@@ -395,7 +395,7 @@ void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved) {
         info->bit_order = m_spi_map[spi].bit_order;
         info->data_mode = m_spi_map[spi].data_mode;
         if (info->version >= HAL_SPI_INFO_VERSION_2) {
-            info->ss_pin = m_spi_map[spi].ss_pin != PIN_INVALID ? NRF_PIN_LOOKUP_TABLE[m_spi_map[spi].ss_pin] : 0xffff;
+            info->ss_pin = m_spi_map[spi].ss_pin;
         }
         HAL_enable_irq(state);
     }

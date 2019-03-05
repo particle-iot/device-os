@@ -26,6 +26,21 @@ make -s all PLATFORM=boron COMPILE_LTO=n
 cp ../build/target/bootloader/platform-13/bootloader.bin ../release/bootloader-${version}-boron.bin
 cp ../build/target/bootloader/platform-13/bootloader.elf ../release/bootloader-${version}-boron.elf
 
+rm -rf ../build/target
+make -s all PLATFORM=xenon-som COMPILE_LTO=n
+cp ../build/target/bootloader/platform-24/bootloader.bin ../release/bootloader-${version}-xenon-som.bin
+cp ../build/target/bootloader/platform-24/bootloader.elf ../release/bootloader-${version}-xenon-som.elf
+
+rm -rf ../build/target
+make -s all PLATFORM=argon-som COMPILE_LTO=n
+cp ../build/target/bootloader/platform-22/bootloader.bin ../release/bootloader-${version}-argon-som.bin
+cp ../build/target/bootloader/platform-22/bootloader.elf ../release/bootloader-${version}-argon-som.elf
+
+rm -rf ../build/target
+make -s all PLATFORM=boron-som COMPILE_LTO=n
+cp ../build/target/bootloader/platform-23/bootloader.bin ../release/bootloader-${version}-boron-som.bin
+cp ../build/target/bootloader/platform-23/bootloader.elf ../release/bootloader-${version}-boron-som.elf
+
 # Modular firmware
 
 cd ../modules
@@ -64,6 +79,42 @@ make -s all PLATFORM=boron APP=tinker-serial1-debugging
 cp ../build/target/user-part/platform-13-m/tinker-serial1-debugging.bin ../release/tinker-serial1-debugging-${version}-boron.bin
 cp ../build/target/user-part/platform-13-m/tinker-serial1-debugging.elf ../release/tinker-serial1-debugging-${version}-boron.elf
 
+cd ../modules
+rm -rf ../build/target
+make -s all PLATFORM=xenon-som APP=tinker
+cp ../build/target/system-part1/platform-24-m/system-part1.bin ../release/system-part1-${version}-xenon-som.bin
+cp ../build/target/system-part1/platform-24-m/system-part1.elf ../release/system-part1-${version}-xenon-som.elf
+cp ../build/target/user-part/platform-24-m/tinker.bin ../release/tinker-${version}-xenon-som.bin
+cp ../build/target/user-part/platform-24-m/tinker.elf ../release/tinker-${version}-xenon-som.elf
+cd ../main
+make -s all PLATFORM=xenon-som APP=tinker-serial1-debugging
+cp ../build/target/user-part/platform-24-m/tinker-serial1-debugging.bin ../release/tinker-serial1-debugging-${version}-xenon-som.bin
+cp ../build/target/user-part/platform-24-m/tinker-serial1-debugging.elf ../release/tinker-serial1-debugging-${version}-xenon-som.elf
+
+cd ../modules
+rm -rf ../build/target
+make -s all PLATFORM=argon-som APP=tinker
+cp ../build/target/system-part1/platform-22-m/system-part1.bin ../release/system-part1-${version}-argon-som.bin
+cp ../build/target/system-part1/platform-22-m/system-part1.elf ../release/system-part1-${version}-argon-som.elf
+cp ../build/target/user-part/platform-22-m/tinker.bin ../release/tinker-${version}-argon-som.bin
+cp ../build/target/user-part/platform-22-m/tinker.elf ../release/tinker-${version}-argon-som.elf
+cd ../main
+make -s all PLATFORM=argon-som APP=tinker-serial1-debugging
+cp ../build/target/user-part/platform-22-m/tinker-serial1-debugging.bin ../release/tinker-serial1-debugging-${version}-argon-som.bin
+cp ../build/target/user-part/platform-22-m/tinker-serial1-debugging.elf ../release/tinker-serial1-debugging-${version}-argon-som.elf
+
+cd ../modules
+rm -rf ../build/target
+make -s all PLATFORM=boron-som APP=tinker
+cp ../build/target/system-part1/platform-23-m/system-part1.bin ../release/system-part1-${version}-boron-som.bin
+cp ../build/target/system-part1/platform-23-m/system-part1.elf ../release/system-part1-${version}-boron-som.elf
+cp ../build/target/user-part/platform-23-m/tinker.bin ../release/tinker-${version}-boron-som.bin
+cp ../build/target/user-part/platform-23-m/tinker.elf ../release/tinker-${version}-boron-som.elf
+cd ../main
+make -s all PLATFORM=boron-som APP=tinker-serial1-debugging
+cp ../build/target/user-part/platform-23-m/tinker-serial1-debugging.bin ../release/tinker-serial1-debugging-${version}-boron-som.bin
+cp ../build/target/user-part/platform-23-m/tinker-serial1-debugging.elf ../release/tinker-serial1-debugging-${version}-boron-som.elf
+
 # Non-modular tinker with debugging enabled
 
 cd ../main
@@ -83,6 +134,21 @@ make -s all PLATFORM=boron APP=tinker-serial1-debugging MODULAR=n DEBUG_BUILD=y
 cp ../build/target/main/platform-13/tinker-serial1-debugging.bin ../release/tinker-serial1-debugging-${version}-boron-mono.bin
 cp ../build/target/main/platform-13/tinker-serial1-debugging.elf ../release/tinker-serial1-debugging-${version}-boron-mono.elf
 
+rm -rf ../build/target
+make -s all PLATFORM=xenon-som APP=tinker-serial1-debugging MODULAR=n DEBUG_BUILD=y
+cp ../build/target/main/platform-24/tinker-serial1-debugging.bin ../release/tinker-serial1-debugging-${version}-xenon-som-mono.bin
+cp ../build/target/main/platform-24/tinker-serial1-debugging.elf ../release/tinker-serial1-debugging-${version}-xenon-som-mono.elf
+
+rm -rf ../build/target
+make -s all PLATFORM=argon-som APP=tinker-serial1-debugging MODULAR=n DEBUG_BUILD=y
+cp ../build/target/main/platform-22/tinker-serial1-debugging.bin ../release/tinker-serial1-debugging-${version}-argon-som-mono.bin
+cp ../build/target/main/platform-22/tinker-serial1-debugging.elf ../release/tinker-serial1-debugging-${version}-argon-som-mono.elf
+
+rm -rf ../build/target
+make -s all PLATFORM=boron-som APP=tinker-serial1-debugging MODULAR=n DEBUG_BUILD=y
+cp ../build/target/main/platform-23/tinker-serial1-debugging.bin ../release/tinker-serial1-debugging-${version}-boron-som-mono.bin
+cp ../build/target/main/platform-23/tinker-serial1-debugging.elf ../release/tinker-serial1-debugging-${version}-boron-som-mono.elf
+
 # Hybrid firmware
 
 cd ../modules
@@ -101,3 +167,18 @@ rm -rf ../build/target
 make -s all PLATFORM=boron HYBRID_BUILD=y INCLUDE_APP=y
 cp ../build/target/system-part1/platform-13-m/system-part1.bin ../release/hybrid-${version}-boron.bin
 cp ../build/target/system-part1/platform-13-m/system-part1.elf ../release/hybrid-${version}-boron.elf
+
+rm -rf ../build/target
+make -s all PLATFORM=xenon-som HYBRID_BUILD=y INCLUDE_APP=y
+cp ../build/target/system-part1/platform-24-m/system-part1.bin ../release/hybrid-${version}-xenon-som.bin
+cp ../build/target/system-part1/platform-24-m/system-part1.elf ../release/hybrid-${version}-xenon-som.elf
+
+rm -rf ../build/target
+make -s all PLATFORM=argon-som HYBRID_BUILD=y INCLUDE_APP=y
+cp ../build/target/system-part1/platform-22-m/system-part1.bin ../release/hybrid-${version}-argon-som.bin
+cp ../build/target/system-part1/platform-22-m/system-part1.elf ../release/hybrid-${version}-argon-som.elf
+
+rm -rf ../build/target
+make -s all PLATFORM=boron-som HYBRID_BUILD=y INCLUDE_APP=y
+cp ../build/target/system-part1/platform-23-m/system-part1.bin ../release/hybrid-${version}-boron-som.bin
+cp ../build/target/system-part1/platform-23-m/system-part1.elf ../release/hybrid-${version}-boron-som.elf

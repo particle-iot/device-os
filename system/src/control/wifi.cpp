@@ -38,7 +38,7 @@ using namespace particle::control::common;
 
 using wlan_common_function_ptr = decltype(&wlan_scan);
 
-#if PLATFORM_ID != 14
+#if PLATFORM_ID != 14 && PLATFORM_ID != 24
 
 int handleGetAntennaRequest(ctrl_request* req) {
     particle_ctrl_WiFiGetAntennaReply reply = {};
@@ -175,7 +175,7 @@ int handleClearCredentialsRequest(ctrl_request* req) {
     return wlan_clear_credentials() == 0 ? SYSTEM_ERROR_NONE : SYSTEM_ERROR_UNKNOWN;
 }
 
-#else // PLATFORM_ID == 14
+#else // PLATFORM_ID == 14 || PLATFORM_ID == 24
 
 // TODO
 int handleGetAntennaRequest(ctrl_request* req) {

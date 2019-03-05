@@ -6,23 +6,32 @@
 #include "nrf_gpio.h"
 
 
-//LEDs
+// LEDs
 #define LEDn                                4
 #define LED_MIRROR_SUPPORTED                0
-#define LED1_GPIO_PIN                       42                      //User Led
 #define LED_BLUE                            LED2                    //BLUE Led
-#define LED2_GPIO_PIN                       15                      //BLUE Led
 #define LED_RED                             LED3                    //RED Led
-#define LED3_GPIO_PIN                       13                      //RED Led
 #define LED_GREEN                           LED4                    //GREEN Led
+
+// FIXME: It should fetch the pin number and PWM configurations from pinmap_hal.c
+#if PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_XENON_SOM
+#define LED1_GPIO_PIN                       44                      //User Led
+#define LED2_GPIO_PIN                       45                      //BLUE Led
+#define LED3_GPIO_PIN                       47                      //RED Led
+#define LED4_GPIO_PIN                       46                      //GREEN Led
+#else
+#define LED1_GPIO_PIN                       44                      //User Led
+#define LED2_GPIO_PIN                       15                      //BLUE Led
+#define LED3_GPIO_PIN                       13                      //RED Led
 #define LED4_GPIO_PIN                       14                      //GREEN Led
+#endif
 
 
 led_config_t HAL_Leds[] = {
     {
         .version = 0x00,
         .pin = LED1_GPIO_PIN,
-        .is_inverted = 1
+        .is_inverted = 0
     },
     {
         .version = 0x00,

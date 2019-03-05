@@ -100,9 +100,9 @@ void Network_Setup(bool threaded)
     Spark_Protocol_Init();
 #endif
 
-#if PLATFORM_ID == PLATFORM_BORON
+#if PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BORON_SOM
     system_cloud_set_inet_family_keepalive(AF_INET, HAL_PLATFORM_BORON_CLOUD_KEEPALIVE_INTERVAL, 0);
-#endif // PLATFORM_ID == PLATFORM_BORON
+#endif // PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BORON_SOM
 }
 
 int cfod_count = 0;

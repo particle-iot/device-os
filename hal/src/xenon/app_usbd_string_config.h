@@ -80,8 +80,13 @@
  *
  * List of product names defined the same way like in @ref APP_USBD_STRINGS_MANUFACTURER
  */
+#if PLATFORM_ID == 14 // Xenon
 #define APP_USBD_STRINGS_PRODUCT         \
     APP_USBD_STRING_DESC('X', 'e', 'n', 'o', 'n', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
+#else // Xenon SoM
+#define APP_USBD_STRINGS_PRODUCT         \
+    APP_USBD_STRING_DESC('X', 'e', 'n', 'o', 'n', ' ', 'S', 'o', 'M', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
+#endif
 
 
 /**
@@ -124,10 +129,17 @@
  *                Then use X(USBD_STRING_WINUSB, =0xEE, (APP_USBD_STRING_DESC(...)))
  * - @c ...     : List of string descriptors for each defined language.
  */
+#if PLATFORM_ID == 14 // Xenon
 #define APP_USBD_STRINGS_USER \
     X(APP_USER_1, , APP_USBD_STRING_DESC('S', 'e', 'r', 'i', 'a', 'l')) \
     X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC('M', 'S', 'F', 'T', '1', '0', '0', 0xee)) \
     X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC('X', 'e', 'n', 'o', 'n', ' ', 'C', 'o', 'n', 't', 'r', 'o', 'l', ' ', 'I', 'n', 't', 'e', 'r', 'f', 'a', 'c', 'e'))
+#else
+#define APP_USBD_STRINGS_USER \
+    X(APP_USER_1, , APP_USBD_STRING_DESC('S', 'e', 'r', 'i', 'a', 'l')) \
+    X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC('M', 'S', 'F', 'T', '1', '0', '0', 0xee)) \
+    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC('X', 'e', 'n', 'o', 'n', ' ', 'S', 'o', 'M', ' ', 'C', 'o', 'n', 't', 'r', 'o', 'l', ' ', 'I', 'n', 't', 'e', 'r', 'f', 'a', 'c', 'e'))
+#endif
 
 /** @} */
 #endif /* APP_USBD_STRING_CONFIG_H */
