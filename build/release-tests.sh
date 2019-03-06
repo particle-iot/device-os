@@ -6,7 +6,8 @@ function display_help ()
 usage: release-tests.sh [--dryrun] [--help]
                         [--filename=<test_parameter_file.json>]
                         --output-directory=<binary_output_directory>
-                        --platform=<core|electron|p1|photon>
+                        --platform=<argon|argon-som|boron|boron-som...
+                        |core|electron|p1|photon|xenon|xenon-som>
                         --version=<semver_version_string>
 
 Generate the testing binaries belonging to a given platform.
@@ -103,7 +104,7 @@ function valid_platform ()
     platform=$1
 
     # Validate platform (result of expression returned to caller)
-    [ "$platform" = "core" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ]
+    [ "$platform" = "argon" ] || [ "$platform" = "argon-som" ] || [ "$platform" = "boron" ] || [ "$platform" = "boron-som" ] || [ "$platform" = "core" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ] || [ "$platform" = "xenon" ] || [ "$platform" = "xenon-som" ]
 }
 
 # Handle invalid arguments
@@ -126,17 +127,35 @@ fi
 
 # Infer platform id
 case "$PLATFORM" in
-    core)
+    "core")
         PLATFORM_ID="0"
         ;;
-    photon)
+    "photon")
         PLATFORM_ID="6"
         ;;
-    p1)
+    "p1")
         PLATFORM_ID="8"
         ;;
-    electron)
+    "electron")
         PLATFORM_ID="10"
+        ;;
+    "argon")
+        PLATFORM_ID="12"
+        ;;
+    "boron")
+        PLATFORM_ID="13"
+        ;;
+    "xenon")
+        PLATFORM_ID="14"
+        ;;
+    "argon-som")
+        PLATFORM_ID="22"
+        ;;
+    "boron-som")
+        PLATFORM_ID="23"
+        ;;
+    "xenon-som")
+        PLATFORM_ID="24"
         ;;
     *)
         echo "ERROR: No rules to release platform: \"$PLATFORM\"!"
@@ -203,6 +222,14 @@ for test_object in $(jq '.platforms[] | select(.platform == "'${PLATFORM}'") | .
     else
         MAKE_COMMAND+=" DEBUG_BUILD=n"
     fi
+
+    # Support Core
+    if [ "$PLATFORM" == "core" ]; then
+        MAKE_COMMAND+=" MODULAR=n"
+    else
+        MAKE_COMMAND+=" MODULAR=y"
+    fi
+
     MAKE_COMMAND+=" USE_SWD_JTAG=n USE_SWD=n"
     
     # Append test commands and metadata

@@ -6,9 +6,11 @@ VERSION="1.0.1"
 function display_help ()
 {
     echo "\
-usage: release.sh [--debug] [--help] [--output-directory=<binary_output_directory>]
-                  (--platform=<core|electron|p1|photon> | --platform-id=<0|6|8|10>])
-                  [--tests]
+usage: release.sh [--output-directory=<binary_output_directory>]
+                  (--platform=<argon|argon-som|boron|boron-som...
+                  |core|electron|p1|photon|xenon|xenon-som>...
+                  | --platform-id=<0|6|8|10|12|13|14|22|23|24>)
+                  [--debug] [--help] [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
 is capable of generating both debug and release binaries, as well as the
@@ -160,13 +162,13 @@ function release_file()
     local path=$ABSOLUTE_TARGET_DIRECTORY
     local qualified_filename=""
 
-    # Support Core
-    if [ "$from_name" = "tinker" ]; then
+    # Support Core and Mesh Monolithic Debug Builds
+    if [ "$from_name" = "tinker" ] || [ "$MODULAR" = "n" ] && [ "$from_name" != "bootloader" ]; then
         path+="/main"
     else
         path+="/${from_name}"
     fi
-    path+="/platform-${PLATFORM_ID}-${suffix}"
+    path+="/platform-${PLATFORM_ID}${suffix}"
 
     # Translate suffix to parameter
     if [ "$suffix" = "lto" ]; then
@@ -185,17 +187,17 @@ function release_binary ()
     # Parse parameter(s)
     local from_name=$1
     local to_name=$2
-    local suffix=${3:-m}
+    local suffix=$3
     local debug_build=${4:-n}
     local use_swd_jtag=${5:-n}
 
     # Move files into release folder
-    release_file $from_name $to_name "bin" $suffix $debug_build $use_swd_jtag
+    release_file "$from_name" "$to_name" "bin" "$suffix" "$debug_build" "$use_swd_jtag"
     if [ $DEBUG = true ]; then
-        release_file $from_name $to_name "elf" $suffix $debug_build $use_swd_jtag
-        release_file $from_name $to_name "hex" $suffix $debug_build $use_swd_jtag
-        release_file $from_name $to_name "lst" $suffix $debug_build $use_swd_jtag
-        release_file $from_name $to_name "map" $suffix $debug_build $use_swd_jtag
+        release_file "$from_name" "$to_name" "elf" "$suffix" "$debug_build" "$use_swd_jtag"
+        release_file "$from_name" "$to_name" "hex" "$suffix" "$debug_build" "$use_swd_jtag"
+        release_file "$from_name" "$to_name" "lst" "$suffix" "$debug_build" "$use_swd_jtag"
+        release_file "$from_name" "$to_name" "map" "$suffix" "$debug_build" "$use_swd_jtag"
     fi
 }
 
@@ -205,17 +207,45 @@ if [ -z $PLATFORM ] && [ -z $PLATFORM_ID ]; then
     exit 5
 elif [ ! -z $PLATFORM ]; then
     case "$PLATFORM" in
-        core)
+        "core")
             PLATFORM_ID="0"
+            MESH=false
             ;;
-        photon)
+        "photon")
             PLATFORM_ID="6"
+            MESH=false
             ;;
-        p1)
+        "p1")
             PLATFORM_ID="8"
+            MESH=false
             ;;
-        electron)
+        "electron")
             PLATFORM_ID="10"
+            MESH=false
+            ;;
+        "argon")
+            PLATFORM_ID="12"
+            MESH=true
+            ;;
+        "boron")
+            PLATFORM_ID="13"
+            MESH=true
+            ;;
+        "xenon")
+            PLATFORM_ID="14"
+            MESH=true
+            ;;
+        "argon-som")
+            PLATFORM_ID="22"
+            MESH=true
+            ;;
+        "boron-som")
+            PLATFORM_ID="23"
+            MESH=true
+            ;;
+        "xenon-som")
+            PLATFORM_ID="24"
+            MESH=true
             ;;
         *)
             echo "ERROR: No rules to release platform: \"$PLATFORM\"!"
@@ -226,15 +256,43 @@ else
     case "$PLATFORM_ID" in
         0)
             PLATFORM="core"
+            MESH=false
             ;;
         6)
             PLATFORM="photon"
+            MESH=false
             ;;
         8)
             PLATFORM="p1"
+            MESH=false
             ;;
         10)
             PLATFORM="electron"
+            MESH=false
+            ;;
+        12)
+            PLATFORM="argon"
+            MESH=true
+            ;;
+        13)
+            PLATFORM="boron"
+            MESH=true
+            ;;
+        14)
+            PLATFORM="xenon"
+            MESH=true
+            ;;
+        22)
+            PLATFORM="argon-som"
+            MESH=true
+            ;;
+        23)
+            PLATFORM="boron-som"
+            MESH=true
+            ;;
+        24)
+            PLATFORM="xenon-som"
+            MESH=true
             ;;
         *)
             echo "ERROR: No rules to release platform id: $PLATFORM_ID!"
@@ -271,37 +329,104 @@ OUT_MODULE=$ABSOLUTE_TARGET_DIRECTORY/user-part/platform-$PLATFORM_ID-m
 rm -rf ../build/modules/
 rm -rf $ABSOLUTE_TARGET_DIRECTORY/
 
-# Photon (6), P1 (8)
-if [ $PLATFORM_ID -eq 6 ] || [ $PLATFORM_ID -eq 8 ]; then
-    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
-    cd ../modules
+#########################
+# Build Platform System #
+#########################
+
+# Core (0)
+if [ $PLATFORM_ID -eq 0 ]; then
+    # Configure
+    cd ../main
+    DEBUG_BUILD="n"
+    MODULAR="n"
+
+    # Compose, echo and execute the `make` command
+    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n APP=tinker"
     echo $MAKE_COMMAND
     eval $MAKE_COMMAND
-    release_binary system-part1 system-part1 "m" $DEBUG_BUILD $USE_SWD_JTAG
-    release_binary system-part2 system-part2 "m" $DEBUG_BUILD $USE_SWD_JTAG
-    release_binary user-part tinker "m" $DEBUG_BUILD $USE_SWD_JTAG
+
+    # Migrate file(s) into output interface
+    release_binary "tinker" "tinker" "-lto" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+    cd ../modules
+
+# Photon (6), P1 (8)
+elif [ $PLATFORM_ID -eq 6 ] || [ $PLATFORM_ID -eq 8 ]; then
+    # Configure
+    if [ $DEBUG = true ]; then
+        cd ../main
+        MODULAR="n"
+        SUFFIX=""
+    else
+        cd ../modules
+        MODULAR="y"
+        SUFFIX="-m"
+    fi
+
+    # Compose, echo and execute the `make` command
+    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
+    if [ "$MODULAR" = "n" ]; then
+        MAKE_COMMAND+=" APP=tinker-serial1-debugging"
+    fi
+    echo $MAKE_COMMAND
+    eval $MAKE_COMMAND
+
+    # Migrate file(s) into output interface
+    if [ "$MODULAR" = "n" ]; then
+        release_binary "tinker-serial1-debugging" "tinker-serial1-debugging" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+    else
+        release_binary "system-part1" "system-part1" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+        release_binary "system-part2" "system-part2" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+        release_binary "user-part" "tinker" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+    fi
 
 # Electron (10)
 elif [ $PLATFORM_ID -eq 10 ]; then
+    # Configure
+    cd ../modules
     DEBUG_BUILD="y"
-    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
-    cd ../modules
-    echo $MAKE_COMMAND
-    eval $MAKE_COMMAND
-    release_binary system-part1 system-part1 "m" $DEBUG_BUILD $USE_SWD_JTAG
-    release_binary system-part2 system-part2 "m" $DEBUG_BUILD $USE_SWD_JTAG
-    release_binary system-part3 system-part3 "m" $DEBUG_BUILD $USE_SWD_JTAG
-    release_binary user-part tinker "m" $DEBUG_BUILD $USE_SWD_JTAG
+    MODULAR="y"
 
-# Core (0)
-elif [ $PLATFORM_ID -eq 0 ]; then
-    DEBUG_BUILD="n"
-    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n APP=tinker"
-    cd ../main
+    # Compose, echo and execute the `make` command
+    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
     echo $MAKE_COMMAND
     eval $MAKE_COMMAND
-    release_binary tinker tinker "lto" $DEBUG_BUILD $USE_SWD_JTAG
-    cd ../modules
+
+    # Migrate file(s) into output interface
+    release_binary "system-part1" "system-part1" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+    release_binary "system-part2" "system-part2" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+    release_binary "system-part3" "system-part3" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+    release_binary "user-part" "tinker" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+
+# Mesh
+elif [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 14 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 24 ]; then
+    # Configure
+    if [ $DEBUG = true ]; then
+        cd ../main
+        MODULAR="n"
+        SUFFIX=""
+    else
+        cd ../modules
+        MODULAR="y"
+        SUFFIX="-m"
+    fi
+    USE_SWD_JTAG="n"
+
+    # Compose, echo and execute the `make` command
+    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
+    if [ "$MODULAR" = "n" ]; then
+        MAKE_COMMAND+=" APP=tinker-serial1-debugging"
+    fi
+    echo $MAKE_COMMAND
+    eval $MAKE_COMMAND
+
+    # Migrate file(s) into output interface
+    if [ "$MODULAR" = "n" ]; then
+        release_binary "tinker-serial1-debugging" "tinker-serial1-debugging" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+    else
+        release_binary "system-part1" "system-part1" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+        release_binary "user-part" "tinker" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+    fi
+
 fi
 
 # Generate test binaries for platform
@@ -309,9 +434,25 @@ if [ $GENERATE_TESTS = true ]; then
     ../build/release-tests.sh --output-directory $ABSOLUTE_OUTPUT_DIRECTORY --platform $PLATFORM --version $VERSION
 fi
 
-# Build Platform Bootloader
+#############################
+# Build Platform Bootloader #
+#############################
+
+# Configure
 cd ../bootloader
-MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=y DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
+if [ $MESH = true ]; then
+    COMPILE_LTO="n"
+    DEBUG_BUILD="n"
+    SUFFIX=""
+else
+    COMPILE_LTO="y"
+    SUFFIX="-lto"
+fi
+
+# Compose, echo and execute the `make` command
+MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=$COMPILE_LTO DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
 echo $MAKE_COMMAND
 eval $MAKE_COMMAND
-release_binary bootloader bootloader "lto" $DEBUG_BUILD $USE_SWD_JTAG
+
+# Migrate file(s) into output interface
+release_binary bootloader bootloader "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
