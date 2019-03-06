@@ -340,9 +340,9 @@ BLEAttribute::BLEAttribute() {
     init();
 }
 
-BLEAttribute::BLEAttribute(uint8_t properties, const char* desc, onDataReceivedCb cb)
-        : properties_(properties),
-          description_(desc),
+BLEAttribute::BLEAttribute(const char* desc, uint8_t properties, onDataReceivedCb cb)
+        : description_(desc),
+          properties_(properties),
           dataCb_(cb) {
     init();
 
@@ -377,6 +377,10 @@ int BLEAttribute::onDataReceived(onDataReceivedCb callback) {
 
 int BLEAttribute::setValue(const uint8_t* buf, uint16_t len) {
     return SYSTEM_ERROR_NONE;
+}
+
+int BLEAttribute::setValue(String& str) {
+    return setValue(reinterpret_cast<const uint8_t*>(str.c_str()), str.length());
 }
 
 int BLEAttribute::getValue(uint8_t* buf, uint16_t* len) const {
@@ -457,14 +461,6 @@ BLEClass::~BLEClass() {
 
 }
 
-int BLEClass::on(void) {
-    return SYSTEM_ERROR_NONE;
-}
-
-int BLEClass::off(void) {
-    return SYSTEM_ERROR_NONE;
-}
-
 int BLEClass::advertise(uint32_t interval) const {
     return SYSTEM_ERROR_NONE;
 }
@@ -496,6 +492,10 @@ int BLEClass::disconnect(BLEConnection* conn) {
 
 bool BLEClass::connected(BLEConnection* conn) const {
     return conn->handle() != 0xFFFF;
+}
+
+bool BLEClass::connected(void) const {
+    return false;
 }
 
 BLEConnection* BLEClass::connection(bleConnHandle) {

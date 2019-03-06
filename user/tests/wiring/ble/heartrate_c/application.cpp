@@ -30,7 +30,6 @@ void heartrateUpdated(uint8_t* data, uint16_t len) {
 }
 
 void setup() {
-    BLE.on();
 }
 
 void loop() {

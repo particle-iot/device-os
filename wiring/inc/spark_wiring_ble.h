@@ -158,7 +158,7 @@ public:
 };
 
 
-/* BLE advertiser class */
+/* BLE scan result class */
 class BLEScanResult {
 public:
     BLEScanResult();
@@ -186,7 +186,7 @@ public:
     typedef void (*onDataReceivedCb)(uint8_t* data, uint16_t len);
 
     BLEAttribute();
-    BLEAttribute(uint8_t properties, const char* desc, onDataReceivedCb cb = nullptr);
+    BLEAttribute(const char* desc, uint8_t properties, onDataReceivedCb cb = nullptr);
 
     ~BLEAttribute();
 
@@ -198,6 +198,11 @@ public:
 
     /* Update the attribute value and send to peer automatically if connected.*/
     int setValue(const uint8_t* buf, uint16_t len);
+    int setValue(String& str);
+
+    template<typename T> int setValue(T val) {
+        return setValue(reinterpret_cast<const uint8_t*>(&val), sizeof(T));
+    }
 
     /* Get the attribute value */
     int getValue(uint8_t* buf, uint16_t* len) const;
@@ -211,8 +216,8 @@ private:
      */
     bool             valid_;
 
-    uint8_t          properties_;
     const char*      description_;
+    uint8_t          properties_;
 
     /**
      * Internally used for the attribute with NOTIFY or INDICATE property.
@@ -301,12 +306,6 @@ public:
     BLEClass();
     ~BLEClass();
 
-    /* Initialize BLE stack and add pre-defined local attributes. */
-    int on(void);
-
-    /* Turn BLE off. */
-    int off(void);
-
     /* Start advertising. */
     int advertise(uint32_t interval = DEFAULT_ADVERTISING_INTERVAL) const;
     int advertise(uint32_t interval, uint32_t timeout = DEFAULT_ADVERTISING_TIMEOUT) const;
@@ -332,6 +331,7 @@ public:
     int disconnect(BLEConnection* conn);
 
     bool connected(BLEConnection* conn) const;
+    bool connected(void) const;
 
 private:
     BLEClass* getInstance(void) {
