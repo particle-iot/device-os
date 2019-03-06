@@ -22,9 +22,8 @@
 
 void onDataReceived(uint8_t* data, uint16_t len);
 
-BLEAttribute txAttr(NOTIFY, "tx");
-BLEAttribute rxAttr(WRITE_WO_RSP, "rx", onDataReceived);
-BLEConnection* myConn;
+BLEAttribute txAttr("tx", NOTIFY);
+BLEAttribute rxAttr("rx", WRITE_WO_RSP, onDataReceived);
 
 void onDataReceived(uint8_t* data, uint16_t len) {
     for (uint8_t i = 0; i < len; i++) {
@@ -35,16 +34,11 @@ void onDataReceived(uint8_t* data, uint16_t len) {
 void setup() {
     Serial.begin();
 
-    BLE.on();
-
     BLE.advertise();
-
-    BLEDevice local;
-    myConn = BLE.connect();
 }
 
 void loop() {
-    if (BLE.connected(myConn)) {
+    if (BLE.connected()) {
         while (Serial.available()) {
             // Read data from Serial into txBuf
             uint8_t txBuf[20];
