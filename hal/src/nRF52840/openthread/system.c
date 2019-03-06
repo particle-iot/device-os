@@ -56,6 +56,18 @@ extern bool gPlatformPseudoResetWasRequested;
 #include "gpio_hal.h"
 #include "platforms.h"
 
+// FIXME
+void otSysPowerDownAntenna(bool en) {
+#if (PLATFORM_ID == PLATFORM_XENON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_BORON_SOM)
+    return;
+#else    
+    HAL_Pin_Mode(ANTSW1, en ? INPUT : OUTPUT);
+#if (PLATFORM_ID == PLATFORM_XENON) || (PLATFORM_ID == PLATFORM_ARGON)
+    HAL_Pin_Mode(ANTSW2, en ? INPUT : OUTPUT);
+#endif // (PLATFORM_ID == PLATFORM_XENON) || (PLATFORM_ID == PLATFORM_ARGON)
+#endif // (PLATFORM_ID == PLATFORM_XENON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_BORON_SOM)
+}
+
 static void selectAntenna(bool external) {
     // Mesh SoM don't have on-board antenna switch.
 #if (PLATFORM_ID == PLATFORM_XENON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_BORON_SOM)

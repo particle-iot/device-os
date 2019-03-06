@@ -286,7 +286,14 @@ int NetworkManager::disableNetworking() {
             return 0;
         }
         case State::IFACE_DOWN: {
-            /* Networking is enabled, but no interfaces were brought up. Nothing to do here */
+            /* Networking is enabled, but no interfaces were brought up. Nothing to do here
+             * except to power them all down
+             */
+            CHECK(for_each_iface([&](if_t iface, unsigned int flags) {
+                if_req_power req = {};
+                req.state = IF_POWER_STATE_DOWN;
+                if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
+            }));
             transition(State::DISABLED);
             break;
         }

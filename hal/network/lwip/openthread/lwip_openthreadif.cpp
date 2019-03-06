@@ -43,6 +43,9 @@ LOG_SOURCE_CATEGORY("net.th")
 #include "system_threading.h"
 extern "C" int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags);
 
+// FIXME:
+extern "C" void otSysPowerDownAntenna(bool en);
+
 using namespace particle::net;
 
 namespace {
@@ -803,10 +806,13 @@ int OpenThreadNetif::down() {
     LwipTcpIpCoreLock lkk;
     netif_set_link_down(interface());
 
+    otSysPowerDownAntenna(true);
+
     return r;
 }
 
 int OpenThreadNetif::powerUp() {
+    otSysPowerDownAntenna(false);
     return 0;
 }
 

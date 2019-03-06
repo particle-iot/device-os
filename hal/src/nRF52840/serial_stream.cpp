@@ -173,4 +173,9 @@ int SerialStream::setBaudRate(unsigned int baudrate) {
     return 0;
 }
 
+int SerialStream::powerDown() const {
+    HAL_USART_End(serial_);
+    return 0;
+}
+
 } // particle

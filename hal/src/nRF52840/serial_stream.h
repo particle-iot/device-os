@@ -39,6 +39,7 @@ public:
     int waitEvent(unsigned flags, unsigned timeout) override;
 
     int setBaudRate(unsigned int baudrate);
+    int powerDown() const;
 
     void enabled(bool enabled);
     bool enabled() const;

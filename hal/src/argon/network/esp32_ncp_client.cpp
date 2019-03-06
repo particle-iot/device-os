@@ -77,6 +77,8 @@ const auto ESP32_NCP_AP_CHANNEL = 3;
 
 const auto ESP32_NCP_MIN_MVER_WITH_CMUX = 4;
 
+const auto ESP32_NCP_DEFAULT_SERIAL_BAUDRATE = 921600;
+
 } // unnamed
 
 Esp32NcpClient::Esp32NcpClient() :
@@ -98,7 +100,7 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     HAL_Pin_Mode(ESPEN, OUTPUT);
     espOff();
     // Initialize serial stream
-    std::unique_ptr<SerialStream> serial(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, 921600,
+    std::unique_ptr<SerialStream> serial(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, ESP32_NCP_DEFAULT_SERIAL_BAUDRATE,
             SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
     // Initialize muxed channel stream
@@ -164,6 +166,10 @@ int Esp32NcpClient::off() {
     }
     muxer_.stop();
     espOff();
+
+    // Power down USART as well
+    serial_->powerDown();
+
     ready_ = false;
     ncpState(NcpState::OFF);
     return 0;
@@ -447,6 +453,7 @@ int Esp32NcpClient::waitReady() {
         return 0;
     }
     muxer_.stop();
+    CHECK(serial_->setBaudRate(ESP32_NCP_DEFAULT_SERIAL_BAUDRATE));
     CHECK(initParser(serial_.get()));
     espReset();
     skipAll(serial_.get(), 1000);

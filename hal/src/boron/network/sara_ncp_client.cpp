@@ -222,6 +222,9 @@ int SaraNcpClient::off() {
     modemSetUartState(false);
     // Power down
     modemPowerOff();
+    // Power down USART as well
+    serial_->powerDown();
+
     ready_ = false;
     ncpState(NcpState::OFF);
     return 0;
