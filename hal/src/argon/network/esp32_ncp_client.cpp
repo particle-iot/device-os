@@ -467,17 +467,29 @@ int Esp32NcpClient::waitReady() {
             HAL_Delay_Milliseconds(1000);
         }
     }
-    if (!ready_) {
+
+    if (ready_) {
+        skipAll(serial_.get(), 1000);
+        parser_.reset();
+        parserError_ = 0;
+        LOG(TRACE, "NCP ready to accept AT commands");
+
+        auto r = initReady();
+        if (r != SYSTEM_ERROR_NONE) {
+            LOG(ERROR, "Failed to perform early initialization");
+            ready_ = false;
+        }
+    } else {
         LOG(ERROR, "No response from NCP");
+    }
+
+    if (!ready_) {
         espOff();
         ncpState(NcpState::OFF);
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    skipAll(serial_.get(), 1000);
-    parser_.reset();
-    parserError_ = 0;
-    LOG(TRACE, "NCP ready to accept AT commands");
-    return initReady();
+
+    return 0;
 }
 
 int Esp32NcpClient::initReady() {
