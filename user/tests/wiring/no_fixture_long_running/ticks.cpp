@@ -45,6 +45,7 @@ void assert_micros_millis(int duration, bool overflow = false)
 
 void assert_micros_millis_interrupts(int duration)
 {
+    // TODO: nRF52 platforms
 #if PLATFORM_ID==0 || (PLATFORM_ID>=6 && PLATFORM_ID<=10)
     // Enable some high priority interrupt to run interference
     pinMode(D0, OUTPUT);
@@ -127,7 +128,8 @@ test(TICKS_00_millis_micros_baseline_test)
     assertMoreOrEqual(micros() - startMicros, DELAY);
 }
 
-#if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
+// TODO: nRF52 platforms
+#if (!defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE) && !defined(HAL_PLATFORM_NRF52840)
 // the __advance_system1MsTick isn't dynamically linked so we build this as a monolithic app
 #include "hw_ticks.h"
 test(TICKS_01_millis_and_micros_rollover)

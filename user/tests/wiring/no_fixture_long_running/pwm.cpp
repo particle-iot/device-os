@@ -14,11 +14,18 @@ static const uint32_t maxPulseSamples = 100;
 static const uint32_t minimumFrequency = 100;
 
 uint8_t pwm_pins[] = {
-
-#if defined(STM32F2XX)
-        D0, D1, D2, D3, A4, A5, WKP, RX, TX
-#else
+#if (PLATFORM_ID == 0) // Core
         A0, A1, A4, A5, A6, A7, D0, D1
+#elif (PLATFORM_ID == 6) // Photon
+        D0, D1, D2, D3, A4, A5, WKP, RX, TX
+#elif (PLATFORM_ID == 8) // P1
+        D0, D1, D2, D3, A4, A5, WKP, RX, TX, P1S0, P1S1, P1S6
+#elif (PLATFORM_ID == 10) // Electron
+        D0, D1, D2, D3, A4, A5, WKP, RX, TX, B0, B1, B2, B3, C4, C5
+#elif HAL_PLATFORM_NRF52840 // Xenon/Argon/Boron
+        D2, D3, D4, D5, D6, /* D7, */ D8, A0, A1, A2, A3, A4, A5 /* , RGBR, RGBG, RGBB */
+#else
+#error "Unsupported platform"
 #endif
 };
 
@@ -31,6 +38,13 @@ template <typename F> void for_all_pwm_pins(F callback)
         callback(pwm_pins[i]);
     }
 }
+
+#if (PLATFORM_ID == 8) // P1
+test(PWM_00_P1S6SetupForP1) {
+    // disable POWERSAVE_CLOCK on P1S6
+    System.disableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
+}
+#endif
 
 test(PWM_01_CompherensiveResolutionFrequency) {
     for_all_pwm_pins([&](uint16_t pin) {
@@ -136,4 +150,11 @@ test(PWM_01_CompherensiveResolutionFrequency) {
     });
 }
 
+#if (PLATFORM_ID == 8) // P1
+test(PWM_99_P1S6CleanupForP1) {
+    // enable POWERSAVE_CLOCK on P1S6
+    System.enableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
+}
 #endif
+
+#endif // PLATFORM_ID >= 3
