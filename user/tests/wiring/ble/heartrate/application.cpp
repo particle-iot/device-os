@@ -20,7 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-BLEAttribute heartrate("heartrate", READ | NOTIFY);
+BLEAttributeClass heartrate("heartrate", READ | NOTIFY);
 int newHr = 1234;
 
 void setup() {

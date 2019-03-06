@@ -73,11 +73,9 @@ __attribute__((unused))void onDataReceived(void* event) {
  * BLEUUID class
  */
 BLEUUID::BLEUUID() {
-
 }
 
 BLEUUID::~BLEUUID() {
-
 }
 
 
@@ -85,61 +83,9 @@ BLEUUID::~BLEUUID() {
  * BLEAdvertisingData class
  */
 BLEAdvertisingData::BLEAdvertisingData() {
-
 }
 
 BLEAdvertisingData::~BLEAdvertisingData() {
-
-}
-
-int BLEAdvertisingData::locate(uint8_t type, uint16_t* offset, uint16_t* len, bool sr) const {
-    // A valid AD structure is composed of Length field, Type field and Data field.
-    // Each field should be filled with at least one byte.
-    if (!sr) {
-        for (uint16_t i = 0; (i + 3) <= this->advLen_; i = i) {
-            *len = this->adv_[i];
-
-            uint8_t type = this->adv_[i + 1];
-            if (type == type) {
-                // The value of adsLen doesn't include the length field of an AD structure.
-                if ((i + *len + 1) <= this->advLen_) {
-                    *offset = i;
-                    *len += 1;
-                    return SYSTEM_ERROR_NONE;
-                } else {
-                    return SYSTEM_ERROR_INTERNAL;
-                }
-            } else {
-                // Navigate to the next AD structure.
-                i += (*len + 1);
-            }
-        }
-    }
-    else {
-        for (uint16_t i = 0; (i + 3) <= this->srLen_; i = i) {
-            *len = this->sr_[i];
-
-            uint8_t type = this->sr_[i + 1];
-            if (type == type) {
-                // The value of adsLen doesn't include the length field of an AD structure.
-                if ((i + *len + 1) <= this->srLen_) {
-                    *offset = i;
-                    *len += 1;
-                    if (!sr) {
-                        sr = true;
-                    }
-                    return SYSTEM_ERROR_NONE;
-                } else {
-                    return SYSTEM_ERROR_INTERNAL;
-                }
-            } else {
-                // Navigate to the next AD structure.
-                i += (*len + 1);
-            }
-        }
-    }
-
-    return SYSTEM_ERROR_NOT_FOUND;
 }
 
 int BLEAdvertisingData::append(uint8_t type, const uint8_t* data, uint16_t len, bool sr) {
@@ -305,11 +251,9 @@ int BLEAdvertisingData::scanRspData(uint8_t* buf, uint16_t len) const {
  * BLEScanResult class
  */
 BLEScanResult::BLEScanResult() {
-
 }
 
 BLEScanResult::~BLEScanResult() {
-
 }
 
 int BLEScanResult::advData(uint8_t* buf, uint16_t len) const {
@@ -328,11 +272,23 @@ bool BLEScanResult::find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr) c
     return data_.find(type, data, len, sr);
 }
 
+void BLEScanResult::address(uint8_t* addr) const {
+    memcpy(addr, address_.addr, 6);
+}
+
+const BLEAddress& BLEScanResult::address(void) const {
+    return address_;
+}
+
+bleAddrType BLEScanResult::addrType(void) const {
+    return address_.type;
+}
+
 
 /**
  * BLEAttribute class
  */
-BLEAttribute::BLEAttribute() {
+BLEAttributeClass::BLEAttributeClass() {
     properties_ = 0;
     description_ = nullptr;
     dataCb_ = nullptr;
@@ -340,50 +296,46 @@ BLEAttribute::BLEAttribute() {
     init();
 }
 
-BLEAttribute::BLEAttribute(const char* desc, uint8_t properties, onDataReceivedCb cb)
+BLEAttributeClass::BLEAttributeClass(const char* desc, uint8_t properties, onDataReceivedCb cb)
         : description_(desc),
           properties_(properties),
           dataCb_(cb) {
     init();
 
-    BLEConnection::local().attributes_.append(*this);
+    BLEClass::local_.attributes_.append(*this);
 }
 
-BLEAttribute::~BLEAttribute() {
-
+BLEAttributeClass::~BLEAttributeClass() {
 }
 
-void BLEAttribute::init(void) {
-    valid_ = false;
-    configured_ = false;
-    len_ = 0;
-    attrHandle_ = 0;
-}
-
-const char* BLEAttribute::description(void) const {
+const char* BLEAttributeClass::description(void) const {
     return description_;
 }
 
-uint8_t BLEAttribute::properties(void) const {
+uint8_t BLEAttributeClass::properties(void) const {
     return properties_;
 }
 
-int BLEAttribute::onDataReceived(onDataReceivedCb callback) {
+int BLEAttributeClass::onDataReceived(onDataReceivedCb callback) {
     if (callback != nullptr) {
         dataCb_ = callback;
     }
     return SYSTEM_ERROR_NONE;;
 }
 
-int BLEAttribute::setValue(const uint8_t* buf, uint16_t len) {
+int BLEAttributeClass::setValue(const uint8_t* buf, uint16_t len) {
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEAttribute::setValue(String& str) {
+int BLEAttributeClass::setValue(String& str) {
     return setValue(reinterpret_cast<const uint8_t*>(str.c_str()), str.length());
 }
 
-int BLEAttribute::getValue(uint8_t* buf, uint16_t* len) const {
+int BLEAttributeClass::getValue(uint8_t* buf, uint16_t* len) const {
+    return SYSTEM_ERROR_NONE;
+}
+
+int BLEAttributeClass::getValue(String& str) const {
     return SYSTEM_ERROR_NONE;
 }
 
@@ -391,60 +343,44 @@ int BLEAttribute::getValue(uint8_t* buf, uint16_t* len) const {
 /**
  * BLEDevice class
  */
-BLEDevice::BLEDevice() {
+BLEDeviceClass::BLEDeviceClass() {
 
 }
 
-BLEDevice::BLEDevice(int n) : attributes_(n) {
+BLEDeviceClass::BLEDeviceClass(int n) : attributes_(n) {
 
 }
 
-BLEDevice::~BLEDevice() {
+BLEDeviceClass::~BLEDeviceClass() {
 
 }
 
-int BLEDevice::attribute(const char* desc, BLEAttribute** attrs) {
-    return 0;
-}
-
-uint8_t BLEDevice::attrsCount(void) const {
-    return 0;
-}
-
-
-/**
- * BLEConnection class
- */
-BLEDevice BLEConnection::local_(5);
-
-BLEConnection::BLEConnection() {
-
-}
-
-BLEConnection::BLEConnection(bleDeviceRole role, int n)
-        : role(role),
-          peer_(n) {
-
-}
-
-BLEConnection::~BLEConnection() {
-
-}
-
-const bleConnHandle BLEConnection::handle(void) const {
-    return handle_;
-}
-
-const connParameters& BLEConnection::params(void) const {
+const connParameters& BLEDeviceClass::params(void) const {
     return params_;
 }
 
-BLEDevice& BLEConnection::peer(void) {
-    return peer_;
+bool BLEDeviceClass::connected(void) const {
+    return false;
 }
 
-BLEDevice& BLEConnection::local(void) {
-    return local_;
+void BLEDeviceClass::address(uint8_t* addr) const {
+    memcpy(addr, addr_.addr, 6);
+}
+
+const BLEAddress& BLEDeviceClass::address(void) const {
+    return addr_;
+}
+
+bleAddrType BLEDeviceClass::addrType(void) const {
+    return addr_.type;
+}
+
+int BLEDeviceClass::attribute(const char* desc, BLEAttribute* attrs) {
+    return 0;
+}
+
+uint8_t BLEDeviceClass::attrsCount(void) const {
+    return 0;
 }
 
 
@@ -452,8 +388,9 @@ BLEDevice& BLEConnection::local(void) {
  * BLEClass class
  */
 BLEClass* BLEClass::ble_;
+BLEDeviceClass BLEClass::local_(5);
 
-BLEClass::BLEClass() : connections_(MAX_PERIPHERAL_LINK_COUNT+MAX_CENTRAL_LINK_COUNT) {
+BLEClass::BLEClass() : peers_(MAX_PERIPHERAL_LINK_COUNT+MAX_CENTRAL_LINK_COUNT) {
 
 }
 
@@ -473,32 +410,32 @@ int BLEClass::scan(BLEScanResult* results, uint8_t count, uint16_t timeout) cons
     return SYSTEM_ERROR_NONE;
 }
 
-BLEConnection* BLEClass::connect(onConnectedCb connCb, onDisconnectedCb disconnCb) {
-    return nullptr;
+int BLEClass::connect(onConnectedCb connCb, onDisconnectedCb disconnCb) {
+    return SYSTEM_ERROR_NONE;
 }
 
 
-BLEConnection* BLEClass::connect(const BLEAddress& addr, onConnectedCb connCb, onDisconnectedCb disconnCb) {
-    return nullptr;
+int BLEClass::connect(const BLEAddress& addr, onConnectedCb connCb, onDisconnectedCb disconnCb) {
+    return SYSTEM_ERROR_NONE;
 }
 
 int BLEClass::disconnect(void) {
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEClass::disconnect(BLEConnection* conn) {
+int BLEClass::disconnect(BLEDevice peer) {
     return SYSTEM_ERROR_NONE;
-}
-
-bool BLEClass::connected(BLEConnection* conn) const {
-    return conn->handle() != 0xFFFF;
 }
 
 bool BLEClass::connected(void) const {
     return false;
 }
 
-BLEConnection* BLEClass::connection(bleConnHandle) {
+int BLEClass::peerDevices(BLEDevice* devices, uint8_t count) const {
+    return 0;
+}
+
+BLEDevice BLEClass::peer(const BLEAddress& addr) {
     return nullptr;
 }
 

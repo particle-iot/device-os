@@ -22,9 +22,9 @@
 
 BLEScanResult results[10];
 
-BLEAttribute* peerTxAttr = nullptr;
-BLEAttribute* peerRxAttr = nullptr;
-BLEConnection* myConn;
+BLEAttribute peerTxAttr;
+BLEAttribute peerRxAttr;
+BLEDevice peer;
 
 void onDataReceived(uint8_t* data, uint16_t len) {
     for (uint8_t i = 0; i < len; i++) {
@@ -37,7 +37,7 @@ void setup() {
 }
 
 void loop() {
-    if (BLE.connected(myConn)) {
+    if (BLE.connected()) {
         while (Serial.available()) {
             // Read data from Serial into txBuf
             uint8_t txBuf[20];
@@ -52,12 +52,18 @@ void loop() {
             for (uint8_t i = 0; i < count; i++) {
                 bool found = results[i].find(BLE_SIG_AD_TYPE_FLAGS);
                 if (found) {
-                    myConn = BLE.connect(results[i].address);
-                    if (BLE.connected(myConn)) {
-                        myConn->peer().attribute("tx", &peerTxAttr);
-                        myConn->peer().attribute("rx", &peerRxAttr);
+                    BLE.connect(results[i].address());
+
+                    if (BLE.connected()) {
+                        peer = BLE.peer(results[i].address());
+
+                        peer->attribute("tx", &peerTxAttr);
+                        peer->attribute("rx", &peerRxAttr);
+
                         peerTxAttr->onDataReceived(onDataReceived);
                     }
+
+                    break;
                 }
             }
         }

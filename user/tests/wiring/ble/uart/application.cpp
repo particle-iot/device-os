@@ -22,8 +22,8 @@
 
 void onDataReceived(uint8_t* data, uint16_t len);
 
-BLEAttribute txAttr("tx", NOTIFY);
-BLEAttribute rxAttr("rx", WRITE_WO_RSP, onDataReceived);
+BLEAttributeClass txAttr("tx", NOTIFY);
+BLEAttributeClass rxAttr("rx", WRITE_WO_RSP, onDataReceived);
 
 void onDataReceived(uint8_t* data, uint16_t len) {
     for (uint8_t i = 0; i < len; i++) {

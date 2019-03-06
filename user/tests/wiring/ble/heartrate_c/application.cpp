@@ -22,8 +22,8 @@
 
 BLEScanResult results[10];
 
-BLEAttribute* heartrate = nullptr;
-BLEConnection* myConn;
+BLEAttribute heartrate;
+BLEDevice peer;
 
 void heartrateUpdated(uint8_t* data, uint16_t len) {
 
@@ -33,7 +33,7 @@ void setup() {
 }
 
 void loop() {
-    if (BLE.connected(myConn)) {
+    if (BLE.connected()) {
         uint8_t newHr[4];
         uint16_t len = 4;
         heartrate->getValue(newHr, &len);
@@ -45,12 +45,18 @@ void loop() {
             for (uint8_t i = 0; i < count; i++) {
                 bool found = results[i].find(BLE_SIG_AD_TYPE_FLAGS);
                 if (found) {
-                    myConn = BLE.connect(results[i].address);
-                    if (BLE.connected(myConn)) {
-                        myConn->peer().attribute("heartrate", &heartrate);
+                    BLE.connect(results[i].address());
+
+                    if (BLE.connected()) {
+                        peer = BLE.peer(results[i].address());
+
+                        peer->attribute("heartrate", &heartrate);
+
                         heartrate->onDataReceived(heartrateUpdated);
                     }
                 }
+
+                break;
             }
         }
     }
