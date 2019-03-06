@@ -20,21 +20,16 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-BLEAttribute heartrate(READ | NOTIFY, "heartrate");
-BLEConnection* myConn;
+BLEAttribute heartrate("heartrate", READ | NOTIFY);
+int newHr = 1234;
 
 void setup() {
-    BLE.on();
-
     BLE.advertise();
-
-    BLEDevice local;
-    myConn = BLE.connect();
 }
 
 void loop() {
-    uint32_t newHr = 1234;
-    if (BLE.connected(myConn)) {
-        heartrate.setValue((const uint8_t*)&newHr, sizeof(uint32_t));
+    if (BLE.connected()) {
+        heartrate.setValue(newHr);
     }
+    delay(200);
 }
