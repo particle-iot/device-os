@@ -34,7 +34,9 @@ DYNALIB_TABLE_EXTERN(hal_inet);
 DYNALIB_TABLE_EXTERN(hal_netdb);
 DYNALIB_TABLE_EXTERN(hal_ifapi);
 DYNALIB_TABLE_EXTERN(hal_resolvapi);
+#if HAL_PLATFORM_NFC
 DYNALIB_TABLE_EXTERN(hal_nfc);
+#endif // HAL_PLATFORM_NFC
 #if HAL_PLATFORM_CELLULAR
 DYNALIB_TABLE_EXTERN(hal_cellular);
 #endif // HAL_PLATFORM_CELLULAR
@@ -77,7 +79,9 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
     DYNALIB_TABLE_NAME(hal_netdb),
     DYNALIB_TABLE_NAME(hal_ifapi),
     DYNALIB_TABLE_NAME(hal_resolvapi),
+#if HAL_PLATFORM_NFC
     DYNALIB_TABLE_NAME(hal_nfc)
+#endif // HAL_PLATFORM_NFC
 #if HAL_PLATFORM_CELLULAR
     , DYNALIB_TABLE_NAME(hal_cellular)
 #endif // HAL_PLATFORM_CELLULAR

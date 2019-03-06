@@ -38,8 +38,16 @@ typedef struct {
 
 typedef void (*nfc_event_callback_t)(nfc_event_type_t type, nfc_event_t *event, void* ctx);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int hal_nfc_type2_init(void);
 int hal_nfc_type2_set_payload(const void *msg_buf, size_t msg_len);
 int hal_nfc_type2_start_emulation(void);
 int hal_nfc_type2_stop_emulation(void);
 int hal_nfc_type2_set_callback(nfc_event_callback_t callback);
+
+#ifdef __cplusplus
+}
+#endif
