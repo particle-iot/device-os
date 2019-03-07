@@ -1,6 +1,5 @@
-
-WRITE_FILE_CREATE = $(shell echo "$(2)" >$(1))
-WRITE_FILE_APPEND = $(shell echo "$(2)" >>$(1))
+WRITE_FILE_CREATE = $(shell echo "$(2)" > $(1))
+WRITE_FILE_APPEND = $(shell echo "$(2)" >> $(1))
 
 COMMA := ,
 
@@ -20,8 +19,8 @@ all: $(INTERMEDIATE_ELF)
 endif
 
 all:
-	@echo Creating module_user_memory.ld ...
-	$(call WRITE_FILE_CREATE, module_user_memory.ld,user_module_app_flash_origin = 0xD4000;)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_app_flash_length = 128K;)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,)
-	$(call WRITE_FILE_APPEND, module_user_memory.ld,user_module_sram_length = $(USER_SRAM_LENGTH);)
+	@echo Creating $(MODULE_USER_MEMORY_FILE_GEN) ...
+	$(call WRITE_FILE_CREATE, "$(MODULE_USER_MEMORY_FILE_GEN)",user_module_app_flash_origin = 0xD4000;)
+	$(call WRITE_FILE_APPEND, "$(MODULE_USER_MEMORY_FILE_GEN)",user_module_app_flash_length = 128K;)
+	$(call WRITE_FILE_APPEND, "$(MODULE_USER_MEMORY_FILE_GEN)",)
+	$(call WRITE_FILE_APPEND, "$(MODULE_USER_MEMORY_FILE_GEN)",user_module_sram_length = $(USER_SRAM_LENGTH);)
