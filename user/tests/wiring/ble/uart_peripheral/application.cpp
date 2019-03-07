@@ -34,6 +34,7 @@ void onDataReceived(uint8_t* data, uint16_t len) {
 void setup() {
     Serial.begin();
 
+    BLE.begin();
     BLE.advertise();
 }
 

@@ -238,12 +238,20 @@ bool BLEAdvertisingData::find(uint8_t type, uint8_t* data, uint16_t* len, bool* 
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEAdvertisingData::advData(uint8_t* buf, uint16_t len) const {
-    return 0;
+const uint8_t* BLEAdvertisingData::advData(void) const {
+    return adv_;
 }
 
-int BLEAdvertisingData::scanRspData(uint8_t* buf, uint16_t len) const {
-    return 0;
+uint16_t BLEAdvertisingData::advDataLen(void) const {
+    return advLen_;
+}
+
+const uint8_t* BLEAdvertisingData::srData(void) const {
+    return sr_;
+}
+
+uint16_t BLEAdvertisingData::srDataLen(void) const {
+    return srLen_;
 }
 
 
@@ -256,12 +264,20 @@ BLEScanResult::BLEScanResult() {
 BLEScanResult::~BLEScanResult() {
 }
 
-int BLEScanResult::advData(uint8_t* buf, uint16_t len) const {
-    return data_.advData(buf, len);
+const uint8_t* BLEScanResult::advData() const {
+    return data_.advData();
 }
 
-int BLEScanResult::scanRspData(uint8_t* buf, uint16_t len) const {
-    return data_.scanRspData(buf, len);
+uint16_t BLEScanResult::advDataLen(void) const {
+    return data_.advDataLen();
+}
+
+const uint8_t* BLEScanResult::srData(void) const {
+    return data_.srData();
+}
+
+uint16_t BLEScanResult::srDataLen(void) const {
+    return data_.srDataLen();
 }
 
 bool BLEScanResult::find(uint8_t type) const {
@@ -359,10 +375,6 @@ const connParameters& BLEDeviceClass::params(void) const {
     return params_;
 }
 
-bool BLEDeviceClass::connected(void) const {
-    return false;
-}
-
 void BLEDeviceClass::address(uint8_t* addr) const {
     memcpy(addr, addr_.addr, 6);
 }
@@ -398,6 +410,10 @@ BLEClass::~BLEClass() {
 
 }
 
+void BLEClass::begin(onConnectedCb connCb, onDisconnectedCb disconnCb) {
+    return;
+}
+
 int BLEClass::advertise(uint32_t interval) const {
     return SYSTEM_ERROR_NONE;
 }
@@ -410,13 +426,8 @@ int BLEClass::scan(BLEScanResult* results, uint8_t count, uint16_t timeout) cons
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEClass::connect(onConnectedCb connCb, onDisconnectedCb disconnCb) {
-    return SYSTEM_ERROR_NONE;
-}
-
-
-int BLEClass::connect(const BLEAddress& addr, onConnectedCb connCb, onDisconnectedCb disconnCb) {
-    return SYSTEM_ERROR_NONE;
+BLEDevice BLEClass::connect(const BLEAddress& addr) {
+    return nullptr;
 }
 
 int BLEClass::disconnect(void) {
@@ -431,12 +442,20 @@ bool BLEClass::connected(void) const {
     return false;
 }
 
-int BLEClass::peerDevices(BLEDevice* devices, uint8_t count) const {
-    return 0;
+bool BLEClass::connected(BLEDevice peer) const {
+    return false;
 }
 
-BLEDevice BLEClass::peer(const BLEAddress& addr) {
+BLEDevice BLEClass::peripheral(const BLEAddress& addr) {
     return nullptr;
+}
+
+BLEDevice BLEClass::central(void) {
+    return nullptr;
+}
+
+BLEDevice BLEClass::local(void) const {
+    return &local_;
 }
 
 void BLEClass::onBleEvents(void* event, void* context) {

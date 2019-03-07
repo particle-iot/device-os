@@ -111,7 +111,6 @@ public:
     bleUuidType type;
     uint16_t shortUuid;
     uint8_t fullUuid[LONG_UUID_LENGTH];
-    uint8_t baseUuid[LONG_UUID_LENGTH];
 };
 
 
@@ -133,9 +132,11 @@ public:
     bool find(uint8_t type) const;
     bool find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr = nullptr) const;
 
-    int advData(uint8_t* buf, uint16_t len) const;
+    const uint8_t* advData(void) const;
+    uint16_t advDataLen(void) const;
 
-    int scanRspData(uint8_t* buf, uint16_t len) const;
+    const uint8_t* srData(void) const;
+    uint16_t srDataLen(void) const;
 
 private:
     int locate(uint8_t type, uint16_t* offset, uint16_t* len, bool sr) const {
@@ -211,9 +212,11 @@ public:
     BLEScanResult();
     ~BLEScanResult();
 
-    int advData(uint8_t* buf, uint16_t len) const;
+    const uint8_t* advData(void) const;
+    uint16_t advDataLen(void) const;
 
-    int scanRspData(uint8_t* buf, uint16_t len) const;
+    const uint8_t* srData(void) const;
+    uint16_t srDataLen(void) const;
 
     bool find(uint8_t type) const;
     bool find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr = nullptr) const;
@@ -246,15 +249,20 @@ public:
 
     int onDataReceived(onDataReceivedCb callback);
 
-    /* Update the attribute value and send to peer automatically if connected.*/
+    /**
+     * Update the attribute value and send to peer automatically if connected.
+     */
     int setValue(const uint8_t* buf, uint16_t len);
     int setValue(String& str);
+    int setValue(const char* str);
 
     template<typename T> int setValue(T val) {
         return setValue(reinterpret_cast<const uint8_t*>(&val), sizeof(T));
     }
 
-    /* Get the attribute value */
+    /**
+     * Get the attribute value
+     */
     int getValue(uint8_t* buf, uint16_t* len) const;
     int getValue(String& str) const;
 
@@ -308,13 +316,13 @@ public:
 
     const connParameters& params(void) const;
 
-    bool connected(void) const;
-
     void address(uint8_t* addr) const;
     const BLEAddress& address(void) const;
     bleAddrType addrType(void) const;
 
-    // There might have more than two attributes with the same description.
+    /**
+     * There might have more than two attributes with the same description.
+     */
     int attribute(const char* desc, BLEAttribute* attrs);
 
     uint8_t attrsCount(void) const;
@@ -348,7 +356,11 @@ public:
     BLEClass();
     ~BLEClass();
 
-    /* Start advertising. */
+    void begin(onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
+
+    /**
+     * Start advertising.
+     */
     int advertise(uint32_t interval = DEFAULT_ADVERTISING_INTERVAL) const;
     int advertise(uint32_t interval, uint32_t timeout = DEFAULT_ADVERTISING_TIMEOUT) const;
 
@@ -358,27 +370,44 @@ public:
     int scan(BLEScanResult* result, uint8_t count, uint16_t timeout = DEFAULT_SCANNING_TIMEOUT) const;
 
     /**
-     * By calling these methods, local device will be Peripheral once connected.
+     * Connect to a peer Peripheral device.
      */
-    int connect(onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
+    BLEDevice connect(const BLEAddress& addr);
 
     /**
-     * If peer is local device, it will be BLE Peripheral once connected.
-     * Otherwise, it will be BLE Central once connected.
+     * Disconnect from peer Central.
      */
-    int connect(const BLEAddress& addr, onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
-
-    /* Disconnect from peer Central device. */
     int disconnect(void);
 
-    /* Disconnect from specific peer Central or Peripheral device. */
+    /**
+     * Disconnect from peer Peripheral.
+     */
     int disconnect(BLEDevice peer);
 
+    /**
+     * Check if connected with peer Central.
+     */
     bool connected(void) const;
 
-    int peerDevices(BLEDevice* devices, uint8_t count) const;
+    /**
+     * Check if connected with peer Peripheral.
+     */
+    bool connected(BLEDevice peer) const;
 
-    BLEDevice peer(const BLEAddress& addr);
+    /**
+     * Retrieve specific peer Peripheral if found.
+     */
+    BLEDevice peripheral(const BLEAddress& addr);
+
+    /**
+     * Retrieve peer Central if connected.
+     */
+    BLEDevice central(void);
+
+    /**
+     * Retrieve local device.
+     */
+    BLEDevice local(void) const;
 
 private:
     BLEClass* getInstance(void) {
@@ -390,7 +419,9 @@ private:
 
     static void onBleEvents(void* event, void* context);
 
-    /* Retrieve the connection with given connection handle.  */
+    /**
+     * Retrieve peer device with given connection handle.
+     */
     BLEDevice getPeerDeviceByConnHandle(bleConnHandle) {
         return nullptr;
     }
@@ -398,7 +429,7 @@ private:
     static BLEClass* ble_;
     static BLEDeviceClass local_;
     Vector<BLEDeviceClass> peers_;
-    onConnectedCb    connectedCb_;
+    onConnectedCb connectedCb_;
     onDisconnectedCb disconnectCb_;
 };
 

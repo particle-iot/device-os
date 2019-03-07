@@ -22,21 +22,29 @@
 
 BLEScanResult results[10];
 
-BLEAttribute heartrate;
+BLEAttribute peerTxAttr;
+BLEAttribute peerRxAttr;
 BLEDevice peer;
 
-void heartrateUpdated(uint8_t* data, uint16_t len) {
-
+void onDataReceived(uint8_t* data, uint16_t len) {
+    for (uint8_t i = 0; i < len; i++) {
+        Serial.write(data[i]);
+    }
 }
 
 void setup() {
+    Serial.begin();
+    BLE.begin();
 }
 
 void loop() {
-    if (BLE.connected()) {
-        uint8_t newHr[4];
-        uint16_t len = 4;
-        heartrate->getValue(newHr, &len);
+    if (BLE.connected(peer)) {
+        while (Serial.available()) {
+            // Read data from Serial into txBuf
+            uint8_t txBuf[20];
+
+            peerRxAttr->setValue(txBuf, sizeof(txBuf));
+        }
     }
     else {
         uint8_t count = BLE.scan(results, 10);
@@ -45,18 +53,17 @@ void loop() {
             for (uint8_t i = 0; i < count; i++) {
                 bool found = results[i].find(BLE_SIG_AD_TYPE_FLAGS);
                 if (found) {
-                    BLE.connect(results[i].address());
+                    peer = BLE.connect(results[i].address());
 
-                    if (BLE.connected()) {
-                        peer = BLE.peer(results[i].address());
+                    if (BLE.connected(peer)) {
+                        peer->attribute("tx", &peerTxAttr);
+                        peer->attribute("rx", &peerRxAttr);
 
-                        peer->attribute("heartrate", &heartrate);
-
-                        heartrate->onDataReceived(heartrateUpdated);
+                        peerTxAttr->onDataReceived(onDataReceived);
                     }
-                }
 
-                break;
+                    break;
+                }
             }
         }
     }

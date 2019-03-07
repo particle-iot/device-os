@@ -20,16 +20,42 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-BLEAttributeClass heartrate("heartrate", READ | NOTIFY);
-int newHr = 1234;
+BLEScanResult results[10];
+
+BLEAttribute heartrate;
+BLEDevice peer;
+
+void heartrateUpdated(uint8_t* data, uint16_t len) {
+
+}
 
 void setup() {
-    BLE.advertise();
+    BLE.begin();
 }
 
 void loop() {
     if (BLE.connected()) {
-        heartrate.setValue(newHr);
+        uint8_t newHr[4];
+        uint16_t len = 4;
+        heartrate->getValue(newHr, &len);
     }
-    delay(200);
+    else {
+        uint8_t count = BLE.scan(results, 10);
+
+        if (count > 0) {
+            for (uint8_t i = 0; i < count; i++) {
+                bool found = results[i].find(BLE_SIG_AD_TYPE_FLAGS);
+                if (found) {
+                    peer = BLE.connect(results[i].address());
+
+                    if (BLE.connected(peer)) {
+                        peer->attribute("heartrate", &heartrate);
+                        heartrate->onDataReceived(heartrateUpdated);
+                    }
+                }
+
+                break;
+            }
+        }
+    }
 }
