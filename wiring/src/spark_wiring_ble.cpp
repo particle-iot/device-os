@@ -75,7 +75,31 @@ __attribute__((unused))void onDataReceived(void* event) {
 BLEUUID::BLEUUID() {
 }
 
+BLEUUID::BLEUUID(uint8_t* uuid128, bleUuidOrder order) {
+
+}
+
+BLEUUID::BLEUUID(uint16_t uuid16, bleUuidOrder order) {
+
+}
+
 BLEUUID::~BLEUUID() {
+}
+
+BLEUUID::bleUuidType BLEUUID::type(void) const {
+    return type_;
+}
+
+BLEUUID::bleUuidOrder BLEUUID::order(void) const {
+    return order_;
+}
+
+uint16_t BLEUUID::shorted(void) const {
+    return shortUuid_;
+}
+
+void BLEUUID::full(uint8_t* uuid128) const {
+
 }
 
 
@@ -88,10 +112,10 @@ BLEAdvertisingData::BLEAdvertisingData() {
 BLEAdvertisingData::~BLEAdvertisingData() {
 }
 
-int BLEAdvertisingData::append(uint8_t type, const uint8_t* data, uint16_t len, bool sr) {
-    uint16_t  offset;
-    uint16_t  adsLen;
-    bool      adsExist = false;
+int BLEAdvertisingData::append(uint8_t type, const uint8_t* data, size_t len, bool sr) {
+    size_t      offset;
+    size_t      adsLen;
+    bool        adsExist = false;
 
     if (sr && type == BLE_SIG_AD_TYPE_FLAGS) {
         // The scan response data should not contain the AD Flags AD structure.
@@ -102,8 +126,8 @@ int BLEAdvertisingData::append(uint8_t type, const uint8_t* data, uint16_t len, 
         adsExist = true;
     }
 
-    uint8_t *advPtr;
-    uint16_t *advLenPtr;
+    uint8_t*    advPtr;
+    size_t*     advLenPtr;
 
     if (sr) {
         advPtr = this->sr_;
@@ -150,24 +174,28 @@ int BLEAdvertisingData::appendLocalName(const char* name, bool sr) {
     return append(BLE_SIG_AD_TYPE_LOCAL_NAME, (const uint8_t*)name, strlen(name), sr);
 }
 
-int BLEAdvertisingData::appendCustomData(uint8_t* buf, uint16_t len, bool sr) {
+int BLEAdvertisingData::appendCustomData(uint8_t* buf, size_t len, bool sr) {
     return append(BLE_SIG_AD_TYPE_MANU_DATA, buf, len, sr);
 }
 
 int BLEAdvertisingData::appendUuid(BLEUUID& uuid, bool sr) {
-    if (uuid.type == BLEUUID::BLE_UUID_SHORT) {
-        return append(BLE_SIG_AD_TYPE_UUID, reinterpret_cast<const uint8_t*>(&uuid.shortUuid), 2, sr);
+    if (uuid.type() == BLEUUID::BLE_UUID_SHORT) {
+        uint16_t uuid16;
+        uuid16 = uuid.shorted();
+        return append(BLE_SIG_AD_TYPE_UUID, reinterpret_cast<const uint8_t*>(&uuid16), 2, sr);
     }
     else {
-        return append(BLE_SIG_AD_TYPE_UUID, (const uint8_t*)uuid.fullUuid, 16, sr);
+        uint8_t uuid128[16];
+        uuid.full(uuid128);
+        return append(BLE_SIG_AD_TYPE_UUID, (const uint8_t*)uuid128, 16, sr);
     }
 }
 
 int BLEAdvertisingData::remove(uint8_t type) {
-    uint16_t  offset, len;
-    bool      sr;
-    uint8_t*  advPtr;
-    uint16_t* advLenPtr;
+    size_t      offset, len;
+    bool        sr;
+    uint8_t*    advPtr;
+    size_t*     advLenPtr;
 
     if (locate(type, &offset, &len, true) == SYSTEM_ERROR_NONE) {
         sr = true;
@@ -194,55 +222,44 @@ int BLEAdvertisingData::remove(uint8_t type) {
     return SYSTEM_ERROR_NONE;
 }
 
-bool BLEAdvertisingData::find(uint8_t type) const {
-    return find(type, nullptr, nullptr);
+size_t BLEAdvertisingData::find(uint8_t type, bool sr) const {
+    return find(type, nullptr, 0, sr);
 }
 
-bool BLEAdvertisingData::find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr) const {
+size_t BLEAdvertisingData::find(uint8_t type, uint8_t* data, size_t len, bool sr) const {
     // An AD structure must consist of 1 byte length field, 1 byte type field and at least 1 byte data field
     if (this->advLen_ < 3 && this->srLen_ < 3) {
-        *len = 0;
-        return SYSTEM_ERROR_NOT_FOUND;
+        return 0;
     }
 
-    uint16_t offset, adsLen;
-    const uint8_t *advPtr;
+    size_t          offset, adsLen;
+    const uint8_t*  advPtr;
 
-    if (locate(type, &offset, &adsLen, true) == SYSTEM_ERROR_NONE) {
-        if (sr != nullptr) {
-            *sr = true;
+    if (locate(type, &offset, &adsLen, sr) == SYSTEM_ERROR_NONE) {
+        if (sr) {
+            advPtr = this->sr_;
+        } else {
+            advPtr = this->adv_;
         }
-        advPtr = this->sr_;
-    } else if (locate(type, &offset, &adsLen, false) == SYSTEM_ERROR_NONE) {
-        if (sr != nullptr) {
-            *sr = false;
-        }
-        advPtr = this->adv_;
     } else {
-        if (len != nullptr) {
-            *len = 0;
-        }
-        return SYSTEM_ERROR_NOT_FOUND;
+        return 0;
     }
 
-    if (len != nullptr) {
-        adsLen = adsLen - 2;
-        if (data != nullptr && *len > 0) {
-            // Only copy the data field of the found AD structure.
-            *len = MIN(*len, adsLen);
-            memcpy(data, &advPtr[offset + 2], *len);
-        }
-        *len = adsLen;
+    adsLen = adsLen - 2;
+    if (data != nullptr) {
+        // Only copy the data field of the found AD structure.
+        len = MIN(len, adsLen);
+        memcpy(data, &advPtr[offset + 2], len);
     }
 
-    return SYSTEM_ERROR_NONE;
+    return adsLen;
 }
 
 const uint8_t* BLEAdvertisingData::advData(void) const {
     return adv_;
 }
 
-uint16_t BLEAdvertisingData::advDataLen(void) const {
+size_t BLEAdvertisingData::advDataLen(void) const {
     return advLen_;
 }
 
@@ -250,7 +267,7 @@ const uint8_t* BLEAdvertisingData::srData(void) const {
     return sr_;
 }
 
-uint16_t BLEAdvertisingData::srDataLen(void) const {
+size_t BLEAdvertisingData::srDataLen(void) const {
     return srLen_;
 }
 
@@ -268,7 +285,7 @@ const uint8_t* BLEScanResult::advData() const {
     return data_.advData();
 }
 
-uint16_t BLEScanResult::advDataLen(void) const {
+size_t BLEScanResult::advDataLen(void) const {
     return data_.advDataLen();
 }
 
@@ -276,7 +293,7 @@ const uint8_t* BLEScanResult::srData(void) const {
     return data_.srData();
 }
 
-uint16_t BLEScanResult::srDataLen(void) const {
+size_t BLEScanResult::srDataLen(void) const {
     return data_.srDataLen();
 }
 
@@ -284,7 +301,7 @@ bool BLEScanResult::find(uint8_t type) const {
     return data_.find(type);
 }
 
-bool BLEScanResult::find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr) const {
+bool BLEScanResult::find(uint8_t type, uint8_t* data, size_t len, bool sr) const {
     return data_.find(type, data, len, sr);
 }
 
@@ -304,7 +321,7 @@ bleAddrType BLEScanResult::addrType(void) const {
 /**
  * BLEAttribute class
  */
-BLEAttributeClass::BLEAttributeClass() {
+BLEAttribute::BLEAttribute() {
     properties_ = 0;
     description_ = nullptr;
     dataCb_ = nullptr;
@@ -312,7 +329,7 @@ BLEAttributeClass::BLEAttributeClass() {
     init();
 }
 
-BLEAttributeClass::BLEAttributeClass(const char* desc, uint8_t properties, onDataReceivedCb cb)
+BLEAttribute::BLEAttribute(const char* desc, uint8_t properties, onDataReceivedCb cb)
         : description_(desc),
           properties_(properties),
           dataCb_(cb) {
@@ -321,37 +338,41 @@ BLEAttributeClass::BLEAttributeClass(const char* desc, uint8_t properties, onDat
     BLEClass::local_.attributes_.append(*this);
 }
 
-BLEAttributeClass::~BLEAttributeClass() {
+BLEAttribute::BLEAttribute(const char* desc, uint8_t properties, BLEUUID& attrUuid, BLEUUID& svcUuid, onDataReceivedCb cb) {
+
 }
 
-const char* BLEAttributeClass::description(void) const {
+BLEAttribute::~BLEAttribute() {
+}
+
+const char* BLEAttribute::description(void) const {
     return description_;
 }
 
-uint8_t BLEAttributeClass::properties(void) const {
+uint8_t BLEAttribute::properties(void) const {
     return properties_;
 }
 
-int BLEAttributeClass::onDataReceived(onDataReceivedCb callback) {
+int BLEAttribute::onDataReceived(onDataReceivedCb callback) {
     if (callback != nullptr) {
         dataCb_ = callback;
     }
     return SYSTEM_ERROR_NONE;;
 }
 
-int BLEAttributeClass::setValue(const uint8_t* buf, uint16_t len) {
+int BLEAttribute::setValue(const uint8_t* buf, size_t len) {
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEAttributeClass::setValue(String& str) {
+int BLEAttribute::setValue(String& str) {
     return setValue(reinterpret_cast<const uint8_t*>(str.c_str()), str.length());
 }
 
-int BLEAttributeClass::getValue(uint8_t* buf, uint16_t* len) const {
+size_t BLEAttribute::getValue(uint8_t* buf, size_t len) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEAttributeClass::getValue(String& str) const {
+size_t BLEAttribute::getValue(String& str) const {
     return SYSTEM_ERROR_NONE;
 }
 
@@ -359,39 +380,39 @@ int BLEAttributeClass::getValue(String& str) const {
 /**
  * BLEDevice class
  */
-BLEDeviceClass::BLEDeviceClass() {
+BLEDevice::BLEDevice() {
 
 }
 
-BLEDeviceClass::BLEDeviceClass(int n) : attributes_(n) {
+BLEDevice::BLEDevice(int n) : attributes_(n) {
 
 }
 
-BLEDeviceClass::~BLEDeviceClass() {
+BLEDevice::~BLEDevice() {
 
 }
 
-const connParameters& BLEDeviceClass::params(void) const {
+const connParameters& BLEDevice::params(void) const {
     return params_;
 }
 
-void BLEDeviceClass::address(uint8_t* addr) const {
+void BLEDevice::address(uint8_t* addr) const {
     memcpy(addr, addr_.addr, 6);
 }
 
-const BLEAddress& BLEDeviceClass::address(void) const {
+const BLEAddress& BLEDevice::address(void) const {
     return addr_;
 }
 
-bleAddrType BLEDeviceClass::addrType(void) const {
+bleAddrType BLEDevice::addrType(void) const {
     return addr_.type;
 }
 
-int BLEDeviceClass::attribute(const char* desc, BLEAttribute* attrs) {
+int BLEDevice::attribute(const char* desc, BLEPeerAttribute* attrs) {
     return 0;
 }
 
-uint8_t BLEDeviceClass::attrsCount(void) const {
+size_t BLEDevice::attrsCount(void) const {
     return 0;
 }
 
@@ -400,7 +421,7 @@ uint8_t BLEDeviceClass::attrsCount(void) const {
  * BLEClass class
  */
 BLEClass* BLEClass::ble_;
-BLEDeviceClass BLEClass::local_(5);
+BLEDevice BLEClass::local_(5);
 
 BLEClass::BLEClass() : peers_(MAX_PERIPHERAL_LINK_COUNT+MAX_CENTRAL_LINK_COUNT) {
 
@@ -410,7 +431,15 @@ BLEClass::~BLEClass() {
 
 }
 
-void BLEClass::begin(onConnectedCb connCb, onDisconnectedCb disconnCb) {
+void BLEClass::on(void) {
+
+}
+
+void BLEClass::off(void) {
+
+}
+
+void BLEClass::onConnectionChangedCb(onConnectedCb connCb, onDisconnectedCb disconnCb) {
     return;
 }
 
@@ -422,11 +451,11 @@ int BLEClass::advertise(uint32_t interval, uint32_t timeout) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEClass::scan(BLEScanResult* results, uint8_t count, uint16_t timeout) const {
+size_t BLEClass::scan(BLEScanResult* results, size_t count, uint16_t timeout) const {
     return SYSTEM_ERROR_NONE;
 }
 
-BLEDevice BLEClass::connect(const BLEAddress& addr) {
+BLEPeerDevice BLEClass::connect(const BLEAddress& addr) {
     return nullptr;
 }
 
@@ -434,7 +463,7 @@ int BLEClass::disconnect(void) {
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEClass::disconnect(BLEDevice peer) {
+int BLEClass::disconnect(BLEPeerDevice peer) {
     return SYSTEM_ERROR_NONE;
 }
 
@@ -442,20 +471,20 @@ bool BLEClass::connected(void) const {
     return false;
 }
 
-bool BLEClass::connected(BLEDevice peer) const {
+bool BLEClass::connected(BLEPeerDevice peer) const {
     return false;
 }
 
-BLEDevice BLEClass::peripheral(const BLEAddress& addr) {
+BLEPeerDevice BLEClass::peripheral(const BLEAddress& addr) {
     return nullptr;
 }
 
-BLEDevice BLEClass::central(void) {
+BLEPeerDevice BLEClass::central(void) {
     return nullptr;
 }
 
-BLEDevice BLEClass::local(void) const {
-    return &local_;
+BLEDevice& BLEClass::local(void) const {
+    return local_;
 }
 
 void BLEClass::onBleEvents(void* event, void* context) {

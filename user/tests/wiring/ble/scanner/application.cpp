@@ -27,21 +27,20 @@ BLEScanResult results[SCAN_RESULT_COUNT];
 
 void setup() {
     Serial.begin();
-    BLE.begin();
 }
 
 void loop() {
-    uint8_t count = BLE.scan(results, SCAN_RESULT_COUNT);
+    size_t count = BLE.scan(results, SCAN_RESULT_COUNT);
 
-    for (uint8_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
         Serial.println("Advertising data:");
-        for (uint8_t j; j < results[i].advDataLen(); j++) {
+        for (size_t j; j < results[i].advDataLen(); j++) {
             Serial.printf("0x%02x, ", results[i].advData()[j]);
         }
         Serial.println("");
 
         Serial.println("Scan response data:");
-        for (uint8_t j; j < results[i].srDataLen(); j++) {
+        for (size_t j; j < results[i].srDataLen(); j++) {
             Serial.printf("0x%02x, ", results[i].srData()[j]);
         }
         Serial.println("");

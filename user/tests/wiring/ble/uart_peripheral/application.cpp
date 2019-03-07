@@ -20,12 +20,12 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-void onDataReceived(uint8_t* data, uint16_t len);
+void onDataReceived(uint8_t* data, size_t len);
 
-BLEAttributeClass txAttr("tx", NOTIFY);
-BLEAttributeClass rxAttr("rx", WRITE_WO_RSP, onDataReceived);
+BLEAttribute txAttr("tx", NOTIFY);
+BLEAttribute rxAttr("rx", WRITE_WO_RSP, onDataReceived);
 
-void onDataReceived(uint8_t* data, uint16_t len) {
+void onDataReceived(uint8_t* data, size_t len) {
     for (uint8_t i = 0; i < len; i++) {
         Serial.write(data[i]);
     }
@@ -34,7 +34,6 @@ void onDataReceived(uint8_t* data, uint16_t len) {
 void setup() {
     Serial.begin();
 
-    BLE.begin();
     BLE.advertise();
 }
 

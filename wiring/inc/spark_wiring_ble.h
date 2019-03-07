@@ -58,8 +58,8 @@ using particle::Flags;
 
 
 class BLEClass;
-class BLEDeviceClass;
-class BLEAttributeClass;
+class BLEDevice;
+class BLEAttribute;
 
 
 typedef struct {
@@ -106,11 +106,20 @@ public:
     static const uint8_t LONG_UUID_LENGTH = 16;
 
     BLEUUID();
+    BLEUUID(uint8_t* uuid128, bleUuidOrder order = LSB);
+    BLEUUID(uint16_t uuid16, bleUuidOrder order = LSB);
     ~BLEUUID();
 
-    bleUuidType type;
-    uint16_t shortUuid;
-    uint8_t fullUuid[LONG_UUID_LENGTH];
+    bleUuidType type(void) const;
+    bleUuidOrder order(void) const;
+    uint16_t shorted(void) const;
+    void full(uint8_t* uuid128) const;
+
+private:
+    bleUuidType type_;
+    bleUuidOrder order_;
+    uint16_t shortUuid_;
+    uint8_t fullUuid_[LONG_UUID_LENGTH];
 };
 
 
@@ -121,78 +130,64 @@ public:
     ~BLEAdvertisingData();
 
     /* Add or update a type of data snippet to advertising data or scan response data. */
-    int append(uint8_t type, const uint8_t* data, uint16_t len, bool sr = false);
+    int append(uint8_t type, const uint8_t* data, size_t len, bool sr = false);
     int appendLocalName(const char* name, bool sr = false);
-    int appendCustomData(uint8_t* buf, uint16_t len, bool sr = false);
+    int appendCustomData(uint8_t* buf, size_t len, bool sr = false);
     int appendUuid(BLEUUID& uuid, bool sr = false);
 
     int remove(uint8_t type);
 
     /* Filter the specified type of data from advertising or scan response data. */
-    bool find(uint8_t type) const;
-    bool find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr = nullptr) const;
+    size_t find(uint8_t type, bool sr = false) const;
+    size_t find(uint8_t type, uint8_t* data, size_t len, bool sr = false) const;
 
     const uint8_t* advData(void) const;
-    uint16_t advDataLen(void) const;
+    size_t advDataLen(void) const;
 
     const uint8_t* srData(void) const;
-    uint16_t srDataLen(void) const;
+    size_t srDataLen(void) const;
 
 private:
-    int locate(uint8_t type, uint16_t* offset, uint16_t* len, bool sr) const {
+    int locate(uint8_t type, size_t* offset, size_t* len, bool sr) const {
+        const uint8_t*  data;
+        size_t          dataLen;
+
         // A valid AD structure is composed of Length field, Type field and Data field.
         // Each field should be filled with at least one byte.
         if (!sr) {
-            for (uint16_t i = 0; (i + 3) <= this->advLen_; i = i) {
-                *len = this->adv_[i];
-
-                uint8_t type = this->adv_[i + 1];
-                if (type == type) {
-                    // The value of adsLen doesn't include the length field of an AD structure.
-                    if ((i + *len + 1) <= this->advLen_) {
-                        *offset = i;
-                        *len += 1;
-                        return SYSTEM_ERROR_NONE;
-                    } else {
-                        return SYSTEM_ERROR_INTERNAL;
-                    }
-                } else {
-                    // Navigate to the next AD structure.
-                    i += (*len + 1);
-                }
-            }
+            data = adv_;
+            dataLen = this->advLen_;
+        } else {
+            data = sr_;
+            dataLen = this->srLen_;
         }
-        else {
-            for (uint16_t i = 0; (i + 3) <= this->srLen_; i = i) {
-                *len = this->sr_[i];
 
-                uint8_t type = this->sr_[i + 1];
-                if (type == type) {
-                    // The value of adsLen doesn't include the length field of an AD structure.
-                    if ((i + *len + 1) <= this->srLen_) {
-                        *offset = i;
-                        *len += 1;
-                        if (!sr) {
-                            sr = true;
-                        }
-                        return SYSTEM_ERROR_NONE;
-                    } else {
-                        return SYSTEM_ERROR_INTERNAL;
-                    }
+        for (size_t i = 0; (i + 3) <= dataLen; i = i) {
+            *len = data[i];
+
+            uint8_t adsType = data[i + 1];
+            if (adsType == type) {
+                // The value of adsLen doesn't include the length field of an AD structure.
+                if ((i + *len + 1) <= dataLen) {
+                    *offset = i;
+                    *len += 1;
+                    return SYSTEM_ERROR_NONE;
                 } else {
-                    // Navigate to the next AD structure.
-                    i += (*len + 1);
+                    return SYSTEM_ERROR_INTERNAL;
                 }
+            } else {
+                // Navigate to the next AD structure.
+                i += (*len + 1);
             }
         }
 
         return SYSTEM_ERROR_NOT_FOUND;
     }
 
-    uint8_t  adv_[31];
-    uint16_t advLen_;
-    uint8_t  sr_[31];
-    uint16_t srLen_;
+    uint8_t adv_[31];
+    size_t advLen_;
+    uint8_t sr_[31];
+    size_t srLen_;
 };
 
 
@@ -213,13 +208,13 @@ public:
     ~BLEScanResult();
 
     const uint8_t* advData(void) const;
-    uint16_t advDataLen(void) const;
+    size_t advDataLen(void) const;
 
     const uint8_t* srData(void) const;
-    uint16_t srDataLen(void) const;
+    size_t srDataLen(void) const;
 
     bool find(uint8_t type) const;
-    bool find(uint8_t type, uint8_t* data, uint16_t* len, bool* sr = nullptr) const;
+    bool find(uint8_t type, uint8_t* data, size_t len, bool sr = false) const;
 
     void address(uint8_t* addr) const;
     const BLEAddress& address(void) const;
@@ -233,15 +228,16 @@ private:
 
 
 /* BLE attribute class */
-class BLEAttributeClass {
+class BLEAttribute {
 public:
     static const uint16_t MAX_ATTR_VALUE_LEN = 20;
 
-    typedef void (*onDataReceivedCb)(uint8_t* data, uint16_t len);
+    typedef void (*onDataReceivedCb)(uint8_t* data, size_t len);
 
-    BLEAttributeClass();
-    BLEAttributeClass(const char* desc, uint8_t properties, onDataReceivedCb cb = nullptr);
-    ~BLEAttributeClass();
+    BLEAttribute();
+    BLEAttribute(const char* desc, uint8_t properties, onDataReceivedCb cb = nullptr);
+    BLEAttribute(const char* desc, uint8_t properties, BLEUUID& attrUuid, BLEUUID& svcUuid, onDataReceivedCb cb = nullptr);
+    ~BLEAttribute();
 
     const char* description(void) const;
 
@@ -252,7 +248,7 @@ public:
     /**
      * Update the attribute value and send to peer automatically if connected.
      */
-    int setValue(const uint8_t* buf, uint16_t len);
+    int setValue(const uint8_t* buf, size_t len);
     int setValue(String& str);
     int setValue(const char* str);
 
@@ -263,12 +259,12 @@ public:
     /**
      * Get the attribute value
      */
-    int getValue(uint8_t* buf, uint16_t* len) const;
-    int getValue(String& str) const;
+    size_t getValue(uint8_t* buf, size_t len) const;
+    size_t getValue(String& str) const;
 
-    template<typename T> int getValue(T* val) const {
-        uint16_t len = sizeof(T);
-        return getValue(static_cast<uint8_t*>(val), &len);
+    template<typename T> size_t getValue(T* val) const {
+        size_t len = sizeof(T);
+        return getValue(reinterpret_cast<uint8_t*>(val), len);
     }
 
 private:
@@ -289,7 +285,7 @@ private:
     bool configured_;
 
     uint8_t value_[MAX_ATTR_VALUE_LEN];
-    uint16_t len_;
+    size_t len_;
 
     /**
      * For local attribute that with WRITE or WRITE_WITHOUT_RESPONSE property.
@@ -302,17 +298,17 @@ private:
     BLEUUID svcUuid_;
 };
 
-typedef BLEAttributeClass* BLEAttribute;
+typedef BLEAttribute* BLEPeerAttribute;
 
 
 /* BLE device class */
-class BLEDeviceClass {
-    friend BLEAttributeClass;
+class BLEDevice {
+    friend BLEAttribute;
 
 public:
-    BLEDeviceClass();
-    explicit BLEDeviceClass(int n);
-    ~BLEDeviceClass();
+    BLEDevice();
+    explicit BLEDevice(int n);
+    ~BLEDevice();
 
     const connParameters& params(void) const;
 
@@ -323,24 +319,24 @@ public:
     /**
      * There might have more than two attributes with the same description.
      */
-    int attribute(const char* desc, BLEAttribute* attrs);
+    int attribute(const char* desc, BLEPeerAttribute* attrs);
 
-    uint8_t attrsCount(void) const;
+    size_t attrsCount(void) const;
 
 private:
     bleConnHandle handle_;
     connParameters params_;
     BLEAddress addr_;
     int rssi_;
-    Vector<BLEAttributeClass> attributes_;
+    Vector<BLEAttribute> attributes_;
 };
 
-typedef BLEDeviceClass* BLEDevice;
+typedef BLEDevice* BLEPeerDevice;
 
 
 /* BLE class */
 class BLEClass {
-    friend BLEAttributeClass;
+    friend BLEAttribute;
 
 public:
     static const uint8_t  MAX_PERIPHERAL_LINK_COUNT = 1; // When acting as Peripheral, the maximum number of Central it can connect to in parallel.
@@ -350,13 +346,16 @@ public:
     static const uint32_t DEFAULT_ADVERTISING_TIMEOUT = 0; // In milliseconds, 0 for advertising infinitely
     static const uint32_t DEFAULT_SCANNING_TIMEOUT = 0; // In milliseconds, 0 for scanning infinitely
 
-    typedef void (*onConnectedCb)(BLEDevice peer);
-    typedef void (*onDisconnectedCb)(BLEDevice peer);
+    typedef void (*onConnectedCb)(BLEPeerDevice peer);
+    typedef void (*onDisconnectedCb)(BLEPeerDevice peer);
 
     BLEClass();
     ~BLEClass();
 
-    void begin(onConnectedCb connCb = nullptr, onDisconnectedCb disconnCb = nullptr);
+    void on(void);
+    void off(void);
+
+    void onConnectionChangedCb(onConnectedCb connCb, onDisconnectedCb disconnCb);
 
     /**
      * Start advertising.
@@ -367,12 +366,12 @@ public:
     /**
      * Start scanning. It will stop once the advertiser count is reached or timeout expired.
      */
-    int scan(BLEScanResult* result, uint8_t count, uint16_t timeout = DEFAULT_SCANNING_TIMEOUT) const;
+    size_t scan(BLEScanResult* result, size_t count, uint16_t timeout = DEFAULT_SCANNING_TIMEOUT) const;
 
     /**
      * Connect to a peer Peripheral device.
      */
-    BLEDevice connect(const BLEAddress& addr);
+    BLEPeerDevice connect(const BLEAddress& addr);
 
     /**
      * Disconnect from peer Central.
@@ -382,7 +381,7 @@ public:
     /**
      * Disconnect from peer Peripheral.
      */
-    int disconnect(BLEDevice peer);
+    int disconnect(BLEPeerDevice peer);
 
     /**
      * Check if connected with peer Central.
@@ -392,22 +391,22 @@ public:
     /**
      * Check if connected with peer Peripheral.
      */
-    bool connected(BLEDevice peer) const;
+    bool connected(BLEPeerDevice peer) const;
 
     /**
      * Retrieve specific peer Peripheral if found.
      */
-    BLEDevice peripheral(const BLEAddress& addr);
+    BLEPeerDevice peripheral(const BLEAddress& addr);
 
     /**
      * Retrieve peer Central if connected.
      */
-    BLEDevice central(void);
+    BLEPeerDevice central(void);
 
     /**
      * Retrieve local device.
      */
-    BLEDevice local(void) const;
+    BLEDevice& local(void) const;
 
 private:
     BLEClass* getInstance(void) {
@@ -422,13 +421,13 @@ private:
     /**
      * Retrieve peer device with given connection handle.
      */
-    BLEDevice getPeerDeviceByConnHandle(bleConnHandle) {
+    BLEPeerDevice getPeerDeviceByConnHandle(bleConnHandle) {
         return nullptr;
     }
 
     static BLEClass* ble_;
-    static BLEDeviceClass local_;
-    Vector<BLEDeviceClass> peers_;
+    static BLEDevice local_;
+    Vector<BLEDevice> peers_;
     onConnectedCb connectedCb_;
     onDisconnectedCb disconnectCb_;
 };

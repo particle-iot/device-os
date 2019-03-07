@@ -22,11 +22,11 @@
 
 BLEScanResult results[10];
 
-BLEAttribute peerTxAttr;
-BLEAttribute peerRxAttr;
-BLEDevice peer;
+BLEPeerAttribute peerTxAttr;
+BLEPeerAttribute peerRxAttr;
+BLEPeerDevice peer;
 
-void onDataReceived(uint8_t* data, uint16_t len) {
+void onDataReceived(uint8_t* data, size_t len) {
     for (uint8_t i = 0; i < len; i++) {
         Serial.write(data[i]);
     }
@@ -34,7 +34,6 @@ void onDataReceived(uint8_t* data, uint16_t len) {
 
 void setup() {
     Serial.begin();
-    BLE.begin();
 }
 
 void loop() {
@@ -47,7 +46,7 @@ void loop() {
         }
     }
     else {
-        uint8_t count = BLE.scan(results, 10);
+        size_t count = BLE.scan(results, 10);
 
         if (count > 0) {
             for (uint8_t i = 0; i < count; i++) {

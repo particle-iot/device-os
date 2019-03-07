@@ -20,27 +20,25 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-BLEScanResult results[10];
+BLEScanResult    results[10];
 
-BLEAttribute heartrate;
-BLEDevice peer;
+BLEPeerAttribute heartrate;
+BLEPeerDevice    peer;
 
-void heartrateUpdated(uint8_t* data, uint16_t len) {
+void heartrateUpdated(uint8_t* data, size_t len) {
 
 }
 
 void setup() {
-    BLE.begin();
 }
 
 void loop() {
     if (BLE.connected()) {
-        uint8_t newHr[4];
-        uint16_t len = 4;
-        heartrate->getValue(newHr, &len);
+        int newHr;
+        heartrate->getValue(&newHr);
     }
     else {
-        uint8_t count = BLE.scan(results, 10);
+        size_t count = BLE.scan(results, 10);
 
         if (count > 0) {
             for (uint8_t i = 0; i < count; i++) {
