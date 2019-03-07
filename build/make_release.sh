@@ -4,9 +4,11 @@ set -o errexit -o pipefail -o noclobber -o nounset
 function display_help ()
 {
     echo "\
-usage: make_release.sh [--debug] [--help] [--output-directory=<binary_output_directory>]
-                       [--platform=<all|core|electron|p1|photon>] [--tests]
-					   [--publish=<semantic_version_string>]
+usage: make_release.sh [--debug] [--help]
+                       [--output-directory=<binary_output_directory>]
+                       [--platform=<all|argon|argon-som|boron|boron-som...
+                       |core|electron|p1|photon|xenon|xenon-som>]
+                       [--publish=<semantic_version_string>] [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
 is capable of generating both debug and release binaries, as well as the
@@ -110,11 +112,11 @@ function release_platform()
     platform=$1
 
 	# Generate release binaries
-	./release.sh --platform $platform $PASSTHROUGH_FLAGS --output-directory $OUTPUT_DIRECTORY
+	./release.sh --platform "$platform" $PASSTHROUGH_FLAGS --output-directory "$OUTPUT_DIRECTORY"
 
 	# Generate debug binaries
 	if [ $DEBUG = true ]; then
-		./release.sh --platform $platform --debug --output-directory $OUTPUT_DIRECTORY
+		./release.sh --platform "$platform" --debug --output-directory "$OUTPUT_DIRECTORY"
 	fi
 }
 
@@ -124,7 +126,7 @@ function valid_platform()
     platform=$1
 
     # Validate platform (result of expression returned to caller)
-    [ "$platform" = "all" ] || [ "$platform" = "core" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ]
+    [ "$platform" = "all" ] || [ "$platform" = "argon" ] || [ "$platform" = "argon-som" ] || [ "$platform" = "boron" ] || [ "$platform" = "boron-som" ] || [ "$platform" = "core" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ] || [ "$platform" = "xenon" ] || [ "$platform" = "xenon-som" ]
 }
 
 if !(valid_platform $PLATFORM); then
@@ -140,12 +142,18 @@ fi
 
 # Release platform(s)
 if [ $PLATFORM = "all" ]; then
-	release_platform core
-	release_platform electron
-	release_platform p1
-	release_platform photon
+	release_platform "argon"
+	release_platform "argon-som"
+	release_platform "boron"
+	release_platform "boron-som"
+	release_platform "core"
+	release_platform "electron"
+	release_platform "p1"
+	release_platform "photon"
+	release_platform "xenon"
+	release_platform "xenon-som"
 else
-	release_platform $PLATFORM
+	release_platform "$PLATFORM"
 fi
 
 # Publish binaries
