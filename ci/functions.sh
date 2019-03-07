@@ -4,11 +4,11 @@ RED="\033[31m"
 NO_COLOR="\033[0m"
 
 function checkFailures {
-if [[ $HAS_FAILURES == 1 ]]; then
+if [[ $HAS_FAILURES == 1 ]] || [[ -f '.has_failures' ]]; then
    echo "Ruh roh. Failed tests."
    return 1
 fi
-return 0
+	return 0
 }
 
 function testcase {
@@ -18,6 +18,7 @@ function testcase {
 	else
 	  echo -e "$RED ✗ FAILED $NO_COLOR"
 	  export HAS_FAILURES=1
+	  touch '.has_failures'
 	  return 1
 	fi
 }
