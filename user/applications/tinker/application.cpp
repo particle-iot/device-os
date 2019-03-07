@@ -24,6 +24,8 @@
 
 #include <cctype>
 
+#include "pinmapping.h"
+
 PRODUCT_ID(PLATFORM_ID);
 PRODUCT_VERSION(3);
 
@@ -34,56 +36,15 @@ int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
 STARTUP(System.enable(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1));
+#if defined(SYSTEM_VERSION_v080RC1) && SYSTEM_VERSION >= SYSTEM_VERSION_v080RC1
 STARTUP(System.enableFeature(FEATURE_WIFITESTER));
+#endif // defined(SYSTEM_VERSION_v080RC1) && SYSTEM_VERSION >= SYSTEM_VERSION_v080RC1
 
 SYSTEM_MODE(AUTOMATIC);
 
-struct PinMapping {
-    const char* name;
-    pin_t pin;
-};
-
-PinMapping pinmap[] = {
-#if HAL_PLATFORM_MESH
-    {"D0", D0},
-    {"D1", D1},
-    {"D2", D2},
-    {"D3", D3},
-    {"D4", D4},
-    {"D5", D5},
-    {"D6", D6},
-    {"D7", D7},
-    {"D8", D8},
-    {"D9", D9},
-    {"D10", D10},
-    {"D11", D11},
-    {"D12", D12},
-    {"D13", D13},
-    {"D14", D14},
-    {"D15", D15},
-    {"D16", D16},
-    {"D17", D17},
-    {"D18", D18},
-    {"D19", D19},
-    {"A0", A0},
-    {"A1", A1},
-    {"A2", A2},
-    {"A3", A3},
-    {"A4", A4},
-    {"A5", A5},
-    {"SCK", SCK},
-    {"MISO", MISO},
-    {"MOSI", MOSI},
-    {"SDA", SDA},
-    {"SCL", SCL},
-    {"TX", TX},
-    {"RX", RX}
-#endif /* HAL_PLATFORM_MESH */
-};
-
 pin_t lookupPinByName(const String& name) {
-    for (unsigned i = 0; i < sizeof(pinmap) / sizeof(pinmap[0]); i++) {
-        const auto& entry = pinmap[i];
+    for (unsigned i = 0; i < g_pin_count; i++) {
+        const auto& entry = g_pinmap[i];
         if (!strcmp(entry.name, name.c_str())) {
             return entry.pin;
         }

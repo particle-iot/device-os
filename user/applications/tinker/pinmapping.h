@@ -15,16 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-/* Includes ------------------------------------------------------------------*/
-#include "application.h"
+#pragma once
 
-/* This function is called once at start up ----------------------------------*/
-void setup()
-{
-}
+#include "pinmap_hal.h"
+#include <cstddef>
 
-/* This function loops forever -----------------------------------------------*/
-void loop()
-{
-    // This will run in a loop
-}
+struct PinMapping {
+    const char* name;
+    pin_t pin;
+};
+
+extern const PinMapping g_pinmap[];
+extern const size_t g_pin_count;
