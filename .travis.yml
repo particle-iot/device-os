@@ -32,22 +32,25 @@ script:
 
 #after_success: ./ci/update-gh-pages.sh
 
+git:
+  depth: 1
+  submodules_depth: 1
+
 env:
-  # FIXME: Other platforms are currently probably broken
   matrix:
-    - BUILD_PLATFORM=xenon
-    - BUILD_PLATFORM=argon
-    - BUILD_PLATFORM=boron
-    - BUILD_PLATFORM=xenon-som
-    - BUILD_PLATFORM=argon-som
-    - BUILD_PLATFORM=boron-som
-    - BUILD_PLATFORM=photon
-    - BUILD_PLATFORM=P1
-    - BUILD_PLATFORM=electron
-    - BUILD_PLATFORM=gcc
-    - BUILD_PLATFORM=newhal
-    - BUILD_PLATFORM=unit-test
-    - BUILD_PLATFORM=core
+    # 5 jobs
+    - BUILD_PLATFORM="photon P1"
+    - BUILD_PLATFORM="electron core"
+    - BUILD_PLATFORM="xenon argon boron"
+    - BUILD_PLATFORM="xenon-som argon-som boron-som"
+    - BUILD_PLATFORM="unit-test newhal gcc"
+    # 6 jobs
+    # - BUILD_PLATFORM=photon P1
+    # - BUILD_PLATFORM=electron core
+    # - BUILD_PLATFORM=xenon argon
+    # - BUILD_PLATFORM=boron xenon-som
+    # - BUILD_PLATFORM=argon-som boron-som
+    # - BUILD_PLATFORM=unit-test newhal gcc
 
   # matrix:
   #   - BUILD_PLATFORM=unit-test gcc
