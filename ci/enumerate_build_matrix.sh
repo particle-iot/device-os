@@ -27,6 +27,12 @@ function runBuildJob()
   mkdir -p "${build_directory}"
   cd "${BUILD_JOBS_DIRECTORY}"
   eval ${@:3} -C "${make_directory}" BUILD_PATH_BASE="${build_directory}"
+  # I didn't want to deal with another build type, so we are specifically dealing
+  # with newhal build here
+  if echo "${@:3}" | grep --quiet "newhal"; then
+    HAS_NO_SECTIONS=`echo $? | grep 'has no sections'`;
+    [[ ! -z HAS_NO_SECTIONS || "$?" -eq 0 ]];
+  fi
   testcase
 }
 
@@ -73,18 +79,10 @@ if platform gcc; then
   BUILD_JOBS+=("main ${#BUILD_JOBS[@]} ${cmd}")
 fi
 
-function buildNewHal()
-{
-  echo
-  echo '-----------------------------------------------------------------------'
-  $MAKE  PLATFORM="newhal" COMPILE_LTO="n"
-  HAS_NO_SECTIONS=`echo $? | grep 'has no sections'`;
-  [[ ! -z HAS_NO_SECTIONS || "$?" -eq 0 ]];
-}
-
 # Newhal Build
 if platform newhal; then
-  BUILD_JOBS+=("main ${#BUILD_JOBS[@]} buildNewHal")
+  cmd="${MAKE} PLATFORM=\"newhal\" COMPILE_LTO=\"n\""
+  BUILD_JOBS+=("main ${#BUILD_JOBS[@]} ${cmd}")
 fi
 
 # COMPILE_LTO required on the Core for wiring/no_fixture to fit
@@ -157,7 +155,6 @@ NPROC=$(nproc)
 # Export necessary functions
 export -f runBuildJob
 export -f runmake
-export -f buildNewHal
 export -f testcase
 
 echo

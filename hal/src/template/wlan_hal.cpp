@@ -120,8 +120,9 @@ void wlan_set_error_count(uint32_t errorCount)
 {
 }
 
-void wlan_fetch_ipconfig(WLanConfig* config)
+int wlan_fetch_ipconfig(WLanConfig* config)
 {
+    return -1;
 }
 
 void SPARK_WLAN_SmartConfigProcess()
