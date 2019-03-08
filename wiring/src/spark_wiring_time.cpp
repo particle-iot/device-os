@@ -343,13 +343,13 @@ String TimeClass::timeFormatImpl(tm* calendar_time, const char* format, int time
     strcpy(format_str, format);
     size_t len = strlen(format_str);
 
-    char time_zone_str[10];
+    char time_zone_str[16];
     // while we are not using stdlib for managing the timezone, we have to do this manually
     if (!time_zone) {
         strcpy(time_zone_str, "Z");
     }
     else {
-        snprintf(time_zone_str, 10, "%+03d:%02u", time_zone/3600, abs(time_zone/60)%60);
+        snprintf(time_zone_str, sizeof(time_zone_str), "%+03d:%02u", time_zone/3600, abs(time_zone/60)%60);
     }
 
     // replace %z with the timezone

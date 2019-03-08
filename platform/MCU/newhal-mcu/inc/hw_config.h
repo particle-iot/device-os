@@ -50,9 +50,6 @@ inline void NVIC_SystemReset() {}
 inline void Finish_Update() {}
 inline void Bootloader_Update_Version(int version) {}
 
-#define BUTTON1                     1
-#define BUTTON1_PRESSED             1
-
 inline int BUTTON_GetState(int button) { return 0; }
 
 

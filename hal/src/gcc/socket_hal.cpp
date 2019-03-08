@@ -345,7 +345,7 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
 
     if (result == boost::asio::error::would_block)
         return 0;
-   if (result==boost::asio::error::try_again)
+    if (result==boost::asio::error::try_again)
 	   return 0;
 	if (!result)
 		DEBUG("count: %d", count);
@@ -371,7 +371,7 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
     if (result == boost::asio::error::would_block)
         return 0;
 
-	return result ? result : count;
+    return result ? result : count;
 }
 
 

@@ -26,22 +26,26 @@ include $(PROJECT_ROOT)/build/arm-tlm.mk
 
 $(call check_modular)
 
+MODULE_USER_MEMORY_FILE_GEN = $(TARGET_BASE_DIR)module_user_memory.ld
+export MODULE_USER_MEMORY_FILE_GEN
 
 elf_fi: $(TARGET_BASE)_fi.elf
 
 
 prebuild: $(SHARED_MODULAR)/build_linker_script.mk
 	$(call echo,)
+	$(VERBOSE)$(MKDIR) $(dir $(MODULE_USER_MEMORY_FILE_GEN))
 	$(VERBOSE)$(MAKE) -f $(SHARED_MODULAR)/build_linker_script.mk PREBUILD=1
 	$(call echo,)
 
 
 postbuild:
-	$(VERBOSE)$(RM) module_user_memory.ld
+	$(VERBOSE)$(RM) $(MODULE_USER_MEMORY_FILE_GEN)
 
 
 $(TARGET_BASE)_fi.elf: $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS) $(TARGET_BASE).elf $(SHARED_MODULAR)/build_linker_script.mk
-	$(VERBOSE)$(RM) module_user_memory.ld
+	$(VERBOSE)$(RM) $(MODULE_USER_MEMORY_FILE_GEN)
+	$(VERBOSE)$(MKDIR) $(dir $(MODULE_USER_MEMORY_FILE_GEN))
 	$(VERBOSE)$(MAKE) -f $(SHARED_MODULAR)/build_linker_script.mk INTERMEDIATE_ELF=$(TARGET_BASE).elf
 	$(call echo,)
 	$(call echo, Generating the final ELF file...)

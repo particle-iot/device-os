@@ -72,6 +72,13 @@ CSRC += \
 	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/app_usbd_string_desc.c \
 	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/class/cdc/acm/app_usbd_cdc_acm.c 
 
+# FreeRTOS
+ifeq ($(SOFTDEVICE_PRESENT),y)
+CSRC += $(TARGET_NRF5_SDK_SRC_PATH)/external/freertos/portable/GCC/nrf52/port.c
+CSRC += $(TARGET_NRF5_SDK_SRC_PATH)/external/freertos/portable/CMSIS/nrf52/port_cmsis.c
+CSRC += $(TARGET_NRF5_SDK_SRC_PATH)/external/freertos/portable/CMSIS/nrf52/port_cmsis_systick.c
+endif
+
 #ifeq ($(DEBUG_BUILD),y)
 #CSRC += \
 #	$(TARGET_NRF5_SDK_EXTERNAL_SRC_PATH)/segger_rtt/SEGGER_RTT.c

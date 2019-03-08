@@ -12,7 +12,32 @@ set -x # be noisy + log everything that is happening in the script
 
 function runmake()
 {
-	make -s clean all $*
+  make -s all $*
+}
+
+export BUILD_JOBS_DIRECTORY="$PWD/build/jobs"
+
+function runBuildJob()
+{
+  build_directory="${BUILD_JOBS_DIRECTORY}/$2"
+  make_directory="$PWD/$1"
+  build_log="${BUILD_JOBS_DIRECTORY}/$2.log"
+  echo
+  echo '-----------------------------------------------------------------------'
+  echo "Running ${@:3} in $1, build directory ${build_directory}"
+  mkdir -p "${build_directory}"
+  cd "${BUILD_JOBS_DIRECTORY}"
+  eval ${@:3} -C "${make_directory}" BUILD_PATH_BASE="${build_directory}" |& tee "${build_log}"
+  result_code=${PIPESTATUS[0]}
+  # I didn't want to deal with another build type, so we are specifically dealing
+  # with newhal build here
+  if echo "${@:3}" | grep --quiet "newhal"; then
+    HAS_NO_SECTIONS=$(grep 'has no sections' "${build_log}")
+    [[ ! -z "${HAS_NO_SECTIONS}" ]] || [[ ${result_code} -eq 0 ]]
+    result_code=$?
+  fi
+  [[ ${result_code} -eq 0 ]]
+  testcase
 }
 
 MAKE=runmake
@@ -37,45 +62,40 @@ filterPlatform PLATFORM
 filterPlatform MODULAR_PLATFORM
 filterPlatform PLATFORM_BOOTLOADER
 
-echo "runing matrix PLATFORM=$PLATFORM MODULAR_PLATFORM=$MODULAR_PLATFORM PLATFORM_BOOTLOADER=$PLATFORM_BOOTLOADER"
+echo "running matrix PLATFORM=$PLATFORM MODULAR_PLATFORM=$MODULAR_PLATFORM PLATFORM_BOOTLOADER=$PLATFORM_BOOTLOADER"
 
+# Build the list of build jobs
+BUILD_JOBS=()
+# Just in case remove build/jobs folder
+rm -rf build/jobs
 
-# set current working dir
-cd main
+# Build any necessary prerequisites first
+# Only build Boost if gcc is being built separately without unit tests
+if platform gcc; then
+  source ci/install_boost.sh
+  if ! platform 'unit-test'; then
+    echo
+    echo '-----------------------------------------------------------------------'
+    ci/build_boost.sh
+    testcase
+  fi
+  cmd="${MAKE} PLATFORM=gcc"
+  BUILD_JOBS+=("main ${#BUILD_JOBS[@]} ${cmd}")
+fi
 
 # Newhal Build
 if platform newhal; then
-echo
-echo '-----------------------------------------------------------------------'
-$MAKE  PLATFORM="newhal" COMPILE_LTO="n"
-HAS_NO_SECTIONS=`echo $? | grep 'has no sections'`;
-[[ ! -z HAS_NO_SECTIONS || "$?" -eq 0 ]];
-testcase
+  cmd="${MAKE} PLATFORM=\"newhal\" COMPILE_LTO=\"n\""
+  BUILD_JOBS+=("main ${#BUILD_JOBS[@]} ${cmd}")
 fi
-
-# GCC Build
-if platform gcc; then
-echo
-echo '-----------------------------------------------------------------------'
-# Note: we are already in main directory
-source ../ci/install_boost.sh
-../ci/build_boost.sh
-echo
-echo '-----------------------------------------------------------------------'
-$MAKE  PLATFORM=gcc
-testcase
-fi
-
 
 # COMPILE_LTO required on the Core for wiring/no_fixture to fit
 for t in "${TEST[@]}"
 do
   for p in "${MODULAR_PLATFORM[@]}"
   do
-    echo
-    echo '-----------------------------------------------------------------------'
-    $MAKE  PLATFORM="$p" COMPILE_LTO="n" TEST="$t"
-	testcase
+    cmd="${MAKE} PLATFORM=\"$p\" COMPILE_LTO=\"n\" TEST=\"$t\""
+    BUILD_JOBS+=("main ${#BUILD_JOBS[@]} ${cmd}")
   done
 done
 
@@ -94,54 +114,61 @@ do
         fi
         c=n
         if [[ "$p" = "core" ]]; then
-           c=y
-	   # core debug build overflows at present
-           if [[ "$db" = "y" ]]; then
-               continue
-        fi
-        fi
-        echo
-        echo '-----------------------------------------------------------------------'
-        if [[ "$app" = "" ]]; then
-          $MAKE  DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc"
-        else
-          $MAKE  DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="$c" SPARK_CLOUD="$sc" APP="$app"
+          c=y
+          # core debug build overflows at present
+          if [[ "$db" = "y" ]]; then
+            continue
           fi
-		testcase
+        fi
+        if [[ "$app" = "" ]]; then
+          cmd="${MAKE} DEBUG_BUILD=\"$db\" PLATFORM=\"$p\" COMPILE_LTO=\"$c\" SPARK_CLOUD=\"$sc\""
+          BUILD_JOBS+=("main ${#BUILD_JOBS[@]} ${cmd}")
+        else
+          cmd="${MAKE} DEBUG_BUILD=\"$db\" PLATFORM=\"$p\" COMPILE_LTO=\"$c\" SPARK_CLOUD=\"$sc\" APP=\"$app\""
+          BUILD_JOBS+=("main ${#BUILD_JOBS[@]} ${cmd}")
+        fi
       done
     done
   done
 done
 
-cd ../bootloader
 for p in "${PLATFORM_BOOTLOADER[@]}"
 do
-  echo
-  echo '-----------------------------------------------------------------------'
-  $MAKE PLATFORM="$p"
-  testcase
+  cmd="${MAKE} PLATFORM=\"$p\""
+  BUILD_JOBS+=("bootloader ${#BUILD_JOBS[@]} ${cmd}")
 done
-
-cd ../modules
 
 # enumerate the matrix, exit 1 if anything fails
 for db in "${DEBUG_BUILD[@]}"
 do
   for p in "${MODULAR_PLATFORM[@]}"
   do
-    echo
-    echo '-----------------------------------------------------------------------'
-    $MAKE  DEBUG_BUILD="$db" PLATFORM="$p" COMPILE_LTO="n"
-	testcase
+    cmd="${MAKE} DEBUG_BUILD=\"$db\" PLATFORM=\"$p\" COMPILE_LTO=\"n\""
+    BUILD_JOBS+=("modules ${#BUILD_JOBS[@]} ${cmd}")
   done
 done
 
 # Photon minimal build
 if platform photon; then
-echo
-echo '-----------------------------------------------------------------------'
-$MAKE  PLATFORM="photon" COMPILE_LTO="n" MINIMAL=y
-	testcase
+  cmd="${MAKE} PLATFORM=\"photon\" COMPILE_LTO=\"n\" MINIMAL=y"
+  BUILD_JOBS+=("modules ${#BUILD_JOBS[@]} ${cmd}")
 fi
+
+NPROC=$(nproc)
+
+# Export necessary functions
+export -f runBuildJob
+export -f runmake
+export -f testcase
+
+echo
+echo "Running ${#BUILD_JOBS[@]} build jobs on ${NPROC} cores"
+
+# Silence an annoying notice
+echo "will cite" | parallel --citation > /dev/null 2>&1
+
+printf '%s\n' "${BUILD_JOBS[@]}" | parallel --colsep ' ' -j "${NPROC}" runBuildJob
+
+cd "${BUILD_JOBS_DIRECTORY}"
 
 checkFailures || exit 1
