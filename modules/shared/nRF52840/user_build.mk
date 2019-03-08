@@ -68,7 +68,8 @@ LDFLAGS += -Wl,--defsym,__STACK_SIZE=2048
 BUILTINS_EXCLUDE = malloc free realloc
 CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
 
-USER_PART_SRC_PATH = $(SHARED_MODULAR)/src/user-part
+# IMPORTANT: This needs to be relative to USER_PART_MODULE_PATH
+USER_PART_SRC_PATH = $(USER_PART_MODULE_PATH)/../../shared/nRF52840/src/user-part
 
 CPPSRC += $(call target_files,$(USER_PART_SRC_PATH),*.cpp)
 CSRC += $(call target_files,$(USER_PART_SRC_PATH),*.c)

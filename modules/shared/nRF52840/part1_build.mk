@@ -58,7 +58,8 @@ endif
 
 LDFLAGS += -u uxTopUsedPriority
 
-SYSTEM_PART1_SRC_PATH = $(SHARED_MODULAR)/src/system-part1
+# IMPORTANT: This needs to be relative to SYSTEM_PART1_MODULE_PATH
+SYSTEM_PART1_SRC_PATH = $(SYSTEM_PART1_MODULE_PATH)/../../shared/nRF52840/src/system-part1
 
 CPPSRC += $(call target_files,$(SYSTEM_PART1_SRC_PATH),*.cpp)
 CSRC += $(call target_files,$(SYSTEM_PART1_SRC_PATH),*.c)
