@@ -21,18 +21,22 @@ function runBuildJob()
 {
   build_directory="${BUILD_JOBS_DIRECTORY}/$2"
   make_directory="$PWD/$1"
+  build_log="${BUILD_JOBS_DIRECTORY}/$2.log"
   echo
   echo '-----------------------------------------------------------------------'
   echo "Running ${@:3} in $1, build directory ${build_directory}"
   mkdir -p "${build_directory}"
   cd "${BUILD_JOBS_DIRECTORY}"
-  eval ${@:3} -C "${make_directory}" BUILD_PATH_BASE="${build_directory}"
+  eval ${@:3} -C "${make_directory}" BUILD_PATH_BASE="${build_directory}" |& tee "${build_log}"
+  result_code=${PIPESTATUS[0]}
   # I didn't want to deal with another build type, so we are specifically dealing
   # with newhal build here
   if echo "${@:3}" | grep --quiet "newhal"; then
-    HAS_NO_SECTIONS=`echo $? | grep 'has no sections'`;
-    [[ ! -z HAS_NO_SECTIONS || "$?" -eq 0 ]];
+    HAS_NO_SECTIONS=$(grep 'has no sections' "${build_log}")
+    [[ ! -z "${HAS_NO_SECTIONS}" ]] || [[ ${result_code} -eq 0 ]]
+    result_code=$?
   fi
+  [[ ${result_code} -eq 0 ]]
   testcase
 }
 
