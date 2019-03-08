@@ -167,7 +167,7 @@ echo "Running ${#BUILD_JOBS[@]} build jobs on ${NPROC} cores"
 # Silence an annoying notice
 echo "will cite" | parallel --citation > /dev/null 2>&1
 
-printf '%s\n' "${BUILD_JOBS[@]}" | parallel --line-buffer --colsep ' ' -j "${NPROC}" runBuildJob
+printf '%s\n' "${BUILD_JOBS[@]}" | parallel --colsep ' ' -j "${NPROC}" runBuildJob
 
 cd "${BUILD_JOBS_DIRECTORY}"
 
