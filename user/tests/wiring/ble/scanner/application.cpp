@@ -30,20 +30,22 @@ void setup() {
 }
 
 void loop() {
-    size_t count = BLE.scan(results, SCAN_RESULT_COUNT);
+    int count = BLE.scan(results, SCAN_RESULT_COUNT);
 
-    for (size_t i = 0; i < count; i++) {
-        Serial.println("Advertising data:");
-        for (size_t j; j < results[i].advDataLen(); j++) {
-            Serial.printf("0x%02x, ", results[i].advData()[j]);
-        }
-        Serial.println("");
+    if (count > 0) {
+        for (int i = 0; i < count; i++) {
+            Serial.println("Advertising data:");
+            for (size_t j = 0; j < results[i].advDataLen(); j++) {
+                Serial.printf("0x%02x, ", results[i].advData()[j]);
+            }
+            Serial.println("");
 
-        Serial.println("Scan response data:");
-        for (size_t j; j < results[i].srDataLen(); j++) {
-            Serial.printf("0x%02x, ", results[i].srData()[j]);
+            Serial.println("Scan response data:");
+            for (size_t j = 0; j < results[i].srDataLen(); j++) {
+                Serial.printf("0x%02x, ", results[i].srData()[j]);
+            }
+            Serial.println("");
         }
-        Serial.println("");
     }
 
     delay(3000);

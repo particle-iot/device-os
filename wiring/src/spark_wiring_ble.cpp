@@ -103,6 +103,19 @@ void BLEUUID::full(uint8_t* uuid128) const {
 }
 
 
+iBeacon::iBeacon() {
+
+}
+
+iBeacon::iBeacon(uint16_t major, uint16_t minor, uint8_t* uuid, int8_t mp) {
+
+}
+
+iBeacon::~iBeacon() {
+
+}
+
+
 /**
  * BLEAdvertisingData class
  */
@@ -443,6 +456,14 @@ void BLEClass::onConnectionChangedCb(onConnectedCb connCb, onDisconnectedCb disc
     return;
 }
 
+int BLEClass::advertisementData(BLEAdvertisingData& data) {
+    return SYSTEM_ERROR_NONE;
+}
+
+int BLEClass::advertisementData(iBeacon& beacon) {
+    return SYSTEM_ERROR_NONE;
+}
+
 int BLEClass::advertise(uint32_t interval) const {
     return SYSTEM_ERROR_NONE;
 }
@@ -451,7 +472,7 @@ int BLEClass::advertise(uint32_t interval, uint32_t timeout) const {
     return SYSTEM_ERROR_NONE;
 }
 
-size_t BLEClass::scan(BLEScanResult* results, size_t count, uint16_t timeout) const {
+ssize_t BLEClass::scan(BLEScanResult* results, size_t count, uint16_t timeout) const {
     return SYSTEM_ERROR_NONE;
 }
 

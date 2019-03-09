@@ -123,6 +123,19 @@ private:
 };
 
 
+class iBeacon {
+public:
+    uint16_t major;
+    uint16_t minor;
+    uint8_t* uuid;
+    int8_t   measurePower;
+
+    iBeacon();
+    iBeacon(uint16_t major, uint16_t minor, uint8_t* uuid, int8_t mp);
+    ~iBeacon();
+};
+
+
 /* BLE advertising data class */
 class BLEAdvertisingData {
 public:
@@ -357,6 +370,9 @@ public:
 
     void onConnectionChangedCb(onConnectedCb connCb, onDisconnectedCb disconnCb);
 
+    int advertisementData(BLEAdvertisingData& data);
+    int advertisementData(iBeacon& beacon);
+
     /**
      * Start advertising.
      */
@@ -366,7 +382,7 @@ public:
     /**
      * Start scanning. It will stop once the advertiser count is reached or timeout expired.
      */
-    size_t scan(BLEScanResult* result, size_t count, uint16_t timeout = DEFAULT_SCANNING_TIMEOUT) const;
+    ssize_t scan(BLEScanResult* result, size_t count, uint16_t timeout = DEFAULT_SCANNING_TIMEOUT) const;
 
     /**
      * Connect to a peer Peripheral device.
