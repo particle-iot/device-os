@@ -25,7 +25,7 @@ SYSTEM_MODE(MANUAL);
 
 Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
-const char *addrType[4] = {
+const char* addrType[4] = {
     "Public",
     "Random Static",
     "Random Private Resolvable",
@@ -85,7 +85,7 @@ static int decodeAdvertisingData(uint8_t ads_type, const uint8_t* adv_data, uint
     return SYSTEM_ERROR_NOT_FOUND;
 }
 
-static void ble_on_scan_result(hal_ble_gap_on_scan_result_evt_t *event) {
+static void ble_on_scan_result(hal_ble_gap_on_scan_result_evt_t* event) {
     if (event->type.scan_response) {
         LOG(TRACE, "BLE Scan Response event");
     }
@@ -150,11 +150,11 @@ static void ble_on_scan_result(hal_ble_gap_on_scan_result_evt_t *event) {
     }
 }
 
-static void ble_on_scan_stopped(hal_ble_gap_on_scan_stopped_evt_t *event) {
+static void ble_on_scan_stopped(hal_ble_gap_on_scan_stopped_evt_t* event) {
     LOG(TRACE, "BLE scan stopped.");
 }
 
-static void ble_on_events(hal_ble_events_t *event, void* context) {
+static void ble_on_events(hal_ble_evts_t* event, void* context) {
     if (event->type == BLE_EVT_SCAN_RESULT) {
         ble_on_scan_result(&event->params.scan_result);
     }
@@ -172,7 +172,7 @@ void setup()
 
     ble_gap_set_device_name(devName, sizeof(devName));
 
-    hal_ble_scan_parameters_t scanParams;
+    hal_ble_scan_params_t scanParams;
     scanParams.active = true;
     scanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
     scanParams.interval = 1600; // 1 seconds
