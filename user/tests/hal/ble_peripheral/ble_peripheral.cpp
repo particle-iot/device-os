@@ -24,18 +24,24 @@
 
 Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
-hal_ble_characteristic_t characteristic1; // Read and Write
-hal_ble_characteristic_t characteristic2; // Notify
-hal_ble_characteristic_t characteristic3; // Write without response
+hal_ble_char_handles_t characteristic1; // Read and Write
+hal_ble_char_handles_t characteristic2; // Notify
+hal_ble_char_handles_t characteristic3; // Write without response
 
-const char *addrType[4] = {
+const char* addrType[4] = {
     "Public",
     "Random Static",
     "Random Private Resolvable",
     "Random Static Non-resolvable"
 };
 
-static void ble_on_connected(hal_ble_gap_on_connected_evt_t *event) {
+uint8_t svc1UUID[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x0f};
+uint8_t char1UUID[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x0f};
+uint8_t svc2UUID[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x10};
+uint8_t char2UUID[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x10};
+
+
+static void ble_on_connected(hal_ble_gap_on_connected_evt_t* event) {
     LOG(TRACE, "BLE connected, connection handle: 0x%04X.", event->conn_handle);
     LOG(TRACE, "Local device role: %d.", event->role);
     if (event->peer_addr.addr_type <= 3) {
@@ -49,7 +55,7 @@ static void ble_on_connected(hal_ble_gap_on_connected_evt_t *event) {
     LOG(TRACE, "Interval: %.2fms, Latency: %d, Timeout: %dms", event->conn_interval*1.25, event->slave_latency, event->conn_sup_timeout*10);
 }
 
-static void ble_on_disconnected(hal_ble_gap_on_disconnected_evt_t *event) {
+static void ble_on_disconnected(hal_ble_gap_on_disconnected_evt_t* event) {
     LOG(TRACE, "BLE disconnected, connection handle: 0x%04X.", event->conn_handle);
     if (event->peer_addr.addr_type <= 3) {
         LOG(TRACE, "Peer address type: %s", addrType[event->peer_addr.addr_type]);
@@ -61,7 +67,7 @@ static void ble_on_disconnected(hal_ble_gap_on_disconnected_evt_t *event) {
                 event->peer_addr.addr[2], event->peer_addr.addr[3], event->peer_addr.addr[4], event->peer_addr.addr[5]);
 }
 
-static void ble_on_data_received(hal_ble_gatt_on_data_received_evt_t* event) {
+static void ble_on_data_received(hal_ble_gatt_on_data_evt_t* event) {
     LOG(TRACE, "BLE data received, connection handle: 0x%04X.", event->conn_handle);
 
     if (event->attr_handle == characteristic1.value_handle) {
@@ -83,7 +89,7 @@ static void ble_on_data_received(hal_ble_gatt_on_data_received_evt_t* event) {
     Serial1.print("\r\n");
 }
 
-static void ble_on_events(hal_ble_events_t *event, void* context) {
+static void ble_on_events(hal_ble_evts_t *event, void* context) {
     if (event->type == BLE_EVT_CONNECTED) {
         ble_on_connected(&event->params.connected);
     }
@@ -109,8 +115,8 @@ test(01_BleStackReinitializationShouldFail) {
 
 test(02_BleSetDeviceAddressShouldBePublicOrRandomStatic) {
     int ret;
-    hal_ble_address_t setAddr;
-    hal_ble_address_t getAddr;
+    hal_ble_addr_t setAddr;
+    hal_ble_addr_t getAddr;
     uint8_t macAddr[6] = {0x10, 0x23, 0x35, 0x46, 0x57, 0x66};
 
     // Set a public device address
@@ -183,8 +189,8 @@ test(04_BleSetAppearance) {
 
 test(05_BleSetPpcpShouldBeWithinValidRange) {
     int ret;
-    hal_ble_connection_parameters_t setConnParams;
-    hal_ble_connection_parameters_t getConnParams;
+    hal_ble_conn_params_t setConnParams;
+    hal_ble_conn_params_t getConnParams;
 
     // Set invalid PPCP
     setConnParams.min_conn_interval = BLE_SIG_CP_MIN_CONN_INTERVAL_MAX + 1;
@@ -282,7 +288,7 @@ test(06_BleSetTxPowerShouldBeRounded) {
 
 test(07_BleSetAdvertisingParametersShouldBeValid) {
     int ret;
-    hal_ble_advertising_parameters_t advParams;
+    hal_ble_adv_params_t advParams;
 
     advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams.filter_policy = BLE_ADV_FP_ANY;
@@ -304,7 +310,7 @@ test(07_BleSetAdvertisingParametersShouldBeValid) {
 
 test(08_BleChangeAdvertisingParametersDuringAdvertising) {
     int ret;
-    hal_ble_advertising_parameters_t advParams;
+    hal_ble_adv_params_t advParams;
 
     advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams.filter_policy = BLE_ADV_FP_ANY;
@@ -379,27 +385,44 @@ test(09_BleChangeAdvertisingDataDuringAdvertising) {
 
 test(10_BleAddServicesAndCharacteristics_NeedToConnectAndCheckOnTheCentralSide) {
     int ret;
-    hal_ble_advertising_parameters_t advParams;
+    hal_ble_adv_params_t advParams;
+
     uint16_t svcHandle;
+    hal_ble_uuid_t bleUuid;
+    hal_ble_char_init_t char_init;
 
-    uint8_t svcUUID1[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x0f};
-    uint8_t charUUID1[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x0f};
-    ret = ble_gatt_server_add_service_uuid128(BLE_SERVICE_TYPE_PRIMARY, svcUUID1, &svcHandle, NULL);
-    assertEqual(ret, 0);
-    ret = ble_gatt_server_add_characteristic_uuid128(svcHandle, charUUID1, BLE_SIG_CHAR_PROP_READ|BLE_SIG_CHAR_PROP_WRITE, NULL, &characteristic1, NULL);
-    assertEqual(ret, 0);
+    bleUuid.type = BLE_UUID_TYPE_128BIT;
+    memcpy(bleUuid.uuid128, svc1UUID, 16);
+    ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &bleUuid, &svcHandle, NULL);
 
-    uint8_t svcUUID2[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x10};
-    uint8_t charUUID2[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x10};
-    ret = ble_gatt_server_add_service_uuid128(BLE_SERVICE_TYPE_PRIMARY, svcUUID2, &svcHandle, NULL);
-    assertEqual(ret, 0);
-    ret = ble_gatt_server_add_characteristic_uuid128(svcHandle, charUUID2, BLE_SIG_CHAR_PROP_NOTIFY, NULL, &characteristic2, NULL);
-    assertEqual(ret, 0);
+    memset(&char_init, 0x00, sizeof(hal_ble_char_init_t));
+    memcpy(bleUuid.uuid128, char1UUID, 16);
+    char_init.properties = BLE_SIG_CHAR_PROP_READ|BLE_SIG_CHAR_PROP_WRITE;
+    char_init.service_handle = svcHandle;
+    char_init.uuid = bleUuid;
+    ble_gatt_server_add_characteristic(&char_init, &characteristic1, NULL);
 
-    ret = ble_gatt_server_add_service_uuid16(BLE_SERVICE_TYPE_PRIMARY, 0x1234, &svcHandle, NULL);
-    assertEqual(ret, 0);
-    ret = ble_gatt_server_add_characteristic_uuid16(svcHandle, 0x5678, BLE_SIG_CHAR_PROP_WRITE_WO_RESP, "hello", &characteristic3, NULL);
-    assertEqual(ret, 0);
+    memcpy(bleUuid.uuid128, svc2UUID, 16);
+    ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &bleUuid, &svcHandle, NULL);
+
+    memset(&char_init, 0x00, sizeof(hal_ble_char_init_t));
+    memcpy(bleUuid.uuid128, char2UUID, 16);
+    char_init.properties = BLE_SIG_CHAR_PROP_NOTIFY;
+    char_init.service_handle = svcHandle;
+    char_init.uuid = bleUuid;
+    ble_gatt_server_add_characteristic(&char_init, &characteristic2, NULL);
+
+    bleUuid.type = BLE_UUID_TYPE_16BIT;
+    bleUuid.uuid16 = 0x1234;
+    ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &bleUuid, &svcHandle, NULL);
+
+    memset(&char_init, 0x00, sizeof(hal_ble_char_init_t));
+    bleUuid.uuid16 = 0x5678;
+    char_init.properties = BLE_SIG_CHAR_PROP_WRITE_WO_RESP;
+    char_init.service_handle = svcHandle;
+    char_init.uuid = bleUuid;
+    char_init.description = "hello";
+    ble_gatt_server_add_characteristic(&char_init, &characteristic3, NULL);
 
     uint8_t data[20] = {0x11};
     ret = ble_gatt_server_set_characteristic_value(characteristic1.value_handle, data, 5, NULL);

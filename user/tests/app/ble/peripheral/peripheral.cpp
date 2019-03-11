@@ -25,11 +25,11 @@ SYSTEM_MODE(MANUAL);
 
 Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
-hal_ble_characteristic_t bleChar1; // Read and Write
-hal_ble_characteristic_t bleChar2; // Notify
-hal_ble_characteristic_t bleChar3; // Write without response
+hal_ble_char_handles_t char1Handles; // Read and Write
+hal_ble_char_handles_t char2Handles; // Notify
+hal_ble_char_handles_t char3Handles; // Write without response
 
-const char *addrType[4] = {
+const char* addrType[4] = {
     "Public",
     "Random Static",
     "Random Private Resolvable",
@@ -37,6 +37,11 @@ const char *addrType[4] = {
 };
 
 bool notifyEnabled = false;
+
+uint8_t svc1UUID[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x0f};
+uint8_t char1UUID[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x0f};
+uint8_t svc2UUID[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x10};
+uint8_t char2UUID[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x10};
 
 
 static int locateAdStructure(uint8_t adsType, const uint8_t* data, uint16_t len, uint16_t* offset, uint16_t* adsLen) {
@@ -131,7 +136,7 @@ static int adStructEncode(uint8_t adsType, uint8_t* data, uint16_t len, bool sr,
     }
 }
 
-static int encodeAdvertisingData(uint8_t ads_type, uint8_t* data, uint16_t len, uint8_t* advData, uint16_t*advDataLen) {
+static int encodeAdvertisingData(uint8_t ads_type, uint8_t* data, uint16_t len, uint8_t* advData, uint16_t* advDataLen) {
     int ret = adStructEncode(ads_type, data, len, false, advData, advDataLen);
     if (ret == SYSTEM_ERROR_NONE) {
         ret = ble_gap_set_advertising_data(advData, *advDataLen, NULL);
@@ -140,7 +145,7 @@ static int encodeAdvertisingData(uint8_t ads_type, uint8_t* data, uint16_t len, 
     return ret;
 }
 
-static int encodeScanResponseData(uint8_t ads_type, uint8_t* data, uint16_t len, uint8_t* advData, uint16_t*advDataLen) {
+static int encodeScanResponseData(uint8_t ads_type, uint8_t* data, uint16_t len, uint8_t* advData, uint16_t* advDataLen) {
     int ret = adStructEncode(ads_type, data, len, true, advData, advDataLen);
     if (ret == SYSTEM_ERROR_NONE) {
         ret = ble_gap_set_scan_response_data(advData, *advDataLen, NULL);
@@ -149,11 +154,11 @@ static int encodeScanResponseData(uint8_t ads_type, uint8_t* data, uint16_t len,
     return ret;
 }
 
-static void ble_on_adv_stopped(hal_ble_gap_on_advertising_stopped_evt_t *event) {
+static void ble_on_adv_stopped(hal_ble_gap_on_adv_stopped_evt_t* event) {
     LOG(TRACE, "BLE advertising stopped");
 }
 
-static void ble_on_connected(hal_ble_gap_on_connected_evt_t *event) {
+static void ble_on_connected(hal_ble_gap_on_connected_evt_t* event) {
     LOG(TRACE, "BLE connected, connection handle: 0x%04X.", event->conn_handle);
     LOG(TRACE, "Local device role: %d.", event->role);
     if (event->peer_addr.addr_type <= 3) {
@@ -167,7 +172,7 @@ static void ble_on_connected(hal_ble_gap_on_connected_evt_t *event) {
     LOG(TRACE, "Interval: %.2fms, Latency: %d, Timeout: %dms", event->conn_interval*1.25, event->slave_latency, event->conn_sup_timeout*10);
 }
 
-static void ble_on_disconnected(hal_ble_gap_on_disconnected_evt_t *event) {
+static void ble_on_disconnected(hal_ble_gap_on_disconnected_evt_t* event) {
     LOG(TRACE, "BLE disconnected, connection handle: 0x%04X.", event->conn_handle);
     if (event->peer_addr.addr_type <= 3) {
         LOG(TRACE, "Peer address type: %s", addrType[event->peer_addr.addr_type]);
@@ -179,18 +184,18 @@ static void ble_on_disconnected(hal_ble_gap_on_disconnected_evt_t *event) {
                 event->peer_addr.addr[2], event->peer_addr.addr[3], event->peer_addr.addr[4], event->peer_addr.addr[5]);
 }
 
-static void ble_on_connection_parameters_updated(hal_ble_gap_on_connection_parameters_updated_evt_t* event) {
+static void ble_on_connection_parameters_updated(hal_ble_gap_on_conn_params_evt_t* event) {
     LOG(TRACE, "BLE connection parameters updated, connection handle: 0x%04X.", event->conn_handle);
     LOG(TRACE, "Interval: %.2fms, Latency: %d, Timeout: %dms", event->conn_interval*1.25, event->slave_latency, event->conn_sup_timeout*10);
 }
 
-static void ble_on_data_received(hal_ble_gatt_on_data_received_evt_t* event) {
+static void ble_on_data_received(hal_ble_gatt_on_data_evt_t* event) {
     LOG(TRACE, "BLE data received, connection handle: 0x%04X.", event->conn_handle);
 
-    if (event->attr_handle == bleChar1.value_handle) {
+    if (event->attr_handle == char1Handles.value_handle) {
         LOG(TRACE, "Write BLE characteristic 1 value:");
     }
-    else if (event->attr_handle == bleChar2.cccd_handle) {
+    else if (event->attr_handle == char2Handles.cccd_handle) {
         LOG(TRACE, "Configure BLE characteristic 2 CCCD:");
         if (event->data[0] == 0x01) {
             notifyEnabled = true;
@@ -199,7 +204,7 @@ static void ble_on_data_received(hal_ble_gatt_on_data_received_evt_t* event) {
             notifyEnabled = false;
         }
     }
-    else if (event->attr_handle == bleChar3.value_handle) {
+    else if (event->attr_handle == char3Handles.value_handle) {
         LOG(TRACE, "Write BLE characteristic 3 value:");
     }
     else {
@@ -212,7 +217,7 @@ static void ble_on_data_received(hal_ble_gatt_on_data_received_evt_t* event) {
     Serial1.print("\r\n");
 }
 
-static void ble_on_events(hal_ble_events_t *event, void* context) {
+static void ble_on_events(hal_ble_evts_t* event, void* context) {
     if (event->type == BLE_EVT_ADV_STOPPED) {
         ble_on_adv_stopped(&event->params.adv_stopped);
     }
@@ -240,19 +245,21 @@ void setup()
         BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE
     };
     uint16_t advDataLen = 3;
+    uint8_t srData[31];
+    uint16_t srDataLen = 0;
 
     ble_stack_init(NULL);
 
     ble_gap_set_device_name(devName, sizeof(devName));
 
-    hal_ble_connection_parameters_t connParams;
+    hal_ble_conn_params_t connParams;
     connParams.min_conn_interval = 100;
     connParams.max_conn_interval = 400;
     connParams.slave_latency     = 0;
     connParams.conn_sup_timeout  = 400;
     ble_gap_set_ppcp(&connParams, NULL);
 
-    hal_ble_advertising_parameters_t advParams;
+    hal_ble_adv_params_t advParams;
     advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams.filter_policy = BLE_ADV_FP_ANY;
     advParams.interval      = 100;
@@ -263,26 +270,48 @@ void setup()
     encodeAdvertisingData(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME, devName, sizeof(devName), advData, &advDataLen);
     uint8_t uuid[2] = {0xab, 0xcd};
     encodeAdvertisingData(BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE, uuid, sizeof(uuid), advData, &advDataLen);
-    uint8_t mfgData[10] = {0x12, 0x34};
-    encodeScanResponseData(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, mfgData, sizeof(mfgData), advData, &advDataLen);
+    uint8_t mfgData[] = {0x12, 0x34};
+    encodeScanResponseData(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, mfgData, sizeof(mfgData), srData, &srDataLen);
 
     uint16_t svcHandle;
+    hal_ble_uuid_t bleUuid;
+    hal_ble_char_init_t char_init;
 
-    uint8_t svcUUID1[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x0f};
-    uint8_t charUUID1[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x0f};
-    ble_gatt_server_add_service_uuid128(BLE_SERVICE_TYPE_PRIMARY, svcUUID1, &svcHandle, NULL);
-    ble_gatt_server_add_characteristic_uuid128(svcHandle, charUUID1, BLE_SIG_CHAR_PROP_READ|BLE_SIG_CHAR_PROP_WRITE, NULL, &bleChar1, NULL);
+    bleUuid.type = BLE_UUID_TYPE_128BIT;
+    memcpy(bleUuid.uuid128, svc1UUID, 16);
+    ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &bleUuid, &svcHandle, NULL);
 
-    uint8_t svcUUID2[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x00,0x00,0x0e,0x10};
-    uint8_t charUUID2[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x08,0x09,0x0a,0x0b,0x01,0x00,0x0e,0x10};
-    ble_gatt_server_add_service_uuid128(BLE_SERVICE_TYPE_PRIMARY, svcUUID2, &svcHandle, NULL);
-    ble_gatt_server_add_characteristic_uuid128(svcHandle, charUUID2, BLE_SIG_CHAR_PROP_NOTIFY, NULL, &bleChar2, NULL);
+    memset(&char_init, 0x00, sizeof(hal_ble_char_init_t));
+    memcpy(bleUuid.uuid128, char1UUID, 16);
+    char_init.properties = BLE_SIG_CHAR_PROP_READ|BLE_SIG_CHAR_PROP_WRITE;
+    char_init.service_handle = svcHandle;
+    char_init.uuid = bleUuid;
+    ble_gatt_server_add_characteristic(&char_init, &char1Handles, NULL);
 
-    ble_gatt_server_add_service_uuid16(BLE_SERVICE_TYPE_PRIMARY, 0x1234, &svcHandle, NULL);
-    ble_gatt_server_add_characteristic_uuid16(svcHandle, 0x5678, BLE_SIG_CHAR_PROP_WRITE_WO_RESP, "hello", &bleChar3, NULL);
+    memcpy(bleUuid.uuid128, svc2UUID, 16);
+    ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &bleUuid, &svcHandle, NULL);
+
+    memset(&char_init, 0x00, sizeof(hal_ble_char_init_t));
+    memcpy(bleUuid.uuid128, char2UUID, 16);
+    char_init.properties = BLE_SIG_CHAR_PROP_NOTIFY;
+    char_init.service_handle = svcHandle;
+    char_init.uuid = bleUuid;
+    ble_gatt_server_add_characteristic(&char_init, &char2Handles, NULL);
+
+    bleUuid.type = BLE_UUID_TYPE_16BIT;
+    bleUuid.uuid16 = 0x1234;
+    ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &bleUuid, &svcHandle, NULL);
+
+    memset(&char_init, 0x00, sizeof(hal_ble_char_init_t));
+    bleUuid.uuid16 = 0x5678;
+    char_init.properties = BLE_SIG_CHAR_PROP_WRITE_WO_RESP;
+    char_init.service_handle = svcHandle;
+    char_init.uuid = bleUuid;
+    char_init.description = "hello";
+    ble_gatt_server_add_characteristic(&char_init, &char3Handles, NULL);
 
     uint8_t data[20] = {0x11};
-    ble_gatt_server_set_characteristic_value(bleChar1.value_handle, data, 5, NULL);
+    ble_gatt_server_set_characteristic_value(char1Handles.value_handle, data, 5, NULL);
 
     ble_set_callback_on_events(ble_on_events, NULL);
 
@@ -295,7 +324,7 @@ void loop()
     static uint16_t cnt = 0;
 
     if (ble_gap_is_connected() && notifyEnabled) {
-        ble_gatt_server_notify_characteristic_value(bleChar2.value_handle, (uint8_t *)&cnt, 2, NULL);
+        ble_gatt_server_notify_characteristic_value(char2Handles.value_handle, (uint8_t *)&cnt, 2, NULL);
         cnt++;
     }
     else {
