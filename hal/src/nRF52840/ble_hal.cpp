@@ -1416,7 +1416,10 @@ int ble_stack_init(void* reserved) {
 }
 
 int ble_select_antenna(hal_ble_ant_type_t antenna) {
-    // FIXME: mesh SoMs specific configurations
+#if (PLATFORM_ID == PLATFORM_XENON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_BORON_SOM)
+    // Mesh SoM don't have on-board antenna switch.
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#else
     HAL_Pin_Mode(ANTSW1, OUTPUT);
 #if (PLATFORM_ID == PLATFORM_XENON) || (PLATFORM_ID == PLATFORM_ARGON)
     HAL_Pin_Mode(ANTSW2, OUTPUT);
@@ -1444,8 +1447,8 @@ int ble_select_antenna(hal_ble_ant_type_t antenna) {
         HAL_GPIO_Write(ANTSW2, 0);
 #endif
     }
-
     return SYSTEM_ERROR_NONE;
+#endif // (PLATFORM_ID == PLATFORM_XENON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM)
 }
 
 int ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context) {
