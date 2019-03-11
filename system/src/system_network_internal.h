@@ -88,7 +88,7 @@ inline void CLR_WLAN_WD() {
 #include "system_power.h"
 
 #if HAL_PLATFORM_BLE
-#include "ble_hal.h"
+#include "ble_hal_legacy.h"
 #endif // HAL_PLATFORM_BLE
 
 // FIXME
