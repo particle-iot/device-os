@@ -472,7 +472,7 @@ int BLEClass::advertise(uint32_t interval, uint32_t timeout) const {
     return SYSTEM_ERROR_NONE;
 }
 
-ssize_t BLEClass::scan(BLEScanResult* results, size_t count, uint16_t timeout) const {
+int BLEClass::scan(BLEScanResult* results, size_t count, uint16_t timeout) const {
     return SYSTEM_ERROR_NONE;
 }
 
