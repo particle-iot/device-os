@@ -19,6 +19,9 @@
 #define BLE_HAL_DEFINES_H
 
 
+#if HAL_PLATFORM_BLE
+
+
 /**
  * @addtogroup ble_defines
  *
@@ -267,5 +270,7 @@
 /**
  * @}
  */
+
+#endif //HAL_PLATFORM_BLE
 
 #endif /* BLE_HAL_DEFINES_H */

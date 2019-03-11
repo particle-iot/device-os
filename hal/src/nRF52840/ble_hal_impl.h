@@ -19,6 +19,8 @@
 #define BLE_HAL_IMPL_H
 
 
+#if HAL_PLATFORM_BLE
+
 #include "ble_gap.h"
 #include "ble_gatts.h"
 
@@ -117,6 +119,9 @@
 #define BLE_MAX_SVC_COUNT                           5
 #define BLE_MAX_CHAR_COUNT                          10
 #define BLE_MAX_DESC_COUNT                          10
+
+
+#endif //HAL_PLATFORM_BLE
 
 
 #endif /* BLE_HAL_API_IMPL_H */

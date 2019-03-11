@@ -45,9 +45,7 @@ hal_ble_char_t char1, char2, char3;
 bool svc1Discovered = false, svc2Discovered = false, svc3Discovered= false;
 bool char1Discovered = false, char2Discovered = false, char3Discovered = false;
 bool cccdDiscovered = false;
-bool notifiedData = false, readData = false;
-
-uint8_t char1Data[20];
+bool notifiedData = false;
 
 uint16_t connHandle = BLE_INVALID_CONN_HANDLE;
 bool connectOnFound = false;
@@ -233,12 +231,7 @@ static void ble_on_descriptors_discovered(hal_ble_gattc_on_desc_disc_evt_t* even
 static void ble_on_data_received(hal_ble_gatt_on_data_evt_t* event) {
     LOG(TRACE, "BLE data received, connection handle: 0x%04X.", event->conn_handle);
 
-    if (event->attr_handle == char1.value_handle) {
-        LOG(TRACE, "Read BLE characteristic 1 value:");
-        readData = true;
-        memcpy(char1Data, event->data, event->data_len);
-    }
-    else if (event->attr_handle == char2.value_handle) {
+    if (event->attr_handle == char2.value_handle) {
         LOG(TRACE, "Notified BLE characteristic 2 value:");
         notifiedData = true;
     }
@@ -271,7 +264,7 @@ static void ble_on_events(hal_ble_evts_t* event, void* context) {
     else if (event->type == BLE_EVT_DESC_DISCOVERED) {
         ble_on_descriptors_discovered(&event->params.desc_disc);
     }
-    else if (event->type == BLE_EVT_DATA_NOTIFIED || event->type == BLE_EVT_DATA_READ) {
+    else if (event->type == BLE_EVT_DATA_NOTIFIED) {
         ble_on_data_received(&event->params.data_rec);
     }
 }
@@ -398,18 +391,21 @@ test(06_BleDiscoverDescriptorsAndConfigCccdSuccessfully) {
 
 test(07_BleReadWriteDataSuccessfully) {
     int ret;
+    uint8_t readData[20];
+    uint16_t readDataLen = sizeof(readData);
 
-    ret = ble_gatt_client_read(connHandle, char1.value_handle, NULL);
+    ret = ble_gatt_client_read(connHandle, char1.value_handle, readData, &readDataLen, NULL);
     assertEqual(ret, 0);
-    assertEqual(readData, true);
+    assertEqual(readDataLen, 5);
 
     uint8_t writeData[] = {0xaa, 0xbb, 0x5a, 0xa5};
     ret = ble_gatt_client_write_with_response(connHandle, char1.value_handle, writeData, sizeof(writeData), NULL);
     assertEqual(ret, 0);
 
-    ret = ble_gatt_client_read(connHandle, char1.value_handle, NULL);
+    readDataLen = sizeof(readData);
+    ret = ble_gatt_client_read(connHandle, char1.value_handle, readData, &readDataLen, NULL);
     assertEqual(ret, 0);
-    ret = memcmp(char1Data, writeData, sizeof(writeData));
+    ret = memcmp(readData, writeData, sizeof(writeData));
     assertEqual(ret, 0);
 
     ret = ble_gatt_client_write_without_response(connHandle, char3.value_handle, writeData, sizeof(writeData), NULL);
