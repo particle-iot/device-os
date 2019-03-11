@@ -23,7 +23,6 @@
 #include <string.h>
 #include "spark_wiring_platform.h"
 
-#define Wiring_BLE  1
 
 #if Wiring_BLE
 
@@ -382,7 +381,7 @@ public:
     /**
      * Start scanning. It will stop once the advertiser count is reached or timeout expired.
      */
-    ssize_t scan(BLEScanResult* result, size_t count, uint16_t timeout = DEFAULT_SCANNING_TIMEOUT) const;
+    int scan(BLEScanResult* result, size_t count, uint16_t timeout = DEFAULT_SCANNING_TIMEOUT) const;
 
     /**
      * Connect to a peer Peripheral device.
