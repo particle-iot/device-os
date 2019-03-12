@@ -6,7 +6,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#ifndef SPARK_NO_PLATFORM
 #include "platform_config.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
