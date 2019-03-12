@@ -96,7 +96,7 @@ test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
 #if !HAL_PLATFORM_NRF52840
     pin_t pin = D1; // pin under test
 #else
-    pin_t pin = D2; // pin under test
+    pin_t pin = D4; // pin under test
 #endif
 
     uint32_t avgPulseHigh = 0;
@@ -120,7 +120,7 @@ test(GPIO_06_pulseIn_Measures1000usLOWWithin5Percent) {
 #if !HAL_PLATFORM_NRF52840
     pin_t pin = D1; // pin under test
 #else
-    pin_t pin = D2; // pin under test
+    pin_t pin = D4; // pin under test
 #endif
 
     uint32_t avgPulseLow = 0;
