@@ -332,8 +332,8 @@ test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
 }
 
 test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
-	for_all_pwm_pins([](uint16_t pin) {
-	// when
+    for_all_pwm_pins([](uint16_t pin) {
+    // when
     pinMode(pin, OUTPUT);
 
     // 8-bit resolution
@@ -341,6 +341,11 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     assertEqual(analogWriteResolution(pin), 8);
     // analogWrite(pin, 25, 10); // 9.8% Duty Cycle at 10Hz = 9800us HIGH, 90200us LOW.
     // if (pin == D0) delay(5000);
+#if HAL_PLATFORM_NRF52840
+    // Dummy read to wait until the change of PWM takes effect
+    pulseIn(pin, HIGH);
+    pulseIn(pin, LOW);
+#endif
     uint32_t avgPulseHigh = 0;
     for(int i=0; i<2; i++) {
         analogWrite(pin, 25, 10); // 9.8% Duty Cycle at 10Hz = 9800us HIGH, 90200us LOW.
@@ -357,6 +362,11 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     assertEqual(analogWriteResolution(pin), 4);
     // analogWrite(pin, 2, 10); // 13.3% Duty Cycle at 10Hz = 13333us HIGH, 86000us LOW.
     // if (pin == D0) delay(5000);
+#if HAL_PLATFORM_NRF52840
+    // Dummy read to wait until the change of PWM takes effect
+    pulseIn(pin, HIGH);
+    pulseIn(pin, LOW);
+#endif
     avgPulseHigh = 0;
     for(int i=0; i<2; i++) {
         analogWrite(pin, 2, 10); // 13.3% Duty Cycle at 10Hz = 13333us HIGH, 90000us LOW.
@@ -373,6 +383,11 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     assertEqual(analogWriteResolution(pin), 12);
     // analogWrite(pin, 409, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
     // if (pin == D0) delay(5000);
+#if HAL_PLATFORM_NRF52840
+    // Dummy read to wait until the change of PWM takes effect
+    pulseIn(pin, HIGH);
+    pulseIn(pin, LOW);
+#endif
     avgPulseHigh = 0;
     for(int i=0; i<2; i++) {
         analogWrite(pin, 409, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
@@ -389,6 +404,11 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     assertEqual(analogWriteResolution(pin), 15);
     // analogWrite(pin, 3277, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
     // if (pin == D0) delay(5000);
+#if HAL_PLATFORM_NRF52840
+    // Dummy read to wait until the change of PWM takes effect
+    pulseIn(pin, HIGH);
+    pulseIn(pin, LOW);
+#endif
     avgPulseHigh = 0;
     for(int i=0; i<2; i++) {
         analogWrite(pin, 3277, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
@@ -402,7 +422,7 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 
     analogWrite(pin, 0, 10);
     pinMode(pin, INPUT);
-	});
+    });
 }
 
 test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
