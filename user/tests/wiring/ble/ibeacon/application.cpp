@@ -30,5 +30,9 @@ void setup() {
 }
 
 void loop() {
-
+    delay(5000);
+    BLE.stopAdvertise();
+  
+    delay(5000);
+    BLE.advertise();
 }
