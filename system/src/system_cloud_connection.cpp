@@ -265,7 +265,9 @@ int Internet_Test(void)
 
 void Multicast_Presence_Announcement(void)
 {
+#if HAL_PLATFORM_NETWORK_MULTICAST
     system_multicast_announce_presence(nullptr);
+#endif // HAL_PLATFORM_NETWORK_MULTICAST
 }
 
 int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags) {
