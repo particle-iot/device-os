@@ -22,7 +22,9 @@ uint8_t pwm_pins[] = {
         D0, D1, D2, D3, A4, A5, WKP, RX, TX, P1S0, P1S1, P1S6
 #elif (PLATFORM_ID == 10) // Electron
         D0, D1, D2, D3, A4, A5, WKP, RX, TX, B0, B1, B2, B3, C4, C5
-#elif HAL_PLATFORM_NRF52840 // Xenon/Argon/Boron
+#elif (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_BORON_SOM) || (PLATFORM_ID == PLATFORM_XENON_SOM)
+        D4, D5, D6, D7, A0, A1, A6, A7 /* , RGBR, RGBG, RGBB */
+#elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_XENON)
         D2, D3, D4, D5, D6, /* D7, */ D8, A0, A1, A2, A3, A4, A5 /* , RGBR, RGBG, RGBB */
 #else
 #error "Unsupported platform"
