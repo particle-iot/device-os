@@ -1,4 +1,4 @@
-VERSION="0.9.0"
+VERSION="0.9.1"
 
 function release_file()
 {
@@ -64,7 +64,7 @@ else if [ $1 -eq 10 ]; then
 else if [ $1 -eq 0 ]; then
 	cd ../main
 cp ../Dockerfile.test .
-        make -s -C ../bootloader PLATFORM_ID=$PLATFORM_ID  all 
+        make -s -C ../bootloader PLATFORM_ID=$PLATFORM_ID  all
 	make -s PLATFORM_ID=$PLATFORM_ID all COMPILE_LTO=y APP=tinker
 	release_binary_core tinker
 	release_binary bootloader lto
