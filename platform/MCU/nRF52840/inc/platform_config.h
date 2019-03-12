@@ -83,11 +83,7 @@
 #endif
 
 //Push Buttons, use interrupt HAL
-#if PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
-#define BUTTON1_PIN                                 22
-#else
-#define BUTTON1_PIN                                 20
-#endif
+#define BUTTON1_PIN                                 BTN
 #define BUTTON1_PIN_MODE                            INPUT_PULLUP
 #define BUTTON1_INTERRUPT_MODE                      FALLING
 #define BUTTON1_PRESSED                             0x00
@@ -103,10 +99,10 @@
 #define LED_RED                                     LED2  // RED Led
 #define LED_GREEN                                   LED3  // GREEN Led
 #define LED_BLUE                                    LED4  // BLUE Led
-#define LED_PIN_USER                                7
-#define LED_PIN_RED                                 21
-#define LED_PIN_GREEN                               22
-#define LED_PIN_BLUE                                23
+#define LED_PIN_USER                                D7
+#define LED_PIN_RED                                 RGBR
+#define LED_PIN_GREEN                               RGBG
+#define LED_PIN_BLUE                                RGBB
 
 /* Exported functions ------------------------------------------------------- */
 
