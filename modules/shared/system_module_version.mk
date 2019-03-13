@@ -20,7 +20,7 @@ endif
 
 
 # Bump by 1 if Tinker has been updated
-USER_PART_MODULE_VERSION ?= 5
+USER_PART_MODULE_VERSION ?= 6
 
 RELEASE_064_MODULE_VERSION=110
 
