@@ -100,6 +100,11 @@ STARTUP(System.enable(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1));
 STARTUP(System.enableFeature(FEATURE_WIFITESTER));
 #endif // defined(SYSTEM_VERSION_v080RC1) && SYSTEM_VERSION >= SYSTEM_VERSION_v080RC1
 
+// PIN_INVALID is not available on Gen2 platforms < 1.1.0
+#ifndef PIN_INVALID
+#define PIN_INVALID (0xff)
+#endif // PIN_INVALID
+
 SYSTEM_MODE(AUTOMATIC);
 
 pin_t lookupPinByName(const String& name) {
