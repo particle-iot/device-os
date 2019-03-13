@@ -663,6 +663,10 @@ void system_pool_free(void* ptr, void* reserved) {
 int system_invoke_event_handler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
                 const char* event_name, const char* event_data, void* reserved)
 {
+#if HAL_PLATFORM_MESH
 	invokeEventHandler(handlerInfoSize, handlerInfo, event_name, event_data, reserved);
 	return SYSTEM_ERROR_NONE;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // HAL_PLATFORM_MESH
 }
