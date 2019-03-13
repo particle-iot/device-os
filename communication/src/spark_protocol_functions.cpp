@@ -117,6 +117,12 @@ int spark_protocol_presence_announcement(ProtocolFacade* protocol, uint8_t *buf,
     return protocol->presence_announcement(buf, id);
 }
 
+bool spark_protocol_send_description(ProtocolFacade* protocol, void* reserved) {
+    ASSERT_ON_SYSTEM_THREAD();
+    (void)reserved;
+    return protocol->post_description();
+}
+
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
                 int ttl, uint32_t flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
@@ -262,7 +268,13 @@ int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char 
     ASSERT_ON_SYSTEM_THREAD();
     return protocol->presence_announcement(buf, id);
 }
-
+/*
+bool spark_protocol_send_description(SparkProtocol* protocol, void* reserved) {
+    ASSERT_ON_SYSTEM_THREAD();
+    (void)reserved;
+    return protocol->post_description();
+}
+*/
 bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, const char *data,
                 int ttl, uint32_t flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
@@ -351,6 +363,5 @@ system_tick_t spark_protocol_time_last_synced(SparkProtocol* protocol, time_t* t
 int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* data, void* reserved) {
 	return -1;
 }
-
 
 #endif
