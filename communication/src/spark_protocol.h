@@ -150,6 +150,12 @@ class SparkProtocol
                     unsigned char message_id_msb, unsigned char message_id_lsb, int description_flags);
     void ping(unsigned char *buf);
 
+    /**
+     * Produces and transmits (POST) a describe message.
+     * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
+     */
+    //bool post_description(message_id_t msg_id = -1, int desc_flags = DESCRIBE_DEFAULT);
+
     bool function_result(const void* result, SparkReturnType::Enum resultType, uint8_t token);
 
     /********** Queue **********/

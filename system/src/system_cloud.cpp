@@ -57,6 +57,12 @@ bool register_event(const char* eventName, SubscriptionScope::Enum event_scope, 
     return success;
 }
 
+bool spark_send_description(void *reserved)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_send_description(reserved));
+    return spark_protocol_send_description(sp);
+}
+
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
 {

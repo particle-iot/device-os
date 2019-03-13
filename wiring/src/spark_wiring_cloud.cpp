@@ -1,5 +1,10 @@
 #include "spark_wiring_cloud.h"
 
+#include "system_cloud.h"
+
+const size_t CloudClass::PUBLISH_VITALS_DISABLE = 0;
+const size_t CloudClass::PUBLISH_VITALS_NOW = static_cast<size_t>(-1);
+
 namespace {
 
 using namespace particle;
@@ -14,6 +19,7 @@ void publishCompletionCallback(int error, const void* data, void* callbackData, 
     }
 }
 #endif
+
 } // namespace
 
 int CloudClass::call_raw_user_function(void* data, const char* param, void* reserved)
@@ -65,4 +71,43 @@ Future<bool> CloudClass::publish_event(const char *eventName, const char *eventD
 #else
     return Future<bool>(Error::NOT_SUPPORTED);
 #endif
+}
+
+int CloudClass::publishVitals(size_t period_) {
+    int result;
+
+    switch (period_) {
+      case PUBLISH_VITALS_NOW:
+        publishVitalsImmediately();
+        break;
+      case 0:
+        disableVitalsPeriodTimer();
+        publishVitalsImmediately();
+        break;
+      default:
+        setVitalsPeriod(period_);
+        enableVitalsPeriodTimer();
+        publishVitalsImmediately();
+    }
+    result = 0;  //TODO: Incorporate result logic into each branch
+    return result;
+}
+
+// Publish vitals core functions
+void CloudClass::disableVitalsPeriodTimer (void) {
+}
+
+void CloudClass::enableVitalsPeriodTimer (void) {
+}
+
+size_t CloudClass::getVitalsPeriod (void) {
+    return _publish_vitals_period;
+}
+
+bool CloudClass::publishVitalsImmediately (void) {
+    return spark_send_description();
+}
+
+void CloudClass::setVitalsPeriod (size_t period_) {
+    _publish_vitals_period = period_;
 }
