@@ -129,7 +129,8 @@ int AtResponseReader::vscanf(const char* fmt, va_list args) {
         n = vsscanf(buf2, fmt, args);
     }
     if (n < 0) {
-        return error(SYSTEM_ERROR_UNKNOWN); // vsscanf() error
+        // Do not invalidate the reader object on scanf() errors
+        return SYSTEM_ERROR_BAD_DATA;
     }
     return n;
 }
@@ -162,6 +163,14 @@ int AtResponseReader::error(int ret) {
         error_ = ret;
     }
     return error_;
+}
+
+AtResponseReader& AtResponseReader::operator=(AtResponseReader&& reader) {
+    parser_ = reader.parser_;
+    error_ = reader.error_;
+    reader.parser_ = nullptr;
+    reader.error_ = SYSTEM_ERROR_INVALID_STATE;
+    return *this;
 }
 
 AtResponse::AtResponse(detail::AtParserImpl* parser) :
@@ -226,6 +235,13 @@ void AtResponse::reset() {
         parser_->resetCommand();
         parser_ = nullptr;
     }
+}
+
+AtResponse& AtResponse::operator=(AtResponse&& resp) {
+    AtResponseReader::operator=(std::move(resp));
+    resultErrorCode_ = resp.resultErrorCode_;
+    resp.resultErrorCode_ = 0;
+    return *this;
 }
 
 } // particle
