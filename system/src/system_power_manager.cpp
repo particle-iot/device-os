@@ -27,7 +27,7 @@ LOG_SOURCE_CATEGORY("sys.power")
 #include "spark_wiring_platform.h"
 #include "pinmap_hal.h"
 
-#if Wiring_Cellular == 1 || (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
+#if (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
 
 using namespace particle::power;
 
@@ -402,4 +402,4 @@ void PowerManager::logStat(uint8_t stat, uint8_t fault) {
 #endif
 }
 
-#endif /* Wiring_Cellular == 1 || (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043) */
+#endif /* (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043) */
