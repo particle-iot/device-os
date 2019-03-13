@@ -20,6 +20,7 @@
 #include "pwm_hal.h"
 #include "pinmap_hal.h"
 #include "pinmap_impl.h"
+#include "gpio_hal.h"
 
 #define NRF5X_PWM_COUNT                     4
 #define PWM_CHANNEL_NUM                     4
@@ -59,9 +60,16 @@ static inline uint8_t get_nrf_pin(uint8_t pin) {
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (pin == PIN_INVALID) {
         return pin;
-    } else {
-        return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
     }
+    uint8_t p = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
+    if (HAL_Get_Pin_Mode(pin) == OUTPUT) {
+        // If GPIO is configured as output and is set to high, tell nrfx_pwm
+        // that we want this pin to be high when PWM is off
+        if (HAL_GPIO_Read(pin) == 1) {
+            p |= NRFX_PWM_PIN_INVERTED;
+        }
+    }
+    return p;
 }
 
 static bool get_pwm_clock_setting(uint32_t value, uint32_t frequency, uint8_t resolution, pwm_setting_t *p_setting) {
@@ -195,21 +203,19 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency) {
     uint8_t          pwm_num = PIN_MAP[pin].pwm_instance;
     uint8_t          pwm_channel = PIN_MAP[pin].pwm_channel;
 
+    // if frequency or pin is changed, pwm module should be reconfigured
+    bool reconfig = (PWM_MAP[pwm_num].pins[pwm_channel] != pin) || (PWM_MAP[pwm_num].frequency != frequency);
     PWM_MAP[pwm_num].pins[pwm_channel] = pin;
     PWM_MAP[pwm_num].values[pwm_channel] = value;
-
-    if (PWM_MAP[pwm_num].enabled) {
-        nrfx_pwm_uninit(&PWM_MAP[pwm_num].pwm);
-        PWM_MAP[pwm_num].enabled = false;
-    }
+    PWM_MAP[pwm_num].frequency = frequency;
 
     // GPIO output mode will cause glitches, configure GPIO to default mode
     nrf_gpio_cfg_default(NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin));
 
-    // if frequency is changed, all the pins in the same pwm module should be reconfigured
+    // Get PWM parameters for each pin
     for (int i = 0; i < PWM_CHANNEL_NUM; i++) {
         if (PWM_MAP[pwm_num].pins[i] != PIN_INVALID) {
-            if (get_pwm_clock_setting(PWM_MAP[pwm_num].values[i], frequency, 
+            if (get_pwm_clock_setting(PWM_MAP[pwm_num].values[i], frequency,
                                       PIN_MAP[PWM_MAP[pwm_num].pins[i]].pwm_resolution, &pwm_setting) == false)
             {
                 continue;
@@ -220,28 +226,33 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency) {
         }
     }
 
-    PWM_MAP[pwm_num].frequency = frequency;
+    if (!PWM_MAP[pwm_num].enabled || reconfig) {
+        if (PWM_MAP[pwm_num].enabled) {
+            nrfx_pwm_uninit(&PWM_MAP[pwm_num].pwm);
+            PWM_MAP[pwm_num].enabled = false;
+        }
 
-    nrfx_pwm_config_t const config = {
-        .output_pins = {
-            get_nrf_pin(PWM_MAP[pwm_num].pins[0]),  // channel 0
-            get_nrf_pin(PWM_MAP[pwm_num].pins[1]),  // channel 1
-            get_nrf_pin(PWM_MAP[pwm_num].pins[2]),  // channel 2
-            get_nrf_pin(PWM_MAP[pwm_num].pins[3])   // channel 3
-        },
-        .irq_priority = APP_IRQ_PRIORITY_LOWEST,
-        .base_clock   = pwm_setting.pwm_clock,
-        .count_mode   = NRF_PWM_MODE_UP,
-        .top_value    = pwm_setting.period_hwu,
-        .load_mode    = NRF_PWM_LOAD_INDIVIDUAL,
-        .step_mode    = NRF_PWM_STEP_AUTO
-    };
+        nrfx_pwm_config_t const config = {
+            .output_pins = {
+                get_nrf_pin(PWM_MAP[pwm_num].pins[0]),  // channel 0
+                get_nrf_pin(PWM_MAP[pwm_num].pins[1]),  // channel 1
+                get_nrf_pin(PWM_MAP[pwm_num].pins[2]),  // channel 2
+                get_nrf_pin(PWM_MAP[pwm_num].pins[3])   // channel 3
+            },
+            .irq_priority = APP_IRQ_PRIORITY_LOWEST,
+            .base_clock   = pwm_setting.pwm_clock,
+            .count_mode   = NRF_PWM_MODE_UP,
+            .top_value    = pwm_setting.period_hwu,
+            .load_mode    = NRF_PWM_LOAD_INDIVIDUAL,
+            .step_mode    = NRF_PWM_STEP_AUTO
+        };
 
-    ret_code = nrfx_pwm_init(&PWM_MAP[pwm_num].pwm, &config, NULL);
-    if (ret_code) {
-        return -2;
+        ret_code = nrfx_pwm_init(&PWM_MAP[pwm_num].pwm, &config, NULL);
+        if (ret_code) {
+            return -1;
+        }
+        PWM_MAP[pwm_num].enabled = true;
     }
-    PWM_MAP[pwm_num].enabled = true;
 
     nrf_pwm_sequence_t const seq = {
         .values = {.p_individual = (nrf_pwm_values_individual_t*) &PWM_MAP[pwm_num].seq_value},
@@ -252,7 +263,7 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency) {
 
     ret_code = nrfx_pwm_simple_playback(&PWM_MAP[pwm_num].pwm, &seq, 1, NRFX_PWM_FLAG_LOOP);
     if (ret_code) {
-        return -3;
+        return -2;
     }
     HAL_Set_Pin_Function(pin, PF_PWM);
 
@@ -260,14 +271,14 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency) {
 }
 
 void HAL_PWM_Reset_Pin(uint16_t pin) {
-    if (pin >= TOTAL_PINS) {
+    // Reset pwm resolution
+    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+    if (pin >= TOTAL_PINS || PIN_MAP[pin].pwm_instance == PWM_INSTANCE_NONE) {
         return;
     }
 
     uninit_pwm_pin(pin);
-
-    // Reset pwm resolution
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
     PIN_MAP[pin].pwm_resolution = DEFAULT_RESOLUTION_BITS;
 }
 

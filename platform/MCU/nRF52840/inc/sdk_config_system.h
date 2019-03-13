@@ -25,11 +25,11 @@
 // config/nrf52840/config/sdk_config.h
 
 // IMPORTANT: these two should be set to the same value
-#define NRFX_CLOCK_CONFIG_IRQ_PRIORITY 0
-#define NRFX_POWER_CONFIG_IRQ_PRIORITY 0
+#define NRFX_CLOCK_CONFIG_IRQ_PRIORITY                  _PRIO_APP_HIGH
+#define NRFX_POWER_CONFIG_IRQ_PRIORITY                  _PRIO_APP_HIGH
 
 #define NRFX_GPIOTE_ENABLED                             1
-#define GPIOTE_CONFIG_IRQ_PRIORITY                      _PRIO_SD_LOWEST
+#define GPIOTE_CONFIG_IRQ_PRIORITY                      _PRIO_APP_LOWEST
 #define NRFX_GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS      8
 
 #define NRFX_RTC_ENABLED  1

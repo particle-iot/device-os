@@ -23,13 +23,6 @@
 #define NO_STATIC_ASSERT
 #include "platforms.h"
 #include "logging.h"
-#include "module_info.h"
-
-// STM32 Device electronic signature
-// Factory-programmed 12 byte unique device ID
-#define         ID1          (0x1FFF7A10)
-#define         ID2          (0x1FFF7A14)
-#define         ID3          (0x1FFF7A18)
 
 #ifndef PLATFORM_ID
 #error "PLATFORM_ID not defined"
@@ -37,7 +30,6 @@
 
 #define UI_TIMER_FREQUENCY                  100    /* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL            (1000 / UI_TIMER_FREQUENCY)
-
 
 // QSPI Flash
 #if PLATFORM_ID == PLATFORM_ARGON || \
@@ -77,9 +69,7 @@
 #define USART1_IRQ_PRIORITY                 5       //USART1 Interrupt
 #define USART2_IRQ_PRIORITY                 5       //USART2 Interrupt
 #define RTC1_IRQ_PRIORITY                   5       //RTC1 Interrupt
-#define SYSTICK_IRQ_PRIORITY                13      //CORTEX_M3 Systick Interrupt
-#define SVCALL_IRQ_PRIORITY                 14      //CORTEX_M3 SVCall Interrupt
-#define PENDSV_IRQ_PRIORITY                 15      //CORTEX_M3 PendSV Interrupt
+#define SYSTICK_IRQ_PRIORITY                7      //CORTEX_M3 Systick Interrupt
 
 #define PREPSTRING2(x) #x
 #define PREPSTRING(x) PREPSTRING2(x)
@@ -92,42 +82,27 @@
     #error "Unknown PLATFORM_ID"
 #endif
 
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-//Push Buttons in Bootloader, use the lowest level GPIOTE driver
-#if PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_XENON_SOM
-#define BUTTON1_GPIO_PIN                    25
-#else
-#define BUTTON1_GPIO_PIN                    11
-#endif
-#define BUTTON1_GPIO_MODE                   NRF_GPIO_PIN_DIR_INPUT
-#define BUTTON1_GPIO_PUPD                   NRF_GPIO_PIN_PULLUP
-#define BUTTON1_PRESSED                     0x00
-#define BUTTON1_GPIOTE_EVENT_IN             NRF_GPIOTE_EVENTS_IN_0
-#define BUTTON1_GPIOTE_EVENT_CHANNEL        0
-#define BUTTON1_GPIOTE_INT_MASK             NRF_GPIOTE_INT_IN0_MASK
-#define BUTTON1_GPIOTE_INTERRUPT_MODE       FALLING
-#define BUTTON1_GPIOTE_IRQn                 GPIOTE_IRQn
-#define BUTTON1_GPIOTE_IRQ_HANDLER          GPIOTE_IRQHandler
-#define BUTTON1_GPIOTE_IRQ_PRIORITY         7
-#define BUTTON1_GPIOTE_IRQ_INDEX            22
-#define BUTTON1_GPIOTE_TRIGGER              NRF_GPIOTE_POLARITY_HITOLO
-#define BUTTON1_MIRROR_SUPPORTED            0
-#else
-//Push Buttons in Device OS, use interrupt HAL
-#if PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
-#define BUTTON1_PIN                         22
-#else
-#define BUTTON1_PIN                         20
-#endif
-#define BUTTON1_PIN_MODE                    INPUT_PULLUP
-#define BUTTON1_INTERRUPT_MODE              FALLING
-#define BUTTON1_PRESSED                     0x00
-#define BUTTON1_MIRROR_SUPPORTED            1
-#define BUTTON1_MIRROR_PIN                  PIN_INVALID
-#define BUTTON1_MIRROR_PIN_MODE             INPUT_PULLUP
-#define BUTTON1_MIRROR_INTERRUPT_MODE       FALLING
+//Push Buttons, use interrupt HAL
+#define BUTTON1_PIN                                 BTN
+#define BUTTON1_PIN_MODE                            INPUT_PULLUP
+#define BUTTON1_INTERRUPT_MODE                      FALLING
+#define BUTTON1_PRESSED                             0x00
+#define BUTTON1_MIRROR_SUPPORTED                    1
+#define BUTTON1_MIRROR_PRESSED                      0x00
+#define BUTTON1_MIRROR_PIN                          PIN_INVALID
+#define BUTTON1_MIRROR_PIN_MODE                     INPUT_PULLUP
+#define BUTTON1_MIRROR_INTERRUPT_MODE               FALLING
 
-#endif /* MODULE_FUNCTION == MOD_FUNC_BOOTLOADER */
+//RGB LEDs
+#define LED_MIRROR_SUPPORTED                        1
+#define LEDn                                        (4 * (LED_MIRROR_SUPPORTED + 1))
+#define LED_RED                                     LED2  // RED Led
+#define LED_GREEN                                   LED3  // GREEN Led
+#define LED_BLUE                                    LED4  // BLUE Led
+#define LED_PIN_USER                                D7
+#define LED_PIN_RED                                 RGBR
+#define LED_PIN_GREEN                               RGBG
+#define LED_PIN_BLUE                                RGBB
 
 /* Exported functions ------------------------------------------------------- */
 

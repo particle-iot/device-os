@@ -30,14 +30,6 @@
 extern "C" {
 #endif
 
-#ifndef LEDn
-#define LEDn                                4
-#endif // LEDn
-
-#ifndef LED_MIRROR_SUPPORTED
-#define LED_MIRROR_SUPPORTED                0
-#endif // LED_MIRROR_SUPPORTED
-
 #include "rgbled_hal_impl.h"
 
 // #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
@@ -64,10 +56,10 @@ uint16_t Get_RGB_LED_Max_Value(void);
 void Set_User_LED(uint8_t state);
 void Toggle_User_LED(void);
 uint16_t Get_RGB_LED_Max_Value(void);
+void RGB_LED_Uninit();
 
 #ifdef	__cplusplus
 }
 #endif
 
 #endif	/* RGBLED_HAL_H */
-

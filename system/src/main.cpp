@@ -419,6 +419,10 @@ extern "C" void HAL_SysTick_Handler(void)
     }
 #endif
 
+#if HAL_PLATFORM_BUTTON_DEBOUNCE_IN_SYSTICK
+    BUTTON_Timer_Handler();
+#endif
+
     if (IS_BUTTON_TIMEOUT())
     {
         reset_button_click();

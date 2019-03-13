@@ -6,6 +6,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#ifndef SPARK_NO_PLATFORM
+#include "platform_config.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,7 +57,6 @@ typedef enum
 #ifndef LED_BLUE
 #define LED_BLUE          LED2
 #endif
-
 
 //RGB Basic Colors
 #define RGB_COLOR_RED     0xFF0000
@@ -113,4 +115,3 @@ extern LedCallbacks LED_Callbacks;
 #endif
 
 #endif	/* RGBLED_H */
-

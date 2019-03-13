@@ -27,22 +27,6 @@
 extern "C" {
 #endif
 
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-typedef struct {
-    uint16_t              pin;
-    nrf_gpio_pin_dir_t    mode;
-    nrf_gpio_pin_pull_t   pupd;
-    volatile uint8_t      active;
-    volatile uint16_t     debounce_time;
-    uint16_t              event_in;
-    uint16_t              event_channel;
-    uint16_t              int_mask;
-    uint16_t              interrupt_mode;
-    uint16_t              nvic_irqn;
-    uint16_t              nvic_irq_prio;
-    uint8_t               padding[12];
-} button_config_t;
-#else
 typedef struct {
     uint16_t              pin;
     uint8_t               interrupt_mode;
@@ -50,7 +34,6 @@ typedef struct {
     volatile uint16_t     debounce_time;
     uint8_t               padding[26];
 } button_config_t;
-#endif /* MODULE_FUNCTION == MOD_FUNC_BOOTLOADER */
 
 #ifdef __cplusplus
 }
