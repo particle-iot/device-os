@@ -716,12 +716,16 @@ int SaraNcpClient::initReady() {
             }
         }
         CHECK_PARSER_OK(resp.readResult());
+        int lastError = AtResponse::OK;
         for (unsigned act: acts) {
-            // A synthetic test shows that this command may fail for unknown reason. eDRX mode is a
-            // persistent setting and, eventually, it will get applied for each RAT during subsequent
-            // re-initialization attempts
-            CHECK_PARSER_OK(parser_.execCommand("AT+CEDRXS=3,%u", act)); // 3: Disable the use of eDRX
+            // This command may fail for unknown reason. eDRX mode is a persistent setting and, eventually,
+            // it will get applied for each RAT during subsequent re-initialization attempts
+            r = CHECK_PARSER(parser_.execCommand("AT+CEDRXS=3,%u", act)); // 3: Disable the use of eDRX
+            if (r != AtResponse::OK) {
+                lastError = r;
+            }
         }
+        CHECK_PARSER_OK(lastError);
         // Force Power Saving mode to be disabled for good measure
         CHECK_PARSER_OK(parser_.execCommand("AT+CPSMS=0"));
     } else {
