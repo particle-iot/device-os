@@ -238,7 +238,7 @@ protected:
 	const int MISSED_CHUNKS_TO_SEND = 50;
 
 	/**
-	 * Produces and transmits a describe message.
+	 * Produces and transmits (PIGGYBACK) a describe message.
 	 * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
 	 */
 	ProtocolError send_description(token_t token, message_id_t msg_id, int desc_flags);
@@ -358,6 +358,12 @@ public:
 		CoAPMessageType::Enum message;
 		return !event_loop(message);
 	}
+
+	/**
+	 * Produces and transmits (POST) a describe message.
+	 * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
+	 */
+	bool post_description(message_id_t msg_id = -1, int desc_flags = DESCRIBE_DEFAULT);
 
 	// Returns true on success, false on sending timeout or rate-limiting failure
 	bool send_event(const char *event_name, const char *data, int ttl,

@@ -278,6 +278,28 @@ size_t Messages::presence_announcement(unsigned char *buf, const char *id)
 	return 19;
 }
 
+size_t Messages::describe_post_header(uint8_t buf[], size_t buffer_size, uint16_t message_id)
+{
+	const size_t header_size = 7;
+
+	size_t bytes_written;
+
+	if ( buffer_size < header_size ) {
+		bytes_written = 0;
+	} else {
+		buf[0] = 0x40; // Confirmable, no token
+		buf[1] = 0x02; // Type POST
+		buf[2] = message_id >> 8;
+		buf[3] = message_id & 0xff;
+		buf[4] = 0xb1; // Uri-Path option of length 1
+		buf[5] = 'd';
+		buf[6] = 0xff; // payload marker
+		bytes_written = header_size;
+	}
+
+	return bytes_written;
+}
+
 size_t Messages::separate_response_with_payload(unsigned char *buf, uint16_t message_id,
 		unsigned char token, unsigned char code, unsigned char* payload,
 		unsigned payload_len, bool confirmable)

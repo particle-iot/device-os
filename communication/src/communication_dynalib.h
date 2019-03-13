@@ -75,15 +75,19 @@ DYNALIB_FN(BASE_IDX2 + 3, communication, spark_protocol_time_last_synced, system
 
 #if HAL_PLATFORM_MESH
 DYNALIB_FN(BASE_IDX2 + 4, communication, spark_protocol_mesh_command, int(ProtocolFacade* protocol, MeshCommand::Enum cmd, uint32_t data, void* extraData, completion_handler_data* completion, void* reserved))
-DYNALIB_FN(BASE_IDX2 + 5, communication, spark_protocol_get_describe_data, int(ProtocolFacade*, spark_protocol_describe_data*, void*))
+#define BASE_IDX3 (BASE_IDX2 + 5)
 #else // !HAL_PLATFORM_MESH
-DYNALIB_FN(BASE_IDX2 + 4, communication, spark_protocol_get_describe_data, int(ProtocolFacade*, spark_protocol_describe_data*, void*))
+#define BASE_IDX3 (BASE_IDX2 + 4)
 #endif // HAL_PLATFORM_MESH
+
+DYNALIB_FN(BASE_IDX3 + 0, communication, spark_protocol_get_describe_data, int(ProtocolFacade*, spark_protocol_describe_data*, void*))
+DYNALIB_FN(BASE_IDX3 + 1, communication, spark_protocol_send_description, bool(ProtocolFacade*, void*))
 
 DYNALIB_END(communication)
 
 #undef BASE_IDX
 #undef BASE_IDX2
+#undef BASE_IDX3
 
 #ifdef	__cplusplus
 }

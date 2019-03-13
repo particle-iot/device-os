@@ -75,6 +75,8 @@ class CloudClass {
 
 
 public:
+    static const size_t PUBLISH_VITALS_DISABLE;
+    static const size_t PUBLISH_VITALS_NOW;
 
     template <typename T, class ... Types>
     static inline bool variable(const T &name, const Types& ... args)
@@ -242,6 +244,8 @@ public:
     particle::Future<bool> publish(const char* name, const char* data) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
     particle::Future<bool> publish(const char* name, const char* data, int ttl) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
 
+    int publishVitals(size_t period = PUBLISH_VITALS_NOW);
+
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
     {
         return CLOUD_FN(spark_subscribe(eventName, handler, NULL, scope, NULL, NULL), false);
@@ -346,6 +350,14 @@ public:
 #endif
 
 private:
+    // Vitals
+    bool _publish_vitals_period;
+
+    void disableVitalsPeriodTimer (void);
+    void enableVitalsPeriodTimer (void);
+    bool publishVitalsImmediately (void);
+    size_t getVitalsPeriod (void);
+    void setVitalsPeriod (size_t);
 
     static bool register_function(cloud_function_t fn, void* data, const char* funcKey);
     static int call_raw_user_function(void* data, const char* param, void* reserved);
@@ -383,7 +395,6 @@ private:
         return s->c_str();
     }
 };
-
 
 extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));
 extern CloudClass Particle;
