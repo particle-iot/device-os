@@ -519,7 +519,6 @@ bool Protocol::post_description(int desc_flags)
 
 	Message message;
 	channel.create(message);
-	message.set_id(-1);  // Allow channel to specify message id
 	const size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), 0);
 
 	BufferAppender appender((message.buf() + header_size), (message.capacity() - header_size));
