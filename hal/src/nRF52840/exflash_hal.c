@@ -38,7 +38,8 @@ enum qspi_cmds_t {
     QSPI_STD_CMD_RST     = 0x99,
     QSPI_MX25_CMD_ENSO   = 0xb1,
     QSPI_MX25_CMD_EXSO   = 0xc1,
-    QSPI_MX25_CMD_WRSCUR = 0x2f
+    QSPI_MX25_CMD_WRSCUR = 0x2f,
+    QSPI_MX25_CMD_SLEEP  = 0xB9
 };
 
 static const size_t MX25_OTP_SECTOR_SIZE = 4096 / 8; /* 4Kb or 512B */
@@ -154,6 +155,23 @@ hal_exflash_init_done:
 int hal_exflash_uninit(void)
 {
     hal_exflash_lock();
+
+    nrf_qspi_cinstr_conf_t cinstr_cfg = {
+        .opcode    = QSPI_MX25_CMD_SLEEP,
+        .length    = NRF_QSPI_CINSTR_LEN_1B,
+        .io2_level = true,
+        .io3_level = true,
+        .wipwait   = true,
+        .wren      = true
+    };
+
+    // Send sleep command
+    uint32_t err_code = nrfx_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
+    if (err_code)
+    {
+        return -1;
+    }
+
     nrfx_qspi_uninit();
     // PATCH: Initialize CS pin, external memory discharge
     nrf_gpio_cfg_output(QSPI_FLASH_CSN_PIN);
