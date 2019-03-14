@@ -513,21 +513,14 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
  * Produces and transmits (POST) a describe message.
  * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
  */
-bool Protocol::post_description(message_id_t msg_id, int desc_flags)
+bool Protocol::post_description(int desc_flags)
 {
-	static message_id_t message_id = 0;
 	bool result;
-
-	if ( -1 == msg_id ) {
-		++message_id;
-	} else {
-		message_id = msg_id;
-	}
 
 	Message message;
 	channel.create(message);
-	message.set_id(message_id);
-	size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), message_id);
+	message.set_id(-1);  // Allow channel to specify message id
+	const size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), 0);
 
 	BufferAppender appender((message.buf() + header_size), (message.capacity() - header_size));
 	build_describe_message(appender, desc_flags);
