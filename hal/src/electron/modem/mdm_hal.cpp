@@ -1165,6 +1165,12 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         if (RESP_OK != waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
             goto failure;
         }
+        // +CREG, +CGREG, +COPS does not contain <AcT> for G350 devices.
+        // After we are registered to CSD or PSD, populate _net.act with ACT_GSM to ensure
+        // Device Diagnostics and RSSI() API have a RAT for conversion lookup purposes.
+        if (_dev.dev == DEV_SARA_G350) {
+            _net.act = ACT_GSM;
+        }
     }
     if (status) {
         memcpy(status, &_net, sizeof(NetStatus));
