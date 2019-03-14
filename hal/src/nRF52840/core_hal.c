@@ -951,7 +951,6 @@ int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
 
     // Disable external flash
     hal_exflash_uninit();
-    hal_exflash_unlock();
 
     // Uninit GPIOTE
     nrfx_gpiote_uninit();
