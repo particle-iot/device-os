@@ -399,6 +399,7 @@ void PowerManager::checkWatchdog() {
     // Re-enable charging, do not run DPDM detection
     LOG_DEBUG(TRACE, "re-enabling charging");
     chargingDisabledTimestamp_ = 0;
+    g_batteryState = BATTERY_STATE_UNKNOWN;
     initDefault(false);
   }
 }
