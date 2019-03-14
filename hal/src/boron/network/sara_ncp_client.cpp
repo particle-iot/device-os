@@ -34,8 +34,10 @@
 
 #include "stream_util.h"
 
-#include <algorithm>
 #include "spark_wiring_interrupts.h"
+#include "spark_wiring_vector.h"
+
+#include <algorithm>
 
 #define CHECK_PARSER(_expr) \
         ({ \
@@ -693,22 +695,42 @@ int SaraNcpClient::initReady() {
     }
 
     if (ncpId() == MESH_NCP_SARA_R410) {
-        // Force eDRX mode to be disabled
-        // 18/23 hardware doesn't seem to be disabled by default
-        r = CHECK_PARSER(parser_.execCommand("AT+CEDRXS=0"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        // Force Cat M1-only mode
+        auto resp = parser_.sendCommand("AT+URAT?");
+        unsigned selectAct = 0, preferAct1 = 0, preferAct2 = 0;
+        r = CHECK_PARSER(resp.scanf("+URAT: %u,%u,%u", &selectAct, &preferAct1, &preferAct2));
+        CHECK_PARSER_OK(resp.readResult());
+        if (selectAct != 7 || (r >= 2 && preferAct1 != 7) || (r >= 3 && preferAct2 != 7)) { // 7: LTE Cat M1
+            // This is a persistent setting
+            CHECK_PARSER_OK(parser_.execCommand("AT+URAT=7"));
+        }
+        // Force eDRX mode to be disabled. AT+CEDRXS=0 doesn't seem disable eDRX completely, so
+        // so we're disabling it for each reported RAT individually
+        Vector<unsigned> acts;
+        resp = parser_.sendCommand("AT+CEDRXS?");
+        while (resp.hasNextLine()) {
+            unsigned act = 0;
+            r = resp.scanf("+CEDRXS: %u", &act);
+            if (r == 1) { // Ignore scanf() errors
+                CHECK_TRUE(acts.append(act), SYSTEM_ERROR_NO_MEMORY);
+            }
+        }
+        CHECK_PARSER_OK(resp.readResult());
+        int lastError = AtResponse::OK;
+        for (unsigned act: acts) {
+            // This command may fail for unknown reason. eDRX mode is a persistent setting and, eventually,
+            // it will get applied for each RAT during subsequent re-initialization attempts
+            r = CHECK_PARSER(parser_.execCommand("AT+CEDRXS=3,%u", act)); // 3: Disable the use of eDRX
+            if (r != AtResponse::OK) {
+                lastError = r;
+            }
+        }
+        CHECK_PARSER_OK(lastError);
         // Force Power Saving mode to be disabled for good measure
-        r = CHECK_PARSER(parser_.execCommand("AT+CPSMS=0"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-
-        r = CHECK_PARSER(parser_.execCommand("AT+CEDRXS?"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-        r = CHECK_PARSER(parser_.execCommand("AT+CPSMS?"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_PARSER_OK(parser_.execCommand("AT+CPSMS=0"));
     } else {
         // Power saving
-        r = CHECK_PARSER(parser_.execCommand("AT+UPSV=0"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_PARSER_OK(parser_.execCommand("AT+UPSV=0"));
     }
 
     // Send AT+CMUX and initialize multiplexer

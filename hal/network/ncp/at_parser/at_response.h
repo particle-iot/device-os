@@ -141,6 +141,8 @@ protected:
     int readLine(char* buf, size_t size, size_t offs);
     int error(int ret);
 
+    AtResponseReader& operator=(AtResponseReader&& reader);
+
     friend class detail::AtParserImpl;
 };
 
@@ -216,6 +218,10 @@ public:
      * Cancels the processing of the current AT command.
      */
     void reset();
+    /**
+     * Move-assigns `resp` to this response object.
+     */
+    AtResponse& operator=(AtResponse&& resp);
 
 private:
     int resultErrorCode_;

@@ -246,7 +246,13 @@ private:
 template<typename T, typename AllocatorT>
 void swap(Vector<T, AllocatorT>& vector, Vector<T, AllocatorT>& vector2);
 
-} // namespace spark
+} // spark
+
+namespace particle {
+
+using ::spark::Vector;
+
+} // particle
 
 // spark::DefaultAllocator
 inline void* spark::DefaultAllocator::malloc(size_t size) {
