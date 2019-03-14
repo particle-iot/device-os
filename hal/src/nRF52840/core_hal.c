@@ -939,10 +939,19 @@ int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 
+    // Make sure we acquire exflash lock BEFORE going into a critical section
+    hal_exflash_lock();
 
     // This will disable all but SoftDevice interrupts (by modifying NVIC->ICER)
     uint8_t st = 0;
     sd_nvic_critical_region_enter(&st);
+
+    // Disable SysTick
+    SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
+
+    // Disable external flash
+    hal_exflash_uninit();
+    hal_exflash_unlock();
 
     // Uninit GPIOTE
     nrfx_gpiote_uninit();
