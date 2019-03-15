@@ -20,6 +20,7 @@
 
 #include "hal_platform.h"
 
+
 #if HAL_PLATFORM_BLE
 
 #include <stdint.h>
@@ -178,7 +179,6 @@ typedef struct {
     uint8_t  version;
     uint8_t  reason;
     uint16_t conn_handle;
-    hal_ble_addr_t peer_addr;
 } hal_ble_gap_on_disconnected_evt_t;
 
 typedef struct {
@@ -609,24 +609,26 @@ int ble_gatt_server_get_characteristic_value(uint16_t value_handle, uint8_t* dat
 /**
  * Send a notification to GATT Client. No response from GATT Client is required.
  *
+ * @param[in]   conn_handle     Connection handle.
  * @param[in]   value_handle    Characteristic value handle.
  * @param[in]   data            Pointer to the buffer that contains the data to be sent.
  * @param[in]   len             Length of the data to be sent.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gatt_server_notify_characteristic_value(uint16_t value_handle, const uint8_t* data, uint16_t len, void* reserved);
+int ble_gatt_server_notify_characteristic_value(uint16_t conn_handle, uint16_t value_handle, const uint8_t* data, uint16_t len, void* reserved);
 
 /**
  * Send an indication to GATT Client. A response from GATT Client is required.
  *
+ * @param[in]   conn_handle     Connection handle.
  * @param[in]   value_handle    Characteristic value handle.
  * @param[in]   data            Pointer to the buffer that contains the data to be sent.
  * @param[in]   len             Length of the data to be sent.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gatt_server_indicate_characteristic_value(uint16_t value_handle, const uint8_t* data, uint16_t len, void* reserved);
+int ble_gatt_server_indicate_characteristic_value(uint16_t conn_handle, uint16_t value_handle, const uint8_t* data, uint16_t len, void* reserved);
 
 /**
  * Discover all BLE primary services.
