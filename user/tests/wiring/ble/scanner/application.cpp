@@ -21,8 +21,13 @@
 #include "application.h"
 
 #define SCAN_RESULT_COUNT       10
+#define BLE_ADV_DATA_MAX        31
 
-BLEScanResult results[SCAN_RESULT_COUNT];
+SYSTEM_MODE(MANUAL);
+
+Serial1LogHandler log(115200, LOG_LEVEL_ALL);
+
+BleScanResult results[SCAN_RESULT_COUNT];
 
 
 void setup() {
@@ -34,15 +39,20 @@ void loop() {
 
     if (count > 0) {
         for (int i = 0; i < count; i++) {
+            uint8_t buf[BLE_ADV_DATA_MAX];
+            size_t len = results[i].advData(buf, sizeof(buf));
+
             Serial.println("Advertising data:");
-            for (size_t j = 0; j < results[i].advDataLen(); j++) {
-                Serial.printf("0x%02x, ", results[i].advData()[j]);
+            for (size_t j = 0; j < len; j++) {
+                Serial.printf("0x%02x, ", buf[j]);
             }
             Serial.println("");
 
+            len = results[i].srData(buf, sizeof(buf));
+
             Serial.println("Scan response data:");
-            for (size_t j = 0; j < results[i].srDataLen(); j++) {
-                Serial.printf("0x%02x, ", results[i].srData()[j]);
+            for (size_t j = 0; j < len; j++) {
+                Serial.printf("0x%02x, ", buf[j]);
             }
             Serial.println("");
         }
