@@ -1,5 +1,5 @@
 #include "UnitTest++.h"
-#include "spark_protocol.h"
+#include "core_protocol.h"
 #include "ConstructorFixture.h"
 
 SUITE(SparkProtocolConstruction)

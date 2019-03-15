@@ -1,10 +1,10 @@
 /**
   ******************************************************************************
-  * @file    spark_protocol.cpp
+  * @file    core_protocol.cpp
   * @authors  Zachary Crockett, Matthew McGowan
   * @version V1.0.0
   * @date    15-Nov-2013
-  * @brief   SPARK PROTOCOL
+  * @brief   CORE PROTOCOL
   ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
@@ -24,9 +24,9 @@
   */
 
 #include "logging.h"
-LOG_SOURCE_CATEGORY("comm.sparkprotocol")
+LOG_SOURCE_CATEGORY("comm.coreprotocol")
 
-#include "spark_protocol.h"
+#include "core_protocol.h"
 #include "protocol_selector.h"
 
 #if !PARTICLE_PROTOCOL

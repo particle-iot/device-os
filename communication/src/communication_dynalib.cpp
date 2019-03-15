@@ -24,7 +24,7 @@
 #include "lightssl_protocol.h"
 #include "dtls_protocol.h"
 #else
-#include "spark_protocol.h"
+#include "core_protocol.h"
 #endif
 
 /**

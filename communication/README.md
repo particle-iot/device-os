@@ -6,12 +6,12 @@ This directory holds the firmware libraries used for the communication between P
 
 The following applies to the TCP connection used by default on Wi-Fi devices. The Electron uses standard DTLS.
 
-* [RSA encrypt initial handshake message to cloud](src/spark_protocol.cpp#L101)
+* [RSA encrypt initial handshake message to cloud](src/core_protocol.cpp#L101)
 * [Decrypt return message from Cloud with an RSA private key on the Core](src/handshake.cpp#L56)
-* [Verify HMAC signature](src/spark_protocol.cpp#L1609-L1613)
+* [Verify HMAC signature](src/core_protocol.cpp#L1609-L1613)
 * If everything checks out, AES-128-CBC session key is saved and IV is rotated with every message exchanged
-  * [encrypt](src/spark_protocol.cpp#L1558-L1563)
-  * [decrypt](src/spark_protocol.cpp#L306-L312)
+  * [encrypt](src/core_protocol.cpp#L1558-L1563)
+  * [decrypt](src/core_protocol.cpp#L306-L312)
 
 ## VERSION HISTORY
 

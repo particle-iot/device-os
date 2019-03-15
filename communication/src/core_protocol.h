@@ -1,10 +1,10 @@
 /**
   ******************************************************************************
-  * @file    spark_protocol.h
+  * @file    core_protocol.h
   * @authors  Zachary Crockett, Matthew McGowan
   * @version V1.0.0
   * @date    15-Nov-2013
-  * @brief   SPARK PROTOCOL
+  * @brief   CORE PROTOCOL
   ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
