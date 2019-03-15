@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 #include <time.h>
+#include "protocol_defs.h"
 #include "system_tick_hal.h"
 #include "spark_descriptor.h"
 #include "events.h"
@@ -192,7 +193,7 @@ typedef struct {
 } spark_protocol_describe_data;
 
 int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* limits, void* reserved);
-bool spark_protocol_send_description(ProtocolFacade* protocol, void* reserved=NULL);
+bool spark_protocol_send_description(ProtocolFacade* protocol, int desc_flags=particle::protocol::DESCRIBE_DEFAULT, void* reserved=NULL);
 
 namespace ProtocolCommands {
   enum Enum {
