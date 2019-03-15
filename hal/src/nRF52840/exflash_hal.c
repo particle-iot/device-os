@@ -33,13 +33,14 @@
 #include "nrf_nvic.h"
 
 enum qspi_cmds_t {
-    QSPI_STD_CMD_WRSR    = 0x01,
-    QSPI_STD_CMD_RSTEN   = 0x66,
-    QSPI_STD_CMD_RST     = 0x99,
-    QSPI_MX25_CMD_ENSO   = 0xb1,
-    QSPI_MX25_CMD_EXSO   = 0xc1,
-    QSPI_MX25_CMD_WRSCUR = 0x2f,
-    QSPI_MX25_CMD_SLEEP  = 0xB9
+    QSPI_STD_CMD_WRSR     = 0x01,
+    QSPI_STD_CMD_RSTEN    = 0x66,
+    QSPI_STD_CMD_RST      = 0x99,
+    QSPI_MX25_CMD_ENSO    = 0xb1,
+    QSPI_MX25_CMD_EXSO    = 0xc1,
+    QSPI_MX25_CMD_WRSCUR  = 0x2f,
+    QSPI_MX25_CMD_SLEEP   = 0xB9,
+    QSPI_MX25_CMD_READ_ID = 0xAB
 };
 
 static const size_t MX25_OTP_SECTOR_SIZE = 4096 / 8; /* 4Kb or 512B */
@@ -140,6 +141,22 @@ int hal_exflash_init(void)
         goto hal_exflash_init_done;
     }
     LOG_DEBUG(TRACE, "QSPI initialized.");
+
+    // Wake up external flash from deep power down mode by sending read id command
+    nrf_qspi_cinstr_conf_t cinstr_cfg = {
+        .opcode    = QSPI_MX25_CMD_READ_ID,
+        .length    = NRF_QSPI_CINSTR_LEN_1B,
+        .io2_level = true,
+        .io3_level = true,
+        .wipwait   = true,
+        .wren      = true
+    };
+
+    uint32_t err_code = nrfx_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
+    if (err_code)
+    {
+        return -1;
+    }
 
     ret = configure_memory();
     if (ret)
