@@ -279,8 +279,8 @@ ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& messag
     {
         updating = 2;       // flag that we are sending missing chunks.
         DEBUG("update done - missing chunks starting at %d", index);
-        chunk_index_t increase = std::max(unsigned(chunk_count*0.2), MINIMUM_CHUNK_INCREASE);	// ensure always some growth
-        chunk_index_t resend_chunk_count = std::min(unsigned(chunk_count+increase), MISSED_CHUNKS_TO_SEND);
+        chunk_index_t increase = std::max(size_t(chunk_count*0.2), size_t(MINIMUM_CHUNK_INCREASE));	// ensure always some growth
+        chunk_index_t resend_chunk_count = std::min(size_t(chunk_count+increase), size_t(MISSED_CHUNKS_TO_SEND));
         chunk_count = 0;
 
         error = send_missing_chunks(channel, resend_chunk_count);
