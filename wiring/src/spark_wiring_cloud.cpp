@@ -1,5 +1,8 @@
 #include "spark_wiring_cloud.h"
 
+#include <functional>
+#include "spark_wiring_cloud_publish_vitals.h"
+#include "spark_wiring_timer.h"
 #include "system_cloud.h"
 
 const size_t CloudClass::PUBLISH_VITALS_DISABLE = 0;
@@ -8,6 +11,7 @@ const size_t CloudClass::PUBLISH_VITALS_NOW = static_cast<size_t>(-1);
 namespace {
 
 using namespace particle;
+using namespace particle::wiring::cloud;
 
 #ifndef SPARK_NO_CLOUD
 void publishCompletionCallback(int error, const void* data, void* callbackData, void* reserved) {
@@ -19,6 +23,9 @@ void publishCompletionCallback(int error, const void* data, void* callbackData, 
     }
 }
 #endif
+
+Timer vitals_timer(std::numeric_limits<unsigned>::max(), [](){ spark_send_description(); }, false);
+VitalsPublisher<std::function<bool(void)>, Timer> _vitals(std::bind(spark_send_description, nullptr), vitals_timer);
 
 } // namespace
 
@@ -73,41 +80,22 @@ Future<bool> CloudClass::publish_event(const char *eventName, const char *eventD
 #endif
 }
 
-int CloudClass::publishVitals(size_t period_) {
+int CloudClass::publishVitals(size_t period_s_) {
     int result;
 
-    switch (period_) {
+    switch (period_s_) {
       case PUBLISH_VITALS_NOW:
-        publishVitalsImmediately();
+        result = _vitals.publish();
         break;
       case 0:
-        disableVitalsPeriodTimer();
-        publishVitalsImmediately();
+        _vitals.disablePeriodicPublish();
+        result = _vitals.publish();
         break;
       default:
-        setVitalsPeriod(period_);
-        enableVitalsPeriodTimer();
-        publishVitalsImmediately();
+        _vitals.period(period_s_);
+        _vitals.enablePeriodicPublish();
+        result = _vitals.publish();
     }
-    result = 0;  //TODO: Incorporate result logic into each branch
+
     return result;
-}
-
-// Publish vitals core functions
-void CloudClass::disableVitalsPeriodTimer (void) {
-}
-
-void CloudClass::enableVitalsPeriodTimer (void) {
-}
-
-size_t CloudClass::getVitalsPeriod (void) {
-    return _publish_vitals_period;
-}
-
-bool CloudClass::publishVitalsImmediately (void) {
-    return spark_send_description();
-}
-
-void CloudClass::setVitalsPeriod (size_t period_) {
-    _publish_vitals_period = period_;
 }
