@@ -229,7 +229,7 @@ int spark_protocol_mesh_command(ProtocolFacade* protocol, MeshCommand::Enum cmd,
 
 #else // !PARTICLE_PROTOCOL
 
-#include "spark_protocol.h"
+#include "core_protocol.h"
 
 void spark_protocol_communications_handlers(SparkProtocol* protocol, CommunicationsHandlers* handlers)
 {
