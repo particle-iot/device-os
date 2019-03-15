@@ -184,9 +184,9 @@ bool BleUuid::operator == (const BleUuid& uuid) const {
 
 
 /**
- * BLEAdvertisingData class
+ * BleAdvertisingData class
  */
-int BLEAdvertisingData::append(uint8_t type, const uint8_t* data, size_t len, bool sr) {
+int BleAdvertisingData::append(uint8_t type, const uint8_t* data, size_t len, bool sr) {
     size_t offset;
     size_t adsLen;
     bool adsExist = false;
@@ -253,15 +253,15 @@ execute:
     return SYSTEM_ERROR_NONE;
 }
 
-int BLEAdvertisingData::appendLocalName(const char* name, bool sr) {
+int BleAdvertisingData::appendLocalName(const char* name, bool sr) {
     return append(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME, (const uint8_t*)name, strlen(name), sr);
 }
 
-int BLEAdvertisingData::appendCustomData(uint8_t* buf, size_t len, bool sr) {
+int BleAdvertisingData::appendCustomData(uint8_t* buf, size_t len, bool sr) {
     return append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, buf, len, sr);
 }
 
-int BLEAdvertisingData::appendUuid(BleUuid& uuid, bool sr) {
+int BleAdvertisingData::appendUuid(BleUuid& uuid, bool sr) {
     if (uuid.type() == BleUuidType::SHORT) {
         uint16_t uuid16;
         uuid16 = uuid.shortUuid();
@@ -274,7 +274,7 @@ int BLEAdvertisingData::appendUuid(BleUuid& uuid, bool sr) {
     }
 }
 
-int BLEAdvertisingData::remove(uint8_t type) {
+int BleAdvertisingData::remove(uint8_t type) {
     size_t offset, len;
     bool sr;
     uint8_t* advPtr;
@@ -305,7 +305,7 @@ int BLEAdvertisingData::remove(uint8_t type) {
     return SYSTEM_ERROR_NONE;
 }
 
-size_t BLEAdvertisingData::find(uint8_t type, uint8_t* data, size_t len, bool sr) const {
+size_t BleAdvertisingData::find(uint8_t type, uint8_t* data, size_t len, bool sr) const {
     // An AD structure must consist of 1 byte length field, 1 byte type field and at least 1 byte data field
     if (advLen_ < 3 && srLen_ < 3) {
         return 0;
@@ -334,11 +334,11 @@ size_t BLEAdvertisingData::find(uint8_t type, uint8_t* data, size_t len, bool sr
     return adsLen;
 }
 
-size_t BLEAdvertisingData::find(uint8_t type, bool sr) const {
+size_t BleAdvertisingData::find(uint8_t type, bool sr) const {
     return find(type, nullptr, 0, sr);
 }
 
-int BLEAdvertisingData::locate(uint8_t type, size_t* offset, size_t* len, bool sr) const {
+int BleAdvertisingData::locate(uint8_t type, size_t* offset, size_t* len, bool sr) const {
     const uint8_t*  data;
     size_t dataLen;
 
@@ -374,13 +374,13 @@ int BLEAdvertisingData::locate(uint8_t type, size_t* offset, size_t* len, bool s
     return SYSTEM_ERROR_NOT_FOUND;
 }
 
-size_t BLEAdvertisingData::advData(uint8_t* data, size_t len) const {
+size_t BleAdvertisingData::advData(uint8_t* data, size_t len) const {
     len = (len > advLen_) ? advLen_ : len;
     memcpy(data, adv_, len);
     return len;
 }
 
-size_t BLEAdvertisingData::srData(uint8_t* data, size_t len) const {
+size_t BleAdvertisingData::srData(uint8_t* data, size_t len) const {
     len = (len > srLen_) ? srLen_ : len;
     memcpy(data, sr_, len);
     return len;
@@ -754,7 +754,7 @@ int BleClass::on(void) {
     /**
      * Set default advertising and scan response data
      */
-    BLEAdvertisingData advData;
+    BleAdvertisingData advData;
     uint8_t  mfgData[31];
     size_t   mfgDataLen = 0;
     uint16_t platformID = PLATFORM_ID;
@@ -785,7 +785,7 @@ void BleClass::off(void) {
 
 }
 
-int BleClass::advertisementData(BLEAdvertisingData& data) {
+int BleClass::advertisementData(BleAdvertisingData& data) {
     return SYSTEM_ERROR_NONE;
 }
 
@@ -824,7 +824,7 @@ int BleClass::advertise(BleAdvParams& params) const {
     return ble_gap_start_advertising(NULL);
 }
 
-int BleClass::scan(BLEScanResult* results, size_t count, uint16_t timeout) const {
+int BleClass::scan(BleScanResult* results, size_t count, uint16_t timeout) const {
     return SYSTEM_ERROR_NONE;
 }
 

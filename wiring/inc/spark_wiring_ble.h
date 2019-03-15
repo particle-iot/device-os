@@ -160,10 +160,10 @@ private:
 
 
 /* BLE advertising data class */
-class BLEAdvertisingData {
+class BleAdvertisingData {
 public:
-    BLEAdvertisingData() : advLen_(0), srLen_(0) { }
-    ~BLEAdvertisingData() { }
+    BleAdvertisingData() : advLen_(0), srLen_(0) { }
+    ~BleAdvertisingData() { }
 
     /* Add or update a type of data snippet to advertising data or scan response data. */
     int append(uint8_t type, const uint8_t* data, size_t len, bool sr = false);
@@ -194,10 +194,10 @@ private:
 
 
 /* BLE scan result class */
-class BLEScanResult {
+class BleScanResult {
 public:
-    BLEScanResult() : rssi_(-99) { }
-    ~BLEScanResult(){}
+    BleScanResult() : rssi_(-99) { }
+    ~BleScanResult(){}
 
     size_t advData(uint8_t* data, size_t len) const { return data_.advData(data, len); }
     size_t srData(uint8_t* data, size_t len) const { return data_.srData(data, len); }
@@ -214,7 +214,7 @@ public:
 
 private:
     BleAddress address_;
-    BLEAdvertisingData data_;
+    BleAdvertisingData data_;
     int rssi_;
 };
 
@@ -340,7 +340,7 @@ public:
 
     void onConnectionChangedCb(onConnectedCb connCb, onDisconnectedCb disconnCb);
 
-    int advertisementData(BLEAdvertisingData& data);
+    int advertisementData(BleAdvertisingData& data);
     int advertisementData(iBeacon& beacon);
 
     int advertise(void) const;
@@ -348,7 +348,9 @@ public:
     int advertise(uint32_t interval, uint32_t timeout) const;
     int advertise(BleAdvParams& params) const;
 
-    int scan(BLEScanResult* result, size_t count, uint16_t timeout = BLE_DEFAULT_SCANNING_TIMEOUT) const;
+    int stopAdvertise(void) const { return SYSTEM_ERROR_NONE; }
+
+    int scan(BleScanResult* result, size_t count, uint16_t timeout = BLE_DEFAULT_SCANNING_TIMEOUT) const;
 
     BleDevice* connect(const BleAddress& addr);
 
