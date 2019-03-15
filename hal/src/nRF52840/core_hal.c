@@ -56,6 +56,7 @@
 #include "exflash_hal.h"
 #include "flash_common.h"
 #include <nrf_pwm.h>
+#include "concurrent_hal.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -554,6 +555,9 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
     // Make sure we acquire exflash lock BEFORE going into a critical section
     hal_exflash_lock();
 
+    // Disable thread scheduling
+    os_thread_scheduling(false, NULL);
+
     // This will disable all but SoftDevice interrupts (by modifying NVIC->ICER)
     uint8_t st = 0;
     sd_nvic_critical_region_enter(&st);
@@ -563,7 +567,6 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
 
     // Disable external flash
     hal_exflash_uninit();
-    hal_exflash_unlock();
 
     uint32_t exit_conditions = STOP_MODE_EXIT_CONDITION_NONE;
 
@@ -916,6 +919,12 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
     // Re-enable USB
     HAL_USB_Attach();
 
+    // Unlock external flash
+    hal_exflash_unlock();
+
+    // Enable thread scheduling
+    os_thread_scheduling(true, NULL);
+
     return reason;
 }
 
@@ -941,6 +950,9 @@ int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
 
     // Make sure we acquire exflash lock BEFORE going into a critical section
     hal_exflash_lock();
+
+    // Disable thread scheduling
+    os_thread_scheduling(false, NULL);
 
     // This will disable all but SoftDevice interrupts (by modifying NVIC->ICER)
     uint8_t st = 0;
