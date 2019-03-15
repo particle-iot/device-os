@@ -350,14 +350,6 @@ public:
 #endif
 
 private:
-    // Vitals
-    bool _publish_vitals_period;
-
-    void disableVitalsPeriodTimer (void);
-    void enableVitalsPeriodTimer (void);
-    bool publishVitalsImmediately (void);
-    size_t getVitalsPeriod (void);
-    void setVitalsPeriod (size_t);
 
     static bool register_function(cloud_function_t fn, void* data, const char* funcKey);
     static int call_raw_user_function(void* data, const char* param, void* reserved);
