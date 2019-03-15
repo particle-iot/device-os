@@ -55,7 +55,7 @@ enum class NetifEvent {
     PowerOn = 5
 };
 
-unsigned NCP_SARA_R410_MTU = 1300;
+unsigned NCP_SARA_R410_MTU = 1012;
 
 } // anonymous
 
