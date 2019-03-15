@@ -119,6 +119,10 @@
 #define Wiring_WiFi 1
 #endif
 
+#if HAL_PLATFORM_BLE
+#define Wiring_BLE 1
+#endif
+
 #if HAL_PLATFORM_CELLULAR
 #define Wiring_Cellular 1
 #endif
@@ -157,6 +161,10 @@
 
 #ifndef Wiring_WiFi
 #define Wiring_WiFi 0
+#endif
+
+#ifndef Wiring_BLE
+#define Wiring_BLE 0
 #endif
 
 #ifndef Wiring_Cellular
