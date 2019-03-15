@@ -363,7 +363,7 @@ public:
 	 * Produces and transmits (POST) a describe message.
 	 * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
 	 */
-	bool post_description(int desc_flags = DESCRIBE_DEFAULT);
+	bool post_description(int desc_flags);
 
 	// Returns true on success, false on sending timeout or rate-limiting failure
 	bool send_event(const char *event_name, const char *data, int ttl,
