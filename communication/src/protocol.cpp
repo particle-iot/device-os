@@ -578,7 +578,7 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 	size_t desc = Messages::description(buf, msg_id, token);
 
 	//TODO: Confirm logic is correct. If `message.buf()` is offset my `desc`, how is this factored into `message.capacity()` (which is the buffer length)?
-	BufferAppender appender(buf + desc, message.capacity());
+	BufferAppender appender((buf + desc), (message.capacity() - desc));
 
 	build_describe_message(appender, desc_flags);
 
