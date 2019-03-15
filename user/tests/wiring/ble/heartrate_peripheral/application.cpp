@@ -20,16 +20,23 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-BLEAttribute heartrate("heartrate", READ | NOTIFY);
-int newHr = 1234;
+SYSTEM_MODE(MANUAL);
+
+Serial1LogHandler log(115200, LOG_LEVEL_ALL);
+
+// Use Particle default service UUID and assigned attribute UUID.
+BleAttribute heartrate("heartrate", PROPERTY::READ | PROPERTY::NOTIFY);
+
+int newHr = 0;
 
 void setup() {
+    BLE.on();
     BLE.advertise();
 }
 
 void loop() {
-    if (BLE.connected()) {
-        heartrate.setValue(newHr);
-    }
-    delay(200);
+    heartrate.setValue(newHr);
+
+    delay(5000);
+    newHr++;
 }

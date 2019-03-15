@@ -20,21 +20,26 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-uint8_t uuids[2][16] = {
-    {0xd0,0x2c,0x4d,0xe4,0x00,0x4e,0x98,0xb2,0x87,0x41,0x9c,0xcf,0xa1,0xf1,0x24,0x91},
-    {0x8d,0xac,0xef,0x0d,0x1a,0x7b,0x38,0x83,0x66,0x4b,0x1d,0x40,0x64,0xeb,0x70,0x01}
-};
+#define UART_TX_BUF_SIZE        20
 
-BLEUUID uartSvcUuid(0x5AA5);
-BLEUUID txUuid(uuids[0]);
-BLEUUID rxUuid(uuids[1]);
+SYSTEM_MODE(MANUAL);
 
-void onDataReceived(uint8_t* data, size_t len);
+Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
-BLEAttribute txAttr("tx", NOTIFY, txUuid, uartSvcUuid);
-BLEAttribute rxAttr("rx", WRITE_WO_RSP, rxUuid, uartSvcUuid, onDataReceived);
+void onDataReceived(const uint8_t* data, size_t len);
 
-void onDataReceived(uint8_t* data, size_t len) {
+BleUuid uartSvcUuid("14d1d294-8317-4bea-bbfb-9363a6517afc");
+BleUuid txUuid("a2ef4f89-11ad-4887-9e32-6eeb57594ced");
+BleUuid rxUuid("ad43b620-f076-4fb3-9bdc-785b585f4719");
+
+BleAttribute txAttr("tx", PROPERTY::NOTIFY, txUuid, uartSvcUuid);
+BleAttribute rxAttr("rx", PROPERTY::WRITE_WO_RSP, rxUuid, uartSvcUuid, onDataReceived);
+
+uint8_t txBuf[UART_TX_BUF_SIZE];
+size_t txLen = 0;
+
+
+void onDataReceived(const uint8_t* data, size_t len) {
     for (uint8_t i = 0; i < len; i++) {
         Serial.write(data[i]);
     }
@@ -43,16 +48,18 @@ void onDataReceived(uint8_t* data, size_t len) {
 void setup() {
     Serial.begin();
 
+    BLE.on();
+
     BLE.advertise();
 }
 
 void loop() {
-    if (BLE.connected()) {
-        while (Serial.available()) {
-            // Read data from Serial into txBuf
-            uint8_t txBuf[20];
+    while (Serial.available() && txLen < UART_TX_BUF_SIZE) {
+        txBuf[txLen++] = Serial.read();
+    }
 
-            txAttr.setValue(txBuf, sizeof(txBuf));
-        }
+    if (txLen > 0) {
+        txAttr.setValue(txBuf, txLen);
+        txLen = 0;
     }
 }
