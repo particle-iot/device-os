@@ -18,10 +18,10 @@ ssllib      = $(ssllibdir)/libtropicssl.a
 
 objects = \
         src/coap.o \
+        src/core_protocol.o \
         src/dsakeygen.o \
         src/events.o \
         src/handshake.o \
-        src/spark_protocol.o \
         src/spark_protocol_functions.o
 
 testobjects = tests/ConstructorFixture.o \

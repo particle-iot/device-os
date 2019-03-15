@@ -27,7 +27,7 @@
 #define __CONSTRUCTOR_FIXTURE_H
 
 #include <stdint.h>
-#include "spark_protocol.h"
+#include "core_protocol.h"
 
 struct EventHandlerCalledWith
 {
