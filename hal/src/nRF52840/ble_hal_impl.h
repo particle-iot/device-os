@@ -23,6 +23,7 @@
 
 #include "ble_gap.h"
 #include "ble_gatts.h"
+#include "sdk_config_system.h"
 
 #define BLE_ROLE_INVALID                            BLE_GAP_ROLE_INVALID
 #define BLE_ROLE_PERIPHERAL                         BLE_GAP_ROLE_PERIPH
@@ -43,7 +44,7 @@
 #define BLE_INVALID_CONN_HANDLE                     BLE_CONN_HANDLE_INVALID
 
 /* BLE invalid attribute handle. */
-#define BLE_INVALID_ATTR_HANDLE                     0x00
+#define BLE_INVALID_ATTR_HANDLE                     0x0000
 
 /* Maximum number of device address in the whitelist. */
 #define BLE_MAX_WHITELIST_ADDR_COUNT                BLE_GAP_WHITELIST_ADDR_MAX_COUNT
@@ -59,7 +60,7 @@
 
 /* Default advertising parameters */
 #define BLE_DEFAULT_ADVERTISING_INTERVAL            160     /* The advertising interval: 100ms (in units of 0.625 ms). */
-#define BLE_DEFAULT_ADVERTISING_TIMEOUT             18000   /* The advertising duration: 180s (in units of 10 milliseconds). */
+#define BLE_DEFAULT_ADVERTISING_TIMEOUT             0       /* The advertising duration: infinite (in units of 10 milliseconds). */
 
 /* BLE advertisement filter policy */
 #define BLE_ADV_FP_ANY                              0x00   /**< Allow scan requests and connect requests from any device. */
@@ -119,6 +120,9 @@
 #define BLE_MAX_SVC_COUNT                           5
 #define BLE_MAX_CHAR_COUNT                          10
 #define BLE_MAX_DESC_COUNT                          10
+
+#define BLE_MAX_PERIPHERAL_COUNT                    NRF_SDH_BLE_PERIPHERAL_LINK_COUNT
+#define BLE_MAX_CENTRAL_COUNT                       NRF_SDH_BLE_CENTRAL_LINK_COUNT
 
 
 #endif //HAL_PLATFORM_BLE
