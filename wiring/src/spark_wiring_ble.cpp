@@ -35,47 +35,6 @@ const uint8_t BLE_CTRL_REQ_SVC_UUID[BLE_SIG_UUID_128BIT_LEN] = {
     0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x01, 0x00, 0xa9, 0x6f
 };
 
-
-void onAdvStopped(hal_ble_gap_on_adv_stopped_evt_t* event, void* context) {
-    return;
-}
-
-__attribute__((unused))void onScanResult(void* event, void* context) {
-
-}
-
-__attribute__((unused))void onScanStopped(void* event, void* context) {
-
-}
-
-void onConnected(hal_ble_gap_on_connected_evt_t* event, void* context) {
-
-}
-
-void onDisconnected(hal_ble_gap_on_disconnected_evt_t* event, void* context) {
-
-}
-
-void onConnParamsUpdated(hal_ble_gap_on_conn_params_evt_t* event, void* context) {
-
-}
-
-__attribute__((unused))void onServiceDiscovered(void* event, void* context) {
-
-}
-
-__attribute__((unused))void onCharacteristicDiscovered(void* event, void* context) {
-
-}
-
-__attribute__((unused))void onDescriptorDiscovered(void* event, void* context) {
-
-}
-
-void onDataReceived(hal_ble_gatt_on_data_evt_t* event, void* context) {
-
-}
-
 void convertToHalUuid(const BleUuid& uuid, hal_ble_uuid_t* halUuid) {
     if (uuid.type() == BleUuidType::SHORT) {
         halUuid->type = BLE_UUID_TYPE_16BIT;
@@ -184,206 +143,377 @@ bool BleUuid::operator == (const BleUuid& uuid) const {
 
 
 /**
- * BleAdvertisingData class
+ * BleAdvData class
  */
-int BleAdvertisingData::append(uint8_t type, const uint8_t* data, size_t len, bool sr) {
-    size_t offset;
+size_t BleAdvData::locate(uint8_t type, size_t* offset) {
     size_t adsLen;
-    bool adsExist = false;
 
-    if (sr && type == BLE_SIG_AD_TYPE_FLAGS) {
-        // The scan response data should not contain the AD Flags AD structure.
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-
-    if (locate(type, &offset, &adsLen, sr) == SYSTEM_ERROR_NONE) {
-        adsExist = true;
-    }
-
-    uint8_t* advPtr;
-    size_t* advLenPtr;
-
-    if (sr) {
-        advPtr = sr_;
-        advLenPtr = &srLen_;
-    } else {
-        advPtr = adv_;
-        advLenPtr = &advLen_;
-    }
-
-    if (adsExist) {
-        // Update the existing AD structure.
-        uint16_t staLen = *advLenPtr - adsLen;
-        if ((staLen + len + 2) <= BLE_MAX_ADV_DATA_LEN) {
-            // Firstly, move the last consistent block.
-            uint16_t moveLen = *advLenPtr - offset - adsLen;
-            memmove(&advPtr[offset + len], &advPtr[offset + adsLen], moveLen);
-
-            // Secondly, Update the AD structure.
-            // The Length field is the total length of Type field and Data field.
-            advPtr[offset + 1] = len + 1;
-            memcpy(&advPtr[offset + 2], data, len);
-
-            // An AD structure is composed of one byte length field, one byte Type field and Data field.
-            *advLenPtr = staLen + len + 2;
-            goto execute;
-        } else {
-            return SYSTEM_ERROR_LIMIT_EXCEEDED;
-        }
-    } else {
-        // Append the AD structure at the and of advertising data.
-        if ((*advLenPtr + len + 2) <= BLE_MAX_ADV_DATA_LEN) {
-            advPtr[(*advLenPtr)++] = len + 1;
-            advPtr[(*advLenPtr)++] = type;
-            memcpy(&advPtr[*advLenPtr], data, len);
-            *advLenPtr += len;
-            goto execute;
-        } else {
-            return SYSTEM_ERROR_LIMIT_EXCEEDED;
-        }
-    }
-
-execute:
-    if (!sr) {
-        ble_gap_set_advertising_data(adv_, advLen_, nullptr);
-    }
-    else {
-        ble_gap_set_scan_response_data(sr_, srLen_, nullptr);
-    }
-    return SYSTEM_ERROR_NONE;
-}
-
-int BleAdvertisingData::appendLocalName(const char* name, bool sr) {
-    return append(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME, (const uint8_t*)name, strlen(name), sr);
-}
-
-int BleAdvertisingData::appendCustomData(uint8_t* buf, size_t len, bool sr) {
-    return append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, buf, len, sr);
-}
-
-int BleAdvertisingData::appendUuid(BleUuid& uuid, bool sr) {
-    if (uuid.type() == BleUuidType::SHORT) {
-        uint16_t uuid16;
-        uuid16 = uuid.shortUuid();
-        return append(BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE, reinterpret_cast<const uint8_t*>(&uuid16), sizeof(uint16_t), sr);
-    }
-    else {
-        uint8_t uuid128[16];
-        uuid.fullUuid(uuid128);
-        return append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE, (const uint8_t*)uuid128, 16, sr);
-    }
-}
-
-int BleAdvertisingData::remove(uint8_t type) {
-    size_t offset, len;
-    bool sr;
-    uint8_t* advPtr;
-    size_t* advLenPtr;
-
-    if (this->locate(type, &offset, &len, true) == SYSTEM_ERROR_NONE) {
-        sr = true;
-        advPtr = sr_;
-        advLenPtr = &srLen_;
-    } else if (locate(type, &offset, &len, false) == SYSTEM_ERROR_NONE) {
-        sr = false;
-        advPtr = adv_;
-        advLenPtr = &advLen_;
-    } else {
-        return SYSTEM_ERROR_NONE;
-    }
-
-    // The advertising data must contain the AD Flags AD structure.
-    if (!sr && type == BLE_SIG_AD_TYPE_FLAGS) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-    }
-
-    // Remove the AD structure from advertising data.
-    uint16_t moveLen = *advLenPtr - offset - len;
-    memcpy(&advPtr[offset], &advPtr[offset + len], moveLen);
-    *advLenPtr = *advLenPtr - len;
-
-    return SYSTEM_ERROR_NONE;
-}
-
-size_t BleAdvertisingData::find(uint8_t type, uint8_t* data, size_t len, bool sr) const {
-    // An AD structure must consist of 1 byte length field, 1 byte type field and at least 1 byte data field
-    if (advLen_ < 3 && srLen_ < 3) {
-        return 0;
-    }
-
-    size_t offset, adsLen;
-    const uint8_t* advPtr;
-
-    if (locate(type, &offset, &adsLen, sr) == SYSTEM_ERROR_NONE) {
-        if (sr) {
-            advPtr = sr_;
-        } else {
-            advPtr = adv_;
-        }
-    } else {
-        return 0;
-    }
-
-    adsLen = adsLen - 2;
-    if (data != nullptr) {
-        // Only copy the data field of the found AD structure.
-        len = MIN(len, adsLen);
-        memcpy(data, &advPtr[offset + 2], len);
-    }
-
-    return adsLen;
-}
-
-size_t BleAdvertisingData::find(uint8_t type, bool sr) const {
-    return find(type, nullptr, 0, sr);
-}
-
-int BleAdvertisingData::locate(uint8_t type, size_t* offset, size_t* len, bool sr) const {
-    const uint8_t*  data;
-    size_t dataLen;
-
-    // A valid AD structure is composed of Length field, Type field and Data field.
-    // Each field should be filled with at least one byte.
-    if (!sr) {
-        data = adv_;
-        dataLen = advLen_;
-    } else {
-        data = sr_;
-        dataLen = srLen_;
-    }
-
-    for (size_t i = 0; (i + 3) <= dataLen; i = i) {
-        *len = data[i];
-
-        uint8_t adsType = data[i + 1];
-        if (adsType == type) {
+    for (size_t i = 0; (i + 3) <= len; i = i) {
+        adsLen = data[i];
+        if (data[i + 1] == type) {
             // The value of adsLen doesn't include the length field of an AD structure.
-            if ((i + *len + 1) <= dataLen) {
+            if ((i + adsLen + 1) <= len) {
                 *offset = i;
-                *len += 1;
-                return SYSTEM_ERROR_NONE;
-            } else {
-                return SYSTEM_ERROR_INTERNAL;
+                adsLen += 1;
+                return adsLen;
             }
-        } else {
-            // Navigate to the next AD structure.
-            i += (*len + 1);
+            else {
+                return 0;
+            }
         }
+        else {
+            // Navigate to the next AD structure.
+            i += (adsLen + 1);
+        }
+    }
+
+    return 0;
+}
+
+size_t BleAdvData::fetch(uint8_t type, uint8_t* buf, size_t len) {
+    size_t adsOffset;
+    size_t adsLen = locate(type, &adsOffset);
+    if (adsLen > 0) {
+        adsLen -= 2;
+        adsOffset += 2;
+        len = len > adsLen ? adsLen : len;
+        if (buf != nullptr) {
+            memcpy(buf, &data[adsOffset], len);
+        }
+
+        return adsLen;
+    }
+
+    return 0;
+}
+
+bool BleAdvData::contain(uint8_t type, const uint8_t* buf, size_t len) {
+    uint8_t temp[BLE_MAX_ADV_DATA_LEN];
+
+    size_t tempLen = fetch(type, temp, sizeof(temp));
+
+    if (tempLen > 0) {
+        return !memcmp(buf, temp, len);
     }
 
     return SYSTEM_ERROR_NOT_FOUND;
 }
 
-size_t BleAdvertisingData::advData(uint8_t* data, size_t len) const {
-    len = (len > advLen_) ? advLen_ : len;
-    memcpy(data, adv_, len);
-    return len;
+bool BleAdvData::contain(uint8_t type) {
+    return (fetch(type, nullptr, 0)  > 0);
 }
 
-size_t BleAdvertisingData::srData(uint8_t* data, size_t len) const {
-    len = (len > srLen_) ? srLen_ : len;
-    memcpy(data, sr_, len);
-    return len;
+
+/**
+ * BleBroadcaster class
+ */
+BleBroadcaster::BleBroadcaster() {
+    // AD flag
+    uint8_t flag = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+    appendAdvData(BLE_SIG_AD_TYPE_FLAGS, &flag, 1);
+
+    // Complete local name
+    char devName[32] = {};
+    get_device_name(devName, sizeof(devName));
+    appendAdvDataLocalName(devName);
+
+    // Particle specific Manufacture data
+    uint8_t mfgData[BLE_MAX_ADV_DATA_LEN];
+    size_t mfgDataLen = 0;
+    uint16_t platformID = PLATFORM_ID;
+    memcpy(&mfgData[mfgDataLen], (uint8_t*)&PARTICLE_COMPANY_ID, sizeof(PARTICLE_COMPANY_ID));
+    mfgDataLen += sizeof(PARTICLE_COMPANY_ID);
+    memcpy(&mfgData[mfgDataLen], (uint8_t*)&platformID, sizeof(platformID));
+    mfgDataLen += sizeof(platformID);
+    appendAdvDataCustomData(mfgData, mfgDataLen);
+
+    // Particle Control Request Service 128-bits UUID
+    BleUuid svcUUID(BLE_CTRL_REQ_SVC_UUID);
+    appendScanRspDataUuid(svcUUID);
+
+    // Default advertising parameters
+    advParams_.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
+    advParams_.filter_policy = BLE_ADV_FP_ANY;
+    advParams_.interval      = BLE_DEFAULT_ADVERTISING_INTERVAL;
+    advParams_.timeout       = BLE_DEFAULT_ADVERTISING_TIMEOUT;
+    advParams_.inc_tx_power  = false;
+}
+
+BleBroadcaster::~BleBroadcaster() {
+
+}
+
+int BleBroadcaster::advDataBeacon(const iBeacon& beacon) {
+    return 0;
+}
+
+int BleBroadcaster::append(uint8_t type, const uint8_t* buf, size_t len, BleAdvData& advData) {
+    size_t offset;
+    size_t adsLen = advData.locate(type, &offset);
+
+    if (adsLen > 0) {
+        // Update the existing AD structure.
+        uint16_t staLen = advData.len - adsLen;
+        if ((staLen + len + 2) <= BLE_MAX_ADV_DATA_LEN) {
+            // Firstly, move the last consistent block.
+            uint16_t moveLen = advData.len - offset - adsLen;
+            memmove(&advData.data[offset + len], &advData.data[offset + adsLen], moveLen);
+
+            // Secondly, Update the AD structure.
+            // The Length field is the total length of Type field and Data field.
+            advData.data[offset] = len + 1;
+            memcpy(&advData.data[offset + 2], buf, len);
+
+            // An AD structure is composed of one byte length field, one byte Type field and Data field.
+            advData.len = staLen + len + 2;
+        }
+        else {
+            return SYSTEM_ERROR_LIMIT_EXCEEDED;
+        }
+    }
+    else {
+        // Append the AD structure at the and of advertising data.
+        if ((advData.len + len + 2) <= BLE_MAX_ADV_DATA_LEN) {
+            advData.data[advData.len++] = len + 1;
+            advData.data[advData.len++] = type;
+            memcpy(&advData.data[advData.len], buf, len);
+            advData.len += len;
+        }
+        else {
+            return SYSTEM_ERROR_LIMIT_EXCEEDED;
+        }
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleBroadcaster::appendAdvData(uint8_t type, const uint8_t* buf, size_t len) {
+    return append(type, buf, len, advData_);
+}
+
+int BleBroadcaster::appendAdvDataLocalName(const char* name) {
+    return appendAdvData(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME, (const uint8_t*)name, strlen(name));
+}
+
+int BleBroadcaster::appendAdvDataCustomData(const uint8_t* buf, size_t len) {
+    return appendAdvData(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, buf, len);
+}
+
+int BleBroadcaster::appendAdvDataUuid(const BleUuid& uuid) {
+    if (uuid.type() == BleUuidType::SHORT) {
+        uint16_t uuid16;
+        uuid16 = uuid.shortUuid();
+        return appendAdvData(BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE, reinterpret_cast<const uint8_t*>(&uuid16), sizeof(uint16_t));
+    }
+    else {
+        uint8_t uuid128[16];
+        uuid.fullUuid(uuid128);
+        return appendAdvData(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE, (const uint8_t*)uuid128, 16);
+    }
+}
+
+int BleBroadcaster::appendScanRspData(uint8_t type, const uint8_t* buf, size_t len) {
+    if (type == BLE_SIG_AD_TYPE_FLAGS) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    return append(type, buf, len, srData_);
+}
+
+int BleBroadcaster::appendScanRspDataLocalName(const char* name) {
+    return appendScanRspData(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME, (const uint8_t*)name, strlen(name));
+}
+
+int BleBroadcaster::appendScanRspDataCustomData(const uint8_t* buf, size_t len) {
+    return appendScanRspData(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, buf, len);
+}
+
+int BleBroadcaster::appendScanRspDataUuid(const BleUuid& uuid) {
+    if (uuid.type() == BleUuidType::SHORT) {
+        uint16_t uuid16;
+        uuid16 = uuid.shortUuid();
+        return appendScanRspData(BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE, reinterpret_cast<const uint8_t*>(&uuid16), sizeof(uint16_t));
+    }
+    else {
+        uint8_t uuid128[16];
+        uuid.fullUuid(uuid128);
+        return appendScanRspData(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE, (const uint8_t*)uuid128, 16);
+    }
+}
+
+int BleBroadcaster::removeFromAdvData(uint8_t type) {
+    size_t offset, len;
+    len = advData_.locate(type, &offset);
+    if (len > 0) {
+        uint16_t moveLen = advData_.len - offset - len;
+        memcpy(&advData_.data[offset], &advData_.data[offset + len], moveLen);
+        advData_.len = advData_.len - len;
+        return SYSTEM_ERROR_NONE;
+    }
+    else {
+        return SYSTEM_ERROR_NONE;
+    }
+}
+
+int BleBroadcaster::clearAdvData(void) {
+    advData_.len = 0;
+    memset(advData_.data, 0x00, sizeof(advData_.data));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleBroadcaster::removeFromScanRspData(uint8_t type) {
+    // The advertising data must contain the AD Flags AD structure.
+    if (type == BLE_SIG_AD_TYPE_FLAGS) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+
+    size_t offset, len;
+    len = srData_.locate(type, &offset);
+    if (len > 0) {
+        uint16_t moveLen = srData_.len - offset - len;
+        memcpy(&srData_.data[offset], &srData_.data[offset + len], moveLen);
+        srData_.len = srData_.len - len;
+        return SYSTEM_ERROR_NONE;
+    }
+    else {
+        return SYSTEM_ERROR_NONE;
+    }
+}
+
+int BleBroadcaster::clearScanRspData(void) {
+    srData_.len = 0;
+    memset(srData_.data, 0x00, sizeof(srData_.data));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleBroadcaster::setTxPower(int8_t val) const {
+    return ble_gap_set_tx_power(val);
+}
+
+int8_t BleBroadcaster::txPower(void) const {
+    int8_t txPower;
+
+    if (ble_gap_get_tx_power(&txPower) == SYSTEM_ERROR_NONE) {
+        return txPower;
+    }
+    else {
+        return 0x7F;
+    }
+}
+
+int BleBroadcaster::advertise(void) {
+    return advertise(advParams_);
+}
+
+int BleBroadcaster::advertise(uint32_t interval) {
+    advParams_.interval = interval;
+
+    return advertise(advParams_);
+}
+
+int BleBroadcaster::advertise(uint32_t interval, uint32_t timeout) {
+    advParams_.interval = interval;
+    advParams_.timeout = timeout;
+
+    return advertise(advParams_);
+}
+
+int BleBroadcaster::advertise(const BleAdvParams& params) {
+    advParams_ = params;
+    ble_gap_set_advertising_parameters(&advParams_, NULL);
+
+    if (advData_.len > 0) {
+        ble_gap_set_advertising_data(advData_.data, advData_.len, nullptr);
+    }
+
+    if (srData_.len > 0) {
+        ble_gap_set_scan_response_data(srData_.data, srData_.len, nullptr);
+    }
+
+    return ble_gap_start_advertising(NULL);
+}
+
+int BleBroadcaster::stopAdvertise(void) const {
+    return ble_gap_stop_advertising();
+}
+
+void BleBroadcaster::bleBroadcasterCallback(hal_ble_gap_on_adv_stopped_evt_t* event) {
+
+}
+
+
+/**
+ * BleObserver class
+ */
+BleObserver::BleObserver() : targetCount_(0), callback_(nullptr), results_(nullptr), count_(0) {
+    scanParams_.active = true;
+    scanParams_.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    scanParams_.interval = BLE_DEFAULT_SCANNING_INTERVAL;
+    scanParams_.window = BLE_DEFAULT_SCANNING_WINDOW;
+    scanParams_.timeout = BLE_DEFAULT_SCANNING_TIMEOUT;
+}
+
+BleObserver::~BleObserver() {
+
+}
+
+int BleObserver::scan(BleScanCallback callback) {
+    callback_ = callback;
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleObserver::scan(BleScannedDevice* results, size_t resultCount) {
+    return scan(results, resultCount, scanParams_);
+}
+
+int BleObserver::scan(BleScannedDevice* results, size_t resultCount, uint16_t timeout) {
+    scanParams_.timeout  = timeout;
+
+    return scan(results, resultCount, scanParams_);
+}
+
+int BleObserver::scan(BleScannedDevice* results, size_t resultCount, const BleScanParams& params) {
+    results_ = results;
+    targetCount_ = resultCount;
+    scanParams_ = params;
+    ble_gap_set_scan_parameters(&scanParams_, NULL);
+
+    ble_gap_start_scan(nullptr);
+
+    return count_;
+}
+
+int BleObserver::stopScan(void) {
+    return ble_gap_stop_scan();
+}
+
+void BleObserver::bleObserverScanResultCallback(const hal_ble_gap_on_scan_result_evt_t* event) {
+    BleScannedDevice device;
+    device.address = event->peer_addr;
+    device.rssi = event->rssi;
+
+    if (event->type.scan_response) {
+        memcpy(device.srData.data, event->data, event->data_len);
+        device.srData.len = event->data_len;
+    }
+    else {
+        memcpy(device.advData.data, event->data, event->data_len);
+        device.advData.len = event->data_len;
+    }
+
+    if (callback_ != nullptr) {
+        callback_(&device);
+    }
+    else if (results_ != nullptr) {
+        results_[count_++] = device;
+        if (count_ > targetCount_) {
+            stopScan();
+        }
+    }
+}
+
+void BleObserver::bleObserverScanStoppedCallback(const hal_ble_gap_on_scan_stopped_evt_t* event) {
+
 }
 
 
@@ -730,48 +860,6 @@ int BleClass::on(void) {
     ble_gap_set_ppcp(&connParams, NULL);
 
     /**
-     * Set default advertising parameters
-     */
-    hal_ble_adv_params_t advParams;
-    advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
-    advParams.filter_policy = BLE_ADV_FP_ANY;
-    advParams.interval      = BLE_DEFAULT_ADVERTISING_INTERVAL;
-    advParams.timeout       = BLE_DEFAULT_ADVERTISING_TIMEOUT;
-    advParams.inc_tx_power  = false;
-    ble_gap_set_advertising_parameters(&advParams, NULL);
-
-    /**
-     * Set default scan parameters
-     */
-    hal_ble_scan_params_t scanParams;
-    scanParams.active = true;
-    scanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
-    scanParams.interval = BLE_DEFAULT_SCANNING_INTERVAL;
-    scanParams.window   = BLE_DEFAULT_SCANNING_WINDOW;
-    scanParams.timeout  = BLE_DEFAULT_SCANNING_TIMEOUT;
-    ble_gap_set_scan_parameters(&scanParams, NULL);
-
-    /**
-     * Set default advertising and scan response data
-     */
-    BleAdvertisingData advData;
-    uint8_t  mfgData[31];
-    size_t   mfgDataLen = 0;
-    uint16_t platformID = PLATFORM_ID;
-    uint8_t  flag = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-    BleUuid  svcUUID(BLE_CTRL_REQ_SVC_UUID);
-
-    memcpy(&mfgData[mfgDataLen], (uint8_t*)&PARTICLE_COMPANY_ID, sizeof(PARTICLE_COMPANY_ID));
-    mfgDataLen += sizeof(PARTICLE_COMPANY_ID);
-    memcpy(&mfgData[mfgDataLen], (uint8_t*)&platformID, sizeof(platformID));
-    mfgDataLen += sizeof(platformID);
-
-    advData.append(BLE_SIG_AD_TYPE_FLAGS, &flag, 1);    // AD flag
-    advData.appendLocalName(devName);   // Complete local name
-    advData.appendCustomData(mfgData, mfgDataLen);  // Manufacture data
-    advData.appendUuid(svcUUID, true);  // Full 128-bits UUID
-
-    /**
      * Add local services and characteristics.
      */
     local().executeAddAttr();
@@ -783,49 +871,6 @@ int BleClass::on(void) {
 
 void BleClass::off(void) {
 
-}
-
-int BleClass::advertisementData(BleAdvertisingData& data) {
-    return SYSTEM_ERROR_NONE;
-}
-
-int BleClass::advertisementData(iBeacon& beacon) {
-    return SYSTEM_ERROR_NONE;
-}
-
-int BleClass::advertise(void) const {
-    return ble_gap_start_advertising(NULL);
-}
-
-int BleClass::advertise(uint32_t interval) const {
-    BleAdvParams advParams;
-    advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
-    advParams.filter_policy = BLE_ADV_FP_ANY;
-    advParams.interval      = interval;
-    advParams.timeout       = BLE_DEFAULT_ADVERTISING_TIMEOUT;
-    advParams.inc_tx_power  = false;
-    ble_gap_set_advertising_parameters(&advParams, NULL);
-    return advertise(advParams);
-}
-
-int BleClass::advertise(uint32_t interval, uint32_t timeout) const {
-    BleAdvParams advParams;
-    advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
-    advParams.filter_policy = BLE_ADV_FP_ANY;
-    advParams.interval      = interval;
-    advParams.timeout       = timeout;
-    advParams.inc_tx_power  = false;
-    ble_gap_set_advertising_parameters(&advParams, NULL);
-    return advertise(advParams);
-}
-
-int BleClass::advertise(BleAdvParams& params) const {
-    ble_gap_set_advertising_parameters(&params, NULL);
-    return ble_gap_start_advertising(NULL);
-}
-
-int BleClass::scan(BleScanResult* results, size_t count, uint16_t timeout) const {
-    return SYSTEM_ERROR_NONE;
 }
 
 BleDevice* BleClass::connect(const BleAddress& addr) {
@@ -901,13 +946,19 @@ void BleClass::onBleEvents(hal_ble_evts_t *event, void* context) {
     auto bleInstance = static_cast<BleClass*>(context);
 
     switch (event->type) {
-        case BLE_EVT_ADV_STOPPED:
-            onAdvStopped(&event->params.adv_stopped, context);
-            break;
+        case BLE_EVT_ADV_STOPPED: {
+            bleInstance->bleBroadcasterCallback(&event->params.adv_stopped);
+        } break;
+
+        case BLE_EVT_SCAN_RESULT: {
+            bleInstance->bleObserverScanResultCallback(&event->params.scan_result);
+        } break;
+
+        case BLE_EVT_SCAN_STOPPED: {
+            bleInstance->bleObserverScanStoppedCallback(&event->params.scan_stopped);
+        } break;
 
         case BLE_EVT_CONNECTED: {
-            onConnected(&event->params.connected, context);
-
             BleDevice peer;
             BleConnParams params;
 
@@ -917,7 +968,7 @@ void BleClass::onBleEvents(hal_ble_evts_t *event, void* context) {
             params.min_conn_interval = event->params.connected.conn_interval;
             peer.connHandle_ = event->params.connected.conn_handle;
             peer.connParams_ = params;
-            peer.address_ = static_cast<const BleAddress&>(event->params.connected.peer_addr);
+            peer.address_ = event->params.connected.peer_addr;
             if (event->params.connected.role == BLE_ROLE_PERIPHERAL) {
                 peer.role_ = ROLE::CENTRAL;
             }
@@ -929,19 +980,15 @@ void BleClass::onBleEvents(hal_ble_evts_t *event, void* context) {
         } break;
 
         case BLE_EVT_DISCONNECTED: {
-            onDisconnected(&event->params.disconnected, context);
-
             bleInstance->removePeer(event->params.disconnected.conn_handle);
             bleInstance->updateLocal();
         } break;
 
-        case BLE_EVT_CONN_PARAMS_UPDATED:
-            onConnParamsUpdated(&event->params.conn_params_updated, context);
-            break;
+        case BLE_EVT_CONN_PARAMS_UPDATED: {
+
+        } break;
 
         case BLE_EVT_DATA_WRITTEN: {
-            onDataReceived(&event->params.data_rec, context);
-
             LOG(TRACE, "onDataReceived: %d, %d", event->params.data_rec.conn_handle, event->params.data_rec.attr_handle);
             const BleDevice* peerPtr = bleInstance->findPeer(event->params.data_rec.conn_handle);
             if (peerPtr == nullptr) {
