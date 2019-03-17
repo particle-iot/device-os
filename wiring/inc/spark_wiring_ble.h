@@ -23,7 +23,7 @@
 #include <string.h>
 #include "spark_wiring_platform.h"
 
-#define Wiring_BLE 1
+
 #if Wiring_BLE
 
 #include "system_error.h"
@@ -275,6 +275,7 @@ public:
     typedef void (*BleScanCallback)(const BleScannedDevice *device);
 
     int scan(BleScanCallback callback);
+    int scan(BleScanCallback callback, uint16_t timeout);
     int scan(BleScannedDevice* results, size_t resultCount);
     int scan(BleScannedDevice* results, size_t resultCount, uint16_t timeout);
     int scan(BleScannedDevice* results, size_t resultCount, const BleScanParams& params);
