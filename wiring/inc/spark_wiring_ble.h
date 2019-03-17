@@ -23,7 +23,7 @@
 #include <string.h>
 #include "spark_wiring_platform.h"
 
-
+#define Wiring_BLE 1
 #if Wiring_BLE
 
 #include "system_error.h"
@@ -85,6 +85,11 @@ typedef uint16_t BleConnHandle;
 
 class BleAddress : public hal_ble_addr_t {
 public:
+    void operator = (hal_ble_addr_t addr) {
+        this->addr_type = addr.addr_type;
+        memcpy(this->addr, addr.addr, BLE_SIG_ADDR_LEN);
+    }
+
     bool operator == (const BleAddress& addr) const {
         if (this->addr_type == addr.addr_type && !memcmp(this->addr, addr.addr, BLE_SIG_ADDR_LEN)) {
             return true;
@@ -106,7 +111,6 @@ class BleCharHandles : public hal_ble_char_handles_t {
 };
 
 
-/* BLE UUID class */
 class BleUuid {
 public:
     BleUuid();
@@ -117,12 +121,25 @@ public:
     BleUuid(const char* string);
     ~BleUuid();
 
-    BleUuidType type(void) const { return type_; }
-    BleUuidOrder order(void) const { return order_; }
+    BleUuidType type(void) const {
+        return type_;
+    }
 
-    uint16_t shortUuid(void) const { return shortUuid_; }
-    void fullUuid(uint8_t* uuid128) const { memcpy(uuid128, fullUuid_, BLE_SIG_UUID_128BIT_LEN); }
-    const uint8_t* fullUuid(void) const { return fullUuid_; }
+    BleUuidOrder order(void) const {
+        return order_;
+    }
+
+    uint16_t shortUuid(void) const {
+        return shortUuid_;
+    }
+
+    void fullUuid(uint8_t uuid128[BLE_SIG_UUID_128BIT_LEN]) const {
+        memcpy(uuid128, fullUuid_, BLE_SIG_UUID_128BIT_LEN);
+    }
+
+    const uint8_t* fullUuid(void) const {
+        return fullUuid_;
+    }
 
     bool operator == (const BleUuid& uuid) const;
 
@@ -139,17 +156,31 @@ private:
 
 class iBeacon {
 public:
-    iBeacon() : major_(0),minor_(0),uuid_(nullptr),measurePower_(0) {}
-    iBeacon(uint16_t major, uint16_t minor, uint8_t* uuid, int8_t mp) : major_(major),minor_(minor),uuid_(uuid),measurePower_(mp) { }
-    ~iBeacon() { }
+    iBeacon() : major_(0),minor_(0),uuid_(nullptr),measurePower_(0) {
 
-    uint16_t major(void) const { return major_; }
+    }
+    iBeacon(uint16_t major, uint16_t minor, uint8_t* uuid, int8_t mp) : major_(major),minor_(minor),uuid_(uuid),measurePower_(mp) {
 
-    uint16_t minor(void) const { return minor_; }
+    }
+    ~iBeacon() {
 
-    uint8_t* uuid(void) const { return uuid_; }
+    }
 
-    int8_t measurePower(void) { return measurePower_; }
+    uint16_t major(void) const {
+        return major_;
+    }
+
+    uint16_t minor(void) const {
+        return minor_;
+    }
+
+    uint8_t* uuid(void) const {
+        return uuid_;
+    }
+
+    int8_t measurePower(void) {
+        return measurePower_;
+    }
 
 private:
     uint16_t major_;
@@ -159,63 +190,107 @@ private:
 };
 
 
-/* BLE advertising data class */
-class BleAdvertisingData {
+class BleAdvData {
 public:
-    BleAdvertisingData() : advLen_(0), srLen_(0) { }
-    ~BleAdvertisingData() { }
+    BleAdvData() : len(0) {
 
-    /* Add or update a type of data snippet to advertising data or scan response data. */
-    int append(uint8_t type, const uint8_t* data, size_t len, bool sr = false);
-    int appendLocalName(const char* name, bool sr = false);
-    int appendCustomData(uint8_t* buf, size_t len, bool sr = false);
-    int appendUuid(BleUuid& uuid, bool sr = false);
+    }
+    ~BleAdvData() {
 
-    int remove(uint8_t type);
+    }
 
-    /* Filter the specified type of data from advertising or scan response data. */
-    size_t find(uint8_t type, uint8_t* data, size_t len, bool sr = false) const;
-    size_t find(uint8_t type, bool sr = false) const;
+    uint8_t data[BLE_MAX_ADV_DATA_LEN];
+    size_t len;
 
-    size_t advData(uint8_t* data, size_t len) const;
-    size_t srData(uint8_t* data, size_t len) const;
+    bool contain(uint8_t type);
+    bool contain(uint8_t type, const uint8_t* buf, size_t len);
 
-    size_t advLen(void) const { return advLen_; }
-    size_t srLen(void) const { return srLen_; }
+    size_t fetch(uint8_t type, uint8_t* buf, size_t len);
 
-private:
-    uint8_t adv_[31];
-    size_t advLen_;
-    uint8_t sr_[31];
-    size_t srLen_;
-
-    int locate(uint8_t type, size_t* offset, size_t* len, bool sr) const;
+    size_t locate(uint8_t type, size_t* offset);
 };
 
 
-/* BLE scan result class */
-class BleScanResult {
+class BleBroadcaster {
 public:
-    BleScanResult() : rssi_(-99) { }
-    ~BleScanResult(){}
+    BleBroadcaster();
+    ~BleBroadcaster();
 
-    size_t advData(uint8_t* data, size_t len) const { return data_.advData(data, len); }
-    size_t srData(uint8_t* data, size_t len) const { return data_.srData(data, len); }
+    int appendAdvData(uint8_t type, const uint8_t* data, size_t len);
+    int appendAdvDataLocalName(const char* name);
+    int appendAdvDataCustomData(const uint8_t* buf, size_t len);
+    int appendAdvDataUuid(const BleUuid& uuid);
 
-    size_t advLen(void) const { return data_.advLen(); }
-    size_t srLen(void) const { return data_.srLen(); }
+    int appendScanRspData(uint8_t type, const uint8_t* buf, size_t len);
+    int appendScanRspDataLocalName(const char* name);
+    int appendScanRspDataCustomData(const uint8_t* buf, size_t len);
+    int appendScanRspDataUuid(const BleUuid& uuid);
 
-    bool find(uint8_t type) const { return data_.find(type); }
-    bool find(uint8_t type, uint8_t* data, size_t len, bool sr = false) const { return data_.find(type, data, len, sr);}
+    int advDataBeacon(const iBeacon& beacon);
 
-    const BleAddress& address(void) const { return address_; }
+    int clearAdvData(void);
+    int removeFromAdvData(uint8_t type);
 
-    int rssi(void) { return rssi_; }
+    int clearScanRspData(void);
+    int removeFromScanRspData(uint8_t type);
+
+    int setTxPower(int8_t val) const;
+    int8_t txPower(void) const;
+
+    int advertise(void);
+    int advertise(uint32_t interval);
+    int advertise(uint32_t interval, uint32_t timeout);
+    int advertise(const BleAdvParams& params);
+
+    int stopAdvertise(void) const;
+
+protected:
+    void bleBroadcasterCallback(hal_ble_gap_on_adv_stopped_evt_t* event);
 
 private:
-    BleAddress address_;
-    BleAdvertisingData data_;
-    int rssi_;
+    BleAdvParams advParams_;
+    BleAdvData advData_;
+    BleAdvData srData_;
+
+    int append(uint8_t type, const uint8_t* buf, size_t len, BleAdvData& data);
+};
+
+
+class BleScannedDevice {
+public:
+    BleAddress address;
+    BleAdvData advData;
+    BleAdvData srData;
+    int8_t rssi;
+};
+
+
+class BleObserver {
+public:
+    BleObserver();
+    ~BleObserver();
+
+    static const size_t DEFAULT_COUNT = 5;
+
+    typedef void (*BleScanCallback)(const BleScannedDevice *device);
+
+    int scan(BleScanCallback callback);
+    int scan(BleScannedDevice* results, size_t resultCount);
+    int scan(BleScannedDevice* results, size_t resultCount, uint16_t timeout);
+    int scan(BleScannedDevice* results, size_t resultCount, const BleScanParams& params);
+
+    int stopScan(void);
+
+protected:
+    void bleObserverScanResultCallback(const hal_ble_gap_on_scan_result_evt_t* event);
+    void bleObserverScanStoppedCallback(const hal_ble_gap_on_scan_stopped_evt_t* event);
+
+private:
+    BleScanParams scanParams_;
+    size_t targetCount_;
+    BleScanCallback callback_;
+    BleScannedDevice* results_;
+    size_t count_;
 };
 
 
@@ -330,7 +405,8 @@ private:
 
 
 /* BLE class */
-class BleClass {
+class BleClass : public BleBroadcaster,
+                 public BleObserver {
 public:
     typedef void (*onConnectedCb)(BleDevice &peer);
     typedef void (*onDisconnectedCb)(BleDevice &peer);
@@ -339,18 +415,6 @@ public:
     void off(void);
 
     void onConnectionChangedCb(onConnectedCb connCb, onDisconnectedCb disconnCb);
-
-    int advertisementData(BleAdvertisingData& data);
-    int advertisementData(iBeacon& beacon);
-
-    int advertise(void) const;
-    int advertise(uint32_t interval) const;
-    int advertise(uint32_t interval, uint32_t timeout) const;
-    int advertise(BleAdvParams& params) const;
-
-    int stopAdvertise(void) const { return SYSTEM_ERROR_NONE; }
-
-    int scan(BleScanResult* result, size_t count, uint16_t timeout = BLE_DEFAULT_SCANNING_TIMEOUT) const;
 
     BleDevice* connect(const BleAddress& addr);
 
