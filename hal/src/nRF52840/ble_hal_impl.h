@@ -71,7 +71,7 @@
 /* Default scanning parameters */
 #define BLE_DEFAULT_SCANNING_INTERVAL               160     /* The scan interval: 100ms (in units of 0.625 ms). */
 #define BLE_DEFAULT_SCANNING_WINDOW                 80      /* The scan window: 50ms (in units of 0.625 ms). */
-#define BLE_DEFAULT_SCANNING_TIMEOUT                0       /* The timeout: forever (in units of 10 ms. 0 for scanning forever). */
+#define BLE_DEFAULT_SCANNING_TIMEOUT                500     /* The timeout: forever (in units of 10 ms. 0 for scanning forever). */
 
 /* BLE scan filter policy */
 #define BLE_SCAN_FP_ACCEPT_ALL                      0x00  /**< Accept all advertising packets except directed advertising packets
