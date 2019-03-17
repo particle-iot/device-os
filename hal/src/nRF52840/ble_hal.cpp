@@ -124,6 +124,7 @@ typedef struct {
     uint8_t  scanRespData[BLE_MAX_ADV_DATA_LEN];
     uint16_t scanRespDataLen;
 
+    os_semaphore_t scanSemaphore;
     os_semaphore_t connectSemaphore;
     os_semaphore_t disconnectSemaphore;
     os_semaphore_t connUpdateSemaphore;
@@ -201,6 +202,7 @@ static HalBleInstance_t s_bleInstance = {
     .scanRespData = { 0 },
     .scanRespDataLen = 0,
 
+    .scanSemaphore = NULL,
     .connectSemaphore = NULL,
     .disconnectSemaphore = NULL,
     .connUpdateSemaphore = NULL,
@@ -901,10 +903,12 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                         LOG(ERROR, "os_queue_put() failed.");
                     }
                 }
+                os_semaphore_give(s_bleInstance.scanSemaphore, false);
             }
             else if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
                 LOG_DEBUG(ERROR, "BLE GAP event: Connection timeout");
                 s_bleInstance.connecting = false;
+                os_semaphore_give(s_bleInstance.connectSemaphore, false);
             }
             else if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_AUTH_PAYLOAD) {
                 LOG_DEBUG(ERROR, "BLE GAP event: Authenticated payload timeout");
@@ -1869,6 +1873,11 @@ int ble_gap_start_scan(void* reserved) {
         }
     }
 
+    if (os_semaphore_create(&s_bleInstance.scanSemaphore, 1, 0)) {
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
     ble_gap_scan_params_t bleGapScanParams;
     fromHalScanParams(&s_bleInstance.scanParams, &bleGapScanParams);
 
@@ -1885,6 +1894,9 @@ int ble_gap_start_scan(void* reserved) {
     }
 
     s_bleInstance.scanning = true;
+
+    os_semaphore_take(s_bleInstance.scanSemaphore, CONCURRENT_WAIT_FOREVER, false);
+    os_semaphore_destroy(s_bleInstance.scanSemaphore);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -1907,6 +1919,8 @@ int ble_gap_stop_scan(void) {
         LOG(ERROR, "sd_ble_gap_scan_stop() failed: %u", (unsigned)ret);
         return sysError(ret);
     }
+
+    os_semaphore_give(s_bleInstance.scanSemaphore, false);
 
     s_bleInstance.scanning = false;
     return SYSTEM_ERROR_NONE;
