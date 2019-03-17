@@ -459,7 +459,19 @@ BleObserver::~BleObserver() {
 
 int BleObserver::scan(BleScanCallback callback) {
     callback_ = callback;
-    return SYSTEM_ERROR_NONE;
+    ble_gap_set_scan_parameters(&scanParams_, NULL);
+    ble_gap_start_scan(nullptr);
+
+    return count_;
+}
+
+int BleObserver::scan(BleScanCallback callback, uint16_t timeout) {
+    callback_ = callback;
+    scanParams_.timeout  = timeout;
+    ble_gap_set_scan_parameters(&scanParams_, NULL);
+    ble_gap_start_scan(nullptr);
+
+    return count_;
 }
 
 int BleObserver::scan(BleScannedDevice* results, size_t resultCount) {
@@ -506,7 +518,7 @@ void BleObserver::bleObserverScanResultCallback(const hal_ble_gap_on_scan_result
     }
     else if (results_ != nullptr) {
         results_[count_++] = device;
-        if (count_ > targetCount_) {
+        if (count_ >= targetCount_) {
             stopScan();
         }
     }
