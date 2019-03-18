@@ -145,7 +145,7 @@ test(TICKS_01_millis_and_micros_rollover)
 
 test(TICKS_02_millis_and_micros_along_with_high_priority_interrupts)
 {
-    #define TWO_MINUTES 2*60*1000
+    static const system_tick_t TWO_MINUTES = 2 * 60 * 1000;
     system_tick_t start = millis();
     assert_micros_millis_interrupts(TWO_MINUTES);
     assertMoreOrEqual(millis()-start,TWO_MINUTES);
@@ -153,7 +153,7 @@ test(TICKS_02_millis_and_micros_along_with_high_priority_interrupts)
 
 test(TICKS_03_millis_and_micros_monotonically_increases)
 {
-    #define TWO_MINUTES 2*60*1000
+    static const system_tick_t TWO_MINUTES = 2 * 60 * 1000;
     system_tick_t start = millis();
     assert_micros_millis(TWO_MINUTES);
     assertMoreOrEqual(millis()-start,TWO_MINUTES);

@@ -123,14 +123,13 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     size_t minMtu = MIN_MTU;
     size_t maxMtu = MAX_MTU;
     while (mtu > IPV4_PLUS_UDP_HEADER_LENGTH) {
-        Serial.printlnf("Test MTU: %lu", mtu);
         // Fille send buffer with random data
         const size_t payloadSize = mtu - IPV4_PLUS_UDP_HEADER_LENGTH;
         rand.gen((char*)sendBuffer.get(), payloadSize);
         auto res = udpEchoTest(udp.get(), udpEchoIp, UDP_ECHO_PORT, sendBuffer.get(), payloadSize, UDP_ECHO_RETRIES, UDP_ECHO_REPLY_WAIT_TIME);
+        Serial.printlnf("Test MTU: %lu (%s)", mtu, res ? "OK" : "FAIL");
         size_t newMtu = bisect(mtu, minMtu, maxMtu, res);
-        Serial.printlnf("New MTU: %lu", newMtu);
-        if (std::abs((int)newMtu - (int)mtu) <= 1) {
+        if (std::abs((int)newMtu - (int)mtu) <= 1 && res) {
             // Converged
             break;
         }
@@ -138,11 +137,12 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     }
 
     Serial.printlnf("Resolved MTU: %lu", mtu);
-    assertTrue((mtu - IPV4_PLUS_UDP_HEADER_LENGTH) >= MBEDTLS_SSL_MAX_CONTENT_LEN);
 
     // The test should be running for at least a minute, just in case
     if (millis() - start < MINIMUM_TEST_TIME) {
         delay(millis() - start);
     }
     assertFalse((bool)state.disconnected);
+
+    assertTrue((mtu - IPV4_PLUS_UDP_HEADER_LENGTH) >= MBEDTLS_SSL_MAX_CONTENT_LEN);
 }
