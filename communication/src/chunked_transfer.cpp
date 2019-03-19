@@ -66,8 +66,9 @@ ProtocolError ChunkedTransfer::handle_update_begin(
     }
     Message response;
     channel.response(message, response, 16);
-    size_t size = Messages::coded_ack(response.buf(),
-            success ? 0x00 : RESPONSE_CODE(4, 00), 0, 0);
+    size_t size = success ?
+    		Messages::empty_ack(response.buf(), 0, 0) :
+			Messages::coded_ack(response.buf(), token, RESPONSE_CODE(5, 03), 0, 0);
     response.set_length(size);
     response.set_id(msg_id);
     ProtocolError error = channel.send(response);
