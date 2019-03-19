@@ -345,17 +345,45 @@ SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
     }
 }
 
-const char* CLAIM_EVENTS = "spark/device/claim/";
-const char* RESET_EVENT = "spark/device/reset";
-const char* KEY_RESTORE_EVENT = "spark/device/key/restore";
+constexpr const char CLAIM_EVENTS[] = "spark/device/claim/";
+constexpr const char RESET_EVENT[] = "spark/device/reset";
+constexpr const char KEY_RESTORE_EVENT[] = "spark/device/key/restore";
+constexpr const char DEVICE_UPDATES_EVENT[] = "particle/device/updates/";
+constexpr const char FORCED_EVENT[] = "forced";
+constexpr const char UPDATES_PENDING_EVENT[] = "pending";
 
+inline bool is_prefix(const char* eventName, const char* prefix) {
+	return !strncmp(eventName, prefix, strlen(prefix));
+}
+
+inline bool is_suffix(const char* eventName, const char* prefix, const char* suffix) {
+	// todo - sanity check parameters?
+	return !strncmp(eventName+strlen(prefix), suffix, strlen(eventName)-strlen(prefix));
+}
+
+uint8_t data_to_flag(const char* data) {
+	return !strncmp(data, "true", strlen(data));
+}
+
+/**
+ * Handler for system events.
+ */
 void SystemEvents(const char* name, const char* data)
 {
-    if (!strncmp(name, CLAIM_EVENTS, strlen(CLAIM_EVENTS))) {
-    	LOG(TRACE, "Claim code received by the cloud and cleared locally.");
+	if (is_prefix(name, DEVICE_UPDATES_EVENT)) {
+		const uint8_t flagValue = data_to_flag(data);
+		if (is_suffix(name, DEVICE_UPDATES_EVENT, FORCED_EVENT)) {
+			system_set_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED, flagValue, nullptr);
+		}
+		if (is_suffix(name, DEVICE_UPDATES_EVENT, UPDATES_PENDING_EVENT)) {
+			system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, flagValue, nullptr);
+		}
+	}
+	else if (!strncmp(name, CLAIM_EVENTS, strlen(CLAIM_EVENTS))) {
+        LOG(TRACE, "Claim code received by the cloud and cleared locally.");
         HAL_Set_Claim_Code(NULL);
     }
-    if (!strcmp(name, RESET_EVENT)) {
+	else if (!strcmp(name, RESET_EVENT)) {
         if (data && *data) {
             if (!strcmp("safe mode", data))
                 System.enterSafeMode();
@@ -365,7 +393,7 @@ void SystemEvents(const char* name, const char* data)
                 System.reset();
         }
     }
-    if (!strncmp(name, KEY_RESTORE_EVENT, strlen(KEY_RESTORE_EVENT))) {
+	else if (!strncmp(name, KEY_RESTORE_EVENT, strlen(KEY_RESTORE_EVENT))) {
         // Restore PSK to DCT/DCD/FLASH
         LOG(INFO,"Restoring Public Server Key and Server Address to flash");
 #if HAL_PLATFORM_CLOUD_UDP
@@ -844,7 +872,10 @@ void Spark_Protocol_Init(void)
         HAL_device_ID(id, id_length);
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
-        Particle.subscribe("spark", SystemEvents);
+        // hmm...these system events should probably be processed on the system event thread.
+        // But as they are they will be processed on the application thread.
+        Particle.subscribe("spark", SystemEvents, MY_DEVICES);
+        Particle.subscribe("particle", SystemEvents, MY_DEVICES);
 
         CommunicationsHandlers handlers;
         handlers.size = sizeof(handlers);
