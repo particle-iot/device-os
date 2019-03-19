@@ -127,6 +127,14 @@ void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
 	}
 }
 
+/**
+ * Refreshes the flag by performing the update action.
+ */
+int system_refresh_flag(system_flag_t flag) {
+	uint8_t value;
+	int result = system_get_flag(flag, &value, nullptr);
+	system_flag_changed(flag, value, value);
+	return result;
 }
 
 int system_set_flag(system_flag_t flag, uint8_t value, void*)
