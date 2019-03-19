@@ -324,6 +324,10 @@ public:
         return get_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED)!=0;
     }
 
+    inline uint8_t updatesForced()
+    {
+    	return get_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED)!=0;
+    }
 
     inline void enableReset()
     {
