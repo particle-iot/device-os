@@ -43,7 +43,9 @@
 #include "system_network_internal.h"
 #include "bytes2hexbuf.h"
 #include "system_threading.h"
+#if HAL_PLATFORM_DCT
 #include "dct.h"
+#endif // HAL_PLATFORM_DCT
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
