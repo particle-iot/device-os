@@ -280,6 +280,11 @@ void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin) {
 }
 
 void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved) {
+    if (spi == HAL_SPI_INTERFACE1 && mode == SPI_MODE_SLAVE) {
+        // HAL_SPI_INTERFACE1 does not support slave mode
+        return;
+    }
+
     if (m_spi_map[spi].enabled) {
         spi_uninit(spi);
     }
