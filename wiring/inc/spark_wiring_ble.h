@@ -23,7 +23,7 @@
 #include <string.h>
 #include "spark_wiring_platform.h"
 
-
+#define Wiring_BLE 1
 #if Wiring_BLE
 
 #include "system_error.h"
@@ -36,10 +36,15 @@
 using spark::Vector;
 using particle::Flags;
 
-
-class BleAttribute;
-class BleDevice;
-class BleClass;
+class BleCharacteristic;
+class BleService;
+class BleGattServer;
+class BleBroadcaster;
+class BleObserver;
+class BlePeripheral;
+class BleCentral;
+class BlePeerDevice;
+class BleLocalDevice;
 
 enum class BleUuidType {
     SHORT = 0,
@@ -63,8 +68,8 @@ namespace ROLE {
 }
 
 struct BleAttrPropType; // Tag type for BLE attribute property flags
-typedef Flags<BleAttrPropType, uint8_t> BleAttrProps;
-typedef BleAttrProps::FlagType BleAttrProp;
+typedef Flags<BleAttrPropType, uint8_t> BleCharProps;
+typedef BleCharProps::FlagType BleAttrProp;
 
 namespace PROPERTY {
     const BleAttrProp NONE(0);
@@ -192,15 +197,11 @@ private:
 
 class BleAdvData {
 public:
-    BleAdvData() : len(0) {
-
-    }
-    ~BleAdvData() {
-
-    }
-
     uint8_t data[BLE_MAX_ADV_DATA_LEN];
     size_t len;
+
+    BleAdvData();
+    ~BleAdvData();
 
     bool contain(uint8_t type);
     bool contain(uint8_t type, const uint8_t* buf, size_t len);
@@ -208,6 +209,150 @@ public:
     size_t fetch(uint8_t type, uint8_t* buf, size_t len);
 
     size_t locate(uint8_t type, size_t* offset);
+};
+
+
+class BleCharacteristic {
+public:
+    typedef void (*onDataReceivedCb)(const uint8_t* data, size_t len);
+
+    BleCharProps properties;
+    BleCharHandles attrHandles;
+    BleUuid uuid;
+    const char* description;
+
+    bool valid;
+    bool isLocal;
+    Vector<BleConnHandle> cccdOfServer;
+    bool cccdOfClient;
+    BleService* service;
+
+    BleCharacteristic();
+    BleCharacteristic(const char* desc, BleCharProps properties, onDataReceivedCb cb = nullptr);
+    BleCharacteristic(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, onDataReceivedCb cb = nullptr);
+    ~BleCharacteristic();
+
+    size_t getValue(uint8_t* buf, size_t len) const;
+    size_t getValue(String& str) const;
+
+    template<typename T>
+    size_t getValue(T* val) const {
+        size_t len = sizeof(T);
+        return getValue(reinterpret_cast<uint8_t*>(val), len);
+    }
+
+    int setValue(const uint8_t* buf, size_t len);
+    int setValue(const String& str);
+    int setValue(const char* str);
+
+    template<typename T>
+    int setValue(T val) {
+        uint8_t buf[BLE_MAX_CHAR_VALUE_LEN];
+        size_t len = sizeof(T) > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : sizeof(T);
+        for (size_t i = 0, j = len - 1; i < len; i++, j--) {
+            buf[i] = reinterpret_cast<const uint8_t*>(&val)[j];
+        }
+        return setValue(buf, len);
+    }
+
+    void onDataReceived(onDataReceivedCb callback);
+
+    void syncStub(void) const;
+
+    void processReceivedData(uint16_t attrHandle, const uint8_t* data, size_t len, const BlePeerDevice& peer);
+
+private:
+    static uint16_t defaultUuidCharCount_;
+
+    BleCharacteristic* stub_;
+    onDataReceivedCb dataCb_;
+
+    void init(void);
+    BleUuid generateDefaultCharUuid(void) const;
+};
+
+
+class BleService {
+public:
+    BleUuid uuid;
+    uint16_t startHandle;
+    uint16_t endHandle;
+
+    BleGattServer* server;
+
+    BleService();
+    ~BleService();
+
+    size_t characteristicCount(void) const {
+        return characteristics_.size();
+    }
+
+    BleCharacteristic* findCharacteristic(const char* desc);
+    BleCharacteristic* findCharacteristic(uint16_t attrHandle);
+    BleCharacteristic* findCharacteristic(const BleUuid& charUuid);
+    BleCharacteristic* findCharacteristic(size_t i);
+
+    int addCharacteristic(BleCharacteristic& characteristic);
+
+private:
+    Vector<BleCharacteristic> characteristics_;
+};
+
+
+class BleGattServer {
+public:
+    BleGattServer();
+    ~BleGattServer();
+
+    void* device;
+
+    size_t serviceCount(void) const {
+        return services_.size();
+    }
+
+    BleService* findService(const BleUuid& svcUuid);
+    BleService* findService(size_t i);
+
+    BleService* addService(const BleUuid& svcUuid);
+
+    size_t characteristicCount(void) const;
+
+    template <typename T>
+    BleCharacteristic* findCharacteristic(T& type) {
+        for (size_t i = 0; i < serviceCount(); i++) {
+            BleCharacteristic* characteristic = services_.at(i).findCharacteristic(type);
+            if (characteristic != nullptr) {
+                return characteristic;
+            }
+        }
+        return nullptr;
+    }
+
+    int addCharacteristic(BleService& service, BleCharacteristic& characteristic);
+
+    static int write(const BleCharacteristic& characteristic, const uint8_t* buf, size_t len);
+    static int read(const BleCharacteristic& characteristic, uint8_t* buf, size_t len);
+
+protected:
+    void finalizeLocalGattServer(void);
+    void gattServerProcessDisconnected(const BlePeerDevice& peer);
+    void gattServerProcessDataWritten(uint16_t attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer);
+
+private:
+    Vector<BleService> services_;
+};
+
+
+class BleGattClient {
+public:
+    BleGattClient();
+    ~BleGattClient();
+
+    static int write(const BleCharacteristic& characteristic, const uint8_t* buf, size_t len);
+    static int read(const BleCharacteristic& characteristic, uint8_t* buf, size_t len);
+
+protected:
+    void gattClientProcessDataNotified(uint16_t attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer);
 };
 
 
@@ -245,7 +390,7 @@ public:
     int stopAdvertise(void) const;
 
 protected:
-    void bleBroadcasterCallback(hal_ble_gap_on_adv_stopped_evt_t* event);
+    void broadcasterProcessStopped(void);
 
 private:
     BleAdvParams advParams_;
@@ -283,8 +428,8 @@ public:
     int stopScan(void);
 
 protected:
-    void bleObserverScanResultCallback(const hal_ble_gap_on_scan_result_evt_t* event);
-    void bleObserverScanStoppedCallback(const hal_ble_gap_on_scan_stopped_evt_t* event);
+    void observerProcessScanResult(const hal_ble_gap_on_scan_result_evt_t* event);
+    void observerProcessScanStopped(const hal_ble_gap_on_scan_stopped_evt_t* event);
 
 private:
     BleScanParams scanParams_;
@@ -295,160 +440,117 @@ private:
 };
 
 
-/* BLE device class */
-class BleDevice {
-    friend BleClass;
-    friend BleAttribute;
-
+class BlePeripheral {
 public:
-    BleDevice();
-    BleDevice(int n);
-    ~BleDevice();
+    BlePeripheral();
+    ~BlePeripheral();
 
-    const BleConnParams& params(void) const { return connParams_; }
+    size_t centralCount(void) const {
+        return centrals_.size();
+    }
 
-    const BleAddress& address(void) const { return address_; }
+    int setPpcp(void);
+    int setPpcp(uint16_t minInterval, uint16_t maxInterval, uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY, uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT);
 
-    BleDevRoles role(void) const { return role_; }
+    int disconnect(void);
 
-    size_t attrCount(void) const { return attributes_.size(); }
+    bool connected(void) const {
+        return centrals_.size() > 0;
+    }
 
-    Vector<BleAttribute> getAttrList(const char* desc);
-    Vector<BleAttribute> getAttrList(const BleUuid& svcUuid);
-
-    BleAttribute* getAttr(uint16_t attrHandle);
-    BleAttribute* getAttr(const BleUuid& charUuid);
-    BleAttribute* getAttr(size_t i);
-
-    bool operator == (const BleDevice& dev) const;
+protected:
+    BlePeerDevice* centralAt(size_t i);
+    void peripheralProcessConnected(const BlePeerDevice& peer);
+    void peripheralProcessDisconnected(const BlePeerDevice& peer);
 
 private:
-    BleDevRoles role_;
-    BleConnHandle connHandle_;
+    BleConnParams ppcp_;
+    Vector<BlePeerDevice> centrals_;
+};
+
+
+class BleCentral {
+public:
+    BleCentral();
+    ~BleCentral();
+
+    size_t peripheralCount(void) const {
+        return peripherals_.size();
+    }
+
+    BlePeerDevice* connect(const BleAddress& addr,
+            uint16_t interval = BLE_DEFAULT_MIN_CONN_INTERVAL,
+            uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY,
+            uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT);
+
+    int disconnect(const BlePeerDevice& peripheral);
+
+    bool connectedAsCentral(void) const {
+        return peripherals_.size() > 0;
+    }
+
+protected:
+    BlePeerDevice* peripheralAt(size_t i);
+    void centralProcessConnected(const BlePeerDevice& peer);
+    void centralProcessDisconnected(const BlePeerDevice& peer);
+
+private:
     BleConnParams connParams_;
-    BleAddress address_;
-    int rssi_;
-    Vector<BleAttribute> attributes_;
-
-    int preAddAttr(const BleAttribute& attr);
-    void executeAddAttr(void);
+    Vector<BlePeerDevice> peripherals_;
 };
 
 
-/* BLE attribute class */
-class BleAttribute {
-    friend BleClass;
-    friend BleDevice;
-
+class BlePeerDevice : public BleGattServer {
 public:
-    typedef void (*onDataReceivedCb)(const uint8_t* data, size_t len);
+    BleDevRoles role;
+    BleAddress address;
+    BleConnParams connParams;
+    BleConnHandle connHandle;
+    int8_t rssi;
 
-    BleAttribute();
-    BleAttribute(const char* desc, BleAttrProps properties, onDataReceivedCb cb = nullptr);
-    BleAttribute(const char* desc, BleAttrProps properties, BleUuid& attrUuid, BleUuid& svcUuid, onDataReceivedCb cb = nullptr);
-    ~BleAttribute();
+    BlePeerDevice();
+    ~BlePeerDevice();
 
-    const char* description(void) const { return description_; }
-
-    BleAttrProps properties(void) const { return properties_; }
-
-    const BleUuid& serviceUuid(void) const { return svcUuid_; }
-
-    const BleUuid& charUuid(void) const { return charUuid_; }
-
-    size_t getValue(uint8_t* buf, size_t len) const;
-    size_t getValue(String& str) const;
-    template<typename T> size_t getValue(T* val) const {
-        size_t len = sizeof(T);
-        return getValue(reinterpret_cast<uint8_t*>(val), len);
-    }
-
-    int setValue(const uint8_t* buf, size_t len);
-    int setValue(const String& str);
-    int setValue(const char* str);
-
-    template<typename T> int setValue(T val) {
-        uint8_t buf[BLE_MAX_CHAR_VALUE_LEN];
-        size_t len = sizeof(T) > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : sizeof(T);
-
-        for (size_t i = 0, j = len - 1; i < len; i++, j--) {
-            buf[i] = reinterpret_cast<const uint8_t*>(&val)[j];
-        }
-
-        return setValue(buf, len);
-    }
-
-    void onDataReceived(onDataReceivedCb callback);
-
-private:
-    BleAttrProps properties_;
-    BleCharHandles handles_;
-    uint16_t svcHandle_;
-    BleUuid charUuid_;
-    BleUuid svcUuid_;
-    const char* description_;
-    onDataReceivedCb dataCb_;
-
-    bool valid_;
-    bool cccdConfigured_;
-    static uint16_t defaultAttrCount_;
-    BleDevice* owner_;
-    BleAttribute* extRef_;
-
-    void init(void);
-    bool contain(uint16_t handle);
-    bool isLocalAttr(void) const;
-    void syncExtRef(void) const;
-    BleUuid generateDefaultAttrUuid(void) const;
-    BleUuid assignDefaultSvcUuid(void) const;
-    void processReceivedData(uint16_t handle, const uint8_t* data, size_t len);
+    bool operator == (const BlePeerDevice& device);
 };
 
 
-/* BLE class */
-class BleClass : public BleBroadcaster,
-                 public BleObserver {
+class BleLocalDevice : public BleBroadcaster,
+                       public BleObserver,
+                       public BlePeripheral,
+                       public BleCentral,
+                       public BleGattServer,
+                       public BleGattClient {
 public:
-    typedef void (*onConnectedCb)(BleDevice &peer);
-    typedef void (*onDisconnectedCb)(BleDevice &peer);
+    typedef void (*onConnectedCb)(BlePeerDevice &peer);
+    typedef void (*onDisconnectedCb)(BlePeerDevice &peer);
+
+    BleAddress address;
 
     int on(void);
     void off(void);
 
     void onConnectionChangedCb(onConnectedCb connCb, onDisconnectedCb disconnCb);
 
-    BleDevice* connect(const BleAddress& addr);
-
-    int disconnect(void);
-    int disconnect(const BleDevice& peer);
-
-    bool connected(void) const { return (peerCount() > 0); }
-
-    size_t peerCount(void) const { return peers_.size(); }
-
-    const BleDevice* peer(size_t i) const;
-
-    BleDevice& local(void);
-
-    static BleClass* getInstance(void);
+    static BleLocalDevice* getInstance(void);
 
 private:
-    Vector<BleDevice> peers_;
     onConnectedCb connectedCb_;
     onDisconnectedCb disconnectedCb_;
 
-    BleClass() : connectedCb_(nullptr), disconnectedCb_(nullptr) { }
-    ~BleClass() { }
+    BleLocalDevice() : connectedCb_(nullptr), disconnectedCb_(nullptr) {
+        device = this;
+    }
+    ~BleLocalDevice() {
 
-    const BleDevice* findPeer(BleConnHandle handle) const;
-    int addPeer(const BleDevice& device);
-    int removePeer(BleConnHandle handle);
-    void updateLocal(void);
+    }
+
     static void onBleEvents(hal_ble_evts_t *event, void* context);
+    BlePeerDevice* findPeerDevice(BleConnHandle connHandle);
 };
 
 
-extern BleClass& _fetch_ble();
+extern BleLocalDevice& _fetch_ble();
 #define BLE _fetch_ble()
 
 
