@@ -133,6 +133,11 @@ typedef enum
      */
     SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS,
 
+    /**
+     * Enable/Disable runtime power management peripheral detection
+     */
+    SYSTEM_FLAG_PM_DETECTION,
+
     SYSTEM_FLAG_MAX
 
 } system_flag_t;
