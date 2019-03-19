@@ -153,6 +153,7 @@ void system_pending_shutdown();
 
 int system_set_flag(system_flag_t flag, uint8_t value, void* reserved);
 int system_get_flag(system_flag_t flag, uint8_t* value,void* reserved);
+int system_refresh_flag(system_flag_t flag);
 
 /**
  * Formats the diagnostic data using an appender function.

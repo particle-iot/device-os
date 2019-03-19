@@ -912,6 +912,16 @@ int Spark_Handshake(bool presence_announce)
             }
         }
 
+        if (!System.updatesEnabled()) {
+        	// force the event to be resent. The cloud assumes updates
+        	// are enabled by default.
+        	system_refresh_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED);
+        }
+
+        if (System.updatesForced()) {
+        	system_refresh_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED);
+        }
+
         if (presence_announce) {
             Multicast_Presence_Announcement();
         }
