@@ -193,7 +193,7 @@ typedef struct {
 } spark_protocol_describe_data;
 
 int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* limits, void* reserved);
-bool spark_protocol_send_description(ProtocolFacade* protocol, int desc_flags=particle::protocol::DESCRIBE_DEFAULT, void* reserved=NULL);
+bool spark_protocol_send_description(ProtocolFacade* protocol, int desc_flags=particle::protocol::DESCRIBE_METRICS, void* reserved=NULL);
 
 namespace ProtocolCommands {
   enum Enum {
