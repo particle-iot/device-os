@@ -292,11 +292,17 @@ void invokeEventHandlerString(uint16_t handlerInfoSize, FilteringEventHandler* h
     invokeEventHandlerInternal(handlerInfoSize, handlerInfo, name.c_str(), data.c_str(), reserved);
 }
 
+void SystemEvents(const char* name, const char* data);
+
+bool is_system_handler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo) {
+	// for now we hack this to recognize our own system handler
+	return handlerInfo->handler==SystemEvents;
+}
 
 void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
                 const char* event_name, const char* event_data, void* reserved)
 {
-    if (system_thread_get_state(NULL)==spark::feature::DISABLED)
+    if (is_system_handler(handlerInfoSize, handlerInfo) || system_thread_get_state(NULL)==spark::feature::DISABLED)
     {
         invokeEventHandlerInternal(handlerInfoSize, handlerInfo, event_name, event_data, reserved);
     }
