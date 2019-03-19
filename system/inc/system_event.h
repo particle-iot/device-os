@@ -50,9 +50,10 @@ enum SystemEvents {
     cloud_status = 1<<6,             // parameter is 0 for disconnected, 1 for connecting, 8 for connected, 9 for disconnecting. other values reserved.
     button_status = 1<<7,            // parameter is >0 for time pressed in ms (when released) or 0 for just pressed.
     firmware_update = 1<<8,          // parameter is 0 for begin, 1 for OTA complete, -1 for error.
-    firmware_update_pending = 1<<9,
+    firmware_update_pending = 1<<9,	// notifies the application that an OTA update is pending and will be delivered when updates are enabled
     reset_pending = 1<<10,          // notifies that the system would like to shutdown (System.resetPending() return true)
-    reset = 1<<11,                  // notifies that the system will now reset on return from this event.
+    // todo - rename to system_reset, or otherwise avoid common name clashes
+	reset = 1<<11,                  // notifies that the system will now reset on return from this event.
     button_click = 1<<12,           // generated for every click in series - data is number of clicks in the lower 4 bits.
     button_final_click = 1<<13,     // generated for last click in series - data is the number of clicks in the lower 4 bits.
     time_changed = 1<<14,
