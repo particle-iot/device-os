@@ -57,7 +57,7 @@ typedef enum PinMode {
 typedef enum {
     PF_NONE,
     PF_DIO,
-    PF_TIMER, 
+    PF_TIMER,
     PF_ADC,
     PF_DAC,
     PF_UART,
@@ -265,6 +265,10 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define LOW_BAT_UC      35
 #endif
 
+#if PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
+#define LOW_BAT_UC      A6
+#endif // PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
+
 #if PLATFORM_ID == PLATFORM_XENON_SOM // Xenon SoM
 #define TOTAL_PINS      (38)
 #endif
@@ -282,7 +286,6 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define UBRST           35
 #define BUFEN           36
 #define UBVINT          37
-#define LOW_BAT_UC      A6
 #endif
 
 // TODO: Move this to a platform-specific header
