@@ -70,18 +70,28 @@ static_assert(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1 == 5, "system flag value");
 static_assert(SYSTEM_FLAG_PUBLISH_RESET_INFO == 6, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS == 7, "system flag value");
 static_assert(SYSTEM_FLAG_PM_DETECTION == 8, "system flag value");
-static_assert(SYSTEM_FLAG_MAX == 9, "system flag max value");
+static_assert(SYSTEM_FLAG_OTA_UPDATE_FORCED == 9, "system flag value");
+static_assert(SYSTEM_FLAG_MAX == 10, "system flag max value");
 
 volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
     0, 1, // OTA updates pending/enabled
     0, 1, // Reset pending/enabled
-    0,    // SYSTEM_FLAG_STARTUP_LISTEN_MODE,
+    0,    // SYSTEM_FLAG_STARTUP_LISTEN_MODE
     0,    // SYSTEM_FLAG_SETUP_OVER_SERIAL1
     1,    // SYSTEM_FLAG_PUBLISH_RESET_INFO
-    1     // SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS
+    1,    // SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS
+    0,    // UNUSED (SYSTEM_FLAG_PM_DETECTION)
+	0,	  // SYSTEM_FLAG_OTA_UPDATE_FORCED
 };
 
 const uint16_t SAFE_MODE_LISTEN = 0x5A1B;
+
+const char* UPDATES_ENABLED_EVENT = "particle/device/updates/enabled";
+const char* UPDATES_FORCED_EVENT = "particle/device/updates/forced";
+
+const char* flag_to_string(uint8_t flag) {
+	return flag ? "true" : "false";
+}
 
 void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
 {
@@ -99,6 +109,24 @@ void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
         }
     }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+    if (flag == SYSTEM_FLAG_OTA_UPDATE_ENABLED)
+    {
+    	// publish the firmware enabled event
+    	spark_send_event(UPDATES_ENABLED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
+    }
+    if (flag == SYSTEM_FLAG_OTA_UPDATE_FORCED)
+    {
+    	spark_send_event(UPDATES_FORCED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
+    }
+    if (flag == SYSTEM_FLAG_OTA_UPDATE_PENDING)
+    {
+    	if (newValue) {
+			system_notify_event(firmware_update_pending, 0, nullptr, nullptr, nullptr);
+			// publish an internal system event for pending updates
+    	}
+	}
+}
+
 }
 
 int system_set_flag(system_flag_t flag, uint8_t value, void*)
@@ -251,34 +279,24 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
         }
     }
     int result = 0;
-    if (flags & 1) {
-        // only check address
+    if (System.updatesEnabled() || System.updatesForced()) {		// application event is handled asynchronously
+		if (flags & 1) {
+			// only check address
+		}
+		else {
+			system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 0, nullptr);
+			RGB.control(true);
+			// Get base color used for the update process indication
+			const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
+			RGB.color(status ? status->color : RGB_COLOR_MAGENTA);
+			SPARK_FLASH_UPDATE = 1;
+			TimingFlashUpdateTimeout = 0;
+			system_notify_event(firmware_update, firmware_update_begin, &file);
+			HAL_FLASH_Begin(file.file_address, file.file_length, NULL);
+		}
     }
     else {
-        uint32_t start = HAL_Timer_Milliseconds();
-        system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 1, nullptr);
-
-        volatile bool flag = false;
-        system_notify_event(firmware_update_pending, 0, nullptr, set_flag, (void*)&flag);
-
-        System.waitCondition([&flag]{return flag;}, timeRemaining(start, 30000));
-
-        system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 0, nullptr);
-        	if (System.updatesEnabled())		// application event is handled asynchronously
-        {
-            RGB.control(true);
-            // Get base color used for the update process indication
-            const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
-            RGB.color(status ? status->color : RGB_COLOR_MAGENTA);
-            SPARK_FLASH_UPDATE = 1;
-            TimingFlashUpdateTimeout = 0;
-            system_notify_event(firmware_update, firmware_update_begin, &file);
-            HAL_FLASH_Begin(file.file_address, file.file_length, NULL);
-        }
-        else
-        {
-            result = 1;     // updates disabled
-        }
+    	result = 1;
     }
     return result;
 }
