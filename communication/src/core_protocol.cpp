@@ -815,16 +815,31 @@ void SparkProtocol::update_ready(unsigned char *buf, unsigned char token, uint8_
 }
 
 int SparkProtocol::description(unsigned char *buf, unsigned char token,
-                               unsigned char message_id_msb, unsigned char message_id_lsb, int desc_flags)
-{
-    buf[0] = 0x61; // acknowledgment, one-byte token
-    buf[1] = 0x45; // response code 2.05 CONTENT
+      unsigned char message_id_msb, unsigned char message_id_lsb, int desc_flags) {
+    buf[0] = 0x61; // message type, token length
+    buf[1] = 0x45; // response code
     buf[2] = message_id_msb;
     buf[3] = message_id_lsb;
     buf[4] = token;
     buf[5] = 0xff; // payload marker
+    return build_describe_message(buf, 6, desc_flags);
+}
 
-    BufferAppender appender(buf+6, QUEUE_SIZE-8);
+int SparkProtocol::build_post_description(unsigned char *buf, int desc_flags) {
+    const unsigned short msg_id = next_message_id();
+    buf[0] = 0x40; // message type, token length
+    buf[1] = 0x02; // response code
+    buf[2] = ((msg_id >> 8) & 0xFF);
+    buf[3] = (msg_id & 0xFF);
+    buf[4] = 0xb1;
+    buf[5] = 'd';
+    buf[6] = 0xff; // payload marker
+    return build_describe_message(buf, 7, desc_flags);
+}
+
+int SparkProtocol::build_describe_message(unsigned char *buf, unsigned char offset, int desc_flags)
+{
+    BufferAppender appender(buf+offset, QUEUE_SIZE-(offset + 2));
     appender.append("{");
     bool has_content = false;
 
@@ -876,7 +891,7 @@ int SparkProtocol::description(unsigned char *buf, unsigned char token,
       appender.append('}');
     }
 
-    if (descriptor.append_system_info && (desc_flags&DESCRIBE_SYSTEM)) {
+    if (descriptor.append_system_info && (desc_flags & DESCRIBE_SYSTEM)) {
       if (has_content)
         appender.append(',');
       descriptor.append_system_info(append_instance, &appender, NULL);
@@ -1491,71 +1506,27 @@ void SparkProtocol::handle_event(msg& message)
 
 /**
  * Produces and transmits (POST) a describe message.
- * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
+ * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION), {@code DESCRIBE_SYSTEM), {@code DESCRIBE_METRICS} flags.
  */
-/*bool SparkProtocol::post_description(message_id_t msg_id, int desc_flags)
+bool SparkProtocol::post_description(int desc_flags)
 {
-    static message_id_t message_id = 0;
-
-    if ( -1 == msg_id ) {
-        ++message_id;
-    } else {
-        message_id = msg_id;
-    }
-//
-    Message message;
-    channel.create(message);
-    message.set_id(message_id);
-    size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), message_id);
-
-    BufferAppender appender((message.buf() + header_size), (message.capacity() - header_size));
-    build_describe_message(appender, desc_flags);
-
-    const size_t msglen = (appender.next() - (uint8_t*) message.buf());
-    message.set_length(msglen);
-    if (appender.overflowed()) {
-        LOG(ERROR, "Describe message overflowed by %d bytes", appender.overflowed());
-        // There is no point in continuing to run, the device will be constantly reconnecting
-        // to the cloud. It's better to clearly indicate that the describe message is never going
-        // to go through to the cloud by going into a panic state, otherwise one would have to
-        // sift through logs to find 'Describe message overflowed by %d bytes' message to understand
-        // what's going on.
-        SPARK_ASSERT(!appender.overflowed());
-    }
-
-    LOG(INFO,"Posting '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
-                                                  desc_flags & DESCRIBE_APPLICATION ? "A" : "",
-                                                  desc_flags & DESCRIBE_METRICS ? "M" : "");
-
-    const ProtocolError error = channel.send(message);
-    if (error == NO_ERROR && descriptor.app_state_selector_info
-    && (desc_flags & DESCRIBE_APPLICATION || desc_flags & DESCRIBE_SYSTEM))
-    {
-        this->channel.command(Channel::SAVE_SESSION);
-        if (desc_flags & DESCRIBE_APPLICATION)
-        {
-            // have sent the describe message to the cloud so update the crc
-            descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-        }
-        if (desc_flags & DESCRIBE_SYSTEM)
-        {
-            // have sent the describe message to the cloud so update the crc
-            descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-        }
-        this->channel.command(Channel::LOAD_SESSION);
-    }
-    return error;
-  //
-   return false;
+    int desc_len = build_post_description(queue + 2, desc_flags);
+    queue[0] = ((desc_len >> 8) & 0xff);
+    queue[1] = (desc_len & 0xff);
+    LOG(INFO,"Sending %s%s%s describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
+                                                desc_flags & DESCRIBE_APPLICATION ? "A" : "",
+                                                desc_flags & DESCRIBE_METRICS ? "M" : "");
+    return blocking_send(queue, desc_len + 2)>=0;
 }
-*/
+
 bool SparkProtocol::send_description(int description_flags, msg& message)
 {
     int desc_len = description(queue + 2, message.token, queue[2], queue[3], description_flags);
     queue[0] = (desc_len >> 8) & 0xff;
     queue[1] = desc_len & 0xff;
-    LOG(INFO,"Sending %s%s describe message", description_flags & DESCRIBE_SYSTEM ? "S" : "",
-                                              description_flags & DESCRIBE_APPLICATION ? "A" : "");
+    LOG(INFO,"Sending %s%s%s describe message", description_flags & DESCRIBE_SYSTEM ? "S" : "",
+                                                description_flags & DESCRIBE_APPLICATION ? "A" : "",
+                                                description_flags & DESCRIBE_METRICS ? "M" : "");
     return blocking_send(queue, desc_len + 2)>=0;
 }
 

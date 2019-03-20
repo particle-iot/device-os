@@ -71,6 +71,18 @@ struct is_string_literal {
     static constexpr bool value = std::is_array<T>::value && std::is_same<typename std::remove_extent<T>::type, char>::value;
 };
 
+#if PLATFORM_ID == 0  // CORE
+  class NullTimer {
+    public:
+      inline static bool changePeriod (const size_t) { return false; }
+      inline static void dispose (void) {}
+      inline static bool isActive (void) { return false; }
+      inline static void reset (void) {}
+      inline static void start (void) {}
+      inline static void stop (void) {}
+  };
+#endif
+
 class CloudClass {
 
 
