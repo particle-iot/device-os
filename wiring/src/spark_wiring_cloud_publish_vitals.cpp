@@ -99,6 +99,11 @@ VitalsPublisher<publish_fn_t, Timer>::publish (
 }
 
 #include <functional>
-#include "spark_wiring_timer.h"
 
-template class VitalsPublisher<std::function<bool(void)>, Timer>;
+#if PLATFORM_ID == 0  // CORE
+  #include "spark_wiring_cloud.h"
+  template class VitalsPublisher<std::function<bool(void)>, NullTimer>;
+#else
+  #include "spark_wiring_timer.h"
+  template class VitalsPublisher<std::function<bool(void)>, Timer>;
+#endif

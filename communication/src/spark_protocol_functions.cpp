@@ -268,13 +268,13 @@ int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char 
     ASSERT_ON_SYSTEM_THREAD();
     return protocol->presence_announcement(buf, id);
 }
-/*
-bool spark_protocol_send_description(SparkProtocol* protocol, void* reserved) {
+
+bool spark_protocol_send_description(SparkProtocol* protocol, int desc_flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
     (void)reserved;
-    return protocol->post_description();
+    return protocol->post_description(desc_flags);
 }
-*/
+
 bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, const char *data,
                 int ttl, uint32_t flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
