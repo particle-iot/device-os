@@ -831,10 +831,12 @@ int SparkProtocol::build_post_description(unsigned char *buf, int desc_flags) {
     buf[1] = 0x02; // response code
     buf[2] = ((msg_id >> 8) & 0xFF);
     buf[3] = (msg_id & 0xFF);
-    buf[4] = 0xb1;
+    buf[4] = 0xb1; // Uri-Path option of length 1
     buf[5] = 'd';
-    buf[6] = 0xff; // payload marker
-    return build_describe_message(buf, 7, desc_flags);
+    buf[6] = 0x41; // Uri-Query option of length 1
+    buf[7] = (desc_flags & 0xFF);
+    buf[8] = 0xff; // payload marker
+    return build_describe_message(buf, 9, desc_flags);
 }
 
 int SparkProtocol::build_describe_message(unsigned char *buf, unsigned char offset, int desc_flags)
