@@ -146,16 +146,17 @@ class SparkProtocol
     void update_ready(unsigned char *buf, unsigned char token);
     void update_ready(unsigned char *buf, unsigned char token, uint8_t flags);
 
+    int build_describe_message(unsigned char *buf, unsigned char offset, int desc_flags);
+    int build_post_description(unsigned char *buf, int desc_flags);
     int description(unsigned char *buf, unsigned char token,
-                    unsigned char message_id_msb, unsigned char message_id_lsb, int description_flags);
-    void ping(unsigned char *buf);
-
+                    unsigned char message_id_msb, unsigned char message_id_lsb, int desc_flags);
     /**
      * Produces and transmits (POST) a describe message.
-     * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
+     * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION), {@code DESCRIBE_SYSTEM), {@code DESCRIBE_METRICS} flags.
      */
-    //bool post_description(message_id_t msg_id = -1, int desc_flags = DESCRIBE_DEFAULT);
+    bool post_description(int desc_flags);
 
+    void ping(unsigned char *buf);
     bool function_result(const void* result, SparkReturnType::Enum resultType, uint8_t token);
 
     /********** Queue **********/
