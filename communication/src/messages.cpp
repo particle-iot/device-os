@@ -278,9 +278,9 @@ size_t Messages::presence_announcement(unsigned char *buf, const char *id)
 	return 19;
 }
 
-size_t Messages::describe_post_header(uint8_t buf[], size_t buffer_size, uint16_t message_id)
+size_t Messages::describe_post_header(uint8_t buf[], size_t buffer_size, uint16_t message_id, uint8_t desc_flags)
 {
-	const size_t header_size = 7;
+	const size_t header_size = 9;
 
 	size_t bytes_written;
 
@@ -293,7 +293,9 @@ size_t Messages::describe_post_header(uint8_t buf[], size_t buffer_size, uint16_
 		buf[3] = message_id & 0xff;
 		buf[4] = 0xb1; // Uri-Path option of length 1
 		buf[5] = 'd';
-		buf[6] = 0xff; // payload marker
+		buf[6] = 0x41; // Uri-Query option of length 1
+		buf[7] = desc_flags;
+		buf[8] = 0xff; // payload marker
 		bytes_written = header_size;
 	}
 

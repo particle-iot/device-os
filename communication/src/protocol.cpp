@@ -71,8 +71,8 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	{
 	case CoAPMessageType::DESCRIBE:
 	{
-		// 4 bytes header, 1 byte token, 2 bytes location path
-		// 2 bytes optional single character location path for describe flags
+		// 4 bytes header, 1 byte token, 2 bytes Uri-Path
+		// 2 bytes optional single character Uri-Query for describe flags
 		int descriptor_type = DESCRIBE_DEFAULT;
 		if (message.length()>8 && queue[8] <= DESCRIBE_MAX) {
 			descriptor_type = queue[8];
@@ -519,7 +519,7 @@ bool Protocol::post_description(int desc_flags)
 
 	Message message;
 	channel.create(message);
-	const size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), 0);
+	const size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), 0, (desc_flags & 0xFF));
 
 	BufferAppender appender((message.buf() + header_size), (message.capacity() - header_size));
 	build_describe_message(appender, desc_flags);
