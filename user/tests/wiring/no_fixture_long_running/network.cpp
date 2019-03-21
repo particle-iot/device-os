@@ -88,7 +88,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     const size_t IPV4_HEADER_LENGTH = 20;
     const size_t UDP_HEADER_LENGTH = 8;
     const size_t IPV4_PLUS_UDP_HEADER_LENGTH = IPV4_HEADER_LENGTH + UDP_HEADER_LENGTH;
-    const size_t MAX_MTU = 1500;
+    const size_t MAX_MTU = 1000;
     const size_t MIN_MTU = IPV4_PLUS_UDP_HEADER_LENGTH;
     const system_tick_t UDP_ECHO_REPLY_WAIT_TIME = 5000;
     const unsigned UDP_ECHO_RETRIES = 5;
@@ -145,4 +145,9 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     assertFalse((bool)state.disconnected);
 
     assertTrue((mtu - IPV4_PLUS_UDP_HEADER_LENGTH) >= MBEDTLS_SSL_MAX_CONTENT_LEN);
+
+    SCOPE_GUARD({
+        Network.disconnect();
+        Network.off();
+    });
 }
