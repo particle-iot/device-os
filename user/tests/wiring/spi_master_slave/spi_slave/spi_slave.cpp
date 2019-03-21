@@ -9,14 +9,90 @@
 
 #ifndef USE_SPI
 #error Define USE_SPI
-#endif
+#endif // #ifndef USE_SPI
 
 #ifndef USE_CS
 #error Define USE_CS
-#endif
+#endif // #ifndef USE_CS
+
+#if HAL_PLATFORM_NRF52840
+#if (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_BORON_SOM) || (PLATFORM_ID == PLATFORM_XENON_SOM)
+
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
+#define MY_SPI SPI
+#define MY_CS D8
+#pragma message "Compiling for SPI, MY_CS set to D8"
+#elif (USE_SPI == 1)
+#define MY_SPI SPI1
+#define MY_CS D5
+#pragma message "Compiling for SPI1, MY_CS set to D5"
+#elif (USE_SPI == 2)
+#error "SPI2 not supported for xenon-som, argon-som or boron-som"
+#else
+#error "Not supported for Gen 3"
+#endif // (USE_SPI == 0 || USE_SPI == 255)
+
+#else // xenon, argon, boron
+
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
+#define MY_SPI SPI
+#define MY_CS D14
+#pragma message "Compiling for SPI, MY_CS set to D14"
+#elif (USE_SPI == 1)
+#define MY_SPI SPI1
+#define MY_CS D5
+#pragma message "Compiling for SPI1, MY_CS set to D5"
+#elif (USE_SPI == 2)
+#error "SPI2 not supported for xenon, argon or boron"
+#else
+#error "Not supported for Gen 3"
+#endif // (USE_SPI == 0 || USE_SPI == 255)
+
+#endif // #if (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_BORON_SOM) || (PLATFORM_ID == PLATFORM_XENON_SOM)
+
+#else // Gen 2
+
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
+#define MY_SPI SPI
+#define MY_CS A2
+#pragma message "Compiling for SPI, MY_CS set to A2"
+#elif (USE_SPI == 1)
+#define MY_SPI SPI1
+#define MY_CS D5
+#pragma message "Compiling for SPI1, MY_CS set to D5"
+#elif (USE_SPI == 2)
+#define MY_SPI SPI2
+#define MY_CS C0
+#pragma message "Compiling for SPI2, MY_CS set to C0"
+#else
+#error "Not supported for Gen 2"
+#endif // (USE_SPI == 0)
+
+#endif // #if HAL_PLATFORM_NRF52840
+
+#if defined(_SPI) && (USE_CS != 255)
+#pragma message "Overriding default CS selection"
+#undef MY_CS
+#if (USE_CS == 0)
+#define MY_CS A2
+#pragma message "_CS pin set to A2"
+#elif (USE_CS == 1)
+#define MY_CS D5
+#pragma message "_CS pin set to D5"
+#elif (USE_CS == 2)
+#define MY_CS D8
+#pragma message "_CS pin set to D8"
+#elif (USE_CS == 3)
+#define MY_CS D14
+#pragma message "_CS pin set to D14"
+#elif (USE_CS == 4)
+#define MY_CS C0
+#pragma message "_CS pin set to C0"
+#endif // (USE_CS == 0)
+#endif // defined(_SPI) && (USE_CS != 255)
 
 /*
- * Wiring diagrams
+ * Gen 2 Wiring diagrams
  *
  * SPI/SPI                        SPI1/SPI                       SPI2/SPI
  * Master: SPI (USE_SPI=SPI)      Master: SPI1 (USE_SPI=SPI1)    Master: SPI2 (USE_SPI=SPI2)
@@ -53,7 +129,37 @@
  * CS   A2 <---------> C0 CS      CS   D5 <---------> C0 CS      CS   C0 <---------> C0 CS
  *
  *********************************************************************************************
+ *
+ * Gen 3 SoM Wiring diagrams
+ *
+ * SPI/SPI1                       SPI1/SPI1
+ * Master: SPI  (USE_SPI=SPI)     Master: SPI1 (USE_SPI=SPI1)
+ * Slave:  SPI1 (USE_SPI=SPI1)    Slave:  SPI1 (USE_SPI=SPI1)
+ *
+ * Master             Slave       Master              Slave
+ * CS   D8  <-------> D5 CS       CS   D5 <---------> D5 CS
+ * MISO D11 <-------> D4 MISO     MISO D4 <---------> D4 MISO
+ * MOSI D12 <-------> D3 MOSI     MOSI D3 <---------> D3 MOSI
+ * SCK  D13 <-------> D2 SCK      SCK  D2 <---------> D2 SCK
+ *
+ *********************************************************************************************
+ *
+ * Gen 3 Non-SoM Wiring diagrams
+ *
+ * SPI/SPI1                       SPI1/SPI1
+ * Master: SPI  (USE_SPI=SPI)     Master: SPI1 (USE_SPI=SPI1)
+ * Slave:  SPI1 (USE_SPI=SPI1)    Slave:  SPI1 (USE_SPI=SPI1)
+ *
+ * Master             Slave       Master              Slave
+ * CS   D14 <-------> D5 CS       CS   D5 <---------> D5 CS
+ * MISO D11 <-------> D4 MISO     MISO D4 <---------> D4 MISO
+ * MOSI D12 <-------> D3 MOSI     MOSI D3 <---------> D3 MOSI
+ * SCK  D13 <-------> D2 SCK      SCK  D2 <---------> D2 SCK
+ *
+ *********************************************************************************************
  */
+
+#ifdef MY_SPI
 
 static uint8_t SPI_Slave_Tx_Buffer[TRANSFER_LENGTH_2];
 static uint8_t SPI_Slave_Rx_Buffer[TRANSFER_LENGTH_2];
@@ -76,9 +182,9 @@ static inline void SPI_Transfer_DMA(uint8_t *tx, uint8_t *rx, int length, HAL_SP
     while (true)
     {
         DMA_Completed_Flag = cb ? 0 : 1;
-        USE_SPI.transfer(tx, rx, length, cb);
+        MY_SPI.transfer(tx, rx, length, cb);
         while(DMA_Completed_Flag == 0);
-        if (USE_SPI.available() == 0)
+        if (MY_SPI.available() == 0)
         {
             /* 0 length transfer means that we got deselected by master and nothing got clocked in. Try again? */
             continue;
@@ -88,15 +194,15 @@ static inline void SPI_Transfer_DMA(uint8_t *tx, uint8_t *rx, int length, HAL_SP
 }
 
 static void SPI_Init(uint8_t mode, uint8_t bitOrder) {
-    if (USE_SPI.isEnabled()) {
-        USE_SPI.end();
+    if (MY_SPI.isEnabled()) {
+        MY_SPI.end();
     }
 
-    USE_SPI.onSelect(SPI_On_Select);
-    USE_SPI.setBitOrder(bitOrder);
-    USE_SPI.setDataMode(mode);
+    MY_SPI.onSelect(SPI_On_Select);
+    MY_SPI.setBitOrder(bitOrder);
+    MY_SPI.setDataMode(mode);
 
-    USE_SPI.begin(SPI_MODE_SLAVE, USE_CS);
+    MY_SPI.begin(SPI_MODE_SLAVE, MY_CS);
 }
 
 test(SPI_Master_Slave_Slave_Transfer)
@@ -128,7 +234,7 @@ test(SPI_Master_Slave_Slave_Transfer)
         /* Receive up to TRANSFER_LENGTH_2 bytes */
         SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, TRANSFER_LENGTH_2, count % 2 == 0 ? &SPI_DMA_Completed_Callback : NULL);
         /* Check how many bytes we have received */
-        assertEqual(USE_SPI.available(), TRANSFER_LENGTH_1);
+        assertEqual(MY_SPI.available(), TRANSFER_LENGTH_1);
 
         // Serial.print("< ");
         // Serial.println((const char *)SPI_Slave_Rx_Buffer);
@@ -143,7 +249,7 @@ test(SPI_Master_Slave_Slave_Transfer)
             if (((switchMode >> 16) & 0xffff) == 0x8DC6) {
                 uint8_t mode = switchMode & 0xff;
                 uint8_t bitOrder = (switchMode >> 8) & 0xff;
-                
+
                 assertMoreOrEqual(mode, SPI_MODE0);
                 assertLessOrEqual(mode, SPI_MODE3);
 
@@ -168,7 +274,7 @@ test(SPI_Master_Slave_Slave_Transfer)
 
         SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, requestedLength, count % 2 == 0 ? &SPI_DMA_Completed_Callback : NULL);
         /* Check that we have transferred requestedLength bytes as requested */
-        assertEqual(USE_SPI.available(), requestedLength);
+        assertEqual(MY_SPI.available(), requestedLength);
 
         /* Just a sanity check that we received only 0xff */
         for (int i = 0; i < requestedLength; i++)
@@ -179,3 +285,5 @@ test(SPI_Master_Slave_Slave_Transfer)
         count++;
     }
 }
+
+#endif // #ifdef MY_SPI
