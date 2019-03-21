@@ -32,6 +32,7 @@
 #include "spark_wiring_flags.h"
 #include "ble_hal.h"
 #include "check.h"
+#include <memory>
 
 using spark::Vector;
 using particle::Flags;
@@ -211,26 +212,19 @@ public:
     size_t locate(uint8_t type, size_t* offset);
 };
 
-
+// BleCharacteristicImpl forward declaration
+class BleCharacteristicImpl;
 class BleCharacteristic {
 public:
     typedef void (*onDataReceivedCb)(const uint8_t* data, size_t len);
 
-    BleCharProps properties;
-    BleCharHandles attrHandles;
-    BleUuid uuid;
-    const char* description;
-
-    bool valid;
-    bool isLocal;
-    Vector<BleConnHandle> cccdOfServer;
-    bool cccdOfClient;
-    BleService* service;
-
     BleCharacteristic();
+    BleCharacteristic(const BleCharacteristic& characteristic);
     BleCharacteristic(const char* desc, BleCharProps properties, onDataReceivedCb cb = nullptr);
     BleCharacteristic(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, onDataReceivedCb cb = nullptr);
     ~BleCharacteristic();
+
+    BleCharacteristic& operator=(const BleCharacteristic&);
 
     size_t getValue(uint8_t* buf, size_t len) const;
     size_t getValue(String& str) const;
@@ -241,12 +235,12 @@ public:
         return getValue(reinterpret_cast<uint8_t*>(val), len);
     }
 
-    int setValue(const uint8_t* buf, size_t len);
-    int setValue(const String& str);
-    int setValue(const char* str);
+    size_t setValue(const uint8_t* buf, size_t len);
+    size_t setValue(const String& str);
+    size_t setValue(const char* str);
 
     template<typename T>
-    int setValue(T val) {
+    size_t setValue(T val) {
         uint8_t buf[BLE_MAX_CHAR_VALUE_LEN];
         size_t len = sizeof(T) > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : sizeof(T);
         for (size_t i = 0, j = len - 1; i < len; i++, j--) {
@@ -257,18 +251,12 @@ public:
 
     void onDataReceived(onDataReceivedCb callback);
 
-    void syncStub(void) const;
-
-    void processReceivedData(uint16_t attrHandle, const uint8_t* data, size_t len, const BlePeerDevice& peer);
+    BleCharacteristicImpl* stub(void) const {
+        return stub_.get();
+    }
 
 private:
-    static uint16_t defaultUuidCharCount_;
-
-    BleCharacteristic* stub_;
-    onDataReceivedCb dataCb_;
-
-    void init(void);
-    BleUuid generateDefaultCharUuid(void) const;
+    std::shared_ptr<BleCharacteristicImpl> stub_;
 };
 
 
@@ -287,10 +275,10 @@ public:
         return characteristics_.size();
     }
 
-    BleCharacteristic* findCharacteristic(const char* desc);
-    BleCharacteristic* findCharacteristic(uint16_t attrHandle);
-    BleCharacteristic* findCharacteristic(const BleUuid& charUuid);
-    BleCharacteristic* findCharacteristic(size_t i);
+    BleCharacteristic* getCharacteristic(const char* desc);
+    BleCharacteristic* getCharacteristic(uint16_t attrHandle);
+    BleCharacteristic* getCharacteristic(const BleUuid& charUuid);
+    BleCharacteristic* getCharacteristic(size_t i);
 
     int addCharacteristic(BleCharacteristic& characteristic);
 
@@ -310,17 +298,17 @@ public:
         return services_.size();
     }
 
-    BleService* findService(const BleUuid& svcUuid);
-    BleService* findService(size_t i);
+    BleService* getService(const BleUuid& svcUuid);
+    BleService* getService(size_t i);
 
     BleService* addService(const BleUuid& svcUuid);
 
     size_t characteristicCount(void) const;
 
     template <typename T>
-    BleCharacteristic* findCharacteristic(T& type) {
+    BleCharacteristic* getCharacteristic(T& type) {
         for (size_t i = 0; i < serviceCount(); i++) {
-            BleCharacteristic* characteristic = services_.at(i).findCharacteristic(type);
+            BleCharacteristic* characteristic = services_.at(i).getCharacteristic(type);
             if (characteristic != nullptr) {
                 return characteristic;
             }
