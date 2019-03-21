@@ -23,6 +23,7 @@
 
 #include "device_code.h"
 #include "logging.h"
+#include <memory>
 
 LOG_SOURCE_CATEGORY("wiring.ble")
 
@@ -35,7 +36,13 @@ const uint8_t BLE_CTRL_REQ_SVC_UUID[BLE_SIG_UUID_128BIT_LEN] = {
     0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x01, 0x00, 0xa9, 0x6f
 };
 
+const char* BLE_CTRL_REQ_SVC_UUID_STR = "6fa90001-5c4e-48a8-94f4-8030546f36fc";
+
 void convertToHalUuid(const BleUuid& uuid, hal_ble_uuid_t* halUuid) {
+    if (halUuid == nullptr) {
+        return;
+    }
+
     if (uuid.type() == BleUuidType::SHORT) {
         halUuid->type = BLE_UUID_TYPE_16BIT;
         halUuid->uuid16 = uuid.shortUuid();
@@ -60,8 +67,13 @@ BleUuid::BleUuid() : type_(BleUuidType::SHORT), order_(BleUuidOrder::LSB), short
 }
 
 BleUuid::BleUuid(const uint8_t* uuid128, BleUuidOrder order) : order_(order), shortUuid_(0x0000) {
+    if (uuid128 == nullptr) {
+        memcpy(fullUuid_, PARTICLE_BLE::BLE_USER_DEFAULT_SVC_UUID, BLE_SIG_UUID_128BIT_LEN);
+    }
+    else {
+        memcpy(fullUuid_, uuid128, BLE_SIG_UUID_128BIT_LEN);
+    }
     type_ = BleUuidType::LONG;
-    memcpy(fullUuid_, uuid128, BLE_SIG_UUID_128BIT_LEN);
 }
 
 BleUuid::BleUuid(uint16_t uuid16, BleUuidOrder order) : order_(order), shortUuid_(uuid16) {
@@ -71,7 +83,12 @@ BleUuid::BleUuid(uint16_t uuid16, BleUuidOrder order) : order_(order), shortUuid
 
 BleUuid::BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order) : order_(order), shortUuid_(0x0000) {
     type_ = BleUuidType::LONG;
-    memcpy(fullUuid_, uuid128, BLE_SIG_UUID_128BIT_LEN);
+    if (uuid128 == nullptr) {
+        memcpy(fullUuid_, PARTICLE_BLE::BLE_USER_DEFAULT_SVC_UUID, BLE_SIG_UUID_128BIT_LEN);
+    }
+    else {
+        memcpy(fullUuid_, uuid128, BLE_SIG_UUID_128BIT_LEN);
+    }
     if (order == BleUuidOrder::LSB) {
         fullUuid_[12] = (uint8_t)(uuid16 & 0x00FF);
         fullUuid_[13] = (uint8_t)((uuid16 >> 8) & 0x00FF);
@@ -87,8 +104,14 @@ BleUuid::BleUuid(const String& str) : type_(BleUuidType::LONG), order_(BleUuidOr
 }
 
 BleUuid::BleUuid(const char* string) : type_(BleUuidType::LONG), order_(BleUuidOrder::LSB), shortUuid_(0x0000) {
-    String str(string);
-    setUuid(str);
+    if (string == nullptr) {
+        String str(BLE_CTRL_REQ_SVC_UUID_STR);
+        setUuid(str);
+    }
+    else {
+        String str(string);
+        setUuid(str);
+    }
 }
 
 BleUuid::~BleUuid() {
@@ -153,6 +176,10 @@ BleAdvData::~BleAdvData() {
 }
 
 size_t BleAdvData::locate(uint8_t type, size_t* offset) {
+    if (offset == nullptr) {
+        return 0;
+    }
+
     size_t adsLen;
     for (size_t i = 0; (i + 3) <= len; i = i) {
         adsLen = data[i];
@@ -192,6 +219,10 @@ size_t BleAdvData::fetch(uint8_t type, uint8_t* buf, size_t len) {
 }
 
 bool BleAdvData::contain(uint8_t type, const uint8_t* buf, size_t len) {
+    if (buf == nullptr) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
     uint8_t temp[BLE_MAX_ADV_DATA_LEN];
     size_t tempLen = fetch(type, temp, sizeof(temp));
     if (tempLen > 0) {
@@ -206,34 +237,196 @@ bool BleAdvData::contain(uint8_t type) {
 
 
 /**
- * BleCharacteristic class
+ * BleCharacteristicImpl definition
  */
-uint16_t BleCharacteristic::defaultUuidCharCount_ = 0;
+class BleCharacteristicImpl {
+public:
+    BleCharProps properties;
+    BleCharHandles attrHandles;
+    BleUuid uuid;
+    const char* description;
+    bool valid;
+    bool isLocal;
+    Vector<BleConnHandle> cccdOfServer;
+    bool cccdOfClient;
+    BleConnHandle connHandle;
+    BleService* service;
+    BleCharacteristic::onDataReceivedCb dataCb;
 
-BleCharacteristic::BleCharacteristic() : properties(PROPERTY::NONE), description(nullptr), dataCb_(nullptr) {
+    BleCharacteristicImpl();
+    ~BleCharacteristicImpl();
+
+    size_t getValue(uint8_t* buf, size_t len) const;
+    size_t setValue(const uint8_t* buf, size_t len);
+    void configureCccd(BleConnHandle handle, uint8_t enable);
+    void processReceivedData(uint16_t attrHandle, const uint8_t* data, size_t len, const BlePeerDevice& peer);
+
+private:
+    static uint16_t defaultUuidCharCount_;
+
+    void init(void);
+    void generateDefaultCharUuid(void);
+};
+
+uint16_t BleCharacteristicImpl::defaultUuidCharCount_ = 0;
+
+BleCharacteristicImpl::BleCharacteristicImpl() {
+    defaultUuidCharCount_++;
     init();
 }
 
+BleCharacteristicImpl::~BleCharacteristicImpl() {
+    defaultUuidCharCount_--;
+}
+
+size_t BleCharacteristicImpl::getValue(uint8_t* buf, size_t len) const {
+    if (!valid || buf == nullptr) {
+        return 0;
+    }
+
+    uint16_t readLen = len > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : len;
+    int ret;
+    if (isLocal) {
+        ret = ble_gatt_server_get_characteristic_value(attrHandles.value_handle, buf, &readLen, nullptr);
+    }
+    else {
+        ret = ble_gatt_client_read(connHandle, attrHandles.value_handle, buf, &readLen, nullptr);
+    }
+
+    if (ret == SYSTEM_ERROR_NONE) {
+        return readLen;
+    }
+    return 0;
+}
+
+size_t BleCharacteristicImpl::setValue(const uint8_t* buf, size_t len) {
+    if (!valid || buf == nullptr) {
+        return 0;
+    }
+
+    len = len > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : len;
+    int ret = SYSTEM_ERROR_INVALID_STATE;
+    if (isLocal) {
+        ret = ble_gatt_server_set_characteristic_value(attrHandles.value_handle, buf, len, nullptr);
+        if (ret != SYSTEM_ERROR_NONE) {
+            return 0;
+        }
+        size_t count = cccdOfServer.size();
+        for (size_t i = 0; i < count; i++) {
+            if (properties & PROPERTY::NOTIFY) {
+                ret = ble_gatt_server_notify_characteristic_value(cccdOfServer.at(i), attrHandles.value_handle, buf, len, nullptr);
+            }
+            else if (properties & PROPERTY::INDICATE) {
+                ret = ble_gatt_server_indicate_characteristic_value(cccdOfServer.at(i), attrHandles.value_handle, buf, len, nullptr);
+            }
+            if (ret != SYSTEM_ERROR_NONE) {
+                return 0;
+            }
+        }
+    }
+    else {
+        if (properties & PROPERTY::WRITE) {
+            ret = ble_gatt_client_write_with_response(connHandle, attrHandles.value_handle, buf, len, nullptr);
+        }
+        else if (properties & PROPERTY::WRITE_WO_RSP) {
+            ret = ble_gatt_client_write_without_response(connHandle, attrHandles.value_handle, buf, len, nullptr);
+        }
+        if (ret != SYSTEM_ERROR_NONE) {
+            return 0;
+        }
+    }
+    return len;
+}
+
+void BleCharacteristicImpl::processReceivedData(uint16_t attrHandle, const uint8_t* data, size_t len, const BlePeerDevice& peer) {
+    if (data == nullptr) {
+        return;
+    }
+
+    if (isLocal) {
+        if (attrHandle == attrHandles.cccd_handle) {
+            LOG_DEBUG(TRACE, "Configure CCCD: 0x%02x%02x", data[0],data[1]);
+            configureCccd(peer.connHandle, data[0]);
+        }
+    }
+    if (attrHandle == attrHandles.value_handle) {
+        if (dataCb != nullptr) {
+            dataCb(data, len);
+        }
+    }
+}
+
+void BleCharacteristicImpl::init(void) {
+    properties = PROPERTY::NONE;
+    description = nullptr;
+    valid = false;
+    isLocal = false;
+    cccdOfClient = false;
+    connHandle = BLE_INVALID_CONN_HANDLE;
+    service = nullptr;
+    dataCb = nullptr;
+    generateDefaultCharUuid();
+}
+
+void BleCharacteristicImpl::generateDefaultCharUuid(void) {
+    uint8_t uuid[BLE_SIG_UUID_128BIT_LEN];
+    memcpy(uuid, PARTICLE_BLE::BLE_USER_DEFAULT_SVC_UUID, BLE_SIG_UUID_128BIT_LEN);
+    uuid[12] = (uint8_t)(defaultUuidCharCount_ & 0x00FF);
+    uuid[13] = (uint8_t)((defaultUuidCharCount_ >> 8) & 0x00FF);
+
+    BleUuid charUuid(uuid);
+    this->uuid = charUuid;
+}
+
+void BleCharacteristicImpl::configureCccd(BleConnHandle handle, uint8_t enable) {
+    if (isLocal) {
+        if (enable) {
+            cccdOfServer.append(handle);
+        }
+        else {
+            cccdOfServer.removeAll(handle);
+        }
+        LOG_DEBUG(TRACE, "CCCD configured count: %d", cccdOfServer.size());
+    }
+    else {
+        // Gatt Client configure peer CCCD.
+    }
+}
+
+
+/**
+ * BleCharacteristic class
+ */
+BleCharacteristic::BleCharacteristic()
+    : stub_(std::make_shared<BleCharacteristicImpl>()) {
+}
+
+BleCharacteristic::BleCharacteristic(const BleCharacteristic& characteristic)
+    : stub_(characteristic.stub_) {
+}
+
 BleCharacteristic::BleCharacteristic(const char* desc, BleCharProps properties, onDataReceivedCb cb)
-        : properties(properties), description(desc), dataCb_(cb) {
-    init();
+    : stub_(std::make_shared<BleCharacteristicImpl>()) {
+    stub_->description = desc;
+    stub_->properties = properties;
+    stub_->dataCb = cb;
 
     BleUuid svcUuid(PARTICLE_BLE::BLE_USER_DEFAULT_SVC_UUID);
     BleService* service = BleLocalDevice::getInstance()->addService(svcUuid);
     if (service != nullptr) {
-        stub_ = this;
-        uuid = generateDefaultCharUuid();
         service->addCharacteristic(*this);
     }
 }
 
 BleCharacteristic::BleCharacteristic(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, onDataReceivedCb cb)
-        : properties(properties), uuid(charUuid), description(desc), dataCb_(cb) {
-    init();
+    : stub_(std::make_shared<BleCharacteristicImpl>()) {
+    stub_->description = desc;
+    stub_->properties = properties;
+    stub_->uuid = charUuid;
+    stub_->dataCb = cb;
 
     BleService* service = BleLocalDevice::getInstance()->addService(svcUuid);
     if (service != nullptr) {
-        stub_ = this;
         service->addCharacteristic(*this);
     }
 }
@@ -242,41 +435,25 @@ BleCharacteristic::~BleCharacteristic() {
 
 }
 
-void BleCharacteristic::init(void) {
-    valid = false;
-    stub_ = nullptr;
+BleCharacteristic& BleCharacteristic::operator=(const BleCharacteristic& characteristic) {
+    stub_ = characteristic.stub_;
+    return *this;
 }
 
-int BleCharacteristic::setValue(const uint8_t* buf, size_t len) {
-    if (!valid) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    if (isLocal) {
-        return BleGattServer::write(*this, buf, len);
-    }
-    else {
-        return BleGattClient::write(*this, buf, len);
-    }
+size_t BleCharacteristic::setValue(const uint8_t* buf, size_t len) {
+    return stub_->setValue(buf, len);
 }
 
-int BleCharacteristic::setValue(const String& str) {
+size_t BleCharacteristic::setValue(const String& str) {
     return setValue(reinterpret_cast<const uint8_t*>(str.c_str()), str.length());
 }
 
-int BleCharacteristic::setValue(const char* str) {
+size_t BleCharacteristic::setValue(const char* str) {
     return setValue(reinterpret_cast<const uint8_t*>(str), strlen(str));
 }
 
 size_t BleCharacteristic::getValue(uint8_t* buf, size_t len) const {
-    if (!valid) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    if (isLocal) {
-        return BleGattServer::read(*this, buf, len);
-    }
-    else {
-        return BleGattClient::read(*this, buf, len);
-    }
+    return stub_->getValue(buf, len);
 }
 
 size_t BleCharacteristic::getValue(String& str) const {
@@ -284,46 +461,7 @@ size_t BleCharacteristic::getValue(String& str) const {
 }
 
 void BleCharacteristic::onDataReceived(onDataReceivedCb callback) {
-    if (callback != nullptr) {
-        dataCb_ = callback;
-    }
-}
-
-void BleCharacteristic::syncStub(void) const {
-    if (stub_ != nullptr) {
-        *stub_ = *this;
-    }
-}
-
-BleUuid BleCharacteristic::generateDefaultCharUuid(void) const {
-    defaultUuidCharCount_++;
-    uint8_t uuid[BLE_SIG_UUID_128BIT_LEN];
-    memcpy(uuid, PARTICLE_BLE::BLE_USER_DEFAULT_SVC_UUID, BLE_SIG_UUID_128BIT_LEN);
-    uuid[12] = (uint8_t)(defaultUuidCharCount_ & 0x00FF);
-    uuid[13] = (uint8_t)((defaultUuidCharCount_ >> 8) & 0x00FF);
-
-    BleUuid charUuid(uuid);
-    return charUuid;
-}
-
-void BleCharacteristic::processReceivedData(uint16_t attrHandle, const uint8_t* data, size_t len, const BlePeerDevice& peer) {
-    if (isLocal) {
-        if (attrHandle == attrHandles.cccd_handle) {
-            if (data[0] > 0) {
-                LOG(TRACE, "Configure CCCD: 0x%02x%02x", data[0],data[1]);
-                cccdOfServer.append(peer.connHandle);
-            }
-            else {
-                cccdOfServer.removeAll(peer.connHandle);
-            }
-            syncStub();
-        }
-    }
-    if (attrHandle == attrHandles.value_handle) {
-        if (dataCb_ != nullptr) {
-            dataCb_(data, len);
-        }
-    }
+    stub_->dataCb = callback;
 }
 
 
@@ -338,41 +476,41 @@ BleService::~BleService() {
 
 }
 
-BleCharacteristic* BleService::findCharacteristic(const char* desc) {
+BleCharacteristic* BleService::getCharacteristic(const char* desc) {
     for (size_t i = 0; i < characteristicCount(); i++) {
         BleCharacteristic& characteristic = characteristics_.at(i);
-        if (!strcmp(characteristic.description, desc)) {
+        if (!strcmp(characteristic.stub()->description, desc)) {
             return &characteristic;
         }
     }
     return nullptr;
 }
 
-BleCharacteristic* BleService::findCharacteristic(uint16_t attrHandle) {
+BleCharacteristic* BleService::getCharacteristic(uint16_t attrHandle) {
     for (size_t i = 0; i < characteristicCount(); i++) {
         BleCharacteristic& characteristic = characteristics_.at(i);
-        if (   characteristic.attrHandles.decl_handle == attrHandle
-            || characteristic.attrHandles.value_handle == attrHandle
-            || characteristic.attrHandles.user_desc_handle == attrHandle
-            || characteristic.attrHandles.cccd_handle == attrHandle
-            || characteristic.attrHandles.sccd_handle == attrHandle) {
+        if (   characteristic.stub()->attrHandles.decl_handle == attrHandle
+            || characteristic.stub()->attrHandles.value_handle == attrHandle
+            || characteristic.stub()->attrHandles.user_desc_handle == attrHandle
+            || characteristic.stub()->attrHandles.cccd_handle == attrHandle
+            || characteristic.stub()->attrHandles.sccd_handle == attrHandle) {
             return &characteristic;
         }
     }
     return nullptr;
 }
 
-BleCharacteristic* BleService::findCharacteristic(const BleUuid& charUuid) {
+BleCharacteristic* BleService::getCharacteristic(const BleUuid& charUuid) {
     for (size_t i = 0; i < characteristicCount(); i++) {
         BleCharacteristic& characteristic = characteristics_.at(i);
-        if (characteristic.uuid == charUuid) {
+        if (characteristic.stub()->uuid == charUuid) {
             return &characteristic;
         }
     }
     return nullptr;
 }
 
-BleCharacteristic* BleService::findCharacteristic(size_t i) {
+BleCharacteristic* BleService::getCharacteristic(size_t i) {
     if (i >= characteristicCount()) {
         return nullptr;
     }
@@ -380,9 +518,9 @@ BleCharacteristic* BleService::findCharacteristic(size_t i) {
 }
 
 int BleService::addCharacteristic(BleCharacteristic& characteristic) {
-    BleCharacteristic* charPtr = findCharacteristic(characteristic.uuid);
+    BleCharacteristic* charPtr = getCharacteristic(characteristic.stub()->uuid);
     if (charPtr == nullptr) {
-        characteristic.service = this;
+        characteristic.stub()->service = this;
         if (characteristics_.append(characteristic)) {
             return SYSTEM_ERROR_NONE;
         }
@@ -403,7 +541,7 @@ BleGattServer::~BleGattServer() {
 
 }
 
-BleService* BleGattServer::findService(const BleUuid& svcUuid) {
+BleService* BleGattServer::getService(const BleUuid& svcUuid) {
     for (size_t i = 0; i < serviceCount(); i++) {
         BleService& service = services_.at(i);
         if (service.uuid == svcUuid) {
@@ -413,7 +551,7 @@ BleService* BleGattServer::findService(const BleUuid& svcUuid) {
     return nullptr;
 }
 
-BleService* BleGattServer::findService(size_t i) {
+BleService* BleGattServer::getService(size_t i) {
     if (i >= serviceCount()) {
         return nullptr;
     }
@@ -421,7 +559,7 @@ BleService* BleGattServer::findService(size_t i) {
 }
 
 BleService* BleGattServer::addService(const BleUuid& svcUuid) {
-    BleService* svcPtr = findService(svcUuid);
+    BleService* svcPtr = getService(svcUuid);
     if (svcPtr == nullptr) {
         BleService service;
         service.uuid = svcUuid;
@@ -448,37 +586,12 @@ int BleGattServer::addCharacteristic(BleService& service, BleCharacteristic& cha
     return service.addCharacteristic(characteristic);
 }
 
-int BleGattServer::write(const BleCharacteristic& characteristic, const uint8_t* buf, size_t len) {
-    size_t writeLen = len > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : len;
-
-    ble_gatt_server_set_characteristic_value(characteristic.attrHandles.value_handle, buf, writeLen, nullptr);
-
-    size_t count = characteristic.cccdOfServer.size();
-    for (size_t i = 0; i < count; i++) {
-        if (characteristic.properties & PROPERTY::NOTIFY) {
-            return ble_gatt_server_notify_characteristic_value( characteristic.cccdOfServer.at(i),
-                    characteristic.attrHandles.value_handle, buf, writeLen, nullptr);
-        }
-        else if (characteristic.properties & PROPERTY::INDICATE) {
-            return ble_gatt_server_indicate_characteristic_value( characteristic.cccdOfServer.at(i),
-                    characteristic.attrHandles.value_handle, buf, writeLen, nullptr);
-        }
-    }
-    return SYSTEM_ERROR_NONE;
-}
-
-int BleGattServer::read(const BleCharacteristic& characteristic, uint8_t* buf, size_t len) {
-    uint16_t readLen = len > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : len;
-    ble_gatt_server_get_characteristic_value(characteristic.attrHandles.value_handle, buf, &readLen, nullptr);
-    return readLen;
-}
-
 void BleGattServer::finalizeLocalGattServer(void) {
     size_t svcCount = serviceCount();
     LOG_DEBUG(TRACE, "Total local service: %d", svcCount);
 
     for (size_t i = 0; i < svcCount; i++) {
-        BleService* service = findService(i);
+        BleService* service = getService(i);
         if (service != nullptr) {
             // Add service
             hal_ble_uuid_t halUuid;
@@ -488,21 +601,20 @@ void BleGattServer::finalizeLocalGattServer(void) {
             // Add Characteristics
             size_t count = service->characteristicCount();
             for (size_t j = 0; j < count; j++) {
-                BleCharacteristic* characteristic = service->findCharacteristic(j);
+                BleCharacteristic* characteristic = service->getCharacteristic(j);
                 if (characteristic != nullptr) {
                     hal_ble_char_init_t char_init;
                     memset(&char_init, 0x00, sizeof(hal_ble_char_init_t));
 
-                    convertToHalUuid(characteristic->uuid, &char_init.uuid);
-                    char_init.properties = static_cast<uint8_t>(characteristic->properties);
+                    convertToHalUuid(characteristic->stub()->uuid, &char_init.uuid);
+                    char_init.properties = static_cast<uint8_t>(characteristic->stub()->properties);
                     char_init.service_handle = service->startHandle;
-                    char_init.description = characteristic->description;
+                    char_init.description = characteristic->stub()->description;
 
-                    ble_gatt_server_add_characteristic(&char_init, &characteristic->attrHandles, NULL);
+                    ble_gatt_server_add_characteristic(&char_init, &characteristic->stub()->attrHandles, NULL);
 
-                    characteristic->isLocal = true;
-                    characteristic->valid = true;
-                    characteristic->syncStub();
+                    characteristic->stub()->isLocal = true;
+                    characteristic->stub()->valid = true;
                 }
             }
         }
@@ -510,16 +622,23 @@ void BleGattServer::finalizeLocalGattServer(void) {
 }
 
 void BleGattServer::gattServerProcessDataWritten(uint16_t attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer) {
-    BleCharacteristic* characteristic = findCharacteristic(attrHandle);
+    BleCharacteristic* characteristic = getCharacteristic(attrHandle);
     if (characteristic != nullptr) {
-        characteristic->processReceivedData(attrHandle, buf, len, peer);
+        characteristic->stub()->processReceivedData(attrHandle, buf, len, peer);
     }
 }
 
 void BleGattServer::gattServerProcessDisconnected(const BlePeerDevice& peer) {
-    for (size_t i = 0; i < characteristicCount(); i++) {
-        BleCharacteristic* characteristic = findCharacteristic(i);
-        characteristic->cccdOfServer.removeAll(peer.connHandle);
+    for (size_t i = 0; i < serviceCount(); i++) {
+        BleService* service = getService(i);
+        if (service != nullptr) {
+            for (size_t j = 0; j < service->characteristicCount(); j++) {
+                BleCharacteristic* characteristic = service->getCharacteristic(j);
+                if (characteristic != nullptr) {
+                    characteristic->stub()->configureCccd(peer.connHandle, false);
+                }
+            }
+        }
     }
 }
 
@@ -535,29 +654,10 @@ BleGattClient::~BleGattClient() {
 
 }
 
-int BleGattClient::write(const BleCharacteristic& characteristic, const uint8_t* buf, size_t len) {
-    size_t writeLen = len > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : len;
-    if (characteristic.properties & PROPERTY::INDICATE) {
-        return ble_gatt_client_write_with_response( static_cast<BlePeerDevice*>(characteristic.service->server->device)->connHandle,
-                characteristic.attrHandles.value_handle, buf, writeLen, nullptr);
-    }
-    else {
-        return ble_gatt_client_write_without_response( static_cast<BlePeerDevice*>(characteristic.service->server->device)->connHandle,
-                characteristic.attrHandles.value_handle, buf, writeLen, nullptr);
-    }
-}
-
-int BleGattClient::read(const BleCharacteristic& characteristic, uint8_t* buf, size_t len) {
-    uint16_t readLen = len > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : len;
-    ble_gatt_client_read( static_cast<BlePeerDevice*>(characteristic.service->server->device)->connHandle,
-            characteristic.attrHandles.value_handle, buf, &readLen, nullptr);
-    return readLen;
-}
-
 void BleGattClient::gattClientProcessDataNotified(uint16_t attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer) {
-    BleCharacteristic* characteristic = peer.findCharacteristic(attrHandle);
+    BleCharacteristic* characteristic = peer.getCharacteristic(attrHandle);
     if (characteristic != nullptr) {
-        characteristic->processReceivedData(attrHandle, buf, len, peer);
+        characteristic->stub()->processReceivedData(attrHandle, buf, len, peer);
     }
 }
 
@@ -606,6 +706,10 @@ int BleBroadcaster::advDataBeacon(const iBeacon& beacon) {
 }
 
 int BleBroadcaster::append(uint8_t type, const uint8_t* buf, size_t len, BleAdvData& advData) {
+    if (buf == nullptr) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
     size_t offset;
     size_t adsLen = advData.locate(type, &offset);
 
@@ -1124,7 +1228,7 @@ void BleLocalDevice::onBleEvents(hal_ble_evts_t *event, void* context) {
         } break;
 
         case BLE_EVT_DATA_WRITTEN: {
-            LOG(TRACE, "onDataReceived: %d, %d", event->params.data_rec.conn_handle, event->params.data_rec.attr_handle);
+            LOG_DEBUG(TRACE, "onDataWritten, connection: %d, attribute: %d", event->params.data_rec.conn_handle, event->params.data_rec.attr_handle);
 
             BlePeerDevice* peer = bleInstance->findPeerDevice(event->params.data_rec.conn_handle);
             if (peer != nullptr) {
@@ -1134,7 +1238,7 @@ void BleLocalDevice::onBleEvents(hal_ble_evts_t *event, void* context) {
         } break;
 
         case BLE_EVT_DATA_NOTIFIED: {
-            LOG(TRACE, "onDataNotified: %d, %d", event->params.data_rec.conn_handle, event->params.data_rec.attr_handle);
+            LOG_DEBUG(TRACE, "onDataNotified, connection: %d, attribute: %d", event->params.data_rec.conn_handle, event->params.data_rec.attr_handle);
 
             BlePeerDevice* peer = bleInstance->findPeerDevice(event->params.data_rec.conn_handle);
             if (peer != nullptr) {
