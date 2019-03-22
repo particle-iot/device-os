@@ -842,64 +842,80 @@ int SparkProtocol::build_post_description(unsigned char *buf, int desc_flags) {
 int SparkProtocol::build_describe_message(unsigned char *buf, unsigned char offset, int desc_flags)
 {
     BufferAppender appender(buf+offset, QUEUE_SIZE-(offset + 2));
-    appender.append("{");
-    bool has_content = false;
-
-    if (desc_flags & DESCRIBE_APPLICATION) {
-        has_content = true;
-      appender.append("\"f\":[");
-
-      int num_keys = descriptor.num_functions();
-      int i;
-      for (i = 0; i < num_keys; ++i)
-      {
-        if (i)
-        {
-            appender.append(',');
-        }
-        appender.append('"');
-
-        const char* key = descriptor.get_function_key(i);
-        size_t function_name_length = strlen(key);
-        if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
-        {
-          function_name_length = MAX_FUNCTION_KEY_LENGTH;
-        }
-        appender.append((const uint8_t*)key, function_name_length);
-        appender.append('"');
-      }
-
-      appender.append("],\"v\":{");
-
-      num_keys = descriptor.num_variables();
-      for (i = 0; i < num_keys; ++i)
-      {
-        if (i)
-        {
-            appender.append(',');
-        }
-        appender.append('"');
-        const char* key = descriptor.get_variable_key(i);
-        size_t variable_name_length = strlen(key);
-        SparkReturnType::Enum t = descriptor.variable_type(key);
-        if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
-        {
-          variable_name_length = MAX_VARIABLE_KEY_LENGTH;
-        }
-        appender.append((const uint8_t*)key, variable_name_length);
-        appender.append("\":");
-        appender.append('0' + (char)t);
-      }
-      appender.append('}');
+    // diagnostics must be requested in isolation to be a binary packet
+    if (descriptor.append_metrics && (desc_flags == DESCRIBE_METRICS))
+    {
+        appender.append(char(0));	// null byte means binary data
+        appender.append(char(DESCRIBE_METRICS)); 	// uint16 describes the type of binary packet
+        appender.append(char(0));	//
+        const int flags = 1;		// binary
+        const int page = 0;
+        descriptor.append_metrics(append_instance, &appender, flags, page, nullptr);
     }
+    else
+    {
+        appender.append("{");
+        bool has_content = false;
 
-    if (descriptor.append_system_info && (desc_flags & DESCRIBE_SYSTEM)) {
-      if (has_content)
-        appender.append(',');
-      descriptor.append_system_info(append_instance, &appender, NULL);
+        if (desc_flags & DESCRIBE_APPLICATION)
+        {
+            has_content = true;
+            appender.append("\"f\":[");
+
+            int num_keys = descriptor.num_functions();
+            int i;
+            for (i = 0; i < num_keys; ++i)
+            {
+                if (i)
+                {
+                    appender.append(',');
+                }
+                appender.append('"');
+
+                const char* key = descriptor.get_function_key(i);
+                size_t function_name_length = strlen(key);
+                if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
+                {
+                    function_name_length = MAX_FUNCTION_KEY_LENGTH;
+                }
+                appender.append((const uint8_t*)key, function_name_length);
+                appender.append('"');
+            }
+
+            appender.append("],\"v\":{");
+
+            num_keys = descriptor.num_variables();
+            for (i = 0; i < num_keys; ++i)
+            {
+                if (i)
+                {
+                    appender.append(',');
+                }
+                appender.append('"');
+                const char* key = descriptor.get_variable_key(i);
+                size_t variable_name_length = strlen(key);
+                SparkReturnType::Enum t = descriptor.variable_type(key);
+                if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
+                {
+                    variable_name_length = MAX_VARIABLE_KEY_LENGTH;
+                }
+                appender.append((const uint8_t*)key, variable_name_length);
+                appender.append("\":");
+                appender.append('0' + (char)t);
+            }
+            appender.append('}');
+        }
+
+        if (descriptor.append_system_info && (desc_flags & DESCRIBE_SYSTEM))
+        {
+            if (has_content)
+            {
+                appender.append(',');
+            }
+            descriptor.append_system_info(append_instance, &appender, NULL);
+        }
+        appender.append('}');
     }
-    appender.append('}');
-
     int msglen = appender.next() - (uint8_t *)buf;
 
 
@@ -1506,19 +1522,24 @@ void SparkProtocol::handle_event(msg& message)
   }
 }
 
-/**
- * Produces and transmits (POST) a describe message.
- * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION), {@code DESCRIBE_SYSTEM), {@code DESCRIBE_METRICS} flags.
- */
-bool SparkProtocol::post_description(int desc_flags)
+ProtocolError SparkProtocol::post_description(int desc_flags)
 {
+    ProtocolError result;
+
     int desc_len = build_post_description(queue + 2, desc_flags);
     queue[0] = ((desc_len >> 8) & 0xff);
     queue[1] = (desc_len & 0xff);
     LOG(INFO,"Sending %s%s%s describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
                                                 desc_flags & DESCRIBE_APPLICATION ? "A" : "",
                                                 desc_flags & DESCRIBE_METRICS ? "M" : "");
-    return blocking_send(queue, desc_len + 2)>=0;
+    // Generate a valid return code
+    if ( 0 >= blocking_send(queue, desc_len + 2) ) {
+        result = particle::protocol::IO_ERROR_GENERIC_SEND;
+    } else {
+        result = particle::protocol::NO_ERROR;
+    }
+
+    return result;
 }
 
 bool SparkProtocol::send_description(int description_flags, msg& message)

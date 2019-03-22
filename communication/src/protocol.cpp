@@ -501,7 +501,9 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
 		if (descriptor.append_system_info && (desc_flags & DESCRIBE_SYSTEM))
 		{
 			if (has_content)
+			{
 				appender.append(',');
+			}
 			has_content = true;
 			descriptor.append_system_info(append_instance, &appender, nullptr);
 		}
@@ -509,14 +511,8 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
 	}
 }
 
-/**
- * Produces and transmits (POST) a describe message.
- * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
- */
-bool Protocol::post_description(int desc_flags)
+ProtocolError Protocol::post_description(int desc_flags)
 {
-	bool result;
-
 	Message message;
 	channel.create(message);
 	const size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), 0, (desc_flags & 0xFF));
@@ -556,13 +552,11 @@ bool Protocol::post_description(int desc_flags)
 			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
 		}
 		this->channel.command(Channel::LOAD_SESSION);
-		result = false;
 	} else {
 		LOG(ERROR, "Channel failed to send message with error-code <%d>", error);
-		result = true;
 	}
 
-	return result;
+	return error;
 }
 
 /**

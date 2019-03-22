@@ -81,7 +81,7 @@ DYNALIB_FN(BASE_IDX2 + 4, communication, spark_protocol_mesh_command, int(Protoc
 #endif // HAL_PLATFORM_MESH
 
 DYNALIB_FN(BASE_IDX3 + 0, communication, spark_protocol_get_describe_data, int(ProtocolFacade*, spark_protocol_describe_data*, void*))
-DYNALIB_FN(BASE_IDX3 + 1, communication, spark_protocol_send_description, bool(ProtocolFacade*, int, void*))
+DYNALIB_FN(BASE_IDX3 + 1, communication, spark_protocol_post_description, int(ProtocolFacade*, int, void*))
 
 DYNALIB_END(communication)
 
