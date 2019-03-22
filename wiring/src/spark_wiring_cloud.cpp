@@ -1,20 +1,11 @@
 #include "spark_wiring_cloud.h"
 
 #include <functional>
-#include "spark_wiring_cloud_publish_vitals.h"
 #include "system_cloud.h"
-
-#if PLATFORM_ID != 0  // CORE
-  #include "spark_wiring_timer.h"
-#endif
-
-const size_t CloudClass::PUBLISH_VITALS_DISABLE = 0;
-const size_t CloudClass::PUBLISH_VITALS_NOW = static_cast<size_t>(-1);
 
 namespace {
 
 using namespace particle;
-using namespace particle::wiring::cloud;
 
 #ifndef SPARK_NO_CLOUD
 void publishCompletionCallback(int error, const void* data, void* callbackData, void* reserved) {
@@ -25,14 +16,6 @@ void publishCompletionCallback(int error, const void* data, void* callbackData, 
         p.setResult(true);
     }
 }
-#endif
-
-#if PLATFORM_ID == 0  // CORE
-  NullTimer vitals_timer;
-  VitalsPublisher<std::function<bool(void)>, NullTimer> _vitals(std::bind(spark_send_description, nullptr), vitals_timer);
-#else
-  Timer vitals_timer(std::numeric_limits<unsigned>::max(), [](){ spark_send_description(); }, false);
-  VitalsPublisher<std::function<bool(void)>, Timer> _vitals(std::bind(spark_send_description, nullptr), vitals_timer);
 #endif
 
 } // namespace
@@ -89,23 +72,5 @@ Future<bool> CloudClass::publish_event(const char *eventName, const char *eventD
 }
 
 int CloudClass::publishVitals(size_t period_s_) {
-    int result;
-
-    switch (period_s_) {
-      case PUBLISH_VITALS_NOW:
-        result = _vitals.publish();
-#if PLATFORM_ID != 0
-        break;
-      case 0:
-        _vitals.disablePeriodicPublish();
-        result = _vitals.publish();
-        break;
-      default:
-        _vitals.period(period_s_);
-        _vitals.enablePeriodicPublish();
-        result = _vitals.publish();
-#endif
-    }
-
-    return result;
+    return spark_publish_vitals(period_s_);
 }
