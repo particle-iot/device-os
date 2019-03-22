@@ -117,10 +117,10 @@ int spark_protocol_presence_announcement(ProtocolFacade* protocol, uint8_t *buf,
     return protocol->presence_announcement(buf, id);
 }
 
-bool spark_protocol_send_description(ProtocolFacade* protocol, int desc_flags, void* reserved) {
+int spark_protocol_post_description(ProtocolFacade* protocol, int desc_flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
     (void)reserved;
-    return protocol->post_description(desc_flags);
+    return toSystemError(protocol->post_description(desc_flags));
 }
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
@@ -269,10 +269,10 @@ int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char 
     return protocol->presence_announcement(buf, id);
 }
 
-bool spark_protocol_send_description(SparkProtocol* protocol, int desc_flags, void* reserved) {
+int spark_protocol_post_description(SparkProtocol* protocol, int desc_flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
     (void)reserved;
-    return protocol->post_description(desc_flags);
+    return toSystemError(protocol->post_description(desc_flags));
 }
 
 bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, const char *data,

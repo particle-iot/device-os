@@ -44,6 +44,10 @@ typedef enum
 	CLOUD_VAR_BOOLEAN = 1, CLOUD_VAR_INT = 2, CLOUD_VAR_STRING = 4, CLOUD_VAR_DOUBLE = 9
 } Spark_Data_TypeDef;
 
+namespace particle {
+    static const size_t PUBLISH_VITALS_NOW = static_cast<size_t>(-1);
+}
+
 struct CloudVariableTypeBase {};
 struct CloudVariableTypeBool : public CloudVariableTypeBase {
     using vartype = bool;
@@ -177,7 +181,7 @@ typedef struct {
     void* handler_data;
 } spark_send_event_data;
 
-bool spark_send_description(void *reserved = nullptr);
+int spark_publish_vitals(size_t period_s, void *reserved = nullptr);
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);

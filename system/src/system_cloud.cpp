@@ -25,9 +25,13 @@
  ******************************************************************************
  */
 
+#include "platforms.h"
+#include "protocol_defs.h"
+#include "spark_wiring_cloud.h"
 #include "spark_wiring_string.h"
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
+#include "system_publish_vitals.h"
 #include "system_task.h"
 #include "system_threading.h"
 #include "system_update.h"
@@ -38,7 +42,35 @@
 #include "deviceid_hal.h"
 #include "system_mode.h"
 
+#if PLATFORM_ID != PLATFORM_SPARK_CORE
+  #include "spark_wiring_timer.h"
+#endif // not PLATFORM_SPARK_CORE
+
 extern void (*random_seed_from_cloud_handler)(unsigned int);
+
+namespace {
+
+using namespace particle::system;
+
+#if PLATFORM_ID == PLATFORM_SPARK_CORE
+  particle::NullTimer _vitals_timer;
+  VitalsPublisher<std::function<int(ProtocolFacade *, int, void *)>, particle::NullTimer> _vitals(spark_protocol_instance(), spark_protocol_post_description, _vitals_timer);
+#else // not PLATFORM_SPARK_CORE
+  Timer _vitals_timer(std::numeric_limits<unsigned>::max(), []() -> void {
+      const auto task = new(std::nothrow) ISRTaskQueue::Task;
+      if (!task) {
+          return;
+      }
+      task->func = [](ISRTaskQueue::Task* task) {
+          delete task;
+          spark_protocol_post_description(spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr);
+      };
+      SystemISRTaskQueue.enqueue(task);
+  }, false);
+  VitalsPublisher<std::function<int(ProtocolFacade *, int, void *)>, Timer> _vitals(spark_protocol_instance(), spark_protocol_post_description, _vitals_timer);
+#endif  // PLATFORM_SPARK_CORE
+
+} // namespace
 
 #ifndef SPARK_NO_CLOUD
 
@@ -57,10 +89,26 @@ bool register_event(const char* eventName, SubscriptionScope::Enum event_scope, 
     return success;
 }
 
-bool spark_send_description(void *reserved)
+int spark_publish_vitals(size_t period_s_, void *reserved_)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_send_description(reserved));
-    return spark_protocol_send_description(sp);
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_publish_vitals(period_s_, reserved_));
+    int result;
+
+    switch (period_s_) {
+      case particle::PUBLISH_VITALS_NOW:
+        result = _vitals.publish();
+        break;
+      case 0:
+        _vitals.disablePeriodicPublish();
+        result = _vitals.publish();
+        break;
+      default:
+        _vitals.period(period_s_);
+        _vitals.enablePeriodicPublish();
+        result = _vitals.publish();
+    }
+    
+    return result;
 }
 
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
@@ -166,7 +214,7 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
     return result;
 }
 
-#endif
+#endif // SPARK_NO_CLOUD
 
 bool spark_cloud_flag_connected(void)
 {
@@ -185,7 +233,7 @@ void spark_process(void)
         ApplicationThread.process();
         return;
     }
-#endif
+#endif // PLATFORM_THREADING
 
     // run the background processing loop, and specifically also pump cloud events
     Spark_Idle_Events(true);
