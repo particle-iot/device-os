@@ -384,7 +384,7 @@ public:
 
     void onConnectionChangedCb(onConnectedCb connCb, onDisconnectedCb disconnCb);
 
-    static BleLocalDevice* getInstance(void);
+    static BleLocalDevice& getInstance(void);
 
 private:
     onConnectedCb connectedCb_;
