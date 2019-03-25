@@ -1082,29 +1082,29 @@ public:
         return ble_gap_stop_advertising();
     }
 
-    int append(uint8_t type, const uint8_t* buf, size_t len, BleAdvData& data) {
+    int append(uint8_t type, const uint8_t* buf, size_t len, BleAdvData& target) {
         if (buf == nullptr) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
 
         size_t offset;
-        size_t adsLen = advData.locate(type, &offset);
+        size_t adsLen = target.locate(type, &offset);
 
         if (adsLen > 0) {
             // Update the existing AD structure.
-            uint16_t staLen = advData.len - adsLen;
+            uint16_t staLen = target.len - adsLen;
             if ((staLen + len + 2) <= BLE_MAX_ADV_DATA_LEN) {
                 // Firstly, move the last consistent block.
-                uint16_t moveLen = advData.len - offset - adsLen;
-                memmove(&advData.data[offset + len], &advData.data[offset + adsLen], moveLen);
+                uint16_t moveLen = target.len - offset - adsLen;
+                memmove(&target.data[offset + len], &target.data[offset + adsLen], moveLen);
 
                 // Secondly, Update the AD structure.
                 // The Length field is the total length of Type field and Data field.
-                advData.data[offset] = len + 1;
-                memcpy(&advData.data[offset + 2], buf, len);
+                target.data[offset] = len + 1;
+                memcpy(&target.data[offset + 2], buf, len);
 
                 // An AD structure is composed of one byte length field, one byte Type field and Data field.
-                advData.len = staLen + len + 2;
+                target.len = staLen + len + 2;
             }
             else {
                 return SYSTEM_ERROR_LIMIT_EXCEEDED;
@@ -1112,11 +1112,11 @@ public:
         }
         else {
             // Append the AD structure at the and of advertising data.
-            if ((advData.len + len + 2) <= BLE_MAX_ADV_DATA_LEN) {
-                advData.data[advData.len++] = len + 1;
-                advData.data[advData.len++] = type;
-                memcpy(&advData.data[advData.len], buf, len);
-                advData.len += len;
+            if ((target.len + len + 2) <= BLE_MAX_ADV_DATA_LEN) {
+                target.data[target.len++] = len + 1;
+                target.data[target.len++] = type;
+                memcpy(&target.data[target.len], buf, len);
+                target.len += len;
             }
             else {
                 return SYSTEM_ERROR_LIMIT_EXCEEDED;
@@ -1386,6 +1386,13 @@ BleLocalDevice::BleLocalDevice()
 
     ble_gap_get_device_address(&address);
 
+    gattsProxy_ = std::make_shared<BleGattServerImpl>(address);
+    gattcProxy_ = std::make_shared<BleGattClientImpl>();
+    broadcasterProxy_ = std::make_shared<BleBroadcasterImpl>();
+    observerProxy_ = std::make_shared<BleObserverImpl>();
+    peripheralProxy_ = std::make_shared<BlePeripheralImpl>();
+    centralProxy_ = std::make_shared<BleCentralImpl>();
+
     char devName[32] = {};
     get_device_name(devName, sizeof(devName));
     ble_gap_set_device_name((const uint8_t*)devName, strlen(devName));
@@ -1393,22 +1400,15 @@ BleLocalDevice::BleLocalDevice()
     setPpcp();
 
     ble_set_callback_on_events(onBleEvents, this);
-
-    gattsProxy_ = std::make_shared<BleGattServerImpl>(address);
-    gattcProxy_ = std::make_shared<BleGattClientImpl>();
-    broadcasterProxy_ = std::make_shared<BleBroadcasterImpl>();
-    observerProxy_ = std::make_shared<BleObserverImpl>();
-    peripheralProxy_ = std::make_shared<BlePeripheralImpl>();
-    centralProxy_ = std::make_shared<BleCentralImpl>();
 }
 
 BleLocalDevice::~BleLocalDevice() {
 
 }
 
-BleLocalDevice* BleLocalDevice::getInstance(void) {
+BleLocalDevice& BleLocalDevice::getInstance(void) {
     static BleLocalDevice instance;
-    return &instance;
+    return instance;
 }
 
 void BleLocalDevice::onConnectionChangedCb(onConnectedCb connCb, onDisconnectedCb disconnCb) {
@@ -1671,7 +1671,7 @@ void BleLocalDevice::onBleEvents(hal_ble_evts_t *event, void* context) {
 
 
 BleLocalDevice& _fetch_ble() {
-    return *BleLocalDevice::getInstance();
+    return BleLocalDevice::getInstance();
 }
 
 
