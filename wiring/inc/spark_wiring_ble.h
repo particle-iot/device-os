@@ -88,6 +88,9 @@ namespace PARTICLE_BLE {
 }
 
 typedef uint16_t BleConnHandle;
+typedef uint16_t BleAttrHandle;
+
+typedef void (*onDataReceivedCb)(const uint8_t* data, size_t len);
 
 class BleAddress : public hal_ble_addr_t {
 public:
@@ -126,6 +129,8 @@ public:
     BleUuid(const String& str);
     BleUuid(const char* string);
     ~BleUuid();
+
+    bool isValid(void) const;
 
     BleUuidType type(void) const {
         return type_;
@@ -216,8 +221,6 @@ public:
 class BleCharacteristicImpl;
 class BleCharacteristic {
 public:
-    typedef void (*onDataReceivedCb)(const uint8_t* data, size_t len);
-
     BleCharacteristic();
     BleCharacteristic(const BleCharacteristic& characteristic);
     BleCharacteristic(const char* desc, BleCharProps properties, onDataReceivedCb cb = nullptr);
@@ -225,6 +228,13 @@ public:
     ~BleCharacteristic();
 
     BleCharacteristic& operator=(const BleCharacteristic&);
+
+    bool valid(void) {
+        return impl() != nullptr;
+    }
+
+    BleUuid uuid(void) const;
+    BleCharProps properties(void) const;
 
     size_t getValue(uint8_t* buf, size_t len) const;
     size_t getValue(String& str) const;
@@ -251,96 +261,29 @@ public:
 
     void onDataReceived(onDataReceivedCb callback);
 
-    BleCharacteristicImpl* stub(void) const {
-        return stub_.get();
+    BleCharacteristicImpl* impl(void) const {
+        return impl_.get();
     }
 
 private:
-    std::shared_ptr<BleCharacteristicImpl> stub_;
+    std::shared_ptr<BleCharacteristicImpl> impl_;
 };
 
 
+// BleServiceImpl forward declaration
+class BleServiceImpl;
 class BleService {
 public:
-    BleUuid uuid;
-    uint16_t startHandle;
-    uint16_t endHandle;
-
-    BleGattServer* server;
-
     BleService();
+    BleService(const BleUuid& uuid);
     ~BleService();
 
-    size_t characteristicCount(void) const {
-        return characteristics_.size();
+    BleServiceImpl* impl(void) const {
+        return impl_.get();
     }
-
-    BleCharacteristic* getCharacteristic(const char* desc);
-    BleCharacteristic* getCharacteristic(uint16_t attrHandle);
-    BleCharacteristic* getCharacteristic(const BleUuid& charUuid);
-    BleCharacteristic* getCharacteristic(size_t i);
-
-    int addCharacteristic(BleCharacteristic& characteristic);
 
 private:
-    Vector<BleCharacteristic> characteristics_;
-};
-
-
-class BleGattServer {
-public:
-    BleGattServer();
-    ~BleGattServer();
-
-    void* device;
-
-    size_t serviceCount(void) const {
-        return services_.size();
-    }
-
-    BleService* getService(const BleUuid& svcUuid);
-    BleService* getService(size_t i);
-
-    BleService* addService(const BleUuid& svcUuid);
-
-    size_t characteristicCount(void) const;
-
-    template <typename T>
-    BleCharacteristic* getCharacteristic(T& type) {
-        for (size_t i = 0; i < serviceCount(); i++) {
-            BleCharacteristic* characteristic = services_.at(i).getCharacteristic(type);
-            if (characteristic != nullptr) {
-                return characteristic;
-            }
-        }
-        return nullptr;
-    }
-
-    int addCharacteristic(BleService& service, BleCharacteristic& characteristic);
-
-    static int write(const BleCharacteristic& characteristic, const uint8_t* buf, size_t len);
-    static int read(const BleCharacteristic& characteristic, uint8_t* buf, size_t len);
-
-protected:
-    void finalizeLocalGattServer(void);
-    void gattServerProcessDisconnected(const BlePeerDevice& peer);
-    void gattServerProcessDataWritten(uint16_t attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer);
-
-private:
-    Vector<BleService> services_;
-};
-
-
-class BleGattClient {
-public:
-    BleGattClient();
-    ~BleGattClient();
-
-    static int write(const BleCharacteristic& characteristic, const uint8_t* buf, size_t len);
-    static int read(const BleCharacteristic& characteristic, uint8_t* buf, size_t len);
-
-protected:
-    void gattClientProcessDataNotified(uint16_t attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer);
+    std::shared_ptr<BleServiceImpl> impl_;
 };
 
 
@@ -375,7 +318,7 @@ public:
     int advertise(uint32_t interval, uint32_t timeout);
     int advertise(const BleAdvParams& params);
 
-    int stopAdvertise(void) const;
+    int stopAdvertising(void) const;
 
 protected:
     void broadcasterProcessStopped(void);
@@ -413,7 +356,7 @@ public:
     int scan(BleScannedDevice* results, size_t resultCount, uint16_t timeout);
     int scan(BleScannedDevice* results, size_t resultCount, const BleScanParams& params);
 
-    int stopScan(void);
+    int stopScanning(void);
 
 protected:
     void observerProcessScanResult(const hal_ble_gap_on_scan_result_evt_t* event);
@@ -488,7 +431,8 @@ private:
 };
 
 
-class BlePeerDevice : public BleGattServer {
+class BleGattServerImpl;
+class BlePeerDevice {
 public:
     BleDevRoles role;
     BleAddress address;
@@ -499,16 +443,23 @@ public:
     BlePeerDevice();
     ~BlePeerDevice();
 
+    BleGattServerImpl* gattsProxy(void) {
+        return gattsProxy_.get();
+    }
+
     bool operator == (const BlePeerDevice& device);
+
+private:
+    std::shared_ptr<BleGattServerImpl> gattsProxy_;
 };
 
 
+class BleGattServerImpl;
+class BleGattClientImpl;
 class BleLocalDevice : public BleBroadcaster,
                        public BleObserver,
                        public BlePeripheral,
-                       public BleCentral,
-                       public BleGattServer,
-                       public BleGattClient {
+                       public BleCentral {
 public:
     typedef void (*onConnectedCb)(BlePeerDevice &peer);
     typedef void (*onDisconnectedCb)(BlePeerDevice &peer);
@@ -518,6 +469,10 @@ public:
     int on(void);
     void off(void);
 
+    int addCharacteristic(BleCharacteristic& characteristic);
+    int addCharacteristic(const char* desc, BleCharProps properties, onDataReceivedCb cb);
+    int addCharacteristic(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, onDataReceivedCb cb);
+
     void onConnectionChangedCb(onConnectedCb connCb, onDisconnectedCb disconnCb);
 
     static BleLocalDevice* getInstance(void);
@@ -526,12 +481,11 @@ private:
     onConnectedCb connectedCb_;
     onDisconnectedCb disconnectedCb_;
 
-    BleLocalDevice() : connectedCb_(nullptr), disconnectedCb_(nullptr) {
-        device = this;
-    }
-    ~BleLocalDevice() {
+    std::shared_ptr<BleGattServerImpl> gattsProxy_;
+    std::shared_ptr<BleGattClientImpl> gattcProxy_;
 
-    }
+    BleLocalDevice();
+    ~BleLocalDevice();
 
     static void onBleEvents(hal_ble_evts_t *event, void* context);
     BlePeerDevice* findPeerDevice(BleConnHandle connHandle);
