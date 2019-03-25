@@ -23,7 +23,6 @@
 #include <string.h>
 #include "spark_wiring_platform.h"
 
-#define Wiring_BLE 1
 #if Wiring_BLE
 
 #include "system_error.h"
@@ -39,11 +38,7 @@ using particle::Flags;
 
 class BleCharacteristic;
 class BleService;
-class BleGattServer;
-class BleBroadcaster;
-class BleObserver;
-class BlePeripheral;
-class BleCentral;
+class BleScannedDevice;
 class BlePeerDevice;
 class BleLocalDevice;
 
@@ -91,6 +86,9 @@ typedef uint16_t BleConnHandle;
 typedef uint16_t BleAttrHandle;
 
 typedef void (*onDataReceivedCb)(const uint8_t* data, size_t len);
+typedef void (*BleScanCallback)(const BleScannedDevice *device);
+typedef void (*onConnectedCb)(BlePeerDevice &peer);
+typedef void (*onDisconnectedCb)(BlePeerDevice &peer);
 
 class BleAddress : public hal_ble_addr_t {
 public:
@@ -287,51 +285,6 @@ private:
 };
 
 
-class BleBroadcaster {
-public:
-    BleBroadcaster();
-    ~BleBroadcaster();
-
-    int appendAdvData(uint8_t type, const uint8_t* data, size_t len);
-    int appendAdvDataLocalName(const char* name);
-    int appendAdvDataCustomData(const uint8_t* buf, size_t len);
-    int appendAdvDataUuid(const BleUuid& uuid);
-
-    int appendScanRspData(uint8_t type, const uint8_t* buf, size_t len);
-    int appendScanRspDataLocalName(const char* name);
-    int appendScanRspDataCustomData(const uint8_t* buf, size_t len);
-    int appendScanRspDataUuid(const BleUuid& uuid);
-
-    int advDataBeacon(const iBeacon& beacon);
-
-    int clearAdvData(void);
-    int removeFromAdvData(uint8_t type);
-
-    int clearScanRspData(void);
-    int removeFromScanRspData(uint8_t type);
-
-    int setTxPower(int8_t val) const;
-    int8_t txPower(void) const;
-
-    int advertise(void);
-    int advertise(uint32_t interval);
-    int advertise(uint32_t interval, uint32_t timeout);
-    int advertise(const BleAdvParams& params);
-
-    int stopAdvertising(void) const;
-
-protected:
-    void broadcasterProcessStopped(void);
-
-private:
-    BleAdvParams advParams_;
-    BleAdvData advData_;
-    BleAdvData srData_;
-
-    int append(uint8_t type, const uint8_t* buf, size_t len, BleAdvData& data);
-};
-
-
 class BleScannedDevice {
 public:
     BleAddress address;
@@ -341,97 +294,8 @@ public:
 };
 
 
-class BleObserver {
-public:
-    BleObserver();
-    ~BleObserver();
-
-    static const size_t DEFAULT_COUNT = 5;
-
-    typedef void (*BleScanCallback)(const BleScannedDevice *device);
-
-    int scan(BleScanCallback callback);
-    int scan(BleScanCallback callback, uint16_t timeout);
-    int scan(BleScannedDevice* results, size_t resultCount);
-    int scan(BleScannedDevice* results, size_t resultCount, uint16_t timeout);
-    int scan(BleScannedDevice* results, size_t resultCount, const BleScanParams& params);
-
-    int stopScanning(void);
-
-protected:
-    void observerProcessScanResult(const hal_ble_gap_on_scan_result_evt_t* event);
-    void observerProcessScanStopped(const hal_ble_gap_on_scan_stopped_evt_t* event);
-
-private:
-    BleScanParams scanParams_;
-    size_t targetCount_;
-    BleScanCallback callback_;
-    BleScannedDevice* results_;
-    size_t count_;
-};
-
-
-class BlePeripheral {
-public:
-    BlePeripheral();
-    ~BlePeripheral();
-
-    size_t centralCount(void) const {
-        return centrals_.size();
-    }
-
-    int setPpcp(void);
-    int setPpcp(uint16_t minInterval, uint16_t maxInterval, uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY, uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT);
-
-    int disconnect(void);
-
-    bool connected(void) const {
-        return centrals_.size() > 0;
-    }
-
-protected:
-    BlePeerDevice* centralAt(size_t i);
-    void peripheralProcessConnected(const BlePeerDevice& peer);
-    void peripheralProcessDisconnected(const BlePeerDevice& peer);
-
-private:
-    BleConnParams ppcp_;
-    Vector<BlePeerDevice> centrals_;
-};
-
-
-class BleCentral {
-public:
-    BleCentral();
-    ~BleCentral();
-
-    size_t peripheralCount(void) const {
-        return peripherals_.size();
-    }
-
-    BlePeerDevice* connect(const BleAddress& addr,
-            uint16_t interval = BLE_DEFAULT_MIN_CONN_INTERVAL,
-            uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY,
-            uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT);
-
-    int disconnect(const BlePeerDevice& peripheral);
-
-    bool connectedAsCentral(void) const {
-        return peripherals_.size() > 0;
-    }
-
-protected:
-    BlePeerDevice* peripheralAt(size_t i);
-    void centralProcessConnected(const BlePeerDevice& peer);
-    void centralProcessDisconnected(const BlePeerDevice& peer);
-
-private:
-    BleConnParams connParams_;
-    Vector<BlePeerDevice> peripherals_;
-};
-
-
 class BleGattServerImpl;
+
 class BlePeerDevice {
 public:
     BleDevRoles role;
@@ -441,6 +305,7 @@ public:
     int8_t rssi;
 
     BlePeerDevice();
+    BlePeerDevice(const BleAddress& addr);
     ~BlePeerDevice();
 
     BleGattServerImpl* gattsProxy(void) {
@@ -456,22 +321,66 @@ private:
 
 class BleGattServerImpl;
 class BleGattClientImpl;
-class BleLocalDevice : public BleBroadcaster,
-                       public BleObserver,
-                       public BlePeripheral,
-                       public BleCentral {
-public:
-    typedef void (*onConnectedCb)(BlePeerDevice &peer);
-    typedef void (*onDisconnectedCb)(BlePeerDevice &peer);
+class BleBroadcasterImpl;
+class BleObserverImpl;
+class BlePeripheralImpl;
+class BleCentralImpl;
 
+class BleLocalDevice {
+public:
     BleAddress address;
 
     int on(void);
     void off(void);
 
+    int appendAdvData(uint8_t type, const uint8_t* buf, size_t len);
+    int appendAdvDataLocalName(const char* name);
+    int appendAdvDataCustomData(const uint8_t* buf, size_t len);
+    int appendAdvDataUuid(const BleUuid& uuid);
+    int appendScanRspData(uint8_t type, const uint8_t* buf, size_t len);
+    int appendScanRspDataLocalName(const char* name);
+    int appendScanRspDataCustomData(const uint8_t* buf, size_t len);
+    int appendScanRspDataUuid(const BleUuid& uuid);
+    int advDataBeacon(const iBeacon& beacon);
+    int clearAdvData(void);
+    int removeFromAdvData(uint8_t type);
+    int clearScanRspData(void);
+    int removeFromScanRspData(uint8_t type);
+
+    int setTxPower(int8_t val) const;
+    int8_t txPower(void) const;
+
+    int advertise(void);
+    int advertise(uint32_t interval);
+    int advertise(uint32_t interval, uint32_t timeout);
+
+    int advertise(const BleAdvParams& params);
+    int stopAdvertising(void) const;
+
+    int scan(BleScanCallback callback);
+    int scan(BleScanCallback callback, uint16_t timeout);
+    int scan(BleScannedDevice* results, size_t resultCount);
+    int scan(BleScannedDevice* results, size_t resultCount, uint16_t timeout);
+    int scan(BleScannedDevice* results, size_t resultCount, const BleScanParams& params);
+    int stopScanning(void);
+
     int addCharacteristic(BleCharacteristic& characteristic);
     int addCharacteristic(const char* desc, BleCharProps properties, onDataReceivedCb cb);
     int addCharacteristic(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, onDataReceivedCb cb);
+
+    int setPpcp(void);
+    int setPpcp(uint16_t minInterval, uint16_t maxInterval, uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY, uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT);
+
+    BlePeerDevice* connect(const BleAddress& addr,
+            uint16_t interval = BLE_DEFAULT_MIN_CONN_INTERVAL,
+            uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY,
+            uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT);
+
+    int disconnect(void);
+    int disconnect(const BlePeerDevice& peripheral);
+
+    bool connected(void) const;
+    bool connectedAsCentral(void) const;
 
     void onConnectionChangedCb(onConnectedCb connCb, onDisconnectedCb disconnCb);
 
@@ -480,13 +389,15 @@ public:
 private:
     onConnectedCb connectedCb_;
     onDisconnectedCb disconnectedCb_;
-
     std::shared_ptr<BleGattServerImpl> gattsProxy_;
     std::shared_ptr<BleGattClientImpl> gattcProxy_;
+    std::shared_ptr<BleBroadcasterImpl> broadcasterProxy_;
+    std::shared_ptr<BleObserverImpl> observerProxy_;
+    std::shared_ptr<BlePeripheralImpl> peripheralProxy_;
+    std::shared_ptr<BleCentralImpl> centralProxy_;
 
     BleLocalDevice();
     ~BleLocalDevice();
-
     static void onBleEvents(hal_ble_evts_t *event, void* context);
     BlePeerDevice* findPeerDevice(BleConnHandle connHandle);
 };
