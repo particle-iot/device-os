@@ -1142,8 +1142,6 @@ public:
     BleScannedDevice* results;
     size_t count;
 
-    static const size_t DEFAULT_COUNT = 5;
-
     BleObserverImpl() : targetCount(0), callback(nullptr), results(nullptr), count(0) {
         scanParams.active = true;
         scanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
@@ -1158,6 +1156,7 @@ public:
 
     int scan(BleScanCallback callback) {
         this->callback = callback;
+        count = 0;
         ble_gap_set_scan_parameters(&scanParams, NULL);
         ble_gap_start_scan(nullptr);
         return count;
@@ -1166,6 +1165,7 @@ public:
     int scan(BleScanCallback callback, uint16_t timeout) {
         this->callback = callback;
         scanParams.timeout  = timeout;
+        count = 0;
         ble_gap_set_scan_parameters(&scanParams, NULL);
         ble_gap_start_scan(nullptr);
         return count;
@@ -1184,6 +1184,7 @@ public:
         this->results = results;
         targetCount = resultCount;
         scanParams = params;
+        count = 0;
         ble_gap_set_scan_parameters(&scanParams, NULL);
         ble_gap_start_scan(nullptr);
         return count;
@@ -1211,9 +1212,11 @@ public:
             callback(&device);
         }
         else if (results != nullptr) {
-            results[count++] = device;
-            if (count >= targetCount) {
-                stopScanning();
+            if (count < targetCount) {
+                results[count++] = device;
+                if (count >= targetCount) {
+                    stopScanning();
+                }
             }
         }
     }
