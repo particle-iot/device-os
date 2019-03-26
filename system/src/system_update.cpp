@@ -43,6 +43,9 @@
 #include "system_network_internal.h"
 #include "bytes2hexbuf.h"
 #include "system_threading.h"
+#if HAL_PLATFORM_DCT
+#include "dct.h"
+#endif // HAL_PLATFORM_DCT
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -66,7 +69,8 @@ static_assert(SYSTEM_FLAG_STARTUP_LISTEN_MODE == 4, "system flag value");
 static_assert(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1 == 5, "system flag value");
 static_assert(SYSTEM_FLAG_PUBLISH_RESET_INFO == 6, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS == 7, "system flag value");
-static_assert(SYSTEM_FLAG_MAX == 8, "system flag max value");
+static_assert(SYSTEM_FLAG_PM_DETECTION == 8, "system flag value");
+static_assert(SYSTEM_FLAG_MAX == 9, "system flag max value");
 
 volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
     0, 1, // OTA updates pending/enabled
@@ -85,6 +89,16 @@ void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
     {
         HAL_Core_Write_Backup_Register(BKP_DR_09, newValue ? SAFE_MODE_LISTEN : 0xFFFF);
     }
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+    else if (flag == SYSTEM_FLAG_PM_DETECTION) {
+        static_assert(DCT_PM_DETECT_SIZE == sizeof(newValue), "");
+        system_get_flag(flag, &oldValue, nullptr);
+        if (oldValue != newValue) {
+            newValue = !newValue;
+            dct_write_app_data(&newValue, DCT_PM_DETECT_OFFSET, sizeof(newValue));
+        }
+    }
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
 }
 
 int system_set_flag(system_flag_t flag, uint8_t value, void*)
@@ -92,7 +106,7 @@ int system_set_flag(system_flag_t flag, uint8_t value, void*)
     if (flag>=SYSTEM_FLAG_MAX)
         return -1;
 
-    if (systemFlags[flag] != value || flag == SYSTEM_FLAG_STARTUP_LISTEN_MODE) {
+    if (systemFlags[flag] != value || flag == SYSTEM_FLAG_STARTUP_LISTEN_MODE || flag == SYSTEM_FLAG_PM_DETECTION) {
         uint8_t oldValue = systemFlags[flag];
         systemFlags[flag] = value;
         system_flag_changed(flag, oldValue, value);
@@ -113,6 +127,16 @@ int system_get_flag(system_flag_t flag, uint8_t* value, void*)
             *value = (reg == SAFE_MODE_LISTEN);
             systemFlags[flag] = *value;
         }
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+        else if (flag == SYSTEM_FLAG_PM_DETECTION)
+        {
+            uint8_t v = 0;
+            static_assert(DCT_PM_DETECT_SIZE == sizeof(v), "");
+            auto r = dct_read_app_data_copy(DCT_PM_DETECT_OFFSET, &v, sizeof(v));
+            *value = !r && !v;
+            systemFlags[flag] = *value;
+        }
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
         else
         {
             *value = systemFlags[flag];

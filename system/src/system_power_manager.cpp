@@ -26,8 +26,16 @@ LOG_SOURCE_CATEGORY("sys.power")
 #include "debug.h"
 #include "spark_wiring_platform.h"
 #include "pinmap_hal.h"
+// For system flags
+#include "system_update.h"
 
 #if (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
+
+namespace {
+
+const uint8_t BQ24195_VERSION = 0x23;
+
+} // anonymous
 
 using namespace particle::power;
 
@@ -189,6 +197,11 @@ void PowerManager::loop(void* arg) {
   PowerManager* self = PowerManager::instance();
   {
     LOG_DEBUG(INFO, "Power Management Initializing.");
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+    if (!self->detect()) {
+      goto exit;
+    }
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
     // IMPORTANT: attach the interrupt handler first
     attachInterrupt(LOW_BAT_UC, &PowerManager::isrHandler, FALLING);
     self->initDefault();
@@ -209,6 +222,12 @@ void PowerManager::loop(void* arg) {
     self->handlePossibleFaultLoop();
     self->checkWatchdog();
   }
+
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+exit:
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+  self->deinit();
+  os_thread_exit(nullptr);
 }
 
 void PowerManager::isrHandler() {
@@ -380,6 +399,7 @@ void PowerManager::checkWatchdog() {
     // Re-enable charging, do not run DPDM detection
     LOG_DEBUG(TRACE, "re-enabling charging");
     chargingDisabledTimestamp_ = 0;
+    g_batteryState = BATTERY_STATE_UNKNOWN;
     initDefault(false);
   }
 }
@@ -400,6 +420,61 @@ void PowerManager::logStat(uint8_t stat, uint8_t fault) {
   LOG_DEBUG(TRACE, "[ PMIC STAT ] VBUS:%d CHRG:%d DPM:%d PG:%d THERM:%d VSYS:%d", vbus_stat, chrg_stat, dpm_stat, pg_stat, therm_stat, vsys_stat);
   LOG_DEBUG(TRACE, "[ PMIC FAULT ] WATCHDOG:%d CHRG:%d BAT:%d NTC:%d", wd_fault, chrg_fault, bat_fault, ntc_fault);
 #endif
+}
+
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+bool PowerManager::detect() {
+  // Check if runtime detection enabled (DCT flag)
+  uint8_t v;
+  system_get_flag(SYSTEM_FLAG_PM_DETECTION, &v, nullptr);
+  if (!v) {
+    LOG_DEBUG(INFO, "Runtime PMIC/FuelGauge detection is not enabled");
+    return false;
+  }
+
+  // Check that PMIC is present by reading its version
+  PMIC power(true);
+  power.begin();
+  auto pVer = power.getVersion();
+  if (pVer != BQ24195_VERSION) {
+    LOG(WARN, "PMIC not present");
+    return false;
+  }
+  LOG_DEBUG(INFO, "PMIC present, version %02x", (int)pVer);
+
+  // Check that FuelGauge is present by reading its version
+  FuelGauge fuel(true);
+  fuel.wakeup();
+  auto fVer = fuel.getVersion();
+  if (fVer == 0x0000 || fVer == 0xffff) {
+    LOG(WARN, "FuelGauge not present");
+    return false;
+  }
+  fuel.clearAlert();
+  LOG_DEBUG(INFO, "FuelGauge present, version %04x", (int)fVer);
+
+  // FIXME: there is no reliable way to check whether PMIC interrupt line
+  // is connected to LOW_BAT_UC
+
+  detect_ = true;
+
+  return true;
+}
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+
+void PowerManager::deinit() {
+  LOG(WARN, "Disabling system power manager");
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+  if (detect_) {
+#else
+  {
+#endif // #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+    // PMIC is most likely present, return it to automatic mode
+    PMIC power(true);
+    power.setWatchdog(0b01);
+  }
+
+  detachInterrupt(LOW_BAT_UC);
 }
 
 #endif /* (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043) */

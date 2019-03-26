@@ -51,6 +51,10 @@ private:
   void handlePossibleFaultLoop();
   void logStat(uint8_t stat, uint8_t fault);
   void checkWatchdog();
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+  bool detect();
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+  void deinit();
 
 private:
   static volatile bool update_;
@@ -62,6 +66,10 @@ private:
   system_tick_t possibleFaultTimestamp_ = 0;
   bool lowBatEnabled_ = true;
   system_tick_t chargingDisabledTimestamp_ = 0;
+
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+  bool detect_ = false;
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
 };
 
 
