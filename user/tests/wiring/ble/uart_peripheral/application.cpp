@@ -24,16 +24,16 @@
 
 SYSTEM_MODE(MANUAL);
 
-Serial1LogHandler log(115200, LOG_LEVEL_ALL);
+//Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
 void onDataReceived(const uint8_t* data, size_t len);
 
-BleUuid uartSvcUuid("14d1d294-8317-4bea-bbfb-9363a6517afc");
-BleUuid txUuid("a2ef4f89-11ad-4887-9e32-6eeb57594ced");
-BleUuid rxUuid("ad43b620-f076-4fb3-9bdc-785b585f4719");
+BleUuid uartSvcUuid("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+BleUuid rxUuid("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+BleUuid txUuid("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
 
-BleAttribute txAttr("tx", PROPERTY::NOTIFY, txUuid, uartSvcUuid);
-BleAttribute rxAttr("rx", PROPERTY::WRITE_WO_RSP, rxUuid, uartSvcUuid, onDataReceived);
+BleCharacteristic txAttr("tx", PROPERTY::NOTIFY, txUuid, uartSvcUuid);
+BleCharacteristic rxAttr("rx", PROPERTY::WRITE_WO_RSP, rxUuid, uartSvcUuid, onDataReceived);
 
 uint8_t txBuf[UART_TX_BUF_SIZE];
 size_t txLen = 0;
@@ -41,25 +41,30 @@ size_t txLen = 0;
 
 void onDataReceived(const uint8_t* data, size_t len) {
     for (uint8_t i = 0; i < len; i++) {
-        Serial.write(data[i]);
+        Serial1.write(data[i]);
     }
 }
 
 void setup() {
-    Serial.begin();
+    Serial1.begin(115200);
 
-    BLE.on();
+    BLE.addCharacteristic(txAttr);
+    BLE.addCharacteristic(rxAttr);
 
-    BLE.advertise();
+    BleAdvData advData;
+    advData.appendServiceUuid("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+    BLE.advertise(&advData, nullptr);
 }
 
 void loop() {
-    while (Serial.available() && txLen < UART_TX_BUF_SIZE) {
-        txBuf[txLen++] = Serial.read();
-    }
+    if (BLE.connected()) {
+        while (Serial1.available() && txLen < UART_TX_BUF_SIZE) {
+            txBuf[txLen++] = Serial1.read();
+        }
 
-    if (txLen > 0) {
-        txAttr.setValue(txBuf, txLen);
-        txLen = 0;
+        if (txLen > 0) {
+            txAttr.setValue(txBuf, txLen);
+            txLen = 0;
+        }
     }
 }

@@ -287,36 +287,30 @@ int setAdvData(const uint8_t* data, uint16_t len, uint8_t flag) {
         advPending = true;
     }
 
-    // Make sure the advertising data or scan response data is consistent.
-    ble_gap_adv_data_t bleGapAdvData;
     if (flag == BLE_ADV_DATA_ADVERTISING) {
-        bleGapAdvData.adv_data.p_data      = (uint8_t*)data;
-        bleGapAdvData.adv_data.len         = len;
-        bleGapAdvData.scan_rsp_data.p_data = s_bleInstance.scanRespData;
-        bleGapAdvData.scan_rsp_data.len    = s_bleInstance.scanRespDataLen;
+        if (data != NULL) {
+            memcpy(s_bleInstance.advData, data, len);
+            s_bleInstance.advDataLen = len;
+        }
     }
     else {
-        bleGapAdvData.adv_data.p_data      = s_bleInstance.advData;
-        bleGapAdvData.adv_data.len         = s_bleInstance.advDataLen;
-        bleGapAdvData.scan_rsp_data.p_data = (uint8_t*)data;
-        bleGapAdvData.scan_rsp_data.len    = len;
+        if (data != NULL) {
+            memcpy(s_bleInstance.scanRespData, data, len);
+            s_bleInstance.scanRespDataLen = len;
+        }
     }
+
+    // Make sure the advertising data or scan response data is consistent.
+    ble_gap_adv_data_t bleGapAdvData;
+    bleGapAdvData.adv_data.p_data      = s_bleInstance.advData;
+    bleGapAdvData.adv_data.len         = s_bleInstance.advDataLen;
+    bleGapAdvData.scan_rsp_data.p_data = s_bleInstance.scanRespData;
+    bleGapAdvData.scan_rsp_data.len    = s_bleInstance.scanRespDataLen;
 
     ret_code_t ret = sd_ble_gap_adv_set_configure(&s_bleInstance.advHandle, &bleGapAdvData, NULL);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gap_adv_set_configure() failed: %u", (unsigned)ret);
         return sysError(ret);
-    }
-
-    if (flag == BLE_ADV_DATA_ADVERTISING) {
-        memcpy(s_bleInstance.advData, data, len);
-        s_bleInstance.advDataLen = len;
-    }
-    else {
-        if (data != NULL) {
-            memcpy(s_bleInstance.scanRespData, data, len);
-        }
-        s_bleInstance.scanRespDataLen = len;
     }
 
     if (advPending) {

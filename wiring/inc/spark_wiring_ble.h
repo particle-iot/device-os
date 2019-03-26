@@ -23,6 +23,7 @@
 #include <string.h>
 #include "spark_wiring_platform.h"
 
+#define Wiring_BLE 1
 #if Wiring_BLE
 
 #include "system_error.h"
@@ -36,11 +37,18 @@
 using spark::Vector;
 using particle::Flags;
 
-class BleCharacteristic;
-class BleService;
 class BleScannedDevice;
 class BlePeerDevice;
-class BleLocalDevice;
+
+// Forward declaration
+class BleCharacteristicImpl;
+class BleServiceImpl;
+class BleGattServerImpl;
+class BleGattClientImpl;
+class BleBroadcasterImpl;
+class BleObserverImpl;
+class BlePeripheralImpl;
+class BleCentralImpl;
 
 enum class BleUuidType {
     SHORT = 0,
@@ -55,7 +63,6 @@ enum class BleUuidOrder {
 struct BleDevRoleType; // Tag type for BLE device role flags
 typedef Flags<BleDevRoleType, uint8_t> BleDevRoles;
 typedef BleDevRoles::FlagType BleDevRole;
-
 namespace ROLE {
     const BleDevRole INVALID(BLE_ROLE_INVALID);
     const BleDevRole PERIPHERAL(BLE_ROLE_PERIPHERAL);
@@ -66,7 +73,6 @@ namespace ROLE {
 struct BleAttrPropType; // Tag type for BLE attribute property flags
 typedef Flags<BleAttrPropType, uint8_t> BleCharProps;
 typedef BleCharProps::FlagType BleAttrProp;
-
 namespace PROPERTY {
     const BleAttrProp NONE(0);
     const BleAttrProp READ(BLE_SIG_CHAR_PROP_READ);
@@ -121,6 +127,7 @@ class BleCharHandles : public hal_ble_char_handles_t {
 class BleUuid {
 public:
     BleUuid();
+    BleUuid(const BleUuid& uuid);
     BleUuid(const uint8_t* uuid128, BleUuidOrder order = BleUuidOrder::LSB);
     BleUuid(uint16_t uuid16, BleUuidOrder order = BleUuidOrder::LSB);
     BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order = BleUuidOrder::LSB);
@@ -165,58 +172,85 @@ private:
 
 class iBeacon {
 public:
-    iBeacon() : major_(0),minor_(0),uuid_(nullptr),measurePower_(0) {
+    uint16_t major;
+    uint16_t minor;
+    BleUuid uuid;
+    int8_t measurePower;
 
-    }
-    iBeacon(uint16_t major, uint16_t minor, uint8_t* uuid, int8_t mp) : major_(major),minor_(minor),uuid_(uuid),measurePower_(mp) {
+    static const uint16_t APPLE_COMPANY_ID = 0x004C;
+    static const uint8_t BEACON_TYPE_IBEACON = 0x02;
 
+    iBeacon() : major(0), minor(0), measurePower(0) {
     }
+
+    template<typename T>
+    iBeacon(uint16_t major, uint16_t minor, T uuid, int8_t measurePower)
+        : major(major), minor(minor), uuid(uuid), measurePower(measurePower) {
+    }
+
+//    iBeacon(uint16_t major, uint16_t minor, const BleUuid& uuid, int8_t measurePower)
+//        : major(major), minor(minor), uuid(uuid), measurePower(measurePower) {
+//    }
+//
+//    iBeacon(uint16_t major, uint16_t minor, const uint8_t uuid128[16], int8_t measurePower)
+//        : major(major), minor(minor), uuid(uuid128), measurePower(measurePower) {
+//    }
+//
+//    iBeacon(uint16_t major, uint16_t minor, const char* uuid, int8_t measurePower)
+//        : major(major), minor(minor), uuid(uuid), measurePower(measurePower) {
+//    }
+//
+//    iBeacon(uint16_t major, uint16_t minor, const String& uuid, int8_t measurePower)
+//        : major(major), minor(minor), uuid(uuid), measurePower(measurePower) {
+//    }
+
     ~iBeacon() {
-
     }
-
-    uint16_t major(void) const {
-        return major_;
-    }
-
-    uint16_t minor(void) const {
-        return minor_;
-    }
-
-    uint8_t* uuid(void) const {
-        return uuid_;
-    }
-
-    int8_t measurePower(void) {
-        return measurePower_;
-    }
-
-private:
-    uint16_t major_;
-    uint16_t minor_;
-    uint8_t* uuid_;
-    int8_t   measurePower_;
 };
 
 
 class BleAdvData {
 public:
-    uint8_t data[BLE_MAX_ADV_DATA_LEN];
-    size_t len;
+    static const size_t MAX_LEN = BLE_MAX_ADV_DATA_LEN;
 
     BleAdvData();
     ~BleAdvData();
 
-    bool contain(uint8_t type);
-    bool contain(uint8_t type, const uint8_t* buf, size_t len);
+    size_t set(const uint8_t* buf, size_t len);
 
-    size_t fetch(uint8_t type, uint8_t* buf, size_t len);
+    size_t append(uint8_t type, const uint8_t* buf, size_t len, bool force = false);
+    size_t appendLocalName(const char* name, bool force = false);
+    size_t appendCustomData(const uint8_t* buf, size_t len, bool force = false);
+    size_t appendServiceUuid(const BleUuid& uuid, bool force = false);
 
-    size_t locate(uint8_t type, size_t* offset);
+    template<typename T>
+    size_t appendServiceUuid(T uuid, bool force = false) {
+        BleUuid tempUuid(uuid);
+        return appendServiceUuid(tempUuid, force);
+    }
+
+    void clear(void);
+    void remove(uint8_t type);
+
+    size_t get(uint8_t* buf, size_t len) const;
+    size_t get(uint8_t type, uint8_t* buf, size_t len) const;
+
+    String deviceName(void) const;
+    size_t deviceName(uint8_t* buf, size_t len) const;
+    size_t serviceUuid(BleUuid* uuids, size_t count) const;
+    size_t customData(uint8_t* buf, size_t len) const;
+
+    bool contains (uint8_t type) const;
+
+private:
+    uint8_t selfData[BLE_MAX_ADV_DATA_LEN];
+    size_t selfLen;
+
+    size_t serviceUuid(uint8_t type, BleUuid* uuids, size_t count) const;
+    static size_t locate(const uint8_t* buf, size_t len, uint8_t type, size_t* offset);
 };
 
-// BleCharacteristicImpl forward declaration
-class BleCharacteristicImpl;
+
 class BleCharacteristic {
 public:
     BleCharacteristic();
@@ -268,8 +302,6 @@ private:
 };
 
 
-// BleServiceImpl forward declaration
-class BleServiceImpl;
 class BleService {
 public:
     BleService();
@@ -319,13 +351,6 @@ private:
 };
 
 
-class BleGattServerImpl;
-class BleGattClientImpl;
-class BleBroadcasterImpl;
-class BleObserverImpl;
-class BlePeripheralImpl;
-class BleCentralImpl;
-
 class BleLocalDevice {
 public:
     BleAddress address;
@@ -333,28 +358,23 @@ public:
     int on(void);
     void off(void);
 
-    int appendAdvData(uint8_t type, const uint8_t* buf, size_t len);
-    int appendAdvDataLocalName(const char* name);
-    int appendAdvDataCustomData(const uint8_t* buf, size_t len);
-    int appendAdvDataUuid(const BleUuid& uuid);
-    int appendScanRspData(uint8_t type, const uint8_t* buf, size_t len);
-    int appendScanRspDataLocalName(const char* name);
-    int appendScanRspDataCustomData(const uint8_t* buf, size_t len);
-    int appendScanRspDataUuid(const BleUuid& uuid);
-    int advDataBeacon(const iBeacon& beacon);
-    int clearAdvData(void);
-    int removeFromAdvData(uint8_t type);
-    int clearScanRspData(void);
-    int removeFromScanRspData(uint8_t type);
-
     int setTxPower(int8_t val) const;
     int8_t txPower(void) const;
 
     int advertise(void);
+    int advertise(BleAdvData* advData, BleAdvData* srData);
     int advertise(uint32_t interval);
+    int advertise(uint32_t interval, BleAdvData* advData, BleAdvData* srData);
     int advertise(uint32_t interval, uint32_t timeout);
-
+    int advertise(uint32_t interval, uint32_t timeout, BleAdvData* advData, BleAdvData* srData);
     int advertise(const BleAdvParams& params);
+    int advertise(const BleAdvParams& params, BleAdvData* advData, BleAdvData* srData);
+
+    int advertise(const iBeacon& iBeacon);
+    int advertise(uint32_t interval, const iBeacon& iBeacon);
+    int advertise(uint32_t interval, uint32_t timeout, const iBeacon& iBeacon);
+    int advertise(const BleAdvParams& params, const iBeacon& iBeacon);
+
     int stopAdvertising(void) const;
 
     int scan(BleScanCallback callback);

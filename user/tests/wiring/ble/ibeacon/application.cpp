@@ -20,19 +20,15 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-uint8_t beaconUuid[16] = {0x00,0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88,0x99,0xaa,0xbb,0xcc,0xdd,0xee,0xff};
+SYSTEM_MODE(MANUAL);
+
+Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
 void setup() {
-    iBeacon beacon(1, 2, beaconUuid, -30);
-    BLE.advertisementData(beacon);
-
-    BLE.advertise();
+    iBeacon beacon(1, 2, "9c1b8bdc-5548-4e32-8a78-b9f524131206", -30);
+    BLE.advertise(beacon);
 }
 
 void loop() {
-    delay(5000);
-    BLE.stopAdvertise();
-  
-    delay(5000);
-    BLE.advertise();
+
 }
