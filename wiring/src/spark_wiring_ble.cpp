@@ -21,7 +21,6 @@
 
 #if Wiring_BLE
 
-#include "device_code.h"
 #include "logging.h"
 #include <memory>
 
@@ -1042,8 +1041,10 @@ public:
         advData.append(BLE_SIG_AD_TYPE_FLAGS, &flags, 1);
 
         // Complete local name
-        char devName[32] = {};
-        get_device_name(devName, sizeof(devName));
+        char devName[32];
+        uint16_t nameLen = sizeof(devName);
+        ble_gap_get_device_name((uint8_t*)devName, &nameLen);
+        devName[nameLen++] = '\0';
         advData.appendLocalName(devName);
 
         // Particle specific Manufacture data
@@ -1458,10 +1459,6 @@ BleLocalDevice::BleLocalDevice()
     observerProxy_ = std::make_shared<BleObserverImpl>();
     peripheralProxy_ = std::make_shared<BlePeripheralImpl>();
     centralProxy_ = std::make_shared<BleCentralImpl>();
-
-    char devName[32] = {};
-    get_device_name(devName, sizeof(devName));
-    ble_gap_set_device_name((const uint8_t*)devName, strlen(devName));
 
     setPpcp();
 

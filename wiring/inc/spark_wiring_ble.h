@@ -23,7 +23,6 @@
 #include <string.h>
 #include "spark_wiring_platform.h"
 
-#define Wiring_BLE 1
 #if Wiring_BLE
 
 #include "system_error.h"
