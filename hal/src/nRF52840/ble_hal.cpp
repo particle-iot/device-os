@@ -41,6 +41,7 @@ LOG_SOURCE_CATEGORY("hal.ble")
 #include <mutex>
 
 #include "gpio_hal.h"
+#include "device_code.h"
 #include "system_error.h"
 #include "sdk_config_system.h"
 
@@ -1367,6 +1368,11 @@ int ble_stack_init(void* reserved) {
         NRF_SDH_BLE_OBSERVER(bleObserver, BLE_OBSERVER_PRIO, isrProcessBleEvent, nullptr);
 
         s_bleInstance.connHandle = BLE_INVALID_CONN_HANDLE;
+
+        // Set the default device name
+        char devName[32] = {};
+        get_device_name(devName, sizeof(devName));
+        ble_gap_set_device_name((const uint8_t*)devName, strlen(devName));
 
         // Configure an advertising set to obtain an advertising handle.
         int error = ble_gap_set_advertising_parameters(&s_bleInstance.advParams, NULL);
