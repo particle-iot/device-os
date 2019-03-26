@@ -85,7 +85,7 @@
  *     // Open the resource file
  *     auto result = lfs_file_open(lfs, file, name, LFS_O_RDONLY);
  *     if (result < 0) {
- *         LOG_ERROR("Unable to open resource file");
+ *         LOG(ERROR, "Unable to open resource file");
  *         return SYSTEM_ERROR_FILE;
  *     }
  *     // Declare a scope guard
@@ -97,11 +97,11 @@
  *     char header[headerSize + 1] = {}; // Reserve one character for the term. null
  *     result = lfs_file_read(lfs, file, header, headerSize);
  *     if (result < 0) {
- *         LOG_ERROR("Unable to read resource file");
+ *         LOG(ERROR, "Unable to read resource file");
  *         return SYSTEM_ERROR_IO;
  *     }
  *     if (result != headerSize || strcmp(header, "RES") != 0) {
- *         LOG_ERROR("Invalid header signature");
+ *         LOG(ERROR, "Invalid header signature");
  *         return SYSTEM_ERROR_BAD_DATA;
  *     }
  *     ...
