@@ -108,7 +108,7 @@ private:
     int modemInit() const;
     int modemPowerOn() const;
     int modemPowerOff() const;
-    int modemHardReset() const;
+    int modemHardReset(bool powerOff = false) const;
     bool modemPowerState() const;
     int modemSetUartState(bool state) const;
 };

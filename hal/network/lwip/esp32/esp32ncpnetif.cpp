@@ -288,11 +288,6 @@ void Esp32NcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, v
 
 int Esp32NcpNetif::downImpl() {
     up_ = false;
-    auto r = wifiMan_->ncpClient()->on();
-    if (r) {
-        LOG(TRACE, "Failed to initialize ESP32 NCP client: %d", r);
-        return r;
-    }
     wifiMan_->ncpClient()->disconnect();
     LwipTcpIpCoreLock lk;
     netif_set_link_down(interface());

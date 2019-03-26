@@ -513,15 +513,15 @@ int SaraNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) {
     const auto t1 = HAL_Timer_Get_Milli_Seconds();
     for (;;) {
         const int r = parser_.execCommand(period, "AT");
+        if (r < 0 && r != SYSTEM_ERROR_TIMEOUT) {
+            return r;
+        }
         if (r == AtResponse::OK) {
             return 0;
         }
         const auto t2 = HAL_Timer_Get_Milli_Seconds();
         if (t2 - t1 >= timeout) {
             break;
-        }
-        if (r != SYSTEM_ERROR_TIMEOUT) {
-            HAL_Delay_Milliseconds(period);
         }
     }
     return SYSTEM_ERROR_TIMEOUT;
@@ -559,7 +559,7 @@ int SaraNcpClient::waitReady() {
         // Disable voltage translator
         modemSetUartState(false);
         // Hard reset the modem
-        modemHardReset();
+        modemHardReset(true);
         ncpState(NcpState::OFF);
 
         return SYSTEM_ERROR_INVALID_STATE;
@@ -1129,7 +1129,7 @@ int SaraNcpClient::modemPowerOff() const {
     return 0;
 }
 
-int SaraNcpClient::modemHardReset() const {
+int SaraNcpClient::modemHardReset(bool powerOff) const {
     const auto pwrState = modemPowerState();
     // We can only reset the modem in the powered state
     if (!pwrState) {
@@ -1145,6 +1145,9 @@ int SaraNcpClient::modemHardReset() const {
         HAL_Delay_Milliseconds(50);
         HAL_GPIO_Write(UBRST, 1);
         HAL_Delay_Milliseconds(1000);
+
+        // NOTE: powerOff argument is ignored, modem will restart automatically
+        // in all cases
     } else {
         // R410
         // Low pulse for 10s
@@ -1155,7 +1158,10 @@ int SaraNcpClient::modemHardReset() const {
         // won't hurt, we've already waited for 10
         HAL_Delay_Milliseconds(1000);
         // IMPORTANT: R4 is powered-off after applying RESET!
-        return modemPowerOn();
+        if (!powerOff) {
+            LOG(TRACE, "Powering on the modem after the hard reset");
+            return modemPowerOn();
+        }
     }
     return 0;
 }

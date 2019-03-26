@@ -202,11 +202,6 @@ int PppNcpNetif::downImpl() {
     up_ = false;
     client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
     client_.disconnect();
-    auto r = celMan_->ncpClient()->on();
-    if (r) {
-        LOG(TRACE, "Failed to initialize ublox NCP client: %d", r);
-        return r;
-    }
     celMan_->ncpClient()->disconnect();
     return 0;
 }
