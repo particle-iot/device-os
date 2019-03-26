@@ -38,22 +38,29 @@ void loop() {
     int count = BLE.scan(results, SCAN_RESULT_COUNT);
 
     if (count > 0) {
+        uint8_t buf[BleAdvData::MAX_LEN];
+        size_t len;
+
         LOG(TRACE, "%d devices are found:", count);
         for (int i = 0; i < count; i++) {
             LOG(TRACE, "devices %d: %d - %02X:%02X:%02X:%02X:%02X:%02X", i, results[i].rssi,
                     results[i].address.addr[0], results[i].address.addr[1], results[i].address.addr[2],
                     results[i].address.addr[3], results[i].address.addr[4], results[i].address.addr[5]);
-            if (results[i].advData.len > 0) {
+
+            len = results[i].advData.get(buf, sizeof(buf));
+            if (len > 0) {
                 LOG(TRACE, "Advertising data:");
-                for (size_t j = 0; j < results[i].advData.len; j++) {
-                    Serial1.printf("0x%02x, ", results[i].advData.data[j]);
+                for (size_t j = 0; j < len; j++) {
+                    Serial1.printf("0x%02x, ", buf[j]);
                 }
                 Serial1.println("\r\n");
             }
-            if (results[i].srData.len > 0) {
+
+            len = results[i].srData.get(buf, sizeof(buf));
+            if (len > 0) {
                 LOG(TRACE, "Scan response data:");
-                for (size_t j = 0; j < results[i].srData.len; j++) {
-                    Serial1.printf("0x%02x, ", results[i].srData.data[j]);
+                for (size_t j = 0; j < len; j++) {
+                    Serial1.printf("0x%02x, ", buf[j]);
                 }
                 Serial1.println("\r\n");
             }

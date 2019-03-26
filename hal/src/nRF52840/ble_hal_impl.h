@@ -37,6 +37,9 @@
 /* BLE event queue depth */
 #define BLE_EVENT_QUEUE_ITEM_COUNT                  10
 
+/* Maximum length of device name, non null-terminated */
+#define BLE_MAX_DEV_NAME_LEN                        20
+
 /* BLE event thread stack size */
 #define BLE_EVENT_THREAD_STACK_SIZE                 2048
 
