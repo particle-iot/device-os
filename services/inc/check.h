@@ -65,9 +65,10 @@
  *     return 0;
  * }
  * ```
- * The `CHECK()` macro expands to a code that evaluates the expression passed to the macro, and if
- * the expression yields a negative value makes the function that invokes the macro return that
- * value. Non-negative values get passed back to the calling code:
+ * The `CHECK()` macro expands to a code that evaluates the expression passed to the macro. If the
+ * expression yields a negative value then the function that invokes the macro (`fooBarBaz()` in the
+ * above example) will return that value and thus finish its execution with an error. Non-negative
+ * values get passed back to the calling code as if the checked expression was evaluated directly:
  * ```
  * int parseStream(Stream* stream) {
  *     char buffer[128];
