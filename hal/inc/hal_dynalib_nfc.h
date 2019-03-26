@@ -32,10 +32,11 @@
 
 DYNALIB_BEGIN(hal_nfc)
 
-DYNALIB_FN(0, hal_nfc, hal_nfc_type2_init, int(void))
-DYNALIB_FN(1, hal_nfc, hal_nfc_type2_set_payload, int(const void *msg_buf, size_t msg_len))
-DYNALIB_FN(2, hal_nfc, hal_nfc_type2_start_emulation, int(void))
-DYNALIB_FN(3, hal_nfc, hal_nfc_type2_stop_emulation, int(void))
-DYNALIB_FN(4, hal_nfc, hal_nfc_type2_set_callback, int(nfc_event_callback_t callback))
+DYNALIB_FN(0, hal_nfc, hal_nfc_type2_init, int(void* reserved))
+DYNALIB_FN(1, hal_nfc, hal_nfc_type2_uninit, int(void* reserved))
+DYNALIB_FN(2, hal_nfc, hal_nfc_type2_set_payload, int(const void *msg_buf, size_t msg_len))
+DYNALIB_FN(3, hal_nfc, hal_nfc_type2_start_emulation, int(void* reserved))
+DYNALIB_FN(4, hal_nfc, hal_nfc_type2_stop_emulation, int(void* reserved))
+DYNALIB_FN(5, hal_nfc, hal_nfc_type2_set_callback, int(nfc_event_callback_t callback, void* context))
 
 DYNALIB_END(hal_nfc)
