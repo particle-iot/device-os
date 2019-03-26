@@ -104,12 +104,12 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     assertTrue(udpEchoIp);
 
     // Create UDP client
-    auto udp = std::make_unique<UDP>();
+    std::unique_ptr<UDP> udp(new UDP());
     assertTrue((bool)udp);
 
-    auto sendBuffer = std::make_unique<uint8_t[]>(MAX_MTU);
+    std::unique_ptr<uint8_t[]> sendBuffer(new uint8_t[MAX_MTU]);
     assertTrue((bool)sendBuffer);
-    auto recvBuffer = std::make_unique<uint8_t[]>(MAX_MTU);
+    std::unique_ptr<uint8_t[]> recvBuffer(new uint8_t[MAX_MTU]);
     assertTrue((bool)recvBuffer);
 
     udp->setBuffer(MAX_MTU, recvBuffer.get());
