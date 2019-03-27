@@ -146,12 +146,52 @@ class SparkProtocol
     void update_ready(unsigned char *buf, unsigned char token);
     void update_ready(unsigned char *buf, unsigned char token, uint8_t flags);
 
+    /**
+     * @brief Constructs the body of a describe message
+     *
+     * @param buf The buffer for the message
+     * @param offset The offset to start the body of the message
+     *               (typically, beyond the header)
+     * @param desc_flags The information description flags
+     * @arg \p DESCRIBE_APPLICATION
+     * @arg \p DESCRIBE_METRICS
+     * @arg \p DESCRIBE_SYSTEM
+     *
+     * @returns The buffer length of the message
+     * @retval \p -1 - failure
+     */
     int build_describe_message(unsigned char *buf, unsigned char offset, int desc_flags);
 
+    /**
+     * @brief Constructs a describe message (POST request)
+     *
+     * @param buf The buffer for the message
+     * @param desc_flags The information description flags
+     * @arg \p DESCRIBE_APPLICATION
+     * @arg \p DESCRIBE_METRICS
+     * @arg \p DESCRIBE_SYSTEM
+     *
+     * @returns The buffer length of the message
+     * @retval \p -1 - failure
+     */
     int build_post_description(unsigned char *buf, int desc_flags);
     int description(unsigned char *buf, unsigned char token,
                     unsigned char message_id_msb, unsigned char message_id_lsb, int desc_flags);
 
+    /**
+     * @brief Produces and transmits a describe message (POST request)
+     *
+     * @param desc_flags Flags describing the information to provide
+     * @arg \p DESCRIBE_APPLICATION
+     * @arg \p DESCRIBE_METRICS
+     * @arg \p DESCRIBE_SYSTEM
+     *
+     * @returns \s ProtocolError result value
+     * @retval \p particle::protocol::NO_ERROR
+     * @retval \p particle::protocol::IO_ERROR_GENERIC_SEND
+     *
+     * @sa particle::protocol::ProtocolError
+     */
     ProtocolError post_description(int desc_flags);
 
     void ping(unsigned char *buf);

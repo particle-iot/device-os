@@ -181,6 +181,26 @@ typedef struct {
     void* handler_data;
 } spark_send_event_data;
 
+/**
+ * @brief Publish vitals information
+ *
+ * Provides a mechanism to control the interval at which system
+ * diagnostic messages are sent to the cloud. Subsequently, this
+ * controls the granularity of detail on the fleet health metrics.
+ *
+ * @param[in] period_s The period (in seconds) at which vitals messages
+ *                     are to be sent to the cloud
+ * @arg \p particle::PUBLISH_VITALS_NOW - Special value used to send vitals immediately
+ * @arg \p 0 - Publish a final message and disable periodic publishing
+ * @arg \p n - Publish an initial message and subsequent messages every \p n seconds thereafter
+ * @param[in,out] reserved Reserved for future use (default value: \p nullptr).
+ *
+ * @returns \p system_error_t result code
+ * @retval \p system_error_t::SYSTEM_ERROR_NONE
+ * @retval \p system_error_t::SYSTEM_ERROR_IO
+ *
+ * @note The periodic functionality is not available for the Spark Core
+ */
 int spark_publish_vitals(size_t period_s, void *reserved = nullptr);
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
