@@ -1187,6 +1187,16 @@ public:
         return ble_gap_start_advertising(NULL);
     }
 
+    int advertise(bool connectable) {
+        if (connectable) {
+            advParams.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
+        }
+        else {
+            advParams.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
+        }
+        return advertise();
+    }
+
     int stopAdvertising(void) const {
         return ble_gap_stop_advertising();
     }
@@ -1542,28 +1552,28 @@ int BleLocalDevice::advertise(const BleAdvParams& params, BleAdvData* advData, B
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(const iBeacon& iBeacon) {
+int BleLocalDevice::advertise(const iBeacon& iBeacon, bool connectable) {
     broadcasterProxy_->setIbeacon(iBeacon);
-    return broadcasterProxy_->advertise();
+    return broadcasterProxy_->advertise(connectable);
 }
 
-int BleLocalDevice::advertise(uint32_t interval, const iBeacon& iBeacon) {
+int BleLocalDevice::advertise(uint32_t interval, const iBeacon& iBeacon, bool connectable) {
     broadcasterProxy_->setIbeacon(iBeacon);
     broadcasterProxy_->advParams.interval = interval;
-    return broadcasterProxy_->advertise();
+    return broadcasterProxy_->advertise(connectable);
 }
 
-int BleLocalDevice::advertise(uint32_t interval, uint32_t timeout, const iBeacon& iBeacon) {
+int BleLocalDevice::advertise(uint32_t interval, uint32_t timeout, const iBeacon& iBeacon, bool connectable) {
     broadcasterProxy_->setIbeacon(iBeacon);
     broadcasterProxy_->advParams.interval = interval;
     broadcasterProxy_->advParams.timeout = timeout;
-    return broadcasterProxy_->advertise();
+    return broadcasterProxy_->advertise(connectable);
 }
 
-int BleLocalDevice::advertise(const BleAdvParams& params, const iBeacon& iBeacon) {
+int BleLocalDevice::advertise(const BleAdvParams& params, const iBeacon& iBeacon, bool connectable) {
     broadcasterProxy_->setIbeacon(iBeacon);
     broadcasterProxy_->advParams = params;
-    return broadcasterProxy_->advertise();
+    return broadcasterProxy_->advertise(connectable);
 }
 
 int BleLocalDevice::stopAdvertising(void) const {

@@ -25,7 +25,7 @@ SYSTEM_MODE(MANUAL);
 Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
 void setup() {
-    iBeacon beacon(1, 2, "9c1b8bdc-5548-4e32-8a78-b9f524131206", -30);
+    iBeacon beacon(1, 2, "9c1b8bdc-5548-4e32-8a78-b9f524131206", -55);
     BLE.advertise(beacon);
 }
 

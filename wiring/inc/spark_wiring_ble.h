@@ -187,22 +187,6 @@ public:
         : major(major), minor(minor), uuid(uuid), measurePower(measurePower) {
     }
 
-//    iBeacon(uint16_t major, uint16_t minor, const BleUuid& uuid, int8_t measurePower)
-//        : major(major), minor(minor), uuid(uuid), measurePower(measurePower) {
-//    }
-//
-//    iBeacon(uint16_t major, uint16_t minor, const uint8_t uuid128[16], int8_t measurePower)
-//        : major(major), minor(minor), uuid(uuid128), measurePower(measurePower) {
-//    }
-//
-//    iBeacon(uint16_t major, uint16_t minor, const char* uuid, int8_t measurePower)
-//        : major(major), minor(minor), uuid(uuid), measurePower(measurePower) {
-//    }
-//
-//    iBeacon(uint16_t major, uint16_t minor, const String& uuid, int8_t measurePower)
-//        : major(major), minor(minor), uuid(uuid), measurePower(measurePower) {
-//    }
-
     ~iBeacon() {
     }
 };
@@ -369,10 +353,10 @@ public:
     int advertise(const BleAdvParams& params);
     int advertise(const BleAdvParams& params, BleAdvData* advData, BleAdvData* srData);
 
-    int advertise(const iBeacon& iBeacon);
-    int advertise(uint32_t interval, const iBeacon& iBeacon);
-    int advertise(uint32_t interval, uint32_t timeout, const iBeacon& iBeacon);
-    int advertise(const BleAdvParams& params, const iBeacon& iBeacon);
+    int advertise(const iBeacon& iBeacon, bool connectable = false);
+    int advertise(uint32_t interval, const iBeacon& iBeacon, bool connectable = false);
+    int advertise(uint32_t interval, uint32_t timeout, const iBeacon& iBeacon, bool connectable = false);
+    int advertise(const BleAdvParams& params, const iBeacon& iBeacon, bool connectable = false);
 
     int stopAdvertising(void) const;
 
