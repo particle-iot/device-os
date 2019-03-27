@@ -359,6 +359,19 @@ public:
 		return !event_loop(message);
 	}
 
+	/**
+	 * @brief Produces and transmits a describe message (POST request)
+	 *
+	 * @param desc_flags The information description flags
+	 * @arg \p DESCRIBE_APPLICATION
+	 * @arg \p DESCRIBE_METRICS
+	 * @arg \p DESCRIBE_SYSTEM
+	 *
+	 * @returns \s ProtocolError result value
+	 * @retval \p particle::protocol::NO_ERROR
+	 *
+	 * @sa particle::protocol::ProtocolError
+	 */
 	ProtocolError post_description(int desc_flags);
 
 	// Returns true on success, false on sending timeout or rate-limiting failure
