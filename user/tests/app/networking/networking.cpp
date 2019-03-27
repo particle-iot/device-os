@@ -24,7 +24,6 @@
  */
 
 #include "application.h"
-#include "unit-test/unit-test.h"
 
 unsigned int localPort = 8888;      // local port to listen for UDP packets
 
@@ -113,8 +112,12 @@ unsigned long getNTPClientTime(void)
     return ntpEpochTime;
 }
 
-test(UDP_NTPClientTimeApproximatesSparkCloudTime)
+void setup()
 {
+    while (!Serial.isConnected()) {
+        Particle.process();
+    }
+
     // Request time synchronization from the Spark Cloud
     Particle.syncTime();
 
@@ -134,10 +137,18 @@ test(UDP_NTPClientTimeApproximatesSparkCloudTime)
     //Test passes if the time difference is < 100 sec
     if (ntpEpochTime > sparkEpochTime)
     {
-        assertTrue((ntpEpochTime - sparkEpochTime) < 100);
+        if ( (ntpEpochTime - sparkEpochTime) < 100) {
+            Serial.printlnf("PASS: %lu < 100", (ntpEpochTime - sparkEpochTime));
+        } else {
+            Serial.printlnf("FAIL: %lu >= 100", (ntpEpochTime - sparkEpochTime));
+        }
     }
     else
     {
-        assertTrue((sparkEpochTime - ntpEpochTime) < 100);
+        if ( (sparkEpochTime - ntpEpochTime) < 100) {
+            Serial.printlnf("PASS: %lu < 100", (sparkEpochTime - ntpEpochTime));
+        } else {
+            Serial.printlnf("FAIL: %lu >= 100", (sparkEpochTime - ntpEpochTime));
+        }
     }
 }
