@@ -193,6 +193,25 @@ typedef struct {
 } spark_protocol_describe_data;
 
 int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* limits, void* reserved);
+
+/**
+ * @brief Publish vitals information
+ *
+ * Provides a mechanism to control the interval at which system
+ * diagnostic messages are sent to the cloud. Subsequently, this
+ * controls the granularity of detail on the fleet health metrics.
+ *
+ * @param[in] protocol The protocol used to send cloud messages
+ * @param desc_flags The information description flags (default value: \p DESCRIBE_METRICS)
+ * @arg \p DESCRIBE_APPLICATION
+ * @arg \p DESCRIBE_METRICS
+ * @arg \p DESCRIBE_SYSTEM
+ * @param[in,out] reserved Reserved for future use (default value: \p NULL).
+ *
+ * @returns \p system_error_t result code
+ * @retval \p system_error_t::SYSTEM_ERROR_NONE
+ * @retval \p system_error_t::SYSTEM_ERROR_IO
+ */
 int spark_protocol_post_description(ProtocolFacade* protocol, int desc_flags=particle::protocol::DESCRIBE_METRICS, void* reserved=NULL);
 
 namespace ProtocolCommands {
