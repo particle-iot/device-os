@@ -190,7 +190,7 @@ void network_disconnect(network_handle_t network, uint32_t reason, void* reserve
     }());
 }
 
-bool network_ready(network_handle_t network, uint32_t param, void* reserved) {
+bool network_ready(network_handle_t network, uint32_t type, void* reserved) {
     if (network == NETWORK_INTERFACE_ALL) {
         return NetworkManager::instance()->isConnectivityAvailable();
     } else {
@@ -199,14 +199,21 @@ bool network_ready(network_handle_t network, uint32_t param, void* reserved) {
             if (NetworkManager::instance()->isInterfaceEnabled(iface)) {
                 auto ip4 = NetworkManager::instance()->getInterfaceIp4State(iface);
                 auto ip6 = NetworkManager::instance()->getInterfaceIp6State(iface);
-                // FIXME
-                if (network != NETWORK_INTERFACE_MESH) {
-                    if (ip4 == NetworkManager::ProtocolState::CONFIGURED || ip6 == NetworkManager::ProtocolState::CONFIGURED) {
-                        return true;
+                if ((network_ready_type)type == NETWORK_READY_TYPE_ALL) {
+                    if (network != NETWORK_INTERFACE_MESH) {
+                        if (ip4 == NetworkManager::ProtocolState::CONFIGURED || ip6 == NetworkManager::ProtocolState::CONFIGURED) {
+                            return true;
+                        }
+                    } else {
+                        if (ip4 != NetworkManager::ProtocolState::UNCONFIGURED || ip6 != NetworkManager::ProtocolState::UNCONFIGURED) {
+                            return true;
+                        }
                     }
                 } else {
-                    if (ip4 != NetworkManager::ProtocolState::UNCONFIGURED || ip6 != NetworkManager::ProtocolState::UNCONFIGURED) {
-                        return true;
+                    if ((network_ready_type)type == NETWORK_READY_TYPE_IPV4) {
+                        return ip4 == NetworkManager::ProtocolState::CONFIGURED;
+                    } else if ((network_ready_type)type == NETWORK_READY_TYPE_IPV6) {
+                        return ip6 == NetworkManager::ProtocolState::CONFIGURED;
                     }
                 }
             }
