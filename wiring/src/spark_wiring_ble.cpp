@@ -240,19 +240,6 @@ size_t BleAdvData::appendCustomData(const uint8_t* buf, size_t len, bool force) 
     return append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, buf, len, force);
 }
 
-size_t BleAdvData::appendServiceUuid(const BleUuid& uuid, bool force) {
-    if (uuid.type() == BleUuidType::SHORT) {
-        uint16_t uuid16;
-        uuid16 = uuid.shortUuid();
-        return append(BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE, reinterpret_cast<const uint8_t*>(&uuid16), sizeof(uint16_t),force);
-    }
-    else {
-        uint8_t uuid128[16];
-        uuid.fullUuid(uuid128);
-        return append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE, (const uint8_t*)uuid128, 16, force);
-    }
-}
-
 void BleAdvData::clear(void) {
     selfLen = 0;
     memset(selfData, 0x00, sizeof(selfData));

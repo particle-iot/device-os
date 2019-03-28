@@ -204,12 +204,17 @@ public:
     size_t append(uint8_t type, const uint8_t* buf, size_t len, bool force = false);
     size_t appendLocalName(const char* name, bool force = false);
     size_t appendCustomData(const uint8_t* buf, size_t len, bool force = false);
-    size_t appendServiceUuid(const BleUuid& uuid, bool force = false);
 
     template<typename T>
     size_t appendServiceUuid(T uuid, bool force = false) {
         BleUuid tempUuid(uuid);
-        return appendServiceUuid(tempUuid, force);
+        if (tempUuid.type() == BleUuidType::SHORT) {
+            uint16_t uuid16 = tempUuid.shortUuid();
+            return append(BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE, reinterpret_cast<const uint8_t*>(&uuid16), sizeof(uint16_t), force);
+        }
+        else {
+            return append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE, tempUuid.fullUuid(), BLE_SIG_UUID_128BIT_LEN, force);
+        }
     }
 
     void clear(void);
