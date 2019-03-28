@@ -62,7 +62,7 @@ typedef enum network_disconnect_reason {
 } network_disconnect_reason;
 
 typedef enum network_ready_type {
-    NETWORK_READY_TYPE_ALL  = 0x00,
+    NETWORK_READY_TYPE_ANY  = 0x00,
     NETWORK_READY_TYPE_IPV4 = 0x01,
     NETWORK_READY_TYPE_IPV6 = 0x02
 } network_ready_type;
