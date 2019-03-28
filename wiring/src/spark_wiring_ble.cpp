@@ -106,16 +106,16 @@ BleUuid::BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order) : 
     }
 }
 
-BleUuid::BleUuid(const String& str) : type_(BleUuidType::LONG), order_(BleUuidOrder::LSB), shortUuid_(0x0000) {
-    setUuid(str);
+BleUuid::BleUuid(const String& uuid) : type_(BleUuidType::LONG), order_(BleUuidOrder::LSB), shortUuid_(0x0000) {
+    setUuid(uuid);
 }
 
-BleUuid::BleUuid(const char* string) : type_(BleUuidType::LONG), order_(BleUuidOrder::LSB), shortUuid_(0x0000) {
-    if (string == nullptr) {
+BleUuid::BleUuid(const char* uuid) : type_(BleUuidType::LONG), order_(BleUuidOrder::LSB), shortUuid_(0x0000) {
+    if (uuid == nullptr) {
         memset(fullUuid_, 0x00, BLE_SIG_UUID_128BIT_LEN);
     }
     else {
-        String str(string);
+        String str(uuid);
         setUuid(str);
     }
 }
@@ -133,6 +133,18 @@ bool BleUuid::isValid(void) const {
         memset(temp, 0x00, sizeof(temp));
         return memcmp(fullUuid_, temp, BLE_SIG_UUID_128BIT_LEN);
     }
+}
+
+bool BleUuid::operator == (const BleUuid& uuid) const {
+    if (type_ == uuid.type() && order_ == uuid.order()) {
+        if (type_ == BleUuidType::SHORT) {
+            return (shortUuid_ == uuid.shortUuid());
+        }
+        else {
+            return !memcmp(fullUuid(), uuid.fullUuid(), BLE_SIG_UUID_128BIT_LEN);
+        }
+    }
+    return false;
 }
 
 int8_t BleUuid::toInt(char c) {
@@ -166,18 +178,6 @@ void BleUuid::setUuid(const String& str) {
         fullUuid_[len - 1] = 0x00;
         len--;
     }
-}
-
-bool BleUuid::operator == (const BleUuid& uuid) const {
-    if (type_ == uuid.type() && order_ == uuid.order()) {
-        if (type_ == BleUuidType::SHORT) {
-            return (shortUuid_ == uuid.shortUuid());
-        }
-        else {
-            return !memcmp(fullUuid(), uuid.fullUuid(), BLE_SIG_UUID_128BIT_LEN);
-        }
-    }
-    return false;
 }
 
 
@@ -636,11 +636,11 @@ BleCharacteristic::BleCharacteristic(const char* desc, BleCharProps properties, 
     LOG_DEBUG(TRACE, "shared_ptr count: %d", impl_.use_count());
 }
 
-BleCharacteristic::BleCharacteristic(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, onDataReceivedCb cb)
-    : impl_(std::make_shared<BleCharacteristicImpl>(desc, properties, charUuid, svcUuid, cb)) {
+void BleCharacteristic::construct(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, onDataReceivedCb cb) {
+    impl_ = std::make_shared<BleCharacteristicImpl>(desc, properties, charUuid, svcUuid, cb);
     impl()->addReference(this, false);
 
-    LOG_DEBUG(TRACE, "BleCharacteristic::BleCharacteristic(...):0x%08X -> 0x%08X", this, impl());
+    LOG_DEBUG(TRACE, "BleCharacteristic::construct(...):0x%08X -> 0x%08X", this, impl());
     LOG_DEBUG(TRACE, "shared_ptr count: %d", impl_.use_count());
 }
 
@@ -964,16 +964,6 @@ public:
             }
             return SYSTEM_ERROR_INTERNAL;
         }
-    }
-
-    int addCharacteristic(const char* desc, BleCharProps properties, onDataReceivedCb cb) {
-        BleCharacteristic characteristic(desc, properties, cb);
-        return addCharacteristic(characteristic);
-    }
-
-    int addCharacteristic(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, onDataReceivedCb cb) {
-        BleCharacteristic characteristic(desc, properties, charUuid, svcUuid, cb);
-        return addCharacteristic(characteristic);
     }
 
     template <typename T>
@@ -1637,11 +1627,8 @@ int BleLocalDevice::addCharacteristic(BleCharacteristic& characteristic) {
 }
 
 int BleLocalDevice::addCharacteristic(const char* desc, BleCharProps properties, onDataReceivedCb cb) {
-    return gattsProxy_->addCharacteristic(desc, properties, cb);
-}
-
-int BleLocalDevice::addCharacteristic(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, onDataReceivedCb cb) {
-    return gattsProxy_->addCharacteristic(desc, properties, charUuid, svcUuid, cb);
+    BleCharacteristic characteristic(desc, properties, cb);
+    return gattsProxy_->addCharacteristic(characteristic);
 }
 
 BlePeerDevice* BleLocalDevice::findPeerDevice(BleConnHandle connHandle) {
