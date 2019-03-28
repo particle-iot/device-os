@@ -137,6 +137,16 @@ IPAddress NetworkClass::resolve(const char* name) {
         }
     }
     freeaddrinfo(ai);
+#else
+
+    // Compatibility calls into interface-specific methods for platforms
+    // that do not support getaddrinfo()
+#if Wiring_WiFi
+    return WiFi.resolve(name);
+#elif Wiring_Cellular
+    return Cellular.resolve(name);
+#endif // Wiring_Cellular
+
 #endif // HAL_USE_INET_HAL_POSIX
     return addr;
 }
