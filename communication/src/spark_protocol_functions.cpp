@@ -19,6 +19,7 @@
 
 #include "protocol_selector.h"
 #include "spark_protocol_functions.h"
+#include "system_error.h"
 #include "handshake.h"
 #include "debug.h"
 #include <stdlib.h>
