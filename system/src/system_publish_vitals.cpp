@@ -4,83 +4,62 @@
 #include <limits>
 
 #include "logging.h"
-#include "protocol_defs.h"
 
 using namespace particle::system;
 
-template <
-    typename publish_fn_t,
-    class Timer
->
-VitalsPublisher<publish_fn_t, Timer>::VitalsPublisher (
-    ProtocolFacade * protocol_,
-    publish_fn_t fn_,
+template <class Timer>
+VitalsPublisher<Timer>::VitalsPublisher (
+    publish_fn_t publish_fn_,
     const Timer & timer_
 ) :
     _period_s(std::numeric_limits<system_tick_t>::max()),
-    _protocol(protocol_),
-    _publishVitals(fn_),
+    _publishVitals(publish_fn_),
     _timer(timer_)
 {
 
 }
 
-template <
-    typename publish_fn_t,
-    class Timer
->
-VitalsPublisher<publish_fn_t, Timer>::~VitalsPublisher (
+template <class Timer>
+VitalsPublisher<Timer>::~VitalsPublisher (
     void
 ) {
     _timer.dispose();
 }
 
-template <
-    typename publish_fn_t,
-    class Timer
->
+template <class Timer>
 void
-VitalsPublisher<publish_fn_t, Timer>::disablePeriodicPublish (
+VitalsPublisher<Timer>::disablePeriodicPublish (
     void
 ) {
     _timer.stop();
 }
 
-template <
-    typename publish_fn_t,
-    class Timer
->
+template <class Timer>
 void
-VitalsPublisher<publish_fn_t, Timer>::enablePeriodicPublish (
+VitalsPublisher<Timer>::enablePeriodicPublish (
     void
 ) {
     _timer.start();
 }
 
-template <
-    typename publish_fn_t,
-    class Timer
->
+template <class Timer>
 system_tick_t
-VitalsPublisher<publish_fn_t, Timer>::period (
+VitalsPublisher<Timer>::period (
     void
 ) const {
     return _period_s;
 }
 
-template <
-    typename publish_fn_t,
-    class Timer
->
+template <class Timer>
 void
-VitalsPublisher<publish_fn_t, Timer>::period (
+VitalsPublisher<Timer>::period (
     system_tick_t period_s_
 ) {
     const system_tick_t period_ms = period_s_ * 1000;
     const bool was_active = _timer.isActive();
 
     if ( _timer.changePeriod(period_ms) ) {
-        LOG(ERROR, "Unable to update timer period!");
+        LOG(ERROR, "Unable to update vitals timer period!");
     } else {
         _period_s = period_s_;
 
@@ -93,23 +72,17 @@ VitalsPublisher<publish_fn_t, Timer>::period (
     }
 }
 
-template <
-    typename publish_fn_t,
-    class Timer
->
+template <class Timer>
 int
-VitalsPublisher<publish_fn_t, Timer>::publish (
+VitalsPublisher<Timer>::publish (
     void
 ) {
-    return _publishVitals(_protocol, particle::protocol::DESCRIBE_METRICS, nullptr);
+    return _publishVitals();
 }
 
-#include <functional>
-
 #if PLATFORM_ID == PLATFORM_SPARK_CORE
-  template class VitalsPublisher<std::function<int(ProtocolFacade *, int, void *)>, particle::NullTimer>;
+  template class VitalsPublisher<particle::NullTimer>;
 #else // not PLATFORM_SPARK_CORE
   #include "spark_wiring_timer.h"
-  template class VitalsPublisher<std::function<int(ProtocolFacade *, int, void *)>, Timer>;
+  template class VitalsPublisher<Timer>;
 #endif // PLATFORM_SPARK_CORE
-

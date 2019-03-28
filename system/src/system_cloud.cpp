@@ -27,7 +27,6 @@
 
 #include "platforms.h"
 #include "protocol_defs.h"
-#include "spark_wiring_cloud.h"
 #include "spark_wiring_string.h"
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
@@ -54,7 +53,7 @@ using namespace particle::system;
 
 #if PLATFORM_ID == PLATFORM_SPARK_CORE
   particle::NullTimer _vitals_timer;
-  VitalsPublisher<std::function<int(ProtocolFacade *, int, void *)>, particle::NullTimer> _vitals(spark_protocol_instance(), spark_protocol_post_description, _vitals_timer);
+  VitalsPublisher<particle::NullTimer> _vitals(std::bind(spark_protocol_post_description, spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr), _vitals_timer);
 #else // not PLATFORM_SPARK_CORE
   Timer _vitals_timer(std::numeric_limits<unsigned>::max(), []() -> void {
       const auto task = new(std::nothrow) ISRTaskQueue::Task;
@@ -67,7 +66,7 @@ using namespace particle::system;
       };
       SystemISRTaskQueue.enqueue(task);
   }, false);
-  VitalsPublisher<std::function<int(ProtocolFacade *, int, void *)>, Timer> _vitals(spark_protocol_instance(), spark_protocol_post_description, _vitals_timer);
+  VitalsPublisher<Timer> _vitals(std::bind(spark_protocol_post_description, spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr), _vitals_timer);
 #endif  // PLATFORM_SPARK_CORE
 
 } // namespace
