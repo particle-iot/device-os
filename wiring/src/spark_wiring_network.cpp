@@ -99,9 +99,13 @@ IPAddress NetworkClass::resolve(const char* name) {
     IPAddress addr;
 #if HAL_USE_INET_HAL_POSIX
     struct addrinfo *ai = nullptr;
-    const int r = getaddrinfo(name, nullptr, nullptr, &ai);
+    struct addrinfo hints = {};
+    hints.ai_flags = AI_ADDRCONFIG;
+    hints.ai_family = AF_UNSPEC;
+    const int r = getaddrinfo(name, nullptr, &hints, &ai);
     if (!r) {
         bool ok = false;
+        // This is not really needed if AI_ADDRCONFIG is properly supported
         bool ipv4 = network_ready(*this, NETWORK_READY_TYPE_IPV4, nullptr);
         bool ipv6 = network_ready(*this, NETWORK_READY_TYPE_IPV6, nullptr);
         for (auto cur = ai; cur != nullptr && !ok; cur = cur->ai_next) {
