@@ -2,9 +2,9 @@
 #define VITALS_PUBLISHER_H
 
 #include <cstddef>
+#include <functional>
 
 #include "platforms.h"
-#include "protocol_selector.h"
 #include "system_tick_hal.h"
 
 namespace particle {
@@ -24,28 +24,36 @@ namespace particle {
 namespace system {
 
 /**
+ * @class VitalsPublisher system_publish_vitals.h
  * @brief Publish vitals information
  *
  * Combines a protocol, function and timer, to schedule and periodically
  * publish vitals information to the cloud. This information is then consumed
  * by the fleet health metrics dashboard in the console.
+ *
+ * @tparam Timer An API compatible timer class with \p spark_wiring_timer.h:Timer
+ *
+ * @sa Timer
  */
 template <
-    typename publish_fn_t,
     class Timer
 >
 class VitalsPublisher {
   public:
     /**
+     * @typedef publish_fn_t
+     * @brief A function requiring no parameters and returning a \p system_error_t
+     */
+    typedef std::function<int(void)> publish_fn_t;
+
+    /**
      * @brief Constructor
      *
-     * @param[in] protocol The protocol used to send cloud messages
-     * @param[in] fn The function used to send cloud messages
+     * @param[in] publish_fn The function used to send cloud messages
      * @param[in] timer The timer used to schedule the period
      */
     VitalsPublisher (
-        ProtocolFacade * protocol,
-        publish_fn_t fn,
+        publish_fn_t publish_fn,
         const Timer & timer
     );
 
@@ -110,7 +118,6 @@ class VitalsPublisher {
 
   private:
     system_tick_t _period_s;
-    ProtocolFacade * _protocol;
     publish_fn_t _publishVitals;
     Timer _timer;
 };
