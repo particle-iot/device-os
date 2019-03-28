@@ -28,12 +28,12 @@ SYSTEM_MODE(MANUAL);
 
 void onDataReceived(const uint8_t* data, size_t len);
 
-BleUuid uartSvcUuid("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
-BleUuid rxUuid("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
-BleUuid txUuid("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+const char* serviceUuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
+const char* rxUuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
+const char* txUuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E";
 
-BleCharacteristic txAttr("tx", PROPERTY::NOTIFY, txUuid, uartSvcUuid);
-BleCharacteristic rxAttr("rx", PROPERTY::WRITE_WO_RSP, rxUuid, uartSvcUuid, onDataReceived);
+BleCharacteristic txCharacteristic("tx", PROPERTY::NOTIFY, txUuid, serviceUuid);
+BleCharacteristic rxCharacteristic("rx", PROPERTY::WRITE_WO_RSP, rxUuid, serviceUuid, onDataReceived);
 
 uint8_t txBuf[UART_TX_BUF_SIZE];
 size_t txLen = 0;
@@ -48,8 +48,8 @@ void onDataReceived(const uint8_t* data, size_t len) {
 void setup() {
     Serial1.begin(115200);
 
-    BLE.addCharacteristic(txAttr);
-    BLE.addCharacteristic(rxAttr);
+    BLE.addCharacteristic(txCharacteristic);
+    BLE.addCharacteristic(rxCharacteristic);
 
     BleAdvData advData;
     advData.appendServiceUuid("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
@@ -57,13 +57,14 @@ void setup() {
 }
 
 void loop() {
+
     if (BLE.connected()) {
         while (Serial1.available() && txLen < UART_TX_BUF_SIZE) {
             txBuf[txLen++] = Serial1.read();
         }
 
         if (txLen > 0) {
-            txAttr.setValue(txBuf, txLen);
+            txCharacteristic.setValue(txBuf, txLen);
             txLen = 0;
         }
     }

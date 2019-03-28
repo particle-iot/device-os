@@ -130,8 +130,8 @@ public:
     BleUuid(const uint8_t* uuid128, BleUuidOrder order = BleUuidOrder::LSB);
     BleUuid(uint16_t uuid16, BleUuidOrder order = BleUuidOrder::LSB);
     BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order = BleUuidOrder::LSB);
-    BleUuid(const String& str);
-    BleUuid(const char* string);
+    BleUuid(const String& uuid);
+    BleUuid(const char* uuid);
     ~BleUuid();
 
     bool isValid(void) const;
@@ -239,7 +239,14 @@ public:
     BleCharacteristic();
     BleCharacteristic(const BleCharacteristic& characteristic);
     BleCharacteristic(const char* desc, BleCharProps properties, onDataReceivedCb cb = nullptr);
-    BleCharacteristic(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, onDataReceivedCb cb = nullptr);
+
+    template<typename T>
+    BleCharacteristic(const char* desc, BleCharProps properties, T charUuid, T svcUuid, onDataReceivedCb cb = nullptr) {
+        BleUuid cUuid(charUuid);
+        BleUuid sUuid(svcUuid);
+        construct(desc, properties, cUuid, sUuid, cb);
+    }
+
     ~BleCharacteristic();
 
     BleCharacteristic& operator=(const BleCharacteristic&);
@@ -282,6 +289,7 @@ public:
 
 private:
     std::shared_ptr<BleCharacteristicImpl> impl_;
+    void construct(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, onDataReceivedCb cb);
 };
 
 
@@ -369,7 +377,12 @@ public:
 
     int addCharacteristic(BleCharacteristic& characteristic);
     int addCharacteristic(const char* desc, BleCharProps properties, onDataReceivedCb cb);
-    int addCharacteristic(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, onDataReceivedCb cb);
+
+    template<typename T>
+    int addCharacteristic(const char* desc, BleCharProps properties, T charUuid, T svcUuid, onDataReceivedCb cb = nullptr) {
+        BleCharacteristic characteristic(desc, properties, charUuid, svcUuid, cb);
+        return addCharacteristic(characteristic);
+    }
 
     int setPpcp(void);
     int setPpcp(uint16_t minInterval, uint16_t maxInterval, uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY, uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT);
