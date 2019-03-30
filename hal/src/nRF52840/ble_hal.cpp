@@ -62,6 +62,8 @@ LOG_SOURCE_CATEGORY("hal.ble")
 #define BLE_GENERAL_PROCEDURE_TIMEOUT               5000 // In milliseconds
 #define BLE_DICOVERY_PROCEDURE_TIMEOUT              15000 // In milliseconds
 
+#define BLE_MAX_EVT_CB_COUNT                        2
+
 
 StaticRecursiveMutex s_bleMutex;
 
@@ -75,13 +77,14 @@ class bleLock {
     }
 };
 
-
-typedef void (*evt_handler_t)(void*, void*);
-
 typedef struct {
-    evt_handler_t  handler;
     hal_ble_evts_t arg;
 } HalBleEvtMsg_t;
+
+typedef struct {
+    on_ble_evt_cb_t handler;
+    void* context;
+} HalBleEvtCb_t;
 
 typedef struct {
     uint16_t       discStartHandle;
@@ -147,6 +150,8 @@ typedef struct {
     uint16_t readAttrHandle;
     uint8_t  readData[20];
     uint16_t readDataLen;
+
+    HalBleEvtCb_t evtCbs[BLE_MAX_EVT_CB_COUNT];
 } HalBleInstance_t;
 
 
@@ -212,9 +217,6 @@ static HalBleInstance_t s_bleInstance = {
     .evtQueue  = NULL,
     .evtThread = NULL,
     .connParamsUpdateTimer = NULL,
-
-    .onEvtCb = NULL,
-    .context = NULL
 };
 
 static uint8_t    s_scanReportBuff[BLE_MAX_SCAN_REPORT_BUF_LEN];
@@ -291,14 +293,14 @@ int setAdvData(const uint8_t* data, uint16_t len, uint8_t flag) {
     if (flag == BLE_ADV_DATA_ADVERTISING) {
         if (data != NULL) {
             memcpy(s_bleInstance.advData, data, len);
-            s_bleInstance.advDataLen = len;
         }
+        s_bleInstance.advDataLen = len;
     }
     else {
         if (data != NULL) {
             memcpy(s_bleInstance.scanRespData, data, len);
-            s_bleInstance.scanRespDataLen = len;
         }
+        s_bleInstance.scanRespDataLen = len;
     }
 
     // Make sure the advertising data or scan response data is consistent.
@@ -662,37 +664,31 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             LOG_DEBUG(TRACE, "BLE GAP event: advertising stopped.");
             s_bleInstance.advertising = false;
 
-            if (s_bleInstance.onEvtCb != NULL) {
-                msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                msg.arg.type = BLE_EVT_ADV_STOPPED;
-                msg.arg.params.adv_stopped.version = 0x01;
-                msg.arg.params.adv_stopped.reserved = NULL;
-                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                    LOG(ERROR, "os_queue_put() failed.");
-                }
+            msg.arg.type = BLE_EVT_ADV_STOPPED;
+            msg.arg.params.adv_stopped.version = 0x01;
+            msg.arg.params.adv_stopped.reserved = NULL;
+            if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
             }
         } break;
 
         case BLE_GAP_EVT_ADV_REPORT: {
             LOG_DEBUG(TRACE, "BLE GAP event: advertising report.");
 
-            if (s_bleInstance.onEvtCb != NULL) {
-                msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                msg.arg.type = BLE_EVT_SCAN_RESULT;
-                msg.arg.params.scan_result.version = 0x01;
-                msg.arg.params.scan_result.type.connectable = event->evt.gap_evt.params.adv_report.type.connectable;
-                msg.arg.params.scan_result.type.scannable = event->evt.gap_evt.params.adv_report.type.scannable;
-                msg.arg.params.scan_result.type.directed = event->evt.gap_evt.params.adv_report.type.directed;
-                msg.arg.params.scan_result.type.scan_response = event->evt.gap_evt.params.adv_report.type.scan_response;
-                msg.arg.params.scan_result.type.extended_pdu = event->evt.gap_evt.params.adv_report.type.extended_pdu;
-                msg.arg.params.scan_result.rssi = event->evt.gap_evt.params.adv_report.rssi;
-                msg.arg.params.scan_result.data_len = event->evt.gap_evt.params.adv_report.data.len;
-                memcpy(msg.arg.params.scan_result.data, event->evt.gap_evt.params.adv_report.data.p_data, msg.arg.params.scan_result.data_len);
-                msg.arg.params.scan_result.peer_addr.addr_type = event->evt.gap_evt.params.adv_report.peer_addr.addr_type;
-                memcpy(msg.arg.params.scan_result.peer_addr.addr, event->evt.gap_evt.params.adv_report.peer_addr.addr, BLE_SIG_ADDR_LEN);
-                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                    LOG(ERROR, "os_queue_put() failed.");
-                }
+            msg.arg.type = BLE_EVT_SCAN_RESULT;
+            msg.arg.params.scan_result.version = 0x01;
+            msg.arg.params.scan_result.type.connectable = event->evt.gap_evt.params.adv_report.type.connectable;
+            msg.arg.params.scan_result.type.scannable = event->evt.gap_evt.params.adv_report.type.scannable;
+            msg.arg.params.scan_result.type.directed = event->evt.gap_evt.params.adv_report.type.directed;
+            msg.arg.params.scan_result.type.scan_response = event->evt.gap_evt.params.adv_report.type.scan_response;
+            msg.arg.params.scan_result.type.extended_pdu = event->evt.gap_evt.params.adv_report.type.extended_pdu;
+            msg.arg.params.scan_result.rssi = event->evt.gap_evt.params.adv_report.rssi;
+            msg.arg.params.scan_result.data_len = event->evt.gap_evt.params.adv_report.data.len;
+            memcpy(msg.arg.params.scan_result.data, event->evt.gap_evt.params.adv_report.data.p_data, msg.arg.params.scan_result.data_len);
+            msg.arg.params.scan_result.peer_addr.addr_type = event->evt.gap_evt.params.adv_report.peer_addr.addr_type;
+            memcpy(msg.arg.params.scan_result.peer_addr.addr, event->evt.gap_evt.params.adv_report.peer_addr.addr, BLE_SIG_ADDR_LEN);
+            if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
             }
 
             // Continue scanning, scanning parameters pointer must be set to NULL.
@@ -708,20 +704,17 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
             LOG_DEBUG(TRACE, "BLE GAP event: connected.");
 
-            if (s_bleInstance.onEvtCb != NULL) {
-                msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                msg.arg.type = BLE_EVT_CONNECTED;
-                msg.arg.params.connected.version = 0x01;
-                msg.arg.params.connected.role = event->evt.gap_evt.params.connected.role;
-                msg.arg.params.connected.conn_handle = event->evt.gap_evt.conn_handle;
-                msg.arg.params.connected.conn_interval = event->evt.gap_evt.params.connected.conn_params.max_conn_interval;
-                msg.arg.params.connected.slave_latency = event->evt.gap_evt.params.connected.conn_params.slave_latency;
-                msg.arg.params.connected.conn_sup_timeout = event->evt.gap_evt.params.connected.conn_params.conn_sup_timeout;
-                msg.arg.params.connected.peer_addr.addr_type = event->evt.gap_evt.params.connected.peer_addr.addr_type;
-                memcpy(msg.arg.params.connected.peer_addr.addr, event->evt.gap_evt.params.connected.peer_addr.addr, BLE_SIG_ADDR_LEN);
-                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                    LOG(ERROR, "os_queue_put() failed.");
-                }
+            msg.arg.type = BLE_EVT_CONNECTED;
+            msg.arg.params.connected.version = 0x01;
+            msg.arg.params.connected.role = event->evt.gap_evt.params.connected.role;
+            msg.arg.params.connected.conn_handle = event->evt.gap_evt.conn_handle;
+            msg.arg.params.connected.conn_interval = event->evt.gap_evt.params.connected.conn_params.max_conn_interval;
+            msg.arg.params.connected.slave_latency = event->evt.gap_evt.params.connected.conn_params.slave_latency;
+            msg.arg.params.connected.conn_sup_timeout = event->evt.gap_evt.params.connected.conn_params.conn_sup_timeout;
+            msg.arg.params.connected.peer_addr.addr_type = event->evt.gap_evt.params.connected.peer_addr.addr_type;
+            memcpy(msg.arg.params.connected.peer_addr.addr, event->evt.gap_evt.params.connected.peer_addr.addr, BLE_SIG_ADDR_LEN);
+            if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
             }
 
             s_bleInstance.role       = event->evt.gap_evt.params.connected.role;
@@ -754,15 +747,12 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                 os_timer_change(s_bleInstance.connParamsUpdateTimer, OS_TIMER_CHANGE_STOP, true, 0, 0, NULL);
             }
 
-            if (s_bleInstance.onEvtCb != NULL) {
-                msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                msg.arg.type = BLE_EVT_DISCONNECTED;
-                msg.arg.params.disconnected.version = 0x01;
-                msg.arg.params.disconnected.reason = event->evt.gap_evt.params.disconnected.reason;
-                msg.arg.params.disconnected.conn_handle = event->evt.gap_evt.conn_handle;
-                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                    LOG(ERROR, "os_queue_put() failed.");
-                }
+            msg.arg.type = BLE_EVT_DISCONNECTED;
+            msg.arg.params.disconnected.version = 0x01;
+            msg.arg.params.disconnected.reason = event->evt.gap_evt.params.disconnected.reason;
+            msg.arg.params.disconnected.conn_handle = event->evt.gap_evt.conn_handle;
+            if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
             }
 
             // Re-start advertising.
@@ -809,18 +799,16 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             // Update connection parameters if needed.
             updateConnParamsIfNeeded();
 
-            if (s_bleInstance.onEvtCb != NULL) {
-                msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                msg.arg.type = BLE_EVT_CONN_PARAMS_UPDATED;
-                msg.arg.params.conn_params_updated.version = 0x01;
-                msg.arg.params.conn_params_updated.conn_handle = event->evt.gap_evt.conn_handle;
-                msg.arg.params.conn_params_updated.conn_interval = event->evt.gap_evt.params.conn_param_update.conn_params.max_conn_interval;
-                msg.arg.params.conn_params_updated.slave_latency = event->evt.gap_evt.params.conn_param_update.conn_params.slave_latency;
-                msg.arg.params.conn_params_updated.conn_sup_timeout = event->evt.gap_evt.params.conn_param_update.conn_params.conn_sup_timeout;
-                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                    LOG(ERROR, "os_queue_put() failed.");
-                }
+            msg.arg.type = BLE_EVT_CONN_PARAMS_UPDATED;
+            msg.arg.params.conn_params_updated.version = 0x01;
+            msg.arg.params.conn_params_updated.conn_handle = event->evt.gap_evt.conn_handle;
+            msg.arg.params.conn_params_updated.conn_interval = event->evt.gap_evt.params.conn_param_update.conn_params.max_conn_interval;
+            msg.arg.params.conn_params_updated.slave_latency = event->evt.gap_evt.params.conn_param_update.conn_params.slave_latency;
+            msg.arg.params.conn_params_updated.conn_sup_timeout = event->evt.gap_evt.params.conn_param_update.conn_params.conn_sup_timeout;
+            if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
             }
+
             os_semaphore_give(s_bleInstance.connUpdateSemaphore, false);
         } break;
 
@@ -889,15 +877,13 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                 LOG_DEBUG(TRACE, "BLE GAP event: Scanning timeout");
                 s_bleInstance.scanning = false;
 
-                if (s_bleInstance.onEvtCb != NULL) {
-                    msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                    msg.arg.type = BLE_EVT_SCAN_STOPPED;
-                    msg.arg.params.scan_stopped.version = 0x01;
-                    msg.arg.params.scan_stopped.reserved = NULL;
-                    if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                        LOG(ERROR, "os_queue_put() failed.");
-                    }
+                msg.arg.type = BLE_EVT_SCAN_STOPPED;
+                msg.arg.params.scan_stopped.version = 0x01;
+                msg.arg.params.scan_stopped.reserved = NULL;
+                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
                 }
+
                 os_semaphore_give(s_bleInstance.scanSemaphore, false);
             }
             else if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
@@ -916,6 +902,14 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
         case BLE_GATTC_EVT_EXCHANGE_MTU_RSP: {
             LOG_DEBUG(TRACE, "BLE GATT Client event: exchange ATT MTU response.");
             LOG_DEBUG(TRACE, "Effective Server RX MTU: %d.", event->evt.gattc_evt.params.exchange_mtu_rsp.server_rx_mtu);
+
+            msg.arg.type = BLE_EVT_GATT_PARAMS_UPDATED;
+            msg.arg.params.gatt_params_updated.version = 0x01;
+            msg.arg.params.gatt_params_updated.conn_handle = event->evt.gattc_evt.conn_handle;
+            msg.arg.params.gatt_params_updated.att_mtu_size = event->evt.gattc_evt.params.exchange_mtu_rsp.server_rx_mtu;
+            if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
+            }
         } break;
 
         case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: {
@@ -952,22 +946,19 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             }
 
             if (terminate) {
-                if (s_bleInstance.onEvtCb != NULL) {
-                    msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                    msg.arg.type = BLE_EVT_SVC_DISCOVERED;
-                    msg.arg.params.svc_disc.version = 0x01;
-                    msg.arg.params.svc_disc.conn_handle = event->evt.gattc_evt.conn_handle;
-                    msg.arg.params.svc_disc.count = s_bleInstance.discovery.count;
-                    msg.arg.params.svc_disc.services = s_bleInstance.discovery.services;
-                    if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                        LOG(ERROR, "os_queue_put() failed.");
-                        // This flag should be cleared after this event being popped, in case that
-                        // further operation is needed to retrieve 128-bits UUID. If this event is
-                        // not enqueued successfully, this flag should be clear here.
-                        s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
-                        s_bleInstance.discovering = false;
-                        os_semaphore_give(s_bleInstance.discoverySemaphore, false);
-                    }
+                msg.arg.type = BLE_EVT_SVC_DISCOVERED;
+                msg.arg.params.svc_disc.version = 0x01;
+                msg.arg.params.svc_disc.conn_handle = event->evt.gattc_evt.conn_handle;
+                msg.arg.params.svc_disc.count = s_bleInstance.discovery.count;
+                msg.arg.params.svc_disc.services = s_bleInstance.discovery.services;
+                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                    // This flag should be cleared after this event being popped, in case that
+                    // further operation is needed to retrieve 128-bits UUID. If this event is
+                    // not enqueued successfully, this flag should be clear here.
+                    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                    s_bleInstance.discovering = false;
+                    os_semaphore_give(s_bleInstance.discoverySemaphore, false);
                 }
             }
         } break;
@@ -1012,22 +1003,19 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             }
 
             if (terminate) {
-                if (s_bleInstance.onEvtCb != NULL) {
-                    msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                    msg.arg.type = BLE_EVT_CHAR_DISCOVERED;
-                    msg.arg.params.char_disc.version = 0x01;
-                    msg.arg.params.char_disc.conn_handle = event->evt.gattc_evt.conn_handle;
-                    msg.arg.params.char_disc.count = s_bleInstance.discovery.count;
-                    msg.arg.params.char_disc.characteristics = s_bleInstance.discovery.characteristics;
-                    if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                        LOG(ERROR, "os_queue_put() failed.");
-                        // This flag should be cleared after this event being popped, in case that
-                        // further operation is needed to retrieve 128-bits UUID. If this event is
-                        // not enqueued successfully, this flag should be clear here.
-                        s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
-                        s_bleInstance.discovering = false;
-                        os_semaphore_give(s_bleInstance.discoverySemaphore, false);
-                    }
+                msg.arg.type = BLE_EVT_CHAR_DISCOVERED;
+                msg.arg.params.char_disc.version = 0x01;
+                msg.arg.params.char_disc.conn_handle = event->evt.gattc_evt.conn_handle;
+                msg.arg.params.char_disc.count = s_bleInstance.discovery.count;
+                msg.arg.params.char_disc.characteristics = s_bleInstance.discovery.characteristics;
+                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                    // This flag should be cleared after this event being popped, in case that
+                    // further operation is needed to retrieve 128-bits UUID. If this event is
+                    // not enqueued successfully, this flag should be clear here.
+                    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                    s_bleInstance.discovering = false;
+                    os_semaphore_give(s_bleInstance.discoverySemaphore, false);
                 }
             }
         } break;
@@ -1079,22 +1067,19 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             }
 
             if (terminate) {
-                if (s_bleInstance.onEvtCb != NULL) {
-                    msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                    msg.arg.type = BLE_EVT_DESC_DISCOVERED;
-                    msg.arg.params.desc_disc.version = 0x01;
-                    msg.arg.params.desc_disc.conn_handle = event->evt.gattc_evt.conn_handle;
-                    msg.arg.params.desc_disc.count = s_bleInstance.discovery.count;
-                    msg.arg.params.desc_disc.descriptors = s_bleInstance.discovery.descriptors;
-                    if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                        LOG(ERROR, "os_queue_put() failed.");
-                        // This flag should be cleared after this event being popped, in case that
-                        // further operation is needed to retrieve 128-bits UUID. If this event is
-                        // not enqueued successfully, this flag should be clear here.
-                        s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
-                        s_bleInstance.discovering = false;
-                        os_semaphore_give(s_bleInstance.discoverySemaphore, false);
-                    }
+                msg.arg.type = BLE_EVT_DESC_DISCOVERED;
+                msg.arg.params.desc_disc.version = 0x01;
+                msg.arg.params.desc_disc.conn_handle = event->evt.gattc_evt.conn_handle;
+                msg.arg.params.desc_disc.count = s_bleInstance.discovery.count;
+                msg.arg.params.desc_disc.descriptors = s_bleInstance.discovery.descriptors;
+                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                    // This flag should be cleared after this event being popped, in case that
+                    // further operation is needed to retrieve 128-bits UUID. If this event is
+                    // not enqueued successfully, this flag should be clear here.
+                    s_bleInstance.discovery.currDiscProcedure = BLE_DISCOVERY_PROCEDURE_IDLE;
+                    s_bleInstance.discovering = false;
+                    os_semaphore_give(s_bleInstance.discoverySemaphore, false);
                 }
             }
         } break;
@@ -1153,18 +1138,15 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
                 }
             }
 
-            if (s_bleInstance.onEvtCb != NULL) {
-                msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                msg.arg.type = BLE_EVT_DATA_NOTIFIED;
-                msg.arg.params.data_rec.version = 0x01;
-                msg.arg.params.data_rec.conn_handle = event->evt.gattc_evt.conn_handle;
-                msg.arg.params.data_rec.attr_handle = event->evt.gattc_evt.params.hvx.handle;
-                msg.arg.params.data_rec.offset = 0;
-                msg.arg.params.data_rec.data_len = event->evt.gattc_evt.params.hvx.len;
-                memcpy(msg.arg.params.data_rec.data, event->evt.gattc_evt.params.hvx.data, msg.arg.params.data_rec.data_len);
-                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                    LOG(ERROR, "os_queue_put() failed.");
-                }
+            msg.arg.type = BLE_EVT_DATA_NOTIFIED;
+            msg.arg.params.data_rec.version = 0x01;
+            msg.arg.params.data_rec.conn_handle = event->evt.gattc_evt.conn_handle;
+            msg.arg.params.data_rec.attr_handle = event->evt.gattc_evt.params.hvx.handle;
+            msg.arg.params.data_rec.offset = 0;
+            msg.arg.params.data_rec.data_len = event->evt.gattc_evt.params.hvx.len;
+            memcpy(msg.arg.params.data_rec.data, event->evt.gattc_evt.params.hvx.data, msg.arg.params.data_rec.data_len);
+            if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
             }
         } break;
 
@@ -1206,18 +1188,15 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
             // TODO: deal with different write commands.
 
-            if (s_bleInstance.onEvtCb != NULL) {
-                msg.handler = (evt_handler_t)s_bleInstance.onEvtCb;
-                msg.arg.type = BLE_EVT_DATA_WRITTEN;
-                msg.arg.params.data_rec.version = 0x01;
-                msg.arg.params.data_rec.conn_handle = event->evt.gatts_evt.conn_handle;
-                msg.arg.params.data_rec.attr_handle = event->evt.gatts_evt.params.write.handle;
-                msg.arg.params.data_rec.offset = event->evt.gatts_evt.params.write.offset;
-                msg.arg.params.data_rec.data_len = event->evt.gatts_evt.params.write.len;
-                memcpy(msg.arg.params.data_rec.data, event->evt.gatts_evt.params.write.data, msg.arg.params.data_rec.data_len);
-                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                    LOG(ERROR, "os_queue_put() failed.");
-                }
+            msg.arg.type = BLE_EVT_DATA_WRITTEN;
+            msg.arg.params.data_rec.version = 0x01;
+            msg.arg.params.data_rec.conn_handle = event->evt.gatts_evt.conn_handle;
+            msg.arg.params.data_rec.attr_handle = event->evt.gatts_evt.params.write.handle;
+            msg.arg.params.data_rec.offset = event->evt.gatts_evt.params.write.offset;
+            msg.arg.params.data_rec.data_len = event->evt.gatts_evt.params.write.len;
+            memcpy(msg.arg.params.data_rec.data, event->evt.gatts_evt.params.write.data, msg.arg.params.data_rec.data_len);
+            if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
             }
         } break;
 
@@ -1309,8 +1288,10 @@ static os_thread_return_t handleBleEventThread(void* param) {
                 }
             }
 
-            if (msg.handler != NULL) {
-                msg.handler(&msg.arg, s_bleInstance.context);
+            for (uint8_t i = 0; i < BLE_MAX_EVT_CB_COUNT; i++) {
+                if (s_bleInstance.evtCbs[i].handler != NULL) {
+                    s_bleInstance.evtCbs[i].handler(&msg.arg, s_bleInstance.context);
+                }
             }
 
             if (   msg.arg.type == BLE_EVT_SVC_DISCOVERED
@@ -1363,6 +1344,11 @@ int ble_stack_init(void* reserved) {
         }
 
         s_bleInstance.initialized = true;
+
+        for (uint8_t i = 0; i < BLE_MAX_EVT_CB_COUNT; i++) {
+            s_bleInstance.evtCbs[i].handler = NULL;
+            s_bleInstance.evtCbs[i].context = NULL;
+        }
 
         // Register a handler for BLE events.
         NRF_SDH_BLE_OBSERVER(bleObserver, BLE_OBSERVER_PRIO, isrProcessBleEvent, nullptr);
@@ -1453,8 +1439,14 @@ int ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
 
-    s_bleInstance.onEvtCb = callback;
-    s_bleInstance.context = context;
+    for (uint8_t i = 0; i < BLE_MAX_EVT_CB_COUNT; i++) {
+        if (s_bleInstance.evtCbs[i].handler == NULL) {
+            s_bleInstance.evtCbs[i].handler = callback;
+            s_bleInstance.evtCbs[i].context = context;
+            break;
+        }
+    }
+
     return SYSTEM_ERROR_NONE;
 }
 

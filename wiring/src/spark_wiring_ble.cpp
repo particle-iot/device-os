@@ -213,7 +213,7 @@ size_t BleAdvData::append(uint8_t type, const uint8_t* buf, size_t len, bool for
         if ((staLen + len + 2) <= BLE_MAX_ADV_DATA_LEN) {
             // Firstly, move the last consistent block.
             uint16_t moveLen = selfLen - offset - adsLen;
-            memmove(&selfData[offset + len], &selfData[offset + adsLen], moveLen);
+            memmove(&selfData[offset + len + 2], &selfData[offset + adsLen], moveLen);
             // Secondly, Update the AD structure.
             // The Length field is the total length of Type field and Data field.
             selfData[offset] = len + 1;
@@ -1144,23 +1144,22 @@ public:
         if (ret != SYSTEM_ERROR_NONE) {
             return ret;
         }
+
         uint8_t buf[BLE_MAX_ADV_DATA_LEN];
         size_t len = advData.get(buf, sizeof(buf));
-        if (len > 0) {
-            ret = ble_gap_set_advertising_data(buf, len, nullptr);
-            if (ret != SYSTEM_ERROR_NONE) {
-                LOG_DEBUG(TRACE, "ble_gap_set_advertising_data failed: %d", ret);
-                return ret;
-            }
+        ret = ble_gap_set_advertising_data(buf, len, nullptr);
+        if (ret != SYSTEM_ERROR_NONE) {
+            LOG_DEBUG(TRACE, "ble_gap_set_advertising_data failed: %d", ret);
+            return ret;
         }
+
         len = srData.get(buf, sizeof(buf));
-        if (len > 0) {
-            ret = ble_gap_set_scan_response_data(buf, len, nullptr);
-            if (ret != SYSTEM_ERROR_NONE) {
-                LOG_DEBUG(TRACE, "ble_gap_set_scan_response_data failed: %d", ret);
-                return ret;
-            }
+        ret = ble_gap_set_scan_response_data(buf, len, nullptr);
+        if (ret != SYSTEM_ERROR_NONE) {
+            LOG_DEBUG(TRACE, "ble_gap_set_scan_response_data failed: %d", ret);
+            return ret;
         }
+
         return ble_gap_start_advertising(NULL);
     }
 

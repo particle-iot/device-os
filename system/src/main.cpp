@@ -747,7 +747,9 @@ void app_setup_and_loop(void)
 
 #if HAL_PLATFORM_BLE
     // FIXME: Move BLE and Thread initialization to an appropriate place
-    ble_init(nullptr);
+    if (!ble_stack_is_initialized()) {
+        ble_stack_init(NULL);
+    }
 #endif // HAL_PLATFORM_BLE
 
 #if SYSTEM_CONTROL_ENABLED

@@ -37,7 +37,7 @@ LOG_SOURCE_CATEGORY("system.listen")
 using particle::LEDStatus;
 
 #if HAL_PLATFORM_BLE
-#include "ble_hal_legacy.h"
+#include "ble_hal.h"
 #endif /* HAL_PLATFORM_BLE */
 
 namespace {
@@ -80,7 +80,7 @@ int ListeningModeHandler::enter(unsigned int timeout) {
 
 #if HAL_PLATFORM_BLE
     // Start advertising
-    ble_start_advert(nullptr);
+    ble_gap_start_advertising(nullptr);
 #endif /* HAL_PLATFORM_BLE */
 
 #if !HAL_PLATFORM_WIFI
@@ -115,7 +115,7 @@ int ListeningModeHandler::exit() {
 
 #if HAL_PLATFORM_BLE
     // Start advertising
-    ble_stop_advert(nullptr);
+    ble_gap_stop_advertising();
 #endif /* HAL_PLATFORM_BLE */
 
     LED_SIGNAL_STOP(LISTENING_MODE);
