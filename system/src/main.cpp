@@ -739,7 +739,7 @@ void app_setup_and_loop(void)
 
 #if HAL_PLATFORM_BLE
     // FIXME: Move BLE and Thread initialization to an appropriate place
-    ble_init(nullptr);
+    SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
 #endif // HAL_PLATFORM_BLE
 
 #if HAL_PLATFORM_LWIP

@@ -27,7 +27,7 @@
 #include "intrusive_queue.h"
 #include "linked_buffer.h"
 
-#include "ble_hal_legacy.h"
+#include "ble_hal.h"
 
 #include "spark_wiring_thread.h"
 
@@ -44,7 +44,7 @@
 #define BLE_CHANNEL_DEBUG_ENABLED 0
 #endif
 
-static_assert(BLE_MAX_PERIPH_CONN_COUNT == 1, "Concurrent peripheral connections are not supported");
+//static_assert(BLE_MAX_PERIPH_CONN_COUNT == 1, "Concurrent peripheral connections are not supported");
 
 namespace particle {
 
@@ -126,6 +126,7 @@ private:
     volatile bool writable_; // Set to `true` if the TX characteristic is writable
 
     uint16_t sendCharHandle_; // TX characteristic handle
+    uint16_t sendCharCccdHandle_; // TX characteristic CCCD handle
     uint16_t recvCharHandle_; // RX characteristic handle
 
     int initChannel();
@@ -139,12 +140,10 @@ private:
     size_t readSome(char* data, size_t size);
     void sendBuffer(Buffer* buf);
 
-    int connected(const ble_connected_event_data& event);
-    int disconnected(const ble_disconnected_event_data& event);
-    int connParamChanged(const ble_conn_param_changed_event_data& event);
-    int charParamChanged(const ble_char_param_changed_event_data& event);
-    int dataSent(const ble_data_sent_event_data& event);
-    int dataReceived(const ble_data_received_event_data& event);
+    int connected(const hal_ble_evts_t& event);
+    int disconnected(const hal_ble_evts_t& event);
+    int gattParamChanged(const hal_ble_evts_t& event);
+    int dataReceived(const hal_ble_evts_t& event);
 
     int initProfile();
 #if BLE_CHANNEL_SECURITY_ENABLED
@@ -160,7 +159,7 @@ private:
     int allocPooledBuffer(size_t size, Buffer** buf);
     void freePooledBuffer(Buffer* buf);
 
-    static void processBleEvent(int event, const void* eventData, void* userData);
+    static void processBleEvent(hal_ble_evts_t *event, void* context);
 };
 
 inline void BleControlRequestChannel::sendBuffer(Buffer* buf) {

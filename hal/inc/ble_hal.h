@@ -192,6 +192,12 @@ typedef struct {
 typedef struct {
     uint8_t  version;
     uint16_t conn_handle;
+    uint16_t att_mtu_size;
+} hal_ble_gatt_on_params_updated_evt_t;
+
+typedef struct {
+    uint8_t  version;
+    uint16_t conn_handle;
     uint8_t  count;
     hal_ble_svc_t* services;
 } hal_ble_gattc_on_svc_disc_evt_t;
@@ -226,6 +232,7 @@ typedef enum {
     BLE_EVT_CONNECTED,
     BLE_EVT_DISCONNECTED,
     BLE_EVT_CONN_PARAMS_UPDATED,
+    BLE_EVT_GATT_PARAMS_UPDATED,
     BLE_EVT_SVC_DISCOVERED,
     BLE_EVT_CHAR_DISCOVERED,
     BLE_EVT_DESC_DISCOVERED,
@@ -242,6 +249,7 @@ typedef struct {
         hal_ble_gap_on_connected_evt_t    connected;
         hal_ble_gap_on_disconnected_evt_t disconnected;
         hal_ble_gap_on_conn_params_evt_t  conn_params_updated;
+        hal_ble_gatt_on_params_updated_evt_t gatt_params_updated;
         hal_ble_gattc_on_svc_disc_evt_t   svc_disc;
         hal_ble_gattc_on_char_disc_evt_t  char_disc;
         hal_ble_gattc_on_desc_disc_evt_t  desc_disc;

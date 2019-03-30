@@ -25,6 +25,16 @@
 #include "ble_gatts.h"
 #include "sdk_config_system.h"
 
+
+/**< Number of microseconds in 0.625 milliseconds. */
+#define BLE_UNIT_0_625_MS                           625
+/**< Number of microseconds in 1.25 milliseconds. */
+#define BLE_UNIT_1_25_MS                            1250
+/**< Number of microseconds in 10 milliseconds. */
+#define BLE_UNIT_10_MS                              10000
+
+#define BLE_MSEC_TO_UNITS(TIME, RESOLUTION)         (((TIME) * 1000) / (RESOLUTION))
+
 #define BLE_ROLE_INVALID                            BLE_GAP_ROLE_INVALID
 #define BLE_ROLE_PERIPHERAL                         BLE_GAP_ROLE_PERIPH
 #define BLE_ROLE_CENTRAL                            BLE_GAP_ROLE_CENTRAL
@@ -102,10 +112,10 @@
 #define BLE_CONN_PARAMS_UPDATE_ATTEMPS              2
 
 /* Default BLE connection parameters */
-#define BLE_DEFAULT_MIN_CONN_INTERVAL               80      /* The minimal connection interval: 100ms (in units of 1.25ms). */
-#define BLE_DEFAULT_MAX_CONN_INTERVAL               400     /* The minimal connection interval: 500ms (in units of 1.25ms). */
-#define BLE_DEFAULT_SLAVE_LATENCY                   0       /* The slave latency. */
-#define BLE_DEFAULT_CONN_SUP_TIMEOUT                400     /* The connection supervision timeout: 4s (in units of 10ms). */
+#define BLE_DEFAULT_MIN_CONN_INTERVAL               BLE_MSEC_TO_UNITS(30, BLE_UNIT_1_25_MS)     /* The minimal connection interval: 30ms (in units of 1.25ms). */
+#define BLE_DEFAULT_MAX_CONN_INTERVAL               BLE_MSEC_TO_UNITS(45, BLE_UNIT_1_25_MS)     /* The minimal connection interval: 45ms (in units of 1.25ms). */
+#define BLE_DEFAULT_SLAVE_LATENCY                   0                                           /* The slave latency. */
+#define BLE_DEFAULT_CONN_SUP_TIMEOUT                BLE_MSEC_TO_UNITS(5000, BLE_UNIT_10_MS)     /* The connection supervision timeout: 5s (in units of 10ms). */
 
 /* BLE Service type */
 #define BLE_SERVICE_TYPE_INVALID                    BLE_GATTS_SRVC_TYPE_INVALID
@@ -119,6 +129,23 @@
 
 /* Maximum BLE Characteristic value length */
 #define BLE_MAX_CHAR_VALUE_LEN                      20
+
+// Maximum supported size of an ATT packet in bytes (ATT_MTU)
+#define BLE_MAX_ATT_MTU_SIZE                        NRF_SDH_BLE_GATT_MAX_MTU_SIZE
+
+// Default maximum size of an ATT packet in bytes (ATT_MTU)
+#define BLE_MIN_ATT_MTU_SIZE                        23
+
+// Size of the ATT opcode field in bytes
+#define BLE_ATT_OPCODE_SIZE                         1
+
+// Size of the ATT handle field in bytes
+#define BLE_ATT_HANDLE_SIZE                         2
+
+// Minimum and maximum number of bytes that can be sent in a single write command, read response,
+// notification or indication packet
+#define BLE_MIN_ATTR_VALUE_PACKET_SIZE              (BLE_MIN_ATT_MTU_SIZE - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE)
+#define BLE_MAX_ATTR_VALUE_PACKET_SIZE              (BLE_MAX_ATT_MTU_SIZE - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE)
 
 #define BLE_MAX_SVC_COUNT                           5
 #define BLE_MAX_CHAR_COUNT                          10
