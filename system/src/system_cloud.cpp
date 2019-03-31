@@ -25,6 +25,9 @@
  ******************************************************************************
  */
 
+#include <cstdarg>
+
+#include "logging.h"
 #include "platforms.h"
 #include "protocol_defs.h"
 #include "spark_wiring_string.h"
@@ -49,11 +52,18 @@ extern void (*random_seed_from_cloud_handler)(unsigned int);
 
 namespace {
 
+static inline void __log_error (const char * format_, ...) {
+    va_list args;
+    va_start(args, format_);
+    LOG(ERROR, format_, args);
+    va_end(args);
+}
+
 using namespace particle::system;
 
 #if PLATFORM_ID == PLATFORM_SPARK_CORE
   particle::NullTimer _vitals_timer;
-  VitalsPublisher<particle::NullTimer> _vitals(std::bind(spark_protocol_post_description, spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr), _vitals_timer);
+  VitalsPublisher<particle::NullTimer> _vitals(std::bind(spark_protocol_post_description, spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr), &_vitals_timer, __log_error);
 #else // not PLATFORM_SPARK_CORE
   Timer _vitals_timer(std::numeric_limits<unsigned>::max(), []() -> void {
       const auto task = new(std::nothrow) ISRTaskQueue::Task;
@@ -66,7 +76,7 @@ using namespace particle::system;
       };
       SystemISRTaskQueue.enqueue(task);
   }, false);
-  VitalsPublisher<Timer> _vitals(std::bind(spark_protocol_post_description, spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr), _vitals_timer);
+  VitalsPublisher<Timer> _vitals(std::bind(spark_protocol_post_description, spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr), &_vitals_timer, __log_error);
 #endif  // PLATFORM_SPARK_CORE
 
 } // namespace
