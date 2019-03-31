@@ -1,9 +1,11 @@
 #ifndef VITALS_PUBLISHER_H
 #define VITALS_PUBLISHER_H
 
+#include <cstdarg>
 #include <cstddef>
 #include <functional>
 
+#include "logging.h"
 #include "platforms.h"
 #include "system_tick_hal.h"
 
@@ -35,9 +37,7 @@ namespace system {
  *
  * @sa Timer
  */
-template <
-    class Timer
->
+template <class Timer>
 class VitalsPublisher {
   public:
     /**
@@ -47,6 +47,12 @@ class VitalsPublisher {
     typedef std::function<int(void)> publish_fn_t;
 
     /**
+     * @typedef log_fn_t
+     * @brief A function requiring a format and values to log
+     */
+    typedef void(*log_fn_t)(const char *, ...);
+
+    /**
      * @brief Constructor
      *
      * @param[in] publish_fn The function used to send cloud messages
@@ -54,7 +60,8 @@ class VitalsPublisher {
      */
     VitalsPublisher (
         publish_fn_t publish_fn,
-        const Timer & timer
+        Timer * timer,
+        log_fn_t log_fn
     );
 
     /**
@@ -117,9 +124,10 @@ class VitalsPublisher {
     );
 
   private:
+    log_fn_t _log;
     system_tick_t _period_s;
     publish_fn_t _publishVitals;
-    Timer _timer;
+    Timer * const _timer;
 };
 
 } // namespace system
