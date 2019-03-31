@@ -13,4 +13,5 @@ list(APPEND CMAKE_MODULE_PATH ${CATCH2_DIR}/contrib)
 include(CTest)
 include(Catch)
 
+add_subdirectory(cloud)
 add_subdirectory(services)
