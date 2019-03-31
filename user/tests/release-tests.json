@@ -64,6 +64,11 @@
                     "path": "app"
                 },
                 {
+                    "enabled": true,
+                    "name": "particle_publish_vitals",
+                    "path": "app"
+                },
+                {
                     "enabled": false,
                     "name": "pub_no_ack",
                     "path": "app"
@@ -380,6 +385,11 @@
                     "path": "app"
                 },
                 {
+                    "enabled": true,
+                    "name": "particle_publish_vitals",
+                    "path": "app"
+                },
+                {
                     "enabled": false,
                     "name": "pub_no_ack",
                     "path": "app"
@@ -693,6 +703,11 @@
                 {
                     "enabled": false,
                     "name": "particle_connect_semi_automatic_issue_1399",
+                    "path": "app"
+                },
+                {
+                    "enabled": true,
+                    "name": "particle_publish_vitals",
                     "path": "app"
                 },
                 {
@@ -1015,6 +1030,11 @@
                 {
                     "enabled": false,
                     "name": "particle_connect_semi_automatic_issue_1399",
+                    "path": "app"
+                },
+                {
+                    "enabled": true,
+                    "name": "particle_publish_vitals",
                     "path": "app"
                 },
                 {
@@ -1349,6 +1369,11 @@
                     "compile_lto": true,
                     "enabled": false,
                     "name": "particle_connect_semi_automatic_issue_1399",
+                    "path": "app"
+                },
+                {
+                    "enabled": true,
+                    "name": "particle_publish_vitals",
                     "path": "app"
                 },
                 {
@@ -1731,6 +1756,11 @@
                     "debug_build": true,
                     "enabled": false,
                     "name": "particle_connect_semi_automatic_issue_1399",
+                    "path": "app"
+                },
+                {
+                    "enabled": true,
+                    "name": "particle_publish_vitals",
                     "path": "app"
                 },
                 {
@@ -2151,6 +2181,11 @@
                     "path": "app"
                 },
                 {
+                    "enabled": true,
+                    "name": "particle_publish_vitals",
+                    "path": "app"
+                },
+                {
                     "enabled": false,
                     "name": "pub_no_ack",
                     "path": "app"
@@ -2464,6 +2499,11 @@
                 {
                     "enabled": false,
                     "name": "particle_connect_semi_automatic_issue_1399",
+                    "path": "app"
+                },
+                {
+                    "enabled": true,
+                    "name": "particle_publish_vitals",
                     "path": "app"
                 },
                 {
@@ -2805,6 +2845,11 @@
                     "path": "app"
                 },
                 {
+                    "enabled": true,
+                    "name": "particle_publish_vitals",
+                    "path": "app"
+                },
+                {
                     "enabled": false,
                     "name": "pub_no_ack",
                     "path": "app"
@@ -3124,6 +3169,11 @@
                 {
                     "enabled": false,
                     "name": "particle_connect_semi_automatic_issue_1399",
+                    "path": "app"
+                },
+                {
+                    "enabled": true,
+                    "name": "particle_publish_vitals",
                     "path": "app"
                 },
                 {
