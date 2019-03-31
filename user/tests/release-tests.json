@@ -1372,6 +1372,7 @@
                     "path": "app"
                 },
                 {
+                    "compile_lto": true,
                     "enabled": true,
                     "name": "particle_publish_vitals",
                     "path": "app"
