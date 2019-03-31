@@ -9,21 +9,38 @@
 #include "platforms.h"
 #include "system_tick_hal.h"
 
-namespace particle {
+namespace particle
+{
 
-#if PLATFORM_ID == PLATFORM_SPARK_CORE  // CORE
-  class NullTimer {
-    public:
-      inline static bool changePeriod (const size_t) { return false; }
-      inline static void dispose (void) {}
-      inline static bool isActive (void) { return false; }
-      inline static void reset (void) {}
-      inline static void start (void) {}
-      inline static void stop (void) {}
-  };
+#if PLATFORM_ID == PLATFORM_SPARK_CORE // CORE
+class NullTimer
+{
+public:
+    inline static bool changePeriod(const size_t)
+    {
+        return false;
+    }
+    inline static void dispose(void)
+    {
+    }
+    inline static bool isActive(void)
+    {
+        return false;
+    }
+    inline static void reset(void)
+    {
+    }
+    inline static void start(void)
+    {
+    }
+    inline static void stop(void)
+    {
+    }
+};
 #endif // PLATFORM_SPARK_CORE
 
-namespace system {
+namespace system
+{
 
 /**
  * @class VitalsPublisher system_publish_vitals.h
@@ -38,8 +55,9 @@ namespace system {
  * @sa Timer
  */
 template <class Timer>
-class VitalsPublisher {
-  public:
+class VitalsPublisher
+{
+public:
     /**
      * @typedef publish_fn_t
      * @brief A function requiring no parameters and returning a \p system_error_t
@@ -50,19 +68,16 @@ class VitalsPublisher {
      * @typedef log_fn_t
      * @brief A function requiring a format and values to log
      */
-    typedef void(*log_fn_t)(const char *, ...);
+    typedef void (*log_fn_t)(const char*, ...);
 
     /**
      * @brief Constructor
      *
      * @param[in] publish_fn The function used to send cloud messages
      * @param[in] timer The timer used to schedule the period
+     * @param[in] log_fn The function used to generate logs
      */
-    VitalsPublisher (
-        publish_fn_t publish_fn,
-        Timer * timer,
-        log_fn_t log_fn
-    );
+    VitalsPublisher(publish_fn_t publish_fn, Timer* timer, log_fn_t log_fn);
 
     /**
      * @brief Destructor
@@ -70,46 +85,31 @@ class VitalsPublisher {
      * The destructor ensures the resources allocated during the
      * scheduling of events are returned to the system.
      */
-    virtual
-    ~VitalsPublisher (
-        void
-    );
+    virtual ~VitalsPublisher(void);
 
     /**
      * @brief Disable periodic publishing
      */
-    void
-    disablePeriodicPublish (
-        void
-    );
+    void disablePeriodicPublish(void);
 
     /**
      * @brief Enable periodic publishing
      */
-    void
-    enablePeriodicPublish (
-        void
-    );
+    void enablePeriodicPublish(void);
 
     /**
      * @brief Fetch the period value
      *
      * @return The period value in seconds
      */
-    system_tick_t
-    period (
-        void
-    ) const;
+    system_tick_t period(void) const;
 
     /**
      * @brief Update the period value
      *
      * @param[in] period_s The period value in seconds
      */
-    void
-    period (
-        system_tick_t period_s
-    );
+    void period(system_tick_t period_s);
 
     /**
      * @brief Publish vitals information to the cloud (immediately).
@@ -118,16 +118,13 @@ class VitalsPublisher {
      * @retval \p system_error_t::SYSTEM_ERROR_NONE
      * @retval \p system_error_t::SYSTEM_ERROR_IO
      */
-    int
-    publish (
-        void
-    );
+    int publish(void);
 
-  private:
+private:
     log_fn_t _log;
     system_tick_t _period_s;
     publish_fn_t _publishVitals;
-    Timer * const _timer;
+    Timer* const _timer;
 };
 
 } // namespace system
