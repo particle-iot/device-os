@@ -124,6 +124,13 @@ test(api_spark_publish) {
     API_COMPILE(Particle.publish(String("event"), String("data"), 60, PUBLIC | NO_ACK));
 }
 
+test(api_spark_publish_vitals) {
+    API_COMPILE(Particle.publishVitals()); // publish vitals immediately
+    API_COMPILE(Particle.publishVitals(particle::PUBLISH_VITALS_NOW)); // publish vitals immediately
+    API_COMPILE(Particle.publishVitals(0)); // disable periodic publishing
+    API_COMPILE(Particle.publishVitals(5)); // publish vitals at 5 second intervals
+}
+
 test(api_spark_subscribe) {
 
     void (*handler)(const char *event_name, const char *data) = NULL;
