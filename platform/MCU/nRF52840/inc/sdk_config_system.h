@@ -133,7 +133,7 @@
                                                    // change it to no pull <0=> NRF_GPIO_PIN_NOPULL.
 
 #define APP_USBD_DEVICE_VER_MAJOR               1
-#define APP_USBD_DEVICE_VER_MINOR               1
+#define APP_USBD_DEVICE_VER_MINOR               2
 
 #define NRFX_POWER_CONFIG_DEFAULT_DCDCEN        1
 
