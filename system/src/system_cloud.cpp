@@ -31,6 +31,7 @@
 #include "platforms.h"
 #include "protocol_defs.h"
 #include "spark_wiring_string.h"
+#include "spark_wiring_timer.h"
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
 #include "system_publish_vitals.h"
