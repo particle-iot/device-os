@@ -16,10 +16,13 @@ BatteryChargeDiagnosticData::BatteryChargeDiagnosticData(uint16_t id, const char
 }
 
 int BatteryChargeDiagnosticData::get(IntType& val) {
-    if (g_batteryState == BATTERY_STATE_DISCONNECTED) {
+    // Do not report battery SoC in disconnected and unknown states
+    if (g_batteryState == BATTERY_STATE_DISCONNECTED || g_batteryState == BATTERY_STATE_UNKNOWN) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     FuelGauge fuel(true);
+    // Call begin here just in case to initialize I2C if needed
+    fuel.begin();
     float soc = fuel.getNormalizedSoC();
     val = particle::FixedPointUQ<8, 8>(soc);
     return SYSTEM_ERROR_NONE;
