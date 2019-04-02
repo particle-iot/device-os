@@ -1223,7 +1223,7 @@ int BleControlRequestChannel::initProfile() {
     }
     recvCharHandle_ = attrHandles.value_handle;
 
-    ble_set_callback_on_events(processBleEvent, this);
+    //ble_set_callback_on_events(processBleEvent, this);
 
     return 0;
 }
