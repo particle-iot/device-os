@@ -139,6 +139,12 @@ for db in "${DEBUG_BUILD[@]}"
 do
   for p in "${MODULAR_PLATFORM[@]}"
   do
+    # Gen 3 overflow with modular DEBUG_BUILD=y, so skip those
+    if [[ "$db" = "y" ]]; then
+      if [[ "$p" = "xenon" ]] || [[ "$p" = "argon" ]] || [[ "$p" = "boron" ]] || [[ "$p" = "xenon-som" ]] || [[ "$p" = "argon-som" ]] || [[ "$p" = "boron-som" ]]; then
+        continue
+      fi
+    fi
     cmd="${MAKE} DEBUG_BUILD=\"$db\" PLATFORM=\"$p\" COMPILE_LTO=\"n\""
     BUILD_JOBS+=("modules ${#BUILD_JOBS[@]} ${cmd}")
   done
