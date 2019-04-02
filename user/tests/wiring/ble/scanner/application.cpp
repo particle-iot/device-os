@@ -27,7 +27,7 @@ SYSTEM_MODE(MANUAL);
 
 Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
-BleScannedDevice results[SCAN_RESULT_COUNT];
+BleScanResult results[SCAN_RESULT_COUNT];
 
 
 void setup() {
@@ -38,16 +38,16 @@ void loop() {
     int count = BLE.scan(results, SCAN_RESULT_COUNT);
 
     if (count > 0) {
-        uint8_t buf[BleAdvData::MAX_LEN];
+        uint8_t buf[BleAdvertisingData::MAX_LEN];
         size_t len;
 
         LOG(TRACE, "%d devices are found:", count);
         for (int i = 0; i < count; i++) {
             LOG(TRACE, "devices %d: %d - %02X:%02X:%02X:%02X:%02X:%02X", i, results[i].rssi,
-                    results[i].address.addr[0], results[i].address.addr[1], results[i].address.addr[2],
-                    results[i].address.addr[3], results[i].address.addr[4], results[i].address.addr[5]);
+                    results[i].address[0], results[i].address[1], results[i].address[2],
+                    results[i].address[3], results[i].address[4], results[i].address[5]);
 
-            len = results[i].advData.get(buf, sizeof(buf));
+            len = results[i].advertisingData(buf, sizeof(buf));
             if (len > 0) {
                 LOG(TRACE, "Advertising data:");
                 for (size_t j = 0; j < len; j++) {
@@ -56,7 +56,7 @@ void loop() {
                 Serial1.println("\r\n");
             }
 
-            len = results[i].srData.get(buf, sizeof(buf));
+            len = results[i].scanResponse(buf, sizeof(buf));
             if (len > 0) {
                 LOG(TRACE, "Scan response data:");
                 for (size_t j = 0; j < len; j++) {

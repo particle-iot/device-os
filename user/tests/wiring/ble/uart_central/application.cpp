@@ -20,50 +20,54 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-BLEScanResult results[10];
+#define UART_TX_BUF_SIZE        20
+#define SCAN_RESULT_COUNT       5
 
-BLEPeerAttribute peerTxAttr;
-BLEPeerAttribute peerRxAttr;
-BLEPeerDevice peer;
+BleScanResult results[SCAN_RESULT_COUNT];
 
-void onDataReceived(uint8_t* data, size_t len) {
+BleCharacteristic peerTxCharacteristic;
+BleCharacteristic peerRxCharacteristic;
+BlePeerDevice peer;
+
+uint8_t txBuf[UART_TX_BUF_SIZE];
+size_t txLen = 0;
+
+void onDataReceived(const uint8_t* data, size_t len) {
     for (uint8_t i = 0; i < len; i++) {
         Serial.write(data[i]);
     }
 }
 
 void setup() {
-    Serial.begin();
+    Serial.begin(115200);
+    peerTxCharacteristic.onDataReceived(onDataReceived);
 }
 
 void loop() {
-    if (BLE.connected(peer)) {
-        while (Serial.available()) {
-            // Read data from Serial into txBuf
-            uint8_t txBuf[20];
-
-            peerRxAttr->setValue(txBuf, sizeof(txBuf));
+    if (peer.connected()) {
+        while (Serial.available() && txLen < UART_TX_BUF_SIZE) {
+            txBuf[txLen++] = Serial.read();
+        }
+        if (txLen > 0) {
+            peerRxCharacteristic.setValue(txBuf, txLen);
+            txLen = 0;
         }
     }
     else {
-        size_t count = BLE.scan(results, 10);
-
+        size_t count = BLE.scan(results, SCAN_RESULT_COUNT);
         if (count > 0) {
             for (uint8_t i = 0; i < count; i++) {
-                bool found = results[i].find(BLE_SIG_AD_TYPE_FLAGS);
-                if (found) {
-                    peer = BLE.connect(results[i].address());
-
-                    if (BLE.connected(peer)) {
-                        peer->attribute("tx", &peerTxAttr);
-                        peer->attribute("rx", &peerRxAttr);
-
-                        peerTxAttr->onDataReceived(onDataReceived);
+                String peerDeviceName = results[i].advertisingData.deviceName();
+                if (peerDeviceName == "Xenon-123ABC") {
+                    peer = BLE.connect(results[i].address);
+                    if (peer.connected()) {
+                        peerTxCharacteristic = peer.characteristic("tx");
+                        peerRxCharacteristic = peer.characteristic("rx");
                     }
-
                     break;
                 }
             }
         }
     }
 }
+
