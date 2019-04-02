@@ -5,20 +5,18 @@
 #include <cstddef>
 #include <functional>
 
-#include "logging.h"
-#include "platforms.h"
 #include "system_tick_hal.h"
 
 namespace particle
 {
 
-#if PLATFORM_ID == PLATFORM_SPARK_CORE // CORE
+#if (0 == PLATFORM_THREADING)
 class NullTimer
 {
 public:
     inline static bool changePeriod(const size_t)
     {
-        return false;
+        return true;
     }
     inline static void dispose(void)
     {
@@ -37,7 +35,7 @@ public:
     {
     }
 };
-#endif // PLATFORM_SPARK_CORE
+#endif // not PLATFORM_THREADING
 
 namespace system
 {
