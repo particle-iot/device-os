@@ -63,19 +63,12 @@ public:
     typedef std::function<int(void)> publish_fn_t;
 
     /**
-     * @typedef log_fn_t
-     * @brief A function requiring a format and values to log
-     */
-    typedef void (*log_fn_t)(const char*, ...);
-
-    /**
      * @brief Constructor
      *
      * @param[in] publish_fn The function used to send cloud messages
      * @param[in] timer The timer used to schedule the period
-     * @param[in] log_fn The function used to generate logs
      */
-    VitalsPublisher(publish_fn_t publish_fn, Timer* timer, log_fn_t log_fn);
+    VitalsPublisher(publish_fn_t publish_fn, Timer* timer);
 
     /**
      * @brief Destructor
@@ -119,7 +112,6 @@ public:
     int publish(void);
 
 private:
-    log_fn_t _log;
     system_tick_t _period_s;
     publish_fn_t _publishVitals;
     Timer* const _timer;
