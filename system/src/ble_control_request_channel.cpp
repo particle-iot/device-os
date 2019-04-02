@@ -141,7 +141,7 @@ const size_t HANDSHAKE_HEADER_SIZE = sizeof(HandshakeHeader);
 const size_t MAX_HANDSHAKE_PAYLOAD_SIZE = 512;
 
 // Handshake timeout in milliseconds
-const unsigned HANDSHAKE_TIMEOUT = 10000;
+const unsigned HANDSHAKE_TIMEOUT = 30000;
 
 // Size of the J-PAKE passphrase in bytes
 const size_t JPAKE_PASSPHRASE_SIZE = 15;
@@ -949,7 +949,6 @@ int BleControlRequestChannel::sendPacket() {
     if (!writable_) {
         return 0; // Can't send now
     }
-    LOG(TRACE, "BleControlRequestChannel::sendPacket");
     // Prepare a BLE packet
     SPARK_ASSERT(packetBuf_);
     const size_t maxSize = maxPacketSize_;
@@ -979,7 +978,7 @@ int BleControlRequestChannel::sendPacket() {
     // Send packet
     const int ret = ble_gatt_server_notify_characteristic_value(connHandle_, sendCharHandle_, (const uint8_t*)packetBuf_.get(), packetSize_, nullptr);
     if (ret != (int)packetSize_) {
-        LOG(ERROR, "ble_set_char_value() failed: %d", ret);
+        LOG(ERROR, "ble_gatt_server_notify_characteristic_value() failed: %d", ret);
         return ret;
     }
     DEBUG("Sent BLE packet");
@@ -1044,7 +1043,7 @@ int BleControlRequestChannel::connected(const hal_ble_evts_t& event) {
     writable_ = subscribed_;
     packetCount_ = 0;
     // Update connection state counter
-    curConnId_.fetch_add(1, std::memory_order_relaxed);
+    curConnId_.fetch_add(1, std::memory_order_release);
     return 0;
 }
 
@@ -1064,6 +1063,7 @@ int BleControlRequestChannel::disconnected(const hal_ble_evts_t& event) {
 int BleControlRequestChannel::gattParamChanged(const hal_ble_evts_t& event) {
     if (curConnHandle_ == event.params.gatt_params_updated.conn_handle) {
         maxPacketSize_ = event.params.gatt_params_updated.att_mtu_size - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE;
+        DEBUG("maxPacketSize_: %d", maxPacketSize_);
     }
     return 0;
 }
@@ -1081,6 +1081,11 @@ int BleControlRequestChannel::dataReceived(const hal_ble_evts_t& event) {
         subscribed_ = false;
         if (event.params.data_rec.data[0] > 0) {
             subscribed_ = true;
+            DEBUG("Enable CCCD");
+        }
+        else {
+            subscribed_ = false;
+            DEBUG("Disable CCCD");
         }
         writable_ = subscribed_;
     }
@@ -1130,7 +1135,7 @@ int BleControlRequestChannel::initProfile() {
     advDataLen += mfgDataLen;
     ret = ble_gap_set_advertising_data(advData, advDataLen, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG_DEBUG(TRACE, "ble_gap_set_advertising_data failed: %d", ret);
+        LOG_DEBUG(ERROR, "ble_gap_set_advertising_data failed: %d", ret);
         return ret;
     }
 
@@ -1143,7 +1148,7 @@ int BleControlRequestChannel::initProfile() {
     srDataLen += sizeof(CTRL_SERVICE_UUID);
     ret = ble_gap_set_scan_response_data(srData, srDataLen, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG_DEBUG(TRACE, "ble_gap_set_scan_response_data failed: %d", ret);
+        LOG(ERROR, "ble_gap_set_scan_response_data failed: %d", ret);
         return ret;
     }
 
@@ -1156,7 +1161,7 @@ int BleControlRequestChannel::initProfile() {
     advParams.inc_tx_power  = false;
     ret = ble_gap_set_advertising_parameters(&advParams, NULL);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG_DEBUG(TRACE, "ble_gap_set_advertising_parameters failed: %d", ret);
+        LOG(ERROR, "ble_gap_set_advertising_parameters failed: %d", ret);
         return ret;
     }
 
@@ -1171,7 +1176,7 @@ int BleControlRequestChannel::initProfile() {
     memcpy(halUuid.uuid128, CTRL_SERVICE_UUID, sizeof(CTRL_SERVICE_UUID));
     ret = ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &halUuid, &serviceHandle, NULL);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG_DEBUG(TRACE, "ble_gatt_server_add_service failed: %d", ret);
+        LOG(ERROR, "ble_gatt_server_add_service failed: %d", ret);
         return ret;
     }
 
@@ -1184,7 +1189,7 @@ int BleControlRequestChannel::initProfile() {
     char_init.description = nullptr;
     ret = ble_gatt_server_add_characteristic(&char_init, &attrHandles, NULL);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG_DEBUG(TRACE, "ble_gatt_server_add_characteristic failed: %d", ret);
+        LOG(ERROR, "ble_gatt_server_add_characteristic failed: %d", ret);
         return ret;
     }
     ble_gatt_server_set_characteristic_value(attrHandles.value_handle, (const uint8_t*)&PROTOCOL_VERSION, 1, NULL);
@@ -1198,7 +1203,7 @@ int BleControlRequestChannel::initProfile() {
     char_init.description = nullptr;
     ret = ble_gatt_server_add_characteristic(&char_init, &attrHandles, NULL);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG_DEBUG(TRACE, "ble_gatt_server_add_characteristic failed: %d", ret);
+        LOG(ERROR, "ble_gatt_server_add_characteristic failed: %d", ret);
         return ret;
     }
     sendCharHandle_ = attrHandles.value_handle;
@@ -1213,7 +1218,7 @@ int BleControlRequestChannel::initProfile() {
     char_init.description = nullptr;
     ret = ble_gatt_server_add_characteristic(&char_init, &attrHandles, NULL);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG_DEBUG(TRACE, "ble_gatt_server_add_characteristic failed: %d", ret);
+        LOG(ERROR, "ble_gatt_server_add_characteristic failed: %d", ret);
         return ret;
     }
     recvCharHandle_ = attrHandles.value_handle;

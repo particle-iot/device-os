@@ -138,9 +138,6 @@ typedef struct {
     os_thread_t    evtThread;
     os_timer_t     connParamsUpdateTimer;
 
-    on_ble_evt_cb_t onEvtCb;
-    void*           context;
-
     hal_ble_conn_params_t effectiveConnParams;
     ble_gap_addr_t        whitelist[BLE_MAX_WHITELIST_ADDR_COUNT];
     ble_gap_addr_t const* whitelistPointer[BLE_MAX_WHITELIST_ADDR_COUNT];
@@ -901,12 +898,15 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
         case BLE_GATTC_EVT_EXCHANGE_MTU_RSP: {
             LOG_DEBUG(TRACE, "BLE GATT Client event: exchange ATT MTU response.");
-            LOG_DEBUG(TRACE, "Effective Server RX MTU: %d.", event->evt.gattc_evt.params.exchange_mtu_rsp.server_rx_mtu);
 
+            uint16_t serverMtu = event->evt.gattc_evt.params.exchange_mtu_rsp.server_rx_mtu;
+            LOG_DEBUG(TRACE, "Effective Server RX MTU: %d.", serverMtu);
+
+            uint16_t effectMtu = serverMtu > NRF_SDH_BLE_GATT_MAX_MTU_SIZE ? NRF_SDH_BLE_GATT_MAX_MTU_SIZE : serverMtu;
             msg.arg.type = BLE_EVT_GATT_PARAMS_UPDATED;
             msg.arg.params.gatt_params_updated.version = 0x01;
             msg.arg.params.gatt_params_updated.conn_handle = event->evt.gattc_evt.conn_handle;
-            msg.arg.params.gatt_params_updated.att_mtu_size = event->evt.gattc_evt.params.exchange_mtu_rsp.server_rx_mtu;
+            msg.arg.params.gatt_params_updated.att_mtu_size = effectMtu;
             if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
                 LOG(ERROR, "os_queue_put() failed.");
             }
@@ -1173,21 +1173,31 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
 
         case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST: {
             LOG_DEBUG(TRACE, "BLE GATT Server event: exchange ATT MTU request.");
-            LOG_DEBUG(TRACE, "Effective Client RX MTU: %d.", event->evt.gatts_evt.params.exchange_mtu_request.client_rx_mtu);
 
-            ret = sd_ble_gatts_exchange_mtu_reply(event->evt.gatts_evt.conn_handle, NRF_SDH_BLE_GATT_MAX_MTU_SIZE);
+            uint16_t clientMtu = event->evt.gatts_evt.params.exchange_mtu_request.client_rx_mtu;
+            LOG_DEBUG(TRACE, "Effective Client RX MTU: %d.", clientMtu);
+
+            uint16_t effectMtu = clientMtu > NRF_SDH_BLE_GATT_MAX_MTU_SIZE ? NRF_SDH_BLE_GATT_MAX_MTU_SIZE : clientMtu;
+            ret = sd_ble_gatts_exchange_mtu_reply(event->evt.gatts_evt.conn_handle, effectMtu);
             if (ret != NRF_SUCCESS) {
                 LOG(ERROR, "sd_ble_gatts_exchange_mtu_reply() failed: %u", (unsigned)ret);
             }
+            LOG_DEBUG(TRACE, "Reply with Server RX MTU: %d.", effectMtu);
 
-            LOG_DEBUG(TRACE, "Reply with Server RX MTU: %d.", NRF_SDH_BLE_GATT_MAX_MTU_SIZE);
+            msg.arg.type = BLE_EVT_GATT_PARAMS_UPDATED;
+            msg.arg.params.gatt_params_updated.version = 0x01;
+            msg.arg.params.gatt_params_updated.conn_handle = event->evt.gatts_evt.conn_handle;
+            msg.arg.params.gatt_params_updated.att_mtu_size = effectMtu;
+            if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                LOG(ERROR, "os_queue_put() failed.");
+            }
         } break;
 
         case BLE_GATTS_EVT_WRITE: {
-            LOG_DEBUG(TRACE, "BLE GATT Server event: write characteristic.");
+            LOG_DEBUG(TRACE, "BLE GATT Server event: write characteristic, handle: %d, len: %d.",
+                    event->evt.gatts_evt.params.write.handle, event->evt.gatts_evt.params.write.len);
 
             // TODO: deal with different write commands.
-
             msg.arg.type = BLE_EVT_DATA_WRITTEN;
             msg.arg.params.data_rec.version = 0x01;
             msg.arg.params.data_rec.conn_handle = event->evt.gatts_evt.conn_handle;
@@ -1290,7 +1300,7 @@ static os_thread_return_t handleBleEventThread(void* param) {
 
             for (uint8_t i = 0; i < BLE_MAX_EVT_CB_COUNT; i++) {
                 if (s_bleInstance.evtCbs[i].handler != NULL) {
-                    s_bleInstance.evtCbs[i].handler(&msg.arg, s_bleInstance.context);
+                    s_bleInstance.evtCbs[i].handler(&msg.arg, s_bleInstance.evtCbs[i].context);
                 }
             }
 
@@ -2161,7 +2171,7 @@ int ble_gatt_server_set_characteristic_value(uint16_t value_handle, const uint8_
     LOG_DEBUG(TRACE, "ble_gatt_server_set_characteristic_value().");
 
     if (value_handle == BLE_INVALID_ATTR_HANDLE || data == NULL) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
+        return 0;
     }
 
     ble_gatts_value_t gattValue;
@@ -2172,10 +2182,10 @@ int ble_gatt_server_set_characteristic_value(uint16_t value_handle, const uint8_
     ret_code_t ret = sd_ble_gatts_value_set(BLE_CONN_HANDLE_INVALID, value_handle, &gattValue);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_value_set() failed: %u", (unsigned)ret);
-        return sysError(ret);
+        return 0;
     }
 
-    return SYSTEM_ERROR_NONE;
+    return len;
 }
 
 int ble_gatt_server_get_characteristic_value(uint16_t value_handle, uint8_t* data, uint16_t* len, void* reserved) {
@@ -2210,12 +2220,12 @@ int ble_gatt_server_notify_characteristic_value(uint16_t conn_handle, uint16_t v
     LOG_DEBUG(TRACE, "ble_gatt_server_notify_characteristic_value().");
 
     if (conn_handle == BLE_INVALID_CONN_HANDLE || value_handle == BLE_INVALID_ATTR_HANDLE || data == NULL) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
+        return 0;
     }
 
     if (os_semaphore_create(&s_bleInstance.readWriteSemaphore, 1, 0)) {
         LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
+        return 0;
     }
 
     ble_gatts_hvx_params_t hvxParams;
@@ -2231,7 +2241,7 @@ int ble_gatt_server_notify_characteristic_value(uint16_t conn_handle, uint16_t v
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_hvx() failed: %u", (unsigned)ret);
         os_semaphore_destroy(s_bleInstance.readWriteSemaphore);
-        return sysError(ret);
+        return 0;
     }
 
     os_semaphore_take(s_bleInstance.readWriteSemaphore, BLE_GENERAL_PROCEDURE_TIMEOUT, false);
@@ -2246,12 +2256,12 @@ int ble_gatt_server_indicate_characteristic_value(uint16_t conn_handle, uint16_t
     LOG_DEBUG(TRACE, "ble_gatt_server_indicate_characteristic_value().");
 
     if (conn_handle == BLE_INVALID_CONN_HANDLE || value_handle == BLE_INVALID_ATTR_HANDLE || data == NULL) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
+        return 0;
     }
 
     if (os_semaphore_create(&s_bleInstance.readWriteSemaphore, 1, 0)) {
         LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
+        return 0;
     }
 
     ble_gatts_hvx_params_t hvxParams;
@@ -2267,7 +2277,7 @@ int ble_gatt_server_indicate_characteristic_value(uint16_t conn_handle, uint16_t
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gatts_hvx() failed: %u", (unsigned)ret);
         os_semaphore_destroy(s_bleInstance.readWriteSemaphore);
-        return sysError(ret);
+        return 0;
     }
 
     os_semaphore_take(s_bleInstance.readWriteSemaphore, BLE_GENERAL_PROCEDURE_TIMEOUT, false);
