@@ -211,6 +211,7 @@ void Set_System(void)
 
 void Reset_System(void)
 {
+    SysTick_Disable();
 }
 
 /*******************************************************************************

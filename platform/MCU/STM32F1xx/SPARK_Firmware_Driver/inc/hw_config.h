@@ -127,6 +127,7 @@ typedef enum
 
 /* Exported functions ------------------------------------------------------- */
 void Set_System(void);
+void Reset_System(void);
 void NVIC_Configuration(void);
 void SysTick_Configuration(void);
 
@@ -209,9 +210,6 @@ void Finish_Update(void);
 
 uint16_t Bootloader_Get_Version(void);
 void Bootloader_Update_Version(uint16_t bootloaderVersion);
-
-inline void Reset_System(void) {
-}
 
 /* External variables --------------------------------------------------------*/
 extern uint8_t USE_SYSTEM_FLAGS;
