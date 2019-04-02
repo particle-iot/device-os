@@ -338,6 +338,10 @@ int Protocol::begin()
 	return error;
 }
 
+const auto HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL = 1;
+const auto HELLO_FLAG_DIAGNOSTICS_SUPPORT = 2;
+const auto HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT = 4;
+
 /**
  * Send the hello message over the channel.
  * @param was_ota_upgrade_successful {@code true} if the previous OTA update was successful.
@@ -347,8 +351,8 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 	Message message;
 	channel.create(message);
 
-	uint8_t flags = was_ota_upgrade_successful ? 1 : 0;
-	flags |= 2;		// diagnostics support
+	uint8_t flags = was_ota_upgrade_successful ? HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL : 0;
+	flags |= HELLO_FLAG_DIAGNOSTICS_SUPPORT | HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT;
 	size_t len = build_hello(message, flags);
 	message.set_length(len);
 	message.set_confirm_received(true);
