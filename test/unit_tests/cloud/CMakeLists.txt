@@ -1,3 +1,5 @@
+add_definitions(-DLOG_DISABLE)
+
 include_directories(
   ${THIRD_PARTY_DIR}/catch2/catch2/single_include/
   ${THIRD_PARTY_DIR}/fakeit/fakeit/single_header/catch/

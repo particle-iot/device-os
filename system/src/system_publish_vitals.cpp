@@ -3,12 +3,14 @@
 
 #include <limits>
 
+#include "logging.h"
+
 using namespace particle::system;
 
 template <class Timer>
-VitalsPublisher<Timer>::VitalsPublisher(publish_fn_t publish_fn_, Timer* timer_, log_fn_t log_fn_)
-    : _log(log_fn_), _period_s(std::numeric_limits<system_tick_t>::max()),
-      _publishVitals(publish_fn_), _timer(timer_)
+VitalsPublisher<Timer>::VitalsPublisher(publish_fn_t publish_fn_, Timer* timer_)
+    : _period_s(std::numeric_limits<system_tick_t>::max()), _publishVitals(publish_fn_),
+      _timer(timer_)
 {
 }
 
@@ -44,7 +46,7 @@ void VitalsPublisher<Timer>::period(system_tick_t period_s_)
 
     if (!_timer->changePeriod(period_ms))
     {
-        _log("Unable to update vitals timer period!");
+        LOG(ERROR, "Unable to update vitals timer period!");
     }
     else
     {
@@ -71,7 +73,7 @@ int VitalsPublisher<Timer>::publish(void)
 #if PLATFORM_THREADING
 #include "spark_wiring_timer.h"
 template class VitalsPublisher<Timer>;
-#else // not PLATFORM_THREADING
+#else  // not PLATFORM_THREADING
 template class VitalsPublisher<particle::NullTimer>;
 #endif // PLATFORM_THREADING
 
