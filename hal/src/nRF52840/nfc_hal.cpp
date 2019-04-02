@@ -22,6 +22,7 @@
 
 static nfc_event_callback_t g_nfc_event_user_callback = NULL;
 static void* g_context = NULL;
+static bool g_nfc_enabled = false;
 
 static void nfc_type_2_callback(void* p_context, nfc_t2t_event_t event, const uint8_t* p_data, size_t data_length) {
     (void)p_context;
@@ -71,15 +72,23 @@ int hal_nfc_type2_set_payload(const void* msg_buf, size_t msg_len) {
 }
 
 int hal_nfc_type2_start_emulation(void* reserved) {
+    if (g_nfc_enabled) {
+        return 0;
+    }
+
     uint32_t err_code = nfc_t2t_emulation_start();
     SPARK_ASSERT(err_code == NRF_SUCCESS)
+    g_nfc_enabled = true;
 
     return 0;
 }
 
 int hal_nfc_type2_stop_emulation(void* reserved) {
-    uint32_t err_code = nfc_t2t_emulation_stop();
-    SPARK_ASSERT(err_code == NRF_SUCCESS)
+    if (g_nfc_enabled) {
+        uint32_t err_code = nfc_t2t_emulation_stop();
+        SPARK_ASSERT(err_code == NRF_SUCCESS)
+        g_nfc_enabled = false;
+    }
 
     return 0;
 }
