@@ -74,6 +74,12 @@ SECTIONS
     link_heap_location = ALIGN(system_part1_module_ram_end, 4);
     link_heap_location_end = system_heap_end;
 
+    /* The static RAM of system-part1 is going to be relocated in 1.2.0. This variable holds the new
+     * end address of the heap and is used by the system to reserve memory for the relocated region
+     * in the intermediate 1.1.0 release (see system_part2_loader.c)
+     */
+    link_heap_location_end_v1_2_0 = link_heap_location_end - 1536;
+
     padding_length = ALIGN(system_part2_ram_start - ORIGIN(SRAM), 512);
 
     .padding : /* 512 byte aligned offset in SRAM */
@@ -233,3 +239,5 @@ ASSERT ( ORIGIN(SRAM) == system_part2_ram_start, "ORIGIN of SRAM should be equal
 ASSERT ( LENGTH(SRAM) == ( system_part2_ram_size + stack_size ), "LENGTH of SRAM should be equal to system_static_ram_size plus stack_size. Adjust by hand to obtain the correct address and length. ");
 
 ASSERT ( (link_bss_end - link_global_data_start) <= system_part2_ram_size, "Insufficient room for .data and .bss sections" )
+
+ASSERT ( link_end_of_static_ram <= system_part2_ram_end, "static RAM use exceeds allocated space" );

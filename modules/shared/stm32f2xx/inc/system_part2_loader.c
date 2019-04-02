@@ -1,14 +1,20 @@
 #include "platforms.h"
+#include "ota_flash_hal.h"
+#include "flash_mal.h"
+#include "module_info.h"
 
 #include <string.h>
 
-extern void** dynalib_location_user;
-
-static bool module_user_part_validated = false;
-
 extern void malloc_enable(uint8_t);
 extern void malloc_set_heap_start(void*);
+extern void malloc_set_heap_end(void*);
 extern void* malloc_heap_start();
+
+extern void** dynalib_location_user;
+extern char link_heap_location_end_v1_2_0;
+extern const module_bounds_t module_system_part1;
+
+static bool module_user_part_validated = false;
 
 /**
  * Determines if the user module is present and valid.
@@ -55,6 +61,20 @@ void system_part2_pre_init() {
         // indicate to the system that it shouldn't run user code
         set_system_mode(SAFE_MODE);
     }
+
+    // The code below reserves memory for the static RAM of system-part1, which is going to be
+    // relocated in 1.2.0 (see also part2.ld)
+#ifndef SYSTEM_VERSION_120
+    // Get the module version of system-part1
+    const module_info_t* const part1 = FLASH_ModuleInfo(FLASH_INTERNAL, module_system_part1.start_address);
+    // Adjust the end address of the heap if system-part1 is newer than system-part2
+    if (part1->module_version > MODULE_VERSION) {
+        malloc_set_heap_end(&link_heap_location_end_v1_2_0);
+    }
+#else
+    // TODO: The above code needs to be removed in 1.2.0
+#error "Update linker files to relocate the static RAM of system-part1"
+#endif
 
     malloc_enable(1);
 
