@@ -99,8 +99,10 @@ PMIC::~PMIC()
  *******************************************************************************/
 bool PMIC::begin()
 {
-    pmicWireInstance()->begin();
-    return 1;
+    if (!pmicWireInstance()->isEnabled()) {
+        pmicWireInstance()->begin();
+    }
+    return pmicWireInstance()->isEnabled();
 }
 
 /*
