@@ -225,15 +225,20 @@ ProtocolError DTLSMessageChannel::init(
 	return NO_ERROR;
 }
 
+/*
+ * Inspects the move session flag to amend the application data record to a move session record.
+ * See: https://github.com/particle-iot/knowledge/blob/8df146d88c4237e90553f3fd6d8465ab58ec79e0/services/dtls-ip-change.md
+ */
 inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 {
 	if (move_session && len && data[0]==23)
 	{
+		// buffer for a new packet that contains the device ID length and a byte for the length appended to the existing data.
 		uint8_t d[len+DEVICE_ID_LEN+1];
-		memcpy(d, data, len);
-		d[0] = 254;
-		memcpy(d+len, device_id, DEVICE_ID_LEN);
-		d[len+DEVICE_ID_LEN] = DEVICE_ID_LEN;
+		memcpy(d, data, len);						// original application data
+		d[0] = 254;									// move session record type
+		memcpy(d+len, device_id, DEVICE_ID_LEN);	// set the device ID
+		d[len+DEVICE_ID_LEN] = DEVICE_ID_LEN;			// set the device ID length as the last byte in the packet
 		int result = callbacks.send(d, len+DEVICE_ID_LEN+1, callbacks.tx_context);
 		// hide the increased length from DTLS
 		if (result==int(len+DEVICE_ID_LEN+1))
