@@ -890,6 +890,19 @@ void Spark_Protocol_Init(void)
     }
 }
 
+int Send_Firmware_Update_Flags()
+{
+    if (!System.updatesEnabled()) {
+    	// force the event to be resent. The cloud assumes updates
+    	// are enabled by default.
+    	system_refresh_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED);
+    }
+
+    if (System.updatesForced()) {
+    	system_refresh_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED);
+    }
+}
+
 int Spark_Handshake(bool presence_announce)
 {
     cloud_socket_aborted = false; // Clear cancellation flag for socket operations
@@ -949,15 +962,7 @@ int Spark_Handshake(bool presence_announce)
             }
         }
 
-        if (!System.updatesEnabled()) {
-        	// force the event to be resent. The cloud assumes updates
-        	// are enabled by default.
-        	system_refresh_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED);
-        }
-
-        if (System.updatesForced()) {
-        	system_refresh_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED);
-        }
+        Send_Firmware_Update_Flags();
 
         if (presence_announce) {
             Multicast_Presence_Announcement();
@@ -976,6 +981,8 @@ int Spark_Handshake(bool presence_announce)
             spark_protocol_send_time_request(sp);
             Spark_Process_Events();
         }
+
+        Send_Firmware_Update_Flags();
     }
     if (particle_key_errors != NO_ERROR) {
         char buf[sizeof(unsigned long)*8+1];
