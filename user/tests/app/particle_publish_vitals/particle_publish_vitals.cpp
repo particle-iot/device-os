@@ -7,7 +7,7 @@
 
 #include "Particle.h"
 
-static const uint16_t ALT_LED = D0;
+static const uint16_t ALT_LED = D7;
 size_t setup_ms = 0;
 bool publish = true;
 bool final_publish = false;
