@@ -50,7 +50,7 @@ typedef struct __attribute__((packed)) SessionPersistDataOpaque
 namespace particle { namespace protocol {
 
 /**
- * A simple POD for the persisted session data.
+ * A simple PODO for the persisted session data.
  */
 struct __attribute__((packed)) SessionPersistData
 {
