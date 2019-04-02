@@ -68,12 +68,12 @@ int VitalsPublisher<Timer>::publish(void)
     return _publishVitals();
 }
 
-#if PLATFORM_ID == PLATFORM_SPARK_CORE
-template class VitalsPublisher<particle::NullTimer>;
-#else // not PLATFORM_SPARK_CORE
+#if PLATFORM_THREADING
 #include "spark_wiring_timer.h"
 template class VitalsPublisher<Timer>;
-#endif // PLATFORM_SPARK_CORE
+#else // not PLATFORM_THREADING
+template class VitalsPublisher<particle::NullTimer>;
+#endif // PLATFORM_THREADING
 
 #include "../test/unit_tests/mock_types.h"
 template class VitalsPublisher<particle::mock_type::Timer>;
