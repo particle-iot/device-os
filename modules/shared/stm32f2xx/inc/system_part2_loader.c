@@ -64,7 +64,7 @@ void system_part2_pre_init() {
 
     // The code below reserves memory for the static RAM of system-part1, which is going to be
     // relocated in 1.2.0 (see also part2.ld)
-#ifndef SYSTEM_VERSION_120
+#ifndef SYSTEM_VERSION_120RC1
     // Get the module version of system-part1
     const module_info_t* const part1 = FLASH_ModuleInfo(FLASH_INTERNAL, module_system_part1.start_address);
     // Adjust the end address of the heap if system-part1 is newer than system-part2
