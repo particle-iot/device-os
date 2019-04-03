@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_BLE
+
 #include <cstddef>
 #include <cstdint>
 
@@ -51,4 +55,6 @@ int hal_nfc_type2_set_callback(nfc_event_callback_t callback, void* context);
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
