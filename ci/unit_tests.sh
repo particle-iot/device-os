@@ -1,6 +1,10 @@
 #!/bin/bash
 #
 # Top-level script for running unit tests.
+# for manual testing run
+# . install_boost.sh
+# ./unit_tests.sh
+
 ci_dir=$(dirname $BASH_SOURCE)
 cd $ci_dir
 
@@ -41,9 +45,15 @@ cd obj || die "cannot find obj dir"
 
 set -x -e
 
+# Run Communication Catch Tests
+cd $ci_dir/../communication/tests/catch
+make test PARTICLE_DEVELOP=1
+
 # Run CMake-based unit tests
 cd $unit_test_dir
 rm -rf .build
 mkdir .build && cd .build
 cmake ..
 make && make test
+
+
