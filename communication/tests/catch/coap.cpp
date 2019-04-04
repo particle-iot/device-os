@@ -60,7 +60,7 @@ SCENARIO("CoAP::header")
 			int size = coap.header(buf, CoAPType::CON, CoAPCode::CONTINUE, 0, nullptr, message_id_t(0x1234));
 			THEN("The buffer is filled out correctly")
 			{
-				REQUIRE(buf[0]==0x43);
+				REQUIRE(buf[0]==0x40);	// version << 6 (0x40) + Type:CON=0 << 4 + tokenlen 0
 				REQUIRE(buf[1]==40);
 				REQUIRE(buf[2]==0x12);
 				REQUIRE(buf[3]==0x34);

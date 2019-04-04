@@ -130,10 +130,21 @@ SCENARIO("ping requests and responses are managed")
 
 		WHEN("Calling back before 10s")
 		{
-			THEN("The ping is considered anknowledged.")
+			THEN("The ping is not considered acknowledge")
+			{
+				// ping callback is not used
+				REQUIRE(pinger.process(10000, []{return IO_ERROR;})==NO_ERROR);
+				REQUIRE(pinger.is_expecting_ping_ack());
+			}
+
+			AND_WHEN("A message is received at the timeout interval")
 			{
 				REQUIRE(pinger.process(10000, []{return IO_ERROR;})==NO_ERROR);
-				REQUIRE(!pinger.is_expecting_ping_ack());
+				pinger.message_received();
+				THEN("the ping request is acknowledged")
+				{
+					REQUIRE(!pinger.is_expecting_ping_ack());
+				}
 			}
 		}
 

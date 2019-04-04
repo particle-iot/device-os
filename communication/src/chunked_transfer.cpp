@@ -20,6 +20,7 @@
 #include "chunked_transfer.h"
 #include "service_debug.h"
 #include "coap.h"
+#include <algorithm>
 
 namespace particle { namespace protocol {
 
