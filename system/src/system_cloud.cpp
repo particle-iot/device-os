@@ -97,7 +97,7 @@ int spark_publish_vitals(size_t period_s_, void *reserved_)
     int result;
 
     switch (period_s_) {
-      case particle::PUBLISH_VITALS_NOW:
+      case particle::NOW:
         result = _vitals.publish();
         break;
       case 0:

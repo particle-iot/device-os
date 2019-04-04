@@ -45,7 +45,7 @@ typedef enum
 } Spark_Data_TypeDef;
 
 namespace particle {
-    static const size_t PUBLISH_VITALS_NOW = static_cast<size_t>(-1);
+    static const size_t NOW = static_cast<size_t>(-1);
 }
 
 struct CloudVariableTypeBase {};
@@ -190,7 +190,7 @@ typedef struct {
  *
  * @param[in] period_s The period (in seconds) at which vitals messages
  *                     are to be sent to the cloud
- * @arg \p particle::PUBLISH_VITALS_NOW - Special value used to send vitals immediately
+ * @arg \p particle::NOW - Special value used to send vitals immediately
  * @arg \p 0 - Publish a final message and disable periodic publishing
  * @arg \p n - Publish an initial message and subsequent messages every \p n seconds thereafter
  * @param[in,out] reserved Reserved for future use (default value: \p nullptr).
