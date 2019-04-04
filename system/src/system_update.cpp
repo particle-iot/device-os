@@ -90,7 +90,7 @@ const char* UPDATES_ENABLED_EVENT = "particle/device/updates/enabled";
 const char* UPDATES_FORCED_EVENT = "particle/device/updates/forced";
 
 const char* flag_to_string(uint8_t flag) {
-	return flag ? "true" : "false";
+    return flag ? "true" : "false";
 }
 
 void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
@@ -109,20 +109,21 @@ void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
         }
     }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
-    if (flag == SYSTEM_FLAG_OTA_UPDATE_ENABLED)
+    else if (flag == SYSTEM_FLAG_OTA_UPDATE_ENABLED)
     {
-    	// publish the firmware enabled event
-    	spark_send_event(UPDATES_ENABLED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
+        // publish the firmware enabled event
+        spark_send_event(UPDATES_ENABLED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
     }
-    if (flag == SYSTEM_FLAG_OTA_UPDATE_FORCED)
+    else if (flag == SYSTEM_FLAG_OTA_UPDATE_FORCED)
     {
-    	spark_send_event(UPDATES_FORCED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
+        // acknowledge to the cloud that system updates are forced. It helps avoid a race condition where we might try sending firmware before the event has been received.
+        spark_send_event(UPDATES_FORCED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
     }
-    if (flag == SYSTEM_FLAG_OTA_UPDATE_PENDING)
+    else if (flag == SYSTEM_FLAG_OTA_UPDATE_PENDING)
     {
-    	if (newValue) {
-			system_notify_event(firmware_update_pending, 0, nullptr, nullptr, nullptr);
-			// publish an internal system event for pending updates
+        if (newValue) {
+            system_notify_event(firmware_update_pending, 0, nullptr, nullptr, nullptr);
+            // publish an internal system event for pending updates
     	}
 	}
 }
@@ -131,10 +132,10 @@ void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
  * Refreshes the flag by performing the update action.
  */
 int system_refresh_flag(system_flag_t flag) {
-	uint8_t value;
-	int result = system_get_flag(flag, &value, nullptr);
-	system_flag_changed(flag, value, value);
-	return result;
+    uint8_t value;
+    int result = system_get_flag(flag, &value, nullptr);
+    system_flag_changed(flag, value, value);
+    return result;
 }
 
 int system_set_flag(system_flag_t flag, uint8_t value, void*)
@@ -288,20 +289,20 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
     }
     int result = 0;
     if (System.updatesEnabled() || System.updatesForced()) {		// application event is handled asynchronously
-		if (flags & 1) {
-			// only check address
+        if (flags & 1) {
+            // only check address
 		}
 		else {
-			system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 0, nullptr);
-			RGB.control(true);
-			// Get base color used for the update process indication
-			const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
-			RGB.color(status ? status->color : RGB_COLOR_MAGENTA);
-			SPARK_FLASH_UPDATE = 1;
-			TimingFlashUpdateTimeout = 0;
-			system_notify_event(firmware_update, firmware_update_begin, &file);
-			HAL_FLASH_Begin(file.file_address, file.file_length, NULL);
-		}
+            system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 0, nullptr);
+            RGB.control(true);
+            // Get base color used for the update process indication
+            const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
+            RGB.color(status ? status->color : RGB_COLOR_MAGENTA);
+            SPARK_FLASH_UPDATE = 1;
+            TimingFlashUpdateTimeout = 0;
+            system_notify_event(firmware_update, firmware_update_begin, &file);
+            HAL_FLASH_Begin(file.file_address, file.file_length, NULL);
+        }
     }
     else {
     	result = 1;
