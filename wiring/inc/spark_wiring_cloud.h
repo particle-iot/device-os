@@ -247,8 +247,8 @@ class CloudClass {
      * controls the granularity of detail on the fleet health metrics.
      *
      * @param[in] period_s The period (in seconds) at which vitals messages are to be sent
-     *                     to the cloud (default value: \p particle::PUBLISH_VITALS_NOW)
-     * @arg \p particle::PUBLISH_VITALS_NOW - Special value used to send vitals immediately
+     *                     to the cloud (default value: \p particle::NOW)
+     * @arg \p particle::NOW - Special value used to send vitals immediately
      * @arg \p 0 - Publish a final message and disable periodic publishing
      * @arg \p s - Publish an initial message and subsequent messages every \p s seconds thereafter
      * @param[in,out] reserved Reserved for future use (default value: \p nullptr).
@@ -259,7 +259,7 @@ class CloudClass {
      *
      * @note The periodic functionality is not available for the Spark Core
      */
-    int publishVitals(size_t period = particle::PUBLISH_VITALS_NOW);
+    int publishVitals(size_t period = particle::NOW);
 
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
     {

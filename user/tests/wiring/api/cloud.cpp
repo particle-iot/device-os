@@ -126,7 +126,7 @@ test(api_spark_publish) {
 
 test(api_spark_publish_vitals) {
     API_COMPILE(Particle.publishVitals()); // publish vitals immediately
-    API_COMPILE(Particle.publishVitals(particle::PUBLISH_VITALS_NOW)); // publish vitals immediately
+    API_COMPILE(Particle.publishVitals(particle::NOW)); // publish vitals immediately
     API_COMPILE(Particle.publishVitals(0)); // disable periodic publishing
     API_COMPILE(Particle.publishVitals(5)); // publish vitals at 5 second intervals
 }
