@@ -151,6 +151,12 @@
 #pragma weak mbedtls_sha512_finish
 #pragma weak mbedtls_sha512_process
 
+// MD5 with return value
+#pragma weak mbedtls_md5_starts_ret
+#pragma weak mbedtls_md5_update_ret
+#pragma weak mbedtls_md5_finish_ret
+#pragma weak mbedtls_internal_md5_process
+
 #endif
 
 #endif // MBEDTLS_WEAKEN
