@@ -901,6 +901,8 @@ int Send_Firmware_Update_Flags()
     if (System.updatesForced()) {
     	system_refresh_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED);
     }
+
+    return 0;
 }
 
 int Spark_Handshake(bool presence_announce)
