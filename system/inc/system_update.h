@@ -136,7 +136,8 @@ typedef enum
     /**
      * Enable/Disable runtime power management peripheral detection
      */
-    SYSTEM_FLAG_PM_DETECTION, 
+	SYSTEM_FLAG_PM_DETECTION,
+
 	/**
 	 * When 0, OTA updates are only applied when SYSTEM_FLAG_OTA_UPDATE_ENABLED is set.
 	 * When 1, OTA updates are applied irrespective of the value of SYSTEM_FLAG_OTA_UPDATE_ENABLED.
