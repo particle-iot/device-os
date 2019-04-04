@@ -195,6 +195,13 @@ DYNALIB_FN(117, crypto, mbedtls_sha512_starts, void(mbedtls_sha512_context*, int
 DYNALIB_FN(118, crypto, mbedtls_sha512_update, void(mbedtls_sha512_context*, const unsigned char*, size_t))
 DYNALIB_FN(119, crypto, mbedtls_sha512_finish, void(mbedtls_sha512_context*, unsigned char output[64]))
 DYNALIB_FN(120, crypto, mbedtls_sha512_process, void(mbedtls_sha512_context*, const unsigned char data[128]))
+
+// MD5 with return value
+DYNALIB_FN(121, crypto, mbedtls_md5_starts_ret, int(mbedtls_md5_context*))
+DYNALIB_FN(122, crypto, mbedtls_md5_update_ret, int(mbedtls_md5_context*, const unsigned char*, size_t))
+DYNALIB_FN(123, crypto, mbedtls_md5_finish_ret, int(mbedtls_md5_context*, unsigned char[16]))
+DYNALIB_FN(124, crypto, mbedtls_internal_md5_process, int(mbedtls_md5_context*, const unsigned char[64]))
+
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 DYNALIB_END(crypto)
 
