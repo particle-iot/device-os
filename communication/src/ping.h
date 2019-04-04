@@ -47,7 +47,10 @@ public:
 	}
 
 	/**
-	 * Handle ping messages
+	 * Handle ping messages. If a message is not received
+	 * within the timeout, the connection is considered unreliable.
+	 * @param millis_since_last_message Elapsed number of milliseconds since the last message was received.
+	 * @param callback a no-arg callable that is used to perform a ping to the cloud.
 	 */
 	template <typename Callback> ProtocolError process(system_tick_t millis_since_last_message, Callback ping)
 	{
@@ -61,6 +64,8 @@ public:
 		}
 		else
 		{
+			// ping interval set, so check if we need to send a ping
+			// The ping is sent based on the elapsed time since the last message
 			if (ping_interval && ping_interval < millis_since_last_message)
 			{
 				expecting_ping_ack = true;
@@ -72,6 +77,11 @@ public:
 
 	bool is_expecting_ping_ack() const { return expecting_ping_ack; }
 
+	/**
+	 * Notifies the Pinger that a message has been received
+	 * and that there is presently no need to resend a ping
+	 * until the ping interval has elapsed.
+	 */
 	void message_received() { expecting_ping_ack = false; }
 };
 
