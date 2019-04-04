@@ -56,10 +56,12 @@ __attribute__((weak)) mbedtls_callbacks_t* mbedtls_get_callbacks(void* reserved)
 }
 #endif // defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS) || PLATFORM_ID == 0
 
+#if PLATFORM_ID!=3
 unsigned long mbedtls_timing_hardclock()
 {
     return HAL_Timer_Microseconds();
 }
+#endif
 
 int mbedtls_x509_crt_pem_to_der(const char* pem_crt, size_t pem_len, uint8_t** der_crt, size_t* der_len)
 {

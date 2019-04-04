@@ -32,6 +32,7 @@
 #if defined(USE_STDPERIPH_DRIVER) || (!defined(SPARK_NO_PLATFORM) && !defined(INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS))
 #include "interrupts_irq.h"
 #else
+#include <stdint.h>
 typedef int32_t IRQn_Type;
 typedef int32_t hal_irq_t;
 #endif // SPARK_NO_PLATFORM

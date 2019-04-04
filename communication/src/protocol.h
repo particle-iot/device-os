@@ -37,7 +37,6 @@ class Protocol
 	 * todo - move this into the message channel?
 	 */
 	system_tick_t last_message_millis;
-	system_tick_t cloud_connected_millis;
 
 	/**
 	 * The product_id represented by this device. set_product_id()
