@@ -44,7 +44,7 @@ public:
 
 	inline bool is_system(const char* event_name)
 	{
-		return !strncmp(event_name, "spark", 5);
+		return !strncmp(event_name, "spark", 5) || !strncmp(event_name, "particle", 8);
 	}
 
 	bool is_rate_limited(bool is_system_event, system_tick_t millis)
