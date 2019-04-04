@@ -22,6 +22,7 @@
 #include "fakeit.hpp"
 using namespace fakeit;
 
+using namespace particle;
 using namespace particle::protocol;
 
 class AbstractProtocol : public Protocol
@@ -29,7 +30,12 @@ class AbstractProtocol : public Protocol
 public:
 	AbstractProtocol(MessageChannel& channel) : Protocol(channel) {}
 
-	virtual size_t build_hello(Message& message, bool was_ota_upgrade_successful)
+	virtual size_t build_hello(Message& message, uint8_t flags)
+	{
+		return 0;
+	}
+
+	virtual int command(ProtocolCommands::Enum command, uint32_t data)
 	{
 		return 0;
 	}
@@ -133,7 +139,7 @@ void event_ack(bool confirmable, bool unreliable)
 	if (confirmable)
 		When(Method(channel,is_unreliable)).Return(unreliable);
 
-	auto receive_event = [&event, msglen](Message& msg) {
+	auto receive_event = [&event](Message& msg) {
 		msg = event;
 		return NO_ERROR;
 	};
@@ -211,8 +217,9 @@ void verify_event_type_with_flags(int flags, CoAPType::Enum coapType)
 	};
 	When(Method(channel,send)).Do(validate_event);
 
-	Publisher publisher;
-	publisher.send_event(channel.get(),"abc","def", 60, EventType::PUBLIC, flags, 0);
+	Publisher publisher(nullptr);
+	CompletionHandler completionHandler;
+	publisher.send_event(channel.get(),"abc","def", 60, EventType::PUBLIC, flags, 0, std::move(completionHandler));
 
 	Verify(Method(channel,send));
 }
