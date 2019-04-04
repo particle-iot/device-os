@@ -55,7 +55,7 @@ void loop()
         digitalWrite(ALT_LED, LOW);
         Particle.publishVitals();
         delay(500);
-        Particle.publishVitals(particle::PUBLISH_VITALS_NOW);
+        Particle.publishVitals(particle::NOW);
     }
     delay(1000);
 }
