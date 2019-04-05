@@ -17,9 +17,9 @@
  ******************************************************************************
  */
 
+#include "protocol_defs.h"
 #include "protocol_selector.h"
 #include "spark_protocol_functions.h"
-#include "system_error.h"
 #include "handshake.h"
 #include "debug.h"
 #include <stdlib.h>
@@ -121,7 +121,7 @@ int spark_protocol_presence_announcement(ProtocolFacade* protocol, uint8_t *buf,
 int spark_protocol_post_description(ProtocolFacade* protocol, int desc_flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
     (void)reserved;
-    return toSystemError(protocol->post_description(desc_flags));
+    return protocol->post_description(desc_flags);
 }
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
@@ -273,7 +273,7 @@ int spark_protocol_presence_announcement(SparkProtocol* protocol, unsigned char 
 int spark_protocol_post_description(SparkProtocol* protocol, int desc_flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
     (void)reserved;
-    return toSystemError(protocol->post_description(desc_flags));
+    return protocol->post_description(desc_flags);
 }
 
 bool spark_protocol_send_event(SparkProtocol* protocol, const char *event_name, const char *data,

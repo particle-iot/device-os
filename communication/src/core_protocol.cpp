@@ -815,7 +815,8 @@ void SparkProtocol::update_ready(unsigned char *buf, unsigned char token, uint8_
 }
 
 int SparkProtocol::description(unsigned char *buf, unsigned char token,
-      unsigned char message_id_msb, unsigned char message_id_lsb, int desc_flags) {
+                               unsigned char message_id_msb, unsigned char message_id_lsb, int desc_flags)
+{
     buf[0] = 0x61; // message type, token length
     buf[1] = 0x45; // response code
     buf[2] = message_id_msb;

@@ -238,6 +238,25 @@ protected:
 	const int MISSED_CHUNKS_TO_SEND = 50;
 
 	/**
+	 * @brief Generates and sends describe message
+	 *
+	 * @param channel The message channel used to send the message
+	 * @param message The message buffer used to store the message
+	 * @param header_size The offset at which to place the message payload
+	 * @param desc_flags The information description flags
+	 * @arg \p DESCRIBE_APPLICATION
+	 * @arg \p DESCRIBE_METRICS
+	 * @arg \p DESCRIBE_SYSTEM
+	 *
+	 * @returns \s ProtocolError result value
+	 * @retval \p particle::protocol::NO_ERROR
+	 *
+	 * @sa particle::protocol::ProtocolError
+	 */
+	ProtocolError generate_and_send_description(MessageChannel& channel, Message& message,
+												size_t header_size, int desc_flags);
+
+	/**
 	 * Produces and transmits (PIGGYBACK) a describe message.
 	 * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
 	 */
