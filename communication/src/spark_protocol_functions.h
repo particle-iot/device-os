@@ -208,9 +208,9 @@ int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_de
  * @arg \p DESCRIBE_SYSTEM
  * @param[in,out] reserved Reserved for future use (default value: \p NULL).
  *
- * @returns \p system_error_t result code
- * @retval \p system_error_t::SYSTEM_ERROR_NONE
- * @retval \p system_error_t::SYSTEM_ERROR_IO
+ * @returns \p ProtocolError result code
+ * @retval \p ProtocolError::NO_ERROR
+ * @retval \p ProtocolError::IO_ERROR_GENERIC_SEND
  */
 int spark_protocol_post_description(ProtocolFacade* protocol, int desc_flags=particle::protocol::DESCRIBE_METRICS, void* reserved=NULL);
 

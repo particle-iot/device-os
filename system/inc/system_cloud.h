@@ -21,6 +21,7 @@
 #include "static_assert.h"
 #include "spark_wiring_string.h"
 #include "spark_protocol_functions.h"
+#include "system_tick_hal.h"
 #include "completion_handler.h"
 #include <string.h>
 #include <time.h>
@@ -45,7 +46,7 @@ typedef enum
 } Spark_Data_TypeDef;
 
 namespace particle {
-    static const size_t NOW = static_cast<size_t>(-1);
+    static const system_tick_t NOW = static_cast<system_tick_t>(-1);
 }
 
 struct CloudVariableTypeBase {};
@@ -193,7 +194,7 @@ typedef struct {
  * @arg \p particle::NOW - Special value used to send vitals immediately
  * @arg \p 0 - Publish a final message and disable periodic publishing
  * @arg \p n - Publish an initial message and subsequent messages every \p n seconds thereafter
- * @param[in,out] reserved Reserved for future use (default value: \p nullptr).
+ * @param[in,out] reserved Reserved for future use.
  *
  * @returns \p system_error_t result code
  * @retval \p system_error_t::SYSTEM_ERROR_NONE
@@ -201,7 +202,7 @@ typedef struct {
  *
  * @note The periodic functionality is not available for the Spark Core
  */
-int spark_publish_vitals(size_t period_s, void *reserved = nullptr);
+int spark_publish_vitals(system_tick_t period_s, void *reserved);
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);
