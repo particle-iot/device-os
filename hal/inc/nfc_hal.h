@@ -19,7 +19,7 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_BLE
+#if HAL_PLATFORM_NFC
 
 #include <cstddef>
 #include <cstdint>
