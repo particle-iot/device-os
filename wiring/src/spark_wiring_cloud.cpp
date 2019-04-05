@@ -71,6 +71,6 @@ Future<bool> CloudClass::publish_event(const char *eventName, const char *eventD
 #endif
 }
 
-int CloudClass::publishVitals(size_t period_s_) {
-    return spark_publish_vitals(period_s_);
+int CloudClass::publishVitals(system_tick_t period_s_) {
+    return spark_publish_vitals(period_s_, nullptr);
 }
