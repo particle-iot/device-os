@@ -15,36 +15,24 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "diagnostics.h"
+#include "system_logging.h"
+#include "system_error.h"
 
-#if SYSTEM_CONTROL_ENABLED
+namespace {
 
-#include "common.h"
+log_config_callback g_logConfigCallback = nullptr;
+void* g_logConfigCallbackData = nullptr;
 
-#define PB(_name) particle_ctrl_diagnostics_##_name
+} // unnamed
 
-namespace particle {
-
-namespace control {
-
-namespace diagnostics {
-
-int addLogHandler(ctrl_request* req) {
-    return 0;
+void log_config_set_callback(log_config_callback callback, void* user_data, void* reserved) {
+    g_logConfigCallback = callback;
+    g_logConfigCallbackData = user_data;
 }
 
-int removeLogHandler(ctrl_request* req) {
-    return 0;
+int log_config_invoke_callback(int command, void* command_data, void** command_result) {
+    if (!g_logConfigCallback) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return g_logConfigCallback(command, command_data, command_result, g_logConfigCallbackData);
 }
-
-int listLogHandlers(ctrl_request* req) {
-    return 0;
-}
-
-} // particle::control::diagnostics
-
-} // particle::control
-
-} // particle
-
-#endif // SYSTEM_CONTROL_ENABLED
