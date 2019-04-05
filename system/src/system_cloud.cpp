@@ -50,27 +50,38 @@
 
 extern void (*random_seed_from_cloud_handler)(unsigned int);
 
-namespace {
+namespace
+{
 
 using namespace particle::system;
 
 #if PLATFORM_THREADING
-  Timer _vitals_timer(std::numeric_limits<unsigned>::max(), []() -> void {
-      const auto task = new(std::nothrow) ISRTaskQueue::Task;
-      if (!task) {
-          return;
-      }
-      task->func = [](ISRTaskQueue::Task* task) {
-          delete task;
-          spark_protocol_post_description(spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr);
-      };
-      SystemISRTaskQueue.enqueue(task);
-  }, false);
-  VitalsPublisher<Timer> _vitals(std::bind(spark_protocol_post_description, spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr), &_vitals_timer);
-#else // not PLATFORM_THREADING
-  particle::NullTimer _vitals_timer;
-  VitalsPublisher<particle::NullTimer> _vitals(std::bind(spark_protocol_post_description, spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr), &_vitals_timer);
-#endif  // PLATFORM_THREADING
+Timer _vitals_timer(std::numeric_limits<unsigned>::max(),
+                    []() -> void {
+                        const auto task = new (std::nothrow) ISRTaskQueue::Task;
+                        if (!task)
+                        {
+                            return;
+                        }
+                        task->func = [](ISRTaskQueue::Task* task) {
+                            delete task;
+                            spark_protocol_post_description(spark_protocol_instance(),
+                                                            particle::protocol::DESCRIBE_METRICS,
+                                                            nullptr);
+                        };
+                        SystemISRTaskQueue.enqueue(task);
+                    },
+                    false);
+VitalsPublisher<Timer> _vitals(std::bind(spark_protocol_post_description, spark_protocol_instance(),
+                                         particle::protocol::DESCRIBE_METRICS, nullptr),
+                               &_vitals_timer);
+#else  // not PLATFORM_THREADING
+particle::NullTimer _vitals_timer;
+VitalsPublisher<particle::NullTimer>
+    _vitals(std::bind(spark_protocol_post_description, spark_protocol_instance(),
+                      particle::protocol::DESCRIBE_METRICS, nullptr),
+            &_vitals_timer);
+#endif // PLATFORM_THREADING
 
 } // namespace
 
@@ -91,26 +102,28 @@ bool register_event(const char* eventName, SubscriptionScope::Enum event_scope, 
     return success;
 }
 
-int spark_publish_vitals(size_t period_s_, void *reserved_)
+int spark_publish_vitals(system_tick_t period_s_, void* reserved_)
 {
     SYSTEM_THREAD_CONTEXT_SYNC(spark_publish_vitals(period_s_, reserved_));
     int result;
 
-    switch (period_s_) {
-      case particle::NOW:
+    switch (period_s_)
+    {
+    case particle::NOW:
         result = _vitals.publish();
         break;
-      case 0:
+    case 0:
         _vitals.disablePeriodicPublish();
         result = _vitals.publish();
         break;
-      default:
+    default:
         _vitals.period(period_s_);
         _vitals.enablePeriodicPublish();
         result = _vitals.publish();
     }
-    
-    return result;
+
+    return particle::protocol::toSystemError(
+        static_cast<particle::protocol::ProtocolError>(result));
 }
 
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,

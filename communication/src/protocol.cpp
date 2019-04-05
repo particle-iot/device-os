@@ -515,104 +515,84 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
 	}
 }
 
+ProtocolError Protocol::generate_and_send_description(MessageChannel& channel, Message& message,
+                                                      size_t header_size, int desc_flags)
+{
+    ProtocolError error;
+
+    BufferAppender appender((message.buf() + header_size), (message.capacity() - header_size));
+    build_describe_message(appender, desc_flags);
+
+    const size_t msglen = (appender.next() - (uint8_t*)message.buf());
+    message.set_length(msglen);
+    if (appender.overflowed())
+    {
+        LOG(ERROR, "Describe message overflowed by %d bytes", appender.overflowed());
+        // There is no point in continuing to run, the device will be constantly reconnecting
+        // to the cloud. It's better to clearly indicate that the describe message is never going
+        // to go through to the cloud by going into a panic state, otherwise one would have to
+        // sift through logs to find 'Describe message overflowed by %d bytes' message to understand
+        // what's going on.
+        SPARK_ASSERT(!appender.overflowed());
+    }
+
+    LOG(INFO, "Posting '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
+        desc_flags & DESCRIBE_APPLICATION ? "A" : "", desc_flags & DESCRIBE_METRICS ? "M" : "");
+
+    error = channel.send(message);
+
+    if (error == NO_ERROR && descriptor.app_state_selector_info &&
+        (desc_flags & DESCRIBE_APPLICATION || desc_flags & DESCRIBE_SYSTEM))
+    {
+        this->channel.command(Channel::SAVE_SESSION);
+        if (desc_flags & DESCRIBE_APPLICATION)
+        {
+            // have sent the describe message to the cloud so update the crc
+            descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
+                                               SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0,
+                                               nullptr);
+        }
+        if (desc_flags & DESCRIBE_SYSTEM)
+        {
+            // have sent the describe message to the cloud so update the crc
+            descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
+                                               SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0,
+                                               nullptr);
+        }
+        this->channel.command(Channel::LOAD_SESSION);
+    }
+    else
+    {
+        LOG(ERROR, "Channel failed to send message with error-code <%d>", error);
+    }
+
+    return error;
+}
+
 ProtocolError Protocol::post_description(int desc_flags)
 {
-	Message message;
-	channel.create(message);
-	const size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), 0, (desc_flags & 0xFF));
+    Message message;
+    channel.create(message);
+    const size_t header_size =
+        Messages::describe_post_header(message.buf(), message.capacity(), 0, (desc_flags & 0xFF));
 
-	BufferAppender appender((message.buf() + header_size), (message.capacity() - header_size));
-	build_describe_message(appender, desc_flags);
-
-	const size_t msglen = (appender.next() - (uint8_t*) message.buf());
-	message.set_length(msglen);
-	if (appender.overflowed()) {
-		LOG(ERROR, "Describe message overflowed by %d bytes", appender.overflowed());
-		// There is no point in continuing to run, the device will be constantly reconnecting
-		// to the cloud. It's better to clearly indicate that the describe message is never going
-		// to go through to the cloud by going into a panic state, otherwise one would have to
-		// sift through logs to find 'Describe message overflowed by %d bytes' message to understand
-		// what's going on.
-		SPARK_ASSERT(!appender.overflowed());
-	}
-
-	LOG(INFO,"Posting '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
-												  desc_flags & DESCRIBE_APPLICATION ? "A" : "",
-												  desc_flags & DESCRIBE_METRICS ? "M" : "");
-
-	const ProtocolError error = channel.send(message);
-	if (error == NO_ERROR && descriptor.app_state_selector_info
-	&& (desc_flags & DESCRIBE_APPLICATION || desc_flags & DESCRIBE_SYSTEM))
-	{
-		this->channel.command(Channel::SAVE_SESSION);
-		if (desc_flags & DESCRIBE_APPLICATION)
-		{
-			// have sent the describe message to the cloud so update the crc
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-		}
-		if (desc_flags & DESCRIBE_SYSTEM)
-		{
-			// have sent the describe message to the cloud so update the crc
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-		}
-		this->channel.command(Channel::LOAD_SESSION);
-	} else {
-		LOG(ERROR, "Channel failed to send message with error-code <%d>", error);
-	}
-
-	return error;
+    return generate_and_send_description(channel, message, header_size, desc_flags);
 }
 
 /**
  * Produces and transmits (PIGGYBACK) a describe message.
- * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
+ * @param desc_flags Flags describing the information to provide. A combination of {@code
+ * DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
  */
 ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int desc_flags)
 {
-	Message message;
-	channel.create(message);
-	uint8_t* buf = message.buf();
-	message.set_id(msg_id);
-	size_t desc = Messages::description(buf, msg_id, token);
+    Message message;
+    channel.create(message);
+    uint8_t* buf = message.buf();
+    message.set_id(msg_id);
+    size_t desc = Messages::description(buf, msg_id, token);
 
-	//TODO: Confirm logic is correct. If `message.buf()` is offset my `desc`, how is this factored into `message.capacity()` (which is the buffer length)?
-	BufferAppender appender((buf + desc), (message.capacity() - desc));
-
-	build_describe_message(appender, desc_flags);
-
-	int msglen = appender.next() - (uint8_t*) buf;
-	message.set_length(msglen);
-	if (appender.overflowed()) {
-		LOG(ERROR, "Describe message overflowed by %d bytes", appender.overflowed());
-		// There is no point in continuing to run, the device will be constantly reconnecting
-		// to the cloud. It's better to clearly indicate that the describe message is never going
-		// to go through to the cloud by going into a panic state, otherwise one would have to
-		// sift through logs to find 'Describe message overflowed by %d bytes' message to understand
-		// what's going on.
-		SPARK_ASSERT(!appender.overflowed());
-	}
-
-	LOG(INFO,"Sending '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
-											  desc_flags & DESCRIBE_APPLICATION ? "A" : "",
-											  desc_flags & DESCRIBE_METRICS ? "M" : "");
-	ProtocolError error = channel.send(message);
-	if (error==NO_ERROR && descriptor.app_state_selector_info &&
-            (desc_flags & DESCRIBE_APPLICATION || desc_flags & DESCRIBE_SYSTEM))
-	{
-        this->channel.command(Channel::SAVE_SESSION);
-		if (desc_flags & DESCRIBE_APPLICATION)
-		{
-			// have sent the describe message to the cloud so update the crc
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-		}
-		if (desc_flags & DESCRIBE_SYSTEM)
-		{
-			// have sent the describe message to the cloud so update the crc
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-		}
-        this->channel.command(Channel::LOAD_SESSION);
-	}
-	return error;
+    return generate_and_send_description(channel, message, desc, desc_flags);
 }
 
 int Protocol::ChunkedTransferCallbacks::prepare_for_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void* reserved)

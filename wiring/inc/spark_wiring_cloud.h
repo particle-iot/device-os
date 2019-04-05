@@ -26,6 +26,7 @@
 #include "events.h"
 #include "system_cloud.h"
 #include "system_sleep.h"
+#include "system_tick_hal.h"
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
 #include "spark_wiring_watchdog.h"
@@ -259,7 +260,7 @@ class CloudClass {
      *
      * @note The periodic functionality is not available for the Spark Core
      */
-    int publishVitals(size_t period = particle::NOW);
+    int publishVitals(system_tick_t period = particle::NOW);
 
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
     {

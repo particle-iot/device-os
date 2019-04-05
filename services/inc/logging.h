@@ -384,8 +384,6 @@ static const char* const _log_category = NULL;
 
 #else // LOG_DISABLE
 
-#warning  "Logging MACROs have been disabled! (-DLOG_DISABLE)"
-
 #define LOG_CATEGORY(_name)
 #define LOG_SOURCE_CATEGORY(_name)
 #define LOG_THIS_CATEGORY() NULL
