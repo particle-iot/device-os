@@ -470,21 +470,20 @@ public:
             return 0;
         }
         len = len > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : len;
-        int ret = SYSTEM_ERROR_INVALID_STATE;
+        int ret = 0;
         if (isLocal) {
             ret = ble_gatt_server_set_characteristic_value(attrHandles.value_handle, buf, len, nullptr);
-            if (ret != SYSTEM_ERROR_NONE) {
-                return 0;
+            if (ret == 0) {
+                LOG(ERROR, "ble_gatt_server_set_characteristic_value failed.");
             }
-            for (int i = 0; i < cccdOfServer.size(); i++) {
-                if (properties & PROPERTY::NOTIFY) {
-                    ret = ble_gatt_server_notify_characteristic_value(cccdOfServer[i], attrHandles.value_handle, buf, len, nullptr);
-                }
-                else if (properties & PROPERTY::INDICATE) {
-                    ret = ble_gatt_server_indicate_characteristic_value(cccdOfServer[i], attrHandles.value_handle, buf, len, nullptr);
-                }
-                if (ret != SYSTEM_ERROR_NONE) {
-                    return 0;
+            else {
+                for (int i = 0; i < cccdOfServer.size(); i++) {
+                    if (properties & PROPERTY::NOTIFY) {
+                        ble_gatt_server_notify_characteristic_value(cccdOfServer[i], attrHandles.value_handle, buf, len, nullptr);
+                    }
+                    else if (properties & PROPERTY::INDICATE) {
+                        ble_gatt_server_indicate_characteristic_value(cccdOfServer[i], attrHandles.value_handle, buf, len, nullptr);
+                    }
                 }
             }
         }
@@ -495,11 +494,8 @@ public:
             else if (properties & PROPERTY::WRITE_WO_RSP) {
                 ret = ble_gatt_client_write_without_response(connHandle, attrHandles.value_handle, buf, len, nullptr);
             }
-            if (ret != SYSTEM_ERROR_NONE) {
-                return 0;
-            }
         }
-        return len;
+        return ret;
     }
 
     void configureCccd(BleConnHandle handle, uint8_t enable) {
