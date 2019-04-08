@@ -4,13 +4,20 @@
 #include <limits>
 
 #include "logging.h"
+#include "spark_protocol_functions.h"
+#include "system_threading.h"
 
 using namespace particle::system;
 
 template <class Timer>
-VitalsPublisher<Timer>::VitalsPublisher(publish_fn_t publish_fn_, Timer* timer_)
-    : _period_s(std::numeric_limits<system_tick_t>::max()), _publishVitals(publish_fn_),
-      _timer(timer_)
+const typename VitalsPublisher<Timer>::publish_fn_t VitalsPublisher<Timer>::_publishVitals =
+    std::bind(spark_protocol_post_description, spark_protocol_instance(),
+              particle::protocol::DESCRIBE_METRICS, nullptr);
+
+template <class Timer>
+VitalsPublisher<Timer>::VitalsPublisher(Timer* timer_)
+    : _period_s(std::numeric_limits<system_tick_t>::max()),
+      _timer(timer_ ? timer_ : onDemandTimerInstance())
 {
 }
 
@@ -30,6 +37,13 @@ template <class Timer>
 void VitalsPublisher<Timer>::enablePeriodicPublish(void)
 {
     _timer->start();
+}
+
+template <class Timer>
+Timer* VitalsPublisher<Timer>::onDemandTimerInstance(void)
+{
+    static Timer* timer = new Timer(_period_s, &VitalsPublisher::publishFromTimer, *this, false);
+    return timer;
 }
 
 template <class Timer>
@@ -70,12 +84,29 @@ int VitalsPublisher<Timer>::publish(void)
     return _publishVitals();
 }
 
-#if PLATFORM_THREADING
+template <class Timer>
+void VitalsPublisher<Timer>::publishFromTimer(void)
+{
+    const auto task = new (std::nothrow) ISRTaskQueue::Task;
+    if (!task)
+    {
+        return;
+    }
+    task->func = [](ISRTaskQueue::Task* task) {
+        delete task;
+        _publishVitals();
+    };
+    SystemISRTaskQueue.enqueue(task);
+}
+
 #include "spark_wiring_timer.h"
+#if PLATFORM_THREADING
 template class VitalsPublisher<Timer>;
 #else  // not PLATFORM_THREADING
 template class VitalsPublisher<particle::NullTimer>;
 #endif // PLATFORM_THREADING
 
+#ifdef UNIT_TEST
 #include "../test/unit_tests/mock_types.h"
 template class VitalsPublisher<particle::mock_type::Timer>;
+#endif // UNIT_TEST

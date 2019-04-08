@@ -132,4 +132,41 @@ private:
 
 };
 
+#if (0 == PLATFORM_THREADING)
+namespace particle {
+class NullTimer
+{
+public:
+    NullTimer(unsigned, Timer::timer_callback_fn, bool) {
+    }
+
+    template <typename T>
+    NullTimer(unsigned, void (T::*)(), T&, bool)
+    {
+    }
+
+    inline static bool changePeriod(const size_t)
+    {
+        return true;
+    }
+    inline static void dispose(void)
+    {
+    }
+    inline static bool isActive(void)
+    {
+        return false;
+    }
+    inline static void reset(void)
+    {
+    }
+    inline static void start(void)
+    {
+    }
+    inline static void stop(void)
+    {
+    }
+};
+}
+#endif // not PLATFORM_THREADING
+
 #endif

@@ -29,7 +29,7 @@
 #include <stdlib.h>
 
 namespace EventType {
-  enum Enum {
+  enum Enum : char {
     PUBLIC = 'e',			// 0x65
     PRIVATE = 'E',			// 0x45
   };
