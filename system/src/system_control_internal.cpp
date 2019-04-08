@@ -464,8 +464,8 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::diagnostics::removeLogHandler(req));
         break;
     }
-    case CTRL_REQUEST_LIST_LOG_HANDLERS: {
-        setResult(req, control::diagnostics::listLogHandlers(req));
+    case CTRL_REQUEST_GET_LOG_HANDLERS: {
+        setResult(req, control::diagnostics::getLogHandlers(req));
         break;
     }
 #endif // HAL_PLATFORM_MESH

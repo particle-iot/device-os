@@ -27,7 +27,7 @@ namespace diagnostics {
 
 int addLogHandler(ctrl_request* req);
 int removeLogHandler(ctrl_request* req);
-int listLogHandlers(ctrl_request* req);
+int getLogHandlers(ctrl_request* req);
 
 } // particle::control::diagnostics
 

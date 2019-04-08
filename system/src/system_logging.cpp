@@ -17,6 +17,7 @@
 
 #include "system_logging.h"
 #include "system_error.h"
+#include "check.h"
 
 namespace {
 
@@ -30,9 +31,7 @@ void log_config_set_callback(log_config_callback callback, void* user_data, void
     g_logConfigCallbackData = user_data;
 }
 
-int log_config_invoke_callback(int command, void* command_data, void** command_result) {
-    if (!g_logConfigCallback) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-    }
+int log_config(int command, const void* command_data, void* command_result) {
+    CHECK_TRUE(g_logConfigCallback, SYSTEM_ERROR_NOT_SUPPORTED);
     return g_logConfigCallback(command, command_data, command_result, g_logConfigCallbackData);
 }
