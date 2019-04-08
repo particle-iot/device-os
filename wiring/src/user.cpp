@@ -170,9 +170,18 @@ void __attribute((weak)) ctrl_request_custom_handler(ctrl_request* req) {
 }
 
 #if Wiring_LogConfig
-// Callback invoked to configure the logging
+
+// Logging configuration callback
 int(*log_config_callback)(int cmd, const void* data, void* result, void* userData) = nullptr;
-#endif
+
+static int log_config_callback_wrapper(int cmd, const void* data, void* result, void* userData) {
+    if (!log_config_callback) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return log_config_callback(cmd, data, result, userData);
+}
+
+#endif // Wiring_LogConfig
 
 // Application handler for control requests
 static void ctrl_request_handler(ctrl_request* req) {
@@ -216,6 +225,6 @@ void module_user_init_hook()
 
 #if Wiring_LogConfig
     // Register the logging configuration callback
-    log_config_set_callback(log_config_callback, nullptr, nullptr);
+    log_config_set_callback(log_config_callback_wrapper, nullptr, nullptr);
 #endif
 }
