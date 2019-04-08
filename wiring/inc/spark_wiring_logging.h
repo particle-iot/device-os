@@ -537,7 +537,7 @@ public:
         \param callback Callback function invoked for each active handler.
         \param data User data.
     */
-    void enumFactoryHandlers(void(*callback)(const char *id, void *data), void *data);
+    bool enumFactoryHandlers(bool(*callback)(const char *id, void *data), void *data);
     /*!
         \brief Sets log handler factory.
 
