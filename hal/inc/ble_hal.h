@@ -222,7 +222,7 @@ typedef struct {
     uint16_t attr_handle;
     uint16_t offset;
     uint16_t data_len;
-    uint8_t  data[BLE_MAX_CHAR_VALUE_LEN];
+    uint8_t  data[BLE_MAX_ATTR_VALUE_PACKET_SIZE];
 } hal_ble_gatt_on_data_evt_t;
 
 typedef enum {

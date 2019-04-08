@@ -598,7 +598,7 @@ static int addCharacteristic(uint16_t svcHandle, const ble_uuid_t* uuid, uint8_t
     charValueAttr.p_attr_md = &valueAttrMd;
     charValueAttr.init_len  = 0;
     charValueAttr.init_offs = 0;
-    charValueAttr.max_len   = BLE_MAX_CHAR_VALUE_LEN;
+    charValueAttr.max_len   = BLE_MAX_ATTR_VALUE_PACKET_SIZE;
     charValueAttr.p_value   = NULL;
 
     ret = sd_ble_gatts_characteristic_add(svcHandle, &charMd, &charValueAttr, &charHandles);

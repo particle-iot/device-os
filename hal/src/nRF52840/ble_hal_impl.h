@@ -127,9 +127,6 @@
 #define BLE_UUID_TYPE_128BIT                        1
 #define BLE_UUID_TYPE_128BIT_SHORTED                2
 
-/* Maximum BLE Characteristic value length */
-#define BLE_MAX_CHAR_VALUE_LEN                      20
-
 // Maximum supported size of an ATT packet in bytes (ATT_MTU)
 #define BLE_MAX_ATT_MTU_SIZE                        NRF_SDH_BLE_GATT_MAX_MTU_SIZE
 

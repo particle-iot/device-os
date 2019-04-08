@@ -451,7 +451,7 @@ public:
         if (buf == nullptr) {
             return 0;
         }
-        uint16_t readLen = len > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : len;
+        uint16_t readLen = len > BLE_MAX_ATTR_VALUE_PACKET_SIZE ? BLE_MAX_ATTR_VALUE_PACKET_SIZE : len;
         int ret;
         if (isLocal) {
             ret = ble_gatt_server_get_characteristic_value(attrHandles.value_handle, buf, &readLen, nullptr);
@@ -469,7 +469,7 @@ public:
         if (buf == nullptr) {
             return 0;
         }
-        len = len > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : len;
+        len = len > BLE_MAX_ATTR_VALUE_PACKET_SIZE ? BLE_MAX_ATTR_VALUE_PACKET_SIZE : len;
         int ret = 0;
         if (isLocal) {
             ret = ble_gatt_server_set_characteristic_value(attrHandles.value_handle, buf, len, nullptr);

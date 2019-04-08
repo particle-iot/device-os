@@ -289,8 +289,8 @@ public:
 
     template<typename T>
     size_t setValue(T val) {
-        uint8_t buf[BLE_MAX_CHAR_VALUE_LEN];
-        size_t len = sizeof(T) > BLE_MAX_CHAR_VALUE_LEN ? BLE_MAX_CHAR_VALUE_LEN : sizeof(T);
+        uint8_t buf[BLE_MAX_ATTR_VALUE_PACKET_SIZE];
+        size_t len = sizeof(T) > BLE_MAX_ATTR_VALUE_PACKET_SIZE ? BLE_MAX_ATTR_VALUE_PACKET_SIZE : sizeof(T);
         for (size_t i = 0, j = len - 1; i < len; i++, j--) {
             buf[i] = reinterpret_cast<const uint8_t*>(&val)[j];
         }
