@@ -141,7 +141,7 @@ const size_t HANDSHAKE_HEADER_SIZE = sizeof(HandshakeHeader);
 const size_t MAX_HANDSHAKE_PAYLOAD_SIZE = 512;
 
 // Handshake timeout in milliseconds
-const unsigned HANDSHAKE_TIMEOUT = 30000;
+const unsigned HANDSHAKE_TIMEOUT = 10000;
 
 // Size of the J-PAKE passphrase in bytes
 const size_t JPAKE_PASSPHRASE_SIZE = 15;
@@ -343,9 +343,9 @@ protected:
     }
 
     int readPacket(const char** data, size_t* size) {
-        if (HAL_Timer_Get_Milli_Seconds() - timeStart_ >= HANDSHAKE_TIMEOUT) {
-            return SYSTEM_ERROR_TIMEOUT;
-        }
+//        if (HAL_Timer_Get_Milli_Seconds() - timeStart_ >= HANDSHAKE_TIMEOUT) {
+//            return SYSTEM_ERROR_TIMEOUT;
+//        }
         if (offs_ == size_) {
             // Read packet header
             HandshakeHeader h = {};
