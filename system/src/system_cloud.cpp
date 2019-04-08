@@ -56,31 +56,9 @@ namespace
 using namespace particle::system;
 
 #if PLATFORM_THREADING
-Timer _vitals_timer(std::numeric_limits<unsigned>::max(),
-                    []() -> void {
-                        const auto task = new (std::nothrow) ISRTaskQueue::Task;
-                        if (!task)
-                        {
-                            return;
-                        }
-                        task->func = [](ISRTaskQueue::Task* task) {
-                            delete task;
-                            spark_protocol_post_description(spark_protocol_instance(),
-                                                            particle::protocol::DESCRIBE_METRICS,
-                                                            nullptr);
-                        };
-                        SystemISRTaskQueue.enqueue(task);
-                    },
-                    false);
-VitalsPublisher<Timer> _vitals(std::bind(spark_protocol_post_description, spark_protocol_instance(),
-                                         particle::protocol::DESCRIBE_METRICS, nullptr),
-                               &_vitals_timer);
+VitalsPublisher<Timer> _vitals;
 #else  // not PLATFORM_THREADING
-particle::NullTimer _vitals_timer;
-VitalsPublisher<particle::NullTimer>
-    _vitals(std::bind(spark_protocol_post_description, spark_protocol_instance(),
-                      particle::protocol::DESCRIBE_METRICS, nullptr),
-            &_vitals_timer);
+VitalsPublisher<particle::NullTimer> _vitals;
 #endif // PLATFORM_THREADING
 
 } // namespace
