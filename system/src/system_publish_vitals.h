@@ -9,34 +9,6 @@
 
 namespace particle
 {
-
-#if (0 == PLATFORM_THREADING)
-class NullTimer
-{
-public:
-    inline static bool changePeriod(const size_t)
-    {
-        return true;
-    }
-    inline static void dispose(void)
-    {
-    }
-    inline static bool isActive(void)
-    {
-        return false;
-    }
-    inline static void reset(void)
-    {
-    }
-    inline static void start(void)
-    {
-    }
-    inline static void stop(void)
-    {
-    }
-};
-#endif // not PLATFORM_THREADING
-
 namespace system
 {
 
@@ -65,10 +37,11 @@ public:
     /**
      * @brief Constructor
      *
-     * @param[in] publish_fn The function used to send cloud messages
+     * The constructor initializes all member variables to known values.
+     *
      * @param[in] timer The timer used to schedule the period
      */
-    VitalsPublisher(publish_fn_t publish_fn, Timer* timer);
+    VitalsPublisher(Timer* timer = nullptr);
 
     /**
      * @brief Destructor
@@ -103,7 +76,7 @@ public:
     void period(system_tick_t period_s);
 
     /**
-     * @brief Publish vitals information to the cloud (immediately).
+     * @brief Publish vitals information to the cloud (immediately)
      *
      * @returns \p ProtocolError result code
      * @retval \p ProtocolError::NO_ERROR
@@ -112,9 +85,13 @@ public:
     int publish(void);
 
 private:
+    static const publish_fn_t _publishVitals;
+
     system_tick_t _period_s;
-    publish_fn_t _publishVitals;
     Timer* const _timer;
+
+    Timer* onDemandTimerInstance(void);
+    void publishFromTimer(void);
 };
 
 } // namespace system
