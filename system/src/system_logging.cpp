@@ -21,12 +21,12 @@
 
 namespace {
 
-log_config_callback g_logConfigCallback = nullptr;
+log_config_callback_type g_logConfigCallback = nullptr;
 void* g_logConfigCallbackData = nullptr;
 
 } // unnamed
 
-void log_config_set_callback(log_config_callback callback, void* user_data, void* reserved) {
+void log_config_set_callback(log_config_callback_type callback, void* user_data, void* reserved) {
     g_logConfigCallback = callback;
     g_logConfigCallbackData = user_data;
 }

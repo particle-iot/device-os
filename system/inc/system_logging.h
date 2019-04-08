@@ -112,8 +112,9 @@ typedef struct log_config_get_handlers_result {
  * @param command_data Command data.
  * @param command_result Command result.
  * @param user_data User data.
+ * @return `0` on success, or a negative result code in case of an error.
  */
-typedef int(*log_config_callback)(int command, const void* command_data, void* command_result, void* user_data);
+typedef int(*log_config_callback_type)(int command, const void* command_data, void* command_result, void* user_data);
 
 #ifdef __cplusplus
 extern "C" {
@@ -126,7 +127,7 @@ extern "C" {
  * @param user_data User data.
  * @param reserved This argument should be set to NULL.
  */
-void log_config_set_callback(log_config_callback callback, void* user_data, void* reserved);
+void log_config_set_callback(log_config_callback_type callback, void* user_data, void* reserved);
 
 // Invoke the configuration callback. This function is internal to the system module
 int log_config(int command, const void* command_data, void* command_result);

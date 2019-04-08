@@ -18,12 +18,6 @@
 #ifndef SPARK_WIRING_LOGGING_H
 #define SPARK_WIRING_LOGGING_H
 
-#include <cstring>
-#include <cstdarg>
-
-#include "logging.h"
-
-#include "spark_wiring_json.h"
 #include "spark_wiring_print.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_thread.h"
@@ -31,8 +25,13 @@
 #include "spark_wiring_platform.h"
 
 #if Wiring_LogConfig
-#include "system_control.h"
+#include "system_logging.h"
 #endif
+
+#include "logging.h"
+
+#include <cstring>
+#include <cstdarg>
 
 namespace spark {
 
@@ -451,15 +450,13 @@ class LogHandlerFactory {
 public:
     virtual ~LogHandlerFactory() = default;
 
-    virtual LogHandler* createHandler(const char *type, LogLevel level, LogCategoryFilters filters, Print *stream,
-            const JSONValue &params) = 0; // TODO: Use some generic container or a buffer instead of JSONValue
+    virtual LogHandler* createHandler(LogLevel level, LogCategoryFilters filters, Print *stream) = 0;
     virtual void destroyHandler(LogHandler *handler);
 };
 
 class DefaultLogHandlerFactory: public LogHandlerFactory {
 public:
-    virtual LogHandler* createHandler(const char *type, LogLevel level, LogCategoryFilters filters, Print *stream,
-            const JSONValue &params) override;
+    LogHandler* createHandler(LogLevel level, LogCategoryFilters filters, Print *stream) override;
 
     static DefaultLogHandlerFactory* instance();
 };
@@ -469,19 +466,16 @@ class OutputStreamFactory {
 public:
     virtual ~OutputStreamFactory() = default;
 
-    virtual Print* createStream(const char *type, const JSONValue &params) = 0;
+    virtual Print* createStream(log_config_handler_type type, const log_config_serial_params* params) = 0;
     virtual void destroyStream(Print *stream);
 };
 
 class DefaultOutputStreamFactory: public OutputStreamFactory {
 public:
-    virtual Print* createStream(const char *type, const JSONValue &params) override;
-    virtual void destroyStream(Print *stream) override;
+    Print* createStream(log_config_handler_type type, const log_config_serial_params* params) override;
+    void destroyStream(Print *stream) override;
 
     static DefaultOutputStreamFactory* instance();
-
-private:
-    static void getParams(const JSONValue &params, int *baudRate);
 };
 
 #endif // Wiring_LogConfig
@@ -529,8 +523,8 @@ public:
 
         \return `false` in case of error.
     */
-    bool addFactoryHandler(const char *id, const char *handlerType, LogLevel level, LogCategoryFilters filters,
-            const JSONValue &handlerParams, const char *streamType, const JSONValue &streamParams);
+    bool addFactoryHandler(const char *id, log_config_handler_type handlerType, LogLevel level, LogCategoryFilters filters,
+            const log_config_serial_params* streamParams);
     /*!
         \brief Unregisters and destroys a factory log handler.
 
@@ -612,11 +606,15 @@ private:
 #if Wiring_LogConfig
 
 /*!
-    \brief Performs processing of a control request.
+    \brief Configuration callback.
 
-    \param req Request handle.
+    \param cmd Command type (one of the values defined by the `log_config_command` enum).
+    \param data Command data.
+    \param result Command result.
+    \param userData User data.
+    \return `0` on success, or a negative result code in case of an error.
 */
-void logProcessControlRequest(ctrl_request* req);
+int logConfig(int cmd, const void* data, void* result, void* userData);
 
 #endif // Wiring_LogConfig
 

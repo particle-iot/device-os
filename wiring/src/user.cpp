@@ -170,23 +170,13 @@ void __attribute((weak)) ctrl_request_custom_handler(ctrl_request* req) {
 }
 
 #if Wiring_LogConfig
-// Callback invoked to process a logging configuration request
-void(*log_process_ctrl_request_callback)(ctrl_request* req) = nullptr;
+// Callback invoked to configure the logging
+int(*log_config_callback)(int cmd, const void* data, void* result, void* userData) = nullptr;
 #endif
 
 // Application handler for control requests
 static void ctrl_request_handler(ctrl_request* req) {
     switch (req->type) {
-#if Wiring_LogConfig
-    case CTRL_REQUEST_LOG_CONFIG: {
-        if (log_process_ctrl_request_callback) {
-            log_process_ctrl_request_callback(req);
-        } else {
-            system_ctrl_set_result(req, SYSTEM_ERROR_NOT_SUPPORTED, nullptr, nullptr, nullptr);
-        }
-        break;
-    }
-#endif
     case CTRL_REQUEST_APP_CUSTOM: {
         ctrl_request_custom_handler(req);
         break;
@@ -223,4 +213,9 @@ void module_user_init_hook()
 
     // Register application handler for the control requests
     system_ctrl_set_app_request_handler(ctrl_request_handler, nullptr);
+
+#if Wiring_LogConfig
+    // Register the logging configuration callback
+    log_config_set_callback(log_config_callback, nullptr, nullptr);
+#endif
 }
