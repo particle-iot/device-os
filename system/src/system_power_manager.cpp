@@ -56,7 +56,7 @@ void PowerManager::init() {
 #if defined(DEBUG_BUILD)
     4 * 1024);
 #else
-    512);
+    1024);
 #endif // defined(DEBUIG_BUILD)
   SPARK_ASSERT(thread_ != nullptr);
 }
