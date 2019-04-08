@@ -23,8 +23,8 @@
   ******************************************************************************
   */
 
-#ifndef __SPARK_PROTOCOL_H
-#define __SPARK_PROTOCOL_H
+#ifndef __CORE_PROTOCOL_H
+#define __CORE_PROTOCOL_H
 
 #include "protocol_selector.h"
 
@@ -69,13 +69,19 @@ namespace ProtocolState {
   };
 }
 
-
-class SparkProtocol
+/*
+ * @brief Protocol implementation for the Spark Core
+ *
+ * @warning This protocol is deprecated
+ * @note This protocol shall not be extended. All new APIs
+ * requiring parity shall return a ProtocolError of NOT_IMPLEMENTED
+ */
+class CoreProtocol
 {
   public:
     static int presence_announcement(unsigned char *buf, const unsigned char *id);
 
-    SparkProtocol();
+    CoreProtocol();
 
     void init(const char *id,
               const SparkKeys &keys,
@@ -337,4 +343,4 @@ class SparkProtocol
 
 #endif // !PARTICLE_PROTOCOL
 
-#endif // __SPARK_PROTOCOL_H
+#endif // __CORE_PROTOCOL_H
