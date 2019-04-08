@@ -123,6 +123,34 @@ int getLogHandlers(const log_config_get_handlers_command* cmd, log_config_get_ha
     if (cmd->version != LOG_CONFIG_API_VERSION) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
+    result->handlers = nullptr;
+    result->handler_count = 0;
+    NAMED_SCOPE_GUARD(resultGuard, {
+        for (size_t i = 0; i < result->handler_count; ++i) {
+            free(result->handlers[i].id);
+        }
+        free(result->handlers);
+    });
+    const auto mgr = LogManager::instance();
+    const bool ok = mgr->enumFactoryHandlers([](const char* id, void* data) {
+        const auto result = (log_config_get_handlers_result*)data;
+        ++result->handler_count;
+        const auto handlers = (log_config_handler_list_item*)realloc(result->handlers,
+                sizeof(log_config_handler_list_item) * result->handler_count);
+        if (!handlers) {
+            return false;
+        }
+        result->handlers = handlers;
+        result->handlers[result->handler_count - 1].id = strdup(id);
+        if (!result->handlers[result->handler_count - 1].id) {
+            return false;
+        }
+        return true;
+    }, result);
+    if (!ok) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    resultGuard.dismiss();
     return 0;
 }
 
@@ -538,12 +566,15 @@ void spark::LogManager::removeFactoryHandler(const char *id) {
     }
 }
 
-void spark::LogManager::enumFactoryHandlers(void(*callback)(const char *id, void *data), void *data) {
+bool spark::LogManager::enumFactoryHandlers(bool(*callback)(const char *id, void *data), void *data) {
     LOG_WITH_LOCK(mutex_) {
         for (const FactoryHandler &h: factoryHandlers_) {
-            callback(h.id.c_str(), data);
+            if (!callback(h.id.c_str(), data)) {
+                return false;
+            }
         }
     }
+    return true;
 }
 
 void spark::LogManager::setHandlerFactory(LogHandlerFactory *factory) {
