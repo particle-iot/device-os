@@ -39,11 +39,11 @@ typedef void* ProtocolFacade;
 #endif
 #else // !PARTICLE_PROTOCOL
 #ifdef __cplusplus
-class SparkProtocol;
-typedef SparkProtocol ProtocolFacade;
+class CoreProtocol;
+typedef CoreProtocol ProtocolFacade;
 #else
-struct SparkProtocol;
-typedef struct SparkProtocol ProtocolFacade;
+struct CoreProtocol;
+typedef struct CoreProtocol ProtocolFacade;
 
 #endif
 #endif

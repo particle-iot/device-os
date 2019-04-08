@@ -28,7 +28,7 @@
 #endif
 
 /**
- * Allocate an instance of the SparkProtocol. By doing it here rather than in system
+ * Allocate an instance of the CoreProtocol. By doing it here rather than in system
  * we ensure the structure is allocated the correct amount of memory, cf. a system
  * module using a newer version of comms lib where the size has grown.
  *
@@ -54,8 +54,8 @@ ProtocolFacade* create_protocol(ProtocolFactory factory)
 #endif
     	return nullptr;
 #else
-		DEBUG("creating SparkProtocol");
-		return new SparkProtocol();
+		DEBUG("creating CoreProtocol");
+		return new CoreProtocol();
 #endif
 }
 
