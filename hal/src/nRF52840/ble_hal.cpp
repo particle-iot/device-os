@@ -222,6 +222,9 @@ static ble_data_t s_bleScanData = {
     .len = BLE_MAX_SCAN_REPORT_BUF_LEN
 };
 
+static uint8_t charValue[BLE_MAX_CHAR_COUNT][BLE_MAX_ATTR_VALUE_PACKET_SIZE];
+static uint8_t charValueCount = 0;
+
 
 /*
  * Valid TX Power for nRF52840:
@@ -548,6 +551,10 @@ static int addCharacteristic(uint16_t svcHandle, const ble_uuid_t* uuid, uint8_t
     ble_gatts_attr_t         charValueAttr;
     ble_gatts_char_handles_t charHandles;
 
+    if (charValueCount >= BLE_MAX_CHAR_COUNT) {
+        return SYSTEM_ERROR_LIMIT_EXCEEDED;
+    }
+
     /* Characteristic metadata */
     memset(&charMd, 0, sizeof(charMd));
     fromHalCharacteristicProperties(properties, &charMd.char_props);
@@ -587,7 +594,7 @@ static int addCharacteristic(uint16_t svcHandle, const ble_uuid_t* uuid, uint8_t
     memset(&valueAttrMd, 0, sizeof(valueAttrMd));
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&valueAttrMd.read_perm);
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&valueAttrMd.write_perm);
-    valueAttrMd.vloc    = BLE_GATTS_VLOC_STACK;
+    valueAttrMd.vloc    = BLE_GATTS_VLOC_USER;//BLE_GATTS_VLOC_STACK;
     valueAttrMd.rd_auth = 0;
     valueAttrMd.wr_auth = 0;
     valueAttrMd.vlen    = 1;
@@ -599,7 +606,7 @@ static int addCharacteristic(uint16_t svcHandle, const ble_uuid_t* uuid, uint8_t
     charValueAttr.init_len  = 0;
     charValueAttr.init_offs = 0;
     charValueAttr.max_len   = BLE_MAX_ATTR_VALUE_PACKET_SIZE;
-    charValueAttr.p_value   = NULL;
+    charValueAttr.p_value   = charValue[charValueCount++];
 
     ret = sd_ble_gatts_characteristic_add(svcHandle, &charMd, &charValueAttr, &charHandles);
     if (ret != NRF_SUCCESS) {
