@@ -4,7 +4,7 @@
   * @authors  Zachary Crockett
   * @version V1.0.0
   * @date    10-Jan-2014
-  * @brief   Fixture for testing SparkProtocol
+  * @brief   Fixture for testing CoreProtocol
   ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
@@ -83,7 +83,7 @@ struct ConstructorFixture
   SparkKeys keys;
   SparkCallbacks callbacks;
   SparkDescriptor descriptor;
-  SparkProtocol spark_protocol;
+  CoreProtocol core_protocol;
 };
 
 #endif // __CONSTRUCTOR_FIXTURE_H

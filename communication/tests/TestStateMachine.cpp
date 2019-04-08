@@ -5,8 +5,8 @@ SUITE(StateMachine)
 {
   TEST(InitialStateIs_READ_NONCE)
   {
-    SparkProtocol spark_protocol;
-    ProtocolState::Enum state = spark_protocol.state();
+    CoreProtocol core_protocol;
+    ProtocolState::Enum state = core_protocol.state();
     CHECK_EQUAL(ProtocolState::READ_NONCE, state);
   }
 }

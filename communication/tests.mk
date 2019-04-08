@@ -30,7 +30,7 @@ testobjects = tests/ConstructorFixture.o \
               tests/TestCoAP.o \
               tests/TestQueue.o \
               tests/TestStateMachine.o \
-              tests/TestSparkProtocol.o \
+              tests/TestCoreProtocol.o \
               tests/TestDescriptor.o \
               tests/TestUserFunctions.o \
               tests/TestEvents.o
