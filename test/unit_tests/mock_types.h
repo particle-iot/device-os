@@ -3,6 +3,8 @@
 
 #include <cstddef>
 
+#include "spark_wiring_timer.h"
+
 namespace particle
 {
 namespace mock_type
@@ -11,6 +13,14 @@ namespace mock_type
 class Timer
 {
 public:
+    Timer(unsigned, ::Timer::timer_callback_fn, bool) {
+    }
+
+    template <typename T>
+    Timer(unsigned, void (T::*)(), T&, bool)
+    {
+    }
+
     virtual ~Timer(void) = default;
     virtual bool changePeriod(const size_t)
     {
