@@ -439,7 +439,7 @@ Print* spark::DefaultOutputStreamFactory::createStream(log_config_handler_type t
 void spark::DefaultOutputStreamFactory::destroyStream(Print *stream) {
 #if PLATFORM_ID != 3
     if (stream == &Serial) {
-        Serial.end();
+        // Serial.end();
         return;
     }
 #if Wiring_USBSerial1
