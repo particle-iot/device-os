@@ -21,227 +21,304 @@
 #include <catch2/catch.hpp>
 #include <fakeit.hpp>
 
-#include "system_publish_vitals.h"
+// Defined in CMakeList.txt
+// Redefined to enable Intellisense
+#ifdef LOG_DISABLE
+#undef LOG_DISABLE
+#endif
+#define LOG_DISABLE
+#ifdef UNIT_TEST
+#undef UNIT_TEST
+#endif
+#define UNIT_TEST
+
 #include "../test/unit_tests/mock_types.h"
+#include "system_publish_vitals.h"
 
 // ASSUMPTION!!! - Period "getter" method works correctly - without being testing.
 
-TEST_CASE("Initialized values", "[VitalsPublisher::VitalsPublisher]")
+TEST_CASE("Construction", "[VitalsPublisher::VitalsPublisher]")
 {
-    particle::mock_type::Timer t;
-
-    SECTION("When constructed, then period is initialized to MAX value.")
+    SECTION("Initialized values")
     {
         // Arrange
+        GIVEN("Default Construction")
+        {
+            WHEN("Constructed")
+            {
+                particle::system::VitalsPublisher<particle::mock_type::Timer> vp;
 
-        // Act
-        particle::system::VitalsPublisher<particle::mock_type::Timer> vp(nullptr, &t);
-
-        // Assert
-        CHECK(std::numeric_limits<system_tick_t>::max() == vp.period());
+                THEN("VitalsPublisher::period is initialized to MAX value")
+                {
+                    CHECK(std::numeric_limits<system_tick_t>::max() == vp.period());
+                }
+            }
+        }
     }
 }
 
-TEST_CASE("Cleanup", "[VitalsPublisher::~VitalsPublisher]")
+TEST_CASE("Destruction", "[VitalsPublisher::~VitalsPublisher]")
 {
-    fakeit::Mock<particle::mock_type::Timer> mock_timer;
-
-    // Configure Mock
-    fakeit::When(Method(mock_timer, changePeriod)).AlwaysReturn(true);
-    fakeit::When(Method(mock_timer, dispose)).AlwaysReturn();
-    fakeit::When(Method(mock_timer, isActive)).AlwaysReturn(false);
-    fakeit::When(Method(mock_timer, reset)).AlwaysReturn();
-    fakeit::When(Method(mock_timer, start)).AlwaysReturn();
-    fakeit::When(Method(mock_timer, stop)).AlwaysReturn();
-
-    SECTION("When destroyed, then the timer will be disposed.")
+    SECTION("Resource reclaimation")
     {
-        // Arrange
-
-        // Act
+        GIVEN("Initialized Timer behavior")
         {
-            particle::system::VitalsPublisher<particle::mock_type::Timer> vp(nullptr,
-                                                                             &mock_timer.get());
-        }
+            fakeit::Mock<particle::mock_type::Timer> mock_timer;
 
-        // Assert
-        fakeit::Verify(Method(mock_timer, dispose));
+            // Configure Mock
+            fakeit::When(Method(mock_timer, changePeriod)).AlwaysReturn(true);
+            fakeit::When(Method(mock_timer, dispose)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, isActive)).AlwaysReturn(false);
+            fakeit::When(Method(mock_timer, reset)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, start)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, stop)).AlwaysReturn();
+
+            WHEN("Destroyed")
+            {
+                {
+                    particle::system::VitalsPublisher<particle::mock_type::Timer> vp(&mock_timer());
+                }
+
+                THEN("Timer is disposed")
+                {
+                    fakeit::Verify(Method(mock_timer, dispose));
+                }
+            }
+        }
     }
 }
 
 TEST_CASE("Stop publishing", "[VitalsPublisher::disablePeriodicPublish]")
 {
-    fakeit::Mock<particle::mock_type::Timer> mock_timer;
-    particle::system::VitalsPublisher<particle::mock_type::Timer> vp(nullptr, &mock_timer.get());
-
-    // Configure Mock
-    fakeit::When(Method(mock_timer, changePeriod)).AlwaysReturn(true);
-    fakeit::When(Method(mock_timer, dispose)).AlwaysReturn();
-    fakeit::When(Method(mock_timer, isActive)).AlwaysReturn(false);
-    fakeit::When(Method(mock_timer, reset)).AlwaysReturn();
-    fakeit::When(Method(mock_timer, start)).AlwaysReturn();
-    fakeit::When(Method(mock_timer, stop)).AlwaysReturn();
-
-    SECTION("When disabled, then the timer will be disposed.")
+    SECTION("Timer state")
     {
-        // Arrange
+        GIVEN("Initialized Timer behavior")
+        {
+            fakeit::Mock<particle::mock_type::Timer> mock_timer;
 
-        // Act
-        vp.disablePeriodicPublish();
+            // Configure Mock
+            fakeit::When(Method(mock_timer, changePeriod)).AlwaysReturn(true);
+            fakeit::When(Method(mock_timer, dispose)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, isActive)).AlwaysReturn(false);
+            fakeit::When(Method(mock_timer, reset)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, start)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, stop)).AlwaysReturn();
 
-        // Assert
-        fakeit::Verify(Method(mock_timer, stop));
+            particle::system::VitalsPublisher<particle::mock_type::Timer> vp(&mock_timer());
+
+            WHEN("Disabled")
+            {
+                vp.disablePeriodicPublish();
+
+                THEN("Timer is stopped")
+                {
+                    fakeit::Verify(Method(mock_timer, stop));
+                }
+            }
+        }
     }
 }
 
 TEST_CASE("Start publishing", "[VitalsPublisher::enablePeriodicPublish]")
 {
-    fakeit::Mock<particle::mock_type::Timer> mock_timer;
-    particle::system::VitalsPublisher<particle::mock_type::Timer> vp(nullptr, &mock_timer.get());
-
-    // Configure Mock
-    fakeit::When(Method(mock_timer, changePeriod)).AlwaysReturn(true);
-    fakeit::When(Method(mock_timer, dispose)).AlwaysReturn();
-    fakeit::When(Method(mock_timer, isActive)).AlwaysReturn(false);
-    fakeit::When(Method(mock_timer, reset)).AlwaysReturn();
-    fakeit::When(Method(mock_timer, start)).AlwaysReturn();
-    fakeit::When(Method(mock_timer, stop)).AlwaysReturn();
-
-    SECTION("When enabled, then the timer will be started.")
+    SECTION("Timer state")
     {
-        // Arrange
+        GIVEN("Initialized Timer behavior")
+        {
+            fakeit::Mock<particle::mock_type::Timer> mock_timer;
 
-        // Act
-        vp.enablePeriodicPublish();
+            // Configure Mock
+            fakeit::When(Method(mock_timer, changePeriod)).AlwaysReturn(true);
+            fakeit::When(Method(mock_timer, dispose)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, isActive)).AlwaysReturn(false);
+            fakeit::When(Method(mock_timer, reset)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, start)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, stop)).AlwaysReturn();
 
-        // Assert
-        fakeit::Verify(Method(mock_timer, start));
+            particle::system::VitalsPublisher<particle::mock_type::Timer> vp(&mock_timer());
+
+            WHEN("Enabled")
+            {
+                vp.enablePeriodicPublish();
+
+                THEN("Timer is started")
+                {
+                    fakeit::Verify(Method(mock_timer, start));
+                }
+            }
+        }
     }
 }
 
 TEST_CASE("Setting period value", "[VitalsPublisher::period]")
 {
-    fakeit::Mock<particle::mock_type::Timer> mock_timer;
-    particle::system::VitalsPublisher<particle::mock_type::Timer> vp(nullptr, &mock_timer.get());
-
-    // Configure Mock
-    fakeit::When(Method(mock_timer, changePeriod)).AlwaysReturn(true);
-    fakeit::When(Method(mock_timer, dispose)).AlwaysReturn();
-    fakeit::When(Method(mock_timer, isActive)).AlwaysReturn(false);
-    fakeit::When(Method(mock_timer, reset)).AlwaysReturn();
-    fakeit::When(Method(mock_timer, start)).AlwaysReturn();
-    fakeit::When(Method(mock_timer, stop)).AlwaysReturn();
-
-    SECTION("When setter is invoked, then period is stored.")
+    SECTION("Internal period value")
     {
-        // Arrange
-        const system_tick_t PERIOD_VALUE = 1979;
+        GIVEN("A known period value (seconds) and initialized Timer behavior")
+        {
+            const system_tick_t PERIOD_S = 1979;
+            fakeit::Mock<particle::mock_type::Timer> mock_timer;
 
-        // Act
-        vp.period(PERIOD_VALUE);
+            // Configure Mock
+            fakeit::When(Method(mock_timer, changePeriod)).AlwaysReturn(true);
+            fakeit::When(Method(mock_timer, dispose)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, isActive)).AlwaysReturn(false);
+            fakeit::When(Method(mock_timer, reset)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, start)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, stop)).AlwaysReturn();
 
-        // Assert
-        CHECK(PERIOD_VALUE == vp.period());
+            particle::system::VitalsPublisher<particle::mock_type::Timer> vp(&mock_timer());
+
+            WHEN("Setter Invoked")
+            {
+                vp.period(PERIOD_S);
+
+                THEN("Period is stored")
+                {
+                    CHECK(PERIOD_S == vp.period());
+                }
+            }
+        }
+
+        GIVEN("Timer fails to update period")
+        {
+            fakeit::Mock<particle::mock_type::Timer> mock_timer;
+
+            // Configure Mock
+            fakeit::When(Method(mock_timer, changePeriod)).AlwaysReturn(false);
+            fakeit::When(Method(mock_timer, dispose)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, isActive)).AlwaysReturn(false);
+            fakeit::When(Method(mock_timer, reset)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, start)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, stop)).AlwaysReturn();
+
+            particle::system::VitalsPublisher<particle::mock_type::Timer> vp(&mock_timer());
+
+            WHEN("Setter Invoked")
+            {
+                vp.period(1979);
+
+                THEN("Period is not updated")
+                {
+                    fakeit::Verify(Method(mock_timer, changePeriod));
+                    CHECK(std::numeric_limits<system_tick_t>::max() == vp.period());
+                }
+            }
+        }
     }
 
-    SECTION("When setter is invoked (seconds), then timer period is updated (milliseconds)")
+    SECTION("Timer state")
     {
-        // Arrange
-        const system_tick_t PERIOD_S = 1979;
-        const system_tick_t PERIOD_MS = (PERIOD_S * 1000);
+        GIVEN("A known period value (seconds) and initialized Timer behavior")
+        {
+            const system_tick_t PERIOD_S = 1979;
+            const system_tick_t PERIOD_MS = (PERIOD_S * 1000);
+            fakeit::Mock<particle::mock_type::Timer> mock_timer;
 
-        // Act
-        vp.period(PERIOD_S);
+            // Configure Mock
+            fakeit::When(Method(mock_timer, changePeriod)).AlwaysReturn(true);
+            fakeit::When(Method(mock_timer, dispose)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, isActive)).AlwaysReturn(false);
+            fakeit::When(Method(mock_timer, reset)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, start)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, stop)).AlwaysReturn();
 
-        // Assert
-        fakeit::Verify(Method(mock_timer, changePeriod).Using(PERIOD_MS));
-    }
+            particle::system::VitalsPublisher<particle::mock_type::Timer> vp(&mock_timer());
 
-    SECTION("When unable to update timer period, then publisher period is not updated")
-    {
-        // Arrange
-        const system_tick_t PERIOD_S = 1979;
+            WHEN("Setter Invoked")
+            {
+                vp.period(PERIOD_S);
 
-        fakeit::When(Method(mock_timer, changePeriod)).Return(false);
+                THEN("Timer period updated in milliseconds")
+                {
+                    fakeit::Verify(Method(mock_timer, changePeriod).Using(PERIOD_MS));
+                }
+            }
+        }
 
-        // Act
-        vp.period(PERIOD_S);
+        GIVEN("Timer is active")
+        {
+            fakeit::Mock<particle::mock_type::Timer> mock_timer;
 
-        // Assert
-        fakeit::Verify(Method(mock_timer, changePeriod));
-        CHECK(std::numeric_limits<system_tick_t>::max() == vp.period());
-    }
+            // Configure Mock
+            fakeit::When(Method(mock_timer, changePeriod)).AlwaysReturn(true);
+            fakeit::When(Method(mock_timer, dispose)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, isActive)).AlwaysReturn(true);
+            fakeit::When(Method(mock_timer, reset)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, start)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, stop)).AlwaysReturn();
 
-    SECTION("When timer is active before period is updated, then timer is reset")
-    {
-        // Arrange
-        const system_tick_t PERIOD_S = 1979;
+            particle::system::VitalsPublisher<particle::mock_type::Timer> vp(&mock_timer());
 
-        fakeit::When(Method(mock_timer, isActive)).Return(true);
+            WHEN("Setter Invoked")
+            {
+                vp.period(1979);
 
-        // Act
-        vp.period(PERIOD_S);
+                THEN("Timer is reset")
+                {
+                    fakeit::Verify(Method(mock_timer, isActive) + Method(mock_timer, changePeriod) +
+                                   Method(mock_timer, reset));
+                }
+            }
+        }
 
-        // Assert
-        fakeit::Verify(Method(mock_timer, isActive) + Method(mock_timer, changePeriod) +
-                       Method(mock_timer, reset));
-    }
+        GIVEN("Timer is inactive")
+        {
+            fakeit::Mock<particle::mock_type::Timer> mock_timer;
 
-    SECTION("When timer is inactive before period is updated, then timer is stopped")
-    {
-        // Arrange
-        const system_tick_t PERIOD_S = 1979;
+            // Configure Mock
+            fakeit::When(Method(mock_timer, changePeriod)).AlwaysReturn(true);
+            fakeit::When(Method(mock_timer, dispose)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, isActive)).AlwaysReturn(false);
+            fakeit::When(Method(mock_timer, reset)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, start)).AlwaysReturn();
+            fakeit::When(Method(mock_timer, stop)).AlwaysReturn();
 
-        fakeit::When(Method(mock_timer, isActive)).Return(false);
+            particle::system::VitalsPublisher<particle::mock_type::Timer> vp(&mock_timer());
 
-        // Act
-        vp.period(PERIOD_S);
+            WHEN("Setter Invoked")
+            {
+                vp.period(1979);
 
-        // Assert
-        fakeit::Verify(Method(mock_timer, isActive) + Method(mock_timer, changePeriod) +
-                       Method(mock_timer, stop));
+                THEN("Timer is reset")
+                {
+                    fakeit::Verify(Method(mock_timer, isActive) + Method(mock_timer, changePeriod) +
+                                   Method(mock_timer, stop));
+                }
+            }
+        }
     }
 }
 
-TEST_CASE("Publish vitals", "[VitalsPublisher::publish]")
+TEST_CASE("Publishing vitals", "[VitalsPublisher::publish]")
 {
-    bool mock_publish_fn_called;
-    int mock_publish_fn_result;
-    particle::system::VitalsPublisher<particle::mock_type::Timer>::publish_fn_t mock_publish_fn =
-        [&mock_publish_fn_called, &mock_publish_fn_result](void) -> int {
-        mock_publish_fn_called = true;
-        return mock_publish_fn_result;
-    };
-    particle::mock_type::Timer t;
-
-    SECTION("When publish is called on VitalsPublisher, then the stored publish function (passed "
-            "to constructor) is called.")
+    SECTION("spark_protocol_post_description invocation")
     {
-        // Arrange
-        mock_publish_fn_called = false;
-        particle::system::VitalsPublisher<particle::mock_type::Timer> vp(mock_publish_fn, &t);
+        extern bool spark_protocol_post_description_called;
+        extern int spark_protocol_post_description_result;
 
-        // Act
-        vp.publish();
+        GIVEN("A VitalsPublisher with mocked publish function and expected results")
+        {
+            const int EXPECTED_RESULT = 1979;
+            spark_protocol_post_description_called = false;
+            spark_protocol_post_description_result = EXPECTED_RESULT;
 
-        // Assert
-        CHECK(mock_publish_fn_called);
-    }
+            particle::system::VitalsPublisher<particle::mock_type::Timer> vp;
 
-    SECTION("When publish is called on VitalsPublisher, then the result of the stored publish "
-            "function is returned to caller.")
-    {
-        // Arrange
-        const int EXPECTED_RESULT = 1979;
-        mock_publish_fn_called = false;
-        mock_publish_fn_result = EXPECTED_RESULT;
-        particle::system::VitalsPublisher<particle::mock_type::Timer> vp(mock_publish_fn, &t);
+            WHEN("Publish Invoked")
+            {
+                const int ACTUAL_RESULT = vp.publish();
 
-        // Act
-        const int ACTUAL_RESULT = vp.publish();
+                THEN("Static function invoked")
+                {
+                    CHECK(spark_protocol_post_description_called);
+                }
 
-        // Assert
-        REQUIRE(mock_publish_fn_called);
-        CHECK(EXPECTED_RESULT == ACTUAL_RESULT);
+                THEN("spark_protocol_post_description result is returned to caller")
+                {
+                    CHECK(EXPECTED_RESULT == ACTUAL_RESULT);
+                }
+            }
+        }
     }
 }
