@@ -51,9 +51,6 @@ LOG_SOURCE_CATEGORY("hal.ble")
 #define BLE_CONN_CFG_TAG                            1
 #define BLE_OBSERVER_PRIO                           1
 
-#define BLE_ADV_DATA_ADVERTISING                    0
-#define BLE_ADV_DATA_SCAN_RESPONSE                  1
-
 #define BLE_DISCOVERY_PROCEDURE_IDLE                0x00
 #define BLE_DISCOVERY_PROCEDURE_SERVICES            0x01
 #define BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS     0x02
@@ -63,6 +60,43 @@ LOG_SOURCE_CATEGORY("hal.ble")
 #define BLE_DICOVERY_PROCEDURE_TIMEOUT              15000 // In milliseconds
 
 #define BLE_MAX_EVT_CB_COUNT                        2
+
+#define NRF_CHECK_RETURN(ret, str) \
+        do { \
+            const int _ret = ret; \
+            const char* _str = str; \
+            if (_ret != NRF_SUCCESS) { \
+                if (_str != nullptr) { \
+                    LOG(ERROR, "%s failed: %u", _str, _ret); \
+                } \
+                return sysError(_ret); \
+            } \
+        } while (false)
+
+#define CHECK_RETURN(ret, str) \
+        do { \
+            const int _ret = ret; \
+            const char* _str = str; \
+            if (_ret != SYSTEM_ERROR_NONE) { \
+                if (_str != nullptr) { \
+                    LOG(ERROR, "%s failed: %u", _str, _ret); \
+                } \
+                return _ret; \
+            } \
+        } while (false)
+
+
+#define CHECK_RETURN_VOID(ret, str) \
+        do { \
+            const int _ret = ret; \
+            const char* _str = str; \
+            if (_ret != SYSTEM_ERROR_NONE) { \
+                if (_str != nullptr) { \
+                    LOG(ERROR, "%s failed: %u", _str, _ret); \
+                } \
+                return; \
+            } \
+        } while (false)
 
 
 StaticRecursiveMutex s_bleMutex;
@@ -108,25 +142,16 @@ typedef struct {
 /* BLE Instance */
 typedef struct {
     uint8_t  initialized  : 1;
-    uint8_t  advertising  : 1;
     uint8_t  scanning     : 1;
     uint8_t  connecting   : 1;
     uint8_t  discovering  : 1;
     uint8_t  connected    : 1;
-    int8_t   txPower;
     uint8_t  role;
     uint16_t connHandle;
-    uint8_t  advHandle;
     uint8_t  connParamsUpdateAttempts;
 
     hal_ble_scan_params_t scanParams;
-    hal_ble_adv_params_t  advParams;
     hal_ble_conn_params_t ppcp;
-
-    uint8_t  advData[BLE_MAX_ADV_DATA_LEN];
-    uint16_t advDataLen;
-    uint8_t  scanRespData[BLE_MAX_ADV_DATA_LEN];
-    uint16_t scanRespDataLen;
 
     os_semaphore_t scanSemaphore;
     os_semaphore_t connectSemaphore;
@@ -154,15 +179,12 @@ typedef struct {
 
 static HalBleInstance_t s_bleInstance = {
     .initialized  = 0,
-    .advertising  = 0,
     .scanning     = 0,
     .connecting   = 0,
     .discovering  = 0,
     .connected    = 0,
-    .txPower      = 0,
     .role         = BLE_ROLE_INVALID,
     .connHandle   = BLE_INVALID_CONN_HANDLE,
-    .advHandle    = BLE_GAP_ADV_SET_HANDLE_NOT_SET,
     .connParamsUpdateAttempts = 0,
 
     .scanParams = {
@@ -172,15 +194,6 @@ static HalBleInstance_t s_bleInstance = {
         .interval      = BLE_DEFAULT_SCANNING_INTERVAL,
         .window        = BLE_DEFAULT_SCANNING_WINDOW,
         .timeout       = BLE_DEFAULT_SCANNING_TIMEOUT
-    },
-
-    .advParams = {
-        .version       = 0x01,
-        .type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT,
-        .filter_policy = BLE_ADV_FP_ANY,
-        .interval      = BLE_DEFAULT_ADVERTISING_INTERVAL,
-        .timeout       = BLE_DEFAULT_ADVERTISING_TIMEOUT,
-        .inc_tx_power  = false
     },
 
     /*
@@ -194,16 +207,6 @@ static HalBleInstance_t s_bleInstance = {
         .slave_latency     = BLE_DEFAULT_SLAVE_LATENCY,
         .conn_sup_timeout  = BLE_DEFAULT_CONN_SUP_TIMEOUT
     },
-
-    .advData = {
-        0x02,
-        BLE_SIG_AD_TYPE_FLAGS,
-        BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE
-    },
-    .advDataLen = 3,
-
-    .scanRespData = { 0 },
-    .scanRespDataLen = 0,
 
     .scanSemaphore = NULL,
     .connectSemaphore = NULL,
@@ -224,15 +227,6 @@ static ble_data_t s_bleScanData = {
 
 static uint8_t charValue[BLE_MAX_CHAR_COUNT][BLE_MAX_ATTR_VALUE_PACKET_SIZE];
 static uint8_t charValueCount = 0;
-
-
-/*
- * Valid TX Power for nRF52840:
- * -40dBm, -20dBm, -16dBm, -12dBm, -8dBm, -4dBm, 0dBm, +2dBm, +3dBm, +4dBm, +5dBm, +6dBm, +7dBm and +8dBm.
- */
-static const int8_t s_validTxPower[] = {
-    -20, -16, -12, -8, -4, 0, 4, 8
-};
 
 
 static system_error_t sysError(uint32_t error) {
@@ -259,69 +253,6 @@ static system_error_t sysError(uint32_t error) {
         case NRF_ERROR_RESOURCES:               return SYSTEM_ERROR_ABORTED;
         default:                                return SYSTEM_ERROR_UNKNOWN;
     }
-}
-
-static int8_t roundTxPower(int8_t value) {
-    uint8_t i = 0;
-
-    for (i = 0; i < sizeof(s_validTxPower); i++) {
-        if (value == s_validTxPower[i]) {
-            return value;
-        }
-        else {
-            if (value < s_validTxPower[i]) {
-                return s_validTxPower[i];
-            }
-        }
-    }
-
-    return s_validTxPower[i - 1];
-}
-
-int setAdvData(const uint8_t* data, uint16_t len, uint8_t flag) {
-    bool advPending = false;
-
-    // It is invalid to provide the same data buffers while advertising.
-    if (s_bleInstance.advertising) {
-        int err = ble_gap_stop_advertising();
-        if (err != SYSTEM_ERROR_NONE) {
-            return err;
-        }
-        advPending = true;
-    }
-
-    if (flag == BLE_ADV_DATA_ADVERTISING) {
-        if (data != NULL) {
-            memcpy(s_bleInstance.advData, data, len);
-        }
-        s_bleInstance.advDataLen = len;
-    }
-    else {
-        if (data != NULL) {
-            memcpy(s_bleInstance.scanRespData, data, len);
-        }
-        s_bleInstance.scanRespDataLen = len;
-    }
-
-    // Make sure the advertising data or scan response data is consistent.
-    ble_gap_adv_data_t bleGapAdvData;
-    bleGapAdvData.adv_data.p_data      = s_bleInstance.advData;
-    bleGapAdvData.adv_data.len         = s_bleInstance.advDataLen;
-    bleGapAdvData.scan_rsp_data.p_data = s_bleInstance.scanRespData;
-    bleGapAdvData.scan_rsp_data.len    = s_bleInstance.scanRespDataLen;
-
-    ret_code_t ret = sd_ble_gap_adv_set_configure(&s_bleInstance.advHandle, &bleGapAdvData, NULL);
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_gap_adv_set_configure() failed: %u", (unsigned)ret);
-        return sysError(ret);
-    }
-
-    if (advPending) {
-        advPending = false;
-        return ble_gap_start_advertising(NULL);
-    }
-
-    return SYSTEM_ERROR_NONE;
 }
 
 static int fromHalScanParams(const hal_ble_scan_params_t* halScanParams, ble_gap_scan_params_t* scanParams) {
@@ -664,18 +595,6 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
     memset(&msg, 0x00, sizeof(HalBleEvtMsg_t));
 
     switch (event->header.evt_id) {
-        case BLE_GAP_EVT_ADV_SET_TERMINATED: {
-            LOG_DEBUG(TRACE, "BLE GAP event: advertising stopped.");
-            s_bleInstance.advertising = false;
-
-            msg.arg.type = BLE_EVT_ADV_STOPPED;
-            msg.arg.params.adv_stopped.version = 0x01;
-            msg.arg.params.adv_stopped.reserved = NULL;
-            if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                LOG(ERROR, "os_queue_put() failed.");
-            }
-        } break;
-
         case BLE_GAP_EVT_ADV_REPORT: {
             LOG_DEBUG(TRACE, "BLE GAP event: advertising report.");
 
@@ -703,9 +622,6 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
         } break;
 
         case BLE_GAP_EVT_CONNECTED: {
-            // FIXME: If multi role is enabled, this flag should not be clear here.
-            s_bleInstance.advertising = false;
-
             LOG_DEBUG(TRACE, "BLE GAP event: connected.");
 
             msg.arg.type = BLE_EVT_CONNECTED;
@@ -757,19 +673,6 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
             msg.arg.params.disconnected.conn_handle = event->evt.gap_evt.conn_handle;
             if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
                 LOG(ERROR, "os_queue_put() failed.");
-            }
-
-            // Re-start advertising.
-            // FIXME: when multi-role implemented.
-            if (s_bleInstance.role == BLE_ROLE_PERIPHERAL) {
-                LOG_DEBUG(TRACE, "Restart BLE advertising.");
-                ret = sd_ble_gap_adv_start(s_bleInstance.advHandle, BLE_CONN_CFG_TAG);
-                if (ret != NRF_SUCCESS) {
-                    LOG(ERROR, "sd_ble_gap_adv_start() failed: %u", (unsigned)ret);
-                }
-                else {
-                    s_bleInstance.advertising = true;
-                }
             }
 
             s_bleInstance.connHandle   = BLE_INVALID_CONN_HANDLE;
@@ -1328,6 +1231,304 @@ static os_thread_return_t handleBleEventThread(void* param) {
     os_thread_exit(s_bleInstance.evtThread);
 }
 
+/* FIXME: It causes a section type conflict if using NRF_SDH_BLE_OBSERVER() in c++ class.*/
+class Broadcaster;
+typedef struct {
+    Broadcaster* instance;
+} BroadcasterImpl;
+static BroadcasterImpl broadcasterImpl;
+
+class Broadcaster {
+public:
+    // Singleton
+    static Broadcaster& getInstance(void) {
+        static Broadcaster instance;
+        return instance;
+    }
+
+    bool advertising(void) const {
+        return isAdvertising_;
+    }
+
+    int setAdvertisingParams(const hal_ble_adv_params_t* params) {
+        if (params == nullptr) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        int ret = suspend();
+        CHECK_RETURN(ret, nullptr);
+
+        ret = configure(params);
+        NRF_CHECK_RETURN(ret, nullptr);
+
+        memcpy(&advParams_, params, sizeof(hal_ble_adv_params_t));
+        return resume();
+    }
+
+    int getAdvertisingParams(hal_ble_adv_params_t* params) const {
+        if (params == nullptr) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        memcpy(params, &advParams_, sizeof(hal_ble_adv_params_t));
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int setAdvertisingData(const uint8_t* buf, size_t len) {
+        // It is invalid to provide the same data buffers while advertising.
+        int ret = suspend();
+        CHECK_RETURN(ret, nullptr);
+
+        if (buf != nullptr) {
+            len = len > BLE_MAX_ADV_DATA_LEN ? BLE_MAX_ADV_DATA_LEN : len;
+            memcpy(advData_, buf, len);
+        }
+        else {
+            // It should at least contain the Flags in advertising data.
+            len = 3;
+        }
+        advDataLen_ = len;
+
+        ret = configure(nullptr);
+        CHECK_RETURN(ret, nullptr);
+        return resume();
+    }
+
+    size_t getAdvertisingData(uint8_t* buf, size_t len) const {
+        if (buf == nullptr) {
+            return 0;
+        }
+        len = len > advDataLen_ ? advDataLen_ : len;
+        memcpy(buf, advData_, len);
+        return len;
+    }
+
+    int setScanResponseData(const uint8_t* buf, size_t len) {
+        // It is invalid to provide the same data buffers while advertising.
+        int ret = suspend();
+        CHECK_RETURN(ret, nullptr);
+
+        if (buf != nullptr) {
+            len = len > BLE_MAX_ADV_DATA_LEN ? BLE_MAX_ADV_DATA_LEN : len;
+            memcpy(scanRespData_, buf, len);
+        }
+        else {
+            len = 0;
+        }
+        scanRespDataLen_ = len;
+
+        ret = configure(nullptr);
+        CHECK_RETURN(ret, nullptr);
+        return resume();
+    }
+
+    size_t getScanResponseData(uint8_t* buf, size_t len) const {
+        if (buf == nullptr) {
+            return 0;
+        }
+        len = len > scanRespDataLen_ ? scanRespDataLen_ : len;
+        memcpy(buf, scanRespData_, len);
+        return len;
+    }
+
+    int setTxPower(int8_t val) {
+        int ret = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, advHandle_, roundTxPower(val));
+        NRF_CHECK_RETURN(ret, "sd_ble_gap_tx_power_set");
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int8_t getTxPower(void) const {
+        return txPower_;
+    }
+
+    int startAdvertising(void) {
+        int ret;
+        if (isAdvertising_) {
+            // Stop advertising first.
+            ret = sd_ble_gap_adv_stop(advHandle_);
+            NRF_CHECK_RETURN(ret, "sd_ble_gap_adv_stop");
+            isAdvertising_ = false;
+        }
+        ret = sd_ble_gap_adv_start(advHandle_, BLE_CONN_CFG_TAG);
+        NRF_CHECK_RETURN(ret, "sd_ble_gap_adv_start");
+        isAdvertising_ = true;
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int stopAdvertising(void) {
+        if (isAdvertising_) {
+            int ret = sd_ble_gap_adv_stop(advHandle_);
+            NRF_CHECK_RETURN(ret, "sd_ble_gap_adv_stop");
+            isAdvertising_ = false;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+private:
+    uint8_t isAdvertising_ : 1;                     /**< If it is advertising or not. */
+    uint8_t advHandle_;                             /**< Advertising handle. */
+    hal_ble_adv_params_t advParams_;                /**< Current advertising parameters. */
+    uint8_t advData_[BLE_MAX_ADV_DATA_LEN];         /**< Current advertising data. */
+    size_t  advDataLen_;                            /**< Current advertising data length. */
+    uint8_t scanRespData_[BLE_MAX_ADV_DATA_LEN];    /**< Current scan response data. */
+    size_t  scanRespDataLen_;                       /**< Current scan response data length. */
+    int8_t  txPower_;                               /**< TX Power. */
+    bool advPending_;                               /**< Advertising is pending. */
+    uint16_t connHandle_;                           /**< Connection handle. It is assigned once device is connected
+                                                         as Peripheral. It is used for re-start advertising. */
+    static const int8_t validTxPower_[8];
+
+    Broadcaster() {
+        isAdvertising_ = false;
+        advPending_ = false;
+        advHandle_ = BLE_GAP_ADV_SET_HANDLE_NOT_SET;
+
+        /* Default advertising parameters. */
+        advParams_.version = 0x01;
+        advParams_.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
+        advParams_.filter_policy = BLE_ADV_FP_ANY;
+        advParams_.interval = BLE_DEFAULT_ADVERTISING_INTERVAL;
+        advParams_.timeout = BLE_DEFAULT_ADVERTISING_TIMEOUT;
+        advParams_.inc_tx_power = false;
+
+        memset(advData_, 0x00, sizeof(advData_));
+        memset(scanRespData_, 0x00, sizeof(scanRespData_));
+        advDataLen_ = scanRespDataLen_ = 0;
+
+        /* Default advertising data. */
+        // FLags
+        advData_[advDataLen_++] = 0x02;
+        advData_[advDataLen_++] = BLE_SIG_AD_TYPE_FLAGS;
+        advData_[advDataLen_++] = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+
+        int ret = configure(&advParams_);
+        CHECK_RETURN_VOID(ret, nullptr);
+
+        /* Default TX power. */
+        txPower_ = 0;
+        setTxPower(txPower_);
+
+        broadcasterImpl.instance = this;
+        NRF_SDH_BLE_OBSERVER(bleBroadcaster, 1, processEvents, &broadcasterImpl);
+    }
+
+    ~Broadcaster() = default;
+
+    int suspend(void) {
+        if (isAdvertising_) {
+            int ret = ble_gap_stop_advertising();
+            CHECK_RETURN(ret, "ble_gap_stop_advertising");
+            advPending_ = true;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int resume(void) {
+        if (advPending_) {
+            int ret = startAdvertising();
+            CHECK_RETURN(ret, nullptr);
+            advPending_ = false;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    void toPlatformParams(ble_gap_adv_params_t* params, const hal_ble_adv_params_t* halParams) const {
+        memset(params, 0x00, sizeof(ble_gap_adv_params_t));
+        params->properties.type = halParams->type;
+        params->properties.include_tx_power = false; // FIXME: for extended advertising packet
+        params->p_peer_addr = NULL;
+        params->interval = halParams->interval;
+        params->duration = halParams->timeout;
+        params->filter_policy = halParams->filter_policy;
+        params->primary_phy = BLE_GAP_PHY_1MBPS;
+    }
+
+    void toPlatformAdvData(ble_gap_adv_data_t* data) {
+        data->adv_data.p_data = advData_;
+        data->adv_data.len = advDataLen_;
+        data->scan_rsp_data.p_data = scanRespData_;
+        data->scan_rsp_data.len = scanRespDataLen_;
+    }
+
+    int configure(const hal_ble_adv_params_t* params) {
+        int ret;
+
+        ble_gap_adv_data_t bleGapAdvData;
+        toPlatformAdvData(&bleGapAdvData);
+
+        if (params == nullptr) {
+            ret = sd_ble_gap_adv_set_configure(&advHandle_, &bleGapAdvData, NULL);
+        }
+        else {
+            ble_gap_adv_params_t bleGapAdvParams;
+            toPlatformParams(&bleGapAdvParams, params);
+            LOG_DEBUG(TRACE, "BLE advertising interval: %.3fms, timeout: %dms.",
+                      bleGapAdvParams.interval*0.625, bleGapAdvParams.duration*10);
+            ret = sd_ble_gap_adv_set_configure(&advHandle_, &bleGapAdvData, &bleGapAdvParams);
+        }
+        NRF_CHECK_RETURN(ret, "sd_ble_gap_adv_set_configure");
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int8_t roundTxPower(int8_t value) {
+        uint8_t i = 0;
+        for (i = 0; i < sizeof(validTxPower_); i++) {
+            if (value == validTxPower_[i]) {
+                return value;
+            }
+            else {
+                if (value < validTxPower_[i]) {
+                    return validTxPower_[i];
+                }
+            }
+        }
+        return validTxPower_[i - 1];
+    }
+
+    static void processEvents(const ble_evt_t* event, void* context) {
+        Broadcaster* broadcaster = static_cast<BroadcasterImpl*>(context)->instance;
+
+        switch (event->header.evt_id) {
+            case BLE_GAP_EVT_ADV_SET_TERMINATED: {
+                LOG_DEBUG(TRACE, "BLE GAP event: advertising stopped.");
+                broadcaster->isAdvertising_ = false;
+
+                HalBleEvtMsg_t  msg;
+                memset(&msg, 0x00, sizeof(HalBleEvtMsg_t));
+                msg.arg.type = BLE_EVT_ADV_STOPPED;
+                msg.arg.params.adv_stopped.version = 0x01;
+                msg.arg.params.adv_stopped.reserved = NULL;
+                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                    LOG(ERROR, "os_queue_put() failed.");
+                }
+            } break;
+
+            case BLE_GAP_EVT_CONNECTED: {
+                // FIXME: If multi role is enabled, this flag should not be clear here.
+                broadcaster->isAdvertising_ = false;
+                if (event->evt.gap_evt.params.connected.role == BLE_ROLE_PERIPHERAL) {
+                    broadcaster->connHandle_ = event->evt.gap_evt.conn_handle;
+                }
+            } break;
+
+            case BLE_GAP_EVT_DISCONNECTED: {
+                // Re-start advertising.
+                // FIXME: when multi-role implemented.
+                if (broadcaster->connHandle_ == event->evt.gap_evt.conn_handle) {
+                    LOG_DEBUG(TRACE, "Restart BLE advertising.");
+                    int ret = broadcaster->startAdvertising();
+                    CHECK_RETURN_VOID(ret, nullptr);
+                    broadcaster->isAdvertising_ = true;
+                    broadcaster->connHandle_ = BLE_INVALID_CONN_HANDLE;
+                }
+            } break;
+
+            default: break;
+        }
+    }
+};
+
+const int8_t Broadcaster::validTxPower_[8] = { -20, -16, -12, -8, -4, 0, 4, 8 };
+
 
 /**********************************************
  * Particle BLE APIs
@@ -1377,19 +1578,8 @@ int ble_stack_init(void* reserved) {
         get_device_name(devName, sizeof(devName));
         ble_gap_set_device_name((const uint8_t*)devName, strlen(devName));
 
-        // Configure an advertising set to obtain an advertising handle.
-        int error = ble_gap_set_advertising_parameters(&s_bleInstance.advParams, NULL);
-        if (error != SYSTEM_ERROR_NONE) {
-            return error;
-        }
-
-        // Set the default TX Power
-        ret = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, s_bleInstance.advHandle, s_bleInstance.txPower);
-        if (ret != NRF_SUCCESS) {
-            LOG(ERROR, "sd_ble_gap_tx_power_set() failed: %u", (unsigned)ret);
-            return sysError(ret);
-        }
-        s_bleInstance.txPower = 0;
+        // Initialize BLE Broadcaster.
+        Broadcaster::getInstance();
 
         // Select internal antenna by default
         ble_select_antenna(BLE_ANT_INTERNAL);
@@ -1482,7 +1672,7 @@ int ble_gap_set_device_address(const hal_ble_addr_t* address) {
     if (address->addr_type != BLE_SIG_ADDR_TYPE_PUBLIC && address->addr_type != BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    if (s_bleInstance.advertising || s_bleInstance.scanning || s_bleInstance.connecting) {
+    if (Broadcaster::getInstance().advertising() || s_bleInstance.scanning || s_bleInstance.connecting) {
         // The identity address cannot be changed while advertising, scanning or creating a connection.
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -1694,28 +1884,15 @@ int ble_gap_set_tx_power(int8_t value) {
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_set_tx_power().");
 
-    ret_code_t ret = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, s_bleInstance.advHandle, roundTxPower(value));
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_gap_tx_power_set() failed: %u", (unsigned)ret);
-    }
-
-    s_bleInstance.txPower = roundTxPower(value);
-
-    return sysError(ret);
+    return Broadcaster::getInstance().setTxPower(value);
 }
 
-int ble_gap_get_tx_power(int8_t* value) {
+int8_t ble_gap_get_tx_power(void) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_get_tx_power().");
 
-    if (value == NULL) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-
-    *value = s_bleInstance.txPower;
-
-    return SYSTEM_ERROR_NONE;
+    return Broadcaster::getInstance().getTxPower();
 }
 
 int ble_gap_set_advertising_parameters(const hal_ble_adv_params_t* adv_params, void* reserved) {
@@ -1723,81 +1900,47 @@ int ble_gap_set_advertising_parameters(const hal_ble_adv_params_t* adv_params, v
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_set_advertising_parameters().");
 
-    if (adv_params == NULL) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-
-    ret_code_t ret;
-    bool advPending = false;
-
-    // It is invalid to change advertising set parameters while advertising.
-    if (s_bleInstance.advertising) {
-        int err = ble_gap_stop_advertising();
-        if (err != SYSTEM_ERROR_NONE) {
-            return err;
-        }
-        advPending = true;
-    }
-
-    ble_gap_adv_params_t bleGapAdvParams;
-    memset(&bleGapAdvParams, 0x00, sizeof(ble_gap_adv_params_t));
-
-    bleGapAdvParams.properties.type             = adv_params->type;
-    bleGapAdvParams.properties.include_tx_power = false; // FIXME: for extended advertising packet
-    bleGapAdvParams.p_peer_addr                 = NULL;
-    bleGapAdvParams.interval                    = adv_params->interval;
-    bleGapAdvParams.duration                    = adv_params->timeout;
-    bleGapAdvParams.filter_policy               = adv_params->filter_policy;
-    bleGapAdvParams.primary_phy                 = BLE_GAP_PHY_1MBPS;
-
-    LOG_DEBUG(TRACE, "BLE advertising interval: %.3fms, timeout: %dms.",
-            bleGapAdvParams.interval*0.625, bleGapAdvParams.duration*10);
-
-    // Make sure the advertising data and scan response data is consistent.
-    ble_gap_adv_data_t bleGapAdvData;
-    bleGapAdvData.adv_data.p_data      = s_bleInstance.advData;
-    bleGapAdvData.adv_data.len         = s_bleInstance.advDataLen;
-    bleGapAdvData.scan_rsp_data.p_data = s_bleInstance.scanRespData;
-    bleGapAdvData.scan_rsp_data.len    = s_bleInstance.scanRespDataLen;
-
-    ret = sd_ble_gap_adv_set_configure(&s_bleInstance.advHandle, &bleGapAdvData, &bleGapAdvParams);
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_gap_adv_set_configure() failed: %u", (unsigned)ret);
-        return sysError(ret);
-    }
-
-    if (advPending) {
-        advPending = false;
-        return ble_gap_start_advertising(NULL);
-    }
-
-    memcpy(&s_bleInstance.advParams, adv_params, sizeof(hal_ble_adv_params_t));
-
-    return sysError(ret);
+    return Broadcaster::getInstance().setAdvertisingParams(adv_params);
 }
 
-int ble_gap_set_advertising_data(const uint8_t* data, uint16_t len, void* reserved) {
+int ble_gap_get_advertising_parameters(hal_ble_adv_params_t* adv_params, void* reserved) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+    LOG_DEBUG(TRACE, "ble_gap_get_advertising_parameters().");
+
+    return Broadcaster::getInstance().getAdvertisingParams(adv_params);
+}
+
+int ble_gap_set_advertising_data(const uint8_t* buf, uint16_t len, void* reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_set_advertising_data().");
 
-    if ((data == NULL) || (len < 3)) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-
-    return setAdvData(data, len, BLE_ADV_DATA_ADVERTISING);
+    return Broadcaster::getInstance().setAdvertisingData(buf, len);
 }
 
-int ble_gap_set_scan_response_data(const uint8_t* data, uint16_t len, void* reserved) {
+size_t ble_gap_get_advertising_data(uint8_t* buf, uint16_t len, void* reserved) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+    LOG_DEBUG(TRACE, "ble_gap_get_advertising_data().");
+
+    return Broadcaster::getInstance().getAdvertisingData(buf, len);
+}
+
+int ble_gap_set_scan_response_data(const uint8_t* buf, uint16_t len, void* reserved) {
     std::lock_guard<bleLock> lk(bleLock());
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_set_scan_response_data().");
 
-    if (data == NULL) {
-        len = 0;
-    }
+    return Broadcaster::getInstance().setScanResponseData(buf, len);
+}
 
-    return setAdvData(data, len, BLE_ADV_DATA_SCAN_RESPONSE);
+size_t ble_gap_get_scan_response_data(uint8_t* buf, uint16_t len, void* reserved) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+    LOG_DEBUG(TRACE, "ble_gap_get_scan_response_data().");
+
+    return Broadcaster::getInstance().getScanResponseData(buf, len);
 }
 
 int ble_gap_start_advertising(void* reserved) {
@@ -1805,23 +1948,7 @@ int ble_gap_start_advertising(void* reserved) {
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_start_advertising().");
 
-    if (s_bleInstance.advertising) {
-        // Restart advertising
-        int error = ble_gap_stop_advertising();
-        if (error != SYSTEM_ERROR_NONE) {
-            return error;
-        }
-    }
-
-    ret_code_t ret = sd_ble_gap_adv_start(s_bleInstance.advHandle, BLE_CONN_CFG_TAG);
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_gap_adv_start() failed: %u", (unsigned)ret);
-        return sysError(ret);
-    }
-    else {
-        s_bleInstance.advertising = true;
-        return SYSTEM_ERROR_NONE;
-    }
+    return Broadcaster::getInstance().startAdvertising();
 }
 
 int ble_gap_stop_advertising(void) {
@@ -1829,23 +1956,11 @@ int ble_gap_stop_advertising(void) {
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_stop_advertising().");
 
-    if (!s_bleInstance.advertising) {
-        return SYSTEM_ERROR_NONE;
-    }
-
-    ret_code_t ret = sd_ble_gap_adv_stop(s_bleInstance.advHandle);
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_gap_adv_stop() failed: %u", (unsigned)ret);
-        return sysError(ret);
-    }
-    else {
-        s_bleInstance.advertising = false;
-        return SYSTEM_ERROR_NONE;
-    }
+    return Broadcaster::getInstance().stopAdvertising();
 }
 
 bool ble_gap_is_advertising(void) {
-    return s_bleInstance.advertising;
+    return Broadcaster::getInstance().advertising();
 }
 
 int ble_gap_set_scan_parameters(const hal_ble_scan_params_t* scan_params, void* reserved) {

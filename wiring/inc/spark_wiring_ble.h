@@ -230,6 +230,9 @@ public:
     size_t get(uint8_t* buf, size_t len) const;
     size_t get(uint8_t type, uint8_t* buf, size_t len) const;
 
+    const uint8_t* data(void) const;
+    size_t length(void) const;
+
     String deviceName(void) const;
     size_t deviceName(uint8_t* buf, size_t len) const;
     size_t serviceUUID(BleUuid* uuids, size_t count) const;
@@ -242,8 +245,8 @@ public:
     bool contains (uint8_t type) const;
 
 private:
-    uint8_t selfData[BLE_MAX_ADV_DATA_LEN];
-    size_t selfLen;
+    uint8_t selfData_[BLE_MAX_ADV_DATA_LEN];
+    size_t selfLen_;
 
     size_t serviceUUID(uint8_t type, BleUuid* uuids, size_t count) const;
     static size_t locate(const uint8_t* buf, size_t len, uint8_t type, size_t* offset);
@@ -373,16 +376,16 @@ public:
 
     int advertise(void);
     int advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
-    int advertise(uint32_t interval);
-    int advertise(uint32_t interval, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
-    int advertise(uint32_t interval, uint32_t timeout);
-    int advertise(uint32_t interval, uint32_t timeout, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
+    int advertise(uint16_t interval);
+    int advertise(uint16_t interval, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
+    int advertise(uint16_t interval, uint16_t timeout);
+    int advertise(uint16_t interval, uint16_t timeout, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
     int advertise(const BleAdvParams& params);
     int advertise(const BleAdvParams& params, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
 
     int advertise(const iBeacon& iBeacon, bool connectable = false);
-    int advertise(uint32_t interval, const iBeacon& iBeacon, bool connectable = false);
-    int advertise(uint32_t interval, uint32_t timeout, const iBeacon& iBeacon, bool connectable = false);
+    int advertise(uint16_t interval, const iBeacon& iBeacon, bool connectable = false);
+    int advertise(uint16_t interval, uint16_t timeout, const iBeacon& iBeacon, bool connectable = false);
     int advertise(const BleAdvParams& params, const iBeacon& iBeacon, bool connectable = false);
 
     int stopAdvertising(void) const;
