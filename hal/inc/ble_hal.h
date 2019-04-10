@@ -502,6 +502,15 @@ bool ble_gap_is_advertising(void);
 int ble_gap_set_scan_parameters(const hal_ble_scan_params_t* scan_params, void* reserved);
 
 /**
+ * Get the BLE scanning parameters.
+ *
+ * @param[in,out]   scan_params Pointer to the scanning parameters to be filled.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int ble_gap_get_scan_parameters(hal_ble_scan_params_t* scan_params, void* reserved);
+
+/**
  * Start scanning nearby BLE devices.
  *
  * @returns     0 on success, system_error_t on error.

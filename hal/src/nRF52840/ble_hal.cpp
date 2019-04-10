@@ -44,8 +44,11 @@ LOG_SOURCE_CATEGORY("hal.ble")
 #include "device_code.h"
 #include "system_error.h"
 #include "sdk_config_system.h"
-
+#include "spark_wiring_vector.h"
 #include <string.h>
+
+
+using spark::Vector;
 
 
 #define BLE_CONN_CFG_TAG                            1
@@ -70,6 +73,17 @@ LOG_SOURCE_CATEGORY("hal.ble")
                     LOG(ERROR, "%s failed: %u", _str, _ret); \
                 } \
                 return sysError(_ret); \
+            } \
+        } while (false)
+
+#define NRF_CHECK_RETURN_VOID(ret, str) \
+        do { \
+            const int _ret = ret; \
+            const char* _str = str; \
+            if (_ret != NRF_SUCCESS) { \
+                if (_str != nullptr) { \
+                    LOG(ERROR, "%s failed: %u", _str, _ret); \
+                } \
             } \
         } while (false)
 
@@ -142,7 +156,6 @@ typedef struct {
 /* BLE Instance */
 typedef struct {
     uint8_t  initialized  : 1;
-    uint8_t  scanning     : 1;
     uint8_t  connecting   : 1;
     uint8_t  discovering  : 1;
     uint8_t  connected    : 1;
@@ -150,10 +163,8 @@ typedef struct {
     uint16_t connHandle;
     uint8_t  connParamsUpdateAttempts;
 
-    hal_ble_scan_params_t scanParams;
     hal_ble_conn_params_t ppcp;
 
-    os_semaphore_t scanSemaphore;
     os_semaphore_t connectSemaphore;
     os_semaphore_t disconnectSemaphore;
     os_semaphore_t connUpdateSemaphore;
@@ -179,22 +190,12 @@ typedef struct {
 
 static HalBleInstance_t s_bleInstance = {
     .initialized  = 0,
-    .scanning     = 0,
     .connecting   = 0,
     .discovering  = 0,
     .connected    = 0,
     .role         = BLE_ROLE_INVALID,
     .connHandle   = BLE_INVALID_CONN_HANDLE,
     .connParamsUpdateAttempts = 0,
-
-    .scanParams = {
-        .version       = 0x01,
-        .active        = true,
-        .filter_policy = BLE_SCAN_FP_ACCEPT_ALL,
-        .interval      = BLE_DEFAULT_SCANNING_INTERVAL,
-        .window        = BLE_DEFAULT_SCANNING_WINDOW,
-        .timeout       = BLE_DEFAULT_SCANNING_TIMEOUT
-    },
 
     /*
      * For BLE Central, this is the initial connection parameters.
@@ -208,7 +209,6 @@ static HalBleInstance_t s_bleInstance = {
         .conn_sup_timeout  = BLE_DEFAULT_CONN_SUP_TIMEOUT
     },
 
-    .scanSemaphore = NULL,
     .connectSemaphore = NULL,
     .disconnectSemaphore = NULL,
     .connUpdateSemaphore = NULL,
@@ -217,12 +217,6 @@ static HalBleInstance_t s_bleInstance = {
     .evtQueue  = NULL,
     .evtThread = NULL,
     .connParamsUpdateTimer = NULL,
-};
-
-static uint8_t    s_scanReportBuff[BLE_MAX_SCAN_REPORT_BUF_LEN];
-static ble_data_t s_bleScanData = {
-    .p_data = s_scanReportBuff,
-    .len = BLE_MAX_SCAN_REPORT_BUF_LEN
 };
 
 static uint8_t charValue[BLE_MAX_CHAR_COUNT][BLE_MAX_ATTR_VALUE_PACKET_SIZE];
@@ -253,24 +247,6 @@ static system_error_t sysError(uint32_t error) {
         case NRF_ERROR_RESOURCES:               return SYSTEM_ERROR_ABORTED;
         default:                                return SYSTEM_ERROR_UNKNOWN;
     }
-}
-
-static int fromHalScanParams(const hal_ble_scan_params_t* halScanParams, ble_gap_scan_params_t* scanParams) {
-    if (halScanParams == NULL || scanParams == NULL) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-
-    memset(scanParams, 0x00, sizeof(ble_gap_scan_params_t));
-
-    scanParams->extended      = 0;
-    scanParams->active        = halScanParams->active;
-    scanParams->interval      = halScanParams->interval;
-    scanParams->window        = halScanParams->window;
-    scanParams->timeout       = halScanParams->timeout;
-    scanParams->scan_phys     = BLE_GAP_PHY_1MBPS;
-    scanParams->filter_policy = halScanParams->filter_policy;
-
-    return SYSTEM_ERROR_NONE;
 }
 
 static int fromHalConnParams(const hal_ble_conn_params_t* halConnParams, ble_gap_conn_params_t* connParams) {
@@ -595,32 +571,6 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
     memset(&msg, 0x00, sizeof(HalBleEvtMsg_t));
 
     switch (event->header.evt_id) {
-        case BLE_GAP_EVT_ADV_REPORT: {
-            LOG_DEBUG(TRACE, "BLE GAP event: advertising report.");
-
-            msg.arg.type = BLE_EVT_SCAN_RESULT;
-            msg.arg.params.scan_result.version = 0x01;
-            msg.arg.params.scan_result.type.connectable = event->evt.gap_evt.params.adv_report.type.connectable;
-            msg.arg.params.scan_result.type.scannable = event->evt.gap_evt.params.adv_report.type.scannable;
-            msg.arg.params.scan_result.type.directed = event->evt.gap_evt.params.adv_report.type.directed;
-            msg.arg.params.scan_result.type.scan_response = event->evt.gap_evt.params.adv_report.type.scan_response;
-            msg.arg.params.scan_result.type.extended_pdu = event->evt.gap_evt.params.adv_report.type.extended_pdu;
-            msg.arg.params.scan_result.rssi = event->evt.gap_evt.params.adv_report.rssi;
-            msg.arg.params.scan_result.data_len = event->evt.gap_evt.params.adv_report.data.len;
-            memcpy(msg.arg.params.scan_result.data, event->evt.gap_evt.params.adv_report.data.p_data, msg.arg.params.scan_result.data_len);
-            msg.arg.params.scan_result.peer_addr.addr_type = event->evt.gap_evt.params.adv_report.peer_addr.addr_type;
-            memcpy(msg.arg.params.scan_result.peer_addr.addr, event->evt.gap_evt.params.adv_report.peer_addr.addr, BLE_SIG_ADDR_LEN);
-            if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                LOG(ERROR, "os_queue_put() failed.");
-            }
-
-            // Continue scanning, scanning parameters pointer must be set to NULL.
-            ret = sd_ble_gap_scan_start(NULL, &s_bleScanData);
-            if (ret != NRF_SUCCESS) {
-                LOG(ERROR, "sd_ble_gap_scan_start() failed: %u", (unsigned)ret);
-            }
-        } break;
-
         case BLE_GAP_EVT_CONNECTED: {
             LOG_DEBUG(TRACE, "BLE GAP event: connected.");
 
@@ -780,29 +730,13 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
         } break;
 
         case BLE_GAP_EVT_TIMEOUT: {
-            if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_SCAN) {
-                LOG_DEBUG(TRACE, "BLE GAP event: Scanning timeout");
-                s_bleInstance.scanning = false;
-
-                msg.arg.type = BLE_EVT_SCAN_STOPPED;
-                msg.arg.params.scan_stopped.version = 0x01;
-                msg.arg.params.scan_stopped.reserved = NULL;
-                if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
-                    LOG(ERROR, "os_queue_put() failed.");
-                }
-
-                os_semaphore_give(s_bleInstance.scanSemaphore, false);
-            }
-            else if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
+            if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
                 LOG_DEBUG(ERROR, "BLE GAP event: Connection timeout");
                 s_bleInstance.connecting = false;
                 os_semaphore_give(s_bleInstance.connectSemaphore, false);
             }
             else if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_AUTH_PAYLOAD) {
                 LOG_DEBUG(ERROR, "BLE GAP event: Authenticated payload timeout");
-            }
-            else {
-                LOG_DEBUG(ERROR, "BLE GAP event: Unknown timeout, source: %d", event->evt.gap_evt.params.timeout.src);
             }
         } break;
 
@@ -1141,7 +1075,7 @@ static void isrProcessBleEvent(const ble_evt_t* event, void* context) {
         } break;
 
         default: {
-            LOG_DEBUG(TRACE, "Unhandled BLE event: %u", (unsigned)event->header.evt_id);
+            //LOG_DEBUG(TRACE, "Unhandled BLE event: %u", (unsigned)event->header.evt_id);
         } break;
     }
 }
@@ -1407,7 +1341,7 @@ private:
         setTxPower(txPower_);
 
         broadcasterImpl.instance = this;
-        NRF_SDH_BLE_OBSERVER(bleBroadcaster, 1, processEvents, &broadcasterImpl);
+        NRF_SDH_BLE_OBSERVER(bleBroadcaster, 1, processBroadcasterEvents, &broadcasterImpl);
     }
 
     ~Broadcaster() = default;
@@ -1430,7 +1364,7 @@ private:
         return SYSTEM_ERROR_NONE;
     }
 
-    void toPlatformParams(ble_gap_adv_params_t* params, const hal_ble_adv_params_t* halParams) const {
+    void toPlatformAdvParams(ble_gap_adv_params_t* params, const hal_ble_adv_params_t* halParams) const {
         memset(params, 0x00, sizeof(ble_gap_adv_params_t));
         params->properties.type = halParams->type;
         params->properties.include_tx_power = false; // FIXME: for extended advertising packet
@@ -1459,7 +1393,7 @@ private:
         }
         else {
             ble_gap_adv_params_t bleGapAdvParams;
-            toPlatformParams(&bleGapAdvParams, params);
+            toPlatformAdvParams(&bleGapAdvParams, params);
             LOG_DEBUG(TRACE, "BLE advertising interval: %.3fms, timeout: %dms.",
                       bleGapAdvParams.interval*0.625, bleGapAdvParams.duration*10);
             ret = sd_ble_gap_adv_set_configure(&advHandle_, &bleGapAdvData, &bleGapAdvParams);
@@ -1484,7 +1418,7 @@ private:
         return validTxPower_[i - 1];
     }
 
-    static void processEvents(const ble_evt_t* event, void* context) {
+    static void processBroadcasterEvents(const ble_evt_t* event, void* context) {
         Broadcaster* broadcaster = static_cast<BroadcasterImpl*>(context)->instance;
 
         switch (event->header.evt_id) {
@@ -1492,7 +1426,7 @@ private:
                 LOG_DEBUG(TRACE, "BLE GAP event: advertising stopped.");
                 broadcaster->isAdvertising_ = false;
 
-                HalBleEvtMsg_t  msg;
+                HalBleEvtMsg_t msg;
                 memset(&msg, 0x00, sizeof(HalBleEvtMsg_t));
                 msg.arg.type = BLE_EVT_ADV_STOPPED;
                 msg.arg.params.adv_stopped.version = 0x01;
@@ -1528,6 +1462,203 @@ private:
 };
 
 const int8_t Broadcaster::validTxPower_[8] = { -20, -16, -12, -8, -4, 0, 4, 8 };
+
+
+class Observer;
+typedef struct {
+    Observer* instance;
+} ObserverImpl;
+static ObserverImpl observerImpl;
+
+class Observer {
+public:
+    // Singleton
+    static Observer& getInstance(void) {
+        static Observer instance;
+        return instance;
+    }
+
+    bool scanning(void) {
+        return isScanning_;
+    }
+
+    int setScanParams(const hal_ble_scan_params_t* params) {
+        if (params == nullptr) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        if ((params->interval < BLE_GAP_SCAN_INTERVAL_MIN) ||
+                (params->interval > BLE_GAP_SCAN_INTERVAL_MAX) ||
+                (params->window < BLE_GAP_SCAN_WINDOW_MIN) ||
+                (params->window > BLE_GAP_SCAN_WINDOW_MAX) ||
+                (params->window > params->interval) ) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        memcpy(&scanParams_, params, sizeof(hal_ble_scan_params_t));
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int getScanParams(hal_ble_scan_params_t* params) const {
+        if (params == nullptr) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        memcpy(params, &scanParams_, sizeof(hal_ble_scan_params_t));
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int startScanning(bool restart) {
+        if(restart) {
+            int ret = sd_ble_gap_scan_start(NULL, &bleScanData_);
+            NRF_CHECK_RETURN(ret, "sd_ble_gap_scan_start");
+            return SYSTEM_ERROR_NONE;
+        }
+
+        if (isScanning_) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        if (os_semaphore_create(&scanSemaphore_, 1, 0)) {
+            LOG(ERROR, "os_semaphore_create() failed");
+            return SYSTEM_ERROR_INTERNAL;
+        }
+
+        ble_gap_scan_params_t bleGapScanParams;
+        toPlatformScanParams(&bleGapScanParams);
+
+        LOG_DEBUG(TRACE, "| interval(ms)   window(ms)   timeout(ms) |");
+        LOG_DEBUG(TRACE, "  %.3f        %.3f      %d",
+                bleGapScanParams.interval*0.625, bleGapScanParams.window*0.625, bleGapScanParams.timeout*10);
+
+        cache_.clear();
+
+        int ret = sd_ble_gap_scan_start(&bleGapScanParams, &bleScanData_);
+        NRF_CHECK_RETURN(ret, "sd_ble_gap_scan_start");
+
+        isScanning_ = true;
+        os_semaphore_take(scanSemaphore_, CONCURRENT_WAIT_FOREVER, false);
+        os_semaphore_destroy(scanSemaphore_);
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int stopScanning(void) {
+        if (!isScanning_) {
+            return SYSTEM_ERROR_NONE;
+        }
+
+        int ret = sd_ble_gap_scan_stop();
+        NRF_CHECK_RETURN(ret, "sd_ble_gap_scan_stop");
+
+        os_semaphore_give(scanSemaphore_, false);
+        isScanning_ = false;
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    void toPlatformScanParams(ble_gap_scan_params_t* params) const {
+        memset(params, 0x00, sizeof(ble_gap_scan_params_t));
+        params->extended = 0;
+        params->active = scanParams_.active;
+        params->interval = scanParams_.interval;
+        params->window = scanParams_.window;
+        params->timeout = scanParams_.timeout;
+        params->scan_phys = BLE_GAP_PHY_1MBPS;
+        params->filter_policy = scanParams_.filter_policy;
+    }
+
+private:
+    uint8_t isScanning_: 1;                                 /**< If it is scanning or not. */
+    hal_ble_scan_params_t scanParams_;                      /**< BLE scanning parameters. */
+    os_semaphore_t scanSemaphore_;                          /**< Semaphore to wait until the scan procedure completed. */
+    uint8_t scanReportBuff_[BLE_MAX_SCAN_REPORT_BUF_LEN];   /**< Buffer to hold the scanned report data. */
+    ble_data_t bleScanData_;                                /**< BLE scanned data. */
+    Vector<hal_ble_addr_t> cache_;                          /**< Cached address of scanned devices to filter-out duplicated result. */
+
+    Observer() {
+        isScanning_ = false;
+
+        scanParams_.version = 0x01;
+        scanParams_.active = true;
+        scanParams_.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+        scanParams_.interval = BLE_DEFAULT_SCANNING_INTERVAL;
+        scanParams_.window = BLE_DEFAULT_SCANNING_WINDOW;
+        scanParams_.timeout = BLE_DEFAULT_SCANNING_TIMEOUT;
+
+        scanSemaphore_ = NULL;
+
+        bleScanData_.p_data = scanReportBuff_;
+        bleScanData_.len = sizeof(scanReportBuff_);
+
+        observerImpl.instance = this;
+        NRF_SDH_BLE_OBSERVER(bleObserver, 1, processObserverEvents, &observerImpl);
+    }
+
+    ~Observer() = default;
+
+    bool chacheDevice(const hal_ble_addr_t& newAddr) {
+        for (int i = 0; i < cache_.size(); i++) {
+            const hal_ble_addr_t& existAddr = cache_[i];
+            if (existAddr.addr_type == newAddr.addr_type &&
+                    !memcmp(existAddr.addr, newAddr.addr, BLE_SIG_ADDR_LEN)) {
+                LOG_DEBUG(TRACE, "Duplicated scan result. Filter it out.");
+                return false;
+            }
+        }
+        cache_.append(newAddr);
+        return true;
+    }
+
+    static void processObserverEvents(const ble_evt_t* event, void* context) {
+        Observer* observer = static_cast<ObserverImpl*>(context)->instance;
+        HalBleEvtMsg_t msg;
+        memset(&msg, 0x00, sizeof(HalBleEvtMsg_t));
+        switch (event->header.evt_id) {
+            case BLE_GAP_EVT_ADV_REPORT: {
+                LOG_DEBUG(TRACE, "BLE GAP event: advertising report.");
+
+                hal_ble_addr_t newAddr;
+                newAddr.addr_type = event->evt.gap_evt.params.adv_report.peer_addr.addr_type;
+                memcpy(newAddr.addr, event->evt.gap_evt.params.adv_report.peer_addr.addr, BLE_SIG_ADDR_LEN);
+                if (observer->chacheDevice(newAddr)) {
+                    // The new scanned device is not in the cached device list.
+                    msg.arg.type = BLE_EVT_SCAN_RESULT;
+                    msg.arg.params.scan_result.version = 0x01;
+                    msg.arg.params.scan_result.type.connectable = event->evt.gap_evt.params.adv_report.type.connectable;
+                    msg.arg.params.scan_result.type.scannable = event->evt.gap_evt.params.adv_report.type.scannable;
+                    msg.arg.params.scan_result.type.directed = event->evt.gap_evt.params.adv_report.type.directed;
+                    msg.arg.params.scan_result.type.scan_response = event->evt.gap_evt.params.adv_report.type.scan_response;
+                    msg.arg.params.scan_result.type.extended_pdu = event->evt.gap_evt.params.adv_report.type.extended_pdu;
+                    msg.arg.params.scan_result.rssi = event->evt.gap_evt.params.adv_report.rssi;
+                    msg.arg.params.scan_result.data_len = event->evt.gap_evt.params.adv_report.data.len;
+                    memcpy(msg.arg.params.scan_result.data, event->evt.gap_evt.params.adv_report.data.p_data, msg.arg.params.scan_result.data_len);
+                    msg.arg.params.scan_result.peer_addr.addr_type = newAddr.addr_type;
+                    memcpy(msg.arg.params.scan_result.peer_addr.addr, newAddr.addr, BLE_SIG_ADDR_LEN);
+                    if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                        LOG(ERROR, "os_queue_put() failed.");
+                    }
+                }
+
+                // Continue scanning, scanning parameters pointer must be set to NULL.
+                observer->startScanning(true);
+            } break;
+
+            case BLE_GAP_EVT_TIMEOUT: {
+                if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_SCAN) {
+                    LOG_DEBUG(TRACE, "BLE GAP event: Scanning timeout");
+                    observer->isScanning_ = false;
+
+                    msg.arg.type = BLE_EVT_SCAN_STOPPED;
+                    msg.arg.params.scan_stopped.version = 0x01;
+                    msg.arg.params.scan_stopped.reserved = NULL;
+                    if (os_queue_put(s_bleInstance.evtQueue, &msg, 0, NULL)) {
+                        LOG(ERROR, "os_queue_put() failed.");
+                    }
+                    os_semaphore_give(observer->scanSemaphore_, false);
+                }
+            } break;
+
+            default: break;
+        }
+    }
+};
 
 
 /**********************************************
@@ -1672,7 +1803,8 @@ int ble_gap_set_device_address(const hal_ble_addr_t* address) {
     if (address->addr_type != BLE_SIG_ADDR_TYPE_PUBLIC && address->addr_type != BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    if (Broadcaster::getInstance().advertising() || s_bleInstance.scanning || s_bleInstance.connecting) {
+    if (Broadcaster::getInstance().advertising() ||
+        Observer::getInstance().scanning() || s_bleInstance.connecting) {
         // The identity address cannot be changed while advertising, scanning or creating a connection.
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -1968,21 +2100,15 @@ int ble_gap_set_scan_parameters(const hal_ble_scan_params_t* scan_params, void* 
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_set_scan_parameters().");
 
-    if (scan_params == NULL) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
+    return Observer::getInstance().setScanParams(scan_params);
+}
 
-    if (    (scan_params->interval < BLE_GAP_SCAN_INTERVAL_MIN)
-         || (scan_params->interval > BLE_GAP_SCAN_INTERVAL_MAX)
-         || (scan_params->window < BLE_GAP_SCAN_WINDOW_MIN)
-         || (scan_params->window > BLE_GAP_SCAN_WINDOW_MAX)
-         || (scan_params->window > scan_params->interval) ) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
+int ble_gap_get_scan_parameters(hal_ble_scan_params_t* scan_params, void* reserved) {
+    std::lock_guard<bleLock> lk(bleLock());
+    SPARK_ASSERT(s_bleInstance.initialized);
+    LOG_DEBUG(TRACE, "ble_gap_set_scan_parameters().");
 
-    memcpy(&s_bleInstance.scanParams, scan_params, sizeof(hal_ble_scan_params_t));
-
-    return SYSTEM_ERROR_NONE;
+    return Observer::getInstance().getScanParams(scan_params);
 }
 
 int ble_gap_start_scan(void* reserved) {
@@ -1990,43 +2116,11 @@ int ble_gap_start_scan(void* reserved) {
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_start_scan().");
 
-    if (s_bleInstance.scanning) {
-        int error = ble_gap_stop_scan();
-        if (error != SYSTEM_ERROR_NONE) {
-            return error;
-        }
-    }
-
-    if (os_semaphore_create(&s_bleInstance.scanSemaphore, 1, 0)) {
-        LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
-    }
-
-    ble_gap_scan_params_t bleGapScanParams;
-    fromHalScanParams(&s_bleInstance.scanParams, &bleGapScanParams);
-
-    LOG_DEBUG(TRACE, "| interval(ms)   window(ms)   timeout(ms) |");
-    LOG_DEBUG(TRACE, "  %.3f        %.3f      %d",
-            bleGapScanParams.interval*0.625,
-            bleGapScanParams.window*0.625,
-            bleGapScanParams.timeout*10);
-
-    ret_code_t ret = sd_ble_gap_scan_start(&bleGapScanParams, &s_bleScanData);
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_gap_scan_start() failed: %u", (unsigned)ret);
-        return sysError(ret);
-    }
-
-    s_bleInstance.scanning = true;
-
-    os_semaphore_take(s_bleInstance.scanSemaphore, CONCURRENT_WAIT_FOREVER, false);
-    os_semaphore_destroy(s_bleInstance.scanSemaphore);
-
-    return SYSTEM_ERROR_NONE;
+    return Observer::getInstance().startScanning(false);
 }
 
 bool ble_gap_is_scanning(void) {
-    return s_bleInstance.scanning;
+    return Observer::getInstance().scanning();
 }
 
 int ble_gap_stop_scan(void) {
@@ -2034,20 +2128,7 @@ int ble_gap_stop_scan(void) {
     SPARK_ASSERT(s_bleInstance.initialized);
     LOG_DEBUG(TRACE, "ble_gap_stop_scan().");
 
-    if (!s_bleInstance.scanning) {
-        return SYSTEM_ERROR_NONE;
-    }
-
-    ret_code_t ret = sd_ble_gap_scan_stop();
-    if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_gap_scan_stop() failed: %u", (unsigned)ret);
-        return sysError(ret);
-    }
-
-    os_semaphore_give(s_bleInstance.scanSemaphore, false);
-
-    s_bleInstance.scanning = false;
-    return SYSTEM_ERROR_NONE;
+    return Observer::getInstance().stopScanning();
 }
 
 int ble_gap_connect(const hal_ble_addr_t* address, const hal_ble_conn_params_t* params, void* reserved) {
@@ -2071,7 +2152,7 @@ int ble_gap_connect(const hal_ble_addr_t* address, const hal_ble_conn_params_t* 
     memcpy(devAddr.addr, address->addr, BLE_SIG_ADDR_LEN);
 
     ble_gap_scan_params_t bleGapScanParams;
-    fromHalScanParams(&s_bleInstance.scanParams, &bleGapScanParams);
+    Observer::getInstance().toPlatformScanParams(&bleGapScanParams);
 
     ble_gap_conn_params_t connParams;
     fromHalConnParams(params, &connParams);

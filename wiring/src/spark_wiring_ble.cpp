@@ -1012,11 +1012,8 @@ public:
  */
 class BleBroadcasterImpl {
 public:
-    BleBroadcasterImpl() {
-    }
-
-    ~BleBroadcasterImpl() {
-    }
+    BleBroadcasterImpl() {}
+    ~BleBroadcasterImpl() {}
 
     int setTxPower(int8_t val) const {
         return ble_gap_set_tx_power(val);
@@ -1183,58 +1180,48 @@ public:
  */
 class BleObserverImpl {
 public:
-    BleScanParams scanParams;
     size_t targetCount;
     OnScanResultCallback callback;
     BleScanResult* results;
     size_t count;
 
-    BleObserverImpl() : targetCount(0), callback(nullptr), results(nullptr), count(0) {
-        scanParams.active = true;
-        scanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
-        scanParams.interval = BLE_DEFAULT_SCANNING_INTERVAL;
-        scanParams.window = BLE_DEFAULT_SCANNING_WINDOW;
-        scanParams.timeout = BLE_DEFAULT_SCANNING_TIMEOUT;
-    }
-
-    ~BleObserverImpl() {
-
-    }
+    BleObserverImpl() : targetCount(0), callback(nullptr), results(nullptr), count(0) {}
+    ~BleObserverImpl() {}
 
     int scan(OnScanResultCallback callback) {
         this->callback = callback;
         count = 0;
-        ble_gap_set_scan_parameters(&scanParams, NULL);
         ble_gap_start_scan(nullptr);
         return count;
     }
 
     int scan(OnScanResultCallback callback, uint16_t timeout) {
-        this->callback = callback;
-        scanParams.timeout  = timeout;
-        count = 0;
-        ble_gap_set_scan_parameters(&scanParams, NULL);
-        ble_gap_start_scan(nullptr);
-        return count;
+        hal_ble_scan_params_t params;
+        ble_gap_get_scan_parameters(&params, nullptr);
+        params.timeout = timeout;
+        ble_gap_set_scan_parameters(&params, NULL);
+        return scan(callback);
     }
 
     int scan(BleScanResult* results, size_t resultCount) {
-        return scan(results, resultCount, scanParams);
+        this->results = results;
+        targetCount = resultCount;
+        count = 0;
+        ble_gap_start_scan(nullptr);
+        return count;
     }
 
     int scan(BleScanResult* results, size_t resultCount, uint16_t timeout) {
-        scanParams.timeout  = timeout;
-        return scan(results, resultCount, scanParams);
+        hal_ble_scan_params_t params;
+        ble_gap_get_scan_parameters(&params, nullptr);
+        params.timeout = timeout;
+        ble_gap_set_scan_parameters(&params, NULL);
+        return scan(results, resultCount);
     }
 
     int scan(BleScanResult* results, size_t resultCount, const BleScanParams& params) {
-        this->results = results;
-        targetCount = resultCount;
-        scanParams = params;
-        count = 0;
-        ble_gap_set_scan_parameters(&scanParams, NULL);
-        ble_gap_start_scan(nullptr);
-        return count;
+        ble_gap_set_scan_parameters(&params, NULL);
+        return scan(results, resultCount);
     }
 
     int stopScanning(void) {
