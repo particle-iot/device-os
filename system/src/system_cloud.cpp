@@ -100,8 +100,7 @@ int spark_publish_vitals(system_tick_t period_s_, void* reserved_)
         result = _vitals.publish();
     }
 
-    return particle::protocol::toSystemError(
-        static_cast<particle::protocol::ProtocolError>(result));
+    return spark_protocol_to_system_error(result);
 }
 
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
