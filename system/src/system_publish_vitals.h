@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <functional>
 
+#include "spark_protocol_functions.h"
 #include "system_tick_hal.h"
 
 namespace particle
@@ -28,12 +29,6 @@ template <class Timer>
 class VitalsPublisher
 {
 public:
-    /**
-     * @typedef publish_fn_t
-     * @brief A function requiring no parameters and returning a \p system_error_t
-     */
-    typedef std::function<int(void)> publish_fn_t;
-
     /**
      * @brief Constructor
      *
@@ -85,12 +80,16 @@ public:
     int publish(void);
 
 private:
-    static const publish_fn_t _publishVitals;
-
     system_tick_t _period_s;
     Timer* const _timer;
+    const bool _timer_owner;
 
-    Timer* onDemandTimerInstance(void);
+    /**
+     * @brief Publish vitals from Timer callback
+     *
+     * This function is required to work around Timer thread execution bug.
+     * https://app.clubhouse.io/particle/story/30935/fix-spark-wiring-timer-timer-object-callback-to-ensure-execution-on-the-system-thread
+     */
     void publishFromTimer(void);
 };
 
