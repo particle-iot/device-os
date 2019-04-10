@@ -20,7 +20,7 @@
 
 #include "hal_platform.h"
 
-
+//#define HAL_PLATFORM_BLE 1
 #if HAL_PLATFORM_BLE
 
 #include <stdint.h>
@@ -405,11 +405,9 @@ int ble_gap_set_tx_power(int8_t value);
 /**
  * Get the TX Power for advertisement.
  *
- * @param[out]  value   Pointer to radio transmit power in dBm to be filled in.
- *
- * @returns     0 on success, system_error_t on error.
+ * @returns     The current TX power.
  */
-int ble_gap_get_tx_power(int8_t* value);
+int8_t ble_gap_get_tx_power(void);
 
 /**
  * Set the BLE advertising parameters. Changing the advertising parameter during
@@ -421,27 +419,57 @@ int ble_gap_get_tx_power(int8_t* value);
  */
 int ble_gap_set_advertising_parameters(const hal_ble_adv_params_t* adv_params, void* reserved);
 
+
+/**
+ * Get the current BLE advertising parameters.
+ *
+ * @param[in,out]   adv_params  Pointer to the advertising parameters to be filled.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int ble_gap_get_advertising_parameters(hal_ble_adv_params_t* adv_params, void* reserved);
+
 /**
  * Set the BLE advertising data. It will update the advertising data immediately if success.
  * Changing the advertising data during advertising will restart advertising using the
  * previous advertising parameters and the new advertising data.
  *
- * @param[in]   data    Pointer to the advertising data to be set.
+ * @param[in]   buf     Pointer to the advertising data to be set.
  * @param[in]   len     Length of the advertising data.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gap_set_advertising_data(const uint8_t* data, uint16_t len, void* reserved);
+int ble_gap_set_advertising_data(const uint8_t* buf, uint16_t len, void* reserved);
+
+/**
+ * Get the current BLE advertising data.
+ *
+ * @param[in,out]   buf     Pointer to the advertising data to be filled.
+ * @param[in]       len     Length of the given buffer.
+ *
+ * @returns     The length of copied data.
+ */
+size_t ble_gap_get_advertising_data(uint8_t* buf, uint16_t len, void* reserved);
 
 /**
  * Set the BLE scan response data.
  *
- * @param[in]   data    Pointer to the scan response data to be set.
+ * @param[in]   buf     Pointer to the scan response data to be set.
  * @param[in]   len     Length of the scan response data.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gap_set_scan_response_data(const uint8_t* data, uint16_t len, void* reserved);
+int ble_gap_set_scan_response_data(const uint8_t* buf, uint16_t len, void* reserved);
+
+/**
+ * Get the current BLE scan response data.
+ *
+ * @param[in,out]   buf     Pointer to the scan response data to be filled.
+ * @param[in]       len     Length of the given buffer.
+ *
+ * @returns     The length of copied data.
+ */
+size_t ble_gap_get_scan_response_data(uint8_t* buf, uint16_t len, void* reserved);
 
 /**
  * Start BLE advertising.
