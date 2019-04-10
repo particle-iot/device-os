@@ -11,7 +11,7 @@
 #include "spark_wiring_wifitester.h"
 
 #if Wiring_LogConfig
-extern int(*log_config_callback)(int cmd, const void* data, void* result, void* userData);
+extern int(*log_config_callback)(int cmd, const void* cmdData, void* result, void* userData);
 #endif
 
 SystemClass System;

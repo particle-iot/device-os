@@ -172,13 +172,13 @@ void __attribute((weak)) ctrl_request_custom_handler(ctrl_request* req) {
 #if Wiring_LogConfig
 
 // Logging configuration callback
-int(*log_config_callback)(int cmd, const void* data, void* result, void* userData) = nullptr;
+int(*log_config_callback)(int cmd, const void* cmdData, void* result, void* userData) = nullptr;
 
-static int log_config_callback_wrapper(int cmd, const void* data, void* result, void* userData) {
+static int log_config_callback_wrapper(int cmd, const void* cmdData, void* result, void* userData) {
     if (!log_config_callback) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
-    return log_config_callback(cmd, data, result, userData);
+    return log_config_callback(cmd, cmdData, result, userData);
 }
 
 #endif // Wiring_LogConfig

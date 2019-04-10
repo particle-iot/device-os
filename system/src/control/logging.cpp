@@ -15,7 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "diagnostics.h"
+#include "logging.h"
 
 #if SYSTEM_CONTROL_ENABLED
 
@@ -28,15 +28,15 @@
 
 #include "spark_wiring_vector.h"
 
-#include "diagnostics.pb.h"
+#include "logging.pb.h"
 
-#define PB(_name) particle_ctrl_diagnostics_##_name
+#define PB(_name) particle_ctrl_logging_##_name
 
 namespace particle {
 
 namespace control {
 
-namespace diagnostics {
+namespace logging {
 
 namespace {
 
@@ -74,7 +74,7 @@ int addLogHandler(ctrl_request* req) {
         if (!ctg) {
             return false;
         }
-        log_filter filt;
+        log_filter filt = {};
         filt.category = ctg; // Category name
         filt.level = pbFilt.level; // Logging level
         if (!f->filters.append(std::move(filt)) || !f->strings.append(std::move(ctg))) {
@@ -89,14 +89,15 @@ int addLogHandler(ctrl_request* req) {
     log_config_add_handler_command cmd = {};
     cmd.version = LOG_CONFIG_API_VERSION; // API version
     cmd.id = idStr.data; // Handler ID
-    cmd.type = pbReq.type; // Handler type
+    cmd.handler_type = pbReq.handler_type; // Handler type
     cmd.level = pbReq.level; // Default logging level
-    // Handler-specific settings
-    log_config_serial_params params = {};
-    if (pbReq.which_settings == PB(AddLogHandlerRequest_serial_tag)) {
-        params.index = pbReq.settings.serial.index;
-        params.baud_rate = pbReq.settings.serial.baud_rate;
-        cmd.params = &params;
+    cmd.stream_type = pbReq.stream_type; // Stream type
+    // Stream parameters
+    log_config_serial_stream_params strmParams = {};
+    if (pbReq.which_stream_params == PB(AddLogHandlerRequest_serial_tag)) {
+        strmParams.index = pbReq.stream_params.serial.index;
+        strmParams.baud_rate = pbReq.stream_params.serial.baud_rate;
+        cmd.stream_params = &strmParams;
     }
     // Category filters
     cmd.filters = f.filters.data();

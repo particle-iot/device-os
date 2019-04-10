@@ -450,13 +450,15 @@ class LogHandlerFactory {
 public:
     virtual ~LogHandlerFactory() = default;
 
-    virtual LogHandler* createHandler(LogLevel level, LogCategoryFilters filters, Print *stream) = 0;
-    virtual void destroyHandler(LogHandler *handler);
+    virtual LogHandler* createHandler(log_config_handler_type type, LogLevel level, LogCategoryFilters filters,
+            Print* stream, const void* params) = 0;
+    virtual void destroyHandler(LogHandler* handler);
 };
 
 class DefaultLogHandlerFactory: public LogHandlerFactory {
 public:
-    LogHandler* createHandler(LogLevel level, LogCategoryFilters filters, Print *stream) override;
+    LogHandler* createHandler(log_config_handler_type type, LogLevel level, LogCategoryFilters filters, Print* stream,
+            const void* params) override;
 
     static DefaultLogHandlerFactory* instance();
 };
@@ -466,14 +468,14 @@ class OutputStreamFactory {
 public:
     virtual ~OutputStreamFactory() = default;
 
-    virtual Print* createStream(log_config_handler_type type, const log_config_serial_params* params) = 0;
-    virtual void destroyStream(Print *stream);
+    virtual Print* createStream(log_config_stream_type type, const void* params) = 0;
+    virtual void destroyStream(Print* stream);
 };
 
 class DefaultOutputStreamFactory: public OutputStreamFactory {
 public:
-    Print* createStream(log_config_handler_type type, const log_config_serial_params* params) override;
-    void destroyStream(Print *stream) override;
+    Print* createStream(log_config_stream_type type, const void* params) override;
+    void destroyStream(Print* stream) override;
 
     static DefaultOutputStreamFactory* instance();
 };
@@ -512,19 +514,17 @@ public:
 
     /*!
         \brief Creates and registers a factory log handler.
-
         \param id Handler ID.
         \param handlerType Handler type.
         \param level Default logging level.
         \param filters Category filters.
-        \param handlerParams Additional handler parameters.
+        \param handlerParams Handler parameters.
         \param streamType Stream type.
-        \param streamParams Additional stream parameters.
-
+        \param streamParams Stream parameters.
         \return `false` in case of error.
     */
     bool addFactoryHandler(const char *id, log_config_handler_type handlerType, LogLevel level, LogCategoryFilters filters,
-            const log_config_serial_params* streamParams);
+            const void* handlerParams, log_config_stream_type streamType, const void* streamParams);
     /*!
         \brief Unregisters and destroys a factory log handler.
 
@@ -609,12 +609,12 @@ private:
     \brief Configuration callback.
 
     \param cmd Command type (one of the values defined by the `log_config_command` enum).
-    \param data Command data.
+    \param cmdData Command data.
     \param result Command result.
     \param userData User data.
     \return `0` on success, or a negative result code in case of an error.
 */
-int logConfig(int cmd, const void* data, void* result, void* userData);
+int logConfig(int cmd, const void* cmdData, void* result, void* userData);
 
 #endif // Wiring_LogConfig
 

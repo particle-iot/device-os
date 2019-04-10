@@ -37,24 +37,34 @@ typedef enum log_config_command {
  * Log handler types.
  */
 typedef enum log_config_handler_type {
-    LOG_CONFIG_USB_SERIAL = 1, ///< USB serial (Serial, USBSerial1, etc.)
-    LOG_CONFIG_HW_SERIAL = 2 ///< Hardware serial (Serial1, Serial2, etc.)
+    LOG_CONFIG_DEFAULT_STREAM_HANDLER = 1, ///< `StreamLogHandler`
+    LOG_CONFIG_JSON_STREAM_HANDLER = 2 ///< `JSONStreamLogHandler`
 } log_config_handler_type;
 
 /**
- * Serial interface settings.
+ * Stream types.
  */
-typedef struct log_config_serial_params {
+typedef enum log_config_stream_type {
+    LOG_CONFIG_USB_SERIAL_STREAM = 1, ///< USB serial (`Serial`, `USBSerial1`, etc.)
+    LOG_CONFIG_HW_SERIAL_STREAM = 2 ///< Hardware serial (`Serial1`, `Serial2`, etc.)
+} log_config_stream_type;
+
+/**
+ * Serial stream parameters.
+ */
+typedef struct log_config_serial_stream_params {
     uint8_t index; ///< Interface index.
+    uint8_t reserved1;
+    uint16_t reserved2;
     uint32_t baud_rate; ///< Baud rate.
-} log_config_serial_params;
+} log_config_serial_stream_params;
 
 /**
  * Category filter.
  */
 typedef struct log_filter {
     const char* category; ///< Category name.
-    uint8_t level; ///< Logging level (one of the values defined by the `LogLevel` enum).
+    uint8_t level; ///< Logging level (a value defined by the `LogLevel` enum).
 } log_filter;
 
 /**
@@ -62,11 +72,14 @@ typedef struct log_filter {
  */
 typedef struct log_config_add_handler_command {
     uint8_t version; ///< API version number.
-    uint8_t type; ///< Handler type (one of the values defined by the `log_config_handler_type` enum).
-    uint8_t level; ///< Default logging level (one of the values defined by the `LogLevel` enum).
-    uint8_t filter_count; ///< Number of elements in the `filters` array.
+    uint8_t handler_type; ///< Handler type (a value defined by the `log_config_handler_type` enum).
+    uint8_t stream_type; ///< Stream type (a value defined by the `log_config_stream_type` enum).
+    uint8_t level; ///< Default logging level (a value defined by the `LogLevel` enum).
+    uint16_t filter_count; ///< Number of elements in the `filters` array.
+    uint16_t reserved;
     const char* id; ///< Handler ID.
-    const void* params; ///< Handler-specific parameters.
+    const void* handler_params; ///< Handler parameters.
+    const void* stream_params; ///< Stream parameters.
     const log_filter* filters; ///< Category filters.
 } log_config_add_handler_command;
 
@@ -108,13 +121,13 @@ typedef struct log_config_get_handlers_result {
 /**
  * Configuration callback.
  *
- * @param command Command type (one of the values defined by the `log_config_command` enum).
- * @param command_data Command data.
- * @param command_result Command result.
+ * @param cmd Command type (a value defined by the `log_config_command` enum).
+ * @param cmd_data Command data.
+ * @param result Command result.
  * @param user_data User data.
  * @return `0` on success, or a negative result code in case of an error.
  */
-typedef int(*log_config_callback_type)(int command, const void* command_data, void* command_result, void* user_data);
+typedef int(*log_config_callback_type)(int cmd, const void* cmd_data, void* result, void* user_data);
 
 #ifdef __cplusplus
 extern "C" {
@@ -130,7 +143,7 @@ extern "C" {
 void log_config_set_callback(log_config_callback_type callback, void* user_data, void* reserved);
 
 // Invoke the configuration callback. This function is internal to the system module
-int log_config(int command, const void* command_data, void* command_result);
+int log_config(int cmd, const void* cmd_data, void* result);
 
 #ifdef __cplusplus
 } // extern "C"

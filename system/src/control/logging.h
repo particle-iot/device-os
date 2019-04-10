@@ -23,13 +23,13 @@ namespace particle {
 
 namespace control {
 
-namespace diagnostics {
+namespace logging {
 
 int addLogHandler(ctrl_request* req);
 int removeLogHandler(ctrl_request* req);
 int getLogHandlers(ctrl_request* req);
 
-} // particle::control::diagnostics
+} // particle::control::logging
 
 } // particle::control
 
