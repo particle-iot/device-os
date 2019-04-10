@@ -50,6 +50,10 @@ void default_random_seed_from_cloud(unsigned int seed)
     srand(seed);
 }
 
+int spark_protocol_to_system_error (int error_) {
+    return toSystemError(static_cast<particle::protocol::ProtocolError>(error_));
+}
+
 #if !PARTICLE_PROTOCOL || HAL_PLATFORM_CLOUD_TCP
 int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* plaintext, int32_t plaintext_len)
 {
