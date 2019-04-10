@@ -37,7 +37,7 @@
 #include "control/storage.h"
 #include "control/mesh.h"
 #include "control/cloud.h"
-#include "control/diagnostics.h"
+#include "control/logging.h"
 
 namespace particle {
 
@@ -457,15 +457,15 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
     case CTRL_REQUEST_ADD_LOG_HANDLER: {
-        setResult(req, control::diagnostics::addLogHandler(req));
+        setResult(req, control::logging::addLogHandler(req));
         break;
     }
     case CTRL_REQUEST_REMOVE_LOG_HANDLER: {
-        setResult(req, control::diagnostics::removeLogHandler(req));
+        setResult(req, control::logging::removeLogHandler(req));
         break;
     }
     case CTRL_REQUEST_GET_LOG_HANDLERS: {
-        setResult(req, control::diagnostics::getLogHandlers(req));
+        setResult(req, control::logging::getLogHandlers(req));
         break;
     }
 #endif // HAL_PLATFORM_MESH

@@ -103,10 +103,10 @@ int addLogHandler(const log_config_add_handler_command* cmd) {
         const auto& f = cmd->filters[i];
         CHECK_TRUE(filters.append(LogCategoryFilter(f.category, (LogLevel)f.level)), SYSTEM_ERROR_NO_MEMORY);
     }
-    const auto params = (const log_config_serial_params*)cmd->params;
     const auto mgr = LogManager::instance();
-    CHECK_TRUE(mgr->addFactoryHandler(cmd->id, (log_config_handler_type)cmd->type, (LogLevel)cmd->level,
-            std::move(filters), params), SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(mgr->addFactoryHandler(cmd->id, (log_config_handler_type)cmd->handler_type, (LogLevel)cmd->level,
+            std::move(filters), cmd->handler_params, (log_config_stream_type)cmd->stream_type, cmd->stream_params),
+            SYSTEM_ERROR_UNKNOWN);
     return 0;
 }
 
@@ -393,8 +393,16 @@ void spark::JSONStreamLogHandler::logMessage(const char *msg, LogLevel level, co
 #if Wiring_LogConfig
 
 // spark::DefaultLogHandlerFactory
-LogHandler* spark::DefaultLogHandlerFactory::createHandler(LogLevel level, LogCategoryFilters filters, Print *stream) {
-    return new(std::nothrow) JSONStreamLogHandler(*stream, level, std::move(filters)); // FIXME
+LogHandler* spark::DefaultLogHandlerFactory::createHandler(log_config_handler_type type, LogLevel level,
+        LogCategoryFilters filters, Print* stream, const void* params) {
+    switch (type) {
+    case LOG_CONFIG_DEFAULT_STREAM_HANDLER:
+        return new(std::nothrow) StreamLogHandler(*stream, level, std::move(filters));
+    case LOG_CONFIG_JSON_STREAM_HANDLER:
+        return new(std::nothrow) JSONStreamLogHandler(*stream, level, std::move(filters));
+    default:
+        return nullptr;
+    }
 }
 
 spark::DefaultLogHandlerFactory* spark::DefaultLogHandlerFactory::instance() {
@@ -403,32 +411,34 @@ spark::DefaultLogHandlerFactory* spark::DefaultLogHandlerFactory::instance() {
 }
 
 // spark::DefaultOutputStreamFactory
-Print* spark::DefaultOutputStreamFactory::createStream(log_config_handler_type type, const log_config_serial_params* params) {
+Print* spark::DefaultOutputStreamFactory::createStream(log_config_stream_type type, const void* params) {
 #if PLATFORM_ID != 3
-    if (!params) {
-        return nullptr;
-    }
     switch (type) {
-        case LOG_CONFIG_USB_SERIAL: {
-            switch (params->index) {
-                case 0: {
-                    Serial.begin();
-                    return &Serial;
-                }
+        case LOG_CONFIG_USB_SERIAL_STREAM: {
+            if (!params) {
+                return nullptr;
+            }
+            const auto p = (const log_config_serial_stream_params*)params;
+            switch (p->index) {
+            case 0:
+                Serial.begin();
+                return &Serial;
 #if Wiring_USBSerial1
-                case 1: {
-                    USBSerial1.begin();
-                    return &USBSerial1;
-                }
+            case 1:
+                USBSerial1.begin();
+                return &USBSerial1;
 #endif // Wiring_USBSerial1
             }
         }
-        case LOG_CONFIG_HW_SERIAL: {
-            switch (params->index) {
-                case 1: {
-                    Serial1.begin(params->baud_rate ? params->baud_rate : 115200);
-                    return &Serial1;
-                }
+        case LOG_CONFIG_HW_SERIAL_STREAM: {
+            if (!params) {
+                return nullptr;
+            }
+            const auto p = (const log_config_serial_stream_params*)params;
+            switch (p->index) {
+            case 1:
+                Serial1.begin(p->baud_rate ? p->baud_rate : 115200);
+                return &Serial1;
             }
         }
     }
@@ -439,6 +449,7 @@ Print* spark::DefaultOutputStreamFactory::createStream(log_config_handler_type t
 void spark::DefaultOutputStreamFactory::destroyStream(Print *stream) {
 #if PLATFORM_ID != 3
     if (stream == &Serial) {
+        // Uninitializing the USB serial detaches a Gen 3 device from the host
         // Serial.end();
         return;
     }
@@ -470,19 +481,19 @@ struct spark::LogManager::FactoryHandler {
 
 #endif // Wiring_LogConfig
 
-spark::LogManager::LogManager() {
+spark::LogManager::LogManager() :
+        outputActive_(false) {
 #if Wiring_LogConfig
     handlerFactory_ = DefaultLogHandlerFactory::instance();
     streamFactory_ = DefaultOutputStreamFactory::instance();
 #endif
-    outputActive_ = false;
 }
 
 spark::LogManager::~LogManager() {
     resetSystemCallbacks();
 #if Wiring_LogConfig
     LOG_WITH_LOCK(mutex_) {
-         destroyFactoryHandlers();
+        destroyFactoryHandlers();
     }
 #endif
 }
@@ -515,24 +526,21 @@ spark::LogManager* spark::LogManager::instance() {
 #if Wiring_LogConfig
 
 bool spark::LogManager::addFactoryHandler(const char *id, log_config_handler_type handlerType, LogLevel level,
-        LogCategoryFilters filters, const log_config_serial_params* streamParams) {
+        LogCategoryFilters filters, const void* handlerParams, log_config_stream_type streamType, const void* streamParams) {
     LOG_WITH_LOCK(mutex_) {
         destroyFactoryHandler(id); // Destroy an existing handler with the same ID
-        FactoryHandler h;
+        FactoryHandler h = {};
         h.id = id;
         if (!h.id.length()) {
             return false; // Empty handler ID or memory allocation error
         }
         // Create output stream (optional)
-        Print* stream = streamFactory_->createStream(handlerType, streamParams); // FIXME
-        if (!stream) {
-            return false;
-        }
+        Print* stream = streamFactory_->createStream(streamType, streamParams);
         NAMED_SCOPE_GUARD(streamGuard, {
             streamFactory_->destroyStream(stream);
         });
         // Create log handler
-        LogHandler* handler = handlerFactory_->createHandler(level, std::move(filters), stream);
+        LogHandler* handler = handlerFactory_->createHandler(handlerType, level, std::move(filters), stream, handlerParams);
         if (!handler) {
             return false;
         }
@@ -707,14 +715,14 @@ inline void spark::LogManager::setActive(bool outputActive) {
 #if Wiring_LogConfig
 
 // spark::
-int spark::logConfig(int cmd, const void* data, void* result, void* userData) {
+int spark::logConfig(int cmd, const void* cmdData, void* result, void* userData) {
     switch (cmd) {
     case LOG_CONFIG_ADD_HANDLER:
-        return addLogHandler((const log_config_add_handler_command*)data);
+        return addLogHandler((const log_config_add_handler_command*)cmdData);
     case LOG_CONFIG_REMOVE_HANDLER:
-        return removeLogHandler((const log_config_remove_handler_command*)data);
+        return removeLogHandler((const log_config_remove_handler_command*)cmdData);
     case LOG_CONFIG_GET_HANDLERS:
-        return getLogHandlers((const log_config_get_handlers_command*)data, (log_config_get_handlers_result*)result);
+        return getLogHandlers((const log_config_get_handlers_command*)cmdData, (log_config_get_handlers_result*)result);
     default:
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }

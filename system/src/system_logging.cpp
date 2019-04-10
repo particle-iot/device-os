@@ -31,7 +31,7 @@ void log_config_set_callback(log_config_callback_type callback, void* user_data,
     g_logConfigCallbackData = user_data;
 }
 
-int log_config(int command, const void* command_data, void* command_result) {
+int log_config(int cmd, const void* cmd_data, void* result) {
     CHECK_TRUE(g_logConfigCallback, SYSTEM_ERROR_NOT_SUPPORTED);
-    return g_logConfigCallback(command, command_data, command_result, g_logConfigCallbackData);
+    return g_logConfigCallback(cmd, cmd_data, result, g_logConfigCallbackData);
 }
