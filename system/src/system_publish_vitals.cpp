@@ -4,20 +4,16 @@
 #include <limits>
 
 #include "logging.h"
-#include "spark_protocol_functions.h"
 #include "system_threading.h"
 
 using namespace particle::system;
 
 template <class Timer>
-const typename VitalsPublisher<Timer>::publish_fn_t VitalsPublisher<Timer>::_publishVitals =
-    std::bind(spark_protocol_post_description, spark_protocol_instance(),
-              particle::protocol::DESCRIBE_METRICS, nullptr);
-
-template <class Timer>
 VitalsPublisher<Timer>::VitalsPublisher(Timer* timer_)
     : _period_s(std::numeric_limits<system_tick_t>::max()),
-      _timer(timer_ ? timer_ : onDemandTimerInstance())
+      _timer(timer_ ? timer_
+                    : new Timer(_period_s, &VitalsPublisher::publishFromTimer, *this, false)),
+      _timer_owner(!timer_)
 {
 }
 
@@ -25,6 +21,10 @@ template <class Timer>
 VitalsPublisher<Timer>::~VitalsPublisher(void)
 {
     _timer->dispose();
+    if (_timer_owner)
+    {
+        delete _timer;
+    }
 }
 
 template <class Timer>
@@ -37,13 +37,6 @@ template <class Timer>
 void VitalsPublisher<Timer>::enablePeriodicPublish(void)
 {
     _timer->start();
-}
-
-template <class Timer>
-Timer* VitalsPublisher<Timer>::onDemandTimerInstance(void)
-{
-    static Timer* timer = new Timer(_period_s, &VitalsPublisher::publishFromTimer, *this, false);
-    return timer;
 }
 
 template <class Timer>
@@ -81,7 +74,8 @@ void VitalsPublisher<Timer>::period(system_tick_t period_s_)
 template <class Timer>
 int VitalsPublisher<Timer>::publish(void)
 {
-    return _publishVitals();
+    return spark_protocol_post_description(spark_protocol_instance(),
+                                           particle::protocol::DESCRIBE_METRICS, nullptr);
 }
 
 template <class Timer>
@@ -94,7 +88,8 @@ void VitalsPublisher<Timer>::publishFromTimer(void)
     }
     task->func = [](ISRTaskQueue::Task* task) {
         delete task;
-        _publishVitals();
+        spark_protocol_post_description(spark_protocol_instance(),
+                                        particle::protocol::DESCRIBE_METRICS, nullptr);
     };
     SystemISRTaskQueue.enqueue(task);
 }
