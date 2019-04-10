@@ -185,6 +185,8 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
 bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved=NULL);
 system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved=NULL);
 
+int spark_protocol_to_system_error (int error);
+
 typedef struct {
 	size_t size;				// size of this structure
 	uint32_t flags;				// for now 0, may be used to influence the details retrieved
