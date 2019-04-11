@@ -132,12 +132,18 @@ private:
 
 };
 
+#endif // PLATFORM_ID!=3
+
 #if (0 == PLATFORM_THREADING)
-namespace particle {
+namespace particle
+{
 class NullTimer
 {
 public:
-    NullTimer(unsigned, Timer::timer_callback_fn, bool) {
+    typedef std::function<void(void)> timer_callback_fn;
+
+    NullTimer(unsigned, timer_callback_fn, bool)
+    {
     }
 
     template <typename T>
@@ -166,7 +172,5 @@ public:
     {
     }
 };
-}
+} // namespace particle
 #endif // not PLATFORM_THREADING
-
-#endif
