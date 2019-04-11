@@ -55,6 +55,8 @@ enum class NetifEvent {
     PowerOn = 5
 };
 
+unsigned NCP_SARA_R410_MTU = 1000;
+
 } // anonymous
 
 
@@ -200,11 +202,6 @@ int PppNcpNetif::downImpl() {
     up_ = false;
     client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
     client_.disconnect();
-    auto r = celMan_->ncpClient()->on();
-    if (r) {
-        LOG(TRACE, "Failed to initialize ublox NCP client: %d", r);
-        return r;
-    }
     celMan_->ncpClient()->disconnect();
     return 0;
 }
@@ -229,6 +226,17 @@ void PppNcpNetif::pppEventHandlerCb(particle::net::ppp::Client* c, uint64_t ev, 
 }
 
 void PppNcpNetif::pppEventHandler(uint64_t ev) {
+    if (ev == particle::net::ppp::Client::EVENT_UP) {
+        unsigned mtu = client_.getIf()->mtu;
+        LOG(TRACE, "Negotiated MTU: %u", mtu);
+        if (celMan_->ncpClient()->ncpId() == MESH_NCP_SARA_R410) {
+            // This is a workaround for SARA R410 02B, where the default MTU
+            // causes the PPP session to get broken
+            client_.getIf()->mtu = std::min(mtu, NCP_SARA_R410_MTU);
+            mtu = client_.getIf()->mtu;
+            LOG(INFO, "Updating MTU to: %u", mtu);
+        }
+    }
 }
 
 void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {

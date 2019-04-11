@@ -268,7 +268,7 @@ int UDP::parsePacket(system_tick_t timeout) {
 
     flush_buffer();         // start a new read - discard the old data
     if (_buffer && _buffer_size) {
-        int result = receivePacket(_buffer, _buffer_size);
+        int result = receivePacket(_buffer, _buffer_size, timeout);
         if (result > 0) {
             _total = result;
         }
