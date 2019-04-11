@@ -349,7 +349,7 @@ void spark::JSONStreamLogHandler::logMessage(const char *msg, LogLevel level, co
     JSONStreamWriter json(*this->stream());
     json.beginObject();
     // Level
-    const char *s = levelName(level);
+    const char *s = jsonLevelName(level);
     json.name("l", 1).value(s);
     // Message
     if (msg) {
@@ -388,6 +388,18 @@ void spark::JSONStreamLogHandler::logMessage(const char *msg, LogLevel level, co
     }
     json.endObject();
     this->stream()->write((const uint8_t*)"\r\n", 2);
+}
+
+const char* spark::JSONStreamLogHandler::jsonLevelName(int level) {
+    if (level >= LOG_LEVEL_ERROR) {
+        return "e";
+    } else if (level >= LOG_LEVEL_WARN) {
+        return "w";
+    } else if (level >= LOG_LEVEL_INFO) {
+        return "i";
+    } else {
+        return "t";
+    }
 }
 
 #if Wiring_LogConfig
