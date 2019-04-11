@@ -645,47 +645,23 @@ int ble_gatt_server_add_descriptor(const hal_ble_desc_init_t* desc_init, uint16_
  * Set Characteristic value..
  *
  * @param[in]   value_handle    Characteristic value handle.
- * @param[in]   data            Pointer to the buffer that contains the data to be set.
+ * @param[in]   buf             Pointer to the buffer that contains the data to be set.
  * @param[in]   len             Length of the data to be set.
  *
- * @returns     0 on success, system_error_t on error.
+ * @returns     Length of the data has been set.
  */
-int ble_gatt_server_set_characteristic_value(uint16_t value_handle, const uint8_t* data, uint16_t len, void* reserved);
+size_t ble_gatt_server_set_characteristic_value(uint16_t value_handle, const uint8_t* buf, size_t len, void* reserved);
 
 /**
  * Get Characteristic value.
  *
- * @param[in]       value_handle    Characteristic value handle.
- * @param[in]       data            Pointer to the buffer that to be filled with the Characteristic value.
- * @param[in,out]   len             Length of the given buffer. Return the actual length of the value.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_gatt_server_get_characteristic_value(uint16_t value_handle, uint8_t* data, uint16_t* len, void* reserved);
-
-/**
- * Send a notification to GATT Client. No response from GATT Client is required.
- *
- * @param[in]   conn_handle     Connection handle.
  * @param[in]   value_handle    Characteristic value handle.
- * @param[in]   data            Pointer to the buffer that contains the data to be sent.
- * @param[in]   len             Length of the data to be sent.
+ * @param[in]   buf             Pointer to the buffer that to be filled with the Characteristic value.
+ * @param[in]   len             Length of the given buffer. Return the actual length of the value.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gatt_server_notify_characteristic_value(uint16_t conn_handle, uint16_t value_handle, const uint8_t* data, uint16_t len, void* reserved);
-
-/**
- * Send an indication to GATT Client. A response from GATT Client is required.
- *
- * @param[in]   conn_handle     Connection handle.
- * @param[in]   value_handle    Characteristic value handle.
- * @param[in]   data            Pointer to the buffer that contains the data to be sent.
- * @param[in]   len             Length of the data to be sent.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int ble_gatt_server_indicate_characteristic_value(uint16_t conn_handle, uint16_t value_handle, const uint8_t* data, uint16_t len, void* reserved);
+size_t ble_gatt_server_get_characteristic_value(uint16_t value_handle, uint8_t* buf, size_t len, void* reserved);
 
 /**
  * Discover all BLE primary services.
@@ -768,7 +744,7 @@ int ble_gatt_client_configure_cccd(uint16_t conn_handle, uint16_t cccd_handle, u
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gatt_client_write_with_response(uint16_t conn_handle, uint16_t value_handle, const uint8_t* data, uint16_t len, void* reserved);
+int ble_gatt_client_write_with_response(uint16_t conn_handle, uint16_t value_handle, const uint8_t* data, size_t len, void* reserved);
 
 /**
  * Write data to GATT server without a response required from peer device.
@@ -780,7 +756,7 @@ int ble_gatt_client_write_with_response(uint16_t conn_handle, uint16_t value_han
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gatt_client_write_without_response(uint16_t conn_handle, uint16_t value_handle, const uint8_t* data, uint16_t len, void* reserved);
+int ble_gatt_client_write_without_response(uint16_t conn_handle, uint16_t value_handle, const uint8_t* data, size_t len, void* reserved);
 
 /**
  * Read data from GATT server. The data is returned through a BLE event.
@@ -790,7 +766,7 @@ int ble_gatt_client_write_without_response(uint16_t conn_handle, uint16_t value_
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gatt_client_read(uint16_t conn_handle, uint16_t attr_handle, uint8_t* data, uint16_t* len, void* reserved);
+int ble_gatt_client_read(uint16_t conn_handle, uint16_t attr_handle, uint8_t* data, size_t* len, void* reserved);
 
 
 #ifdef __cplusplus
