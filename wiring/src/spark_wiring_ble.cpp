@@ -1267,30 +1267,20 @@ public:
     BleConnParams ppcp;
     Vector<BlePeerDevice> centrals;
 
-    BlePeripheralImpl() {
-        ppcp.min_conn_interval = BLE_DEFAULT_MIN_CONN_INTERVAL;
-        ppcp.max_conn_interval = BLE_DEFAULT_MAX_CONN_INTERVAL;
-        ppcp.slave_latency     = BLE_DEFAULT_SLAVE_LATENCY;
-        ppcp.conn_sup_timeout  = BLE_DEFAULT_CONN_SUP_TIMEOUT;
-    }
-
-    ~BlePeripheralImpl() {
-    }
+    BlePeripheralImpl() {}
+    ~BlePeripheralImpl() {}
 
     size_t centralCount(void) const {
         return centrals.size();
     }
 
-    int setPPCP(void) {
-        return ble_gap_set_ppcp(&ppcp, NULL);
-    }
-
     int setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) {
+        hal_ble_conn_params_t ppcp;
         ppcp.min_conn_interval = minInterval;
         ppcp.max_conn_interval = maxInterval;
         ppcp.slave_latency = latency;
         ppcp.conn_sup_timeout = timeout;
-        return setPPCP();
+        return ble_gap_set_ppcp(&ppcp, nullptr);
     }
 
     int disconnect(void) {
@@ -1323,29 +1313,30 @@ public:
  */
 class BleCentralImpl {
 public:
-    BleConnParams connParams;
     Vector<BlePeerDevice> peripherals;
 
-    BleCentralImpl() {
-        connParams.min_conn_interval = BLE_DEFAULT_MIN_CONN_INTERVAL;
-        connParams.max_conn_interval = BLE_DEFAULT_MIN_CONN_INTERVAL;
-        connParams.slave_latency     = BLE_DEFAULT_SLAVE_LATENCY;
-        connParams.conn_sup_timeout  = BLE_DEFAULT_CONN_SUP_TIMEOUT;
-    }
-
-    ~BleCentralImpl() {
-    }
+    BleCentralImpl() {}
+    ~BleCentralImpl() {}
 
     size_t peripheralCount(void) const {
         return peripherals.size();
     }
 
     BlePeerDevice connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout) {
+        hal_ble_conn_params_t connParams;
         connParams.min_conn_interval = interval;
         connParams.max_conn_interval = interval;
         connParams.slave_latency = latency;
         connParams.conn_sup_timeout = timeout;
-        ble_gap_connect(&addr, &connParams, nullptr);
+        ble_gap_set_ppcp(&connParams, nullptr);
+        ble_gap_connect(&addr, nullptr);
+
+        BlePeerDevice peer;
+        return peer;
+    }
+
+    BlePeerDevice connect(const BleAddress& addr) {
+        ble_gap_connect(&addr, nullptr);
 
         BlePeerDevice peer;
         return peer;
@@ -1441,8 +1432,6 @@ BleLocalDevice::BleLocalDevice()
     observerProxy_ = std::make_shared<BleObserverImpl>();
     peripheralProxy_ = std::make_shared<BlePeripheralImpl>();
     centralProxy_ = std::make_shared<BleCentralImpl>();
-
-    setPPCP();
 
     ble_set_callback_on_events(onBleEvents, this);
 }
@@ -1579,10 +1568,6 @@ int BleLocalDevice::stopScanning(void) {
     return observerProxy_->stopScanning();
 }
 
-int BleLocalDevice::setPPCP(void) {
-    return peripheralProxy_->setPPCP();
-}
-
 int BleLocalDevice::setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) {
     return peripheralProxy_->setPPCP(minInterval, maxInterval, latency, timeout);
 }
@@ -1597,6 +1582,10 @@ bool BleLocalDevice::connected(void) const {
 
 BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout) {
     return centralProxy_->connect(addr, interval, latency, timeout);
+}
+
+BlePeerDevice BleLocalDevice::connect(const BleAddress& addr) {
+    return centralProxy_->connect(addr);
 }
 
 int BleLocalDevice::disconnect(const BlePeerDevice& peripheral) {

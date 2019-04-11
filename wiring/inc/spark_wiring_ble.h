@@ -406,13 +406,10 @@ public:
         return addCharacteristic(characteristic);
     }
 
-    int setPPCP(void);
     int setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY, uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT);
 
-    BlePeerDevice connect(const BleAddress& addr,
-            uint16_t interval = BLE_DEFAULT_MIN_CONN_INTERVAL,
-            uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY,
-            uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT);
+    BlePeerDevice connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout);
+    BlePeerDevice connect(const BleAddress& addr);
 
     int disconnect(void);
     int disconnect(const BlePeerDevice& peripheral);
