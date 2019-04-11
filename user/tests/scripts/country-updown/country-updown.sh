@@ -1,4 +1,4 @@
-# Usage: WIFI_NETWORK=myssid WIFI_SECURITY=WPA2_AES WIFI_PASSWORD=mypass DEVICE_ID=123412341234123412341234 PORT=$port4p ./country_updown.sh
+# Usage: WIFI_NETWORK=myssid WIFI_SECURITY=WPA2_AES WIFI_PASSWORD=mypass DEVICE_ID=123412341234123412341234 PORT=$port4p ./country-updown.sh
 # set globals
 : ${DEVICE_ID:?"REQUIRED"}
 : ${PORT:?"REQUIRED"}
@@ -48,6 +48,8 @@ export PHOTON_SP1_070="https://github.com/particle-iot/device-os/releases/downlo
 export PHOTON_SP2_070="https://github.com/particle-iot/device-os/releases/download/v0.7.0/system-part2-0.7.0-photon.bin"
 export PHOTON_SP1_101="https://github.com/particle-iot/device-os/releases/download/v1.0.1/system-part1-1.0.1-photon.bin"
 export PHOTON_SP2_101="https://github.com/particle-iot/device-os/releases/download/v1.0.1/system-part2-1.0.1-photon.bin"
+export PHOTON_SP1_110_RC1="https://github.com/particle-iot/device-os/releases/download/v1.1.0-rc.1/system-part1-1.1.0-rc.1-photon.bin"
+export PHOTON_SP2_110_RC1="https://github.com/particle-iot/device-os/releases/download/v1.1.0-rc.1/system-part2-1.1.0-rc.1-photon.bin"
 
 
 # instead of these set options,
@@ -355,6 +357,13 @@ curl_all_required_system_parts() {
     curl --fail -L "$PHOTON_SP2_101" -o "system-part2-1.0.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
   fi
 
+  if [ ! -e "system-part1-1.1.0-rc.1-photon.bin" ]; then
+    curl --fail -L "$PHOTON_SP1_110_RC1" -o "system-part1-1.1.0-rc.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
+  fi
+  if [ ! -e "system-part2-1.1.0-rc.1-photon.bin" ]; then
+    curl --fail -L "$PHOTON_SP2_110_RC1" -o "system-part2-1.1.0-rc.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
+  fi
+
   if [ ! -e "tinker-v0.4.9-photon.bin" ]; then
     curl --fail -L "$PHOTON_TKR_049" -o "tinker-v0.4.9-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
   fi
@@ -584,6 +593,15 @@ fail() {
 #  86 |   JP2   |   050   | DEFAULT |   101      |   JP2   |   070/063/051   | online
 #  87 |   JP2   |   050   | DEFAULT |   101      |   GB0   |   070/063/050   | wiped creds, re-enter
 #  88 |   JP2   |   050   | DEFAULT |   101      | DEFAULT |   070/063/050   | re-test, online
+# ----+---------+---------+---------+------------+---------+-----------------+----------------------
+#  89 |   JP2   |   050   | DEFAULT |   110rc1   |   N/A   |   070/063/050   | online
+#  90 |   JP2   |   050   | DEFAULT | 051/110rc1 |   N/A   |   070/063/050   | online
+#  91 |   JP2   |   050   | DEFAULT |   110rc1   |   N/A   |   070/063/051   | online
+#  92 |   JP2   |   050   | DEFAULT |   110rc1   |   JP2   |   070/063/050   | online
+#  93 |   JP2   |   050   | DEFAULT | 051/110rc1 |   JP2   |   070/063/050   | online
+#  94 |   JP2   |   050   | DEFAULT |   110rc1   |   JP2   |   070/063/051   | online
+#  95 |   JP2   |   050   | DEFAULT |   110rc1   |   GB0   |   070/063/050   | wiped creds, re-enter
+#  96 |   JP2   |   050   | DEFAULT |   110rc1   | DEFAULT |   070/063/050   | re-test, online
 # ----+---------+---------+---------+------------+---------+-----------------+----------------------
 # LAST TEST | ALL PASSED
 # -------------------------
@@ -2863,7 +2881,7 @@ if false; then
   try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
 fi
 
-if true; then
+if false; then
   # ------
   # 101
   # ------
@@ -3173,6 +3191,337 @@ if true; then
   try exit_dfu_mode
 
   # wait for 1.0.1 bootloader from SMH
+  sleep 30
+
+  enter_dfu_mode
+  try dfu_system 0.7.0 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.6.3 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try exit_dfu_mode
+
+  enter_ymodem
+  try ymodem_boot 0.5.4 photon
+
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+
+fi
+
+if true; then
+  # ------
+  # 110rc1
+  # ------
+
+  heading
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  echo "| 89 |   JP2   |   050   | DEFAULT |   110rc1   |   N/A   |   070/063/050   | online                 |"
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  enter_dfu_mode
+  try set_country JP2
+  exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try set_country DEFAULT
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 1.1.0-rc.1 photon
+  try exit_dfu_mode
+
+  # wait for 1.1.0-rc.1 bootloader from SMH
+  sleep 30
+
+  enter_dfu_mode
+  try dfu_system 0.7.0 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.6.3 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try exit_dfu_mode
+
+  enter_ymodem
+  try ymodem_boot 0.5.4 photon
+
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+
+  heading
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  echo "| 90 |   JP2   |   050   | DEFAULT | 051/110rc1 |   N/A   |   070/063/050   | online                 |"
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  enter_dfu_mode
+  try set_country JP2
+  exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try set_country DEFAULT
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.1 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 1.1.0-rc.1 photon
+  try exit_dfu_mode
+
+  # wait for 1.1.0-rc.1 bootloader from SMH
+  sleep 30
+
+  enter_dfu_mode
+  try dfu_system 0.7.0 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.6.3 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try exit_dfu_mode
+
+  enter_ymodem
+  try ymodem_boot 0.5.4 photon
+
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+
+  heading
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  echo "| 91 |   JP2   |   050   | DEFAULT |   110rc1   |   N/A   |   070/063/051   | online                 |"
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  enter_dfu_mode
+  try set_country JP2
+  exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try set_country DEFAULT
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 1.1.0-rc.1 photon
+  try exit_dfu_mode
+
+  # wait for 1.1.0-rc.1 bootloader from SMH
+  sleep 30
+
+  enter_dfu_mode
+  try dfu_system 0.7.0 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.6.3 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.1 photon
+  try exit_dfu_mode
+
+  enter_ymodem
+  try ymodem_boot 0.5.4 photon
+
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+
+  heading
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  echo "| 92 |   JP2   |   050   | DEFAULT |   110rc1   |   JP2   |   070/063/050   | online                 |"
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  enter_dfu_mode
+  try set_country JP2
+  exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try set_country DEFAULT
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 1.1.0-rc.1 photon
+  try exit_dfu_mode
+
+  # wait for 1.1.0-rc.1 bootloader from SMH
+  sleep 30
+
+  enter_dfu_mode
+  try dfu_system 0.7.0 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.6.3 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try set_country JP2
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try exit_dfu_mode
+
+  enter_ymodem
+  try ymodem_boot 0.5.4 photon
+
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+
+  heading
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  echo "| 93 |   JP2   |   050   | DEFAULT | 051/110rc1 |   JP2   |   070/063/050   | online                 |"
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  enter_dfu_mode
+  try set_country JP2
+  exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try set_country DEFAULT
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.1 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 1.1.0-rc.1 photon
+  try exit_dfu_mode
+
+  # wait for 1.1.0-rc.1 bootloader from SMH
+  sleep 30
+
+  enter_dfu_mode
+  try dfu_system 0.7.0 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.6.3 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try set_country JP2
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try exit_dfu_mode
+
+  enter_ymodem
+  try ymodem_boot 0.5.4 photon
+
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+
+  heading
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  echo "| 94 |   JP2   |   050   | DEFAULT |   110rc1   |   JP2   |   070/063/051   | online                 |"
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  enter_dfu_mode
+  try set_country JP2
+  exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try set_country DEFAULT
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 1.1.0-rc.1 photon
+  try exit_dfu_mode
+
+  # wait for 1.1.0-rc.1 bootloader from SMH
+  sleep 30
+
+  enter_dfu_mode
+  try dfu_system 0.7.0 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.6.3 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try set_country JP2
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.1 photon
+  try exit_dfu_mode
+
+  enter_ymodem
+  try ymodem_boot 0.5.4 photon
+
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+
+  heading
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  echo "| 95 |   JP2   |   050   | DEFAULT |   110rc1   |   GB0   |   070/063/050   | wiped creds, re-enter  |"
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  enter_dfu_mode
+  try set_country JP2
+  exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try set_country DEFAULT
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 1.1.0-rc.1 photon
+  try exit_dfu_mode
+
+  # wait for 1.1.0-rc.1 bootloader from SMH
+  sleep 30
+
+  enter_dfu_mode
+  try dfu_system 0.7.0 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.6.3 photon
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try set_country GB0
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try exit_dfu_mode
+
+  enter_ymodem
+  try ymodem_boot 0.5.4 photon
+
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_offline
+
+  heading
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+  echo "| 96 |   JP2   |   050   | DEFAULT |   110rc1   | DEFAULT |   070/063/050   | re-test, online        |"
+  echo "+----+---------+---------+---------+------------+---------+-----------------+------------------------+"
+
+  enter_ymodem
+  set_wifi_credentials
+
+  enter_dfu_mode
+  try set_country JP2
+  exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 0.5.0 photon
+  try set_country DEFAULT
+  try exit_dfu_mode
+
+  enter_dfu_mode
+  try dfu_system 1.1.0-rc.1 photon
+  try exit_dfu_mode
+
+  # wait for 1.1.0-rc.1 bootloader from SMH
   sleep 30
 
   enter_dfu_mode

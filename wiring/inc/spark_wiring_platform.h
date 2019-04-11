@@ -196,7 +196,7 @@
 #endif
 
 #ifndef Wiring_IPv6
-#define Wiring_IPv6 HAL_IPv6
+#define Wiring_IPv6 HAL_PLATFORM_IPV6
 #endif
 
 #ifndef Wiring_WpaEnterprise

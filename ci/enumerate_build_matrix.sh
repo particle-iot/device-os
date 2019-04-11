@@ -44,17 +44,13 @@ MAKE=runmake
 
 # define build matrix dimensions
 # "" means execute execute the $MAKE command without that var specified
-# DEBUG_BUILD=( y n )
+DEBUG_BUILD=( y n )
 PLATFORM=( core photon P1 electron xenon argon boron xenon-som argon-som boron-som )
 # P1 bootloader built with gcc 4.8.4 doesn't fit flash, disabling for now
 PLATFORM_BOOTLOADER=( core photon electron xenon argon boron xenon-som argon-som boron-som )
 SPARK_CLOUD=( y n )
-APP=( "" tinker product_id_and_version )
-# TEST=( wiring/api wiring/no_fixture )
-
-# FIXME: not building tests and not building DEBUG_BUILD=y for now
-DEBUG_BUILD=( n )
-TEST=()
+APP=( "" tinker product_id_and_version)
+TEST=( wiring/api wiring/no_fixture )
 
 MODULAR_PLATFORM=( photon P1 electron xenon argon boron xenon-som argon-som boron-som )
 
@@ -143,6 +139,12 @@ for db in "${DEBUG_BUILD[@]}"
 do
   for p in "${MODULAR_PLATFORM[@]}"
   do
+    # Gen 3 overflow with modular DEBUG_BUILD=y, so skip those
+    if [[ "$db" = "y" ]]; then
+      if [[ "$p" = "xenon" ]] || [[ "$p" = "argon" ]] || [[ "$p" = "boron" ]] || [[ "$p" = "xenon-som" ]] || [[ "$p" = "argon-som" ]] || [[ "$p" = "boron-som" ]]; then
+        continue
+      fi
+    fi
     cmd="${MAKE} DEBUG_BUILD=\"$db\" PLATFORM=\"$p\" COMPILE_LTO=\"n\""
     BUILD_JOBS+=("modules ${#BUILD_JOBS[@]} ${cmd}")
   done

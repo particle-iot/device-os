@@ -105,18 +105,18 @@ bool IPAddress::operator==(const uint8_t* address) const
 
 bool IPAddress::operator==(const IPAddress& that) const
 {
-#if 	HAL_IPv6
+#if Wiring_IPv6
 	if (address.v!=that.address.v)
 		return false;
 	if (address.v==6)
 		return !memcmp(address.ipv6, that.address.ipv6, sizeof(address.ipv6));
-#endif
+#endif // Wiring_IPv6
 	return address.ipv4==that.address.ipv4;
 }
 
 size_t IPAddress::printTo(Print& p) const
 {
-#if HAL_IPv6
+#if Wiring_IPv6
 #if HAL_USE_INET_HAL_POSIX
 	if (address.v==6) {
 		char buf[INET6_ADDRSTRLEN+1];
@@ -127,7 +127,7 @@ size_t IPAddress::printTo(Print& p) const
 #else
 #pragma message "HAL_USE_INET_HAL_POSIX is required for IPv6 support in IPAddress::printTo()"
 #endif // HAL_USE_INET_HAL_POSIX
-#endif // HAL_IPv6
+#endif // Wiring_IPv6
     size_t n = 0;
     for (int i = 0; i < 4; i++)
     {
