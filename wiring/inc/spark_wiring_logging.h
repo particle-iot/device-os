@@ -224,6 +224,9 @@ public:
 protected:
     virtual void logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) override;
     virtual void write(const char *data, size_t size) override;
+
+private:
+    static const char* jsonLevelName(int level);
 };
 
 class AttributedLogger;
