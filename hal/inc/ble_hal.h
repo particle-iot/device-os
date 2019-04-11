@@ -535,11 +535,10 @@ int ble_gap_stop_scan(void);
  * Connect to a peer BLE device.
  *
  * @param[in]   address Pointer to the peer BLE identity address.
- * @param[in]   params  The connection parameters for the connection to be established.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gap_connect(const hal_ble_addr_t* address, const hal_ble_conn_params_t* params, void* reserved);
+int ble_gap_connect(const hal_ble_addr_t* address, void* reserved);
 
 /**
  * Check if BLE is connecting with peer device.
@@ -551,9 +550,12 @@ bool ble_gap_is_connecting(void);
 /**
  * Check if BLE is connected with peer device.
  *
+ * @param[in]   address Pointer to the peer BLE identity address.
+ *                      If NULL, it returns true as long as there has on-going connections.
+ *
  * @returns true if connected, otherwise false.
  */
-bool ble_gap_is_connected(void);
+bool ble_gap_is_connected(const hal_ble_addr_t* address);
 
 /**
  * Cancel the ongoing procedure that connecting to the peer BLE device.
@@ -584,6 +586,16 @@ int ble_gap_disconnect(uint16_t conn_handle, void* reserved);
  * @returns     0 on success, system_error_t on error.
  */
 int ble_gap_update_connection_params(uint16_t conn_handle, const hal_ble_conn_params_t* conn_params, void* reserved);
+
+/**
+ * Get connection parameters.
+ *
+ * @param[in]       conn_handle BLE connection handle.
+ * @param[in,out]   conn_params Pointer to a hal_ble_conn_params_t structure to be filled.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int ble_gap_get_connection_params(uint16_t conn_handle, hal_ble_conn_params_t* conn_params, void* reserved);
 
 /**
  * Get the RSSI value of the specific BLE connection.
