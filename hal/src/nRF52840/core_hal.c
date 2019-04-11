@@ -321,6 +321,8 @@ void HAL_Core_Config(void) {
 
     // Enable malloc before littlefs initialization.
     malloc_enable(1);
+#else
+    module_user_init_hook();
 #endif
 
 #ifdef DFU_BUILD_ENABLE
