@@ -340,8 +340,10 @@ String TimeClass::format(time_t t, const char* format_spec)
 String TimeClass::timeFormatImpl(tm* calendar_time, const char* format, int time_zone)
 {
     char format_str[64];
-    strcpy(format_str, format);
-    size_t len = strlen(format_str);
+    // only copy up to n-1 to dest if no null terminator found
+    strncpy(format_str, format, sizeof(format_str) - 1); // Flawfinder: ignore (ch42318)
+    format_str[sizeof(format_str) - 1] = '\0'; // ensure null termination
+    size_t len = strlen(format_str); // Flawfinder: ignore (ch42318)
 
     char time_zone_str[16];
     // while we are not using stdlib for managing the timezone, we have to do this manually
