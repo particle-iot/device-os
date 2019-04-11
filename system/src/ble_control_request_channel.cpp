@@ -976,7 +976,7 @@ int BleControlRequestChannel::sendPacket() {
         return 0; // Nothing to send
     }
     // Send packet
-    const int ret = ble_gatt_server_notify_characteristic_value(connHandle_, sendCharHandle_, (const uint8_t*)packetBuf_.get(), packetSize_, nullptr);
+    const int ret = ble_gatt_server_set_characteristic_value(sendCharHandle_, (const uint8_t*)packetBuf_.get(), packetSize_, nullptr);
     if (ret != (int)packetSize_) {
         LOG(ERROR, "ble_gatt_server_notify_characteristic_value() failed: %d", ret);
         return ret;

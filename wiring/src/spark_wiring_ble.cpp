@@ -416,8 +416,6 @@ public:
     bool isLocal;
     BleCharHandles attrHandles;
     OnDataReceivedCallback dataCb;
-    Vector<BleConnHandle> cccdOfServer; // For local characteristic
-    bool cccdOfClient; // For peer characteristic
     BleConnHandle connHandle; // For peer characteristic
     BleServiceImpl* svcImpl; // Related service
     Vector<BleCharacteristicRef> references;
@@ -449,7 +447,6 @@ public:
         properties = PROPERTY::NONE;
         description = nullptr;
         isLocal = true;
-        cccdOfClient = false;
         connHandle = BLE_INVALID_CONN_HANDLE;
         svcImpl = nullptr;
         dataCb = nullptr;
@@ -459,16 +456,16 @@ public:
         if (buf == nullptr) {
             return 0;
         }
-        uint16_t readLen = len > BLE_MAX_ATTR_VALUE_PACKET_SIZE ? BLE_MAX_ATTR_VALUE_PACKET_SIZE : len;
+        len = len > BLE_MAX_ATTR_VALUE_PACKET_SIZE ? BLE_MAX_ATTR_VALUE_PACKET_SIZE : len;
         int ret;
         if (isLocal) {
-            ret = ble_gatt_server_get_characteristic_value(attrHandles.value_handle, buf, &readLen, nullptr);
+            ret = ble_gatt_server_get_characteristic_value(attrHandles.value_handle, buf, len, nullptr);
         }
         else {
-            ret = ble_gatt_client_read(connHandle, attrHandles.value_handle, buf, &readLen, nullptr);
+            ret = ble_gatt_client_read(connHandle, attrHandles.value_handle, buf, &len, nullptr);
         }
         if (ret == SYSTEM_ERROR_NONE) {
-            return readLen;
+            return len;
         }
         return 0;
     }
@@ -484,16 +481,6 @@ public:
             if (ret == 0) {
                 LOG(ERROR, "ble_gatt_server_set_characteristic_value failed.");
             }
-            else {
-                for (int i = 0; i < cccdOfServer.size(); i++) {
-                    if (properties & PROPERTY::NOTIFY) {
-                        ble_gatt_server_notify_characteristic_value(cccdOfServer[i], attrHandles.value_handle, buf, len, nullptr);
-                    }
-                    else if (properties & PROPERTY::INDICATE) {
-                        ble_gatt_server_indicate_characteristic_value(cccdOfServer[i], attrHandles.value_handle, buf, len, nullptr);
-                    }
-                }
-            }
         }
         else {
             if (properties & PROPERTY::WRITE) {
@@ -507,16 +494,7 @@ public:
     }
 
     void configureCccd(BleConnHandle handle, uint8_t enable) {
-        if (isLocal) {
-            if (enable) {
-                cccdOfServer.append(handle);
-            }
-            else {
-                cccdOfServer.removeOne(handle);
-            }
-            LOG_DEBUG(TRACE, "CCCD configured count: %d", cccdOfServer.size());
-        }
-        else {
+        if (!isLocal) {
             // Gatt Client configure peer CCCD.
         }
     }
@@ -579,12 +557,6 @@ public:
     void processReceivedData(BleAttrHandle attrHandle, const uint8_t* data, size_t len, const BlePeerDevice& peer) {
         if (data == nullptr) {
             return;
-        }
-        if (isLocal) {
-            if (attrHandle == attrHandles.cccd_handle) {
-                LOG_DEBUG(TRACE, "Configure CCCD: 0x%02x%02x", data[0],data[1]);
-                configureCccd(peer.connHandle, data[0]);
-            }
         }
         if (attrHandle == attrHandles.value_handle) {
             if (dataCb != nullptr) {
@@ -970,13 +942,6 @@ public:
     }
 
     void gattsProcessDisconnected(const BlePeerDevice& peer) {
-        for (size_t i = 0; i < serviceCount(); i++) {
-            BleService& service = services[i];
-            for (size_t j = 0; j < service.impl()->characteristicCount(); j++) {
-                BleCharacteristic& characteristic = service.impl()->characteristics[j];
-                characteristic.impl()->configureCccd(peer.connHandle, false);
-            }
-        }
     }
 
     void gattsProcessDataWritten(BleAttrHandle attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer) {
