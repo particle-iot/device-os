@@ -791,12 +791,12 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "i2c_master",
                     "path": "wiring/i2c_master_slave"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "i2c_slave",
                     "path": "wiring/i2c_master_slave"
                 },
@@ -806,7 +806,7 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "i2c_mcp23017",
                     "path": "wiring"
                 },
@@ -816,7 +816,7 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "networking",
                     "path": "wiring"
                 },
@@ -865,17 +865,31 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "enabled": true,
                     "name": "spi_slave",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -883,7 +897,7 @@
                     }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -891,15 +905,7 @@
                     }
                 },
                 {
-                    "enabled": false,
-                    "name": "spi_slave",
-                    "path": "wiring/spi_master_slave_alt",
-                    "user_args": {
-                         "USE_SPI": "SPI"
-                    }
-                },
-                {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_slave",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -1022,7 +1028,7 @@
                     "path": "app"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep_multiple_pins",
                     "path": "app"
                 },
@@ -1107,12 +1113,12 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "i2c_master",
                     "path": "wiring/i2c_master_slave"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "i2c_slave",
                     "path": "wiring/i2c_master_slave"
                 },
@@ -1122,7 +1128,7 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "i2c_mcp23017",
                     "path": "wiring"
                 },
@@ -1132,7 +1138,7 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "networking",
                     "path": "wiring"
                 },
@@ -1181,17 +1187,31 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "enabled": true,
                     "name": "spi_slave",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -1199,7 +1219,7 @@
                     }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -1207,15 +1227,7 @@
                     }
                 },
                 {
-                    "enabled": false,
-                    "name": "spi_slave",
-                    "path": "wiring/spi_master_slave_alt",
-                    "user_args": {
-                         "USE_SPI": "SPI"
-                    }
-                },
-                {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_slave",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -1487,7 +1499,7 @@
                     "compile_lto": true,
                     "enabled": true,
                     "name": "networking",
-                    "path": "wiring"
+                    "path": "app"
                 },
                 {
                     "compile_lto": true,
@@ -1644,6 +1656,19 @@
                 },
                 {
                     "debug_build": true,
+                    "enabled": true,
+                    "name": "band_select",
+                    "path": "app"
+                },
+                {
+                    "debug_build": true,
+                    "enabled": true,
+                    "name": "band_select",
+                    "path": "app",
+                    "use_threading": true
+                },
+                {
+                    "debug_build": true,
                     "enabled": false,
                     "name": "blank",
                     "path": "app"
@@ -1722,7 +1747,7 @@
                 },
                 {
                     "debug_build": true,
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep_multiple_pins",
                     "path": "app"
                 },
@@ -1912,15 +1937,57 @@
                 },
                 {
                     "debug_build": true,
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
                 },
                 {
                     "debug_build": true,
-                    "enabled": false,
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "debug_build": true,
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI2"
+                    }
+                },
+                {
+                    "debug_build": true,
+                    "enabled": true,
                     "name": "spi_slave",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
+                },
+                {
+                    "debug_build": true,
+                    "enabled": true,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "debug_build": true,
+                    "enabled": true,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI2"
+                    }
                 },
                 {
                     "enabled": true,
@@ -2159,7 +2226,7 @@
                     "path": "app"
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "name": "weather3",
                     "path": "app"
                 },
@@ -2179,12 +2246,12 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "name": "i2c_master",
                     "path": "wiring/i2c_master_slave"
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "name": "i2c_slave",
                     "path": "wiring/i2c_master_slave"
                 },
@@ -2194,7 +2261,7 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "name": "i2c_mcp23017",
                     "path": "wiring"
                 },
@@ -2209,25 +2276,25 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "name": "no_fixture",
                     "path": "wiring"
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "name": "no_fixture",
                     "path": "wiring",
                     "use_threading": true
                 },
                 {
                     "comment": "this test should be run without anything connected to the device (and must connect a battery for cellular or else PMIC interrupt is evil)",
-                    "enabled": true,
+                    "enabled": false,
                     "name": "no_fixture_long_running",
                     "path": "wiring"
                 },
                 {
                     "comment": "this test should be run without anything connected to the device (and must connect a battery for cellular or else PMIC interrupt is evil)",
-                    "enabled": true,
+                    "enabled": false,
                     "name": "no_fixture_long_running",
                     "path": "wiring",
                     "use_threading": true
@@ -2263,7 +2330,7 @@
                     "path": "wiring/spi_master_slave"
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -2271,7 +2338,7 @@
                     }
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -2279,7 +2346,7 @@
                     }
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "name": "spi_slave",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -2287,7 +2354,7 @@
                     }
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "name": "spi_slave",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -2410,7 +2477,7 @@
                     "path": "app"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep_multiple_pins",
                     "path": "app"
                 },
@@ -2569,14 +2636,36 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "enabled": true,
                     "name": "spi_slave",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
+                },
+                {
+                    "enabled": true,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
                 },
                 {
                     "enabled": true,
@@ -2726,7 +2815,7 @@
                     "path": "app"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep_multiple_pins",
                     "path": "app"
                 },
@@ -2791,7 +2880,7 @@
                     "path": "app"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "weather3",
                     "path": "app"
                 },
@@ -2811,12 +2900,12 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "i2c_master",
                     "path": "wiring/i2c_master_slave"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "i2c_slave",
                     "path": "wiring/i2c_master_slave"
                 },
@@ -2826,7 +2915,7 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "i2c_mcp23017",
                     "path": "wiring"
                 },
@@ -2836,7 +2925,7 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "networking",
                     "path": "wiring"
                 },
@@ -2885,17 +2974,31 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "enabled": true,
                     "name": "spi_slave",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -2903,7 +3006,7 @@
                     }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -2911,15 +3014,7 @@
                     }
                 },
                 {
-                    "enabled": false,
-                    "name": "spi_slave",
-                    "path": "wiring/spi_master_slave_alt",
-                    "user_args": {
-                         "USE_SPI": "SPI"
-                    }
-                },
-                {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_slave",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -3157,25 +3252,25 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "name": "no_fixture",
                     "path": "wiring"
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "name": "no_fixture",
                     "path": "wiring",
                     "use_threading": true
                 },
                 {
                     "comment": "this test should be run without anything connected to the device (and must connect a battery for cellular or else PMIC interrupt is evil)",
-                    "enabled": true,
+                    "enabled": false,
                     "name": "no_fixture_long_running",
                     "path": "wiring"
                 },
                 {
                     "comment": "this test should be run without anything connected to the device (and must connect a battery for cellular or else PMIC interrupt is evil)",
-                    "enabled": true,
+                    "enabled": false,
                     "name": "no_fixture_long_running",
                     "path": "wiring",
                     "use_threading": true
@@ -3203,12 +3298,26 @@
                 {
                     "enabled": false,
                     "name": "spi_master",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
+                },
+                {
+                    "enabled": false,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
                 },
                 {
                     "enabled": false,
                     "name": "spi_slave",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
                 },
                 {
                     "enabled": false,
@@ -3224,14 +3333,6 @@
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
                          "USE_SPI": "SPI1"
-                    }
-                },
-                {
-                    "enabled": false,
-                    "name": "spi_slave",
-                    "path": "wiring/spi_master_slave_alt",
-                    "user_args": {
-                         "USE_SPI": "SPI"
                     }
                 },
                 {

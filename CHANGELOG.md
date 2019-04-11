@@ -1,3 +1,51 @@
+## 1.1.0-rc.1
+
+### FEATURES
+
+- [gen 3] Argon, Boron, Xenon platform Device OS `mesh_develop` merged into `develop` [#1700](https://github.com/particle-iot/device-os/pull/1700)
+- [gen 3] Adds Argon SoM, Boron SoM and Xenon SoM platforms to Device OS [#1662](https://github.com/particle-iot/device-os/pull/1662)
+- [som] Runtime power management IC detection [#1733](https://github.com/particle-iot/device-os/pull/1733)
+
+### ENHANCEMENTS
+
+- [photon/p1/electron] mbedTLS updated from v2.4.2 to v2.9.0 [#1700](https://github.com/particle-iot/device-os/pull/1700)
+- [electron/LTE] FreeRTOS updated from v8.2.2 to v10.0.1 [#1700](https://github.com/particle-iot/device-os/pull/1700)
+- [gen 2] Binary size optimizations [#1720](https://github.com/particle-iot/device-os/pull/1720)
+- Updates Tinker for all platforms [#1717](https://github.com/particle-iot/device-os/pull/1717)
+- [gen 3] Adds button and RGB LED mirroring support [#1590](https://github.com/particle-iot/device-os/pull/1590)
+- [boron-som] Disables system power management [#1722](https://github.com/particle-iot/device-os/pull/1722)
+- [boron/LTE] Enable Cat M1-only mode and disable eDRX completely [#1723](https://github.com/particle-iot/device-os/pull/1723)
+- [gen 3] QSPI flash is put into sleep mode and is deinitialized when entering STANDBY or STOP sleep mode [1725](https://github.com/particle-iot/device-os/pull/1725)
+- [gen 3] Parameter check for SPI slave mode with HAL_SPI_INTERFACE1 [#1731](https://github.com/particle-iot/device-os/pull/1731)
+
+### BUGFIXES
+
+- [gen 3] [hal] Fixes USBSerial SOS issue when removing USB cable from battery powered device [#1707](https://github.com/particle-iot/device-os/pull/1707)
+- [gen 3] Fixes A5 staying high when using Ethernet feather wing [#1696](https://github.com/particle-iot/device-os/pull/1696)
+- [core] Disable system logs for Core to reduce flash space needed to build tests [#1713](https://github.com/particle-iot/device-os/pull/1713)
+- [wiring] Fixed a potential (but unlikely due to bounds checking) buffer overflow in time formatting function [#1712](https://github.com/particle-iot/device-os/pull/1712)
+- [electron] [G350] fixes Cellular.RSSI() issues due to unknown RAT [#1721](https://github.com/particle-iot/device-os/pull/1721)
+- [gen 3] Fixes a deadlock in `system_power_manager` and `i2c_hal` when exiting the sleep mode  [1725](https://github.com/particle-iot/device-os/pull/1725)
+- [gen 3] Fixes issues in USB and WCID descriptors preventing Control Interface from working correctly on Windows platforms [#1736](https://github.com/particle-iot/device-os/pull/1736)
+- [bootloader] SysTick needs to be disabled in Reset_System() on Gen 2 platforms [#1741](https://github.com/particle-iot/device-os/pull/1741)
+- [boron] Workaround for SARA R4 ppp session getting broken and system power manager fix [#1726](https://github.com/particle-iot/device-os/pull/1726)
+- Fixes system power manager re-enabling charging every 1s with a battery connected (now every 60s) [#1726](https://github.com/particle-iot/device-os/pull/1726)
+
+### INTERNAL
+
+- Update release.sh parameter handling [#1690](https://github.com/particle-iot/device-os/pull/1690)
+- Adds missing Device OS release tests [#1698](https://github.com/particle-iot/device-os/pull/1698)
+- [gen 3] Fixes TEST=wiring/no_fixture [#1694](https://github.com/particle-iot/device-os/pull/1694)
+- [gen 3] Add Gen 3 platforms to Device OS build scripts [#1714](https://github.com/particle-iot/device-os/pull/1714)
+- [docs] Fix `brew install gcc-arm-none-eabi-53` formula [#1708](https://github.com/particle-iot/device-os/pull/1708)
+- [docs] Fixes recent merge issues with `system-versions.md` [#1715](https://github.com/particle-iot/device-os/pull/1715)
+- [ci] Build time optimizations [#1712](https://github.com/particle-iot/device-os/pull/1712)
+- [ci] disables shallow submodule checkouts [#1735](https://github.com/particle-iot/device-os/pull/1735)
+- [docs] for the check and scope guard macros [#1734](https://github.com/particle-iot/device-os/pull/1734)
+- [hal] Correct ADC channel number for SoM [#1739](https://github.com/particle-iot/device-os/pull/1739)
+- [photon/p1] crypto: re-enables MD5 for TLS (WPA Enterprise) [#1743](https://github.com/particle-iot/device-os/pull/1743)
+- [gen 3] Fix/wiring tests [#1719](https://github.com/particle-iot/device-os/pull/1719)
+
 ## 1.0.1
 
 ### BUGFIXES
@@ -11,86 +59,6 @@
 - Mojave doesn't ship with `wget` [#1674](https://github.com/particle-iot/device-os/pull/1674)
 - Bypass git dependency in build [#1664](https://github.com/particle-iot/device-os/pull/1664)
 - Refactor release scripts [#1687](https://github.com/particle-iot/device-os/pull/1687)
-
-## 0.9.0 (same as 0.9.0-rc.1, 0.9.0-rc.2, 0.9.0-rc.3)
-
-### BUGFIXES
-- [Gen 3] Fixes system-dynalib incompatibility introduced in 0.9.0-rc.1, causing pre-0.9.0-rc.1 user applications that call certain system-dynalib functions to crash the device [#1692]
-- [Gen 3] `WKP` pin is configured as pull-down with rising edge trigger when entering STANDBY sleep mode to keep feature parity with Gen 2 devices (#1691)
-- [Boron] PPP thread stack size increased by 1K in order to resolve a very rare stack overflow (#1691)
-- [Gen 3] Fixes a crash when attempting to send constant data residing in flash through Ethernet interface (#1691)
-- [Gen 3] An attempt to unitialize an SPI interface no longer causes an assertion failure if the interface is not initialized (#1663)
-- [Gen 3] Default SPI settings are now recognized correctly (#1663)
-- [Gen 3] Fixed a possible race condition during the Timer's uninitialization (#1663)
-- [Gen 3] `random()` is now properly seeded on application startup (#1663)
-- [Boron] Fixes an issue with IMEI and ICCID not being reported in listening mode serial console with `v` command (#1681)
-- [Gen 3] SPI MISO is no longer configured with a pull-down and user-provided CS pin is not reset to `INPUT` state when reconfiguring SPI peripheral (#1671)
-- [Argon] Fixes a deadlock when initializing NCP client (#1661)
-- [Gen 3] DFU mode no longer requires driver installation on Windows. Fixes incorrect WCID descriptors (#1653)
-- [Gen 3] Adds missing Arduino-specific definitions (#1658)
-- [Xenon] Makes `Serial2` available in user applications (#1660)
-- [Argon] WiFi cipher types are now being correctly reported when scanning or retreiving stored credentials (#1659)
-
-### ENHANCEMENTS
-- [Gen 3] `micros()` resolution increased by mixing in `DWT->CYCCNT` (#1682)
-
-### FEATURES
-- [Gen 3] STOP sleep mode support (#1682)
-- [Gen 3] STANDBY sleep mode support (#1667)
-- [Gen 3] USB control requests (#1655)
-- [Gen 3] Mesh network diagnostics (#1657)
-- [Boron] `Cellular.command()` support (#1651)
-
-### INTERNAL
-- [Gen 3] Most of the `wiring/no_fixture` tests now successfully run on Xenon, Argon and Boron (#1663)
-- Removed strong dependency on `git` (#1664)
-- [Gen 3] OpenThread updated to 20190130 master with the fix for negative clock drift between HFCLK and LFCLK (#1684)
-- Submodules now use absolute https URLs (#1699)
-- Fixed an assertion failure (SOS 10) with Mesh.subscribe() and threading enabled (#1652)
-
-## 0.9.0-rc.3 (internal only)
-
-### BUGFIXES
-- [Gen 3] Fixes system-dynalib incompatibility introduced in 0.9.0-rc.1, causing pre-0.9.0-rc.1 user applications that call certain system-dynalib functions to crash the device [#1692]
-
-## 0.9.0-rc.2 (internal only)
-
-### BUGFIXES
-- [Gen 3] `WKP` pin is configured as pull-down with rising edge trigger when entering STANDBY sleep mode to keep feature parity with Gen 2 devices (#1691)
-- [Boron] PPP thread stack size increased by 1K in order to resolve a very rare stack overflow (#1691)
-- [Gen 3] Fixes a crash when attempting to send constant data residing in flash through Ethernet interface (#1691)
-
-## 0.9.0-rc.1 (internal only)
-
-### BUGFIXES
-- [Gen 3] An attempt to unitialize an SPI interface no longer causes an assertion failure if the interface is not initialized (#1663)
-- [Gen 3] Default SPI settings are now recognized correctly (#1663)
-- [Gen 3] Fixed a possible race condition during the Timer's uninitialization (#1663)
-- [Gen 3] `random()` is now properly seeded on application startup (#1663)
-- [Boron] Fixes an issue with IMEI and ICCID not being reported in listening mode serial console with `v` command (#1681)
-- [Gen 3] SPI MISO is no longer configured with a pull-down and user-provided CS pin is not reset to `INPUT` state when reconfiguring SPI peripheral (#1671)
-- [Argon] Fixes a deadlock when initializing NCP client (#1661)
-- [Gen 3] DFU mode no longer requires driver installation on Windows. Fixes incorrect WCID descriptors (#1653)
-- [Gen 3] Adds missing Arduino-specific definitions (#1658)
-- [Xenon] Makes `Serial2` available in user applications (#1660)
-- [Argon] WiFi cipher types are now being correctly reported when scanning or retreiving stored credentials (#1659)
-
-### ENHANCEMENTS
-- [Gen 3] `micros()` resolution increased by mixing in `DWT->CYCCNT` (#1682)
-
-### FEATURES
-- [Gen 3] STOP sleep mode support (#1682)
-- [Gen 3] STANDBY sleep mode support (#1667)
-- [Gen 3] USB control requests (#1655)
-- [Gen 3] Mesh network diagnostics (#1657)
-- [Boron] `Cellular.command()` support (#1651)
-
-### INTERNAL
-- [Gen 3] Most of the `wiring/no_fixture` tests now successfully run on Xenon, Argon and Boron (#1663)
-- Removed strong dependency on `git` (#1664)
-- [Gen 3] OpenThread updated to 20190130 master with the fix for negative clock drift between HFCLK and LFCLK (#1684)
-- Submodules now use absolute https URLs (#1699)
-- Fixed an assertion failure (SOS 10) with Mesh.subscribe() and threading enabled (#1652)
 
 ## 1.0.1-rc.1
 
@@ -200,6 +168,42 @@
 - Fixes some 0.8.0-rc.2 tests [#1476](https://github.com/particle-iot/firmware/pull/1476)
 - [Electron] fixes sticker-rig issue with POWER_ON command [#1544](https://github.com/particle-iot/firmware/pull/1544)
 - [Electron] Fixes monolithic build [#1543](https://github.com/particle-iot/firmware/pull/1543)
+
+## 0.9.0
+
+### BUGFIXES
+- [Gen 3] Fixes system-dynalib incompatibility introduced in 0.9.0-rc.1, causing pre-0.9.0-rc.1 user applications that call certain system-dynalib functions to crash the device [#1692]
+- [Gen 3] `WKP` pin is configured as pull-down with rising edge trigger when entering STANDBY sleep mode to keep feature parity with Gen 2 devices (#1691)
+- [Boron] PPP thread stack size increased by 1K in order to resolve a very rare stack overflow (#1691)
+- [Gen 3] Fixes a crash when attempting to send constant data residing in flash through Ethernet interface (#1691)
+- [Gen 3] An attempt to unitialize an SPI interface no longer causes an assertion failure if the interface is not initialized (#1663)
+- [Gen 3] Default SPI settings are now recognized correctly (#1663)
+- [Gen 3] Fixed a possible race condition during the Timer's uninitialization (#1663)
+- [Gen 3] `random()` is now properly seeded on application startup (#1663)
+- [Boron] Fixes an issue with IMEI and ICCID not being reported in listening mode serial console with `v` command (#1681)
+- [Gen 3] SPI MISO is no longer configured with a pull-down and user-provided CS pin is not reset to `INPUT` state when reconfiguring SPI peripheral (#1671)
+- [Argon] Fixes a deadlock when initializing NCP client (#1661)
+- [Gen 3] DFU mode no longer requires driver installation on Windows. Fixes incorrect WCID descriptors (#1653)
+- [Gen 3] Adds missing Arduino-specific definitions (#1658)
+- [Xenon] Makes `Serial2` available in user applications (#1660)
+- [Argon] WiFi cipher types are now being correctly reported when scanning or retreiving stored credentials (#1659)
+
+### ENHANCEMENTS
+- [Gen 3] `micros()` resolution increased by mixing in `DWT->CYCCNT` (#1682)
+
+### FEATURES
+- [Gen 3] STOP sleep mode support (#1682)
+- [Gen 3] STANDBY sleep mode support (#1667)
+- [Gen 3] USB control requests (#1655)
+- [Gen 3] Mesh network diagnostics (#1657)
+- [Boron] `Cellular.command()` support (#1651)
+
+### INTERNAL
+- [Gen 3] Most of the `wiring/no_fixture` tests now successfully run on Xenon, Argon and Boron (#1663)
+- Removed strong dependency on `git` (#1664)
+- [Gen 3] OpenThread updated to 20190130 master with the fix for negative clock drift between HFCLK and LFCLK (#1684)
+- Submodules now use absolute https URLs (#1699)
+- Fixed an assertion failure (SOS 10) with Mesh.subscribe() and threading enabled (#1652)
 
 ## 0.8.0-rc.27
 

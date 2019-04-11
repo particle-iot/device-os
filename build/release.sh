@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o errexit -o pipefail -o noclobber -o nounset
 
-VERSION="1.0.1"
+VERSION="1.1.0-rc.1"
 
 function display_help ()
 {
@@ -162,8 +162,8 @@ function release_file()
     local path=$ABSOLUTE_TARGET_DIRECTORY
     local qualified_filename=""
 
-    # Support Core and Mesh Monolithic Debug Builds
-    if [ "$from_name" = "tinker" ] || [ "$MODULAR" = "n" ] && [ "$from_name" != "bootloader" ]; then
+    # All monolithic builds
+    if [ "$MODULAR" = "n" ] && [ "$from_name" != "bootloader" ]; then
         path+="/main"
     else
         path+="/${from_name}"
@@ -179,7 +179,7 @@ function release_file()
     compose_qualified_filename $to_name $ext $compile_lto $debug_build $use_swd_jtag
 
     # Move file from build to release folder
-    cp ${path}/${from_name}.${ext} ${BINARY_DIRECTORY}/${qualified_filename}
+    cp ${path}/${to_name}.${ext} ${BINARY_DIRECTORY}/${qualified_filename}
 }
 
 function release_binary ()
@@ -346,7 +346,7 @@ if [ $PLATFORM_ID -eq 0 ]; then
     eval $MAKE_COMMAND
 
     # Migrate file(s) into output interface
-    release_binary "tinker" "tinker" "-lto" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+    release_binary "main" "tinker" "-lto" "$DEBUG_BUILD" "$USE_SWD_JTAG"
     cd ../modules
 
 # Photon (6), P1 (8)
@@ -366,6 +366,8 @@ elif [ $PLATFORM_ID -eq 6 ] || [ $PLATFORM_ID -eq 8 ]; then
     MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
     if [ "$MODULAR" = "n" ]; then
         MAKE_COMMAND+=" APP=tinker-serial1-debugging"
+    else
+        MAKE_COMMAND+=" APP=tinker"
     fi
     echo $MAKE_COMMAND
     eval $MAKE_COMMAND
@@ -387,7 +389,7 @@ elif [ $PLATFORM_ID -eq 10 ]; then
     MODULAR="y"
 
     # Compose, echo and execute the `make` command
-    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
+    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n APP=tinker"
     echo $MAKE_COMMAND
     eval $MAKE_COMMAND
 
@@ -415,6 +417,8 @@ elif [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 14
     MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
     if [ "$MODULAR" = "n" ]; then
         MAKE_COMMAND+=" APP=tinker-serial1-debugging"
+    else
+        MAKE_COMMAND+=" APP=tinker"
     fi
     echo $MAKE_COMMAND
     eval $MAKE_COMMAND
@@ -455,4 +459,4 @@ echo $MAKE_COMMAND
 eval $MAKE_COMMAND
 
 # Migrate file(s) into output interface
-release_binary bootloader bootloader "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+release_binary "bootloader" "bootloader" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
