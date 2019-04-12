@@ -1,3 +1,10 @@
+## 1.2.0-alpha.1
+
+### FEATURES
+
+- [Enterprise] Immediate Product Firmware Updates
+- [Enterprise] Device Vitals reporting
+
 ## 1.1.0-rc.1
 
 ### FEATURES
