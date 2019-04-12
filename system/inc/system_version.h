@@ -24,6 +24,25 @@
 extern "C" {
 #endif
 
+// 1.2.0-alpha.1 < 1.2.0-alpha.63 < 1.2.0-beta.1 < 1.2.0-beta.63 < 1.2.0-rc.1 < 1.2.0-rc.2 < 1.2.0
+#define SYSTEM_VERSION_ALPHA(x, y, z, p) ((((x) & 0xFF) << 24) | \
+                                          (((y) & 0xFF) << 16) | \
+                                          (((z) & 0xFF) <<  8) | \
+                                          (((p) & 0x3F) | 0x00))
+#define SYSTEM_VERSION_BETA(x, y, z, p)  ((((x) & 0xFF) << 24) | \
+                                          (((y) & 0xFF) << 16) | \
+                                          (((z) & 0xFF) <<  8) | \
+                                          (((p) & 0x3F) | 0x40))
+#define SYSTEM_VERSION_RC(x, y, z, p)    ((((x) & 0xFF) << 24) | \
+                                          (((y) & 0xFF) << 16) | \
+                                          (((z) & 0xFF) <<  8) | \
+                                          (((p) & 0x3F) | 0x80))
+// (((p)) | 0xC0)) is reserved (0xC1 - 0xFE), unit-tests will fail if this range is detected.
+#define SYSTEM_VERSION_DEFAULT(x, y, z)  ((((x) & 0xFF) << 24) | \
+                                          (((y) & 0xFF) << 16) | \
+                                          (((z) & 0xFF) <<  8) | \
+                                           ((0xFF)))
+
 /**
  * This file is referenced from https://github.com/spark/firmware/wiki/Firmware-Release-Checklist
  */
@@ -103,7 +122,7 @@ extern "C" {
 #define SYSTEM_VERSION_v101     0x01000100
 #define SYSTEM_VERSION_v110RC1  0x01010001
 #define SYSTEM_VERSION_v110RC2  0x01010002
-#define SYSTEM_VERSION_v120ALPHA1  0x01020001
+#define SYSTEM_VERSION_v120ALPHA1  SYSTEM_VERSION_ALPHA(1, 2, 0, 1)
 #define SYSTEM_VERSION SYSTEM_VERSION_v120ALPHA1
 
 /* previously we would set the least significant byte to 0 for the final release, but to make
