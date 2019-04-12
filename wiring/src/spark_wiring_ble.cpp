@@ -462,7 +462,7 @@ public:
             ret = ble_gatt_server_get_characteristic_value(attrHandles.value_handle, buf, len, nullptr);
         }
         else {
-            ret = ble_gatt_client_read(connHandle, attrHandles.value_handle, buf, &len, nullptr);
+            ret = ble_gatt_client_read(connHandle, attrHandles.value_handle, buf, len, nullptr);
         }
         if (ret == SYSTEM_ERROR_NONE) {
             return len;
