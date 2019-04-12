@@ -37,7 +37,7 @@
 #include "control/storage.h"
 #include "control/mesh.h"
 #include "control/cloud.h"
-#include "control/logging.h"
+#include "control/log_config.h"
 
 namespace particle {
 
