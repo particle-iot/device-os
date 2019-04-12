@@ -64,12 +64,20 @@ SCENARIO("System version info is retrieved", "[system,version]") {
 
 
     char expected[20];
-    if (SYSTEM_VERSION & 0xFF)
-    		sprintf(expected, "%d.%d.%d-rc.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1), BYTE_N(info.versionNumber,0));
-    else
-    		sprintf(expected, "%d.%d.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1));
+    // Order of testing here is important to retain
+    if ((SYSTEM_VERSION & 0xFF) == 0xFF) {
+        sprintf(expected, "%d.%d.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1));
+    } else if ((SYSTEM_VERSION & 0xC0) == 0x00) {
+        sprintf(expected, "%d.%d.%d-alpha.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1), BYTE_N(info.versionNumber,0) & 0x3F);
+    } else if ((SYSTEM_VERSION & 0xC0) == 0x40) {
+        sprintf(expected, "%d.%d.%d-beta.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1), BYTE_N(info.versionNumber,0) & 0x3F);
+    } else if ((SYSTEM_VERSION & 0xC0) == 0x80) {
+        sprintf(expected, "%d.%d.%d-rc.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1), BYTE_N(info.versionNumber,0) & 0x3F);
+    } else if ((SYSTEM_VERSION & 0xC0) >= 0xC0) {
+        FAIL("expected \"alpha\", \"beta\", \"rc\", or \"default\" version!");
+    }
 
-	REQUIRE(strcmp(expected,info.versionString)==0);
+    REQUIRE_THAT( expected, Equals(info.versionString));
 
     REQUIRE(System.versionNumber()==info.versionNumber);
 
