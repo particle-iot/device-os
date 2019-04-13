@@ -212,6 +212,7 @@ typedef struct {
 } hal_ble_gatt_on_data_evt_t;
 
 typedef enum {
+    BLE_EVT_UNKNOWN,
     BLE_EVT_ADV_STOPPED,
     BLE_EVT_SCAN_RESULT,
     BLE_EVT_SCAN_STOPPED,
