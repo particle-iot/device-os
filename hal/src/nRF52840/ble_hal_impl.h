@@ -72,8 +72,8 @@
 #define BLE_ADV_SCANABLE_DIRECTED_EVT                       BLE_GAP_ADV_TYPE_EXTENDED_NONCONNECTABLE_SCANNABLE_DIRECTED
 
 /* Default advertising parameters */
-#define BLE_DEFAULT_ADVERTISING_INTERVAL            160     /* The advertising interval: 100ms (in units of 0.625 ms). */
-#define BLE_DEFAULT_ADVERTISING_TIMEOUT             0       /* The advertising duration: infinite (in units of 10 milliseconds). */
+#define BLE_DEFAULT_ADVERTISING_INTERVAL            BLE_MSEC_TO_UNITS(100, BLE_UNIT_0_625_MS)   /* The advertising interval: 100ms (in units of 0.625 ms). */
+#define BLE_DEFAULT_ADVERTISING_TIMEOUT             BLE_MSEC_TO_UNITS(0, BLE_UNIT_10_MS)        /* The advertising duration: infinite (in units of 10 milliseconds). */
 
 /* BLE advertisement filter policy */
 #define BLE_ADV_FP_ANY                              0x00   /**< Allow scan requests and connect requests from any device. */
