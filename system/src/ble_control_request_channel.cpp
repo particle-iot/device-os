@@ -1093,6 +1093,8 @@ int BleControlRequestChannel::dataReceived(const hal_ble_evts_t& event) {
 }
 
 int BleControlRequestChannel::initProfile() {
+    ble_stack_init(NULL);
+
     // Set PPCP (Peripheral Preferred Connection Parameters)
     hal_ble_conn_params_t connParam = {};
     connParam.min_conn_interval = BLE_DEFAULT_MIN_CONN_INTERVAL;
@@ -1356,7 +1358,7 @@ void BleControlRequestChannel::freePooledBuffer(Buffer* buf) {
 }
 
 // Note: This method is called from an ISR
-void BleControlRequestChannel::processBleEvent(hal_ble_evts_t *event, void* context) {
+void BleControlRequestChannel::processBleEvent(const hal_ble_evts_t *event, void* context) {
     const auto ch = (BleControlRequestChannel*)context;
     int ret = 0;
     switch (event->type) {

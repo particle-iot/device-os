@@ -433,7 +433,7 @@ private:
 
     BleLocalDevice();
     ~BleLocalDevice();
-    static void onBleEvents(hal_ble_evts_t *event, void* context);
+    static void onBleEvents(const hal_ble_evts_t *event, void* context);
     BlePeerDevice* findPeerDevice(BleConnHandle connHandle);
 };
 
