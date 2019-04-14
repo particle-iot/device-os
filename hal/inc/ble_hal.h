@@ -20,7 +20,6 @@
 
 #include "hal_platform.h"
 
-//#define HAL_PLATFORM_BLE 1
 #if HAL_PLATFORM_BLE
 
 #include <stdint.h>
@@ -149,14 +148,9 @@ typedef struct {
         uint16_t extended_pdu  : 1;     /**< Received an extended advertising set. */
     } type;
     uint16_t data_len;
-    uint8_t data[BLE_MAX_SCAN_REPORT_BUF_LEN];
+    uint8_t* data;
     hal_ble_addr_t peer_addr;
 } hal_ble_gap_on_scan_result_evt_t;
-
-typedef struct {
-    uint8_t version;
-    void* reserved;
-} hal_ble_gap_on_scan_stopped_evt_t;
 
 typedef struct {
     uint8_t version;
@@ -208,14 +202,13 @@ typedef struct {
     uint16_t attr_handle;
     uint16_t offset;
     uint16_t data_len;
-    uint8_t data[BLE_MAX_ATTR_VALUE_PACKET_SIZE];
+    uint8_t* data;
 } hal_ble_gatt_on_data_evt_t;
 
 typedef enum {
     BLE_EVT_UNKNOWN,
     BLE_EVT_ADV_STOPPED,
     BLE_EVT_SCAN_RESULT,
-    BLE_EVT_SCAN_STOPPED,
     BLE_EVT_CONNECTED,
     BLE_EVT_DISCONNECTED,
     BLE_EVT_CONN_PARAMS_UPDATED,
@@ -231,7 +224,6 @@ typedef struct {
     union {
         hal_ble_gap_on_adv_stopped_evt_t adv_stopped;
         hal_ble_gap_on_scan_result_evt_t scan_result;
-        hal_ble_gap_on_scan_stopped_evt_t scan_stopped;
         hal_ble_gap_on_connected_evt_t connected;
         hal_ble_gap_on_disconnected_evt_t disconnected;
         hal_ble_gap_on_conn_params_evt_t conn_params_updated;
@@ -242,19 +234,14 @@ typedef struct {
     } params;
 } hal_ble_evts_t;
 
-typedef void (*on_ble_evt_cb_t)(hal_ble_evts_t *event, void* context);
-
+typedef void (*on_ble_evt_cb_t)(const hal_ble_evts_t *event, void* context);
+typedef void (*on_ble_scan_result_cb_t)(const hal_ble_gap_on_scan_result_evt_t *result, void* context);
+typedef void (*on_ble_disc_service_cb_t)(const hal_ble_gattc_on_svc_disc_evt_t *event, void* context);
+typedef void (*on_ble_disc_char_cb_t)(const hal_ble_gattc_on_char_disc_evt_t *event, void* context);
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * Check if the BLE stack is initialized.
- *
- * @returns     true if initialized, otherwise false.
- */
-bool ble_stack_is_initialized(void);
 
 /**
  * Initialize the BLE stack. This function must be called previous to any other BLE APIs.
@@ -498,9 +485,12 @@ int ble_gap_get_scan_parameters(hal_ble_scan_params_t* scan_params, void* reserv
 /**
  * Start scanning nearby BLE devices.
  *
+ * @param[in] callback  The callback function to handle the scan results.
+ * @param[in] context   The callback function context.
+ *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gap_start_scan(void* reserved);
+int ble_gap_start_scan(on_ble_scan_result_cb_t callback, void* context, void* reserved);
 
 /**
  * Check if BLE is scanning nearby devices.
@@ -652,41 +642,49 @@ size_t ble_gatt_server_get_characteristic_value(uint16_t value_handle, uint8_t* 
  * Discover all BLE primary services.
  *
  * @param[in]   conn_handle BLE connection handle.
+ * @param[in]   callback    The callback function to handle the discovered services.
+ * @param[in]   context     The callback function context.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gatt_client_discover_all_services(uint16_t conn_handle, void* reserved);
+int ble_gatt_client_discover_all_services(uint16_t conn_handle, on_ble_disc_service_cb_t callback, void* context, void* reserved);
 
 /**
  * Discover BLE service with specific 128-bits service UUID.
  *
  * @param[in]   conn_handle BLE connection handle.
  * @param[in]   uuid        Pointer to the service UUID.
+ * @param[in]   callback    The callback function to handle the discovered services.
+ * @param[in]   context     The callback function context.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gatt_client_discover_service_by_uuid(uint16_t conn_handle, const hal_ble_uuid_t* uuid, void* reserved);
+int ble_gatt_client_discover_service_by_uuid(uint16_t conn_handle, const hal_ble_uuid_t* uuid, on_ble_disc_service_cb_t callback, void* context, void* reserved);
 
 /**
  * Discover all BLE characteristics within specific handle range.
  *
- * @param[in]   conn_handle     BLE connection handle.
- * @param[in]   service         The service to be discovered.
+ * @param[in]   conn_handle BLE connection handle.
+ * @param[in]   service     The service to be discovered.
+ * @param[in]   callback    The callback function to handle the discovered characteristics.
+ * @param[in]   context     The callback function context.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gatt_client_discover_characteristics(uint16_t conn_handle, const hal_ble_svc_t* service, void* reserved);
+int ble_gatt_client_discover_characteristics(uint16_t conn_handle, const hal_ble_svc_t* service, on_ble_disc_char_cb_t callback, void* context, void* reserved);
 
 /**
  * Discover all BLE characteristics within specific handle range.
  *
- * @param[in]   conn_handle     BLE connection handle.
- * @param[in]   service         The service to be discovered.
- * @param[in]   uuid            The specific characteristic UUID.
+ * @param[in]   conn_handle BLE connection handle.
+ * @param[in]   service     The service to be discovered.
+ * @param[in]   uuid        The specific characteristic UUID.
+ * @param[in]   callback    The callback function to handle the discovered characteristics.
+ * @param[in]   context     The callback function context.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int ble_gatt_client_discover_characteristics_by_uuid(uint16_t conn_handle, const hal_ble_svc_t* service, const hal_ble_uuid_t* uuid, void* reserved);
+int ble_gatt_client_discover_characteristics_by_uuid(uint16_t conn_handle, const hal_ble_svc_t* service, const hal_ble_uuid_t* uuid, on_ble_disc_char_cb_t callback, void* context, void* reserved);
 
 /**
  * Check if the BLE discovery procedure is ongoing or not.

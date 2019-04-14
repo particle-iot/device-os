@@ -159,7 +159,7 @@ private:
     int allocPooledBuffer(size_t size, Buffer** buf);
     void freePooledBuffer(Buffer* buf);
 
-    static void processBleEvent(hal_ble_evts_t *event, void* context);
+    static void processBleEvent(const hal_ble_evts_t *event, void* context);
 };
 
 inline void BleControlRequestChannel::sendBuffer(Buffer* buf) {

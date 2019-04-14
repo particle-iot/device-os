@@ -51,9 +51,7 @@ void setup() {
     BLE.addCharacteristic(txCharacteristic);
     BLE.addCharacteristic(rxCharacteristic);
 
-    BleAdvertisingData advData;
-    advData.appendServiceUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
-    BLE.advertise(&advData);
+    BLE.advertise();
 }
 
 void loop() {
