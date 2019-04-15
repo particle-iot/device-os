@@ -238,6 +238,7 @@ typedef void (*on_ble_evt_cb_t)(const hal_ble_evts_t *event, void* context);
 typedef void (*on_ble_scan_result_cb_t)(const hal_ble_gap_on_scan_result_evt_t *result, void* context);
 typedef void (*on_ble_disc_service_cb_t)(const hal_ble_gattc_on_svc_disc_evt_t *event, void* context);
 typedef void (*on_ble_disc_char_cb_t)(const hal_ble_gattc_on_char_disc_evt_t *event, void* context);
+typedef void (*on_ble_att_mtu_updated_cb_t)(const hal_ble_gatt_on_params_updated_evt_t *event, void* context);
 
 #ifdef __cplusplus
 extern "C" {
@@ -692,6 +693,15 @@ int ble_gatt_client_discover_characteristics_by_uuid(uint16_t conn_handle, const
  * @returns True if BLE is discovering services, characteristics or descriptors, otherwise false.
  */
 bool ble_gatt_client_is_discovering(void);
+
+/**
+ * Set the desired ATT_MTU size.
+ *
+ * @param[in]   att_mtu     The desired ATT_MTU size.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int ble_gatt_client_set_att_mtu(uint16_t att_mtu, void* reserved);
 
 /**
  * Configure the Client Characteristic Configuration Descriptor.
