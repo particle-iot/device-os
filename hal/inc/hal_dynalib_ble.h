@@ -81,10 +81,11 @@ DYNALIB_FN( GATTC_BASE_IDX + 1,  hal_ble, ble_gatt_client_discover_service_by_uu
 DYNALIB_FN( GATTC_BASE_IDX + 2,  hal_ble, ble_gatt_client_discover_characteristics, int(uint16_t, const hal_ble_svc_t*, on_ble_disc_char_cb_t, void*, void*))
 DYNALIB_FN( GATTC_BASE_IDX + 3,  hal_ble, ble_gatt_client_discover_characteristics_by_uuid, int(uint16_t, const hal_ble_svc_t*, const hal_ble_uuid_t*, on_ble_disc_char_cb_t, void*, void*) )
 DYNALIB_FN( GATTC_BASE_IDX + 4,  hal_ble, ble_gatt_client_is_discovering, bool(void) )
-DYNALIB_FN( GATTC_BASE_IDX + 5,  hal_ble, ble_gatt_client_configure_cccd, int(uint16_t, uint16_t, uint8_t, void*) )
-DYNALIB_FN( GATTC_BASE_IDX + 6,  hal_ble, ble_gatt_client_write_with_response, size_t(uint16_t, uint16_t, const uint8_t*, size_t, void*) )
-DYNALIB_FN( GATTC_BASE_IDX + 7,  hal_ble, ble_gatt_client_write_without_response, size_t(uint16_t, uint16_t, const uint8_t*, size_t, void*) )
-DYNALIB_FN( GATTC_BASE_IDX + 8,  hal_ble, ble_gatt_client_read, size_t(uint16_t, uint16_t, uint8_t*, size_t, void*) )
+DYNALIB_FN( GATTC_BASE_IDX + 5,  hal_ble, ble_gatt_client_set_att_mtu, int(uint16_t, void*) )
+DYNALIB_FN( GATTC_BASE_IDX + 6,  hal_ble, ble_gatt_client_configure_cccd, int(uint16_t, uint16_t, uint8_t, void*) )
+DYNALIB_FN( GATTC_BASE_IDX + 7,  hal_ble, ble_gatt_client_write_with_response, size_t(uint16_t, uint16_t, const uint8_t*, size_t, void*) )
+DYNALIB_FN( GATTC_BASE_IDX + 8,  hal_ble, ble_gatt_client_write_without_response, size_t(uint16_t, uint16_t, const uint8_t*, size_t, void*) )
+DYNALIB_FN( GATTC_BASE_IDX + 9,  hal_ble, ble_gatt_client_read, size_t(uint16_t, uint16_t, uint8_t*, size_t, void*) )
 
 DYNALIB_END(hal_ble)
 

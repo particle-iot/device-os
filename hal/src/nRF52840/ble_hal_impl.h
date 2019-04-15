@@ -108,7 +108,7 @@
 #define BLE_CONN_PARAMS_SLAVE_LATENCY_ERR           5
 #define BLE_CONN_PARAMS_TIMEOUT_ERR                 100
 
-#define BLE_CONN_PARAMS_UPDATE_DELAY_MS             5000
+#define BLE_CONN_PARAMS_UPDATE_DELAY_MS             1000
 #define BLE_CONN_PARAMS_UPDATE_ATTEMPS              2
 
 /* Default BLE connection parameters */
@@ -130,8 +130,10 @@
 // Maximum supported size of an ATT packet in bytes (ATT_MTU)
 #define BLE_MAX_ATT_MTU_SIZE                        NRF_SDH_BLE_GATT_MAX_MTU_SIZE
 
-// Default maximum size of an ATT packet in bytes (ATT_MTU)
+// Minimum supported size of an ATT packet in bytes (ATT_MTU)
 #define BLE_MIN_ATT_MTU_SIZE                        23
+
+#define BLE_DEFAULT_ATT_MTU_SIZE                    BLE_MIN_ATT_MTU_SIZE
 
 // Size of the ATT opcode field in bytes
 #define BLE_ATT_OPCODE_SIZE                         1
@@ -143,6 +145,7 @@
 // notification or indication packet
 #define BLE_MIN_ATTR_VALUE_PACKET_SIZE              (BLE_MIN_ATT_MTU_SIZE - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE)
 #define BLE_MAX_ATTR_VALUE_PACKET_SIZE              (BLE_MAX_ATT_MTU_SIZE - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE)
+#define BLE_ATTR_VALUE_PACKET_SIZE(ATT_MTU)         (ATT_MTU - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE)
 
 #define BLE_MAX_SVC_COUNT                           5
 #define BLE_MAX_CHAR_COUNT                          10
