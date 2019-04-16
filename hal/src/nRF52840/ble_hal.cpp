@@ -622,11 +622,9 @@ os_thread_return_t BleObject::BleEventDispatcher::bleEventDispatch(void* param) 
                     msg.handler(&msg.evt.params.svc_disc, msg.context);
                 } else if (msg.evt.type == BLE_EVT_CHAR_DISCOVERED) {
                     msg.handler(&msg.evt.params.char_disc, msg.context);
-                } else if (msg.evt.type == BLE_EVT_GATT_PARAMS_UPDATED) {
-                    msg.handler(&msg.evt.params.gatt_params_updated, msg.context);
                 }
             } else {
-                // Just dispatch the event to the application those have subscribe the generic events.
+                // Just dispatch the event to the application those have subscribed the generic events.
                 for (int i = 0; i < dispatcher->bleObj_->genericEventHandlers_.size(); i++) {
                     BleGenericEventHandler& evtHandler = dispatcher->bleObj_->genericEventHandlers_[i];
                     if (evtHandler.handler && evtHandler.context) {

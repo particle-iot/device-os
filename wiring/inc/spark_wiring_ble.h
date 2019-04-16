@@ -92,8 +92,8 @@ typedef uint16_t BleAttrHandle;
 
 typedef void (*OnDataReceivedCallback)(const uint8_t* data, size_t len);
 typedef void (*OnScanResultCallback)(const BleScanResult *device);
-typedef void (*OnConnectedCallback)(BlePeerDevice &peer);
-typedef void (*OnDisconnectedCallback)(BlePeerDevice &peer);
+typedef void (*OnConnectedCallback)(const BlePeerDevice &peer);
+typedef void (*OnDisconnectedCallback)(const BlePeerDevice &peer);
 
 class BleAddress : public hal_ble_addr_t {
 public:
