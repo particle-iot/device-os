@@ -1555,12 +1555,10 @@ void BleLocalDevice::onBleEvents(const hal_ble_evts_t *event, void* context) {
 
     switch (event->type) {
         case BLE_EVT_ADV_STOPPED: {
-            LOG_DEBUG(TRACE, "BLE_EVT_ADV_STOPPED");
             bleInstance->broadcasterProxy_->broadcasterProcessStopped();
         } break;
 
         case BLE_EVT_CONNECTED: {
-            LOG_DEBUG(TRACE, "BLE_EVT_CONNECTED");
             BlePeerDevice peer;
 
             peer.connParams.conn_sup_timeout = event->params.connected.conn_sup_timeout;
@@ -1570,6 +1568,9 @@ void BleLocalDevice::onBleEvents(const hal_ble_evts_t *event, void* context) {
             peer.connHandle = event->params.connected.conn_handle;
             peer.address = event->params.connected.peer_addr;
 
+            if (bleInstance->connectedCb_) {
+                bleInstance->connectedCb_(peer);
+            }
             if (event->params.connected.role == BLE_ROLE_PERIPHERAL) {
                 peer.role = ROLE::CENTRAL;
                 bleInstance->peripheralProxy_->peripheralProcessConnected(peer);
@@ -1580,11 +1581,13 @@ void BleLocalDevice::onBleEvents(const hal_ble_evts_t *event, void* context) {
         } break;
 
         case BLE_EVT_DISCONNECTED: {
-            LOG_DEBUG(TRACE, "BLE_EVT_DISCONNECTED");
             BlePeerDevice* peer = bleInstance->findPeerDevice(event->params.disconnected.conn_handle);
             if (peer != nullptr) {
                 bleInstance->gattsProxy_->gattsProcessDisconnected(*peer);
 
+                if (bleInstance->disconnectedCb_) {
+                    bleInstance->disconnectedCb_(*peer);
+                }
                 if (peer->role & ROLE::PERIPHERAL) {
                     bleInstance->centralProxy_->centralProcessDisconnected(*peer);
                 } else {
