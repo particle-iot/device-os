@@ -398,14 +398,14 @@ public:
  */
 class BleCharacteristicImpl {
 public:
-    BleCharProps properties;
+    BleCharacteristicProperties properties;
     BleUuid uuid;
     BleUuid svcUuid;
     const char* description;
     bool isLocal;
-    BleCharHandles attrHandles;
+    BleCharacteristicHandles attrHandles;
     OnDataReceivedCallback dataCb;
-    BleConnHandle connHandle; // For peer characteristic
+    BleConnectionHandle connHandle; // For peer characteristic
     BleServiceImpl* svcImpl; // Related service
     Vector<BleCharacteristicRef> references;
 
@@ -413,14 +413,14 @@ public:
         init();
     }
 
-    BleCharacteristicImpl(const char* desc, BleCharProps properties, OnDataReceivedCallback callback) {
+    BleCharacteristicImpl(const char* desc, BleCharacteristicProperties properties, OnDataReceivedCallback callback) {
         init();
         this->description = desc;
         this->properties = properties;
         this->dataCb = callback;
     }
 
-    BleCharacteristicImpl(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, OnDataReceivedCallback callback) {
+    BleCharacteristicImpl(const char* desc, BleCharacteristicProperties properties, BleUuid& charUuid, BleUuid& svcUuid, OnDataReceivedCallback callback) {
         init();
         this->description = desc;
         this->properties = properties;
@@ -479,7 +479,7 @@ public:
         return ret;
     }
 
-    void configureCccd(BleConnHandle handle, uint8_t enable) {
+    void configureCccd(BleConnectionHandle handle, uint8_t enable) {
         if (!isLocal) {
             // Gatt Client configure peer CCCD.
         }
@@ -540,7 +540,7 @@ public:
         }
     }
 
-    void processReceivedData(BleAttrHandle attrHandle, const uint8_t* data, size_t len, const BlePeerDevice& peer) {
+    void processReceivedData(BleAttributeHandle attrHandle, const uint8_t* data, size_t len, const BlePeerDevice& peer) {
         if (data == nullptr) {
             return;
         }
@@ -577,7 +577,7 @@ BleCharacteristic::BleCharacteristic(const BleCharacteristic& characteristic)
     }
 }
 
-BleCharacteristic::BleCharacteristic(const char* desc, BleCharProps properties, OnDataReceivedCallback callback)
+BleCharacteristic::BleCharacteristic(const char* desc, BleCharacteristicProperties properties, OnDataReceivedCallback callback)
     : impl_(std::make_shared<BleCharacteristicImpl>(desc, properties, callback)) {
     impl()->addReference(this, false);
 
@@ -585,7 +585,7 @@ BleCharacteristic::BleCharacteristic(const char* desc, BleCharProps properties, 
     LOG_DEBUG(TRACE, "shared_ptr count: %d", impl_.use_count());
 }
 
-void BleCharacteristic::construct(const char* desc, BleCharProps properties, BleUuid& charUuid, BleUuid& svcUuid, OnDataReceivedCallback callback) {
+void BleCharacteristic::construct(const char* desc, BleCharacteristicProperties properties, BleUuid& charUuid, BleUuid& svcUuid, OnDataReceivedCallback callback) {
     impl_ = std::make_shared<BleCharacteristicImpl>(desc, properties, charUuid, svcUuid, callback);
     impl()->addReference(this, false);
 
@@ -653,7 +653,7 @@ BleUuid BleCharacteristic::UUID(void) const {
     return uuid;
 }
 
-BleCharProps BleCharacteristic::properties(void) const {
+BleCharacteristicProperties BleCharacteristic::properties(void) const {
     if (impl() != nullptr) {
         return impl()->properties;
     }
@@ -699,8 +699,8 @@ void BleCharacteristic::onDataReceived(OnDataReceivedCallback callback) {
 class BleServiceImpl {
 public:
     BleUuid uuid;
-    BleAttrHandle startHandle;
-    BleAttrHandle endHandle;
+    BleAttributeHandle startHandle;
+    BleAttributeHandle endHandle;
     Vector<BleCharacteristic> characteristics;
     BleGattServerImpl* gattsProxy; // Related GATT Server
 
@@ -751,7 +751,7 @@ public:
         return nullptr;
     }
 
-    BleCharacteristic* characteristic(BleAttrHandle attrHandle) {
+    BleCharacteristic* characteristic(BleAttributeHandle attrHandle) {
         for (size_t i = 0; i < characteristicCount(); i++) {
             BleCharacteristic& characteristic = characteristics[i];
             BleCharacteristicImpl* charImpl = characteristic.impl();
@@ -917,7 +917,7 @@ public:
     void gattsProcessDisconnected(const BlePeerDevice& peer) {
     }
 
-    void gattsProcessDataWritten(BleAttrHandle attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer) {
+    void gattsProcessDataWritten(BleAttributeHandle attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer) {
         for (size_t i = 0; i < serviceCount(); i++) {
             BleCharacteristic* characteristic = services[i].impl()->characteristic(attrHandle);
             if (characteristic != nullptr) {
@@ -939,7 +939,7 @@ public:
     ~BleGattClientImpl() {
     }
 
-    void gattcProcessDataNotified(BleAttrHandle attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer) {
+    void gattcProcessDataNotified(BleAttributeHandle attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer) {
         peer.gattsProxy()->gattsProcessDataWritten(attrHandle, buf, len, peer);
     }
 };
@@ -991,7 +991,7 @@ public:
         return ret;
     }
 
-    int setAdvertisingParams(const BleAdvParams* params) {
+    int setAdvertisingParams(const BleAdvertisingParams* params) {
         return ble_gap_set_advertising_parameters(params, nullptr);
     }
 
@@ -1192,7 +1192,7 @@ public:
  */
 class BlePeripheralImpl {
 public:
-    BleConnParams ppcp;
+    BleConnectionParams ppcp;
     Vector<BlePeerDevice> centrals;
 
     BlePeripheralImpl() {}
@@ -1351,12 +1351,12 @@ BleLocalDevice::BleLocalDevice()
     ble_stack_init(NULL);
     ble_gap_get_device_address(&address);
 
-    gattsProxy_ = std::make_shared<BleGattServerImpl>(address);
-    gattcProxy_ = std::make_shared<BleGattClientImpl>();
-    broadcasterProxy_ = std::make_shared<BleBroadcasterImpl>();
-    observerProxy_ = std::make_shared<BleObserverImpl>();
-    peripheralProxy_ = std::make_shared<BlePeripheralImpl>();
-    centralProxy_ = std::make_shared<BleCentralImpl>();
+    gattsProxy_ = std::make_unique<BleGattServerImpl>(address);
+    gattcProxy_ = std::make_unique<BleGattClientImpl>();
+    broadcasterProxy_ = std::make_unique<BleBroadcasterImpl>();
+    observerProxy_ = std::make_unique<BleObserverImpl>();
+    peripheralProxy_ = std::make_unique<BlePeripheralImpl>();
+    centralProxy_ = std::make_unique<BleCentralImpl>();
 
     ble_set_callback_on_events(onBleEvents, this);
 }
@@ -1429,12 +1429,12 @@ int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout, BleAdvertisin
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(const BleAdvParams& params) {
+int BleLocalDevice::advertise(const BleAdvertisingParams& params) {
     broadcasterProxy_->setAdvertisingParams(&params);
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(const BleAdvParams& params, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) {
+int BleLocalDevice::advertise(const BleAdvertisingParams& params, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) {
     broadcasterProxy_->setAdvertisingData(advertisingData);
     broadcasterProxy_->setScanResponseData(scanResponse);
     broadcasterProxy_->setAdvertisingParams(&params);
@@ -1459,7 +1459,7 @@ int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout, const iBeacon
     return broadcasterProxy_->advertise(connectable);
 }
 
-int BleLocalDevice::advertise(const BleAdvParams& params, const iBeacon& iBeacon, bool connectable) {
+int BleLocalDevice::advertise(const BleAdvertisingParams& params, const iBeacon& iBeacon, bool connectable) {
     broadcasterProxy_->setIbeacon(iBeacon);
     broadcasterProxy_->setAdvertisingParams(&params);
     return broadcasterProxy_->advertise(connectable);
@@ -1521,12 +1521,12 @@ int BleLocalDevice::addCharacteristic(BleCharacteristic& characteristic) {
     return gattsProxy_->addCharacteristic(characteristic);
 }
 
-int BleLocalDevice::addCharacteristic(const char* desc, BleCharProps properties, OnDataReceivedCallback callback) {
+int BleLocalDevice::addCharacteristic(const char* desc, BleCharacteristicProperties properties, OnDataReceivedCallback callback) {
     BleCharacteristic characteristic(desc, properties, callback);
     return gattsProxy_->addCharacteristic(characteristic);
 }
 
-BlePeerDevice* BleLocalDevice::findPeerDevice(BleConnHandle connHandle) {
+BlePeerDevice* BleLocalDevice::findPeerDevice(BleConnectionHandle connHandle) {
     for (size_t i = 0; i < peripheralProxy_->centralCount(); i++) {
         BlePeerDevice* peer = &peripheralProxy_->centrals[i];
         if (peer != nullptr) {
