@@ -49,6 +49,8 @@ LOG_SOURCE_CATEGORY("hal.ble")
 #include <string.h>
 #include <memory>
 
+static_assert(NRF_SDH_BLE_PERIPHERAL_LINK_COUNT == 1, "Multiple simultaneous peripheral connections are not supported");
+static_assert(NRF_SDH_BLE_TOTAL_LINK_COUNT <= 20, "Maximum supported number of concurrent connections in the peripheral and central roles combined exceeded");
 
 using spark::Vector;
 
@@ -263,17 +265,6 @@ Vector<GattBase::LinkAttMtu> GattBase::attMtuList_;
 
 class BleObject {
 public:
-    class BleGenericEventHandler {
-    public:
-        on_ble_evt_cb_t handler;
-        void* context;
-        BleGenericEventHandler() {
-            handler = nullptr;
-            context = nullptr;
-        }
-        ~BleGenericEventHandler() = default;
-    };
-
     class BleEventDispatcher;
     class BleGap;
     class Broadcaster;
@@ -289,12 +280,10 @@ public:
     std::unique_ptr<ConnectionsManager> connectionsMgr;     /**< BLE connections manager instance. */
     std::unique_ptr<GattServer> gatts;                      /**< BLE GATT server instance. */
     std::unique_ptr<GattClient> gattc;                      /**< BLE GATT client instance. */
-    Vector<BleGenericEventHandler> genericEventHandlers_;   /**< BLE generic event handlers. */
 
     static BleObject& getInstance(void);
     int init(void);
     int selectAntenna(hal_ble_ant_type_t antenna) const;
-    void onGenericEventCallback(on_ble_evt_cb_t cb, void* context);
 
 private:
     static bool initialized_;
@@ -329,11 +318,24 @@ public:
     ~BleEventDispatcher() = default;
     int init(void);
     int enqueue(EventMessage& msg);
+    void onGenericEventCallback(on_ble_evt_cb_t cb, void* context);
 
 private:
-    os_queue_t evtQueue_;                               /**< BLE event queue. */
-    os_thread_t evtThread_;                             /**< BLE event thread. */
-    BleObject* bleObj_;                                 /**< Pointer to the BLE Object. */
+    class BleGenericEventHandler {
+    public:
+        on_ble_evt_cb_t handler;
+        void* context;
+        BleGenericEventHandler() {
+            handler = nullptr;
+            context = nullptr;
+        }
+        ~BleGenericEventHandler() = default;
+    };
+
+    os_queue_t evtQueue_;                                   /**< BLE event queue. */
+    os_thread_t evtThread_;                                 /**< BLE event thread. */
+    BleObject* bleObj_;                                     /**< Pointer to the BLE Object. */
+    Vector<BleGenericEventHandler> genericEventHandlers_;   /**< BLE generic event handlers. */
 
     static os_thread_return_t bleEventDispatch(void* param);
 };
@@ -454,7 +456,7 @@ public:
     int disconnect(uint16_t connHandle);
     int updateConnectionParams(uint16_t connHandle, const hal_ble_conn_params_t* params);
     int getConnectionParams(uint16_t connHandle, hal_ble_conn_params_t* params);
-    bool valid(uint16_t connHandle) const;
+    bool valid(uint16_t connHandle);
 
 private:
     uint8_t isConnecting_ : 1;                      /**< If it is connecting or not. */
@@ -585,6 +587,7 @@ BleObject::BleEventDispatcher::BleEventDispatcher(BleObject* obj) : bleObj_(obj 
 }
 
 int BleObject::BleEventDispatcher::init(void) {
+    genericEventHandlers_.clear();
     if (os_queue_create(&evtQueue_, sizeof(EventMessage), BLE_EVENT_QUEUE_ITEM_COUNT, nullptr)) {
         LOG(ERROR, "os_queue_create() failed");
         return SYSTEM_ERROR_INTERNAL;
@@ -609,12 +612,19 @@ int BleObject::BleEventDispatcher::enqueue(EventMessage& msg) {
     return SYSTEM_ERROR_NONE;
 }
 
+void BleObject::BleEventDispatcher::onGenericEventCallback(on_ble_evt_cb_t cb, void* context) {
+    BleGenericEventHandler evtHandler;
+    evtHandler.handler = cb;
+    evtHandler.context = context;
+    genericEventHandlers_.append(evtHandler);
+}
+
 os_thread_return_t BleObject::BleEventDispatcher::bleEventDispatch(void* param) {
     BleEventDispatcher* dispatcher = static_cast<BleEventDispatcher*>(param);
     while (1) {
         EventMessage msg;
         if (!os_queue_take(dispatcher->evtQueue_, &msg, CONCURRENT_WAIT_FOREVER, nullptr)) {
-            if (msg.handler && msg.context) {
+            if (msg.handler) {
                 // Invoke the handler registered by specific application.
                 if (msg.evt.type == BLE_EVT_SCAN_RESULT) {
                     msg.handler(&msg.evt.params.scan_result, msg.context);
@@ -625,15 +635,15 @@ os_thread_return_t BleObject::BleEventDispatcher::bleEventDispatch(void* param) 
                 }
             } else {
                 // Just dispatch the event to the application those have subscribed the generic events.
-                for (int i = 0; i < dispatcher->bleObj_->genericEventHandlers_.size(); i++) {
-                    BleGenericEventHandler& evtHandler = dispatcher->bleObj_->genericEventHandlers_[i];
-                    if (evtHandler.handler && evtHandler.context) {
+                for (int i = 0; i < dispatcher->genericEventHandlers_.size(); i++) {
+                    BleGenericEventHandler& evtHandler = dispatcher->genericEventHandlers_[i];
+                    if (evtHandler.handler) {
                         evtHandler.handler(&msg.evt, evtHandler.context);
                     }
                 }
             }
             // Free the memory if needed.
-            if (msg.hook && msg.hookContext) {
+            if (msg.hook) {
                 msg.hook(&msg.evt, msg.hookContext);
             }
         } else {
@@ -930,8 +940,10 @@ size_t BleObject::Broadcaster::getScanResponseData(uint8_t* buf, size_t len) con
 }
 
 int BleObject::Broadcaster::setTxPower(int8_t val) {
-    int ret = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, advHandle_, roundTxPower(val));
+    val = roundTxPower(val);
+    int ret = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, advHandle_, val);
     NRF_CHECK_RETURN(ret, "sd_ble_gap_tx_power_set");
+    txPower_ = val;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1208,8 +1220,8 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
             if (observer->chacheDevice(newAddr)) {
                 // The new scanned device is not in the cached device list.
                 uint8_t* data = (uint8_t*)observer->observerScannedDataPool_.alloc(advReport.data.len);
-                LOG_DEBUG(TRACE, "Scanned data address: %u, len: %u", (unsigned)data, advReport.data.len);
                 if (data) {
+                    LOG_DEBUG(TRACE, "Scanned data address: %u, len: %u", (unsigned)data, advReport.data.len);
                     BleObject::BleEventDispatcher::EventMessage msg;
                     msg.evt.type = BLE_EVT_SCAN_RESULT;
                     msg.evt.params.scan_result.version = 0x01;
@@ -1443,17 +1455,9 @@ int BleObject::ConnectionsManager::getConnectionParams(uint16_t connHandle, hal_
     return SYSTEM_ERROR_NONE;
 }
 
-bool BleObject::ConnectionsManager::valid(uint16_t connHandle) const {
-    if (connHandle == BLE_INVALID_CONN_HANDLE) {
-        return false;
-    }
-    for (int i = 0; i < connections_.size(); i++) {
-        const BleConnection_t& connection = connections_[i];
-        if (connection.connHandle == connHandle) {
-            return true;
-        }
-    }
-    return false;
+bool BleObject::ConnectionsManager::valid(uint16_t connHandle) {
+    const BleConnection_t* connection = fetchConnection(connHandle);
+    return connection != nullptr;
 }
 
 void BleObject::ConnectionsManager::toPlatformConnParams(ble_gap_conn_params_t* params, const hal_ble_conn_params_t* halConnParams) {
@@ -2029,8 +2033,8 @@ void BleObject::GattServer::processGattServerEvents(const ble_evt_t* event, void
                 }
                 // TODO: deal with different write commands.
                 uint8_t* data = (uint8_t*)gatts->gattsDataRecPool_.alloc(write.len);
-                LOG_DEBUG(TRACE, "Received data address: %u, len: %u", (unsigned)data, write.len);
                 if (data) {
+                    LOG_DEBUG(TRACE, "Received data address: %u, len: %u", (unsigned)data, write.len);
                     BleObject::BleEventDispatcher::EventMessage msg;
                     msg.evt.type = BLE_EVT_DATA_WRITTEN;
                     msg.evt.params.data_rec.version = 0x01;
@@ -2097,8 +2101,11 @@ bool BleObject::GattClient::discovering(void) const {
 }
 
 int BleObject::GattClient::discoverServices(uint16_t connHandle, const hal_ble_uuid_t* uuid, on_ble_disc_service_cb_t callback, void* context) {
-    int ret = bleObj_->connectionsMgr->valid(connHandle);
-    CHECK_RETURN(ret, nullptr);
+    int ret;
+    if (!bleObj_->connectionsMgr->valid(connHandle)) {
+        LOG(ERROR, "Connection invalid.");
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
     if (isDiscovering_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -2128,8 +2135,8 @@ int BleObject::GattClient::discoverServices(uint16_t connHandle, const hal_ble_u
     }
     os_semaphore_destroy(discoverySemaphore_);
     hal_ble_svc_t* services = (hal_ble_svc_t*)gattcDiscSvcCharPool_.alloc(discoveredServices_.size() * sizeof(hal_ble_svc_t));
-    LOG_DEBUG(TRACE, "Discovered services address: %u, len: %u", (unsigned)services, discoveredServices_.size() * sizeof(hal_ble_svc_t));
     if (services) {
+        LOG_DEBUG(TRACE, "Discovered services address: %u, len: %u", (unsigned)services, discoveredServices_.size() * sizeof(hal_ble_svc_t));
         BleObject::BleEventDispatcher::EventMessage msg;
         msg.evt.type = BLE_EVT_SVC_DISCOVERED;
         msg.evt.params.svc_disc.version = 0x01;
@@ -2151,8 +2158,10 @@ int BleObject::GattClient::discoverServices(uint16_t connHandle, const hal_ble_u
 }
 
 int BleObject::GattClient::discoverCharacteristics(uint16_t connHandle, const hal_ble_svc_t* service, on_ble_disc_char_cb_t callback, void* context) {
-    int ret = bleObj_->connectionsMgr->valid(connHandle);
-    CHECK_RETURN(ret, nullptr);
+    if (!bleObj_->connectionsMgr->valid(connHandle)) {
+        LOG(ERROR, "Connection invalid.");
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
     if (isDiscovering_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -2166,7 +2175,8 @@ int BleObject::GattClient::discoverCharacteristics(uint16_t connHandle, const ha
     currDiscConnHandle_ = connHandle;
     currDiscSvc_ = *service;
     currDiscProcedure_ = BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS;
-    if (sd_ble_gattc_characteristics_discover(connHandle, &handleRange) != NRF_SUCCESS) {
+    int ret = sd_ble_gattc_characteristics_discover(connHandle, &handleRange);
+    if (ret != NRF_SUCCESS) {
         resetDiscoveryState();
         os_semaphore_destroy(discoverySemaphore_);
         NRF_CHECK_RETURN(ret, "sd_ble_gattc_characteristics_discover");
@@ -2187,8 +2197,8 @@ int BleObject::GattClient::discoverCharacteristics(uint16_t connHandle, const ha
     }
     os_semaphore_destroy(discoverySemaphore_);
     hal_ble_char_t* characteristics = (hal_ble_char_t*)gattcDiscSvcCharPool_.alloc(discoveredCharacteristics_.size() * sizeof(hal_ble_char_t));
-    LOG_DEBUG(TRACE, "Discovered characteristics address: %u, len: %u", (unsigned)characteristics, discoveredCharacteristics_.size() * sizeof(hal_ble_char_t));
     if (characteristics) {
+        LOG_DEBUG(TRACE, "Discovered characteristics address: %u, len: %u", (unsigned)characteristics, discoveredCharacteristics_.size() * sizeof(hal_ble_char_t));
         BleObject::BleEventDispatcher::EventMessage msg;
         msg.evt.type = BLE_EVT_CHAR_DISCOVERED;
         msg.evt.params.char_disc.version = 0x01;
@@ -2218,8 +2228,10 @@ size_t BleObject::GattClient::writeAttribute(uint16_t connHandle, uint16_t attrH
     if (buf == nullptr) {
         return 0;
     }
-    int ret = bleObj_->connectionsMgr->valid(connHandle);
-    CHECK_RETURN(ret, nullptr);
+    if (!bleObj_->connectionsMgr->valid(connHandle)) {
+        LOG(ERROR, "Connection invalid.");
+        return 0;
+    }
     ble_gattc_write_params_t writeParams;
     if (os_semaphore_create(&readWriteSemaphore_, 1, 0)) {
         LOG(ERROR, "os_semaphore_create() failed");
@@ -2236,7 +2248,8 @@ size_t BleObject::GattClient::writeAttribute(uint16_t connHandle, uint16_t attrH
     writeParams.offset = 0;
     writeParams.len = len;
     writeParams.p_value = buf;
-    if (sd_ble_gattc_write(connHandle, &writeParams) != NRF_SUCCESS) {
+    int ret = sd_ble_gattc_write(connHandle, &writeParams);
+    if (ret != NRF_SUCCESS) {
         os_semaphore_destroy(readWriteSemaphore_);
         LOG(ERROR, "sd_ble_gattc_write() failed: %u", (unsigned)ret);
         return 0;
@@ -2253,8 +2266,10 @@ size_t BleObject::GattClient::readAttribute(uint16_t connHandle, uint16_t attrHa
     if (buf == nullptr) {
         return 0;
     }
-    int ret = bleObj_->connectionsMgr->valid(connHandle);
-    CHECK_RETURN(ret, nullptr);
+    if (!bleObj_->connectionsMgr->valid(connHandle)) {
+        LOG(ERROR, "Connection invalid.");
+        return 0;
+    }
     if (os_semaphore_create(&readWriteSemaphore_, 1, 0)) {
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
@@ -2262,7 +2277,7 @@ size_t BleObject::GattClient::readAttribute(uint16_t connHandle, uint16_t attrHa
     readAttrHandle_ = attrHandle;
     readBuf_ = buf;
     readLen_ = MIN(len, BLE_ATTR_VALUE_PACKET_SIZE(getAttMtu(connHandle)));
-    ret = sd_ble_gattc_read(connHandle, attrHandle, 0);
+    int ret = sd_ble_gattc_read(connHandle, attrHandle, 0);
     if (ret != NRF_SUCCESS) {
         readBuf_ = nullptr;
         readAttrHandle_ = BLE_INVALID_ATTR_HANDLE;
@@ -2565,8 +2580,8 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                 }
             }
             uint8_t* data = (uint8_t*)gattc->gattcDataRecPool_.alloc(hvx.len);
-            LOG_DEBUG(TRACE, "Received data address: %u, len: %u", (unsigned)data, hvx.len);
             if (data) {
+                LOG_DEBUG(TRACE, "Received data address: %u, len: %u", (unsigned)data, hvx.len);
                 BleObject::BleEventDispatcher::EventMessage msg;
                 msg.evt.type = BLE_EVT_DATA_NOTIFIED;
                 msg.evt.params.data_rec.version = 0x01;
@@ -2616,12 +2631,17 @@ int BleObject::init(void) {
     if (!initialized_) {
         // Configure the BLE stack using the default settings.
         // Fetch the start address of the application RAM.
-        uint32_t ramStart = 0;
-        int ret = nrf_sdh_ble_default_cfg_set(BLE_CONN_CFG_TAG, &ramStart);
+        uint32_t appRamStart = 0;
+        int ret = nrf_sdh_ble_default_cfg_set(BLE_CONN_CFG_TAG, &appRamStart);
         NRF_CHECK_RETURN(ret, "nrf_sdh_ble_default_cfg_set");
-        LOG_DEBUG(TRACE, "RAM start: 0x%08x", (unsigned)ramStart);
+        LOG_DEBUG(TRACE, "APP RAM start: 0x%08x", (unsigned)appRamStart);
         // Enable the stack
-        ret = nrf_sdh_ble_enable(&ramStart);
+        uint32_t sdRamEnd = appRamStart;
+        ret = nrf_sdh_ble_enable(&sdRamEnd);
+        LOG_DEBUG(TRACE, "SoftDevice RAM end: 0x%08x", (unsigned)sdRamEnd);
+        if (sdRamEnd > appRamStart) {
+            LOG(ERROR, "Need to change APP_RAM_BASE in linker script to be large than: 0x%08x", (unsigned)sdRamEnd - 0x20000000);
+        }
         NRF_CHECK_RETURN(ret, "nrf_sdh_ble_enable");
         dispatcher->init();
         gap->init();
@@ -2630,7 +2650,6 @@ int BleObject::init(void) {
         connectionsMgr->init();
         gatts->init();
         gattc->init();
-        genericEventHandlers_.clear();
         initialized_ = true;
     }
     return SYSTEM_ERROR_NONE;
@@ -2668,13 +2687,6 @@ int BleObject::selectAntenna(hal_ble_ant_type_t antenna) const {
     }
     return SYSTEM_ERROR_NONE;
 #endif // (PLATFORM_ID == PLATFORM_XENON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM)
-}
-
-void BleObject::onGenericEventCallback(on_ble_evt_cb_t cb, void* context) {
-    BleGenericEventHandler evtHandler;
-    evtHandler.handler = cb;
-    evtHandler.context = context;
-    genericEventHandlers_.append(evtHandler);
 }
 
 int BleObject::toPlatformUUID(const hal_ble_uuid_t* halUuid, ble_uuid_t* uuid) {
@@ -2740,7 +2752,7 @@ int ble_select_antenna(hal_ble_ant_type_t antenna) {
 
 int ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context) {
     std::lock_guard<bleLock> lk(bleLock());
-    BleObject::getInstance().onGenericEventCallback(callback, context);
+    BleObject::getInstance().dispatcher->onGenericEventCallback(callback, context);
     return SYSTEM_ERROR_NONE;
 }
 
