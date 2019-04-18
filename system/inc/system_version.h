@@ -122,7 +122,8 @@ extern "C" {
 #define SYSTEM_VERSION_v101     0x01000100
 #define SYSTEM_VERSION_v110RC1  0x01010001
 #define SYSTEM_VERSION_v120ALPHA1  SYSTEM_VERSION_ALPHA(1, 2, 0, 1)
-#define SYSTEM_VERSION SYSTEM_VERSION_v120ALPHA1
+#define SYSTEM_VERSION_v120BETA1    SYSTEM_VERSION_BETA(1, 2, 0, 1)
+#define SYSTEM_VERSION SYSTEM_VERSION_v120BETA1
 
 /* previously we would set the least significant byte to 0 for the final release, but to make
  * version comparisons simpler, we will continue incrementing the LSB for the final release in a given
@@ -208,6 +209,7 @@ extern "C" {
 #define SYSTEM_VERSION_101
 #define SYSTEM_VERSION_110RC1
 #define SYSTEM_VERSION_120ALPHA1
+#define SYSTEM_VERSION_120BETA1
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {

@@ -1,9 +1,21 @@
+## 1.2.0-beta.1
+
+### FEATURES
+
+- [Enterprise] Immediate Product Firmware Updates [#1732](https://github.com/particle-iot/device-os/pull/1732)
+- [Enterprise] Device Vitals reporting [#1724](https://github.com/particle-iot/device-os/pull/1724)
+
+### INTERNAL
+
+- [test] fixes unit-tests for testing version string with pre-release [#1749](https://github.com/particle-iot/device-os/pull/1749)
+- [test] update upgrade-downgrade.sh to 1.2.0-beta.1 [#1749](https://github.com/particle-iot/device-os/pull/1749)
+
 ## 1.2.0-alpha.1
 
 ### FEATURES
 
-- [Enterprise] Immediate Product Firmware Updates
-- [Enterprise] Device Vitals reporting
+- [Enterprise] Immediate Product Firmware Updates [#1732](https://github.com/particle-iot/device-os/pull/1732)
+- [Enterprise] Device Vitals reporting [#1724](https://github.com/particle-iot/device-os/pull/1724)
 
 ## 1.1.0-rc.1
 
