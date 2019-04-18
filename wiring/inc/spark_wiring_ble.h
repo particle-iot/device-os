@@ -134,9 +134,9 @@ class BleUuid {
 public:
     BleUuid();
     BleUuid(const BleUuid& uuid);
-    BleUuid(const uint8_t* uuid128, BleUuidOrder order = BleUuidOrder::LSB);
-    BleUuid(uint16_t uuid16, BleUuidOrder order = BleUuidOrder::LSB);
-    BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order = BleUuidOrder::LSB);
+    BleUuid(const uint8_t* uuid128, BleUuidOrder order=BleUuidOrder::LSB);
+    BleUuid(uint16_t uuid16, BleUuidOrder order=BleUuidOrder::LSB);
+    BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order=BleUuidOrder::LSB);
     BleUuid(const String& uuid);
     BleUuid(const char* uuid);
     ~BleUuid();
@@ -208,12 +208,12 @@ public:
 
     size_t set(const uint8_t* buf, size_t len);
 
-    size_t append(uint8_t type, const uint8_t* buf, size_t len, bool force = false);
+    size_t append(uint8_t type, const uint8_t* buf, size_t len, bool force=false);
     size_t appendLocalName(const char* name, bool force = false);
-    size_t appendCustomData(const uint8_t* buf, size_t len, bool force = false);
+    size_t appendCustomData(const uint8_t* buf, size_t len, bool force=false);
 
     template<typename T>
-    size_t appendServiceUUID(T uuid, bool force = false) {
+    size_t appendServiceUUID(T uuid, bool force=false) {
         BleUuid tempUUID(uuid);
         if (tempUUID.type() == BleUuidType::SHORT) {
             uint16_t uuid16 = tempUUID.shorted();
@@ -257,10 +257,10 @@ class BleCharacteristic {
 public:
     BleCharacteristic();
     BleCharacteristic(const BleCharacteristic& characteristic);
-    BleCharacteristic(const char* desc, BleCharacteristicProperties properties, OnDataReceivedCallback callback = nullptr);
+    BleCharacteristic(const char* desc, BleCharacteristicProperties properties, OnDataReceivedCallback callback=nullptr);
 
     template<typename T>
-    BleCharacteristic(const char* desc, BleCharacteristicProperties properties, T charUuid, T svcUuid, OnDataReceivedCallback callback = nullptr) {
+    BleCharacteristic(const char* desc, BleCharacteristicProperties properties, T charUuid, T svcUuid, OnDataReceivedCallback callback=nullptr) {
         BleUuid cUuid(charUuid);
         BleUuid sUuid(svcUuid);
         construct(desc, properties, cUuid, sUuid, callback);
@@ -375,18 +375,18 @@ public:
     int8_t txPower(void) const;
 
     int advertise(void);
-    int advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
+    int advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse=nullptr);
     int advertise(uint16_t interval);
-    int advertise(uint16_t interval, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
+    int advertise(uint16_t interval, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse=nullptr);
     int advertise(uint16_t interval, uint16_t timeout);
-    int advertise(uint16_t interval, uint16_t timeout, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
+    int advertise(uint16_t interval, uint16_t timeout, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse=nullptr);
     int advertise(const BleAdvertisingParams& params);
-    int advertise(const BleAdvertisingParams& params, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
+    int advertise(const BleAdvertisingParams& params, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse=nullptr);
 
-    int advertise(const iBeacon& iBeacon, bool connectable = false);
-    int advertise(uint16_t interval, const iBeacon& iBeacon, bool connectable = false);
-    int advertise(uint16_t interval, uint16_t timeout, const iBeacon& iBeacon, bool connectable = false);
-    int advertise(const BleAdvertisingParams& params, const iBeacon& iBeacon, bool connectable = false);
+    int advertise(const iBeacon& iBeacon, bool connectable=false);
+    int advertise(uint16_t interval, const iBeacon& iBeacon, bool connectable=false);
+    int advertise(uint16_t interval, uint16_t timeout, const iBeacon& iBeacon, bool connectable=false);
+    int advertise(const BleAdvertisingParams& params, const iBeacon& iBeacon, bool connectable=false);
 
     int stopAdvertising(void) const;
 
@@ -398,15 +398,15 @@ public:
     int stopScanning(void);
 
     int addCharacteristic(BleCharacteristic& characteristic);
-    int addCharacteristic(const char* desc, BleCharacteristicProperties properties, OnDataReceivedCallback callback);
+    int addCharacteristic(const char* desc, BleCharacteristicProperties properties, OnDataReceivedCallback callback=nullptr);
 
     template<typename T>
-    int addCharacteristic(const char* desc, BleCharacteristicProperties properties, T charUuid, T svcUuid, OnDataReceivedCallback callback = nullptr) {
+    int addCharacteristic(const char* desc, BleCharacteristicProperties properties, T charUuid, T svcUuid, OnDataReceivedCallback callback=nullptr) {
         BleCharacteristic characteristic(desc, properties, charUuid, svcUuid, callback);
         return addCharacteristic(characteristic);
     }
 
-    int setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY, uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT);
+    int setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency=BLE_DEFAULT_SLAVE_LATENCY, uint16_t timeout=BLE_DEFAULT_CONN_SUP_TIMEOUT);
 
     BlePeerDevice connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout);
     BlePeerDevice connect(const BleAddress& addr);
