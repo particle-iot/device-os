@@ -59,9 +59,6 @@
 #endif
 
 // TODO: Add support for external flash (available if HAS_SERIAL_FLASH macro is defined)
-#ifdef USE_SERIAL_FLASH
-#pragma message("External flash is not supported")
-#endif
 
 #define PB(_name) particle_ctrl_##_name
 
