@@ -518,6 +518,16 @@ public:
         return false;
     }
 
+    BleCharacteristic* getReferenceStub(void) {
+        for (int i = 0; i < references.size(); i++) {
+            BleCharacteristicRef& reference = references[i];
+            if (reference.isStub) {
+                return reference.charPtr;
+            }
+        }
+        return nullptr;
+    }
+
     size_t referenceStubCount(void) {
         size_t total = 0;
         for (int i = 0; i < references.size(); i++) {
@@ -543,10 +553,9 @@ public:
         if (data == nullptr) {
             return;
         }
-        if (attrHandle == attrHandles.value_handle) {
-            if (dataCb != nullptr) {
-                dataCb(data, len);
-            }
+        BleCharacteristic* characteristic = getReferenceStub();
+        if (characteristic && dataCb && attrHandle == attrHandles.value_handle) {
+            dataCb(data, len, peer, characteristic);
         }
     }
 
