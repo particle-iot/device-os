@@ -20,7 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
-#define SCAN_RESULT_COUNT       5
+#define SCAN_RESULT_COUNT       30
 #define BLE_ADV_DATA_MAX        31
 
 SYSTEM_MODE(MANUAL);
@@ -43,24 +43,33 @@ void loop() {
 
         LOG(TRACE, "%d devices are found:", count);
         for (int i = 0; i < count; i++) {
-            LOG(TRACE, "devices %d: %d - %02X:%02X:%02X:%02X:%02X:%02X", i, results[i].rssi,
+            LOG(TRACE, " -------- MAC: %02X:%02X:%02X:%02X:%02X:%02X | RSSI: %dBm --------",
                     results[i].address[0], results[i].address[1], results[i].address[2],
-                    results[i].address[3], results[i].address[4], results[i].address[5]);
+                    results[i].address[3], results[i].address[4], results[i].address[5], results[i].rssi);
+
+            String name = results[i].advertisingData.deviceName();
+            if (name.length() > 0) {
+                LOG(TRACE, "Local name: %s", name.c_str());
+            }
+            name = results[i].scanResponse.deviceName();
+            if (name.length() > 0) {
+                LOG(TRACE, "Local name: %s", name.c_str());
+            }
 
             len = results[i].advertisingData(buf, sizeof(buf));
             if (len > 0) {
-                LOG(TRACE, "Advertising data:");
+                Serial1.print("Advertising data: ");
                 for (size_t j = 0; j < len; j++) {
-                    Serial1.printf("0x%02x, ", buf[j]);
+                    Serial1.printf("0x%02x,", buf[j]);
                 }
                 Serial1.println("\r\n");
             }
 
             len = results[i].scanResponse(buf, sizeof(buf));
             if (len > 0) {
-                LOG(TRACE, "Scan response data:");
+                Serial1.print("Scan response data: ");
                 for (size_t j = 0; j < len; j++) {
-                    Serial1.printf("0x%02x, ", buf[j]);
+                    Serial1.printf("0x%02x,", buf[j]);
                 }
                 Serial1.println("\r\n");
             }

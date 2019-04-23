@@ -144,11 +144,12 @@ typedef struct {
         uint16_t connectable   : 1;     /**< Connectable advertising event type. */
         uint16_t scannable     : 1;     /**< Scannable advertising event type. */
         uint16_t directed      : 1;     /**< Directed advertising event type. */
-        uint16_t scan_response : 1;     /**< Received a scan response. */
         uint16_t extended_pdu  : 1;     /**< Received an extended advertising set. */
     } type;
-    uint16_t data_len;
-    uint8_t* data;
+    uint16_t adv_data_len;
+    uint8_t* adv_data;
+    uint16_t sr_data_len;
+    uint8_t* sr_data;
     hal_ble_addr_t peer_addr;
 } hal_ble_gap_on_scan_result_evt_t;
 

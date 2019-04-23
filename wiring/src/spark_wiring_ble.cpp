@@ -292,8 +292,8 @@ size_t BleAdvertisingData::deviceName(uint8_t* buf, size_t len) const {
 
 String BleAdvertisingData::deviceName(void) const {
     String name;
-    uint8_t buf[BLE_MAX_ADV_DATA_LEN];
-    size_t len = deviceName(buf, sizeof(buf));
+    char buf[BLE_MAX_ADV_DATA_LEN];
+    size_t len = deviceName((uint8_t*)buf, sizeof(buf));
     if (len > 0) {
         for (size_t i = 0; i < len; i++) {
             if (!name.concat(buf[i])) {
@@ -326,15 +326,14 @@ size_t BleAdvertisingData::serviceUUID(uint8_t type, BleUuid* uuids, size_t coun
     size_t offset, adsLen = 0, found = 0;
     for (size_t i = 0; i < selfLen_; i += (offset + adsLen)) {
         adsLen = locate(&selfData_[i], selfLen_ - i, type, &offset);
-        if (adsLen > 0) {
+        if (adsLen > 0 && found < count) {
             if (adsLen == 4) { // length field + type field + 16-bits UUID
-                if (found < count) {
-                    uint16_t temp = (uint16_t)selfData_[i + offset + 2] | ((uint16_t)selfData_[i + offset + 3] << 8);
-                    BleUuid uuid(temp);
-                    uuids[found++] = uuid;
-                } else {
-                    return found;
-                }
+                uint16_t temp = (uint16_t)selfData_[i + offset + 2] | ((uint16_t)selfData_[i + offset + 3] << 8);
+                BleUuid uuid(temp);
+                uuids[found++] = uuid;
+            } else if (adsLen == 18) {
+                BleUuid uuid(&selfData_[i + offset + 2]);
+                uuids[found++] = uuid;
             }
             continue;
         }
@@ -1166,12 +1165,8 @@ public:
         BleScanResult result;
         result.address = event->peer_addr;
         result.rssi = event->rssi;
-
-        if (event->type.scan_response) {
-            result.scanResponse.set(event->data, event->data_len);
-        } else {
-            result.advertisingData.set(event->data, event->data_len);
-        }
+        result.scanResponse.set(event->sr_data, event->sr_data_len);
+        result.advertisingData.set(event->adv_data, event->adv_data_len);
 
         if (impl->callback != nullptr) {
             impl->callback(&result);
@@ -1257,15 +1252,18 @@ public:
         connParams.slave_latency = latency;
         connParams.conn_sup_timeout = timeout;
         ble_gap_set_ppcp(&connParams, nullptr);
-        ble_gap_connect(&addr, nullptr);
-
-        BlePeerDevice peer;
-        return peer;
+        return connect(addr);
     }
 
     BlePeerDevice connect(const BleAddress& addr) {
         ble_gap_connect(&addr, nullptr);
-
+        for (int i = 0; i < peripherals.size(); i++) {
+            const BlePeerDevice& peer = peripherals[i];
+            if (peer.address == addr) {
+                LOG(TRACE, "New peripheral connected. Start discovering services.");
+                //ble_gatt_client_discover_all_services(peer.connHandle, on_ble_disc_service_cb_t callback, this, nullptr);
+            }
+        }
         BlePeerDevice peer;
         return peer;
     }
@@ -1297,6 +1295,36 @@ public:
     void centralProcessDisconnected(const BlePeerDevice& peer) {
         peripherals.removeOne(peer);
     }
+
+//    static void onServicesDiscovered(const hal_ble_gattc_on_svc_disc_evt_t* event, void* context) {
+//        BleCentralImpl* central = static_cast<BleCentralImpl*>(context);
+//        hal_ble_svc_t* service;
+//        for (uint8_t i = 0; i < event->count; i++) {
+//            service = NULL;
+//            if (event->services[i].uuid.type == BLE_UUID_TYPE_16BIT) {
+//                if (event->services[i].uuid.uuid16 == svc3UUID) {
+//                    service = &service3;
+//                    svc3Discovered = true;
+//                    LOG(TRACE, "BLE Service3 found.");
+//                }
+//            }
+//            else if (event->services[i].uuid.type == BLE_UUID_TYPE_128BIT) {
+//                if (!memcmp(svc1UUID, event->services[i].uuid.uuid128, BLE_SIG_UUID_128BIT_LEN)) {
+//                    service = &service1;
+//                    svc1Discovered = true;
+//                    LOG(TRACE, "BLE Service1 found.");
+//                }
+//                else if (!memcmp(svc2UUID, event->services[i].uuid.uuid128, BLE_SIG_UUID_128BIT_LEN)) {
+//                    service = &service2;
+//                    svc2Discovered = true;
+//                    LOG(TRACE, "BLE Service2 found.");
+//                }
+//            }
+//            if (service != NULL) {
+//                memcpy(service, &event->services[i], sizeof(hal_ble_svc_t));
+//            }
+//        }
+//    }
 };
 
 
