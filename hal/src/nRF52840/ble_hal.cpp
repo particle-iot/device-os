@@ -144,6 +144,10 @@ system_error_t sysError(uint32_t error) {
     }
 }
 
+bool addressEqual(const hal_ble_addr_t& srcAddr, const hal_ble_addr_t& destAddr) {
+    return (srcAddr.addr_type == destAddr.addr_type && !memcmp(srcAddr.addr, destAddr.addr, BLE_SIG_ADDR_LEN));
+}
+
 } //anonymous namespace
 
 class GattBase {
@@ -422,6 +426,7 @@ private:
     uint8_t scanReportBuff_[BLE_MAX_SCAN_REPORT_BUF_LEN];   /**< Buffer to hold the scanned report data. */
     ble_data_t bleScanData_;                                /**< BLE scanned data. */
     Vector<hal_ble_addr_t> cache_;                          /**< Cached address of scanned devices to filter-out duplicated result. */
+    Vector<hal_ble_gap_on_scan_result_evt_t> pendingResults_; /**< Caches the scanned advertising data until the scan response data is captured. */
     BleObject* bleObj_;                                     /**< Pointer to the BLE Object. */
     AtomicAllocedPool observerScannedDataPool_;             /**< Pool to allocate memory for scanned data. */
     on_ble_scan_result_cb_t scanResultCallBack_;            /**< Callback function on scan result. */
@@ -429,7 +434,10 @@ private:
 
     static const uint16_t OBSERVER_SCANNED_DATA_POOL_SIZE = 1024;
 
-    bool chacheDevice(const hal_ble_addr_t& newAddr);
+    bool chachedDevice(const hal_ble_addr_t& address) const;
+    hal_ble_gap_on_scan_result_evt_t* chachedResult(const hal_ble_addr_t& address);
+    void removeResult(const hal_ble_addr_t& address);
+    void clearResult(void);
     int continueScanning(void);
     static void observerEventProcessedHook(const hal_ble_evts_t *event, void* context);
     static void processObserverEvents(const ble_evt_t* event, void* context);
@@ -1161,6 +1169,8 @@ int BleObject::Observer::startScanning(on_ble_scan_result_cb_t callback, void* c
     }
     os_semaphore_destroy(scanSemaphore_);
     isScanning_ = false;
+    cache_.clear();
+    clearResult();
     return ret;
 }
 
@@ -1185,25 +1195,57 @@ void BleObject::Observer::toPlatformScanParams(ble_gap_scan_params_t* params) co
     params->filter_policy = scanParams_.filter_policy;
 }
 
-bool BleObject::Observer::chacheDevice(const hal_ble_addr_t& newAddr) {
+bool BleObject::Observer::chachedDevice(const hal_ble_addr_t& address) const {
     for (int i = 0; i < cache_.size(); i++) {
-        const hal_ble_addr_t& existAddr = cache_[i];
-        if (existAddr.addr_type == newAddr.addr_type &&
-                !memcmp(existAddr.addr, newAddr.addr, BLE_SIG_ADDR_LEN)) {
-            LOG_DEBUG(TRACE, "Duplicated scan result. Filter it out.");
-            return false;
+        const hal_ble_addr_t& addr = cache_[i];
+        if (addressEqual(addr, address)) {
+            return true;
         }
     }
-    cache_.append(newAddr);
-    return true;
+    return false;
+}
+
+hal_ble_gap_on_scan_result_evt_t* BleObject::Observer::chachedResult(const hal_ble_addr_t& address) {
+    for (int i = 0; i < pendingResults_.size(); i++) {
+        hal_ble_gap_on_scan_result_evt_t& result = pendingResults_[i];
+        if (addressEqual(result.peer_addr, address)) {
+            return &result;
+        }
+    }
+    return nullptr;
+}
+
+void BleObject::Observer::removeResult(const hal_ble_addr_t& address) {
+    for (int i = 0; i < pendingResults_.size(); i++) {
+        const hal_ble_gap_on_scan_result_evt_t& result = pendingResults_[i];
+        if (addressEqual(result.peer_addr, address)) {
+            pendingResults_.removeAt(i);
+            return;
+        }
+    }
+}
+
+void BleObject::Observer::clearResult(void) {
+    for (int i = 0; i < pendingResults_.size(); i++) {
+        const hal_ble_gap_on_scan_result_evt_t& result = pendingResults_[i];
+        if (result.adv_data != nullptr) {
+            observerScannedDataPool_.free(result.adv_data);
+            LOG_DEBUG(TRACE, "clearResult: Free Scanned adv_data memory: %u", (unsigned)result.adv_data);
+        }
+    }
+    pendingResults_.clear();
 }
 
 void BleObject::Observer::observerEventProcessedHook(const hal_ble_evts_t *event, void* context) {
     Observer* observer = static_cast<Observer*>(context);
     if (observer && event && event->type == BLE_EVT_SCAN_RESULT) {
-        if (event->params.scan_result.data != nullptr) {
-            observer->observerScannedDataPool_.free(event->params.scan_result.data);
-            LOG_DEBUG(TRACE, "Free Scanned data memory: %u", (unsigned)event->params.scan_result.data);
+        if (event->params.scan_result.adv_data != nullptr) {
+            observer->observerScannedDataPool_.free(event->params.scan_result.adv_data);
+            LOG_DEBUG(TRACE, "Hook: Free Scanned adv_data memory: %u", (unsigned)event->params.scan_result.adv_data);
+        }
+        if (event->params.scan_result.sr_data != nullptr) {
+            observer->observerScannedDataPool_.free(event->params.scan_result.sr_data);
+            LOG_DEBUG(TRACE, "Hook: Free Scanned sr_data memory: %u", (unsigned)event->params.scan_result.sr_data);
         }
     }
 }
@@ -1213,34 +1255,86 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
     switch (event->header.evt_id) {
         case BLE_GAP_EVT_ADV_REPORT: {
             const ble_gap_evt_adv_report_t& advReport = event->evt.gap_evt.params.adv_report;
-            LOG_DEBUG(TRACE, "BLE GAP event: advertising report.");
             hal_ble_addr_t newAddr;
             newAddr.addr_type = advReport.peer_addr.addr_type;
             memcpy(newAddr.addr, advReport.peer_addr.addr, BLE_SIG_ADDR_LEN);
-            if (observer->chacheDevice(newAddr)) {
-                // The new scanned device is not in the cached device list.
-                uint8_t* data = (uint8_t*)observer->observerScannedDataPool_.alloc(advReport.data.len);
-                if (data) {
-                    LOG_DEBUG(TRACE, "Scanned data address: %u, len: %u", (unsigned)data, advReport.data.len);
-                    BleObject::BleEventDispatcher::EventMessage msg;
-                    msg.evt.type = BLE_EVT_SCAN_RESULT;
-                    msg.evt.params.scan_result.version = 0x01;
-                    msg.evt.params.scan_result.type.connectable = advReport.type.connectable;
-                    msg.evt.params.scan_result.type.scannable = advReport.type.scannable;
-                    msg.evt.params.scan_result.type.directed = advReport.type.directed;
-                    msg.evt.params.scan_result.type.scan_response = advReport.type.scan_response;
-                    msg.evt.params.scan_result.type.extended_pdu = advReport.type.extended_pdu;
-                    msg.evt.params.scan_result.rssi = advReport.rssi;
-                    msg.evt.params.scan_result.peer_addr.addr_type = newAddr.addr_type;
-                    memcpy(msg.evt.params.scan_result.peer_addr.addr, newAddr.addr, BLE_SIG_ADDR_LEN);
-                    msg.evt.params.scan_result.data_len = advReport.data.len;
-                    memcpy(data, advReport.data.p_data, advReport.data.len);
-                    msg.evt.params.scan_result.data = data;
-                    msg.handler = (BleObject::BleEventDispatcher::BleSpecificEventHandler)observer->scanResultCallBack_;
-                    msg.context = observer->context_;
-                    msg.hook = observer->observerEventProcessedHook;
-                    msg.hookContext = observer;
-                    observer->bleObj_->dispatcher->enqueue(msg);
+            //LOG_DEBUG(TRACE, "BLE GAP event: advertising report.");
+            if (!observer->chachedDevice(newAddr)) {
+                if (!observer->scanParams_.active || !advReport.type.scannable) {
+                    observer->cache_.append(newAddr);
+                    uint8_t* advData = (uint8_t*)observer->observerScannedDataPool_.alloc(advReport.data.len);
+                    if (advData) {
+                        LOG_DEBUG(TRACE, "Scanned adv_data address: %u, len: %u", (unsigned)advData, advReport.data.len);
+                        BleObject::BleEventDispatcher::EventMessage msg;
+                        memset(&msg.evt.params.scan_result, 0x00, sizeof(hal_ble_gap_on_scan_result_evt_t));
+                        msg.evt.type = BLE_EVT_SCAN_RESULT;
+                        msg.evt.params.scan_result.version = 0x01;
+                        msg.evt.params.scan_result.type.connectable = advReport.type.connectable;
+                        msg.evt.params.scan_result.type.scannable = advReport.type.scannable;
+                        msg.evt.params.scan_result.type.directed = advReport.type.directed;
+                        msg.evt.params.scan_result.type.extended_pdu = advReport.type.extended_pdu;
+                        msg.evt.params.scan_result.rssi = advReport.rssi;
+                        msg.evt.params.scan_result.peer_addr.addr_type = advReport.peer_addr.addr_type;
+                        memcpy(msg.evt.params.scan_result.peer_addr.addr, advReport.peer_addr.addr, BLE_SIG_ADDR_LEN);
+                        msg.evt.params.scan_result.adv_data_len = advReport.data.len;
+                        memcpy(advData, advReport.data.p_data, advReport.data.len);
+                        msg.evt.params.scan_result.adv_data = advData;
+                        msg.handler = (BleObject::BleEventDispatcher::BleSpecificEventHandler)observer->scanResultCallBack_;
+                        msg.context = observer->context_;
+                        msg.hook = observer->observerEventProcessedHook;
+                        msg.hookContext = observer;
+                        observer->bleObj_->dispatcher->enqueue(msg);
+                    }
+                } else if (advReport.type.scannable) {
+                    if (!advReport.type.scan_response) {
+                        if (observer->chachedResult(newAddr) == nullptr) {
+                            uint8_t* advData = (uint8_t*)observer->observerScannedDataPool_.alloc(advReport.data.len);
+                            if (advData) {
+                                LOG_DEBUG(TRACE, "Cached adv_data address: %u, len: %u", (unsigned)advData, advReport.data.len);
+                                hal_ble_gap_on_scan_result_evt_t result;
+                                memset(&result, 0x00, sizeof(hal_ble_gap_on_scan_result_evt_t));
+                                result.version = 0x01;
+                                result.type.connectable = advReport.type.connectable;
+                                result.type.scannable = advReport.type.scannable;
+                                result.type.directed = advReport.type.directed;
+                                result.type.extended_pdu = advReport.type.extended_pdu;
+                                result.rssi = advReport.rssi;
+                                result.peer_addr.addr_type = newAddr.addr_type;
+                                memcpy(result.peer_addr.addr, newAddr.addr, BLE_SIG_ADDR_LEN);
+                                result.adv_data_len = advReport.data.len;
+                                memcpy(advData, advReport.data.p_data, advReport.data.len);
+                                result.adv_data = advData;
+                                observer->pendingResults_.append(result);
+                            }
+                        }
+                    } else {
+                        hal_ble_gap_on_scan_result_evt_t* result = observer->chachedResult(newAddr);
+                        if (result) {
+                            result->rssi = advReport.rssi;
+                            result->sr_data = nullptr;
+                            result->sr_data_len = advReport.data.len;
+                            if (advReport.data.len > 0) {
+                                uint8_t* srData = (uint8_t*)observer->observerScannedDataPool_.alloc(advReport.data.len);
+                                if (srData) {
+                                    LOG_DEBUG(TRACE, "Scanned sr_data address: %u, len: %u", (unsigned)srData, advReport.data.len);
+                                    memcpy(srData, advReport.data.p_data, advReport.data.len);
+                                    result->sr_data = srData;
+                                } else {
+                                    result->sr_data_len = 0;
+                                }
+                            }
+                            BleObject::BleEventDispatcher::EventMessage msg;
+                            msg.evt.type = BLE_EVT_SCAN_RESULT;
+                            msg.evt.params.scan_result = *result;
+                            msg.handler = (BleObject::BleEventDispatcher::BleSpecificEventHandler)observer->scanResultCallBack_;
+                            msg.context = observer->context_;
+                            msg.hook = observer->observerEventProcessedHook;
+                            msg.hookContext = observer;
+                            observer->bleObj_->dispatcher->enqueue(msg);
+                            observer->removeResult(newAddr);
+                            observer->cache_.append(newAddr);
+                        }
+                    }
                 }
             }
             // Continue scanning
@@ -1496,7 +1590,7 @@ BleObject::ConnectionsManager::BleConnection_t* BleObject::ConnectionsManager::f
     for (int i = 0; i < connections_.size(); i++) {
         BleConnection_t& connection = connections_.at(i);
         hal_ble_addr_t& peer = connection.peer;
-        if (peer.addr_type == address->addr_type && !memcmp(peer.addr, address->addr, BLE_SIG_ADDR_LEN)) {
+        if (addressEqual(peer, *address)) {
             return &connection;
         }
     }
