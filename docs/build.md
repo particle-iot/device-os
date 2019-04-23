@@ -488,19 +488,13 @@ Before the 0.4.0 firmware was released, we recommended the develop branch for ea
 
 Pre-releases are available in `release/vx.x.x-rc.x` branches.  Default released firmware is available as `release/vx.x.x`, which is also then duplicated to `release/stable` and `master` branches.
 
-To build the develop branch, follow these guidelines:
-
-1. export the environment variable PARTICLE_DEVELOP=1
-2. after pulling from the develop branch, be sure to build and flash the system firmware
-
 
 ## Recipes and Tips
 
 - The variables passed to make can also be provided as environment variables,
 so you avoid having to type them out for each build. The environment variable value can be overridden
 by passing the variable on the command line.
- - `PARTICLE_DEVELOP` can be set in the environment when building from the `develop` branch. (Caveats apply that this is bleeding edge!)
- - `PLATFORM` set in the environment if you mainly build for one platform, e.g. the Photon.
+- `PLATFORM` set in the environment if you mainly build for one platform, e.g. the Photon.
 
 ### Photon
 
