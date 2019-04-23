@@ -90,7 +90,7 @@ namespace PARTICLE_BLE {
 typedef uint16_t BleConnectionHandle;
 typedef uint16_t BleAttributeHandle;
 
-typedef void (*OnDataReceivedCallback)(const uint8_t* data, size_t len);
+typedef void (*OnDataReceivedCallback)(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 typedef void (*OnScanResultCallback)(const BleScanResult* device);
 typedef void (*OnConnectedCallback)(const BlePeerDevice& peer);
 typedef void (*OnDisconnectedCallback)(const BlePeerDevice& peer);
