@@ -20,8 +20,12 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 
+SYSTEM_MODE(MANUAL);
+
+Serial1LogHandler log(115200, LOG_LEVEL_ALL);
+
 #define UART_TX_BUF_SIZE        20
-#define SCAN_RESULT_COUNT       5
+#define SCAN_RESULT_COUNT       20
 
 BleScanResult results[SCAN_RESULT_COUNT];
 
@@ -29,10 +33,13 @@ BleCharacteristic peerTxCharacteristic;
 BleCharacteristic peerRxCharacteristic;
 BlePeerDevice peer;
 
+const BleUuid svcUUID("6FA90001-5C4E-48A8-94F4-8030546F36FC");
+BleUuid foundServiceUUID;
+
 uint8_t txBuf[UART_TX_BUF_SIZE];
 size_t txLen = 0;
 
-void onDataReceived(const uint8_t* data, size_t len) {
+void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context) {
     for (uint8_t i = 0; i < len; i++) {
         Serial.write(data[i]);
     }
@@ -44,7 +51,7 @@ void setup() {
 }
 
 void loop() {
-    if (peer.connected()) {
+    if (BLE.connected()) {
         while (Serial.available() && txLen < UART_TX_BUF_SIZE) {
             txBuf[txLen++] = Serial.read();
         }
@@ -54,11 +61,12 @@ void loop() {
         }
     }
     else {
+        delay(3000);
         size_t count = BLE.scan(results, SCAN_RESULT_COUNT);
         if (count > 0) {
             for (uint8_t i = 0; i < count; i++) {
-                String peerDeviceName = results[i].advertisingData.deviceName();
-                if (peerDeviceName == "Xenon-123ABC") {
+                size_t svcCount = results[i].scanResponse.serviceUUID(&foundServiceUUID, 1);
+                if (svcCount > 0 && foundServiceUUID == svcUUID) {
                     peer = BLE.connect(results[i].address);
                     if (peer.connected()) {
                         peerTxCharacteristic = peer.characteristic("tx");

@@ -2279,6 +2279,12 @@ int BleObject::GattClient::discoverCharacteristics(uint16_t connHandle, const ha
     ret = SYSTEM_ERROR_NONE;
     os_semaphore_take(discoverySemaphore_, BLE_DICOVERY_PROCEDURE_TIMEOUT_MS, false);
     // Now discover characteristic descriptors
+    if (!bleObj_->connectionsMgr->valid(connHandle)) {
+        LOG(ERROR, "Connection invalid.");
+        os_semaphore_destroy(discoverySemaphore_);
+        resetDiscoveryState();
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
     currDiscProcedure_ = BLE_DISCOVERY_PROCEDURE_DESCRIPTORS;
     if (sd_ble_gattc_descriptors_discover(currDiscConnHandle_, &handleRange) != NRF_SUCCESS) {
         os_semaphore_destroy(discoverySemaphore_);
@@ -2411,7 +2417,7 @@ bool BleObject::GattClient::readCharacteristicUUID128IfNeeded(void) {
     for (int i = 0;  i < discoveredCharacteristics_.size(); i++) {
         hal_ble_char_t& characteristic = discoveredCharacteristics_[i];
         if (characteristic.uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
-            return (sd_ble_gattc_read(currDiscConnHandle_, characteristic.decl_handle, 0) == NRF_SUCCESS);
+            return (sd_ble_gattc_read(currDiscConnHandle_, characteristic.attr_handles.decl_handle, 0) == NRF_SUCCESS);
         }
     }
     return false;
@@ -2431,7 +2437,7 @@ hal_ble_char_t* BleObject::GattClient::findDiscoveredCharacteristic(uint16_t han
     hal_ble_char_t* foundChar = nullptr;
     for (int i = 0;  i < discoveredCharacteristics_.size(); i++) {
         hal_ble_char_t& characteristic = discoveredCharacteristics_[i];
-        if (characteristic.decl_handle <= handle) {
+        if (characteristic.attr_handles.decl_handle <= handle) {
             foundChar = &characteristic;
         }
     }
@@ -2493,8 +2499,7 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
             }
             gattc->clearAttMtu(event->evt.gap_evt.conn_handle);
             if (gattc->isDiscovering_ && event->evt.gap_evt.conn_handle == gattc->currDiscConnHandle_) {
-                os_semaphore_destroy(gattc->discoverySemaphore_);
-                gattc->resetDiscoveryState();
+                os_semaphore_give(gattc->discoverySemaphore_, false);
             }
         } break;
         case BLE_GATTC_EVT_EXCHANGE_MTU_RSP: {
@@ -2550,8 +2555,8 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                         hal_ble_char_t characteristic;
                         characteristic.char_ext_props = charDiscRsp.chars[i].char_ext_props;
                         characteristic.properties = toHalCharProps(charDiscRsp.chars[i].char_props);
-                        characteristic.decl_handle = charDiscRsp.chars[i].handle_decl;
-                        characteristic.value_handle = charDiscRsp.chars[i].handle_value;
+                        characteristic.attr_handles.decl_handle = charDiscRsp.chars[i].handle_decl;
+                        characteristic.attr_handles.value_handle = charDiscRsp.chars[i].handle_value;
                         BleObject::toHalUUID(&charDiscRsp.chars[i].uuid, &characteristic.uuid);
                         gattc->discoveredCharacteristics_.append(characteristic);
                     }
@@ -2587,13 +2592,13 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                         if (characteristic) {
                             switch (descDiscRsp.descs[i].uuid.uuid) {
                                 case BLE_SIG_UUID_CHAR_USER_DESCRIPTION_DESC: {
-                                    characteristic->user_desc_handle = descDiscRsp.descs[i].handle;
+                                    characteristic->attr_handles.user_desc_handle = descDiscRsp.descs[i].handle;
                                 } break;
                                 case BLE_SIG_UUID_CLIENT_CHAR_CONFIG_DESC: {
-                                    characteristic->cccd_handle = descDiscRsp.descs[i].handle;
+                                    characteristic->attr_handles.cccd_handle = descDiscRsp.descs[i].handle;
                                 } break;
                                 case BLE_SIG_UUID_SERVER_CHAR_CONFIG_DESC: {
-                                    characteristic->sccd_handle = descDiscRsp.descs[i].handle;
+                                    characteristic->attr_handles.sccd_handle = descDiscRsp.descs[i].handle;
                                 } break;
                                 case BLE_SIG_UUID_CHAR_EXTENDED_PROPERTIES_DESC:
                                 case BLE_SIG_UUID_CHAR_PRESENT_FORMAT_DESC:

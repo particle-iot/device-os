@@ -115,11 +115,7 @@ typedef struct {
     uint8_t version;
     uint8_t char_ext_props : 1;
     uint8_t properties;
-    uint16_t decl_handle;
-    uint16_t value_handle;
-    uint16_t user_desc_handle;
-    uint16_t cccd_handle;
-    uint16_t sccd_handle;
+    hal_ble_char_handles_t attr_handles;
     hal_ble_uuid_t uuid;
 } hal_ble_char_t;
 
