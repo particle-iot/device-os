@@ -274,6 +274,10 @@ public:
         return numBytes;
     }
 
+    void setPayload(Vector<uint8_t> v) {
+        payload_ = std::move(v);
+    }
+
 private:
     FlagsAndTnf         flagsAndTnf_;
     Vector<uint8_t>     type_;

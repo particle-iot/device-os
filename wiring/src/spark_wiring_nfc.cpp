@@ -37,14 +37,11 @@ TextRecord::TextRecord(const char* text, const char* encoding) {
     setType(&ndefType, sizeof(ndefType));
 
     // Payload: encoding length + encoding data + text data
-    uint16_t payloadLength = 1 + strlen(encoding) + strlen(text);
-    std::unique_ptr<uint8_t[]> payload(new (std::nothrow) uint8_t[payloadLength]);
-    uint8_t index = 0;
-    payload[index++] = strlen(encoding);
-    memcpy(&payload[index], encoding, strlen(encoding));
-    index += strlen(encoding);
-    memcpy(&payload[index], text, strlen(text));
-    setPayload(payload.get(), payloadLength);
+    Vector<uint8_t> payload;
+    payload.append(static_cast<uint8_t>(strlen(encoding)));
+    payload.append(reinterpret_cast<const uint8_t*>(encoding), strlen(encoding));
+    payload.append(reinterpret_cast<const uint8_t*>(text), strlen(text));
+    setPayload(payload);
 }
 
 UriRecord::UriRecord(const char* uri, NfcUriType type) {
@@ -58,11 +55,10 @@ UriRecord::UriRecord(const char* uri, NfcUriType type) {
     setType(&ndefType, sizeof(ndefType));
 
     // Payload: uri type + uri
-    uint16_t payloadLength = 1 + strlen(uri);
-    std::unique_ptr<uint8_t[]> payload(new (std::nothrow) uint8_t[payloadLength]);
-    payload[0] = static_cast<uint8_t>(type);
-    memcpy(&payload[1], uri, strlen(uri));
-    setPayload(payload.get(), payloadLength);
+    Vector<uint8_t> payload;
+    payload.append(static_cast<uint8_t>(type));
+    payload.append(reinterpret_cast<const uint8_t*>(uri), strlen(uri));
+    setPayload(payload);
 }
 
 LauchAppRecord::LauchAppRecord(const char* androidPackageName) {
