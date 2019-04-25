@@ -37,13 +37,14 @@ TextRecord::TextRecord(const char* text, const char* encoding) {
     setType(&ndefType, sizeof(ndefType));
 
     // Payload: encoding length + encoding data + text data
-    uint8_t payload[1 + strlen(encoding) + strlen(text)];
+    uint16_t payloadLength = 1 + strlen(encoding) + strlen(text);
+    std::unique_ptr<uint8_t[]> payload(new (std::nothrow) uint8_t[payloadLength]);
     uint8_t index = 0;
     payload[index++] = strlen(encoding);
     memcpy(&payload[index], encoding, strlen(encoding));
     index += strlen(encoding);
     memcpy(&payload[index], text, strlen(text));
-    setPayload(payload, sizeof(payload));
+    setPayload(payload.get(), payloadLength);
 }
 
 UriRecord::UriRecord(const char* uri, NfcUriType type) {
@@ -57,10 +58,11 @@ UriRecord::UriRecord(const char* uri, NfcUriType type) {
     setType(&ndefType, sizeof(ndefType));
 
     // Payload: uri type + uri
-    uint8_t payload[1 + strlen(uri)];
+    uint16_t payloadLength = 1 + strlen(uri);
+    std::unique_ptr<uint8_t[]> payload(new (std::nothrow) uint8_t[payloadLength]);
     payload[0] = static_cast<uint8_t>(type);
     memcpy(&payload[1], uri, strlen(uri));
-    setPayload(payload, sizeof(payload));
+    setPayload(payload.get(), payloadLength);
 }
 
 LauchAppRecord::LauchAppRecord(const char* androidPackageName) {
@@ -72,7 +74,6 @@ LauchAppRecord::LauchAppRecord(const char* androidPackageName) {
     static constexpr const char ndefAndroidLaunchappRecType[] = "android.com:pkg";
 
     setTnf(Tnf::TNF_EXTERNAL_TYPE);
-
     setType(ndefAndroidLaunchappRecType, strlen(ndefAndroidLaunchappRecType));
     setPayload(androidPackageName, strlen(androidPackageName));
 }
@@ -100,7 +101,7 @@ size_t NdefMessage::getEncodedData(Vector<uint8_t>& vector) const {
 }
 
 int NdefMessage::addRecord(Record& record) {
-    std::shared_ptr<Record> r(new Record(record));
+    std::shared_ptr<Record> r(new (std::nothrow) Record(record));
     if (!records_.append(r)) {
         return -1;
     }
@@ -113,8 +114,8 @@ int NdefMessage::addTextRecord(const char* text, const char* encoding) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    TextRecord textRecord = TextRecord(text, encoding);
-    Record* record = static_cast<Record*>(&textRecord);
+    std::unique_ptr<TextRecord> textRecord(new (std::nothrow) TextRecord(text, encoding));
+    Record* record = static_cast<Record*>(textRecord.get());
 
     return addRecord(*record);
 }
@@ -124,8 +125,8 @@ int NdefMessage::addUriRecord(const char* uri, NfcUriType type) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    UriRecord uriRecord = UriRecord(uri, type);
-    Record* record = static_cast<Record*>(&uriRecord);
+    std::unique_ptr<UriRecord> uriRecord(new (std::nothrow) UriRecord(uri, type));
+    Record* record = static_cast<Record*>(uriRecord.get());
 
     return addRecord(*record);
 }
@@ -135,8 +136,8 @@ int NdefMessage::addLauchAppRecord(const char* androidPackageName) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    LauchAppRecord lauchAppRecord = LauchAppRecord(androidPackageName);
-    Record* record = static_cast<Record*>(&lauchAppRecord);
+    std::unique_ptr<LauchAppRecord> lauchAppRecord(new (std::nothrow) LauchAppRecord(androidPackageName));
+    Record* record = static_cast<Record*>(lauchAppRecord.get());
 
     return addRecord(*record);
 }
