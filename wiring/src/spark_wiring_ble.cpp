@@ -55,6 +55,16 @@ void convertToHalUuid(const BleUuid& uuid, hal_ble_uuid_t* halUuid) {
     }
 }
 
+BleUuid convertToWiringUuid(const hal_ble_uuid_t* halUuid) {
+    if (halUuid->type == BLE_UUID_TYPE_16BIT || halUuid->type == BLE_UUID_TYPE_128BIT_SHORTED) {
+        BleUuid uuid(halUuid->uuid16);
+        return uuid;
+    } else {
+        BleUuid uuid(halUuid->uuid128);
+        return uuid;
+    }
+}
+
 } //anonymous namespace
 
 
@@ -947,9 +957,88 @@ public:
     ~BleGattClientImpl() {
     }
 
+    int discoverAllServices(BlePeerDevice& peer) {
+        int ret = ble_gatt_client_discover_all_services(peer.connHandle, onServicesDiscovered, &peer, nullptr);
+        if (ret == SYSTEM_ERROR_NONE) {
+            for (int i = 0; i < peer.gattsProxy()->services.size(); i++) {
+                LOG_DEBUG(TRACE, "Discovering characteristics of service %d.", i);
+                BleService& service = peer.gattsProxy()->services[i];
+                hal_ble_svc_t halService;
+                halService.start_handle = service.impl()->startHandle;
+                halService.end_handle = service.impl()->endHandle;
+                ret = ble_gatt_client_discover_characteristics(peer.connHandle, &halService, onCharacteristicsDiscovered, &service, NULL);
+                if (ret != SYSTEM_ERROR_NONE) {
+                    return ret;
+                }
+                // Enable notification or indication if presented.
+                for (int j = 0; j < service.impl()->characteristics.size(); j++) {
+                    BleCharacteristic& characteristic = service.impl()->characteristics[j];
+                    if (characteristic.impl()->attrHandles.cccd_handle != BLE_INVALID_ATTR_HANDLE) {
+                        if (characteristic.impl()->properties & PROPERTY::NOTIFY) {
+                            ble_gatt_client_configure_cccd(peer.connHandle, characteristic.impl()->attrHandles.cccd_handle, BLE_SIG_CCCD_VAL_NOTIFICATION, NULL);
+                        } else if (characteristic.impl()->properties & PROPERTY::INDICATE) {
+                            ble_gatt_client_configure_cccd(peer.connHandle, characteristic.impl()->attrHandles.cccd_handle, BLE_SIG_CCCD_VAL_INDICATION, NULL);
+                        }
+                    }
+                }
+            }
+        }
+        return ret;
+    }
+
     void gattcProcessDataNotified(BleAttributeHandle attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer) {
         peer.gattsProxy()->gattsProcessDataWritten(attrHandle, buf, len, peer);
     }
+
+    static void onServicesDiscovered(const hal_ble_gattc_on_svc_disc_evt_t* event, void* context) {
+        BlePeerDevice* peer = static_cast<BlePeerDevice*>(context);
+        for (uint8_t i = 0; i < event->count; i++) {
+            BleUuid svcUUID = convertToWiringUuid(&event->services[i].uuid);
+            BleService service(svcUUID);
+            service.impl()->startHandle = event->services[i].start_handle;
+            service.impl()->endHandle = event->services[i].end_handle;
+            if (peer->gattsProxy()->addService(service) == SYSTEM_ERROR_NONE) {
+                LOG_DEBUG(TRACE, "New service found.");
+            }
+        }
+    }
+
+    BleCharacteristicProperties properties;
+    const char* description;
+
+    static void onCharacteristicsDiscovered(const hal_ble_gattc_on_char_disc_evt_t* event, void* context) {
+        BleService* service = static_cast<BleService*>(context);
+        for (uint8_t i = 0; i < event->count; i++) {
+            BleCharacteristic characteristic;
+            characteristic.impl()->isLocal = false;
+            characteristic.impl()->connHandle = event->conn_handle;
+            characteristic.impl()->svcUuid = service->impl()->uuid;
+            if (event->characteristics[i].properties & BLE_SIG_CHAR_PROP_READ) {
+                characteristic.impl()->properties |= PROPERTY::READ;
+            }
+            if (event->characteristics[i].properties & BLE_SIG_CHAR_PROP_WRITE_WO_RESP) {
+                characteristic.impl()->properties |= PROPERTY::WRITE_WO_RSP;
+            }
+            if (event->characteristics[i].properties & BLE_SIG_CHAR_PROP_WRITE) {
+                characteristic.impl()->properties |= PROPERTY::WRITE;
+            }
+            if (event->characteristics[i].properties & BLE_SIG_CHAR_PROP_NOTIFY){
+                characteristic.impl()->properties |= PROPERTY::NOTIFY;
+            }
+            if (event->characteristics[i].properties & BLE_SIG_CHAR_PROP_INDICATE) {
+                characteristic.impl()->properties |= PROPERTY::INDICATE;
+            }
+            BleUuid charUUID = convertToWiringUuid(&event->characteristics[i].uuid);
+            characteristic.impl()->uuid = charUUID;
+            characteristic.impl()->attrHandles = event->characteristics[i].attr_handles;
+            if (service->impl()->addCharacteristic(characteristic) == SYSTEM_ERROR_NONE) {
+                LOG_DEBUG(TRACE, "New characteristic found.");
+            }
+        }
+    }
+
+private:
+
 };
 
 
@@ -1254,27 +1343,21 @@ public:
         return peripherals.size();
     }
 
-    BlePeerDevice connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout) {
-        hal_ble_conn_params_t connParams;
-        connParams.min_conn_interval = interval;
-        connParams.max_conn_interval = interval;
-        connParams.slave_latency = latency;
-        connParams.conn_sup_timeout = timeout;
-        ble_gap_set_ppcp(&connParams, nullptr);
-        return connect(addr);
-    }
-
     BlePeerDevice connect(const BleAddress& addr) {
-        ble_gap_connect(&addr, nullptr);
+        BlePeerDevice pseudo;
+        int ret = ble_gap_connect(&addr, nullptr);
+        if (ret != SYSTEM_ERROR_NONE) {
+            LOG_DEBUG(TRACE, "ble_gap_set_scan_response_data failed: %d", ret);
+            return pseudo;
+        }
         for (int i = 0; i < peripherals.size(); i++) {
             const BlePeerDevice& peer = peripherals[i];
             if (peer.address == addr) {
                 LOG(TRACE, "New peripheral connected. Start discovering services.");
-                //ble_gatt_client_discover_all_services(peer.connHandle, on_ble_disc_service_cb_t callback, this, nullptr);
+                return peer;
             }
         }
-        BlePeerDevice peer;
-        return peer;
+        return pseudo;
     }
 
     int disconnect(const BlePeerDevice& peripheral) {
@@ -1304,36 +1387,6 @@ public:
     void centralProcessDisconnected(const BlePeerDevice& peer) {
         peripherals.removeOne(peer);
     }
-
-//    static void onServicesDiscovered(const hal_ble_gattc_on_svc_disc_evt_t* event, void* context) {
-//        BleCentralImpl* central = static_cast<BleCentralImpl*>(context);
-//        hal_ble_svc_t* service;
-//        for (uint8_t i = 0; i < event->count; i++) {
-//            service = NULL;
-//            if (event->services[i].uuid.type == BLE_UUID_TYPE_16BIT) {
-//                if (event->services[i].uuid.uuid16 == svc3UUID) {
-//                    service = &service3;
-//                    svc3Discovered = true;
-//                    LOG(TRACE, "BLE Service3 found.");
-//                }
-//            }
-//            else if (event->services[i].uuid.type == BLE_UUID_TYPE_128BIT) {
-//                if (!memcmp(svc1UUID, event->services[i].uuid.uuid128, BLE_SIG_UUID_128BIT_LEN)) {
-//                    service = &service1;
-//                    svc1Discovered = true;
-//                    LOG(TRACE, "BLE Service1 found.");
-//                }
-//                else if (!memcmp(svc2UUID, event->services[i].uuid.uuid128, BLE_SIG_UUID_128BIT_LEN)) {
-//                    service = &service2;
-//                    svc2Discovered = true;
-//                    LOG(TRACE, "BLE Service2 found.");
-//                }
-//            }
-//            if (service != NULL) {
-//                memcpy(service, &event->services[i], sizeof(hal_ble_svc_t));
-//            }
-//        }
-//    }
 };
 
 
@@ -1543,11 +1596,22 @@ bool BleLocalDevice::connected(void) const {
 }
 
 BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout) {
-    return centralProxy_->connect(addr, interval, latency, timeout);
+    hal_ble_conn_params_t connParams;
+    connParams.min_conn_interval = interval;
+    connParams.max_conn_interval = interval;
+    connParams.slave_latency = latency;
+    connParams.conn_sup_timeout = timeout;
+    ble_gap_set_ppcp(&connParams, nullptr);
+    return connect(addr);
 }
 
 BlePeerDevice BleLocalDevice::connect(const BleAddress& addr) {
-    return centralProxy_->connect(addr);
+    BlePeerDevice peer = centralProxy_->connect(addr);
+    // Automatically discover services and characteristics.
+    if (peer.connected()) {
+        gattcProxy_->discoverAllServices(peer);
+    }
+    return peer;
 }
 
 int BleLocalDevice::disconnect(const BlePeerDevice& peripheral) {

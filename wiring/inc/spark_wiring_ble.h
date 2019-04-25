@@ -127,6 +127,15 @@ class BleScanParams : public hal_ble_scan_params_t {
 };
 
 class BleCharacteristicHandles : public hal_ble_char_handles_t {
+public:
+    const BleCharacteristicHandles& operator = (const hal_ble_char_handles_t& halHandles) {
+        this->decl_handle = halHandles.decl_handle;
+        this->value_handle = halHandles.value_handle;
+        this->user_desc_handle = halHandles.user_desc_handle;
+        this->cccd_handle = halHandles.cccd_handle;
+        this->sccd_handle = halHandles.sccd_handle;
+        return *this;
+    }
 };
 
 
