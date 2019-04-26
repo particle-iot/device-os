@@ -71,6 +71,7 @@ void loop() {
     if (BLE.connected()) {
         while (Serial.available() && txLen < UART_TX_BUF_SIZE) {
             txBuf[txLen++] = Serial.read();
+            Serial.write(txBuf[txLen - 1]);
         }
 
         if (txLen > 0) {
