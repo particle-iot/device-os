@@ -2553,6 +2553,7 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                 if (event->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
                     for (uint8_t i = 0; i < charDiscRsp.count; i++) {
                         hal_ble_char_t characteristic;
+                        memset(&characteristic, 0x00, sizeof(hal_ble_char_t));
                         characteristic.char_ext_props = charDiscRsp.chars[i].char_ext_props;
                         characteristic.properties = toHalCharProps(charDiscRsp.chars[i].char_props);
                         characteristic.attr_handles.decl_handle = charDiscRsp.chars[i].handle_decl;
