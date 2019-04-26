@@ -507,12 +507,6 @@ public:
         return ret;
     }
 
-    void configureCccd(BleConnectionHandle handle, uint8_t enable) {
-        if (!isLocal) {
-            // Gatt Client configure peer CCCD.
-        }
-    }
-
     void assignUuidIfNeeded(void) {
         if (!uuid.isValid()) {
             defaultUuidCharCount_++;
