@@ -255,6 +255,86 @@ public:
     }
 };
 
+class NetworkCellularCellGlobalIdentityMobileCountryCodeDiagnosticData
+    : public AbstractIntegerDiagnosticData
+{
+public:
+    NetworkCellularCellGlobalIdentityMobileCountryCodeDiagnosticData()
+        : AbstractIntegerDiagnosticData(
+              DIAG_ID_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_MOBILE_COUNTRY_CODE,
+              DIAG_NAME_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_MOBILE_COUNTRY_CODE)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const int some_value = 310;
+        val = static_cast<IntType>(some_value);
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_networkCellularCellGlobalIdentityMobileCountryCodeDiagnosticData;
+
+class NetworkCellularCellGlobalIdentityMobileNetworkCodeDiagnosticData
+    : public AbstractIntegerDiagnosticData
+{
+public:
+    NetworkCellularCellGlobalIdentityMobileNetworkCodeDiagnosticData()
+        : AbstractIntegerDiagnosticData(
+              DIAG_ID_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_MOBILE_NETWORK_CODE,
+              DIAG_NAME_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_MOBILE_NETWORK_CODE)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const int some_value = 410;
+        val = static_cast<IntType>(some_value);
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_networkCellularCellGlobalIdentityMobileNetworkCodeDiagnosticData;
+
+class NetworkCellularCellGlobalIdentityLocationAreaCodeDiagnosticData
+    : public AbstractIntegerDiagnosticData
+{
+public:
+    NetworkCellularCellGlobalIdentityLocationAreaCodeDiagnosticData()
+        : AbstractIntegerDiagnosticData(
+              DIAG_ID_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_LOCATION_AREA_CODE,
+              DIAG_NAME_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_LOCATION_AREA_CODE)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const int some_value = 4118;
+        val = static_cast<IntType>(some_value);
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_networkCellularCellGlobalIdentityLocationAreaCodeDiagnosticData;
+
+class NetworkCellularCellGlobalIdentityCellIdDiagnosticData
+    : public AbstractIntegerDiagnosticData
+{
+public:
+    NetworkCellularCellGlobalIdentityCellIdDiagnosticData()
+        : AbstractIntegerDiagnosticData(
+              DIAG_ID_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_CELL_ID,
+              DIAG_NAME_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_CELL_ID)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const int some_value = 0x336470F;
+        val = static_cast<IntType>(some_value);
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_networkCellularCellGlobalIdentityCellIdDiagnosticData;
+
 SignalStrengthDiagnosticData g_signalStrengthDiagData;
 SignalStrengthValueDiagnosticData g_signalStrengthValueDiagData;
 SignalQualityDiagnosticData g_signalQualityDiagData;
