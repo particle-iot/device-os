@@ -450,6 +450,10 @@ private:
 extern BleLocalDevice& _fetch_ble();
 #define BLE _fetch_ble()
 
+#ifndef BLE_WIRING_DEBUG_ENABLED
+#define BLE_WIRING_DEBUG_ENABLED 0
+#endif
+
 
 #endif /* Wiring_BLE */
 
