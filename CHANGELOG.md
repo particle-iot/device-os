@@ -2,7 +2,14 @@
 
 ### BUGFIXES
 
+- [photon/p1] Fixes 802.11n-only mode regression in 0.7.0 ~ 1.1.0-rc.1 [#1755](https://github.com/particle-iot/device-os/pull/1755)
+- [gen 3] Updates embedded bootloader, fixes hardfault after hard reset when sleeping [#1756](https://github.com/particle-iot/device-os/pull/1756)
+
 ### INTERNAL
+
+- Remove the message "External flash is not supported" from Gen 3 builds [#1751](https://github.com/particle-iot/device-os/pull/1751)
+- Do not fail the build if PARTICLE_DEVELOP is not defined [#1750](https://github.com/particle-iot/device-os/pull/1750)
+- [gen 3] Fixes a build system issue that caused object files to be created outside build directory [#1754](https://github.com/particle-iot/device-os/pull/1754)
 
 ## 1.1.0-rc.1
 
