@@ -54,9 +54,11 @@ cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signa
             signalext->rat = NET_ACCESS_TECHNOLOGY_UTRAN;
             break;
         case ACT_LTE:
+            signalext->rat = NET_ACCESS_TECHNOLOGY_LTE;
+            break;
         case ACT_LTE_CAT_M1:
         case ACT_LTE_CAT_NB1:
-            signalext->rat = NET_ACCESS_TECHNOLOGY_LTE;
+            signalext->rat = NET_ACCESS_TECHNOLOGY_LTE_IOT;
             break;
         default:
             signalext->rat = NET_ACCESS_TECHNOLOGY_NONE;
