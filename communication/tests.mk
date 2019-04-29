@@ -1,8 +1,14 @@
 CXX ?= g++
-CXXFLAGS ?= -g -Wall -W -Winline -ansi -std=c++11
+CXXFLAGS ?= -g -Wall -W -Winline
 CXXFLAGS += -I../hal/shared -I../services/inc -Ilib/tropicssl/include -Isrc -Itests/UnitTest++/src
 RM = rm
 CXXFLAGS += -DPLATFORM_ID=3
+
+COMMON_BUILD = ../build
+
+# Set C++ standard version
+include $(COMMON_BUILD)/lang-std.mk
+CXXFLAGS += $(CPPFLAGS)
 
 .SUFFIXES: .o .cpp
 

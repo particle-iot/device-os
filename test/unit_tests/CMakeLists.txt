@@ -4,6 +4,13 @@ set (CMAKE_CXX_STANDARD 11)
 
 project(unit_tests)
 
+# NOTE: Keep this in sync with lang-std.mk
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
+
+set(CMAKE_C_STANDARD 11)
+
 set(PROJECT_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 set(THIRD_PARTY_DIR ${PROJECT_DIR}/third_party)
 set(COMMON_DIR ${CMAKE_CURRENT_LIST_DIR}/common)

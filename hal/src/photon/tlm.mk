@@ -5,6 +5,3 @@
 
 DEPENDENCIES += communication newlib_nano third_party/miniz
 MAKE_DEPENDENCIES += third_party/miniz
-
-CPPFLAGS += -std=gnu++11
-

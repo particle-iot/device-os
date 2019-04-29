@@ -28,6 +28,8 @@ TARGETDIR=obj/
 TARGET=runner
 
 include $(SRC_ROOT)/build/version.mk
+include $(SRC_ROOT)/build/lang-std.mk
+CCFLAGS += $(CONLYFLAGS)
 
 BUILD_PATH=$(TARGETDIR)core-firmware/
 # Define the target directories. Nest 2 levels deep since we also include
@@ -144,7 +146,6 @@ CFLAGS += -DSPARK=1 -DPLATFORM_ID=3
 CFLAGS += -DDEBUG_BUILD
 CFLAGS += $(DEFINES:%=-D%)
 
-CPPFLAGS += -std=gnu++11
 CPPFLAGS += -DCATCH_CONFIG_SFINAE
 
 LDFLAGS += $(LIB_DIRS:%=-L%) $(LIBS:%=-l%)
