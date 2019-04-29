@@ -266,13 +266,13 @@ public:
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         RxLock lk(uarte_);
         ssize_t d = rxBuffer_.data();
-        if (d == 0 && receiving_) {
+        if (receiving_) {
             const ssize_t toConsume = timerValue() - rxConsumed_;
             if (toConsume > 0) {
                 rxBuffer_.acquireCommit(toConsume);
                 rxConsumed_ += toConsume;
+                d += toConsume;
             }
-            d += toConsume;
         }
         return d;
     }
