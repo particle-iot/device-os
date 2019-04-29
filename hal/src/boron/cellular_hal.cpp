@@ -95,8 +95,8 @@ hal_net_access_tech_t fromCellularAccessTechnology(CellularAccessTechnology rat)
     case CellularAccessTechnology::UTRAN_HSDPA_HSUPA:
         return NET_ACCESS_TECHNOLOGY_UTRAN;
     case CellularAccessTechnology::LTE:
-    case CellularAccessTechnology::E_UTRAN:
         return NET_ACCESS_TECHNOLOGY_LTE;
+    case CellularAccessTechnology::E_UTRAN:
     case CellularAccessTechnology::EC_GSM_IOT:
         return NET_ACCESS_TECHNOLOGY_LTE_IOT;
     default:

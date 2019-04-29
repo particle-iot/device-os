@@ -108,14 +108,6 @@ typedef struct
 
 typedef struct
 {
-    uint16_t mobile_country_code;
-    uint16_t mobile_network_code;
-    uint16_t location_area_code;
-    uint32_t cell_id;
-} CellularGlobalIdentity;
-
-typedef struct
-{
     uint16_t size;
     uint16_t version;
     uint8_t rat;

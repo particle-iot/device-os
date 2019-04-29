@@ -158,7 +158,7 @@ int SaraNcpClient::initParser(Stream* stream) {
     // +CREG: <stat>[,<lac>,<ci>[,<AcTStatus>]]
     CHECK(parser_.addUrcHandler("+CREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
-        int val[4];
+        int val[4] = {-1,-1,-1,-1};
         // Parse as direct response (ignoring mode)
         int r = CHECK_PARSER_URC(reader->scanf("+CREG: %*d,%d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
         // Reparse as URC
@@ -172,7 +172,7 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
-        self->cgi_.location_area_code = val[2];
+        self->cgi_.location_area_code = static_cast<uint16_t>(val[2]);
         self->cgi_.cell_id = val[3];
         return 0;
     }, this));
@@ -403,8 +403,8 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         mobile_network_code[1] = home_network_identity[4];
         mobile_network_code[2] = home_network_identity[5];
         // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
-        cgi_.mobile_country_code = atoi(mobile_country_code);
-        cgi_.mobile_network_code = atoi(mobile_network_code);
+        cgi_.mobile_country_code = static_cast<uint16_t>(::atoi(mobile_country_code));
+        cgi_.mobile_network_code = static_cast<uint16_t>(::atoi(mobile_network_code));
 
         switch (static_cast<CellularAccessTechnology>(act)) {
             case CellularAccessTechnology::NONE:

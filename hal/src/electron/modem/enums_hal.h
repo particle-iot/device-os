@@ -22,7 +22,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "cellular_hal_constants.h"
+#include "hal_cellular_global_identity.h"
 
 // ----------------------------------------------------------------
 // Types

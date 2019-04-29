@@ -20,9 +20,10 @@
 #ifndef HAL_CELLULAR_EXCLUDE
 
 /* Includes -----------------------------------------------------------------*/
-#include <stdio.h>
-#include <stdint.h>
 #include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "mdm_hal.h"
@@ -1143,8 +1144,10 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     // TODO: optimize, add a param/variable to prevent clearing _net if
     // arriving here after break() from inner while() in registerNet().
     memset(&_net, 0, sizeof(_net));
-    _net.lac = 0xFFFF;
-    _net.ci = 0xFFFFFFFF;
+    _net.cgi.mobile_country_code = 0;
+    _net.cgi.mobile_network_code = 0;
+    _net.cgi.location_area_code = 0xFFFF;
+    _net.cgi.cell_id = 0xFFFFFFFF;
     if (_dev.dev == DEV_SARA_R410) {
         // check EPS registration (LTE)
         sendFormated("AT+CEREG?\r\n");
@@ -1396,8 +1399,8 @@ int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
             mobile_network_code[1] = home_network_identity[4];
             mobile_network_code[2] = home_network_identity[5];
             // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
-            status->mobile_country_code = atoi(mobile_country_code);
-            status->mobile_network_code = atoi(mobile_network_code);
+            status->cgi.mobile_country_code = static_cast<uint16_t>(::atoi(mobile_country_code));
+            status->cgi.mobile_network_code = static_cast<uint16_t>(::atoi(mobile_network_code));
 
             if      (act == 0) status->act = ACT_GSM;      // 0: GSM,
             else if (act == 2) status->act = ACT_UTRAN;    // 2: UTRAN
