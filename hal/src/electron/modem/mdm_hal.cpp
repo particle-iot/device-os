@@ -198,8 +198,10 @@ MDMParser::MDMParser(void)
     inst = this;
     memset(&_dev, 0, sizeof(_dev));
     memset(&_net, 0, sizeof(_net));
-    _net.lac = 0xFFFF;
-    _net.ci = 0xFFFFFFFF;
+    _net.cgi.mobile_country_code = 0;
+    _net.cgi.mobile_network_code = 0;
+    _net.cgi.location_area_code = 0xFFFF;
+    _net.cgi.cell_id = 0xFFFFFFFF;
     _ip        = NOIP;
     _init      = false;
     _pwr       = false;
@@ -418,8 +420,8 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                             else if (a == 3) *reg = REG_DENIED;   // 3: registration denied
                             else if (a == 4) *reg = REG_UNKNOWN;  // 4: unknown
                             else if (a == 5) *reg = REG_ROAMING;  // 5: registered, roaming
-                            if ((r >= 3) && (b != (int)0xFFFF))      _net.lac = b; // location area code
-                            if ((r >= 4) && (c != (int)0xFFFFFFFF))  _net.ci  = c; // cell ID
+                            if ((r >= 3) && (b != (int)0xFFFF))      _net.cgi.location_area_code = b;
+                            if ((r >= 4) && (c != (int)0xFFFFFFFF))  _net.cgi.cell_id  = c;
                             // access technology
                             if (r >= 5) {
                                 if      (d == 0) _net.act = ACT_GSM;      // 0: GSM
@@ -844,6 +846,11 @@ bool MDMParser::init(DevStatus* status)
     // Request IMSI (International Mobile Subscriber Identification)
     sendFormated("AT+CIMI\r\n");
     if (RESP_OK != waitFinalResp(_cbString, _dev.imsi))
+        goto failure;
+    // Reformat the operator string to be numeric
+    // (allows the capture of `mcc` and `mnc`)
+    sendFormated("AT+COPS=3,2\r\n");
+    if (RESP_OK != waitFinalResp())
         goto failure;
 #ifdef SOCKET_HEX_MODE
     // Enable hex mode for socket commands
@@ -1375,8 +1382,23 @@ int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
 {
     if ((type == TYPE_PLUS) && status){
         int act = 99;
+        char home_network_identity[7] = {'\0','\0','\0','\0','\0','\0','\0'};
+        char mobile_country_code[4] = {'\0','\0','\0','\0'};
+        char mobile_network_code[4] = {'\0','\0','\0','\0'};
+
         // +COPS: <mode>[,<format>,<oper>[,<AcT>]]
-        if (sscanf(buf, "\r\n+COPS: %*d,%*d,\"%[^\"]\",%d",status->opr,&act) >= 1) {
+        if (sscanf(buf, "\r\n+COPS: %*d,%*d,\"%6[0-9]\",%d",home_network_identity,&act) >= 1) {
+            // Parse MCC and MNC, from HNI
+            mobile_country_code[0] = home_network_identity[0];
+            mobile_country_code[1] = home_network_identity[1];
+            mobile_country_code[2] = home_network_identity[2];
+            mobile_network_code[0] = home_network_identity[3];
+            mobile_network_code[1] = home_network_identity[4];
+            mobile_network_code[2] = home_network_identity[5];
+            // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
+            status->mobile_country_code = atoi(mobile_country_code);
+            status->mobile_network_code = atoi(mobile_network_code);
+
             if      (act == 0) status->act = ACT_GSM;      // 0: GSM,
             else if (act == 2) status->act = ACT_UTRAN;    // 2: UTRAN
         }
@@ -2762,24 +2784,26 @@ void MDMParser::dumpNetStatus(NetStatus *status)
     MDM_INFO("\r\n[ Modem::netStatus ] = = = = = = = = = = = = = =");
     const char* txtReg[] = { "Unknown", "Denied", "None", "Home", "Roaming" };
     if (status->csd < sizeof(txtReg)/sizeof(*txtReg) && (status->csd != REG_UNKNOWN))
-        DEBUG_D("  CSD Registration:   %s\r\n", txtReg[status->csd]);
+        DEBUG_D("  CSD Registration:    %s\r\n", txtReg[status->csd]);
     if (status->psd < sizeof(txtReg)/sizeof(*txtReg) && (status->psd != REG_UNKNOWN))
-        DEBUG_D("  PSD Registration:   %s\r\n", txtReg[status->psd]);
+        DEBUG_D("  PSD Registration:    %s\r\n", txtReg[status->psd]);
     const char* txtAct[] = { "Unknown", "GSM", "Edge", "3G", "CDMA" };
     if (status->act < sizeof(txtAct)/sizeof(*txtAct) && (status->act != ACT_UNKNOWN))
-        DEBUG_D("  Access Technology:  %s\r\n", txtAct[status->act]);
+        DEBUG_D("  Access Technology:   %s\r\n", txtAct[status->act]);
     if (status->rssi)
-        DEBUG_D("  Signal Strength:    %d dBm\r\n", status->rssi);
+        DEBUG_D("  Signal Strength:     %d dBm\r\n", status->rssi);
     if (status->qual)
-        DEBUG_D("  Signal Quality:     %d\r\n", status->qual);
-    if (*status->opr)
-        DEBUG_D("  Operator:           %s\r\n", status->opr);
-    if (status->lac != 0xFFFF)
-        DEBUG_D("  Location Area Code: %04X\r\n", status->lac);
-    if (status->ci != 0xFFFFFFFF)
-        DEBUG_D("  Cell ID:            %08X\r\n", status->ci);
+        DEBUG_D("  Signal Quality:      %d\r\n", status->qual);
+    if (status->cgi.mobile_country_code != 0)
+        DEBUG_D("  Mobile Country Code: %d\r\n", status->cgi.mobile_country_code);
+    if (status->cgi.mobile_network_code != 0)
+        DEBUG_D("  Mobile Network Code: %d\r\n", status->cgi.mobile_network_code);
+    if (status->cgi.location_area_code != 0xFFFF)
+        DEBUG_D("  Location Area Code:  %04X\r\n", status->cgi.location_area_code);
+    if (status->cgi.cell_id != 0xFFFFFFFF)
+        DEBUG_D("  Cell ID:             %08X\r\n", status->cgi.cell_id);
     if (*status->num)
-        DEBUG_D("  Phone Number:       %s\r\n", status->num);
+        DEBUG_D("  Phone Number:        %s\r\n", status->num);
 }
 
 void MDMParser::dumpIp(MDM_IP ip)
