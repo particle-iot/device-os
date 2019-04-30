@@ -199,8 +199,6 @@ MDMParser::MDMParser(void)
     inst = this;
     memset(&_dev, 0, sizeof(_dev));
     memset(&_net, 0, sizeof(_net));
-    _net.cgi.mobile_country_code = 0;
-    _net.cgi.mobile_network_code = 0;
     _net.cgi.location_area_code = 0xFFFF;
     _net.cgi.cell_id = 0xFFFFFFFF;
     _ip        = NOIP;
@@ -1391,19 +1389,11 @@ int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
 {
     if ((type == TYPE_PLUS) && status){
         int act = 99;
-        char home_network_identity[7] = {'\0','\0','\0','\0','\0','\0','\0'};
-        char mobile_country_code[4] = {'\0','\0','\0','\0'};
-        char mobile_network_code[4] = {'\0','\0','\0','\0'};
+        char mobile_country_code[4] = {};
+        char mobile_network_code[4] = {};
 
         // +COPS: <mode>[,<format>,<oper>[,<AcT>]]
-        if (sscanf(buf, "\r\n+COPS: %*d,%*d,\"%6[0-9]\",%d",home_network_identity,&act) >= 1) {
-            // Parse MCC and MNC, from HNI
-            mobile_country_code[0] = home_network_identity[0];
-            mobile_country_code[1] = home_network_identity[1];
-            mobile_country_code[2] = home_network_identity[2];
-            mobile_network_code[0] = home_network_identity[3];
-            mobile_network_code[1] = home_network_identity[4];
-            mobile_network_code[2] = home_network_identity[5];
+        if (sscanf(buf, "\r\n+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d",mobile_country_code,mobile_network_code,&act) >= 1) {
             // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
             status->cgi.mobile_country_code = static_cast<uint16_t>(::atoi(mobile_country_code));
             status->cgi.mobile_network_code = static_cast<uint16_t>(::atoi(mobile_network_code));

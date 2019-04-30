@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "cellular_ncp_client.h"
 #include "platform_ncp.h"
@@ -91,6 +91,7 @@ private:
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
 
+    int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
     int checkParser();
     int waitReady();

@@ -141,7 +141,7 @@ public:
 
         return SYSTEM_ERROR_NONE;
     }
-};
+} g_signalStrengthDiagData;
 
 class NetworkRssiDiagnosticData: public AbstractIntegerDiagnosticData {
 public:
@@ -165,7 +165,7 @@ public:
 
         return SYSTEM_ERROR_NONE;
     }
-};
+} g_networkRssiDiagData;
 
 class SignalStrengthValueDiagnosticData: public AbstractIntegerDiagnosticData {
 public:
@@ -189,7 +189,7 @@ public:
 
         return SYSTEM_ERROR_NONE;
     }
-};
+} g_signalStrengthValueDiagData;
 
 class SignalQualityDiagnosticData: public AbstractIntegerDiagnosticData {
 public:
@@ -213,7 +213,7 @@ public:
 
         return SYSTEM_ERROR_NONE;
     }
-};
+} g_signalQualityDiagData;
 
 class SignalQualityValueDiagnosticData: public AbstractIntegerDiagnosticData {
 public:
@@ -237,7 +237,7 @@ public:
 
         return SYSTEM_ERROR_NONE;
     }
-};
+} g_signalQualityValueDiagData;
 
 class NetworkAccessTechnologyDiagnosticData: public AbstractIntegerDiagnosticData {
 public:
@@ -255,8 +255,9 @@ public:
 
         return SYSTEM_ERROR_NONE;
     }
-};
+} g_networkAccessTechnologyDiagData;
 
+#if HAL_PLATFORM_CELLULAR
 class NetworkCellularCellGlobalIdentityMobileCountryCodeDiagnosticData
     : public AbstractIntegerDiagnosticData
 {
@@ -340,16 +341,7 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 } g_networkCellularCellGlobalIdentityCellIdDiagnosticData;
-
-SignalStrengthDiagnosticData g_signalStrengthDiagData;
-SignalStrengthValueDiagnosticData g_signalStrengthValueDiagData;
-SignalQualityDiagnosticData g_signalQualityDiagData;
-SignalQualityValueDiagnosticData g_signalQualityValueDiagData;
-NetworkAccessTechnologyDiagnosticData g_networkAccessTechnologyDiagData;
-//
-NetworkRssiDiagnosticData g_networkRssiDiagData;
-//
-
+#endif // HAL_PLATFORM_CELLULAR
 } // namespace
 
 void HAL_WLAN_notify_simple_config_done()
@@ -376,7 +368,6 @@ void HAL_NET_notify_dhcp(bool dhcp)
 {
     network.notify_dhcp(dhcp);
 }
-
 
 const void* network_config(network_handle_t network, uint32_t param, void* reserved)
 {

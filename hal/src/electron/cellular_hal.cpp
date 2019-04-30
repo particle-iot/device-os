@@ -363,28 +363,21 @@ cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* r
     CellularGlobalIdentity cgi;
 
     // Validate Argument(s)
-    if (nullptr == cgi_)
-    {
+    if (nullptr == cgi_) {
         (void)reserved_;
         result = SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-
     // Load cached data into result struct
-    else if (!electronMDM.getCellularGlobalIdentity(cgi))
-    {
+    else if (!electronMDM.getCellularGlobalIdentity(cgi)) {
         result = SYSTEM_ERROR_UNKNOWN;
     }
-
     // Validate cache
     else if (0 == cgi.mobile_country_code || 0 == cgi.mobile_network_code ||
-             0xFFFF == cgi.location_area_code || 0xFFFFFFFF == cgi.cell_id)
-    {
+             0xFFFF == cgi.location_area_code || 0xFFFFFFFF == cgi.cell_id) {
         result = SYSTEM_ERROR_BAD_DATA;
     }
-
     // Update result
-    else
-    {
+    else {
         *cgi_ = cgi;
         result = SYSTEM_ERROR_NONE;
     }
