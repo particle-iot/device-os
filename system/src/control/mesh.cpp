@@ -149,7 +149,7 @@ const size_t JOINER_PASSWORD_MIN_SIZE = 6;
 const size_t JOINER_PASSWORD_MAX_SIZE = 32;
 
 // Time in milliseconds to spend scanning each channel during an active scan
-const unsigned ACTIVE_SCAN_DURATION = 0; // Use Thread's default timeout
+const unsigned DEFAULT_ACTIVE_SCAN_DURATION = 0; // Use OpenThread's default timeout
 
 // Time in milliseconds to spend scanning each channel during an energy scan
 const unsigned ENERGY_SCAN_DURATION = 200;
@@ -470,7 +470,7 @@ int createNetwork(ctrl_request* req) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     LOG_DEBUG(TRACE, "Performing active scan");
-    CHECK_THREAD(otLinkActiveScan(thread, (uint32_t)1 << channel, ACTIVE_SCAN_DURATION,
+    CHECK_THREAD(otLinkActiveScan(thread, (uint32_t)1 << channel, DEFAULT_ACTIVE_SCAN_DURATION,
             [](otActiveScanResult* result, void* data) {
         const auto scan = (ActiveScanResult*)data;
         if (!result) {
@@ -870,6 +870,9 @@ int scanNetworks(ctrl_request* req) {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    // Parse request
+    PB(ScanNetworksRequest) pbReq = {};
+    CHECK(decodeRequestMessage(req, PB(ScanNetworksRequest_fields), &pbReq));
     struct Network {
         char name[OT_NETWORK_NAME_MAX_SIZE + 1]; // Network name (null-terminated)
         char extPanId[OT_EXT_PAN_ID_SIZE * 2]; // Extended PAN ID in hex
@@ -882,7 +885,8 @@ int scanNetworks(ctrl_request* req) {
         volatile bool done;
     };
     ScanResult scan = {};
-    CHECK_THREAD(otLinkActiveScan(thread, OT_CHANNEL_ALL, ACTIVE_SCAN_DURATION,
+    const unsigned duration = pbReq.duration ? pbReq.duration : DEFAULT_ACTIVE_SCAN_DURATION;
+    CHECK_THREAD(otLinkActiveScan(thread, OT_CHANNEL_ALL, duration,
             [](otActiveScanResult* result, void* data) {
         const auto scan = (ScanResult*)data;
         if (!result) {
