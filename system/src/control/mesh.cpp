@@ -296,10 +296,6 @@ int resetThread() {
     // Clear master key (invalidates active and pending datasets)
     otMasterKey key = {};
     CHECK_THREAD(otThreadSetMasterKey(thread, &key));
-    // FIXME: Setting the network name to an invalid UTF-8 string helps to work around an issue in
-    // the OT's MAC layer implementation, where the cached network name doesn't get updated if it
-    // starts with the same characters as the new name
-    CHECK_THREAD(otThreadSetNetworkName(thread, "\xff"));
     // Erase persistent data
     CHECK_THREAD(otInstanceErasePersistentInfo(thread));
     return 0;
@@ -899,10 +895,7 @@ int scanNetworks(ctrl_request* req) {
         Network network = {};
         // Network name
         static_assert(sizeof(result->mNetworkName) <= sizeof(Network::name), "");
-        memcpy(&network.name, &result->mNetworkName, sizeof(result->mNetworkName));
-        // FIXME: OT doesn't null-terminate the network name in the scan results if it has the
-        // maximum length of 16 characters
-        network.name[OT_NETWORK_NAME_MAX_SIZE] = '\0';
+        strncpy(network.name, result->mNetworkName.m8, sizeof(Network::name));
         // Extended PAN ID
         static_assert(sizeof(result->mExtendedPanId) * 2 == sizeof(Network::extPanId), "");
         bytes2hexbuf_lower_case((const uint8_t*)&result->mExtendedPanId, sizeof(result->mExtendedPanId), network.extPanId);
