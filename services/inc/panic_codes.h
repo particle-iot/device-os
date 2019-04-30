@@ -28,4 +28,4 @@ def_panic_codes(Software,RGB_COLOR_RED,PureVirtualCall)		// 12
 
 def_panic_codes(System,RGB_COLOR_RED,StackOverflow)			// 13
 
-def_panic_codes(System,RGB_COLOR_RED,SemaphoreLockTimeout)	// 14
+def_panic_codes(System,RGB_COLOR_RED,HeapError)	    // 14
