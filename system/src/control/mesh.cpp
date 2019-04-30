@@ -903,6 +903,12 @@ int scanNetworks(ctrl_request* req) {
         network.panId = result->mPanId;
         // Channel number
         network.channel = result->mChannel;
+        // Ignore duplicate entries
+        for (const auto& n: scan->networks) {
+            if (memcmp(&network, &n, sizeof(Network)) == 0) {
+                return;
+            }
+        }
         if (!scan->networks.append(std::move(network))) {
             scan->result = SYSTEM_ERROR_NO_MEMORY;
         }
