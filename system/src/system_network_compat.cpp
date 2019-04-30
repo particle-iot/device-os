@@ -23,6 +23,8 @@
  * or not */
 #if !HAL_PLATFORM_IFAPI
 
+#include "cellular_hal.h"
+#include "hal_cellular_global_identity.h"
 #include "spark_wiring_ticks.h"
 #include "spark_wiring_diagnostics.h"
 #include "system_setup.h"
@@ -268,8 +270,9 @@ public:
 
     virtual int get(IntType& val)
     {
-        const int some_value = 310;
-        val = static_cast<IntType>(some_value);
+        CellularGlobalIdentity cgi;
+        cellular_global_identity(&cgi, nullptr);
+        val = static_cast<IntType>(cgi.mobile_country_code);
 
         return SYSTEM_ERROR_NONE;
     }
@@ -288,8 +291,9 @@ public:
 
     virtual int get(IntType& val)
     {
-        const int some_value = 410;
-        val = static_cast<IntType>(some_value);
+        CellularGlobalIdentity cgi;
+        cellular_global_identity(&cgi, nullptr);
+        val = static_cast<IntType>(cgi.mobile_network_code);
 
         return SYSTEM_ERROR_NONE;
     }
@@ -308,8 +312,9 @@ public:
 
     virtual int get(IntType& val)
     {
-        const int some_value = 4118;
-        val = static_cast<IntType>(some_value);
+        CellularGlobalIdentity cgi;
+        cellular_global_identity(&cgi, nullptr);
+        val = static_cast<IntType>(cgi.location_area_code);
 
         return SYSTEM_ERROR_NONE;
     }
@@ -328,8 +333,9 @@ public:
 
     virtual int get(IntType& val)
     {
-        const int some_value = 0x336470F;
-        val = static_cast<IntType>(some_value);
+        CellularGlobalIdentity cgi;
+        cellular_global_identity(&cgi, nullptr);
+        val = static_cast<IntType>(cgi.cell_id);
 
         return SYSTEM_ERROR_NONE;
     }
