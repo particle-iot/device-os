@@ -903,9 +903,12 @@ int scanNetworks(ctrl_request* req) {
         network.panId = result->mPanId;
         // Channel number
         network.channel = result->mChannel;
-        // Ignore duplicate entries
+        // Ignore duplicate entries. Note: For some reason, OT may report the same network multiple
+        // times with different channel numbers. As a workaround, we're excluding the channel number
+        // from the comparison
         for (const auto& n: scan->networks) {
-            if (memcmp(&network, &n, sizeof(Network)) == 0) {
+            if (strcmp(network.name, n.name) == 0 && memcmp(network.extPanId, n.extPanId, sizeof(Network::extPanId)) == 0 &&
+                    network.panId == n.panId) {
                 return;
             }
         }
