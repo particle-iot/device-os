@@ -24,6 +24,7 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include "hal_cellular_global_identity.h"
 #include "pipe_hal.h"
 #include "electronserialpipe_hal.h"
 #include "pinmap_hal.h"
@@ -137,6 +138,15 @@ public:
         \return true if successful, false otherwise
     */
     bool getBandAvailable(MDM_BandSelect &data);
+
+    /**
+     * \brief Get the Cellular Global Identity
+     *
+     * \param[out] cgi A reference to a CellularGlobalIdentity
+     *                 structure in which to populate cached values.
+     * \returns true
+     */
+    bool getCellularGlobalIdentity(CellularGlobalIdentity& cgi);
 
     /** Power off the MT, This function has to be called prior to
         switching off the supply.

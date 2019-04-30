@@ -348,6 +348,21 @@ int SaraNcpClient::connect(const CellularNetworkConfig& conf) {
     return 0;
 }
 
+int SaraNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi)
+{
+    int result;
+    if ( !cgi ) {
+        result = -1;
+    }
+    else
+    {
+       *cgi = cgi_;
+       result = 0;
+    }
+    
+    return result;
+}
+
 int SaraNcpClient::getIccid(char* buf, size_t size) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
@@ -724,7 +739,7 @@ int SaraNcpClient::initReady() {
 
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
-    int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
+    r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
 
     if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
         // Change the baudrate to 921600

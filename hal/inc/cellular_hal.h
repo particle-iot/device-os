@@ -27,6 +27,7 @@
 #include "inet_hal.h"
 #include "system_tick_hal.h"
 #include "cellular_hal_constants.h"
+#include "hal_cellular_global_identity.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -112,6 +113,19 @@ CellularCredentials* cellular_credentials_get(void* reserved);
  * Set cellular connection parameters to defaults.
  */
 cellular_result_t cellular_credentials_clear(void* reserved);
+
+/**
+ * @brief Retrieve the cached values representing the cellular global identity
+ *
+ * @param[out] cgi An initialized struct to be overwritten
+ * @param[in] reserved Reserved for future use
+ *
+ * @returns \c cellular_result_t code
+ * @retval SYSTEM_ERROR_NONE
+ * @retval SYSTEM_ERROR_BAD_DATA The cached values are invalid
+ * @retval SYSTER_ERROR_INVALID_ARGUMENT
+ */
+cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi, void* reserved);
 
 bool cellular_sim_ready(void* reserved);
 

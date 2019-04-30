@@ -60,6 +60,7 @@ public:
 
     // Reimplemented from CellularNcpClient
     virtual int connect(const CellularNetworkConfig& conf) override;
+    virtual int getCellularGlobalIdentity(CellularGlobalIdentity* cgi) override;
     virtual int getIccid(char* buf, size_t size) override;
     virtual int getImei(char* buf, size_t size) override;
     virtual int getSignalQuality(CellularSignalQuality* qual) override;

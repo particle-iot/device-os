@@ -1234,6 +1234,12 @@ bool MDMParser::getDataUsage(MDM_DataUsage &data)
     return ok;
 }
 
+bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_)
+{
+    cgi_ = _net.cgi;
+    return true;
+}
+
 void MDMParser::_setBandSelectString(MDM_BandSelect &data, char* bands, int index /*= 0*/) {
     char band[5];
     for (int x=index; x<data.count; x++) {

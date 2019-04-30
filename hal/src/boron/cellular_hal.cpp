@@ -33,6 +33,7 @@
 #include "at_command.h"
 #include "at_response.h"
 #include "modem/enums_hal.h"
+#include "hal_cellular_global_identity.h"
 
 #include <limits>
 
@@ -220,6 +221,47 @@ int cellular_credentials_clear(void* reserved) {
     CHECK(CellularNetworkManager::getActiveSim(&sim));
     CHECK(CellularNetworkManager::clearNetworkConfig(sim));
     return 0;
+}
+
+cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* reserved_)
+{
+    cellular_result_t result;
+    CellularGlobalIdentity cgi;
+
+    // Acquire Cellular NCP Client
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+
+    // Validate Argument(s)
+    if (nullptr == cgi_)
+    {
+        (void)reserved_;
+        result = SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    // Load cached data into result struct
+    else if (client->getCellularGlobalIdentity(&cgi))
+    {
+        result = SYSTEM_ERROR_UNKNOWN;
+    }
+
+    // Validate cache
+    else if (0 == cgi.mobile_country_code || 0 == cgi.mobile_network_code ||
+             0xFFFF == cgi.location_area_code || 0xFFFFFFFF == cgi.cell_id)
+    {
+        result = SYSTEM_ERROR_BAD_DATA;
+    }
+
+    // Update result
+    else
+    {
+        *cgi_ = cgi;
+        result = SYSTEM_ERROR_NONE;
+    }
+
+    return result;
 }
 
 bool cellular_sim_ready(void* reserved) {
