@@ -44,8 +44,6 @@
 #define BLE_CHANNEL_DEBUG_ENABLED 0
 #endif
 
-//static_assert(BLE_MAX_PERIPH_CONN_COUNT == 1, "Concurrent peripheral connections are not supported");
-
 namespace particle {
 
 namespace system {

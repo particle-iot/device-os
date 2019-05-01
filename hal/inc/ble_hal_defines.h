@@ -119,55 +119,57 @@
 /** @defgroup BLE_APPEARANCES Bluetooth Appearance values
  *  @note Retrieved from http://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.gap.appearance.xml
  * @{ */
-#define BLE_SIG_APPEARANCE_UNKNOWN                              0    /**< Unknown. */
-#define BLE_SIG_APPEARANCE_GENERIC_PHONE                        64   /**< Generic Phone. */
-#define BLE_SIG_APPEARANCE_GENERIC_COMPUTER                     128  /**< Generic Computer. */
-#define BLE_SIG_APPEARANCE_GENERIC_WATCH                        192  /**< Generic Watch. */
-#define BLE_SIG_APPEARANCE_WATCH_SPORTS_WATCH                   193  /**< Watch: Sports Watch. */
-#define BLE_SIG_APPEARANCE_GENERIC_CLOCK                        256  /**< Generic Clock. */
-#define BLE_SIG_APPEARANCE_GENERIC_DISPLAY                      320  /**< Generic Display. */
-#define BLE_SIG_APPEARANCE_GENERIC_REMOTE_CONTROL               384  /**< Generic Remote Control. */
-#define BLE_SIG_APPEARANCE_GENERIC_EYE_GLASSES                  448  /**< Generic Eye-glasses. */
-#define BLE_SIG_APPEARANCE_GENERIC_TAG                          512  /**< Generic Tag. */
-#define BLE_SIG_APPEARANCE_GENERIC_KEYRING                      576  /**< Generic Keyring. */
-#define BLE_SIG_APPEARANCE_GENERIC_MEDIA_PLAYER                 640  /**< Generic Media Player. */
-#define BLE_SIG_APPEARANCE_GENERIC_BARCODE_SCANNER              704  /**< Generic Barcode Scanner. */
-#define BLE_SIG_APPEARANCE_GENERIC_THERMOMETER                  768  /**< Generic Thermometer. */
-#define BLE_SIG_APPEARANCE_THERMOMETER_EAR                      769  /**< Thermometer: Ear. */
-#define BLE_SIG_APPEARANCE_GENERIC_HEART_RATE_SENSOR            832  /**< Generic Heart rate Sensor. */
-#define BLE_SIG_APPEARANCE_HEART_RATE_SENSOR_HEART_RATE_BELT    833  /**< Heart Rate Sensor: Heart Rate Belt. */
-#define BLE_SIG_APPEARANCE_GENERIC_BLOOD_PRESSURE               896  /**< Generic Blood Pressure. */
-#define BLE_SIG_APPEARANCE_BLOOD_PRESSURE_ARM                   897  /**< Blood Pressure: Arm. */
-#define BLE_SIG_APPEARANCE_BLOOD_PRESSURE_WRIST                 898  /**< Blood Pressure: Wrist. */
-#define BLE_SIG_APPEARANCE_GENERIC_HID                          960  /**< Human Interface Device (HID). */
-#define BLE_SIG_APPEARANCE_HID_KEYBOARD                         961  /**< Keyboard (HID Subtype). */
-#define BLE_SIG_APPEARANCE_HID_MOUSE                            962  /**< Mouse (HID Subtype). */
-#define BLE_SIG_APPEARANCE_HID_JOYSTICK                         963  /**< Joystick (HID Subtype). */
-#define BLE_SIG_APPEARANCE_HID_GAMEPAD                          964  /**< Gamepad (HID Subtype). */
-#define BLE_SIG_APPEARANCE_HID_DIGITIZERSUBTYPE                 965  /**< Digitizer Tablet (HID Subtype). */
-#define BLE_SIG_APPEARANCE_HID_CARD_READER                      966  /**< Card Reader (HID Subtype). */
-#define BLE_SIG_APPEARANCE_HID_DIGITAL_PEN                      967  /**< Digital Pen (HID Subtype). */
-#define BLE_SIG_APPEARANCE_HID_BARCODE                          968  /**< Barcode Scanner (HID Subtype). */
-#define BLE_SIG_APPEARANCE_GENERIC_GLUCOSE_METER                1024 /**< Generic Glucose Meter. */
-#define BLE_SIG_APPEARANCE_GENERIC_RUNNING_WALKING_SENSOR       1088 /**< Generic Running Walking Sensor. */
-#define BLE_SIG_APPEARANCE_RUNNING_WALKING_SENSOR_IN_SHOE       1089 /**< Running Walking Sensor: In-Shoe. */
-#define BLE_SIG_APPEARANCE_RUNNING_WALKING_SENSOR_ON_SHOE       1090 /**< Running Walking Sensor: On-Shoe. */
-#define BLE_SIG_APPEARANCE_RUNNING_WALKING_SENSOR_ON_HIP        1091 /**< Running Walking Sensor: On-Hip. */
-#define BLE_SIG_APPEARANCE_GENERIC_CYCLING                      1152 /**< Generic Cycling. */
-#define BLE_SIG_APPEARANCE_CYCLING_CYCLING_COMPUTER             1153 /**< Cycling: Cycling Computer. */
-#define BLE_SIG_APPEARANCE_CYCLING_SPEED_SENSOR                 1154 /**< Cycling: Speed Sensor. */
-#define BLE_SIG_APPEARANCE_CYCLING_CADENCE_SENSOR               1155 /**< Cycling: Cadence Sensor. */
-#define BLE_SIG_APPEARANCE_CYCLING_POWER_SENSOR                 1156 /**< Cycling: Power Sensor. */
-#define BLE_SIG_APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR         1157 /**< Cycling: Speed and Cadence Sensor. */
-#define BLE_SIG_APPEARANCE_GENERIC_PULSE_OXIMETER               3136 /**< Generic Pulse Oximeter. */
-#define BLE_SIG_APPEARANCE_PULSE_OXIMETER_FINGERTIP             3137 /**< Fingertip (Pulse Oximeter subtype). */
-#define BLE_SIG_APPEARANCE_PULSE_OXIMETER_WRIST_WORN            3138 /**< Wrist Worn(Pulse Oximeter subtype). */
-#define BLE_SIG_APPEARANCE_GENERIC_WEIGHT_SCALE                 3200 /**< Generic Weight Scale. */
-#define BLE_SIG_APPEARANCE_GENERIC_OUTDOOR_SPORTS_ACT           5184 /**< Generic Outdoor Sports Activity. */
-#define BLE_SIG_APPEARANCE_OUTDOOR_SPORTS_ACT_LOC_DISP          5185 /**< Location Display Device (Outdoor Sports Activity subtype). */
-#define BLE_SIG_APPEARANCE_OUTDOOR_SPORTS_ACT_LOC_AND_NAV_DISP  5186 /**< Location and Navigation Display Device (Outdoor Sports Activity subtype). */
-#define BLE_SIG_APPEARANCE_OUTDOOR_SPORTS_ACT_LOC_POD           5187 /**< Location Pod (Outdoor Sports Activity subtype). */
-#define BLE_SIG_APPEARANCE_OUTDOOR_SPORTS_ACT_LOC_AND_NAV_POD   5188 /**< Location and Navigation Pod (Outdoor Sports Activity subtype). */
+typedef enum {
+    BLE_SIG_APPEARANCE_UNKNOWN                              = 0,    /**< Unknown. */
+    BLE_SIG_APPEARANCE_GENERIC_PHONE                        = 64,   /**< Generic Phone. */
+    BLE_SIG_APPEARANCE_GENERIC_COMPUTER                     = 128,  /**< Generic Computer. */
+    BLE_SIG_APPEARANCE_GENERIC_WATCH                        = 192,  /**< Generic Watch. */
+    BLE_SIG_APPEARANCE_WATCH_SPORTS_WATCH                   = 193,  /**< Watch: Sports Watch. */
+    BLE_SIG_APPEARANCE_GENERIC_CLOCK                        = 256,  /**< Generic Clock. */
+    BLE_SIG_APPEARANCE_GENERIC_DISPLAY                      = 320,  /**< Generic Display. */
+    BLE_SIG_APPEARANCE_GENERIC_REMOTE_CONTROL               = 384,  /**< Generic Remote Control. */
+    BLE_SIG_APPEARANCE_GENERIC_EYE_GLASSES                  = 448,  /**< Generic Eye-glasses. */
+    BLE_SIG_APPEARANCE_GENERIC_TAG                          = 512,  /**< Generic Tag. */
+    BLE_SIG_APPEARANCE_GENERIC_KEYRING                      = 576,  /**< Generic Keyring. */
+    BLE_SIG_APPEARANCE_GENERIC_MEDIA_PLAYER                 = 640,  /**< Generic Media Player. */
+    BLE_SIG_APPEARANCE_GENERIC_BARCODE_SCANNER              = 704,  /**< Generic Barcode Scanner. */
+    BLE_SIG_APPEARANCE_GENERIC_THERMOMETER                  = 768,  /**< Generic Thermometer. */
+    BLE_SIG_APPEARANCE_THERMOMETER_EAR                      = 769,  /**< Thermometer: Ear. */
+    BLE_SIG_APPEARANCE_GENERIC_HEART_RATE_SENSOR            = 832,  /**< Generic Heart rate Sensor. */
+    BLE_SIG_APPEARANCE_HEART_RATE_SENSOR_HEART_RATE_BELT    = 833,  /**< Heart Rate Sensor: Heart Rate Belt. */
+    BLE_SIG_APPEARANCE_GENERIC_BLOOD_PRESSURE               = 896,  /**< Generic Blood Pressure. */
+    BLE_SIG_APPEARANCE_BLOOD_PRESSURE_ARM                   = 897,  /**< Blood Pressure: Arm. */
+    BLE_SIG_APPEARANCE_BLOOD_PRESSURE_WRIST                 = 898,  /**< Blood Pressure: Wrist. */
+    BLE_SIG_APPEARANCE_GENERIC_HID                          = 960,  /**< Human Interface Device (HID). */
+    BLE_SIG_APPEARANCE_HID_KEYBOARD                         = 961,  /**< Keyboard (HID Subtype). */
+    BLE_SIG_APPEARANCE_HID_MOUSE                            = 962,  /**< Mouse (HID Subtype). */
+    BLE_SIG_APPEARANCE_HID_JOYSTICK                         = 963,  /**< Joystick (HID Subtype). */
+    BLE_SIG_APPEARANCE_HID_GAMEPAD                          = 964,  /**< Gamepad (HID Subtype). */
+    BLE_SIG_APPEARANCE_HID_DIGITIZERSUBTYPE                 = 965,  /**< Digitizer Tablet (HID Subtype). */
+    BLE_SIG_APPEARANCE_HID_CARD_READER                      = 966,  /**< Card Reader (HID Subtype). */
+    BLE_SIG_APPEARANCE_HID_DIGITAL_PEN                      = 967,  /**< Digital Pen (HID Subtype). */
+    BLE_SIG_APPEARANCE_HID_BARCODE                          = 968,  /**< Barcode Scanner (HID Subtype). */
+    BLE_SIG_APPEARANCE_GENERIC_GLUCOSE_METER                = 1024, /**< Generic Glucose Meter. */
+    BLE_SIG_APPEARANCE_GENERIC_RUNNING_WALKING_SENSOR       = 1088, /**< Generic Running Walking Sensor. */
+    BLE_SIG_APPEARANCE_RUNNING_WALKING_SENSOR_IN_SHOE       = 1089, /**< Running Walking Sensor: In-Shoe. */
+    BLE_SIG_APPEARANCE_RUNNING_WALKING_SENSOR_ON_SHOE       = 1090, /**< Running Walking Sensor: On-Shoe. */
+    BLE_SIG_APPEARANCE_RUNNING_WALKING_SENSOR_ON_HIP        = 1091, /**< Running Walking Sensor: On-Hip. */
+    BLE_SIG_APPEARANCE_GENERIC_CYCLING                      = 1152, /**< Generic Cycling. */
+    BLE_SIG_APPEARANCE_CYCLING_CYCLING_COMPUTER             = 1153, /**< Cycling: Cycling Computer. */
+    BLE_SIG_APPEARANCE_CYCLING_SPEED_SENSOR                 = 1154, /**< Cycling: Speed Sensor. */
+    BLE_SIG_APPEARANCE_CYCLING_CADENCE_SENSOR               = 1155, /**< Cycling: Cadence Sensor. */
+    BLE_SIG_APPEARANCE_CYCLING_POWER_SENSOR                 = 1156, /**< Cycling: Power Sensor. */
+    BLE_SIG_APPEARANCE_CYCLING_SPEED_CADENCE_SENSOR         = 1157, /**< Cycling: Speed and Cadence Sensor. */
+    BLE_SIG_APPEARANCE_GENERIC_PULSE_OXIMETER               = 3136, /**< Generic Pulse Oximeter. */
+    BLE_SIG_APPEARANCE_PULSE_OXIMETER_FINGERTIP             = 3137, /**< Fingertip (Pulse Oximeter subtype). */
+    BLE_SIG_APPEARANCE_PULSE_OXIMETER_WRIST_WORN            = 3138, /**< Wrist Worn(Pulse Oximeter subtype). */
+    BLE_SIG_APPEARANCE_GENERIC_WEIGHT_SCALE                 = 3200, /**< Generic Weight Scale. */
+    BLE_SIG_APPEARANCE_GENERIC_OUTDOOR_SPORTS_ACT           = 5184, /**< Generic Outdoor Sports Activity. */
+    BLE_SIG_APPEARANCE_OUTDOOR_SPORTS_ACT_LOC_DISP          = 5185, /**< Location Display Device (Outdoor Sports Activity subtype). */
+    BLE_SIG_APPEARANCE_OUTDOOR_SPORTS_ACT_LOC_AND_NAV_DISP  = 5186, /**< Location and Navigation Display Device (Outdoor Sports Activity subtype). */
+    BLE_SIG_APPEARANCE_OUTDOOR_SPORTS_ACT_LOC_POD           = 5187, /**< Location Pod (Outdoor Sports Activity subtype). */
+    BLE_SIG_APPEARANCE_OUTDOOR_SPORTS_ACT_LOC_AND_NAV_POD   = 5188 /**< Location and Navigation Pod (Outdoor Sports Activity subtype). */
+} ble_sig_appearance_t;
 /** @} */
 
 
@@ -261,9 +263,11 @@
 
 /**@defgroup BLE Characteristic properties
  * @{ */
-#define BLE_SIG_CCCD_VAL_DISABLED                               0x00 /**< Neither notification nor indication is enabled. */
-#define BLE_SIG_CCCD_VAL_NOTIFICATION                           0x01 /**< Notification is enabled. */
-#define BLE_SIG_CCCD_VAL_INDICATION                             0x02 /**< Indication is enabled. */
+typedef enum ble_sig_cccd_value_t {
+    BLE_SIG_CCCD_VAL_DISABLED     = 0x00, /**< Neither notification nor indication is enabled. */
+    BLE_SIG_CCCD_VAL_NOTIFICATION = 0x01, /**< Notification is enabled. */
+    BLE_SIG_CCCD_VAL_INDICATION   = 0x02 /**< Indication is enabled. */
+} ble_sig_cccd_value_t;
 /**@} */
 
 

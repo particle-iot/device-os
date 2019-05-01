@@ -18,6 +18,7 @@
 #pragma once
 
 #include "check.h"
+#include "nrfx.h"
 #include <nrf_error.h>
 #include <nrfx_errors.h>
 
