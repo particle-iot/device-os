@@ -75,6 +75,8 @@
 #define BLE_DEFAULT_ADVERTISING_INTERVAL            BLE_MSEC_TO_UNITS(100, BLE_UNIT_0_625_MS)   /* The advertising interval: 100ms (in units of 0.625 ms). */
 #define BLE_DEFAULT_ADVERTISING_TIMEOUT             BLE_MSEC_TO_UNITS(0, BLE_UNIT_10_MS)        /* The advertising duration: infinite (in units of 10 milliseconds). */
 
+#define BLE_MAX_TX_POWER                            (8)
+
 /* BLE advertisement filter policy */
 #define BLE_ADV_FP_ANY                              0x00   /**< Allow scan requests and connect requests from any device. */
 #define BLE_ADV_FP_FILTER_SCANREQ                   0x01   /**< Filter scan requests with whitelist. */
@@ -153,6 +155,10 @@
 
 #define BLE_MAX_PERIPHERAL_COUNT                    NRF_SDH_BLE_PERIPHERAL_LINK_COUNT
 #define BLE_MAX_CENTRAL_COUNT                       NRF_SDH_BLE_CENTRAL_LINK_COUNT
+
+
+typedef uint16_t hal_ble_attr_handle_t;
+typedef uint16_t hal_ble_conn_handle_t;
 
 
 #endif //HAL_PLATFORM_BLE

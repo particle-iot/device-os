@@ -87,8 +87,8 @@ namespace PARTICLE_BLE {
     };
 }
 
-typedef uint16_t BleConnectionHandle;
-typedef uint16_t BleAttributeHandle;
+typedef hal_ble_conn_handle_t BleConnectionHandle;
+typedef hal_ble_attr_handle_t BleAttributeHandle;
 
 typedef void (*OnDataReceivedCallback)(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 typedef void (*OnScanResultCallback)(const BleScanResult* device);
@@ -129,6 +129,7 @@ class BleScanParams : public hal_ble_scan_params_t {
 class BleCharacteristicHandles : public hal_ble_char_handles_t {
 public:
     const BleCharacteristicHandles& operator = (const hal_ble_char_handles_t& halHandles) {
+        this->size = halHandles.size;
         this->decl_handle = halHandles.decl_handle;
         this->value_handle = halHandles.value_handle;
         this->user_desc_handle = halHandles.user_desc_handle;
@@ -380,8 +381,8 @@ public:
     int on(void);
     void off(void);
 
-    int setTxPower(int8_t val) const;
-    int8_t txPower(void) const;
+    int setTxPower(int8_t txPower) const;
+    int txPower(int8_t* txPower) const;
 
     int advertise(void);
     int advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse=nullptr);

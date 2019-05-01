@@ -784,7 +784,7 @@ void BleControlRequestChannel::run() {
 error:
     LOG(ERROR, "Channel error: %d", ret);
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
-        ble_gap_disconnect(connHandle_, nullptr);
+        hal_ble_gap_disconnect(connHandle_, nullptr);
         connHandle_ = BLE_INVALID_CONN_HANDLE;
     }
     resetChannel();
@@ -976,7 +976,7 @@ int BleControlRequestChannel::sendPacket() {
         return 0; // Nothing to send
     }
     // Send packet
-    const int ret = ble_gatt_server_set_characteristic_value(sendCharHandle_, (const uint8_t*)packetBuf_.get(), packetSize_, nullptr);
+    const int ret = hal_ble_gatt_server_set_characteristic_value(sendCharHandle_, (const uint8_t*)packetBuf_.get(), packetSize_, nullptr);
     if (ret != (int)packetSize_) {
         LOG(ERROR, "ble_gatt_server_notify_characteristic_value() failed: %d", ret);
         return ret;
@@ -1093,7 +1093,7 @@ int BleControlRequestChannel::dataReceived(const hal_ble_evts_t& event) {
 }
 
 int BleControlRequestChannel::initProfile() {
-    ble_stack_init(NULL);
+    hal_ble_stack_init(nullptr);
 
     // Set PPCP (Peripheral Preferred Connection Parameters)
     hal_ble_conn_params_t connParam = {};
@@ -1101,17 +1101,15 @@ int BleControlRequestChannel::initProfile() {
     connParam.max_conn_interval = BLE_DEFAULT_MAX_CONN_INTERVAL;
     connParam.conn_sup_timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT;
     connParam.slave_latency = BLE_DEFAULT_SLAVE_LATENCY;
-    int ret = ble_gap_set_ppcp(&connParam, nullptr);
+    int ret = hal_ble_gap_set_ppcp(&connParam, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "ble_gap_set_ppcp() failed: %u", (unsigned)ret);
+        LOG(ERROR, "hal_ble_gap_set_ppcp() failed: %u", (unsigned)ret);
         return ret;
     }
 
     // Complete local name
-    char devName[32];
-    uint16_t nameLen = sizeof(devName);
-    ble_gap_get_device_name((uint8_t*)devName, &nameLen);
-    devName[nameLen++] = '\0';
+    char devName[32] = {};
+    hal_ble_gap_get_device_name(devName, sizeof(devName));
 
     // Particle specific Manufacture data
     uint8_t mfgData[BLE_MAX_ADV_DATA_LEN];
@@ -1135,9 +1133,9 @@ int BleControlRequestChannel::initProfile() {
     advData[advDataLen++] = BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA;
     memcpy(&advData[advDataLen], mfgData, mfgDataLen);
     advDataLen += mfgDataLen;
-    ret = ble_gap_set_advertising_data(advData, advDataLen, nullptr);
+    ret = hal_ble_gap_set_advertising_data(advData, advDataLen, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG_DEBUG(ERROR, "ble_gap_set_advertising_data failed: %d", ret);
+        LOG_DEBUG(ERROR, "hal_ble_gap_set_advertising_data failed: %d", ret);
         return ret;
     }
 
@@ -1148,22 +1146,22 @@ int BleControlRequestChannel::initProfile() {
     srData[srDataLen++] = BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE;
     memcpy(&srData[srDataLen], CTRL_SERVICE_UUID, sizeof(CTRL_SERVICE_UUID));
     srDataLen += sizeof(CTRL_SERVICE_UUID);
-    ret = ble_gap_set_scan_response_data(srData, srDataLen, nullptr);
+    ret = hal_ble_gap_set_scan_response_data(srData, srDataLen, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "ble_gap_set_scan_response_data failed: %d", ret);
+        LOG(ERROR, "hal_ble_gap_set_scan_response_data failed: %d", ret);
         return ret;
     }
 
     // Default advertising parameters
-    hal_ble_adv_params_t advParams;
+    hal_ble_adv_params_t advParams = {};
     advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams.filter_policy = BLE_ADV_FP_ANY;
     advParams.interval      = BLE_DEFAULT_ADVERTISING_INTERVAL;
     advParams.timeout       = BLE_DEFAULT_ADVERTISING_TIMEOUT;
     advParams.inc_tx_power  = false;
-    ret = ble_gap_set_advertising_parameters(&advParams, NULL);
+    ret = hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "ble_gap_set_advertising_parameters failed: %d", ret);
+        LOG(ERROR, "hal_ble_gap_set_advertising_parameters failed: %d", ret);
         return ret;
     }
 
@@ -1173,59 +1171,59 @@ int BleControlRequestChannel::initProfile() {
     hal_ble_char_handles_t attrHandles;
 
     // Add service
-    memset(&halUuid, 0x00, sizeof(hal_ble_uuid_t));
+    halUuid = {};
     halUuid.type = BLE_UUID_TYPE_128BIT;
     memcpy(halUuid.uuid128, CTRL_SERVICE_UUID, sizeof(CTRL_SERVICE_UUID));
-    ret = ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &halUuid, &serviceHandle, NULL);
+    ret = hal_ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &halUuid, &serviceHandle, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "ble_gatt_server_add_service failed: %d", ret);
+        LOG(ERROR, "hal_ble_gatt_server_add_service failed: %d", ret);
         return ret;
     }
 
     // Add version characteristic
-    memset(&char_init, 0x00, sizeof(hal_ble_char_init_t));
+    char_init = {};
     char_init.uuid.type = BLE_UUID_TYPE_128BIT;
     memcpy(char_init.uuid.uuid128, VERSION_CHAR_UUID, sizeof(VERSION_CHAR_UUID));
     char_init.properties = BLE_SIG_CHAR_PROP_READ;
     char_init.service_handle = serviceHandle;
     char_init.description = nullptr;
-    ret = ble_gatt_server_add_characteristic(&char_init, &attrHandles, NULL);
+    ret = hal_ble_gatt_server_add_characteristic(&char_init, &attrHandles, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "ble_gatt_server_add_characteristic failed: %d", ret);
+        LOG(ERROR, "hal_ble_gatt_server_add_characteristic failed: %d", ret);
         return ret;
     }
-    ble_gatt_server_set_characteristic_value(attrHandles.value_handle, (const uint8_t*)&PROTOCOL_VERSION, 1, NULL);
+    hal_ble_gatt_server_set_characteristic_value(attrHandles.value_handle, (const uint8_t*)&PROTOCOL_VERSION, 1, nullptr);
 
     // Add TX characteristic
-    memset(&char_init, 0x00, sizeof(hal_ble_char_init_t));
+    char_init = {};
     char_init.uuid.type = BLE_UUID_TYPE_128BIT;
     memcpy(char_init.uuid.uuid128, SEND_CHAR_UUID, sizeof(SEND_CHAR_UUID));
     char_init.properties = BLE_SIG_CHAR_PROP_NOTIFY;
     char_init.service_handle = serviceHandle;
     char_init.description = nullptr;
-    ret = ble_gatt_server_add_characteristic(&char_init, &attrHandles, NULL);
+    ret = hal_ble_gatt_server_add_characteristic(&char_init, &attrHandles, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "ble_gatt_server_add_characteristic failed: %d", ret);
+        LOG(ERROR, "hal_ble_gatt_server_add_characteristic failed: %d", ret);
         return ret;
     }
     sendCharHandle_ = attrHandles.value_handle;
     sendCharCccdHandle_ = attrHandles.cccd_handle;
 
     // Add RX characteristic
-    memset(&char_init, 0x00, sizeof(hal_ble_char_init_t));
+    char_init = {};
     char_init.uuid.type = BLE_UUID_TYPE_128BIT;
     memcpy(char_init.uuid.uuid128, RECV_CHAR_UUID, sizeof(RECV_CHAR_UUID));
     char_init.properties = BLE_SIG_CHAR_PROP_WRITE | BLE_SIG_CHAR_PROP_WRITE_WO_RESP;
     char_init.service_handle = serviceHandle;
     char_init.description = nullptr;
-    ret = ble_gatt_server_add_characteristic(&char_init, &attrHandles, NULL);
+    ret = hal_ble_gatt_server_add_characteristic(&char_init, &attrHandles, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "ble_gatt_server_add_characteristic failed: %d", ret);
+        LOG(ERROR, "hal_ble_gatt_server_add_characteristic failed: %d", ret);
         return ret;
     }
     recvCharHandle_ = attrHandles.value_handle;
 
-    ble_set_callback_on_events(processBleEvent, this);
+    hal_ble_set_callback_on_events(processBleEvent, this);
 
     return 0;
 }
@@ -1384,7 +1382,7 @@ void BleControlRequestChannel::processBleEvent(const hal_ble_evts_t *event, void
     if (ret != 0) {
         LOG(ERROR, "Failed to process BLE event: %d (error: %d)", event->type, ret);
         if (ch->curConnHandle_ != BLE_INVALID_CONN_HANDLE) {
-            ble_gap_disconnect(ch->curConnHandle_, nullptr);
+            hal_ble_gap_disconnect(ch->curConnHandle_, nullptr);
         }
     }
 }
