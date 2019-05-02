@@ -240,8 +240,9 @@ cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* r
         result = SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     // Load cached data into result struct
-    else if (client->getCellularGlobalIdentity(&cgi)) {
-        result = SYSTEM_ERROR_UNKNOWN;
+    else if ((result = client->getCellularGlobalIdentity(&cgi))) {
+        // Failed to acquire cellular global identity
+        ERROR("Failed to acquire cellular global identity. Result <%d>", result);
     }
     // Validate cache
     else if (0 == cgi.mobile_country_code || 0 == cgi.mobile_network_code ||
