@@ -561,7 +561,8 @@ ProtocolError Protocol::generate_and_send_description(MessageChannel& channel, M
         }
         this->channel.command(Channel::LOAD_SESSION);
     }
-    else
+	// Log error code
+    else if (NO_ERROR != error)
     {
         LOG(ERROR, "Channel failed to send message with error-code <%d>", error);
     }
