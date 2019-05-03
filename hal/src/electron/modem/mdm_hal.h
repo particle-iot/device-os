@@ -519,6 +519,18 @@ protected:
     static int _cbCPIN(int type, const char* buf, int len, Sim* sim);
     static int _cbCCID(int type, const char* buf, int len, char* ccid);
     // network
+    #define MDM_R410_EDRX_ACTS_MAX (4) //!< maximum number of AcTs for eDRX mode on SARA-R410M-02B
+    // eDRX AcTs
+    struct EdrxActs {
+        int act[MDM_R410_EDRX_ACTS_MAX];
+        int count;
+
+        EdrxActs()
+        {
+            memset(this, 0, sizeof(*this));
+        }
+    };
+    static int _cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs);
     static int _cbUGCNTRD(int type, const char* buf, int len, MDM_DataUsage* data);
     static int _cbBANDAVAIL(int type, const char* buf, int len, MDM_BandSelect* data);
     static int _cbBANDSEL(int type, const char* buf, int len, MDM_BandSelect* data);
