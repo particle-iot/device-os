@@ -49,7 +49,9 @@
         (OUT_OF_RANGE, "Out of range", -290), \
         (COAP, "CoAP error", -1000), /* -1199 ... -1000: CoAP errors */ \
         (COAP_4XX, "CoAP: 4xx", -1100), \
-        (COAP_5XX, "CoAP: 5xx", -1132)
+        (COAP_5XX, "CoAP: 5xx", -1132), \
+        (AT_NOT_OK, "AT command failure", -1200), /* -1399 ... -1200: AT command errors */ \
+        (AT_RESPONSE_UNEXPECTED, "Failed to parse AT response", -1210)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

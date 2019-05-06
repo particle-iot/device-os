@@ -57,7 +57,7 @@
                 return _r; \
             } \
             if (_r != ::particle::AtResponse::OK) { \
-                return SYSTEM_ERROR_UNKNOWN; \
+                return SYSTEM_ERROR_AT_NOT_OK; \
             } \
         } while (false)
 
@@ -159,7 +159,7 @@ int SaraNcpClient::initParser(Stream* stream) {
         const auto self = (SaraNcpClient*)data;
         int val[2];
         int r = CHECK_PARSER_URC(reader->scanf("+CREG: %d,%d", &val[0], &val[1]));
-        CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         // Home network or roaming
         if (val[r - 1] == 1 || val[r - 1] == 5) {
             self->creg_ = RegistrationState::Registered;
@@ -173,7 +173,7 @@ int SaraNcpClient::initParser(Stream* stream) {
         const auto self = (SaraNcpClient*)data;
         int val[2];
         int r = CHECK_PARSER_URC(reader->scanf("+CGREG: %d,%d", &val[0], &val[1]));
-        CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         // Home network or roaming
         if (val[r - 1] == 1 || val[r - 1] == 5) {
             self->cgreg_ = RegistrationState::Registered;
@@ -187,7 +187,7 @@ int SaraNcpClient::initParser(Stream* stream) {
         const auto self = (SaraNcpClient*)data;
         int val[2];
         int r = CHECK_PARSER_URC(reader->scanf("+CEREG: %d,%d", &val[0], &val[1]));
-        CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         // Home network or roaming
         if (val[r - 1] == 1 || val[r - 1] == 5) {
             self->cereg_ = RegistrationState::Registered;
@@ -269,7 +269,7 @@ int SaraNcpClient::disconnect() {
     CHECK(checkParser());
     const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
     (void)r;
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     resetRegistrationState();
 
@@ -287,7 +287,7 @@ int SaraNcpClient::getFirmwareVersionString(char* buf, size_t size) {
     auto resp = parser_.sendCommand("AT+CGMR");
     CHECK_PARSER(resp.readLine(buf, size));
     const int r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     return 0;
 }
 
@@ -332,9 +332,9 @@ int SaraNcpClient::getIccid(char* buf, size_t size) {
     auto resp = parser_.sendCommand("AT+CCID");
     char iccid[32] = {};
     int r = CHECK_PARSER(resp.scanf("+CCID: %31s", iccid));
-    CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     size_t n = std::min(strlen(iccid), size);
     memcpy(buf, iccid, n);
     if (size > 0) {
@@ -366,9 +366,9 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         int v;
         auto resp = parser_.sendCommand("AT+COPS?");
         int r = CHECK_PARSER(resp.scanf("+COPS: %d,%*d,\"%*[^\"]\",%d", &v, &act));
-        CHECK_TRUE(r == 2, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == 2, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
         switch (static_cast<CellularAccessTechnology>(act)) {
             case CellularAccessTechnology::NONE:
@@ -396,9 +396,9 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         auto resp = parser_.sendCommand("AT+CESQ");
         int r = CHECK_PARSER(resp.scanf("+CESQ: %d,%d,%d,%d,%d,%d", &rxlev, &rxqual,
                 &rscp, &ecn0, &rsrq, &rsrp));
-        CHECK_TRUE(r == 6, SYSTEM_ERROR_BAD_DATA);
+        CHECK_TRUE(r == 6, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
         switch (qual->strengthUnits()) {
             case CellularStrengthUnits::RXLEV: {
@@ -441,9 +441,9 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         int rxlev, rxqual;
         auto resp = parser_.sendCommand("AT+CSQ");
         int r = CHECK_PARSER(resp.scanf("+CSQ: %d,%d", &rxlev, &rxqual));
-        CHECK_TRUE(r == 2, SYSTEM_ERROR_BAD_DATA);
+        CHECK_TRUE(r == 2, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
         // Fixup values
         switch (qual->strengthUnits()) {
@@ -586,7 +586,7 @@ int SaraNcpClient::selectSimCard() {
             }
         }
         const int r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     }
 
     if (mode == 0) {
@@ -597,7 +597,7 @@ int SaraNcpClient::selectSimCard() {
             value = v;
         }
         r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     }
 
     bool reset = false;
@@ -610,7 +610,7 @@ int SaraNcpClient::selectSimCard() {
             if (mode != externalSimMode || externalSimValue != value) {
                 const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
                         UBLOX_NCP_SIM_SELECT_PIN, externalSimMode, externalSimValue));
-                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
                 reset = true;
             }
             break;
@@ -623,7 +623,7 @@ int SaraNcpClient::selectSimCard() {
                 if (mode != internalSimMode) {
                     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
                             UBLOX_NCP_SIM_SELECT_PIN, internalSimMode));
-                    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
                     reset = true;
                 }
             } else {
@@ -632,7 +632,7 @@ int SaraNcpClient::selectSimCard() {
                 if (mode != internalSimMode || value != internalSimValue) {
                     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
                             UBLOX_NCP_SIM_SELECT_PIN, internalSimMode, internalSimValue));
-                    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
                     reset = true;
                 }
             }
@@ -644,12 +644,12 @@ int SaraNcpClient::selectSimCard() {
         if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
             // U201
             const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16"));
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
             HAL_Delay_Milliseconds(1000);
         } else {
             // R410
             const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
             HAL_Delay_Milliseconds(10000);
         }
 
@@ -658,7 +658,7 @@ int SaraNcpClient::selectSimCard() {
 
     // Using numeric CME ERROR codes
     // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=1"));
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     int simState = 0;
     for (unsigned i = 0; i < 10; ++i) {
@@ -674,7 +674,7 @@ int SaraNcpClient::selectSimCard() {
 int SaraNcpClient::changeBaudRate(unsigned int baud) {
     auto resp = parser_.sendCommand("AT+IPR=%u", baud);
     const int r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     return serial_->setBaudRate(baud);
 }
 
@@ -684,7 +684,7 @@ int SaraNcpClient::initReady() {
 
     // Just in case disconnect
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
         // Change the baudrate to 921600
@@ -735,7 +735,7 @@ int SaraNcpClient::initReady() {
 
     // Send AT+CMUX and initialize multiplexer
     r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,1509,,,,,"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     // Initialize muxer
     muxer_.setStream(serial_.get());
@@ -793,12 +793,12 @@ int SaraNcpClient::checkSimCard() {
     auto resp = parser_.sendCommand("AT+CPIN?");
     char code[33] = {};
     int r = CHECK_PARSER(resp.scanf("+CPIN: %32[^\n]", code));
-    CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     if (!strcmp(code, "READY")) {
         r = parser_.execCommand("AT+CCID");
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         return 0;
     }
     return SYSTEM_ERROR_UNKNOWN;
@@ -812,7 +812,7 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         auto resp = parser_.sendCommand("AT+CIMI");
         CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
         const int r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         netConf_ = networkConfigForImsi(buf, strlen(buf));
     }
     // FIXME: for now IPv4 context only
@@ -820,7 +820,7 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
             (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
             netConf_.hasApn() ? netConf_.apn() : "");
     const int r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     return 0;
 }
 
@@ -828,12 +828,12 @@ int SaraNcpClient::registerNet() {
     int r = 0;
     if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
         r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     } else {
         r = CHECK_PARSER(parser_.execCommand("AT+CEREG=2"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     }
 
     connectionState(NcpConnectionState::CONNECTING);
@@ -841,16 +841,16 @@ int SaraNcpClient::registerNet() {
     // NOTE: up to 3 mins
     r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0"));
     // Ignore response code here
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
         r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         r = CHECK_PARSER(parser_.execCommand("AT+CGREG?"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     } else {
         r = CHECK_PARSER(parser_.execCommand("AT+CEREG?"));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     }
 
     regStartTime_ = millis();

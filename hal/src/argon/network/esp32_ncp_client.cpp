@@ -208,7 +208,7 @@ int Esp32NcpClient::disconnect() {
     }
     CHECK(checkParser());
     const int r = CHECK_PARSER(parser_.execCommand("AT+CWQAP"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     connectionState(NcpConnectionState::DISCONNECTED);
     return 0;
 }
@@ -223,7 +223,7 @@ int Esp32NcpClient::getFirmwareVersionString(char* buf, size_t size) {
     auto resp = parser_.sendCommand("AT+CGMR");
     CHECK_PARSER(resp.readLine(buf, size));
     const int r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     return 0;
 }
 
@@ -238,7 +238,7 @@ int Esp32NcpClient::getFirmwareModuleVersionImpl(uint16_t* ver) {
     auto resp = parser_.sendCommand("AT+MVER");
     CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
     const int r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     CHECK_TRUE(buf[0] != '\0', SYSTEM_ERROR_UNKNOWN);
     char* end = nullptr;
     const auto val = strtol(buf, &end, 10);
@@ -357,7 +357,7 @@ int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecur
     auto resp = cmd.send();
     parser_.logEnabled(AtParserConfig::DEFAULT_LOG_ENABLED);
     r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     connectionState(NcpConnectionState::CONNECTED);
     return 0;
 }
@@ -372,11 +372,11 @@ int Esp32NcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     int channel = 0;
     int rssi = 0;
     int r = CHECK_PARSER(resp.scanf("+CWJAP: \"%32[^\"]\",\"%17[^\"]\",%d,%d", ssid, bssidStr, &channel, &rssi));
-    CHECK_TRUE(r == 4, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == 4, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     MacAddress bssid = INVALID_MAC_ADDRESS;
     CHECK_TRUE(macAddressFromString(&bssid, bssidStr), SYSTEM_ERROR_UNKNOWN);
     r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     *info = WifiNetworkInfo().ssid(ssid).bssid(bssid).channel(channel).rssi(rssi);
     return 0;
 }
@@ -409,7 +409,7 @@ int Esp32NcpClient::scan(WifiScanCallback callback, void* data) {
         CHECK(callback(std::move(result), data));
     }
     const int r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     return 0;
 }
 
@@ -419,10 +419,10 @@ int Esp32NcpClient::getMacAddress(MacAddress* addr) {
     auto resp = parser_.sendCommand("AT+GETMAC=0"); // WiFi station
     char addrStr[MAC_ADDRESS_STRING_SIZE + 1] = {};
     int r = CHECK_PARSER(resp.scanf("+GETMAC: \"%32[^\"]\"", addrStr));
-    CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
-    CHECK_TRUE(macAddressFromString(addr, addrStr), SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    CHECK_TRUE(macAddressFromString(addr, addrStr), SYSTEM_ERROR_BAD_DATA);
     r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     return 0;
 }
 
@@ -513,7 +513,7 @@ int Esp32NcpClient::initReady() {
 
     // Disable DHCP on both STA and AP interfaces
     r = CHECK_PARSER(parser_.execCommand("AT+CWDHCP=0,3"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     // Now we are ready
     ncpState(NcpState::ON);
