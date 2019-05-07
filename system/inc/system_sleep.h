@@ -33,12 +33,13 @@ typedef enum
     SLEEP_MODE_WLAN = 0, SLEEP_MODE_DEEP = 1, SLEEP_MODE_SOFTPOWEROFF = 2
 } Spark_Sleep_TypeDef;
 
-enum class SystemSleepOption
+typedef enum System_Sleep_Flag
 {
-    NetworkOff = 0x00,
-    NetworkStandby = 0x01,
-    DisableWkpPin = 0x02
-};
+    SYSTEM_SLEEP_FLAG_NETWORK_OFF = 0x00,
+    SYSTEM_SLEEP_FLAG_NETWORK_STANDBY = 0x01,
+    SYSTEM_SLEEP_FLAG_DISABLE_WKP_PIN = 0x02,
+    SYSTEM_SLEEP_FLAG_NO_WAIT = 0x04
+} System_Sleep_Flag;
 
 /**
  * @param param A SystemSleepNetwork enum cast as an integer.

@@ -94,7 +94,7 @@ void sleep_fuel_gauge()
 
 bool network_sleep_flag(uint32_t flags)
 {
-    return (flags & SLEEP_NETWORK_STANDBY.value()) == 0;
+    return (flags & SYSTEM_SLEEP_FLAG_NETWORK_STANDBY) == 0;
 }
 
 int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
@@ -118,7 +118,9 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
     // System.sleep(10) always powers down the network, even if SLEEP_NETWORK_STANDBY flag is used.
 
     // Make sure all confirmable UDP messages are sent and acknowledged before sleeping
-    Spark_Sleep();
+    if (!(param & SYSTEM_SLEEP_FLAG_NO_WAIT)) {
+        Spark_Sleep();
+    }
 
     if (network_sleep_flag(param) || SLEEP_MODE_WLAN == sleepMode) {
         network_suspend();
@@ -164,7 +166,9 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
     SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved));
 
     // Make sure all confirmable UDP messages are sent and acknowledged before sleeping
-    Spark_Sleep();
+    if (!(param & SYSTEM_SLEEP_FLAG_NO_WAIT)) {
+        Spark_Sleep();
+    }
 
     bool network_sleep = network_sleep_flag(param);
     if (network_sleep)
