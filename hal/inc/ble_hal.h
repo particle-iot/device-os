@@ -44,10 +44,58 @@ typedef enum hal_ble_ant_type_t {
     BLE_ANT_EXTERNAL = 2,
 } hal_ble_ant_type_t;
 
+typedef enum hal_ble_role_t {
+    BLE_ROLE_INVALID    = 0,
+    BLE_ROLE_PERIPHERAL = 1,
+    BLE_ROLE_CENTRAL    = 2
+} hal_ble_role_t;
+
+typedef enum hal_ble_adv_evt_type_t {
+    BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT        = 0,
+    BLE_ADV_CONNECTABLE_UNDIRECTED_EVT                  = 1,
+    BLE_ADV_CONNECTABLE_DIRECTED_EVT                    = 2,
+    BLE_ADV_NON_CONNECTABLE_NON_SCANABLE_UNDIRECTED_EVT = 3,
+    BLE_ADV_NON_CONNECTABLE_NON_SCANABLE_DIRECTED_EVT   = 4,
+    BLE_ADV_SCANABLE_UNDIRECTED_EVT                     = 5,
+    BLE_ADV_SCANABLE_DIRECTED_EVT                       = 6
+} hal_ble_adv_evt_type_t;
+
+typedef enum hal_ble_adv_fp_t {
+    BLE_ADV_FP_ANY            = 0x00,   /**< Allow scan requests and connect requests from any device. */
+    BLE_ADV_FP_FILTER_SCANREQ = 0x01,   /**< Filter scan requests with whitelist. */
+    BLE_ADV_FP_FILTER_CONNREQ = 0x02,   /**< Filter connect requests with whitelist. */
+    BLE_ADV_FP_FILTER_BOTH    = 0x03    /**< Filter both scan and connect requests with whitelist. */
+} hal_ble_adv_fp_t;
+
+typedef enum hal_ble_scan_fp_t {
+    BLE_SCAN_FP_ACCEPT_ALL                      = 0x00,  /**< Accept all advertising packets except directed advertising packets
+                                                                   not addressed to this device. */
+    BLE_SCAN_FP_WHITELIST                       = 0x01,  /**< Accept advertising packets from devices in the whitelist except directed
+                                                                   packets not addressed to this device. */
+    BLE_SCAN_FP_ALL_NOT_RESOLVED_DIRECTED       = 0x02,  /**< Accept all advertising packets specified in @ref BLE_GAP_SCAN_FP_ACCEPT_ALL.
+                                                                   In addition, accept directed advertising packets, where the advertiser's
+                                                                   address is a resolvable private address that cannot be resolved. */
+    BLE_SCAN_FP_WHITELIST_NOT_RESOLVED_DIRECTED = 0x03   /**< Accept all advertising packets specified in @ref BLE_GAP_SCAN_FP_WHITELIST.
+                                                                   In addition, accept directed advertising packets, where the advertiser's
+                                                                   address is a resolvable private address that cannot be resolved. */
+} hal_ble_scan_fp_t;
+
+typedef enum hal_ble_service_type_t {
+    BLE_SERVICE_TYPE_INVALID   = 0,
+    BLE_SERVICE_TYPE_PRIMARY   = 1,
+    BLE_SERVICE_TYPE_SECONDARY = 2
+} hal_ble_service_type_t;
+
+typedef enum hal_ble_uuid_type_t {
+    BLE_UUID_TYPE_16BIT          = 0,
+    BLE_UUID_TYPE_128BIT         = 1,
+    BLE_UUID_TYPE_128BIT_SHORTED = 2
+} hal_ble_uuid_type_t;
+
 /* BLE device address */
 typedef struct hal_ble_addr_t {
     uint8_t addr[BLE_SIG_ADDR_LEN];
-    uint8_t addr_type;
+    ble_sig_addr_type_t addr_type;
     uint8_t reserved;
 } hal_ble_addr_t;
 
@@ -57,7 +105,7 @@ typedef struct hal_ble_uuid_t {
         uint16_t uuid16;
         uint8_t uuid128[BLE_SIG_UUID_128BIT_LEN];
     };
-    uint8_t type;
+    hal_ble_uuid_type_t type;
     uint8_t reserved[3];
 } hal_ble_uuid_t;
 
@@ -67,7 +115,7 @@ typedef struct hal_ble_adv_params_t {
     uint16_t size;
     uint16_t interval;                  /**< Advertising interval in 625 us units. */
     uint16_t timeout;                   /**< Advertising timeout in 10 ms units.*/
-    uint8_t type;
+    hal_ble_adv_evt_type_t type;        /**< Advertising event type.*/
     uint8_t filter_policy;
     uint8_t inc_tx_power;
     uint8_t reserved;
