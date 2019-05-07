@@ -159,12 +159,15 @@ int SaraNcpClient::initParser(Stream* stream) {
     CHECK(parser_.addUrcHandler("+CREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
         int val[4] = {-1,-1,-1,-1};
-        // Parse as direct response (ignoring mode)
-        int r = CHECK_PARSER_URC(reader->scanf("+CREG: %*d,%d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
-        // Reparse as URC
-        if (0 == r) {
+        char at_response[64]{};
+        // Take a copy of AT response for multi-pass scanning
+        CHECK_PARSER_URC(reader->readLine(at_response, sizeof(at_response)));
+        // Parse response ignoring mode (replicate URC response)
+        int r = ::sscanf(at_response, "+CREG: %*d,%d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]);
+        // Reparse URC as direct response
+        if (0 >= r) {
             r = CHECK_PARSER_URC(
-                reader->scanf("+CREG: %d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
+                ::sscanf(at_response, "+CREG: %d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         // Home network or roaming
@@ -183,13 +186,16 @@ int SaraNcpClient::initParser(Stream* stream) {
     // n=2     +CGREG: <stat>[,<lac>,<ci>[,<AcT>,<rac>]]
     CHECK(parser_.addUrcHandler("+CGREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
-        int val[4];
-        // Parse as direct response (ignoring mode)
-        int r = CHECK_PARSER_URC(reader->scanf("+CGREG: %*d,%d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
-        // Reparse as URC
-        if (0 == r) {
+        int val[4] = {-1,-1,-1,-1};
+        char at_response[64]{};
+        // Take a copy of AT response for multi-pass scanning
+        CHECK_PARSER_URC(reader->readLine(at_response, sizeof(at_response)));
+        // Parse response ignoring mode (replicate URC response)
+        int r = ::sscanf(at_response, "+CGREG: %*d,%d,\"%x\",\"%x\",%d,\"%*x\"", &val[0], &val[1], &val[2], &val[3]);
+        // Reparse URC as direct response
+        if (0 >= r) {
             r = CHECK_PARSER_URC(
-                reader->scanf("+CGREG: %d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
+                ::sscanf(at_response, "+CGREG: %d,\"%x\",\"%x\",%d,\"%*x\"", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         // Home network or roaming
@@ -207,13 +213,16 @@ int SaraNcpClient::initParser(Stream* stream) {
     // +CEREG: <stat>[,[<tac>],[<ci>],[<AcT>][,<cause_type>,<reject_cause>[,[<Active_Time>],[<Periodic_TAU>]]]]
     CHECK(parser_.addUrcHandler("+CEREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
-        int val[4];
-        // Parse as direct response (ignoring mode)
-        int r = CHECK_PARSER_URC(reader->scanf("+CEREG: %*d,%d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
-        // Reparse as URC
-        if (0 == r) {
+        int val[4] = {-1,-1,-1,-1};
+        char at_response[64]{};
+        // Take a copy of AT response for multi-pass scanning
+        CHECK_PARSER_URC(reader->readLine(at_response, sizeof(at_response)));
+        // Parse response ignoring mode (replicate URC response)
+        int r = ::sscanf(at_response, "+CEREG: %*d,%d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]);
+        // Reparse URC as direct response
+        if (0 >= r) {
             r = CHECK_PARSER_URC(
-                reader->scanf("+CEREG: %d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
+                ::sscanf(at_response, "+CEREG: %d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         // Home network or roaming
