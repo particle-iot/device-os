@@ -61,16 +61,16 @@
  * @brief Manufacturer name string descriptor
  *
  * Comma separated list of manufacturer names for each defined language.
- * Use @ref APP_USBD_STRING_DESC macro to create string descriptor.
+ * Use @ref APP_USBD_STRING_RAW8_DESC macro to create string descriptor.
  *
  * The order of manufacturer names has to be the same like in
  * @ref APP_USBD_STRINGS_LANGIDS.
  */
 #define APP_USBD_STRINGS_MANUFACTURER    \
-    APP_USBD_STRING_DESC('P', 'a', 'r', 't', 'i', 'c', 'l', 'e')
+    APP_USBD_STRING_RAW8_DESC('P', 'a', 'r', 't', 'i', 'c', 'l', 'e')
 
 /**
- * @brief Define whether @ref APP_USBD_STRINGS_MANUFACTURER is created by @ref APP_USBD_STRING_DESC
+ * @brief Define whether @ref APP_USBD_STRINGS_MANUFACTURER is created by @ref APP_USBD_STRING_RAW8_DESC
  * or declared as global variable.
  * */
 #define APP_USBD_STRINGS_MANUFACTURER_EXTERN 0
@@ -82,15 +82,15 @@
  */
 #if PLATFORM_ID == 12 // Argon
 #define APP_USBD_STRINGS_PRODUCT         \
-    APP_USBD_STRING_DESC('A', 'r', 'g', 'o', 'n', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
+    APP_USBD_STRING_RAW8_DESC('A', 'r', 'g', 'o', 'n', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
 #else // A SoM
 #define APP_USBD_STRINGS_PRODUCT         \
-    APP_USBD_STRING_DESC('A', ' ', 'S', 'o', 'M', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
+    APP_USBD_STRING_RAW8_DESC('A', ' ', 'S', 'o', 'M', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
 #endif
 
 
 /**
- * @brief Define whether @ref APP_USBD_STRINGS_PRODUCT is created by @ref APP_USBD_STRING_DESC
+ * @brief Define whether @ref APP_USBD_STRINGS_PRODUCT is created by @ref APP_USBD_STRING_RAW8_DESC
  * or declared as global variable.
  * */
 #define APP_USBD_STRINGS_PRODUCT_EXTERN 0
@@ -98,17 +98,17 @@
 /**
  * @brief Serial number string descriptor
  *
- * Create serial number string descriptor using @ref APP_USBD_STRING_DESC,
+ * Create serial number string descriptor using @ref APP_USBD_STRING_RAW8_DESC,
  * or configure it to point to any internal variable pointer filled with descriptor.
  *
  * @note
  * There is only one SERIAL number inside the library and it is Language independent.
  */
 #define APP_USBD_STRING_SERIAL          g_extern_serial_number
-    // APP_USBD_STRING_DESC('0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0')
+    // APP_USBD_STRING_RAW8_DESC('0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0')
 
 /**
- * @brief Define whether @ref APP_USBD_STRING_SERIAL is created by @ref APP_USBD_STRING_DESC
+ * @brief Define whether @ref APP_USBD_STRING_SERIAL is created by @ref APP_USBD_STRING_RAW8_DESC
  * or declared as global variable.
  * */
 #define APP_USBD_STRING_SERIAL_EXTERN 1
@@ -126,19 +126,19 @@
  *                @ref app_usbd_string_desc_idx_t enumerator.
  * - @c str_idx : String index value, may be set or left empty.
  *                For example WinUSB driver requires descriptor to be present on 0xEE index.
- *                Then use X(USBD_STRING_WINUSB, =0xEE, (APP_USBD_STRING_DESC(...)))
+ *                Then use X(USBD_STRING_WINUSB, =0xEE, (APP_USBD_STRING_RAW8_DESC(...)))
  * - @c ...     : List of string descriptors for each defined language.
  */
 #if PLATFORM_ID == 12 // Argon
 #define APP_USBD_STRINGS_USER \
-    X(APP_USER_1, , APP_USBD_STRING_DESC('S', 'e', 'r', 'i', 'a', 'l')) \
-    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC('A', 'r', 'g', 'o', 'n', ' ', 'C', 'o', 'n', 't', 'r', 'o', 'l', ' ', 'I', 'n', 't', 'e', 'r', 'f', 'a', 'c', 'e')) \
-    X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC('M', 'S', 'F', 'T', '1', '0', '0', 0xee))
+    X(APP_USER_1, , APP_USBD_STRING_RAW8_DESC('S', 'e', 'r', 'i', 'a', 'l')) \
+    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_RAW8_DESC('A', 'r', 'g', 'o', 'n', ' ', 'C', 'o', 'n', 't', 'r', 'o', 'l', ' ', 'I', 'n', 't', 'e', 'r', 'f', 'a', 'c', 'e')) \
+    X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_RAW8_DESC('M', 'S', 'F', 'T', '1', '0', '0', 0xee))
 #else
 #define APP_USBD_STRINGS_USER \
-    X(APP_USER_1, , APP_USBD_STRING_DESC('S', 'e', 'r', 'i', 'a', 'l')) \
-    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC('A', 'r', 'g', 'o', 'n', ' ', 'S', 'o', 'M', ' ', 'C', 'o', 'n', 't', 'r', 'o', 'l', ' ', 'I', 'n', 't', 'e', 'r', 'f', 'a', 'c', 'e')) \
-    X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC('M', 'S', 'F', 'T', '1', '0', '0', 0xee))
+    X(APP_USER_1, , APP_USBD_STRING_RAW8_DESC('S', 'e', 'r', 'i', 'a', 'l')) \
+    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_RAW8_DESC('A', 'r', 'g', 'o', 'n', ' ', 'S', 'o', 'M', ' ', 'C', 'o', 'n', 't', 'r', 'o', 'l', ' ', 'I', 'n', 't', 'e', 'r', 'f', 'a', 'c', 'e')) \
+    X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_RAW8_DESC('M', 'S', 'F', 'T', '1', '0', '0', 0xee))
 #endif
 
 /** @} */

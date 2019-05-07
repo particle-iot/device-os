@@ -37,6 +37,12 @@
 #define NRFX_SPIS_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
 #define NRFX_TWIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
 
+// FIXME: for some reason there are no defaults for these configuration parameters in nrfx_config.h/sdk_config.h
+#define NRFX_TWIM2_ENABLED 0
+#define NRFX_TWIM3_ENABLED 0
+#define NRFX_TWIS2_ENABLED 0
+#define NRFX_TWIS3_ENABLED 0
+
 #define CLOCK_ENABLED 1
 
 #define POWER_ENABLED 1
@@ -61,3 +67,13 @@
 // <0=> 32MHz/1
 // Ze fastest!
 #define NRFX_QSPI_CONFIG_FREQUENCY 1
+
+// FIXME: no default for these parameters in the newer versions of SDK
+#define NRFX_DPPI_ENABLED 0
+#define NRFX_UARTE2_ENABLED 0
+#define NRFX_UARTE3_ENABLED 0
+
+// There is no slave mode for SPI3
+#define NRFX_SPIS3_ENABLED 0
+
+#define NRF_CLOCK_ENABLED 1

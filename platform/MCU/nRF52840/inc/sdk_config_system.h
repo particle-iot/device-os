@@ -103,12 +103,19 @@
 #define NRFX_TWIS0_ENABLED      1
 #define NRFX_TWIS1_ENABLED      1
 
+// FIXME: for some reason there are no defaults for these configuration parameters in nrfx_config.h/sdk_config.h
+#define NRFX_TWIM2_ENABLED      0
+#define NRFX_TWIM3_ENABLED      0
+#define NRFX_TWIS2_ENABLED      0
+#define NRFX_TWIS3_ENABLED      0
+
 #define NRFX_SPIM_ENABLED       1
 #define NRFX_SPIS_ENABLED       1
 #define NRFX_SPIM2_ENABLED      1
 #define NRFX_SPIM3_ENABLED      1
 #define NRFX_SPIS2_ENABLED      1
-#define NRFX_SPIS3_ENABLED      1
+// SPI3 doesn't support slave mode
+#define NRFX_SPIS3_ENABLED      0
 
 #define NRFX_TIMER2_ENABLED     1
 
@@ -137,3 +144,12 @@
 
 #define NRFX_POWER_CONFIG_DEFAULT_DCDCEN        1
 
+// Recent Nordic nRF5 SDK versions do not include this file and rely on
+// configuration to be provided in sdk_config.h
+// Simply including it here.
+#include "app_usbd_string_config.h"
+
+// FIXME: no default for this parameter
+#define NRFX_DPPI_ENABLED 0
+
+#define NRF_CLOCK_ENABLED 1

@@ -12,13 +12,19 @@
 extern "C" {
 #endif
 
-#define STATIC_ASSERT_EXPR(name, condition) ((void)sizeof(char[1 - 2*!!(condition)]))
-
 #if defined(__cplusplus) && __cplusplus >= 201103L
-#define PARTICLE_STATIC_ASSERT(name,condition) static_assert(condition,#name)
+#define PARTICLE_STATIC_ASSERT(name, condition) static_assert(condition, #name)
+#elif defined(__STDC_VERSION__) &&  (defined(__arm__) || __STDC_VERSION__ >= 201112L)
+// _Static_assert is supported starting with C11, however we can bypass the check
+// because GCC supports it no matter what starting with 4.6
+#define PARTICLE_STATIC_ASSERT(name, condition) _Static_assert(condition, #name)
 #else
-#define PARTICLE_STATIC_ASSERT(name,condition) typedef char assert_##name[(condition)?0:-1]
+// Fallback
+#define PARTICLE_STATIC_ASSERT(name, condition) typedef char assert_##name[(condition)?0:-1]
 #endif
+
+// Compatibility macro
+#define STATIC_ASSERT_EXPR(name, condition) PARTICLE_STATIC_ASSERT(name, condition)
 
 #if !defined(STATIC_ASSERT) && !defined(NO_STATIC_ASSERT)
 #define STATIC_ASSERT(name, condition) PARTICLE_STATIC_ASSERT(name, condition)
