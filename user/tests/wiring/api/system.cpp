@@ -65,6 +65,7 @@ test(system_sleep)
     API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_NETWORK_STANDBY, 60); (void)r; });
 
     API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_NETWORK_STANDBY); (void)r; });
+    API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_NETWORK_STANDBY | SLEEP_NO_WAIT); (void)r; });
 
     API_COMPILE({ SleepResult r = System.sleep(A0, CHANGE, SLEEP_NETWORK_STANDBY); (void)r; });
     API_COMPILE({ SleepResult r = System.sleep(A0, RISING, SLEEP_NETWORK_STANDBY); (void)r; });
