@@ -1078,7 +1078,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
                     if (!_atOk()) {
                         goto failure;
                     }
-                    sendFormated("AT+COPS=2\r\n");
+                    sendFormated("AT+COPS=2,2\r\n");
                     if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
                         goto failure;
                     }
@@ -1102,7 +1102,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
                 if (!_atOk()) {
                     goto failure;
                 }
-                sendFormated("AT+COPS=0\r\n");
+                sendFormated("AT+COPS=0,2\r\n");
                 if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
                     goto failure;
                 }
@@ -1828,7 +1828,7 @@ bool MDMParser::detach(void)
             // the PSD connection. For now let's unregister from the network entirely, since the
             // behavior of the detach command in relation to LTE is not documented
             if (_atOk()) {
-                sendFormated("AT+COPS=2\r\n");
+                sendFormated("AT+COPS=2,2\r\n");
                 if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) == RESP_OK) {
                     _activated = false;
                     ok = true;

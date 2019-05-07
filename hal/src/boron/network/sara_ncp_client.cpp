@@ -298,7 +298,7 @@ int SaraNcpClient::disconnect() {
         return 0;
     }
     CHECK(checkParser());
-    const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+    const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2,2"));
     (void)r;
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
@@ -737,7 +737,7 @@ int SaraNcpClient::initReady() {
     CHECK(selectSimCard());
 
     // Just in case disconnect
-    int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+    int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2,2"));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     // Reformat the operator string to be numeric
@@ -897,7 +897,7 @@ int SaraNcpClient::registerNet() {
     connectionState(NcpConnectionState::CONNECTING);
 
     // NOTE: up to 3 mins
-    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0"));
+    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0,2"));
     // Ignore response code here
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
