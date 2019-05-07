@@ -118,7 +118,7 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
     // System.sleep(10) always powers down the network, even if SLEEP_NETWORK_STANDBY flag is used.
 
     // Make sure all confirmable UDP messages are sent and acknowledged before sleeping
-    if (!(param & SYSTEM_SLEEP_FLAG_NO_WAIT)) {
+    if (spark_cloud_flag_connected() && !(param & SYSTEM_SLEEP_FLAG_NO_WAIT)) {
         Spark_Sleep();
     }
 
@@ -166,7 +166,7 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
     SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved));
 
     // Make sure all confirmable UDP messages are sent and acknowledged before sleeping
-    if (!(param & SYSTEM_SLEEP_FLAG_NO_WAIT)) {
+    if (spark_cloud_flag_connected() && !(param & SYSTEM_SLEEP_FLAG_NO_WAIT)) {
         Spark_Sleep();
     }
 
