@@ -50,6 +50,7 @@ LOG_SOURCE_CATEGORY("hal.ble")
 #include <memory>
 #include "check_nrf.h"
 #include "check.h"
+#include "scope_guard.h"
 
 static_assert(NRF_SDH_BLE_PERIPHERAL_LINK_COUNT == 1, "Multiple simultaneous peripheral connections are not supported");
 static_assert(NRF_SDH_BLE_TOTAL_LINK_COUNT <= 20, "Maximum supported number of concurrent connections in the peripheral and central roles combined exceeded");
@@ -195,10 +196,13 @@ protected:
     }
 
     void clearAttMtu(hal_ble_conn_handle_t connHandle) {
-        for (const auto& attMtu : attMtuList_) {
+        for (int i = 0; i < attMtuList_.size(); i = i) {
+            const auto& attMtu = attMtuList_[i];
             if (attMtu.connHandle == connHandle) {
-                attMtuList_.removeOne(attMtu);
+                attMtuList_.removeAt(i);
+                continue;
             }
+            i++;
         }
     }
 
@@ -229,7 +233,6 @@ protected:
     }
 
     static void toPlatformCharProps(uint8_t halProperties, ble_gatt_char_props_t* properties) {
-        memset(properties, 0x00, sizeof(ble_gatt_char_props_t));
         properties->broadcast = (halProperties & BLE_SIG_CHAR_PROP_BROADCAST) ? 1 : 0;
         properties->read = (halProperties & BLE_SIG_CHAR_PROP_READ) ? 1 : 0;
         properties->write_wo_resp = (halProperties & BLE_SIG_CHAR_PROP_WRITE_WO_RESP) ? 1 : 0;
@@ -391,7 +394,7 @@ private:
     size_t scanRespDataLen_;                        /**< Current scan response data length. */
     int8_t txPower_;                                /**< TX Power. */
     bool advPending_;                               /**< Advertising is pending. */
-    hal_ble_conn_handle_t connHandle_;              /**< Connection handle. It is assigned once device is connected as Peripheral. It is used for re-start advertising. */
+    volatile hal_ble_conn_handle_t connHandle_;     /**< Connection handle. It is assigned once device is connected as Peripheral. It is used for re-start advertising. */
     static const int8_t validTxPower_[8];           /**< Valid TX power values. */
 };
 
@@ -459,7 +462,7 @@ public:
             connParamsUpdateSemaphore_(nullptr),
             connectSemaphore_(nullptr),
             disconnectSemaphore_(nullptr) {
-        memset(&connectingAddr_, 0x00, sizeof(hal_ble_addr_t));
+        connectingAddr_ = {};
         connections_.clear();
     }
     ~ConnectionsManager() = default;
@@ -642,8 +645,7 @@ os_thread_return_t BleObject::BleEventDispatcher::bleEventDispatch(void* param) 
                 }
             } else {
                 // Just dispatch the event to the application those have subscribed the generic events.
-                for (int i = 0; i < dispatcher->genericEventHandlers_.size(); i++) {
-                    BleGenericEventHandler& evtHandler = dispatcher->genericEventHandlers_[i];
+                for (auto& evtHandler : dispatcher->genericEventHandlers_) {
                     if (evtHandler.handler) {
                         evtHandler.handler(&msg.evt, evtHandler.context);
                     }
@@ -995,7 +997,6 @@ int BleObject::Broadcaster::resume() {
 }
 
 void BleObject::Broadcaster::toPlatformAdvParams(ble_gap_adv_params_t* params, const hal_ble_adv_params_t* halParams) {
-    memset(params, 0x00, sizeof(ble_gap_adv_params_t));
     params->properties.type = halParams->type;
     params->properties.include_tx_power = false; // FIXME: for extended advertising packet
     params->p_peer_addr = nullptr;
@@ -1019,7 +1020,7 @@ int BleObject::Broadcaster::configure(const hal_ble_adv_params_t* params) {
     if (params == nullptr) {
         ret = sd_ble_gap_adv_set_configure(&advHandle_, &bleGapAdvData, nullptr);
     } else {
-        ble_gap_adv_params_t bleGapAdvParams;
+        ble_gap_adv_params_t bleGapAdvParams = {};
         toPlatformAdvParams(&bleGapAdvParams, params);
         LOG_DEBUG(TRACE, "BLE advertising interval: %.3fms, timeout: %dms.",
                   bleGapAdvParams.interval*0.625, bleGapAdvParams.duration*10);
@@ -1134,7 +1135,11 @@ int BleObject::Observer::startScanning(on_ble_scan_result_cb_t callback, void* c
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
-    ble_gap_scan_params_t bleGapScanParams;
+    SCOPE_GUARD ({
+        os_semaphore_destroy(scanSemaphore_);
+        scanSemaphore_ = nullptr;
+    });
+    ble_gap_scan_params_t bleGapScanParams = {};
     toPlatformScanParams(&bleGapScanParams);
     LOG_DEBUG(TRACE, "| interval(ms)   window(ms)   timeout(ms) |");
     LOG_DEBUG(TRACE, "  %.3f        %.3f      %d",
@@ -1149,8 +1154,6 @@ int BleObject::Observer::startScanning(on_ble_scan_result_cb_t callback, void* c
     if (os_semaphore_take(scanSemaphore_, CONCURRENT_WAIT_FOREVER, false)) {
         ret = SYSTEM_ERROR_TIMEOUT;
     }
-    os_semaphore_destroy(scanSemaphore_);
-    scanSemaphore_ = nullptr;
     isScanning_ = false;
     cache_.clear();
     clearResult();
@@ -1170,7 +1173,6 @@ int BleObject::Observer::stopScanning() {
 }
 
 void BleObject::Observer::toPlatformScanParams(ble_gap_scan_params_t* params) const {
-    memset(params, 0x00, sizeof(ble_gap_scan_params_t));
     params->extended = 0;
     params->active = scanParams_.active;
     params->interval = scanParams_.interval;
@@ -1199,11 +1201,11 @@ hal_ble_gap_on_scan_result_evt_t* BleObject::Observer::cachedResult(const hal_bl
 }
 
 void BleObject::Observer::removeResult(const hal_ble_addr_t& address) {
-    size_t i = 0;
-    for (const auto& result : pendingResults_) {
+    for (int i = 0; i < pendingResults_.size(); i = i) {
+        const auto& result = pendingResults_[i];
         if (addressEqual(result.peer_addr, address)) {
             pendingResults_.removeAt(i);
-            return;
+            continue;
         }
         i++;
     }
@@ -1348,7 +1350,7 @@ int BleObject::ConnectionsManager::init() {
      * For BLE Central, this is the initial connection parameters.
      * For BLE Peripheral, this is the Peripheral Preferred Connection Parameters.
      */
-    ble_gap_conn_params_t bleGapConnParams;
+    ble_gap_conn_params_t bleGapConnParams = {};
     bleGapConnParams.min_conn_interval = BLE_DEFAULT_MIN_CONN_INTERVAL;
     bleGapConnParams.max_conn_interval = BLE_DEFAULT_MAX_CONN_INTERVAL;
     bleGapConnParams.slave_latency = BLE_DEFAULT_SLAVE_LATENCY;
@@ -1398,7 +1400,7 @@ int BleObject::ConnectionsManager::getPpcp(hal_ble_conn_params_t* ppcp) const {
     if (ppcp == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    ble_gap_conn_params_t bleGapConnParams;
+    ble_gap_conn_params_t bleGapConnParams = {};
     int ret = sd_ble_gap_ppcp_get(&bleGapConnParams);
     CHECK_NRF_RETURN(ret, sysError(ret));
     toHalConnParams(ppcp, &bleGapConnParams);
@@ -1425,12 +1427,15 @@ int BleObject::ConnectionsManager::connect(const hal_ble_addr_t* address) {
     CHECK(BleObject::getInstance().observer()->stopScanning());
     if (os_semaphore_create(&connectSemaphore_, 1, 0)) {
         LOG(ERROR, "os_semaphore_create() failed");
-        connectSemaphore_ = nullptr;
         return SYSTEM_ERROR_INTERNAL;
     }
+    SCOPE_GUARD({
+        os_semaphore_destroy(connectSemaphore_);
+        connectSemaphore_ = nullptr;
+    });
     ble_gap_addr_t bleDevAddr = {};
-    ble_gap_scan_params_t bleGapScanParams;
-    ble_gap_conn_params_t bleGapConnParams;
+    ble_gap_scan_params_t bleGapScanParams = {};
+    ble_gap_conn_params_t bleGapConnParams = {};
     bleDevAddr.addr_type = address->addr_type;
     memcpy(bleDevAddr.addr, address->addr, BLE_SIG_ADDR_LEN);
     BleObject::getInstance().observer()->toPlatformScanParams(&bleGapScanParams);
@@ -1438,7 +1443,6 @@ int BleObject::ConnectionsManager::connect(const hal_ble_addr_t* address) {
     CHECK_NRF_RETURN(ret, sysError(ret));
     ret = sd_ble_gap_connect(&bleDevAddr, &bleGapScanParams, &bleGapConnParams, BLE_CONN_CFG_TAG);
     if (ret != NRF_SUCCESS) {
-        os_semaphore_destroy(connectSemaphore_);
         CHECK_NRF_RETURN(ret, sysError(ret));
     }
     isConnecting_ = true;
@@ -1448,7 +1452,6 @@ int BleObject::ConnectionsManager::connect(const hal_ble_addr_t* address) {
         ret = SYSTEM_ERROR_TIMEOUT;
     }
     isConnecting_ = false;
-    os_semaphore_destroy(connectSemaphore_);
     connectingAddr_ = {};
     return ret;
 }
@@ -1472,9 +1475,12 @@ int BleObject::ConnectionsManager::disconnect(hal_ble_conn_handle_t connHandle) 
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
+    SCOPE_GUARD({
+        os_semaphore_destroy(disconnectSemaphore_);
+        disconnectSemaphore_ = nullptr;
+    });
     int ret = sd_ble_gap_disconnect(connHandle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
     if (ret != NRF_SUCCESS) {
-        os_semaphore_destroy(disconnectSemaphore_);
         CHECK_NRF_RETURN(ret, sysError(ret));
     }
     disconnectingHandle_ = connHandle;
@@ -1483,7 +1489,6 @@ int BleObject::ConnectionsManager::disconnect(hal_ble_conn_handle_t connHandle) 
         ret = SYSTEM_ERROR_TIMEOUT;
     }
     disconnectingHandle_ = BLE_INVALID_CONN_HANDLE;
-    os_semaphore_destroy(disconnectSemaphore_);
     return ret;
 }
 
@@ -1496,19 +1501,22 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
+    SCOPE_GUARD({
+        os_semaphore_destroy(connParamsUpdateSemaphore_);
+        connParamsUpdateSemaphore_ = nullptr;
+    });
     ble_gap_conn_params_t bleGapConnParams = {};
     if (params == nullptr) {
         // Use the PPCP characteristic value as the connection parameters.
         ret = sd_ble_gap_ppcp_get(&bleGapConnParams);
         CHECK_NRF_RETURN(ret, sysError(ret));
-    }  else {
+    } else {
         toPlatformConnParams(&bleGapConnParams, params);
     }
     // For Central role, this will initiate the connection parameter update procedure.
     // For Peripheral role, this will use the passed in parameters and send the request to central.
     ret = sd_ble_gap_conn_param_update(connHandle, &bleGapConnParams);
     if (ret != NRF_SUCCESS) {
-        os_semaphore_destroy(connParamsUpdateSemaphore_);
         CHECK_NRF_RETURN(ret, sysError(ret));
     }
     connParamUpdateHandle_ = connHandle;
@@ -1517,7 +1525,6 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
         ret = SYSTEM_ERROR_TIMEOUT;
     }
     connParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
-    os_semaphore_destroy(connParamsUpdateSemaphore_);
     return ret;
 }
 
@@ -1543,7 +1550,6 @@ void BleObject::ConnectionsManager::toPlatformConnParams(ble_gap_conn_params_t* 
 }
 
 void BleObject::ConnectionsManager::toHalConnParams(hal_ble_conn_params_t* halConnParams, const ble_gap_conn_params_t* params) {
-    memset(halConnParams, 0x00, sizeof(hal_ble_conn_params_t));
     halConnParams->version = BLE_API_VERSION;
     halConnParams->size = sizeof(hal_ble_conn_params_t);
     halConnParams->min_conn_interval = params->min_conn_interval;
@@ -1583,10 +1589,11 @@ void BleObject::ConnectionsManager::addConnection(const BleConnection& connectio
 }
 
 void BleObject::ConnectionsManager::removeConnection(hal_ble_conn_handle_t connHandle) {
-    size_t i = 0;
-    for (const auto& connection : connections_) {
+    for (int i = 0; i < connections_.size(); i = i) {
+        const auto& connection = connections_[i];
         if (connection.connHandle == connHandle) {
             connections_.removeAt(i);
+            continue;
         }
         i++;
     }
@@ -1663,6 +1670,7 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
             BleConnection newConnection = {};
             newConnection.role = connected.role;
             newConnection.connHandle = event->evt.gap_evt.conn_handle;
+            newConnection.effectiveConnParams = {};
             connMgr->toHalConnParams(&newConnection.effectiveConnParams, &connected.conn_params);
             newConnection.peer.addr_type = connected.peer_addr.addr_type;
             memcpy(newConnection.peer.addr, connected.peer_addr.addr, BLE_SIG_ADDR_LEN);
@@ -1673,7 +1681,9 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
                     newConnection.effectiveConnParams.slave_latency, newConnection.effectiveConnParams.conn_sup_timeout*10);
             // If the connection is initiated by Central.
             if (connMgr->isConnecting_ && addressEqual(newConnection.peer, connMgr->connectingAddr_)) {
-                os_semaphore_give(connMgr->connectSemaphore_, false);
+                if (!connMgr->connectSemaphore_) {
+                    os_semaphore_give(connMgr->connectSemaphore_, false);
+                }
             }
             // Update connection parameters if needed.
             if (newConnection.role == BLE_ROLE_PERIPHERAL) {
@@ -1707,11 +1717,15 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
                             os_timer_change(connMgr->connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
                         }
                     } else {
-                        os_semaphore_give(connMgr->connParamsUpdateSemaphore_, false);
+                        if (!connMgr->connParamsUpdateSemaphore_) {
+                            os_semaphore_give(connMgr->connParamsUpdateSemaphore_, false);
+                        }
                     }
                 }
                 if (connMgr->disconnectingHandle_ == event->evt.gap_evt.conn_handle) {
-                    os_semaphore_give(connMgr->disconnectSemaphore_, false);
+                    if (!connMgr->disconnectSemaphore_) {
+                        os_semaphore_give(connMgr->disconnectSemaphore_, false);
+                    }
                 }
                 connMgr->removeConnection(event->evt.gap_evt.conn_handle);
             } else {
@@ -1741,6 +1755,7 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
             LOG_DEBUG(TRACE, "BLE GAP event: connection parameter updated.");
             BleConnection* connection = connMgr->fetchConnection(event->evt.gap_evt.conn_handle);
             if (connection != nullptr) {
+                connection->effectiveConnParams = {};
                 connMgr->toHalConnParams(&connection->effectiveConnParams, &connParaUpdate.conn_params);
                 if (connection->role == BLE_ROLE_PERIPHERAL) {
                     connMgr->initiateConnParamsUpdateIfNeeded(connection);
@@ -1819,19 +1834,18 @@ int BleObject::GattServer::addCharacteristic(hal_ble_attr_handle_t svcHandle, ui
     }
     if (findService(svcHandle)) {
         ble_uuid_t charUuid;
-        ble_gatts_char_md_t charMd;
-        ble_gatts_attr_md_t valueAttrMd;
-        ble_gatts_attr_md_t userDescAttrMd;
-        ble_gatts_attr_md_t cccdAttrMd;
-        ble_gatts_attr_t charValueAttr;
-        ble_gatts_char_handles_t handles;
+        ble_gatts_char_md_t charMd = {};
+        ble_gatts_attr_md_t valueAttrMd = {};
+        ble_gatts_attr_md_t userDescAttrMd = {};
+        ble_gatts_attr_md_t cccdAttrMd = {};
+        ble_gatts_attr_t charValueAttr = {};
+        ble_gatts_char_handles_t handles = {};
         int ret;
         CHECK(BleObject::toPlatformUUID(uuid, &charUuid));
-        memset(&charMd, 0, sizeof(charMd));
+        charMd.char_props = {};
         toPlatformCharProps(properties, &charMd.char_props);
         // User Description Descriptor attribute metadata
         if (desc != nullptr) {
-            memset(&userDescAttrMd, 0, sizeof(userDescAttrMd));
             BLE_GAP_CONN_SEC_MODE_SET_OPEN(&userDescAttrMd.read_perm);
             BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&userDescAttrMd.write_perm);
             userDescAttrMd.vloc = BLE_GATTS_VLOC_STACK;
@@ -1848,7 +1862,6 @@ int BleObject::GattServer::addCharacteristic(hal_ble_attr_handle_t svcHandle, ui
         }
         // Client Characteristic Configuration Descriptor attribute metadata
         if (charMd.char_props.notify || charMd.char_props.indicate) {
-            memset(&cccdAttrMd, 0, sizeof(cccdAttrMd));
             BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccdAttrMd.read_perm);
             BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccdAttrMd.write_perm);
             cccdAttrMd.vloc = BLE_GATTS_VLOC_STACK;
@@ -1858,7 +1871,6 @@ int BleObject::GattServer::addCharacteristic(hal_ble_attr_handle_t svcHandle, ui
         charMd.p_char_pf = nullptr;
         charMd.p_sccd_md = nullptr;
         // Characteristic value attribute metadata
-        memset(&valueAttrMd, 0, sizeof(valueAttrMd));
         BLE_GAP_CONN_SEC_MODE_SET_OPEN(&valueAttrMd.read_perm);
         BLE_GAP_CONN_SEC_MODE_SET_OPEN(&valueAttrMd.write_perm);
         valueAttrMd.vloc = BLE_GATTS_VLOC_USER;
@@ -1870,7 +1882,6 @@ int BleObject::GattServer::addCharacteristic(hal_ble_attr_handle_t svcHandle, ui
         if (charValue == nullptr) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        memset(&charValueAttr, 0, sizeof(charValueAttr));
         charValueAttr.p_uuid = &charUuid;
         charValueAttr.p_attr_md = &valueAttrMd;
         charValueAttr.init_len = 0;
@@ -1907,19 +1918,17 @@ int BleObject::GattServer::addDescriptor(hal_ble_attr_handle_t charHandle, const
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (findCharacteristic(charHandle)) {
-        ble_gatts_attr_t descAttr;
-        ble_gatts_attr_md_t descAttrMd;
+        ble_gatts_attr_t descAttr = {};
+        ble_gatts_attr_md_t descAttrMd = {};
         ble_uuid_t descUuid;
         int ret;
         CHECK(BleObject::toPlatformUUID(uuid, &descUuid));
-        memset(&descAttrMd, 0, sizeof(descAttrMd));
         BLE_GAP_CONN_SEC_MODE_SET_OPEN(&descAttrMd.read_perm);
         BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&descAttrMd.write_perm);
         descAttrMd.vloc = BLE_GATTS_VLOC_STACK;
         descAttrMd.rd_auth = 0;
         descAttrMd.wr_auth = 0;
         descAttrMd.vlen    = 0;
-        memset(&descAttr, 0, sizeof(descAttr));
         descAttr.p_uuid    = &descUuid;
         descAttr.p_attr_md = &descAttrMd;
         descAttr.init_len  = len;
@@ -1938,13 +1947,13 @@ int BleObject::GattServer::addDescriptor(hal_ble_attr_handle_t charHandle, const
 }
 
 ssize_t BleObject::GattServer::setValue(hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len) {
-    if (attrHandle == BLE_INVALID_ATTR_HANDLE || buf == nullptr) {
+    if (attrHandle == BLE_INVALID_ATTR_HANDLE || buf == nullptr || len == 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     BleCharacteristic* characteristic = findCharacteristic(attrHandle);
     if (characteristic != nullptr && attrHandle == characteristic->charHandles.value_handle) {
         len = std::min(len, (size_t)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
-        ble_gatts_value_t gattValue;
+        ble_gatts_value_t gattValue = {};
         gattValue.len = len;
         gattValue.offset = 0;
         gattValue.p_value = (uint8_t*)buf;
@@ -1957,7 +1966,11 @@ ssize_t BleObject::GattServer::setValue(hal_ble_attr_handle_t attrHandle, const 
                     LOG(ERROR, "os_semaphore_create() failed");
                     break;
                 }
-                ble_gatts_hvx_params_t hvxParams;
+                SCOPE_GUARD({
+                    os_semaphore_destroy(hvxSemaphore_);
+                    hvxSemaphore_ = nullptr;
+                });
+                ble_gatts_hvx_params_t hvxParams = {};
                 uint16_t hvxLen = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(getAttMtu(cccdConnection)));
                 LOG_DEBUG(TRACE, "Notify data len: %d", hvxLen);
                 if (characteristic->properties & BLE_SIG_CHAR_PROP_NOTIFY) {
@@ -1972,14 +1985,11 @@ ssize_t BleObject::GattServer::setValue(hal_ble_attr_handle_t attrHandle, const 
                 ret_code_t ret = sd_ble_gatts_hvx(cccdConnection, &hvxParams);
                 if (ret != NRF_SUCCESS) {
                     LOG(ERROR, "sd_ble_gatts_hvx() failed: %u", (unsigned)ret);
-                    os_semaphore_destroy(hvxSemaphore_);
                     break;
                 }
                 if (os_semaphore_take(hvxSemaphore_, BLE_HVX_PROCEDURE_TIMEOUT_MS, false)) {
-                    os_semaphore_destroy(hvxSemaphore_);
                     break;
                 }
-                os_semaphore_destroy(hvxSemaphore_);
             }
         }
         return len;
@@ -1990,7 +2000,7 @@ ssize_t BleObject::GattServer::setValue(hal_ble_attr_handle_t attrHandle, const 
 }
 
 ssize_t BleObject::GattServer::getValue(hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len) {
-    if (attrHandle == BLE_INVALID_ATTR_HANDLE || buf == nullptr) {
+    if (attrHandle == BLE_INVALID_ATTR_HANDLE || buf == nullptr || len == 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     BleCharacteristic* characteristic = findCharacteristic(attrHandle);
@@ -2038,10 +2048,11 @@ void BleObject::GattServer::addToCccdList(BleCharacteristic* characteristic, hal
 }
 
 void BleObject::GattServer::removeFromCCCDList(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle) {
-    size_t i = 0;
-    for (const auto& cccdConnection : characteristic->cccdConnections) {
+    for (int i = 0; i < characteristic->cccdConnections.size(); i = i) {
+        const auto& cccdConnection = characteristic->cccdConnections[i];
         if (cccdConnection == connHandle) {
             characteristic->cccdConnections.removeAt(i);
+            continue;
         }
         i++;
     }
@@ -2203,6 +2214,10 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
+    SCOPE_GUARD({
+        os_semaphore_destroy(discoverySemaphore_);
+        discoverySemaphore_ = nullptr;
+    });
     currDiscConnHandle_ = connHandle;
     currDiscProcedure_ = DiscoveryProcedure::BLE_DISCOVERY_PROCEDURE_SERVICES;
     if (uuid == nullptr) {
@@ -2215,7 +2230,6 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
     }
     if (ret != NRF_SUCCESS) {
         resetDiscoveryState();
-        os_semaphore_destroy(discoverySemaphore_);
         CHECK_NRF_RETURN(ret, sysError(ret));
     }
     isDiscovering_ = true;
@@ -2224,7 +2238,6 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
         ret = SYSTEM_ERROR_TIMEOUT;
     }
     resetDiscoveryState();
-    os_semaphore_destroy(discoverySemaphore_);
     hal_ble_svc_t* services = (hal_ble_svc_t*)gattcDiscSvcCharPool_.alloc(discoveredServices_.size() * sizeof(hal_ble_svc_t));
     if (services) {
         LOG_DEBUG(TRACE, "Discovered services address: %u, len: %u", (unsigned)services, discoveredServices_.size() * sizeof(hal_ble_svc_t));
@@ -2261,6 +2274,10 @@ int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHan
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
+    SCOPE_GUARD({
+        os_semaphore_destroy(discoverySemaphore_);
+        discoverySemaphore_ = nullptr;
+    });
     ble_gattc_handle_range_t handleRange = {};
     handleRange.start_handle = service->start_handle;
     handleRange.end_handle = service->end_handle;
@@ -2270,7 +2287,6 @@ int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHan
     int ret = sd_ble_gattc_characteristics_discover(connHandle, &handleRange);
     if (ret != NRF_SUCCESS) {
         resetDiscoveryState();
-        os_semaphore_destroy(discoverySemaphore_);
         CHECK_NRF_RETURN(ret, sysError(ret));
     }
     isDiscovering_ = true;
@@ -2280,12 +2296,10 @@ int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHan
     if (!BleObject::getInstance().connMgr()->valid(connHandle)) {
         LOG(ERROR, "Connection invalid.");
         resetDiscoveryState();
-        os_semaphore_destroy(discoverySemaphore_);
         return SYSTEM_ERROR_NOT_FOUND;
     }
     currDiscProcedure_ = DiscoveryProcedure::BLE_DISCOVERY_PROCEDURE_DESCRIPTORS;
     if (sd_ble_gattc_descriptors_discover(currDiscConnHandle_, &handleRange) != NRF_SUCCESS) {
-        os_semaphore_destroy(discoverySemaphore_);
         LOG(ERROR, "sd_ble_gattc_descriptors_discover() failed: %u", (unsigned)ret);
     } else {
         ret = SYSTEM_ERROR_NONE;
@@ -2294,7 +2308,6 @@ int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHan
         }
     }
     resetDiscoveryState();
-    os_semaphore_destroy(discoverySemaphore_);
     hal_ble_char_t* characteristics = (hal_ble_char_t*)gattcDiscSvcCharPool_.alloc(discoveredCharacteristics_.size() * sizeof(hal_ble_char_t));
     if (characteristics) {
         LOG_DEBUG(TRACE, "Discovered characteristics address: %u, len: %u", (unsigned)characteristics, discoveredCharacteristics_.size() * sizeof(hal_ble_char_t));
@@ -2337,6 +2350,10 @@ ssize_t BleObject::GattClient::writeAttribute(hal_ble_conn_handle_t connHandle, 
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
+    SCOPE_GUARD({
+        os_semaphore_destroy(readWriteSemaphore_);
+        readWriteSemaphore_ = nullptr;
+    });
     if (response) {
         writeParams.write_op = BLE_GATT_OP_WRITE_REQ;
     } else {
@@ -2350,15 +2367,12 @@ ssize_t BleObject::GattClient::writeAttribute(hal_ble_conn_handle_t connHandle, 
     writeParams.p_value = buf;
     int ret = sd_ble_gattc_write(connHandle, &writeParams);
     if (ret != NRF_SUCCESS) {
-        os_semaphore_destroy(readWriteSemaphore_);
         LOG(ERROR, "sd_ble_gattc_write() failed: %u", (unsigned)ret);
         return sysError(ret);
     }
     if (os_semaphore_take(readWriteSemaphore_, BLE_READ_WRITE_PROCEDURE_TIMEOUT_MS, false)) {
-        os_semaphore_destroy(readWriteSemaphore_);
         return SYSTEM_ERROR_TIMEOUT;
     }
-    os_semaphore_destroy(readWriteSemaphore_);
     return len;
 }
 
@@ -2375,6 +2389,10 @@ ssize_t BleObject::GattClient::readAttribute(hal_ble_conn_handle_t connHandle, h
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
+    SCOPE_GUARD({
+        os_semaphore_destroy(readWriteSemaphore_);
+        readWriteSemaphore_ = nullptr;
+    });
     readAttrHandle_ = attrHandle;
     readBuf_ = buf;
     readLen_ = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(getAttMtu(connHandle)));
@@ -2383,14 +2401,11 @@ ssize_t BleObject::GattClient::readAttribute(hal_ble_conn_handle_t connHandle, h
         readBuf_ = nullptr;
         readAttrHandle_ = BLE_INVALID_ATTR_HANDLE;
         LOG(ERROR, "sd_ble_gattc_read() failed: %u", (unsigned)ret);
-        os_semaphore_destroy(readWriteSemaphore_);
         return sysError(ret);
     }
     if (os_semaphore_take(readWriteSemaphore_, BLE_READ_WRITE_PROCEDURE_TIMEOUT_MS, false)) {
-        os_semaphore_destroy(readWriteSemaphore_);
         return SYSTEM_ERROR_TIMEOUT;
     }
-    os_semaphore_destroy(readWriteSemaphore_);
     return readLen_;
 }
 
@@ -2486,9 +2501,9 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
     switch (event->header.evt_id) {
         case BLE_GAP_EVT_CONNECTED: {
             // Use the default ATT_MTU on connected.
-            // FIXME: What if there is a new connection established before the timer expired?
             gattc->configureAttMtu(event->evt.gap_evt.conn_handle, BLE_DEFAULT_ATT_MTU_SIZE);
             if (gattc->desiredAttMtu_ > BLE_DEFAULT_ATT_MTU_SIZE) {
+                // FIXME: What if there is another new connection established before the timer expired?
                 if (!os_timer_change(gattc->attMtuExchangeTimer_, OS_TIMER_CHANGE_START, true, 0, 0, nullptr)) {
                     LOG_DEBUG(TRACE, "Attempts to exchange ATT_MTU if needed.");
                     gattc->attMtuExchangeConnHandle_ = event->evt.gap_evt.conn_handle;
@@ -2502,7 +2517,9 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
             }
             gattc->clearAttMtu(event->evt.gap_evt.conn_handle);
             if (gattc->isDiscovering_ && event->evt.gap_evt.conn_handle == gattc->currDiscConnHandle_) {
-                os_semaphore_give(gattc->discoverySemaphore_, false);
+                if (!gattc->discoverySemaphore_) {
+                    os_semaphore_give(gattc->discoverySemaphore_, false);
+                }
             }
             break;
         }
@@ -2528,7 +2545,7 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                     event->evt.gattc_evt.conn_handle == gattc->currDiscConnHandle_) {
                 if (event->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
                     for (uint8_t i = 0; i < primSvcDiscRsp.count; i++) {
-                        hal_ble_svc_t service;
+                        hal_ble_svc_t service = {};
                         service.version = BLE_API_VERSION;
                         service.size = sizeof(hal_ble_svc_t);
                         service.start_handle = primSvcDiscRsp.services[i].handle_range.start_handle;
@@ -2550,7 +2567,9 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                 if (gattc->readServiceUUID128IfNeeded()) {
                     return;
                 }
-                os_semaphore_give(gattc->discoverySemaphore_, false);
+                if (!gattc->discoverySemaphore_) {
+                    os_semaphore_give(gattc->discoverySemaphore_, false);
+                }
             }
             break;
         }
@@ -2590,7 +2609,9 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                 if (gattc->readCharacteristicUUID128IfNeeded()) {
                     return;
                 }
-                os_semaphore_give(gattc->discoverySemaphore_, false);
+                if (!gattc->discoverySemaphore_) {
+                    os_semaphore_give(gattc->discoverySemaphore_, false);
+                }
             }
             break;
         }
@@ -2633,7 +2654,9 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                         LOG(ERROR, "sd_ble_gattc_descriptors_discover() failed: %u", (unsigned)ret);
                     }
                 }
-                os_semaphore_give(gattc->discoverySemaphore_, false);
+                if (!gattc->discoverySemaphore_) {
+                    os_semaphore_give(gattc->discoverySemaphore_, false);
+                }
             }
             break;
         }
@@ -2664,13 +2687,17 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                 } else {
                     LOG(ERROR, "BLE read characteristic failed: %d, handle: %d.", event->evt.gattc_evt.gatt_status, event->evt.gattc_evt.error_handle);
                 }
-                os_semaphore_give(gattc->discoverySemaphore_, false);
+                if (!gattc->discoverySemaphore_) {
+                    os_semaphore_give(gattc->discoverySemaphore_, false);
+                }
             } else if (event->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
                 if (gattc->readAttrHandle_ == readRsp.handle && gattc->readBuf_ != nullptr) {
                     gattc->readLen_ = std::min(gattc->readLen_, (size_t)readRsp.len);
                     memcpy(gattc->readBuf_, readRsp.data, gattc->readLen_);
                 }
-                os_semaphore_give(gattc->readWriteSemaphore_, false);
+                if (!gattc->readWriteSemaphore_) {
+                    os_semaphore_give(gattc->readWriteSemaphore_, false);
+                }
             } else {
                 LOG(ERROR, "BLE read characteristic failed: %d, handle: %d.", event->evt.gattc_evt.gatt_status, event->evt.gattc_evt.error_handle);
             }
@@ -2678,12 +2705,16 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
         }
         case BLE_GATTC_EVT_WRITE_RSP: {
             LOG_DEBUG(TRACE, "BLE GATT Client event: write with response completed.");
-            os_semaphore_give(gattc->readWriteSemaphore_, false);
+            if (!gattc->readWriteSemaphore_) {
+                os_semaphore_give(gattc->readWriteSemaphore_, false);
+            }
             break;
         }
         case BLE_GATTC_EVT_WRITE_CMD_TX_COMPLETE: {
             LOG_DEBUG(TRACE, "BLE GATT Client event: write without response completed.");
-            os_semaphore_give(gattc->readWriteSemaphore_, false);
+            if (!gattc->readWriteSemaphore_) {
+                os_semaphore_give(gattc->readWriteSemaphore_, false);
+            }
             break;
         }
         case BLE_GATTC_EVT_HVX: {
@@ -2754,13 +2785,13 @@ int BleObject::init() {
             LOG(ERROR, "Need to change APP_RAM_BASE in linker script to be large than: 0x%08x", (unsigned)sdRamEnd - 0x20000000);
         }
         CHECK_NRF_RETURN(ret, sysError(ret));
-        dispatcher_->init();
-        gap_->init();
-        broadcaster_->init();
-        observer_->init();
-        connectionsMgr_->init();
-        gatts_->init();
-        gattc_->init();
+        CHECK(dispatcher_->init());
+        CHECK(gap_->init());
+        CHECK(broadcaster_->init());
+        CHECK(observer_->init());
+        CHECK(connectionsMgr_->init());
+        CHECK(gatts_->init());
+        CHECK(gattc_->init());
         initialized_ = true;
     }
     return SYSTEM_ERROR_NONE;
@@ -3158,7 +3189,7 @@ int hal_ble_gatt_client_configure_cccd(hal_ble_conn_handle_t conn_handle, hal_bl
     }
     uint8_t buf[2] = {0x00, 0x00};
     buf[0] = cccd_value;
-    if (BleObject::getInstance().gattc()->writeAttribute(conn_handle, cccd_handle, buf, 2, true) == 0) {
+    if (BleObject::getInstance().gattc()->writeAttribute(conn_handle, cccd_handle, buf, sizeof(buf), true) == 0) {
         return SYSTEM_ERROR_INTERNAL;
     }
     return SYSTEM_ERROR_NONE;
