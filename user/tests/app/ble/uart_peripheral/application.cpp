@@ -29,8 +29,8 @@ const char* serviceUuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
 const char* rxUuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
 const char* txUuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E";
 
-BleCharacteristic txCharacteristic("tx", PROPERTY::NOTIFY, txUuid, serviceUuid);
-BleCharacteristic rxCharacteristic("rx", PROPERTY::WRITE_WO_RSP, rxUuid, serviceUuid, onDataReceived);
+BleCharacteristic txCharacteristic("tx", BleCharacteristicProperty::NOTIFY, txUuid, serviceUuid);
+BleCharacteristic rxCharacteristic("rx", BleCharacteristicProperty::WRITE_WO_RSP, rxUuid, serviceUuid, onDataReceived);
 
 uint8_t txBuf[UART_TX_BUF_SIZE];
 size_t txLen = 0;

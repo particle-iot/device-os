@@ -173,15 +173,19 @@ public:
         return false;
     }
 };
+static_assert(std::is_pod<BleAddress>::value, "BleAddress is not a POD struct");
 
 class BleAdvertisingParams : public hal_ble_adv_params_t {
 };
+static_assert(std::is_pod<BleAdvertisingParams>::value, "BleAdvertisingParams is not a POD struct");
 
 class BleConnectionParams : public hal_ble_conn_params_t {
 };
+static_assert(std::is_pod<BleConnectionParams>::value, "BleConnectionParams is not a POD struct");
 
 class BleScanParams : public hal_ble_scan_params_t {
 };
+static_assert(std::is_pod<BleScanParams>::value, "BleScanParams is not a POD struct");
 
 class BleCharacteristicHandles : public hal_ble_char_handles_t {
 public:
@@ -195,51 +199,54 @@ public:
         return *this;
     }
 };
+static_assert(std::is_pod<BleCharacteristicHandles>::value, "BleCharacteristicHandles is not a POD struct");
 
 
 class BleUuid {
 public:
-    BleUuid();
+    BleUuid() = default;
     BleUuid(const BleUuid& uuid);
     BleUuid(const uint8_t* uuid128, BleUuidOrder order=BleUuidOrder::LSB);
-    BleUuid(uint16_t uuid16, BleUuidOrder order=BleUuidOrder::LSB);
+    BleUuid(uint16_t uuid16);
     BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order=BleUuidOrder::LSB);
     BleUuid(const String& uuid);
     BleUuid(const char* uuid);
-    ~BleUuid();
+    ~BleUuid() = default;
 
-    bool isValid(void) const;
+    bool isValid() const;
 
     BleUuidType type(void) const {
-        return type_;
+        if (uuid_.type == BLE_UUID_TYPE_16BIT || uuid_.type == BLE_UUID_TYPE_128BIT_SHORTED) {
+            return BleUuidType::SHORT;
+        } else {
+            return BleUuidType::LONG;
+        }
     }
 
-    BleUuidOrder order(void) const {
-        return order_;
+    hal_ble_uuid_t UUID() const {
+        return uuid_;
     }
 
-    uint16_t shorted(void) const {
-        return shortUUID_;
+    hal_ble_uuid_t& UUID() {
+        return uuid_;
+    }
+
+    uint16_t shorted() const {
+        return uuid_.uuid16;
     }
 
     void full(uint8_t uuid128[BLE_SIG_UUID_128BIT_LEN]) const {
-        memcpy(uuid128, fullUUID_, BLE_SIG_UUID_128BIT_LEN);
+        memcpy(uuid128, uuid_.uuid128, BLE_SIG_UUID_128BIT_LEN);
     }
 
-    const uint8_t* full(void) const {
-        return fullUUID_;
+    const uint8_t* full() const {
+        return uuid_.uuid128;
     }
 
     bool operator==(const BleUuid& uuid) const;
 
 private:
-    int8_t toInt(char c);
-    void setUuid(const String& str);
-
-    BleUuidType type_;
-    BleUuidOrder order_;
-    uint16_t shortUUID_;
-    uint8_t fullUUID_[BLE_SIG_UUID_128BIT_LEN];
+    hal_ble_uuid_t uuid_;
 };
 
 
@@ -326,24 +333,20 @@ public:
     BleCharacteristic();
     BleCharacteristic(const BleCharacteristic& characteristic);
     BleCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr);
-    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr) {
-        BleCharacteristic(desc.c_str(), properties, callback);
-    }
-    BleCharacteristic(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback);
-    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback) {
-        BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback);
+    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr)
+        : BleCharacteristic(desc.c_str(), properties, callback) {
     }
 
     template<typename T>
     BleCharacteristic(const char* desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr) {
         BleUuid cUuid(charUuid);
         BleUuid sUuid(svcUuid);
-        BleCharacteristic(desc, properties, cUuid, sUuid, callback);
+        construct(desc, properties, cUuid, sUuid, callback);
     }
 
     template<typename T>
-    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr) {
-        BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback);
+    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr)
+        : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback) {
     }
 
     ~BleCharacteristic();
@@ -387,6 +390,8 @@ public:
     }
 
 private:
+    void construct(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback);
+
     std::shared_ptr<BleCharacteristicImpl> impl_;
 };
 
@@ -395,7 +400,7 @@ class BleService {
 public:
     BleService();
     BleService(const BleUuid& uuid);
-    ~BleService();
+    ~BleService() = default;
 
     BleServiceImpl* impl(void) const {
         return impl_.get();
@@ -419,7 +424,7 @@ class BlePeerDevice {
 public:
     BlePeerDevice();
     BlePeerDevice(const BleAddress& addr);
-    ~BlePeerDevice();
+    ~BlePeerDevice() = default;
 
     BleCharacteristic characteristic(const char* desc) const;
     BleCharacteristic characteristic(const BleUuid& uuid) const;
@@ -453,45 +458,53 @@ public:
     int setTxPower(int8_t txPower) const;
     int txPower(int8_t* txPower) const;
 
-    int advertise();
-    int advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
-    int advertise(uint16_t interval);
-    int advertise(uint16_t interval, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
-    int advertise(uint16_t interval, uint16_t timeout);
-    int advertise(uint16_t interval, uint16_t timeout, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
-    int advertise(const BleAdvertisingParams& params);
-    int advertise(const BleAdvertisingParams& params, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr);
-
-    int advertise(const iBeacon& iBeacon, bool connectable = false);
-    int advertise(uint16_t interval, const iBeacon& iBeacon, bool connectable = false);
-    int advertise(uint16_t interval, uint16_t timeout, const iBeacon& iBeacon, bool connectable = false);
-    int advertise(const BleAdvertisingParams& params, const iBeacon& iBeacon, bool connectable = false);
+    int advertise() const;
+    int advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr) const;
+    int advertise(uint16_t interval) const;
+    int advertise(uint16_t interval, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr) const;
+    int advertise(uint16_t interval, uint16_t timeout) const;
+    int advertise(uint16_t interval, uint16_t timeout, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr) const;
+    int advertise(const BleAdvertisingParams& params) const;
+    int advertise(const BleAdvertisingParams& params, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr) const;
+    int advertise(const iBeacon& iBeacon, bool connectable = false) const;
+    int advertise(uint16_t interval, const iBeacon& iBeacon, bool connectable = false) const;
+    int advertise(uint16_t interval, uint16_t timeout, const iBeacon& iBeacon, bool connectable = false) const;
+    int advertise(const BleAdvertisingParams& params, const iBeacon& iBeacon, bool connectable = false) const;
 
     int stopAdvertising() const;
 
-    int scan(BleOnScanResultCallback callback, void* context = nullptr);
-    int scan(BleOnScanResultCallback callback, uint16_t timeout, void* context = nullptr);
-    int scan(BleScanResult* results, size_t resultCount);
-    int scan(BleScanResult* results, size_t resultCount, uint16_t timeout);
-    int scan(BleScanResult* results, size_t resultCount, const BleScanParams& params);
-    int stopScanning();
+    int scan(BleOnScanResultCallback callback, void* context = nullptr) const;
+    int scan(BleOnScanResultCallback callback, uint16_t timeout, void* context = nullptr) const;
+    int scan(BleScanResult* results, size_t resultCount) const;
+    int scan(BleScanResult* results, size_t resultCount, uint16_t timeout) const;
+    int scan(BleScanResult* results, size_t resultCount, const BleScanParams& params) const;
+    Vector<BleScanResult> scan() const;
+    Vector<BleScanResult> scan(uint16_t timeout) const;
+    Vector<BleScanResult> scan(const BleScanParams& params) const;
 
-    int addCharacteristic(BleCharacteristic& characteristic);
-    int addCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr);
+    int stopScanning() const;
 
+    int addCharacteristic(BleCharacteristic& characteristic) const;
+    int addCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr) const;
+    int addCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr) const;
     template<typename T>
-    int addCharacteristic(const char* desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr) {
+    int addCharacteristic(const char* desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr) const {
         BleCharacteristic characteristic(desc, properties, charUuid, svcUuid, callback);
         return addCharacteristic(characteristic);
     }
+    template<typename T>
+    int addCharacteristic(const String& desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr) const {
+        BleCharacteristic characteristic(desc.c_str(), properties, charUuid, svcUuid, callback);
+        return addCharacteristic(characteristic);
+    }
 
-    int setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY, uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT);
+    int setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY, uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT) const;
 
-    BlePeerDevice connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout);
-    BlePeerDevice connect(const BleAddress& addr);
+    BlePeerDevice connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout) const;
+    BlePeerDevice connect(const BleAddress& addr) const;
 
-    int disconnect();
-    int disconnect(const BlePeerDevice& peripheral);
+    int disconnect() const;
+    int disconnect(const BlePeerDevice& peripheral) const;
 
     bool connected() const;
 
