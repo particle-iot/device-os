@@ -16,6 +16,7 @@ typedef void  (*constructor_ptr_t)(void);
  */
 extern void* dynamic_reset_handler_location;
 extern char stack_end;
+extern char system_part1_module_ram_start;
 
 /**
  * No register saving needed.
@@ -62,7 +63,7 @@ void* module_system_part1_pre_init()
 
     memset(&link_bss_location, 0, link_bss_size );
 
-    return link_end_of_static_ram;
+    return &system_part1_module_ram_start;
 }
 
 
