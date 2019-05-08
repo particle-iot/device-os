@@ -74,12 +74,6 @@ SECTIONS
     link_heap_location = ALIGN(system_part1_module_ram_end, 4);
     link_heap_location_end = system_heap_end;
 
-    /* The static RAM of system-part1 is going to be relocated in 1.2.0. This variable holds the new
-     * end address of the heap and is used by the system to reserve memory for the relocated region
-     * in the intermediate 1.1.0 release (see system_part2_loader.c)
-     */
-    link_heap_location_end_v1_2_0 = link_heap_location_end - 1536;
-
     padding_length = ALIGN(system_part2_ram_start - ORIGIN(SRAM), 512);
 
     .padding : /* 512 byte aligned offset in SRAM */

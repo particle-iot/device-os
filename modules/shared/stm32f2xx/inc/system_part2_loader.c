@@ -5,14 +5,16 @@
 
 #include <string.h>
 
+#define MODULE_VERSION_V1_3_0 1300
+
 extern void malloc_enable(uint8_t);
 extern void malloc_set_heap_start(void*);
 extern void malloc_set_heap_end(void*);
 extern void* malloc_heap_start();
 
 extern void** dynalib_location_user;
-extern char link_heap_location_end_v1_2_0;
 extern const module_bounds_t module_system_part1;
+extern const module_bounds_t module_system_part3;
 
 static bool module_user_part_validated = false;
 
@@ -32,9 +34,15 @@ bool is_user_module_valid()
 void system_part2_pre_init() {
     // initialize dependent modules
 #if defined(MODULE_HAS_SYSTEM_PART3) && MODULE_HAS_SYSTEM_PART3
-    module_system_part3_pre_init();
-#endif
+    // Starting from Device OS 1.2.0, module_system_part3_pre_init() on Electron returns the
+    // start address of the module's static RAM region. Device OS 1.3.0 relocates that region
+    // so that its start address also signifies the end address of the heap. The same applies
+    // to module_system_part1_pre_init() on Photon
+    void* const heap_end = module_system_part3_pre_init();
     module_system_part1_pre_init();
+#else
+    void* const heap_end = module_system_part1_pre_init();
+#endif
 
     HAL_Core_Config();
 
@@ -52,9 +60,9 @@ void system_part2_pre_init() {
     }
 
     if (bootloader_validated && is_user_module_valid()) {
-        void* new_heap_top = module_user_pre_init();
-        if (new_heap_top>malloc_heap_start()) {
-            malloc_set_heap_start(new_heap_top);
+        void* heap_start = module_user_pre_init();
+        if (heap_start > malloc_heap_start()) {
+            malloc_set_heap_start(heap_start);
         }
     }
     else {
@@ -62,24 +70,21 @@ void system_part2_pre_init() {
         set_system_mode(SAFE_MODE);
     }
 
-    // The code below reserves memory for the static RAM of system-part1, which is going to be
-    // relocated in 1.2.0 (see also part2.ld)
-#ifndef SYSTEM_VERSION_120RC1
-    // Get the module version of system-part1
-    const module_info_t* const part1 = FLASH_ModuleInfo(FLASH_INTERNAL, module_system_part1.start_address);
-    // Adjust the end address of the heap if system-part1 is newer than system-part2
-    if (part1->module_version > MODULE_VERSION) {
-        malloc_set_heap_end(&link_heap_location_end_v1_2_0);
-    }
+    // Override the end address of the heap depending on the module version of the system part 3
+    // on Electron and system part 1 on Photon
+#if defined(MODULE_HAS_SYSTEM_PART3) && MODULE_HAS_SYSTEM_PART3
+    const uintptr_t module_addr = module_system_part3.start_address;
 #else
-    // TODO: The above code needs to be removed in 1.2.0
-#error "Update linker files to relocate the static RAM of system-part1"
+    const uintptr_t module_addr = module_system_part1.start_address;
 #endif
+    const module_info_t* const module_info = FLASH_ModuleInfo(FLASH_INTERNAL, module_addr);
+    if (module_info->module_version >= MODULE_VERSION_V1_3_0 && heap_end > malloc_heap_start()) {
+        malloc_set_heap_end(heap_end);
+    }
 
     malloc_enable(1);
 
     // now call any C++ constructors in this module's dependencies
-
 #if defined(MODULE_HAS_SYSTEM_PART3) && MODULE_HAS_SYSTEM_PART3
     module_system_part3_init();
 #endif
