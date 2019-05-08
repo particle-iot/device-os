@@ -16,7 +16,8 @@ extern "C" {
 // C++
 // static_assert is supported since C++11
 #define PARTICLE_STATIC_ASSERT(name, condition) static_assert(condition, #name)
-#elif defined(__STDC_VERSION__) &&  ((__STDC_VERSION__ >= 201112L) || (defined(__GNUC__) && __GNUC__ >= 4 && __GNUC_MINOR__ >= 6))
+#elif defined(__STDC_VERSION__) && ((__STDC_VERSION__ >= 201112L) || \
+        (defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 6) || __GNUC__ > 4)))
 // C
 // _Static_assert is supported since C11, and since GCC 4.6 no matter the standard
 #define PARTICLE_STATIC_ASSERT(name, condition) _Static_assert(condition, #name)
