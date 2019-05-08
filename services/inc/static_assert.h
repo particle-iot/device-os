@@ -13,13 +13,16 @@ extern "C" {
 #endif
 
 #if defined(__cplusplus) && __cplusplus >= 201103L
+// C++
+// static_assert is supported since C++11
 #define PARTICLE_STATIC_ASSERT(name, condition) static_assert(condition, #name)
-#elif defined(__STDC_VERSION__) &&  (defined(__arm__) || __STDC_VERSION__ >= 201112L)
-// _Static_assert is supported starting with C11, however we can bypass the check
-// because GCC supports it no matter what starting with 4.6
+#elif defined(__STDC_VERSION__) &&  ((__STDC_VERSION__ >= 201112L) || (defined(__GNUC__) && __GNUC__ >= 4 && __GNUC_MINOR__ >= 6))
+// C
+// _Static_assert is supported since C11, and since GCC 4.6 no matter the standard
 #define PARTICLE_STATIC_ASSERT(name, condition) _Static_assert(condition, #name)
 #else
-// Fallback
+// Fallback, this doesn't work in all cases e.g. when static_asserting in a function: generates an unused warning
+// causing an error with Werror
 #define PARTICLE_STATIC_ASSERT(name, condition) typedef char assert_##name[(condition)?0:-1]
 #endif
 
