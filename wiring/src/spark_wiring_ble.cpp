@@ -24,6 +24,7 @@
 #include "logging.h"
 #include <memory>
 #include <algorithm>
+#include "hex_to_bytes.h"
 
 LOG_SOURCE_CATEGORY("wiring.ble")
 
@@ -51,41 +52,9 @@ namespace particle {
 
 namespace {
 
-const uint16_t PARTICLE_COMPANY_ID = 0x0662;
-
 const uint8_t BLE_CTRL_REQ_SVC_UUID[BLE_SIG_UUID_128BIT_LEN] = {
     0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x01, 0x00, 0xa9, 0x6f
 };
-
-void convertToHalUuid(const BleUuid& uuid, hal_ble_uuid_t* halUuid) {
-    if (halUuid == nullptr) {
-        return;
-    }
-
-    if (uuid.type() == BleUuidType::SHORT) {
-        halUuid->type = BLE_UUID_TYPE_16BIT;
-        halUuid->uuid16 = uuid.shorted();
-    } else {
-        halUuid->type = BLE_UUID_TYPE_128BIT;
-        if (uuid.order() == BleUuidOrder::LSB) {
-            uuid.full(halUuid->uuid128);
-        } else {
-            for (size_t i = 0, j = BLE_SIG_UUID_128BIT_LEN - 1; i < BLE_SIG_UUID_128BIT_LEN; i++, j--) {
-                halUuid->uuid128[i] = uuid.full()[j];
-            }
-        }
-    }
-}
-
-BleUuid convertToWiringUuid(const hal_ble_uuid_t* halUuid) {
-    if (halUuid->type == BLE_UUID_TYPE_16BIT || halUuid->type == BLE_UUID_TYPE_128BIT_SHORTED) {
-        BleUuid uuid(halUuid->uuid16);
-        return uuid;
-    } else {
-        BleUuid uuid(halUuid->uuid128);
-        return uuid;
-    }
-}
 
 } //anonymous namespace
 
@@ -93,114 +62,79 @@ BleUuid convertToWiringUuid(const hal_ble_uuid_t* halUuid) {
 /*******************************************************
  * BleUuid class
  */
-BleUuid::BleUuid() : type_(BleUuidType::SHORT), order_(BleUuidOrder::LSB), shortUUID_(0x0000) {
+BleUuid::BleUuid(const BleUuid& uuid) : uuid_(uuid.uuid_) {
 }
 
-BleUuid::BleUuid(const BleUuid& uuid) {
-    type_ = uuid.type();
-    order_ = uuid.order();
-    shortUUID_ = uuid.shorted();
-    memcpy(fullUUID_, uuid.full(), BLE_SIG_UUID_128BIT_LEN);
-}
-
-BleUuid::BleUuid(const uint8_t* uuid128, BleUuidOrder order) : order_(order), shortUUID_(0x0000) {
+BleUuid::BleUuid(const uint8_t* uuid128, BleUuidOrder order) {
     if (uuid128 == nullptr) {
-        memset(fullUUID_, 0x00, BLE_SIG_UUID_128BIT_LEN);
+        memset(uuid_.uuid128, 0x00, BLE_SIG_UUID_128BIT_LEN);
     } else {
-        memcpy(fullUUID_, uuid128, BLE_SIG_UUID_128BIT_LEN);
-    }
-    type_ = BleUuidType::LONG;
-}
-
-BleUuid::BleUuid(uint16_t uuid16, BleUuidOrder order) : order_(order), shortUUID_(uuid16) {
-    type_ = BleUuidType::SHORT;
-    memset(fullUUID_, 0x00, BLE_SIG_UUID_128BIT_LEN);
-}
-
-BleUuid::BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order) : order_(order), shortUUID_(0x0000) {
-    type_ = BleUuidType::LONG;
-    if (uuid128 == nullptr) {
-        memset(fullUUID_, 0x00, BLE_SIG_UUID_128BIT_LEN);
-    } else {
-        memcpy(fullUUID_, uuid128, BLE_SIG_UUID_128BIT_LEN);
-    }
-    if (order == BleUuidOrder::LSB) {
-        fullUUID_[12] = (uint8_t)(uuid16 & 0x00FF);
-        fullUUID_[13] = (uint8_t)((uuid16 >> 8) & 0x00FF);
-    } else {
-        fullUUID_[13] = (uint8_t)(uuid16 & 0x00FF);
-        fullUUID_[12] = (uint8_t)((uuid16 >> 8) & 0x00FF);
-    }
-}
-
-BleUuid::BleUuid(const String& uuid) : type_(BleUuidType::LONG), order_(BleUuidOrder::LSB), shortUUID_(0x0000) {
-    setUuid(uuid);
-}
-
-BleUuid::BleUuid(const char* uuid) : type_(BleUuidType::LONG), order_(BleUuidOrder::LSB), shortUUID_(0x0000) {
-    if (uuid == nullptr) {
-        memset(fullUUID_, 0x00, BLE_SIG_UUID_128BIT_LEN);
-    } else {
-        String str(uuid);
-        setUuid(str);
-    }
-}
-
-BleUuid::~BleUuid() {
-
-}
-
-bool BleUuid::isValid() const {
-    if (type_ == BleUuidType::SHORT) {
-        return shortUUID_ != 0x0000;
-    } else {
-        uint8_t temp[BLE_SIG_UUID_128BIT_LEN];
-        memset(temp, 0x00, sizeof(temp));
-        return memcmp(fullUUID_, temp, BLE_SIG_UUID_128BIT_LEN);
-    }
-}
-
-bool BleUuid::operator == (const BleUuid& uuid) const {
-    if (type_ == uuid.type() && order_ == uuid.order()) {
-        if (type_ == BleUuidType::SHORT) {
-            return (shortUUID_ == uuid.shorted());
+        if (order == BleUuidOrder::LSB) {
+            memcpy(uuid_.uuid128, uuid128, BLE_SIG_UUID_128BIT_LEN);
         } else {
-            return !memcmp(full(), uuid.full(), BLE_SIG_UUID_128BIT_LEN);
-        }
-    }
-    return false;
-}
-
-int8_t BleUuid::toInt(char c) {
-    if (c >= '0' && c <= '9') {
-        return (c - '0');
-    } else if (c >= 'a' && c <= 'f') {
-        return (c - 'a' + 10);
-    } else if (c >= 'A' && c <= 'F') {
-        return (c - 'A' + 10);
-    } else {
-        return -1;
-    }
-}
-
-void BleUuid::setUuid(const String& str) {
-    size_t len = BLE_SIG_UUID_128BIT_LEN;
-    for (size_t i = 0; i < str.length(); i++) {
-        int8_t hi = toInt(str.charAt(i));
-        if (hi >= 0) {
-            fullUUID_[len - 1] = hi << 4;
-            if (++i < str.length()) {
-                int8_t lo = toInt(str.charAt(i));
-                if (lo >= 0) {
-                    fullUUID_[len - 1] |= lo;
-                }
+            for (uint8_t i = 0, j = BLE_SIG_UUID_128BIT_LEN - 1; i < BLE_SIG_UUID_128BIT_LEN; i++, j--) {
+                uuid_.uuid128[i] = uuid128[j];
             }
+        }
+        uuid_.type = BLE_UUID_TYPE_128BIT;
+    }
+}
+
+BleUuid::BleUuid(uint16_t uuid16) {
+    uuid_.uuid16 = uuid16;
+    uuid_.type = BLE_UUID_TYPE_16BIT;
+}
+
+BleUuid::BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order) {
+    BleUuid(uuid128, order);
+    uuid_.uuid128[12] = (uint8_t)(uuid16 & 0x00FF);
+    uuid_.uuid128[13] = (uint8_t)((uuid16 >> 8) & 0x00FF);
+    uuid_.type = BLE_UUID_TYPE_128BIT;
+}
+
+BleUuid::BleUuid(const String& uuid) : BleUuid(uuid.c_str()) {
+}
+
+BleUuid::BleUuid(const char* uuid) {
+    if (uuid == nullptr) {
+        memset(uuid_.uuid128, 0x00, BLE_SIG_UUID_128BIT_LEN);
+    } else {
+        size_t len = BLE_SIG_UUID_128BIT_LEN;
+        for (size_t i = 0; i < strlen(uuid); i++) {
+            int8_t hi = hexToNibble(uuid[i]);
+            if (hi >= 0) {
+                uuid_.uuid128[len - 1] = hi << 4;
+                if (++i < strlen(uuid)) {
+                    int8_t lo = hexToNibble(uuid[i]);
+                    if (lo >= 0) {
+                        uuid_.uuid128[len - 1] |= lo;
+                    }
+                }
+                len--;
+            }
+        }
+        while (len > 0) {
+            uuid_.uuid128[len - 1] = 0x00;
             len--;
         }
     }
-    while (len > 0) {
-        fullUUID_[len - 1] = 0x00;
-        len--;
+    uuid_.type = BLE_UUID_TYPE_128BIT;
+}
+
+bool BleUuid::isValid() const {
+    if (type() == BleUuidType::SHORT) {
+        return uuid_.uuid16 != 0x0000;
+    } else {
+        uint8_t temp[BLE_SIG_UUID_128BIT_LEN] = {};
+        return memcmp(uuid_.uuid128, temp, BLE_SIG_UUID_128BIT_LEN);
+    }
+}
+
+bool BleUuid::operator==(const BleUuid& uuid) const {
+    if (type() == BleUuidType::SHORT) {
+        return (uuid_.uuid16 == uuid.uuid_.uuid16);
+    } else {
+        return !memcmp(uuid_.uuid128, uuid.uuid_.uuid128, BLE_SIG_UUID_128BIT_LEN);
     }
 }
 
@@ -208,8 +142,7 @@ void BleUuid::setUuid(const String& str) {
 /*******************************************************
  * BleAdvertisingData class
  */
-BleAdvertisingData::BleAdvertisingData() : selfLen_(0) {
-    memset(selfData_, 0x00, sizeof(selfData_));
+BleAdvertisingData::BleAdvertisingData() : selfData_(), selfLen_(0) {
 }
 
 BleAdvertisingData::~BleAdvertisingData() {
@@ -353,7 +286,7 @@ size_t BleAdvertisingData::customData(uint8_t* buf, size_t len) const {
     return get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, len);
 }
 
-bool BleAdvertisingData::contains (BleAdvertisingDataType type) const {
+bool BleAdvertisingData::contains(BleAdvertisingDataType type) const {
     size_t adsOffset;
     return locate(selfData_, selfLen_, type, &adsOffset) > 0;
 }
@@ -419,10 +352,9 @@ public:
           isStub(stub) {
     }
 
-    ~BleCharacteristicRef() {
-    }
+    ~BleCharacteristicRef() = default;
 
-    bool operator == (const BleCharacteristicRef& reference) {
+    bool operator==(const BleCharacteristicRef& reference) {
         return (reference.charPtr == this->charPtr);
     }
 };
@@ -442,7 +374,6 @@ public:
     BleOnDataReceivedCallback dataCb;
     BleConnectionHandle connHandle; // For peer characteristic
     BleServiceImpl* svcImpl; // Related service
-    Vector<BleCharacteristicRef> references;
 
     BleCharacteristicImpl() {
         init();
@@ -464,8 +395,7 @@ public:
         this->dataCb = callback;
     }
 
-    ~BleCharacteristicImpl() {
-    }
+    ~BleCharacteristicImpl() = default;
 
     void init() {
         properties = BleCharacteristicProperty::NONE;
@@ -474,6 +404,10 @@ public:
         connHandle = BLE_INVALID_CONN_HANDLE;
         svcImpl = nullptr;
         dataCb = nullptr;
+    }
+
+    Vector<BleCharacteristicRef>& references() {
+        return references_;
     }
 
     size_t getValue(uint8_t* buf, size_t len) const {
@@ -524,23 +458,21 @@ public:
 
     void addReference(BleCharacteristic* characteristic, bool stub) {
         BleCharacteristicRef reference(characteristic, stub);
-        references.append(reference);
-        DEBUG(TRACE, "0x%08X added references: %d", this, references.size());
+        references_.append(reference);
+        DEBUG("0x%08X added references: %d", this, references_.size());
     }
 
     void removeReference(BleCharacteristic* characteristic) {
-        for (int i = 0; i < references.size(); i++) {
-            BleCharacteristicRef& reference = references[i];
+        for (const auto& reference : references_) {
             if (reference.charPtr == characteristic) {
-                references.removeOne(reference);
-                DEBUG(TRACE, "0x%08X removed references: %d", this, references.size());
+                references_.removeOne(reference);
+                DEBUG("0x%08X removed references: %d", this, references_.size());
             }
         }
     }
 
     bool isReferenceStub(const BleCharacteristic* characteristic) {
-        for (int i = 0; i < references.size(); i++) {
-            BleCharacteristicRef& reference = references[i];
+        for (const auto& reference : references_) {
             if (reference.charPtr == characteristic) {
                 return reference.isStub;
             }
@@ -549,8 +481,7 @@ public:
     }
 
     BleCharacteristic* getReferenceStub() {
-        for (int i = 0; i < references.size(); i++) {
-            BleCharacteristicRef& reference = references[i];
+        for (const auto& reference : references_) {
             if (reference.isStub) {
                 return reference.charPtr;
             }
@@ -560,8 +491,7 @@ public:
 
     size_t referenceStubCount() {
         size_t total = 0;
-        for (int i = 0; i < references.size(); i++) {
-            BleCharacteristicRef& reference = references[i];
+        for (const auto& reference : references_) {
             if (reference.isStub) {
                 total++;
             }
@@ -570,11 +500,10 @@ public:
     }
 
     void markReferenceAsStub(BleCharacteristic* characteristic) {
-        for (int i = 0; i < references.size(); i++) {
-            BleCharacteristicRef& reference = references[i];
+        for (auto& reference : references_) {
             if (reference.charPtr == characteristic) {
                 reference.isStub = true;
-                DEBUG(TRACE, "0x%08X STUB references: 0x%08X", this, characteristic);
+                DEBUG("0x%08X STUB references: 0x%08X", this, characteristic);
             }
         }
     }
@@ -591,6 +520,7 @@ public:
 
 private:
     static uint16_t defaultUuidCharCount_;
+    Vector<BleCharacteristicRef> references_;
 };
 
 uint16_t BleCharacteristicImpl::defaultUuidCharCount_ = 0;
@@ -600,53 +530,52 @@ uint16_t BleCharacteristicImpl::defaultUuidCharCount_ = 0;
  * BleCharacteristic class
  */
 BleCharacteristic::BleCharacteristic()
-    : impl_(std::make_shared<BleCharacteristicImpl>()) {
+        : impl_(std::make_shared<BleCharacteristicImpl>()) {
     impl()->addReference(this, false);
-    DEBUG(TRACE, "BleCharacteristic::BleCharacteristic():0x%08X -> 0x%08X", this, impl());
-    DEBUG(TRACE, "shared_ptr count: %d", impl_.use_count());
+    DEBUG("BleCharacteristic::BleCharacteristic():0x%08X -> 0x%08X", this, impl());
+    DEBUG("shared_ptr count: %d", impl_.use_count());
 }
 
 BleCharacteristic::BleCharacteristic(const BleCharacteristic& characteristic)
-    : impl_(characteristic.impl_) {
-    DEBUG(TRACE, "BleCharacteristic::BleCharacteristic(copy):0x%08X => 0x%08X -> 0x%08X", &characteristic, this, impl());
-    DEBUG(TRACE, "shared_ptr count: %d", impl_.use_count());
+        : impl_(characteristic.impl_) {
+    DEBUG("BleCharacteristic::BleCharacteristic(copy):0x%08X => 0x%08X -> 0x%08X", &characteristic, this, impl());
+    DEBUG("shared_ptr count: %d", impl_.use_count());
     if (impl() != nullptr) {
         impl()->addReference(this, impl()->isReferenceStub(&characteristic));
     }
 }
 
 BleCharacteristic::BleCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback)
-    : impl_(std::make_shared<BleCharacteristicImpl>(desc, properties, callback)) {
+        : impl_(std::make_shared<BleCharacteristicImpl>(desc, properties, callback)) {
     impl()->addReference(this, false);
 
-    DEBUG(TRACE, "BleCharacteristic::BleCharacteristic(...):0x%08X -> 0x%08X", this, impl());
-    DEBUG(TRACE, "shared_ptr count: %d", impl_.use_count());
+    DEBUG("BleCharacteristic::BleCharacteristic(...):0x%08X -> 0x%08X", this, impl());
+    DEBUG("shared_ptr count: %d", impl_.use_count());
 }
 
-BleCharacteristic::BleCharacteristic(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback) {
+void BleCharacteristic::construct(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback) {
     impl_ = std::make_shared<BleCharacteristicImpl>(desc, properties, charUuid, svcUuid, callback);
     impl()->addReference(this, false);
 
-    DEBUG(TRACE, "BleCharacteristic::construct(...):0x%08X -> 0x%08X", this, impl());
-    DEBUG(TRACE, "shared_ptr count: %d", impl_.use_count());
+    DEBUG("BleCharacteristic::construct(...):0x%08X -> 0x%08X", this, impl());
+    DEBUG("shared_ptr count: %d", impl_.use_count());
 }
 
 BleCharacteristic& BleCharacteristic::operator=(const BleCharacteristic& characteristic) {
-    DEBUG(TRACE, "BleCharacteristic::operator=:0x%08X -> 0x%08X", this, impl());
-    DEBUG(TRACE, "shared_ptr pre-count1: %d", impl_.use_count());
+    DEBUG("BleCharacteristic::operator=:0x%08X -> 0x%08X", this, impl());
+    DEBUG("shared_ptr pre-count1: %d", impl_.use_count());
     BleOnDataReceivedCallback preDataCb = nullptr;
     if (impl() != nullptr) {
         if (impl()->dataCb != nullptr) {
             preDataCb = impl()->dataCb;
         }
         if (impl()->isReferenceStub(this) && impl()->referenceStubCount() == 1) {
-            for (int i = 0; i < impl()->references.size(); i++) {
-                BleCharacteristicRef reference = impl()->references[i];
+            for (auto& reference : impl()->references()) {
                 if (reference.charPtr != this) {
                     reference.charPtr->impl_ = nullptr;
                 }
             }
-            DEBUG(TRACE, "shared_ptr pre-count2: %d", impl_.use_count());
+            DEBUG("shared_ptr pre-count2: %d", impl_.use_count());
         } else {
             impl()->removeReference(this);
         }
@@ -656,8 +585,8 @@ BleCharacteristic& BleCharacteristic::operator=(const BleCharacteristic& charact
     if (impl()->dataCb == nullptr) {
         impl()->dataCb = preDataCb;
     }
-    DEBUG(TRACE, "now:0x%08X -> 0x%08X", this, impl());
-    DEBUG(TRACE, "shared_ptr curr-count: %d", impl_.use_count());
+    DEBUG("now:0x%08X -> 0x%08X", this, impl());
+    DEBUG("shared_ptr curr-count: %d", impl_.use_count());
     if (impl() != nullptr) {
         impl()->addReference(this, impl()->isReferenceStub(&characteristic));
     }
@@ -665,19 +594,18 @@ BleCharacteristic& BleCharacteristic::operator=(const BleCharacteristic& charact
 }
 
 BleCharacteristic::~BleCharacteristic() {
-    DEBUG(TRACE, "BleCharacteristic::~BleCharacteristic:0x%08X -> 0x%08X", this, impl());
+    DEBUG("BleCharacteristic::~BleCharacteristic:0x%08X -> 0x%08X", this, impl());
     if (impl() != nullptr) {
         if (impl()->isReferenceStub(this) && impl()->referenceStubCount() == 1) {
-            DEBUG(TRACE, "shared_ptr count1: %d", impl_.use_count());
-            for (int i = 0; i < impl()->references.size(); i++) {
-                BleCharacteristicRef reference = impl()->references[i];
+            DEBUG("shared_ptr count1: %d", impl_.use_count());
+            for (auto& reference : impl()->references()) {
                 if (reference.charPtr != this) {
                     reference.charPtr->impl_ = nullptr;
                 }
             }
-            DEBUG(TRACE, "shared_ptr count2: %d", impl_.use_count());
+            DEBUG("shared_ptr count2: %d", impl_.use_count());
         } else {
-            DEBUG(TRACE, "shared_ptr count1: %d", impl_.use_count());
+            DEBUG("shared_ptr count1: %d", impl_.use_count());
             impl()->removeReference(this);
         }
     }
@@ -739,8 +667,6 @@ public:
     BleUuid uuid;
     BleAttributeHandle startHandle;
     BleAttributeHandle endHandle;
-    Vector<BleCharacteristic> characteristics;
-    BleGattServerImpl* gattsProxy; // Related GATT Server
 
     BleServiceImpl() {
         init();
@@ -750,24 +676,20 @@ public:
         : uuid(uuid) {
         init();
     }
+    ~BleServiceImpl() = default;
 
-    ~BleServiceImpl() {
+    Vector<BleCharacteristic>& characteristics() {
+        return characteristics_;
     }
 
     void init() {
         startHandle = 0;
         endHandle = 0;
-        gattsProxy = nullptr;
-    }
-
-    size_t characteristicCount() const {
-        return characteristics.size();
     }
 
     bool contains(const BleCharacteristic& characteristic) {
         if (characteristic.impl() != nullptr) {
-            for (size_t i = 0; i < characteristicCount(); i++) {
-                BleCharacteristic& stubChar = characteristics[i];
+            for (const auto& stubChar : characteristics_) {
                 if (characteristic.impl() == stubChar.impl()) {
                     return true;
                 }
@@ -780,8 +702,7 @@ public:
         if (desc == nullptr) {
             return nullptr;
         }
-        for (size_t i = 0; i < characteristicCount(); i++) {
-            BleCharacteristic& characteristic = characteristics[i];
+        for (auto& characteristic : characteristics_) {
             if (characteristic.impl() != nullptr && !strcmp(characteristic.impl()->description.c_str(), desc)) {
                 return &characteristic;
             }
@@ -790,8 +711,7 @@ public:
     }
 
     BleCharacteristic* characteristic(BleAttributeHandle attrHandle) {
-        for (size_t i = 0; i < characteristicCount(); i++) {
-            BleCharacteristic& characteristic = characteristics[i];
+        for (auto& characteristic : characteristics_) {
             BleCharacteristicImpl* charImpl = characteristic.impl();
             if (charImpl != nullptr) {
                 if (   charImpl->attrHandles.decl_handle == attrHandle
@@ -807,8 +727,7 @@ public:
     }
 
     BleCharacteristic* characteristic(const BleUuid& charUuid) {
-        for (size_t i = 0; i < characteristicCount(); i++) {
-            BleCharacteristic& characteristic = characteristics[i];
+        for (auto& characteristic : characteristics_) {
             if (characteristic.impl() != nullptr && characteristic.impl()->uuid == charUuid) {
                 return &characteristic;
             }
@@ -825,7 +744,7 @@ public:
             characteristic.impl()->assignUuidIfNeeded();
             hal_ble_char_init_t char_init = {};
             char_init.size = sizeof(hal_ble_char_init_t);
-            convertToHalUuid(characteristic.impl()->uuid, &char_init.uuid);
+            char_init.uuid = characteristic.impl()->uuid.UUID();
             char_init.properties = static_cast<uint8_t>(characteristic.impl()->properties);
             char_init.service_handle = startHandle;
             char_init.description = characteristic.impl()->description.c_str();
@@ -836,11 +755,14 @@ public:
         }
         characteristic.impl()->svcImpl = this;
         LOG_DEBUG(TRACE, "characteristics.append(characteristic)");
-        characteristics.append(characteristic);
-        BleCharacteristic& lastChar = characteristics.last();
+        characteristics_.append(characteristic);
+        BleCharacteristic& lastChar = characteristics_.last();
         lastChar.impl()->markReferenceAsStub(&lastChar);
         return SYSTEM_ERROR_NONE;
     }
+
+private:
+    Vector<BleCharacteristic> characteristics_;
 };
 
 
@@ -855,34 +777,21 @@ BleService::BleService(const BleUuid& uuid)
     : impl_(std::make_shared<BleServiceImpl>(uuid)) {
 }
 
-BleService::~BleService() {
-}
-
 
 /*******************************************************
  * BleGattServerImpl definition
  */
 class BleGattServerImpl {
 public:
-    Vector<BleService> services;
+    BleGattServerImpl(const BleAddress& addr) : address_(addr) {}
+    ~BleGattServerImpl() = default;
 
-    // Related device
-    BleAddress address;
-
-    BleGattServerImpl(const BleAddress& addr)
-        : address(addr) {
-    }
-
-    ~BleGattServerImpl() {
-    }
-
-    size_t serviceCount() const {
-        return services.size();
+    Vector<BleService>& services() {
+        return services_;
     }
 
     BleService* service(const BleUuid& uuid) {
-        for (size_t i = 0; i < serviceCount(); i++) {
-            BleService& stubSvc = services[i];
+        for (auto& stubSvc : services_) {
             if (stubSvc.impl()->uuid == uuid) {
                 return &stubSvc;
             }
@@ -893,7 +802,7 @@ public:
     bool isLocal() {
         BleAddress addr;
         hal_ble_gap_get_device_address(&addr);
-        return addr == address;
+        return addr == address_;
     }
 
     int addService(BleService& svc) {
@@ -901,15 +810,14 @@ public:
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         if (isLocal()) {
-            hal_ble_uuid_t halUuid;
-            convertToHalUuid(svc.impl()->uuid, &halUuid);
+            hal_ble_uuid_t halUuid = svc.impl()->uuid.UUID();
             int ret = hal_ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &halUuid, &svc.impl()->startHandle, nullptr);
             if (ret != SYSTEM_ERROR_NONE) {
                 return ret;
             }
         }
         LOG_DEBUG(TRACE, "services.append(service)");
-        services.append(svc);
+        services_.append(svc);
         return SYSTEM_ERROR_NONE;
     }
 
@@ -934,7 +842,7 @@ public:
         } else {
             BleService service(characteristic.impl()->svcUuid);
             if (addService(service) == SYSTEM_ERROR_NONE) {
-                return services.last().impl()->addCharacteristic(characteristic);
+                return services_.last().impl()->addCharacteristic(characteristic);
             }
             return SYSTEM_ERROR_INTERNAL;
         }
@@ -942,8 +850,8 @@ public:
 
     template <typename T>
     BleCharacteristic characteristic(T type) const {
-        for (size_t i = 0; i < serviceCount(); i++) {
-            BleCharacteristic* characteristic = services[i].impl()->characteristic(type);
+        for (auto& service : services_) {
+            BleCharacteristic* characteristic = service.impl()->characteristic(type);
             if (characteristic != nullptr) {
                 return *characteristic;
             }
@@ -956,13 +864,17 @@ public:
     }
 
     void gattsProcessDataWritten(BleAttributeHandle attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer) {
-        for (size_t i = 0; i < serviceCount(); i++) {
-            BleCharacteristic* characteristic = services[i].impl()->characteristic(attrHandle);
+        for (auto& service : services_) {
+            BleCharacteristic* characteristic = service.impl()->characteristic(attrHandle);
             if (characteristic != nullptr) {
                 characteristic->impl()->processReceivedData(attrHandle, buf, len, peer);
             }
         }
     }
+
+private:
+    Vector<BleService> services_;
+    BleAddress address_;
 };
 
 
@@ -971,18 +883,13 @@ public:
  */
 class BleGattClientImpl {
 public:
-    BleGattClientImpl() {
-    }
-
-    ~BleGattClientImpl() {
-    }
+    BleGattClientImpl() = default;
+    ~BleGattClientImpl() = default;
 
     int discoverAllServices(BlePeerDevice& peer) {
         int ret = hal_ble_gatt_client_discover_all_services(peer.connHandle, onServicesDiscovered, &peer, nullptr);
         if (ret == SYSTEM_ERROR_NONE) {
-            for (int i = 0; i < peer.gattsProxy()->services.size(); i++) {
-                LOG_DEBUG(TRACE, "Discovering characteristics of service %d.", i);
-                BleService& service = peer.gattsProxy()->services[i];
+            for (auto& service : peer.gattsProxy()->services()) {
                 hal_ble_svc_t halService;
                 halService.size = sizeof(hal_ble_svc_t);
                 halService.start_handle = service.impl()->startHandle;
@@ -991,11 +898,9 @@ public:
                 if (ret != SYSTEM_ERROR_NONE) {
                     return ret;
                 }
-                for (int j = 0; j < service.impl()->characteristics.size(); j++) {
-                    BleCharacteristic& characteristic = service.impl()->characteristics[j];
+                for (auto& characteristic : service.impl()->characteristics()) {
                     // Enable notification or indication if presented.
                     if (characteristic.impl()->attrHandles.cccd_handle != BLE_INVALID_ATTR_HANDLE) {
-                        LOG_DEBUG(TRACE, "Enable CCCD of characteristics: %d.", j);
                         if ((characteristic.impl()->properties & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY) {
                             hal_ble_gatt_client_configure_cccd(peer.connHandle, characteristic.impl()->attrHandles.cccd_handle, BLE_SIG_CCCD_VAL_NOTIFICATION, nullptr);
                         } else if ((characteristic.impl()->properties & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE) {
@@ -1004,7 +909,6 @@ public:
                     }
                     // Read the user description string if presented.
                     if (characteristic.impl()->attrHandles.user_desc_handle != BLE_INVALID_ATTR_HANDLE) {
-                        LOG_DEBUG(TRACE, "Read user description of characteristics: %d.", j);
                         char desc[32]; // FIXME: use macro definition instead.
                         size_t len = hal_ble_gatt_client_read(peer.connHandle, characteristic.impl()->attrHandles.user_desc_handle, (uint8_t*)desc, sizeof(desc) - 1, nullptr);
                         if (len > 0) {
@@ -1026,7 +930,8 @@ public:
     static void onServicesDiscovered(const hal_ble_gattc_on_svc_disc_evt_t* event, void* context) {
         BlePeerDevice* peer = static_cast<BlePeerDevice*>(context);
         for (size_t i = 0; i < event->count; i++) {
-            BleUuid svcUUID = convertToWiringUuid(&event->services[i].uuid);
+            BleUuid svcUUID;
+            svcUUID.UUID() = event->services[i].uuid;
             BleService service(svcUUID);
             service.impl()->startHandle = event->services[i].start_handle;
             service.impl()->endHandle = event->services[i].end_handle;
@@ -1058,7 +963,8 @@ public:
             if (event->characteristics[i].properties & BLE_SIG_CHAR_PROP_INDICATE) {
                 characteristic.impl()->properties |= BleCharacteristicProperty::INDICATE;
             }
-            BleUuid charUUID = convertToWiringUuid(&event->characteristics[i].uuid);
+            BleUuid charUUID;
+            charUUID.UUID() = event->characteristics[i].uuid;
             characteristic.impl()->uuid = charUUID;
             characteristic.impl()->attrHandles = event->characteristics[i].charHandles;
             if (service->impl()->addCharacteristic(characteristic) == SYSTEM_ERROR_NONE) {
@@ -1066,9 +972,6 @@ public:
             }
         }
     }
-
-private:
-
 };
 
 
@@ -1077,8 +980,8 @@ private:
  */
 class BleBroadcasterImpl {
 public:
-    BleBroadcasterImpl() {}
-    ~BleBroadcasterImpl() {}
+    BleBroadcasterImpl() = default;
+    ~BleBroadcasterImpl() = default;
 
     int setTxPower(int8_t txPower) const {
         return hal_ble_gap_set_tx_power(txPower);
@@ -1148,12 +1051,8 @@ public:
         // Length of the following payload
         mfgData[mfgDataLen++] = 0x15;
         // 128-bits Beacon UUID, MSB
-        if (iBeacon.uuid.order() == BleUuidOrder::MSB) {
-            memcpy(&mfgData[mfgDataLen], iBeacon.uuid.full(), BLE_SIG_UUID_128BIT_LEN);
-        } else {
-            for (size_t i = 0, j = BLE_SIG_UUID_128BIT_LEN - 1; i < BLE_SIG_UUID_128BIT_LEN; i++, j--) {
-                mfgData[mfgDataLen + i] = iBeacon.uuid.full()[j];
-            }
+        for (size_t i = 0, j = BLE_SIG_UUID_128BIT_LEN - 1; i < BLE_SIG_UUID_128BIT_LEN; i++, j--) {
+            mfgData[mfgDataLen + i] = iBeacon.uuid.full()[j];
         }
         mfgDataLen += BLE_SIG_UUID_128BIT_LEN;
         // Major, MSB
@@ -1243,21 +1142,15 @@ public:
  */
 class BleObserverImpl {
 public:
-    size_t targetCount;
-    BleOnScanResultCallback callback;
-    void* context;
-    BleScanResult* results;
-    size_t count;
-
-    BleObserverImpl() : targetCount(0), callback(nullptr), context(nullptr), results(nullptr), count(0) {}
-    ~BleObserverImpl() {}
+    BleObserverImpl() : callback_(nullptr), context_(nullptr), resultsPtr_(nullptr), targetCount_(0), count_(0) {}
+    ~BleObserverImpl() = default;
 
     int scan(BleOnScanResultCallback callback, void* context) {
-        this->callback = callback;
-        this->context = context;
-        count = 0;
+        init();
+        callback_ = callback;
+        context_ = context;
         hal_ble_gap_start_scan(observerProcessScanResult, this, nullptr);
-        return count;
+        return count_;
     }
 
     int scan(BleOnScanResultCallback callback, uint16_t timeout, void* context) {
@@ -1270,11 +1163,11 @@ public:
     }
 
     int scan(BleScanResult* results, size_t resultCount) {
-        this->results = results;
-        targetCount = resultCount;
-        count = 0;
+        init();
+        resultsPtr_ = results;
+        targetCount_ = resultCount;
         hal_ble_gap_start_scan(observerProcessScanResult, this, nullptr);
-        return count;
+        return count_;
     }
 
     int scan(BleScanResult* results, size_t resultCount, uint16_t timeout) {
@@ -1291,6 +1184,26 @@ public:
         return scan(results, resultCount);
     }
 
+    Vector<BleScanResult> scan() {
+        init();
+        hal_ble_gap_start_scan(observerProcessScanResult, this, nullptr);
+        return resultsVector_;
+    }
+
+    Vector<BleScanResult> scan(uint16_t timeout) {
+        hal_ble_scan_params_t params;
+        params.size = sizeof(hal_ble_scan_params_t);
+        hal_ble_gap_get_scan_parameters(&params, nullptr);
+        params.timeout = timeout;
+        hal_ble_gap_set_scan_parameters(&params, nullptr);
+        return scan();
+    }
+
+    Vector<BleScanResult> scan(const BleScanParams& params) {
+        hal_ble_gap_set_scan_parameters(&params, nullptr);
+        return scan();
+    }
+
     int stopScanning() {
         return hal_ble_gap_stop_scan();
     }
@@ -1303,17 +1216,35 @@ public:
         result.scanResponse.set(event->sr_data, event->sr_data_len);
         result.advertisingData.set(event->adv_data, event->adv_data_len);
 
-        if (impl->callback != nullptr) {
-            impl->callback(&result, impl->context);
-        } else if (impl->results != nullptr) {
-            if (impl->count < impl->targetCount) {
-                impl->results[impl->count++] = result;
-                if (impl->count >= impl->targetCount) {
+        if (impl->callback_ != nullptr) {
+            impl->callback_(&result, impl->context_);
+        } else if (impl->resultsPtr_ != nullptr) {
+            if (impl->count_ < impl->targetCount_) {
+                impl->resultsPtr_[impl->count_++] = result;
+                if (impl->count_ >= impl->targetCount_) {
                     impl->stopScanning();
                 }
             }
+        } else {
+            impl->resultsVector_.append(result);
         }
     }
+
+private:
+    void init() {
+        count_ = 0;
+        callback_ = nullptr;
+        context_=nullptr;
+        resultsPtr_ = nullptr;
+        resultsVector_.clear();
+    }
+
+    Vector<BleScanResult> resultsVector_;
+    BleOnScanResultCallback callback_;
+    void* context_;
+    BleScanResult* resultsPtr_;
+    size_t targetCount_;
+    size_t count_;
 };
 
 
@@ -1322,10 +1253,8 @@ public:
  */
 class BlePeripheralImpl {
 public:
-    BleConnectionParams ppcp;
-
-    BlePeripheralImpl() {}
-    ~BlePeripheralImpl() {}
+    BlePeripheralImpl() = default;
+    ~BlePeripheralImpl() = default;
 
     Vector<BlePeerDevice>& centrals() {
         return centrals_;
@@ -1342,7 +1271,7 @@ public:
     }
 
     int disconnect() {
-        for (BlePeerDevice& central: centrals_) {
+        for (BlePeerDevice& central : centrals_) {
             hal_ble_gap_disconnect(central.connHandle, nullptr);
         }
         centrals_.clear();
@@ -1373,8 +1302,8 @@ private:
  */
 class BleCentralImpl {
 public:
-    BleCentralImpl() {}
-    ~BleCentralImpl() {}
+    BleCentralImpl() = default;
+    ~BleCentralImpl() = default;
 
     Vector<BlePeerDevice>& peripherals() {
         return peripherals_;
@@ -1387,7 +1316,7 @@ public:
             LOG_DEBUG(TRACE, "hal_ble_gap_connect failed: %d", ret);
             return pseudo;
         }
-        for (BlePeerDevice& peripheral : peripherals_) {
+        for (const auto& peripheral : peripherals_) {
             if (peripheral.address == addr) {
                 LOG(TRACE, "New peripheral connected. Start discovering services.");
                 return peripheral;
@@ -1397,7 +1326,7 @@ public:
     }
 
     int disconnect(const BlePeerDevice& peer) {
-        for (BlePeerDevice& peripheral : peripherals_) {
+        for (const auto& peripheral : peripherals_) {
             if (peripheral.connHandle == peer.connHandle) {
                 hal_ble_gap_disconnect(peer.connHandle, nullptr);
                 peripherals_.removeOne(peripheral);
@@ -1443,10 +1372,6 @@ BlePeerDevice::BlePeerDevice(const BleAddress& addr) {
     connHandle = BLE_INVALID_CONN_HANDLE;
     rssi = 0x7F;
     gattsProxy_ = std::make_shared<BleGattServerImpl>(addr);
-}
-
-BlePeerDevice::~BlePeerDevice() {
-
 }
 
 BleCharacteristic BlePeerDevice::characteristic(const char* desc) const {
@@ -1524,35 +1449,35 @@ int BleLocalDevice::txPower(int8_t* txPower) const {
     return broadcasterProxy_->txPower(txPower);
 }
 
-int BleLocalDevice::advertise() {
+int BleLocalDevice::advertise() const {
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) {
+int BleLocalDevice::advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) const {
     broadcasterProxy_->setAdvertisingData(advertisingData);
     broadcasterProxy_->setScanResponseData(scanResponse);
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(uint16_t interval) {
+int BleLocalDevice::advertise(uint16_t interval) const {
     broadcasterProxy_->setAdvertisingInterval(interval);
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(uint16_t interval, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) {
+int BleLocalDevice::advertise(uint16_t interval, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) const {
     broadcasterProxy_->setAdvertisingData(advertisingData);
     broadcasterProxy_->setScanResponseData(scanResponse);
     broadcasterProxy_->setAdvertisingInterval(interval);
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout) {
+int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout) const {
     broadcasterProxy_->setAdvertisingInterval(interval);
     broadcasterProxy_->setAdvertisingTimeout(timeout);
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) {
+int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) const {
     broadcasterProxy_->setAdvertisingData(advertisingData);
     broadcasterProxy_->setScanResponseData(scanResponse);
     broadcasterProxy_->setAdvertisingInterval(interval);
@@ -1560,37 +1485,37 @@ int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout, BleAdvertisin
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(const BleAdvertisingParams& params) {
+int BleLocalDevice::advertise(const BleAdvertisingParams& params) const {
     broadcasterProxy_->setAdvertisingParams(&params);
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(const BleAdvertisingParams& params, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) {
+int BleLocalDevice::advertise(const BleAdvertisingParams& params, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) const {
     broadcasterProxy_->setAdvertisingData(advertisingData);
     broadcasterProxy_->setScanResponseData(scanResponse);
     broadcasterProxy_->setAdvertisingParams(&params);
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(const iBeacon& iBeacon, bool connectable) {
+int BleLocalDevice::advertise(const iBeacon& iBeacon, bool connectable) const {
     broadcasterProxy_->setIbeacon(iBeacon);
     return broadcasterProxy_->advertise(connectable);
 }
 
-int BleLocalDevice::advertise(uint16_t interval, const iBeacon& iBeacon, bool connectable) {
+int BleLocalDevice::advertise(uint16_t interval, const iBeacon& iBeacon, bool connectable) const {
     broadcasterProxy_->setIbeacon(iBeacon);
     broadcasterProxy_->setAdvertisingInterval(interval);
     return broadcasterProxy_->advertise(connectable);
 }
 
-int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout, const iBeacon& iBeacon, bool connectable) {
+int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout, const iBeacon& iBeacon, bool connectable) const {
     broadcasterProxy_->setIbeacon(iBeacon);
     broadcasterProxy_->setAdvertisingInterval(interval);
     broadcasterProxy_->setAdvertisingTimeout(timeout);
     return broadcasterProxy_->advertise(connectable);
 }
 
-int BleLocalDevice::advertise(const BleAdvertisingParams& params, const iBeacon& iBeacon, bool connectable) {
+int BleLocalDevice::advertise(const BleAdvertisingParams& params, const iBeacon& iBeacon, bool connectable) const {
     broadcasterProxy_->setIbeacon(iBeacon);
     broadcasterProxy_->setAdvertisingParams(&params);
     return broadcasterProxy_->advertise(connectable);
@@ -1600,43 +1525,51 @@ int BleLocalDevice::stopAdvertising() const {
     return broadcasterProxy_->stopAdvertising();
 }
 
-int BleLocalDevice::scan(BleOnScanResultCallback callback, void* context) {
+int BleLocalDevice::scan(BleOnScanResultCallback callback, void* context) const {
     return observerProxy_->scan(callback, context);
 }
 
-int BleLocalDevice::scan(BleOnScanResultCallback callback, uint16_t timeout, void* context) {
+int BleLocalDevice::scan(BleOnScanResultCallback callback, uint16_t timeout, void* context) const {
     return observerProxy_->scan(callback, timeout, context);
 }
 
-int BleLocalDevice::scan(BleScanResult* results, size_t resultCount) {
+int BleLocalDevice::scan(BleScanResult* results, size_t resultCount) const {
     return observerProxy_->scan(results, resultCount);
 }
 
-int BleLocalDevice::scan(BleScanResult* results, size_t resultCount, uint16_t timeout) {
+int BleLocalDevice::scan(BleScanResult* results, size_t resultCount, uint16_t timeout) const {
     return observerProxy_->scan(results, resultCount, timeout);
 }
 
-int BleLocalDevice::scan(BleScanResult* results, size_t resultCount, const BleScanParams& params) {
+int BleLocalDevice::scan(BleScanResult* results, size_t resultCount, const BleScanParams& params) const {
     return observerProxy_->scan(results, resultCount, params);
 }
 
-int BleLocalDevice::stopScanning() {
+Vector<BleScanResult> BleLocalDevice::scan() const {
+    return observerProxy_->scan();
+}
+
+Vector<BleScanResult> BleLocalDevice::scan(uint16_t timeout) const {
+    return observerProxy_->scan(timeout);
+}
+
+Vector<BleScanResult> BleLocalDevice::scan(const BleScanParams& params) const {
+    return observerProxy_->scan(params);
+}
+
+int BleLocalDevice::stopScanning() const {
     return observerProxy_->stopScanning();
 }
 
-int BleLocalDevice::setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) {
+int BleLocalDevice::setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) const {
     return peripheralProxy_->setPPCP(minInterval, maxInterval, latency, timeout);
-}
-
-int BleLocalDevice::disconnect() {
-    return peripheralProxy_->disconnect();
 }
 
 bool BleLocalDevice::connected() const {
     return (peripheralProxy_->connected() || centralProxy_->connected());
 }
 
-BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout) {
+BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout) const {
     hal_ble_conn_params_t connParams;
     connParams.size = sizeof(hal_ble_conn_params_t);
     connParams.min_conn_interval = interval;
@@ -1647,7 +1580,7 @@ BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, uint16_t interval,
     return connect(addr);
 }
 
-BlePeerDevice BleLocalDevice::connect(const BleAddress& addr) {
+BlePeerDevice BleLocalDevice::connect(const BleAddress& addr) const {
     BlePeerDevice peer = centralProxy_->connect(addr);
     // Automatically discover services and characteristics.
     if (peer.connected()) {
@@ -1656,26 +1589,34 @@ BlePeerDevice BleLocalDevice::connect(const BleAddress& addr) {
     return peer;
 }
 
-int BleLocalDevice::disconnect(const BlePeerDevice& peripheral) {
+int BleLocalDevice::disconnect() const {
+    return peripheralProxy_->disconnect();
+}
+
+int BleLocalDevice::disconnect(const BlePeerDevice& peripheral) const {
     return centralProxy_->disconnect(peripheral);
 }
 
-int BleLocalDevice::addCharacteristic(BleCharacteristic& characteristic) {
+int BleLocalDevice::addCharacteristic(BleCharacteristic& characteristic) const {
     return gattsProxy_->addCharacteristic(characteristic);
 }
 
-int BleLocalDevice::addCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback) {
+int BleLocalDevice::addCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback) const {
     BleCharacteristic characteristic(desc, properties, callback);
     return gattsProxy_->addCharacteristic(characteristic);
 }
 
+int BleLocalDevice::addCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback) const {
+    return addCharacteristic(desc.c_str(), properties, callback);
+}
+
 BlePeerDevice* BleLocalDevice::findPeerDevice(BleConnectionHandle connHandle) {
-    for (BlePeerDevice& central : peripheralProxy_->centrals()) {
+    for (auto& central : peripheralProxy_->centrals()) {
         if (central.connHandle == connHandle) {
             return &central;
         }
     }
-    for (BlePeerDevice& peripheral : centralProxy_->peripherals()) {
+    for (auto& peripheral : centralProxy_->peripherals()) {
         if (peripheral.connHandle == connHandle) {
             return &peripheral;
         }
@@ -1693,8 +1634,8 @@ void BleLocalDevice::onBleEvents(const hal_ble_evts_t *event, void* context) {
     switch (event->type) {
         case BLE_EVT_ADV_STOPPED: {
             bleInstance->broadcasterProxy_->broadcasterProcessStopped();
-        } break;
-
+            break;
+        }
         case BLE_EVT_CONNECTED: {
             BlePeerDevice peer;
 
@@ -1715,8 +1656,8 @@ void BleLocalDevice::onBleEvents(const hal_ble_evts_t *event, void* context) {
                 peer.role = BLE_ROLE_PERIPHERAL;
                 bleInstance->centralProxy_->centralProcessConnected(peer);
             }
-        } break;
-
+            break;
+        }
         case BLE_EVT_DISCONNECTED: {
             BlePeerDevice* peer = bleInstance->findPeerDevice(event->params.disconnected.conn_handle);
             if (peer != nullptr) {
@@ -1731,12 +1672,11 @@ void BleLocalDevice::onBleEvents(const hal_ble_evts_t *event, void* context) {
                     bleInstance->peripheralProxy_->peripheralProcessDisconnected(*peer);
                 }
             }
-        } break;
-
+            break;
+        }
         case BLE_EVT_CONN_PARAMS_UPDATED: {
-
-        } break;
-
+            break;
+        }
         case BLE_EVT_DATA_WRITTEN: {
             LOG_DEBUG(TRACE, "onDataWritten, connection: %d, attribute: %d", event->params.data_rec.conn_handle, event->params.data_rec.attr_handle);
 
@@ -1745,8 +1685,8 @@ void BleLocalDevice::onBleEvents(const hal_ble_evts_t *event, void* context) {
                 bleInstance->gattsProxy_->gattsProcessDataWritten(event->params.data_rec.attr_handle,
                         event->params.data_rec.data, event->params.data_rec.data_len, *peer);
             }
-        } break;
-
+            break;
+        }
         case BLE_EVT_DATA_NOTIFIED: {
             LOG_DEBUG(TRACE, "onDataNotified, connection: %d, attribute: %d", event->params.data_rec.conn_handle, event->params.data_rec.attr_handle);
 
@@ -1755,9 +1695,11 @@ void BleLocalDevice::onBleEvents(const hal_ble_evts_t *event, void* context) {
                 bleInstance->gattcProxy_->gattcProcessDataNotified(event->params.data_rec.attr_handle,
                         event->params.data_rec.data, event->params.data_rec.data_len, *peer);
             }
-        } break;
-
-        default: break;
+            break;
+        }
+        default:{
+            break;
+        }
     }
 }
 
