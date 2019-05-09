@@ -18,6 +18,8 @@
 #ifndef SERVICES_INTRUSIVE_LIST_H
 #define SERVICES_INTRUSIVE_LIST_H
 
+#include "spark_wiring_interrupts.h"
+
 namespace particle {
 
 // Template class implementing an intrusive list container
@@ -65,6 +67,67 @@ public:
             return popFront();
         }
 
+        return nullptr;
+    }
+
+    ItemT* front() const {
+        return front_;
+    }
+
+private:
+    ItemT* front_;
+};
+
+template<typename ItemT>
+class AtomicIntrusiveList {
+public:
+    typedef ItemT ItemType;
+
+    AtomicIntrusiveList() :
+            front_(nullptr) {
+    }
+
+    ~AtomicIntrusiveList() {
+
+    }
+
+    void pushFront(ItemT* item) {
+        ATOMIC_BLOCK() {
+            item->next = front_;
+            front_ = item;
+        }
+    }
+
+    ItemT* popFront() {
+        if (!front_) {
+            return nullptr;
+        }
+        ItemT* item = nullptr;
+        ATOMIC_BLOCK() {
+            item = front_;
+            front_ = static_cast<ItemT*>(front_->next);
+        }
+        return item;
+    }
+
+    ItemT* pop(ItemT* item, ItemT* prev = nullptr) {
+        ATOMIC_BLOCK() {
+            if (!prev) {
+                for (ItemT* i = front_, *p = static_cast<ItemT*>(nullptr); i != nullptr; p = i, i = i->next) {
+                    if (i == item) {
+                        prev = p;
+                        break;
+                    }
+                }
+            }
+
+            if (prev) {
+                prev->next = item->next;
+                return item;
+            } else if (item == front()) {
+                return popFront();
+            }
+        }
         return nullptr;
     }
 
