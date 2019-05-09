@@ -52,6 +52,9 @@ LOG_SOURCE_CATEGORY("hal.ble")
 #include "check.h"
 #include "scope_guard.h"
 
+using namespace particle;
+#include "intrusive_list.h"
+
 static_assert(NRF_SDH_BLE_PERIPHERAL_LINK_COUNT == 1, "Multiple simultaneous peripheral connections are not supported");
 static_assert(NRF_SDH_BLE_TOTAL_LINK_COUNT <= 20, "Maximum supported number of concurrent connections in the peripheral and central roles combined exceeded");
 
@@ -70,14 +73,22 @@ const hal_ble_attr_handle_t SERVICES_BASE_START_HANDLE = 0x0001;
 // BLE service top end handle.
 const hal_ble_attr_handle_t SERVICES_TOP_END_HANDLE = 0xFFFF;
 
-// Pool for storing scan results.
+// Pool for storing scan result pure data.
 const size_t OBSERVER_SCANNED_DATA_POOL_SIZE = 1024;
+// Pool for scan result cached device.
+const size_t OBSERVER_CACHED_DEVICE_POOL_SIZE = 1024;
+// Pool for scan pending results.
+const size_t OBSERVER_PENDING_RESULTS_POOL_SIZE = 1024;
+// Pool for storing on-going connections.
+const size_t CONNECTIONS_POOL_SIZE = 256;
 // Pool for GATT Server to store received data.
 const size_t GATT_SERVER_DATA_REC_POOL_SIZE = 1024;
 // Pool for storing discovered service or characteristics.
-static const size_t GATT_CLIENT_DISC_SVC_CHAR_POOL_SIZE = 2048;
+const size_t GATT_CLIENT_DISC_SVC_CHAR_POOL_SIZE = 2048;
 // Pool for GATT Client to store received data.
-static const size_t GATT_CLIENT_DATA_REC_POOL_SIZE = 1024;
+const size_t GATT_CLIENT_DATA_REC_POOL_SIZE = 1024;
+// Pool for link att_mtu list.
+const size_t GATT_LINK_ATT_MTU_LIST_POOL_SIZE = 256;
 
 // Timeout for GAP connection operation.
 const uint32_t CONNECTION_OPERATION_TIMEOUT_MS = 5000;
@@ -88,7 +99,7 @@ const uint32_t BLE_DICOVERY_PROCEDURE_TIMEOUT_MS = 10000;
 // Timeout for data read write procedure.
 const uint32_t BLE_READ_WRITE_PROCEDURE_TIMEOUT_MS = 5000;
 // Delay for GATT Client to send the ATT MTU exchanging request.
-static const uint32_t BLE_ATT_MTU_EXCHANGE_DELAY_MS = 800;
+const uint32_t BLE_ATT_MTU_EXCHANGE_DELAY_MS = 800;
 
 static const uint8_t BleAdvEvtTypeMap[] = {
     BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED,
@@ -151,68 +162,79 @@ public:
      * A device's Exchange MTU Request shall contain the same MTU as the
      * device's Exchange MTU Response (i.e. the MTU shall be symmetric).
      */
-    class LinkAttMtu {
-    public:
-        LinkAttMtu() : connHandle(BLE_INVALID_CONN_HANDLE), effective(BLE_DEFAULT_ATT_MTU_SIZE), isExchanged(false) {}
-        ~LinkAttMtu() = default;
-
-        bool operator == (const LinkAttMtu& attMtu) const {
-            return (attMtu.connHandle == connHandle);
-        }
-
+    struct LinkAttMtu {
+        LinkAttMtu* next;
         hal_ble_conn_handle_t connHandle;
         size_t effective;
         bool isExchanged;
     };
 
     GattBase() {
-        attMtuList_.clear();
+        if (!poolInitialized) {
+            attMtuListPool_.init(GATT_LINK_ATT_MTU_LIST_POOL_SIZE);
+            poolInitialized = true;
+        }
     }
     ~GattBase() = default;
 
 protected:
     size_t getAttMtu(hal_ble_conn_handle_t connHandle) const {
-        for (const auto& attMtu : attMtuList_) {
-            if (attMtu.connHandle == connHandle) {
-                return attMtu.effective;
+        auto attMtu = attMtuList_.front();
+        while (attMtu) {
+            if (attMtu->connHandle == connHandle) {
+                return attMtu->effective;
             }
+            attMtu = attMtu->next;
         }
-        return 0;
+        return BLE_MIN_ATT_MTU_SIZE;
     }
 
-    void configureAttMtu(hal_ble_conn_handle_t connHandle, size_t effective, bool exchanged = false) {
+    int configureAttMtu(hal_ble_conn_handle_t connHandle, size_t effective, bool exchanged = false) {
         // Update the effective ATT_MTU if existed.
-        for (auto& attMtu : attMtuList_) {
-            if (attMtu.connHandle == connHandle) {
-                attMtu.effective = effective;
-                attMtu.isExchanged = exchanged;
-                return;
+        auto attMtu = attMtuList_.front();
+        while (attMtu) {
+            if (attMtu->connHandle == connHandle) {
+                attMtu->effective = effective;
+                attMtu->isExchanged = exchanged;
+                return SYSTEM_ERROR_NONE;
             }
+            attMtu = attMtu->next;
         }
         // Set ATT_MTU for new link.
-        LinkAttMtu effectAttMtu;
-        effectAttMtu.connHandle = connHandle;
-        effectAttMtu.effective = effective;
-        attMtuList_.append(effectAttMtu);
+        LinkAttMtu* effectAttMtu = (LinkAttMtu*)attMtuListPool_.alloc(sizeof(LinkAttMtu));
+        if (effectAttMtu) {
+            effectAttMtu->connHandle = connHandle;
+            effectAttMtu->effective = effective;
+            effectAttMtu->isExchanged = exchanged;
+            attMtuList_.pushFront(effectAttMtu);
+            return SYSTEM_ERROR_NONE;
+        }
+        return SYSTEM_ERROR_NO_MEMORY;
     }
 
     bool attMtuExchanged(hal_ble_conn_handle_t connHandle) const {
-        for (const auto& attMtu : attMtuList_) {
-            if (attMtu.connHandle == connHandle) {
-                return attMtu.isExchanged;
+        auto attMtu = attMtuList_.front();
+        while (attMtu) {
+            if (attMtu->connHandle == connHandle) {
+                return attMtu->isExchanged;
             }
+            attMtu = attMtu->next;
         }
         return false;
     }
 
     void clearAttMtu(hal_ble_conn_handle_t connHandle) {
-        for (int i = 0; i < attMtuList_.size(); i = i) {
-            const auto& attMtu = attMtuList_[i];
-            if (attMtu.connHandle == connHandle) {
-                attMtuList_.removeAt(i);
+        auto attMtu = attMtuList_.front();
+        LinkAttMtu* prev = nullptr;
+        while (attMtu) {
+            if (attMtu->connHandle == connHandle) {
+                LinkAttMtu* curr = attMtuList_.pop(attMtu, prev);
+                attMtu = curr->next;
+                attMtuListPool_.free(curr);
                 continue;
             }
-            i++;
+            prev = attMtu;
+            attMtu = attMtu->next;
         }
     }
 
@@ -256,11 +278,15 @@ protected:
 
     // GATT Server and GATT client share the same ATT_MTU.
     static size_t desiredAttMtu_;
-    static Vector<LinkAttMtu> attMtuList_;
+    static AtomicIntrusiveList<LinkAttMtu> attMtuList_;
+    static AtomicAllocedPool attMtuListPool_;
+    static bool poolInitialized;
 };
 
 size_t GattBase::desiredAttMtu_ = BLE_MAX_ATT_MTU_SIZE;
-Vector<GattBase::LinkAttMtu> GattBase::attMtuList_;
+AtomicIntrusiveList<GattBase::LinkAttMtu> GattBase::attMtuList_;
+AtomicAllocedPool GattBase::attMtuListPool_;
+bool GattBase::poolInitialized = false;
 
 class BleObject {
 public:
@@ -422,6 +448,8 @@ public:
         scanParams_.timeout = BLE_DEFAULT_SCANNING_TIMEOUT;
         bleScanData_.p_data = scanReportBuff_;
         bleScanData_.len = sizeof(scanReportBuff_);
+        scanCacheDevicesPool_.init(OBSERVER_CACHED_DEVICE_POOL_SIZE);
+        scanPendingResultsPool_.init(OBSERVER_PENDING_RESULTS_POOL_SIZE);
     }
     ~Observer() = default;
     int init();
@@ -433,10 +461,23 @@ public:
     ble_gap_scan_params_t toPlatformScanParams(void) const;
 
 private:
-    bool cachedDevice(const hal_ble_addr_t& address) const;
-    hal_ble_gap_on_scan_result_evt_t* cachedResult(const hal_ble_addr_t& address);
-    void removeResult(const hal_ble_addr_t& address);
-    void clearResult();
+    struct cachedDevice {
+        cachedDevice* next;
+        hal_ble_addr_t addr;
+    };
+
+    struct pendingResult {
+        pendingResult* next;
+        hal_ble_gap_on_scan_result_evt_t resultEvt;
+    };
+
+    bool isCachedDevice(const hal_ble_addr_t& address) const;
+    int addCachedDevice(const hal_ble_addr_t& address);
+    void clearCachedDevice();
+    hal_ble_gap_on_scan_result_evt_t* getPendingResult(const hal_ble_addr_t& address);
+    int addPendingResult(const hal_ble_gap_on_scan_result_evt_t& resultEvt);
+    void removePendingResult(const hal_ble_addr_t& address);
+    void clearPendingResult();
     int continueScanning();
     static void observerEventProcessedHook(const hal_ble_evts_t *event, void* context);
     static void processObserverEvents(const ble_evt_t* event, void* context);
@@ -446,16 +487,19 @@ private:
     os_semaphore_t scanSemaphore_;                          /**< Semaphore to wait until the scan procedure completed. */
     uint8_t scanReportBuff_[BLE_MAX_SCAN_REPORT_BUF_LEN];   /**< Buffer to hold the scanned report data. */
     ble_data_t bleScanData_;                                /**< BLE scanned data. */
-    Vector<hal_ble_addr_t> cache_;                          /**< Cached address of scanned devices to filter-out duplicated result. */
-    Vector<hal_ble_gap_on_scan_result_evt_t> pendingResults_; /**< Caches the scanned advertising data until the scan response data is captured. */
     AtomicAllocedPool observerScannedDataPool_;             /**< Pool to allocate memory for scanned data. */
     on_ble_scan_result_cb_t scanResultCallBack_;            /**< Callback function on scan result. */
     void* context_;                                         /**< Context of the scan result callback function. */
+    AtomicIntrusiveList<cachedDevice> cachedDevicesList_;   /**< Cached address of scanned devices to filter-out duplicated result. */
+    AtomicIntrusiveList<pendingResult> pendingResultsList_; /**< Caches the scanned advertising data until the scan response data is captured. */
+    AtomicAllocedPool scanCacheDevicesPool_;
+    AtomicAllocedPool scanPendingResultsPool_;
 };
 
 class BleObject::ConnectionsManager {
 public:
     struct BleConnection {
+        BleConnection* next;
         uint8_t role;
         hal_ble_conn_handle_t connHandle;
         hal_ble_conn_params_t effectiveConnParams;
@@ -472,7 +516,7 @@ public:
             connectSemaphore_(nullptr),
             disconnectSemaphore_(nullptr) {
         connectingAddr_ = {};
-        connections_.clear();
+        connectionsPool_.init(CONNECTIONS_POOL_SIZE);
     }
     ~ConnectionsManager() = default;
     int init();
@@ -490,7 +534,7 @@ public:
 private:
     BleConnection* fetchConnection(hal_ble_conn_handle_t connHandle);
     BleConnection* fetchConnection(const hal_ble_addr_t* address);
-    void addConnection(const BleConnection& connection);
+    int addConnection(const BleConnection& connection);
     void removeConnection(hal_ble_conn_handle_t connHandle);
     void initiateConnParamsUpdateIfNeeded(const BleConnection* connection);
     bool isConnParamsFeeded(const hal_ble_conn_params_t* params) const;
@@ -499,16 +543,17 @@ private:
     static void onConnParamsUpdateTimerExpired(os_timer_t timer);
     static void processConnectionEvents(const ble_evt_t* event, void* context);
 
-    bool isConnecting_;                             /**< If it is connecting or not. */
-    hal_ble_addr_t connectingAddr_;                 /**< Address of peer the Central is connecting to. */
-    volatile hal_ble_conn_handle_t disconnectingHandle_;     /**< Handle of connection to be disconnected. */
-    volatile hal_ble_conn_handle_t connParamUpdateHandle_;   /**< Handle of the connection that is to send peripheral connection update request. */
-    uint8_t connParamsUpdateAttempts_;              /**< Attempts for peripheral to update connection parameters. */
-    os_timer_t connParamsUpdateTimer_;              /**< Timer used for sending peripheral connection update request after connection established. */
-    os_semaphore_t connParamsUpdateSemaphore_;      /**< Semaphore to wait until connection parameters updated. */
-    os_semaphore_t connectSemaphore_;               /**< Semaphore to wait until connection established. */
-    os_semaphore_t disconnectSemaphore_;            /**< Semaphore to wait until connection disconnected. */
-    Vector<BleConnection> connections_;             /**< Current on-going connections. */
+    bool isConnecting_;                                         /**< If it is connecting or not. */
+    hal_ble_addr_t connectingAddr_;                             /**< Address of peer the Central is connecting to. */
+    volatile hal_ble_conn_handle_t disconnectingHandle_;        /**< Handle of connection to be disconnected. */
+    volatile hal_ble_conn_handle_t connParamUpdateHandle_;      /**< Handle of the connection that is to send peripheral connection update request. */
+    uint8_t connParamsUpdateAttempts_;                          /**< Attempts for peripheral to update connection parameters. */
+    os_timer_t connParamsUpdateTimer_;                          /**< Timer used for sending peripheral connection update request after connection established. */
+    os_semaphore_t connParamsUpdateSemaphore_;                  /**< Semaphore to wait until connection parameters updated. */
+    os_semaphore_t connectSemaphore_;                           /**< Semaphore to wait until connection established. */
+    os_semaphore_t disconnectSemaphore_;                        /**< Semaphore to wait until connection disconnected. */
+    AtomicIntrusiveList<BleConnection> connectionsList_;        /**< Current on-going connections. */
+    AtomicAllocedPool connectionsPool_;
 };
 
 class BleObject::GattServer : public GattBase {
@@ -525,10 +570,16 @@ public:
 private:
     class BleCharacteristic {
         public:
+            BleCharacteristic() {
+                for (auto& cccdConnection : cccdConnections) {
+                    cccdConnection = BLE_INVALID_CONN_HANDLE;
+                }
+            }
+
             uint8_t properties;
             hal_ble_attr_handle_t svcHandle;
             hal_ble_char_handles_t charHandles;
-            Vector<hal_ble_conn_handle_t> cccdConnections;
+            hal_ble_conn_handle_t cccdConnections[BLE_MAX_LINK_COUNT];
     };
 
     bool findService(hal_ble_attr_handle_t svcHandle) const;
@@ -577,7 +628,19 @@ private:
         BLE_DISCOVERY_PROCEDURE_DESCRIPTORS = 3,
     };
 
+    struct DiscoveredService {
+        DiscoveredService* next;
+        hal_ble_svc_t service;
+    };
+
+    struct DiscoveredCharacteristic {
+        DiscoveredCharacteristic* next;
+        hal_ble_char_t characteristic;
+    };
+
     void resetDiscoveryState();
+    int addDiscoveredService(const hal_ble_svc_t& service);
+    int addDiscoveredCharacteristic(const hal_ble_char_t& characteristic);
     bool readServiceUUID128IfNeeded() const;
     bool readCharacteristicUUID128IfNeeded() const;
     hal_ble_svc_t* findDiscoveredService(hal_ble_attr_handle_t attrHandle);
@@ -586,21 +649,24 @@ private:
     static void gattcEventProcessedHook(const hal_ble_evts_t *event, void* context);
     static void processGattClientEvents(const ble_evt_t* event, void* context);
 
-    bool discoverAll_;                                  /**< If it is going to discover all service during the service discovery procedure. */
-    bool isDiscovering_;                                /**< If there is on-going discovery procedure. */
-    hal_ble_conn_handle_t currDiscConnHandle_;          /**< Current connection handle under which the service and characteristics to be discovered. */
-    DiscoveryProcedure currDiscProcedure_;              /**< Current discovery procedure. */
-    hal_ble_svc_t currDiscSvc_;                         /**< Current service to be discovered for the characteristics. */
-    os_semaphore_t discoverySemaphore_;                 /**< Semaphore to wait until the discovery procedure completed. */
-    os_semaphore_t readWriteSemaphore_;                 /**< Semaphore to wait until the read or write operation completed. */
-    Vector<hal_ble_svc_t> discoveredServices_;          /**< Discover services. */
-    Vector<hal_ble_char_t> discoveredCharacteristics_;  /**< Discovered characteristics. */
-    hal_ble_attr_handle_t readAttrHandle_;              /**< Current handle of which attribute to be read. */
-    uint8_t* readBuf_;                                  /**< Current buffer to be filled for the read data. */
-    size_t readLen_;                                    /**< Length of read data. */
-    AtomicAllocedPool gattcDataRecPool_;                /**< Pool to allocate memory for received data. */
-    volatile hal_ble_conn_handle_t attMtuExchangeConnHandle_;    /**< Current handle of the connection to execute ATT_MTU exchange procedure. */
-    os_timer_t attMtuExchangeTimer_;                    /**< Timer used for sending the exchanging ATT_MTU request after connection established. */
+    bool discoverAll_;                                              /**< If it is going to discover all service during the service discovery procedure. */
+    bool isDiscovering_;                                            /**< If there is on-going discovery procedure. */
+    hal_ble_conn_handle_t currDiscConnHandle_;                      /**< Current connection handle under which the service and characteristics to be discovered. */
+    DiscoveryProcedure currDiscProcedure_;                          /**< Current discovery procedure. */
+    hal_ble_svc_t currDiscSvc_;                                     /**< Current service to be discovered for the characteristics. */
+    os_semaphore_t discoverySemaphore_;                             /**< Semaphore to wait until the discovery procedure completed. */
+    os_semaphore_t readWriteSemaphore_;                             /**< Semaphore to wait until the read or write operation completed. */
+    AtomicIntrusiveList<DiscoveredService> discServicesList_;       /**< Discover services. */
+    AtomicIntrusiveList<DiscoveredCharacteristic> discCharacteristicsList_; /**< Discovered characteristics. */
+    volatile size_t discServiceCount_;                              /**< Discovered service count. */
+    volatile size_t discCharacteristicCount_;                       /**< Discovered characteristic count. */
+    hal_ble_attr_handle_t readAttrHandle_;                          /**< Current handle of which attribute to be read. */
+    uint8_t* readBuf_;                                              /**< Current buffer to be filled for the read data. */
+    size_t readLen_;                                                /**< Length of read data. */
+    AtomicAllocedPool gattcDataRecPool_;                            /**< Pool to allocate memory for received data. */
+    AtomicAllocedPool gattcDiscPool_;                               /**< Pool to allocate memory for service/characteristic discovery. */
+    volatile hal_ble_conn_handle_t attMtuExchangeConnHandle_;       /**< Current handle of the connection to execute ATT_MTU exchange procedure. */
+    os_timer_t attMtuExchangeTimer_;                                /**< Timer used for sending the exchanging ATT_MTU request after connection established. */
 };
 
 int BleObject::BleEventDispatcher::init() {
@@ -1156,7 +1222,6 @@ int BleObject::Observer::startScanning(on_ble_scan_result_cb_t callback, void* c
     LOG_DEBUG(TRACE, "| interval(ms)   window(ms)   timeout(ms) |");
     LOG_DEBUG(TRACE, "  %.3f        %.3f      %d",
             bleGapScanParams.interval*0.625, bleGapScanParams.window*0.625, bleGapScanParams.timeout*10);
-    cache_.clear();
     scanResultCallBack_ = callback;
     context_ = context;
     int ret = sd_ble_gap_scan_start(&bleGapScanParams, &bleScanData_);
@@ -1167,8 +1232,8 @@ int BleObject::Observer::startScanning(on_ble_scan_result_cb_t callback, void* c
         ret = SYSTEM_ERROR_TIMEOUT;
     }
     isScanning_ = false;
-    cache_.clear();
-    clearResult();
+    clearCachedDevice();
+    clearPendingResult();
     return ret;
 }
 
@@ -1196,43 +1261,85 @@ ble_gap_scan_params_t BleObject::Observer::toPlatformScanParams(void) const {
     return params;
 }
 
-bool BleObject::Observer::cachedDevice(const hal_ble_addr_t& address) const {
-    for (const auto& addr : cache_) {
-        if (addressEqual(addr, address)) {
+bool BleObject::Observer::isCachedDevice(const hal_ble_addr_t& address) const {
+    auto device = cachedDevicesList_.front();
+    while (device) {
+        if (addressEqual(device->addr, address)) {
             return true;
         }
+        device = device->next;
     }
     return false;
 }
 
-hal_ble_gap_on_scan_result_evt_t* BleObject::Observer::cachedResult(const hal_ble_addr_t& address) {
-    for (auto& result : pendingResults_) {
-        if (addressEqual(result.peer_addr, address)) {
-            return &result;
+int BleObject::Observer::addCachedDevice(const hal_ble_addr_t& address) {
+    cachedDevice* device = (cachedDevice*)scanCacheDevicesPool_.alloc(sizeof(cachedDevice));
+    if (device) {
+        device->addr = address;
+        cachedDevicesList_.pushFront(device);
+        return SYSTEM_ERROR_NONE;
+    }
+    return SYSTEM_ERROR_NO_MEMORY;
+}
+
+void BleObject::Observer::clearCachedDevice() {
+    cachedDevice* device = nullptr;
+    do {
+        device = cachedDevicesList_.popFront();
+        if (device) {
+            scanCacheDevicesPool_.free(device);
         }
+    } while (device);
+}
+
+hal_ble_gap_on_scan_result_evt_t* BleObject::Observer::getPendingResult(const hal_ble_addr_t& address) {
+    auto result = pendingResultsList_.front();
+    while (result) {
+        if (addressEqual(result->resultEvt.peer_addr, address)) {
+            return &result->resultEvt;
+        }
+        result = result->next;
     }
     return nullptr;
 }
 
-void BleObject::Observer::removeResult(const hal_ble_addr_t& address) {
-    for (int i = 0; i < pendingResults_.size(); i = i) {
-        const auto& result = pendingResults_[i];
-        if (addressEqual(result.peer_addr, address)) {
-            pendingResults_.removeAt(i);
-            continue;
+int BleObject::Observer::addPendingResult(const hal_ble_gap_on_scan_result_evt_t& resultEvt) {
+    pendingResult* result = (pendingResult*)scanPendingResultsPool_.alloc(sizeof(pendingResult));
+    if (result) {
+        memcpy(&result->resultEvt, &resultEvt, sizeof(hal_ble_gap_on_scan_result_evt_t));
+        pendingResultsList_.pushFront(result);
+        return SYSTEM_ERROR_NONE;
+    }
+    return SYSTEM_ERROR_NO_MEMORY;
+}
+
+void BleObject::Observer::removePendingResult(const hal_ble_addr_t& address) {
+    auto result = pendingResultsList_.front();
+    pendingResult* prev = nullptr;
+    while (result) {
+        if (addressEqual(result->resultEvt.peer_addr, address)) {
+            pendingResult* curr = pendingResultsList_.pop(result, prev);
+            result = curr->next;
+            scanPendingResultsPool_.free(curr);
+            return;
         }
-        i++;
+        prev = result;
+        result = result->next;
     }
 }
 
-void BleObject::Observer::clearResult() {
-    for (const auto& result : pendingResults_) {
-        if (result.adv_data != nullptr) {
-            observerScannedDataPool_.free(result.adv_data);
-            LOG_DEBUG(TRACE, "clearResult: Free Scanned adv_data memory: %u", (unsigned)result.adv_data);
+void BleObject::Observer::clearPendingResult() {
+    pendingResult* result = nullptr;
+    do {
+        result = pendingResultsList_.popFront();
+        if (result) {
+            if (result->resultEvt.adv_data != nullptr) {
+                observerScannedDataPool_.free(result->resultEvt.adv_data);
+                LOG_DEBUG(TRACE, "clearPendingResult: Free Scanned adv_data memory: %u", (unsigned)result->resultEvt.adv_data);
+            }
+            scanPendingResultsPool_.free(result);
         }
-    }
-    pendingResults_.clear();
+    } while (result);
 }
 
 void BleObject::Observer::observerEventProcessedHook(const hal_ble_evts_t *event, void* context) {
@@ -1257,9 +1364,11 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
             hal_ble_addr_t newAddr;
             newAddr.addr_type = (ble_sig_addr_type_t)advReport.peer_addr.addr_type;
             memcpy(newAddr.addr, advReport.peer_addr.addr, BLE_SIG_ADDR_LEN);
-            if (!observer->cachedDevice(newAddr)) {
+            if (!observer->isCachedDevice(newAddr)) {
                 if (!observer->scanParams_.active || !advReport.type.scannable) {
-                    observer->cache_.append(newAddr);
+                    if (observer->addCachedDevice(newAddr) != SYSTEM_ERROR_NONE) {
+                        LOG(ERROR, "There will have no memory to cache more devices.");
+                    }
                     uint8_t* advData = (uint8_t*)observer->observerScannedDataPool_.alloc(advReport.data.len);
                     if (advData) {
                         LOG_DEBUG(TRACE, "Scanned adv_data address: %u, len: %u", (unsigned)advData, advReport.data.len);
@@ -1285,7 +1394,7 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
                     }
                 } else if (advReport.type.scannable) {
                     if (!advReport.type.scan_response) {
-                        if (observer->cachedResult(newAddr) == nullptr) {
+                        if (observer->getPendingResult(newAddr) == nullptr) {
                             uint8_t* advData = (uint8_t*)observer->observerScannedDataPool_.alloc(advReport.data.len);
                             if (advData) {
                                 LOG_DEBUG(TRACE, "Cached adv_data address: %u, len: %u", (unsigned)advData, advReport.data.len);
@@ -1300,11 +1409,13 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
                                 result.adv_data_len = advReport.data.len;
                                 memcpy(advData, advReport.data.p_data, advReport.data.len);
                                 result.adv_data = advData;
-                                observer->pendingResults_.append(result);
+                                if (observer->addPendingResult(result) != SYSTEM_ERROR_NONE) {
+                                    LOG(ERROR, "There will have no memory to store pending results.");
+                                }
                             }
                         }
                     } else {
-                        hal_ble_gap_on_scan_result_evt_t* result = observer->cachedResult(newAddr);
+                        hal_ble_gap_on_scan_result_evt_t* result = observer->getPendingResult(newAddr);
                         if (result) {
                             result->rssi = advReport.rssi;
                             result->sr_data = nullptr;
@@ -1327,8 +1438,10 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
                             msg.hook = observer->observerEventProcessedHook;
                             msg.hookContext = observer;
                             BleObject::getInstance().dispatcher()->enqueue(msg);
-                            observer->removeResult(newAddr);
-                            observer->cache_.append(newAddr);
+                            observer->removePendingResult(newAddr);
+                            if (observer->addCachedDevice(newAddr) != SYSTEM_ERROR_NONE) {
+                                LOG(ERROR, "There will have no memory to cache more devices.");
+                            }
                         }
                     }
                 }
@@ -1426,7 +1539,7 @@ bool BleObject::ConnectionsManager::connecting(const hal_ble_addr_t* address) co
 
 bool BleObject::ConnectionsManager::connected(const hal_ble_addr_t* address) {
     if (address == nullptr) {
-        return connections_.size() > 0;
+        return connectionsList_.front() != nullptr;
     } else if (fetchConnection(address)) {
         return true;
     }
@@ -1577,10 +1690,12 @@ BleObject::ConnectionsManager::BleConnection* BleObject::ConnectionsManager::fet
     if (connHandle == BLE_INVALID_CONN_HANDLE) {
         return nullptr;
     }
-    for (auto& connection : connections_) {
-        if (connection.connHandle == connHandle) {
-            return &connection;
+    auto connection = connectionsList_.front();
+    while (connection) {
+        if (connection->connHandle == connHandle) {
+            return connection;
         }
+        connection = connection->next;
     }
     return nullptr;
 }
@@ -1589,28 +1704,39 @@ BleObject::ConnectionsManager::BleConnection* BleObject::ConnectionsManager::fet
     if (address == nullptr) {
         return nullptr;
     }
-    for (auto& connection : connections_) {
-        const hal_ble_addr_t& peer = connection.peer;
-        if (addressEqual(peer, *address)) {
-            return &connection;
+    auto connection = connectionsList_.front();
+    while (connection) {
+        if (addressEqual(connection->peer, *address)) {
+            return connection;
         }
+        connection = connection->next;
     }
     return nullptr;
 }
 
-void BleObject::ConnectionsManager::addConnection(const BleConnection& connection) {
+int BleObject::ConnectionsManager::addConnection(const BleConnection& connection) {
     removeConnection(connection.connHandle);
-    connections_.append(connection);
+    BleConnection* conn = (BleConnection*)connectionsPool_.alloc(sizeof(BleConnection));
+    if (conn) {
+        *conn = connection;
+        connectionsList_.pushFront(conn);
+        return SYSTEM_ERROR_NONE;
+    }
+    return SYSTEM_ERROR_NO_MEMORY;
 }
 
 void BleObject::ConnectionsManager::removeConnection(hal_ble_conn_handle_t connHandle) {
-    for (int i = 0; i < connections_.size(); i = i) {
-        const auto& connection = connections_[i];
-        if (connection.connHandle == connHandle) {
-            connections_.removeAt(i);
+    auto connection = connectionsList_.front();
+    BleConnection* prev = nullptr;
+    while (connection) {
+        if (connection->connHandle == connHandle) {
+            BleConnection* curr = connectionsList_.pop(connection, prev);
+            connection = curr->next;
+            connectionsPool_.free(curr);
             continue;
         }
-        i++;
+        prev = connection;
+        connection = connection->next;
     }
 }
 
@@ -1973,33 +2099,35 @@ ssize_t BleObject::GattServer::setValue(hal_ble_attr_handle_t attrHandle, const 
         // Notify or indicate the value if possible.
         if ((characteristic->properties & BLE_SIG_CHAR_PROP_NOTIFY) || (characteristic->properties & BLE_SIG_CHAR_PROP_INDICATE)) {
             for (const auto& cccdConnection : characteristic->cccdConnections) {
-                if (os_semaphore_create(&hvxSemaphore_, 1, 0)) {
-                    LOG(ERROR, "os_semaphore_create() failed");
-                    break;
-                }
-                SCOPE_GUARD({
-                    os_semaphore_destroy(hvxSemaphore_);
-                    hvxSemaphore_ = nullptr;
-                });
-                ble_gatts_hvx_params_t hvxParams = {};
-                uint16_t hvxLen = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(getAttMtu(cccdConnection)));
-                LOG_DEBUG(TRACE, "Notify data len: %d", hvxLen);
-                if (characteristic->properties & BLE_SIG_CHAR_PROP_NOTIFY) {
-                    hvxParams.type = BLE_GATT_HVX_NOTIFICATION;
-                } else if (characteristic->properties & BLE_SIG_CHAR_PROP_INDICATE) {
-                    hvxParams.type = BLE_GATT_HVX_INDICATION;
-                }
-                hvxParams.handle = attrHandle;
-                hvxParams.offset = 0;
-                hvxParams.p_data = buf;
-                hvxParams.p_len = &hvxLen;
-                ret_code_t ret = sd_ble_gatts_hvx(cccdConnection, &hvxParams);
-                if (ret != NRF_SUCCESS) {
-                    LOG(ERROR, "sd_ble_gatts_hvx() failed: %u", (unsigned)ret);
-                    break;
-                }
-                if (os_semaphore_take(hvxSemaphore_, BLE_HVX_PROCEDURE_TIMEOUT_MS, false)) {
-                    break;
+                if (cccdConnection != BLE_INVALID_CONN_HANDLE) {
+                    if (os_semaphore_create(&hvxSemaphore_, 1, 0)) {
+                        LOG(ERROR, "os_semaphore_create() failed");
+                        break;
+                    }
+                    SCOPE_GUARD({
+                        os_semaphore_destroy(hvxSemaphore_);
+                        hvxSemaphore_ = nullptr;
+                    });
+                    ble_gatts_hvx_params_t hvxParams = {};
+                    uint16_t hvxLen = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(getAttMtu(cccdConnection)));
+                    LOG_DEBUG(TRACE, "Notify data len: %d", hvxLen);
+                    if (characteristic->properties & BLE_SIG_CHAR_PROP_NOTIFY) {
+                        hvxParams.type = BLE_GATT_HVX_NOTIFICATION;
+                    } else if (characteristic->properties & BLE_SIG_CHAR_PROP_INDICATE) {
+                        hvxParams.type = BLE_GATT_HVX_INDICATION;
+                    }
+                    hvxParams.handle = attrHandle;
+                    hvxParams.offset = 0;
+                    hvxParams.p_data = buf;
+                    hvxParams.p_len = &hvxLen;
+                    ret_code_t ret = sd_ble_gatts_hvx(cccdConnection, &hvxParams);
+                    if (ret != NRF_SUCCESS) {
+                        LOG(ERROR, "sd_ble_gatts_hvx() failed: %u", (unsigned)ret);
+                        break;
+                    }
+                    if (os_semaphore_take(hvxSemaphore_, BLE_HVX_PROCEDURE_TIMEOUT_MS, false)) {
+                        break;
+                    }
                 }
             }
         }
@@ -2055,17 +2183,19 @@ BleObject::GattServer::BleCharacteristic* BleObject::GattServer::findCharacteris
 }
 
 void BleObject::GattServer::addToCccdList(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle) {
-    characteristic->cccdConnections.append(connHandle);
+    for (auto& cccdConnection : characteristic->cccdConnections) {
+        if (cccdConnection == BLE_INVALID_CONN_HANDLE) {
+            cccdConnection = connHandle;
+            return;
+        }
+    }
 }
 
 void BleObject::GattServer::removeFromCCCDList(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle) {
-    for (int i = 0; i < characteristic->cccdConnections.size(); i = i) {
-        const auto& cccdConnection = characteristic->cccdConnections[i];
+    for (auto& cccdConnection : characteristic->cccdConnections) {
         if (cccdConnection == connHandle) {
-            characteristic->cccdConnections.removeAt(i);
-            continue;
+            cccdConnection = BLE_INVALID_CONN_HANDLE;
         }
-        i++;
     }
 }
 
@@ -2196,6 +2326,7 @@ struct GattClientImpl {
 static GattClientImpl gattcImpl;
 
 int BleObject::GattClient::init() {
+    gattcDiscPool_.init(GATT_CLIENT_DISC_SVC_CHAR_POOL_SIZE);
     gattcDataRecPool_.init(GATT_CLIENT_DATA_REC_POOL_SIZE);
     if (os_timer_create(&attMtuExchangeTimer_, BLE_ATT_MTU_EXCHANGE_DELAY_MS, onAttMtuExchangeTimerExpired, this, true, nullptr)) {
         LOG(ERROR, "os_timer_create() failed.");
@@ -2247,20 +2378,26 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
     if (os_semaphore_take(discoverySemaphore_, BLE_DICOVERY_PROCEDURE_TIMEOUT_MS, false)) {
         ret = SYSTEM_ERROR_TIMEOUT;
     }
-    hal_ble_svc_t* services = (hal_ble_svc_t*)malloc(discoveredServices_.size() * sizeof(hal_ble_svc_t));
+    hal_ble_svc_t* services = (hal_ble_svc_t*)malloc(discServiceCount_ * sizeof(hal_ble_svc_t));
     if (services) {
-        LOG_DEBUG(TRACE, "Discovered services address: %u, len: %u", (unsigned)services, discoveredServices_.size() * sizeof(hal_ble_svc_t));
+        LOG_DEBUG(TRACE, "Discovered services address: %u, len: %u", (unsigned)services, discServiceCount_ * sizeof(hal_ble_svc_t));
         BleObject::BleEventDispatcher::EventMessage msg;
         msg.evt.type = BLE_EVT_SVC_DISCOVERED;
         msg.evt.version = BLE_API_VERSION;
         msg.evt.size = sizeof(hal_ble_evts_t);
         msg.evt.params.svc_disc.conn_handle = currDiscConnHandle_;
-        msg.evt.params.svc_disc.count = discoveredServices_.size();
+        msg.evt.params.svc_disc.count = discServiceCount_;
+        DiscoveredService* discService = nullptr;
         size_t i = 0;
-        for (const auto& service : discoveredServices_) {
-            memcpy(services + i, &service, service.size);
-            i++;
-        }
+        do {
+            discService = discServicesList_.popFront();
+            if (discService) {
+                memcpy(services + i, &discService->service, sizeof(hal_ble_svc_t));
+                i++;
+                DiscoveredService* curr = discService;
+                gattcDiscPool_.free(curr);
+            }
+        } while (discService);
         msg.evt.params.svc_disc.services = services;
         msg.handler = (BleObject::BleEventDispatcher::BleSpecificEventHandler)callback;
         msg.context = context;
@@ -2317,20 +2454,26 @@ int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHan
             ret = SYSTEM_ERROR_TIMEOUT;
         }
     }
-    hal_ble_char_t* characteristics = (hal_ble_char_t*)malloc(discoveredCharacteristics_.size() * sizeof(hal_ble_char_t));
+    hal_ble_char_t* characteristics = (hal_ble_char_t*)malloc(discCharacteristicCount_ * sizeof(hal_ble_char_t));
     if (characteristics) {
-        LOG_DEBUG(TRACE, "Discovered characteristics address: %u, len: %u", (unsigned)characteristics, discoveredCharacteristics_.size() * sizeof(hal_ble_char_t));
+        LOG_DEBUG(TRACE, "Discovered characteristics address: %u, len: %u", (unsigned)characteristics, discCharacteristicCount_ * sizeof(hal_ble_char_t));
         BleObject::BleEventDispatcher::EventMessage msg;
         msg.evt.type = BLE_EVT_CHAR_DISCOVERED;
         msg.evt.version = BLE_API_VERSION;
         msg.evt.size = sizeof(hal_ble_evts_t);
         msg.evt.params.char_disc.conn_handle = currDiscConnHandle_;
-        msg.evt.params.char_disc.count = discoveredCharacteristics_.size();
+        msg.evt.params.char_disc.count = discCharacteristicCount_;
+        DiscoveredCharacteristic* discChar = nullptr;
         size_t i = 0;
-        for (const auto& characteristic : discoveredCharacteristics_) {
-            memcpy(characteristics + i, &characteristic, characteristic.size);
-            i++;
-        }
+        do {
+            discChar = discCharacteristicsList_.popFront();
+            if (discChar) {
+                memcpy(characteristics + i, &discChar->characteristic, sizeof(hal_ble_char_t));
+                i++;
+                DiscoveredCharacteristic* curr = discChar;
+                gattcDiscPool_.free(curr);
+            }
+        } while (discChar);
         msg.evt.params.char_disc.characteristics = characteristics;
         msg.handler = (BleObject::BleEventDispatcher::BleSpecificEventHandler)callback;
         msg.context = context;
@@ -2424,45 +2567,78 @@ void BleObject::GattClient::resetDiscoveryState() {
     isDiscovering_ = false;
     currDiscConnHandle_ = BLE_INVALID_CONN_HANDLE;
     currDiscProcedure_ = DiscoveryProcedure::BLE_DISCOVERY_PROCEDURE_IDLE;
-    discoveredServices_.clear();
-    discoveredCharacteristics_.clear();
+    discServiceCount_ = 0;
+    discCharacteristicCount_ = 0;
+}
+
+int BleObject::GattClient::addDiscoveredService(const hal_ble_svc_t& service) {
+    DiscoveredService* discService = (DiscoveredService*)gattcDiscPool_.alloc(sizeof(DiscoveredService));
+    if (discService) {
+        discService->service = service;
+        discServicesList_.pushFront(discService);
+        discServiceCount_++;
+        return SYSTEM_ERROR_NONE;
+    }
+    return SYSTEM_ERROR_NO_MEMORY;
+}
+
+int BleObject::GattClient::addDiscoveredCharacteristic(const hal_ble_char_t& characteristic) {
+    DiscoveredCharacteristic* discChar = (DiscoveredCharacteristic*)gattcDiscPool_.alloc(sizeof(DiscoveredCharacteristic));
+    if (discChar) {
+        discChar->characteristic = characteristic;
+        discCharacteristicsList_.pushFront(discChar);
+        discCharacteristicCount_++;
+        return SYSTEM_ERROR_NONE;
+    }
+    return SYSTEM_ERROR_NO_MEMORY;
 }
 
 bool BleObject::GattClient::readServiceUUID128IfNeeded() const {
-    for (const auto& service : discoveredServices_) {
-        if (service.uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
-            return (sd_ble_gattc_read(currDiscConnHandle_, service.start_handle, 0) == NRF_SUCCESS);
+    auto discService = discServicesList_.front();
+    while (discService) {
+        if (discService->service.uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
+            return (sd_ble_gattc_read(currDiscConnHandle_, discService->service.start_handle, 0) == NRF_SUCCESS);
         }
+        discService = discService->next;
     }
     return false;
 }
 
 bool BleObject::GattClient::readCharacteristicUUID128IfNeeded() const {
-    for (const auto& characteristic : discoveredCharacteristics_) {
-        if (characteristic.uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
-            return (sd_ble_gattc_read(currDiscConnHandle_, characteristic.charHandles.decl_handle, 0) == NRF_SUCCESS);
+    auto discChar = discCharacteristicsList_.front();
+    while (discChar) {
+        if (discChar->characteristic.uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
+            return (sd_ble_gattc_read(currDiscConnHandle_, discChar->characteristic.charHandles.decl_handle, 0) == NRF_SUCCESS);
         }
+        discChar = discChar->next;
     }
     return false;
 }
 
 hal_ble_svc_t* BleObject::GattClient::findDiscoveredService(hal_ble_attr_handle_t attrHandle) {
-    for (auto& service : discoveredServices_) {
-        if (service.start_handle <= attrHandle && attrHandle <= service.end_handle) {
-            return &service;
+    auto discService = discServicesList_.front();
+    while (discService) {
+        if (discService->service.start_handle <= attrHandle && attrHandle <= discService->service.end_handle) {
+            return &discService->service;
         }
+        discService = discService->next;
     }
     return nullptr;
 }
 
 hal_ble_char_t* BleObject::GattClient::findDiscoveredCharacteristic(hal_ble_attr_handle_t attrHandle) {
     hal_ble_char_t* foundChar = nullptr;
-    for (auto& characteristic : discoveredCharacteristics_) {
-        // Since the discovered characteristic is stored in sequence, the attribute handles are also organized in sequence.
-        if (characteristic.charHandles.decl_handle <= attrHandle) {
-            foundChar = &characteristic;
-            // Continue to iterate the list to find the actual characteristic the attrHandle belonging to.
+    hal_ble_attr_handle_t foundCharDeclHandle = BLE_INVALID_ATTR_HANDLE;
+    auto discChar = discCharacteristicsList_.front();
+    while (discChar) {
+        // The attribute handles increase by sequence.
+        if (attrHandle >= discChar->characteristic.charHandles.decl_handle) {
+            if (discChar->characteristic.charHandles.decl_handle > foundCharDeclHandle) {
+                foundChar = &discChar->characteristic;
+                foundCharDeclHandle = discChar->characteristic.charHandles.decl_handle;
+            }
         }
+        discChar = discChar->next;
     }
     return foundChar;
 }
@@ -2559,7 +2735,9 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                         service.start_handle = primSvcDiscRsp.services[i].handle_range.start_handle;
                         service.end_handle = primSvcDiscRsp.services[i].handle_range.end_handle;
                         BleObject::toHalUUID(&primSvcDiscRsp.services[i].uuid, &service.uuid);
-                        gattc->discoveredServices_.append(service);
+                        if (gattc->addDiscoveredService(service) != SYSTEM_ERROR_NONE) {
+                            LOG(ERROR, "There will have no memory to store new discovered services.");
+                        }
                     }
                     hal_ble_attr_handle_t currEndHandle = primSvcDiscRsp.services[primSvcDiscRsp.count - 1].handle_range.end_handle;
                     if ((gattc->discoverAll_) && (currEndHandle < SERVICES_TOP_END_HANDLE)) {
@@ -2598,7 +2776,9 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                         characteristic.charHandles.decl_handle = charDiscRsp.chars[i].handle_decl;
                         characteristic.charHandles.value_handle = charDiscRsp.chars[i].handle_value;
                         BleObject::toHalUUID(&charDiscRsp.chars[i].uuid, &characteristic.uuid);
-                        gattc->discoveredCharacteristics_.append(characteristic);
+                        if (gattc->addDiscoveredCharacteristic(characteristic) != SYSTEM_ERROR_NONE) {
+                            LOG(ERROR, "There will have no memory to store discovered characteristics.");
+                        }
                     }
                     hal_ble_attr_handle_t currEndHandle = charDiscRsp.chars[charDiscRsp.count - 1].handle_value;
                     if (currEndHandle < gattc->currDiscSvc_.end_handle) {

@@ -85,8 +85,7 @@ BleUuid::BleUuid(uint16_t uuid16) {
     uuid_.type = BLE_UUID_TYPE_16BIT;
 }
 
-BleUuid::BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order) {
-    BleUuid(uuid128, order);
+BleUuid::BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order) : BleUuid(uuid128, order) {
     uuid_.uuid128[12] = (uint8_t)(uuid16 & 0x00FF);
     uuid_.uuid128[13] = (uint8_t)((uuid16 >> 8) & 0x00FF);
     uuid_.type = BLE_UUID_TYPE_128BIT;
@@ -143,9 +142,6 @@ bool BleUuid::operator==(const BleUuid& uuid) const {
  * BleAdvertisingData class
  */
 BleAdvertisingData::BleAdvertisingData() : selfData_(), selfLen_(0) {
-}
-
-BleAdvertisingData::~BleAdvertisingData() {
 }
 
 size_t BleAdvertisingData::set(const uint8_t* buf, size_t len) {
@@ -376,28 +372,6 @@ public:
     BleServiceImpl* svcImpl; // Related service
 
     BleCharacteristicImpl() {
-        init();
-    }
-
-    BleCharacteristicImpl(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback) {
-        init();
-        this->description = desc;
-        this->properties = properties;
-        this->dataCb = callback;
-    }
-
-    BleCharacteristicImpl(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback) {
-        init();
-        this->description = desc;
-        this->properties = properties;
-        this->uuid = charUuid;
-        this->svcUuid = svcUuid;
-        this->dataCb = callback;
-    }
-
-    ~BleCharacteristicImpl() = default;
-
-    void init() {
         properties = BleCharacteristicProperty::NONE;
         description = "";
         isLocal = true;
@@ -405,6 +379,21 @@ public:
         svcImpl = nullptr;
         dataCb = nullptr;
     }
+
+    BleCharacteristicImpl(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback)
+            : BleCharacteristicImpl() {
+        this->description = desc;
+        this->properties = properties;
+        this->dataCb = callback;
+    }
+
+    BleCharacteristicImpl(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback)
+            : BleCharacteristicImpl(desc, properties, callback) {
+        this->uuid = charUuid;
+        this->svcUuid = svcUuid;
+    }
+
+    ~BleCharacteristicImpl() = default;
 
     Vector<BleCharacteristicRef>& references() {
         return references_;
@@ -668,23 +657,14 @@ public:
     BleAttributeHandle startHandle;
     BleAttributeHandle endHandle;
 
-    BleServiceImpl() {
-        init();
-    }
-
-    BleServiceImpl(const BleUuid& uuid)
-        : uuid(uuid) {
-        init();
+    BleServiceImpl() : startHandle(BLE_INVALID_ATTR_HANDLE), endHandle(BLE_INVALID_ATTR_HANDLE) {}
+    BleServiceImpl(const BleUuid& svcUuid) : BleServiceImpl() {
+        uuid = svcUuid;
     }
     ~BleServiceImpl() = default;
 
     Vector<BleCharacteristic>& characteristics() {
         return characteristics_;
-    }
-
-    void init() {
-        startHandle = 0;
-        endHandle = 0;
     }
 
     bool contains(const BleCharacteristic& characteristic) {
@@ -1386,7 +1366,7 @@ bool BlePeerDevice::connected() const {
     return connHandle != BLE_INVALID_CONN_HANDLE;
 }
 
-bool BlePeerDevice::operator == (const BlePeerDevice& device) {
+bool BlePeerDevice::operator==(const BlePeerDevice& device) {
     if (connHandle == device.connHandle &&
         address == device.address) {
         return true;

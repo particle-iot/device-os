@@ -73,14 +73,14 @@ enum class BleCharacteristicProperty : uint8_t {
     EXTENDED_PROP       = BLE_SIG_CHAR_PROP_EXTENDED_PROP
 };
 
-inline BleCharacteristicProperty operator& (BleCharacteristicProperty lhs, BleCharacteristicProperty rhs) {
+inline BleCharacteristicProperty operator&(BleCharacteristicProperty lhs, BleCharacteristicProperty rhs) {
     return static_cast<BleCharacteristicProperty>(
         static_cast<std::underlying_type<BleCharacteristicProperty>::type>(lhs) |
         static_cast<std::underlying_type<BleCharacteristicProperty>::type>(rhs)
     );
 }
 
-inline BleCharacteristicProperty& operator|= (BleCharacteristicProperty& lhs, BleCharacteristicProperty rhs) {
+inline BleCharacteristicProperty& operator|=(BleCharacteristicProperty& lhs, BleCharacteristicProperty rhs) {
     lhs = static_cast<BleCharacteristicProperty> (
         static_cast<std::underlying_type<BleCharacteristicProperty>::type>(lhs) |
         static_cast<std::underlying_type<BleCharacteristicProperty>::type>(rhs)
@@ -278,7 +278,7 @@ public:
     static const size_t MAX_LEN = BLE_MAX_ADV_DATA_LEN;
 
     BleAdvertisingData();
-    ~BleAdvertisingData();
+    ~BleAdvertisingData() = default;
 
     size_t set(const uint8_t* buf, size_t len);
 
@@ -336,19 +336,16 @@ public:
     BleCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr)
         : BleCharacteristic(desc.c_str(), properties, callback) {
     }
-
     template<typename T>
     BleCharacteristic(const char* desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr) {
         BleUuid cUuid(charUuid);
         BleUuid sUuid(svcUuid);
         construct(desc, properties, cUuid, sUuid, callback);
     }
-
     template<typename T>
     BleCharacteristic(const String& desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr)
         : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback) {
     }
-
     ~BleCharacteristic();
 
     BleCharacteristic& operator=(const BleCharacteristic& characteristic);
