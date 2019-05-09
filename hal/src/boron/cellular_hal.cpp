@@ -33,7 +33,6 @@
 #include "at_command.h"
 #include "at_response.h"
 #include "modem/enums_hal.h"
-#include "hal_cellular_global_identity.h"
 
 #include <limits>
 
@@ -97,9 +96,10 @@ hal_net_access_tech_t fromCellularAccessTechnology(CellularAccessTechnology rat)
         return NET_ACCESS_TECHNOLOGY_UTRAN;
     case CellularAccessTechnology::LTE:
         return NET_ACCESS_TECHNOLOGY_LTE;
-    case CellularAccessTechnology::E_UTRAN:
     case CellularAccessTechnology::EC_GSM_IOT:
-        return NET_ACCESS_TECHNOLOGY_LTE_IOT;
+        return NET_ACCESS_TECHNOLOGY_LTE_CAT_M1;
+    case CellularAccessTechnology::E_UTRAN:
+        return NET_ACCESS_TECHNOLOGY_LTE_CAT_NB1;
     default:
         return NET_ACCESS_TECHNOLOGY_UNKNOWN;
     }

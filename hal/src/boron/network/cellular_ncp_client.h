@@ -19,7 +19,7 @@
 
 #include "ncp_client.h"
 #include "cellular_network_manager.h"
-#include "hal_cellular_global_identity.h"
+#include "cellular_hal_cellular_global_identity.h"
 
 namespace particle {
 

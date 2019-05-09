@@ -31,7 +31,6 @@
 
 #ifdef DYNALIB_EXPORT
 #include "cellular_hal.h"
-#include "hal_cellular_global_identity.h"
 #include "inet_hal.h"
 #include "net_hal.h"
 #endif

@@ -27,7 +27,7 @@
 #include "inet_hal.h"
 #include "system_tick_hal.h"
 #include "cellular_hal_constants.h"
-#include "hal_cellular_global_identity.h"
+#include "cellular_hal_cellular_global_identity.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -24,7 +24,6 @@
 
 #include "at_parser.h"
 
-#include "hal_cellular_global_identity.h"
 #include "spark_wiring_thread.h"
 #include "gsm0710muxer/channel_stream.h"
 #include "static_recursive_mutex.h"

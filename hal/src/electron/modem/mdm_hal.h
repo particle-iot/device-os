@@ -19,12 +19,11 @@
 
 #pragma once
 
-//#include <stdio.h>
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
 
-#include "hal_cellular_global_identity.h"
+#include "cellular_hal_cellular_global_identity.h"
 #include "pipe_hal.h"
 #include "electronserialpipe_hal.h"
 #include "pinmap_hal.h"
