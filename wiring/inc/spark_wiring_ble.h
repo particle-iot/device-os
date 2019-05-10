@@ -450,7 +450,7 @@ public:
     BleAddress address;
 
     int on();
-    void off();
+    int off();
 
     int setTxPower(int8_t txPower) const;
     int txPower(int8_t* txPower) const;
@@ -527,7 +527,6 @@ private:
     std::unique_ptr<BlePeripheralImpl> peripheralProxy_;
     std::unique_ptr<BleCentralImpl> centralProxy_;
 };
-
 
 #define BLE BleLocalDevice::getInstance()
 
