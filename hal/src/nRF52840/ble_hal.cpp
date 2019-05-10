@@ -3070,8 +3070,16 @@ int BleObject::toHalUUID(const ble_uuid_t* uuid, hal_ble_uuid_t* halUuid) {
 /**********************************************
  * Particle BLE APIs
  */
+int hal_ble_lock(void* reserved) {
+    return !s_bleMutex.lock();
+}
+
+int hal_ble_unlock(void* reserved) {
+    return !s_bleMutex.unlock();
+}
+
 int hal_ble_stack_init(void* reserved) {
-    std::lock_guard<BleLock> lk(BleLock());
+    BleLock lk;
     /* The SoftDevice has been enabled in core_hal.c */
     LOG_DEBUG(TRACE, "hal_ble_stack_init().");
     return BleObject::getInstance().init();
@@ -3082,7 +3090,7 @@ int hal_ble_select_antenna(hal_ble_ant_type_t antenna) {
 }
 
 int hal_ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context) {
-    std::lock_guard<BleLock> lk(BleLock());
+    BleLock lk;
     BleObject::getInstance().dispatcher()->onGenericEventCallback(callback, context);
     return SYSTEM_ERROR_NONE;
 }
@@ -3090,14 +3098,6 @@ int hal_ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context) {
 /**********************************************
  * BLE GAP APIs
  */
-int hal_ble_lock(void* reserved) {
-    return !s_bleMutex.lock();
-}
-
-int hal_ble_unlock(void* reserved) {
-    return !s_bleMutex.unlock();
-}
-
 int hal_ble_gap_set_device_address(const hal_ble_addr_t* address) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_device_address().");
@@ -3247,7 +3247,7 @@ bool hal_ble_gap_is_scanning(void) {
 }
 
 int hal_ble_gap_stop_scan(void) {
-    BleLock lk;
+    // Do not acquire the lock here, otherwise another thread cannot cancel the scanning.
     LOG_DEBUG(TRACE, "hal_ble_gap_stop_scan().");
     return BleObject::getInstance().observer()->stopScanning();
 }
