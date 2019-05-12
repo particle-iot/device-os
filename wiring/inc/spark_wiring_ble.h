@@ -50,6 +50,7 @@ class BleBroadcasterImpl;
 class BleObserverImpl;
 class BlePeripheralImpl;
 class BleCentralImpl;
+class BlePeerDeviceImpl;
 
 enum class BleUuidType {
     SHORT = 0,
@@ -332,46 +333,42 @@ class BleCharacteristic {
 public:
     BleCharacteristic();
     BleCharacteristic(const BleCharacteristic& characteristic);
-    BleCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr);
-    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr)
-        : BleCharacteristic(desc.c_str(), properties, callback) {
+    BleCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
+    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
+        : BleCharacteristic(desc.c_str(), properties, callback, context) {
     }
     template<typename T>
-    BleCharacteristic(const char* desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr) {
+    BleCharacteristic(const char* desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
         BleUuid cUuid(charUuid);
         BleUuid sUuid(svcUuid);
-        construct(desc, properties, cUuid, sUuid, callback);
+        construct(desc, properties, cUuid, sUuid, callback, context);
     }
     template<typename T>
-    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr)
-        : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback) {
+    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
+        : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context) {
     }
     ~BleCharacteristic();
 
     BleCharacteristic& operator=(const BleCharacteristic& characteristic);
 
-    bool valid() {
-        return impl() != nullptr;
-    }
-
     BleUuid UUID() const;
     BleCharacteristicProperty properties(void) const;
 
-    size_t getValue(uint8_t* buf, size_t len) const;
-    size_t getValue(String& str) const;
+    ssize_t getValue(uint8_t* buf, size_t len) const;
+    ssize_t getValue(String& str) const;
 
     template<typename T>
-    size_t getValue(T* val) const {
+    ssize_t getValue(T* val) const {
         size_t len = sizeof(T);
         return getValue(reinterpret_cast<uint8_t*>(val), len);
     }
 
-    size_t setValue(const uint8_t* buf, size_t len);
-    size_t setValue(const String& str);
-    size_t setValue(const char* str);
+    ssize_t setValue(const uint8_t* buf, size_t len);
+    ssize_t setValue(const String& str);
+    ssize_t setValue(const char* str);
 
     template<typename T>
-    size_t setValue(T val) {
+    ssize_t setValue(T val) {
         uint8_t buf[BLE_MAX_ATTR_VALUE_PACKET_SIZE];
         size_t len = std::min(sizeof(T), (unsigned)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
         for (size_t i = 0, j = len - 1; i < len; i++, j--) {
@@ -380,14 +377,14 @@ public:
         return setValue(buf, len);
     }
 
-    void onDataReceived(BleOnDataReceivedCallback callback);
+    void onDataReceived(BleOnDataReceivedCallback callback, void* context);
 
     BleCharacteristicImpl* impl() const {
         return impl_.get();
     }
 
 private:
-    void construct(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback);
+    void construct(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context);
 
     std::shared_ptr<BleCharacteristicImpl> impl_;
 };
@@ -420,28 +417,23 @@ public:
 class BlePeerDevice {
 public:
     BlePeerDevice();
-    BlePeerDevice(const BleAddress& addr);
-    ~BlePeerDevice() = default;
+    ~BlePeerDevice();
 
-    BleCharacteristic characteristic(const char* desc) const;
-    BleCharacteristic characteristic(const BleUuid& uuid) const;
+    BleCharacteristic getCharacteristic(const char* desc);
+    BleCharacteristic getCharacteristic(const BleUuid& uuid);
 
-    bool connected() const;
+    bool connected();
 
-    BleGattServerImpl* gattsProxy(void) {
-        return gattsProxy_.get();
+    const BleAddress& address() const;
+
+    BlePeerDeviceImpl* impl(void) const {
+        return impl_.get();
     }
 
     bool operator==(const BlePeerDevice& device);
 
-    hal_ble_role_t role;
-    BleAddress address;
-    BleConnectionParams connParams;
-    BleConnectionHandle connHandle;
-    int8_t rssi;
-
 private:
-    std::shared_ptr<BleGattServerImpl> gattsProxy_;
+    std::shared_ptr<BlePeerDeviceImpl> impl_;
 };
 
 
@@ -531,7 +523,7 @@ private:
 #define BLE BleLocalDevice::getInstance()
 
 #ifndef BLE_WIRING_DEBUG_ENABLED
-#define BLE_WIRING_DEBUG_ENABLED 0
+#define BLE_WIRING_DEBUG_ENABLED 1
 #endif
 
 } /* namespace particle */

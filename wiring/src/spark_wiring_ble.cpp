@@ -379,29 +379,6 @@ size_t BleAdvertisingData::locate(const uint8_t* buf, size_t len, BleAdvertising
 }
 
 
-class BleCharacteristicRef {
-public:
-    BleCharacteristic* charPtr;
-    bool isStub;
-
-    BleCharacteristicRef() {
-        charPtr = nullptr;
-        isStub = false;
-    }
-
-    BleCharacteristicRef(BleCharacteristic* characteristic, bool stub)
-        : charPtr(characteristic),
-          isStub(stub) {
-    }
-
-    ~BleCharacteristicRef() = default;
-
-    bool operator==(const BleCharacteristicRef& reference) {
-        return (reference.charPtr == this->charPtr);
-    }
-};
-
-
 /*******************************************************
  * BleCharacteristicImpl definition
  */
@@ -414,73 +391,69 @@ public:
     bool isLocal;
     BleCharacteristicHandles attrHandles;
     BleOnDataReceivedCallback dataCb;
+    void* context;
     BleConnectionHandle connHandle; // For peer characteristic
     BleServiceImpl* svcImpl; // Related service
 
-    BleCharacteristicImpl() {
-        properties = BleCharacteristicProperty::NONE;
-        description = "";
-        isLocal = true;
-        connHandle = BLE_INVALID_CONN_HANDLE;
-        svcImpl = nullptr;
-        dataCb = nullptr;
+    BleCharacteristicImpl()
+            : properties(BleCharacteristicProperty::NONE),
+              description(),
+              isLocal(true),
+              dataCb(nullptr),
+              context(nullptr),
+              connHandle(BLE_INVALID_CONN_HANDLE),
+              svcImpl(nullptr),
+              valid_(false) {
     }
 
-    BleCharacteristicImpl(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback)
+    BleCharacteristicImpl(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback, void* context)
             : BleCharacteristicImpl() {
         this->description = desc;
         this->properties = properties;
         this->dataCb = callback;
+        this->context = context;
     }
 
-    BleCharacteristicImpl(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback)
-            : BleCharacteristicImpl(desc, properties, callback) {
+    BleCharacteristicImpl(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context)
+            : BleCharacteristicImpl(desc, properties, callback, context) {
         this->uuid = charUuid;
         this->svcUuid = svcUuid;
     }
 
     ~BleCharacteristicImpl() = default;
 
-    Vector<BleCharacteristicRef>& references() {
-        return references_;
-    }
-
-    size_t getValue(uint8_t* buf, size_t len) const {
-        if (buf == nullptr) {
-            return 0;
+    ssize_t getValue(uint8_t* buf, size_t len) const {
+        if (buf == nullptr || len == 0) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         len = len > BLE_MAX_ATTR_VALUE_PACKET_SIZE ? BLE_MAX_ATTR_VALUE_PACKET_SIZE : len;
-        int ret;
         if (isLocal) {
-            ret = hal_ble_gatt_server_get_characteristic_value(attrHandles.value_handle, buf, len, nullptr);
+            return hal_ble_gatt_server_get_characteristic_value(attrHandles.value_handle, buf, len, nullptr);
+        } else if(valid_) {
+            return hal_ble_gatt_client_read(connHandle, attrHandles.value_handle, buf, len, nullptr);
         } else {
-            ret = hal_ble_gatt_client_read(connHandle, attrHandles.value_handle, buf, len, nullptr);
+            return SYSTEM_ERROR_INVALID_STATE;
         }
-        if (ret == SYSTEM_ERROR_NONE) {
-            return len;
-        }
-        return 0;
     }
 
-    size_t setValue(const uint8_t* buf, size_t len) {
-        if (buf == nullptr) {
-            return 0;
+    ssize_t setValue(const uint8_t* buf, size_t len) {
+        if (buf == nullptr || len == 0) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         len = len > BLE_MAX_ATTR_VALUE_PACKET_SIZE ? BLE_MAX_ATTR_VALUE_PACKET_SIZE : len;
-        int ret = 0;
         if (isLocal) {
-            ret = hal_ble_gatt_server_set_characteristic_value(attrHandles.value_handle, buf, len, nullptr);
-            if (ret == 0) {
-                LOG(ERROR, "hal_ble_gatt_server_set_characteristic_value failed.");
-            }
-        } else {
+            return hal_ble_gatt_server_set_characteristic_value(attrHandles.value_handle, buf, len, nullptr);
+        } else if(valid_) {
             if ((properties & BleCharacteristicProperty::WRITE) == BleCharacteristicProperty::WRITE) {
-                ret = hal_ble_gatt_client_write_with_response(connHandle, attrHandles.value_handle, buf, len, nullptr);
+                return hal_ble_gatt_client_write_with_response(connHandle, attrHandles.value_handle, buf, len, nullptr);
             } else if ((properties & BleCharacteristicProperty::WRITE_WO_RSP) == BleCharacteristicProperty::WRITE_WO_RSP) {
-                ret = hal_ble_gatt_client_write_without_response(connHandle, attrHandles.value_handle, buf, len, nullptr);
+                return hal_ble_gatt_client_write_without_response(connHandle, attrHandles.value_handle, buf, len, nullptr);
+            } else {
+                return SYSTEM_ERROR_NOT_SUPPORTED;
             }
+        } else {
+            return SYSTEM_ERROR_INVALID_STATE;
         }
-        return ret;
     }
 
     void assignUuidIfNeeded() {
@@ -491,71 +464,22 @@ public:
         }
     }
 
-    void addReference(BleCharacteristic* characteristic, bool stub) {
-        BleCharacteristicRef reference(characteristic, stub);
-        references_.append(reference);
-        DEBUG("0x%08X added references: %d", this, references_.size());
-    }
-
-    void removeReference(BleCharacteristic* characteristic) {
-        for (const auto& reference : references_) {
-            if (reference.charPtr == characteristic) {
-                references_.removeOne(reference);
-                DEBUG("0x%08X removed references: %d", this, references_.size());
-            }
-        }
-    }
-
-    bool isReferenceStub(const BleCharacteristic* characteristic) {
-        for (const auto& reference : references_) {
-            if (reference.charPtr == characteristic) {
-                return reference.isStub;
-            }
-        }
-        return false;
-    }
-
-    BleCharacteristic* getReferenceStub() {
-        for (const auto& reference : references_) {
-            if (reference.isStub) {
-                return reference.charPtr;
-            }
-        }
-        return nullptr;
-    }
-
-    size_t referenceStubCount() {
-        size_t total = 0;
-        for (const auto& reference : references_) {
-            if (reference.isStub) {
-                total++;
-            }
-        }
-        return total;
-    }
-
-    void markReferenceAsStub(BleCharacteristic* characteristic) {
-        for (auto& reference : references_) {
-            if (reference.charPtr == characteristic) {
-                reference.isStub = true;
-                DEBUG("0x%08X STUB references: 0x%08X", this, characteristic);
-            }
-        }
+    void setValid(bool valid) {
+        valid_ = valid;
     }
 
     void processReceivedData(BleAttributeHandle attrHandle, const uint8_t* data, size_t len, const BlePeerDevice& peer) {
-        if (data == nullptr) {
+        if (data == nullptr || len == 0) {
             return;
         }
-        BleCharacteristic* characteristic = getReferenceStub();
-        if (characteristic && dataCb && attrHandle == attrHandles.value_handle) {
-            dataCb(data, len, peer, characteristic);
+        if (dataCb && attrHandle == attrHandles.value_handle) {
+            dataCb(data, len, peer, context);
         }
     }
 
 private:
     static uint16_t defaultUuidCharCount_;
-    Vector<BleCharacteristicRef> references_;
+    bool valid_;
 };
 
 uint16_t BleCharacteristicImpl::defaultUuidCharCount_ = 0;
@@ -566,84 +490,46 @@ uint16_t BleCharacteristicImpl::defaultUuidCharCount_ = 0;
  */
 BleCharacteristic::BleCharacteristic()
         : impl_(std::make_shared<BleCharacteristicImpl>()) {
-    impl()->addReference(this, false);
-    DEBUG("BleCharacteristic::BleCharacteristic():0x%08X -> 0x%08X", this, impl());
-    DEBUG("shared_ptr count: %d", impl_.use_count());
+    DEBUG("BleCharacteristic(), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
 }
 
 BleCharacteristic::BleCharacteristic(const BleCharacteristic& characteristic)
         : impl_(characteristic.impl_) {
-    DEBUG("BleCharacteristic::BleCharacteristic(copy):0x%08X => 0x%08X -> 0x%08X", &characteristic, this, impl());
-    DEBUG("shared_ptr count: %d", impl_.use_count());
-    if (impl() != nullptr) {
-        impl()->addReference(this, impl()->isReferenceStub(&characteristic));
-    }
+    DEBUG("BleCharacteristic(copy), 0x%08X => 0x%08X -> 0x%08X, count: %d", &characteristic, this, impl(), impl_.use_count());
 }
 
-BleCharacteristic::BleCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback)
-        : impl_(std::make_shared<BleCharacteristicImpl>(desc, properties, callback)) {
-    impl()->addReference(this, false);
-
-    DEBUG("BleCharacteristic::BleCharacteristic(...):0x%08X -> 0x%08X", this, impl());
-    DEBUG("shared_ptr count: %d", impl_.use_count());
+BleCharacteristic::BleCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback, void* context)
+        : impl_(std::make_shared<BleCharacteristicImpl>(desc, properties, callback, context)) {
+    DEBUG("BleCharacteristic(...), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
 }
 
-void BleCharacteristic::construct(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback) {
-    impl_ = std::make_shared<BleCharacteristicImpl>(desc, properties, charUuid, svcUuid, callback);
-    impl()->addReference(this, false);
-
-    DEBUG("BleCharacteristic::construct(...):0x%08X -> 0x%08X", this, impl());
-    DEBUG("shared_ptr count: %d", impl_.use_count());
+void BleCharacteristic::construct(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context) {
+    impl_ = std::make_shared<BleCharacteristicImpl>(desc, properties, charUuid, svcUuid, callback, context);
+    DEBUG("BleCharacteristic(), construct(...):0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
 }
 
 BleCharacteristic& BleCharacteristic::operator=(const BleCharacteristic& characteristic) {
-    DEBUG("BleCharacteristic::operator=:0x%08X -> 0x%08X", this, impl());
-    DEBUG("shared_ptr pre-count1: %d", impl_.use_count());
+    DEBUG("BleCharacteristic(), operator=:0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
     BleOnDataReceivedCallback preDataCb = nullptr;
+    void* preContext = nullptr;
     if (impl() != nullptr) {
         if (impl()->dataCb != nullptr) {
             preDataCb = impl()->dataCb;
-        }
-        if (impl()->isReferenceStub(this) && impl()->referenceStubCount() == 1) {
-            for (auto& reference : impl()->references()) {
-                if (reference.charPtr != this) {
-                    reference.charPtr->impl_ = nullptr;
-                }
-            }
-            DEBUG("shared_ptr pre-count2: %d", impl_.use_count());
-        } else {
-            impl()->removeReference(this);
+            preContext = impl()->context;
         }
     }
 
     impl_ = characteristic.impl_;
     if (impl()->dataCb == nullptr) {
         impl()->dataCb = preDataCb;
+        impl()->context = preContext;
     }
-    DEBUG("now:0x%08X -> 0x%08X", this, impl());
-    DEBUG("shared_ptr curr-count: %d", impl_.use_count());
-    if (impl() != nullptr) {
-        impl()->addReference(this, impl()->isReferenceStub(&characteristic));
-    }
+    DEBUG("now:0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
     return *this;
 }
 
 BleCharacteristic::~BleCharacteristic() {
-    DEBUG("BleCharacteristic::~BleCharacteristic:0x%08X -> 0x%08X", this, impl());
-    if (impl() != nullptr) {
-        if (impl()->isReferenceStub(this) && impl()->referenceStubCount() == 1) {
-            DEBUG("shared_ptr count1: %d", impl_.use_count());
-            for (auto& reference : impl()->references()) {
-                if (reference.charPtr != this) {
-                    reference.charPtr->impl_ = nullptr;
-                }
-            }
-            DEBUG("shared_ptr count2: %d", impl_.use_count());
-        } else {
-            DEBUG("shared_ptr count1: %d", impl_.use_count());
-            impl()->removeReference(this);
-        }
-    }
+    DEBUG("~BleCharacteristic(), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count() - 1);
 }
 
 BleUuid BleCharacteristic::UUID() const {
@@ -661,35 +547,36 @@ BleCharacteristicProperty BleCharacteristic::properties() const {
     return BleCharacteristicProperty::NONE;
 }
 
-size_t BleCharacteristic::setValue(const uint8_t* buf, size_t len) {
+ssize_t BleCharacteristic::setValue(const uint8_t* buf, size_t len) {
     if (impl() != nullptr) {
         return impl()->setValue(buf, len);
     }
     return 0;
 }
 
-size_t BleCharacteristic::setValue(const String& str) {
+ssize_t BleCharacteristic::setValue(const String& str) {
     return setValue(reinterpret_cast<const uint8_t*>(str.c_str()), str.length());
 }
 
-size_t BleCharacteristic::setValue(const char* str) {
+ssize_t BleCharacteristic::setValue(const char* str) {
     return setValue(reinterpret_cast<const uint8_t*>(str), strlen(str));
 }
 
-size_t BleCharacteristic::getValue(uint8_t* buf, size_t len) const {
+ssize_t BleCharacteristic::getValue(uint8_t* buf, size_t len) const {
     if (impl() != nullptr) {
         return impl()->getValue(buf, len);
     }
     return 0;
 }
 
-size_t BleCharacteristic::getValue(String& str) const {
+ssize_t BleCharacteristic::getValue(String& str) const {
     return 0;
 }
 
-void BleCharacteristic::onDataReceived(BleOnDataReceivedCallback callback) {
+void BleCharacteristic::onDataReceived(BleOnDataReceivedCallback callback, void* context) {
     if (impl() != nullptr) {
         impl()->dataCb = callback;
+        impl()->context = context;
     }
 }
 
@@ -724,7 +611,7 @@ public:
         return false;
     }
 
-    BleCharacteristic* characteristic(const char* desc) {
+    BleCharacteristic* getCharacteristic(const char* desc) {
         if (desc == nullptr) {
             return nullptr;
         }
@@ -736,7 +623,7 @@ public:
         return nullptr;
     }
 
-    BleCharacteristic* characteristic(BleAttributeHandle attrHandle) {
+    BleCharacteristic* getCharacteristic(BleAttributeHandle attrHandle) {
         for (auto& characteristic : characteristics_) {
             BleCharacteristicImpl* charImpl = characteristic.impl();
             if (charImpl != nullptr) {
@@ -752,7 +639,7 @@ public:
         return nullptr;
     }
 
-    BleCharacteristic* characteristic(const BleUuid& charUuid) {
+    BleCharacteristic* getCharacteristic(const BleUuid& charUuid) {
         for (auto& characteristic : characteristics_) {
             if (characteristic.impl() != nullptr && characteristic.impl()->uuid == charUuid) {
                 return &characteristic;
@@ -780,10 +667,9 @@ public:
             }
         }
         characteristic.impl()->svcImpl = this;
+        characteristic.impl()->setValid(true);
         LOG_DEBUG(TRACE, "characteristics.append(characteristic)");
         characteristics_.append(characteristic);
-        BleCharacteristic& lastChar = characteristics_.last();
-        lastChar.impl()->markReferenceAsStub(&lastChar);
         return SYSTEM_ERROR_NONE;
     }
 
@@ -816,10 +702,10 @@ public:
         return services_;
     }
 
-    BleService* service(const BleUuid& uuid) {
-        for (auto& stubSvc : services_) {
-            if (stubSvc.impl()->uuid == uuid) {
-                return &stubSvc;
+    BleService* getService(const BleUuid& uuid) {
+        for (auto& service : services_) {
+            if (service.impl()->uuid == uuid) {
+                return &service;
             }
         }
         return nullptr;
@@ -830,7 +716,7 @@ public:
     }
 
     int addService(BleService& svc) {
-        if (service(svc.impl()->uuid) != nullptr) {
+        if (getService(svc.impl()->uuid) != nullptr) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         if (isLocal()) {
@@ -840,7 +726,7 @@ public:
                 return ret;
             }
         }
-        DEBUG(TRACE, "services.append(service)");
+        DEBUG("services.append(service)");
         services_.append(svc);
         return SYSTEM_ERROR_NONE;
     }
@@ -857,10 +743,10 @@ public:
                 characteristic.impl()->svcUuid = newUuid;
             }
         }
-        BleService* stubSvc = service(characteristic.impl()->svcUuid);
-        if (stubSvc != nullptr) {
-            if (stubSvc->impl() != nullptr) {
-                return stubSvc->impl()->addCharacteristic(characteristic);
+        BleService* service = getService(characteristic.impl()->svcUuid);
+        if (service != nullptr) {
+            if (service->impl() != nullptr) {
+                return service->impl()->addCharacteristic(characteristic);
             }
             return SYSTEM_ERROR_INTERNAL;
         } else {
@@ -873,9 +759,9 @@ public:
     }
 
     template <typename T>
-    BleCharacteristic characteristic(T type) const {
+    BleCharacteristic getCharacteristic(T type) const {
         for (auto& service : services_) {
-            BleCharacteristic* characteristic = service.impl()->characteristic(type);
+            BleCharacteristic* characteristic = service.impl()->getCharacteristic(type);
             if (characteristic != nullptr) {
                 return *characteristic;
             }
@@ -887,9 +773,9 @@ public:
     void gattsProcessDisconnected(const BlePeerDevice& peer) {
     }
 
-    void gattsProcessDataWritten(BleAttributeHandle attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer) {
+    void gattsProcessDataWritten(BleAttributeHandle attrHandle, const uint8_t* buf, size_t len, const BlePeerDevice& peer) {
         for (auto& service : services_) {
-            BleCharacteristic* characteristic = service.impl()->characteristic(attrHandle);
+            BleCharacteristic* characteristic = service.impl()->getCharacteristic(attrHandle);
             if (characteristic != nullptr) {
                 characteristic->impl()->processReceivedData(attrHandle, buf, len, peer);
             }
@@ -902,6 +788,33 @@ private:
 };
 
 
+class BlePeerDeviceImpl {
+public:
+    BlePeerDeviceImpl()
+            : role(BLE_ROLE_INVALID),
+              address(),
+              connParams(),
+              connHandle(BLE_INVALID_CONN_HANDLE),
+              rssi(0x7F),
+              gattsProxy(std::make_unique<BleGattServerImpl>(false)) {
+    }
+    ~BlePeerDeviceImpl() = default;
+
+    void invalidate() {
+        role = BLE_ROLE_INVALID;
+        connHandle = BLE_INVALID_CONN_HANDLE;
+        rssi = 0x7F;
+        connParams = {};
+    }
+
+    hal_ble_role_t role;
+    BleAddress address;
+    BleConnectionParams connParams;
+    BleConnectionHandle connHandle;
+    int8_t rssi;
+    std::unique_ptr<BleGattServerImpl> gattsProxy;
+};
+
 /*******************************************************
  * BleGattClientImpl definition
  */
@@ -912,15 +825,15 @@ public:
 
     int discoverAllServices(BlePeerDevice& peer) {
         LOG(TRACE, "Start discovering services.");
-        int ret = hal_ble_gatt_client_discover_all_services(peer.connHandle, onServicesDiscovered, &peer, nullptr);
+        int ret = hal_ble_gatt_client_discover_all_services(peer.impl()->connHandle, onServicesDiscovered, &peer, nullptr);
         if (ret == SYSTEM_ERROR_NONE) {
-            for (auto& service : peer.gattsProxy()->services()) {
+            for (auto& service : peer.impl()->gattsProxy->services()) {
                 hal_ble_svc_t halService;
                 halService.size = sizeof(hal_ble_svc_t);
                 halService.start_handle = service.impl()->startHandle;
                 halService.end_handle = service.impl()->endHandle;
                 LOG(TRACE, "Start discovering characteristics.");
-                ret = hal_ble_gatt_client_discover_characteristics(peer.connHandle, &halService, onCharacteristicsDiscovered, &service, nullptr);
+                ret = hal_ble_gatt_client_discover_characteristics(peer.impl()->connHandle, &halService, onCharacteristicsDiscovered, &service, nullptr);
                 if (ret != SYSTEM_ERROR_NONE) {
                     return ret;
                 }
@@ -928,15 +841,15 @@ public:
                     // Enable notification or indication if presented.
                     if (characteristic.impl()->attrHandles.cccd_handle != BLE_INVALID_ATTR_HANDLE) {
                         if ((characteristic.impl()->properties & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY) {
-                            hal_ble_gatt_client_configure_cccd(peer.connHandle, characteristic.impl()->attrHandles.cccd_handle, BLE_SIG_CCCD_VAL_NOTIFICATION, nullptr);
+                            hal_ble_gatt_client_configure_cccd(peer.impl()->connHandle, characteristic.impl()->attrHandles.cccd_handle, BLE_SIG_CCCD_VAL_NOTIFICATION, nullptr);
                         } else if ((characteristic.impl()->properties & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE) {
-                            hal_ble_gatt_client_configure_cccd(peer.connHandle, characteristic.impl()->attrHandles.cccd_handle, BLE_SIG_CCCD_VAL_INDICATION, nullptr);
+                            hal_ble_gatt_client_configure_cccd(peer.impl()->connHandle, characteristic.impl()->attrHandles.cccd_handle, BLE_SIG_CCCD_VAL_INDICATION, nullptr);
                         }
                     }
                     // Read the user description string if presented.
                     if (characteristic.impl()->attrHandles.user_desc_handle != BLE_INVALID_ATTR_HANDLE) {
                         char desc[32]; // FIXME: use macro definition instead.
-                        size_t len = hal_ble_gatt_client_read(peer.connHandle, characteristic.impl()->attrHandles.user_desc_handle, (uint8_t*)desc, sizeof(desc) - 1, nullptr);
+                        size_t len = hal_ble_gatt_client_read(peer.impl()->connHandle, characteristic.impl()->attrHandles.user_desc_handle, (uint8_t*)desc, sizeof(desc) - 1, nullptr);
                         if (len > 0) {
                             desc[len] = '\0';
                             characteristic.impl()->description = desc;
@@ -952,8 +865,8 @@ public:
         return ret;
     }
 
-    void gattcProcessDataNotified(BleAttributeHandle attrHandle, const uint8_t* buf, size_t len, BlePeerDevice& peer) {
-        peer.gattsProxy()->gattsProcessDataWritten(attrHandle, buf, len, peer);
+    void gattcProcessDataNotified(BleAttributeHandle attrHandle, const uint8_t* buf, size_t len, const BlePeerDevice& peer) {
+        peer.impl()->gattsProxy->gattsProcessDataWritten(attrHandle, buf, len, peer);
     }
 
     /*
@@ -970,7 +883,7 @@ public:
             BleService service(svcUUID);
             service.impl()->startHandle = event->services[i].start_handle;
             service.impl()->endHandle = event->services[i].end_handle;
-            if (peer->gattsProxy()->addService(service) == SYSTEM_ERROR_NONE) {
+            if (peer->impl()->gattsProxy->addService(service) == SYSTEM_ERROR_NONE) {
                 LOG_DEBUG(TRACE, "New service found.");
             }
         }
@@ -1318,8 +1231,8 @@ public:
     }
 
     int disconnect() {
-        for (BlePeerDevice& central : centrals_) {
-            hal_ble_gap_disconnect(central.connHandle, nullptr);
+        for (const BlePeerDevice& central : centrals_) {
+            hal_ble_gap_disconnect(central.impl()->connHandle, nullptr);
         }
         centrals_.clear();
         return SYSTEM_ERROR_NONE;
@@ -1336,6 +1249,12 @@ public:
     }
 
     void peripheralProcessDisconnected(const BlePeerDevice& peer) {
+        for (auto& service : peer.impl()->gattsProxy->services()) {
+            for (auto& characteristic : service.impl()->characteristics()) {
+                characteristic.impl()->setValid(false);
+            }
+        }
+        peer.impl()->invalidate();
         centrals_.clear();
     }
 
@@ -1363,8 +1282,8 @@ public:
             LOG_DEBUG(TRACE, "hal_ble_gap_connect failed: %d", ret);
             return pseudo;
         }
-        for (const auto& peripheral : peripherals_) {
-            if (peripheral.address == addr) {
+        for (auto& peripheral : peripherals_) {
+            if (peripheral.impl()->address == addr) {
                 LOG(TRACE, "New peripheral connected.");
                 return peripheral;
             }
@@ -1373,12 +1292,9 @@ public:
     }
 
     int disconnect(const BlePeerDevice& peer) {
-        for (const auto& peripheral : peripherals_) {
-            if (peripheral.connHandle == peer.connHandle) {
-                hal_ble_gap_disconnect(peer.connHandle, nullptr);
-                peripherals_.removeOne(peripheral);
-
-                // clear CCCD
+        for (auto& peripheral : peripherals_) {
+            if (peripheral.impl()->connHandle == peer.impl()->connHandle) {
+                hal_ble_gap_disconnect(peer.impl()->connHandle, nullptr);
                 return SYSTEM_ERROR_NONE;
             }
         }
@@ -1396,6 +1312,12 @@ public:
     }
 
     void centralProcessDisconnected(const BlePeerDevice& peer) {
+        for (auto& service : peer.impl()->gattsProxy->services()) {
+            for (auto& characteristic : service.impl()->characteristics()) {
+                characteristic.impl()->setValid(false);
+            }
+        }
+        peer.impl()->invalidate();
         peripherals_.removeOne(peer);
     }
 
@@ -1407,35 +1329,32 @@ private:
 /*******************************************************
  * BlePeerDevice class
  */
-BlePeerDevice::BlePeerDevice() {
-    role = BLE_ROLE_INVALID;
-    connHandle = BLE_INVALID_CONN_HANDLE;
-    rssi = 0x7F;
-    gattsProxy_ = std::make_shared<BleGattServerImpl>(false);
+BlePeerDevice::BlePeerDevice()
+    : impl_(std::make_shared<BlePeerDeviceImpl>()) {
 }
 
-BlePeerDevice::BlePeerDevice(const BleAddress& addr) {
-    role = BLE_ROLE_INVALID;
-    connHandle = BLE_INVALID_CONN_HANDLE;
-    rssi = 0x7F;
-    gattsProxy_ = std::make_shared<BleGattServerImpl>(false);
+BlePeerDevice::~BlePeerDevice() {
+    DEBUG("~BlePeerDevice(), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count() - 1);
 }
 
-BleCharacteristic BlePeerDevice::characteristic(const char* desc) const {
-    return gattsProxy_->characteristic(desc);
+BleCharacteristic BlePeerDevice::getCharacteristic(const char* desc) {
+    return impl()->gattsProxy->getCharacteristic(desc);
 }
 
-BleCharacteristic BlePeerDevice::characteristic(const BleUuid& uuid) const {
-    return gattsProxy_->characteristic(uuid);
+BleCharacteristic BlePeerDevice::getCharacteristic(const BleUuid& uuid) {
+    return impl()->gattsProxy->getCharacteristic(uuid);
 }
 
-bool BlePeerDevice::connected() const {
-    return connHandle != BLE_INVALID_CONN_HANDLE;
+bool BlePeerDevice::connected() {
+    return impl()->connHandle != BLE_INVALID_CONN_HANDLE;
+}
+
+const BleAddress& BlePeerDevice::address() const {
+    return impl()->address;
 }
 
 bool BlePeerDevice::operator==(const BlePeerDevice& device) {
-    if (connHandle == device.connHandle &&
-        address == device.address) {
+    if (impl()->connHandle == device.impl()->connHandle && impl()->address == device.impl()->address) {
         return true;
     }
     return false;
@@ -1690,12 +1609,12 @@ int BleLocalDevice::addCharacteristic(const String& desc, BleCharacteristicPrope
 
 BlePeerDevice* BleLocalDevice::findPeerDevice(BleConnectionHandle connHandle) {
     for (auto& central : peripheralProxy_->centrals()) {
-        if (central.connHandle == connHandle) {
+        if (central.impl()->connHandle == connHandle) {
             return &central;
         }
     }
     for (auto& peripheral : centralProxy_->peripherals()) {
-        if (peripheral.connHandle == connHandle) {
+        if (peripheral.impl()->connHandle == connHandle) {
             return &peripheral;
         }
     }
@@ -1722,21 +1641,21 @@ void BleLocalDevice::onBleEvents(const hal_ble_evts_t *event, void* context) {
         case BLE_EVT_CONNECTED: {
             BlePeerDevice peer;
 
-            peer.connParams.conn_sup_timeout = event->params.connected.conn_sup_timeout;
-            peer.connParams.slave_latency = event->params.connected.slave_latency;
-            peer.connParams.max_conn_interval = event->params.connected.conn_interval;
-            peer.connParams.min_conn_interval = event->params.connected.conn_interval;
-            peer.connHandle = event->params.connected.conn_handle;
-            peer.address = event->params.connected.peer_addr;
+            peer.impl()->connParams.conn_sup_timeout = event->params.connected.conn_sup_timeout;
+            peer.impl()->connParams.slave_latency = event->params.connected.slave_latency;
+            peer.impl()->connParams.max_conn_interval = event->params.connected.conn_interval;
+            peer.impl()->connParams.min_conn_interval = event->params.connected.conn_interval;
+            peer.impl()->connHandle = event->params.connected.conn_handle;
+            peer.impl()->address = event->params.connected.peer_addr;
 
             if (bleInstance->connectedCb_) {
                 bleInstance->connectedCb_(peer, bleInstance->connectedContext);
             }
             if (event->params.connected.role == BLE_ROLE_PERIPHERAL) {
-                peer.role = BLE_ROLE_CENTRAL;
+                peer.impl()->role = BLE_ROLE_CENTRAL;
                 bleInstance->peripheralProxy_->peripheralProcessConnected(peer);
             } else {
-                peer.role = BLE_ROLE_PERIPHERAL;
+                peer.impl()->role = BLE_ROLE_PERIPHERAL;
                 bleInstance->centralProxy_->centralProcessConnected(peer);
             }
             break;
@@ -1749,7 +1668,7 @@ void BleLocalDevice::onBleEvents(const hal_ble_evts_t *event, void* context) {
                 if (bleInstance->disconnectedCb_) {
                     bleInstance->disconnectedCb_(*peer, bleInstance->disconnectedContext);
                 }
-                if (peer->role == BLE_ROLE_PERIPHERAL) {
+                if (peer->impl()->role == BLE_ROLE_PERIPHERAL) {
                     bleInstance->centralProxy_->centralProcessDisconnected(*peer);
                 } else {
                     bleInstance->peripheralProxy_->peripheralProcessDisconnected(*peer);

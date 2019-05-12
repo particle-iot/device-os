@@ -44,7 +44,7 @@ void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, 
 
 void setup() {
     Serial.begin(115200);
-    peerTxCharacteristic.onDataReceived(onDataReceived);
+    peerTxCharacteristic.onDataReceived(onDataReceived, nullptr);
 }
 
 void loop() {
@@ -67,8 +67,8 @@ void loop() {
                 if (svcCount > 0 && foundServiceUUID == svcUUID) {
                     peer = BLE.connect(results[i].address);
                     if (peer.connected()) {
-                        peerTxCharacteristic = peer.characteristic("tx");
-                        peerRxCharacteristic = peer.characteristic("rx");
+                        peerTxCharacteristic = peer.getCharacteristic("tx");
+                        peerRxCharacteristic = peer.getCharacteristic("rx");
                     }
                     break;
                 }
