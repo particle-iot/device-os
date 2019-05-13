@@ -1,3 +1,57 @@
+## 1.1.0
+
+### FEATURES
+
+- [gen 3] Argon, Boron, Xenon platform Device OS `mesh_develop` merged into `develop` [#1700](https://github.com/particle-iot/device-os/pull/1700)
+- [gen 3] Adds A SoM, B SoM and X SoM platforms (compile with PLATFORM=asom, PLATFORM=bsom, PLATFORM=xsom) to Device OS [#1662](https://github.com/particle-iot/device-os/pull/1662)
+- [som] Runtime power management IC detection [#1733](https://github.com/particle-iot/device-os/pull/1733)
+
+### ENHANCEMENTS
+
+- [photon/p1/electron] mbedTLS updated from v2.4.2 to v2.9.0 [#1700](https://github.com/particle-iot/device-os/pull/1700)
+- [electron/LTE] FreeRTOS updated from v8.2.2 to v10.0.1 [#1700](https://github.com/particle-iot/device-os/pull/1700)
+- [gen 2] Binary size optimizations [#1720](https://github.com/particle-iot/device-os/pull/1720)
+- Updates Tinker for all platforms [#1717](https://github.com/particle-iot/device-os/pull/1717)
+- [gen 3] Adds button and RGB LED mirroring support [#1590](https://github.com/particle-iot/device-os/pull/1590)
+- [boron-som] Disables system power management [#1722](https://github.com/particle-iot/device-os/pull/1722)
+- [boron/LTE] Enable Cat M1-only mode and disable eDRX completely [#1723](https://github.com/particle-iot/device-os/pull/1723)
+- [gen 3] QSPI flash is put into sleep mode and is deinitialized when entering STANDBY or STOP sleep mode [1725](https://github.com/particle-iot/device-os/pull/1725)
+- [gen 3] Parameter check for SPI slave mode with HAL_SPI_INTERFACE1 [#1731](https://github.com/particle-iot/device-os/pull/1731)
+
+### BUGFIXES
+
+- [gen 3] [hal] Fixes USBSerial SOS issue when removing USB cable from battery powered device [#1707](https://github.com/particle-iot/device-os/pull/1707)
+- [gen 3] Fixes A5 staying high when using Ethernet feather wing [#1696](https://github.com/particle-iot/device-os/pull/1696)
+- [core] Disable system logs for Core to reduce flash space needed to build tests [#1713](https://github.com/particle-iot/device-os/pull/1713)
+- [wiring] Fixed a potential (but unlikely due to bounds checking) buffer overflow in time formatting function [#1712](https://github.com/particle-iot/device-os/pull/1712)
+- [electron] [G350] fixes Cellular.RSSI() issues due to unknown RAT [#1721](https://github.com/particle-iot/device-os/pull/1721)
+- [gen 3] Fixes a deadlock in `system_power_manager` and `i2c_hal` when exiting the sleep mode  [1725](https://github.com/particle-iot/device-os/pull/1725)
+- [gen 3] Fixes issues in USB and WCID descriptors preventing Control Interface from working correctly on Windows platforms [#1736](https://github.com/particle-iot/device-os/pull/1736)
+- [bootloader] SysTick needs to be disabled in Reset_System() on Gen 2 platforms [#1741](https://github.com/particle-iot/device-os/pull/1741)
+- [boron] Workaround for SARA R4 ppp session getting broken and system power manager fix [#1726](https://github.com/particle-iot/device-os/pull/1726)
+- Fixes system power manager re-enabling charging every 1s with a battery connected (now every 60s) [#1726](https://github.com/particle-iot/device-os/pull/1726)
+- [photon/p1] Fixes 802.11n-only mode regression in 0.7.0 ~ 1.1.0-rc.1 [#1755](https://github.com/particle-iot/device-os/pull/1755)
+- [gen 3] Updates embedded bootloader, fixes hardfault after hard reset when sleeping [#1756](https://github.com/particle-iot/device-os/pull/1756)
+
+### INTERNAL
+
+- Update release.sh parameter handling [#1690](https://github.com/particle-iot/device-os/pull/1690)
+- Adds missing Device OS release tests [#1698](https://github.com/particle-iot/device-os/pull/1698)
+- [gen 3] Fixes TEST=wiring/no_fixture [#1694](https://github.com/particle-iot/device-os/pull/1694)
+- [gen 3] Add Gen 3 platforms to Device OS build scripts [#1714](https://github.com/particle-iot/device-os/pull/1714)
+- [docs] Fix `brew install gcc-arm-none-eabi-53` formula [#1708](https://github.com/particle-iot/device-os/pull/1708)
+- [docs] Fixes recent merge issues with `system-versions.md` [#1715](https://github.com/particle-iot/device-os/pull/1715)
+- [ci] Build time optimizations [#1712](https://github.com/particle-iot/device-os/pull/1712)
+- [ci] disables shallow submodule checkouts [#1735](https://github.com/particle-iot/device-os/pull/1735)
+- [docs] for the check and scope guard macros [#1734](https://github.com/particle-iot/device-os/pull/1734)
+- [hal] Correct ADC channel number for SoM [#1739](https://github.com/particle-iot/device-os/pull/1739)
+- [photon/p1] crypto: re-enables MD5 for TLS (WPA Enterprise) [#1743](https://github.com/particle-iot/device-os/pull/1743)
+- [gen 3] Fix/wiring tests [#1719](https://github.com/particle-iot/device-os/pull/1719)
+- Remove the message "External flash is not supported" from Gen 3 builds [#1751](https://github.com/particle-iot/device-os/pull/1751)
+- Do not fail the build if PARTICLE_DEVELOP is not defined [#1750](https://github.com/particle-iot/device-os/pull/1750)
+- [gen 3] Fixes a build system issue that caused object files to be created outside build directory [#1754](https://github.com/particle-iot/device-os/pull/1754)
+- [gen 3] Rename SoM platform names `[ch32184]` [#1774](https://github.com/particle-iot/device-os/pull/1774)
+
 ## 1.1.0-rc.2
 
 ### BUGFIXES
@@ -16,7 +70,7 @@
 ### FEATURES
 
 - [gen 3] Argon, Boron, Xenon platform Device OS `mesh_develop` merged into `develop` [#1700](https://github.com/particle-iot/device-os/pull/1700)
-- [gen 3] Adds A SoM, B SoM and X SoM platforms to Device OS [#1662](https://github.com/particle-iot/device-os/pull/1662)
+- [gen 3] Adds A SoM, B SoM and X SoM platforms (compile with PLATFORM=asom, PLATFORM=bsom, PLATFORM=xsom) to Device OS [#1662](https://github.com/particle-iot/device-os/pull/1662)
 - [som] Runtime power management IC detection [#1733](https://github.com/particle-iot/device-os/pull/1733)
 
 ### ENHANCEMENTS

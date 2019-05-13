@@ -103,7 +103,8 @@ extern "C" {
 #define SYSTEM_VERSION_v101     0x01000100
 #define SYSTEM_VERSION_v110RC1  0x01010001
 #define SYSTEM_VERSION_v110RC2  0x01010002
-#define SYSTEM_VERSION SYSTEM_VERSION_v110RC2
+#define SYSTEM_VERSION_v110     0x01010000
+#define SYSTEM_VERSION SYSTEM_VERSION_v110
 
 /**
  * For Library/App creators. Can be used to ensure features/api's are present.
@@ -184,6 +185,7 @@ extern "C" {
 #define SYSTEM_VERSION_101
 #define SYSTEM_VERSION_110RC1
 #define SYSTEM_VERSION_110RC2
+#define SYSTEM_VERSION_110
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {

@@ -184,7 +184,7 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "networking",
                     "path": "wiring"
                 },
@@ -317,7 +317,7 @@
             ]
         },
         {
-            "platform": "argon-som",
+            "platform": "asom",
             "tests": [
                 {
                     "enabled": false,
@@ -500,7 +500,7 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "networking",
                     "path": "wiring"
                 },
@@ -955,7 +955,7 @@
             ]
         },
         {
-            "platform": "boron-som",
+            "platform": "bsom",
             "tests": [
                 {
                     "enabled": false,
@@ -3064,7 +3064,7 @@
             ]
         },
         {
-            "platform": "xenon-som",
+            "platform": "xsom",
             "tests": [
                 {
                     "enabled": false,

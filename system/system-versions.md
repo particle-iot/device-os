@@ -88,6 +88,7 @@
 | 201 | 1002 | 1.0.1       |       Core, Photon, P1, Electron |
 | 300 | 1100 | 1.1.0-rc.1  |       Core, Photon, P1, Electron, Xenon, Argon, Boron, Xenon-SoM, Argon-SoM, Boron-SoM |
 | 301 | 1101 | 1.1.0-rc.2  |       Core, Photon, P1, Electron, Xenon, Argon, Boron, Xenon-SoM, Argon-SoM, Boron-SoM |
+| 301 | 1102 | 1.1.0       |       Core, Photon, P1, Electron, Xenon, Argon, Boron, Xenon-SoM, Argon-SoM, Boron-SoM |
 
 [1] For 0.8.0-rc.1, The v101 bootloader was also released in the Github releases as v200. Thus the next released bootloader in the 0.8.x line should be v201. As of 4/5/2018: 22 device had v200 bootloaders.
 
