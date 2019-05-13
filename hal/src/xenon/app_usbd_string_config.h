@@ -83,9 +83,9 @@
 #if PLATFORM_ID == 14 // Xenon
 #define APP_USBD_STRINGS_PRODUCT         \
     APP_USBD_STRING_DESC('X', 'e', 'n', 'o', 'n', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
-#else // Xenon SoM
+#else // X SoM
 #define APP_USBD_STRINGS_PRODUCT         \
-    APP_USBD_STRING_DESC('X', 'e', 'n', 'o', 'n', ' ', 'S', 'o', 'M', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
+    APP_USBD_STRING_DESC('X', ' ', 'S', 'o', 'M', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
 #endif
 
 

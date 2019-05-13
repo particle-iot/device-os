@@ -6,8 +6,8 @@ function display_help ()
     echo "\
 usage: make_release.sh [--debug] [--help]
                        [--output-directory=<binary_output_directory>]
-                       [--platform=<all|argon|argon-som|boron|boron-som...
-                       |core|electron|p1|photon|xenon|xenon-som>]
+                       [--platform=<all|argon|asom|boron|bsom...
+                       |core|electron|p1|photon|xenon|xsom>]
                        [--publish=<semantic_version_string>] [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
@@ -126,7 +126,7 @@ function valid_platform()
     platform=$1
 
     # Validate platform (result of expression returned to caller)
-    [ "$platform" = "all" ] || [ "$platform" = "argon" ] || [ "$platform" = "argon-som" ] || [ "$platform" = "boron" ] || [ "$platform" = "boron-som" ] || [ "$platform" = "core" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ] || [ "$platform" = "xenon" ] || [ "$platform" = "xenon-som" ]
+    [ "$platform" = "all" ] || [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || [ "$platform" = "boron" ] || [ "$platform" = "bsom" ] || [ "$platform" = "core" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ] || [ "$platform" = "xenon" ] || [ "$platform" = "xsom" ]
 }
 
 if !(valid_platform $PLATFORM); then
@@ -143,15 +143,15 @@ fi
 # Release platform(s)
 if [ $PLATFORM = "all" ]; then
 	release_platform "argon"
-	release_platform "argon-som"
+	release_platform "asom"
 	release_platform "boron"
-	release_platform "boron-som"
+	release_platform "bsom"
 	release_platform "core"
 	release_platform "electron"
 	release_platform "p1"
 	release_platform "photon"
 	release_platform "xenon"
-	release_platform "xenon-som"
+	release_platform "xsom"
 else
 	release_platform "$PLATFORM"
 fi

@@ -89,7 +89,7 @@ NRF5x_Pin_Info __PIN_MAP[TOTAL_PINS] =
 /* LOW_BAT_UC    - 35 */ { NRF_PORT_0, 5,  PIN_MODE_NONE, PF_NONE, 3,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE}
 #endif
 
-#elif PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_XENON_SOM
+#elif PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_XSOM
 
 /* D0            - 00 */ { NRF_PORT_1, 9,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 /* D1            - 01 */ { NRF_PORT_0, 12, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
@@ -124,7 +124,7 @@ NRF5x_Pin_Info __PIN_MAP[TOTAL_PINS] =
 /* D22           - 28 */ { NRF_PORT_1, 1,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 /* D23           - 29 */ { NRF_PORT_1, 3,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 
-#if PLATFORM_ID == PLATFORM_ARGON_SOM
+#if PLATFORM_ID == PLATFORM_ASOM
 /* TX1           - 30 */ { NRF_PORT_1, 5,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 /* RX1           - 31 */ { NRF_PORT_1, 4,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 /* CTS1          - 32 */ { NRF_PORT_1, 6,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
@@ -135,7 +135,7 @@ NRF5x_Pin_Info __PIN_MAP[TOTAL_PINS] =
 /* D24           - 37 */ { NRF_PORT_1, 2,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 #endif
 
-#if PLATFORM_ID == PLATFORM_XENON_SOM
+#if PLATFORM_ID == PLATFORM_XSOM
 /* D24           - 30 */ { NRF_PORT_1, 6,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 /* D25           - 31 */ { NRF_PORT_0, 15, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 /* D26           - 32 */ { NRF_PORT_0, 16, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
@@ -146,7 +146,7 @@ NRF5x_Pin_Info __PIN_MAP[TOTAL_PINS] =
 /* D31           - 37 */ { NRF_PORT_0, 24, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 #endif
 
-#elif PLATFORM_ID == PLATFORM_BORON_SOM
+#elif PLATFORM_ID == PLATFORM_BSOM
 /* D0 /          - 00 */ { NRF_PORT_0, 26, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 /* D1 /          - 01 */ { NRF_PORT_0, 27, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
 /* D2 /          - 02 */ { NRF_PORT_1, 2,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
@@ -219,7 +219,7 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
     PIN_INVALID, 2,           3,           8,           25,          24,          26,          27,          /* P1.00 ~ P1.07 */
     4,           32,          5,           6,           7,           12,          11,          13,          /* P1.08 ~ P1.15 */
 };
-#elif PLATFORM_ID == PLATFORM_XENON_SOM
+#elif PLATFORM_ID == PLATFORM_XSOM
 const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
     PIN_INVALID, PIN_INVALID, 20,          19,          18,          21,          9,           12,          /* P0.00 ~ P0.07 */
     10,          26,          27,          8,           1,           2,           3,           31,          /* P0.08 ~ P0.15 */
@@ -228,7 +228,7 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
     PIN_INVALID, 28,          33,          29,          34,          35,          30,          36,          /* P1.00 ~ P1.07 */
     11,          0,           5,           6,           7,           25,          24,          23,          /* P1.08 ~ P1.15 */
 };
-#elif PLATFORM_ID == PLATFORM_ARGON_SOM
+#elif PLATFORM_ID == PLATFORM_ASOM
 const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
     PIN_INVALID, PIN_INVALID, 20,          19,          18,          21,          9,           12,          /* P0.00 ~ P0.07 */
     10,          26,          27,          8,           1,           2,           3,           36,          /* P0.08 ~ P0.15 */
@@ -237,7 +237,7 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
     PIN_INVALID, 28,          37,          29,          31,          30,          32,          33,          /* P1.00 ~ P1.07 */
     11,          0,           5,           6,           7,           25,          24,          23,          /* P1.08 ~ P1.15 */
 };
-#elif PLATFORM_ID == PLATFORM_BORON_SOM
+#elif PLATFORM_ID == PLATFORM_BSOM
 const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
     PIN_INVALID, PIN_INVALID, 20,          19,          18,          21,          9,           37,          /* P0.00 ~ P0.07 */
     10,          26,          27,          22,          35,          23,          24,          25,          /* P0.08 ~ P0.15 */

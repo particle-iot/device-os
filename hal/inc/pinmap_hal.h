@@ -91,7 +91,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 * Pin mapping. Borrowed from Wiring
 */
 #if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || \
-    PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
+    PLATFORM_ID == PLATFORM_XSOM || PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM
 
 #if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
 #define TOTAL_ANALOG_PINS   6
@@ -123,18 +123,18 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define D18             18
 #define D19             19
 
-#if PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
+#if PLATFORM_ID == PLATFORM_XSOM || PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM
 
 #define D20             20
 #define D21             21
 #define D22             28
 #define D23             29
 
-#if PLATFORM_ID == PLATFORM_ARGON_SOM
+#if PLATFORM_ID == PLATFORM_ASOM
 #define D24             37
 #endif
 
-#if PLATFORM_ID == PLATFORM_XENON_SOM
+#if PLATFORM_ID == PLATFORM_XSOM
 #define D24             30
 #define D25             31
 #define D26             32
@@ -155,13 +155,13 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define A4              D15
 #define A5              D14
 
-#if PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
+#if PLATFORM_ID == PLATFORM_XSOM || PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM
 #define A6              D21
 #define A7              D20
 #endif
 
 // SPI pins
-#if PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
+#if PLATFORM_ID == PLATFORM_XSOM || PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM
 #define SS              D8
 #else
 #define SS              D14
@@ -185,7 +185,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define RX1             D5
 #define CTS1            D6
 #define RTS1            D8
-#elif PLATFORM_ID == PLATFORM_XENON_SOM
+#elif PLATFORM_ID == PLATFORM_XSOM
 #define TX1             D25
 #define RX1             D26
 #define CTS1            D22
@@ -195,7 +195,7 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define RX1             25
 #define CTS1            26
 #define RTS1            27
-#else // Argon SoM and Boron SoM
+#else // A SoM and B SoM
 #define TX1             30
 #define RX1             31
 #define CTS1            32
@@ -265,22 +265,22 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #define LOW_BAT_UC      35
 #endif
 
-#if PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
+#if PLATFORM_ID == PLATFORM_XSOM || PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM
 #define LOW_BAT_UC      A6
-#endif // PLATFORM_ID == PLATFORM_XENON_SOM || PLATFORM_ID == PLATFORM_ARGON_SOM || PLATFORM_ID == PLATFORM_BORON_SOM
+#endif // PLATFORM_ID == PLATFORM_XSOM || PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM
 
-#if PLATFORM_ID == PLATFORM_XENON_SOM // Xenon SoM
+#if PLATFORM_ID == PLATFORM_XSOM // X SoM
 #define TOTAL_PINS      (38)
 #endif
 
-#if PLATFORM_ID == PLATFORM_ARGON_SOM // Argon SoM
+#if PLATFORM_ID == PLATFORM_ASOM // A SoM
 #define TOTAL_PINS      (38)
 #define ESPBOOT         34
 #define ESPEN           35
 #define HWAKE           36
 #endif
 
-#if PLATFORM_ID == PLATFORM_BORON_SOM // Boron SoM
+#if PLATFORM_ID == PLATFORM_BSOM // B SoM
 #define TOTAL_PINS      (38)
 #define UBPWR           34
 #define UBRST           35
