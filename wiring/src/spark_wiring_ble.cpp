@@ -476,6 +476,15 @@ public:
         }
     }
 
+    bool operator==(const BleCharacteristicImpl& impl) {
+        if (uuid == impl.uuid
+                && svcUuid == impl.svcUuid
+                && isLocal == impl.isLocal) {
+            return true;
+        }
+        return false;
+    }
+
     BleCharacteristicProperty properties;
     BleUuid uuid;
     BleUuid svcUuid;
@@ -611,17 +620,6 @@ public:
         return characteristics_;
     }
 
-    bool contains(const BleCharacteristic& characteristic) {
-        if (characteristic.impl() != nullptr) {
-            for (const auto& stubChar : characteristics_) {
-                if (characteristic.impl() == stubChar.impl()) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     BleCharacteristic* getCharacteristic(const char* desc) {
         if (desc == nullptr) {
             return nullptr;
@@ -689,6 +687,17 @@ public:
     BleAttributeHandle endHandle;
 
 private:
+    bool contains(const BleCharacteristic& characteristic) {
+        if (characteristic.impl() != nullptr) {
+            for (const auto& stubChar : characteristics_) {
+                if (*characteristic.impl() == *stubChar.impl()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     Vector<BleCharacteristic> characteristics_;
 };
 
@@ -710,6 +719,7 @@ BleService::BleService(const BleUuid& uuid)
  */
 class BleGattServerImpl {
 public:
+    BleGattServerImpl() = delete;
     BleGattServerImpl(bool local)
             : local_(local) {
     }
@@ -719,24 +729,11 @@ public:
         return services_;
     }
 
-    BleService* getService(const BleUuid& uuid) {
-        for (auto& service : services_) {
-            if (service.impl()->uuid == uuid) {
-                return &service;
-            }
-        }
-        return nullptr;
-    }
-
-    bool isLocal() {
-        return local_;
-    }
-
     int addService(BleService& svc) {
         if (getService(svc.impl()->uuid) != nullptr) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
-        if (isLocal()) {
+        if (local_) {
             hal_ble_uuid_t halUuid = svc.impl()->uuid.UUID();
             int ret = hal_ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &halUuid, &svc.impl()->startHandle, nullptr);
             if (ret != SYSTEM_ERROR_NONE) {
@@ -752,8 +749,8 @@ public:
         if (characteristic.impl() == nullptr) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
-        characteristic.impl()->isLocal = isLocal();
-        if (isLocal()) {
+        characteristic.impl()->isLocal = local_;
+        if (local_) {
             LOG_DEBUG(TRACE, "< LOCAL CHARACTERISTIC >");
             if (!characteristic.impl()->svcUuid.isValid()) {
                 BleUuid newUuid(PARTICLE_DEFAULT_BLE_SVC_UUID);
@@ -801,6 +798,15 @@ public:
     }
 
 private:
+    BleService* getService(const BleUuid& uuid) {
+        for (auto& service : services_) {
+            if (service.impl()->uuid == uuid) {
+                return &service;
+            }
+        }
+        return nullptr;
+    }
+
     Vector<BleService> services_;
     bool local_;
 };
@@ -1364,11 +1370,15 @@ BlePeerDevice::~BlePeerDevice() {
     DEBUG("~BlePeerDevice(), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count() - 1);
 }
 
-BleCharacteristic BlePeerDevice::getCharacteristic(const char* desc) {
+BleCharacteristic BlePeerDevice::getCharacteristicByDescription(const char* desc) {
     return impl()->gattsProxy->getCharacteristic(desc);
 }
 
-BleCharacteristic BlePeerDevice::getCharacteristic(const BleUuid& uuid) {
+BleCharacteristic BlePeerDevice::getCharacteristicByDescription(const String& desc) {
+    return impl()->gattsProxy->getCharacteristic(desc.c_str());
+}
+
+BleCharacteristic BlePeerDevice::getCharacteristicByUUID(const BleUuid& uuid) {
     return impl()->gattsProxy->getCharacteristic(uuid);
 }
 
@@ -1439,7 +1449,7 @@ int BleLocalDevice::off() {
     return SYSTEM_ERROR_NONE;
 }
 
-BleAddress BleLocalDevice::address() const {
+const BleAddress BleLocalDevice::address() const {
     BleAddress addr = {};
     hal_ble_gap_get_device_address(&addr);
     return addr;
@@ -1460,7 +1470,7 @@ int BleLocalDevice::advertise() const {
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) const {
+int BleLocalDevice::advertise(const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse) const {
     WiringBleLock lk;
     broadcasterProxy_->setAdvertisingData(advertisingData);
     broadcasterProxy_->setScanResponseData(scanResponse);
@@ -1473,7 +1483,7 @@ int BleLocalDevice::advertise(uint16_t interval) const {
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(uint16_t interval, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) const {
+int BleLocalDevice::advertise(uint16_t interval, const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse) const {
     WiringBleLock lk;
     broadcasterProxy_->setAdvertisingData(advertisingData);
     broadcasterProxy_->setScanResponseData(scanResponse);
@@ -1488,7 +1498,7 @@ int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout) const {
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) const {
+int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout, const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse) const {
     WiringBleLock lk;
     broadcasterProxy_->setAdvertisingData(advertisingData);
     broadcasterProxy_->setScanResponseData(scanResponse);
@@ -1503,7 +1513,7 @@ int BleLocalDevice::advertise(const BleAdvertisingParams& params) const {
     return broadcasterProxy_->advertise();
 }
 
-int BleLocalDevice::advertise(const BleAdvertisingParams& params, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) const {
+int BleLocalDevice::advertise(const BleAdvertisingParams& params, const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse) const {
     WiringBleLock lk;
     broadcasterProxy_->setAdvertisingData(advertisingData);
     broadcasterProxy_->setScanResponseData(scanResponse);

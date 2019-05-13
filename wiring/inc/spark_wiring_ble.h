@@ -209,16 +209,16 @@ public:
             : uuid_() {
     }
     BleUuid(const BleUuid& uuid);
-    BleUuid(const uint8_t* uuid128, BleUuidOrder order=BleUuidOrder::LSB);
+    BleUuid(const uint8_t* uuid128, BleUuidOrder order = BleUuidOrder::LSB);
     BleUuid(uint16_t uuid16);
-    BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order=BleUuidOrder::LSB);
+    BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order = BleUuidOrder::LSB);
     BleUuid(const String& uuid);
     BleUuid(const char* uuid);
     ~BleUuid() = default;
 
     bool isValid() const;
 
-    BleUuidType type(void) const {
+    BleUuidType type() const {
         if (uuid_.type == BLE_UUID_TYPE_16BIT || uuid_.type == BLE_UUID_TYPE_128BIT_SHORTED) {
             return BleUuidType::SHORT;
         } else {
@@ -359,7 +359,7 @@ public:
     BleCharacteristic& operator=(const BleCharacteristic& characteristic);
 
     BleUuid UUID() const;
-    BleCharacteristicProperty properties(void) const;
+    BleCharacteristicProperty properties() const;
 
     ssize_t getValue(uint8_t* buf, size_t len) const;
     ssize_t getValue(String& str) const;
@@ -403,7 +403,7 @@ public:
     BleService(const BleUuid& uuid);
     ~BleService() = default;
 
-    BleServiceImpl* impl(void) const {
+    BleServiceImpl* impl() const {
         return impl_.get();
     }
 
@@ -426,14 +426,21 @@ public:
     BlePeerDevice();
     ~BlePeerDevice();
 
-    BleCharacteristic getCharacteristic(const char* desc);
-    BleCharacteristic getCharacteristic(const BleUuid& uuid);
+    BleCharacteristic getCharacteristicByDescription(const char* desc);
+    BleCharacteristic getCharacteristicByDescription(const String& desc);
+    BleCharacteristic getCharacteristicByUUID(const BleUuid& uuid);
+
+    template <typename T>
+    BleCharacteristic getCharacteristicByUUID(const BleUuid& uuid) {
+        BleUuid charUuid(uuid);
+        return getCharacteristicByUUID(charUuid);
+    }
 
     bool connected();
 
     const BleAddress& address() const;
 
-    BlePeerDeviceImpl* impl(void) const {
+    BlePeerDeviceImpl* impl() const {
         return impl_.get();
     }
 
@@ -449,19 +456,19 @@ public:
     int on();
     int off();
 
-    BleAddress address() const;
+    const BleAddress address() const;
 
     int setTxPower(int8_t txPower) const;
     int txPower(int8_t* txPower) const;
 
     int advertise() const;
-    int advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr) const;
+    int advertise(const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse = nullptr) const;
     int advertise(uint16_t interval) const;
-    int advertise(uint16_t interval, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr) const;
+    int advertise(uint16_t interval, const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse = nullptr) const;
     int advertise(uint16_t interval, uint16_t timeout) const;
-    int advertise(uint16_t interval, uint16_t timeout, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr) const;
+    int advertise(uint16_t interval, uint16_t timeout, const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse = nullptr) const;
     int advertise(const BleAdvertisingParams& params) const;
-    int advertise(const BleAdvertisingParams& params, BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr) const;
+    int advertise(const BleAdvertisingParams& params, const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse = nullptr) const;
     int advertise(const iBeacon& iBeacon, bool connectable = false) const;
     int advertise(uint16_t interval, const iBeacon& iBeacon, bool connectable = false) const;
     int advertise(uint16_t interval, uint16_t timeout, const iBeacon& iBeacon, bool connectable = false) const;
