@@ -17,17 +17,16 @@
   ******************************************************************************
  */
 
-#include "logging.h"
-LOG_SOURCE_CATEGORY("wiring.ble")
-
-#include "static_recursive_mutex.h"
 #include "spark_wiring_ble.h"
 
 #if Wiring_BLE
-
+#include "spark_wiring_thread.h"
 #include <memory>
 #include <algorithm>
 #include "hex_to_bytes.h"
+
+#include "logging.h"
+LOG_SOURCE_CATEGORY("wiring.ble")
 
 using namespace particle::ble;
 
@@ -55,8 +54,8 @@ namespace particle {
 
 namespace {
 
-const uint8_t BLE_CTRL_REQ_SVC_UUID[BLE_SIG_UUID_128BIT_LEN] = {
-    0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x01, 0x00, 0xa9, 0x6f
+const uint8_t PARTICLE_DEFAULT_BLE_SVC_UUID[BLE_SIG_UUID_128BIT_LEN] = {
+    0x7b, 0xe3, 0x27, 0x74, 0x7b, 0xf8, 0x15, 0xac, 0xdd, 0x49, 0xa9, 0x13, 0x00, 0x00, 0x72, 0xf5
 };
 
 } //anonymous namespace
@@ -97,10 +96,10 @@ public:
 
 private:
     bool locked_;
-    static StaticRecursiveMutex mutex_;
+    static RecursiveMutex mutex_;
 };
 
-StaticRecursiveMutex WiringBleLock::mutex_;
+RecursiveMutex WiringBleLock::mutex_;
 
 } /* namespace ble */
 
@@ -108,10 +107,12 @@ StaticRecursiveMutex WiringBleLock::mutex_;
 /*******************************************************
  * BleUuid class
  */
-BleUuid::BleUuid(const BleUuid& uuid) : uuid_(uuid.uuid_) {
+BleUuid::BleUuid(const BleUuid& uuid)
+        : uuid_(uuid.uuid_) {
 }
 
-BleUuid::BleUuid(const uint8_t* uuid128, BleUuidOrder order) {
+BleUuid::BleUuid(const uint8_t* uuid128, BleUuidOrder order)
+        : BleUuid() {
     if (uuid128 == nullptr) {
         memset(uuid_.uuid128, 0x00, BLE_SIG_UUID_128BIT_LEN);
     } else {
@@ -126,21 +127,21 @@ BleUuid::BleUuid(const uint8_t* uuid128, BleUuidOrder order) {
     }
 }
 
-BleUuid::BleUuid(uint16_t uuid16) {
+BleUuid::BleUuid(uint16_t uuid16)
+        : BleUuid() {
     uuid_.uuid16 = uuid16;
     uuid_.type = BLE_UUID_TYPE_16BIT;
 }
 
-BleUuid::BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order) : BleUuid(uuid128, order) {
+BleUuid::BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order)
+        : BleUuid(uuid128, order) {
     uuid_.uuid128[12] = (uint8_t)(uuid16 & 0x00FF);
     uuid_.uuid128[13] = (uint8_t)((uuid16 >> 8) & 0x00FF);
     uuid_.type = BLE_UUID_TYPE_128BIT;
 }
 
-BleUuid::BleUuid(const String& uuid) : BleUuid(uuid.c_str()) {
-}
-
-BleUuid::BleUuid(const char* uuid) {
+BleUuid::BleUuid(const char* uuid)
+        : BleUuid() {
     if (uuid == nullptr) {
         memset(uuid_.uuid128, 0x00, BLE_SIG_UUID_128BIT_LEN);
     } else {
@@ -166,6 +167,10 @@ BleUuid::BleUuid(const char* uuid) {
     uuid_.type = BLE_UUID_TYPE_128BIT;
 }
 
+BleUuid::BleUuid(const String& uuid)
+        : BleUuid(uuid.c_str()) {
+}
+
 bool BleUuid::isValid() const {
     if (type() == BleUuidType::SHORT) {
         return uuid_.uuid16 != 0x0000;
@@ -187,7 +192,9 @@ bool BleUuid::operator==(const BleUuid& uuid) const {
 /*******************************************************
  * BleAdvertisingData class
  */
-BleAdvertisingData::BleAdvertisingData() : selfData_(), selfLen_(0) {
+BleAdvertisingData::BleAdvertisingData()
+        : selfData_(),
+          selfLen_(0) {
 }
 
 size_t BleAdvertisingData::set(const uint8_t* buf, size_t len) {
@@ -384,19 +391,10 @@ size_t BleAdvertisingData::locate(const uint8_t* buf, size_t len, BleAdvertising
  */
 class BleCharacteristicImpl {
 public:
-    BleCharacteristicProperty properties;
-    BleUuid uuid;
-    BleUuid svcUuid;
-    String description;
-    bool isLocal;
-    BleCharacteristicHandles attrHandles;
-    BleOnDataReceivedCallback dataCb;
-    void* context;
-    BleConnectionHandle connHandle; // For peer characteristic
-    BleServiceImpl* svcImpl; // Related service
-
     BleCharacteristicImpl()
             : properties(BleCharacteristicProperty::NONE),
+              uuid(),
+              svcUuid(),
               description(),
               isLocal(true),
               dataCb(nullptr),
@@ -458,8 +456,9 @@ public:
 
     void assignUuidIfNeeded() {
         if (!uuid.isValid()) {
+            LOG_DEBUG(TRACE, "Assign default characteristic UUID.");
             defaultUuidCharCount_++;
-            BleUuid newUuid(BLE_CTRL_REQ_SVC_UUID, defaultUuidCharCount_);
+            BleUuid newUuid(PARTICLE_DEFAULT_BLE_SVC_UUID, defaultUuidCharCount_);
             uuid = newUuid;
         }
     }
@@ -476,6 +475,17 @@ public:
             dataCb(data, len, peer, context);
         }
     }
+
+    BleCharacteristicProperty properties;
+    BleUuid uuid;
+    BleUuid svcUuid;
+    String description;
+    bool isLocal;
+    BleCharacteristicHandles attrHandles;
+    BleOnDataReceivedCallback dataCb;
+    void* context;
+    BleConnectionHandle connHandle; // For peer characteristic
+    BleServiceImpl* svcImpl; // Related service
 
 private:
     static uint16_t defaultUuidCharCount_;
@@ -586,12 +596,13 @@ void BleCharacteristic::onDataReceived(BleOnDataReceivedCallback callback, void*
  */
 class BleServiceImpl {
 public:
-    BleUuid uuid;
-    BleAttributeHandle startHandle;
-    BleAttributeHandle endHandle;
-
-    BleServiceImpl() : startHandle(BLE_INVALID_ATTR_HANDLE), endHandle(BLE_INVALID_ATTR_HANDLE) {}
-    BleServiceImpl(const BleUuid& svcUuid) : BleServiceImpl() {
+    BleServiceImpl()
+            : uuid(),
+              startHandle(BLE_INVALID_ATTR_HANDLE),
+              endHandle(BLE_INVALID_ATTR_HANDLE) {
+    }
+    BleServiceImpl(const BleUuid& svcUuid)
+            : BleServiceImpl() {
         uuid = svcUuid;
     }
     ~BleServiceImpl() = default;
@@ -673,6 +684,10 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
+    BleUuid uuid;
+    BleAttributeHandle startHandle;
+    BleAttributeHandle endHandle;
+
 private:
     Vector<BleCharacteristic> characteristics_;
 };
@@ -682,11 +697,11 @@ private:
  * BleService class
  */
 BleService::BleService()
-    : impl_(std::make_shared<BleServiceImpl>()) {
+        : impl_(std::make_shared<BleServiceImpl>()) {
 }
 
 BleService::BleService(const BleUuid& uuid)
-    : impl_(std::make_shared<BleServiceImpl>(uuid)) {
+        : impl_(std::make_shared<BleServiceImpl>(uuid)) {
 }
 
 
@@ -695,7 +710,9 @@ BleService::BleService(const BleUuid& uuid)
  */
 class BleGattServerImpl {
 public:
-    BleGattServerImpl(bool local) : local_(local) {}
+    BleGattServerImpl(bool local)
+            : local_(local) {
+    }
     ~BleGattServerImpl() = default;
 
     Vector<BleService>& services() {
@@ -739,7 +756,8 @@ public:
         if (isLocal()) {
             LOG_DEBUG(TRACE, "< LOCAL CHARACTERISTIC >");
             if (!characteristic.impl()->svcUuid.isValid()) {
-                BleUuid newUuid(BLE_CTRL_REQ_SVC_UUID);
+                BleUuid newUuid(PARTICLE_DEFAULT_BLE_SVC_UUID);
+                LOG_DEBUG(TRACE, "Assign default service UUID.");
                 characteristic.impl()->svcUuid = newUuid;
             }
         }
@@ -788,6 +806,9 @@ private:
 };
 
 
+/*******************************************************
+ * BlePeerDeviceImpl definition
+ */
 class BlePeerDeviceImpl {
 public:
     BlePeerDeviceImpl()
@@ -1096,7 +1117,13 @@ public:
  */
 class BleObserverImpl {
 public:
-    BleObserverImpl() : callback_(nullptr), context_(nullptr), resultsPtr_(nullptr), targetCount_(0), count_(0) {}
+    BleObserverImpl()
+            : callback_(nullptr),
+              context_(nullptr),
+              resultsPtr_(nullptr),
+              targetCount_(0),
+              count_(0) {
+    }
     ~BleObserverImpl() = default;
 
     int scan(BleOnScanResultCallback callback, void* context) {
@@ -1330,7 +1357,7 @@ private:
  * BlePeerDevice class
  */
 BlePeerDevice::BlePeerDevice()
-    : impl_(std::make_shared<BlePeerDeviceImpl>()) {
+        : impl_(std::make_shared<BlePeerDeviceImpl>()) {
 }
 
 BlePeerDevice::~BlePeerDevice() {
@@ -1365,11 +1392,14 @@ bool BlePeerDevice::operator==(const BlePeerDevice& device) {
  * BleLocalDevice class
  */
 BleLocalDevice::BleLocalDevice()
-    : connectedCb_(nullptr),
-      disconnectedCb_(nullptr) {
+        : connectedCb_(nullptr),
+          disconnectedCb_(nullptr),
+          connectedContext(nullptr),
+          disconnectedContext(nullptr) {
     hal_ble_stack_init(nullptr);
-    hal_ble_gap_get_device_address(&address);
 
+    // The following members must not be in the initializer list, since it may call
+    // BLE HAL APIs and BLE stack must be initialized previous to these APIs.
     gattsProxy_ = std::make_unique<BleGattServerImpl>(true);
     gattcProxy_ = std::make_unique<BleGattClientImpl>();
     broadcasterProxy_ = std::make_unique<BleBroadcasterImpl>();
@@ -1407,6 +1437,12 @@ int BleLocalDevice::on() {
 int BleLocalDevice::off() {
     WiringBleLock lk;
     return SYSTEM_ERROR_NONE;
+}
+
+BleAddress BleLocalDevice::address() const {
+    BleAddress addr = {};
+    hal_ble_gap_get_device_address(&addr);
+    return addr;
 }
 
 int BleLocalDevice::setTxPower(int8_t val) const {
