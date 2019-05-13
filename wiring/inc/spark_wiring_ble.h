@@ -205,7 +205,9 @@ static_assert(std::is_pod<BleCharacteristicHandles>::value, "BleCharacteristicHa
 
 class BleUuid {
 public:
-    BleUuid() = default;
+    BleUuid()
+            : uuid_() {
+    }
     BleUuid(const BleUuid& uuid);
     BleUuid(const uint8_t* uuid128, BleUuidOrder order=BleUuidOrder::LSB);
     BleUuid(uint16_t uuid16);
@@ -253,16 +255,21 @@ private:
 
 class iBeacon {
 public:
-    iBeacon() : major(0), minor(0), measurePower(0) {
+    iBeacon()
+            : major(0),
+              minor(0),
+              measurePower(0) {
     }
 
     template<typename T>
     iBeacon(uint16_t major, uint16_t minor, T uuid, int8_t measurePower)
-        : major(major), minor(minor), uuid(uuid), measurePower(measurePower) {
+            : major(major),
+              minor(minor),
+              uuid(uuid),
+              measurePower(measurePower) {
     }
 
-    ~iBeacon() {
-    }
+    ~iBeacon() = default;
 
     uint16_t major;
     uint16_t minor;
@@ -335,7 +342,7 @@ public:
     BleCharacteristic(const BleCharacteristic& characteristic);
     BleCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
     BleCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
-        : BleCharacteristic(desc.c_str(), properties, callback, context) {
+            : BleCharacteristic(desc.c_str(), properties, callback, context) {
     }
     template<typename T>
     BleCharacteristic(const char* desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
@@ -345,7 +352,7 @@ public:
     }
     template<typename T>
     BleCharacteristic(const String& desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
-        : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context) {
+            : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context) {
     }
     ~BleCharacteristic();
 
@@ -439,10 +446,10 @@ private:
 
 class BleLocalDevice {
 public:
-    BleAddress address;
-
     int on();
     int off();
+
+    BleAddress address() const;
 
     int setTxPower(int8_t txPower) const;
     int txPower(int8_t* txPower) const;
@@ -523,7 +530,7 @@ private:
 #define BLE BleLocalDevice::getInstance()
 
 #ifndef BLE_WIRING_DEBUG_ENABLED
-#define BLE_WIRING_DEBUG_ENABLED 1
+#define BLE_WIRING_DEBUG_ENABLED 0
 #endif
 
 } /* namespace particle */

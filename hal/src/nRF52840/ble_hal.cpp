@@ -311,14 +311,14 @@ public:
     GattClient* gattc() { return gattc_.get(); }
 
 private:
-    BleObject() :
-            dispatcher_(std::make_unique<BleEventDispatcher>()),
-            gap_(std::make_unique<BleGap>()),
-            broadcaster_(std::make_unique<Broadcaster>()),
-            observer_(std::make_unique<Observer>()),
-            connectionsMgr_(std::make_unique<ConnectionsManager>()),
-            gatts_(std::make_unique<GattServer>()),
-            gattc_(std::make_unique<GattClient>()) {
+    BleObject()
+            : dispatcher_(std::make_unique<BleEventDispatcher>()),
+              gap_(std::make_unique<BleGap>()),
+              broadcaster_(std::make_unique<Broadcaster>()),
+              observer_(std::make_unique<Observer>()),
+              connectionsMgr_(std::make_unique<ConnectionsManager>()),
+              gatts_(std::make_unique<GattServer>()),
+              gattc_(std::make_unique<GattClient>()) {
         init();
     }
     ~BleObject() = default;
@@ -341,7 +341,11 @@ public:
 
     class EventMessage {
     public:
-        EventMessage() : handler(nullptr), context(nullptr), hook(nullptr), hookContext(nullptr) {
+        EventMessage()
+                : handler(nullptr),
+                  context(nullptr),
+                  hook(nullptr),
+                  hookContext(nullptr) {
             evt = {};
         }
         ~EventMessage() = default;
@@ -353,7 +357,10 @@ public:
         void* hookContext;                  /**< Internal hook function context. */
     };
 
-    BleEventDispatcher() : evtQueue_(nullptr), evtThread_(nullptr) {}
+    BleEventDispatcher()
+            : evtQueue_(nullptr),
+              evtThread_(nullptr) {
+    }
     ~BleEventDispatcher() = default;
     int init();
     int enqueue(EventMessage& msg);
@@ -435,11 +442,11 @@ private:
 
 class BleObject::Observer {
 public:
-    Observer() :
-            isScanning_(false),
-            scanSemaphore_(nullptr),
-            scanResultCallBack_(nullptr),
-            context_(nullptr) {
+    Observer()
+            : isScanning_(false),
+              scanSemaphore_(nullptr),
+              scanResultCallBack_(nullptr),
+              context_(nullptr) {
         scanParams_.version = 0x01;
         scanParams_.active = true;
         scanParams_.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
@@ -506,15 +513,15 @@ public:
         hal_ble_addr_t peer;
     };
 
-    ConnectionsManager() :
-            isConnecting_(false),
-            disconnectingHandle_(BLE_INVALID_CONN_HANDLE),
-            connParamUpdateHandle_(BLE_INVALID_CONN_HANDLE),
-            connParamsUpdateAttempts_(0),
-            connParamsUpdateTimer_(nullptr),
-            connParamsUpdateSemaphore_(nullptr),
-            connectSemaphore_(nullptr),
-            disconnectSemaphore_(nullptr) {
+    ConnectionsManager()
+            : isConnecting_(false),
+              disconnectingHandle_(BLE_INVALID_CONN_HANDLE),
+              connParamUpdateHandle_(BLE_INVALID_CONN_HANDLE),
+              connParamsUpdateAttempts_(0),
+              connParamsUpdateTimer_(nullptr),
+              connParamsUpdateSemaphore_(nullptr),
+              connectSemaphore_(nullptr),
+              disconnectSemaphore_(nullptr) {
         connectingAddr_ = {};
         connectionsPool_.init(CONNECTIONS_POOL_SIZE);
     }
@@ -575,6 +582,7 @@ private:
                     cccdConnection = BLE_INVALID_CONN_HANDLE;
                 }
             }
+            ~BleCharacteristic() = default;
 
             uint8_t properties;
             hal_ble_attr_handle_t svcHandle;
@@ -598,17 +606,17 @@ private:
 
 class BleObject::GattClient : public GattBase {
 public:
-    GattClient() :
-            isDiscovering_(false),
-            currDiscConnHandle_(BLE_INVALID_CONN_HANDLE),
-            currDiscProcedure_(DiscoveryProcedure::BLE_DISCOVERY_PROCEDURE_IDLE),
-            discoverySemaphore_(nullptr),
-            readWriteSemaphore_(nullptr),
-            readAttrHandle_(BLE_INVALID_ATTR_HANDLE),
-            readBuf_(nullptr),
-            readLen_(0),
-            attMtuExchangeConnHandle_(BLE_INVALID_CONN_HANDLE),
-            attMtuExchangeTimer_(nullptr) {
+    GattClient()
+            : isDiscovering_(false),
+              currDiscConnHandle_(BLE_INVALID_CONN_HANDLE),
+              currDiscProcedure_(DiscoveryProcedure::BLE_DISCOVERY_PROCEDURE_IDLE),
+              discoverySemaphore_(nullptr),
+              readWriteSemaphore_(nullptr),
+              readAttrHandle_(BLE_INVALID_ATTR_HANDLE),
+              readBuf_(nullptr),
+              readLen_(0),
+              attMtuExchangeConnHandle_(BLE_INVALID_CONN_HANDLE),
+              attMtuExchangeTimer_(nullptr) {
         resetDiscoveryState();
     }
     ~GattClient() = default;
@@ -925,12 +933,12 @@ struct BroadcasterImpl {
 };
 static BroadcasterImpl broadcasterImpl;
 
-BleObject::Broadcaster::Broadcaster() :
-        isAdvertising_(false),
-        advHandle_(BLE_GAP_ADV_SET_HANDLE_NOT_SET),
-        txPower_(0),
-        advPending_(false),
-        connHandle_(BLE_INVALID_CONN_HANDLE) {
+BleObject::Broadcaster::Broadcaster()
+        : isAdvertising_(false),
+          advHandle_(BLE_GAP_ADV_SET_HANDLE_NOT_SET),
+          txPower_(0),
+          advPending_(false),
+          connHandle_(BLE_INVALID_CONN_HANDLE) {
     /* Default advertising parameters. */
     advParams_.version = BLE_API_VERSION;
     advParams_.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;

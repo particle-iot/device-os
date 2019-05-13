@@ -834,8 +834,8 @@ namespace particle { namespace ble {
 
 class BleLock {
 public:
-    BleLock() :
-            locked_(false) {
+    BleLock()
+            : locked_(false) {
         lock();
     }
 
@@ -845,8 +845,8 @@ public:
         }
     }
 
-    BleLock(BleLock&& lock) :
-            locked_(lock.locked_) {
+    BleLock(BleLock&& lock)
+            : locked_(lock.locked_) {
         lock.locked_ = false;
     }
 
