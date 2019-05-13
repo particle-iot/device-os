@@ -58,7 +58,7 @@ extern bool gPlatformPseudoResetWasRequested;
 
 static void selectAntenna(bool external) {
     // Mesh SoM don't have on-board antenna switch.
-#if (PLATFORM_ID == PLATFORM_XENON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_BORON_SOM)
+#if (PLATFORM_ID == PLATFORM_XSOM) || (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM)
     return;
 #else
     HAL_Pin_Mode(ANTSW1, OUTPUT);
@@ -87,7 +87,7 @@ static void selectAntenna(bool external) {
         HAL_GPIO_Write(ANTSW2, 0);
 #endif
     }
-#endif // (PLATFORM_ID == PLATFORM_XENON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM)
+#endif // (PLATFORM_ID == PLATFORM_XSOM) || (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_ASOM)
 }
 
 static void processSocEvent(uint32_t event, void* data) {

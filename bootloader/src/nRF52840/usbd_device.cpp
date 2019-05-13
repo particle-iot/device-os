@@ -143,11 +143,11 @@ private:
 #elif PLATFORM_ID == 14
 # define USBD_PRODUCT_NAME              "Xenon"
 #elif PLATFORM_ID == 22
-# define USBD_PRODUCT_NAME              "Argon SoM"
+# define USBD_PRODUCT_NAME              "A SoM"
 #elif PLATFORM_ID == 23
-# define USBD_PRODUCT_NAME              "Boron SoM"
+# define USBD_PRODUCT_NAME              "B SoM"
 #else
-# define USBD_PRODUCT_NAME              "Xenon SoM"
+# define USBD_PRODUCT_NAME              "X SoM"
 #endif
 #define USBD_PRODUCT_STRING             USBD_PRODUCT_NAME " " "DFU Mode"
 #define USBD_CONFIGURATION_STRING       USBD_PRODUCT_STRING

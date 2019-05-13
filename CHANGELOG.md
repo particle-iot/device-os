@@ -16,7 +16,7 @@
 ### FEATURES
 
 - [gen 3] Argon, Boron, Xenon platform Device OS `mesh_develop` merged into `develop` [#1700](https://github.com/particle-iot/device-os/pull/1700)
-- [gen 3] Adds Argon SoM, Boron SoM and Xenon SoM platforms to Device OS [#1662](https://github.com/particle-iot/device-os/pull/1662)
+- [gen 3] Adds A SoM, B SoM and X SoM platforms to Device OS [#1662](https://github.com/particle-iot/device-os/pull/1662)
 - [som] Runtime power management IC detection [#1733](https://github.com/particle-iot/device-os/pull/1733)
 
 ### ENHANCEMENTS
@@ -26,7 +26,7 @@
 - [gen 2] Binary size optimizations [#1720](https://github.com/particle-iot/device-os/pull/1720)
 - Updates Tinker for all platforms [#1717](https://github.com/particle-iot/device-os/pull/1717)
 - [gen 3] Adds button and RGB LED mirroring support [#1590](https://github.com/particle-iot/device-os/pull/1590)
-- [boron-som] Disables system power management [#1722](https://github.com/particle-iot/device-os/pull/1722)
+- [bsom] Disables system power management [#1722](https://github.com/particle-iot/device-os/pull/1722)
 - [boron/LTE] Enable Cat M1-only mode and disable eDRX completely [#1723](https://github.com/particle-iot/device-os/pull/1723)
 - [gen 3] QSPI flash is put into sleep mode and is deinitialized when entering STANDBY or STOP sleep mode [1725](https://github.com/particle-iot/device-os/pull/1725)
 - [gen 3] Parameter check for SPI slave mode with HAL_SPI_INTERFACE1 [#1731](https://github.com/particle-iot/device-os/pull/1731)

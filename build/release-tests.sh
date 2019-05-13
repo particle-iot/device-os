@@ -6,8 +6,8 @@ function display_help ()
 usage: release-tests.sh [--dryrun] [--help]
                         [--filename=<test_parameter_file.json>]
                         --output-directory=<binary_output_directory>
-                        --platform=<argon|argon-som|boron|boron-som...
-                        |core|electron|p1|photon|xenon|xenon-som>
+                        --platform=<argon|asom|boron|bsom...
+                        |core|electron|p1|photon|xenon|xsom>
                         --version=<semver_version_string>
 
 Generate the testing binaries belonging to a given platform.
@@ -104,7 +104,7 @@ function valid_platform ()
     platform=$1
 
     # Validate platform (result of expression returned to caller)
-    [ "$platform" = "argon" ] || [ "$platform" = "argon-som" ] || [ "$platform" = "boron" ] || [ "$platform" = "boron-som" ] || [ "$platform" = "core" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ] || [ "$platform" = "xenon" ] || [ "$platform" = "xenon-som" ]
+    [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || [ "$platform" = "boron" ] || [ "$platform" = "bsom" ] || [ "$platform" = "core" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ] || [ "$platform" = "xenon" ] || [ "$platform" = "xsom" ]
 }
 
 # Handle invalid arguments
@@ -148,13 +148,13 @@ case "$PLATFORM" in
     "xenon")
         PLATFORM_ID="14"
         ;;
-    "argon-som")
+    "asom")
         PLATFORM_ID="22"
         ;;
-    "boron-som")
+    "bsom")
         PLATFORM_ID="23"
         ;;
-    "xenon-som")
+    "xsom")
         PLATFORM_ID="24"
         ;;
     *)

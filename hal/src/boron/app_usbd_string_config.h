@@ -85,9 +85,9 @@
 #if PLATFORM_ID == 13 // Boron
 #define APP_USBD_STRINGS_PRODUCT         \
     APP_USBD_STRING_DESC('B', 'o', 'r', 'o', 'n', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
-#else // Boron SoM
+#else // B SoM
 #define APP_USBD_STRINGS_PRODUCT         \
-    APP_USBD_STRING_DESC('B', 'o', 'r', 'o', 'n', ' ', 'S', 'o', 'M', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
+    APP_USBD_STRING_DESC('B', ' ', 'S', 'o', 'M', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
 #endif
 
 

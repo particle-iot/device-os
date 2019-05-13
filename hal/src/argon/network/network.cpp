@@ -131,7 +131,7 @@ int if_init_platform(void*) {
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
 #if PLATFORM_ID == PLATFORM_ARGON
         en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
-#else // Argon SoM
+#else // A SoM
         en2 = new WizNetif(HAL_SPI_INTERFACE1, D8, A7, D22, mac);
 #endif
     }
