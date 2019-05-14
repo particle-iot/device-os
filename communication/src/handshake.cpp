@@ -25,7 +25,7 @@
 #include "handshake.h"
 #include "protocol_selector.h"
 
-#if HAL_PLATFORM_CLOUD_TCP
+#if HAL_PLATFORM_CLOUD_TCP || HAL_PLATFORM_SOFTAP_SETUP
 
 #ifdef USE_MBEDTLS
 #include "mbedtls/sha1.h"

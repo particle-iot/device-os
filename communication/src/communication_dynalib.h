@@ -49,7 +49,7 @@ DYNALIB_FN(13, communication, spark_protocol_add_event_handler, bool(ProtocolFac
 DYNALIB_FN(14, communication, spark_protocol_send_time_request, bool(ProtocolFacade*, void*))
 DYNALIB_FN(15, communication, spark_protocol_send_subscriptions, void(ProtocolFacade*, void*))
 
-#if !defined(PARTICLE_PROTOCOL) || HAL_PLATFORM_CLOUD_TCP
+#if !defined(PARTICLE_PROTOCOL) || HAL_PLATFORM_CLOUD_TCP || HAL_PLATFORM_SOFTAP_SETUP
 DYNALIB_FN(16, communication, decrypt_rsa, int(const uint8_t*, const uint8_t*, uint8_t*, int32_t))
 DYNALIB_FN(17, communication, gen_rsa_key, int(uint8_t*, size_t, int32_t(*)(void*), void*))
 DYNALIB_FN(18, communication, extract_public_rsa_key, void(uint8_t*, const uint8_t*))

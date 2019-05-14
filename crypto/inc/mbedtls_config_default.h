@@ -23,13 +23,7 @@
 
 #include "hal_platform.h"
 
-#if PLATFORM_ID==6 || PLATFORM_ID==8
-#define PLATFORM_WICED 1
-#else
-#define PLATFORM_WICED 0
-#endif
-
-#if !HAL_PLATFORM_CLOUD_UDP && PLATFORM_WICED
+#if !HAL_PLATFORM_CLOUD_UDP && HAL_PLATFORM_WICED
 #include "mbedtls_config_photon.h"
 #else
 

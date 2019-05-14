@@ -18,6 +18,7 @@
  */
 
 #include "protocol_selector.h"
+#include "hal_platform.h"
 #include "spark_protocol_functions.h"
 #include "handshake.h"
 #include "debug.h"
@@ -49,7 +50,7 @@ void default_random_seed_from_cloud(unsigned int seed)
     srand(seed);
 }
 
-#if !PARTICLE_PROTOCOL || HAL_PLATFORM_CLOUD_TCP
+#if !PARTICLE_PROTOCOL || HAL_PLATFORM_CLOUD_TCP || HAL_PLATFORM_SOFTAP_SETUP
 int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* plaintext, int32_t plaintext_len)
 {
     rsa_context rsa;
@@ -71,7 +72,6 @@ int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* 
 #endif // !PARTICLE_PROTOCOL || HAL_PLATFORM_CLOUD_TCP
 
 #if PARTICLE_PROTOCOL
-#include "hal_platform.h"
 
 #if HAL_PLATFORM_CLOUD_TCP
 #include "lightssl_protocol.h"
