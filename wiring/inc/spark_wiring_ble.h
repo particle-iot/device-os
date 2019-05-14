@@ -291,9 +291,10 @@ public:
     size_t set(const uint8_t* buf, size_t len);
 
     size_t append(BleAdvertisingDataType type, const uint8_t* buf, size_t len, bool force = false);
-    size_t appendLocalName(const char* name, bool force = false);
-    size_t appendLocalName(const String& name, bool force = false);
     size_t appendCustomData(const uint8_t* buf, size_t len, bool force = false);
+    // According to the Bluetooth CSS, Local Name shall not appear more than once in a block.
+    size_t appendLocalName(const char* name);
+    size_t appendLocalName(const String& name);
 
     template<typename T>
     size_t appendServiceUUID(T uuid, bool force = false) {
@@ -475,6 +476,8 @@ public:
     int advertise(const BleAdvertisingParams& params, const iBeacon& iBeacon, bool connectable = false) const;
 
     int stopAdvertising() const;
+
+    bool advertising() const;
 
     int scan(BleOnScanResultCallback callback, void* context = nullptr) const;
     int scan(BleOnScanResultCallback callback, uint16_t timeout, void* context = nullptr) const;

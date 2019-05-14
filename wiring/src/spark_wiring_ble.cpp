@@ -238,12 +238,12 @@ size_t BleAdvertisingData::append(BleAdvertisingDataType type, const uint8_t* bu
     return selfLen_;
 }
 
-size_t BleAdvertisingData::appendLocalName(const char* name, bool force) {
-    return append(BleAdvertisingDataType::COMPLETE_LOCAL_NAME, (const uint8_t*)name, strlen(name), force);
+size_t BleAdvertisingData::appendLocalName(const char* name) {
+    return append(BleAdvertisingDataType::COMPLETE_LOCAL_NAME, (const uint8_t*)name, strlen(name), false);
 }
 
-size_t BleAdvertisingData::appendLocalName(const String& name, bool force) {
-    return appendLocalName(name.c_str(), force);
+size_t BleAdvertisingData::appendLocalName(const String& name) {
+    return appendLocalName(name.c_str());
 }
 
 size_t BleAdvertisingData::appendCustomData(const uint8_t* buf, size_t len, bool force) {
@@ -1112,6 +1112,10 @@ public:
         return hal_ble_gap_stop_advertising();
     }
 
+    bool advertising() const {
+        return hal_ble_gap_is_advertising();
+    }
+
     void broadcasterProcessStopped() {
         return;
     }
@@ -1551,6 +1555,10 @@ int BleLocalDevice::advertise(const BleAdvertisingParams& params, const iBeacon&
 
 int BleLocalDevice::stopAdvertising() const {
     return broadcasterProxy_->stopAdvertising();
+}
+
+bool BleLocalDevice::advertising() const {
+    return broadcasterProxy_->advertising();
 }
 
 int BleLocalDevice::scan(BleOnScanResultCallback callback, void* context) const {
