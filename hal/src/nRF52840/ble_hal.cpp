@@ -21,6 +21,7 @@ LOG_SOURCE_CATEGORY("hal.ble")
 #include "ble_hal.h"
 
 #if HAL_PLATFORM_BLE
+#define LOG_CHECKED_ERRORS 1
 
 /* Headers included from nRF5_SDK/components/softdevice/s140/headers */
 #include "ble.h"
@@ -436,6 +437,7 @@ private:
     size_t scanRespDataLen_;                        /**< Current scan response data length. */
     int8_t txPower_;                                /**< TX Power. */
     bool advPending_;                               /**< Advertising is pending. */
+    bool connectedAdvParams_;                       /**< Whether it is using the advertising parameters being set when connected as Peripheral. */
     volatile hal_ble_conn_handle_t connHandle_;     /**< Connection handle. It is assigned once device is connected as Peripheral. It is used for re-start advertising. */
     static const int8_t validTxPower_[8];           /**< Valid TX power values. */
 };
@@ -938,6 +940,7 @@ BleObject::Broadcaster::Broadcaster()
           advHandle_(BLE_GAP_ADV_SET_HANDLE_NOT_SET),
           txPower_(0),
           advPending_(false),
+          connectedAdvParams_(false),
           connHandle_(BLE_INVALID_CONN_HANDLE) {
     /* Default advertising parameters. */
     advParams_.version = BLE_API_VERSION;
@@ -1052,6 +1055,21 @@ int BleObject::Broadcaster::getTxPower(int8_t* txPower) const {
 
 int BleObject::Broadcaster::startAdvertising() {
     CHECK(stopAdvertising());
+    if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
+        // It is connected as Peripheral, the advertising event should be set to non-connectable.
+        if (!connectedAdvParams_) {
+            hal_ble_adv_params_t params = advParams_;
+            params.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
+            CHECK(configure(&params));
+            connectedAdvParams_ = true;
+        }
+    } else {
+        // Restores the advertising parameters set by user.
+        if (connectedAdvParams_) {
+            CHECK(configure(&advParams_));
+            connectedAdvParams_ = false;
+        }
+    }
     int ret = sd_ble_gap_adv_start(advHandle_, BLE_CONN_CFG_TAG);
     CHECK_NRF_RETURN(ret, sysError(ret));
     isAdvertising_ = true;
@@ -1068,8 +1086,10 @@ int BleObject::Broadcaster::stopAdvertising() {
 }
 
 int BleObject::Broadcaster::suspend() {
-    CHECK(stopAdvertising());
-    advPending_ = true;
+    if (isAdvertising_) {
+        CHECK(stopAdvertising());
+        advPending_ = true;
+    }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1141,20 +1161,21 @@ void BleObject::Broadcaster::processBroadcasterEvents(const ble_evt_t* event, vo
             break;
         }
         case BLE_GAP_EVT_CONNECTED: {
-            // FIXME: If multi role is enabled, this flag should not be clear here.
-            broadcaster->isAdvertising_ = false;
+            // When connected as Peripheral, stop advertising automatically.
+            // When connected as Central, nothing should change.
             if (event->evt.gap_evt.params.connected.role == BLE_ROLE_PERIPHERAL) {
                 broadcaster->connHandle_ = event->evt.gap_evt.conn_handle;
+                broadcaster->isAdvertising_ = false;
             }
             break;
         }
         case BLE_GAP_EVT_DISCONNECTED: {
-            // Re-start advertising.
-            // FIXME: when multi-role implemented.
             if (broadcaster->connHandle_ == event->evt.gap_evt.conn_handle) {
                 LOG_DEBUG(TRACE, "Restart BLE advertising.");
-                broadcaster->startAdvertising();
+                // The connection handle must be cleared before re-start advertising.
+                // Otherwise, it cannot restore the normal advertising parameters.
                 broadcaster->connHandle_ = BLE_INVALID_CONN_HANDLE;
+                broadcaster->startAdvertising();
             }
             break;
         }
