@@ -1387,19 +1387,24 @@ int MDMParser::_cbBANDSEL(int type, const char* buf, int len, MDM_BandSelect* da
 
 int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
 {
-    if ((type == TYPE_PLUS) && status){
+    if ((type == TYPE_PLUS) && status)
+    {
         int act = 99;
-        char mobile_country_code[4] = {};
-        char mobile_network_code[4] = {};
+        char mobile_country_code[4] = {0};
+        char mobile_network_code[4] = {0};
 
         // +COPS: <mode>[,<format>,<oper>[,<AcT>]]
-        if (sscanf(buf, "\r\n+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d",mobile_country_code,mobile_network_code,&act) >= 1) {
+        if (sscanf(buf, "\r\n+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobile_country_code,
+                   mobile_network_code, &act) >= 1)
+        {
             // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
             status->cgi.mobile_country_code = static_cast<uint16_t>(::atoi(mobile_country_code));
             status->cgi.mobile_network_code = static_cast<uint16_t>(::atoi(mobile_network_code));
 
-            if      (act == 0) status->act = ACT_GSM;      // 0: GSM,
-            else if (act == 2) status->act = ACT_UTRAN;    // 2: UTRAN
+            if (act == 0)
+                status->act = ACT_GSM; // 0: GSM,
+            else if (act == 2)
+                status->act = ACT_UTRAN; // 2: UTRAN
         }
     }
     return WAIT;

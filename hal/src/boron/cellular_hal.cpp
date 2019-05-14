@@ -223,8 +223,7 @@ int cellular_credentials_clear(void* reserved) {
     return 0;
 }
 
-cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* reserved_)
-{
+cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* reserved_) {
     cellular_result_t result;
     CellularGlobalIdentity cgi;
 

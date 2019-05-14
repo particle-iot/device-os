@@ -159,7 +159,7 @@ int SaraNcpClient::initParser(Stream* stream) {
     CHECK(parser_.addUrcHandler("+CREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
         int val[4] = {-1,-1,-1,-1};
-        char at_response[64]{};
+        char at_response[64] = {0};
         // Take a copy of AT response for multi-pass scanning
         CHECK_PARSER_URC(reader->readLine(at_response, sizeof(at_response)));
         // Parse response ignoring mode (replicate URC response)
@@ -187,7 +187,7 @@ int SaraNcpClient::initParser(Stream* stream) {
     CHECK(parser_.addUrcHandler("+CGREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
         int val[4] = {-1,-1,-1,-1};
-        char at_response[64]{};
+        char at_response[64] = {0};
         // Take a copy of AT response for multi-pass scanning
         CHECK_PARSER_URC(reader->readLine(at_response, sizeof(at_response)));
         // Parse response ignoring mode (replicate URC response)
@@ -214,7 +214,7 @@ int SaraNcpClient::initParser(Stream* stream) {
     CHECK(parser_.addUrcHandler("+CEREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
         int val[4] = {-1,-1,-1,-1};
-        char at_response[64]{};
+        char at_response[64] = {0};
         // Take a copy of AT response for multi-pass scanning
         CHECK_PARSER_URC(reader->readLine(at_response, sizeof(at_response)));
         // Parse response ignoring mode (replicate URC response)
@@ -397,18 +397,19 @@ int SaraNcpClient::getImei(char* buf, size_t size) {
 
 int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
     int act;
-    char mobile_country_code[4] = {};
-    char mobile_network_code[4] = {};
+    char mobileCountryCode[4] = {0};
+    char mobileNetworkCode[4] = {0};
 
     auto resp = parser_.sendCommand("AT+COPS?");
-    int r = CHECK_PARSER(resp.scanf("+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobile_country_code, mobile_network_code, &act));
+    int r = CHECK_PARSER(resp.scanf("+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobileCountryCode,
+                                    mobileNetworkCode, &act));
     CHECK_TRUE(r == 3, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
-    cgi_.mobile_country_code = static_cast<uint16_t>(::atoi(mobile_country_code));
-    cgi_.mobile_network_code = static_cast<uint16_t>(::atoi(mobile_network_code));
+    cgi_.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
+    cgi_.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
 
     switch (static_cast<CellularAccessTechnology>(act)) {
         case CellularAccessTechnology::NONE:
