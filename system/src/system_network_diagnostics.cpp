@@ -17,7 +17,8 @@
  ******************************************************************************
  */
 
-#include "hal_platform.h"
+// Mesh signal strength/quality have not been implemented
+#if (PLATFORM_ID != 14) && (PLATFORM_ID != 24)
 
 #include <string.h>
 
@@ -350,3 +351,5 @@ public:
 } // namespace
 
 #endif // Wiring_Network
+
+#endif // (PLATFORM_ID != 14) && (PLATFORM_ID != 24)
