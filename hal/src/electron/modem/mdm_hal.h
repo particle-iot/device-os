@@ -143,7 +143,10 @@ public:
      *
      * \param[out] cgi A reference to a CellularGlobalIdentity
      *                 structure in which to populate cached values.
-     * \returns true
+     *
+     * \returns A boolean indicating success
+     * \retval true Success
+     * \retval false Failure
      */
     bool getCellularGlobalIdentity(CellularGlobalIdentity& cgi);
 

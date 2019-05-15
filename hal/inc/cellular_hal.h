@@ -115,17 +115,26 @@ CellularCredentials* cellular_credentials_get(void* reserved);
 cellular_result_t cellular_credentials_clear(void* reserved);
 
 /**
- * @brief Retrieve the cached values representing the cellular global identity
+ * @brief Retrieve Cellular Global Identity (CGI)
  *
- * @param[out] cgi An initialized struct to be overwritten
- * @param[in] reserved Reserved for future use
+ * If a cell phone is connected to a GSM network then the position of that particular cell phone can
+ * be determined using CGI of the cell which is covering that cell phone. A more specific
+ * application of the CGI is to roughly determine a mobile phone's geographical position.
+ *
+ * @param[in,out] cgi An allocated struct with the size member specified (contents will be
+ * overwritten)
+ * @param[in] reserved Reserved for future use (defaulted to `NULL`)
  *
  * @returns \c cellular_result_t code
  * @retval SYSTEM_ERROR_NONE
- * @retval SYSTEM_ERROR_BAD_DATA The cached values are invalid
+ * @retval SYSTEM_ERROR_AT_NOT_OK
+ * @retval SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED Cannot parse the value returned from AT command
+ * @retval SYSTEM_ERROR_BAD_DATA The resulting values are invalid
  * @retval SYSTER_ERROR_INVALID_ARGUMENT
+ * @retval SYSTEM_ERROR_INVALID_STATE The device is disconnected
+ * @retval SYSTER_ERROR_UNKNOWN
  */
-cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi, void* reserved);
+cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi, void* reserved = NULL);
 
 bool cellular_sim_ready(void* reserved);
 

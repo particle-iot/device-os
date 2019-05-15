@@ -1232,10 +1232,23 @@ bool MDMParser::getDataUsage(MDM_DataUsage &data)
     return ok;
 }
 
-bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_)
-{
-    cgi_ = _net.cgi;
-    return true;
+bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_) {
+    bool result;
+    // We receive `lac` and `ci` changes asynchronously via CREG URCs, however we need to explicitly
+    // update the `mcc` and `mnc` to confirm the operator has not changed.
+    if (0 == sendFormated("AT+COPS?\r\n")) {
+        // Failed to send request
+        result = false;
+    // Await response from AT+COPS
+    } else if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
+        // Request not accepted
+        result = false;
+    // CGI value has been updated successfully
+    } else {
+        cgi_ = _net.cgi;
+        result = true;
+    }
+    return result;
 }
 
 void MDMParser::_setBandSelectString(MDM_BandSelect &data, char* bands, int index /*= 0*/) {

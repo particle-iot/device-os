@@ -369,7 +369,8 @@ cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* r
     }
     // Load cached data into result struct
     else if (!electronMDM.getCellularGlobalIdentity(cgi)) {
-        result = SYSTEM_ERROR_UNKNOWN;
+        // Failed to query AT+COPS
+        result = SYSTEM_ERROR_AT_NOT_OK;
     }
     // Validate cache
     else if (0 == cgi.mobile_country_code || 0 == cgi.mobile_network_code ||
