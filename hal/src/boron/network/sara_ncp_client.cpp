@@ -402,11 +402,11 @@ int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
 
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
-    r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
+    int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     auto resp = parser_.sendCommand("AT+COPS?");
-    int r = CHECK_PARSER(resp.scanf("+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobileCountryCode,
+    r = CHECK_PARSER(resp.scanf("+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobileCountryCode,
                                     mobileNetworkCode, &act));
     CHECK_TRUE(r == 3, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     r = CHECK_PARSER(resp.readResult());
