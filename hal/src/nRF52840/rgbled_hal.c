@@ -126,7 +126,6 @@ void LED_Init(Led_TypeDef Led) {
         return;
     }
 
-    HAL_Pin_Mode(HAL_Leds[Led].pin, OUTPUT);
     if (HAL_Leds[Led].is_inverted) {
         HAL_GPIO_Write(HAL_Leds[Led].pin, 1);
     } else {
