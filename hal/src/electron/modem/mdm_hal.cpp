@@ -1164,6 +1164,12 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         if (!_atOk()) {
             goto failure;
         }
+        // Reformat the operator string to be numeric
+        // (allows the capture of `mcc` and `mnc`)
+        sendFormated("AT+COPS=3,2\r\n");
+        if (RESP_OK != waitFinalResp()) {
+            goto failure;
+        }
         sendFormated("AT+COPS?\r\n");
         if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
             goto failure;
@@ -1234,12 +1240,20 @@ bool MDMParser::getDataUsage(MDM_DataUsage &data)
 
 bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_) {
     bool result;
-    // We receive `lac` and `ci` changes asynchronously via CREG URCs, however we need to explicitly
-    // update the `mcc` and `mnc` to confirm the operator has not changed.
-    if (0 == sendFormated("AT+COPS?\r\n")) {
+    // Reformat the operator string to be numeric (allows the capture of `mcc` and `mnc`)
+    if (0 == sendFormated("AT+COPS=3,2\r\n")) {
         // Failed to send request
         result = false;
-    // Await response from AT+COPS
+    // Await response from `AT+COPS=3,2`
+    } else if (RESP_OK != waitFinalResp()) {
+        // Request not accepted
+        result = false;
+    // We receive `lac` and `ci` changes asynchronously via CREG URCs, however we need to explicitly
+    // update the `mcc` and `mnc` to confirm the operator has not changed.
+    } else if (0 == sendFormated("AT+COPS?\r\n")) {
+        // Failed to send request
+        result = false;
+    // Await response from `AT+COPS?`
     } else if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
         // Request not accepted
         result = false;
