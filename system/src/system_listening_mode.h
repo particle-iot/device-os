@@ -29,6 +29,10 @@
 #include <memory>
 #include "system_tick_hal.h"
 
+#if HAL_PLATFORM_BLE
+#include "ble_hal.h"
+#endif /* HAL_PLATFORM_BLE */
+
 namespace particle { namespace system {
 
 class ListeningModeHandler {
@@ -62,6 +66,18 @@ private:
 
 private:
     std::atomic_bool active_;
+
+#if HAL_PLATFORM_BLE
+    uint8_t* preAdvData_;
+    size_t preAdvDataLen_;
+    uint8_t* preSrData_;
+    size_t preSrDataLen_;
+    hal_ble_adv_params_t preAdvParams_;
+    hal_ble_conn_params_t prePpcp_;
+    bool preAdvertising_;
+    bool preConnected_;
+    hal_ble_auto_adv_cfg_t preAutoAdv_;
+#endif
 
     std::unique_ptr<SystemSetupConsoleBase> console_;
     system_tick_t timestampStarted_;

@@ -38,6 +38,9 @@
 
 #define BLE_API_VERSION 1
 
+// Particle's company ID
+#define PARTICLE_COMPANY_ID     0x0662
+
 typedef enum hal_ble_ant_type_t {
     BLE_ANT_DEFAULT  = 0,
     BLE_ANT_INTERNAL = 1,
@@ -66,6 +69,12 @@ typedef enum hal_ble_adv_fp_t {
     BLE_ADV_FP_FILTER_CONNREQ = 0x02,   /**< Filter connect requests with whitelist. */
     BLE_ADV_FP_FILTER_BOTH    = 0x03    /**< Filter both scan and connect requests with whitelist. */
 } hal_ble_adv_fp_t;
+
+typedef enum hal_ble_auto_adv_cfg_t {
+    BLE_AUTO_ADV_FORBIDDEN = 0,
+    BLE_AUTO_ADV_SINCE_NEXT_CONN = 1,
+    BLE_AUTO_ADV_ALWAYS = 2,
+} hal_ble_auto_adv_cfg_t;
 
 typedef enum hal_ble_scan_fp_t {
     BLE_SCAN_FP_ACCEPT_ALL                      = 0x00,  /**< Accept all advertising packets except directed advertising packets
@@ -217,7 +226,7 @@ typedef struct hal_ble_gap_on_connected_evt_t {
     uint16_t conn_interval;             /**< Connection Interval in 1.25 ms units.*/
     uint16_t slave_latency;             /**< Slave Latency in number of connection events.*/
     uint16_t conn_sup_timeout;          /**< Connection Supervision Timeout in 10 ms units.*/
-    uint8_t role;                       /**< It can be either BLE_ROLE_PERIPHERAL or BLE_ROLE_CENTRAL. */
+    hal_ble_role_t role;                /**< It can be either BLE_ROLE_PERIPHERAL or BLE_ROLE_CENTRAL. */
     uint8_t reserved;
     hal_ble_addr_t peer_addr;
     hal_ble_conn_handle_t conn_handle;
@@ -493,7 +502,8 @@ int hal_ble_gap_set_advertising_data(const uint8_t* buf, size_t len, void* reser
 /**
  * Get the current BLE advertising data.
  *
- * @param[in,out]   buf     Pointer to the advertising data to be filled.
+ * @param[in,out]   buf     Pointer to the advertising data to be filled. If nullptr, it returns the total length
+ *                          of the advertising data.
  * @param[in]       len     Length of the given buffer.
  *
  * @returns     The length of copied data, or system_error_t if negative value.
@@ -513,7 +523,8 @@ int hal_ble_gap_set_scan_response_data(const uint8_t* buf, size_t len, void* res
 /**
  * Get the current BLE scan response data.
  *
- * @param[in,out]   buf     Pointer to the scan response data to be filled.
+ * @param[in,out]   buf     Pointer to the scan response data to be filled. If nullptr, it returns the total length
+ *                          of the scan response data.
  * @param[in]       len     Length of the given buffer.
  *
  * @returns     The length of copied data, or system_error_t if negative value.
@@ -526,6 +537,22 @@ ssize_t hal_ble_gap_get_scan_response_data(uint8_t* buf, size_t len, void* reser
  * @returns     0 on success, system_error_t on error.
  */
 int hal_ble_gap_start_advertising(void* reserved);
+
+/**
+ * Configure the automatic advertising scheme.
+ *
+ * @param[in]   config  The automatic advertising configuration, see @hal_ble_auto_adv_cfg_t.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_gap_set_auto_advertise(hal_ble_auto_adv_cfg_t config, void* reserved);
+
+/**
+ * Get the current automatic advertising scheme.
+ *
+ * @returns     The current automatic advertising scheme.
+ */
+hal_ble_auto_adv_cfg_t hal_ble_gap_get_auto_advertise(void* reserved);
 
 /**
  * Stop BLE advertising.
@@ -603,7 +630,7 @@ bool hal_ble_gap_is_connecting(const hal_ble_addr_t* address);
  * Check if BLE is connected with peer device.
  *
  * @param[in]   address Pointer to the peer BLE identity address.
- *                      If NULL, it returns true as long as there has on-going connections.
+ *                      If NULL, it returns true if local device is connected as peripheral, otherwise false.
  *
  * @returns true if connected, otherwise false.
  */
