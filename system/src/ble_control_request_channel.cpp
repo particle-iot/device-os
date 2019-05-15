@@ -104,9 +104,6 @@ struct __attribute__((packed)) HandshakeHeader {
     uint16_t size; // Payload size
 };
 
-// Particle's company ID
-const unsigned COMPANY_ID = 0x0662;
-
 // Device setup protocol version
 const unsigned PROTOCOL_VERSION = 0x02;
 
@@ -1037,57 +1034,65 @@ size_t BleControlRequestChannel::readSome(char* data, size_t size) {
 }
 
 int BleControlRequestChannel::connected(const hal_ble_evts_t& event) {
-    curConnHandle_ = event.params.connected.conn_handle;
-    maxPacketSize_ = BLE_MIN_ATTR_VALUE_PACKET_SIZE;
-    subscribed_ = false;
-    writable_ = subscribed_;
-    packetCount_ = 0;
-    // Update connection state counter
-    curConnId_.fetch_add(1, std::memory_order_release);
+    if (event.params.connected.role == BLE_ROLE_PERIPHERAL) {
+        curConnHandle_ = event.params.connected.conn_handle;
+        maxPacketSize_ = BLE_MIN_ATTR_VALUE_PACKET_SIZE;
+        subscribed_ = false;
+        writable_ = subscribed_;
+        packetCount_ = 0;
+        // Update connection state counter
+        curConnId_.fetch_add(1, std::memory_order_release);
+    }
     return 0;
 }
 
 int BleControlRequestChannel::disconnected(const hal_ble_evts_t& event) {
-    // Free queued buffers
-    while (Buffer* buf = inBufs_.popFront()) {
-        freePooledBuffer(buf);
+    if (event.params.disconnected.conn_handle == curConnHandle_) {
+        // Free queued buffers
+        while (Buffer* buf = inBufs_.popFront()) {
+            freePooledBuffer(buf);
+        }
+        // Reset connection parameters
+        curConnHandle_ = BLE_INVALID_CONN_HANDLE;
+        writable_ = false;
+        // Update connection state counter
+        curConnId_.fetch_add(1, std::memory_order_release);
     }
-    // Reset connection parameters
-    curConnHandle_ = BLE_INVALID_CONN_HANDLE;
-    writable_ = false;
-    // Update connection state counter
-    curConnId_.fetch_add(1, std::memory_order_release);
     return 0;
 }
 
 int BleControlRequestChannel::gattParamChanged(const hal_ble_evts_t& event) {
-    if (curConnHandle_ == event.params.gatt_params_updated.conn_handle) {
-        maxPacketSize_ = event.params.gatt_params_updated.att_mtu_size - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE;
-        DEBUG("maxPacketSize_: %d", maxPacketSize_);
+    if (event.params.gatt_params_updated.conn_handle == curConnHandle_) {
+        if (curConnHandle_ == event.params.gatt_params_updated.conn_handle) {
+            maxPacketSize_ = event.params.gatt_params_updated.att_mtu_size - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE;
+            DEBUG("maxPacketSize_: %d", maxPacketSize_);
+        }
     }
     return 0;
 }
 
 int BleControlRequestChannel::dataReceived(const hal_ble_evts_t& event) {
-    if (event.params.data_rec.attr_handle == recvCharHandle_) {
-        DEBUG("Received BLE packet");
-        DEBUG_DUMP(event.params.data_rec.data, event.params.data_rec.data_len);
-        Buffer* buf = nullptr;
-        CHECK(allocPooledBuffer(event.params.data_rec.data_len, &buf));
-        memcpy(buf->data, event.params.data_rec.data, event.params.data_rec.data_len);
-        inBufs_.pushBack(buf);
-    }
-    else if (event.params.data_rec.attr_handle == sendCharCccdHandle_) {
-        subscribed_ = false;
-        if (event.params.data_rec.data[0] > 0) {
-            subscribed_ = true;
-            DEBUG("Enable CCCD");
+    if (event.params.data_rec.conn_handle == curConnHandle_) {
+        if (event.params.data_rec.attr_handle == recvCharHandle_) {
+            DEBUG("Received BLE packet");
+            DEBUG_DUMP(event.params.data_rec.data, event.params.data_rec.data_len);
+            Buffer* buf = nullptr;
+            CHECK(allocPooledBuffer(event.params.data_rec.data_len, &buf));
+            memcpy(buf->data, event.params.data_rec.data, event.params.data_rec.data_len);
+            inBufs_.pushBack(buf);
         }
-        else {
+        else if (event.params.data_rec.attr_handle == sendCharCccdHandle_) {
             subscribed_ = false;
-            DEBUG("Disable CCCD");
+            if (event.params.data_rec.data[0] > 0) {
+                subscribed_ = true;
+                DEBUG("Enable CCCD");
+            }
+            else {
+                subscribed_ = false;
+                DEBUG("Disable CCCD");
+            }
+            writable_ = subscribed_;
         }
-        writable_ = subscribed_;
     }
     return 0;
 }
@@ -1095,78 +1100,8 @@ int BleControlRequestChannel::dataReceived(const hal_ble_evts_t& event) {
 int BleControlRequestChannel::initProfile() {
     hal_ble_stack_init(nullptr);
 
-    // Set PPCP (Peripheral Preferred Connection Parameters)
-    hal_ble_conn_params_t connParam = {};
-    connParam.min_conn_interval = BLE_DEFAULT_MIN_CONN_INTERVAL;
-    connParam.max_conn_interval = BLE_DEFAULT_MAX_CONN_INTERVAL;
-    connParam.conn_sup_timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT;
-    connParam.slave_latency = BLE_DEFAULT_SLAVE_LATENCY;
-    int ret = hal_ble_gap_set_ppcp(&connParam, nullptr);
-    if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "hal_ble_gap_set_ppcp() failed: %u", (unsigned)ret);
-        return ret;
-    }
-
-    // Complete local name
-    char devName[32] = {};
-    hal_ble_gap_get_device_name(devName, sizeof(devName));
-
-    // Particle specific Manufacture data
-    uint8_t mfgData[BLE_MAX_ADV_DATA_LEN];
-    size_t mfgDataLen = 0;
-    uint16_t platformID = PLATFORM_ID;
-    memcpy(&mfgData[mfgDataLen], (uint8_t*)&COMPANY_ID, 2);
-    mfgDataLen += 2;
-    memcpy(&mfgData[mfgDataLen], (uint8_t*)&platformID, sizeof(platformID));
-    mfgDataLen += sizeof(platformID);
-
-    uint8_t advData[BLE_MAX_ADV_DATA_LEN] = {};
-    size_t advDataLen = 0;
-    advData[advDataLen++] = 0x02;
-    advData[advDataLen++] = BLE_SIG_AD_TYPE_FLAGS;
-    advData[advDataLen++] = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-    advData[advDataLen++] = strlen(devName) + 1;
-    advData[advDataLen++] = BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME;
-    memcpy(&advData[advDataLen], devName, strlen(devName));
-    advDataLen += strlen(devName);
-    advData[advDataLen++] = mfgDataLen + 1;
-    advData[advDataLen++] = BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA;
-    memcpy(&advData[advDataLen], mfgData, mfgDataLen);
-    advDataLen += mfgDataLen;
-    ret = hal_ble_gap_set_advertising_data(advData, advDataLen, nullptr);
-    if (ret != SYSTEM_ERROR_NONE) {
-        LOG_DEBUG(ERROR, "hal_ble_gap_set_advertising_data failed: %d", ret);
-        return ret;
-    }
-
-    // Particle Control Request Service 128-bits UUID
-    uint8_t srData[BLE_MAX_ADV_DATA_LEN] = {};
-    size_t srDataLen = 0;
-    srData[srDataLen++] = 0x11;
-    srData[srDataLen++] = BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE;
-    memcpy(&srData[srDataLen], CTRL_SERVICE_UUID, sizeof(CTRL_SERVICE_UUID));
-    srDataLen += sizeof(CTRL_SERVICE_UUID);
-    ret = hal_ble_gap_set_scan_response_data(srData, srDataLen, nullptr);
-    if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "hal_ble_gap_set_scan_response_data failed: %d", ret);
-        return ret;
-    }
-
-    // Default advertising parameters
-    hal_ble_adv_params_t advParams = {};
-    advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
-    advParams.filter_policy = BLE_ADV_FP_ANY;
-    advParams.interval      = BLE_DEFAULT_ADVERTISING_INTERVAL;
-    advParams.timeout       = BLE_DEFAULT_ADVERTISING_TIMEOUT;
-    advParams.inc_tx_power  = false;
-    ret = hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
-    if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "hal_ble_gap_set_advertising_parameters failed: %d", ret);
-        return ret;
-    }
-
     hal_ble_uuid_t halUuid;
-    uint16_t serviceHandle;
+    hal_ble_attr_handle_t serviceHandle;
     hal_ble_char_init_t char_init;
     hal_ble_char_handles_t attrHandles;
 
@@ -1174,7 +1109,7 @@ int BleControlRequestChannel::initProfile() {
     halUuid = {};
     halUuid.type = BLE_UUID_TYPE_128BIT;
     memcpy(halUuid.uuid128, CTRL_SERVICE_UUID, sizeof(CTRL_SERVICE_UUID));
-    ret = hal_ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &halUuid, &serviceHandle, nullptr);
+    int ret = hal_ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &halUuid, &serviceHandle, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
         LOG(ERROR, "hal_ble_gatt_server_add_service failed: %d", ret);
         return ret;

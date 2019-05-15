@@ -112,20 +112,20 @@ private:
 #endif
     AtomicAllocedPool pool_; // Pool allocator
 
-    uint16_t connHandle_; // Connection handle used by the processing thread
-    volatile uint16_t curConnHandle_; // Current connection handle
+    hal_ble_conn_handle_t connHandle_; // Connection handle used by the processing thread
+    volatile hal_ble_conn_handle_t curConnHandle_; // Current connection handle
 
     unsigned connId_; // Last connection ID known to the processing thread
     std::atomic<unsigned> curConnId_; // Current connection ID
 
     std::atomic<unsigned> packetCount_; // Number of pending notification packets
-    volatile uint16_t maxPacketSize_; // Maximum number of bytes that can be sent in a single notification packet
+    volatile size_t maxPacketSize_; // Maximum number of bytes that can be sent in a single notification packet
     volatile bool subscribed_; // Set to `true` if the client is subscribed to the notifications
     volatile bool writable_; // Set to `true` if the TX characteristic is writable
 
-    uint16_t sendCharHandle_; // TX characteristic handle
-    uint16_t sendCharCccdHandle_; // TX characteristic CCCD handle
-    uint16_t recvCharHandle_; // RX characteristic handle
+    hal_ble_attr_handle_t sendCharHandle_; // TX characteristic handle
+    hal_ble_attr_handle_t sendCharCccdHandle_; // TX characteristic CCCD handle
+    hal_ble_attr_handle_t recvCharHandle_; // RX characteristic handle
 
     int initChannel();
     void resetChannel();

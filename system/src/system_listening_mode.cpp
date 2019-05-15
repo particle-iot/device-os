@@ -33,12 +33,9 @@ LOG_SOURCE_CATEGORY("system.listen")
 #include "system_control_internal.h"
 #include "check.h"
 #include "system_event.h"
+#include "scope_guard.h"
 
 using particle::LEDStatus;
-
-#if HAL_PLATFORM_BLE
-#include "ble_hal.h"
-#endif /* HAL_PLATFORM_BLE */
 
 namespace {
 
@@ -51,11 +48,35 @@ const auto SETUP_UPDATE_INTERVAL = 1000;
 } // unnamed
 
 ListeningModeHandler::ListeningModeHandler()
-        : active_(false) {
+        : active_(false)
+#if HAL_PLATFORM_BLE
+        , preAdvData_(nullptr),
+          preAdvDataLen_(0),
+          preSrData_(nullptr),
+          preSrDataLen_(0),
+          preAdvParams_(),
+          prePpcp_(),
+          preAdvertising_(false),
+          preConnected_(false),
+          preAutoAdv_(BLE_AUTO_ADV_ALWAYS)
+#endif
+{
 
 }
 
 ListeningModeHandler::~ListeningModeHandler() {
+#if HAL_PLATFORM_BLE
+    if (!preAdvData_) {
+        free(preAdvData_);
+        preAdvData_ = nullptr;
+        LOG_DEBUG(TRACE, "Free preAdvData_");
+
+    }
+    if (!preSrData_) {
+        free(preSrData_);
+        preSrData_ = nullptr;
+    }
+#endif
 }
 
 ListeningModeHandler* ListeningModeHandler::instance() {
@@ -79,8 +100,94 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     timestampStarted_ = timestampUpdate_ = HAL_Timer_Get_Milli_Seconds();
 
 #if HAL_PLATFORM_BLE
-    // Start advertising
-    hal_ble_gap_start_advertising(nullptr);
+    // TODO: Would it be better to call the method of BLE Control Request Channel to isolate the logic?
+    // Cache the application specific advertising data, advertising parameters and connection parameters.
+    preAdvDataLen_ = hal_ble_gap_get_advertising_data(nullptr, 0, nullptr);
+    if (preAdvDataLen_ > 0) {
+        preAdvData_ = (uint8_t*)malloc(preAdvDataLen_);
+        if (preAdvData_) {
+            hal_ble_gap_get_advertising_data(preAdvData_, preAdvDataLen_, nullptr);
+            LOG_DEBUG(TRACE, "Cache preAdvData_: 0x%08X", (unsigned)preAdvData_);
+        }
+    }
+    preSrDataLen_ = hal_ble_gap_get_scan_response_data(nullptr, 0, nullptr);
+    if (preSrDataLen_ > 0) {
+        preSrData_ = (uint8_t*)malloc(preSrDataLen_);
+        if (preSrData_) {
+            hal_ble_gap_get_scan_response_data(preSrData_, preSrDataLen_, nullptr);
+            LOG_DEBUG(TRACE, "Cache preSrData_: 0x%08X", (unsigned)preSrData_);
+        }
+    }
+    preAdvParams_.size = sizeof(hal_ble_adv_params_t);
+    hal_ble_gap_get_advertising_parameters(&preAdvParams_, nullptr);
+    hal_ble_gap_get_ppcp(&prePpcp_, nullptr);
+
+    preAdvertising_ = hal_ble_gap_is_advertising();
+    preConnected_ = hal_ble_gap_is_connected(nullptr);
+    preAutoAdv_ = hal_ble_gap_get_auto_advertise(nullptr);
+
+    // Set PPCP (Peripheral Preferred Connection Parameters)
+    hal_ble_conn_params_t ppcp = {};
+    ppcp.min_conn_interval = BLE_DEFAULT_MIN_CONN_INTERVAL;
+    ppcp.max_conn_interval = BLE_DEFAULT_MAX_CONN_INTERVAL;
+    ppcp.conn_sup_timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT;
+    ppcp.slave_latency = BLE_DEFAULT_SLAVE_LATENCY;
+    hal_ble_gap_set_ppcp(&ppcp, nullptr);
+
+    // Complete local name
+    char devName[32] = {};
+    hal_ble_gap_get_device_name(devName, sizeof(devName));
+
+    // Particle specific Manufacture data
+    uint8_t mfgData[BLE_MAX_ADV_DATA_LEN];
+    size_t mfgDataLen = 0;
+    uint16_t platformID = PLATFORM_ID;
+    uint16_t companyID = PARTICLE_COMPANY_ID;
+    memcpy(&mfgData[mfgDataLen], (uint8_t*)&companyID, 2);
+    mfgDataLen += 2;
+    memcpy(&mfgData[mfgDataLen], (uint8_t*)&platformID, sizeof(platformID));
+    mfgDataLen += sizeof(platformID);
+
+    uint8_t advData[BLE_MAX_ADV_DATA_LEN] = {};
+    size_t advDataLen = 0;
+    advData[advDataLen++] = 0x02;
+    advData[advDataLen++] = BLE_SIG_AD_TYPE_FLAGS;
+    advData[advDataLen++] = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+    advData[advDataLen++] = strlen(devName) + 1;
+    advData[advDataLen++] = BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME;
+    memcpy(&advData[advDataLen], devName, strlen(devName));
+    advDataLen += strlen(devName);
+    advData[advDataLen++] = mfgDataLen + 1;
+    advData[advDataLen++] = BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA;
+    memcpy(&advData[advDataLen], mfgData, mfgDataLen);
+    advDataLen += mfgDataLen;
+    hal_ble_gap_set_advertising_data(advData, advDataLen, nullptr);
+
+    // Particle Control Request Service 128-bits UUID
+    uint8_t srData[BLE_MAX_ADV_DATA_LEN] = {};
+    const uint8_t CTRL_SERVICE_UUID[] = {0xfc,0x36,0x6f,0x54,0x30,0x80,0xf4,0x94,0xa8,0x48,0x4e,0x5c,0x01,0x00,0xa9,0x6f};
+    size_t srDataLen = 0;
+    srData[srDataLen++] = 0x11;
+    srData[srDataLen++] = BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE;
+    memcpy(&srData[srDataLen], CTRL_SERVICE_UUID, sizeof(CTRL_SERVICE_UUID));
+    srDataLen += sizeof(CTRL_SERVICE_UUID);
+    hal_ble_gap_set_scan_response_data(srData, srDataLen, nullptr);
+
+    // Advertising parameters
+    hal_ble_adv_params_t advParams = {};
+    advParams.type          = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
+    advParams.filter_policy = BLE_ADV_FP_ANY;
+    advParams.interval      = BLE_DEFAULT_ADVERTISING_INTERVAL;
+    advParams.timeout       = BLE_DEFAULT_ADVERTISING_TIMEOUT;
+    advParams.inc_tx_power  = false;
+    hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
+
+    hal_ble_gap_set_auto_advertise(BLE_AUTO_ADV_ALWAYS, nullptr);
+
+    if (!preAdvertising_ && !preConnected_) {
+        // Start advertising if it not connected as BLE Peripheral
+        hal_ble_gap_start_advertising(nullptr);
+    }
 #endif /* HAL_PLATFORM_BLE */
 
 #if !HAL_PLATFORM_WIFI
@@ -113,11 +220,6 @@ int ListeningModeHandler::exit() {
 
     LOG(INFO, "Exiting listening mode");
 
-#if HAL_PLATFORM_BLE
-    // Start advertising
-    hal_ble_gap_stop_advertising();
-#endif /* HAL_PLATFORM_BLE */
-
     LED_SIGNAL_STOP(LISTENING_MODE);
 
     console_.reset();
@@ -125,6 +227,64 @@ int ListeningModeHandler::exit() {
     active_ = false;
 
     system_notify_event(setup_end, HAL_Timer_Get_Milli_Seconds() - timestampStarted_);
+
+#if HAL_PLATFORM_BLE
+    /* TODO: Would it be better to call the method of BLE Control Request Channel to isolate the logic? */
+    /* FIXME: It's not possible to restore the final state that is changed by user application
+     * during in the listening mode when threading is enabled. */
+
+    SCOPE_GUARD ({
+        if (preAdvData_) {
+            free(preAdvData_);
+            preAdvData_ = nullptr;
+        }
+        if (preSrData_) {
+            free(preSrData_);
+            preSrData_ = nullptr;
+        }
+    });
+
+    // Restore the advertising data, advertising parameters and connection parameters.
+    hal_ble_gap_set_advertising_data(preAdvData_, preAdvDataLen_, nullptr);
+    hal_ble_gap_set_scan_response_data(preSrData_, preSrDataLen_, nullptr);
+
+    hal_ble_gap_set_ppcp(&prePpcp_, nullptr);
+    hal_ble_gap_set_advertising_parameters(&preAdvParams_, nullptr);
+
+    if (preAdvertising_) {
+        // It is advertising when entering listening mode.
+        if (!hal_ble_gap_is_connected(nullptr)) {
+            // Currently it is disconnected. Start/restart advertising anyway.
+            hal_ble_gap_start_advertising(nullptr);
+        }
+        // Currently it is connected. When disconnected, use previous automatic advertising scheme.
+    } else {
+        // It is NOT advertising when entering listening mode.
+        if (preConnected_) {
+            if (!hal_ble_gap_is_connected(nullptr)) {
+                // Currently it is disconnected.
+                if (preAutoAdv_ == BLE_AUTO_ADV_ALWAYS) {
+                    hal_ble_gap_start_advertising(nullptr);
+                } else {
+                    hal_ble_gap_stop_advertising();
+                }
+            }
+        } else {
+            if (hal_ble_gap_is_connected(nullptr)) {
+                // Currently it is connected.
+                if (preAutoAdv_ == BLE_AUTO_ADV_ALWAYS) {
+                    // Do not automatically start advertising when disconnected.
+                    preAutoAdv_ = BLE_AUTO_ADV_SINCE_NEXT_CONN;
+                }
+            } else {
+                // Stop advertising anyway.
+                hal_ble_gap_stop_advertising();
+            }
+        }
+    }
+
+    hal_ble_gap_set_auto_advertise(preAutoAdv_, nullptr);
+#endif /* HAL_PLATFORM_BLE */
 
     return 0;
 }

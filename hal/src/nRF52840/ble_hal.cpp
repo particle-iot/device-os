@@ -418,6 +418,8 @@ public:
     int getTxPower(int8_t* txPower) const;
     int startAdvertising();
     int stopAdvertising();
+    int setAutoAdvertiseScheme(hal_ble_auto_adv_cfg_t config);
+    hal_ble_auto_adv_cfg_t getAutoAdvertiseScheme();
 
 private:
     int suspend();
@@ -429,6 +431,7 @@ private:
     static void processBroadcasterEvents(const ble_evt_t* event, void* context);
 
     volatile bool isAdvertising_;                   /**< If it is advertising or not. */
+    volatile hal_ble_auto_adv_cfg_t autoAdvCfg_;    /**< Automatic advertising configuration. */
     uint8_t advHandle_;                             /**< Advertising handle. */
     hal_ble_adv_params_t advParams_;                /**< Current advertising parameters. */
     uint8_t advData_[BLE_MAX_ADV_DATA_LEN];         /**< Current advertising data. */
@@ -509,7 +512,7 @@ class BleObject::ConnectionsManager {
 public:
     struct BleConnection {
         BleConnection* next;
-        uint8_t role;
+        hal_ble_role_t role;
         hal_ble_conn_handle_t connHandle;
         hal_ble_conn_params_t effectiveConnParams;
         hal_ble_addr_t peer;
@@ -839,7 +842,7 @@ int BleObject::BleGap::addWhitelist(const hal_ble_addr_t* addrList, size_t len) 
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     ble_gap_addr_t* whitelist = (ble_gap_addr_t*)malloc(sizeof(ble_gap_addr_t) * len);
-    SCOPE_GUARD({
+    SCOPE_GUARD ({
         free(whitelist);
     });
     ble_gap_addr_t const* whitelistPointer[BLE_MAX_WHITELIST_ADDR_COUNT];
@@ -937,6 +940,7 @@ static BroadcasterImpl broadcasterImpl;
 
 BleObject::Broadcaster::Broadcaster()
         : isAdvertising_(false),
+          autoAdvCfg_(BLE_AUTO_ADV_ALWAYS),
           advHandle_(BLE_GAP_ADV_SET_HANDLE_NOT_SET),
           txPower_(0),
           advPending_(false),
@@ -976,10 +980,20 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     CHECK(suspend());
-    CHECK(configure(params));
-    advParams_.size = sizeof(hal_ble_adv_params_t);
-    memcpy(&advParams_, params, advParams_.size);
-    advParams_.version = BLE_API_VERSION;
+    if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
+        hal_ble_adv_params_t connectedAdvParams = *params;
+        connectedAdvParams.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
+        CHECK(configure(&connectedAdvParams));
+        advParams_.size = sizeof(hal_ble_adv_params_t);
+        memcpy(&advParams_, params, advParams_.size);
+        advParams_.version = BLE_API_VERSION;
+        connectedAdvParams_ = true; // Set the flag after the advParams_ being updated.
+    } else {
+        CHECK(configure(params));
+        advParams_.size = sizeof(hal_ble_adv_params_t);
+        memcpy(&advParams_, params, advParams_.size);
+        advParams_.version = BLE_API_VERSION;
+    }
     return resume();
 }
 
@@ -1007,7 +1021,7 @@ int BleObject::Broadcaster::setAdvertisingData(const uint8_t* buf, size_t len) {
 
 ssize_t BleObject::Broadcaster::getAdvertisingData(uint8_t* buf, size_t len) const {
     if (buf == nullptr) {
-        return 0;
+        return advDataLen_;
     }
     len = std::min(len, advDataLen_);
     memcpy(buf, advData_, len);
@@ -1030,7 +1044,7 @@ int BleObject::Broadcaster::setScanResponseData(const uint8_t* buf, size_t len) 
 
 ssize_t BleObject::Broadcaster::getScanResponseData(uint8_t* buf, size_t len) const {
     if (buf == nullptr) {
-        return 0;
+        return scanRespDataLen_;
     }
     len = std::min(len, scanRespDataLen_);
     memcpy(buf, scanRespData_, len);
@@ -1058,9 +1072,9 @@ int BleObject::Broadcaster::startAdvertising() {
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
         // It is connected as Peripheral, the advertising event should be set to non-connectable.
         if (!connectedAdvParams_) {
-            hal_ble_adv_params_t params = advParams_;
-            params.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
-            CHECK(configure(&params));
+            hal_ble_adv_params_t connectedAdvParams = advParams_;
+            connectedAdvParams.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
+            CHECK(configure(&connectedAdvParams));
             connectedAdvParams_ = true;
         }
     } else {
@@ -1085,7 +1099,21 @@ int BleObject::Broadcaster::stopAdvertising() {
     return SYSTEM_ERROR_NONE;
 }
 
+int BleObject::Broadcaster::setAutoAdvertiseScheme(hal_ble_auto_adv_cfg_t config) {
+    autoAdvCfg_ = config;
+    if (connHandle_ == BLE_INVALID_CONN_HANDLE && autoAdvCfg_ == BLE_AUTO_ADV_SINCE_NEXT_CONN) {
+        // If it is not connected as Peripheral currently.
+        autoAdvCfg_ = BLE_AUTO_ADV_ALWAYS;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+hal_ble_auto_adv_cfg_t BleObject::Broadcaster::getAutoAdvertiseScheme() {
+    return autoAdvCfg_;
+}
+
 int BleObject::Broadcaster::suspend() {
+    advPending_ = false;
     if (isAdvertising_) {
         CHECK(stopAdvertising());
         advPending_ = true;
@@ -1096,8 +1124,8 @@ int BleObject::Broadcaster::suspend() {
 int BleObject::Broadcaster::resume() {
     if (advPending_) {
         CHECK(startAdvertising());
-        advPending_ = false;
     }
+    advPending_ = false;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1171,11 +1199,23 @@ void BleObject::Broadcaster::processBroadcasterEvents(const ble_evt_t* event, vo
         }
         case BLE_GAP_EVT_DISCONNECTED: {
             if (broadcaster->connHandle_ == event->evt.gap_evt.conn_handle) {
-                LOG_DEBUG(TRACE, "Restart BLE advertising.");
                 // The connection handle must be cleared before re-start advertising.
                 // Otherwise, it cannot restore the normal advertising parameters.
                 broadcaster->connHandle_ = BLE_INVALID_CONN_HANDLE;
-                broadcaster->startAdvertising();
+                if (broadcaster->isAdvertising_) {
+                    LOG_DEBUG(TRACE, "Restart BLE advertising.");
+                    broadcaster->startAdvertising();
+                } else {
+                    if (broadcaster->autoAdvCfg_ == BLE_AUTO_ADV_FORBIDDEN) {
+                        return;
+                    } else if (broadcaster->autoAdvCfg_ == BLE_AUTO_ADV_SINCE_NEXT_CONN) {
+                        broadcaster->autoAdvCfg_ = BLE_AUTO_ADV_ALWAYS;
+                        return;
+                    } else {
+                        LOG_DEBUG(TRACE, "Restart BLE advertising.");
+                        broadcaster->startAdvertising();
+                    }
+                }
             }
             break;
         }
@@ -1568,7 +1608,15 @@ bool BleObject::ConnectionsManager::connecting(const hal_ble_addr_t* address) co
 
 bool BleObject::ConnectionsManager::connected(const hal_ble_addr_t* address) {
     if (address == nullptr) {
-        return connectionsList_.front() != nullptr;
+        // Check if local device is connected as BLE Peripheral.
+        auto connection = connectionsList_.front();
+        while (connection) {
+            if (connection->role == BLE_ROLE_PERIPHERAL) {
+                return true;
+            }
+            connection = connection->next;
+        }
+        return false;
     } else if (fetchConnection(address)) {
         return true;
     }
@@ -1583,7 +1631,7 @@ int BleObject::ConnectionsManager::connect(const hal_ble_addr_t* address) {
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
-    SCOPE_GUARD({
+    SCOPE_GUARD ({
         os_semaphore_destroy(connectSemaphore_);
         connectSemaphore_ = nullptr;
     });
@@ -1628,7 +1676,7 @@ int BleObject::ConnectionsManager::disconnect(hal_ble_conn_handle_t connHandle) 
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
-    SCOPE_GUARD({
+    SCOPE_GUARD ({
         os_semaphore_destroy(disconnectSemaphore_);
         disconnectSemaphore_ = nullptr;
     });
@@ -1654,7 +1702,7 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
-    SCOPE_GUARD({
+    SCOPE_GUARD ({
         os_semaphore_destroy(connParamsUpdateSemaphore_);
         connParamsUpdateSemaphore_ = nullptr;
     });
@@ -1838,7 +1886,7 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
             const ble_gap_evt_connected_t& connected = event->evt.gap_evt.params.connected;
             LOG_DEBUG(TRACE, "BLE GAP event: connected.");
             BleConnection newConnection = {};
-            newConnection.role = connected.role;
+            newConnection.role = (hal_ble_role_t)connected.role;
             newConnection.connHandle = event->evt.gap_evt.conn_handle;
             newConnection.effectiveConnParams = connMgr->toHalConnParams(&connected.conn_params);
             newConnection.peer.addr_type = (ble_sig_addr_type_t)connected.peer_addr.addr_type;
@@ -2133,7 +2181,7 @@ ssize_t BleObject::GattServer::setValue(hal_ble_attr_handle_t attrHandle, const 
                         LOG(ERROR, "os_semaphore_create() failed");
                         break;
                     }
-                    SCOPE_GUARD({
+                    SCOPE_GUARD ({
                         os_semaphore_destroy(hvxSemaphore_);
                         hvxSemaphore_ = nullptr;
                     });
@@ -2384,7 +2432,7 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
-    SCOPE_GUARD({
+    SCOPE_GUARD ({
         os_semaphore_destroy(discoverySemaphore_);
         discoverySemaphore_ = nullptr;
     });
@@ -2450,7 +2498,7 @@ int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHan
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
-    SCOPE_GUARD({
+    SCOPE_GUARD ({
         os_semaphore_destroy(discoverySemaphore_);
         discoverySemaphore_ = nullptr;
     });
@@ -2532,7 +2580,7 @@ ssize_t BleObject::GattClient::writeAttribute(hal_ble_conn_handle_t connHandle, 
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
-    SCOPE_GUARD({
+    SCOPE_GUARD ({
         os_semaphore_destroy(readWriteSemaphore_);
         readWriteSemaphore_ = nullptr;
     });
@@ -2571,7 +2619,7 @@ ssize_t BleObject::GattClient::readAttribute(hal_ble_conn_handle_t connHandle, h
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
-    SCOPE_GUARD({
+    SCOPE_GUARD ({
         os_semaphore_destroy(readWriteSemaphore_);
         readWriteSemaphore_ = nullptr;
     });
@@ -3239,6 +3287,18 @@ int hal_ble_gap_start_advertising(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_start_advertising().");
     return BleObject::getInstance().broadcaster()->startAdvertising();
+}
+
+int hal_ble_gap_set_auto_advertise(hal_ble_auto_adv_cfg_t config, void* reserved) {
+    BleLock lk;
+    LOG_DEBUG(TRACE, "hal_ble_gap_set_auto_advertise().");
+    return BleObject::getInstance().broadcaster()->setAutoAdvertiseScheme(config);
+}
+
+hal_ble_auto_adv_cfg_t hal_ble_gap_get_auto_advertise(void* reserved) {
+    BleLock lk;
+    LOG_DEBUG(TRACE, "hal_ble_gap_get_auto_advertise().");
+    return BleObject::getInstance().broadcaster()->getAutoAdvertiseScheme();
 }
 
 int hal_ble_gap_stop_advertising(void) {
