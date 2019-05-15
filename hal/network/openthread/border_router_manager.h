@@ -61,6 +61,7 @@ private:
 
     int enable();
     int disable();
+    int syncWithLeader();
 
     bool isIfUp() const;
 
