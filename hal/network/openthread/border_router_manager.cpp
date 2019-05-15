@@ -256,8 +256,10 @@ int BorderRouterManager::enable() {
         }
     }
 
+#ifdef DEBUG_BUILD
     int netDataVersion = otNetDataGetVersion(ot_get_instance());
     LOG_DEBUG(TRACE, "Network data version %d", netDataVersion);
+#endif // DEBUG_BUILD
 
     // We want to make sure that the leader network data changes, so we temporarily flip mPreferred flag
     // and settle on mPreferred = true once the network data propagates through the network. This is less
