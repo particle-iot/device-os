@@ -118,6 +118,34 @@ inline void CLR_GPRS_TIMEOUT() {
     DEBUG("GPRS WD Cleared, was %d", gprs_timeout_duration);
 }
 
+namespace {
+
+AcT toCellularAccessTechnology(int v) {
+    switch (v) {
+        case 0: // GSM
+        case 1: // GSM COMPACT
+            return ACT_GSM;
+        case 2: // UTRAN
+            return ACT_UTRAN;
+        case 3: // GSM with EDGE availability
+            return ACT_EDGE;
+        case 4: // UTRAN with HSDPA availability
+        case 5: // UTRAN with HSUPA availability
+        case 6: // UTRAN with HSDPA and HSUPA availability
+            return ACT_UTRAN;
+        case 7: // LTE
+            return ACT_LTE;
+        case 8: // LTE Cat M1
+            return ACT_LTE_CAT_M1;
+        case 9: // LTE Cat NB1
+            return ACT_LTE_CAT_NB1;
+        default:
+            return ACT_UNKNOWN;
+    }
+}
+
+} // anonymous
+
 #ifdef MDM_DEBUG
  #if 0 // colored terminal output using ANSI escape sequences
   #define COL(c) "\033[" c
@@ -423,16 +451,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                             if ((r >= 4) && (c != (int)0xFFFFFFFF))  _net.cgi.cell_id  = c;
                             // access technology
                             if (r >= 5) {
-                                if      (d == 0) _net.act = ACT_GSM;      // 0: GSM
-                                else if (d == 1) _net.act = ACT_GSM;      // 1: GSM COMPACT
-                                else if (d == 2) _net.act = ACT_UTRAN;    // 2: UTRAN
-                                else if (d == 3) _net.act = ACT_EDGE;     // 3: GSM with EDGE availability
-                                else if (d == 4) _net.act = ACT_UTRAN;    // 4: UTRAN with HSDPA availability
-                                else if (d == 5) _net.act = ACT_UTRAN;    // 5: UTRAN with HSUPA availability
-                                else if (d == 6) _net.act = ACT_UTRAN;    // 6: UTRAN with HSDPA and HSUPA availability
-                                else if (d == 7) _net.act = ACT_LTE;      // 7: LTE
-                                else if (d == 8) _net.act = ACT_LTE_CAT_M1; // 8: LTE Cat M1
-                                else if (d == 9) _net.act = ACT_LTE_CAT_NB1; // 9: LTE Cat NB1
+                                _net.act = toCellularAccessTechnology(d);
                             }
                         }
                     }
@@ -1257,6 +1276,14 @@ bool MDMParser::getSignalStrength(NetStatus &status)
     LOCK();
     if (_init && _pwr) {
         MDM_INFO("\r\n[ Modem::getSignalStrength ] = = = = = = = = = =");
+
+        // We do receive RAT changes asynchronously via CREG URCs, but
+        // just in case we'll update it here explicitly.
+        sendFormated("AT+COPS?\r\n");
+        if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
+            return ok;
+        }
+
         sendFormated("AT+CSQ\r\n");
         if (RESP_OK == waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
             ok = true;
@@ -1474,10 +1501,7 @@ int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
             status->cgi.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
             status->cgi.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
 
-            if (act == 0)
-                status->act = ACT_GSM; // 0: GSM,
-            else if (act == 2)
-                status->act = ACT_UTRAN; // 2: UTRAN
+            status->act = toCellularAccessTechnology(act);
         }
     }
     return WAIT;
