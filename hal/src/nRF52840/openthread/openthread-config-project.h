@@ -73,6 +73,14 @@
 #define OPENTHREAD_CONFIG_PLATFORM_INFO                         "Xenon"
 
 /**
+ * @def OPENTHREAD_CONFIG_ENABLE_SLAAC
+ *
+ * Define as 1 to enable support for adding of auto-configured SLAAC addresses by OpenThread.
+ *
+ */
+#define OPENTHREAD_CONFIG_ENABLE_SLAAC                          0
+
+/**
  * @def OPENTHREAD_CONFIG_MAX_CHILDREN
  *
  * The maximum number of children.
