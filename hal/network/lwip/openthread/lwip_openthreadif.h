@@ -60,8 +60,10 @@ private:
 
     void input(otMessage* message);
     void stateChanged(uint32_t flags);
+    static void debugLogOtStateChange(uint32_t flags);
 
     void refreshIpAddresses();
+    void syncIpState();
 
     int up();
     int down();

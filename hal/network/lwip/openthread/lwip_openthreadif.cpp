@@ -350,7 +350,78 @@ void OpenThreadNetif::otStateChangedCb(uint32_t flags, void* ctx) {
     self->stateChanged(flags);
 }
 
+void OpenThreadNetif::debugLogOtStateChange(uint32_t flags) {
+    if (flags & OT_CHANGED_IP6_ADDRESS_ADDED) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_IP6_ADDRESS_ADDED");
+    }
+    if (flags & OT_CHANGED_IP6_ADDRESS_REMOVED) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_IP6_ADDRESS_REMOVED");
+    }
+    if (flags & OT_CHANGED_THREAD_ROLE) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_ROLE");
+    }
+    if (flags & OT_CHANGED_THREAD_LL_ADDR) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_LL_ADDR");
+    }
+    if (flags & OT_CHANGED_THREAD_ML_ADDR) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_ML_ADDR");
+    }
+    if (flags & OT_CHANGED_THREAD_RLOC_ADDED) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_RLOC_ADDED");
+    }
+    if (flags & OT_CHANGED_THREAD_RLOC_REMOVED) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_RLOC_REMOVED");
+    }
+    if (flags & OT_CHANGED_THREAD_PARTITION_ID) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_PARTITION_ID");
+    }
+    if (flags & OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER");
+    }
+    if (flags & OT_CHANGED_THREAD_CHILD_ADDED) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_CHILD_ADDED");
+    }
+    if (flags & OT_CHANGED_THREAD_CHILD_REMOVED) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_CHILD_REMOVED");
+    }
+    if (flags & OT_CHANGED_IP6_MULTICAST_SUBSRCRIBED) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_IP6_MULTICAST_SUBSRCRIBED");
+    }
+    if (flags & OT_CHANGED_IP6_MULTICAST_UNSUBSRCRIBED) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_IP6_MULTICAST_UNSUBSRCRIBED");
+    }
+    if (flags & OT_CHANGED_COMMISSIONER_STATE) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_COMMISSIONER_STATE");
+    }
+    if (flags & OT_CHANGED_JOINER_STATE) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_JOINER_STATE");
+    }
+    if (flags & OT_CHANGED_THREAD_CHANNEL) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_CHANNEL");
+    }
+    if (flags & OT_CHANGED_THREAD_PANID) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_PANID");
+    }
+    if (flags & OT_CHANGED_THREAD_NETWORK_NAME) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_NETWORK_NAME");
+    }
+    if (flags & OT_CHANGED_THREAD_EXT_PANID) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_EXT_PANID");
+    }
+    if (flags & OT_CHANGED_MASTER_KEY) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_MASTER_KEY");
+    }
+    if (flags & OT_CHANGED_PSKC) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_PSKC");
+    }
+    if (flags & OT_CHANGED_SECURITY_POLICY) {
+        LOG_DEBUG(TRACE, "OT_CHANGED_SECURITY_POLICY");
+    }
+}
+
 void OpenThreadNetif::stateChanged(uint32_t flags) {
+    debugLogOtStateChange(flags);
+
     LwipTcpIpCoreLock lk;
 
     if (!netif_is_up(interface())) {
@@ -370,7 +441,7 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
                 refreshIpAddresses();
 
                 // FIXME:
-                flags |= OT_CHANGED_IP6_ADDRESS_ADDED | OT_CHANGED_IP6_MULTICAST_SUBSRCRIBED;
+                flags |= OT_CHANGED_IP6_MULTICAST_SUBSRCRIBED;
             }
         }
     }
@@ -385,84 +456,7 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
                  OT_CHANGED_IP6_ADDRESS_REMOVED |
                  OT_CHANGED_THREAD_LL_ADDR |
                  OT_CHANGED_THREAD_ML_ADDR)) {
-        /* Synchronize IP-addresses */
-
-        uint8_t handledLwip[LWIP_IPV6_NUM_ADDRESSES] = {};
-        uint8_t handledOt[LWIP_IPV6_NUM_ADDRESSES] = {};
-
-        /* Check existing addresses and adjust state if necessary */
-        int otIdx = 0;
-        for (auto addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
-            // Skip RLOC addresses
-            if (otNetifAddressIsRlocOrAloc(addr)) {
-                continue;
-            }
-            ip6_addr_t ip6addr = {};
-            otNetifAddressToIp6Addr(addr, ip6addr);
-            if (addr->mScopeOverrideValid) {
-                /* FIXME: we should use custom scopes */
-                ip6_addr_set_zone(&ip6addr, netif_get_index(interface()));
-            } else {
-                ip6_addr_assign_zone(&ip6addr, IP6_UNICAST, interface());
-            }
-            const auto state = otNetifAddressStateToIp6AddrState(addr);
-
-            int idx = netif_get_ip6_addr_match(interface(), &ip6addr);
-            if (idx != -1) {
-                /* Address is present */
-                if (state != netif_ip6_addr_state(interface(), idx)) {
-                    /* State needs to be adjusted */
-                    netif_ip6_addr_set_state(interface(), idx, state);
-                }
-                handledLwip[idx] = 1;
-                handledOt[otIdx] = 1;
-            }
-
-            otIdx++;
-        }
-
-        /* Clear any other addresses */
-        for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) {
-            if (!handledLwip[i]) {
-                if ((netif_ip6_addr_state(interface(), i) != IP6_ADDR_INVALID) ||
-                     !ip6_addr_isany(netif_ip6_addr(interface(), i))) {
-                    netif_ip6_addr_set_state(interface(), i, IP6_ADDR_INVALID);
-                    netif_ip6_addr_set_parts(interface(), i, 0, 0, 0, 0);
-                }
-            }
-        }
-
-        /* Add new addresses */
-        otIdx = 0;
-        for (auto addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
-            if (otNetifAddressIsRlocOrAloc(addr)) {
-                continue;
-            }
-            if (!handledOt[otIdx]) {
-                /* New address */
-                ip6_addr_t ip6addr = {};
-                otNetifAddressToIp6Addr(addr, ip6addr);
-                ip6_addr_assign_zone(&ip6addr, IP6_UNICAST, interface());
-                const auto state = otNetifAddressStateToIp6AddrState(addr);
-
-                int8_t idx = -1;
-                netif_add_ip6_address(interface(), &ip6addr, &idx);
-                if (idx >= 0) {
-                    /* IMPORTANT: scope needs to be adjusted first */
-                    if (addr->mScopeOverrideValid) {
-                        /* FIXME: we should use custom scopes */
-                        ip6_addr_set_zone((ip6_addr_t*)netif_ip6_addr(interface(), idx), netif_get_index(interface()));
-                    } else {
-                        ip6_addr_assign_zone((ip6_addr_t*)netif_ip6_addr(interface(), idx), IP6_UNICAST, interface());
-                    }
-                    netif_ip6_addr_set_state(interface(), idx, state);
-                }
-                char tmp[IP6ADDR_STRLEN_MAX] = {0};
-                ip6addr_ntoa_r(&ip6addr, tmp, sizeof(tmp));
-                LOG(TRACE, "Added %s %d", tmp, otNetifAddressIsRlocOrAloc(addr));
-            }
-            otIdx++;
-        }
+        syncIpState();
     }
 
     if (flags & (OT_CHANGED_IP6_MULTICAST_SUBSRCRIBED | OT_CHANGED_IP6_MULTICAST_UNSUBSRCRIBED)) {
@@ -491,73 +485,6 @@ void OpenThreadNetif::stateChanged(uint32_t flags) {
             }
         }
         interface()->mld_mac_filter = mldMacFilterCb;
-    }
-
-    if (flags & OT_CHANGED_IP6_ADDRESS_ADDED) {
-        LOG(TRACE, "OT_CHANGED_IP6_ADDRESS_ADDED");
-    }
-    if (flags & OT_CHANGED_IP6_ADDRESS_REMOVED) {
-        LOG(TRACE, "OT_CHANGED_IP6_ADDRESS_REMOVED");
-    }
-    if (flags & OT_CHANGED_THREAD_ROLE) {
-        LOG(TRACE, "OT_CHANGED_THREAD_ROLE");
-    }
-    if (flags & OT_CHANGED_THREAD_LL_ADDR) {
-        LOG(TRACE, "OT_CHANGED_THREAD_LL_ADDR");
-    }
-    if (flags & OT_CHANGED_THREAD_ML_ADDR) {
-        LOG(TRACE, "OT_CHANGED_THREAD_ML_ADDR");
-    }
-    if (flags & OT_CHANGED_THREAD_RLOC_ADDED) {
-        LOG(TRACE, "OT_CHANGED_THREAD_RLOC_ADDED");
-    }
-    if (flags & OT_CHANGED_THREAD_RLOC_REMOVED) {
-        LOG(TRACE, "OT_CHANGED_THREAD_RLOC_REMOVED");
-    }
-    if (flags & OT_CHANGED_THREAD_PARTITION_ID) {
-        LOG(TRACE, "OT_CHANGED_THREAD_PARTITION_ID");
-    }
-    if (flags & OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER) {
-        LOG(TRACE, "OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER");
-    }
-    if (flags & OT_CHANGED_THREAD_CHILD_ADDED) {
-        LOG(TRACE, "OT_CHANGED_THREAD_CHILD_ADDED");
-    }
-    if (flags & OT_CHANGED_THREAD_CHILD_REMOVED) {
-        LOG(TRACE, "OT_CHANGED_THREAD_CHILD_REMOVED");
-    }
-    if (flags & OT_CHANGED_IP6_MULTICAST_SUBSRCRIBED) {
-        LOG(TRACE, "OT_CHANGED_IP6_MULTICAST_SUBSRCRIBED");
-    }
-    if (flags & OT_CHANGED_IP6_MULTICAST_UNSUBSRCRIBED) {
-        LOG(TRACE, "OT_CHANGED_IP6_MULTICAST_UNSUBSRCRIBED");
-    }
-    if (flags & OT_CHANGED_COMMISSIONER_STATE) {
-        LOG(TRACE, "OT_CHANGED_COMMISSIONER_STATE");
-    }
-    if (flags & OT_CHANGED_JOINER_STATE) {
-        LOG(TRACE, "OT_CHANGED_JOINER_STATE");
-    }
-    if (flags & OT_CHANGED_THREAD_CHANNEL) {
-        LOG(TRACE, "OT_CHANGED_THREAD_CHANNEL");
-    }
-    if (flags & OT_CHANGED_THREAD_PANID) {
-        LOG(TRACE, "OT_CHANGED_THREAD_PANID");
-    }
-    if (flags & OT_CHANGED_THREAD_NETWORK_NAME) {
-        LOG(TRACE, "OT_CHANGED_THREAD_NETWORK_NAME");
-    }
-    if (flags & OT_CHANGED_THREAD_EXT_PANID) {
-        LOG(TRACE, "OT_CHANGED_THREAD_EXT_PANID");
-    }
-    if (flags & OT_CHANGED_MASTER_KEY) {
-        LOG(TRACE, "OT_CHANGED_MASTER_KEY");
-    }
-    if (flags & OT_CHANGED_PSKC) {
-        LOG(TRACE, "OT_CHANGED_PSKC");
-    }
-    if (flags & OT_CHANGED_SECURITY_POLICY) {
-        LOG(TRACE, "OT_CHANGED_SECURITY_POLICY");
     }
 }
 
@@ -683,6 +610,28 @@ void OpenThreadNetif::refreshIpAddresses() {
         memset(&abr_, 0, sizeof(abr_));
     }
 
+    bool sync = false;
+
+    // Go over the current list of addresses and temporarily set all of them to DEPRECATED
+    for (auto& addr : addresses_) {
+        if (addr.mValid && addr.mPreferred) {
+            addr.mPreferred = false;
+            // IMPORTANT: calling otIp6AddUnicastAddress for an address already present in the list
+            // will not cause any kind of an event even if for example its state is being changed!
+            otIp6AddUnicastAddress(ot_, &addr);
+
+            sync = true;
+        }
+    }
+
+    // Manually synchronize state with LwIP to notify subscribers for a potential change in IP configuration
+    // This should NOT cause any active connections to be dropped (new connections might very temporarily be affected until we
+    // set at least one of the addresses as PREFERRED)
+    if (sync) {
+        syncIpState();
+    }
+
+    sync = false;
     iterator = OT_NETWORK_DATA_ITERATOR_INIT;
     while (otNetDataGetNextOnMeshPrefix(ot_, &iterator, &config) == OT_ERROR_NONE) {
         /* For now we are only handling SLAAC prefixes */
@@ -700,11 +649,29 @@ void OpenThreadNetif::refreshIpAddresses() {
             if (otNetifAddressMatchesPrefix(addresses_[i], config.mPrefix)) {
                 matches = true;
 
-                bool preferred = otNetifAddressMatchesPrefix(addresses_[i], active.mPrefix);
+                if (config.mRloc16 == ourRloc16) {
+                    // Make sure that if this is our prefix, we have Pref::1/Preflen address
+                    // instead of a random one, because that's where the devices within the mesh
+                    // expect DNS server to be at the moment.
+                    auto addr = config.mPrefix.mPrefix;
+                    addr.mFields.m8[OT_IP6_ADDRESS_SIZE - 1] = 0x01;
+                    if (memcmp(&addr, &addresses_[i].mAddress, sizeof(addr))) {
+                        otIp6RemoveUnicastAddress(ot_, &addresses_[i].mAddress);
+                        addresses_[i] = {};
+                        matches = false;
+                    }
+                }
 
-                if (addresses_[i].mPreferred != preferred) {
-                    addresses_[i].mPreferred = true;
-                    otIp6AddUnicastAddress(ot_, &addresses_[i]);
+                if (matches) {
+                    bool preferred = otNetifAddressMatchesPrefix(addresses_[i], active.mPrefix);
+
+                    if (addresses_[i].mPreferred != preferred) {
+                        addresses_[i].mPreferred = true;
+                        // IMPORTANT: calling otIp6AddUnicastAddress for an address already present in the list
+                        // will not cause any kind of an event even if for example its state is being changed!
+                        otIp6AddUnicastAddress(ot_, &addresses_[i]);
+                        sync = true;
+                    }
                 }
             }
         }
@@ -730,8 +697,100 @@ void OpenThreadNetif::refreshIpAddresses() {
                 addresses_[i].mAddress.mFields.m8[OT_IP6_ADDRESS_SIZE - 1] = 0x01;
             }
             otIp6AddUnicastAddress(ot_, &addresses_[i]);
+            // The call above already generates OT_CHANGED_IP6_ADDRESS_ADDED, so no state sync is required after this point
+            sync = false;
             break;
         }
+    }
+
+    // Manually synchronize state with LwIP to notify subscribers for a potential change in IP configuration
+    if (sync) {
+        syncIpState();
+    }
+}
+
+void OpenThreadNetif::syncIpState() {
+    LOG(TRACE, "Synchronizing IP state with LwIP");
+
+    /* Synchronize IP-addresses */
+    uint8_t handledLwip[LWIP_IPV6_NUM_ADDRESSES] = {};
+    uint8_t handledOt[LWIP_IPV6_NUM_ADDRESSES] = {};
+
+    /* Check existing addresses and adjust state if necessary */
+    int otIdx = 0;
+    for (auto addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
+        // Skip RLOC addresses
+        if (otNetifAddressIsRlocOrAloc(addr)) {
+            continue;
+        }
+        ip6_addr_t ip6addr = {};
+        otNetifAddressToIp6Addr(addr, ip6addr);
+        if (addr->mScopeOverrideValid) {
+            /* FIXME: we should use custom scopes */
+            ip6_addr_set_zone(&ip6addr, netif_get_index(interface()));
+        } else {
+            ip6_addr_assign_zone(&ip6addr, IP6_UNICAST, interface());
+        }
+        const auto state = otNetifAddressStateToIp6AddrState(addr);
+
+        int idx = netif_get_ip6_addr_match(interface(), &ip6addr);
+        if (idx != -1) {
+            /* Address is present */
+            if (state != netif_ip6_addr_state(interface(), idx)) {
+                /* State needs to be adjusted */
+                netif_ip6_addr_set_state(interface(), idx, state);
+            }
+            handledLwip[idx] = 1;
+            handledOt[otIdx] = 1;
+        }
+
+        otIdx++;
+    }
+
+    /* Clear any other addresses */
+    for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) {
+        if (!handledLwip[i]) {
+            if ((netif_ip6_addr_state(interface(), i) != IP6_ADDR_INVALID) ||
+                    !ip6_addr_isany(netif_ip6_addr(interface(), i))) {
+                char tmp[IP6ADDR_STRLEN_MAX] = {};
+                ip6addr_ntoa_r(netif_ip6_addr(interface(), i), tmp, sizeof(tmp));
+                netif_ip6_addr_set_state(interface(), i, IP6_ADDR_INVALID);
+                netif_ip6_addr_set_parts(interface(), i, 0, 0, 0, 0);
+                LOG(TRACE, "Removed %s", tmp);
+            }
+        }
+    }
+
+    /* Add new addresses */
+    otIdx = 0;
+    for (auto addr = otIp6GetUnicastAddresses(ot_); addr; addr = addr->mNext) {
+        if (otNetifAddressIsRlocOrAloc(addr)) {
+            continue;
+        }
+        if (!handledOt[otIdx]) {
+            /* New address */
+            ip6_addr_t ip6addr = {};
+            otNetifAddressToIp6Addr(addr, ip6addr);
+            ip6_addr_assign_zone(&ip6addr, IP6_UNICAST, interface());
+            const auto state = otNetifAddressStateToIp6AddrState(addr);
+
+            int8_t idx = -1;
+            netif_add_ip6_address(interface(), &ip6addr, &idx);
+            if (idx >= 0) {
+                /* IMPORTANT: scope needs to be adjusted first */
+                if (addr->mScopeOverrideValid) {
+                    /* FIXME: we should use custom scopes */
+                    ip6_addr_set_zone((ip6_addr_t*)netif_ip6_addr(interface(), idx), netif_get_index(interface()));
+                } else {
+                    ip6_addr_assign_zone((ip6_addr_t*)netif_ip6_addr(interface(), idx), IP6_UNICAST, interface());
+                }
+                netif_ip6_addr_set_state(interface(), idx, state);
+            }
+            char tmp[IP6ADDR_STRLEN_MAX] = {0};
+            ip6addr_ntoa_r(&ip6addr, tmp, sizeof(tmp));
+            LOG(TRACE, "Added %s %d", tmp, otNetifAddressIsRlocOrAloc(addr));
+        }
+        otIdx++;
     }
 }
 
