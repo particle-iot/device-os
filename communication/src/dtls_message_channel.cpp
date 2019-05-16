@@ -87,14 +87,16 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uin
 		return NO_SESSION;
 	}
 
-    increment_use_count();
-    save(saver);
-
     LOG(WARN, "session has %d uses", use_count());
 	if (has_expired()) {
+	    invalidate();
+	    save(saver);
 	    LOG(WARN, "session has expired after %d uses", use_count());
 	    return NO_SESSION;
 	}
+
+    increment_use_count();
+    save(saver);
 
 	// assume invalid initially. With the ssl context being reset,
 	// we cannot return NO_SESSION from this point onwards.
@@ -412,6 +414,7 @@ ProtocolError DTLSMessageChannel::establish(uint32_t& flags, uint32_t app_state_
 ProtocolError DTLSMessageChannel::notify_established()
 {
 	sessionPersist.make_persistent();
+	sessionPersist.save(callbacks.save);
 	return NO_ERROR;
 }
 
@@ -468,9 +471,11 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
  */
 void DTLSMessageChannel::cancel_move_session()
 {
-    move_session = false;
-    sessionPersist.clear_use_count();
-    command(SAVE_SESSION);
+    if (move_session) {
+        move_session = false;
+        sessionPersist.clear_use_count();
+        command(SAVE_SESSION);
+    }
 }
 
 ProtocolError DTLSMessageChannel::send(Message& message)
