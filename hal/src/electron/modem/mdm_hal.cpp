@@ -480,6 +480,23 @@ void MDMParser::unlock()
     mdm_mutex.unlock();
 }
 
+int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
+{
+    if (((type == TYPE_PLUS) || (type == TYPE_UNKNOWN)) && edrxActs) {
+        // if response is "\r\n+CEDRXS:\r\n", all AcT's disabled, do nothing
+        if (strncmp(buf, "\r\n+CEDRXS:\r\n", len) != 0) {
+            int a;
+            if (sscanf(buf, "\r\n+CEDRXS: %1d[2-5]", &a) == 1 ||
+                sscanf(buf, "+CEDRXS: %1d[2-5]", &a) == 1) {
+                if (edrxActs->count < MDM_R410_EDRX_ACTS_MAX) {
+                    edrxActs->act[edrxActs->count++] = a;
+                }
+            }
+        }
+    }
+    return WAIT;
+}
+
 int MDMParser::_cbString(int type, const char* buf, int len, char* str)
 {
     if (str && (type == TYPE_UNKNOWN)) {
@@ -807,33 +824,6 @@ bool MDMParser::init(DevStatus* status)
     sendFormated("AT+CCID\r\n");
     if (RESP_OK != waitFinalResp(_cbCCID, _dev.ccid))
         goto failure;
-    // enable power saving
-    if (_dev.lpm != LPM_DISABLED) {
-        // enable power saving (requires flow control, cts at least)
-        sendFormated("AT+UPSV=%d\r\n", _power_mode);
-        if (RESP_OK != waitFinalResp())
-            goto failure;
-        if (_power_mode != 0) {
-            _dev.lpm = LPM_ACTIVE;
-        }
-    }
-    if (_dev.dev == DEV_SARA_R410) {
-        // Force eDRX mode to be disabled
-        // 18/23 hardware doesn't seem to be disabled by default
-        sendFormated("AT+CEDRXS=3,2\r\n");
-        if (RESP_OK != waitFinalResp())
-            goto failure;
-        sendFormated("AT+CEDRXS?\r\n");
-        if (RESP_OK != waitFinalResp())
-            goto failure;
-        // Force Power Saving mode to be disabled for good measure
-        sendFormated("AT+CPSMS=0\r\n");
-        if (RESP_OK != waitFinalResp())
-            goto failure;
-        sendFormated("AT+CPSMS?\r\n");
-        if (RESP_OK != waitFinalResp())
-            goto failure;
-    }
     // Setup SMS in text mode
     sendFormated("AT+CMGF=1\r\n");
     if (RESP_OK != waitFinalResp())
@@ -857,14 +847,73 @@ bool MDMParser::init(DevStatus* status)
     if (waitFinalResp() != RESP_OK) {
         goto failure;
     }
-#endif
-    if (status)
+#endif // SOCKET_HEX_MODE
+    // enable power saving
+    if (_dev.lpm != LPM_DISABLED) {
+        // enable power saving (requires flow control, cts at least)
+        sendFormated("AT+UPSV=%d\r\n", _power_mode);
+        if (RESP_OK != waitFinalResp())
+            goto failure;
+        if (_power_mode != 0) {
+            _dev.lpm = LPM_ACTIVE;
+        }
+    }
+    // All _dev items collected without error, populate status.
+    if (status) {
         memcpy(status, &_dev, sizeof(DevStatus));
+    }
+    if (_dev.dev == DEV_SARA_R410) {
+        // Force Power Saving mode to be disabled for good measure
+        sendFormated("AT+CPSMS=0\r\n");
+        if (RESP_OK != waitFinalResp())
+            goto failure;
+        sendFormated("AT+CPSMS?\r\n");
+        if (RESP_OK != waitFinalResp())
+            goto failure;
+        // Force eDRX mode to be disabled
+        // 18/23 hardware doesn't seem to be disabled by default
+        sendFormated("AT+CEDRXS?\r\n");
+        // Reset the detected count each time we check for eDRX AcTs enabled
+        EdrxActs _edrxActs;
+        if (RESP_ERROR == waitFinalResp(_cbCEDRXS, &_edrxActs)) {
+            goto reset_failure;
+        }
+        bool resetNeeded = false;
+        for (int i = 0; i < _edrxActs.count; i++) {
+            sendFormated("AT+CEDRXS=3,%d\r\n", _edrxActs.act[i]);
+            waitFinalResp(); // Not checking for error since we will reset either way
+            resetNeeded = true;
+        }
+        if (resetNeeded) {
+            goto reset_failure;
+        }
+    } // if (_dev.dev == DEV_SARA_R410)
     UNLOCK();
     return true;
+
 failure:
     UNLOCK();
+    return false;
 
+reset_failure:
+    // Don't get stuck in a reset-retry loop
+    static int resetFailureAttempts = 0;
+    if (resetFailureAttempts++ < 3) {
+        sendFormated("AT+CFUN=15\r\n");
+        waitFinalResp();
+        _init = false; // invalidate init and prevent cellular registration
+        _pwr = false;  //   |
+        // When this exits false, ARM_WLAN_WD 1 will fire and timeout after 30s.
+        // MDMParser::powerOn and MDMParser::init will then be retried by the system.
+    } // else {
+        // stop resetting, and try to register.
+        // Preventing cellular registration gets us back to retrying init() faster,
+        // and the timeout of 3 attempts is arbitrary but allows us to register and
+        // connect even with an error, since that error is persisting and might just
+        // be a fluke or bug in the modem. Allowing to continue on eventually helps
+        // the device recover in odd situations we can't predict.
+    // }
+    UNLOCK();
     return false;
 }
 
