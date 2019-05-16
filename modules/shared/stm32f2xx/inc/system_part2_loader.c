@@ -5,7 +5,7 @@
 
 #include <string.h>
 
-#define MODULE_VERSION_V1_3_0 1300
+#define MODULE_VERSION_V1_3_0 1320
 
 extern void malloc_enable(uint8_t);
 extern void malloc_set_heap_start(void*);
