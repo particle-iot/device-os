@@ -417,10 +417,6 @@ bool NetworkManager::isConfigured(if_t iface) const {
 }
 
 int NetworkManager::clearConfiguration(if_t oIface) {
-    if (!oIface && state_ != State::IFACE_DOWN && state_ != State::DISABLED) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-
     if (!isConfigured()) {
         return SYSTEM_ERROR_NONE;
     }
@@ -435,14 +431,20 @@ int NetworkManager::clearConfiguration(if_t oIface) {
             return;
         }
 
-        if (oIface && (flags & (IFF_UP | IFF_LOWER_UP))) {
-            ret = SYSTEM_ERROR_INVALID_STATE;
-            return;
-        }
+        // NOTE: there used to be a check here preventing credentials to be cleared
+        // if the interface is up, which introduced a difference between Gen 2 and Gen 3.
+        // For now the only network interface that really requires to be down
+        // before clearing credentials is OpenThread mesh. So, we specifically
+        // down it, in all the other cases, we may clear the credentials notwithstanding
+        // the current state.
 
 #if HAL_PLATFORM_OPENTHREAD
         if (!strncmp(name, "th", 2)) {
-            /* OpenThread iface */
+            // OpenThread iface
+
+            // IMPORTANT: mesh interface needs to be down, before we may
+            // clear mesh credentials.
+            if_clear_flags(iface, IFF_UP);
             ThreadLock lk;
             otMasterKey key = {};
             otThreadSetMasterKey(threadInstance(), &key);
