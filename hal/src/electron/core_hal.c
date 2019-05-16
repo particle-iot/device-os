@@ -203,10 +203,9 @@ static void init_malloc_mutex(void)
 
 void __malloc_lock(void* ptr)
 {
-    SPARK_ASSERT(!HAL_IsISR());
     if (malloc_mutex) {
         if (!xSemaphoreTakeRecursive(malloc_mutex, MALLOC_LOCK_TIMEOUT_MS)) {
-            PANIC(SemaphoreLockTimeout,"Semaphore Lock Timeout");
+            PANIC(HeapError, "Semaphore Lock Timeout");
             while (1);
         }
     }
@@ -214,7 +213,6 @@ void __malloc_lock(void* ptr)
 
 void __malloc_unlock(void* ptr)
 {
-    SPARK_ASSERT(!HAL_IsISR());
     if (malloc_mutex) {
         xSemaphoreGiveRecursive(malloc_mutex);
     }
