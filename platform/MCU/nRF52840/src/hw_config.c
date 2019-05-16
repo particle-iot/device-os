@@ -133,8 +133,9 @@ void Set_System(void)
 
     /* Configure the LEDs and set the default states */
     int LEDx;
-    for(LEDx = 0; LEDx < LEDn; ++LEDx)
+    for(LEDx = 1; LEDx < LEDn; ++LEDx)
     {
+        // LED_USER initialization is skipped during system setup
         LED_Init(LEDx);
     }
 
