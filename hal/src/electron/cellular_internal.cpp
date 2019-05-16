@@ -10,19 +10,23 @@
 #include "net_hal.h"
 
 namespace detail {
+
+const int MCC_MNC_MIN_SIZE = 5;
+
 CellularNetProv _cellular_imsi_to_network_provider(const char* imsi) {
-    if (imsi && strlen(imsi) > 0) {
-        // convert to unsigned long long (imsi can be 15 digits)
-        unsigned long long imsi64 = strtoull(imsi, NULL, 10);
-        // LOG(INFO,"IMSI: %s %lu%lu", imsi, (uint32_t)(imsi64/100000000), (uint32_t)(imsi64-310260800000000));
-        // set network provider based on IMSI range
-        if (imsi64 >= 310260859000000 && imsi64 <= 310260859999999) {
-            return CELLULAR_NETPROV_TWILIO;
-        }
-        else {
+    if (imsi && strlen(imsi) >= MCC_MNC_MIN_SIZE) {
+        if (strncmp(imsi, "21407", 5) == 0) {
+            // LOG(INFO, "CELLULAR_NETPROV_TELEFONICA");
             return CELLULAR_NETPROV_TELEFONICA;
+        } else if (strncmp(imsi, "310410", 6) == 0) {
+            // LOG(INFO, "CELLULAR_NETPROV_KORE_ATT");
+            return CELLULAR_NETPROV_KORE_ATT;
+        } else if (strncmp(imsi, "20404", 5) == 0) {
+            // LOG(INFO, "CELLULAR_NETPROV_KORE_VODAFONE");
+            return CELLULAR_NETPROV_KORE_VODAFONE;
         }
     }
+    // LOG(INFO, "DEFAULT CELLULAR_NETPROV_TELEFONICA");
     return CELLULAR_NETPROV_TELEFONICA; // default to telefonica
 }
 
