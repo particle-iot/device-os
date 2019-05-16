@@ -1277,6 +1277,12 @@ bool MDMParser::getSignalStrength(NetStatus &status)
     if (_init && _pwr) {
         MDM_INFO("\r\n[ Modem::getSignalStrength ] = = = = = = = = = =");
 
+        // Reformat the operator string to be numeric
+        // (allows the capture of `mcc` and `mnc`)
+        sendFormated("AT+COPS=3,2\r\n");
+        if (RESP_OK != waitFinalResp(nullptr, nullptr, COPS_TIMEOUT))
+            goto cleanup;
+
         // We do receive RAT changes asynchronously via CREG URCs, but
         // just in case we'll update it here explicitly.
         sendFormated("AT+COPS?\r\n");
