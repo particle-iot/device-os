@@ -65,24 +65,23 @@ void USBSerial::end()
 // Read data from buffer
 int USBSerial::read()
 {
-	return HAL_USB_USART_Receive_Data(_serial, false);
+	return std::max(-1, (int)HAL_USB_USART_Receive_Data(_serial, false));
 }
 
 int USBSerial::availableForWrite()
 {
-  return HAL_USB_USART_Available_Data_For_Write(_serial);
+  return std::max(0, (int)HAL_USB_USART_Available_Data_For_Write(_serial));
 }
 
 int USBSerial::available()
 {
-	return HAL_USB_USART_Available_Data(_serial);
+	return std::max(0, (int)HAL_USB_USART_Available_Data(_serial));
 }
 
 size_t USBSerial::write(uint8_t byte)
 {
   if (HAL_USB_USART_Available_Data_For_Write(_serial) > 0 || _blocking) {
-    HAL_USB_USART_Send_Data(_serial, byte);
-    return 1;
+    return std::max(0, (int)HAL_USB_USART_Send_Data(_serial, byte));
   }
   return 0;
 }
@@ -99,7 +98,7 @@ void USBSerial::blockOnOverrun(bool block)
 
 int USBSerial::peek()
 {
-	return HAL_USB_USART_Receive_Data(_serial, true);
+	return std::max(0, (int)HAL_USB_USART_Receive_Data(_serial, true));
 }
 
 USBSerial::operator bool() {
