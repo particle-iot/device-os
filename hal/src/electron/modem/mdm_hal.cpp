@@ -120,8 +120,8 @@ inline void CLR_GPRS_TIMEOUT() {
 
 namespace {
 
-AcT toCellularAccessTechnology(int v) {
-    switch (v) {
+AcT toCellularAccessTechnology(int rat) {
+    switch (rat) {
         case 0: // GSM
         case 1: // GSM COMPACT
             return ACT_GSM;
@@ -1281,7 +1281,7 @@ bool MDMParser::getSignalStrength(NetStatus &status)
         // just in case we'll update it here explicitly.
         sendFormated("AT+COPS?\r\n");
         if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
-            return ok;
+            goto cleanup;
         }
 
         sendFormated("AT+CSQ\r\n");
@@ -1290,6 +1290,8 @@ bool MDMParser::getSignalStrength(NetStatus &status)
             status = _net;
         }
     }
+
+cleanup:
     UNLOCK();
     return ok;
 }
