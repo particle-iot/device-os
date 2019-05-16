@@ -58,6 +58,13 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
 
     PinMode mode = conf ? conf->mode : PIN_MODE_NONE;
 
+    // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
+    if (mode != PIN_MODE_NONE) {
+        HAL_Set_Pin_Function(pin, PF_DIO);
+    } else {
+        HAL_Set_Pin_Function(pin, PF_NONE);
+    }
+
     // Pre-set the output value if requested to avoid a glitch
     if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN)) {
         if (conf->value) {
@@ -103,11 +110,6 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
     }
 
     PIN_MAP[pin].pin_mode = mode;
-    if (mode != PIN_MODE_NONE) {
-        HAL_Set_Pin_Function(pin, PF_DIO);
-    } else {
-        HAL_Set_Pin_Function(pin, PF_NONE);
-    }
 
     return 0;
 }
