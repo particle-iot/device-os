@@ -257,7 +257,7 @@ class CoreProtocol
     bool expecting_ping_ack;
     bool initialized;
     uint8_t updating;
-    char function_arg[MAX_FUNCTION_ARG_LENGTH];
+    char function_arg[MAX_FUNCTION_ARG_LENGTH+1]; // add one for null terminator
 
     size_t wrap(unsigned char *buf, size_t msglen);
     CoAPMessageType::Enum handle_received_message(void);
