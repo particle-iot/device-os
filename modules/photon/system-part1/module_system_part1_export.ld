@@ -5,6 +5,7 @@
  * 512-byte aligned.
  */
 system_part1_module_ram_end = 0x20000300;
+system_part1_module_ram_start = 0x20000000;
 
 INCLUDE "../../shared/stm32f2xx/part1_vtor_module.ld"
 
