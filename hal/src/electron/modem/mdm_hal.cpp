@@ -849,7 +849,7 @@ bool MDMParser::init(DevStatus* status)
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
     sendFormated("AT+COPS=3,2\r\n");
-    if (RESP_OK != waitFinalResp())
+    if (RESP_OK != waitFinalResp(nullptr, nullptr, COPS_TIMEOUT))
         goto failure;
 #ifdef SOCKET_HEX_MODE
     // Enable hex mode for socket commands
@@ -1167,7 +1167,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         // Reformat the operator string to be numeric
         // (allows the capture of `mcc` and `mnc`)
         sendFormated("AT+COPS=3,2\r\n");
-        if (RESP_OK != waitFinalResp()) {
+        if (RESP_OK != waitFinalResp(nullptr, nullptr, COPS_TIMEOUT)) {
             goto failure;
         }
         sendFormated("AT+COPS?\r\n");
@@ -1240,12 +1240,13 @@ bool MDMParser::getDataUsage(MDM_DataUsage &data)
 
 bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_) {
     bool result;
+    LOCK();
     // Reformat the operator string to be numeric (allows the capture of `mcc` and `mnc`)
     if (0 == sendFormated("AT+COPS=3,2\r\n")) {
         // Failed to send request
         result = false;
     // Await response from `AT+COPS=3,2`
-    } else if (RESP_OK != waitFinalResp()) {
+    } else if (RESP_OK != waitFinalResp(nullptr, nullptr, COPS_TIMEOUT)) {
         // Request not accepted
         result = false;
     // We receive `lac` and `ci` changes asynchronously via CREG URCs, however we need to explicitly
@@ -1262,6 +1263,7 @@ bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_) {
         cgi_ = _net.cgi;
         result = true;
     }
+    UNLOCK();
     return result;
 }
 
