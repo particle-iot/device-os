@@ -21,7 +21,7 @@ void DTLSProtocol::init(const char *id,
 	channelCallbacks.receive = callbacks.receive;
 	channelCallbacks.send = callbacks.send;
 	channelCallbacks.calculate_crc = callbacks.calculate_crc;
-	if (callbacks.size>=52) {
+	if (callbacks.size>=52) {   // todo - get rid of this magic number and define it by the size of some struct.
 		channelCallbacks.save = callbacks.save;
 		channelCallbacks.restore = callbacks.restore;
 	}

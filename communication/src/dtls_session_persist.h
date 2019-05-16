@@ -62,7 +62,7 @@ struct __attribute__((packed)) SessionPersistData
 	 */
 	uint8_t persistent;
 
-	uint8_t reserved;	// padding - use for something if needed.
+	uint8_t use_counter;	    // the number of times this session has been retrieved without being successfully used.
 
 	// do not add more members here - the offset of the public connection data should be
 	// constant. Add more members at the end of the struct.
@@ -114,6 +114,12 @@ public:
 
 	void invalidate() { size = 0; }
 
+	void increment_use_count() { use_counter++; }
+	void clear_use_count() { use_counter = 0; }
+	int use_count() { return use_counter; }
+	bool has_expired() { return use_counter >= MAXIMUM_SESSION_USES; }
+
+	static const int MAXIMUM_SESSION_USES = 3;
 };
 
 
@@ -204,7 +210,7 @@ public:
 	/**
 	 * Persist information in this context .
 	 */
-	void save(save_fn_t saver);
+	void save(save_fn_t saver) { save_this_with(saver); };
 	void restore(restore_fn_t restore) { restore_this_from(restore); }
 
 	/**
@@ -240,7 +246,7 @@ public:
 	/**
 	 * Restores the state from this context. The persistence flag is not changed.
 	 */
-	RestoreStatus restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* message, restore_fn_t restorer);
+	RestoreStatus restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* message, restore_fn_t restorer, save_fn_t saver);
 
 	uint32_t application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len));
 

@@ -48,12 +48,6 @@ uint32_t compute_checksum(uint32_t(*calculate_crc)(const uint8_t* data, uint32_t
 }
 
 
-
-void SessionPersist::save(save_fn_t saver)
-{
-	save_this_with(saver);
-}
-
 void SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum, mbedtls_ssl_context* context, message_id_t next_id)
 {
 	if (context->state == MBEDTLS_SSL_HANDSHAKE_OVER)
@@ -82,10 +76,9 @@ void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver, messa
 	}
 }
 
-auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* next_id, restore_fn_t restorer) -> RestoreStatus
+auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* next_id, restore_fn_t restorer, save_fn_t saver) -> RestoreStatus
 {
 	if (!restore_this_from(restorer)) {
-
 		return NO_SESSION;
 	}
 
@@ -94,9 +87,21 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uin
 		return NO_SESSION;
 	}
 
+    LOG(WARN, "session has %d uses", use_count());
+	if (has_expired()) {
+	    invalidate();
+	    save(saver);
+	    LOG(WARN, "session has expired after %d uses", use_count());
+	    return NO_SESSION;
+	}
+
+    increment_use_count();
+    save(saver);
+
 	// assume invalid initially. With the ssl context being reset,
 	// we cannot return NO_SESSION from this point onwards.
 	size = 0;
+
 	mbedtls_ssl_session_reset(context);
 
 	context->handshake->resume = 1;
@@ -113,7 +118,6 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uin
 		context->in_epoch = in_epoch;
 		memcpy(context->out_ctr, &out_ctr, sizeof(out_ctr));
 		memcpy(context->handshake->randbytes, randbytes, sizeof(randbytes));
-
 		context->transform_negotiate->ciphersuite_info = mbedtls_ssl_ciphersuite_from_id(ciphersuite);
 		if (!context->transform_negotiate->ciphersuite_info)
 		{
@@ -344,7 +348,7 @@ ProtocolError DTLSMessageChannel::establish(uint32_t& flags, uint32_t app_state_
 	}
 	bool renegotiate = false;
 
-	SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, keys_checksum, coap_state, callbacks.restore);
+	SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, keys_checksum, coap_state, callbacks.restore, callbacks.save);
 	LOG(INFO,"(CMPL,RENEG,NO_SESS,ERR) restoreStatus=%d", restoreStatus);
 	if (restoreStatus==SessionPersist::COMPLETE)
 	{
@@ -458,6 +462,20 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 #endif
 	}
 	return NO_ERROR;
+}
+
+/**
+ * Once data has been successfully received we can stop
+ * sending move-session messages.
+ * This is also used to reset the expiration counter.
+ */
+void DTLSMessageChannel::cancel_move_session()
+{
+    if (move_session) {
+        move_session = false;
+        sessionPersist.clear_use_count();
+        command(SAVE_SESSION);
+    }
 }
 
 ProtocolError DTLSMessageChannel::send(Message& message)

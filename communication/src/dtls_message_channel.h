@@ -116,7 +116,7 @@ private:
 
 	ProtocolError setup_context();
 
-	void cancel_move_session() { move_session = false; }
+	void cancel_move_session();
 
 	void reset_session();
 
