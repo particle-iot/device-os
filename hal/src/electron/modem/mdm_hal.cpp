@@ -1239,32 +1239,27 @@ bool MDMParser::getDataUsage(MDM_DataUsage &data)
 }
 
 bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_) {
-    bool result;
     LOCK();
+
     // Reformat the operator string to be numeric (allows the capture of `mcc` and `mnc`)
-    if (0 == sendFormated("AT+COPS=3,2\r\n")) {
-        // Failed to send request
-        result = false;
-    // Await response from `AT+COPS=3,2`
-    } else if (RESP_OK != waitFinalResp(nullptr, nullptr, COPS_TIMEOUT)) {
-        // Request not accepted
-        result = false;
+    sendFormated("AT+COPS=3,2\r\n");
+    if (RESP_OK != waitFinalResp(nullptr, nullptr, COPS_TIMEOUT))
+        goto failure;
+
     // We receive `lac` and `ci` changes asynchronously via CREG URCs, however we need to explicitly
     // update the `mcc` and `mnc` to confirm the operator has not changed.
-    } else if (0 == sendFormated("AT+COPS?\r\n")) {
-        // Failed to send request
-        result = false;
-    // Await response from `AT+COPS?`
-    } else if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
-        // Request not accepted
-        result = false;
+    sendFormated("AT+COPS?\r\n");
+    if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT))
+        goto failure;
+
     // CGI value has been updated successfully
-    } else {
-        cgi_ = _net.cgi;
-        result = true;
-    }
+    cgi_ = _net.cgi;
+
     UNLOCK();
-    return result;
+    return true;
+failure:
+    UNLOCK();
+    return false;
 }
 
 void MDMParser::_setBandSelectString(MDM_BandSelect &data, char* bands, int index /*= 0*/) {
@@ -1419,16 +1414,16 @@ int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
     if ((type == TYPE_PLUS) && status)
     {
         int act = 99;
-        char mobile_country_code[4] = {0};
-        char mobile_network_code[4] = {0};
+        char mobileCountryCode[4] = {0};
+        char mobileNetworkCode[4] = {0};
 
         // +COPS: <mode>[,<format>,<oper>[,<AcT>]]
-        if (sscanf(buf, "\r\n+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobile_country_code,
-                   mobile_network_code, &act) >= 1)
+        if (sscanf(buf, "\r\n+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobileCountryCode,
+                   mobileNetworkCode, &act) >= 1)
         {
             // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
-            status->cgi.mobile_country_code = static_cast<uint16_t>(::atoi(mobile_country_code));
-            status->cgi.mobile_network_code = static_cast<uint16_t>(::atoi(mobile_network_code));
+            status->cgi.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
+            status->cgi.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
 
             if (act == 0)
                 status->act = ACT_GSM; // 0: GSM,

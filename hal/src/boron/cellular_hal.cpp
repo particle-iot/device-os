@@ -224,7 +224,6 @@ int cellular_credentials_clear(void* reserved) {
 }
 
 cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* reserved_) {
-    cellular_result_t result;
     CellularGlobalIdentity cgi;
 
     // Acquire Cellular NCP Client
@@ -234,27 +233,21 @@ cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* r
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
 
     // Validate Argument(s)
-    if (nullptr == cgi_) {
-        (void)reserved_;
-        result = SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    // Load cached data into result struct
-    else if ((result = client->getCellularGlobalIdentity(&cgi))) {
-        // Failed to acquire cellular global identity
-        ERROR("Failed to acquire cellular global identity. Result <%d>", result);
-    }
-    // Validate cache
-    else if (0 == cgi.mobile_country_code || 0 == cgi.mobile_network_code ||
-             0xFFFF == cgi.location_area_code || 0xFFFFFFFF == cgi.cell_id) {
-        result = SYSTEM_ERROR_BAD_DATA;
-    }
-    // Update result
-    else {
-        *cgi_ = cgi;
-        result = SYSTEM_ERROR_NONE;
-    }
+    (void)reserved_;
+    CHECK_TRUE((nullptr != cgi_), SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    return result;
+    // Load cached data into result struct
+    CHECK(client->getCellularGlobalIdentity(&cgi));
+
+    // Validate cache
+    CHECK_TRUE((0 != cgi.mobile_country_code && 0 != cgi.mobile_network_code &&
+                0xFFFF != cgi.location_area_code && 0xFFFFFFFF != cgi.cell_id),
+               SYSTEM_ERROR_BAD_DATA);
+
+    // Update result
+    *cgi_ = cgi;
+
+    return SYSTEM_ERROR_NONE;
 }
 
 bool cellular_sim_ready(void* reserved) {

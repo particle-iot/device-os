@@ -1,5 +1,6 @@
 #ifndef HAL_CELLULAR_EXCLUDE
 
+#include "check.h"
 #include "modem/mdm_hal.h"
 #include "cellular_hal.h"
 #include "cellular_internal.h"
@@ -359,31 +360,24 @@ cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reser
 
 cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* reserved_)
 {
-    cellular_result_t result;
     CellularGlobalIdentity cgi;
 
     // Validate Argument(s)
-    if (nullptr == cgi_) {
-        (void)reserved_;
-        result = SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    // Load cached data into result struct
-    else if (!electronMDM.getCellularGlobalIdentity(cgi)) {
-        // Failed to query AT+COPS
-        result = SYSTEM_ERROR_AT_NOT_OK;
-    }
-    // Validate cache
-    else if (0 == cgi.mobile_country_code || 0 == cgi.mobile_network_code ||
-             0xFFFF == cgi.location_area_code || 0xFFFFFFFF == cgi.cell_id) {
-        result = SYSTEM_ERROR_BAD_DATA;
-    }
-    // Update result
-    else {
-        *cgi_ = cgi;
-        result = SYSTEM_ERROR_NONE;
-    }
+    (void)reserved_;
+    CHECK_TRUE((nullptr != cgi_), SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    return result;
+    // Load cached data into result struct
+    CHECK_TRUE(electronMDM.getCellularGlobalIdentity(cgi), SYSTEM_ERROR_AT_NOT_OK);
+
+    // Validate cache
+    CHECK_TRUE((0 != cgi.mobile_country_code && 0 != cgi.mobile_network_code &&
+                0xFFFF != cgi.location_area_code && 0xFFFFFFFF != cgi.cell_id),
+               SYSTEM_ERROR_BAD_DATA);
+
+    // Update result
+    *cgi_ = cgi;
+
+    return SYSTEM_ERROR_NONE;
 }
 
 cellular_result_t cellular_sms_received_handler_set(_CELLULAR_SMS_CB_MDM cb, void* data,
