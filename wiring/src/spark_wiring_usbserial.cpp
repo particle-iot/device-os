@@ -98,7 +98,7 @@ void USBSerial::blockOnOverrun(bool block)
 
 int USBSerial::peek()
 {
-	return std::max(0, (int)HAL_USB_USART_Receive_Data(_serial, true));
+	return std::max(-1, (int)HAL_USB_USART_Receive_Data(_serial, true));
 }
 
 USBSerial::operator bool() {
