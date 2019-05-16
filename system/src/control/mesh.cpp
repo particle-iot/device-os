@@ -149,7 +149,7 @@ const size_t JOINER_PASSWORD_MIN_SIZE = 6;
 const size_t JOINER_PASSWORD_MAX_SIZE = 32;
 
 // Time in milliseconds to spend scanning each channel during an active scan
-const unsigned ACTIVE_SCAN_DURATION = 0; // Use Thread's default timeout
+const unsigned DEFAULT_ACTIVE_SCAN_DURATION = 0; // Use OpenThread's default timeout
 
 // Time in milliseconds to spend scanning each channel during an energy scan
 const unsigned ENERGY_SCAN_DURATION = 200;
@@ -296,10 +296,6 @@ int resetThread() {
     // Clear master key (invalidates active and pending datasets)
     otMasterKey key = {};
     CHECK_THREAD(otThreadSetMasterKey(thread, &key));
-    // FIXME: Setting the network name to an invalid UTF-8 string helps to work around an issue in
-    // the OT's MAC layer implementation, where the cached network name doesn't get updated if it
-    // starts with the same characters as the new name
-    CHECK_THREAD(otThreadSetNetworkName(thread, "\xff"));
     // Erase persistent data
     CHECK_THREAD(otInstanceErasePersistentInfo(thread));
     return 0;
@@ -470,7 +466,7 @@ int createNetwork(ctrl_request* req) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     LOG_DEBUG(TRACE, "Performing active scan");
-    CHECK_THREAD(otLinkActiveScan(thread, (uint32_t)1 << channel, ACTIVE_SCAN_DURATION,
+    CHECK_THREAD(otLinkActiveScan(thread, (uint32_t)1 << channel, DEFAULT_ACTIVE_SCAN_DURATION,
             [](otActiveScanResult* result, void* data) {
         const auto scan = (ActiveScanResult*)data;
         if (!result) {
@@ -870,6 +866,9 @@ int scanNetworks(ctrl_request* req) {
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    // Parse request
+    PB(ScanNetworksRequest) pbReq = {};
+    CHECK(decodeRequestMessage(req, PB(ScanNetworksRequest_fields), &pbReq));
     struct Network {
         char name[OT_NETWORK_NAME_MAX_SIZE + 1]; // Network name (null-terminated)
         char extPanId[OT_EXT_PAN_ID_SIZE * 2]; // Extended PAN ID in hex
@@ -882,7 +881,8 @@ int scanNetworks(ctrl_request* req) {
         volatile bool done;
     };
     ScanResult scan = {};
-    CHECK_THREAD(otLinkActiveScan(thread, OT_CHANNEL_ALL, ACTIVE_SCAN_DURATION,
+    const unsigned duration = pbReq.duration ? pbReq.duration : DEFAULT_ACTIVE_SCAN_DURATION;
+    CHECK_THREAD(otLinkActiveScan(thread, OT_CHANNEL_ALL, duration,
             [](otActiveScanResult* result, void* data) {
         const auto scan = (ScanResult*)data;
         if (!result) {
@@ -895,10 +895,7 @@ int scanNetworks(ctrl_request* req) {
         Network network = {};
         // Network name
         static_assert(sizeof(result->mNetworkName) <= sizeof(Network::name), "");
-        memcpy(&network.name, &result->mNetworkName, sizeof(result->mNetworkName));
-        // FIXME: OT doesn't null-terminate the network name in the scan results if it has the
-        // maximum length of 16 characters
-        network.name[OT_NETWORK_NAME_MAX_SIZE] = '\0';
+        strncpy(network.name, result->mNetworkName.m8, sizeof(Network::name));
         // Extended PAN ID
         static_assert(sizeof(result->mExtendedPanId) * 2 == sizeof(Network::extPanId), "");
         bytes2hexbuf_lower_case((const uint8_t*)&result->mExtendedPanId, sizeof(result->mExtendedPanId), network.extPanId);
@@ -906,6 +903,15 @@ int scanNetworks(ctrl_request* req) {
         network.panId = result->mPanId;
         // Channel number
         network.channel = result->mChannel;
+        // Ignore duplicate entries. Note: For some reason, OT may report the same network multiple
+        // times with different channel numbers. As a workaround, we're excluding the channel number
+        // from the comparison
+        for (const auto& n: scan->networks) {
+            if (strcmp(network.name, n.name) == 0 && memcmp(network.extPanId, n.extPanId, sizeof(Network::extPanId)) == 0 &&
+                    network.panId == n.panId) {
+                return;
+            }
+        }
         if (!scan->networks.append(std::move(network))) {
             scan->result = SYSTEM_ERROR_NO_MEMORY;
         }
