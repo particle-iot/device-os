@@ -84,6 +84,20 @@ typedef enum {
     ACT_LTE_CAT_M1  = 6,
     ACT_LTE_CAT_NB1 = 7
 } AcT;
+//! Ublox-specific RAT
+typedef enum {
+    UBLOX_SARA_RAT_NONE              = -1,
+    UBLOX_SARA_RAT_GSM               = 0,
+    UBLOX_SARA_RAT_GSM_COMPACT       = 1,
+    UBLOX_SARA_RAT_UTRAN             = 2,
+    UBLOX_SARA_RAT_GSM_EDGE          = 3,
+    UBLOX_SARA_RAT_UTRAN_HSDPA       = 4,
+    UBLOX_SARA_RAT_UTRAN_HSUPA       = 5,
+    UBLOX_SARA_RAT_UTRAN_HSDPA_HSUPA = 6,
+    UBLOX_SARA_RAT_LTE               = 7,
+    UBLOX_SARA_RAT_EC_GSM_IOT        = 8,
+    UBLOX_SARA_RAT_E_UTRAN           = 9
+} UbloxSaraCellularAccessTechnology;
 //! Network Status
 typedef struct {
     Reg csd;        //!< CSD Registration Status (Circuit Switched Data)
