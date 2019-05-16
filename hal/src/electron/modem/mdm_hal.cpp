@@ -121,23 +121,23 @@ inline void CLR_GPRS_TIMEOUT() {
 namespace {
 
 AcT toCellularAccessTechnology(int rat) {
-    switch (rat) {
-        case 0: // GSM
-        case 1: // GSM COMPACT
+    switch (static_cast<UbloxSaraCellularAccessTechnology>(rat)) {
+        case UBLOX_SARA_RAT_GSM:
+        case UBLOX_SARA_RAT_GSM_COMPACT:
             return ACT_GSM;
-        case 2: // UTRAN
+        case UBLOX_SARA_RAT_UTRAN:
             return ACT_UTRAN;
-        case 3: // GSM with EDGE availability
+        case UBLOX_SARA_RAT_GSM_EDGE:
             return ACT_EDGE;
-        case 4: // UTRAN with HSDPA availability
-        case 5: // UTRAN with HSUPA availability
-        case 6: // UTRAN with HSDPA and HSUPA availability
+        case UBLOX_SARA_RAT_UTRAN_HSDPA:
+        case UBLOX_SARA_RAT_UTRAN_HSUPA:
+        case UBLOX_SARA_RAT_UTRAN_HSDPA_HSUPA:
             return ACT_UTRAN;
-        case 7: // LTE
+        case UBLOX_SARA_RAT_LTE:
             return ACT_LTE;
-        case 8: // LTE Cat M1
+        case UBLOX_SARA_RAT_EC_GSM_IOT:
             return ACT_LTE_CAT_M1;
-        case 9: // LTE Cat NB1
+        case UBLOX_SARA_RAT_E_UTRAN:
             return ACT_LTE_CAT_NB1;
         default:
             return ACT_UNKNOWN;
