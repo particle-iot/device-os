@@ -886,13 +886,26 @@ void Spark_Protocol_Init(void)
 
 int Send_Firmware_Update_Flags()
 {
-    if (!System.updatesEnabled()) {
+    // short-circuiting the current state and always sending these flags
+    /*
+      Problem
+      The device previously only sends the value of these flags when they
+      have changed from the default. However, they are reset when the device
+      resets, yet the cloud is not informed of this change.
+
+      Solution
+      Send the state of these flags whenever connecting to the cloud, so the
+      cloud has the latest state. This will increase data usage marginally.
+      This feature will be reworked in a later release to allow
+      synchronization with less data use.
+     */
+    if (true || !System.updatesEnabled()) {
     	// force the event to be resent. The cloud assumes updates
     	// are enabled by default.
     	system_refresh_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED);
     }
 
-    if (System.updatesForced()) {
+    if (true || System.updatesForced()) {
     	system_refresh_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED);
     }
 
