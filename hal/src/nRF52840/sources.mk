@@ -39,5 +39,3 @@ CSRC += $(TARGET_HAL_PATH)/src/portable/FreeRTOS/heap_4_lock.c
 
 # ASM source files included in this build.
 ASRC +=
-
-CPPFLAGS += -std=gnu++14

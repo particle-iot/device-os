@@ -36,8 +36,6 @@ CPPSRC += $(TARGET_SRC_PATH)/mesh.cpp
 # ASM source files included in this build.
 ASRC +=
 
-CPPFLAGS += -std=gnu++11
-
 ifeq ($(PLATFORM_ID),6)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_NONE
 endif
