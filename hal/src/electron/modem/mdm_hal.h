@@ -19,11 +19,11 @@
 
 #pragma once
 
-//#include <stdio.h>
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
 
+#include "cellular_hal_cellular_global_identity.h"
 #include "pipe_hal.h"
 #include "electronserialpipe_hal.h"
 #include "pinmap_hal.h"
@@ -137,6 +137,18 @@ public:
         \return true if successful, false otherwise
     */
     bool getBandAvailable(MDM_BandSelect &data);
+
+    /**
+     * \brief Get the Cellular Global Identity
+     *
+     * \param[out] cgi A reference to a CellularGlobalIdentity
+     *                 structure in which to populate cached values.
+     *
+     * \returns A boolean indicating success
+     * \retval true Success
+     * \retval false Failure
+     */
+    bool getCellularGlobalIdentity(CellularGlobalIdentity& cgi);
 
     /** Power off the MT, This function has to be called prior to
         switching off the supply.

@@ -22,6 +22,8 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "cellular_hal_cellular_global_identity.h"
+
 // ----------------------------------------------------------------
 // Types
 // ----------------------------------------------------------------
@@ -106,10 +108,8 @@ typedef struct {
         int aqual;  //!< Abstract accessor
     };
 
-    char opr[16+1]; //!< Operator Name
+    CellularGlobalIdentity cgi;  //!< Cellular Global Identity (MCC, MNC, LAC, CI)
     char num[32];   //!< Mobile Directory Number
-    unsigned short lac;  //!< location area code in hexadecimal format (2 bytes in hex)
-    unsigned int ci;     //!< Cell ID in hexadecimal format (2 to 4 bytes in hex)
 } NetStatus;
 
 #ifdef __cplusplus

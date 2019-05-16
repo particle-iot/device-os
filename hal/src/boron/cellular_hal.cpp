@@ -95,9 +95,11 @@ hal_net_access_tech_t fromCellularAccessTechnology(CellularAccessTechnology rat)
     case CellularAccessTechnology::UTRAN_HSDPA_HSUPA:
         return NET_ACCESS_TECHNOLOGY_UTRAN;
     case CellularAccessTechnology::LTE:
-    case CellularAccessTechnology::E_UTRAN:
-    case CellularAccessTechnology::EC_GSM_IOT: // FIXME
         return NET_ACCESS_TECHNOLOGY_LTE;
+    case CellularAccessTechnology::EC_GSM_IOT:
+        return NET_ACCESS_TECHNOLOGY_LTE_CAT_M1;
+    case CellularAccessTechnology::E_UTRAN:
+        return NET_ACCESS_TECHNOLOGY_LTE_CAT_NB1;
     default:
         return NET_ACCESS_TECHNOLOGY_UNKNOWN;
     }
@@ -219,6 +221,33 @@ int cellular_credentials_clear(void* reserved) {
     CHECK(CellularNetworkManager::getActiveSim(&sim));
     CHECK(CellularNetworkManager::clearNetworkConfig(sim));
     return 0;
+}
+
+cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* reserved_) {
+    CellularGlobalIdentity cgi;
+
+    // Acquire Cellular NCP Client
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+
+    // Validate Argument(s)
+    (void)reserved_;
+    CHECK_TRUE((nullptr != cgi_), SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    // Load cached data into result struct
+    CHECK(client->getCellularGlobalIdentity(&cgi));
+
+    // Validate cache
+    CHECK_TRUE((0 != cgi.mobile_country_code && 0 != cgi.mobile_network_code &&
+                0xFFFF != cgi.location_area_code && 0xFFFFFFFF != cgi.cell_id),
+               SYSTEM_ERROR_BAD_DATA);
+
+    // Update result
+    *cgi_ = cgi;
+
+    return SYSTEM_ERROR_NONE;
 }
 
 bool cellular_sim_ready(void* reserved) {

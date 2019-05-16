@@ -46,7 +46,7 @@ void disconnect_from_cloud(system_tick_t timeout, bool detach = false)
     delay(1000);
 
     if (detach) {
-        Cellular.command(timeout, "AT+COPS=2\r\n");
+        Cellular.command(timeout, "AT+COPS=2,2\r\n");
     }
 }
 void connect_to_cloud(system_tick_t timeout)
@@ -411,7 +411,7 @@ bool BAND_SELECT_09_restore_connection() {
     }
     Log.trace("%s", __func__);
     // Allow network registration
-    cellular_command(NULL, NULL, 30000, "AT+COPS=0\r\n"); // blocking call to avoid adding delays
+    cellular_command(NULL, NULL, 30000, "AT+COPS=0,2\r\n"); // blocking call to avoid adding delays
     connect_to_cloud(6*60*1000);
     if (Particle.disconnected()) {
         Log.error("Connection was not restored and timed out!");

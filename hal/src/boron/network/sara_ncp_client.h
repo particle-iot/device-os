@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <cstdlib>
+
 #include "cellular_ncp_client.h"
 #include "platform_ncp.h"
 
@@ -57,6 +59,7 @@ public:
 
     // Reimplemented from CellularNcpClient
     virtual int connect(const CellularNetworkConfig& conf) override;
+    virtual int getCellularGlobalIdentity(CellularGlobalIdentity* cgi) override;
     virtual int getIccid(char* buf, size_t size) override;
     virtual int getImei(char* buf, size_t size) override;
     virtual int getSignalQuality(CellularSignalQuality* qual) override;
@@ -74,6 +77,7 @@ private:
     gsm0710::Muxer<particle::Stream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
     CellularNetworkConfig netConf_;
+    CellularGlobalIdentity cgi_;
 
     enum class RegistrationState {
         NotRegistered = 0,
@@ -86,6 +90,7 @@ private:
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
 
+    int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
     int checkParser();
     int waitReady();

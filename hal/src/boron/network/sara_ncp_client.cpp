@@ -155,46 +155,86 @@ int SaraNcpClient::initParser(Stream* stream) {
             .commandTerminator(AtCommandTerminator::CRLF);
     parser_.destroy();
     CHECK(parser_.init(std::move(parserConf)));
+    // +CREG: <stat>[,<lac>,<ci>[,<AcTStatus>]]
     CHECK(parser_.addUrcHandler("+CREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
-        int val[2];
-        int r = CHECK_PARSER_URC(reader->scanf("+CREG: %d,%d", &val[0], &val[1]));
+        int val[4] = {-1,-1,-1,-1};
+        char atResponse[64] = {0};
+        // Take a copy of AT response for multi-pass scanning
+        CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
+        // Parse response ignoring mode (replicate URC response)
+        int r = ::sscanf(atResponse, "+CREG: %*d,%d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]);
+        // Reparse URC as direct response
+        if (0 >= r) {
+            r = CHECK_PARSER_URC(
+                ::sscanf(atResponse, "+CREG: %d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
+        }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         // Home network or roaming
-        if (val[r - 1] == 1 || val[r - 1] == 5) {
+        if (val[0] == 1 || val[0] == 5) {
             self->creg_ = RegistrationState::Registered;
         } else {
             self->creg_ = RegistrationState::NotRegistered;
         }
         self->checkRegistrationState();
+        // Cellular Global Identity (partial)
+        self->cgi_.location_area_code = static_cast<uint16_t>(val[1]);
+        self->cgi_.cell_id = val[2];
         return 0;
     }, this));
+    // n={0,1} +CGREG: <stat>
+    // n=2     +CGREG: <stat>[,<lac>,<ci>[,<AcT>,<rac>]]
     CHECK(parser_.addUrcHandler("+CGREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
-        int val[2];
-        int r = CHECK_PARSER_URC(reader->scanf("+CGREG: %d,%d", &val[0], &val[1]));
+        int val[4] = {-1,-1,-1,-1};
+        char atResponse[64] = {0};
+        // Take a copy of AT response for multi-pass scanning
+        CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
+        // Parse response ignoring mode (replicate URC response)
+        int r = ::sscanf(atResponse, "+CGREG: %*d,%d,\"%x\",\"%x\",%d,\"%*x\"", &val[0], &val[1], &val[2], &val[3]);
+        // Reparse URC as direct response
+        if (0 >= r) {
+            r = CHECK_PARSER_URC(
+                ::sscanf(atResponse, "+CGREG: %d,\"%x\",\"%x\",%d,\"%*x\"", &val[0], &val[1], &val[2], &val[3]));
+        }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         // Home network or roaming
-        if (val[r - 1] == 1 || val[r - 1] == 5) {
+        if (val[0] == 1 || val[0] == 5) {
             self->cgreg_ = RegistrationState::Registered;
         } else {
             self->cgreg_ = RegistrationState::NotRegistered;
         }
         self->checkRegistrationState();
+        // Cellular Global Identity (partial)
+        self->cgi_.location_area_code = val[1];
+        self->cgi_.cell_id = val[2];
         return 0;
     }, this));
+    // +CEREG: <stat>[,[<tac>],[<ci>],[<AcT>][,<cause_type>,<reject_cause>[,[<Active_Time>],[<Periodic_TAU>]]]]
     CHECK(parser_.addUrcHandler("+CEREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
-        int val[2];
-        int r = CHECK_PARSER_URC(reader->scanf("+CEREG: %d,%d", &val[0], &val[1]));
+        int val[4] = {-1,-1,-1,-1};
+        char atResponse[64] = {0};
+        // Take a copy of AT response for multi-pass scanning
+        CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
+        // Parse response ignoring mode (replicate URC response)
+        int r = ::sscanf(atResponse, "+CEREG: %*d,%d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]);
+        // Reparse URC as direct response
+        if (0 >= r) {
+            r = CHECK_PARSER_URC(
+                ::sscanf(atResponse, "+CEREG: %d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
+        }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         // Home network or roaming
-        if (val[r - 1] == 1 || val[r - 1] == 5) {
+        if (val[0] == 1 || val[0] == 5) {
             self->cereg_ = RegistrationState::Registered;
         } else {
             self->cereg_ = RegistrationState::NotRegistered;
         }
         self->checkRegistrationState();
+        // Cellular Global Identity (partial)
+        self->cgi_.location_area_code = val[1];
+        self->cgi_.cell_id = val[2];
         return 0;
     }, this));
     return 0;
@@ -267,7 +307,7 @@ int SaraNcpClient::disconnect() {
         return 0;
     }
     CHECK(checkParser());
-    const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+    const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2,2"));
     (void)r;
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
@@ -355,41 +395,70 @@ int SaraNcpClient::getImei(char* buf, size_t size) {
     return n;
 }
 
+int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
+    int act;
+    char mobileCountryCode[4] = {0};
+    char mobileNetworkCode[4] = {0};
+
+    // Reformat the operator string to be numeric
+    // (allows the capture of `mcc` and `mnc`)
+    int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
+    auto resp = parser_.sendCommand("AT+COPS?");
+    r = CHECK_PARSER(resp.scanf("+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobileCountryCode,
+                                    mobileNetworkCode, &act));
+    CHECK_TRUE(r == 3, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
+    // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
+    cgi_.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
+    cgi_.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
+
+    switch (static_cast<CellularAccessTechnology>(act)) {
+        case CellularAccessTechnology::NONE:
+        case CellularAccessTechnology::GSM:
+        case CellularAccessTechnology::GSM_COMPACT:
+        case CellularAccessTechnology::UTRAN:
+        case CellularAccessTechnology::GSM_EDGE:
+        case CellularAccessTechnology::UTRAN_HSDPA:
+        case CellularAccessTechnology::UTRAN_HSUPA:
+        case CellularAccessTechnology::UTRAN_HSDPA_HSUPA:
+        case CellularAccessTechnology::LTE:
+        case CellularAccessTechnology::EC_GSM_IOT:
+        case CellularAccessTechnology::E_UTRAN: {
+            break;
+        }
+        default: {
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+    }
+    if (qual) {
+        qual->accessTechnology(static_cast<CellularAccessTechnology>(act));
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int SaraNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
+    const NcpClientLock lock(this);
+    CHECK_TRUE(connState_ != NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(cgi, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK(checkParser());
+    CHECK(queryAndParseAtCops(nullptr));
+
+    *cgi = cgi_;
+
+    return SYSTEM_ERROR_NONE;
+}
+
 int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
     const NcpClientLock lock(this);
     CHECK_TRUE(connState_ != NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(qual, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK(checkParser());
-
-    {
-        int act;
-        int v;
-        auto resp = parser_.sendCommand("AT+COPS?");
-        int r = CHECK_PARSER(resp.scanf("+COPS: %d,%*d,\"%*[^\"]\",%d", &v, &act));
-        CHECK_TRUE(r == 2, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-
-        switch (static_cast<CellularAccessTechnology>(act)) {
-            case CellularAccessTechnology::NONE:
-            case CellularAccessTechnology::GSM:
-            case CellularAccessTechnology::GSM_COMPACT:
-            case CellularAccessTechnology::UTRAN:
-            case CellularAccessTechnology::GSM_EDGE:
-            case CellularAccessTechnology::UTRAN_HSDPA:
-            case CellularAccessTechnology::UTRAN_HSUPA:
-            case CellularAccessTechnology::UTRAN_HSDPA_HSUPA:
-            case CellularAccessTechnology::LTE:
-            case CellularAccessTechnology::EC_GSM_IOT:
-            case CellularAccessTechnology::E_UTRAN: {
-                break;
-            }
-            default: {
-                return SYSTEM_ERROR_BAD_DATA;
-            }
-        }
-        qual->accessTechnology(static_cast<CellularAccessTechnology>(act));
-    }
+    CHECK(queryAndParseAtCops(qual));
 
     if (ncpId() == MESH_NCP_SARA_R410) {
         int rxlev, rxqual, rscp, ecn0, rsrq, rsrp;
@@ -683,8 +752,12 @@ int SaraNcpClient::initReady() {
     CHECK(selectSimCard());
 
     // Just in case disconnect
-    int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+    int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2,2"));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
+    // Reformat the operator string to be numeric
+    // (allows the capture of `mcc` and `mnc`)
+    r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
 
     if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
         // Change the baudrate to 921600
@@ -839,7 +912,7 @@ int SaraNcpClient::registerNet() {
     connectionState(NcpConnectionState::CONNECTING);
 
     // NOTE: up to 3 mins
-    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0"));
+    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0,2"));
     // Ignore response code here
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 

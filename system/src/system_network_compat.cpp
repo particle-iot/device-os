@@ -23,8 +23,6 @@
  * or not */
 #if !HAL_PLATFORM_IFAPI
 
-#include "spark_wiring_ticks.h"
-#include "spark_wiring_diagnostics.h"
 #include "system_setup.h"
 #include "system_network.h"
 #include "system_network_internal.h"
@@ -36,7 +34,6 @@
 #include "delay_hal.h"
 #include "rgbled.h"
 #include <string.h>
-#include "spark_wiring_fixed_point.h"
 
 uint32_t wlan_watchdog_base;
 uint32_t wlan_watchdog_duration;
@@ -75,196 +72,7 @@ inline NetworkInterface& nif(network_interface_t _nif) { return mesh; }
 
 #ifndef Wiring_Network
 #define Wiring_Network 0
-#endif
-
-#if Wiring_Network
-
-namespace {
-
-using namespace particle;
-using namespace spark;
-
-static const system_tick_t SIGNAL_INFO_CACHE_INTERVAL = 1000;
-
-class SignalCache {
-public:
-    const Signal* getSignal() {
-#if Wiring_WiFi || Wiring_Cellular
-        system_tick_t m = millis();
-        if (ts_ == 0 || (m - ts_) >= SIGNAL_INFO_CACHE_INTERVAL) {
-# if Wiring_WiFi
-            sig_ = WiFi.RSSI();
-# elif Wiring_Cellular
-            sig_ = Cellular.RSSI();
-# endif
-            ts_ = millis();
-        }
-        return &sig_;
 #else
-        return nullptr;
-#endif
-    }
-private:
-#if Wiring_Cellular
-    CellularSignal sig_;
-#elif Wiring_WiFi
-    WiFiSignal sig_;
-#elif Wiring_Mesh
-    MeshSignal sig_;
-#endif
-    system_tick_t ts_ = 0;
-};
-
-static SignalCache s_signalCache;
-
-class SignalStrengthDiagnosticData: public AbstractIntegerDiagnosticData {
-public:
-    SignalStrengthDiagnosticData() :
-            AbstractIntegerDiagnosticData(DIAG_ID_NETWORK_SIGNAL_STRENGTH, DIAG_NAME_NETWORK_SIGNAL_STRENGTH) {
-    }
-
-    virtual int get(IntType& val) {
-        const Signal* sig = s_signalCache.getSignal();
-        if (sig == nullptr) {
-            return SYSTEM_ERROR_NOT_SUPPORTED;
-        }
-
-        if (sig->getStrength() < 0) {
-            return SYSTEM_ERROR_UNKNOWN;
-        }
-
-        // Convert to unsigned Q8.8
-        FixedPointUQ<8, 8> str(sig->getStrength());
-        val = str;
-
-        return SYSTEM_ERROR_NONE;
-    }
-};
-
-class NetworkRssiDiagnosticData: public AbstractIntegerDiagnosticData {
-public:
-    NetworkRssiDiagnosticData() :
-            AbstractIntegerDiagnosticData(DIAG_ID_NETWORK_RSSI, DIAG_NAME_NETWORK_RSSI) {
-    }
-
-    virtual int get(IntType& val) {
-        const Signal* sig = s_signalCache.getSignal();
-        if (sig == nullptr) {
-            return SYSTEM_ERROR_NOT_SUPPORTED;
-        }
-
-        if (sig->getStrength() < 0) {
-            return SYSTEM_ERROR_UNKNOWN;
-        }
-
-        // Convert to signed Q8.8
-        FixedPointSQ<8, 8> str(sig->getStrengthValue());
-        val = str;
-
-        return SYSTEM_ERROR_NONE;
-    }
-};
-
-class SignalStrengthValueDiagnosticData: public AbstractIntegerDiagnosticData {
-public:
-    SignalStrengthValueDiagnosticData() :
-            AbstractIntegerDiagnosticData(DIAG_ID_NETWORK_SIGNAL_STRENGTH_VALUE, DIAG_NAME_NETWORK_SIGNAL_STRENGTH_VALUE) {
-    }
-
-    virtual int get(IntType& val) {
-        const Signal* sig = s_signalCache.getSignal();
-        if (sig == nullptr) {
-            return SYSTEM_ERROR_NOT_SUPPORTED;
-        }
-
-        if (sig->getStrength() < 0) {
-            return SYSTEM_ERROR_UNKNOWN;
-        }
-
-        // Convert to signed Q16.16
-        FixedPointSQ<16, 16> str(sig->getStrengthValue());
-        val = str;
-
-        return SYSTEM_ERROR_NONE;
-    }
-};
-
-class SignalQualityDiagnosticData: public AbstractIntegerDiagnosticData {
-public:
-    SignalQualityDiagnosticData() :
-            AbstractIntegerDiagnosticData(DIAG_ID_NETWORK_SIGNAL_QUALITY, DIAG_NAME_NETWORK_SIGNAL_QUALITY) {
-    }
-
-    virtual int get(IntType& val) {
-        const Signal* sig = s_signalCache.getSignal();
-        if (sig == nullptr) {
-            return SYSTEM_ERROR_NOT_SUPPORTED;
-        }
-
-        if (sig->getQuality() < 0) {
-            return SYSTEM_ERROR_UNKNOWN;
-        }
-
-        // Convert to unsigned Q8.8
-        FixedPointUQ<8, 8> str(sig->getQuality());
-        val = str;
-
-        return SYSTEM_ERROR_NONE;
-    }
-};
-
-class SignalQualityValueDiagnosticData: public AbstractIntegerDiagnosticData {
-public:
-    SignalQualityValueDiagnosticData() :
-            AbstractIntegerDiagnosticData(DIAG_ID_NETWORK_SIGNAL_QUALITY_VALUE, DIAG_NAME_NETWORK_SIGNAL_QUALITY_VALUE) {
-    }
-
-    virtual int get(IntType& val) {
-        const Signal* sig = s_signalCache.getSignal();
-        if (sig == nullptr) {
-            return SYSTEM_ERROR_NOT_SUPPORTED;
-        }
-
-        if (sig->getQuality() < 0) {
-            return SYSTEM_ERROR_UNKNOWN;
-        }
-
-        // Convert to signed Q16.16
-        FixedPointSQ<16, 16> str(sig->getQualityValue());
-        val = str;
-
-        return SYSTEM_ERROR_NONE;
-    }
-};
-
-class NetworkAccessTechnologyDiagnosticData: public AbstractIntegerDiagnosticData {
-public:
-    NetworkAccessTechnologyDiagnosticData() :
-            AbstractIntegerDiagnosticData(DIAG_ID_NETWORK_ACCESS_TECNHOLOGY, DIAG_NAME_NETWORK_ACCESS_TECNHOLOGY) {
-    }
-
-    virtual int get(IntType& val) {
-        const Signal* sig = s_signalCache.getSignal();
-        if (sig == nullptr) {
-            return SYSTEM_ERROR_NOT_SUPPORTED;
-        }
-
-        val = static_cast<IntType>(sig->getAccessTechnology());
-
-        return SYSTEM_ERROR_NONE;
-    }
-};
-
-SignalStrengthDiagnosticData g_signalStrengthDiagData;
-SignalStrengthValueDiagnosticData g_signalStrengthValueDiagData;
-SignalQualityDiagnosticData g_signalQualityDiagData;
-SignalQualityValueDiagnosticData g_signalQualityValueDiagData;
-NetworkAccessTechnologyDiagnosticData g_networkAccessTechnologyDiagData;
-//
-NetworkRssiDiagnosticData g_networkRssiDiagData;
-//
-
-} // namespace
 
 void HAL_WLAN_notify_simple_config_done()
 {
@@ -290,7 +98,6 @@ void HAL_NET_notify_dhcp(bool dhcp)
 {
     network.notify_dhcp(dhcp);
 }
-
 
 const void* network_config(network_handle_t network, uint32_t param, void* reserved)
 {
@@ -461,6 +268,5 @@ void manage_network_connection()
     }
 }
 
-#endif
-
+#endif /* Wiring_Network */
 #endif /* !HAL_PLATFORM_IFAPI */
