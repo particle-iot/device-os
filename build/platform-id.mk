@@ -2,15 +2,16 @@ ifeq ($(included_productid_mk),)
 included_productid_mk := 1
 
 # defines
-# PLATFORM_NAME - a unique name for the platform, can be used to organise sources
+# PLATFORM_NAME - a unique name for the platform, can be used to organize sources
 #                 by platform
+# PLATFORM_GEN  - a number that identifies the generation of device
 # PLATFORM_MCU  - an identifier for the MCU family
 # PLATFORM_NET  - the network subsystem
 # STM32_DEVICE  - the specific device being targeted for STM32 platform builds
-# ARCH		- architecture (ARM/GCC)
+# ARCH          - architecture (ARM/GCC)
 # PRODUCT_DESC  - text description of the product ID
 # PLATFORM_DYNALIB_MODULES - if the device supports a modular build, the name
-#		- of the subdirectory containing
+#                          - of the subdirectory containing
 
 # Default USB Device Vendor ID for Spark Products
 USBD_VID_SPARK=0x1D50
@@ -112,6 +113,7 @@ ARCH=arm
 ifeq ("$(PLATFORM_ID)","0")
 STM32_DEVICE=STM32F10X_MD
 PLATFORM=core
+PLATFORM_GEN=1
 PLATFORM_NAME=core
 PLATFORM_MCU=STM32F1xx
 PLATFORM_NET=CC3000
@@ -133,6 +135,7 @@ ifeq ("$(PLATFORM_ID)","2")
 PLATFORM=core-hd
 STM32_DEVICE=STM32F10X_HD
 PLATFORM_NAME=core
+PLATFORM_GEN=1
 PLATFORM_MCU=STM32F1xx
 PLATFORM_NET=CC3000
 PRODUCT_DESC=Spark core-HD, 256k flash, 48k ram
@@ -146,6 +149,7 @@ endif
 ifeq ("$(PLATFORM_ID)","3")
 PLATFORM=gcc
 PLATFORM_NAME=gcc
+PLATFORM_GEN=0
 PLATFORM_MCU=gcc
 PLATFORM_NET=gcc
 ARCH=gcc
@@ -159,6 +163,7 @@ ifeq ("$(PLATFORM_ID)","4")
 PLATFORM=dev-photon
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=photon
+PLATFORM_GEN=2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=BCM9WCDUSI09
 PRODUCT_DESC=BM-09/WICED
@@ -175,6 +180,7 @@ ifeq ("$(PLATFORM_ID)","5")
 PLATFORM=dev-teacup-bm14
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=photon
+PLATFORM_GEN=2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=BCM9WCDUSI14
 PRODUCT_DESC=BM-14/WICED
@@ -190,6 +196,7 @@ ifeq ("$(PLATFORM_ID)","6")
 PLATFORM=photon
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=photon
+PLATFORM_GEN=2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=BCM9WCDUSI09
 PRODUCT_DESC=Production Photon
@@ -207,6 +214,7 @@ ifeq ("$(PLATFORM_ID)","7")
 PLATFORM=teacup-bm14
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=photon
+PLATFORM_GEN=2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=BCM9WCDUSI14
 PRODUCT_DESC=Production Teacup Pigtail
@@ -222,6 +230,7 @@ ifeq ("$(PLATFORM_ID)","8")
 PLATFORM=P1
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=photon
+PLATFORM_GEN=2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=BCM9WCDUSI14
 PRODUCT_DESC=Production P1
@@ -238,6 +247,7 @@ ifeq ("$(PLATFORM_ID)","9")
 PLATFORM=ethernet
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=photon
+PLATFORM_GEN=2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=STM32F2xx
 PRODUCT_DESC=Proto Wired Ethernet
@@ -252,6 +262,7 @@ ifeq ("$(PLATFORM_ID)","10")
 PLATFORM=electron
 STM32_DEVICE=STM32F2XX
 PLATFORM_NAME=electron
+PLATFORM_GEN=2
 PLATFORM_MCU=STM32F2xx
 PLATFORM_NET=UBLOXSARA
 PRODUCT_DESC=Production Electron
@@ -267,6 +278,7 @@ endif
 ifeq ("$(PLATFORM_ID)","12")
 PLATFORM=argon
 PLATFORM_NAME=$(PLATFORM)
+PLATFORM_GEN=3
 PLATFORM_MCU=nRF52840
 PLATFORM_NET=ESP32
 PLATFORM_WIZNET=W5500
@@ -285,6 +297,7 @@ endif
 ifeq ("$(PLATFORM_ID)","13")
 PLATFORM=boron
 PLATFORM_NAME=$(PLATFORM)
+PLATFORM_GEN=3
 PLATFORM_MCU=nRF52840
 PLATFORM_NET=UBLOXSARA
 PLATFORM_WIZNET=W5500
@@ -303,6 +316,7 @@ endif
 ifeq ("$(PLATFORM_ID)","14")
 PLATFORM=xenon
 PLATFORM_NAME=$(PLATFORM)
+PLATFORM_GEN=3
 PLATFORM_MCU=nRF52840
 PLATFORM_NET=None
 PLATFORM_WIZNET=W5500
@@ -321,6 +335,7 @@ endif
 ifeq ("$(PLATFORM_ID)","20")
 PLATFORM=mesh-virtual
 PLATFORM_NAME=mesh-virtual
+PLATFORM_GEN=0
 PLATFORM_MCU=gcc
 PLATFORM_NET=mesh-virtual
 ARCH=gcc
@@ -335,6 +350,7 @@ endif
 ifeq ("$(PLATFORM_ID)","22")
 PLATFORM=asom
 PLATFORM_NAME=argon
+PLATFORM_GEN=3
 PLATFORM_MCU=nRF52840
 PLATFORM_NET=ESP32
 PLATFORM_WIZNET=W5500
@@ -353,6 +369,7 @@ endif
 ifeq ("$(PLATFORM_ID)","23")
 PLATFORM=bsom
 PLATFORM_NAME=boron
+PLATFORM_GEN=3
 PLATFORM_MCU=nRF52840
 PLATFORM_NET=UBLOXSARA
 PLATFORM_WIZNET=W5500
@@ -371,6 +388,7 @@ endif
 ifeq ("$(PLATFORM_ID)","24")
 PLATFORM=xsom
 PLATFORM_NAME=xenon
+PLATFORM_GEN=3
 PLATFORM_MCU=nRF52840
 PLATFORM_NET=None
 PLATFORM_WIZNET=W5500
@@ -392,6 +410,7 @@ PLATFORM=newhal
 STM32_DEVICE=newhalcpu
 # used to define the sources in hal/src/new-hal
 PLATFORM_NAME=newhal
+PLATFORM_GEN=60000
 # define MCU-specific platform defines under platform/MCU/new-hal
 PLATFORM_MCU=newhal-mcu
 PLATFORM_NET=not-defined

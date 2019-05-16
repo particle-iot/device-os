@@ -32,7 +32,16 @@ endif
 # Skip to next 100 every v0.x.0 release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
 # but only if the bootloader has changed since the last v0.x.0 release.
 # Bump by 1 for every updated bootloader image for a release with the same v0.x.* base.
-BOOTLOADER_VERSION ?= 301
+BOOTLOADER_VERSION ?= 302
 
-# the version of the bootloader that the system firmware requires
+# The version of the bootloader that the system firmware requires
+# NOTE: this will force the device into safe mode until this dependency is met, which is why
+# this version usually lags behind the current bootloader version, to avoid non-mandatory updates.
+ifeq ($(PLATFORM_GEN),2)
 BOOTLOADER_DEPENDENCY = 201
+else ifeq ($(PLATFORM_GEN),3)
+BOOTLOADER_DEPENDENCY = 302
+else
+# Some sensible default
+BOOTLOADER_DEPENDENCY = 0
+endif
