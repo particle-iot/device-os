@@ -79,10 +79,6 @@ public:
 		{
 		case ProtocolCommands::SLEEP:
 			result = wait_confirmable();
-			// Discard the session on an event loop error
-			if (result != ProtocolError::NO_ERROR) {
-				channel.command(MessageChannel::CLOSE);
-			}
 			break;
 		case ProtocolCommands::DISCONNECT:
 			result = wait_confirmable();
