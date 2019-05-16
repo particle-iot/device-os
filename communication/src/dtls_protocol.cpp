@@ -76,6 +76,12 @@ int DTLSProtocol::wait_confirmable(uint32_t timeout)
 		channel.client_messages().has_messages() ? "no" : "yes",
 		channel.server_messages().has_unacknowledged_requests() ? "no" : "yes");
 
+	if (err == ProtocolError::NO_ERROR && channel.has_unacknowledged_requests())
+	{
+		err = ProtocolError::MESSAGE_TIMEOUT;
+		LOG(WARN, "Timeout while waiting for confirmable messages to be processed");
+	}
+
 	return (int)err;
 }
 

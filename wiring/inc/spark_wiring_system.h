@@ -56,9 +56,10 @@ struct SleepOptionFlagType; // Tag type for System.sleep() flags
 typedef particle::Flags<SleepOptionFlagType, uint32_t> SleepOptionFlags;
 typedef SleepOptionFlags::FlagType SleepOptionFlag;
 
-const SleepOptionFlag SLEEP_NETWORK_OFF(static_cast<uint32_t>(SystemSleepOption::NetworkOff));
-const SleepOptionFlag SLEEP_NETWORK_STANDBY(static_cast<uint32_t>(SystemSleepOption::NetworkStandby));
-const SleepOptionFlag SLEEP_DISABLE_WKP_PIN(static_cast<uint32_t>(SystemSleepOption::DisableWkpPin));
+const SleepOptionFlag SLEEP_NETWORK_OFF(System_Sleep_Flag::SYSTEM_SLEEP_FLAG_NETWORK_OFF);
+const SleepOptionFlag SLEEP_NETWORK_STANDBY(System_Sleep_Flag::SYSTEM_SLEEP_FLAG_NETWORK_STANDBY);
+const SleepOptionFlag SLEEP_DISABLE_WKP_PIN(System_Sleep_Flag::SYSTEM_SLEEP_FLAG_DISABLE_WKP_PIN);
+const SleepOptionFlag SLEEP_NO_WAIT(System_Sleep_Flag::SYSTEM_SLEEP_FLAG_NO_WAIT);
 
 #if Wiring_LogConfig
 enum LoggingFeature {
