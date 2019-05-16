@@ -37,6 +37,16 @@ using namespace particle;
 using namespace particle::net;
 using namespace particle::net::nat;
 
+namespace {
+
+void generateRandomPrefix(otIp6Prefix& prefix, size_t length) {
+    prefix.mPrefix.mFields.m8[0] = 0xfd;
+    Random rand;
+    rand.gen((char*)prefix.mPrefix.mFields.m8 + 1, length);
+}
+
+} // anonymous
+
 BorderRouterManager::BorderRouterManager()
         : started_(false),
           enabled_(false) {
@@ -182,6 +192,12 @@ int BorderRouterManager::stopServices() {
 }
 
 int BorderRouterManager::enable() {
+    enabled_ = true;
+
+    if (!isIfUp()) {
+        return 0;
+    }
+
     particle::net::ot::ThreadLock lk;
 
     otNetworkDataIterator iterator = OT_NETWORK_DATA_ITERATOR_INIT;
@@ -214,40 +230,72 @@ int BorderRouterManager::enable() {
             if (ot_get_border_router_prefix(ot_get_instance(), 0, &config_.mPrefix) ||
                     config_.mPrefix.mLength != 64) {
                 // Failed to retrieve from persistent storage
-                // Generate new prefix
-                config_.mPrefix.mPrefix.mFields.m8[0] = 0xfd;
-                Random rand;
-                rand.gen((char*)config_.mPrefix.mPrefix.mFields.m8 + 1, 5); // Generate global ID
+                // Generate new prefix, five random bytes (global id)
+                generateRandomPrefix(config_.mPrefix, 5);
                 config_.mPrefix.mLength = 64;
                 ot_set_border_router_prefix(ot_get_instance(), 0, &config_.mPrefix);
             }
         }
-
-        LOG(TRACE, "Adding prefix into local network data");
-        CHECK(otBorderRouterAddOnMeshPrefix(ot_get_instance(), &config_));
     }
 
     iterator = OT_NETWORK_DATA_ITERATOR_INIT;
     bool presentLeader = false;
+    bool leaderPreferred = false;
+    bool leaderNeedsUpdate = false;
     while (otNetDataGetNextOnMeshPrefix(ot_get_instance(), &iterator, &config) == OT_ERROR_NONE) {
-        if (config.mRloc16 == otThreadGetRloc16(ot_get_instance())) {
+        // IMPORTANT: ignore RLOC16 if we are still a child!
+        if (config.mRloc16 == otThreadGetRloc16(ot_get_instance()) || otThreadGetDeviceRole(ot_get_instance()) == OT_DEVICE_ROLE_CHILD) {
             if (config_.mPrefix.mLength == config.mPrefix.mLength && otIp6PrefixMatch(&config.mPrefix.mPrefix, &config_.mPrefix.mPrefix) >= config_.mPrefix.mLength) {
                 presentLeader = true;
+                leaderPreferred = config.mPreferred;
+
+                config_.mRloc16 = config.mRloc16;
+                leaderNeedsUpdate = memcmp(&config_, &config, sizeof(otBorderRouterConfig));
                 break;
             }
         }
     }
 
-    if (isIfUp() && !presentLeader) {
-        LOG(TRACE, "Trying to synchronize local netdata with leader");
-        if (otThreadGetDeviceRole(ot_get_instance()) == OT_DEVICE_ROLE_CHILD) {
-            otThreadBecomeRouter(ot_get_instance());
-        }
-        otBorderRouterRegister(ot_get_instance());
+#ifdef DEBUG_BUILD
+    int netDataVersion = otNetDataGetVersion(ot_get_instance());
+    LOG_DEBUG(TRACE, "Network data version %d", netDataVersion);
+#endif // DEBUG_BUILD
+
+    // We want to make sure that the leader network data changes, so we temporarily flip mPreferred flag
+    // and settle on mPreferred = true once the network data propagates through the network. This is less
+    // disruptive than simply clearing our prefixes from the leader.
+    if (!presentLocal) {
+        config_.mPreferred = !leaderPreferred;
+        LOG(TRACE, "Adding prefix into local network data preferred (%d, %d)", config_.mPreferred, leaderPreferred);
+        CHECK(otBorderRouterAddOnMeshPrefix(ot_get_instance(), &config_));
+    } else if (!config_.mPreferred && presentLeader && !leaderPreferred) {
+        config_.mPreferred = true;
+        LOG(TRACE, "Adding prefix into local network data preferred (%d, %d)", config_.mPreferred, leaderPreferred);
+        CHECK(otBorderRouterAddOnMeshPrefix(ot_get_instance(), &config_));
+        leaderNeedsUpdate = true;
     }
 
-    enabled_ = true;
+    LOG_DEBUG(TRACE, "Netdata state (%d, %d, %d)", presentLocal, presentLeader, leaderNeedsUpdate);
 
+    if (!presentLocal || !presentLeader || leaderNeedsUpdate) {
+        return syncWithLeader();
+    }
+
+    return 0;
+}
+
+int BorderRouterManager::syncWithLeader() {
+    // Only send network data update when we are a child, in all the other cases OpenThread
+    // should be able to do it on its own.
+    if (otThreadGetDeviceRole(ot_get_instance()) == OT_DEVICE_ROLE_CHILD) {
+        // NOTE: we are using API here that is reserved for testing and demo purposes only.
+        // > Changing settings with this API will render a production application non-compliant
+        // > with the Thread Specification.
+        // This call was added to workaround REED -> Router promotion timeout, which is a random
+        // value between 0 and ROUTER_SELECTION_JITTER (120s by default).
+        otThreadBecomeRouter(ot_get_instance());
+        return ot_system_error(otBorderRouterRegister(ot_get_instance()));
+    }
     return 0;
 }
 
@@ -258,6 +306,8 @@ int BorderRouterManager::disable() {
         LOG(TRACE, "Disabling border routing");
         otBorderRouterRemoveOnMeshPrefix(ot_get_instance(), &config_.mPrefix);
         otBorderRouterRegister(ot_get_instance());
+        // Invalidate config
+        config_.mOnMesh = 0;
     }
 
     enabled_ = false;
@@ -288,7 +338,7 @@ void BorderRouterManager::otStateChanged(uint32_t flags) {
     }
 
     /* link state */
-    if (flags & (OT_CHANGED_THREAD_ROLE | OT_CHANGED_THREAD_NETDATA)) {
+    if (flags & (OT_CHANGED_THREAD_ROLE | OT_CHANGED_THREAD_NETDATA | OT_CHANGED_THREAD_PARTITION_ID)) {
         switch (otThreadGetDeviceRole(ot_get_instance())) {
             /* We will only disable border routing when Thread interface is downed */
             case OT_DEVICE_ROLE_DISABLED:

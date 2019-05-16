@@ -849,8 +849,10 @@ void NetworkManager::resolvEventHandlerCb(void* arg, const void* data) {
 }
 
 void NetworkManager::resolvEventHandler(const void* data) {
-    /* FIXME */
     refreshIpState();
+    // NOTE: we could potentially force a cloud ping on DNS change, but
+    // this seems excessive, and it's better to rely on IP state only instead
+    // forceCloudPingIfConnected();
 }
 
 const char* NetworkManager::stateToName(State state) const {
