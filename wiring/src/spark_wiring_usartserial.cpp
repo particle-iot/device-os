@@ -67,22 +67,22 @@ void USARTSerial::blockOnOverrun(bool block)
 
 int USARTSerial::availableForWrite(void)
 {
-  return HAL_USART_Available_Data_For_Write(_serial);
+  return std::max(0, (int)HAL_USART_Available_Data_For_Write(_serial));
 }
 
 int USARTSerial::available(void)
 {
-  return HAL_USART_Available_Data(_serial);
+  return std::max(0, (int)HAL_USART_Available_Data(_serial));
 }
 
 int USARTSerial::peek(void)
 {
-  return HAL_USART_Peek_Data(_serial);
+  return std::max(-1, (int)HAL_USART_Peek_Data(_serial));
 }
 
 int USARTSerial::read(void)
 {
-  return HAL_USART_Read_Data(_serial);
+  return std::max(-1, (int)HAL_USART_Read_Data(_serial));
 }
 
 void USARTSerial::flush()
