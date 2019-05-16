@@ -31,14 +31,32 @@ using namespace detail;
 
 SCENARIO("IMSI range should default to Telefonica as Network Provider", "[cellular]") {
     REQUIRE(_cellular_imsi_to_network_provider(NULL) == CELLULAR_NETPROV_TELEFONICA);
-    REQUIRE(_cellular_imsi_to_network_provider("") == CELLULAR_NETPROV_TELEFONICA);
+    REQUIRE(_cellular_imsi_to_network_provider("")   == CELLULAR_NETPROV_TELEFONICA);
     REQUIRE(_cellular_imsi_to_network_provider("123456789012345") == CELLULAR_NETPROV_TELEFONICA);
+    REQUIRE(_cellular_imsi_to_network_provider("2040")  == CELLULAR_NETPROV_TELEFONICA);
+    REQUIRE(_cellular_imsi_to_network_provider("31041") == CELLULAR_NETPROV_TELEFONICA);
+    REQUIRE(_cellular_imsi_to_network_provider("2140")  == CELLULAR_NETPROV_TELEFONICA);
+    REQUIRE(_cellular_imsi_to_network_provider("0404")  == CELLULAR_NETPROV_TELEFONICA);
+    REQUIRE(_cellular_imsi_to_network_provider("10410") == CELLULAR_NETPROV_TELEFONICA);
+    REQUIRE(_cellular_imsi_to_network_provider("1407")  == CELLULAR_NETPROV_TELEFONICA);
 }
 
-SCENARIO("IMSI range should set Twilio as Network Provider", "[cellular]") {
-    REQUIRE(_cellular_imsi_to_network_provider("310260859000000") == CELLULAR_NETPROV_TWILIO);
-    REQUIRE(_cellular_imsi_to_network_provider("310260859500000") == CELLULAR_NETPROV_TWILIO);
-    REQUIRE(_cellular_imsi_to_network_provider("310260859999999") == CELLULAR_NETPROV_TWILIO);
+SCENARIO("IMSI range should set Kore Vodafone as Network Provider", "[cellular]") {
+    REQUIRE(_cellular_imsi_to_network_provider("204040000000000") == CELLULAR_NETPROV_KORE_VODAFONE);
+    REQUIRE(_cellular_imsi_to_network_provider("204045555555555") == CELLULAR_NETPROV_KORE_VODAFONE);
+    REQUIRE(_cellular_imsi_to_network_provider("204049999999999") == CELLULAR_NETPROV_KORE_VODAFONE);
+}
+
+SCENARIO("IMSI range should set Kore AT&T as Network Provider", "[cellular]") {
+    REQUIRE(_cellular_imsi_to_network_provider("310410000000000") == CELLULAR_NETPROV_KORE_ATT);
+    REQUIRE(_cellular_imsi_to_network_provider("310410555555555") == CELLULAR_NETPROV_KORE_ATT);
+    REQUIRE(_cellular_imsi_to_network_provider("310410999999999") == CELLULAR_NETPROV_KORE_ATT);
+}
+
+SCENARIO("IMSI range should set Telefonica as Network Provider", "[cellular]") {
+    REQUIRE(_cellular_imsi_to_network_provider("214070000000000") == CELLULAR_NETPROV_TELEFONICA);
+    REQUIRE(_cellular_imsi_to_network_provider("214075555555555") == CELLULAR_NETPROV_TELEFONICA);
+    REQUIRE(_cellular_imsi_to_network_provider("214079999999999") == CELLULAR_NETPROV_TELEFONICA);
 }
 
 TEST_CASE("cellular_signal()") {
