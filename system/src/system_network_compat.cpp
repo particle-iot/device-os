@@ -101,6 +101,7 @@ void HAL_NET_notify_dhcp(bool dhcp)
 
 const void* network_config(network_handle_t network, uint32_t param, void* reserved)
 {
+    nif(network).update_config(true);
     return nif(network).config();
 }
 
