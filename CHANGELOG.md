@@ -1,3 +1,47 @@
+## 1.2.0-rc.1
+
+>**Note:** If your Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release)
+>
+>This release contains v302 bootloaders (bumped this release due to Gen 3 changes in [#1777](https://github.com/particle-iot/device-os/pull/1777) ). We have also separated BOOTLOADER_DEPENDENCY for Gen 2 and Gen 3. For now, we will leave Gen 2 as is depending on v201 bootloader (so there is nothing to do for Gen 2 (Photon/P1 only) unless you want the latest bootloader, although it is not mandatory), but we have bumped Gen 3 to v302 because also in this release we have removed the embedded bootloaders from Gen 3 system firmware. To force the Cloud update for Gen 2 (Photon/P1 only) we will bump the bootloader dependency version to v302 in v1.2.0 default.
+
+### FEATURES
+
+- [Enterprise] Immediate Product Firmware Updates [#1732](https://github.com/particle-iot/device-os/pull/1732)
+- [Enterprise] Device Vitals reporting [#1724](https://github.com/particle-iot/device-os/pull/1724)
+
+### ENHANCEMENTS
+
+- [gen 3] Update error codes in Gen3 parser to facilitate debugging efforts and provide context to system errors [#1766](https://github.com/particle-iot/device-os/pull/1766)
+- [gen 3] Remove bootloader machine code string from system-part1 on Gen3 platforms.  Bootloader will require local update with `particle flash --serial bootloader.bin` or OTA update from the Cloud. [#1771](https://github.com/particle-iot/device-os/pull/1771)
+- Updates C++ and C standard versions (C++14 and C11) [#1757](https://github.com/particle-iot/device-os/pull/1757)
+- [gen 3] Always check ongoing RX DMA transaction when reporting number of bytes available in RX buffer [#1758](https://github.com/particle-iot/device-os/pull/1758)
+- Introduce safety checks on heap usage from ISRs [#1761](https://github.com/particle-iot/device-os/pull/1761)
+- [gen 3] Mesh network scan enhancements [#1760](https://github.com/particle-iot/device-os/pull/1760)
+- expires a session after 3 unsuccessful attempts at connecting to the cloud [#1776](https://github.com/particle-iot/device-os/pull/1776)
+- Integrate cellular network vitals data into `DESCRIBE_x` message [#1759](https://github.com/particle-iot/device-os/pull/1759)
+- [gen 2] adds Kore Vodafone SIM support & removes Twilio SIM support (still supported through 3rd party API) [ch31955] [#1780](https://github.com/particle-iot/device-os/pull/1780)
+- Reserve memory for system-part1 SRAM [#1742](https://github.com/particle-iot/device-os/pull/1742)
+
+### BUGFIXES
+
+- [system] network manager: allows to clear interface-specific credentials notwithstanding interface state, except for Mesh [#1773](https://github.com/particle-iot/device-os/pull/1773)
+- [gen 3] pinMode fixes, D7 was initialized as OUTPUT mode, `analogWrite()` and `digitalWrite()` were changing pinMode back to default after use [#1777](https://github.com/particle-iot/device-os/pull/1777)
+- [gen 3] Mesh network scan fixes [#1760](https://github.com/particle-iot/device-os/pull/1760)
+- Wait for confirmable messages when entering the deep sleep mode [#1767](https://github.com/particle-iot/device-os/pull/1767)
+- [gen 1] Fixes Spark Core function calls broken in 0.8.0-rc.4 [ch32050] [#1770](https://github.com/particle-iot/device-os/pull/1770)
+- [Electron/LTE] disables all eDRX AcT types [ch32051] [#1762](https://github.com/particle-iot/device-os/pull/1762)
+- [Electron/LTE] Make sure that the RAT information is actual before calculating signal strength (RSSI) and quality [#1779](https://github.com/particle-iot/device-os/pull/1779)
+- intelligent update flags synchronization [#1784](https://github.com/particle-iot/device-os/pull/1784)
+- [gen 3] Fixes various issues caused by the gateway reset [#1778](https://github.com/particle-iot/device-os/pull/1778)
+- [Photon/P1] Fixes MAC address info not being available in listening mode [#1783](https://github.com/particle-iot/device-os/pull/1783)
+- [wiring] Make sure that `Serial` and `SerialX` methods are in sync with the documentation and don't return unexpected values [#1782](https://github.com/particle-iot/device-os/pull/1782)
+- [gen3] Fixes a HeapError panic due to malloc() call from an ISR (caused by rand() usage) [#1786](https://github.com/particle-iot/device-os/pull/1786)
+- [gen3] Fixes HAL_USB_USART_Send_Data() returning incorrect values [#1787](https://github.com/particle-iot/device-os/pull/1787)
+
+### INTERNAL
+
+- [gen 3] update bootloader dependency to v302 [#1785](https://github.com/particle-iot/device-os/pull/1785)
+
 ## 1.2.0-beta.1
 
 ### FEATURES
