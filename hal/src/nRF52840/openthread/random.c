@@ -44,6 +44,8 @@
 
 #include "platform-nrf5.h"
 
+extern unsigned int nrf_802154_csma_ca_random_seed;
+
 #if SOFTDEVICE_PRESENT
 #include "softdevice.h"
 #else
@@ -142,6 +144,7 @@ void RNG_IRQHandler(void)
 void nrf5RandomInit(void)
 {
     uint32_t seed = 0;
+    uint32_t csmaSeed = 0;
 
 #if SOFTDEVICE_PRESENT
     uint32_t retval;
@@ -151,6 +154,13 @@ void nrf5RandomInit(void)
         // Wait for the first randomized 4 bytes, to randomize software generator seed.
         retval = sd_rand_application_vector_get((uint8_t *)&seed, sizeof(seed));
     } while (retval != NRF_SUCCESS && seed == 0);
+
+    // Generate another random seed for 802.15.4 CSMA/CA
+    do
+    {
+        // Wait for the first randomized 4 bytes, to randomize software generator seed.
+        retval = sd_rand_application_vector_get((uint8_t *)&csmaSeed, sizeof(csmaSeed));
+    } while (retval != NRF_SUCCESS && csmaSeed == 0);
 
 #else  // SOFTDEVICE_PRESENT
     memset(sBuffer, 0, sizeof(sBuffer));
@@ -170,9 +180,17 @@ void nrf5RandomInit(void)
         ;
 
     seed = bufferGetUint32();
+
+    // Generate another random seed for 802.15.4 CSMA/CA
+    while (!bufferIsUint32Ready())
+        ;
+
+    csmaSeed = bufferGetUint32();
+
 #endif // SOFTDEVICE_PRESENT
 
     srand(seed);
+    nrf_802154_csma_ca_random_seed = csmaSeed;
 }
 
 void nrf5RandomDeinit(void)
