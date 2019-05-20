@@ -23,6 +23,8 @@
 #include "spark_wiring_thread.h"
 #include <memory>
 #include <algorithm>
+#include "check.h"
+#include "scope_guard.h"
 #include "hex_to_bytes.h"
 
 #include "logging.h"
@@ -195,6 +197,13 @@ bool BleUuid::operator==(const BleUuid& uuid) const {
 BleAdvertisingData::BleAdvertisingData()
         : selfData_(),
           selfLen_(0) {
+    uint8_t flag = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+    append(BleAdvertisingDataType::FLAGS, &flag, sizeof(uint8_t));
+}
+
+BleAdvertisingData::BleAdvertisingData(const iBeacon& beacon)
+        : BleAdvertisingData() {
+    set(beacon);
 }
 
 size_t BleAdvertisingData::set(const uint8_t* buf, size_t len) {
@@ -204,6 +213,40 @@ size_t BleAdvertisingData::set(const uint8_t* buf, size_t len) {
     len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN);
     memcpy(selfData_, buf, len);
     selfLen_ = len;
+    return selfLen_;
+}
+
+size_t BleAdvertisingData::set(const iBeacon& beacon) {
+    clear();
+
+    if (beacon.uuid.type() == BleUuidType::SHORT) {
+        return selfLen_;
+    }
+
+    selfData_[selfLen_++] = 0x02;
+    selfData_[selfLen_++] = BLE_SIG_AD_TYPE_FLAGS;
+    selfData_[selfLen_++] = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+    // Company ID
+    memcpy(&selfData_[selfLen_], (uint8_t*)&iBeacon::APPLE_COMPANY_ID, sizeof(iBeacon::APPLE_COMPANY_ID));
+    selfLen_ += sizeof(iBeacon::APPLE_COMPANY_ID);
+    // Beacon type: iBeacon
+    selfData_[selfLen_++] = iBeacon::BEACON_TYPE_IBEACON;
+    // Length of the following payload
+    selfData_[selfLen_++] = 0x15;
+    // 128-bits Beacon UUID, MSB
+    for (size_t i = 0, j = BLE_SIG_UUID_128BIT_LEN - 1; i < BLE_SIG_UUID_128BIT_LEN; i++, j--) {
+        selfData_[selfLen_ + i] = beacon.uuid.full()[j];
+    }
+    selfLen_ += BLE_SIG_UUID_128BIT_LEN;
+    // Major, MSB
+    selfData_[selfLen_++] = (uint8_t)((beacon.major >> 8) & 0x00FF);
+    selfData_[selfLen_++] = (uint8_t)(beacon.major & 0x00FF);
+    // Minor, MSB
+    selfData_[selfLen_++] = (uint8_t)((beacon.minor >> 8) & 0x00FF);
+    selfData_[selfLen_++] = (uint8_t)(beacon.minor & 0x00FF);
+    // Measure power
+    selfData_[selfLen_++] = beacon.measurePower;
+
     return selfLen_;
 }
 
@@ -292,7 +335,7 @@ size_t BleAdvertisingData::get(BleAdvertisingDataType type, uint8_t* buf, size_t
     return 0;
 }
 
-const uint8_t* BleAdvertisingData::data() const {
+uint8_t* BleAdvertisingData::data() {
     return selfData_;
 }
 
@@ -957,295 +1000,6 @@ public:
 
 
 /*******************************************************
- * BleBroadcasterImpl definition
- */
-class BleBroadcasterImpl {
-public:
-    BleBroadcasterImpl() = default;
-    ~BleBroadcasterImpl() = default;
-
-    int setTxPower(int8_t txPower) const {
-        return hal_ble_gap_set_tx_power(txPower);
-    }
-
-    int txPower(int8_t* txPower) const {
-        return hal_ble_gap_get_tx_power(txPower, nullptr);
-    }
-
-    int setAdvertisingInterval(uint16_t interval) {
-        hal_ble_adv_params_t advParams;
-        advParams.size = sizeof(hal_ble_adv_params_t);
-        int ret = hal_ble_gap_get_advertising_parameters(&advParams, nullptr);
-        if (ret == SYSTEM_ERROR_NONE) {
-            advParams.interval = interval;
-            ret = hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
-        }
-        return ret;
-    }
-
-    int setAdvertisingTimeout(uint16_t timeout) {
-        hal_ble_adv_params_t advParams;
-        advParams.size = sizeof(hal_ble_adv_params_t);
-        int ret = hal_ble_gap_get_advertising_parameters(&advParams, nullptr);
-        if (ret == SYSTEM_ERROR_NONE) {
-            advParams.timeout = timeout;
-            ret = hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
-        }
-        return ret;
-    }
-
-    int setAdvertisingType(BleAdvertisingEventType type) {
-        hal_ble_adv_params_t advParams;
-        advParams.size = sizeof(hal_ble_adv_params_t);
-        int ret = hal_ble_gap_get_advertising_parameters(&advParams, nullptr);
-        if (ret == SYSTEM_ERROR_NONE) {
-            advParams.type = static_cast<hal_ble_adv_evt_type_t>(type);
-            ret = hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
-        }
-        return ret;
-    }
-
-    int setAdvertisingParams(const BleAdvertisingParams* params) {
-        return hal_ble_gap_set_advertising_parameters(params, nullptr);
-    }
-
-    int setIbeacon(const iBeacon& iBeacon) {
-        if (iBeacon.uuid.type() == BleUuidType::SHORT) {
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
-        }
-
-        BleAdvertisingData advertisingData;
-        advertisingData.clear();
-
-        // AD flags
-        uint8_t flags = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-        advertisingData.append(BleAdvertisingDataType::FLAGS, &flags, 1);
-
-        uint8_t mfgData[BLE_MAX_ADV_DATA_LEN];
-        size_t mfgDataLen = 0;
-
-        // Company ID
-        memcpy(&mfgData[mfgDataLen], (uint8_t*)&iBeacon::APPLE_COMPANY_ID, sizeof(iBeacon::APPLE_COMPANY_ID));
-        mfgDataLen += sizeof(iBeacon::APPLE_COMPANY_ID);
-        // Beacon type: iBeacon
-        mfgData[mfgDataLen++] = iBeacon::BEACON_TYPE_IBEACON;
-        // Length of the following payload
-        mfgData[mfgDataLen++] = 0x15;
-        // 128-bits Beacon UUID, MSB
-        for (size_t i = 0, j = BLE_SIG_UUID_128BIT_LEN - 1; i < BLE_SIG_UUID_128BIT_LEN; i++, j--) {
-            mfgData[mfgDataLen + i] = iBeacon.uuid.full()[j];
-        }
-        mfgDataLen += BLE_SIG_UUID_128BIT_LEN;
-        // Major, MSB
-        mfgData[mfgDataLen++] = (uint8_t)((iBeacon.major >> 8) & 0x00FF);
-        mfgData[mfgDataLen++] = (uint8_t)(iBeacon.major & 0x00FF);
-        // Minor, MSB
-        mfgData[mfgDataLen++] = (uint8_t)((iBeacon.minor >> 8) & 0x00FF);
-        mfgData[mfgDataLen++] = (uint8_t)(iBeacon.minor & 0x00FF);
-        // Measure power
-        mfgData[mfgDataLen++] = iBeacon.measurePower;
-        advertisingData.appendCustomData(mfgData, mfgDataLen);
-
-        int ret = hal_ble_gap_set_advertising_data(advertisingData.data(), advertisingData.length(), nullptr);
-        if (ret == SYSTEM_ERROR_NONE) {
-            // Clear the scan response data.
-            ret = hal_ble_gap_set_scan_response_data(nullptr, 0, nullptr);
-        }
-        return ret;
-    }
-
-    int setAdvertisingData(const BleAdvertisingData* advData) {
-        int ret;
-        if (advData == nullptr) {
-            ret = hal_ble_gap_set_advertising_data(nullptr, 0, nullptr);
-        } else {
-            if (advData->contains(BleAdvertisingDataType::FLAGS)) {
-                ret = hal_ble_gap_set_advertising_data(advData->data(), advData->length(), nullptr);
-            } else {
-                uint8_t temp[BLE_MAX_ADV_DATA_LEN];
-                hal_ble_gap_get_advertising_data(temp, sizeof(temp), nullptr);
-                // Keep the previous AD Flags
-                size_t len = advData->get(&temp[3], sizeof(temp) - 3);
-                ret = hal_ble_gap_set_advertising_data(temp, len + 3, nullptr);
-            }
-        }
-        if (ret != SYSTEM_ERROR_NONE) {
-            LOG_DEBUG(TRACE, "ble_gap_set_advertising_data failed: %d", ret);
-        }
-        return ret;
-    }
-
-    int setScanResponseData(const BleAdvertisingData* srData) {
-        int ret;
-        if (srData == nullptr) {
-            ret = hal_ble_gap_set_scan_response_data(nullptr, 0, nullptr);
-            // TODO: keep the Particle vendor ID
-        } else {
-            BleAdvertisingData scanRespData = *srData;
-            scanRespData.remove(BleAdvertisingDataType::FLAGS);
-            ret = hal_ble_gap_set_scan_response_data(scanRespData.data(), scanRespData.length(), nullptr);
-        }
-        if (ret != SYSTEM_ERROR_NONE) {
-            LOG_DEBUG(TRACE, "ble_gap_set_scan_response_data failed: %d", ret);
-        }
-        return ret;
-    }
-
-    int advertise() {
-        return hal_ble_gap_start_advertising(nullptr);
-    }
-
-    int advertise(bool connectable) {
-        int ret;
-        if (connectable) {
-            ret = setAdvertisingType(BleAdvertisingEventType::CONNECTABLE_SCANNABLE_UNDIRECRED);
-        } else {
-            ret = setAdvertisingType(BleAdvertisingEventType::SCANABLE_UNDIRECTED);
-        }
-        if (ret == SYSTEM_ERROR_NONE) {
-            ret = advertise();
-        }
-        return ret;
-    }
-
-    int stopAdvertising() const {
-        return hal_ble_gap_stop_advertising();
-    }
-
-    bool advertising() const {
-        return hal_ble_gap_is_advertising();
-    }
-
-    void broadcasterProcessStopped() {
-        return;
-    }
-};
-
-
-/*******************************************************
- * BleObserverImpl definition
- */
-class BleObserverImpl {
-public:
-    BleObserverImpl()
-            : callback_(nullptr),
-              context_(nullptr),
-              resultsPtr_(nullptr),
-              targetCount_(0),
-              count_(0) {
-    }
-    ~BleObserverImpl() = default;
-
-    int scan(BleOnScanResultCallback callback, void* context) {
-        init();
-        callback_ = callback;
-        context_ = context;
-        hal_ble_gap_start_scan(observerProcessScanResult, this, nullptr);
-        return count_;
-    }
-
-    int scan(BleOnScanResultCallback callback, uint16_t timeout, void* context) {
-        hal_ble_scan_params_t params;
-        params.size = sizeof(hal_ble_scan_params_t);
-        hal_ble_gap_get_scan_parameters(&params, nullptr);
-        params.timeout = timeout;
-        hal_ble_gap_set_scan_parameters(&params, nullptr);
-        return scan(callback, context);
-    }
-
-    int scan(BleScanResult* results, size_t resultCount) {
-        init();
-        resultsPtr_ = results;
-        targetCount_ = resultCount;
-        hal_ble_gap_start_scan(observerProcessScanResult, this, nullptr);
-        return count_;
-    }
-
-    int scan(BleScanResult* results, size_t resultCount, uint16_t timeout) {
-        hal_ble_scan_params_t params;
-        params.size = sizeof(hal_ble_scan_params_t);
-        hal_ble_gap_get_scan_parameters(&params, nullptr);
-        params.timeout = timeout;
-        hal_ble_gap_set_scan_parameters(&params, nullptr);
-        return scan(results, resultCount);
-    }
-
-    int scan(BleScanResult* results, size_t resultCount, const BleScanParams& params) {
-        hal_ble_gap_set_scan_parameters(&params, nullptr);
-        return scan(results, resultCount);
-    }
-
-    Vector<BleScanResult> scan() {
-        init();
-        hal_ble_gap_start_scan(observerProcessScanResult, this, nullptr);
-        return resultsVector_;
-    }
-
-    Vector<BleScanResult> scan(uint16_t timeout) {
-        hal_ble_scan_params_t params;
-        params.size = sizeof(hal_ble_scan_params_t);
-        hal_ble_gap_get_scan_parameters(&params, nullptr);
-        params.timeout = timeout;
-        hal_ble_gap_set_scan_parameters(&params, nullptr);
-        return scan();
-    }
-
-    Vector<BleScanResult> scan(const BleScanParams& params) {
-        hal_ble_gap_set_scan_parameters(&params, nullptr);
-        return scan();
-    }
-
-    int stopScanning() {
-        return hal_ble_gap_stop_scan();
-    }
-
-    /*
-     * WARN: This is executed from HAL ble thread. The current thread which starts the scanning procedure
-     * has acquired the BLE HAL lock. Calling BLE HAL APIs those acquiring the BLE HAL lock in this function
-     * will suspend the execution of the callback until the current thread release the BLE HAL lock. Or the BLE HAL
-     * APIs those are invoked here must not acquire the BLE HAL lock.
-     */
-    static void observerProcessScanResult(const hal_ble_gap_on_scan_result_evt_t* event, void* context) {
-        BleObserverImpl* impl = static_cast<BleObserverImpl*>(context);
-        BleScanResult result;
-        result.address = event->peer_addr;
-        result.rssi = event->rssi;
-        result.scanResponse.set(event->sr_data, event->sr_data_len);
-        result.advertisingData.set(event->adv_data, event->adv_data_len);
-
-        if (impl->callback_ != nullptr) {
-            impl->callback_(&result, impl->context_);
-        } else if (impl->resultsPtr_ != nullptr) {
-            if (impl->count_ < impl->targetCount_) {
-                impl->resultsPtr_[impl->count_++] = result;
-                if (impl->count_ >= impl->targetCount_) {
-                    impl->stopScanning();
-                }
-            }
-        } else {
-            impl->resultsVector_.append(result);
-        }
-    }
-
-private:
-    void init() {
-        count_ = 0;
-        callback_ = nullptr;
-        context_=nullptr;
-        resultsPtr_ = nullptr;
-        resultsVector_.clear();
-    }
-
-    Vector<BleScanResult> resultsVector_;
-    BleOnScanResultCallback callback_;
-    void* context_;
-    BleScanResult* resultsPtr_;
-    size_t targetCount_;
-    size_t count_;
-};
-
-
-/*******************************************************
  * BlePeripheralImpl definition
  */
 class BlePeripheralImpl {
@@ -1255,16 +1009,6 @@ public:
 
     Vector<BlePeerDevice>& centrals() {
         return centrals_;
-    }
-
-    int setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) {
-        hal_ble_conn_params_t ppcp;
-        ppcp.size = sizeof(hal_ble_conn_params_t);
-        ppcp.min_conn_interval = minInterval;
-        ppcp.max_conn_interval = maxInterval;
-        ppcp.slave_latency = latency;
-        ppcp.conn_sup_timeout = timeout;
-        return hal_ble_gap_set_ppcp(&ppcp, nullptr);
     }
 
     int disconnect() {
@@ -1416,16 +1160,10 @@ BleLocalDevice::BleLocalDevice()
     // BLE HAL APIs and BLE stack must be initialized previous to these APIs.
     gattsProxy_ = std::make_unique<BleGattServerImpl>(true);
     gattcProxy_ = std::make_unique<BleGattClientImpl>();
-    broadcasterProxy_ = std::make_unique<BleBroadcasterImpl>();
-    observerProxy_ = std::make_unique<BleObserverImpl>();
     peripheralProxy_ = std::make_unique<BlePeripheralImpl>();
     centralProxy_ = std::make_unique<BleCentralImpl>();
 
     hal_ble_set_callback_on_events(onBleEvents, this);
-}
-
-BleLocalDevice::~BleLocalDevice() {
-
 }
 
 BleLocalDevice& BleLocalDevice::getInstance() {
@@ -1459,154 +1197,249 @@ const BleAddress BleLocalDevice::address() const {
     return addr;
 }
 
-int BleLocalDevice::setTxPower(int8_t val) const {
+int BleLocalDevice::setTxPower(int8_t txPower) const {
     WiringBleLock lk;
-    return broadcasterProxy_->setTxPower(val);
+    return hal_ble_gap_set_tx_power(txPower);
 }
 
 int BleLocalDevice::txPower(int8_t* txPower) const {
     WiringBleLock lk;
-    return broadcasterProxy_->txPower(txPower);
+    return hal_ble_gap_get_tx_power(txPower, nullptr);
+}
+
+int BleLocalDevice::setAdvertisingInterval(uint16_t interval) const {
+    WiringBleLock lk;
+    hal_ble_adv_params_t advParams = {};
+    advParams.size = sizeof(hal_ble_adv_params_t);
+    CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
+    advParams.interval = interval;
+    return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
+}
+
+int BleLocalDevice::setAdvertisingTimeout(uint16_t timeout) const {
+    WiringBleLock lk;
+    hal_ble_adv_params_t advParams = {};
+    advParams.size = sizeof(hal_ble_adv_params_t);
+    CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
+    advParams.timeout = timeout;
+    return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
+}
+
+int BleLocalDevice::setAdvertisingType(BleAdvertisingEventType type) const {
+    WiringBleLock lk;
+    hal_ble_adv_params_t advParams = {};
+    advParams.size = sizeof(hal_ble_adv_params_t);
+    CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
+    advParams.type = static_cast<hal_ble_adv_evt_type_t>(type);
+    return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
+}
+
+int BleLocalDevice::setAdvertisingParameters(const BleAdvertisingParams* params) const {
+    return hal_ble_gap_set_advertising_parameters(params, nullptr);
+}
+
+int BleLocalDevice::setAdvertisingParameters(uint16_t interval, uint16_t timeout, BleAdvertisingEventType type) const {
+    WiringBleLock lk;
+    hal_ble_adv_params_t advParams = {};
+    advParams.size = sizeof(hal_ble_adv_params_t);
+    CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
+    advParams.interval = interval;
+    advParams.timeout = timeout;
+    advParams.type = static_cast<hal_ble_adv_evt_type_t>(type);
+    return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
+}
+
+int BleLocalDevice::getAdvertisingParameters(BleAdvertisingParams* params) const {
+    return hal_ble_gap_get_advertising_parameters(params, nullptr);
+}
+
+int BleLocalDevice::setAdvertisingData(BleAdvertisingData* advertisingData) const {
+    if (advertisingData == nullptr) {
+        return hal_ble_gap_set_advertising_data(nullptr, 0, nullptr);
+    } else {
+        return hal_ble_gap_set_advertising_data(advertisingData->data(), advertisingData->length(), nullptr);
+    }
+}
+
+int BleLocalDevice::setScanResponseData(BleAdvertisingData* scanResponse) const {
+    if (scanResponse == nullptr) {
+        return hal_ble_gap_set_scan_response_data(nullptr, 0, nullptr);
+    } else {
+        scanResponse->remove(BleAdvertisingDataType::FLAGS);
+        return hal_ble_gap_set_scan_response_data(scanResponse->data(), scanResponse->length(), nullptr);
+    }
+}
+
+ssize_t BleLocalDevice::getAdvertisingData(BleAdvertisingData* advertisingData) const {
+    WiringBleLock lk;
+    if (advertisingData == nullptr) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    return hal_ble_gap_get_advertising_data(advertisingData->data(), BLE_MAX_ADV_DATA_LEN, nullptr);
+}
+
+ssize_t BleLocalDevice::getScanResponseData(BleAdvertisingData* scanResponse) const {
+    WiringBleLock lk;
+    if (scanResponse == nullptr) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    return hal_ble_gap_get_scan_response_data(scanResponse->data(), BLE_MAX_ADV_DATA_LEN, nullptr);
 }
 
 int BleLocalDevice::advertise() const {
     WiringBleLock lk;
-    return broadcasterProxy_->advertise();
+    return hal_ble_gap_start_advertising(nullptr);
 }
 
-int BleLocalDevice::advertise(const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse) const {
+int BleLocalDevice::advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) const {
     WiringBleLock lk;
-    broadcasterProxy_->setAdvertisingData(advertisingData);
-    broadcasterProxy_->setScanResponseData(scanResponse);
-    return broadcasterProxy_->advertise();
+    CHECK(setAdvertisingData(advertisingData));
+    CHECK(setScanResponseData(scanResponse));
+    return advertise();
 }
 
-int BleLocalDevice::advertise(uint16_t interval) const {
+int BleLocalDevice::advertise(const iBeacon& beacon) const {
     WiringBleLock lk;
-    broadcasterProxy_->setAdvertisingInterval(interval);
-    return broadcasterProxy_->advertise();
-}
-
-int BleLocalDevice::advertise(uint16_t interval, const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse) const {
-    WiringBleLock lk;
-    broadcasterProxy_->setAdvertisingData(advertisingData);
-    broadcasterProxy_->setScanResponseData(scanResponse);
-    broadcasterProxy_->setAdvertisingInterval(interval);
-    return broadcasterProxy_->advertise();
-}
-
-int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout) const {
-    WiringBleLock lk;
-    broadcasterProxy_->setAdvertisingInterval(interval);
-    broadcasterProxy_->setAdvertisingTimeout(timeout);
-    return broadcasterProxy_->advertise();
-}
-
-int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout, const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse) const {
-    WiringBleLock lk;
-    broadcasterProxy_->setAdvertisingData(advertisingData);
-    broadcasterProxy_->setScanResponseData(scanResponse);
-    broadcasterProxy_->setAdvertisingInterval(interval);
-    broadcasterProxy_->setAdvertisingTimeout(timeout);
-    return broadcasterProxy_->advertise();
-}
-
-int BleLocalDevice::advertise(const BleAdvertisingParams& params) const {
-    WiringBleLock lk;
-    broadcasterProxy_->setAdvertisingParams(&params);
-    return broadcasterProxy_->advertise();
-}
-
-int BleLocalDevice::advertise(const BleAdvertisingParams& params, const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse) const {
-    WiringBleLock lk;
-    broadcasterProxy_->setAdvertisingData(advertisingData);
-    broadcasterProxy_->setScanResponseData(scanResponse);
-    broadcasterProxy_->setAdvertisingParams(&params);
-    return broadcasterProxy_->advertise();
-}
-
-int BleLocalDevice::advertise(const iBeacon& iBeacon, bool connectable) const {
-    WiringBleLock lk;
-    broadcasterProxy_->setIbeacon(iBeacon);
-    return broadcasterProxy_->advertise(connectable);
-}
-
-int BleLocalDevice::advertise(uint16_t interval, const iBeacon& iBeacon, bool connectable) const {
-    WiringBleLock lk;
-    broadcasterProxy_->setIbeacon(iBeacon);
-    broadcasterProxy_->setAdvertisingInterval(interval);
-    return broadcasterProxy_->advertise(connectable);
-}
-
-int BleLocalDevice::advertise(uint16_t interval, uint16_t timeout, const iBeacon& iBeacon, bool connectable) const {
-    WiringBleLock lk;
-    broadcasterProxy_->setIbeacon(iBeacon);
-    broadcasterProxy_->setAdvertisingInterval(interval);
-    broadcasterProxy_->setAdvertisingTimeout(timeout);
-    return broadcasterProxy_->advertise(connectable);
-}
-
-int BleLocalDevice::advertise(const BleAdvertisingParams& params, const iBeacon& iBeacon, bool connectable) const {
-    WiringBleLock lk;
-    broadcasterProxy_->setIbeacon(iBeacon);
-    broadcasterProxy_->setAdvertisingParams(&params);
-    return broadcasterProxy_->advertise(connectable);
+    BleAdvertisingData* advData = new(std::nothrow) BleAdvertisingData(beacon);
+    SCOPE_GUARD ({
+        free(advData);
+    });
+    CHECK_TRUE(advData, SYSTEM_ERROR_NO_MEMORY);
+    CHECK(hal_ble_gap_set_advertising_data(advData->data(), advData->length(), nullptr));
+    CHECK(setAdvertisingType(BleAdvertisingEventType::SCANABLE_UNDIRECTED));
+    return advertise();
 }
 
 int BleLocalDevice::stopAdvertising() const {
-    return broadcasterProxy_->stopAdvertising();
+    return hal_ble_gap_stop_advertising();
 }
 
 bool BleLocalDevice::advertising() const {
-    return broadcasterProxy_->advertising();
+    return hal_ble_gap_is_advertising();
+}
+
+class BleScanDelegator {
+public:
+    BleScanDelegator()
+            : resultsPtr_(nullptr),
+              targetCount_(0),
+              foundCount_(0),
+              callback_(nullptr),
+              context_(nullptr) {
+        resultsVector_.clear();
+    }
+    ~BleScanDelegator() = default;
+
+    int start(BleOnScanResultCallback callback, void* context) {
+        callback_ = callback;
+        context_ = context;
+        CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
+        return foundCount_;
+    }
+
+    int start(BleScanResult* results, size_t resultCount) {
+        resultsPtr_ = results;
+        targetCount_ = resultCount;
+        CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
+        return foundCount_;
+    }
+
+    Vector<BleScanResult> start() {
+        hal_ble_gap_start_scan(onScanResultCallback, this, nullptr);
+        return resultsVector_;
+    }
+
+private:
+    /*
+     * WARN: This is executed from HAL ble thread. The current thread which starts the scanning procedure
+     * has acquired the BLE HAL lock. Calling BLE HAL APIs those acquiring the BLE HAL lock in this function
+     * will suspend the execution of the callback until the current thread release the BLE HAL lock. Or the BLE HAL
+     * APIs those are invoked here must not acquire the BLE HAL lock.
+     */
+    static void onScanResultCallback(const hal_ble_gap_on_scan_result_evt_t* event, void* context) {
+        BleScanDelegator* delegator = static_cast<BleScanDelegator*>(context);
+        BleScanResult result = {};
+        result.address = event->peer_addr;
+        result.rssi = event->rssi;
+        result.scanResponse.set(event->sr_data, event->sr_data_len);
+        result.advertisingData.set(event->adv_data, event->adv_data_len);
+        if (delegator->callback_) {
+            delegator->callback_(&result, delegator->context_);
+            delegator->foundCount_++;
+        } else if (delegator->resultsPtr_) {
+            if (delegator->foundCount_ < delegator->targetCount_) {
+                delegator->resultsPtr_[delegator->foundCount_++] = result;
+                if (delegator->foundCount_ >= delegator->targetCount_) {
+                    hal_ble_gap_stop_scan();
+                }
+            }
+        } else {
+            delegator->resultsVector_.append(result);
+            delegator->foundCount_++;
+        }
+    }
+
+    Vector<BleScanResult> resultsVector_;
+    BleScanResult* resultsPtr_;
+    size_t targetCount_;
+    size_t foundCount_;
+    BleOnScanResultCallback callback_;
+    void* context_;
+};
+
+int BleLocalDevice::setScanTimeout(uint16_t timeout) const {
+    WiringBleLock lk;
+    hal_ble_scan_params_t scanParams = {};
+    scanParams.size = sizeof(hal_ble_scan_params_t);
+    hal_ble_gap_get_scan_parameters(&scanParams, nullptr);
+    scanParams.timeout = timeout;
+    return hal_ble_gap_set_scan_parameters(&scanParams, nullptr);
+}
+
+int BleLocalDevice::setScanParameters(const BleScanParams* params) const {
+    WiringBleLock lk;
+    return hal_ble_gap_set_scan_parameters(params, nullptr);
+}
+
+int BleLocalDevice::getScanParameters(BleScanParams* params) const {
+    WiringBleLock lk;
+    return hal_ble_gap_get_scan_parameters(params, nullptr);
 }
 
 int BleLocalDevice::scan(BleOnScanResultCallback callback, void* context) const {
     WiringBleLock lk;
-    return observerProxy_->scan(callback, context);
-}
-
-int BleLocalDevice::scan(BleOnScanResultCallback callback, uint16_t timeout, void* context) const {
-    WiringBleLock lk;
-    return observerProxy_->scan(callback, timeout, context);
+    BleScanDelegator scanner;
+    return scanner.start(callback, context);
 }
 
 int BleLocalDevice::scan(BleScanResult* results, size_t resultCount) const {
     WiringBleLock lk;
-    return observerProxy_->scan(results, resultCount);
-}
-
-int BleLocalDevice::scan(BleScanResult* results, size_t resultCount, uint16_t timeout) const {
-    WiringBleLock lk;
-    return observerProxy_->scan(results, resultCount, timeout);
-}
-
-int BleLocalDevice::scan(BleScanResult* results, size_t resultCount, const BleScanParams& params) const {
-    return observerProxy_->scan(results, resultCount, params);
+    if (results == nullptr || resultCount == 0) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    BleScanDelegator scanner;
+    return scanner.start(results, resultCount);
 }
 
 Vector<BleScanResult> BleLocalDevice::scan() const {
     WiringBleLock lk;
-    return observerProxy_->scan();
-}
-
-Vector<BleScanResult> BleLocalDevice::scan(uint16_t timeout) const {
-    WiringBleLock lk;
-    return observerProxy_->scan(timeout);
-}
-
-Vector<BleScanResult> BleLocalDevice::scan(const BleScanParams& params) const {
-    WiringBleLock lk;
-    return observerProxy_->scan(params);
+    BleScanDelegator scanner;
+    return scanner.start();
 }
 
 int BleLocalDevice::stopScanning() const {
-    return observerProxy_->stopScanning();
+    return hal_ble_gap_stop_scan();
 }
 
 int BleLocalDevice::setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) const {
     WiringBleLock lk;
-    return peripheralProxy_->setPPCP(minInterval, maxInterval, latency, timeout);
+    hal_ble_conn_params_t ppcp = {};
+    ppcp.size = sizeof(hal_ble_conn_params_t);
+    ppcp.min_conn_interval = minInterval;
+    ppcp.max_conn_interval = maxInterval;
+    ppcp.slave_latency = latency;
+    ppcp.conn_sup_timeout = timeout;
+    return hal_ble_gap_set_ppcp(&ppcp, nullptr);
 }
 
 bool BleLocalDevice::connected() const {
@@ -1688,10 +1521,6 @@ void BleLocalDevice::onBleEvents(const hal_ble_evts_t *event, void* context) {
     auto bleInstance = static_cast<BleLocalDevice*>(context);
 
     switch (event->type) {
-        case BLE_EVT_ADV_STOPPED: {
-            bleInstance->broadcasterProxy_->broadcasterProcessStopped();
-            break;
-        }
         case BLE_EVT_CONNECTED: {
             BlePeerDevice peer;
 

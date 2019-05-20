@@ -30,7 +30,6 @@
 #include "spark_wiring_vector.h"
 #include "spark_wiring_flags.h"
 #include "ble_hal.h"
-#include "check.h"
 #include <memory>
 
 namespace particle {
@@ -46,8 +45,6 @@ class BleCharacteristicImpl;
 class BleServiceImpl;
 class BleGattServerImpl;
 class BleGattClientImpl;
-class BleBroadcasterImpl;
-class BleObserverImpl;
 class BlePeripheralImpl;
 class BleCentralImpl;
 class BlePeerDeviceImpl;
@@ -283,12 +280,12 @@ public:
 
 class BleAdvertisingData {
 public:
-    static const size_t MAX_LEN = BLE_MAX_ADV_DATA_LEN;
-
     BleAdvertisingData();
+    BleAdvertisingData(const iBeacon& beacon);
     ~BleAdvertisingData() = default;
 
     size_t set(const uint8_t* buf, size_t len);
+    size_t set(const iBeacon& beacon);
 
     size_t append(BleAdvertisingDataType type, const uint8_t* buf, size_t len, bool force = false);
     size_t appendCustomData(const uint8_t* buf, size_t len, bool force = false);
@@ -314,7 +311,7 @@ public:
     size_t get(uint8_t* buf, size_t len) const;
     size_t get(BleAdvertisingDataType type, uint8_t* buf, size_t len) const;
 
-    const uint8_t* data() const;
+    uint8_t* data();
     size_t length() const;
 
     String deviceName() const;
@@ -462,33 +459,37 @@ public:
     int setTxPower(int8_t txPower) const;
     int txPower(int8_t* txPower) const;
 
+    int setAdvertisingInterval(uint16_t interval) const;
+    int setAdvertisingTimeout(uint16_t timeout) const;
+    int setAdvertisingType(BleAdvertisingEventType type) const;
+    int setAdvertisingParameters(const BleAdvertisingParams* params) const;
+    int setAdvertisingParameters(uint16_t interval, uint16_t timeout, BleAdvertisingEventType type) const;
+    int getAdvertisingParameters(BleAdvertisingParams* params) const;
+
+    int setAdvertisingData(BleAdvertisingData* advertisingData) const;
+    int setScanResponseData(BleAdvertisingData* scanResponse) const;
+    ssize_t getAdvertisingData(BleAdvertisingData* advertisingData) const;
+    ssize_t getScanResponseData(BleAdvertisingData* scanResponse) const;
+
     int advertise() const;
-    int advertise(const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse = nullptr) const;
-    int advertise(uint16_t interval) const;
-    int advertise(uint16_t interval, const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse = nullptr) const;
-    int advertise(uint16_t interval, uint16_t timeout) const;
-    int advertise(uint16_t interval, uint16_t timeout, const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse = nullptr) const;
-    int advertise(const BleAdvertisingParams& params) const;
-    int advertise(const BleAdvertisingParams& params, const BleAdvertisingData* advertisingData, const BleAdvertisingData* scanResponse = nullptr) const;
-    int advertise(const iBeacon& iBeacon, bool connectable = false) const;
-    int advertise(uint16_t interval, const iBeacon& iBeacon, bool connectable = false) const;
-    int advertise(uint16_t interval, uint16_t timeout, const iBeacon& iBeacon, bool connectable = false) const;
-    int advertise(const BleAdvertisingParams& params, const iBeacon& iBeacon, bool connectable = false) const;
+    int advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr) const;
+    int advertise(const iBeacon& beacon) const;
 
     int stopAdvertising() const;
 
     bool advertising() const;
 
-    int scan(BleOnScanResultCallback callback, void* context = nullptr) const;
-    int scan(BleOnScanResultCallback callback, uint16_t timeout, void* context = nullptr) const;
+    int setScanTimeout(uint16_t timeout) const;
+    int setScanParameters(const BleScanParams* params) const;
+    int getScanParameters(BleScanParams* params) const;
+
+    int scan(BleOnScanResultCallback callback, void* context) const;
     int scan(BleScanResult* results, size_t resultCount) const;
-    int scan(BleScanResult* results, size_t resultCount, uint16_t timeout) const;
-    int scan(BleScanResult* results, size_t resultCount, const BleScanParams& params) const;
     Vector<BleScanResult> scan() const;
-    Vector<BleScanResult> scan(uint16_t timeout) const;
-    Vector<BleScanResult> scan(const BleScanParams& params) const;
 
     int stopScanning() const;
+
+    int setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) const;
 
     int addCharacteristic(BleCharacteristic& characteristic) const;
     int addCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr) const;
@@ -503,8 +504,6 @@ public:
         BleCharacteristic characteristic(desc.c_str(), properties, charUuid, svcUuid, callback);
         return addCharacteristic(characteristic);
     }
-
-    int setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency = BLE_DEFAULT_SLAVE_LATENCY, uint16_t timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT) const;
 
     BlePeerDevice connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout) const;
     BlePeerDevice connect(const BleAddress& addr) const;
@@ -521,7 +520,7 @@ public:
 
 private:
     BleLocalDevice();
-    ~BleLocalDevice();
+    ~BleLocalDevice() = default;
     static void onBleEvents(const hal_ble_evts_t* event, void* context);
     BlePeerDevice* findPeerDevice(BleConnectionHandle connHandle);
 
@@ -531,8 +530,6 @@ private:
     void* disconnectedContext;
     std::unique_ptr<BleGattServerImpl> gattsProxy_;
     std::unique_ptr<BleGattClientImpl> gattcProxy_;
-    std::unique_ptr<BleBroadcasterImpl> broadcasterProxy_;
-    std::unique_ptr<BleObserverImpl> observerProxy_;
     std::unique_ptr<BlePeripheralImpl> peripheralProxy_;
     std::unique_ptr<BleCentralImpl> centralProxy_;
 };
