@@ -35,7 +35,7 @@ void loop() {
     int count = BLE.scan(results, SCAN_RESULT_COUNT);
 
     if (count > 0) {
-        uint8_t buf[BleAdvertisingData::MAX_LEN];
+        uint8_t buf[BLE_MAX_ADV_DATA_LEN];
         size_t len;
 
         LOG(TRACE, "%d devices are found:", count);
