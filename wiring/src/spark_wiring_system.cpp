@@ -64,7 +64,7 @@ uint32_t SystemClass::freeMemory()
 }
 
 #if Wiring_LogConfig
-bool SystemClass::enableFeature(LoggingFeature) {
+bool SystemClass::enableFeature(LogConfigFeature) {
     log_config_callback = spark::logConfig;
     return true;
 }
