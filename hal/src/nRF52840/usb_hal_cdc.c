@@ -382,7 +382,8 @@ int usb_uart_send(uint8_t data[], uint16_t size) {
         }
     }
 
-    return pre_send_size;
+    // NOTE: we only care and report about how many bytes were actually put into the transmit buffer
+    return size;
 }
 
 void usb_uart_set_baudrate(uint32_t baudrate) {
