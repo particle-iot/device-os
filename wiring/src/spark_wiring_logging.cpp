@@ -422,8 +422,14 @@ LogHandler* spark::DefaultLogHandlerFactory::createHandler(log_config_handler_ty
         LogCategoryFilters filters, Print* stream, const void* params) {
     switch (type) {
     case LOG_CONFIG_DEFAULT_STREAM_HANDLER:
+        if (!stream) {
+            return nullptr;
+        }
         return new(std::nothrow) StreamLogHandler(*stream, level, std::move(filters));
     case LOG_CONFIG_JSON_STREAM_HANDLER:
+        if (!stream) {
+            return nullptr;
+        }
         return new(std::nothrow) JSONStreamLogHandler(*stream, level, std::move(filters));
     default:
         return nullptr;
