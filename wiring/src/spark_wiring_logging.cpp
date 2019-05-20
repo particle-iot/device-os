@@ -26,9 +26,9 @@
 #include <cinttypes>
 #include <memory>
 
+#include "spark_wiring_network.h"
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_usartserial.h"
-
 #include "spark_wiring_interrupts.h"
 
 // Uncomment to enable logging in interrupt handlers
@@ -472,6 +472,10 @@ int spark::detail::LogFilter::nodeIndex(const Vector<Node> &nodes, const char *n
 
 // spark::StreamLogHandler
 void spark::StreamLogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
+    // TODO: Move this check to a base class (see also JSONStreamLogHandler::logMessage())
+    if (stream_ == &Serial && Network.listening()) {
+        return; // Do not mix logging and serial console output
+    }
     const char *s = nullptr;
     // Timestamp
     if (attr.has_time) {
@@ -535,6 +539,10 @@ void spark::StreamLogHandler::logMessage(const char *msg, LogLevel level, const 
 
 // spark::JSONStreamLogHandler
 void spark::JSONStreamLogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
+    // TODO: Move this check to a base class (see also StreamLogHandler::logMessage())
+    if (this->stream() == &Serial && Network.listening()) {
+        return; // Do not mix logging and serial console output
+    }
     JSONStreamWriter json(*this->stream());
     json.beginObject();
     // Level
@@ -629,7 +637,10 @@ Print* spark::DefaultOutputStreamFactory::createStream(const char *type, const J
 void spark::DefaultOutputStreamFactory::destroyStream(Print *stream) {
 #if PLATFORM_ID != 3
     if (stream == &Serial) {
+        // FIXME: Uninitializing Serial detaches a Gen 3 device from the host
+#if !HAL_PLATFORM_NRF52840
         Serial.end();
+#endif
         return;
     }
 #if Wiring_USBSerial1
