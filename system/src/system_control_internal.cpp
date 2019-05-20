@@ -345,6 +345,18 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, ctrl::cloud::disconnect(req));
         break;
     }
+    case CTRL_REQUEST_ADD_LOG_HANDLER: {
+        setResult(req, control::logging::addLogHandler(req));
+        break;
+    }
+    case CTRL_REQUEST_REMOVE_LOG_HANDLER: {
+        setResult(req, control::logging::removeLogHandler(req));
+        break;
+    }
+    case CTRL_REQUEST_GET_LOG_HANDLERS: {
+        setResult(req, control::logging::getLogHandlers(req));
+        break;
+    }
 #if HAL_USE_SOCKET_HAL_POSIX && HAL_PLATFORM_IFAPI
     case CTRL_REQUEST_NETWORK_GET_INTERFACE_LIST: {
         setResult(req, control::network::getInterfaceList(req));
@@ -454,18 +466,6 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
     }
     case CTRL_REQUEST_MESH_GET_NETWORK_DIAGNOSTICS: {
         setResult(req, ctrl::mesh::getNetworkDiagnostics(req));
-        break;
-    }
-    case CTRL_REQUEST_ADD_LOG_HANDLER: {
-        setResult(req, control::logging::addLogHandler(req));
-        break;
-    }
-    case CTRL_REQUEST_REMOVE_LOG_HANDLER: {
-        setResult(req, control::logging::removeLogHandler(req));
-        break;
-    }
-    case CTRL_REQUEST_GET_LOG_HANDLERS: {
-        setResult(req, control::logging::getLogHandlers(req));
         break;
     }
 #endif // HAL_PLATFORM_MESH
