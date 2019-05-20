@@ -176,7 +176,7 @@ int(*log_config_callback)(int cmd, const void* cmdData, void* result, void* user
 
 static int log_config_callback_wrapper(int cmd, const void* cmdData, void* result, void* userData) {
     if (!log_config_callback) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
+        return SYSTEM_ERROR_DISABLED;
     }
     return log_config_callback(cmd, cmdData, result, userData);
 }

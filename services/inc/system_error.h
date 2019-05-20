@@ -27,6 +27,7 @@
         (BUSY, "Resource busy", -110), \
         (NOT_SUPPORTED, "Not supported", -120), \
         (NOT_ALLOWED, "Not allowed", -130), \
+        (DISABLED, "Disabled", -131), \
         (CANCELLED, "Operation cancelled", -140), \
         (ABORTED, "Operation aborted", -150), \
         (TIMEOUT, "Timeout error", -160), \
