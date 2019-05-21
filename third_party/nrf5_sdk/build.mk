@@ -19,7 +19,6 @@ CSRC += $(TARGET_NRF5_SDK_INTEGRATION_NRFX_SRC_PATH)/legacy/nrf_drv_clock.c
 CSRC += $(TARGET_NRF5_SDK_INTEGRATION_NRFX_SRC_PATH)/legacy/nrf_drv_power.c
 CSRC += $(TARGET_NRF5_SDK_INTEGRATION_NRFX_SRC_PATH)/legacy/nrf_drv_rng.c
 CSRC += $(TARGET_NRF5_SDK_LIBRARY_UTIL_PATH)/app_util_platform.c
-CSRC += $(TARGET_NRF5_SDK_DRIVERS_NRF_SRC_PATH)/usbd/nrf_drv_usbd.c
 CSRC += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/atomic/nrf_atomic.c
 CSRS += $(TARGET_NRF5_SDK_LIBRARIES_PATH)/atomic_fifo/nrf_atfifo.c
 CSRC += $(TARGET_NRF5_SDK_INTEGRATION_NRFX_SRC_PATH)/legacy/nrf_drv_spi.c
@@ -70,7 +69,7 @@ CSRC += \
 	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/app_usbd_core.c \
 	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/app_usbd_serial_num.c \
 	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/app_usbd_string_desc.c \
-	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/class/cdc/acm/app_usbd_cdc_acm.c 
+	$(TARGET_NRF5_SDK_LIBRARIES_PATH)/usbd/class/cdc/acm/app_usbd_cdc_acm.c
 
 # FreeRTOS
 ifeq ($(SOFTDEVICE_PRESENT),y)

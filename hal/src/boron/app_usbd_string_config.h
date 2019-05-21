@@ -40,8 +40,6 @@
 #ifndef APP_USBD_STRING_CONFIG_H
 #define APP_USBD_STRING_CONFIG_H
 
-#include "app_usbd_langid.h"
-
 /**
  * @defgroup app_usbd_string_conf USBD string configuration
  * @ingroup app_usbd_string_desc
@@ -69,7 +67,7 @@
  * @ref APP_USBD_STRINGS_LANGIDS.
  */
 #define APP_USBD_STRINGS_MANUFACTURER    \
-    APP_USBD_STRING_DESC('P', 'a', 'r', 't', 'i', 'c', 'l', 'e')
+    APP_USBD_STRING_DESC("Particle")
 
 /**
  * @brief Define whether @ref APP_USBD_STRINGS_MANUFACTURER is created by @ref APP_USBD_STRING_DESC
@@ -84,10 +82,10 @@
  */
 #if PLATFORM_ID == 13 // Boron
 #define APP_USBD_STRINGS_PRODUCT         \
-    APP_USBD_STRING_DESC('B', 'o', 'r', 'o', 'n', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
-#else // B SoM
+    APP_USBD_STRING_DESC("Boron CDC Mode")
+#else // Boron SoM
 #define APP_USBD_STRINGS_PRODUCT         \
-    APP_USBD_STRING_DESC('B', ' ', 'S', 'o', 'M', ' ', 'C', 'D', 'C', ' ', 'M', 'o', 'd', 'e')
+    APP_USBD_STRING_DESC("B SoM CDC Mode")
 #endif
 
 
@@ -107,7 +105,6 @@
  * There is only one SERIAL number inside the library and it is Language independent.
  */
 #define APP_USBD_STRING_SERIAL          g_extern_serial_number
-    // APP_USBD_STRING_DESC('0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0')
 
 /**
  * @brief Define whether @ref APP_USBD_STRING_SERIAL is created by @ref APP_USBD_STRING_DESC
@@ -133,14 +130,14 @@
  */
 #if PLATFORM_ID == 13 // Boron
 #define APP_USBD_STRINGS_USER \
-    X(APP_USER_1, , APP_USBD_STRING_DESC('S', 'e', 'r', 'i', 'a', 'l')) \
-    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC('B', 'o', 'r', 'o', 'n', ' ', 'C', 'o', 'n', 't', 'r', 'o', 'l', ' ', 'I', 'n', 't', 'e', 'r', 'f', 'a', 'c', 'e')) \
-    X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC('M', 'S', 'F', 'T', '1', '0', '0', 0xee))
+    X(APP_USER_1, , APP_USBD_STRING_DESC("Boron Serial")) \
+    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC("Boron Control Interface")) \
+    X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC("MSFT100\xee"))
 #else
 #define APP_USBD_STRINGS_USER \
-    X(APP_USER_1, , APP_USBD_STRING_DESC('S', 'e', 'r', 'i', 'a', 'l')) \
-    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC('B', 'o', 'r', 'o', 'n', ' ', 'S', 'o', 'M', ' ', 'C', 'o', 'n', 't', 'r', 'o', 'l', ' ', 'I', 'n', 't', 'e', 'r', 'f', 'a', 'c', 'e')) \
-    X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC('M', 'S', 'F', 'T', '1', '0', '0', 0xee))
+    X(APP_USER_1, , APP_USBD_STRING_DESC("B SoM Serial")) \
+    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC("B SoM Control Interface")) \
+    X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC("MSFT100\xee"))
 #endif
 
 /** @} */
