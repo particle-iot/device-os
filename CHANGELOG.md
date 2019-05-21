@@ -1,3 +1,13 @@
+## 1.2.1-rc.1
+
+>**Note:** If your Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release)
+>
+>This release contains v310 bootloaders (bumped this release due to Gen 3 changes in [#1768](https://github.com/particle-iot/device-os/pull/1768) ). We have also separated BOOTLOADER_DEPENDENCY for Gen 2 and Gen 3. For now, we will leave Gen 2 as is depending on v201 bootloader (so there is nothing to do for Gen 2 (Photon/P1 only) unless you want the latest bootloader, although it is not mandatory), but we have bumped Gen 3 to v302 because also in this release we have removed the embedded bootloaders from Gen 3 system firmware. To force the Cloud update for Gen 2 (Photon/P1 only) we will bump the bootloader dependency version to v302 in v1.2.0 default.
+
+### ENHANCEMENTS
+
+- [gen3] Upgrades Nordic nRF5 SDK to 15.3.0 [#1768](https://github.com/particle-iot/device-os/pull/1768)
+
 ## 1.2.0-rc.1
 
 >**Note:** If your Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release)
@@ -7,7 +17,7 @@
 ### FEATURES
 
 - [Enterprise] Immediate Product Firmware Updates [#1732](https://github.com/particle-iot/device-os/pull/1732)
-- [Enterprise] Device Vitals reporting [#1724](https://github.com/particle-iot/device-os/pull/1724)
+- On-demand Device Vitals publishing [#1724](https://github.com/particle-iot/device-os/pull/1724)
 
 ### ENHANCEMENTS
 
