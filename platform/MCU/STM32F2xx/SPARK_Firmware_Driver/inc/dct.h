@@ -74,7 +74,8 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t device_private_key[1216];   // sufficient for 2048 bits
     uint8_t device_public_key[384];     // sufficient for 2048 bits
     static_ip_config_t  ip_config;
-    uint8_t unused[96];
+    uint8_t unused[95];                 //
+    uint8_t ota_update_flag;            // should be 0xA5 to trigger an update from data stored in the update region
     uint32_t feature_flags[1];          // Configurable feature flags (see HAL_Feature_Set()). Default uninitialized value is 0xffffffff
     uint8_t country_code[4];            // WICED country code. Stored as bit-endian format: CH1/CH2/0/rev (max 255)
     uint8_t claim_code[63];             // claim code. no terminating null.
@@ -111,6 +112,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_SERVER_PUBLIC_KEY_OFFSET (offsetof(application_dct_t, server_public_key))
 #define DCT_SERVER_ADDRESS_OFFSET ((DCT_SERVER_PUBLIC_KEY_OFFSET)+384)
 #define DCT_IP_CONFIG_OFFSET (offsetof(application_dct_t, ip_config))
+#define DCT_OTA_UPDATE_FLAG_OFFSET (offsetof(application_dct_t, ota_update_flag))
 #define DCT_FEATURE_FLAGS_OFFSET (offsetof(application_dct_t, feature_flags))
 #define DCT_COUNTRY_CODE_OFFSET (offsetof(application_dct_t, country_code))
 #define DCT_CLAIM_CODE_OFFSET (offsetof(application_dct_t, claim_code))
@@ -138,6 +140,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_DEVICE_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::device_public_key))
 #define DCT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::server_public_key))
 #define DCT_IP_CONFIG_SIZE (sizeof(application_dct_t::ip_config))
+#define DCT_OTA_UPDATE_FLAG_SIZE  (sizeof(application_dct_t::ota_update_flag))
 #define DCT_FEATURE_FLAGS_SIZE  (sizeof(application_dct_t::feature_flags))
 #define DCT_COUNTRY_CODE_SIZE  (sizeof(application_dct_t::country_code))
 #define DCT_CLAIM_CODE_SIZE  (sizeof(application_dct_t::claim_code))
@@ -171,6 +174,7 @@ STATIC_ASSERT_DCT_OFFSET(version, 32);
 STATIC_ASSERT_DCT_OFFSET(device_private_key, 34);
 STATIC_ASSERT_DCT_OFFSET(device_public_key, 1250 /*34+1216*/);
 STATIC_ASSERT_DCT_OFFSET(ip_config, 1634 /* 1250 + 384 */);
+STATIC_ASSERT_DCT_OFFSET(ota_update_flag, 1753);
 STATIC_ASSERT_DCT_OFFSET(feature_flags, 1754 /* 1634 + 120 */);
 STATIC_ASSERT_DCT_OFFSET(country_code, 1758 /* 1754 + 4 */);
 STATIC_ASSERT_DCT_OFFSET(claim_code, 1762 /* 1758 + 4 */);
@@ -211,6 +215,10 @@ STATIC_ASSERT_FLAGS_OFFSET(StartupMode_SysFlag, 18);
 STATIC_ASSERT_FLAGS_OFFSET(FeaturesEnabled_SysFlag, 19);
 STATIC_ASSERT_FLAGS_OFFSET(RCC_CSR_SysFlag, 20);
 STATIC_ASSERT_FLAGS_OFFSET(reserved, 24);
+
+#define DCT_OTA_UPDATE_FLAG_SET (0xA5)
+#define DCT_OTA_UPDATE_FLAG_CLEAR (0XFF)
+
 
 // Note: This function is deprecated, use dct_read_app_data_copy() or dct_read_app_data_lock() instead
 const void* dct_read_app_data(uint32_t offset);
