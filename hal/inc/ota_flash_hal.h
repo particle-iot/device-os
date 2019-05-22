@@ -143,6 +143,13 @@ typedef enum {
 
 hal_update_complete_t HAL_FLASH_End(hal_module_t* module);
 
+/**
+ * @param module Optional pointer to a module that receives the module definition of the firmware that was flashed.
+ * @param dryRun when true, only test that the system has a pending update in memory. When false, the test is performed and the module
+ *   applied if valid (or the bootloader instructed to apply it.)
+ */
+hal_update_complete_t HAL_FLASH_ApplyPendingUpdate(hal_module_t* module, bool dryRun, void* reserved);
+
 uint32_t HAL_FLASH_ModuleAddress(uint32_t address);
 uint32_t HAL_FLASH_ModuleLength(uint32_t address);
 bool HAL_FLASH_VerifyCRC32(uint32_t address, uint32_t length);

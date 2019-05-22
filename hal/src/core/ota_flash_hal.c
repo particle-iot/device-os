@@ -69,7 +69,7 @@ int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_vali
   return 0;
 }
 
-hal_update_complete_t HAL_FLASH_End(hal_module_t* reserved)
+hal_update_complete_t HAL_FLASH_ApplyPendingUpdate(hal_module_t* module, bool dryRun, void* reserved)
 {
     FLASH_End();
     return HAL_UPDATE_APPLIED_PENDING_RESTART;
