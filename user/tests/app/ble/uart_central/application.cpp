@@ -30,7 +30,7 @@ BleCharacteristic peerTxCharacteristic;
 BleCharacteristic peerRxCharacteristic;
 BlePeerDevice peer;
 
-const BleUuid svcUUID("6FA90001-5C4E-48A8-94F4-8030546F36FC");
+const BleUuid svcUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
 BleUuid foundServiceUUID;
 
 uint8_t txBuf[UART_TX_BUF_SIZE];
@@ -44,7 +44,7 @@ void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, 
 
 void setup() {
     Serial.begin(115200);
-    peerTxCharacteristic.onDataReceived(onDataReceived, nullptr);
+    peerTxCharacteristic.onDataReceived(onDataReceived, &peerTxCharacteristic);
 }
 
 void loop() {
@@ -63,12 +63,12 @@ void loop() {
         size_t count = BLE.scan(results, SCAN_RESULT_COUNT);
         if (count > 0) {
             for (uint8_t i = 0; i < count; i++) {
-                size_t svcCount = results[i].scanResponse.serviceUUID(&foundServiceUUID, 1);
+                size_t svcCount = results[i].advertisingData.serviceUUID(&foundServiceUUID, 1);
                 if (svcCount > 0 && foundServiceUUID == svcUUID) {
                     peer = BLE.connect(results[i].address);
                     if (peer.connected()) {
                         peerTxCharacteristic = peer.getCharacteristicByDescription("tx");
-                        peerRxCharacteristic = peer.getCharacteristicByUUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+                        peerRxCharacteristic = peer.getCharacteristicByUUID(svcUUID);
                     }
                     break;
                 }
