@@ -359,7 +359,7 @@ int hal_ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context, void
 /**
  * Set local BLE identity address, which type must be either public or random.
  *
- * @param[in]   address Pointer to the BLE local identity address to be set.
+ * @param[in]   address Pointer to the BLE local identity address to be set. If nullptr, it restores the default BLE address.
  *
  * @returns     0 on success, system_error_t on error.
  */
@@ -377,7 +377,7 @@ int hal_ble_gap_get_device_address(hal_ble_addr_t* address, void* reserved);
 /**
  * Set the BLE device name.
  *
- * @param[in]   device_name Pointer to a UTF-8 encoded, <b>non NULL-terminated</b> string.
+ * @param[in]   device_name Pointer to a UTF-8 encoded, <b>non NULL-terminated</b> string. If nullptr, it resets to the default device name.
  * @param[in]   len         Length of the UTF-8, <b>non NULL-terminated</b> string pointed to by device_name
  *                          in octets (must be smaller or equal than @ref BLE_GAP_DEVNAME_MAX_LEN).
  *
