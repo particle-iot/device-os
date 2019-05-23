@@ -172,13 +172,13 @@ void __attribute((weak)) ctrl_request_custom_handler(ctrl_request* req) {
 #if Wiring_LogConfig
 
 // Logging configuration callback
-int(*log_config_callback)(int cmd, const void* cmdData, void* result, void* userData) = nullptr;
+int(*log_command_handler)(const log_command* cmd, log_command_result** result, void* userData) = nullptr;
 
-static int log_config_callback_wrapper(int cmd, const void* cmdData, void* result, void* userData) {
-    if (!log_config_callback) {
+static int log_command_handler_wrapper(const log_command* cmd, log_command_result** result, void* userData) {
+    if (!log_command_handler) {
         return SYSTEM_ERROR_DISABLED;
     }
-    return log_config_callback(cmd, cmdData, result, userData);
+    return log_command_handler(cmd, result, userData);
 }
 
 #endif // Wiring_LogConfig
@@ -225,6 +225,6 @@ void module_user_init_hook()
 
 #if Wiring_LogConfig
     // Register the logging configuration callback
-    log_config_set_callback(log_config_callback_wrapper, nullptr, nullptr);
+    log_set_command_handler(log_command_handler_wrapper, nullptr, nullptr);
 #endif
 }

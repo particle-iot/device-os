@@ -16,22 +16,23 @@
  */
 
 #include "system_logging.h"
-#include "system_error.h"
 #include "check.h"
 
 namespace {
 
-log_config_callback_type g_logConfigCallback = nullptr;
-void* g_logConfigCallbackData = nullptr;
+log_command_handler_fn g_logCommandHandler = nullptr;
+void* g_logCommandHandlerData = nullptr;
 
 } // unnamed
 
-void log_config_set_callback(log_config_callback_type callback, void* user_data, void* reserved) {
-    g_logConfigCallback = callback;
-    g_logConfigCallbackData = user_data;
+void log_set_command_handler(log_command_handler_fn handler, void* user_data, void* reserved) {
+    g_logCommandHandler = handler;
+    g_logCommandHandlerData = user_data;
 }
 
-int log_config(int cmd, const void* cmd_data, void* result) {
-    CHECK_TRUE(g_logConfigCallback, SYSTEM_ERROR_NOT_SUPPORTED);
-    return g_logConfigCallback(cmd, cmd_data, result, g_logConfigCallbackData);
+int log_process_command(const log_command* cmd, log_command_result** result) {
+    if (!g_logCommandHandler) {
+        return SYSTEM_ERROR_DISABLED;
+    }
+    return g_logCommandHandler(cmd, result, g_logCommandHandlerData);
 }

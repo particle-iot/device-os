@@ -100,7 +100,7 @@ DYNALIB_FN(BASE_IDX + 14, system, system_pool_free, void(void*, void*))
 DYNALIB_FN(BASE_IDX + 15, system, system_sleep_pins, int(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
 DYNALIB_FN(BASE_IDX + 16, system, system_invoke_event_handler, int(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo, const char* event_name, const char* event_data, void* reserved))
 
-DYNALIB_FN(BASE_IDX + 17, system, log_config_set_callback, void(log_config_callback_type, void*, void*))
+DYNALIB_FN(BASE_IDX + 17, system, log_set_command_handler, void(log_command_handler_fn, void*, void*))
 
 DYNALIB_END(system)
 

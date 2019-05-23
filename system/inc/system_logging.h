@@ -22,128 +22,182 @@
 /**
  * API version number.
  */
-#define LOG_CONFIG_API_VERSION 1
+#define LOG_SYSTEM_API_VERSION 1
+
+typedef struct log_command log_command;
+typedef struct log_command_result log_command_result;
+typedef struct log_handler_list_item log_handler_list_item;
+typedef struct log_filter_list_item log_filter_list_item;
 
 /**
- * Configuration commands.
+ * Command handler callback.
+ *
+ * @param cmd Command data.
+ * @param result[out] Result data.
+ * @param user_data User data.
+ * @return 0 on success, or a negative result code in case of an error.
+ *
+ * @see `log_set_command_handler()`
  */
-typedef enum log_config_command {
-    LOG_CONFIG_ADD_HANDLER = 1, ///< Add a log handler.
-    LOG_CONFIG_REMOVE_HANDLER = 2, ///< Remove a log handler.
-    LOG_CONFIG_GET_HANDLERS = 3 ///< Get the list of active log handlers.
-} log_config_command;
+typedef int(*log_command_handler_fn)(const log_command* cmd, log_command_result** result, void* user_data);
+
+/**
+ * Command completion callback.
+ *
+ * @param error Result code.
+ * @param result Result data.
+ *
+ * @see `log_command_result`
+ */
+typedef void(*log_command_completion_fn)(int error, log_command_result* result);
+
+/**
+ * Deleter function for a command result data.
+ *
+ * @param result Result data.
+ *
+ * @see `log_command_result`
+ */
+typedef void(*log_command_result_deleter_fn)(log_command_result* result);
+
+/**
+ * Command types.
+ */
+typedef enum log_command_type {
+    LOG_INVALID_COMMAND = 0, ///< Invalid command.
+    LOG_ADD_HANDLER_COMMAND = 1, ///< Add a log handler.
+    LOG_REMOVE_HANDLER_COMMAND = 2, ///< Remove a log handler.
+    LOG_GET_HANDLERS_COMMAND = 3 ///< Get the list of active log handlers.
+} log_command_type;
 
 /**
  * Log handler types.
  */
-typedef enum log_config_handler_type {
-    LOG_CONFIG_DEFAULT_STREAM_HANDLER = 1, ///< `StreamLogHandler`
-    LOG_CONFIG_JSON_STREAM_HANDLER = 2 ///< `JSONStreamLogHandler`
-} log_config_handler_type;
+typedef enum log_handler_type {
+    LOG_INVALID_HANDLER = 0, ///< Invalid handler.
+    LOG_DEFAULT_STREAM_HANDLER = 1, ///< `StreamLogHandler`.
+    LOG_JSON_STREAM_HANDLER = 2 ///< `JSONStreamLogHandler`.
+} log_handler_type;
 
 /**
  * Stream types.
  */
-typedef enum log_config_stream_type {
-    LOG_CONFIG_USB_SERIAL_STREAM = 1, ///< USB serial (`Serial`, `USBSerial1`, etc.)
-    LOG_CONFIG_HW_SERIAL_STREAM = 2 ///< Hardware serial (`Serial1`, `Serial2`, etc.)
-} log_config_stream_type;
+typedef enum log_stream_type {
+    LOG_INVALID_STREAM = 0, ///< Invalid stream.
+    LOG_USB_SERIAL_STREAM = 1, ///< USB serial (`Serial`, `USBSerial1`, etc.)
+    LOG_HW_SERIAL_STREAM = 2 ///< Hardware serial (`Serial1`, `Serial2`, etc.)
+} log_stream_type;
+
+/**
+ * Common handler parameters.
+ */
+typedef struct log_handler {
+    const char* id; ///< Handler ID.
+    const log_filter_list_item* filters; ///< Category filters.
+    uint16_t filter_count; ///< Number of category filters.
+    uint8_t type; ///< Handler type (a value defined by the `log_handler_type` enum).
+    uint8_t level; ///< Default logging level (a value defined by the `LogLevel` enum).
+} __attribute__((aligned(4))) log_handler;
+// ^^ makes sure the first field of a derived structure is aligned by at least 4 bytes
+
+/**
+ * Common stream parameters.
+ */
+typedef struct log_stream {
+    uint8_t type; ///< Stream type (a value defined by the `log_stream_type` enum).
+} __attribute__((aligned(4))) log_stream;
+
+/**
+ * Common command data.
+ */
+typedef struct log_command {
+    uint8_t type; ///< Command type (a value defined by the `log_command_type` enum).
+} __attribute__((aligned(4))) log_command;
+
+/**
+ * Common result data.
+ */
+typedef struct log_command_result {
+    log_command_completion_fn completion_fn; ///< Command completion callback.
+    log_command_result_deleter_fn deleter_fn; ///< Result deleter callback.
+    uint16_t version; ///< API version number.
+} __attribute__((aligned(4))) log_command_result;
 
 /**
  * Serial stream parameters.
  */
-typedef struct log_config_serial_stream_params {
-    uint8_t index; ///< Interface index.
-    uint8_t reserved1;
-    uint16_t reserved2;
+typedef struct log_serial_stream {
+    log_stream stream; ///< Common stream parameters.
     uint32_t baud_rate; ///< Baud rate.
-} log_config_serial_stream_params;
+    uint8_t index; ///< Interface index.
+} log_serial_stream;
 
 /**
- * Category filter.
+ * Parameters of the `LOG_ADD_HANDLER_COMMAND` command.
  */
-typedef struct log_filter {
-    const char* category; ///< Category name.
-    uint8_t level; ///< Logging level (a value defined by the `LogLevel` enum).
-} log_filter;
+typedef struct log_add_handler_command {
+    log_command command; ///< Common command data.
+    const log_handler* handler; ///< Handler parameters.
+    const log_stream* stream; ///< Stream parameters.
+} log_add_handler_command;
 
 /**
- * Parameters of the `LOG_CONFIG_ADD_HANDLER` command.
+ * Parameters of the `LOG_REMOVE_HANDLER_COMMAND` command.
  */
-typedef struct log_config_add_handler_command {
-    uint8_t version; ///< API version number.
-    uint8_t handler_type; ///< Handler type (a value defined by the `log_config_handler_type` enum).
-    uint8_t stream_type; ///< Stream type (a value defined by the `log_config_stream_type` enum).
-    uint8_t level; ///< Default logging level (a value defined by the `LogLevel` enum).
-    uint16_t filter_count; ///< Number of elements in the `filters` array.
-    uint16_t reserved;
+typedef struct log_remove_handler_command {
+    log_command command; ///< Common command data.
     const char* id; ///< Handler ID.
-    const void* handler_params; ///< Handler parameters.
-    const void* stream_params; ///< Stream parameters.
-    const log_filter* filters; ///< Category filters.
-} log_config_add_handler_command;
-
-/**
- * Parameters of the `LOG_CONFIG_REMOVE_HANDLER` command.
- */
-typedef struct log_config_remove_handler_command {
-    uint8_t version; ///< API version number.
-    uint8_t reserved1;
-    uint16_t reserved2;
-    const char* id; ///< Handler ID.
-} log_config_remove_handler_command;
-
-/**
- * Parameters of the `LOG_CONFIG_GET_HANDLERS` command.
- */
-typedef struct log_config_get_handlers_command {
-    uint8_t version; ///< API version number.
-    uint8_t reserved1;
-    uint16_t reserved2;
-} log_config_get_handlers_command;
-
-/**
- * An element of a log handler list.
- */
-typedef struct log_config_handler_list_item {
-    char* id; ///< Handler ID. This string is allocated dynamically.
-} log_config_handler_list_item;
+} log_remove_handler_command;
 
 /**
  * Result of a `LOG_CONFIG_GET_HANDLERS` command.
  */
-typedef struct log_config_get_handlers_result {
-    uint16_t handler_count; ///< Number of elements in the `handlers` array.
-    uint16_t reserved;
-    log_config_handler_list_item* handlers; ///< Active handlers. This array is allocated dynamically.
-} log_config_get_handlers_result;
+typedef struct log_get_handlers_result {
+    log_command_result result; ///< Common result data.
+    const log_handler_list_item* handlers; ///< Active handlers.
+    uint16_t handler_count; ///< Number of active handlers.
+} log_get_handlers_result;
 
 /**
- * Configuration callback.
- *
- * @param cmd Command type (a value defined by the `log_config_command` enum).
- * @param cmd_data Command data.
- * @param result Command result.
- * @param user_data User data.
- * @return `0` on success, or a negative result code in case of an error.
+ * An element of a log handler list.
  */
-typedef int(*log_config_callback_type)(int cmd, const void* cmd_data, void* result, void* user_data);
+typedef struct log_handler_list_item {
+    const log_handler_list_item* next; ///< Next element in the list.
+    const char* id; ///< Handler ID.
+} log_handler_list_item;
+
+/**
+ * An element of a filter list.
+ */
+typedef struct log_filter_list_item {
+    const log_filter_list_item* next; ///< Next element in the list.
+    const char* category; ///< Category name.
+    uint8_t level; ///< Logging level (a value defined by the `LogLevel` enum).
+} log_filter_list_item;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * Set the configuration callback.
+ * Set the command handler callback.
  *
- * @param callback A callback.
+ * @param handler A callback.
  * @param user_data User data.
  * @param reserved This argument should be set to NULL.
  */
-void log_config_set_callback(log_config_callback_type callback, void* user_data, void* reserved);
+void log_set_command_handler(log_command_handler_fn handler, void* user_data, void* reserved);
 
-// Invoke the configuration callback. This function is internal to the system module
-int log_config(int cmd, const void* cmd_data, void* result);
+/**
+ * Process a logging configuration command.
+ *
+ * This function is used internally by the system module.
+ *
+ * @param cmd Command data.
+ * @param result[out] Result data.
+ * @return 0 on success, or a negative result code in case of an error.
+ */
+int log_process_command(const log_command* cmd, log_command_result** result);
 
 #ifdef __cplusplus
 } // extern "C"

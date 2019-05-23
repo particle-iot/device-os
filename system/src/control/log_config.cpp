@@ -23,8 +23,8 @@
 #include "common.h"
 
 #include "c_string.h"
-#include "scope_guard.h"
 #include "check.h"
+#include "debug.h"
 
 #include "spark_wiring_vector.h"
 
@@ -48,37 +48,40 @@ const size_t MAX_HANDLER_ID_SIZE = 32;
 // Maximum number of category filters per handler
 const size_t MAX_FILTER_COUNT = 64;
 
-} // unnamed
-
-int addLogHandler(ctrl_request* req) {
-    struct Filters {
-        Vector<log_filter> filters; // Category filters
-        Vector<CString> strings; // Category name strings
+int addLogHandlerImpl(ctrl_request* req, log_command_result** result) {
+    struct Filter: log_filter_list_item {
+        CString categoryName;
     };
     PB(AddLogHandlerRequest) pbReq = {};
     const DecodedCString idStr(&pbReq.id);
-    Filters f;
-    pbReq.filters.arg = &f;
+    Vector<Filter> filters;
+    pbReq.filters.arg = &filters;
     pbReq.filters.funcs.decode = [](pb_istream_t* strm, const pb_field_t* field, void** arg) {
-        const auto f = (Filters*)*arg;
-        if ((size_t)f->filters.size() >= MAX_FILTER_COUNT) {
+        const auto filters = (Vector<Filter>*)*arg;
+        if ((size_t)filters->size() >= MAX_FILTER_COUNT) {
             return false;
         }
-        PB(LogFilter) pbFilt = {};
-        const DecodedString ctgStr(&pbFilt.category);
-        if (!pb_decode_noinit(strm, PB(LogFilter_fields), &pbFilt)) {
+        PB(LogFilter) pbFilter = {};
+        const DecodedString ctgStr(&pbFilter.category);
+        if (!pb_decode_noinit(strm, PB(LogFilter_fields), &pbFilter)) {
             return false;
         }
+        if (ctgStr.size == 0) {
+            return false; // Empty category names are not allowed
+        }
+        Filter f = {};
         // Store the category name as a null-terminated string
-        CString ctg(ctgStr.data, ctgStr.size);
-        if (!ctg) {
+        f.categoryName = CString(ctgStr.data, ctgStr.size);
+        if (!f.categoryName) {
+            return false; // Memory allocation error
+        }
+        f.category = f.categoryName; // Category name
+        f.level = pbFilter.level; // Logging level
+        if (!filters->append(std::move(f))) {
             return false;
         }
-        log_filter filt = {};
-        filt.category = ctg; // Category name
-        filt.level = pbFilt.level; // Logging level
-        if (!f->filters.append(std::move(filt)) || !f->strings.append(std::move(ctg))) {
-            return false;
+        if (filters->size() > 1) {
+            filters->at(filters->size() - 2).next = &filters->last();
         }
         return true;
     };
@@ -86,58 +89,54 @@ int addLogHandler(ctrl_request* req) {
     if (idStr.size == 0 || idStr.size > MAX_HANDLER_ID_SIZE) {
         return SYSTEM_ERROR_OUT_OF_RANGE;
     }
-    log_config_add_handler_command cmd = {};
-    cmd.version = LOG_CONFIG_API_VERSION; // API version
-    cmd.id = idStr.data; // Handler ID
-    cmd.handler_type = pbReq.handler_type; // Handler type
-    cmd.level = pbReq.level; // Default logging level
-    cmd.stream_type = pbReq.stream_type; // Stream type
-    // Stream parameters
-    log_config_serial_stream_params strmParams = {};
-    if (pbReq.which_stream_params == PB(AddLogHandlerRequest_serial_tag)) {
-        strmParams.index = pbReq.stream_params.serial.index;
-        strmParams.baud_rate = pbReq.stream_params.serial.baud_rate;
-        cmd.stream_params = &strmParams;
-    }
+    log_add_handler_command cmd = {};
+    cmd.command.type = LOG_ADD_HANDLER_COMMAND; // Command type
+    // Handler parameters
+    log_handler handler = {};
+    handler.id = idStr.data; // Handler ID
+    handler.type = pbReq.handler_type; // Handler type
+    handler.level = pbReq.level; // Default logging level
     // Category filters
-    cmd.filters = f.filters.data();
-    cmd.filter_count = f.filters.size();
-    CHECK(log_config(LOG_CONFIG_ADD_HANDLER, &cmd, nullptr));
+    handler.filters = filters.data();
+    handler.filter_count = filters.size();
+    cmd.handler = &handler;
+    // Stream parameters
+    log_serial_stream serial = {};
+    if (pbReq.which_stream_params == PB(AddLogHandlerRequest_serial_tag)) {
+        serial.stream.type = pbReq.stream_type; // Stream type
+        serial.index = pbReq.stream_params.serial.index; // Interface index
+        serial.baud_rate = pbReq.stream_params.serial.baud_rate; // Baud rate
+    }
+    cmd.stream = (log_stream*)&serial;
+    CHECK(log_process_command((log_command*)&cmd, result));
     return 0;
 }
 
-int removeLogHandler(ctrl_request* req) {
+int removeLogHandlerImpl(ctrl_request* req, log_command_result** result) {
     PB(RemoveLogHandlerRequest) pbReq = {};
     const DecodedCString idStr(&pbReq.id);
     CHECK(decodeRequestMessage(req, PB(RemoveLogHandlerRequest_fields), &pbReq));
-    log_config_remove_handler_command cmd = {};
-    cmd.version = LOG_CONFIG_API_VERSION; // API version
+    log_remove_handler_command cmd = {};
+    cmd.command.type = LOG_REMOVE_HANDLER_COMMAND; // Command type
     cmd.id = idStr.data; // Handler ID
-    CHECK(log_config(LOG_CONFIG_REMOVE_HANDLER, &cmd, nullptr));
+    CHECK(log_process_command((log_command*)&cmd, result));
     return 0;
 }
 
-int getLogHandlers(ctrl_request* req) {
-    log_config_get_handlers_command cmd = {};
-    cmd.version = LOG_CONFIG_API_VERSION; // API version
-    log_config_get_handlers_result result = {};
-    CHECK(log_config(LOG_CONFIG_GET_HANDLERS, &cmd, &result));
-    // The handler list is allocated dynamically and needs to be freed
-    SCOPE_GUARD({
-        for (size_t i = 0; i < result.handler_count; ++i) {
-            free(result.handlers[i].id);
-        }
-        free(result.handlers);
-    });
+int getLogHandlersImpl(ctrl_request* req, log_command_result** result) {
+    log_command cmd = {};
+    cmd.type = LOG_GET_HANDLERS_COMMAND;
+    CHECK(log_process_command(&cmd, result));
+    SPARK_ASSERT(*result);
     // Encode a reply message
     PB(GetLogHandlersReply) pbRep = {};
-    pbRep.handlers.arg = &result;
+    pbRep.handlers.arg = const_cast<log_command_result*>(*result);
     pbRep.handlers.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
-        const auto result = (const log_config_get_handlers_result*)*arg;
-        for (int i = 0; i < result->handler_count; ++i) {
+        const auto result = (const log_get_handlers_result*)*arg;
+        for (auto handler = result->handlers; handler; handler = handler->next) {
             PB(GetLogHandlersReply_Handler) pbHandler = {};
-            const auto id = result->handlers[i].id;
-            const EncodedString idStr(&pbHandler.id, id, strlen(id));
+            SPARK_ASSERT(handler->id);
+            const EncodedString idStr(&pbHandler.id, handler->id, strlen(handler->id));
             if (!pb_encode_tag_for_field(strm, field) ||
                     !pb_encode_submessage(strm, PB(GetLogHandlersReply_Handler_fields), &pbHandler)) {
                 return false;
@@ -149,7 +148,51 @@ int getLogHandlers(ctrl_request* req) {
     return 0;
 }
 
-} // particle::control::diagnostics
+void setResult(ctrl_request* req, int error, log_command_result* result) {
+    if (result) {
+        if (result->completion_fn) {
+            // Wait until the request finishes and then invoke the completion callback and free the result data
+            system_ctrl_set_result(req, error, [](int error, void* data) {
+                const auto result = (log_command_result*)data;
+                result->completion_fn(error, result);
+                if (result->deleter_fn) {
+                    result->deleter_fn(result);
+                }
+            }, result, nullptr);
+        } else {
+            // No completion callback: free the result data and finish the request
+            if (result->deleter_fn) {
+                result->deleter_fn(result);
+            }
+            system_ctrl_set_result(req, error, nullptr, nullptr, nullptr);
+        }
+    } else {
+        // No result data: finish the request
+        system_ctrl_set_result(req, error, nullptr, nullptr, nullptr);
+    }
+}
+
+} // unnamed
+
+void addLogHandler(ctrl_request* req) {
+    log_command_result* result = nullptr;
+    const int error = addLogHandlerImpl(req, &result);
+    setResult(req, error, result);
+}
+
+void removeLogHandler(ctrl_request* req) {
+    log_command_result* result = nullptr;
+    const int error = removeLogHandlerImpl(req, &result);
+    setResult(req, error, result);
+}
+
+void getLogHandlers(ctrl_request* req) {
+    log_command_result* result = nullptr;
+    const int error = getLogHandlersImpl(req, &result);
+    setResult(req, error, result);
+}
+
+} // particle::control::logging
 
 } // particle::control
 
