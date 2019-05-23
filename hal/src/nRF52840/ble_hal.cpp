@@ -846,6 +846,7 @@ BleObject::Broadcaster::Broadcaster()
           connHandle_(BLE_INVALID_CONN_HANDLE) {
     /* Default advertising parameters. */
     advParams_.version = BLE_API_VERSION;
+    advParams_.size = sizeof(hal_ble_adv_params_t);
     advParams_.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams_.filter_policy = BLE_ADV_FP_ANY;
     advParams_.interval = BLE_DEFAULT_ADVERTISING_INTERVAL;
@@ -882,14 +883,14 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
         hal_ble_adv_params_t connectedAdvParams = *params;
         connectedAdvParams.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
         CHECK(configure(&connectedAdvParams));
+        memcpy(&advParams_, params, std::min(advParams_.size, params->size));
         advParams_.size = sizeof(hal_ble_adv_params_t);
-        memcpy(&advParams_, params, advParams_.size);
         advParams_.version = BLE_API_VERSION;
         connectedAdvParams_ = true; // Set the flag after the advParams_ being updated.
     } else {
         CHECK(configure(params));
+        memcpy(&advParams_, params, std::min(advParams_.size, params->size));
         advParams_.size = sizeof(hal_ble_adv_params_t);
-        memcpy(&advParams_, params, advParams_.size);
         advParams_.version = BLE_API_VERSION;
     }
     return resume();
@@ -899,7 +900,7 @@ int BleObject::Broadcaster::getAdvertisingParams(hal_ble_adv_params_t* params) c
     if (params == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    memcpy(params, &advParams_, params->size);
+    memcpy(params, &advParams_, std::min(advParams_.size, params->size));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1154,8 +1155,8 @@ int BleObject::Observer::setScanParams(const hal_ble_scan_params_t* params) {
             (params->window > params->interval) ) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    memcpy(&scanParams_, params, std::min(scanParams_.size, params->size));
     scanParams_.size = sizeof(hal_ble_scan_params_t);
-    memcpy(&scanParams_, params, scanParams_.size);
     scanParams_.version = BLE_API_VERSION;
     return SYSTEM_ERROR_NONE;
 }
@@ -1164,7 +1165,7 @@ int BleObject::Observer::getScanParams(hal_ble_scan_params_t* params) const {
     if (params == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    memcpy(params, &scanParams_, params->size);
+    memcpy(params, &scanParams_, std::min(scanParams_.size, params->size));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1638,7 +1639,7 @@ int BleObject::ConnectionsManager::getConnectionParams(hal_ble_conn_handle_t con
     if (connection == nullptr) {
         return SYSTEM_ERROR_NOT_FOUND;
     }
-    memcpy(params, &connection->effectiveConnParams, params->size);
+    memcpy(params, &connection->effectiveConnParams, std::min(params->size, connection->effectiveConnParams.size));
     return SYSTEM_ERROR_NONE;
 }
 
