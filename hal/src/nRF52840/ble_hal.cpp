@@ -185,16 +185,7 @@ public:
     GattClient* gattc() { return gattc_.get(); }
 
 private:
-    BleObject()
-            : dispatcher_(std::make_unique<BleEventDispatcher>()),
-              gap_(std::make_unique<BleGap>()),
-              broadcaster_(std::make_unique<Broadcaster>()),
-              observer_(std::make_unique<Observer>()),
-              connectionsMgr_(std::make_unique<ConnectionsManager>()),
-              gatts_(std::make_unique<GattServer>()),
-              gattc_(std::make_unique<GattClient>()) {
-        init();
-    }
+    BleObject() = default;
     ~BleObject() = default;
     static int toPlatformUUID(const hal_ble_uuid_t* halUuid, ble_uuid_t* uuid);
     static int toHalUUID(const ble_uuid_t* uuid, hal_ble_uuid_t* halUuid);
@@ -325,7 +316,8 @@ public:
               scanSemaphore_(nullptr),
               scanResultCallBack_(nullptr),
               context_(nullptr) {
-        scanParams_.version = 0x01;
+        scanParams_.version = BLE_API_VERSION;
+        scanParams_.size = sizeof(hal_ble_scan_params_t);
         scanParams_.active = true;
         scanParams_.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
         scanParams_.interval = BLE_DEFAULT_SCANNING_INTERVAL;
@@ -333,8 +325,6 @@ public:
         scanParams_.timeout = BLE_DEFAULT_SCANNING_TIMEOUT;
         bleScanData_.p_data = scanReportBuff_;
         bleScanData_.len = sizeof(scanReportBuff_);
-        scanCacheDevicesPool_.init(OBSERVER_CACHED_DEVICE_POOL_SIZE);
-        scanPendingResultsPool_.init(OBSERVER_PENDING_RESULTS_POOL_SIZE);
     }
     ~Observer() = default;
     int init();
@@ -343,16 +333,16 @@ public:
     int getScanParams(hal_ble_scan_params_t* params) const;
     int startScanning(on_ble_scan_result_cb_t callback, void* context);
     int stopScanning();
-    ble_gap_scan_params_t toPlatformScanParams(void) const;
+    ble_gap_scan_params_t toPlatformScanParams() const;
 
 private:
-    struct cachedDevice {
-        cachedDevice* next;
+    struct CachedDevice {
+        CachedDevice* next;
         hal_ble_addr_t addr;
     };
 
-    struct pendingResult {
-        pendingResult* next;
+    struct PendingResult {
+        PendingResult* next;
         hal_ble_gap_on_scan_result_evt_t resultEvt;
     };
 
@@ -375,8 +365,8 @@ private:
     AtomicAllocedPool observerScannedDataPool_;             /**< Pool to allocate memory for scanned data. */
     on_ble_scan_result_cb_t scanResultCallBack_;            /**< Callback function on scan result. */
     void* context_;                                         /**< Context of the scan result callback function. */
-    AtomicIntrusiveList<cachedDevice> cachedDevicesList_;   /**< Cached address of scanned devices to filter-out duplicated result. */
-    AtomicIntrusiveList<pendingResult> pendingResultsList_; /**< Caches the scanned advertising data until the scan response data is captured. */
+    AtomicIntrusiveList<CachedDevice> cachedDevicesList_;   /**< Cached address of scanned devices to filter-out duplicated result. */
+    AtomicIntrusiveList<PendingResult> pendingResultsList_; /**< Caches the scanned advertising data until the scan response data is captured. */
     AtomicAllocedPool scanCacheDevicesPool_;
     AtomicAllocedPool scanPendingResultsPool_;
 };
@@ -409,7 +399,6 @@ public:
               attMtuExchangeConnHandle_(BLE_INVALID_CONN_HANDLE),
               attMtuExchangeTimer_(nullptr) {
         connectingAddr_ = {};
-        connectionsPool_.init(CONNECTIONS_POOL_SIZE);
     }
     ~ConnectionsManager() = default;
     int init();
@@ -728,6 +717,7 @@ int BleObject::BleGap::addWhitelist(const hal_ble_addr_t* addrList, size_t len) 
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     ble_gap_addr_t* whitelist = (ble_gap_addr_t*)malloc(sizeof(ble_gap_addr_t) * len);
+    CHECK_TRUE(whitelist, SYSTEM_ERROR_NO_MEMORY);
     SCOPE_GUARD ({
         free(whitelist);
     });
@@ -1119,8 +1109,9 @@ struct ObserverImpl {
 static ObserverImpl observerImpl;
 
 int BleObject::Observer::init() {
-    scanParams_.size = sizeof(hal_ble_scan_params_t);
-    observerScannedDataPool_.init(OBSERVER_SCANNED_DATA_POOL_SIZE);
+    CHECK(observerScannedDataPool_.init(OBSERVER_SCANNED_DATA_POOL_SIZE));
+    CHECK(scanCacheDevicesPool_.init(OBSERVER_CACHED_DEVICE_POOL_SIZE));
+    CHECK(scanPendingResultsPool_.init(OBSERVER_PENDING_RESULTS_POOL_SIZE));
     observerImpl.instance = this;
     NRF_SDH_BLE_OBSERVER(bleObserver, 1, processObserverEvents, &observerImpl);
     return SYSTEM_ERROR_NONE;
@@ -1204,7 +1195,7 @@ int BleObject::Observer::stopScanning() {
     return SYSTEM_ERROR_NONE;
 }
 
-ble_gap_scan_params_t BleObject::Observer::toPlatformScanParams(void) const {
+ble_gap_scan_params_t BleObject::Observer::toPlatformScanParams() const {
     ble_gap_scan_params_t params = {};
     params.extended = 0;
     params.active = scanParams_.active;
@@ -1228,17 +1219,19 @@ bool BleObject::Observer::isCachedDevice(const hal_ble_addr_t& address) const {
 }
 
 int BleObject::Observer::addCachedDevice(const hal_ble_addr_t& address) {
-    cachedDevice* device = (cachedDevice*)scanCacheDevicesPool_.alloc(sizeof(cachedDevice));
+    CachedDevice* device = (CachedDevice*)scanCacheDevicesPool_.alloc(sizeof(CachedDevice));
     if (device) {
         device->addr = address;
         cachedDevicesList_.pushFront(device);
         return SYSTEM_ERROR_NONE;
+    } else {
+        LOG(ERROR, "Allocate memory for cached device failed.");
     }
     return SYSTEM_ERROR_NO_MEMORY;
 }
 
 void BleObject::Observer::clearCachedDevice() {
-    cachedDevice* device = nullptr;
+    CachedDevice* device = nullptr;
     do {
         device = cachedDevicesList_.popFront();
         if (device) {
@@ -1259,21 +1252,23 @@ hal_ble_gap_on_scan_result_evt_t* BleObject::Observer::getPendingResult(const ha
 }
 
 int BleObject::Observer::addPendingResult(const hal_ble_gap_on_scan_result_evt_t& resultEvt) {
-    pendingResult* result = (pendingResult*)scanPendingResultsPool_.alloc(sizeof(pendingResult));
+    PendingResult* result = (PendingResult*)scanPendingResultsPool_.alloc(sizeof(PendingResult));
     if (result) {
         memcpy(&result->resultEvt, &resultEvt, sizeof(hal_ble_gap_on_scan_result_evt_t));
         pendingResultsList_.pushFront(result);
         return SYSTEM_ERROR_NONE;
+    } else {
+        LOG(ERROR, "Allocate memory for pending result failed.");
     }
     return SYSTEM_ERROR_NO_MEMORY;
 }
 
 void BleObject::Observer::removePendingResult(const hal_ble_addr_t& address) {
     auto result = pendingResultsList_.front();
-    pendingResult* prev = nullptr;
+    PendingResult* prev = nullptr;
     while (result) {
         if (addressEqual(result->resultEvt.peer_addr, address)) {
-            pendingResult* curr = pendingResultsList_.pop(result, prev);
+            PendingResult* curr = pendingResultsList_.pop(result, prev);
             result = curr->next;
             scanPendingResultsPool_.free(curr);
             return;
@@ -1284,13 +1279,13 @@ void BleObject::Observer::removePendingResult(const hal_ble_addr_t& address) {
 }
 
 void BleObject::Observer::clearPendingResult() {
-    pendingResult* result = nullptr;
+    PendingResult* result = nullptr;
     do {
         result = pendingResultsList_.popFront();
         if (result) {
             if (result->resultEvt.adv_data != nullptr) {
                 observerScannedDataPool_.free(result->resultEvt.adv_data);
-                LOG_DEBUG(TRACE, "clearPendingResult: Free Scanned adv_data memory: %u", (unsigned)result->resultEvt.adv_data);
+                //LOG_DEBUG(TRACE, "clearPendingResult: Free Scanned adv_data memory: %u", (unsigned)result->resultEvt.adv_data);
             }
             scanPendingResultsPool_.free(result);
         }
@@ -1302,11 +1297,11 @@ void BleObject::Observer::observerEventProcessedHook(const hal_ble_evts_t *event
     if (observer && event && event->type == BLE_EVT_SCAN_RESULT) {
         if (event->params.scan_result.adv_data != nullptr) {
             observer->observerScannedDataPool_.free(event->params.scan_result.adv_data);
-            LOG_DEBUG(TRACE, "Hook: Free Scanned adv_data memory: %u", (unsigned)event->params.scan_result.adv_data);
+            //LOG_DEBUG(TRACE, "Hook: Free Scanned adv_data memory: %u", (unsigned)event->params.scan_result.adv_data);
         }
         if (event->params.scan_result.sr_data != nullptr) {
             observer->observerScannedDataPool_.free(event->params.scan_result.sr_data);
-            LOG_DEBUG(TRACE, "Hook: Free Scanned sr_data memory: %u", (unsigned)event->params.scan_result.sr_data);
+            //LOG_DEBUG(TRACE, "Hook: Free Scanned sr_data memory: %u", (unsigned)event->params.scan_result.sr_data);
         }
     }
 }
@@ -1322,11 +1317,11 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
             if (!observer->isCachedDevice(newAddr)) {
                 if (!observer->scanParams_.active || !advReport.type.scannable) {
                     if (observer->addCachedDevice(newAddr) != SYSTEM_ERROR_NONE) {
-                        LOG(ERROR, "There will have no memory to cache more devices.");
+                        return;
                     }
                     uint8_t* advData = (uint8_t*)observer->observerScannedDataPool_.alloc(advReport.data.len);
                     if (advData) {
-                        LOG_DEBUG(TRACE, "Scanned adv_data address: %u, len: %u", (unsigned)advData, advReport.data.len);
+                        //LOG_DEBUG(TRACE, "Scanned adv_data address: %u, len: %u", (unsigned)advData, advReport.data.len);
                         BleObject::BleEventDispatcher::EventMessage msg;
                         msg.evt.type = BLE_EVT_SCAN_RESULT;
                         msg.evt.version = BLE_API_VERSION;
@@ -1346,13 +1341,15 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
                         msg.hook = observer->observerEventProcessedHook;
                         msg.hookContext = observer;
                         BleObject::getInstance().dispatcher()->enqueue(msg);
+                    } else {
+                        LOG(ERROR, "Allocate memory for scanned advertising data failed.");
                     }
                 } else if (advReport.type.scannable) {
                     if (!advReport.type.scan_response) {
                         if (observer->getPendingResult(newAddr) == nullptr) {
                             uint8_t* advData = (uint8_t*)observer->observerScannedDataPool_.alloc(advReport.data.len);
                             if (advData) {
-                                LOG_DEBUG(TRACE, "Cached adv_data address: %u, len: %u", (unsigned)advData, advReport.data.len);
+                                //LOG_DEBUG(TRACE, "Cached adv_data address: %u, len: %u", (unsigned)advData, advReport.data.len);
                                 hal_ble_gap_on_scan_result_evt_t result = {};
                                 result.type.connectable = advReport.type.connectable;
                                 result.type.scannable = advReport.type.scannable;
@@ -1364,9 +1361,9 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
                                 result.adv_data_len = advReport.data.len;
                                 memcpy(advData, advReport.data.p_data, advReport.data.len);
                                 result.adv_data = advData;
-                                if (observer->addPendingResult(result) != SYSTEM_ERROR_NONE) {
-                                    LOG(ERROR, "There will have no memory to store pending results.");
-                                }
+                                observer->addPendingResult(result);
+                            } else {
+                                LOG(ERROR, "Allocate memory for scanned advertising data failed.");
                             }
                         }
                     } else {
@@ -1378,12 +1375,17 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
                             if (advReport.data.len > 0) {
                                 uint8_t* srData = (uint8_t*)observer->observerScannedDataPool_.alloc(advReport.data.len);
                                 if (srData) {
-                                    LOG_DEBUG(TRACE, "Scanned sr_data address: %u, len: %u", (unsigned)srData, advReport.data.len);
+                                    //LOG_DEBUG(TRACE, "Scanned sr_data address: %u, len: %u", (unsigned)srData, advReport.data.len);
                                     memcpy(srData, advReport.data.p_data, advReport.data.len);
                                     result->sr_data = srData;
                                 } else {
+                                    LOG(ERROR, "Allocate memory for scan response data failed.");
                                     result->sr_data_len = 0;
                                 }
+                            }
+                            observer->removePendingResult(newAddr);
+                            if (observer->addCachedDevice(newAddr) != SYSTEM_ERROR_NONE) {
+                                return;
                             }
                             BleObject::BleEventDispatcher::EventMessage msg;
                             msg.evt.type = BLE_EVT_SCAN_RESULT;
@@ -1393,10 +1395,6 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
                             msg.hook = observer->observerEventProcessedHook;
                             msg.hookContext = observer;
                             BleObject::getInstance().dispatcher()->enqueue(msg);
-                            observer->removePendingResult(newAddr);
-                            if (observer->addCachedDevice(newAddr) != SYSTEM_ERROR_NONE) {
-                                LOG(ERROR, "There will have no memory to cache more devices.");
-                            }
                         }
                     }
                 }
@@ -1438,6 +1436,7 @@ int BleObject::ConnectionsManager::init() {
     bleGapConnParams.conn_sup_timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT;
     int ret = sd_ble_gap_ppcp_set(&bleGapConnParams);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+    CHECK(connectionsPool_.init(CONNECTIONS_POOL_SIZE));
     if (os_timer_create(&connParamsUpdateTimer_, BLE_CONN_PARAMS_UPDATE_DELAY_MS, onConnParamsUpdateTimerExpired, this, true, nullptr)) {
         LOG(ERROR, "os_timer_create() failed.");
         connParamsUpdateTimer_ = nullptr;
@@ -1714,6 +1713,8 @@ int BleObject::ConnectionsManager::addConnection(const BleConnection& connection
         *conn = connection;
         connectionsList_.pushFront(conn);
         return SYSTEM_ERROR_NONE;
+    } else {
+        LOG(ERROR, "Allocate memory for new connection failed.");
     }
     return SYSTEM_ERROR_NO_MEMORY;
 }
@@ -2004,7 +2005,7 @@ struct GattServerImpl {
 static GattServerImpl gattsImpl;
 
 int BleObject::GattServer::init() {
-    gattsDataRecPool_.init(GATT_SERVER_DATA_REC_POOL_SIZE);
+    CHECK(gattsDataRecPool_.init(GATT_SERVER_DATA_REC_POOL_SIZE));
     gattsImpl.instance = this;
     NRF_SDH_BLE_OBSERVER(bleGattServer, 1, processGattServerEvents, &gattsImpl);
     return SYSTEM_ERROR_NONE;
@@ -2078,9 +2079,7 @@ int BleObject::GattServer::addCharacteristic(hal_ble_attr_handle_t svcHandle, ui
         valueAttrMd.vlen = 1;
         // Characteristic value attribute
         uint8_t* charValue = (uint8_t*)malloc(BLE_MAX_ATTR_VALUE_PACKET_SIZE);
-        if (charValue == nullptr) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
+        CHECK_TRUE(charValue, SYSTEM_ERROR_NO_MEMORY);
         charValueAttr.p_uuid = &charUuid;
         charValueAttr.p_attr_md = &valueAttrMd;
         charValueAttr.init_len = 0;
@@ -2272,7 +2271,7 @@ void BleObject::GattServer::gattsEventProcessedHook(const hal_ble_evts_t *event,
     if (gatts && event && event->type == BLE_EVT_DATA_WRITTEN) {
         if (event->params.data_rec.data != nullptr) {
             gatts->gattsDataRecPool_.free(event->params.data_rec.data);
-            LOG_DEBUG(TRACE, "Free received data memory: %u", (unsigned)event->params.data_rec.data);
+            //LOG_DEBUG(TRACE, "Free received data memory: %u", (unsigned)event->params.data_rec.data);
         }
     }
 }
@@ -2308,7 +2307,7 @@ void BleObject::GattServer::processGattServerEvents(const ble_evt_t* event, void
                 // TODO: deal with different write commands.
                 uint8_t* data = (uint8_t*)gatts->gattsDataRecPool_.alloc(write.len);
                 if (data) {
-                    LOG_DEBUG(TRACE, "Received data address: %u, len: %u", (unsigned)data, write.len);
+                    //LOG_DEBUG(TRACE, "Received data address: %u, len: %u", (unsigned)data, write.len);
                     BleObject::BleEventDispatcher::EventMessage msg;
                     msg.evt.type = BLE_EVT_DATA_WRITTEN;
                     msg.evt.version = BLE_API_VERSION;
@@ -2322,6 +2321,8 @@ void BleObject::GattServer::processGattServerEvents(const ble_evt_t* event, void
                     msg.hook = gatts->gattsEventProcessedHook;
                     msg.hookContext = gatts;
                     BleObject::getInstance().dispatcher()->enqueue(msg);
+                } else {
+                    LOG(ERROR, "Allocate memory for received data failed.");
                 }
             }
             break;
@@ -2361,8 +2362,8 @@ struct GattClientImpl {
 static GattClientImpl gattcImpl;
 
 int BleObject::GattClient::init() {
-    gattcDiscPool_.init(GATT_CLIENT_DISC_SVC_CHAR_POOL_SIZE);
-    gattcDataRecPool_.init(GATT_CLIENT_DATA_REC_POOL_SIZE);
+    CHECK(gattcDiscPool_.init(GATT_CLIENT_DISC_SVC_CHAR_POOL_SIZE));
+    CHECK(gattcDataRecPool_.init(GATT_CLIENT_DATA_REC_POOL_SIZE));
     gattcImpl.instance = this;
     NRF_SDH_BLE_OBSERVER(bleGattClient, 1, processGattClientEvents, &gattcImpl);
     return SYSTEM_ERROR_NONE;
@@ -2411,7 +2412,7 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
     }
     hal_ble_svc_t* services = (hal_ble_svc_t*)malloc(discServiceCount_ * sizeof(hal_ble_svc_t));
     if (services) {
-        LOG_DEBUG(TRACE, "Discovered services address: %u, len: %u", (unsigned)services, discServiceCount_ * sizeof(hal_ble_svc_t));
+        //LOG_DEBUG(TRACE, "Discovered services address: %u, len: %u", (unsigned)services, discServiceCount_ * sizeof(hal_ble_svc_t));
         BleObject::BleEventDispatcher::EventMessage msg;
         msg.evt.type = BLE_EVT_SVC_DISCOVERED;
         msg.evt.version = BLE_API_VERSION;
@@ -2435,6 +2436,8 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
         msg.hook = gattcEventProcessedHook;
         msg.hookContext = this;
         BleObject::getInstance().dispatcher()->enqueue(msg);
+    } else {
+        LOG(ERROR, "Allocate memory for discovered services failed.");
     }
     resetDiscoveryState();
     return ret;
@@ -2487,7 +2490,7 @@ int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHan
     }
     hal_ble_char_t* characteristics = (hal_ble_char_t*)malloc(discCharacteristicCount_ * sizeof(hal_ble_char_t));
     if (characteristics) {
-        LOG_DEBUG(TRACE, "Discovered characteristics address: %u, len: %u", (unsigned)characteristics, discCharacteristicCount_ * sizeof(hal_ble_char_t));
+        //LOG_DEBUG(TRACE, "Discovered characteristics address: %u, len: %u", (unsigned)characteristics, discCharacteristicCount_ * sizeof(hal_ble_char_t));
         BleObject::BleEventDispatcher::EventMessage msg;
         msg.evt.type = BLE_EVT_CHAR_DISCOVERED;
         msg.evt.version = BLE_API_VERSION;
@@ -2511,6 +2514,8 @@ int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHan
         msg.hook = gattcEventProcessedHook;
         msg.hookContext = this;
         BleObject::getInstance().dispatcher()->enqueue(msg);
+    } else {
+        LOG(ERROR, "Allocate memory for discovered characteristics failed.");
     }
     resetDiscoveryState();
     return ret;
@@ -2604,6 +2609,8 @@ int BleObject::GattClient::addDiscoveredService(const hal_ble_svc_t& service) {
         discServicesList_.pushFront(discService);
         discServiceCount_++;
         return SYSTEM_ERROR_NONE;
+    } else {
+        LOG(ERROR, "Allocate memory for discovered services failed.");
     }
     return SYSTEM_ERROR_NO_MEMORY;
 }
@@ -2615,6 +2622,8 @@ int BleObject::GattClient::addDiscoveredCharacteristic(const hal_ble_char_t& cha
         discCharacteristicsList_.pushFront(discChar);
         discCharacteristicCount_++;
         return SYSTEM_ERROR_NONE;
+    } else {
+        LOG(ERROR, "Allocate memory for discovered characteristics failed.");
     }
     return SYSTEM_ERROR_NO_MEMORY;
 }
@@ -2675,17 +2684,17 @@ void BleObject::GattClient::gattcEventProcessedHook(const hal_ble_evts_t *event,
         if (event->type == BLE_EVT_SVC_DISCOVERED) {
             if (event->params.svc_disc.services != nullptr) {
                 free(event->params.svc_disc.services);
-                LOG_DEBUG(TRACE, "Free discovered services memory: %u", (unsigned)event->params.svc_disc.services);
+                //LOG_DEBUG(TRACE, "Free discovered services memory: %u", (unsigned)event->params.svc_disc.services);
             }
         } else if (event->type == BLE_EVT_CHAR_DISCOVERED) {
             if (event->params.char_disc.characteristics != nullptr) {
                 free(event->params.char_disc.characteristics);
-                LOG_DEBUG(TRACE, "Free discovered characteristics memory: %u", (unsigned)event->params.char_disc.characteristics);
+                //LOG_DEBUG(TRACE, "Free discovered characteristics memory: %u", (unsigned)event->params.char_disc.characteristics);
             }
         } else if (event->type == BLE_EVT_DATA_NOTIFIED) {
             if (event->params.data_rec.data != nullptr) {
                 gattc->gattcDataRecPool_.free(event->params.data_rec.data);
-                LOG_DEBUG(TRACE, "Free received data memory: %u", (unsigned)event->params.data_rec.data);
+                //LOG_DEBUG(TRACE, "Free received data memory: %u", (unsigned)event->params.data_rec.data);
             }
         }
     }
@@ -2716,7 +2725,7 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                         service.end_handle = primSvcDiscRsp.services[i].handle_range.end_handle;
                         BleObject::toHalUUID(&primSvcDiscRsp.services[i].uuid, &service.uuid);
                         if (gattc->addDiscoveredService(service) != SYSTEM_ERROR_NONE) {
-                            LOG(ERROR, "There will have no memory to store new discovered services.");
+                            break;
                         }
                     }
                     hal_ble_attr_handle_t currEndHandle = primSvcDiscRsp.services[primSvcDiscRsp.count - 1].handle_range.end_handle;
@@ -2757,7 +2766,7 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                         characteristic.charHandles.value_handle = charDiscRsp.chars[i].handle_value;
                         BleObject::toHalUUID(&charDiscRsp.chars[i].uuid, &characteristic.uuid);
                         if (gattc->addDiscoveredCharacteristic(characteristic) != SYSTEM_ERROR_NONE) {
-                            LOG(ERROR, "There will have no memory to store discovered characteristics.");
+                            break;
                         }
                     }
                     hal_ble_attr_handle_t currEndHandle = charDiscRsp.chars[charDiscRsp.count - 1].handle_value;
@@ -2911,6 +2920,8 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                 msg.hook = gattc->gattcEventProcessedHook;
                 msg.hookContext = gattc;
                 BleObject::getInstance().dispatcher()->enqueue(msg);
+            } else {
+                LOG(ERROR, "Allocate memory for received data failed.");
             }
             break;
         }
@@ -2938,6 +2949,14 @@ BleObject& BleObject::getInstance() {
 }
 
 int BleObject::init() {
+//    : ),
+//      gap_(std::make_unique<BleGap>()),
+//      broadcaster_(std::make_unique<Broadcaster>()),
+//      observer_(std::make_unique<Observer>()),
+//      connectionsMgr_(std::make_unique<ConnectionsManager>()),
+//      gatts_(std::make_unique<GattServer>()),
+//      gattc_(std::make_unique<GattClient>()) {
+
     if (!initialized_) {
         // Configure the BLE stack using the default settings.
         // Fetch the start address of the application RAM.
@@ -2954,13 +2973,41 @@ int BleObject::init() {
         }
         SPARK_ASSERT(sdRamEnd < appRamStart);
         CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-        CHECK(dispatcher_->init());
-        CHECK(gap_->init());
-        CHECK(broadcaster_->init());
-        CHECK(observer_->init());
-        CHECK(connectionsMgr_->init());
-        CHECK(gatts_->init());
-        CHECK(gattc_->init());
+        if (!dispatcher_) {
+            dispatcher_.reset(new(std::nothrow) BleEventDispatcher());
+            CHECK_TRUE(dispatcher_, SYSTEM_ERROR_NO_MEMORY);
+            CHECK(dispatcher_->init());
+        }
+        if (!gap_) {
+            gap_.reset(new(std::nothrow) BleGap());
+            CHECK_TRUE(gap_, SYSTEM_ERROR_NO_MEMORY);
+            CHECK(gap_->init());
+        }
+        if (!broadcaster_) {
+            broadcaster_.reset(new(std::nothrow) Broadcaster());
+            CHECK_TRUE(broadcaster_, SYSTEM_ERROR_NO_MEMORY);
+            CHECK(broadcaster_->init());
+        }
+        if (!observer_) {
+            observer_.reset(new(std::nothrow) Observer());
+            CHECK_TRUE(observer_, SYSTEM_ERROR_NO_MEMORY);
+            CHECK(observer_->init());
+        }
+        if (!connectionsMgr_) {
+            connectionsMgr_.reset(new(std::nothrow) ConnectionsManager());
+            CHECK_TRUE(connectionsMgr_, SYSTEM_ERROR_NO_MEMORY);
+            CHECK(connectionsMgr_->init());
+        }
+        if (!gatts_) {
+            gatts_.reset(new(std::nothrow) GattServer());
+            CHECK_TRUE(gatts_, SYSTEM_ERROR_NO_MEMORY);
+            CHECK(gatts_->init());
+        }
+        if (!gattc_) {
+            gattc_.reset(new(std::nothrow) GattClient());
+            CHECK_TRUE(gattc_, SYSTEM_ERROR_NO_MEMORY);
+            CHECK(gattc_->init());
+        }
         initialized_ = true;
     }
     return SYSTEM_ERROR_NONE;
