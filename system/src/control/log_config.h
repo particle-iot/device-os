@@ -25,9 +25,9 @@ namespace control {
 
 namespace logging {
 
-int addLogHandler(ctrl_request* req);
-int removeLogHandler(ctrl_request* req);
-int getLogHandlers(ctrl_request* req);
+void addLogHandler(ctrl_request* req);
+void removeLogHandler(ctrl_request* req);
+void getLogHandlers(ctrl_request* req);
 
 } // particle::control::logging
 

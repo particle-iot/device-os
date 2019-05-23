@@ -346,15 +346,15 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
     case CTRL_REQUEST_ADD_LOG_HANDLER: {
-        setResult(req, control::logging::addLogHandler(req));
+        control::logging::addLogHandler(req);
         break;
     }
     case CTRL_REQUEST_REMOVE_LOG_HANDLER: {
-        setResult(req, control::logging::removeLogHandler(req));
+        control::logging::removeLogHandler(req);
         break;
     }
     case CTRL_REQUEST_GET_LOG_HANDLERS: {
-        setResult(req, control::logging::getLogHandlers(req));
+        control::logging::getLogHandlers(req);
         break;
     }
 #if HAL_USE_SOCKET_HAL_POSIX && HAL_PLATFORM_IFAPI

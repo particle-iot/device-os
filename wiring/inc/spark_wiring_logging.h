@@ -453,15 +453,13 @@ class LogHandlerFactory {
 public:
     virtual ~LogHandlerFactory() = default;
 
-    virtual LogHandler* createHandler(log_config_handler_type type, LogLevel level, LogCategoryFilters filters,
-            Print* stream, const void* params) = 0;
+    virtual LogHandler* createHandler(log_handler_type type, LogLevel level, LogCategoryFilters filters, Print* stream) = 0;
     virtual void destroyHandler(LogHandler* handler);
 };
 
 class DefaultLogHandlerFactory: public LogHandlerFactory {
 public:
-    LogHandler* createHandler(log_config_handler_type type, LogLevel level, LogCategoryFilters filters, Print* stream,
-            const void* params) override;
+    LogHandler* createHandler(log_handler_type type, LogLevel level, LogCategoryFilters filters, Print* stream) override;
 
     static DefaultLogHandlerFactory* instance();
 };
@@ -471,13 +469,13 @@ class OutputStreamFactory {
 public:
     virtual ~OutputStreamFactory() = default;
 
-    virtual Print* createStream(log_config_stream_type type, const void* params) = 0;
+    virtual Print* createStream(log_stream_type type, unsigned index = 0, unsigned baudRate = 0) = 0;
     virtual void destroyStream(Print* stream);
 };
 
 class DefaultOutputStreamFactory: public OutputStreamFactory {
 public:
-    Print* createStream(log_config_stream_type type, const void* params) override;
+    Print* createStream(log_stream_type type, unsigned index, unsigned baudRate) override;
     void destroyStream(Print* stream) override;
 
     static DefaultOutputStreamFactory* instance();
@@ -517,17 +515,20 @@ public:
 
     /*!
         \brief Creates and registers a factory log handler.
+
+        Note: This is an experimental API and is subject to change.
+
         \param id Handler ID.
         \param handlerType Handler type.
         \param level Default logging level.
         \param filters Category filters.
-        \param handlerParams Handler parameters.
         \param streamType Stream type.
-        \param streamParams Stream parameters.
+        \param streamIndex Stream index.
+        \param baudRate Baud rate.
         \return `false` in case of error.
     */
-    bool addFactoryHandler(const char *id, log_config_handler_type handlerType, LogLevel level, LogCategoryFilters filters,
-            const void* handlerParams, log_config_stream_type streamType, const void* streamParams);
+    bool addFactoryHandler(const char *id, log_handler_type handlerType, LogLevel level, LogCategoryFilters filters,
+            log_stream_type streamType = LOG_INVALID_STREAM, unsigned streamIndex = 0, unsigned baudRate = 0);
     /*!
         \brief Unregisters and destroys a factory log handler.
 
@@ -609,15 +610,14 @@ private:
 #if Wiring_LogConfig
 
 /*!
-    \brief Configuration callback.
+    \brief Command handler.
 
-    \param cmd Command type (one of the values defined by the `log_config_command` enum).
-    \param cmdData Command data.
-    \param result Command result.
+    \param cmd Command data.
+    \param result Result data.
     \param userData User data.
-    \return `0` on success, or a negative result code in case of an error.
+    \return 0 on success, or a negative result code in case of an error.
 */
-int logConfig(int cmd, const void* cmdData, void* result, void* userData);
+int logCommand(const log_command* cmd, log_command_result** result, void* userData);
 
 #endif // Wiring_LogConfig
 
