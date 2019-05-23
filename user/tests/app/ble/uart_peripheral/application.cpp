@@ -30,7 +30,7 @@ const char* rxUuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
 const char* txUuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E";
 
 BleCharacteristic txCharacteristic("tx", BleCharacteristicProperty::NOTIFY, txUuid, serviceUuid);
-BleCharacteristic rxCharacteristic("rx", BleCharacteristicProperty::WRITE_WO_RSP, rxUuid, serviceUuid, onDataReceived, nullptr);
+BleCharacteristic rxCharacteristic("rx", BleCharacteristicProperty::WRITE_WO_RSP, rxUuid, serviceUuid, onDataReceived, &rxCharacteristic);
 
 uint8_t txBuf[UART_TX_BUF_SIZE];
 size_t txLen = 0;
@@ -61,7 +61,9 @@ void setup() {
     BLE.addCharacteristic(txCharacteristic);
     BLE.addCharacteristic(rxCharacteristic);
 
-    BLE.advertise();
+    BleAdvertisingData data;
+    data.appendServiceUUID(serviceUuid);
+    BLE.advertise(&data);
 }
 
 void loop() {

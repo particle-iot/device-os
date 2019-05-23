@@ -1064,8 +1064,7 @@ int BleObject::Broadcaster::configure(const hal_ble_adv_params_t* params) {
                   bleGapAdvParams.interval*0.625, bleGapAdvParams.duration*10);
         ret = sd_ble_gap_adv_set_configure(&advHandle_, &bleGapAdvData, &bleGapAdvParams);
     }
-    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-    return SYSTEM_ERROR_NONE;
+    return nrf_system_error(ret);
 }
 
 int8_t BleObject::Broadcaster::roundTxPower(int8_t value) {
@@ -1191,8 +1190,9 @@ int BleObject::Observer::startScanning(on_ble_scan_result_cb_t callback, void* c
         isScanning_ = false;
         clearCachedDevice();
         clearPendingResult();
-        os_semaphore_destroy(scanSemaphore_);
+        auto sem = scanSemaphore_;
         scanSemaphore_ = nullptr;
+        os_semaphore_destroy(sem);
     });
     ble_gap_scan_params_t bleGapScanParams = toPlatformScanParams();
     LOG_DEBUG(TRACE, "| interval(ms)   window(ms)   timeout(ms) |");
@@ -1547,8 +1547,9 @@ int BleObject::ConnectionsManager::connect(const hal_ble_addr_t* address) {
         return SYSTEM_ERROR_INTERNAL;
     }
     SCOPE_GUARD ({
-        os_semaphore_destroy(connectSemaphore_);
+        auto sem = connectSemaphore_;
         connectSemaphore_ = nullptr;
+        os_semaphore_destroy(sem);
     });
     ble_gap_addr_t bleDevAddr = {};
     bleDevAddr.addr_type = address->addr_type;
@@ -1590,8 +1591,9 @@ int BleObject::ConnectionsManager::disconnect(hal_ble_conn_handle_t connHandle) 
         return SYSTEM_ERROR_INTERNAL;
     }
     SCOPE_GUARD ({
-        os_semaphore_destroy(disconnectSemaphore_);
+        auto sem = disconnectSemaphore_;
         disconnectSemaphore_ = nullptr;
+        os_semaphore_destroy(sem);
     });
     int ret = sd_ble_gap_disconnect(connHandle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
@@ -1614,8 +1616,9 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
         return SYSTEM_ERROR_INTERNAL;
     }
     SCOPE_GUARD ({
-        os_semaphore_destroy(connParamsUpdateSemaphore_);
+        auto sem = connParamsUpdateSemaphore_;
         connParamsUpdateSemaphore_ = nullptr;
+        os_semaphore_destroy(sem);
     });
     ble_gap_conn_params_t bleGapConnParams = {};
     if (params == nullptr) {
@@ -2186,8 +2189,9 @@ ssize_t BleObject::GattServer::setValue(hal_ble_attr_handle_t attrHandle, const 
                         break;
                     }
                     SCOPE_GUARD ({
-                        os_semaphore_destroy(hvxSemaphore_);
+                        auto sem = hvxSemaphore_;
                         hvxSemaphore_ = nullptr;
+                        os_semaphore_destroy(sem);
                     });
                     ble_gatts_hvx_params_t hvxParams = {};
                     uint16_t hvxLen = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(BleObject::getInstance().connMgr()->getAttMtu(cccdConnection)));
@@ -2406,8 +2410,9 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
     }
     SCOPE_GUARD ({
         resetDiscoveryState();
-        os_semaphore_destroy(discoverySemaphore_);
+        auto sem = discoverySemaphore_;
         discoverySemaphore_ = nullptr;
+        os_semaphore_destroy(sem);
     });
     currDiscConnHandle_ = connHandle;
     currDiscProcedure_ = DiscoveryProcedure::BLE_DISCOVERY_PROCEDURE_SERVICES;
@@ -2472,8 +2477,9 @@ int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHan
     }
     SCOPE_GUARD ({
         resetDiscoveryState();
-        os_semaphore_destroy(discoverySemaphore_);
+        auto sem = discoverySemaphore_;
         discoverySemaphore_ = nullptr;
+        os_semaphore_destroy(sem);
     });
     ble_gattc_handle_range_t handleRange = {};
     handleRange.start_handle = service->start_handle;
@@ -2542,8 +2548,9 @@ ssize_t BleObject::GattClient::writeAttribute(hal_ble_conn_handle_t connHandle, 
         return SYSTEM_ERROR_INTERNAL;
     }
     SCOPE_GUARD ({
-        os_semaphore_destroy(readWriteSemaphore_);
+        auto sem = readWriteSemaphore_;
         readWriteSemaphore_ = nullptr;
+        os_semaphore_destroy(sem);
     });
     if (response) {
         writeParams.write_op = BLE_GATT_OP_WRITE_REQ;
@@ -2580,8 +2587,9 @@ ssize_t BleObject::GattClient::readAttribute(hal_ble_conn_handle_t connHandle, h
     SCOPE_GUARD ({
         readBuf_ = nullptr;
         readAttrHandle_ = BLE_INVALID_ATTR_HANDLE;
-        os_semaphore_destroy(readWriteSemaphore_);
+        auto sem = readWriteSemaphore_;
         readWriteSemaphore_ = nullptr;
+        os_semaphore_destroy(sem);
     });
     readAttrHandle_ = attrHandle;
     readBuf_ = buf;
