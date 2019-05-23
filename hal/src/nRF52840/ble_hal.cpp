@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -43,7 +43,7 @@ LOG_SOURCE_CATEGORY("hal.ble")
 
 #include "gpio_hal.h"
 #include "device_code.h"
-#include "system_error.h"
+#include "nrf_system_error.h"
 #include "sdk_config_system.h"
 #include "spark_wiring_vector.h"
 #include "simple_pool_allocator.h"
@@ -110,45 +110,6 @@ static const uint8_t BleAdvEvtTypeMap[] = {
     BLE_GAP_ADV_TYPE_NONCONNECTABLE_SCANNABLE_UNDIRECTED,
     BLE_GAP_ADV_TYPE_EXTENDED_NONCONNECTABLE_SCANNABLE_DIRECTED
 };
-
-system_error_t sysError(uint32_t error) {
-    switch (error) {
-        case NRF_SUCCESS:
-            return SYSTEM_ERROR_NONE;
-        case NRF_ERROR_SVC_HANDLER_MISSING:
-        case NRF_ERROR_NOT_SUPPORTED:
-            return SYSTEM_ERROR_NOT_SUPPORTED;
-        case NRF_ERROR_SOFTDEVICE_NOT_ENABLED:
-        case NRF_ERROR_INVALID_STATE:
-            return SYSTEM_ERROR_INVALID_STATE;
-        case NRF_ERROR_INTERNAL:
-            return SYSTEM_ERROR_INTERNAL;
-        case NRF_ERROR_NO_MEM:
-            return SYSTEM_ERROR_NO_MEMORY;
-        case NRF_ERROR_NOT_FOUND:
-            return SYSTEM_ERROR_NOT_FOUND;
-        case NRF_ERROR_INVALID_PARAM:
-        case NRF_ERROR_INVALID_LENGTH:
-        case NRF_ERROR_INVALID_FLAGS:
-        case NRF_ERROR_INVALID_DATA:
-        case NRF_ERROR_DATA_SIZE:
-        case NRF_ERROR_NULL:
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
-        case NRF_ERROR_TIMEOUT:
-            return SYSTEM_ERROR_TIMEOUT;
-        case NRF_ERROR_FORBIDDEN:
-        case NRF_ERROR_INVALID_ADDR:
-            return SYSTEM_ERROR_NOT_ALLOWED;
-        case NRF_ERROR_BUSY:
-            return SYSTEM_ERROR_BUSY;
-        case NRF_ERROR_CONN_COUNT:
-            return SYSTEM_ERROR_LIMIT_EXCEEDED;
-        case NRF_ERROR_RESOURCES:
-            return SYSTEM_ERROR_ABORTED;
-        default:
-            return SYSTEM_ERROR_UNKNOWN;
-    }
-}
 
 bool addressEqual(const hal_ble_addr_t& srcAddr, const hal_ble_addr_t& destAddr) {
     return (srcAddr.addr_type == destAddr.addr_type && !memcmp(srcAddr.addr, destAddr.addr, BLE_SIG_ADDR_LEN));
@@ -696,7 +657,7 @@ int BleObject::BleGap::setDeviceName(const char* deviceName, size_t len) {
     ble_gap_conn_sec_mode_t secMode;
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&secMode);
     int ret = sd_ble_gap_device_name_set(&secMode, (const uint8_t*)deviceName, len);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -709,7 +670,7 @@ int BleObject::BleGap::getDeviceName(char* deviceName, size_t len) {
     int ret = sd_ble_gap_device_name_get((uint8_t*)deviceName, &nameLen);
     nameLen = std::min(len - 1, (size_t)nameLen);
     deviceName[nameLen] = '\0';
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -731,7 +692,7 @@ int BleObject::BleGap::setDeviceAddress(const hal_ble_addr_t* address) {
     localAddr.addr_type = address->addr_type;
     memcpy(localAddr.addr, address->addr, BLE_SIG_ADDR_LEN);
     int ret = sd_ble_gap_addr_set(&localAddr);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -741,7 +702,7 @@ int BleObject::BleGap::getDeviceAddress(hal_ble_addr_t* address) {
     }
     ble_gap_addr_t localAddr;
     int ret = sd_ble_gap_addr_get(&localAddr);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     address->addr_type = (ble_sig_addr_type_t)localAddr.addr_type;
     memcpy(address->addr, localAddr.addr, BLE_SIG_ADDR_LEN);
     return SYSTEM_ERROR_NONE;
@@ -749,7 +710,7 @@ int BleObject::BleGap::getDeviceAddress(hal_ble_addr_t* address) {
 
 int BleObject::BleGap::setAppearance(ble_sig_appearance_t appearance) {
     int ret = sd_ble_gap_appearance_set((uint16_t)appearance);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -758,7 +719,7 @@ int BleObject::BleGap::getAppearance(ble_sig_appearance_t* appearance) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     int ret = sd_ble_gap_appearance_get((uint16_t*)appearance);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -778,13 +739,13 @@ int BleObject::BleGap::addWhitelist(const hal_ble_addr_t* addrList, size_t len) 
         whitelistPointer[i] = &whitelist[i];
     }
     int ret = sd_ble_gap_whitelist_set(whitelistPointer, len);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     return SYSTEM_ERROR_NONE;
 }
 
 int BleObject::BleGap::deleteWhitelist() {
     int ret = sd_ble_gap_whitelist_set(nullptr, 0);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -979,7 +940,7 @@ ssize_t BleObject::Broadcaster::getScanResponseData(uint8_t* buf, size_t len) co
 int BleObject::Broadcaster::setTxPower(int8_t val) {
     val = roundTxPower(val);
     int ret = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, advHandle_, val);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     txPower_ = val;
     return SYSTEM_ERROR_NONE;
 }
@@ -1010,7 +971,7 @@ int BleObject::Broadcaster::startAdvertising() {
         }
     }
     int ret = sd_ble_gap_adv_start(advHandle_, BLE_CONN_CFG_TAG);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isAdvertising_ = true;
     return SYSTEM_ERROR_NONE;
 }
@@ -1018,7 +979,7 @@ int BleObject::Broadcaster::startAdvertising() {
 int BleObject::Broadcaster::stopAdvertising() {
     if (isAdvertising_) {
         int ret = sd_ble_gap_adv_stop(advHandle_);
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
         isAdvertising_ = false;
     }
     return SYSTEM_ERROR_NONE;
@@ -1086,7 +1047,7 @@ int BleObject::Broadcaster::configure(const hal_ble_adv_params_t* params) {
                   bleGapAdvParams.interval*0.625, bleGapAdvParams.duration*10);
         ret = sd_ble_gap_adv_set_configure(&advHandle_, &bleGapAdvData, &bleGapAdvParams);
     }
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1196,7 +1157,7 @@ int BleObject::Observer::getScanParams(hal_ble_scan_params_t* params) const {
 
 int BleObject::Observer::continueScanning() {
     int ret = sd_ble_gap_scan_start(nullptr, &bleScanData_);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1219,7 +1180,7 @@ int BleObject::Observer::startScanning(on_ble_scan_result_cb_t callback, void* c
     scanResultCallBack_ = callback;
     context_ = context;
     int ret = sd_ble_gap_scan_start(&bleGapScanParams, &bleScanData_);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isScanning_ = true;
     ret = SYSTEM_ERROR_NONE;
     if (os_semaphore_take(scanSemaphore_, CONCURRENT_WAIT_FOREVER, false)) {
@@ -1236,7 +1197,7 @@ int BleObject::Observer::stopScanning() {
         return SYSTEM_ERROR_NONE;
     }
     int ret = sd_ble_gap_scan_stop();
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     if (scanSemaphore_) {
         os_semaphore_give(scanSemaphore_, false);
     }
@@ -1476,7 +1437,7 @@ int BleObject::ConnectionsManager::init() {
     bleGapConnParams.slave_latency = BLE_DEFAULT_SLAVE_LATENCY;
     bleGapConnParams.conn_sup_timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT;
     int ret = sd_ble_gap_ppcp_set(&bleGapConnParams);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     if (os_timer_create(&connParamsUpdateTimer_, BLE_CONN_PARAMS_UPDATE_DELAY_MS, onConnParamsUpdateTimerExpired, this, true, nullptr)) {
         LOG(ERROR, "os_timer_create() failed.");
         connParamsUpdateTimer_ = nullptr;
@@ -1515,7 +1476,7 @@ int BleObject::ConnectionsManager::setPpcp(const hal_ble_conn_params_t* ppcp) {
     }
     ble_gap_conn_params_t bleGapConnParams = toPlatformConnParams(ppcp);
     int ret = sd_ble_gap_ppcp_set(&bleGapConnParams);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1525,7 +1486,7 @@ int BleObject::ConnectionsManager::getPpcp(hal_ble_conn_params_t* ppcp) const {
     }
     ble_gap_conn_params_t bleGapConnParams = {};
     int ret = sd_ble_gap_ppcp_get(&bleGapConnParams);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     *ppcp = toHalConnParams(&bleGapConnParams);
     return SYSTEM_ERROR_NONE;
 }
@@ -1570,10 +1531,10 @@ int BleObject::ConnectionsManager::connect(const hal_ble_addr_t* address) {
     ble_gap_scan_params_t bleGapScanParams = BleObject::getInstance().observer()->toPlatformScanParams();
     ble_gap_conn_params_t bleGapConnParams = {};
     ret = sd_ble_gap_ppcp_get(&bleGapConnParams);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     ret = sd_ble_gap_connect(&bleDevAddr, &bleGapScanParams, &bleGapConnParams, BLE_CONN_CFG_TAG);
     if (ret != NRF_SUCCESS) {
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     }
     isConnecting_ = true;
     memcpy(&connectingAddr_, address, sizeof(hal_ble_addr_t));
@@ -1589,7 +1550,7 @@ int BleObject::ConnectionsManager::connect(const hal_ble_addr_t* address) {
 int BleObject::ConnectionsManager::connectCancel(const hal_ble_addr_t* address) {
     if (isConnecting_) {
         int ret = sd_ble_gap_connect_cancel();
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
         if (connectSemaphore_) {
             os_semaphore_give(connectSemaphore_, false);
         }
@@ -1611,7 +1572,7 @@ int BleObject::ConnectionsManager::disconnect(hal_ble_conn_handle_t connHandle) 
     });
     int ret = sd_ble_gap_disconnect(connHandle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
     if (ret != NRF_SUCCESS) {
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     }
     disconnectingHandle_ = connHandle;
     ret = SYSTEM_ERROR_NONE;
@@ -1639,7 +1600,7 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
     if (params == nullptr) {
         // Use the PPCP characteristic value as the connection parameters.
         ret = sd_ble_gap_ppcp_get(&bleGapConnParams);
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     } else {
         bleGapConnParams = toPlatformConnParams(params);
     }
@@ -1647,7 +1608,7 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
     // For Peripheral role, this will use the passed in parameters and send the request to central.
     ret = sd_ble_gap_conn_param_update(connHandle, &bleGapConnParams);
     if (ret != NRF_SUCCESS) {
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     }
     connParamUpdateHandle_ = connHandle;
     ret = SYSTEM_ERROR_NONE;
@@ -2057,7 +2018,7 @@ int BleObject::GattServer::addService(uint8_t type, const hal_ble_uuid_t* uuid, 
     int ret;
     CHECK(BleObject::toPlatformUUID(uuid, &svcUuid));
     ret = sd_ble_gatts_service_add(type, &svcUuid, svcHandle);
-    CHECK_NRF_RETURN(ret, sysError(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     services_.append(*svcHandle);
     LOG_DEBUG(TRACE, "Service handle: %d.", *svcHandle);
     return SYSTEM_ERROR_NONE;
@@ -2129,7 +2090,7 @@ int BleObject::GattServer::addCharacteristic(hal_ble_attr_handle_t svcHandle, ui
         ret = sd_ble_gatts_characteristic_add(svcHandle, &charMd, &charValueAttr, &handles);
         if (ret != NRF_SUCCESS) {
             free(charValue);
-            CHECK_NRF_RETURN(ret, sysError(ret));
+            CHECK_NRF_RETURN(ret, nrf_system_error(ret));
         }
         BleCharacteristic characteristic;
         characteristic.properties = properties;
@@ -2176,7 +2137,7 @@ int BleObject::GattServer::addDescriptor(hal_ble_attr_handle_t charHandle, const
         // FIXME: validate the descriptor to be added
         ret = sd_ble_gatts_descriptor_add(charHandle, &descAttr, descHandle);
         // TODO: assigne the handle to corresponding characteristic.
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
         return SYSTEM_ERROR_NONE;
     }
     else {
@@ -2196,7 +2157,7 @@ ssize_t BleObject::GattServer::setValue(hal_ble_attr_handle_t attrHandle, const 
         gattValue.offset = 0;
         gattValue.p_value = (uint8_t*)buf;
         int ret = sd_ble_gatts_value_set(BLE_CONN_HANDLE_INVALID, attrHandle, &gattValue);
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
         // Notify or indicate the value if possible.
         if ((characteristic->properties & BLE_SIG_CHAR_PROP_NOTIFY) || (characteristic->properties & BLE_SIG_CHAR_PROP_INDICATE)) {
             for (const auto& cccdConnection : characteristic->cccdConnections) {
@@ -2441,7 +2402,7 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
     }
     if (ret != NRF_SUCCESS) {
         resetDiscoveryState();
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     }
     isDiscovering_ = true;
     ret = SYSTEM_ERROR_NONE;
@@ -2504,7 +2465,7 @@ int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHan
     int ret = sd_ble_gattc_characteristics_discover(connHandle, &handleRange);
     if (ret != NRF_SUCCESS) {
         resetDiscoveryState();
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     }
     isDiscovering_ = true;
     ret = SYSTEM_ERROR_NONE;
@@ -2586,7 +2547,7 @@ ssize_t BleObject::GattClient::writeAttribute(hal_ble_conn_handle_t connHandle, 
     int ret = sd_ble_gattc_write(connHandle, &writeParams);
     if (ret != NRF_SUCCESS) {
         LOG(ERROR, "sd_ble_gattc_write() failed: %u", (unsigned)ret);
-        return sysError(ret);
+        return nrf_system_error(ret);
     }
     if (os_semaphore_take(readWriteSemaphore_, BLE_READ_WRITE_PROCEDURE_TIMEOUT_MS, false)) {
         return SYSTEM_ERROR_TIMEOUT;
@@ -2619,7 +2580,7 @@ ssize_t BleObject::GattClient::readAttribute(hal_ble_conn_handle_t connHandle, h
         readBuf_ = nullptr;
         readAttrHandle_ = BLE_INVALID_ATTR_HANDLE;
         LOG(ERROR, "sd_ble_gattc_read() failed: %u", (unsigned)ret);
-        return sysError(ret);
+        return nrf_system_error(ret);
     }
     if (os_semaphore_take(readWriteSemaphore_, BLE_READ_WRITE_PROCEDURE_TIMEOUT_MS, false)) {
         return SYSTEM_ERROR_TIMEOUT;
@@ -2982,7 +2943,7 @@ int BleObject::init() {
         // Fetch the start address of the application RAM.
         uint32_t appRamStart = 0;
         int ret = nrf_sdh_ble_default_cfg_set(BLE_CONN_CFG_TAG, &appRamStart);
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
         LOG_DEBUG(TRACE, "APP RAM start: 0x%08x", (unsigned)appRamStart);
         // Enable the stack
         uint32_t sdRamEnd = appRamStart;
@@ -2992,7 +2953,7 @@ int BleObject::init() {
             LOG(ERROR, "Need to change APP_RAM_BASE in linker script to be large than: 0x%08x", (unsigned)sdRamEnd - 0x20000000);
         }
         SPARK_ASSERT(sdRamEnd < appRamStart);
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
         CHECK(dispatcher_->init());
         CHECK(gap_->init());
         CHECK(broadcaster_->init());
@@ -3047,9 +3008,9 @@ int BleObject::toPlatformUUID(const hal_ble_uuid_t* halUuid, ble_uuid_t* uuid) {
         ble_uuid128_t uuid128;
         memcpy(uuid128.uuid128, halUuid->uuid128, BLE_SIG_UUID_128BIT_LEN);
         ret_code_t ret = sd_ble_uuid_vs_add(&uuid128, &uuid->type);
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
         ret = sd_ble_uuid_decode(BLE_SIG_UUID_128BIT_LEN, halUuid->uuid128, uuid);
-        CHECK_NRF_RETURN(ret, sysError(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     } else if (halUuid->type == BLE_UUID_TYPE_16BIT) {
         uuid->type = BLE_UUID_TYPE_BLE;
         uuid->uuid = halUuid->uuid16;
@@ -3076,7 +3037,7 @@ int BleObject::toHalUUID(const ble_uuid_t* uuid, hal_ble_uuid_t* halUuid) {
             LOG(ERROR, "sd_ble_uuid_encode() failed: %u", (unsigned)ret);
             halUuid->type = BLE_UUID_TYPE_128BIT_SHORTED;
             halUuid->uuid16 = uuid->uuid;
-            return sysError(ret);
+            return nrf_system_error(ret);
         }
         return SYSTEM_ERROR_NONE;
     }
