@@ -882,13 +882,17 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
         hal_ble_adv_params_t connectedAdvParams = *params;
         connectedAdvParams.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
-        CHECK(configure(&connectedAdvParams));
+        if (configure(&connectedAdvParams) != SYSTEM_ERROR_NONE) {
+            return resume();
+        }
         memcpy(&advParams_, params, std::min(advParams_.size, params->size));
         advParams_.size = sizeof(hal_ble_adv_params_t);
         advParams_.version = BLE_API_VERSION;
         connectedAdvParams_ = true; // Set the flag after the advParams_ being updated.
     } else {
-        CHECK(configure(params));
+        if (configure(params) != SYSTEM_ERROR_NONE) {
+            return resume();
+        }
         memcpy(&advParams_, params, std::min(advParams_.size, params->size));
         advParams_.size = sizeof(hal_ble_adv_params_t);
         advParams_.version = BLE_API_VERSION;
@@ -914,7 +918,7 @@ int BleObject::Broadcaster::setAdvertisingData(const uint8_t* buf, size_t len) {
         len = 0;
     }
     advDataLen_ = len;
-    CHECK(configure(nullptr));
+    configure(nullptr);
     return resume();
 }
 
@@ -937,7 +941,7 @@ int BleObject::Broadcaster::setScanResponseData(const uint8_t* buf, size_t len) 
         len = 0;
     }
     scanRespDataLen_ = len;
-    CHECK(configure(nullptr));
+    configure(nullptr);
     return resume();
 }
 
