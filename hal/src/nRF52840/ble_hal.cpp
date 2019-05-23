@@ -3162,11 +3162,11 @@ int hal_ble_stack_init(void* reserved) {
     return BleObject::getInstance().init();
 }
 
-int hal_ble_select_antenna(hal_ble_ant_type_t antenna) {
+int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved) {
     return BleObject::getInstance().selectAntenna(antenna);
 }
 
-int hal_ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context) {
+int hal_ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     BleObject::getInstance().dispatcher()->onGenericEventCallback(callback, context);
     return SYSTEM_ERROR_NONE;
@@ -3175,37 +3175,37 @@ int hal_ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context) {
 /**********************************************
  * BLE GAP APIs
  */
-int hal_ble_gap_set_device_address(const hal_ble_addr_t* address) {
+int hal_ble_gap_set_device_address(const hal_ble_addr_t* address, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_device_address().");
     return BleObject::getInstance().gap()->setDeviceAddress(address);
 }
 
-int hal_ble_gap_get_device_address(hal_ble_addr_t* address) {
+int hal_ble_gap_get_device_address(hal_ble_addr_t* address, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_device_address().");
     return BleObject::getInstance().gap()->getDeviceAddress(address);
 }
 
-int hal_ble_gap_set_device_name(const char* device_name, size_t len) {
+int hal_ble_gap_set_device_name(const char* device_name, size_t len, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_device_name().");
     return BleObject::getInstance().gap()->setDeviceName(device_name, len);
 }
 
-int hal_ble_gap_get_device_name(char* device_name, size_t len) {
+int hal_ble_gap_get_device_name(char* device_name, size_t len, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_device_name().");
     return BleObject::getInstance().gap()->getDeviceName(device_name, len);
 }
 
-int hal_ble_gap_set_appearance(ble_sig_appearance_t appearance) {
+int hal_ble_gap_set_appearance(ble_sig_appearance_t appearance, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_appearance().");
     return BleObject::getInstance().gap()->setAppearance(appearance);
 }
 
-int hal_ble_gap_get_appearance(ble_sig_appearance_t* appearance) {
+int hal_ble_gap_get_appearance(ble_sig_appearance_t* appearance, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_appearance().");
     return BleObject::getInstance().gap()->getAppearance(appearance);
@@ -3235,7 +3235,7 @@ int hal_ble_gap_delete_whitelist(void* reserved) {
     return BleObject::getInstance().gap()->deleteWhitelist();
 }
 
-int hal_ble_gap_set_tx_power(int8_t tx_power) {
+int hal_ble_gap_set_tx_power(int8_t tx_power, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_tx_power().");
     return BleObject::getInstance().broadcaster()->setTxPower(tx_power);
@@ -3301,13 +3301,13 @@ hal_ble_auto_adv_cfg_t hal_ble_gap_get_auto_advertise(void* reserved) {
     return BleObject::getInstance().broadcaster()->getAutoAdvertiseScheme();
 }
 
-int hal_ble_gap_stop_advertising(void) {
+int hal_ble_gap_stop_advertising(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_stop_advertising().");
     return BleObject::getInstance().broadcaster()->stopAdvertising();
 }
 
-bool hal_ble_gap_is_advertising(void) {
+bool hal_ble_gap_is_advertising(void* reserved) {
     BleLock lk;
     return BleObject::getInstance().broadcaster()->advertising();
 }
@@ -3330,12 +3330,12 @@ int hal_ble_gap_start_scan(on_ble_scan_result_cb_t callback, void* context, void
     return BleObject::getInstance().observer()->startScanning(callback, context);
 }
 
-bool hal_ble_gap_is_scanning(void) {
+bool hal_ble_gap_is_scanning(void* reserved) {
     BleLock lk;
     return BleObject::getInstance().observer()->scanning();
 }
 
-int hal_ble_gap_stop_scan(void) {
+int hal_ble_gap_stop_scan(void* reserved) {
     // Do not acquire the lock here, otherwise another thread cannot cancel the scanning.
     LOG_DEBUG(TRACE, "hal_ble_gap_stop_scan().");
     return BleObject::getInstance().observer()->stopScanning();
@@ -3347,16 +3347,16 @@ int hal_ble_gap_connect(const hal_ble_addr_t* address, void* reserved) {
     return BleObject::getInstance().connMgr()->connect(address);
 }
 
-bool hal_ble_gap_is_connecting(const hal_ble_addr_t* address) {
+bool hal_ble_gap_is_connecting(const hal_ble_addr_t* address, void* reserved) {
     BleLock lk;
     return BleObject::getInstance().connMgr()->connecting(address);
 }
 
-bool hal_ble_gap_is_connected(const hal_ble_addr_t* address) {
+bool hal_ble_gap_is_connected(const hal_ble_addr_t* address, void* reserved) {
     return BleObject::getInstance().connMgr()->connected(address);
 }
 
-int hal_ble_gap_connect_cancel(const hal_ble_addr_t* address) {
+int hal_ble_gap_connect_cancel(const hal_ble_addr_t* address, void* reserved) {
     // Do not acquire the lock here, otherwise another thread cannot cancel the connection attempt.
     LOG_DEBUG(TRACE, "hal_ble_gap_connect_cancel().");
     return BleObject::getInstance().connMgr()->connectCancel(address);
@@ -3445,7 +3445,7 @@ int hal_ble_gatt_client_discover_characteristics_by_uuid(hal_ble_conn_handle_t c
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-bool hal_ble_gatt_client_is_discovering(hal_ble_conn_handle_t conn_handle) {
+bool hal_ble_gatt_client_is_discovering(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
     return BleObject::getInstance().gattc()->discovering(conn_handle);
 }

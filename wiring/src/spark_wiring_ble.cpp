@@ -227,8 +227,9 @@ size_t BleAdvertisingData::set(const iBeacon& beacon) {
     selfData_[selfLen_++] = BLE_SIG_AD_TYPE_FLAGS;
     selfData_[selfLen_++] = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
     // Company ID
-    memcpy(&selfData_[selfLen_], (uint8_t*)&iBeacon::APPLE_COMPANY_ID, sizeof(iBeacon::APPLE_COMPANY_ID));
-    selfLen_ += sizeof(iBeacon::APPLE_COMPANY_ID);
+    uint16_t companyId = iBeacon::APPLE_COMPANY_ID;
+    memcpy(&selfData_[selfLen_], (uint8_t*)&companyId, sizeof(uint16_t));
+    selfLen_ += sizeof(uint16_t);
     // Beacon type: iBeacon
     selfData_[selfLen_++] = iBeacon::BEACON_TYPE_IBEACON;
     // Length of the following payload
@@ -1163,7 +1164,7 @@ BleLocalDevice::BleLocalDevice()
     peripheralProxy_ = std::make_unique<BlePeripheralImpl>();
     centralProxy_ = std::make_unique<BleCentralImpl>();
 
-    hal_ble_set_callback_on_events(onBleEvents, this);
+    hal_ble_set_callback_on_events(onBleEvents, this, nullptr);
 }
 
 BleLocalDevice& BleLocalDevice::getInstance() {
@@ -1193,13 +1194,13 @@ int BleLocalDevice::off() {
 
 const BleAddress BleLocalDevice::address() const {
     BleAddress addr = {};
-    hal_ble_gap_get_device_address(&addr);
+    hal_ble_gap_get_device_address(&addr, nullptr);
     return addr;
 }
 
 int BleLocalDevice::setTxPower(int8_t txPower) const {
     WiringBleLock lk;
-    return hal_ble_gap_set_tx_power(txPower);
+    return hal_ble_gap_set_tx_power(txPower, nullptr);
 }
 
 int BleLocalDevice::txPower(int8_t* txPower) const {
@@ -1311,11 +1312,11 @@ int BleLocalDevice::advertise(const iBeacon& beacon) const {
 }
 
 int BleLocalDevice::stopAdvertising() const {
-    return hal_ble_gap_stop_advertising();
+    return hal_ble_gap_stop_advertising(nullptr);
 }
 
 bool BleLocalDevice::advertising() const {
-    return hal_ble_gap_is_advertising();
+    return hal_ble_gap_is_advertising(nullptr);
 }
 
 class BleScanDelegator {
@@ -1370,7 +1371,7 @@ private:
             if (delegator->foundCount_ < delegator->targetCount_) {
                 delegator->resultsPtr_[delegator->foundCount_++] = result;
                 if (delegator->foundCount_ >= delegator->targetCount_) {
-                    hal_ble_gap_stop_scan();
+                    hal_ble_gap_stop_scan(nullptr);
                 }
             }
         } else {
@@ -1428,7 +1429,7 @@ Vector<BleScanResult> BleLocalDevice::scan() const {
 }
 
 int BleLocalDevice::stopScanning() const {
-    return hal_ble_gap_stop_scan();
+    return hal_ble_gap_stop_scan(nullptr);
 }
 
 int BleLocalDevice::setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) const {

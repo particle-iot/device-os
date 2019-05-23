@@ -345,7 +345,7 @@ int hal_ble_stack_init(void* reserved);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_select_antenna(hal_ble_ant_type_t antenna);
+int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved);
 
 /**
  * Set the callback on BLE events.
@@ -354,7 +354,7 @@ int hal_ble_select_antenna(hal_ble_ant_type_t antenna);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context);
+int hal_ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context, void* reserved);
 
 /**
  * Set local BLE identity address, which type must be either public or random.
@@ -363,7 +363,7 @@ int hal_ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gap_set_device_address(const hal_ble_addr_t* address);
+int hal_ble_gap_set_device_address(const hal_ble_addr_t* address, void* reserved);
 
 /**
  * Get local BLE identity address, which type is either public or random static.
@@ -372,7 +372,7 @@ int hal_ble_gap_set_device_address(const hal_ble_addr_t* address);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gap_get_device_address(hal_ble_addr_t* address);
+int hal_ble_gap_get_device_address(hal_ble_addr_t* address, void* reserved);
 
 /**
  * Set the BLE device name.
@@ -383,7 +383,7 @@ int hal_ble_gap_get_device_address(hal_ble_addr_t* address);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gap_set_device_name(const char* device_name, size_t len);
+int hal_ble_gap_set_device_name(const char* device_name, size_t len, void* reserved);
 
 /**
  * Get the BLE device name.
@@ -394,7 +394,7 @@ int hal_ble_gap_set_device_name(const char* device_name, size_t len);
  *
  * @returns         0 on success, system_error_t on error.
  */
-int hal_ble_gap_get_device_name(char* device_name, size_t len);
+int hal_ble_gap_get_device_name(char* device_name, size_t len, void* reserved);
 
 /**
  * Set GAP Appearance value.
@@ -403,7 +403,7 @@ int hal_ble_gap_get_device_name(char* device_name, size_t len);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gap_set_appearance(ble_sig_appearance_t appearance);
+int hal_ble_gap_set_appearance(ble_sig_appearance_t appearance, void* reserved);
 
 /**
  * Get GAP Appearance value.
@@ -412,7 +412,7 @@ int hal_ble_gap_set_appearance(ble_sig_appearance_t appearance);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gap_get_appearance(ble_sig_appearance_t* appearance);
+int hal_ble_gap_get_appearance(ble_sig_appearance_t* appearance, void* reserved);
 
 /**
  * For Central, it set the connection parameters.
@@ -458,7 +458,7 @@ int hal_ble_gap_delete_whitelist(void* reserved);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gap_set_tx_power(int8_t tx_power);
+int hal_ble_gap_set_tx_power(int8_t tx_power, void* reserved);
 
 /**
  * Get the TX Power for advertisement.
@@ -559,14 +559,14 @@ hal_ble_auto_adv_cfg_t hal_ble_gap_get_auto_advertise(void* reserved);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gap_stop_advertising(void);
+int hal_ble_gap_stop_advertising(void* reserved);
 
 /**
  * Check if BLE is advertising.
  *
  * @returns     true if it is advertising, otherwise, false.
  */
-bool hal_ble_gap_is_advertising(void);
+bool hal_ble_gap_is_advertising(void* reserved);
 
 /**
  * Set the BLE scanning parameters.
@@ -601,14 +601,14 @@ int hal_ble_gap_start_scan(on_ble_scan_result_cb_t callback, void* context, void
  *
  * @returns     true if it is scanning, otherwise false.
  */
-bool hal_ble_gap_is_scanning(void);
+bool hal_ble_gap_is_scanning(void* reserved);
 
 /**
  * Stop scanning nearby BLE devices.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gap_stop_scan(void);
+int hal_ble_gap_stop_scan(void* reserved);
 
 /**
  * Connect to a peer BLE device.
@@ -624,7 +624,7 @@ int hal_ble_gap_connect(const hal_ble_addr_t* address, void* reserved);
  *
  * @returns true if connecting, otherwise false.
  */
-bool hal_ble_gap_is_connecting(const hal_ble_addr_t* address);
+bool hal_ble_gap_is_connecting(const hal_ble_addr_t* address, void* reserved);
 
 /**
  * Check if BLE is connected with peer device.
@@ -634,14 +634,14 @@ bool hal_ble_gap_is_connecting(const hal_ble_addr_t* address);
  *
  * @returns true if connected, otherwise false.
  */
-bool hal_ble_gap_is_connected(const hal_ble_addr_t* address);
+bool hal_ble_gap_is_connected(const hal_ble_addr_t* address, void* reserved);
 
 /**
  * Cancel the ongoing procedure that connecting to the peer BLE device.
  *
  * @returns true if success, otherwise false.
  */
-int hal_ble_gap_connect_cancel(const hal_ble_addr_t* address);
+int hal_ble_gap_connect_cancel(const hal_ble_addr_t* address, void* reserved);
 
 /**
  * Terminate BLE connection.
@@ -795,7 +795,7 @@ int hal_ble_gatt_client_discover_characteristics_by_uuid(hal_ble_conn_handle_t c
  *
  * @returns True if BLE is discovering services, characteristics or descriptors, otherwise false.
  */
-bool hal_ble_gatt_client_is_discovering(hal_ble_conn_handle_t conn_handle);
+bool hal_ble_gatt_client_is_discovering(hal_ble_conn_handle_t conn_handle, void* reserved);
 
 /**
  * Set the desired ATT_MTU size.
