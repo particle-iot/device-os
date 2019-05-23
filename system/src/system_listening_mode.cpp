@@ -122,8 +122,8 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     hal_ble_gap_get_advertising_parameters(&preAdvParams_, nullptr);
     hal_ble_gap_get_ppcp(&prePpcp_, nullptr);
 
-    preAdvertising_ = hal_ble_gap_is_advertising();
-    preConnected_ = hal_ble_gap_is_connected(nullptr);
+    preAdvertising_ = hal_ble_gap_is_advertising(nullptr);
+    preConnected_ = hal_ble_gap_is_connected(nullptr, nullptr);
     preAutoAdv_ = hal_ble_gap_get_auto_advertise(nullptr);
 
     // Set PPCP (Peripheral Preferred Connection Parameters)
@@ -136,7 +136,7 @@ int ListeningModeHandler::enter(unsigned int timeout) {
 
     // Complete local name
     char devName[32] = {};
-    hal_ble_gap_get_device_name(devName, sizeof(devName));
+    hal_ble_gap_get_device_name(devName, sizeof(devName), nullptr);
 
     // Particle specific Manufacture data
     uint8_t mfgData[BLE_MAX_ADV_DATA_LEN];
@@ -253,7 +253,7 @@ int ListeningModeHandler::exit() {
 
     if (preAdvertising_) {
         // It is advertising when entering listening mode.
-        if (!hal_ble_gap_is_connected(nullptr)) {
+        if (!hal_ble_gap_is_connected(nullptr, nullptr)) {
             // Currently it is disconnected. Start/restart advertising anyway.
             hal_ble_gap_start_advertising(nullptr);
         }
@@ -261,16 +261,16 @@ int ListeningModeHandler::exit() {
     } else {
         // It is NOT advertising when entering listening mode.
         if (preConnected_) {
-            if (!hal_ble_gap_is_connected(nullptr)) {
+            if (!hal_ble_gap_is_connected(nullptr, nullptr)) {
                 // Currently it is disconnected.
                 if (preAutoAdv_ == BLE_AUTO_ADV_ALWAYS) {
                     hal_ble_gap_start_advertising(nullptr);
                 } else {
-                    hal_ble_gap_stop_advertising();
+                    hal_ble_gap_stop_advertising(nullptr);
                 }
             }
         } else {
-            if (hal_ble_gap_is_connected(nullptr)) {
+            if (hal_ble_gap_is_connected(nullptr, nullptr)) {
                 // Currently it is connected.
                 if (preAutoAdv_ == BLE_AUTO_ADV_ALWAYS) {
                     // Do not automatically start advertising when disconnected.
@@ -278,7 +278,7 @@ int ListeningModeHandler::exit() {
                 }
             } else {
                 // Stop advertising anyway.
-                hal_ble_gap_stop_advertising();
+                hal_ble_gap_stop_advertising(nullptr);
             }
         }
     }
