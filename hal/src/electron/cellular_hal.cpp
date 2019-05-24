@@ -174,7 +174,9 @@ cellular_result_t cellular_device_info(CellularDevice* device, void* reserved)
     // this would benefit from an unsolicited event to call electronMDM.init() automatically on sim card insert)
     strncpy(device->imei, status->imei, sizeof(device->imei));
     strncpy(device->iccid, status->ccid, sizeof(device->iccid));
-    device->dev = status->dev;
+    if (device->size > offsetof(CellularDevice, dev)) {
+        device->dev = status->dev;
+    }
     return 0;
 }
 
