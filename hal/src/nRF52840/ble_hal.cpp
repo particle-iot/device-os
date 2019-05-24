@@ -926,25 +926,38 @@ bool BleObject::Broadcaster::advertising() const {
 }
 
 int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* params) {
+    hal_ble_adv_params_t tempParams = {};
     if (params == nullptr) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
+        tempParams.version = BLE_API_VERSION;
+        tempParams.size = sizeof(hal_ble_adv_params_t);
+        tempParams.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
+        tempParams.filter_policy = BLE_ADV_FP_ANY;
+        tempParams.interval = BLE_DEFAULT_ADVERTISING_INTERVAL;
+        tempParams.timeout = BLE_DEFAULT_ADVERTISING_TIMEOUT;
+        tempParams.inc_tx_power = false;
+    } else {
+        memcpy(&tempParams, params, std::min(tempParams.size, params->size));
     }
     CHECK(suspend());
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
-        hal_ble_adv_params_t connectedAdvParams = *params;
-        connectedAdvParams.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
-        if (configure(&connectedAdvParams) != SYSTEM_ERROR_NONE) {
+        tempParams.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
+        if (configure(&tempParams) != SYSTEM_ERROR_NONE) {
             return resume();
         }
-        memcpy(&advParams_, params, std::min(advParams_.size, params->size));
+        if (params == nullptr) {
+            tempParams.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
+        } else {
+            tempParams.type = params->type;
+        }
+        memcpy(&advParams_, &tempParams, std::min(advParams_.size, tempParams.size));
         advParams_.size = sizeof(hal_ble_adv_params_t);
         advParams_.version = BLE_API_VERSION;
         connectedAdvParams_ = true; // Set the flag after the advParams_ being updated.
     } else {
-        if (configure(params) != SYSTEM_ERROR_NONE) {
+        if (configure(&tempParams) != SYSTEM_ERROR_NONE) {
             return resume();
         }
-        memcpy(&advParams_, params, std::min(advParams_.size, params->size));
+        memcpy(&advParams_, &tempParams, std::min(advParams_.size, tempParams.size));
         advParams_.size = sizeof(hal_ble_adv_params_t);
         advParams_.version = BLE_API_VERSION;
     }
