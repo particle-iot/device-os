@@ -3162,7 +3162,7 @@ bool BleObject::initialized() const {
 }
 
 int BleObject::selectAntenna(hal_ble_ant_type_t antenna) const {
-#if (PLATFORM_ID == PLATFORM_XENON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_BORON_SOM)
+#if (PLATFORM_ID == PLATFORM_XSOM) || (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM)
     // Mesh SoM don't have on-board antenna switch.
     return SYSTEM_ERROR_NOT_SUPPORTED;
 #else
