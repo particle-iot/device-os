@@ -124,7 +124,7 @@ int ListeningModeHandler::enter(unsigned int timeout) {
 
     preAdvertising_ = hal_ble_gap_is_advertising(nullptr);
     preConnected_ = hal_ble_gap_is_connected(nullptr, nullptr);
-    preAutoAdv_ = hal_ble_gap_get_auto_advertise(nullptr);
+    hal_ble_gap_get_auto_advertise(&preAutoAdv_, nullptr);
 
     // Set PPCP (Peripheral Preferred Connection Parameters)
     hal_ble_conn_params_t ppcp = {};

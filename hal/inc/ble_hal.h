@@ -339,6 +339,15 @@ int hal_ble_unlock(void* reserved);
 int hal_ble_stack_init(void* reserved);
 
 /**
+ * Deinitialize the BLE stack.
+ *
+ * @param[in]   reserved    Reserved for future use.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_stack_deinit(void* reserved);
+
+/**
  * Select the antenna for BLE radio.
  *
  * @param[in]   antenna The antenna type, either be BLE_ANT_INTERNAL or BLE_ANT_EXTERNAL.
@@ -550,9 +559,11 @@ int hal_ble_gap_set_auto_advertise(hal_ble_auto_adv_cfg_t config, void* reserved
 /**
  * Get the current automatic advertising scheme.
  *
- * @returns     The current automatic advertising scheme.
+ * @param[in,out]   cfg     Pointer to where the current automatic advertising scheme being stored.
+ *
+ * @returns     0 on success, system_error_t on error.
  */
-hal_ble_auto_adv_cfg_t hal_ble_gap_get_auto_advertise(void* reserved);
+int hal_ble_gap_get_auto_advertise(hal_ble_auto_adv_cfg_t* cfg, void* reserved);
 
 /**
  * Stop BLE advertising.
