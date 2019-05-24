@@ -233,7 +233,7 @@ public:
         hal_ble_evts_t evt;                 /**< BLE event data. */
         BleSpecificEventHandler handler;    /**< BLE specific event handler. */
         void* context;                      /**< BLE specific event context. */
-        on_ble_evt_cb_t hook;               /**< Internal hook function after event being dispatched. */
+        hal_ble_on_generic_evt_cb_t hook;   /**< Internal hook function after event being dispatched. */
         void* hookContext;                  /**< Internal hook function context. */
     };
 
@@ -248,7 +248,7 @@ public:
         return evtDispatcherinitialized_;
     }
     int enqueue(EventMessage& msg);
-    void onGenericEventCallback(on_ble_evt_cb_t cb, void* context);
+    void onGenericEventCallback(hal_ble_on_generic_evt_cb_t cb, void* context);
 
 private:
     class BleGenericEventHandler {
@@ -256,7 +256,7 @@ private:
         BleGenericEventHandler() : handler(nullptr), context(nullptr) {}
         ~BleGenericEventHandler() = default;
 
-        on_ble_evt_cb_t handler;
+        hal_ble_on_generic_evt_cb_t handler;
         void* context;
     };
 
@@ -369,7 +369,7 @@ public:
     bool scanning();
     int setScanParams(const hal_ble_scan_params_t* params);
     int getScanParams(hal_ble_scan_params_t* params) const;
-    int startScanning(on_ble_scan_result_cb_t callback, void* context);
+    int startScanning(hal_ble_on_scan_result_cb_t callback, void* context);
     int stopScanning();
     ble_gap_scan_params_t toPlatformScanParams() const;
 
@@ -403,7 +403,7 @@ private:
     ble_data_t bleScanData_;                                /**< BLE scanned data. */
     AtomicAllocedPool observerScannedDataPool_;             /**< Pool to allocate memory for scanned data. */
     bool scannedDataPoolInit_;
-    on_ble_scan_result_cb_t scanResultCallBack_;            /**< Callback function on scan result. */
+    hal_ble_on_scan_result_cb_t scanResultCallBack_;        /**< Callback function on scan result. */
     void* context_;                                         /**< Context of the scan result callback function. */
     AtomicIntrusiveList<CachedDevice> cachedDevicesList_;   /**< Cached address of scanned devices to filter-out duplicated result. */
     AtomicIntrusiveList<PendingResult> pendingResultsList_; /**< Caches the scanned advertising data until the scan response data is captured. */
@@ -567,8 +567,8 @@ public:
         return gattcInitialized_;
     }
     bool discovering(hal_ble_conn_handle_t connHandle) const;
-    int discoverServices(hal_ble_conn_handle_t connHandle, const hal_ble_uuid_t* uuid, on_ble_disc_service_cb_t callback, void* context);
-    int discoverCharacteristics(hal_ble_conn_handle_t connHandle, const hal_ble_svc_t* service, on_ble_disc_char_cb_t callback, void* context);
+    int discoverServices(hal_ble_conn_handle_t connHandle, const hal_ble_uuid_t* uuid, hal_ble_on_disc_service_cb_t callback, void* context);
+    int discoverCharacteristics(hal_ble_conn_handle_t connHandle, const hal_ble_svc_t* service, hal_ble_on_disc_char_cb_t callback, void* context);
     ssize_t writeAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool response);
     ssize_t readAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len);
 
@@ -651,7 +651,7 @@ int BleObject::BleEventDispatcher::enqueue(EventMessage& msg) {
     return SYSTEM_ERROR_NONE;
 }
 
-void BleObject::BleEventDispatcher::onGenericEventCallback(on_ble_evt_cb_t cb, void* context) {
+void BleObject::BleEventDispatcher::onGenericEventCallback(hal_ble_on_generic_evt_cb_t cb, void* context) {
     BleGenericEventHandler evtHandler;
     evtHandler.handler = cb;
     evtHandler.context = context;
@@ -1239,7 +1239,7 @@ int BleObject::Observer::continueScanning() {
     return nrf_system_error(ret);
 }
 
-int BleObject::Observer::startScanning(on_ble_scan_result_cb_t callback, void* context) {
+int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     if (isScanning_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -1359,7 +1359,7 @@ void BleObject::Observer::removePendingResult(const hal_ble_addr_t& address) {
             PendingResult* curr = pendingResultsList_.pop(result, prev);
             result = curr->next;
             scanPendingResultsPool_.free(curr);
-            return;
+            continue;
         }
         prev = result;
         result = result->next;
@@ -1633,7 +1633,6 @@ int BleObject::ConnectionsManager::connect(const hal_ble_addr_t* address) {
     ble_gap_conn_params_t bleGapConnParams = {};
     ret = sd_ble_gap_ppcp_get(&bleGapConnParams);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-    LOG(TRACE, "sd_ble_gap_connect() failed");
     ret = sd_ble_gap_connect(&bleDevAddr, &bleGapScanParams, &bleGapConnParams, BLE_CONN_CFG_TAG);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isConnecting_ = true;
@@ -2486,7 +2485,7 @@ bool BleObject::GattClient::discovering(hal_ble_conn_handle_t connHandle) const 
     return isDiscovering_;
 }
 
-int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, const hal_ble_uuid_t* uuid, on_ble_disc_service_cb_t callback, void* context) {
+int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, const hal_ble_uuid_t* uuid, hal_ble_on_disc_service_cb_t callback, void* context) {
     int ret;
     if (!BleObject::getInstance().connMgr()->valid(connHandle)) {
         LOG(ERROR, "Connection invalid.");
@@ -2553,7 +2552,7 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
     return SYSTEM_ERROR_NONE;
 }
 
-int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHandle, const hal_ble_svc_t* service, on_ble_disc_char_cb_t callback, void* context) {
+int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHandle, const hal_ble_svc_t* service, hal_ble_on_disc_char_cb_t callback, void* context) {
     if (!BleObject::getInstance().connMgr()->valid(connHandle)) {
         LOG(ERROR, "Connection invalid.");
         return SYSTEM_ERROR_NOT_FOUND;
@@ -3262,7 +3261,7 @@ int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved) {
     return BleObject::getInstance().selectAntenna(antenna);
 }
 
-int hal_ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context, void* reserved) {
+int hal_ble_set_callback_on_events(hal_ble_on_generic_evt_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     BleObject::getInstance().dispatcher()->onGenericEventCallback(callback, context);
@@ -3446,7 +3445,7 @@ int hal_ble_gap_get_scan_parameters(hal_ble_scan_params_t* scan_params, void* re
     return BleObject::getInstance().observer()->getScanParams(scan_params);
 }
 
-int hal_ble_gap_start_scan(on_ble_scan_result_cb_t callback, void* context, void* reserved) {
+int hal_ble_gap_start_scan(hal_ble_on_scan_result_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_start_scan().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
@@ -3560,28 +3559,28 @@ ssize_t hal_ble_gatt_server_get_characteristic_value(hal_ble_attr_handle_t value
 /**********************************************
  * BLE GATT Client APIs
  */
-int hal_ble_gatt_client_discover_all_services(hal_ble_conn_handle_t conn_handle, on_ble_disc_service_cb_t callback, void* context, void* reserved) {
+int hal_ble_gatt_client_discover_all_services(hal_ble_conn_handle_t conn_handle, hal_ble_on_disc_service_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_discover_all_services().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().gattc()->discoverServices(conn_handle, nullptr, callback, context);
 }
 
-int hal_ble_gatt_client_discover_service_by_uuid(hal_ble_conn_handle_t conn_handle, const hal_ble_uuid_t* uuid, on_ble_disc_service_cb_t callback, void* context, void* reserved) {
+int hal_ble_gatt_client_discover_service_by_uuid(hal_ble_conn_handle_t conn_handle, const hal_ble_uuid_t* uuid, hal_ble_on_disc_service_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_discover_service_by_uuid().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().gattc()->discoverServices(conn_handle, uuid, callback, context);
 }
 
-int hal_ble_gatt_client_discover_characteristics(hal_ble_conn_handle_t conn_handle, const hal_ble_svc_t* service, on_ble_disc_char_cb_t callback, void* context, void* reserved) {
+int hal_ble_gatt_client_discover_characteristics(hal_ble_conn_handle_t conn_handle, const hal_ble_svc_t* service, hal_ble_on_disc_char_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_discover_characteristics().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().gattc()->discoverCharacteristics(conn_handle, service, callback, context);
 }
 
-int hal_ble_gatt_client_discover_characteristics_by_uuid(hal_ble_conn_handle_t conn_handle, const hal_ble_svc_t* service, const hal_ble_uuid_t* uuid, on_ble_disc_char_cb_t callback, void* context, void* reserved) {
+int hal_ble_gatt_client_discover_characteristics_by_uuid(hal_ble_conn_handle_t conn_handle, const hal_ble_svc_t* service, const hal_ble_uuid_t* uuid, hal_ble_on_disc_char_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }

@@ -302,10 +302,10 @@ typedef struct hal_ble_evts_t {
     } params;
 } hal_ble_evts_t;
 
-typedef void (*on_ble_evt_cb_t)(const hal_ble_evts_t* event, void* context);
-typedef void (*on_ble_scan_result_cb_t)(const hal_ble_gap_on_scan_result_evt_t* result, void* context);
-typedef void (*on_ble_disc_service_cb_t)(const hal_ble_gattc_on_svc_disc_evt_t* event, void* context);
-typedef void (*on_ble_disc_char_cb_t)(const hal_ble_gattc_on_char_disc_evt_t* event, void* context);
+typedef void (*hal_ble_on_generic_evt_cb_t)(const hal_ble_evts_t* event, void* context);
+typedef void (*hal_ble_on_scan_result_cb_t)(const hal_ble_gap_on_scan_result_evt_t* result, void* context);
+typedef void (*hal_ble_on_disc_service_cb_t)(const hal_ble_gattc_on_svc_disc_evt_t* event, void* context);
+typedef void (*hal_ble_on_disc_char_cb_t)(const hal_ble_gattc_on_char_disc_evt_t* event, void* context);
 
 #ifdef __cplusplus
 extern "C" {
@@ -363,7 +363,7 @@ int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved);
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_set_callback_on_events(on_ble_evt_cb_t callback, void* context, void* reserved);
+int hal_ble_set_callback_on_events(hal_ble_on_generic_evt_cb_t callback, void* context, void* reserved);
 
 /**
  * Set local BLE identity address, which type must be either public or random.
@@ -605,7 +605,7 @@ int hal_ble_gap_get_scan_parameters(hal_ble_scan_params_t* scan_params, void* re
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gap_start_scan(on_ble_scan_result_cb_t callback, void* context, void* reserved);
+int hal_ble_gap_start_scan(hal_ble_on_scan_result_cb_t callback, void* context, void* reserved);
 
 /**
  * Check if BLE is scanning nearby devices.
@@ -762,7 +762,7 @@ ssize_t hal_ble_gatt_server_get_characteristic_value(hal_ble_attr_handle_t value
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gatt_client_discover_all_services(hal_ble_conn_handle_t conn_handle, on_ble_disc_service_cb_t callback, void* context, void* reserved);
+int hal_ble_gatt_client_discover_all_services(hal_ble_conn_handle_t conn_handle, hal_ble_on_disc_service_cb_t callback, void* context, void* reserved);
 
 /**
  * Discover BLE service with specific 128-bits service UUID.
@@ -774,7 +774,7 @@ int hal_ble_gatt_client_discover_all_services(hal_ble_conn_handle_t conn_handle,
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gatt_client_discover_service_by_uuid(hal_ble_conn_handle_t conn_handle, const hal_ble_uuid_t* uuid, on_ble_disc_service_cb_t callback, void* context, void* reserved);
+int hal_ble_gatt_client_discover_service_by_uuid(hal_ble_conn_handle_t conn_handle, const hal_ble_uuid_t* uuid, hal_ble_on_disc_service_cb_t callback, void* context, void* reserved);
 
 /**
  * Discover all BLE characteristics within specific handle range.
@@ -786,7 +786,7 @@ int hal_ble_gatt_client_discover_service_by_uuid(hal_ble_conn_handle_t conn_hand
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gatt_client_discover_characteristics(hal_ble_conn_handle_t conn_handle, const hal_ble_svc_t* service, on_ble_disc_char_cb_t callback, void* context, void* reserved);
+int hal_ble_gatt_client_discover_characteristics(hal_ble_conn_handle_t conn_handle, const hal_ble_svc_t* service, hal_ble_on_disc_char_cb_t callback, void* context, void* reserved);
 
 /**
  * Discover all BLE characteristics within specific handle range.
@@ -799,7 +799,7 @@ int hal_ble_gatt_client_discover_characteristics(hal_ble_conn_handle_t conn_hand
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gatt_client_discover_characteristics_by_uuid(hal_ble_conn_handle_t conn_handle, const hal_ble_svc_t* service, const hal_ble_uuid_t* uuid, on_ble_disc_char_cb_t callback, void* context, void* reserved);
+int hal_ble_gatt_client_discover_characteristics_by_uuid(hal_ble_conn_handle_t conn_handle, const hal_ble_svc_t* service, const hal_ble_uuid_t* uuid, hal_ble_on_disc_char_cb_t callback, void* context, void* reserved);
 
 /**
  * Check if the BLE discovery procedure is ongoing or not.
