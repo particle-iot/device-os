@@ -1448,7 +1448,7 @@ bool BleLocalDevice::connected() const {
 }
 
 BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout) const {
-    WiringBleLock lk;
+    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     hal_ble_conn_params_t connParams;
     connParams.size = sizeof(hal_ble_conn_params_t);
     connParams.min_conn_interval = interval;
@@ -1460,7 +1460,7 @@ BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, uint16_t interval,
 }
 
 BlePeerDevice BleLocalDevice::connect(const BleAddress& addr) const {
-    WiringBleLock lk;
+    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     BlePeerDevice peer = centralProxy_->connect(addr);
     // Automatically discover services and characteristics.
     if (peer.connected()) {
@@ -1470,12 +1470,12 @@ BlePeerDevice BleLocalDevice::connect(const BleAddress& addr) const {
 }
 
 int BleLocalDevice::disconnect() const {
-    WiringBleLock lk;
+    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     return peripheralProxy_->disconnect();
 }
 
 int BleLocalDevice::disconnect(const BlePeerDevice& peripheral) const {
-    WiringBleLock lk;
+    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     return centralProxy_->disconnect(peripheral);
 }
 
@@ -1520,6 +1520,7 @@ void BleLocalDevice::onBleEvents(const hal_ble_evts_t *event, void* context) {
     }
 
     auto bleInstance = static_cast<BleLocalDevice*>(context);
+    WiringBleLock lk;
 
     switch (event->type) {
         case BLE_EVT_CONNECTED: {
