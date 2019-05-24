@@ -192,6 +192,22 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     CHECK(client->on());
     CHECK(client->getIccid(info->iccid, sizeof(info->iccid)));
     CHECK(client->getImei(info->imei, sizeof(info->imei)));
+    if (info->size > offsetof(CellularDevice, dev)) {
+        switch (client->ncpId()) {
+        case MESH_NCP_SARA_U201:
+            info->dev = DEV_SARA_U201;
+            break;
+        case MESH_NCP_SARA_G350:
+            info->dev = DEV_SARA_G350;
+            break;
+        case MESH_NCP_SARA_R410:
+            info->dev = DEV_SARA_R410;
+            break;
+        default:
+            info->dev = DEV_UNKNOWN;
+            break;
+        }
+    }
     return 0;
 }
 
