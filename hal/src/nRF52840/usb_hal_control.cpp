@@ -218,8 +218,8 @@ ret_code_t usbd_control_setup_handler(app_usbd_class_inst_t const* inst,
     auto req = &event->setup;
 
     // Handle Microsoft vendor requests
-    if ((req->bmRequest == 0xee && req->bmRequestType == 0xc1 && req->wIndex.w == 0x0005) ||
-            (req->bmRequest == 0xee && req->bmRequestType == 0xc0 && req->wIndex.w == 0x0004)) {
+    if ((req->bRequest == 0xee && req->bmRequestType == 0xc1 && req->wIndex.w == 0x0005) ||
+            (req->bRequest == 0xee && req->bmRequestType == 0xc0 && req->wIndex.w == 0x0004)) {
         return usbd_control_handle_msft_request(inst, event);
     }
 
@@ -228,7 +228,7 @@ ret_code_t usbd_control_setup_handler(app_usbd_class_inst_t const* inst,
     }
 
     s_usb_setup_request.bmRequestType = req->bmRequestType;
-    s_usb_setup_request.bRequest = req->bmRequest;
+    s_usb_setup_request.bRequest = req->bRequest;
     s_usb_setup_request.wValue = req->wValue.w;
     s_usb_setup_request.wIndex = req->wIndex.w;
     s_usb_setup_request.wLength = req->wLength.w;

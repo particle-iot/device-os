@@ -198,7 +198,7 @@ public:
         nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
 
         nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTARTED);
-        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDDY);
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDRDY);
         nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
         nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
 
@@ -385,7 +385,7 @@ private:
 #ifdef DEBUG_BUILD
             SPARK_ASSERT(ptr);
 #endif // DEBUG_BUILD
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDDY);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDRDY);
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
             nrf_uarte_tx_buffer_set(uarte_, ptr, consumable);
