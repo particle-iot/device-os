@@ -1953,8 +1953,8 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
             connMgr->addConnection(newConnection);
             LOG_DEBUG(TRACE, "BLE role: %d, connection handle: %d", newConnection.role, newConnection.connHandle);
             LOG_DEBUG(TRACE, "| interval(ms)  latency  timeout(ms) |");
-            LOG_DEBUG(TRACE, "  %.2f          %d       %d", newConnection.effectiveConnParams.max_conn_interval*1.25,
-                    newConnection.effectiveConnParams.slave_latency, newConnection.effectiveConnParams.conn_sup_timeout*10);
+            LOG_DEBUG(TRACE, "  %d*1.25          %d       %d*10", newConnection.effectiveConnParams.max_conn_interval,
+                    newConnection.effectiveConnParams.slave_latency, newConnection.effectiveConnParams.conn_sup_timeout);
             // If the connection is initiated by Central.
             if (connMgr->isConnecting_ && addressEqual(newConnection.peer, connMgr->connectingAddr_)) {
                 if (connMgr->connectSemaphore_) {
@@ -2054,8 +2054,8 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
                 return;
             }
             LOG_DEBUG(TRACE, "| interval(ms)  latency  timeout(ms) |");
-            LOG_DEBUG(TRACE, "  %.2f          %d       %d", connection->effectiveConnParams.max_conn_interval*1.25,
-                    connection->effectiveConnParams.slave_latency, connection->effectiveConnParams.conn_sup_timeout*10);
+            LOG_DEBUG(TRACE, "  %d*1.25          %d       %d*10", connection->effectiveConnParams.max_conn_interval,
+                    connection->effectiveConnParams.slave_latency, connection->effectiveConnParams.conn_sup_timeout);
             BleObject::BleEventDispatcher::EventMessage msg;
             msg.evt.type = BLE_EVT_CONN_PARAMS_UPDATED;
             msg.evt.version = BLE_API_VERSION;
