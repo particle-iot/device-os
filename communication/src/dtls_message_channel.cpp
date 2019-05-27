@@ -556,7 +556,8 @@ ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 
 }}
 
-#include "sys/time.h"
+#if defined(MODULE_HAS_SYSTEM_PART2) && MODULE_HAS_SYSTEM_PART2
+#include <sys/time.h>
 
 extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
 {
@@ -571,5 +572,6 @@ extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
     tv->tv_usec = ( t % 1000 )*1000;  // get remaining microseconds
     return 0;  // return non-zero for error
 } // end _gettimeofday()
+#endif // defined(MODULE_HAS_SYSTEM_PART2) && MODULE_HAS_SYSTEM_PART2
 
 #endif // HAL_PLATFORM_CLOUD_UDP
