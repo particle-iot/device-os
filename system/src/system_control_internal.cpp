@@ -210,7 +210,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         }
         break;
     }
-#if Wiring_WiFi == 1 && !HAL_PLATFORM_NCP
+#if 0 // Wiring_WiFi == 1 && !HAL_PLATFORM_NCP
     /* wifi requests */
     case CTRL_REQUEST_WIFI_GET_ANTENNA: {
         setResult(req, control::wifi::handleGetAntennaRequest(req));
@@ -237,7 +237,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
 #endif // Wiring_WiFi && !HAL_PLATFORM_NCP
-#if !HAL_PLATFORM_MESH
+#if 0 // !HAL_PLATFORM_MESH
     /* network requests */
     case CTRL_REQUEST_NETWORK_GET_CONFIGURATION: {
         setResult(req, control::network::handleGetConfigurationRequest(req));
@@ -313,6 +313,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::firmwareUpdateDataRequest(req));
         break;
     }
+#if 0
     case CTRL_REQUEST_DESCRIBE_STORAGE: {
         setResult(req, control::describeStorageRequest(req));
         break;
@@ -333,6 +334,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::getSectionDataSizeRequest(req));
         break;
     }
+#endif
     case CTRL_REQUEST_CLOUD_GET_CONNECTION_STATUS: {
         setResult(req, ctrl::cloud::getConnectionStatus(req));
         break;
