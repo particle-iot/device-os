@@ -127,7 +127,8 @@ typedef enum ctrl_request_type {
     // Device diagnostics
     CTRL_REQUEST_ADD_LOG_HANDLER = 1100,
     CTRL_REQUEST_REMOVE_LOG_HANDLER = 1101,
-    CTRL_REQUEST_GET_LOG_HANDLERS = 1102
+    CTRL_REQUEST_GET_LOG_HANDLERS = 1102,
+    CTRL_REQUEST_ECHO = 1111
 } ctrl_request_type;
 
 // Control request data
