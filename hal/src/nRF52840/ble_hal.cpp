@@ -91,13 +91,13 @@ const size_t GATT_CLIENT_DISC_SVC_CHAR_POOL_SIZE = 2048;
 const size_t GATT_CLIENT_DATA_REC_POOL_SIZE = 1024;
 
 // Timeout for GAP connection operation.
-const uint32_t CONNECTION_OPERATION_TIMEOUT_MS = 5000;
+const uint32_t CONNECTION_OPERATION_TIMEOUT_MS = 30000;
 // Timeout for sending notification/indication.
-const uint32_t BLE_HVX_PROCEDURE_TIMEOUT_MS = 5000;
+const uint32_t BLE_HVX_PROCEDURE_TIMEOUT_MS = 30000;
 // Timeout for BLE service discovery procedure.
-const uint32_t BLE_DICOVERY_PROCEDURE_TIMEOUT_MS = 10000;
+const uint32_t BLE_DICOVERY_PROCEDURE_TIMEOUT_MS = 30000;
 // Timeout for data read write procedure.
-const uint32_t BLE_READ_WRITE_PROCEDURE_TIMEOUT_MS = 5000;
+const uint32_t BLE_READ_WRITE_PROCEDURE_TIMEOUT_MS = 30000;
 // Delay for GATT Client to send the ATT MTU exchanging request.
 const uint32_t BLE_ATT_MTU_EXCHANGE_DELAY_MS = 800;
 
@@ -396,7 +396,7 @@ private:
     static void processObserverEvents(const ble_evt_t* event, void* context);
 
     bool observerInitialized_;
-    bool isScanning_;                                       /**< If it is scanning or not. */
+    volatile bool isScanning_;                              /**< If it is scanning or not. */
     hal_ble_scan_params_t scanParams_;                      /**< BLE scanning parameters. */
     os_semaphore_t scanSemaphore_;                          /**< Semaphore to wait until the scan procedure completed. */
     uint8_t scanReportBuff_[BLE_MAX_SCAN_REPORT_BUF_LEN];   /**< Buffer to hold the scanned report data. */
@@ -433,7 +433,8 @@ public:
             : connMgrInitialized_(false),
               isConnecting_(false),
               disconnectingHandle_(BLE_INVALID_CONN_HANDLE),
-              connParamUpdateHandle_(BLE_INVALID_CONN_HANDLE),
+              centralConnParamUpdateHandle_(BLE_INVALID_CONN_HANDLE),
+              periphConnParamUpdateHandle_(BLE_INVALID_CONN_HANDLE),
               connParamsUpdateAttempts_(0),
               connParamsUpdateTimer_(nullptr),
               connParamsUpdateSemaphore_(nullptr),
@@ -478,10 +479,11 @@ private:
     static void processConnectionEvents(const ble_evt_t* event, void* context);
 
     bool connMgrInitialized_;
-    bool isConnecting_;                                         /**< If it is connecting or not. */
+    volatile bool isConnecting_;                                /**< If it is connecting or not. */
     hal_ble_addr_t connectingAddr_;                             /**< Address of peer the Central is connecting to. */
     volatile hal_ble_conn_handle_t disconnectingHandle_;        /**< Handle of connection to be disconnected. */
-    volatile hal_ble_conn_handle_t connParamUpdateHandle_;      /**< Handle of the connection that is to send peripheral connection update request. */
+    volatile hal_ble_conn_handle_t centralConnParamUpdateHandle_;/**< Handle of the central connection to send peripheral connection update command. */
+    volatile hal_ble_conn_handle_t periphConnParamUpdateHandle_;/**< Handle of the peripheral connection to send peripheral connection update request. */
     uint8_t connParamsUpdateAttempts_;                          /**< Attempts for peripheral to update connection parameters. */
     os_timer_t connParamsUpdateTimer_;                          /**< Timer used for sending peripheral connection update request after connection established. */
     os_semaphore_t connParamsUpdateSemaphore_;                  /**< Semaphore to wait until connection parameters updated. */
@@ -501,6 +503,8 @@ class BleObject::GattServer : public GattBase {
 public:
     GattServer()
             : gattsInitialized_(false),
+              isHvxing_(false),
+              currHvxConnHandle_(BLE_INVALID_CONN_HANDLE),
               hvxSemaphore_(nullptr) {
     }
     ~GattServer() = default;
@@ -539,6 +543,8 @@ private:
     static void processGattServerEvents(const ble_evt_t* event, void* context);
 
     bool gattsInitialized_;
+    volatile bool isHvxing_;
+    hal_ble_conn_handle_t currHvxConnHandle_;
     os_semaphore_t hvxSemaphore_;                   /**< Semaphore to wait until the HVX operation completed. */
     Vector<hal_ble_attr_handle_t> services_;        /**< Added services. */
     Vector<BleCharacteristic> characteristics_;     /**< Added characteristic. */
@@ -553,7 +559,12 @@ public:
               currDiscConnHandle_(BLE_INVALID_CONN_HANDLE),
               currDiscProcedure_(DiscoveryProcedure::BLE_DISCOVERY_PROCEDURE_IDLE),
               discoverySemaphore_(nullptr),
-              readWriteSemaphore_(nullptr),
+              isReading_(false),
+              currReadConnHandle_(BLE_INVALID_CONN_HANDLE),
+              readSemaphore_(nullptr),
+              isWriting_(false),
+              currWriteConnHandle_(BLE_INVALID_CONN_HANDLE),
+              writeSemaphore_(nullptr),
               readAttrHandle_(BLE_INVALID_ATTR_HANDLE),
               readBuf_(nullptr),
               readLen_(0),
@@ -602,12 +613,17 @@ private:
 
     bool gattcInitialized_;
     bool discoverAll_;                                              /**< If it is going to discover all service during the service discovery procedure. */
-    bool isDiscovering_;                                            /**< If there is on-going discovery procedure. */
+    volatile bool isDiscovering_;                                   /**< If there is on-going discovery procedure. */
     hal_ble_conn_handle_t currDiscConnHandle_;                      /**< Current connection handle under which the service and characteristics to be discovered. */
     DiscoveryProcedure currDiscProcedure_;                          /**< Current discovery procedure. */
     hal_ble_svc_t currDiscSvc_;                                     /**< Current service to be discovered for the characteristics. */
     os_semaphore_t discoverySemaphore_;                             /**< Semaphore to wait until the discovery procedure completed. */
-    os_semaphore_t readWriteSemaphore_;                             /**< Semaphore to wait until the read or write operation completed. */
+    volatile bool isReading_;
+    hal_ble_conn_handle_t currReadConnHandle_;
+    os_semaphore_t readSemaphore_;                                  /**< Semaphore to wait until the read operation completed. */
+    volatile bool isWriting_;
+    hal_ble_conn_handle_t currWriteConnHandle_;
+    os_semaphore_t writeSemaphore_;                                 /**< Semaphore to wait until the write operation completed. */
     AtomicIntrusiveList<DiscoveredService> discServicesList_;       /**< Discover services. */
     AtomicIntrusiveList<DiscoveredCharacteristic> discCharacteristicsList_; /**< Discovered characteristics. */
     volatile size_t discServiceCount_;                              /**< Discovered service count. */
@@ -615,10 +631,11 @@ private:
     hal_ble_attr_handle_t readAttrHandle_;                          /**< Current handle of which attribute to be read. */
     uint8_t* readBuf_;                                              /**< Current buffer to be filled for the read data. */
     size_t readLen_;                                                /**< Length of read data. */
-    AtomicAllocedPool gattcDataRecPool_;                            /**< Pool to allocate memory for received data. */
     bool gattcDataRecPoolInit_;
-    AtomicAllocedPool gattcDiscPool_;                               /**< Pool to allocate memory for service/characteristic discovery. */
     bool gattcDiscPoolInit_;
+    AtomicAllocedPool gattcDataRecPool_;                            /**< Pool to allocate memory for received data. */
+    AtomicAllocedPool gattcDiscPool_;                               /**< Pool to allocate memory for service/characteristic discovery. */
+
 };
 
 int BleObject::BleEventDispatcher::init() {
@@ -1212,6 +1229,11 @@ int BleObject::Observer::init() {
         CHECK(scanPendingResultsPool_.init(OBSERVER_PENDING_RESULTS_POOL_SIZE));
         scanPendingResultsPoolInit_ = true;
     }
+    if (os_semaphore_create(&scanSemaphore_, 1, 0)) {
+        scanSemaphore_ = nullptr;
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
     observerImpl.instance = this;
     NRF_SDH_BLE_OBSERVER(bleObserver, 1, processObserverEvents, &observerImpl);
     observerInitialized_ = true;
@@ -1256,17 +1278,9 @@ int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, voi
     if (isScanning_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    if (os_semaphore_create(&scanSemaphore_, 1, 0)) {
-        LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
-    }
     SCOPE_GUARD ({
-        isScanning_ = false;
         clearCachedDevice();
         clearPendingResult();
-        auto sem = scanSemaphore_;
-        scanSemaphore_ = nullptr;
-        os_semaphore_destroy(sem);
     });
     ble_gap_scan_params_t bleGapScanParams = toPlatformScanParams();
     LOG_DEBUG(TRACE, "| interval(ms)   window(ms)   timeout(ms) |");
@@ -1289,8 +1303,11 @@ int BleObject::Observer::stopScanning() {
     }
     int ret = sd_ble_gap_scan_stop();
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-    if (scanSemaphore_) {
-        os_semaphore_give(scanSemaphore_, false);
+    ATOMIC_BLOCK() {
+        if (isScanning_) {
+            isScanning_ = false;
+            os_semaphore_give(scanSemaphore_, false);
+        }
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -1508,7 +1525,8 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
         case BLE_GAP_EVT_TIMEOUT: {
             if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_SCAN) {
                 LOG_DEBUG(TRACE, "BLE GAP event: Scanning timeout");
-                if (observer->scanSemaphore_) {
+                if (observer->isScanning_) {
+                    observer->isScanning_ = false;
                     os_semaphore_give(observer->scanSemaphore_, false);
                 }
             }
@@ -1538,30 +1556,61 @@ int BleObject::ConnectionsManager::init() {
     bleGapConnParams.conn_sup_timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT;
     int ret = sd_ble_gap_ppcp_set(&bleGapConnParams);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+    if (os_semaphore_create(&connectSemaphore_, 1, 0)) {
+        connectSemaphore_ = nullptr;
+        LOG(ERROR, "os_semaphore_create() failed");
+        goto error;
+    }
+    if (os_semaphore_create(&disconnectSemaphore_, 1, 0)) {
+        disconnectSemaphore_ = nullptr;
+        LOG(ERROR, "os_semaphore_create() failed");
+        goto error;
+    }
+    if (os_semaphore_create(&connParamsUpdateSemaphore_, 1, 0)) {
+        connParamsUpdateSemaphore_ = nullptr;
+        LOG(ERROR, "os_semaphore_create() failed");
+        goto error;
+    }
     if (os_timer_create(&connParamsUpdateTimer_, BLE_CONN_PARAMS_UPDATE_DELAY_MS, onConnParamsUpdateTimerExpired, this, true, nullptr)) {
         connParamsUpdateTimer_ = nullptr;
         LOG(ERROR, "os_timer_create() failed.");
-        return SYSTEM_ERROR_INTERNAL;
+        goto error;
     }
     if (os_timer_create(&attMtuExchangeTimer_, BLE_ATT_MTU_EXCHANGE_DELAY_MS, onAttMtuExchangeTimerExpired, this, true, nullptr)) {
         attMtuExchangeTimer_ = nullptr;
-        os_timer_destroy(connParamsUpdateTimer_, nullptr);
-        connParamsUpdateTimer_ = nullptr;
         LOG(ERROR, "os_timer_create() failed.");
-        return SYSTEM_ERROR_INTERNAL;
+        goto error;
     }
     ret = connectionsPool_.init(CONNECTIONS_POOL_SIZE);
     if (ret != SYSTEM_ERROR_NONE) {
-        os_timer_destroy(connParamsUpdateTimer_, nullptr);
-        connParamsUpdateTimer_ = nullptr;
-        os_timer_destroy(attMtuExchangeTimer_, nullptr);
-        attMtuExchangeTimer_ = nullptr;
-        return ret;
+        goto error;
     }
     connMgrImpl.instance = this;
     NRF_SDH_BLE_OBSERVER(bleConnectionManager, 1, processConnectionEvents, &connMgrImpl);
     connMgrInitialized_ = true;
     return SYSTEM_ERROR_NONE;
+error:
+    if (connectSemaphore_) {
+        os_semaphore_destroy(connectSemaphore_);
+        connectSemaphore_ = nullptr;
+    }
+    if (disconnectSemaphore_) {
+        os_semaphore_destroy(disconnectSemaphore_);
+        disconnectSemaphore_ = nullptr;
+    }
+    if (connParamsUpdateSemaphore_) {
+        os_semaphore_destroy(connParamsUpdateSemaphore_);
+        connParamsUpdateSemaphore_ = nullptr;
+    }
+    if (connParamsUpdateTimer_) {
+        os_timer_destroy(connParamsUpdateTimer_, nullptr);
+        connParamsUpdateTimer_ = nullptr;
+    }
+    if (attMtuExchangeTimer_) {
+        os_timer_destroy(attMtuExchangeTimer_, nullptr);
+        attMtuExchangeTimer_ = nullptr;
+    }
+    return SYSTEM_ERROR_INTERNAL;
 }
 
 int BleObject::ConnectionsManager::setPpcp(const hal_ble_conn_params_t* ppcp) {
@@ -1628,16 +1677,8 @@ int BleObject::ConnectionsManager::connect(const hal_ble_addr_t* address) {
     // Stop scanning first to give the scanning semaphore if possible.
     int ret;
     CHECK(BleObject::getInstance().observer()->stopScanning());
-    if (os_semaphore_create(&connectSemaphore_, 1, 0)) {
-        LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
-    }
     SCOPE_GUARD ({
-        isConnecting_ = false;
         connectingAddr_ = {};
-        auto sem = connectSemaphore_;
-        connectSemaphore_ = nullptr;
-        os_semaphore_destroy(sem);
     });
     ble_gap_addr_t bleDevAddr = {};
     bleDevAddr.addr_type = address->addr_type;
@@ -1651,17 +1692,23 @@ int BleObject::ConnectionsManager::connect(const hal_ble_addr_t* address) {
     isConnecting_ = true;
     memcpy(&connectingAddr_, address, sizeof(hal_ble_addr_t));
     if (os_semaphore_take(connectSemaphore_, CONNECTION_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
     }
     return SYSTEM_ERROR_NONE;
 }
 
 int BleObject::ConnectionsManager::connectCancel(const hal_ble_addr_t* address) {
-    if (isConnecting_) {
+    CHECK_TRUE(isConnecting_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(address == nullptr, SYSTEM_ERROR_INVALID_ARGUMENT);
+    if (addressEqual(connectingAddr_, *address)) {
         int ret = sd_ble_gap_connect_cancel();
         CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-        if (connectSemaphore_) {
-            os_semaphore_give(connectSemaphore_, false);
+        ATOMIC_BLOCK() {
+            if (isConnecting_) {
+                isConnecting_ = false;
+                os_semaphore_give(connectSemaphore_, false);
+            }
         }
     }
     return SYSTEM_ERROR_NONE;
@@ -1671,20 +1718,14 @@ int BleObject::ConnectionsManager::disconnect(hal_ble_conn_handle_t connHandle) 
     if (fetchConnection(connHandle) == nullptr) {
         return SYSTEM_ERROR_NOT_FOUND;
     }
-    if (os_semaphore_create(&disconnectSemaphore_, 1, 0)) {
-        LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
-    }
     SCOPE_GUARD ({
         disconnectingHandle_ = BLE_INVALID_CONN_HANDLE;
-        auto sem = disconnectSemaphore_;
-        disconnectSemaphore_ = nullptr;
-        os_semaphore_destroy(sem);
     });
     int ret = sd_ble_gap_disconnect(connHandle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     disconnectingHandle_ = connHandle;
     if (os_semaphore_take(disconnectSemaphore_, CONNECTION_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
     }
     return SYSTEM_ERROR_NONE;
@@ -1704,34 +1745,39 @@ int BleObject::ConnectionsManager::disconnectAll() {
 }
 
 int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t connHandle, const hal_ble_conn_params_t* params) {
-    int ret;
-    if (fetchConnection(connHandle) == nullptr) {
-        return SYSTEM_ERROR_NOT_FOUND;
-    }
-    if (os_semaphore_create(&connParamsUpdateSemaphore_, 1, 0)) {
-        LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
-    }
+    BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
     SCOPE_GUARD ({
-        connParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
-        auto sem = connParamsUpdateSemaphore_;
-        connParamsUpdateSemaphore_ = nullptr;
-        os_semaphore_destroy(sem);
+        periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
+        centralConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
     });
+    if (connection->role == BLE_ROLE_PERIPHERAL) {
+        // If the automatic peripheral connection parameters update procedure is started.
+        if (!os_timer_is_active(connParamsUpdateTimer_, nullptr)) {
+            periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
+            connParamsUpdateAttempts_ = 0;
+            os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
+        }
+    }
     ble_gap_conn_params_t bleGapConnParams = {};
     if (params == nullptr) {
         // Use the PPCP characteristic value as the connection parameters.
-        ret = sd_ble_gap_ppcp_get(&bleGapConnParams);
+        int ret = sd_ble_gap_ppcp_get(&bleGapConnParams);
         CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     } else {
         bleGapConnParams = toPlatformConnParams(params);
     }
     // For Central role, this will initiate the connection parameter update procedure.
     // For Peripheral role, this will use the passed in parameters and send the request to central.
-    ret = sd_ble_gap_conn_param_update(connHandle, &bleGapConnParams);
+    int ret = sd_ble_gap_conn_param_update(connHandle, &bleGapConnParams);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-    connParamUpdateHandle_ = connHandle;
+    if (connection->role == BLE_ROLE_PERIPHERAL) {
+        periphConnParamUpdateHandle_ = connHandle;
+    } else {
+        centralConnParamUpdateHandle_ = connHandle;
+    }
     if (os_semaphore_take(connParamsUpdateSemaphore_, CONNECTION_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
     }
     return SYSTEM_ERROR_NONE;
@@ -1857,15 +1903,20 @@ void BleObject::ConnectionsManager::initiateConnParamsUpdateIfNeeded(const BleCo
     if (connParamsUpdateTimer_ == nullptr) {
         return;
     }
+    if (connParamsUpdateAttempts_ == 0 && periphConnParamUpdateHandle_ != BLE_INVALID_CONN_HANDLE) {
+        // If the peripheral connection parameters update procedure has been initiated by application.
+        return;
+    }
     if (!isConnParamsFeeded(&connection->effectiveConnParams)) {
         if (connParamsUpdateAttempts_ < BLE_CONN_PARAMS_UPDATE_ATTEMPS) {
             if (!os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_START, true, 0, 0, nullptr)) {
-                LOG_DEBUG(TRACE, "Attempts to update BLE connection parameters, try: %d after %d ms",
-                        connParamsUpdateAttempts_, BLE_CONN_PARAMS_UPDATE_DELAY_MS);
-                connParamUpdateHandle_ = connection->connHandle;
+                periphConnParamUpdateHandle_ = connection->connHandle;
+                LOG_DEBUG(TRACE, "Attempts to update BLE connection parameters, try: %d after %d ms", connParamsUpdateAttempts_, BLE_CONN_PARAMS_UPDATE_DELAY_MS);
                 return;
             }
         } else {
+            periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
+            connParamsUpdateAttempts_ = 0;
             int ret = sd_ble_gap_disconnect(connection->connHandle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
             if (ret != NRF_SUCCESS) {
                 LOG_DEBUG(TRACE, "sd_ble_gap_disconnect() failed: %d", ret);
@@ -1922,13 +1973,13 @@ void BleObject::ConnectionsManager::onAttMtuExchangeTimerExpired(os_timer_t time
 void BleObject::ConnectionsManager::onConnParamsUpdateTimerExpired(os_timer_t timer) {
     ConnectionsManager* connMgr;
     os_timer_get_id(timer, (void**)&connMgr);
-    if (connMgr->connParamUpdateHandle_ == BLE_INVALID_CONN_HANDLE) {
+    if (connMgr->periphConnParamUpdateHandle_ == BLE_INVALID_CONN_HANDLE) {
         return;
     }
     // For Peripheral, it will use the PPCP characteristic value.
-    int ret = sd_ble_gap_conn_param_update(connMgr->connParamUpdateHandle_, nullptr);
+    int ret = sd_ble_gap_conn_param_update(connMgr->periphConnParamUpdateHandle_, nullptr);
     if (ret != NRF_SUCCESS) {
-        sd_ble_gap_disconnect(connMgr->connParamUpdateHandle_, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
+        sd_ble_gap_disconnect(connMgr->periphConnParamUpdateHandle_, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
         LOG_DEBUG(TRACE, "Disconnecting. Update BLE connection parameters failed.");
         return;
     }
@@ -1956,10 +2007,9 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
             LOG_DEBUG(TRACE, "  %d*1.25          %d       %d*10", newConnection.effectiveConnParams.max_conn_interval,
                     newConnection.effectiveConnParams.slave_latency, newConnection.effectiveConnParams.conn_sup_timeout);
             // If the connection is initiated by Central.
-            if (connMgr->isConnecting_ && addressEqual(newConnection.peer, connMgr->connectingAddr_)) {
-                if (connMgr->connectSemaphore_) {
-                    os_semaphore_give(connMgr->connectSemaphore_, false);
-                }
+            if (connMgr->isConnecting_ && newConnection.role == BLE_ROLE_CENTRAL && addressEqual(newConnection.peer, connMgr->connectingAddr_)) {
+                connMgr->isConnecting_ = false;
+                os_semaphore_give(connMgr->connectSemaphore_, false);
             }
             // Update connection parameters if needed.
             if (newConnection.role == BLE_ROLE_PERIPHERAL) {
@@ -1991,33 +2041,34 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
             const ble_gap_evt_disconnected_t& disconnected = event->evt.gap_evt.params.disconnected;
             LOG_DEBUG(TRACE, "BLE GAP event: disconnected, handle: 0x%04X, reason: %d", event->evt.gap_evt.conn_handle, disconnected.reason);
             BleConnection* connection = connMgr->fetchConnection(event->evt.gap_evt.conn_handle);
-            if (connection != nullptr) {
-                // Cancel the on-going connection parameters update procedure.
-                if (connMgr->connParamUpdateHandle_ == event->evt.gap_evt.conn_handle) {
-                    if (connection->role == BLE_ROLE_PERIPHERAL) {
-                        connMgr->connParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
-                        if (!os_timer_is_active(connMgr->connParamsUpdateTimer_, nullptr)) {
-                            os_timer_change(connMgr->connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
-                        }
-                    } else {
-                        if (connMgr->connParamsUpdateSemaphore_) {
-                            os_semaphore_give(connMgr->connParamsUpdateSemaphore_, false);
-                        }
-                    }
-                }
-                if (connMgr->disconnectingHandle_ == event->evt.gap_evt.conn_handle) {
-                    if (connMgr->disconnectSemaphore_) {
-                        os_semaphore_give(connMgr->disconnectSemaphore_, false);
-                    }
-                }
-                if (!os_timer_is_active(connMgr->attMtuExchangeTimer_, nullptr)) {
-                    os_timer_change(connMgr->attMtuExchangeTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
-                }
-                connMgr->removeConnection(event->evt.gap_evt.conn_handle);
-            } else {
+            if (!connection) {
                 LOG(ERROR, "Connection not found.");
                 return;
             }
+            // Cancel the on-going connection parameters update procedure.
+            if (connMgr->periphConnParamUpdateHandle_ == event->evt.gap_evt.conn_handle) {
+                if (!os_timer_is_active(connMgr->connParamsUpdateTimer_, nullptr)) {
+                    connMgr->connParamsUpdateAttempts_ = 0;
+                    connMgr->periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
+                    os_timer_change(connMgr->connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
+                } else {
+                    connMgr->periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
+                    os_semaphore_give(connMgr->connParamsUpdateSemaphore_, false);
+                }
+            }
+            if (connMgr->centralConnParamUpdateHandle_ == event->evt.gap_evt.conn_handle) {
+                connMgr->centralConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
+                os_semaphore_give(connMgr->connParamsUpdateSemaphore_, false);
+            }
+            // If the disconnection is initiated by application.
+            if (connMgr->disconnectingHandle_ == event->evt.gap_evt.conn_handle) {
+                os_semaphore_give(connMgr->disconnectSemaphore_, false);
+            }
+            // If the ATT MTU exchanging procedure is on-going.
+            if (!os_timer_is_active(connMgr->attMtuExchangeTimer_, nullptr)) {
+                os_timer_change(connMgr->attMtuExchangeTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
+            }
+            connMgr->removeConnection(event->evt.gap_evt.conn_handle);
             BleObject::BleEventDispatcher::EventMessage msg;
             msg.evt.type = BLE_EVT_DISCONNECTED;
             msg.evt.version = BLE_API_VERSION;
@@ -2040,19 +2091,11 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
             const ble_gap_evt_conn_param_update_t& connParaUpdate = event->evt.gap_evt.params.conn_param_update;
             LOG_DEBUG(TRACE, "BLE GAP event: connection parameter updated.");
             BleConnection* connection = connMgr->fetchConnection(event->evt.gap_evt.conn_handle);
-            if (connection != nullptr) {
-                connection->effectiveConnParams = connMgr->toHalConnParams(&connParaUpdate.conn_params);
-                if (connection->role == BLE_ROLE_PERIPHERAL) {
-                    connMgr->initiateConnParamsUpdateIfNeeded(connection);
-                } else {
-                    if (connMgr->connParamsUpdateSemaphore_) {
-                        os_semaphore_give(connMgr->connParamsUpdateSemaphore_, false);
-                    }
-                }
-            } else {
+            if (!connection) {
                 LOG(ERROR, "Connection not found.");
                 return;
             }
+            connection->effectiveConnParams = connMgr->toHalConnParams(&connParaUpdate.conn_params);
             LOG_DEBUG(TRACE, "| interval(ms)  latency  timeout(ms) |");
             LOG_DEBUG(TRACE, "  %d*1.25          %d       %d*10", connection->effectiveConnParams.max_conn_interval,
                     connection->effectiveConnParams.slave_latency, connection->effectiveConnParams.conn_sup_timeout);
@@ -2065,12 +2108,27 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
             msg.evt.params.conn_params_updated.slave_latency = connParaUpdate.conn_params.slave_latency;
             msg.evt.params.conn_params_updated.conn_sup_timeout = connParaUpdate.conn_params.conn_sup_timeout;
             BleObject::getInstance().dispatcher()->enqueue(msg);
+            if (connMgr->periphConnParamUpdateHandle_ == event->evt.gap_evt.conn_handle) {
+                if (!os_timer_is_active(connMgr->connParamsUpdateTimer_, nullptr)) {
+                    connMgr->initiateConnParamsUpdateIfNeeded(connection);
+                } else {
+                    connMgr->periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
+                    os_semaphore_give(connMgr->connParamsUpdateSemaphore_, false);
+                }
+            } else if (connMgr->centralConnParamUpdateHandle_ == event->evt.gap_evt.conn_handle) {
+                connMgr->centralConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
+                os_semaphore_give(connMgr->connParamsUpdateSemaphore_, false);
+            } else {
+                LOG(ERROR, "No on-going connection parameters update procedure.");
+                return;
+            }
             break;
         }
         case BLE_GAP_EVT_TIMEOUT: {
             if (event->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
                 LOG_DEBUG(ERROR, "BLE GAP event: Connection timeout");
                 if (connMgr->isConnecting_) {
+                    connMgr->isConnecting_ = false;
                     os_semaphore_give(connMgr->connectSemaphore_, false);
                 }
             }
@@ -2124,7 +2182,15 @@ struct GattServerImpl {
 static GattServerImpl gattsImpl;
 
 int BleObject::GattServer::init() {
-    CHECK(gattsDataRecPool_.init(GATT_SERVER_DATA_REC_POOL_SIZE));
+    if (os_semaphore_create(&hvxSemaphore_, 1, 0)) {
+        hvxSemaphore_ = nullptr;
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    if (gattsDataRecPool_.init(GATT_SERVER_DATA_REC_POOL_SIZE) != SYSTEM_ERROR_NONE) {
+        os_semaphore_destroy(hvxSemaphore_);
+        hvxSemaphore_ = nullptr;
+    }
     gattsImpl.instance = this;
     NRF_SDH_BLE_OBSERVER(bleGattServer, 1, processGattServerEvents, &gattsImpl);
     gattsInitialized_ = true;
@@ -2280,15 +2346,6 @@ ssize_t BleObject::GattServer::setValue(hal_ble_attr_handle_t attrHandle, const 
         if ((characteristic->properties & BLE_SIG_CHAR_PROP_NOTIFY) || (characteristic->properties & BLE_SIG_CHAR_PROP_INDICATE)) {
             for (const auto& cccdConnection : characteristic->cccdConnections) {
                 if (cccdConnection != BLE_INVALID_CONN_HANDLE) {
-                    if (os_semaphore_create(&hvxSemaphore_, 1, 0)) {
-                        LOG(ERROR, "os_semaphore_create() failed");
-                        break;
-                    }
-                    SCOPE_GUARD ({
-                        auto sem = hvxSemaphore_;
-                        hvxSemaphore_ = nullptr;
-                        os_semaphore_destroy(sem);
-                    });
                     ble_gatts_hvx_params_t hvxParams = {};
                     uint16_t hvxLen = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(BleObject::getInstance().connMgr()->getAttMtu(cccdConnection)));
                     LOG_DEBUG(TRACE, "Notify data len: %d", hvxLen);
@@ -2304,11 +2361,16 @@ ssize_t BleObject::GattServer::setValue(hal_ble_attr_handle_t attrHandle, const 
                     ret_code_t ret = sd_ble_gatts_hvx(cccdConnection, &hvxParams);
                     if (ret != NRF_SUCCESS) {
                         LOG(ERROR, "sd_ble_gatts_hvx() failed: %u", (unsigned)ret);
-                        break;
+                        continue;
                     }
+                    isHvxing_ = true;
+                    currHvxConnHandle_ = cccdConnection;
                     if (os_semaphore_take(hvxSemaphore_, BLE_HVX_PROCEDURE_TIMEOUT_MS, false)) {
+                        SPARK_ASSERT(false);
                         break;
                     }
+                    isHvxing_ = false;
+                    currHvxConnHandle_ = BLE_INVALID_CONN_HANDLE;
                 }
             }
         }
@@ -2446,14 +2508,16 @@ void BleObject::GattServer::processGattServerEvents(const ble_evt_t* event, void
         }
         case BLE_GATTS_EVT_HVN_TX_COMPLETE: {
             LOG_DEBUG(TRACE, "BLE GATT Server event: notification sent.");
-            if (gatts->hvxSemaphore_) {
+            if (gatts->isHvxing_ && gatts->currHvxConnHandle_ == event->evt.gatts_evt.conn_handle) {
+                gatts->isHvxing_ = false;
                 os_semaphore_give(gatts->hvxSemaphore_, false);
             }
             break;
         }
         case BLE_GATTS_EVT_HVC: {
             LOG_DEBUG(TRACE, "BLE GATT Server event: indication confirmed.");
-            if (gatts->hvxSemaphore_) {
+            if (gatts->isHvxing_ && gatts->currHvxConnHandle_ == event->evt.gatts_evt.conn_handle) {
+                gatts->isHvxing_ = false;
                 os_semaphore_give(gatts->hvxSemaphore_, false);
             }
             break;
@@ -2464,6 +2528,10 @@ void BleObject::GattServer::processGattServerEvents(const ble_evt_t* event, void
             int ret = sd_ble_gap_disconnect(event->evt.gatts_evt.conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
             if (ret != NRF_SUCCESS) {
                 LOG(ERROR, "sd_ble_gap_disconnect() failed: %u", (unsigned)ret);
+            }
+            if (gatts->isHvxing_ && gatts->currHvxConnHandle_ == event->evt.gatts_evt.conn_handle) {
+                gatts->isHvxing_ = false;
+                os_semaphore_give(gatts->hvxSemaphore_, false);
             }
             break;
         }
@@ -2487,6 +2555,27 @@ int BleObject::GattClient::init() {
         CHECK(gattcDiscPool_.init(GATT_CLIENT_DISC_SVC_CHAR_POOL_SIZE));
         gattcDiscPoolInit_ = true;
     }
+    if (os_semaphore_create(&discoverySemaphore_, 1, 0)) {
+        discoverySemaphore_ = nullptr;
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    if (os_semaphore_create(&readSemaphore_, 1, 0)) {
+        readSemaphore_ = nullptr;
+        os_semaphore_destroy(discoverySemaphore_);
+        discoverySemaphore_ = nullptr;
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    if (os_semaphore_create(&writeSemaphore_, 1, 0)) {
+        writeSemaphore_ = nullptr;
+        os_semaphore_destroy(discoverySemaphore_);
+        discoverySemaphore_ = nullptr;
+        os_semaphore_destroy(readSemaphore_);
+        readSemaphore_ = nullptr;
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
     gattcImpl.instance = this;
     NRF_SDH_BLE_OBSERVER(bleGattClient, 1, processGattClientEvents, &gattcImpl);
     gattcInitialized_ = true;
@@ -2499,26 +2588,14 @@ bool BleObject::GattClient::discovering(hal_ble_conn_handle_t connHandle) const 
 }
 
 int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, const hal_ble_uuid_t* uuid, hal_ble_on_disc_service_cb_t callback, void* context) {
-    int ret;
-    if (!BleObject::getInstance().connMgr()->valid(connHandle)) {
-        LOG(ERROR, "Connection invalid.");
-        return SYSTEM_ERROR_NOT_FOUND;
-    }
-    if (isDiscovering_) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    if (os_semaphore_create(&discoverySemaphore_, 1, 0)) {
-        LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
-    }
+    CHECK_TRUE(BleObject::getInstance().connMgr()->valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(!isDiscovering_, SYSTEM_ERROR_INVALID_STATE);
     SCOPE_GUARD ({
         resetDiscoveryState();
-        auto sem = discoverySemaphore_;
-        discoverySemaphore_ = nullptr;
-        os_semaphore_destroy(sem);
     });
     currDiscConnHandle_ = connHandle;
     currDiscProcedure_ = DiscoveryProcedure::BLE_DISCOVERY_PROCEDURE_SERVICES;
+    int ret;
     if (uuid == nullptr) {
         discoverAll_ = true;
         ret = sd_ble_gattc_primary_services_discover(connHandle, SERVICES_BASE_START_HANDLE, nullptr);
@@ -2530,69 +2607,54 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isDiscovering_ = true;
     if (os_semaphore_take(discoverySemaphore_, BLE_DICOVERY_PROCEDURE_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
     }
     hal_ble_svc_t* services = (hal_ble_svc_t*)malloc(discServiceCount_ * sizeof(hal_ble_svc_t));
-    if (services) {
-        //LOG_DEBUG(TRACE, "Discovered services address: %u, len: %u", (unsigned)services, discServiceCount_ * sizeof(hal_ble_svc_t));
-        BleObject::BleEventDispatcher::EventMessage msg;
-        msg.evt.type = BLE_EVT_SVC_DISCOVERED;
-        msg.evt.version = BLE_API_VERSION;
-        msg.evt.size = sizeof(hal_ble_evts_t);
-        msg.evt.params.svc_disc.conn_handle = currDiscConnHandle_;
-        msg.evt.params.svc_disc.count = discServiceCount_;
-        DiscoveredService* discService = nullptr;
-        size_t i = 0;
-        do {
-            discService = discServicesList_.popFront();
-            if (discService) {
-                memcpy(services + i, &discService->service, sizeof(hal_ble_svc_t));
-                i++;
-                DiscoveredService* curr = discService;
-                gattcDiscPool_.free(curr);
-            }
-        } while (discService);
-        msg.evt.params.svc_disc.services = services;
-        msg.handler = (BleObject::BleEventDispatcher::BleSpecificEventHandler)callback;
-        msg.context = context;
-        msg.hook = gattcEventProcessedHook;
-        msg.hookContext = this;
-        return BleObject::getInstance().dispatcher()->enqueue(msg);
-    } else {
-        LOG(ERROR, "Allocate memory for discovered services failed.");
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    return SYSTEM_ERROR_NONE;
+    CHECK_TRUE(services, SYSTEM_ERROR_NO_MEMORY);
+    //LOG_DEBUG(TRACE, "Discovered services address: %u, len: %u", (unsigned)services, discServiceCount_ * sizeof(hal_ble_svc_t));
+    BleObject::BleEventDispatcher::EventMessage msg;
+    msg.evt.type = BLE_EVT_SVC_DISCOVERED;
+    msg.evt.version = BLE_API_VERSION;
+    msg.evt.size = sizeof(hal_ble_evts_t);
+    msg.evt.params.svc_disc.conn_handle = currDiscConnHandle_;
+    msg.evt.params.svc_disc.count = discServiceCount_;
+    DiscoveredService* discService = nullptr;
+    size_t i = 0;
+    do {
+        discService = discServicesList_.popFront();
+        if (discService) {
+            memcpy(services + i, &discService->service, sizeof(hal_ble_svc_t));
+            i++;
+            DiscoveredService* curr = discService;
+            gattcDiscPool_.free(curr);
+        }
+    } while (discService);
+    msg.evt.params.svc_disc.services = services;
+    msg.handler = (BleObject::BleEventDispatcher::BleSpecificEventHandler)callback;
+    msg.context = context;
+    msg.hook = gattcEventProcessedHook;
+    msg.hookContext = this;
+    return BleObject::getInstance().dispatcher()->enqueue(msg);
 }
 
 int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHandle, const hal_ble_svc_t* service, hal_ble_on_disc_char_cb_t callback, void* context) {
-    if (!BleObject::getInstance().connMgr()->valid(connHandle)) {
-        LOG(ERROR, "Connection invalid.");
-        return SYSTEM_ERROR_NOT_FOUND;
-    }
-    if (isDiscovering_) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    if (os_semaphore_create(&discoverySemaphore_, 1, 0)) {
-        LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
-    }
+    CHECK_TRUE(BleObject::getInstance().connMgr()->valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(!isDiscovering_, SYSTEM_ERROR_INVALID_STATE);
     SCOPE_GUARD ({
         resetDiscoveryState();
-        auto sem = discoverySemaphore_;
-        discoverySemaphore_ = nullptr;
-        os_semaphore_destroy(sem);
     });
+    currDiscSvc_ = *service;
+    currDiscConnHandle_ = connHandle;
+    currDiscProcedure_ = DiscoveryProcedure::BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS;
     ble_gattc_handle_range_t handleRange = {};
     handleRange.start_handle = service->start_handle;
     handleRange.end_handle = service->end_handle;
-    currDiscConnHandle_ = connHandle;
-    currDiscSvc_ = *service;
-    currDiscProcedure_ = DiscoveryProcedure::BLE_DISCOVERY_PROCEDURE_CHARACTERISTICS;
     int ret = sd_ble_gattc_characteristics_discover(connHandle, &handleRange);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isDiscovering_ = true;
     if (os_semaphore_take(discoverySemaphore_, BLE_DICOVERY_PROCEDURE_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
     }
     // Now discover characteristic descriptors
@@ -2600,60 +2662,47 @@ int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHan
     currDiscProcedure_ = DiscoveryProcedure::BLE_DISCOVERY_PROCEDURE_DESCRIPTORS;
     ret = sd_ble_gattc_descriptors_discover(currDiscConnHandle_, &handleRange);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+    isDiscovering_ = true;
     if (os_semaphore_take(discoverySemaphore_, BLE_DICOVERY_PROCEDURE_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
     }
     hal_ble_char_t* characteristics = (hal_ble_char_t*)malloc(discCharacteristicCount_ * sizeof(hal_ble_char_t));
-    if (characteristics) {
-        //LOG_DEBUG(TRACE, "Discovered characteristics address: %u, len: %u", (unsigned)characteristics, discCharacteristicCount_ * sizeof(hal_ble_char_t));
-        BleObject::BleEventDispatcher::EventMessage msg;
-        msg.evt.type = BLE_EVT_CHAR_DISCOVERED;
-        msg.evt.version = BLE_API_VERSION;
-        msg.evt.size = sizeof(hal_ble_evts_t);
-        msg.evt.params.char_disc.conn_handle = currDiscConnHandle_;
-        msg.evt.params.char_disc.count = discCharacteristicCount_;
-        DiscoveredCharacteristic* discChar = nullptr;
-        size_t i = 0;
-        do {
-            discChar = discCharacteristicsList_.popFront();
-            if (discChar) {
-                memcpy(characteristics + i, &discChar->characteristic, sizeof(hal_ble_char_t));
-                i++;
-                DiscoveredCharacteristic* curr = discChar;
-                gattcDiscPool_.free(curr);
-            }
-        } while (discChar);
-        msg.evt.params.char_disc.characteristics = characteristics;
-        msg.handler = (BleObject::BleEventDispatcher::BleSpecificEventHandler)callback;
-        msg.context = context;
-        msg.hook = gattcEventProcessedHook;
-        msg.hookContext = this;
-        return BleObject::getInstance().dispatcher()->enqueue(msg);
-    } else {
-        LOG(ERROR, "Allocate memory for discovered characteristics failed.");
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    return SYSTEM_ERROR_NONE;
+    CHECK_TRUE(characteristics, SYSTEM_ERROR_NO_MEMORY);
+    //LOG_DEBUG(TRACE, "Discovered characteristics address: %u, len: %u", (unsigned)characteristics, discCharacteristicCount_ * sizeof(hal_ble_char_t));
+    BleObject::BleEventDispatcher::EventMessage msg;
+    msg.evt.type = BLE_EVT_CHAR_DISCOVERED;
+    msg.evt.version = BLE_API_VERSION;
+    msg.evt.size = sizeof(hal_ble_evts_t);
+    msg.evt.params.char_disc.conn_handle = currDiscConnHandle_;
+    msg.evt.params.char_disc.count = discCharacteristicCount_;
+    DiscoveredCharacteristic* discChar = nullptr;
+    size_t i = 0;
+    do {
+        discChar = discCharacteristicsList_.popFront();
+        if (discChar) {
+            memcpy(characteristics + i, &discChar->characteristic, sizeof(hal_ble_char_t));
+            i++;
+            DiscoveredCharacteristic* curr = discChar;
+            gattcDiscPool_.free(curr);
+        }
+    } while (discChar);
+    msg.evt.params.char_disc.characteristics = characteristics;
+    msg.handler = (BleObject::BleEventDispatcher::BleSpecificEventHandler)callback;
+    msg.context = context;
+    msg.hook = gattcEventProcessedHook;
+    msg.hookContext = this;
+    return BleObject::getInstance().dispatcher()->enqueue(msg);
 }
 
 ssize_t BleObject::GattClient::writeAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool response) {
-    if (buf == nullptr || len == 0) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    if (!BleObject::getInstance().connMgr()->valid(connHandle)) {
-        LOG(ERROR, "Connection invalid.");
-        return SYSTEM_ERROR_NOT_FOUND;
-    }
-    ble_gattc_write_params_t writeParams;
-    if (os_semaphore_create(&readWriteSemaphore_, 1, 0)) {
-        LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
-    }
+    CHECK_TRUE(buf, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(len, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(BleObject::getInstance().connMgr()->valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
     SCOPE_GUARD ({
-        auto sem = readWriteSemaphore_;
-        readWriteSemaphore_ = nullptr;
-        os_semaphore_destroy(sem);
+        currWriteConnHandle_ = BLE_INVALID_CONN_HANDLE;
     });
+    ble_gattc_write_params_t writeParams = {};
     if (response) {
         writeParams.write_op = BLE_GATT_OP_WRITE_REQ;
     } else {
@@ -2667,7 +2716,10 @@ ssize_t BleObject::GattClient::writeAttribute(hal_ble_conn_handle_t connHandle, 
     writeParams.p_value = buf;
     int ret = sd_ble_gattc_write(connHandle, &writeParams);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-    if (os_semaphore_take(readWriteSemaphore_, BLE_READ_WRITE_PROCEDURE_TIMEOUT_MS, false)) {
+    isWriting_ = true;
+    currWriteConnHandle_ = connHandle;
+    if (os_semaphore_take(writeSemaphore_, BLE_READ_WRITE_PROCEDURE_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
     }
     return len;
@@ -2675,30 +2727,24 @@ ssize_t BleObject::GattClient::writeAttribute(hal_ble_conn_handle_t connHandle, 
 
 // FIXME: Multi-link read
 ssize_t BleObject::GattClient::readAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len) {
-    if (buf == nullptr || len == 0) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    if (!BleObject::getInstance().connMgr()->valid(connHandle)) {
-        LOG(ERROR, "Connection invalid.");
-        return SYSTEM_ERROR_NOT_FOUND;
-    }
-    if (os_semaphore_create(&readWriteSemaphore_, 1, 0)) {
-        LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
-    }
+    CHECK_TRUE(buf, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(len, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(BleObject::getInstance().connMgr()->valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
     SCOPE_GUARD ({
+        isReading_ = false;
         readBuf_ = nullptr;
         readAttrHandle_ = BLE_INVALID_ATTR_HANDLE;
-        auto sem = readWriteSemaphore_;
-        readWriteSemaphore_ = nullptr;
-        os_semaphore_destroy(sem);
+        currReadConnHandle_ = BLE_INVALID_CONN_HANDLE;
     });
     readAttrHandle_ = attrHandle;
     readBuf_ = buf;
     readLen_ = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(BleObject::getInstance().connMgr()->getAttMtu(connHandle)));
     int ret = sd_ble_gattc_read(connHandle, attrHandle, 0);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-    if (os_semaphore_take(readWriteSemaphore_, BLE_READ_WRITE_PROCEDURE_TIMEOUT_MS, false)) {
+    isReading_ = true;
+    currReadConnHandle_ = connHandle;
+    if (os_semaphore_take(readSemaphore_, BLE_READ_WRITE_PROCEDURE_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
     }
     return readLen_;
@@ -2832,9 +2878,8 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
     switch (event->header.evt_id) {
         case BLE_GAP_EVT_DISCONNECTED: {
             if (gattc->isDiscovering_ && event->evt.gap_evt.conn_handle == gattc->currDiscConnHandle_) {
-                if (gattc->discoverySemaphore_) {
-                    os_semaphore_give(gattc->discoverySemaphore_, false);
-                }
+                gattc->isDiscovering_ = false;
+                os_semaphore_give(gattc->discoverySemaphore_, false);
             }
             break;
         }
@@ -2871,9 +2916,8 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                 if (gattc->readServiceUUID128IfNeeded()) {
                     return;
                 }
-                if (gattc->discoverySemaphore_) {
-                    os_semaphore_give(gattc->discoverySemaphore_, false);
-                }
+                gattc->isDiscovering_ = false;
+                os_semaphore_give(gattc->discoverySemaphore_, false);
             }
             break;
         }
@@ -2917,9 +2961,8 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                 if (gattc->readCharacteristicUUID128IfNeeded()) {
                     return;
                 }
-                if (gattc->discoverySemaphore_) {
-                    os_semaphore_give(gattc->discoverySemaphore_, false);
-                }
+                gattc->isDiscovering_ = false;
+                os_semaphore_give(gattc->discoverySemaphore_, false);
             }
             break;
         }
@@ -2963,15 +3006,15 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                         // Falls down to finish the discovery procedure.
                     }
                 }
-                if (gattc->discoverySemaphore_) {
-                    os_semaphore_give(gattc->discoverySemaphore_, false);
-                }
+                gattc->isDiscovering_ = false;
+                os_semaphore_give(gattc->discoverySemaphore_, false);
             }
             break;
         }
         case BLE_GATTC_EVT_READ_RSP: {
             const ble_gattc_evt_read_rsp_t& readRsp = event->evt.gattc_evt.params.read_rsp;
             LOG_DEBUG(TRACE, "BLE GATT Client event: read response.");
+            // If this event is responding to the read 128-bits UUID command.
             if (gattc->isDiscovering_ && event->evt.gattc_evt.conn_handle == gattc->currDiscConnHandle_) {
                 if (event->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
                     if (gattc->currDiscProcedure_ == DiscoveryProcedure::BLE_DISCOVERY_PROCEDURE_SERVICES) {
@@ -2996,33 +3039,38 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                 } else {
                     LOG(ERROR, "BLE read characteristic failed: %d, handle: %d.", event->evt.gattc_evt.gatt_status, event->evt.gattc_evt.error_handle);
                 }
-                if (gattc->discoverySemaphore_) {
-                    os_semaphore_give(gattc->discoverySemaphore_, false);
+                gattc->isDiscovering_ = false;
+                os_semaphore_give(gattc->discoverySemaphore_, false);
+                return;
+            }
+            // Otherwise, this event is responding to the read command.
+            if (gattc->isReading_ && gattc->currReadConnHandle_ == event->evt.gattc_evt.conn_handle) {
+                if (event->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
+                    if (gattc->readAttrHandle_ == readRsp.handle && gattc->readBuf_ != nullptr) {
+                        gattc->readLen_ = std::min(gattc->readLen_, (size_t)readRsp.len);
+                        memcpy(gattc->readBuf_, readRsp.data, gattc->readLen_);
+                    }
+                } else {
+                    LOG(ERROR, "BLE read characteristic failed: %d, handle: %d.", event->evt.gattc_evt.gatt_status, event->evt.gattc_evt.error_handle);
                 }
-            } else if (event->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
-                if (gattc->readAttrHandle_ == readRsp.handle && gattc->readBuf_ != nullptr) {
-                    gattc->readLen_ = std::min(gattc->readLen_, (size_t)readRsp.len);
-                    memcpy(gattc->readBuf_, readRsp.data, gattc->readLen_);
-                }
-                if (gattc->readWriteSemaphore_) {
-                    os_semaphore_give(gattc->readWriteSemaphore_, false);
-                }
-            } else {
-                LOG(ERROR, "BLE read characteristic failed: %d, handle: %d.", event->evt.gattc_evt.gatt_status, event->evt.gattc_evt.error_handle);
+                gattc->isReading_ = false;
+                os_semaphore_give(gattc->readSemaphore_, false);
             }
             break;
         }
         case BLE_GATTC_EVT_WRITE_RSP: {
             LOG_DEBUG(TRACE, "BLE GATT Client event: write with response completed.");
-            if (gattc->readWriteSemaphore_) {
-                os_semaphore_give(gattc->readWriteSemaphore_, false);
+            if (gattc->isWriting_ && gattc->currWriteConnHandle_ == event->evt.gattc_evt.conn_handle) {
+                gattc->isWriting_ = false;
+                os_semaphore_give(gattc->writeSemaphore_, false);
             }
             break;
         }
         case BLE_GATTC_EVT_WRITE_CMD_TX_COMPLETE: {
             LOG_DEBUG(TRACE, "BLE GATT Client event: write without response completed.");
-            if (gattc->readWriteSemaphore_) {
-                os_semaphore_give(gattc->readWriteSemaphore_, false);
+            if (gattc->isWriting_ && gattc->currWriteConnHandle_ == event->evt.gattc_evt.conn_handle) {
+                gattc->isWriting_ = false;
+                os_semaphore_give(gattc->writeSemaphore_, false);
             }
             break;
         }
@@ -3038,24 +3086,23 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                 }
             }
             uint8_t* data = (uint8_t*)gattc->gattcDataRecPool_.alloc(hvx.len);
-            if (data) {
-                LOG_DEBUG(TRACE, "Received data address: %u, len: %u", (unsigned)data, hvx.len);
-                BleObject::BleEventDispatcher::EventMessage msg;
-                msg.evt.type = BLE_EVT_DATA_NOTIFIED;
-                msg.evt.version = BLE_API_VERSION;
-                msg.evt.size = sizeof(hal_ble_evts_t);
-                msg.evt.params.data_rec.conn_handle = event->evt.gattc_evt.conn_handle;
-                msg.evt.params.data_rec.attr_handle = hvx.handle;
-                msg.evt.params.data_rec.offset = 0;
-                msg.evt.params.data_rec.data_len = hvx.len;
-                memcpy(data, hvx.data, hvx.len);
-                msg.evt.params.data_rec.data = data;
-                msg.hook = gattc->gattcEventProcessedHook;
-                msg.hookContext = gattc;
-                BleObject::getInstance().dispatcher()->enqueue(msg);
-            } else {
+            if (!data) {
                 LOG(ERROR, "Allocate memory for received data failed.");
             }
+            LOG_DEBUG(TRACE, "Received data address: %u, len: %u", (unsigned)data, hvx.len);
+            BleObject::BleEventDispatcher::EventMessage msg;
+            msg.evt.type = BLE_EVT_DATA_NOTIFIED;
+            msg.evt.version = BLE_API_VERSION;
+            msg.evt.size = sizeof(hal_ble_evts_t);
+            msg.evt.params.data_rec.conn_handle = event->evt.gattc_evt.conn_handle;
+            msg.evt.params.data_rec.attr_handle = hvx.handle;
+            msg.evt.params.data_rec.offset = 0;
+            msg.evt.params.data_rec.data_len = hvx.len;
+            memcpy(data, hvx.data, hvx.len);
+            msg.evt.params.data_rec.data = data;
+            msg.hook = gattc->gattcEventProcessedHook;
+            msg.hookContext = gattc;
+            BleObject::getInstance().dispatcher()->enqueue(msg);
             break;
         }
         case BLE_GATTC_EVT_TIMEOUT: {
@@ -3065,6 +3112,14 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
             int ret = sd_ble_gap_disconnect(event->evt.gattc_evt.conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
             if (ret != NRF_SUCCESS) {
                 LOG(ERROR, "sd_ble_gap_disconnect() failed: %u", (unsigned)ret);
+            }
+            if (gattc->isReading_ && gattc->currReadConnHandle_ == event->evt.gattc_evt.conn_handle) {
+                gattc->isReading_ = false;
+                os_semaphore_give(gattc->readSemaphore_, false);
+            }
+            if (gattc->isWriting_ && gattc->currWriteConnHandle_ == event->evt.gattc_evt.conn_handle) {
+                gattc->isWriting_ = false;
+                os_semaphore_give(gattc->writeSemaphore_, false);
             }
             break;
         }
