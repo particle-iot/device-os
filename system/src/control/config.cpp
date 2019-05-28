@@ -130,6 +130,13 @@ int getSystemCapabilities(ctrl_request* req) {
     return 0;
 }
 
+// TODO: This request doesn't belong here
+int echo(ctrl_request* req) {
+    CHECK(system_ctrl_alloc_reply_data(req, req->request_size, nullptr));
+    memcpy(req->reply_data, req->request_data, req->request_size);
+    return 0;
+}
+
 int handleSetClaimCodeRequest(ctrl_request* req) {
     particle_ctrl_SetClaimCodeRequest pbReq = {};
     int ret = decodeRequestMessage(req, particle_ctrl_SetClaimCodeRequest_fields, &pbReq);

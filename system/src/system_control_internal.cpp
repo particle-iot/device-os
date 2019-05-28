@@ -471,6 +471,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
 #endif // HAL_PLATFORM_MESH
+    case CTRL_REQUEST_ECHO: {
+        setResult(req, control::config::echo(req));
+        break;
+    }
     default:
         // Forward the request to the application thread
         if (appReqHandler_) {

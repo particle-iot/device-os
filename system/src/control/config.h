@@ -34,6 +34,7 @@ int isDeviceSetupDone(ctrl_request* req);
 int setStartupMode(ctrl_request* req);
 int setFeature(ctrl_request* req);
 int getFeature(ctrl_request* req);
+int echo(ctrl_request* req);
 
 int handleSetClaimCodeRequest(ctrl_request* req);
 int handleIsClaimedRequest(ctrl_request* req);
