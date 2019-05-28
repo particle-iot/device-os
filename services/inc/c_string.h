@@ -70,6 +70,20 @@ public:
         return s;
     }
 
+    // Declare comparison operators as deleted to avoid their misuse
+    bool operator==(const CString&) const = delete;
+    bool operator==(const char*) const = delete;
+    bool operator!=(const CString&) const = delete;
+    bool operator!=(const char*) const = delete;
+    bool operator<(const CString&) const = delete;
+    bool operator<(const char*) const = delete;
+    bool operator<=(const CString&) const = delete;
+    bool operator<=(const char*) const = delete;
+    bool operator>(const CString&) const = delete;
+    bool operator>(const char*) const = delete;
+    bool operator>=(const CString&) const = delete;
+    bool operator>=(const char*) const = delete;
+
 private:
     const char* s_;
 
