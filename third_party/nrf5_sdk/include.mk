@@ -81,7 +81,7 @@ INCLUDE_DIRS += \
 # NFC
 INCLUDE_DIRS += \
 	$(TARGET_NRF5_SDK_NFC_PATH)/t2t_lib \
-	$(TARGET_NRF5_SDK_NFC_PATH)/t2t_lib/hal_t2t \
+	$(TARGET_NRF5_SDK_NFC_PATH)/platform \
 	$(TARGET_NRF5_SDK_NFC_PATH)/ndef/generic/message \
 	$(TARGET_NRF5_SDK_NFC_PATH)/ndef/generic/record \
 	$(TARGET_NRF5_SDK_NFC_PATH)/ndef/lauchapp \

@@ -70,7 +70,8 @@ CSRC += \
 	$(call target_files,$(TARGET_NRF5_SDK_NFC_SRC_PATH)/ndef/launchapp/,*.c) \
 	$(call target_files,$(TARGET_NRF5_SDK_NFC_SRC_PATH)/ndef/text/,*.c) \
 	$(call target_files,$(TARGET_NRF5_SDK_NFC_SRC_PATH)/ndef/uri/,*.c) \
-	$(TARGET_NRF5_SDK_NFC_SRC_PATH)/t2t_lib/hal_t2t/hal_nfc_t2t.c
+	$(call target_files,$(TARGET_NRF5_SDK_NFC_SRC_PATH)/platform/,*.c) \
+	$(TARGET_NRF5_SDK_NRFX_SRC_PATH)/drivers/src/nrfx_nfct.c
 
 # USBD
 CSRC += \
