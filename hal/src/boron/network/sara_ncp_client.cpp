@@ -889,11 +889,27 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         netConf_ = networkConfigForImsi(buf, strlen(buf));
     }
     // FIXME: for now IPv4 context only
-    auto resp = parser_.sendCommand("AT+CGDCONT=1,\"IP\",\"%s%s\"",
-            (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
+    auto resp = parser_.sendCommand("AT+CGDCONT=1,\"IP\",\"%s\"",
             netConf_.hasApn() ? netConf_.apn() : "");
-    const int r = CHECK_PARSER(resp.readResult());
+    int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
+    // If we have a password and user, set it to PDP context #2
+    // Set the type of auth (CHAP by default)
+    // Then set username and password
+    if (netConf_.hasPassword() && netConf_.hasUser()) {
+        resp = parser_.sendCommand("AT+CGDCONT=2,\"IP\",\"%s\"",
+                netConf_.hasApn() ? netConf_.apn() : "");
+        r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
+        resp = parser_.sendCommand("AT+UAUTHREQ=2,2,\"%s\",\"%s\"",
+                netConf_.hasPassword() ? netConf_.password() : "",
+                netConf_.hasUser() ? netConf_.user() : "");
+        r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+    }
+
     return 0;
 }
 
