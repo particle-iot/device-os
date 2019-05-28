@@ -127,19 +127,19 @@ int getLogHandlersImpl(ctrl_request* req, log_command_result** result) {
     log_command cmd = {};
     cmd.type = LOG_GET_HANDLERS_COMMAND;
     CHECK(log_process_command(&cmd, result));
-    SPARK_ASSERT(*result);
     // Encode a reply message
     PB(GetLogHandlersReply) pbRep = {};
     pbRep.handlers.arg = const_cast<log_command_result*>(*result);
     pbRep.handlers.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
         const auto result = (const log_get_handlers_result*)*arg;
         for (auto handler = result->handlers; handler; handler = handler->next) {
-            PB(GetLogHandlersReply_Handler) pbHandler = {};
-            SPARK_ASSERT(handler->id);
-            const EncodedString idStr(&pbHandler.id, handler->id, strlen(handler->id));
-            if (!pb_encode_tag_for_field(strm, field) ||
-                    !pb_encode_submessage(strm, PB(GetLogHandlersReply_Handler_fields), &pbHandler)) {
-                return false;
+            if (handler->id) {
+                PB(GetLogHandlersReply_Handler) pbHandler = {};
+                const EncodedString idStr(&pbHandler.id, handler->id, strlen(handler->id));
+                if (!pb_encode_tag_for_field(strm, field) ||
+                        !pb_encode_submessage(strm, PB(GetLogHandlersReply_Handler_fields), &pbHandler)) {
+                    return false;
+                }
             }
         }
         return true;
@@ -151,7 +151,7 @@ int getLogHandlersImpl(ctrl_request* req, log_command_result** result) {
 void setResult(ctrl_request* req, int error, log_command_result* result) {
     if (result) {
         if (result->completion_fn) {
-            // Wait until the request finishes and then invoke the completion callback and free the result data
+            // Wait until the request finishes, invoke the completion callback and free the result data
             system_ctrl_set_result(req, error, [](int error, void* data) {
                 const auto result = (log_command_result*)data;
                 result->completion_fn(error, result);

@@ -52,7 +52,7 @@ typedef int(*log_command_handler_fn)(const log_command* cmd, log_command_result*
 typedef void(*log_command_completion_fn)(int error, log_command_result* result);
 
 /**
- * Deleter function for a command result data.
+ * Deleter function for a command result.
  *
  * @param result Result data.
  *
@@ -93,7 +93,7 @@ typedef enum log_stream_type {
  */
 typedef struct log_handler {
     const char* id; ///< Handler ID.
-    const log_filter_list_item* filters; ///< Category filters.
+    const log_filter_list_item* filters; ///< List of category filters.
     uint16_t filter_count; ///< Number of category filters.
     uint8_t type; ///< Handler type (a value defined by the `log_handler_type` enum).
     uint8_t level; ///< Default logging level (a value defined by the `LogLevel` enum).
@@ -154,7 +154,7 @@ typedef struct log_remove_handler_command {
  */
 typedef struct log_get_handlers_result {
     log_command_result result; ///< Common result data.
-    const log_handler_list_item* handlers; ///< Active handlers.
+    const log_handler_list_item* handlers; ///< List of active handlers.
     uint16_t handler_count; ///< Number of active handlers.
 } log_get_handlers_result;
 

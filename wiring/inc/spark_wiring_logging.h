@@ -453,7 +453,7 @@ class LogHandlerFactory {
 public:
     virtual ~LogHandlerFactory() = default;
 
-    virtual LogHandler* createHandler(log_handler_type type, LogLevel level, LogCategoryFilters filters, Print* stream) = 0;
+    virtual LogHandler* createHandler(log_handler_type type, LogLevel level, LogCategoryFilters filters, Print* stream = nullptr) = 0;
     virtual void destroyHandler(LogHandler* handler);
 };
 
