@@ -1303,13 +1303,16 @@ int BleObject::Observer::stopScanning() {
     }
     int ret = sd_ble_gap_scan_stop();
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-    // FIXME: the semaphore might be given twice if scanning timeout event is generated here.
-//    ATOMIC_BLOCK() {
+    bool give = false;
+    ATOMIC_BLOCK() {
         if (isScanning_) {
             isScanning_ = false;
-            os_semaphore_give(scanSemaphore_, false);
+            give = true;
         }
-//    }
+    }
+    if (give) {
+        os_semaphore_give(scanSemaphore_, false);
+    }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1696,6 +1699,7 @@ int BleObject::ConnectionsManager::connect(const hal_ble_addr_t* address) {
         SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
     }
+    // FIXME: if the semaphore is given due to a GAP timeout event.
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1705,13 +1709,16 @@ int BleObject::ConnectionsManager::connectCancel(const hal_ble_addr_t* address) 
     if (addressEqual(connectingAddr_, *address)) {
         int ret = sd_ble_gap_connect_cancel();
         CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-        // FIXME: the semaphore might be given twice if connected event is generated here.
-//        ATOMIC_BLOCK() {
+        bool give = false;
+        ATOMIC_BLOCK() {
             if (isConnecting_) {
                 isConnecting_ = false;
-                os_semaphore_give(connectSemaphore_, false);
+                give = true;
             }
-//        }
+        }
+        if (give) {
+            os_semaphore_give(connectSemaphore_, false);
+        }
     }
     return SYSTEM_ERROR_NONE;
 }
