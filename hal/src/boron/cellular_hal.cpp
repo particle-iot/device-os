@@ -192,7 +192,7 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     CHECK(client->on());
     CHECK(client->getIccid(info->iccid, sizeof(info->iccid)));
     CHECK(client->getImei(info->imei, sizeof(info->imei)));
-    if (info->size > offsetof(CellularDevice, dev)) {
+    if (info->size >= offsetof(CellularDevice, dev) + sizeof(CellularDevice::dev)) {
         switch (client->ncpId()) {
         case MESH_NCP_SARA_U201:
             info->dev = DEV_SARA_U201;
