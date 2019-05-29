@@ -484,7 +484,7 @@ private:
     volatile hal_ble_conn_handle_t disconnectingHandle_;        /**< Handle of connection to be disconnected. */
     volatile hal_ble_conn_handle_t centralConnParamUpdateHandle_;/**< Handle of the central connection to send peripheral connection update command. */
     volatile hal_ble_conn_handle_t periphConnParamUpdateHandle_;/**< Handle of the peripheral connection to send peripheral connection update request. */
-    uint8_t connParamsUpdateAttempts_;                          /**< Attempts for peripheral to update connection parameters. */
+    volatile uint8_t connParamsUpdateAttempts_;                 /**< Attempts for peripheral to update connection parameters. */
     os_timer_t connParamsUpdateTimer_;                          /**< Timer used for sending peripheral connection update request after connection established. */
     os_semaphore_t connParamsUpdateSemaphore_;                  /**< Semaphore to wait until connection parameters updated. */
     os_semaphore_t connectSemaphore_;                           /**< Semaphore to wait until connection established. */
@@ -1303,12 +1303,13 @@ int BleObject::Observer::stopScanning() {
     }
     int ret = sd_ble_gap_scan_stop();
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-    ATOMIC_BLOCK() {
+    // FIXME: the semaphore might be given twice if scanning timeout event is generated here.
+//    ATOMIC_BLOCK() {
         if (isScanning_) {
             isScanning_ = false;
             os_semaphore_give(scanSemaphore_, false);
         }
-    }
+//    }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1704,12 +1705,13 @@ int BleObject::ConnectionsManager::connectCancel(const hal_ble_addr_t* address) 
     if (addressEqual(connectingAddr_, *address)) {
         int ret = sd_ble_gap_connect_cancel();
         CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-        ATOMIC_BLOCK() {
+        // FIXME: the semaphore might be given twice if connected event is generated here.
+//        ATOMIC_BLOCK() {
             if (isConnecting_) {
                 isConnecting_ = false;
                 os_semaphore_give(connectSemaphore_, false);
             }
-        }
+//        }
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -1767,15 +1769,15 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
     } else {
         bleGapConnParams = toPlatformConnParams(params);
     }
-    // For Central role, this will initiate the connection parameter update procedure.
-    // For Peripheral role, this will use the passed in parameters and send the request to central.
-    int ret = sd_ble_gap_conn_param_update(connHandle, &bleGapConnParams);
-    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     if (connection->role == BLE_ROLE_PERIPHERAL) {
         periphConnParamUpdateHandle_ = connHandle;
     } else {
         centralConnParamUpdateHandle_ = connHandle;
     }
+    // For Central role, this will initiate the connection parameter update procedure.
+    // For Peripheral role, this will use the passed in parameters and send the request to central.
+    int ret = sd_ble_gap_conn_param_update(connHandle, &bleGapConnParams);
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     if (os_semaphore_take(connParamsUpdateSemaphore_, CONNECTION_OPERATION_TIMEOUT_MS, false)) {
         SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
@@ -2558,28 +2560,36 @@ int BleObject::GattClient::init() {
     if (os_semaphore_create(&discoverySemaphore_, 1, 0)) {
         discoverySemaphore_ = nullptr;
         LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
+        goto error;
     }
     if (os_semaphore_create(&readSemaphore_, 1, 0)) {
         readSemaphore_ = nullptr;
-        os_semaphore_destroy(discoverySemaphore_);
-        discoverySemaphore_ = nullptr;
         LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
+        goto error;
     }
     if (os_semaphore_create(&writeSemaphore_, 1, 0)) {
         writeSemaphore_ = nullptr;
-        os_semaphore_destroy(discoverySemaphore_);
-        discoverySemaphore_ = nullptr;
-        os_semaphore_destroy(readSemaphore_);
-        readSemaphore_ = nullptr;
         LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
+        goto error;
     }
     gattcImpl.instance = this;
     NRF_SDH_BLE_OBSERVER(bleGattClient, 1, processGattClientEvents, &gattcImpl);
     gattcInitialized_ = true;
     return SYSTEM_ERROR_NONE;
+error:
+    if(discoverySemaphore_) {
+        os_semaphore_destroy(discoverySemaphore_);
+        discoverySemaphore_ = nullptr;
+    }
+    if(readSemaphore_) {
+        os_semaphore_destroy(readSemaphore_);
+        readSemaphore_ = nullptr;
+    }
+    if(writeSemaphore_) {
+        os_semaphore_destroy(writeSemaphore_);
+        writeSemaphore_ = nullptr;
+    }
+    return SYSTEM_ERROR_INTERNAL;
 }
 
 bool BleObject::GattClient::discovering(hal_ble_conn_handle_t connHandle) const {
