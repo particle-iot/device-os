@@ -112,12 +112,12 @@ void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
     else if (flag == SYSTEM_FLAG_OTA_UPDATE_ENABLED)
     {
         // publish the firmware enabled event
-        spark_send_event(UPDATES_ENABLED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
+        spark_send_event(UPDATES_ENABLED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_ASYNC|PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
     }
     else if (flag == SYSTEM_FLAG_OTA_UPDATE_FORCED)
     {
         // acknowledge to the cloud that system updates are forced. It helps avoid a race condition where we might try sending firmware before the event has been received.
-        spark_send_event(UPDATES_FORCED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
+        spark_send_event(UPDATES_FORCED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_ASYNC|PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
     }
     else if (flag == SYSTEM_FLAG_OTA_UPDATE_PENDING)
     {
