@@ -1,3 +1,4 @@
+INCLUDE ../../shared/stm32f2xx/photon/platform_ram.ld
 
 reset_handler = _start;
 ENTRY( reset_handler );
@@ -10,12 +11,10 @@ MEMORY
 
     /* The SRAM area is offset to include the stack and static ram allocated at the end of the SRAM area.
        This is done so that the build outputs meaningful values for BSS and Data section sizes.
-
-       The value given here is the sum of system_static_ram_size and stack_size
     */
-    SRAM      (rwx) : ORIGIN = 0x20020000 - 46K, LENGTH = 46K
-    
-   	INCLUDE backup_ram_memory.ld
+    SRAM      (rwx) : ORIGIN = _part2_static_ram_start, LENGTH = _part2_static_ram_size + _stack_size
+
+    INCLUDE backup_ram_memory.ld
 }
 
 

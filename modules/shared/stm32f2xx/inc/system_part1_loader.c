@@ -15,8 +15,8 @@ typedef void  (*constructor_ptr_t)(void);
  * Pointer to the reset handler;
  */
 extern void* dynamic_reset_handler_location;
-extern char stack_end;
-extern char system_part1_module_ram_start;
+extern char _stack_end;
+extern char _part1_static_ram_start;
 
 /**
  * No register saving needed.
@@ -36,7 +36,7 @@ void system_part1_reset_handler() {
  * The fake interrupt vectors table that redirects to part2.
  */
 __attribute__((externally_visible)) const void* const system_part1_boot_table[97] = {
-    &stack_end,
+    &_stack_end,
     &system_part1_reset_handler
 };
 
@@ -63,7 +63,7 @@ void* module_system_part1_pre_init()
 
     memset(&link_bss_location, 0, link_bss_size );
 
-    return &system_part1_module_ram_start;
+    return &_part1_static_ram_start;
 }
 
 

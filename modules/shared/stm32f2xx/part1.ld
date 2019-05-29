@@ -85,6 +85,7 @@ SECTIONS
     {
         link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
         link_global_data_start = .;
+        link_static_ram_start = .;
         *(.data*)
         link_global_data_end = .;
         . = ALIGN(., 4);
@@ -135,7 +136,7 @@ ASSERT( link_boot_table_start == ORIGIN(APP_FLASH), "boot table should be at sta
 ASSERT( link_module_jump_table_end != link_module_jump_table_start, "module master jump table not linked" );
 
 ASSERT ( link_module_jump_table_start == system_part1_module_table, "Export address for module table is incorrect" );
-ASSERT ( link_end_of_static_ram <= system_part1_module_ram_end, "static RAM use exceeds allocated space" );
+ASSERT ( link_end_of_static_ram <= _part1_static_ram_end, "static RAM use exceeds allocated space" );
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
 
@@ -151,3 +152,6 @@ ASSERT ( system_part1_boot_table_start == link_boot_table_start, "boot table exp
 
 link_boot_table_size = link_boot_table_end - link_boot_table_start ;
 ASSERT ( link_boot_table_size == system_part1_boot_table_size, "boot table not linked or incorrect size" );
+
+min_end_of_heap = _heap_start + _heap_min_size;
+ASSERT ( min_end_of_heap < link_static_ram_start, "Insufficient room for heap" );
