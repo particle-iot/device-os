@@ -737,6 +737,11 @@ void app_setup_and_loop(void)
         }
     }
 
+#if HAL_PLATFORM_BLE
+    // FIXME: Move BLE and Thread initialization to an appropriate place
+    ble_init(nullptr);
+#endif // HAL_PLATFORM_BLE
+
 #if HAL_PLATFORM_LWIP
     if_init();
 #endif /* HAL_PLATFORM_LWIP */
@@ -744,11 +749,6 @@ void app_setup_and_loop(void)
 #if HAL_PLATFORM_OPENTHREAD
     system::threadInit();
 #endif /* HAL_PLATFORM_OPENTHREAD */
-
-#if HAL_PLATFORM_BLE
-    // FIXME: Move BLE and Thread initialization to an appropriate place
-    ble_init(nullptr);
-#endif // HAL_PLATFORM_BLE
 
 #if SYSTEM_CONTROL_ENABLED
     system::SystemControl::instance()->init();
