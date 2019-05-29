@@ -34,9 +34,6 @@
 
 namespace particle {
 
-using spark::Vector;
-using particle::Flags;
-
 class BleScanResult;
 class BlePeerDevice;
 
@@ -492,16 +489,16 @@ public:
     int setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) const;
 
     int addCharacteristic(BleCharacteristic& characteristic) const;
-    int addCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr) const;
-    int addCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr) const;
+    int addCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) const;
+    int addCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) const;
     template<typename T>
-    int addCharacteristic(const char* desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr) const {
-        BleCharacteristic characteristic(desc, properties, charUuid, svcUuid, callback);
+    int addCharacteristic(const char* desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) const {
+        BleCharacteristic characteristic(desc, properties, charUuid, svcUuid, callback, context);
         return addCharacteristic(characteristic);
     }
     template<typename T>
-    int addCharacteristic(const String& desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr) const {
-        BleCharacteristic characteristic(desc.c_str(), properties, charUuid, svcUuid, callback);
+    int addCharacteristic(const String& desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) const {
+        BleCharacteristic characteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context);
         return addCharacteristic(characteristic);
     }
 
