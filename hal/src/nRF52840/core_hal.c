@@ -565,7 +565,8 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
     // Disable SysTick
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
-    // Disable external flash
+    // Put external flash into sleep and disable QSPI peripheral
+    hal_exflash_special_command(HAL_EXFLASH_COMMAND_NONE, HAL_EXFLASH_COMMAND_SLEEP, NULL, NULL, 0);
     hal_exflash_uninit();
 
     uint32_t exit_conditions = STOP_MODE_EXIT_CONDITION_NONE;
@@ -961,7 +962,8 @@ int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
     // Disable SysTick
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
-    // Disable external flash
+    // Put external flash into sleep mode and disable QSPI peripheral
+    hal_exflash_special_command(HAL_EXFLASH_COMMAND_NONE, HAL_EXFLASH_COMMAND_SLEEP, NULL, NULL, 0);
     hal_exflash_uninit();
 
     // Uninit GPIOTE
