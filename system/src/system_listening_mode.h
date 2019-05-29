@@ -28,34 +28,9 @@
 #include "system_setup.h"
 #include <memory>
 #include "system_tick_hal.h"
+#include "ble_listening_mode_handler.h"
 
-#if HAL_PLATFORM_BLE
-#include "ble_hal.h"
-#endif /* HAL_PLATFORM_BLE */
-
-namespace particle { namespace system {\
-
-#if HAL_PLATFORM_BLE
-class BleListeningModeHandler {
-public:
-    BleListeningModeHandler();
-    ~BleListeningModeHandler();
-
-    int enter();
-    int exit();
-
-private:
-    uint8_t* preAdvData_;
-    size_t preAdvDataLen_;
-    uint8_t* preSrData_;
-    size_t preSrDataLen_;
-    hal_ble_adv_params_t preAdvParams_;
-    hal_ble_conn_params_t prePpcp_;
-    bool preAdvertising_;
-    bool preConnected_;
-    hal_ble_auto_adv_cfg_t preAutoAdv_;
-};
-#endif
+namespace particle { namespace system {
 
 class ListeningModeHandler {
 public:
