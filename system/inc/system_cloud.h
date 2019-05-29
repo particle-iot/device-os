@@ -191,7 +191,7 @@ typedef struct {
  *
  * @param[in] period_s The period (in seconds) at which vitals messages
  *                     are to be sent to the cloud
- * @arg \p particle::NOW - Special value used to send vitals immediately
+ * @arg \p particle::NOW - A special value used to send vitals immediately
  * @arg \p 0 - Publish a final message and disable periodic publishing
  * @arg \p n - Publish an initial message and subsequent messages every \p n seconds thereafter
  * @param[in,out] reserved Reserved for future use.
@@ -200,7 +200,10 @@ typedef struct {
  * @retval \p system_error_t::SYSTEM_ERROR_NONE
  * @retval \p system_error_t::SYSTEM_ERROR_IO
  *
- * @note The periodic functionality is not available for the Spark Core
+ * @note At call time, a blocking call is made on the application thread. Any subsequent
+ * timer-based calls are executed asynchronously.
+ *
+ * @note The periodic functionality is not available for the Spark Core.
  */
 int spark_publish_vitals(system_tick_t period_s, void *reserved);
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);

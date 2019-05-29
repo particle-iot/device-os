@@ -2,7 +2,7 @@
 
 function display_help ()
 {
-    echo "\
+    echo '
 usage: release-tests.sh [--dryrun] [--help]
                         [--filename=<test_parameter_file.json>]
                         --output-directory=<binary_output_directory>
@@ -16,8 +16,8 @@ Generate the testing binaries belonging to a given platform.
                             binary (as opposed to executing).
   -f, --filename          The file path and name of the desired
                             parameter file. If none is supplied, then
-                            the file '<particle-iot/device-os>/user/tests..
-                            /release-tests.json' will be used as default.
+                            the file `<particle-iot/device-os>/user/tests..
+                            /release-tests.json` will be used as default.
   -h, --help              Display this help and exit.
   -o, --output-directory  Specify the root output directory where the
                             folder hierarchy for the resulting binaries
@@ -25,13 +25,16 @@ Generate the testing binaries belonging to a given platform.
   -p, --platform          Specify the desired platform.
   -v, --version           Specify the semantic version of the Device OS
                             for which you are building tests.
-"
+'
 }
 
 # Utilized Enhanced `getopt`
 ! getopt --test > /dev/null
 if [ ${PIPESTATUS[0]} -ne 4 ]; then
-    echo 'I’m sorry, `getopt --test` failed in this environment.'
+    echo '
+`getopt --test` failed in this environment!
+Please confirm "GNU getopt" is installed on this device.
+'
     exit 1
 fi
 
