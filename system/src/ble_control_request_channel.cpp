@@ -1098,7 +1098,7 @@ int BleControlRequestChannel::dataReceived(const hal_ble_evts_t& event) {
 }
 
 int BleControlRequestChannel::initProfile() {
-    hal_ble_stack_init(nullptr);
+    SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
 
     hal_ble_uuid_t halUuid;
     hal_ble_attr_handle_t serviceHandle;
@@ -1109,11 +1109,7 @@ int BleControlRequestChannel::initProfile() {
     halUuid = {};
     halUuid.type = BLE_UUID_TYPE_128BIT;
     memcpy(halUuid.uuid128, CTRL_SERVICE_UUID, sizeof(CTRL_SERVICE_UUID));
-    int ret = hal_ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &halUuid, &serviceHandle, nullptr);
-    if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "hal_ble_gatt_server_add_service failed: %d", ret);
-        return ret;
-    }
+    CHECK(hal_ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &halUuid, &serviceHandle, nullptr));
 
     // Add version characteristic
     char_init = {};
@@ -1122,12 +1118,8 @@ int BleControlRequestChannel::initProfile() {
     char_init.properties = BLE_SIG_CHAR_PROP_READ;
     char_init.service_handle = serviceHandle;
     char_init.description = nullptr;
-    ret = hal_ble_gatt_server_add_characteristic(&char_init, &attrHandles, nullptr);
-    if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "hal_ble_gatt_server_add_characteristic failed: %d", ret);
-        return ret;
-    }
-    hal_ble_gatt_server_set_characteristic_value(attrHandles.value_handle, (const uint8_t*)&PROTOCOL_VERSION, 1, nullptr);
+    CHECK(hal_ble_gatt_server_add_characteristic(&char_init, &attrHandles, nullptr));
+    CHECK(hal_ble_gatt_server_set_characteristic_value(attrHandles.value_handle, (const uint8_t*)&PROTOCOL_VERSION, 1, nullptr));
 
     // Add TX characteristic
     char_init = {};
@@ -1136,11 +1128,8 @@ int BleControlRequestChannel::initProfile() {
     char_init.properties = BLE_SIG_CHAR_PROP_NOTIFY;
     char_init.service_handle = serviceHandle;
     char_init.description = nullptr;
-    ret = hal_ble_gatt_server_add_characteristic(&char_init, &attrHandles, nullptr);
-    if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "hal_ble_gatt_server_add_characteristic failed: %d", ret);
-        return ret;
-    }
+    CHECK(hal_ble_gatt_server_add_characteristic(&char_init, &attrHandles, nullptr));
+
     sendCharHandle_ = attrHandles.value_handle;
     sendCharCccdHandle_ = attrHandles.cccd_handle;
 
@@ -1151,14 +1140,11 @@ int BleControlRequestChannel::initProfile() {
     char_init.properties = BLE_SIG_CHAR_PROP_WRITE | BLE_SIG_CHAR_PROP_WRITE_WO_RESP;
     char_init.service_handle = serviceHandle;
     char_init.description = nullptr;
-    ret = hal_ble_gatt_server_add_characteristic(&char_init, &attrHandles, nullptr);
-    if (ret != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "hal_ble_gatt_server_add_characteristic failed: %d", ret);
-        return ret;
-    }
+    CHECK(hal_ble_gatt_server_add_characteristic(&char_init, &attrHandles, nullptr));
+
     recvCharHandle_ = attrHandles.value_handle;
 
-    hal_ble_set_callback_on_events(processBleEvent, this, nullptr);
+    CHECK(hal_ble_set_callback_on_events(processBleEvent, this, nullptr));
 
     return 0;
 }

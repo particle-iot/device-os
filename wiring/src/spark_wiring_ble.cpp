@@ -22,6 +22,7 @@
 #include <memory>
 #include <algorithm>
 #include "check.h"
+#include "debug.h"
 #include "scope_guard.h"
 #include "hex_to_bytes.h"
 
@@ -1154,7 +1155,7 @@ BleLocalDevice::BleLocalDevice()
           disconnectedCb_(nullptr),
           connectedContext(nullptr),
           disconnectedContext(nullptr) {
-    hal_ble_stack_init(nullptr);
+    SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
 
     // The following members must not be in the initializer list, since it may call
     // BLE HAL APIs and BLE stack must be initialized previous to these APIs.
