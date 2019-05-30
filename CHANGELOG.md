@@ -1,3 +1,15 @@
+## 1.2.1-rc.2
+
+>**Note:** If your Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release)
+>
+>This release contains v311 bootloaders (bumped this release due to Gen 3 changes in [#1799](https://github.com/particle-iot/device-os/pull/1799) ). We have also separated BOOTLOADER_DEPENDENCY for Gen 2 and Gen 3. For now, we will leave Gen 2 as is depending on v201 bootloader (so there is nothing to do for Gen 2 (Photon/P1 only) unless you want the latest bootloader, although it is not mandatory), but we have bumped Gen 3 to v311 because we have removed the embedded bootloaders from Gen 3 system firmware in 1.2.0-rc.1. To force the Cloud update for Gen 2 (Photon/P1 only) we will bump the bootloader dependency version to v302 in v1.2.0 default.
+
+### BUG FIXES
+
+- [gen 3] Fixes radio initialization sequence for SoftDevice S140v6.1.1 [#1794](https://github.com/particle-iot/device-os/pull/1794)
+- [gen 2] Fix ABI compatibility issue in cellular HAL regarding `CellularDevice` and `cellular_device_info()` [#1792](https://github.com/particle-iot/device-os/pull/1792)
+- [gen 3] [bootloader] fixes SOS 10 when upgrading bootloader first from older system firmware.  External flash sleep refactoring [#1799](https://github.com/particle-iot/device-os/pull/1799)
+
 ## 1.2.1-rc.1
 
 >**Note:** If your Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release)
