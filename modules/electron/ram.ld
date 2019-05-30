@@ -1,17 +1,17 @@
 /*
-Photon RAM (modular firmware):
+Electron RAM (modular firmware):
 
 +-------------------+ 0x20020000
 | Main stack        |
 +-------------------+ 0x2001f000
 | system-part2 SRAM |
-+-------------------+ 0x20014800
++-------------------+ 0x2001d000
 | system-part1 SRAM |
-+-------------------+ 0x20014400
-|                   |
++-------------------+ 0x2001cc00
+| system-part3 SRAM |
++-------------------+ 0x2001bc00
 |                   |
 | Heap              |
-|                   |
 |                   |
 +~~~~~~~~~~~~~~~~~~~+
 | user-part SRAM    |
@@ -31,7 +31,7 @@ _stack_end = _ram_end;
 _stack_start = _stack_end - _stack_size; /* The lowest address of the stack */
 
 /* System part 2 */
-_part2_static_ram_size = 42K;
+_part2_static_ram_size = 8K;
 _part2_static_ram_end = _stack_start;
 _part2_static_ram_start = _part2_static_ram_end - _part2_static_ram_size;
 
@@ -40,17 +40,23 @@ _part1_static_ram_size = 1K;
 _part1_static_ram_end = _part2_static_ram_start;
 _part1_static_ram_start = _part1_static_ram_end - _part1_static_ram_size;
 
+/* System part 3 */
+_part3_static_ram_size = 4K;
+_part3_static_ram_end = _part1_static_ram_start;
+_part3_static_ram_start = _part3_static_ram_end - _part3_static_ram_size;
+
 /* User part */
 _user_static_ram_start = _ram_start;
-_user_static_ram_end = _part1_static_ram_start;
+_user_static_ram_end = _part3_static_ram_start;
 _user_static_ram_size = _user_static_ram_end - _user_static_ram_start;
 
 /* Heap memory */
 _heap_start = _ram_start;
-_heap_end = _part1_static_ram_start;
+_heap_end = _part3_static_ram_start;
 _heap_size = _heap_end - _heap_start;
 _heap_min_size = 16K;
 
 /* Generic definitions independent of the number of system modules */
-_system_static_ram_start = _part1_static_ram_start;
+_system_static_ram_start = _part3_static_ram_start;
 _system_static_ram_end = _part2_static_ram_end;
+_system_static_ram_size = _system_static_ram_end - _system_static_ram_start;

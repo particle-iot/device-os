@@ -1,4 +1,4 @@
-INCLUDE ../../shared/stm32f2xx/photon/platform_ram.ld
+INCLUDE ../ram.ld
 INCLUDE module_user_memory.ld
 
 MEMORY

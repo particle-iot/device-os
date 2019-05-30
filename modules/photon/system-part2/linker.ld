@@ -1,4 +1,4 @@
-INCLUDE ../../shared/stm32f2xx/photon/platform_ram.ld
+INCLUDE ../ram.ld
 
 reset_handler = _start;
 ENTRY( reset_handler );

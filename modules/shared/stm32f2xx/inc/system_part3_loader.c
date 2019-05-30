@@ -6,12 +6,7 @@
  */
 typedef void  (*constructor_ptr_t)(void);
 
-/**
- * Pointer to the reset handler;
- */
-extern void* dynamic_reset_handler_location;
-extern char stack_end;
-extern char system_part3_ram_start;
+extern char _part3_static_ram_start;
 
 void* module_system_part3_pre_init();
 
@@ -38,7 +33,7 @@ void* module_system_part3_pre_init()
 
     memset(&link_bss_location, 0, link_bss_size );
 
-    return &system_part3_ram_start;
+    return &_part3_static_ram_start;
 }
 
 

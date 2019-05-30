@@ -1,12 +1,3 @@
-
-/**
- * The end of the statically allocated region.
- * This is much more than we need but ensures the RAM vtor table in part2 is
- * 512-byte aligned.
- */
-system_part1_module_ram_end = 0x20000400;
-system_part1_module_ram_start = 0x20000000;
-
 INCLUDE "../../shared/stm32f2xx/part1_vtor_module.ld"
 
 /**

@@ -1,3 +1,5 @@
+INCLUDE ../ram.ld
+
 reset_handler = main;
 ENTRY( reset_handler );
 
@@ -10,12 +12,10 @@ MEMORY
 
     /* The SRAM area is offset to include the stack and static ram allocated at the end of the SRAM area.
        This is done so that the build outputs meaningful values for BSS and Data section sizes.
-
-       The value given here is the sum of system_static_ram_size and stack_size
     */
-    SRAM      (rwx) : ORIGIN = 0x20020000 - 12K, LENGTH = 12K
-    
-    INCLUDE backup_ram_memory.ld    
+    SRAM      (rwx) : ORIGIN = _part2_static_ram_start, LENGTH = _part2_static_ram_size + _stack_size
+
+    INCLUDE backup_ram_memory.ld
 }
 
 
@@ -30,5 +30,3 @@ INCLUDE module_system_part2_export.ld
 INCLUDE module_user_export.ld
 
 INCLUDE ../../shared/stm32f2xx/part2.ld
-
-ASSERT ( (link_heap_location_end <= system_part3_ram_start), "the heap should come immediately before part3 static ram") ;
