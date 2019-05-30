@@ -206,7 +206,8 @@ BleAdvertisingData::BleAdvertisingData(const iBeacon& beacon)
 }
 
 size_t BleAdvertisingData::set(const uint8_t* buf, size_t len) {
-    if (buf == nullptr) {
+    if (buf == nullptr || len == 0) {
+        selfLen_ = 0;
         return selfLen_;
     }
     len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN);
