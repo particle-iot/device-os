@@ -28,6 +28,7 @@
 #include "system_setup.h"
 #include <memory>
 #include "system_tick_hal.h"
+#include "ble_listening_mode_handler.h"
 
 namespace particle { namespace system {
 
@@ -66,6 +67,10 @@ private:
     std::unique_ptr<SystemSetupConsoleBase> console_;
     system_tick_t timestampStarted_;
     system_tick_t timestampUpdate_;
+
+#if HAL_PLATFORM_BLE
+    BleListeningModeHandler bleHandler_;
+#endif
 };
 
 } } /* particle::system */

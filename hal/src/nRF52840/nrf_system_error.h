@@ -15,17 +15,14 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-/* s140_nrf52_6.0.0 */
-SOFTDEVICE_MINIMUM_RAM_BASE = 0x1628;
-SOFTDEVICE_MINIMUM_CODE_BASE = 0x26000;
+#ifndef NRF_SYSTEM_ERROR
+#define NRF_SYSTEM_ERROR
 
-/*
- * Reserving 32K in total. The more concurrent BLE links, the more RAM is required for SoftDevice.
- * link.ld for system-part1
- */
-APP_RAM_BASE = 32K;
-/* Reserving 192K in total */
-APP_CODE_BASE = 192K;
+#include <stdint.h>
+#include "nrf_error.h"
+#include "system_error.h"
 
-ASSERT ( APP_RAM_BASE >= SOFTDEVICE_MINIMUM_RAM_BASE, "APP_RAM_BASE needs to be adjusted" );
-ASSERT ( APP_CODE_BASE >= SOFTDEVICE_MINIMUM_CODE_BASE, "APP_CODE_BASE needs to be adjusted" );
+system_error_t nrf_system_error(uint32_t error);
+
+#endif
+

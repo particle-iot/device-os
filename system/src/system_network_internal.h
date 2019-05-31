@@ -327,7 +327,7 @@ protected:
 
 #if HAL_PLATFORM_BLE
         // Start advertising
-        ble_start_advert(nullptr);
+        ble_gap_start_advertising(nullptr);
 #endif // HAL_PLATFORM_BLE
 
         on_start_listening();
@@ -393,7 +393,7 @@ protected:
 
 #if HAL_PLATFORM_BLE
         // Stop advertising
-        ble_stop_advert(nullptr);
+        ble_gap_stop_advertising();
 #endif // HAL_PLATFORM_BLE
 
         LED_SIGNAL_STOP(LISTENING_MODE);

@@ -15,17 +15,21 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-/* s140_nrf52_6.0.0 */
-SOFTDEVICE_MINIMUM_RAM_BASE = 0x1628;
-SOFTDEVICE_MINIMUM_CODE_BASE = 0x26000;
+#include "application.h"
+#include "unit-test/unit-test.h"
 
-/*
- * Reserving 32K in total. The more concurrent BLE links, the more RAM is required for SoftDevice.
- * link.ld for system-part1
- */
-APP_RAM_BASE = 32K;
-/* Reserving 192K in total */
-APP_CODE_BASE = 192K;
+// make clean all TEST=hal/ble_peripheral PLATFORM=xenon DEBUG_BUILD=y
+//
+// Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
+    // { "comm", LOG_LEVEL_NONE }, // filter out comm messages
+    // { "system", LOG_LEVEL_INFO } // only info level for system messages
+// });
 
-ASSERT ( APP_RAM_BASE >= SOFTDEVICE_MINIMUM_RAM_BASE, "APP_RAM_BASE needs to be adjusted" );
-ASSERT ( APP_CODE_BASE >= SOFTDEVICE_MINIMUM_CODE_BASE, "APP_CODE_BASE needs to be adjusted" );
+UNIT_TEST_APP();
+
+// Enable threading if compiled with "USE_THREADING=y"
+#if PLATFORM_THREADING == 1 && USE_THREADING == 1
+SYSTEM_THREAD(ENABLED);
+#endif
+
+SYSTEM_MODE(MANUAL);

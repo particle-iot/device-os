@@ -33,12 +33,9 @@ LOG_SOURCE_CATEGORY("system.listen")
 #include "system_control_internal.h"
 #include "check.h"
 #include "system_event.h"
+#include "scope_guard.h"
 
 using particle::LEDStatus;
-
-#if HAL_PLATFORM_BLE
-#include "ble_hal.h"
-#endif /* HAL_PLATFORM_BLE */
 
 namespace {
 
@@ -79,8 +76,7 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     timestampStarted_ = timestampUpdate_ = HAL_Timer_Get_Milli_Seconds();
 
 #if HAL_PLATFORM_BLE
-    // Start advertising
-    ble_start_advert(nullptr);
+    bleHandler_.enter();
 #endif /* HAL_PLATFORM_BLE */
 
 #if !HAL_PLATFORM_WIFI
@@ -113,11 +109,6 @@ int ListeningModeHandler::exit() {
 
     LOG(INFO, "Exiting listening mode");
 
-#if HAL_PLATFORM_BLE
-    // Start advertising
-    ble_stop_advert(nullptr);
-#endif /* HAL_PLATFORM_BLE */
-
     LED_SIGNAL_STOP(LISTENING_MODE);
 
     console_.reset();
@@ -125,6 +116,10 @@ int ListeningModeHandler::exit() {
     active_ = false;
 
     system_notify_event(setup_end, HAL_Timer_Get_Milli_Seconds() - timestampStarted_);
+
+#if HAL_PLATFORM_BLE
+    bleHandler_.exit();
+#endif /* HAL_PLATFORM_BLE */
 
     return 0;
 }
