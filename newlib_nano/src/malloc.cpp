@@ -6,14 +6,18 @@
 #include "interrupts_hal.h"
 #include "service_debug.h"
 
-extern void *pvPortMalloc( size_t xWantedSize );
-extern void vPortFree( void *pv );
-extern size_t xPortGetFreeHeapSize( void );
-extern size_t xPortGetMinimumEverFreeHeapSize( void );
-extern size_t xPortGetHeapSize( void );
-extern size_t xPortGetBlockSize( void* ptr );
-extern void __malloc_lock(struct _reent *ptr);
-extern void __malloc_unlock(struct _reent *ptr);
+extern "C" {
+
+void *pvPortMalloc( size_t xWantedSize );
+void vPortFree( void *pv );
+size_t xPortGetFreeHeapSize( void );
+size_t xPortGetMinimumEverFreeHeapSize( void );
+size_t xPortGetHeapSize( void );
+size_t xPortGetBlockSize( void* ptr );
+void __malloc_lock(struct _reent *ptr);
+void __malloc_unlock(struct _reent *ptr);
+
+} // extern "C"
 
 static void panic_if_in_isr() {
     if (HAL_IsISR()) {
@@ -31,11 +35,13 @@ void* _malloc_r(struct _reent *r, size_t s) {
 
 void _free_r(struct _reent* r, void* ptr) {
     panic_if_in_isr();
+#if defined(__GLIBCXX__) && __GLIBCXX__ < 20160919 // ARM GCC 5.4.1 (q3)
     // Hack of the century. We cannot free reent->_current_locale, because it's in
     // .text section on most of our platforms in flash and is simply a constant "C"
     if (r && ptr == r->_current_locale) {
         ptr = NULL;
     }
+#endif
     vPortFree(ptr);
 }
 
