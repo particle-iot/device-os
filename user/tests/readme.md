@@ -3,7 +3,6 @@
 ## Directory Overview
 
 - app - test applications
- - CloudTest - automates testing of cloud features like functions, variables, OTA updates.
 - libraries - supporting libraries for test code
 - reflection - back to back tests running on two cores (driver/subject arrangement)
 - unit - gcc compiled unit tests
