@@ -1,3 +1,19 @@
+## 1.3.0-alpha.1
+
+>**Note:** If your Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release)
+>
+>This release contains v311 bootloaders.
+
+### FEATURES
+
+- [gen 3] BLE support [#1740](https://github.com/particle-iot/device-os/pull/1740)
+- [gen 3] NFC support [#1606](https://github.com/particle-iot/device-os/pull/1606)
+
+### BUG FIXES
+
+- [gen 3] [bsom] Building platform BSOM results flash overflow. [#1802](https://github.com/particle-iot/device-os/pull/1802)
+- [gen3] [hal] fixes early wakeup by RTC from STOP sleep mode [#1803](https://github.com/particle-iot/device-os/pull/1803)
+
 ## 1.2.1-rc.2
 
 >**Note:** If your Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release)
