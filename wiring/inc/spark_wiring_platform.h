@@ -123,6 +123,10 @@
 #define Wiring_BLE 1
 #endif
 
+#if HAL_PLATFORM_NFC
+#define Wiring_NFC 1
+#endif
+
 #if HAL_PLATFORM_CELLULAR
 #define Wiring_Cellular 1
 #endif
@@ -165,6 +169,10 @@
 
 #ifndef Wiring_BLE
 #define Wiring_BLE 0
+#endif
+
+#ifndef Wiring_NFC
+#define Wiring_NFC 0
 #endif
 
 #ifndef Wiring_Cellular

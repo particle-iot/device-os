@@ -122,6 +122,7 @@
 #define NRFX_SPIS3_ENABLED      0
 
 #define NRFX_TIMER2_ENABLED     1
+#define NRFX_TIMER4_ENABLED     1
 
 #define USBD_ENABLED                            1
 #define USBD_CONFIG_IRQ_PRIORITY                APP_IRQ_PRIORITY_LOW
@@ -157,3 +158,12 @@
 #define NRFX_DPPI_ENABLED 0
 
 #define NRF_CLOCK_ENABLED 1
+// NFC Configuration
+#define NFC_T2T_HAL_ENABLED                     1
+#define NRF_CLOCK_ENABLED                       1
+#define NFC_NDEF_MSG_TAG_TYPE                   2
+#define NFCT_CONFIG_IRQ_PRIORITY                7
+#define HAL_NFC_NRF52840_ENGINEERING_ABC_WORKAROUND 1
+#define NRFX_NFCT_ENABLED                           1
+#define NFC_PLATFORM_ENABLED                        1
+#define NFC_PLATFORM_LOG_ENABLED                    0

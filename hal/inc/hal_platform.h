@@ -242,4 +242,8 @@
 #define HAL_PLATFORM_IPV6 (0)
 #endif // HAL_PLATFORM_IPV6
 
+#ifndef HAL_PLATFORM_NFC
+#define HAL_PLATFORM_NFC 0
+#endif /* HAL_PLATFORM_NFC */
+
 #endif /* HAL_PLATFORM_H */

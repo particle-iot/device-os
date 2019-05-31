@@ -54,6 +54,7 @@
 #include "spark_wiring_servo.h"
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_ble.h"
+#include "spark_wiring_nfc.h"
 #include "spark_wiring_network.h"
 #include "spark_wiring_client.h"
 #include "spark_wiring_startup.h"

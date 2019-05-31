@@ -51,6 +51,7 @@
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_rgb.h"
 #include "spark_wiring_ticks.h"
+#include "spark_wiring_nfc.h"
 
 /* To prevent build error, we are undefining and redefining DAC here */
 #undef DAC
