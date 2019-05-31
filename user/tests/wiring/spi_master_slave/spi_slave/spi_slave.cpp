@@ -27,7 +27,7 @@
 #define MY_CS D5
 #pragma message "Compiling for SPI1, MY_CS set to D5"
 #elif (USE_SPI == 2)
-#error "SPI2 not supported for xenon-som, argon-som or boron-som"
+#error "SPI2 not supported for xsom, asom or bsom"
 #else
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
