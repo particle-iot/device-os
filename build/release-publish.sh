@@ -3,7 +3,7 @@ set -o errexit -o pipefail -o noclobber -o nounset
 
 function display_help ()
 {
-    echo "\
+    echo '
 usage: release-publish.sh [--help] [--version=<semantic_version_string>]
                           --release-directory=<test_output_directory>
 
@@ -16,13 +16,16 @@ and copying them into a publish folder.
   -v, --version            Specify the version you wish to publish. If not
                              specified, then all versions discovered in the
                              release directory will be published.
-"
+'
 }
 
 # Utilized Enhanced `getopt`
 ! getopt --test > /dev/null
 if [ ${PIPESTATUS[0]} -ne 4 ]; then
-    echo 'I’m sorry, `getopt --test` failed in this environment.'
+    echo '
+`getopt --test` failed in this environment!
+Please confirm "GNU getopt" is installed on this device.
+'
     exit 1
 fi
 

@@ -3,7 +3,7 @@ set -o errexit -o pipefail -o noclobber -o nounset
 
 function display_help ()
 {
-    echo "\
+    echo '
 usage: make_release.sh [--debug] [--help]
                        [--output-directory=<binary_output_directory>]
                        [--platform=<all|argon|asom|boron|bsom...
@@ -19,19 +19,22 @@ associated tests for a specified platform.
   -o, --output-directory  Specify the root output directory where the
                             folder hierarchy for the resulting binaries
                             will be placed. If not specified, the resulting
-                            binaries will be placed in '<particle-iot/device-os>...
-                            /build/releases/' by default.
+                            binaries will be placed in `<particle-iot/device-os>...
+                            /build/releases/` by default.
   -p, --platform          Specify the desired platform. If no platform is
-                            specified, then 'all' will be defaulted.
+                            specified, then `all` will be defaulted.
   --publish               Collect files into a publish directory.
   -t, --tests             Generate test binaries for the selected platform.
-"
+'
 }
 
 # Utilized Enhanced `getopt`
 ! getopt --test > /dev/null
 if [ ${PIPESTATUS[0]} -ne 4 ]; then
-    echo 'I’m sorry, `getopt --test` failed in this environment.'
+    echo '
+`getopt --test` failed in this environment!
+Please confirm "GNU getopt" is installed on this device.
+'
     exit 1
 fi
 

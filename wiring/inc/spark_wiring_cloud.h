@@ -249,18 +249,20 @@ class CloudClass {
      *
      * @param[in] period_s The period (in seconds) at which vitals messages are to be sent
      *                     to the cloud (default value: \p particle::NOW)
-     * @arg \p particle::NOW - Special value used to send vitals immediately
+     * @arg \p particle::NOW - A special value used to send vitals immediately
      * @arg \p 0 - Publish a final message and disable periodic publishing
      * @arg \p s - Publish an initial message and subsequent messages every \p s seconds thereafter
-     * @param[in,out] reserved Reserved for future use (default value: \p nullptr).
      *
      * @returns \p system_error_t result code
      * @retval \p system_error_t::SYSTEM_ERROR_NONE
      * @retval \p system_error_t::SYSTEM_ERROR_IO
      *
-     * @note The periodic functionality is not available for the Spark Core
+     * @note At call time, a blocking call is made on the application thread. Any subsequent
+     * timer-based calls are executed asynchronously.
+     *
+     * @note The periodic functionality is not available for the Spark Core.
      */
-    int publishVitals(system_tick_t period = particle::NOW);
+    int publishVitals(system_tick_t period_s = particle::NOW);
 
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
     {

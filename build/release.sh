@@ -5,7 +5,7 @@ VERSION="1.3.0-alpha.1"
 
 function display_help ()
 {
-    echo "\
+    echo '
 usage: release.sh [--output-directory=<binary_output_directory>]
                   (--platform=<argon|asom|boron|bsom...
                   |core|electron|p1|photon|xenon|xsom>...
@@ -22,17 +22,20 @@ associated tests for a specified platform.
   -o, --output-directory  Specify the root output directory where the
                             folder hierarchy for the resulting binaries
                             will be placed. If not specified, the resulting
-                            binaries will be placed in '<particle-iot/device-os>...
-                            /build/releases/' by default.
+                            binaries will be placed in `<particle-iot/device-os>...
+                            /build/releases/` by default.
   -p, --platform          Specify the desired platform.
   -t, --tests             Generate test binaries for the current platform.
-"
+'
 }
 
 # Utilized Enhanced `getopt`
 ! getopt --test > /dev/null
 if [ ${PIPESTATUS[0]} -ne 4 ]; then
-    echo 'I’m sorry, `getopt --test` failed in this environment.'
+    echo '
+`getopt --test` failed in this environment!
+Please confirm "GNU getopt" is installed on this device.
+'
     exit 1
 fi
 
