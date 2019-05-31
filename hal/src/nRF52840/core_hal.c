@@ -621,19 +621,31 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
     // Configure RTC2 to count at 125ms interval. This should allow us to sleep
     // (2^24 - 1) * 125ms = 24 days
     NVIC_SetPriority(RTC2_IRQn, 4);
+    // Make sure that the RTC is stopped and cleared
     nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_STOP);
     nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_CLEAR);
-    nrf_rtc_prescaler_set(NRF_RTC2, 4095);
+    __DSB();
+    __ISB();
     nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_TICK_MASK);
     nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_OVERFLOW_MASK);
     nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_COMPARE0_MASK);
     nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_COMPARE1_MASK);
     nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_COMPARE2_MASK);
     nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_COMPARE3_MASK);
+    // For some reason even though the RTC should be stopped by now,
+    // the prescaler is still read-only. So, we loop here to make sure that the
+    // prescaler settings does take effect.
+    static const uint32_t prescaler = 4095;
+    while (rtc_prescaler_get(NRF_RTC2) != prescaler) {
+        nrf_rtc_prescaler_set(NRF_RTC2, prescaler);
+        __DSB();
+        __ISB();
+    }
     // Start RTC2
     nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_START);
     __DSB();
     __ISB();
+
 
     NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
@@ -770,12 +782,14 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
         uint32_t cc = counter + seconds * 8;
         NVIC_EnableIRQ(RTC2_IRQn);
         nrf_rtc_cc_set(NRF_RTC2, 0, cc);
+        nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_COMPARE_0);
         nrf_rtc_int_enable(NRF_RTC2, NRF_RTC_INT_COMPARE0_MASK);
         nrf_rtc_event_enable(NRF_RTC2, RTC_EVTEN_COMPARE0_Msk);
     }
 
     __DSB();
     __ISB();
+
 
     while (true) {
         if ((exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) && NVIC_GetPendingIRQ(RTC2_IRQn)) {
@@ -862,6 +876,7 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
         // And disable again
         __set_BASEPRI(base_pri);
     }
+
 
     // Count the number of microseconds we've slept and reconfigure hal_timer (RTC2)
     uint64_t slept_for = (uint64_t)nrf_rtc_counter_get(NRF_RTC2) * 125000;

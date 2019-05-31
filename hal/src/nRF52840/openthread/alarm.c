@@ -454,7 +454,14 @@ void nrf5AlarmInit(void)
     NVIC_ClearPendingIRQ(RTC_IRQN);
     NVIC_EnableIRQ(RTC_IRQN);
 
-    nrf_rtc_prescaler_set(RTC_INSTANCE, 0);
+    // Particle: this is a workaround for a situation we've seen happen:
+    // despite the fact that the RTC should be stopped and prescaler should be R/W,
+    // we've seen it stay R/O for some reason :|
+    while (rtc_prescaler_get(RTC_INSTANCE) != 0) {
+        nrf_rtc_prescaler_set(RTC_INSTANCE, 0);
+        __DSB();
+        __ISB();
+    }
 
     nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW);
     nrf_rtc_event_enable(RTC_INSTANCE, RTC_EVTEN_OVRFLW_Msk);
