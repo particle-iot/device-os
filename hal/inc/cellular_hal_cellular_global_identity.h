@@ -20,6 +20,19 @@
 
 #include <stdint.h>
 
+/*! Cellular Global Identity Structure Version */
+enum __attribute__((__packed__)) CgiVersion
+{
+    CGI_VERSION_1,
+    CGI_VERSION_LATEST = CGI_VERSION_1,
+};
+
+/*! Cellular Global Identity Flags */
+enum __attribute__((__packed__)) CgiFlags
+{
+    CGI_FLAG_TWO_DIGIT_MNC = 0b00000001, /*!< Indicates two-digit format of Mobile Network Code */
+};
+
 /*!
  * \brief Cellular Global Identity (CGI)
  *
@@ -35,8 +48,10 @@ typedef struct __attribute__((__packed__))
     uint16_t size; /*!< \c size is specified by the user application, to inform the device-os of the
                       amount of space allocated to the structure */
     uint16_t version;  /*!< \c version is specified by the device-os, to inform the user-application
-                          of the version of the information returned */
-    uint16_t reserved; /*!< \c reserved is allocated for future usage */
+                           of the version of the information returned */
+    uint8_t reserved;  /*!< \c reserved is allocated for future usage */
+    uint8_t cgi_flags; /*!< \c cgi_flags Indicates the structure/configuration of the values in
+                           CellularGlobalIdentity */
     uint16_t mobile_country_code; /*!< \c mobile_country_code consists of three decimal digits and
                                      identifies uniquely the country of domicile of the mobile
                                      subscription */

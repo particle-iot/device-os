@@ -46,8 +46,8 @@ HAL API Test Plan
     "cell_global_identity": {
       "mobile_country_code": 310,
       "mobile_network_code": 410,
-      "location_area_code": 25876,
-      "cell_id": 88078104
+      "location_area_code": 25878,
+      "cell_id": 88213008
     },
     "radio_access_technology": "LTE"
   }
