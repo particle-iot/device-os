@@ -225,3 +225,4 @@ ASSERT ( link_end_of_static_ram <= _system_part2_static_ram_end, "static RAM use
 ASSERT( _estack % 8 == 0, "Stack should be 8-byte aligned" );
 
 ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );
+ASSERT( ALIGN(_stack_end, 8) == _stack_end, "The stack should be 8-byte aligned" );
