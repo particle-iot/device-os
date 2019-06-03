@@ -7,5 +7,5 @@ CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/electron/,watch
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/electron/,dct_hal.cpp)
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/stm32/,newlib.cpp)
 
-LDFLAGS += -L$(PROJECT_ROOT)/modules/electron/user-part
-LINKER_DEPS += $(PROJECT_ROOT)/modules/electron/user-part/module_user_memory.ld
+LDFLAGS += -L$(PROJECT_ROOT)/modules/electron
+LINKER_DEPS += $(PROJECT_ROOT)/modules/electron/ram.ld
