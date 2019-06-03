@@ -121,8 +121,6 @@ void setup()
  */
 int cellular_modem_type() {
     CellularDevice device;
-    memset(&device, 0, sizeof(device));
-    device.size = sizeof(device);
     cellular_device_info(&device, NULL);
 
     return device.dev;
