@@ -201,7 +201,7 @@ static void init_malloc_mutex(void)
     malloc_mutex = xSemaphoreCreateRecursiveMutex();
 }
 
-void __malloc_lock(void* ptr)
+void __malloc_lock(struct _reent *ptr)
 {
     if (malloc_mutex) {
         if (!xSemaphoreTakeRecursive(malloc_mutex, MALLOC_LOCK_TIMEOUT_MS)) {
@@ -211,7 +211,7 @@ void __malloc_lock(void* ptr)
     }
 }
 
-void __malloc_unlock(void* ptr)
+void __malloc_unlock(struct _reent *ptr)
 {
     if (malloc_mutex) {
         xSemaphoreGiveRecursive(malloc_mutex);
