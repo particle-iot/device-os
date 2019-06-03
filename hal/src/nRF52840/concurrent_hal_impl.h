@@ -71,6 +71,8 @@ int __gthread_cond_timedwait (__gthread_cond_t *cond,
 
 int __gthread_mutex_timedlock (__gthread_mutex_t* mutex, const __gthread_time_t* timeout);
 
+int __gthread_recursive_mutex_timedlock (__gthread_recursive_mutex_t* mutex, const __gthread_time_t* timeout);
+
 #ifdef  __cplusplus
 }
 #endif

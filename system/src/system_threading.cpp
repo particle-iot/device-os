@@ -20,7 +20,9 @@ ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idl
 			100, /* take timeout */
 			0x7FFFFFFF, /* put timeout - wait forever */
 			50, /* queue size */
-			THREAD_STACK_SIZE /* stack size */)); // TODO: Use this value for threads spawned by ActiveObjectBase
+			THREAD_STACK_SIZE /* stack size */));
+
+#if 0
 
 /**
  * Implementation to support gthread's concurrency primitives.
@@ -120,6 +122,8 @@ namespace std {
 }
 #endif /* PLATFORM_ID != 20 */
 
+#endif // 0
+
 static os_mutex_recursive_t usb_serial_mutex;
 
 os_mutex_recursive_t mutex_usb_serial()
@@ -130,9 +134,7 @@ os_mutex_recursive_t mutex_usb_serial()
 	return usb_serial_mutex;
 }
 
-#endif
-
-
+#endif // PLATFORM_THREADING
 
 void* system_internal(int item, void* reserved)
 {
