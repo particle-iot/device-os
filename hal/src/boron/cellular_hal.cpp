@@ -256,9 +256,10 @@ cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* r
     CHECK(client->getCellularGlobalIdentity(&cgi));
 
     // Validate cache
-    CHECK_TRUE((0 != cgi.mobile_country_code && 0 != cgi.mobile_network_code &&
-                0xFFFF != cgi.location_area_code && 0xFFFFFFFF != cgi.cell_id),
-               SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0 != cgi.mobile_country_code, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0 != cgi.mobile_network_code, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0xFFFF != cgi.location_area_code, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0xFFFFFFFF != cgi.cell_id, SYSTEM_ERROR_BAD_DATA);
 
     // Update result
     *cgi_ = cgi;

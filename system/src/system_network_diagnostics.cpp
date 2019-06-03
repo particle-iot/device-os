@@ -302,7 +302,14 @@ public:
     {
         CellularGlobalIdentity cgi;
         cellular_global_identity(&cgi, nullptr);
-        val = static_cast<IntType>(cgi.mobile_network_code);
+        if (CGI_FLAG_TWO_DIGIT_MNC & cgi.cgi_flags)
+        {
+            val = static_cast<IntType>(cgi.mobile_network_code * -1);
+        }
+        else
+        {
+            val = static_cast<IntType>(cgi.mobile_network_code);
+        }
 
         return SYSTEM_ERROR_NONE;
     }
