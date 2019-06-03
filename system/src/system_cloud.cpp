@@ -200,6 +200,8 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
     bool result;
     if (funcKey) {                          // old call, with funcKey != NULL
         cloud_function_descriptor desc;
+        memset(&desc, 0, sizeof(desc));
+        desc.size = sizeof(desc);
         desc.funcKey = funcKey;
         desc.fn = call_raw_user_function;
         desc.data = (void*)pFunc;

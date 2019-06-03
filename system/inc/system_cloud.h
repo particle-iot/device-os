@@ -141,17 +141,12 @@ typedef int (*cloud_function_t)(void* data, const char* param, void* reserved);
 typedef int (user_function_int_str_t)(String paramString);
 typedef user_function_int_str_t* p_user_function_int_str_t;
 
-struct  cloud_function_descriptor {
+struct cloud_function_descriptor {
     uint16_t size;
     uint16_t padding;
     const char *funcKey;
     cloud_function_t fn;
     void* data;
-
-     cloud_function_descriptor() {
-         memset(this, 0, sizeof(*this));
-         size = sizeof(*this);
-     }
 };
 
 PARTICLE_STATIC_ASSERT(cloud_function_descriptor_size, sizeof(cloud_function_descriptor)==16 || sizeof(void*)!=4);
