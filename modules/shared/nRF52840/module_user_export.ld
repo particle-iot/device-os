@@ -1,8 +1,3 @@
-/* Assume the user static RAM start address */
-user_static_ram_size = 96K;
-user_static_ram_start = 0x20000000 + 256K - LENGTH(BACKUPSRAM_ALL) - __Stack_Size - user_static_ram_size;
-
-
 /* location of the module_info block */
 user_module_info = 0xD4000 ;
 

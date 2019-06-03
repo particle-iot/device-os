@@ -40,6 +40,7 @@ ENTRY( _start );
 */
 
 /* Include memory map */
+INCLUDE ram_map.ld
 INCLUDE memory_no_bootloader.ld
 
 /* default stack sizes.

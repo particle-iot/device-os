@@ -24,7 +24,7 @@ SOFTDEVICE_MINIMUM_CODE_BASE = 0x26000;
  * Referenced by link.ld for system-part1
  * IMPORTANT: when changing these values, make sure to update module_radio_stack in ota_module_bounds.c
  */
-APP_RAM_BASE = 16K;
+APP_RAM_BASE = _softdevice_ram_end;
 /* Reserving 192K in total */
 APP_CODE_BASE = 192K;
 

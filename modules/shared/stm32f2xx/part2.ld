@@ -73,7 +73,6 @@ SECTIONS
     .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
     {
         link_static_ram_start = .;
-        . = ALIGN(512);
         link_ram_interrupt_vectors_location = .;
         . = . + interrupt_vectors_length;
         link_ram_interrupt_vectors_location_end = .;
@@ -221,6 +220,3 @@ ASSERT ( (link_bss_end - link_global_data_start) <= _part2_static_ram_size, "Ins
 ASSERT ( link_end_of_static_ram <= _part2_static_ram_end, "static RAM use exceeds allocated space" );
 
 ASSERT( ALIGN(_stack_end, 8) == _stack_end, "The stack should be 8-byte aligned" );
-
-ASSERT( ALIGN(link_ram_interrupt_vectors_location, 512) == link_ram_interrupt_vectors_location,
-    "The vector table should be 512-byte aligned" );

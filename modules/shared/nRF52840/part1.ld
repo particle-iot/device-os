@@ -184,18 +184,10 @@ SECTIONS
         *(.ARM.extab*)
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
-    
-    padding_length = ALIGN(system_part1_static_ram_start - ORIGIN(SRAM), 512);
-
-    .padding : /* 512 byte aligned offset in SRAM */
-    {
-        link_padding_start = .;
-        . = . + padding_length;
-        link_static_ram_start = .;
-    }> SRAM
 
     .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
     {
+        link_static_ram_start = .;
         link_ram_interrupt_vectors_location = .;
         . = . + interrupt_vectors_length;
         link_ram_interrupt_vectors_location_end = .;
@@ -304,6 +296,7 @@ ASSERT ( link_dynalib_start == system_part1_module_table, "Dynalib location not 
 /* RAM interrupt vector table assertion */
 ASSERT( link_ram_interrupt_vectors_location == ORIGIN( SRAM ), "RAM Interrupt table should be at start of RAM" );
 ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location ) == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
+ASSERT ( link_ram_interrupt_vectors_location % 512 == 0, "RAM vector table should be 512-byte aligned" );
 
 /* System init assertion */
 ASSERT ( chk_system_pre_init_start < chk_system_pre_init_end , "system_part1_pre_init function not included" );
@@ -314,9 +307,9 @@ ASSERT ( link_heap_location + min_heap_size <= __Stack_Init, "Insufficient room 
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
 
-ASSERT ( system_part1_static_ram_start == link_static_ram_start, "exported SRAM start different from linked SRAM start." );
-ASSERT ( system_part1_static_ram_start == ORIGIN(SRAM), "ORIGIN of SRAM should be equal to system_part1_static_ram_start. Adjust by hand to obtain the correct address and length. ");
-ASSERT ( (link_bss_end - link_global_data_start) <= system_part1_static_ram_size, "Insufficient room for .data and .bss sections" )
+ASSERT ( _system_part1_static_ram_start == link_static_ram_start, "exported SRAM start different from linked SRAM start." );
+ASSERT ( _system_part1_static_ram_start == ORIGIN(SRAM), "ORIGIN of SRAM should be equal to _system_part1_static_ram_start. Adjust by hand to obtain the correct address and length. ");
+ASSERT ( (link_bss_end - link_global_data_start) <= _system_part1_static_ram_size, "Insufficient room for .data and .bss sections" )
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
