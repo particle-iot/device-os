@@ -1,8 +1,10 @@
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
+
 #include <sys/config.h>
 #include <reent.h>
 #include <malloc.h>
+
 #include "interrupts_hal.h"
 #include "service_debug.h"
 
@@ -35,7 +37,7 @@ void* _malloc_r(struct _reent *r, size_t s) {
 
 void _free_r(struct _reent* r, void* ptr) {
     panic_if_in_isr();
-#if defined(__GLIBCXX__) && __GLIBCXX__ < 20160919 // ARM GCC 5.4.1 (q3)
+#if __GLIBCXX__ < 20160919 // ARM GCC 5.4.1-2016q3
     // Hack of the century. We cannot free reent->_current_locale, because it's in
     // .text section on most of our platforms in flash and is simply a constant "C"
     if (r && ptr == r->_current_locale) {
