@@ -20,6 +20,8 @@
 
 #include <stdint.h>
 
+#include "static_assert.h"
+
 /*! Cellular Global Identity Structure Version */
 enum __attribute__((__packed__)) CgiVersion
 {
@@ -32,6 +34,8 @@ enum __attribute__((__packed__)) CgiFlags
 {
     CGI_FLAG_TWO_DIGIT_MNC = 0b00000001, /*!< Indicates two-digit format of Mobile Network Code */
 };
+
+PARTICLE_STATIC_ASSERT(CgiFlags_size, sizeof(enum CgiFlags) == 1);
 
 /*!
  * \brief Cellular Global Identity (CGI)
