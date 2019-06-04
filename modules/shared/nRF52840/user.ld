@@ -143,3 +143,5 @@ ASSERT ( user_module_info == link_module_info_start, "module info start not wher
 ASSERT ( user_module_info_end == link_module_info_end, "module info end not where expected" );
 
 ASSERT ( ( link_module_info_suffix_start - link_module_info_static_start ) == 4 || ( link_module_info_suffix_start - link_module_info_static_start ) == 8, "module info static details not linked" );
+
+ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

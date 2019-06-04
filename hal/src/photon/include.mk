@@ -58,6 +58,7 @@ LDFLAGS += --specs=nano.specs --specs=$(NEWLIB_TWEAK_SPECS)
 LDFLAGS += -Wl,--whole-archive $(HAL_WICED_LIB_FILES) -Wl,--no-whole-archive
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -L$(COMMON_BUILD)/arm/linker/stm32f2xx
+LDFLAGS += -L$(COMMON_BUILD)/arm/linker/stm32f2xx/$(PLATFORM_NAME)
 LDFLAGS += -L$(WICED_MCU)/STM32F2x5
 LDFLAGS += -Wl,--defsym,__STACKSIZE__=1400
 USE_PRINTF_FLOAT ?= n

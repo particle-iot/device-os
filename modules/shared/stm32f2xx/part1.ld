@@ -151,3 +151,5 @@ ASSERT ( system_part1_boot_table_start == link_boot_table_start, "boot table exp
 
 link_boot_table_size = link_boot_table_end - link_boot_table_start ;
 ASSERT ( link_boot_table_size == system_part1_boot_table_size, "boot table not linked or incorrect size" );
+
+ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

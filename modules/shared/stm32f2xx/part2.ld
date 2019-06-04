@@ -223,3 +223,5 @@ ASSERT ( (link_bss_end - link_global_data_start) <= _system_part2_static_ram_siz
 ASSERT ( link_end_of_static_ram <= _system_part2_static_ram_end, "static RAM use exceeds allocated space" );
 
 ASSERT( _estack % 8 == 0, "Stack should be 8-byte aligned" );
+
+ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

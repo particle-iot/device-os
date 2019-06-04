@@ -376,3 +376,5 @@ ASSERT ( mono_module_info_end == link_module_info_end, "module info end not wher
 ASSERT ( link_constructors_location % 4 == 0, "the constructor array should be at a 4-byte aligned address." );
 
 /*ASSERT ( link_early_startup_begin != link_early_startup_end, "no early startup functions linked" );*/
+
+ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

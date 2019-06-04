@@ -142,3 +142,5 @@ ASSERT ( system_part3_module_info_start == link_module_info_start, "module info 
 ASSERT ( system_part3_module_info_end == link_module_info_end, "module info end not where expected" );
 
 ASSERT ( link_module_info_start == ORIGIN(APP_FLASH), "boot table should be at start of flash region" );
+
+ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

@@ -320,4 +320,6 @@ ASSERT ( system_part1_module_info_end == link_module_info_end, "part1 module inf
 ASSERT ( ( link_constructors_location % 4 ) == 0, "constructor array should be aligned to a 4-bytes" );
 ASSERT( _estack % 8 == 0, "Stack should be 8-byte aligned" );
 
+ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );
+
 INCLUDE backup_ram_system_assert.ld
