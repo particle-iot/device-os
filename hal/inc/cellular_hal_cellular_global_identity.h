@@ -51,8 +51,8 @@ typedef struct __attribute__((__packed__))
 {
     uint16_t size; /*!< \c size is specified by the user application, to inform the device-os of the
                       amount of space allocated to the structure */
-    uint16_t version;  /*!< \c version is specified by the device-os, to inform the user-application
-                           of the version of the information returned */
+    uint16_t version;  /*!< \c version is specified by the user application, to inform the
+                          device-os of the version of the information to be returned */
     uint8_t reserved;  /*!< \c reserved is allocated for future usage */
     uint8_t cgi_flags; /*!< \c cgi_flags Indicates the structure/configuration of the values in
                            CellularGlobalIdentity */
