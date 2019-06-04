@@ -240,7 +240,7 @@ int cellular_credentials_clear(void* reserved) {
 }
 
 cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* reserved_) {
-    CellularGlobalIdentity cgi;
+    CellularGlobalIdentity cgi;  // Intentionally left uninitialized
 
     // Acquire Cellular NCP Client
     const auto mgr = cellularNetworkManager();

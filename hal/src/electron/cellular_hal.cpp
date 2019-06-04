@@ -361,7 +361,7 @@ cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reser
 
 cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* reserved_)
 {
-    CellularGlobalIdentity cgi;
+    CellularGlobalIdentity cgi;  // Intentionally left uninitialized
 
     // Validate Argument(s)
     (void)reserved_;
