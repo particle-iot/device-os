@@ -154,6 +154,7 @@ link_heap_location = _heap_start;
 link_heap_location_end = _heap_end;
 min_heap_end = link_heap_location + _heap_min_size;
 ASSERT ( min_heap_end <= _system_static_ram_start, "Insufficient room for heap" );
+ASSERT ( link_heap_location_end <= _system_static_ram_start, "the heap should come immediately before the system static ram" );
 
 /* Declare libc Heap to start at end of allocated RAM */
 PROVIDE( _heap = link_heap_location );
@@ -201,7 +202,7 @@ link_stack_location = _stack_start;
 link_stack_end = _stack_end;
 _estack = _stack_end;
 
-ASSERT ( link_stack_end - link_stack_location >= _stack_size, "stack is too small" );
+ASSERT ( link_stack_end - link_stack_location <= _stack_size, "stack is too small" );
 
 ASSERT ( link_stack_end == expected_stack_end, "stack should be at the top of SRAM" );
 
@@ -216,9 +217,9 @@ ASSERT ( system_part2_module_info_end == link_module_info_end, "part2 module inf
 
 ASSERT ( ORIGIN(SRAM) == _system_part2_static_ram_start, "ORIGIN of SRAM should be equal to _system_part2_static_ram_start. Adjust by hand to obtain the correct address and length. ");
 ASSERT ( LENGTH(SRAM) == ( _system_part2_static_ram_size + _stack_size ), "LENGTH of SRAM should be equal to _system_part2_static_ram_size plus _stack_size. Adjust by hand to obtain the correct address and length. ");
+ASSERT ( _system_part2_static_ram_start == _system_part1_static_ram_end, "system part1 static ram should come immediately before system part2 static ram" );
 
 ASSERT ( (link_bss_end - link_global_data_start) <= _system_part2_static_ram_size, "Insufficient room for .data and .bss sections" )
-
 ASSERT ( link_end_of_static_ram <= _system_part2_static_ram_end, "static RAM use exceeds allocated space" );
 
-ASSERT( _stack_end % 8 == 0, "Stack should be 8-byte aligned" );
+ASSERT( _estack % 8 == 0, "Stack should be 8-byte aligned" );
