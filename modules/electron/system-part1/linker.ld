@@ -1,9 +1,9 @@
-INCLUDE ../ram.ld
+INCLUDE ram_map.ld
 
 MEMORY
 {
     APP_FLASH (rx)  : ORIGIN = 0x08060000, LENGTH = 128K
-    SRAM      (rwx) : ORIGIN = _part3_static_ram_start, LENGTH = _part3_static_ram_size
+    SRAM      (rwx) : ORIGIN = _system_part3_static_ram_start, LENGTH = _system_part3_static_ram_size
 }
 
 INCLUDE module_system_part1_export.ld

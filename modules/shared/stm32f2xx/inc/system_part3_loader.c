@@ -6,7 +6,7 @@
  */
 typedef void  (*constructor_ptr_t)(void);
 
-extern char _part3_static_ram_start;
+extern char _system_part3_static_ram_start;
 
 void* module_system_part3_pre_init();
 
@@ -33,7 +33,7 @@ void* module_system_part3_pre_init()
 
     memset(&link_bss_location, 0, link_bss_size );
 
-    return &_part3_static_ram_start;
+    return &_system_part3_static_ram_start;
 }
 
 

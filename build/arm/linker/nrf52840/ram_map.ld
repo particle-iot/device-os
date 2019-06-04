@@ -12,7 +12,7 @@ Modular firmware:
 +--------------------------+ 0x2003f000
 | Main stack               |
 +--------------------------+ 0x2003e800
-| User static RAM          |
+| User part static RAM     |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~+
 |                          |
 | Heap                     |
@@ -20,7 +20,7 @@ Modular firmware:
 +~~~~~~~~~~~~~~~~~~~~~~~~~~+
 | System part 1 static RAM |
 +--------------------------+ 0x20004000
-| SoftDevice               |
+| SoftDevice RAM           |
 +--------------------------+ 0x20000000
 
 TODO: Bootloader, monolithic firmware
@@ -59,8 +59,8 @@ _stack_end = _system_backup_ram_start;
 _stack_start = _stack_end - _stack_size; /* The lowest address of the stack */
 
 /* User part */
-_user_part_static_ram_end = _stack_start;
 _user_part_static_ram_size = DEFINED(_user_part_static_ram_size) ? _user_part_static_ram_size : 80K; /* Defined in user_ram_map.ld */
+_user_part_static_ram_end = _stack_start;
 _user_part_static_ram_start = _user_part_static_ram_end - _user_part_static_ram_size;
 
 /* SoftDevice */

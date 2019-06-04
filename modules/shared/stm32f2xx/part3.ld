@@ -130,7 +130,7 @@ SECTIONS
 ASSERT( link_module_jump_table_end != link_module_jump_table_start, "module master jump table not linked" );
 
 ASSERT ( link_module_jump_table_start == system_part3_module_table, "Export address for module table is incorrect" );
-ASSERT ( link_end_of_static_ram <= _part3_static_ram_end, "static RAM use exceeds allocated space" );
+ASSERT ( link_end_of_static_ram <= _system_part3_static_ram_end, "static RAM use exceeds allocated space" );
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
 
