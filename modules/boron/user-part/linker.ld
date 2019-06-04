@@ -1,7 +1,7 @@
 /* This file is generated at build time (see build_linker_script.mk) */
-INCLUDE user_ram_map.ld
+INCLUDE platform_user_ram.ld
 
-INCLUDE ram_map.ld
+INCLUDE platform_ram.ld
 INCLUDE softdevice.ld
 INCLUDE ../../shared/nRF52840/common.ld
 

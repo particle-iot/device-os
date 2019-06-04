@@ -318,6 +318,6 @@ ASSERT ( system_part1_module_info_start == link_module_info_start, "part1 module
 ASSERT ( system_part1_module_info_end == link_module_info_end, "part1 module info end not where expected" );
 
 ASSERT ( ( link_constructors_location % 4 ) == 0, "constructor array should be aligned to a 4-bytes" );
-ASSERT( _stack_end % 8 == 0, "Stack should be 8-byte aligned" );
+ASSERT( _estack % 8 == 0, "Stack should be 8-byte aligned" );
 
 INCLUDE backup_ram_system_assert.ld

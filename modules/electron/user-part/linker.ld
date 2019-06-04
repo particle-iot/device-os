@@ -1,4 +1,4 @@
-INCLUDE ram_map.ld
+INCLUDE platform_ram.ld
 
 MEMORY
 {

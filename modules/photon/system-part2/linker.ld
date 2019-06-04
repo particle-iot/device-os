@@ -1,4 +1,4 @@
-INCLUDE ram_map.ld
+INCLUDE platform_ram.ld
 
 reset_handler = _start;
 ENTRY( reset_handler );

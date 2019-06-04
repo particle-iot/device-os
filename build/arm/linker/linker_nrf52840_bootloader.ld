@@ -7,7 +7,7 @@ __Stack_Init = _estack - __Stack_Size;
 _Minimum_Stack_Size = 0x1400;
 
 /* Memory Spaces Definitions */
-INCLUDE ram_map.ld
+INCLUDE platform_ram.ld
 INCLUDE softdevice.ld
 
 bootloader_ram_origin = 0x20000000 + APP_RAM_BASE;

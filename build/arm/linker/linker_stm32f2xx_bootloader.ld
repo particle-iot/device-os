@@ -8,14 +8,14 @@ _Minimum_Stack_Size = 0x1400;
 
 /* Memory Spaces Definitions */
 
-INCLUDE ram.ld
+INCLUDE platform_ram.ld
 
 /* Ensure RAM region doesn't overlap with the system modules, since the bootloader imports
    dynalib functions dynamically on certain platforms */
 bootloader_ram_length = 16K;
 bootloader_ram_offset = 8K;
-bootloader_ram_origin = _user_static_ram_start + bootloader_ram_offset;
-ASSERT(bootloader_ram_origin + bootloader_ram_length <= _user_static_ram_end,
+bootloader_ram_origin = _user_part_static_ram_start + bootloader_ram_offset;
+ASSERT(bootloader_ram_origin + bootloader_ram_length <= _user_part_static_ram_end,
     "Insufficient space for RAM region");
 
 MEMORY
