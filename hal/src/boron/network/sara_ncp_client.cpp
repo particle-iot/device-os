@@ -413,7 +413,7 @@ int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     // Preserve digit format data
-    const int mnc_digits = ::strnlen(mobileNetworkCode, 4);
+    const int mnc_digits = ::strnlen(mobileNetworkCode, sizeof(mobileNetworkCode));
     CHECK_TRUE((2 == mnc_digits || 3 == mnc_digits), SYSTEM_ERROR_BAD_DATA);
     if (2 == mnc_digits) {
         cgi_.cgi_flags |= CGI_FLAG_TWO_DIGIT_MNC;

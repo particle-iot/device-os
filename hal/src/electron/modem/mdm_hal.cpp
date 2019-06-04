@@ -1513,14 +1513,17 @@ int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
         char mobileNetworkCode[4] = {0};
 
         // +COPS: <mode>[,<format>,<oper>[,<AcT>]]
-        if (sscanf(buf, "\r\n+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobileCountryCode,
+        if (::sscanf(buf, "\r\n+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobileCountryCode,
                    mobileNetworkCode, &act) >= 1)
         {
             // Preserve digit format data
-            const int mnc_digits = ::strnlen(mobileNetworkCode, 4);
-            if (2 == mnc_digits) {
+            const int mnc_digits = ::strnlen(mobileNetworkCode, sizeof(mobileNetworkCode));
+            if (2 == mnc_digits)
+            {
                 status->cgi.cgi_flags |= CGI_FLAG_TWO_DIGIT_MNC;
-            } else {
+            }
+            else
+            {
                 status->cgi.cgi_flags &= ~CGI_FLAG_TWO_DIGIT_MNC;
             }
 
