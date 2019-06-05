@@ -1340,7 +1340,7 @@ bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_) {
     default:
     {
         // Confirm user is expecting the correct amount of data
-        if (cgi_.size >= _net.cgi.size)
+        if (cgi_.size < _net.cgi.size)
             goto failure;
 
         cgi_ = _net.cgi;
