@@ -279,7 +279,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        CellularGlobalIdentity cgi{sizeof(CellularGlobalIdentity),CGI_VERSION_LATEST};
+        CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
         cellular_global_identity(&cgi, nullptr);
         val = static_cast<IntType>(cgi.mobile_country_code);
 
@@ -300,7 +300,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        CellularGlobalIdentity cgi{sizeof(CellularGlobalIdentity),CGI_VERSION_LATEST};
+        CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
         cellular_global_identity(&cgi, nullptr);
         if (CGI_FLAG_TWO_DIGIT_MNC & cgi.cgi_flags)
         {
@@ -328,7 +328,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        CellularGlobalIdentity cgi{sizeof(CellularGlobalIdentity),CGI_VERSION_LATEST};
+        CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
         cellular_global_identity(&cgi, nullptr);
         val = static_cast<IntType>(cgi.location_area_code);
 
@@ -347,7 +347,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        CellularGlobalIdentity cgi{sizeof(CellularGlobalIdentity),CGI_VERSION_LATEST};
+        CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
         cellular_global_identity(&cgi, nullptr);
         val = static_cast<IntType>(cgi.cell_id);
 
