@@ -457,15 +457,16 @@ int SaraNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     CHECK(checkParser());
     CHECK(queryAndParseAtCops(nullptr));
 
-    switch (cgi_.version)
+    switch (cgi->version)
     {
     case CGI_VERSION_1:
     default:
     {
         // Confirm user is expecting the correct amount of data
-        CHECK_TRUE((cgi->size >= cgi_.size), SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE((cgi->size >= sizeof(cgi_)), SYSTEM_ERROR_INVALID_ARGUMENT);
 
         *cgi = cgi_;
+        cgi->size = sizeof(cgi_);
         cgi->version = CGI_VERSION_1;
         break;
     }

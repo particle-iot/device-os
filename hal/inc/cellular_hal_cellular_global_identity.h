@@ -23,19 +23,21 @@
 #include "static_assert.h"
 
 /*! Cellular Global Identity Structure Version */
-enum __attribute__((__packed__)) CgiVersion
+typedef enum __attribute__((__packed__)) CgiVersion
 {
     CGI_VERSION_1,
     CGI_VERSION_LATEST = CGI_VERSION_1,
-};
+} CgiVersion;
+
+PARTICLE_STATIC_ASSERT(CgiVersion_size, sizeof(CgiVersion) <= sizeof(uint16_t));
 
 /*! Cellular Global Identity Flags */
-enum __attribute__((__packed__)) CgiFlags
+typedef enum __attribute__((__packed__)) CgiFlags
 {
     CGI_FLAG_TWO_DIGIT_MNC = 0b00000001, /*!< Indicates two-digit format of Mobile Network Code */
-};
+} CgiFlags;
 
-PARTICLE_STATIC_ASSERT(CgiFlags_size, sizeof(enum CgiFlags) == 1);
+PARTICLE_STATIC_ASSERT(CgiFlags_size, sizeof(CgiFlags) <= sizeof(uint8_t));
 
 /*!
  * \brief Cellular Global Identity (CGI)

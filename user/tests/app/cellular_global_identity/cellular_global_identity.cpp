@@ -11,7 +11,7 @@
 // Log handler processing all messages
 SerialLogHandler logHandler(LOG_LEVEL_ALL);
 
-CellularGlobalIdentity cgi{sizeof(CellularGlobalIdentity), CGI_VERSION_LATEST};
+CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
 
 // setup() runs once, when the device is first turned on.
 void setup()
