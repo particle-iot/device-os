@@ -36,7 +36,8 @@ void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserve
         info->key_value_count = 2;
         info->key_values = new key_value[info->key_value_count];
 
-        CellularDevice device;
+        CellularDevice device = {};
+        device.size = sizeof(device);
         cellular_device_info(&device, NULL);
 
         set_key_value(info->key_values, "imei", device.imei);

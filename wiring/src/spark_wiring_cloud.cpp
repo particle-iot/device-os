@@ -41,8 +41,7 @@ void CloudClass::call_wiring_event_handler(const void* handler_data, const char 
 
 bool CloudClass::register_function(cloud_function_t fn, void* data, const char* funcKey)
 {
-    cloud_function_descriptor desc;
-    memset(&desc, 0, sizeof(desc));
+    cloud_function_descriptor desc = {};
     desc.size = sizeof(desc);
     desc.fn = fn;
     desc.data = (void*)data;
