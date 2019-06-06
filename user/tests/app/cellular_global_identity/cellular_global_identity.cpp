@@ -11,7 +11,7 @@
 // Log handler processing all messages
 SerialLogHandler logHandler(LOG_LEVEL_ALL);
 
-CellularGlobalIdentity cgi;
+CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
 
 // setup() runs once, when the device is first turned on.
 void setup()
@@ -29,7 +29,11 @@ void loop()
   case SYSTEM_ERROR_NONE:
     Log("/%%%%%%%%%%%%%%%%%%%%%% Cellular Global Identity %%%%%%%%%%%%%%%%%%%%%%/");
     Log("\tMobile Country Code: %d", cgi.mobile_country_code);
-    Log("\tMobile Network Code: %d", cgi.mobile_network_code);
+    if (CGI_FLAG_TWO_DIGIT_MNC & cgi.cgi_flags) {
+      Log("\tMobile Network Code: %02d", cgi.mobile_network_code);
+    } else {
+      Log("\tMobile Network Code: %03d", cgi.mobile_network_code);
+    }
     Log("\tLocation Area Code: 0x%x", cgi.location_area_code);
     Log("\tCell Identification: 0x%lx", cgi.cell_id);
     Log("/%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%/");

@@ -279,7 +279,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        CellularGlobalIdentity cgi;
+        CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
         cellular_global_identity(&cgi, nullptr);
         val = static_cast<IntType>(cgi.mobile_country_code);
 
@@ -300,9 +300,16 @@ public:
 
     virtual int get(IntType& val)
     {
-        CellularGlobalIdentity cgi;
+        CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
         cellular_global_identity(&cgi, nullptr);
-        val = static_cast<IntType>(cgi.mobile_network_code);
+        if (CGI_FLAG_TWO_DIGIT_MNC & cgi.cgi_flags)
+        {
+            val = static_cast<IntType>(cgi.mobile_network_code * -1);
+        }
+        else
+        {
+            val = static_cast<IntType>(cgi.mobile_network_code);
+        }
 
         return SYSTEM_ERROR_NONE;
     }
@@ -321,7 +328,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        CellularGlobalIdentity cgi;
+        CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
         cellular_global_identity(&cgi, nullptr);
         val = static_cast<IntType>(cgi.location_area_code);
 
@@ -340,7 +347,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        CellularGlobalIdentity cgi;
+        CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
         cellular_global_identity(&cgi, nullptr);
         val = static_cast<IntType>(cgi.cell_id);
 

@@ -1210,8 +1210,6 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     // TODO: optimize, add a param/variable to prevent clearing _net if
     // arriving here after break() from inner while() in registerNet().
     memset(&_net, 0, sizeof(_net));
-    _net.cgi.mobile_country_code = 0;
-    _net.cgi.mobile_network_code = 0;
     _net.cgi.location_area_code = 0xFFFF;
     _net.cgi.cell_id = 0xFFFFFFFF;
     if (_dev.dev == DEV_SARA_R410) {
@@ -1336,9 +1334,23 @@ bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_) {
     if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT))
         goto failure;
 
-    // CGI value has been updated successfully
-    cgi_ = _net.cgi;
+    switch (cgi_.version)
+    {
+    case CGI_VERSION_1:
+    default:
+    {
+        // Confirm user is expecting the correct amount of data
+        if (cgi_.size < sizeof(_net.cgi))
+            goto failure;
 
+        cgi_ = _net.cgi;
+        cgi_.size = sizeof(_net.cgi);
+        cgi_.version = CGI_VERSION_1;
+        break;
+    }
+    }
+
+    // CGI value has been updated successfully
     UNLOCK();
     return true;
 failure:
@@ -1502,9 +1514,20 @@ int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
         char mobileNetworkCode[4] = {0};
 
         // +COPS: <mode>[,<format>,<oper>[,<AcT>]]
-        if (sscanf(buf, "\r\n+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobileCountryCode,
+        if (::sscanf(buf, "\r\n+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobileCountryCode,
                    mobileNetworkCode, &act) >= 1)
         {
+            // Preserve digit format data
+            const int mnc_digits = ::strnlen(mobileNetworkCode, sizeof(mobileNetworkCode));
+            if (2 == mnc_digits)
+            {
+                status->cgi.cgi_flags |= CGI_FLAG_TWO_DIGIT_MNC;
+            }
+            else
+            {
+                status->cgi.cgi_flags &= ~CGI_FLAG_TWO_DIGIT_MNC;
+            }
+
             // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
             status->cgi.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
             status->cgi.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
@@ -2906,7 +2929,12 @@ void MDMParser::dumpNetStatus(NetStatus *status)
     if (status->cgi.mobile_country_code != 0)
         DEBUG_D("  Mobile Country Code: %d\r\n", status->cgi.mobile_country_code);
     if (status->cgi.mobile_network_code != 0)
-        DEBUG_D("  Mobile Network Code: %d\r\n", status->cgi.mobile_network_code);
+    {
+        if (CGI_FLAG_TWO_DIGIT_MNC & status->cgi.cgi_flags)
+            DEBUG_D("  Mobile Network Code: %02d\r\n", status->cgi.mobile_network_code);
+        else
+            DEBUG_D("  Mobile Network Code: %03d\r\n", status->cgi.mobile_network_code);
+    }
     if (status->cgi.location_area_code != 0xFFFF)
         DEBUG_D("  Location Area Code:  %04X\r\n", status->cgi.location_area_code);
     if (status->cgi.cell_id != 0xFFFFFFFF)
