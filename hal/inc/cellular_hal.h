@@ -121,8 +121,8 @@ cellular_result_t cellular_credentials_clear(void* reserved);
  * be determined using CGI of the cell which is covering that cell phone. A more specific
  * application of the CGI is to roughly determine a mobile phone's geographical position.
  *
- * @param[in,out] cgi An allocated struct with the size member specified (contents will be
- * overwritten)
+ * @param[in,out] cgi An allocated struct with both the \c size and \c version members specified
+ * (contents will be overwritten)
  * @param[in] reserved Reserved for future use (defaulted to `NULL`)
  *
  * @returns \c cellular_result_t code

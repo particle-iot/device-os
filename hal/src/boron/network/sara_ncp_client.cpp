@@ -412,6 +412,15 @@ int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
+    // Preserve digit format data
+    const int mnc_digits = ::strnlen(mobileNetworkCode, sizeof(mobileNetworkCode));
+    CHECK_TRUE((2 == mnc_digits || 3 == mnc_digits), SYSTEM_ERROR_BAD_DATA);
+    if (2 == mnc_digits) {
+        cgi_.cgi_flags |= CGI_FLAG_TWO_DIGIT_MNC;
+    } else {
+        cgi_.cgi_flags &= ~CGI_FLAG_TWO_DIGIT_MNC;
+    }
+
     // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
     cgi_.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
     cgi_.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
@@ -448,7 +457,20 @@ int SaraNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     CHECK(checkParser());
     CHECK(queryAndParseAtCops(nullptr));
 
-    *cgi = cgi_;
+    switch (cgi->version)
+    {
+    case CGI_VERSION_1:
+    default:
+    {
+        // Confirm user is expecting the correct amount of data
+        CHECK_TRUE((cgi->size >= sizeof(cgi_)), SYSTEM_ERROR_INVALID_ARGUMENT);
+
+        *cgi = cgi_;
+        cgi->size = sizeof(cgi_);
+        cgi->version = CGI_VERSION_1;
+        break;
+    }
+    }
 
     return SYSTEM_ERROR_NONE;
 }
