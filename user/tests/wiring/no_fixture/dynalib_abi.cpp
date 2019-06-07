@@ -28,7 +28,7 @@ test(dynalib_api_manual_struct_check) {
 }
 
 bool test_struct_pointer(test_struct* t) {
-    return struct_contains(*t, &test_struct::data);
+    return struct_contains(t, &test_struct::data);
 }
 
 test(dynalib_api_indirect_check) {

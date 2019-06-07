@@ -62,3 +62,8 @@ inline bool struct_contains(const T2& value, T1 T2::* member) {
     return dynamic_size(value) >= size_needed;
 }
 
+template <typename T1, typename T2>
+inline bool struct_contains(const T2* value, T1 T2::* member) {
+    return struct_contains(*value, member);
+}
+
