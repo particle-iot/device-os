@@ -56,16 +56,16 @@ namespace
 using namespace particle;
 using namespace spark;
 
-class SignalCache
+class NetworkCache
 {
 public:
-    static const system_tick_t SIGNAL_INFO_CACHE_INTERVAL = 1000;
+    static const system_tick_t NETWORK_INFO_CACHE_INTERVAL = 1000;
 
     const Signal* getSignal()
     {
 #if Wiring_WiFi || Wiring_Cellular
         system_tick_t m = millis();
-        if (ts_ == 0 || (m - ts_) >= SIGNAL_INFO_CACHE_INTERVAL)
+        if (ts_ == 0 || (m - ts_) >= NETWORK_INFO_CACHE_INTERVAL)
         {
 #if Wiring_WiFi
             sig_ = WiFi.RSSI();
@@ -80,9 +80,28 @@ public:
 #endif
     }
 
+#if HAL_PLATFORM_CELLULAR
+    const CellularGlobalIdentity* getCGI()
+    {
+        system_tick_t m = millis();
+        if (ts_ == 0 || (m - ts_) >= NETWORK_INFO_CACHE_INTERVAL)
+        {
+            cgi_.size = sizeof(cgi_);
+            cgi_.version = CGI_VERSION_LATEST;
+            cellular_global_identity(&cgi_, nullptr);
+            ts_ = millis();
+        }
+        return &cgi_;
+    }
+#endif
+
 private:
 #if Wiring_Cellular
     CellularSignal sig_;
+#if HAL_PLATFORM_CELLULAR
+    CellularGlobalIdentity cgi_{.size = sizeof(CellularGlobalIdentity),
+                                .version = CGI_VERSION_LATEST};
+#endif
 #elif Wiring_WiFi
     WiFiSignal sig_;
 #elif Wiring_Mesh
@@ -91,7 +110,7 @@ private:
     system_tick_t ts_ = 0;
 };
 
-static SignalCache s_signalCache;
+static NetworkCache s_networkCache;
 
 class SignalStrengthDiagnosticData : public AbstractIntegerDiagnosticData
 {
@@ -104,7 +123,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        const Signal* sig = s_signalCache.getSignal();
+        const Signal* sig = s_networkCache.getSignal();
         if (sig == nullptr)
         {
             return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -133,7 +152,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        const Signal* sig = s_signalCache.getSignal();
+        const Signal* sig = s_networkCache.getSignal();
         if (sig == nullptr)
         {
             return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -163,7 +182,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        const Signal* sig = s_signalCache.getSignal();
+        const Signal* sig = s_networkCache.getSignal();
         if (sig == nullptr)
         {
             return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -193,7 +212,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        const Signal* sig = s_signalCache.getSignal();
+        const Signal* sig = s_networkCache.getSignal();
         if (sig == nullptr)
         {
             return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -223,7 +242,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        const Signal* sig = s_signalCache.getSignal();
+        const Signal* sig = s_networkCache.getSignal();
         if (sig == nullptr)
         {
             return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -253,7 +272,7 @@ public:
 
     virtual int get(IntType& val)
     {
-        const Signal* sig = s_signalCache.getSignal();
+        const Signal* sig = s_networkCache.getSignal();
         if (sig == nullptr)
         {
             return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -279,9 +298,8 @@ public:
 
     virtual int get(IntType& val)
     {
-        CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
-        cellular_global_identity(&cgi, nullptr);
-        val = static_cast<IntType>(cgi.mobile_country_code);
+        const CellularGlobalIdentity* cgi = s_networkCache.getCGI();
+        val = static_cast<IntType>(cgi->mobile_country_code);
 
         return SYSTEM_ERROR_NONE;
     }
@@ -300,15 +318,14 @@ public:
 
     virtual int get(IntType& val)
     {
-        CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
-        cellular_global_identity(&cgi, nullptr);
-        if (CGI_FLAG_TWO_DIGIT_MNC & cgi.cgi_flags)
+        const CellularGlobalIdentity* cgi = s_networkCache.getCGI();
+        if (CGI_FLAG_TWO_DIGIT_MNC & cgi->cgi_flags)
         {
-            val = static_cast<IntType>(cgi.mobile_network_code * -1);
+            val = static_cast<IntType>(cgi->mobile_network_code * -1);
         }
         else
         {
-            val = static_cast<IntType>(cgi.mobile_network_code);
+            val = static_cast<IntType>(cgi->mobile_network_code);
         }
 
         return SYSTEM_ERROR_NONE;
@@ -328,9 +345,8 @@ public:
 
     virtual int get(IntType& val)
     {
-        CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
-        cellular_global_identity(&cgi, nullptr);
-        val = static_cast<IntType>(cgi.location_area_code);
+        const CellularGlobalIdentity* cgi = s_networkCache.getCGI();
+        val = static_cast<IntType>(cgi->location_area_code);
 
         return SYSTEM_ERROR_NONE;
     }
@@ -347,9 +363,8 @@ public:
 
     virtual int get(IntType& val)
     {
-        CellularGlobalIdentity cgi{.size = sizeof(CellularGlobalIdentity), .version = CGI_VERSION_LATEST};
-        cellular_global_identity(&cgi, nullptr);
-        val = static_cast<IntType>(cgi.cell_id);
+        const CellularGlobalIdentity* cgi = s_networkCache.getCGI();
+        val = static_cast<IntType>(cgi->cell_id);
 
         return SYSTEM_ERROR_NONE;
     }
