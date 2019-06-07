@@ -117,9 +117,16 @@ struct SparkCallbacks
 	int (*restore)(void* data, size_t max_length, uint8_t type, void* reserved);
 
 	// size == 52
+
+	/**
+	 * Notify the client that all messages sent to the server have been processed.
+	 */
+	void (*notify_client_messages_processed)(void* reserved);
+
+	// size == 56
 };
 
-PARTICLE_STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*13));
+PARTICLE_STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*14));
 
 /**
  * Application-supplied callbacks. (Deliberately distinct from the system-supplied
@@ -312,7 +319,7 @@ enum Enum {
  * @param completion An optional completion handler that is called with the result of the command.
  */
 int spark_protocol_mesh_command(ProtocolFacade* protocol, MeshCommand::Enum cmd, uint32_t data=0, void* extraData=nullptr, completion_handler_data* completion=nullptr, void* reserved=nullptr);
-#endif
+#endif // HAL_PLATFORM_MESH
 
 
 /**

@@ -29,6 +29,8 @@ namespace particle
 namespace protocol
 {
 
+bool is_ack_or_reset(const uint8_t* buf, size_t len);
+
 /**
  * Decorates a MessageChannel with message ID management as required by CoAP.
  * When a message is sent that doesn't have an assigned ID, it is assigned the next available ID.
@@ -419,61 +421,6 @@ public:
 	 */
 	ProtocolError send_message(CoAPMessage* msg, Channel& channel);
 
-	bool is_ack_or_reset(const uint8_t* buf, size_t len)
-	{
-		if (len<1)
-			return false;
-		CoAPType::Enum type = CoAP::type(buf);
-		return type==CoAPType::ACK || type==CoAPType::RESET;
-	}
-
-	/**
-	 * Send a message synchronously, waiting for the acknowledgement.
-	 */
-	template<typename Time>
-	ProtocolError send_synchronous(Message& msg, Channel& channel, Time& time)
-	{
-		message_id_t id = msg.get_id();
-		DEBUG("sending message id=%x synchronously", id);
-		CoAPType::Enum coapType = CoAP::type(msg.buf());
-		ProtocolError error = send(msg, time());
-		if (!error)
-			error = channel.send(msg);
-		if (!error && coapType==CoAPType::CON)
-		{
-			CoAPMessage::delivery_fn flag_delivered = [&error](CoAPMessage::Delivery delivered) {
-				if (delivered==CoAPMessage::NOT_DELIVERED)
-					error = MESSAGE_TIMEOUT;
-				else if (delivered==CoAPMessage::DELIVERED_NACK)
-					error = MESSAGE_RESET;
-			};
-			CoAPMessage* coapmsg = from_id(id);
-			if (coapmsg)
-				coapmsg->set_delivered_handler(&flag_delivered);
-			else
-				ERROR("no coapmessage for msg id=%x", id);
-			while (from_id(id)!=nullptr && !error)
-			{
-				msg.clear();
-				msg.set_length(0);
-				error = channel.receive(msg);
-				if (!error && msg.decode_id() && is_ack_or_reset(msg.buf(), msg.length()))
-				{
-					// handle acknowledgements, waiting for the one that
-					// acknowledges the original confirmation.
-					ProtocolError receive_error = receive(msg, channel, time());
-					if (!error)
-						error = receive_error;
-				}
-				// drop CON messages on the floor since we cannot handle them now
-				process(time(), channel);
-			}
-		}
-		clear_message(id);
-		// todo - if msg contains a delivery callback then call that with the outcome of this
-		return error;
-	}
-
 	/**
 	 * Registers that this message has been sent from the application.
 	 * Confirmable messages, and ack/reset responses are cached.
@@ -572,6 +519,55 @@ class CoAPReliableChannel : public T
 
 	DelegateChannel delegateChannel;
 
+	/**
+	 * Send a message synchronously, waiting for the acknowledgement.
+	 */
+	ProtocolError send_synchronous(Message& msg)
+	{
+		message_id_t id = msg.get_id();
+		DEBUG("sending message id=%x synchronously", id);
+		CoAPType::Enum coapType = CoAP::type(msg.buf());
+		ProtocolError error = client.send(msg, millis());
+		if (!error)
+			error = delegateChannel.send(msg);
+		if (!error && coapType==CoAPType::CON)
+		{
+			CoAPMessage::delivery_fn flag_delivered = [&error](CoAPMessage::Delivery delivered) {
+				if (delivered==CoAPMessage::NOT_DELIVERED)
+					error = MESSAGE_TIMEOUT;
+				else if (delivered==CoAPMessage::DELIVERED_NACK)
+					error = MESSAGE_RESET;
+			};
+			CoAPMessage* coapmsg = client.from_id(id);
+			if (coapmsg)
+				coapmsg->set_delivered_handler(&flag_delivered);
+			else
+				ERROR("no coapmessage for msg id=%x", id);
+			while (client.from_id(id)!=nullptr && !error)
+			{
+				msg.clear();
+				msg.set_length(0);
+				error = delegateChannel.receive(msg);
+				if (!error && msg.decode_id() && is_ack_or_reset(msg.buf(), msg.length()))
+				{
+					// handle acknowledgements, waiting for the one that
+					// acknowledges the original confirmation.
+					ProtocolError receive_error = client.receive(msg, delegateChannel, millis());
+					if (!error)
+						error = receive_error;
+				}
+				// drop CON messages on the floor since we cannot handle them now
+				client.process(millis(), delegateChannel);
+			}
+			if (!client.has_messages()) {
+				channel::notify_client_messages_processed();
+			}
+		}
+		client.clear_message(id);
+		// todo - if msg contains a delivery callback then call that with the outcome of this
+		return error;
+	}
+
 public:
 
 	CoAPReliableChannel(M m=0) : millis(m) {
@@ -611,7 +607,7 @@ public:
 			return delegateChannel.send(msg);
 
 		if (msg.is_request() && msg.get_confirm_received())
-			return client.send_synchronous(msg, delegateChannel, millis);
+			return send_synchronous(msg);
 
 		// determine the type of message.
 		CoAPMessageStore& store = msg.is_request() ? client : server;
@@ -656,6 +652,7 @@ public:
 	 */
 	ProtocolError receive(Message& msg, bool requests)
 	{
+		const bool had_client_messages = client.has_messages();
 		ProtocolError error = channel::receive(msg);
 		if (!error && msg.length())
 		{
@@ -668,6 +665,9 @@ public:
 		}
 		client.process(millis(), delegateChannel);
 		server.process(millis(), delegateChannel);
+		if (had_client_messages && !client.has_messages()) {
+			channel::notify_client_messages_processed();
+		}
 		return error;
 	}
 
