@@ -7,6 +7,8 @@
 
 #include "hippomocks.h"
 
+#include <functional>
+
 namespace {
 
 using namespace particle;
