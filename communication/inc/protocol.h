@@ -394,7 +394,7 @@ public:
 
 	// Returns true on success, false on sending timeout or rate-limiting failure
 	bool send_event(const char *event_name, const char *data, int ttl,
-			EventType::Enum event_type, int flags, CompletionHandler handler)
+			EventType::Enum event_type, int flags, CompletionHandler handler, message_handle_t* message_result)
 	{
 		if (chunkedTransfer.is_updating())
 		{
@@ -402,7 +402,7 @@ public:
 			return false;
 		}
 		const ProtocolError error = publisher.send_event(channel, event_name, data, ttl, event_type, flags,
-				callbacks.millis(), std::move(handler));
+				callbacks.millis(), std::move(handler), message_result);
 		if (error != NO_ERROR)
 		{
 			handler.setError(toSystemError(error));

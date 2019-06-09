@@ -89,7 +89,7 @@ public:
 
 	ProtocolError send_event(MessageChannel& channel, const char* event_name,
 			const char* data, int ttl, EventType::Enum event_type, int flags,
-			system_tick_t time, CompletionHandler handler)
+			system_tick_t time, CompletionHandler handler, particle::protocol::message_handle_t* message_sent)
 	{
 		bool is_system_event = is_system(event_name);
 		bool rate_limited = is_rate_limited(is_system_event, time);
@@ -111,6 +111,10 @@ public:
 		message.set_length(msglen);
 		const ProtocolError result = channel.send(message);
 		if (result == NO_ERROR) {
+		    if (message_sent) {
+		        *message_sent = message.get_id();
+		    }
+
 			// Register completion handler only if acknowledgement was requested explicitly
 			if ((flags & EventType::WITH_ACK) && message.has_id()) {
 			    add_ack_handler(message.get_id(), std::move(handler));
