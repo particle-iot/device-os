@@ -157,24 +157,19 @@ inline uint32_t convert(uint32_t flags) {
 	return flags;
 }
 
-bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved)
+/**
+ * NB: Callers should ensure that with PUBLISH_EVENT_FLAG_ASYNC that either the event data is absent, or has a lifetime connected to te completion handler.
+ */
+bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, spark_send_event_data* d)
 {
     if (flags & PUBLISH_EVENT_FLAG_ASYNC) {
-        SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(spark_send_event(name, data, ttl, flags, reserved), true);
+        SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(spark_send_event(name, data, ttl, flags, d), true);
     }
     else {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, flags, reserved));
+        SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, flags, d));
     }
 
-    spark_protocol_send_event_data d = { sizeof(spark_protocol_send_event_data) };
-    if (reserved) {
-        // Forward completion callback to the protocol implementation
-        auto r = static_cast<const spark_send_event_data*>(reserved);
-        d.handler_callback = r->handler_callback;
-        d.handler_data = r->handler_data;
-    }
-
-    return spark_protocol_send_event(sp, name, data, ttl, convert(flags), &d);
+    return spark_protocol_send_event(sp, name, data, ttl, convert(flags), d);
 }
 
 bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra)

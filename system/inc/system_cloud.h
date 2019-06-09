@@ -182,13 +182,6 @@ bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef 
  */
 bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* reserved);
 
-// Additional parameters for spark_send_event()
-typedef struct {
-    size_t size;
-    completion_callback handler_callback;
-    void* handler_data;
-} spark_send_event_data;
-
 /**
  * @brief Publish vitals information
  *
@@ -213,7 +206,28 @@ typedef struct {
  * @note The periodic functionality is not available for the Spark Core.
  */
 int spark_publish_vitals(system_tick_t period_s, void *reserved);
-bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);
+
+typedef spark_protocol_send_event_data spark_send_event_data;
+
+/**
+ * Synchronous function that sends an event to the cloud.
+ *
+ * This function blocks for the time taken to send the confirmable message to the cloud,
+ * but does not block waiting for the cloud to acknowledge the message.
+ * @param[in] name  The name of the event.
+ * @param[in] data  The data to send with the event
+ * @param[in] ttl   Presently unused
+ * @param[in] flags WITH_ACK, NO_ACK, PUBLIC, PRIVATE
+ * @param[in] event_data    exgtension data for the event.
+ * @returns \p true if the event was successfully sent to the cloud.
+ * On TCP platforms this means the event was also received by the cloud.
+ * On UDP platforms, the event has been sent but no guarantee of receipt.
+ * The completion handler in the /p event_data can be used to determine the success of event delivery.
+ * @retval \p false if the event was not sent to the cloud. The completion handler contains more details
+ * on the reason why the event was not delivered.
+ *
+ */
+bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, spark_send_event_data* event_data);
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);
 void spark_unsubscribe(void *reserved);

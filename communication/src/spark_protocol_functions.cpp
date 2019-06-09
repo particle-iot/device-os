@@ -129,12 +129,11 @@ int spark_protocol_post_description(ProtocolFacade* protocol, int desc_flags, vo
 }
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
-                int ttl, uint32_t flags, void* reserved) {
+                int ttl, uint32_t flags, spark_protocol_send_event_data* event_data) {
     ASSERT_ON_SYSTEM_THREAD();
 	CompletionHandler handler;
-	if (reserved) {
-		auto r = static_cast<const spark_protocol_send_event_data*>(reserved);
-		handler = CompletionHandler(r->handler_callback, r->handler_data);
+	if (event_data) {
+		handler = CompletionHandler(event_data->handler_callback, event_data->handler_data);
 	}
 	EventType::Enum event_type = EventType::extract_event_type(flags);
 	return protocol->send_event(event_name, data, ttl, event_type, flags, std::move(handler));
@@ -287,12 +286,11 @@ int spark_protocol_post_description(CoreProtocol* protocol, int desc_flags, void
 }
 
 bool spark_protocol_send_event(CoreProtocol* protocol, const char *event_name, const char *data,
-                int ttl, uint32_t flags, void* reserved) {
+                int ttl, uint32_t flags, spark_protocol_send_event_data* event_data) {
     ASSERT_ON_SYSTEM_THREAD();
 	CompletionHandler handler;
-	if (reserved) {
-		auto r = static_cast<const spark_protocol_send_event_data*>(reserved);
-		handler = CompletionHandler(r->handler_callback, r->handler_data);
+	if (event_data) {
+		handler = CompletionHandler(event_data->handler_callback, event_data->handler_data);
 	}
 	EventType::Enum event_type = EventType::extract_event_type(flags);
 	return protocol->send_event(event_name, data, ttl, event_type, flags, std::move(handler));
