@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "cellular_hal.h"
+#include "check.h"
 #include "spark_wiring_diagnostics.h"
 #include "spark_wiring_fixed_point.h"
 #include "spark_wiring_platform.h"
@@ -83,13 +84,13 @@ public:
 #if HAL_PLATFORM_CELLULAR
     const CellularGlobalIdentity* getCGI()
     {
-        system_tick_t m = millis();
-        if (ts_ == 0 || (m - ts_) >= NETWORK_INFO_CACHE_INTERVAL)
+        system_tick_t ms = millis();
+        if (cgi_ts_ == 0 || (ms - cgi_ts_) >= NETWORK_INFO_CACHE_INTERVAL)
         {
             cgi_.size = sizeof(cgi_);
             cgi_.version = CGI_VERSION_LATEST;
-            cellular_global_identity(&cgi_, nullptr);
-            ts_ = millis();
+            CHECK_RETURN(cellular_global_identity(&cgi_, nullptr), nullptr);
+            cgi_ts_ = millis();
         }
         return &cgi_;
     }
@@ -108,6 +109,10 @@ private:
     MeshSignal sig_;
 #endif
     system_tick_t ts_ = 0;
+
+#if HAL_PLATFORM_CELLULAR
+    system_tick_t cgi_ts_ = 0;
+#endif
 };
 
 static NetworkCache s_networkCache;
@@ -298,7 +303,8 @@ public:
 
     virtual int get(IntType& val)
     {
-        const CellularGlobalIdentity* cgi = s_networkCache.getCGI();
+        const CellularGlobalIdentity* const cgi = s_networkCache.getCGI();
+        CHECK_TRUE(cgi, SYSTEM_ERROR_NETWORK);
         val = static_cast<IntType>(cgi->mobile_country_code);
 
         return SYSTEM_ERROR_NONE;
@@ -318,7 +324,8 @@ public:
 
     virtual int get(IntType& val)
     {
-        const CellularGlobalIdentity* cgi = s_networkCache.getCGI();
+        const CellularGlobalIdentity* const cgi = s_networkCache.getCGI();
+        CHECK_TRUE(cgi, SYSTEM_ERROR_NETWORK);
         if (CGI_FLAG_TWO_DIGIT_MNC & cgi->cgi_flags)
         {
             val = static_cast<IntType>(cgi->mobile_network_code * -1);
@@ -345,7 +352,8 @@ public:
 
     virtual int get(IntType& val)
     {
-        const CellularGlobalIdentity* cgi = s_networkCache.getCGI();
+        const CellularGlobalIdentity* const cgi = s_networkCache.getCGI();
+        CHECK_TRUE(cgi, SYSTEM_ERROR_NETWORK);
         val = static_cast<IntType>(cgi->location_area_code);
 
         return SYSTEM_ERROR_NONE;
@@ -363,7 +371,8 @@ public:
 
     virtual int get(IntType& val)
     {
-        const CellularGlobalIdentity* cgi = s_networkCache.getCGI();
+        const CellularGlobalIdentity* const cgi = s_networkCache.getCGI();
+        CHECK_TRUE(cgi, SYSTEM_ERROR_NETWORK);
         val = static_cast<IntType>(cgi->cell_id);
 
         return SYSTEM_ERROR_NONE;
