@@ -72,7 +72,7 @@ public:
 		return len;
 	}
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t data) override
+	virtual int command(ProtocolCommands::Enum command, uint32_t value, void* data) override
 	{
 		int result = UNKNOWN;
 		switch (command)
@@ -98,6 +98,16 @@ public:
 				pinger.process(std::numeric_limits<system_tick_t>::max(), [this] {
 					return ping(true);
 				});
+			}
+			break;
+		}
+		case ProtocolCommands::GET_STATS: {
+			if (data) {
+				const auto s = static_cast<protocol_stats*>(data);
+				s->pending_client_message_count = channel.unacknowledged_client_request_count();
+				result = NO_ERROR;
+			} else {
+				result = INVALID_ARGUMENTS;
 			}
 			break;
 		}

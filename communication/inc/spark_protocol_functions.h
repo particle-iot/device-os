@@ -229,12 +229,21 @@ namespace ProtocolCommands {
     WAKE,
     DISCONNECT,
     TERMINATE,
-    FORCE_PING
+    FORCE_PING,
+    GET_STATS
   };
 };
 
+/**
+ * Protocol statistics.
+ */
+typedef struct protocol_stats {
+    uint16_t size; ///< Size of this structure.
+    unsigned pending_client_message_count; ///< Number of pending client messages requiring an acknowledgement.
+} protocol_stats;
 
-int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data=0, void* reserved=NULL);
+
+int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value=0, void* data=NULL);
 
 #if HAL_PLATFORM_MESH
 namespace MeshCommand {

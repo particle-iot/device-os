@@ -507,7 +507,7 @@ public:
 
 	system_tick_t millis() { return callbacks.millis(); }
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t data)=0;
+	virtual int command(ProtocolCommands::Enum command, uint32_t value, void* data)=0;
 
 	virtual int get_describe_data(spark_protocol_describe_data* data, void* reserved);
 

@@ -1881,7 +1881,7 @@ inline void CoreProtocol::coded_ack(unsigned char *buf,
   encrypt(buf, 16);
 }
 
-int CoreProtocol::command(ProtocolCommands::Enum command, uint32_t data)
+int CoreProtocol::command(ProtocolCommands::Enum command, uint32_t value, void* data)
 {
   int result = UNKNOWN;
   switch (command) {

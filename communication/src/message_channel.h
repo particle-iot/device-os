@@ -239,7 +239,7 @@ struct MessageChannel : public Channel
 	virtual ProtocolError notify_established()=0;
 
 	/**
-	 * Notify the upper layer that all messages sent to the server have been processed.
+	 * Notify the upper layer that all client messages have been processed.
 	 */
 	virtual void notify_client_messages_processed()=0;
 };

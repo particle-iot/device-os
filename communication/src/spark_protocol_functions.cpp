@@ -203,10 +203,10 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
     }
     return 0;
 }
-int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
+int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value, void* data)
 {
     ASSERT_ON_SYSTEM_THREAD();
-    return protocol->command(cmd, data);
+    return protocol->command(cmd, value, data);
 }
 
 bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved)
@@ -348,10 +348,10 @@ int spark_protocol_set_connection_property(CoreProtocol* protocol, unsigned prop
     return 0;
 }
 
-int spark_protocol_command(CoreProtocol* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
+int spark_protocol_command(CoreProtocol* protocol, ProtocolCommands::Enum cmd, uint32_t value, void* data)
 {
     (void)reserved;
-	return protocol->command(cmd, data);
+	return protocol->command(cmd, value, data);
 }
 
 bool spark_protocol_time_request_pending(CoreProtocol* protocol, void* reserved)

@@ -168,13 +168,23 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 
 bool CoAPMessageStore::has_unacknowledged_requests() const
 {
-	// TODO: Count confirmable messages
+	// TODO: Use a message counter
 	for (const CoAPMessage* msg = head; msg != nullptr; msg = msg->get_next()) {
 		if (is_confirmable((uint8_t*)msg->get_data()))
 			return true;
 	}
 
 	return false;
+}
+
+unsigned CoAPMessageStore::message_count() const
+{
+	// TODO: Use a message counter
+	unsigned n = 0;
+	for (auto msg = head; msg; msg = msg->get_next()) {
+		++n;
+	}
+	return n;
 }
 
 }}
