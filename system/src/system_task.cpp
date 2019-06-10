@@ -351,38 +351,12 @@ void handle_cloud_connection(bool force_events)
 {
     if (SPARK_CLOUD_SOCKETED)
     {
-        if (!SPARK_CLOUD_CONNECTED)
+        if (!SPARK_CLOUD_CONNECTED && !SPARK_CLOUD_HANDSHAKE_PENDING)
         {
-            LED_SIGNAL_START(CLOUD_HANDSHAKE, NORMAL);
-            int err = cloud_handshake();
-            if (err)
-            {
-                if (!SPARK_WLAN_RESET && !network_listening(0, 0, 0))
-                {
-                    cloud_connection_failed();
-                    uint32_t color = RGB_COLOR_RED;
-                    if (particle::protocol::DECRYPTION_ERROR==err)
-                        color = RGB_COLOR_ORANGE;
-                    else if (particle::protocol::AUTHENTICATION_ERROR==err)
-                        color = RGB_COLOR_MAGENTA;
-                    WARN("Cloud handshake failed, code=%d", err);
-                    LEDStatus led(color, LED_PRIORITY_IMPORTANT);
-                    led.setActive();
-                    // delay a little to be sure the user sees the LED color, since
-                    // the socket may quickly disconnect and the connection retried, turning
-                    // the LED back to cyan
-                    system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-                    // allow time for the LED to be flashed
-                    while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
-                }
-                const auto diag = CloudDiagnostics::instance();
-                diag->lastError(err);
-                cloud_disconnect();
-            }
-            else
-            {
+            if (SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE) {
                 INFO("Cloud connected");
                 SPARK_CLOUD_CONNECTED = 1;
+                SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
                 cloud_failed_connection_attempts = 0;
                 CloudDiagnostics::instance()->status(CloudDiagnostics::CONNECTED);
                 system_notify_event(cloud_status, cloud_status_connected);
@@ -403,8 +377,35 @@ void handle_cloud_connection(bool force_events)
 #endif /* !HAL_PLATFORM_IFAPI */
                 }
                 LED_SIGNAL_STOP(CLOUD_CONNECTING);
+                LED_SIGNAL_STOP(CLOUD_HANDSHAKE);
+            } else {
+                LED_SIGNAL_START(CLOUD_HANDSHAKE, NORMAL);
+                int err = cloud_handshake();
+                if (err)
+                {
+                    if (!SPARK_WLAN_RESET && !network_listening(0, 0, 0))
+                    {
+                        cloud_connection_failed();
+                        uint32_t color = RGB_COLOR_RED;
+                        if (particle::protocol::DECRYPTION_ERROR==err)
+                            color = RGB_COLOR_ORANGE;
+                        else if (particle::protocol::AUTHENTICATION_ERROR==err)
+                            color = RGB_COLOR_MAGENTA;
+                        WARN("Cloud handshake failed, code=%d", err);
+                        LEDStatus led(color, LED_PRIORITY_IMPORTANT);
+                        led.setActive();
+                        // delay a little to be sure the user sees the LED color, since
+                        // the socket may quickly disconnect and the connection retried, turning
+                        // the LED back to cyan
+                        system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+                        // allow time for the LED to be flashed
+                        while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
+                    }
+                    const auto diag = CloudDiagnostics::instance();
+                    diag->lastError(err);
+                    cloud_disconnect();
+                }
             }
-            LED_SIGNAL_STOP(CLOUD_HANDSHAKE);
         }
         if (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL || system_thread_get_state(NULL)==spark::feature::ENABLED)
         {
@@ -587,6 +588,8 @@ void cloud_disconnect(bool closeSocket, bool graceful, cloud_disconnect_reason r
 
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;
+        SPARK_CLOUD_HANDSHAKE_PENDING = 0;
+        SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
         SPARK_CLOUD_SOCKETED = 0;
 
         LED_SIGNAL_STOP(CLOUD_CONNECTED);

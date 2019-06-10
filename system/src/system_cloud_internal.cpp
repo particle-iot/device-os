@@ -548,6 +548,14 @@ private:
 const uint32_t LEDCloudSignalStatus::COLORS[] = { 0xEE82EE, 0x4B0082, 0x0000FF, 0x00FF00, 0xFFFF00, 0xFFA500, 0xFF0000 }; // VIBGYOR
 const size_t LEDCloudSignalStatus::COLOR_COUNT = sizeof(LEDCloudSignalStatus::COLORS) / sizeof(LEDCloudSignalStatus::COLORS[0]);
 
+void clientMessagesProcessed(void* reserved) {
+    if (SPARK_CLOUD_HANDSHAKE_PENDING) {
+        SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 1;
+        SPARK_CLOUD_HANDSHAKE_PENDING = 0;
+        LOG(INFO, "All handshake messages have been processed");
+    }
+}
+
 } // namespace
 
 void Spark_Signal(bool on, unsigned, void*)
@@ -817,6 +825,7 @@ void Spark_Protocol_Init(void)
         callbacks.signal = Spark_Signal;
         callbacks.millis = HAL_Timer_Get_Milli_Seconds;
         callbacks.set_time = system_set_time;
+        callbacks.notify_client_messages_processed = clientMessagesProcessed;
 
         SparkDescriptor descriptor;
         memset(&descriptor, 0, sizeof(descriptor));
@@ -998,6 +1007,17 @@ int Spark_Handshake(bool presence_announce)
         ultoa((unsigned long)particle_key_errors, buf, 10);
         LOG(INFO,"Send event spark/device/key/error=%s", buf);
         Particle.publish("spark/device/key/error", buf, 60, PRIVATE);
+    }
+    if (err == 0) {
+        protocol_stat stat = {};
+        stat.size = sizeof(stat);
+        const auto r = spark_protocol_command(sp, ProtocolCommands::GET_STAT, 0, &stat);
+        if (r == 0 && stat.pending_client_message_count > 0) {
+            SPARK_CLOUD_HANDSHAKE_PENDING = 1;
+            LOG(TRACE, "Waiting until all handshake messages are processed by the protocol layer");
+        } else {
+            SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 1;
+        }
     }
     return err;
 }

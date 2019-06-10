@@ -230,17 +230,17 @@ namespace ProtocolCommands {
     DISCONNECT,
     TERMINATE,
     FORCE_PING,
-    GET_STATS
+    GET_STAT
   };
 };
 
 /**
  * Protocol statistics.
  */
-typedef struct protocol_stats {
+typedef struct protocol_stat {
     uint16_t size; ///< Size of this structure.
     unsigned pending_client_message_count; ///< Number of pending client messages requiring an acknowledgement.
-} protocol_stats;
+} protocol_stat;
 
 
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value=0, void* data=NULL);

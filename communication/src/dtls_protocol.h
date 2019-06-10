@@ -101,10 +101,10 @@ public:
 			}
 			break;
 		}
-		case ProtocolCommands::GET_STATS: {
-			if (data) {
-				const auto s = static_cast<protocol_stats*>(data);
-				s->pending_client_message_count = channel.unacknowledged_client_request_count();
+		case ProtocolCommands::GET_STAT: {
+			const auto stat = static_cast<protocol_stat*>(data);
+			if (stat) {
+				stat->pending_client_message_count = channel.unacknowledged_client_request_count();
 				result = NO_ERROR;
 			} else {
 				result = INVALID_ARGUMENTS;
