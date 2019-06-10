@@ -90,6 +90,8 @@ public:
         if (cgi_ts_ == 0 || (ms - cgi_ts_) >= NETWORK_INFO_CACHE_INTERVAL)
         {
             // Update cache
+            cgi_.size = sizeof(CellularGlobalIdentity);
+            cgi_.version = CGI_VERSION_LATEST;
             result = CHECK(cellular_global_identity(&cgi_, nullptr));
             cgi_ts_ = millis();
         }
@@ -306,8 +308,7 @@ public:
     virtual int get(IntType& val)
     {
         cellular_result_t result;
-        CellularGlobalIdentity cgi = {.size = sizeof(CellularGlobalIdentity),
-                                      .version = CGI_VERSION_LATEST};
+        CellularGlobalIdentity cgi; // Intentionally left uninitialized
         result = CHECK(s_networkCache.getCGI(cgi));
         val = static_cast<IntType>(cgi.mobile_country_code);
 
@@ -329,8 +330,7 @@ public:
     virtual int get(IntType& val)
     {
         cellular_result_t result;
-        CellularGlobalIdentity cgi = {.size = sizeof(CellularGlobalIdentity),
-                                      .version = CGI_VERSION_LATEST};
+        CellularGlobalIdentity cgi; // Intentionally left uninitialized
         result = CHECK(s_networkCache.getCGI(cgi));
         if (CGI_FLAG_TWO_DIGIT_MNC & cgi.cgi_flags)
         {
@@ -359,8 +359,7 @@ public:
     virtual int get(IntType& val)
     {
         cellular_result_t result;
-        CellularGlobalIdentity cgi = {.size = sizeof(CellularGlobalIdentity),
-                                      .version = CGI_VERSION_LATEST};
+        CellularGlobalIdentity cgi; // Intentionally left uninitialized
         result = CHECK(s_networkCache.getCGI(cgi));
         val = static_cast<IntType>(cgi.location_area_code);
 
@@ -380,8 +379,7 @@ public:
     virtual int get(IntType& val)
     {
         cellular_result_t result;
-        CellularGlobalIdentity cgi = {.size = sizeof(CellularGlobalIdentity),
-                                      .version = CGI_VERSION_LATEST};
+        CellularGlobalIdentity cgi; // Intentionally left uninitialized
         result = CHECK(s_networkCache.getCGI(cgi));
         val = static_cast<IntType>(cgi.cell_id);
 
