@@ -82,27 +82,29 @@ public:
     }
 
 #if HAL_PLATFORM_CELLULAR
-    const CellularGlobalIdentity* getCGI()
+    const cellular_result_t getCGI(CellularGlobalIdentity& cgi)
     {
+        cellular_result_t result = SYSTEM_ERROR_NONE;
         system_tick_t ms = millis();
+
         if (cgi_ts_ == 0 || (ms - cgi_ts_) >= NETWORK_INFO_CACHE_INTERVAL)
         {
-            cgi_.size = sizeof(cgi_);
-            cgi_.version = CGI_VERSION_LATEST;
-            CHECK_RETURN(cellular_global_identity(&cgi_, nullptr), nullptr);
+            // Update cache
+            result = CHECK(cellular_global_identity(&cgi_, nullptr));
             cgi_ts_ = millis();
         }
-        return &cgi_;
+
+        // Return cached values
+        cgi = cgi_;
+        return result;
     }
 #endif
 
 private:
 #if Wiring_Cellular
     CellularSignal sig_;
-#if HAL_PLATFORM_CELLULAR
     CellularGlobalIdentity cgi_{.size = sizeof(CellularGlobalIdentity),
                                 .version = CGI_VERSION_LATEST};
-#endif
 #elif Wiring_WiFi
     WiFiSignal sig_;
 #elif Wiring_Mesh
@@ -303,11 +305,13 @@ public:
 
     virtual int get(IntType& val)
     {
-        const CellularGlobalIdentity* const cgi = s_networkCache.getCGI();
-        CHECK_TRUE(cgi, SYSTEM_ERROR_NETWORK);
-        val = static_cast<IntType>(cgi->mobile_country_code);
+        cellular_result_t result;
+        CellularGlobalIdentity cgi = {.size = sizeof(CellularGlobalIdentity),
+                                      .version = CGI_VERSION_LATEST};
+        result = CHECK(s_networkCache.getCGI(cgi));
+        val = static_cast<IntType>(cgi.mobile_country_code);
 
-        return SYSTEM_ERROR_NONE;
+        return result;
     }
 } g_networkCellularCellGlobalIdentityMobileCountryCodeDiagnosticData;
 
@@ -324,18 +328,20 @@ public:
 
     virtual int get(IntType& val)
     {
-        const CellularGlobalIdentity* const cgi = s_networkCache.getCGI();
-        CHECK_TRUE(cgi, SYSTEM_ERROR_NETWORK);
-        if (CGI_FLAG_TWO_DIGIT_MNC & cgi->cgi_flags)
+        cellular_result_t result;
+        CellularGlobalIdentity cgi = {.size = sizeof(CellularGlobalIdentity),
+                                      .version = CGI_VERSION_LATEST};
+        result = CHECK(s_networkCache.getCGI(cgi));
+        if (CGI_FLAG_TWO_DIGIT_MNC & cgi.cgi_flags)
         {
-            val = static_cast<IntType>(cgi->mobile_network_code * -1);
+            val = static_cast<IntType>(cgi.mobile_network_code * -1);
         }
         else
         {
-            val = static_cast<IntType>(cgi->mobile_network_code);
+            val = static_cast<IntType>(cgi.mobile_network_code);
         }
 
-        return SYSTEM_ERROR_NONE;
+        return result;
     }
 } g_networkCellularCellGlobalIdentityMobileNetworkCodeDiagnosticData;
 
@@ -352,11 +358,13 @@ public:
 
     virtual int get(IntType& val)
     {
-        const CellularGlobalIdentity* const cgi = s_networkCache.getCGI();
-        CHECK_TRUE(cgi, SYSTEM_ERROR_NETWORK);
-        val = static_cast<IntType>(cgi->location_area_code);
+        cellular_result_t result;
+        CellularGlobalIdentity cgi = {.size = sizeof(CellularGlobalIdentity),
+                                      .version = CGI_VERSION_LATEST};
+        result = CHECK(s_networkCache.getCGI(cgi));
+        val = static_cast<IntType>(cgi.location_area_code);
 
-        return SYSTEM_ERROR_NONE;
+        return result;
     }
 } g_networkCellularCellGlobalIdentityLocationAreaCodeDiagnosticData;
 
@@ -371,11 +379,13 @@ public:
 
     virtual int get(IntType& val)
     {
-        const CellularGlobalIdentity* const cgi = s_networkCache.getCGI();
-        CHECK_TRUE(cgi, SYSTEM_ERROR_NETWORK);
-        val = static_cast<IntType>(cgi->cell_id);
+        cellular_result_t result;
+        CellularGlobalIdentity cgi = {.size = sizeof(CellularGlobalIdentity),
+                                      .version = CGI_VERSION_LATEST};
+        result = CHECK(s_networkCache.getCGI(cgi));
+        val = static_cast<IntType>(cgi.cell_id);
 
-        return SYSTEM_ERROR_NONE;
+        return result;
     }
 } g_networkCellularCellGlobalIdentityCellIdDiagnosticData;
 #endif // HAL_PLATFORM_CELLULAR
