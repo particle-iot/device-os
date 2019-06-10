@@ -426,7 +426,7 @@ public:
     BleCharacteristic getCharacteristicByUUID(const BleUuid& uuid);
 
     template <typename T>
-    BleCharacteristic getCharacteristicByUUID(const BleUuid& uuid) {
+    BleCharacteristic getCharacteristicByUUID(T uuid) {
         BleUuid charUuid(uuid);
         return getCharacteristicByUUID(charUuid);
     }
