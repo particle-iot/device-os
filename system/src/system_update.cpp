@@ -540,6 +540,7 @@ const char* module_function_string(module_function_t func) {
         case MODULE_FUNCTION_SYSTEM_PART: return "s";
         case MODULE_FUNCTION_USER_PART: return "u";
         case MODULE_FUNCTION_NCP_FIRMWARE: return "c";
+        case MODULE_FUNCTION_RADIO_STACK: return "a";
         default: return "_";
     }
 }
@@ -561,7 +562,8 @@ bool is_module_function_valid(module_function_t func) {
         case MODULE_FUNCTION_MONO_FIRMWARE:
         case MODULE_FUNCTION_SYSTEM_PART:
         case MODULE_FUNCTION_USER_PART:
-        case MODULE_FUNCTION_NCP_FIRMWARE: {
+        case MODULE_FUNCTION_NCP_FIRMWARE:
+        case MODULE_FUNCTION_RADIO_STACK: {
             return true;
         }
         case MODULE_FUNCTION_NONE:

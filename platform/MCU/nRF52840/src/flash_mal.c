@@ -190,6 +190,17 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     uint8_t data_buf[MAX_COPY_LENGTH];
     uint32_t copy_len = 0;
 
+    // We may only check the module header if we've been asked to verify it
+    if (flags & MODULE_VERIFY_MASK)
+    {
+        const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress);
+        if (info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO && (uintptr_t)info == (uintptr_t)sourceAddress)
+        {
+            // Skip module header
+            sourceAddress += sizeof(module_info_t);
+        }
+    }
+
     /* Program source to destination */
     while (sourceAddress < endAddress)
     {

@@ -2,7 +2,8 @@
 #include "spark_macros.h"
 #include "hal_platform.h"
 #include "flash_mal.h"
-
+#include "static_assert.h"
+#include "nrf_mbr.h"
 
 // Bootloader
 const module_bounds_t module_bootloader = {
@@ -126,6 +127,20 @@ const module_bounds_t module_ncp_mono = {
 };
 #endif
 
+#define MODULE_RADIO_STACK_START_ADDRESS (0x1000)
+const module_bounds_t module_radio_stack = {
+        .maximum_size = 0x30000, // APP_CODE_BASE in softdevice.ld
+        .start_address = MODULE_RADIO_STACK_START_ADDRESS, // MBR_SIZE
+        .end_address = 0x30000, // APP_CODE_BASE in softdevice.ld
+        .module_function = MODULE_FUNCTION_RADIO_STACK,
+        .module_index = 0,
+        .store = MODULE_STORE_MAIN
+#if HAL_PLATFORM_NCP
+        ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
+#endif
+};
+PARTICLE_STATIC_ASSERT(radio_stack_start_address, MODULE_RADIO_STACK_START_ADDRESS == MBR_SIZE);
+
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user, &module_factory
 #if defined(HYBRID_BUILD) // include the mono module so that the hybrid module validates. The reason to not do this all the time is because the
@@ -138,6 +153,7 @@ const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_use
 #if HAL_PLATFORM_NCP_UPDATABLE
         ,&module_ncp_mono
 #endif /* HAL_PLATFORM_NCP */
+        , &module_radio_stack
 };
 
 

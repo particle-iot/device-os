@@ -38,18 +38,23 @@ typedef struct module_dependency_t {
     uint16_t module_version;        // version/release number of the module.
 } module_dependency_t;
 
+typedef enum module_info_flags_t {
+    MODULE_INFO_FLAG_NONE               = 0x00,
+    MODULE_INFO_FLAG_DROP_MODULE_INFO   = 0x01
+} module_info_flags_t;
+
 /**
  * Describes the module info struct placed at the start of
  */
 typedef struct module_info_t {
     const void* module_start_address;   /* the first byte of this module in flash */
     const void* module_end_address;     /* the last byte (exclusive) of this smodule in flash. 4 byte crc starts here. */
-    uint8_t reserved;					/* Platform-specific definition. */
-    uint8_t reserved2;					/* reserved, set to 0 */
+    uint8_t reserved;                   /* Platform-specific definition (mcu_target on Gen3) */
+    uint8_t flags;                      /* module_info_flags_t */
     uint16_t module_version;            /* 16 bit version */
     uint16_t platform_id;               /* The platform this module was compiled for. */
     uint8_t  module_function;           /* The module function */
-    uint8_t  module_index;				/* distinguish modules of the same type */
+    uint8_t  module_index;              /* distinguish modules of the same type */
     module_dependency_t dependency;
     module_dependency_t dependency2;
 } module_info_t;
@@ -59,7 +64,7 @@ typedef struct module_info_t {
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_start_address, 0);
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_end_address, 4);
 STATIC_ASSERT_MODULE_INFO_OFFSET(reserved, 8);
-STATIC_ASSERT_MODULE_INFO_OFFSET(reserved2, 9);
+STATIC_ASSERT_MODULE_INFO_OFFSET(flags, 9);
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_version, 10);
 STATIC_ASSERT_MODULE_INFO_OFFSET(platform_id, 12);
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_function, 14);
@@ -80,7 +85,8 @@ PARTICLE_STATIC_ASSERT(module_info_size, sizeof(module_info_t) == 24 || sizeof(v
 #define MOD_FUNC_SYSTEM_PART     4
 #define MOD_FUNC_USER_PART       5
 #define MOD_FUNC_SETTINGS        6
-#define MOD_FUNC_NCP_FIRMWARE	   7
+#define MOD_FUNC_NCP_FIRMWARE    7
+#define MOD_FUNC_RADIO_STACK     8
 
 typedef enum module_function_t {
     MODULE_FUNCTION_NONE = MOD_FUNC_NONE,
@@ -104,7 +110,10 @@ typedef enum module_function_t {
     MODULE_FUNCTION_SETTINGS = MOD_FUNC_SETTINGS,
 
     /* Firmware targeted for the NCP. */
-    MODULE_FUNCTION_NCP_FIRMWARE = MOD_FUNC_NCP_FIRMWARE
+    MODULE_FUNCTION_NCP_FIRMWARE = MOD_FUNC_NCP_FIRMWARE,
+
+    /* Radio stack module */
+    MODULE_FUNCTION_RADIO_STACK = MOD_FUNC_RADIO_STACK
 
 } module_function_t;
 
@@ -184,5 +193,5 @@ extern const module_info_crc_t module_info_crc;
 #endif
 
 
-#endif	/* MODULE_INFO_H */
+#endif /* MODULE_INFO_H */
 
