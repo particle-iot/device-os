@@ -1003,7 +1003,9 @@ int BleObject::Broadcaster::setAdvertisingData(const uint8_t* buf, size_t len) {
 }
 
 ssize_t BleObject::Broadcaster::getAdvertisingData(uint8_t* buf, size_t len) const {
-    CHECK_TRUE(buf, advDataLen_);
+    if (!buf) {
+        return advDataLen_;
+    }
     len = std::min(len, advDataLen_);
     memcpy(buf, advData_, len);
     return len;
@@ -1024,7 +1026,9 @@ int BleObject::Broadcaster::setScanResponseData(const uint8_t* buf, size_t len) 
 }
 
 ssize_t BleObject::Broadcaster::getScanResponseData(uint8_t* buf, size_t len) const {
-    CHECK_TRUE(buf, scanRespDataLen_);
+    if (!buf) {
+        return scanRespDataLen_;
+    }
     len = std::min(len, scanRespDataLen_);
     memcpy(buf, scanRespData_, len);
     return len;
