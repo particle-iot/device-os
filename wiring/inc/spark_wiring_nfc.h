@@ -387,7 +387,7 @@ public:
         return inst;
     }
 
-    int on(nfc_event_callback_t cb=nullptr);
+    int on(nfc_event_callback_t cb=nullptr, void* context=nullptr);
     int off();
     int update();
 
@@ -419,6 +419,8 @@ private:
     Vector<uint8_t>      uid_;
     Vector<uint8_t>      encode_;
     NdefMessage          ndefMessage_;
+    nfc_event_callback_t callback_;
+    void*                context_;
 };
 
 #define NFC NfcTagType2::instance()

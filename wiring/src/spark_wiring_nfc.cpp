@@ -149,7 +149,7 @@ void NdefMessage::arrangeRecords(void) {
     }
 }
 
-int NfcTagType2::on(nfc_event_callback_t cb) {
+int NfcTagType2::on(nfc_event_callback_t cb, void* context) {
     if (!enable_) {
         enable_ = true;
         hal_nfc_type2_init(nullptr);
@@ -159,8 +159,11 @@ int NfcTagType2::on(nfc_event_callback_t cb) {
     LOG_DEBUG(TRACE, "size: %d", encode_.size());
     hal_nfc_type2_stop_emulation(nullptr);
     hal_nfc_type2_set_payload(encode_.data(), encode_.size());
-    hal_nfc_type2_set_callback(cb, nullptr);
+    hal_nfc_type2_set_callback(cb, context);
     hal_nfc_type2_start_emulation(nullptr);
+
+    callback_ = cb;
+    context_ = context;
 
     return 0;
 }
@@ -174,7 +177,7 @@ int NfcTagType2::off() {
 
 int NfcTagType2::update() {
     off();
-    on();
+    on(callback_, context_);
 
     return 0;
 }
