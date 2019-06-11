@@ -20,10 +20,10 @@ SOFTDEVICE_MINIMUM_RAM_BASE = 0x1628;
 SOFTDEVICE_MINIMUM_CODE_BASE = 0x26000;
 
 /*
- * Reserving 32K in total. The more concurrent BLE links, the more RAM is required for SoftDevice.
- * link.ld for system-part1
+ * Reserving 16K in total. The more concurrent BLE links, the more RAM is required for SoftDevice.
+ * Referenced by link.ld for system-part1
  */
-APP_RAM_BASE = 32K;
+APP_RAM_BASE = 16K;
 /* Reserving 192K in total */
 APP_CODE_BASE = 192K;
 
