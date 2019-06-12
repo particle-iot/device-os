@@ -35,7 +35,7 @@ public:
 	typedef uint32_t (*calculate_crc_fn)(const unsigned char *buf, uint32_t buflen);
 
 private:
-	FilteringEventHandler event_handlers[5];
+	FilteringEventHandler event_handlers[MAX_SUBSCRIPTIONS];
 
 protected:
 
