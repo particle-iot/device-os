@@ -18,6 +18,8 @@ namespace particle { namespace protocol {
 #define PRODUCT_FIRMWARE_VERSION (0xffff)
 #endif
 
+#define MAX_SUBSCRIPTIONS (6)       // 2 system and 4 application
+
 enum ProtocolError
 {
     /* 00 */ NO_ERROR,
