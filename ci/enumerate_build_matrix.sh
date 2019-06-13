@@ -139,9 +139,9 @@ for db in "${DEBUG_BUILD[@]}"
 do
   for p in "${MODULAR_PLATFORM[@]}"
   do
-    # Gen 3 overflow with modular DEBUG_BUILD=y, so skip those
+    # Gen 3 and Photon overflow with modular DEBUG_BUILD=y, so skip those
     if [[ "$db" = "y" ]]; then
-      if [[ "$p" = "xenon" ]] || [[ "$p" = "argon" ]] || [[ "$p" = "boron" ]] || [[ "$p" = "xsom" ]] || [[ "$p" = "asom" ]] || [[ "$p" = "bsom" ]]; then
+      if [[ "$p" = "photon" ]] || [[ "$p" = "p1" ]] || [[ "$p" = "xenon" ]] || [[ "$p" = "argon" ]] || [[ "$p" = "boron" ]] || [[ "$p" = "xsom" ]] || [[ "$p" = "asom" ]] || [[ "$p" = "bsom" ]]; then
         continue
       fi
     fi
