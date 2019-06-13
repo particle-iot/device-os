@@ -32,6 +32,8 @@
 
 /* Include for debug capabilty */
 #define MDM_DEBUG
+// #define MDM_DEBUG_TX_PIPE
+// #define MDM_DEBUG_RX_PIPE
 
 /** basic modem parser class
 */
