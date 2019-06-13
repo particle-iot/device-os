@@ -277,8 +277,14 @@ int MDMParser::send(const char* buf, int len)
     if (_debugLevel >= 3) {
         DEBUG_D("%10.3f AT send    ", (HAL_Timer_Get_Milli_Seconds()-_debugTime)*0.001);
         dumpAtCmd(buf,len);
+#ifdef MDM_DEBUG_TX_PIPE
+        // When using this, look for dangling stuff in the TX pipe just before a send.
+        // This is evidence of something not being fully sent for the last write to the pipe.
+        electronMDM.txDump();
+#endif // MDM_DEBUG_TX_PIPE
     }
-#endif
+#endif // MDM_DEBUG
+
     return _send(buf, len);
 }
 
@@ -355,8 +361,16 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
             DEBUG_D("%10.3f AT read %s", (HAL_Timer_Get_Milli_Seconds()-_debugTime)*0.001, s);
             dumpAtCmd(buf, len);
             (void)s;
+#ifdef MDM_DEBUG_RX_PIPE
+            // When using this, look for dangling stuff in the RX pipe after a read.
+            // This is evidence of something not being fully parsed, which could be
+            // a multi-line URC or an error in parsing.  Could also comment this out
+            // and uncomment the ones used in _getLine() for even more real-time feedback
+            // with the downside of MUCH more logs.
+            electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
         }
-#endif
+#endif // MDM_DEBUG
         if ((ret != WAIT) && (ret != NOT_FOUND))
         {
             int type = TYPE(ret);
@@ -3059,33 +3073,61 @@ int MDMParser::_getLine(Pipe<char>* pipe, char* buf, int len)
         };
         for (int i = 0; i < (int)(sizeof(lutF)/sizeof(*lutF)); i ++) {
             pipe->set(unkn);
+#ifdef MDM_DEBUG_RX_PIPE
+            // electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
+            // DEBUG_D("lutF [%d] len:%d sz:%d sz now:%d\r\n", i, len, sz, pipe->size());
             int ln = _parseFormated(pipe, len, lutF[i].fmt);
             if (ln == WAIT && fr) {
+                // DEBUG_D("lutF ln == WAIT len:%d\r\n", len);
+#ifdef MDM_DEBUG_RX_PIPE
+                // electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
                 return WAIT;
             }
             if ((ln != NOT_FOUND) && (unkn > 0)) {
+                // DEBUG_D("lutF ln != NOT_FOUND (%d) len:%d\r\n", i, len);
+#ifdef MDM_DEBUG_RX_PIPE
+                // electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
                 return TYPE_UNKNOWN | pipe->get(buf, unkn);
             }
             if (ln > 0) {
+                // DEBUG_D("lutF matched (%d)\r\n", i);
                 return lutF[i].type  | pipe->get(buf, ln);
             }
         }
         for (int i = 0; i < (int)(sizeof(lut)/sizeof(*lut)); i ++) {
             pipe->set(unkn);
+#ifdef MDM_DEBUG_RX_PIPE
+            // electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
+            // DEBUG_D("lut [%d] len:%d sz:%d sz now:%d\r\n", i, len, sz, pipe->size());
             int ln = _parseMatch(pipe, len, lut[i].sta, lut[i].end);
             if (ln == WAIT && fr) {
+                // DEBUG_D("lut ln == WAIT len:%d\r\n", len);
+#ifdef MDM_DEBUG_RX_PIPE
+                // electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
                 return WAIT;
             }
             // Double CRLF detected, discard it.
             // This resolves a case on G350 where "\r\n" is generated after +USORF response, but missing
             // on U260/U270, which would otherwise generate "\r\n\r\nOK\r\n" which is not parseable.
             if ((ln > 0) && (lut[i].type == TYPE_DBLNEWLINE) && (unkn == 0)) {
+                // DEBUG_D("lut TYPE_DBLNEWLINE\r\n");
                 return TYPE_UNKNOWN | pipe->get(buf, 2);
             }
             if ((ln != NOT_FOUND) && (unkn > 0)) {
+                // DEBUG_D("lut ln != NOT_FOUND (%d) len:%d\r\n", i, len);
+#ifdef MDM_DEBUG_RX_PIPE
+                // electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
                 return TYPE_UNKNOWN | pipe->get(buf, unkn);
             }
+
             if (ln > 0) {
+                // DEBUG_D("lut matched (%d)\r\n", i);
                 return lut[i].type | pipe->get(buf, ln);
             }
         }
