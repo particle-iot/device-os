@@ -244,6 +244,8 @@ MDMParser::MDMParser(void)
     _cancel_all_operations = false;
     sms_cb = NULL;
     memset(_sockets, 0, sizeof(_sockets));
+    _timePowerOn = 0;
+    _timeRegistered = 0;
     for (int socket = 0; socket < NUMSOCKETS; socket ++)
         _sockets[socket].handle = MDM_SOCKET_ERROR;
 #ifdef MDM_DEBUG
@@ -617,6 +619,9 @@ void MDMParser::reset(void)
     HAL_GPIO_Write(RESET_UC, 0);
     HAL_Delay_Milliseconds(delay);
     HAL_GPIO_Write(RESET_UC, 1);
+    // reset power on and registered timers for memory issue power off delays
+    _timePowerOn = 0;
+    _timeRegistered = 0;
 }
 
 bool MDMParser::_powerOn(void)
@@ -691,6 +696,9 @@ bool MDMParser::_powerOn(void)
         // check interface
         if(_atOk()) {
             _pwr = true;
+            // start power on timer for memory issue power off delays, assume not registered.
+            _timePowerOn = HAL_Timer_Get_Milli_Seconds();
+            _timeRegistered = 0;
             break;
         }
         else if (i==0 && !retried_after_reset) {
@@ -856,6 +864,23 @@ bool MDMParser::init(DevStatus* status)
     sendFormated("AT+CGMR\r\n");
     if (RESP_OK != waitFinalResp(_cbString, _dev.ver))
         goto failure;
+    // ATI9 (get version and app version)
+    // example output
+    // 16 "\r\n08.90,A01.13\r\n" G350 (newer)
+    // 16 "\r\n08.70,A00.02\r\n" G350 (older)
+    // 28 "\r\nL0.0.00.00.05.06,A.02.00\r\n" (memory issue)
+    // 28 "\r\nL0.0.00.00.05.07,A.02.02\r\n" (demonstrator)
+    // 28 "\r\nL0.0.00.00.05.08,A.02.04\r\n" (maintenance)
+    memset(_verExtended, 0, sizeof(_verExtended));
+    sendFormated("ATI9\r\n");
+    if (RESP_OK != waitFinalResp(_cbString, _verExtended))
+        goto failure;
+    // Test for Memory Issue version
+    _memoryIssuePresent = false;
+    if (!strcmp("L0.0.00.00.05.06,A.02.00", _verExtended)) {
+        _memoryIssuePresent = true;
+    }
+    // DEBUG_D("MODEM AND APP VERSION: %s (%s)\r\n", _verExtended, (_memoryIssuePresent) ? "MEMISSUE" : "OTHER");
     // Returns the ICCID (Integrated Circuit Card ID) of the SIM-card.
     // ICCID is a serial number identifying the SIM.
     sendFormated("AT+CCID\r\n");
@@ -982,16 +1007,47 @@ bool MDMParser::powerOff(void)
         // Try to power off
         for (int i=0; i<3; i++) { // try 3 times
             if (!_atOk()) {
+                if (_dev.dev == DEV_SARA_R410) {
+                    check_ri = true;
+                    // If memory issue is present, ensure we don't force a power off too soon
+                    // to avoid hitting the 124 day memory housekeeping issue, AT+CPWROFF will
+                    // handle this delay automatically, or timeout after 40s.
+                    if (_memoryIssuePresent) {
+                        MDM_INFO("\r\n[ Modem::powerOff ] AT Failure, waiting up to 30s to power off with PWR_UC...");
+                        system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+                        if (_timePowerOn == 0) {
+                            // fallback to max timeout of 30s to be safe
+                            _timePowerOn = now;
+                        }
+                        // check for timeout (VINT == LOW, Powered on 30s ago, Registered 20s ago)
+                        do {
+                            now = HAL_Timer_Get_Milli_Seconds();
+                            // prefer to timeout 20s after registration if we are registered
+                            if (_timeRegistered) {
+                                if (now - _timeRegistered >= 20000UL) {
+                                    break;
+                                }
+                            } else if (_timePowerOn && now - _timePowerOn >= 30000UL) {
+                                break;
+                            }
+                            HAL_Delay_Milliseconds(100); // just wait
+                        } while ( HAL_GPIO_Read(RI_UC) );
+                        // reset timers
+                        _timeRegistered = 0;
+                        _timePowerOn = 0;
+                    }
+                }
                 MDM_INFO("\r\n[ Modem::powerOff ] AT Failure, trying PWR_UC...");
+                // Skip power off sequence if power is already off
+                if (_dev.dev == DEV_SARA_R410 && !HAL_GPIO_Read(RI_UC)) {
+                    break;
+                }
                 HAL_GPIO_Write(PWR_UC, 0);
                 // >1.5 seconds on SARA R410M
                 // >1 second on SARA U2
                 // plus a little extra for good luck
                 HAL_Delay_Milliseconds(1600);
                 HAL_GPIO_Write(PWR_UC, 1);
-                if (_dev.dev == DEV_SARA_R410) {
-                    check_ri = true;
-                }
                 break;
             } else {
                 sendFormated("AT+CPWROFF\r\n");
@@ -1143,6 +1199,8 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
         // call to checkNetStatus(), so these registration URCs need to be set up at
         // least once to ensure they continue to work later on when using _checkEpsReg()
         if (_dev.dev == DEV_SARA_R410) {
+            // reset registered timer for memory issue power off delays
+            _timeRegistered = 0;
             // Set up the EPS network registration URC
             sendFormated("AT+CEREG=2\r\n");
             if (RESP_OK != waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT)) {
@@ -1301,6 +1359,10 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     // don't return true until fully registered
     if (_dev.dev == DEV_SARA_R410) {
         ok = REG_OK(_net.eps);
+        if (_memoryIssuePresent && ok) {
+            // start registered timer for memory issue power off delays.
+            _timeRegistered = HAL_Timer_Get_Milli_Seconds();
+        }
     } else {
         ok = REG_OK(_net.csd) && REG_OK(_net.psd);
     }
