@@ -82,6 +82,22 @@ typedef enum {
     ACT_LTE_CAT_M1  = 6,
     ACT_LTE_CAT_NB1 = 7
 } AcT;
+//! Ublox UMNOPROF settings
+typedef enum {
+    UBLOX_SARA_UMNOPROF_NONE             = -1,
+    UBLOX_SARA_UMNOPROF_SW_DEFAULT       = 0,
+    UBLOX_SARA_UMNOPROF_SIM_SELECT       = 1,
+    UBLOX_SARA_UMNOPROF_ATT              = 2,
+    UBLOX_SARA_UMNOPROF_VERIZON          = 3,
+    UBLOX_SARA_UMNOPROF_TELSTRA          = 4,
+    UBLOX_SARA_UMNOPROF_TMOBILE          = 5,
+    UBLOX_SARA_UMNOPROF_CHINA_TELECOM    = 6,
+    UBLOX_SARA_UMNOPROF_SPRINT           = 8,
+    UBLOX_SARA_UMNOPROF_VODAFONE         = 19,
+    UBLOX_SARA_UMNOPROF_TELUS            = 21,
+    UBLOX_SARA_UMNOPROF_DEUTSCHE_TELEKOM = 31,
+    UBLOX_SARA_UMNOPROF_STANDARD_EUROPE  = 100,
+} UbloxSaraUmnoprof;
 //! Network Status
 typedef struct {
     Reg csd;        //!< CSD Registration Status (Circuit Switched Data)

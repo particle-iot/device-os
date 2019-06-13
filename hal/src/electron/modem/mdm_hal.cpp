@@ -84,6 +84,9 @@ std::recursive_mutex mdm_mutex;
 #define UPSD_TIMEOUT    (  1 * 1000)
 #define UPSDA_TIMEOUT   (180 * 1000)
 #define UPSND_TIMEOUT   (  1 * 1000)
+#define UMNOPROF_TIMEOUT ( 1 * 1000)
+#define CEDRXS_TIMEOUT  (  1 * 1000)
+#define CFUN_TIMEOUT    (180 * 1000)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -347,7 +350,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
             int type = TYPE(ret);
             // handle unsolicited commands here
             if (type == TYPE_PLUS) {
-                const char* cmd = buf+3;
+                const char* cmd = buf+3; // assume all TYPE_PLUS commands have \r\n+ and skip
                 int a, b, c, d, r;
                 char s[32];
 
@@ -871,22 +874,35 @@ bool MDMParser::init(DevStatus* status)
         memcpy(status, &_dev, sizeof(DevStatus));
     }
     if (_dev.dev == DEV_SARA_R410) {
+        bool resetNeeded = false;
+        int umnoprof = UBLOX_SARA_UMNOPROF_NONE;
+
+        sendFormated("AT+UMNOPROF?\r\n");
+        if (RESP_ERROR == waitFinalResp(_cbUMNOPROF, &umnoprof, UMNOPROF_TIMEOUT)) {
+            goto reset_failure;
+        }
+        if (umnoprof == UBLOX_SARA_UMNOPROF_SW_DEFAULT) {
+            sendFormated("AT+UMNOPROF=%d\r\n", UBLOX_SARA_UMNOPROF_SIM_SELECT);
+            waitFinalResp(); // Not checking for error since we will reset either way
+            goto reset_failure;
+        }
         // Force Power Saving mode to be disabled for good measure
         sendFormated("AT+CPSMS=0\r\n");
-        if (RESP_OK != waitFinalResp())
+        if (RESP_OK != waitFinalResp()) {
             goto failure;
+        }
         sendFormated("AT+CPSMS?\r\n");
-        if (RESP_OK != waitFinalResp())
+        if (RESP_OK != waitFinalResp()) {
             goto failure;
+        }
         // Force eDRX mode to be disabled
         // 18/23 hardware doesn't seem to be disabled by default
         sendFormated("AT+CEDRXS?\r\n");
         // Reset the detected count each time we check for eDRX AcTs enabled
         EdrxActs _edrxActs;
-        if (RESP_ERROR == waitFinalResp(_cbCEDRXS, &_edrxActs)) {
+        if (RESP_ERROR == waitFinalResp(_cbCEDRXS, &_edrxActs, CEDRXS_TIMEOUT)) {
             goto reset_failure;
         }
-        bool resetNeeded = false;
         for (int i = 0; i < _edrxActs.count; i++) {
             sendFormated("AT+CEDRXS=3,%d\r\n", _edrxActs.act[i]);
             waitFinalResp(); // Not checking for error since we will reset either way
@@ -906,9 +922,9 @@ failure:
 reset_failure:
     // Don't get stuck in a reset-retry loop
     static int resetFailureAttempts = 0;
-    if (resetFailureAttempts++ < 3) {
+    if (resetFailureAttempts++ < 5) {
         sendFormated("AT+CFUN=15\r\n");
-        waitFinalResp();
+        waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT);
         _init = false; // invalidate init and prevent cellular registration
         _pwr = false;  //   |
         // When this exits false, ARM_WLAN_WD 1 will fire and timeout after 30s.
@@ -1000,6 +1016,18 @@ bool MDMParser::powerOff(void)
     if (continue_cancel) cancel();
     UNLOCK();
     return ok;
+}
+
+int MDMParser::_cbUMNOPROF(int type, const char *buf, int len, int* i)
+{
+    if ((type == TYPE_PLUS) && i){
+        int a;
+        *i = -1;
+        if (sscanf(buf, "\r\n+UMNOPROF: %d", &a) == 1) {
+            *i = a;
+        }
+    }
+    return WAIT;
 }
 
 int MDMParser::_cbCGMM(int type, const char* buf, int len, DevStatus* s)
@@ -1113,9 +1141,9 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
                 // On SARA R410M [Cat-M1(7) & Cat-NB1(8)] is an invalid default configuration.
                 // Detect and force Cat-MB1 only when detected.
                 sendFormated("AT+URAT?\r\n");
-                if (waitFinalResp(_cbURAT, &set_rat, URAT_TIMEOUT) != RESP_OK) {
-                    goto failure;
-                }
+                // This may fail in some cases due to UMNOPROF setting, so do not check for error.
+                // In the case of error, set_rat will remain false and the URAT setting will not be altered.
+                waitFinalResp(_cbURAT, &set_rat, URAT_TIMEOUT);
                 // Get default context settings
                 sendFormated("AT+CGDCONT?\r\n");
                 CGDCONTparam ctx = {};
