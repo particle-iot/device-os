@@ -115,10 +115,13 @@
 #define HAL_PLATFORM_NCP_UPDATABLE (0)
 #endif /* HAL_PLATFORM_NCP_UPDATABLE */
 
-// FIXME: why are these here? Are they supposed to be overridable by platform?
+#ifndef HAL_PLATFORM_MCU_ANY
 #define HAL_PLATFORM_MCU_ANY (0xFF)
+#endif // HAL_PLATFORM_MCU_ANY
+
+#ifndef HAL_PLATFORM_MCU_DEFAULT
 #define HAL_PLATFORM_MCU_DEFAULT (0)
-// /FIXME
+#endif // HAL_PLATFORM_MCU_DEFAULT
 
 #ifndef HAL_PLATFORM_ETHERNET
 #define HAL_PLATFORM_ETHERNET (0)

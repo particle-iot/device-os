@@ -129,7 +129,7 @@ const module_bounds_t module_ncp_mono = {
 
 #define MODULE_RADIO_STACK_START_ADDRESS (0x1000)
 const module_bounds_t module_radio_stack = {
-        .maximum_size = 0x30000, // APP_CODE_BASE in softdevice.ld
+        .maximum_size = 0x30000 - MODULE_RADIO_STACK_START_ADDRESS, // APP_CODE_BASE - MBR_SIZE
         .start_address = MODULE_RADIO_STACK_START_ADDRESS, // MBR_SIZE
         .end_address = 0x30000, // APP_CODE_BASE in softdevice.ld
         .module_function = MODULE_FUNCTION_RADIO_STACK,
