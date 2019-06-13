@@ -263,6 +263,18 @@ int ElectronSerialPipe::rxSize(void)
     return _pipeRx.size();
 }
 
+void ElectronSerialPipe::txDump(void)
+{
+    DEBUG_D("TX ");
+    _pipeTx.dump();
+}
+
+void ElectronSerialPipe::rxDump(void)
+{
+    DEBUG_D("RX ");
+    _pipeRx.dump();
+}
+
 void ElectronSerialPipe::rxIrqBuf(void)
 {
     if (_pipeRx.writeable()) {
