@@ -51,6 +51,9 @@ bool CloudClass::register_function(cloud_function_t fn, void* data, const char* 
 
 Future<bool> CloudClass::publish_event(const char *eventName, const char *eventData, int ttl, PublishFlags flags) {
 #ifndef SPARK_NO_CLOUD
+    if (!connected()) {
+        return Future<bool>(Error::INVALID_STATE);
+    }
     spark_send_event_data d = { sizeof(spark_send_event_data) };
 
     // Completion handler

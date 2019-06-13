@@ -311,6 +311,9 @@ class CloudClass {
 
     bool syncTime(void)
     {
+        if (!connected()) {
+            return false;
+        }
         return CLOUD_FN(spark_sync_time(NULL), false);
     }
 

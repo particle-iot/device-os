@@ -4,9 +4,19 @@
 #include <limits>
 
 #include "logging.h"
+#include "system_cloud.h"
 #include "system_threading.h"
 
+namespace {
+
 using namespace particle::system;
+
+int postDescription() {
+    const auto r = spark_protocol_post_description(spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr);
+    return spark_protocol_to_system_error(r);
+}
+
+} // unnamed
 
 template <class Timer>
 VitalsPublisher<Timer>::VitalsPublisher(Timer* timer_)
@@ -74,8 +84,10 @@ void VitalsPublisher<Timer>::period(system_tick_t period_s_)
 template <class Timer>
 int VitalsPublisher<Timer>::publish(void)
 {
-    return spark_protocol_post_description(spark_protocol_instance(),
-                                           particle::protocol::DESCRIBE_METRICS, nullptr);
+    if (!spark_cloud_flag_connected()) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    return postDescription();
 }
 
 template <class Timer>
@@ -88,8 +100,9 @@ void VitalsPublisher<Timer>::publishFromTimer(void)
     }
     task->func = [](ISRTaskQueue::Task* task) {
         delete task;
-        spark_protocol_post_description(spark_protocol_instance(),
-                                        particle::protocol::DESCRIBE_METRICS, nullptr);
+        if (spark_cloud_flag_connected()) {
+            postDescription();
+        }
     };
     SystemISRTaskQueue.enqueue(task);
 }
