@@ -569,6 +569,10 @@ protected:
     static int _cbURDFILE(int type, const char* buf, int len, URDFILEparam* param);
     // variables
     DevStatus   _dev; //!< collected device information
+    char _verExtended[32]; //!< collected modem and application version string (ATI9)
+    bool _memoryIssuePresent = false; //!< flag to add specific delays when the firmware version with memory issue is present
+    system_tick_t _timePowerOn; //!< timestamp when unit was powered on (to be used in conjunction with _memoryIssuePresent)
+    system_tick_t _timeRegistered; //!< timestamp when unit was registered on (to be used in conjunction with _memoryIssuePresent)
     NetStatus   _net; //!< collected network information
     MDM_IP       _ip;  //!< assigned ip address
     MDM_DataUsage _data_usage; //!< collected data usage information
