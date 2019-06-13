@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/particle-iot/device-os.svg?branch=develop)](https://travis-ci.org/particle-iot/device-os)
+[![Open Source Helpers](https://www.codetriage.com/spark/firmware/badges/users.svg)](https://www.codetriage.com/spark/firmware)
 
 # Particle Firmware for the Electron, P1, Photon and Core.
 
