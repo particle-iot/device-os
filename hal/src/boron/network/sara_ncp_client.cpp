@@ -695,15 +695,40 @@ int SaraNcpClient::initReady() {
     }
 
     if (ncpId() == MESH_NCP_SARA_R410) {
-        // Force Cat M1-only mode
-        auto resp = parser_.sendCommand("AT+URAT?");
-        unsigned selectAct = 0, preferAct1 = 0, preferAct2 = 0;
-        r = CHECK_PARSER(resp.scanf("+URAT: %u,%u,%u", &selectAct, &preferAct1, &preferAct2));
+        // Set UMNOPROF = SIM_SELECT
+        auto resp = parser_.sendCommand("AT+UMNOPROF?");
+        bool reset = false;
+        int umnoprof = static_cast<int>(UbloxSaraUmnoprof::NONE);
+        r = CHECK_PARSER(resp.scanf("+UMNOPROF: %d", &umnoprof));
         CHECK_PARSER_OK(resp.readResult());
-        if (selectAct != 7 || (r >= 2 && preferAct1 != 7) || (r >= 3 && preferAct2 != 7)) { // 7: LTE Cat M1
+        if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::SW_DEFAULT) {
             // This is a persistent setting
-            CHECK_PARSER_OK(parser_.execCommand("AT+URAT=7"));
+            auto respUmno = parser_.sendCommand(1000, "AT+UMNOPROF=%d", static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT));
+            respUmno.readResult();
+            // Not checking for error since we will reset either way
+            reset = true;
         }
+        if (reset) {
+            const int respCfun = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
+            CHECK_TRUE(respCfun == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+            HAL_Delay_Milliseconds(10000);
+            CHECK(waitAtResponse(20000));
+        }
+
+        // Force Cat M1-only mode
+        // We may encounter a CME ERROR response with u-blox firmware 05.08,A.02.04 and in that case Cat-M1 mode is
+        // already enforced properly based on the UMNOPROF setting.
+        resp = parser_.sendCommand("AT+URAT?");
+        unsigned selectAct = 0, preferAct1 = 0, preferAct2 = 0;
+        r = resp.scanf("+URAT: %u,%u,%u", &selectAct, &preferAct1, &preferAct2);
+        resp.readResult();
+        if (r > 0) {
+            if (selectAct != 7 || (r >= 2 && preferAct1 != 7) || (r >= 3 && preferAct2 != 7)) { // 7: LTE Cat M1
+                // This is a persistent setting
+                CHECK_PARSER_OK(parser_.execCommand("AT+URAT=7"));
+            }
+        }
+
         // Force eDRX mode to be disabled. AT+CEDRXS=0 doesn't seem disable eDRX completely, so
         // so we're disabling it for each reported RAT individually
         Vector<unsigned> acts;
