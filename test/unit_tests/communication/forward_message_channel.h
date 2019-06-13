@@ -72,6 +72,11 @@ public:
 	}
 
 	virtual ProtocolError notify_established() override { return NO_ERROR; }
+
+	virtual void notify_client_messages_processed() override
+	{
+		channel->notify_client_messages_processed();
+	}
 };
 
 

@@ -519,55 +519,6 @@ class CoAPReliableChannel : public T
 
 	DelegateChannel delegateChannel;
 
-	/**
-	 * Send a message synchronously, waiting for the acknowledgement.
-	 */
-	ProtocolError send_synchronous(Message& msg)
-	{
-		message_id_t id = msg.get_id();
-		DEBUG("sending message id=%x synchronously", id);
-		CoAPType::Enum coapType = CoAP::type(msg.buf());
-		ProtocolError error = client.send(msg, millis());
-		if (!error)
-			error = delegateChannel.send(msg);
-		if (!error && coapType==CoAPType::CON)
-		{
-			CoAPMessage::delivery_fn flag_delivered = [&error](CoAPMessage::Delivery delivered) {
-				if (delivered==CoAPMessage::NOT_DELIVERED)
-					error = MESSAGE_TIMEOUT;
-				else if (delivered==CoAPMessage::DELIVERED_NACK)
-					error = MESSAGE_RESET;
-			};
-			CoAPMessage* coapmsg = client.from_id(id);
-			if (coapmsg)
-				coapmsg->set_delivered_handler(&flag_delivered);
-			else
-				ERROR("no coapmessage for msg id=%x", id);
-			while (client.from_id(id)!=nullptr && !error)
-			{
-				msg.clear();
-				msg.set_length(0);
-				error = delegateChannel.receive(msg);
-				if (!error && msg.decode_id() && is_ack_or_reset(msg.buf(), msg.length()))
-				{
-					// handle acknowledgements, waiting for the one that
-					// acknowledges the original confirmation.
-					ProtocolError receive_error = client.receive(msg, delegateChannel, millis());
-					if (!error)
-						error = receive_error;
-				}
-				// drop CON messages on the floor since we cannot handle them now
-				client.process(millis(), delegateChannel);
-			}
-			if (!client.has_messages()) {
-				channel::notify_client_messages_processed();
-			}
-		}
-		client.clear_message(id);
-		// todo - if msg contains a delivery callback then call that with the outcome of this
-		return error;
-	}
-
 public:
 
 	CoAPReliableChannel(M m=0) : millis(m) {
@@ -675,6 +626,54 @@ public:
 		return error;
 	}
 
+	/**
+	 * Send a message synchronously, waiting for the acknowledgement.
+	 */
+	ProtocolError send_synchronous(Message& msg)
+	{
+		message_id_t id = msg.get_id();
+		DEBUG("sending message id=%x synchronously", id);
+		CoAPType::Enum coapType = CoAP::type(msg.buf());
+		ProtocolError error = client.send(msg, millis());
+		if (!error)
+			error = delegateChannel.send(msg);
+		if (!error && coapType==CoAPType::CON)
+		{
+			CoAPMessage::delivery_fn flag_delivered = [&error](CoAPMessage::Delivery delivered) {
+				if (delivered==CoAPMessage::NOT_DELIVERED)
+					error = MESSAGE_TIMEOUT;
+				else if (delivered==CoAPMessage::DELIVERED_NACK)
+					error = MESSAGE_RESET;
+			};
+			CoAPMessage* coapmsg = client.from_id(id);
+			if (coapmsg)
+				coapmsg->set_delivered_handler(&flag_delivered);
+			else
+				ERROR("no coapmessage for msg id=%x", id);
+			while (client.from_id(id)!=nullptr && !error)
+			{
+				msg.clear();
+				msg.set_length(0);
+				error = delegateChannel.receive(msg);
+				if (!error && msg.decode_id() && is_ack_or_reset(msg.buf(), msg.length()))
+				{
+					// handle acknowledgements, waiting for the one that
+					// acknowledges the original confirmation.
+					ProtocolError receive_error = client.receive(msg, delegateChannel, millis());
+					if (!error)
+						error = receive_error;
+				}
+				// drop CON messages on the floor since we cannot handle them now
+				client.process(millis(), delegateChannel);
+			}
+			if (!client.has_messages()) {
+				channel::notify_client_messages_processed();
+			}
+		}
+		client.clear_message(id);
+		// todo - if msg contains a delivery callback then call that with the outcome of this
+		return error;
+	}
 };
 
 

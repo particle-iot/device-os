@@ -272,7 +272,7 @@ void build_message_channel_mock(Mock<MessageChannel>& mock)
 	When(Method(mock,notify_established)).AlwaysReturn(NO_ERROR);
 	When(Method(mock,is_unreliable)).AlwaysReturn(false);
 	When(Method(mock,command)).AlwaysReturn(NO_ERROR);
-
+	When(Method(mock,notify_client_messages_processed)).AlwaysReturn();
 }
 
 SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exponentially increasing delays, after which it is removed")
@@ -694,6 +694,24 @@ SCENARIO("a repeated confirmable CoAP message is passed only once to the applica
 	}
 }
 
+/**
+ * A reliable CoAP Channel that uses a forwarding message channel.
+ * This allows the actual message channel to be set later (e.g. a mock.)
+ * The typename M is a callable that provides the current time.
+ */
+template <typename M>
+class ForwardCoAPReliableChannel: public CoAPReliableChannel<ForwardMessageChannel, M>
+{
+	using super = CoAPReliableChannel<ForwardMessageChannel, M>;
+
+public:
+
+	ForwardCoAPReliableChannel(MessageChannel& ch, M m) : super(m)
+	{
+		this->setForward(&ch);
+	}
+};
+
 template<typename R>
 struct Callme
 {
@@ -710,8 +728,7 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 		m.decode_id();
 		Mock<MessageChannel> mock;
 		build_message_channel_mock(mock);
-		MessageChannel& channel = mock.get();
-		CoAPMessageStore store;
+		MessageChannel& delegate = mock.get();
 
 		typedef Callme<system_tick_t> time_source;
 		Mock<time_source> mockTime;
@@ -719,6 +736,9 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 		system_tick_t time_count = 0;
 		auto time_increment = [&time_count]() { return time_count+=1000; };
 		When(Method(mockTime, operator())).AlwaysDo(time_increment);
+
+		ForwardCoAPReliableChannel<decltype(time)> channel(delegate, time);
+		const CoAPMessageStore& store = channel.client_messages();
 
 		WHEN("the message is sent")
 		{
@@ -746,7 +766,7 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 
 				THEN("the send_synchronous method returns success")
 				{
-					ProtocolError error = store.send_synchronous(m, channel, time);
+					ProtocolError error = channel.send_synchronous(m);
 					REQUIRE(error==NO_ERROR);
 					AND_THEN("the CoAP message is purged")
 					{
@@ -777,7 +797,7 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 
 				THEN("the send_synchronous method times out")
 				{
-					ProtocolError error = store.send_synchronous(m, channel, time);
+					ProtocolError error = channel.send_synchronous(m);
 					REQUIRE(error==MESSAGE_TIMEOUT);
 					AND_THEN("the CoAP message is purged")
 					{
@@ -791,7 +811,7 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 				When(Method(mock,send)).Return(IO_ERROR);
 				THEN("the send_synchronous method fails with IO_ERROR")
 				{
-					ProtocolError error = store.send_synchronous(m, channel, time);
+					ProtocolError error = channel.send_synchronous(m);
 					REQUIRE(error==IO_ERROR);
 					AND_THEN("the CoAP message is purged")
 					{
@@ -806,7 +826,7 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 				When(Method(mock,send)).Return(IO_ERROR);
 				THEN("the send_synchronous method fails with IO_ERROR")
 				{
-					ProtocolError error = store.send_synchronous(m, channel, time);
+					ProtocolError error = channel.send_synchronous(m);
 					REQUIRE(error==IO_ERROR);
 					AND_THEN("the CoAP message is purged")
 					{
@@ -817,24 +837,6 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 		}
 	}
 }
-
-/**
- * A reliable CoAP Channel that uses a forwarding message channel.
- * This allows the actual message channel to be set later (e.g. a mock.)
- * The typename M is a callable that provides the current time.
- */
-template <typename M>
-class ForwardCoAPReliableChannel: public CoAPReliableChannel<ForwardMessageChannel, M>
-{
-	using super = CoAPReliableChannel<ForwardMessageChannel, M>;
-
-public:
-
-	ForwardCoAPReliableChannel(MessageChannel& ch, M m) : super(m)
-	{
-		this->setForward(&ch);
-	}
-};
 
 
 SCENARIO("sending a message and re-establishing the connection clears existing messages")
@@ -983,6 +985,7 @@ SCENARIO("client and server can send requests with the same message ID and they 
 	GIVEN("a reliable CoAP channel")
 	{
 		Mock<MessageChannel> mock;
+		build_message_channel_mock(mock);
 		MessageChannel& delegate = mock.get();
 		auto time = []() { return system_tick_t(234); };
 		ForwardCoAPReliableChannel<decltype(time)> channel(delegate, time);
@@ -1016,6 +1019,7 @@ SCENARIO("client and server can send requests with the same message ID and they 
 			REQUIRE(m.length()==sizeof(con_server));			// message is received in full
 			Verify(Method(mock,receive)).Exactly(Once);
 			mock.Reset();
+			build_message_channel_mock(mock);
 
 			REQUIRE(message_equals(channel.client_messages().from_id(0x1234), client, "client"));
 
@@ -1050,6 +1054,7 @@ SCENARIO("client and server can send requests with the same message ID and they 
 
 				// send ACK from client
 				mock.Reset();
+				build_message_channel_mock(mock);
 				ack.decode_id();		// ensure the ID is set
 				When(Method(mock,send)).Return(NO_ERROR);
 				REQUIRE(channel.send(ack)==NO_ERROR);
@@ -1072,6 +1077,7 @@ SCENARIO("a message flagged as confirm received waits synchronously for acknowle
 	GIVEN("a message flagged as confirm received and a reliable channel")
 	{
 		Mock<MessageChannel> mock;
+		build_message_channel_mock(mock);
 		MessageChannel& delegate = mock.get();
 		system_tick_t ticks = 0;
 		auto time = [&ticks]() { return ticks+=10; };
