@@ -71,7 +71,8 @@ std::recursive_mutex mdm_mutex;
 #define USOCTL_TIMEOUT  (  1 * 1000)
 #define USOWR_TIMEOUT   ( 10 * 1000) /* 120s for R4 (optimizing for non-blocking behavior with 10s), 1s for U2/G3 */
 #define USORD_TIMEOUT   ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
-#define USOST_TIMEOUT   ( 10 * 1000) /*  10s for R4, 1s for U2/G3 */
+#define USOST_TIMEOUT   ( 40 * 1000) /*  10s for R4, 1s for U2/G3, changed to 40s due to R410 firmware
+                                         L0.0.00.00.05.08,A.02.04 background DNS lookup and other factors */
 #define USORF_TIMEOUT   ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
 #define CEER_TIMEOUT    (  1 * 1000)
 #define CEREG_TIMEOUT   (  1 * 1000)
@@ -2646,15 +2647,23 @@ int MDMParser::_cbUSORF(int type, const char* buf, int len, USORFparam* param)
 #ifndef SOCKET_HEX_MODE
     if ((type == TYPE_PLUS) && param) {
         int sz, sk, p, a,b,c,d;
-        int r = sscanf(buf, "\r\n+USORF: %d,\"" IPSTR "\",%d,%d,",
-            &sk,&a,&b,&c,&d,&p,&sz);
-        if ((r == 7) && (buf[len-sz-2] == '\"') && (buf[len-1] == '\"')) {
-            memcpy(param->buf, &buf[len-1-sz], sz);
+        int r;
+        r = sscanf(buf, "\r\n\r\n+USORF: %d,\"" IPSTR "\",%d,%d,", &sk,&a,&b,&c,&d,&p,&sz);
+        if ((r == 7) && (buf[len-sz-2-2] == '\"') && (buf[len-1-2] == '\"')) {
+            memcpy(param->buf, &buf[len-1-sz-2], sz);
             param->ip = IPADR(a,b,c,d);
             param->port = p;
             param->len = sz;
         } else {
-            param->len = 0;
+            r = sscanf(buf, "\r\n+USORF: %d,\"" IPSTR "\",%d,%d,", &sk,&a,&b,&c,&d,&p,&sz);
+            if ((r == 7) && (buf[len-sz-2] == '\"') && (buf[len-1] == '\"')) {
+                memcpy(param->buf, &buf[len-1-sz], sz);
+                param->ip = IPADR(a,b,c,d);
+                param->port = p;
+                param->len = sz;
+            } else {
+                param->len = 0;
+            }
         }
     }
     return WAIT;
@@ -3075,13 +3084,17 @@ int MDMParser::_getLine(Pipe<char>* pipe, char* buf, int len)
               const char* fmt;                              int type;
         } lutF[] = {
             { "\r\n+USORD: %d,%d,\"%c\"",                   TYPE_PLUS       },
+            { "\r\n\r\n+USORF: %d,\"" IPSTR "\",%d,%d,\"%c\"\r\n",  TYPE_PLUS }, // R410 firmware L0.0.00.00.05.08,A.02.04
+            { "\r\n+USORF: %d,\"" IPSTR "\",%d,%d,\"%c\"\r\n",  TYPE_PLUS     },
             { "\r\n+USORF: %d,\"" IPSTR "\",%d,%d,\"%c\"",  TYPE_PLUS       },
             { "\r\n+URDFILE: %s,%d,\"%c\"",                 TYPE_PLUS       },
         };
         static struct {
               const char* sta;          const char* end;    int type;
         } lut[] = {
+            { "\r\n\r\r\nOK\r\n",       NULL,               TYPE_OK         }, // R410 firmware L0.0.00.00.05.08,A.02.04
             { "\r\nOK\r\n",             NULL,               TYPE_OK         },
+            { "OK\r\n",                 NULL,               TYPE_OK         }, // Necessary to clean up after TYPE_USORF_1 is parsed
             { "\r\nERROR\r\n",          NULL,               TYPE_ERROR      },
             { "\r\n+CME ERROR:",        "\r\n",             TYPE_ERROR      },
             { "\r\n+CMS ERROR:",        "\r\n",             TYPE_ERROR      },
@@ -3091,12 +3104,13 @@ int MDMParser::_getLine(Pipe<char>* pipe, char* buf, int len)
             { "\r\nNO DIALTONE\r\n",    NULL,               TYPE_NODIALTONE },
             { "\r\nBUSY\r\n",           NULL,               TYPE_BUSY       },
             { "\r\nNO ANSWER\r\n",      NULL,               TYPE_NOANSWER   },
+            { "\r\r\n\r\r\n+USORF:",    NULL,               TYPE_USORF_1    }, // R410 firmware L0.0.00.00.05.08,A.02.04
             { "\r\n+",                  "\r\n",             TYPE_PLUS       },
             { "\r\n@",                  NULL,               TYPE_PROMPT     }, // Sockets
             { "\r\n>",                  NULL,               TYPE_PROMPT     }, // SMS
             { "\n>",                    NULL,               TYPE_PROMPT     }, // File
             { "\r\nABORTED\r\n",        NULL,               TYPE_ABORTED    }, // Current command aborted
-            { "\r\n\r\n",               "\r\n",             TYPE_DBLNEWLINE }, // Double CRLF detected
+            { "\r\n\r\n",               NULL,               TYPE_DBLNEWLINE }, // Double CRLF detected, R410 firmware L0.0.00.00.05.07,A.02.02
             { "\r\n",                   "\r\n",             TYPE_UNKNOWN    }, // If all else fails, break up generic strings
         };
         for (int i = 0; i < (int)(sizeof(lutF)/sizeof(*lutF)); i ++) {
@@ -3139,13 +3153,31 @@ int MDMParser::_getLine(Pipe<char>* pipe, char* buf, int len)
 #endif // MDM_DEBUG_RX_PIPE
                 return WAIT;
             }
-            // Double CRLF detected, discard it.
+
+            // Double CRLF detected, discard these two bytes
+            // This resolves a case on R410 where double "\r\n" is generated after +CME ERROR response specifically
+            // following a USOST command, but missing on U260/U270, which would otherwise generate "\r\n\r\n@" prompt
+            // which is not parseable.  We do it this way because it's safer to detect and discard these instead
+            // of parsing CME ERROR with double CRLF endings because that can strip CRLF from the beginning of
+            // some URCs which make them unparseable.
+            //
+            // This also fixes the previous TYPE_DBLNEWLINE usage:
+            // Double CRLF detected, discard these two bytes
             // This resolves a case on G350 where "\r\n" is generated after +USORF response, but missing
             // on U260/U270, which would otherwise generate "\r\n\r\nOK\r\n" which is not parseable.
             if ((ln > 0) && (lut[i].type == TYPE_DBLNEWLINE) && (unkn == 0)) {
                 // DEBUG_D("lut TYPE_DBLNEWLINE\r\n");
                 return TYPE_UNKNOWN | pipe->get(buf, 2);
             }
+
+            // Double CRLF and CR detected, discard these 4 bytes
+            // This resolves a case on R410 firmware L0.0.00.00.05.08,A.02.04 where "\r\r\n\r" is generated
+            // before a "\r\n+USORF:" response, which would otherwise generate "\r\r\n\r\r\n+USORF:" which is not parseable.
+            if ((ln > 0) && (lut[i].type == TYPE_USORF_1) && (unkn == 0)) {
+                // DEBUG_D("lut TYPE_USORF_1\r\n");
+                return TYPE_UNKNOWN | pipe->get(buf, 4);
+            }
+
             if ((ln != NOT_FOUND) && (unkn > 0)) {
                 // DEBUG_D("lut ln != NOT_FOUND (%d) len:%d\r\n", i, len);
 #ifdef MDM_DEBUG_RX_PIPE
