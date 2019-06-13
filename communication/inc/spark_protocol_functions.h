@@ -229,21 +229,12 @@ namespace ProtocolCommands {
     WAKE,
     DISCONNECT,
     TERMINATE,
-    FORCE_PING,
-    GET_STAT
+    FORCE_PING
   };
 };
 
-/**
- * Protocol statistics.
- */
-typedef struct protocol_stat {
-    uint16_t size; ///< Size of this structure.
-    unsigned pending_client_message_count; ///< Number of pending client messages requiring an acknowledgement.
-} protocol_stat;
 
-
-int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value=0, void* data=NULL);
+int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data=0, void* reserved=NULL);
 
 #if HAL_PLATFORM_MESH
 namespace MeshCommand {
@@ -330,6 +321,36 @@ enum Enum {
 int spark_protocol_mesh_command(ProtocolFacade* protocol, MeshCommand::Enum cmd, uint32_t data=0, void* extraData=nullptr, completion_handler_data* completion=nullptr, void* reserved=nullptr);
 #endif // HAL_PLATFORM_MESH
 
+/**
+ * Protocol status flags.
+ *
+ * @see `protocol_status`
+ */
+typedef enum protocol_status_flag {
+    /**
+     * This flag is set if there are client messages waiting for an acknowledgement.
+     *
+     * @see `SparkCallbacks::notify_client_messages_processed`
+     */
+    PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES = 0x01
+} protocol_status_flag;
+
+/**
+ * Protocol status.
+ */
+typedef struct protocol_status {
+    uint16_t size; ///< Size of this structure.
+    uint32_t flags; ///< Status flags (see `protocol_status_flag`).
+} protocol_status;
+
+/**
+ * Get protocol status.
+ *
+ * @param status Status info.
+ * @param reserved This argument should be set to NULL.
+ * @param 0 on success.
+ */
+int spark_protocol_get_status(ProtocolFacade* protocol, protocol_status* status, void* reserved);
 
 /**
  * Decrypt a buffer using the given public key.

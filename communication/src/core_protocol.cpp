@@ -1881,7 +1881,7 @@ inline void CoreProtocol::coded_ack(unsigned char *buf,
   encrypt(buf, 16);
 }
 
-int CoreProtocol::command(ProtocolCommands::Enum command, uint32_t value, void* data)
+int CoreProtocol::command(ProtocolCommands::Enum command, uint32_t data)
 {
   int result = UNKNOWN;
   switch (command) {
@@ -1895,6 +1895,12 @@ int CoreProtocol::command(ProtocolCommands::Enum command, uint32_t value, void* 
     break;
   }
   return result;
+}
+
+int CoreProtocol::get_status(protocol_status* status) const
+{
+  status->flags = 0;
+  return 0;
 }
 
 int CoreProtocol::wait_confirmable(uint32_t timeout)

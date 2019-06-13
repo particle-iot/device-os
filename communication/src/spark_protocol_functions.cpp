@@ -203,10 +203,10 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
     }
     return 0;
 }
-int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value, void* data)
+int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
 {
     ASSERT_ON_SYSTEM_THREAD();
-    return protocol->command(cmd, value, data);
+    return protocol->command(cmd, data);
 }
 
 bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved)
@@ -231,6 +231,12 @@ int spark_protocol_mesh_command(ProtocolFacade* protocol, MeshCommand::Enum cmd,
 	return protocol->mesh_command(cmd, data, extraData, completion);
 }
 #endif // HAL_PLATFORM_MESH
+
+int spark_protocol_get_status(ProtocolFacade* protocol, protocol_status* status, void* reserved)
+{
+    ASSERT_ON_SYSTEM_THREAD();
+    return protocol->get_status(status);
+}
 
 #else // !PARTICLE_PROTOCOL
 
@@ -348,10 +354,10 @@ int spark_protocol_set_connection_property(CoreProtocol* protocol, unsigned prop
     return 0;
 }
 
-int spark_protocol_command(CoreProtocol* protocol, ProtocolCommands::Enum cmd, uint32_t value, void* data)
+int spark_protocol_command(CoreProtocol* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
 {
     (void)reserved;
-	return protocol->command(cmd, value, data);
+	return protocol->command(cmd, data);
 }
 
 bool spark_protocol_time_request_pending(CoreProtocol* protocol, void* reserved)
@@ -365,8 +371,13 @@ system_tick_t spark_protocol_time_last_synced(CoreProtocol* protocol, time_t* tm
     return protocol->time_last_synced(tm);
 }
 
-int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* data, void* reserved) {
+int spark_protocol_get_describe_data(CoreProtocol* protocol, spark_protocol_describe_data* data, void* reserved) {
 	return -1;
+}
+
+int spark_protocol_get_status(CoreProtocol* protocol, protocol_status* status, void* reserved)
+{
+    return protocol->get_status(status);
 }
 
 #endif

@@ -1009,14 +1009,16 @@ int Spark_Handshake(bool presence_announce)
         Particle.publish("spark/device/key/error", buf, 60, PRIVATE);
     }
     if (err == 0) {
-        protocol_stat stat = {};
-        stat.size = sizeof(stat);
-        const auto r = spark_protocol_command(sp, ProtocolCommands::GET_STAT, 0, &stat);
-        if (r == 0 && stat.pending_client_message_count > 0) {
-            SPARK_CLOUD_HANDSHAKE_PENDING = 1;
-            LOG(TRACE, "Waiting until all handshake messages are processed by the protocol layer");
-        } else {
-            SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 1;
+        protocol_status status = {};
+        status.size = sizeof(status);
+        err = spark_protocol_get_status(sp, &status, nullptr);
+        if (err == 0) {
+            if (status.flags & PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES) {
+                SPARK_CLOUD_HANDSHAKE_PENDING = 1;
+                LOG(TRACE, "Waiting until all handshake messages are processed by the protocol layer");
+            } else {
+                SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 1;
+            }
         }
     }
     return err;

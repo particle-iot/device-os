@@ -177,14 +177,4 @@ bool CoAPMessageStore::has_unacknowledged_requests() const
 	return false;
 }
 
-unsigned CoAPMessageStore::message_count() const
-{
-	// TODO: Use a message counter
-	unsigned n = 0;
-	for (auto msg = head; msg; msg = msg->get_next()) {
-		++n;
-	}
-	return n;
-}
-
 }}

@@ -352,8 +352,6 @@ public:
 
 	bool has_unacknowledged_requests() const;
 
-	unsigned message_count() const;
-
 	/**
 	 * Retrieves the current confirmable message that is still
 	 * waiting acknowledgement.
@@ -645,8 +643,8 @@ public:
 		return client.has_messages() || server.has_unacknowledged_requests();
 	}
 
-	unsigned unacknowledged_client_request_count() const {
-		return client.message_count();
+	bool has_unacknowledged_client_requests() const {
+		return client.has_messages();
 	}
 
 	/**

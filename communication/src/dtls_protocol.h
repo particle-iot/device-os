@@ -72,7 +72,7 @@ public:
 		return len;
 	}
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t value, void* data) override
+	virtual int command(ProtocolCommands::Enum command, uint32_t data) override
 	{
 		int result = UNKNOWN;
 		switch (command)
@@ -101,20 +101,18 @@ public:
 			}
 			break;
 		}
-		case ProtocolCommands::GET_STAT: {
-			const auto stat = static_cast<protocol_stat*>(data);
-			if (stat) {
-				stat->pending_client_message_count = channel.unacknowledged_client_request_count();
-				result = NO_ERROR;
-			} else {
-				result = INVALID_ARGUMENTS;
-			}
-			break;
-		}
 		}
 		return result;
 	}
 
+	int get_status(protocol_status* status) const override {
+		SPARK_ASSERT(status);
+		status->flags = 0;
+		if (channel.has_unacknowledged_client_requests()) {
+			status->flags |= PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES;
+		}
+		return NO_ERROR;
+	}
 
 
 	/**
