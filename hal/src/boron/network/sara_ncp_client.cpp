@@ -132,6 +132,9 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     connState_ = NcpConnectionState::DISCONNECTED;
     regStartTime_ = 0;
     regCheckTime_ = 0;
+    powerOnTime_ = 0;
+    registeredTime_ = 0;
+    memoryIssuePresent_ = false;
     parserError_ = 0;
     ready_ = false;
     resetRegistrationState();
@@ -541,6 +544,9 @@ int SaraNcpClient::waitReady() {
     ready_ = waitAtResponse(20000) == 0;
 
     if (ready_) {
+        // start power on timer for memory issue power off delays, assume not registered
+        powerOnTime_ = millis();
+        registeredTime_ = 0;
         skipAll(serial_.get(), 1000);
         parser_.reset();
         parserError_ = 0;
@@ -695,8 +701,26 @@ int SaraNcpClient::initReady() {
     }
 
     if (ncpId() == MESH_NCP_SARA_R410) {
+        // ATI9 (get version and app version)
+        // example output
+        // 16 "\r\n08.90,A01.13\r\n" G350 (newer)
+        // 16 "\r\n08.70,A00.02\r\n" G350 (older)
+        // 28 "\r\nL0.0.00.00.05.06,A.02.00\r\n" (memory issue)
+        // 28 "\r\nL0.0.00.00.05.07,A.02.02\r\n" (demonstrator)
+        // 28 "\r\nL0.0.00.00.05.08,A.02.04\r\n" (maintenance)
+        auto resp = parser_.sendCommand("ATI9");
+        char verExtended[33] = {};
+        memoryIssuePresent_ = false;
+        int r = CHECK_PARSER(resp.scanf("%32[^\n]", verExtended));
+        CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+        r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+        if (!strcmp(verExtended, "L0.0.00.00.05.06,A.02.00")) {
+            memoryIssuePresent_ = true;
+        }
+
         // Set UMNOPROF = SIM_SELECT
-        auto resp = parser_.sendCommand("AT+UMNOPROF?");
+        resp = parser_.sendCommand("AT+UMNOPROF?");
         bool reset = false;
         int umnoprof = static_cast<int>(UbloxSaraUmnoprof::NONE);
         r = CHECK_PARSER(resp.scanf("+UMNOPROF: %d", &umnoprof));
@@ -862,6 +886,7 @@ int SaraNcpClient::registerNet() {
     }
 
     connectionState(NcpConnectionState::CONNECTING);
+    registeredTime_ = 0;
 
     // NOTE: up to 3 mins
     r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0"));
@@ -990,11 +1015,15 @@ void SaraNcpClient::checkRegistrationState() {
         if ((creg_ == RegistrationState::Registered &&
                     cgreg_ == RegistrationState::Registered) ||
                     cereg_ == RegistrationState::Registered) {
+            if (memoryIssuePresent_ && connState_ != NcpConnectionState::CONNECTED) {
+                registeredTime_ = millis(); // start registered timer for memory issue power off delays
+            }
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
             connectionState(NcpConnectionState::CONNECTING);
             regStartTime_ = millis();
             regCheckTime_ = regStartTime_;
+            registeredTime_ = 0;
         }
     }
 }
@@ -1020,7 +1049,7 @@ int SaraNcpClient::processEventsImpl() {
             millis() - regStartTime_ >= REGISTRATION_TIMEOUT) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
         muxer_.stop();
-        modemHardReset();
+        modemHardReset(); // FIXME: This should cleanly switch off/on power instead of hard resetting
         ncpState(NcpState::OFF);
     }
     return 0;
@@ -1094,7 +1123,7 @@ int SaraNcpClient::modemPowerOn() const {
     return 0;
 }
 
-int SaraNcpClient::modemPowerOff() const {
+int SaraNcpClient::modemPowerOff() {
     static std::once_flag f;
     std::call_once(f, [this]() {
         if (ncpId() != MESH_NCP_SARA_R410 && modemPowerState()) {
@@ -1125,6 +1154,12 @@ int SaraNcpClient::modemPowerOff() const {
             HAL_Delay_Milliseconds(1500);
             HAL_GPIO_Write(UBPWR, 1);
         } else {
+            // If memory issue is present, ensure we don't force a power off too soon
+            // to avoid hitting the 124 day memory housekeeping issue
+            // TODO: Add ATOK check and AT+CPWROFF command attempt first?
+            if (memoryIssuePresent_) {
+                waitForPowerOff();
+            }
             // R410
             // Low pulse 1.5s+
             HAL_GPIO_Write(UBPWR, 0);
@@ -1154,7 +1189,7 @@ int SaraNcpClient::modemPowerOff() const {
     return 0;
 }
 
-int SaraNcpClient::modemHardReset(bool powerOff) const {
+int SaraNcpClient::modemHardReset(bool powerOff) {
     const auto pwrState = modemPowerState();
     // We can only reset the modem in the powered state
     if (!pwrState) {
@@ -1174,6 +1209,11 @@ int SaraNcpClient::modemHardReset(bool powerOff) const {
         // NOTE: powerOff argument is ignored, modem will restart automatically
         // in all cases
     } else {
+        // If memory issue is present, ensure we don't force a power off too soon
+        // to avoid hitting the 124 day memory housekeeping issue
+        if (memoryIssuePresent_) {
+            waitForPowerOff();
+        }
         // R410
         // Low pulse for 10s
         HAL_GPIO_Write(UBRST, 0);
@@ -1199,6 +1239,28 @@ int SaraNcpClient::modemSetUartState(bool state) const {
     LOG(TRACE, "Setting UART voltage translator state %d", state);
     HAL_GPIO_Write(BUFEN, state ? 0 : 1);
     return 0;
+}
+
+void SaraNcpClient::waitForPowerOff() {
+    LOG(TRACE, "Modem waiting up to 30s to power off with PWR_UC...");
+    system_tick_t now = millis();
+    if (powerOnTime_ == 0) {
+        powerOnTime_ = now; // fallback to max timeout of 30s to be safe
+    }
+    do { // check for timeout (VINT == LOW, Powered on 30s ago, Registered 20s ago)
+        now = millis();
+        // prefer to timeout 20s after registration if we are registered
+        if (registeredTime_) {
+            if (now - registeredTime_ >= 20000UL) {
+                break;
+            }
+        } else if (powerOnTime_ && now - powerOnTime_ >= 30000UL) {
+            break;
+        }
+        HAL_Delay_Milliseconds(100); // just wait
+    } while (modemPowerState());
+    registeredTime_ = 0; // reset timers
+    powerOnTime_ = 0;
 }
 
 } // particle
