@@ -235,7 +235,7 @@ class CoreProtocol
     unsigned char core_private_key[MAX_DEVICE_PRIVATE_KEY_LENGTH];
     aes_context aes;
 
-    FilteringEventHandler event_handlers[5];    // 1 system event listener + 4 application event listeners
+    FilteringEventHandler event_handlers[MAX_SUBSCRIPTIONS];
     SparkCallbacks callbacks;
     SparkDescriptor descriptor;
 
