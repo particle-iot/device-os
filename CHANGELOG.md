@@ -1,3 +1,36 @@
+## 1.3.0-rc.1
+
+>**Note:** If your Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release)
+>
+>This release contains v311 bootloaders.
+
+### FEATURES
+
+- [gen 3] BLE support [#1740](https://github.com/particle-iot/device-os/pull/1740)
+- [gen 3] NFC support [#1606](https://github.com/particle-iot/device-os/pull/1606)
+
+### ENHANCEMENTS
+
+- [enhancement] Cache cellular diagnostics [#1810](https://github.com/particle-iot/device-os/pull/1810)
+- [enhancement] allow the bootloader to be flashed over DFU [#1788](https://github.com/particle-iot/device-os/pull/1788)
+
+### BUG FIXES
+
+- Add two-digit mnc diagnostic flag [#1804](https://github.com/particle-iot/device-os/pull/1807)
+- BLE fixes from 1.3.0-alpha.1 [#1817](https://github.com/particle-iot/device-os/pull/1817)
+- NFC Context parameter is missing and NFC.update() will remove callback, fixes from 1.3.0-alpha.1 [#1818](https://github.com/particle-iot/device-os/pull/1818)
+- [lte] cellular fixes [#1824](https://github.com/particle-iot/device-os/pull/1824)
+- fixes #1811 - increases the number of event handlers to 6 [#1822](https://github.com/particle-iot/device-os/pull/1822)
+- [gen 3] fixes memory usage diagnostics (reported negative values in safe mode) [#1819](https://github.com/particle-iot/device-os/pull/1819)
+- System.disableUpdates() operates asynchronously [#1801](https://github.com/particle-iot/device-os/pull/1801)
+- [gen 3] [bsom] Building platform BSOM results flash overflow. [#1802](https://github.com/particle-iot/device-os/pull/1802)
+- [gen 3] [hal] fixes early wakeup by RTC from STOP sleep mode [#1803](https://github.com/particle-iot/device-os/pull/1803)
+
+### INTERNAL
+
+- [docs] Updates `spark_publish_vitals` and build scripts documentation. [#1800](https://github.com/particle-iot/device-os/pull/1800)
+- [docs] update the test documentation [#1683](https://github.com/particle-iot/device-os/pull/1683)
+
 ## 1.3.0-alpha.1
 
 >**Note:** If your Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release)
