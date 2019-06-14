@@ -1145,3 +1145,90 @@ SCENARIO("a message flagged as confirm received waits synchronously for acknowle
 
 	}
 }
+
+SCENARIO("notify_client_messages_processed() is invoked when all client messages are processed")
+{
+	GIVEN("two confirmable messages and a reliable channel")
+	{
+		Mock<Callme<system_tick_t>> timeMock;
+		When(Method(timeMock, operator())).AlwaysDo([]() {
+			static system_tick_t t = 0;
+			return t += 60 * 60 * 1000;
+		});
+		auto& time = timeMock.get();
+
+		Mock<MessageChannel> channelMock; // Delegate channel
+		build_message_channel_mock(channelMock);
+		ForwardCoAPReliableChannel<decltype(time)> channel(channelMock.get(), time);
+
+		uint8_t buf1[] = { 0x40, 0x00, 0x11, 0x11 };
+		Message msg1(buf1, sizeof(buf1), sizeof(buf1));
+		msg1.decode_id();
+		uint8_t buf2[] = { 0x40, 0x00, 0x22, 0x22 };
+		Message msg2(buf2, sizeof(buf2), sizeof(buf2));
+		msg2.decode_id();
+
+		WHEN("the messages are sent") {
+			When(Method(channelMock, send)).AlwaysReturn(NO_ERROR);
+
+			REQUIRE(channel.send(msg1) == NO_ERROR);
+			REQUIRE(channel.send(msg2) == NO_ERROR);
+
+			AND_WHEN("both messages are acknowledged") {
+				When(Method(channelMock, receive)).Do([](Message& msg) {
+					msg.set_length(Messages::empty_ack(msg.buf(), 0x11, 0x11)); // ACK for the 1st message
+					return NO_ERROR;
+				}).Do([](Message& msg) {
+					msg.set_length(Messages::empty_ack(msg.buf(), 0x22, 0x22)); // ACK for the 2nd message
+					return NO_ERROR;
+				}).AlwaysDo([](Message& msg) {
+					msg.set_length(0);
+					return NO_ERROR;
+				});
+
+
+				REQUIRE(channel.receive(msg1) == NO_ERROR);
+				REQUIRE(channel.receive(msg1) == NO_ERROR);
+
+				THEN("the callback is invoked only once") {
+					Verify(Method(channelMock, notify_client_messages_processed)).Once();
+					REQUIRE_FALSE(channel.has_unacknowledged_client_requests());
+				}
+			}
+
+			AND_WHEN("only one message is acknowledged") {
+				When(Method(channelMock, receive)).Do([](Message& msg) {
+					msg.set_length(Messages::empty_ack(msg.buf(), 0x22, 0x22)); // ACK for the 2nd message
+					return NO_ERROR;
+				}).AlwaysDo([](Message& msg) {
+					msg.set_length(0);
+					return NO_ERROR;
+				});
+
+				REQUIRE(channel.receive(msg1) == NO_ERROR);
+				REQUIRE(channel.receive(msg1) == NO_ERROR);
+
+				THEN("the callback is not invoked") {
+					Verify(Method(channelMock, notify_client_messages_processed)).Never();
+					REQUIRE(channel.has_unacknowledged_client_requests());
+				}
+			}
+
+			AND_WHEN("none of the messages are acknowledged") {
+				When(Method(channelMock, receive)).AlwaysDo([](Message& msg) {
+					msg.set_length(0);
+					return NO_ERROR;
+				});
+
+				for (auto i = 0; i < CoAPMessage::MAX_RETRANSMIT + 1; ++i) {
+					REQUIRE(channel.receive(msg1) == NO_ERROR);
+				}
+
+				THEN("the callback is invoked only once") {
+					Verify(Method(channelMock, notify_client_messages_processed)).Once();
+					REQUIRE_FALSE(channel.has_unacknowledged_client_requests());
+				}
+			}
+		}
+	}
+}
