@@ -767,7 +767,13 @@ void app_setup_and_loop(void)
     bool threaded = system_thread_get_state(NULL) != spark::feature::DISABLED &&
       (system_mode()!=SAFE_MODE);
 
-    Network_Setup(threaded);
+    if (HAL_FLASH_ApplyPendingUpdate(nullptr /*module*/, false /*dryRun*/, nullptr /*reserved*/)==HAL_UPDATE_APPLIED_PENDING_RESTART) {
+        // the regular OTA update delays 100 milliseconds so maintaining the same behavior.
+        HAL_Delay_Milliseconds(100);
+        HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, nullptr);
+    }
+
+    Network_Setup(threaded);    // todo - why does this come before system thread initialization?
 
 #if PLATFORM_THREADING
     if (threaded)
