@@ -1,3 +1,22 @@
+## 1.2.1-rc.3
+
+>**Note:** If your Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release)
+>
+>This release contains v311 bootloaders.
+
+### ENHANCEMENTS
+
+- Cache cellular diagnostics [#1820](https://github.com/particle-iot/device-os/pull/1820)
+- allow the bootloader to be flashed over DFU [#1788](https://github.com/particle-iot/device-os/pull/1788)
+
+### BUG FIXES
+
+- Add two-digit mnc diagnostic flag [#1804](https://github.com/particle-iot/device-os/pull/1804)
+- [lte] cellular fixes [#1824](https://github.com/particle-iot/device-os/pull/1824)
+- fixes #1811 - increases the number of event handlers to 6 [#1822](https://github.com/particle-iot/device-os/pull/1822)
+- [gen 3] fixes memory usage diagnostics (reported negative values in safe mode) [#1819](https://github.com/particle-iot/device-os/pull/1819)
+- System.disableUpdates() operates asynchronously [#1801](https://github.com/particle-iot/device-os/pull/1801)
+
 ## 1.2.1-rc.2
 
 >**Note:** If your Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release)
