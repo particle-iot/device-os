@@ -5,7 +5,7 @@ COMMA := ,
 
 ifneq (,$(PREBUILD))
 # Should declare enough RAM for inermediate linker script: 96K
-USER_SRAM_LENGTH = 80K
+USER_SRAM_LENGTH = 96K
 else
 DATA_SECTION_LEN  = $(shell arm-none-eabi-objdump -h --section=.data $(INTERMEDIATE_ELF) | grep .data)
 DATA_SECTION_LEN := 0x$(word 3,$(DATA_SECTION_LEN))

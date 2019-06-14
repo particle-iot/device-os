@@ -1,5 +1,5 @@
 /* Assume the user static RAM start address */
-user_static_ram_size = 80K;
+user_static_ram_size = 96K;
 user_static_ram_start = 0x20000000 + 256K - LENGTH(BACKUPSRAM_ALL) - __Stack_Size - user_static_ram_size;
 
 

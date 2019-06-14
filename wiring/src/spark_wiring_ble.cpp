@@ -226,6 +226,8 @@ size_t BleAdvertisingData::set(const iBeacon& beacon) {
     selfData_[selfLen_++] = 0x02;
     selfData_[selfLen_++] = BLE_SIG_AD_TYPE_FLAGS;
     selfData_[selfLen_++] = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+    selfData_[selfLen_++] = 0x1a; // length
+    selfData_[selfLen_++] = BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA;
     // Company ID
     uint16_t companyId = iBeacon::APPLE_COMPANY_ID;
     memcpy(&selfData_[selfLen_], (uint8_t*)&companyId, sizeof(uint16_t));
