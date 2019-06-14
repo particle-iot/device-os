@@ -53,6 +53,7 @@
 #include <stdint.h>
 
 using particle::CloudDiagnostics;
+using particle::publishEvent;
 
 #ifndef SPARK_NO_CLOUD
 
@@ -932,37 +933,37 @@ int Spark_Handshake(bool presence_announce)
         if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && buf[0] != 0 && (uint8_t)buf[0] != 0xff)
         {
             LOG(INFO,"Send spark/device/claim/code event for code %s", buf);
-            Particle.publish("spark/device/claim/code", buf, 60, PRIVATE);
+            publishEvent("spark/device/claim/code", buf);
         }
 
         // open up for possibility of retrieving multiple ID datums
         if (!HAL_Get_Device_Identifier(NULL, buf, sizeof(buf), 0, NULL) && *buf) {
             LOG(INFO,"Send spark/device/ident/0 event");
-            Particle.publish("spark/device/ident/0", buf, 60, PRIVATE);
+            publishEvent("spark/device/ident/0", buf);
         }
 
         bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 #if PLATFORM_ID!=PLATFORM_ELECTRON_PRODUCTION || !defined(MODULAR_FIRMWARE)
         ultoa(HAL_OTA_FlashLength(), buf, 10);
         LOG(INFO,"Send spark/hardware/max_binary event");
-        Particle.publish("spark/hardware/max_binary", buf, 60, PRIVATE);
+        publishEvent("spark/hardware/max_binary", buf);
 #endif
 
         uint32_t chunkSize = HAL_OTA_ChunkSize();
         if (chunkSize!=512 || !udp) {
             ultoa(chunkSize, buf, 10);
             LOG(INFO,"spark/hardware/ota_chunk_size event");
-            Particle.publish("spark/hardware/ota_chunk_size", buf, 60, PRIVATE);
+            publishEvent("spark/hardware/ota_chunk_size", buf);
         }
         if (system_mode()==SAFE_MODE) {
             LOG(INFO,"Send spark/device/safemode event");
-            Particle.publish("spark/device/safemode","", 60, PRIVATE);
+            publishEvent("spark/device/safemode", "");
         }
 #if defined(SPARK_SUBSYSTEM_EVENT_NAME)
         if (!HAL_core_subsystem_version(buf, sizeof (buf)) && *buf)
         {
             LOG(INFO,"Send spark/" SPARK_SUBSYSTEM_EVENT_NAME " event");
-            Particle.publish("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf, 60, PRIVATE);
+            publishEvent("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf);
         }
 #endif
         uint8_t flag = 0;
@@ -976,7 +977,7 @@ int Spark_Handshake(bool presence_announce)
                 char buf[64];
                 formatResetReasonEventData(reason, data, buf, sizeof(buf));
                 LOG(INFO,"Send spark/device/last_reset event");
-                Particle.publish("spark/device/last_reset", buf, 60, PRIVATE);
+                publishEvent("spark/device/last_reset", buf);
             }
         }
 
@@ -1006,7 +1007,7 @@ int Spark_Handshake(bool presence_announce)
         char buf[sizeof(unsigned long)*8+1];
         ultoa((unsigned long)particle_key_errors, buf, 10);
         LOG(INFO,"Send event spark/device/key/error=%s", buf);
-        Particle.publish("spark/device/key/error", buf, 60, PRIVATE);
+        publishEvent("spark/device/key/error", buf);
     }
     if (err == 0) {
         protocol_status status = {};

@@ -1899,6 +1899,7 @@ int CoreProtocol::command(ProtocolCommands::Enum command, uint32_t data)
 
 int CoreProtocol::get_status(protocol_status* status) const
 {
+  SPARK_ASSERT(status);
   status->flags = 0;
   return 0;
 }

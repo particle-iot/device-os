@@ -634,6 +634,7 @@ public:
 		message_id_t id = msg.get_id();
 		DEBUG("sending message id=%x synchronously", id);
 		CoAPType::Enum coapType = CoAP::type(msg.buf());
+		const bool had_client_messages = client.has_messages();
 		ProtocolError error = client.send(msg, millis());
 		if (!error)
 			error = delegateChannel.send(msg);
@@ -666,11 +667,11 @@ public:
 				// drop CON messages on the floor since we cannot handle them now
 				client.process(millis(), delegateChannel);
 			}
-			if (!client.has_messages()) {
-				channel::notify_client_messages_processed();
-			}
 		}
 		client.clear_message(id);
+		if (had_client_messages && !client.has_messages()) {
+			channel::notify_client_messages_processed();
+		}
 		// todo - if msg contains a delivery callback then call that with the outcome of this
 		return error;
 	}

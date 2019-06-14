@@ -355,6 +355,9 @@ void handle_cloud_connection(bool force_events)
         {
             int err = 0;
             if (SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE) {
+                // TODO: There's no protocol API to get the current session state, so we're running
+                // one more iteration of the communication loop to make sure all handshake messages
+                // have been acknowledged successfully
                 if (!Spark_Communication_Loop()) {
                     err = particle::protocol::MESSAGE_TIMEOUT;
                 } else {

@@ -772,6 +772,10 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 					{
 						REQUIRE(store.from_id(0x1234)==nullptr);
 					}
+					AND_THEN("notify_client_messages_processed() is not invoked")
+					{
+						Verify(Method(mock, notify_client_messages_processed)).Never();
+					}
 				}
 			}
 
@@ -803,6 +807,10 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 					{
 						REQUIRE(store.from_id(0x1234)==nullptr);
 					}
+					AND_THEN("notify_client_messages_processed() is not invoked")
+					{
+						Verify(Method(mock, notify_client_messages_processed)).Never();
+					}
 				}
 			}
 
@@ -816,6 +824,10 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 					AND_THEN("the CoAP message is purged")
 					{
 						REQUIRE(store.from_id(0x1234)==nullptr);
+					}
+					AND_THEN("notify_client_messages_processed() is not invoked")
+					{
+						Verify(Method(mock, notify_client_messages_processed)).Never();
 					}
 				}
 			}
@@ -831,6 +843,10 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 					AND_THEN("the CoAP message is purged")
 					{
 						REQUIRE(store.from_id(0x1234)==nullptr);
+					}
+					AND_THEN("notify_client_messages_processed() is not invoked")
+					{
+						Verify(Method(mock, notify_client_messages_processed)).Never();
 					}
 				}
 			}
@@ -1168,13 +1184,15 @@ SCENARIO("notify_client_messages_processed() is invoked when all client messages
 		Message msg2(buf2, sizeof(buf2), sizeof(buf2));
 		msg2.decode_id();
 
-		WHEN("the messages are sent") {
+		WHEN("the messages are sent")
+		{
 			When(Method(channelMock, send)).AlwaysReturn(NO_ERROR);
 
 			REQUIRE(channel.send(msg1) == NO_ERROR);
 			REQUIRE(channel.send(msg2) == NO_ERROR);
 
-			AND_WHEN("both messages are acknowledged") {
+			AND_WHEN("both messages are acknowledged")
+			{
 				When(Method(channelMock, receive)).Do([](Message& msg) {
 					msg.set_length(Messages::empty_ack(msg.buf(), 0x11, 0x11)); // ACK for the 1st message
 					return NO_ERROR;
@@ -1186,17 +1204,18 @@ SCENARIO("notify_client_messages_processed() is invoked when all client messages
 					return NO_ERROR;
 				});
 
-
 				REQUIRE(channel.receive(msg1) == NO_ERROR);
 				REQUIRE(channel.receive(msg1) == NO_ERROR);
 
-				THEN("the callback is invoked only once") {
+				THEN("the callback is invoked only once")
+				{
 					Verify(Method(channelMock, notify_client_messages_processed)).Once();
 					REQUIRE_FALSE(channel.has_unacknowledged_client_requests());
 				}
 			}
 
-			AND_WHEN("only one message is acknowledged") {
+			AND_WHEN("only one message is acknowledged")
+			{
 				When(Method(channelMock, receive)).Do([](Message& msg) {
 					msg.set_length(Messages::empty_ack(msg.buf(), 0x22, 0x22)); // ACK for the 2nd message
 					return NO_ERROR;
@@ -1208,13 +1227,15 @@ SCENARIO("notify_client_messages_processed() is invoked when all client messages
 				REQUIRE(channel.receive(msg1) == NO_ERROR);
 				REQUIRE(channel.receive(msg1) == NO_ERROR);
 
-				THEN("the callback is not invoked") {
+				THEN("the callback is not invoked")
+				{
 					Verify(Method(channelMock, notify_client_messages_processed)).Never();
 					REQUIRE(channel.has_unacknowledged_client_requests());
 				}
 			}
 
-			AND_WHEN("none of the messages are acknowledged") {
+			AND_WHEN("none of the messages are acknowledged")
+			{
 				When(Method(channelMock, receive)).AlwaysDo([](Message& msg) {
 					msg.set_length(0);
 					return NO_ERROR;
@@ -1224,7 +1245,8 @@ SCENARIO("notify_client_messages_processed() is invoked when all client messages
 					REQUIRE(channel.receive(msg1) == NO_ERROR);
 				}
 
-				THEN("the callback is invoked only once") {
+				THEN("the callback is invoked only once")
+				{
 					Verify(Method(channelMock, notify_client_messages_processed)).Once();
 					REQUIRE_FALSE(channel.has_unacknowledged_client_requests());
 				}

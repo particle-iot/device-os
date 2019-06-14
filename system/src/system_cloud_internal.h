@@ -131,6 +131,11 @@ private:
     SimpleIntegerDiagnosticData lastError_;
 };
 
+// Use this function instead of Particle.publish() in the system code
+inline bool publishEvent(const char* event, const char* data = nullptr, unsigned flags = 0) {
+    return spark_send_event(event, data, DEFAULT_CLOUD_EVENT_TTL, flags | PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
+}
+
 } // namespace particle
 
 #ifdef __cplusplus

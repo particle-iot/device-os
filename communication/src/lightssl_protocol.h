@@ -81,6 +81,7 @@ public:
 
 	virtual int get_status(protocol_status* status) const override
 	{
+		SPARK_ASSERT(status);
 		status->flags = 0;
 		return 0;
 	}

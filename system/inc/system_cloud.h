@@ -27,6 +27,8 @@
 #include <time.h>
 #include <stdint.h>
 
+#define DEFAULT_CLOUD_EVENT_TTL 60
+
 enum ParticleKeyErrorFlag: uint32_t
 {
   NO_ERROR                      = 0,

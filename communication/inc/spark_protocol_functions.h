@@ -346,6 +346,7 @@ typedef struct protocol_status {
 /**
  * Get protocol status.
  *
+ * @param protocol Protocol instance.
  * @param status Status info.
  * @param reserved This argument should be set to NULL.
  * @param 0 on success.
