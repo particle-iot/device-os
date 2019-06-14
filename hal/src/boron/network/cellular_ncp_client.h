@@ -49,6 +49,22 @@ private:
     MeshNCPIdentifier ident_;
 };
 
+enum class UbloxSaraUmnoprof {
+    NONE             = -1,
+    SW_DEFAULT       = 0,
+    SIM_SELECT       = 1,
+    ATT              = 2,
+    VERIZON          = 3,
+    TELSTRA          = 4,
+    TMOBILE          = 5,
+    CHINA_TELECOM    = 6,
+    SPRINT           = 8,
+    VODAFONE         = 19,
+    TELUS            = 21,
+    DEUTSCHE_TELEKOM = 31,
+    STANDARD_EUROPE  = 100,
+};
+
 enum class CellularAccessTechnology {
     NONE = -1,
     GSM = 0,

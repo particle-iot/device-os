@@ -450,6 +450,31 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
     return result;
 }
 
+// Todo this code and much of the code here is duplicated between Gen2 and Gen3
+// This should be factored out into directory shared by both platforms.
+hal_update_complete_t HAL_FLASH_ApplyPendingUpdate(hal_module_t* module, bool dryRun, void* reserved)
+{
+    uint8_t otaUpdateFlag = DCT_OTA_UPDATE_FLAG_CLEAR;
+    STATIC_ASSERT(sizeof(otaUpdateFlag)==DCT_OTA_UPDATE_FLAG_SIZE, "expected ota update flag size to be 1");
+    dct_read_app_data_copy(DCT_OTA_UPDATE_FLAG_OFFSET, &otaUpdateFlag, DCT_OTA_UPDATE_FLAG_SIZE);
+    hal_update_complete_t result = HAL_UPDATE_ERROR;
+    if (otaUpdateFlag==DCT_OTA_UPDATE_FLAG_SET) {
+        if (dryRun) {
+            // todo - we should probably check the module integrity too
+            // ideally this parameter would be passed to HAL_FLASH_End to avoid duplication of logic here.
+            result = HAL_UPDATE_APPLIED;
+        }
+        else {
+            // clear the flag
+            otaUpdateFlag = DCT_OTA_UPDATE_FLAG_CLEAR;
+            dct_write_app_data(&otaUpdateFlag, DCT_OTA_UPDATE_FLAG_OFFSET, DCT_OTA_UPDATE_FLAG_SIZE);
+            result = HAL_FLASH_End(module);
+        }
+    }
+    return result;
+}
+
+
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 {
 	bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);

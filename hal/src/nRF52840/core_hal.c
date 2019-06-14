@@ -314,11 +314,7 @@ void HAL_Core_Config(void) {
         if (new_heap_end > malloc_heap_end()) {
             malloc_set_heap_end(new_heap_end);
         }
-    }
-    else {
-        // Set the heap end to the stack start to make most use of the SRAM.
-        malloc_set_heap_end(&_Stack_Init);
-
+    } else {
         // Update the user module if needed
         user_update_if_needed();
     }

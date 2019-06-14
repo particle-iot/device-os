@@ -112,12 +112,12 @@ void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
     else if (flag == SYSTEM_FLAG_OTA_UPDATE_ENABLED)
     {
         // publish the firmware enabled event
-        spark_send_event(UPDATES_ENABLED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
+        spark_send_event(UPDATES_ENABLED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_ASYNC|PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
     }
     else if (flag == SYSTEM_FLAG_OTA_UPDATE_FORCED)
     {
         // acknowledge to the cloud that system updates are forced. It helps avoid a race condition where we might try sending firmware before the event has been received.
-        spark_send_event(UPDATES_FORCED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
+        spark_send_event(UPDATES_FORCED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_ASYNC|PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
     }
     else if (flag == SYSTEM_FLAG_OTA_UPDATE_PENDING)
     {
@@ -382,8 +382,8 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
         if (file.store==FileTransfer::Store::FIRMWARE)
         {
             hal_update_complete_t result = HAL_FLASH_End(module ? (hal_module_t*)module : &mod);
-            system_notify_event(firmware_update, result!=HAL_UPDATE_ERROR ? firmware_update_complete : firmware_update_failed, &file);
-            res = (result == HAL_UPDATE_ERROR);
+            system_notify_event(firmware_update, result<=HAL_UPDATE_ERROR ? firmware_update_complete : firmware_update_failed, &file);
+            res = (result <= HAL_UPDATE_ERROR);
 
             // always restart for now
             if ((true || result==HAL_UPDATE_APPLIED_PENDING_RESTART) && !(flags & UpdateFlag::DONT_RESET))

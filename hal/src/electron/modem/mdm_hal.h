@@ -32,6 +32,8 @@
 
 /* Include for debug capabilty */
 #define MDM_DEBUG
+// #define MDM_DEBUG_TX_PIPE
+// #define MDM_DEBUG_RX_PIPE
 
 /** basic modem parser class
 */
@@ -531,6 +533,7 @@ protected:
     static int _cbCPIN(int type, const char* buf, int len, Sim* sim);
     static int _cbCCID(int type, const char* buf, int len, char* ccid);
     // network
+    static int _cbUMNOPROF(int type, const char *buf, int len, int* i);
     #define MDM_R410_EDRX_ACTS_MAX (4) //!< maximum number of AcTs for eDRX mode on SARA-R410M-02B
     // eDRX AcTs
     struct EdrxActs {
@@ -578,6 +581,10 @@ protected:
     static int _cbURDFILE(int type, const char* buf, int len, URDFILEparam* param);
     // variables
     DevStatus   _dev; //!< collected device information
+    char _verExtended[32]; //!< collected modem and application version string (ATI9)
+    bool _memoryIssuePresent = false; //!< flag to add specific delays when the firmware version with memory issue is present
+    system_tick_t _timePowerOn; //!< timestamp when unit was powered on (to be used in conjunction with _memoryIssuePresent)
+    system_tick_t _timeRegistered; //!< timestamp when unit was registered on (to be used in conjunction with _memoryIssuePresent)
     NetStatus   _net; //!< collected network information
     MDM_IP       _ip;  //!< assigned ip address
     MDM_DataUsage _data_usage; //!< collected data usage information

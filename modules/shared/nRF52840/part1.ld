@@ -255,7 +255,7 @@ SECTIONS
     PROVIDE ( _end = _ebss );
     
     link_heap_location = _ebss;
-    link_heap_location_end = link_heap_location + min_heap_size;
+    link_heap_location_end = __Stack_Init;
 
 
     /DISCARD/ :
@@ -286,7 +286,7 @@ SECTIONS
 PROVIDE( _heap = link_heap_location );
 
 /* End of the heap is top of RAM, aligned 8 byte */
-PROVIDE( _eheap = ALIGN( link_heap_location_end, 8 ) );
+PROVIDE( _eheap = ALIGN( link_heap_location_end - 7, 8 ) );
 
 /* ThreadX aliases */
 PROVIDE( __RAM_segment_used_end__ = link_stack_end );
@@ -310,7 +310,7 @@ ASSERT ( chk_system_pre_init_start < chk_system_pre_init_end , "system_part1_pre
 ASSERT ( chk_system_init_start < chk_system_init_end , "system_part1_init function not included" );
 
 /* Heap assertion*/
-ASSERT ( link_heap_location_end < user_static_ram_start, "Insufficient room for heap" );
+ASSERT ( link_heap_location + min_heap_size <= __Stack_Init, "Insufficient room for heap" );
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
 

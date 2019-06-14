@@ -159,7 +159,12 @@ inline uint32_t convert(uint32_t flags) {
 
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved)
 {
+    if (flags & PUBLISH_EVENT_FLAG_ASYNC) {
+        SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(spark_send_event(name, data, ttl, flags, reserved), true);
+    }
+    else {
     SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, flags, reserved));
+    }
 
     spark_protocol_send_event_data d = { sizeof(spark_protocol_send_event_data) };
     if (reserved) {
