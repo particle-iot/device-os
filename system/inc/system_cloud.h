@@ -120,6 +120,11 @@ const uint32_t PUBLISH_EVENT_FLAG_PUBLIC = 0x0;
 const uint32_t PUBLISH_EVENT_FLAG_PRIVATE = 0x1;
 const uint32_t PUBLISH_EVENT_FLAG_NO_ACK = 0x2;
 const uint32_t PUBLISH_EVENT_FLAG_WITH_ACK = 0x8;
+/**
+ * This is a stop-gap solution until all synchronous APIs return futures, allowing asynchronous operation.
+ */
+const uint32_t PUBLISH_EVENT_FLAG_ASYNC = EventType::ASYNC;
+
 
 PARTICLE_STATIC_ASSERT(publish_no_ack_flag_matches, PUBLISH_EVENT_FLAG_NO_ACK==EventType::NO_ACK);
 

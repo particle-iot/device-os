@@ -35,20 +35,22 @@ namespace EventType {
   };
 
   /**
-   * These flags are encoded into the same 32-bit integer that alredy holds EventType::Enum
+   * These flags are encoded into the same 32-bit integer that already holds EventType::Enum
    */
   enum Flags {
 	  EMPTY_FLAGS = 0,
 	   NO_ACK = 0x2,
 	   WITH_ACK = 0x8,
-
-	   ALL_FLAGS = NO_ACK | WITH_ACK
+	   ASYNC = 0x10,        // not used here, but reserved since it's used in the system layer. Makes conversion simpler.
+	   ALL_FLAGS = NO_ACK | WITH_ACK | ASYNC
   };
 
   static_assert((PUBLIC & NO_ACK)==0 &&
 	  (PRIVATE & NO_ACK)==0 &&
 	  (PUBLIC & WITH_ACK)==0 &&
-	  (PRIVATE & WITH_ACK)==0, "flags should be distinct from event type");
+	  (PRIVATE & WITH_ACK)==0 &&
+	  (PRIVATE & ASYNC)==0 &&
+	  (PUBLIC & ASYNC)==0, "flags should be distinct from event type");
 
 /**
  * The flags are encoded in with the event type.
