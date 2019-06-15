@@ -85,6 +85,9 @@ private:
     RegistrationState cereg_ = RegistrationState::NotRegistered;
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
+    system_tick_t registeredTime_;
+    system_tick_t powerOnTime_;
+    bool memoryIssuePresent_ = false;
 
     int initParser(Stream* stream);
     int checkParser();
@@ -107,10 +110,11 @@ private:
 
     int modemInit() const;
     int modemPowerOn() const;
-    int modemPowerOff() const;
-    int modemHardReset(bool powerOff = false) const;
+    int modemPowerOff();
+    int modemHardReset(bool powerOff = false);
     bool modemPowerState() const;
     int modemSetUartState(bool state) const;
+    void waitForPowerOff();
 };
 
 inline AtParser* SaraNcpClient::atParser() {

@@ -70,7 +70,8 @@ std::recursive_mutex mdm_mutex;
 #define USOCTL_TIMEOUT  (  1 * 1000)
 #define USOWR_TIMEOUT   ( 10 * 1000) /* 120s for R4 (optimizing for non-blocking behavior with 10s), 1s for U2/G3 */
 #define USORD_TIMEOUT   ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
-#define USOST_TIMEOUT   ( 10 * 1000) /*  10s for R4, 1s for U2/G3 */
+#define USOST_TIMEOUT   ( 40 * 1000) /*  10s for R4, 1s for U2/G3, changed to 40s due to R410 firmware
+                                         L0.0.00.00.05.08,A.02.04 background DNS lookup and other factors */
 #define USORF_TIMEOUT   ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
 #define CEER_TIMEOUT    (  1 * 1000)
 #define CEREG_TIMEOUT   (  1 * 1000)
@@ -84,6 +85,9 @@ std::recursive_mutex mdm_mutex;
 #define UPSD_TIMEOUT    (  1 * 1000)
 #define UPSDA_TIMEOUT   (180 * 1000)
 #define UPSND_TIMEOUT   (  1 * 1000)
+#define UMNOPROF_TIMEOUT ( 1 * 1000)
+#define CEDRXS_TIMEOUT  (  1 * 1000)
+#define CFUN_TIMEOUT    (180 * 1000)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -211,6 +215,8 @@ MDMParser::MDMParser(void)
     _cancel_all_operations = false;
     sms_cb = NULL;
     memset(_sockets, 0, sizeof(_sockets));
+    _timePowerOn = 0;
+    _timeRegistered = 0;
     for (int socket = 0; socket < NUMSOCKETS; socket ++)
         _sockets[socket].handle = MDM_SOCKET_ERROR;
 #ifdef MDM_DEBUG
@@ -248,8 +254,14 @@ int MDMParser::send(const char* buf, int len)
     if (_debugLevel >= 3) {
         DEBUG_D("%10.3f AT send    ", (HAL_Timer_Get_Milli_Seconds()-_debugTime)*0.001);
         dumpAtCmd(buf,len);
+#ifdef MDM_DEBUG_TX_PIPE
+        // When using this, look for dangling stuff in the TX pipe just before a send.
+        // This is evidence of something not being fully sent for the last write to the pipe.
+        electronMDM.txDump();
+#endif // MDM_DEBUG_TX_PIPE
     }
-#endif
+#endif // MDM_DEBUG
+
     return _send(buf, len);
 }
 
@@ -326,14 +338,22 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
             DEBUG_D("%10.3f AT read %s", (HAL_Timer_Get_Milli_Seconds()-_debugTime)*0.001, s);
             dumpAtCmd(buf, len);
             (void)s;
+#ifdef MDM_DEBUG_RX_PIPE
+            // When using this, look for dangling stuff in the RX pipe after a read.
+            // This is evidence of something not being fully parsed, which could be
+            // a multi-line URC or an error in parsing.  Could also comment this out
+            // and uncomment the ones used in _getLine() for even more real-time feedback
+            // with the downside of MUCH more logs.
+            electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
         }
-#endif
+#endif // MDM_DEBUG
         if ((ret != WAIT) && (ret != NOT_FOUND))
         {
             int type = TYPE(ret);
             // handle unsolicited commands here
             if (type == TYPE_PLUS) {
-                const char* cmd = buf+3;
+                const char* cmd = buf+3; // assume all TYPE_PLUS commands have \r\n+ and skip
                 int a, b, c, d, r;
                 char s[32];
 
@@ -479,6 +499,23 @@ void MDMParser::unlock()
     mdm_mutex.unlock();
 }
 
+int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
+{
+    if (((type == TYPE_PLUS) || (type == TYPE_UNKNOWN)) && edrxActs) {
+        // if response is "\r\n+CEDRXS:\r\n", all AcT's disabled, do nothing
+        if (strncmp(buf, "\r\n+CEDRXS:\r\n", len) != 0) {
+            int a;
+            if (sscanf(buf, "\r\n+CEDRXS: %1d[2-5]", &a) == 1 ||
+                sscanf(buf, "+CEDRXS: %1d[2-5]", &a) == 1) {
+                if (edrxActs->count < MDM_R410_EDRX_ACTS_MAX) {
+                    edrxActs->act[edrxActs->count++] = a;
+                }
+            }
+        }
+    }
+    return WAIT;
+}
+
 int MDMParser::_cbString(int type, const char* buf, int len, char* str)
 {
     if (str && (type == TYPE_UNKNOWN)) {
@@ -562,6 +599,9 @@ void MDMParser::reset(void)
     HAL_GPIO_Write(RESET_UC, 0);
     HAL_Delay_Milliseconds(delay);
     HAL_GPIO_Write(RESET_UC, 1);
+    // reset power on and registered timers for memory issue power off delays
+    _timePowerOn = 0;
+    _timeRegistered = 0;
 }
 
 bool MDMParser::_powerOn(void)
@@ -636,6 +676,9 @@ bool MDMParser::_powerOn(void)
         // check interface
         if(_atOk()) {
             _pwr = true;
+            // start power on timer for memory issue power off delays, assume not registered.
+            _timePowerOn = HAL_Timer_Get_Milli_Seconds();
+            _timeRegistered = 0;
             break;
         }
         else if (i==0 && !retried_after_reset) {
@@ -801,38 +844,28 @@ bool MDMParser::init(DevStatus* status)
     sendFormated("AT+CGMR\r\n");
     if (RESP_OK != waitFinalResp(_cbString, _dev.ver))
         goto failure;
+    // ATI9 (get version and app version)
+    // example output
+    // 16 "\r\n08.90,A01.13\r\n" G350 (newer)
+    // 16 "\r\n08.70,A00.02\r\n" G350 (older)
+    // 28 "\r\nL0.0.00.00.05.06,A.02.00\r\n" (memory issue)
+    // 28 "\r\nL0.0.00.00.05.07,A.02.02\r\n" (demonstrator)
+    // 28 "\r\nL0.0.00.00.05.08,A.02.04\r\n" (maintenance)
+    memset(_verExtended, 0, sizeof(_verExtended));
+    sendFormated("ATI9\r\n");
+    if (RESP_OK != waitFinalResp(_cbString, _verExtended))
+        goto failure;
+    // Test for Memory Issue version
+    _memoryIssuePresent = false;
+    if (!strcmp("L0.0.00.00.05.06,A.02.00", _verExtended)) {
+        _memoryIssuePresent = true;
+    }
+    // DEBUG_D("MODEM AND APP VERSION: %s (%s)\r\n", _verExtended, (_memoryIssuePresent) ? "MEMISSUE" : "OTHER");
     // Returns the ICCID (Integrated Circuit Card ID) of the SIM-card.
     // ICCID is a serial number identifying the SIM.
     sendFormated("AT+CCID\r\n");
     if (RESP_OK != waitFinalResp(_cbCCID, _dev.ccid))
         goto failure;
-    // enable power saving
-    if (_dev.lpm != LPM_DISABLED) {
-        // enable power saving (requires flow control, cts at least)
-        sendFormated("AT+UPSV=%d\r\n", _power_mode);
-        if (RESP_OK != waitFinalResp())
-            goto failure;
-        if (_power_mode != 0) {
-            _dev.lpm = LPM_ACTIVE;
-        }
-    }
-    if (_dev.dev == DEV_SARA_R410) {
-        // Force eDRX mode to be disabled
-        // 18/23 hardware doesn't seem to be disabled by default
-        sendFormated("AT+CEDRXS=3,2\r\n");
-        if (RESP_OK != waitFinalResp())
-            goto failure;
-        sendFormated("AT+CEDRXS?\r\n");
-        if (RESP_OK != waitFinalResp())
-            goto failure;
-        // Force Power Saving mode to be disabled for good measure
-        sendFormated("AT+CPSMS=0\r\n");
-        if (RESP_OK != waitFinalResp())
-            goto failure;
-        sendFormated("AT+CPSMS?\r\n");
-        if (RESP_OK != waitFinalResp())
-            goto failure;
-    }
     // Setup SMS in text mode
     sendFormated("AT+CMGF=1\r\n");
     if (RESP_OK != waitFinalResp())
@@ -851,14 +884,86 @@ bool MDMParser::init(DevStatus* status)
     if (waitFinalResp() != RESP_OK) {
         goto failure;
     }
-#endif
-    if (status)
+#endif // SOCKET_HEX_MODE
+    // enable power saving
+    if (_dev.lpm != LPM_DISABLED) {
+        // enable power saving (requires flow control, cts at least)
+        sendFormated("AT+UPSV=%d\r\n", _power_mode);
+        if (RESP_OK != waitFinalResp())
+            goto failure;
+        if (_power_mode != 0) {
+            _dev.lpm = LPM_ACTIVE;
+        }
+    }
+    // All _dev items collected without error, populate status.
+    if (status) {
         memcpy(status, &_dev, sizeof(DevStatus));
+    }
+    if (_dev.dev == DEV_SARA_R410) {
+        bool resetNeeded = false;
+        int umnoprof = UBLOX_SARA_UMNOPROF_NONE;
+
+        sendFormated("AT+UMNOPROF?\r\n");
+        if (RESP_ERROR == waitFinalResp(_cbUMNOPROF, &umnoprof, UMNOPROF_TIMEOUT)) {
+            goto reset_failure;
+        }
+        if (umnoprof == UBLOX_SARA_UMNOPROF_SW_DEFAULT) {
+            sendFormated("AT+UMNOPROF=%d\r\n", UBLOX_SARA_UMNOPROF_SIM_SELECT);
+            waitFinalResp(); // Not checking for error since we will reset either way
+            goto reset_failure;
+        }
+        // Force Power Saving mode to be disabled for good measure
+        sendFormated("AT+CPSMS=0\r\n");
+        if (RESP_OK != waitFinalResp()) {
+            goto failure;
+        }
+        sendFormated("AT+CPSMS?\r\n");
+        if (RESP_OK != waitFinalResp()) {
+            goto failure;
+        }
+        // Force eDRX mode to be disabled
+        // 18/23 hardware doesn't seem to be disabled by default
+        sendFormated("AT+CEDRXS?\r\n");
+        // Reset the detected count each time we check for eDRX AcTs enabled
+        EdrxActs _edrxActs;
+        if (RESP_ERROR == waitFinalResp(_cbCEDRXS, &_edrxActs, CEDRXS_TIMEOUT)) {
+            goto reset_failure;
+        }
+        for (int i = 0; i < _edrxActs.count; i++) {
+            sendFormated("AT+CEDRXS=3,%d\r\n", _edrxActs.act[i]);
+            waitFinalResp(); // Not checking for error since we will reset either way
+            resetNeeded = true;
+        }
+        if (resetNeeded) {
+            goto reset_failure;
+        }
+    } // if (_dev.dev == DEV_SARA_R410)
     UNLOCK();
     return true;
+
 failure:
     UNLOCK();
+    return false;
 
+reset_failure:
+    // Don't get stuck in a reset-retry loop
+    static int resetFailureAttempts = 0;
+    if (resetFailureAttempts++ < 5) {
+        sendFormated("AT+CFUN=15\r\n");
+        waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT);
+        _init = false; // invalidate init and prevent cellular registration
+        _pwr = false;  //   |
+        // When this exits false, ARM_WLAN_WD 1 will fire and timeout after 30s.
+        // MDMParser::powerOn and MDMParser::init will then be retried by the system.
+    } // else {
+        // stop resetting, and try to register.
+        // Preventing cellular registration gets us back to retrying init() faster,
+        // and the timeout of 3 attempts is arbitrary but allows us to register and
+        // connect even with an error, since that error is persisting and might just
+        // be a fluke or bug in the modem. Allowing to continue on eventually helps
+        // the device recover in odd situations we can't predict.
+    // }
+    UNLOCK();
     return false;
 }
 
@@ -877,16 +982,47 @@ bool MDMParser::powerOff(void)
         // Try to power off
         for (int i=0; i<3; i++) { // try 3 times
             if (!_atOk()) {
+                if (_dev.dev == DEV_SARA_R410) {
+                    check_ri = true;
+                    // If memory issue is present, ensure we don't force a power off too soon
+                    // to avoid hitting the 124 day memory housekeeping issue, AT+CPWROFF will
+                    // handle this delay automatically, or timeout after 40s.
+                    if (_memoryIssuePresent) {
+                        MDM_INFO("\r\n[ Modem::powerOff ] AT Failure, waiting up to 30s to power off with PWR_UC...");
+                        system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+                        if (_timePowerOn == 0) {
+                            // fallback to max timeout of 30s to be safe
+                            _timePowerOn = now;
+                        }
+                        // check for timeout (VINT == LOW, Powered on 30s ago, Registered 20s ago)
+                        do {
+                            now = HAL_Timer_Get_Milli_Seconds();
+                            // prefer to timeout 20s after registration if we are registered
+                            if (_timeRegistered) {
+                                if (now - _timeRegistered >= 20000UL) {
+                                    break;
+                                }
+                            } else if (_timePowerOn && now - _timePowerOn >= 30000UL) {
+                                break;
+                            }
+                            HAL_Delay_Milliseconds(100); // just wait
+                        } while ( HAL_GPIO_Read(RI_UC) );
+                        // reset timers
+                        _timeRegistered = 0;
+                        _timePowerOn = 0;
+                    }
+                }
                 MDM_INFO("\r\n[ Modem::powerOff ] AT Failure, trying PWR_UC...");
+                // Skip power off sequence if power is already off
+                if (_dev.dev == DEV_SARA_R410 && !HAL_GPIO_Read(RI_UC)) {
+                    break;
+                }
                 HAL_GPIO_Write(PWR_UC, 0);
                 // >1.5 seconds on SARA R410M
                 // >1 second on SARA U2
                 // plus a little extra for good luck
                 HAL_Delay_Milliseconds(1600);
                 HAL_GPIO_Write(PWR_UC, 1);
-                if (_dev.dev == DEV_SARA_R410) {
-                    check_ri = true;
-                }
                 break;
             } else {
                 sendFormated("AT+CPWROFF\r\n");
@@ -937,6 +1073,18 @@ bool MDMParser::powerOff(void)
     if (continue_cancel) cancel();
     UNLOCK();
     return ok;
+}
+
+int MDMParser::_cbUMNOPROF(int type, const char *buf, int len, int* i)
+{
+    if ((type == TYPE_PLUS) && i){
+        int a;
+        *i = -1;
+        if (sscanf(buf, "\r\n+UMNOPROF: %d", &a) == 1) {
+            *i = a;
+        }
+    }
+    return WAIT;
 }
 
 int MDMParser::_cbCGMM(int type, const char* buf, int len, DevStatus* s)
@@ -1026,6 +1174,8 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
         // call to checkNetStatus(), so these registration URCs need to be set up at
         // least once to ensure they continue to work later on when using _checkEpsReg()
         if (_dev.dev == DEV_SARA_R410) {
+            // reset registered timer for memory issue power off delays
+            _timeRegistered = 0;
             // Set up the EPS network registration URC
             sendFormated("AT+CEREG=2\r\n");
             if (RESP_OK != waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT)) {
@@ -1050,9 +1200,9 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, syste
                 // On SARA R410M [Cat-M1(7) & Cat-NB1(8)] is an invalid default configuration.
                 // Detect and force Cat-MB1 only when detected.
                 sendFormated("AT+URAT?\r\n");
-                if (waitFinalResp(_cbURAT, &set_rat, URAT_TIMEOUT) != RESP_OK) {
-                    goto failure;
-                }
+                // This may fail in some cases due to UMNOPROF setting, so do not check for error.
+                // In the case of error, set_rat will remain false and the URAT setting will not be altered.
+                waitFinalResp(_cbURAT, &set_rat, URAT_TIMEOUT);
                 // Get default context settings
                 sendFormated("AT+CGDCONT?\r\n");
                 CGDCONTparam ctx = {};
@@ -1178,6 +1328,10 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     // don't return true until fully registered
     if (_dev.dev == DEV_SARA_R410) {
         ok = REG_OK(_net.eps);
+        if (_memoryIssuePresent && ok) {
+            // start registered timer for memory issue power off delays.
+            _timeRegistered = HAL_Timer_Get_Milli_Seconds();
+        }
     } else {
         ok = REG_OK(_net.csd) && REG_OK(_net.psd);
     }
@@ -2450,15 +2604,23 @@ int MDMParser::_cbUSORF(int type, const char* buf, int len, USORFparam* param)
 #ifndef SOCKET_HEX_MODE
     if ((type == TYPE_PLUS) && param) {
         int sz, sk, p, a,b,c,d;
-        int r = sscanf(buf, "\r\n+USORF: %d,\"" IPSTR "\",%d,%d,",
-            &sk,&a,&b,&c,&d,&p,&sz);
-        if ((r == 7) && (buf[len-sz-2] == '\"') && (buf[len-1] == '\"')) {
-            memcpy(param->buf, &buf[len-1-sz], sz);
+        int r;
+        r = sscanf(buf, "\r\n\r\n+USORF: %d,\"" IPSTR "\",%d,%d,", &sk,&a,&b,&c,&d,&p,&sz);
+        if ((r == 7) && (buf[len-sz-2-2] == '\"') && (buf[len-1-2] == '\"')) {
+            memcpy(param->buf, &buf[len-1-sz-2], sz);
             param->ip = IPADR(a,b,c,d);
             param->port = p;
             param->len = sz;
         } else {
-            param->len = 0;
+            r = sscanf(buf, "\r\n+USORF: %d,\"" IPSTR "\",%d,%d,", &sk,&a,&b,&c,&d,&p,&sz);
+            if ((r == 7) && (buf[len-sz-2] == '\"') && (buf[len-1] == '\"')) {
+                memcpy(param->buf, &buf[len-1-sz], sz);
+                param->ip = IPADR(a,b,c,d);
+                param->port = p;
+                param->len = sz;
+            } else {
+                param->len = 0;
+            }
         }
     }
     return WAIT;
@@ -2872,13 +3034,17 @@ int MDMParser::_getLine(Pipe<char>* pipe, char* buf, int len)
               const char* fmt;                              int type;
         } lutF[] = {
             { "\r\n+USORD: %d,%d,\"%c\"",                   TYPE_PLUS       },
+            { "\r\n\r\n+USORF: %d,\"" IPSTR "\",%d,%d,\"%c\"\r\n",  TYPE_PLUS }, // R410 firmware L0.0.00.00.05.08,A.02.04
+            { "\r\n+USORF: %d,\"" IPSTR "\",%d,%d,\"%c\"\r\n",  TYPE_PLUS     },
             { "\r\n+USORF: %d,\"" IPSTR "\",%d,%d,\"%c\"",  TYPE_PLUS       },
             { "\r\n+URDFILE: %s,%d,\"%c\"",                 TYPE_PLUS       },
         };
         static struct {
               const char* sta;          const char* end;    int type;
         } lut[] = {
+            { "\r\n\r\r\nOK\r\n",       NULL,               TYPE_OK         }, // R410 firmware L0.0.00.00.05.08,A.02.04
             { "\r\nOK\r\n",             NULL,               TYPE_OK         },
+            { "OK\r\n",                 NULL,               TYPE_OK         }, // Necessary to clean up after TYPE_USORF_1 is parsed
             { "\r\nERROR\r\n",          NULL,               TYPE_ERROR      },
             { "\r\n+CME ERROR:",        "\r\n",             TYPE_ERROR      },
             { "\r\n+CMS ERROR:",        "\r\n",             TYPE_ERROR      },
@@ -2888,43 +3054,90 @@ int MDMParser::_getLine(Pipe<char>* pipe, char* buf, int len)
             { "\r\nNO DIALTONE\r\n",    NULL,               TYPE_NODIALTONE },
             { "\r\nBUSY\r\n",           NULL,               TYPE_BUSY       },
             { "\r\nNO ANSWER\r\n",      NULL,               TYPE_NOANSWER   },
+            { "\r\r\n\r\r\n+USORF:",    NULL,               TYPE_USORF_1    }, // R410 firmware L0.0.00.00.05.08,A.02.04
             { "\r\n+",                  "\r\n",             TYPE_PLUS       },
             { "\r\n@",                  NULL,               TYPE_PROMPT     }, // Sockets
             { "\r\n>",                  NULL,               TYPE_PROMPT     }, // SMS
             { "\n>",                    NULL,               TYPE_PROMPT     }, // File
             { "\r\nABORTED\r\n",        NULL,               TYPE_ABORTED    }, // Current command aborted
-            { "\r\n\r\n",               "\r\n",             TYPE_DBLNEWLINE }, // Double CRLF detected
+            { "\r\n\r\n",               NULL,               TYPE_DBLNEWLINE }, // Double CRLF detected, R410 firmware L0.0.00.00.05.07,A.02.02
             { "\r\n",                   "\r\n",             TYPE_UNKNOWN    }, // If all else fails, break up generic strings
         };
         for (int i = 0; i < (int)(sizeof(lutF)/sizeof(*lutF)); i ++) {
             pipe->set(unkn);
+#ifdef MDM_DEBUG_RX_PIPE
+            // electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
+            // DEBUG_D("lutF [%d] len:%d sz:%d sz now:%d\r\n", i, len, sz, pipe->size());
             int ln = _parseFormated(pipe, len, lutF[i].fmt);
             if (ln == WAIT && fr) {
+                // DEBUG_D("lutF ln == WAIT len:%d\r\n", len);
+#ifdef MDM_DEBUG_RX_PIPE
+                // electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
                 return WAIT;
             }
             if ((ln != NOT_FOUND) && (unkn > 0)) {
+                // DEBUG_D("lutF ln != NOT_FOUND (%d) len:%d\r\n", i, len);
+#ifdef MDM_DEBUG_RX_PIPE
+                // electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
                 return TYPE_UNKNOWN | pipe->get(buf, unkn);
             }
             if (ln > 0) {
+                // DEBUG_D("lutF matched (%d)\r\n", i);
                 return lutF[i].type  | pipe->get(buf, ln);
             }
         }
         for (int i = 0; i < (int)(sizeof(lut)/sizeof(*lut)); i ++) {
             pipe->set(unkn);
+#ifdef MDM_DEBUG_RX_PIPE
+            // electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
+            // DEBUG_D("lut [%d] len:%d sz:%d sz now:%d\r\n", i, len, sz, pipe->size());
             int ln = _parseMatch(pipe, len, lut[i].sta, lut[i].end);
             if (ln == WAIT && fr) {
+                // DEBUG_D("lut ln == WAIT len:%d\r\n", len);
+#ifdef MDM_DEBUG_RX_PIPE
+                // electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
                 return WAIT;
             }
-            // Double CRLF detected, discard it.
+
+            // Double CRLF detected, discard these two bytes
+            // This resolves a case on R410 where double "\r\n" is generated after +CME ERROR response specifically
+            // following a USOST command, but missing on U260/U270, which would otherwise generate "\r\n\r\n@" prompt
+            // which is not parseable.  We do it this way because it's safer to detect and discard these instead
+            // of parsing CME ERROR with double CRLF endings because that can strip CRLF from the beginning of
+            // some URCs which make them unparseable.
+            //
+            // This also fixes the previous TYPE_DBLNEWLINE usage:
+            // Double CRLF detected, discard these two bytes
             // This resolves a case on G350 where "\r\n" is generated after +USORF response, but missing
             // on U260/U270, which would otherwise generate "\r\n\r\nOK\r\n" which is not parseable.
             if ((ln > 0) && (lut[i].type == TYPE_DBLNEWLINE) && (unkn == 0)) {
+                // DEBUG_D("lut TYPE_DBLNEWLINE\r\n");
                 return TYPE_UNKNOWN | pipe->get(buf, 2);
             }
+
+            // Double CRLF and CR detected, discard these 4 bytes
+            // This resolves a case on R410 firmware L0.0.00.00.05.08,A.02.04 where "\r\r\n\r" is generated
+            // before a "\r\n+USORF:" response, which would otherwise generate "\r\r\n\r\r\n+USORF:" which is not parseable.
+            if ((ln > 0) && (lut[i].type == TYPE_USORF_1) && (unkn == 0)) {
+                // DEBUG_D("lut TYPE_USORF_1\r\n");
+                return TYPE_UNKNOWN | pipe->get(buf, 4);
+            }
+
             if ((ln != NOT_FOUND) && (unkn > 0)) {
+                // DEBUG_D("lut ln != NOT_FOUND (%d) len:%d\r\n", i, len);
+#ifdef MDM_DEBUG_RX_PIPE
+                // electronMDM.rxDump();
+#endif // MDM_DEBUG_RX_PIPE
                 return TYPE_UNKNOWN | pipe->get(buf, unkn);
             }
+
             if (ln > 0) {
+                // DEBUG_D("lut matched (%d)\r\n", i);
                 return lut[i].type | pipe->get(buf, ln);
             }
         }
