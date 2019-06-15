@@ -27,10 +27,6 @@
 
 namespace spark {
 
-int mesh_loop() {
-    return spark::Mesh.poll();
-}
-
 bool MeshPublish::Subscriptions::event_handler_exists(const char *event_name, EventHandler handler,
         void *handler_data, SubscriptionScope::Enum scope, const char* id)
 {
@@ -137,37 +133,71 @@ int MeshPublish::fetchMulticastAddress(IPAddress& mcastAddr) {
     return 0;
 }
 
-int MeshPublish::initialize_udp() {
+int MeshPublish::initializeUdp() {
     std::lock_guard<RecursiveMutex> lk(mutex_);
-    if (udp) {
+    if (udp_) {
         return SYSTEM_ERROR_NONE;
     }
-    udp.reset(new UDP());
+    std::unique_ptr<UDP> udp(new UDP());
     if (!udp) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     udp->setBuffer(MAX_PACKET_LEN);
-    // Get OpenThread interface index (     interface is named "th1" on all Mesh devices)
+    // Get OpenThread interface index (interface is named "th1" on all Mesh devices)
     uint8_t idx = 0;
     if_name_to_index("th1", &idx);
-     // Create UDP socket and bind to OpenThread interface
+    // Create UDP socket and bind to OpenThread interface
     CHECK(udp->begin(PORT, idx));
-    // subscribe to multicast
 
+    // subscribe to multicast
     IPAddress mcastAddr;
     CHECK(fetchMulticastAddress(mcastAddr));
-    udp->joinMulticast(mcastAddr);
+    CHECK(udp->joinMulticast(mcastAddr));
+
+    // Start polling thread
+    exit_ = false;
+    thread_.reset(new (std::nothrow) Thread("meshpub", [](void* ptr) {
+        auto self = (MeshPublish*)ptr;
+        while (!self->exit_) {
+            self->poll();
+        }
+    }, this, OS_THREAD_PRIORITY_DEFAULT + 1));
+
+    if (!thread_) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+
+    udp_ = std::move(udp);
     return SYSTEM_ERROR_NONE;
 }
 
-int MeshPublish::uninitialize_udp() {
+int MeshPublish::uninitializeUdp() {
+    // NB: this function is not really used at the moment
+
+    // Use atomic exit_ as a simple synchronization primitive to ensure thread-safety
+    // instead of a mutex here.
+    if (exit_) {
+        return SYSTEM_ERROR_BUSY;
+    }
+
+    exit_ = true;
+
+    // NB: This should not be run under a lock
+    if (thread_) {
+        // This will also wait for the thread to exit
+        thread_.reset();
+    }
+
     std::lock_guard<RecursiveMutex> lk(mutex_);
-    if (udp) {
+    if (udp_) {
         IPAddress mcastAddr;
         fetchMulticastAddress(mcastAddr);
-        udp->leaveMulticast(mcastAddr);
-        udp.reset();
+        udp_->leaveMulticast(mcastAddr);
+        udp_.reset();
     }
+
+    exit_ = false;
+
     return SYSTEM_ERROR_NONE;
 }
 
@@ -184,33 +214,25 @@ int MeshPublish::publish(const char* topic, const char* data) {
             SYSTEM_ERROR_TOO_LARGE);
 
     std::lock_guard<RecursiveMutex> lk(mutex_);
-    CHECK(initialize_udp());
+    CHECK(initializeUdp());
     IPAddress mcastAddr;
     CHECK(fetchMulticastAddress(mcastAddr));
 
-    CHECK(udp->beginPacket(mcastAddr, PORT));
+    CHECK(udp_->beginPacket(mcastAddr, PORT));
     uint8_t version = 0;
-    udp->write(&version, 1);
-    udp->write((const uint8_t*)topic, topicLen);
+    udp_->write(&version, 1);
+    udp_->write((const uint8_t*)topic, topicLen);
     if (dataLen > 0) {
-        udp->write((const uint8_t*)data, dataLen);
+        udp_->write((const uint8_t*)data, dataLen);
     }
-    CHECK(udp->endPacket());
+    CHECK(udp_->endPacket());
     return SYSTEM_ERROR_NONE;
 }
 
 int MeshPublish::subscribe(const char* prefix, EventHandler handler) {
     std::lock_guard<RecursiveMutex> lk(mutex_);
-    if (!thread_) {
-        thread_.reset(new (std::nothrow) Thread("meshpub", [](void* ptr) {
-            auto self = (MeshPublish*)ptr;
-            while (true) {
-                self->poll();
-            }
-        }, this, OS_THREAD_PRIORITY_DEFAULT + 1));
-    }
-    CHECK(initialize_udp());
-    CHECK(subscriptions.add(prefix, handler));
+    CHECK(initializeUdp());
+    CHECK(subscriptions_.add(prefix, handler));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -222,7 +244,7 @@ int MeshPublish::poll() {
     UDP* u = nullptr;
     {
         std::lock_guard<RecursiveMutex> lk(mutex_);
-        u = udp.get();
+        u = udp_.get();
     }
     if (u) {
         if (!buffer_) {
@@ -276,7 +298,7 @@ int MeshPublish::poll() {
             CHECK_TRUE(len == 0, SYSTEM_ERROR_BAD_DATA);
 
             std::lock_guard<RecursiveMutex> lk(mutex_);
-            subscriptions.send(topic, data);
+            subscriptions_.send(topic, data);
         } else {
             result = len;
         }
