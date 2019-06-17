@@ -46,3 +46,7 @@ void network_set_listen_timeout(network_handle_t network, uint16_t timeout, void
 uint16_t network_get_listen_timeout(network_handle_t network, uint32_t flags, void* reserved) {
     return 0;
 }
+
+int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
+    return 0;
+}
