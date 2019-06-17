@@ -1026,6 +1026,9 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
             // the device will continue pulling SCL low. To avoid that, disable clock stretching
             // when the tx buffer is exhausted to release SCL.
             I2C_StretchClockCmd(i2cMap[i2c]->I2C_Peripheral, DISABLE);
+            __DSB();
+            __ISB();
+            I2C_StretchClockCmd(i2cMap[i2c]->I2C_Peripheral, i2cMap[i2c]->clkStretchingEnabled ? ENABLE : DISABLE);
         }
         break;
 
