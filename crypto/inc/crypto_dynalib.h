@@ -31,6 +31,7 @@
 #endif
 
 #ifdef USE_MBEDTLS
+#include "mbedtls_config.h"
 #if !defined(DYNALIB_IMPORT)
 #include "mbedtls/aes.h"
 #include "mbedtls/rsa.h"
@@ -38,6 +39,7 @@
 #include "mbedtls/sha256.h"
 #include "mbedtls/bignum.h"
 #include "mbedtls_util.h"
+#include "mbedtls/ecjpake.h"
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 #include "mbedtls/md4.h"
 #include "mbedtls/md5.h"
@@ -132,6 +134,7 @@ DYNALIB_FN(70, crypto, mbedtls_sha256_process, void(mbedtls_sha256_context*, con
 DYNALIB_FN(71, crypto, mbedtls_rsa_check_pubkey, int(const mbedtls_rsa_context*))
 DYNALIB_FN(72, crypto, mbedtls_rsa_check_privkey, int(const mbedtls_rsa_context*))
 DYNALIB_FN(73, crypto, mbedtls_rsa_check_pub_priv, int(const mbedtls_rsa_context*, const mbedtls_rsa_context*))
+
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 // MD4
 DYNALIB_FN(74, crypto, mbedtls_md4_init, void(mbedtls_md4_context*))
@@ -202,7 +205,31 @@ DYNALIB_FN(122, crypto, mbedtls_md5_update_ret, int(mbedtls_md5_context*, const 
 DYNALIB_FN(123, crypto, mbedtls_md5_finish_ret, int(mbedtls_md5_context*, unsigned char[16]))
 DYNALIB_FN(124, crypto, mbedtls_internal_md5_process, int(mbedtls_md5_context*, const unsigned char[64]))
 
+#define BASE_IDX 125
+#else
+#define BASE_IDX 74
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
+
+#ifdef MBEDTLS_ECJPAKE_C
+DYNALIB_FN(BASE_IDX + 0, crypto, mbedtls_ecjpake_init, void(mbedtls_ecjpake_context*))
+DYNALIB_FN(BASE_IDX + 1, crypto, mbedtls_ecjpake_setup, int(mbedtls_ecjpake_context*, mbedtls_ecjpake_role, mbedtls_md_type_t, mbedtls_ecp_group_id, const unsigned char*, size_t))
+DYNALIB_FN(BASE_IDX + 2, crypto, mbedtls_ecjpake_check, int(const mbedtls_ecjpake_context*))
+DYNALIB_FN(BASE_IDX + 3, crypto, mbedtls_ecjpake_write_round_one, int(mbedtls_ecjpake_context*, unsigned char*, size_t, size_t*, int (*f_rng)(void *, unsigned char *, size_t), void*))
+DYNALIB_FN(BASE_IDX + 4, crypto, mbedtls_ecjpake_read_round_one, int(mbedtls_ecjpake_context*, const unsigned char*, size_t))
+DYNALIB_FN(BASE_IDX + 5, crypto, mbedtls_ecjpake_write_round_two, int(mbedtls_ecjpake_context*, unsigned char*, size_t, size_t*, int (*f_rng)(void *, unsigned char *, size_t), void*))
+DYNALIB_FN(BASE_IDX + 6, crypto, mbedtls_ecjpake_read_round_two, int(mbedtls_ecjpake_context*, const unsigned char*, size_t))
+DYNALIB_FN(BASE_IDX + 7, crypto, mbedtls_ecjpake_derive_secret, int(mbedtls_ecjpake_context*, unsigned char*, size_t, size_t*, int (*f_rng)(void *, unsigned char *, size_t), void*))
+DYNALIB_FN(BASE_IDX + 8, crypto, mbedtls_ecjpake_free, void(mbedtls_ecjpake_context*))
+#define BASE_IDX2 (BASE_IDX + 9)
+#else
+#define BASE_IDX2 (BASE_IDX)
+#endif // MBEDTLS_ECJPAKE_C
+
+DYNALIB_FN(BASE_IDX2 + 0, crypto, mbedtls_default_rng, int(void*, unsigned char*, size_t))
+
+#undef BASE_IDX
+#undef BASE_IDX2
+
 DYNALIB_END(crypto)
 
 #ifdef	__cplusplus

@@ -24,9 +24,6 @@
 #include <stdint.h>
 #include "mbedtls/md.h"
 
-// Random number generator callback
-int mbedtls_default_rng(void*, unsigned char* data, size_t size);
-
 typedef struct {
     uint16_t version;
     uint16_t size;
@@ -39,6 +36,9 @@ typedef struct {
 #ifdef  __cplusplus
 extern "C" {
 #endif
+
+// Random number generator callback
+int mbedtls_default_rng(void*, unsigned char* data, size_t size);
 
 int mbedtls_set_callbacks(mbedtls_callbacks_t* callbacks, void* reserved);
 mbedtls_callbacks_t* mbedtls_get_callbacks(void* reserved);

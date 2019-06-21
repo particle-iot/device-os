@@ -6,6 +6,6 @@ CRYPTO_DYNALIB_MODULE_PATH=.
 TARGET_TYPE = a
 BUILD_PATH_EXT=$(CRYPTO_DYNALIB_BUILD_PATH_EXT)
 
-DEPENDENCIES = crypto dynalib hal
+DEPENDENCIES = crypto dynalib hal platform
 
 include ../build/arm-tlm.mk
