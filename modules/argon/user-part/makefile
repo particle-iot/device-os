@@ -9,13 +9,13 @@ PLATFORM_DFU_LEAVE = y
 export COMPILE_LTO=n
 
 # communication used only for header declarations
-DEPENDENCIES = user dynalib services services-dynalib hal hal-dynalib system system-dynalib rt-dynalib wiring communication-dynalib modules/argon/system-part1 platform wiring_globals
-MAKE_DEPENDENCIES = user hal-dynalib services-dynalib system-dynalib rt-dynalib wiring communication-dynalib platform wiring_globals
+DEPENDENCIES = user dynalib services services-dynalib hal hal-dynalib system system-dynalib rt-dynalib wiring communication-dynalib modules/argon/system-part1 platform wiring_globals crypto-dynalib
+MAKE_DEPENDENCIES = user hal-dynalib services-dynalib system-dynalib rt-dynalib wiring communication-dynalib platform wiring_globals crypto-dynalib
 include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk
 
 LIBS += $(MAKE_DEPENDENCIES)
-LIB_DEPS += $(USER_LIB_DEP) $(SERVICES_DYNALIB_LIB_DEP) $(HAL_DYNALIB_LIB_DEP) $(SYSTEM_DYNALIB_LIB_DEP) $(RT_DYNALIB_LIB_DEP) $(WIRING_LIB_DEP) $(COMMUNICATION_DYNALIB_LIB_DEP) $(PLATFORM_LIB_DEP) $(WIRING_GLOBALS_LIB_DEP)
+LIB_DEPS += $(USER_LIB_DEP) $(SERVICES_DYNALIB_LIB_DEP) $(HAL_DYNALIB_LIB_DEP) $(SYSTEM_DYNALIB_LIB_DEP) $(RT_DYNALIB_LIB_DEP) $(WIRING_LIB_DEP) $(COMMUNICATION_DYNALIB_LIB_DEP) $(PLATFORM_LIB_DEP) $(WIRING_GLOBALS_LIB_DEP) $(CRYPTO_DYNALIB_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
 
 
