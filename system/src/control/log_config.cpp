@@ -192,6 +192,18 @@ void getLogHandlers(ctrl_request* req) {
     setResult(req, error, result);
 }
 
+int getLogFileInfo(ctrl_request* req) {
+    return 0;
+}
+
+int readLogFile(ctrl_request* req) {
+    return 0;
+}
+
+int clearLogFile(ctrl_request* req) {
+    return 0;
+}
+
 } // particle::control::logging
 
 } // particle::control

@@ -359,6 +359,18 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         control::logging::getLogHandlers(req);
         break;
     }
+    case CTRL_REQUEST_GET_LOG_FILE_INFO: {
+        setResult(req, control::logging::getLogFileInfo(req));
+        break;
+    }
+    case CTRL_REQUEST_READ_LOG_FILE: {
+        setResult(req, control::logging::readLogFile(req));
+        break;
+    }
+    case CTRL_REQUEST_CLEAR_LOG_FILE: {
+        setResult(req, control::logging::clearLogFile(req));
+        break;
+    }
 #if HAL_USE_SOCKET_HAL_POSIX && HAL_PLATFORM_IFAPI
     case CTRL_REQUEST_NETWORK_GET_INTERFACE_LIST: {
         setResult(req, control::network::getInterfaceList(req));

@@ -17,24 +17,6 @@
 
 #pragma once
 
-#include "system_control.h"
-
 namespace particle {
-
-namespace control {
-
-namespace logging {
-
-void addLogHandler(ctrl_request* req);
-void removeLogHandler(ctrl_request* req);
-void getLogHandlers(ctrl_request* req);
-
-int getLogFileInfo(ctrl_request* req);
-int readLogFile(ctrl_request* req);
-int clearLogFile(ctrl_request* req);
-
-} // particle::control::logging
-
-} // particle::control
 
 } // particle
