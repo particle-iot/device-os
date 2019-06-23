@@ -43,6 +43,7 @@
 #include "system_network_internal.h"
 #include "bytes2hexbuf.h"
 #include "system_threading.h"
+#include "cancellable_event.h"
 #if HAL_PLATFORM_DCT
 #include "dct.h"
 #endif // HAL_PLATFORM_DCT
@@ -96,6 +97,15 @@ const char* flag_to_string(uint8_t flag) {
     return flag ? "true" : "false";
 }
 
+SendEventCancelPrevious updates_enabled_event;
+SendEventCancelPrevious updates_forced_event;
+
+void send_state_event(SendEventCancelPrevious* event, const char* name, const char* data) {
+    SYSTEM_THREAD_CONTEXT_ASYNC(send_state_event(event, name, data));
+
+    event->send_event(name, data, DEFAULT_CLOUD_EVENT_TTL, PUBLISH_EVENT_FLAG_PRIVATE);
+}
+
 void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
 {
     if (flag == SYSTEM_FLAG_STARTUP_LISTEN_MODE)
@@ -115,12 +125,12 @@ void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
     else if (flag == SYSTEM_FLAG_OTA_UPDATE_ENABLED)
     {
         // publish the firmware enabled event
-        spark_send_event(UPDATES_ENABLED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_ASYNC|PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
+        send_state_event(&updates_enabled_event, UPDATES_ENABLED_EVENT, flag_to_string(newValue));
     }
     else if (flag == SYSTEM_FLAG_OTA_UPDATE_FORCED)
     {
         // acknowledge to the cloud that system updates are forced. It helps avoid a race condition where we might try sending firmware before the event has been received.
-        spark_send_event(UPDATES_FORCED_EVENT, flag_to_string(newValue), 60, PUBLISH_EVENT_FLAG_ASYNC|PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
+        send_state_event(&updates_forced_event, UPDATES_FORCED_EVENT, flag_to_string(newValue));
     }
     else if (flag == SYSTEM_FLAG_OTA_UPDATE_PENDING)
     {
@@ -128,6 +138,7 @@ void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
             system_notify_event(firmware_update_pending, 0, nullptr, nullptr, nullptr);
             // publish an internal system event for pending updates
     	}
+        // todo - when updates are cancelled from the cloud there should also be a corresponding system event
 	}
 }
 

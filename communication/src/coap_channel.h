@@ -388,8 +388,9 @@ public:
 
 	/**
 	 * Removes a message from the store with the given id.
-	 * Returns nullptr if the message does not exist. Returns
-	 * the removed message otherwise.
+	 * Returns nullptr if the message does not exist.
+	 *
+	 * @return the removed message otherwise nullptr.
 	 */
 	CoAPMessage* remove(message_id_t msg_id)
 	{
@@ -675,6 +676,11 @@ public:
 		// todo - if msg contains a delivery callback then call that with the outcome of this
 		return error;
 	}
+
+	bool cancel_message(message_id_t msg_id) {
+	    return client.clear_message(msg_id);
+	}
+
 };
 
 

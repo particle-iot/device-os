@@ -134,7 +134,7 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 			channel.command(Channel::DISCARD_SESSION, nullptr);
 		}
 		DEBUG("recieved ACK for message id=%x", id);
-		if (!clear_message(id)) {		// message didn't exist, means it's already been acknoweldged or is unknown.
+		if (!clear_message(id)) {		// message didn't exist, means it's already been acknowledged or is unknown.
 			msg.set_length(0);
 		}
 	}

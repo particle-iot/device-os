@@ -38,7 +38,7 @@ class Message
 	uint8_t* buffer;
 	size_t buffer_length;
 	size_t message_length;
-    int id;                     // if < 0 then not-defined.
+    message_handle_t id;                     // if < 0 then not-defined.
     bool confirm_received;
 
 	size_t trim_capacity()

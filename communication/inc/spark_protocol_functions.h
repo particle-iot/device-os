@@ -167,18 +167,26 @@ bool spark_protocol_event_loop(ProtocolFacade* protocol, void* reserved=NULL);
 bool spark_protocol_is_initialized(ProtocolFacade* protocol);
 int spark_protocol_presence_announcement(ProtocolFacade* protocol, unsigned char *buf, const unsigned char *id, void* reserved=NULL);
 
+#define COMPLETION_HANDLER_DATA_FIELDS \
+        uint16_t size; \
+        uint16_t reserved; \
+        completion_callback handler_callback; \
+        void* handler_data
+
+
 // Additional parameters for spark_protocol_send_event()
 typedef struct {
-    uint16_t size;
-    uint16_t reserved;
-    completion_callback handler_callback;
-    void* handler_data;
-    // v2
+    COMPLETION_HANDLER_DATA_FIELDS;
     /**
      * The message handle that was used to send the event.
      */
     particle::protocol::message_handle_t /*[out]*/ message_sent;
 } spark_protocol_send_event_data;
+
+typedef struct {
+    COMPLETION_HANDLER_DATA_FIELDS;
+} completion_handler_data;
+// we should standardize on C++ interfaces to avoid the need for this kind of hacks.
 
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
