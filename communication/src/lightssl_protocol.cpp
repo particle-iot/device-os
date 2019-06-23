@@ -22,49 +22,6 @@
 #if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
 
 namespace particle { namespace protocol {
-int LightSSLProtocol::command(ProtocolCommands::Enum command, uint32_t data)
-{
-  int result = UNKNOWN;
-  switch (command) {
-  case ProtocolCommands::SLEEP:
-  case ProtocolCommands::DISCONNECT:
-    result = this->wait_confirmable();
-    break;
-  case ProtocolCommands::TERMINATE:
-    ack_handlers.clear();
-    result = NO_ERROR;
-    break;
-  }
-  return result;
-}
-
-int LightSSLProtocol::wait_confirmable(uint32_t timeout)
-{
-  ProtocolError err = NO_ERROR;
-
-  if (ack_handlers.size() != 0) {
-    system_tick_t start = millis();
-    LOG(INFO, "Waiting for Confirmed messages to be ACKed.");
-
-    while (((ack_handlers.size() != 0) && (millis()-start)<timeout))
-    {
-      CoAPMessageType::Enum message;
-      err = event_loop(message);
-      if (err)
-      {
-        LOG(WARN, "error receiving acknowledgements");
-        break;
-      }
-    }
-    LOG(INFO, "All Confirmed messages sent: %s",
-        (ack_handlers.size() != 0) ? "no" : "yes");
-
-    ack_handlers.clear();
-  }
-
-  return (int)err;
-}
-
 
 
 }}

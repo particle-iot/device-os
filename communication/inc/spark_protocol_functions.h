@@ -234,7 +234,15 @@ namespace ProtocolCommands {
     WAKE,
     DISCONNECT,
     TERMINATE,
-    FORCE_PING
+    FORCE_PING,
+    /**
+     * Cancel a single message. The message handle is given in the 16-bit parameter.
+     */
+    CANCEL_MESSAGE,
+    /*
+     * Cancels all messages.
+     */
+    CANCEL_ALL_MESSAGES
   };
 };
 

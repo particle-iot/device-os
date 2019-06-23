@@ -34,14 +34,18 @@
 #include "eckeygen.h"
 #include <limits>
 #include "logging.h"
+#include "protocol_mixin.h"
 
 namespace particle {
 namespace protocol {
 
 
-class DTLSProtocol : public Protocol
+class DTLSProtocol : public ProtocolMixin<DTLSProtocol, Protocol>
 {
+    friend class ProtocolMixin<DTLSProtocol, Protocol>;
+
 	CoAPChannel<CoAPReliableChannel<DTLSMessageChannel, decltype(SparkCallbacks::millis)>> channel;
+
 
 	static void handle_seed(const uint8_t* data, size_t len)
 	{
@@ -53,7 +57,7 @@ class DTLSProtocol : public Protocol
 public:
     // todo - this a duplicate of LightSSLProtocol - factor out
 
-	DTLSProtocol() : Protocol(channel) {}
+	DTLSProtocol() : ProtocolMixin(channel) {}
 
 	void init(const char *id,
 	          const SparkKeys &keys,
@@ -72,37 +76,9 @@ public:
 		return len;
 	}
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t data) override
+	void wake()
 	{
-		int result = UNKNOWN;
-		switch (command)
-		{
-		case ProtocolCommands::SLEEP:
-			result = wait_confirmable();
-			break;
-		case ProtocolCommands::DISCONNECT:
-			result = wait_confirmable();
-			ack_handlers.clear();
-			break;
-		case ProtocolCommands::WAKE:
-			wake();
-			result = NO_ERROR;
-			break;
-		case ProtocolCommands::TERMINATE:
-			ack_handlers.clear();
-			result = NO_ERROR;
-			break;
-		case ProtocolCommands::FORCE_PING: {
-			if (!pinger.is_expecting_ping_ack()) {
-				LOG(INFO, "Forcing a cloud ping");
-				pinger.process(std::numeric_limits<system_tick_t>::max(), [this] {
-					return ping(true);
-				});
-			}
-			break;
-		}
-		}
-		return result;
+		ping();
 	}
 
 	int get_status(protocol_status* status) const override {
@@ -112,18 +88,22 @@ public:
 			status->flags |= PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES;
 		}
 		return NO_ERROR;
-	}
+	} 
+    bool has_unacknowledged_requests() {
+        return channel.has_unacknowledged_requests();
+    }
+    void log_unacknowledged_requests() {
+        LOG(INFO, "All Confirmed messages sent: client(%s) server(%s)",
+            channel.client_messages().has_messages() ? "no" : "yes",
+            channel.server_messages().has_unacknowledged_requests() ? "no" : "yes");
+    }
+    void clear_unacknowledged_requests() {
 
+    }
 
-	/**
-	 * Ensures that all outstanding sent coap messages have been acknowledged.
-	 */
-	int wait_confirmable(uint32_t timeout=60000);
-
-	void wake()
-	{
-		ping();
-	}
+    bool cancel_message(message_handle_t msg) {
+        return channel.cancel_message(msg);
+    }
 };
 
 

@@ -31,12 +31,15 @@
 #include "protocol.h"
 #include "lightssl_message_channel.h"
 #include "coap_channel.h"
+#include "protocol_mixin.h"
+#include "logging.h"
 
 namespace particle {
 namespace protocol {
 
-class LightSSLProtocol : public Protocol
+class LightSSLProtocol : public ProtocolMixin<LightSSLProtocol, Protocol>
 {
+    friend class ProtocolMixin<LightSSLProtocol, Protocol>;
 	CoAPChannel<LightSSLMessageChannel> channel;
 
 	static void handle_seed(const uint8_t* data, size_t len)
@@ -46,7 +49,7 @@ class LightSSLProtocol : public Protocol
 
 public:
 
-	LightSSLProtocol() : Protocol(channel) {}
+	LightSSLProtocol() : ProtocolMixin(channel) {}
 
 	void init(const char *id,
 	          const SparkKeys &keys,
@@ -77,16 +80,34 @@ public:
 		return len;
 	}
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t data) override;
+	void wake() {
+	    // nothing to do here. On waking up the cloud connection and session is started anew.
+	};
+
+	bool has_unacknowledged_requests() {
+        return ack_handlers.size() > 0;
+    }
+
+    void log_unacknowledged_requests() {
+        LOG(INFO, "All Confirmed messages sent: %s",
+            (ack_handlers.size() != 0) ? "no" : "yes");
+    }
+
+    void clear_unacknowledged_requests() {
+        ack_handlers.clear();
+    }
 
 	virtual int get_status(protocol_status* status) const override
 	{
 		SPARK_ASSERT(status);
 		status->flags = 0;
 		return 0;
-	}
+    }
 
-	int wait_confirmable(uint32_t timeout=5000);
+    bool cancel_message(message_handle_t msg) {
+        // over TCP this is a no-op due to the speed of the connection.
+        return false;
+    }
 
 };
 

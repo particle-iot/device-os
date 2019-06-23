@@ -1,5 +1,6 @@
 #pragma once
 
+#include "protocol_defs.h"
 #include "message_channel.h"
 #include "service_debug.h"
 #include "protocol_defs.h"
@@ -27,6 +28,7 @@ namespace protocol
  */
 class Protocol
 {
+protected:
 	/**
 	 * The message channel that sends and receives message packets.
 	 */
@@ -295,6 +297,13 @@ protected:
 	void update_subscription_crc();
 
 	uint32_t application_state_checksum();
+
+
+
+    /**
+     * Ensures that all outstanding sent coap messages have been acknowledged.
+     */
+    int wait_confirmable(uint32_t timeout=60000, uint32_t minimum_delay=0);
 
 public:
 	Protocol(MessageChannel& channel) :
