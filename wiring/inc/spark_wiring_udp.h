@@ -241,6 +241,13 @@ public:
      */
     int leaveMulticast(const IPAddress& ip);
 
+    /*
+     * Returns the socket handle
+     */
+    sock_handle_t socket() {
+        return _sock;
+    }
+
     using Print::write;
 };
 
