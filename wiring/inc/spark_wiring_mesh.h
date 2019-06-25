@@ -85,6 +85,13 @@ public:
 
     int subscribe(const char* prefix, EventHandler handler);
 
+    // This shouldn't be public, but we use it in tests
+    int uninitializeUdp();
+
+    static const uint16_t PORT = 36969;
+    static constexpr const char* MULTICAST_ADDR = "ff03::1:1001";
+    static const uint16_t MAX_PACKET_LEN = 1232;
+
 private:
     class Subscriptions {
         FilteringEventHandler event_handlers[5];
@@ -108,13 +115,8 @@ private:
         void send(const char* event_name, const char* data);
     };
 
-    static const uint16_t PORT = 36969;
-    static constexpr const char* MULTICAST_ADDR = "ff03::1:1001";
-    static const uint16_t MAX_PACKET_LEN = 1232;
-
     static int fetchMulticastAddress(IPAddress& mcastAddr);
     int initializeUdp();
-    int uninitializeUdp();
     int poll();
 
     std::unique_ptr<UDP> udp_;
