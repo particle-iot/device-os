@@ -22,6 +22,8 @@
 #if Wiring_Mesh
 
 test(MESH_01_PublishWithoutSubscribeStillReadsDataOutOfPubSubSocket) {
+    // https://github.com/particle-iot/device-os/issues/1828
+
     static const constexpr unsigned MAX_ITERATIONS = 1000;
 
     assertTrue(network_has_credentials(NETWORK_INTERFACE_MESH, 0, nullptr));
@@ -52,11 +54,15 @@ test(MESH_01_PublishWithoutSubscribeStillReadsDataOutOfPubSubSocket) {
     addr.raw().v = 6;
     assertEqual(inet_inet_pton(AF_INET6, MeshPublish::MULTICAST_ADDR, addr.raw().ipv6), 1);
 
+    // Send a number of random data packets
     Random rng;
     for (unsigned i = 0; i < MAX_ITERATIONS; i++) {
         rng.gen((char*)udp->buffer(), MeshPublish::MAX_PACKET_LEN);
         udp->sendPacket(udp->buffer(), MeshPublish::MAX_PACKET_LEN, addr, MeshPublish::PORT);
     }
+
+    // Ensure that packet buffers were freed correctly by simply sending a cloud publish
+    assertTrue((bool)Particle.publish("test", "123", WITH_ACK));
 }
 
 #endif // Wiring_Mesh
