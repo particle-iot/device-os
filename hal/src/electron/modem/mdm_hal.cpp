@@ -1346,9 +1346,9 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         if (RESP_OK != waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
             goto failure;
         }
-        // +CREG, +CGREG, +COPS does not contain <AcT> for G350 devices.
-        // After we are registered to CSD or PSD, populate _net.act with ACT_GSM to ensure
-        // Device Diagnostics and RSSI() API have a RAT for conversion lookup purposes.
+        // +CREG, +CGREG, +COPS do not contain <AcT> for G350 devices.
+        // Force _net.act to ACT_GSM to ensure Device Diagnostics and
+        // RSSI() API's have a RAT for conversion lookup purposes.
         if (_dev.dev == DEV_SARA_G350) {
             _net.act = ACT_GSM;
         }
@@ -1391,6 +1391,13 @@ bool MDMParser::getSignalStrength(NetStatus &status)
         sendFormated("AT+COPS?\r\n");
         if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
             goto cleanup;
+        }
+
+        // +CREG, +CGREG, +COPS do not contain <AcT> for G350 devices.
+        // Force _net.act to ACT_GSM to ensure Device Diagnostics and
+        // RSSI() API's have a RAT for conversion lookup purposes.
+        if (_dev.dev == DEV_SARA_G350) {
+            _net.act = ACT_GSM;
         }
 
         sendFormated("AT+CSQ\r\n");
@@ -1453,6 +1460,13 @@ bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_) {
         cgi_.version = CGI_VERSION_1;
         break;
     }
+    }
+
+    // +CREG, +CGREG, +COPS do not contain <AcT> for G350 devices.
+    // Force _net.act to ACT_GSM to ensure Device Diagnostics and
+    // RSSI() API's have a RAT for conversion lookup purposes.
+    if (_dev.dev == DEV_SARA_G350) {
+        _net.act = ACT_GSM;
     }
 
     // CGI value has been updated successfully
