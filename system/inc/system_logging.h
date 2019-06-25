@@ -182,6 +182,8 @@ extern "C" {
 /**
  * Set the command handler callback.
  *
+ * The user module sets this callback in order to receive logging configuration commands from the system.
+ *
  * @param handler A callback.
  * @param user_data User data.
  * @param reserved This argument should be set to NULL.

@@ -210,6 +210,8 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         }
         break;
     }
+    // These requests are not going to be supported in future versions of Device OS and were disabled
+    // to free some flash memory
 #if 0 // Wiring_WiFi == 1 && !HAL_PLATFORM_NCP
     /* wifi requests */
     case CTRL_REQUEST_WIFI_GET_ANTENNA: {
@@ -313,6 +315,8 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::firmwareUpdateDataRequest(req));
         break;
     }
+    // These requests are not going to be supported in future versions of Device OS and were disabled
+    // to free some flash memory
 #if 0
     case CTRL_REQUEST_DESCRIBE_STORAGE: {
         setResult(req, control::describeStorageRequest(req));

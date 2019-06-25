@@ -31,8 +31,6 @@ void log_set_command_handler(log_command_handler_fn handler, void* user_data, vo
 }
 
 int log_process_command(const log_command* cmd, log_command_result** result) {
-    if (!g_logCommandHandler) {
-        return SYSTEM_ERROR_DISABLED;
-    }
+    CHECK_TRUE(g_logCommandHandler, SYSTEM_ERROR_DISABLED);
     return g_logCommandHandler(cmd, result, g_logCommandHandlerData);
 }

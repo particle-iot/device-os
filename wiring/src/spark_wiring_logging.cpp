@@ -568,8 +568,10 @@ Print* spark::DefaultOutputStreamFactory::createStream(log_stream_type type, uns
 void spark::DefaultOutputStreamFactory::destroyStream(Print *stream) {
 #if PLATFORM_ID != 3
     if (stream == &Serial) {
+#if !HAL_PLATFORM_MESH
         // FIXME: Uninitializing the primary USB serial detaches a Gen 3 device from the host
-        // Serial.end();
+        Serial.end();
+#endif
         return;
     }
 #if Wiring_USBSerial1
