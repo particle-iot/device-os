@@ -303,7 +303,7 @@ ASSERT ( chk_system_pre_init_start < chk_system_pre_init_end , "system_part1_pre
 ASSERT ( chk_system_init_start < chk_system_init_end , "system_part1_init function not included" );
 
 /* Heap assertion*/
-ASSERT ( link_heap_location + min_heap_size <= __Stack_Init, "Insufficient room for heap" );
+ASSERT ( link_heap_location + _heap_min_size <= __Stack_Init, "Insufficient room for heap" );
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
 
