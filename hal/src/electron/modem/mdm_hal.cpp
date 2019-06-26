@@ -631,7 +631,7 @@ bool MDMParser::_powerOn(void)
     LOCK();
 
     /* Initialize I/O */
-    STM32_Pin_Info* PIN_MAP_PARSER = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP_PARSER = HAL_Pin_Map();
     // This pin tends to stay low when floating on the output of the buffer (PWR_UB)
     // It shouldn't hurt if it goes low temporarily on STM32 boot, but strange behavior
     // was noticed when it was left to do whatever it wanted. By adding a 100k pull up

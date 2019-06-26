@@ -293,7 +293,7 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
         pin = spiMap[spi].SPI_SS_Pin;
 
     spiState[spi].SPI_SS_Pin = pin;
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     spiState[spi].mode = mode;
 

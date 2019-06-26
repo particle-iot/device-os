@@ -57,7 +57,7 @@ NRF5x_PWM_Info PWM_MAP[NRF5X_PWM_COUNT] = {
 };
 
 static inline uint8_t get_nrf_pin(uint8_t pin) {
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (pin == PIN_INVALID) {
         return pin;
     }
@@ -121,7 +121,7 @@ int uninit_pwm_pin(uint16_t pin) {
     uint32_t         ret_code;
     pwm_setting_t    pwm_setting;
 
-    NRF5x_Pin_Info*  PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info*  PIN_MAP = HAL_Pin_Map();
     uint8_t          pwm_num = PIN_MAP[pin].pwm_instance;
     uint8_t          pwm_channel = PIN_MAP[pin].pwm_channel;
 
@@ -199,7 +199,7 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency) {
     ret_code_t      ret_code;
     pwm_setting_t   pwm_setting;
 
-    NRF5x_Pin_Info*  PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info*  PIN_MAP = HAL_Pin_Map();
     uint8_t          pwm_num = PIN_MAP[pin].pwm_instance;
     uint8_t          pwm_channel = PIN_MAP[pin].pwm_channel;
 
@@ -272,7 +272,7 @@ static int init_pwm_pin(uint32_t pin, uint32_t value, uint32_t frequency) {
 
 void HAL_PWM_Reset_Pin(uint16_t pin) {
     // Reset pwm resolution
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     if (pin >= TOTAL_PINS || PIN_MAP[pin].pwm_instance == PWM_INSTANCE_NONE) {
         return;
@@ -324,7 +324,7 @@ void HAL_PWM_Write_With_Frequency_Ext(uint16_t pin, uint32_t value, uint32_t pwm
         return;
     }
 
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (PIN_MAP[pin].pwm_instance == PWM_INSTANCE_NONE) {
         return;
     }
@@ -347,7 +347,7 @@ uint32_t HAL_PWM_Get_Frequency_Ext(uint16_t pin) {
         return 0;
     }
 
-    NRF5x_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
     uint8_t pwm_num = pin_info->pwm_instance;
     if (pwm_num == PWM_INSTANCE_NONE) {
         return 0;
@@ -361,7 +361,7 @@ uint32_t HAL_PWM_Get_AnalogValue_Ext(uint16_t pin) {
         return 0;
     }
 
-    NRF5x_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
     uint8_t pwm_num = pin_info->pwm_instance;
     uint8_t pwm_channel = pin_info->pwm_channel;
     if (pwm_num == PWM_INSTANCE_NONE) {
@@ -392,7 +392,7 @@ uint8_t HAL_PWM_Get_Resolution(uint16_t pin) {
         return 0;
     }
 
-    NRF5x_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
     return pin_info->pwm_resolution;
 }
 
@@ -401,6 +401,6 @@ void HAL_PWM_Set_Resolution(uint16_t pin, uint8_t resolution) {
         return;
     }
 
-    NRF5x_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
     pin_info->pwm_resolution = resolution;
 }

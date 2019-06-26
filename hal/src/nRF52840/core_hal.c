@@ -643,7 +643,7 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
     __ISB();
 
 
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     // Suspend all GPIOTE interrupts
     HAL_Interrupts_Suspend();
@@ -993,7 +993,7 @@ int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
     nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
 
     // Configure wakeup pin
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[WKP].gpio_port, PIN_MAP[WKP].gpio_pin);
     nrf_gpio_cfg_sense_input(nrf_pin, NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
 

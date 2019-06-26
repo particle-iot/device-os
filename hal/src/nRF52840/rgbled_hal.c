@@ -247,7 +247,7 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
         return;
     }
 
-    NRF5x_Pin_Info* pinmap = HAL_Pin_Map();
+    Hal_Pin_Info* pinmap = HAL_Pin_Map();
 
     if (pinmap[pin].pwm_instance == PWM_INSTANCE_NONE) {
         return;

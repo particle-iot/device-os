@@ -721,7 +721,7 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
     int32_t reason = SYSTEM_ERROR_UNKNOWN;
 
     if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
-        STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+        Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
         for (unsigned i = 0; i < pins_count; i++) {
             pin_t wakeUpPin = pins[i];
             if (EXTI_GetITStatus(PIN_MAP[wakeUpPin].gpio_pin) != RESET) {
@@ -1548,7 +1548,7 @@ static inline uint32_t Tim_Peripheral_To_Af(TIM_TypeDef* tim) {
 
 void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootloader, uint8_t button, void *reserved) {
     (void)button; // unused
-    STM32_Pin_Info* pinmap = HAL_Pin_Map();
+    Hal_Pin_Info* pinmap = HAL_Pin_Map();
     if (pin > TOTAL_PINS)
         return;
 
@@ -1645,7 +1645,7 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
     if (pin > TOTAL_PINS)
         return;
 
-    STM32_Pin_Info* pinmap = HAL_Pin_Map();
+    Hal_Pin_Info* pinmap = HAL_Pin_Map();
 
     if (!pinmap[pin].timer_peripheral)
         return;

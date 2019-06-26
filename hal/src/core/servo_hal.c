@@ -112,7 +112,7 @@ void HAL_Servo_Attach(uint16_t pin)
 
 void HAL_Servo_Detach(uint16_t pin)
 {
-  const STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+  const Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
   // Disable timer's channel
   switch (pin_info->timer_ch)

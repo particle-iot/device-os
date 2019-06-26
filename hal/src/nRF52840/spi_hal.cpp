@@ -150,7 +150,7 @@ static inline uint8_t get_nrf_pin_num(uint8_t pin) {
         return NRFX_SPIM_PIN_NOT_USED;
     }
 
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 }
 

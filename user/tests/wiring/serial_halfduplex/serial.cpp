@@ -102,7 +102,7 @@ void serialReadLineNoEcho(Stream *serialObj, char *dst, int max_len, system_tick
 void switchPinToAfOpenDrainWithPullUp(pin_t pin)
 {
 #if PLATFORM_ID != 0
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     pin_t gpio_pin = PIN_MAP[pin].gpio_pin;
     GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
     GPIO_InitTypeDef GPIO_InitStructure = {0};

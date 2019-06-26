@@ -140,8 +140,8 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode)
  */
 void HAL_GPIO_Save_Pin_Mode(uint16_t pin)
 {
-  // Save pin mode in STM32_Pin_Info.user_property
-  STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+  // Save pin mode in Hal_Pin_Info.user_property
+  Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
   uint32_t uprop = (uint32_t)PIN_MAP[pin].user_property;
   uprop = (uprop & 0xFFFF) | (((uint32_t)PIN_MAP[pin].pin_mode & 0xFF) << 16) | (0xAA << 24);
   PIN_MAP[pin].user_property = (int32_t)uprop;
@@ -152,8 +152,8 @@ void HAL_GPIO_Save_Pin_Mode(uint16_t pin)
  */
 PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin)
 {
-  // Recall pin mode in STM32_Pin_Info.user_property
-  STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+  // Recall pin mode in Hal_Pin_Info.user_property
+  Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
   uint32_t uprop = (uint32_t)PIN_MAP[pin].user_property;
   if ((uprop & 0xFF000000) != 0xAA000000)
       return PIN_MODE_NONE;
