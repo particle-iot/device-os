@@ -1,3 +1,10 @@
+## 1.1.1
+
+### BUGFIXES
+
+- [Electron/LTE] disables all eDRX AcT types [ch32051] [#1762](https://github.com/particle-iot/device-os/pull/1762)
+- [LTE] cellular fixes [#1824](https://github.com/particle-iot/device-os/pull/1824)
+
 ## 1.1.1-rc.1
 
 ### BUGFIXES
