@@ -46,6 +46,7 @@
 
 void HAL_Servo_Attach(uint16_t pin)
 {
+  Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
   TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
   TIM_OCInitTypeDef  TIM_OCInitStructure;
 
@@ -142,6 +143,7 @@ void HAL_Servo_Detach(uint16_t pin)
 
 void HAL_Servo_Write_Pulse_Width(uint16_t pin, uint16_t pulseWidth)
 {
+  Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
   //SERVO_TIM_CCR = pulseWidth * (SERVO_TIM_ARR + 1) * SERVO_TIM_PWM_FREQ / 1000000;
   uint16_t SERVO_TIM_CCR = pulseWidth;
 
@@ -165,6 +167,7 @@ void HAL_Servo_Write_Pulse_Width(uint16_t pin, uint16_t pulseWidth)
 
 uint16_t HAL_Servo_Read_Pulse_Width(uint16_t pin)
 {
+  Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
   uint16_t SERVO_TIM_CCR = 0x0000;
 
   if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
@@ -192,6 +195,7 @@ uint16_t HAL_Servo_Read_Frequency(uint16_t pin)
 {
     uint16_t TIM_ARR = 0;
     uint16_t Servo_Frequency = 0;
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     if(PIN_MAP[pin].timer_peripheral == TIM2)
     {
