@@ -21,7 +21,7 @@
 #include <nrf_timer.h>
 #include "usart_hal.h"
 #include "ringbuffer.h"
-#include "pinmap_impl.h"
+#include "pinmap_hal.h"
 #include "check_nrf.h"
 #include "gpio_hal.h"
 #include <nrfx_prs.h>
