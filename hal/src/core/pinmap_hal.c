@@ -16,7 +16,6 @@
  */
 
 #include "pinmap_hal.h"
-#include "pinmap_impl.h"
 #include <stddef.h>
 
 #define NONE CHANNEL_NONE

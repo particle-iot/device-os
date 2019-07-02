@@ -17,42 +17,11 @@
 
 #pragma once
 
-#include "stm32f10x.h"
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct Hal_Pin_Info {
-    GPIO_TypeDef    *gpio_peripheral;
-    pin_t           gpio_pin;
-    uint8_t         gpio_pin_source;
-    uint8_t         adc_channel;
-    TIM_TypeDef     *timer_peripheral;
-    uint16_t        timer_ch;
-    PinMode         pin_mode;
-    uint16_t        timer_ccr;
-    int32_t         user_property;
-} Hal_Pin_Info;
-
-// For compatibility
-typedef Hal_Pin_Info STM32_Pin_Info;
-
-Hal_Pin_Info *HAL_Pin_Map(void);
-
-extern void HAL_GPIO_Save_Pin_Mode(uint16_t pin);
-extern PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin);
-
-#define CHANNEL_NONE ((uint8_t)0xFF)
-#define ADC_CHANNEL_NONE CHANNEL_NONE
-
-#define TIM_PWM_FREQ        500  //500Hz
-
-#define SERVO_TIM_PWM_FREQ  50   //50Hz                                                                                      //20ms = 50Hz
-
-#define TOTAL_PINS 24
-#define TOTAL_DAC_PINS 0
-#define TOTAL_ANALOG_PINS 8
+#define TOTAL_PINS 47
+#define TOTAL_DAC_PINS 2
+#define TOTAL_ANALOG_PINS 12
 #define FIRST_ANALOG_PIN 10
 
 #define D0 0
@@ -72,7 +41,6 @@ extern PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin);
 #define A5 15
 #define A6 16
 
-// WKP pin is also an ADC on Photon
 #define A7 17
 #define WKP 17
 
@@ -80,6 +48,8 @@ extern PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin);
 #define TX 19
 
 #define BTN 20
+
+// WKP pin on Photon
 
 // Timer pins
 #define TIMER2_CH1 10
@@ -96,14 +66,14 @@ extern PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin);
 #define TIMER4_CH2 0
 
 // SPI pins
-#define SS   12
-#define SCK  13
+#define SS 12
+#define SCK 13
 #define MISO 14
 #define MOSI 15
 
 // I2C pins
-#define SDA  0
-#define SCL  1
+#define SDA 0
+#define SCL 1
 
 // DAC pins on Photon
 #define DAC1 16
@@ -114,6 +84,33 @@ extern PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin);
 #define RGBG 22
 #define RGBB 23
 
-#ifdef __cplusplus
-}
-#endif
+// ELECTRON pins
+#define B0 24
+#define B1 25
+#define B2 26
+#define B3 27
+#define B4 28
+#define B5 29
+#define C0 30
+#define C1 31
+#define C2 32
+#define C3 33
+#define C4 34
+#define C5 35
+
+// The following pins are only defined for easy access during development.
+// Will be removed later as they are internal I/O and users
+// should not have too easy of access or bad code could do harm.
+#define TXD_UC 36
+#define RXD_UC 37
+#define RI_UC 38
+#define CTS_UC 39
+#define RTS_UC 40
+#define PWR_UC 41
+#define RESET_UC 42
+#define LVLOE_UC 43
+#define PM_SDA_UC 44
+#define PM_SCL_UC 45
+#define LOW_BAT_UC 46
+
+#endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION

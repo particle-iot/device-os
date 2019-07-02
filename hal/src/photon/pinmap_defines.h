@@ -17,44 +17,14 @@
 
 #pragma once
 
-#include "stm32f10x.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct Hal_Pin_Info {
-    GPIO_TypeDef    *gpio_peripheral;
-    pin_t           gpio_pin;
-    uint8_t         gpio_pin_source;
-    uint8_t         adc_channel;
-    TIM_TypeDef     *timer_peripheral;
-    uint16_t        timer_ch;
-    PinMode         pin_mode;
-    uint16_t        timer_ccr;
-    int32_t         user_property;
-} Hal_Pin_Info;
-
-// For compatibility
-typedef Hal_Pin_Info STM32_Pin_Info;
-
-Hal_Pin_Info *HAL_Pin_Map(void);
-
-extern void HAL_GPIO_Save_Pin_Mode(uint16_t pin);
-extern PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin);
-
-#define CHANNEL_NONE ((uint8_t)0xFF)
-#define ADC_CHANNEL_NONE CHANNEL_NONE
-
-#define TIM_PWM_FREQ        500  //500Hz
-
-#define SERVO_TIM_PWM_FREQ  50   //50Hz                                                                                      //20ms = 50Hz
+#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION
 
 #define TOTAL_PINS 24
-#define TOTAL_DAC_PINS 0
+#define TOTAL_DAC_PINS 2
 #define TOTAL_ANALOG_PINS 8
 #define FIRST_ANALOG_PIN 10
 
+// Digital pins
 #define D0 0
 #define D1 1
 #define D2 2
@@ -64,6 +34,7 @@ extern PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin);
 #define D6 6
 #define D7 7
 
+// Analog pins
 #define A0 10
 #define A1 11
 #define A2 12
@@ -96,14 +67,14 @@ extern PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin);
 #define TIMER4_CH2 0
 
 // SPI pins
-#define SS   12
-#define SCK  13
+#define SS 12
+#define SCK 13
 #define MISO 14
 #define MOSI 15
 
 // I2C pins
-#define SDA  0
-#define SCL  1
+#define SDA 0
+#define SCL 1
 
 // DAC pins on Photon
 #define DAC1 16
@@ -114,6 +85,83 @@ extern PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin);
 #define RGBG 22
 #define RGBB 23
 
-#ifdef __cplusplus
-}
-#endif
+#endif // PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION
+
+#if PLATFORM_ID == PLATFORM_P1
+
+#define TOTAL_PINS 31
+#define TOTAL_DAC_PINS 2
+#define TOTAL_ANALOG_PINS 13
+#define FIRST_ANALOG_PIN 10
+
+// Digital pins
+#define D0 0
+#define D1 1
+#define D2 2
+#define D3 3
+#define D4 4
+#define D5 5
+#define D6 6
+#define D7 7
+
+// Analog pins
+#define A0 10
+#define A1 11
+#define A2 12
+#define A3 13
+#define A4 14
+#define A5 15
+#define A6 16
+
+// WKP pin is also an ADC on Photon
+#define A7 17
+#define WKP 17
+
+#define RX 18
+#define TX 19
+
+#define BTN 20
+
+// Timer pins
+#define TIMER2_CH1 10
+#define TIMER2_CH2 11
+#define TIMER2_CH3 18
+#define TIMER2_CH4 19
+
+#define TIMER3_CH1 14
+#define TIMER3_CH2 15
+#define TIMER3_CH3 16
+#define TIMER3_CH4 17
+
+#define TIMER4_CH1 1
+#define TIMER4_CH2 0
+
+// SPI pins
+#define SS 12
+#define SCK 13
+#define MISO 14
+#define MOSI 15
+
+// I2C pins
+#define SDA 0
+#define SCL 1
+
+// DAC pins on Photon
+#define DAC1 16
+#define DAC2 13
+
+// RGB LED pins
+#define RGBR 21
+#define RGBG 22
+#define RGBB 23
+
+// P1 SPARE pins
+#define P1S0 24
+#define P1S1 25
+#define P1S2 26
+#define P1S3 27
+#define P1S4 28
+#define P1S5 29
+#define P1S6 30
+
+#endif // PLATFORM_ID == PLATFORM_P1

@@ -16,7 +16,6 @@
  */
 
 #include "pinmap_hal.h"
-#include "pinmap_impl.h"
 #include <stddef.h>
 
 #define NONE CHANNEL_NONE
@@ -89,32 +88,6 @@ Hal_Pin_Info __PIN_MAP[TOTAL_PINS] = {
 /* P1S4          - 28 */ { GPIOC, GPIO_Pin_13, GPIO_PinSource13, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
 /* P1S5          - 29 */ { GPIOC, GPIO_Pin_1, GPIO_PinSource1, ADC_Channel_11, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
 /* P1S6          - 30 */ { GPIOA, GPIO_Pin_8, GPIO_PinSource8, NONE, NONE, TIM1, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
-#endif
-
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-/* B0            - 24 */,{ GPIOC, GPIO_Pin_8, GPIO_PinSource8, NONE, NONE, TIM8, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
-/* B1            - 25 */ { GPIOC, GPIO_Pin_6, GPIO_PinSource6, NONE, NONE, TIM8, TIM_Channel_1, PIN_MODE_NONE, 0, 0 },
-/* B2            - 26 */ { GPIOB, GPIO_Pin_0, GPIO_PinSource0, ADC_Channel_8, NONE, TIM3, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
-/* B3            - 27 */ { GPIOB, GPIO_Pin_1, GPIO_PinSource1, ADC_Channel_9, NONE, TIM3, TIM_Channel_4, PIN_MODE_NONE, 0, 0 },
-/* B4            - 28 */ { GPIOC, GPIO_Pin_0, GPIO_PinSource0, ADC_Channel_10, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* B5            - 29 */ { GPIOC, GPIO_Pin_1, GPIO_PinSource1, ADC_Channel_11, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* C0            - 30 */ { GPIOD, GPIO_Pin_2, GPIO_PinSource2, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* C1            - 31 */ { GPIOC, GPIO_Pin_12, GPIO_PinSource12, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* C2            - 32 */ { GPIOC, GPIO_Pin_11, GPIO_PinSource11, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* C3            - 33 */ { GPIOC, GPIO_Pin_10, GPIO_PinSource10, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* C4            - 34 */ { GPIOB, GPIO_Pin_9, GPIO_PinSource9, NONE, NONE, TIM4, TIM_Channel_4, PIN_MODE_NONE, 0, 0 },
-/* C5            - 35 */ { GPIOB, GPIO_Pin_8, GPIO_PinSource8, NONE, NONE, TIM4, TIM_Channel_3, PIN_MODE_NONE, 0, 0 },
-/* TXD_UC        - 36 */ { GPIOB, GPIO_Pin_10, GPIO_PinSource10, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* RXD_UC        - 37 */ { GPIOB, GPIO_Pin_11, GPIO_PinSource11, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* RI_UC         - 38 */ { GPIOB, GPIO_Pin_12, GPIO_PinSource12, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* CTS_UC        - 39 */ { GPIOB, GPIO_Pin_13, GPIO_PinSource13, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* RTS_UC        - 40 */ { GPIOB, GPIO_Pin_14, GPIO_PinSource14, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* PWR_UC        - 41 */ { GPIOB, GPIO_Pin_2, GPIO_PinSource2, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* RESET_UC      - 42 */ { GPIOC, GPIO_Pin_4, GPIO_PinSource4, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* LVLOE_UC      - 43 */ { GPIOB, GPIO_Pin_15, GPIO_PinSource15, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* PM_SDA_UC     - 44 */ { GPIOC, GPIO_Pin_9, GPIO_PinSource9, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* PM_SCL_UC     - 45 */ { GPIOA, GPIO_Pin_8, GPIO_PinSource8, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
-/* LOW_BAT_UC    - 46 */ { GPIOC, GPIO_Pin_13, GPIO_PinSource13, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 },
 #endif
 };
 
