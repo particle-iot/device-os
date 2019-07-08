@@ -29,6 +29,10 @@ LOG_SOURCE_CATEGORY("sys.power")
 // For system flags
 #include "system_update.h"
 
+#if HAL_INCREASE_CHARGING_CURRENT_WHEN_POWERED_BY_VUSB
+#include "usb_hal.h"
+#endif
+
 #if (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
 
 namespace {
@@ -148,6 +152,23 @@ void PowerManager::handleUpdate() {
     uint8_t vbus_stat = status >> 6;
     switch (vbus_stat) {
       case 0x01:
+#if HAL_INCREASE_CHARGING_CURRENT_WHEN_POWERED_BY_VUSB
+        // Workaround: 
+        // when Gen3 device is powered via VUSB, USB peripheral gets no power supply.
+        // In this case BQ24195 will wrongly assume the device is connected to a USB host.
+        // This workaround is to manually increase charging current limit from 500mA to 900mA
+        // and decrease input voltage limit to 3880mV.
+        // More details are in clubhouse [CH34730]
+        if (HAL_USB_Get_State() == HAL_USB_STATE_DETACHED) {
+            if (power.getInputCurrentLimit() != DEFAULT_INPUT_CURRENT_LIMIT) {
+                power.setInputCurrentLimit(DEFAULT_INPUT_CURRENT_LIMIT);
+                power.setInputVoltageLimit(3880);
+            }
+        } else {
+            power.setInputCurrentLimit(USB_HOST_INPUT_CURRENT_LIMIT);
+            power.setInputVoltageLimit(4360);
+        }
+#endif
         src = POWER_SOURCE_USB_HOST;
         break;
       case 0x02:

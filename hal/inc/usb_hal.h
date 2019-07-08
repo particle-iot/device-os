@@ -78,6 +78,16 @@ typedef enum {
   HAL_USB_VENDOR_REQUEST_STATE_RESET = 2
 } HAL_USB_VendorRequestState;
 
+typedef enum {
+    HAL_USB_STATE_DETACHED,
+    HAL_USB_STATE_ATTACHED,
+    HAL_USB_STATE_POWERED,
+    HAL_USB_STATE_DEFAULT,
+    HAL_USB_STATE_ADDRESSED,
+    HAL_USB_STATE_CONFIGURED,
+    HAL_USB_STATE_SUSPENDED
+} HAL_USB_State;
+
 typedef uint8_t (*HAL_USB_Vendor_Request_Callback)(HAL_USB_SetupRequest* req, void* p);
 typedef uint8_t (*HAL_USB_Vendor_Request_State_Callback)(HAL_USB_VendorRequestState state, void* p);
 #endif // USB_VENDOR_REQUEST_ENABLE
@@ -165,6 +175,7 @@ void HAL_USB_Set_Vendor_Request_State_Callback(HAL_USB_Vendor_Request_State_Call
 void HAL_USB_Init();
 void HAL_USB_Attach();
 void HAL_USB_Detach();
+HAL_USB_State HAL_USB_Get_State();
 #endif
 
 #ifdef USB_CDC_ENABLE

@@ -2,6 +2,7 @@
 #define  _USB_HAL_CDC_H
 
 #include <stdint.h>
+#include "usb_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -10,6 +11,7 @@ extern "C" {
 int usb_hal_init(void);
 bool usb_hal_is_enabled(void);
 int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16_t tx_buf_size);
+HAL_USB_State usb_hal_get_state();
 int usb_uart_send(uint8_t data[], uint16_t size);
 int usb_uart_available_data(void);
 
