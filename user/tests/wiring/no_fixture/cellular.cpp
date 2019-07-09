@@ -142,6 +142,22 @@ test(CELLULAR_06_resolve) {
     assertEqual(addr, 0);
 }
 
+// FIXME: This test is failing on Gen 3 Boron / B SoM as of 1.1.0 or earlier
+test(CELLULAR_07_rssi_is_valid) {
+    connect_to_cloud(6*60*1000);
+    CellularSignal s;
+    for (int x = 0; x < 10; x++) {
+        s = Cellular.RSSI();
+        if (s.rssi < 0) {
+            break;
+        }
+        Serial.println(s);
+        delay(5000);
+    }
+    assertLessOrEqual(s.rssi, -20);
+    assertMoreOrEqual(s.rssi, -150);
+}
+
 #define LOREM "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque ut elit nec mi bibendum mollis. Nam nec nisl mi. Donec dignissim iaculis purus, ut condimentum arcu semper quis. Phasellus efficitur ut arcu ac dignissim. In interdum sem id dictum luctus. Ut nec mattis sem. Nullam in aliquet lacus. Donec egestas nisi volutpat lobortis sodales. Aenean elementum magna ipsum, vitae pretium tellus lacinia eu. Phasellus commodo nisi at quam tincidunt, tempor gravida mauris facilisis. Duis tristique ligula ac pulvinar consectetur. Cras aliquam, leo ut eleifend molestie, arcu odio semper odio, quis sollicitudin metus libero et lorem. Donec venenatis congue commodo. Vivamus mattis elit metus, sed fringilla neque viverra eu. Phasellus leo urna, elementum vel pharetra sit amet, auctor non sapien. Phasellus at justo ac augue rutrum vulputate. In hac habitasse platea dictumst. Pellentesque nibh eros, placerat id laoreet sed, dapibus efficitur augue. Praesent pretium diam ac sem varius fermentum. Nunc suscipit dui risus sed"
 
 test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
