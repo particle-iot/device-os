@@ -47,6 +47,16 @@
 extern "C" {
 #endif
 
+typedef enum {
+    HAL_USB_STATE_DETACHED,
+    HAL_USB_STATE_ATTACHED,
+    HAL_USB_STATE_POWERED,
+    HAL_USB_STATE_DEFAULT,
+    HAL_USB_STATE_ADDRESSED,
+    HAL_USB_STATE_CONFIGURED,
+    HAL_USB_STATE_SUSPENDED
+} HAL_USB_State;
+
 #ifdef USB_VENDOR_REQUEST_ENABLE
 typedef struct HAL_USB_SetupRequest {
   union {
@@ -77,16 +87,6 @@ typedef enum {
    */
   HAL_USB_VENDOR_REQUEST_STATE_RESET = 2
 } HAL_USB_VendorRequestState;
-
-typedef enum {
-    HAL_USB_STATE_DETACHED,
-    HAL_USB_STATE_ATTACHED,
-    HAL_USB_STATE_POWERED,
-    HAL_USB_STATE_DEFAULT,
-    HAL_USB_STATE_ADDRESSED,
-    HAL_USB_STATE_CONFIGURED,
-    HAL_USB_STATE_SUSPENDED
-} HAL_USB_State;
 
 typedef uint8_t (*HAL_USB_Vendor_Request_Callback)(HAL_USB_SetupRequest* req, void* p);
 typedef uint8_t (*HAL_USB_Vendor_Request_State_Callback)(HAL_USB_VendorRequestState state, void* p);
