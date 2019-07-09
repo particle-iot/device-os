@@ -2133,9 +2133,8 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
             break;
         }
         case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST: {
-            LOG_DEBUG(TRACE, "BLE GAP event: exchange MTU request.");
-            const ble_gatts_evt_exchange_mtu_request_t& mtuRequest = event->evt.gatts_evt.params.exchange_mtu_request;
-            LOG_DEBUG(TRACE, "BLE GATT Server event: exchange ATT MTU request: %d, desired: %d", mtuRequest.client_rx_mtu, connMgr->desiredAttMtu_);
+            LOG_DEBUG(TRACE, "BLE GATT Server event: exchange ATT MTU request: %d, desired: %d",
+                    event->evt.gatts_evt.params.exchange_mtu_request.client_rx_mtu, connMgr->desiredAttMtu_);
             int ret = sd_ble_gatts_exchange_mtu_reply(event->evt.gatts_evt.conn_handle, connMgr->desiredAttMtu_);
             if (ret != NRF_SUCCESS) {
                 LOG_DEBUG(TRACE, "sd_ble_gatts_exchange_mtu_reply() failed: %d", ret);
