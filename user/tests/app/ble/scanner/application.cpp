@@ -40,9 +40,9 @@ void loop() {
 
         LOG(TRACE, "%d devices are found:", count);
         for (int i = 0; i < count; i++) {
+            BleAddress address = results[i].address;
             LOG(TRACE, " -------- MAC: %02X:%02X:%02X:%02X:%02X:%02X | RSSI: %dBm --------",
-                    results[i].address[0], results[i].address[1], results[i].address[2],
-                    results[i].address[3], results[i].address[4], results[i].address[5], results[i].rssi);
+                    address[0], address[1], address[2], address[3], address[4], address[5], results[i].rssi);
 
             String name = results[i].advertisingData.deviceName();
             if (name.length() > 0) {

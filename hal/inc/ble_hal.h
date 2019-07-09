@@ -101,6 +101,22 @@ typedef enum hal_ble_uuid_type_t {
     BLE_UUID_TYPE_128BIT_SHORTED = 2
 } hal_ble_uuid_type_t;
 
+typedef enum hal_ble_evts_type_t {
+    BLE_EVT_UNKNOWN = 0x00,
+    BLE_EVT_ADV_STOPPED = 0x01,
+    BLE_EVT_SCAN_RESULT = 0x02,
+    BLE_EVT_CONNECTED = 0x03,
+    BLE_EVT_DISCONNECTED = 0x04,
+    BLE_EVT_CONN_PARAMS_UPDATED = 0x05,
+    BLE_EVT_ATT_MTU_UPDATED = 0x06,
+    BLE_EVT_SVC_DISCOVERED = 0x07,
+    BLE_EVT_CHAR_DISCOVERED = 0x08,
+    BLE_EVT_DATA_WRITTEN = 0x09,
+    BLE_EVT_DATA_NOTIFIED = 0x0A,
+    BLE_EVT_CHAR_CCCD_UPDATED = 0x0B,
+    BLE_EVT_MAX = 0x7FFFFFFF
+} hal_ble_evts_type_t;
+
 /* BLE device address */
 typedef struct hal_ble_addr_t {
     uint8_t addr[BLE_SIG_ADDR_LEN];
@@ -160,16 +176,6 @@ typedef struct hal_ble_svc_t {
     hal_ble_attr_handle_t end_handle;
 } hal_ble_svc_t;
 
-typedef struct hal_ble_char_init_t {
-    uint16_t version;
-    uint16_t size;
-    uint8_t properties;
-    uint8_t reserved[3];
-    const char* description;
-    hal_ble_uuid_t uuid;
-    hal_ble_attr_handle_t service_handle;
-} hal_ble_char_init_t;
-
 typedef struct hal_ble_char_handles_t {
     uint16_t version;
     uint16_t size;
@@ -200,12 +206,21 @@ typedef struct hal_ble_desc_init_t {
     hal_ble_attr_handle_t char_handle;
 } hal_ble_desc_init_t;
 
-/* BLE events structure */
-typedef struct hal_ble_gap_on_adv_stopped_evt_t {
-    void* reserved;
-} hal_ble_gap_on_adv_stopped_evt_t;
+typedef struct hal_ble_conn_info_t {
+    uint16_t version;
+    uint16_t size;
+    hal_ble_role_t role;
+    uint8_t reserved[3];
+    hal_ble_addr_t address;
+    size_t att_mtu;
+    hal_ble_conn_params_t conn_params;
+    hal_ble_conn_handle_t conn_handle;
+} hal_ble_conn_info_t;
 
-typedef struct hal_ble_gap_on_scan_result_evt_t {
+/* BLE events structure */
+typedef struct hal_ble_scan_result_evt_t {
+    uint16_t version;
+    uint16_t size;
     int8_t rssi;
     uint8_t reserved;
     struct {
@@ -220,92 +235,115 @@ typedef struct hal_ble_gap_on_scan_result_evt_t {
     uint16_t adv_data_len;
     uint16_t sr_data_len;
     hal_ble_addr_t peer_addr;
-} hal_ble_gap_on_scan_result_evt_t;
+} hal_ble_scan_result_evt_t;
 
-typedef struct hal_ble_gap_on_connected_evt_t {
-    uint16_t conn_interval;             /**< Connection Interval in 1.25 ms units.*/
-    uint16_t slave_latency;             /**< Slave Latency in number of connection events.*/
-    uint16_t conn_sup_timeout;          /**< Connection Supervision Timeout in 10 ms units.*/
-    hal_ble_role_t role;                /**< It can be either BLE_ROLE_PERIPHERAL or BLE_ROLE_CENTRAL. */
-    uint8_t reserved;
-    hal_ble_addr_t peer_addr;
-    hal_ble_conn_handle_t conn_handle;
-} hal_ble_gap_on_connected_evt_t;
+typedef struct hal_ble_connected_evt_t {
+    hal_ble_conn_info_t* info;
+} hal_ble_connected_evt_t;
 
-typedef struct hal_ble_gap_on_disconnected_evt_t {
+typedef struct hal_ble_disconnected_evt_t {
     uint8_t reason;
     uint8_t reserved[3];
-    hal_ble_conn_handle_t conn_handle;
-} hal_ble_gap_on_disconnected_evt_t;
+} hal_ble_disconnected_evt_t;
 
-typedef struct hal_ble_gap_on_conn_params_evt_t {
-    uint16_t conn_interval;             /**< Connection Interval in 1.25 ms units.*/
-    uint16_t slave_latency;             /**< Slave Latency in number of connection events.*/
-    uint16_t conn_sup_timeout;          /**< Connection Supervision Timeout in 10 ms units.*/
-    hal_ble_conn_handle_t conn_handle;
-} hal_ble_gap_on_conn_params_evt_t;
+typedef struct hal_ble_conn_params_updated_evt_t {
+    hal_ble_conn_params_t* conn_params;
+} hal_ble_conn_params_updated_evt_t;
 
-typedef struct hal_ble_gatt_on_params_updated_evt_t {
+typedef struct hal_ble_att_mtu_updated_evt_t {
     size_t att_mtu_size;
-    hal_ble_conn_handle_t conn_handle;
-} hal_ble_gatt_on_params_updated_evt_t;
+} hal_ble_att_mtu_updated_evt_t;
 
-typedef struct hal_ble_gattc_on_svc_disc_evt_t {
-    size_t count;
-    hal_ble_svc_t* services;
-    hal_ble_conn_handle_t conn_handle;
-} hal_ble_gattc_on_svc_disc_evt_t;
-
-typedef struct hal_ble_gattc_on_char_disc_evt_t {
-    size_t count;
-    hal_ble_char_t* characteristics;
-    hal_ble_conn_handle_t conn_handle;
-} hal_ble_gattc_on_char_disc_evt_t;
-
-typedef struct hal_ble_gatt_on_data_evt_t {
-    size_t offset;
-    size_t data_len;
-    uint8_t* data;
-    hal_ble_conn_handle_t conn_handle;
-    hal_ble_attr_handle_t attr_handle;
-} hal_ble_gatt_on_data_evt_t;
-
-typedef enum hal_ble_evts_type_t {
-    BLE_EVT_UNKNOWN = 0x00,
-    BLE_EVT_ADV_STOPPED = 0x01,
-    BLE_EVT_SCAN_RESULT = 0x02,
-    BLE_EVT_CONNECTED = 0x03,
-    BLE_EVT_DISCONNECTED = 0x04,
-    BLE_EVT_CONN_PARAMS_UPDATED = 0x05,
-    BLE_EVT_GATT_PARAMS_UPDATED = 0x06,
-    BLE_EVT_SVC_DISCOVERED = 0x07,
-    BLE_EVT_CHAR_DISCOVERED = 0x08,
-    BLE_EVT_DATA_WRITTEN = 0x09,
-    BLE_EVT_DATA_NOTIFIED = 0x0A,
-    BLE_EVT_MAX = 0x7FFFFFFF
-} hal_ble_evts_type_t;
-
-typedef struct hal_ble_evts_t {
+typedef struct hal_ble_link_evt_t {
     uint16_t version;
     uint16_t size;
     hal_ble_evts_type_t type;
     union {
-        hal_ble_gap_on_adv_stopped_evt_t adv_stopped;
-        hal_ble_gap_on_scan_result_evt_t scan_result;
-        hal_ble_gap_on_connected_evt_t connected;
-        hal_ble_gap_on_disconnected_evt_t disconnected;
-        hal_ble_gap_on_conn_params_evt_t conn_params_updated;
-        hal_ble_gatt_on_params_updated_evt_t gatt_params_updated;
-        hal_ble_gattc_on_svc_disc_evt_t svc_disc;
-        hal_ble_gattc_on_char_disc_evt_t char_disc;
-        hal_ble_gatt_on_data_evt_t data_rec;
+        hal_ble_connected_evt_t connected;
+        hal_ble_disconnected_evt_t disconnected;
+        hal_ble_conn_params_updated_evt_t conn_params_updated;
+        hal_ble_att_mtu_updated_evt_t att_mtu_updated;
     } params;
-} hal_ble_evts_t;
+    hal_ble_conn_handle_t conn_handle;
+} hal_ble_link_evt_t;
 
-typedef void (*hal_ble_on_generic_evt_cb_t)(const hal_ble_evts_t* event, void* context);
-typedef void (*hal_ble_on_scan_result_cb_t)(const hal_ble_gap_on_scan_result_evt_t* result, void* context);
-typedef void (*hal_ble_on_disc_service_cb_t)(const hal_ble_gattc_on_svc_disc_evt_t* event, void* context);
-typedef void (*hal_ble_on_disc_char_cb_t)(const hal_ble_gattc_on_char_disc_evt_t* event, void* context);
+typedef struct hal_ble_svc_discovered_evt_t {
+    uint16_t version;
+    uint16_t size;
+    size_t count;
+    hal_ble_svc_t* services;
+    hal_ble_conn_handle_t conn_handle;
+} hal_ble_svc_discovered_evt_t;
+
+typedef struct hal_ble_char_discovered_evt_t {
+    uint16_t version;
+    uint16_t size;
+    size_t count;
+    hal_ble_char_t* characteristics;
+    hal_ble_conn_handle_t conn_handle;
+} hal_ble_char_discovered_evt_t;
+
+typedef struct hal_ble_data_received_evt_t {
+    size_t offset;
+    size_t len;
+    uint8_t* data;
+} hal_ble_data_received_evt_t;
+
+typedef struct hal_ble_cccd_config_evt_t {
+    ble_sig_cccd_value_t value;
+} hal_ble_cccd_config_evt_t;
+
+typedef struct hal_ble_char_evt_t {
+    uint16_t version;
+    uint16_t size;
+    hal_ble_evts_type_t type;
+    hal_ble_conn_handle_t conn_handle;
+    hal_ble_attr_handle_t attr_handle;
+    union {
+        hal_ble_data_received_evt_t data_written;
+        hal_ble_data_received_evt_t data_notified;
+        hal_ble_cccd_config_evt_t cccd_config;
+    } params;
+} hal_ble_char_evt_t;
+
+typedef void (*hal_ble_on_link_evt_cb_t)(const hal_ble_link_evt_t* event, void* context);
+typedef void (*hal_ble_on_scan_result_cb_t)(const hal_ble_scan_result_evt_t* result, void* context);
+typedef void (*hal_ble_on_disc_service_cb_t)(const hal_ble_svc_discovered_evt_t* event, void* context);
+typedef void (*hal_ble_on_disc_char_cb_t)(const hal_ble_char_discovered_evt_t* event, void* context);
+typedef void (*hal_ble_on_char_evt_cb_t)(const hal_ble_char_evt_t* event, void* context);
+
+typedef struct hal_ble_conn_cfg_t {
+    uint16_t version;
+    uint16_t size;
+    hal_ble_addr_t address;
+    const hal_ble_conn_params_t* conn_params;
+    hal_ble_on_link_evt_cb_t callback;
+    void* context;
+} hal_ble_conn_cfg_t;
+
+typedef struct hal_ble_char_init_t {
+    uint16_t version;
+    uint16_t size;
+    uint8_t properties;
+    uint8_t reserved[3];
+    const char* description;
+    hal_ble_uuid_t uuid;
+    hal_ble_attr_handle_t service_handle;
+    uint8_t reserved1[2];
+    hal_ble_on_char_evt_cb_t callback;
+    void* context;
+} hal_ble_char_init_t;
+
+typedef struct hal_ble_cccd_config_t {
+    uint16_t version;
+    uint16_t size;
+    hal_ble_on_char_evt_cb_t callback;
+    void* context;
+    hal_ble_conn_handle_t conn_handle;
+    hal_ble_attr_handle_t cccd_handle;
+    hal_ble_attr_handle_t value_handle;
+    ble_sig_cccd_value_t cccd_value;
+} hal_ble_cccd_config_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -321,7 +359,7 @@ extern "C" {
 int hal_ble_lock(void* reserved);
 
 /**
- * Releases the lock for exclusive access to the OpenThread API.
+ * Releases the lock for exclusive access to the BLE API.
  *
  * @param      reserved  The reserved
  *
@@ -357,13 +395,13 @@ int hal_ble_stack_deinit(void* reserved);
 int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved);
 
 /**
- * Set the callback on BLE events.
+ * Set the callback on BLE Peripheral link events.
  *
  * @param[in]   callback    The callback function.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_set_callback_on_events(hal_ble_on_generic_evt_cb_t callback, void* context, void* reserved);
+int hal_ble_set_callback_on_periph_link_events(hal_ble_on_link_evt_cb_t callback, void* context, void* reserved);
 
 /**
  * Set local BLE identity address, which type must be either public or random.
@@ -624,11 +662,12 @@ int hal_ble_gap_stop_scan(void* reserved);
 /**
  * Connect to a peer BLE device.
  *
- * @param[in]   address Pointer to the peer BLE identity address.
+ * @param[in]       config      Pointer to configuration for the connection.
+ * @param[in,out]   conn_handle Pointer to where the connection handle being stroed.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gap_connect(const hal_ble_addr_t* address, void* reserved);
+int hal_ble_gap_connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* conn_handle, void* reserved);
 
 /**
  * Check if BLE is connecting with peer device.
@@ -688,6 +727,16 @@ int hal_ble_gap_update_connection_params(hal_ble_conn_handle_t conn_handle, cons
 int hal_ble_gap_get_connection_params(hal_ble_conn_handle_t conn_handle, hal_ble_conn_params_t* conn_params, void* reserved);
 
 /**
+ * Get given connection detail information.
+ *
+ * @param[in]       conn_handle BLE connection handle.
+ * @param[in,out]   info  Pointer to where the connection details being stored.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_gap_get_connection_info(hal_ble_conn_handle_t conn_handle, hal_ble_conn_info_t* info, void* reserved);
+
+/**
  * Get the RSSI value of the specific BLE connection.
  *
  * @param[in]   conn_handle BLE connection handle.
@@ -697,7 +746,7 @@ int hal_ble_gap_get_connection_params(hal_ble_conn_handle_t conn_handle, hal_ble
 int hal_ble_gap_get_rssi(hal_ble_conn_handle_t conn_handle, void* reserved);
 
 /**
- * Add a BLE 128-bits UUID service.
+ * Add a BLE service.
  *
  * @param[in]   type    BLE service type, either BLE_SERVICE_TYPE_PRIMARY or BLE_SERVICE_TYPE_SECONDARY.
  * @param[in]   uuid    Pointer to BLE service UUID.
@@ -708,7 +757,7 @@ int hal_ble_gap_get_rssi(hal_ble_conn_handle_t conn_handle, void* reserved);
 int hal_ble_gatt_server_add_service(uint8_t type, const hal_ble_uuid_t* uuid, hal_ble_attr_handle_t* handle, void* reserved);
 
 /**
- * Add a 128-bits UUID BLE Characteristic under a specific BLE Service.
+ * Add a BLE Characteristic under a specific BLE Service.
  *
  * @note It is currently only possible to add a characteristic to the last added service (i.e. only sequential population is supported at this time).
  *
@@ -820,13 +869,11 @@ int hal_ble_gatt_set_att_mtu(size_t att_mtu, void* reserved);
 /**
  * Configure the Client Characteristic Configuration Descriptor.
  *
- * @param[in]   conn_handle     BLE connection handle.
- * @param[in]   cccd_handle     The peer device's Characteristic CCCD handle.
- * @param[in]   cccd_value      The CCCD value, it can be either BLE_SIG_CCCD_VAL_DISABLED, BLE_SIG_CCCD_VAL_NOTIFICATION or BLE_SIG_CCCD_VAL_INDICATION.
+ * @param[in]   config  Pointer to the CCCD configuration.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gatt_client_configure_cccd(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t cccd_handle, ble_sig_cccd_value_t cccd_value, void* reserved);
+int hal_ble_gatt_client_configure_cccd(const hal_ble_cccd_config_t* config, void* reserved);
 
 /**
  * Write data to GATT server with a response required from peer device.
@@ -864,6 +911,78 @@ ssize_t hal_ble_gatt_client_write_without_response(hal_ble_conn_handle_t conn_ha
  */
 ssize_t hal_ble_gatt_client_read(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t attr_handle, uint8_t* buf, size_t len, void* reserved);
 
+
+#define HAL_PLATFORM_BLE_BETA_COMPAT 1
+
+#if HAL_PLATFORM_BLE_BETA_COMPAT
+
+typedef struct hal_ble_char_init_deprecated_t {
+    uint16_t version;
+    uint16_t size;
+    uint8_t properties;
+    uint8_t reserved[3];
+    const char* description;
+    hal_ble_uuid_t uuid;
+    hal_ble_attr_handle_t service_handle;
+} hal_ble_char_init_deprecated_t;
+
+typedef struct hal_ble_connected_evt_deprecated_t {
+    uint16_t conn_interval;
+    uint16_t slave_latency;
+    uint16_t conn_sup_timeout;
+    hal_ble_role_t role;
+    uint8_t reserved;
+    hal_ble_addr_t peer_addr;
+    hal_ble_conn_handle_t conn_handle;
+} hal_ble_connected_evt_deprecated_t;
+
+typedef struct hal_ble_disconnected_evt_deprecated_t {
+    uint8_t reason;
+    uint8_t reserved[3];
+    hal_ble_conn_handle_t conn_handle;
+} hal_ble_disconnected_evt_deprecated_t;
+
+typedef struct hal_ble_conn_params_updated_evt_deprecated_t {
+    uint16_t conn_interval;
+    uint16_t slave_latency;
+    uint16_t conn_sup_timeout;
+    hal_ble_conn_handle_t conn_handle;
+} hal_ble_conn_params_updated_evt_deprecated_t;
+
+typedef struct hal_ble_att_mtu_updated_evt_deprecated_t {
+    size_t att_mtu_size;
+    hal_ble_conn_handle_t conn_handle;
+} hal_ble_att_mtu_updated_evt_deprecated_t;
+
+typedef struct hal_ble_data_evt_deprecated_t {
+    size_t offset;
+    size_t data_len;
+    uint8_t* data;
+    hal_ble_conn_handle_t conn_handle;
+    hal_ble_attr_handle_t attr_handle;
+} hal_ble_data_evt_deprecated_t;
+
+typedef struct hal_ble_evts_deprecated_t {
+    uint16_t version;
+    uint16_t size;
+    hal_ble_evts_type_t type;
+    union {
+        hal_ble_connected_evt_deprecated_t connected;
+        hal_ble_disconnected_evt_deprecated_t disconnected;
+        hal_ble_conn_params_updated_evt_deprecated_t conn_params_updated;
+        hal_ble_att_mtu_updated_evt_deprecated_t att_mtu_updated;
+        hal_ble_data_evt_deprecated_t data_rec;
+    } params;
+} hal_ble_evts_deprecated_t;
+
+typedef void (*hal_ble_on_generic_evt_cb_deprecated_t)(const hal_ble_evts_deprecated_t* event, void* context);
+
+int hal_ble_set_callback_on_events_deprecated(hal_ble_on_generic_evt_cb_deprecated_t callback, void* context, void* reserved);
+int hal_ble_gap_connect_deprecated(const hal_ble_addr_t* address, void* reserved);
+int hal_ble_gatt_client_configure_cccd_deprecated(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t cccd_handle, ble_sig_cccd_value_t cccd_value, void* reserved);
+int hal_ble_gatt_server_add_characteristic_deprecated(const hal_ble_char_init_deprecated_t* char_init, hal_ble_char_handles_t* char_handles, void* reserved);
+
+#endif // HAL_PLATFORM_BLE_BETA_COMPAT
 
 #ifdef __cplusplus
 } // extern "C"

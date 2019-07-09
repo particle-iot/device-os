@@ -1033,21 +1033,19 @@ size_t BleControlRequestChannel::readSome(char* data, size_t size) {
     return size;
 }
 
-int BleControlRequestChannel::connected(const hal_ble_evts_t& event) {
-    if (event.params.connected.role == BLE_ROLE_PERIPHERAL) {
-        curConnHandle_ = event.params.connected.conn_handle;
-        maxPacketSize_ = BLE_MIN_ATTR_VALUE_PACKET_SIZE;
-        subscribed_ = false;
-        writable_ = subscribed_;
-        packetCount_ = 0;
-        // Update connection state counter
-        curConnId_.fetch_add(1, std::memory_order_release);
-    }
+int BleControlRequestChannel::connected(const hal_ble_link_evt_t& event) {
+    curConnHandle_ = event.conn_handle;
+    maxPacketSize_ = BLE_MIN_ATTR_VALUE_PACKET_SIZE;
+    subscribed_ = false;
+    writable_ = subscribed_;
+    packetCount_ = 0;
+    // Update connection state counter
+    curConnId_.fetch_add(1, std::memory_order_release);
     return 0;
 }
 
-int BleControlRequestChannel::disconnected(const hal_ble_evts_t& event) {
-    if (event.params.disconnected.conn_handle == curConnHandle_) {
+int BleControlRequestChannel::disconnected(const hal_ble_link_evt_t& event) {
+    if (event.conn_handle == curConnHandle_) {
         // Free queued buffers
         while (Buffer* buf = inBufs_.popFront()) {
             freePooledBuffer(buf);
@@ -1061,29 +1059,33 @@ int BleControlRequestChannel::disconnected(const hal_ble_evts_t& event) {
     return 0;
 }
 
-int BleControlRequestChannel::gattParamChanged(const hal_ble_evts_t& event) {
-    if (event.params.gatt_params_updated.conn_handle == curConnHandle_) {
-        if (curConnHandle_ == event.params.gatt_params_updated.conn_handle) {
-            maxPacketSize_ = event.params.gatt_params_updated.att_mtu_size - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE;
-            DEBUG("maxPacketSize_: %d", maxPacketSize_);
+int BleControlRequestChannel::gattParamChanged(const hal_ble_link_evt_t& event) {
+    if (event.conn_handle == curConnHandle_) {
+        maxPacketSize_ = event.params.att_mtu_updated.att_mtu_size - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE;
+        DEBUG("maxPacketSize_: %d", maxPacketSize_);
+    }
+    return 0;
+}
+
+int BleControlRequestChannel::dataReceived(const hal_ble_char_evt_t& event) {
+    if (event.conn_handle == curConnHandle_) {
+        if (event.attr_handle == recvCharHandle_) {
+            DEBUG("Received BLE packet");
+            DEBUG_DUMP(event.params.data_written.data, event.params.data_written.len);
+            Buffer* buf = nullptr;
+            CHECK(allocPooledBuffer(event.params.data_written.len, &buf));
+            memcpy(buf->data, event.params.data_written.data, event.params.data_written.len);
+            inBufs_.pushBack(buf);
         }
     }
     return 0;
 }
 
-int BleControlRequestChannel::dataReceived(const hal_ble_evts_t& event) {
-    if (event.params.data_rec.conn_handle == curConnHandle_) {
-        if (event.params.data_rec.attr_handle == recvCharHandle_) {
-            DEBUG("Received BLE packet");
-            DEBUG_DUMP(event.params.data_rec.data, event.params.data_rec.data_len);
-            Buffer* buf = nullptr;
-            CHECK(allocPooledBuffer(event.params.data_rec.data_len, &buf));
-            memcpy(buf->data, event.params.data_rec.data, event.params.data_rec.data_len);
-            inBufs_.pushBack(buf);
-        }
-        else if (event.params.data_rec.attr_handle == sendCharCccdHandle_) {
+int BleControlRequestChannel::cccdChanged(const hal_ble_char_evt_t& event) {
+    if (event.conn_handle == curConnHandle_) {
+        if (event.attr_handle == sendCharCccdHandle_) {
             subscribed_ = false;
-            if (event.params.data_rec.data[0] > 0) {
+            if (event.params.cccd_config.value > 0) {
                 subscribed_ = true;
                 DEBUG("Enable CCCD");
             }
@@ -1113,6 +1115,8 @@ int BleControlRequestChannel::initProfile() {
 
     // Add version characteristic
     char_init = {};
+    char_init.version = BLE_API_VERSION;
+    char_init.size = sizeof(hal_ble_char_init_t);
     char_init.uuid.type = BLE_UUID_TYPE_128BIT;
     memcpy(char_init.uuid.uuid128, VERSION_CHAR_UUID, sizeof(VERSION_CHAR_UUID));
     char_init.properties = BLE_SIG_CHAR_PROP_READ;
@@ -1123,11 +1127,15 @@ int BleControlRequestChannel::initProfile() {
 
     // Add TX characteristic
     char_init = {};
+    char_init.version = BLE_API_VERSION;
+    char_init.size = sizeof(hal_ble_char_init_t);
     char_init.uuid.type = BLE_UUID_TYPE_128BIT;
     memcpy(char_init.uuid.uuid128, SEND_CHAR_UUID, sizeof(SEND_CHAR_UUID));
     char_init.properties = BLE_SIG_CHAR_PROP_NOTIFY;
     char_init.service_handle = serviceHandle;
     char_init.description = nullptr;
+    char_init.callback = onBleCharEvents;
+    char_init.context = this;
     CHECK(hal_ble_gatt_server_add_characteristic(&char_init, &attrHandles, nullptr));
 
     sendCharHandle_ = attrHandles.value_handle;
@@ -1135,16 +1143,20 @@ int BleControlRequestChannel::initProfile() {
 
     // Add RX characteristic
     char_init = {};
+    char_init.version = BLE_API_VERSION;
+    char_init.size = sizeof(hal_ble_char_init_t);
     char_init.uuid.type = BLE_UUID_TYPE_128BIT;
     memcpy(char_init.uuid.uuid128, RECV_CHAR_UUID, sizeof(RECV_CHAR_UUID));
     char_init.properties = BLE_SIG_CHAR_PROP_WRITE | BLE_SIG_CHAR_PROP_WRITE_WO_RESP;
     char_init.service_handle = serviceHandle;
     char_init.description = nullptr;
+    char_init.callback = onBleCharEvents;
+    char_init.context = this;
     CHECK(hal_ble_gatt_server_add_characteristic(&char_init, &attrHandles, nullptr));
 
     recvCharHandle_ = attrHandles.value_handle;
 
-    CHECK(hal_ble_set_callback_on_events(processBleEvent, this, nullptr));
+    CHECK(hal_ble_set_callback_on_periph_link_events(onBleLinkEvents, this, nullptr));
 
     return 0;
 }
@@ -1276,29 +1288,50 @@ void BleControlRequestChannel::freePooledBuffer(Buffer* buf) {
     }
 }
 
-// Note: This method is called from an ISR
-void BleControlRequestChannel::processBleEvent(const hal_ble_evts_t *event, void* context) {
+// Note: This method is called from an BLE event thread
+void BleControlRequestChannel::onBleLinkEvents(const hal_ble_link_evt_t* event, void* context) {
     const auto ch = (BleControlRequestChannel*)context;
     int ret = 0;
     switch (event->type) {
-    case BLE_EVT_CONNECTED: {
-        ret = ch->connected(*event);
-        break;
+        case BLE_EVT_CONNECTED: {
+            ret = ch->connected(*event);
+            break;
+        }
+        case BLE_EVT_DISCONNECTED: {
+            ret = ch->disconnected(*event);
+            break;
+        }
+        case BLE_EVT_ATT_MTU_UPDATED: {
+            ret = ch->gattParamChanged(*event);
+            break;
+        }
+        default:{
+            break;
+        }
     }
-    case BLE_EVT_DISCONNECTED: {
-        ret = ch->disconnected(*event);
-        break;
+    if (ret != 0) {
+        LOG(ERROR, "Failed to process BLE event: %d (error: %d)", event->type, ret);
+        if (ch->curConnHandle_ != BLE_INVALID_CONN_HANDLE) {
+            hal_ble_gap_disconnect(ch->curConnHandle_, nullptr);
+        }
     }
-    case BLE_EVT_GATT_PARAMS_UPDATED: {
-        ret = ch->gattParamChanged(*event);
-        break;
-    }
-    case BLE_EVT_DATA_WRITTEN: {
-        ret = ch->dataReceived(*event);
-        break;
-    }
-    default:
-        break;
+}
+
+void BleControlRequestChannel::onBleCharEvents(const hal_ble_char_evt_t *event, void* context) {
+    const auto ch = (BleControlRequestChannel*)context;
+    int ret = 0;
+    switch (event->type) {
+        case BLE_EVT_DATA_WRITTEN: {
+            ret = ch->dataReceived(*event);
+            break;
+        }
+        case BLE_EVT_CHAR_CCCD_UPDATED: {
+            ret = ch->cccdChanged(*event);
+            break;
+        }
+        default: {
+            break;
+        }
     }
     if (ret != 0) {
         LOG(ERROR, "Failed to process BLE event: %d (error: %d)", event->type, ret);

@@ -41,7 +41,7 @@
 #define BLE_MAX_EVENT_CALLBACK_COUNT                10
 
 /* BLE event queue depth */
-#define BLE_EVENT_QUEUE_ITEM_COUNT                  20
+#define BLE_EVENT_QUEUE_ITEM_COUNT                  30
 
 /* Maximum length of device name, non null-terminated */
 #define BLE_MAX_DEV_NAME_LEN                        20
