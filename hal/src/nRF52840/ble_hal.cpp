@@ -1722,9 +1722,9 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
 }
 
 int BleObject::ConnectionsManager::getConnectionParams(hal_ble_conn_handle_t connHandle, hal_ble_conn_params_t* params) {
-    const BleConnection* connection = fetchConnection(connHandle);
-    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
-    memcpy(params, &connection->info.conn_params, std::min(params->size, connection->info.conn_params.size));
+//    const BleConnection* connection = fetchConnection(connHandle);
+//    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
+//    memcpy(params, &connection->info.conn_params, std::min(params->size, connection->info.conn_params.size));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -3602,13 +3602,6 @@ int hal_ble_gap_update_connection_params(hal_ble_conn_handle_t conn_handle, cons
     return BleObject::getInstance().connMgr()->updateConnectionParams(conn_handle, conn_params);
 }
 
-int hal_ble_gap_get_connection_params(hal_ble_conn_handle_t conn_handle, hal_ble_conn_params_t* conn_params, void* reserved) {
-    BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gap_get_connection_params().");
-    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    return BleObject::getInstance().connMgr()->getConnectionParams(conn_handle, conn_params);
-}
-
 int hal_ble_gap_get_connection_info(hal_ble_conn_handle_t conn_handle, hal_ble_conn_info_t* info, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_connection_info().");
@@ -3738,49 +3731,61 @@ int hal_ble_set_callback_on_events_deprecated(hal_ble_on_generic_evt_cb_deprecat
 //    BleLock lk;
 //    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
 //    BleObject::getInstance().dispatcher()->onGenericEventCallback(callback, context);
-    return SYSTEM_ERROR_NONE;
+//    return SYSTEM_ERROR_NONE;
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 int hal_ble_gap_connect_deprecated(const hal_ble_addr_t* address, void* reserved) {
-    BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gap_connect_deprecated().");
-    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    hal_ble_conn_handle_t connHandle;
-    hal_ble_conn_cfg_t connCfg = {};
-    connCfg.version = BLE_API_VERSION;
-    connCfg.size = sizeof(hal_ble_conn_cfg_t);
-    connCfg.address = *address;
-    connCfg.conn_params = nullptr;
-    connCfg.callback = nullptr;
-    connCfg.context = nullptr;
-    return BleObject::getInstance().connMgr()->connect(&connCfg, &connHandle);
+//    BleLock lk;
+//    LOG_DEBUG(TRACE, "hal_ble_gap_connect_deprecated().");
+//    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+//    hal_ble_conn_handle_t connHandle;
+//    hal_ble_conn_cfg_t connCfg = {};
+//    connCfg.version = BLE_API_VERSION;
+//    connCfg.size = sizeof(hal_ble_conn_cfg_t);
+//    connCfg.address = *address;
+//    connCfg.conn_params = nullptr;
+//    connCfg.callback = nullptr;
+//    connCfg.context = nullptr;
+//    return BleObject::getInstance().connMgr()->connect(&connCfg, &connHandle);
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 int hal_ble_gatt_server_add_characteristic_deprecated(const hal_ble_char_init_deprecated_t* char_init, hal_ble_char_handles_t* char_handles, void* reserved) {
-    BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gatt_server_add_characteristic_deprecated().");
-    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    hal_ble_char_init_t charInit = {};
-    charInit.size = sizeof(hal_ble_char_init_t);
-    memcpy(&charInit, char_init, std::min(char_init->size, charInit.size));
-    charInit.callback = nullptr;
-    charInit.context = nullptr;
-    return BleObject::getInstance().gatts()->addCharacteristic(&charInit, char_handles);
+//    BleLock lk;
+//    LOG_DEBUG(TRACE, "hal_ble_gatt_server_add_characteristic_deprecated().");
+//    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+//    hal_ble_char_init_t charInit = {};
+//    charInit.size = sizeof(hal_ble_char_init_t);
+//    memcpy(&charInit, char_init, std::min(char_init->size, charInit.size));
+//    charInit.callback = nullptr;
+//    charInit.context = nullptr;
+//    return BleObject::getInstance().gatts()->addCharacteristic(&charInit, char_handles);
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 int hal_ble_gatt_client_configure_cccd_deprecated(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t cccd_handle, ble_sig_cccd_value_t cccd_value, void* reserved) {
-    BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gatt_client_configure_cccd_deprecated().");
-    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    CHECK_TRUE(conn_handle != BLE_CONN_HANDLE_INVALID, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(cccd_handle != BLE_INVALID_ATTR_HANDLE, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(cccd_value <= BLE_SIG_CCCD_VAL_INDICATION, SYSTEM_ERROR_NOT_SUPPORTED);
-    uint8_t buf[2] = {0x00, 0x00};
-    buf[0] = cccd_value;
-    if (BleObject::getInstance().gattc()->writeAttribute(conn_handle, cccd_handle, buf, sizeof(buf), true) == 0) {
-        return SYSTEM_ERROR_INTERNAL;
-    }
-    return SYSTEM_ERROR_NONE;
+//    BleLock lk;
+//    LOG_DEBUG(TRACE, "hal_ble_gatt_client_configure_cccd_deprecated().");
+//    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+//    CHECK_TRUE(conn_handle != BLE_CONN_HANDLE_INVALID, SYSTEM_ERROR_INVALID_ARGUMENT);
+//    CHECK_TRUE(cccd_handle != BLE_INVALID_ATTR_HANDLE, SYSTEM_ERROR_INVALID_ARGUMENT);
+//    CHECK_TRUE(cccd_value <= BLE_SIG_CCCD_VAL_INDICATION, SYSTEM_ERROR_NOT_SUPPORTED);
+//    uint8_t buf[2] = {0x00, 0x00};
+//    buf[0] = cccd_value;
+//    if (BleObject::getInstance().gattc()->writeAttribute(conn_handle, cccd_handle, buf, sizeof(buf), true) == 0) {
+//        return SYSTEM_ERROR_INTERNAL;
+//    }
+//    return SYSTEM_ERROR_NONE;
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_ble_gap_get_connection_params_deprecated(hal_ble_conn_handle_t conn_handle, hal_ble_conn_params_t* conn_params, void* reserved) {
+//    BleLock lk;
+//    LOG_DEBUG(TRACE, "hal_ble_gap_get_connection_params().");
+//    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+//    return BleObject::getInstance().connMgr()->getConnectionParams(conn_handle, conn_params);
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 #endif // #if HAL_PLATFORM_BLE_BETA_COMPAT

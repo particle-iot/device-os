@@ -69,7 +69,7 @@ DYNALIB_FN(36, hal_ble, hal_ble_gap_is_connected, bool(const hal_ble_addr_t*, vo
 DYNALIB_FN(37, hal_ble, hal_ble_gap_connect_cancel, int(const hal_ble_addr_t*, void*))
 DYNALIB_FN(38, hal_ble, hal_ble_gap_disconnect, int(hal_ble_conn_handle_t, void*))
 DYNALIB_FN(39, hal_ble, hal_ble_gap_update_connection_params, int(hal_ble_conn_handle_t, const hal_ble_conn_params_t*, void*))
-DYNALIB_FN(40, hal_ble, hal_ble_gap_get_connection_params, int(hal_ble_conn_handle_t, hal_ble_conn_params_t*, void*))
+DYNALIB_FN(40, hal_ble, hal_ble_gap_get_connection_params_deprecated, int(hal_ble_conn_handle_t, hal_ble_conn_params_t*, void*))
 DYNALIB_FN(41, hal_ble, hal_ble_gap_get_rssi, int(hal_ble_conn_handle_t, void*))
 DYNALIB_FN(42, hal_ble, hal_ble_gatt_server_add_service, int(uint8_t, const hal_ble_uuid_t*, hal_ble_attr_handle_t*, void*))
 DYNALIB_FN(43, hal_ble, hal_ble_gatt_server_add_characteristic_deprecated, int(const hal_ble_char_init_deprecated_t*, hal_ble_char_handles_t*, void*))

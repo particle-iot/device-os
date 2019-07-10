@@ -717,16 +717,6 @@ int hal_ble_gap_disconnect(hal_ble_conn_handle_t conn_handle, void* reserved);
 int hal_ble_gap_update_connection_params(hal_ble_conn_handle_t conn_handle, const hal_ble_conn_params_t* conn_params, void* reserved);
 
 /**
- * Get connection parameters.
- *
- * @param[in]       conn_handle BLE connection handle.
- * @param[in,out]   conn_params Pointer to a hal_ble_conn_params_t structure to be filled.
- *
- * @returns     0 on success, system_error_t on error.
- */
-int hal_ble_gap_get_connection_params(hal_ble_conn_handle_t conn_handle, hal_ble_conn_params_t* conn_params, void* reserved);
-
-/**
  * Get given connection detail information.
  *
  * @param[in]       conn_handle BLE connection handle.
@@ -981,6 +971,7 @@ int hal_ble_set_callback_on_events_deprecated(hal_ble_on_generic_evt_cb_deprecat
 int hal_ble_gap_connect_deprecated(const hal_ble_addr_t* address, void* reserved);
 int hal_ble_gatt_client_configure_cccd_deprecated(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t cccd_handle, ble_sig_cccd_value_t cccd_value, void* reserved);
 int hal_ble_gatt_server_add_characteristic_deprecated(const hal_ble_char_init_deprecated_t* char_init, hal_ble_char_handles_t* char_handles, void* reserved);
+int hal_ble_gap_get_connection_params_deprecated(hal_ble_conn_handle_t conn_handle, hal_ble_conn_params_t* conn_params, void* reserved);
 
 #endif // HAL_PLATFORM_BLE_BETA_COMPAT
 
