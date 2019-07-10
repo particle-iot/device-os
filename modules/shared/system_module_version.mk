@@ -1,6 +1,6 @@
 # Skip to next 100 every v0.x.0 release (e.g. 108 for v0.6.2 to 200 for v0.7.0-rc.1)
 # Bump by 1 for every prerelease or release with the same v0.x.* base.
-COMMON_MODULE_VERSION ?= 1212
+COMMON_MODULE_VERSION ?= 1213
 SYSTEM_PART1_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 SYSTEM_PART2_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 SYSTEM_PART3_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
@@ -38,7 +38,7 @@ BOOTLOADER_VERSION ?= 311
 # NOTE: this will force the device into safe mode until this dependency is met, which is why
 # this version usually lags behind the current bootloader version, to avoid non-mandatory updates.
 ifeq ($(PLATFORM_GEN),2)
-BOOTLOADER_DEPENDENCY = 201
+BOOTLOADER_DEPENDENCY = 311
 else ifeq ($(PLATFORM_GEN),3)
 BOOTLOADER_DEPENDENCY = 311
 else
