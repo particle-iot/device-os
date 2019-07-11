@@ -49,6 +49,8 @@
 - [wiring] Make sure that `Serial` and `SerialX` methods are in sync with the documentation and don't return unexpected values [#1782](https://github.com/particle-iot/device-os/pull/1782)
 - [gen3] Fixes a HeapError panic due to malloc() call from an ISR (caused by rand() usage) [#1786](https://github.com/particle-iot/device-os/pull/1786)
 - [gen3] Fixes HAL_USB_USART_Send_Data() returning incorrect values [#1787](https://github.com/particle-iot/device-os/pull/1787)
+- Fix to ensure device resets after bootloader update [#1850](https://github.com/particle-iot/device-os/pull/1850)
+- Fixes boot issue for Core introduced in 1.2.1-rc.3 [#1851](https://github.com/particle-iot/device-os/pull/1851)
 
 ## 1.2.1-rc.3
 
