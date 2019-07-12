@@ -38,6 +38,7 @@ LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
 # Minimum main stack size with S140 softdevice is 1536 bytes
+# __STACKSIZE__ is referenced by build/arm/linker/nrf52840/platform_ram.ld
 MAIN_STACK_SIZE = 2048
 LDFLAGS += -Wl,--defsym,__STACKSIZE__=$(MAIN_STACK_SIZE)
 LDFLAGS += -Wl,--defsym,__STACK_SIZE=$(MAIN_STACK_SIZE)

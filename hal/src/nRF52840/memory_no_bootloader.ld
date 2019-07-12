@@ -15,15 +15,11 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-INCLUDE softdevice.ld
-
 MEMORY
 {
     INCLUDE backup_ram_memory.ld
 
-    /* FIXME: bootloader size should come from a common .ld */
-    APP_FLASH (rx)  : ORIGIN = APP_CODE_BASE, LENGTH = 1M - APP_CODE_BASE - 48K
-
-    SRAM      (rwx) : ORIGIN = 0x20000000 + APP_RAM_BASE, LENGTH = 256K - APP_RAM_BASE - LENGTH(BACKUPSRAM_ALL)
+    APP_FLASH (rx)  : ORIGIN = _monolithic_firmware_flash_start,      LENGTH = _monolithic_firmware_flash_size
+    SRAM      (rwx) : ORIGIN = _monolithic_firmware_static_ram_start, LENGTH = _monolithic_firmware_static_ram_size
 }
 
