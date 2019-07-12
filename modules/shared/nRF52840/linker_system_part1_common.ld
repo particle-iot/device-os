@@ -1,3 +1,10 @@
+/* Stack */
+_estack = _modular_firmware_stack_end;
+__Stack_Size = _modular_firmware_stack_size;
+__Stack_Init = _estack - __Stack_Size ;
+
+PROVIDE ( _Stack_Size = __Stack_Size ) ;
+PROVIDE ( _Stack_Init = __Stack_Init ) ;
 
 SECTIONS
 {
@@ -44,8 +51,7 @@ SECTIONS
 
     INCLUDE module_info.ld
     
-    /* 0x200 is vector table size. */
-    expected_dynalib_start = ORIGIN (APP_FLASH) + 0x200 + 24;
+    expected_dynalib_start = ORIGIN (APP_FLASH) + _system_part1_vector_table_flash_size + _system_part1_module_info_flash_size;
     .dynalib :
     {
         link_dynalib_start = . ;
@@ -273,6 +279,11 @@ SECTIONS
 
     INCLUDE module_end.ld
 }
+/* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
+INCLUDE module_system_part1_export.ld
+
+/* Definitions for the static parts of the user module */
+INCLUDE module_user_export.ld
 
 /* Declare libc Heap to start at end of allocated RAM */
 PROVIDE( _heap = link_heap_location );
@@ -291,7 +302,7 @@ ASSERT ( interrupt_vectors_length == 0x200, "vector table length invalid");
 /* Dynalib assertion */
 ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
 ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" );
-ASSERT ( link_dynalib_start == system_part1_module_table, "Dynalib location not same as exported location" );
+ASSERT ( link_dynalib_start == _system_part1_dynalib_table_flash_start, "Dynalib location not same as exported location" );
 
 /* RAM interrupt vector table assertion */
 ASSERT( link_ram_interrupt_vectors_location == ORIGIN( SRAM ), "RAM Interrupt table should be at start of RAM" );
@@ -314,8 +325,8 @@ ASSERT ( (link_bss_end - link_global_data_start) <= _system_part1_static_ram_siz
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
-ASSERT ( system_part1_module_info_start == link_module_info_start, "part1 module info start not where expected" );
-ASSERT ( system_part1_module_info_end == link_module_info_end, "part1 module info end not where expected" );
+ASSERT ( _system_part1_module_info_flash_start == link_module_info_start, "part1 module info start not where expected" );
+ASSERT ( _system_part1_module_info_flash_end == link_module_info_end, "part1 module info end not where expected" );
 
 ASSERT ( ( link_constructors_location % 4 ) == 0, "constructor array should be aligned to a 4-bytes" );
 ASSERT( _estack % 8 == 0, "Stack should be 8-byte aligned" );
