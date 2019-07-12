@@ -41,37 +41,26 @@ ENTRY( _start );
 
 /* Include memory map */
 INCLUDE platform_ram.ld
-INCLUDE memory_no_bootloader.ld
+INCLUDE platform_flash.ld
 
 /* default stack sizes.
- + These are used by the startup in order to allocate stacks for the different modes.
- */
+ * These are used by the startup in order to allocate stacks for the different modes. */
+_estack = _monolithic_firmware_stack_end;
+__Stack_Size = _monolithic_firmware_stack_size;
+__Stack_Init = _estack - __Stack_Size;
 
-__Stack_Size = __STACKSIZE__;
-
-PROVIDE ( _Stack_Size = __Stack_Size ) ;
-
-__Stack_Init = _estack - __Stack_Size ;
-
-/* "PROVIDE" allows to easily override these values from an object file or the commmand line.
- */
-PROVIDE ( _Stack_Init = __Stack_Init ) ;
-
-/*
-There will be a link error if there is not this amount of RAM free at the end.
-*/
+/* There will be a link error if there is not this amount of RAM free at the end. */
 _Minimum_Stack_Size = 0x1400;
 
-/* include the memory spaces definitions sub-script */
-/* Linker subscript for STM32F20x definitions with 1024K Flash and 128K RAM */
+/* "PROVIDE" allows to easily override these values from an object file or the commmand line. */
+PROVIDE ( _Stack_Size = __Stack_Size );
+PROVIDE ( _Stack_Init = __Stack_Init );
 
 /* Memory Spaces Definitions */
-
-/* higher address of the user mode stack */
-_estack = 0x20040000 - LENGTH(BACKUPSRAM_ALL);
+INCLUDE memory_no_bootloader.ld
 
 /* TODO: Below sections are required by the Nordic SDK and were copy-pasted from a BLE example code.
-Consider revising them, especially for modular builds */
+ * Consider revising them, especially for modular builds */
 SECTIONS
 {
   . = ALIGN(4);
@@ -103,7 +92,6 @@ SECTIONS
 
 SECTIONS
 {
-
     .vectors :
     {
         link_module_start = .;
@@ -347,11 +335,9 @@ SECTIONS
 }
 
 /* Declare libc Heap to start at end of allocated RAM */
-
 PROVIDE( _heap = link_stack_end );
 
 /* End of the heap is top of RAM, aligned 8 byte */
-
 PROVIDE( _eheap = ALIGN( ORIGIN( SRAM ) + LENGTH( SRAM ) - 8, 8 ) );
 
 /* ThreadX aliases */
@@ -364,14 +350,12 @@ PROVIDE( VTOR_Length = interrupt_vectors_length );
 ASSERT( link_ram_interrupt_vectors_location == ORIGIN( SRAM ), "RAM Interrupt table should be at start of RAM" );
 ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location ) == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
 
-INCLUDE module_export.ld
-
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 
-ASSERT ( mono_module_info == link_module_info_start, "module info start not where expected" );
-ASSERT ( mono_module_info_end == link_module_info_end, "module info end not where expected" );
+ASSERT ( _monolithic_firmware_module_info_flash_start == link_module_info_start, "module info start not where expected" );
+ASSERT ( _monolithic_firmware_module_info_flash_end == link_module_info_end, "module info end not where expected" );
 
 ASSERT ( link_constructors_location % 4 == 0, "the constructor array should be at a 4-byte aligned address." );
 

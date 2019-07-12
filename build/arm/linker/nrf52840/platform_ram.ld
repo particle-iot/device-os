@@ -1,90 +1,136 @@
 /*
-Modular firmware:
+Modular firmware:                       Monolithic firmware:                          Bootloader:
 
-+--------------------------+ 0x20040000
-| User backup RAM          |
-+--------------------------+ 0x2003f400
-| System flags             |
-+--------------------------+ 0x2003f3c0
-| Backup registers         |
-+--------------------------+ 0x2003f380
-| System backup RAM        |
-+--------------------------+ 0x2003f000
-| Main stack               |
-+--------------------------+ 0x2003e800
-| User part static RAM     |
-+~~~~~~~~~~~~~~~~~~~~~~~~~~+
-|                          |
-| Heap                     |
-|                          |
-+~~~~~~~~~~~~~~~~~~~~~~~~~~+
-| System part 1 static RAM |
-+--------------------------+ 0x20004000
-| SoftDevice RAM           |
-+--------------------------+ 0x20000000
-
-TODO: Bootloader, monolithic firmware
++--------------------------+ 0x20040000 +--------------------------------+ 0x20040000 +-----------------------+
+| User backup RAM          |            | User backup RAM                |            | User backup RAM       |
++--------------------------+ 0x2003f400 +--------------------------------+ 0x2003f400 +-----------------------+
+| System flags             |            | System flags                   |            | System flags          |
++--------------------------+ 0x2003f3c0 +--------------------------------+ 0x2003f3c0 +-----------------------+
+| Backup registers         |            | Backup registers               |            | Backup registers      |
++--------------------------+ 0x2003f380 +--------------------------------+ 0x2003f380 +-----------------------+
+| System backup RAM        |            | System backup RAM              |            | System backup RAM     |
++--------------------------+ 0x2003f000 +--------------------------------+ 0x2003f000 +-----------------------+
+| Main stack               |            | Main stack                     |            | Main stack            |
++--------------------------+ 0x2003e800 +--------------------------------+ 0x2003e800 +-----------------------+
+| User part static RAM     |            |                                |            |                       |
++~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                |            |                       |
+|                          |            | Heap                           |            | Heap                  |
+| Heap                     |            |                                |            |                       |
+|                          |            |                                |            |                       |
++~~~~~~~~~~~~~~~~~~~~~~~~~~+            |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|            |~~~~~~~~~~~~~~~~~~~~~~~|
+| System part 1 static RAM |            | Monolithic firmware static RAM |            | Bootloader static RAM |
++--------------------------+ 0x20004000 +--------------------------------+ 0x20004000 +-----------------------+
+| SoftDevice RAM           |            | SoftDevice RAM                 |            | SoftDevice RAM        |
++--------------------------+ 0x20000000 +--------------------------------+ 0x20000000 +-----------------------+
 
 Note: Keep the diagrams up to date with the actual memory maps defined in this file.
 */
 
 /* Total amount of RAM available on the MCU */
-_ram_size = 256K;
+_ram_size  = 256K;
 _ram_start = 0x20000000;
-_ram_end = _ram_start + _ram_size;
+_ram_end   = _ram_start + _ram_size;
+
+/* All backup RAM size */
+_backup_ram_all_size = 4K;
 
 /* User backup memory */
-_user_backup_ram_size = 3K;
-_user_backup_ram_end = _ram_end;
+_user_backup_ram_size  = 3K;
+_user_backup_ram_end   = _ram_end;
 _user_backup_ram_start = _user_backup_ram_end - _user_backup_ram_size;
 
 /* System flags */
-_system_flags_ram_size = 64;
-_system_flags_ram_end = _user_backup_ram_start;
+_system_flags_ram_size  = 64;
+_system_flags_ram_end   = _user_backup_ram_start;
 _system_flags_ram_start = _system_flags_ram_end - _system_flags_ram_size;
 
 /* Backup registers */
-_backup_registers_ram_size = 64;
-_backup_registers_ram_end = _system_flags_ram_start;
+_backup_registers_ram_size  = 64;
+_backup_registers_ram_end   = _system_flags_ram_start;
 _backup_registers_ram_start = _backup_registers_ram_end - _backup_registers_ram_size;
 
 /* System backup memory */
-_system_backup_ram_size = 4K - _user_backup_ram_size - _system_flags_ram_size - _backup_registers_ram_size;
-_system_backup_ram_end = _backup_registers_ram_start;
+_system_backup_ram_size  = _backup_ram_all_size - _user_backup_ram_size - _system_flags_ram_size - _backup_registers_ram_size;
+_system_backup_ram_end   = _backup_registers_ram_start;
 _system_backup_ram_start = _system_backup_ram_end - _system_backup_ram_size;
 
-/* Main stack */
-_stack_size = __STACKSIZE__; /* Defined in modules/shared/nRF52840/part1_build.mk */
-_stack_end = _system_backup_ram_start;
-_stack_start = _stack_end - _stack_size; /* The lowest address of the stack */
+/* Modular firmware main stack
+ * _modular_firmware_stack_size is equal to 2K, which is defined in part1_build.mk and user_build.mk under modules/shared/nRF52840.
+ * _modular_firmware_stack_start is the lowest address of the stack. */
+_modular_firmware_stack_size  = __STACKSIZE__;
+_modular_firmware_stack_end   = _system_backup_ram_start;
+_modular_firmware_stack_start = _modular_firmware_stack_end - _modular_firmware_stack_size;
 
-/* User part */
-_user_part_static_ram_size = DEFINED(_user_part_static_ram_size) ? _user_part_static_ram_size : 89K; /* Defined in platform_user_ram.ld */
-_user_part_static_ram_end = _stack_start;
+/* Monolithic firmware main stack
+ * _monolithic_firmware_stack_size is equal to 2K, which is defined in include.mk under hal/src/nRF52840.
+ * _monolithic_firmware_stack_start is the lowest address of the stack. */
+_monolithic_firmware_stack_size  = __STACKSIZE__;
+_monolithic_firmware_stack_end   = _system_backup_ram_start;
+_monolithic_firmware_stack_start = _monolithic_firmware_stack_end - _monolithic_firmware_stack_size;
+
+/* Bootloader main stack
+ * _bootloader_stack_size is equal to 8K, which is defined in bootloader/src/nRF52840/include.mk. */
+_bootloader_stack_size  = __STACKSIZE__;
+_bootloader_stack_end   = _system_backup_ram_start;
+_bootloader_stack_start = _bootloader_stack_end - _bootloader_stack_size;
+
+/* User part
+ * _user_part_static_ram_size is referenced as a constant value when linking system part 1.
+ * _user_part_static_ram_size is defined in platform_user_ram.ld, which is generated by modules/shared/nRF52840/bbuild_linker_script.mk, when linking the user part.
+ * _user_part_static_ram_size is preallocated to be large enough during the user part first link stage. 
+ * _user_part_static_ram_size is decreased to that just fits the user part's .data and .bss sections during the user part final link stage.
+ * _user_part_static_ram_start is passed to system part 1 at startup for calculating the actual heap end. */
+_user_part_static_ram_size  = DEFINED(_user_part_static_ram_size) ? _user_part_static_ram_size : 96K;
+_user_part_static_ram_end   = _modular_firmware_stack_start;
 _user_part_static_ram_start = _user_part_static_ram_end - _user_part_static_ram_size;
 
 /* SoftDevice */
-_softdevice_ram_size = 23K;
+_softdevice_ram_size  = 16K;
 _softdevice_ram_start = _ram_start;
-_softdevice_ram_end = _softdevice_ram_start + _softdevice_ram_size;
+_softdevice_ram_end   = _softdevice_ram_start + _softdevice_ram_size;
 
-/* System part 1 */
-_system_part1_static_ram_size = 100K;
+/* System part 1
+ * _system_part1_static_ram_size is preallocated large enough to fit the system part's .data and .bss sections.
+ * The actual end of the system part static ram is calculated after linkage. Unused preallocated RAM is recognized as heap for modular firmware. */
+_system_part1_static_ram_size  = _ram_size - _backup_ram_all_size - _modular_firmware_stack_size - _user_part_static_ram_size - _softdevice_ram_size;
 _system_part1_static_ram_start = _softdevice_ram_end;
-_system_part1_static_ram_end = _system_part1_static_ram_start + _system_part1_static_ram_size;
+_system_part1_static_ram_end   = _system_part1_static_ram_start + _system_part1_static_ram_size;
 
-/* Heap */
+/* Monolithic firmware
+ * _monolithic_firmware_static_ram_size is preallocated large enough to fit the monolithic firmware's .data and .bss sections.
+ * The actual end of the monolithic firmware static ram is calculated after linkage. Unused preallocated RAM is recognized as heap for monolithic firmware. */
+_monolithic_firmware_static_ram_size  = _ram_size - _backup_ram_all_size - _monolithic_firmware_stack_size - _softdevice_ram_size;
+_monolithic_firmware_static_ram_start = _softdevice_ram_end;
+_monolithic_firmware_static_ram_end   = _monolithic_firmware_static_ram_start + _monolithic_firmware_static_ram_size;
+
+/* Bootloader
+ * _bootloader_static_ram_size is preallocated large enough to fit the bootloader's .data and .bss sections.
+ * The actual end of the bootloader static ram is calculated after linkage. Unused preallocated RAM is recognized as heap for bootloader. */
+_bootloader_static_ram_size  = _ram_size - _backup_ram_all_size - _bootloader_stack_size - _softdevice_ram_size;
+_bootloader_static_ram_start = _softdevice_ram_end;
+_bootloader_static_ram_end   = _bootloader_static_ram_start + _bootloader_static_ram_size;
+
+/* The heap size after linkage should meet the minimum heap requirement. 
+ * For modular firmware:
+ *   The start address of the heap is the actual end of system part 1 static ram;
+ *   The end address of the heap is the actual start of user part static ram.
+ * For monolithic firmware:
+ *   The start address of the heap is actual end of monolithic firmware static ram;
+ *   The end address of the heap is the start of monolithic firmware stack. */
 _heap_min_size = 32K;
 
 /* Basic sanity checks */
 ASSERT(
-    _softdevice_ram_end - _softdevice_ram_start == _softdevice_ram_size && _softdevice_ram_size > 0 &&
-    _system_part1_static_ram_end - _system_part1_static_ram_start == _system_part1_static_ram_size && _system_part1_static_ram_size > 0 &&
-    _user_part_static_ram_end - _user_part_static_ram_start == _user_part_static_ram_size && _user_part_static_ram_size > 0 &&
-    _stack_end - _stack_start == _stack_size && _stack_size > 0 &&
-    _system_backup_ram_end - _system_backup_ram_start == _system_backup_ram_size && _system_backup_ram_size > 0 &&
-    _backup_registers_ram_end - _backup_registers_ram_start == _backup_registers_ram_size && _backup_registers_ram_size > 0 &&
-    _system_flags_ram_end - _system_flags_ram_start == _system_flags_ram_size && _system_flags_ram_size > 0 &&
-    _user_backup_ram_end - _user_backup_ram_start == _user_backup_ram_size && _user_backup_ram_size > 0 &&
-    _ram_end - _ram_start == _ram_size && _ram_size > 0,
+    (_softdevice_ram_end - _softdevice_ram_start == _softdevice_ram_size && _softdevice_ram_size > 0) &&
+    (_system_part1_static_ram_end - _system_part1_static_ram_start == _system_part1_static_ram_size && _system_part1_static_ram_size > 0) &&
+    (_user_part_static_ram_end - _user_part_static_ram_start == _user_part_static_ram_size && _user_part_static_ram_size > 0) &&
+    (_modular_firmware_stack_end - _modular_firmware_stack_start == _modular_firmware_stack_size && _modular_firmware_stack_size > 0) &&
+    (_system_backup_ram_end - _system_backup_ram_start == _system_backup_ram_size && _system_backup_ram_size > 0) &&
+    (_backup_registers_ram_end - _backup_registers_ram_start == _backup_registers_ram_size && _backup_registers_ram_size > 0) &&
+    (_system_flags_ram_end - _system_flags_ram_start == _system_flags_ram_size && _system_flags_ram_size > 0) &&
+    (_user_backup_ram_end - _user_backup_ram_start == _user_backup_ram_size && _user_backup_ram_size > 0) &&
+    (_ram_end - _ram_start == _ram_size && _ram_size > 0) &&
+    (_backup_ram_all_size + _modular_firmware_stack_size + _user_part_static_ram_size + _system_part1_static_ram_size + _softdevice_ram_size <= _ram_size) &&
+    (_backup_ram_all_size + _monolithic_firmware_stack_size + _monolithic_firmware_static_ram_size + _softdevice_ram_size == _ram_size) &&
+    (_backup_ram_all_size + _bootloader_stack_size + _bootloader_static_ram_size + _softdevice_ram_size == _ram_size),
     "Invalid memory map");

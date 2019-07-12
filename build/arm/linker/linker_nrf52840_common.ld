@@ -1,22 +1,17 @@
+/* Default stack sizes. These are used by the startup in order to allocate stacks for the
+ * different modes. *//* higher address of the user mode stack */
+_estack = _bootloader_stack_end;
+__Stack_Size = _bootloader_stack_size;
+__Stack_Init = _estack - __Stack_Size;
 
-PROVIDE ( _Stack_Size = __Stack_Size ) ;
-/*"PROVIDE" allows to easily override these values from an object file or the commmand line.*/
-PROVIDE ( _Stack_Init = __Stack_Init ) ;
+/* There will be a link error if there is not this amount of RAM free at the end. */
+_Minimum_Stack_Size = 0x1400;
 
-
-/* include the memory spaces definitions sub-script */
-/*
-Linker subscript for STM32F205xx definitions with 1024K Flash and 128K RAM
-*/
-
-/* higher address of the user mode stack */
-/* end of 256K SRAM - backup sram pages */
-_estack = 0x20040000 - LENGTH(BACKUPSRAM_ALL);
-
-/* include the sections management sub-script for FLASH mode */
+/* "PROVIDE" allows to easily override these values from an object file or the commmand line. */
+PROVIDE ( _Stack_Size = __Stack_Size );
+PROVIDE ( _Stack_Init = __Stack_Init );
 
 /* Sections Definitions */
-
 SECTIONS
 {
     INCLUDE module_start.ld

@@ -1,3 +1,10 @@
+/* Stack */
+_estack = _modular_firmware_stack_end;
+__Stack_Size = _modular_firmware_stack_size;
+__Stack_Init = _estack - __Stack_Size ;
+
+PROVIDE ( _Stack_Size = __Stack_Size ) ;
+PROVIDE ( _Stack_Init = __Stack_Init ) ;
 
 SECTIONS
 {
@@ -9,7 +16,7 @@ SECTIONS
 
     .dynalib :
     {
-        expected_dynalib_start = ORIGIN(APP_FLASH) + 24 ;
+        expected_dynalib_start = ORIGIN(APP_FLASH) + _user_part_module_info_flash_size;
         link_dynalib_start = .;
         KEEP(*(*.user_part_module))
         link_dynalib_end = . ;
@@ -121,17 +128,18 @@ SECTIONS
 
 PROVIDE ( end = system_heap_end );
 
+/* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
+INCLUDE module_system_part1_export.ld
+
+/* Definitions for the static parts of the user module */
+INCLUDE module_user_export.ld
 
 ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
 ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" );
-ASSERT ( link_dynalib_start == user_module_table, "Dynalib location not same as exported location" );
+ASSERT ( link_dynalib_start == _user_part_dynalib_table_flash_start, "Dynalib location not same as exported location" );
 
 ASSERT ( USER_FIRMWARE_IMAGE_LOCATION == ORIGIN(APP_FLASH), "User firmware location and APP_FLASH origin differ" );
 ASSERT ( USER_FIRMWARE_IMAGE_SIZE == LENGTH(APP_FLASH), "User firmware size and APP_FLASH length differ" );
-
-/* Heap assertion*/
-link_heap_location_end = _system_part1_static_ram_end + _heap_min_size;
-ASSERT ( link_heap_location_end < link_global_data_start, "Insufficient room for heap" );
 
 ASSERT ( (link_bss_end - link_global_data_start) <= _user_part_static_ram_size, "Insufficient room for .data and .bss sections" )
 
@@ -139,8 +147,8 @@ ASSERT ( link_module_info_start < link_module_info_end, "module info not linked"
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 
-ASSERT ( user_module_info == link_module_info_start, "module info start not where expected" );
-ASSERT ( user_module_info_end == link_module_info_end, "module info end not where expected" );
+ASSERT ( _user_part_module_info_flash_start == link_module_info_start, "module info start not where expected" );
+ASSERT ( _user_part_module_info_flash_end == link_module_info_end, "module info end not where expected" );
 
 ASSERT ( ( link_module_info_suffix_start - link_module_info_static_start ) == 4 || ( link_module_info_suffix_start - link_module_info_static_start ) == 8, "module info static details not linked" );
 
