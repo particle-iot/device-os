@@ -18,12 +18,6 @@
 #ifndef SPARK_WIRING_LOGGING_H
 #define SPARK_WIRING_LOGGING_H
 
-#include <cstring>
-#include <cstdarg>
-
-#include "logging.h"
-
-#include "spark_wiring_json.h"
 #include "spark_wiring_print.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_thread.h"
@@ -31,8 +25,13 @@
 #include "spark_wiring_platform.h"
 
 #if Wiring_LogConfig
-#include "system_control.h"
+#include "system_logging.h"
 #endif
+
+#include "logging.h"
+
+#include <cstring>
+#include <cstdarg>
 
 namespace spark {
 
@@ -225,6 +224,9 @@ public:
 protected:
     virtual void logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) override;
     virtual void write(const char *data, size_t size) override;
+
+private:
+    static const char* jsonLevelName(int level);
 };
 
 class AttributedLogger;
@@ -451,15 +453,13 @@ class LogHandlerFactory {
 public:
     virtual ~LogHandlerFactory() = default;
 
-    virtual LogHandler* createHandler(const char *type, LogLevel level, LogCategoryFilters filters, Print *stream,
-            const JSONValue &params) = 0; // TODO: Use some generic container or a buffer instead of JSONValue
-    virtual void destroyHandler(LogHandler *handler);
+    virtual LogHandler* createHandler(log_handler_type type, LogLevel level, LogCategoryFilters filters, Print* stream = nullptr) = 0;
+    virtual void destroyHandler(LogHandler* handler);
 };
 
 class DefaultLogHandlerFactory: public LogHandlerFactory {
 public:
-    virtual LogHandler* createHandler(const char *type, LogLevel level, LogCategoryFilters filters, Print *stream,
-            const JSONValue &params) override;
+    LogHandler* createHandler(log_handler_type type, LogLevel level, LogCategoryFilters filters, Print* stream) override;
 
     static DefaultLogHandlerFactory* instance();
 };
@@ -469,19 +469,16 @@ class OutputStreamFactory {
 public:
     virtual ~OutputStreamFactory() = default;
 
-    virtual Print* createStream(const char *type, const JSONValue &params) = 0;
-    virtual void destroyStream(Print *stream);
+    virtual Print* createStream(log_stream_type type, unsigned index = 0, unsigned baudRate = 0) = 0;
+    virtual void destroyStream(Print* stream);
 };
 
 class DefaultOutputStreamFactory: public OutputStreamFactory {
 public:
-    virtual Print* createStream(const char *type, const JSONValue &params) override;
-    virtual void destroyStream(Print *stream) override;
+    Print* createStream(log_stream_type type, unsigned index, unsigned baudRate) override;
+    void destroyStream(Print* stream) override;
 
     static DefaultOutputStreamFactory* instance();
-
-private:
-    static void getParams(const JSONValue &params, int *baudRate);
 };
 
 #endif // Wiring_LogConfig
@@ -519,18 +516,19 @@ public:
     /*!
         \brief Creates and registers a factory log handler.
 
+        Note: This is an experimental API and is subject to change.
+
         \param id Handler ID.
         \param handlerType Handler type.
         \param level Default logging level.
         \param filters Category filters.
-        \param handlerParams Additional handler parameters.
         \param streamType Stream type.
-        \param streamParams Additional stream parameters.
-
+        \param streamIndex Stream index.
+        \param baudRate Baud rate.
         \return `false` in case of error.
     */
-    bool addFactoryHandler(const char *id, const char *handlerType, LogLevel level, LogCategoryFilters filters,
-            const JSONValue &handlerParams, const char *streamType, const JSONValue &streamParams);
+    bool addFactoryHandler(const char *id, log_handler_type handlerType, LogLevel level, LogCategoryFilters filters,
+            log_stream_type streamType = LOG_INVALID_STREAM, unsigned streamIndex = 0, unsigned baudRate = 0);
     /*!
         \brief Unregisters and destroys a factory log handler.
 
@@ -543,7 +541,7 @@ public:
         \param callback Callback function invoked for each active handler.
         \param data User data.
     */
-    void enumFactoryHandlers(void(*callback)(const char *id, void *data), void *data);
+    bool enumFactoryHandlers(bool(*callback)(const char *id, void *data), void *data);
     /*!
         \brief Sets log handler factory.
 
@@ -612,11 +610,14 @@ private:
 #if Wiring_LogConfig
 
 /*!
-    \brief Performs processing of a control request.
+    \brief Command handler.
 
-    \param req Request handle.
+    \param cmd Command data.
+    \param result Result data.
+    \param userData User data.
+    \return 0 on success, or a negative result code in case of an error.
 */
-void logProcessControlRequest(ctrl_request* req);
+int logCommand(const log_command* cmd, log_command_result** result, void* userData);
 
 #endif // Wiring_LogConfig
 

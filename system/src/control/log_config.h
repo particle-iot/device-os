@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,27 +21,16 @@
 
 namespace particle {
 
-namespace ctrl {
+namespace control {
 
-namespace mesh {
+namespace logging {
 
-int auth(ctrl_request* req);
-int createNetwork(ctrl_request* req);
-int startCommissioner(ctrl_request* req);
-int stopCommissioner(ctrl_request* req);
-int prepareJoiner(ctrl_request* req);
-int addJoiner(ctrl_request* req);
-int removeJoiner(ctrl_request* req);
-int joinNetwork(ctrl_request* req);
-int leaveNetwork(ctrl_request* req);
-int getNetworkInfo(ctrl_request* req);
-int scanNetworks(ctrl_request* req);
-int getNetworkDiagnostics(ctrl_request* req);
+void addLogHandler(ctrl_request* req);
+void removeLogHandler(ctrl_request* req);
+void getLogHandlers(ctrl_request* req);
 
-int notifyBorderRouter(bool active);
+} // particle::control::logging
 
-} // particle::ctrl::mesh
-
-} // particle::ctrl
+} // particle::control
 
 } // particle

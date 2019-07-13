@@ -62,8 +62,8 @@ const SleepOptionFlag SLEEP_DISABLE_WKP_PIN(System_Sleep_Flag::SYSTEM_SLEEP_FLAG
 const SleepOptionFlag SLEEP_NO_WAIT(System_Sleep_Flag::SYSTEM_SLEEP_FLAG_NO_WAIT);
 
 #if Wiring_LogConfig
-enum LoggingFeature {
-    FEATURE_CONFIGURABLE_LOGGING = 1
+enum LogConfigFeature {
+    FEATURE_LOG_CONFIG
 };
 #endif
 
@@ -286,7 +286,7 @@ public:
     }
 
 #if Wiring_LogConfig
-    bool enableFeature(LoggingFeature feature);
+    static bool enableFeature(LogConfigFeature);
 #endif
 
     static bool enableFeature(const WiFiTesterFeature feature);

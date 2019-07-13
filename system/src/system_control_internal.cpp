@@ -37,6 +37,7 @@
 #include "control/storage.h"
 #include "control/mesh.h"
 #include "control/cloud.h"
+#include "control/log_config.h"
 
 namespace particle {
 
@@ -209,7 +210,9 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         }
         break;
     }
-#if Wiring_WiFi == 1 && !HAL_PLATFORM_NCP
+    // These requests are not going to be supported in future versions of Device OS and were disabled
+    // to free some flash memory
+#if 0 // Wiring_WiFi == 1 && !HAL_PLATFORM_NCP
     /* wifi requests */
     case CTRL_REQUEST_WIFI_GET_ANTENNA: {
         setResult(req, control::wifi::handleGetAntennaRequest(req));
@@ -236,7 +239,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
 #endif // Wiring_WiFi && !HAL_PLATFORM_NCP
-#if !HAL_PLATFORM_MESH
+#if 0 // !HAL_PLATFORM_MESH
     /* network requests */
     case CTRL_REQUEST_NETWORK_GET_CONFIGURATION: {
         setResult(req, control::network::handleGetConfigurationRequest(req));
@@ -312,6 +315,9 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::firmwareUpdateDataRequest(req));
         break;
     }
+    // These requests are not going to be supported in future versions of Device OS and were disabled
+    // to free some flash memory
+#if 0
     case CTRL_REQUEST_DESCRIBE_STORAGE: {
         setResult(req, control::describeStorageRequest(req));
         break;
@@ -332,6 +338,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::getSectionDataSizeRequest(req));
         break;
     }
+#endif
     case CTRL_REQUEST_CLOUD_GET_CONNECTION_STATUS: {
         setResult(req, ctrl::cloud::getConnectionStatus(req));
         break;
@@ -342,6 +349,18 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
     }
     case CTRL_REQUEST_CLOUD_DISCONNECT: {
         setResult(req, ctrl::cloud::disconnect(req));
+        break;
+    }
+    case CTRL_REQUEST_ADD_LOG_HANDLER: {
+        control::logging::addLogHandler(req);
+        break;
+    }
+    case CTRL_REQUEST_REMOVE_LOG_HANDLER: {
+        control::logging::removeLogHandler(req);
+        break;
+    }
+    case CTRL_REQUEST_GET_LOG_HANDLERS: {
+        control::logging::getLogHandlers(req);
         break;
     }
 #if HAL_USE_SOCKET_HAL_POSIX && HAL_PLATFORM_IFAPI
@@ -455,11 +474,11 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, ctrl::mesh::getNetworkDiagnostics(req));
         break;
     }
-    case CTRL_REQUEST_MESH_TEST: { // FIXME
-        setResult(req, ctrl::mesh::test(req));
+#endif // HAL_PLATFORM_MESH
+    case CTRL_REQUEST_ECHO: {
+        setResult(req, control::config::echo(req));
         break;
     }
-#endif // HAL_PLATFORM_MESH
     default:
         // Forward the request to the application thread
         if (appReqHandler_) {

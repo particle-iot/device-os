@@ -170,23 +170,22 @@ void __attribute((weak)) ctrl_request_custom_handler(ctrl_request* req) {
 }
 
 #if Wiring_LogConfig
-// Callback invoked to process a logging configuration request
-void(*log_process_ctrl_request_callback)(ctrl_request* req) = nullptr;
-#endif
+
+// Logging configuration callback
+int(*log_command_handler)(const log_command* cmd, log_command_result** result, void* userData) = nullptr;
+
+static int log_command_handler_wrapper(const log_command* cmd, log_command_result** result, void* userData) {
+    if (!log_command_handler) {
+        return SYSTEM_ERROR_DISABLED;
+    }
+    return log_command_handler(cmd, result, userData);
+}
+
+#endif // Wiring_LogConfig
 
 // Application handler for control requests
 static void ctrl_request_handler(ctrl_request* req) {
     switch (req->type) {
-#if Wiring_LogConfig
-    case CTRL_REQUEST_LOG_CONFIG: {
-        if (log_process_ctrl_request_callback) {
-            log_process_ctrl_request_callback(req);
-        } else {
-            system_ctrl_set_result(req, SYSTEM_ERROR_NOT_SUPPORTED, nullptr, nullptr, nullptr);
-        }
-        break;
-    }
-#endif
     case CTRL_REQUEST_APP_CUSTOM: {
         ctrl_request_custom_handler(req);
         break;
@@ -223,4 +222,9 @@ void module_user_init_hook()
 
     // Register application handler for the control requests
     system_ctrl_set_app_request_handler(ctrl_request_handler, nullptr);
+
+#if Wiring_LogConfig
+    // Register the logging configuration callback
+    log_set_command_handler(log_command_handler_wrapper, nullptr, nullptr);
+#endif
 }

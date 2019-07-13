@@ -11,7 +11,7 @@
 #include "spark_wiring_wifitester.h"
 
 #if Wiring_LogConfig
-extern void(*log_process_ctrl_request_callback)(ctrl_request* req);
+extern int(*log_command_handler)(const log_command* cmd, log_command_result** result, void* userData);
 #endif
 
 SystemClass System;
@@ -64,8 +64,8 @@ uint32_t SystemClass::freeMemory()
 }
 
 #if Wiring_LogConfig
-bool SystemClass::enableFeature(LoggingFeature) {
-    log_process_ctrl_request_callback = spark::logProcessControlRequest;
+bool SystemClass::enableFeature(LogConfigFeature) {
+    log_command_handler = spark::logCommand;
     return true;
 }
 #endif
