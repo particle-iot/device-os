@@ -227,7 +227,7 @@ uint8_t TCPClient::connected()
     {
       rv = available(); // Try CC3000
       if (!rv) {        // No more Data and CLOSE_WAIT
-          DEBUG("caling Stop No more Data and in CLOSE_WAIT");
+          DEBUG("calling .stop(), no more data, in CLOSE_WAIT");
           stop();       // Close our side
       }
   }

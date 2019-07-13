@@ -196,7 +196,10 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
         }
         if (!c.connected())
             break;
-        if (millis() - mil >= 60000) {
+        if (millis() - mil >= 20000UL) {
+            if (c.connected()) {
+                c.stop();
+            }
             break;
         }
     }

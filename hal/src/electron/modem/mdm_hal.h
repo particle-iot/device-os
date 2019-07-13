@@ -564,7 +564,17 @@ protected:
     static int _cbUPSND(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUDNSRN(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUSOCR(int type, const char* buf, int len, int* handle);
-    static int _cbUSOCTL(int type, const char* buf, int len, int* handle);
+    struct Usoctl {
+        int handle;
+        int param_id;
+        int param_val;
+
+        Usoctl()
+        {
+            memset(this, 0, sizeof(*this));
+        }
+    };
+    static int _cbUSOCTL(int type, const char* buf, int len, Usoctl* usoctl);
     typedef struct { char* buf; int len; } USORDparam;
     static int _cbUSORD(int type, const char* buf, int len, USORDparam* param);
     typedef struct { char* buf; MDM_IP ip; int port; int len; } USORFparam;
