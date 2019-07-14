@@ -22,7 +22,7 @@ ifeq ("$(INCLUDE_APP)", "y")
 GLOBAL_DEFINES += INCLUDE_APP
 endif
 
-LINKER_FILE=$(SYSTEM_PART1_MODULE_PATH)/linker.ld
+LINKER_FILE=$(SHARED_MODULAR)/linker_system_part1_common.ld
 LINKER_DEPS += $(LINKER_FILE)
 
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld

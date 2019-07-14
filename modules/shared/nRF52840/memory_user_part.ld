@@ -11,5 +11,3 @@ MEMORY
     APP_FLASH (rx)  : ORIGIN = _user_part_flash_start,      LENGTH = _user_part_flash_size
     SRAM      (rwx) : ORIGIN = _user_part_static_ram_start, LENGTH = _user_part_static_ram_size
 }
-
-INCLUDE linker_user_part_common.ld
