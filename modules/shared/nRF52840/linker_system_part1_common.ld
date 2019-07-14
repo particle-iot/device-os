@@ -3,8 +3,11 @@ _estack = _modular_firmware_stack_end;
 __Stack_Size = _modular_firmware_stack_size;
 __Stack_Init = _estack - __Stack_Size ;
 
-PROVIDE ( _Stack_Size = __Stack_Size ) ;
-PROVIDE ( _Stack_Init = __Stack_Init ) ;
+PROVIDE ( _Stack_Size = __Stack_Size );
+PROVIDE ( _Stack_Init = __Stack_Init );
+
+/* Memory spaces definitions */
+INCLUDE memory_system_part1.ld
 
 SECTIONS
 {
