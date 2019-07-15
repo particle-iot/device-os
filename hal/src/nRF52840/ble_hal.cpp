@@ -781,7 +781,7 @@ int BleObject::BleGap::getAppearance(ble_sig_appearance_t* appearance) const {
 int BleObject::BleGap::addWhitelist(const hal_ble_addr_t* addrList, size_t len) const {
     CHECK_TRUE(addrList, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(len, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(len < BLE_MAX_WHITELIST_ADDR_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(len <= BLE_MAX_WHITELIST_ADDR_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     ble_gap_addr_t* whitelist = (ble_gap_addr_t*)malloc(sizeof(ble_gap_addr_t) * len);
     CHECK_TRUE(whitelist, SYSTEM_ERROR_NO_MEMORY);
     SCOPE_GUARD ({
@@ -1201,11 +1201,11 @@ bool BleObject::Observer::scanning() {
 
 int BleObject::Observer::setScanParams(const hal_ble_scan_params_t* params) {
     CHECK_TRUE(params, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(params->interval < BLE_GAP_SCAN_INTERVAL_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(params->interval > BLE_GAP_SCAN_INTERVAL_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(params->window < BLE_GAP_SCAN_WINDOW_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(params->window > BLE_GAP_SCAN_WINDOW_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(params->window > params->interval, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(params->interval >= BLE_GAP_SCAN_INTERVAL_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(params->interval <= BLE_GAP_SCAN_INTERVAL_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(params->window >= BLE_GAP_SCAN_WINDOW_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(params->window <= BLE_GAP_SCAN_WINDOW_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(params->window <= params->interval, SYSTEM_ERROR_INVALID_ARGUMENT);
     memcpy(&scanParams_, params, std::min(scanParams_.size, params->size));
     scanParams_.size = sizeof(hal_ble_scan_params_t);
     scanParams_.version = BLE_API_VERSION;
@@ -1558,17 +1558,17 @@ void BleObject::ConnectionsManager::onPeripheralLinkEventCallback(hal_ble_on_lin
 int BleObject::ConnectionsManager::setPpcp(const hal_ble_conn_params_t* ppcp) {
     CHECK_TRUE(ppcp, SYSTEM_ERROR_INVALID_ARGUMENT);
     if (ppcp->min_conn_interval != BLE_SIG_CP_MIN_CONN_INTERVAL_NONE) {
-        CHECK_TRUE(ppcp->min_conn_interval > BLE_SIG_CP_MIN_CONN_INTERVAL_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
-        CHECK_TRUE(ppcp->min_conn_interval < BLE_SIG_CP_MIN_CONN_INTERVAL_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(ppcp->min_conn_interval >= BLE_SIG_CP_MIN_CONN_INTERVAL_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(ppcp->min_conn_interval <= BLE_SIG_CP_MIN_CONN_INTERVAL_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
     }
     if (ppcp->max_conn_interval != BLE_SIG_CP_MAX_CONN_INTERVAL_NONE) {
-        CHECK_TRUE(ppcp->max_conn_interval > BLE_SIG_CP_MAX_CONN_INTERVAL_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
-        CHECK_TRUE(ppcp->max_conn_interval < BLE_SIG_CP_MAX_CONN_INTERVAL_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(ppcp->max_conn_interval >= BLE_SIG_CP_MAX_CONN_INTERVAL_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(ppcp->max_conn_interval <= BLE_SIG_CP_MAX_CONN_INTERVAL_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
     }
     CHECK_TRUE(ppcp->slave_latency < BLE_SIG_CP_SLAVE_LATENCY_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
     if (ppcp->conn_sup_timeout != BLE_SIG_CP_CONN_SUP_TIMEOUT_NONE) {
-        CHECK_TRUE(ppcp->conn_sup_timeout > BLE_SIG_CP_CONN_SUP_TIMEOUT_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
-        CHECK_TRUE(ppcp->conn_sup_timeout < BLE_SIG_CP_CONN_SUP_TIMEOUT_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(ppcp->conn_sup_timeout >= BLE_SIG_CP_CONN_SUP_TIMEOUT_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(ppcp->conn_sup_timeout <= BLE_SIG_CP_CONN_SUP_TIMEOUT_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
     }
     ble_gap_conn_params_t bleGapConnParams = toPlatformConnParams(ppcp);
     int ret = sd_ble_gap_ppcp_set(&bleGapConnParams);
@@ -2759,7 +2759,7 @@ int BleObject::GattClient::configureRemoteCCCD(const hal_ble_cccd_config_t* conf
     CHECK_TRUE(BleObject::getInstance().connMgr()->valid(config->conn_handle), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(config->cccd_handle != BLE_INVALID_ATTR_HANDLE, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(config->value_handle != BLE_INVALID_ATTR_HANDLE, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(config->cccd_value < BLE_SIG_CCCD_VAL_INDICATION, SYSTEM_ERROR_NOT_SUPPORTED);
+    CHECK_TRUE(config->cccd_value <= BLE_SIG_CCCD_VAL_INDICATION, SYSTEM_ERROR_NOT_SUPPORTED);
     if (config->cccd_value == BLE_SIG_CCCD_VAL_NOTIFICATION || config->cccd_value == BLE_SIG_CCCD_VAL_INDICATION) {
         CHECK(addPublisher(config->conn_handle, config->value_handle, config->callback, config->context));
     } else {
