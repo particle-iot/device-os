@@ -2189,6 +2189,7 @@ int BleObject::GattServer::addService(uint8_t type, const hal_ble_uuid_t* uuid, 
     ble_uuid_t svcUuid;
     CHECK_TRUE(uuid, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(svcHandle, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(services_.size() <= BLE_MAX_SVC_COUNT, SYSTEM_ERROR_LIMIT_EXCEEDED);
     CHECK(BleObject::toPlatformUUID(uuid, &svcUuid));
     int ret = sd_ble_gatts_service_add(type, &svcUuid, svcHandle);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
@@ -2200,7 +2201,7 @@ int BleObject::GattServer::addService(uint8_t type, const hal_ble_uuid_t* uuid, 
 int BleObject::GattServer::addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char_handles_t* charHandles) {
     CHECK_TRUE(charHandles, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(charInit, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(characteristics_.size() < BLE_MAX_CHAR_COUNT, SYSTEM_ERROR_LIMIT_EXCEEDED);
+    CHECK_TRUE(characteristics_.size() <= BLE_MAX_CHAR_COUNT, SYSTEM_ERROR_LIMIT_EXCEEDED);
     CHECK_TRUE(findService(charInit->service_handle), SYSTEM_ERROR_NOT_FOUND);
     ble_uuid_t charUuid = {};
     ble_gatts_char_md_t charMd = {};
@@ -2220,8 +2221,8 @@ int BleObject::GattServer::addCharacteristic(const hal_ble_char_init_t* charInit
         userDescAttrMd.wr_auth = 0;
         userDescAttrMd.vlen = 0;
         charMd.p_char_user_desc = (const uint8_t *)charInit->description;
-        charMd.char_user_desc_max_size = strlen(charInit->description);
-        charMd.char_user_desc_size = strlen(charInit->description);
+        charMd.char_user_desc_max_size = std::min((size_t)BLE_MAX_DESC_LEN, strlen(charInit->description));
+        charMd.char_user_desc_size = std::min((size_t)BLE_MAX_DESC_LEN, strlen(charInit->description));
         charMd.p_user_desc_md = &userDescAttrMd;
     } else {
         charMd.p_char_user_desc = nullptr;

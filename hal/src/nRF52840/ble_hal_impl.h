@@ -46,6 +46,9 @@
 /* Maximum length of device name, non null-terminated */
 #define BLE_MAX_DEV_NAME_LEN                        20
 
+/* Maximum length of characteristic description */
+#define BLE_MAX_DESC_LEN                            20
+
 /* BLE event thread stack size */
 #define BLE_EVENT_THREAD_STACK_SIZE                 2048
 
@@ -108,8 +111,8 @@
 #define BLE_MAX_ATTR_VALUE_PACKET_SIZE              (BLE_MAX_ATT_MTU_SIZE - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE)
 #define BLE_ATTR_VALUE_PACKET_SIZE(ATT_MTU)         (ATT_MTU - BLE_ATT_OPCODE_SIZE - BLE_ATT_HANDLE_SIZE)
 
-#define BLE_MAX_SVC_COUNT                           5
-#define BLE_MAX_CHAR_COUNT                          10
+#define BLE_MAX_SVC_COUNT                           21
+#define BLE_MAX_CHAR_COUNT                          23
 #define BLE_MAX_DESC_COUNT                          10
 
 #define BLE_MAX_PERIPHERAL_COUNT                    NRF_SDH_BLE_PERIPHERAL_LINK_COUNT
