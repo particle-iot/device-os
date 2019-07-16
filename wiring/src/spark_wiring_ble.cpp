@@ -244,6 +244,7 @@ BleUuid& BleUuid::operator=(const BleUuid& uuid) {
 BleUuid& BleUuid::operator=(const uint8_t* uuid128) {
     if (uuid128) {
         memcpy(uuid_.uuid128, uuid128, BLE_SIG_UUID_128BIT_LEN);
+        uuid_.type = BLE_UUID_TYPE_128BIT;
     }
     return *this;
 }
