@@ -141,6 +141,13 @@ enum class BleAntennaType : uint8_t {
     EXTERNAL = BLE_ANT_EXTERNAL
 };
 
+enum class BleAddressType : uint8_t {
+    PUBLIC                          = BLE_SIG_ADDR_TYPE_PUBLIC,
+    RANDOM_STATIC                   = BLE_SIG_ADDR_TYPE_RANDOM_STATIC,
+    RANDOM_PRIVATE_RESOLVABLE       = BLE_SIG_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE,
+    RANDOM_PRIVATE_NON_RESOLVABLE   = BLE_SIG_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE
+};
+
 typedef hal_ble_conn_handle_t BleConnectionHandle;
 typedef hal_ble_attr_handle_t BleAttributeHandle;
 
@@ -148,30 +155,6 @@ typedef void (*BleOnDataReceivedCallback)(const uint8_t* data, size_t len, const
 typedef void (*BleOnScanResultCallback)(const BleScanResult* device, void* context);
 typedef void (*BleOnConnectedCallback)(const BlePeerDevice& peer, void* context);
 typedef void (*BleOnDisconnectedCallback)(const BlePeerDevice& peer, void* context);
-
-class BleAddress : public hal_ble_addr_t {
-public:
-    BleAddress& operator=(hal_ble_addr_t addr) {
-        this->addr_type = addr.addr_type;
-        memcpy(this->addr, addr.addr, BLE_SIG_ADDR_LEN);
-        return *this;
-    }
-
-    uint8_t operator[](uint8_t i) const {
-        if (i >= BLE_SIG_ADDR_LEN) {
-            return 0;
-        }
-        return addr[i];
-    }
-
-    bool operator==(const BleAddress& addr) const {
-        if (this->addr_type == addr.addr_type && !memcmp(this->addr, addr.addr, BLE_SIG_ADDR_LEN)) {
-            return true;
-        }
-        return false;
-    }
-};
-static_assert(std::is_pod<BleAddress>::value, "BleAddress is not a POD struct");
 
 class BleAdvertisingParams : public hal_ble_adv_params_t {
 };
@@ -198,6 +181,40 @@ public:
     }
 };
 static_assert(std::is_pod<BleCharacteristicHandles>::value, "BleCharacteristicHandles is not a POD struct");
+
+
+class BleAddress {
+public:
+    BleAddress();
+    BleAddress(const hal_ble_addr_t& addr);
+    BleAddress(const uint8_t addr[BLE_SIG_ADDR_LEN], BleAddressType type = BleAddressType::PUBLIC);
+    BleAddress(const char* address, BleAddressType type = BleAddressType::PUBLIC);
+    BleAddress(const String& address, BleAddressType type = BleAddressType::PUBLIC);
+    ~BleAddress() = default;
+
+    // Setters
+    int type(BleAddressType type);
+    int set(const uint8_t addr[BLE_SIG_ADDR_LEN], BleAddressType type = BleAddressType::PUBLIC);
+    int set(const char* address, BleAddressType type = BleAddressType::PUBLIC);
+    int set(const String& address, BleAddressType type = BleAddressType::PUBLIC);
+    BleAddress& operator=(const hal_ble_addr_t& addr);
+    BleAddress& operator=(const uint8_t addr[BLE_SIG_ADDR_LEN]);
+
+    // Getters
+    BleAddressType type() const;
+    void octets(uint8_t addr[BLE_SIG_ADDR_LEN]) const;
+    String toString(bool stripped = false) const;
+    size_t toString(char* buf, size_t len, bool stripped = false) const;
+    hal_ble_addr_t halAddress() const;
+    uint8_t operator[](uint8_t i) const;
+
+    bool operator==(const BleAddress& addr) const;
+
+private:
+    void toBigEndian(uint8_t buf[BLE_SIG_ADDR_LEN]) const;
+
+    hal_ble_addr_t address_;
+};
 
 
 class BleUuid {
@@ -237,6 +254,7 @@ public:
 
 private:
     void construct(const char* uuid);
+    void toBigEndian(uint8_t buf[BLE_SIG_UUID_128BIT_LEN]) const;
 
     hal_ble_uuid_t uuid_;
 };
@@ -464,7 +482,11 @@ private:
 class BleLocalDevice {
 public:
     // Local device identifies.
+    int setAddress(const BleAddress& address) const;
+    int setAddress(const char* address, BleAddressType type = BleAddressType::PUBLIC) const;
+    int setAddress(const String& address, BleAddressType type = BleAddressType::PUBLIC) const;
     BleAddress address() const;
+
     int setDeviceName(const char* name, size_t len) const;
     int setDeviceName(const char* name) const;
     int setDeviceName(const String& name) const;

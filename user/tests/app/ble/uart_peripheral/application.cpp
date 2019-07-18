@@ -46,8 +46,7 @@ size_t txLen = 0;
 
 void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context) {
     BleAddress address = peer.address();
-    LOG(TRACE, "Received data from: %02X:%02X:%02X:%02X:%02X:%02X:",
-            address[0], address[1], address[2], address[3], address[4], address[5]);
+    LOG(TRACE, "Received data from: %s", address.toString().c_str());
 
     BleCharacteristic* characteristic = static_cast<BleCharacteristic*>(context);
     Serial1.printf("Characteristic UUID: %s\r\n", characteristic->UUID().toString().c_str());

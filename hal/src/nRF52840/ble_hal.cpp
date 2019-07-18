@@ -151,16 +151,16 @@ bool addressEqual(const hal_ble_addr_t& srcAddr, const hal_ble_addr_t& destAddr)
 }
 
 hal_ble_addr_t chipDefaultAddress() {
-    uint32_t addrMsb = NRF_FICR->DEVICEID[1];
-    uint32_t addrLsb = NRF_FICR->DEVICEID[0];
+    uint32_t addrMsb = NRF_FICR->DEVICEADDR[1];
+    uint32_t addrLsb = NRF_FICR->DEVICEADDR[0];
     hal_ble_addr_t localAddr = {};
     localAddr.addr_type = BLE_SIG_ADDR_TYPE_RANDOM_STATIC;
-    localAddr.addr[0] = (uint8_t)((addrMsb >> 24) & 0x000000FF);
-    localAddr.addr[1] = (uint8_t)((addrMsb >> 16) & 0x000000FF);
-    localAddr.addr[2] = (uint8_t)((addrMsb >> 8) & 0x000000FF);
-    localAddr.addr[3] = (uint8_t)(addrMsb & 0x000000FF);
-    localAddr.addr[4] = (uint8_t)((addrLsb >> 24) & 0x000000FF);
-    localAddr.addr[5] = (uint8_t)((addrLsb >> 16) & 0x000000FF);
+    localAddr.addr[0] = (uint8_t)(addrLsb & 0x000000FF);
+    localAddr.addr[1] = (uint8_t)((addrLsb >> 8) & 0x000000FF);
+    localAddr.addr[2] = (uint8_t)((addrLsb >> 16) & 0x000000FF);
+    localAddr.addr[3] = (uint8_t)((addrLsb >> 24) & 0x000000FF);
+    localAddr.addr[4] = (uint8_t)(addrMsb & 0x000000FF);
+    localAddr.addr[5] = (uint8_t)((addrMsb >> 8) & 0x000000FF);
     return localAddr;
 }
 
@@ -753,8 +753,12 @@ int BleObject::BleGap::setDeviceAddress(const hal_ble_addr_t* address) const {
     if (newAddr.addr_type != BLE_SIG_ADDR_TYPE_PUBLIC && newAddr.addr_type != BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    ble_gap_addr_t localAddr = toPlatformAddress(*address);
-    int ret = sd_ble_gap_addr_set(&localAddr);
+    if (newAddr.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
+        // For random static address, the two most significant bits of the address shall be equal to 1.
+        newAddr.addr[5] |= 0xC0;
+    }
+    ble_gap_addr_t bleGapAddr = toPlatformAddress(newAddr);
+    int ret = sd_ble_gap_addr_set(&bleGapAddr);
     return nrf_system_error(ret);
 }
 

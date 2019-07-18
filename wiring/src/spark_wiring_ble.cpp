@@ -107,6 +107,158 @@ RecursiveMutex WiringBleLock::mutex_;
 
 
 /*******************************************************
+ * BleAddress class
+ */
+BleAddress::BleAddress() {
+    address_.addr_type = BLE_SIG_ADDR_TYPE_PUBLIC;
+    memset(address_.addr, 0x00, BLE_SIG_ADDR_LEN);
+}
+
+BleAddress::BleAddress(const hal_ble_addr_t& addr) {
+    address_ = addr;
+}
+
+BleAddress::BleAddress(const uint8_t addr[BLE_SIG_ADDR_LEN], BleAddressType type) {
+    address_.addr_type = static_cast<ble_sig_addr_type_t>(type);
+    memcpy(address_.addr, addr, BLE_SIG_ADDR_LEN);
+}
+
+BleAddress::BleAddress(const char* address, BleAddressType type) {
+    set(address, type);
+}
+
+BleAddress::BleAddress(const String& address, BleAddressType type) {
+    set(address, type);
+}
+
+int BleAddress::type(BleAddressType type) {
+    address_.addr_type = static_cast<ble_sig_addr_type_t>(type);
+    return SYSTEM_ERROR_NONE;
+}
+
+BleAddressType BleAddress::type() const {
+    return static_cast<BleAddressType>(address_.addr_type);
+}
+
+int BleAddress::set(const uint8_t addr[BLE_SIG_ADDR_LEN], BleAddressType type) {
+    address_.addr_type = static_cast<ble_sig_addr_type_t>(type);
+    memcpy(address_.addr, addr, BLE_SIG_ADDR_LEN);
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleAddress::set(const char* address, BleAddressType type) {
+    CHECK_TRUE(address, SYSTEM_ERROR_INVALID_ARGUMENT);
+    size_t len = BLE_SIG_ADDR_LEN;
+    for (size_t i = 0; i < strlen(address) && len > 0; i++) {
+        int8_t hi = hexToNibble(address[i]);
+        if (hi >= 0) {
+            address_.addr[len - 1] = hi << 4;
+            if (++i < strlen(address)) {
+                int8_t lo = hexToNibble(address[i]);
+                if (lo >= 0) {
+                    address_.addr[len - 1] |= lo;
+                }
+            }
+            len--;
+        }
+    }
+    while (len > 0) {
+        address_.addr[len - 1] = 0x00;
+        len--;
+    }
+    address_.addr_type = static_cast<ble_sig_addr_type_t>(type);
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleAddress::set(const String& address, BleAddressType type) {
+    return set(address.c_str(), type);
+}
+
+void BleAddress::octets(uint8_t addr[BLE_SIG_ADDR_LEN]) const {
+    memcpy(addr, address_.addr, BLE_SIG_ADDR_LEN);
+}
+
+hal_ble_addr_t BleAddress::halAddress() const {
+    return address_;
+}
+
+String BleAddress::toString(bool stripped) const {
+    String string;
+    uint8_t temp[BLE_SIG_ADDR_LEN];
+    toBigEndian(temp);
+    char* cStr = (char*)malloc(BLE_SIG_ADDR_LEN * 2 + 6);
+    if (cStr) {
+        SCOPE_GUARD ({
+            free(cStr);
+        });
+        if (stripped) {
+            bytes2hexbuf(temp, BLE_SIG_ADDR_LEN, cStr);
+            cStr[BLE_SIG_ADDR_LEN * 2] = '\0';
+        } else {
+            uint8_t idx = 0;
+            bytes2hexbuf(&temp[idx], 1, &cStr[idx]);
+            idx++;
+            cStr[idx * 2] = ':';
+            bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 1]);
+            idx++;
+            cStr[idx * 2 + 1] = ':';
+            bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 2]);
+            idx++;
+            cStr[idx * 2 + 2] = ':';
+            bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 3]);
+            idx++;
+            cStr[idx * 2 + 3] = ':';
+            bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 4]);
+            idx++;
+            cStr[idx * 2 + 4] = ':';
+            bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 5]);
+            idx++;
+            cStr[idx * 2 + 5] = '\0';
+        }
+        string.concat(cStr);
+    }
+    return string;
+}
+
+size_t BleAddress::toString(char* buf, size_t len, bool stripped) const {
+    String string = toString(stripped);
+    len = std::min(len, string.length());
+    memcpy(buf, string.c_str(), len);
+    return len;
+}
+
+uint8_t BleAddress::operator[](uint8_t i) const {
+    if (i >= BLE_SIG_ADDR_LEN) {
+        return 0;
+    }
+    return address_.addr[i];
+}
+
+BleAddress& BleAddress::operator=(const hal_ble_addr_t& addr) {
+    address_ = addr;
+    return *this;
+}
+
+BleAddress& BleAddress::operator=(const uint8_t addr[BLE_SIG_ADDR_LEN]) {
+    memcpy(address_.addr, addr, BLE_SIG_ADDR_LEN);
+    return *this;
+}
+
+bool BleAddress::operator==(const BleAddress& addr) const {
+    if (address_.addr_type == addr.address_.addr_type && !memcmp(address_.addr, addr.address_.addr, BLE_SIG_ADDR_LEN)) {
+        return true;
+    }
+    return false;
+}
+
+void BleAddress::toBigEndian(uint8_t buf[BLE_SIG_ADDR_LEN]) const {
+    for (uint8_t i = 0, j = BLE_SIG_ADDR_LEN - 1; i < BLE_SIG_ADDR_LEN; i++, j--) {
+        buf[i] = address_.addr[j];
+    }
+}
+
+
+/*******************************************************
  * BleUuid class
  */
 BleUuid::BleUuid()
@@ -193,12 +345,10 @@ const uint8_t* BleUuid::rawBytes() const {
 }
 
 String BleUuid::toString(bool stripped) const {
-    uint8_t temp[BLE_SIG_UUID_128BIT_LEN];
-    for (uint8_t i = 0, j = BLE_SIG_UUID_128BIT_LEN - 1; i < BLE_SIG_UUID_128BIT_LEN; i++, j--) {
-        temp[i] = uuid_.uuid128[j];
-    }
-    char* cStr = (char*)malloc(BLE_SIG_UUID_128BIT_LEN * 2 + 5);
     String string;
+    uint8_t temp[BLE_SIG_UUID_128BIT_LEN];
+    toBigEndian(temp);
+    char* cStr = (char*)malloc(BLE_SIG_UUID_128BIT_LEN * 2 + 5);
     if (cStr) {
         SCOPE_GUARD ({
             free(cStr);
@@ -283,7 +433,7 @@ void BleUuid::construct(const char* uuid) {
         memset(uuid_.uuid128, 0x00, BLE_SIG_UUID_128BIT_LEN);
     } else {
         size_t len = BLE_SIG_UUID_128BIT_LEN;
-        for (size_t i = 0; i < strlen(uuid); i++) {
+        for (size_t i = 0; i < strlen(uuid) && len > 0; i++) {
             int8_t hi = hexToNibble(uuid[i]);
             if (hi >= 0) {
                 uuid_.uuid128[len - 1] = hi << 4;
@@ -302,6 +452,12 @@ void BleUuid::construct(const char* uuid) {
         }
     }
     uuid_.type = BLE_UUID_TYPE_128BIT;
+}
+
+void BleUuid::toBigEndian(uint8_t buf[BLE_SIG_UUID_128BIT_LEN]) const {
+    for (uint8_t i = 0, j = BLE_SIG_UUID_128BIT_LEN - 1; i < BLE_SIG_UUID_128BIT_LEN; i++, j--) {
+        buf[i] = uuid_.uuid128[j];
+    }
 }
 
 
@@ -1255,10 +1411,29 @@ int BleLocalDevice::off() {
     return SYSTEM_ERROR_NONE;
 }
 
+int BleLocalDevice::setAddress(const BleAddress& address) const {
+    hal_ble_addr_t addr = address.halAddress();
+    return hal_ble_gap_set_device_address(&addr, nullptr);
+}
+
+int BleLocalDevice::setAddress(const char* address, BleAddressType type) const {
+    if (!address) {
+        // Restores the default random static address.
+        return hal_ble_gap_set_device_address(nullptr, nullptr);
+    }
+    BleAddress addr(address, type);
+    return setAddress(addr);
+}
+
+int BleLocalDevice::setAddress(const String& address, BleAddressType type) const {
+    BleAddress addr(address, type);
+    return setAddress(addr);
+}
+
 BleAddress BleLocalDevice::address() const {
-    BleAddress addr = {};
-    hal_ble_gap_get_device_address(&addr, nullptr);
-    return addr;
+    hal_ble_addr_t halAddr = {};
+    hal_ble_gap_get_device_address(&halAddr, nullptr);
+    return BleAddress(halAddr);
 }
 
 int BleLocalDevice::setDeviceName(const char* name, size_t len) const {
@@ -1552,7 +1727,7 @@ BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, const BleConnectio
     hal_ble_conn_cfg_t connCfg = {};
     connCfg.version = BLE_API_VERSION;
     connCfg.size = sizeof(hal_ble_conn_cfg_t);
-    connCfg.address = addr;
+    connCfg.address = addr.halAddress();
     connCfg.conn_params = params;
     connCfg.callback = impl()->onBleLinkEvents;
     connCfg.context = impl();
