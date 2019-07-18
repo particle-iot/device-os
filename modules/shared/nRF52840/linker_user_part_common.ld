@@ -89,19 +89,21 @@ SECTIONS
     .data : /* Contains the non-zero initialised global variables */
     {
         link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
+        . = ALIGN(4);
         link_global_data_start = .;
         *(.data*)
-        link_global_data_end = .;
         . = ALIGN(., 4);
+        link_global_data_end = .;
     }> SRAM AT> APP_FLASH
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
-        link_bss_location = ALIGN(., 4);
+        . = ALIGN(4);
+        link_bss_location = .;
         *(.bss*)
         *(COMMON)
-        link_bss_end = .;
         . = ALIGN(., 4);
+        link_bss_end = .;
     }> SRAM AT> SRAM
 
     INCLUDE module_end.ld

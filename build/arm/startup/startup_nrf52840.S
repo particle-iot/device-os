@@ -222,15 +222,15 @@ Reset_Handler:
 /* Loop to copy data from read only memory to RAM.
  * The ranges of copy from/to are specified by following symbols:
  *      __etext: LMA of start of the section to copy from. Usually end of text
- *      __data_start__: VMA of start of the section to copy to.
- *      __bss_start__: VMA of end of the section to copy to. Normally __data_end__ is used, but by using __bss_start__
+ *      link_global_data_start: VMA of start of the section to copy to.
+ *      link_bss_location: VMA of end of the section to copy to. Normally link_global_data_end is used, but by using link_bss_location
  *                    the user can add their own initialized data section before BSS section with the INTERT AFTER command.
  *
  * All addresses must be aligned to 4 bytes boundary.
  */
     ldr r1, =_sidata
-    ldr r2, =__data_start__
-    ldr r3, =__bss_start__
+    ldr r2, =link_global_data_start
+    ldr r3, =link_bss_location
 
     subs r3, r2
     ble .L_loop1_done
@@ -248,8 +248,8 @@ Reset_Handler:
  * clears the RAM where BSS data is located.
  *
  * The BSS section is specified by following symbols
- *    __bss_start__: start of the BSS section.
- *    __bss_end__: end of the BSS section.
+ *    link_bss_location: start of the BSS section.
+ *    link_bss_end: end of the BSS section.
  *
  * All addresses must be aligned to 4 bytes boundary.
  */
@@ -258,8 +258,8 @@ Reset_Handler:
 #define __STARTUP_CLEAR_BSS 1
 #endif
 #ifdef __STARTUP_CLEAR_BSS
-    ldr r1, =__bss_start__
-    ldr r2, =__bss_end__
+    ldr r1, =link_bss_location
+    ldr r2, =link_bss_end
 
     movs r0, 0
 
