@@ -1,22 +1,28 @@
+# Global defines
 add_definitions(-DLOG_DISABLE)
 
 include_directories(
-  ${THIRD_PARTY_DIR}/catch2/catch2/single_include/
   ${THIRD_PARTY_DIR}/fakeit/fakeit/single_header/catch/
-  ${PROJECT_DIR}/communication/src/
-  ${PROJECT_DIR}/hal/inc/
-  ${PROJECT_DIR}/hal/shared/
-  ${PROJECT_DIR}/hal/src/stm32/
-  ${PROJECT_DIR}/services/inc/
-  ${PROJECT_DIR}/system/inc/
-  ${PROJECT_DIR}/system/src/
-  ${PROJECT_DIR}/test/
-  ${PROJECT_DIR}/wiring/inc/
+  ${DEVICE_OS_DIR}/communication/src/
+  ${DEVICE_OS_DIR}/hal/inc/
+  ${DEVICE_OS_DIR}/hal/shared/
+  ${DEVICE_OS_DIR}/hal/src/stm32/
+  ${DEVICE_OS_DIR}/services/inc/
+  ${DEVICE_OS_DIR}/system/inc/
+  ${DEVICE_OS_DIR}/system/src/
+  ${DEVICE_OS_DIR}/test/
+  ${DEVICE_OS_DIR}/wiring/inc/
 )
 
 add_executable( publish_vitals
-  ${PROJECT_DIR}/system/src/system_publish_vitals.cpp
+  ${DEVICE_OS_DIR}/system/src/system_publish_vitals.cpp
   publish_vitals.cpp
 )
 
-catch_discover_tests(publish_vitals)
+target_link_libraries( publish_vitals
+  Catch2::Catch2
+)
+
+catch_discover_tests( publish_vitals
+  TEST_PREFIX cloud_publish_vitals_
+)

@@ -1,14 +1,17 @@
+include_directories(
+  ${DEVICE_OS_DIR}/services/inc
+)
+
 add_executable(
   services
-  ${PROJECT_DIR}/services/src/str_util.cpp
-  ${COMMON_DIR}/main.cpp
+  ${DEVICE_OS_DIR}/services/src/str_util.cpp
   str_util.cpp
 )
 
-include_directories(
-  ${PROJECT_DIR}/services/inc
-  ${COMMON_DIR}
+target_link_libraries( services
+  Catch2::Catch2
 )
 
-target_link_libraries(services Catch2::Catch2)
-catch_discover_tests(services)
+catch_discover_tests( services
+  TEST_PREFIX services_str_util_
+)
