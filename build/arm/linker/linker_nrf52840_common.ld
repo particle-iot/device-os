@@ -86,14 +86,15 @@ SECTIONS
         _sidata = LOADADDR(.data);
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
+        link_global_data_start = .;
         _sdata = . ;
-        __data_start__ = _sdata;
 
         *(.data)
         *(.data.*)
 
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
+        link_global_data_end = .;
         _edata = . ;
     } >RAM AT>APP_FLASH
 
@@ -105,6 +106,7 @@ SECTIONS
     {
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
+        link_bss_location = .;
         _sbss = .;
         __bss_start__ = _sbss;
 
@@ -114,6 +116,7 @@ SECTIONS
 
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
+        link_bss_end = .;
         _ebss = . ;
         __bss_end__ = _ebss;
     } >RAM
@@ -174,6 +177,10 @@ SECTIONS
 
     INCLUDE module_end.ld
 }
+
+/* Referenced by SoftDevice driver. */
+__data_start__ = link_global_data_start;
+__data_end__ = link_global_data_end;
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_start - ORIGIN(APP_FLASH) == 0x200,  "module info not where expected" )
