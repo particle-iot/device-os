@@ -235,6 +235,7 @@ SECTIONS
 
     .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
     {
+        link_static_ram_start = .;
         link_ram_interrupt_vectors_location = .;
         . = . + interrupt_vectors_length;
         link_ram_interrupt_vectors_location_end = .;
@@ -253,24 +254,27 @@ SECTIONS
         _sidata = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
+        link_global_data_start = .;
         _sdata = . ;
-        __data_start__ = _sdata;
         *(.data*)
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
+        link_global_data_end = .;
         _edata = . ;
-        __data_end__ = _sdata;
     }> SRAM AT> APP_FLASH
 
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
-        _sbss = ALIGN(., 4);
+        . = ALIGN(4);
+        _sbss = .;
+        link_bss_location = .;
         __bss_start__ = _sbss;
         *(.bss*)
         *(COMMON)
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
+        link_bss_end = .;
         _ebss = . ;
         __bss_end__ = _ebss;
     }> SRAM AT> SRAM
@@ -330,9 +334,11 @@ SECTIONS
         KEEP(*.o(.modinfo.module_info_crc))
         link_module_info_crc_end = .;
     }>APP_FLASH AT> APP_FLASH
-
-
 }
+
+/* Referenced by SoftDevice driver. */
+__data_start__ = link_static_ram_start;
+__data_end__ = link_global_data_end;
 
 /* Declare libc Heap to start at end of allocated RAM */
 PROVIDE( _heap = link_stack_end );

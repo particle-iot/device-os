@@ -214,30 +214,30 @@ SECTIONS
     {
         _sidata = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
         link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
+        . = ALIGN(4);
+        /* This is used by the startup in order to initialize the .data secion */
         link_global_data_start = .;
-        . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .data secion */
         _sdata = . ;
-        __data_start__ = _sdata;
         *(.data*)
-        link_global_data_end = .;
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
+        link_global_data_end = .;
         _edata = . ;
-        __data_end__ = _sdata;
     }> SRAM AT> APP_FLASH
 
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
-        _sbss = ALIGN(., 4);
-        link_bss_location = ALIGN(., 4);
+        . = ALIGN(4);
+        _sbss = .;
+        link_bss_location = .;
         __bss_start__ = _sbss;
         *(.bss*)
         *(COMMON)
         link_bss_end = .;
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
+        link_bss_end = .;
         _ebss = . ;
         __bss_end__ = _ebss;
     }> SRAM AT> SRAM
@@ -282,6 +282,11 @@ SECTIONS
 
     INCLUDE module_end.ld
 }
+
+/* Referenced by SoftDevice driver. */
+__data_start__ = link_static_ram_start;
+__data_end__ = link_global_data_end;
+    
 /* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
 INCLUDE module_system_part1_export.ld
 
