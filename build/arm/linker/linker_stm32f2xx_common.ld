@@ -190,7 +190,7 @@ PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
 PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
-ASSERT ( link_module_info_start - ORIGIN(APP_FLASH) == 0x184,  "module info not where expected" )
+ASSERT ( link_module_info_start - ORIGIN(APP_FLASH) == _bootloader_vector_table_flash_size,  "module info not where expected" )
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 

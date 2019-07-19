@@ -1,10 +1,8 @@
-INCLUDE "../../shared/stm32f2xx/part1_vtor_module.ld"
-
 /**
  * The dyanmic libraries exported by this module.
  */
-PROVIDE ( dynalib_location_communication = system_part1_module_table + 0 );
-PROVIDE ( dynalib_location_wifi_resource = system_part1_module_table + 4 );
-PROVIDE ( dynalib_location_system_module_part1 = system_part1_module_table + 8 );
-PROVIDE ( dynalib_location_services = system_part1_module_table + 12 );
-PROVIDE ( dynalib_location_crypto = system_part1_module_table + 16 );
+PROVIDE ( dynalib_location_communication = _system_part1_dynalib_table_flash_start + 0 );
+PROVIDE ( dynalib_location_wifi_resource = _system_part1_dynalib_table_flash_start + 4 );
+PROVIDE ( dynalib_location_system_module_part1 = _system_part1_dynalib_table_flash_start + 8 );
+PROVIDE ( dynalib_location_services = _system_part1_dynalib_table_flash_start + 12 );
+PROVIDE ( dynalib_location_crypto = _system_part1_dynalib_table_flash_start + 16 );
