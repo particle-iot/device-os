@@ -15,7 +15,7 @@ SECTIONS
     INCLUDE module_info.ld
 
     /* 97*4=388 is vector table size. */
-    expected_dynalib_start = ORIGIN (APP_FLASH) + 0x184 + 24;
+    expected_dynalib_start = ORIGIN (APP_FLASH) + _system_part2_vector_table_flash_size + _system_part2_module_info_flash_size;
     .dynalib :
     {
         link_dynalib_start = . ;
@@ -150,11 +150,11 @@ SECTIONS
     INCLUDE module_end.ld
 }
 
-link_heap_location = _heap_start;
-link_heap_location_end = _heap_end;
+link_heap_location = _user_part_static_ram_start;
+link_heap_location_end = _user_part_static_ram_end;
 min_heap_end = link_heap_location + _heap_min_size;
-ASSERT ( min_heap_end <= _system_static_ram_start, "Insufficient room for heap" );
-ASSERT ( link_heap_location_end <= _system_static_ram_start, "the heap should come immediately before the system static ram" );
+ASSERT ( min_heap_end <= _system_part1_static_ram_start, "Insufficient room for heap" );
+ASSERT ( link_heap_location_end <= _system_part1_static_ram_start, "the heap should come immediately before the system static ram" );
 
 /* Declare libc Heap to start at end of allocated RAM */
 PROVIDE( _heap = link_heap_location );
@@ -180,48 +180,48 @@ PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
 
 
 ASSERT ( link_interrupt_vectors_location == ORIGIN(APP_FLASH), "VTOR table should be at start of flash" )
-ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location ) == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
+ASSERT ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
 
 ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
 
 ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" );
 
-ASSERT ( link_dynalib_start == system_part2_module_table, "Dynalib location not same as exported location" );
+ASSERT ( link_dynalib_start == _system_part2_dynalib_table_flash_start, "Dynalib location not same as exported location" );
 
 ASSERT ( link_ram_interrupt_vectors_location >= _system_part1_static_ram_end, "RAM vtor table should be at end of part1 static ram. " );
-ASSERT ( ( link_ram_interrupt_vectors_location % 512 ) == 0, "RAM vtor table should be 512 byte aligned. " );
+ASSERT ( link_ram_interrupt_vectors_location % 512 == 0, "RAM vtor table should be 512 byte aligned. " );
 
 ASSERT ( chk_system_pre_init_start < chk_system_pre_init_end , "system_part2_pre_init function not included" );
 ASSERT ( chk_system_init_start < chk_system_init_end , "system_part2_init function not included" );
 
-expected_stack_end = ORIGIN(SRAM) + LENGTH(SRAM) ;
+expected_stack_end = _ram_end;
 
 /* place stack at the end of SRAM, but not as a section, since this will increase the BSS region to ca. 128K */
 /* Provide stack location to WICED linker symbols */
-link_stack_location = _stack_start;
-link_stack_end = _stack_end;
-_estack = _stack_end;
+link_stack_location = _modular_firmware_stack_start;
+link_stack_end = _modular_firmware_stack_end;
+_estack = _modular_firmware_stack_end;
 
-ASSERT ( link_stack_end - link_stack_location <= _stack_size, "stack is too small" );
+ASSERT ( link_stack_end - link_stack_location <= _modular_firmware_stack_size, "stack is too small" );
 
 ASSERT ( link_stack_end == expected_stack_end, "stack should be at the top of SRAM" );
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
 
-ASSERT ( _system_part2_static_ram_start == link_static_ram_start, "exported SRAM start different from linked SRAM start." );
+ASSERT ( link_static_ram_start == _system_part2_static_ram_start, "exported SRAM start different from linked SRAM start." );
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
-ASSERT ( system_part2_module_info_start == link_module_info_start, "part2 module info start not where expected" );
-ASSERT ( system_part2_module_info_end == link_module_info_end, "part2 module info end not where expected" );
+ASSERT ( link_module_info_start == _system_part2_module_info_flash_start, "part2 module info start not where expected" );
+ASSERT ( link_module_info_end == _system_part2_module_info_flash_end, "part2 module info end not where expected" );
 
 ASSERT ( ORIGIN(SRAM) == _system_part2_static_ram_start, "ORIGIN of SRAM should be equal to _system_part2_static_ram_start. Adjust by hand to obtain the correct address and length. ");
-ASSERT ( LENGTH(SRAM) == ( _system_part2_static_ram_size + _stack_size ), "LENGTH of SRAM should be equal to _system_part2_static_ram_size plus _stack_size. Adjust by hand to obtain the correct address and length. ");
+ASSERT ( LENGTH(SRAM) == _system_part2_static_ram_size, "LENGTH of SRAM should be equal to _system_part2_static_ram_size. Adjust by hand to obtain the correct address and length. ");
 ASSERT ( _system_part2_static_ram_start == _system_part1_static_ram_end, "system part1 static ram should come immediately before system part2 static ram" );
 
-ASSERT ( (link_bss_end - link_global_data_start) <= _system_part2_static_ram_size, "Insufficient room for .data and .bss sections" )
+ASSERT ( link_bss_end - link_global_data_start <= _system_part2_static_ram_size, "Insufficient room for .data and .bss sections" )
 ASSERT ( link_end_of_static_ram <= _system_part2_static_ram_end, "static RAM use exceeds allocated space" );
 
-ASSERT( _estack % 8 == 0, "Stack should be 8-byte aligned" );
+ASSERT ( _estack % 8 == 0, "Stack should be 8-byte aligned" );
 
-ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );
+ASSERT ( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

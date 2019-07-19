@@ -134,7 +134,7 @@ SECTIONS
 ASSERT( link_boot_table_start == ORIGIN(APP_FLASH), "boot table should be at start of APP FLASH" );
 ASSERT( link_module_jump_table_end != link_module_jump_table_start, "module master jump table not linked" );
 
-ASSERT ( link_module_jump_table_start == system_part1_module_table, "Export address for module table is incorrect" );
+ASSERT ( link_module_jump_table_start == _system_part1_dynalib_table_flash_start, "Export address for module table is incorrect" );
 ASSERT ( link_end_of_static_ram <= _system_part1_static_ram_end, "static RAM use exceeds allocated space" );
 
 ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
@@ -143,13 +143,13 @@ ASSERT ( link_module_info_start < link_module_info_end, "module info not linked"
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 
-ASSERT ( system_part1_module_info_start == link_module_info_start, "module info start not where expected" );
-ASSERT ( system_part1_module_info_end == link_module_info_end, "module info end not where expected" );
+ASSERT ( link_module_info_start == _system_part1_module_info_flash_start, "module info start not where expected" );
+ASSERT ( link_module_info_end == _system_part1_module_info_flash_end, "module info end not where expected" );
 
 ASSERT ( link_boot_table_start == ORIGIN(APP_FLASH), "boot table should be at start of flash region" );
-ASSERT ( system_part1_boot_table_start == link_boot_table_start, "boot table export address is not correct" );
+ASSERT ( link_boot_table_start == _system_part1_vector_table_flash_start, "boot table export address is not correct" );
 
 link_boot_table_size = link_boot_table_end - link_boot_table_start ;
-ASSERT ( link_boot_table_size == system_part1_boot_table_size, "boot table not linked or incorrect size" );
+ASSERT ( link_boot_table_size == _system_part1_vector_table_flash_size, "boot table not linked or incorrect size" );
 
 ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );
