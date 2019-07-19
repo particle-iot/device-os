@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.0)
 project(unit_tests)
 
 # NOTE: Keep this in sync with lang-std.mk
@@ -10,6 +10,7 @@ set(CMAKE_C_STANDARD 11)
 
 # Create variables for commonly referenced directories
 set(DEVICE_OS_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
+set(TEST_DIR ${DEVICE_OS_DIR}/test)
 set(THIRD_PARTY_DIR ${DEVICE_OS_DIR}/third_party)
 
 # Add Catch2 from git submodule
@@ -21,21 +22,21 @@ include(Catch)
 # Expose `test` target from the `make` command
 enable_testing()
 
-# Build flags to enable code coverage
-SET(GCC_COVERAGE_COMPILE_FLAGS "-fno-inline -fprofile-arcs -ftest-coverage -O0 -g")
-SET(GCC_COVERAGE_LINK_FLAGS "-lgcov")
-
-# Set compiler flags for all tests
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
-SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAGS}")
-
 # Global defines for all tests
+add_definitions(-DRELEASE_BUILD)
 add_definitions(-DUNIT_TEST)
+
+# Link against dependencies of all tests
+link_libraries(
+  Catch2::Catch2
+  gcov
+)
 
 # Build and discover unit-tests
 add_subdirectory(cloud)
 add_subdirectory(services)
 
+# Create `coverage` target in the `make` command
 add_custom_target( coverage
-  gcovr --root ${CMAKE_CURRENT_LIST_DIR} --print-summary
+  gcovr --root ${DEVICE_OS_DIR} --exclude ${TEST_DIR} --exclude ${THIRD_PARTY_DIR} --print-summary
 )
