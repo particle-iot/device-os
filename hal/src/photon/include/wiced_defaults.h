@@ -46,17 +46,17 @@ extern "C"
 //#define WPRINT_ENABLE_RTOS_DEBUG
 //#define WPRINT_ENABLE_RTOS_ERROR
 
-//#define WPRINT_ENABLE_SECURITY_INFO    /* Security stack prints */
-//#define WPRINT_ENABLE_SECURITY_DEBUG
-//#define WPRINT_ENABLE_SECURITY_ERROR
+#define WPRINT_ENABLE_SECURITY_INFO    /* Security stack prints */
+#define WPRINT_ENABLE_SECURITY_DEBUG
+#define WPRINT_ENABLE_SECURITY_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 //#define WPRINT_ENABLE_WPS_INFO           /* WPS stack prints */
 //#define WPRINT_ENABLE_WPS_DEBUG
 //#define WPRINT_ENABLE_WPS_ERROR
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-// #define WPRINT_ENABLE_SUPPLICANT_INFO    /* Supplicant stack prints */
-// #define WPRINT_ENABLE_SUPPLICANT_DEBUG
-// #define WPRINT_ENABLE_SUPPLICANT_ERROR
+#define WPRINT_ENABLE_SUPPLICANT_INFO    /* Supplicant stack prints */
+#define WPRINT_ENABLE_SUPPLICANT_DEBUG
+#define WPRINT_ENABLE_SUPPLICANT_ERROR
 
 #ifndef DISABLE_LOGGING
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */

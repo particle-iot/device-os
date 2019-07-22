@@ -12,7 +12,20 @@ void vApplicationStackOverflowHook(xTaskHandle handle, char* name) {
 void log_printf_wiced(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    log_printf_v(LOG_LEVEL_TRACE, "wiced", nullptr /* reserved */, fmt, args);
+    char fmttmp[255] = {};
+    strncpy(fmttmp, fmt, sizeof(fmttmp) - 1);
+    if (fmt != nullptr) {
+        const size_t len = strlen(fmttmp);
+        if (len > 0) {
+            if (fmttmp[len - 1] == '\n') {
+                if (fmttmp[len - 2] != '\r' && len < 254) {
+                    fmttmp[len - 1] = '\r';
+                    fmttmp[len] = '\n';
+                }
+            }
+        }
+    }
+    log_printf_v(LOG_LEVEL_TRACE, "wiced", nullptr /* reserved */, fmttmp, args);
     va_end(args);
 }
 

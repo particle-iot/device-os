@@ -5,7 +5,7 @@
 #if defined(SYSTEM_MINIMAL)
 #define SOFTAP_HTTP 0
 #else
-#define SOFTAP_HTTP 1
+#define SOFTAP_HTTP 0
 #endif
 
 
