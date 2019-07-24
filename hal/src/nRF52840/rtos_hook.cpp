@@ -20,6 +20,13 @@
 #include "service_debug.h"
 #include "hal_event.h"
 #include "concurrent_hal.h"
+#include <atomic>
+
+namespace {
+
+std::atomic_bool sRestoreIdleThreadPriority(false);
+
+} // anonymous
 
 extern "C" {
 
@@ -89,9 +96,13 @@ static StackType_t uxTimerTaskStack[ configTIMER_TASK_STACK_DEPTH ];
 }
 #endif /* configSUPPORT_STATIC_ALLOCATION == 1 */
 
-void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile BaseType_t* pxPendYield) {
+void vApplicationTaskDeleteHook(void* pvTaskToDelete, volatile BaseType_t* pxPendYield) {
     (void)pvTaskToDelete;
     (void)pxPendYield;
+
+    // NOTE: this hook is executed within a critical section
+
+    sRestoreIdleThreadPriority = true;
 
     // Temporarily raise IDLE thread priority to (configMAX_PRIORITIES - 1) (maximum)
     // to give it some processing time to clean up the deleted task resources.
@@ -102,8 +113,10 @@ void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile BaseType_t* pxPen
 }
 
 void vApplicationIdleHook(void) {
-    // Restore IDLE thread priority back to the default one
-    vTaskPrioritySet(xTaskGetIdleTaskHandle(), tskIDLE_PRIORITY);
+    if (sRestoreIdleThreadPriority.exchange(false)) {
+        // Restore IDLE thread priority back to the default one
+        vTaskPrioritySet(nullptr, tskIDLE_PRIORITY);
+    }
 }
 
 } // extern "C"
