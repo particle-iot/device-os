@@ -176,11 +176,9 @@ int MeshPublish::uninitializeUdp() {
 
     // Use atomic exit_ as a simple synchronization primitive to ensure thread-safety
     // instead of a mutex here.
-    if (exit_) {
+    if (exit_.exchange(true)) {
         return SYSTEM_ERROR_BUSY;
     }
-
-    exit_ = true;
 
     // NB: This should not be run under a lock
     if (thread_) {
