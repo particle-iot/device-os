@@ -9,9 +9,18 @@ set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_C_STANDARD 11)
 
 # Create variables for commonly referenced directories
-set(DEVICE_OS_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
-set(TEST_DIR ${DEVICE_OS_DIR}/test)
-set(THIRD_PARTY_DIR ${DEVICE_OS_DIR}/third_party)
+execute_process(
+  COMMAND realpath ${CMAKE_CURRENT_LIST_DIR}/../.. --zero
+  OUTPUT_VARIABLE DEVICE_OS_DIR
+)
+execute_process(
+  COMMAND realpath ${DEVICE_OS_DIR}/test --zero
+  OUTPUT_VARIABLE TEST_DIR
+)
+execute_process(
+  COMMAND realpath ${DEVICE_OS_DIR}/third_party --zero
+  OUTPUT_VARIABLE THIRD_PARTY_DIR
+)
 
 # Add Catch2 from git submodule
 set(CATCH2_DIR ${THIRD_PARTY_DIR}/catch2/catch2)
@@ -38,5 +47,5 @@ add_subdirectory(services)
 
 # Create `coverage` target in the `make` command
 add_custom_target( coverage
-  gcovr --root ${DEVICE_OS_DIR} --exclude ${TEST_DIR} --exclude ${THIRD_PARTY_DIR} --print-summary
+  gcovr --root ${DEVICE_OS_DIR} --exclude ${TEST_DIR} --exclude ${THIRD_PARTY_DIR} -j 4 --print-summary
 )
