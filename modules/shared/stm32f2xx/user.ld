@@ -147,9 +147,6 @@ ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc
 ASSERT ( link_module_info_start == _user_part_module_info_flash_start, "module info start not where expected" );
 ASSERT ( link_module_info_end == _user_part_module_info_flash_end, "module info end not where expected" );
 
-user_sram_end =  ( ORIGIN(SRAM) + LENGTH(SRAM) );
-ASSERT ( user_sram_end == _system_part1_static_ram_start, "end of user SRAM should be at the start of system sram" );
-
 ASSERT ( link_module_info_suffix_start - link_module_info_static_start == 4 || link_module_info_suffix_start - link_module_info_static_start == 8, "module info static details not linked" );
 
 ASSERT ( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );
