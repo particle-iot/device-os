@@ -57,37 +57,38 @@ const char* deviceRoleStr(otDeviceRole role) {
     }
 }
 
-const char* commissionerStateStr(otCommissionerState state) {
-    switch (state) {
-    case OT_COMMISSIONER_STATE_DISABLED:
-        return "disabled";
-    case OT_COMMISSIONER_STATE_PETITION:
-        return "petition";
-    case OT_COMMISSIONER_STATE_ACTIVE:
-        return "active";
-    default:
-        return "unknown";
-    }
-}
+// FIXME:
+// const char* commissionerStateStr(otCommissionerState state) {
+//     switch (state) {
+//     case OT_COMMISSIONER_STATE_DISABLED:
+//         return "disabled";
+//     case OT_COMMISSIONER_STATE_PETITION:
+//         return "petition";
+//     case OT_COMMISSIONER_STATE_ACTIVE:
+//         return "active";
+//     default:
+//         return "unknown";
+//     }
+// }
 
-const char* joinerStateStr(otJoinerState state) {
-    switch (state) {
-    case OT_JOINER_STATE_IDLE:
-        return "idle";
-    case OT_JOINER_STATE_DISCOVER:
-        return "discover";
-    case OT_JOINER_STATE_CONNECT:
-        return "connect";
-    case OT_JOINER_STATE_CONNECTED:
-        return "connected";
-    case OT_JOINER_STATE_ENTRUST:
-        return "entrust";
-    case OT_JOINER_STATE_JOINED:
-        return "joined";
-    default:
-        return "unknown";
-    }
-}
+// const char* joinerStateStr(otJoinerState state) {
+//     switch (state) {
+//     case OT_JOINER_STATE_IDLE:
+//         return "idle";
+//     case OT_JOINER_STATE_DISCOVER:
+//         return "discover";
+//     case OT_JOINER_STATE_CONNECT:
+//         return "connect";
+//     case OT_JOINER_STATE_CONNECTED:
+//         return "connected";
+//     case OT_JOINER_STATE_ENTRUST:
+//         return "entrust";
+//     case OT_JOINER_STATE_JOINED:
+//         return "joined";
+//     default:
+//         return "unknown";
+//     }
+// }
 
 void threadStateChanged(uint32_t flags, void* data) {
     const auto thread = (otInstance*)data;
@@ -134,14 +135,15 @@ void threadStateChanged(uint32_t flags, void* data) {
     if (flags & OT_CHANGED_IP6_MULTICAST_UNSUBSRCRIBED) {
         LOG(TRACE, "Unsubscribed from IPv6 multicast address");
     }
-    if (flags & OT_CHANGED_COMMISSIONER_STATE) {
-        const otCommissionerState state = otCommissionerGetState(thread);
-        LOG(INFO, "Commissioner state changed: %s", commissionerStateStr(state));
-    }
-    if (flags & OT_CHANGED_JOINER_STATE) {
-        const otJoinerState state = otJoinerGetState(thread);
-        LOG(INFO, "Joiner state changed: %s", joinerStateStr(state));
-    }
+    // FIXME:
+    // if (flags & OT_CHANGED_COMMISSIONER_STATE) {
+    //     const otCommissionerState state = otCommissionerGetState(thread);
+    //     LOG(INFO, "Commissioner state changed: %s", commissionerStateStr(state));
+    // }
+    // if (flags & OT_CHANGED_JOINER_STATE) {
+    //     const otJoinerState state = otJoinerGetState(thread);
+    //     LOG(INFO, "Joiner state changed: %s", joinerStateStr(state));
+    // }
     if (flags & OT_CHANGED_THREAD_CHANNEL) {
         LOG(TRACE, "Thread network channel changed");
     }
