@@ -6,6 +6,7 @@
 #       based on the root of the project
 TARGET_SRC_PATH = src
 
+INCLUDE_DIRS += $(TARGET_SRC_PATH)
 
 # C source files included in this build.
 # CSRC +=

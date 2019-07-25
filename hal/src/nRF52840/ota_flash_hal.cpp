@@ -19,7 +19,6 @@
 #include "ota_flash_hal_impl.h"
 #include "dct_hal.h"
 #include "dct.h"
-#include "handshake.h"
 #include "core_hal.h"
 #include "flash_mal.h"
 #include "dct_hal.h"
