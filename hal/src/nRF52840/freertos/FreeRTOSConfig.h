@@ -114,8 +114,11 @@
  * See http://www.freertos.org/a00110.html.
  *----------------------------------------------------------*/
 
+extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPendYield);
+#define portPRE_TASK_DELETE_HOOK(pvTaskToDelete, pxYieldPending) vApplicationTaskDeleteHook((pvTaskToDelete), (pxYieldPending))
+
 #define configUSE_PREEMPTION        1
-#define configUSE_IDLE_HOOK         0
+#define configUSE_IDLE_HOOK         1
 #define configUSE_TICK_HOOK         0
 #define configCPU_CLOCK_HZ          ( SystemCoreClock )
 #define configTICK_RATE_HZ          ( ( TickType_t ) 1000 )
@@ -160,6 +163,7 @@ to exclude the API function. */
 #define INCLUDE_vTaskDelayUntil         1
 #define INCLUDE_vTaskDelay              1
 #define INCLUDE_eTaskGetState           1
+#define INCLUDE_xTaskGetIdleTaskHandle  1
 
 /* The lowest interrupt priority that can be used in a call to a "set priority"
 function. */

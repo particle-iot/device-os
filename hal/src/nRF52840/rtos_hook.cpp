@@ -19,6 +19,14 @@
 #include <task.h>
 #include "service_debug.h"
 #include "hal_event.h"
+#include "concurrent_hal.h"
+#include <atomic>
+
+namespace {
+
+std::atomic_bool sRestoreIdleThreadPriority(false);
+
+} // anonymous
 
 extern "C" {
 
@@ -28,8 +36,7 @@ void vApplicationStackOverflowHook(TaskHandle_t, char*) {
 }
 #endif /* DEBUG_BUILD */
 
-void vApplicationMallocFailedHook(size_t xWantedSize)
-{
+void vApplicationMallocFailedHook(size_t xWantedSize) {
     hal_notify_event(HAL_EVENT_OUT_OF_MEMORY, xWantedSize, 0);
 }
 
@@ -88,5 +95,28 @@ static StackType_t uxTimerTaskStack[ configTIMER_TASK_STACK_DEPTH ];
     *pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
 }
 #endif /* configSUPPORT_STATIC_ALLOCATION == 1 */
+
+void vApplicationTaskDeleteHook(void* pvTaskToDelete, volatile BaseType_t* pxPendYield) {
+    (void)pvTaskToDelete;
+    (void)pxPendYield;
+
+    // NOTE: this hook is executed within a critical section
+
+    sRestoreIdleThreadPriority = true;
+
+    // Temporarily raise IDLE thread priority to (configMAX_PRIORITIES - 1) (maximum)
+    // to give it some processing time to clean up the deleted task resources.
+    vTaskPrioritySet(xTaskGetIdleTaskHandle(), configMAX_PRIORITIES - 1);
+
+    // Immediately request the scheduler to yield to now higher priority IDLE thread
+    *pxPendYield = pdTRUE;
+}
+
+void vApplicationIdleHook(void) {
+    if (sRestoreIdleThreadPriority.exchange(false)) {
+        // Restore IDLE thread priority back to the default one
+        vTaskPrioritySet(nullptr, tskIDLE_PRIORITY);
+    }
+}
 
 } // extern "C"
