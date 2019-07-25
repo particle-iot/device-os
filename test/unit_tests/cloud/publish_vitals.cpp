@@ -32,7 +32,7 @@
 #endif
 #define UNIT_TEST
 
-#include "../test/unit_tests/mock_types.h"
+#include "mock_types.h"
 #include "system_publish_vitals.h"
 
 // ASSUMPTION!!! - Period "getter" method works correctly - without being testing.

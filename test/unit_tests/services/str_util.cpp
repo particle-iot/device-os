@@ -16,7 +16,9 @@
  */
 
 #include "str_util.h"
-#include "catch.h"
+
+#define CATCH_CONFIG_MAIN
+#include <catch2/catch.hpp>
 
 using namespace particle;
 
