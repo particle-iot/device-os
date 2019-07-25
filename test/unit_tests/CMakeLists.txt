@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.2)
 project(unit_tests)
 
 # NOTE: Keep this in sync with lang-std.mk
@@ -9,17 +9,20 @@ set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_C_STANDARD 11)
 
 # Create variables for commonly referenced directories
-execute_process(
-  COMMAND realpath ${CMAKE_CURRENT_LIST_DIR}/../.. --zero
-  OUTPUT_VARIABLE DEVICE_OS_DIR
+get_filename_component(
+  DEVICE_OS_DIR
+  ${CMAKE_CURRENT_LIST_DIR}/../..
+  REALPATH
 )
-execute_process(
-  COMMAND realpath ${DEVICE_OS_DIR}/test --zero
-  OUTPUT_VARIABLE TEST_DIR
+get_filename_component(
+  TEST_DIR
+  ${DEVICE_OS_DIR}/test
+  REALPATH
 )
-execute_process(
-  COMMAND realpath ${DEVICE_OS_DIR}/third_party --zero
-  OUTPUT_VARIABLE THIRD_PARTY_DIR
+get_filename_component(
+  THIRD_PARTY_DIR
+  ${DEVICE_OS_DIR}/third_party
+  REALPATH
 )
 
 # Add Catch2 from git submodule
