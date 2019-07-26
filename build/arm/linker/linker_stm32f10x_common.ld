@@ -1,20 +1,14 @@
-/* default stack sizes.
-
-These are used by the startup in order to allocate stacks for the different modes.
-*/
-
+/* default stack sizes. These are used by the startup in order to allocate stacks for the different modes. */
 __Stack_Size = 2048 ;
 
 PROVIDE ( _Stack_Size = __Stack_Size ) ;
 
 __Stack_Init = _estack - __Stack_Size ;
 
-/*"PROVIDE" allows to easily override these values from an object file or the commmand line.*/
+/* "PROVIDE" allows to easily override these values from an object file or the commmand line. */
 PROVIDE ( _Stack_Init = __Stack_Init ) ;
 
-/*
-There will be a link error if there is not this amount of RAM free at the end.
-*/
+/* There will be a link error if there is not this amount of RAM free at the end. */
 _Minimum_Stack_Size = 0x1400;
 
 /* include the memory spaces definitions sub-script */
@@ -30,27 +24,26 @@ _estack = ORIGIN(RAM)+LENGTH(RAM);
 /* include the sections management sub-script for FLASH mode */
 
 /* Sections Definitions */
-
 SECTIONS
 {
-    INCLUDE module_start.ld
+    INCLUDE linker_module_start.ld
 
     /* for Cortex devices, the beginning of the startup code is stored in the .isr_vector section, which goes to FLASH */
     .isr_vector :
     {
-	. = ALIGN(4);
+        . = ALIGN(4);
         KEEP(*(.isr_vector))            /* Startup code */
-	. = ALIGN(4);
-    } >APP_FLASH
+        . = ALIGN(4);
+    } > APP_FLASH
 
-    INCLUDE module_info.ld
+    INCLUDE linker_module_info.ld
 
     .flashtext :
     {
-	. = ALIGN(4);
+        . = ALIGN(4);
         *(.flashtext)            /* Startup code */
-	. = ALIGN(4);
-    } >APP_FLASH
+        . = ALIGN(4);
+    } > APP_FLASH
 
     /* the program code is stored in the .text section, which goes to Flash */
     .text :
@@ -66,7 +59,6 @@ SECTIONS
 
 	    . = ALIGN(4);
         link_constructors_location = .;
-        chk_system_pre_init_start = .;
         KEEP (*(.module_pre_init))
         chk_system_pre_init_end = .;
         KEEP(*(.preinit_array))
@@ -80,17 +72,21 @@ SECTIONS
         chk_system_init_end = .;
         link_constructors_end = .;
 
-
 	    . = ALIGN(4);
    	  _etext = .;
-    } >APP_FLASH
+    } > APP_FLASH
 
-    .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >APP_FLASH
-    .ARM : {
+    .ARM.extab :
+    {
+        *(.ARM.extab* .gnu.linkonce.armextab.*)
+    } > APP_FLASH
+    
+    .ARM :
+    {
         __exidx_start = .;
         *(.ARM.exidx*)
         __exidx_end = .;
-    } >APP_FLASH
+    } > APP_FLASH
 
     /* This is the initialized data section
     The program executes knowing that the data is in the RAM
@@ -101,7 +97,6 @@ SECTIONS
         /* This is used by the startup to initialize .data  section */
         _sidata = LOADADDR(.data);
 
-
 	    . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         _sdata = . ;
@@ -111,8 +106,8 @@ SECTIONS
 
 	    . = ALIGN(4);
 	    /* This is used by the startup in order to initialize the .data secion */
-   	 _edata = . ;
-    } >RAM AT>APP_FLASH
+        _edata = . ;
+    } > RAM AT> APP_FLASH
 
     /* This is the uninitialized data section */
     .bss :
@@ -127,8 +122,8 @@ SECTIONS
 
 	    . = ALIGN(4);
 	    /* This is used by the startup in order to initialize the .bss secion */
-   	 _ebss = . ;
-    } >RAM
+        _ebss = . ;
+    } > RAM
 
     PROVIDE ( end = _ebss );
     PROVIDE ( _end = _ebss );
@@ -146,17 +141,17 @@ SECTIONS
 
 	    . = ALIGN(4);
         _eusrstack = . ;
-    } >RAM
+    } > RAM
 
     /* after that it's only debugging information. */
 
     /* remove the debugging information from the standard libraries */
     DISCARD :
     {
-     libc.a ( * )
-     libm.a ( * )
-     libgcc.a ( * )
-     }
+        libc.a ( * )
+        libm.a ( * )
+        libgcc.a ( * )
+    }
 
     /* Stabs debugging sections.  */
     .stab          0 : { *(.stab) }
@@ -192,8 +187,10 @@ SECTIONS
     .debug_typenames 0 : { *(.debug_typenames) }
     .debug_varnames  0 : { *(.debug_varnames) }
 
-    INCLUDE module_end.ld
+    INCLUDE linker_module_end.ld
 }
 
-INCLUDE module_asserts.ld
+ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
+ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
+ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 ASSERT ( link_module_info_start - ORIGIN(APP_FLASH) == 268,  "module info not where expected" )

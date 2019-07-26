@@ -169,58 +169,58 @@ _bootloader_module_info_flash_start = _bootloader_vector_table_flash_end;
 _bootloader_module_info_flash_end   = _bootloader_module_info_flash_start + _bootloader_module_info_flash_size;
 
 /* Basic sanity checks */
-ASSERT(
+ASSERT (
     (_flash_end - _flash_start == _flash_size && _flash_size > 0) &&
     (_bootloader_flash_size + _dct1_flash_size + _dct2_flash_size + _eeprom1_flash_size + _eeprom2_flash_size + _system_part1_flash_size + _system_part2_flash_size + _user_part_flash_size + _ota_backup_flash_size + _factory_backup_flash_size == _flash_size) &&
     (_bootloader_flash_size + _dct1_flash_size + _dct2_flash_size + _eeprom1_flash_size + _eeprom2_flash_size + _monolithic_firmware_flash_size == _flash_size),
     "Invalid overall flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_factory_backup_flash_end - _factory_backup_flash_start == _factory_backup_flash_size && _factory_backup_flash_size > 0),
     "Invalid factory backup flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_ota_backup_flash_end - _ota_backup_flash_start == _ota_backup_flash_size && _ota_backup_flash_size > 0),
     "Invalid OTA backup flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_user_part_flash_start == 0x80A0000) &&
     (_user_part_flash_end - _user_part_flash_start == _user_part_flash_size && _user_part_flash_size > 0) &&
     (_user_part_module_info_flash_end - _user_part_module_info_flash_start == _user_part_module_info_flash_size && _user_part_module_info_flash_size > 0),
     "Invalid user part flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_system_part2_flash_start == 0x8060000) &&
     (_system_part2_flash_end - _system_part2_flash_start == _system_part2_flash_size && _system_part2_flash_size > 0) &&
     (_system_part2_vector_table_flash_end - _system_part2_vector_table_flash_start == _system_part2_vector_table_flash_size && _system_part2_vector_table_flash_size > 0) &&
     (_system_part2_module_info_flash_end - _system_part2_module_info_flash_start == _system_part2_module_info_flash_size && _system_part2_module_info_flash_size > 0),
     "Invalid system part 2 flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_system_part1_flash_start == 0x8020000) &&
     (_system_part1_flash_end - _system_part1_flash_start == _system_part1_flash_size && _system_part1_flash_size > 0) &&
     (_system_part1_vector_table_flash_end - _system_part1_vector_table_flash_start == _system_part1_vector_table_flash_size && _system_part1_vector_table_flash_size > 0) &&
     (_system_part1_module_info_flash_end - _system_part1_module_info_flash_start == _system_part1_module_info_flash_size && _system_part1_module_info_flash_size > 0),
     "Invalid system part 1 flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_monolithic_firmware_flash_start == 0x8020000) &&
     (_monolithic_firmware_flash_end - _monolithic_firmware_flash_start == _monolithic_firmware_flash_size && _monolithic_firmware_flash_size > 0) &&
     (_monolithic_firmware_vector_table_flash_end - _monolithic_firmware_vector_table_flash_start == _monolithic_firmware_vector_table_flash_size && _monolithic_firmware_vector_table_flash_size > 0) &&
     (_monolithic_firmware_module_info_flash_end - _monolithic_firmware_module_info_flash_start == _monolithic_firmware_module_info_flash_size && _monolithic_firmware_module_info_flash_size > 0),
     "Invalid monolithic firmware flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_eeprom2_flash_end - _eeprom2_flash_start == _eeprom2_flash_size && _eeprom2_flash_size > 0) &&
     (_eeprom1_flash_end - _eeprom1_flash_start == _eeprom1_flash_size && _eeprom1_flash_size > 0),
     "Invalid EEPROM flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_dct2_flash_end - _dct2_flash_start == _dct2_flash_size && _dct2_flash_size > 0) &&
     (_dct1_flash_end - _dct1_flash_start == _dct1_flash_size && _dct1_flash_size > 0),
     "Invalid DCT flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_bootloader_flash_start == 0x8000000) &&
     (_bootloader_flash_end - _bootloader_flash_start == _bootloader_flash_size && _bootloader_flash_size > 0) &&
     (_bootloader_vector_table_flash_end - _bootloader_vector_table_flash_start == _bootloader_vector_table_flash_size && _bootloader_vector_table_flash_size > 0) &&

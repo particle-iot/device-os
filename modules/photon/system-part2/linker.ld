@@ -14,7 +14,7 @@ MEMORY
      * This is done so that the build outputs meaningful values for BSS and Data section sizes. */
     SRAM       (rwx) : ORIGIN = _system_part2_static_ram_start, LENGTH = _system_part2_static_ram_size
 
-    INCLUDE backup_ram_memory.ld
+    INCLUDE memory_backup_ram.ld
 }
 
 
@@ -27,4 +27,4 @@ INCLUDE module_system_part2_export.ld
 /* Definitions for the static parts of the user module */
 INCLUDE module_user_export.ld
 
-INCLUDE ../../shared/stm32f2xx/part2.ld
+INCLUDE linker_system_part2_common.ld
