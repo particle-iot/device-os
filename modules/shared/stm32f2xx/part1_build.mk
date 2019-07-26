@@ -21,7 +21,7 @@ LINKER_DEPS += $(SYSTEM_PART3_MODULE_PATH)/module_system_part3_export.ld
 endif
 LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_part2_export.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
-LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/../../shared/stm32f2xx/part1.ld
+LINKER_DEPS += $(SHARED_MODULAR)/linker_system_part1_common.ld
 
 
 LDFLAGS += --specs=nano.specs -lnosys
@@ -31,6 +31,7 @@ LDFLAGS += -L$(SYSTEM_PART2_MODULE_PATH)
 ifneq (,$(MODULE_HAS_SYSTEM_PART3))
 LDFLAGS += -L$(SYSTEM_PART3_MODULE_PATH)
 endif
+LDFLAGS += -L$(SHARED_MODULAR)
 LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 

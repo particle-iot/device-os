@@ -22,11 +22,12 @@ ifeq ("$(INCLUDE_APP)", "y")
 GLOBAL_DEFINES += INCLUDE_APP
 endif
 
-LINKER_FILE=$(SHARED_MODULAR)/linker_system_part1_common.ld
+LINKER_FILE=$(SYSTEM_PART1_MODULE_PATH)/linker.ld
 LINKER_DEPS += $(LINKER_FILE)
 
+LINKER_DEPS += $(SHARED_MODULAR)/linker_system_part1_common.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
-LINKER_DEPS += $(SHARED_MODULAR)/module_user_export.ld
+LINKER_DEPS += $(USER_PART_MODULE_PATH)/module_user_export.ld
 
 LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
 LDFLAGS += --specs=nano.specs --specs=$(NEWLIB_TWEAK_SPECS)

@@ -118,43 +118,43 @@ _bootloader_static_ram_end   = _bootloader_static_ram_start + _bootloader_static
 _heap_min_size = 32K;
 
 /* Basic sanity checks */
-ASSERT(
+ASSERT (
     (_ram_end - _ram_start == _ram_size && _ram_size > 0) &&
     (_backup_ram_all_size + _modular_firmware_stack_size + _user_part_static_ram_size + _system_part1_static_ram_size + _softdevice_ram_size <= _ram_size) &&
     (_backup_ram_all_size + _monolithic_firmware_stack_size + _monolithic_firmware_static_ram_size + _softdevice_ram_size == _ram_size) &&
     (_backup_ram_all_size + _bootloader_stack_size + _bootloader_static_ram_size + _softdevice_ram_size == _ram_size),
     "Invalid overall RAM memory map!"
 );
-ASSERT(
+ASSERT (
     (_system_backup_ram_end - _system_backup_ram_start == _system_backup_ram_size && _system_backup_ram_size > 0) &&
     (_backup_registers_ram_end - _backup_registers_ram_start == _backup_registers_ram_size && _backup_registers_ram_size > 0) &&
     (_system_flags_ram_end - _system_flags_ram_start == _system_flags_ram_size && _system_flags_ram_size > 0) &&
     (_user_backup_ram_end - _user_backup_ram_start == _user_backup_ram_size && _user_backup_ram_size > 0),
     "Invalid backup RAM memory map!"
 );
-ASSERT(
+ASSERT (
     (_modular_firmware_stack_end - _modular_firmware_stack_start == _modular_firmware_stack_size && _modular_firmware_stack_size > 0) &&
     (_monolithic_firmware_stack_end - _monolithic_firmware_stack_start == _monolithic_firmware_stack_size && _monolithic_firmware_stack_size > 0) &&
     (_bootloader_stack_end - _bootloader_stack_start == _bootloader_stack_size && _bootloader_stack_size > 0),
     "Invalid stack memory map!"
 );
-ASSERT(
+ASSERT (
     (_user_part_static_ram_end - _user_part_static_ram_start == _user_part_static_ram_size && _user_part_static_ram_size > 0),
     "Invalid user part RAM memory map!"
 );
-ASSERT(
+ASSERT (
     (_system_part1_static_ram_end - _system_part1_static_ram_start == _system_part1_static_ram_size && _system_part1_static_ram_size > 0),
     "Invalid system part 1 RAM memory map!"
 );
-ASSERT(
+ASSERT (
     (_monolithic_firmware_static_ram_end - _monolithic_firmware_static_ram_start == _monolithic_firmware_static_ram_size && _monolithic_firmware_static_ram_size > 0),
     "Invalid monolithic firmware RAM memory map!"
 );
-ASSERT(
+ASSERT (
     (_bootloader_static_ram_end - _bootloader_static_ram_start == _bootloader_static_ram_size && _bootloader_static_ram_size > 0),
     "Invalid bootloader RAM memory map!"
 );
-ASSERT(
+ASSERT (
     (_softdevice_ram_end - _softdevice_ram_start == _softdevice_ram_size && _softdevice_ram_size > 0),
     "Invalid softdevice RAM memory map!"
 );

@@ -12,12 +12,12 @@ INCLUDE platform_flash.ld
 
 MEMORY
 {
-  RAM        (xrw) : ORIGIN = _bootloader_static_ram_start, LENGTH = _bootloader_static_ram_size
-  APP_FLASH  (rx)  : ORIGIN = _bootloader_flash_start,      LENGTH = _bootloader_flash_size
-  DCT1_FLASH (rx)  : ORIGIN = _dct1_flash_start,            LENGTH = _dct1_flash_size
-  DCT2_FLASH (rx)  : ORIGIN = _dct2_flash_start,            LENGTH = _dct2_flash_size
+    RAM        (xrw) : ORIGIN = _bootloader_static_ram_start, LENGTH = _bootloader_static_ram_size
+    APP_FLASH  (rx)  : ORIGIN = _bootloader_flash_start,      LENGTH = _bootloader_flash_size
+    DCT1_FLASH (rx)  : ORIGIN = _dct1_flash_start,            LENGTH = _dct1_flash_size
+    DCT2_FLASH (rx)  : ORIGIN = _dct2_flash_start,            LENGTH = _dct2_flash_size
   
-  INCLUDE backup_ram_memory.ld
+  INCLUDE memory_backup_ram.ld
 }
 
 INCLUDE linker_stm32f2xx_common.ld

@@ -23,6 +23,7 @@ LINKER_DEPS += $(SYSTEM_PART3_MODULE_PATH)/module_system_part3_export.ld
 endif
 
 LINKER_DEPS += $(USER_PART_MODULE_PATH)/module_user_export.ld
+LINKER_DEPS += $(SHARED_MODULAR)/linker_system_part2_common.ld
 
 LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
 LDFLAGS += --specs=nano.specs --specs=$(NEWLIB_TWEAK_SPECS)
@@ -33,6 +34,7 @@ LDFLAGS += -L$(SYSTEM_PART3_MODULE_PATH)
 endif
 
 LDFLAGS += -L$(USER_PART_MODULE_PATH)
+LDFLAGS += -L$(SHARED_MODULAR)
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map

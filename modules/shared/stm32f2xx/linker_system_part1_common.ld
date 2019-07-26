@@ -1,19 +1,23 @@
-
 SECTIONS
 {
-    sram_start = ORIGIN(SRAM);
-    sram_end = sram_start + LENGTH(SRAM);
+    INCLUDE linker_module_start.ld
 
-    INCLUDE module_start.ld
-    INCLUDE module_info.ld
+    .boot_jump : /* immitation vector table */
+    {
+        . = ALIGN(512);
+        link_boot_table_start = .;
+        KEEP(*(*.system_part1_boot_table))
+        link_boot_table_end = .;
+    } > APP_FLASH AT> APP_FLASH
+
+    INCLUDE linker_module_info.ld
 
     .dynalib :
     {
-        expected_dynalib_start = ORIGIN(APP_FLASH) + _user_part_module_info_flash_size;
-        link_dynalib_start = .;
-        KEEP(*(*.user_part_module))
-        link_dynalib_end = . ;
-    } > APP_FLASH AT> APP_FLASH
+        link_module_jump_table_start = . ;
+        KEEP(*(*.system_part1_module))
+        link_module_jump_table_end = . ;
+    } > APP_FLASH  AT> APP_FLASH
 
     .text :
     {
@@ -52,7 +56,7 @@ SECTIONS
 
         . = ALIGN(16);
 
-    }>APP_FLASH  AT> APP_FLASH
+    } > APP_FLASH  AT> APP_FLASH
 
     /*
      * The .ARM.exidx and .ARM.extab sections are used for C++ exception handling.
@@ -74,8 +78,6 @@ SECTIONS
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
 
-    INCLUDE backup_ram_user.ld
-
     .data : /* Contains the non-zero initialised global variables */
     {
         link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
@@ -83,7 +85,7 @@ SECTIONS
         *(.data*)
         link_global_data_end = .;
         . = ALIGN(., 4);
-    }> SRAM AT> APP_FLASH
+    } > SRAM AT> APP_FLASH
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
@@ -91,11 +93,9 @@ SECTIONS
         *(.bss*)
         *(COMMON)
         link_bss_end = .;
-        link_heap_start = .;
         . = ALIGN(., 4);
-    }> SRAM AT> SRAM
-
-    INCLUDE module_end.ld
+        link_end_of_static_ram = .;
+    } > SRAM AT> SRAM
 
     /DISCARD/ :
     {
@@ -118,35 +118,34 @@ SECTIONS
         *(.glue*)
     }
 
+    INCLUDE linker_module_end.ld
 }
 
-ASSERT ( ORIGIN(SRAM) == _ram_start, "Origin of SRAM should be at _ram_start" );
+/**
+ * These asserts verify that things are at their expected or exported location.
+ * The export linker file defines symbols in absolute terms (a hard-coded address)
+ * These asserts verify the exported symbol values match the actual values assigned during the link.
+ */
 
-min_heap_end = link_heap_start + _heap_min_size;
-ASSERT ( min_heap_end <= _system_part1_static_ram_start, "Insufficient room for heap." );
+ASSERT( link_boot_table_start == ORIGIN(APP_FLASH), "boot table should be at start of APP FLASH" );
+ASSERT( link_module_jump_table_end != link_module_jump_table_start, "module master jump table not linked" );
 
-ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
+ASSERT ( link_module_jump_table_start == _system_part1_dynalib_table_flash_start, "Export address for module table is incorrect" );
+ASSERT ( link_end_of_static_ram <= _system_part1_static_ram_end, "static RAM use exceeds allocated space" );
 
-ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" );
-
-/* Include this modules static exports for validation */
-INCLUDE module_user_export.ld
-
-ASSERT ( link_dynalib_start == _user_part_dynalib_table_flash_start, "Dynalib location not same as exported location" );
-
-ASSERT ( USER_FIRMWARE_IMAGE_LOCATION == ORIGIN(APP_FLASH), "User firmware location and APP_FLASH origin differ" );
-
-ASSERT ( USER_FIRMWARE_IMAGE_SIZE == LENGTH(APP_FLASH), "User firmware size and APP_FLASH length differ" );
-
-ASSERT ( sram_start <= link_heap_start && link_heap_start < sram_end, "link_heap_start is in the wrong memory space" );
+ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 
-ASSERT ( link_module_info_start == _user_part_module_info_flash_start, "module info start not where expected" );
-ASSERT ( link_module_info_end == _user_part_module_info_flash_end, "module info end not where expected" );
+ASSERT ( link_module_info_start == _system_part1_module_info_flash_start, "module info start not where expected" );
+ASSERT ( link_module_info_end == _system_part1_module_info_flash_end, "module info end not where expected" );
 
-ASSERT ( link_module_info_suffix_start - link_module_info_static_start == 4 || link_module_info_suffix_start - link_module_info_static_start == 8, "module info static details not linked" );
+ASSERT ( link_boot_table_start == ORIGIN(APP_FLASH), "boot table should be at start of flash region" );
+ASSERT ( link_boot_table_start == _system_part1_vector_table_flash_start, "boot table export address is not correct" );
 
-ASSERT ( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );
+link_boot_table_size = link_boot_table_end - link_boot_table_start ;
+ASSERT ( link_boot_table_size == _system_part1_vector_table_flash_size, "boot table not linked or incorrect size" );
+
+ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

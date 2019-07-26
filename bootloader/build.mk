@@ -6,9 +6,9 @@ ASFLAGS += -I$(COMMON_BUILD)/arm/startup
 # Linker flags
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
-LINKER_DEPS += $(COMMON_BUILD)/arm/linker/module_start.ld
-LINKER_DEPS += $(COMMON_BUILD)/arm/linker/module_end.ld
-LINKER_DEPS += $(COMMON_BUILD)/arm/linker/module_info.ld
+LINKER_DEPS += $(COMMON_BUILD)/arm/linker/linker_module_start.ld
+LINKER_DEPS += $(COMMON_BUILD)/arm/linker/linker_module_end.ld
+LINKER_DEPS += $(COMMON_BUILD)/arm/linker/linker_module_info.ld
 
 GLOBAL_DEFINES += BOOTLOADER_VERSION=$(BOOTLOADER_VERSION)
 GLOBAL_DEFINES += MODULE_VERSION=$(BOOTLOADER_VERSION)

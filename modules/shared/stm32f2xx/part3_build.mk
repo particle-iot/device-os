@@ -32,12 +32,14 @@ LINKER_DEPS += $(SYSTEM_PART3_MODULE_PATH)/module_system_part3_export.ld
 LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_part2_export.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
 LINKER_DEPS += $(USER_PART_MODULE_PATH)/module_user_export.ld
+LINKER_DEPS += $(SHARED_MODULAR)/linker_system_part3_common.ld
 
 LDFLAGS += --specs=nano.specs -lnosys
 LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
 LDFLAGS += -L$(SYSTEM_PART2_MODULE_PATH)
 LDFLAGS += -L$(SYSTEM_PART3_MODULE_PATH)
 LDFLAGS += -L$(USER_PART_MODULE_PATH)
+LDFLAGS += -L$(SHARED_MODULAR)
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map

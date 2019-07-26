@@ -6,8 +6,16 @@ INCLUDE platform_flash.ld
 
 MEMORY
 {
-    INCLUDE backup_ram_memory.ld
+    INCLUDE memory_backup_ram.ld
     
     APP_FLASH (rx)  : ORIGIN = _user_part_flash_start,      LENGTH = _user_part_flash_size
     SRAM      (rwx) : ORIGIN = _user_part_static_ram_start, LENGTH = _user_part_static_ram_size
 }
+
+/* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
+INCLUDE module_system_part1_export.ld
+
+/* Definitions for the static parts of the user module */
+INCLUDE module_user_export.ld
+
+INCLUDE linker_user_part_common.ld

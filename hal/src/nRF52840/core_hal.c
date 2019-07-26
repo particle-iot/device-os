@@ -95,7 +95,7 @@ extern char link_heap_location, link_heap_location_end;
 extern char link_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location;
 extern char link_ram_interrupt_vectors_location_end;
-extern char _Stack_Init;
+extern char __stack_start__;
 
 static void* new_heap_end = &link_heap_location_end;
 
@@ -1324,7 +1324,7 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     }
 
     if (offsetof(runtime_info_t, user_static_ram) + sizeof(info->user_static_ram) <= info->size) {
-        info->user_static_ram = (uintptr_t)&_Stack_Init - (uintptr_t)new_heap_end;
+        info->user_static_ram = (uintptr_t)&__stack_start__ - (uintptr_t)new_heap_end;
     }
 
     if (offsetof(runtime_info_t, largest_free_block_heap) + sizeof(info->largest_free_block_heap) <= info->size) {

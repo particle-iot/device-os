@@ -20,8 +20,8 @@
 
 MEMORY
 {
-  RAM (xrw)     : ORIGIN = 0x20000000, LENGTH = 20K
-  APP_FLASH (rx)    : ORIGIN = 0x08005000, LENGTH = 128K-0x5000
+    RAM       (xrw) : ORIGIN = 0x20000000, LENGTH = 20K
+    APP_FLASH (rx)  : ORIGIN = 0x08005000, LENGTH = 128K-0x5000
 }
 
 INCLUDE linker_stm32f10x_common.ld

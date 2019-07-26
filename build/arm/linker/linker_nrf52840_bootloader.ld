@@ -4,10 +4,10 @@ INCLUDE platform_flash.ld
 
 MEMORY
 {
-  INCLUDE backup_ram_memory.ld
+    INCLUDE memory_backup_ram.ld
   
-  RAM (xrw)      : ORIGIN = _bootloader_static_ram_start, LENGTH = _bootloader_static_ram_size
-  APP_FLASH (rx) : ORIGIN = _bootloader_flash_start,      LENGTH = _bootloader_flash_size
+    RAM       (xrw) : ORIGIN = _bootloader_static_ram_start, LENGTH = _bootloader_static_ram_size
+    APP_FLASH (rx)  : ORIGIN = _bootloader_flash_start,      LENGTH = _bootloader_flash_size
 }
 
 INCLUDE linker_nrf52840_common.ld

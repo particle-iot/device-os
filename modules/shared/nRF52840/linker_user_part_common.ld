@@ -6,16 +6,10 @@ __Stack_Init = _estack - __Stack_Size ;
 PROVIDE ( _Stack_Size = __Stack_Size );
 PROVIDE ( _Stack_Init = __Stack_Init );
 
-/* Memory spaces definitions */
-INCLUDE memory_user_part.ld
-
 SECTIONS
 {
-    sram_start = ORIGIN(SRAM);
-    sram_end = sram_start + LENGTH(SRAM);
-
-    INCLUDE module_start.ld
-    INCLUDE module_info.ld
+    INCLUDE linker_module_start.ld
+    INCLUDE linker_module_info.ld
 
     .dynalib :
     {
@@ -62,7 +56,7 @@ SECTIONS
 
         . = ALIGN(16);
 
-    }>APP_FLASH  AT> APP_FLASH
+    } > APP_FLASH  AT> APP_FLASH
 
     /*
      * The .ARM.exidx and .ARM.extab sections are used for C++ exception handling.
@@ -84,7 +78,7 @@ SECTIONS
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
 
-    INCLUDE backup_ram_user.ld
+    INCLUDE linker_backup_ram_user.ld
 
     .data : /* Contains the non-zero initialised global variables */
     {
@@ -94,7 +88,7 @@ SECTIONS
         *(.data*)
         . = ALIGN(., 4);
         link_global_data_end = .;
-    }> SRAM AT> APP_FLASH
+    } > SRAM AT> APP_FLASH
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
@@ -104,9 +98,9 @@ SECTIONS
         *(COMMON)
         . = ALIGN(., 4);
         link_bss_end = .;
-    }> SRAM AT> SRAM
+    } > SRAM AT> SRAM
 
-    INCLUDE module_end.ld
+    INCLUDE linker_module_end.ld
 
     /DISCARD/ :
     {
@@ -128,16 +122,9 @@ SECTIONS
         *(.eh_frame)
         *(.glue*)
     }
-
 }
 
 PROVIDE ( end = system_heap_end );
-
-/* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
-INCLUDE module_system_part1_export.ld
-
-/* Definitions for the static parts of the user module */
-INCLUDE module_user_export.ld
 
 ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
 ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" );
