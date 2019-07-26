@@ -17,8 +17,10 @@
  ******************************************************************************
  */
 
-#include "catch.hpp"
 #include "coap.h"
+
+#define CATCH_CONFIG_MAIN
+#include <catch2/catch.hpp>
 
 using namespace particle::protocol;
 
@@ -27,7 +29,7 @@ SCENARIO("CoAP::code")
     CoAP coap;
 
     unsigned char msg[2];
-    
+
     msg[1] = 0x00;
     REQUIRE(coap.code(msg)==CoAPCode::EMPTY);
 

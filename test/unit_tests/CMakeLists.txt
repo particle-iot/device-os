@@ -46,6 +46,7 @@ link_libraries(
 
 # Build and discover unit-tests
 add_subdirectory(cloud)
+add_subdirectory(communication)
 add_subdirectory(services)
 
 # Create `coverage` target in the `make` command

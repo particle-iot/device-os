@@ -17,12 +17,12 @@
  ******************************************************************************
  */
 
-#include "catch.hpp"
-#include "fakeit.hpp"
 #include "coap_channel.h"
 
-using namespace particle::protocol;
+#include <catch2/catch.hpp>
+#include "fakeit.hpp"
 
+using namespace particle::protocol;
 
 SCENARIO("forward message channel delegates all methods")
 {

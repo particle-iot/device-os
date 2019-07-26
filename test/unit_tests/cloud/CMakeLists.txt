@@ -1,3 +1,5 @@
+set(target_name cloud)
+
 # Global defines
 add_definitions(-DLOG_DISABLE)
 
@@ -17,19 +19,19 @@ include_directories(
 )
 
 # Create test executable
-add_executable( publish_vitals
+add_executable( ${target_name}
   ${DEVICE_OS_DIR}/system/src/system_publish_vitals.cpp
   publish_vitals.cpp
 )
 
 # Set compiler flags specific to target
-target_compile_options( publish_vitals
+target_compile_options( ${target_name}
   PRIVATE -fno-inline -fprofile-arcs -ftest-coverage -O0 -g
 )
 
 # Link against dependencies specific to target
 
 # Add tests to `test` target
-catch_discover_tests( publish_vitals
-  TEST_PREFIX cloud_publish_vitals_
+catch_discover_tests( ${target_name}
+  TEST_PREFIX ${target_name}_
 )

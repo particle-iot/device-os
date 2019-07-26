@@ -18,7 +18,8 @@
  */
 
 #include "protocol.h"
-#include "catch.hpp"
+
+#include <catch2/catch.hpp>
 #include "fakeit.hpp"
 using namespace fakeit;
 
