@@ -121,40 +121,40 @@ _softdevice_flash_start = _flash_start;
 _softdevice_flash_end   = _softdevice_flash_start + _softdevice_flash_size;
 
 /* Basic sanity checks */
-ASSERT(
+ASSERT (
     (_flash_end - _flash_start == _flash_size && _flash_size > 0) &&
     (_softdevice_flash_size + _softdevice_reserved_flash_size + _system_part1_flash_size + _user_part_flash_size + _bootloader_flash_size == _flash_size) &&
     (_softdevice_flash_size + _softdevice_reserved_flash_size + _monolithic_firmware_flash_size + _bootloader_flash_size == _flash_size),
     "Invalid overall flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_bootloader_flash_start == 0xF4000) &&
     (_bootloader_flash_end - _bootloader_flash_start == _bootloader_flash_size && _bootloader_flash_size > 0) &&
     (_bootloader_vector_table_flash_end - _bootloader_vector_table_flash_start == _bootloader_vector_table_flash_size && _bootloader_vector_table_flash_size > 0) &&
     (_bootloader_module_info_flash_end - _bootloader_module_info_flash_start == _bootloader_module_info_flash_size && _bootloader_module_info_flash_size > 0),
     "Invalid bootloader flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_user_part_flash_start == 0xD4000) &&
     (_user_part_flash_end - _user_part_flash_start == _user_part_flash_size && _user_part_flash_size > 0) &&
     (_user_part_module_info_flash_end - _user_part_module_info_flash_start == _user_part_module_info_flash_size && _user_part_module_info_flash_size > 0),
     "Invalid user part flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_system_part1_flash_start == 0x30000) &&
     (_system_part1_flash_end - _system_part1_flash_start == _system_part1_flash_size && _system_part1_flash_size > 0) &&
     (_system_part1_vector_table_flash_end - _system_part1_vector_table_flash_start == _system_part1_vector_table_flash_size && _system_part1_vector_table_flash_size > 0) &&
     (_system_part1_module_info_flash_end - _system_part1_module_info_flash_start == _system_part1_module_info_flash_size && _system_part1_module_info_flash_size > 0),
     "Invalid system part 1 flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_monolithic_firmware_flash_start == 0x30000) &&
     (_monolithic_firmware_flash_end - _monolithic_firmware_flash_start == _monolithic_firmware_flash_size && _monolithic_firmware_flash_size > 0) &&
     (_monolithic_firmware_vector_table_flash_end - _monolithic_firmware_vector_table_flash_start == _monolithic_firmware_vector_table_flash_size && _monolithic_firmware_vector_table_flash_size > 0) &&
     (_monolithic_firmware_module_info_flash_end - _monolithic_firmware_module_info_flash_start == _monolithic_firmware_module_info_flash_size && _monolithic_firmware_module_info_flash_size > 0),
     "Invalid monolithic firmware flash memory map!"
 );
-ASSERT(
+ASSERT (
     (_softdevice_reserved_flash_end - _softdevice_reserved_flash_start == _softdevice_reserved_flash_size && _softdevice_reserved_flash_size > 0) &&
     (_softdevice_flash_end - _softdevice_flash_start == _softdevice_flash_size && _softdevice_flash_size > 0),
     "Invalid softdevice flash memory map!"

@@ -1,18 +1,17 @@
-
 SECTIONS
 {
-    INCLUDE module_start.ld
+    INCLUDE linker_module_start.ld
 
     .vectors :
     {
         link_interrupt_vectors_location = .;
         KEEP(*(*.interrupt_vector_table))
         link_interrupt_vectors_location_end = .;
-    }>APP_FLASH  AT> APP_FLASH
+    } > APP_FLASH  AT> APP_FLASH
 
     interrupt_vectors_length = link_interrupt_vectors_location_end - link_interrupt_vectors_location;
 
-    INCLUDE module_info.ld
+    INCLUDE linker_module_info.ld
 
     /* 97*4=388 is vector table size. */
     expected_dynalib_start = ORIGIN (APP_FLASH) + _system_part2_vector_table_flash_size + _system_part2_module_info_flash_size;
@@ -21,8 +20,7 @@ SECTIONS
         link_dynalib_start = . ;
         KEEP(*(*.system_part2_module))
         link_dynalib_end = . ;
-    }>APP_FLASH AT>APP_FLASH
-
+    } > APP_FLASH AT> APP_FLASH
 
     .text :
     {
@@ -43,9 +41,9 @@ SECTIONS
         . = ALIGN(0x4);
 
         link_constructors_location = .;
-        chk_system_pre_init_start = .;
+        link_system_pre_init_start = .;
         KEEP (*(.module_pre_init))
-        chk_system_pre_init_end = .;
+        link_system_pre_init_end = .;
         KEEP(*(.preinit_array))
         KEEP(*(.init_array))
         KEEP (*crtbegin.o(.ctors))
@@ -68,7 +66,7 @@ SECTIONS
 
         . = ALIGN(16);
 
-    }>APP_FLASH  AT> APP_FLASH
+    } > APP_FLASH  AT> APP_FLASH
 
     .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
     {
@@ -76,9 +74,9 @@ SECTIONS
         link_ram_interrupt_vectors_location = .;
         . = . + interrupt_vectors_length;
         link_ram_interrupt_vectors_location_end = .;
-    }> SRAM
+    } > SRAM
 
-    INCLUDE backup_ram_system.ld
+    INCLUDE linker_backup_ram_system.ld
 
     .data : /* Contains the non-zero initialised global variables */
     {
@@ -90,7 +88,7 @@ SECTIONS
         link_global_data_end = .;
         _edata = . ;
         . = ALIGN(., 4);
-    }> SRAM AT> APP_FLASH
+    } > SRAM AT> APP_FLASH
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
@@ -102,7 +100,7 @@ SECTIONS
         _ebss = .;
         . = ALIGN(., 4);
         link_end_of_static_ram = .;
-    }> SRAM AT> SRAM
+    } > SRAM AT> SRAM
 
     /*
      * The .ARM.exidx and .ARM.extab sections are used for C++ exception handling.
@@ -123,8 +121,6 @@ SECTIONS
         *(.ARM.extab*)
         __extab_end = .;
     } > APP_FLASH  AT> APP_FLASH
-
-
 
     /DISCARD/ :
     {
@@ -147,7 +143,7 @@ SECTIONS
         *(.glue*)
     }
 
-    INCLUDE module_end.ld
+    INCLUDE linker_module_end.ld
 }
 
 link_heap_location = _user_part_static_ram_start;
@@ -191,7 +187,7 @@ ASSERT ( link_dynalib_start == _system_part2_dynalib_table_flash_start, "Dynalib
 ASSERT ( link_ram_interrupt_vectors_location >= _system_part1_static_ram_end, "RAM vtor table should be at end of part1 static ram. " );
 ASSERT ( link_ram_interrupt_vectors_location % 512 == 0, "RAM vtor table should be 512 byte aligned. " );
 
-ASSERT ( chk_system_pre_init_start < chk_system_pre_init_end , "system_part2_pre_init function not included" );
+ASSERT ( link_system_pre_init_start < link_system_pre_init_end , "system_part2_pre_init function not included" );
 ASSERT ( chk_system_init_start < chk_system_init_end , "system_part2_init function not included" );
 
 expected_stack_end = _ram_end;

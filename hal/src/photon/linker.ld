@@ -39,37 +39,26 @@ INCLUDE platform_flash.ld
 
 MEMORY
 {
+    DCT1_FLASH (rx)  : ORIGIN = _dct1_flash_start,                     LENGTH = _dct1_flash_size
+    DCT2_FLASH (rx)  : ORIGIN = _dct2_flash_start,                     LENGTH = _dct2_flash_size
+    APP_FLASH  (rx)  : ORIGIN = _monolithic_firmware_flash_start,      LENGTH = _monolithic_firmware_flash_size
+    SRAM       (rwx) : ORIGIN = _monolithic_firmware_static_ram_start, LENGTH = _monolithic_firmware_static_ram_size
+    
     INCLUDE memory_backup_ram.ld
-
-    APP_FLASH (rx)  : ORIGIN = _monolithic_firmware_flash_start,      LENGTH = _monolithic_firmware_flash_size
-    SRAM      (rwx) : ORIGIN = _monolithic_firmware_static_ram_start, LENGTH = _monolithic_firmware_static_ram_size
 }
 
-/* default stack sizes.
- * These are used by the startup in order to allocate stacks for the different modes. */
-_estack = _monolithic_firmware_stack_end;
-__Stack_Size = _monolithic_firmware_stack_size;
-__Stack_Init = _estack - __Stack_Size;
+reset_handler = _start;
 
-/* There will be a link error if there is not this amount of RAM free at the end. */
-_Minimum_Stack_Size = 0x1400;
-
-/* "PROVIDE" allows to easily override these values from an object file or the commmand line. */
-PROVIDE ( _Stack_Size = __Stack_Size );
-PROVIDE ( _Stack_Init = __Stack_Init );
-
-/* TODO: Below sections are required by the Nordic SDK and were copy-pasted from a BLE example code.
- * Consider revising them, especially for modular builds */
-INCLUDE linker_nrf52840_sdk_ram.ld
+ENTRY( _start );
 
 SECTIONS
 {
     INCLUDE linker_module_start.ld
-
+    
     .vectors :
     {
         link_interrupt_vectors_location = .;
-        KEEP(*(.isr_vector))            /* interrupt vector table */
+        KEEP(*(*.interrupt_vector_table))
         link_interrupt_vectors_location_end = .;
     } > APP_FLASH  AT> APP_FLASH
 
@@ -80,36 +69,42 @@ SECTIONS
     .text :
     {
         . = ALIGN(4);
+        link_code_location = .;
+        KEEP(*(.text.irq ))
+        *(.text .text.* .gnu.linkonce.t.*)
+        link_code_end = .;
 
-        *(.text)                   /* remaining code */
-        *(.text.*)                   /* remaining code */
-        *(.rodata)                 /* read-only data (constants) */
-        *(.rodata*)
-        *(.glue_7)
-        *(.glue_7t)
+        . = ALIGN(0x4);
+
+        link_const_variable_data_location = .;
+        *(.rodata .rodata.* .gnu.linkonce.r.*)
+        link_const_variable_data_end = .;
 
         . = ALIGN(0x4);
 
         link_constructors_location = .;
-        KEEP (*(.module_pre_init))
-        chk_system_pre_init_end = .;
+        link_early_startup_begin = .;
+        KEEP(*.o(.early_startup.*))
+        link_early_startup_end = .;
         KEEP(*(.preinit_array))
         KEEP(*(.init_array))
         KEEP (*crtbegin.o(.ctors))
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
-        chk_system_init_start = .;
-        KEEP (*(.module_init))
-        chk_system_init_end = .;
         link_constructors_end = .;
 
-        . = ALIGN(4);
-        _etext = .;
-        /* This is used by the startup in order to initialize the .data secion */
-    } > APP_FLASH  AT> APP_FLASH
+        . = ALIGN(0x4);
 
-    INCLUDE linker_nrf52840_sdk_libs.ld
+        link_destructors_location = .;
+        KEEP (*crtbegin.o(.dtors))
+        KEEP (*(EXCLUDE_FILE (*crtend.o) .dtors))
+        KEEP (*(SORT(.dtors.*)))
+        KEEP (*crtend.o(.dtors))
+        link_destructors_end = .;
+
+        . = ALIGN(16);
+    } > APP_FLASH  AT> APP_FLASH
 
     /*
      * The .ARM.exidx and .ARM.extab sections are used for C++ exception handling.
@@ -133,7 +128,6 @@ SECTIONS
 
     .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
     {
-        link_static_ram_start = .;
         link_ram_interrupt_vectors_location = .;
         . = . + interrupt_vectors_length;
         link_ram_interrupt_vectors_location_end = .;
@@ -149,47 +143,35 @@ SECTIONS
 
     .data : /* Contains the non-zero initialised global variables */
     {
-        _sidata = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
-        . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .data secion */
+        link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
         link_global_data_start = .;
-        _sdata = . ;
         *(.data*)
-        . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
-        _edata = . ;
+        . = ALIGN(., 4);
     } > SRAM AT> APP_FLASH
 
     .bss : /* Zero initialised memory used for zero initialised variables */
     {
-        . = ALIGN(4);
-        _sbss = .;
-        link_bss_location = .;
-        __bss_start__ = _sbss;
+        link_bss_location = ALIGN(., 4);
         *(.bss*)
         *(COMMON)
-        . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .bss secion */
         link_bss_end = .;
-        _ebss = . ;
-        __bss_end__ = _ebss;
+        . = ALIGN(., 4);
+    } > SRAM AT> SRAM
+
+    .stack : /* Contains the initial stack */
+    {
+        link_stack_location = ALIGN(., 4);
+        *(.stack)
+        . = ALIGN(MAX(link_stack_location + __STACKSIZE__ , .), 4);
+        link_stack_end = .;
     } > SRAM AT> SRAM
 
     INCLUDE linker_backup_ram_user.ld
     INCLUDE linker_backup_ram_system.ld
 
-    link_heap_location = end;
-    link_heap_location_end = __Stack_Init;
-    PROVIDE ( end = _ebss );
-    PROVIDE ( _end = _ebss );
-
-    .stack __Stack_Init : /* Contains the initial stack */
-    {
-        link_stack_location = .;
-        *(.stack)
-        link_stack_end = .;
-    }> SRAM AT> SRAM
+    link_heap_location = _heap;
+    link_heap_location_end = _eheap;
 
     /DISCARD/ :
     {
@@ -215,35 +197,34 @@ SECTIONS
     INCLUDE linker_module_end.ld
 }
 
-/* Referenced by SoftDevice driver. */
-__data_start__ = link_static_ram_start;
-__data_end__ = link_global_data_end;
-
 /* Declare libc Heap to start at end of allocated RAM */
-PROVIDE( _heap = link_stack_end );
+PROVIDE ( _heap = link_stack_end );
 
 /* End of the heap is top of RAM, aligned 8 byte */
-PROVIDE( _eheap = ALIGN( ORIGIN( SRAM ) + LENGTH( SRAM ) - 8, 8 ) );
+PROVIDE ( _eheap = ALIGN( ORIGIN( SRAM ) + LENGTH( SRAM ) - 8, 8 ) );
 
 /* ThreadX aliases */
-PROVIDE( __RAM_segment_used_end__ = link_stack_end );
-PROVIDE( __tx_free_memory_start = link_stack_end );
-PROVIDE( __tx_vectors = link_interrupt_vectors_location );
+PROVIDE ( __RAM_segment_used_end__ = link_stack_end );
+PROVIDE ( __tx_free_memory_start = link_stack_end );
+PROVIDE ( __tx_vectors = link_interrupt_vectors_location );
 
-PROVIDE( VTOR_Length = interrupt_vectors_length );
+PROVIDE ( dct1_start_addr_loc     = ORIGIN( DCT1_FLASH ));
+PROVIDE ( dct1_size_loc           = LENGTH( DCT1_FLASH ));
+PROVIDE ( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
+PROVIDE ( dct2_size_loc           = LENGTH( DCT2_FLASH ));
 
-ASSERT( link_ram_interrupt_vectors_location == ORIGIN( SRAM ), "RAM Interrupt table should be at start of RAM" );
-ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location ) == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
+PROVIDE ( VTOR_Length = interrupt_vectors_length );
+
+ASSERT ( link_ram_interrupt_vectors_location == ORIGIN( SRAM ), "RAM Interrupt table should be at start of RAM" );
+ASSERT ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 
-ASSERT ( _monolithic_firmware_module_info_flash_start == link_module_info_start, "module info start not where expected" );
-ASSERT ( _monolithic_firmware_module_info_flash_end == link_module_info_end, "module info end not where expected" );
+ASSERT ( link_module_info_start == _monolithic_firmware_module_info_flash_start, "module info start not where expected" );
+ASSERT ( link_module_info_end == _monolithic_firmware_module_info_flash_end, "module info end not where expected" );
 
-ASSERT ( link_constructors_location % 4 == 0, "the constructor array should be at a 4-byte aligned address." );
+ASSERT ( link_early_startup_begin != link_early_startup_end, "no early startup functions linked" );
 
-/*ASSERT ( link_early_startup_begin != link_early_startup_end, "no early startup functions linked" );*/
-
-ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );
+ASSERT ( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

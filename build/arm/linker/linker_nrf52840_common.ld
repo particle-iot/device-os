@@ -14,24 +14,24 @@ PROVIDE ( _Stack_Init = __Stack_Init );
 /* Sections Definitions */
 SECTIONS
 {
-    INCLUDE module_start.ld
+    INCLUDE linker_module_start.ld
 
     /* for Cortex devices, the beginning of the startup code is stored in the .isr_vector section, which goes to FLASH */
     .isr_vector :
     {
-    . = ALIGN(4);
+        . = ALIGN(4);
         KEEP(*(.isr_vector))            /* Startup code */
-    . = ALIGN(4);
-    } >APP_FLASH
+        . = ALIGN(4);
+    } > APP_FLASH
 
-    INCLUDE module_info.ld
+    INCLUDE linker_module_info.ld
 
     .flashtext :
     {
-    . = ALIGN(4);
-        *(.flashtext)            /* Startup code */
-    . = ALIGN(4);
-    } >APP_FLASH
+        . = ALIGN(4);
+        *(.flashtext)                   /* Startup code */
+        . = ALIGN(4);
+    } > APP_FLASH
 
     /* the program code is stored in the .text section, which goes to Flash */
     .text :
@@ -39,9 +39,9 @@ SECTIONS
         . = ALIGN(4);
         _etext = .;
 
-        *(.text)                   /* remaining code */
-        *(.text.*)                   /* remaining code */
-        *(.rodata)                 /* read-only data (constants) */
+        *(.text)                        /* remaining code */
+        *(.text.*)                      /* remaining code */
+        *(.rodata)                      /* read-only data (constants) */
         *(.rodata*)
         *(.glue_7)
         *(.glue_7t)
@@ -49,7 +49,6 @@ SECTIONS
         . = ALIGN(0x4);
 
         link_constructors_location = .;
-        chk_system_pre_init_start = .;
         KEEP (*(.module_pre_init))
         chk_system_pre_init_end = .;
         KEEP(*(.preinit_array))
@@ -66,16 +65,19 @@ SECTIONS
         . = ALIGN(4);
         __etext = .;
         /* This is used by the startup in order to initialize the .data secion */
+    } > APP_FLASH
 
-    } >APP_FLASH
-
-    .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >APP_FLASH
-    .ARM : {
+    .ARM.extab :
+    {
+        *(.ARM.extab* .gnu.linkonce.armextab.*)
+    } > APP_FLASH
+    
+    .ARM :
+    {
         __exidx_start = .;
         *(.ARM.exidx*)
         __exidx_end = .;
-    } >APP_FLASH
-
+    } > APP_FLASH
 
     /* This is the initialized data section
     The program executes knowing that the data is in the RAM
@@ -96,10 +98,10 @@ SECTIONS
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
         _edata = . ;
-    } >RAM AT>APP_FLASH
+    } > RAM AT> APP_FLASH
 
-    INCLUDE backup_ram_system.ld
-    INCLUDE backup_ram_user.ld
+    INCLUDE linker_backup_ram_system.ld
+    INCLUDE linker_backup_ram_user.ld
 
     /* This is the uninitialized data section */
     .bss :
@@ -119,7 +121,7 @@ SECTIONS
         link_bss_end = .;
         _ebss = . ;
         __bss_end__ = _ebss;
-    } >RAM
+    } > RAM
 
     PROVIDE ( end = _ebss );
     PROVIDE ( _end = _ebss );
@@ -129,17 +131,17 @@ SECTIONS
         link_stack_location = .;
         *(.stack)
         link_stack_end = .;
-    }> RAM AT> RAM
+    } > RAM AT> RAM
 
     /* after that it's only debugging information. */
 
     /* remove the debugging information from the standard libraries */
     DISCARD :
     {
-     libc.a ( * )
-     libm.a ( * )
-     libgcc.a ( * )
-     }
+        libc.a ( * )
+        libm.a ( * )
+        libgcc.a ( * )
+    }
 
     /* Stabs debugging sections.  */
     .stab          0 : { *(.stab) }
@@ -175,7 +177,7 @@ SECTIONS
     .debug_typenames 0 : { *(.debug_typenames) }
     .debug_varnames  0 : { *(.debug_varnames) }
 
-    INCLUDE module_end.ld
+    INCLUDE linker_module_end.ld
 }
 
 /* Referenced by SoftDevice driver. */
