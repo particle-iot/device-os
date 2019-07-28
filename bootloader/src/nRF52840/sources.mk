@@ -19,5 +19,5 @@ CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/nRF52840/,dct
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/nRF52840/littlefs/,*.cpp)
 CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/nRF52840/littlefs/,*.c)
 
-LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_nrf52840_bootloader.ld
-LINKER_DEPS += $(COMMON_BUILD)/arm/linker/linker_nrf52840_bootloader.ld
+LDFLAGS += -T$(BOOTLOADER_SRC_PATH)/linker.ld
+LINKER_DEPS += $(BOOTLOADER_SRC_PATH)/linker.ld
