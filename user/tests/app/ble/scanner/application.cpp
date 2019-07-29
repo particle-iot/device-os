@@ -15,7 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "particle.h"
+#include "Particle.h"
 
 #define SCAN_RESULT_COUNT       30
 #define BLE_ADV_DATA_MAX        31

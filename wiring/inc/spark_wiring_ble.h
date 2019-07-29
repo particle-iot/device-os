@@ -251,6 +251,10 @@ public:
     BleUuid& operator=(const hal_ble_uuid_t& uuid);
 
     bool operator==(const BleUuid& uuid) const;
+    bool operator==(const char* uuid) const;
+    bool operator==(const String& uuid) const;
+    bool operator==(uint16_t uuid) const;
+    bool operator==(const uint8_t* uuid128) const;
 
 private:
     void construct(const char* uuid);

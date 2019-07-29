@@ -346,35 +346,43 @@ const uint8_t* BleUuid::rawBytes() const {
 
 String BleUuid::toString(bool stripped) const {
     String string;
-    uint8_t temp[BLE_SIG_UUID_128BIT_LEN];
-    toBigEndian(temp);
-    char* cStr = (char*)malloc(BLE_SIG_UUID_128BIT_LEN * 2 + 5);
-    if (cStr) {
-        SCOPE_GUARD ({
-            free(cStr);
-        });
-        if (stripped) {
-            bytes2hexbuf(temp, BLE_SIG_UUID_128BIT_LEN, cStr);
-            cStr[BLE_SIG_UUID_128BIT_LEN * 2] = '\0';
-        } else {
-            uint8_t idx = 0;
-            bytes2hexbuf(&temp[idx], 4, &cStr[0]);
-            idx += 4;
-            cStr[idx * 2] = '-';
-            bytes2hexbuf(&temp[idx], 2, &cStr[idx * 2 + 1]);
-            idx += 2;
-            cStr[idx * 2 + 1] = '-';
-            bytes2hexbuf(&temp[idx], 2, &cStr[idx * 2 + 2]);
-            idx += 2;
-            cStr[idx * 2 + 2] = '-';
-            bytes2hexbuf(&temp[idx], 2, &cStr[idx * 2 + 3]);
-            idx += 2;
-            cStr[idx * 2 + 3] = '-';
-            bytes2hexbuf(&temp[idx], 6, &cStr[idx * 2 + 4]);
-            idx += 6;
-            cStr[idx * 2 + 4] = '\0';
+    if (type() == BleUuidType::SHORT) {
+        char buf[BLE_SIG_UUID_16BIT_LEN * 2 + 1] = {};
+        uint16_t bigEndian = uuid_.uuid16 << 8 | uuid_.uuid16 >> 8;
+        bytes2hexbuf((uint8_t*)&bigEndian, 2, buf);
+        buf[BLE_SIG_UUID_16BIT_LEN * 2] = '\0';
+        string.concat(buf);
+    } else {
+        uint8_t temp[BLE_SIG_UUID_128BIT_LEN];
+        toBigEndian(temp);
+        char* cStr = (char*)malloc(BLE_SIG_UUID_128BIT_LEN * 2 + 5);
+        if (cStr) {
+            SCOPE_GUARD ({
+                free(cStr);
+            });
+            if (stripped) {
+                bytes2hexbuf(temp, BLE_SIG_UUID_128BIT_LEN, cStr);
+                cStr[BLE_SIG_UUID_128BIT_LEN * 2] = '\0';
+            } else {
+                uint8_t idx = 0;
+                bytes2hexbuf(&temp[idx], 4, &cStr[0]);
+                idx += 4;
+                cStr[idx * 2] = '-';
+                bytes2hexbuf(&temp[idx], 2, &cStr[idx * 2 + 1]);
+                idx += 2;
+                cStr[idx * 2 + 1] = '-';
+                bytes2hexbuf(&temp[idx], 2, &cStr[idx * 2 + 2]);
+                idx += 2;
+                cStr[idx * 2 + 2] = '-';
+                bytes2hexbuf(&temp[idx], 2, &cStr[idx * 2 + 3]);
+                idx += 2;
+                cStr[idx * 2 + 3] = '-';
+                bytes2hexbuf(&temp[idx], 6, &cStr[idx * 2 + 4]);
+                idx += 6;
+                cStr[idx * 2 + 4] = '\0';
+            }
+            string.concat(cStr);
         }
-        string.concat(cStr);
     }
     return string;
 }
@@ -428,28 +436,55 @@ bool BleUuid::operator==(const BleUuid& uuid) const {
     }
 }
 
+bool BleUuid::operator==(const char* uuid) const {
+    return !strcmp(uuid, toString().c_str());
+}
+
+bool BleUuid::operator==(const String& uuid) const {
+    return (*this == uuid.c_str());
+}
+
+bool BleUuid::operator==(uint16_t uuid) const {
+    return (type() == BleUuidType::SHORT && uuid_.uuid16 == uuid);
+}
+
+bool BleUuid::operator==(const uint8_t* uuid128) const {
+    return (type() == BleUuidType::LONG && !memcmp(uuid128, uuid_.uuid128, BLE_SIG_UUID_128BIT_LEN));
+}
+
 void BleUuid::construct(const char* uuid) {
     if (uuid == nullptr) {
         memset(uuid_.uuid128, 0x00, BLE_SIG_UUID_128BIT_LEN);
-    } else {
-        size_t len = BLE_SIG_UUID_128BIT_LEN;
-        for (size_t i = 0; i < strnlen(uuid, BLE_SIG_UUID_128BIT_LEN * 2 + 4) && len > 0; i++) {
-            int8_t hi = hexToNibble(uuid[i]);
-            if (hi >= 0) {
-                uuid_.uuid128[len - 1] = hi << 4;
-                if (++i < strnlen(uuid, BLE_SIG_UUID_128BIT_LEN * 2 + 4)) {
-                    int8_t lo = hexToNibble(uuid[i]);
-                    if (lo >= 0) {
-                        uuid_.uuid128[len - 1] |= lo;
-                    }
-                }
-                len--;
-            }
+        uuid_.type = BLE_UUID_TYPE_128BIT;
+        return;
+    }
+    if (strnlen(uuid, BLE_SIG_UUID_128BIT_LEN * 2 + 4) == (BLE_SIG_UUID_16BIT_LEN * 2)) {
+        char buf[2] = {};
+        if (hexToBytes(uuid, buf, BLE_SIG_UUID_16BIT_LEN) == BLE_SIG_UUID_16BIT_LEN) {
+            uuid_.uuid16 = ((uint16_t)buf[0] << 8) | (uint16_t)buf[1];
+        } else {
+            uuid_.uuid16 = 0x0000;
         }
-        while (len > 0) {
-            uuid_.uuid128[len - 1] = 0x00;
+        uuid_.type = BLE_UUID_TYPE_16BIT;
+        return;
+    }
+    size_t len = BLE_SIG_UUID_128BIT_LEN;
+    for (size_t i = 0; i < strnlen(uuid, BLE_SIG_UUID_128BIT_LEN * 2 + 4) && len > 0; i++) {
+        int8_t hi = hexToNibble(uuid[i]);
+        if (hi >= 0) {
+            uuid_.uuid128[len - 1] = hi << 4;
+            if (++i < strnlen(uuid, BLE_SIG_UUID_128BIT_LEN * 2 + 4)) {
+                int8_t lo = hexToNibble(uuid[i]);
+                if (lo >= 0) {
+                    uuid_.uuid128[len - 1] |= lo;
+                }
+            }
             len--;
         }
+    }
+    while (len > 0) {
+        uuid_.uuid128[len - 1] = 0x00;
+        len--;
     }
     uuid_.type = BLE_UUID_TYPE_128BIT;
 }
