@@ -72,10 +72,26 @@ public:
     }
 };
 
-
-int mesh_loop();
-
 class MeshPublish {
+public:
+    MeshPublish() : exit_(false) {
+        // System thread gets blocked while connecting to cloud, while it's connecting to it
+        // RX packet buffer pool may easily get exhausted, because nobody is reading the data
+        // out of the socket. Create a separate thread here with a higher priority than application
+        // and system.
+    }
+
+    int publish(const char* topic, const char* data = nullptr);
+
+    int subscribe(const char* prefix, EventHandler handler);
+
+    // This shouldn't be public, but we use it in tests
+    int uninitializeUdp();
+
+    static const uint16_t PORT = 36969;
+    static constexpr const char* MULTICAST_ADDR = "ff03::1:1001";
+    static const uint16_t MAX_PACKET_LEN = 1232;
+
 private:
     class Subscriptions {
         FilteringEventHandler event_handlers[5];
@@ -99,41 +115,16 @@ private:
         void send(const char* event_name, const char* data);
     };
 
-
-    static const uint16_t PORT = 36969;
-    static constexpr const char* MULTICAST_ADDR = "ff03::1:1001";
-    static const uint16_t MAX_PACKET_LEN = 1232;
-
-    std::unique_ptr<UDP> udp;
-    Subscriptions subscriptions;
-
     static int fetchMulticastAddress(IPAddress& mcastAddr);
+    int initializeUdp();
+    int poll();
 
-    int initialize_udp();
-
-    int uninitialize_udp();
-
+    std::unique_ptr<UDP> udp_;
+    Subscriptions subscriptions_;
     std::unique_ptr<Thread> thread_;
     RecursiveMutex mutex_;
     std::unique_ptr<uint8_t[]> buffer_;
-
-public:
-
-    MeshPublish() : udp(nullptr) {
-        // System thread gets blocked while connecting to cloud, while it's connecting to it
-        // RX packet buffer pool may easily get exhausted, because nobody is reading the data
-        // out of the socket. Create a separate thread here with a higher priority than application
-        // and system.
-    }
-
-    int publish(const char* topic, const char* data = nullptr);
-
-    int subscribe(const char* prefix, EventHandler handler);
-
-    /**
-     * Pull data from the socket and handle as required.
-     */
-    int poll();
+    std::atomic_bool exit_;
 };
 
 class MeshClass : public NetworkClass, public MeshPublish {
