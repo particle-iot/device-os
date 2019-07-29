@@ -17,23 +17,37 @@
 
 #include <limits>
 
+#include "active_object.h"
+#include "protocol_selector.h"
+
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 #include <fakeit.hpp>
 
-// Defined in CMakeList.txt
-// Redefined to enable Intellisense
-#ifdef LOG_DISABLE
-#undef LOG_DISABLE
-#endif
-#define LOG_DISABLE
-#ifdef UNIT_TEST
-#undef UNIT_TEST
-#endif
-#define UNIT_TEST
-
-#include "mock_types.h"
+#include "mock/mock_types.h"
 #include "system_publish_vitals.h"
+
+bool spark_protocol_post_description_called;
+int spark_protocol_post_description_result;
+
+ISRTaskQueue SystemISRTaskQueue;
+
+void ISRTaskQueue::enqueue(ISRTaskQueue::Task*)
+{
+}
+
+extern "C" {
+ProtocolFacade* spark_protocol_instance()
+{
+    return nullptr;
+}
+
+int spark_protocol_post_description(ProtocolFacade*, int, void*)
+{
+    spark_protocol_post_description_called = true;
+    return spark_protocol_post_description_result;
+}
+}
 
 // ASSUMPTION!!! - Period "getter" method works correctly - without being testing.
 
