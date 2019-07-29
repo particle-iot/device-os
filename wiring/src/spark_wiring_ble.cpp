@@ -149,11 +149,11 @@ int BleAddress::set(const uint8_t addr[BLE_SIG_ADDR_LEN], BleAddressType type) {
 int BleAddress::set(const char* address, BleAddressType type) {
     CHECK_TRUE(address, SYSTEM_ERROR_INVALID_ARGUMENT);
     size_t len = BLE_SIG_ADDR_LEN;
-    for (size_t i = 0; i < strlen(address) && len > 0; i++) {
+    for (size_t i = 0; i < strnlen(address, BLE_SIG_ADDR_LEN * 2 + 5) && len > 0; i++) {
         int8_t hi = hexToNibble(address[i]);
         if (hi >= 0) {
             address_.addr[len - 1] = hi << 4;
-            if (++i < strlen(address)) {
+            if (++i < strnlen(address, BLE_SIG_ADDR_LEN * 2 + 5)) {
                 int8_t lo = hexToNibble(address[i]);
                 if (lo >= 0) {
                     address_.addr[len - 1] |= lo;
@@ -433,11 +433,11 @@ void BleUuid::construct(const char* uuid) {
         memset(uuid_.uuid128, 0x00, BLE_SIG_UUID_128BIT_LEN);
     } else {
         size_t len = BLE_SIG_UUID_128BIT_LEN;
-        for (size_t i = 0; i < strlen(uuid) && len > 0; i++) {
+        for (size_t i = 0; i < strnlen(uuid, BLE_SIG_UUID_128BIT_LEN * 2 + 4) && len > 0; i++) {
             int8_t hi = hexToNibble(uuid[i]);
             if (hi >= 0) {
                 uuid_.uuid128[len - 1] = hi << 4;
-                if (++i < strlen(uuid)) {
+                if (++i < strnlen(uuid, BLE_SIG_UUID_128BIT_LEN * 2 + 4)) {
                     int8_t lo = hexToNibble(uuid[i]);
                     if (lo >= 0) {
                         uuid_.uuid128[len - 1] |= lo;
@@ -556,7 +556,7 @@ size_t BleAdvertisingData::append(BleAdvertisingDataType type, const uint8_t* bu
 }
 
 size_t BleAdvertisingData::appendLocalName(const char* name) {
-    return append(BleAdvertisingDataType::COMPLETE_LOCAL_NAME, (const uint8_t*)name, strlen(name), false);
+    return append(BleAdvertisingDataType::COMPLETE_LOCAL_NAME, (const uint8_t*)name, strnlen(name, BLE_MAX_DEV_NAME_LEN), false);
 }
 
 size_t BleAdvertisingData::appendLocalName(const String& name) {
@@ -1107,7 +1107,7 @@ ssize_t BleCharacteristic::setValue(const String& str) {
 }
 
 ssize_t BleCharacteristic::setValue(const char* str) {
-    return setValue(reinterpret_cast<const uint8_t*>(str), strlen(str));
+    return setValue(reinterpret_cast<const uint8_t*>(str), strnlen(str, BLE_MAX_ATTR_VALUE_PACKET_SIZE));
 }
 
 ssize_t BleCharacteristic::getValue(uint8_t* buf, size_t len) const {
@@ -1441,7 +1441,7 @@ int BleLocalDevice::setDeviceName(const char* name, size_t len) const {
 }
 
 int BleLocalDevice::setDeviceName(const char* name) const {
-    return setDeviceName(name, strlen(name));
+    return setDeviceName(name, strnlen(name, BLE_MAX_DEV_NAME_LEN));
 }
 
 int BleLocalDevice::setDeviceName(const String& name) const {
@@ -1450,7 +1450,7 @@ int BleLocalDevice::setDeviceName(const String& name) const {
 
 ssize_t BleLocalDevice::getDeviceName(char* name, size_t len) const {
     CHECK(hal_ble_gap_get_device_name(name, len, nullptr));
-    return strlen(name);
+    return strnlen(name, BLE_MAX_DEV_NAME_LEN);
 }
 
 String BleLocalDevice::getDeviceName() const {
