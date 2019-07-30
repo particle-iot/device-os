@@ -30,9 +30,10 @@
 #include "usbd_dfu_mal.h"
 #include "usb_bsp.h"
 #include "hw_config.h"
-
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#include "platforms.h"
+#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1
 #include "bootloader_dct.h"
+#include "module_info.h"
 #endif
 
 /* Private typedef -----------------------------------------------------------*/
@@ -162,8 +163,8 @@ uint16_t FLASH_If_Write(uint32_t Add, uint32_t Len)
   /* This make sure that after the system parts being updated,
    * the address of DCT functions that resided in system parts are up to date,
    * otherwise, bootloader cannot access the DCT after updating the system parts without a reset. */
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-#if MODULE_FUNCTION == 2 // Bootloader
+#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
   dct_reload_functions();
 #endif
 #endif
