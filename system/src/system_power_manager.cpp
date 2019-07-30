@@ -60,7 +60,9 @@ void PowerManager::init() {
 #endif // defined(DEBUIG_BUILD)
   SPARK_ASSERT(thread_ != nullptr);
 
+#if HAL_INCREASE_CHARGING_CURRENT_WHEN_POWERED_BY_VIN
   HAL_USB_Set_State_Change_Callback(usbStateChangeHandler, (void*)this, nullptr);
+#endif
 }
 
 void PowerManager::update() {
@@ -150,7 +152,7 @@ void PowerManager::handleUpdate() {
     uint8_t vbus_stat = status >> 6;
     switch (vbus_stat) {
       case 0x01:
-#if WHEN_POWERED_BY_VIN
+#if HAL_INCREASE_CHARGING_CURRENT_WHEN_POWERED_BY_VIN
         // Workaround: 
         // when Gen3 device is powered via VUSB, USB peripheral gets no power supply.
         // In this case BQ24195 will wrongly assume the device is connected to a USB host.

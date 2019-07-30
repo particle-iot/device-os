@@ -20,9 +20,7 @@
 #include "system_tick_hal.h"
 #include "concurrent_hal.h"
 #include "hal_platform.h"
-#if WHEN_POWERED_BY_VIN
 #include "usb_hal.h"
-#endif
 
 namespace particle { namespace power {
 
