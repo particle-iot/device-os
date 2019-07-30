@@ -47,6 +47,7 @@ protected:
 private:
   static void loop(void* arg);
   static void isrHandler();
+  static void usbStateChangeHandler(HAL_USB_State state, void* context);
   void update();
   void handleUpdate();
   void initDefault(bool dpdm = true);

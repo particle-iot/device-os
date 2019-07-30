@@ -59,6 +59,8 @@ void PowerManager::init() {
     1024);
 #endif // defined(DEBUIG_BUILD)
   SPARK_ASSERT(thread_ != nullptr);
+
+  HAL_USB_Set_State_Change_Callback(usbStateChangeHandler, (void*)this, nullptr);
 }
 
 void PowerManager::update() {
@@ -156,13 +158,10 @@ void PowerManager::handleUpdate() {
         // and decrease input voltage limit to 3880mV.
         // More details are in clubhouse [CH34730]
         if (HAL_USB_Get_State() == HAL_USB_STATE_DETACHED) {
-            if (power.getInputCurrentLimit() != DEFAULT_INPUT_CURRENT_LIMIT) {
-                power.setInputCurrentLimit(DEFAULT_INPUT_CURRENT_LIMIT);
-                power.setInputVoltageLimit(3880);
-            }
-        } else {
-            power.setInputCurrentLimit(USB_HOST_INPUT_CURRENT_LIMIT);
-            power.setInputVoltageLimit(4360);
+          if (power.getInputCurrentLimit() != DEFAULT_INPUT_CURRENT_LIMIT) {
+            power.setInputCurrentLimit(DEFAULT_INPUT_CURRENT_LIMIT);
+            power.setInputVoltageLimit(3880);
+          }
         }
 #endif
         src = POWER_SOURCE_USB_HOST;
@@ -492,6 +491,11 @@ void PowerManager::deinit() {
   }
 
   detachInterrupt(LOW_BAT_UC);
+}
+
+void PowerManager::usbStateChangeHandler(HAL_USB_State state, void* context) {
+  PowerManager* power = (PowerManager*)context;
+  power->update();
 }
 
 #endif /* (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043) */
