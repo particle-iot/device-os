@@ -31,6 +31,10 @@
 #include "usb_bsp.h"
 #include "hw_config.h"
 
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#include "bootloader_dct.h"
+#endif
+
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
@@ -154,6 +158,15 @@ uint16_t FLASH_If_Write(uint32_t Add, uint32_t Len)
 
   /* Lock the internal flash */
   FLASH_Lock();
+
+  /* This make sure that after the system parts being updated,
+   * the address of DCT functions that resided in system parts are up to date,
+   * otherwise, bootloader cannot access the DCT after updating the system parts without a reset. */
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
+#if MODULE_FUNCTION == 2 // Bootloader
+  dct_reload_functions();
+#endif
+#endif
 
   if (status != FLASH_COMPLETE) return MAL_FAIL;
 
