@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void load_dct_functions();
+void dct_reload_functions();
 
 #ifdef __cplusplus
 } // extern "C"

@@ -69,7 +69,7 @@ static void init_dct_functions() {
     dct_write_app_data_func = dct_write;
 }
 
-void load_dct_functions() {
+void dct_reload_functions() {
     dct_funcs_inited = 0;
 }
 
