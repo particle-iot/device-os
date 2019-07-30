@@ -29,10 +29,6 @@ LOG_SOURCE_CATEGORY("sys.power")
 // For system flags
 #include "system_update.h"
 
-#if HAL_INCREASE_CHARGING_CURRENT_WHEN_POWERED_BY_VUSB
-#include "usb_hal.h"
-#endif
-
 #if (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
 
 namespace {
@@ -152,7 +148,7 @@ void PowerManager::handleUpdate() {
     uint8_t vbus_stat = status >> 6;
     switch (vbus_stat) {
       case 0x01:
-#if HAL_INCREASE_CHARGING_CURRENT_WHEN_POWERED_BY_VUSB
+#if WHEN_POWERED_BY_VIN
         // Workaround: 
         // when Gen3 device is powered via VUSB, USB peripheral gets no power supply.
         // In this case BQ24195 will wrongly assume the device is connected to a USB host.
