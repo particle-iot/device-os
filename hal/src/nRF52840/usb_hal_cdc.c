@@ -39,6 +39,7 @@
 #include "deviceid_hal.h"
 #include "bytes2hexbuf.h"
 #include "hal_platform.h"
+#include "system_error.h"
 
 #include "logging.h"
 LOG_SOURCE_CATEGORY("hal.usbcdc")
@@ -59,7 +60,7 @@ LOG_SOURCE_CATEGORY("hal.usbcdc")
 #define CDC_ACM_DATA_EPIN       NRF_DRV_USBD_EPIN1
 #define CDC_ACM_DATA_EPOUT      NRF_DRV_USBD_EPOUT1
 
-#define MAX_USB_STATE_CB_NUM    5
+#define MAX_USB_STATE_CB_NUM    1
 
 extern uint8_t g_extern_serial_number[SERIAL_NUMBER_STRING_SIZE + 1];
 
@@ -85,7 +86,6 @@ typedef struct {
     void (*bit_rate_changed_handler)(uint32_t bitRate);
     HAL_USB_State_Callback  state_callback[MAX_USB_STATE_CB_NUM];
     void*                   state_callback_context[MAX_USB_STATE_CB_NUM];
-    int                     state_callback_count;
 } usb_instance_t;
 
 static usb_instance_t m_usb_instance = {0};
@@ -130,8 +130,12 @@ static void reset_rx_tx_state(void) {
 static void set_usb_state(HAL_USB_State state) {
     if (m_usb_instance.state != state) {
         m_usb_instance.state = state;
-        for (int i = 0; i < m_usb_instance.state_callback_count; i++) {
-            (*m_usb_instance.state_callback[i])(state, m_usb_instance.state_callback_context[i]);
+        for (int i = 0; i < MAX_USB_STATE_CB_NUM; i++) {
+            if (m_usb_instance.state_callback[i]) {
+                (*m_usb_instance.state_callback[i])(state, m_usb_instance.state_callback_context[i]);
+            } else {
+                break;
+            }
         }
     }
 }
@@ -500,11 +504,12 @@ HAL_USB_State usb_hal_get_state() {
 }
 
 int usb_hal_set_state_change_callback(HAL_USB_State_Callback cb, void* context, void* reserved) {
-    if (m_usb_instance.state_callback_count >= MAX_USB_STATE_CB_NUM) {
-        return -1;
+    for (int i = 0; i < MAX_USB_STATE_CB_NUM; i++) {
+        if (m_usb_instance.state_callback[i] == NULL) {
+            m_usb_instance.state_callback[i] = cb;
+            m_usb_instance.state_callback_context[i] = context;
+            return 0;
+        }
     }
-    m_usb_instance.state_callback[m_usb_instance.state_callback_count] = cb;
-    m_usb_instance.state_callback_context[m_usb_instance.state_callback_count] = context;
-    m_usb_instance.state_callback_count++;
-    return 0;
+    return SYSTEM_ERROR_NO_MEMORY;
 }
