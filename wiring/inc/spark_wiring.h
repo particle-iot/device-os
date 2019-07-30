@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file    spark_wiring.h
- * @author  Satish Nair, Zachary Crockett, Zach Supalla and Mohit Bhoite
+ * @author  Satish Nair, Zachary Crockett, Zach Supalla, Mohit Bhoite and Stuart Feichtinger
  * @version V1.0.0
  * @date    13-March-2013
  * @brief   Header for spark_wiring.c module
@@ -51,7 +51,6 @@
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_rgb.h"
 #include "spark_wiring_ticks.h"
-#include "spark_wiring_nfc.h"
 
 /* To prevent build error, we are undefining and redefining DAC here */
 #undef DAC
@@ -66,6 +65,7 @@ extern "C" {
 */
 void setADCSampleTime(uint8_t ADC_SampleTime);
 int32_t analogRead(uint16_t pin);
+void analogReference(vref_e v);
 
 /*
 * GPIO

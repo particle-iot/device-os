@@ -153,6 +153,14 @@ int32_t digitalRead(pin_t pin)
 }
 
 /*
+ * @brief Set the ADC reference to either VDD / 4 (VDD4) or the internal 0.6v (INTERNAL)
+ */
+
+void analogReference(vref_e v){
+    HAL_ADC_Set_VREF(v);
+}
+
+/*
  * @brief Read the analog value of a pin.
  * Should return a 16-bit value, 0-65536 (0 = LOW, 65536 = HIGH)
  * Note: ADC is 12-bit. Currently it returns 0-4095
@@ -177,6 +185,7 @@ int32_t analogRead(pin_t pin)
 
   return HAL_ADC_Read(pin);
 }
+
 
 /*
  * @brief Should take an integer 0-255 and create a 500Hz PWM signal with a duty cycle from 0-100%.
@@ -251,7 +260,7 @@ uint8_t analogWriteResolution(pin_t pin, uint8_t value)
     HAL_PWM_Set_Resolution(pin, value);
     return HAL_PWM_Get_Resolution(pin);
   }
-  
+
 
   return 0;
 }

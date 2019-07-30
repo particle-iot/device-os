@@ -32,6 +32,12 @@
 
 /* Exported types ------------------------------------------------------------*/
 
+typedef enum
+{
+    VDD4,
+    INTERNAL,
+} vref_e;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
@@ -45,6 +51,7 @@ extern "C" {
 void HAL_ADC_Set_Sample_Time(uint8_t ADC_SampleTime);
 int32_t HAL_ADC_Read(pin_t pin);
 void HAL_ADC_DMA_Init();
+void HAL_ADC_Set_VREF(vref_e v_e);
 
 #ifdef __cplusplus
 }
