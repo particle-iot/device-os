@@ -47,7 +47,7 @@
 extern "C" {
 #endif
 
-typedef enum {
+typedef enum HAL_USB_State {
     HAL_USB_STATE_DETACHED,
     HAL_USB_STATE_ATTACHED,
     HAL_USB_STATE_POWERED,
@@ -56,6 +56,9 @@ typedef enum {
     HAL_USB_STATE_CONFIGURED,
     HAL_USB_STATE_SUSPENDED
 } HAL_USB_State;
+
+typedef void (*HAL_USB_State_Callback)(HAL_USB_State state, void* data);
+int HAL_USB_Set_State_Change_Callback(HAL_USB_State_Callback cb, void* context, void* reserved);
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 typedef struct HAL_USB_SetupRequest {
