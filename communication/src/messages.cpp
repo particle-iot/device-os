@@ -19,7 +19,19 @@
 
 #include "messages.h"
 
-namespace particle { namespace protocol {
+#include "appender.h"
+
+namespace particle {
+
+namespace protocol {
+
+namespace {
+
+const unsigned CLOSE_DISCONNECT_REASON_FLAG = 0x01;
+const unsigned CLOSE_RESET_REASON_FLAG = 0x02;
+const unsigned CLOSE_SLEEP_DURATION_FLAG = 0x04;
+
+} // unnamed
 
 CoAPMessageType::Enum Messages::decodeType(const uint8_t* buf, size_t length)
 {
@@ -342,4 +354,49 @@ size_t Messages::response_size(size_t payload_size, bool has_token)
 			(has_token ? 1 : 0); // One-byte token
 }
 
-}}
+size_t Messages::close(unsigned char* buf, size_t size, message_id_t message_id, unsigned disconnect_reason,
+		unsigned reset_reason, unsigned sleep_duration, bool confirmable)
+{
+	BufferAppender b(buf, size);
+	b.appendChar(confirmable ? 0x40 : 0x50); // No token
+	b.appendChar(0x02); // POST
+	b.appendInt16Be(message_id);
+	b.appendChar(0xb1); // Uri-Path (11), length: 1
+	b.appendChar('x');
+	if (!confirmable) {
+		// No-Response (258), length: 0
+		b.appendChar(0xd0);
+		b.appendChar(0xea); // 258 - 11 - 13
+	}
+	b.appendChar(0xff); // Payload marker
+	// Field flags
+	unsigned flags = 0;
+	if (disconnect_reason != 0) {
+		flags |= CLOSE_DISCONNECT_REASON_FLAG;
+	}
+	if (reset_reason != 0) {
+		flags |= CLOSE_RESET_REASON_FLAG;
+	}
+	if (sleep_duration != 0) {
+		flags |= CLOSE_SLEEP_DURATION_FLAG;
+	}
+	b.appendUnsignedVarint(flags);
+	// Field values
+	if (flags & CLOSE_DISCONNECT_REASON_FLAG) {
+		b.appendUnsignedVarint(disconnect_reason);
+	}
+	if (flags & CLOSE_RESET_REASON_FLAG) {
+		b.appendUnsignedVarint(reset_reason);
+	}
+	if (flags & CLOSE_SLEEP_DURATION_FLAG) {
+		b.appendUnsignedVarint(sleep_duration);
+	}
+	return b.dataSize();
+}
+
+const size_t Messages::MAX_CLOSE_MESSAGE_SIZE = 9 + // CoAP header, options, payload marker
+		maxUnsignedVarintSize<unsigned>() * 4; // Flags, disconnection reason, reset reason, sleep duration
+
+} // particle::protocol
+
+} // particle
