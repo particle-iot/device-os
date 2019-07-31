@@ -138,7 +138,7 @@ public:
     }
 
     void off() {
-        network_off(*this, 0, 0, NULL);
+        network_off(*this, 1, 0, NULL);
     }
 
     void connect(unsigned flags=0) {
