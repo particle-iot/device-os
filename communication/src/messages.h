@@ -46,6 +46,8 @@ inline uint8_t decode_uint8(unsigned char* buf) {
 class Messages
 {
 public:
+	static const size_t MAX_CLOSE_MESSAGE_SIZE;
+
 	static CoAPMessageType::Enum decodeType(const uint8_t* buf, size_t length);
 	static size_t describe_post_header(uint8_t buf[], size_t buffer_size, uint16_t message_id, uint8_t desc_flags);
 	static size_t hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
@@ -160,6 +162,9 @@ public:
      * @return Message size.
      */
     static size_t response_size(size_t payload_size, bool has_token);
+
+    static size_t close(unsigned char* buf, size_t size, message_id_t message_id, unsigned disconnect_reason,
+            unsigned reset_reason, unsigned sleep_duration, bool confirmable);
 };
 
 
