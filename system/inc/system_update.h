@@ -6,6 +6,8 @@
 #include "static_assert.h"
 #include "appender.h"
 
+using particle::Appender;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -67,6 +67,7 @@ uint32_t particle_key_errors = NO_ERROR;
 const int CLAIM_CODE_SIZE = 63;
 
 using particle::LEDStatus;
+using particle::BufferAppender;
 
 int userVarType(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
@@ -724,7 +725,7 @@ int formatOtaUpdateStatusEventData(uint32_t flags, int result, hal_module_t* mod
 
     if (flags & 1) {
         appender.append(",");
-        res = ota_update_info(append_instance, &appender, module, false, NULL);
+        res = ota_update_info(Appender::callback, &appender, module, false, NULL);
     }
 
     appender.append("}");

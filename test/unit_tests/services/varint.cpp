@@ -19,6 +19,8 @@
 
 #include <catch2/catch.hpp>
 
+#include <limits>
+
 using namespace particle;
 
 TEST_CASE("encodeUnsignedVarint()") {
@@ -203,5 +205,22 @@ TEST_CASE("decodeUnsignedVarint()") {
             CHECK(r == 5);
             CHECK(v == 0xffffffff);
         }
+    }
+}
+
+TEST_CASE("maxUnsignedVarintSize()") {
+    SECTION("returns the maximum size of a varint in bytes") {
+        // uint8_t
+        auto r = encodeUnsignedVarint(nullptr, 0, std::numeric_limits<uint8_t>::max());
+        CHECK(r == maxUnsignedVarintSize<uint8_t>());
+        // uint16_t
+        r = encodeUnsignedVarint(nullptr, 0, std::numeric_limits<uint16_t>::max());
+        CHECK(r == maxUnsignedVarintSize<uint16_t>());
+        // uint32_t
+        r = encodeUnsignedVarint(nullptr, 0, std::numeric_limits<uint32_t>::max());
+        CHECK(r == maxUnsignedVarintSize<uint32_t>());
+        // uint64_t
+        r = encodeUnsignedVarint(nullptr, 0, std::numeric_limits<uint64_t>::max());
+        CHECK(r == maxUnsignedVarintSize<uint64_t>());
     }
 }

@@ -345,7 +345,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
         auto prefix = "{";
         auto suffix = "}\r\n";
         WrappedStreamAppender appender(serial, (const uint8_t*)prefix, strlen(prefix), (const uint8_t*)suffix, strlen(suffix));
-        system_module_info(append_instance, &appender);
+        system_module_info(Appender::callback, &appender);
     }
     else if ('v' == c)
     {
