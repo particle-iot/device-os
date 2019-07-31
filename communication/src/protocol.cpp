@@ -463,7 +463,7 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
 		appender.append(char(0));	//
 		const int flags = 1;		// binary
 		const int page = 0;
-		descriptor.append_metrics(append_instance, &appender, flags, page, nullptr);
+		descriptor.append_metrics(Appender::callback, &appender, flags, page, nullptr);
 	}
 	else {
 		appender.append("{");
@@ -525,7 +525,7 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
 				appender.append(',');
 			}
 			has_content = true;
-			descriptor.append_system_info(append_instance, &appender, nullptr);
+			descriptor.append_system_info(Appender::callback, &appender, nullptr);
 		}
 		appender.append('}');
 	}
@@ -539,17 +539,17 @@ ProtocolError Protocol::generate_and_send_description(MessageChannel& channel, M
     BufferAppender appender((message.buf() + header_size), (message.capacity() - header_size));
     build_describe_message(appender, desc_flags);
 
-    const size_t msglen = (appender.next() - (uint8_t*)message.buf());
+    const size_t msglen = appender.dataSize();
     message.set_length(msglen);
-    if (appender.overflowed())
+    if (appender.dataSize() > appender.bufferSize())
     {
-        LOG(ERROR, "Describe message overflowed by %d bytes", appender.overflowed());
+        LOG(ERROR, "Describe message overflowed by %u bytes", (unsigned)(appender.dataSize() - appender.bufferSize()));
         // There is no point in continuing to run, the device will be constantly reconnecting
         // to the cloud. It's better to clearly indicate that the describe message is never going
         // to go through to the cloud by going into a panic state, otherwise one would have to
         // sift through logs to find 'Describe message overflowed by %d bytes' message to understand
         // what's going on.
-        SPARK_ASSERT(!appender.overflowed());
+        SPARK_ASSERT(false);
     }
 
     LOG(INFO, "Posting '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
@@ -640,7 +640,7 @@ system_tick_t Protocol::ChunkedTransferCallbacks::millis()
 int Protocol::get_describe_data(spark_protocol_describe_data* data, void* reserved)
 {
 	data->maximum_size = 768;  // a conservative guess based on dtls and lightssl encryption overhead and the CoAP data
-	BufferAppender2 appender(nullptr,  0);	// don't need to store the data, just count the size
+	BufferAppender appender(nullptr,  0);	// don't need to store the data, just count the size
 	build_describe_message(appender, data->flags);
 	data->current_size = appender.dataSize();
 	return 0;

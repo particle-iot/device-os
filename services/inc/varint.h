@@ -40,7 +40,7 @@ namespace particle {
  * @return The number of bytes written.
  */
 template<typename T>
-int encodeUnsignedVarint(char* buf, size_t size, T val) {
+inline int encodeUnsignedVarint(char* buf, size_t size, T val) {
     val = nativeToLittleEndian(val);
     size_t bytes = 0;
     do {
@@ -69,7 +69,7 @@ int encodeUnsignedVarint(char* buf, size_t size, T val) {
  * @return The number of bytes read or a negative result code in case of an error.
  */
 template<typename T>
-int decodeUnsignedVarint(const char* buf, size_t size, T* val) {
+inline int decodeUnsignedVarint(const char* buf, size_t size, T* val) {
     T v = 0;
     size_t bytes = 0;
     size_t bits = 0;
@@ -96,6 +96,18 @@ int decodeUnsignedVarint(const char* buf, size_t size, T* val) {
         *val = littleEndianToNative(v);
     }
     return bytes;
+}
+
+/**
+ * Returns the maximum number of bytes that can be taken by a varint when encoding a value of a
+ * given unsigned integer type.
+ *
+ * @tparam T Integer type.
+ * @return Maximum size of a varint in bytes.
+ */
+template<typename T>
+constexpr size_t maxUnsignedVarintSize() {
+    return (sizeof(T) * 8 + 6) / 7;
 }
 
 } // particle
