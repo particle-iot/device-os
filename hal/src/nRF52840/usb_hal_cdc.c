@@ -234,10 +234,12 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
     switch (event) {
         case APP_USBD_EVT_DRV_SUSPEND: {
             LOG_DEBUG(TRACE, "APP_USBD_EVT_DRV_SUSPEND");
+            set_usb_state(HAL_USB_STATE_SUSPENDED);
             break;
         }
         case APP_USBD_EVT_DRV_RESUME: {
             LOG_DEBUG(TRACE, "APP_USBD_EVT_DRV_RESUME");
+            set_usb_state(HAL_USB_STATE_DEFAULT);
             break;
         }
         case APP_USBD_EVT_STARTED: {
@@ -250,13 +252,14 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
         case APP_USBD_EVT_STOPPED: {
             // triggered by app_usbd_stop()
             app_usbd_disable();
+            set_usb_state(HAL_USB_STATE_DETACHED);
             break;
         }
         case APP_USBD_EVT_POWER_DETECTED: {
-            set_usb_state(HAL_USB_STATE_ATTACHED);
             if (!nrf_drv_usbd_is_enabled()) {
                 app_usbd_enable();
             }
+            set_usb_state(HAL_USB_STATE_ATTACHED);
             break;
         }
         case APP_USBD_EVT_POWER_REMOVED: {
@@ -265,8 +268,8 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
             break;
         }
         case APP_USBD_EVT_POWER_READY: {
-            set_usb_state(HAL_USB_STATE_POWERED);
             app_usbd_start();
+            set_usb_state(HAL_USB_STATE_POWERED);
             break;
         }
         default:
