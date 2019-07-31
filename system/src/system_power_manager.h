@@ -20,6 +20,7 @@
 #include "system_tick_hal.h"
 #include "concurrent_hal.h"
 #include "hal_platform.h"
+#include "usb_hal.h"
 
 namespace particle { namespace power {
 
@@ -43,6 +44,7 @@ protected:
 private:
   static void loop(void* arg);
   static void isrHandler();
+  static void usbStateChangeHandler(HAL_USB_State state, void* context);
   void update();
   void handleUpdate();
   void initDefault(bool dpdm = true);

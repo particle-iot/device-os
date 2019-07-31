@@ -124,3 +124,12 @@ int32_t USB_USART_Flush_Output(unsigned timeout, void* reserved)
 {
     return 0;
 }
+
+HAL_USB_State HAL_USB_Get_State() {
+    return usb_hal_get_state();
+}
+
+int HAL_USB_Set_State_Change_Callback(HAL_USB_State_Callback cb, void* context, void* reserved) {
+    usb_hal_set_state_change_callback(cb, context, reserved);
+    return 0;
+}

@@ -39,6 +39,7 @@
 #include "deviceid_hal.h"
 #include "bytes2hexbuf.h"
 #include "hal_platform.h"
+#include "system_error.h"
 
 #include "logging.h"
 LOG_SOURCE_CATEGORY("hal.usbcdc")
@@ -59,6 +60,8 @@ LOG_SOURCE_CATEGORY("hal.usbcdc")
 #define CDC_ACM_DATA_EPIN       NRF_DRV_USBD_EPIN1
 #define CDC_ACM_DATA_EPOUT      NRF_DRV_USBD_EPOUT1
 
+#define MAX_USB_STATE_CB_NUM    1
+
 extern uint8_t g_extern_serial_number[SERIAL_NUMBER_STRING_SIZE + 1];
 
 typedef enum {
@@ -67,15 +70,9 @@ typedef enum {
      USB_MODE_HID
 } usb_mode_t;
 
-typedef enum {
-    POWER_STATE_REMOVED,
-    POWER_STATE_DETECTED,
-    POWER_STATE_READY
-} power_state_t;
-
 typedef struct {
     bool                    initialized;
-    volatile power_state_t  power_state;
+    volatile HAL_USB_State  state;
     usb_mode_t              mode;
 
     app_fifo_t              rx_fifo;
@@ -87,6 +84,8 @@ typedef struct {
     volatile bool           rx_done;
 
     void (*bit_rate_changed_handler)(uint32_t bitRate);
+    HAL_USB_State_Callback  state_callback[MAX_USB_STATE_CB_NUM];
+    void*                   state_callback_context[MAX_USB_STATE_CB_NUM];
 } usb_instance_t;
 
 static usb_instance_t m_usb_instance = {0};
@@ -126,6 +125,19 @@ static void reset_rx_tx_state(void) {
     m_usb_instance.rx_done = false;
     m_usb_instance.rx_data_size = 0;
     m_usb_instance.transmitting = false;
+}
+
+static void set_usb_state(HAL_USB_State state) {
+    if (m_usb_instance.state != state) {
+        m_usb_instance.state = state;
+        for (int i = 0; i < MAX_USB_STATE_CB_NUM; i++) {
+            if (m_usb_instance.state_callback[i]) {
+                (*m_usb_instance.state_callback[i])(state, m_usb_instance.state_callback_context[i]);
+            } else {
+                break;
+            }
+        }
+    }
 }
 
 /**
@@ -222,38 +234,42 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
     switch (event) {
         case APP_USBD_EVT_DRV_SUSPEND: {
             LOG_DEBUG(TRACE, "APP_USBD_EVT_DRV_SUSPEND");
+            set_usb_state(HAL_USB_STATE_SUSPENDED);
             break;
         }
         case APP_USBD_EVT_DRV_RESUME: {
             LOG_DEBUG(TRACE, "APP_USBD_EVT_DRV_RESUME");
+            set_usb_state(HAL_USB_STATE_DEFAULT);
             break;
         }
         case APP_USBD_EVT_STARTED: {
             // triggered by app_usbd_start()
             m_usb_instance.com_opened = false;
             reset_rx_tx_state();
+            set_usb_state(HAL_USB_STATE_DEFAULT);
             break;
         }
         case APP_USBD_EVT_STOPPED: {
             // triggered by app_usbd_stop()
             app_usbd_disable();
+            set_usb_state(HAL_USB_STATE_DETACHED);
             break;
         }
         case APP_USBD_EVT_POWER_DETECTED: {
-            m_usb_instance.power_state = POWER_STATE_DETECTED;
             if (!nrf_drv_usbd_is_enabled()) {
                 app_usbd_enable();
             }
+            set_usb_state(HAL_USB_STATE_ATTACHED);
             break;
         }
         case APP_USBD_EVT_POWER_REMOVED: {
             app_usbd_stop();
-            m_usb_instance.power_state = POWER_STATE_REMOVED;
+            set_usb_state(HAL_USB_STATE_DETACHED);
             break;
         }
         case APP_USBD_EVT_POWER_READY: {
-            m_usb_instance.power_state = POWER_STATE_READY;
             app_usbd_start();
+            set_usb_state(HAL_USB_STATE_POWERED);
             break;
         }
         default:
@@ -337,7 +353,7 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
 }
 
 int usb_uart_send(uint8_t data[], uint16_t size) {
-    if (!m_usb_instance.com_opened || m_usb_instance.power_state != POWER_STATE_READY) {
+    if (!m_usb_instance.com_opened || m_usb_instance.state != HAL_USB_STATE_POWERED) {
         return -1;
     }
 
@@ -401,7 +417,7 @@ uint32_t usb_uart_get_baudrate(void) {
 }
 
 void usb_hal_attach(void) {
-    if (m_usb_instance.power_state == POWER_STATE_REMOVED) {
+    if (m_usb_instance.state == HAL_USB_STATE_DETACHED) {
         return;
     }
 
@@ -414,7 +430,7 @@ void usb_hal_attach(void) {
 }
 
 void usb_hal_detach(void) {
-    if (m_usb_instance.power_state == POWER_STATE_REMOVED) {
+    if (m_usb_instance.state == HAL_USB_STATE_DETACHED) {
         return;
     }
 
@@ -484,4 +500,19 @@ bool usb_hal_is_connected(void) {
 
 void usb_hal_set_bit_rate_changed_handler(void (*handler)(uint32_t bitRate)) {
     m_usb_instance.bit_rate_changed_handler = handler;
+}
+
+HAL_USB_State usb_hal_get_state() {
+    return m_usb_instance.state;
+}
+
+int usb_hal_set_state_change_callback(HAL_USB_State_Callback cb, void* context, void* reserved) {
+    for (int i = 0; i < MAX_USB_STATE_CB_NUM; i++) {
+        if (m_usb_instance.state_callback[i] == NULL) {
+            m_usb_instance.state_callback[i] = cb;
+            m_usb_instance.state_callback_context[i] = context;
+            return 0;
+        }
+    }
+    return SYSTEM_ERROR_NO_MEMORY;
 }
