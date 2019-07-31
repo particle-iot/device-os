@@ -155,7 +155,7 @@ void PowerManager::handleUpdate() {
       case 0x01: {
 #if HAL_INCREASE_CHARGING_CURRENT_WHEN_POWERED_BY_VIN
         // Workaround: 
-        // when Gen3 device is powered via VUSB, USB peripheral gets no power supply.
+        // when Gen3 device is powered by VIN, USB peripheral gets no power supply.
         // In this case BQ24195 will wrongly assume the device is connected to a USB host.
         // This workaround is to manually increase charging current limit from 500mA to 900mA
         // and decrease input voltage limit to 3880mV.
@@ -187,7 +187,9 @@ void PowerManager::handleUpdate() {
           // so just check input current source register whenever we are in this state
           if (power.getInputCurrentLimit() != DEFAULT_INPUT_CURRENT_LIMIT) {
             power.setInputCurrentLimit(DEFAULT_INPUT_CURRENT_LIMIT);
+#if HAL_INCREASE_CHARGING_CURRENT_WHEN_POWERED_BY_VIN
             power.setInputVoltageLimit(3880);
+#endif
             // LOG_DEBUG(INFO, "DPDM Done-2! +++ current limit: %d", power.getInputCurrentLimit());
           }
         }
