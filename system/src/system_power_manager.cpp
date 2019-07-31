@@ -150,8 +150,9 @@ void PowerManager::handleUpdate() {
   power_source_t src = g_powerSource;
   if (pwr_good) {
     uint8_t vbus_stat = status >> 6;
+    // LOG_DEBUG(INFO, "vbus_stat: 0x%x, usb state: %d, current limit: %d", vbus_stat, HAL_USB_Get_State(), power.getInputCurrentLimit());
     switch (vbus_stat) {
-      case 0x01:
+      case 0x01: {
 #if HAL_INCREASE_CHARGING_CURRENT_WHEN_POWERED_BY_VIN
         // Workaround: 
         // when Gen3 device is powered via VUSB, USB peripheral gets no power supply.
@@ -159,15 +160,18 @@ void PowerManager::handleUpdate() {
         // This workaround is to manually increase charging current limit from 500mA to 900mA
         // and decrease input voltage limit to 3880mV.
         // More details are in clubhouse [CH34730]
-        if (HAL_USB_Get_State() == HAL_USB_STATE_DETACHED) {
+        auto usb_state = HAL_USB_Get_State();
+        if (usb_state == HAL_USB_STATE_DETACHED || usb_state == HAL_USB_STATE_SUSPENDED) {
           if (power.getInputCurrentLimit() != DEFAULT_INPUT_CURRENT_LIMIT) {
             power.setInputCurrentLimit(DEFAULT_INPUT_CURRENT_LIMIT);
             power.setInputVoltageLimit(3880);
+            // LOG_DEBUG(INFO, "DPDM Done-1! +++ current limit: %d", power.getInputCurrentLimit());
           }
         }
 #endif
         src = POWER_SOURCE_USB_HOST;
         break;
+      }
       case 0x02:
         src = POWER_SOURCE_USB_ADAPTER;
         break;
@@ -183,6 +187,8 @@ void PowerManager::handleUpdate() {
           // so just check input current source register whenever we are in this state
           if (power.getInputCurrentLimit() != DEFAULT_INPUT_CURRENT_LIMIT) {
             power.setInputCurrentLimit(DEFAULT_INPUT_CURRENT_LIMIT);
+            power.setInputVoltageLimit(3880);
+            // LOG_DEBUG(INFO, "DPDM Done-2! +++ current limit: %d", power.getInputCurrentLimit());
           }
         }
         break;
