@@ -19,7 +19,7 @@
 
 #include "publisher.h"
 
-#include "catch.hpp"
+#include <catch2/catch.hpp>
 
 using namespace particle::protocol;
 

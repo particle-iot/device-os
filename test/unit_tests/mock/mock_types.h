@@ -13,7 +13,8 @@ namespace mock_type
 class Timer
 {
 public:
-    Timer(unsigned, ::Timer::timer_callback_fn, bool) {
+    Timer(unsigned, ::Timer::timer_callback_fn, bool)
+    {
     }
 
     template <typename T>

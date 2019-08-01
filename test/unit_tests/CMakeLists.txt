@@ -35,6 +35,7 @@ include(Catch)
 enable_testing()
 
 # Global defines for all tests
+add_definitions(-DLOG_DISABLE)
 add_definitions(-DRELEASE_BUILD)
 add_definitions(-DUNIT_TEST)
 
@@ -45,8 +46,11 @@ link_libraries(
 )
 
 # Build and discover unit-tests
+add_subdirectory(cellular)
 add_subdirectory(cloud)
+add_subdirectory(communication)
 add_subdirectory(services)
+add_subdirectory(wiring)
 
 # Create `coverage` target in the `make` command
 add_custom_target( coverage
