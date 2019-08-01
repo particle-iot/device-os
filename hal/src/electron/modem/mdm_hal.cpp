@@ -64,31 +64,33 @@ std::recursive_mutex mdm_mutex;
 // #define SOCKET_HEX_MODE
 
 // Timeouts for various AT commands based on R4 & U2/G3 AT command manual as of Jan 2019
-#define AT_TIMEOUT      (  1 * 1000)
-#define USOCL_TIMEOUT   ( 10 * 1000) /* 120s for R4 (TCP only, optimizing for UDP with 10s), 1s for U2/G3 */
-#define USOCO_TIMEOUT   ( 10 * 1000) /* 120s for R4 (TCP only, optimizing for UDP with 10s), 1s for U2/G3 */
-#define USOCR_TIMEOUT   (  1 * 1000)
-#define USOCTL_TIMEOUT  (  1 * 1000)
-#define USOWR_TIMEOUT   ( 10 * 1000) /* 120s for R4 (optimizing for non-blocking behavior with 10s), 1s for U2/G3 */
-#define USORD_TIMEOUT   ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
-#define USOST_TIMEOUT   ( 40 * 1000) /*  10s for R4, 1s for U2/G3, changed to 40s due to R410 firmware
-                                         L0.0.00.00.05.08,A.02.04 background DNS lookup and other factors */
-#define USORF_TIMEOUT   ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
-#define CEER_TIMEOUT    (  1 * 1000)
-#define CEREG_TIMEOUT   (  1 * 1000)
-#define CGDCONT_TIMEOUT (  1 * 1000)
-#define CGREG_TIMEOUT   (  1 * 1000)
-#define COPS_TIMEOUT    (180 * 1000)
-#define CPWROFF_TIMEOUT ( 40 * 1000)
-#define CREG_TIMEOUT    (  1 * 1000)
-#define CSQ_TIMEOUT     (  1 * 1000)
-#define URAT_TIMEOUT    (  1 * 1000)
-#define UPSD_TIMEOUT    (  1 * 1000)
-#define UPSDA_TIMEOUT   (180 * 1000)
-#define UPSND_TIMEOUT   (  1 * 1000)
-#define UMNOPROF_TIMEOUT ( 1 * 1000)
-#define CEDRXS_TIMEOUT  (  1 * 1000)
-#define CFUN_TIMEOUT    (180 * 1000)
+#define AT_TIMEOUT        (  1 * 1000)
+#define USOCL_UDP_TIMEOUT ( 10 * 1000) /* 120s for R4 (TCP only, optimizing for UDP with 10s), 1s for U2/G3 */
+#define USOCL_TCP_TIMEOUT (120 * 1000) /* 120s for R4 (TCP only), 1s for U2/G3 */
+#define USOCO_TIMEOUT     (120 * 1000) /* 120s for R4 (TCP only, going with 120 to be safe), 20s for U2/G3 */
+#define USOCR_TIMEOUT     (  1 * 1000)
+#define USOCTL_TIMEOUT    (  1 * 1000)
+#define USOWR_TIMEOUT     (120 * 1000) /* 120s for R4 (going with 120 to be safe since we don't use this with UDP),
+                                          1s for U2/G3 */
+#define USORD_TIMEOUT     ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
+#define USOST_TIMEOUT     ( 40 * 1000) /*  10s for R4, 1s for U2/G3, changed to 40s due to R410 firmware
+                                          L0.0.00.00.05.08,A.02.04 background DNS lookup and other factors */
+#define USORF_TIMEOUT     ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
+#define CEER_TIMEOUT      (  1 * 1000)
+#define CEREG_TIMEOUT     (  1 * 1000)
+#define CGDCONT_TIMEOUT   (  1 * 1000)
+#define CGREG_TIMEOUT     (  1 * 1000)
+#define COPS_TIMEOUT      (180 * 1000)
+#define CPWROFF_TIMEOUT   ( 40 * 1000)
+#define CREG_TIMEOUT      (  1 * 1000)
+#define CSQ_TIMEOUT       (  1 * 1000)
+#define URAT_TIMEOUT      (  1 * 1000)
+#define UPSD_TIMEOUT      (  1 * 1000)
+#define UPSDA_TIMEOUT     (180 * 1000)
+#define UPSND_TIMEOUT     (  1 * 1000)
+#define UMNOPROF_TIMEOUT  ( 1 * 1000)
+#define CEDRXS_TIMEOUT    (  1 * 1000)
+#define CFUN_TIMEOUT      (180 * 1000)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -2139,12 +2141,16 @@ int MDMParser::_cbUSOCR(int type, const char* buf, int len, int* handle)
     return WAIT;
 }
 
-int MDMParser::_cbUSOCTL(int type, const char* buf, int len, int* handle)
+int MDMParser::_cbUSOCTL(int type, const char* buf, int len, Usoctl* usoctl)
 {
-    if ((type == TYPE_PLUS) && handle) {
+    if ((type == TYPE_PLUS) && usoctl) {
+        int a = MDM_SOCKET_ERROR, b = 0, c = 0;
         // +USOCTL: socket,param_id,param_val
-        if (sscanf(buf, "\r\n+USOCTL: %d,%*d,%*d", handle) == 1)
-            /*nothing*/;
+        if (sscanf(buf, "\r\n+USOCTL: %d,%d,%d", &a, &b, &c) == 3) {
+            usoctl->handle = a;
+            usoctl->param_id = b;
+            usoctl->param_val = c;
+        }
     }
     return WAIT;
 }
@@ -2172,20 +2178,27 @@ int MDMParser::_socketCloseHandleIfOpen(int socket_handle) {
     bool ok = false;
     LOCK();
 
-    // Check if socket_handle is open
-    // AT+USOCTL=0,1
-    // +USOCTL: 0,1,0
-    int handle = MDM_SOCKET_ERROR;
-    sendFormated("AT+USOCTL=%d,1\r\n", socket_handle);
-    if ((RESP_OK == waitFinalResp(_cbUSOCTL, &handle, USOCTL_TIMEOUT)) &&
-        (handle != MDM_SOCKET_ERROR)) {
-        DEBUG_D("Socket handle %d was open, now closing...\r\n", handle);
+    // Check if socket_handle X is open by checking socket type, and use an appropriate timeout
+    // to wait much longer for the socket to close if it's TCP. When closing a TCP socket,
+    // if the timeout is not respected the AT interface will block further commands.
+    // AT+USOCTL=0,0
+    // +USOCTL: 0,0,17 (UDP)
+    // +USOCTL: 0,0,6  (TCP)
+    // +USOCTL: 0,0,0  (UNK) - likely closed, although we attempt to close it anyway
+    Usoctl usoctl;
+    usoctl.handle = MDM_SOCKET_ERROR;
+    sendFormated("AT+USOCTL=%d,0\r\n", socket_handle);
+    if ((RESP_OK == waitFinalResp(_cbUSOCTL, &usoctl, USOCTL_TIMEOUT)) &&
+        (usoctl.handle != MDM_SOCKET_ERROR)) {
+        DEBUG_D("Socket handle %d (%s) open, closing...\r\n",
+            usoctl.handle, (usoctl.param_val == 17) ? "UDP" : (usoctl.param_val == 6) ? "TCP" : "UNK");
         // Close it if it's open
         // AT+USOCL=0
         // OK
-        sendFormated("AT+USOCL=%d\r\n", handle);
-        if (RESP_OK == waitFinalResp(nullptr, nullptr, USOCL_TIMEOUT)) {
-            DEBUG_D("Socket handle %d was closed.\r\n", handle);
+        sendFormated("AT+USOCL=%d\r\n", usoctl.handle);
+        if (RESP_OK == waitFinalResp(nullptr, nullptr,
+            (usoctl.param_val == 17) ? USOCL_UDP_TIMEOUT : USOCL_TCP_TIMEOUT)) {
+            DEBUG_D("Socket handle %d was closed.\r\n", usoctl.handle);
             ok = true;
         }
     }
@@ -2323,13 +2336,21 @@ bool MDMParser::socketClose(int socket)
     if (ISSOCKET(socket)
         && (_sockets[socket].connected || _sockets[socket].open))
     {
+        // Check socket type, and use an appropriate timeout. When closing a TCP socket,
+        // if the timeout is not respected the AT interface will block further commands.
+        Usoctl usoctl;
+        usoctl.handle = MDM_SOCKET_ERROR;
+        sendFormated("AT+USOCTL=%d,0\r\n", _sockets[socket].handle);
+        waitFinalResp(_cbUSOCTL, &usoctl, USOCTL_TIMEOUT);
         // On the SARA R410M check EPS registration prior due to an issue
         // where the USOCL can lockup the modem if connection drops and we
         // are trying to close a TCP socket (without using the async option).
-        DEBUG_D("socketClose(%d)\r\n", socket);
+        DEBUG_D("socketClose(%d)(%s)\r\n", socket,
+            (usoctl.param_val == 17) ? "UDP" : (usoctl.param_val == 6) ? "TCP" : "UNK");
         if (_checkEpsReg()) {
             sendFormated("AT+USOCL=%d\r\n", _sockets[socket].handle);
-            if (RESP_ERROR == waitFinalResp(nullptr, nullptr, USOCL_TIMEOUT)) {
+            if (RESP_ERROR == waitFinalResp(nullptr, nullptr,
+                (usoctl.param_val == 17) ? USOCL_UDP_TIMEOUT : USOCL_TCP_TIMEOUT)) {
                 if (_dev.dev != DEV_SARA_R410) {
                     sendFormated("AT+CEER\r\n"); // For logging visibility
                     waitFinalResp(nullptr, nullptr, CEER_TIMEOUT);
