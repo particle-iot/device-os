@@ -1118,6 +1118,20 @@ BleCharacteristicProperty BleCharacteristic::properties() const {
     return impl()->properties();
 }
 
+String BleCharacteristic::description() const {
+    return impl()->description();
+}
+
+size_t BleCharacteristic::description(char* buf, size_t len) const {
+    if (!buf || len == 0) {
+        return 0;
+    }
+    String desc = description();
+    len = std::min(len, desc.length());
+    memcpy(buf, desc.c_str(), len);
+    return len;
+}
+
 ssize_t BleCharacteristic::setValue(const uint8_t* buf, size_t len) {
     if (buf == nullptr || len == 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -1314,7 +1328,7 @@ private:
             if (event->characteristics[i].properties & BLE_SIG_CHAR_PROP_WRITE) {
                 characteristic.impl()->properties() |= BleCharacteristicProperty::WRITE;
             }
-            if (event->characteristics[i].properties & BLE_SIG_CHAR_PROP_NOTIFY){
+            if (event->characteristics[i].properties & BLE_SIG_CHAR_PROP_NOTIFY) {
                 characteristic.impl()->properties() |= BleCharacteristicProperty::NOTIFY;
             }
             if (event->characteristics[i].properties & BLE_SIG_CHAR_PROP_INDICATE) {
@@ -1347,31 +1361,94 @@ BlePeerDevice& BlePeerDevice::operator=(const BlePeerDevice& peer) {
     return *this;
 }
 
-Vector<BleService>& BlePeerDevice::discoverAllServices(){
-    BleDiscoveryDelegator discovery;
-    if (discovery.discoverAllServices(*this) == SYSTEM_ERROR_NONE) {
+Vector<BleService>& BlePeerDevice::discoverAllServices() {
+    if (!impl()->servicesDiscovered()) {
+        BleDiscoveryDelegator discovery;
+        if (discovery.discoverAllServices(*this) == SYSTEM_ERROR_NONE) {
+            impl()->servicesDiscovered() = true;
+        }
+    }
+    return services();
+}
+
+ssize_t BlePeerDevice::discoverAllServices(BleService* svcs, size_t count) {
+    CHECK_TRUE(svcs && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+    if (!impl()->servicesDiscovered()) {
+        BleDiscoveryDelegator discovery;
+        CHECK(discovery.discoverAllServices(*this));
         impl()->servicesDiscovered() = true;
     }
-    return impl()->services();
+    return services(svcs, count);
 }
 
 Vector<BleCharacteristic>& BlePeerDevice::discoverAllCharacteristics() {
     if (!impl()->servicesDiscovered()) {
         discoverAllServices();
     }
-    BleDiscoveryDelegator discovery;
-    if (discovery.discoverAllCharacteristics(*this) == SYSTEM_ERROR_NONE) {
+    if (!impl()->characteristicsDiscovered()) {
+        BleDiscoveryDelegator discovery;
+        if (discovery.discoverAllCharacteristics(*this) == SYSTEM_ERROR_NONE) {
+            impl()->characteristicsDiscovered() = true;
+        }
+    }
+    return characteristics();
+}
+
+ssize_t BlePeerDevice::discoverAllCharacteristics(BleCharacteristic* chars, size_t count) {
+    CHECK_TRUE(chars && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+    if (!impl()->servicesDiscovered()) {
+        discoverAllServices();
+    }
+    if (!impl()->characteristicsDiscovered()) {
+        BleDiscoveryDelegator discovery;
+        CHECK(discovery.discoverAllCharacteristics(*this));
         impl()->characteristicsDiscovered() = true;
     }
+    return characteristics(chars, count);
+}
+
+Vector<BleService>& BlePeerDevice::services() {
+    return impl()->services();
+}
+
+size_t BlePeerDevice::services(BleService* svcs, size_t count) {
+    CHECK_TRUE(svcs && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+    count = std::min((int)count, impl()->services().size());
+    for (size_t i = 0; i < count; i++) {
+        svcs[i] = impl()->services()[i];
+    }
+    return count;
+}
+
+bool BlePeerDevice::getServiceByUUID(BleService* service, const BleUuid& uuid) const {
+    CHECK_TRUE(service, false);
+    for (auto& existSvc : impl()->services()) {
+        if (existSvc.UUID() == uuid) {
+            *service = existSvc;
+            return true;
+        }
+    }
+    return false;
+}
+
+Vector<BleCharacteristic>& BlePeerDevice::characteristics() {
     return impl()->characteristics();
 }
 
-bool BlePeerDevice::getCharacteristicByDescription(BleCharacteristic* characteristic, const char* desc) const {
-    if (desc == nullptr) {
-        return false;
+size_t BlePeerDevice::characteristics(BleCharacteristic* chars, size_t count) {
+    CHECK_TRUE(chars && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+    count = std::min((int)count, impl()->characteristics().size());
+    for (size_t i = 0; i < count; i++) {
+        chars[i] = impl()->characteristics()[i];
     }
+    return count;
+}
+
+bool BlePeerDevice::getCharacteristicByDescription(BleCharacteristic* characteristic, const char* desc) const {
+    CHECK_TRUE(characteristic, false);
+    CHECK_TRUE(desc, false);
     for (auto& existChar : impl()->characteristics()) {
-        if (existChar.impl() && !strcmp(existChar.impl()->description().c_str(), desc)) {
+        if (!strcmp(existChar.description().c_str(), desc)) {
             *characteristic = existChar;
             return true;
         }
@@ -1384,8 +1461,9 @@ bool BlePeerDevice::getCharacteristicByDescription(BleCharacteristic* characteri
 }
 
 bool BlePeerDevice::getCharacteristicByUUID(BleCharacteristic* characteristic, const BleUuid& uuid) const {
+    CHECK_TRUE(characteristic, false);
     for (auto& existChar : impl()->characteristics()) {
-        if (existChar.impl() && existChar.impl()->charUUID() == uuid) {
+        if (existChar.UUID() == uuid) {
             *characteristic = existChar;
             return true;
         }
@@ -1393,8 +1471,82 @@ bool BlePeerDevice::getCharacteristicByUUID(BleCharacteristic* characteristic, c
     return false;
 }
 
+int BlePeerDevice::connect(const BleAddress& addr, const BleConnectionParams* params, bool automatic) {
+    hal_ble_conn_cfg_t connCfg = {};
+    connCfg.version = BLE_API_VERSION;
+    connCfg.size = sizeof(hal_ble_conn_cfg_t);
+    connCfg.address = addr.halAddress();
+    connCfg.conn_params = params;
+    connCfg.callback = BleLocalDevice::getInstance().impl()->onBleLinkEvents;
+    connCfg.context = BleLocalDevice::getInstance().impl();
+    int ret = hal_ble_gap_connect(&connCfg, &impl()->connHandle(), nullptr);
+    if (ret != SYSTEM_ERROR_NONE) {
+        impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
+        return ret;
+    }
+    bind(addr);
+    if (!BleLocalDevice::getInstance().impl()->peers().append(*this)) {
+        LOG(ERROR, "Cannot add new peer device.");
+        hal_ble_gap_disconnect(impl()->connHandle(), nullptr);
+        impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    LOG(TRACE, "New peripheral is connected.");
+    if (automatic) {
+        Vector<BleCharacteristic>& characteristics = discoverAllCharacteristics();
+        for (auto& characteristic : characteristics) {
+            characteristic.subscribe(true);
+        }
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BlePeerDevice::connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic) {
+    BleConnectionParams connParams;
+    connParams.version = BLE_API_VERSION;
+    connParams.size = sizeof(hal_ble_conn_params_t);
+    connParams.min_conn_interval = interval;
+    connParams.max_conn_interval = interval;
+    connParams.slave_latency = latency;
+    connParams.conn_sup_timeout = timeout;
+    hal_ble_gap_set_ppcp(&connParams, nullptr);
+    return connect(addr, &connParams, automatic);
+}
+
+int BlePeerDevice::connect(const BleAddress& addr, bool automatic) {
+    return connect(addr, nullptr, automatic);
+}
+
+int BlePeerDevice::connect(const BleConnectionParams* params, bool automatic) {
+    return connect(address(), params, automatic);
+}
+
+int BlePeerDevice::connect(uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic) {
+    return connect(address(), interval, latency, timeout, automatic);
+}
+
+int BlePeerDevice::connect(bool automatic) {
+    return connect(address(), nullptr, automatic);
+}
+
+int BlePeerDevice::disconnect() const {
+    CHECK_TRUE(connected(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK(hal_ble_gap_disconnect(impl()->connHandle(), nullptr));
+    BleLocalDevice::getInstance().impl()->peers().removeOne(*this);
+    /*
+     * Only the connection handle is invalid. The service and characteristics being
+     * discovered previously can be re-used next time once connected if needed.
+     */
+    impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
+    return SYSTEM_ERROR_NONE;
+}
+
 bool BlePeerDevice::connected() const {
     return impl()->connHandle() != BLE_INVALID_CONN_HANDLE;
+}
+
+void BlePeerDevice::bind(const BleAddress& address) const {
+    impl()->address() = address;
 }
 
 BleAddress BlePeerDevice::address() const {
@@ -1759,45 +1911,15 @@ bool BleLocalDevice::connected() const {
 BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, const BleConnectionParams* params, bool automatic) const {
     // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     BlePeerDevice peer;
-    hal_ble_conn_cfg_t connCfg = {};
-    connCfg.version = BLE_API_VERSION;
-    connCfg.size = sizeof(hal_ble_conn_cfg_t);
-    connCfg.address = addr.halAddress();
-    connCfg.conn_params = params;
-    connCfg.callback = impl()->onBleLinkEvents;
-    connCfg.context = impl();
-    if (hal_ble_gap_connect(&connCfg, &peer.impl()->connHandle(), nullptr) != SYSTEM_ERROR_NONE) {
-        peer.impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
-        return peer;
-    }
-    peer.impl()->address() = addr;
-    if (!impl()->peers().append(peer)){
-        LOG(ERROR, "Cannot add new peer device.");
-        hal_ble_gap_disconnect(peer.impl()->connHandle(), nullptr);
-        peer.impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
-        return peer;
-    }
-    LOG(TRACE, "New peripheral is connected.");
-    if (automatic) {
-        Vector<BleCharacteristic>& characteristics = peer.discoverAllCharacteristics();
-        for (auto& characteristic : characteristics) {
-            characteristic.subscribe(true);
-        }
-    }
+    peer.connect(addr, params, automatic);
     return peer;
 }
 
 BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic) const {
     // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
-    BleConnectionParams connParams;
-    connParams.version = BLE_API_VERSION;
-    connParams.size = sizeof(hal_ble_conn_params_t);
-    connParams.min_conn_interval = interval;
-    connParams.max_conn_interval = interval;
-    connParams.slave_latency = latency;
-    connParams.conn_sup_timeout = timeout;
-    hal_ble_gap_set_ppcp(&connParams, nullptr);
-    return connect(addr, &connParams, automatic);
+    BlePeerDevice peer;
+    peer.connect(addr, interval, latency, timeout, automatic);
+    return peer;
 }
 
 BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, bool automatic) const {
@@ -1821,14 +1943,15 @@ int BleLocalDevice::disconnect() const {
 
 int BleLocalDevice::disconnect(const BlePeerDevice& peer) const {
     // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
+    return peer.disconnect();
+}
+
+int BleLocalDevice::disconnectAll() const {
+    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     for (auto& p : impl()->peers()) {
-        if (p.impl()->connHandle() == peer.impl()->connHandle()) {
-            CHECK(hal_ble_gap_disconnect(peer.impl()->connHandle(), nullptr));
-            impl()->peers().removeOne(p);
-            return SYSTEM_ERROR_NONE;
-        }
+        p.disconnect();
     }
-    return SYSTEM_ERROR_NOT_FOUND;
+    return SYSTEM_ERROR_NONE;
 }
 
 BleCharacteristic BleLocalDevice::addCharacteristic(BleCharacteristic& characteristic) {

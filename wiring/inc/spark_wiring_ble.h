@@ -223,10 +223,10 @@ public:
     BleUuid(const hal_ble_uuid_t& uuid);
     BleUuid(const BleUuid& uuid);
     BleUuid(const uint8_t* uuid128, BleUuidOrder order = BleUuidOrder::LSB);
-    BleUuid(uint16_t uuid16);
     BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order = BleUuidOrder::LSB);
-    BleUuid(const String& uuid);
-    BleUuid(const char* uuid);
+    explicit BleUuid(uint16_t uuid16);
+    explicit BleUuid(const String& uuid);
+    explicit BleUuid(const char* uuid);
     ~BleUuid() = default;
 
     bool isValid() const;
@@ -376,6 +376,8 @@ public:
 
     BleUuid UUID() const;
     BleCharacteristicProperty properties() const;
+    String description() const;
+    size_t description(char* buf, size_t len) const;
 
     // Get characteristic value
     ssize_t getValue(uint8_t* buf, size_t len) const;
@@ -412,7 +414,9 @@ public:
     }
 
 private:
-    void construct(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context);
+    void construct(const char* desc, BleCharacteristicProperty properties,
+            BleUuid& charUuid, BleUuid& svcUuid,
+            BleOnDataReceivedCallback callback, void* context);
 
     std::shared_ptr<BleCharacteristicImpl> impl_;
 };
@@ -453,21 +457,51 @@ public:
     BlePeerDevice();
     ~BlePeerDevice();
 
+    // Discover all services on peer device.
     Vector<BleService>& discoverAllServices();
-    Vector<BleCharacteristic>& discoverAllCharacteristics();
+    ssize_t discoverAllServices(BleService* services, size_t count);
 
+    // Discover all characteristics on peer device.
+    Vector<BleCharacteristic>& discoverAllCharacteristics();
+    ssize_t discoverAllCharacteristics(BleCharacteristic* characteristics, size_t count);
+
+    // Fetch the discovered services on peer device.
+    Vector<BleService>& services();
+    size_t services(BleService* services, size_t count);
+    bool getServiceByUUID(BleService* service, const BleUuid& uuid) const;
+
+    template <typename T>
+    bool getServiceByUUID(BleService* service, T uuid) const {
+        BleUuid svcUuid(uuid);
+        return getServiceByUUID(service, svcUuid);
+    }
+
+    // Fetch the discovered characteristics on peer device.
+    Vector<BleCharacteristic>& characteristics();
+    size_t characteristics(BleCharacteristic* characteristics, size_t count);
     bool getCharacteristicByDescription(BleCharacteristic* characteristic, const char* desc) const;
     bool getCharacteristicByDescription(BleCharacteristic* characteristic, const String& desc) const;
     bool getCharacteristicByUUID(BleCharacteristic* characteristic, const BleUuid& uuid) const;
 
     template <typename T>
-    BleCharacteristic getCharacteristicByUUID(T uuid) const {
+    bool getCharacteristicByUUID(BleCharacteristic* characteristic, T uuid) const {
         BleUuid charUuid(uuid);
-        return getCharacteristicByUUID(charUuid);
+        return getCharacteristicByUUID(characteristic, charUuid);
     }
+
+    int connect(const BleAddress& addr, const BleConnectionParams* params, bool automatic = true);
+    int connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic = true);
+    int connect(const BleAddress& addr, bool automatic = true);
+    // These methods should be called after the peer device has bound with an address using the bind() method.
+    int connect(const BleConnectionParams* params, bool automatic = true);
+    int connect(uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic = true);
+    int connect(bool automatic = true);
+
+    int disconnect() const;
 
     bool connected() const;
 
+    void bind(const BleAddress& address) const;
     BleAddress address() const;
 
     bool operator==(const BlePeerDevice& device) const;
@@ -562,8 +596,10 @@ public:
     BlePeerDevice connect(const BleAddress& addr, const BleConnectionParams* params, bool automatic = true) const;
     BlePeerDevice connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic = true) const;
     BlePeerDevice connect(const BleAddress& addr, bool automatic = true) const;
+    // This only disconnect the peer Central device, i.e. when the local device is acting as BLE Peripheral.
     int disconnect() const;
     int disconnect(const BlePeerDevice& peer) const;
+    int disconnectAll() const;
     bool connected() const;
     void onConnected(BleOnConnectedCallback callback, void* context) const;
     void onDisconnected(BleOnDisconnectedCallback callback, void* context) const;
