@@ -141,7 +141,7 @@ typedef struct hal_ble_adv_params_t {
     uint16_t interval;                  /**< Advertising interval in 625 us units. */
     uint16_t timeout;                   /**< Advertising timeout in 10 ms units.*/
     hal_ble_adv_evt_type_t type;        /**< Advertising event type.*/
-    uint8_t filter_policy;
+    hal_ble_adv_fp_t filter_policy;
     uint8_t inc_tx_power;
     uint8_t reserved;
 } hal_ble_adv_params_t;
@@ -154,7 +154,7 @@ typedef struct hal_ble_scan_params_t {
     uint16_t window;                    /**< Scan window in 625 us units. */
     uint16_t timeout;                   /**< Scan timeout in 10 ms units. */
     uint8_t active;
-    uint8_t filter_policy;
+    hal_ble_scan_fp_t filter_policy;
 } hal_ble_scan_params_t;
 
 /* BLE connection parameters */

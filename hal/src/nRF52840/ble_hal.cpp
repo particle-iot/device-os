@@ -409,7 +409,6 @@ public:
     int disconnect(hal_ble_conn_handle_t connHandle);
     int disconnectAll();
     int updateConnectionParams(hal_ble_conn_handle_t connHandle, const hal_ble_conn_params_t* params);
-    int getConnectionParams(hal_ble_conn_handle_t connHandle, hal_ble_conn_params_t* params);
     int getConnectionInfo(hal_ble_conn_handle_t connHandle, hal_ble_conn_info_t* info);
     bool valid(hal_ble_conn_handle_t connHandle);
     ssize_t getAttMtu(hal_ble_conn_handle_t connHandle);
@@ -923,9 +922,9 @@ bool BleObject::Broadcaster::advertising() const {
 
 int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* params) {
     hal_ble_adv_params_t tempParams = {};
+    tempParams.version = BLE_API_VERSION;
+    tempParams.size = sizeof(hal_ble_adv_params_t);
     if (params == nullptr) {
-        tempParams.version = BLE_API_VERSION;
-        tempParams.size = sizeof(hal_ble_adv_params_t);
         tempParams.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
         tempParams.filter_policy = BLE_ADV_FP_ANY;
         tempParams.interval = BLE_DEFAULT_ADVERTISING_INTERVAL;
@@ -1725,13 +1724,6 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
     return SYSTEM_ERROR_NONE;
 }
 
-int BleObject::ConnectionsManager::getConnectionParams(hal_ble_conn_handle_t connHandle, hal_ble_conn_params_t* params) {
-//    const BleConnection* connection = fetchConnection(connHandle);
-//    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
-//    memcpy(params, &connection->info.conn_params, std::min(params->size, connection->info.conn_params.size));
-    return SYSTEM_ERROR_NONE;
-}
-
 int BleObject::ConnectionsManager::getConnectionInfo(hal_ble_conn_handle_t connHandle, hal_ble_conn_info_t* info) {
     const BleConnection* connection = fetchConnection(connHandle);
     CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
@@ -2426,7 +2418,10 @@ void BleObject::GattServer::removeSubscriberFromAllCharacteristics(hal_ble_conn_
 int BleObject::GattServer::processDataWrittenEventFromThread(ble_evt_t* event) {
     ble_gatts_evt_write_t& write = event->evt.gatts_evt.params.write;
     BleCharacteristic* characteristic = findCharacteristic(write.handle);
-    CHECK_TRUE(characteristic, SYSTEM_ERROR_NOT_FOUND);
+    if (!characteristic) {
+        // Writing to the GAP characteristics shouldn't log error.
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
     hal_ble_char_evt_t charEvent = {};
     charEvent.version = BLE_API_VERSION;
     charEvent.size = sizeof(hal_ble_char_evt_t);
