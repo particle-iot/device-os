@@ -2452,6 +2452,13 @@ int BleObject::GattServer::processDataWrittenEventFromThread(ble_evt_t* event) {
 void BleObject::GattServer::processGattServerEvents(const ble_evt_t* event, void* context) {
     GattServer* gatts = static_cast<GattServerImpl*>(context)->instance;
     switch (event->header.evt_id) {
+        case BLE_GAP_EVT_DISCONNECTED: {
+            if (gatts->isHvxing_ && gatts->currHvxConnHandle_ == event->evt.gap_evt.conn_handle) {
+                gatts->isHvxing_ = false;
+                os_semaphore_give(gatts->hvxSemaphore_, false);
+            }
+            break;
+        }
         case BLE_GATTS_EVT_SYS_ATTR_MISSING: {
             LOG_DEBUG(TRACE, "BLE GATT Server event: system attribute is missing.");
             // No persistent system attributes
