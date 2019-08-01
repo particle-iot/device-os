@@ -225,16 +225,25 @@ int spark_protocol_post_description(ProtocolFacade* protocol, int desc_flags=par
 
 namespace ProtocolCommands {
   enum Enum {
-    SLEEP,
-    WAKE,
-    DISCONNECT,
-    TERMINATE,
-    FORCE_PING
+    SLEEP = 0, // Deprecated, use DISCONNECT instead
+    WAKE = 1, // Deprecated, use PING instead
+    DISCONNECT = 2,
+    TERMINATE = 3,
+    PING = 4
   };
 };
 
+/**
+ * Parameters of the DISCONNECT command.
+ */
+typedef struct spark_disconnect_command {
+    uint16_t size; ///< Size of this structure.
+    unsigned disconnect_reason; ///< Disconnection reason (a value defined by the `cloud_disconnect_reason` enum).
+    unsigned reset_reason; ///< System reset reason (a value defined by the `System_Reset_Reason` enum).
+    unsigned sleep_duration; ///< Duration of the system sleep in seconds.
+} spark_disconnect_command;
 
-int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data=0, void* reserved=NULL);
+int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value = 0, const void* param = NULL);
 
 #if HAL_PLATFORM_MESH
 namespace MeshCommand {

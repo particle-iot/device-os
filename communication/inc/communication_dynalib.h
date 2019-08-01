@@ -69,7 +69,7 @@ DYNALIB_FN(BASE_IDX + 2, communication, extract_public_ec_key, int(uint8_t*, siz
 #endif
 
 DYNALIB_FN(BASE_IDX2 + 0, communication, spark_protocol_set_connection_property, int(ProtocolFacade*, unsigned, unsigned, particle::protocol::connection_properties_t*, void*))
-DYNALIB_FN(BASE_IDX2 + 1, communication, spark_protocol_command, int(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 1, communication, spark_protocol_command, int(ProtocolFacade*, ProtocolCommands::Enum, uint32_t, const void*))
 DYNALIB_FN(BASE_IDX2 + 2, communication, spark_protocol_time_request_pending, bool(ProtocolFacade*, void*))
 DYNALIB_FN(BASE_IDX2 + 3, communication, spark_protocol_time_last_synced, system_tick_t(ProtocolFacade*, time_t*, void*))
 

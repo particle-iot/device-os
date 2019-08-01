@@ -72,37 +72,41 @@ public:
 		return len;
 	}
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t data) override
+	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* param) override
 	{
-		int result = UNKNOWN;
 		switch (command)
 		{
 		case ProtocolCommands::SLEEP:
-			result = wait_confirmable();
-			break;
-		case ProtocolCommands::DISCONNECT:
-			result = wait_confirmable();
+		case ProtocolCommands::DISCONNECT: {
+			int r = ProtocolError::NO_ERROR;
+			if (param) {
+				const auto p = (const spark_disconnect_command*)param;
+				r = send_close(p->disconnect_reason, p->reset_reason, p->sleep_duration);
+			}
+			if (r == ProtocolError::NO_ERROR) {
+				r = wait_confirmable();
+			}
 			ack_handlers.clear();
-			break;
+			return r;
+		}
+		case ProtocolCommands::TERMINATE: {
+			ack_handlers.clear();
+			return ProtocolError::NO_ERROR;
+		}
 		case ProtocolCommands::WAKE:
-			wake();
-			result = NO_ERROR;
-			break;
-		case ProtocolCommands::TERMINATE:
-			ack_handlers.clear();
-			result = NO_ERROR;
-			break;
-		case ProtocolCommands::FORCE_PING: {
+		case ProtocolCommands::PING: {
+			int r = ProtocolError::NO_ERROR;
 			if (!pinger.is_expecting_ping_ack()) {
 				LOG(INFO, "Forcing a cloud ping");
-				pinger.process(std::numeric_limits<system_tick_t>::max(), [this] {
+				r = pinger.process(std::numeric_limits<system_tick_t>::max(), [this] {
 					return ping(true);
 				});
 			}
-			break;
+			return r;
 		}
+		default:
+			return ProtocolError::UNKNOWN;
 		}
-		return result;
 	}
 
 	int get_status(protocol_status* status) const override {
@@ -119,11 +123,6 @@ public:
 	 * Ensures that all outstanding sent coap messages have been acknowledged.
 	 */
 	int wait_confirmable(uint32_t timeout=60000);
-
-	void wake()
-	{
-		ping();
-	}
 };
 
 
