@@ -154,7 +154,7 @@
 #define RGBG 24
 #define RGBB 25
 
-#define WKP D8
+#define WKP A7
 
 #define NFC_PIN1 26
 #define NFC_PIN2 27
