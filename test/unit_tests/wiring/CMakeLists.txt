@@ -8,6 +8,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_async.cpp
   async.cpp
   character.cpp
+  eeprom_emulation.cpp
 )
 
 # Set defines specific to target
@@ -35,4 +36,5 @@ target_include_directories( ${target_name}
 # Add tests to `test` target
 catch_discover_tests( ${target_name}
   TEST_PREFIX ${target_name}_
+  WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
 )

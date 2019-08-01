@@ -1,11 +1,14 @@
 // Off device tests for the byte-oriented EEPROM emulation
-
-#include "catch.hpp"
-#include <string>
-#include <fstream>
-#include <sstream>
 #include "eeprom_emulation.h"
+
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+#include <string>
+
 #include "flash_storage.h"
+
+#include "catch2/catch.hpp"
 
 const size_t TestPageSize = 0x4000;
 const uint8_t TestPageCount = 2;
@@ -1184,7 +1187,7 @@ TEST_CASE("Migration from legacy format", "[eeprom]")
     TestEEPROM eeprom;
 
     // Load EEPROM extracted from a Photon into memory
-    loadEEPROMFromFile("eeprom_page1.bin", eeprom, PageBase1, PageSize1);
+    loadEEPROMFromFile("../mock/data/eeprom_page1.bin", eeprom, PageBase1, PageSize1);
     eeprom.store.eraseSector(PageBase2);
 
     eeprom.init();
@@ -1245,8 +1248,8 @@ TEST_CASE("Recover from data corruption", "[eeprom]")
     TestEEPROM eeprom;
 
     // Load corrupted EEPROM extracted from a Photon into memory
-    loadEEPROMFromFile("corrupted_eeprom_page1.bin", eeprom, PageBase1, PageSize1);
-    loadEEPROMFromFile("corrupted_eeprom_page2.bin", eeprom, PageBase2, PageSize2);
+    loadEEPROMFromFile("../mock/data/corrupted_eeprom_page1.bin", eeprom, PageBase1, PageSize1);
+    loadEEPROMFromFile("../mock/data/corrupted_eeprom_page2.bin", eeprom, PageBase2, PageSize2);
 
     eeprom.init();
 
