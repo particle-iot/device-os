@@ -22,20 +22,22 @@
 #if HAL_PLATFORM_CLOUD_TCP
 
 namespace particle { namespace protocol {
-int LightSSLProtocol::command(ProtocolCommands::Enum command, uint32_t data)
+int LightSSLProtocol::command(ProtocolCommands::Enum command, uint32_t value, const void* param)
 {
-  int result = UNKNOWN;
   switch (command) {
   case ProtocolCommands::SLEEP:
-  case ProtocolCommands::DISCONNECT:
-    result = this->wait_confirmable();
-    break;
-  case ProtocolCommands::TERMINATE:
+  case ProtocolCommands::DISCONNECT: {
+    const int r = wait_confirmable();
     ack_handlers.clear();
-    result = NO_ERROR;
-    break;
+    return r;
   }
-  return result;
+  case ProtocolCommands::TERMINATE: {
+    ack_handlers.clear();
+    return ProtocolError::NO_ERROR;
+  }
+  default:
+    return ProtocolError::UNKNOWN;
+  }
 }
 
 int LightSSLProtocol::wait_confirmable(uint32_t timeout)

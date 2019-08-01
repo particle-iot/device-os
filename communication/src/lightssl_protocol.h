@@ -77,7 +77,7 @@ public:
 		return len;
 	}
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t data) override;
+	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* param) override;
 
 	virtual int get_status(protocol_status* status) const override
 	{

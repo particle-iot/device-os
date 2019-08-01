@@ -212,6 +212,19 @@ protected:
 	}
 
 	/**
+	 * Send a Close message over the channel.
+	 */
+	ProtocolError send_close(unsigned disconnect_reason, unsigned reset_reason, unsigned sleep_duration)
+	{
+		Message msg;
+		channel.create(msg);
+		const size_t n = Messages::close(msg.buf(), msg.capacity(), 0, disconnect_reason, reset_reason, sleep_duration,
+				channel.is_unreliable());
+		msg.set_length(n);
+		return channel.send(msg);
+	}
+
+	/**
 	 * Background processing when there are no messages to handle.
 	 */
 	ProtocolError event_loop_idle()
@@ -508,7 +521,7 @@ public:
 
 	system_tick_t millis() { return callbacks.millis(); }
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t data)=0;
+	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* param)=0;
 
 	virtual int get_describe_data(spark_protocol_describe_data* data, void* reserved);
 

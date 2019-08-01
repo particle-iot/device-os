@@ -103,7 +103,7 @@ void forceCloudPingIfConnected() {
     task->func = [](ISRTaskQueue::Task* task) {
         delete task;
         if (spark_cloud_flag_connected()) {
-            spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::FORCE_PING, 0, nullptr);
+            spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::PING, 0, nullptr);
         }
     };
     SystemISRTaskQueue.enqueue(task);
