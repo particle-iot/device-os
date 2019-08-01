@@ -18,8 +18,9 @@
 #pragma once
 
 #include "endian_util.h"
-#include "check.h"
+#include "system_error.h"
 
+#include <cstddef>
 #include <cstdint>
 
 namespace particle {
