@@ -40,6 +40,8 @@ extern "C" {
  *
  */
 
+/** Compatibility nfds_t */
+typedef unsigned int nfds_t;
 /** Compatibility sock_handle_t */
 typedef int sock_handle_t;
 /** Compatibility sock_result_t */
@@ -257,6 +259,11 @@ int sock_socket(int domain, int type, int protocol);
  * @retval -1  Error, errno is set appropriately.
  */
 int sock_fcntl(int s, int cmd, ...);
+
+int sock_poll(struct pollfd* fds, nfds_t nfds, int timeout);
+
+int sock_select(int maxfdp1, fd_set* readset, fd_set* writeset,
+                fd_set* exceptset, struct timeval* timeout);
 
 /**
  * @}

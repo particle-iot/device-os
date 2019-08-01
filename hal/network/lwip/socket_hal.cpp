@@ -94,3 +94,14 @@ int sock_fcntl(int s, int cmd, ...) {
   va_end(vl);
   return lwip_fcntl(s, cmd, val);
 }
+
+int sock_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
+  int ret = lwip_poll(fds, nfds, timeout);
+  return ret;
+}
+
+int sock_select(int maxfdp1, fd_set *readset, fd_set *writeset,
+                fd_set *exceptset, struct timeval *timeout) {
+  int ret = lwip_select(maxfdp1, readset, writeset, exceptset, timeout);
+  return ret;
+}
