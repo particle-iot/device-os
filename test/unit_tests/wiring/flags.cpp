@@ -1,6 +1,6 @@
 #include "spark_wiring_flags.h"
 
-#include "tools/catch.h"
+#include "catch2/catch.hpp"
 
 #include <limits>
 

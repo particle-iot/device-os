@@ -9,6 +9,7 @@ add_executable( ${target_name}
   async.cpp
   character.cpp
   eeprom_emulation.cpp
+  flags.cpp
 )
 
 # Set defines specific to target
