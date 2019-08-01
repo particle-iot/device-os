@@ -1,6 +1,6 @@
 #include "spark_wiring_diagnostics.h"
 
-#include "tools/catch.h"
+#include "catch2/catch.hpp"
 
 #include <functional>
 #include <unordered_set>

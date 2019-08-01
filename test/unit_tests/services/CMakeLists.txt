@@ -2,7 +2,9 @@ set(target_name services)
 
 # Create test executable
 add_executable( ${target_name}
-  ${DEVICE_OS_DIR}/services/src/str_util.cpp
+${DEVICE_OS_DIR}/services/src/diagnostics.cpp
+${DEVICE_OS_DIR}/services/src/str_util.cpp
+  diagnostics.cpp
   str_util.cpp
 )
 
@@ -18,7 +20,11 @@ target_compile_options( ${target_name}
 
 # Set include path specific to target
 target_include_directories( ${target_name}
-  PRIVATE ${DEVICE_OS_DIR}/services/inc
+PRIVATE ${DEVICE_OS_DIR}/hal/inc/
+PRIVATE ${DEVICE_OS_DIR}/hal/shared/
+PRIVATE ${DEVICE_OS_DIR}/hal/src/gcc/
+PRIVATE ${DEVICE_OS_DIR}/services/inc/
+PRIVATE ${DEVICE_OS_DIR}/wiring/inc/
 )
 
 # Link against dependencies specific to target
