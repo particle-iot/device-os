@@ -7,6 +7,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/services/src/system_error.cpp
   diagnostics.cpp
   error.cpp
+  fixed_queue.cpp
   str_util.cpp
 )
 

@@ -21,7 +21,7 @@
  ******************************************************************************
  */
 
-#include "catch.hpp"
+#include "catch2/catch.hpp"
 #include "fixed_queue.h"
 #include <string>
 
