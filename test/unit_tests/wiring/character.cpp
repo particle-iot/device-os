@@ -1,5 +1,5 @@
 
-#include "catch.hpp"
+#include "catch2/catch.hpp"
 
 #include "spark_wiring_character.h"
 
