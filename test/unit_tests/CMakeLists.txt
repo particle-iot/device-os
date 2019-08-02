@@ -14,16 +14,20 @@ get_filename_component(
   ${CMAKE_CURRENT_LIST_DIR}/../..
   REALPATH
 )
-get_filename_component(
-  TEST_DIR
-  ${DEVICE_OS_DIR}/test
-  REALPATH
+set(TEST_DIR ${DEVICE_OS_DIR}/test)
+set(THIRD_PARTY_DIR ${DEVICE_OS_DIR}/third_party)
+
+# Add Boost from git submodule
+set(Boost_USE_MULTITHREADED OFF)
+find_package(Boost
+  1.59.0 EXACT
+  REQUIRED
+  COMPONENTS program_options random regex system thread
 )
-get_filename_component(
-  THIRD_PARTY_DIR
-  ${DEVICE_OS_DIR}/third_party
-  REALPATH
-)
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+  link_libraries(${Boost_LIBRARIES})
+endif()
 
 # Add Catch2 from git submodule
 set(CATCH2_DIR ${THIRD_PARTY_DIR}/catch2/catch2)
@@ -44,11 +48,6 @@ link_libraries(
   Catch2::Catch2
   gcov
 )
-
-# TODO: These should be coming from the dependency's CMake module or find_package()
-include_directories($ENV{BOOST_ROOT})
-link_directories($ENV{BOOST_ROOT}/stage/lib)
-link_libraries(boost_program_options boost_regex boost_system boost_thread)
 
 # Build and discover unit-tests
 add_subdirectory(cellular)

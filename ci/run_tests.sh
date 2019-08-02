@@ -10,7 +10,6 @@ if contains "${BUILD_PLATFORM[*]}" unit-test; then
 	( source ./ci/install_gcovr.sh
 	source ./ci/install_boost.sh
 	./ci/build_boost.sh &&
-	cp -r ${BOOST_ROOT}/boost/ /usr/include/ &&
 	./ci/unit_tests.sh ) || die
 fi
 
