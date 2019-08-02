@@ -45,6 +45,11 @@ link_libraries(
   gcov
 )
 
+# TODO: These should be coming from the dependency's CMake module or find_package()
+include_directories($ENV{BOOST_ROOT})
+link_directories($ENV{BOOST_ROOT}/stage/lib)
+link_libraries(boost_program_options boost_regex boost_system boost_thread)
+
 # Build and discover unit-tests
 add_subdirectory(cellular)
 add_subdirectory(cloud)
