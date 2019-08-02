@@ -86,6 +86,8 @@ typedef struct {
     void (*bit_rate_changed_handler)(uint32_t bitRate);
     HAL_USB_State_Callback  state_callback[MAX_USB_STATE_CB_NUM];
     void*                   state_callback_context[MAX_USB_STATE_CB_NUM];
+
+    volatile bool enabled;
 } usb_instance_t;
 
 static usb_instance_t m_usb_instance = {0};
@@ -282,6 +284,10 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
             set_usb_state(nrf_usb_state_to_hal_usb_state(app_usbd_core_state_get()));
             break;
         }
+        case APP_USBD_EVT_START_REQ: {
+            set_usb_state(HAL_USB_STATE_DETACHED);
+            break;
+        }
         case APP_USBD_EVT_STARTED: {
             // triggered by app_usbd_start()
             m_usb_instance.com_opened = false;
@@ -292,7 +298,11 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
         case APP_USBD_EVT_STOPPED: {
             // triggered by app_usbd_stop()
             app_usbd_disable();
-            set_usb_state(nrf_usb_state_to_hal_usb_state(app_usbd_core_state_get()));
+            if (m_usb_instance.enabled) {
+                set_usb_state(HAL_USB_STATE_DETACHED);
+            } else {
+                set_usb_state(HAL_USB_STATE_DISABLED);
+            }
             break;
         }
         case APP_USBD_EVT_POWER_DETECTED: {
@@ -302,11 +312,17 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
             break;
         }
         case APP_USBD_EVT_POWER_REMOVED: {
-            app_usbd_stop();
+            // We need to check for nrfx_usbd_is_enabled() in order not to accidentally
+            // trigger an assertion
+            if (nrfx_usbd_is_enabled()) {
+                app_usbd_stop();
+            }
             break;
         }
         case APP_USBD_EVT_POWER_READY: {
-            app_usbd_start();
+            if (m_usb_instance.enabled) {
+                app_usbd_start();
+            }
             break;
         }
         case APP_USBD_EVT_STATE_CHANGED: {
@@ -394,7 +410,7 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
 }
 
 int usb_uart_send(uint8_t data[], uint16_t size) {
-    if (m_usb_instance.state != HAL_USB_STATE_CONFIGURED || m_usb_instance.com_opened) {
+    if (m_usb_instance.state != HAL_USB_STATE_CONFIGURED || !m_usb_instance.com_opened) {
         return -1;
     }
 
@@ -458,9 +474,13 @@ uint32_t usb_uart_get_baudrate(void) {
 }
 
 void usb_hal_attach(void) {
-    if (m_usb_instance.state <= HAL_USB_STATE_DISABLED) {
+    if (m_usb_instance.enabled) {
         return;
     }
+
+    m_usb_instance.enabled = true;
+
+    set_usb_state(HAL_USB_STATE_DETACHED);
 
     if (!nrf_drv_usbd_is_enabled()) {
         app_usbd_enable();
@@ -471,11 +491,17 @@ void usb_hal_attach(void) {
 }
 
 void usb_hal_detach(void) {
-    if (m_usb_instance.state >= HAL_USB_STATE_DETACHED) {
+    if (!m_usb_instance.enabled) {
         return;
     }
 
-    app_usbd_stop();
+    m_usb_instance.enabled = false;
+
+    // We need to check for nrfx_usbd_is_enabled() in order not to accidentally
+    // trigger an assertion
+    if (nrfx_usbd_is_enabled()) {
+        app_usbd_stop();
+    }
     if (nrf_drv_usbd_is_enabled()) {
         app_usbd_disable();
     }
