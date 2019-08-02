@@ -110,24 +110,27 @@ test(I2C_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underflow)
         if (requestedLength == 0)
             break;
 
-        // Now read out requestedLength bytes
-        memset(I2C_Master_Rx_Buffer, 0, sizeof(I2C_Master_Rx_Buffer));
-        USE_WIRE.requestFrom(I2C_ADDRESS, requestedLength + (requestedLength & 0x01));
-        if (USE_WIRE.available() != 0) {
-            assertEqual(requestedLength + (requestedLength & 0x01), USE_WIRE.available());
+        // Now read out requestedLength bytes a couple of times
+        int count = random(4, 20);
+        while (count--) {
+            memset(I2C_Master_Rx_Buffer, 0, sizeof(I2C_Master_Rx_Buffer));
+            USE_WIRE.requestFrom(I2C_ADDRESS, requestedLength + (requestedLength & 0x01));
+            if (USE_WIRE.available() != 0) {
+                assertEqual(requestedLength + (requestedLength & 0x01), USE_WIRE.available());
 
-            uint32_t count = 0;
-            while(USE_WIRE.available()) {
-                I2C_Master_Rx_Buffer[count++] = USE_WIRE.read();
+                uint32_t count = 0;
+                while(USE_WIRE.available()) {
+                    I2C_Master_Rx_Buffer[count++] = USE_WIRE.read();
+                }
+                // Serial.print("< ");
+                // Serial.println((const char *)I2C_Master_Rx_Buffer);
+                assertTrue(strncmp((const char *)I2C_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_2, requestedLength) == 0);
+            } else if (requestedLength & 0x01) {
+                Serial.println("Error reading from Slave, checking if we can recover");
+            } else {
+                Serial.println("Failed to recover");
+                assertTrue(false);
             }
-            // Serial.print("< ");
-            // Serial.println((const char *)I2C_Master_Rx_Buffer);
-            assertTrue(strncmp((const char *)I2C_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_2, requestedLength) == 0);
-        } else if (requestedLength & 0x01) {
-            Serial.println("Error reading from Slave, checking if we can recover");
-        } else {
-            Serial.println("Failed to recover");
-            assertTrue(false);
         }
 
         requestedLength--;
