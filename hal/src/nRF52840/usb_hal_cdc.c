@@ -353,7 +353,7 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
 }
 
 int usb_uart_send(uint8_t data[], uint16_t size) {
-    if (!m_usb_instance.com_opened || m_usb_instance.state != HAL_USB_STATE_POWERED) {
+    if (!m_usb_instance.com_opened || m_usb_instance.state != HAL_USB_STATE_DEFAULT) {
         return -1;
     }
 
