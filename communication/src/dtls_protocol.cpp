@@ -13,8 +13,13 @@ void DTLSProtocol::init(const char *id,
 {
 	set_protocol_flags(0);
 	memcpy(device_id, id, sizeof(device_id));
-	// send a ping once every 23 minutes
-	initialize_ping(23*60*1000,30000);
+	// Sets ping interval by default to 23 minutes. This is Electron-specific default
+	// value, however all the other platforms will override this currently depending
+	// on various conditions.
+	// IMPORTANT: the second argument is the timeout waiting for the ping
+	// acknowledgment. This SHOULD be set to MAX_TRANSMIT_WAIT, which is 93s
+	// for default transmission parameters defined in RFC7252. If required we might lower it.
+	initialize_ping(23 * 60 * 1000, CoAPMessage::MAX_TRANSMIT_WAIT);
 	DTLSMessageChannel::Callbacks channelCallbacks = {0};
 	channelCallbacks.millis = callbacks.millis;
 	channelCallbacks.handle_seed = handle_seed;

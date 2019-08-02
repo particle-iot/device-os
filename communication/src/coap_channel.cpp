@@ -48,6 +48,7 @@ bool CoAPMessageStore::retransmit(CoAPMessage* msg, Channel& channel, system_tic
 
 void CoAPMessageStore::message_timeout(CoAPMessage& msg, Channel& channel)
 {
+	LOG(TRACE, "timeout waiting for ACK for message id=%x", msg.get_id());
 	g_unacknowledgedMessageCounter++;
 	msg.notify_timeout();
 	if (msg.is_request())
@@ -99,7 +100,7 @@ ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
 		if (coapType==CoAPType::CON)
 			coapmsg->prepare_retransmit(time);
 		else
-			coapmsg->set_expiration(time+CoAPMessage::MAX_TRANSMIT_SPAN);
+			coapmsg->set_expiration(time + CoAPMessage::EXCHANGE_LIFETIME);
 		add(*coapmsg);
 	}
 	return NO_ERROR;
@@ -150,7 +151,7 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 				return INSUFFICIENT_STORAGE;
 			// the timeout here is ideally purely academic since the application will respond immediately with an ACK/RESET
 			// which will be stored in place of this message, with it's own timeout.
-			coapmsg->set_expiration(time+CoAPMessage::MAX_TRANSMIT_SPAN);
+			coapmsg->set_expiration(time + CoAPMessage::EXCHANGE_LIFETIME);
 			add(*coapmsg);
 		}
 	}
