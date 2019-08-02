@@ -161,7 +161,7 @@ void PowerManager::handleUpdate() {
         // and decrease input voltage limit to 3880mV.
         // More details are in clubhouse [CH34730]
         auto usb_state = HAL_USB_Get_State();
-        if (usb_state == HAL_USB_STATE_DETACHED || usb_state == HAL_USB_STATE_SUSPENDED) {
+        if (usb_state <= HAL_USB_STATE_DETACHED) {
           if (power.getInputCurrentLimit() != DEFAULT_INPUT_CURRENT_LIMIT) {
             power.setInputCurrentLimit(DEFAULT_INPUT_CURRENT_LIMIT);
             power.setInputVoltageLimit(3880);
