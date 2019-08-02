@@ -83,6 +83,7 @@ static exti_state exti_saved_state;
 
 void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config)
 {
+  Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
   uint8_t GPIO_PortSource = 0;    //variable to hold the port number
 
   //EXTI structure to init EXT
@@ -185,6 +186,7 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
 
 void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
 {
+  Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
   //Map the Spark Core pin to the appropriate pin on the STM32
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
   uint8_t GPIO_PinSource = PIN_MAP[pin].gpio_pin_source;

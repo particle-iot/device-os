@@ -62,7 +62,7 @@ where:
 #define GPIO_GetBit_BB(Addr, Bit)       \
           (*(__IO uint32_t *) (PERIPH_BB_BASE | ((Addr - PERIPH_BASE) << 5) | ((Bit) << 2)))
 
-static STM32_Pin_Info* pin_map = HAL_Pin_Map();
+static Hal_Pin_Info* pin_map = HAL_Pin_Map();
 
 inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
 inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
@@ -92,6 +92,7 @@ inline int32_t pinReadFast(pin_t _pin)
 #endif
 
 #ifdef STM32F10X
+static Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
 inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
@@ -109,10 +110,10 @@ inline void pinResetFast(pin_t _pin)
 
 inline int32_t pinReadFast(pin_t _pin)
 {
-	return ((PIN_MAP[_pin].gpio_peripheral->IDR & PIN_MAP[_pin].gpio_pin) == 0 ? LOW : HIGH);
+    return ((PIN_MAP[_pin].gpio_peripheral->IDR & PIN_MAP[_pin].gpio_pin) == 0 ? LOW : HIGH);
 }
 #elif defined(STM32F2XX)
-static STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+static Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
 inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
@@ -142,7 +143,7 @@ inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
 inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
 inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
 
-static NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+static Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 inline void pinSetFast(pin_t _pin)
 {
@@ -159,7 +160,7 @@ inline void pinResetFast(pin_t _pin)
 inline int32_t pinReadFast(pin_t _pin)
 {
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[_pin].gpio_port, PIN_MAP[_pin].gpio_pin);
-    // Dummy read is needed because peripherals run at 16 MHz while the CPU runs at 64 MHz. 
+    // Dummy read is needed because peripherals run at 16 MHz while the CPU runs at 64 MHz.
     (void)nrf_gpio_pin_read(nrf_pin);
     return nrf_gpio_pin_read(nrf_pin);
 }

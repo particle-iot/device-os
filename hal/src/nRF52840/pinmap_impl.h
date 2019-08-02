@@ -15,44 +15,48 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PINMAP_IMPL_H
-#define PINMAP_IMPL_H
+#pragma once
 
-
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "pinmap_hal.h"
 
-typedef struct NRF5x_Pin_Info {
-    uint8_t     gpio_port;      // port0: 0; port: 1;
-    uint8_t     gpio_pin;       // range: 0~31;
-    PinMode     pin_mode;       // GPIO pin mode
-    PinFunction pin_func;       
+typedef struct Hal_Pin_Info {
+    uint8_t     gpio_port; // port0: 0; port: 1;
+    uint8_t     gpio_pin;  // range: 0~31;
+    PinMode     pin_mode;  // GPIO pin mode
+    PinFunction pin_func;
     uint8_t     adc_channel;
     uint8_t     pwm_instance;   // 4 instances on nRF52, range: 0~3
     uint8_t     pwm_channel;    // 4 channels in each instance, range: 0~3
-	uint8_t     pwm_resolution; // default 8bit, max 15bit
+    uint8_t     pwm_resolution; // default 8bit, max 15bit
     uint8_t     exti_channel;   // 16 channels
-    uint32_t    user_data;      
-} NRF5x_Pin_Info;
+    uint32_t    user_data;
+} Hal_Pin_Info;
 
-#define NRF_PORT_NONE       ((uint8_t)(0xFF))
-#define NRF_PORT_0          ((uint8_t)(0))
-#define NRF_PORT_1          ((uint8_t)(1))
+// For compatibility
+typedef Hal_Pin_Info NRF5x_Pin_Info;
 
-#define CHANNEL_NONE        ((uint8_t)(0xFF))
-#define ADC_CHANNEL_NONE    CHANNEL_NONE
-#define DAC_CHANNEL_NONE    CHANNEL_NONE
-#define PWM_INSTANCE_NONE   ((uint8_t)(0xFF))
-#define PWM_CHANNEL_NONE    CHANNEL_NONE
-#define EXTI_CHANNEL_NONE   CHANNEL_NONE
+extern const uint8_t NRF_PIN_LOOKUP_TABLE[48];
 
-extern NRF5x_Pin_Info* HAL_Pin_Map(void);
+#define NRF_PORT_NONE ((uint8_t)(0xFF))
+#define NRF_PORT_0 ((uint8_t)(0))
+#define NRF_PORT_1 ((uint8_t)(1))
 
-#ifdef  __cplusplus
+#define CHANNEL_NONE ((uint8_t)(0xFF))
+#define ADC_CHANNEL_NONE CHANNEL_NONE
+#define DAC_CHANNEL_NONE CHANNEL_NONE
+#define PWM_INSTANCE_NONE ((uint8_t)(0xFF))
+#define PWM_CHANNEL_NONE CHANNEL_NONE
+#define EXTI_CHANNEL_NONE CHANNEL_NONE
+
+#define DEFAULT_PWM_FREQ 500 // 500Hz
+#define TIM_PWM_FREQ DEFAULT_PWM_FREQ
+
+#include "pinmap_defines.h"
+
+#ifdef __cplusplus
 }
-#endif
-
 #endif

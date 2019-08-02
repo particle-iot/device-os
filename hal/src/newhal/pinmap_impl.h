@@ -17,8 +17,6 @@
 
 #pragma once
 
-#if PLATFORM_ID == PLATFORM_GCC
-
 const pin_t TOTAL_PINS = 21;
 const pin_t TOTAL_ANALOG_PINS = 8;
 const pin_t FIRST_ANALOG_PIN = 10;
@@ -70,16 +68,14 @@ const pin_t TIMER4_CH1 = 1;
 const pin_t TIMER4_CH2 = 0;
 
 // SPI pins
-
-const pin_t SS = 12;
-const pin_t SCK = 13;
+const pin_t SS   = 12;
+const pin_t SCK  = 13;
 const pin_t MISO = 14;
 const pin_t MOSI = 15;
 
 // I2C pins
-
-const pin_t SDA = 0;
-const pin_t SCL = 1;
+const pin_t SDA  = 0;
+const pin_t SCL  = 1;
 
 // DAC pins on Photon
 const pin_t DAC1 = 16;
@@ -87,5 +83,3 @@ const pin_t DAC2 = 13;
 
 const uint8_t LSBFIRST = 0;
 const uint8_t MSBFIRST = 1;
-
-#endif // PLATFORM_ID == PLATFORM_GCC

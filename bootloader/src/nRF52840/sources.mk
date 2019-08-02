@@ -10,6 +10,7 @@ CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/nRF52840/,rgble
 CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/nRF52840/,watchdog_hal.c)
 CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/nRF52840/,pinmap_hal.c)
 CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/nRF52840/,button_hal.c)
+CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/$(PLATFORM_NAME)/,pinmap_hal.c)
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/nRF52840/,gpio_hal.cpp)
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/nRF52840/,pwm_hal.cpp)
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/nRF52840/,interrupts_hal.cpp)

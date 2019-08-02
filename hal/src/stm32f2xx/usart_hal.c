@@ -235,7 +235,7 @@ void HAL_USART_Configure_Pin_Modes(HAL_USART_Serial serial, uint32_t config)
 		HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, AF_OUTPUT_PUSHPULL);
 		if (config & SERIAL_TX_PULL_UP) {
 			// We ought to allow enabling pull-up or pull-down through HAL somehow
-			STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+			Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 			pin_t gpio_pin = PIN_MAP[usartMap[serial]->usart_tx_pin].gpio_pin;
 			GPIO_TypeDef *gpio_port = PIN_MAP[usartMap[serial]->usart_tx_pin].gpio_peripheral;
 			GPIO_InitTypeDef GPIO_InitStructure = {0};
@@ -307,7 +307,7 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
 	*usartMap[serial]->usart_apbReg |=  usartMap[serial]->usart_clock_en;
 
 	// Connect USART pins to AFx
-	STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+	Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 	GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_rx_pin].gpio_peripheral, usartMap[serial]->usart_rx_pinsource, usartMap[serial]->usart_af_map);
 	GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_tx_pin].gpio_peripheral, usartMap[serial]->usart_tx_pinsource, usartMap[serial]->usart_af_map);
 

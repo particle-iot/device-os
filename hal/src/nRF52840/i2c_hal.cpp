@@ -162,7 +162,7 @@ static int twi_uinit(HAL_I2C_Interface i2c) {
     }
 
     // Reset pin function
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     PIN_MAP[m_i2c_map[i2c].scl_pin].pin_func = PF_NONE;
     PIN_MAP[m_i2c_map[i2c].sda_pin].pin_func = PF_NONE;
 
@@ -173,7 +173,7 @@ static int twi_init(HAL_I2C_Interface i2c) {
     ret_code_t err_code;
     nrf_twim_frequency_t nrf_frequency = (m_i2c_map[i2c].speed == CLOCK_SPEED_400KHZ) ? NRF_TWIM_FREQ_400K : NRF_TWIM_FREQ_100K;
 
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     
     if (m_i2c_map[i2c].mode == I2C_MODE_MASTER) {
         const nrfx_twim_config_t twi_config = {

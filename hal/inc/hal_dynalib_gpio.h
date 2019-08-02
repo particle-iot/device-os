@@ -43,7 +43,7 @@
 
 DYNALIB_BEGIN(hal_gpio)
 
-DYNALIB_FN(0, hal_gpio, HAL_Pin_Map, STM32_Pin_Info*(void))
+DYNALIB_FN(0, hal_gpio, HAL_Pin_Map, Hal_Pin_Info*(void))
 DYNALIB_FN(1, hal_gpio, HAL_Validate_Pin_Function, PinFunction(pin_t, PinFunction))
 DYNALIB_FN(2, hal_gpio, HAL_Pin_Mode, void(pin_t, PinMode))
 DYNALIB_FN(3, hal_gpio, HAL_Get_Pin_Mode, PinMode(pin_t))

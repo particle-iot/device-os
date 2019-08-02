@@ -131,7 +131,7 @@ void HAL_PWM_Write_With_Frequency_Ext(uint16_t pin, uint32_t value, uint32_t pwm
         return;
     }
 
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     // If PWM has not been initialized, or user has called pinMode(, OUTPUT)
     if (!(pin_info->user_property & PWM_INIT) || pin_info->pin_mode == OUTPUT)
@@ -169,7 +169,7 @@ uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
 
 uint32_t HAL_PWM_Get_Frequency_Ext(uint16_t pin)
 {
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     if(!pin_info->timer_peripheral)
     {
@@ -191,7 +191,7 @@ uint32_t HAL_PWM_Get_AnalogValue_Ext(uint16_t pin)
     uint32_t period = 0;
     uint32_t pwm_analog_value = 0;
 
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     if(pin_info->timer_ch == TIM_Channel_1)
     {
@@ -231,7 +231,7 @@ uint32_t HAL_PWM_Base_Clock(uint16_t pin)
 #if PLATFORM_ID == 0 // Core
     return SystemCoreClock;
 #else
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     if(pin_info->timer_peripheral == TIM3 ||
             pin_info->timer_peripheral == TIM4 ||
@@ -251,7 +251,7 @@ uint8_t HAL_PWM_Timer_Resolution(uint16_t pin)
 #if PLATFORM_ID == 0 // Core
     return 16;
 #else
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     if(pin_info->timer_peripheral == TIM2 || pin_info->timer_peripheral == TIM5)
     {
@@ -269,7 +269,7 @@ uint32_t HAL_PWM_Calculate_Max_Frequency(uint32_t clock, uint8_t resolution)
 
 uint32_t HAL_PWM_Get_Max_Frequency(uint16_t pin)
 {
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
     if (pin_info->timer_peripheral == NULL)
         return 0;
     return HAL_PWM_Calculate_Max_Frequency(HAL_PWM_Base_Clock(pin), HAL_PWM_Get_Resolution(pin));
@@ -309,7 +309,7 @@ uint32_t HAL_PWM_Calculate_Pulse(uint32_t period, uint32_t value, uint8_t resolu
 
 uint32_t HAL_PWM_Get_Period(uint16_t pin)
 {
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
     return pin_info->timer_peripheral->ARR;
 }
 
@@ -335,7 +335,7 @@ TIM_TimeBaseInitTypeDef HAL_PWM_Calculate_Time_Base(uint16_t pin, uint32_t pwm_f
 
 void HAL_PWM_Enable_TIM_Clock(uint16_t pin, uint32_t pwm_frequency)
 {
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
 	// AFIO and TIM clock enable
 
@@ -401,7 +401,7 @@ void HAL_PWM_Enable_TIM_Clock(uint16_t pin, uint32_t pwm_frequency)
 
 void HAL_PWM_Configure_TIM(uint16_t pin, uint32_t value)
 {
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     //PWM Duty Cycle
     uint32_t period = HAL_PWM_Get_Period(pin);
@@ -451,7 +451,7 @@ void HAL_PWM_Configure_TIM(uint16_t pin, uint32_t value)
 
 void HAL_PWM_Enable_TIM(uint16_t pin)
 {
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     // TIM enable counter
     TIM_Cmd(pin_info->timer_peripheral, ENABLE);
@@ -467,7 +467,7 @@ void HAL_PWM_Enable_TIM(uint16_t pin)
 
 void HAL_PWM_Update_DC_Frequency(uint16_t pin, uint32_t value, uint32_t pwm_frequency)
 {
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     // Calculate new prescaler, period and output compare register value
     TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure = HAL_PWM_Calculate_Time_Base(pin, pwm_frequency);
@@ -500,7 +500,7 @@ void HAL_PWM_Update_DC_Frequency(uint16_t pin, uint32_t value, uint32_t pwm_freq
 
 
 void HAL_PWM_Update_Registers(uint16_t pin, FunctionalState new_state) {
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     // UpdateDisableConfig = ENABLE means updates are disabled!
     TIM_UpdateDisableConfig(pin_info->timer_peripheral, !new_state);
@@ -508,7 +508,7 @@ void HAL_PWM_Update_Registers(uint16_t pin, FunctionalState new_state) {
 
 uint8_t HAL_PWM_Get_Resolution(uint16_t pin)
 {
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     if (pin_info->timer_peripheral)
     {
@@ -520,7 +520,7 @@ uint8_t HAL_PWM_Get_Resolution(uint16_t pin)
 
 void HAL_PWM_Set_Resolution(uint16_t pin, uint8_t resolution)
 {
-    STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     if (pin_info->timer_peripheral)
     {

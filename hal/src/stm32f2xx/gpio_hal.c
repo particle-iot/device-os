@@ -57,7 +57,7 @@ PinMode HAL_Get_Pin_Mode(pin_t pin)
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
 {
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     if (!is_valid_pin(pin))
         return PF_NONE;
@@ -76,7 +76,7 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
  */
 void HAL_Pin_Mode(pin_t pin, PinMode setMode)
 {
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
     pin_t gpio_pin = PIN_MAP[pin].gpio_pin;
@@ -171,8 +171,8 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode)
  */
 void HAL_GPIO_Save_Pin_Mode(uint16_t pin)
 {
-    // Save pin mode in STM32_Pin_Info.user_property
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    // Save pin mode in Hal_Pin_Info.user_property
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint32_t uprop = (uint32_t)PIN_MAP[pin].user_property;
     uprop = (uprop & 0xFFFF) | (((uint32_t)PIN_MAP[pin].pin_mode & 0xFF) << 16) | (0xAA << 24);
     PIN_MAP[pin].user_property = (int32_t)uprop;
@@ -183,8 +183,8 @@ void HAL_GPIO_Save_Pin_Mode(uint16_t pin)
  */
 PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin)
 {
-    // Recall pin mode in STM32_Pin_Info.user_property
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    // Recall pin mode in Hal_Pin_Info.user_property
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint32_t uprop = (uint32_t)PIN_MAP[pin].user_property;
     if ((uprop & 0xFF000000) != 0xAA000000)
         return PIN_MODE_NONE;
@@ -216,7 +216,7 @@ PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin)
  */
 void HAL_GPIO_Write(uint16_t pin, uint8_t value)
 {
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     //If the pin is used by analogWrite, we need to change the mode
     if(PIN_MAP[pin].pin_mode == AF_OUTPUT_PUSHPULL)
     {
@@ -244,7 +244,7 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value)
  */
 int32_t HAL_GPIO_Read(uint16_t pin)
 {
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].pin_mode == AN_INPUT)
     {
         PinMode pm = HAL_GPIO_Recall_Pin_Mode(pin);
@@ -290,7 +290,7 @@ int32_t HAL_GPIO_Read(uint16_t pin)
  */
 uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
 {
-    STM32_Pin_Info* SOLO_PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* SOLO_PIN_MAP = HAL_Pin_Map();
     #define pinReadFast(_pin) ((SOLO_PIN_MAP[_pin].gpio_peripheral->IDR & SOLO_PIN_MAP[_pin].gpio_pin) == 0 ? 0 : 1)
 
     volatile uint32_t timeoutStart = SYSTEM_TICK_COUNTER; // total 3 seconds for entire function!
