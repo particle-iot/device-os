@@ -126,7 +126,7 @@ static inline bool HAL_IsISR()
 	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
 }
 
-inline int32_t HAL_ServicedIRQn()
+static inline int32_t HAL_ServicedIRQn()
 {
   return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) - 16;
 }

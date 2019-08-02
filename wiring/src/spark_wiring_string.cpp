@@ -729,9 +729,9 @@ String& String::remove(unsigned int index, unsigned int count){
 	if (index + count > len) { count = len - index; }
 	char *writeTo = buffer + index;
 	len = len - count;
-	strncpy(writeTo, buffer + index + count,len - index);
+	memmove(writeTo, buffer + index + count,len - index);
 	buffer[len] = 0;
-        return *this;
+	return *this;
 }
 
 String& String::toLowerCase(void)

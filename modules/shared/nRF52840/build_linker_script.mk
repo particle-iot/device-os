@@ -20,7 +20,4 @@ endif
 
 all:
 	@echo Creating $(MODULE_USER_MEMORY_FILE_GEN) ...
-	$(call WRITE_FILE_CREATE, "$(MODULE_USER_MEMORY_FILE_GEN)",user_module_app_flash_origin = 0xD4000;)
-	$(call WRITE_FILE_APPEND, "$(MODULE_USER_MEMORY_FILE_GEN)",user_module_app_flash_length = 128K;)
-	$(call WRITE_FILE_APPEND, "$(MODULE_USER_MEMORY_FILE_GEN)",)
-	$(call WRITE_FILE_APPEND, "$(MODULE_USER_MEMORY_FILE_GEN)",user_module_sram_length = $(USER_SRAM_LENGTH);)
+	$(call WRITE_FILE_APPEND, "$(MODULE_USER_MEMORY_FILE_GEN)",_user_part_static_ram_size = $(USER_SRAM_LENGTH);)

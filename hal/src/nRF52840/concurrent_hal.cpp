@@ -95,6 +95,10 @@ os_result_t os_thread_create(os_thread_t* thread, const char* name, os_thread_pr
     return ( result != (signed portBASE_TYPE) pdPASS );
 }
 
+os_thread_t os_thread_current(void* reserved)
+{
+    return xTaskGetCurrentTaskHandle();
+}
 
 /**
  * Determines if the given thread is the one executing.

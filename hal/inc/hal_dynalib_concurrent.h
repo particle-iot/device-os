@@ -63,6 +63,7 @@ DYNALIB_FN(26, hal_concurrent, os_queue_take, int(os_queue_t, void* item, system
 DYNALIB_FN(27, hal_concurrent, os_thread_exit, os_result_t(os_thread_t))
 
 DYNALIB_FN(28, hal_concurrent, os_timer_set_id, int(os_timer_t, void*))
+DYNALIB_FN(29, hal_concurrent, os_thread_current, os_thread_t(void*))
 #endif // PLATFORM_THREADING
 
 DYNALIB_END(hal_concurrent)

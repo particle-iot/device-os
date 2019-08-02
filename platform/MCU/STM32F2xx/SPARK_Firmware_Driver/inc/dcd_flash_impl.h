@@ -42,7 +42,6 @@ public:
             const uint8_t* sector0 = this->store.dataAt(DCD1);
             const uint8_t* sector1 = this->store.dataAt(DCD2);
 
-            Sector init;
             if (isCurrent(sector0))
                 initializeFromSector(sector0, base::Sector_1);
             else if (isCurrent(sector1))

@@ -295,7 +295,8 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
         } else if (spi == HAL_SPI_INTERFACE2) {
             m_spi_map[spi].ss_pin = D5;
         } else {
-            m_spi_map[spi].ss_pin = PIN_INVALID;
+            // This generates a warning with -Warray-bounds enabled
+            // m_spi_map[spi].ss_pin = PIN_INVALID;
         }
     } else {
         m_spi_map[spi].ss_pin = pin;

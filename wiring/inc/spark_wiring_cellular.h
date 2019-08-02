@@ -34,8 +34,6 @@ namespace spark {
 
 class CellularClass : public NetworkClass
 {
-    CellularDevice device;
-
 public:
     CellularClass() :
             NetworkClass(NETWORK_INTERFACE_CELLULAR) {

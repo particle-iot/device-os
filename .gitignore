@@ -55,7 +55,6 @@ build/cores/
 hal/soft-ap/.idea/
 cmake-build-debug
 .vscode
-module_user_memory.ld
 
 # Doxygen documentation
 docs/doxygen/html/
