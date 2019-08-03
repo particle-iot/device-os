@@ -18,7 +18,6 @@ set(TEST_DIR ${DEVICE_OS_DIR}/test)
 set(THIRD_PARTY_DIR ${DEVICE_OS_DIR}/third_party)
 
 # Add Boost from git submodule
-set(Boost_USE_MULTITHREADED OFF)
 find_package(Boost
   1.59.0 EXACT
   REQUIRED
@@ -42,6 +41,7 @@ enable_testing()
 add_definitions(-DLOG_DISABLE)
 add_definitions(-DRELEASE_BUILD)
 add_definitions(-DUNIT_TEST)
+add_definitions(-DBOOST_NO_AUTO_PTR)
 
 # Link against dependencies of all tests
 link_libraries(
