@@ -153,7 +153,7 @@ int32_t digitalRead(pin_t pin)
 }
 
 /*
- * @brief Set the ADC reference to either VDD / 4 (VDD4) or the internal 0.6v (INTERNAL)
+ * @brief Set the ADC reference to either VDD / 4 (AR_DEFAULT) or the internal 0.6v (INTERNAL)
  */
 
 void analogReference(vref_e v){

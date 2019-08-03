@@ -34,7 +34,7 @@
 
 typedef enum
 {
-    VDD4,
+    AR_DEFAULT,
     INTERNAL,
 } vref_e;
 

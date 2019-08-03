@@ -26,7 +26,7 @@ Serial1LogHandler logHandler(115200);
 void setup() {
     HAL_ADC_DMA_Init();
     HAL_ADC_Set_VREF(INTERNAL);
-    HAL_ADC_Set_VREF(VDD4);
+    HAL_ADC_Set_VREF(AR_DEFAULT);
 }
 
 /* executes continuously after setup() runs */
