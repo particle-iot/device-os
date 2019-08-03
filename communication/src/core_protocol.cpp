@@ -1897,6 +1897,13 @@ int CoreProtocol::command(ProtocolCommands::Enum command, uint32_t data)
   return result;
 }
 
+int CoreProtocol::get_status(protocol_status* status) const
+{
+  SPARK_ASSERT(status);
+  status->flags = 0;
+  return 0;
+}
+
 int CoreProtocol::wait_confirmable(uint32_t timeout)
 {
   bool st = true;

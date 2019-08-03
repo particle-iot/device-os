@@ -215,6 +215,7 @@ class CoreProtocol
     }
 
     int command(ProtocolCommands::Enum command, uint32_t data);
+    int get_status(protocol_status* status) const;
     int wait_confirmable(uint32_t timeout=5000);
 
     /********** State Machine **********/

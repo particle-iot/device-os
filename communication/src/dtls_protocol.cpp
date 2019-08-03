@@ -25,6 +25,9 @@ void DTLSProtocol::init(const char *id,
 		channelCallbacks.save = callbacks.save;
 		channelCallbacks.restore = callbacks.restore;
 	}
+	if (offsetof(SparkCallbacks, notify_client_messages_processed) + sizeof(SparkCallbacks::notify_client_messages_processed) <= callbacks.size) {
+		channelCallbacks.notify_client_messages_processed = callbacks.notify_client_messages_processed;
+	}
 
 	channel.set_millis(callbacks.millis);
 

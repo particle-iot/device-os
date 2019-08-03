@@ -56,8 +56,11 @@ static uint32_t start_ymodem_flasher_serial_speed = START_YMODEM_FLASHER_SERIAL_
 
 ymodem_serial_flash_update_handler Ymodem_Serial_Flash_Update_Handler = NULL;
 
+// TODO: Use a single state variable instead of SPARK_CLOUD_XXX flags
 volatile uint8_t SPARK_CLOUD_SOCKETED;
 volatile uint8_t SPARK_CLOUD_CONNECTED;
+volatile uint8_t SPARK_CLOUD_HANDSHAKE_PENDING = 0;
+volatile uint8_t SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
 volatile uint8_t SPARK_FLASH_UPDATE;
 volatile uint32_t TimingFlashUpdateTimeout;
 

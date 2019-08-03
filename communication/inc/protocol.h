@@ -511,6 +511,8 @@ public:
 
 	virtual int get_describe_data(spark_protocol_describe_data* data, void* reserved);
 
+	virtual int get_status(protocol_status* status) const = 0;
+
 #if HAL_PLATFORM_MESH
 	int mesh_command(MeshCommand::Enum cmd, uint32_t data, void* extraData, completion_handler_data* completion);
 #endif // HAL_PLATFORM_MESH
