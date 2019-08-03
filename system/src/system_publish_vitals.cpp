@@ -108,6 +108,7 @@ void VitalsPublisher<Timer>::publishFromTimer(void)
 }
 
 #include "spark_wiring_timer.h"
+
 #if PLATFORM_THREADING
 template class VitalsPublisher<Timer>;
 #else  // not PLATFORM_THREADING
@@ -120,25 +121,11 @@ template class VitalsPublisher<particle::NullTimer>;
 
 template class VitalsPublisher<particle::mock_type::Timer>;
 
-bool spark_protocol_post_description_called;
-int spark_protocol_post_description_result;
-
-inline ProtocolFacade* spark_protocol_instance()
-{
-    return nullptr;
-}
-inline int spark_protocol_post_description(ProtocolFacade*, int, void*)
-{
-    spark_protocol_post_description_called = true;
-    return spark_protocol_post_description_result;
-}
-inline void ISRTaskQueue::enqueue(ISRTaskQueue::Task*)
-{
-}
 inline bool spark_cloud_flag_connected()
 {
     return true;
 }
+
 inline int spark_protocol_to_system_error(int error)
 {
     return error;

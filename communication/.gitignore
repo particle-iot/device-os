@@ -35,5 +35,3 @@ Release/*
 .cproject
 .project
 .DS_Store
-
-/tests/catch/target/
