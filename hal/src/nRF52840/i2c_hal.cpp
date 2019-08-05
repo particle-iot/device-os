@@ -236,13 +236,13 @@ static int twi_init(HAL_I2C_Interface i2c) {
 }
 
 void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved) {
-    if (m_i2c_map[i2c].enabled) {
-        twi_uninit(i2c);
-    }
-
     os_thread_scheduling(false, NULL);
     if (m_i2c_map[i2c].mutex == NULL) {
         os_mutex_recursive_create(&m_i2c_map[i2c].mutex);
+    } else {
+        // Already initialized
+        os_thread_scheduling(true, NULL);
+        return;
     }
 
     HAL_I2C_Acquire(i2c, NULL);
