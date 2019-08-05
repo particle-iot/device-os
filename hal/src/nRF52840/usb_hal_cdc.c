@@ -316,6 +316,9 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
             // trigger an assertion
             if (nrfx_usbd_is_enabled()) {
                 app_usbd_stop();
+            } else if (m_usb_instance.enabled) {
+                // Just in case go into detached state
+                set_usb_state(HAL_USB_STATE_DETACHED);
             }
             break;
         }
@@ -505,6 +508,9 @@ void usb_hal_detach(void) {
     if (nrf_drv_usbd_is_enabled()) {
         app_usbd_disable();
     }
+
+    // Go to disabled state just in case
+    set_usb_state(HAL_USB_STATE_DISABLED);
 }
 
 int usb_uart_available_rx_data(void) {
