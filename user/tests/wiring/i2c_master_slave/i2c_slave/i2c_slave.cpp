@@ -17,7 +17,8 @@ static uint32_t requestedLength = 0;
 
 static int random_range(int minVal, int maxVal)
 {
-    return rand() % (maxVal - minVal + 1) + minVal;
+    static unsigned int seed = HAL_RNG_GetRandomNumber();
+    return rand_r(&seed) % (maxVal - minVal + 1) + minVal;
 }
 
 void I2C_Slave_On_Request_Callback(void) {
@@ -57,6 +58,9 @@ test(I2C_Master_Slave_Slave_Transfer)
     USE_WIRE.stretchClock(true);
     USE_WIRE.onRequest(I2C_Slave_On_Request_Callback);
     USE_WIRE.onReceive(I2C_Slave_On_Receive_Callback);
+
+    // Dummy call to initialize the seed
+    (void)random_range(0, 1);
 
     while(done == 0) {
         delay(100);
