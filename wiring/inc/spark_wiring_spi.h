@@ -227,14 +227,14 @@ public:
   void lock()
   {
 #if PLATFORM_THREADING
-    mutex_.lock();
+    HAL_SPI_Acquire(_spi, NULL);
 #endif
   }
 
   void unlock()
   {
 #if PLATFORM_THREADING
-    mutex_.unlock();
+    HAL_SPI_Release(_spi, NULL);
 #endif
   }
 };

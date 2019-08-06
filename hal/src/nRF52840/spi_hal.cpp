@@ -275,13 +275,18 @@ void HAL_SPI_Init(HAL_SPI_Interface spi) {
 }
 
 void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin) {
+    HAL_SPI_Acquire(spi, nullptr);
     // Default to Master mode
     HAL_SPI_Begin_Ext(spi, SPI_MODE_MASTER, pin, NULL);
+    HAL_SPI_Release(spi, nullptr);
 }
 
 void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved) {
+    HAL_SPI_Acquire(spi, nullptr);
+
     if (spi == HAL_SPI_INTERFACE1 && mode == SPI_MODE_SLAVE) {
         // HAL_SPI_INTERFACE1 does not support slave mode
+        HAL_SPI_Release(spi, nullptr);
         return;
     }
 
@@ -305,42 +310,63 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
     m_spi_map[spi].spi_mode = mode;
     spi_init(spi, mode);
     m_spi_map[spi].enabled = true;
+
+    HAL_SPI_Release(spi, nullptr);
 }
 
 void HAL_SPI_End(HAL_SPI_Interface spi) {
+    HAL_SPI_Acquire(spi, nullptr);
+
     if (m_spi_map[spi].enabled) {
         spi_uninit(spi);
         m_spi_map[spi].enabled = false;
     }
+
+    HAL_SPI_Release(spi, nullptr);
 }
 
 void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order) {
+    HAL_SPI_Acquire(spi, nullptr);
+
     m_spi_map[spi].bit_order = order;
     if (m_spi_map[spi].enabled) {
         spi_uninit(spi);
         spi_init(spi, m_spi_map[spi].spi_mode);
     }
+
+    HAL_SPI_Release(spi, nullptr);
 }
 
 void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode) {
+    HAL_SPI_Acquire(spi, nullptr);
+
     m_spi_map[spi].data_mode = mode;
     if (m_spi_map[spi].enabled) {
         spi_uninit(spi);
         spi_init(spi, m_spi_map[spi].spi_mode);
     }
+
+    HAL_SPI_Release(spi, nullptr);
 }
 
 void HAL_SPI_Set_Clock_Divider(HAL_SPI_Interface spi, uint8_t rate) {
+    HAL_SPI_Acquire(spi, nullptr);
+
     // actual speed is the system clock divided by some scalar
     m_spi_map[spi].clock = rate;
     if (m_spi_map[spi].enabled) {
         spi_uninit(spi);
         spi_init(spi, m_spi_map[spi].spi_mode);
     }
+
+    HAL_SPI_Release(spi, nullptr);
 }
 
 uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data) {
+    HAL_SPI_Acquire(spi, nullptr);
+
     if (m_spi_map[spi].spi_mode == SPI_MODE_SLAVE) {
+        HAL_SPI_Release(spi, nullptr);
         return 0;
     }
 
@@ -362,11 +388,16 @@ uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data) {
         ;
     }
 
+    HAL_SPI_Release(spi, nullptr);
+    
     return rx_buffer;
 }
 
 bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi) {
-    return m_spi_map[spi].enabled;
+    HAL_SPI_Acquire(spi, nullptr);
+    bool en = m_spi_map[spi].enabled;
+    HAL_SPI_Release(spi, nullptr);
+    return en;
 }
 
 bool HAL_SPI_Is_Enabled_Old(void) {
@@ -374,6 +405,8 @@ bool HAL_SPI_Is_Enabled_Old(void) {
 }
 
 void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved) {
+    HAL_SPI_Acquire(spi, nullptr);
+
     info->system_clock = 64000000;
     if (info->version >= HAL_SPI_INFO_VERSION_1) {
         int32_t state = HAL_disable_irq();
@@ -405,14 +438,21 @@ void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved) {
         }
         HAL_enable_irq(state);
     }
+
+    HAL_SPI_Release(spi, nullptr);
 }
 
 void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb, void* reserved) {
+    HAL_SPI_Acquire(spi, nullptr);
     m_spi_map[spi].spi_select_user_callback = cb;
+    HAL_SPI_Release(spi, nullptr);
 }
 
 void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback) {
+    HAL_SPI_Acquire(spi, nullptr);
+    
     if (length == 0) {
+        HAL_SPI_Release(spi, nullptr);
         return;
     }
 
@@ -441,9 +481,13 @@ void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffe
             m_spi_map[spi].transmitting = true;
         }
     }
+
+    HAL_SPI_Release(spi, nullptr);
 }
 
 void HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi) {
+    HAL_SPI_Acquire(spi, nullptr);
+
     if (m_spi_map[spi].spi_mode == SPI_MODE_MASTER) {
         spi_transfer_cancel(spi);
         m_spi_map[spi].transmitting = false;
@@ -451,9 +495,13 @@ void HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi) {
     } else {
         // Not supported by SPI Slave
     }
+
+    HAL_SPI_Release(spi, nullptr);
 }
 
 int32_t HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatus* st) {
+    HAL_SPI_Acquire(spi, nullptr);
+    
     int32_t transfer_length = 0;
 
     if (m_spi_map[spi].transmitting) {
@@ -469,10 +517,14 @@ int32_t HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatu
         st->ss_state = m_spi_map[spi].spi_ss_state;
     }
 
+    HAL_SPI_Release(spi, nullptr);
+    
     return transfer_length;
 }
 
 int32_t HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t clockdiv, uint8_t order, uint8_t mode, void* reserved) {
+    HAL_SPI_Acquire(spi, nullptr);
+    
     if (set_default) {
         m_spi_map[spi].data_mode = DEFAULT_DATA_MODE;
         m_spi_map[spi].bit_order = DEFAULT_BIT_ORDER;
@@ -488,6 +540,8 @@ int32_t HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t
         spi_init(spi, m_spi_map[spi].spi_mode);
     }
 
+    HAL_SPI_Release(spi, nullptr);
+    
     return 0;
 }
 
