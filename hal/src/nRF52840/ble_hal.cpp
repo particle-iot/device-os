@@ -62,6 +62,10 @@ static_assert(NRF_SDH_BLE_TOTAL_LINK_COUNT <= 20, "Maximum supported number of c
 using spark::Vector;
 using namespace particle::ble;
 
+#ifdef SUB1
+#undef SUB1
+#endif
+#define SUB1(X) (((X)>0) ? ((X)-1) : (X))
 
 //anonymous namespace
 namespace {
@@ -399,7 +403,7 @@ public:
     bool initialized() const {
         return connMgrInitialized_;
     }
-    void onPeripheralLinkEventCallback(hal_ble_on_link_evt_cb_t cb, void* context);
+    int onPeripheralLinkEventCallback(hal_ble_on_link_evt_cb_t cb, void* context);
     int setPpcp(const hal_ble_conn_params_t* ppcp);
     int getPpcp(hal_ble_conn_params_t* ppcp) const;
     bool connecting(const hal_ble_addr_t* address) const;
@@ -492,7 +496,7 @@ private:
 
     bool findService(hal_ble_attr_handle_t svcHandle) const;
     BleCharacteristic* findCharacteristic(hal_ble_attr_handle_t attrHandle);
-    void addSubscriber(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle);
+    int addSubscriber(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle);
     void removeSubscriber(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle);
     static void processGattServerEvents(const ble_evt_t* event, void* context);
 
@@ -752,9 +756,9 @@ int BleObject::BleGap::setDeviceAddress(const hal_ble_addr_t* address) const {
     if (newAddr.addr_type != BLE_SIG_ADDR_TYPE_PUBLIC && newAddr.addr_type != BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    if (newAddr.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
+    if (newAddr.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC && (newAddr.addr[5] & 0xC0) != 0xC0) {
         // For random static address, the two most significant bits of the address shall be equal to 1.
-        newAddr.addr[5] |= 0xC0;
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     ble_gap_addr_t bleGapAddr = toPlatformAddress(newAddr);
     int ret = sd_ble_gap_addr_set(&bleGapAddr);
@@ -1289,7 +1293,7 @@ bool BleObject::Observer::isCachedDevice(const hal_ble_addr_t& address) const {
 }
 
 int BleObject::Observer::addCachedDevice(const hal_ble_addr_t& address) {
-    cachedDevices_.append(address);
+    CHECK_TRUE(cachedDevices_.append(address), SYSTEM_ERROR_NO_MEMORY);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1316,11 +1320,10 @@ int BleObject::Observer::addPendingResult(const hal_ble_scan_result_evt_t& resul
 
 void BleObject::Observer::removePendingResult(const hal_ble_addr_t& address) {
     // Note: this function isn't responsible for freeing the memory allocated for the advertising data.
-    size_t i = 0;
-    for (const auto& result : pendingResults_) {
-        if (addressEqual(result.peer_addr, address)) {
+    for (int i = 0; i < pendingResults_.size(); i = i) {
+        if (addressEqual(pendingResults_[i].peer_addr, address)) {
             pendingResults_.removeAt(i);
-            return;
+            continue;
         }
         i++;
     }
@@ -1339,8 +1342,6 @@ void BleObject::Observer::clearPendingResult() {
 int BleObject::Observer::constructObserverEvent(hal_ble_scan_result_evt_t& result, const ble_gap_evt_adv_report_t& advReport) const {
     if (!advReport.type.scan_response) {
         // Advertising data packet
-        result.version = BLE_API_VERSION;
-        result.size = sizeof(hal_ble_scan_result_evt_t);
         result.type.connectable = advReport.type.connectable;
         result.type.scannable = advReport.type.scannable;
         result.type.directed = advReport.type.directed;
@@ -1551,11 +1552,12 @@ error:
     return SYSTEM_ERROR_INTERNAL;
 }
 
-void BleObject::ConnectionsManager::onPeripheralLinkEventCallback(hal_ble_on_link_evt_cb_t cb, void* context) {
+int BleObject::ConnectionsManager::onPeripheralLinkEventCallback(hal_ble_on_link_evt_cb_t cb, void* context) {
     BleLinkEventHandler handler = {};
     handler.callback = cb;
     handler.context = context;
-    peripheralLinkEventHandlers_.append(handler);
+    CHECK_TRUE(peripheralLinkEventHandlers_.append(handler), SYSTEM_ERROR_NO_MEMORY);
+    return SYSTEM_ERROR_NONE;
 }
 
 int BleObject::ConnectionsManager::setPpcp(const hal_ble_conn_params_t* ppcp) {
@@ -1798,7 +1800,7 @@ BleObject::ConnectionsManager::BleConnection* BleObject::ConnectionsManager::fet
 
 int BleObject::ConnectionsManager::addConnection(const BleConnection& connection) {
     CHECK_TRUE(fetchConnection(connection.info.conn_handle) == nullptr, SYSTEM_ERROR_INTERNAL);
-    connections_.append(connection);
+    CHECK_TRUE(connections_.append(connection), SYSTEM_ERROR_NO_MEMORY);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1924,7 +1926,10 @@ int BleObject::ConnectionsManager::processConnectedEventFromThread(const ble_evt
     connection.info.address = toHalAddress(connected.peer_addr);
     connection.info.att_mtu = BLE_DEFAULT_ATT_MTU_SIZE; // Use the default ATT_MTU on connected.
     connection.isMtuExchanged = false;
-    addConnection(connection);
+    if (addConnection(connection) != SYSTEM_ERROR_NONE) {
+        LOG(ERROR, "Add new connection failed. Disconnects from peer.");
+        return nrf_system_error(sd_ble_gap_disconnect(connection.info.conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION));
+    }
     LOG_DEBUG(TRACE, "BLE role: %d, connection handle: %d", connection.info.role, connection.info.conn_handle);
     LOG_DEBUG(TRACE, "| interval(ms)  latency  timeout(ms) |");
     LOG_DEBUG(TRACE, "  %d*1.25          %d       %d*10", connection.info.conn_params.max_conn_interval,
@@ -1935,8 +1940,6 @@ int BleObject::ConnectionsManager::processConnectedEventFromThread(const ble_evt
         initiateConnParamsUpdateIfNeeded(&connection);
         // Notify the connected event.
         hal_ble_link_evt_t linkEvent = {};
-        linkEvent.version = BLE_API_VERSION;
-        linkEvent.size = sizeof(hal_ble_link_evt_t);
         linkEvent.type = BLE_EVT_CONNECTED;
         linkEvent.conn_handle = connection.info.conn_handle;
         linkEvent.params.connected.info = &connection.info;
@@ -1993,8 +1996,6 @@ int BleObject::ConnectionsManager::processDisconnectedEventFromThread(const ble_
     } else {
         // Notify the connected event.
         hal_ble_link_evt_t linkEvent = {};
-        linkEvent.version = BLE_API_VERSION;
-        linkEvent.size = sizeof(hal_ble_link_evt_t);
         linkEvent.type = BLE_EVT_DISCONNECTED;
         linkEvent.conn_handle = connection->info.conn_handle;
         linkEvent.params.disconnected.reason = disconnected.reason;
@@ -2017,8 +2018,6 @@ int BleObject::ConnectionsManager::processConnParamsUpdatedEventFromThread(const
             connection->info.conn_params.slave_latency, connection->info.conn_params.conn_sup_timeout);
     // Notify the connection parameters updated event.
     hal_ble_link_evt_t linkEvent = {};
-    linkEvent.version = BLE_API_VERSION;
-    linkEvent.size = sizeof(hal_ble_link_evt_t);
     linkEvent.type = BLE_EVT_CONN_PARAMS_UPDATED;
     linkEvent.conn_handle = connection->info.conn_handle;
     linkEvent.params.conn_params_updated.conn_params = &connection->info.conn_params;
@@ -2054,8 +2053,6 @@ int BleObject::ConnectionsManager::processAttMtuExchangeEventFromThread(const bl
     configureAttMtu(event->evt.gatts_evt.conn_handle, effectAttMtu);
     // Notify the ATT MTU updated event.
     hal_ble_link_evt_t linkEvent = {};
-    linkEvent.version = BLE_API_VERSION;
-    linkEvent.size = sizeof(hal_ble_link_evt_t);
     linkEvent.type = BLE_EVT_ATT_MTU_UPDATED;
     linkEvent.conn_handle = event->evt.gatts_evt.conn_handle;
     linkEvent.params.att_mtu_updated.att_mtu_size = effectAttMtu;
@@ -2071,7 +2068,7 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
             const ble_gap_evt_connected_t& connected = event->evt.gap_evt.params.connected;
             ble_evt_t* connectedEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
             if (!connectedEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
+                LOG(ERROR, "Allocate memory for BLE event failed. Disconnect from peer.");
                 sd_ble_gap_disconnect(event->evt.gatts_evt.conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
                 hal_ble_addr_t address = toHalAddress(connected.peer_addr);
                 if (connMgr->isConnecting_ && connected.role == BLE_GAP_ROLE_CENTRAL && addressEqual(address, connMgr->connectingAddr_)) {
@@ -2089,9 +2086,8 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
             ble_evt_t* disconnectedEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
             if (!disconnectedEvent) {
                 LOG(ERROR, "Allocate memory for BLE event failed.");
-                if (connMgr->disconnectingHandle_ == event->evt.gap_evt.conn_handle) {
-                    os_semaphore_give(connMgr->disconnectSemaphore_, false);
-                }
+                // Assert it since the connection is cached but invalid for further reference.
+                SPARK_ASSERT(false);
                 break;
             }
             memcpy(disconnectedEvent, event, sizeof(ble_evt_t));
@@ -2389,13 +2385,14 @@ BleObject::GattServer::BleCharacteristic* BleObject::GattServer::findCharacteris
     return nullptr;
 }
 
-void BleObject::GattServer::addSubscriber(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle) {
+int BleObject::GattServer::addSubscriber(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle) {
     for (auto& subscriber : characteristic->subscribers) {
         if (subscriber == connHandle) {
-            return;
+            return SYSTEM_ERROR_NONE;
         }
     }
-    characteristic->subscribers.append(connHandle);
+    CHECK_TRUE(characteristic->subscribers.append(connHandle), SYSTEM_ERROR_NO_MEMORY);
+    return SYSTEM_ERROR_NONE;
 }
 
 void BleObject::GattServer::removeSubscriber(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle) {
@@ -2423,13 +2420,11 @@ int BleObject::GattServer::processDataWrittenEventFromThread(ble_evt_t* event) {
         return SYSTEM_ERROR_NOT_FOUND;
     }
     hal_ble_char_evt_t charEvent = {};
-    charEvent.version = BLE_API_VERSION;
-    charEvent.size = sizeof(hal_ble_char_evt_t);
     charEvent.conn_handle = event->evt.gatts_evt.conn_handle;
     charEvent.attr_handle = write.handle;
     if (characteristic->charHandles.cccd_handle == write.handle) {
         if (write.data[0] > 0) {
-            addSubscriber(characteristic, event->evt.gatts_evt.conn_handle);
+            CHECK(addSubscriber(characteristic, event->evt.gatts_evt.conn_handle));
         } else {
             removeSubscriber(characteristic, event->evt.gatts_evt.conn_handle);
         }
@@ -2470,8 +2465,8 @@ void BleObject::GattServer::processGattServerEvents(const ble_evt_t* event, void
         }
         case BLE_GATTS_EVT_WRITE: {
             LOG_DEBUG(TRACE, "BLE GATT Server event: data written.");
-            ble_evt_t* dataWrittenEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) + \
-                    event->evt.gatts_evt.params.write.len * sizeof(uint8_t));
+            ble_evt_t* dataWrittenEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
+                    SUB1(event->evt.gatts_evt.params.write.len) * sizeof(uint8_t));
             if (!dataWrittenEvent) {
                 LOG(ERROR, "Allocate memory for received data failed.");
                 break;
@@ -2734,7 +2729,7 @@ int BleObject::GattClient::addPublisher(hal_ble_conn_handle_t connHandle, hal_bl
     pub.valueHandle = valueHandle;
     pub.callback = callback;
     pub.context = context;
-    publishers_.append(pub);
+    CHECK_TRUE(publishers_.append(pub), SYSTEM_ERROR_NO_MEMORY);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2823,8 +2818,6 @@ int BleObject::GattClient::processSvcDiscEventFromThread(const ble_evt_t* event)
     isDiscovering_ = false;
     if (discSvcCallback_) {
         hal_ble_svc_discovered_evt_t svcDiscEvent = {};
-        svcDiscEvent.version = BLE_API_VERSION;
-        svcDiscEvent.size = sizeof(hal_ble_svc_discovered_evt_t);
         svcDiscEvent.conn_handle = currDiscConnHandle_;
         svcDiscEvent.count = discServices_.size();
         svcDiscEvent.services = discServices_.data();
@@ -2857,7 +2850,7 @@ int BleObject::GattClient::processCharDiscEventFromThread(const ble_evt_t* event
                     characteristic.charHandles.decl_handle = charDiscRsp.chars[i].handle_decl;
                     characteristic.charHandles.value_handle = charDiscRsp.chars[i].handle_value;
                     BleObject::toHalUUID(&charDiscRsp.chars[i].uuid, &characteristic.uuid);
-                    discCharacteristics_.append(characteristic);
+                    CHECK_TRUE(discCharacteristics_.append(characteristic), SYSTEM_ERROR_NO_MEMORY);
                 }
                 hal_ble_attr_handle_t currEndHandle = charDiscRsp.chars[charDiscRsp.count - 1].handle_value;
                 if (currEndHandle < currDiscSvc_.end_handle) {
@@ -2941,8 +2934,6 @@ int BleObject::GattClient::processCharDiscEventFromThread(const ble_evt_t* event
     isDiscovering_ = false;
     if (discCharCallback_) {
         hal_ble_char_discovered_evt_t charDiscEvent = {};
-        charDiscEvent.version = BLE_API_VERSION;
-        charDiscEvent.size = sizeof(hal_ble_char_discovered_evt_t);
         charDiscEvent.conn_handle = currDiscConnHandle_;
         charDiscEvent.count = discCharacteristics_.size();
         charDiscEvent.characteristics = discCharacteristics_.data();
@@ -2998,8 +2989,6 @@ int BleObject::GattClient::processDataNotifiedEventFromThread(ble_evt_t* event) 
         }
     }
     hal_ble_char_evt_t charEvent = {};
-    charEvent.version = BLE_API_VERSION;
-    charEvent.size = sizeof(hal_ble_char_evt_t);
     charEvent.conn_handle = event->evt.gattc_evt.conn_handle;
     charEvent.attr_handle = hvx.handle;
     charEvent.type = BLE_EVT_DATA_NOTIFIED;
@@ -3042,14 +3031,12 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                     event->evt.gattc_evt.conn_handle != gattc->currDiscConnHandle_) {
                 break;
             }
-            ble_evt_t* svcDiscEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) + \
-                    event->evt.gattc_evt.params.prim_srvc_disc_rsp.count * sizeof(ble_gattc_service_t));
+            ble_evt_t* svcDiscEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
+                    SUB1(event->evt.gattc_evt.params.prim_srvc_disc_rsp.count) * sizeof(ble_gattc_service_t));
             if (!svcDiscEvent) {
                 LOG(ERROR, "Allocate memory for discovered services failed.");
-                if (gattc->isDiscovering_ && event->evt.gattc_evt.conn_handle == gattc->currDiscConnHandle_) {
-                    gattc->isDiscovering_ = false;
-                    os_semaphore_give(gattc->discoverySemaphore_, false);
-                }
+                // Assert it since the discovered services are incomplete.
+                SPARK_ASSERT(false);
                 break;
             }
             memcpy(svcDiscEvent, event, sizeof(ble_evt_t));
@@ -3064,14 +3051,12 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                     event->evt.gattc_evt.conn_handle != gattc->currDiscConnHandle_) {
                 break;
             }
-            ble_evt_t* charDiscEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) + \
-                    event->evt.gattc_evt.params.char_disc_rsp.count * sizeof(ble_gattc_char_t));
+            ble_evt_t* charDiscEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
+                    SUB1(event->evt.gattc_evt.params.char_disc_rsp.count) * sizeof(ble_gattc_char_t));
             if (!charDiscEvent) {
                 LOG(ERROR, "Allocate memory for discovered characteristics failed.");
-                if (gattc->isDiscovering_ && event->evt.gattc_evt.conn_handle == gattc->currDiscConnHandle_) {
-                    gattc->isDiscovering_ = false;
-                    os_semaphore_give(gattc->discoverySemaphore_, false);
-                }
+                // Assert it since the discovered characteristics are incomplete.
+                SPARK_ASSERT(false);
                 break;
             }
             memcpy(charDiscEvent, event, sizeof(ble_evt_t));
@@ -3086,14 +3071,12 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
                     event->evt.gattc_evt.conn_handle != gattc->currDiscConnHandle_) {
                 return;
             }
-            ble_evt_t* descDiscEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) + \
-                    event->evt.gattc_evt.params.desc_disc_rsp.count * sizeof(ble_gattc_desc_t));
+            ble_evt_t* descDiscEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
+                    SUB1(event->evt.gattc_evt.params.desc_disc_rsp.count) * sizeof(ble_gattc_desc_t));
             if (!descDiscEvent) {
                 LOG(ERROR, "Allocate memory for discovered descriptors failed.");
-                if (gattc->isDiscovering_ && event->evt.gattc_evt.conn_handle == gattc->currDiscConnHandle_) {
-                    gattc->isDiscovering_ = false;
-                    os_semaphore_give(gattc->discoverySemaphore_, false);
-                }
+                // Assert it since the discovered descriptors are incomplete.
+                SPARK_ASSERT(false);
                 break;
             }
             memcpy(descDiscEvent, event, sizeof(ble_evt_t));
@@ -3104,10 +3087,10 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
         }
         case BLE_GATTC_EVT_READ_RSP: {
             LOG_DEBUG(TRACE, "BLE GATT Client event: read response.");
-            ble_evt_t* readRspEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) + \
-                    event->evt.gattc_evt.params.read_rsp.len * sizeof(uint8_t));
+            ble_evt_t* readRspEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
+                    SUB1(event->evt.gattc_evt.params.read_rsp.len) * sizeof(uint8_t));
             if (!readRspEvent) {
-                LOG(ERROR, "Allocate memory for discovered descriptors failed.");
+                LOG(ERROR, "Allocate memory for read response failed.");
                 if (gattc->isReading_ && gattc->currReadConnHandle_ == event->evt.gattc_evt.conn_handle) {
                     gattc->isReading_ = false;
                     os_semaphore_give(gattc->readSemaphore_, false);
@@ -3138,8 +3121,8 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
         }
         case BLE_GATTC_EVT_HVX: {
             LOG_DEBUG(TRACE, "BLE GATT Server event: data notified.");
-            ble_evt_t* dataNotifiedEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) + \
-                    event->evt.gattc_evt.params.hvx.len * sizeof(uint8_t));
+            ble_evt_t* dataNotifiedEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
+                    SUB1(event->evt.gattc_evt.params.hvx.len) * sizeof(uint8_t));
             if (!dataNotifiedEvent) {
                 LOG(ERROR, "Allocate memory for received data failed.");
                 break;
@@ -3369,8 +3352,7 @@ int hal_ble_set_callback_on_periph_link_events(hal_ble_on_link_evt_cb_t callback
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_set_callback_on_periph_link_events().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    BleObject::getInstance().connMgr()->onPeripheralLinkEventCallback(callback, context);
-    return SYSTEM_ERROR_NONE;
+    return BleObject::getInstance().connMgr()->onPeripheralLinkEventCallback(callback, context);
 }
 
 /**********************************************
@@ -3735,23 +3717,23 @@ ssize_t hal_ble_gatt_client_read(hal_ble_conn_handle_t conn_handle, hal_ble_attr
 #if HAL_PLATFORM_BLE_BETA_COMPAT
 
 int hal_ble_set_callback_on_events_deprecated(hal_ble_on_generic_evt_cb_deprecated_t callback, void* context, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_DEPRECATED;
 }
 
 int hal_ble_gap_connect_deprecated(const hal_ble_addr_t* address, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_DEPRECATED;
 }
 
 int hal_ble_gatt_server_add_characteristic_deprecated(const hal_ble_char_init_deprecated_t* char_init, hal_ble_char_handles_t* char_handles, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_DEPRECATED;
 }
 
 int hal_ble_gatt_client_configure_cccd_deprecated(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t cccd_handle, ble_sig_cccd_value_t cccd_value, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_DEPRECATED;
 }
 
 int hal_ble_gap_get_connection_params_deprecated(hal_ble_conn_handle_t conn_handle, hal_ble_conn_params_t* conn_params, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_DEPRECATED;
 }
 
 #endif // #if HAL_PLATFORM_BLE_BETA_COMPAT

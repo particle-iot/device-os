@@ -76,6 +76,11 @@ typedef enum hal_ble_auto_adv_cfg_t {
     BLE_AUTO_ADV_ALWAYS = 2,
 } hal_ble_auto_adv_cfg_t;
 
+typedef enum hal_ble_adv_stopped_reason_t {
+    BLE_ADV_STOPPED_REASON_TIMEOUT = 0x01,
+    BLE_ADV_STOPPED_REASON_LIMIT_REACHED = 0x02
+} hal_ble_adv_stopped_reason_t;
+
 typedef enum hal_ble_scan_fp_t {
     BLE_SCAN_FP_ACCEPT_ALL                      = 0x00,  /**< Accept all advertising packets except directed advertising packets
                                                                    not addressed to this device. */
@@ -116,6 +121,8 @@ typedef enum hal_ble_evts_type_t {
     BLE_EVT_CHAR_CCCD_UPDATED = 0x0B,
     BLE_EVT_MAX = 0x7FFFFFFF
 } hal_ble_evts_type_t;
+
+static_assert(sizeof(hal_ble_evts_type_t) == 4, "length of hal_ble_evts_type_t should be 4-bytes aligned.");
 
 /* BLE device address */
 typedef struct hal_ble_addr_t {
@@ -218,9 +225,17 @@ typedef struct hal_ble_conn_info_t {
 } hal_ble_conn_info_t;
 
 /* BLE events structure */
-typedef struct hal_ble_scan_result_evt_t {
+typedef struct hal_ble_adv_evt_t {
     uint16_t version;
     uint16_t size;
+    hal_ble_evts_type_t type;
+    union {
+        hal_ble_adv_stopped_reason_t reason;
+    } params;
+    uint8_t reserved[3];
+} hal_ble_adv_evt_t;
+
+typedef struct hal_ble_scan_result_evt_t {
     int8_t rssi;
     uint8_t reserved;
     struct {
@@ -255,8 +270,6 @@ typedef struct hal_ble_att_mtu_updated_evt_t {
 } hal_ble_att_mtu_updated_evt_t;
 
 typedef struct hal_ble_link_evt_t {
-    uint16_t version;
-    uint16_t size;
     hal_ble_evts_type_t type;
     union {
         hal_ble_connected_evt_t connected;
@@ -268,16 +281,12 @@ typedef struct hal_ble_link_evt_t {
 } hal_ble_link_evt_t;
 
 typedef struct hal_ble_svc_discovered_evt_t {
-    uint16_t version;
-    uint16_t size;
     size_t count;
     hal_ble_svc_t* services;
     hal_ble_conn_handle_t conn_handle;
 } hal_ble_svc_discovered_evt_t;
 
 typedef struct hal_ble_char_discovered_evt_t {
-    uint16_t version;
-    uint16_t size;
     size_t count;
     hal_ble_char_t* characteristics;
     hal_ble_conn_handle_t conn_handle;
@@ -294,8 +303,6 @@ typedef struct hal_ble_cccd_config_evt_t {
 } hal_ble_cccd_config_evt_t;
 
 typedef struct hal_ble_char_evt_t {
-    uint16_t version;
-    uint16_t size;
     hal_ble_evts_type_t type;
     hal_ble_conn_handle_t conn_handle;
     hal_ble_attr_handle_t attr_handle;
@@ -306,6 +313,7 @@ typedef struct hal_ble_char_evt_t {
     } params;
 } hal_ble_char_evt_t;
 
+typedef void (*hal_ble_on_adv_evt_cb_t)(const hal_ble_adv_evt_t* event, void* context);
 typedef void (*hal_ble_on_link_evt_cb_t)(const hal_ble_link_evt_t* event, void* context);
 typedef void (*hal_ble_on_scan_result_cb_t)(const hal_ble_scan_result_evt_t* result, void* context);
 typedef void (*hal_ble_on_disc_service_cb_t)(const hal_ble_svc_discovered_evt_t* event, void* context);
@@ -393,6 +401,15 @@ int hal_ble_stack_deinit(void* reserved);
  * @returns     0 on success, system_error_t on error.
  */
 int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved);
+
+/**
+ * Set the callback on BLE advertising events.
+ *
+ * @param[in]   callback    The callback function.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_set_callback_on_adv_events(hal_ble_on_adv_evt_cb_t callback, void* context, void* reserved);
 
 /**
  * Set the callback on BLE Peripheral link events.
@@ -906,64 +923,13 @@ ssize_t hal_ble_gatt_client_read(hal_ble_conn_handle_t conn_handle, hal_ble_attr
 
 #if HAL_PLATFORM_BLE_BETA_COMPAT
 
-typedef struct hal_ble_char_init_deprecated_t {
-    uint16_t version;
-    uint16_t size;
-    uint8_t properties;
-    uint8_t reserved[3];
-    const char* description;
-    hal_ble_uuid_t uuid;
-    hal_ble_attr_handle_t service_handle;
-} hal_ble_char_init_deprecated_t;
-
-typedef struct hal_ble_connected_evt_deprecated_t {
-    uint16_t conn_interval;
-    uint16_t slave_latency;
-    uint16_t conn_sup_timeout;
-    hal_ble_role_t role;
-    uint8_t reserved;
-    hal_ble_addr_t peer_addr;
-    hal_ble_conn_handle_t conn_handle;
-} hal_ble_connected_evt_deprecated_t;
-
-typedef struct hal_ble_disconnected_evt_deprecated_t {
-    uint8_t reason;
-    uint8_t reserved[3];
-    hal_ble_conn_handle_t conn_handle;
-} hal_ble_disconnected_evt_deprecated_t;
-
-typedef struct hal_ble_conn_params_updated_evt_deprecated_t {
-    uint16_t conn_interval;
-    uint16_t slave_latency;
-    uint16_t conn_sup_timeout;
-    hal_ble_conn_handle_t conn_handle;
-} hal_ble_conn_params_updated_evt_deprecated_t;
-
-typedef struct hal_ble_att_mtu_updated_evt_deprecated_t {
-    size_t att_mtu_size;
-    hal_ble_conn_handle_t conn_handle;
-} hal_ble_att_mtu_updated_evt_deprecated_t;
-
-typedef struct hal_ble_data_evt_deprecated_t {
-    size_t offset;
-    size_t data_len;
-    uint8_t* data;
-    hal_ble_conn_handle_t conn_handle;
-    hal_ble_attr_handle_t attr_handle;
-} hal_ble_data_evt_deprecated_t;
-
-typedef struct hal_ble_evts_deprecated_t {
-    uint16_t version;
-    uint16_t size;
-    hal_ble_evts_type_t type;
-    union {
-        hal_ble_connected_evt_deprecated_t connected;
-        hal_ble_disconnected_evt_deprecated_t disconnected;
-        hal_ble_conn_params_updated_evt_deprecated_t conn_params_updated;
-        hal_ble_att_mtu_updated_evt_deprecated_t att_mtu_updated;
-        hal_ble_data_evt_deprecated_t data_rec;
-    } params;
-} hal_ble_evts_deprecated_t;
+typedef void* hal_ble_char_init_deprecated_t;
+typedef void* hal_ble_connected_evt_deprecated_t;
+typedef void* hal_ble_disconnected_evt_deprecated_t;
+typedef void* hal_ble_conn_params_updated_evt_deprecated_t;
+typedef void* hal_ble_att_mtu_updated_evt_deprecated_t;
+typedef void* hal_ble_data_evt_deprecated_t;
+typedef void* hal_ble_evts_deprecated_t;
 
 typedef void (*hal_ble_on_generic_evt_cb_deprecated_t)(const hal_ble_evts_deprecated_t* event, void* context);
 

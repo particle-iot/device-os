@@ -224,16 +224,16 @@ public:
     BleUuid(const BleUuid& uuid);
     BleUuid(const uint8_t* uuid128, BleUuidOrder order = BleUuidOrder::LSB);
     BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order = BleUuidOrder::LSB);
-    explicit BleUuid(uint16_t uuid16);
-    explicit BleUuid(const String& uuid);
-    explicit BleUuid(const char* uuid);
+    BleUuid(uint16_t uuid16);
+    BleUuid(const String& uuid);
+    BleUuid(const char* uuid);
     ~BleUuid() = default;
 
     bool isValid() const;
 
     BleUuidType type() const;
 
-    hal_ble_uuid_t& halUUID();
+    hal_ble_uuid_t halUUID();
 
     uint16_t shorted() const;
 
@@ -458,36 +458,24 @@ public:
     ~BlePeerDevice();
 
     // Discover all services on peer device.
-    Vector<BleService>& discoverAllServices();
+    Vector<BleService> discoverAllServices();
     ssize_t discoverAllServices(BleService* services, size_t count);
 
     // Discover all characteristics on peer device.
-    Vector<BleCharacteristic>& discoverAllCharacteristics();
+    Vector<BleCharacteristic> discoverAllCharacteristics();
     ssize_t discoverAllCharacteristics(BleCharacteristic* characteristics, size_t count);
 
     // Fetch the discovered services on peer device.
-    Vector<BleService>& services();
+    Vector<BleService> services();
     size_t services(BleService* services, size_t count);
-    bool getServiceByUUID(BleService* service, const BleUuid& uuid) const;
-
-    template <typename T>
-    bool getServiceByUUID(BleService* service, T uuid) const {
-        BleUuid svcUuid(uuid);
-        return getServiceByUUID(service, svcUuid);
-    }
+    bool getServiceByUUID(BleService& service, const BleUuid& uuid) const;
 
     // Fetch the discovered characteristics on peer device.
-    Vector<BleCharacteristic>& characteristics();
+    Vector<BleCharacteristic> characteristics();
     size_t characteristics(BleCharacteristic* characteristics, size_t count);
-    bool getCharacteristicByDescription(BleCharacteristic* characteristic, const char* desc) const;
-    bool getCharacteristicByDescription(BleCharacteristic* characteristic, const String& desc) const;
-    bool getCharacteristicByUUID(BleCharacteristic* characteristic, const BleUuid& uuid) const;
-
-    template <typename T>
-    bool getCharacteristicByUUID(BleCharacteristic* characteristic, T uuid) const {
-        BleUuid charUuid(uuid);
-        return getCharacteristicByUUID(characteristic, charUuid);
-    }
+    bool getCharacteristicByDescription(BleCharacteristic& characteristic, const char* desc) const;
+    bool getCharacteristicByDescription(BleCharacteristic& characteristic, const String& desc) const;
+    bool getCharacteristicByUUID(BleCharacteristic& characteristic, const BleUuid& uuid) const;
 
     int connect(const BleAddress& addr, const BleConnectionParams* params, bool automatic = true);
     int connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic = true);
@@ -571,7 +559,7 @@ public:
     int stopScanning() const;
 
     // Access local characteristics
-    BleCharacteristic addCharacteristic(BleCharacteristic& characteristic);
+    BleCharacteristic addCharacteristic(const BleCharacteristic& characteristic);
     BleCharacteristic addCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
     BleCharacteristic addCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
 

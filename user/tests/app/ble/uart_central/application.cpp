@@ -65,8 +65,8 @@ void loop() {
                 if (svcCount > 0 && foundServiceUUID == "6E400001-B5A3-F393-E0A9-E50E24DCCA9E") {
                     peer = BLE.connect(results[i].address);
                     if (peer.connected()) {
-                        peer.getCharacteristicByDescription(&peerTxCharacteristic, "tx");
-                        peer.getCharacteristicByUUID(&peerRxCharacteristic, "6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+                        peer.getCharacteristicByDescription(peerTxCharacteristic, "tx");
+                        peer.getCharacteristicByUUID(peerRxCharacteristic, "6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
                     }
                     break;
                 }

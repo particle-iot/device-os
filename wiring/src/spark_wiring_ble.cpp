@@ -109,9 +109,9 @@ RecursiveMutex WiringBleLock::mutex_;
 /*******************************************************
  * BleAddress class
  */
-BleAddress::BleAddress() {
+BleAddress::BleAddress()
+        : address_{} {
     address_.addr_type = BLE_SIG_ADDR_TYPE_PUBLIC;
-    memset(address_.addr, 0x00, BLE_SIG_ADDR_LEN);
 }
 
 BleAddress::BleAddress(const hal_ble_addr_t& addr) {
@@ -183,47 +183,41 @@ hal_ble_addr_t BleAddress::halAddress() const {
 }
 
 String BleAddress::toString(bool stripped) const {
-    String string;
-    uint8_t temp[BLE_SIG_ADDR_LEN];
-    toBigEndian(temp);
-    char* cStr = (char*)malloc(BLE_SIG_ADDR_LEN * 2 + 6);
-    if (cStr) {
-        SCOPE_GUARD ({
-            free(cStr);
-        });
-        if (stripped) {
-            bytes2hexbuf(temp, BLE_SIG_ADDR_LEN, cStr);
-            cStr[BLE_SIG_ADDR_LEN * 2] = '\0';
-        } else {
-            uint8_t idx = 0;
-            bytes2hexbuf(&temp[idx], 1, &cStr[idx]);
-            idx++;
-            cStr[idx * 2] = ':';
-            bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 1]);
-            idx++;
-            cStr[idx * 2 + 1] = ':';
-            bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 2]);
-            idx++;
-            cStr[idx * 2 + 2] = ':';
-            bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 3]);
-            idx++;
-            cStr[idx * 2 + 3] = ':';
-            bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 4]);
-            idx++;
-            cStr[idx * 2 + 4] = ':';
-            bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 5]);
-            idx++;
-            cStr[idx * 2 + 5] = '\0';
-        }
-        string.concat(cStr);
-    }
-    return string;
+    char cStr[BLE_SIG_ADDR_LEN * 2 + 6];
+    size_t len = toString(cStr, sizeof(cStr), stripped);
+    return String(cStr, len);
 }
 
 size_t BleAddress::toString(char* buf, size_t len, bool stripped) const {
-    String string = toString(stripped);
-    len = std::min(len, string.length());
-    memcpy(buf, string.c_str(), len);
+    if (!buf || len == 0) {
+        return 0;
+    }
+    uint8_t temp[BLE_SIG_ADDR_LEN];
+    char cStr[BLE_SIG_ADDR_LEN * 2 + 5];
+    toBigEndian(temp);
+    if (stripped) {
+        bytes2hexbuf(temp, BLE_SIG_ADDR_LEN, cStr);
+    } else {
+        uint8_t idx = 0;
+        bytes2hexbuf(&temp[idx], 1, &cStr[idx]);
+        idx++;
+        cStr[idx * 2] = ':';
+        bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 1]);
+        idx++;
+        cStr[idx * 2 + 1] = ':';
+        bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 2]);
+        idx++;
+        cStr[idx * 2 + 2] = ':';
+        bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 3]);
+        idx++;
+        cStr[idx * 2 + 3] = ':';
+        bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 4]);
+        idx++;
+        cStr[idx * 2 + 4] = ':';
+        bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 5]);
+    }
+    len = std::min(len, sizeof(cStr));
+    memcpy(buf, cStr, len);
     return len;
 }
 
@@ -328,7 +322,7 @@ BleUuidType BleUuid::type() const {
     }
 }
 
-hal_ble_uuid_t& BleUuid::halUUID() {
+hal_ble_uuid_t BleUuid::halUUID() {
     return uuid_;
 }
 
@@ -345,52 +339,46 @@ const uint8_t* BleUuid::rawBytes() const {
 }
 
 String BleUuid::toString(bool stripped) const {
-    String string;
-    if (type() == BleUuidType::SHORT) {
-        char buf[BLE_SIG_UUID_16BIT_LEN * 2 + 1] = {};
-        uint16_t bigEndian = uuid_.uuid16 << 8 | uuid_.uuid16 >> 8;
-        bytes2hexbuf((uint8_t*)&bigEndian, 2, buf);
-        buf[BLE_SIG_UUID_16BIT_LEN * 2] = '\0';
-        string.concat(buf);
-    } else {
-        uint8_t temp[BLE_SIG_UUID_128BIT_LEN];
-        toBigEndian(temp);
-        char* cStr = (char*)malloc(BLE_SIG_UUID_128BIT_LEN * 2 + 5);
-        if (cStr) {
-            SCOPE_GUARD ({
-                free(cStr);
-            });
-            if (stripped) {
-                bytes2hexbuf(temp, BLE_SIG_UUID_128BIT_LEN, cStr);
-                cStr[BLE_SIG_UUID_128BIT_LEN * 2] = '\0';
-            } else {
-                uint8_t idx = 0;
-                bytes2hexbuf(&temp[idx], 4, &cStr[0]);
-                idx += 4;
-                cStr[idx * 2] = '-';
-                bytes2hexbuf(&temp[idx], 2, &cStr[idx * 2 + 1]);
-                idx += 2;
-                cStr[idx * 2 + 1] = '-';
-                bytes2hexbuf(&temp[idx], 2, &cStr[idx * 2 + 2]);
-                idx += 2;
-                cStr[idx * 2 + 2] = '-';
-                bytes2hexbuf(&temp[idx], 2, &cStr[idx * 2 + 3]);
-                idx += 2;
-                cStr[idx * 2 + 3] = '-';
-                bytes2hexbuf(&temp[idx], 6, &cStr[idx * 2 + 4]);
-                idx += 6;
-                cStr[idx * 2 + 4] = '\0';
-            }
-            string.concat(cStr);
-        }
-    }
-    return string;
+    char cStr[BLE_SIG_UUID_128BIT_LEN * 2 + 5];
+    size_t len = toString(cStr, sizeof(cStr));
+    return String(cStr, len);
 }
 
 size_t BleUuid::toString(char* buf, size_t len, bool stripped) const {
-    String string = toString(stripped);
-    len = std::min(len, string.length());
-    memcpy(buf, string.c_str(), len);
+    if (!buf || len == 0) {
+        return 0;
+    }
+    if (type() == BleUuidType::SHORT) {
+        char cStr[BLE_SIG_UUID_16BIT_LEN * 2] = {};
+        uint16_t bigEndian = uuid_.uuid16 << 8 | uuid_.uuid16 >> 8;
+        bytes2hexbuf((uint8_t*)&bigEndian, 2, cStr);
+        len = std::min(len, sizeof(cStr));
+        memcpy(buf, cStr, len);
+        return len;
+    }
+    uint8_t temp[BLE_SIG_UUID_128BIT_LEN];
+    toBigEndian(temp);
+    char cStr[BLE_SIG_UUID_128BIT_LEN * 2 + 4];
+    if (stripped) {
+        bytes2hexbuf(temp, BLE_SIG_UUID_128BIT_LEN, cStr);
+    } else {
+        uint8_t idx = 0;
+        bytes2hexbuf(&temp[idx], 4, &cStr[0]);
+        idx += 4;
+        cStr[idx * 2] = '-';
+        bytes2hexbuf(&temp[idx], 2, &cStr[idx * 2 + 1]);
+        idx += 2;
+        cStr[idx * 2 + 1] = '-';
+        bytes2hexbuf(&temp[idx], 2, &cStr[idx * 2 + 2]);
+        idx += 2;
+        cStr[idx * 2 + 2] = '-';
+        bytes2hexbuf(&temp[idx], 2, &cStr[idx * 2 + 3]);
+        idx += 2;
+        cStr[idx * 2 + 3] = '-';
+        bytes2hexbuf(&temp[idx], 6, &cStr[idx * 2 + 4]);
+    }
+    len = std::min(len, sizeof(cStr));
+    memcpy(buf, cStr, len);
     return len;
 }
 
@@ -993,7 +981,11 @@ public:
                 BlePeerDevice peer;
                 peer.impl()->connHandle() = event->conn_handle;
                 peer.impl()->address() = event->params.connected.info->address;
-                impl->peers_.append(peer);
+                if (!impl->peers_.append(peer)) {
+                    LOG(ERROR, "Failed to append peer Central device.");
+                    hal_ble_gap_disconnect(peer.impl()->connHandle(), nullptr);
+                    return;
+                }
                 LOG(TRACE, "Connected by Central device.");
                 if (impl->connectedCb_) {
                     impl->connectedCb_(peer, impl->connectedContext_);
@@ -1012,7 +1004,7 @@ public:
                 }
                 break;
             }
-            default:{
+            default: {
                 break;
             }
         }
@@ -1136,7 +1128,7 @@ ssize_t BleCharacteristic::setValue(const uint8_t* buf, size_t len) {
     if (buf == nullptr || len == 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    len = len > BLE_MAX_ATTR_VALUE_PACKET_SIZE ? BLE_MAX_ATTR_VALUE_PACKET_SIZE : len;
+    len = std::min(len, (size_t)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
     if (impl()->local()) {
         return hal_ble_gatt_server_set_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
     }
@@ -1163,7 +1155,7 @@ ssize_t BleCharacteristic::getValue(uint8_t* buf, size_t len) const {
     if (buf == nullptr || len == 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    len = len > BLE_MAX_ATTR_VALUE_PACKET_SIZE ? BLE_MAX_ATTR_VALUE_PACKET_SIZE : len;
+    len = std::min(len, (size_t)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
     if (impl()->local()) {
         return hal_ble_gatt_server_get_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
     }
@@ -1181,8 +1173,7 @@ ssize_t BleCharacteristic::getValue(String& str) const {
         });
         int len = getValue((uint8_t*)buf, BLE_MAX_ATTR_VALUE_PACKET_SIZE);
         if (len > 0) {
-            String string(buf, len);
-            str.concat(string);
+            str = String(buf, len);
         }
         return len;
     }
@@ -1277,7 +1268,7 @@ public:
         for (auto& characteristic : peer.impl()->characteristics()) {
             // Read the user description string if presented.
             if (characteristic.impl()->attrHandles().user_desc_handle != BLE_INVALID_ATTR_HANDLE) {
-                char desc[32]; // FIXME: use macro definition instead.
+                char desc[BLE_MAX_DESC_LEN] = {};
                 memset(desc, 0x00, sizeof(desc));
                 size_t len = hal_ble_gatt_client_read(peer.impl()->connHandle(), characteristic.impl()->attrHandles().user_desc_handle, (uint8_t*)desc, sizeof(desc) - 1, nullptr);
                 if (len > 0) {
@@ -1304,7 +1295,9 @@ private:
             service.impl()->UUID() = event->services[i].uuid;
             service.impl()->startHandle() = event->services[i].start_handle;
             service.impl()->endHandle() = event->services[i].end_handle;
-            peer->impl()->services().append(service);
+            if (!peer->impl()->services().append(service)) {
+                LOG(ERROR, "Failed to append discovered service.");
+            }
         }
     }
 
@@ -1336,7 +1329,9 @@ private:
             }
             characteristic.impl()->charUUID() = event->characteristics[i].uuid;
             characteristic.impl()->attrHandles() = event->characteristics[i].charHandles;
-            peer->impl()->characteristics().append(characteristic);
+            if (!peer->impl()->characteristics().append(characteristic)) {
+                LOG(ERROR, "Failed to append discovered characteristic.");
+            }
         }
     }
 };
@@ -1361,7 +1356,7 @@ BlePeerDevice& BlePeerDevice::operator=(const BlePeerDevice& peer) {
     return *this;
 }
 
-Vector<BleService>& BlePeerDevice::discoverAllServices() {
+Vector<BleService> BlePeerDevice::discoverAllServices() {
     if (!impl()->servicesDiscovered()) {
         BleDiscoveryDelegator discovery;
         if (discovery.discoverAllServices(*this) == SYSTEM_ERROR_NONE) {
@@ -1381,7 +1376,7 @@ ssize_t BlePeerDevice::discoverAllServices(BleService* svcs, size_t count) {
     return services(svcs, count);
 }
 
-Vector<BleCharacteristic>& BlePeerDevice::discoverAllCharacteristics() {
+Vector<BleCharacteristic> BlePeerDevice::discoverAllCharacteristics() {
     if (!impl()->servicesDiscovered()) {
         discoverAllServices();
     }
@@ -1407,7 +1402,7 @@ ssize_t BlePeerDevice::discoverAllCharacteristics(BleCharacteristic* chars, size
     return characteristics(chars, count);
 }
 
-Vector<BleService>& BlePeerDevice::services() {
+Vector<BleService> BlePeerDevice::services() {
     return impl()->services();
 }
 
@@ -1420,18 +1415,17 @@ size_t BlePeerDevice::services(BleService* svcs, size_t count) {
     return count;
 }
 
-bool BlePeerDevice::getServiceByUUID(BleService* service, const BleUuid& uuid) const {
-    CHECK_TRUE(service, false);
+bool BlePeerDevice::getServiceByUUID(BleService& service, const BleUuid& uuid) const {
     for (auto& existSvc : impl()->services()) {
         if (existSvc.UUID() == uuid) {
-            *service = existSvc;
+            service = existSvc;
             return true;
         }
     }
     return false;
 }
 
-Vector<BleCharacteristic>& BlePeerDevice::characteristics() {
+Vector<BleCharacteristic> BlePeerDevice::characteristics() {
     return impl()->characteristics();
 }
 
@@ -1444,27 +1438,25 @@ size_t BlePeerDevice::characteristics(BleCharacteristic* chars, size_t count) {
     return count;
 }
 
-bool BlePeerDevice::getCharacteristicByDescription(BleCharacteristic* characteristic, const char* desc) const {
-    CHECK_TRUE(characteristic, false);
+bool BlePeerDevice::getCharacteristicByDescription(BleCharacteristic& characteristic, const char* desc) const {
     CHECK_TRUE(desc, false);
     for (auto& existChar : impl()->characteristics()) {
         if (!strcmp(existChar.description().c_str(), desc)) {
-            *characteristic = existChar;
+            characteristic = existChar;
             return true;
         }
     }
     return true;
 }
 
-bool BlePeerDevice::getCharacteristicByDescription(BleCharacteristic* characteristic, const String& desc) const {
+bool BlePeerDevice::getCharacteristicByDescription(BleCharacteristic& characteristic, const String& desc) const {
     return getCharacteristicByDescription(characteristic, desc.c_str());
 }
 
-bool BlePeerDevice::getCharacteristicByUUID(BleCharacteristic* characteristic, const BleUuid& uuid) const {
-    CHECK_TRUE(characteristic, false);
+bool BlePeerDevice::getCharacteristicByUUID(BleCharacteristic& characteristic, const BleUuid& uuid) const {
     for (auto& existChar : impl()->characteristics()) {
         if (existChar.UUID() == uuid) {
-            *characteristic = existChar;
+            characteristic = existChar;
             return true;
         }
     }
@@ -1493,7 +1485,7 @@ int BlePeerDevice::connect(const BleAddress& addr, const BleConnectionParams* pa
     }
     LOG(TRACE, "New peripheral is connected.");
     if (automatic) {
-        Vector<BleCharacteristic>& characteristics = discoverAllCharacteristics();
+        Vector<BleCharacteristic> characteristics = discoverAllCharacteristics();
         for (auto& characteristic : characteristics) {
             characteristic.subscribe(true);
         }
@@ -1530,6 +1522,7 @@ int BlePeerDevice::connect(bool automatic) {
 }
 
 int BlePeerDevice::disconnect() const {
+    WiringBleLock lk;
     CHECK_TRUE(connected(), SYSTEM_ERROR_INVALID_STATE);
     CHECK(hal_ble_gap_disconnect(impl()->connHandle(), nullptr));
     BleLocalDevice::getInstance().impl()->peers().removeOne(*this);
@@ -1643,7 +1636,7 @@ ssize_t BleLocalDevice::getDeviceName(char* name, size_t len) const {
 String BleLocalDevice::getDeviceName() const {
     String name;
     char buf[BLE_MAX_DEV_NAME_LEN] = {};
-    if (getDeviceName(buf, sizeof(buf) > 0)) {
+    if (getDeviceName(buf, sizeof(buf)) > 0) {
         name.concat(buf);
     }
     return name;
@@ -1660,7 +1653,6 @@ int BleLocalDevice::txPower(int8_t* txPower) const {
 }
 
 int BleLocalDevice::selectAntenna(BleAntennaType antenna) const {
-    WiringBleLock lk;
     return hal_ble_select_antenna(static_cast<hal_ble_ant_type_t>(antenna), nullptr);
 }
 
@@ -1837,8 +1829,9 @@ private:
             }
             return;
         }
-        delegator->resultsVector_.append(result);
-        delegator->foundCount_++;
+        if (delegator->resultsVector_.append(result)) {
+            delegator->foundCount_++;
+        }
     }
 
     Vector<BleScanResult> resultsVector_;
@@ -1928,7 +1921,7 @@ BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, bool automatic) co
 }
 
 int BleLocalDevice::disconnect() const {
-    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
+    WiringBleLock lk;
     for (auto& p : impl()->peers()) {
         hal_ble_conn_info_t connInfo = {};
         CHECK(hal_ble_gap_get_connection_info(p.impl()->connHandle(), &connInfo, nullptr));
@@ -1942,19 +1935,19 @@ int BleLocalDevice::disconnect() const {
 }
 
 int BleLocalDevice::disconnect(const BlePeerDevice& peer) const {
-    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
+    WiringBleLock lk;
     return peer.disconnect();
 }
 
 int BleLocalDevice::disconnectAll() const {
-    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
+    WiringBleLock lk;
     for (auto& p : impl()->peers()) {
         p.disconnect();
     }
     return SYSTEM_ERROR_NONE;
 }
 
-BleCharacteristic BleLocalDevice::addCharacteristic(BleCharacteristic& characteristic) {
+BleCharacteristic BleLocalDevice::addCharacteristic(const BleCharacteristic& characteristic) {
     WiringBleLock lk;
     auto charImpl = characteristic.impl();
     if (charImpl->properties() == BleCharacteristicProperty::NONE) {
@@ -1986,7 +1979,9 @@ BleCharacteristic BleLocalDevice::addCharacteristic(BleCharacteristic& character
         if (hal_ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &halUuid, &svc.impl()->startHandle(), nullptr) != SYSTEM_ERROR_NONE) {
             return characteristic;
         }
-        impl()->services().append(svc);
+        if(!impl()->services().append(svc)) {
+            return characteristic;
+        }
         service = &impl()->services().last();
     }
     charImpl->assignUuidIfNeeded();
@@ -2004,7 +1999,9 @@ BleCharacteristic BleLocalDevice::addCharacteristic(BleCharacteristic& character
     }
     charImpl->local() = true;
     LOG_DEBUG(TRACE, "Add new local characteristic.");
-    impl()->characteristics().append(characteristic);
+    if(!impl()->characteristics().append(characteristic)) {
+        LOG(ERROR, "Failed to append local characteristic.");
+    }
     return characteristic;
 }
 
