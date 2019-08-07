@@ -59,12 +59,12 @@ _stack_end = _system_backup_ram_start;
 _stack_start = _stack_end - _stack_size; /* The lowest address of the stack */
 
 /* User part */
-_user_part_static_ram_size = DEFINED(_user_part_static_ram_size) ? _user_part_static_ram_size : 96K; /* Defined in platform_user_ram.ld */
+_user_part_static_ram_size = DEFINED(_user_part_static_ram_size) ? _user_part_static_ram_size : 89K; /* Defined in platform_user_ram.ld */
 _user_part_static_ram_end = _stack_start;
 _user_part_static_ram_start = _user_part_static_ram_end - _user_part_static_ram_size;
 
 /* SoftDevice */
-_softdevice_ram_size = 16K;
+_softdevice_ram_size = 23K;
 _softdevice_ram_start = _ram_start;
 _softdevice_ram_end = _softdevice_ram_start + _softdevice_ram_size;
 

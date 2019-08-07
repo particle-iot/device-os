@@ -1611,6 +1611,7 @@ bool BleObject::ConnectionsManager::connected(const hal_ble_addr_t* address) {
 }
 
 int BleObject::ConnectionsManager::connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* connHandle) {
+    CHECK_TRUE(connections_.size() < BLE_MAX_LINK_COUNT, SYSTEM_ERROR_LIMIT_EXCEEDED);
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(connHandle, SYSTEM_ERROR_INVALID_ARGUMENT);
     // Stop scanning first to give the scanning semaphore if possible.

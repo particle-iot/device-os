@@ -4,8 +4,8 @@ WRITE_FILE_APPEND = $(shell echo "$(2)" >> $(1))
 COMMA := ,
 
 ifneq (,$(PREBUILD))
-# Should declare enough RAM for inermediate linker script: 96K
-USER_SRAM_LENGTH = 96K
+# Should declare enough RAM for inermediate linker script: 89K
+USER_SRAM_LENGTH = 89K
 else
 DATA_SECTION_LEN  = $(shell arm-none-eabi-objdump -h --section=.data $(INTERMEDIATE_ELF) | grep .data)
 DATA_SECTION_LEN := 0x$(word 3,$(DATA_SECTION_LEN))

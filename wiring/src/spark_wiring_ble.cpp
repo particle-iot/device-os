@@ -791,10 +791,12 @@ public:
         context_ = context;
     }
 
-    void inheritCallback(const BleCharacteristicImpl& charImpl) {
+    void inheritCallback(BleCharacteristicImpl& charImpl) {
         if (charImpl.callback_) {
             callback_ = charImpl.callback_;
             context_ = charImpl.context_;
+            charImpl.callback_ = nullptr;
+            charImpl.context_ = nullptr;
         }
     }
 
