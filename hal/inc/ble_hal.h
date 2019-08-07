@@ -226,8 +226,6 @@ typedef struct hal_ble_conn_info_t {
 
 /* BLE events structure */
 typedef struct hal_ble_adv_evt_t {
-    uint16_t version;
-    uint16_t size;
     hal_ble_evts_type_t type;
     union {
         hal_ble_adv_stopped_reason_t reason;

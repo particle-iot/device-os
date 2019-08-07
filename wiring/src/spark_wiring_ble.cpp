@@ -184,8 +184,8 @@ hal_ble_addr_t BleAddress::halAddress() const {
 
 String BleAddress::toString(bool stripped) const {
     char cStr[BLE_SIG_ADDR_LEN * 2 + 6];
-    size_t len = toString(cStr, sizeof(cStr), stripped);
-    return String(cStr, len);
+    toString(cStr, sizeof(cStr), stripped);
+    return String(cStr);
 }
 
 size_t BleAddress::toString(char* buf, size_t len, bool stripped) const {
@@ -216,8 +216,9 @@ size_t BleAddress::toString(char* buf, size_t len, bool stripped) const {
         cStr[idx * 2 + 4] = ':';
         bytes2hexbuf(&temp[idx], 1, &cStr[idx * 2 + 5]);
     }
-    len = std::min(len, sizeof(cStr));
+    len = std::min(len - 1, sizeof(cStr));
     memcpy(buf, cStr, len);
+    buf[len++] = '\0';
     return len;
 }
 
@@ -340,8 +341,8 @@ const uint8_t* BleUuid::rawBytes() const {
 
 String BleUuid::toString(bool stripped) const {
     char cStr[BLE_SIG_UUID_128BIT_LEN * 2 + 5];
-    size_t len = toString(cStr, sizeof(cStr));
-    return String(cStr, len);
+    toString(cStr, sizeof(cStr));
+    return String(cStr);
 }
 
 size_t BleUuid::toString(char* buf, size_t len, bool stripped) const {
@@ -352,8 +353,9 @@ size_t BleUuid::toString(char* buf, size_t len, bool stripped) const {
         char cStr[BLE_SIG_UUID_16BIT_LEN * 2] = {};
         uint16_t bigEndian = uuid_.uuid16 << 8 | uuid_.uuid16 >> 8;
         bytes2hexbuf((uint8_t*)&bigEndian, 2, cStr);
-        len = std::min(len, sizeof(cStr));
+        len = std::min(len - 1, sizeof(cStr));
         memcpy(buf, cStr, len);
+        buf[len++] = '\0';
         return len;
     }
     uint8_t temp[BLE_SIG_UUID_128BIT_LEN];
@@ -377,8 +379,9 @@ size_t BleUuid::toString(char* buf, size_t len, bool stripped) const {
         cStr[idx * 2 + 3] = '-';
         bytes2hexbuf(&temp[idx], 6, &cStr[idx * 2 + 4]);
     }
-    len = std::min(len, sizeof(cStr));
+    len = std::min(len - 1, sizeof(cStr));
     memcpy(buf, cStr, len);
+    buf[len++] = '\0';
     return len;
 }
 
@@ -1269,7 +1272,6 @@ public:
             // Read the user description string if presented.
             if (characteristic.impl()->attrHandles().user_desc_handle != BLE_INVALID_ATTR_HANDLE) {
                 char desc[BLE_MAX_DESC_LEN] = {};
-                memset(desc, 0x00, sizeof(desc));
                 size_t len = hal_ble_gatt_client_read(peer.impl()->connHandle(), characteristic.impl()->attrHandles().user_desc_handle, (uint8_t*)desc, sizeof(desc) - 1, nullptr);
                 if (len > 0) {
                     desc[len] = '\0';

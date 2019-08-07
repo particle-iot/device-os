@@ -1314,7 +1314,7 @@ int BleObject::Observer::addPendingResult(const hal_ble_scan_result_evt_t& resul
     if (getPendingResult(result.peer_addr) != nullptr) {
         return SYSTEM_ERROR_INTERNAL;
     }
-    pendingResults_.append(result);
+    CHECK_TRUE(pendingResults_.append(result), SYSTEM_ERROR_NO_MEMORY);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1926,9 +1926,13 @@ int BleObject::ConnectionsManager::processConnectedEventFromThread(const ble_evt
     connection.info.address = toHalAddress(connected.peer_addr);
     connection.info.att_mtu = BLE_DEFAULT_ATT_MTU_SIZE; // Use the default ATT_MTU on connected.
     connection.isMtuExchanged = false;
-    if (addConnection(connection) != SYSTEM_ERROR_NONE) {
+    int ret = addConnection(connection);
+    if (ret != SYSTEM_ERROR_NONE) {
         LOG(ERROR, "Add new connection failed. Disconnects from peer.");
-        return nrf_system_error(sd_ble_gap_disconnect(connection.info.conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION));
+        if (sd_ble_gap_disconnect(connection.info.conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION) != NRF_SUCCESS) {
+            LOG(ERROR, "sd_ble_gap_disconnect() failed.");
+        }
+        return ret;
     }
     LOG_DEBUG(TRACE, "BLE role: %d, connection handle: %d", connection.info.role, connection.info.conn_handle);
     LOG_DEBUG(TRACE, "| interval(ms)  latency  timeout(ms) |");
@@ -2263,7 +2267,7 @@ int BleObject::GattServer::addCharacteristic(const hal_ble_char_init_t* charInit
     characteristic.charHandles.sccd_handle = handles.sccd_handle;
     characteristic.callback = charInit->callback;
     characteristic.context = charInit->context;
-    characteristics_.append(characteristic);
+    CHECK_TRUE(characteristics_.append(characteristic), SYSTEM_ERROR_NO_MEMORY);
     *charHandles = characteristic.charHandles;
     LOG_DEBUG(TRACE, "Characteristic value handle: %d.", handles.value_handle);
     LOG_DEBUG(TRACE, "Characteristic cccd handle: %d.", handles.cccd_handle);
@@ -2787,7 +2791,10 @@ int BleObject::GattClient::processSvcDiscEventFromThread(const ble_evt_t* event)
                 service.start_handle = primSvcDiscRsp.services[i].handle_range.start_handle;
                 service.end_handle = primSvcDiscRsp.services[i].handle_range.end_handle;
                 BleObject::toHalUUID(&primSvcDiscRsp.services[i].uuid, &service.uuid);
-                discServices_.append(service);
+                if (!discServices_.append(service)) {
+                    LOG(ERROR, "Failed to append discovered service.");
+                    // Falls down to continue or finalize the service discovery procedure.
+                }
             }
             hal_ble_attr_handle_t currEndHandle = primSvcDiscRsp.services[primSvcDiscRsp.count - 1].handle_range.end_handle;
             if (discoverAll_ && currEndHandle < SERVICES_TOP_END_HANDLE) {
@@ -2850,7 +2857,10 @@ int BleObject::GattClient::processCharDiscEventFromThread(const ble_evt_t* event
                     characteristic.charHandles.decl_handle = charDiscRsp.chars[i].handle_decl;
                     characteristic.charHandles.value_handle = charDiscRsp.chars[i].handle_value;
                     BleObject::toHalUUID(&charDiscRsp.chars[i].uuid, &characteristic.uuid);
-                    CHECK_TRUE(discCharacteristics_.append(characteristic), SYSTEM_ERROR_NO_MEMORY);
+                    if (!discCharacteristics_.append(characteristic)) {
+                        LOG(ERROR, "Failed to append discovered characteristic.");
+                        // Falls down to continue or finalize the characteristic discovery procedure.
+                    }
                 }
                 hal_ble_attr_handle_t currEndHandle = charDiscRsp.chars[charDiscRsp.count - 1].handle_value;
                 if (currEndHandle < currDiscSvc_.end_handle) {
