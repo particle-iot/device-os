@@ -19,9 +19,37 @@
 
 #include "system_mode.h"
 #include "system_task.h"
-static System_Mode_TypeDef current_mode = DEFAULT;
+#include "system_cloud.h"
+
+namespace {
+
+System_Mode_TypeDef current_mode = DEFAULT;
 
 volatile uint8_t SPARK_CLOUD_AUTO_CONNECT = 1; //default is AUTOMATIC mode
+
+int systemResetImpl(system_reset_mode mode, system_reset_reason reason, unsigned value, unsigned flags) {
+    if (!(flags & SYSTEM_RESET_FLAG_NO_WAIT)) {
+        // Disconnect from the cloud gracefully
+        cloud_disconnect(CLOUD_DISCONNECT_DEFAULT_FLAGS, CLOUD_DISCONNECT_REASON_SYSTEM_RESET, reason);
+    }
+    switch (mode) {
+    case SYSTEM_RESET_MODE_DFU:
+        HAL_Core_Enter_Bootloader(flags & SYSTEM_RESET_FLAG_PERSIST_DFU);
+        break;
+    case SYSTEM_RESET_MODE_SAFE:
+        HAL_Core_Enter_Safe_Mode(nullptr);
+        break;
+    case SYSTEM_RESET_MODE_FACTORY:
+        HAL_Core_Factory_Reset();
+        break;
+    default: // SYSTEM_RESET_MODE_NORMAL
+        HAL_Core_System_Reset_Ex(reason, value, nullptr);
+        break;
+    }
+    return 0; // Not reachable
+}
+
+} // unnamed
 
 void spark_cloud_flag_connect(void)
 {
@@ -105,3 +133,38 @@ spark::feature::State system_thread_get_state(void*)
 }
 
 #endif
+
+int system_reset(unsigned mode, unsigned reason, unsigned value, unsigned flags, void* reserved) {
+    unsigned defaultReason = RESET_REASON_NONE;
+    switch (mode) {
+    case SYSTEM_RESET_MODE_NORMAL:
+        defaultReason = RESET_REASON_UNKNOWN;
+        break;
+    case SYSTEM_RESET_MODE_DFU:
+        defaultReason = RESET_REASON_DFU_MODE;
+        break;
+    case SYSTEM_RESET_MODE_SAFE:
+        defaultReason = RESET_REASON_SAFE_MODE;
+        break;
+    case SYSTEM_RESET_MODE_FACTORY:
+        defaultReason = RESET_REASON_FACTORY_RESET;
+        break;
+    default:
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if (reason == RESET_REASON_NONE) {
+        reason = defaultReason;
+    }
+    // Reset immediately if requested or if we're not connected to the cloud
+    if (!spark_cloud_flag_connected()) {
+        flags |= SYSTEM_RESET_FLAG_NO_WAIT;
+    }
+    if (flags & SYSTEM_RESET_FLAG_NO_WAIT) {
+        // Reset the system directly in the calling thread
+        systemResetImpl((system_reset_mode)mode, (system_reset_reason)reason, value, flags);
+    } else {
+        // Gracefully disconnect from the cloud and reset the system in the system thread
+        SYSTEM_THREAD_CONTEXT_SYNC(systemResetImpl((system_reset_mode)mode, (system_reset_reason)reason, value, flags));
+    }
+    return 0; // Not reachable
+}

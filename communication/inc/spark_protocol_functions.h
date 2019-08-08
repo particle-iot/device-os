@@ -241,7 +241,10 @@ typedef enum cloud_disconnect_reason {
     CLOUD_DISCONNECT_REASON_ERROR = 1, ///< Disconnected due to an error.
     CLOUD_DISCONNECT_REASON_USER = 2, ///< Disconnected at the user's request.
     CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT = 3, ///< Disconnected due to a network disconnection.
-    CLOUD_DISCONNECT_REASON_LISTENING = 4 ///< Disconnected when entering the listening mode.
+    CLOUD_DISCONNECT_REASON_LISTENING = 4, ///< Disconnected to enter the listening mode.
+    CLOUD_DISCONNECT_REASON_SYSTEM_RESET = 5, ///< Disconnected due to a system reset.
+    CLOUD_DISCONNECT_REASON_SLEEP = 6, ///< Disconnected to enter the sleep mode.
+    CLOUD_DISCONNECT_REASON_UNKNOWN = 7 ///< Unspecified disconnection reason.
 } cloud_disconnect_reason;
 
 /**

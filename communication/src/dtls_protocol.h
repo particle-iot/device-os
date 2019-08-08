@@ -81,8 +81,10 @@ public:
 			int r = ProtocolError::NO_ERROR;
 			if (param) {
 				const auto p = (const spark_disconnect_command*)param;
-				r = send_close((cloud_disconnect_reason)p->disconnect_reason, (system_reset_reason)p->reset_reason,
-						p->sleep_duration);
+				if (p->disconnect_reason != CLOUD_DISCONNECT_REASON_NONE) {
+					r = send_close((cloud_disconnect_reason)p->disconnect_reason, (system_reset_reason)p->reset_reason,
+							p->sleep_duration);
+				}
 			}
 			if (r == ProtocolError::NO_ERROR) {
 				r = wait_confirmable();
