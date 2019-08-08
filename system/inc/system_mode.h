@@ -47,6 +47,37 @@ void system_thread_set_state(spark::feature::State feature, void* reserved);
 spark::feature::State system_thread_get_state(void*);
 uint16_t system_button_pushed_duration(uint8_t button, void* reserved);
 
+/**
+ * System reset mode.
+ */
+typedef enum system_reset_mode {
+    SYSTEM_RESET_MODE_INVALID_ = 0, ///< Invalid reset mode.
+    SYSTEM_RESET_MODE_NORMAL = 1, ///< Normal system reset.
+    SYSTEM_RESET_MODE_DFU = 2, ///< Reset into DFU mode.
+    SYSTEM_RESET_MODE_SAFE = 3, ///< Reset into safe mode.
+    SYSTEM_RESET_MODE_FACTORY = 4 ///< Factory reset.
+} system_reset_mode;
+
+/**
+ * System reset flags.
+ */
+typedef enum system_reset_flag {
+    SYSTEM_RESET_FLAG_NO_WAIT = 0x01; ///< Reset immediately.
+    SYSTEM_RESET_FLAG_PERSIST_DFU = 0x02; ///< Persistent DFU mode (see `System.dfu()`).
+} system_reset_flag;
+
+/**
+ * Reset the system.
+ *
+ * @param mode Reset mode (a value defined by the `system_reset_mode` enum).
+ * @param reason Reset reason (a value defined by the `system_reset_reason` enum).
+ * @param value Additional mode-specific parameter.
+ * @param flags System reset flags (a combination of flags defined by the `system_reset_flag` enum).
+ * @param reserved This argument should be set to NULL.
+ * @return 0 on success or a negative result code in case of an error.
+ */
+int system_reset(unsigned mode, unsigned reason, unsigned value, unsigned flags, void* reserved);
+
 #ifdef __cplusplus
 }
 #endif

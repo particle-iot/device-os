@@ -128,8 +128,31 @@ extern "C" {
 String spark_deviceID(void);
 #endif
 
-void cloud_disconnect(bool closeSocket = true, bool graceful = false, cloud_disconnect_reason reason = CLOUD_DISCONNECT_REASON_NONE);
-void cloud_disconnect_graceful(bool closeSocket = true, cloud_disconnect_reason reason = CLOUD_DISCONNECT_REASON_NONE);
+/**
+ * Flags for `cloud_disconnect()`.
+ */
+enum CloudDisconnectFlag {
+    CLOUD_DISCONNECT_FLAG_CLOSE_SOCKET = 0x01, ///< Close the socket.
+    CLOUD_DISCONNECT_FLAG_GRACEFUL = 0x02 ///< Disconnect gracefully.
+};
+
+/**
+ * Default flags for `cloud_disconnect()`.
+ */
+const unsigned CLOUD_DISCONNECT_DEFAULT_FLAGS = CLOUD_DISCONNECT_FLAG_CLOSE_SOCKET | CLOUD_DISCONNECT_FLAG_GRACEFUL;
+
+/**
+ * Close the cloud connection.
+ *
+ * @param flags Disconnection flags (a combination of flags defined by `cloud_disconnect_flag`).
+ * @param reason Disconnection reason.
+ * @param resetReason System reset reason.
+ * @param sleepDuration Sleep duration in seconds.
+ */
+// TODO: The interface of this function is convoluted, consider wrapping the arguments into a parameters object
+void cloud_disconnect(unsigned flags = CLOUD_DISCONNECT_DEFAULT_FLAGS,
+        cloud_disconnect_reason disconnectReason = CLOUD_DISCONNECT_REASON_UNKNOWN,
+        system_reset_reason resetReason = RESET_REASON_NONE, unsigned sleepDuration = 0);
 
 class String;
 
