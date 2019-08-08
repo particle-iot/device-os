@@ -297,7 +297,9 @@ void DTLSMessageChannel::init()
 	mbedtls_ssl_config_init (&conf);
 	mbedtls_x509_crt_init (&clicert);
 	mbedtls_pk_init (&pkey);
+#if defined(MBEDTLS_DEBUG_C)
 	mbedtls_debug_set_threshold(1);
+#endif
 }
 
 void DTLSMessageChannel::dispose()

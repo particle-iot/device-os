@@ -15,7 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "application.h"
+#include "Particle.h"
 
 #define SCAN_RESULT_COUNT       30
 #define BLE_ADV_DATA_MAX        31
@@ -40,9 +40,8 @@ void loop() {
 
         LOG(TRACE, "%d devices are found:", count);
         for (int i = 0; i < count; i++) {
-            LOG(TRACE, " -------- MAC: %02X:%02X:%02X:%02X:%02X:%02X | RSSI: %dBm --------",
-                    results[i].address[0], results[i].address[1], results[i].address[2],
-                    results[i].address[3], results[i].address[4], results[i].address[5], results[i].rssi);
+            BleAddress address = results[i].address;
+            LOG(TRACE, " -------- MAC: %s | RSSI: %dBm --------", address.toString().c_str(), results[i].rssi);
 
             String name = results[i].advertisingData.deviceName();
             if (name.length() > 0) {

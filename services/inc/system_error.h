@@ -47,6 +47,7 @@
         (INVALID_ARGUMENT, "Invalid argument", -270), \
         (BAD_DATA, "Invalid data format", -280), \
         (OUT_OF_RANGE, "Out of range", -290), \
+        (DEPRECATED, "Deprecated", -300), \
         (COAP, "CoAP error", -1000), /* -1199 ... -1000: CoAP errors */ \
         (COAP_4XX, "CoAP: 4xx", -1100), \
         (COAP_5XX, "CoAP: 5xx", -1132), \

@@ -138,10 +138,11 @@ private:
     size_t readSome(char* data, size_t size);
     void sendBuffer(Buffer* buf);
 
-    int connected(const hal_ble_evts_t& event);
-    int disconnected(const hal_ble_evts_t& event);
-    int gattParamChanged(const hal_ble_evts_t& event);
-    int dataReceived(const hal_ble_evts_t& event);
+    int connected(const hal_ble_link_evt_t& event);
+    int disconnected(const hal_ble_link_evt_t& event);
+    int gattParamChanged(const hal_ble_link_evt_t& event);
+    int dataReceived(const hal_ble_char_evt_t& event);
+    int cccdChanged(const hal_ble_char_evt_t& event);
 
     int initProfile();
 #if BLE_CHANNEL_SECURITY_ENABLED
@@ -157,7 +158,8 @@ private:
     int allocPooledBuffer(size_t size, Buffer** buf);
     void freePooledBuffer(Buffer* buf);
 
-    static void processBleEvent(const hal_ble_evts_t *event, void* context);
+    static void onBleCharEvents(const hal_ble_char_evt_t *event, void* context);
+    static void onBleLinkEvents(const hal_ble_link_evt_t* event, void* context);
 };
 
 inline void BleControlRequestChannel::sendBuffer(Buffer* buf) {

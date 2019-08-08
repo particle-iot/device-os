@@ -15,7 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "application.h"
+#include "Particle.h"
 
 SYSTEM_MODE(MANUAL);
 
@@ -29,9 +29,6 @@ BleScanResult results[SCAN_RESULT_COUNT];
 BleCharacteristic peerTxCharacteristic;
 BleCharacteristic peerRxCharacteristic;
 BlePeerDevice peer;
-
-const BleUuid svcUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
-BleUuid foundServiceUUID;
 
 uint8_t txBuf[UART_TX_BUF_SIZE];
 size_t txLen = 0;
@@ -63,12 +60,13 @@ void loop() {
         size_t count = BLE.scan(results, SCAN_RESULT_COUNT);
         if (count > 0) {
             for (uint8_t i = 0; i < count; i++) {
+                BleUuid foundServiceUUID;
                 size_t svcCount = results[i].advertisingData.serviceUUID(&foundServiceUUID, 1);
-                if (svcCount > 0 && foundServiceUUID == svcUUID) {
+                if (svcCount > 0 && foundServiceUUID == "6E400001-B5A3-F393-E0A9-E50E24DCCA9E") {
                     peer = BLE.connect(results[i].address);
                     if (peer.connected()) {
-                        peerTxCharacteristic = peer.getCharacteristicByDescription("tx");
-                        peerRxCharacteristic = peer.getCharacteristicByUUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+                        peer.getCharacteristicByDescription(peerTxCharacteristic, "tx");
+                        peer.getCharacteristicByUUID(peerRxCharacteristic, "6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
                     }
                     break;
                 }
