@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "spark_protocol_functions.h"
 #include "coap.h"
 #include "protocol_defs.h"
 #include "system_defs.h"
