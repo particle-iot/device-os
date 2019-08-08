@@ -29,3 +29,30 @@ typedef enum network_interface_index {
     NETWORK_INTERFACE_WIFI_STA = 4,
     NETWORK_INTERFACE_WIFI_AP = 5
 } network_interface_index;
+
+/**
+ * System reset reason.
+ *
+ * @note These reason codes are converted to string identifiers and get published via the
+ * spark/device/last_reset event. When adding a new reason code, make sure to update the
+ * mappings accordingly.
+ */
+typedef enum system_reset_reason {
+    RESET_REASON_NONE = 0, ///< Invalid reason code.
+    RESET_REASON_UNKNOWN = 10, ///< Unspecified reason.
+    // Hardware
+    RESET_REASON_PIN_RESET = 20, ///< Reset from the reset pin.
+    RESET_REASON_POWER_MANAGEMENT = 30, ///< Low-power management reset.
+    RESET_REASON_POWER_DOWN = 40, ///< Power-down reset.
+    RESET_REASON_POWER_BROWNOUT = 50, ///< Brownout reset.
+    RESET_REASON_WATCHDOG = 60, ///< Watchdog reset.
+    // Software
+    RESET_REASON_UPDATE = 70, ///< Successful firmware update.
+    RESET_REASON_UPDATE_ERROR = 80, ///< Generic update error.
+    RESET_REASON_UPDATE_TIMEOUT = 90, ///< Update timeout.
+    RESET_REASON_FACTORY_RESET = 100, ///< Factory reset requested.
+    RESET_REASON_SAFE_MODE = 110, ///< Safe mode requested.
+    RESET_REASON_DFU_MODE = 120, ///< DFU mode requested.
+    RESET_REASON_PANIC = 130, ///< System panic.
+    RESET_REASON_USER = 140 ///< User-requested reset.
+} system_reset_reason;

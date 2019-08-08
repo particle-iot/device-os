@@ -234,12 +234,23 @@ namespace ProtocolCommands {
 };
 
 /**
+ * Cloud disconnection reason.
+ */
+typedef enum cloud_disconnect_reason {
+    CLOUD_DISCONNECT_REASON_NONE = 0, ///< Invalid reason code.
+    CLOUD_DISCONNECT_REASON_ERROR = 1, ///< Disconnected due to an error.
+    CLOUD_DISCONNECT_REASON_USER = 2, ///< Disconnected at the user's request.
+    CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT = 3, ///< Disconnected due to a network disconnection.
+    CLOUD_DISCONNECT_REASON_LISTENING = 4 ///< Disconnected when entering the listening mode.
+} cloud_disconnect_reason;
+
+/**
  * Parameters of the DISCONNECT command.
  */
 typedef struct spark_disconnect_command {
     uint16_t size; ///< Size of this structure.
     unsigned disconnect_reason; ///< Disconnection reason (a value defined by the `cloud_disconnect_reason` enum).
-    unsigned reset_reason; ///< System reset reason (a value defined by the `System_Reset_Reason` enum).
+    unsigned reset_reason; ///< System reset reason (a value defined by the `system_reset_reason` enum).
     unsigned sleep_duration; ///< Duration of the system sleep in seconds.
 } spark_disconnect_command;
 

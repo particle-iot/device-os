@@ -56,29 +56,6 @@ typedef enum
     POWER_BROWNOUT_RESET = 0x06
 } RESET_TypeDef;
 
-// Reason codes are exposed under identifier names via the cloud - ensure the mapping is
-// updated for newly added reason codes
-typedef enum System_Reset_Reason
-{
-    RESET_REASON_NONE = 0,
-    RESET_REASON_UNKNOWN = 10, // Unspecified reason
-    // Hardware
-    RESET_REASON_PIN_RESET = 20, // Reset from the NRST pin
-    RESET_REASON_POWER_MANAGEMENT = 30, // Low-power management reset
-    RESET_REASON_POWER_DOWN = 40, // Power-down reset
-    RESET_REASON_POWER_BROWNOUT = 50, // Brownout reset
-    RESET_REASON_WATCHDOG = 60, // Watchdog reset
-    // Software
-    RESET_REASON_UPDATE = 70, // Successful firmware update
-    RESET_REASON_UPDATE_ERROR = 80, // Generic update error
-    RESET_REASON_UPDATE_TIMEOUT = 90, // Update timeout
-    RESET_REASON_FACTORY_RESET = 100, // Factory reset requested
-    RESET_REASON_SAFE_MODE = 110, // Safe mode requested
-    RESET_REASON_DFU_MODE = 120, // DFU mode requested
-    RESET_REASON_PANIC = 130, // System panic (additional data may contain panic code)
-    RESET_REASON_USER = 140 // User-requested reset
-} System_Reset_Reason;
-
 /* Exported constants --------------------------------------------------------*/
 
 //Following is normally defined via "CFLAGS += -DDFU_BUILD_ENABLE" in makefile
@@ -112,6 +89,7 @@ typedef enum System_Reset_Reason
 #include "watchdog_hal.h"
 #include "core_subsys_hal.h"
 #include "interrupts_hal.h"
+#include "system_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
