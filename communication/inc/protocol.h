@@ -214,7 +214,7 @@ protected:
 	/**
 	 * Send a Close message over the channel.
 	 */
-	ProtocolError send_close(unsigned disconnect_reason, unsigned reset_reason, unsigned sleep_duration)
+	ProtocolError send_close(cloud_disconnect_reason disconnect_reason, system_reset_reason reset_reason, unsigned sleep_duration)
 	{
 		Message msg;
 		channel.create(msg);

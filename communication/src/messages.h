@@ -20,6 +20,7 @@
 
 #include "coap.h"
 #include "protocol_defs.h"
+#include "system_defs.h"
 #include "events.h"
 
 namespace particle
@@ -163,8 +164,8 @@ public:
      */
     static size_t response_size(size_t payload_size, bool has_token);
 
-    static size_t close(unsigned char* buf, size_t size, message_id_t message_id, unsigned disconnect_reason,
-            unsigned reset_reason, unsigned sleep_duration, bool confirmable);
+    static size_t close(unsigned char* buf, size_t size, message_id_t message_id, cloud_disconnect_reason disconnect_reason,
+            system_reset_reason reset_reason, unsigned sleep_duration, bool confirmable);
 };
 
 
