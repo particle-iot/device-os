@@ -410,6 +410,15 @@ int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved);
 int hal_ble_set_callback_on_adv_events(hal_ble_on_adv_evt_cb_t callback, void* context, void* reserved);
 
 /**
+ * Deregister the callback on BLE advertising events.
+ *
+ * @param[in]   callback    The callback function.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_cancel_callback_on_adv_events(hal_ble_on_adv_evt_cb_t callback, void* context, void* reserved);
+
+/**
  * Set the callback on BLE Peripheral link events.
  *
  * @param[in]   callback    The callback function.
