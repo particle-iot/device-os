@@ -946,6 +946,7 @@ void BleObject::Broadcaster::cancelAdvEventCallback(hal_ble_on_adv_evt_cb_t call
         const auto& handler = advEventHandlers_[i];
         if (handler.callback == callback && handler.context == context) {
             advEventHandlers_.removeAt(i);
+            continue;
         }
         i++;
     }
