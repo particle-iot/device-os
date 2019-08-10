@@ -65,7 +65,10 @@ extern "C" {
 */
 void setADCSampleTime(uint8_t ADC_SampleTime);
 int32_t analogRead(uint16_t pin);
+
+#if (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_XENON)
 void analogReference(vref_e v);
+#endif
 
 /*
 * GPIO

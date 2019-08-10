@@ -25,8 +25,10 @@ Serial1LogHandler logHandler(115200);
 /* executes once at startup */
 void setup() {
     HAL_ADC_DMA_Init();
+    #if (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_XENON)
     HAL_ADC_Set_VREF(INTERNAL);
     HAL_ADC_Set_VREF(AR_DEFAULT);
+    #endif
 }
 
 /* executes continuously after setup() runs */

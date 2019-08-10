@@ -46,7 +46,7 @@ void HAL_ADC_Set_Sample_Time(uint8_t ADC_SampleTime)
 /*
  * @brief @brief Set the ADC reference to either VDD / 4 (AR_DEFAULT) or the internal 0.6v (INTERNAL)
  */
-
+#if (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_XENON)
 void HAL_ADC_Set_VREF(vref_e v_e){
     switch (v_e) {
         case AR_DEFAULT: VREF = NRF_SAADC_REFERENCE_VDD4; break;
@@ -57,7 +57,7 @@ void HAL_ADC_Set_VREF(vref_e v_e){
     }
 
 }
-
+#endif
 
 /*
  * @brief Read the analog value of a pin.

@@ -39,6 +39,7 @@ int32_t HAL_ADC_Read(uint16_t pin)
     return 0;
 }
 
+
 /*
  * @brief Initialize the ADC peripheral.
  */
