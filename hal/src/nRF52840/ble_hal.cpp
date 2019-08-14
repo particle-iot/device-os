@@ -72,6 +72,8 @@ namespace {
 
 StaticRecursiveMutex s_bleMutex;
 
+bool bleInListeningMode = false;
+
 const auto BLE_CONN_CFG_TAG = 1;
 
 // BLE service base start handle.
@@ -3393,6 +3395,16 @@ int hal_ble_unlock(void* reserved) {
     return !s_bleMutex.unlock();
 }
 
+int hal_ble_notify_enter_listening_mode(void* reserved) {
+    bleInListeningMode = true;
+    return SYSTEM_ERROR_NONE;
+}
+
+int hal_ble_notify_exit_listening_mode(void* reserved) {
+    bleInListeningMode = false;
+    return SYSTEM_ERROR_NONE;
+}
+
 int hal_ble_stack_init(void* reserved) {
     BleLock lk;
     /* The SoftDevice has been enabled in core_hal.c */
@@ -3486,6 +3498,7 @@ int hal_ble_gap_set_ppcp(const hal_ble_conn_params_t* ppcp, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_ppcp().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(bleInListeningMode, SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().connMgr()->setPpcp(ppcp);
 }
 
@@ -3514,6 +3527,7 @@ int hal_ble_gap_set_tx_power(int8_t tx_power, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_tx_power().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(bleInListeningMode, SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().broadcaster()->setTxPower(tx_power);
 }
 
@@ -3528,6 +3542,7 @@ int hal_ble_gap_set_advertising_parameters(const hal_ble_adv_params_t* adv_param
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_advertising_parameters().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(bleInListeningMode, SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().broadcaster()->setAdvertisingParams(adv_params);
 }
 
@@ -3542,6 +3557,7 @@ int hal_ble_gap_set_advertising_data(const uint8_t* buf, size_t len, void* reser
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_advertising_data().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(bleInListeningMode, SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().broadcaster()->setAdvertisingData(buf, len);
 }
 
@@ -3556,6 +3572,7 @@ int hal_ble_gap_set_scan_response_data(const uint8_t* buf, size_t len, void* res
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_scan_response_data().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(bleInListeningMode, SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().broadcaster()->setScanResponseData(buf, len);
 }
 
@@ -3577,6 +3594,7 @@ int hal_ble_gap_set_auto_advertise(hal_ble_auto_adv_cfg_t config, void* reserved
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_auto_advertise().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(bleInListeningMode, SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().broadcaster()->setAutoAdvertiseScheme(config);
 }
 
@@ -3591,12 +3609,13 @@ int hal_ble_gap_stop_advertising(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_stop_advertising().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(bleInListeningMode, SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().broadcaster()->stopAdvertising();
 }
 
 bool hal_ble_gap_is_advertising(void* reserved) {
     BleLock lk;
-    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(BleObject::getInstance().initialized(), false);
     return BleObject::getInstance().broadcaster()->advertising();
 }
 
@@ -3623,7 +3642,7 @@ int hal_ble_gap_start_scan(hal_ble_on_scan_result_cb_t callback, void* context, 
 
 bool hal_ble_gap_is_scanning(void* reserved) {
     BleLock lk;
-    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(BleObject::getInstance().initialized(), false);
     return BleObject::getInstance().observer()->scanning();
 }
 
@@ -3643,12 +3662,12 @@ int hal_ble_gap_connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t*
 
 bool hal_ble_gap_is_connecting(const hal_ble_addr_t* address, void* reserved) {
     BleLock lk;
-    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(BleObject::getInstance().initialized(), false);
     return BleObject::getInstance().connMgr()->connecting(address);
 }
 
 bool hal_ble_gap_is_connected(const hal_ble_addr_t* address, void* reserved) {
-    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(BleObject::getInstance().initialized(), false);
     return BleObject::getInstance().connMgr()->connected(address);
 }
 
@@ -3663,6 +3682,9 @@ int hal_ble_gap_disconnect(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_disconnect().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    hal_ble_conn_info_t info = {};
+    CHECK(BleObject::getInstance().connMgr()->getConnectionInfo(conn_handle, &info));
+    CHECK_FALSE(bleInListeningMode && info.role == BLE_ROLE_PERIPHERAL, SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().connMgr()->disconnect(conn_handle);
 }
 
@@ -3670,6 +3692,9 @@ int hal_ble_gap_update_connection_params(hal_ble_conn_handle_t conn_handle, cons
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_update_connection_params().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    hal_ble_conn_info_t info = {};
+    CHECK(BleObject::getInstance().connMgr()->getConnectionInfo(conn_handle, &info));
+    CHECK_FALSE(bleInListeningMode && info.role == BLE_ROLE_PERIPHERAL, SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().connMgr()->updateConnectionParams(conn_handle, conn_params);
 }
 
@@ -3756,7 +3781,7 @@ int hal_ble_gatt_client_discover_characteristics_by_uuid(hal_ble_conn_handle_t c
 
 bool hal_ble_gatt_client_is_discovering(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
-    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(BleObject::getInstance().initialized(), false);
     return BleObject::getInstance().gattc()->discovering(conn_handle);
 }
 

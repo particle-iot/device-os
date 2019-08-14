@@ -24,6 +24,7 @@
 
 #include <memory>
 #include "ble_hal.h"
+#include "spark_wiring_vector.h"
 
 namespace particle { namespace system {
 
@@ -52,23 +53,24 @@ private:
     const uint16_t BLE_CTRL_REQ_ADV_INTERVAL = BLE_MSEC_TO_UNITS(50, BLE_UNIT_0_625_MS); // Advertising interval: 50ms
     const uint16_t BLE_CTRL_REQ_ADV_TIMEOUT = BLE_MSEC_TO_UNITS(500, BLE_UNIT_10_MS); // Advertising timeout: 500ms
 
+    const int8_t BLE_CTRL_REQ_TX_POWER = 0; //0dBm
+
     const uint8_t BLE_CTRL_REQ_SVC_UUID[BLE_SIG_UUID_128BIT_LEN] = {0xfc,0x36,0x6f,0x54,0x30,0x80,0xf4,0x94,0xa8,0x48,0x4e,0x5c,0x01,0x00,0xa9,0x6f};
 
-    std::unique_ptr<uint8_t[]> preAdvData_;
-    size_t preAdvDataLen_;
-    std::unique_ptr<uint8_t[]> preSrData_;
-    size_t preSrDataLen_;
+    Vector<uint8_t> preAdvData_;
+    Vector<uint8_t> preSrData_;
     hal_ble_adv_params_t preAdvParams_;
+    int8_t preTxPower_;
     hal_ble_conn_params_t prePpcp_;
     bool preAdvertising_;
     bool preConnected_;
     hal_ble_auto_adv_cfg_t preAutoAdv_;
     bool userAdv_;
+    bool restoreUserConfig_;
+    static bool exited_;
 
-    std::unique_ptr<uint8_t[]> ctrlReqAdvData_;
-    size_t ctrlReqAdvDataLen_;
-    std::unique_ptr<uint8_t[]> ctrlReqSrData_;
-    size_t ctrlReqSrDataLen_;
+    Vector<uint8_t> ctrlReqAdvData_;
+    Vector<uint8_t> ctrlReqSrData_;
 };
 
 } } /* particle::system */

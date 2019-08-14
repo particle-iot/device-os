@@ -34,112 +34,103 @@ using namespace particle::system;
 } // unnamed
 
 BleListeningModeHandler::BleListeningModeHandler()
-        : preAdvData_(nullptr),
-          preAdvDataLen_(0),
-          preSrData_(nullptr),
-          preSrDataLen_(0),
-          preAdvParams_(),
+        : preAdvParams_(),
+          preTxPower_(0),
           prePpcp_(),
           preAdvertising_(false),
           preConnected_(false),
           preAutoAdv_(BLE_AUTO_ADV_ALWAYS),
           userAdv_(false),
-          ctrlReqAdvData_(nullptr),
-          ctrlReqAdvDataLen_(0),
-          ctrlReqSrData_(nullptr),
-          ctrlReqSrDataLen_(0) {
+          restoreUserConfig_(false) {
 }
 
 BleListeningModeHandler::~BleListeningModeHandler() {
 }
 
 int BleListeningModeHandler::constructControlRequestAdvData() {
-    ctrlReqAdvData_.reset(new(std::nothrow) uint8_t[BLE_MAX_ADV_DATA_LEN]);
-    CHECK_TRUE(ctrlReqAdvData_, SYSTEM_ERROR_NO_MEMORY);
-    ctrlReqSrData_.reset(new(std::nothrow) uint8_t[BLE_MAX_ADV_DATA_LEN]);
-    CHECK_TRUE(ctrlReqSrData_, SYSTEM_ERROR_NO_MEMORY);
-    ctrlReqAdvDataLen_ = 0;
-    ctrlReqSrDataLen_ = 0;
+    CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
+
+    Vector<uint8_t> tempAdvData;
+    Vector<uint8_t> tempSrData;
 
     // AD Flag
-    ctrlReqAdvData_[ctrlReqAdvDataLen_++] = 0x02;
-    ctrlReqAdvData_[ctrlReqAdvDataLen_++] = BLE_SIG_AD_TYPE_FLAGS;
-    ctrlReqAdvData_[ctrlReqAdvDataLen_++] = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+    CHECK_TRUE(tempAdvData.append(0x02), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_FLAGS), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(tempAdvData.append(BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE), SYSTEM_ERROR_NO_MEMORY);
 
     char devName[32] = {};
     CHECK(get_device_name(devName, sizeof(devName)));
 
     // Complete local name
-    ctrlReqAdvData_[ctrlReqAdvDataLen_++] = strlen(devName) + 1;
-    ctrlReqAdvData_[ctrlReqAdvDataLen_++] = BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME;
-    memcpy(&ctrlReqAdvData_[ctrlReqAdvDataLen_], devName, strlen(devName));
-    ctrlReqAdvDataLen_ += strlen(devName);
+    CHECK_TRUE(tempAdvData.append(strlen(devName) + 1), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_COMPLETE_LOCAL_NAME), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(tempAdvData.append((uint8_t*)devName, strlen(devName)), SYSTEM_ERROR_NO_MEMORY);
 
     uint16_t platformID = PLATFORM_ID;
     uint16_t companyID = PARTICLE_COMPANY_ID;
 
     // Manufacturing specific data
-    ctrlReqAdvData_[ctrlReqAdvDataLen_++] = sizeof(platformID) + sizeof(companyID) + 1;
-    ctrlReqAdvData_[ctrlReqAdvDataLen_++] = BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA;
-    memcpy(&ctrlReqAdvData_[ctrlReqAdvDataLen_], (uint8_t*)&companyID, 2);
-    ctrlReqAdvDataLen_ += sizeof(companyID);
-    memcpy(&ctrlReqAdvData_[ctrlReqAdvDataLen_], (uint8_t*)&platformID, sizeof(platformID));
-    ctrlReqAdvDataLen_ += sizeof(platformID);
+    CHECK_TRUE(tempAdvData.append(sizeof(platformID) + sizeof(companyID) + 1), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(tempAdvData.append((uint8_t*)&companyID, 2), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(tempAdvData.append((uint8_t*)&platformID, sizeof(platformID)), SYSTEM_ERROR_NO_MEMORY);
 
     // Particle Control Request Service 128-bits UUID
-    ctrlReqSrData_[ctrlReqSrDataLen_++] = sizeof(BLE_CTRL_REQ_SVC_UUID) + 1;
-    ctrlReqSrData_[ctrlReqSrDataLen_++] = BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE;
-    memcpy(&ctrlReqSrData_[ctrlReqSrDataLen_], BLE_CTRL_REQ_SVC_UUID, sizeof(BLE_CTRL_REQ_SVC_UUID));
-    ctrlReqSrDataLen_ += sizeof(BLE_CTRL_REQ_SVC_UUID);
+    CHECK_TRUE(tempSrData.append(sizeof(BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(tempSrData.append(BLE_CTRL_REQ_SVC_UUID, sizeof(BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
+
+    ctrlReqAdvData_ = std::move(tempAdvData);
+    ctrlReqSrData_ = std::move(tempSrData);
     return SYSTEM_ERROR_NONE;
 }
 
 int BleListeningModeHandler::cacheUserConfigurations() {
     LOG_DEBUG(TRACE, "Cache user's BLE configurations.");
+    CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
+
+    Vector<uint8_t> tempAdvData(BLE_MAX_ADV_DATA_LEN);
+    Vector<uint8_t> tempSrData(BLE_MAX_ADV_DATA_LEN);
 
     // Advertising data set by user application
-    preAdvDataLen_ = hal_ble_gap_get_advertising_data(nullptr, 0, nullptr);
-    CHECK(preAdvDataLen_);
-    if (preAdvDataLen_ > 0) {
-        preAdvData_.reset(new(std::nothrow) uint8_t[preAdvDataLen_]);
-        CHECK_TRUE(preAdvData_, SYSTEM_ERROR_NO_MEMORY);
-        hal_ble_gap_get_advertising_data(preAdvData_.get(), preAdvDataLen_, nullptr);
-    }
+    size_t len = hal_ble_gap_get_advertising_data(tempAdvData.data(), BLE_MAX_ADV_DATA_LEN, nullptr);
+    CHECK(len);
+    tempAdvData.resize(len);
 
     // Scan response data set by user application
-    preSrDataLen_ = hal_ble_gap_get_scan_response_data(nullptr, 0, nullptr);
-    CHECK(preSrDataLen_);
-    if (preSrDataLen_ > 0) {
-        preSrData_.reset(new(std::nothrow) uint8_t[preSrDataLen_]);
-        CHECK_TRUE(preSrData_, SYSTEM_ERROR_NO_MEMORY);
-        hal_ble_gap_get_scan_response_data(preSrData_.get(), preSrDataLen_, nullptr);
-    }
+    len = hal_ble_gap_get_scan_response_data(tempSrData.data(), BLE_MAX_ADV_DATA_LEN, nullptr);
+    CHECK(len);
+    tempSrData.resize(len);
 
     // Advertising and connection parameters set by user application
     preAdvParams_.size = sizeof(hal_ble_adv_params_t);
     CHECK(hal_ble_gap_get_advertising_parameters(&preAdvParams_, nullptr));
+    CHECK(hal_ble_gap_get_tx_power(&preTxPower_, nullptr));
     CHECK(hal_ble_gap_get_ppcp(&prePpcp_, nullptr));
     CHECK(hal_ble_gap_get_auto_advertise(&preAutoAdv_, nullptr));
 
     // Current BLE status in user application
     preAdvertising_ = hal_ble_gap_is_advertising(nullptr);
     preConnected_ = hal_ble_gap_is_connected(nullptr, nullptr);
+
+    preAdvData_ = std::move(tempAdvData);
+    preSrData_ = std::move(tempSrData);
     return SYSTEM_ERROR_NONE;
 }
 
 int BleListeningModeHandler::restoreUserConfigurations() {
-    /*
-     * FIXME: It's not possible to restore the final state that is changed by user application
-     * during in the listening mode when threading is enabled.
-     */
-
     LOG_DEBUG(TRACE, "Restore user's BLE configurations.");
+    CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
+
+    // Do not allow other thread to modify the BLE configurations.
+    CHECK(hal_ble_lock(nullptr));
 
     // Restore the advertising data, advertising parameters and connection parameters.
-    CHECK(hal_ble_gap_set_advertising_data(preAdvData_.get(), preAdvDataLen_, nullptr));
-    CHECK(hal_ble_gap_set_scan_response_data(preSrData_.get(), preSrDataLen_, nullptr));
+    CHECK(hal_ble_gap_set_advertising_data(preAdvData_.data(), preAdvData_.size(), nullptr));
+    CHECK(hal_ble_gap_set_scan_response_data(preSrData_.data(), preSrData_.size(), nullptr));
     CHECK(hal_ble_gap_set_ppcp(&prePpcp_, nullptr));
     CHECK(hal_ble_gap_set_advertising_parameters(&preAdvParams_, nullptr));
+    CHECK(hal_ble_gap_set_tx_power(preTxPower_, nullptr));
     CHECK(hal_ble_gap_set_auto_advertise(preAutoAdv_, nullptr));
 
     // It is advertising when entering listening mode.
@@ -172,11 +163,25 @@ int BleListeningModeHandler::restoreUserConfigurations() {
     }
     // Stop advertising anyway.
     CHECK(hal_ble_gap_stop_advertising(nullptr));
+
+    CHECK(hal_ble_unlock(nullptr));
+
     return SYSTEM_ERROR_NONE;
 }
 
 int BleListeningModeHandler::applyControlRequestConfigurations() {
     LOG_DEBUG(TRACE, "Apply BLE control request configurations.");
+    CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
+
+    bool success = false;
+    SCOPE_GUARD ({
+        if (!success) {
+            exit();
+        }
+    });
+
+    CHECK(hal_ble_lock(nullptr));
+    CHECK(hal_ble_notify_exit_listening_mode(nullptr));
 
     // Set PPCP (Peripheral Preferred Connection Parameters)
     hal_ble_conn_params_t ppcp = {};
@@ -198,15 +203,34 @@ int BleListeningModeHandler::applyControlRequestConfigurations() {
     CHECK(hal_ble_gap_set_advertising_parameters(&advParams, nullptr));
     CHECK(hal_ble_gap_set_auto_advertise(BLE_AUTO_ADV_ALWAYS, nullptr));
 
+    // TX power
+    CHECK(hal_ble_gap_set_tx_power(BLE_CTRL_REQ_TX_POWER, nullptr));
+
+    CHECK(hal_ble_notify_enter_listening_mode(nullptr));
+    CHECK(hal_ble_unlock(nullptr));
+
+    success = true;
     return SYSTEM_ERROR_NONE;
 }
 
 int BleListeningModeHandler::applyUserAdvData() {
+    CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE((preAdvertising_ || preConnected_), SYSTEM_ERROR_INVALID_STATE);
     if (!userAdv_) {
         LOG_DEBUG(TRACE, "Apply user's advertising data set.");
-        CHECK(hal_ble_gap_set_advertising_data(preAdvData_.get(), preAdvDataLen_, nullptr));
-        CHECK(hal_ble_gap_set_scan_response_data(preSrData_.get(), preSrDataLen_, nullptr));
+        bool success = false;
+        SCOPE_GUARD ({
+            if (!success) {
+                exit();
+            }
+        });
+        CHECK(hal_ble_lock(nullptr));
+        CHECK(hal_ble_notify_exit_listening_mode(nullptr));
+        CHECK(hal_ble_gap_set_advertising_data(preAdvData_.data(), preAdvData_.size(), nullptr));
+        CHECK(hal_ble_gap_set_scan_response_data(preSrData_.data(), preSrData_.size(), nullptr));
+        CHECK(hal_ble_notify_enter_listening_mode(nullptr));
+        CHECK(hal_ble_unlock(nullptr));
+        success = true;
     }
     userAdv_ = !userAdv_;
     return userAdv_ ? SYSTEM_ERROR_NONE : SYSTEM_ERROR_INVALID_STATE;
@@ -214,33 +238,90 @@ int BleListeningModeHandler::applyUserAdvData() {
 
 int BleListeningModeHandler::applyControlRequestAdvData() {
     LOG_DEBUG(TRACE, "Apply control request advertising data set.");
-    CHECK(hal_ble_gap_set_advertising_data(ctrlReqAdvData_.get(), ctrlReqAdvDataLen_, nullptr));
-    CHECK(hal_ble_gap_set_scan_response_data(ctrlReqSrData_.get(), ctrlReqSrDataLen_, nullptr));
+    CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
+    bool success = false;
+    SCOPE_GUARD ({
+        if (!success) {
+            exit();
+        }
+    });
+    CHECK(hal_ble_lock(nullptr));
+    CHECK(hal_ble_notify_exit_listening_mode(nullptr));
+    CHECK(hal_ble_gap_set_advertising_data(ctrlReqAdvData_.data(), ctrlReqAdvData_.size(), nullptr));
+    CHECK(hal_ble_gap_set_scan_response_data(ctrlReqSrData_.data(), ctrlReqSrData_.size(), nullptr));
+    CHECK(hal_ble_notify_enter_listening_mode(nullptr));
+    CHECK(hal_ble_unlock(nullptr));
+    success = true;
     return SYSTEM_ERROR_NONE;
 }
 
 int BleListeningModeHandler::enter() {
+    exited_ = false;
+
+    bool success = false;
+    SCOPE_GUARD ({
+        if (!success) {
+            exit();
+        }
+    });
+
+    // Do not allow other thread to modify the BLE configurations.
+    CHECK(hal_ble_lock(nullptr));
+    // Now the BLE configurations are non-modifiable.
+    CHECK(hal_ble_notify_enter_listening_mode(nullptr));
     CHECK(constructControlRequestAdvData());
     CHECK(cacheUserConfigurations());
+    // Restore the user's BLE configurations on exited.
+    restoreUserConfig_ = true;
     CHECK(applyControlRequestAdvData());
     CHECK(applyControlRequestConfigurations());
-
     CHECK(hal_ble_set_callback_on_adv_events(onBleAdvEvents, this, nullptr));
-
     if (!preAdvertising_ && !preConnected_) {
         // Start advertising if it is neither connected nor advertising.
         CHECK(hal_ble_gap_start_advertising(nullptr));
     }
+    CHECK(hal_ble_unlock(nullptr));
+
+    success = true;
     return SYSTEM_ERROR_NONE;
 }
 
 int BleListeningModeHandler::exit() {
-    CHECK(restoreUserConfigurations());
-    CHECK(hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr));
+    if (exited_) {
+        return SYSTEM_ERROR_NONE;
+    }
+
+    // FIXME: BLE is still connected to finalize the mobile setup when this function is called. In that case,
+    // there is a chance that the mobile setup process is terminated by other thread or user application.
+
+    preAdvData_.clear();
+    preSrData_.clear();
+    ctrlReqAdvData_.clear();
+    ctrlReqSrData_.clear();
+
+    // It should not CHECK() in this function, in case that the BLE HAL status cannot be restored correctly.
+
+    // Do not allow other thread to modify the BLE configurations until this function exits.
+    hal_ble_lock(nullptr);
+    // Now the BLE configurations are modifiable.
+    hal_ble_notify_exit_listening_mode(nullptr);
+    if (restoreUserConfig_) {
+        restoreUserConfig_ = false;
+        if (restoreUserConfigurations() != SYSTEM_ERROR_NONE) {
+            LOG(ERROR, "Failed to restore user configuration.");
+        }
+    }
+    hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr);
+    hal_ble_unlock(nullptr);
+
+    exited_ = true;
     return SYSTEM_ERROR_NONE;
 }
 
 void BleListeningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, void* context) {
+    if (BleListeningModeHandler::exited_) {
+        return;
+    }
     const auto handler = (BleListeningModeHandler*)context;
     switch (event->type) {
         case BLE_EVT_ADV_STOPPED: {
@@ -261,5 +342,7 @@ void BleListeningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, voi
         }
     }
 }
+
+bool BleListeningModeHandler::exited_ = true;
 
 #endif /* HAL_PLATFORM_BLE */
