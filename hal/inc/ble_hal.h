@@ -374,6 +374,26 @@ int hal_ble_lock(void* reserved);
 int hal_ble_unlock(void* reserved);
 
 /**
+ * Notify that device has entered the Listening mode, in which case the BLE
+ * advertising data/parameters and connection parameters are not allowed to be modified.
+ *
+ * @param      reserved  The reserved
+ *
+ * @returns    0 on success, system_error_t on error.
+ */
+int hal_ble_notify_enter_listening_mode(void* reserved);
+
+/**
+ * Notify that device has exited the Listening mode, BLE advertising data/parameters and
+ * connection parameters are allowed to be modified.
+ *
+ * @param      reserved  The reserved
+ *
+ * @returns    0 on success, system_error_t on error.
+ */
+int hal_ble_notify_exit_listening_mode(void* reserved);
+
+/**
  * Initialize the BLE stack. This function must be called previous to any other BLE APIs.
  *
  * @param[in]   reserved    Reserved for future use.
