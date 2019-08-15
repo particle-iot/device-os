@@ -50,8 +50,8 @@ private:
     const uint16_t BLE_CTRL_REQ_SLAVE_LATENCY = 0;
     const uint16_t BLE_CTRL_REQ_CONN_SUP_TIMEOUT = BLE_MSEC_TO_UNITS(5000, BLE_UNIT_10_MS);
 
-    const uint16_t BLE_CTRL_REQ_ADV_INTERVAL = BLE_MSEC_TO_UNITS(50, BLE_UNIT_0_625_MS); // Advertising interval: 50ms
-    const uint16_t BLE_CTRL_REQ_ADV_TIMEOUT = BLE_MSEC_TO_UNITS(500, BLE_UNIT_10_MS); // Advertising timeout: 500ms
+    const uint16_t BLE_CTRL_REQ_ADV_INTERVAL = BLE_MSEC_TO_UNITS(20, BLE_UNIT_0_625_MS); // Advertising interval: 20ms
+    const uint16_t BLE_CTRL_REQ_ADV_TIMEOUT = BLE_MSEC_TO_UNITS(1000, BLE_UNIT_10_MS); // Advertising timeout: 1000ms
 
     const int8_t BLE_CTRL_REQ_TX_POWER = 0; //0dBm
 
