@@ -245,7 +245,9 @@ void manage_network_connection()
             WARN("Resetting WLAN due to %s", (WLAN_WD_TO()) ? "WLAN_WD_TO()":((SPARK_WLAN_RESET) ? "SPARK_WLAN_RESET" : "SPARK_WLAN_SLEEP"));
             auto was_sleeping = SPARK_WLAN_SLEEP;
             //auto was_disconnected = network.manual_disconnect();
-            cloud_disconnect();
+            // This is probably not necessary here, since network_disconnect() will try to close
+            // the cloud connection gracefully anyway
+            cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
             // Note: The cloud connectivity layer may "detect" an unanticipated network disconnection
             // before the networking layer, and due to current recovery logic, which resets the network,
             // it's difficult to say whether the network has actually failed or not. In this case we

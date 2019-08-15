@@ -412,7 +412,7 @@ void manage_cloud_connection(bool force_events)
 {
     if (spark_cloud_flag_auto_connect() == 0)
     {
-        cloud_disconnect(CLOUD_DISCONNECT_DEFAULT_FLAGS, CLOUD_DISCONNECT_REASON_USER);
+        cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_USER);
     }
     else // cloud connection is wanted
     {
@@ -559,9 +559,9 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason disconnectReason, 
         if (SPARK_CLOUD_CONNECTED)
         {
             diag->resetConnectionAttempts();
-            if (reason != CLOUD_DISCONNECT_REASON_NONE) {
-                diag->disconnectionReason(reason);
-                if (reason == CLOUD_DISCONNECT_REASON_ERROR) {
+            if (disconnectReason != CLOUD_DISCONNECT_REASON_NONE) {
+                diag->disconnectionReason(disconnectReason);
+                if (disconnectReason == CLOUD_DISCONNECT_REASON_ERROR) {
                     diag->disconnectedUnexpectedly();
                 }
             }
@@ -570,7 +570,7 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason disconnectReason, 
             system_notify_event(cloud_status, cloud_status_disconnecting);
         }
 
-        const bool graceful = flags & CLOUD_DISCONNECT_FLAG_GRACEFUL;
+        const bool graceful = flags & CLOUD_DISCONNECT_GRACEFULLY;
         if (SPARK_CLOUD_CONNECTED && graceful) {
             // Notify the cloud that we're about to disconnect
             spark_disconnect_command cmd = {};
@@ -583,7 +583,7 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason disconnectReason, 
                 LOG(WARN, "DISCONNECT command failed: %d", r);
             }
         }
-        if (flags & CLOUD_DISCONNECT_FLAG_CLOSE_SOCKET) {
+        if (!(flags & CLOUD_DISCONNECT_DONT_CLOSE)) {
             spark_cloud_socket_disconnect(graceful);
         }
 

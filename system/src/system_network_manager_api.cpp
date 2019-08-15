@@ -163,7 +163,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 void network_disconnect(network_handle_t network, uint32_t reason, void* reserved) {
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL([network]() {
         if (network == NETWORK_INTERFACE_ALL) {
-            cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
+            cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
             SPARK_WLAN_STARTED = 0;
             s_forcedDisconnect = true;
         }
@@ -401,7 +401,7 @@ void manage_network_connection() {
     /* FIXME: refactor */
     if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP) {
         auto wasSleeping = SPARK_WLAN_SLEEP;
-        cloud_disconnect();
+        cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
         network_disconnect(0, SPARK_WLAN_RESET ? NETWORK_DISCONNECT_REASON_RESET : NETWORK_DISCONNECT_REASON_NONE, 0);
         network_off(0, 0, 0, 0);
         SPARK_WLAN_RESET = 0;

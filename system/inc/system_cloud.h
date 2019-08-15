@@ -22,6 +22,7 @@
 #include "spark_wiring_string.h"
 #include "spark_protocol_functions.h"
 #include "system_tick_hal.h"
+#include "core_hal.h"
 #include "completion_handler.h"
 
 #include <type_traits>
@@ -132,14 +133,9 @@ String spark_deviceID(void);
  * Flags for `cloud_disconnect()`.
  */
 enum CloudDisconnectFlag {
-    CLOUD_DISCONNECT_FLAG_CLOSE_SOCKET = 0x01, ///< Close the socket.
-    CLOUD_DISCONNECT_FLAG_GRACEFUL = 0x02 ///< Disconnect gracefully.
+    CLOUD_DISCONNECT_GRACEFULLY = 0x01, ///< Disconnect gracefully.
+    CLOUD_DISCONNECT_DONT_CLOSE = 0x02 ///< Do not close the socket.
 };
-
-/**
- * Default flags for `cloud_disconnect()`.
- */
-const unsigned CLOUD_DISCONNECT_DEFAULT_FLAGS = CLOUD_DISCONNECT_FLAG_CLOSE_SOCKET | CLOUD_DISCONNECT_FLAG_GRACEFUL;
 
 /**
  * Close the cloud connection.
@@ -149,9 +145,7 @@ const unsigned CLOUD_DISCONNECT_DEFAULT_FLAGS = CLOUD_DISCONNECT_FLAG_CLOSE_SOCK
  * @param resetReason System reset reason.
  * @param sleepDuration Sleep duration in seconds.
  */
-// TODO: The interface of this function is convoluted, consider wrapping the arguments into a parameters object
-void cloud_disconnect(unsigned flags = CLOUD_DISCONNECT_DEFAULT_FLAGS,
-        cloud_disconnect_reason disconnectReason = CLOUD_DISCONNECT_REASON_UNKNOWN,
+void cloud_disconnect(unsigned flags = 0, cloud_disconnect_reason disconnectReason = CLOUD_DISCONNECT_REASON_UNKNOWN,
         system_reset_reason resetReason = RESET_REASON_NONE, unsigned sleepDuration = 0);
 
 class String;
