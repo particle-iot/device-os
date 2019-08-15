@@ -1443,7 +1443,7 @@ bool MDMParser::getDataUsage(MDM_DataUsage &data)
 bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_) {
     LOCK();
 
-    // Ensure modem is repsonsive
+    // Ensure modem is responsive
     if (!_atOk())
         goto failure;
 
@@ -2452,7 +2452,7 @@ int MDMParser::socketSend(int socket, const char * buf, int len)
         cnt -= blk;
     }
     LOCK();
-    if (_atOk() && ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
+    if (ISSOCKET(socket) && (_sockets[socket].pending == 0) && _atOk()) {
         sendFormated("AT+USORD=%d,0\r\n", _sockets[socket].handle); // TCP
         waitFinalResp(nullptr, nullptr, USORD_TIMEOUT);
     }
@@ -2562,7 +2562,7 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
         cnt -= blk;
     }
     LOCK();
-    if (_atOk() && ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
+    if (ISSOCKET(socket) && (_sockets[socket].pending == 0) && _atOk()) {
         sendFormated("AT+USORF=%d,0\r\n", _sockets[socket].handle); // UDP
         waitFinalResp(nullptr, nullptr, USORF_TIMEOUT);
     }
@@ -2587,6 +2587,9 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
         if (prefixSize < 0 || prefixSize > (int)sizeof(data)) {
             goto error;
         }
+        if (!_atOk()) {
+            goto error;
+        }
         if (send(data, prefixSize) != prefixSize) {
             goto error;
         }
@@ -2605,9 +2608,6 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
             bytesLeft -= n;
         } while (bytesLeft > 0);
         // Write command suffix
-        if (!_atOk()) {
-            goto error;
-        }
         if (send("\"\r\n", 3) != 3) {
             goto error;
         }
