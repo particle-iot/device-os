@@ -976,12 +976,14 @@ reset_failure:
     // Don't get stuck in a reset-retry loop
     static int resetFailureAttempts = 0;
     if (resetFailureAttempts++ < 5) {
-        sendFormated("AT+CFUN=15\r\n");
-        waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT);
-        _init = false; // invalidate init and prevent cellular registration
-        _pwr = false;  //   |
-        // When this exits false, ARM_WLAN_WD 1 will fire and timeout after 30s.
-        // MDMParser::powerOn and MDMParser::init will then be retried by the system.
+        if (_atOk()) {
+            sendFormated("AT+CFUN=15\r\n");
+            waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT);
+            _init = false; // invalidate init and prevent cellular registration
+            _pwr = false;  //   |
+            // When this exits false, ARM_WLAN_WD 1 will fire and timeout after 30s.
+            // MDMParser::powerOn and MDMParser::init will then be retried by the system.
+        }
     } // else {
         // stop resetting, and try to register.
         // Preventing cellular registration gets us back to retrying init() faster,
@@ -1382,6 +1384,10 @@ bool MDMParser::getSignalStrength(NetStatus &status)
     if (_init && _pwr) {
         MDM_INFO("\r\n[ Modem::getSignalStrength ] = = = = = = = = = =");
 
+        // Ensure modem is responsive
+        if (!_atOk())
+            goto cleanup;
+
         // Reformat the operator string to be numeric
         // (allows the capture of `mcc` and `mnc`)
         sendFormated("AT+COPS=3,2\r\n");
@@ -1436,6 +1442,10 @@ bool MDMParser::getDataUsage(MDM_DataUsage &data)
 
 bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_) {
     LOCK();
+
+    // Ensure modem is repsonsive
+    if (!_atOk())
+        goto failure;
 
     // Reformat the operator string to be numeric (allows the capture of `mcc` and `mnc`)
     sendFormated("AT+COPS=3,2\r\n");
@@ -2004,7 +2014,7 @@ bool MDMParser::reconnect(void)
 {
     bool ok = false;
     LOCK();
-    if (_activated) {
+    if (_activated && _atOk()) {
         MDM_INFO("\r\n[ Modem::reconnect ] = = = = = = = = = = = = = =");
         if (!_attached) {
             /* Activates the PDP context assoc. with this profile */
@@ -2048,7 +2058,7 @@ bool MDMParser::deactivate(void)
                 _ip = NOIP;
                 _attached = false;
                 ok = true;
-            } else {
+            } else if (_atOk()) {
                 /* Deactivates the PDP context assoc. with this profile
                  * ensuring that no additional data is sent or received
                  * by the device. */
@@ -2442,7 +2452,7 @@ int MDMParser::socketSend(int socket, const char * buf, int len)
         cnt -= blk;
     }
     LOCK();
-    if (ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
+    if (_atOk() && ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
         sendFormated("AT+USORD=%d,0\r\n", _sockets[socket].handle); // TCP
         waitFinalResp(nullptr, nullptr, USORD_TIMEOUT);
     }
@@ -2552,7 +2562,7 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
         cnt -= blk;
     }
     LOCK();
-    if (ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
+    if (_atOk() && ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
         sendFormated("AT+USORF=%d,0\r\n", _sockets[socket].handle); // UDP
         waitFinalResp(nullptr, nullptr, USORF_TIMEOUT);
     }
@@ -2595,6 +2605,9 @@ int MDMParser::socketSendTo(int socket, MDM_IP ip, int port, const char * buf, i
             bytesLeft -= n;
         } while (bytesLeft > 0);
         // Write command suffix
+        if (!_atOk()) {
+            goto error;
+        }
         if (send("\"\r\n", 3) != 3) {
             goto error;
         }
