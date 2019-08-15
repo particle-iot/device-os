@@ -349,7 +349,7 @@ void HAL_NET_notify_socket_closed(sock_handle_t socket)
 {
     if (s_state.socket == socket)
     {
-        cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_ERROR);
+        cloud_disconnect(CLOUD_DISCONNECT_DONT_CLOSE, CLOUD_DISCONNECT_REASON_ERROR);
     }
 }
 

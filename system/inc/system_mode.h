@@ -62,8 +62,8 @@ typedef enum system_reset_mode {
  * System reset flags.
  */
 typedef enum system_reset_flag {
-    SYSTEM_RESET_FLAG_NO_WAIT = 0x01; ///< Reset immediately.
-    SYSTEM_RESET_FLAG_PERSIST_DFU = 0x02; ///< Persistent DFU mode (see `System.dfu()`).
+    SYSTEM_RESET_FLAG_NO_WAIT = 0x01, ///< Reset immediately.
+    SYSTEM_RESET_FLAG_PERSIST_DFU = 0x02 ///< Persistent DFU mode (see `System.dfu()`).
 } system_reset_flag;
 
 /**

@@ -70,7 +70,7 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     LOG(INFO, "Entering listening mode");
 
     /* Disconnect from cloud and network */
-    cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_LISTENING);
+    cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_LISTENING);
     NetworkManager::instance()->deactivateConnections();
 
     LED_SIGNAL_START(LISTENING_MODE, CRITICAL);
