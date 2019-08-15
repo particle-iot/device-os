@@ -68,6 +68,7 @@ const int CLAIM_CODE_SIZE = 63;
 
 using particle::LEDStatus;
 using particle::BufferAppender;
+using particle::protocol::ProtocolError;
 
 int userVarType(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
@@ -1156,14 +1157,21 @@ String bytes2hex(const uint8_t* buf, unsigned len)
     return result;
 }
 
-void Spark_Sleep(void)
+void Spark_Sleep(unsigned duration)
 {
-	spark_protocol_command(sp, ProtocolCommands::SLEEP);
+	spark_disconnect_command cmd = {};
+	cmd.size = sizeof(cmd);
+	cmd.disconnect_reason = CLOUD_DISCONNECT_REASON_SLEEP;
+	cmd.sleep_duration = duration;
+	const int r = spark_protocol_command(sp, ProtocolCommands::DISCONNECT, 0, &cmd);
+	if (r != ProtocolError::NO_ERROR) {
+		LOG(WARN, "Spark_Sleep(): DISCONNECT command failed: %d", r);
+	}
 }
 
 void Spark_Wake(void)
 {
-	spark_protocol_command(sp, ProtocolCommands::WAKE);
+	spark_protocol_command(sp, ProtocolCommands::PING);
 }
 
 CloudDiagnostics* CloudDiagnostics::instance() {
