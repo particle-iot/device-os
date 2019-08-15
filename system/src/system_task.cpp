@@ -580,7 +580,7 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason disconnectReason, 
             cmd.sleep_duration = sleepDuration;
             const int r = spark_protocol_command(spark_protocol_instance(), ProtocolCommands::DISCONNECT, 0, &cmd);
             if (r != protocol::NO_ERROR) {
-                LOG(WARN, "DISCONNECT command failed: %d", r);
+                LOG(WARN, "cloud_disconnect(): DISCONNECT command failed: %d", r);
             }
         }
         if (!(flags & CLOUD_DISCONNECT_DONT_CLOSE)) {
