@@ -296,17 +296,16 @@ int BleListeningModeHandler::exit() {
     // FIXME: BLE is still connected to finalize the mobile setup when this function is called. In that case,
     // there is a chance that the mobile setup process is terminated by other thread or user application.
 
-    preAdvData_.clear();
-    preSrData_.clear();
-    ctrlReqAdvData_.clear();
-    ctrlReqSrData_.clear();
-
     // It should not CHECK() in this function, in case that the BLE HAL status cannot be restored correctly.
 
     // Do not allow other thread to modify the BLE configurations until this function exits.
     hal_ble_lock(nullptr);
     SCOPE_GUARD ({
         hal_ble_unlock(nullptr);
+        preAdvData_.clear();
+        preSrData_.clear();
+        ctrlReqAdvData_.clear();
+        ctrlReqSrData_.clear();
     });
 
     // Now the BLE configurations are modifiable.
