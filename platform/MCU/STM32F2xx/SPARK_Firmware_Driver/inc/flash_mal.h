@@ -38,10 +38,6 @@
 extern "C" {
 #endif
 
-#if (PLATFORM_ID==6 || PLATFORM_ID==8) && !defined(MODULAR_FIRMWARE)
-#define COMBINED_FIRMWARE_IMAGE 1
-#endif
-
 /* Exported types ------------------------------------------------------------*/
 
 /* Exported constants --------------------------------------------------------*/

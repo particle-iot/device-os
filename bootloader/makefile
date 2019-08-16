@@ -16,6 +16,10 @@ export BOOTLOADER_MODULE=1
 
 include ../build/platform-id.mk
 
+ifeq ($(MONO_MFG_FIRMWARE_AT_USER_PART),y)
+include ../modules/$(PLATFORM_NAME)/modular.mk
+endif
+
 # Target this makefile is building.
 ifeq ("$(ARCH)","gcc")
 TARGET=none
