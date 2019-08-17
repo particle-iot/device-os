@@ -80,10 +80,14 @@ std::recursive_mutex mdm_mutex;
 #define CEREG_TIMEOUT     (  1 * 1000)
 #define CGDCONT_TIMEOUT   (  1 * 1000)
 #define CGREG_TIMEOUT     (  1 * 1000)
+#define CGATT_TIMEOUT     (180 * 1000)
+#define CMGS_TIMEOUT      (150 * 1000) /* 180s for R4 (set to 150s to match previous implementation) */
 #define COPS_TIMEOUT      (180 * 1000)
 #define CPWROFF_TIMEOUT   ( 40 * 1000)
 #define CREG_TIMEOUT      (  1 * 1000)
 #define CSQ_TIMEOUT       (  1 * 1000)
+#define UBANDSEL_TIMEOUT  ( 40 * 1000)
+#define UDNSRN_TIMEOUT    ( 30 * 1000) /* 70s for R4 (set to 30s to match previous implementation) */
 #define URAT_TIMEOUT      (  1 * 1000)
 #define UPSD_TIMEOUT      (  1 * 1000)
 #define UPSDA_TIMEOUT     (180 * 1000)
@@ -1535,9 +1539,11 @@ bool MDMParser::setBandSelect(MDM_BandSelect &data)
         }
 
         if (strcmp(bands_selected, bands_to_set) != 0) {
-            sendFormated("AT+UBANDSEL=%s\r\n", bands_to_set);
-            if (RESP_OK == waitFinalResp(NULL,NULL,40000)) {
-                ok = true;
+            if (_atOk()) {
+                sendFormated("AT+UBANDSEL=%s\r\n", bands_to_set);
+                if (RESP_OK == waitFinalResp(NULL,NULL,UBANDSEL_TIMEOUT)) {
+                    ok = true;
+                }
             }
         }
         else {
@@ -1833,9 +1839,13 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
             int a = 0;
             bool force = false; // If we are already connected, don't force a reconnect.
 
+            // Ensure modem is responsive
+            if (!_atOk())
+                goto failure;
+
             // perform GPRS attach
             sendFormated("AT+CGATT=1\r\n");
-            if (RESP_OK != waitFinalResp(NULL,NULL,3*60*1000))
+            if (RESP_OK != waitFinalResp(NULL,NULL,CGATT_TIMEOUT))
                 goto failure;
 
             // Check the if the PSD profile is activated (a=1)
@@ -2098,12 +2108,12 @@ bool MDMParser::detach(void)
                     ok = true;
                 }
             }
-        } else {
+        } else if (_atOk()) {
             // if (_ip != NOIP) {  // if we deactivate() first we won't have an IP
                 /* Detach from the GPRS network and conserve network resources. */
                 /* Any active PDP context will also be deactivated. */
                 sendFormated("AT+CGATT=0\r\n");
-                if (RESP_OK != waitFinalResp(NULL,NULL,3*60*1000)) {
+                if (RESP_OK != waitFinalResp(NULL,NULL,CGATT_TIMEOUT)) {
                     ok = true;
                     _activated = false;
                 }
@@ -2127,9 +2137,9 @@ MDM_IP MDMParser::gethostbyname(const char* host)
         int a,b,c,d;
         if (sscanf(host, IPSTR, &a,&b,&c,&d) == 4) {
             ip = IPADR(a,b,c,d);
-        } else {
+        } else if (_atOk()) {
             sendFormated("AT+UDNSRN=0,\"%s\"\r\n", host);
-            if (RESP_OK != waitFinalResp(_cbUDNSRN, &ip, 30*1000)) {
+            if (RESP_OK != waitFinalResp(_cbUDNSRN, &ip, UDNSRN_TIMEOUT)) {
                 ip = NOIP;
             }
         }
@@ -2743,9 +2753,9 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
         }
     }
     LOCK();
-    if (ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
+    if (ISSOCKET(socket) && (_sockets[socket].pending == 0 && _atOk())) {
         sendFormated("AT+USORD=%d,0\r\n", _sockets[socket].handle); // TCP
-        waitFinalResp(NULL, NULL, 10*1000);
+        waitFinalResp(NULL, NULL, USORD_TIMEOUT);
     }
     UNLOCK();
     // DEBUG_D("socketRecv: %d \"%*s\"\r\n", cnt, cnt, buf-cnt);
@@ -2845,9 +2855,9 @@ int MDMParser::socketRecvFrom(int socket, MDM_IP* ip, int* port, char* buf, int 
         }
     }
     LOCK();
-    if (ISSOCKET(socket) && (_sockets[socket].pending == 0)) {
+    if (ISSOCKET(socket) && (_sockets[socket].pending == 0) && _atOk()) {
         sendFormated("AT+USORF=%d,0\r\n", _sockets[socket].handle); // UDP
-        waitFinalResp(NULL, NULL, 10*1000);
+        waitFinalResp(NULL, NULL, USORF_TIMEOUT);
     }
     UNLOCK();
     // DEBUG_D("socketRecv: %d \"%*s\"\r\n", cnt, cnt, buf-cnt);
@@ -2895,12 +2905,14 @@ bool MDMParser::smsSend(const char* num, const char* buf)
 {
     bool ok = false;
     LOCK();
-    sendFormated("AT+CMGS=\"%s\"\r\n",num);
-    if (RESP_PROMPT == waitFinalResp(NULL,NULL,150*1000)) {
-        send(buf, strlen(buf));
-        const char ctrlZ = 0x1A;
-        send(&ctrlZ, sizeof(ctrlZ));
-        ok = (RESP_OK == waitFinalResp());
+    if (_atOk()) {
+        sendFormated("AT+CMGS=\"%s\"\r\n",num);
+        if (RESP_PROMPT == waitFinalResp(NULL,NULL,CMGS_TIMEOUT)) {
+            send(buf, strlen(buf));
+            const char ctrlZ = 0x1A;
+            send(&ctrlZ, sizeof(ctrlZ));
+            ok = (RESP_OK == waitFinalResp());
+        }
     }
     UNLOCK();
     return ok;
