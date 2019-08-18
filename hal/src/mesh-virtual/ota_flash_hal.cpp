@@ -72,7 +72,7 @@ uint16_t HAL_Set_Claim_Code(const char* code)
 
 /**
  * Retrieves the claim code for this device.
- * @param buffer    The buffer to recieve the claim code.
+ * @param buffer    The buffer to receive the claim code.
  * @param len       The maximum size of the code to copy to the buffer, including the null terminator.
  * @return          0 on success.
  */

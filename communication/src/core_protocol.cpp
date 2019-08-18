@@ -234,7 +234,7 @@ bool CoreProtocol::event_loop(CoAPMessageType::Enum& message_type)
   {
     if (0 > bytes_received)
     {
-      LOG(WARN,"bytes recieved error %d", bytes_received);
+      LOG(WARN,"bytes received error %d", bytes_received);
       // error, disconnected
       return false;
     }

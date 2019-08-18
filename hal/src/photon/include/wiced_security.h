@@ -175,7 +175,7 @@ int aes_crypt_ctr( aes_context_t *ctx, uint32_t length, const unsigned char iv[1
  * @param nonce_length  length of nonce.
  * @param aad_input     the buffer containing the additional associated data
  * @param data_input    buffer holding the input data
- * @param mac_output    buffer which recieves the output MAC
+ * @param mac_output    buffer which receives the output MAC
  */
 int aes_ccm_mac( aes_context_t *ctx, uint32_t length, uint32_t aad_length, const unsigned char *nonce,int nonce_length, const unsigned char *aad_input, const unsigned char *data_input, unsigned char mac_output[8] );
 
@@ -190,7 +190,7 @@ int aes_ccm_mac( aes_context_t *ctx, uint32_t length, uint32_t aad_length, const
  * @param aad_input         the buffer containing the additional associated data
  * @param plaintext_input   buffer holding the input data
  * @param ciphertext_output buffer which receives the output ciphertext
- * @param mac_output        buffer which recieves the output MAC
+ * @param mac_output        buffer which receives the output MAC
  */
 int aes_encrypt_ccm( aes_context_t *ctx, uint32_t length, uint32_t aad_length, const unsigned char *nonce, uint8_t nonce_length, const unsigned char *aad_input, const unsigned char *plaintext_input, unsigned char *ciphertext_output, unsigned char mac_output[8] );
 

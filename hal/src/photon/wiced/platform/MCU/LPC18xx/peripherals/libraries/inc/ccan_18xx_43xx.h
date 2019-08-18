@@ -223,7 +223,7 @@ void Chip_CCAN_ClearStatus(LPC_CCAN_T *pCCAN, uint32_t val);
  * @param	dir	: direction
  * @return	Current value of the transmit/receive error counter
  * @note	When @a dir is #CCAN_RX_DIR, then MSB (bit-7) indicates the
- * receiver error passive level, if the bit is High(1) then the reciever
+ * receiver error passive level, if the bit is High(1) then the receiver
  * counter has reached error passive level as specified in CAN2.0
  * specification; else if the bit is Low(0) it indicates that the
  * error counter is below the passive level. Bits from (bit6-0) has
