@@ -165,7 +165,7 @@ int system_reset(unsigned mode, unsigned reason, unsigned value, unsigned flags,
         systemResetImpl((system_reset_mode)mode, (system_reset_reason)reason, value, flags);
     } else {
         // Gracefully disconnect from the cloud and reset the system in the system thread
-        SYSTEM_THREAD_CONTEXT_SYNC(systemResetImpl((system_reset_mode)mode, (system_reset_reason)reason, value, flags));
+        SYSTEM_THREAD_CONTEXT_SYNC_CALL(systemResetImpl((system_reset_mode)mode, (system_reset_reason)reason, value, flags));
     }
     return 0; // Not reachable
 }
