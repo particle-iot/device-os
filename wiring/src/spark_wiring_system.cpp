@@ -20,7 +20,7 @@ void SystemClass::factoryReset(void)
 {
     //This method will work only if the Core is supplied
     //with the latest version of Bootloader
-    HAL_Core_Factory_Reset();
+    system_reset(SYSTEM_RESET_MODE_FACTORY, 0, 0, 0, nullptr);
 }
 
 void SystemClass::dfu(bool persist)
@@ -28,7 +28,7 @@ void SystemClass::dfu(bool persist)
     // true  - DFU mode persist if firmware upgrade is not completed
     // false - Briefly enter DFU bootloader mode (works with latest bootloader only )
     //         Subsequent reset or power off-on will execute normal firmware
-    HAL_Core_Enter_Bootloader(persist);
+    system_reset(SYSTEM_RESET_MODE_DFU, 0, 0, persist ? SYSTEM_RESET_FLAG_PERSIST_DFU : 0, nullptr);
 }
 
 void SystemClass::reset(void)
@@ -38,7 +38,12 @@ void SystemClass::reset(void)
 
 void SystemClass::reset(uint32_t data)
 {
-    HAL_Core_System_Reset_Ex(RESET_REASON_USER, data, nullptr);
+    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_USER, data, 0, nullptr);
+}
+
+void SystemClass::enterSafeMode(void)
+{
+    system_reset(SYSTEM_RESET_MODE_SAFE, 0, 0, 0, nullptr);
 }
 
 SystemSleepResult SystemClass::sleep(const SystemSleepConfiguration& config) {
