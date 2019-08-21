@@ -462,7 +462,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     }
     else
     {
-        system_pending_shutdown();
+        system_pending_shutdown(RESET_REASON_USER);
     }
 #if HAL_PLATFORM_BLE
     // TODO: Process BLE channel events in a separate thread

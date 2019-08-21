@@ -808,6 +808,9 @@ static const char* panicCodeString(ePanicCode code)
 
 static void formatResetReasonEventData(int reason, uint32_t data, char *buf, size_t size)
 {
+    // TODO: Consider using numeric reason codes instead of string identifiers for uniformity
+    // with the CoAP protocol
+
     // Reset reason
     int n = 0;
     const char* s = resetReasonString((system_reset_reason)reason);

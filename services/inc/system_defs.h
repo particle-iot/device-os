@@ -47,9 +47,10 @@ typedef enum system_reset_reason {
     RESET_REASON_POWER_BROWNOUT = 50, ///< Brownout reset.
     RESET_REASON_WATCHDOG = 60, ///< Watchdog reset.
     // Software
-    RESET_REASON_UPDATE = 70, ///< Successful firmware update.
-    RESET_REASON_UPDATE_ERROR = 80, ///< Generic update error.
-    RESET_REASON_UPDATE_TIMEOUT = 90, ///< Update timeout.
+    RESET_REASON_UPDATE = 70, ///< Reset to apply firmware update.
+    RESET_REASON_UPDATE_ERROR = 80, ///< Generic firmware update error (deprecated).
+    RESET_REASON_RECOVERY = 90, ///< Recovery reset.
+    RESET_REASON_UPDATE_TIMEOUT = RESET_REASON_RECOVERY, ///< Firmware update timeout (deprecated).
     RESET_REASON_FACTORY_RESET = 100, ///< Factory reset requested.
     RESET_REASON_SAFE_MODE = 110, ///< Safe mode requested.
     RESET_REASON_DFU_MODE = 120, ///< DFU mode requested.
