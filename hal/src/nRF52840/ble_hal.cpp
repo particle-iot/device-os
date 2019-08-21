@@ -975,6 +975,7 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
         tempParams.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
         if (configure(&tempParams) != SYSTEM_ERROR_NONE) {
+            LOG(ERROR, "Failed to configure advertising parameters.");
             return resume();
         }
         if (params == nullptr) {
@@ -988,6 +989,7 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
         connectedAdvParams_ = true; // Set the flag after the advParams_ being updated.
     } else {
         if (configure(&tempParams) != SYSTEM_ERROR_NONE) {
+            LOG(ERROR, "Failed to configure advertising parameters.");
             return resume();
         }
         memcpy(&advParams_, &tempParams, std::min(advParams_.size, tempParams.size));
@@ -1013,7 +1015,9 @@ int BleObject::Broadcaster::setAdvertisingData(const uint8_t* buf, size_t len) {
         len = 0;
     }
     advDataLen_ = len;
-    configure(nullptr);
+    if (configure(nullptr) != SYSTEM_ERROR_NONE) {
+        LOG(ERROR, "Failed to configure advertising data.");
+    }
     return resume();
 }
 
@@ -1036,7 +1040,9 @@ int BleObject::Broadcaster::setScanResponseData(const uint8_t* buf, size_t len) 
         len = 0;
     }
     scanRespDataLen_ = len;
-    configure(nullptr);
+    if (configure(nullptr) != SYSTEM_ERROR_NONE) {
+        LOG(ERROR, "Failed to configure scan response data.");
+    }
     return resume();
 }
 
@@ -1159,7 +1165,8 @@ int BleObject::Broadcaster::configure(const hal_ble_adv_params_t* params) {
                   bleGapAdvParams.interval*0.625, bleGapAdvParams.duration*10);
         ret = sd_ble_gap_adv_set_configure(&advHandle_, &bleGapAdvData, &bleGapAdvParams);
     }
-    return nrf_system_error(ret);
+    CHECK(nrf_system_error(ret));
+    return SYSTEM_ERROR_NONE;
 }
 
 int8_t BleObject::Broadcaster::roundTxPower(int8_t value) {
