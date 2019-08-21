@@ -67,7 +67,7 @@ enum class BleCharacteristicProperty : uint8_t {
 
 inline BleCharacteristicProperty operator&(BleCharacteristicProperty lhs, BleCharacteristicProperty rhs) {
     return static_cast<BleCharacteristicProperty>(
-        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(lhs) |
+        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(lhs) &
         static_cast<std::underlying_type<BleCharacteristicProperty>::type>(rhs)
     );
 }
