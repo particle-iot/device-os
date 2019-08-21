@@ -1664,7 +1664,7 @@ ssize_t BleLocalDevice::getDeviceName(char* name, size_t len) const {
 
 String BleLocalDevice::getDeviceName() const {
     String name;
-    char buf[BLE_MAX_DEV_NAME_LEN] = {};
+    char buf[BLE_MAX_DEV_NAME_LEN + 1] = {}; // NULL-terminated string is returned.
     if (getDeviceName(buf, sizeof(buf)) > 0) {
         name.concat(buf);
     }

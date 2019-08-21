@@ -722,7 +722,7 @@ static BleGapImpl bleGapImpl;
 
 int BleObject::BleGap::init() {
     // Set the default device name
-    char devName[32] = {};
+    char devName[BLE_MAX_DEV_NAME_LEN] = {};
     CHECK(get_device_name(devName, sizeof(devName)));
     CHECK(setDeviceName(devName, strlen(devName)));
     bleGapImpl.instance = this;
@@ -732,7 +732,7 @@ int BleObject::BleGap::init() {
 }
 
 int BleObject::BleGap::setDeviceName(const char* deviceName, size_t len) const {
-    char name[32] = {};
+    char name[BLE_MAX_DEV_NAME_LEN] = {};
     if (deviceName == nullptr || len == 0) {
         CHECK(get_device_name(name, sizeof(name)));
         len = strlen(name);
@@ -749,8 +749,7 @@ int BleObject::BleGap::setDeviceName(const char* deviceName, size_t len) const {
 int BleObject::BleGap::getDeviceName(char* deviceName, size_t len) const {
     CHECK_TRUE(deviceName, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(len, SYSTEM_ERROR_INVALID_ARGUMENT);
-    // non NULL-terminated string returned.
-    uint16_t nameLen = len - 1;
+    uint16_t nameLen = len - 1; // Reserve 1 byte for the NULL-terminated character.
     int ret = sd_ble_gap_device_name_get((uint8_t*)deviceName, &nameLen);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     nameLen = std::min(len - 1, (size_t)nameLen);
