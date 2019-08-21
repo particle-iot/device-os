@@ -294,9 +294,7 @@ public:
     static void reset(void);
     static void reset(uint32_t data);
 
-    static void enterSafeMode(void) {
-        HAL_Core_Enter_Safe_Mode(NULL);
-    }
+    static void enterSafeMode(void);
 
 #if SYSTEM_HW_TICKS
     static inline uint32_t ticksPerMicrosecond()
