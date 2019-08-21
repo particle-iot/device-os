@@ -242,7 +242,7 @@ void cancelFirmwareUpdate() {
 
 void firmwareUpdateCompletionHandler(int result, void* data) {
     HAL_Delay_Milliseconds(1000);
-    system_pending_shutdown();
+    system_pending_shutdown(RESET_REASON_UPDATE);
 }
 
 PB(FirmwareModuleType) moduleFunctionToPb(module_function_t func) {

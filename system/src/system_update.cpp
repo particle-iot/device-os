@@ -240,7 +240,7 @@ bool system_fileTransfer(system_file_transfer_t* tx, void* reserved)
             if (tx->descriptor.store==FileTransfer::Store::FIRMWARE) {
                 serialObj->println("Restarting system to apply firmware update...");
                 HAL_Delay_Milliseconds(100);
-                HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, nullptr);
+                system_pending_shutdown(RESET_REASON_UPDATE);
             }
         }
     }
@@ -321,12 +321,19 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
     return result;
 }
 
-void system_pending_shutdown()
+namespace {
+
+system_reset_reason pendingResetReason = RESET_REASON_NONE;
+
+} // unnamed
+
+void system_pending_shutdown(system_reset_reason reason)
 {
     uint8_t was_set = false;
     system_get_flag(SYSTEM_FLAG_RESET_PENDING, &was_set, nullptr);
     if (!was_set) {
         system_set_flag(SYSTEM_FLAG_RESET_PENDING, 1, nullptr);
+        pendingResetReason = reason;
         system_notify_event(reset_pending);
     }
 }
@@ -345,7 +352,7 @@ void system_shutdown_if_enabled(void* data=nullptr)
             system_sleep(SLEEP_MODE_SOFTPOWEROFF, 0, 0, NULL);
         }
         else {
-            System.reset();
+            system_reset(SYSTEM_RESET_MODE_NORMAL, pendingResetReason, 0, 0, nullptr);
         }
     }
 }
@@ -399,8 +406,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
             // always restart for now
             if ((true || result==HAL_UPDATE_APPLIED_PENDING_RESTART) && !(flags & UpdateFlag::DONT_RESET))
             {
-                spark_protocol_command(sp, ProtocolCommands::DISCONNECT);
-                system_pending_shutdown();
+                system_pending_shutdown(RESET_REASON_UPDATE);
             }
         }
     }

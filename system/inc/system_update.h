@@ -5,6 +5,7 @@
 #include "file_transfer.h"
 #include "static_assert.h"
 #include "appender.h"
+#include "system_defs.h"
 
 using particle::Appender;
 
@@ -154,7 +155,7 @@ typedef enum
 
 
 void system_shutdown_if_needed();
-void system_pending_shutdown();
+void system_pending_shutdown(system_reset_reason reason);
 
 int system_set_flag(system_flag_t flag, uint8_t value, void* reserved);
 int system_get_flag(system_flag_t flag, uint8_t* value,void* reserved);
