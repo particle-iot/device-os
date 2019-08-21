@@ -167,6 +167,7 @@ hal_ble_addr_t chipDefaultAddress() {
     localAddr.addr[3] = (uint8_t)((addrLsb >> 24) & 0x000000FF);
     localAddr.addr[4] = (uint8_t)(addrMsb & 0x000000FF);
     localAddr.addr[5] = (uint8_t)((addrMsb >> 8) & 0x000000FF);
+    localAddr.addr[5] |= 0xC0; // For random static address, the two most significant bits of the address shall be equal to 1.
     return localAddr;
 }
 
