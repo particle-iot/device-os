@@ -507,6 +507,9 @@ private:
 
 class BleLocalDevice {
 public:
+    int begin() const;
+    int end() const;
+
     // Local device identifies.
     int setAddress(const BleAddress& address) const;
     int setAddress(const char* address, BleAddressType type = BleAddressType::PUBLIC) const;
@@ -520,8 +523,8 @@ public:
     String getDeviceName() const;
 
     // Access radio performance
-    int on();
-    int off();
+    int on() const;
+    int off() const;
     int setTxPower(int8_t txPower) const;
     int txPower(int8_t* txPower) const;
     int selectAntenna(BleAntennaType antenna) const;
