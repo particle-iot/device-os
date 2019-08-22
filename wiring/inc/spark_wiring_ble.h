@@ -319,6 +319,8 @@ public:
         }
     }
 
+    size_t resize(size_t size);
+
     void clear();
     void remove(BleAdvertisingDataType type);
 

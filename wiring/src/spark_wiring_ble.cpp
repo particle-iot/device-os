@@ -593,6 +593,11 @@ size_t BleAdvertisingData::appendCustomData(const uint8_t* buf, size_t len, bool
     return append(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, len, force);
 }
 
+size_t BleAdvertisingData::resize(size_t size) {
+    selfLen_ = std::min(size, (size_t)BLE_MAX_ADV_DATA_LEN);
+    return selfLen_;
+}
+
 void BleAdvertisingData::clear() {
     selfLen_ = 0;
     memset(selfData_, 0x00, sizeof(selfData_));
@@ -1753,7 +1758,11 @@ ssize_t BleLocalDevice::getAdvertisingData(BleAdvertisingData* advertisingData) 
     if (advertisingData == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    return hal_ble_gap_get_advertising_data(advertisingData->data(), BLE_MAX_ADV_DATA_LEN, nullptr);
+    advertisingData->clear();
+    ssize_t len = hal_ble_gap_get_advertising_data(advertisingData->data(), BLE_MAX_ADV_DATA_LEN, nullptr);
+    CHECK(len);
+    advertisingData->resize(len);
+    return len;
 }
 
 ssize_t BleLocalDevice::getScanResponseData(BleAdvertisingData* scanResponse) const {
@@ -1761,7 +1770,11 @@ ssize_t BleLocalDevice::getScanResponseData(BleAdvertisingData* scanResponse) co
     if (scanResponse == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    return hal_ble_gap_get_scan_response_data(scanResponse->data(), BLE_MAX_ADV_DATA_LEN, nullptr);
+    scanResponse->clear();
+    ssize_t len = hal_ble_gap_get_scan_response_data(scanResponse->data(), BLE_MAX_ADV_DATA_LEN, nullptr);
+    CHECK(len);
+    scanResponse->resize(len);
+    return len;
 }
 
 int BleLocalDevice::advertise() const {
