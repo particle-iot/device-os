@@ -26,6 +26,7 @@ LOG_SOURCE_CATEGORY("system.listen.ble")
 #include "check.h"
 #include "scope_guard.h"
 #include "device_code.h"
+#include "service_debug.h"
 
 namespace {
 
@@ -271,6 +272,8 @@ int BleListeningModeHandler::enter() {
             exit();
         }
     });
+
+    SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
 
     // Now the BLE configurations are non-modifiable.
     CHECK(hal_ble_enter_locked_mode(nullptr));
