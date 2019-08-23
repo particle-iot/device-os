@@ -109,7 +109,7 @@ os_thread_t os_thread_current(void* reserved)
  */
 bool os_thread_is_current(os_thread_t thread)
 {
-    return reinterpret_cast<TaskHandle_t>(thread) == xTaskGetCurrentTaskHandle();
+    return static_cast<TaskHandle_t>(thread) == xTaskGetCurrentTaskHandle();
 }
 
 
@@ -146,7 +146,7 @@ os_result_t os_thread_join(os_thread_t thread)
     }
     return 0;
 #else
-    while (eTaskGetState(reinterpret_cast<TaskHandle_t>(thread)) != eDeleted)
+    while (eTaskGetState(static_cast<TaskHandle_t>(thread)) != eDeleted)
     {
         HAL_Delay_Milliseconds(10);
     }
@@ -161,7 +161,7 @@ os_result_t os_thread_join(os_thread_t thread)
  */
 os_result_t os_thread_exit(os_thread_t thread)
 {
-    vTaskDelete(reinterpret_cast<TaskHandle_t>(thread));
+    vTaskDelete(static_cast<TaskHandle_t>(thread));
     return 0;
 }
 
@@ -351,22 +351,22 @@ int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay, void*)
 {
     if (HAL_IsISR()) {
         BaseType_t woken = pdFALSE;
-        int res = xQueueSendFromISR(reinterpret_cast<QueueHandle_t>(queue), item, &woken) != pdTRUE;
+        int res = xQueueSendFromISR(static_cast<QueueHandle_t>(queue), item, &woken) != pdTRUE;
         portYIELD_FROM_ISR(woken);
         return res;
     } else {
-        return xQueueSend(reinterpret_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
+        return xQueueSend(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
     }
 }
 
 int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void*)
 {
-    return xQueueReceive(reinterpret_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
+    return xQueueReceive(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
 }
 
 int os_queue_destroy(os_queue_t queue, void*)
 {
-    vQueueDelete(reinterpret_cast<QueueHandle_t>(queue));
+    vQueueDelete(static_cast<QueueHandle_t>(queue));
     return 0;
 }
 
@@ -384,19 +384,19 @@ int os_mutex_destroy(os_mutex_t mutex)
 
 int os_mutex_lock(os_mutex_t mutex)
 {
-    xSemaphoreTake(reinterpret_cast<QueueHandle_t>(mutex), portMAX_DELAY);
+    xSemaphoreTake(static_cast<SemaphoreHandle_t>(mutex), portMAX_DELAY);
     return 0;
 }
 
 int os_mutex_trylock(os_mutex_t mutex)
 {
-    return xSemaphoreTake(reinterpret_cast<QueueHandle_t>(mutex), 0)==pdFALSE;
+    return xSemaphoreTake(static_cast<SemaphoreHandle_t>(mutex), 0)==pdFALSE;
 }
 
 
 int os_mutex_unlock(os_mutex_t mutex)
 {
-    xSemaphoreGive(reinterpret_cast<QueueHandle_t>(mutex));
+    xSemaphoreGive(static_cast<SemaphoreHandle_t>(mutex));
     return 0;
 }
 
@@ -407,24 +407,24 @@ int os_mutex_recursive_create(os_mutex_recursive_t* mutex)
 
 int os_mutex_recursive_destroy(os_mutex_recursive_t mutex)
 {
-    vSemaphoreDelete(reinterpret_cast<QueueHandle_t>(mutex));
+    vSemaphoreDelete(static_cast<SemaphoreHandle_t>(mutex));
     return 0;
 }
 
 int os_mutex_recursive_lock(os_mutex_recursive_t mutex)
 {
-    xSemaphoreTakeRecursive(reinterpret_cast<QueueHandle_t>(mutex), portMAX_DELAY);
+    xSemaphoreTakeRecursive(static_cast<SemaphoreHandle_t>(mutex), portMAX_DELAY);
     return 0;
 }
 
 int os_mutex_recursive_trylock(os_mutex_recursive_t mutex)
 {
-    return (xSemaphoreTakeRecursive(reinterpret_cast<QueueHandle_t>(mutex), 0)!=pdTRUE);
+    return (xSemaphoreTakeRecursive(static_cast<SemaphoreHandle_t>(mutex), 0)!=pdTRUE);
 }
 
 int os_mutex_recursive_unlock(os_mutex_recursive_t mutex)
 {
-    return xSemaphoreGiveRecursive(reinterpret_cast<QueueHandle_t>(mutex))!=pdTRUE;
+    return xSemaphoreGiveRecursive(static_cast<SemaphoreHandle_t>(mutex))!=pdTRUE;
 }
 
 void os_thread_scheduling(bool enabled, void* reserved)
@@ -448,22 +448,22 @@ int os_semaphore_create(os_semaphore_t* semaphore, unsigned max, unsigned initia
 
 int os_semaphore_destroy(os_semaphore_t semaphore)
 {
-    vSemaphoreDelete(reinterpret_cast<QueueHandle_t>(semaphore));
+    vSemaphoreDelete(static_cast<SemaphoreHandle_t>(semaphore));
     return 0;
 }
 
 int os_semaphore_take(os_semaphore_t semaphore, system_tick_t timeout, bool reserved)
 {
-    return (xSemaphoreTake(reinterpret_cast<QueueHandle_t>(semaphore), timeout)!=pdTRUE);
+    return (xSemaphoreTake(static_cast<SemaphoreHandle_t>(semaphore), timeout)!=pdTRUE);
 }
 
 int os_semaphore_give(os_semaphore_t semaphore, bool reserved)
 {
     if (!HAL_IsISR()) {
-        return xSemaphoreGive(reinterpret_cast<QueueHandle_t>(semaphore))!=pdTRUE;
+        return xSemaphoreGive(static_cast<SemaphoreHandle_t>(semaphore))!=pdTRUE;
     } else {
         BaseType_t woken = pdFALSE;
-        int res = xSemaphoreGiveFromISR(reinterpret_cast<QueueHandle_t>(semaphore), &woken) != pdTRUE;
+        int res = xSemaphoreGiveFromISR(static_cast<SemaphoreHandle_t>(semaphore), &woken) != pdTRUE;
         portYIELD_FROM_ISR(woken);
         return res;
     }
@@ -480,13 +480,13 @@ int os_timer_create(os_timer_t* timer, unsigned period, void (*callback)(os_time
 
 int os_timer_get_id(os_timer_t timer, void** timer_id)
 {
-    *timer_id = pvTimerGetTimerID(reinterpret_cast<TimerHandle_t>(timer));
+    *timer_id = pvTimerGetTimerID(static_cast<TimerHandle_t>(timer));
     return 0;
 }
 
 int os_timer_set_id(os_timer_t timer, void* timer_id)
 {
-    vTimerSetTimerID(reinterpret_cast<TimerHandle_t>(timer), timer_id);
+    vTimerSetTimerID(static_cast<TimerHandle_t>(timer), timer_id);
     return 0;
 }
 
@@ -497,39 +497,39 @@ int os_timer_change(os_timer_t timer, os_timer_change_t change, bool fromISR, un
     {
     case OS_TIMER_CHANGE_START:
         if (fromISR)
-            return xTimerStartFromISR(reinterpret_cast<TimerHandle_t>(timer), &woken)!=pdPASS;
+            return xTimerStartFromISR(static_cast<TimerHandle_t>(timer), &woken)!=pdPASS;
         else
-            return xTimerStart(reinterpret_cast<TimerHandle_t>(timer), block)!=pdPASS;
+            return xTimerStart(static_cast<TimerHandle_t>(timer), block)!=pdPASS;
 
     case OS_TIMER_CHANGE_RESET:
         if (fromISR)
-            return xTimerResetFromISR(reinterpret_cast<TimerHandle_t>(timer), &woken)!=pdPASS;
+            return xTimerResetFromISR(static_cast<TimerHandle_t>(timer), &woken)!=pdPASS;
         else
-            return xTimerReset(reinterpret_cast<TimerHandle_t>(timer), block)!=pdPASS;
+            return xTimerReset(static_cast<TimerHandle_t>(timer), block)!=pdPASS;
 
     case OS_TIMER_CHANGE_STOP:
         if (fromISR)
-            return xTimerStopFromISR(reinterpret_cast<TimerHandle_t>(timer), &woken)!=pdPASS;
+            return xTimerStopFromISR(static_cast<TimerHandle_t>(timer), &woken)!=pdPASS;
         else
-            return xTimerStop(reinterpret_cast<TimerHandle_t>(timer), block)!=pdPASS;
+            return xTimerStop(static_cast<TimerHandle_t>(timer), block)!=pdPASS;
 
     case OS_TIMER_CHANGE_PERIOD:
         if (fromISR)
-            return xTimerChangePeriodFromISR(reinterpret_cast<TimerHandle_t>(timer), period, &woken)!=pdPASS;
+            return xTimerChangePeriodFromISR(static_cast<TimerHandle_t>(timer), period, &woken)!=pdPASS;
         else
-            return xTimerChangePeriod(reinterpret_cast<TimerHandle_t>(timer), period, block)!=pdPASS;
+            return xTimerChangePeriod(static_cast<TimerHandle_t>(timer), period, block)!=pdPASS;
     }
     return -1;
 }
 
 int os_timer_destroy(os_timer_t timer, void* reserved)
 {
-    return xTimerDelete(reinterpret_cast<TimerHandle_t>(timer), CONCURRENT_WAIT_FOREVER)!=pdPASS;
+    return xTimerDelete(static_cast<TimerHandle_t>(timer), CONCURRENT_WAIT_FOREVER)!=pdPASS;
 }
 
 int os_timer_is_active(os_timer_t timer, void* reserved)
 {
-    return xTimerIsTimerActive(reinterpret_cast<TimerHandle_t>(timer)) != pdFALSE;
+    return xTimerIsTimerActive(static_cast<TimerHandle_t>(timer)) != pdFALSE;
 }
 
 void __flash_acquire() {
