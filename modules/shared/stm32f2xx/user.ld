@@ -7,16 +7,16 @@ SECTIONS
     INCLUDE module_start.ld
     INCLUDE module_info.ld
 
-    .text :
+    .dynalib :
     {
-        expected_dynalib_start = ORIGIN (APP_FLASH) + 24 ;
+        expected_dynalib_start = ORIGIN(APP_FLASH) + 24 ;
         link_dynalib_start = .;
         KEEP(*(*.user_part_module))
         link_dynalib_end = . ;
-        link_length_start = .;
-        KEEP(*(*.user_part_length))
-        link_length_end = .;
+    } > APP_FLASH AT> APP_FLASH
 
+    .text :
+    {
         . = ALIGN(4);
 
         link_code_location = .;
