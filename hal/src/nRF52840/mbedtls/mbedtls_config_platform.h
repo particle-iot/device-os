@@ -1198,6 +1198,11 @@
  * while buffering multiple smaller handshake messages.
  *
  */
+/* NOTE: we are using half of the recommended value:
+ * 1. to save on RAM
+ * 2. we are using raw keys and not certificates
+ * 3. we've used such a value with our own implementation of DTLS message queuing
+ */
 #define MBEDTLS_SSL_DTLS_MAX_BUFFERING             16384
 
 /**
