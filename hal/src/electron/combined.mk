@@ -27,7 +27,7 @@ OUT=$(FIRMWARE_BUILD)/releases/release-$(VERSION_STRING)-p$(PLATFORM_ID)
 DCT_MEM=$(OUT)/dct_pad.bin
 DCT_PREP=dct_prep.bin
 ERASE_SECTOR=$(OUT)/erase_sector.bin
-BOOTLOADER_BIN=$(FIRMWARE_BUILD)/target/bootloader/platform-$(PLATFORM_ID)-lto/bootloader.bin
+BOOTLOADER_BIN=$(FIRMWARE_BUILD)/target/bootloader/platform-$(PLATFORM_ID)-m-lto/bootloader.bin
 BOOTLOADER_MEM=$(OUT)/bootloader_pad$(SUFFIX).bin
 BOOTLOADER_DIR=$(FIRMWARE)/bootloader
 

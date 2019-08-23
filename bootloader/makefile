@@ -16,9 +16,8 @@ export BOOTLOADER_MODULE=1
 
 include ../build/platform-id.mk
 
-ifeq ($(MONO_MFG_FIRMWARE_AT_USER_PART),y)
-include ../modules/$(PLATFORM_NAME)/modular.mk
-endif
+# Build bootloader as modular by default if the platform is modular
+-include ../modules/$(PLATFORM_NAME)/modular.mk
 
 # Target this makefile is building.
 ifeq ("$(ARCH)","gcc")
