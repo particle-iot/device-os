@@ -974,9 +974,12 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
     CHECK(suspend());
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
         tempParams.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
-        if (configure(&tempParams) != SYSTEM_ERROR_NONE) {
-            LOG(ERROR, "Failed to configure advertising parameters.");
-            return resume();
+        int ret = configure(&tempParams);
+        if (ret != SYSTEM_ERROR_NONE) {
+            if (resume() != SYSTEM_ERROR_NONE) {
+                LOG(ERROR, "Failed to resume BLE advertising.");
+            }
+            return ret;
         }
         if (params == nullptr) {
             tempParams.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
@@ -988,15 +991,18 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
         advParams_.version = BLE_API_VERSION;
         connectedAdvParams_ = true; // Set the flag after the advParams_ being updated.
     } else {
-        if (configure(&tempParams) != SYSTEM_ERROR_NONE) {
-            LOG(ERROR, "Failed to configure advertising parameters.");
-            return resume();
+        int ret = configure(&tempParams);
+        if (ret != SYSTEM_ERROR_NONE) {
+            if (resume() != SYSTEM_ERROR_NONE) {
+                LOG(ERROR, "Failed to resume BLE advertising.");
+            }
+            return ret;
         }
         memcpy(&advParams_, &tempParams, std::min(advParams_.size, tempParams.size));
         advParams_.size = sizeof(hal_ble_adv_params_t);
         advParams_.version = BLE_API_VERSION;
     }
-    return resume();
+    return CHECK(resume());
 }
 
 int BleObject::Broadcaster::getAdvertisingParams(hal_ble_adv_params_t* params) const {
@@ -1015,10 +1021,14 @@ int BleObject::Broadcaster::setAdvertisingData(const uint8_t* buf, size_t len) {
         len = 0;
     }
     advDataLen_ = len;
-    if (configure(nullptr) != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "Failed to configure advertising data.");
+    int ret = configure(nullptr);
+    if (ret != SYSTEM_ERROR_NONE) {
+        if (resume() != SYSTEM_ERROR_NONE) {
+            LOG(ERROR, "Failed to resume BLE advertising.");
+        }
+        return ret;
     }
-    return resume();
+    return CHECK(resume());
 }
 
 ssize_t BleObject::Broadcaster::getAdvertisingData(uint8_t* buf, size_t len) const {
@@ -1040,10 +1050,14 @@ int BleObject::Broadcaster::setScanResponseData(const uint8_t* buf, size_t len) 
         len = 0;
     }
     scanRespDataLen_ = len;
-    if (configure(nullptr) != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "Failed to configure scan response data.");
+    int ret = configure(nullptr);
+    if (ret != SYSTEM_ERROR_NONE) {
+        if (resume() != SYSTEM_ERROR_NONE) {
+            LOG(ERROR, "Failed to resume BLE advertising.");
+        }
+        return ret;
     }
-    return resume();
+    return CHECK(resume());
 }
 
 ssize_t BleObject::Broadcaster::getScanResponseData(uint8_t* buf, size_t len) const {
