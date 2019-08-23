@@ -145,7 +145,6 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uin
 
 		mbedtls_ssl_handshake_wrapup(context);
 		size = sizeof(*this);
-
 		return COMPLETE;
 	}
 	else
