@@ -1609,6 +1609,7 @@ int BleLocalDevice::end() const {
 
 int BleLocalDevice::on() const {
     WiringBleLock lk;
+    CHECK(hal_ble_stack_init(nullptr));
     return SYSTEM_ERROR_NONE;
 }
 
