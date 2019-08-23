@@ -381,7 +381,7 @@ int hal_ble_unlock(void* reserved);
  *
  * @returns    0 on success, system_error_t on error.
  */
-int hal_ble_notify_enter_listening_mode(void* reserved);
+int hal_ble_enter_locked_mode(void* reserved);
 
 /**
  * Notify that device has exited the Listening mode, BLE advertising data/parameters and
@@ -391,7 +391,7 @@ int hal_ble_notify_enter_listening_mode(void* reserved);
  *
  * @returns    0 on success, system_error_t on error.
  */
-int hal_ble_notify_exit_listening_mode(void* reserved);
+int hal_ble_exit_locked_mode(void* reserved);
 
 /**
  * Initialize the BLE stack. This function must be called previous to any other BLE APIs.

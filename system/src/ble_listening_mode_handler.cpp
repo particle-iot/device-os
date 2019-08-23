@@ -30,6 +30,7 @@ LOG_SOURCE_CATEGORY("system.listen.ble")
 namespace {
 
 using namespace particle::system;
+using namespace particle::ble;
 
 } // unnamed
 
@@ -93,13 +94,11 @@ int BleListeningModeHandler::cacheUserConfigurations() {
     Vector<uint8_t> tempSrData(BLE_MAX_ADV_DATA_LEN);
 
     // Advertising data set by user application
-    size_t len = hal_ble_gap_get_advertising_data(tempAdvData.data(), BLE_MAX_ADV_DATA_LEN, nullptr);
-    CHECK(len);
+    size_t len = CHECK(hal_ble_gap_get_advertising_data(tempAdvData.data(), BLE_MAX_ADV_DATA_LEN, nullptr));
     tempAdvData.resize(len);
 
     // Scan response data set by user application
-    len = hal_ble_gap_get_scan_response_data(tempSrData.data(), BLE_MAX_ADV_DATA_LEN, nullptr);
-    CHECK(len);
+    len = CHECK(hal_ble_gap_get_scan_response_data(tempSrData.data(), BLE_MAX_ADV_DATA_LEN, nullptr));
     tempSrData.resize(len);
 
     // Advertising and connection parameters set by user application
@@ -123,10 +122,7 @@ int BleListeningModeHandler::restoreUserConfigurations() {
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
     // Do not allow other thread to modify the BLE configurations.
-    CHECK(hal_ble_lock(nullptr));
-    SCOPE_GUARD ({
-        hal_ble_unlock(nullptr);
-    });
+    BleLock lk;
 
     // Restore the advertising data, advertising parameters and connection parameters.
     CHECK(hal_ble_gap_set_advertising_data(preAdvData_.data(), preAdvData_.size(), nullptr));
@@ -173,16 +169,18 @@ int BleListeningModeHandler::restoreUserConfigurations() {
 int BleListeningModeHandler::applyControlRequestConfigurations() {
     LOG_DEBUG(TRACE, "Apply BLE control request configurations.");
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK(hal_ble_lock(nullptr));
+
+    // Do not allow other thread to modify the BLE configurations.
+    BleLock lk;
+
     bool success = false;
     SCOPE_GUARD ({
-        hal_ble_unlock(nullptr);
         if (!success) {
             exit();
         }
     });
 
-    CHECK(hal_ble_notify_exit_listening_mode(nullptr));
+    CHECK(hal_ble_exit_locked_mode(nullptr));
 
     // Set PPCP (Peripheral Preferred Connection Parameters)
     hal_ble_conn_params_t ppcp = {};
@@ -207,7 +205,7 @@ int BleListeningModeHandler::applyControlRequestConfigurations() {
     // TX power
     CHECK(hal_ble_gap_set_tx_power(BLE_CTRL_REQ_TX_POWER, nullptr));
 
-    CHECK(hal_ble_notify_enter_listening_mode(nullptr));
+    CHECK(hal_ble_enter_locked_mode(nullptr));
 
     success = true;
     return SYSTEM_ERROR_NONE;
@@ -218,19 +216,21 @@ int BleListeningModeHandler::applyUserAdvData() {
     CHECK_TRUE((preAdvertising_ || preConnected_), SYSTEM_ERROR_INVALID_STATE);
     if (!userAdv_) {
         LOG_DEBUG(TRACE, "Apply user's advertising data set.");
-        CHECK(hal_ble_lock(nullptr));
+
+        // Do not allow other thread to modify the BLE configurations.
+        BleLock lk;
+
         bool success = false;
         SCOPE_GUARD ({
-            hal_ble_unlock(nullptr);
             if (!success) {
                 exit();
             }
         });
 
-        CHECK(hal_ble_notify_exit_listening_mode(nullptr));
+        CHECK(hal_ble_exit_locked_mode(nullptr));
         CHECK(hal_ble_gap_set_advertising_data(preAdvData_.data(), preAdvData_.size(), nullptr));
         CHECK(hal_ble_gap_set_scan_response_data(preSrData_.data(), preSrData_.size(), nullptr));
-        CHECK(hal_ble_notify_enter_listening_mode(nullptr));
+        CHECK(hal_ble_enter_locked_mode(nullptr));
         success = true;
     }
     userAdv_ = !userAdv_;
@@ -240,19 +240,21 @@ int BleListeningModeHandler::applyUserAdvData() {
 int BleListeningModeHandler::applyControlRequestAdvData() {
     LOG_DEBUG(TRACE, "Apply control request advertising data set.");
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK(hal_ble_lock(nullptr));
+
+    // Do not allow other thread to modify the BLE configurations.
+    BleLock lk;
+
     bool success = false;
     SCOPE_GUARD ({
-        hal_ble_unlock(nullptr);
         if (!success) {
             exit();
         }
     });
 
-    CHECK(hal_ble_notify_exit_listening_mode(nullptr));
+    CHECK(hal_ble_exit_locked_mode(nullptr));
     CHECK(hal_ble_gap_set_advertising_data(ctrlReqAdvData_.data(), ctrlReqAdvData_.size(), nullptr));
     CHECK(hal_ble_gap_set_scan_response_data(ctrlReqSrData_.data(), ctrlReqSrData_.size(), nullptr));
-    CHECK(hal_ble_notify_enter_listening_mode(nullptr));
+    CHECK(hal_ble_enter_locked_mode(nullptr));
     success = true;
     return SYSTEM_ERROR_NONE;
 }
@@ -261,17 +263,17 @@ int BleListeningModeHandler::enter() {
     exited_ = false;
 
     // Do not allow other thread to modify the BLE configurations.
-    CHECK(hal_ble_lock(nullptr));
+    BleLock lk;
+
     bool success = false;
     SCOPE_GUARD ({
-        hal_ble_unlock(nullptr);
         if (!success) {
             exit();
         }
     });
 
     // Now the BLE configurations are non-modifiable.
-    CHECK(hal_ble_notify_enter_listening_mode(nullptr));
+    CHECK(hal_ble_enter_locked_mode(nullptr));
     CHECK(constructControlRequestAdvData());
     CHECK(cacheUserConfigurations());
     // Restore the user's BLE configurations on exited.
@@ -299,9 +301,9 @@ int BleListeningModeHandler::exit() {
     // It should not CHECK() in this function, in case that the BLE HAL status cannot be restored correctly.
 
     // Do not allow other thread to modify the BLE configurations until this function exits.
-    hal_ble_lock(nullptr);
+    BleLock lk;
+
     SCOPE_GUARD ({
-        hal_ble_unlock(nullptr);
         preAdvData_.clear();
         preSrData_.clear();
         ctrlReqAdvData_.clear();
@@ -309,7 +311,7 @@ int BleListeningModeHandler::exit() {
     });
 
     // Now the BLE configurations are modifiable.
-    hal_ble_notify_exit_listening_mode(nullptr);
+    hal_ble_exit_locked_mode(nullptr);
     if (restoreUserConfig_) {
         restoreUserConfig_ = false;
         if (restoreUserConfigurations() != SYSTEM_ERROR_NONE) {
