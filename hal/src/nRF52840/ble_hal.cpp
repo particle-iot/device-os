@@ -167,6 +167,7 @@ hal_ble_addr_t chipDefaultAddress() {
     localAddr.addr[3] = (uint8_t)((addrLsb >> 24) & 0x000000FF);
     localAddr.addr[4] = (uint8_t)(addrMsb & 0x000000FF);
     localAddr.addr[5] = (uint8_t)((addrMsb >> 8) & 0x000000FF);
+    localAddr.addr[5] |= 0xC0; // For random static address, the two most significant bits of the address shall be equal to 1.
     return localAddr;
 }
 
@@ -721,7 +722,7 @@ static BleGapImpl bleGapImpl;
 
 int BleObject::BleGap::init() {
     // Set the default device name
-    char devName[32] = {};
+    char devName[BLE_MAX_DEV_NAME_LEN] = {};
     CHECK(get_device_name(devName, sizeof(devName)));
     CHECK(setDeviceName(devName, strlen(devName)));
     bleGapImpl.instance = this;
@@ -731,7 +732,7 @@ int BleObject::BleGap::init() {
 }
 
 int BleObject::BleGap::setDeviceName(const char* deviceName, size_t len) const {
-    char name[32] = {};
+    char name[BLE_MAX_DEV_NAME_LEN] = {};
     if (deviceName == nullptr || len == 0) {
         CHECK(get_device_name(name, sizeof(name)));
         len = strlen(name);
@@ -748,8 +749,7 @@ int BleObject::BleGap::setDeviceName(const char* deviceName, size_t len) const {
 int BleObject::BleGap::getDeviceName(char* deviceName, size_t len) const {
     CHECK_TRUE(deviceName, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(len, SYSTEM_ERROR_INVALID_ARGUMENT);
-    // non NULL-terminated string returned.
-    uint16_t nameLen = len - 1;
+    uint16_t nameLen = len - 1; // Reserve 1 byte for the NULL-terminated character.
     int ret = sd_ble_gap_device_name_get((uint8_t*)deviceName, &nameLen);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     nameLen = std::min(len - 1, (size_t)nameLen);
@@ -974,8 +974,12 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
     CHECK(suspend());
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
         tempParams.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
-        if (configure(&tempParams) != SYSTEM_ERROR_NONE) {
-            return resume();
+        int ret = configure(&tempParams);
+        if (ret != SYSTEM_ERROR_NONE) {
+            if (resume() != SYSTEM_ERROR_NONE) {
+                LOG(ERROR, "Failed to resume BLE advertising.");
+            }
+            return ret;
         }
         if (params == nullptr) {
             tempParams.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
@@ -987,14 +991,18 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
         advParams_.version = BLE_API_VERSION;
         connectedAdvParams_ = true; // Set the flag after the advParams_ being updated.
     } else {
-        if (configure(&tempParams) != SYSTEM_ERROR_NONE) {
-            return resume();
+        int ret = configure(&tempParams);
+        if (ret != SYSTEM_ERROR_NONE) {
+            if (resume() != SYSTEM_ERROR_NONE) {
+                LOG(ERROR, "Failed to resume BLE advertising.");
+            }
+            return ret;
         }
         memcpy(&advParams_, &tempParams, std::min(advParams_.size, tempParams.size));
         advParams_.size = sizeof(hal_ble_adv_params_t);
         advParams_.version = BLE_API_VERSION;
     }
-    return resume();
+    return CHECK(resume());
 }
 
 int BleObject::Broadcaster::getAdvertisingParams(hal_ble_adv_params_t* params) const {
@@ -1013,8 +1021,14 @@ int BleObject::Broadcaster::setAdvertisingData(const uint8_t* buf, size_t len) {
         len = 0;
     }
     advDataLen_ = len;
-    configure(nullptr);
-    return resume();
+    int ret = configure(nullptr);
+    if (ret != SYSTEM_ERROR_NONE) {
+        if (resume() != SYSTEM_ERROR_NONE) {
+            LOG(ERROR, "Failed to resume BLE advertising.");
+        }
+        return ret;
+    }
+    return CHECK(resume());
 }
 
 ssize_t BleObject::Broadcaster::getAdvertisingData(uint8_t* buf, size_t len) const {
@@ -1036,8 +1050,14 @@ int BleObject::Broadcaster::setScanResponseData(const uint8_t* buf, size_t len) 
         len = 0;
     }
     scanRespDataLen_ = len;
-    configure(nullptr);
-    return resume();
+    int ret = configure(nullptr);
+    if (ret != SYSTEM_ERROR_NONE) {
+        if (resume() != SYSTEM_ERROR_NONE) {
+            LOG(ERROR, "Failed to resume BLE advertising.");
+        }
+        return ret;
+    }
+    return CHECK(resume());
 }
 
 ssize_t BleObject::Broadcaster::getScanResponseData(uint8_t* buf, size_t len) const {
@@ -1159,7 +1179,8 @@ int BleObject::Broadcaster::configure(const hal_ble_adv_params_t* params) {
                   bleGapAdvParams.interval*0.625, bleGapAdvParams.duration*10);
         ret = sd_ble_gap_adv_set_configure(&advHandle_, &bleGapAdvData, &bleGapAdvParams);
     }
-    return nrf_system_error(ret);
+    CHECK(nrf_system_error(ret));
+    return SYSTEM_ERROR_NONE;
 }
 
 int8_t BleObject::Broadcaster::roundTxPower(int8_t value) {

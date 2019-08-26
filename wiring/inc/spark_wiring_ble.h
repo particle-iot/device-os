@@ -67,7 +67,7 @@ enum class BleCharacteristicProperty : uint8_t {
 
 inline BleCharacteristicProperty operator&(BleCharacteristicProperty lhs, BleCharacteristicProperty rhs) {
     return static_cast<BleCharacteristicProperty>(
-        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(lhs) |
+        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(lhs) &
         static_cast<std::underlying_type<BleCharacteristicProperty>::type>(rhs)
     );
 }
@@ -318,6 +318,8 @@ public:
             return append(BleAdvertisingDataType::SERVICE_UUID_128BIT_COMPLETE, tempUUID.rawBytes(), BLE_SIG_UUID_128BIT_LEN, force);
         }
     }
+
+    size_t resize(size_t size);
 
     void clear();
     void remove(BleAdvertisingDataType type);
