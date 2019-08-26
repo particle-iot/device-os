@@ -77,19 +77,16 @@ OPTS=
 all: combined-full
 
 setup:
-	-mkdir $(TARGET_PARENT)
-	-mkdir $(TARGET)
-	-mkdir $(OUT)
+	mkdir -p $(TARGET_PARENT)
+	mkdir -p $(OUT)
 clean:
-	-rm -rf $(TARGET_PARENT)
-	-rm $(MFG_TEST_BIN)
-	-rm $(BOOTLOADER_MEM)
-	-rm $(DCT_MEM)
+	rm -rf $(TARGET_PARENT)
+	rm -rf $(OUT)
 	cd "$(WICED_SDK)"; "./make" clean
 
 bootloader:
 	@echo building bootloader to $(BOOTLOADER_MEM)
-	-rm $(BOOTLOADER_MEM)
+	rm -f $(BOOTLOADER_MEM)
 	$(MAKE) -s -C $(BOOTLOADER_DIR) PLATFORM_ID=$(PLATFORM_ID) MONO_MFG_FIRMWARE_AT_USER_PART=y all
 	dd if=/dev/zero ibs=1k count=16 | tr "\000" "\377"  > $(BOOTLOADER_MEM)
 	dd if=$(BOOTLOADER_BIN) of=$(BOOTLOADER_MEM) conv=notrunc
@@ -97,7 +94,7 @@ bootloader:
 # add the prepared dct image into the flash image
 dct:
 	@echo building DCT to $(DCT_MEM)
-	-rm $(DCT_MEM)
+	rm -f $(DCT_MEM)
 	dd if=/dev/zero ibs=1k count=112 | tr "\000" "\377" > $(DCT_MEM)
 #	tr "\000" "\377" < /dev/zero | dd of=$(DCT_MEM) ibs=1k count=112
 	dd if=$(DCT_PREP) of=$(DCT_MEM) conv=notrunc
@@ -111,7 +108,7 @@ $(MFG_TEST_BIN): user-full
 
 $(MFG_TEST_MEM): $(MFG_TEST_BIN) user-full
 	@echo building WICED test tool to $(MFT_TEST_MEM)
-	-rm $(MFG_TEST_MEM)
+	rm -f $(MFG_TEST_MEM)
 	dd if=/dev/zero ibs=1k count=384 | tr "\000" "\377" > $(MFG_TEST_MEM)
 
 	# the application image (tinker) is injected into the gap in the
@@ -134,14 +131,14 @@ mfg_test: $(MFG_TEST_MEM)
 
 user: 
 	@echo building factory default modular user app to $(USER_MEM)
-	-rm $(USER_MEM)
+	rm -f $(USER_MEM)
 	$(MAKE) -s -C $(USER_DIR) APP=tinker PLATFORM_ID=$(PLATFORM_ID)  PRODUCT_ID=$(PRODUCT_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) all
 	cp $(USER_BIN) $(USER_MEM)
 
 system-full:
 	# The system module is composed of part1 and part2 concatenated together
 	@echo building full modular system firmware to $(SYSTEM_MEM)
-	-rm $(SYSTEM_MEM)
+	rm -f $(SYSTEM_MEM)
 	$(MAKE) -s -C $(MODULAR_DIR) COMPILE_LTO=n PLATFORM_ID=$(PLATFORM_ID) PRODUCT_FIRMWARE_VERSION=$(VERSION) PRODUCT_ID=$(PRODUCT_ID) all
 	# 512k - 4 bytes for the CRC
 	dd if=/dev/zero ibs=1 count=524288 | tr "\000" "\377" > $(SYSTEM_MEM)
@@ -156,7 +153,7 @@ user-full: user
 
 combined-full: setup bootloader dct user-full mfg_test system-full $(WL_DEP) checks-full
 	@echo Building combined full image to $(COMBINED_MEM)
-	-rm $(COMBINED_MEM)
+	rm -f $(COMBINED_MEM)
 	cat $(BOOTLOADER_MEM) $(DCT_MEM) $(SYSTEM_MEM) $(MFG_TEST_MEM) > $(COMBINED_MEM)
 
 	# Generate combined.elf from combined.bin
@@ -164,8 +161,10 @@ combined-full: setup bootloader dct user-full mfg_test system-full $(WL_DEP) che
 	${TOOLCHAIN_PREFIX}objcopy --rename-section .data=.text --set-section-flags .data=alloc,code,load $(OUT)/temp.elf
 	${TOOLCHAIN_PREFIX}ld $(OUT)/temp.elf -T ../stm32/combined_bin_to_elf.ld -o $(COMBINED_ELF)
 	${TOOLCHAIN_PREFIX}strip -s $(COMBINED_ELF)
-	-rm -rf $(OUT)/temp.elf
-
+	rm -f $(OUT)/temp.elf
+	@echo
+	@echo
+	@echo "Success! Release binaries written to $(OUT)"
 
 st-flash: combined-full
 	st-flash write $(COMBINED_MEM) 0x8000000
