@@ -374,6 +374,26 @@ int hal_ble_lock(void* reserved);
 int hal_ble_unlock(void* reserved);
 
 /**
+ * Notify that device has entered the Listening mode, in which case the BLE
+ * advertising data/parameters and connection parameters are not allowed to be modified.
+ *
+ * @param      reserved  The reserved
+ *
+ * @returns    0 on success, system_error_t on error.
+ */
+int hal_ble_enter_locked_mode(void* reserved);
+
+/**
+ * Notify that device has exited the Listening mode, BLE advertising data/parameters and
+ * connection parameters are allowed to be modified.
+ *
+ * @param      reserved  The reserved
+ *
+ * @returns    0 on success, system_error_t on error.
+ */
+int hal_ble_exit_locked_mode(void* reserved);
+
+/**
  * Initialize the BLE stack. This function must be called previous to any other BLE APIs.
  *
  * @param[in]   reserved    Reserved for future use.
@@ -408,6 +428,15 @@ int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved);
  * @returns     0 on success, system_error_t on error.
  */
 int hal_ble_set_callback_on_adv_events(hal_ble_on_adv_evt_cb_t callback, void* context, void* reserved);
+
+/**
+ * Deregister the callback on BLE advertising events.
+ *
+ * @param[in]   callback    The callback function.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_cancel_callback_on_adv_events(hal_ble_on_adv_evt_cb_t callback, void* context, void* reserved);
 
 /**
  * Set the callback on BLE Peripheral link events.

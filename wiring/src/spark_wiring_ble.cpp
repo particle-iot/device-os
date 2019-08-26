@@ -1583,12 +1583,37 @@ void BleLocalDevice::onDisconnected(BleOnDisconnectedCallback callback, void* co
     impl()->onDisconnectedCallback(callback, context);
 }
 
-int BleLocalDevice::on() {
+int BleLocalDevice::begin() const {
     WiringBleLock lk;
     return SYSTEM_ERROR_NONE;
 }
 
-int BleLocalDevice::off() {
+int BleLocalDevice::end() const {
+    /*
+     * 1. Disconnects all the connections initiated by user application.
+     * 2. Disconnects Peripheral connection if it is not in the Listening mode.
+     * 3. Stops advertising if it is not in the Listening mode.
+     * 4. Stops scanning if initiated.
+     *
+     * FIXME: If device is broadcasting before entering the Listening mode and
+     * then this API is called during device in the Listening mode, device will
+     * restart broadcasting automatically when device exits the Listening mode.
+     */
+    WiringBleLock lk;
+    disconnectAll(); // BLE HAL will guard that the Peripheral connection is remained if device is in the Listening mode.
+    impl()->peers().clear();
+    stopAdvertising(); // BLE HAL will guard that device keeps broadcasting if device is in the Listening mode.
+    stopScanning();
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleLocalDevice::on() const {
+    WiringBleLock lk;
+    CHECK(hal_ble_stack_init(nullptr));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleLocalDevice::off() const {
     WiringBleLock lk;
     CHECK(hal_ble_stack_deinit(nullptr));
     impl()->peers().clear();
