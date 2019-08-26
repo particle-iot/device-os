@@ -243,7 +243,7 @@
  *
  */
 #ifndef RNG_BUFFER_SIZE
-#define RNG_BUFFER_SIZE 64
+#define RNG_BUFFER_SIZE 128
 #endif
 
 /**

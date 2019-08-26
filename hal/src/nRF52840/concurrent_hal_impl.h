@@ -28,9 +28,8 @@ extern "C" {
 // so we cannot directly define __gthread_t as TaskHandle_t, however, we define it
 // here and statically assert that it is the same size.
 
-typedef void* __gthread_t;
-
 typedef void* os_thread_t;
+typedef os_thread_t __gthread_t;
 typedef int32_t os_result_t;
 typedef uint8_t os_thread_prio_t;
 /* Default priority is the same as the application thread */

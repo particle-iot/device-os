@@ -386,14 +386,14 @@ int auth(ctrl_request* req) {
     // Get network name, extended PAN ID and current PSKc
     const char* name = otThreadGetNetworkName(thread);
     const auto extPanId = otThreadGetExtendedPanId(thread);
-    const uint8_t* curPskc = otThreadGetPSKc(thread);
+    const auto curPskc = otThreadGetPSKc(thread);
     if (!name || !extPanId || !curPskc) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     // Generate PSKc for the provided commissioning credential
     uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
     CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, name, extPanId, pskc));
-    if (memcmp(pskc, curPskc, OT_PSKC_MAX_SIZE) != 0) {
+    if (memcmp(pskc, curPskc->m8, OT_PSKC_MAX_SIZE) != 0) {
         return SYSTEM_ERROR_NOT_ALLOWED;
     }
     return 0;
@@ -533,9 +533,9 @@ int createNetwork(ctrl_request* req) {
     rand.genSecure((char*)&key, sizeof(key));
     CHECK_THREAD(otThreadSetMasterKey(thread, &key));
     // Set PSKc
-    uint8_t pskc[OT_PSKC_MAX_SIZE] = {};
-    CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, dName.data, &extPanId, pskc));
-    CHECK_THREAD(otThreadSetPSKc(thread, pskc));
+    otPSKc pskc = {};
+    CHECK_THREAD(otCommissionerGeneratePSKc(thread, dPwd.data, dName.data, &extPanId, pskc.m8));
+    CHECK_THREAD(otThreadSetPSKc(thread, &pskc));
     CHECK(ot_set_network_id(thread, dId.data ? dId.data : "", dId.data ? (strlen(dId.data) + 1) : 1));
     // Enable Thread
     CHECK_THREAD(otIp6SetEnabled(thread, true));
@@ -592,7 +592,8 @@ int startCommissioner(ctrl_request* req) {
     } else {
         if (state == OT_COMMISSIONER_STATE_DISABLED) {
             LOG_DEBUG(TRACE, "Starting commissioner");
-            CHECK_THREAD(otCommissionerStart(thread));
+            // FIXME: use callback to track state changes
+            CHECK_THREAD(otCommissionerStart(thread, nullptr, nullptr, nullptr));
         }
         WAIT_UNTIL(lock, otCommissionerGetState(thread) != OT_COMMISSIONER_STATE_PETITION);
         state = otCommissionerGetState(thread);
@@ -1395,26 +1396,24 @@ int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* messag
             }
             case NetworkDiagnosticTlv::kIp6AddressList: {
                 auto ip6AddrList = static_cast<const Ip6AddressListTlv*>(tlv);
-                if (ip6AddrList->IsValid()) {
-                    auto& pbList = pbRep.ipv6_address_list;
-                    pbList.arg = (void*)ip6AddrList;
-                    pbList.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
-                        auto ip6AddrList = reinterpret_cast<const Ip6AddressListTlv*>(*arg);
-                        const unsigned totalAddrs = ip6AddrList->GetLength() / sizeof(otIp6Address);
-                        for (unsigned i = 0; i < totalAddrs; i++) {
-                            const otIp6Address* addr = &ip6AddrList->GetIp6Address(i);
-                            particle_ctrl_Ipv6Address pbAddr = {};
-                            memcpy(pbAddr.address, addr->mFields.m8, sizeof(pbAddr.address));
-                            if (!pb_encode_tag_for_field(strm, field)) {
-                                return false;
-                            }
-                            if (!pb_encode_submessage(strm, particle_ctrl_Ipv6Address_fields, &pbAddr)) {
-                                return false;
-                            }
+                auto& pbList = pbRep.ipv6_address_list;
+                pbList.arg = (void*)ip6AddrList;
+                pbList.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+                    auto ip6AddrList = reinterpret_cast<const Ip6AddressListTlv*>(*arg);
+                    const unsigned totalAddrs = ip6AddrList->GetLength() / sizeof(otIp6Address);
+                    for (unsigned i = 0; i < totalAddrs; i++) {
+                        const otIp6Address* addr = &ip6AddrList->GetIp6Address(i);
+                        particle_ctrl_Ipv6Address pbAddr = {};
+                        memcpy(pbAddr.address, addr->mFields.m8, sizeof(pbAddr.address));
+                        if (!pb_encode_tag_for_field(strm, field)) {
+                            return false;
                         }
-                        return true;
-                    };
-                }
+                        if (!pb_encode_submessage(strm, particle_ctrl_Ipv6Address_fields, &pbAddr)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                };
                 break;
             }
             case NetworkDiagnosticTlv::kMacCounters: {
@@ -1481,11 +1480,9 @@ int processNetworkDiagnosticTlvs(DiagnosticResult* diagResult, otMessage* messag
             }
             case NetworkDiagnosticTlv::kChannelPages: {
                 auto channelPagesTlv = (ChannelPagesTlv*)(tlv);
-                if (channelPagesTlv->IsValid()) {
-                    // Only 1 channel page supported in OpenThread at the moment
-                    pbRep.channel_pages.size = 1;
-                    pbRep.channel_pages.bytes[0] = *channelPagesTlv->GetChannelPages();
-                }
+                // Only 1 channel page supported in OpenThread at the moment
+                pbRep.channel_pages.size = 1;
+                pbRep.channel_pages.bytes[0] = *channelPagesTlv->GetChannelPages();
                 break;
             }
             case NetworkDiagnosticTlv::kTypeList: {

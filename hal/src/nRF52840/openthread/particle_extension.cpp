@@ -24,6 +24,7 @@ LOG_SOURCE_CATEGORY("ot.ext");
 #include "openthread/particle_extension.h"
 
 #include <common/instance.hpp>
+#include <common/locator-getters.hpp>
 #include <common/extension.hpp>
 #include <coap/coap.hpp>
 #include <common/tlvs.hpp>
@@ -86,11 +87,11 @@ public:
               deviceIdGetRequest_(PARTICLE_URI_PATH_DEVICE_ID_GET_REQUEST, &handleDeviceIdGetRequest, this),
               receiveDeviceIdGetCallback_(nullptr),
               receiveDeviceIdGetCallbackCtx_(nullptr) {
-        GetNetif().GetCoap().AddResource(deviceIdGetRequest_);
+        Get<Coap::Coap>().AddResource(deviceIdGetRequest_);
     }
 
     otError sendDeviceIdGetRequest(const Ip6::Address& dst) {
-        auto msg = GetNetif().GetCoap().NewMessage();
+        auto msg = Get<Coap::Coap>().NewMessage();
         if (!msg) {
             return OT_ERROR_NO_BUFS;
         }
@@ -109,12 +110,11 @@ public:
 
         Ip6::MessageInfo msgInfo;
 
-        msgInfo.SetSockAddr(GetNetif().GetMle().GetMeshLocal16());
+        msgInfo.SetSockAddr(Get<Mle::MleRouter>().GetMeshLocal16());
         msgInfo.SetPeerAddr(dst);
         msgInfo.SetPeerPort(kCoapUdpPort);
-        msgInfo.SetInterfaceId(GetNetif().GetInterfaceId());
 
-        auto err = GetNetif().GetCoap().SendMessage(*msg, msgInfo, &handleDeviceIdGetResponse, this);
+        auto err = Get<Coap::Coap>().SendMessage(*msg, msgInfo, &handleDeviceIdGetResponse, this);
 
         if (err == OT_ERROR_NONE) {
             LOG_DEBUG(TRACE, "Sent GET Device Id request");
@@ -143,7 +143,7 @@ private:
 
         LOG_DEBUG(TRACE, "Received GET Device Id request");
 
-        auto rep = GetNetif().GetCoap().NewMessage();
+        auto rep = Get<Coap::Coap>().NewMessage();
         if (!rep) {
             return;
         }
@@ -165,7 +165,7 @@ private:
 
         auto err = rep->Append(&tlv, sizeof(tlv));
         if (err == OT_ERROR_NONE) {
-            err = GetNetif().GetCoap().SendMessage(*rep, msgInfo);
+            err = Get<Coap::Coap>().SendMessage(*rep, msgInfo);
         }
 
         if (err == OT_ERROR_NONE) {
@@ -231,7 +231,7 @@ otError otExtParticleSetReceiveDeviceIdGetCallback(otInstance* instance,
     using namespace ot;
     Instance& inst = *static_cast<Instance*>(instance);
 
-    auto& extension = static_cast<Extension::Particle::Extension&>(inst.GetExtension());
+    auto& extension = static_cast<Extension::Particle::Extension&>(inst.Get<Extension::ExtensionBase>());
     return extension.setReceiveDeviceIdGetCallback(cb, ctx);
 }
 
@@ -239,6 +239,6 @@ otError otExtParticleSendDeviceIdGet(otInstance* instance, const otIp6Address* d
     using namespace ot;
     Instance& inst = *static_cast<Instance*>(instance);
 
-    auto& extension = static_cast<Extension::Particle::Extension&>(inst.GetExtension());
+    auto& extension = static_cast<Extension::Particle::Extension&>(inst.Get<Extension::ExtensionBase>());
     return extension.sendDeviceIdGetRequest(*static_cast<const Ip6::Address*>(dest));
 }

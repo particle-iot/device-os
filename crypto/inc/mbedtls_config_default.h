@@ -1184,14 +1184,27 @@
  */
 #define MBEDTLS_SSL_DTLS_BADMAC_LIMIT
 
-/**
- * \def MBEDTLS_SSL_DTLS_HANDSHAKE_QUEUE
+/** \def MBEDTLS_SSL_DTLS_MAX_BUFFERING
  *
- * Enable out of order message queuing during the DTLS handshake
+ * Maximum number of heap-allocated bytes for the purpose of
+ * DTLS handshake message reassembly and future message buffering.
  *
- * Requires: MBEDTLS_SSL_PROTO_DTLS
+ * This should be at least 9/8 * MBEDTLSSL_IN_CONTENT_LEN
+ * to account for a reassembled handshake message of maximum size,
+ * together with its reassembly bitmap.
+ *
+ * A value of 2 * MBEDTLS_SSL_IN_CONTENT_LEN (32768 by default)
+ * should be sufficient for all practical situations as it allows
+ * to reassembly a large handshake message (such as a certificate)
+ * while buffering multiple smaller handshake messages.
+ *
  */
-#define MBEDTLS_SSL_DTLS_HANDSHAKE_QUEUE
+/* NOTE: we are using half of the recommended value:
+ * 1. to save on RAM
+ * 2. we are using raw keys and not certificates
+ * 3. we've used such a value with our own implementation of DTLS message queuing
+ */
+#define MBEDTLS_SSL_DTLS_MAX_BUFFERING             16384
 
 /**
  * \def MBEDTLS_SSL_SESSION_TICKETS
@@ -1332,12 +1345,12 @@
 //#define MBEDTLS_X509_RSASSA_PSS_SUPPORT
 
 /**
- * \def MBEDTLS_X509_INFO_SUPPORT
+ * \def MBEDTLS_X509_INFO_DISABLE
  *
- * Enable mbedtls_x509_crt_info and mbedtls_x509_crt_verify_info functions
+ * Disable mbedtls_x509_crt_info and mbedtls_x509_crt_verify_info functions
  *
  */
-// #define MBEDTLS_X509_INFO_SUPPORT
+#define MBEDTLS_X509_INFO_DISABLE
 
 /**
  * \def MBEDTLS_SSL_RAW_PUBLIC_KEY_SUPPORT
@@ -1676,6 +1689,13 @@
 #define MBEDTLS_DEBUG_C
 
 /**
+ * \def MBEDTLS_DEBUG_COMPILE_TIME_LEVEL
+ *
+ * Set the maximum log level in compile time.
+ */
+#define MBEDTLS_DEBUG_COMPILE_TIME_LEVEL 1
+
+/**
  * \def MBEDTLS_DES_C
  *
  * Enable the DES block cipher.
@@ -1956,6 +1976,14 @@
  * This modules translates between OIDs and internal values.
  */
 #define MBEDTLS_OID_C
+
+/**
+ * \def MBEDTLS_OID_OPTIMIZE_STRINGS
+ *
+ * Remove unused functions from oid.c that cause unused strings to get pulled in
+ *
+ */
+#define MBEDTLS_OID_OPTIMIZE_STRINGS
 
 /**
  * \def MBEDTLS_PADLOCK_C
@@ -2546,6 +2574,8 @@
 #if !(PLATFORM_ID == 3 && defined(__clang__))
 #include "mbedtls_weaken.h"
 #endif // !(PLATFORM_ID == 3 && defined(__clang__))
+
+#include "mbedtls/check_config.h"
 
 #endif /* MBEDTLS_CONFIG_DEFAULT_H */
 

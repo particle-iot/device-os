@@ -39,6 +39,8 @@ LOG_SOURCE_CATEGORY("net.th")
 #include <lwip/opt.h>
 #include "hal_platform.h"
 
+#include "random.h"
+
 // FIXME:
 #include "system_threading.h"
 extern "C" int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags);
@@ -350,78 +352,7 @@ void OpenThreadNetif::otStateChangedCb(uint32_t flags, void* ctx) {
     self->stateChanged(flags);
 }
 
-void OpenThreadNetif::debugLogOtStateChange(uint32_t flags) {
-    if (flags & OT_CHANGED_IP6_ADDRESS_ADDED) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_IP6_ADDRESS_ADDED");
-    }
-    if (flags & OT_CHANGED_IP6_ADDRESS_REMOVED) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_IP6_ADDRESS_REMOVED");
-    }
-    if (flags & OT_CHANGED_THREAD_ROLE) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_ROLE");
-    }
-    if (flags & OT_CHANGED_THREAD_LL_ADDR) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_LL_ADDR");
-    }
-    if (flags & OT_CHANGED_THREAD_ML_ADDR) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_ML_ADDR");
-    }
-    if (flags & OT_CHANGED_THREAD_RLOC_ADDED) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_RLOC_ADDED");
-    }
-    if (flags & OT_CHANGED_THREAD_RLOC_REMOVED) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_RLOC_REMOVED");
-    }
-    if (flags & OT_CHANGED_THREAD_PARTITION_ID) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_PARTITION_ID");
-    }
-    if (flags & OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER");
-    }
-    if (flags & OT_CHANGED_THREAD_CHILD_ADDED) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_CHILD_ADDED");
-    }
-    if (flags & OT_CHANGED_THREAD_CHILD_REMOVED) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_CHILD_REMOVED");
-    }
-    if (flags & OT_CHANGED_IP6_MULTICAST_SUBSRCRIBED) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_IP6_MULTICAST_SUBSRCRIBED");
-    }
-    if (flags & OT_CHANGED_IP6_MULTICAST_UNSUBSRCRIBED) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_IP6_MULTICAST_UNSUBSRCRIBED");
-    }
-    if (flags & OT_CHANGED_COMMISSIONER_STATE) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_COMMISSIONER_STATE");
-    }
-    if (flags & OT_CHANGED_JOINER_STATE) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_JOINER_STATE");
-    }
-    if (flags & OT_CHANGED_THREAD_CHANNEL) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_CHANNEL");
-    }
-    if (flags & OT_CHANGED_THREAD_PANID) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_PANID");
-    }
-    if (flags & OT_CHANGED_THREAD_NETWORK_NAME) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_NETWORK_NAME");
-    }
-    if (flags & OT_CHANGED_THREAD_EXT_PANID) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_THREAD_EXT_PANID");
-    }
-    if (flags & OT_CHANGED_MASTER_KEY) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_MASTER_KEY");
-    }
-    if (flags & OT_CHANGED_PSKC) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_PSKC");
-    }
-    if (flags & OT_CHANGED_SECURITY_POLICY) {
-        LOG_DEBUG(TRACE, "OT_CHANGED_SECURITY_POLICY");
-    }
-}
-
 void OpenThreadNetif::stateChanged(uint32_t flags) {
-    debugLogOtStateChange(flags);
-
     LwipTcpIpCoreLock lk;
 
     if (!netif_is_up(interface())) {
@@ -691,7 +622,8 @@ void OpenThreadNetif::refreshIpAddresses() {
             addresses_[i].mValid = true;
             addresses_[i].mPreferred = !memcmp(&config, &active, sizeof(config));
             if (config.mRloc16 != ourRloc16) {
-                otIp6CreateRandomIid(ot_, &addresses_[i], nullptr);
+                Random rand;
+                rand.gen(reinterpret_cast<char*>(addresses_[i].mAddress.mFields.m8) + OT_IP6_ADDRESS_SIZE - OT_IP6_IID_SIZE, OT_IP6_IID_SIZE);
             } else {
                 /* Pref::1/PrefLen */
                 addresses_[i].mAddress.mFields.m8[OT_IP6_ADDRESS_SIZE - 1] = 0x01;
