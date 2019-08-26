@@ -17,6 +17,10 @@ const void* get_module_func(const module_info_t* module, size_t dynalib_index, s
 // Returns version number of the main system module
 int get_main_module_version();
 
+#ifdef MONO_MFG_FIRMWARE_AT_USER_PART
+const module_info_t* get_mfg_firmware(void);
+#endif // MONO_MFG_FIRMWARE_AT_USER_PART
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

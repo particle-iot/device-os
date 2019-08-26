@@ -34,6 +34,7 @@
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 #define LOAD_DCT_FUNCTIONS
 #include "bootloader_dct.h"
+#include "dct.h"
 #endif
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
@@ -181,6 +182,24 @@ int main(void)
      * Check that firmware is valid at this address.
      */
     ApplicationAddress = CORE_FW_ADDRESS;
+
+#if defined(MONO_MFG_FIRMWARE_AT_USER_PART) && defined(CHECK_FIRMWARE)
+    {
+        const module_info_t* mfg_mod = get_mfg_firmware();
+        if (mfg_mod) {
+            platform_system_flags_t temp_flags = {};
+            // Additionally load some system flags from DCT
+            if (!dct_read_app_data_copy(DCT_SYSTEM_FLAGS_OFFSET, &temp_flags, sizeof(temp_flags))) {
+                if (temp_flags.NVMEM_SPARK_Reset_SysFlag != 0xffff && temp_flags.NVMEM_SPARK_Reset_SysFlag != 0x0000) {
+                    SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = temp_flags.NVMEM_SPARK_Reset_SysFlag;
+                }
+                if (temp_flags.Factory_Reset_SysFlag != 0xffff && temp_flags.Factory_Reset_SysFlag != 0x0000) {
+                    SYSTEM_FLAG(Factory_Reset_SysFlag) = temp_flags.Factory_Reset_SysFlag;
+                }
+            }
+        }
+    }
+#endif // defined(MONO_MFG_FIRMWARE_AT_USER_PART) && defined(CHECK_FIRMWARE)
 
     // 0x0005 is written to the backup register at the end of firmware update.
     // if the register reads 0x0005, it signifies that the firmware update
@@ -413,6 +432,15 @@ int main(void)
             BACKUP_Flash_Reset();
         }
 #endif
+
+#if defined(MONO_MFG_FIRMWARE_AT_USER_PART) && defined(CHECK_FIRMWARE)
+        {
+            const module_info_t* mfg_mod = get_mfg_firmware();
+            if (mfg_mod) {
+                ApplicationAddress = (uint32_t)mfg_mod->module_start_address;
+            }
+        }
+#endif // defined(MONO_MFG_FIRMWARE_AT_USER_PART) && defined(CHECK_FIRMWARE)
 
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress

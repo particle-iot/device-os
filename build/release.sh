@@ -64,6 +64,7 @@ PLATFORM=""
 PLATFORM_ID=""
 OUTPUT_DIRECTORY="../build/releases"
 USE_SWD_JTAG="n"
+PLATFORM_MODULAR=true
 
 # Parse parameter(s)
 while true; do
@@ -213,6 +214,7 @@ elif [ ! -z $PLATFORM ]; then
         "core")
             PLATFORM_ID="0"
             MESH=false
+            PLATFORM_MODULAR=false
             ;;
         "photon")
             PLATFORM_ID="6"
@@ -260,6 +262,7 @@ else
         0)
             PLATFORM="core"
             MESH=false
+            PLATFORM_MODULAR=false
             ;;
         6)
             PLATFORM="photon"
@@ -450,10 +453,14 @@ cd ../bootloader
 if [ $MESH = true ]; then
     COMPILE_LTO="n"
     DEBUG_BUILD="n"
-    SUFFIX=""
+    SUFFIX="-m"
 else
     COMPILE_LTO="y"
-    SUFFIX="-lto"
+    if [ $MODULAR = true ]; then
+        SUFFIX="-m-lto"
+    else
+        SUFFIX="-lto"
+    fi
 fi
 
 # Compose, echo and execute the `make` command
