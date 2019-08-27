@@ -96,12 +96,10 @@ int sock_fcntl(int s, int cmd, ...) {
 }
 
 int sock_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
-  int ret = lwip_poll(fds, nfds, timeout);
-  return ret;
+  return lwip_poll(fds, nfds, timeout);
 }
 
-int sock_select(int maxfdp1, fd_set *readset, fd_set *writeset,
-                fd_set *exceptset, struct timeval *timeout) {
-  int ret = lwip_select(maxfdp1, readset, writeset, exceptset, timeout);
-  return ret;
+int sock_select(int nfds, fd_set* readfds, fd_set* writefds,
+                fd_set* exceptfds, struct timeval* timeout) {
+  return lwip_select(nfds, readset, writeset, exceptset, timeout);
 }
