@@ -42,6 +42,6 @@
 #define sendto(s, dataptr, size, flags, to, tolen) sock_sendto(s, dataptr, size, flags, to, tolen)
 #define socket(domain, type, protocol) sock_socket(domain, type, protocol)
 #define poll(fds, nfds, timeout) sock_poll(fds, nfds, timeout)
-#define select(nfds, readset, writeset, exceptset, timeout) sock_select(nfds, readset, writeset, exceptset, timeout)
+#define select(nfds, readfds, writefds, exceptfds, timeout) sock_select(nfds, readfds, writefds, exceptfds, timeout)
 
 #endif /* SYS_SOCKET_H */
