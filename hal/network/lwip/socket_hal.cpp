@@ -101,5 +101,5 @@ int sock_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
 
 int sock_select(int nfds, fd_set* readfds, fd_set* writefds,
                 fd_set* exceptfds, struct timeval* timeout) {
-  return lwip_select(nfds, readset, writeset, exceptset, timeout);
+  return lwip_select(nfds, readfds, writefds, exceptfds, timeout);
 }
