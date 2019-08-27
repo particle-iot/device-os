@@ -228,7 +228,11 @@ STM32_Pin_Info* HAL_Pin_Map(void);
 #endif
 
 // WKP pin
+#if PLATFORM_ID == PLATFORM_XSOM || PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM
+#define WKP             A7
+#else
 #define WKP             D8
+#endif
 
 #if PLATFORM_ID == PLATFORM_XENON // Xenon
 #define TOTAL_PINS      (31)

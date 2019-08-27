@@ -32,6 +32,7 @@
 #include <functional>
 #include <type_traits>
 #include <memory>
+#include "delay_hal.h"
 
 typedef std::function<os_thread_return_t(void)> wiring_thread_fn_t;
 
@@ -103,7 +104,9 @@ public:
             goto error;
         }
         while (!d_->started) {
-            os_thread_yield();
+            // FIXME: This used to be os_thread_yield() but for some unknown reasons sometimes
+            // it doesn't let the new thread to run.
+            HAL_Delay_Milliseconds(1);
         }
         return;
     error:
@@ -125,7 +128,9 @@ public:
             goto error;
         }
         while (!d_->started) {
-            os_thread_yield();
+            // FIXME: This used to be os_thread_yield() but for some unknown reasons sometimes
+            // it doesn't let the new thread to run.
+            HAL_Delay_Milliseconds(1);
         }
         return;
     error:

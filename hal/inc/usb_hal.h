@@ -47,6 +47,19 @@
 extern "C" {
 #endif
 
+typedef enum HAL_USB_State {
+    HAL_USB_STATE_DETACHED,
+    HAL_USB_STATE_ATTACHED,
+    HAL_USB_STATE_POWERED,
+    HAL_USB_STATE_DEFAULT,
+    HAL_USB_STATE_ADDRESSED,
+    HAL_USB_STATE_CONFIGURED,
+    HAL_USB_STATE_SUSPENDED
+} HAL_USB_State;
+
+typedef void (*HAL_USB_State_Callback)(HAL_USB_State state, void* data);
+int HAL_USB_Set_State_Change_Callback(HAL_USB_State_Callback cb, void* context, void* reserved);
+
 #ifdef USB_VENDOR_REQUEST_ENABLE
 typedef struct HAL_USB_SetupRequest {
   union {
@@ -165,6 +178,7 @@ void HAL_USB_Set_Vendor_Request_State_Callback(HAL_USB_Vendor_Request_State_Call
 void HAL_USB_Init();
 void HAL_USB_Attach();
 void HAL_USB_Detach();
+HAL_USB_State HAL_USB_Get_State();
 #endif
 
 #ifdef USB_CDC_ENABLE

@@ -229,6 +229,8 @@ int dct_read_app_data_unlock(uint32_t offset);
 
 int dct_write_app_data( const void* data, uint32_t offset, uint32_t size );
 
+void dct_reload_functions();
+
 
 #ifdef	__cplusplus
 }
