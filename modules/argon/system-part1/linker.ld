@@ -1,4 +1,4 @@
-
+INCLUDE platform_ram.ld
 INCLUDE softdevice.ld
 INCLUDE ../../shared/nRF52840/common.ld
 
@@ -9,7 +9,7 @@ MEMORY
     /* FIXME: bootloader size should come from a common .ld */
     APP_FLASH (rx)  : ORIGIN = APP_CODE_BASE, LENGTH = 1M - APP_CODE_BASE - 128K - 48K
 
-    SRAM      (rwx) : ORIGIN = 0x20000000 + APP_RAM_BASE, LENGTH = 100K
+    SRAM      (rwx) : ORIGIN = _system_part1_static_ram_start, LENGTH = _system_part1_static_ram_size
 }
 
 

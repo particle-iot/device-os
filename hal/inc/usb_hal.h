@@ -48,6 +48,8 @@ extern "C" {
 #endif
 
 typedef enum HAL_USB_State {
+    HAL_USB_STATE_NONE = 0,
+    HAL_USB_STATE_DISABLED,
     HAL_USB_STATE_DETACHED,
     HAL_USB_STATE_ATTACHED,
     HAL_USB_STATE_POWERED,

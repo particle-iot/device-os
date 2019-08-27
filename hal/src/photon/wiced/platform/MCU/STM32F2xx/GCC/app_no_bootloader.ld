@@ -38,6 +38,7 @@ reset_handler = _start;
 ENTRY( _start );
 
 /* Include memory map */
+INCLUDE platform_ram.ld
 INCLUDE memory_no_bootloader.ld
 
 SECTIONS
@@ -247,3 +248,5 @@ ASSERT ( mono_module_info == link_module_info_start, "module info start not wher
 ASSERT ( mono_module_info_end == link_module_info_end, "module info end not where expected" );
 
 ASSERT ( link_early_startup_begin != link_early_startup_end, "no early startup functions linked" );
+
+ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

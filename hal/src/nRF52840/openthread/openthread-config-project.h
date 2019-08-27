@@ -73,6 +73,16 @@
 #define OPENTHREAD_CONFIG_PLATFORM_INFO                         "Xenon"
 
 /**
+ * @def OPENTHREAD_CONFIG_STACK_VENDOR_OUI
+ *
+ * The Organizationally Unique Identifier for the vendor.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_STACK_VENDOR_OUI
+#define OPENTHREAD_CONFIG_STACK_VENDOR_OUI 0xf4ce36
+#endif
+
+/**
  * @def OPENTHREAD_CONFIG_ENABLE_SLAAC
  *
  * Define as 1 to enable support for adding of auto-configured SLAAC addresses by OpenThread.

@@ -20,10 +20,11 @@ SOFTDEVICE_MINIMUM_RAM_BASE = 0x1628;
 SOFTDEVICE_MINIMUM_CODE_BASE = 0x26000;
 
 /*
- * Reserving 16K in total. The more concurrent BLE links, the more RAM is required for SoftDevice.
+ * Reserving 23K in total. The more concurrent BLE links, the more RAM is required for SoftDevice.
  * Referenced by link.ld for system-part1
+ * IMPORTANT: when changing these values, make sure to update module_radio_stack in ota_module_bounds.c
  */
-APP_RAM_BASE = 16K;
+APP_RAM_BASE = _softdevice_ram_size;
 /* Reserving 192K in total */
 APP_CODE_BASE = 192K;
 

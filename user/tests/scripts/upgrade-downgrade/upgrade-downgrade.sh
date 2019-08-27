@@ -92,6 +92,18 @@ export PHOTON_SP1_121_RC2="https://github.com/particle-iot/device-os/releases/do
 export PHOTON_SP2_121_RC2="https://github.com/particle-iot/device-os/releases/download/v1.2.1-rc.2/photon-system-part2@1.2.1-rc.2.bin"
 export PHOTON_SP1_121_RC2_MOD=1211
 export PHOTON_SP2_121_RC2_MOD=1211
+export PHOTON_SP1_121_RC3="https://github.com/particle-iot/device-os/releases/download/v1.2.1-rc.3/photon-system-part1@1.2.1-rc.3.bin"
+export PHOTON_SP2_121_RC3="https://github.com/particle-iot/device-os/releases/download/v1.2.1-rc.3/photon-system-part2@1.2.1-rc.3.bin"
+export PHOTON_SP1_121_RC3_MOD=1212
+export PHOTON_SP2_121_RC3_MOD=1212
+export PHOTON_SP1_121="https://github.com/particle-iot/device-os/releases/download/v1.2.1/photon-system-part1@1.2.1.bin"
+export PHOTON_SP2_121="https://github.com/particle-iot/device-os/releases/download/v1.2.1/photon-system-part2@1.2.1.bin"
+export PHOTON_SP1_121_MOD=1213
+export PHOTON_SP2_121_MOD=1213
+export PHOTON_SP1_131_RC1="https://github.com/particle-iot/device-os/releases/download/v1.3.1-rc.1/photon-system-part1@1.3.1-rc.1.bin"
+export PHOTON_SP2_131_RC1="https://github.com/particle-iot/device-os/releases/download/v1.3.1-rc.1/photon-system-part2@1.3.1-rc.1.bin"
+export PHOTON_SP1_131_RC1_MOD=1320
+export PHOTON_SP2_131_RC1_MOD=1320
 
 # instead of these set options,
 #   set script options
@@ -386,17 +398,21 @@ set_country() {
 # | 59 | photon | 0.5.2      | 0.6.3                | part1, part2 | yes                | ok      |
 # | 60 | photon | 0.6.3      | 0.7.0                | part2, part1 | no, part2 rejected | ok      |
 # | 61 | photon | 0.6.3      | 0.7.0                | part1, part2 | yes                | ok      |
-# | 62 | photon | 0.7.0      | 1.2.1-rc.2           | part2, part1 | no, part2 rejected | ok      |
-# | 63 | photon | 0.7.0      | 1.2.1-rc.2           | part1, part2 | yes                | ok      |
+# | 62 | photon | 0.7.0      | 1.2.1                | part2, part1 | no, part2 rejected | ok      |
+# | 63 | photon | 0.7.0      | 1.2.1                | part1, part2 | yes                | ok      |
+# | 64 | photon | 1.2.1      | 1.3.1-rc.1           | part2, part1 | no, part2 rejected | ok      |
+# | 65 | photon | 1.2.1      | 1.3.1-rc.1           | part1, part2 | yes                | ok      |
 # ------------------------ downgrade -------------------------------------------------------------+
-# | 64 | photon | 1.2.1-rc.2 | 0.7.0                | part1, part2 | no, part1 rejected | ok      |
-# | 65 | photon | 1.2.1-rc.2 | 0.7.0                | part2, part1 | yes                | ok      |
-# | 66 | photon | 0.7.0      | 0.6.3                | part1, part2 | no, part1 rejected | ok      |
-# | 67 | photon | 0.7.0      | 0.6.3                | part2, part1 | yes                | ok      |
-# | 68 | photon | 0.6.3      | 0.5.5                | part1, part2 | no, part1 rejected | ok      |
-# | 69 | photon | 0.6.3      | 0.5.5                | part2, part1 | yes                | ok      |
-# | 70 | photon | 0.5.5      | 0.5.2                | part1, part2 | no, part1 rejected | ok      |
-# | 71 | photon | 0.5.5      | 0.5.2                | part2, part1 | yes                | ok      |
+# | 65 | photon | 1.3.1-rc.1 | 1.2.1                | part1, part2 | no, part1 rejected | ok      |
+# | 66 | photon | 1.3.1-rc.1 | 1.2.1                | part2, part1 | yes                | ok      |
+# | 67 | photon | 1.2.1      | 0.7.0                | part1, part2 | no, part1 rejected | ok      |
+# | 68 | photon | 1.2.1      | 0.7.0                | part2, part1 | yes                | ok      |
+# | 69 | photon | 0.7.0      | 0.6.3                | part1, part2 | no, part1 rejected | ok      |
+# | 70 | photon | 0.7.0      | 0.6.3                | part2, part1 | yes                | ok      |
+# | 71 | photon | 0.6.3      | 0.5.5                | part1, part2 | no, part1 rejected | ok      |
+# | 72 | photon | 0.6.3      | 0.5.5                | part2, part1 | yes                | ok      |
+# | 73 | photon | 0.5.5      | 0.5.2                | part1, part2 | no, part1 rejected | ok      |
+# | 74 | photon | 0.5.5      | 0.5.2                | part2, part1 | yes                | ok      |
 # ------------------------------------------------------------------------------------------------+
 #
 # Not tested any more...
@@ -1624,10 +1640,10 @@ if true; then
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 62 | photon | 0.7.0      | 1.2.1-rc.2           | part2, part1 | no, part2 rejected | ok     |"
+  echo "| 62 | photon | 0.7.0      | 1.2.1                | part2, part1 | no, part2 rejected | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
-  ymodem_part 2 1.2.1-rc.2 photon
+  ymodem_part 2 1.2.1 photon
   enter_dfu_mode
   try exit_dfu_mode
 
@@ -1639,27 +1655,67 @@ if true; then
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 63 | photon | 0.7.0      | 1.2.1-rc.2           | part1, part2 | yes                | ok     |"
+  echo "| 63 | photon | 0.7.0      | 1.2.1                | part1, part2 | yes                | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
-  try ymodem_part 1 1.2.1-rc.2 photon
+  try ymodem_part 1 1.2.1 photon
   try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
   enter_ymodem
   try serial_inspect
-  try compare_system_version 1 ${PHOTON_SP1_121_RC2_MOD}
+  try compare_system_version 1 ${PHOTON_SP1_121_MOD}
   try compare_system_version 2 ${PHOTON_SP2_070_MOD}
 
   enter_ymodem
-  try ymodem_part 2 1.2.1-rc.2 photon
-  # wait for 1.2.1-rc.2 bootloader from SMH
-  # particle flash --serial bootloader-1.2.1-rc.2-photon.bin
+  try ymodem_part 2 1.2.1 photon
+  # wait for 1.2.1 bootloader from SMH
+  # particle flash --serial bootloader-1.2.1-photon.bin
   sleep 30
 
   try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
   enter_ymodem
   try serial_inspect
-  try compare_system_version 1 ${PHOTON_SP1_121_RC2_MOD}
-  try compare_system_version 2 ${PHOTON_SP2_121_RC2_MOD}
+  try compare_system_version 1 ${PHOTON_SP1_121_MOD}
+  try compare_system_version 2 ${PHOTON_SP2_121_MOD}
+  pass
+
+  heading
+  echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
+  echo "| 64 | photon | 1.2.1      | 1.3.1-rc.1           | part2, part1 | no, part2 rejected | ok     |"
+  echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
+  enter_ymodem
+  ymodem_part 2 1.3.1-rc.1 photon
+  enter_dfu_mode
+  try exit_dfu_mode
+
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+  enter_ymodem
+  try serial_inspect
+  try compare_system_version 1 ${PHOTON_SP1_121_MOD}
+  try compare_system_version 2 ${PHOTON_SP2_121_MOD}
+
+  heading
+  echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
+  echo "| 65 | photon | 1.2.1      | 1.3.1-rc.1           | part1, part2 | yes                | ok     |"
+  echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
+  enter_ymodem
+  try ymodem_part 1 1.3.1-rc.1 photon
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+  enter_ymodem
+  try serial_inspect
+  try compare_system_version 1 ${PHOTON_SP1_131_RC1_MOD}
+  try compare_system_version 2 ${PHOTON_SP2_121_MOD}
+
+  enter_ymodem
+  try ymodem_part 2 1.3.1-rc.1 photon
+  # wait for 1.3.1-rc.1 bootloader from SMH
+  particle flash --serial bootloader-1.3.1-rc.1-photon.bin
+  sleep 30
+
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+  enter_ymodem
+  try serial_inspect
+  try compare_system_version 1 ${PHOTON_SP1_131_RC1_MOD}
+  try compare_system_version 2 ${PHOTON_SP2_131_RC1_MOD}
   pass
 
   # ------------------------ downgrade -------------------------------------------------------------
@@ -1668,7 +1724,44 @@ if true; then
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 64 | photon | 1.2.1-rc.2 | 0.7.0                | part1, part2 | no, part1 rejected | ok     |"
+  echo "| 66 | photon | 1.3.1-rc.1 | 1.2.1                | part1, part2 | no, part1 rejected | ok     |"
+  echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
+  enter_ymodem
+  ymodem_part 1 1.2.1 photon
+  enter_dfu_mode
+  try exit_dfu_mode
+
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+  enter_ymodem
+  try serial_inspect
+  try compare_system_version 1 ${PHOTON_SP1_131_RC1_MOD}
+  try compare_system_version 2 ${PHOTON_SP2_131_RC1_MOD}
+  pass
+
+  heading
+  echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
+  echo "| 67 | photon | 1.3.1-rc.1 | 1.2.1                | part2, part1 | yes                | ok     |"
+  echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
+  enter_ymodem
+  try ymodem_part 2 1.2.1 photon
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+  enter_ymodem
+  try serial_inspect
+  try compare_system_version 1 ${PHOTON_SP1_131_RC1_MOD}
+  try compare_system_version 2 ${PHOTON_SP2_121_MOD}
+
+  enter_ymodem
+  try ymodem_part 1 1.2.1 photon
+  try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
+  enter_ymodem
+  try serial_inspect
+  try compare_system_version 1 ${PHOTON_SP1_121_MOD}
+  try compare_system_version 2 ${PHOTON_SP2_121_MOD}
+  pass
+
+  heading
+  echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
+  echo "| 68 | photon | 1.2.1      | 0.7.0                | part1, part2 | no, part1 rejected | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
   ymodem_part 1 0.7.0 photon
@@ -1678,20 +1771,20 @@ if true; then
   try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
   enter_ymodem
   try serial_inspect
-  try compare_system_version 1 ${PHOTON_SP1_121_RC2_MOD}
-  try compare_system_version 2 ${PHOTON_SP2_121_RC2_MOD}
+  try compare_system_version 1 ${PHOTON_SP1_121_MOD}
+  try compare_system_version 2 ${PHOTON_SP2_121_MOD}
   pass
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 65 | photon | 1.2.1-rc.2 | 0.7.0                | part2, part1 | yes                | ok     |"
+  echo "| 69 | photon | 1.2.1      | 0.7.0                | part2, part1 | yes                | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
   try ymodem_part 2 0.7.0 photon
   try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
   enter_ymodem
   try serial_inspect
-  try compare_system_version 1 ${PHOTON_SP1_121_RC2_MOD}
+  try compare_system_version 1 ${PHOTON_SP1_121_MOD}
   try compare_system_version 2 ${PHOTON_SP2_070_MOD}
 
   enter_ymodem
@@ -1705,7 +1798,7 @@ if true; then
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 66 | photon | 0.7.0      | 0.6.3                | part1, part2 | no, part1 rejected | ok     |"
+  echo "| 70 | photon | 0.7.0      | 0.6.3                | part1, part2 | no, part1 rejected | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
   ymodem_part 1 0.6.3 photon
@@ -1721,7 +1814,7 @@ if true; then
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 67 | photon | 0.7.0      | 0.6.3                | part2, part1 | yes                | ok     |"
+  echo "| 71 | photon | 0.7.0      | 0.6.3                | part2, part1 | yes                | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
   try ymodem_part 2 0.6.3 photon
@@ -1742,7 +1835,7 @@ if true; then
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 68 | photon | 0.6.3      | 0.5.5                | part1, part2 | no, part1 rejected | ok     |"
+  echo "| 72 | photon | 0.6.3      | 0.5.5                | part1, part2 | no, part1 rejected | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
   ymodem_part 1 0.5.5 photon
@@ -1758,7 +1851,7 @@ if true; then
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 69 | photon | 0.6.3      | 0.5.5                | part2, part1 | yes                | ok     |"
+  echo "| 73 | photon | 0.6.3      | 0.5.5                | part2, part1 | yes                | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
   try ymodem_part 2 0.5.5 photon
@@ -1779,7 +1872,7 @@ if true; then
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 70 | photon | 0.5.5      | 0.5.2                | part1, part2 | no, part1 rejected | ok     |"
+  echo "| 74 | photon | 0.5.5      | 0.5.2                | part1, part2 | no, part1 rejected | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
   ymodem_part 1 0.5.2 photon
@@ -1795,7 +1888,7 @@ if true; then
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 71 | photon | 0.5.5      | 0.5.2                | part2, part1 | yes                | ok     |"
+  echo "| 75 | photon | 0.5.5      | 0.5.2                | part2, part1 | yes                | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
   try ymodem_part 2 0.5.2 photon
@@ -2003,11 +2096,32 @@ curl_all_required_system_parts() {
   #   curl -L "$PHOTON_SP2_121_RC1" -o "system-part2-1.2.1-rc.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
   # fi
 
-  if [ ! -e "system-part1-1.2.1-rc.2-photon.bin" ]; then
-    curl -L "$PHOTON_SP1_121_RC1" -o "system-part1-1.2.1-rc.2-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
+  # if [ ! -e "system-part1-1.2.1-rc.2-photon.bin" ]; then
+  #   curl -L "$PHOTON_SP1_121_RC1" -o "system-part1-1.2.1-rc.2-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
+  # fi
+  # if [ ! -e "system-part2-1.2.1-rc.2-photon.bin" ]; then
+  #   curl -L "$PHOTON_SP2_121_RC1" -o "system-part2-1.2.1-rc.2-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
+  # fi
+
+  # if [ ! -e "system-part1-1.2.1-rc.3-photon.bin" ]; then
+  #   curl -L "$PHOTON_SP1_121_RC3" -o "system-part1-1.2.1-rc.3-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
+  # fi
+  # if [ ! -e "system-part2-1.2.1-rc.3-photon.bin" ]; then
+  #   curl -L "$PHOTON_SP2_121_RC3" -o "system-part2-1.2.1-rc.3-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
+  # fi
+
+  if [ ! -e "system-part1-1.2.1-photon.bin" ]; then
+    curl -L "$PHOTON_SP1_121" -o "system-part1-1.2.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
   fi
-  if [ ! -e "system-part2-1.2.1-rc.2-photon.bin" ]; then
-    curl -L "$PHOTON_SP2_121_RC1" -o "system-part2-1.2.1-rc.2-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
+  if [ ! -e "system-part2-1.2.1-photon.bin" ]; then
+    curl -L "$PHOTON_SP2_121" -o "system-part2-1.2.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
+  fi
+
+  if [ ! -e "system-part1-1.3.1-rc.1-photon.bin" ]; then
+    curl -L "$PHOTON_SP1_131_RC1" -o "system-part1-1.3.1-rc.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
+  fi
+  if [ ! -e "system-part2-1.3.1-rc.1-photon.bin" ]; then
+    curl -L "$PHOTON_SP2_131_RC1" -o "system-part2-1.3.1-rc.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
   fi
 
   if [ ! -e "tinker-v0.4.9-photon.bin" ]; then

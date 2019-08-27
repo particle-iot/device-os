@@ -257,6 +257,8 @@ PB(FirmwareModuleType) moduleFunctionToPb(module_function_t func) {
         return PB(FirmwareModuleType_USER_PART);
     case MODULE_FUNCTION_NCP_FIRMWARE:
         return PB(FirmwareModuleType_NCP_FIRMWARE);
+    case MODULE_FUNCTION_RADIO_STACK:
+        return PB(FirmwareModuleType_RADIO_STACK);
     default:
         return PB(FirmwareModuleType_INVALID_FIRMWARE_MODULE);
     }

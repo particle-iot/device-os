@@ -262,7 +262,7 @@ void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved)
 void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved)
 {
     HAL_I2C_Acquire(i2c, NULL);
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 #if PLATFORM_ID == 10
     /*
@@ -1026,6 +1026,9 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
             // the device will continue pulling SCL low. To avoid that, disable clock stretching
             // when the tx buffer is exhausted to release SCL.
             I2C_StretchClockCmd(i2cMap[i2c]->I2C_Peripheral, DISABLE);
+            __DSB();
+            __ISB();
+            I2C_StretchClockCmd(i2cMap[i2c]->I2C_Peripheral, i2cMap[i2c]->clkStretchingEnabled ? ENABLE : DISABLE);
         }
         break;
 

@@ -60,6 +60,7 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config*
 }
 
 void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved) {
+    HAL_USB_Attach();
     usb_uart_set_baudrate(baud);
 }
 

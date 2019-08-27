@@ -1,9 +1,3 @@
-/* System part1 static RAM */
-system_part1_static_ram_start = 0x20000000 + APP_RAM_BASE;
-system_part1_static_ram_size = 104K;
-system_part1_static_ram_end = system_part1_static_ram_start + system_part1_static_ram_size;
-
-
 /* System part1 flash */
 system_part1_start = 0x30000;
 system_part1_vtor_table_size = 0x200;

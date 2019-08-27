@@ -26,20 +26,21 @@
 #include <cstring>
 #include "ota_flash_hal_impl.h"
 #include "cellular_hal.h"
+#include "platform_radio_stack.h"
 
 void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
-	const int additional = 2;
-	int count = add_system_properties(info, create, additional);
+    const int additional = 2;
+    int count = add_system_properties(info, create, additional);
     if (create) {
         info->key_value_count = count + additional;
 
-        CellularDevice device;
-        memset(&device, 0, sizeof(device));
+        CellularDevice device = {};
         device.size = sizeof(device);
         cellular_device_info(&device, NULL);
         set_key_value(info->key_values+count, "imei", device.imei);
         set_key_value(info->key_values+count+1, "iccid", device.iccid);
     }
+    platform_radio_stack_fetch_module_info(info, create);
 }
 

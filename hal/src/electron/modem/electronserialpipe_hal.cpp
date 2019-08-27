@@ -65,7 +65,7 @@ void ElectronSerialPipe::begin(unsigned baud, bool hwFlowCtrl)
     RCC->APB1ENR |= RCC_APB1Periph_USART3;
 
     // Connect USART pins to AFx
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     if (hwFlowCtrl) {
         GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, GPIO_AF_USART3);
@@ -290,7 +290,7 @@ void ElectronSerialPipe::rxResume(void)
     if (hwFlowCtrl_ && pause_) {
         pause_ = false;
         HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
-        STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+        Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
         GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, GPIO_AF_USART3);
     }
     USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);

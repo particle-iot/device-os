@@ -27,6 +27,8 @@
 #include <time.h>
 #include <stdint.h>
 
+#define DEFAULT_CLOUD_EVENT_TTL 60
+
 enum ParticleKeyErrorFlag: uint32_t
 {
   NO_ERROR                      = 0,
@@ -110,7 +112,7 @@ class String;
 
 #if defined(PLATFORM_ID)
 
-#if PLATFORM_ID!=3 && PLATFORM_ID != 20
+#if !defined(UNIT_TEST) && PLATFORM_ID !=3 && PLATFORM_ID != 20
 PARTICLE_STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
 #endif
 

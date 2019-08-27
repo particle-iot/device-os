@@ -1,13 +1,14 @@
 #include "spark_wiring_async.h"
 
-#include "completion_handler.h"
-
-#include "tools/catch.h"
+#include <deque>
+#include <thread>
 
 #include <boost/optional.hpp>
 
-#include <thread>
-#include <deque>
+#include "completion_handler.h"
+
+#define CATCH_CONFIG_MAIN
+#include "catch2/catch.hpp"
 
 namespace {
 

@@ -38,8 +38,9 @@ extern const module_bounds_t module_factory_mono;
 
 #if HAL_PLATFORM_NCP_UPDATABLE
 extern const module_bounds_t module_ncp_mono;
-#endif
+#endif // HAL_PLATFORM_NCP_UPDATABLE
 
+extern const module_bounds_t module_radio_stack;
 
 const uint8_t* fetch_server_public_key(uint8_t lock);
 const uint8_t* fetch_device_private_key(uint8_t lock);

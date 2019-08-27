@@ -26,7 +26,7 @@ include $(PROJECT_ROOT)/build/arm-tlm.mk
 
 $(call check_modular)
 
-MODULE_USER_MEMORY_FILE_GEN = $(TARGET_BASE_DIR)module_user_memory.ld
+MODULE_USER_MEMORY_FILE_GEN = $(TARGET_BASE_DIR)platform_user_ram.ld
 export MODULE_USER_MEMORY_FILE_GEN
 
 elf_fi: $(TARGET_BASE)_fi.elf

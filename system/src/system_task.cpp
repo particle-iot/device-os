@@ -351,10 +351,45 @@ void handle_cloud_connection(bool force_events)
 {
     if (SPARK_CLOUD_SOCKETED)
     {
-        if (!SPARK_CLOUD_CONNECTED)
+        if (!SPARK_CLOUD_CONNECTED && !SPARK_CLOUD_HANDSHAKE_PENDING)
         {
-            LED_SIGNAL_START(CLOUD_HANDSHAKE, NORMAL);
-            int err = cloud_handshake();
+            int err = 0;
+            if (SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE) {
+                // TODO: There's no protocol API to get the current session state, so we're running
+                // one more iteration of the communication loop to make sure all handshake messages
+                // have been acknowledged successfully
+                if (!Spark_Communication_Loop()) {
+                    err = particle::protocol::MESSAGE_TIMEOUT;
+                } else {
+                    INFO("Cloud connected");
+                    SPARK_CLOUD_CONNECTED = 1;
+                    SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
+                    cloud_failed_connection_attempts = 0;
+                    CloudDiagnostics::instance()->status(CloudDiagnostics::CONNECTED);
+                    system_notify_event(cloud_status, cloud_status_connected);
+                    if (system_mode() == SAFE_MODE) {
+/* FIXME: there should be macro that checks for NetworkManager availability */
+                        // Connected to the cloud while in safe mode
+#if !HAL_PLATFORM_IFAPI
+                        LED_SIGNAL_START(SAFE_MODE, BACKGROUND);
+#else
+                        LED_SIGNAL_START(SAFE_MODE, NORMAL);
+#endif /* !HAL_PLATFORM_IFAPI */
+                    } else {
+/* FIXME: there should be macro that checks for NetworkManager availability */
+#if !HAL_PLATFORM_IFAPI
+                        LED_SIGNAL_START(CLOUD_CONNECTED, BACKGROUND);
+#else
+                        LED_SIGNAL_START(CLOUD_CONNECTED, NORMAL);
+#endif /* !HAL_PLATFORM_IFAPI */
+                    }
+                    LED_SIGNAL_STOP(CLOUD_CONNECTING);
+                    LED_SIGNAL_STOP(CLOUD_HANDSHAKE);
+                }
+            } else { // !SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE
+                LED_SIGNAL_START(CLOUD_HANDSHAKE, NORMAL);
+                err = cloud_handshake();
+            }
             if (err)
             {
                 if (!SPARK_WLAN_RESET && !network_listening(0, 0, 0))
@@ -379,32 +414,6 @@ void handle_cloud_connection(bool force_events)
                 diag->lastError(err);
                 cloud_disconnect();
             }
-            else
-            {
-                INFO("Cloud connected");
-                SPARK_CLOUD_CONNECTED = 1;
-                cloud_failed_connection_attempts = 0;
-                CloudDiagnostics::instance()->status(CloudDiagnostics::CONNECTED);
-                system_notify_event(cloud_status, cloud_status_connected);
-                if (system_mode() == SAFE_MODE) {
-/* FIXME: there should be macro that checks for NetworkManager availability */
-                    // Connected to the cloud while in safe mode
-#if !HAL_PLATFORM_IFAPI
-                    LED_SIGNAL_START(SAFE_MODE, BACKGROUND);
-#else
-                    LED_SIGNAL_START(SAFE_MODE, NORMAL);
-#endif /* !HAL_PLATFORM_IFAPI */
-                } else {
-/* FIXME: there should be macro that checks for NetworkManager availability */
-#if !HAL_PLATFORM_IFAPI
-                    LED_SIGNAL_START(CLOUD_CONNECTED, BACKGROUND);
-#else
-                    LED_SIGNAL_START(CLOUD_CONNECTED, NORMAL);
-#endif /* !HAL_PLATFORM_IFAPI */
-                }
-                LED_SIGNAL_STOP(CLOUD_CONNECTING);
-            }
-            LED_SIGNAL_STOP(CLOUD_HANDSHAKE);
         }
         if (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL || system_thread_get_state(NULL)==spark::feature::ENABLED)
         {
@@ -587,6 +596,8 @@ void cloud_disconnect(bool closeSocket, bool graceful, cloud_disconnect_reason r
 
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;
+        SPARK_CLOUD_HANDSHAKE_PENDING = 0;
+        SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
         SPARK_CLOUD_SOCKETED = 0;
 
         LED_SIGNAL_STOP(CLOUD_CONNECTED);

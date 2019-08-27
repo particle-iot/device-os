@@ -30,9 +30,11 @@
 
 void ActiveObjectBase::start_thread()
 {
+    const auto r = os_thread_create(&_thread, "active_object", configuration.priority, run_active_object, this,
+            configuration.stack_size);
+    SPARK_ASSERT(r == 0);
     // prevent the started thread from running until the thread id has been assigned
     // so that calls to isCurrentThread() work correctly
-    set_thread(std::thread(run_active_object, this));
     while (!started) {
         os_thread_yield();
     }
@@ -75,9 +77,10 @@ bool ActiveObjectBase::process()
     return result;
 }
 
-void ActiveObjectBase::run_active_object(ActiveObjectBase* object)
+void ActiveObjectBase::run_active_object(void* data)
 {
-    object->run();
+    const auto that = static_cast<ActiveObjectBase*>(data);
+    that->run();
 }
 
 #endif // PLATFORM_THREADING

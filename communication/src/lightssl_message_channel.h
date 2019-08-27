@@ -109,6 +109,9 @@ public:
 		return NO_ERROR;
 	}
 
+	void notify_client_messages_processed() override {
+	}
+
 protected:
 
 	ProtocolError set_key(const unsigned char *signed_encrypted_credentials);

@@ -1,8 +1,9 @@
 /* Declaration for the location of the application and system backup RAM region. */
 /* FIXME: nRF52840 does not have a dedicated backup SRAM. These were randomly selected */
-BACKUPSRAM (rwx) : ORIGIN = 0x20000000 + 256K - 3K, LENGTH = 3K
-BACKUPSRAM_SYSTEM (rwx) : ORIGIN = 0x20000000 + 256K - 3K - 1K, LENGTH = 1K - 64 - 64
-BACKUPSRAM_SYSTEM_FLAGS (rwx) : ORIGIN = 0x20000000 + 256K - 3K - 64, LENGTH = 64
-BACKUPSRAM_REGISTERS (rwx) : ORIGIN = 0x20000000 + 256K - 3K - 64 - 64, LENGTH = 64
+BACKUPSRAM (rwx) : ORIGIN = _user_backup_ram_start, LENGTH = _user_backup_ram_size
+BACKUPSRAM_SYSTEM (rwx) : ORIGIN = _system_backup_ram_start, LENGTH = _system_backup_ram_size
+BACKUPSRAM_SYSTEM_FLAGS (rwx) : ORIGIN = _system_flags_ram_start, LENGTH = _system_flags_ram_size
+BACKUPSRAM_REGISTERS (rwx) : ORIGIN = _backup_registers_ram_start, LENGTH = _backup_registers_ram_size
 
-BACKUPSRAM_ALL (rwx) : ORIGIN = ORIGIN(BACKUPSRAM_SYSTEM), LENGTH = LENGTH(BACKUPSRAM) + LENGTH(BACKUPSRAM_SYSTEM) + LENGTH(BACKUPSRAM_SYSTEM_FLAGS) + LENGTH(BACKUPSRAM_REGISTERS)
+/* FIXME: This is only used in monolithic builds */
+BACKUPSRAM_ALL (rwx) : ORIGIN = _system_backup_ram_start, LENGTH = _user_backup_ram_size + _system_backup_ram_size + _system_flags_ram_size + _backup_registers_ram_size

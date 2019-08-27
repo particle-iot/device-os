@@ -79,6 +79,13 @@ public:
 
 	virtual int command(ProtocolCommands::Enum command, uint32_t data) override;
 
+	virtual int get_status(protocol_status* status) const override
+	{
+		SPARK_ASSERT(status);
+		status->flags = 0;
+		return 0;
+	}
+
 	int wait_confirmable(uint32_t timeout=5000);
 
 };

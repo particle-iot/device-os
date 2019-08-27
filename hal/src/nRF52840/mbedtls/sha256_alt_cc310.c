@@ -41,7 +41,7 @@ void mbedtls_sha256_init(mbedtls_sha256_context * ctx)
 
 void mbedtls_sha256_free(mbedtls_sha256_context * ctx)
 {
-    CC310_OPERATION_NO_RESULT(CRYS_HASH_Free(&ctx->user_context));
+    CC310_OPERATION_NO_RESULT(CRYS_HASH_Free(&ctx->hardware.user_context));
 }
 
 void mbedtls_sha256_clone(mbedtls_sha256_context *dst, const mbedtls_sha256_context *src)
@@ -53,15 +53,15 @@ int mbedtls_sha256_starts_ret(mbedtls_sha256_context * ctx, int is224)
 {
     if (is224)
     {
-        ctx->mode = CRYS_HASH_SHA224_mode;
+        ctx->hardware.mode = CRYS_HASH_SHA224_mode;
     }
     else
     {
-        ctx->mode = CRYS_HASH_SHA256_mode;
+        ctx->hardware.mode = CRYS_HASH_SHA256_mode;
     }
 
     int ret = 0;
-    CC310_OPERATION(CRYS_HASH_Init(&ctx->user_context, ctx->mode), ret);
+    CC310_OPERATION(CRYS_HASH_Init(&ctx->hardware.user_context, ctx->hardware.mode), ret);
 
     return ret;
 }
@@ -69,7 +69,7 @@ int mbedtls_sha256_starts_ret(mbedtls_sha256_context * ctx, int is224)
 int mbedtls_sha256_update_ret(mbedtls_sha256_context * ctx, const unsigned char * input, size_t ilen)
 {
     int ret = 0;
-    CC310_OPERATION(CRYS_HASH_Update(&ctx->user_context, (unsigned char *)input, ilen), ret);
+    CC310_OPERATION(CRYS_HASH_Update(&ctx->hardware.user_context, (unsigned char *)input, ilen), ret);
 
     return ret;
 }
@@ -82,11 +82,11 @@ int mbedtls_sha256_finish_ret(mbedtls_sha256_context * ctx, unsigned char output
 
     int ret = 0;
 
-    CC310_OPERATION(CRYS_HASH_Finish(&ctx->user_context, result), ret);
+    CC310_OPERATION(CRYS_HASH_Finish(&ctx->hardware.user_context, result), ret);
 
     uint8_t size = CRYS_HASH_SHA256_DIGEST_SIZE_IN_BYTES;
 
-    if (ctx->mode == CRYS_HASH_SHA224_mode)
+    if (ctx->hardware.mode == CRYS_HASH_SHA224_mode)
     {
         size = CRYS_HASH_SHA224_DIGEST_SIZE_IN_BYTES;
     }

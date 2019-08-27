@@ -105,6 +105,14 @@ public:
 		return result;
 	}
 
+	int get_status(protocol_status* status) const override {
+		SPARK_ASSERT(status);
+		status->flags = 0;
+		if (channel.has_unacknowledged_client_requests()) {
+			status->flags |= PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES;
+		}
+		return NO_ERROR;
+	}
 
 
 	/**

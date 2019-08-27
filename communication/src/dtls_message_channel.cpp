@@ -297,7 +297,14 @@ void DTLSMessageChannel::init()
 	mbedtls_ssl_config_init (&conf);
 	mbedtls_x509_crt_init (&clicert);
 	mbedtls_pk_init (&pkey);
+
+#if defined(MBEDTLS_DEBUG_C)
+#ifndef MBEDTLS_DEBUG_COMPILE_TIME_LEVEL
 	mbedtls_debug_set_threshold(1);
+#else
+	mbedtls_debug_set_threshold(MBEDTLS_DEBUG_COMPILE_TIME_LEVEL);
+#endif // MBEDTLS_DEBUG_COMPILE_TIME_LEVEL
+#endif // MBEDTLS_DEBUG_C
 }
 
 void DTLSMessageChannel::dispose()

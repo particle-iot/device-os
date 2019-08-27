@@ -79,6 +79,7 @@ public:
 		int (*restore)(void* data, size_t max_length, uint8_t type, void* reserved);
 
 		uint32_t (*calculate_crc)(const uint8_t* data, uint32_t length);
+		void (*notify_client_messages_processed)(void* reserved);
 	};
 
 private:
@@ -151,6 +152,11 @@ private:
 
 	virtual ProtocolError command(Command cmd, void* arg=nullptr) override;
 
+	virtual void notify_client_messages_processed() override {
+		if (callbacks.notify_client_messages_processed) {
+			callbacks.notify_client_messages_processed(nullptr);
+		}
+	}
 };
 
 

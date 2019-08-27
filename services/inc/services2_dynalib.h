@@ -56,7 +56,7 @@ DYNALIB_FN(16, services2, _tzset_unlocked_r, void(struct _reent*))
 DYNALIB_FN(17, services2, __udivmoddi4, unsigned long(unsigned long, unsigned long, unsigned long*))
 DYNALIB_FN(18, services2, mktime, time_t(struct tm*))
 DYNALIB_FN(19, services2, __ssvfscanf_r, int(struct _reent*, FILE*, const char*, va_list))
-DYNALIB_FN(20, services2, _printf_i, int(struct _reent*, struct _prt_data_t*, FILE*, int (*pfunc)(struct _reent *, FILE *, _CONST char *, size_t), va_list*))
+DYNALIB_FN(20, services2, _printf_i, int(struct _reent*, struct _prt_data_t*, FILE*, int (*pfunc)(struct _reent *, FILE *, const char *, size_t), va_list*))
 DYNALIB_FN(21, services2, localtime_r, struct tm*(const time_t*, struct tm*))
 
 DYNALIB_END(services2)

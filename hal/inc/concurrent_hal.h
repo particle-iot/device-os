@@ -87,6 +87,13 @@ os_result_t os_thread_create_with_stack(os_thread_t* result, const char* name,
         size_t stack_size, void* stack);
 
 /**
+ * Returns the current thread's handle.
+ * @param reserved This argument should be set to NULL.
+ * @return The thread handle.
+ */
+os_thread_t os_thread_current(void* reserved);
+
+/**
  * Determines if the given thread is the one executing.
  * @param   The thread to test.
  * @return {@code true} if the thread given is the one currently executing. {@code false} otherwise.

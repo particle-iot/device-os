@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2016, The OpenThread Authors.
+ *  Copyright (c) 2019, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -35,16 +35,17 @@
 #include <openthread-core-config.h>
 #include <openthread/config.h>
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <utils/code_utils.h>
-#include <openthread/platform/random.h>
+#include <openthread/platform/entropy.h>
 
 #include "platform-nrf5.h"
 
-extern unsigned int nrf_802154_csma_ca_random_seed;
+static volatile bool sEntropyGetEntered;
 
 #if SOFTDEVICE_PRESENT
 #include "softdevice.h"
@@ -188,9 +189,6 @@ void nrf5RandomInit(void)
     csmaSeed = bufferGetUint32();
 
 #endif // SOFTDEVICE_PRESENT
-
-    srand(seed);
-    nrf_802154_csma_ca_random_seed = csmaSeed;
 }
 
 void nrf5RandomDeinit(void)
@@ -204,16 +202,14 @@ void nrf5RandomDeinit(void)
 #endif // SOFTDEVICE_PRESENT
 }
 
-uint32_t otPlatRandomGet(void)
-{
-    return (uint32_t)rand();
-}
-
-otError otPlatRandomGetTrue(uint8_t *aOutput, uint16_t aOutputLength)
+otError otPlatEntropyGet(uint8_t *aOutput, uint16_t aOutputLength)
 {
     otError  error = OT_ERROR_NONE;
     uint8_t  copyLength;
     uint16_t index = 0;
+
+    assert(!sEntropyGetEntered);
+    sEntropyGetEntered = true;
 
     otEXPECT_ACTION(aOutput && aOutputLength, error = OT_ERROR_INVALID_ARGS);
 
@@ -250,5 +246,7 @@ otError otPlatRandomGetTrue(uint8_t *aOutput, uint16_t aOutputLength)
     } while (index < aOutputLength);
 
 exit:
+    sEntropyGetEntered = false;
+
     return error;
 }

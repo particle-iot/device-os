@@ -19,7 +19,6 @@
 #include "ota_flash_hal_impl.h"
 #include "dct_hal.h"
 #include "dct.h"
-#include "handshake.h"
 #include "core_hal.h"
 #include "flash_mal.h"
 #include "dct_hal.h"
@@ -43,6 +42,7 @@
 #include "platform_ncp.h"
 #include "deviceid_hal.h"
 #include <memory>
+#include "platform_radio_stack.h"
 
 #define OTA_CHUNK_SIZE                 (512)
 #define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
@@ -414,8 +414,10 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
 			if (function==MODULE_FUNCTION_BOOTLOADER) {
 				result = flash_bootloader(&module, moduleLength);
 			}
-			else
-			{
+			else if (function == MODULE_FUNCTION_RADIO_STACK) {
+				result = platform_radio_stack_update_module(&module);
+			}
+			else {
 				if (FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS,
 					FLASH_INTERNAL, uint32_t(module.info->module_start_address),
 					(moduleLength + 4),//+4 to copy the CRC too

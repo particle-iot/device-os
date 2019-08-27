@@ -100,7 +100,7 @@ int spark_publish_vitals(system_tick_t period_s_, void* reserved_)
         result = _vitals.publish();
     }
 
-    return spark_protocol_to_system_error(result);
+    return result;
 }
 
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
@@ -199,7 +199,8 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
 
     bool result;
     if (funcKey) {                          // old call, with funcKey != NULL
-        cloud_function_descriptor desc;
+        cloud_function_descriptor desc = {};
+        desc.size = sizeof(desc);
         desc.funcKey = funcKey;
         desc.fn = call_raw_user_function;
         desc.data = (void*)pFunc;

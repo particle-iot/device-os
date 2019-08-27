@@ -51,7 +51,7 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration) {
         return;
     }
 
-    NRF5x_Pin_Info * pinmap = HAL_Pin_Map();
+    Hal_Pin_Info* pinmap = HAL_Pin_Map();
     if (pin >= TOTAL_PINS || pinmap[pin].pwm_instance == PWM_INSTANCE_NONE) {
         return;
     }

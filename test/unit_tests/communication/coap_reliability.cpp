@@ -23,7 +23,7 @@
 #include "forward_message_channel.h"
 #include "messages.h"
 
-#include "catch.hpp"
+#include <catch2/catch.hpp>
 #include "fakeit.hpp"
 
 using namespace particle::protocol;
@@ -272,7 +272,7 @@ void build_message_channel_mock(Mock<MessageChannel>& mock)
 	When(Method(mock,notify_established)).AlwaysReturn(NO_ERROR);
 	When(Method(mock,is_unreliable)).AlwaysReturn(false);
 	When(Method(mock,command)).AlwaysReturn(NO_ERROR);
-
+	When(Method(mock,notify_client_messages_processed)).AlwaysReturn();
 }
 
 SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exponentially increasing delays, after which it is removed")
@@ -694,6 +694,24 @@ SCENARIO("a repeated confirmable CoAP message is passed only once to the applica
 	}
 }
 
+/**
+ * A reliable CoAP Channel that uses a forwarding message channel.
+ * This allows the actual message channel to be set later (e.g. a mock.)
+ * The typename M is a callable that provides the current time.
+ */
+template <typename M>
+class ForwardCoAPReliableChannel: public CoAPReliableChannel<ForwardMessageChannel, M>
+{
+	using super = CoAPReliableChannel<ForwardMessageChannel, M>;
+
+public:
+
+	ForwardCoAPReliableChannel(MessageChannel& ch, M m) : super(m)
+	{
+		this->setForward(&ch);
+	}
+};
+
 template<typename R>
 struct Callme
 {
@@ -710,8 +728,7 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 		m.decode_id();
 		Mock<MessageChannel> mock;
 		build_message_channel_mock(mock);
-		MessageChannel& channel = mock.get();
-		CoAPMessageStore store;
+		MessageChannel& delegate = mock.get();
 
 		typedef Callme<system_tick_t> time_source;
 		Mock<time_source> mockTime;
@@ -719,6 +736,9 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 		system_tick_t time_count = 0;
 		auto time_increment = [&time_count]() { return time_count+=1000; };
 		When(Method(mockTime, operator())).AlwaysDo(time_increment);
+
+		ForwardCoAPReliableChannel<decltype(time)> channel(delegate, time);
+		const CoAPMessageStore& store = channel.client_messages();
 
 		WHEN("the message is sent")
 		{
@@ -746,11 +766,15 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 
 				THEN("the send_synchronous method returns success")
 				{
-					ProtocolError error = store.send_synchronous(m, channel, time);
+					ProtocolError error = channel.send_synchronous(m);
 					REQUIRE(error==NO_ERROR);
 					AND_THEN("the CoAP message is purged")
 					{
 						REQUIRE(store.from_id(0x1234)==nullptr);
+					}
+					AND_THEN("notify_client_messages_processed() is not invoked")
+					{
+						Verify(Method(mock, notify_client_messages_processed)).Never();
 					}
 				}
 			}
@@ -777,11 +801,15 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 
 				THEN("the send_synchronous method times out")
 				{
-					ProtocolError error = store.send_synchronous(m, channel, time);
+					ProtocolError error = channel.send_synchronous(m);
 					REQUIRE(error==MESSAGE_TIMEOUT);
 					AND_THEN("the CoAP message is purged")
 					{
 						REQUIRE(store.from_id(0x1234)==nullptr);
+					}
+					AND_THEN("notify_client_messages_processed() is not invoked")
+					{
+						Verify(Method(mock, notify_client_messages_processed)).Never();
 					}
 				}
 			}
@@ -791,11 +819,15 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 				When(Method(mock,send)).Return(IO_ERROR);
 				THEN("the send_synchronous method fails with IO_ERROR")
 				{
-					ProtocolError error = store.send_synchronous(m, channel, time);
+					ProtocolError error = channel.send_synchronous(m);
 					REQUIRE(error==IO_ERROR);
 					AND_THEN("the CoAP message is purged")
 					{
 						REQUIRE(store.from_id(0x1234)==nullptr);
+					}
+					AND_THEN("notify_client_messages_processed() is not invoked")
+					{
+						Verify(Method(mock, notify_client_messages_processed)).Never();
 					}
 				}
 			}
@@ -806,35 +838,21 @@ SCENARIO("the send_synchronous method blocks until the message is sent or the se
 				When(Method(mock,send)).Return(IO_ERROR);
 				THEN("the send_synchronous method fails with IO_ERROR")
 				{
-					ProtocolError error = store.send_synchronous(m, channel, time);
+					ProtocolError error = channel.send_synchronous(m);
 					REQUIRE(error==IO_ERROR);
 					AND_THEN("the CoAP message is purged")
 					{
 						REQUIRE(store.from_id(0x1234)==nullptr);
+					}
+					AND_THEN("notify_client_messages_processed() is not invoked")
+					{
+						Verify(Method(mock, notify_client_messages_processed)).Never();
 					}
 				}
 			}
 		}
 	}
 }
-
-/**
- * A reliable CoAP Channel that uses a forwarding message channel.
- * This allows the actual message channel to be set later (e.g. a mock.)
- * The typename M is a callable that provides the current time.
- */
-template <typename M>
-class ForwardCoAPReliableChannel: public CoAPReliableChannel<ForwardMessageChannel, M>
-{
-	using super = CoAPReliableChannel<ForwardMessageChannel, M>;
-
-public:
-
-	ForwardCoAPReliableChannel(MessageChannel& ch, M m) : super(m)
-	{
-		this->setForward(&ch);
-	}
-};
 
 
 SCENARIO("sending a message and re-establishing the connection clears existing messages")
@@ -983,6 +1001,7 @@ SCENARIO("client and server can send requests with the same message ID and they 
 	GIVEN("a reliable CoAP channel")
 	{
 		Mock<MessageChannel> mock;
+		build_message_channel_mock(mock);
 		MessageChannel& delegate = mock.get();
 		auto time = []() { return system_tick_t(234); };
 		ForwardCoAPReliableChannel<decltype(time)> channel(delegate, time);
@@ -1016,6 +1035,7 @@ SCENARIO("client and server can send requests with the same message ID and they 
 			REQUIRE(m.length()==sizeof(con_server));			// message is received in full
 			Verify(Method(mock,receive)).Exactly(Once);
 			mock.Reset();
+			build_message_channel_mock(mock);
 
 			REQUIRE(message_equals(channel.client_messages().from_id(0x1234), client, "client"));
 
@@ -1050,6 +1070,7 @@ SCENARIO("client and server can send requests with the same message ID and they 
 
 				// send ACK from client
 				mock.Reset();
+				build_message_channel_mock(mock);
 				ack.decode_id();		// ensure the ID is set
 				When(Method(mock,send)).Return(NO_ERROR);
 				REQUIRE(channel.send(ack)==NO_ERROR);
@@ -1072,6 +1093,7 @@ SCENARIO("a message flagged as confirm received waits synchronously for acknowle
 	GIVEN("a message flagged as confirm received and a reliable channel")
 	{
 		Mock<MessageChannel> mock;
+		build_message_channel_mock(mock);
 		MessageChannel& delegate = mock.get();
 		system_tick_t ticks = 0;
 		auto time = [&ticks]() { return ticks+=10; };
@@ -1137,5 +1159,98 @@ SCENARIO("a message flagged as confirm received waits synchronously for acknowle
 			}
 		}
 
+	}
+}
+
+SCENARIO("notify_client_messages_processed() is invoked when all client messages are processed")
+{
+	GIVEN("two confirmable messages and a reliable channel")
+	{
+		Mock<Callme<system_tick_t>> timeMock;
+		When(Method(timeMock, operator())).AlwaysDo([]() {
+			static system_tick_t t = 0;
+			return t += 60 * 60 * 1000;
+		});
+		auto& time = timeMock.get();
+
+		Mock<MessageChannel> channelMock; // Delegate channel
+		build_message_channel_mock(channelMock);
+		ForwardCoAPReliableChannel<decltype(time)> channel(channelMock.get(), time);
+
+		uint8_t buf1[] = { 0x40, 0x00, 0x11, 0x11 };
+		Message msg1(buf1, sizeof(buf1), sizeof(buf1));
+		msg1.decode_id();
+		uint8_t buf2[] = { 0x40, 0x00, 0x22, 0x22 };
+		Message msg2(buf2, sizeof(buf2), sizeof(buf2));
+		msg2.decode_id();
+
+		WHEN("the messages are sent")
+		{
+			When(Method(channelMock, send)).AlwaysReturn(NO_ERROR);
+
+			REQUIRE(channel.send(msg1) == NO_ERROR);
+			REQUIRE(channel.send(msg2) == NO_ERROR);
+
+			AND_WHEN("both messages are acknowledged")
+			{
+				When(Method(channelMock, receive)).Do([](Message& msg) {
+					msg.set_length(Messages::empty_ack(msg.buf(), 0x11, 0x11)); // ACK for the 1st message
+					return NO_ERROR;
+				}).Do([](Message& msg) {
+					msg.set_length(Messages::empty_ack(msg.buf(), 0x22, 0x22)); // ACK for the 2nd message
+					return NO_ERROR;
+				}).AlwaysDo([](Message& msg) {
+					msg.set_length(0);
+					return NO_ERROR;
+				});
+
+				REQUIRE(channel.receive(msg1) == NO_ERROR);
+				REQUIRE(channel.receive(msg1) == NO_ERROR);
+
+				THEN("the callback is invoked only once")
+				{
+					Verify(Method(channelMock, notify_client_messages_processed)).Once();
+					REQUIRE_FALSE(channel.has_unacknowledged_client_requests());
+				}
+			}
+
+			AND_WHEN("only one message is acknowledged")
+			{
+				When(Method(channelMock, receive)).Do([](Message& msg) {
+					msg.set_length(Messages::empty_ack(msg.buf(), 0x22, 0x22)); // ACK for the 2nd message
+					return NO_ERROR;
+				}).AlwaysDo([](Message& msg) {
+					msg.set_length(0);
+					return NO_ERROR;
+				});
+
+				REQUIRE(channel.receive(msg1) == NO_ERROR);
+				REQUIRE(channel.receive(msg1) == NO_ERROR);
+
+				THEN("the callback is not invoked")
+				{
+					Verify(Method(channelMock, notify_client_messages_processed)).Never();
+					REQUIRE(channel.has_unacknowledged_client_requests());
+				}
+			}
+
+			AND_WHEN("none of the messages are acknowledged")
+			{
+				When(Method(channelMock, receive)).AlwaysDo([](Message& msg) {
+					msg.set_length(0);
+					return NO_ERROR;
+				});
+
+				for (auto i = 0; i < CoAPMessage::MAX_RETRANSMIT + 1; ++i) {
+					REQUIRE(channel.receive(msg1) == NO_ERROR);
+				}
+
+				THEN("the callback is invoked only once")
+				{
+					Verify(Method(channelMock, notify_client_messages_processed)).Once();
+					REQUIRE_FALSE(channel.has_unacknowledged_client_requests());
+				}
+			}
+		}
 	}
 }

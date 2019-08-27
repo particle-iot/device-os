@@ -29,8 +29,7 @@ bool skip_r410 = false;
  * DEV_UNKNOWN, DEV_SARA_G350, DEV_SARA_U260, DEV_SARA_U270, DEV_SARA_U201, DEV_SARA_R410
  */
 int cellular_modem_type() {
-    CellularDevice device;
-    memset(&device, 0, sizeof(device));
+    CellularDevice device = {};
     device.size = sizeof(device);
     cellular_device_info(&device, NULL);
 
@@ -196,7 +195,10 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
         }
         if (!c.connected())
             break;
-        if (millis() - mil >= 60000) {
+        if (millis() - mil >= 20000UL) {
+            if (c.connected()) {
+                c.stop();
+            }
             break;
         }
     }

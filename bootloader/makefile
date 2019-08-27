@@ -16,6 +16,9 @@ export BOOTLOADER_MODULE=1
 
 include ../build/platform-id.mk
 
+# Build bootloader as modular by default if the platform is modular
+-include ../modules/$(PLATFORM_NAME)/modular.mk
+
 # Target this makefile is building.
 ifeq ("$(ARCH)","gcc")
 TARGET=none

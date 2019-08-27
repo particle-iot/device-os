@@ -56,8 +56,11 @@ static uint32_t start_ymodem_flasher_serial_speed = START_YMODEM_FLASHER_SERIAL_
 
 ymodem_serial_flash_update_handler Ymodem_Serial_Flash_Update_Handler = NULL;
 
+// TODO: Use a single state variable instead of SPARK_CLOUD_XXX flags
 volatile uint8_t SPARK_CLOUD_SOCKETED;
 volatile uint8_t SPARK_CLOUD_CONNECTED;
+volatile uint8_t SPARK_CLOUD_HANDSHAKE_PENDING = 0;
+volatile uint8_t SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
 volatile uint8_t SPARK_FLASH_UPDATE;
 volatile uint32_t TimingFlashUpdateTimeout;
 
@@ -540,6 +543,7 @@ const char* module_function_string(module_function_t func) {
         case MODULE_FUNCTION_SYSTEM_PART: return "s";
         case MODULE_FUNCTION_USER_PART: return "u";
         case MODULE_FUNCTION_NCP_FIRMWARE: return "c";
+        case MODULE_FUNCTION_RADIO_STACK: return "a";
         default: return "_";
     }
 }
@@ -561,7 +565,8 @@ bool is_module_function_valid(module_function_t func) {
         case MODULE_FUNCTION_MONO_FIRMWARE:
         case MODULE_FUNCTION_SYSTEM_PART:
         case MODULE_FUNCTION_USER_PART:
-        case MODULE_FUNCTION_NCP_FIRMWARE: {
+        case MODULE_FUNCTION_NCP_FIRMWARE:
+        case MODULE_FUNCTION_RADIO_STACK: {
             return true;
         }
         case MODULE_FUNCTION_NONE:

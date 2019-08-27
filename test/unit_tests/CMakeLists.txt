@@ -14,16 +14,19 @@ get_filename_component(
   ${CMAKE_CURRENT_LIST_DIR}/../..
   REALPATH
 )
-get_filename_component(
-  TEST_DIR
-  ${DEVICE_OS_DIR}/test
-  REALPATH
+set(TEST_DIR ${DEVICE_OS_DIR}/test)
+set(THIRD_PARTY_DIR ${DEVICE_OS_DIR}/third_party)
+
+# Add Boost from git submodule
+find_package(Boost
+  1.59.0 EXACT
+  REQUIRED
+  COMPONENTS program_options random regex system thread
 )
-get_filename_component(
-  THIRD_PARTY_DIR
-  ${DEVICE_OS_DIR}/third_party
-  REALPATH
-)
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+  link_libraries(${Boost_LIBRARIES})
+endif()
 
 # Add Catch2 from git submodule
 set(CATCH2_DIR ${THIRD_PARTY_DIR}/catch2/catch2)
@@ -35,8 +38,10 @@ include(Catch)
 enable_testing()
 
 # Global defines for all tests
+add_definitions(-DLOG_DISABLE)
 add_definitions(-DRELEASE_BUILD)
 add_definitions(-DUNIT_TEST)
+add_definitions(-DBOOST_NO_AUTO_PTR)
 
 # Link against dependencies of all tests
 link_libraries(
@@ -45,8 +50,11 @@ link_libraries(
 )
 
 # Build and discover unit-tests
+add_subdirectory(cellular)
 add_subdirectory(cloud)
+add_subdirectory(communication)
 add_subdirectory(services)
+add_subdirectory(wiring)
 
 # Create `coverage` target in the `make` command
 add_custom_target( coverage

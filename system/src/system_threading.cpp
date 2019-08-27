@@ -20,7 +20,7 @@ ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idl
 			100, /* take timeout */
 			0x7FFFFFFF, /* put timeout - wait forever */
 			50, /* queue size */
-			THREAD_STACK_SIZE /* stack size */)); // TODO: Use this value for threads spawned by ActiveObjectBase
+			THREAD_STACK_SIZE /* stack size */));
 
 /**
  * Implementation to support gthread's concurrency primitives.
@@ -58,14 +58,6 @@ namespace std {
     {
         os_condition_variable_notify_all(_M_cond);
     }
-#endif
-
-    mutex& __get_once_mutex() {
-        static mutex __once;
-        return __once;
-    }
-
-    function<void()> __once_functor;
 
     __future_base::_Result_base::_Result_base() = default;
     __future_base::_Result_base::~_Result_base() = default;
@@ -106,6 +98,14 @@ namespace std {
             while (!startup.started) os_thread_yield();
         }
     }
+#endif // 0
+
+    function<void()> __once_functor;
+
+    mutex& __get_once_mutex() {
+        static mutex __once;
+        return __once;
+    }
 
     inline std::unique_lock<std::mutex>*& __get_once_functor_lock_ptr()
     {
@@ -130,9 +130,7 @@ os_mutex_recursive_t mutex_usb_serial()
 	return usb_serial_mutex;
 }
 
-#endif
-
-
+#endif // PLATFORM_THREADING
 
 void* system_internal(int item, void* reserved)
 {

@@ -120,8 +120,7 @@ void setup()
  * DEV_UNKNOWN, DEV_SARA_G350, DEV_SARA_U260, DEV_SARA_U270, DEV_SARA_U201, DEV_SARA_R410
  */
 int cellular_modem_type() {
-    CellularDevice device;
-    memset(&device, 0, sizeof(device));
+    CellularDevice device = {};
     device.size = sizeof(device);
     cellular_device_info(&device, NULL);
 

@@ -34,7 +34,7 @@ PinMode HAL_Get_Pin_Mode(pin_t pin) {
 }
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction) {
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     if (!is_valid_pin(pin)) {
         return PF_NONE;
@@ -53,7 +53,7 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction) {
 int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
     CHECK_TRUE(is_valid_pin(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint32_t nrfPin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
     PinMode mode = conf ? conf->mode : PIN_MODE_NONE;
@@ -150,7 +150,7 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value) {
         return;
     }
 
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
     // PWM have conflict with GPIO OUTPUT mode on nRF52
@@ -173,7 +173,7 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
         return 0;
     }
 
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
     if ((PIN_MAP[pin].pin_mode == INPUT) ||
@@ -201,7 +201,7 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value) {
         return 0;
     }
 
-    NRF5x_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
     NRF_GPIO_Type *reg = nrf_gpio_pin_port_decode(&nrf_pin);
 

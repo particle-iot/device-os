@@ -18,7 +18,8 @@
  */
 
 #include "protocol.h"
-#include "catch.hpp"
+
+#include <catch2/catch.hpp>
 #include "fakeit.hpp"
 using namespace fakeit;
 
@@ -48,6 +49,10 @@ public:
 		Protocol::init(callbacks, descriptor);
 	}
 
+	virtual int get_status(protocol_status* status) const {
+		status->flags = 0;
+		return 0;
+	}
 };
 
 SCENARIO("default product co-ordinates are set")

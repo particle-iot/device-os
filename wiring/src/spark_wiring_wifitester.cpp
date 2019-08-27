@@ -205,7 +205,8 @@ void WiFiTester::printInfo() {
 
     // GET ICCID and IMEI (Modem with power on required)
     if (isPowerOn()) {
-        CellularDevice dev;
+        CellularDevice dev = {};
+        dev.size = sizeof(dev);
         cellular_device_info(&dev, NULL);
         printItem("ICCID", dev.iccid);
         printItem("IMEI", dev.imei);

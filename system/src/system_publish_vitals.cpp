@@ -4,9 +4,19 @@
 #include <limits>
 
 #include "logging.h"
+#include "system_cloud.h"
 #include "system_threading.h"
 
+namespace {
+
 using namespace particle::system;
+
+int postDescription() {
+    const auto r = spark_protocol_post_description(spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr);
+    return spark_protocol_to_system_error(r);
+}
+
+} // unnamed
 
 template <class Timer>
 VitalsPublisher<Timer>::VitalsPublisher(Timer* timer_)
@@ -74,8 +84,10 @@ void VitalsPublisher<Timer>::period(system_tick_t period_s_)
 template <class Timer>
 int VitalsPublisher<Timer>::publish(void)
 {
-    return spark_protocol_post_description(spark_protocol_instance(),
-                                           particle::protocol::DESCRIBE_METRICS, nullptr);
+    if (!spark_cloud_flag_connected()) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    return postDescription();
 }
 
 template <class Timer>
@@ -88,13 +100,15 @@ void VitalsPublisher<Timer>::publishFromTimer(void)
     }
     task->func = [](ISRTaskQueue::Task* task) {
         delete task;
-        spark_protocol_post_description(spark_protocol_instance(),
-                                        particle::protocol::DESCRIBE_METRICS, nullptr);
+        if (spark_cloud_flag_connected()) {
+            postDescription();
+        }
     };
     SystemISRTaskQueue.enqueue(task);
 }
 
 #include "spark_wiring_timer.h"
+
 #if PLATFORM_THREADING
 template class VitalsPublisher<Timer>;
 #else  // not PLATFORM_THREADING
@@ -102,6 +116,19 @@ template class VitalsPublisher<particle::NullTimer>;
 #endif // PLATFORM_THREADING
 
 #ifdef UNIT_TEST
+
 #include "../test/unit_tests/mock/mock_types.h"
+
 template class VitalsPublisher<particle::mock_type::Timer>;
+
+inline bool spark_cloud_flag_connected()
+{
+    return true;
+}
+
+inline int spark_protocol_to_system_error(int error)
+{
+    return error;
+}
+
 #endif // UNIT_TEST

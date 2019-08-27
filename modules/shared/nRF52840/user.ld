@@ -7,16 +7,16 @@ SECTIONS
     INCLUDE module_start.ld
     INCLUDE module_info.ld
 
-    .text :
+    .dynalib :
     {
-        expected_dynalib_start = ORIGIN (APP_FLASH) + 24 ;
+        expected_dynalib_start = ORIGIN(APP_FLASH) + 24 ;
         link_dynalib_start = .;
         KEEP(*(*.user_part_module))
         link_dynalib_end = . ;
-        link_length_start = .;
-        KEEP(*(*.user_part_length))
-        link_length_end = .;
+    } > APP_FLASH AT> APP_FLASH
 
+    .text :
+    {
         . = ALIGN(4);
 
         link_code_location = .;
@@ -130,10 +130,10 @@ ASSERT ( USER_FIRMWARE_IMAGE_LOCATION == ORIGIN(APP_FLASH), "User firmware locat
 ASSERT ( USER_FIRMWARE_IMAGE_SIZE == LENGTH(APP_FLASH), "User firmware size and APP_FLASH length differ" );
 
 /* Heap assertion*/
-link_heap_location_end = system_part1_static_ram_end + min_heap_size;
+link_heap_location_end = _system_part1_static_ram_end + _heap_min_size;
 ASSERT ( link_heap_location_end < link_global_data_start, "Insufficient room for heap" );
 
-ASSERT ( (link_bss_end - link_global_data_start) <= user_static_ram_size, "Insufficient room for .data and .bss sections" )
+ASSERT ( (link_bss_end - link_global_data_start) <= _user_part_static_ram_size, "Insufficient room for .data and .bss sections" )
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
@@ -143,3 +143,5 @@ ASSERT ( user_module_info == link_module_info_start, "module info start not wher
 ASSERT ( user_module_info_end == link_module_info_end, "module info end not where expected" );
 
 ASSERT ( ( link_module_info_suffix_start - link_module_info_static_start ) == 4 || ( link_module_info_suffix_start - link_module_info_static_start ) == 8, "module info static details not linked" );
+
+ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

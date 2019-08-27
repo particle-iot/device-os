@@ -232,6 +232,12 @@ int spark_protocol_mesh_command(ProtocolFacade* protocol, MeshCommand::Enum cmd,
 }
 #endif // HAL_PLATFORM_MESH
 
+int spark_protocol_get_status(ProtocolFacade* protocol, protocol_status* status, void* reserved)
+{
+    ASSERT_ON_SYSTEM_THREAD();
+    return protocol->get_status(status);
+}
+
 #else // !PARTICLE_PROTOCOL
 
 #include "core_protocol.h"
@@ -365,8 +371,13 @@ system_tick_t spark_protocol_time_last_synced(CoreProtocol* protocol, time_t* tm
     return protocol->time_last_synced(tm);
 }
 
-int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* data, void* reserved) {
+int spark_protocol_get_describe_data(CoreProtocol* protocol, spark_protocol_describe_data* data, void* reserved) {
 	return -1;
+}
+
+int spark_protocol_get_status(CoreProtocol* protocol, protocol_status* status, void* reserved)
+{
+    return protocol->get_status(status);
 }
 
 #endif
