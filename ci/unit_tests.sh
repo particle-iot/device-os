@@ -47,7 +47,7 @@ set -x -e
 
 # Run CMake-based unit tests
 cd $unit_test_dir
-rm -rf .build
-mkdir .build && cd .build
+rm -rf .build/*
+mkdir .build -p && cd .build/
 cmake ..
-make all test coverage
+make all test coveralls

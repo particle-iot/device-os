@@ -18,6 +18,7 @@ install:
 
 script:
   - buildpack/scripts/run-tests-in-container
+  - 'if [ -f /home/travis/build/.build/coverage.json ]; then python ci/report/report.py /home/travis/build/.build/coverage.json; rm -f /home/travis/build/.build/coverage.json; fi'
   - buildpack/scripts/push-image
 
   # - 'if [ ! -z "$DOCKER_HUB_EMAIL" ]; then docker login --email=$DOCKER_HUB_EMAIL --username=$DOCKER_HUB_USERNAME --password=$DOCKER_HUB_PASSWORD; fi'
