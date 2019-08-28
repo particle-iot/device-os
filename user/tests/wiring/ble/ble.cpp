@@ -1,0 +1,452 @@
+/*
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "Particle.h"
+#include "unit-test/unit-test.h"
+
+#ifdef INFO
+#undef INFO
+#endif
+#define INFO(msg, ...) \
+    do { \
+        Serial.printf(msg, ##__VA_ARGS__); \
+    } while(false)
+
+test(01_Set_BLE_Device_Address) {
+    int ret;
+    BleAddress defaultAddr = BLE.address();
+    BleAddress getAddr;
+
+    // The most two significant bits should be  0b10.
+    uint8_t mac[6] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x9b};
+    ret = BLE.setAddress(BleAddress(mac));
+    assertEqual(ret, 0);
+    getAddr = BLE.address();
+    assertTrue(!strcmp(getAddr.toString().c_str(), "9B:44:33:22:11:00"));
+
+    // The address in string is big-endian
+    ret = BLE.setAddress("9b:44:33:22:11:00");
+    assertEqual(ret, 0);
+    getAddr = BLE.address();
+    assertTrue(!strcmp(getAddr.toString().c_str(), "9B:44:33:22:11:00"));
+
+    ret = BLE.setAddress("9b44:33:22/11:00");
+    assertEqual(ret, 0);
+    getAddr = BLE.address();
+    assertTrue(!strcmp(getAddr.toString().c_str(), "9B:44:33:22:11:00"));
+
+    ret = BLE.setAddress("9b44:33:22/x;11");
+    assertEqual(ret, 0);
+    getAddr = BLE.address();
+    assertTrue(!strcmp(getAddr.toString().c_str(), "9B:44:33:22:11:00"));
+
+    ret = BLE.setAddress("9b44:33:22/11:00:43gd34");
+    assertEqual(ret, 0);
+    getAddr = BLE.address();
+    assertTrue(!strcmp(getAddr.toString().c_str(), "9B:44:33:22:11:00"));
+
+    ret = BLE.setAddress("9b4k:33:2,/11:00:43gd34");
+    assertEqual(ret, 0);
+    getAddr = BLE.address();
+    assertTrue(!strcmp(getAddr.toString().c_str(), "9B:40:33:20:11:00"));
+
+    // The most two significant bits of static address must be 0b11
+    ret = BLE.setAddress("9b:44:33:22:11:00", BleAddressType::RANDOM_STATIC);
+    assertNotEqual(ret, 0);
+
+    ret = BLE.setAddress("c5:44:33:22:11:00", BleAddressType::RANDOM_STATIC);
+    assertEqual(ret, 0);
+    getAddr = BLE.address();
+    assertTrue(!strcmp(getAddr.toString().c_str(), "C5:44:33:22:11:00"));
+
+    // Restore default device address
+    ret = BLE.setAddress(nullptr);
+    assertEqual(ret, 0);
+    getAddr = BLE.address();
+    assertTrue(getAddr == defaultAddr);
+}
+
+test(02_Set_BLE_Device_Name) {
+    int ret;
+    String defaultName = BLE.getDeviceName();
+    String getName;
+
+    // Fetched device name should be null-terminated.
+    char buf[BLE_MAX_DEV_NAME_LEN + 1];
+    size_t len = BLE.getDeviceName(buf, sizeof(buf));
+    assertTrue(buf[len] == '\0');
+
+    ret = BLE.setDeviceName("Xenon-test1");
+    assertEqual(ret, 0);
+    getName = BLE.getDeviceName();
+    assertTrue(getName == "Xenon-test1");
+
+    ret = BLE.setDeviceName("Xenon-test01234567890123456789");
+    assertEqual(ret, 0);
+    getName = BLE.getDeviceName();
+    assertTrue(getName == "Xenon-test0123456789");
+
+    ret = BLE.setDeviceName("Xenon-test0123456789012", 5);
+    assertEqual(ret, 0);
+    getName = BLE.getDeviceName();
+    assertTrue(getName == "Xenon");
+
+    ret = BLE.setDeviceName("Xenon-test2", BLE_MAX_DEV_NAME_LEN);
+    assertEqual(ret, 0);
+    getName = BLE.getDeviceName();
+    assertTrue(getName == "Xenon-test2");
+
+    ret = BLE.setDeviceName(String("Xenon-test3"));
+    assertEqual(ret, 0);
+    getName = BLE.getDeviceName();
+    assertTrue(getName == "Xenon-test3");
+
+    // Restore default device name
+    ret = BLE.setDeviceName(nullptr);
+    assertEqual(ret, 0);
+    getName = BLE.getDeviceName();
+    assertTrue(getName == defaultName);
+}
+
+test(03_Set_BLE_Tx_Power) {
+    int ret;
+    int8_t getTxPower;
+
+    // Valid TX power: -20, -16, -12, -8, -4, 0, 4, 8
+    // Other values are right-rounded, except the value larger than 8.
+    ret = BLE.setTxPower(-25);
+    assertEqual(ret, 0);
+    ret = BLE.txPower(&getTxPower);
+    assertEqual(ret, 0);
+    assertEqual(getTxPower, -20);
+
+    ret = BLE.setTxPower(-18);
+    assertEqual(ret, 0);
+    ret = BLE.txPower(&getTxPower);
+    assertEqual(ret, 0);
+    assertEqual(getTxPower, -16);
+
+    ret = BLE.setTxPower(-14);
+    assertEqual(ret, 0);
+    ret = BLE.txPower(&getTxPower);
+    assertEqual(ret, 0);
+    assertEqual(getTxPower, -12);
+
+    ret = BLE.setTxPower(-10);
+    assertEqual(ret, 0);
+    ret = BLE.txPower(&getTxPower);
+    assertEqual(ret, 0);
+    assertEqual(getTxPower, -8);
+
+    ret = BLE.setTxPower(-6);
+    assertEqual(ret, 0);
+    ret = BLE.txPower(&getTxPower);
+    assertEqual(ret, 0);
+    assertEqual(getTxPower, -4);
+
+    ret = BLE.setTxPower(-2);
+    assertEqual(ret, 0);
+    ret = BLE.txPower(&getTxPower);
+    assertEqual(ret, 0);
+    assertEqual(getTxPower, 0);
+
+    ret = BLE.setTxPower(2);
+    assertEqual(ret, 0);
+    ret = BLE.txPower(&getTxPower);
+    assertEqual(ret, 0);
+    assertEqual(getTxPower, 4);
+
+    ret = BLE.setTxPower(6);
+    assertEqual(ret, 0);
+    ret = BLE.txPower(&getTxPower);
+    assertEqual(ret, 0);
+    assertEqual(getTxPower, 8);
+
+    ret = BLE.setTxPower(9);
+    assertEqual(ret, 0);
+    ret = BLE.txPower(&getTxPower);
+    assertEqual(ret, 0);
+    assertEqual(getTxPower, 8);
+}
+
+test(04_Select_BLE_Antenna) {
+    int ret = BLE.selectAntenna(BleAntennaType::EXTERNAL);
+    assertEqual(ret, 0);
+    ret = BLE.selectAntenna(BleAntennaType::INTERNAL);
+    assertEqual(ret, 0);
+}
+
+test(05_Set_BLE_Advertising_Parameters) {
+    int ret;
+    BleAdvertisingParams defaultAdvParams = {};
+    BleAdvertisingParams getAdvParams = {};
+
+    defaultAdvParams.size = sizeof(BleAdvertisingParams);
+    ret = BLE.getAdvertisingParameters(&defaultAdvParams);
+    assertEqual(ret, 0);
+
+    ret = BLE.setAdvertisingInterval(50); // In units of 0.625ms
+    assertEqual(ret, 0);
+    ret = BLE.setAdvertisingTimeout(1000); // In units of 10ms
+    assertEqual(ret, 0);
+    ret = BLE.setAdvertisingType(BleAdvertisingEventType::SCANABLE_UNDIRECTED);
+    assertEqual(ret, 0);
+    getAdvParams.size = sizeof(BleAdvertisingParams);
+    ret = BLE.getAdvertisingParameters(&getAdvParams);
+    assertEqual(ret, 0);
+    assertEqual(getAdvParams.interval, 50);
+    assertEqual(getAdvParams.timeout, 1000);
+    assertTrue(getAdvParams.type == (uint8_t)BleAdvertisingEventType::SCANABLE_UNDIRECTED);
+
+    ret = BLE.setAdvertisingParameters(150, 2000, BleAdvertisingEventType::CONNECTABLE_UNDIRECTED);
+    assertEqual(ret, 0);
+    ret = BLE.getAdvertisingParameters(&getAdvParams);
+    assertEqual(ret, 0);
+    assertEqual(getAdvParams.interval, 150);
+    assertEqual(getAdvParams.timeout, 2000);
+    assertTrue(getAdvParams.type == (uint8_t)BleAdvertisingEventType::CONNECTABLE_UNDIRECTED);
+
+    BleAdvertisingParams setAdvParams = {};
+    setAdvParams.size = sizeof(BleAdvertisingParams);
+    setAdvParams.interval = 200;
+    setAdvParams.timeout = 3000;
+    setAdvParams.type = (hal_ble_adv_evt_type_t)BleAdvertisingEventType::NON_CONNECTABLE_NON_SCANABLE_UNDIRECTED;
+    ret = BLE.setAdvertisingParameters(&setAdvParams);
+    assertEqual(ret, 0);
+    ret = BLE.getAdvertisingParameters(&getAdvParams);
+    assertEqual(ret, 0);
+    assertEqual(getAdvParams.interval, 200);
+    assertEqual(getAdvParams.timeout, 3000);
+    assertTrue(getAdvParams.type == (uint8_t)BleAdvertisingEventType::NON_CONNECTABLE_NON_SCANABLE_UNDIRECTED);
+
+    // Restore default advertising data
+    ret = BLE.setAdvertisingParameters(nullptr);
+    assertEqual(ret, 0);
+    ret = BLE.getAdvertisingParameters(&getAdvParams);
+    assertEqual(ret, 0);
+    assertEqual(getAdvParams.interval, defaultAdvParams.interval);
+    assertEqual(getAdvParams.timeout, defaultAdvParams.timeout);
+    assertTrue(getAdvParams.type == defaultAdvParams.type);
+}
+
+test(06_Set_BLE_Advertising_Data) {
+    int ret;
+    BleAdvertisingData getAdvData = {};
+    BleAdvertisingData setAdvData = {};
+
+    setAdvData.appendServiceUUID("1234");
+    ret = BLE.setAdvertisingData(&setAdvData);
+    assertEqual(ret, 0);
+    ret = BLE.getAdvertisingData(&getAdvData);
+    assertEqual(ret, 7);
+    assertEqual(getAdvData.length(), 7);
+
+    BleUuid uuid;
+    ret = getAdvData.serviceUUID(&uuid, 1);
+    assertEqual(ret, 1);
+    assertTrue(uuid == "1234");
+
+    // Clear advertising data.
+    ret = BLE.setAdvertisingData(nullptr);
+    assertEqual(ret, 0);
+    ret = BLE.getAdvertisingData(&getAdvData);
+    assertEqual(ret, 0);
+    assertEqual(getAdvData.length(), 0);
+}
+
+test(07_Set_BLE_Scan_Response_Data) {
+    int ret;
+    BleAdvertisingData getSrData = {};
+    BleAdvertisingData setSrData = {};
+
+    setSrData.appendServiceUUID("1234");
+    ret = BLE.setScanResponseData(&setSrData);
+    assertEqual(ret, 0);
+    ret = BLE.getScanResponseData(&getSrData);
+    assertEqual(ret, 4);
+    assertEqual(getSrData.length(), 4);
+
+    BleUuid uuid;
+    ret = getSrData.serviceUUID(&uuid, 1);
+    assertEqual(ret, 1);
+    assertTrue(uuid == "1234");
+
+    // Clear Scan response data.
+    ret = BLE.setScanResponseData(nullptr);
+    assertEqual(ret, 0);
+    ret = BLE.getScanResponseData(&getSrData);
+    assertEqual(ret, 0);
+    assertEqual(getSrData.length(), 0);
+}
+
+test(08_BLE_Advertising_Control) {
+    INFO("  > Testing BLE advertisement...\r\n");
+
+    int ret;
+    BleAdvertisingData setAdvData = {};
+    BleAdvertisingData setSrData = {};
+    BleAdvertisingData getAdvData = {};
+    BleAdvertisingData getSrData = {};
+
+    setAdvData.appendLocalName("Xenon");
+    setSrData.appendServiceUUID("1234");
+    ret = BLE.advertise(&setAdvData, &setSrData);
+    assertEqual(ret, 0);
+    assertTrue(BLE.advertising());
+
+    ret = BLE.getAdvertisingData(&getAdvData);
+    assertEqual(ret, 10);
+    assertEqual(getAdvData.length(), 10);
+    ret = BLE.getScanResponseData(&getSrData);
+    assertEqual(ret, 4);
+    assertEqual(getSrData.length(), 4);
+
+    String name = getAdvData.deviceName();
+    assertTrue(name == "Xenon");
+    BleUuid uuid;
+    ret = getSrData.serviceUUID(&uuid, 1);
+    assertEqual(ret, 1);
+    assertTrue(uuid == "1234");
+
+    ret = BLE.setAdvertisingInterval(50); // In units of 0.625ms
+    assertEqual(ret, 0);
+    ret = BLE.setAdvertisingTimeout(200); // In units of 10ms, 2 seconds
+    assertEqual(ret, 0);
+
+    delay(2500);
+    assertFalse(BLE.advertising());
+
+    ret = BLE.advertise(); // Timeout: inherit from the value that is set at the last time.
+    assertEqual(ret, 0);
+    delay(2500);
+    assertFalse(BLE.advertising());
+
+    iBeacon beacon(1, 2, "9c1b8bdc-5548-4e32-8a78-b9f524131206", -55);
+    ret = BLE.advertise(beacon); // Timeout: inherit from the value that is set at the last time.
+    assertEqual(ret, 0);
+    delay(1000);
+    assertTrue(BLE.advertising());
+    ret = BLE.stopAdvertising();
+    assertEqual(ret, 0);
+    assertFalse(BLE.advertising());
+}
+
+test(09_Set_BLE_Scanning_Parameters) {
+    int ret;
+    BleScanParams setScanParams = {};
+    BleScanParams getScanParams = {};
+
+    ret = BLE.setScanParameters(nullptr);
+    assertNotEqual(ret, 0);
+
+    setScanParams.size = sizeof(BleScanParams);
+    setScanParams.interval = 50; // In units of 0.625ms
+    setScanParams.window = 25; // In units of 0.625ms
+    setScanParams.timeout = 100; // In units of 10ms
+    setScanParams.active = false; // Do not send scan request
+    setScanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    ret = BLE.setScanParameters(&setScanParams);
+    assertEqual(ret, 0);
+
+    getScanParams.size = sizeof(BleScanParams);
+    ret = BLE.getScanParameters(&getScanParams);
+    assertEqual(ret, 0);
+    assertTrue(setScanParams.interval == getScanParams.interval);
+    assertTrue(setScanParams.timeout == getScanParams.timeout);
+    assertTrue(setScanParams.window == getScanParams.window);
+    assertTrue(setScanParams.active == getScanParams.active);
+    assertTrue(setScanParams.filter_policy == getScanParams.filter_policy);
+
+    setScanParams.interval = 25;
+    setScanParams.window = 50;
+    ret = BLE.setScanParameters(&setScanParams);
+    assertNotEqual(ret, 0);
+
+    setScanParams.interval = 100;
+    setScanParams.window = 50;
+    ret = BLE.setScanParameters(&setScanParams);
+    assertEqual(ret, 0);
+    ret = BLE.setScanTimeout(1000); // In units of 10ms
+    assertEqual(ret, 0);
+    ret = BLE.getScanParameters(&getScanParams);
+    assertEqual(ret, 0);
+    assertEqual(getScanParams.timeout, 1000);
+}
+
+static void bleOnScanResultCallback(const BleScanResult* result, void* context) {
+    INFO("  > On BLE device scanned callback.\r\n");
+    INFO("  > Stop scanning...\r\n");
+    int ret = BLE.stopScanning();
+    assertEqual(ret, 0);
+}
+
+test(10_BLE_Scanning_Control) {
+    INFO("  > Please make sure that there is at least one BLE Peripheral being advertising nearby.\r\n");
+
+    int ret;
+
+    BleScanParams setScanParams = {};
+    setScanParams.size = sizeof(BleScanParams);
+    setScanParams.interval = 50; // In units of 0.625ms
+    setScanParams.window = 25; // In units of 0.625ms
+    setScanParams.timeout = 300; // In units of 10ms
+    setScanParams.active = true; // Send scan request
+    setScanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    ret = BLE.setScanParameters(&setScanParams);
+    assertEqual(ret, 0);
+
+    INFO("  > Testing BLE scanning for 3 seconds...\r\n");
+    ret = BLE.scan(bleOnScanResultCallback, nullptr);
+    assertTrue(ret > 0);
+
+    INFO("  > Testing BLE scanning for 3 seconds...\r\n");
+    BleScanResult results[10];
+    ret = BLE.scan(results, sizeof(results)/sizeof(BleScanResult));
+    assertTrue(ret > 0);
+    INFO("  > Found %d BLE devices\r\n", ret);
+
+    INFO("  > Testing BLE scanning for 3 seconds...\r\n");
+    Vector<BleScanResult> result = BLE.scan();
+    assertTrue(result.size() > 0);
+    INFO("  > Found %d BLE devices\r\n", result.size());
+}
+
+test(11_Add_BLE_Local_Characteristics) {
+    BleCharacteristic characteristic("char1", BleCharacteristicProperty::NOTIFY);
+    BleCharacteristic char1 = BLE.addCharacteristic(characteristic);
+    assertTrue(char1.UUID() == "F5720001-13A9-49DD-AC15-F87B7427E37B"); // Default particle assigned UUID
+    assertTrue(char1.properties() == BleCharacteristicProperty::NOTIFY);
+    assertTrue(char1.description() == "char1");
+
+    BleCharacteristic char2 = BLE.addCharacteristic("char2", BleCharacteristicProperty::READ);
+    assertTrue(char2.UUID() == "F5720002-13A9-49DD-AC15-F87B7427E37B");
+    assertTrue(char2.properties() == BleCharacteristicProperty::READ);
+    assertTrue(char2.description() == "char2");
+
+    BleCharacteristic char3 = BLE.addCharacteristic("char3", BleCharacteristicProperty::WRITE, 0x1234, 0x5678);
+    assertTrue(char3.UUID() == 0x1234);
+    assertTrue(char3.properties() == BleCharacteristicProperty::WRITE);
+    assertTrue(char3.description() == "char3");
+
+    BleCharacteristic char4 = BLE.addCharacteristic("char4", BleCharacteristicProperty::WRITE_WO_RSP, "8a37dbf2-c931-4102-9068-4bed3643e726", "58850a2a-38f6-4188-9f19-d867f02a028c ");
+    assertTrue(char4.UUID() == "8A37DBF2-C931-4102-9068-4BED3643E726");
+    assertTrue(char4.properties() == BleCharacteristicProperty::WRITE_WO_RSP);
+    assertTrue(char4.description() == "char4");
+}
+
+
+
