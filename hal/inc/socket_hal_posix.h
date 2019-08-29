@@ -259,6 +259,35 @@ int sock_socket(int domain, int type, int protocol);
 int sock_fcntl(int s, int cmd, ...);
 
 /**
+ * Synchronous I/O multiplexing.
+ *
+ * @param      fds      Events to poll for.
+ * @param[in]  nfds     Size of @p fds.
+ * @param[in]  timeout  Timeout in milliseconds (if greater than zero). If zero,
+ *                      returns without blocking. If -1, blocks indefinitely.
+ *
+ * @return     Returns the number of descriptors that are ready for I/O, or -1
+ *             if an error occurred.
+ */
+int sock_poll(struct pollfd* fds, nfds_t nfds, int timeout);
+
+/**
+ * Synchronous I/O multiplexing.
+ *
+ * @param[in]  nfds       Number of descriptors to check.
+ * @param      readfds    Descriptors to check for being ready for reading.
+ * @param      writefds   Descriptors to check for being ready for writing.
+ * @param      exceptfds  Descriptors to check for exceptions.
+ * @param      timeout    If non-NULL, maximum interval to wait. If NULL, blocks
+ *                        indefinitely.
+ *
+ * @return     Returns the number of ready descriptors that are contained in the
+ *             descriptor sets, or -1 if an error occurred.
+ */
+int sock_select(int nfds, fd_set* readfds, fd_set* writefds,
+                fd_set* exceptfds, struct timeval* timeout);
+
+/**
  * @}
  *
  */
