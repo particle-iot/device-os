@@ -194,14 +194,23 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     if (flags & MODULE_VERIFY_MASK)
     {
         const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress);
-        // NB: We have corner cases where the module info is not located in the
-        // front of the module but for example after the vector table and we
-        // only want to enable this feature in the case it is in the front,
-        // hence the module_info_t located at the the source address check.
-        if (info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO && (uintptr_t)info == (uintptr_t)sourceAddress)
-        {
-            // Skip module header
-            sourceAddress += sizeof(module_info_t);
+        if (info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
+            // NB: We have corner cases where the module info is not located in the
+            // front of the module but for example after the vector table and we
+            // only want to enable this feature in the case it is in the front,
+            // hence the module_info_t located at the the source address check.
+            module_info_t front = {0};
+            if (sourceDeviceID == FLASH_SERIAL) {
+                hal_exflash_read(sourceAddress, (uint8_t*)&front, sizeof(front));
+            } else {
+                hal_flash_read(sourceAddress, (uint8_t*)&front, sizeof(front));
+            }
+            if (!memcmp(info, &front, sizeof(module_info_t))) {
+                // Skip module header
+                sourceAddress += sizeof(module_info_t);
+            } else {
+                return FLASH_ACCESS_RESULT_ERROR;
+            }
         }
     }
 
