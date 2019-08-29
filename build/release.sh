@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o errexit -o pipefail -o noclobber -o nounset
 
-VERSION="1.3.1-rc.1"
+VERSION="1.4.0-rc.1"
 
 function display_help ()
 {
@@ -175,10 +175,9 @@ function release_file()
     path+="/platform-${PLATFORM_ID}${suffix}"
 
     # Translate suffix to parameter
-    if [ "$suffix" = "lto" ]; then
-        compile_lto="y"
-    fi
-
+    case "$suffix" in
+        *lto*) compile_lto="y";;
+    esac
     # Compose file name
     compose_qualified_filename $to_name $ext $compile_lto $debug_build $use_swd_jtag
 
@@ -456,7 +455,7 @@ if [ $MESH = true ]; then
     SUFFIX="-m"
 else
     COMPILE_LTO="y"
-    if [ $MODULAR = true ]; then
+    if [ $PLATFORM_MODULAR = true ]; then
         SUFFIX="-m-lto"
     else
         SUFFIX="-lto"

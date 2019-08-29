@@ -100,10 +100,10 @@ export PHOTON_SP1_121="https://github.com/particle-iot/device-os/releases/downlo
 export PHOTON_SP2_121="https://github.com/particle-iot/device-os/releases/download/v1.2.1/photon-system-part2@1.2.1.bin"
 export PHOTON_SP1_121_MOD=1213
 export PHOTON_SP2_121_MOD=1213
-export PHOTON_SP1_131_RC1="https://github.com/particle-iot/device-os/releases/download/v1.3.1-rc.1/photon-system-part1@1.3.1-rc.1.bin"
-export PHOTON_SP2_131_RC1="https://github.com/particle-iot/device-os/releases/download/v1.3.1-rc.1/photon-system-part2@1.3.1-rc.1.bin"
-export PHOTON_SP1_131_RC1_MOD=1320
-export PHOTON_SP2_131_RC1_MOD=1320
+export PHOTON_SP1_140_RC1="https://github.com/particle-iot/device-os/releases/download/v1.4.0-rc.1/photon-system-part1@1.4.0-rc.1.bin"
+export PHOTON_SP2_140_RC1="https://github.com/particle-iot/device-os/releases/download/v1.4.0-rc.1/photon-system-part2@1.4.0-rc.1.bin"
+export PHOTON_SP1_140_RC1_MOD=1400
+export PHOTON_SP2_140_RC1_MOD=1400
 
 # instead of these set options,
 #   set script options
@@ -116,19 +116,43 @@ try() { "$@" || die "cannot $*"; }
 
 declare -gA _inspect=()
 
-# Finds and puts device in dfu mode automatically, must only have one device connected.
-# or select a specific device with a specified $PORT
-dfu() {
-  local x=`compgen -f -- "/dev/cu.usbmodem"`;
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+case "$(uname -s)" in
+    Linux*)     OS=Linux;;
+    Darwin*)    OS=Mac;;
+    *)          die 'Unsupported operating system';;
+esac
+
+set_baudrate() {
+  baudrate=$1
+  if [ "$OS" = "Linux" ]; then
+    port_path="/dev/ttyACM"
+  else
+    port_path="/dev/cu.usbmodem"
+  fi
+  local x=`compgen -f -- "${port_path}"`;
   if [ -z "${x}" ]; then
     echo "No USB device found";
-  else if [ ! -z "${PORT}" ]; then
-      eval $(stty -f ${PORT} 14400);
+  else
+    if [ ! -z "${PORT}" ]; then
+      port="${PORT}"
     else
-      eval $(stty -f ${x} 14400);
+      port="${x}"
+    fi
+    if [ "$OS" = "Linux" ]; then
+      eval $(${DIR}/../../../../build/serial_switcher.py ${baudrate} ${port});
+    else
+      eval $(stty -f ${port} ${baudrate});
     fi
   fi
   return 0;
+}
+
+# Finds and puts device in dfu mode automatically, must only have one device connected.
+# or select a specific device with a specified $PORT
+dfu() {
+  set_baudrate 14400
 }
 check_bash_version() {
   if  [[ $BASH_VERSION == 4.* ]] || [[ $BASH_VERSION == 5.* ]] ;
@@ -238,13 +262,7 @@ usb() {
 }
 # puts photon/p1/electron/core in Listening Mode
 ymodem() {
-  eval $(stty -f ${PORT} 28800);
-  # x=`compgen -f -- "/dev/tty.usbmodem"`;
-  # if [ -z "$x" ]; then
-  #   echo "No USB device found";
-  # else
-  #   eval $(stty -f $x 28800);
-  # fi
+  set_baudrate 28800
 }
 # alias for opening a new tab, killscreen, then entering listening mode, then connecting a screen session
 killscreen_new_window() {
@@ -400,11 +418,11 @@ set_country() {
 # | 61 | photon | 0.6.3      | 0.7.0                | part1, part2 | yes                | ok      |
 # | 62 | photon | 0.7.0      | 1.2.1                | part2, part1 | no, part2 rejected | ok      |
 # | 63 | photon | 0.7.0      | 1.2.1                | part1, part2 | yes                | ok      |
-# | 64 | photon | 1.2.1      | 1.3.1-rc.1           | part2, part1 | no, part2 rejected | ok      |
-# | 65 | photon | 1.2.1      | 1.3.1-rc.1           | part1, part2 | yes                | ok      |
+# | 64 | photon | 1.2.1      | 1.4.0-rc.1           | part2, part1 | no, part2 rejected | ok      |
+# | 65 | photon | 1.2.1      | 1.4.0-rc.1           | part1, part2 | yes                | ok      |
 # ------------------------ downgrade -------------------------------------------------------------+
-# | 65 | photon | 1.3.1-rc.1 | 1.2.1                | part1, part2 | no, part1 rejected | ok      |
-# | 66 | photon | 1.3.1-rc.1 | 1.2.1                | part2, part1 | yes                | ok      |
+# | 65 | photon | 1.4.0-rc.1 | 1.2.1                | part1, part2 | no, part1 rejected | ok      |
+# | 66 | photon | 1.4.0-rc.1 | 1.2.1                | part2, part1 | yes                | ok      |
 # | 67 | photon | 1.2.1      | 0.7.0                | part1, part2 | no, part1 rejected | ok      |
 # | 68 | photon | 1.2.1      | 0.7.0                | part2, part1 | yes                | ok      |
 # | 69 | photon | 0.7.0      | 0.6.3                | part1, part2 | no, part1 rejected | ok      |
@@ -1668,7 +1686,7 @@ if true; then
   enter_ymodem
   try ymodem_part 2 1.2.1 photon
   # wait for 1.2.1 bootloader from SMH
-  # particle flash --serial bootloader-1.2.1-photon.bin
+  particle flash --serial bootloader-1.2.1-photon.bin
   sleep 30
 
   try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
@@ -1680,10 +1698,10 @@ if true; then
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 64 | photon | 1.2.1      | 1.3.1-rc.1           | part2, part1 | no, part2 rejected | ok     |"
+  echo "| 64 | photon | 1.2.1      | 1.4.0-rc.1           | part2, part1 | no, part2 rejected | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
-  ymodem_part 2 1.3.1-rc.1 photon
+  ymodem_part 2 1.4.0-rc.1 photon
   enter_dfu_mode
   try exit_dfu_mode
 
@@ -1695,27 +1713,27 @@ if true; then
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 65 | photon | 1.2.1      | 1.3.1-rc.1           | part1, part2 | yes                | ok     |"
+  echo "| 65 | photon | 1.2.1      | 1.4.0-rc.1           | part1, part2 | yes                | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
-  try ymodem_part 1 1.3.1-rc.1 photon
+  try ymodem_part 1 1.4.0-rc.1 photon
   try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
   enter_ymodem
   try serial_inspect
-  try compare_system_version 1 ${PHOTON_SP1_131_RC1_MOD}
+  try compare_system_version 1 ${PHOTON_SP1_140_RC1_MOD}
   try compare_system_version 2 ${PHOTON_SP2_121_MOD}
 
   enter_ymodem
-  try ymodem_part 2 1.3.1-rc.1 photon
-  # wait for 1.3.1-rc.1 bootloader from SMH
-  particle flash --serial bootloader-1.3.1-rc.1-photon.bin
+  try ymodem_part 2 1.4.0-rc.1 photon
+  # wait for 1.4.0-rc.1 bootloader from SMH
+  particle flash --serial bootloader-1.4.0-rc.1-photon.bin
   sleep 30
 
   try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
   enter_ymodem
   try serial_inspect
-  try compare_system_version 1 ${PHOTON_SP1_131_RC1_MOD}
-  try compare_system_version 2 ${PHOTON_SP2_131_RC1_MOD}
+  try compare_system_version 1 ${PHOTON_SP1_140_RC1_MOD}
+  try compare_system_version 2 ${PHOTON_SP2_140_RC1_MOD}
   pass
 
   # ------------------------ downgrade -------------------------------------------------------------
@@ -1724,7 +1742,7 @@ if true; then
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 66 | photon | 1.3.1-rc.1 | 1.2.1                | part1, part2 | no, part1 rejected | ok     |"
+  echo "| 66 | photon | 1.4.0-rc.1 | 1.2.1                | part1, part2 | no, part1 rejected | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
   ymodem_part 1 1.2.1 photon
@@ -1734,20 +1752,20 @@ if true; then
   try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
   enter_ymodem
   try serial_inspect
-  try compare_system_version 1 ${PHOTON_SP1_131_RC1_MOD}
-  try compare_system_version 2 ${PHOTON_SP2_131_RC1_MOD}
+  try compare_system_version 1 ${PHOTON_SP1_140_RC1_MOD}
+  try compare_system_version 2 ${PHOTON_SP2_140_RC1_MOD}
   pass
 
   heading
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
-  echo "| 67 | photon | 1.3.1-rc.1 | 1.2.1                | part2, part1 | yes                | ok     |"
+  echo "| 67 | photon | 1.4.0-rc.1 | 1.2.1                | part2, part1 | yes                | ok     |"
   echo "+----+--------+------------+----------------------+--------------+--------------------+--------+"
   enter_ymodem
   try ymodem_part 2 1.2.1 photon
   try run_cli_list_subcommand_and_confirm_device_shows_up_as_online
   enter_ymodem
   try serial_inspect
-  try compare_system_version 1 ${PHOTON_SP1_131_RC1_MOD}
+  try compare_system_version 1 ${PHOTON_SP1_140_RC1_MOD}
   try compare_system_version 2 ${PHOTON_SP2_121_MOD}
 
   enter_ymodem
@@ -2117,11 +2135,11 @@ curl_all_required_system_parts() {
     curl -L "$PHOTON_SP2_121" -o "system-part2-1.2.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
   fi
 
-  if [ ! -e "system-part1-1.3.1-rc.1-photon.bin" ]; then
-    curl -L "$PHOTON_SP1_131_RC1" -o "system-part1-1.3.1-rc.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
+  if [ ! -e "system-part1-1.4.0-rc.1-photon.bin" ]; then
+    curl -L "$PHOTON_SP1_140_RC1" -o "system-part1-1.4.0-rc.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
   fi
-  if [ ! -e "system-part2-1.3.1-rc.1-photon.bin" ]; then
-    curl -L "$PHOTON_SP2_131_RC1" -o "system-part2-1.3.1-rc.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
+  if [ ! -e "system-part2-1.4.0-rc.1-photon.bin" ]; then
+    curl -L "$PHOTON_SP2_140_RC1" -o "system-part2-1.4.0-rc.1-photon.bin"; if [[ "$?" -ne 0 ]]; then return 1; fi
   fi
 
   if [ ! -e "tinker-v0.4.9-photon.bin" ]; then
