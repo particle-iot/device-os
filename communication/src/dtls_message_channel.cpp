@@ -54,7 +54,7 @@ void SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum,
 	{
 		this->keys_checksum = keys_checksum;
 		in_epoch = context->in_epoch;
-		memcpy(out_ctr, context->out_ctr, 8);
+		memcpy(out_ctr, context->cur_out_ctr, 8);
 		memcpy(randbytes, random, sizeof(randbytes));
 		this->next_coap_id = next_id;
 		save_session(context->session);
@@ -70,7 +70,7 @@ void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver, messa
 {
 	if (context->state == MBEDTLS_SSL_HANDSHAKE_OVER)
 	{
-		memcpy(out_ctr, context->out_ctr, 8);
+		memcpy(out_ctr, context->cur_out_ctr, 8);
 		this->next_coap_id = next_id;
 		save_this_with(saver);
 	}
@@ -116,7 +116,7 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uin
 	if (!renegotiate) {
 		context->state = MBEDTLS_SSL_HANDSHAKE_WRAPUP;
 		context->in_epoch = in_epoch;
-		memcpy(context->out_ctr, &out_ctr, sizeof(out_ctr));
+		memcpy(context->cur_out_ctr, &out_ctr, sizeof(out_ctr));
 		memcpy(context->handshake->randbytes, randbytes, sizeof(randbytes));
 		context->transform_negotiate->ciphersuite_info = mbedtls_ssl_ciphersuite_from_id(ciphersuite);
 		if (!context->transform_negotiate->ciphersuite_info)
