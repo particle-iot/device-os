@@ -52,6 +52,17 @@ const uint8_t pwm_pins[] = {
 
 static pin_t pin = pwm_pins[0];
 
+test(PWM_00_prepare) {
+#if (PLATFORM_ID == 8) // P1
+    // disable POWERSAVE_CLOCK on P1S6
+    System.disableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
+#endif // (PLATFORM_ID == 8) // P1
+
+    // Disconnect network and cloud
+    Particle.disconnect();
+    Network.disconnect();
+}
+
 #if (PLATFORM_ID == 8) // P1
 test(PWM_00_P1S6SetupForP1) {
     // disable POWERSAVE_CLOCK on P1S6
@@ -546,9 +557,14 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 	});
 }
 
+test(PWM_11_restore) {
 #if (PLATFORM_ID == 8) // P1
-test(PWM_11_P1S6CleanupForP1) {
     // enable POWERSAVE_CLOCK on P1S6
     System.enableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
+#endif // (PLATFORM_ID == 8)
+
+    // Restore network and cloud connection
+    Network.connect();
+    Particle.connect();
+    waitFor(Particle.connected, 6*60*1000);
 }
-#endif
