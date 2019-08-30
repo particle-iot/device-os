@@ -311,7 +311,7 @@ void HAL_Core_Config(void) {
 #if defined(MODULAR_FIRMWARE)
     if (HAL_Core_Validate_User_Module()) {
         new_heap_end = module_user_pre_init();
-        if (new_heap_end > malloc_heap_end()) {
+        if (new_heap_end < malloc_heap_end()) {
             malloc_set_heap_end(new_heap_end);
         }
     } else {
