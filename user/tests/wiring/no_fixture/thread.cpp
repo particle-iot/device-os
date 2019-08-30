@@ -105,19 +105,25 @@ test(APPLICATION_WATCHDOG_02_doesnt_fire_when_app_checks_in)
 			os_thread_yield();
 		}
 		// now force a timeout
-		HAL_Delay_Milliseconds(t+10);
+		// Worst case scenario it may take two application watchdog loop iterations
+		HAL_Delay_Milliseconds(t * 2);
 		// LOG_DEBUG(INFO, "TIME: %d, R %d:%s", millis()-startTime, x, timeout_called?"pass":"fail");
 		assertEqual(timeout_called, 1);
 		waitForComplete(wd);
 		uint32_t endTime = millis();
-		assertMoreOrEqual(endTime-startTime, 307); // should be 310 (give it 1% margin)
-		assertLessOrEqual(endTime-startTime, 313); //   |
+		const auto expected = t * 4; // should be t*4
+		const auto margin = expected / 100; // 1%
+		assertMoreOrEqual(endTime - startTime, expected - margin);
+		assertLessOrEqual(endTime - startTime, expected + margin);
 		// LOG_DEBUG(INFO, "E %d",endTime-startTime);
 	}
 }
 
 test(APPLICATION_WATCHDOG_03_doesnt_leak_memory)
 {
+	// Give the system some time to get the resources back
+	delay(500);
+
 	// Before Photon/P1 Thread fixes were introduced, we would lose approximately 20k
 	// of RAM due to 10 allocations of ApplicationWatchdog in APPLICATION_WATCHDOG_02.
 	// Taking fragmentation and other potential allocations into consideration, 2k seems like
