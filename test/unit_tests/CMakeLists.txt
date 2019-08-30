@@ -60,3 +60,8 @@ add_subdirectory(wiring)
 add_custom_target( coverage
   gcovr --root ${DEVICE_OS_DIR} --exclude ${TEST_DIR} --exclude ${THIRD_PARTY_DIR} -j 4 --print-summary
 )
+
+# Create `coveralls` target in the `make` command
+add_custom_target( coveralls
+  gcovr --root ${DEVICE_OS_DIR} --exclude ${TEST_DIR} --exclude ${THIRD_PARTY_DIR} -j 4 --coveralls coverage.json
+)
