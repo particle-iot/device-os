@@ -141,7 +141,6 @@ test(CELLULAR_06_resolve) {
     assertEqual(addr, 0);
 }
 
-// FIXME: This test is failing on Gen 3 Boron / B SoM as of 1.1.0 or earlier
 test(CELLULAR_07_rssi_is_valid) {
     connect_to_cloud(6*60*1000);
     CellularSignal s;
@@ -160,6 +159,15 @@ test(CELLULAR_07_rssi_is_valid) {
 #define LOREM "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque ut elit nec mi bibendum mollis. Nam nec nisl mi. Donec dignissim iaculis purus, ut condimentum arcu semper quis. Phasellus efficitur ut arcu ac dignissim. In interdum sem id dictum luctus. Ut nec mattis sem. Nullam in aliquet lacus. Donec egestas nisi volutpat lobortis sodales. Aenean elementum magna ipsum, vitae pretium tellus lacinia eu. Phasellus commodo nisi at quam tincidunt, tempor gravida mauris facilisis. Duis tristique ligula ac pulvinar consectetur. Cras aliquam, leo ut eleifend molestie, arcu odio semper odio, quis sollicitudin metus libero et lorem. Donec venenatis congue commodo. Vivamus mattis elit metus, sed fringilla neque viverra eu. Phasellus leo urna, elementum vel pharetra sit amet, auctor non sapien. Phasellus at justo ac augue rutrum vulputate. In hac habitasse platea dictumst. Pellentesque nibh eros, placerat id laoreet sed, dapibus efficitur augue. Praesent pretium diam ac sem varius fermentum. Nunc suscipit dui risus sed"
 
 test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
+
+#if HAL_PLATFORM_NCP
+    // CH32073
+    if (cellular_modem_type() == DEV_SARA_R410) {
+        skip();
+        return;
+    }
+#endif // HAL_PLATFORM_NCP
+
     // https://github.com/spark/firmware/issues/1104
     const char request[] =
         "POST /post HTTP/1.1\r\n"
@@ -213,9 +221,6 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
     assertTrue(contains);
 }
 
-// TODO: Cellular.command() is not implemented on Gen 3 devices
-#if !HAL_PLATFORM_NCP
-
 static int atCallback(int type, const char* buf, int len, int* lines) {
     if (len && type == TYPE_UNKNOWN)
         (*lines)++;
@@ -242,6 +247,8 @@ test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_control
     assertMoreOrEqual(lines, 200);
 }
 
-#endif // !HAL_PLATFORM_NCP
+test(MDM_03_restore_cloud_connection) {
+    connect_to_cloud(6*60*1000);
+}
 
 #endif // Wiring_Cellular == 1

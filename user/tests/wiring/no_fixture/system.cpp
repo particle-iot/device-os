@@ -1,7 +1,7 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
-
+#include "random.h"
 
 #if PLATFORM_ID >= 3
 test(SYSTEM_01_freeMemory)
@@ -142,7 +142,8 @@ test(SYSTEM_05_button_mirror_disable)
 bool oomEventReceived = false;
 size_t oomSizeReceived = 0;
 void handle_oom(system_event_t event, int param, void*) {
-	Serial.printlnf("got event %d %d", event, param);
+	// Serial is not thread-safe
+	// Serial.printlnf("got event %d %d", event, param);
 	if (out_of_memory==event) {
 		oomEventReceived = true;
 		oomSizeReceived = param;
@@ -159,9 +160,12 @@ void unregister_oom() {
 	System.off(out_of_memory, handle_oom);
 }
 
-
 test(SYSTEM_06_out_of_memory)
 {
+	// Disconnect from the cloud and network just in case
+	Particle.disconnect();
+	Network.disconnect();
+
 	const size_t size = 1024*1024*1024;
 	register_oom();
 	malloc(size);
@@ -173,17 +177,25 @@ test(SYSTEM_06_out_of_memory)
 }
 
 test(SYSTEM_07_fragmented_heap) {
-	struct block {
+	struct Block {
+		Block() {
+			// Write garbage data to more easily corrupt the RAM
+			// in case of issues like static RAM / heap overlap or
+			// just simple heap corruption
+			Random rng;
+			rng.gen(data, sizeof(data));
+			next = nullptr;
+		}
 		char data[508];
-		block* next;
+		Block* next;
 	};
 	register_oom();
 
-	block* next = nullptr;
+	Block* next = nullptr;
 
 	// exhaust memory
 	for (;;) {
-		block* b = new block();
+		Block* b = new Block();
 		if (!b) {
 			break;
 		} else {
@@ -193,21 +205,21 @@ test(SYSTEM_07_fragmented_heap) {
 	}
 
 	assertTrue(oomEventReceived);
-	assertEqual(oomSizeReceived, sizeof(block));
+	assertEqual(oomSizeReceived, sizeof(Block));
 
 	runtime_info_t info;
 	info.size = sizeof(info);
 	HAL_Core_Runtime_Info(&info, nullptr);
 
 	// we can't really say about the free heap but the block size should be less
-	assertLessOrEqual(info.largest_free_block_heap, sizeof(block));
+	assertLessOrEqual(info.largest_free_block_heap, sizeof(Block));
 	size_t low_heap = info.freeheap;
 
 	// free every 2nd block
-	block* head = next;
+	Block* head = next;
 	int count = 0;
 	for (;head;) {
-		block* free = head->next;
+		Block* free = head->next;
 		if (free) {
 			// skip the next block
 			head->next = free->next;
@@ -226,22 +238,22 @@ test(SYSTEM_07_fragmented_heap) {
 	unregister_oom();
 	register_oom();
 	const size_t BLOCKS_TO_MALLOC = 3;
-	block* b = new block[BLOCKS_TO_MALLOC];  // no room for 3 blocks, memory is clearly fragmented
-	delete b;
+	Block* b = new Block[BLOCKS_TO_MALLOC];  // no room for 3 blocks, memory is clearly fragmented
+	delete[] b;
 
 	// free the remaining blocks
 	for (;next;) {
-		block* b = next;
+		Block* b = next;
 		next = b->next;
 		delete b;
 	}
 
-	assertMoreOrEqual(half_fragment_block_size, sizeof(block)); // there should definitely be one block available
-	assertLessOrEqual(half_fragment_block_size, BLOCKS_TO_MALLOC*sizeof(block)-1); // we expect malloc of 3 blocks to fail, so this better allow up to that size less 1
-	assertMoreOrEqual(half_fragment_free, low_heap+(sizeof(block)*count));
+	assertMoreOrEqual(half_fragment_block_size, sizeof(Block)); // there should definitely be one block available
+	assertLessOrEqual(half_fragment_block_size, BLOCKS_TO_MALLOC*sizeof(Block)-1); // we expect malloc of 3 blocks to fail, so this better allow up to that size less 1
+	assertMoreOrEqual(half_fragment_free, low_heap+(sizeof(Block)*count));
 
 	assertTrue(oomEventReceived);
-	assertMoreOrEqual(oomSizeReceived, sizeof(block)*BLOCKS_TO_MALLOC);
+	assertMoreOrEqual(oomSizeReceived, sizeof(Block)*BLOCKS_TO_MALLOC);
 }
 
 test(SYSTEM_08_out_of_memory_not_raised_for_0_size_malloc)
@@ -255,6 +267,12 @@ test(SYSTEM_08_out_of_memory_not_raised_for_0_size_malloc)
 	assertFalse(oomEventReceived);
 }
 
+test(SYSTEM_09_out_of_memory_restore_state)
+{
+	// Restore connection to the cloud and network
+	Network.connect();
+	Particle.connect();
+	waitFor(Particle.connected, 6*60*1000);
+}
 
-
-#endif
+#endif // PLATFORM_ID!=0
