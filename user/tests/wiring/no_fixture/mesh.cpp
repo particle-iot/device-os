@@ -26,7 +26,11 @@ test(MESH_01_PublishWithoutSubscribeStillReadsDataOutOfPubSubSocket) {
 
     static const constexpr unsigned MAX_ITERATIONS = 1000;
 
-    assertTrue(network_has_credentials(NETWORK_INTERFACE_MESH, 0, nullptr));
+    if (!network_has_credentials(NETWORK_INTERFACE_MESH, 0, nullptr)) {
+        // Simply skip this test if there are no mesh credentials
+        skip();
+        return;
+    }
 
     // Make sure the device is a known (deinitialized) state
     Mesh.uninitializeUdp();
