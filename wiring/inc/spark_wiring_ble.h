@@ -386,7 +386,8 @@ public:
     ssize_t getValue(String& str) const;
 
     template<typename T>
-    ssize_t getValue(T* val) const {
+    typename std::enable_if<std::is_integral<T>::value, ssize_t>::type
+    getValue(T* val) const {
         size_t len = sizeof(T);
         return getValue(reinterpret_cast<uint8_t*>(val), len);
     }
@@ -397,7 +398,8 @@ public:
     ssize_t setValue(const char* str);
 
     template<typename T>
-    ssize_t setValue(T val) {
+    typename std::enable_if<std::is_integral<T>::value, ssize_t>::type
+    setValue(T val) {
         uint8_t buf[BLE_MAX_ATTR_VALUE_PACKET_SIZE];
         size_t len = std::min(sizeof(T), (unsigned)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
         for (size_t i = 0, j = len - 1; i < len; i++, j--) {
