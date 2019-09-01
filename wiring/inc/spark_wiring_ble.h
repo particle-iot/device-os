@@ -359,15 +359,15 @@ public:
             : BleCharacteristic(desc.c_str(), properties, callback, context) {
     }
 
-    template<typename T>
-    BleCharacteristic(const char* desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
+    template<typename T1, typename T2>
+    BleCharacteristic(const char* desc, BleCharacteristicProperty properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
         BleUuid cUuid(charUuid);
         BleUuid sUuid(svcUuid);
         construct(desc, properties, cUuid, sUuid, callback, context);
     }
 
-    template<typename T>
-    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
+    template<typename T1, typename T2>
+    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
             : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context) {
     }
     ~BleCharacteristic();
@@ -568,15 +568,15 @@ public:
     BleCharacteristic addCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
     BleCharacteristic addCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
 
-    template<typename T>
-    BleCharacteristic addCharacteristic(const char* desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
+    template<typename T1, typename T2>
+    BleCharacteristic addCharacteristic(const char* desc, BleCharacteristicProperty properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
         BleCharacteristic characteristic(desc, properties, charUuid, svcUuid, callback, context);
         addCharacteristic(characteristic);
         return characteristic;
     }
 
-    template<typename T>
-    BleCharacteristic addCharacteristic(const String& desc, BleCharacteristicProperty properties, T charUuid, T svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
+    template<typename T1, typename T2>
+    BleCharacteristic addCharacteristic(const String& desc, BleCharacteristicProperty properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
         BleCharacteristic characteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context);
         addCharacteristic(characteristic);
         return characteristic;
