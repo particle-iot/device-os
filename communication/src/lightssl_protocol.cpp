@@ -22,12 +22,27 @@
 #if HAL_PLATFORM_CLOUD_TCP
 
 namespace particle { namespace protocol {
+
 int LightSSLProtocol::command(ProtocolCommands::Enum command, uint32_t value, const void* param)
 {
   switch (command) {
   case ProtocolCommands::SLEEP:
   case ProtocolCommands::DISCONNECT: {
-    const int r = wait_confirmable();
+    int r = ProtocolError::NO_ERROR;
+    unsigned timeout = DEFAULT_DISCONNECT_COMMAND_TIMEOUT;
+    if (param) {
+      const auto p = (const spark_disconnect_command*)param;
+      if (p->timeout != 0) {
+        timeout = p->timeout;
+      }
+      if (p->disconnect_reason != CLOUD_DISCONNECT_REASON_NONE) {
+        r = send_close((cloud_disconnect_reason)p->disconnect_reason, (system_reset_reason)p->reset_reason,
+            p->sleep_duration);
+      }
+    }
+    if (r == ProtocolError::NO_ERROR) {
+      r = wait_confirmable(timeout);
+    }
     ack_handlers.clear();
     return r;
   }
