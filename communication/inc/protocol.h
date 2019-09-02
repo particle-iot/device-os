@@ -220,6 +220,10 @@ protected:
 		channel.create(msg);
 		const size_t n = Messages::close(msg.buf(), msg.capacity(), 0, disconnect_reason, reset_reason, sleep_duration,
 				channel.is_unreliable());
+		if (n > msg.capacity()) {
+			LOG(ERROR, "Insufficient storage for the CLOSE message data");
+			return INSUFFICIENT_STORAGE;
+		}
 		msg.set_length(n);
 		return channel.send(msg);
 	}

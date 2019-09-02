@@ -38,7 +38,6 @@
 namespace particle {
 namespace protocol {
 
-
 class DTLSProtocol : public Protocol
 {
 	CoAPChannel<CoAPReliableChannel<DTLSMessageChannel, decltype(SparkCallbacks::millis)>> channel;
@@ -51,6 +50,8 @@ class DTLSProtocol : public Protocol
 	uint8_t device_id[12];
 
 public:
+	static const unsigned DEFAULT_DISCONNECT_COMMAND_TIMEOUT = 60000;
+
     // todo - this a duplicate of LightSSLProtocol - factor out
 
 	DTLSProtocol() : Protocol(channel) {}
@@ -78,16 +79,20 @@ public:
 		{
 		case ProtocolCommands::SLEEP:
 		case ProtocolCommands::DISCONNECT: {
+			unsigned timeout = DEFAULT_DISCONNECT_COMMAND_TIMEOUT;
 			int r = ProtocolError::NO_ERROR;
 			if (param) {
 				const auto p = (const spark_disconnect_command*)param;
+				if (p->timeout != 0) {
+					timeout = p->timeout;
+				}
 				if (p->disconnect_reason != CLOUD_DISCONNECT_REASON_NONE) {
 					r = send_close((cloud_disconnect_reason)p->disconnect_reason, (system_reset_reason)p->reset_reason,
 							p->sleep_duration);
 				}
 			}
 			if (r == ProtocolError::NO_ERROR) {
-				r = wait_confirmable();
+				r = wait_confirmable(timeout);
 			}
 			ack_handlers.clear();
 			return r;
@@ -125,7 +130,7 @@ public:
 	/**
 	 * Ensures that all outstanding sent coap messages have been acknowledged.
 	 */
-	int wait_confirmable(uint32_t timeout=60000);
+	int wait_confirmable(uint32_t timeout);
 };
 
 

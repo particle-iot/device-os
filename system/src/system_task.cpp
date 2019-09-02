@@ -578,6 +578,7 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason disconnectReason, 
             cmd.disconnect_reason = disconnectReason;
             cmd.reset_reason = resetReason;
             cmd.sleep_duration = sleepDuration;
+            // TODO: Use a shorter timeout than the default one?
             const int r = spark_protocol_command(spark_protocol_instance(), ProtocolCommands::DISCONNECT, 0, &cmd);
             if (r != protocol::NO_ERROR) {
                 LOG(WARN, "cloud_disconnect(): DISCONNECT command failed: %d", r);
