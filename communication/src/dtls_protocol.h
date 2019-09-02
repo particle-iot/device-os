@@ -79,8 +79,8 @@ public:
 		{
 		case ProtocolCommands::SLEEP:
 		case ProtocolCommands::DISCONNECT: {
-			unsigned timeout = DEFAULT_DISCONNECT_COMMAND_TIMEOUT;
 			int r = ProtocolError::NO_ERROR;
+			unsigned timeout = DEFAULT_DISCONNECT_COMMAND_TIMEOUT;
 			if (param) {
 				const auto p = (const spark_disconnect_command*)param;
 				if (p->timeout != 0) {
@@ -98,6 +98,7 @@ public:
 			return r;
 		}
 		case ProtocolCommands::TERMINATE: {
+			// TODO: Clear pending messages and reset the pinger
 			ack_handlers.clear();
 			return ProtocolError::NO_ERROR;
 		}

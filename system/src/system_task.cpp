@@ -571,17 +571,21 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason disconnectReason, 
         }
 
         const bool graceful = flags & CLOUD_DISCONNECT_GRACEFULLY;
-        if (SPARK_CLOUD_CONNECTED && graceful) {
-            // Notify the cloud that we're about to disconnect
-            spark_disconnect_command cmd = {};
-            cmd.size = sizeof(cmd);
-            cmd.disconnect_reason = disconnectReason;
-            cmd.reset_reason = resetReason;
-            cmd.sleep_duration = sleepDuration;
-            // TODO: Use a shorter timeout than the default one?
-            const int r = spark_protocol_command(spark_protocol_instance(), ProtocolCommands::DISCONNECT, 0, &cmd);
-            if (r != protocol::NO_ERROR) {
-                LOG(WARN, "cloud_disconnect(): DISCONNECT command failed: %d", r);
+        if (SPARK_CLOUD_CONNECTED) {
+            if (graceful) {
+                // Notify the cloud that we're about to disconnect
+                spark_disconnect_command cmd = {};
+                cmd.size = sizeof(cmd);
+                cmd.disconnect_reason = disconnectReason;
+                cmd.reset_reason = resetReason;
+                cmd.sleep_duration = sleepDuration;
+                // TODO: Use a shorter timeout than the default one?
+                const int r = spark_protocol_command(spark_protocol_instance(), ProtocolCommands::DISCONNECT, 0, &cmd);
+                if (r != protocol::NO_ERROR) {
+                    LOG(WARN, "cloud_disconnect(): DISCONNECT command failed: %d", r);
+                }
+            } else {
+                spark_protocol_command(spark_protocol_instance(), ProtocolCommands::TERMINATE, 0, nullptr);
             }
         }
         if (!(flags & CLOUD_DISCONNECT_DONT_CLOSE)) {
