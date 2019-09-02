@@ -157,7 +157,7 @@ int system_reset(unsigned mode, unsigned reason, unsigned value, unsigned flags,
         reason = defaultReason;
     }
     // Reset immediately if requested or if we're not connected to the cloud
-    if (!spark_cloud_flag_connected()) {
+    if (HAL_IsISR() || !spark_cloud_flag_connected()) {
         flags |= SYSTEM_RESET_FLAG_NO_WAIT;
     }
     if (flags & SYSTEM_RESET_FLAG_NO_WAIT) {

@@ -1162,19 +1162,25 @@ String bytes2hex(const uint8_t* buf, unsigned len)
 
 void Spark_Sleep(unsigned duration)
 {
-	spark_disconnect_command cmd = {};
-	cmd.size = sizeof(cmd);
-	cmd.disconnect_reason = CLOUD_DISCONNECT_REASON_SLEEP;
-	cmd.sleep_duration = duration;
-	const int r = spark_protocol_command(sp, ProtocolCommands::DISCONNECT, 0, &cmd);
-	if (r != ProtocolError::NO_ERROR) {
-		LOG(WARN, "Spark_Sleep(): DISCONNECT command failed: %d", r);
+	if (spark_cloud_flag_connected()) {
+		// TODO: There's probably no reason to keep the connection open if the system loop is not
+		// supposed to run in the current sleep mode
+		spark_disconnect_command cmd = {};
+		cmd.size = sizeof(cmd);
+		cmd.disconnect_reason = CLOUD_DISCONNECT_REASON_SLEEP;
+		cmd.sleep_duration = duration;
+		const int r = spark_protocol_command(sp, ProtocolCommands::DISCONNECT, 0, &cmd);
+		if (r != ProtocolError::NO_ERROR) {
+			LOG(WARN, "Spark_Sleep(): DISCONNECT command failed: %d", r);
+		}
 	}
 }
 
 void Spark_Wake(void)
 {
-	spark_protocol_command(sp, ProtocolCommands::PING);
+	if (spark_cloud_flag_connected()) {
+	   spark_protocol_command(sp, ProtocolCommands::PING);
+	}
 }
 
 CloudDiagnostics* CloudDiagnostics::instance() {

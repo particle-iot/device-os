@@ -255,6 +255,7 @@ typedef struct spark_disconnect_command {
     unsigned disconnect_reason; ///< Disconnection reason (a value defined by the `cloud_disconnect_reason` enum).
     unsigned reset_reason; ///< System reset reason (a value defined by the `system_reset_reason` enum).
     unsigned sleep_duration; ///< Duration of the system sleep in seconds.
+    unsigned timeout; ///< Maximum time in milliseconds to spend waiting for acknowledgements.
 } spark_disconnect_command;
 
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value = 0, const void* param = NULL);
