@@ -428,11 +428,13 @@ bool BleUuid::operator==(const BleUuid& uuid) const {
 }
 
 bool BleUuid::operator==(const char* uuid) const {
-    return !strcmp(uuid, toString().c_str());
+    BleUuid temp(uuid);
+    return *this == temp;
 }
 
 bool BleUuid::operator==(const String& uuid) const {
-    return (*this == uuid.c_str());
+    BleUuid temp(uuid);
+    return *this == temp;
 }
 
 bool BleUuid::operator==(uint16_t uuid) const {
