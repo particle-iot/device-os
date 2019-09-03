@@ -1181,8 +1181,8 @@ int BleObject::Broadcaster::configure(const hal_ble_adv_params_t* params) {
         ret = sd_ble_gap_adv_set_configure(&advHandle_, &bleGapAdvData, nullptr);
     } else {
         ble_gap_adv_params_t bleGapAdvParams = toPlatformAdvParams(params);
-        LOG_DEBUG(TRACE, "BLE advertising interval: %.3fms, timeout: %dms.",
-                  bleGapAdvParams.interval*0.625, bleGapAdvParams.duration*10);
+        LOG_DEBUG(TRACE, "BLE advertising interval: %d*0.625ms, timeout: %dms.",
+                  bleGapAdvParams.interval, bleGapAdvParams.duration*10);
         ret = sd_ble_gap_adv_set_configure(&advHandle_, &bleGapAdvData, &bleGapAdvParams);
     }
     CHECK(nrf_system_error(ret));
@@ -1322,8 +1322,8 @@ int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, voi
     });
     ble_gap_scan_params_t bleGapScanParams = toPlatformScanParams();
     LOG_DEBUG(TRACE, "| interval(ms)   window(ms)   timeout(ms) |");
-    LOG_DEBUG(TRACE, "  %.3f        %.3f      %d",
-            bleGapScanParams.interval*0.625, bleGapScanParams.window*0.625, bleGapScanParams.timeout*10);
+    LOG_DEBUG(TRACE, "  %d*0.625        %d*0.625      %d",
+            bleGapScanParams.interval, bleGapScanParams.window, bleGapScanParams.timeout*10);
     scanResultCallback_ = callback;
     context_ = context;
     int ret = sd_ble_gap_scan_start(&bleGapScanParams, &bleScanData_);
