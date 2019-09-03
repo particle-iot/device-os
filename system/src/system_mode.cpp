@@ -22,6 +22,8 @@
 #include "system_cloud.h"
 #include "system_threading.h"
 
+#include "core_hal.h"
+
 namespace {
 
 System_Mode_TypeDef current_mode = DEFAULT;
