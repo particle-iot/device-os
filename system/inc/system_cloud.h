@@ -22,7 +22,7 @@
 #include "spark_wiring_string.h"
 #include "spark_protocol_functions.h"
 #include "system_tick_hal.h"
-#include "core_hal.h"
+#include "system_defs.h"
 #include "completion_handler.h"
 
 #include <type_traits>

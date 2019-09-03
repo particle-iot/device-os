@@ -19,3 +19,11 @@
 
 void Spark_Abort() {
 }
+
+void cloud_disconnect(unsigned flags, cloud_disconnect_reason disconnectReason, system_reset_reason resetReason,
+		unsigned sleepDuration) {
+}
+
+bool spark_cloud_flag_connected() {
+	return false;
+}
