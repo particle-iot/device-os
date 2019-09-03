@@ -20,6 +20,8 @@
 #ifndef SPARK_WIRING_CELLULAR_H
 #define	SPARK_WIRING_CELLULAR_H
 
+#include <chrono>
+
 #include "spark_wiring_platform.h"
 #include "spark_wiring_network.h"
 #include "system_network.h"
@@ -80,9 +82,11 @@ public:
         network_listen(*this, begin ? 0 : 1, NULL);
     }
 
-    void setListenTimeout(uint16_t timeout) {
+    inline void setListenTimeout(uint16_t timeout) {
         network_set_listen_timeout(*this, timeout, NULL);
     }
+
+    inline void setListenTimeout(std::chrono::seconds s) { setListenTimeout(s.count()); }
 
     uint16_t getListenTimeout(void) {
         return network_get_listen_timeout(*this, 0, NULL);

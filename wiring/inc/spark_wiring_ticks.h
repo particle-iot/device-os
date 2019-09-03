@@ -26,12 +26,14 @@
 #ifndef SPARK_WIRING_TICKS_H
 #define	SPARK_WIRING_TICKS_H
 
+#include <chrono>
+
+#include "delay_hal.h"
+#include "timer_hal.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "timer_hal.h"
-#include "delay_hal.h"
 
 inline system_tick_t millis(void) { return HAL_Timer_Get_Milli_Seconds(); }
 inline unsigned long micros(void) { return HAL_Timer_Get_Micro_Seconds(); }
@@ -42,6 +44,7 @@ inline void delayMicroseconds(unsigned int us) { HAL_Delay_Microseconds(us); }
 }
 #endif
 
+static inline void delay(std::chrono::milliseconds ms) { ::delay(ms.count()); }
+static inline void delayMicroseconds(std::chrono::microseconds us) { ::delayMicroseconds(us.count()); }
 
 #endif	/* SPARK_WIRING_TICKS_H */
-

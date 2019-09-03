@@ -61,6 +61,7 @@ test (api_cellular_listen)
     API_COMPILE(Cellular.listen(false));
     API_COMPILE(result = Cellular.listening());
     API_COMPILE(Cellular.setListenTimeout(10));
+    API_COMPILE(Cellular.setListenTimeout(10s));
     API_COMPILE(val = Cellular.getListenTimeout());
     (void)result; // avoid unused warning
     (void)val;    //   |
