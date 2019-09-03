@@ -27,9 +27,9 @@ namespace protocol {
 
 namespace {
 
-const unsigned CLOSE_DISCONNECT_REASON_FLAG = 0x01;
-const unsigned CLOSE_RESET_REASON_FLAG = 0x02;
-const unsigned CLOSE_SLEEP_DURATION_FLAG = 0x04;
+const unsigned GOODBYE_DISCONNECT_REASON_FLAG = 0x01;
+const unsigned GOODBYE_RESET_REASON_FLAG = 0x02;
+const unsigned GOODBYE_SLEEP_DURATION_FLAG = 0x04;
 
 } // unnamed
 
@@ -354,7 +354,7 @@ size_t Messages::response_size(size_t payload_size, bool has_token)
 			(has_token ? 1 : 0); // One-byte token
 }
 
-size_t Messages::close(unsigned char* buf, size_t size, message_id_t message_id, cloud_disconnect_reason disconnect_reason,
+size_t Messages::goodbye(unsigned char* buf, size_t size, message_id_t message_id, cloud_disconnect_reason disconnect_reason,
 		system_reset_reason reset_reason, unsigned sleep_duration, bool confirmable)
 {
 	BufferAppender b(buf, size);
@@ -372,29 +372,29 @@ size_t Messages::close(unsigned char* buf, size_t size, message_id_t message_id,
 	// Field flags
 	unsigned flags = 0;
 	if (disconnect_reason != CLOUD_DISCONNECT_REASON_NONE) {
-		flags |= CLOSE_DISCONNECT_REASON_FLAG;
+		flags |= GOODBYE_DISCONNECT_REASON_FLAG;
 	}
 	if (reset_reason != RESET_REASON_NONE) {
-		flags |= CLOSE_RESET_REASON_FLAG;
+		flags |= GOODBYE_RESET_REASON_FLAG;
 	}
 	if (sleep_duration != 0) {
-		flags |= CLOSE_SLEEP_DURATION_FLAG;
+		flags |= GOODBYE_SLEEP_DURATION_FLAG;
 	}
 	b.appendUnsignedVarint(flags);
 	// Field values
-	if (flags & CLOSE_DISCONNECT_REASON_FLAG) {
+	if (flags & GOODBYE_DISCONNECT_REASON_FLAG) {
 		b.appendUnsignedVarint(disconnect_reason);
 	}
-	if (flags & CLOSE_RESET_REASON_FLAG) {
+	if (flags & GOODBYE_RESET_REASON_FLAG) {
 		b.appendUnsignedVarint(reset_reason);
 	}
-	if (flags & CLOSE_SLEEP_DURATION_FLAG) {
+	if (flags & GOODBYE_SLEEP_DURATION_FLAG) {
 		b.appendUnsignedVarint(sleep_duration);
 	}
 	return b.dataSize();
 }
 
-const size_t Messages::MAX_CLOSE_MESSAGE_SIZE = 9 + // CoAP header, options, payload marker
+const size_t Messages::MAX_GOODBYE_MESSAGE_SIZE = 9 + // CoAP header, options, payload marker
 		maxUnsignedVarintSize<unsigned>() * 4; // Flags, disconnection reason, reset reason, sleep duration
 
 } // particle::protocol

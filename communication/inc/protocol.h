@@ -212,16 +212,16 @@ protected:
 	}
 
 	/**
-	 * Send a Close message over the channel.
+	 * Send a Goodbye message over the channel.
 	 */
-	ProtocolError send_close(cloud_disconnect_reason disconnect_reason, system_reset_reason reset_reason, unsigned sleep_duration)
+	ProtocolError send_goodbye(cloud_disconnect_reason disconnect_reason, system_reset_reason reset_reason, unsigned sleep_duration)
 	{
 		Message msg;
 		channel.create(msg);
-		const size_t n = Messages::close(msg.buf(), msg.capacity(), 0, disconnect_reason, reset_reason, sleep_duration,
+		const size_t n = Messages::goodbye(msg.buf(), msg.capacity(), 0, disconnect_reason, reset_reason, sleep_duration,
 				channel.is_unreliable());
 		if (n > msg.capacity()) {
-			LOG(ERROR, "Insufficient storage for the CLOSE message data");
+			LOG(ERROR, "Insufficient storage for the Goodbye message data");
 			return INSUFFICIENT_STORAGE;
 		}
 		msg.set_length(n);
