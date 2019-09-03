@@ -323,7 +323,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
 
 namespace {
 
-system_reset_reason pendingResetReason = RESET_REASON_NONE;
+system_reset_reason pendingResetReason = RESET_REASON_UNKNOWN;
 
 } // unnamed
 
