@@ -1142,15 +1142,29 @@ ssize_t BleCharacteristic::setValue(const uint8_t* buf, size_t len) {
     }
     len = std::min(len, (size_t)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
     if (impl()->local()) {
-        return hal_ble_gatt_server_set_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
+        int ret = 0;
+        // Updates the local characteristic value for peer to read.
+        if ((impl()->properties() & BleCharacteristicProperty::READ) == BleCharacteristicProperty::READ) {
+            ret = CHECK(hal_ble_gatt_server_set_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr));
+        }
+        // If the characteristic has NOTIFY and INDICATE properties, notifies the data by default.
+        if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY) {
+            return hal_ble_gatt_server_notify_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
+        }
+        if ((impl()->properties() & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE) {
+            return hal_ble_gatt_server_indicate_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
+        }
+        return ret;
     }
     if (impl()->connHandle() != BLE_INVALID_CONN_HANDLE) {
-        if ((impl()->properties() & BleCharacteristicProperty::WRITE) == BleCharacteristicProperty::WRITE) {
-            return hal_ble_gatt_client_write_with_response(impl()->connHandle(), impl()->attrHandles().value_handle, buf, len, nullptr);
-        }
+        // If the peer characteristic has WRITE and WRITE_WITHOUT_RSP properties, sends the data without response required by default.
         if ((impl()->properties() & BleCharacteristicProperty::WRITE_WO_RSP) == BleCharacteristicProperty::WRITE_WO_RSP) {
             return hal_ble_gatt_client_write_without_response(impl()->connHandle(), impl()->attrHandles().value_handle, buf, len, nullptr);
         }
+        if ((impl()->properties() & BleCharacteristicProperty::WRITE) == BleCharacteristicProperty::WRITE) {
+            return hal_ble_gatt_client_write_with_response(impl()->connHandle(), impl()->attrHandles().value_handle, buf, len, nullptr);
+        }
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     return SYSTEM_ERROR_INVALID_STATE;
 }
@@ -1161,6 +1175,45 @@ ssize_t BleCharacteristic::setValue(const String& str) {
 
 ssize_t BleCharacteristic::setValue(const char* str) {
     return setValue(reinterpret_cast<const uint8_t*>(str), strnlen(str, BLE_MAX_ATTR_VALUE_PACKET_SIZE));
+}
+
+ssize_t BleCharacteristic::setValue(const uint8_t* buf, size_t len, bool ack) {
+    if (buf == nullptr || len == 0) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    len = std::min(len, (size_t)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
+    if (impl()->local()) {
+        int ret = 0;
+        // Updates the local characteristic value for peer to read.
+        if ((impl()->properties() & BleCharacteristicProperty::READ) == BleCharacteristicProperty::READ) {
+            ret = CHECK(hal_ble_gatt_server_set_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr));
+        }
+        if (ack && (impl()->properties() & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE) {
+            return hal_ble_gatt_server_indicate_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
+        }
+        if (!ack && (impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY) {
+            return hal_ble_gatt_server_notify_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
+        }
+        return ret;
+    }
+    if (impl()->connHandle() != BLE_INVALID_CONN_HANDLE) {
+        if (ack && (impl()->properties() & BleCharacteristicProperty::WRITE) == BleCharacteristicProperty::WRITE) {
+            return hal_ble_gatt_client_write_with_response(impl()->connHandle(), impl()->attrHandles().value_handle, buf, len, nullptr);
+        }
+        if (!ack && (impl()->properties() & BleCharacteristicProperty::WRITE_WO_RSP) == BleCharacteristicProperty::WRITE_WO_RSP) {
+            return hal_ble_gatt_client_write_without_response(impl()->connHandle(), impl()->attrHandles().value_handle, buf, len, nullptr);
+        }
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return SYSTEM_ERROR_INVALID_STATE;
+}
+
+ssize_t BleCharacteristic::setValue(const String& str, bool ack) {
+    return setValue(reinterpret_cast<const uint8_t*>(str.c_str()), str.length(), ack);
+}
+
+ssize_t BleCharacteristic::setValue(const char* str, bool ack) {
+    return setValue(reinterpret_cast<const uint8_t*>(str), strnlen(str, BLE_MAX_ATTR_VALUE_PACKET_SIZE), ack);
 }
 
 ssize_t BleCharacteristic::getValue(uint8_t* buf, size_t len) const {

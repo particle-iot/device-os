@@ -270,9 +270,10 @@ typedef enum ble_sig_char_prop_t {
 /**@defgroup BLE Characteristic properties
  * @{ */
 typedef enum ble_sig_cccd_value_t {
-    BLE_SIG_CCCD_VAL_DISABLED     = 0x00, /**< Neither notification nor indication is enabled. */
-    BLE_SIG_CCCD_VAL_NOTIFICATION = 0x01, /**< Notification is enabled. */
-    BLE_SIG_CCCD_VAL_INDICATION   = 0x02 /**< Indication is enabled. */
+    BLE_SIG_CCCD_VAL_DISABLED     = 0x0000, /**< Neither notification nor indication is enabled. */
+    BLE_SIG_CCCD_VAL_NOTIFICATION = 0x0001, /**< Notification is enabled. */
+    BLE_SIG_CCCD_VAL_INDICATION   = 0x0002, /**< Indication is enabled. */
+    BLE_SIG_CCCD_VAL_NOTI_IND     = 0x0003  /**< Both Notification and indication are enabled. */
 } ble_sig_cccd_value_t;
 /**@} */
 

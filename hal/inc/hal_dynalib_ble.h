@@ -94,6 +94,8 @@ DYNALIB_FN(60, hal_ble, hal_ble_set_callback_on_periph_link_events, int(hal_ble_
 DYNALIB_FN(61, hal_ble, hal_ble_gatt_client_configure_cccd, int(const hal_ble_cccd_config_t*, void*))
 DYNALIB_FN(62, hal_ble, hal_ble_set_callback_on_adv_events, int(hal_ble_on_adv_evt_cb_t, void*, void*))
 DYNALIB_FN(63, hal_ble, hal_ble_cancel_callback_on_adv_events, int(hal_ble_on_adv_evt_cb_t, void*, void*))
+DYNALIB_FN(64, hal_ble, hal_ble_gatt_server_notify_characteristic_value, ssize_t(hal_ble_attr_handle_t, const uint8_t*, size_t, void*))
+DYNALIB_FN(65, hal_ble, hal_ble_gatt_server_indicate_characteristic_value, ssize_t(hal_ble_attr_handle_t, const uint8_t*, size_t, void*))
 
 DYNALIB_END(hal_ble)
 

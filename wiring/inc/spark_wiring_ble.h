@@ -396,6 +396,9 @@ public:
     ssize_t setValue(const uint8_t* buf, size_t len);
     ssize_t setValue(const String& str);
     ssize_t setValue(const char* str);
+    ssize_t setValue(const uint8_t* buf, size_t len, bool ack);
+    ssize_t setValue(const String& str, bool ack);
+    ssize_t setValue(const char* str, bool ack);
 
     template<typename T>
     typename std::enable_if<std::is_integral<T>::value, ssize_t>::type
@@ -406,6 +409,17 @@ public:
             buf[i] = reinterpret_cast<const uint8_t*>(&val)[j];
         }
         return setValue(buf, len);
+    }
+
+    template<typename T>
+    typename std::enable_if<std::is_integral<T>::value, ssize_t>::type
+    setValue(T val, bool ack) {
+        uint8_t buf[BLE_MAX_ATTR_VALUE_PACKET_SIZE];
+        size_t len = std::min(sizeof(T), (unsigned)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
+        for (size_t i = 0, j = len - 1; i < len; i++, j--) {
+            buf[i] = reinterpret_cast<const uint8_t*>(&val)[j];
+        }
+        return setValue(buf, len, ack);
     }
 
     // Valid for peer characteristic only. Manually enable the characteristic notification or indication.

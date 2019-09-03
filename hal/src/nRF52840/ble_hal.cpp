@@ -489,10 +489,16 @@ public:
     int addDescriptor(hal_ble_attr_handle_t charHandle, const hal_ble_uuid_t* uuid, uint8_t* descriptor, size_t len, hal_ble_attr_handle_t* descHandle);
     void removeSubscriberFromAllCharacteristics(hal_ble_conn_handle_t connHandle);
     ssize_t setValue(hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len);
+    ssize_t notifyValue(hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool ack);
     ssize_t getValue(hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len);
     int processDataWrittenEventFromThread(ble_evt_t* event);
 
 private:
+    struct Subscriber {
+        hal_ble_conn_handle_t connHandle;
+        ble_sig_cccd_value_t config;
+    };
+
     class BleCharacteristic {
         public:
             BleCharacteristic() = default;
@@ -503,12 +509,12 @@ private:
             hal_ble_char_handles_t charHandles;
             hal_ble_on_char_evt_cb_t callback;
             void* context;
-            Vector<hal_ble_conn_handle_t> subscribers;
+            Vector<Subscriber> subscribers;
     };
 
     bool findService(hal_ble_attr_handle_t svcHandle) const;
     BleCharacteristic* findCharacteristic(hal_ble_attr_handle_t attrHandle);
-    int addSubscriber(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle);
+    int addSubscriber(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle, ble_sig_cccd_value_t value);
     void removeSubscriber(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle);
     static void processGattServerEvents(const ble_evt_t* event, void* context);
 
@@ -2394,39 +2400,49 @@ ssize_t BleObject::GattServer::setValue(hal_ble_attr_handle_t attrHandle, const 
     gattValue.p_value = (uint8_t*)buf;
     int ret = sd_ble_gatts_value_set(BLE_CONN_HANDLE_INVALID, attrHandle, &gattValue);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
-    // Notify or indicate the value if possible.
-    if ((characteristic->properties & BLE_SIG_CHAR_PROP_NOTIFY) || (characteristic->properties & BLE_SIG_CHAR_PROP_INDICATE)) {
-        for (const auto& subscriber : characteristic->subscribers) {
-            if (subscriber == BLE_INVALID_CONN_HANDLE) {
-                continue;
-            }
-            ble_gatts_hvx_params_t hvxParams = {};
-            uint16_t hvxLen = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(BleObject::getInstance().connMgr()->getAttMtu(subscriber)));
-            if (characteristic->properties & BLE_SIG_CHAR_PROP_NOTIFY) {
-                hvxParams.type = BLE_GATT_HVX_NOTIFICATION;
-            } else if (characteristic->properties & BLE_SIG_CHAR_PROP_INDICATE) {
-                hvxParams.type = BLE_GATT_HVX_INDICATION;
-            }
-            hvxParams.handle = attrHandle;
-            hvxParams.offset = 0;
-            hvxParams.p_data = buf;
-            hvxParams.p_len = &hvxLen;
-            ret = sd_ble_gatts_hvx(subscriber, &hvxParams);
-            if (ret != NRF_SUCCESS) {
-                LOG(ERROR, "sd_ble_gatts_hvx() failed: %u", (unsigned)ret);
-                continue;
-            }
-            isHvxing_ = true;
-            currHvxConnHandle_ = subscriber;
-            if (os_semaphore_take(hvxSemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
-                SPARK_ASSERT(false);
-                break;
-            }
-            isHvxing_ = false;
-            currHvxConnHandle_ = BLE_INVALID_CONN_HANDLE;
-        }
-    }
     return len;
+}
+
+ssize_t BleObject::GattServer::notifyValue(hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool ack) {
+    CHECK_TRUE(attrHandle, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(buf, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(len, SYSTEM_ERROR_INVALID_ARGUMENT);
+    BleCharacteristic* characteristic = findCharacteristic(attrHandle);
+    CHECK_TRUE(characteristic, SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE((characteristic->properties & BLE_SIG_CHAR_PROP_NOTIFY) || (characteristic->properties & BLE_SIG_CHAR_PROP_INDICATE), SYSTEM_ERROR_NOT_SUPPORTED);
+    for (const auto& subscriber : characteristic->subscribers) {
+        if (subscriber.connHandle == BLE_INVALID_CONN_HANDLE) {
+            continue;
+        }
+        ble_gatts_hvx_params_t hvxParams = {};
+        uint16_t hvxLen = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(BleObject::getInstance().connMgr()->getAttMtu(subscriber.connHandle)));
+        if (ack && (subscriber.config & BLE_SIG_CCCD_VAL_INDICATION)) {
+            hvxParams.type = BLE_GATT_HVX_INDICATION;
+        } else if (!ack && (subscriber.config & BLE_SIG_CCCD_VAL_NOTIFICATION)) {
+            hvxParams.type = BLE_GATT_HVX_NOTIFICATION;
+        } else {
+            continue;
+        }
+        hvxParams.handle = attrHandle;
+        hvxParams.offset = 0;
+        hvxParams.p_data = buf;
+        hvxParams.p_len = &hvxLen;
+        int ret = sd_ble_gatts_hvx(subscriber.connHandle, &hvxParams);
+        if (ret != NRF_SUCCESS) {
+            LOG(ERROR, "sd_ble_gatts_hvx() failed: %u", (unsigned)ret);
+            continue;
+        }
+        isHvxing_ = true;
+        currHvxConnHandle_ = subscriber.connHandle;
+        if (os_semaphore_take(hvxSemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
+            SPARK_ASSERT(false);
+            break;
+        }
+        isHvxing_ = false;
+        currHvxConnHandle_ = BLE_INVALID_CONN_HANDLE;
+    }
+    // FIXME: Different link may have different ATT_MTU, let's just return the possible maximum transmitted data length.
+    return std::min(len, (size_t)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
 }
 
 ssize_t BleObject::GattServer::getValue(hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len) {
@@ -2468,20 +2484,24 @@ BleObject::GattServer::BleCharacteristic* BleObject::GattServer::findCharacteris
     return nullptr;
 }
 
-int BleObject::GattServer::addSubscriber(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle) {
+int BleObject::GattServer::addSubscriber(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle, ble_sig_cccd_value_t value) {
     for (auto& subscriber : characteristic->subscribers) {
-        if (subscriber == connHandle) {
+        if (subscriber.connHandle == connHandle) {
+            subscriber.config = value;
             return SYSTEM_ERROR_NONE;
         }
     }
-    CHECK_TRUE(characteristic->subscribers.append(connHandle), SYSTEM_ERROR_NO_MEMORY);
+    Subscriber subscriber = {};
+    subscriber.connHandle = connHandle;
+    subscriber.config = value;
+    CHECK_TRUE(characteristic->subscribers.append(subscriber), SYSTEM_ERROR_NO_MEMORY);
     return SYSTEM_ERROR_NONE;
 }
 
 void BleObject::GattServer::removeSubscriber(BleCharacteristic* characteristic, hal_ble_conn_handle_t connHandle) {
     size_t i = 0;
     for (auto& subscriber : characteristic->subscribers) {
-        if (subscriber == connHandle) {
+        if (subscriber.connHandle == connHandle) {
             characteristic->subscribers.removeAt(i);
             return;
         }
@@ -2505,14 +2525,21 @@ int BleObject::GattServer::processDataWrittenEventFromThread(ble_evt_t* event) {
     hal_ble_char_evt_t charEvent = {};
     charEvent.conn_handle = event->evt.gatts_evt.conn_handle;
     charEvent.attr_handle = write.handle;
-    if (characteristic->charHandles.cccd_handle == write.handle) {
-        if (write.data[0] > 0) {
-            CHECK(addSubscriber(characteristic, event->evt.gatts_evt.conn_handle));
+    if (characteristic->charHandles.cccd_handle == write.handle && write.len == sizeof(uint16_t)) {
+        uint16_t cccd = ((uint16_t)write.data[1] << 8 | (uint16_t)write.data[0]) & BLE_SIG_CCCD_VAL_NOTI_IND;
+        if (!(characteristic->properties & BLE_SIG_CHAR_PROP_NOTIFY)) {
+            cccd &= ~BLE_SIG_CCCD_VAL_NOTIFICATION;
+        }
+        if (!(characteristic->properties & BLE_SIG_CHAR_PROP_INDICATE)) {
+            cccd &= ~BLE_SIG_CCCD_VAL_INDICATION;
+        }
+        if (cccd > 0) {
+            CHECK(addSubscriber(characteristic, event->evt.gatts_evt.conn_handle, (ble_sig_cccd_value_t)cccd));
         } else {
             removeSubscriber(characteristic, event->evt.gatts_evt.conn_handle);
         }
         charEvent.type = BLE_EVT_CHAR_CCCD_UPDATED;
-        charEvent.params.cccd_config.value = (ble_sig_cccd_value_t)write.data[0];
+        charEvent.params.cccd_config.value = (ble_sig_cccd_value_t)cccd;
     } else if (characteristic->charHandles.value_handle == write.handle) {
         charEvent.type = BLE_EVT_DATA_WRITTEN;
         charEvent.params.data_written.offset = write.offset;
@@ -3762,6 +3789,20 @@ ssize_t hal_ble_gatt_server_set_characteristic_value(hal_ble_attr_handle_t value
     LOG_DEBUG(TRACE, "hal_ble_gatt_server_set_characteristic_value().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().gatts()->setValue(value_handle, buf, len);
+}
+
+ssize_t hal_ble_gatt_server_notify_characteristic_value(hal_ble_attr_handle_t value_handle, const uint8_t* buf, size_t len, void* reserved) {
+    BleLock lk;
+    LOG_DEBUG(TRACE, "hal_ble_gatt_server_notify_characteristic_value().");
+    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleObject::getInstance().gatts()->notifyValue(value_handle, buf, len, false);
+}
+
+ssize_t hal_ble_gatt_server_indicate_characteristic_value(hal_ble_attr_handle_t value_handle, const uint8_t* buf, size_t len, void* reserved) {
+    BleLock lk;
+    LOG_DEBUG(TRACE, "hal_ble_gatt_server_indicate_characteristic_value().");
+    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleObject::getInstance().gatts()->notifyValue(value_handle, buf, len, true);
 }
 
 ssize_t hal_ble_gatt_server_get_characteristic_value(hal_ble_attr_handle_t value_handle, uint8_t* buf, size_t len, void* reserved) {

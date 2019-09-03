@@ -815,7 +815,7 @@ int hal_ble_gatt_server_add_characteristic(const hal_ble_char_init_t* char_init,
 int hal_ble_gatt_server_add_descriptor(const hal_ble_desc_init_t* desc_init, hal_ble_attr_handle_t* handle, void* reserved);
 
 /**
- * Set Characteristic value..
+ * Set Characteristic value.
  *
  * @param[in]   value_handle    Characteristic value handle.
  * @param[in]   buf             Pointer to the buffer that contains the data to be set.
@@ -824,6 +824,28 @@ int hal_ble_gatt_server_add_descriptor(const hal_ble_desc_init_t* desc_init, hal
  * @returns     Length of the data has been set.
  */
 ssize_t hal_ble_gatt_server_set_characteristic_value(hal_ble_attr_handle_t value_handle, const uint8_t* buf, size_t len, void* reserved);
+
+/**
+ * Set Characteristic value and notify it to subscribers without acknowledgment.
+ *
+ * @param[in]   value_handle    Characteristic value handle.
+ * @param[in]   buf             Pointer to the buffer that contains the data to be set.
+ * @param[in]   len             Length of the data to be set.
+ *
+ * @returns     Length of the data has been set.
+ */
+ssize_t hal_ble_gatt_server_notify_characteristic_value(hal_ble_attr_handle_t value_handle, const uint8_t* buf, size_t len, void* reserved);
+
+/**
+ * Set Characteristic value and notify it to subscribers with acknowledgment.
+ *
+ * @param[in]   value_handle    Characteristic value handle.
+ * @param[in]   buf             Pointer to the buffer that contains the data to be set.
+ * @param[in]   len             Length of the data to be set.
+ *
+ * @returns     Length of the data has been set.
+ */
+ssize_t hal_ble_gatt_server_indicate_characteristic_value(hal_ble_attr_handle_t value_handle, const uint8_t* buf, size_t len, void* reserved);
 
 /**
  * Get Characteristic value.
