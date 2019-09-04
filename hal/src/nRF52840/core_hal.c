@@ -346,6 +346,9 @@ void HAL_Core_Setup(void) {
     if (bootloader_update_if_needed()) {
         HAL_Core_System_Reset();
     }
+
+    // Initialize stdlib PRNG with a seed from hardware RNG
+    srand(HAL_RNG_GetRandomNumber());
 }
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE

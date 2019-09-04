@@ -370,10 +370,6 @@ void HAL_Core_Config(void)
 
     HAL_RNG_Configuration();
 
-    // Initialize system-part2 stdlib PRNG with a seed from hardware PRNG
-    // in case some system code happens to use rand()
-    srand(HAL_RNG_GetRandomNumber());
-
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();
 #endif
@@ -418,6 +414,9 @@ void HAL_Core_Setup(void) {
     }
 
     HAL_save_device_id(DCT_DEVICE_ID_OFFSET);
+
+    // Initialize stdlib PRNG with a seed from hardware RNG
+    srand(HAL_RNG_GetRandomNumber());
 
 #if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
     module_user_init_hook();
