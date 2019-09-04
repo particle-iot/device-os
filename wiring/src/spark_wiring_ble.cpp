@@ -1257,14 +1257,16 @@ int BleCharacteristic::subscribe(bool enable) const {
     config.conn_handle = impl()->connHandle();
     config.cccd_handle = impl()->attrHandles().cccd_handle;
     config.value_handle = impl()->attrHandles().value_handle;
+    config.cccd_value = BLE_SIG_CCCD_VAL_DISABLED;
     if (enable) {
-        if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY) {
-            config.cccd_value = BLE_SIG_CCCD_VAL_NOTIFICATION;
-        } else {
+        if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY &&
+                (impl()->properties() & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE) {
+            config.cccd_value = BLE_SIG_CCCD_VAL_NOTI_IND;
+        } else if ((impl()->properties() & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE) {
             config.cccd_value = BLE_SIG_CCCD_VAL_INDICATION;
+        } else if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY) {
+            config.cccd_value = BLE_SIG_CCCD_VAL_NOTIFICATION;
         }
-    } else {
-        config.cccd_value = BLE_SIG_CCCD_VAL_DISABLED;
     }
     return hal_ble_gatt_client_configure_cccd(&config, nullptr);
 }

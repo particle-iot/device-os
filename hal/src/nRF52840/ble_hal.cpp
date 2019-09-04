@@ -2852,7 +2852,7 @@ int BleObject::GattClient::removePublisher(hal_ble_conn_handle_t connHandle, hal
         }
         i++;
     }
-    return SYSTEM_ERROR_NOT_FOUND;
+    return SYSTEM_ERROR_NONE;
 }
 
 int BleObject::GattClient::removeAllPublishersOfConnection(hal_ble_conn_handle_t connHandle) {
@@ -2871,15 +2871,16 @@ int BleObject::GattClient::configureRemoteCCCD(const hal_ble_cccd_config_t* conf
     CHECK_TRUE(BleObject::getInstance().connMgr()->valid(config->conn_handle), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(config->cccd_handle != BLE_INVALID_ATTR_HANDLE, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(config->value_handle != BLE_INVALID_ATTR_HANDLE, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(config->cccd_value <= BLE_SIG_CCCD_VAL_INDICATION, SYSTEM_ERROR_NOT_SUPPORTED);
-    if (config->cccd_value == BLE_SIG_CCCD_VAL_NOTIFICATION || config->cccd_value == BLE_SIG_CCCD_VAL_INDICATION) {
+    CHECK_TRUE(config->cccd_value <= BLE_SIG_CCCD_VAL_NOTI_IND, SYSTEM_ERROR_NOT_SUPPORTED);
+    uint8_t buf[2] = {0x00, 0x00};
+    buf[0] = config->cccd_value;
+    CHECK(writeAttribute(config->conn_handle, config->cccd_handle, buf, sizeof(buf), true));
+    if (config->cccd_value > BLE_SIG_CCCD_VAL_DISABLED && config->cccd_value <= BLE_SIG_CCCD_VAL_NOTI_IND) {
         CHECK(addPublisher(config->conn_handle, config->value_handle, config->callback, config->context));
     } else {
         CHECK(removePublisher(config->conn_handle, config->value_handle));
     }
-    uint8_t buf[2] = {0x00, 0x00};
-    buf[0] = config->cccd_value;
-    return writeAttribute(config->conn_handle, config->cccd_handle, buf, sizeof(buf), true);
+    return SYSTEM_ERROR_NONE;
 }
 
 int BleObject::GattClient::processSvcDiscEventFromThread(const ble_evt_t* event) {
@@ -3103,6 +3104,7 @@ int BleObject::GattClient::processDataNotifiedEventFromThread(ble_evt_t* event) 
             LOG(ERROR, "sd_ble_gattc_hv_confirm() failed: %u", (unsigned)ret);
             return nrf_system_error(ret);
         }
+    } else {
     }
     hal_ble_char_evt_t charEvent = {};
     charEvent.conn_handle = event->evt.gattc_evt.conn_handle;
