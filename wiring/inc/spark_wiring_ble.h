@@ -80,6 +80,13 @@ inline BleCharacteristicProperty& operator|=(BleCharacteristicProperty& lhs, Ble
     return lhs;
 }
 
+inline BleCharacteristicProperty operator|(BleCharacteristicProperty lhs, BleCharacteristicProperty rhs) {
+    return static_cast<BleCharacteristicProperty> (
+        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(lhs) |
+        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(rhs)
+    );
+}
+
 enum class BleAdvertisingDataType : uint8_t {
     FLAGS                               = BLE_SIG_AD_TYPE_FLAGS,
     SERVICE_UUID_16BIT_MORE_AVAILABLE   = BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE,
