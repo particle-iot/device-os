@@ -19,12 +19,14 @@
 
 #pragma once
 
+#include <chrono>
+#include <functional>
+
 #if PLATFORM_ID!=3
+
 #include "stddef.h"
 #include "concurrent_hal.h"
 #include "spark_wiring_thread.h"
-#include <chrono>
-#include <functional>
 
 class Timer
 {
