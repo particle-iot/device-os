@@ -3104,7 +3104,6 @@ int BleObject::GattClient::processDataNotifiedEventFromThread(ble_evt_t* event) 
             LOG(ERROR, "sd_ble_gattc_hv_confirm() failed: %u", (unsigned)ret);
             return nrf_system_error(ret);
         }
-    } else {
     }
     hal_ble_char_evt_t charEvent = {};
     charEvent.conn_handle = event->evt.gattc_evt.conn_handle;
