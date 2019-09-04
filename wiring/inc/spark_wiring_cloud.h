@@ -265,7 +265,7 @@ class CloudClass {
      * @note The periodic functionality is not available for the Spark Core.
      */
     int publishVitals(system_tick_t period_s = particle::NOW);
-    inline int publishVitals(std::chrono::seconds s = std::chrono::seconds(particle::NOW)) { return publishVitals(s.count()); }
+    inline int publishVitals(std::chrono::seconds s) { return publishVitals(s.count()); }
 
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
     {
