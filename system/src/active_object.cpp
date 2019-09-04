@@ -27,6 +27,7 @@
 #include <string.h>
 #include "concurrent_hal.h"
 #include "timer_hal.h"
+#include "rng_hal.h"
 
 void ActiveObjectBase::start_thread()
 {
@@ -47,6 +48,9 @@ void ActiveObjectBase::run()
     /* It's not even used anywhere */
     // std::lock_guard<std::mutex> lck (_start);
     started = true;
+
+    // This ensures that rand() is properly seeded in the system thread
+    srand(HAL_RNG_GetRandomNumber());
 
     uint32_t last_background_run = 0;
     for (;;)
