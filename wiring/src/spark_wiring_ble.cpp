@@ -1137,10 +1137,9 @@ size_t BleCharacteristic::description(char* buf, size_t len) const {
 }
 
 ssize_t BleCharacteristic::setValue(const uint8_t* buf, size_t len) {
-    if (buf == nullptr || len == 0) {
+    if (buf == nullptr || len == 0 || len > BLE_MAX_ATTR_VALUE_PACKET_SIZE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    len = std::min(len, (size_t)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
     if (impl()->local()) {
         int ret = 0;
         // Updates the local characteristic value for peer to read.
@@ -1178,10 +1177,9 @@ ssize_t BleCharacteristic::setValue(const char* str) {
 }
 
 ssize_t BleCharacteristic::setValue(const uint8_t* buf, size_t len, bool ack) {
-    if (buf == nullptr || len == 0) {
+    if (buf == nullptr || len == 0 || len > BLE_MAX_ATTR_VALUE_PACKET_SIZE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    len = std::min(len, (size_t)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
     if (impl()->local()) {
         int ret = 0;
         // Updates the local characteristic value for peer to read.
@@ -1259,13 +1257,11 @@ int BleCharacteristic::subscribe(bool enable) const {
     config.value_handle = impl()->attrHandles().value_handle;
     config.cccd_value = BLE_SIG_CCCD_VAL_DISABLED;
     if (enable) {
-        if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY &&
-                (impl()->properties() & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE) {
-            config.cccd_value = BLE_SIG_CCCD_VAL_NOTI_IND;
-        } else if ((impl()->properties() & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE) {
+        if ((impl()->properties() & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE) {
             config.cccd_value = BLE_SIG_CCCD_VAL_INDICATION;
-        } else if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY) {
-            config.cccd_value = BLE_SIG_CCCD_VAL_NOTIFICATION;
+        }
+        if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY) {
+            config.cccd_value = (ble_sig_cccd_value_t)(config.cccd_value | BLE_SIG_CCCD_VAL_NOTIFICATION);
         }
     }
     return hal_ble_gatt_client_configure_cccd(&config, nullptr);
