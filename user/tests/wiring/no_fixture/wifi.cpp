@@ -69,8 +69,6 @@ void checkEtherAddress(const uint8_t* address)
 test(WIFI_04_config)
 {
     checkIPAddress("local", WiFi.localIP());
-    checkIPAddress("dnsServer", WiFi.dnsServerIP());
-    checkIPAddress("dhcpServer", WiFi.dhcpServerIP());
     checkIPAddress("gateway", WiFi.gatewayIP());
 
     uint8_t ether[6];
@@ -88,7 +86,13 @@ test(WIFI_04_config)
     assertTrue(WiFi.BSSID(ether)==ether);
     assertTrue(WiFi.BSSID(ether2)==ether2);
     checkEtherAddress(ether);
-    assertTrue(!memcmp(ether, ether2, 6))
+    assertTrue(!memcmp(ether, ether2, 6));
+
+#if !HAL_PLATFORM_NCP
+    // FIXME: this is not available on Gen 3 devices yet
+    checkIPAddress("dnsServer", WiFi.dnsServerIP());
+    checkIPAddress("dhcpServer", WiFi.dhcpServerIP());
+#endif // !HAL_PLATFORM_NCP
 }
 
 test(WIFI_05_scan)

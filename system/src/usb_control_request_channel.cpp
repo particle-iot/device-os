@@ -165,6 +165,7 @@ inline bool isServiceRequestType(uint8_t bRequest) {
     return (bRequest >= 0x01 && bRequest <= 0x0f);
 }
 
+// Note: This function is called from an ISR
 inline void cancelNetworkConnectionIfNeeded(uint16_t type) {
     switch (type) {
     case CTRL_REQUEST_RESET:
@@ -174,6 +175,10 @@ inline void cancelNetworkConnectionIfNeeded(uint16_t type) {
     case CTRL_REQUEST_START_LISTENING: {
         network_connect_cancel(NETWORK_INTERFACE_ALL, 1, 0, nullptr); // Cancel network connection attempt
         Spark_Abort(); // Abort cloud connection
+        if (type != CTRL_REQUEST_START_LISTENING) {
+            // Prevent the system from reconnecting to the cloud if the device is going to be reset
+            spark_cloud_flag_disconnect();
+        }
         break;
     }
     default:

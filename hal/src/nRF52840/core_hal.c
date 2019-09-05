@@ -311,7 +311,7 @@ void HAL_Core_Config(void) {
 #if defined(MODULAR_FIRMWARE)
     if (HAL_Core_Validate_User_Module()) {
         new_heap_end = module_user_pre_init();
-        if (new_heap_end > malloc_heap_end()) {
+        if (new_heap_end < malloc_heap_end()) {
             malloc_set_heap_end(new_heap_end);
         }
     } else {
@@ -346,6 +346,13 @@ void HAL_Core_Setup(void) {
     if (bootloader_update_if_needed()) {
         HAL_Core_System_Reset();
     }
+
+    // Initialize stdlib PRNG with a seed from hardware RNG
+    srand(HAL_RNG_GetRandomNumber());
+
+#if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
+    module_user_init_hook();
+#endif
 }
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE

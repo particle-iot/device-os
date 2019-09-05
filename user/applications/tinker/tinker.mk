@@ -13,7 +13,6 @@ endif
 ifeq ("$(LOG_SERIAL)","y")
 CFLAGS += -DLOG_SERIAL
 CXXFLAGS += -DLOG_SERIAL
-$(error "test")
 endif
 
 ifeq ("$(LOG_SERIAL1)","y")

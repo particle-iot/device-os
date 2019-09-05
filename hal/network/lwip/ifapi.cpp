@@ -21,6 +21,7 @@ LOG_SOURCE_CATEGORY("net.ifapi")
 #include "ifapi.h"
 #include "ipsockaddr.h"
 #include "lwiplock.h"
+#include "rng_hal.h"
 #include <lwip/tcpip.h>
 #include <lwip/netif.h>
 #include <lwip/netifapi.h>
@@ -321,6 +322,7 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
 int if_init(void) {
     tcpip_init([](void* arg) {
         LOG(TRACE, "LwIP started");
+        srand(HAL_RNG_GetRandomNumber());
     }, /* &sem */ nullptr);
 
     LwipTcpIpCoreLock lk;
