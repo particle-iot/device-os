@@ -18,15 +18,7 @@
 #include "Particle.h"
 #include "unit-test/unit-test.h"
 
-#ifdef INFO
-#undef INFO
-#endif
-#define INFO(msg, ...) \
-    do { \
-        Serial.printf(msg, ##__VA_ARGS__); \
-    } while(false)
-
-test(01_Set_BLE_Device_Address) {
+test(BLE_01_Set_BLE_Device_Address) {
     int ret;
     BleAddress defaultAddr = BLE.address();
     BleAddress getAddr;
@@ -80,7 +72,7 @@ test(01_Set_BLE_Device_Address) {
     assertTrue(getAddr == defaultAddr);
 }
 
-test(02_Set_BLE_Device_Name) {
+test(BLE_02_Set_BLE_Device_Name) {
     int ret;
     String defaultName = BLE.getDeviceName();
     String getName;
@@ -122,7 +114,7 @@ test(02_Set_BLE_Device_Name) {
     assertTrue(getName == defaultName);
 }
 
-test(03_Set_BLE_Tx_Power) {
+test(BLE_03_Set_BLE_Tx_Power) {
     int ret;
     int8_t getTxPower;
 
@@ -183,14 +175,14 @@ test(03_Set_BLE_Tx_Power) {
     assertEqual(getTxPower, 8);
 }
 
-test(04_Select_BLE_Antenna) {
+test(BLE_04_Select_BLE_Antenna) {
     int ret = BLE.selectAntenna(BleAntennaType::EXTERNAL);
     assertEqual(ret, 0);
     ret = BLE.selectAntenna(BleAntennaType::INTERNAL);
     assertEqual(ret, 0);
 }
 
-test(05_Set_BLE_Advertising_Parameters) {
+test(BLE_05_Set_BLE_Advertising_Parameters) {
     int ret;
     BleAdvertisingParams defaultAdvParams = {};
     BleAdvertisingParams getAdvParams = {};
@@ -243,7 +235,7 @@ test(05_Set_BLE_Advertising_Parameters) {
     assertTrue(getAdvParams.type == defaultAdvParams.type);
 }
 
-test(06_Set_BLE_Advertising_Data) {
+test(BLE_06_Set_BLE_Advertising_Data) {
     int ret;
     BleAdvertisingData getAdvData = {};
     BleAdvertisingData setAdvData = {};
@@ -268,7 +260,7 @@ test(06_Set_BLE_Advertising_Data) {
     assertEqual(getAdvData.length(), 0);
 }
 
-test(07_Set_BLE_Scan_Response_Data) {
+test(BLE_07_Set_BLE_Scan_Response_Data) {
     int ret;
     BleAdvertisingData getSrData = {};
     BleAdvertisingData setSrData = {};
@@ -293,7 +285,7 @@ test(07_Set_BLE_Scan_Response_Data) {
     assertEqual(getSrData.length(), 0);
 }
 
-test(08_BLE_Advertising_Control) {
+test(BLE_08_BLE_Advertising_Control) {
     INFO("  > Testing BLE advertisement...\r\n");
 
     int ret;
@@ -345,7 +337,7 @@ test(08_BLE_Advertising_Control) {
     assertFalse(BLE.advertising());
 }
 
-test(09_Set_BLE_Scanning_Parameters) {
+test(BLE_09_Set_BLE_Scanning_Parameters) {
     int ret;
     BleScanParams setScanParams = {};
     BleScanParams getScanParams = {};
@@ -387,45 +379,7 @@ test(09_Set_BLE_Scanning_Parameters) {
     assertEqual(getScanParams.timeout, 1000);
 }
 
-static void bleOnScanResultCallback(const BleScanResult* result, void* context) {
-    INFO("  > On BLE device scanned callback.\r\n");
-    INFO("  > Stop scanning...\r\n");
-    int ret = BLE.stopScanning();
-    assertEqual(ret, 0);
-}
-
-test(10_BLE_Scanning_Control) {
-    INFO("  > Please make sure that there is at least one BLE Peripheral being advertising nearby.\r\n");
-
-    int ret;
-
-    BleScanParams setScanParams = {};
-    setScanParams.size = sizeof(BleScanParams);
-    setScanParams.interval = 50; // In units of 0.625ms
-    setScanParams.window = 25; // In units of 0.625ms
-    setScanParams.timeout = 300; // In units of 10ms
-    setScanParams.active = true; // Send scan request
-    setScanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
-    ret = BLE.setScanParameters(&setScanParams);
-    assertEqual(ret, 0);
-
-    INFO("  > Testing BLE scanning for 3 seconds...\r\n");
-    ret = BLE.scan(bleOnScanResultCallback, nullptr);
-    assertTrue(ret > 0);
-
-    INFO("  > Testing BLE scanning for 3 seconds...\r\n");
-    BleScanResult results[10];
-    ret = BLE.scan(results, sizeof(results)/sizeof(BleScanResult));
-    assertTrue(ret > 0);
-    INFO("  > Found %d BLE devices\r\n", ret);
-
-    INFO("  > Testing BLE scanning for 3 seconds...\r\n");
-    Vector<BleScanResult> result = BLE.scan();
-    assertTrue(result.size() > 0);
-    INFO("  > Found %d BLE devices\r\n", result.size());
-}
-
-test(11_Add_BLE_Local_Characteristics) {
+test(BLE_10_Add_BLE_Local_Characteristics) {
     BleCharacteristic characteristic("char1", BleCharacteristicProperty::NOTIFY);
     BleCharacteristic char1 = BLE.addCharacteristic(characteristic);
     assertTrue(char1.UUID() == "F5720001-13A9-49DD-AC15-F87B7427E37B"); // Default particle assigned UUID
