@@ -99,6 +99,7 @@
 | 311 | 1300 | 1.3.0-alpha.1 |       Core, Photon, P1, Electron, Xenon, Argon, Boron, X SoM, A SoM, B SoM |
 | 311 | 1301 | 1.3.0-rc.1    |       Core, Photon, P1, Electron, Xenon, Argon, Boron, X SoM, A SoM, B SoM |
 | 400 | 1320 | 1.3.1-rc.1    |       Core, Photon, P1, Electron, Xenon, Argon, Boron, X SoM, A SoM, B SoM |
+| 401 | 1321 | 1.3.1         |       Core, Photon, P1, Electron, Xenon, Argon, Boron, X SoM, A SoM, B SoM |
 | 500 | 1400 | 1.4.0-rc.1    |       Core, Photon, P1, Electron, Xenon, Argon, Boron, X SoM, A SoM, B SoM |
 
 [1] For 0.8.0-rc.1, The v101 bootloader was also released in the Github releases as v200. Thus the next released bootloader in the 0.8.x line should be v201. As of 4/5/2018: 22 device had v200 bootloaders.
