@@ -88,11 +88,18 @@ SCENARIO("ping requests and responses are managed")
 
 		THEN("The ping interval can be updated by the SYSTEM and then the USER")
 		{
-			pinger.set_interval(30000, KeepAliveSource::SYSTEM);
+			keepalive_source_t source;
+			REQUIRE(pinger.set_interval(30000, KeepAliveSource::SYSTEM));
+			REQUIRE(pinger.get_interval(&source) == 30000);
+			REQUIRE(source == KeepAliveSource::SYSTEM);
+
 			REQUIRE(pinger.process(15001, []{return IO_ERROR;})==NO_ERROR);
 			REQUIRE(!pinger.is_expecting_ping_ack());
 
-			pinger.set_interval(60000, KeepAliveSource::USER);
+			REQUIRE(pinger.set_interval(60000, KeepAliveSource::USER));
+			REQUIRE(pinger.get_interval(&source) == 60000);
+			REQUIRE(source == KeepAliveSource::USER);
+
 			REQUIRE(pinger.process(30001, []{return IO_ERROR;})==NO_ERROR);
 			REQUIRE(!pinger.is_expecting_ping_ack());
 
@@ -104,11 +111,17 @@ SCENARIO("ping requests and responses are managed")
 
 		THEN("The ping interval can be updated by the USER but then not the SYSTEM")
 		{
-			pinger.set_interval(30000, KeepAliveSource::USER);
+			keepalive_source_t source;
+			REQUIRE(pinger.set_interval(30000, KeepAliveSource::USER));
+			REQUIRE(pinger.get_interval(&source) == 30000);
+			REQUIRE(source == KeepAliveSource::USER);
+
 			REQUIRE(pinger.process(15001, []{return IO_ERROR;})==NO_ERROR);
 			REQUIRE(!pinger.is_expecting_ping_ack());
 
-			pinger.set_interval(60000, KeepAliveSource::SYSTEM);
+			REQUIRE(pinger.set_interval(60000, KeepAliveSource::SYSTEM) == false);
+			REQUIRE(pinger.get_interval(&source) == 30000);
+			REQUIRE(source == KeepAliveSource::USER);
 
 			bool callback_called = false;
 			REQUIRE(pinger.process(30001, [&]()->ProtocolError{callback_called = true; return NO_ERROR;})==NO_ERROR);
