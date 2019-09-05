@@ -188,7 +188,8 @@ void spark_protocol_set_product_id(ProtocolFacade* protocol, product_id_t produc
 void spark_protocol_set_product_firmware_version(ProtocolFacade* protocol, product_firmware_version_t product_firmware_version, unsigned int param=0, void* reserved = NULL);
 void spark_protocol_get_product_details(ProtocolFacade* protocol, product_details_t* product_details, void* reserved=NULL);
 
-int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id, unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved);
+int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id, unsigned value, const void* data, void* reserved);
+int spark_protocol_get_connection_property(ProtocolFacade* protocol, unsigned property_id, unsigned* value, void* data, void* reserved);
 bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved=NULL);
 system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved=NULL);
 

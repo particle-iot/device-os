@@ -190,19 +190,60 @@ void spark_protocol_get_product_details(ProtocolFacade* protocol, product_detail
     protocol->get_product_details(*details);
 }
 
-int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id,
-                                           unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved)
+int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id, unsigned value,
+        const void* data, void* reserved)
 {
     ASSERT_ON_SYSTEM_THREAD();
-    if (property_id == particle::protocol::Connection::PING)
-    {
-        protocol->set_keepalive(data, conn_prop->keepalive_source);
-    } else if (property_id == particle::protocol::Connection::FAST_OTA)
-    {
-        protocol->set_fast_ota(data);
+    switch (property_id) {
+    case particle::protocol::Connection::PING: {
+        particle::protocol::keepalive_source_t source = particle::protocol::KeepAliveSource::SYSTEM;
+        if (data) {
+            const auto d = static_cast<const particle::protocol::connection_properties_t*>(data);
+            source = d->keepalive_source;
+        }
+        const bool changed = protocol->set_keepalive(value, source);
+        if (!changed) {
+            return particle::protocol::NOT_CHANGED;
+        }
+        return 0;
     }
-    return 0;
+    case particle::protocol::Connection::FAST_OTA: {
+        protocol->set_fast_ota(value);
+        return 0;
+    }
+    default:
+        return particle::protocol::INVALID_PARAM;
+    }
 }
+
+int spark_protocol_get_connection_property(ProtocolFacade* protocol, unsigned property_id, unsigned* value, void* data,
+        void* reserved)
+{
+    ASSERT_ON_SYSTEM_THREAD();
+    switch (property_id) {
+    case particle::protocol::Connection::PING: {
+        particle::protocol::keepalive_source_t source = particle::protocol::KeepAliveSource::SYSTEM;
+        const system_tick_t interval = protocol->get_keepalive(&source);
+        if (value) {
+            *value = interval;
+        }
+        if (data) {
+            const auto d = static_cast<particle::protocol::connection_properties_t*>(data);
+            d->keepalive_source = source;
+        }
+        return 0;
+    }
+    case particle::protocol::Connection::FAST_OTA: {
+        if (value) {
+            *value = protocol->get_fast_ota();
+        }
+        return 0;
+    }
+    default:
+        return particle::protocol::INVALID_PARAM;
+    }
+}
+
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
 {
     ASSERT_ON_SYSTEM_THREAD();
@@ -214,6 +255,7 @@ bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserve
     (void)reserved;
     return protocol->time_request_pending();
 }
+
 system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved)
 {
     (void)reserved;
@@ -348,10 +390,16 @@ void spark_protocol_get_product_details(CoreProtocol* protocol, product_details_
     protocol->get_product_details(*details);
 }
 
-int spark_protocol_set_connection_property(CoreProtocol* protocol, unsigned property_id,
-                                           unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved)
+int spark_protocol_set_connection_property(CoreProtocol* protocol, unsigned property_id, unsigned value, const void* data,
+        void* reserved)
 {
-    return 0;
+    return particle::protocol::NOT_IMPLEMENTED;
+}
+
+int spark_protocol_get_connection_property(CoreProtocol* protocol, unsigned property_id, unsigned* value, void* data,
+        void* reserved)
+{
+    return particle::protocol::NOT_IMPLEMENTED;
 }
 
 int spark_protocol_command(CoreProtocol* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)

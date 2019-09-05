@@ -24,7 +24,15 @@ public:
 		this->keepalive_source = KeepAliveSource::SYSTEM;
 	}
 
-	void set_interval(system_tick_t interval, keepalive_source_t source)
+	/**
+	 * Sets the ping interval.
+	 *
+	 * @param interval New interval in milliseconds.
+	 * @param source Source of the interval change. The interval set by the user application takes
+	 *               precedence over the interval set by the system.
+	 * @return `true` if the current interval has been changed or `false` otherwise.
+	 */
+	bool set_interval(system_tick_t interval, keepalive_source_t source)
 	{
 		/**
 		 * LAST  CURRENT  UPDATE?
@@ -34,11 +42,28 @@ public:
 		 * USER  SYS      NO
 		 * USER  USER     YES
 		 */
+		// TODO: It feels that this logic should have been implemented in the system layer
 		if ( !(this->keepalive_source == KeepAliveSource::USER && source == KeepAliveSource::SYSTEM) )
 		{
 			this->ping_interval = interval;
 			this->keepalive_source = source;
+			return true;
 		}
+		return false;
+	}
+
+	/**
+	 * Returns the current ping interval.
+	 *
+	 * @param source[out] Source of the last interval change.
+	 * @return Interval in milliseconds.
+	 */
+	system_tick_t get_interval(keepalive_source_t* source = nullptr) const
+	{
+		if (source) {
+			*source = keepalive_source;
+		}
+		return ping_interval;
 	}
 
 	void reset()
