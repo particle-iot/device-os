@@ -1512,7 +1512,6 @@ int BlePeerDevice::connect(const BleAddress& addr, uint16_t interval, uint16_t l
     connParams.max_conn_interval = interval;
     connParams.slave_latency = latency;
     connParams.conn_sup_timeout = timeout;
-    hal_ble_gap_set_ppcp(&connParams, nullptr);
     return connect(addr, &connParams, automatic);
 }
 
