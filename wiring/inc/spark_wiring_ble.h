@@ -155,6 +155,12 @@ enum class BleAddressType : uint8_t {
     RANDOM_PRIVATE_NON_RESOLVABLE   = BLE_SIG_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE
 };
 
+enum class BleTxRxType : uint8_t {
+    AUTO = 0,
+    ACK  = 1,
+    NACK = 2
+};
+
 typedef hal_ble_conn_handle_t BleConnectionHandle;
 typedef hal_ble_attr_handle_t BleAttributeHandle;
 
@@ -393,30 +399,21 @@ public:
     ssize_t getValue(String& str) const;
 
     template<typename T>
-    typename std::enable_if<std::is_integral<T>::value, ssize_t>::type
+    typename std::enable_if<std::is_standard_layout<T>::value, ssize_t>::type
     getValue(T* val) const {
         size_t len = sizeof(T);
         return getValue(reinterpret_cast<uint8_t*>(val), len);
     }
 
     // Set characteristic value
-    ssize_t setValue(const uint8_t* buf, size_t len);
-    ssize_t setValue(const String& str);
-    ssize_t setValue(const char* str);
-    ssize_t setValue(const uint8_t* buf, size_t len, bool ack);
-    ssize_t setValue(const String& str, bool ack);
-    ssize_t setValue(const char* str, bool ack);
+    ssize_t setValue(const uint8_t* buf, size_t len, BleTxRxType type = BleTxRxType::AUTO);
+    ssize_t setValue(const String& str, BleTxRxType type = BleTxRxType::AUTO);
+    ssize_t setValue(const char* str, BleTxRxType type = BleTxRxType::AUTO);
 
     template<typename T>
-    typename std::enable_if<std::is_integral<T>::value, ssize_t>::type
-    setValue(T val) {
-        return setValue(reinterpret_cast<const uint8_t*>(&val), sizeof(T));
-    }
-
-    template<typename T>
-    typename std::enable_if<std::is_integral<T>::value, ssize_t>::type
-    setValue(T val, bool ack) {
-        return setValue(reinterpret_cast<const uint8_t*>(&val), sizeof(T), ack);
+    typename std::enable_if<std::is_standard_layout<T>::value, ssize_t>::type
+    setValue(const T& val, BleTxRxType type = BleTxRxType::AUTO) {
+        return setValue(reinterpret_cast<const uint8_t*>(&val), sizeof(T), type);
     }
 
     // Valid for peer characteristic only. Manually enable the characteristic notification or indication.
