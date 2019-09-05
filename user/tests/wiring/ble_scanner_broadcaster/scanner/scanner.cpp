@@ -1,6 +1,8 @@
 #include "Particle.h"
 #include "unit-test/unit-test.h"
 
+#if Wiring_BLE == 1
+
 #ifdef INFO
 #undef INFO
 #endif
@@ -46,3 +48,5 @@ test(BLE_Scanning_Control) {
     assertTrue(result.size() > 0);
     INFO("  > Found %d BLE devices\r\n", result.size());
 }
+
+#endif // #if Wiring_BLE == 1

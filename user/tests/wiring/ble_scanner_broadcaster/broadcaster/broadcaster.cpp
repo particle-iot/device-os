@@ -1,5 +1,7 @@
 #include "Particle.h"
 
+#if Wiring_BLE == 1
+
 SYSTEM_MODE(MANUAL);
 
 void setup() {
@@ -10,3 +12,5 @@ void setup() {
 void loop() {
 
 }
+
+#endif // #if Wiring_BLE == 1

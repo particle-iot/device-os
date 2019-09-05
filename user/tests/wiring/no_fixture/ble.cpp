@@ -18,6 +18,7 @@
 #include "Particle.h"
 #include "unit-test/unit-test.h"
 
+#if Wiring_BLE == 1
 test(BLE_01_Set_BLE_Device_Address) {
     int ret;
     BleAddress defaultAddr = BLE.address();
@@ -402,5 +403,5 @@ test(BLE_10_Add_BLE_Local_Characteristics) {
     assertTrue(char4.description() == "char4");
 }
 
-
+#endif // #if Wiring_BLE == 1
 

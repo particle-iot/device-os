@@ -1,6 +1,8 @@
 #include "Particle.h"
 #include "unit-test/unit-test.h"
 
+#if Wiring_BLE == 1
+
 #define SCAN_RESULT_COUNT       20
 
 BleScanResult results[SCAN_RESULT_COUNT];
@@ -27,15 +29,11 @@ static void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice&
     }
 }
 
-test(BLE_Central_Scan_Connected_Data_Transfer) {
-    int ret;
-
-    // Make sure that the serial terminal is connected to device before printing message.
-    delay(5000);
-
+test(BLE_01_Central_Scan_And_Connect) {
     peerTxCharacteristic.onDataReceived(onDataReceived, &peerTxCharacteristic);
 
-    BLE.setScanTimeout(100); // Scan timeout: 1s
+    int ret = BLE.setScanTimeout(100); // Scan timeout: 1s
+    assertEqual(ret, 0);
 
     Serial.println("BLE starts scanning...");
 
@@ -61,23 +59,49 @@ test(BLE_Central_Scan_Connected_Data_Transfer) {
     assertTrue(wait > 0);
 
     Serial.println("BLE connected.");
+}
 
-    wait = 10; //Wait for 10s to receive the data from BLE peripheral.
-    while (!(str1Rec && str2Rec && str3Rec) && wait > 0) {
+test(BLE_02_Central_Send_Characteristic_Value_With_Auto_Ack) {
+    int ret = peerRxCharacteristic.setValue(str1);
+    assertTrue(ret == str1.length());
+}
+
+test(BLE_03_Central_Send_Characteristic_Value_With_Ack) {
+    int ret = peerRxCharacteristic.setValue(str2, BleTxRxType::ACK);
+    assertTrue(ret == str2.length());
+}
+
+test(BLE_04_Central_Send_Characteristic_Value_Without_Ack) {
+    int ret = peerRxCharacteristic.setValue(str3, BleTxRxType::NACK);
+    assertTrue(ret == str3.length());
+}
+
+test(BLE_05_Central_Receive_Characteristic_Value_String1) {
+    size_t wait = 5; //Wait for 5s to receive the data from BLE peripheral.
+    while (!str1Rec && wait > 0) {
         delay(100);
         wait--;
     }
-
-    Serial.println("Sends data according to the characteristic property.");
-    size_t len = peerRxCharacteristic.setValue(str1);
-    assertTrue(len == str1.length());
-
-    Serial.println("Sends data with explicit ACK required.");
-    ret = peerRxCharacteristic.setValue(str2, BleTxRxType::ACK);
-    assertTrue(ret == str2.length());
-
-    Serial.println("Sends data without ACK required.");
-    ret = peerRxCharacteristic.setValue(str3, BleTxRxType::NACK);
-    assertTrue(ret == str3.length());
+    assertTrue(wait > 0);
 }
+
+test(BLE_06_Central_Receive_Characteristic_Value_String2) {
+    size_t wait = 5; //Wait for 5s to receive the data from BLE peripheral.
+    while (!str2Rec && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+}
+
+test(BLE_07_Central_Receive_Characteristic_Value_String3) {
+    size_t wait = 5; //Wait for 5s to receive the data from BLE peripheral.
+    while (!str3Rec && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+}
+
+#endif // #if Wiring_BLE == 1
 
