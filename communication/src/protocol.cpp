@@ -313,7 +313,12 @@ int Protocol::begin()
 	if (session_resumed && channel.is_unreliable() && (flags & SKIP_SESSION_RESUME_HELLO))
 	{
 		LOG(INFO,"resumed session - not sending HELLO message");
-		return ping(true);
+		const auto r = ping(true);
+		if (r != NO_ERROR) {
+			error = r;
+		}
+		// Note: Make sure SESSION_RESUMED gets returned to the calling code
+		return error;
 	}
 
 	// todo - this will return code 0 even when the session was resumed,
