@@ -399,10 +399,9 @@ public:
     ssize_t getValue(String& str) const;
 
     template<typename T>
-    typename std::enable_if<std::is_standard_layout<T>::value, ssize_t>::type
+    typename std::enable_if_t<std::is_standard_layout<T>::value, ssize_t>
     getValue(T* val) const {
-        size_t len = sizeof(T);
-        return getValue(reinterpret_cast<uint8_t*>(val), len);
+        return getValue(reinterpret_cast<uint8_t*>(val), sizeof(T));
     }
 
     // Set characteristic value
@@ -411,7 +410,7 @@ public:
     ssize_t setValue(const char* str, BleTxRxType type = BleTxRxType::AUTO);
 
     template<typename T>
-    typename std::enable_if<std::is_standard_layout<T>::value, ssize_t>::type
+    typename std::enable_if_t<std::is_standard_layout<T>::value, ssize_t>
     setValue(const T& val, BleTxRxType type = BleTxRxType::AUTO) {
         return setValue(reinterpret_cast<const uint8_t*>(&val), sizeof(T), type);
     }
