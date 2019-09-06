@@ -45,9 +45,11 @@ public:
 		// TODO: It feels that this logic should have been implemented in the system layer
 		if ( !(this->keepalive_source == KeepAliveSource::USER && source == KeepAliveSource::SYSTEM) )
 		{
-			this->ping_interval = interval;
 			this->keepalive_source = source;
-			return true;
+			if (this->ping_interval != interval) {
+				this->ping_interval = interval;
+				return true;
+			}
 		}
 		return false;
 	}

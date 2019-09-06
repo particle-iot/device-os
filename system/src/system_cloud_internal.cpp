@@ -1130,6 +1130,9 @@ bool publishKeepaliveInterval(unsigned interval) {
             return false;
         }
     }
+    // TODO: Even though the keepalive interval is not supposed to be changed frequently, it would be
+    // nice to make sure the previously published event is either sent or cancelled before publishing
+    // a new event. This would help to mitigate the effect of possible out of order delivery
     char buf[16] = {};
     snprintf(buf, sizeof(buf), "%u", interval);
     return publishEvent(KEEPALIVE_INTERVAL_EVENT, buf);
