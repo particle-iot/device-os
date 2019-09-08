@@ -390,19 +390,23 @@ elif [ $PLATFORM_ID -eq 6 ] || [ $PLATFORM_ID -eq 8 ]; then
 elif [ $PLATFORM_ID -eq 10 ]; then
     # Configure
     cd ../modules
-    DEBUG_BUILD="y"
     MODULAR="y"
+    declare -a debugBuildOptions=("y" "n")
 
-    # Compose, echo and execute the `make` command
-    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n APP=tinker"
-    echo $MAKE_COMMAND
-    eval $MAKE_COMMAND
+    for debugBuildOption in ${debugBuildOptions[@]}; do
+        DEBUG_BUILD=$debugBuildOption
 
-    # Migrate file(s) into output interface
-    release_binary "system-part1" "system-part1" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-    release_binary "system-part2" "system-part2" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-    release_binary "system-part3" "system-part3" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-    release_binary "user-part" "tinker" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+        # Compose, echo and execute the `make` command
+        MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n APP=tinker"
+        echo $MAKE_COMMAND
+        eval $MAKE_COMMAND
+
+        # Migrate file(s) into output interface
+        release_binary "system-part1" "system-part1" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+        release_binary "system-part2" "system-part2" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+        release_binary "system-part3" "system-part3" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+        release_binary "user-part" "tinker" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+    done
 
 # Mesh
 elif [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 14 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 24 ]; then
@@ -418,23 +422,27 @@ elif [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 14
     fi
     USE_SWD_JTAG="n"
 
-    # Compose, echo and execute the `make` command
-    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
     if [ "$MODULAR" = "n" ]; then
-        MAKE_COMMAND+=" APP=tinker-serial1-debugging"
+        declare -a apps=("tinker-serial1-debugging" "tinker-serial-debugging")
     else
-        MAKE_COMMAND+=" APP=tinker"
+        declare -a apps=("tinker")
     fi
-    echo $MAKE_COMMAND
-    eval $MAKE_COMMAND
 
-    # Migrate file(s) into output interface
-    if [ "$MODULAR" = "n" ]; then
-        release_binary "tinker-serial1-debugging" "tinker-serial1-debugging" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-    else
-        release_binary "system-part1" "system-part1" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-        release_binary "user-part" "tinker" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-    fi
+    for app in ${apps[@]}; do
+        # Compose, echo and execute the `make` command
+        MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
+        MAKE_COMMAND+=" APP=$app"
+        echo $MAKE_COMMAND
+        eval $MAKE_COMMAND
+
+        # Migrate file(s) into output interface
+        if [ "$MODULAR" = "n" ]; then
+            release_binary "$app" "$app" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+        else
+            release_binary "system-part1" "system-part1" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+            release_binary "user-part" "$app" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+        fi
+    done
 
 fi
 
