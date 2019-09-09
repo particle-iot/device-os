@@ -428,11 +428,13 @@ bool BleUuid::operator==(const BleUuid& uuid) const {
 }
 
 bool BleUuid::operator==(const char* uuid) const {
-    return !strcmp(uuid, toString().c_str());
+    BleUuid temp(uuid);
+    return *this == temp;
 }
 
 bool BleUuid::operator==(const String& uuid) const {
-    return (*this == uuid.c_str());
+    BleUuid temp(uuid);
+    return *this == temp;
 }
 
 bool BleUuid::operator==(uint16_t uuid) const {
@@ -1510,7 +1512,6 @@ int BlePeerDevice::connect(const BleAddress& addr, uint16_t interval, uint16_t l
     connParams.max_conn_interval = interval;
     connParams.slave_latency = latency;
     connParams.conn_sup_timeout = timeout;
-    hal_ble_gap_set_ppcp(&connParams, nullptr);
     return connect(addr, &connParams, automatic);
 }
 
