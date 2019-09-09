@@ -318,6 +318,32 @@
                     "enabled": false,
                     "name": "wifi",
                     "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "no_fixture_ble",
+                    "path": "wiring",
+                    "use_threading": true
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_central",
+                    "path": "wiring/ble_central_peripheral"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_peripheral",
+                    "path": "wiring/ble_central_peripheral"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_broadcaster",
+                    "path": "wiring/ble_scanner_broadcaster"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_scanner",
+                    "path": "wiring/ble_scanner_broadcaster"
                 }
             ]
         },
@@ -639,6 +665,32 @@
                     "enabled": false,
                     "name": "wifi",
                     "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "no_fixture_ble",
+                    "path": "wiring",
+                    "use_threading": true
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_central",
+                    "path": "wiring/ble_central_peripheral"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_peripheral",
+                    "path": "wiring/ble_central_peripheral"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_broadcaster",
+                    "path": "wiring/ble_scanner_broadcaster"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_scanner",
+                    "path": "wiring/ble_scanner_broadcaster"
                 }
             ]
         },
@@ -966,6 +1018,32 @@
                     "enabled": false,
                     "name": "wifi",
                     "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "no_fixture_ble",
+                    "path": "wiring",
+                    "use_threading": true
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_central",
+                    "path": "wiring/ble_central_peripheral"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_peripheral",
+                    "path": "wiring/ble_central_peripheral"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_broadcaster",
+                    "path": "wiring/ble_scanner_broadcaster"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_scanner",
+                    "path": "wiring/ble_scanner_broadcaster"
                 }
             ]
         },
@@ -1293,6 +1371,32 @@
                     "enabled": false,
                     "name": "wifi",
                     "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "no_fixture_ble",
+                    "path": "wiring",
+                    "use_threading": true
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_central",
+                    "path": "wiring/ble_central_peripheral"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_peripheral",
+                    "path": "wiring/ble_central_peripheral"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_broadcaster",
+                    "path": "wiring/ble_scanner_broadcaster"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_scanner",
+                    "path": "wiring/ble_scanner_broadcaster"
                 }
             ]
         },
@@ -3106,6 +3210,32 @@
                     "enabled": false,
                     "name": "wifi",
                     "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "no_fixture_ble",
+                    "path": "wiring",
+                    "use_threading": true
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_central",
+                    "path": "wiring/ble_central_peripheral"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_peripheral",
+                    "path": "wiring/ble_central_peripheral"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_broadcaster",
+                    "path": "wiring/ble_scanner_broadcaster"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_scanner",
+                    "path": "wiring/ble_scanner_broadcaster"
                 }
             ]
         },
@@ -3433,6 +3563,32 @@
                     "enabled": false,
                     "name": "wifi",
                     "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "no_fixture_ble",
+                    "path": "wiring",
+                    "use_threading": true
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_central",
+                    "path": "wiring/ble_central_peripheral"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_peripheral",
+                    "path": "wiring/ble_central_peripheral"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_broadcaster",
+                    "path": "wiring/ble_scanner_broadcaster"
+                },
+                {
+                    "enabled": true,
+                    "name": "ble_scanner",
+                    "path": "wiring/ble_scanner_broadcaster"
                 }
             ]
         }

@@ -80,6 +80,13 @@ inline BleCharacteristicProperty& operator|=(BleCharacteristicProperty& lhs, Ble
     return lhs;
 }
 
+inline BleCharacteristicProperty operator|(BleCharacteristicProperty lhs, BleCharacteristicProperty rhs) {
+    return static_cast<BleCharacteristicProperty> (
+        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(lhs) |
+        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(rhs)
+    );
+}
+
 enum class BleAdvertisingDataType : uint8_t {
     FLAGS                               = BLE_SIG_AD_TYPE_FLAGS,
     SERVICE_UUID_16BIT_MORE_AVAILABLE   = BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE,
@@ -146,6 +153,12 @@ enum class BleAddressType : uint8_t {
     RANDOM_STATIC                   = BLE_SIG_ADDR_TYPE_RANDOM_STATIC,
     RANDOM_PRIVATE_RESOLVABLE       = BLE_SIG_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE,
     RANDOM_PRIVATE_NON_RESOLVABLE   = BLE_SIG_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE
+};
+
+enum class BleTxRxType : uint8_t {
+    AUTO = 0,
+    ACK  = 1,
+    NACK = 2
 };
 
 typedef hal_ble_conn_handle_t BleConnectionHandle;
@@ -386,26 +399,20 @@ public:
     ssize_t getValue(String& str) const;
 
     template<typename T>
-    typename std::enable_if<std::is_integral<T>::value, ssize_t>::type
+    typename std::enable_if_t<std::is_standard_layout<T>::value, ssize_t>
     getValue(T* val) const {
-        size_t len = sizeof(T);
-        return getValue(reinterpret_cast<uint8_t*>(val), len);
+        return getValue(reinterpret_cast<uint8_t*>(val), sizeof(T));
     }
 
     // Set characteristic value
-    ssize_t setValue(const uint8_t* buf, size_t len);
-    ssize_t setValue(const String& str);
-    ssize_t setValue(const char* str);
+    ssize_t setValue(const uint8_t* buf, size_t len, BleTxRxType type = BleTxRxType::AUTO);
+    ssize_t setValue(const String& str, BleTxRxType type = BleTxRxType::AUTO);
+    ssize_t setValue(const char* str, BleTxRxType type = BleTxRxType::AUTO);
 
     template<typename T>
-    typename std::enable_if<std::is_integral<T>::value, ssize_t>::type
-    setValue(T val) {
-        uint8_t buf[BLE_MAX_ATTR_VALUE_PACKET_SIZE];
-        size_t len = std::min(sizeof(T), (unsigned)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
-        for (size_t i = 0, j = len - 1; i < len; i++, j--) {
-            buf[i] = reinterpret_cast<const uint8_t*>(&val)[j];
-        }
-        return setValue(buf, len);
+    typename std::enable_if_t<std::is_standard_layout<T>::value, ssize_t>
+    setValue(const T& val, BleTxRxType type = BleTxRxType::AUTO) {
+        return setValue(reinterpret_cast<const uint8_t*>(&val), sizeof(T), type);
     }
 
     // Valid for peer characteristic only. Manually enable the characteristic notification or indication.

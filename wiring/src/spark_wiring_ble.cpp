@@ -1136,31 +1136,48 @@ size_t BleCharacteristic::description(char* buf, size_t len) const {
     return len;
 }
 
-ssize_t BleCharacteristic::setValue(const uint8_t* buf, size_t len) {
+ssize_t BleCharacteristic::setValue(const uint8_t* buf, size_t len, BleTxRxType type) {
     if (buf == nullptr || len == 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     len = std::min(len, (size_t)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
     if (impl()->local()) {
-        return hal_ble_gatt_server_set_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
+        int ret = 0;
+        // Updates the local characteristic value for peer to read.
+        if ((impl()->properties() & BleCharacteristicProperty::READ) == BleCharacteristicProperty::READ) {
+            ret = CHECK(hal_ble_gatt_server_set_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr));
+        }
+        if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY) {
+            if (type == BleTxRxType::AUTO || type == BleTxRxType::NACK) {
+                return hal_ble_gatt_server_notify_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
+            }
+        }
+        if (type == BleTxRxType::ACK && (impl()->properties() & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE) {
+            return hal_ble_gatt_server_indicate_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
+        }
+        return ret;
     }
     if (impl()->connHandle() != BLE_INVALID_CONN_HANDLE) {
-        if ((impl()->properties() & BleCharacteristicProperty::WRITE) == BleCharacteristicProperty::WRITE) {
+        // If the peer characteristic has WRITE and WRITE_WITHOUT_RSP properties, sends the data without response required by default.
+        if ((impl()->properties() & BleCharacteristicProperty::WRITE_WO_RSP) == BleCharacteristicProperty::WRITE_WO_RSP) {
+            if (type == BleTxRxType::AUTO || type == BleTxRxType::NACK) {
+                return hal_ble_gatt_client_write_without_response(impl()->connHandle(), impl()->attrHandles().value_handle, buf, len, nullptr);
+            }
+        }
+        if (type == BleTxRxType::ACK && (impl()->properties() & BleCharacteristicProperty::WRITE) == BleCharacteristicProperty::WRITE) {
             return hal_ble_gatt_client_write_with_response(impl()->connHandle(), impl()->attrHandles().value_handle, buf, len, nullptr);
         }
-        if ((impl()->properties() & BleCharacteristicProperty::WRITE_WO_RSP) == BleCharacteristicProperty::WRITE_WO_RSP) {
-            return hal_ble_gatt_client_write_without_response(impl()->connHandle(), impl()->attrHandles().value_handle, buf, len, nullptr);
-        }
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     return SYSTEM_ERROR_INVALID_STATE;
 }
 
-ssize_t BleCharacteristic::setValue(const String& str) {
-    return setValue(reinterpret_cast<const uint8_t*>(str.c_str()), str.length());
+ssize_t BleCharacteristic::setValue(const String& str, BleTxRxType type) {
+    return setValue(reinterpret_cast<const uint8_t*>(str.c_str()), str.length(), type);
 }
 
-ssize_t BleCharacteristic::setValue(const char* str) {
-    return setValue(reinterpret_cast<const uint8_t*>(str), strnlen(str, BLE_MAX_ATTR_VALUE_PACKET_SIZE));
+ssize_t BleCharacteristic::setValue(const char* str, BleTxRxType type) {
+    return setValue(reinterpret_cast<const uint8_t*>(str), strnlen(str, BLE_MAX_ATTR_VALUE_PACKET_SIZE), type);
 }
 
 ssize_t BleCharacteristic::getValue(uint8_t* buf, size_t len) const {
@@ -1204,14 +1221,14 @@ int BleCharacteristic::subscribe(bool enable) const {
     config.conn_handle = impl()->connHandle();
     config.cccd_handle = impl()->attrHandles().cccd_handle;
     config.value_handle = impl()->attrHandles().value_handle;
+    config.cccd_value = BLE_SIG_CCCD_VAL_DISABLED;
     if (enable) {
-        if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY) {
-            config.cccd_value = BLE_SIG_CCCD_VAL_NOTIFICATION;
-        } else {
+        if ((impl()->properties() & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE) {
             config.cccd_value = BLE_SIG_CCCD_VAL_INDICATION;
         }
-    } else {
-        config.cccd_value = BLE_SIG_CCCD_VAL_DISABLED;
+        if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY) {
+            config.cccd_value = (ble_sig_cccd_value_t)(config.cccd_value | BLE_SIG_CCCD_VAL_NOTIFICATION);
+        }
     }
     return hal_ble_gatt_client_configure_cccd(&config, nullptr);
 }
