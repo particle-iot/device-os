@@ -1,11 +1,11 @@
 [submodule "proto"]
 	path = proto
-  url = https://github.com/particle-iot/firmware-protobuf.git
-  branch = master
+	url = https://github.com/particle-iot/firmware-protobuf.git
+	branch = master
 [submodule "third_party/nrf5_sdk/nrf5_sdk"]
 	path = third_party/nrf5_sdk/nrf5_sdk
-  url = https://github.com/particle-iot/nrf5_sdk.git
-  branch = particle
+	url = https://github.com/particle-iot/nrf5_sdk.git
+	branch = particle
 [submodule "third_party/lwip/lwip"]
 	path = third_party/lwip/lwip
 	url = https://github.com/particle-iot/lwip.git
@@ -28,12 +28,12 @@
 	branch = particle
 [submodule "third_party/openthread/openthread"]
 	path = third_party/openthread/openthread
-  url = https://github.com/particle-iot/openthread.git
-  branch = particle
+	url = https://github.com/particle-iot/openthread.git
+	branch = particle
 [submodule "third_party/littlefs/littlefs"]
 	path = third_party/littlefs/littlefs
-  url = https://github.com/particle-iot/littlefs.git
-  branch = particle
+	url = https://github.com/particle-iot/littlefs.git
+	branch = particle
 [submodule "third_party/wiznet_driver/wiznet_driver"]
 	path = third_party/wiznet_driver/wiznet_driver
 	url = https://github.com/particle-iot/ioLibrary_Driver.git
@@ -44,14 +44,14 @@
 	branch = particle
 [submodule "gsm0710muxer/gsm0710muxer"]
 	path = gsm0710muxer/gsm0710muxer
-  url = https://github.com/particle-iot/gsm0710muxer.git
-  branch = master
+	url = https://github.com/particle-iot/gsm0710muxer.git
+	branch = master
 [submodule "third_party/catch2/catch2"]
 	path = third_party/catch2/catch2
-  url = https://github.com/particle-iot/Catch2.git
-  branch = particle
+	url = https://github.com/particle-iot/Catch2.git
+	branch = particle
 [submodule "third_party/fakeit/fakeit"]
 	path = third_party/fakeit/fakeit
-  url = https://github.com/particle-iot/Fakeit.git
-  branch = particle
+	url = https://github.com/particle-iot/Fakeit.git
+	branch = particle
 
