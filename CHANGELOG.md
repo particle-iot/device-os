@@ -1,3 +1,65 @@
+## 1.4.0
+
+>**Note:** If your Gen 2 Photon/P1 or Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release).
+>**Note:** If your Gen 3 device does not have a Cloud connection, this release will also require manually updating the SoftDevice via CLI. The instructions are available in the release notes and the SoftDevice binaries are available in the Github release.
+>
+>This release contains v500 bootloaders.
+
+### FEATURES
+
+- [Gen 3] Introduces BLE.begin() and BLE.end() wiring APIs [#1890](https://github.com/particle-iot/device-os/pull/1890)
+- [Gen 3] Exposes POSIX `select()` and `poll()` from socket HAL dynalib [#1895](https://github.com/particle-iot/device-os/pull/1895)
+
+### ENHANCEMENTS
+
+- [Gen 3] Adds `BleCharacteristic::setValue(..., BleTxRxType)` API to send data with or without acknowledgement [#1901](https://github.com/particle-iot/device-os/pull/1901)
+- [Gen 3] Alternately broadcast user's and Particle-specific BLE advertising data when the device is in the Listening mode [#1882](https://github.com/particle-iot/device-os/pull/1882)
+- Updates FreeRTOS from [10.0.1](https://github.com/particle-iot/freertos/commit/3feb84fee1840c0a8a3ea50810fb5f3e7527c6ce) to [10.2.1](https://github.com/particle-iot/freertos/commit/c4e1510c832f9467169f2ab7165ec49d3ce7428a). [Changelog](https://gist.github.com/avtolstoy/2f4b147f3a678bef75afde818a8ff77c) [#1864](https://github.com/particle-iot/device-os/pull/1864)
+- Updates Catch2 from [2.4.2](https://github.com/particle-iot/catch2/commit/03d122a35c3f5c398c43095a87bc82ed44642516) to [2.9.1](https://github.com/particle-iot/catch2/commit/2f631bb8087a0355d2b23a75a28d936ce237659d). [Changelog](https://gist.github.com/avtolstoy/4b628c894798b4d0b3617860030de788) [#1864](https://github.com/particle-iot/device-os/pull/1864)
+- Updates FakeIt from [2.0.5-7-g362271d](https://github.com/particle-iot/fakeit/commit/362271de8f59178aaf12fc0c27de1a814ee5a98d) to [2.0.5-13-g317419c](https://github.com/particle-iot/fakeit/317419c2e2f5a98e023a4d62628eb149fe3d3c3a). [Changelog](https://gist.github.com/avtolstoy/63742d7e03949a651bc74d240f903113) [#1864](https://github.com/particle-iot/device-os/pull/1864)
+- Updates LittleFS from [1.6.0](https://github.com/particle-iot/littlefs/commit/9996634a148c68f6135318cce0f69b9debf73469) to [1.7.2](https://github.com/particle-iot/littlefs/commit/ed07f602fbfa5e9bd905829997436c607f10837a). [Changelog](https://gist.github.com/avtolstoy/1af0fb67f6e15d1b7711a49759cbdfb9). [Fork diff](https://github.com/particle-iot/littlefs/compare/7e110b44c0e796dc56e2fe86587762d685653029...ed07f602fbfa5e9bd905829997436c607f10837a) [#1864](https://github.com/particle-iot/device-os/pull/1864)
+- Updates LwIP from [2.0.5](https://github.com/particle-iot/lwip/commit/362271de8f59178aaf12fc0c27de1a814ee5a98d) to [2.1.2](https://github.com/particle-iot/lwip/commit/4fe04959e5665dc58cb2552f750d82e257aab87d). [Changelog](https://gist.github.com/avtolstoy/1a5d6bf832451ce4329151eb2995ce0f). [Fork diff](https://github.com/particle-iot/lwip/compare/bd116cd6d9627ebdae41bb061a6e39cbd7909e60...4fe04959e5665dc58cb2552f750d82e257aab87d) [#1864](https://github.com/particle-iot/device-os/pull/1864)
+- Updates LwIP Contrib from [2.0.0](https://github.com/particle-iot/lwip-contrib/commit/cce6cd11ffc1e0bddcb5a9c96674d1a7ae73e36f) to [2.1.2](https://github.com/particle-iot/lwip-contrib/commit/35b011d4cf4c4b480f8859c456587a884ec9d287). [Changelog](https://gist.github.com/avtolstoy/4cb3f7ae77ec359bc797528ab1a98412) [#1864](https://github.com/particle-iot/device-os/pull/1864)
+- Updates MbedTLS from [2.9.0](https://github.com/particle-iot/mbedtls/commit/48fe5b1030039557c6a6340d22bb473fc8042920) to [2.16.2](https://github.com/particle-iot/mbedtls/commit/4e4e631f48e72448213ac340e172ea8442dc442b). [Changelog](https://gist.github.com/avtolstoy/50db3f7c10c5479f5fd9fa817b7df693). [Fork diff](https://github.com/particle-iot/mbedtls/compare/a8a2d73d794ff28b2079ca9ccbf98bb0e97cb3b3...4e4e631f48e72448213ac340e172ea8442dc442b) [#1864](https://github.com/particle-iot/device-os/pull/1864)
+- Updates miniz from [2.0.7](https://github.com/particle-iot/miniz/commit/f07041c88cdbb5a85401a0f49366cac2143871d8) to [2.1.0](https://github.com/particle-iot/miniz/commit/af839bf788cec53c0d72f22e46cf58701498e264). [Changelog](https://gist.github.com/avtolstoy/c22df11f316203fc1857d039802525de). [Fork diff](https://github.com/particle-iot/miniz/compare/be54fea1c66154ad98a01b890a17043858837d26...af839bf788cec53c0d72f22e46cf58701498e264) [#1864](https://github.com/particle-iot/device-os/pull/1864)
+- Updates nanopb from [0.3.9](https://github.com/particle-iot/nanopb/commit/2d40a90db76036458cf1150cdf5979e5e5fc77c6) to [0.3.9.3](https://github.com/particle-iot/nanopb/commit/6b91cc53dfb53ff5cd34bd2e057fbfc8ae7f12eb). [Changelog](https://gist.github.com/avtolstoy/96f3078e4076129a6cb62be69f62c287). [Fork diff](https://github.com/particle-iot/nanopb/compare/74171dee87de0c2465fd9cef1d8b296f8cb17746...6b91cc53dfb53ff5cd34bd2e057fbfc8ae7f12eb) [#1864](https://github.com/particle-iot/device-os/pull/1864)
+- Updates OpenThread from [20190130](https://github.com/particle-iot/openthread/commit/0eab4ecddd8208741ae5856275e2dc2bee8e0838) to [20190709](https://github.com/particle-iot/openthread/commit/1bb328f93b7feba919e81f63ebe5a9745811239a). [Changelog](https://gist.github.com/avtolstoy/1408ced79f33291f51c2a0e9c9f94fdd). [Fork diff](https://github.com/particle-iot/openthread/compare/f2ea476c3afaa7bf51dc71d4a5713510e2b8c10d...1bb328f93b7feba919e81f63ebe5a9745811239a) [#1864](https://github.com/particle-iot/device-os/pull/1864)
+- Updates WizNet Ethernet Driver from [20180515](https://github.com/particle-iot/ioLibrary_Driver/commit/53401b1d55b63641f60577e40e6996da59d71fd5) to [20190529](https://github.com/particle-iot/ioLibrary_Driver/commit/890a73fb8beb1ccbd5a43d1f6aee545bd883fb46). [Changelog](https://gist.github.com/avtolstoy/2c5d13ef00886136aefaaeca51af6a72). [Fork diff](https://github.com/particle-iot/ioLibrary_Driver/compare/b5592d446dbed91704d0fde88e7aff748df1887d...d4e78e46259069d02c3383e7792432e12b9c54c1) [#1864](https://github.com/particle-iot/device-os/pull/1864)
+
+### BUGFIXES
+
+- Fixes an issue in `IPAddress::operator bool()` causing the operator to return `false` for valid IPv6 addresses [#1912](https://github.com/particle-iot/device-os/pull/1912)
+- Fixes [#1865](https://github.com/particle-iot/device-os/issues/1865), `TCPClient::connect()` return values [#1909](https://github.com/particle-iot/device-os/pull/1909)
+- [Gen 2] [LTE] fixes slow to close TCP sockets on SARA-R410M-02B [ch35609] [#1909](https://github.com/particle-iot/device-os/pull/1909)
+- [Gen 3] Subscribes both notification and indication if both properties are present in peer BLE characteristic [#1901](https://github.com/particle-iot/device-os/pull/1901)
+- [Gen 3] Restricts `BleCharacteristic` templated `getValue()` and `setValue()` arguments to be standard layout [#1901](https://github.com/particle-iot/device-os/pull/1901)
+- [Gen 3] `BleUuid` comparison operators are no longer case-sensitive [#1902](https://github.com/particle-iot/device-os/pull/1902)
+- [Gen 3] Fixes `BleCharacteristic` constructor template to accept characteristic and service UUID arguments with different types [#1902](https://github.com/particle-iot/device-os/pull/1902)
+- Fixes `SerialLogHandler` interfering with the Serial setup console in listening mode [#1909](https://github.com/particle-iot/device-os/pull/1909)
+- Fixes a regression introduced in 1.1.0 where the system layer was always sending its handshake messages even if the session was resumed causing increased data usage [#1905](https://github.com/particle-iot/device-os/pull/1905)
+- Properly seeds `rand()` in multiple threads including system thread. Fixes ephemeral port allocation in LwIP on Gen 3 platforms [#1905](https://github.com/particle-iot/device-os/pull/1905)
+- Control requests that reset the device (e.g. `particle usb dfu`) no longer cause unnecessary reconnection to the cloud [#1905](https://github.com/particle-iot/device-os/pull/1905)
+- Initialize user module in monolithic builds [#1905](https://github.com/particle-iot/device-os/pull/1905)
+- [Gen 3] Fixes heap and application static RAM overlap introduced in 1.3.0-rc.1 [#1898](https://github.com/particle-iot/device-os/pull/1898)
+- Fixes tinker build errors when building with `LOG_SERIAL=y` [#1898](https://github.com/particle-iot/device-os/pull/1898)
+- [Gen 3] Restored default BLE device address is incorrect. [#1891](https://github.com/particle-iot/device-os/pull/1891)
+- [Gen 3] Read BLE device name might be contracted. [#1891](https://github.com/particle-iot/device-os/pull/1891)
+- [Gen 3] operator& of the BleCharacteristicProperty enum class doesn't work as expected. [#1891](https://github.com/particle-iot/device-os/pull/1891)
+- [Gen 3] The length of got advertising and scan response data is not updated. [#1891](https://github.com/particle-iot/device-os/pull/1891)
+- Fixes dynalib alignment issue when compiling relatively large applications potentially due to an unconfirmed bug in GCC by moving the dynalib into a separate section (`.dynalib`) [#1894](https://github.com/particle-iot/device-os/pull/1894)
+- [Gen 3] Fixes incorrect handling of `MODULE_INFO_FLAG_DROP_MODULE_INFO` in the bootloader [#1897](https://github.com/particle-iot/device-os/pull/1897)
+- [Gen 3] Adds a dummy suffix to the NCP and SoftDevice modules' module info with unique SHA to cause the communication layer to detect the change in SYSTEM DESCRIBE after NCP or SoftDevice update [#1897](https://github.com/particle-iot/device-os/pull/1897)
+
+### INTERNAL
+
+- Minor enhancements in `wiring/no_fixture` and `wiring/no_fixture_long_running` tests [#1912](https://github.com/particle-iot/device-os/pull/1912)
+- [Git] Fixes whitespace issues in `.gitmodules` [#1910](https://github.com/particle-iot/device-os/pull/1910)
+- [Gen 3] Adds `wiring/no_fixture_ble`, `wiring/ble_central_peripheral` and `wiring/ble_scanner_broadcaster` on-device tests [#1901](https://github.com/particle-iot/device-os/pull/1901)
+- Update release script to include Electron without DEBUG_BUILD=y and tinker-serial-debugging apps for Gen 3 [#1903](https://github.com/particle-iot/device-os/pull/1903)
+- [Photon / P1] Changes to support building combined images for the recent releases [#1887](https://github.com/particle-iot/device-os/pull/1887)
+- `wiring/no_fixture` test adjustments for Gen 2 and Gen 3 platforms [#1898](https://github.com/particle-iot/device-os/pull/1898)
+- Coveralls test coverage reports generated by Travis [#1896](https://github.com/particle-iot/device-os/pull/1896)
+
 ## 1.4.0-rc.1
 
 ### FEATURES
