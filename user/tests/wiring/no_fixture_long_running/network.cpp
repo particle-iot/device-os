@@ -65,6 +65,12 @@ bool udpEchoTest(UDP* udp, const IPAddress& ip, uint16_t port, const uint8_t* se
 test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     Network.on();
     Network.connect();
+
+    SCOPE_GUARD({
+        Network.disconnect();
+        Network.off();
+    });
+
     waitFor(Network.ready, 60000);
     assertTrue(Network.ready());
 
@@ -96,7 +102,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 
     // FIXME: Hosted by @avtolstoy, should be changed to something else
     const char UDP_ECHO_SERVER[] = "particle-udp-echo.rltm.org";
-    uint16_t UDP_ECHO_PORT = 40000;
+    const uint16_t UDP_ECHO_PORT = 40000;
 
     // Resolve UDP echo server hostname to ip address, so that DNS resolutions
     // no longer affect us after this point
@@ -145,9 +151,4 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     assertFalse((bool)state.disconnected);
 
     assertTrue((mtu - IPV4_PLUS_UDP_HEADER_LENGTH) >= MBEDTLS_SSL_MAX_CONTENT_LEN);
-
-    SCOPE_GUARD({
-        Network.disconnect();
-        Network.off();
-    });
 }
