@@ -65,7 +65,7 @@ IPAddress::operator bool() const
     if (version() == 4) {
         return address.ipv4 != 0;
     } else if (version() == 6) {
-        return address.ipv6[0] != 0 && address.ipv6[1] != 0 && address.ipv6[2] != 0 && address.ipv6[3] != 0;
+        return address.ipv6[0] != 0 || address.ipv6[1] != 0 || address.ipv6[2] != 0 || address.ipv6[3] != 0;
     } else {
         return false;
     }
