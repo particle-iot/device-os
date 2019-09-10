@@ -55,7 +55,7 @@ test(GPIO_01_PinModeSetResultsInCorrectMode) {
 }
 
 test(GPIO_02_NoDigitalWriteWhenPinModeIsNotSetToOutput) {
-    pin_t pin = D0;//pin under test
+    pin_t pin = A0;//pin under test
     // when
     // pin set to INPUT_PULLUP mode, to keep pin from floating and test failing
     pinMode(pin, INPUT_PULLUP);
@@ -76,7 +76,7 @@ test(GPIO_03_NoDigitalWriteWhenPinSelectedIsOutOfRange) {
 }
 
 test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
-    pin_t pin = D0;//pin under test
+    pin_t pin = A0;//pin under test
     // when
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);
