@@ -73,6 +73,7 @@ std::recursive_mutex mdm_mutex;
 #define USOWR_TIMEOUT     (120 * 1000) /* 120s for R4 (going with 120 to be safe since we don't use this with UDP),
                                           1s for U2/G3 */
 #define USORD_TIMEOUT     ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
+#define USOSO_TIMEOUT     (  1 * 1000)
 #define USOST_TIMEOUT     ( 40 * 1000) /*  10s for R4, 1s for U2/G3, changed to 40s due to R410 firmware
                                           L0.0.00.00.05.08,A.02.04 background DNS lookup and other factors */
 #define USORF_TIMEOUT     ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
@@ -2251,6 +2252,16 @@ int MDMParser::_socketSocket(int socket, IpProtocol ipproto, int port)
         _sockets[socket].connected  = (ipproto == MDM_IPPROTO_UDP);
         _sockets[socket].pending    = 0;
         _sockets[socket].open       = true;
+
+        /**
+         * [ch35609] Enable linger on close if data present for TCP sockets to speed up time to close.
+         * In this case we won't "linger" because the default timeout is 0, which will cause
+         * the socket to immediately close. This is a necessary option for SARA_R410M_02B.
+         */
+        if (ipproto == MDM_IPPROTO_TCP && _dev.dev == DEV_SARA_R410) {
+            sendFormated("AT+USOSO=%d,65535,128,1\r\n", handle);
+            waitFinalResp(nullptr, nullptr, USOSO_TIMEOUT);
+        }
     }
     else {
         rv = MDM_SOCKET_ERROR;

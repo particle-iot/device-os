@@ -49,6 +49,7 @@ TCPClient::TCPClient(sock_handle_t sock)
     flush_buffer();
 }
 
+// return 0 on error, 1 on success
 int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif) {
     stop();
 
@@ -56,7 +57,7 @@ int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
     SCOPE_GUARD({
         netdb_freeaddrinfo(ais);
     });
-    CHECK(netdb_getaddrinfo(host, nullptr, nullptr, &ais));
+    CHECK_TRUE(netdb_getaddrinfo(host, nullptr, nullptr, &ais) == 0, 0); // return 0
 
     // FIXME: for now using only the first entry
     if (ais && ais->ai_addr) {
@@ -67,9 +68,10 @@ int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
         }
     }
 
-    return -1;
+    return 0; // error, could not connect
 }
 
+// return 0 on error, 1 on success
 int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif) {
     stop();
 
@@ -78,7 +80,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif) {
     });
 
     d_->sock = sock_socket(ip.version() == 4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-    CHECK(d_->sock);
+    CHECK_TRUE(d_->sock >= 0, 0); // return 0
 
     flush_buffer();
 
@@ -86,8 +88,8 @@ int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif) {
     // TODO: provide compatibility headers and use if_indextoname()
     if (nif != 0) {
         struct ifreq ifr = {};
-        CHECK(if_index_to_name(nif, ifr.ifr_name));
-        CHECK(sock_setsockopt(d_->sock, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr)));
+        CHECK_TRUE(if_index_to_name(nif, ifr.ifr_name) == 0, 0); // return 0
+        CHECK_TRUE(sock_setsockopt(d_->sock, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr)) == 0, 0); // return 0
     }
 #endif // HAL_PLATFORM_IFAPI
 
@@ -107,13 +109,13 @@ int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif) {
     }
 
     // FIXME: timeout?
-    CHECK(sock_connect(d_->sock, (const sockaddr*)&saddr, sizeof(saddr)));
+    CHECK_TRUE(sock_connect(d_->sock, (const sockaddr*)&saddr, sizeof(saddr)) == 0, 0); // return 0
 
     d_->remoteIP = ip;
 
     done.dismiss();
-    // Why not 0?
-    return 1;
+
+    return 1; // success
 }
 
 size_t TCPClient::write(uint8_t b) {
