@@ -201,7 +201,7 @@ ProtocolError DTLSMessageChannel::init(
 			MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT);
 	EXIT_ERROR(ret, "unable to configure defaults");
 
-	mbedtls_ssl_conf_handshake_timeout(&conf, 3000, 6000);
+	mbedtls_ssl_conf_handshake_timeout(&conf, 3000, 24000);
 
 	mbedtls_ssl_conf_rng(&conf, mbedtls_default_rng, nullptr); // todo - would like to make this a callback
 	mbedtls_ssl_conf_dbg(&conf, my_debug, nullptr);
