@@ -91,9 +91,8 @@ void serial_at_response_out(void* data, const char* msg)
             else if (a == 4) *reg = REG_UNKNOWN;  // 4: unknown
             else if (a == 5) *reg = REG_ROAMING;  // 5: registered, roaming
             else if (a == 6) *reg = REG_HOME;     // 6: registered, sms only, home
-            if ((r >= 3) && (b != (int)0xFFFF))      _net.lac = b; // location area code
-            if ((r >= 4) && (c != (int)0xFFFFFFFF))  _net.ci  = c; // cell ID
-            // access technology
+            if ((r >= 3) && (b != (int)0xFFFF))      _net.cgi.location_area_code = b;
+            if ((r >= 4) && (c != (int)0xFFFFFFFF))  _net.cgi.cell_id  = c;
             if (r >= 5) {
                 if      (d == 0) _net.act = ACT_GSM;      // 0: GSM
                 else if (d == 1) _net.act = ACT_GSM;      // 1: GSM COMPACT
@@ -179,6 +178,7 @@ void loop()
 {
     // AT commands received over USB serial
     static String cmd = "";
+    static String last_cmd = "";
     static bool echo_commands = true;
     static bool assist = true;
     if (Serial.available() > 0) {
@@ -232,6 +232,16 @@ void loop()
                 Cellular.command("%s\r\n", cmd.c_str());
             }
             cmd = "";
+        }
+        else if (assist && c == '[') { // UP ARROW ("ESC [A")
+            delay(1);
+            if (Serial.available() > 0) {
+                char c = Serial.read();
+                if (c == 'A') {
+                    cmd = last_cmd;
+                    if (echo_commands) Serial.print(cmd.c_str());
+                }
+            }
         }
         else if (assist && c == 27) { // ESC
             if (cmd.length() > 0 && echo_commands) {
@@ -339,8 +349,8 @@ void showHelp() {
                    "\r\n[:off;    ] turn the cellular modem OFF, LED=WHITE"
                    "\r\n[:echo1;  ] AT command echo ON (default)"
                    "\r\n[:echo0;  ] AT command echo OFF"
-                   "\r\n[:assist1;] turns on ESCAPE and BACKSPACE keyboard assistance (default)"
-                   "\r\n[:assist0;] turns off ESCAPE and BACKSPACE keyboard assistance"
+                   "\r\n[:assist1;] turns on ESC, BACKSPACE and UP ARROW keyboard assistance (default)"
+                   "\r\n[:assist0;] turns off ESC, BACKSPACE and UP ARROW keyboard assistance"
                    "\r\n[:con;    ] Start the EPS connection process, LED=GREEN (EPS)"
                    "\r\n[:dis;    ] Network disconnect and stop polling the EPS status (default), LED=BLUE"
                    "\r\n[:help;   ] show this help menu\r\n");

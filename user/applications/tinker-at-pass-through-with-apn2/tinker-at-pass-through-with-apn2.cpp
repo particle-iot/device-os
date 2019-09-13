@@ -308,14 +308,14 @@ void loop()
     if (echoTime || digitalRead(B0)==LOW) {
         echoTime = false;
         // Particle.publish("20170118out", String::format("%.3f",millis()/1000.0),NO_ACK);
-        Particle.publish("20170118out", String::format("%.3f",millis()/1000.0));
+        Particle.publish("20170118out", String::format("%.3f",millis()/1000.0), PRIVATE);
         // Particle.publish(NULL, NO_ACK);
         delay(1000);
     }
     if (pingTime && digitalRead(C0)==HIGH) {
         pingTime = false;
         // Particle.publish("20170118out", String::format("%.3f",millis()/1000.0),NO_ACK);
-        Particle.publish("20170118out", String::format("%.3f",millis()/1000.0));
+        Particle.publish("20170118out", String::format("%.3f",millis()/1000.0), PRIVATE);
         // Particle.publish(NULL, NO_ACK);
     }
     if (digitalRead(C1)==LOW) {
@@ -324,7 +324,7 @@ void loop()
     }
     if (ipaddrTime) {
         ipaddrTime = false;
-        Particle.publish("20170118out", String(Cellular.localIP()),NO_ACK);
+        Particle.publish("20170118out", String(Cellular.localIP()), PRIVATE, NO_ACK);
     }
 
     processATcommands();
