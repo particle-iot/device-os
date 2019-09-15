@@ -335,7 +335,21 @@ int MDMParser::sendFormattedWithArgs(const char* format, va_list args) {
 bool MDMParser::_atOk(void)
 {
     sendFormated("AT\r\n");
-    return (RESP_OK == waitFinalResp(nullptr, nullptr, AT_TIMEOUT));
+    int resp = waitFinalResp(nullptr, nullptr, AT_TIMEOUT);
+
+    // R410 Power Savings Mode currently disabled, therefore this only affects all other modems
+    if (resp == WAIT && _dev.dev != DEV_SARA_R410 && _dev.lpm == LPM_ACTIVE) {
+        // if low power mode active, may have to wait up to 5s for OK response
+        int cts = HAL_GPIO_Read(CTS_UC); // 1: not ready, 0: ready
+        system_tick_t t0 = HAL_Timer_Get_Milli_Seconds();
+        // wait for any AT response and CTS ready, or timeout after 5s total (1s + 4s)
+        while ((resp == WAIT || cts == 1) && !TIMEOUT(t0, 4000)) {
+            resp = waitFinalResp(nullptr, nullptr, 200);
+            cts = HAL_GPIO_Read(CTS_UC);
+        }
+    }
+
+    return (resp == RESP_OK);
 }
 
 int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
@@ -944,7 +958,9 @@ bool MDMParser::init(DevStatus* status)
             waitFinalResp(); // Not checking for error since we will reset either way
             goto reset_failure;
         }
-        // Force Power Saving mode to be disabled for good measure
+        // Force Power Saving mode to be disabled
+        //
+        // TODO: if we enable this feature in the future update the logic in MDMParser::_atOk
         sendFormated("AT+CPSMS=0\r\n");
         if (RESP_OK != waitFinalResp()) {
             goto failure;
