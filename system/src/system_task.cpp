@@ -442,7 +442,7 @@ static void process_isr_task_queue()
     SystemISRTaskQueue.process();
 }
 
-#if Wiring_SetupButtonUX
+#if HAL_PLATFORM_SETUP_BUTTON_UX
 extern void system_handle_button_clicks(bool isIsr);
 #endif
 
@@ -457,7 +457,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
     if (!SYSTEM_POWEROFF) {
 
-#if Wiring_SetupButtonUX
+#if HAL_PLATFORM_SETUP_BUTTON_UX
         system_handle_button_clicks(false /* isIsr */);
 #endif
         manage_serial_flasher();

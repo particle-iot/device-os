@@ -92,11 +92,14 @@
 
 #define Wiring_Wire1 1
 #define Wiring_Wire3 1 /* System PMIC and Fuel Guage I2C3 */
-#define Wiring_SetupButtonUX 1
 #define Wiring_USBSerial1 1
 #define Wiring_Mouse 1
 #define Wiring_Keyboard 1
 #define Wiring_LogConfig 1
+
+#if HAL_PLATFORM_SETUP_BUTTON_UX
+#define Wiring_SetupButtonUX 1 // For compatibility on Electron
+#endif // HAL_PLATFORM_SETUP_BUTTON_UX
 #endif
 
 #if PLATFORM_ID==20      // mesh-virtual
