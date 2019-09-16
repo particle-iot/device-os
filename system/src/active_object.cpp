@@ -22,6 +22,8 @@
 #include "spark_wiring_interrupts.h"
 #include "debug.h"
 
+using namespace particle;
+
 #if PLATFORM_THREADING
 
 #include <string.h>

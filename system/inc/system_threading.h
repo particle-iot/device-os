@@ -20,7 +20,8 @@
 #define	SYSTEM_THREADING_H
 
 #include "active_object.h"
-extern ISRTaskQueue SystemISRTaskQueue;
+
+extern particle::ISRTaskQueue SystemISRTaskQueue;
 
 #if PLATFORM_THREADING
 
@@ -38,12 +39,12 @@ extern ISRTaskQueue SystemISRTaskQueue;
 /**
  * System thread runs on a separate thread
  */
-extern ActiveObjectThreadQueue SystemThread;
+extern particle::ActiveObjectThreadQueue SystemThread;
 
 /**
  * Application queue runs on the calling thread (main)
  */
-extern ActiveObjectCurrentThreadQueue ApplicationThread;
+extern particle::ActiveObjectCurrentThreadQueue ApplicationThread;
 
 #endif
 
@@ -100,7 +101,7 @@ FFL(F const &func)
 
 #define _THREAD_CONTEXT_ASYNC(thread, fn)
 #define _THREAD_CONTEXT_ASYNC_RESULT(thread, fn, result)
-#define SYSTEM_THREAD_CONTEXT_SYNC(fn) 
+#define SYSTEM_THREAD_CONTEXT_SYNC(fn)
 #endif
 
 #define SYSTEM_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(SystemThread, fn)

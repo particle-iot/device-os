@@ -3,6 +3,8 @@
 #include <time.h>
 #include <string.h>
 
+using namespace particle;
+
 #if PLATFORM_THREADING
 
 #if PLATFORM_ID != 20
