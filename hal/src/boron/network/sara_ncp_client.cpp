@@ -870,10 +870,16 @@ int SaraNcpClient::initReady() {
             }
         }
         CHECK_PARSER_OK(lastError);
-        // Force Power Saving mode to be disabled for good measure
+        // Force Power Saving mode to be disabled
+        //
+        // TODO: if we enable this feature in the future add logic to CHECK_PARSER macro(s)
+        // to wait longer for device to become active (see MDMParser::_atOk)
         CHECK_PARSER_OK(parser_.execCommand("AT+CPSMS=0"));
     } else {
-        // Power saving
+        // Force Power Saving mode to be disabled
+        //
+        // TODO: if we enable this feature in the future add logic to CHECK_PARSER macro(s)
+        // to wait longer for device to become active (see MDMParser::_atOk)
         CHECK_PARSER_OK(parser_.execCommand("AT+UPSV=0"));
     }
 
