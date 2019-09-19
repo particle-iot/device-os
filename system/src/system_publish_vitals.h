@@ -73,9 +73,10 @@ public:
     /**
      * @brief Publish vitals information to the cloud (immediately)
      *
-     * @returns \p ProtocolError result code
-     * @retval \p ProtocolError::NO_ERROR
-     * @retval \p ProtocolError::IO_ERROR_GENERIC_SEND
+     * @returns \p system_error_t result code
+     * @retval \p system_error_t::SYSTEM_ERROR_NONE
+     * @retval \p system_error_t::SYSTEM_ERROR_INVALID_STATE
+     * @retval \p system_error_t::SYSTEM_ERROR_IO
      */
     int publish(void);
 
