@@ -12,6 +12,15 @@ namespace
 
 using namespace particle::system;
 
+/**
+ * @brief Post description message via the CoAP protocol
+ *
+ * This function is shared internally by both the `publish` and `publishFromTimer` methods. It is
+ * static to ensure it can be called on the system thread via the `ISRTaskQueue`.
+ *
+ * @sa template <class Timer> particle::cloud::VitalsPublisher<Timer>::publish
+ * @sa template <class Timer> particle::cloud::VitalsPublisher<Timer>::publishFromTimer
+ */
 inline int postDescription()
 {
     int error;
@@ -19,8 +28,8 @@ inline int postDescription()
     if (spark_cloud_flag_connected())
     {
         // Transmit CoAP message via communication layer
-        error = spark_protocol_post_description(
-            spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr);
+        error = spark_protocol_post_description(spark_protocol_instance(),
+                                                particle::protocol::DESCRIBE_METRICS, nullptr);
 
         // Convert `protocol` error to `system` error
         error = spark_protocol_to_system_error(error);
