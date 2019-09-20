@@ -24,7 +24,7 @@
 
 namespace particle { namespace power {
 
-static const uint16_t DEFAULT_INPUT_CURRENT_LIMIT = 900;
+static const uint16_t DEFAULT_INPUT_CURRENT_LIMIT = 1500;
 static const system_tick_t DEFAULT_FAULT_WINDOW = 1000;
 static const uint32_t DEFAULT_FAULT_COUNT_THRESHOLD = HAL_PLATFORM_PMIC_BQ24195_FAULT_COUNT_THRESHOLD;
 static const system_tick_t DEFAULT_FAULT_SUPPRESSION_PERIOD = 60000;
