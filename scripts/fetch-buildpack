@@ -1,1 +1,1 @@
-mkdir buildpack && wget https://api.github.com/repos/particle-iot/firmware-buildpack-builder/tarball/master -O - | tar -xz -C buildpack --strip-components 1
+mkdir buildpack && wget https://api.github.com/repos/particle-iot/firmware-buildpack-builder/tarball/feature/buildpack-runnable-without-travis -O - | tar -xz -C buildpack --strip-components 1
