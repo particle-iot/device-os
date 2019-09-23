@@ -163,6 +163,10 @@ export -f runBuildJob
 export -f runmake
 export -f testcase
 
+if [[ ${#BUILD_JOBS[@]} == 0 ]]; then
+  exit 0
+fi
+
 echo
 echo "Running ${#BUILD_JOBS[@]} build jobs on ${NPROC} cores"
 

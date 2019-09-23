@@ -8,30 +8,26 @@ cache:
   directories:
     $HOME/.ci/boost
 
-services:
-  - docker
+# Install latest Docker
+before_install:
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  - sudo apt-get update
+  - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
+  - sudo cat /etc/docker/daemon.json
+  # mirror.gcr.io in daemon.json doesn't work well with BuildKit
+  - sudo rm -f /etc/docker/daemon.json
+  - sudo systemctl restart docker
 
 install:
   - scripts/docker-hub-login
   - scripts/fetch-buildpack
+  - buildpack/scripts/build-deviceos
   - buildpack/scripts/build-image
 
 script:
   - buildpack/scripts/run-tests-in-container
   - 'if [ -f /home/travis/build/.build/coverage.json ]; then python ci/report/report.py /home/travis/build/.build/coverage.json; rm -f /home/travis/build/.build/coverage.json; fi'
-  - buildpack/scripts/push-image
-
-  # - 'if [ ! -z "$DOCKER_HUB_EMAIL" ]; then docker login --email=$DOCKER_HUB_EMAIL --username=$DOCKER_HUB_USERNAME --password=$DOCKER_HUB_PASSWORD; fi'
-  # - wget https://api.github.com/repos/spark/firmware-buildpack-builder/tarball/feature/go_faster_stripes -O - | tar -xz -C ../ --strip-components 1
-  # - ../scripts/build-image
-
-#script:
-  # - ../scripts/run-tests-in-container
-  # - 'if [ "${UNIT_TEST}" = "y" ]; then ./ci/unit_tests.sh; else cd $DIR && make -s clean all DEBUG_BUILD=$DEBUG_BUILD PLATFORM=$PLATFORM COMPILE_LTO=$COMPILE_LTO TEST=$TEST SPARK_CLOUD=$SPARK_CLOUD APP=$APP; fi'
-  # TODO - ./ci/integration_tests.sh
-  # TODO  - ./ci/test_memory_available_with_real_core.sh
-
-#after_success: ./ci/update-gh-pages.sh
 
 git:
   depth: 1
@@ -45,80 +41,8 @@ env:
     - BUILD_PLATFORM="argon bsom"
     - BUILD_PLATFORM="boron xsom"
 
-  # matrix:
-  #   - BUILD_PLATFORM=unit-test gcc
-  #   - BUILD_PLATFORM=photon p1
-  #   - BUILD_PLATFORM=core newhal
-  #   - BUILD_PLATFORM=electron xenon
-
-  # matrix:
-  # - UNIT_TEST=y
-  # - DIR=main    TEST=wiring/api        PLATFORM=photon COMPILE_LTO=n
-  # - DIR=main    TEST=wiring/api        PLATFORM=core   COMPILE_LTO=n SPARK_CLOUD=n
-  # - DIR=main    TEST=wiring/api        PLATFORM=P1     COMPILE_LTO=n
-  # - DIR=main    TEST=wiring/no_fixture PLATFORM=photon COMPILE_LTO=n
-  # - DIR=main    TEST=wiring/no_fixture PLATFORM=P1     COMPILE_LTO=n
-
-  # # expansion of matrix
-  # # dir=MAIN (monolithic)
-  # # DEBUG_BUILD=y
-  # # PLATFORM=core SPARK_CLOUD=y
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=core     SPARK_CLOUD=y APP=       COMPILE_LTO=y
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=core     SPARK_CLOUD=y APP=tinker COMPILE_LTO=y
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=core     SPARK_CLOUD=y APP=blank  COMPILE_LTO=y
-  # # SPARK_CLOUD=n
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=core     SPARK_CLOUD=n APP=       COMPILE_LTO=y
-
-  # # PLATFORM=photon SPARK_CLOUD=y
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=photon   SPARK_CLOUD=y APP=       COMPILE_LTO=n
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=photon   SPARK_CLOUD=y APP=tinker COMPILE_LTO=n
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=photon   SPARK_CLOUD=y APP=blank  COMPILE_LTO=n
-
-  # # PLATFORM=P1 SPARK_CLOUD=y
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=P1       SPARK_CLOUD=y APP=       COMPILE_LTO=n
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=P1       SPARK_CLOUD=y APP=tinker COMPILE_LTO=n
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=P1       SPARK_CLOUD=y APP=blank  COMPILE_LTO=n
-
-  # # PLATFORM=electron SPARK_CLOUD=y
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=electron SPARK_CLOUD=y APP=       COMPILE_LTO=n
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=electron SPARK_CLOUD=y APP=tinker COMPILE_LTO=n
-  # - DIR=main    DEBUG_BUILD=y PLATFORM=electron SPARK_CLOUD=y APP=blank  COMPILE_LTO=n
-
-  # # DEBUG_BUILD=n
-  # # PLATFORM=core SPARK_CLOUD=y
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=core     SPARK_CLOUD=y APP=       COMPILE_LTO=y
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=core     SPARK_CLOUD=y APP=tinker COMPILE_LTO=y
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=core     SPARK_CLOUD=y APP=blank  COMPILE_LTO=y
-  # # SPARK_CLOUD=n
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=core     SPARK_CLOUD=n APP=       COMPILE_LTO=y
-
-  # # PLATFORM=photon SPARK_CLOUD=y
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=photon   SPARK_CLOUD=y APP=       COMPILE_LTO=n
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=photon   SPARK_CLOUD=y APP=tinker COMPILE_LTO=n
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=photon   SPARK_CLOUD=y APP=blank  COMPILE_LTO=n
-
-  # # PLATFORM=P1 SPARK_CLOUD=y
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=P1       SPARK_CLOUD=y APP=       COMPILE_LTO=n
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=P1       SPARK_CLOUD=y APP=tinker COMPILE_LTO=n
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=P1       SPARK_CLOUD=y APP=blank  COMPILE_LTO=n
-
-  # # PLATFORM=electron SPARK_CLOUD=y
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=electron SPARK_CLOUD=y APP=       COMPILE_LTO=n
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=electron SPARK_CLOUD=y APP=tinker COMPILE_LTO=n
-  # - DIR=main    DEBUG_BUILD=n PLATFORM=electron SPARK_CLOUD=y APP=blank  COMPILE_LTO=n
-
-
-  # # DIR=modules (modular)
-  # # DEBUG_BUILD=y
-  # - DIR=modules DEBUG_BUILD=y PLATFORM=photon   COMPILE_LTO=n
-  # - DIR=modules DEBUG_BUILD=y PLATFORM=P1       COMPILE_LTO=n
-  # # DEBUG_BUILD=n
-  # - DIR=modules DEBUG_BUILD=n PLATFORM=photon   COMPILE_LTO=n
-  # - DIR=modules DEBUG_BUILD=n PLATFORM=P1       COMPILE_LTO=n
-
-  # # Photon minimal build
-  # - DIR=modules PLATFORM=photon COMPILE_LTO=n MINIMAL=y
   global:
+  - DOCKER_BUILDKIT=1
   - DOCKER_IMAGE_NAME=particle/buildpack-particle-firmware
   - secure: UM1+Ps1t21JfJaTFhuqkaY/U21j1Gfja6oSJTALcU0Y7zmo7TNyYMJwP+tbRfss7RBilWwUA8osr3sr6NXPREChojKpRQaRt52iD6wDfcxhsxGrpOU79cYO7FK1aQhCmhDGcnXahtxzbOGwS74jjTFW9U6TSveWa+EV1OgagLMc=
   - secure: aJ+EUGgXIp8t0s/f3EEyiUjYXnzAlYW9+jukG240A2Wb/XnGp9Av/JE+wBnBeMv7eF+hxkODo99gDXPumV6uYQevIBtqiHWtAu7kyvCxUWXhSmag+Q89pCJO8QpUrcxra9UZ6i+zhFEfskBctBjlT9nMKoUsGSg4jMg6Kx71QsA=
