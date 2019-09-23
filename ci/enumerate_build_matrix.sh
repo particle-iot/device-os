@@ -46,8 +46,7 @@ MAKE=runmake
 # "" means execute execute the $MAKE command without that var specified
 DEBUG_BUILD=( y n )
 PLATFORM=( core photon p1 electron xenon argon boron xsom asom bsom )
-# P1 bootloader built with gcc 4.8.4 doesn't fit flash, disabling for now
-PLATFORM_BOOTLOADER=( core photon electron xenon argon boron xsom asom bsom )
+PLATFORM_BOOTLOADER=( core photon p1 electron xenon argon boron xsom asom bsom )
 SPARK_CLOUD=( y n )
 APP=( "" tinker product_id_and_version)
 TEST=( wiring/api wiring/no_fixture )
