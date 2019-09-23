@@ -22,11 +22,9 @@ before_install:
 install:
   - scripts/docker-hub-login
   - scripts/fetch-buildpack
-  - buildpack/scripts/build-deviceos
-  - buildpack/scripts/build-image
 
 script:
-  - buildpack/scripts/run-tests-in-container
+  - buildpack/scripts/ci
   - 'if [ -f /home/travis/build/.build/coverage.json ]; then python ci/report/report.py /home/travis/build/.build/coverage.json; rm -f /home/travis/build/.build/coverage.json; fi'
 
 git:

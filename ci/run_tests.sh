@@ -12,3 +12,5 @@ if contains "${BUILD_PLATFORM[*]}" unit-test; then
 	./ci/build_boost.sh &&
 	./ci/unit_tests.sh ) || die
 fi
+
+./ci/enumerate_build_matrix.sh
