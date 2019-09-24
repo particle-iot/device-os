@@ -97,9 +97,7 @@
 #define Wiring_Keyboard 1
 #define Wiring_LogConfig 1
 
-#if HAL_PLATFORM_SETUP_BUTTON_UX
-#define Wiring_SetupButtonUX 1 // For compatibility on Electron
-#endif // HAL_PLATFORM_SETUP_BUTTON_UX
+#define Wiring_SetupButtonUX HAL_PLATFORM_SETUP_BUTTON_UX
 #endif
 
 #if PLATFORM_ID==20      // mesh-virtual
