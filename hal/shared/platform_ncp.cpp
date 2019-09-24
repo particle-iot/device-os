@@ -17,20 +17,23 @@
 
 #include "platform_ncp.h"
 
-
-
-MeshNCPIdentifier platform_ncp_identifier(module_info_t* mi)
-{
-	MeshNCPIdentifier ncp = MESH_NCP_UNKNOWN;
-	if (mi->platform_id == PLATFORM_ID) {
-		switch (mi->reserved) {
-		case MESH_NCP_ESP32:
-		case MESH_NCP_SARA_U201:
-		case MESH_NCP_SARA_G350:
-		case MESH_NCP_SARA_R410:
-			ncp = static_cast<MeshNCPIdentifier>(mi->reserved);
-			break;
-		}
-	}
-	return ncp;
+MeshNCPIdentifier platform_ncp_identifier(module_info_t* mi) {
+    MeshNCPIdentifier ncp = MESH_NCP_UNKNOWN;
+    if (mi->platform_id == PLATFORM_ID) {
+        switch (mi->reserved) {
+        case MESH_NCP_ESP32:
+        case MESH_NCP_SARA_U201:
+        case MESH_NCP_SARA_G350:
+        case MESH_NCP_SARA_R410:
+        case MESH_NCP_QUECTEL_BG96:
+        case MESH_NCP_QUECTEL_EG91:
+        case MESH_NCP_SARA_U260:
+        case MESH_NCP_SARA_U270:
+        case MESH_NCP_BROADCOM_BCM9WCDUSI09:
+        case MESH_NCP_BROADCOM_BCM9WCDUSI14:
+            ncp = static_cast<MeshNCPIdentifier>(mi->reserved);
+            break;
+        }
+    }
+    return ncp;
 }
