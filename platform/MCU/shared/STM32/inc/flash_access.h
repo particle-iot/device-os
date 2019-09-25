@@ -71,7 +71,8 @@ void FLASH_Restore(uint32_t FLASH_Address);
 void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize);
 int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize);
 void FLASH_End(void);
-
+int FLASH_ReadOTP(uint32_t offset, uint8_t* pBuffer, uint32_t bufferSize);
+int FLASH_WriteOTP(uint32_t offset, const uint8_t* pBuffer, uint32_t bufferSize);
 
 #ifdef __cplusplus
 }
