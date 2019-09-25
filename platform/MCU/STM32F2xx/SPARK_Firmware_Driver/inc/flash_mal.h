@@ -61,6 +61,10 @@ extern "C" {
 /* Internal Flash page size */
 #define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x20000) //128K (7 sectors of 128K each used by main firmware)
 
+#define OTP_SIZE                    (528)
+#define OTP_START_ADD               ((uint32_t)0x1FFF7800) 
+#define OTP_END_ADD                 ((uint32_t)(OTP_START_ADD + OTP_SIZE))
+
 #ifdef MODULAR_FIRMWARE
     #define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_USER_PART
     #ifndef USER_FIRMWARE_IMAGE_SIZE
