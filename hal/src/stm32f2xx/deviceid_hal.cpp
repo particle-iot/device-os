@@ -44,8 +44,6 @@ namespace {
 
 using namespace particle;
 
-const uint32_t DEVICE_ID_PREFIX = 0x68ce0fe0;
-
 const uintptr_t SERIAL_NUMBER_OTP_ADDRESS = 0x00000000;
 const uintptr_t DEVICE_SECRET_OTP_ADDRESS = 0x00000010;
 
