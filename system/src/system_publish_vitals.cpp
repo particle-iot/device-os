@@ -7,16 +7,42 @@
 #include "system_cloud.h"
 #include "system_threading.h"
 
-namespace {
+namespace
+{
 
 using namespace particle::system;
 
-int postDescription() {
-    const auto r = spark_protocol_post_description(spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr);
-    return spark_protocol_to_system_error(r);
+/**
+ * @brief Post description message via the CoAP protocol
+ *
+ * This function is shared internally by both the `publish` and `publishFromTimer` methods. It is
+ * static to ensure it can be called on the system thread via the `ISRTaskQueue`.
+ *
+ * @sa template <class Timer> particle::cloud::VitalsPublisher<Timer>::publish
+ * @sa template <class Timer> particle::cloud::VitalsPublisher<Timer>::publishFromTimer
+ */
+inline int postDescription()
+{
+    int error;
+
+    if (spark_cloud_flag_connected())
+    {
+        // Transmit CoAP message via communication layer
+        error = spark_protocol_post_description(spark_protocol_instance(),
+                                                particle::protocol::DESCRIBE_METRICS, nullptr);
+
+        // Convert `protocol` error to `system` error
+        error = spark_protocol_to_system_error(error);
+    }
+    else
+    {
+        error = SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    return error;
 }
 
-} // unnamed
+} // namespace
 
 template <class Timer>
 VitalsPublisher<Timer>::VitalsPublisher(Timer* timer_)
@@ -84,12 +110,15 @@ void VitalsPublisher<Timer>::period(system_tick_t period_s_)
 template <class Timer>
 int VitalsPublisher<Timer>::publish(void)
 {
-    if (!spark_cloud_flag_connected()) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
     return postDescription();
 }
 
+// Functionality covered by E2E tests
+#define LCOV_EXCL_START
+/*
+ * TODO: CH38588 - Abstract ISRTaskQueue boilerplate
+ * https://app.clubhouse.io/particle/story/38588/abstract-isrtaskqueue-boilerplate
+ */
 template <class Timer>
 void VitalsPublisher<Timer>::publishFromTimer(void)
 {
@@ -100,12 +129,11 @@ void VitalsPublisher<Timer>::publishFromTimer(void)
     }
     task->func = [](ISRTaskQueue::Task* task) {
         delete task;
-        if (spark_cloud_flag_connected()) {
-            postDescription();
-        }
+        postDescription();
     };
     SystemISRTaskQueue.enqueue(task);
 }
+#define LCOV_EXCL_STOP
 
 #include "spark_wiring_timer.h"
 
@@ -120,15 +148,5 @@ template class VitalsPublisher<particle::NullTimer>;
 #include "../test/unit_tests/mock/mock_types.h"
 
 template class VitalsPublisher<particle::mock_type::Timer>;
-
-inline bool spark_cloud_flag_connected()
-{
-    return true;
-}
-
-inline int spark_protocol_to_system_error(int error)
-{
-    return error;
-}
 
 #endif // UNIT_TEST

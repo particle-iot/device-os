@@ -27,6 +27,9 @@
 #include "mock/mock_types.h"
 #include "system_publish_vitals.h"
 
+bool spark_cloud_flag_connected_called;
+int spark_cloud_flag_connected_result;
+
 bool spark_protocol_post_description_called;
 int spark_protocol_post_description_result;
 
@@ -36,17 +39,28 @@ void ISRTaskQueue::enqueue(ISRTaskQueue::Task*)
 {
 }
 
-extern "C" {
-ProtocolFacade* spark_protocol_instance()
+extern "C"
 {
-    return nullptr;
-}
+    bool spark_cloud_flag_connected()
+    {
+        return spark_cloud_flag_connected_result;
+    }
 
-int spark_protocol_post_description(ProtocolFacade*, int, void*)
-{
-    spark_protocol_post_description_called = true;
-    return spark_protocol_post_description_result;
-}
+    ProtocolFacade* spark_protocol_instance()
+    {
+        return nullptr;
+    }
+
+    int spark_protocol_post_description(ProtocolFacade*, int, void*)
+    {
+        spark_protocol_post_description_called = true;
+        return spark_protocol_post_description_result;
+    }
+
+    int spark_protocol_to_system_error(int error)
+    {
+        return error;
+    }
 }
 
 // ASSUMPTION!!! - Period "getter" method works correctly - without being testing.
@@ -306,14 +320,17 @@ TEST_CASE("Setting period value", "[VitalsPublisher::period]")
 
 TEST_CASE("Publishing vitals", "[VitalsPublisher::publish]")
 {
-    SECTION("spark_protocol_post_description invocation")
+    SECTION("spark_protocol_post_description direct invocation")
     {
+        extern bool spark_cloud_flag_connected_called;
+        extern int spark_cloud_flag_connected_result;
         extern bool spark_protocol_post_description_called;
         extern int spark_protocol_post_description_result;
 
-        GIVEN("A VitalsPublisher with mocked publish function and expected results")
+        GIVEN("A cloud connected VitalsPublisher")
         {
             const int EXPECTED_RESULT = 1979;
+            spark_cloud_flag_connected_result = true;
             spark_protocol_post_description_called = false;
             spark_protocol_post_description_result = EXPECTED_RESULT;
 
@@ -328,9 +345,34 @@ TEST_CASE("Publishing vitals", "[VitalsPublisher::publish]")
                     CHECK(spark_protocol_post_description_called);
                 }
 
-                THEN("spark_protocol_post_description result is returned to caller")
+                THEN("The expected spark_protocol_post_description result is returned to caller")
                 {
                     CHECK(EXPECTED_RESULT == ACTUAL_RESULT);
+                }
+            }
+        }
+
+        GIVEN("A disconnected VitalsPublisher")
+        {
+            spark_cloud_flag_connected_result = false;
+            spark_protocol_post_description_called = false;
+            spark_protocol_post_description_result = SYSTEM_ERROR_INVALID_STATE;
+
+            particle::system::VitalsPublisher<particle::mock_type::Timer> vp;
+
+            WHEN("Publish Invoked")
+            {
+                const int ACTUAL_RESULT = vp.publish();
+
+                THEN("The static function is not invoked")
+                {
+                    CHECK_FALSE(spark_protocol_post_description_called);
+                }
+
+                THEN("The expected spark_protocol_post_description result is "
+                     "SYSTEM_ERROR_INVALID_STATE")
+                {
+                    CHECK(SYSTEM_ERROR_INVALID_STATE == ACTUAL_RESULT);
                 }
             }
         }
