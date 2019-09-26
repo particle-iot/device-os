@@ -27,9 +27,9 @@ const uintptr_t NCP_ID_OTP_ADDRESS = 0x00000020;
 
 bool isValidNcpId(uint8_t id) {
     switch (id) {
-    case MeshNCPIdentifier::MESH_NCP_SARA_U201:
-    case MeshNCPIdentifier::MESH_NCP_SARA_G350:
-    case MeshNCPIdentifier::MESH_NCP_SARA_R410:
+    case PlatformNCPIdentifier::PLATFORM_NCP_SARA_U201:
+    case PlatformNCPIdentifier::PLATFORM_NCP_SARA_G350:
+    case PlatformNCPIdentifier::PLATFORM_NCP_SARA_R410:
         return true;
     default:
         return false;
@@ -38,7 +38,7 @@ bool isValidNcpId(uint8_t id) {
 
 } // unnamed
 
-MeshNCPIdentifier platform_current_ncp_identifier() {
+PlatformNCPIdentifier platform_current_ncp_identifier() {
     // Check the DCT
     uint8_t ncpId = 0;
     int r = dct_read_app_data_copy(DCT_NCP_ID_OFFSET, &ncpId, 1);
@@ -46,8 +46,8 @@ MeshNCPIdentifier platform_current_ncp_identifier() {
         // Check the OTP flash
         r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, NCP_ID_OTP_ADDRESS, &ncpId, 1);
         if (r < 0 || !isValidNcpId(ncpId)) {
-            ncpId = MeshNCPIdentifier::MESH_NCP_UNKNOWN;
+            ncpId = PlatformNCPIdentifier::PLATFORM_NCP_UNKNOWN;
         }
     }
-    return (MeshNCPIdentifier)ncpId;
+    return (PlatformNCPIdentifier)ncpId;
 }
