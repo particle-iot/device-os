@@ -30,6 +30,8 @@
 #define PARTICLE_WIRING_ARDUINO_COMPATIBILTY 0
 #endif
 
+#include <chrono>
+
 #include "system_version.h"
 
 #ifdef SPARK_PLATFORM
@@ -88,6 +90,7 @@
 
 using namespace spark;
 using namespace particle;
+using namespace std::literals::chrono_literals;
 
 #include "spark_wiring_arduino.h"
 

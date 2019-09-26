@@ -22,6 +22,7 @@
 
 #ifndef SPARK_WIRING_SYSTEM_H
 #define SPARK_WIRING_SYSTEM_H
+
 #include "spark_wiring_ticks.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_platform.h"
@@ -37,6 +38,7 @@
 #include "system_user.h"
 #include "system_version.h"
 #include "spark_wiring_flags.h"
+#include <chrono>
 #include <limits>
 #include <mutex>
 
@@ -146,19 +148,19 @@ public:
     }
 #endif
 
-
     static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
-    inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, SleepOptionFlags flag, long seconds=0) {
-        return sleep(sleepMode, seconds, flag);
-    }
+    inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, std::chrono::seconds s, SleepOptionFlags flag=SLEEP_NETWORK_OFF) { return sleep(sleepMode, s.count(), flag); }
+
+    inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, SleepOptionFlags flag, long seconds=0) { return sleep(sleepMode, seconds, flag); }
+    inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, SleepOptionFlags flag, std::chrono::seconds s) { return sleep(sleepMode, flag, s.count()); }
 
     inline static SleepResult sleep(long seconds) { return sleep(SLEEP_MODE_WLAN, seconds); }
-    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF) {
-        return sleepPinImpl(&wakeUpPin, 1, &edgeTriggerMode, 1, seconds, flag);
-    }
-    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds=0) {
-        return sleep(wakeUpPin, edgeTriggerMode, seconds, flag);
-    }
+    inline static SleepResult sleep(std::chrono::seconds s) { return sleep(s.count()); }
+
+    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF) { return sleepPinImpl(&wakeUpPin, 1, &edgeTriggerMode, 1, seconds, flag); }
+    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, std::chrono::seconds s, SleepOptionFlags flag=SLEEP_NETWORK_OFF) { return sleep(wakeUpPin, edgeTriggerMode, s.count(), flag); }
+    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds=0) { return sleep(wakeUpPin, edgeTriggerMode, seconds, flag); }
+    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, SleepOptionFlags flag, std::chrono::seconds s) { return sleep(wakeUpPin, edgeTriggerMode, flag, s.count()); }
 
     /*
      * wakeup pins: std::initializer_list<pin_t>
@@ -169,9 +171,9 @@ public:
         // static_assert(pins.size() > 0, "Provided pin list is empty");
         return sleepPinImpl(pins.begin(), pins.size(), &edgeTriggerMode, 1, seconds, flag);
     }
-    inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
-        return sleep(pins, edgeTriggerMode, seconds, flag);
-    }
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { return sleep(pins, edgeTriggerMode, s.count(), flag); }
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) { return sleep(pins, edgeTriggerMode, seconds, flag); }
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, SleepOptionFlags flag, std::chrono::seconds s) { return sleep(pins, edgeTriggerMode, flag, s.count()); }
     /*
      * wakeup pins: std::initializer_list<pin_t>
      * trigger mode: std::initializer_list<InterruptMode>
@@ -182,31 +184,27 @@ public:
         // static_assert(edgeTriggerMode.size() > 0, "Provided InterruptMode list is empty");
         return sleepPinImpl(pins.begin(), pins.size(), edgeTriggerMode.begin(), edgeTriggerMode.size(), seconds, flag);
     }
-    inline static SleepResult sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
-        return sleep(pins, edgeTriggerMode, seconds, flag);
-    }
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { return sleep(pins, edgeTriggerMode, s.count(), flag); }
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) { return sleep(pins, edgeTriggerMode, seconds, flag); }
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, SleepOptionFlags flag, std::chrono::seconds s) { return sleep(pins, edgeTriggerMode, flag, s.count()); }
 
     /*
      * wakeup pins: pin_t* + size_t
      * trigger mode: single InterruptMode
      */
-    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
-        return sleepPinImpl(pins, pinsSize, &edgeTriggerMode, 1, seconds, flag);
-    }
-    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
-        return sleep(pins, pinsSize, edgeTriggerMode, seconds, flag);
-    }
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { return sleepPinImpl(pins, pinsSize, &edgeTriggerMode, 1, seconds, flag); }
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { return sleep(pins, pinsSize, edgeTriggerMode, s.count(), flag); }
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) { return sleep(pins, pinsSize, edgeTriggerMode, seconds, flag); }
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, SleepOptionFlags flag, std::chrono::seconds s) { return sleep(pins, pinsSize, edgeTriggerMode, flag, s.count()); }
 
     /*
      * wakeup pins: pin_t* + size_t
      * trigger mode: InterruptMode* + size_t
      */
-    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
-        return sleepPinImpl(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, seconds, flag);
-    }
-    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, SleepOptionFlags flag, long seconds = 0) {
-        return sleep(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, seconds, flag);
-    }
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { return sleepPinImpl(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, seconds, flag); }
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { return sleep(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, s.count(), flag); }
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, SleepOptionFlags flag, long seconds = 0) { return sleep(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, seconds, flag); }
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, SleepOptionFlags flag, std::chrono::seconds s) { return sleep(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, flag, s.count()); }
 
     static String deviceID(void) { return spark_deviceID(); }
 

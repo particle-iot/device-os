@@ -129,6 +129,7 @@ test(api_spark_publish_vitals) {
     API_COMPILE(Particle.publishVitals(particle::NOW)); // publish vitals immediately
     API_COMPILE(Particle.publishVitals(0)); // disable periodic publishing
     API_COMPILE(Particle.publishVitals(5)); // publish vitals at 5 second intervals
+    API_COMPILE(Particle.publishVitals(5s)); // publish vitals at 5 second intervals
 }
 
 test(api_spark_subscribe) {
@@ -187,7 +188,11 @@ test(api_spark_connection) {
     API_COMPILE(Particle.process());
 
 #if HAL_PLATFORM_CLOUD_UDP
+    int s = (20 * 60);
     API_COMPILE(Particle.keepAlive(20 * 60));
+    API_COMPILE(Particle.keepAlive(s));
+    API_COMPILE(Particle.keepAlive(1200s));
+    API_COMPILE(Particle.keepAlive(20min));
 #endif
 }
 

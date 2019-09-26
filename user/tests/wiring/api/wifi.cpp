@@ -61,6 +61,7 @@ test (wifi_api_listen)
     API_COMPILE(WiFi.listen(false));
     API_COMPILE(result = WiFi.listening());
     API_COMPILE(WiFi.setListenTimeout(10));
+    API_COMPILE(WiFi.setListenTimeout(10s));
     API_COMPILE(val = WiFi.getListenTimeout());
     (void)result; // avoid unused warning
     (void)val;    //   |

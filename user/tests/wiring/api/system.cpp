@@ -38,6 +38,7 @@ test(system_api) {
     API_COMPILE(System.resetReasonData());
 
     API_COMPILE(System.sleep(60));
+    API_COMPILE(System.sleep(60s));
 
 }
 
@@ -46,10 +47,13 @@ test(system_sleep)
 
     // All sleep methods should return System.sleep()
     API_COMPILE({ SleepResult r = System.sleep(60); (void)r; });
+    API_COMPILE({ SleepResult r = System.sleep(60s); (void)r; });
 
     API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_WLAN, 60); (void)r; });
+    API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_WLAN, 60s); (void)r; });
 
     API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, 60); (void)r; });
+    API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, 60s); (void)r; });
 
     API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP); (void)r; });
 
@@ -57,12 +61,16 @@ test(system_sleep)
     API_COMPILE({ SleepResult r = System.sleep(A0, RISING); (void)r; });
     API_COMPILE({ SleepResult r = System.sleep(A0, FALLING); (void)r; });
     API_COMPILE({ SleepResult r = System.sleep(A0, FALLING, 20); (void)r; });
+    API_COMPILE({ SleepResult r = System.sleep(A0, FALLING, 20s); (void)r; });
 
     // with network flags
     API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_WLAN, 60, SLEEP_NETWORK_STANDBY); (void)r; });
+    API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_WLAN, 60s, SLEEP_NETWORK_STANDBY); (void)r; });
 
     API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, 60, SLEEP_NETWORK_STANDBY); (void)r; });
+    API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, 60s, SLEEP_NETWORK_STANDBY); (void)r; });
     API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_NETWORK_STANDBY, 60); (void)r; });
+    API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_NETWORK_STANDBY, 60s); (void)r; });
 
     API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_NETWORK_STANDBY); (void)r; });
     API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_NETWORK_STANDBY | SLEEP_NO_WAIT); (void)r; });
@@ -71,7 +79,9 @@ test(system_sleep)
     API_COMPILE({ SleepResult r = System.sleep(A0, RISING, SLEEP_NETWORK_STANDBY); (void)r; });
     API_COMPILE({ SleepResult r = System.sleep(A0, FALLING, SLEEP_NETWORK_STANDBY); (void)r; });
     API_COMPILE({ SleepResult r = System.sleep(A0, FALLING, 20, SLEEP_NETWORK_STANDBY); (void)r; });
+    API_COMPILE({ SleepResult r = System.sleep(A0, FALLING, 20s, SLEEP_NETWORK_STANDBY); (void)r; });
     API_COMPILE({ SleepResult r = System.sleep(A0, FALLING, SLEEP_NETWORK_STANDBY, 20); (void)r; });
+    API_COMPILE({ SleepResult r = System.sleep(A0, FALLING, SLEEP_NETWORK_STANDBY, 20s); (void)r; });
 
     // Multi-pin variants
     {
@@ -96,9 +106,12 @@ test(system_sleep)
          */
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING); (void)r; });
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING, 20); (void)r; });
+        API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING, 20s); (void)r; });
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING, SLEEP_NETWORK_STANDBY); (void)r; });
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING, 20, SLEEP_NETWORK_STANDBY); (void)r; });
+        API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING, 20s, SLEEP_NETWORK_STANDBY); (void)r; });
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING, SLEEP_NETWORK_STANDBY, 20); (void)r; });
+        API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING, SLEEP_NETWORK_STANDBY, 20s); (void)r; });
 
         /*
          * wakeup pins: pin_t* + size_t
@@ -106,18 +119,25 @@ test(system_sleep)
          */
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array)); (void)r; });
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), 20); (void)r; });
+        API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), 20s); (void)r; });
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), SLEEP_NETWORK_STANDBY); (void)r; });
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), 20, SLEEP_NETWORK_STANDBY); (void)r; });
+        API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), 20s, SLEEP_NETWORK_STANDBY); (void)r; });
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), SLEEP_NETWORK_STANDBY, 20); (void)r; });
+        API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array), SLEEP_NETWORK_STANDBY, 20s); (void)r; });
 		// SLEEP_DISABLE_WKP_PIN
 		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN); (void)r;});
 		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN, 60); (void)r;});
+		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN, 60s); (void)r;});
 		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, 60, SLEEP_DISABLE_WKP_PIN); (void)r;});
+		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, 60s, SLEEP_DISABLE_WKP_PIN); (void)r;});
 
 		// Flags OR-ing
 		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY); (void)r;});
 		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY, 60); (void)r;});
+		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY, 60s); (void)r;});
 		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, 60, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY); (void)r;});
+		API_COMPILE({ SleepResult r = System.sleep(SLEEP_MODE_DEEP, 60s, SLEEP_DISABLE_WKP_PIN | SLEEP_NETWORK_STANDBY); (void)r;});
     }
     API_COMPILE({
         SleepResult r;

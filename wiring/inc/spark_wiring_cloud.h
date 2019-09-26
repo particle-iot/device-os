@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <chrono>
+
 #include "spark_wiring_string.h"
 #include "events.h"
 #include "system_cloud.h"
@@ -263,6 +265,7 @@ class CloudClass {
      * @note The periodic functionality is not available for the Spark Core.
      */
     int publishVitals(system_tick_t period_s = particle::NOW);
+    inline int publishVitals(std::chrono::seconds s) { return publishVitals(s.count()); }
 
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
     {
@@ -359,7 +362,7 @@ class CloudClass {
     static String deviceID(void) { return SystemClass::deviceID(); }
 
 #if HAL_PLATFORM_CLOUD_UDP
-    static void keepAlive(unsigned sec)
+    inline static void keepAlive(unsigned sec)
     {
         particle::protocol::connection_properties_t conn_prop = {0};
         conn_prop.size = sizeof(conn_prop);
@@ -368,6 +371,8 @@ class CloudClass {
                                                sec * 1000, &conn_prop, nullptr),
                  (void)0);
     }
+
+    inline static void keepAlive(std::chrono::seconds s) { keepAlive(s.count()); }
 #endif
 
 private:

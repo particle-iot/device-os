@@ -26,7 +26,9 @@
 test(delay) {
 
     API_COMPILE(delay(100));
+    API_COMPILE(delay(100ms));
     API_COMPILE(delayMicroseconds(100));
+    API_COMPILE(delayMicroseconds(100us));
 }
 
 test(ticks) {

@@ -19,11 +19,14 @@
 
 #pragma once
 
+#include <chrono>
+#include <functional>
+
 #if PLATFORM_ID!=3
+
 #include "stddef.h"
 #include "concurrent_hal.h"
 #include "spark_wiring_thread.h"
-#include <functional>
 
 class Timer
 {
@@ -50,6 +53,7 @@ public:
     bool stopFromISR() { return _stop(0, true); }
     bool resetFromISR() { return _reset(0, true); }
     bool changePeriodFromISR(unsigned period) { return _changePeriod(period, 0, true); }
+    inline bool changePeriodFromISR(std::chrono::milliseconds ms) { return changePeriodFromISR(ms.count()); }
 
     static const unsigned default_wait = 0x7FFFFFFF;
 
@@ -57,6 +61,7 @@ public:
     bool stop(unsigned block=default_wait) { return _stop(block, false); }
     bool reset(unsigned block=default_wait) { return _reset(block, false); }
     bool changePeriod(unsigned period, unsigned block=default_wait) { return _changePeriod(period, block, false); }
+    inline bool changePeriod(std::chrono::milliseconds ms, unsigned block=default_wait) { return changePeriod(ms.count(), block); }
 
     bool isValid() const { return handle!=nullptr; }
     bool isActive() const { return isValid() && os_timer_is_active(handle, nullptr); }
@@ -81,6 +86,7 @@ public:
     {
          return handle ? !os_timer_change(handle, OS_TIMER_CHANGE_PERIOD, fromISR, period, block, nullptr) : false;
     }
+    bool _changePeriod(std::chrono::milliseconds ms, unsigned block, bool fromISR=false) { return _changePeriod(ms.count(), block, fromISR); }
 
     void dispose()
     {
@@ -155,6 +161,8 @@ public:
     {
         return true;
     }
+    inline static bool changePeriod(const std::chrono::milliseconds ms) { return changePeriod(ms.count()); }
+
     inline static void dispose(void)
     {
     }
