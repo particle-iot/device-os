@@ -41,12 +41,12 @@ public:
     CellularNcpClientConfig& simType(SimType type);
     SimType simType() const;
 
-    CellularNcpClientConfig& ncpIdentifier(MeshNCPIdentifier ident);
-    MeshNCPIdentifier ncpIdentifier() const;
+    CellularNcpClientConfig& ncpIdentifier(PlatformNCPIdentifier ident);
+    PlatformNCPIdentifier ncpIdentifier() const;
 
 private:
     SimType simType_;
-    MeshNCPIdentifier ident_;
+    PlatformNCPIdentifier ident_;
 };
 
 enum class UbloxSaraUmnoprof {
@@ -130,7 +130,7 @@ public:
 
 inline CellularNcpClientConfig::CellularNcpClientConfig() :
         simType_(SimType::INTERNAL),
-        ident_(MESH_NCP_UNKNOWN) {
+        ident_(PLATFORM_NCP_UNKNOWN) {
 }
 
 inline CellularNcpClientConfig& CellularNcpClientConfig::simType(SimType type) {
@@ -143,12 +143,12 @@ inline SimType CellularNcpClientConfig::simType() const {
 }
 
 
-inline CellularNcpClientConfig& CellularNcpClientConfig::ncpIdentifier(MeshNCPIdentifier ident) {
+inline CellularNcpClientConfig& CellularNcpClientConfig::ncpIdentifier(PlatformNCPIdentifier ident) {
     ident_ = ident;
     return *this;
 }
 
-inline MeshNCPIdentifier CellularNcpClientConfig::ncpIdentifier() const {
+inline PlatformNCPIdentifier CellularNcpClientConfig::ncpIdentifier() const {
     return ident_;
 }
 

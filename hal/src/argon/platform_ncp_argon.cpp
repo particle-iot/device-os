@@ -12,8 +12,8 @@
 
 #include <algorithm>
 
-MeshNCPIdentifier platform_current_ncp_identifier() {
-    return MESH_NCP_ESP32;
+PlatformNCPIdentifier platform_current_ncp_identifier() {
+    return PLATFORM_NCP_ESP32;
 }
 
 class OtaUpdateSourceStream : public particle::InputStream {

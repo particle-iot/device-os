@@ -229,7 +229,7 @@ void PppNcpNetif::pppEventHandler(uint64_t ev) {
     if (ev == particle::net::ppp::Client::EVENT_UP) {
         unsigned mtu = client_.getIf()->mtu;
         LOG(TRACE, "Negotiated MTU: %u", mtu);
-        if (celMan_->ncpClient()->ncpId() == MESH_NCP_SARA_R410) {
+        if (celMan_->ncpClient()->ncpId() == PLATFORM_NCP_SARA_R410) {
             // This is a workaround for SARA R410 02B, where the default MTU
             // causes the PPP session to get broken
             client_.getIf()->mtu = std::min(mtu, NCP_SARA_R410_MTU);

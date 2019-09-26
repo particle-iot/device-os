@@ -97,7 +97,7 @@ inline void Esp32NcpClient::unlock() {
 }
 
 inline int Esp32NcpClient::ncpId() const {
-    return MeshNCPIdentifier::MESH_NCP_ESP32;
+    return PlatformNCPIdentifier::PLATFORM_NCP_ESP32;
 }
 
 inline void Esp32NcpClient::parserError(int error) {
