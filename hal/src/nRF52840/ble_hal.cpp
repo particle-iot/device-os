@@ -1456,7 +1456,12 @@ void BleObject::Observer::notifyScanResultEvent(const hal_ble_scan_result_evt_t&
 }
 
 int BleObject::Observer::processAdvReportEventFromThread(const ble_evt_t* event) {
-    CHECK_TRUE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
+    if (!isScanning_) {
+        if (event->evt.gap_evt.params.adv_report.data.p_data) {
+            BleObject::getInstance().dispatcher()->freeEventData(event->evt.gap_evt.params.adv_report.data.p_data);
+        }
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     const ble_gap_evt_adv_report_t& advReport = event->evt.gap_evt.params.adv_report;
     hal_ble_addr_t newAddr = toHalAddress(advReport.peer_addr);
     if (isCachedDevice(newAddr)) {
@@ -1485,7 +1490,7 @@ int BleObject::Observer::processAdvReportEventFromThread(const ble_evt_t* event)
         // Scan response data packet
         hal_ble_scan_result_evt_t* result = getPendingResult(newAddr);
         if (!result) {
-            goto continue_scanning;
+            goto free;
         }
         constructObserverEvent(*result, advReport);
         notifyScanResultEvent(*result);
@@ -3240,7 +3245,7 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
             break;
         }
         case BLE_GATTC_EVT_HVX: {
-            LOG_DEBUG(TRACE, "BLE GATT Server event: data notified.");
+            LOG_DEBUG(TRACE, "BLE GATT Client event: data notified.");
             ble_evt_t* dataNotifiedEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
                     SUB1(event->evt.gattc_evt.params.hvx.len) * sizeof(uint8_t));
             if (!dataNotifiedEvent) {
