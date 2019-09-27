@@ -323,11 +323,11 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
 
 namespace {
 
-system_reset_reason pendingResetReason = RESET_REASON_UNKNOWN;
+System_Reset_Reason pendingResetReason = RESET_REASON_UNKNOWN;
 
 } // unnamed
 
-void system_pending_shutdown(system_reset_reason reason)
+void system_pending_shutdown(System_Reset_Reason reason)
 {
     uint8_t was_set = false;
     system_get_flag(SYSTEM_FLAG_RESET_PENDING, &was_set, nullptr);

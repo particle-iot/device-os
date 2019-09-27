@@ -37,7 +37,7 @@ typedef enum network_interface_index {
  * spark/device/last_reset event. When adding a new reason code, make sure to update the
  * mappings accordingly.
  */
-typedef enum system_reset_reason {
+typedef enum System_Reset_Reason {
     RESET_REASON_NONE = 0, ///< Invalid reason code.
     RESET_REASON_UNKNOWN = 10, ///< Unspecified reason.
     // Hardware
@@ -55,4 +55,4 @@ typedef enum system_reset_reason {
     RESET_REASON_DFU_MODE = 120, ///< DFU mode requested.
     RESET_REASON_PANIC = 130, ///< System panic.
     RESET_REASON_USER = 140 ///< User-requested reset.
-} system_reset_reason;
+} System_Reset_Reason;

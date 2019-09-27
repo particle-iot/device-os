@@ -253,7 +253,7 @@ typedef enum cloud_disconnect_reason {
 typedef struct spark_disconnect_command {
     uint16_t size; ///< Size of this structure.
     unsigned disconnect_reason; ///< Disconnection reason (a value defined by the `cloud_disconnect_reason` enum).
-    unsigned reset_reason; ///< System reset reason (a value defined by the `system_reset_reason` enum).
+    unsigned reset_reason; ///< System reset reason (a value defined by the `System_Reset_Reason` enum).
     unsigned sleep_duration; ///< Duration of the system sleep in seconds.
     unsigned timeout; ///< Maximum time in milliseconds to spend waiting for acknowledgements.
 } spark_disconnect_command;

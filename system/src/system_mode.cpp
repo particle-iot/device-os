@@ -30,7 +30,7 @@ System_Mode_TypeDef current_mode = DEFAULT;
 
 volatile uint8_t SPARK_CLOUD_AUTO_CONNECT = 1; //default is AUTOMATIC mode
 
-int systemResetImpl(system_reset_mode mode, system_reset_reason reason, unsigned value, unsigned flags) {
+int systemResetImpl(system_reset_mode mode, System_Reset_Reason reason, unsigned value, unsigned flags) {
     if (!(flags & SYSTEM_RESET_FLAG_NO_WAIT)) {
         // Disconnect from the cloud gracefully
         cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SYSTEM_RESET, reason);
@@ -164,10 +164,10 @@ int system_reset(unsigned mode, unsigned reason, unsigned value, unsigned flags,
     }
     if (flags & SYSTEM_RESET_FLAG_NO_WAIT) {
         // Reset the system directly in the calling thread
-        systemResetImpl((system_reset_mode)mode, (system_reset_reason)reason, value, flags);
+        systemResetImpl((system_reset_mode)mode, (System_Reset_Reason)reason, value, flags);
     } else {
         // Gracefully disconnect from the cloud and reset the system in the system thread
-        SYSTEM_THREAD_CONTEXT_SYNC_CALL(systemResetImpl((system_reset_mode)mode, (system_reset_reason)reason, value, flags));
+        SYSTEM_THREAD_CONTEXT_SYNC_CALL(systemResetImpl((system_reset_mode)mode, (System_Reset_Reason)reason, value, flags));
     }
     return 0; // Not reachable
 }

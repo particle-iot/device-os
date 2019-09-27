@@ -87,7 +87,7 @@ public:
 					timeout = p->timeout;
 				}
 				if (p->disconnect_reason != CLOUD_DISCONNECT_REASON_NONE) {
-					r = send_goodbye((cloud_disconnect_reason)p->disconnect_reason, (system_reset_reason)p->reset_reason,
+					r = send_goodbye((cloud_disconnect_reason)p->disconnect_reason, (System_Reset_Reason)p->reset_reason,
 							p->sleep_duration);
 				}
 			}

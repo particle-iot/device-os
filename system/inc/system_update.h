@@ -155,7 +155,7 @@ typedef enum
 
 
 void system_shutdown_if_needed();
-void system_pending_shutdown(system_reset_reason reason);
+void system_pending_shutdown(System_Reset_Reason reason);
 
 int system_set_flag(system_flag_t flag, uint8_t value, void* reserved);
 int system_get_flag(system_flag_t flag, uint8_t* value,void* reserved);

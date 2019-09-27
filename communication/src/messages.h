@@ -166,7 +166,7 @@ public:
     static size_t response_size(size_t payload_size, bool has_token);
 
     static size_t goodbye(unsigned char* buf, size_t size, message_id_t message_id, cloud_disconnect_reason disconnect_reason,
-            system_reset_reason reset_reason, unsigned sleep_duration, bool confirmable);
+            System_Reset_Reason reset_reason, unsigned sleep_duration, bool confirmable);
 };
 
 
