@@ -111,7 +111,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     conf_ = static_cast<const CellularNcpClientConfig&>(conf);
     // Initialize serial stream
     auto sconf = SERIAL_8N1;
-    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         sconf |= SERIAL_FLOW_CONTROL_RTS_CTS;
     } else {
         HAL_Pin_Mode(RTS1, OUTPUT);
@@ -485,7 +485,7 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
     CHECK(checkParser());
     CHECK(queryAndParseAtCops(qual));
 
-    if (ncpId() == MESH_NCP_SARA_R410) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
         int rxlev, rxqual, rscp, ecn0, rsrq, rsrp;
         auto resp = parser_.sendCommand("AT+CESQ");
         int r = CHECK_PARSER(resp.scanf("+CESQ: %d,%d,%d,%d,%d,%d", &rxlev, &rxqual,
@@ -715,7 +715,7 @@ int SaraNcpClient::selectSimCard() {
         case SimType::INTERNAL:
         default: {
             LOG(INFO, "Using internal SIM card");
-            if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+            if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
                 const int internalSimMode = 255;
                 if (mode != internalSimMode) {
                     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
@@ -738,7 +738,7 @@ int SaraNcpClient::selectSimCard() {
     }
 
     if (reset) {
-        if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+        if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
             // U201
             const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16"));
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
@@ -787,7 +787,7 @@ int SaraNcpClient::initReady() {
     // (allows the capture of `mcc` and `mnc`)
     r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
 
-    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         // Change the baudrate to 921600
         CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
         // Check that the modem is responsive at the new baudrate
@@ -795,7 +795,7 @@ int SaraNcpClient::initReady() {
         CHECK(waitAtResponse(10000));
     }
 
-    if (ncpId() == MESH_NCP_SARA_R410) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
         // ATI9 (get version and app version)
         // example output
         // 16 "\r\n08.90,A01.13\r\n" G350 (newer)
@@ -890,7 +890,7 @@ int SaraNcpClient::initReady() {
     // Initialize muxer
     muxer_.setStream(serial_.get());
     muxer_.setMaxFrameSize(UBLOX_NCP_MAX_MUXER_FRAME_SIZE);
-    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD);
         muxer_.setKeepAliveMaxMissed(UBLOX_NCP_KEEPALIVE_MAX_MISSED);
         muxer_.setMaxRetransmissions(10);
@@ -926,7 +926,7 @@ int SaraNcpClient::initReady() {
     // Reinitialize parser with a muxer-based stream
     CHECK(initParser(muxerAtStream_.get()));
 
-    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         CHECK(waitAtResponse(10000));
     } else {
         CHECK(waitAtResponse(20000, 5000));
@@ -976,7 +976,7 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
 
 int SaraNcpClient::registerNet() {
     int r = 0;
-    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
@@ -994,7 +994,7 @@ int SaraNcpClient::registerNet() {
     // Ignore response code here
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
-    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         r = CHECK_PARSER(parser_.execCommand("AT+CGREG?"));
@@ -1140,7 +1140,7 @@ int SaraNcpClient::processEventsImpl() {
     SCOPE_GUARD({
         regCheckTime_ = millis();
     });
-    if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     } else {
@@ -1186,7 +1186,7 @@ int SaraNcpClient::modemPowerOn() const {
     if (!modemPowerState()) {
         LOG(TRACE, "Powering modem on");
         // Perform power-on sequence depending on the NCP type
-        if (ncpId() != MESH_NCP_SARA_R410) {
+        if (ncpId() != PLATFORM_NCP_SARA_R410) {
             // U201
             // Low pulse 50-80us
             ATOMIC_BLOCK() {
@@ -1227,7 +1227,7 @@ int SaraNcpClient::modemPowerOn() const {
 int SaraNcpClient::modemPowerOff() {
     static std::once_flag f;
     std::call_once(f, [this]() {
-        if (ncpId() != MESH_NCP_SARA_R410 && modemPowerState()) {
+        if (ncpId() != PLATFORM_NCP_SARA_R410 && modemPowerState()) {
             // U201 will auto power-on when it detects a rising VIN
             // If we perform a power-off sequence immediately after it just started
             // to power-on, it will not be detected. Add an artificial delay here.
@@ -1248,7 +1248,7 @@ int SaraNcpClient::modemPowerOff() {
         // otherwise V_INT will never go low
         modemSetUartState(false);
         // Perform power-off sequence depending on the NCP type
-        if (ncpId() != MESH_NCP_SARA_R410) {
+        if (ncpId() != PLATFORM_NCP_SARA_R410) {
             // U201
             // Low pulse 1s+
             HAL_GPIO_Write(UBPWR, 0);
@@ -1299,7 +1299,7 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
     }
 
     LOG(TRACE, "Hard resetting the modem");
-    if (ncpId() != MESH_NCP_SARA_R410) {
+    if (ncpId() != PLATFORM_NCP_SARA_R410) {
         // U201
         // Low pulse for 50ms
         HAL_GPIO_Write(UBRST, 0);

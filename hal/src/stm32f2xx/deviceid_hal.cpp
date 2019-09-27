@@ -32,11 +32,24 @@
 #endif // HAL_DEVICE_ID_NO_DCT
 #include <string.h>
 
+#include "str_util.h"
+
+#include <algorithm>
+
 #ifndef MIN
 # define MIN(a,b) (((a)<(b))?(a):(b))
 #endif
 
+namespace {
+
+using namespace particle;
+
+const uintptr_t SERIAL_NUMBER_OTP_ADDRESS = 0x00000000;
+const uintptr_t DEVICE_SECRET_OTP_ADDRESS = 0x00000010;
+
 const unsigned device_id_len = 12;
+
+} // namespace
 
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
 {
@@ -64,7 +77,51 @@ void HAL_save_device_id(uint32_t dct_offset)
 }
 #endif // HAL_DEVICE_ID_NO_DCT
 
+#ifndef HAL_DEVICE_ID_NO_DCT
 int hal_get_device_serial_number(char* str, size_t size, void* reserved)
 {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
+
+    int r = FLASH_ReadOTP(SERIAL_NUMBER_OTP_ADDRESS, (uint8_t*)serial, HAL_DEVICE_SERIAL_NUMBER_SIZE);
+
+    if (r != 0 || !isPrintable(serial, sizeof(serial))) {
+        return -1;
+    }
+    if (str) {
+        memcpy(str, serial, std::min(size, sizeof(serial)));
+        // Ensure the output is null-terminated
+        if (sizeof(serial) < size) {
+            str[sizeof(serial)] = '\0';
+        }
+    }
+    return HAL_DEVICE_SERIAL_NUMBER_SIZE;
 }
+#endif // HAL_DEVICE_ID_NO_DCT
+
+#ifndef HAL_DEVICE_ID_NO_DCT
+int hal_get_device_secret(char* data, size_t size, void* reserved)
+{
+    // Check if the device secret data is initialized in the DCT
+    char secret[HAL_DEVICE_SECRET_SIZE] = {};
+    static_assert(sizeof(secret) == DCT_DEVICE_SECRET_SIZE, "");
+    int ret = dct_read_app_data_copy(DCT_DEVICE_SECRET_OFFSET, secret, sizeof(secret));
+    if (ret < 0) {
+        return ret;
+    }
+    if (!isPrintable(secret, sizeof(secret))) {
+        // Check the OTP memory
+        ret = FLASH_ReadOTP(DEVICE_SECRET_OTP_ADDRESS, (uint8_t*)secret, sizeof(secret));
+        if (ret < 0) {
+            return ret;
+        }
+        if (!isPrintable(secret, sizeof(secret))) {
+            return SYSTEM_ERROR_NOT_FOUND;
+        };
+    }
+    memcpy(data, secret, std::min(size, sizeof(secret)));
+    if (size>HAL_DEVICE_SECRET_SIZE) {
+    	data[HAL_DEVICE_SECRET_SIZE] = 0;
+    }
+    return HAL_DEVICE_SECRET_SIZE;
+}
+#endif /* HAL_DEVICE_ID_NO_DCT */

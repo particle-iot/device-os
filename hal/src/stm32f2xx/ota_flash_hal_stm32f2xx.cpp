@@ -40,6 +40,7 @@
 #include "delay_hal.h"
 // For ATOMIC_BLOCK
 #include "spark_wiring_interrupts.h"
+#include "deviceid_hal.h"
 
 #include <memory>
 
@@ -778,4 +779,43 @@ int store_server_address(server_protocol_type type, const ServerAddress* addr) {
         return ret;
     }
     return dct_write_app_data(buf.get(), offs, maxSize);
+}
+
+int fetch_system_properties(key_value* storage, int keyCount, uint16_t flags) {
+    int keys = 0;
+
+    if (storage) {
+        if (!(flags & HAL_SYSTEM_INFO_FLAGS_CLOUD) && keyCount && 0<hal_get_device_secret(storage[keys].value, sizeof(storage[0].value), nullptr)) {
+            storage[keys].key = "ms";
+            keyCount--;
+            keys++;
+        }
+        if (!(flags & HAL_SYSTEM_INFO_FLAGS_CLOUD) && keyCount && 0<hal_get_device_serial_number(storage[keys].value, sizeof(storage[0].value), nullptr)) {
+            storage[keys].key = "sn";
+            keyCount--;
+            keys++;
+        }
+        return keys;
+    }
+    else {
+        return 2;
+    }
+}
+
+int add_system_properties(hal_system_info_t* info, bool create, size_t additional) {
+    uint16_t flags = 0;
+    if (info->size >= sizeof(hal_system_info_t::flags) + offsetof(hal_system_info_t, flags)) {
+        flags = info->flags;
+    }
+
+    if (create) {
+        int keyCount = fetch_system_properties(nullptr, 0, flags);
+        info->key_values = new key_value[keyCount+additional];
+        info->key_value_count = fetch_system_properties(info->key_values, keyCount, flags);
+        return info->key_value_count;
+    } else {
+        delete[] info->key_values;
+        info->key_values = nullptr;
+        return 0;
+    }
 }

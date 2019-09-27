@@ -29,6 +29,7 @@
 #include "dct.h"
 #include "module_info.h"
 #include <string.h>
+#include "system_error.h"
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -927,4 +928,33 @@ void FLASH_End(void)
 #else
     //FLASH_AddToNextAvailableModulesSlot() should be called in system_update.cpp
 #endif
+}
+
+int FLASH_ReadOTP(uint32_t offset, uint8_t* pBuffer, uint32_t bufferSize) {
+    if (OTP_START_ADD + offset + bufferSize > OTP_END_ADD) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    memcpy(pBuffer, (uint8_t*)(OTP_START_ADD + offset), bufferSize);
+
+    return 0;
+}
+
+int FLASH_WriteOTP(uint32_t offset, const uint8_t* pBuffer, uint32_t bufferSize) {
+    if (OTP_START_ADD + offset + bufferSize > OTP_END_ADD) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    uint8_t tmp = 0;
+    for (int i = 0; i < bufferSize; i++) {
+        FLASH_ReadOTP(offset + i, &tmp, 1);
+        if (tmp != 0xFF) {
+            // OPT is initialized already
+            return SYSTEM_ERROR_NOT_ALLOWED;
+        }
+    }
+
+    FLASH_Update(pBuffer, OTP_START_ADD + offset, bufferSize);
+
+    return 0;
 }
