@@ -272,7 +272,7 @@ void PowerManager::initDefault(bool dpdm) {
 
   // Set recharge threshold to default value - 100mV
   power.setRechargeThreshold(100);
-  // power.setChargeCurrent(0,0,0,0,0,0); // 512mA
+  power.setChargeCurrent(0,0,0,1,1,0); // 512mA + 256mA + 128mA = 896mA
   if (dpdm) {
     // Force-start input current limit detection
     power.enableDPDM();
