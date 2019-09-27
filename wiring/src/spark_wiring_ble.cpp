@@ -1038,7 +1038,8 @@ private:
  */
 void BleCharacteristicImpl::onBleCharEvents(const hal_ble_char_evt_t *event, void* context) {
     auto impl = static_cast<BleCharacteristicImpl*>(context);
-    WiringBleLock lk;
+    // This callback won't modified any data in wiring.
+    //WiringBleLock lk;
     switch (event->type) {
         case BLE_EVT_DATA_NOTIFIED:
         case BLE_EVT_DATA_WRITTEN: {
@@ -1875,6 +1876,7 @@ private:
             if (delegator->foundCount_ < delegator->targetCount_) {
                 delegator->resultsPtr_[delegator->foundCount_++] = result;
                 if (delegator->foundCount_ >= delegator->targetCount_) {
+                    LOG_DEBUG(TRACE, "Target number of devices found. Stop scanning...");
                     hal_ble_gap_stop_scan(nullptr);
                 }
             }
