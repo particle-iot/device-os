@@ -27,9 +27,10 @@ namespace protocol {
 
 namespace {
 
-const unsigned GOODBYE_DISCONNECT_REASON_FLAG = 0x01;
-const unsigned GOODBYE_RESET_REASON_FLAG = 0x02;
+const unsigned GOODBYE_CLOUD_DISCONNECT_REASON_FLAG = 0x01;
+const unsigned GOODBYE_SYSTEM_RESET_REASON_FLAG = 0x02;
 const unsigned GOODBYE_SLEEP_DURATION_FLAG = 0x04;
+const unsigned GOODBYE_NETWORK_DISCONNECT_REASON_FLAG = 0x08;
 
 } // unnamed
 
@@ -354,8 +355,8 @@ size_t Messages::response_size(size_t payload_size, bool has_token)
 			(has_token ? 1 : 0); // One-byte token
 }
 
-size_t Messages::goodbye(unsigned char* buf, size_t size, message_id_t message_id, cloud_disconnect_reason disconnect_reason,
-		System_Reset_Reason reset_reason, unsigned sleep_duration, bool confirmable)
+size_t Messages::goodbye(unsigned char* buf, size_t size, message_id_t message_id, cloud_disconnect_reason cloud_reason,
+		network_disconnect_reason network_reason, System_Reset_Reason reset_reason, unsigned sleep_duration, bool confirmable)
 {
 	BufferAppender b(buf, size);
 	b.appendChar(confirmable ? 0x40 : 0x50); // No token
@@ -371,31 +372,37 @@ size_t Messages::goodbye(unsigned char* buf, size_t size, message_id_t message_i
 	b.appendChar(0xff); // Payload marker
 	// Field flags
 	unsigned flags = 0;
-	if (disconnect_reason != CLOUD_DISCONNECT_REASON_NONE) {
-		flags |= GOODBYE_DISCONNECT_REASON_FLAG;
+	if (cloud_reason != CLOUD_DISCONNECT_REASON_NONE) {
+		flags |= GOODBYE_CLOUD_DISCONNECT_REASON_FLAG;
 	}
 	if (reset_reason != RESET_REASON_NONE) {
-		flags |= GOODBYE_RESET_REASON_FLAG;
+		flags |= GOODBYE_SYSTEM_RESET_REASON_FLAG;
 	}
 	if (sleep_duration != 0) {
 		flags |= GOODBYE_SLEEP_DURATION_FLAG;
 	}
+	if (network_reason != NETWORK_DISCONNECT_REASON_NONE) {
+		flags |= GOODBYE_NETWORK_DISCONNECT_REASON_FLAG;
+	}
 	b.appendUnsignedVarint(flags);
 	// Field values
-	if (flags & GOODBYE_DISCONNECT_REASON_FLAG) {
-		b.appendUnsignedVarint(disconnect_reason);
+	if (flags & GOODBYE_CLOUD_DISCONNECT_REASON_FLAG) {
+		b.appendUnsignedVarint(cloud_reason);
 	}
-	if (flags & GOODBYE_RESET_REASON_FLAG) {
+	if (flags & GOODBYE_SYSTEM_RESET_REASON_FLAG) {
 		b.appendUnsignedVarint(reset_reason);
 	}
 	if (flags & GOODBYE_SLEEP_DURATION_FLAG) {
 		b.appendUnsignedVarint(sleep_duration);
 	}
+	if (flags & GOODBYE_NETWORK_DISCONNECT_REASON_FLAG) {
+		b.appendUnsignedVarint(network_reason);
+	}
 	return b.dataSize();
 }
 
 const size_t Messages::MAX_GOODBYE_MESSAGE_SIZE = 9 + // CoAP header, options, payload marker
-		maxUnsignedVarintSize<unsigned>() * 4; // Flags, disconnection reason, reset reason, sleep duration
+		maxUnsignedVarintSize<unsigned>() * 5; // Flags, cloud disconnection reason, network disconnection reason, system reset reason, sleep duration
 
 } // particle::protocol
 

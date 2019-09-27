@@ -116,19 +116,6 @@ const CloudVariableTypeInt INT;
 const CloudVariableTypeString STRING;
 const CloudVariableTypeDouble DOUBLE;
 
-#if PLATFORM_ID==3
-// avoid a c-linkage incompatible with C error on newer versions of gcc
-String spark_deviceID(void);
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#if PLATFORM_ID!=3
-String spark_deviceID(void);
-#endif
-
 /**
  * Flags for `cloud_disconnect()`.
  */
@@ -141,12 +128,35 @@ enum CloudDisconnectFlag {
  * Close the cloud connection.
  *
  * @param flags Disconnection flags (a combination of flags defined by `cloud_disconnect_flag`).
- * @param reason Disconnection reason.
+ * @param cloudReason Cloud disconnection reason.
+ * @param networkReason Network disconnection reason.
  * @param resetReason System reset reason.
  * @param sleepDuration Sleep duration in seconds.
  */
-void cloud_disconnect(unsigned flags = 0, cloud_disconnect_reason disconnectReason = CLOUD_DISCONNECT_REASON_UNKNOWN,
+void cloud_disconnect(unsigned flags = 0, cloud_disconnect_reason cloudReason = CLOUD_DISCONNECT_REASON_UNKNOWN,
+        network_disconnect_reason networkReason = NETWORK_DISCONNECT_REASON_NONE,
         System_Reset_Reason resetReason = RESET_REASON_NONE, unsigned sleepDuration = 0);
+
+inline void cloud_disconnect(unsigned flags, network_disconnect_reason networkReason) {
+    cloud_disconnect(flags, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT, networkReason, RESET_REASON_NONE, 0);
+}
+
+inline void cloud_disconnect(unsigned flags, System_Reset_Reason resetReason) {
+    cloud_disconnect(flags, CLOUD_DISCONNECT_REASON_SYSTEM_RESET, NETWORK_DISCONNECT_REASON_NONE, resetReason, 0);
+}
+
+#if PLATFORM_ID==3
+// avoid a c-linkage incompatible with C error on newer versions of gcc
+String spark_deviceID(void);
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if PLATFORM_ID!=3
+String spark_deviceID(void);
+#endif
 
 class String;
 

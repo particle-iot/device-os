@@ -546,7 +546,7 @@ public:
         }
     }
 
-    void disconnect(network_disconnect_reason reason = NETWORK_DISCONNECT_REASON_NONE) override
+    void disconnect(network_disconnect_reason reason = NETWORK_DISCONNECT_REASON_UNKNOWN) override
     {
         LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
@@ -623,7 +623,7 @@ public:
         LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
         {
-            disconnect(NETWORK_DISCONNECT_REASON_NETWORK_OFF);
+            disconnect(NETWORK_DISCONNECT_REASON_UNKNOWN);
 
             const auto diag = NetworkDiagnostics::instance();
             diag->status(NetworkDiagnostics::TURNING_OFF);

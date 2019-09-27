@@ -33,7 +33,7 @@ volatile uint8_t SPARK_CLOUD_AUTO_CONNECT = 1; //default is AUTOMATIC mode
 int systemResetImpl(system_reset_mode mode, System_Reset_Reason reason, unsigned value, unsigned flags) {
     if (!(flags & SYSTEM_RESET_FLAG_NO_WAIT)) {
         // Disconnect from the cloud gracefully
-        cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SYSTEM_RESET, reason);
+        cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, reason);
     }
     switch (mode) {
     case SYSTEM_RESET_MODE_DFU:
