@@ -86,9 +86,9 @@ public:
 				if (p->timeout != 0) {
 					timeout = p->timeout;
 				}
-				if (p->disconnect_reason != CLOUD_DISCONNECT_REASON_NONE) {
-					r = send_goodbye((cloud_disconnect_reason)p->disconnect_reason, (System_Reset_Reason)p->reset_reason,
-							p->sleep_duration);
+				if (p->cloud_reason != CLOUD_DISCONNECT_REASON_NONE) {
+					r = send_goodbye((cloud_disconnect_reason)p->cloud_reason, (network_disconnect_reason)p->network_reason,
+							(System_Reset_Reason)p->reset_reason, p->sleep_duration);
 				}
 			}
 			if (r == ProtocolError::NO_ERROR) {

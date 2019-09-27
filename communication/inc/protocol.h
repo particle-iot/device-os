@@ -214,14 +214,15 @@ protected:
 	/**
 	 * Send a Goodbye message over the channel.
 	 */
-	ProtocolError send_goodbye(cloud_disconnect_reason disconnect_reason, System_Reset_Reason reset_reason, unsigned sleep_duration)
+	ProtocolError send_goodbye(cloud_disconnect_reason cloud_reason, network_disconnect_reason network_reason,
+			System_Reset_Reason reset_reason, unsigned sleep_duration)
 	{
 		Message msg;
 		channel.create(msg);
-		const size_t n = Messages::goodbye(msg.buf(), msg.capacity(), 0, disconnect_reason, reset_reason, sleep_duration,
-				channel.is_unreliable());
+		const size_t n = Messages::goodbye(msg.buf(), msg.capacity(), 0, cloud_reason, network_reason, reset_reason,
+				sleep_duration, channel.is_unreliable());
 		if (n > msg.capacity()) {
-			LOG(ERROR, "Insufficient storage for the Goodbye message data");
+			LOG(ERROR, "Insufficient storage for Goodbye message data");
 			return INSUFFICIENT_STORAGE;
 		}
 		msg.set_length(n);

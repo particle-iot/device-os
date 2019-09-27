@@ -1162,7 +1162,8 @@ String bytes2hex(const uint8_t* buf, unsigned len)
 
 void Spark_Sleep(unsigned duration)
 {
-    cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SLEEP, RESET_REASON_NONE, duration);
+    cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SLEEP, NETWORK_DISCONNECT_REASON_NONE,
+            RESET_REASON_NONE, duration);
 }
 
 void Spark_Wake(void)

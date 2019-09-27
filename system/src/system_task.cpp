@@ -549,8 +549,8 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
     }
 }
 
-void cloud_disconnect(unsigned flags, cloud_disconnect_reason disconnectReason, System_Reset_Reason resetReason,
-        unsigned sleepDuration)
+void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, network_disconnect_reason networkReason,
+        System_Reset_Reason resetReason, unsigned sleepDuration)
 {
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
@@ -559,9 +559,9 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason disconnectReason, 
         if (SPARK_CLOUD_CONNECTED)
         {
             diag->resetConnectionAttempts();
-            if (disconnectReason != CLOUD_DISCONNECT_REASON_NONE) {
-                diag->disconnectionReason(disconnectReason);
-                if (disconnectReason == CLOUD_DISCONNECT_REASON_ERROR) {
+            if (cloudReason != CLOUD_DISCONNECT_REASON_NONE) {
+                diag->disconnectionReason(cloudReason);
+                if (cloudReason == CLOUD_DISCONNECT_REASON_ERROR) {
                     diag->disconnectedUnexpectedly();
                 }
             }
@@ -576,7 +576,8 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason disconnectReason, 
                 // Notify the cloud that we're about to disconnect
                 spark_disconnect_command cmd = {};
                 cmd.size = sizeof(cmd);
-                cmd.disconnect_reason = disconnectReason;
+                cmd.cloud_reason = cloudReason;
+                cmd.network_reason = networkReason;
                 cmd.reset_reason = resetReason;
                 cmd.sleep_duration = sleepDuration;
                 // TODO: Use a shorter timeout than the default one?
