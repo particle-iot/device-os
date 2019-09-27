@@ -146,7 +146,7 @@ enum CloudDisconnectFlag {
  * @param sleepDuration Sleep duration in seconds.
  */
 void cloud_disconnect(unsigned flags = 0, cloud_disconnect_reason disconnectReason = CLOUD_DISCONNECT_REASON_UNKNOWN,
-        system_reset_reason resetReason = RESET_REASON_NONE, unsigned sleepDuration = 0);
+        System_Reset_Reason resetReason = RESET_REASON_NONE, unsigned sleepDuration = 0);
 
 class String;
 

@@ -214,7 +214,7 @@ protected:
 	/**
 	 * Send a Goodbye message over the channel.
 	 */
-	ProtocolError send_goodbye(cloud_disconnect_reason disconnect_reason, system_reset_reason reset_reason, unsigned sleep_duration)
+	ProtocolError send_goodbye(cloud_disconnect_reason disconnect_reason, System_Reset_Reason reset_reason, unsigned sleep_duration)
 	{
 		Message msg;
 		channel.create(msg);

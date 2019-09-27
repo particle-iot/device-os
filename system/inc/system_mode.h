@@ -70,7 +70,7 @@ typedef enum system_reset_flag {
  * Reset the system.
  *
  * @param mode Reset mode (a value defined by the `system_reset_mode` enum).
- * @param reason Reset reason (a value defined by the `system_reset_reason` enum).
+ * @param reason Reset reason (a value defined by the `System_Reset_Reason` enum).
  * @param value Additional mode-specific parameter.
  * @param flags System reset flags (a combination of flags defined by the `system_reset_flag` enum).
  * @param reserved This argument should be set to NULL.

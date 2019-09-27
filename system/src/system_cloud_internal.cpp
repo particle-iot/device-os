@@ -748,7 +748,7 @@ int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, v
     return result;
 }
 
-static const char* resetReasonString(system_reset_reason reason)
+static const char* resetReasonString(System_Reset_Reason reason)
 {
     switch (reason) {
     case RESET_REASON_UNKNOWN:
@@ -813,7 +813,7 @@ static void formatResetReasonEventData(int reason, uint32_t data, char *buf, siz
 
     // Reset reason
     int n = 0;
-    const char* s = resetReasonString((system_reset_reason)reason);
+    const char* s = resetReasonString((System_Reset_Reason)reason);
     if (s) {
         n = snprintf(buf, size, "%s", s);
     } else {
