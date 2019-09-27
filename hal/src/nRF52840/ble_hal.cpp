@@ -3014,7 +3014,10 @@ int BleObject::GattClient::processCharDiscEventFromThread(const ble_evt_t* event
         const ble_gattc_evt_desc_disc_rsp_t& descDiscRsp = event->evt.gattc_evt.params.desc_disc_rsp;
         if (event->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) {
             for (uint8_t i = 0; i < descDiscRsp.count; i++) {
-                // It will report all attributes with 16-bits UUID, filter descriptors.
+                // It will report all attributes, filter descriptors only.
+                if (descDiscRsp.descs[i].uuid.type != BLE_UUID_TYPE_BLE) {
+                    continue;
+                }
                 hal_ble_char_t* characteristic = findDiscoveredCharacteristic(descDiscRsp.descs[i].handle);
                 if (characteristic) {
                     switch (descDiscRsp.descs[i].uuid.uuid) {
