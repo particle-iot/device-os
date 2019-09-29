@@ -22,11 +22,32 @@
 #include "net_hal.h"
 #include <limits>
 #include "spark_wiring_cellular_printable.h"
+#include "appender.h"
 
 #undef WARN
 #undef INFO
 #define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
+
+namespace {
+
+    class FakeStream: public Print {
+    private:
+        BufferAppender append_;
+
+    protected:
+        virtual size_t write(uint8_t c) override {
+            append_.append(&c, 1);
+            return 1;
+        }
+
+    public:
+        FakeStream(char* buf, size_t size) :
+                append_((uint8_t*)buf, size) {
+        }
+    };
+
+} // namespace
 
 using namespace detail;
 
@@ -75,6 +96,64 @@ TEST_CASE("cellular_signal()") {
             REQUIRE(cs.getStrengthValue() == 0.0f);
             REQUIRE(cs.getQuality() < 0.0f);
             REQUIRE(cs.getQualityValue() == 0.0f);
+        }
+    }
+
+    SECTION("CellularSignalHal RSSI and QUAL") {
+        NetStatus status;
+        memset(&status, 0, sizeof(status));
+        status.rssi = -50; // arbitrary non-zero values
+        status.qual = 37;  //  "
+
+        SECTION("CellularSignalHal::rssi and CellularSignalHal::qual are set to expected values") {
+            CellularSignalHal signal;
+            memset(&signal, 0, sizeof(signal));
+            REQUIRE(cellular_signal_impl(&signal, nullptr, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(signal.rssi == -50);
+            REQUIRE(signal.qual == 37);
+        }
+    }
+
+    SECTION("UNKNOWN") {
+        NetStatus status;
+        memset(&status, 0, sizeof(status));
+        status.act = ACT_UNKNOWN;
+
+        SECTION("values reported by ACT_UNKNOWN case") {
+            status.rxlev = 10; // seed all values as 10 just to ensure default case is hit
+            status.rxqual = 10;
+            status.rscp = 10;
+            status.ecno = 10;
+            status.rsrp = 10;
+            status.rsrq = 10;
+
+            cellular_signal_t sig = {0};
+            sig.size = sizeof(sig);
+            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_UNKNOWN);
+            REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_NONE);
+            REQUIRE(sig.strength == 0);
+            REQUIRE(sig.quality == 0);
+            REQUIRE(sig.rssi == std::numeric_limits<int32_t>::min());
+            REQUIRE(sig.qual == std::numeric_limits<int32_t>::min());
+
+            SECTION("CellularSignal") {
+                CellularSignal cs;
+                REQUIRE(cs.fromHalCellularSignal(sig) == true);
+                REQUIRE(cs.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_NONE);
+                REQUIRE(cs.getStrength() < 0.0f);
+                REQUIRE(cs.getStrengthValue() == 0.0f);
+                REQUIRE(cs.getQuality() < 0.0f);
+                REQUIRE(cs.getQualityValue() == 0.0f);
+            }
+
+            SECTION("CellularSignal") {
+                CellularSignal cs(sig);
+                REQUIRE(cs.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_NONE);
+                REQUIRE(cs.getStrength() < 0.0f);
+                REQUIRE(cs.getStrengthValue() == 0.0f);
+                REQUIRE(cs.getQuality() < 0.0f);
+                REQUIRE(cs.getQualityValue() == 0.0f);
+            }
         }
     }
 
@@ -197,6 +276,15 @@ TEST_CASE("cellular_signal()") {
             SECTION("CellularSignal") {
                 CellularSignal cs;
                 REQUIRE(cs.fromHalCellularSignal(sig) == true);
+                REQUIRE(cs.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_GSM);
+                REQUIRE(cs.getStrength() == 100.0f);
+                REQUIRE(cs.getStrengthValue() == -48.0f);
+                REQUIRE(cs.getQuality() == 0.0f);
+                REQUIRE(cs.getQualityValue() == 18.10f);
+            }
+
+            SECTION("CellularSignal") {
+                CellularSignal cs(sig);
                 REQUIRE(cs.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_GSM);
                 REQUIRE(cs.getStrength() == 100.0f);
                 REQUIRE(cs.getStrengthValue() == -48.0f);
@@ -346,7 +434,7 @@ TEST_CASE("cellular_signal()") {
             cellular_signal_t sig = {0};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
-            REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UMTS);
+            REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UTRAN);
             REQUIRE(sig.strength < 0);
             REQUIRE(sig.quality < 0);
             REQUIRE(sig.rscp == std::numeric_limits<int32_t>::min());
@@ -434,5 +522,159 @@ TEST_CASE("cellular_signal()") {
                 REQUIRE(cs.getQualityValue() == 0.0f);
             }
         }
+    }
+
+    SECTION("LTE/LTE_CAT_M1/LTE_CAT_NB1") {
+        NetStatus status;
+        memset(&status, 0, sizeof(status));
+
+        // Expected { input, output } data table
+        struct DataTable { AcT input_act; hal_net_access_tech_t expected_act; };
+        auto data = GENERATE( values<DataTable>({
+            { AcT::ACT_LTE, hal_net_access_tech_t::NET_ACCESS_TECHNOLOGY_LTE },
+            { AcT::ACT_LTE_CAT_M1, hal_net_access_tech_t::NET_ACCESS_TECHNOLOGY_LTE_CAT_M1 },
+            { AcT::ACT_LTE_CAT_NB1, hal_net_access_tech_t::NET_ACCESS_TECHNOLOGY_LTE_CAT_NB1 }
+        }));
+        status.act = data.input_act;
+
+        SECTION("error values reported by the modem") {
+            status.rsrp = 255;
+            status.rsrq = 255;
+
+            cellular_signal_t sig = {0};
+            sig.size = sizeof(sig);
+            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(sig.rat == data.expected_act);
+            REQUIRE(sig.strength < 0);
+            REQUIRE(sig.quality < 0);
+            REQUIRE(sig.rsrp == std::numeric_limits<int32_t>::min());
+            REQUIRE(sig.rsrq == std::numeric_limits<int32_t>::min());
+
+            SECTION("CellularSignal") {
+                CellularSignal cs;
+                REQUIRE(cs.fromHalCellularSignal(sig) == true);
+                REQUIRE(cs.getAccessTechnology() == data.expected_act);
+                REQUIRE(cs.getStrength() < 0.0f);
+                REQUIRE(cs.getStrengthValue() == 0.0f);
+                REQUIRE(cs.getQuality() < 0.0f);
+                REQUIRE(cs.getQualityValue() == 0.0f);
+            }
+        }
+
+        SECTION("minimum RSRP and RSRQ") {
+            status.rsrp = 0;
+            status.rsrq = 0;
+
+            cellular_signal_t sig = {0};
+            sig.size = sizeof(sig);
+            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(sig.rat == data.expected_act);
+            REQUIRE(sig.strength == 0);
+            REQUIRE(sig.quality == 0);
+            REQUIRE(sig.rsrp == -14100);
+            REQUIRE(sig.rsrq == -2000);
+
+            SECTION("CellularSignal") {
+                CellularSignal cs;
+                REQUIRE(cs.fromHalCellularSignal(sig) == true);
+                REQUIRE(cs.getAccessTechnology() == data.expected_act);
+                REQUIRE(cs.getStrength() == 0.0f);
+                REQUIRE(cs.getStrengthValue() == -141.0f);
+                REQUIRE(cs.getQuality() == 0.0f);
+                REQUIRE(cs.getQualityValue() == -20.0f);
+            }
+        }
+
+        SECTION("middle RSRP and RSRQ") {
+            status.rsrp = 48;
+            status.rsrq = 17;
+
+            cellular_signal_t sig = {0};
+            sig.size = sizeof(sig);
+            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(sig.rat == data.expected_act);
+            REQUIRE(sig.strength == 32429);
+            REQUIRE(std::abs(sig.quality - 32767) <= 655 * 2);
+            REQUIRE(sig.rsrp == -9300);
+            REQUIRE(sig.rsrq == -1150);
+
+            SECTION("CellularSignal") {
+                CellularSignal cs;
+                REQUIRE(cs.fromHalCellularSignal(sig) == true);
+                REQUIRE(cs.getAccessTechnology() == data.expected_act);
+                REQUIRE(std::abs(cs.getStrength() - 50.0f) <= 1.0f);
+                REQUIRE(cs.getStrengthValue() == -93.0f);
+                REQUIRE(std::abs(cs.getQuality() - 50.0f) <= 2.0f);
+                REQUIRE(cs.getQualityValue() == -11.5f);
+            }
+        }
+
+        SECTION("max RSRP and RSRQ") {
+            status.rsrp = 97;
+            status.rsrq = 34;
+
+            cellular_signal_t sig = {0};
+            sig.size = sizeof(sig);
+            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(sig.rat == data.expected_act);
+            REQUIRE(sig.strength == 65535);
+            REQUIRE(sig.quality == 65535);
+            REQUIRE(sig.rsrp == -4400);
+            REQUIRE(sig.rsrq == -300);
+
+            SECTION("CellularSignal") {
+                CellularSignal cs;
+                REQUIRE(cs.fromHalCellularSignal(sig) == true);
+                REQUIRE(cs.getAccessTechnology() == data.expected_act);
+                REQUIRE(cs.getStrength() == 100.0f);
+                REQUIRE(cs.getStrengthValue() == -44.0f);
+                REQUIRE(cs.getQuality() == 100.0f);
+                REQUIRE(cs.getQualityValue() == -3.0f);
+            }
+        }
+    }
+}
+
+TEST_CASE("cellular_printable") {
+
+    char output[32];
+    memset(&output, 0, sizeof(output));
+    FakeStream ser(output, 32);
+
+    SECTION("CellularSignal::printTo") {
+        CellularSignal cs;
+        cs.rssi = -50;
+        cs.qual = 37;
+
+        ser.print(cs);
+        // printf("%s", output);
+        REQUIRE(strncmp(output, "-50,37", 32) == 0);
+    }
+
+    SECTION("CellularData::printTo") {
+        CellularData cd;
+        cd.cid = 10;
+        cd.tx_session = 20;
+        cd.rx_session = 30;
+        cd.tx_total = 40;
+        cd.rx_total = 50;
+
+        ser.print(cd);
+        // printf("%s", output);
+        REQUIRE(strncmp(output, "10,20,30,40,50", 32) == 0);
+    }
+
+    SECTION("CellularBand::printTo") {
+        CellularBand cb;
+        cb.count = 5;
+        cb.band[0] = BAND_700;
+        cb.band[1] = BAND_800;
+        cb.band[2] = BAND_900;
+        cb.band[3] = BAND_2100;
+        cb.band[4] = BAND_2600;
+
+        ser.print(cb);
+        // printf("%s", output);
+        REQUIRE(strncmp(output, "700,800,900,2100,2600", 32) == 0);
     }
 }
