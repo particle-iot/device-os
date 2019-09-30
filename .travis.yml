@@ -42,8 +42,8 @@ env:
     - BUILD_PLATFORM="photon p1 unit-test"
     - BUILD_PLATFORM="electron core gcc"
     - BUILD_PLATFORM="xenon asom newhal"
-    - BUILD_PLATFORM="argon bsom"
-    - BUILD_PLATFORM="boron xsom"
+    - BUILD_PLATFORM="argon bsom boron"
+    - BUILD_PLATFORM="xsom qsom"
 
   # matrix:
   #   - BUILD_PLATFORM=unit-test gcc

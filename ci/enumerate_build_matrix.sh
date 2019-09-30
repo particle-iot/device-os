@@ -45,14 +45,14 @@ MAKE=runmake
 # define build matrix dimensions
 # "" means execute execute the $MAKE command without that var specified
 DEBUG_BUILD=( y n )
-PLATFORM=( core photon p1 electron xenon argon boron xsom asom bsom )
+PLATFORM=( core photon p1 electron xenon argon boron xsom asom bsom qsom )
 # P1 bootloader built with gcc 4.8.4 doesn't fit flash, disabling for now
-PLATFORM_BOOTLOADER=( core photon electron xenon argon boron xsom asom bsom )
+PLATFORM_BOOTLOADER=( core photon electron xenon argon boron xsom asom bsom qsom )
 SPARK_CLOUD=( y n )
 APP=( "" tinker product_id_and_version)
 TEST=( wiring/api wiring/no_fixture )
 
-MODULAR_PLATFORM=( photon p1 electron xenon argon boron xsom asom bsom )
+MODULAR_PLATFORM=( photon p1 electron xenon argon boron xsom asom bsom qsom )
 
 filterPlatform PLATFORM
 filterPlatform MODULAR_PLATFORM
@@ -141,7 +141,7 @@ do
   do
     # Gen 3 and Photon overflow with modular DEBUG_BUILD=y, so skip those
     if [[ "$db" = "y" ]]; then
-      if [[ "$p" = "photon" ]] || [[ "$p" = "p1" ]] || [[ "$p" = "xenon" ]] || [[ "$p" = "argon" ]] || [[ "$p" = "boron" ]] || [[ "$p" = "xsom" ]] || [[ "$p" = "asom" ]] || [[ "$p" = "bsom" ]]; then
+      if [[ "$p" = "photon" ]] || [[ "$p" = "p1" ]] || [[ "$p" = "xenon" ]] || [[ "$p" = "argon" ]] || [[ "$p" = "boron" ]] || [[ "$p" = "xsom" ]] || [[ "$p" = "asom" ]] || [[ "$p" = "bsom" ]] || [[ "$p" = "qsom" ]]; then
         continue
       fi
     fi
