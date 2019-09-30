@@ -384,7 +384,7 @@ extern "C" void HAL_SysTick_Handler(void)
         if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
         {
             //Reset is the only way now to recover from stuck OTA update
-            HAL_Core_System_Reset_Ex(RESET_REASON_WATCHDOG, 0, nullptr);
+            HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE_TIMEOUT, 0, nullptr);
         }
         else
         {
