@@ -48,6 +48,7 @@ public:
         network_on(*this, 0, 0, NULL);
     }
     void off() {
+        disconnect();
         network_off(*this, 0, 0, NULL);
     }
     void connect(unsigned flags=0) {
