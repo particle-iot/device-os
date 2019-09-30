@@ -69,7 +69,7 @@ rm -rf build/jobs
 # Only build Boost if gcc is being built separately without unit tests
 if platform gcc; then
   source ci/install_boost.sh
-  if ! platform 'unit-test'; then
+  if ! contains "${BUILD_PLATFORM[*]}" unit-test; then
     echo
     echo '-----------------------------------------------------------------------'
     ci/build_boost.sh
