@@ -26,7 +26,7 @@
 #include <lwip/pbuf.h>
 #include "gsm0710muxer/muxer.h"
 #include "ppp_client.h"
-#include "network/cellular_network_manager.h"
+#include "network/ncp/cellular_network_manager.h"
 #include "ncp_client.h"
 
 #ifdef __cplusplus

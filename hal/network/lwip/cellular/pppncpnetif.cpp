@@ -36,7 +36,7 @@ LOG_SOURCE_CATEGORY("net.pppncp")
 #include "lwiplock.h"
 #include "interrupts_hal.h"
 #include "ringbuffer.h"
-#include "network/cellular_ncp_client.h"
+#include "network/ncp/cellular_ncp_client.h"
 
 #include "concurrent_hal.h"
 
