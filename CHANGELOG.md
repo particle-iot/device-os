@@ -1,3 +1,31 @@
+## 1.4.1-rc.1
+
+>**Note:** If your Gen 2 Photon/P1 or Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release).
+>**Note:** If your Gen 3 device does not have a Cloud connection, this release will also require manually updating the SoftDevice via CLI. The instructions are available in the release notes and the SoftDevice binaries are available in the Github release.
+>
+>This release contains v500 bootloaders.
+
+### FEATURES
+
+- [Gen 2] Adds support for serial number, NCP type and mobile secret in STM32F2 OTP area [#1927](https://github.com/particle-iot/device-os/pull/1927) [#1931](https://github.com/particle-iot/device-os/pull/1931/files)
+
+### ENHANCEMENTS
+
+- [Electron, Boron] Increase the PMIC input current limit from 900mA to 1500mA and limit charging current to 896mA to allow 2G/3G devices to function when powered by sufficient power supply through VIN without the battery [#1921](https://github.com/particle-iot/device-os/pull/1921)
+- DTLS handshake timeout increased to 24 seconds to allow 3 retransmission attempts [#1914](https://github.com/particle-iot/device-os/pull/1914)
+
+### BUGFIXES
+
+- [Electron] Fixes RSSI failing due to Power Saving mode active [#1917](https://github.com/particle-iot/device-os/pull/1917) [#1892](https://github.com/particle-iot/device-os/pull/1892)
+- [Gen 3] Fixes memory leak when scanning for BLE devices [#1929](https://github.com/particle-iot/device-os/pull/1929) [#1926](https://github.com/particle-iot/device-os/pull/1926)
+- [Gen 3] Fixes reporting of discovered BLE peer characteristic descriptors [#1916](https://github.com/particle-iot/device-os/pull/1916)
+- [Gen 3] Fixes `BleCharacteristic::setValue()` with default `BLeTxRxType` argument (`BleTxRxType::AUTO`) for characteristics with `WRITE` property [#1915](https://github.com/particle-iot/device-os/pull/1915) [#1913](https://github.com/particle-iot/device-os/issues/1913) [#1924](https://github.com/particle-iot/device-os/issues/1924)
+
+### INTERNAL
+
+- [ci] Buildpack builder updated to unreleased branch `feature/buildpack-runnable-without-travis` to move buildpack builds off of Travis
+- [docs] Adds Artifact Versioning and Tagging (1.0.0) artifacts.md [#1703](https://github.com/particle-iot/device-os/pull/1703)
+
 ## 1.4.0
 
 >**Note:** If your Gen 2 Photon/P1 or Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release).
