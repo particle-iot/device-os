@@ -24,7 +24,7 @@
  * PPP_SUPPORT==1: Enable PPP.
  */
 // TODO: There should probably be separate config files for each Gen 3 platform
-#define PPP_SUPPORT                     (PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BSOM)
+#define PPP_SUPPORT                     (PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_QSOM)
 
 /**
  * PPPOE_SUPPORT==1: Enable PPP Over Ethernet

@@ -27,7 +27,12 @@
 #include "dynalib.h"
 #include "hal_platform.h"
 
-#if (PLATFORM_ID != 10 && PLATFORM_ID != 13 && PLATFORM_ID != 14 && PLATFORM_ID != 23 && PLATFORM_ID != 24) || HAL_PLATFORM_WIFI
+#if (PLATFORM_ID != PLATFORM_ELECTRON_PRODUCTION && \
+     PLATFORM_ID != PLATFORM_BORON && \
+     PLATFORM_ID != PLATFORM_XENON && \
+     PLATFORM_ID != PLATFORM_BSOM && \
+     PLATFORM_ID != PLATFORM_XSOM && \
+     PLATFORM_ID != PLATFORM_QSOM) || HAL_PLATFORM_WIFI
 
 #ifdef DYNALIB_EXPORT
 #include "wlan_hal.h"

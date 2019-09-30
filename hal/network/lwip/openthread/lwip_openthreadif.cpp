@@ -532,7 +532,7 @@ void OpenThreadNetif::refreshIpAddresses() {
             }
 
             if (abr_.mPreference == OT_ROUTE_PREFERENCE_LOW) {
-                updateIp6CloudKeepalive(HAL_PLATFORM_BORON_CLOUD_KEEPALIVE_INTERVAL);
+                updateIp6CloudKeepalive(HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL);
             } else {
                 updateIp6CloudKeepalive(HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL);
             }

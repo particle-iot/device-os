@@ -17,8 +17,8 @@
 
 #include "cellular_hal.h"
 
-#include "network/cellular_network_manager.h"
-#include "network/cellular_ncp_client.h"
+#include "network/ncp/cellular_network_manager.h"
+#include "network/ncp/cellular_ncp_client.h"
 #include "network/ncp.h"
 #include "ifapi.h"
 

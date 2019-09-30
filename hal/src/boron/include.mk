@@ -6,7 +6,7 @@
 INCLUDE_DIRS += $(TARGET_HAL_PATH)/src/$(PLATFORM_NAME)
 
 ifneq (,$(findstring platform,$(DEPENDENCIES)))
-INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip/ublox
+INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip/cellular
 endif
 
 

@@ -40,6 +40,7 @@
 #define PLATFORM_ASOM                       22
 #define PLATFORM_BSOM                       23
 #define PLATFORM_XSOM                       24
+#define PLATFORM_QSOM                       25
 #define PLATFORM_NEWHAL                     60000
 
 #endif	/* PLATFORMS_H */
