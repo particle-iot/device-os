@@ -1,1 +1,5 @@
-mkdir buildpack && wget https://api.github.com/repos/particle-iot/firmware-buildpack-builder/tarball/master -O - | tar -xz -C buildpack --strip-components 1
+# FIXME: replace with version tag, once new version of firmware-buildpack-builder with this branch merged is released
+BUILDPACK_FILES=$(mkdir buildpack && wget https://api.github.com/repos/particle-iot/firmware-buildpack-builder/tarball/feature/buildpack-runnable-without-travis -O - | tar -xvz -C buildpack --strip-components 1)
+SHORT_REF=$(echo "$BUILDPACK_FILES" | head -n1 | cut -d '/' -f 1 | rev | cut -d '-' -f 1 | rev)
+mkdir buildpack/.git
+echo "${SHORT_REF}" > buildpack/.git/short_ref
