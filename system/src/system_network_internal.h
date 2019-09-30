@@ -560,7 +560,7 @@ public:
             CLR_WLAN_WD();
             LOG(INFO, "Clearing WLAN WD in disconnect()");
 
-            cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
+            cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, reason);
             const auto diag = NetworkDiagnostics::instance();
             if (was_connected) {
                 diag->resetConnectionAttempts();

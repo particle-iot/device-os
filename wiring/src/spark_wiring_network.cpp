@@ -76,6 +76,7 @@ void NetworkClass::on() {
 }
 
 void NetworkClass::off() {
+    disconnect();
     network_off(*this, 0, 0, nullptr);
 }
 

@@ -154,6 +154,7 @@ public:
     }
 
     void off(void) {
+        disconnect();
         network_off(*this, 0, 0, NULL);
     }
 
