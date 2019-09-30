@@ -23,8 +23,8 @@
 
 #include "common.h"
 
-#include "network/cellular_network_manager.h"
-#include "network/cellular_ncp_client.h"
+#include "cellular_network_manager.h"
+#include "cellular_ncp_client.h"
 #include "network/ncp.h"
 
 #include "check.h"
