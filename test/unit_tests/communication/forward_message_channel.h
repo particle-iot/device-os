@@ -77,6 +77,10 @@ public:
 	{
 		channel->notify_client_messages_processed();
 	}
+
+	virtual void reset() override
+	{
+	}
 };
 
 

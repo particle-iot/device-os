@@ -246,7 +246,7 @@ struct MessageChannel : public Channel
 	/**
 	 * Reset the channel state and free all allocated resources.
 	 */
-	virtual void reset();
+	virtual void reset()=0;
 };
 
 class AbstractMessageChannel : public MessageChannel
