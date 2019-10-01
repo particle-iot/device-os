@@ -43,11 +43,11 @@ int LightSSLProtocol::command(ProtocolCommands::Enum command, uint32_t value, co
     if (r == ProtocolError::NO_ERROR) {
       r = wait_confirmable(timeout);
     }
-    ack_handlers.clear();
+    reset();
     return r;
   }
   case ProtocolCommands::TERMINATE: {
-    ack_handlers.clear();
+    reset();
     return ProtocolError::NO_ERROR;
   }
   default:

@@ -94,12 +94,11 @@ public:
 			if (r == ProtocolError::NO_ERROR) {
 				r = wait_confirmable(timeout);
 			}
-			ack_handlers.clear();
+			reset();
 			return r;
 		}
 		case ProtocolCommands::TERMINATE: {
-			// TODO: Clear pending messages and reset the pinger
-			ack_handlers.clear();
+			reset();
 			return ProtocolError::NO_ERROR;
 		}
 		case ProtocolCommands::WAKE:
