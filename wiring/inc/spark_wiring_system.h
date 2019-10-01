@@ -65,6 +65,13 @@ const SleepOptionFlag SLEEP_NETWORK_STANDBY(System_Sleep_Flag::SYSTEM_SLEEP_FLAG
 const SleepOptionFlag SLEEP_DISABLE_WKP_PIN(System_Sleep_Flag::SYSTEM_SLEEP_FLAG_DISABLE_WKP_PIN);
 const SleepOptionFlag SLEEP_NO_WAIT(System_Sleep_Flag::SYSTEM_SLEEP_FLAG_NO_WAIT);
 
+struct SystemResetFlagType; // Tag type for System.reset() flags
+typedef particle::Flags<SystemResetFlagType, uint32_t> SystemResetFlags;
+typedef SystemResetFlags::FlagType SystemResetFlag;
+
+const SystemResetFlag RESET_NO_WAIT(system_reset_flag::SYSTEM_RESET_FLAG_NO_WAIT);
+const SystemResetFlag RESET_PERSIST_DFU(system_reset_flag::SYSTEM_RESET_FLAG_PERSIST_DFU);
+
 #if Wiring_LogConfig
 enum LoggingFeature {
     FEATURE_CONFIGURABLE_LOGGING = 1
@@ -289,12 +296,14 @@ public:
         return system_firmwareUpdate(serialObj);
     }
 
-    static void factoryReset(void);
-    static void dfu(bool persist=false);
-    static void reset(void);
-    static void reset(uint32_t data);
+    static void factoryReset(SystemResetFlags flags = SystemResetFlags());
+    static void dfu(SystemResetFlags flags = SystemResetFlags());
+    static void dfu(bool persist);
+    static void reset();
+    static void reset(SystemResetFlags flags);
+    static void reset(uint32_t data, SystemResetFlags flags = SystemResetFlags());
 
-    static void enterSafeMode(void);
+    static void enterSafeMode(SystemResetFlags flags = SystemResetFlags());
 
 #if SYSTEM_HW_TICKS
     static inline uint32_t ticksPerMicrosecond()

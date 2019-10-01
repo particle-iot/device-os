@@ -27,13 +27,18 @@ test(system_api) {
 
     API_COMPILE(System.dfu());
     API_COMPILE(System.dfu(true));
+    API_COMPILE(System.dfu(RESET_NO_WAIT | RESET_PERSIST_DFU));
 
     API_COMPILE(System.factoryReset());
+    API_COMPILE(System.factoryReset(RESET_NO_WAIT));
 
     API_COMPILE(System.enterSafeMode());
+    API_COMPILE(System.enterSafeMode(RESET_NO_WAIT));
 
     API_COMPILE(System.reset());
+    API_COMPILE(System.reset(RESET_NO_WAIT));
     API_COMPILE(System.reset(0)); // User data
+    API_COMPILE(System.reset(0, RESET_NO_WAIT));
     API_COMPILE(System.resetReason());
     API_COMPILE(System.resetReasonData());
 
