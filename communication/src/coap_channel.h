@@ -538,13 +538,21 @@ public:
 	}
 
 	/**
-	 * Clear the message stores when the channel is initially established.
+	 * Establish this channel for communication.
 	 */
 	ProtocolError establish(uint32_t& flags, uint32_t app_crc) override
 	{
+		reset();
+		return channel::establish(flags, app_crc);
+	}
+
+	/**
+	 * Clear the message stores.
+	 */
+	void reset() override
+	{
 		server.clear();
 		client.clear();
-		return channel::establish(flags, app_crc);
 	}
 
 	/**

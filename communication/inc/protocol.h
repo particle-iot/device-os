@@ -371,6 +371,11 @@ public:
 	int begin();
 
 	/**
+	 * Reset the protocol state and free all allocated resources.
+	 */
+	void reset();
+
+	/**
 	 * Wait for a specific message type to be received.
 	 * @param message_type		The type of message wait for
 	 * @param timeout			The duration to wait for the message before giving up.

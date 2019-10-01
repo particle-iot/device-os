@@ -242,6 +242,11 @@ struct MessageChannel : public Channel
 	 * Notify the upper layer that all client messages have been processed.
 	 */
 	virtual void notify_client_messages_processed()=0;
+
+	/**
+	 * Reset the channel state and free all allocated resources.
+	 */
+	virtual void reset();
 };
 
 class AbstractMessageChannel : public MessageChannel

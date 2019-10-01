@@ -295,12 +295,8 @@ int Protocol::begin()
 {
 	LOG_CATEGORY("comm.protocol.handshake");
 	LOG(INFO,"Establish secure connection");
-	chunkedTransfer.reset();
-	pinger.reset();
-	timesync_.reset();
 
-	// FIXME: Pending completion handlers should be cancelled at the end of a previous session
-	ack_handlers.clear();
+	reset();
 	last_ack_handlers_update = callbacks.millis();
 
 	uint32_t channel_flags = 0;
@@ -352,6 +348,14 @@ int Protocol::begin()
 	LOG(INFO,"Handshake completed");
 	channel.notify_established();
 	return error;
+}
+
+void Protocol::reset() {
+	chunkedTransfer.reset();
+	pinger.reset();
+	timesync_.reset();
+	ack_handlers.clear();
+	channel.reset();
 }
 
 const auto HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL = 1;
