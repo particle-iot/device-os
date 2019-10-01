@@ -164,13 +164,14 @@ int system_cloud_disconnect(int flags)
         retVal = socket_shutdown(s_state.socket, SHUT_WR);
         if (!retVal) {
             LOG_DEBUG(TRACE, "Half-closed cloud socket");
-            // Wait for an error (which means that the server closed our connection).
+            // Keep reading and discarding socket data until an error occurs (which would mean that
+            // the server closed our connection)
+            uint8_t buf[16];
+            int sockRet = 0;
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-            while (HAL_Timer_Get_Milli_Seconds() - start < 5000) {
-                if (!Spark_Communication_Loop()) {
-                    break;
-                }
-            }
+            do {
+                sockRet = socket_receive(s_state.socket, buf, sizeof(buf), 0);
+            } while (sockRet >= 0 && HAL_Timer_Get_Milli_Seconds() - start < 5000);
         }
     }
 
