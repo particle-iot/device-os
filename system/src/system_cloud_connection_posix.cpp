@@ -264,13 +264,14 @@ int system_cloud_disconnect(int flags)
         ret = sock_shutdown(s_state.socket, SHUT_WR);
         if (!ret) {
             LOG_DEBUG(TRACE, "Half-closed cloud socket");
-            /* Wait for an error (which means that the server closed our connection). */
+            // Keep reading and discarding socket data until an error occurs (which would mean that
+            // the server closed our connection)
+            uint8_t buf[16];
+            int sockRet = 0;
             system_tick_t start = millis();
-            while (millis() - start < CLOUD_SOCKET_HALF_CLOSED_WAIT_TIMEOUT) {
-                if (!spark_protocol_event_loop(system_cloud_protocol_instance())) {
-                    break;
-                }
-            }
+            do {
+                sockRet = system_cloud_recv(buf, sizeof(buf), 0);
+            } while (sockRet >= 0 && millis() - start < CLOUD_SOCKET_HALF_CLOSED_WAIT_TIMEOUT);
         }
     }
 
