@@ -166,7 +166,7 @@ int system_cloud_disconnect(int flags)
             LOG_DEBUG(TRACE, "Half-closed cloud socket");
             // Keep reading and discarding socket data until an error occurs (which would mean that
             // the server closed our connection)
-            uint8_t buf[16];
+            uint8_t buf[32];
             int sockRet = 0;
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
             do {
