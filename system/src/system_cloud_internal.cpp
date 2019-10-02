@@ -1121,6 +1121,8 @@ CloudDiagnostics* CloudDiagnostics::instance() {
 
 namespace particle {
 
+#ifndef SPARK_NO_CLOUD
+
 bool publishKeepaliveInterval(unsigned interval) {
     if (!interval) {
         // Get the current interval
@@ -1137,5 +1139,7 @@ bool publishKeepaliveInterval(unsigned interval) {
     snprintf(buf, sizeof(buf), "%u", interval);
     return publishEvent(KEEPALIVE_INTERVAL_EVENT, buf);
 }
+
+#endif // !defined(SPARK_NO_CLOUD)
 
 } // particle
