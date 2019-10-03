@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,42 +17,30 @@
 
 #pragma once
 
-#include "hal_platform.h"
-
-#if HAL_PLATFORM_MESH
-
-#include <stdint.h>
+#include "radio_hal.h"
 
 /**
- * API version number.
+ * Mesh antenna type.
  */
-#define MESH_API_VERSION 1
+typedef enum mesh_antenna_type {
+    MESH_ANT_DEFAULT = RADIO_ANT_DEFAULT, ///< Default antenna (platform-specific).
+    MESH_ANT_INTERNAL = RADIO_ANT_INTERNAL, ///< Internal antenna.
+    MESH_ANT_EXTERNAL = RADIO_ANT_EXTERNAL ///< External antenna.
+} mesh_antenna_type;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * Mesh antenna type.
- */
-typedef enum mesh_antenna_type {
-    MESH_ANT_DEFAULT = 0,
-    MESH_ANT_INTERNAL = 1,
-    MESH_ANT_EXTERNAL = 2,
-} mesh_antenna_type;
-
-
-/**
  * Select the antenna for mesh radio.
  *
- * @param antenna The antenna type for mesh (see `mesh_antenna_type`).
+ * @param antenna Antenna type (a value defined by the `mesh_antenna_type` enum).
  *
- * @return `0` on success, or a negative result code in case of an error.
+ * @return `0` on success or a negative result code in case of an error.
  */
-int mesh_select_antenna(mesh_antenna_type antenna);
+int mesh_select_antenna(int antenna, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
-
-#endif // HAL_PLATFORM_MESH

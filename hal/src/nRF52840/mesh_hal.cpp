@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,28 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "mesh_hal.h"
 
-#include "hal_platform.h"
+#include "radio_common.h"
 
-#if HAL_PLATFORM_OPENTHREAD
+#include "check.h"
 
-#include "ot_api.h"
+using namespace particle;
 
-namespace particle {
-
-namespace system {
-
-int threadInit();
-
-using ThreadLock = ::particle::net::ot::ThreadLock;
-
-inline otInstance* threadInstance() {
-    return ot_get_instance();
+int mesh_select_antenna(int antenna, void* reserved) {
+	CHECK(selectRadioAntenna((radio_antenna_type)antenna));
+	return 0;
 }
-
-} // particle::system
-
-} // particle
-
-#endif /* HAL_PLATFORM_OPENTHREAD */

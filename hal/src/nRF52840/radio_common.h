@@ -17,32 +17,23 @@
 
 #pragma once
 
-#include "dct.h"
+#include "radio_hal.h"
 
 namespace particle {
 
 /**
- * Antenna type.
- */
-enum class RadioAntenna {
-    DEFAULT, ///< Platform-specific default antenna.
-    INTERNAL, ///< Internal antenna.
-    EXTERNAL ///< External antenna.
-};
-
-/**
- * Load the antenna setting from the DCT and select that antenna.
+ * Load the mesh/BLE antenna setting from the DCT and select that antenna.
  *
  * @return 0 on success or a negative result code in case of an error.
  */
 int initRadioAntenna();
 
 /**
- * Select the antenna and store the setting in the DCT.
+ * Select the mesh/BLE antenna and store the setting in the DCT.
  *
  * @param antenna Antenna type.
  * @return 0 on success or a negative result code in case of an error.
  */
-int setRadioAntenna(RadioAntenna antenna);
+int selectRadioAntenna(radio_antenna_type antenna);
 
 } // particle

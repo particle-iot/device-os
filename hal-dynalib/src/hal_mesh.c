@@ -15,28 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
-
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_OPENTHREAD
-
-#include "ot_api.h"
-
-namespace particle {
-
-namespace system {
-
-int threadInit();
-
-using ThreadLock = ::particle::net::ot::ThreadLock;
-
-inline otInstance* threadInstance() {
-    return ot_get_instance();
-}
-
-} // particle::system
-
-} // particle
-
-#endif /* HAL_PLATFORM_OPENTHREAD */
+#if HAL_PLATFORM_MESH
+#include "hal_dynalib_mesh.h"
+#endif

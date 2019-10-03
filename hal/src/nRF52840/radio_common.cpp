@@ -17,8 +17,8 @@
 
 #include "radio_common.h"
 
-#include "gpio_hal.h"
 #include "dct.h"
+#include "gpio_hal.h"
 
 #include "check.h"
 
@@ -27,16 +27,16 @@ namespace particle {
 namespace {
 
 #if HAL_PLATFORM_RADIO_ANTENNA_INTERNAL
-const auto DEFAULT_ANTENNA = RadioAntenna::INTERNAL;
+const auto DEFAULT_ANTENNA = RADIO_ANT_INTERNAL;
 #elif HAL_PLATFORM_RADIO_ANTENNA_EXTERNAL
-const auto DEFAULT_ANTENNA = RadioAntenna::EXTERNAL;
+const auto DEFAULT_ANTENNA = RADIO_ANT_EXTERNAL;
 #else
 #error "Unsupported platform"
 #endif
 
 #if HAL_PLATFORM_RADIO_ANTENNA_INTERNAL
 
-int setInternalAntenna() {
+int selectInternalAntenna() {
 #if PLATFORM_ID == PLATFORM_ARGON
     HAL_Pin_Mode(ANTSW1, OUTPUT);
     HAL_Pin_Mode(ANTSW2, OUTPUT);
@@ -60,12 +60,12 @@ int setInternalAntenna() {
 
 #if HAL_PLATFORM_RADIO_ANTENNA_EXTERNAL
 
-int setExtenalAntenna() {
+int selectExtenalAntenna() {
 #if PLATFORM_ID == PLATFORM_ARGON
-    HAL_Pin_Mode(ANTSW1, OUTPUT);
-    HAL_Pin_Mode(ANTSW2, OUTPUT);
-    HAL_GPIO_Write(ANTSW1, 1);
-    HAL_GPIO_Write(ANTSW2, 0);
+    //HAL_Pin_Mode(ANTSW1, OUTPUT);
+    //HAL_Pin_Mode(ANTSW2, OUTPUT);
+    //HAL_GPIO_Write(ANTSW1, 1);
+    //HAL_GPIO_Write(ANTSW2, 0);
 #elif PLATFORM_ID == PLATFORM_BORON
     HAL_Pin_Mode(ANTSW1, OUTPUT);
     HAL_GPIO_Write(ANTSW1, 0);
@@ -83,22 +83,25 @@ int setExtenalAntenna() {
 
 #endif // HAL_PLATFORM_RADIO_ANTENNA_EXTERNAL
 
-int setAntenna(RadioAntenna antenna) {
-    if (antenna == RadioAntenna::DEFAULT) {
+int selectAntenna(radio_antenna_type antenna) {
+    if (antenna == RADIO_ANT_DEFAULT) {
         antenna = DEFAULT_ANTENNA;
     }
-    if (antenna == RadioAntenna::INTERNAL) {
+    switch (antenna) {
 #if HAL_PLATFORM_RADIO_ANTENNA_INTERNAL
-        CHECK(setInternalAntenna());
-#else
-        return SYSTEM_ERROR_NOT_SUPPORTED;
+    case RADIO_ANT_INTERNAL: {
+        CHECK(selectInternalAntenna());
+        break;
+    }
 #endif
-    } else {
 #if HAL_PLATFORM_RADIO_ANTENNA_EXTERNAL
-        CHECK(setExtenalAntenna());
-#else
-        return SYSTEM_ERROR_NOT_SUPPORTED;
+    case RADIO_ANT_EXTERNAL: {
+        CHECK(selectExtenalAntenna());
+        break;
+    }
 #endif
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     return 0;
 }
@@ -106,27 +109,23 @@ int setAntenna(RadioAntenna antenna) {
 } // namespace
 
 int initRadioAntenna() {
-    auto antenna = RadioAntenna::DEFAULT;
-    uint8_t dctAntenna = 0xff;
+    auto antenna = RADIO_ANT_DEFAULT;
+    uint8_t dctAntenna = 0;
     if (dct_read_app_data_copy(DCT_RADIO_ANTENNA_OFFSET, &dctAntenna, DCT_RADIO_ANTENNA_SIZE) < 0) {
         LOG(ERROR, "Unable to load antenna settings");
         // Use the default antenna
-    } else if (dctAntenna == DCT_RADIO_ANTENNA_INTERNAL) {
-        antenna = RadioAntenna::INTERNAL;
-    } else if (dctAntenna == DCT_RADIO_ANTENNA_EXTERNAL) {
-        antenna = RadioAntenna::EXTERNAL;
+    } else if (dctAntenna != 0xff) {
+        antenna = (radio_antenna_type)dctAntenna;
     }
-    CHECK(setAntenna(antenna));
+    CHECK(selectAntenna(antenna));
     return 0;
 }
 
-int setRadioAntenna(RadioAntenna antenna) {
-    CHECK(setAntenna(antenna));
+int selectRadioAntenna(radio_antenna_type antenna) {
+    CHECK(selectAntenna(antenna));
     uint8_t dctAntenna = 0xff;
-    if (antenna == RadioAntenna::INTERNAL) {
-        dctAntenna = DCT_RADIO_ANTENNA_INTERNAL;
-    } else if (antenna == RadioAntenna::EXTERNAL) {
-        dctAntenna = DCT_RADIO_ANTENNA_EXTERNAL;
+    if (antenna != RADIO_ANT_DEFAULT) {
+        dctAntenna = antenna;
     }
     if (dct_write_app_data(&dctAntenna, DCT_RADIO_ANTENNA_OFFSET, DCT_RADIO_ANTENNA_SIZE) < 0) {
         LOG(ERROR, "Unable to save antenna settings");

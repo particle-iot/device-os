@@ -27,11 +27,11 @@
 
 #include "spark_wiring_signal.h"
 #include "system_task.h"
-#include "system_mesh.h"
 #include "events.h"
 #include "system_error.h"
 #include "check.h"
 #include "ifapi.h"
+#include "mesh_hal.h"
 #include <memory>
 #include "scope_guard.h"
 

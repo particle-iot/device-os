@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,14 +17,11 @@
 
 #pragma once
 
-#include "dynalib.h"
-
-#ifdef DYNALIB_EXPORT
-#include "system_mesh.h"
-#endif
-
-DYNALIB_BEGIN(system_mesh)
-
-DYNALIB_FN(0, system_mesh, mesh_select_antenna, int(mesh_antenna_type))
-
-DYNALIB_END(system_mesh)
+/**
+ * Antenna type.
+ */
+typedef enum radio_antenna_type {
+    RADIO_ANT_DEFAULT = 0, ///< Default antenna (platform-specific).
+    RADIO_ANT_INTERNAL = 1, ///< Internal antenna.
+    RADIO_ANT_EXTERNAL = 2 ///< External antenna.
+} radio_antenna_type;

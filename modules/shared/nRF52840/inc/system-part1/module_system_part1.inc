@@ -47,7 +47,7 @@ DYNALIB_TABLE_EXTERN(hal_ble);
 DYNALIB_TABLE_EXTERN(hal_nfc);
 #endif // HAL_PLATFORM_NFC
 #if HAL_PLATFORM_MESH
-DYNALIB_TABLE_EXTERN(system_mesh);
+DYNALIB_TABLE_EXTERN(hal_mesh);
 #endif
 
 // strange that this is needed given that the entire block is scoped extern "C"
@@ -95,7 +95,7 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
     , DYNALIB_TABLE_NAME(hal_nfc)
 #endif // HAL_PLATFORM_NFC
 #if HAL_PLATFORM_MESH
-    , DYNALIB_TABLE_NAME(system_mesh)
+    , DYNALIB_TABLE_NAME(hal_mesh)
 #endif
 };
 

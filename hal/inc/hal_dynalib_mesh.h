@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,10 +15,16 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "hal_platform.h"
+#pragma once
 
-#define DYNALIB_IMPORT
+#include "dynalib.h"
 
-#if HAL_PLATFORM_MESH
-#include "system_dynalib_mesh.h"
+#ifdef DYNALIB_EXPORT
+#include "mesh_hal.h"
 #endif
+
+DYNALIB_BEGIN(hal_mesh)
+
+DYNALIB_FN(0, hal_mesh, mesh_select_antenna, int(int, void*))
+
+DYNALIB_END(hal_mesh)

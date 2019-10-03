@@ -24,7 +24,6 @@
 
 #include <arpa/inet.h>
 #include "delay_hal.h"
-#include "gpio_hal.h"
 
 namespace spark {
 
@@ -308,7 +307,8 @@ int MeshPublish::poll() {
 }
 
 int MeshClass::selectAntenna(mesh_antenna_type antenna) {
-    return mesh_select_antenna(antenna);
+    CHECK(mesh_select_antenna(antenna, nullptr));
+    return 0;
 }
 
 IPAddress MeshClass::localIP() {
