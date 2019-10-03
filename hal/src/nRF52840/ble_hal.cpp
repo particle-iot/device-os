@@ -43,6 +43,7 @@ LOG_SOURCE_CATEGORY("hal.ble")
 
 #include "gpio_hal.h"
 #include "device_code.h"
+#include "radio_common.h"
 #include "nrf_system_error.h"
 #include "sdk_config_system.h"
 #include "spark_wiring_vector.h"
@@ -3363,37 +3364,8 @@ bool BleObject::initialized() const {
 }
 
 int BleObject::selectAntenna(hal_ble_ant_type_t antenna) const {
-#if (PLATFORM_ID == PLATFORM_XSOM) || (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM)
-    // Mesh SoM don't have on-board antenna switch.
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-#else
-    HAL_Pin_Mode(ANTSW1, OUTPUT);
-#if (PLATFORM_ID == PLATFORM_XENON) || (PLATFORM_ID == PLATFORM_ARGON)
-    HAL_Pin_Mode(ANTSW2, OUTPUT);
-#endif
-    if (antenna == BLE_ANT_EXTERNAL) {
-#if (PLATFORM_ID == PLATFORM_ARGON)
-        HAL_GPIO_Write(ANTSW1, 1);
-        HAL_GPIO_Write(ANTSW2, 0);
-#elif (PLATFORM_ID == PLATFORM_BORON)
-        HAL_GPIO_Write(ANTSW1, 0);
-#else
-        HAL_GPIO_Write(ANTSW1, 0);
-        HAL_GPIO_Write(ANTSW2, 1);
-#endif
-    } else {
-#if (PLATFORM_ID == PLATFORM_ARGON)
-        HAL_GPIO_Write(ANTSW1, 0);
-        HAL_GPIO_Write(ANTSW2, 1);
-#elif (PLATFORM_ID == PLATFORM_BORON)
-        HAL_GPIO_Write(ANTSW1, 1);
-#else
-        HAL_GPIO_Write(ANTSW1, 1);
-        HAL_GPIO_Write(ANTSW2, 0);
-#endif
-    }
-    return SYSTEM_ERROR_NONE;
-#endif // (PLATFORM_ID == PLATFORM_XENON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM) || (PLATFORM_ID == PLATFORM_ARGON_SOM)
+    CHECK(selectRadioAntenna((radio_antenna_type)antenna));
+    return 0;
 }
 
 int BleObject::toPlatformUUID(const hal_ble_uuid_t* halUuid, ble_uuid_t* uuid) {

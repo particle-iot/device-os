@@ -27,6 +27,7 @@
 
 #include "ble_hal_defines.h"
 #include "ble_hal_impl.h"
+#include "radio_hal.h"
 
 /**
  * @addtogroup ble_api
@@ -42,9 +43,9 @@
 #define PARTICLE_COMPANY_ID     0x0662
 
 typedef enum hal_ble_ant_type_t {
-    BLE_ANT_DEFAULT  = 0,
-    BLE_ANT_INTERNAL = 1,
-    BLE_ANT_EXTERNAL = 2,
+    BLE_ANT_DEFAULT  = RADIO_ANT_DEFAULT,
+    BLE_ANT_INTERNAL = RADIO_ANT_INTERNAL,
+    BLE_ANT_EXTERNAL = RADIO_ANT_EXTERNAL
 } hal_ble_ant_type_t;
 
 typedef enum hal_ble_role_t {

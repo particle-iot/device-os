@@ -87,6 +87,10 @@
 #include <openthread/platform/settings.h>
 #endif
 
+#if HAL_PLATFORM_RADIO_STACK
+#include "radio_common.h"
+#endif
+
 #if PLATFORM_ID == 3
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
 #include <thread>
@@ -736,6 +740,10 @@ void app_setup_and_loop(void)
             LOG(TRACE, "Last reset reason: %d (data: 0x%02x)", reason, (unsigned)data); // TODO: Use LOG_ATTR()
         }
     }
+
+#if HAL_PLATFORM_RADIO_STACK
+    initRadioAntenna();
+#endif
 
 #if HAL_PLATFORM_BLE
     // FIXME: Move BLE and Thread initialization to an appropriate place
