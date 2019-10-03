@@ -187,9 +187,6 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_OTA_UPDATE_FLAG_SET (0xA5)
 #define DCT_OTA_UPDATE_FLAG_CLEAR (0XFF)
 
-#define DCT_RADIO_ANTENNA_INTERNAL (1)
-#define DCT_RADIO_ANTENNA_EXTERNAL (2)
-
 /**
  * Assert offsets. These ensure that the layout in flash isn't inadvertently changed.
  */

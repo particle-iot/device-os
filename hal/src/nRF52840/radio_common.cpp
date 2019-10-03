@@ -62,10 +62,10 @@ int selectInternalAntenna() {
 
 int selectExtenalAntenna() {
 #if PLATFORM_ID == PLATFORM_ARGON
-    //HAL_Pin_Mode(ANTSW1, OUTPUT);
-    //HAL_Pin_Mode(ANTSW2, OUTPUT);
-    //HAL_GPIO_Write(ANTSW1, 1);
-    //HAL_GPIO_Write(ANTSW2, 0);
+    HAL_Pin_Mode(ANTSW1, OUTPUT);
+    HAL_Pin_Mode(ANTSW2, OUTPUT);
+    HAL_GPIO_Write(ANTSW1, 1);
+    HAL_GPIO_Write(ANTSW2, 0);
 #elif PLATFORM_ID == PLATFORM_BORON
     HAL_Pin_Mode(ANTSW1, OUTPUT);
     HAL_GPIO_Write(ANTSW1, 0);
@@ -110,11 +110,11 @@ int selectAntenna(radio_antenna_type antenna) {
 
 int initRadioAntenna() {
     auto antenna = RADIO_ANT_DEFAULT;
-    uint8_t dctAntenna = 0;
+    uint8_t dctAntenna = 0xff;
     if (dct_read_app_data_copy(DCT_RADIO_ANTENNA_OFFSET, &dctAntenna, DCT_RADIO_ANTENNA_SIZE) < 0) {
         LOG(ERROR, "Unable to load antenna settings");
         // Use the default antenna
-    } else if (dctAntenna != 0xff) {
+    } else if (dctAntenna == RADIO_ANT_INTERNAL || dctAntenna == RADIO_ANT_EXTERNAL) {
         antenna = (radio_antenna_type)dctAntenna;
     }
     CHECK(selectAntenna(antenna));
