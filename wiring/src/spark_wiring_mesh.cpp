@@ -306,6 +306,11 @@ int MeshPublish::poll() {
     return result;
 }
 
+int MeshClass::selectAntenna(MeshAntennaType antenna) {
+    CHECK(mesh_select_antenna((int)antenna, nullptr));
+    return 0;
+}
+
 IPAddress MeshClass::localIP() {
     HAL_IPAddress addr = {};
     addr.v = 6;

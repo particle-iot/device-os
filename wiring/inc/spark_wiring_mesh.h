@@ -16,7 +16,7 @@
  */
 
 #ifndef SPARK_WIRING_MESH_H
-#define    SPARK_WIRING_MESH_H
+#define SPARK_WIRING_MESH_H
 
 #include "spark_wiring_platform.h"
 #include "spark_wiring_network.h"
@@ -31,12 +31,19 @@
 #include "system_error.h"
 #include "check.h"
 #include "ifapi.h"
+#include "mesh_hal.h"
 #include <memory>
 #include "scope_guard.h"
 
 #include "spark_wiring_thread.h"
 
 namespace spark {
+
+enum class MeshAntennaType {
+    DEFAULT = RADIO_ANT_DEFAULT,
+    INTERNAL = RADIO_ANT_INTERNAL,
+    EXTERNAL = RADIO_ANT_EXTERNAL
+};
 
 class MeshSignal : public particle::Signal {
 public:
@@ -172,6 +179,8 @@ public:
     bool ready() {
         return network_ready(*this, 0,  NULL);
     }
+
+    int selectAntenna(MeshAntennaType antenna);
 
     // There are multiple IPv6 addresses, here we are only reporting ML-EID (Mesh-Local EID)
     IPAddress localIP();

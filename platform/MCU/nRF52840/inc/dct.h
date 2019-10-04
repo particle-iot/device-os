@@ -108,7 +108,8 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t setup_done;                  // Setup done flag
     uint32_t ncp_id;                     // NCP identifier
     uint8_t pm_detect;                   // Detect power management peripherals flag
-    uint8_t reserved2[251];
+    uint8_t radio_antenna;               // Mesh/BLE antenna: 0x01 - internal, 0x02 - external, 0xff - default
+    uint8_t reserved2[250];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -145,6 +146,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_SETUP_DONE_OFFSET (offsetof(application_dct_t, setup_done))
 #define DCT_NCP_ID_OFFSET (offsetof(application_dct_t, ncp_id))
 #define DCT_PM_DETECT_OFFSET (offsetof(application_dct_t, pm_detect))
+#define DCT_RADIO_ANTENNA_OFFSET (offsetof(application_dct_t, radio_antenna))
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key))
@@ -177,6 +179,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_SETUP_DONE_SIZE (sizeof(application_dct_t::setup_done))
 #define DCT_NCP_ID_SIZE (sizeof(application_dct_t::ncp_id))
 #define DCT_PM_DETECT_SIZE (sizeof(application_dct_t::pm_detect))
+#define DCT_RADIO_ANTENNA_SIZE (sizeof(application_dct_t::radio_antenna))
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) PARTICLE_STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) PARTICLE_STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
@@ -222,8 +225,9 @@ STATIC_ASSERT_DCT_OFFSET(device_secret, 8119 /* 3823 + (196 + 4*1024 + 4) */);
 STATIC_ASSERT_DCT_OFFSET(setup_done, 8134 /* 8119 + 15 */);
 STATIC_ASSERT_DCT_OFFSET(ncp_id, 8135 /* 8134 + 1 */);
 STATIC_ASSERT_DCT_OFFSET(pm_detect, 8139 /* 8135 + 4 */);
-STATIC_ASSERT_DCT_OFFSET(reserved2, 8140 /* 8139 + 1 */);
-STATIC_ASSERT_DCT_OFFSET(end, 8391 /* 8140 + 251 */);
+STATIC_ASSERT_DCT_OFFSET(radio_antenna, 8140 /* 8139 + 1 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 8141 /* 8140 + 1 */);
+STATIC_ASSERT_DCT_OFFSET(end, 8391 /* 8141 + 250 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);
