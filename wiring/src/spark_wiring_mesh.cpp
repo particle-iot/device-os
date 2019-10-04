@@ -306,8 +306,8 @@ int MeshPublish::poll() {
     return result;
 }
 
-int MeshClass::selectAntenna(mesh_antenna_type antenna) {
-    CHECK(mesh_select_antenna(antenna, nullptr));
+int MeshClass::selectAntenna(MeshAntennaType antenna) {
+    CHECK(mesh_select_antenna((int)antenna, nullptr));
     return 0;
 }
 

@@ -19,15 +19,6 @@
 
 #include "radio_hal.h"
 
-/**
- * Mesh antenna type.
- */
-typedef enum mesh_antenna_type {
-    MESH_ANT_DEFAULT = RADIO_ANT_DEFAULT, ///< Default antenna (platform-specific).
-    MESH_ANT_INTERNAL = RADIO_ANT_INTERNAL, ///< Internal antenna.
-    MESH_ANT_EXTERNAL = RADIO_ANT_EXTERNAL ///< External antenna.
-} mesh_antenna_type;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,7 +26,7 @@ extern "C" {
 /**
  * Select the antenna for mesh radio.
  *
- * @param antenna Antenna type (a value defined by the `mesh_antenna_type` enum).
+ * @param antenna Antenna type (a value defined by the `radio_antenna_type` enum).
  *
  * @return `0` on success or a negative result code in case of an error.
  */
