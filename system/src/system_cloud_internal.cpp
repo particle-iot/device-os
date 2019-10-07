@@ -557,6 +557,14 @@ void clientMessagesProcessed(void* reserved) {
     }
 }
 
+bool publishSafeModeEventIfNeeded() {
+    if (system_mode() == SAFE_MODE) {
+        LOG(INFO, "Sending safe mode event");
+        return publishEvent("spark/device/safemode", "");
+    }
+    return true; // ok
+}
+
 } // namespace
 
 void Spark_Signal(bool on, unsigned, void*)
@@ -955,10 +963,9 @@ int Spark_Handshake(bool presence_announce)
             LOG(INFO,"spark/hardware/ota_chunk_size event");
             publishEvent("spark/hardware/ota_chunk_size", buf);
         }
-        if (system_mode()==SAFE_MODE) {
-            LOG(INFO,"Send spark/device/safemode event");
-            publishEvent("spark/device/safemode", "");
-        }
+
+        publishSafeModeEventIfNeeded();
+
 #if defined(SPARK_SUBSYSTEM_EVENT_NAME)
         if (!HAL_core_subsystem_version(buf, sizeof (buf)) && *buf)
         {
@@ -996,12 +1003,14 @@ int Spark_Handshake(bool presence_announce)
     {
         LOG(INFO,"cloud connected from existing session.");
         err = 0;
+
+        publishSafeModeEventIfNeeded();
+        Send_Firmware_Update_Flags();
+
         if (!HAL_RTC_Time_Is_Valid(nullptr) && spark_sync_time_last(nullptr, nullptr) == 0) {
             spark_protocol_send_time_request(sp);
             Spark_Process_Events();
         }
-
-        Send_Firmware_Update_Flags();
     }
     if (particle_key_errors != NO_ERROR) {
         char buf[sizeof(unsigned long)*8+1];
