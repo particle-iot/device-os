@@ -147,7 +147,7 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
                     (param & SLEEP_DISABLE_WKP_PIN.value()) ? HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN : 0);
             break;
 
-#if Wiring_SetupButtonUX
+#if HAL_PLATFORM_SETUP_BUTTON_UX
         case SLEEP_MODE_SOFTPOWEROFF:
             network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
             network_off(0, 0, 0, NULL);
