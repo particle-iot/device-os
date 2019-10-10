@@ -4,34 +4,38 @@ INCLUDE platform_flash.ld
 
 MEMORY
 {
-    INCLUDE memory_backup_ram.ld
+    SRAM       (xrw) : ORIGIN = _bootloader_static_ram_start, LENGTH = _bootloader_static_ram_size
+    APP_FLASH  (rx)  : ORIGIN = _bootloader_flash_start,      LENGTH = _bootloader_flash_size
+    DCT1_FLASH (rx)  : ORIGIN = _dct1_flash_start,            LENGTH = _dct1_flash_size
+    DCT2_FLASH (rx)  : ORIGIN = _dct2_flash_start,            LENGTH = _dct2_flash_size
   
-    SRAM      (xrw) : ORIGIN = _bootloader_static_ram_start, LENGTH = _bootloader_static_ram_size
-    APP_FLASH (rx)  : ORIGIN = _bootloader_flash_start,      LENGTH = _bootloader_flash_size
+    INCLUDE memory_backup_ram.ld
 }
 
+/* Sections Definitions */
 SECTIONS
 {
     /* Module start */
     INCLUDE linker_module_start.ld
 
     /* Interrupt vector table */
-    .vectors :
+    .isr_vector :
     {
         . = ALIGN(0x4);
         link_interrupt_vectors_location = .;
-        KEEP(*(.isr_vector))
+        KEEP (*(.interrupt_vector_table))
         link_interrupt_vectors_location_end = .;
         . = ALIGN(0x4);
-    } > APP_FLASH  AT> APP_FLASH
+    } > APP_FLASH
 
     /* Module info */
     INCLUDE linker_module_info.ld
 
+    /* the program code is stored in the .text section, which goes to Flash */
     .text :
     {
-        . = ALIGN(0x4);
-        
+	    . = ALIGN(4);
+
         /* Code */
         link_code_start = .;
         *(.text)
@@ -40,7 +44,7 @@ SECTIONS
         *(.glue_7)
         *(.glue_7t)
         link_code_end = .;
-
+        
         . = ALIGN(0x4);
         
         /* Read-only data (constants) */
@@ -49,7 +53,7 @@ SECTIONS
         *(.rodata*)
         *(.gnu.linkonce.r.*)
         link_const_data_end = .;
-        
+
         . = ALIGN(0x4);
 
         /* This is used by the startup in order to invoke C++ constructors */
@@ -102,48 +106,60 @@ SECTIONS
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_end = .;
     } > SRAM AT> SRAM
-
+    
     /* Heap location */
     link_heap_location = link_bss_end;
     link_heap_location_end = link_bss_end + _heap_min_size;
-    
-    /* Contains the initial stack */
-    .stack __stack_start__ :
-    {
-        link_init_stack_start = .;
-        *(.stack)
-        link_init_stack_end = .;
-    } > SRAM AT> SRAM
 
-    /* User backup ram data */
-    INCLUDE linker_backup_ram_user.ld
-    
     /* System backup ram data */
-    INCLUDE linker_backup_ram_system.ld
+	INCLUDE linker_backup_ram_system.ld
     
+    /* User backup ram data */
+	INCLUDE linker_backup_ram_user.ld
+
+    /* Stabs debugging sections.  */
+    .stab          0 : { *(.stab) }
+    .stabstr       0 : { *(.stabstr) }
+    .stab.excl     0 : { *(.stab.excl) }
+    .stab.exclstr  0 : { *(.stab.exclstr) }
+    .stab.index    0 : { *(.stab.index) }
+    .stab.indexstr 0 : { *(.stab.indexstr) }
+    .comment       0 : { *(.comment) }
+    /* DWARF debug sections.
+       Symbols in the DWARF debugging sections are relative to the beginning
+       of the section so we begin them at 0.  */
+    /* DWARF 1 */
+    .debug          0 : { *(.debug) }
+    .line           0 : { *(.line) }
+    /* GNU DWARF 1 extensions */
+    .debug_srcinfo  0 : { *(.debug_srcinfo) }
+    .debug_sfnames  0 : { *(.debug_sfnames) }
+    /* DWARF 1.1 and DWARF 2 */
+    .debug_aranges  0 : { *(.debug_aranges) }
+    .debug_pubnames 0 : { *(.debug_pubnames) }
+    /* DWARF 2 */
+    .debug_info     0 : { *(.debug_info .gnu.linkonce.wi.*) }
+    .debug_abbrev   0 : { *(.debug_abbrev) }
+    .debug_line     0 : { *(.debug_line) }
+    .debug_frame    0 : { *(.debug_frame) }
+    .debug_str      0 : { *(.debug_str) }
+    .debug_loc      0 : { *(.debug_loc) }
+    .debug_macinfo  0 : { *(.debug_macinfo) }
+    /* SGI/MIPS DWARF 2 extensions */
+    .debug_weaknames 0 : { *(.debug_weaknames) }
+    .debug_funcnames 0 : { *(.debug_funcnames) }
+    .debug_typenames 0 : { *(.debug_typenames) }
+    .debug_varnames  0 : { *(.debug_varnames) }
+
     /* Module end */
     INCLUDE linker_module_end.ld
-
-    /* Discarded sections */
-    /DISCARD/ :
+    
+    /* remove the debugging information from the standard libraries */
+    DISCARD :
     {
-        *(.ARM.attributes*)
-        *(.comment)
-        *(.init)
-        *(.preinit)
-        *(.fini)
-        *(.fini_array)
-        *(.ARM.exidx*)
-        *(.gnu.linkonce.armexidx.*)
-        *(.eh_frame_hdr)
-        *(.eh_frame)
-        *(.gnu.linkonce.armextab.*)
-        *(.v4_bx)
-        *(.vfp11_veneer)
-        *(.gcc_except_table)
-        *(.eh_frame_hdr)
-        *(.eh_frame)
-        *(.glue*)
+        libc.a ( * )
+        libm.a ( * )
+        libgcc.a ( * )
     }
 }
 
@@ -151,6 +167,11 @@ SECTIONS
 PROVIDE (__stack_size__ = _bootloader_stack_size);
 PROVIDE (__stack_start__ = _bootloader_stack_start);
 PROVIDE (__stack_end__ = __stack_start__ + __stack_size__);
+
+PROVIDE( dct1_start_addr_loc     = ORIGIN( DCT1_FLASH ));
+PROVIDE( dct1_size_loc           = LENGTH( DCT1_FLASH ));
+PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
+PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
 
 ASSERT (
     (ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end) &&

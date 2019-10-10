@@ -44,13 +44,13 @@
 
 /* start address for the initialization values of the .data section.
 defined in linker script */
-.word  _sidata
+.word  link_global_data_initial_values
 /* start address for the .data section. defined in linker script */
-.word  _sdata
+.word  link_global_data_start
 /* end address for the .data section. defined in linker script */
-.word  _edata
+.word  link_global_data_end
 /* start address for the .bss section. defined in linker script */
-.word  _sbss
+.word  link_bss_location
 /* end address for the .bss section. defined in linker script */
 .word  _ebss
 /* stack used for SystemInit_ExtMemCtl; always internal RAM used */
@@ -74,18 +74,18 @@ Reset_Handler:
   b  LoopCopyDataInit
 
 CopyDataInit:
-  ldr  r3, =_sidata
+  ldr  r3, =link_global_data_initial_values
   ldr  r3, [r3, r1]
   str  r3, [r0, r1]
   adds  r1, r1, #4
 
 LoopCopyDataInit:
-  ldr  r0, =_sdata
-  ldr  r3, =_edata
+  ldr  r0, =link_global_data_start
+  ldr  r3, =link_global_data_end
   adds  r2, r0, r1
   cmp  r2, r3
   bcc  CopyDataInit
-  ldr  r2, =_sbss
+  ldr  r2, =link_bss_location
   b  LoopFillZerobss
 /* Zero fill the bss segment. */
 FillZerobss:
@@ -93,7 +93,7 @@ FillZerobss:
   str  r3, [r2], #4
 
 LoopFillZerobss:
-  ldr  r3, = _ebss
+  ldr  r3, = link_bss_end
   cmp  r2, r3
   bcc  FillZerobss
 /* Call the clock system intitialization function.*/
@@ -129,7 +129,7 @@ Infinite_Loop:
 
 
 g_pfnVectors:
-  .word  _estack
+  .word  __stack_end__
   .word  Reset_Handler
   .word  NMI_Handler
   .word  HardFault_Handler
