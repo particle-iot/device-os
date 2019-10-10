@@ -298,14 +298,17 @@ void HAL_Core_Config(void) {
     HAL_RNG_Configuration();
 
 #if defined(MODULAR_FIRMWARE)
+    // Update the user module if needed
+    user_update_if_needed();
+
     if (HAL_Core_Validate_User_Module()) {
         new_heap_end = module_user_pre_init();
-        if (new_heap_end < malloc_heap_end()) {
+        if (new_heap_end > malloc_heap_end()) {
             malloc_set_heap_end(new_heap_end);
         }
     } else {
-        // Update the user module if needed
-        user_update_if_needed();
+        // There is no valid user application
+        malloc_set_heap_end(&__stack_start__);
     }
 
     // Enable malloc before littlefs initialization.
