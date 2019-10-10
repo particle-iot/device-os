@@ -130,7 +130,9 @@ struct DnsQuery {
 class UdpSocket {
 public:
     UdpSocket() :
-            sock_(-1) {
+            sock_(MDM_SOCKET_ERROR),
+            oldModemStateChangeCount_(0),
+            newModemStateChangeCount_(0) {
     }
 
     ~UdpSocket() {
@@ -138,6 +140,7 @@ public:
     }
 
     int open() {
+        _isSocketValid(); // invalidates handle if necessary so we can re-open
         if (sock_ >= 0) {
             return 0; // already open
         }
@@ -150,21 +153,30 @@ public:
             return MDM_SOCKET_ERROR;
         }
         sock_ = sock;
+        oldModemStateChangeCount_ = newModemStateChangeCount_;
         return 0;
     }
 
     void close() {
-        if (sock_ >= 0) {
+        if (_isSocketValid() && sock_ >= 0) {
             electronMDM.socketFree(sock_);
-            sock_ = -1;
+            sock_ = MDM_SOCKET_ERROR;
         }
     }
 
     int sendTo(MDM_IP addr, int port, const char* data, size_t size) {
+        if (!_isSocketValid()) {
+            // do not try to free socket since it is invalidated
+            return MDM_SOCKET_ERROR;
+        }
         return electronMDM.socketSendTo(sock_, addr, port, data, size);
     }
 
     int recvFrom(MDM_IP* addr, int* port, char* data, size_t size) {
+        if (!_isSocketValid()) {
+            // do not try to free socket since it is invalidated
+            return MDM_SOCKET_ERROR;
+        }
         // See if any data is waiting for us
         int result = electronMDM.socketReadable(sock_);
         if (result <= 0) {
@@ -175,7 +187,20 @@ public:
     }
 
 private:
+    bool _isSocketValid() {
+        // Used to detect when the modem has been power cycled off/on/reset since the last time
+        // sock_ has been used, and if it has changed the sock_ handle is invalidated.
+        newModemStateChangeCount_ = electronMDM.getModemStateChangeCount();
+        if (oldModemStateChangeCount_ != newModemStateChangeCount_) {
+            sock_ = MDM_SOCKET_ERROR;
+            return 0;
+        }
+        return 1;
+    }
+
     int sock_;
+    int oldModemStateChangeCount_;
+    int newModemStateChangeCount_;
 };
 
 UdpSocket sock;
