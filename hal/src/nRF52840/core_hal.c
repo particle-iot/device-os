@@ -343,7 +343,7 @@ void HAL_Core_Config(void) {
     hal_user_module_descriptor user_desc = {};
     if (!hal_user_module_get_descriptor(&user_desc)) {
         new_heap_end = user_desc.pre_init();
-        if (new_heap_end < malloc_heap_end()) {
+        if (new_heap_end > malloc_heap_end()) {
             malloc_set_heap_end(new_heap_end);
         }
     }
