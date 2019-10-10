@@ -148,6 +148,12 @@ public:
      */
     bool getCellularGlobalIdentity(CellularGlobalIdentity& cgi);
 
+    /** Provides a way to keep track of if the power has been cycled off / on / reset,
+        which can be used to invalidate previous assumptions about the state of the modem.
+        \return _pwr_off_count value
+    */
+    int getModemStateChangeCount(void);
+
     /** Power off the MT, This function has to be called prior to
         switching off the supply.
         \return true if successfully, false otherwise
@@ -609,17 +615,20 @@ protected:
     // LISA-U and SARA-G have 7 sockets
     SockCtrl _sockets[7];
     int _findSocket(int handle = MDM_SOCKET_ERROR/* = CREATE*/);
+    int _socketCleanupUnusedHandles(void);
     int _socketCloseHandleIfOpen(int socket);
-    int _socketCloseUnusedHandles(void);
+    int _socketCheckType(int);
     int _socketSocket(int socket, IpProtocol ipproto, int port);
     bool _socketFree(int socket);
     bool _powerOn(void);
+    void _incModemStateChangeCount(void);
     void _setBandSelectString(MDM_BandSelect &data, char* bands, int index=0); // private helper to create bands strings
     bool _atOk(void);
     bool _checkEpsReg(void);
     static MDMParser* inst;
     bool _init;
     bool _pwr;
+    int _mdm_state_change_count;
     bool _activated;
     bool _attached;
     bool _attached_urc;
