@@ -75,7 +75,7 @@ __HeapLimit:
     .align 2
     .globl __isr_vector
 __isr_vector:
-    .long   __stack_start__             /* Top of Stack */
+    .long   __stack_end__               /* Top of Stack */
     .long   Reset_Handler
     .long   NMI_Handler
     .long   HardFault_Handler
