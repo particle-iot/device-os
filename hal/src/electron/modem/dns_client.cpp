@@ -75,7 +75,8 @@ const uint16_t SERVER_PORT = 53;
 // Maximum host name length
 const size_t MAX_NAME_LENGTH = 255;
 // Maximum number of retries
-const unsigned MAX_RETRIES = 3;
+const unsigned MAX_DNS_QRY_RETRIES = 3;
+const unsigned MAX_SEND_TO_RETRIES = 1;
 // Buffer size
 const size_t BUFFER_SIZE = 512; // See RFC 1035 – 4.2.1. UDP usage
 
@@ -137,7 +138,9 @@ public:
     }
 
     int open() {
-        close();
+        if (sock_ >= 0) {
+            return 0; // already open
+        }
         const int sock = electronMDM.socketSocket(MDM_IPPROTO_UDP);
         if (sock < 0) {
             return sock;
@@ -162,12 +165,20 @@ public:
     }
 
     int recvFrom(MDM_IP* addr, int* port, char* data, size_t size) {
+        // See if any data is waiting for us
+        int result = electronMDM.socketReadable(sock_);
+        if (result <= 0) {
+            return 0; // no data
+        }
+
         return electronMDM.socketRecvFrom(sock_, addr, port, data, size);
     }
 
 private:
     int sock_;
 };
+
+UdpSocket sock;
 
 inline uint16_t htons(uint16_t val) {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -373,10 +384,20 @@ int sendDnsQuery(UdpSocket* sock, DnsQuery* q) {
     tc.type = htons(DNS_RRTYPE_A);
     tc.cls = htons(DNS_RRCLASS_IN);
     memcpy(q->buf.get() + offs, &tc, sizeof(DnsTypeClass));
-    const int ret = sock->sendTo(SERVER_ADDRESS, SERVER_PORT, q->buf.get(), packetSize);
-    if (ret < 0) {
-        return ret;
-    }
+    unsigned send_retries = 0;
+    do {
+        const int ret = sock->sendTo(SERVER_ADDRESS, SERVER_PORT, q->buf.get(), packetSize);
+        if (ret < 0) {
+            sock->close();
+            if (send_retries >= MAX_SEND_TO_RETRIES) {
+                return ret;
+            }
+            sock->open();
+            send_retries++;
+        } else {
+            break;
+        }
+    } while (send_retries <= MAX_SEND_TO_RETRIES);
     return 0;
 }
 
@@ -405,7 +426,6 @@ int getHostByName(const char* name, MDM_IP* addr) {
     if (!q.buf) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    UdpSocket sock;
     int ret = sock.open();
     if (ret < 0) {
         LOG(ERROR, "Unable to create socket");
@@ -433,7 +453,7 @@ int getHostByName(const char* name, MDM_IP* addr) {
             }
         } while (HAL_Timer_Get_Milli_Seconds() - timeStart < timeout);
         ++retries;
-    } while (retries <= MAX_RETRIES);
+    } while (retries <= MAX_DNS_QRY_RETRIES);
     return SYSTEM_ERROR_TIMEOUT;
 }
 
