@@ -2290,7 +2290,8 @@ int MDMParser::_socketCloseHandleIfOpen(int socket_handle) {
 
 /* Query the socket handle for its type (TCP:6 / UDP:17 / UNKNOWN:0) */
 int MDMParser::_socketCheckType(int socket_handle) {
-    int socket_type = MDM_SOCKET_ERROR;
+    // Default to UNKNOWN type since AT+USOCTL will return CME ERROR on newer u-blox firmware 05.08,A02.04
+    int socket_type = 0;
     LOCK();
 
     // AT+USOCTL=0,0
