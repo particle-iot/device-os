@@ -123,7 +123,7 @@ extern void* link_global_data_start;
 extern void* link_global_data_end;
 extern void* link_bss_location;
 extern void* link_bss_end;
-extern void* link_end_of_static_ram;
+extern void* link_static_ram_end;
 
 #define link_global_data_size ((size_t)&link_global_data_end - (size_t)&link_global_data_start)
 #define link_bss_size ((size_t)&link_bss_end - (size_t)&link_bss_location)
@@ -138,7 +138,7 @@ void* module_system_part2_pre_init() {
         memcpy(&link_global_data_start, &link_global_data_initial_values, link_global_data_size);
     }
     memset(&link_bss_location, 0, link_bss_size);
-    return link_end_of_static_ram;
+    return link_static_ram_end;
 }
 
 void newlib_impure_ptr_change_module(struct _reent* r, size_t size, uint32_t version) {
