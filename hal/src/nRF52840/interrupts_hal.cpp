@@ -154,18 +154,17 @@ int HAL_Interrupts_Detach(uint16_t pin) {
 }
 
 int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved) {
-    if (keepHandler) {
-        // This pin is used, don't detach it
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (PIN_MAP[pin].exti_channel == EXTI_CHANNEL_NONE) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
+        return SYSTEM_ERROR_INVALID_STATE;
     }
 
     uint8_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
     nrfx_gpiote_in_event_disable(nrf_pin);
+    if (keepHandler) {
+        // Only disable events for this pin and keep handlers
+        return SYSTEM_ERROR_NONE;
+    }
     nrfx_gpiote_in_uninit(nrf_pin);
 
     m_exti_channels[PIN_MAP[pin].exti_channel].pin = PIN_INVALID;
