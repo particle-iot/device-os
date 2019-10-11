@@ -173,8 +173,6 @@ AcT toCellularAccessTechnology(int rat) {
  #define CYA COL("36m")
  #define WHY COL("37m")
 
-#define MDM_PRINTF(_fmt, ...) LOG_PRINTF(TRACE, _fmt, ##__VA_ARGS__)
-
 void dumpAtCmd(const char* buf, int len)
 {
     MDM_PRINTF(" %3d \"", len);
@@ -224,7 +222,6 @@ void MDMParser::_debugPrint(int level, const char* color, const char* format, ..
 #define MDM_TEST(...)  // no tracing
 #define MDM_INFO(...)  // no tracing
 #define MDM_TRACE(...) // no tracing
-#define MDM_PRINTF(...) // no tracing
 
 #endif
 
