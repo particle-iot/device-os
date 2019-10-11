@@ -211,3 +211,17 @@ test(INTERRUPTS_04_attachInterruptDirect_1) {
 	detachInterrupt(pin);
 }
 #endif // PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+
+#ifdef PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+test(INTERRUPTS_05_attachInterruptDirect_2) {
+	const pin_t pin = D7;
+	static volatile bool attachInterruptHandler = false;
+	bool res = attachInterrupt(pin, (wiring_interrupt_handler_t)[](void) -> void {
+		attachInterruptHandler = true;
+	}, FALLING);
+	bool tem = detachInterrupt(pin);
+	
+	assertFalse(res);
+	assertFalse(tem);
+}
+#endif
