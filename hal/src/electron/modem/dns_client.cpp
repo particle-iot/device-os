@@ -140,7 +140,7 @@ public:
     }
 
     int open() {
-        _isSocketValid(); // invalidates handle if necessary so we can re-open
+        _invalidateSocketIfNeeded();
         if (sock_ >= 0) {
             return 0; // already open
         }
@@ -158,14 +158,14 @@ public:
     }
 
     void close() {
-        if (_isSocketValid() && sock_ >= 0) {
+        if (!_invalidateSocketIfNeeded() && sock_ >= 0) {
             electronMDM.socketFree(sock_);
             sock_ = MDM_SOCKET_ERROR;
         }
     }
 
     int sendTo(MDM_IP addr, int port, const char* data, size_t size) {
-        if (!_isSocketValid()) {
+        if (_invalidateSocketIfNeeded()) {
             // do not try to free socket since it is invalidated
             return MDM_SOCKET_ERROR;
         }
@@ -173,7 +173,7 @@ public:
     }
 
     int recvFrom(MDM_IP* addr, int* port, char* data, size_t size) {
-        if (!_isSocketValid()) {
+        if (_invalidateSocketIfNeeded()) {
             // do not try to free socket since it is invalidated
             return MDM_SOCKET_ERROR;
         }
@@ -187,15 +187,15 @@ public:
     }
 
 private:
-    bool _isSocketValid() {
+    bool _invalidateSocketIfNeeded() {
         // Used to detect when the modem has been power cycled off/on/reset since the last time
         // sock_ has been used, and if it has changed the sock_ handle is invalidated.
         newModemStateChangeCount_ = electronMDM.getModemStateChangeCount();
         if (oldModemStateChangeCount_ != newModemStateChangeCount_) {
             sock_ = MDM_SOCKET_ERROR;
-            return 0;
+            return 1;
         }
-        return 1;
+        return 0;
     }
 
     int sock_;
@@ -203,7 +203,7 @@ private:
     int newModemStateChangeCount_;
 };
 
-UdpSocket sock;
+UdpSocket g_sock;
 
 inline uint16_t htons(uint16_t val) {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -451,7 +451,7 @@ int getHostByName(const char* name, MDM_IP* addr) {
     if (!q.buf) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    int ret = sock.open();
+    int ret = g_sock.open();
     if (ret < 0) {
         LOG(ERROR, "Unable to create socket");
         return ret;
@@ -460,14 +460,14 @@ int getHostByName(const char* name, MDM_IP* addr) {
     do {
         const system_tick_t timeout = (retries + 1) * 1000;
         LOG_DEBUG(TRACE, "Sending DNS query, timeout: %u", (unsigned)timeout);
-        ret = sendDnsQuery(&sock, &q);
+        ret = sendDnsQuery(&g_sock, &q);
         if (ret < 0) {
             return ret;
         }
         const system_tick_t timeStart = HAL_Timer_Get_Milli_Seconds();
         do {
             HAL_Delay_Milliseconds(200);
-            ret = recvDnsResponse(&sock, &q);
+            ret = recvDnsResponse(&g_sock, &q);
             if (ret < 0) {
                 return ret;
             }
