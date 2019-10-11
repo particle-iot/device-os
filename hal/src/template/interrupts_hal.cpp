@@ -27,14 +27,17 @@
 #include "interrupts_hal.h"
 int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config)
 {
+    return 0;
 }
 
 int HAL_Interrupts_Detach(uint16_t pin)
 {
+    return 0;
 }
 
 int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
 {
+    return 0;
 }
 
 void HAL_Interrupts_Enable_All(void)

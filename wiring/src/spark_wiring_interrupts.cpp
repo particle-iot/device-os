@@ -98,15 +98,18 @@ bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMod
 						        were asssigned previously using attachInterrupt
  * Input          : pin number to which the interrupt was attached
  * Output         : None.
- * Return         : None.
+ * Return         : true or false
  *******************************************************************************/
-void detachInterrupt(uint16_t pin)
+bool detachInterrupt(uint16_t pin)
 {
     if (SYSTEM_ERROR_NONE != HAL_Interrupts_Detach(pin)) {
-        return;
+        return false;
     }
-    delete handlers[pin];
-    handlers[pin] = NULL;
+    if (handlers[pin]) {
+        delete handlers[pin];
+        handlers[pin] = nullptr;
+    }
+    return true;
 }
 
 /*******************************************************************************
