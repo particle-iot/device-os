@@ -86,7 +86,9 @@ int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
   /* safety check that prevents users from attaching an interrupt to D7
    * which is shared with BATT_INT_PC13 for power management */
-  if (pin == D7) return SYSTEM_ERROR_NOT_ALLOWED;
+  if (pin == D7) {
+    return SYSTEM_ERROR_NOT_ALLOWED;
+  }
 #endif
   uint8_t GPIO_PortSource = 0;    //variable to hold the port number
 
@@ -204,7 +206,9 @@ int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
   /* safety check that prevents users from attaching an interrupt to D7
    * which is shared with BATT_INT_PC13 for power management */
-  if (pin == D7) return SYSTEM_ERROR_NOT_ALLOWED;
+  if (pin == D7) {
+    return SYSTEM_ERROR_NOT_ALLOWED;
+  }
 #endif
   //Map the Spark Core pin to the appropriate pin on the STM32
   Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
