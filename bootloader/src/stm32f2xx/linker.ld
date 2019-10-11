@@ -105,6 +105,7 @@ SECTIONS
         . = ALIGN(0x4);
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_end = .;
+        link_static_ram_end = .;
     } > SRAM AT> SRAM
     
     /* Heap location */
@@ -168,10 +169,10 @@ PROVIDE (__stack_size__ = _bootloader_stack_size);
 PROVIDE (__stack_start__ = _bootloader_stack_start);
 PROVIDE (__stack_end__ = __stack_start__ + __stack_size__);
 
-PROVIDE( dct1_start_addr_loc     = ORIGIN( DCT1_FLASH ));
-PROVIDE( dct1_size_loc           = LENGTH( DCT1_FLASH ));
-PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
-PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
+PROVIDE (dct1_start_addr_loc = ORIGIN(DCT1_FLASH));
+PROVIDE (dct1_size_loc       = LENGTH(DCT1_FLASH));
+PROVIDE (dct2_start_addr_loc = ORIGIN(DCT2_FLASH));
+PROVIDE (dct2_size_loc       = LENGTH(DCT2_FLASH));
 
 ASSERT (
     (ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end) &&
@@ -202,7 +203,7 @@ ASSERT (
     "constructor array should be aligned to a 4-bytes!"
 );
 ASSERT (
-    (link_bss_end - link_global_data_start <= _bootloader_static_ram_size),
+    (link_static_ram_end - link_static_ram_start <= _bootloader_static_ram_size),
     "Insufficient room for .data and .bss sections!"
 );
 ASSERT (

@@ -157,6 +157,6 @@ ASSERT (
     "constructor array should be aligned to a 4-bytes!"
 );
 ASSERT (
-    (link_bss_end - link_global_data_start <= _system_part1_static_ram_size),
+    (link_bss_end - link_static_ram_start <= _user_part_static_ram_size),
     "Insufficient room for .data and .bss sections!"
 );

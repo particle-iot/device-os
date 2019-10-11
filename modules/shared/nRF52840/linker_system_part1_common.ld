@@ -9,9 +9,11 @@ SECTIONS
     /* Interrupt vector table */
     .vectors :
     {
+        . = ALIGN(0x4);
         link_interrupt_vectors_location = .;
         KEEP (*(.isr_vector))
         link_interrupt_vectors_location_end = .;
+        . = ALIGN(0x4);
     } > APP_FLASH  AT> APP_FLASH
 
     /* Module info */
@@ -136,6 +138,7 @@ SECTIONS
         . = ALIGN(0x4);
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_end = .;
+        link_static_ram_end = .;
     } > SRAM AT> SRAM
     
     /* Heap location */
@@ -234,7 +237,7 @@ ASSERT (
     "Invalid RAM interrupt vector table!"
 );
 ASSERT (
-    (link_bss_end - link_global_data_start <= _system_part1_static_ram_size),
+    (link_static_ram_end - link_static_ram_start <= _system_part1_static_ram_size),
     "Insufficient room for .data and .bss sections!"
 );
 ASSERT (

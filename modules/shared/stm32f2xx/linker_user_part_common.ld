@@ -1,17 +1,17 @@
 
 SECTIONS
 {
-    sram_start = ORIGIN(SRAM);
-    sram_end = sram_start + LENGTH(SRAM);
-
+    /* Module start */
     INCLUDE linker_module_start.ld
+    
+    /* Module info */
     INCLUDE linker_module_info.ld
 
+    /* Dynalib table */
     .dynalib :
     {
-        expected_dynalib_start = ORIGIN(APP_FLASH) + _user_part_module_info_flash_size;
         link_dynalib_start = .;
-        KEEP(*(*.user_part_module))
+        KEEP (*(*.user_part_module))
         link_dynalib_end = . ;
     } > APP_FLASH AT> APP_FLASH
 
@@ -19,30 +19,40 @@ SECTIONS
     {
         . = ALIGN(4);
 
-        link_code_location = .;
-        KEEP(*(.text.irq ))
-        *(.text .text.* .gnu.linkonce.t.*)
+        /* Code */
+        link_code_start = .;
+        *(.text)
+        *(.text.*)
+        *(.gnu.linkonce.t.*)
+        *(.glue_7)
+        *(.glue_7t)
         link_code_end = .;
 
         . = ALIGN(0x4);
 
-        link_const_variable_data_location = .;
-        *(.rodata .rodata.* .gnu.linkonce.r.*)
-        link_const_variable_data_end = .;
+        /* Read-only data (constants) */
+        link_const_data_start = .;
+        *(.rodata)
+        *(.rodata*)
+        *(.gnu.linkonce.r.*)
+        link_const_data_end = .;
 
         . = ALIGN(0x4);
 
+        /* This is used by module_user_init() function in order to invoke C++ constructors */
         link_constructors_location = .;
-        KEEP(*(.preinit_array))
-        KEEP(*(.init_array))
+        KEEP (*(.preinit_array))
+        KEEP (*(.init_array))
         KEEP (*crtbegin.o(.ctors))
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
+        /* This is used by module_user_init() function in order to invoke C++ constructors */
         link_constructors_end = .;
 
         . = ALIGN(0x4);
 
+        /* C++ destructors */
         link_destructors_location = .;
         KEEP (*crtbegin.o(.dtors))
         KEEP (*(EXCLUDE_FILE (*crtend.o) .dtors))
@@ -53,47 +63,44 @@ SECTIONS
         . = ALIGN(16);
     } > APP_FLASH  AT> APP_FLASH
 
-    /*
-     * The .ARM.exidx and .ARM.extab sections are used for C++ exception handling.
-     * It is located here for completeness. Bare-metal ARM projects
-     * typically cannot afford the overhead associated with C++
-     * exceptions handling.
-     */
-    .ARM.exidx :
-    {
-        __exidx_start = ALIGN(4);
-        *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-        __exidx_end = .;
-    } > APP_FLASH  AT> APP_FLASH
+    /* C++ exception handlers */
+    INCLUDE linker_arm_exception.ld
 
-    .ARM.extab :
+    /* Non-zero initialised global variables */
+    .data :
     {
-        __extab_start = ALIGN(4);
-        *(.ARM.extab*)
-        __extab_end = .;
-    } > APP_FLASH  AT> APP_FLASH
-
-    INCLUDE linker_backup_ram_user.ld
-
-    .data : /* Contains the non-zero initialised global variables */
-    {
-        link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
+        link_static_ram_start = .;
+        /* This is the location in flash of the initial values of global variables */
+        link_global_data_initial_values = LOADADDR( .data ); 
+        . = ALIGN(0x4);
+        /* This is used by module_system_part1_pre_init() in order to initialize the .data secion */
         link_global_data_start = .;
         *(.data*)
+        . = ALIGN(0x4);
+        /* This is used by module_system_part1_pre_init() in order to initialize the .data secion */
         link_global_data_end = .;
-        . = ALIGN(., 4);
     } > SRAM AT> APP_FLASH
 
-    .bss : /* Zero initialised memory used for zero initialised variables */
+    /* Zero initialised memory used for zero initialised variables */
+    .bss :
     {
-        link_bss_location = ALIGN(., 4);
+        . = ALIGN(0x4);
+        /* This is used by module_system_part1_pre_init() in order to initialize the .bss secion */
+        link_bss_location = .;
         *(.bss*)
         *(COMMON)
+        . = ALIGN(0x4);
+        /* This is used by module_system_part1_pre_init() in order to initialize the .bss secion */
         link_bss_end = .;
-        link_heap_start = .;
-        . = ALIGN(., 4);
+        link_static_ram_end = .;
     } > SRAM AT> SRAM
+    
+    /* Heap and stack is defined in system part 2. */
+    
+    /* User backup ram data */
+    INCLUDE linker_backup_ram_user.ld
 
+    /* Module end */
     INCLUDE linker_module_end.ld
 
     /DISCARD/ :
@@ -118,33 +125,36 @@ SECTIONS
     }
 }
 
-ASSERT ( ORIGIN(SRAM) == _ram_start, "Origin of SRAM should be at _ram_start" );
+ASSERT (
+    (ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end) &&
+    (ORIGIN(APP_FLASH) >= _flash_start && ORIGIN(APP_FLASH) + LENGTH(APP_FLASH) <= _flash_end) &&
+    (ORIGIN(APP_FLASH) == USER_FIRMWARE_IMAGE_LOCATION && LENGTH(APP_FLASH) == USER_FIRMWARE_IMAGE_SIZE) &&
+    (link_module_start == ORIGIN(APP_FLASH)) &&
+    (link_module_start == _user_part_flash_start) &&
+    (link_static_ram_start == ORIGIN(SRAM)) &&
+    (link_static_ram_start == _user_part_static_ram_start),
+    "Invalid memory boundary!"
+);
+ASSERT (
+    (link_module_info_start < link_module_info_end) &&
+    (link_module_info_suffix_start - link_module_info_static_start == 4 || link_module_info_suffix_start - link_module_info_static_start == 8) &&
+    (link_module_info_suffix_start < link_module_info_suffix_end) &&
+    (link_module_info_crc_start < link_module_info_crc_end) &&
+    (link_module_info_start == _user_part_module_info_flash_start) &&
+    (link_module_info_end == _user_part_module_info_flash_end),
+    "Invalid module info!"
+);
+ASSERT (
+    (link_dynalib_start != link_dynalib_end) &&
+    (link_dynalib_start == _user_part_dynalib_table_flash_start),
+    "Invalid dynalib table!"
+);
+ASSERT (
+    (link_constructors_location % 4 == 0),
+    "constructor array should be aligned to a 4-bytes!"
+);
+ASSERT (
+    (link_static_ram_end - link_static_ram_start <= _user_part_static_ram_size),
+    "Insufficient room for .data and .bss sections!"
+);
 
-min_heap_end = link_heap_start + _heap_min_size;
-ASSERT ( min_heap_end <= _system_part1_static_ram_start, "Insufficient room for heap." );
-
-ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
-
-ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" );
-
-/* Include this modules static exports for validation */
-INCLUDE module_user_export.ld
-
-ASSERT ( link_dynalib_start == _user_part_dynalib_table_flash_start, "Dynalib location not same as exported location" );
-
-ASSERT ( USER_FIRMWARE_IMAGE_LOCATION == ORIGIN(APP_FLASH), "User firmware location and APP_FLASH origin differ" );
-
-ASSERT ( USER_FIRMWARE_IMAGE_SIZE == LENGTH(APP_FLASH), "User firmware size and APP_FLASH length differ" );
-
-ASSERT ( sram_start <= link_heap_start && link_heap_start < sram_end, "link_heap_start is in the wrong memory space" );
-
-ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
-ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
-ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
-
-ASSERT ( link_module_info_start == _user_part_module_info_flash_start, "module info start not where expected" );
-ASSERT ( link_module_info_end == _user_part_module_info_flash_end, "module info end not where expected" );
-
-ASSERT ( link_module_info_suffix_start - link_module_info_static_start == 4 || link_module_info_suffix_start - link_module_info_static_start == 8, "module info static details not linked" );
-
-ASSERT ( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

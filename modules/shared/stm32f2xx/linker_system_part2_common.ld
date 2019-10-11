@@ -1,62 +1,77 @@
 SECTIONS
 {
+    /* Module start */
     INCLUDE linker_module_start.ld
 
+    /* Interrupt vector table */
     .vectors :
     {
+        . = ALIGN(0x4);
         link_interrupt_vectors_location = .;
-        KEEP(*(*.interrupt_vector_table))
+        KEEP (*(*.interrupt_vector_table))
         link_interrupt_vectors_location_end = .;
+        . = ALIGN(0x4);
     } > APP_FLASH  AT> APP_FLASH
 
-    interrupt_vectors_length = link_interrupt_vectors_location_end - link_interrupt_vectors_location;
-
+    /* Module info */
     INCLUDE linker_module_info.ld
 
-    /* 97*4=388 is vector table size. */
-    expected_dynalib_start = ORIGIN (APP_FLASH) + _system_part2_vector_table_flash_size + _system_part2_module_info_flash_size;
+    /* Dynalib table */
     .dynalib :
     {
-        link_dynalib_start = . ;
-        KEEP(*(*.system_part2_module))
-        link_dynalib_end = . ;
+        link_dynalib_start = .;
+        KEEP (*(*.system_part2_module))
+        link_dynalib_end = .;
     } > APP_FLASH AT> APP_FLASH
 
     .text :
     {
         . = ALIGN(4);
 
+        /* Code */
         link_code_location = .;
-        KEEP(*(.text.irq ))
+        KEEP (*(.text.irq ))
         KEEP (*(EXCLUDE_FILE (*module_system_hal.o) .module))
         *(.text .text.* .gnu.linkonce.t.*)
         link_code_end = .;
 
         . = ALIGN(0x4);
 
-        link_const_variable_data_location = .;
-        *(.rodata .rodata.* .gnu.linkonce.r.*)
-        link_const_variable_data_end = .;
+        /* Read-only data (constants) */
+        link_const_data_start = .;
+        *(.rodata)
+        *(.rodata*)
+        *(.gnu.linkonce.r.*)
+        link_const_data_end = .;
 
         . = ALIGN(0x4);
 
+        /* This is used by the startup in order to invoke C++ constructors */
         link_constructors_location = .;
-        link_system_pre_init_start = .;
+        
+        /* Particle specific preinit functions */
+        link_module_pre_init_start = .;
         KEEP (*(.module_pre_init))
-        link_system_pre_init_end = .;
-        KEEP(*(.preinit_array))
-        KEEP(*(.init_array))
+        link_module_pre_init_end = .;
+        
+        KEEP (*(.preinit_array))
+        KEEP (*(.init_array))
         KEEP (*crtbegin.o(.ctors))
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
-        chk_system_init_start = .;
+        
+        /* Particle specific init functions */
+        link_module_init_start = .;
         KEEP (*(.module_init))
-        chk_system_init_end = .;
+        link_module_init_end = .;
+        
+        /* This is used by the startup in order to invoke C++ constructors */
         link_constructors_end = .;
 
         . = ALIGN(0x4);
 
+        /* C++ destructors */
         link_destructors_location = .;
         KEEP (*crtbegin.o(.dtors))
         KEEP (*(EXCLUDE_FILE (*crtend.o) .dtors))
@@ -64,63 +79,59 @@ SECTIONS
         KEEP (*crtend.o(.dtors))
         link_destructors_end = .;
 
-        . = ALIGN(16);
-
+        . = ALIGN(0x4);
     } > APP_FLASH  AT> APP_FLASH
+    
+    /* C++ exception handlers */
+    INCLUDE linker_arm_exception.ld
 
-    .ram_vectors : /* Ram VTOR table - must be 512 byte-aligned */
+    /* Ram interrupt vector table - must be 512 byte-aligned.
+     * See Cortext-M4 Devices Generic User Guide, Section 4.3.4, Vector Table Offset Register. */
+    .ram_vectors :
     {
         link_static_ram_start = .;
         link_ram_interrupt_vectors_location = .;
-        . = . + interrupt_vectors_length;
+        . = . + _platform_vector_table_flash_size;
         link_ram_interrupt_vectors_location_end = .;
     } > SRAM
 
-    INCLUDE linker_backup_ram_system.ld
-
-    .data : /* Contains the non-zero initialised global variables */
+    /* Non-zero initialised global variables */
+    .data :
     {
-        _sidata = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
-        link_global_data_initial_values = LOADADDR( .data ); /* This is the location in flash of the initial values of global variables */
+        /* This is the location in flash of the initial values of global variables */
+        link_global_data_initial_values = LOADADDR( .data ); 
+        . = ALIGN(0x4);
+        /* This is used by the startup in order to initialize the .data secion */
         link_global_data_start = .;
-        _sdata = . ;
         *(.data*)
+        . = ALIGN(0x4);
+        /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
-        _edata = . ;
-        . = ALIGN(., 4);
     } > SRAM AT> APP_FLASH
 
-    .bss : /* Zero initialised memory used for zero initialised variables */
+    /* Zero initialised memory used for zero initialised variables */
+    .bss :
     {
-        _sbss = ALIGN(., 4);
-        link_bss_location = ALIGN(., 4);
+        . = ALIGN(0x4);
+        /* This is used by the startup in order to initialize the .bss secion */
+        link_bss_location = .;
         *(.bss*)
         *(COMMON)
+        . = ALIGN(0x4);
+        /* This is used by the startup in order to initialize the .bss secion */
         link_bss_end = .;
-        _ebss = .;
-        . = ALIGN(., 4);
-        link_end_of_static_ram = .;
+        link_static_ram_end = .;
     } > SRAM AT> SRAM
-
-    /*
-     * The .ARM.exidx and .ARM.extab sections are used for C++ exception handling.
-     * It is located here for completeness. Bare-metal ARM projects
-     * typically cannot afford the overhead associated with C++
-     * exceptions handling.
-     */
-    .ARM.exidx :
-    {
-        __exidx_start = ALIGN(4);
-        *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-        __exidx_end = .;
-    } > APP_FLASH  AT> APP_FLASH
-
-    .ARM.extab :
-    {
-        __extab_start = ALIGN(4);
-        *(.ARM.extab*)
-        __extab_end = .;
-    } > APP_FLASH  AT> APP_FLASH
+    
+    /* Heap location */
+    link_heap_location = _user_part_static_ram_start;
+    link_heap_location_end = _user_part_static_ram_end;
+    
+    /* System backup ram data */
+    INCLUDE linker_backup_ram_system.ld
+    
+    /* Module end */
+    INCLUDE linker_module_end.ld
 
     /DISCARD/ :
     {
@@ -142,82 +153,83 @@ SECTIONS
         *(.eh_frame)
         *(.glue*)
     }
-
-    INCLUDE linker_module_end.ld
 }
 
-link_heap_location = _user_part_static_ram_start;
-link_heap_location_end = _user_part_static_ram_end;
-min_heap_end = link_heap_location + _heap_min_size;
-ASSERT ( min_heap_end <= _system_part1_static_ram_start, "Insufficient room for heap" );
-ASSERT ( link_heap_location_end <= _system_part1_static_ram_start, "the heap should come immediately before the system static ram" );
-
-/* Declare libc Heap to start at end of allocated RAM */
-PROVIDE( _heap = link_heap_location );
-PROVIDE( _eheap = ALIGN( link_heap_location_end - 8, 8 ) );
-
-/* ThreadX aliases */
-PROVIDE( __RAM_segment_used_end__ = link_stack_end );
-PROVIDE( __tx_free_memory_start = link_heap_location );
-PROVIDE( __tx_vectors = link_interrupt_vectors_location );
+/* Stack , used by startup*/
+PROVIDE (__stack_size__ = _modular_firmware_stack_size);
+PROVIDE (__stack_start__ = _modular_firmware_stack_start);
+PROVIDE (__stack_end__ = __stack_start__ + __stack_size__);
 
 /* Some defines to keep WICED's _start() happy */
-PROVIDE( link_run_from_ram_code_size = 0);
-PROVIDE( link_run_from_ram_code_flash_location = 0);
-PROVIDE( link_run_from_ram_code_ram_location = 0);
-PROVIDE( link_run_from_ram_code_ram_end = 0);
+PROVIDE (link_run_from_ram_code_size = 0);
+PROVIDE (link_run_from_ram_code_flash_location = 0);
+PROVIDE (link_run_from_ram_code_ram_location = 0);
+PROVIDE (link_run_from_ram_code_ram_end = 0);
+PROVIDE (link_stack_location = _modular_firmware_stack_start);
+PROVIDE (link_stack_end = _modular_firmware_stack_end);
 
-PROVIDE( VTOR_Length = interrupt_vectors_length );
+PROVIDE (dct1_start_addr_loc = ORIGIN(DCT1_FLASH));
+PROVIDE (dct1_size_loc       = LENGTH(DCT1_FLASH));
+PROVIDE (dct2_start_addr_loc = ORIGIN(DCT2_FLASH));
+PROVIDE (dct2_size_loc       = LENGTH(DCT2_FLASH));
 
-PROVIDE( dct1_start_addr_loc     = ORIGIN( DCT1_FLASH ));
-PROVIDE( dct1_size_loc           = LENGTH( DCT1_FLASH ));
-PROVIDE( dct2_start_addr_loc     = ORIGIN( DCT2_FLASH ));
-PROVIDE( dct2_size_loc           = LENGTH( DCT2_FLASH ));
+ASSERT (
+    (ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end) &&
+    (ORIGIN(APP_FLASH) >= _flash_start && ORIGIN(APP_FLASH) + LENGTH(APP_FLASH) <= _flash_end) &&
+    (link_module_start == ORIGIN(APP_FLASH)) &&
+    (link_module_start == _system_part2_flash_start) &&
+    (link_static_ram_start == ORIGIN(SRAM)) &&
+    (link_static_ram_start == _system_part2_static_ram_start) &&
+    (_system_part2_static_ram_start == _system_part1_static_ram_end) &&
+    (PLATFORM_DFU == ORIGIN(APP_FLASH)),
+    "Invalid memory boundary!"
+);
+ASSERT (
+    (link_interrupt_vectors_location == _system_part2_vector_table_flash_start) &&
+    (link_interrupt_vectors_location_end == _system_part2_vector_table_flash_end) &&
+    (link_interrupt_vectors_location_end - link_interrupt_vectors_location == _platform_vector_table_flash_size),
+    "Invalid interrupt vector table!"
+);
+ASSERT (
+    (link_module_info_start < link_module_info_end) &&
+    (link_module_info_suffix_start - link_module_info_static_start == 4 || link_module_info_suffix_start - link_module_info_static_start == 8) &&
+    (link_module_info_suffix_start < link_module_info_suffix_end) &&
+    (link_module_info_crc_start < link_module_info_crc_end) &&
+    (link_module_info_start == _system_part2_module_info_flash_start) &&
+    (link_module_info_end == _system_part2_module_info_flash_end),
+    "Invalid module info!"
+);
+ASSERT (
+    (link_dynalib_start != link_dynalib_end) &&
+    (link_dynalib_start == _system_part2_dynalib_table_flash_start),
+    "Invalid dynalib table!"
+);
+ASSERT (
+    (link_constructors_location % 4 == 0),
+    "constructor array should be aligned to a 4-bytes!"
+);
+ASSERT (
+    (link_module_pre_init_start < link_module_pre_init_end) &&
+    (link_module_init_start < link_module_init_end),
+    "Module preinit or init function is not included!"
+);
+ASSERT (
+    (link_ram_interrupt_vectors_location == _system_part2_static_ram_start) &&
+    (link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location == _platform_vector_table_flash_size) &&
+    (link_ram_interrupt_vectors_location % 512 == 0),
+    "Invalid RAM interrupt vector table!"
+);
+ASSERT (
+    (link_static_ram_end - link_static_ram_start <= _system_part2_static_ram_size),
+    "Insufficient room for .data and .bss sections!"
+);
+ASSERT (
+    (link_heap_location_end <= _system_part1_static_ram_start) &&
+    (link_heap_location_end - link_heap_location >= _heap_min_size ),
+    "Insufficient room for heap!"
+);
+ASSERT (
+    (__stack_end__ % 8 == 0),
+    "Stack should be 8-byte aligned!"
+);
 
-
-ASSERT ( link_interrupt_vectors_location == ORIGIN(APP_FLASH), "VTOR table should be at start of flash" )
-ASSERT ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
-
-ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
-
-ASSERT ( link_dynalib_start == expected_dynalib_start, "Dynalib location not correct" );
-
-ASSERT ( link_dynalib_start == _system_part2_dynalib_table_flash_start, "Dynalib location not same as exported location" );
-
-ASSERT ( link_ram_interrupt_vectors_location >= _system_part1_static_ram_end, "RAM vtor table should be at end of part1 static ram. " );
-ASSERT ( link_ram_interrupt_vectors_location % 512 == 0, "RAM vtor table should be 512 byte aligned. " );
-
-ASSERT ( link_system_pre_init_start < link_system_pre_init_end , "system_part2_pre_init function not included" );
-ASSERT ( chk_system_init_start < chk_system_init_end , "system_part2_init function not included" );
-
-expected_stack_end = _ram_end;
-
-/* place stack at the end of SRAM, but not as a section, since this will increase the BSS region to ca. 128K */
-/* Provide stack location to WICED linker symbols */
-link_stack_location = _modular_firmware_stack_start;
-link_stack_end = _modular_firmware_stack_end;
-_estack = _modular_firmware_stack_end;
-
-ASSERT ( link_stack_end - link_stack_location <= _modular_firmware_stack_size, "stack is too small" );
-
-ASSERT ( link_stack_end == expected_stack_end, "stack should be at the top of SRAM" );
-
-ASSERT ( PLATFORM_DFU == ORIGIN(APP_FLASH), "Platform DFU and APP_FLASH origin differ" );
-
-ASSERT ( link_static_ram_start == _system_part2_static_ram_start, "exported SRAM start different from linked SRAM start." );
-ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
-ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
-ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
-ASSERT ( link_module_info_start == _system_part2_module_info_flash_start, "part2 module info start not where expected" );
-ASSERT ( link_module_info_end == _system_part2_module_info_flash_end, "part2 module info end not where expected" );
-
-ASSERT ( ORIGIN(SRAM) == _system_part2_static_ram_start, "ORIGIN of SRAM should be equal to _system_part2_static_ram_start. Adjust by hand to obtain the correct address and length. ");
-ASSERT ( LENGTH(SRAM) == _system_part2_static_ram_size, "LENGTH of SRAM should be equal to _system_part2_static_ram_size. Adjust by hand to obtain the correct address and length. ");
-ASSERT ( _system_part2_static_ram_start == _system_part1_static_ram_end, "system part1 static ram should come immediately before system part2 static ram" );
-
-ASSERT ( link_bss_end - link_global_data_start <= _system_part2_static_ram_size, "Insufficient room for .data and .bss sections" )
-ASSERT ( link_end_of_static_ram <= _system_part2_static_ram_end, "static RAM use exceeds allocated space" );
-
-ASSERT ( _estack % 8 == 0, "Stack should be 8-byte aligned" );
-
-ASSERT ( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

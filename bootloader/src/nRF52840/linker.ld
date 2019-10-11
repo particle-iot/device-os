@@ -101,6 +101,7 @@ SECTIONS
         . = ALIGN(0x4);
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_end = .;
+        link_static_ram_end = .;
     } > SRAM AT> SRAM
 
     /* Heap location */
@@ -181,7 +182,7 @@ ASSERT (
     "constructor array should be aligned to a 4-bytes!"
 );
 ASSERT (
-    (link_bss_end - link_global_data_start <= _bootloader_static_ram_size),
+    (link_static_ram_end - link_static_ram_start <= _bootloader_static_ram_size),
     "Insufficient room for .data and .bss sections!"
 );
 ASSERT (
