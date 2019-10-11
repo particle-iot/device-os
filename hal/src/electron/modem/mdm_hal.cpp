@@ -2146,6 +2146,15 @@ MDM_IP MDMParser::gethostbyname(const char* host)
 {
     MDM_IP ip = NOIP;
     LOCK();
+    // We've seen SARA U2XX modems stuck returning potentially cached DNS lookup results
+    // for longer than records' TTL despite the fact that DNS records have been modified.
+    // The only thing that caused AT+UDNSRN to correctly re-resolve in those particular
+    // cases was to reset the modem.
+    // In order to remove this layer of uncertainty with AT+UDNSRN we are using our own DNS
+    // client on all Gen 2 cellular devices now, whereas previously we've only used it for LTE
+    // SARA R4 devices where AT+UDNSRN was not supported (see below).
+    particle::getHostByName(host, &ip);
+#if 0
     if (_dev.dev == DEV_SARA_R410) {
         // Current uBlox firmware (L0.0.00.00.05.05) doesn't support +UDNSRN command, so we have to
         // use our own DNS client
@@ -2161,6 +2170,7 @@ MDM_IP MDMParser::gethostbyname(const char* host)
             }
         }
     }
+#endif // 0
     UNLOCK();
     return ip;
 }
