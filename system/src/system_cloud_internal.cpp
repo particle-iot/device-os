@@ -25,7 +25,7 @@
 #include "spark_wiring_led.h"
 #include "system_cloud_internal.h"
 #include "system_mode.h"
-#include "system_network.h"
+#include "system_network_internal.h"
 #include "system_task.h"
 #include "system_threading.h"
 #include "system_user.h"
@@ -388,12 +388,16 @@ void SystemEvents(const char* name, const char* data)
     }
     else if (!strcmp(name, RESET_EVENT)) {
         if (data && *data) {
-            if (!strcmp("safe mode", data))
+            if (!strcmp("safe mode", data)) {
                 System.enterSafeMode();
-            else if (!strcmp("dfu", data))
+            } else if (!strcmp("dfu", data)) {
                 System.dfu(false);
-            else if (!strcmp("reboot", data))
+            } else if (!strcmp("reboot", data)) {
                 System.reset();
+            } else if (!strcmp("network", data)) {
+                LOG(WARN, "Received a command to reset the network");
+                particle::resetNetworkInterfaces();
+            }
         }
     }
     else if (!strncmp(name, KEY_RESTORE_EVENT, strlen(KEY_RESTORE_EVENT))) {
