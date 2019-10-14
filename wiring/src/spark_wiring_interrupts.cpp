@@ -27,6 +27,7 @@
  */
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_platform.h"
+#include "system_error.h"
 
 static wiring_interrupt_handler_t* handlers[TOTAL_PINS];
 
@@ -70,30 +71,24 @@ HAL_InterruptExtraConfiguration* configure_interrupt(HAL_InterruptExtraConfigura
 
 bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode mode, int8_t priority, uint8_t subpriority)
 {
-#if Wiring_Cellular == 1
-  /* safety check that prevents users from attaching an interrupt to D7
-   * which is shared with BATT_INT_PC13 for power management */
-  if (pin == D7) return false;
-#endif
     HAL_Interrupts_Detach(pin);
     wiring_interrupt_handler_t* handler = allocate_handler(pin, fn);
     if (handler) {
         HAL_InterruptExtraConfiguration extra = {0};
-        HAL_Interrupts_Attach(pin, call_wiring_interrupt_handler, handler, mode, configure_interrupt(extra, priority, subpriority));
+        if (SYSTEM_ERROR_NONE != HAL_Interrupts_Attach(pin, call_wiring_interrupt_handler, handler, mode, configure_interrupt(extra, priority, subpriority))) {
+            return false;
+        }
     }
     return handler!=NULL;
 }
 
 bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMode mode, int8_t priority, uint8_t subpriority)
 {
-#if Wiring_Cellular == 1
-  /* safety check that prevents users from attaching an interrupt to D7
-   * which is shared with BATT_INT_PC13 for power management */
-  if (pin == D7) return false;
-#endif
     HAL_Interrupts_Detach(pin);
     HAL_InterruptExtraConfiguration extra = {0};
-    HAL_Interrupts_Attach(pin, call_raw_interrupt_handler, (void*)handler, mode, configure_interrupt(extra, priority, subpriority));
+    if (SYSTEM_ERROR_NONE != HAL_Interrupts_Attach(pin, call_raw_interrupt_handler, (void*)handler, mode, configure_interrupt(extra, priority, subpriority))) {
+        return false;
+    }
     return true;
 }
 
@@ -103,18 +98,18 @@ bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMod
 						        were asssigned previously using attachInterrupt
  * Input          : pin number to which the interrupt was attached
  * Output         : None.
- * Return         : None.
+ * Return         : true or false
  *******************************************************************************/
-void detachInterrupt(uint16_t pin)
+bool detachInterrupt(uint16_t pin)
 {
-#if Wiring_Cellular == 1
-    /* safety check that prevents users from detaching an interrupt from
-     * BATT_INT_PC13 for power management which is shared with D7 */
-    if (pin == D7) return;
-#endif
-    HAL_Interrupts_Detach(pin);
-    delete handlers[pin];
-    handlers[pin] = NULL;
+    if (SYSTEM_ERROR_NONE != HAL_Interrupts_Detach(pin)) {
+        return false;
+    }
+    if (handlers[pin]) {
+        delete handlers[pin];
+        handlers[pin] = nullptr;
+    }
+    return true;
 }
 
 /*******************************************************************************

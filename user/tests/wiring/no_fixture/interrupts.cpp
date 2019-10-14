@@ -211,3 +211,13 @@ test(INTERRUPTS_04_attachInterruptDirect_1) {
 	detachInterrupt(pin);
 }
 #endif // PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+
+#ifdef PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+test(INTERRUPTS_05_attachInterruptD7) {
+	const pin_t pin = D7;
+	bool res = attachInterrupt(pin, nullptr, FALLING);
+	bool tem = detachInterrupt(pin);
+	assertFalse(res);
+	assertFalse(tem);
+}
+#endif

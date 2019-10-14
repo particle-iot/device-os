@@ -22,6 +22,7 @@
 #include "logging.h"
 #include "nrf_nvic.h"
 #include "gpio_hal.h"
+#include "system_error.h"
 
 // 8 high accuracy GPIOTE channels
 #define GPIOTE_CHANNEL_NUM              8
@@ -101,7 +102,7 @@ static nrfx_gpiote_in_config_t get_gpiote_config(uint16_t pin, InterruptMode mod
     return in_config;
 }
 
-void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config) {
+int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config) {
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     uint8_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
@@ -141,29 +142,29 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
         }
     } else if (err_code == NRFX_ERROR_NO_MEM) {
         // All channels have been used up
-        return;
+        return SYSTEM_ERROR_NO_MEMORY;
     }
 
     nrfx_gpiote_in_event_enable(nrf_pin, true);
+    return SYSTEM_ERROR_NONE;
 }
 
-void HAL_Interrupts_Detach(uint16_t pin) {
-    HAL_Interrupts_Detach_Ext(pin, 0, NULL);
+int HAL_Interrupts_Detach(uint16_t pin) {
+    return HAL_Interrupts_Detach_Ext(pin, 0, NULL);
 }
 
-void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved) {
-    if (keepHandler) {
-        // This pin is used, don't detach it
-        return;
-    }
-
+int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved) {
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (PIN_MAP[pin].exti_channel == EXTI_CHANNEL_NONE) {
-        return;
+        return SYSTEM_ERROR_INVALID_STATE;
     }
 
     uint8_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
     nrfx_gpiote_in_event_disable(nrf_pin);
+    if (keepHandler) {
+        // Only disable events for this pin and keep handlers
+        return SYSTEM_ERROR_NONE;
+    }
     nrfx_gpiote_in_uninit(nrf_pin);
 
     m_exti_channels[PIN_MAP[pin].exti_channel].pin = PIN_INVALID;
@@ -171,6 +172,7 @@ void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved
     m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.data = NULL;
     PIN_MAP[pin].exti_channel = EXTI_CHANNEL_NONE;
     HAL_Set_Pin_Function(pin, PF_NONE);
+    return SYSTEM_ERROR_NONE;
 }
 
 void HAL_Interrupts_Enable_All(void) {

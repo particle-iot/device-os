@@ -30,6 +30,7 @@
 #include "stm32f2xx.h"
 #include "service_debug.h"
 #include <stddef.h>
+#include "system_error.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -80,8 +81,15 @@ static exti_state exti_saved_state = {0};
 
 /* Private function prototypes -----------------------------------------------*/
 
-void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config)
+int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config)
 {
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+  /* safety check that prevents users from attaching an interrupt to D7
+   * which is shared with BATT_INT_PC13 for power management */
+  if (pin == D7) {
+    return SYSTEM_ERROR_NOT_ALLOWED;
+  }
+#endif
   uint8_t GPIO_PortSource = 0;    //variable to hold the port number
 
   //EXTI structure to init EXT
@@ -184,16 +192,24 @@ void HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* dat
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   //update NVIC registers
   NVIC_Init(&NVIC_InitStructure);
+  return SYSTEM_ERROR_NONE;
 }
 
-void HAL_Interrupts_Detach(uint16_t pin)
+int HAL_Interrupts_Detach(uint16_t pin)
 {
-  HAL_Interrupts_Detach_Ext(pin, 0, NULL);
+  return HAL_Interrupts_Detach_Ext(pin, 0, NULL);
 }
 
 
-void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
+int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
 {
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+  /* safety check that prevents users from attaching an interrupt to D7
+   * which is shared with BATT_INT_PC13 for power management */
+  if (pin == D7) {
+    return SYSTEM_ERROR_NOT_ALLOWED;
+  }
+#endif
   //Map the Spark Core pin to the appropriate pin on the STM32
   Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
@@ -218,6 +234,7 @@ void HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved
   EXTI_InitStructure.EXTI_LineCmd = DISABLE;
   //send values to registers
   EXTI_Init(&EXTI_InitStructure);
+  return SYSTEM_ERROR_NONE;
 }
 
 void HAL_Interrupts_Enable_All(void)
