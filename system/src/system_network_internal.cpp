@@ -36,6 +36,7 @@ void networkOn(network_interface_index iface) {
 } // namespace
 
 void resetNetworkInterfaces() {
+    // TODO: There's no cross-platform API to enumerate available network interfaces
 #if HAL_PLATFORM_MESH
     const bool resetMesh = networkOff(NETWORK_INTERFACE_MESH);
 #endif // HAL_PLATFORM_MESH
