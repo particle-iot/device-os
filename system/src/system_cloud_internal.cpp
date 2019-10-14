@@ -396,7 +396,15 @@ void SystemEvents(const char* name, const char* data)
                 System.reset();
             } else if (!strcmp("network", data)) {
                 LOG(WARN, "Received a command to reset the network");
-                particle::resetNetworkInterfaces();
+                // Reset all active network interfaces asynchronously
+                const auto task = new(std::nothrow) ISRTaskQueue::Task();
+                if (task) {
+                    task->func = [](ISRTaskQueue::Task* task) {
+                        delete task;
+                        particle::resetNetworkInterfaces();
+                    };
+                    SystemISRTaskQueue.enqueue(task);
+                }
             }
         }
     }
