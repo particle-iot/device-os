@@ -25,7 +25,7 @@
 // #define MDM_DEBUG_RX_PIPE
 
 #ifdef MDM_DEBUG
-#define MDM_PRINTF(_fmt, ...) LOG_PRINTF(TRACE, _fmt, ##__VA_ARGS__)
+#define MDM_PRINTF(_fmt, ...) LOG_PRINTF_C(TRACE, "hal.mdm", _fmt, ##__VA_ARGS__)
 #else
 #define MDM_PRINTF(_fmt, ...)
 #endif
