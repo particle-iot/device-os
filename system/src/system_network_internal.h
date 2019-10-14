@@ -24,6 +24,7 @@
 #include "spark_macros.h"
 #include "hal_platform.h"
 #include "timer_hal.h"
+#include "system_network.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,6 +71,15 @@ inline void CLR_WLAN_WD() {
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+
+namespace particle {
+
+/**
+ * Reset all active network interfaces.
+ */
+void resetNetworkInterfaces();
+
+} // namespace particle
 
 /* FIXME: there should be a define that tells whether there is NetworkManager available
  * or not */
