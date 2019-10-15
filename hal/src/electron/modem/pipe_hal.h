@@ -26,6 +26,7 @@
 
 #include "service_debug.h"
 #include "interrupts_hal.h"
+#include "mdm_debug.h"
 
 #ifdef putc
 #undef putc
@@ -100,7 +101,7 @@ public:
             o = _inc(o);
         }
         strcat(temp1, "\r\n");
-        DEBUG_D("%s", temp1);
+        MDM_PRINTF("%s", temp1);
     }
 
     // writing thread/context API

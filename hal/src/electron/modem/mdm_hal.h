@@ -29,11 +29,7 @@
 #include "pinmap_hal.h"
 #include "system_tick_hal.h"
 #include "enums_hal.h"
-
-/* Include for debug capabilty */
-#define MDM_DEBUG
-// #define MDM_DEBUG_TX_PIPE
-// #define MDM_DEBUG_RX_PIPE
+#include "mdm_debug.h"
 
 /** basic modem parser class
 */

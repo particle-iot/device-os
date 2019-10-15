@@ -265,13 +265,13 @@ int ElectronSerialPipe::rxSize(void)
 
 void ElectronSerialPipe::txDump(void)
 {
-    DEBUG_D("TX ");
+    MDM_PRINTF("TX ");
     _pipeTx.dump();
 }
 
 void ElectronSerialPipe::rxDump(void)
 {
-    DEBUG_D("RX ");
+    MDM_PRINTF("RX ");
     _pipeRx.dump();
 }
 
