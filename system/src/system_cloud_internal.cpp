@@ -25,7 +25,6 @@
 #include "spark_wiring_led.h"
 #include "system_cloud_internal.h"
 #include "system_mode.h"
-#include "system_network_internal.h"
 #include "system_task.h"
 #include "system_threading.h"
 #include "system_user.h"
@@ -48,6 +47,7 @@
 #include "bytes2hexbuf.h"
 #include "system_event.h"
 #include "system_cloud_connection.h"
+#include "system_network_internal.h"
 #include "str_util.h"
 #include <stdio.h>
 #include <stdint.h>
