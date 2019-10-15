@@ -69,7 +69,7 @@ inline void CLR_WLAN_WD() {
 }
 
 #ifdef __cplusplus
-}
+} // extern "C"
 #endif /* __cplusplus */
 
 namespace particle {
