@@ -1,8 +1,6 @@
 #!/bin/bash
 set -o errexit -o pipefail -o noclobber -o nounset
 
-VERSION="1.4.1-rc.1"
-
 function display_help ()
 {
     echo '
@@ -306,6 +304,12 @@ else
     esac
 fi
 
+# Import version data
+VERSION="$(./print-version.sh)"
+if [ -z $VERSION ]; then
+    exit 8
+fi
+
 # Eliminate relative paths
 mkdir -p $OUTPUT_DIRECTORY
 pushd $OUTPUT_DIRECTORY > /dev/null
@@ -448,7 +452,7 @@ fi
 
 # Generate test binaries for platform
 if [ $GENERATE_TESTS = true ]; then
-    ../build/release-tests.sh --output-directory $ABSOLUTE_OUTPUT_DIRECTORY --platform $PLATFORM --version $VERSION
+    ../build/release-tests.sh --output-directory $ABSOLUTE_OUTPUT_DIRECTORY --platform $PLATFORM
 fi
 
 #############################

@@ -8,7 +8,6 @@ usage: release-tests.sh [--dryrun] [--help]
                         --output-directory=<binary_output_directory>
                         --platform=<argon|asom|boron|bsom...
                         |core|electron|p1|photon|xenon|xsom>
-                        --version=<semver_version_string>
 
 Generate the testing binaries belonging to a given platform.
 
@@ -23,8 +22,6 @@ Generate the testing binaries belonging to a given platform.
                             folder hierarchy for the resulting binaries
                             will be placed.
   -p, --platform          Specify the desired platform.
-  -v, --version           Specify the semantic version of the Device OS
-                            for which you are building tests.
 '
 }
 
@@ -38,8 +35,8 @@ Please confirm "GNU getopt" is installed on this device.
     exit 1
 fi
 
-OPTIONS=df:ho:p:v:
-LONGOPTS=dry-run,filename:,help,output-directory:,platform:,version:
+OPTIONS=df:ho:p:
+LONGOPTS=dry-run,filename:,help,output-directory:,platform:
 
 # -use ! and PIPESTATUS to get exit code with errexit set
 # -temporarily store output to be able to check for errors
@@ -60,7 +57,6 @@ DRY_RUN=false
 PARAMETER_FILE="../user/tests/release-tests.json"
 OUTPUT_DIRECTORY=""
 PLATFORM=""
-VERSION=""
 
 # Parse parameter(s)
 while true; do
@@ -84,10 +80,6 @@ while true; do
             ;;
         -p|--platform)
             PLATFORM="$2"
-            shift 2
-            ;;
-        -v|--version)
-            VERSION="$2"
             shift 2
             ;;
         --)
@@ -123,9 +115,6 @@ elif [ -z $PLATFORM ]; then
 elif !(valid_platform $PLATFORM); then
     echo "Invalid platform specified!"
     exit 7
-elif [ -z $VERSION ]; then
-    echo "--version argument must be specified!"
-    exit 8
 fi
 
 # Infer platform id
@@ -166,6 +155,12 @@ case "$PLATFORM" in
         ;;
 esac
 
+# Import version data
+VERSION="$(../build/print-version.sh)"
+if [ -z $VERSION ]; then
+    exit 10
+fi
+
 # Eliminate relative paths
 mkdir -p $OUTPUT_DIRECTORY
 pushd $OUTPUT_DIRECTORY > /dev/null
@@ -185,6 +180,7 @@ BINARY_DIRECTORY=$QUALIFIED_OUTPUT_DIRECTORY/tests
 # Move to `main` directory for building tests
 cd ../main
 
+# Iterate through JSON test file
 for test_object in $(jq '.platforms[] | select(.platform == "'${PLATFORM}'") | .tests[] | select(.enabled == true) | @base64' --compact-output -r ${PARAMETER_FILE}); do
     function append_metadata_seperator () {
         if [ $METADATA = false ]; then
@@ -199,7 +195,7 @@ for test_object in $(jq '.platforms[] | select(.platform == "'${PLATFORM}'") | .
         local member=$2
         echo $object_string | base64 --decode | jq -r $member
     }
-    
+
     METADATA=false
 
     # Create tests directory
@@ -234,7 +230,7 @@ for test_object in $(jq '.platforms[] | select(.platform == "'${PLATFORM}'") | .
     fi
 
     MAKE_COMMAND+=" USE_SWD_JTAG=n USE_SWD=n"
-    
+
     # Append test commands and metadata
     MAKE_COMMAND+=" TEST=$(json $test_object .path)/$(json $test_object .name)"
     if [ $(json $test_object .use_threading) = true ]; then
