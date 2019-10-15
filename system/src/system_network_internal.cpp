@@ -17,6 +17,63 @@
 
 #include "system_network_internal.h"
 
+#include "system_cloud.h"
+
+namespace particle {
+
+namespace {
+
+[[gnu::unused]] // Suppress a warning on the newhal platform
+bool turnOffNetworkIfNeeded(network_interface_index iface) {
+    if (network_ready(iface, NETWORK_READY_TYPE_ANY, nullptr) || network_connecting(iface, 0, nullptr)) {
+        network_off(iface, 0, 0, nullptr);
+        return true;
+    }
+    return false;
+}
+
+} // namespace
+
+void resetNetworkInterfaces() {
+    // FIXME: network_off() on Gen 3 disconnects the cloud only if the interface is set to NETWORK_INTERFACE_ALL
+    cloud_disconnect(true /* close_socket */, true /* graceful */, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
+    // TODO: There's no cross-platform API to enumerate available network interfaces
+#if HAL_PLATFORM_MESH
+    const bool resetMesh = turnOffNetworkIfNeeded(NETWORK_INTERFACE_MESH);
+#endif // HAL_PLATFORM_MESH
+#if HAL_PLATFORM_ETHERNET
+    const bool resetEthernet = turnOffNetworkIfNeeded(NETWORK_INTERFACE_ETHERNET);
+#endif // HAL_PLATFORM_ETHERNET
+#if HAL_PLATFORM_CELLULAR
+    const bool resetCellular = turnOffNetworkIfNeeded(NETWORK_INTERFACE_CELLULAR);
+#endif // HAL_PLATFORM_CELLULAR
+#if HAL_PLATFORM_WIFI
+    const bool resetWifi = turnOffNetworkIfNeeded(NETWORK_INTERFACE_WIFI_STA);
+#endif // HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_MESH
+    if (resetMesh) {
+        network_connect(NETWORK_INTERFACE_MESH, 0, 0, nullptr);
+    }
+#endif // HAL_PLATFORM_MESH
+#if HAL_PLATFORM_ETHERNET
+    if (resetEthernet) {
+        network_connect(NETWORK_INTERFACE_ETHERNET, 0, 0, nullptr);
+    }
+#endif // HAL_PLATFORM_ETHERNET
+#if HAL_PLATFORM_CELLULAR
+    if (resetCellular) {
+        network_connect(NETWORK_INTERFACE_CELLULAR, 0, 0, nullptr);
+    }
+#endif // HAL_PLATFORM_CELLULAR
+#if HAL_PLATFORM_WIFI
+    if (resetWifi) {
+        network_connect(NETWORK_INTERFACE_WIFI_STA, 0, 0, nullptr);
+    }
+#endif // HAL_PLATFORM_WIFI
+}
+
+} // namespace particle
+
 /* FIXME: there should be a define that tells whether there is NetworkManager available
  * or not */
 #if !HAL_PLATFORM_IFAPI
