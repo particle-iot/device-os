@@ -50,4 +50,5 @@ cd $unit_test_dir
 rm -rf .build/*
 mkdir .build -p && cd .build/
 cmake ..
-make all test coveralls
+# FIXME: coveralls disabled for now as the CI builds for some reason are failing
+make all test # coveralls
