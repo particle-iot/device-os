@@ -67,7 +67,7 @@ std::recursive_mutex mdm_mutex;
 #define AT_TIMEOUT        (  1 * 1000)
 #define USOCL_UDP_TIMEOUT ( 10 * 1000) /* 120s for R4 (TCP only, optimizing for UDP with 10s), 1s for U2/G3 */
 #define USOCL_TCP_TIMEOUT (120 * 1000) /* 120s for R4 (TCP only), 1s for U2/G3 */
-#define USOCO_TIMEOUT     (120 * 1000) /* 120s for R4 (TCP only, going with 120 to be safe), 20s for U2/G3 */
+#define USOCO_TIMEOUT     (130 * 1000) /* 120s for R4 (TCP only, going with 130 due to testing showing CME ERROR can take a bit longer), 20s for U2/G3 */
 #define USOCR_TIMEOUT     (  1 * 1000)
 #define USOCTL_TIMEOUT    (  1 * 1000)
 #define USOWR_TIMEOUT     (120 * 1000) /* 120s for R4 (going with 120 to be safe since we don't use this with UDP),
@@ -243,6 +243,7 @@ MDMParser::MDMParser(void)
     _ip        = NOIP;
     _init      = false;
     _pwr       = false;
+    _mdm_state_change_count = 0;
     _activated = false;
     _attached  = false;
     _attached_urc = false; // updated by GPRS detached/attached URC,
@@ -250,9 +251,9 @@ MDMParser::MDMParser(void)
     _power_mode = 1; // default power mode is AT+UPSV=1
     _cancel_all_operations = false;
     sms_cb = NULL;
-    memset(_sockets, 0, sizeof(_sockets));
     _timePowerOn = 0;
     _timeRegistered = 0;
+    memset(_sockets, 0, sizeof(_sockets));
     for (int socket = 0; socket < NUMSOCKETS; socket ++)
         _sockets[socket].handle = MDM_SOCKET_ERROR;
 #ifdef MDM_DEBUG
@@ -643,6 +644,8 @@ void MDMParser::reset(void)
     // reset power on and registered timers for memory issue power off delays
     _timePowerOn = 0;
     _timeRegistered = 0;
+    // Increment the state change counter
+    _incModemStateChangeCount();
 }
 
 bool MDMParser::_powerOn(void)
@@ -716,6 +719,10 @@ bool MDMParser::_powerOn(void)
 
         // check interface
         if(_atOk()) {
+            // Increment the state change counter to show that the modem has been powered off -> on
+            if (!_pwr) {
+                _incModemStateChangeCount();
+            }
             _pwr = true;
             // start power on timer for memory issue power off delays, assume not registered.
             _timePowerOn = HAL_Timer_Get_Milli_Seconds();
@@ -1004,6 +1011,7 @@ reset_failure:
             _pwr = false;  //   |
             // When this exits false, ARM_WLAN_WD 1 will fire and timeout after 30s.
             // MDMParser::powerOn and MDMParser::init will then be retried by the system.
+            _incModemStateChangeCount();
         }
     } // else {
         // stop resetting, and try to register.
@@ -1015,6 +1023,23 @@ reset_failure:
     // }
     UNLOCK();
     return false;
+}
+
+void MDMParser::_incModemStateChangeCount(void) {
+    LOCK();
+    // increment count
+    _mdm_state_change_count++;
+
+    // re-initialize things that may be affected by a on/off/reset state change
+    memset(_sockets, 0, sizeof(_sockets));
+    for (int socket = 0; socket < NUMSOCKETS; socket ++) {
+        _sockets[socket].handle = MDM_SOCKET_ERROR;
+    }
+    UNLOCK();
+}
+
+int MDMParser::getModemStateChangeCount(void) {
+    return _mdm_state_change_count;
 }
 
 bool MDMParser::powerOff(void)
@@ -1107,7 +1132,11 @@ bool MDMParser::powerOff(void)
             //_attached = false;
             HAL_Delay_Milliseconds(1000); // give peace a chance
         }
-    }
+        // Increment the state change counter to show that the modem has been powered off -> on
+        if (!_pwr) {
+            _incModemStateChangeCount();
+        }
+    } // if (_init && _pwr)
 
     // Close serial connection
     electronMDM.end();
@@ -2202,25 +2231,32 @@ int MDMParser::_cbUSOCTL(int type, const char* buf, int len, Usoctl* usoctl)
     return WAIT;
 }
 
-/* Tries to close any currently unused socket handles */
-int MDMParser::_socketCloseUnusedHandles() {
+/* Tries to cleanup unused socket handles */
+int MDMParser::_socketCleanupUnusedHandles() {
     bool ok = false;
     LOCK();
 
-    for (int s = 0; s < NUMSOCKETS; s++) {
+    for (int handle = 0; handle < NUMSOCKETS; handle++) {
+        int socket = _findSocket(handle);
         // If this HANDLE is not found to be in use, try to close it
-        if (_findSocket(s) == MDM_SOCKET_ERROR) {
-            if (_socketCloseHandleIfOpen(s)) {
+        if (socket == MDM_SOCKET_ERROR) {
+            if (_socketCloseHandleIfOpen(handle)) {
                 ok = true; // If any actually close, return true
             }
         }
+        // else if this SOCKET is in use, but the HANDLE is an unknown type, free the SOCKET
+        else if (_socketCheckType(handle) == 0) {
+            _socketFree(socket);
+            ok = true; // If any actually free, return true
+        }
+
     }
 
     UNLOCK();
     return ok;
 }
 
-/* Tries to close the specified socket handle */
+/* Tries to close the specified socket handle or free its socket id */
 int MDMParser::_socketCloseHandleIfOpen(int socket_handle) {
     bool ok = false;
     LOCK();
@@ -2229,29 +2265,50 @@ int MDMParser::_socketCloseHandleIfOpen(int socket_handle) {
     // to wait much longer for the socket to close if it's TCP. When closing a TCP socket,
     // if the timeout is not respected the AT interface will block further commands.
     // AT+USOCTL=0,0
+    // +USOCTL: socket,param_id,param_val
     // +USOCTL: 0,0,17 (UDP)
     // +USOCTL: 0,0,6  (TCP)
-    // +USOCTL: 0,0,0  (UNK) - likely closed, although we attempt to close it anyway
-    Usoctl usoctl;
-    usoctl.handle = MDM_SOCKET_ERROR;
-    sendFormated("AT+USOCTL=%d,0\r\n", socket_handle);
-    if ((RESP_OK == waitFinalResp(_cbUSOCTL, &usoctl, USOCTL_TIMEOUT)) &&
-        (usoctl.handle != MDM_SOCKET_ERROR)) {
+    // +USOCTL: 0,0,0  (UNK) - likely a closed socket handle
+    int socket_type = _socketCheckType(socket_handle);
+    if (socket_type > 0) {
         MDM_PRINTF("Socket handle %d (%s) open, closing...\r\n",
-            usoctl.handle, (usoctl.param_val == 17) ? "UDP" : (usoctl.param_val == 6) ? "TCP" : "UNK");
+            socket_handle, (socket_type == 17) ? "UDP" : (socket_type == 6) ? "TCP" : "UNK");
         // Close it if it's open
         // AT+USOCL=0
         // OK
-        sendFormated("AT+USOCL=%d\r\n", usoctl.handle);
+        sendFormated("AT+USOCL=%d\r\n", socket_handle);
         if (RESP_OK == waitFinalResp(nullptr, nullptr,
-            (usoctl.param_val == 17) ? USOCL_UDP_TIMEOUT : USOCL_TCP_TIMEOUT)) {
-            MDM_PRINTF("Socket handle %d was closed.\r\n", usoctl.handle);
+            (socket_type == 17) ? USOCL_UDP_TIMEOUT : USOCL_TCP_TIMEOUT)) {
+            MDM_PRINTF("Socket handle %d was closed.\r\n", socket_handle);
             ok = true;
         }
     }
 
     UNLOCK();
     return ok;
+}
+
+/* Query the socket handle for its type (TCP:6 / UDP:17 / UNKNOWN:0) */
+int MDMParser::_socketCheckType(int socket_handle) {
+    // Default to UNKNOWN type since AT+USOCTL will return CME ERROR on newer u-blox firmware 05.08,A02.04
+    int socket_type = 0;
+    LOCK();
+
+    // AT+USOCTL=0,0
+    // +USOCTL: socket,param_id,param_val
+    // +USOCTL: 0,0,17 (UDP)
+    // +USOCTL: 0,0,6  (TCP)
+    // +USOCTL: 0,0,0  (UNK)
+    Usoctl usoctl;
+    usoctl.handle = MDM_SOCKET_ERROR;
+    sendFormated("AT+USOCTL=%d,0\r\n", socket_handle);
+    if ((RESP_OK == waitFinalResp(_cbUSOCTL, &usoctl, USOCTL_TIMEOUT)) &&
+        (usoctl.handle != MDM_SOCKET_ERROR)) {
+        socket_type = usoctl.param_val;
+    }
+
+    UNLOCK();
+    return socket_type;
 }
 
 int MDMParser::_socketSocket(int socket, IpProtocol ipproto, int port)
@@ -2313,9 +2370,9 @@ int MDMParser::socketSocket(IpProtocol ipproto, int port)
         // with a socket. These may occur after power cycling the STM32 with modem connected
         // or if a previous socket was not closed cleanly. socketFree() will unconditionally
         // free the socket even if the handle doesn't close on the modem.
-        if (_socketCloseUnusedHandles())
+        if (_socketCleanupUnusedHandles())
         {
-            MDM_PRINTF("%s: closed stale socket handle(s)\r\n", __func__);
+            MDM_PRINTF("%s: closed/freed stale socket handle(s)\r\n", __func__);
         }
 
         // find an free socket
@@ -2395,19 +2452,16 @@ bool MDMParser::socketClose(int socket)
     {
         // Check socket type, and use an appropriate timeout. When closing a TCP socket,
         // if the timeout is not respected the AT interface will block further commands.
-        Usoctl usoctl;
-        usoctl.handle = MDM_SOCKET_ERROR;
-        sendFormated("AT+USOCTL=%d,0\r\n", _sockets[socket].handle);
-        waitFinalResp(_cbUSOCTL, &usoctl, USOCTL_TIMEOUT);
+        int socket_type = _socketCheckType(_sockets[socket].handle);
         // On the SARA R410M check EPS registration prior due to an issue
         // where the USOCL can lockup the modem if connection drops and we
         // are trying to close a TCP socket (without using the async option).
         MDM_PRINTF("socketClose(%d)(%s)\r\n", socket,
-            (usoctl.param_val == 17) ? "UDP" : (usoctl.param_val == 6) ? "TCP" : "UNK");
+            (socket_type == 17) ? "UDP" : (socket_type == 6) ? "TCP" : "UNK");
         if (_checkEpsReg()) {
             sendFormated("AT+USOCL=%d\r\n", _sockets[socket].handle);
             if (RESP_ERROR == waitFinalResp(nullptr, nullptr,
-                (usoctl.param_val == 17) ? USOCL_UDP_TIMEOUT : USOCL_TCP_TIMEOUT)) {
+                (socket_type == 17) ? USOCL_UDP_TIMEOUT : USOCL_TCP_TIMEOUT)) {
                 if (_dev.dev != DEV_SARA_R410) {
                     sendFormated("AT+CEER\r\n"); // For logging visibility
                     waitFinalResp(nullptr, nullptr, CEER_TIMEOUT);
