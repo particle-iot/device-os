@@ -67,7 +67,7 @@ std::recursive_mutex mdm_mutex;
 #define AT_TIMEOUT        (  1 * 1000)
 #define USOCL_UDP_TIMEOUT ( 10 * 1000) /* 120s for R4 (TCP only, optimizing for UDP with 10s), 1s for U2/G3 */
 #define USOCL_TCP_TIMEOUT (120 * 1000) /* 120s for R4 (TCP only), 1s for U2/G3 */
-#define USOCO_TIMEOUT     (120 * 1000) /* 120s for R4 (TCP only, going with 120 to be safe), 20s for U2/G3 */
+#define USOCO_TIMEOUT     (130 * 1000) /* 120s for R4 (TCP only, going with 130 due to testing showing CME ERROR can take a bit longer), 20s for U2/G3 */
 #define USOCR_TIMEOUT     (  1 * 1000)
 #define USOCTL_TIMEOUT    (  1 * 1000)
 #define USOWR_TIMEOUT     (120 * 1000) /* 120s for R4 (going with 120 to be safe since we don't use this with UDP),
