@@ -157,6 +157,15 @@ void Reset_System(void) {
 
     RGB_LED_Uninit();
 
+    // XXX: POWER_CLOCK_IRQn needs to be masked!
+    // We've seen cases where the POWER_CLOCK interrupt comes in-between the jump
+    // from the bootloader into the system firmware and when the clock driver is initialized
+    // again in system firmware. This causes a jump into 0x0000000 address because the clock
+    // event handler hasn't been registered.
+    // Surprisingly the event that triggers the interrupt is EVENTS_LFCLKSTARTED,
+    // despite the fact that we are specifically waiting for LFCLK to start in Set_System()
+    NVIC_DisableIRQ(POWER_CLOCK_IRQn);
+
     __DSB();
 }
 
