@@ -1395,25 +1395,28 @@ int wlan_fetch_ipconfig(WLanConfig* config)
 #endif // LWIP_DHCP
     }
 
-    wiced_mac_t my_mac_address;
-    if (wiced_wifi_get_mac_address( &my_mac_address)==WICED_SUCCESS)
-        memcpy(config->nw.uaMacAddr, &my_mac_address, 6);
+    // XXX: calling wiced_wifi_get_mac_address or potentially other functions
+    // before wiced_wlan_connectivity_initialized() returns true will lead to a hardfaul
+    if (wiced_wlan_connectivity_initialized()) {
+        wiced_mac_t my_mac_address;
+        if (wiced_wifi_get_mac_address( &my_mac_address)==WICED_SUCCESS)
+            memcpy(config->nw.uaMacAddr, &my_mac_address, 6);
 
-    wl_bss_info_t ap_info;
-    wiced_security_t sec;
+        wl_bss_info_t ap_info;
+        wiced_security_t sec;
 
-    if ( wwd_wifi_get_ap_info( &ap_info, &sec ) == WWD_SUCCESS )
-    {
-        uint8_t len = std::min(ap_info.SSID_len, uint8_t(32));
-        memcpy(config->uaSSID, ap_info.SSID, len);
-        config->uaSSID[len] = 0;
-
-        if (config->size >= WLanConfig_Size_V2)
+        if ( wwd_wifi_get_ap_info( &ap_info, &sec ) == WWD_SUCCESS )
         {
-            memcpy(config->BSSID, ap_info.BSSID.octet, sizeof(config->BSSID));
+            uint8_t len = std::min(ap_info.SSID_len, uint8_t(32));
+            memcpy(config->uaSSID, ap_info.SSID, len);
+            config->uaSSID[len] = 0;
+
+            if (config->size >= WLanConfig_Size_V2)
+            {
+                memcpy(config->BSSID, ap_info.BSSID.octet, sizeof(config->BSSID));
+            }
         }
     }
-    // todo DNS and DHCP servers
 
     return 0;
 }
