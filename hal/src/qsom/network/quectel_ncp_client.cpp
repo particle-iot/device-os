@@ -684,6 +684,8 @@ int QuectelNcpClient::checkSimCard() {
 int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
     netConf_ = conf;
     if (!netConf_.isValid()) {
+        // FIXME: CIMI may fail, need delay here
+        HAL_Delay_Milliseconds(1000);
         // Look for network settings based on IMSI
         char buf[32] = {};
         auto resp = parser_.sendCommand("AT+CIMI");
