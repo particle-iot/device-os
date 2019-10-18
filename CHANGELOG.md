@@ -1,3 +1,14 @@
+## 1.4.2
+
+>**Note:** If your Gen 2 Photon/P1 or Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release).
+>**Note:** If your Gen 3 device does not have a Cloud connection, this release will also require manually updating the SoftDevice via CLI. The instructions are available in the release notes and the SoftDevice binaries are available in the Github release.
+>
+>This release contains v501 bootloaders.
+
+### BUGFIXES
+
+- [Gen 3] Fixes a boot/crash-loop due to a `POWER_CLOCK_IRQn` firing in between the jump into the system firmware from the bootloader [#1948](https://github.com/particle-iot/device-os/pull/1948)
+
 ## 1.4.1
 
 >**Note:** If your Gen 2 Photon/P1 or Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release).

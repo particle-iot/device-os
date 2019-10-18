@@ -236,7 +236,7 @@ GEN3_RADIO_STACK_VERSION_OFFSET = 0x300c
 GEN3_RADIO_STACK_MBR_OFFSET = 0x1000
 GEN3_RADIO_STACK_FLAGS = ModuleFlags.DROP_MODULE_INFO
 # A bootloader and system-part1 supporting SoftDevice updates are required for radio stack modules generate for Gen 3 platforms
-GEN3_RADIO_STACK_DEPENDENCY = ModuleDependency(ModuleFunction.BOOTLOADER, 401)
+GEN3_RADIO_STACK_DEPENDENCY = ModuleDependency(ModuleFunction.BOOTLOADER, 501)
 GEN3_RADIO_STACK_DEPENDENCY2 = ModuleDependency(ModuleFunction.SYSTEM_PART, 1321, 1)
 
 def main():
