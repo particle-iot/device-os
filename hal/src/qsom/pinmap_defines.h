@@ -21,7 +21,7 @@
 
 #define TOTAL_PINS 38
 #define TOTAL_ANALOG_PINS 8
-#define FIRST_ANALOG_PIN A0
+#define FIRST_ANALOG_PIN D14
 
 // Digital pins
 #define D0 0
@@ -40,16 +40,24 @@
 #define D13 13
 #define D14 14
 #define D15 15
+#define D16 16
+#define D17 17
+#define D18 18
+#define D19 19
+#define D20 20
+#define D21 21
+#define D22 22
+#define D23 23
 
 // Analog pins
-#define A0 16
-#define A1 17
-#define A2 18
-#define A3 19
-#define A4 20
-#define A5 21
-#define A6 22
-#define A7 23
+#define A0 D19
+#define A1 D18
+#define A2 D17
+#define A3 D16
+#define A4 D15
+#define A5 D14
+#define A6 D21
+#define A7 D20
 
 #define BTN 24
 #define RGBR 25
