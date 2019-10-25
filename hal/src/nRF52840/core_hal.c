@@ -85,7 +85,7 @@ extern char link_heap_location, link_heap_location_end;
 extern uintptr_t link_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location_end;
-extern char __stack_start__;
+extern char link_stack_location;
 
 
 static void* new_heap_end = &link_heap_location_end;
@@ -308,7 +308,7 @@ void HAL_Core_Config(void) {
         }
     } else {
         // There is no valid user application
-        malloc_set_heap_end(&__stack_start__);
+        malloc_set_heap_end(&link_stack_location);
     }
 
     // Enable malloc before littlefs initialization.
@@ -833,7 +833,7 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     }
 
     if (offsetof(runtime_info_t, user_static_ram) + sizeof(info->user_static_ram) <= info->size) {
-        info->user_static_ram = (uintptr_t)&__stack_start__ - (uintptr_t)new_heap_end;
+        info->user_static_ram = (uintptr_t)&link_stack_location - (uintptr_t)new_heap_end;
     }
 
     if (offsetof(runtime_info_t, largest_free_block_heap) + sizeof(info->largest_free_block_heap) <= info->size) {

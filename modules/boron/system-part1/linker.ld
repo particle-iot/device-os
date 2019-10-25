@@ -6,8 +6,8 @@ MEMORY
 {
     INCLUDE memory_backup_ram.ld
 
-    APP_FLASH (rx)  : ORIGIN = _system_part1_flash_start,      LENGTH = _system_part1_flash_size
-    SRAM      (rwx) : ORIGIN = _system_part1_static_ram_start, LENGTH = _system_part1_static_ram_size
+    APP_FLASH (rx)  : ORIGIN = platform_system_part1_flash_start,      LENGTH = platform_system_part1_flash_size
+    SRAM      (rwx) : ORIGIN = platform_system_part1_static_ram_start, LENGTH = platform_system_part1_static_ram_size
 }
     
 /* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
