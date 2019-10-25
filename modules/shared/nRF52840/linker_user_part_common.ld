@@ -12,7 +12,7 @@ SECTIONS
     /* Dynalib table */
     .dynalib :
     {
-        link_dynalib_start = . ;
+        link_dynalib_start = .;
         KEEP (*(*.user_part_module))
         link_dynalib_end = . ;
     } > APP_FLASH AT> APP_FLASH
@@ -41,7 +41,7 @@ SECTIONS
 
         . = ALIGN(4);
 
-        /* This is used by the user part init function in order to invoke C++ constructors */
+        /* This is used by module_user_init() function in order to invoke C++ constructors */
         link_constructors_location = .;
         KEEP (*(.preinit_array))
         KEEP (*(.init_array))
@@ -49,7 +49,7 @@ SECTIONS
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
-        /* This is used by the user part init function in order to invoke C++ constructors */
+        /* This is used by module_user_init() function in order to invoke C++ constructors */
         link_constructors_end = .;
 
         . = ALIGN(4);
@@ -71,7 +71,7 @@ SECTIONS
     /* Static RAM start */
     INCLUDE linker_static_ram_start.ld
 
-    /* Non-zero initialised global variables */
+    /* Non-zero initialised global and static variables */
     .data :
     {
         /* This is the location in flash of the initial values of global variables */

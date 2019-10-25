@@ -129,7 +129,7 @@ Infinite_Loop:
 
 
 g_pfnVectors:
-  .word  __stack_end__
+  .word  link_stack_end
   .word  Reset_Handler
   .word  NMI_Handler
   .word  HardFault_Handler

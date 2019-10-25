@@ -1,3 +1,4 @@
+/* Memory spaces definitions */
 INCLUDE platform_ram.ld
 INCLUDE platform_flash.ld
 
@@ -6,13 +7,13 @@ ENTRY( reset_handler );
 
 MEMORY
 {
-    DCT1_FLASH (rx)  : ORIGIN = _dct1_flash_start,              LENGTH = _dct1_flash_size
-    DCT2_FLASH (rx)  : ORIGIN = _dct2_flash_start,              LENGTH = _dct1_flash_size
-    APP_FLASH  (rx)  : ORIGIN = _system_part2_flash_start,      LENGTH = _system_part2_flash_size
+    DCT1_FLASH (rx)  : ORIGIN = platform_dct1_flash_start,              LENGTH = platform_dct1_flash_size
+    DCT2_FLASH (rx)  : ORIGIN = platform_dct2_flash_start,              LENGTH = platform_dct1_flash_size
+    APP_FLASH  (rx)  : ORIGIN = platform_system_part2_flash_start,      LENGTH = platform_system_part2_flash_size
 
     /* The SRAM area is offset to include the stack and static ram allocated at the end of the SRAM area.
      * This is done so that the build outputs meaningful values for BSS and Data section sizes. */
-    SRAM       (rwx) : ORIGIN = _system_part2_static_ram_start, LENGTH = _system_part2_static_ram_size
+    SRAM       (rwx) : ORIGIN = platform_system_part2_static_ram_start, LENGTH = platform_system_part2_static_ram_size
 
     INCLUDE memory_backup_ram.ld
 }

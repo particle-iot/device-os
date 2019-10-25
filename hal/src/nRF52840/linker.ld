@@ -96,7 +96,7 @@ SECTIONS
         link_ram_interrupt_vectors_location_end = .;
     } > SRAM
 
-    /* Non-zero initialised global variables */
+    /* Non-zero initialised global and static variables */
     .data :
     {
         /* This is the location in flash of the initial values of global variables */
@@ -163,9 +163,9 @@ link_heap_location     = link_bss_end;
 link_heap_location_end = link_heap_location + platform_heap_min_size;
 
 /* Stack , used by startup*/
-link_stack_size     = platform_bootloader_stack_size;
-link_stack_location = platform_bootloader_stack_start;
-link_stack_end      = platform_bootloader_stack_end;
+link_stack_size     = platform_monolithic_firmware_stack_size;
+link_stack_location = platform_monolithic_firmware_stack_start;
+link_stack_end      = platform_monolithic_firmware_stack_end;
 
 /* Referenced by SoftDevice driver. */
 __data_start__ = link_static_ram_start;

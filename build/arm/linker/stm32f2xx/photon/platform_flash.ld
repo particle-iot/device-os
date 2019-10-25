@@ -48,182 +48,192 @@ Modular firmware:                          Monolithic firmware:
 Note: Keep the diagrams up to date with the actual memory maps defined in this file.
 */
 
-/* This is only referenced in this file */
-_platform_vector_table_flash_size = 388;
+/* Platform interrupt vector table size. Please reference to the interrupt vector table in platform startup file. */
+platform_vector_table_flash_size = 388;
 
 /* This is only referenced in this file */
-_module_info_flash_size = 24;
+platform_module_info_flash_size = 24;
 
 /* Total amount of flash available on the MCU */
-_flash_size  = 1M;
-_flash_start = 0x08000000;
-_flash_end   = _flash_start + _flash_size;
+platform_flash_size  = 1M;
+platform_flash_start = 0x08000000;
+platform_flash_end   = platform_flash_start + platform_flash_size;
+
 
 /* Factory backup */
-_factory_backup_flash_size  = 128K;
-_factory_backup_flash_end   = _flash_end;
-_factory_backup_flash_start = _factory_backup_flash_end - _factory_backup_flash_size;
+platform_factory_backup_flash_size  = 128K;
+platform_factory_backup_flash_end   = platform_flash_end;
+platform_factory_backup_flash_start = platform_factory_backup_flash_end - platform_factory_backup_flash_size;
+
 
 /* OTA backup */
-_ota_backup_flash_size  = 128K;
-_ota_backup_flash_end   = _factory_backup_flash_start;
-_ota_backup_flash_start = _ota_backup_flash_end - _ota_backup_flash_size;
+platform_ota_backup_flash_size  = 128K;
+platform_ota_backup_flash_end   = platform_factory_backup_flash_start;
+platform_ota_backup_flash_start = platform_ota_backup_flash_end - platform_ota_backup_flash_size;
+
 
 /* User part */
-_user_part_flash_size  = 128K;
-_user_part_flash_end   = _ota_backup_flash_start;
-_user_part_flash_start = _user_part_flash_end - _user_part_flash_size;
+platform_user_part_flash_size  = 128K;
+platform_user_part_flash_end   = platform_ota_backup_flash_start;
+platform_user_part_flash_start = platform_user_part_flash_end - platform_user_part_flash_size;
 
 /* User part module info */
-_user_part_module_info_flash_size  = _module_info_flash_size;
-_user_part_module_info_flash_start = _user_part_flash_start;
-_user_part_module_info_flash_end   = _user_part_module_info_flash_start + _user_part_module_info_flash_size;
+platform_user_part_module_info_flash_size  = platform_module_info_flash_size;
+platform_user_part_module_info_flash_start = platform_user_part_flash_start;
+platform_user_part_module_info_flash_end   = platform_user_part_module_info_flash_start + platform_user_part_module_info_flash_size;
 
 /* User part dynalib table */
-_user_part_dynalib_table_flash_start = _user_part_module_info_flash_end;
+platform_user_part_dynalib_table_flash_start = platform_user_part_module_info_flash_end;
+
 
 /* System part 2 */
-_system_part2_flash_size  = 256K;
-_system_part2_flash_end   = _user_part_flash_start;
-_system_part2_flash_start = _system_part2_flash_end - _system_part2_flash_size;
+platform_system_part2_flash_size  = 256K;
+platform_system_part2_flash_end   = platform_user_part_flash_start;
+platform_system_part2_flash_start = platform_system_part2_flash_end - platform_system_part2_flash_size;
 
 /* System part 2 vector table */
-_system_part2_vector_table_flash_size  = _platform_vector_table_flash_size;
-_system_part2_vector_table_flash_start = _system_part2_flash_start;
-_system_part2_vector_table_flash_end   = _system_part2_vector_table_flash_start + _system_part2_vector_table_flash_size;
+platform_system_part2_vector_table_flash_size  = platform_vector_table_flash_size;
+platform_system_part2_vector_table_flash_start = platform_system_part2_flash_start;
+platform_system_part2_vector_table_flash_end   = platform_system_part2_vector_table_flash_start + platform_system_part2_vector_table_flash_size;
 
 /* System part 2 module info */
-_system_part2_module_info_flash_size  = _module_info_flash_size;
-_system_part2_module_info_flash_start = _system_part2_vector_table_flash_end;
-_system_part2_module_info_flash_end   = _system_part2_module_info_flash_start + _system_part2_module_info_flash_size;
+platform_system_part2_module_info_flash_size  = platform_module_info_flash_size;
+platform_system_part2_module_info_flash_start = platform_system_part2_vector_table_flash_end;
+platform_system_part2_module_info_flash_end   = platform_system_part2_module_info_flash_start + platform_system_part2_module_info_flash_size;
 
 /* System part 2 dynalib table */
-_system_part2_dynalib_table_flash_start = _system_part2_module_info_flash_end;
+platform_system_part2_dynalib_table_flash_start = platform_system_part2_module_info_flash_end;
+
 
 /* System part 1 */
-_system_part1_flash_size  = 256K;
-_system_part1_flash_end   = _system_part2_flash_start;
-_system_part1_flash_start = _system_part1_flash_end - _system_part1_flash_size;
+platform_system_part1_flash_size  = 256K;
+platform_system_part1_flash_end   = platform_system_part2_flash_start;
+platform_system_part1_flash_start = platform_system_part1_flash_end - platform_system_part1_flash_size;
 
 /* System part 1 vector table */
-_system_part1_vector_table_flash_size  = _platform_vector_table_flash_size;
-_system_part1_vector_table_flash_start = _system_part1_flash_start;
-_system_part1_vector_table_flash_end   = _system_part1_vector_table_flash_start + _system_part1_vector_table_flash_size;
+platform_system_part1_vector_table_flash_size  = platform_vector_table_flash_size;
+platform_system_part1_vector_table_flash_start = platform_system_part1_flash_start;
+platform_system_part1_vector_table_flash_end   = platform_system_part1_vector_table_flash_start + platform_system_part1_vector_table_flash_size;
 
 /* System part 1 module info */
-_system_part1_module_info_flash_size  = _module_info_flash_size;
-_system_part1_module_info_flash_start = _system_part1_vector_table_flash_end;
-_system_part1_module_info_flash_end   = _system_part1_module_info_flash_start + _system_part1_module_info_flash_size;
+platform_system_part1_module_info_flash_size  = platform_module_info_flash_size;
+platform_system_part1_module_info_flash_start = platform_system_part1_vector_table_flash_end;
+platform_system_part1_module_info_flash_end   = platform_system_part1_module_info_flash_start + platform_system_part1_module_info_flash_size;
 
 /* System part 1 dynalib table */
-_system_part1_dynalib_table_flash_start = _system_part1_module_info_flash_end;
+platform_system_part1_dynalib_table_flash_start = platform_system_part1_module_info_flash_end;
+
 
 /* Monolithic firmware*/
-_monolithic_firmware_flash_size  = 896K;
-_monolithic_firmware_flash_end   = _flash_end;
-_monolithic_firmware_flash_start = _monolithic_firmware_flash_end - _monolithic_firmware_flash_size;
+platform_monolithic_firmware_flash_size  = 896K;
+platform_monolithic_firmware_flash_end   = platform_flash_end;
+platform_monolithic_firmware_flash_start = platform_monolithic_firmware_flash_end - platform_monolithic_firmware_flash_size;
 
 /* Monolithic firmware vector table */
-_monolithic_firmware_vector_table_flash_size  = _platform_vector_table_flash_size;
-_monolithic_firmware_vector_table_flash_start = _monolithic_firmware_flash_start;
-_monolithic_firmware_vector_table_flash_end   = _monolithic_firmware_vector_table_flash_start + _monolithic_firmware_vector_table_flash_size;
+platform_monolithic_firmware_vector_table_flash_size  = platform_vector_table_flash_size;
+platform_monolithic_firmware_vector_table_flash_start = platform_monolithic_firmware_flash_start;
+platform_monolithic_firmware_vector_table_flash_end   = platform_monolithic_firmware_vector_table_flash_start + platform_monolithic_firmware_vector_table_flash_size;
 
 /* Monolithic firmware module info */
-_monolithic_firmware_module_info_flash_size  = _module_info_flash_size;
-_monolithic_firmware_module_info_flash_start = _monolithic_firmware_vector_table_flash_end;
-_monolithic_firmware_module_info_flash_end   = _monolithic_firmware_module_info_flash_start + _monolithic_firmware_module_info_flash_size;
+platform_monolithic_firmware_module_info_flash_size  = platform_module_info_flash_size;
+platform_monolithic_firmware_module_info_flash_start = platform_monolithic_firmware_vector_table_flash_end;
+platform_monolithic_firmware_module_info_flash_end   = platform_monolithic_firmware_module_info_flash_start + platform_monolithic_firmware_module_info_flash_size;
+
 
 /* EEPROM 2 */
-_eeprom2_flash_size  = 64K;
-_eeprom2_flash_end   = _system_part1_flash_start;
-_eeprom2_flash_start = _eeprom2_flash_end - _eeprom2_flash_size;
+platform_eeprom2_flash_size  = 64K;
+platform_eeprom2_flash_end   = platform_system_part1_flash_start;
+platform_eeprom2_flash_start = platform_eeprom2_flash_end - platform_eeprom2_flash_size;
 
 /* EEPROM 1 */
-_eeprom1_flash_size  = 16K;
-_eeprom1_flash_end   = _eeprom2_flash_start;
-_eeprom1_flash_start = _eeprom1_flash_end - _eeprom1_flash_size;
+platform_eeprom1_flash_size  = 16K;
+platform_eeprom1_flash_end   = platform_eeprom2_flash_start;
+platform_eeprom1_flash_start = platform_eeprom1_flash_end - platform_eeprom1_flash_size;
+
 
 /* DCT 2 */
-_dct2_flash_size  = 16K;
-_dct2_flash_end   = _eeprom1_flash_start;
-_dct2_flash_start = _dct2_flash_end - _dct2_flash_size;
+platform_dct2_flash_size  = 16K;
+platform_dct2_flash_end   = platform_eeprom1_flash_start;
+platform_dct2_flash_start = platform_dct2_flash_end - platform_dct2_flash_size;
 
 /* DCT 1 */
-_dct1_flash_size  = 16K;
-_dct1_flash_end   = _dct2_flash_start;
-_dct1_flash_start = _dct1_flash_end - _dct1_flash_size;
+platform_dct1_flash_size  = 16K;
+platform_dct1_flash_end   = platform_dct2_flash_start;
+platform_dct1_flash_start = platform_dct1_flash_end - platform_dct1_flash_size;
+
 
 /* Bootloader */
-_bootloader_flash_size  = 16K;
-_bootloader_flash_start = _flash_start;
-_bootloader_flash_end   = _bootloader_flash_start + _bootloader_flash_size;
+platform_bootloader_flash_size  = 16K;
+platform_bootloader_flash_start = platform_flash_start;
+platform_bootloader_flash_end   = platform_bootloader_flash_start + platform_bootloader_flash_size;
 
 /* Bootloader vector table */
-_bootloader_vector_table_flash_size  = _platform_vector_table_flash_size;
-_bootloader_vector_table_flash_start = _bootloader_flash_start;
-_bootloader_vector_table_flash_end   = _bootloader_vector_table_flash_start + _bootloader_vector_table_flash_size;
+platform_bootloader_vector_table_flash_size  = platform_vector_table_flash_size;
+platform_bootloader_vector_table_flash_start = platform_bootloader_flash_start;
+platform_bootloader_vector_table_flash_end   = platform_bootloader_vector_table_flash_start + platform_bootloader_vector_table_flash_size;
 
 /* Bootloader module info */
-_bootloader_module_info_flash_size  = _module_info_flash_size;
-_bootloader_module_info_flash_start = _bootloader_vector_table_flash_end;
-_bootloader_module_info_flash_end   = _bootloader_module_info_flash_start + _bootloader_module_info_flash_size;
+platform_bootloader_module_info_flash_size  = platform_module_info_flash_size;
+platform_bootloader_module_info_flash_start = platform_bootloader_vector_table_flash_end;
+platform_bootloader_module_info_flash_end   = platform_bootloader_module_info_flash_start + platform_bootloader_module_info_flash_size;
+
 
 /* Basic sanity checks */
 ASSERT (
-    (_flash_end - _flash_start == _flash_size && _flash_size > 0) &&
-    (_bootloader_flash_size + _dct1_flash_size + _dct2_flash_size + _eeprom1_flash_size + _eeprom2_flash_size + _system_part1_flash_size + _system_part2_flash_size + _user_part_flash_size + _ota_backup_flash_size + _factory_backup_flash_size == _flash_size) &&
-    (_bootloader_flash_size + _dct1_flash_size + _dct2_flash_size + _eeprom1_flash_size + _eeprom2_flash_size + _monolithic_firmware_flash_size == _flash_size),
+    (platform_flash_end - platform_flash_start == platform_flash_size && platform_flash_size > 0) &&
+    (platform_bootloader_flash_size + platform_dct1_flash_size + platform_dct2_flash_size + platform_eeprom1_flash_size + platform_eeprom2_flash_size + platform_system_part1_flash_size + platform_system_part2_flash_size + platform_user_part_flash_size + platform_ota_backup_flash_size + platform_factory_backup_flash_size == platform_flash_size) &&
+    (platform_bootloader_flash_size + platform_dct1_flash_size + platform_dct2_flash_size + platform_eeprom1_flash_size + platform_eeprom2_flash_size + platform_monolithic_firmware_flash_size == platform_flash_size),
     "Invalid overall flash memory map!"
 );
 ASSERT (
-    (_factory_backup_flash_end - _factory_backup_flash_start == _factory_backup_flash_size && _factory_backup_flash_size > 0),
+    (platform_factory_backup_flash_end - platform_factory_backup_flash_start == platform_factory_backup_flash_size && platform_factory_backup_flash_size > 0),
     "Invalid factory backup flash memory map!"
 );
 ASSERT (
-    (_ota_backup_flash_end - _ota_backup_flash_start == _ota_backup_flash_size && _ota_backup_flash_size > 0),
+    (platform_ota_backup_flash_end - platform_ota_backup_flash_start == platform_ota_backup_flash_size && platform_ota_backup_flash_size > 0),
     "Invalid OTA backup flash memory map!"
 );
 ASSERT (
-    (_user_part_flash_start == 0x80A0000) &&
-    (_user_part_flash_end - _user_part_flash_start == _user_part_flash_size && _user_part_flash_size > 0) &&
-    (_user_part_module_info_flash_end - _user_part_module_info_flash_start == _user_part_module_info_flash_size && _user_part_module_info_flash_size > 0),
+    (platform_user_part_flash_start == 0x80A0000) &&
+    (platform_user_part_flash_end - platform_user_part_flash_start == platform_user_part_flash_size && platform_user_part_flash_size > 0) &&
+    (platform_user_part_module_info_flash_end - platform_user_part_module_info_flash_start == platform_user_part_module_info_flash_size && platform_user_part_module_info_flash_size > 0),
     "Invalid user part flash memory map!"
 );
 ASSERT (
-    (_system_part2_flash_start == 0x8060000) &&
-    (_system_part2_flash_end - _system_part2_flash_start == _system_part2_flash_size && _system_part2_flash_size > 0) &&
-    (_system_part2_vector_table_flash_end - _system_part2_vector_table_flash_start == _system_part2_vector_table_flash_size && _system_part2_vector_table_flash_size > 0) &&
-    (_system_part2_module_info_flash_end - _system_part2_module_info_flash_start == _system_part2_module_info_flash_size && _system_part2_module_info_flash_size > 0),
+    (platform_system_part2_flash_start == 0x8060000) &&
+    (platform_system_part2_flash_end - platform_system_part2_flash_start == platform_system_part2_flash_size && platform_system_part2_flash_size > 0) &&
+    (platform_system_part2_vector_table_flash_end - platform_system_part2_vector_table_flash_start == platform_system_part2_vector_table_flash_size && platform_system_part2_vector_table_flash_size > 0) &&
+    (platform_system_part2_module_info_flash_end - platform_system_part2_module_info_flash_start == platform_system_part2_module_info_flash_size && platform_system_part2_module_info_flash_size > 0),
     "Invalid system part 2 flash memory map!"
 );
 ASSERT (
-    (_system_part1_flash_start == 0x8020000) &&
-    (_system_part1_flash_end - _system_part1_flash_start == _system_part1_flash_size && _system_part1_flash_size > 0) &&
-    (_system_part1_vector_table_flash_end - _system_part1_vector_table_flash_start == _system_part1_vector_table_flash_size && _system_part1_vector_table_flash_size > 0) &&
-    (_system_part1_module_info_flash_end - _system_part1_module_info_flash_start == _system_part1_module_info_flash_size && _system_part1_module_info_flash_size > 0),
+    (platform_system_part1_flash_start == 0x8020000) &&
+    (platform_system_part1_flash_end - platform_system_part1_flash_start == platform_system_part1_flash_size && platform_system_part1_flash_size > 0) &&
+    (platform_system_part1_vector_table_flash_end - platform_system_part1_vector_table_flash_start == platform_system_part1_vector_table_flash_size && platform_system_part1_vector_table_flash_size > 0) &&
+    (platform_system_part1_module_info_flash_end - platform_system_part1_module_info_flash_start == platform_system_part1_module_info_flash_size && platform_system_part1_module_info_flash_size > 0),
     "Invalid system part 1 flash memory map!"
 );
 ASSERT (
-    (_monolithic_firmware_flash_start == 0x8020000) &&
-    (_monolithic_firmware_flash_end - _monolithic_firmware_flash_start == _monolithic_firmware_flash_size && _monolithic_firmware_flash_size > 0) &&
-    (_monolithic_firmware_vector_table_flash_end - _monolithic_firmware_vector_table_flash_start == _monolithic_firmware_vector_table_flash_size && _monolithic_firmware_vector_table_flash_size > 0) &&
-    (_monolithic_firmware_module_info_flash_end - _monolithic_firmware_module_info_flash_start == _monolithic_firmware_module_info_flash_size && _monolithic_firmware_module_info_flash_size > 0),
+    (platform_monolithic_firmware_flash_start == 0x8020000) &&
+    (platform_monolithic_firmware_flash_end - platform_monolithic_firmware_flash_start == platform_monolithic_firmware_flash_size && platform_monolithic_firmware_flash_size > 0) &&
+    (platform_monolithic_firmware_vector_table_flash_end - platform_monolithic_firmware_vector_table_flash_start == platform_monolithic_firmware_vector_table_flash_size && platform_monolithic_firmware_vector_table_flash_size > 0) &&
+    (platform_monolithic_firmware_module_info_flash_end - platform_monolithic_firmware_module_info_flash_start == platform_monolithic_firmware_module_info_flash_size && platform_monolithic_firmware_module_info_flash_size > 0),
     "Invalid monolithic firmware flash memory map!"
 );
 ASSERT (
-    (_eeprom2_flash_end - _eeprom2_flash_start == _eeprom2_flash_size && _eeprom2_flash_size > 0) &&
-    (_eeprom1_flash_end - _eeprom1_flash_start == _eeprom1_flash_size && _eeprom1_flash_size > 0),
+    (platform_eeprom2_flash_end - platform_eeprom2_flash_start == platform_eeprom2_flash_size && platform_eeprom2_flash_size > 0) &&
+    (platform_eeprom1_flash_end - platform_eeprom1_flash_start == platform_eeprom1_flash_size && platform_eeprom1_flash_size > 0),
     "Invalid EEPROM flash memory map!"
 );
 ASSERT (
-    (_dct2_flash_end - _dct2_flash_start == _dct2_flash_size && _dct2_flash_size > 0) &&
-    (_dct1_flash_end - _dct1_flash_start == _dct1_flash_size && _dct1_flash_size > 0),
+    (platform_dct2_flash_end - platform_dct2_flash_start == platform_dct2_flash_size && platform_dct2_flash_size > 0) &&
+    (platform_dct1_flash_end - platform_dct1_flash_start == platform_dct1_flash_size && platform_dct1_flash_size > 0),
     "Invalid DCT flash memory map!"
 );
 ASSERT (
-    (_bootloader_flash_start == 0x8000000) &&
-    (_bootloader_flash_end - _bootloader_flash_start == _bootloader_flash_size && _bootloader_flash_size > 0) &&
-    (_bootloader_vector_table_flash_end - _bootloader_vector_table_flash_start == _bootloader_vector_table_flash_size && _bootloader_vector_table_flash_size > 0) &&
-    (_bootloader_module_info_flash_end - _bootloader_module_info_flash_start == _bootloader_module_info_flash_size && _bootloader_module_info_flash_size > 0),
+    (platform_bootloader_flash_start == 0x8000000) &&
+    (platform_bootloader_flash_end - platform_bootloader_flash_start == platform_bootloader_flash_size && platform_bootloader_flash_size > 0) &&
+    (platform_bootloader_vector_table_flash_end - platform_bootloader_vector_table_flash_start == platform_bootloader_vector_table_flash_size && platform_bootloader_vector_table_flash_size > 0) &&
+    (platform_bootloader_module_info_flash_end - platform_bootloader_module_info_flash_start == platform_bootloader_module_info_flash_size && platform_bootloader_module_info_flash_size > 0),
     "Invalid bootloader flash memory map"
 );
