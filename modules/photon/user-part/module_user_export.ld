@@ -1,2 +1,3 @@
-PROVIDE ( dynalib_location_user = _user_part_dynalib_table_flash_start + 0 );
+/* Dynalib table locations */
+link_dynalib_location_user = platform_user_part_dynalib_table_flash_start + 0;
 
