@@ -1,5 +1,5 @@
 /*
-Platform FLASH memory map for Spark Core (Medium Desity).
+Platform FLASH memory map for Spark Core.
 
 Monolithic firmware:
 
@@ -20,64 +20,67 @@ Monolithic firmware:
 Note: Keep the diagrams up to date with the actual memory maps defined in this file.
 */
 
-/* This is only referenced in this file */
-_platform_vector_table_flash_size = 268;
+/* Platform interrupt vector table size. Please reference to the interrupt vector table in platform startup file. */
+platform_vector_table_flash_size = 268;
 
-/* This is only referenced in this file */
-_module_info_flash_size = 24;
+/* Module info size */
+platform_module_info_flash_size = 24;
 
 /* Total amount of flash available on the MCU */
-_flash_size  = 128K;
-_flash_start = 0x08000000;
-_flash_end   = _flash_start + _flash_size;
+platform_flash_size  = 128K;
+platform_flash_start = 0x08000000;
+platform_flash_end   = platform_flash_start + platform_flash_size;
+
 
 /* Monolithic firmware*/
-_monolithic_firmware_flash_size  = 108K;
-_monolithic_firmware_flash_end   = _flash_end;
-_monolithic_firmware_flash_start = _monolithic_firmware_flash_end - _monolithic_firmware_flash_size;
+platform_monolithic_firmware_flash_size  = 108K;
+platform_monolithic_firmware_flash_end   = platform_flash_end;
+platform_monolithic_firmware_flash_start = platform_monolithic_firmware_flash_end - platform_monolithic_firmware_flash_size;
 
 /* Monolithic firmware vector table */
-_monolithic_firmware_vector_table_flash_size  = _platform_vector_table_flash_size;
-_monolithic_firmware_vector_table_flash_start = _monolithic_firmware_flash_start;
-_monolithic_firmware_vector_table_flash_end   = _monolithic_firmware_vector_table_flash_start + _monolithic_firmware_vector_table_flash_size;
+platform_monolithic_firmware_vector_table_flash_size  = platform_vector_table_flash_size;
+platform_monolithic_firmware_vector_table_flash_start = platform_monolithic_firmware_flash_start;
+platform_monolithic_firmware_vector_table_flash_end   = platform_monolithic_firmware_vector_table_flash_start + platform_monolithic_firmware_vector_table_flash_size;
 
 /* Monolithic firmware module info */
-_monolithic_firmware_module_info_flash_size  = _module_info_flash_size;
-_monolithic_firmware_module_info_flash_start = _monolithic_firmware_vector_table_flash_end;
-_monolithic_firmware_module_info_flash_end   = _monolithic_firmware_module_info_flash_start + _monolithic_firmware_module_info_flash_size;
+platform_monolithic_firmware_module_info_flash_size  = platform_module_info_flash_size;
+platform_monolithic_firmware_module_info_flash_start = platform_monolithic_firmware_vector_table_flash_end;
+platform_monolithic_firmware_module_info_flash_end   = platform_monolithic_firmware_module_info_flash_start + platform_monolithic_firmware_module_info_flash_size;
+
 
 /* Bootloader */
-_bootloader_flash_size  = 20K;
-_bootloader_flash_start = _flash_start;
-_bootloader_flash_end   = _bootloader_flash_start + _bootloader_flash_size;
+platform_bootloader_flash_size  = 20K;
+platform_bootloader_flash_start = platform_flash_start;
+platform_bootloader_flash_end   = platform_bootloader_flash_start + platform_bootloader_flash_size;
 
 /* Bootloader vector table */
-_bootloader_vector_table_flash_size  = _platform_vector_table_flash_size;
-_bootloader_vector_table_flash_start = _bootloader_flash_start;
-_bootloader_vector_table_flash_end   = _bootloader_vector_table_flash_start + _bootloader_vector_table_flash_size;
+platform_bootloader_vector_table_flash_size  = platform_vector_table_flash_size;
+platform_bootloader_vector_table_flash_start = platform_bootloader_flash_start;
+platform_bootloader_vector_table_flash_end   = platform_bootloader_vector_table_flash_start + platform_bootloader_vector_table_flash_size;
 
 /* Bootloader module info */
-_bootloader_module_info_flash_size  = _module_info_flash_size;
-_bootloader_module_info_flash_start = _bootloader_vector_table_flash_end;
-_bootloader_module_info_flash_end   = _bootloader_module_info_flash_start + _bootloader_module_info_flash_size;
+platform_bootloader_module_info_flash_size  = platform_module_info_flash_size;
+platform_bootloader_module_info_flash_start = platform_bootloader_vector_table_flash_end;
+platform_bootloader_module_info_flash_end   = platform_bootloader_module_info_flash_start + platform_bootloader_module_info_flash_size;
+
 
 /* Basic sanity checks */
 ASSERT (
-    (_flash_end - _flash_start == _flash_size && _flash_size > 0) &&
-    (_bootloader_flash_size + _monolithic_firmware_flash_size == _flash_size),
+    (platform_flash_end - platform_flash_start == platform_flash_size && platform_flash_size > 0) &&
+    (platform_bootloader_flash_size + platform_monolithic_firmware_flash_size == platform_flash_size),
     "Invalid overall flash memory map!"
 );
 ASSERT (
-    (_monolithic_firmware_flash_start == 0x8005000) &&
-    (_monolithic_firmware_flash_end - _monolithic_firmware_flash_start == _monolithic_firmware_flash_size && _monolithic_firmware_flash_size > 0) &&
-    (_monolithic_firmware_vector_table_flash_end - _monolithic_firmware_vector_table_flash_start == _monolithic_firmware_vector_table_flash_size && _monolithic_firmware_vector_table_flash_size > 0) &&
-    (_monolithic_firmware_module_info_flash_end - _monolithic_firmware_module_info_flash_start == _monolithic_firmware_module_info_flash_size && _monolithic_firmware_module_info_flash_size > 0),
+    (platform_monolithic_firmware_flash_start == 0x8005000) &&
+    (platform_monolithic_firmware_flash_end - platform_monolithic_firmware_flash_start == platform_monolithic_firmware_flash_size && platform_monolithic_firmware_flash_size > 0) &&
+    (platform_monolithic_firmware_vector_table_flash_end - platform_monolithic_firmware_vector_table_flash_start == platform_monolithic_firmware_vector_table_flash_size && platform_monolithic_firmware_vector_table_flash_size > 0) &&
+    (platform_monolithic_firmware_module_info_flash_end - platform_monolithic_firmware_module_info_flash_start == platform_monolithic_firmware_module_info_flash_size && platform_monolithic_firmware_module_info_flash_size > 0),
     "Invalid monolithic firmware flash memory map!"
 );
 ASSERT (
-    (_bootloader_flash_start == 0x8000000) &&
-    (_bootloader_flash_end - _bootloader_flash_start == _bootloader_flash_size && _bootloader_flash_size > 0) &&
-    (_bootloader_vector_table_flash_end - _bootloader_vector_table_flash_start == _bootloader_vector_table_flash_size && _bootloader_vector_table_flash_size > 0) &&
-    (_bootloader_module_info_flash_end - _bootloader_module_info_flash_start == _bootloader_module_info_flash_size && _bootloader_module_info_flash_size > 0),
+    (platform_bootloader_flash_start == 0x8000000) &&
+    (platform_bootloader_flash_end - platform_bootloader_flash_start == platform_bootloader_flash_size && platform_bootloader_flash_size > 0) &&
+    (platform_bootloader_vector_table_flash_end - platform_bootloader_vector_table_flash_start == platform_bootloader_vector_table_flash_size && platform_bootloader_vector_table_flash_size > 0) &&
+    (platform_bootloader_module_info_flash_end - platform_bootloader_module_info_flash_start == platform_bootloader_module_info_flash_size && platform_bootloader_module_info_flash_size > 0),
     "Invalid bootloader flash memory map"
 );
