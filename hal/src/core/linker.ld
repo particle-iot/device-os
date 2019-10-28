@@ -4,8 +4,8 @@ INCLUDE platform_flash.ld
 
 MEMORY
 {
-    SRAM      (xrw) : ORIGIN = _monolithic_firmware_static_ram_start, LENGTH = _monolithic_firmware_static_ram_size
-    APP_FLASH (rx)  : ORIGIN = _monolithic_firmware_flash_start,      LENGTH = _monolithic_firmware_flash_size
+    SRAM      (xrw) : ORIGIN = platform_monolithic_firmware_static_ram_start, LENGTH = platform_monolithic_firmware_static_ram_size
+    APP_FLASH (rx)  : ORIGIN = platform_monolithic_firmware_flash_start,      LENGTH = platform_monolithic_firmware_flash_size
 }
 
 /* Sections Definitions */
@@ -15,7 +15,7 @@ SECTIONS
     INCLUDE linker_module_start.ld
 
     /* Interrupt vector table */
-    .isr_vector :
+    .vectors :
     {
         . = ALIGN(4);
         link_interrupt_vectors_location = .;
@@ -48,7 +48,7 @@ SECTIONS
         *(.glue_7t)
         link_code_end = .;
         
-        . = ALIGN(0x4);
+        . = ALIGN(4);
         
         /* Read-only data (constants) */
         link_const_data_start = .;
@@ -81,11 +81,13 @@ SECTIONS
 
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
+    
+    /* Static RAM start */
+    INCLUDE linker_static_ram_start.ld
 
-    /* Non-zero initialised global variables */
+    /* Non-zero initialised global and static variables */
     .data :
     {
-        link_static_ram_start = .;
         /* This is the location in flash of the initial values of global variables */
         link_global_data_initial_values = LOADADDR( .data ); 
         . = ALIGN(0x4);
@@ -111,9 +113,8 @@ SECTIONS
         link_static_ram_end = .;
     } > SRAM AT> SRAM
     
-    /* Heap location */
-    link_heap_location = link_bss_end;
-    link_heap_location_end = link_bss_end + _heap_min_size;
+    /* Static RAM end */
+    INCLUDE linker_static_ram_end.ld
 
     /* Stabs debugging sections.  */
     .stab          0 : { *(.stab) }
@@ -161,26 +162,31 @@ SECTIONS
     }
 }
 
+/* Heap location */
+link_heap_location     = link_bss_end;
+link_heap_location_end = link_heap_location + platform_heap_min_size;
+
 /* Stack , used by startup*/
-PROVIDE (__stack_size__ = _monolithic_firmware_stack_size);
-PROVIDE (__stack_start__ = _monolithic_firmware_stack_start);
-PROVIDE (__stack_end__ = __stack_start__ + __stack_size__);
+link_stack_size     = platform_bootloader_stack_size;
+link_stack_location = platform_bootloader_stack_start;
+link_stack_end      = platform_bootloader_stack_end;
+
 /* To satisfy newlib_stubs.cpp */
-PROVIDE (__Stack_Init = __stack_start__);
+PROVIDE (__Stack_Init = link_stack_location);
 
 ASSERT (
-    (ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end) &&
-    (ORIGIN(APP_FLASH) >= _flash_start && ORIGIN(APP_FLASH) + LENGTH(APP_FLASH) <= _flash_end) &&
+    (ORIGIN(SRAM) >= platform_ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= platform_ram_end) &&
+    (ORIGIN(APP_FLASH) >= platform_flash_start && ORIGIN(APP_FLASH) + LENGTH(APP_FLASH) <= platform_flash_end) &&
     (link_module_start == ORIGIN(APP_FLASH)) &&
-    (link_module_start == _monolithic_firmware_flash_start) &&
+    (link_module_start == platform_monolithic_firmware_flash_start) &&
     (link_static_ram_start == ORIGIN(SRAM)) &&
-    (link_static_ram_start == _monolithic_firmware_static_ram_start),
+    (link_static_ram_start == platform_monolithic_firmware_static_ram_start),
     "Invalid memory boundary!"
 );
 ASSERT (
-    (link_interrupt_vectors_location == _monolithic_firmware_vector_table_flash_start) &&
-    (link_interrupt_vectors_location_end == _monolithic_firmware_vector_table_flash_end) &&
-    (link_interrupt_vectors_location_end - link_interrupt_vectors_location == _platform_vector_table_flash_size),
+    (link_interrupt_vectors_location == platform_monolithic_firmware_vector_table_flash_start) &&
+    (link_interrupt_vectors_location_end == platform_monolithic_firmware_vector_table_flash_end) &&
+    (link_interrupt_vectors_location_end - link_interrupt_vectors_location == platform_vector_table_flash_size),
     "Invalid interrupt vector table!"
 );
 ASSERT (
@@ -188,8 +194,8 @@ ASSERT (
     (link_module_info_suffix_start - link_module_info_static_start == 4 || link_module_info_suffix_start - link_module_info_static_start == 8) &&
     (link_module_info_suffix_start < link_module_info_suffix_end) &&
     (link_module_info_crc_start < link_module_info_crc_end) &&
-    (link_module_info_start == _monolithic_firmware_module_info_flash_start) &&
-    (link_module_info_end == _monolithic_firmware_module_info_flash_end),
+    (link_module_info_start == platform_monolithic_firmware_module_info_flash_start) &&
+    (link_module_info_end == platform_monolithic_firmware_module_info_flash_end),
     "Invalid module info!"
 );
 ASSERT (
@@ -197,14 +203,14 @@ ASSERT (
     "constructor array should be aligned to a 4-bytes!"
 );
 ASSERT (
-    (link_static_ram_end - link_static_ram_start <= _monolithic_firmware_static_ram_size),
+    (link_static_ram_end - link_static_ram_start <= platform_monolithic_firmware_static_ram_size),
     "Insufficient room for .data and .bss sections!"
 );
 ASSERT (
-    (link_heap_location_end <= _monolithic_firmware_stack_start),
+    (link_heap_location_end <= platform_monolithic_firmware_stack_start),
     "Insufficient room for heap!"
 );
 ASSERT (
-    (__stack_end__ % 8 == 0),
+    (link_stack_end % 8 == 0),
     "Stack should be 8-byte aligned!"
 );
