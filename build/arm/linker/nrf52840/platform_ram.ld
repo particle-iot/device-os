@@ -91,7 +91,7 @@ platform_user_part_static_ram_start = platform_user_part_static_ram_end - platfo
 
 
 /* SoftDevice */
-platform_softdevice_ram_size  = 16K;
+platform_softdevice_ram_size  = 23K;
 platform_softdevice_ram_start = platform_ram_start;
 platform_softdevice_ram_end   = platform_softdevice_ram_start + platform_softdevice_ram_size;
 
