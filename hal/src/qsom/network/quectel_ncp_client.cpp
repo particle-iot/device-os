@@ -580,12 +580,8 @@ int QuectelNcpClient::waitReady() {
 }
 
 int QuectelNcpClient::selectSimCard() {
-    // Auto detect SIM card
-    int r = CHECK_PARSER(parser_.execCommand("AT+QDSIM?"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-
     // Set modem full functionality
-    r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
+    int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     // Using numeric CME ERROR codes
