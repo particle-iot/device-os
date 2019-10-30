@@ -7,7 +7,7 @@ Set when the WiFi module should remain inactive. When false, the wifi module wil
 - default is false in AUTOMATIC, true in other modes
 - set in `Spark.sleep(duration)` and in `WiFi.off()`
 - cleared in `WiFi.on()` and `WiFi.connect()`
-- checked in `Spark_Send()` and `Spark_Recieve()` to avoid attempting to use the cloud socket
+- checked in `Spark_Send()` and `Spark_Receive()` to avoid attempting to use the cloud socket
 - checked in delay() to avoid calling the wlan loop when sleeping
 - checked in wlan loop as a sufficient condition to not start wifi automatically and consider reset
 - checked in wlan loop as a sufificent condition to not fetch IP config details after DHCP complete
@@ -22,7 +22,7 @@ The reset is performed only if `SPARK_WLAN_STARTED` is set.
 - cleared in the wlan loop after wlan reset
 - checked in wlan loop after cloud connection failure to skip CFOD checking
 - set in wlan loop (CFOD checks) after the threashold of failed connection attempts or failed internet connections reached.
-- checked in `Spark_Send()` and `Spark_Recieve()` to avoid attempting to use the cloud socket
+- checked in `Spark_Send()` and `Spark_Receive()` to avoid attempting to use the cloud socket
 
 ## `SPARK_WLAN_STARTED`
 Set when the wlan subsystem is active, and when not set, is a trigger to automatically start it when not sleeping.

@@ -341,8 +341,8 @@ typedef struct rrm_nbr_element
 
 typedef struct
 {
-    uint8_t mode;       /* 1 == target must not tx between recieving CSA and actually switching */
-                        /* 0 == target may tx between recieving CSA and actually switching */
+    uint8_t mode;       /* 1 == target must not tx between receiving CSA and actually switching */
+                        /* 0 == target may tx between receiving CSA and actually switching */
     uint8_t count;      /* count number of beacons before switching */
     uint16_t chspec;    /* target chanspec */
 } wiced_chan_switch_t;
