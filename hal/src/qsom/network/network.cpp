@@ -131,7 +131,7 @@ int if_init_platform(void*) {
     }
 
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, D8, A7, D14, mac);
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, D8, A7, D22, mac);
     }
 
     uint8_t dummy;

@@ -69,10 +69,10 @@
 #define CTS 3
 #define RTS 2
 
-#define SS D5
-#define SCK D2
-#define MISO D4
-#define MOSI D3
+#define SS D8
+#define SCK D13
+#define MISO D11
+#define MOSI D12
 
 #define SDA D0
 #define SCL D1
