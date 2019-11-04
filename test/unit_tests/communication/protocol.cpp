@@ -224,7 +224,7 @@ void verify_event_type_with_flags(int flags, CoAPType::Enum coapType)
 
 	Publisher publisher(nullptr);
 	CompletionHandler completionHandler;
-	publisher.send_event(channel.get(),"abc","def", 60, EventType::PUBLIC, flags, 0, std::move(completionHandler));
+	publisher.send_event(channel.get(),"abc","def", 60, EventType::PUBLIC, flags, 0, std::move(completionHandler), nullptr);
 
 	Verify(Method(channel,send));
 }
