@@ -92,4 +92,6 @@
 #define NFC_PIN1 36
 #define NFC_PIN2 37
 
+#define LOW_BAT_UC A6
+
 #endif // PLATFORM_ID == PLATFORM_QSOM
