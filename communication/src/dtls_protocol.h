@@ -88,15 +88,18 @@ public:
 			status->flags |= PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES;
 		}
 		return NO_ERROR;
-	} 
+	}
+
     bool has_unacknowledged_requests() {
         return channel.has_unacknowledged_requests();
     }
+
     void log_unacknowledged_requests() {
         LOG(INFO, "All Confirmed messages sent: client(%s) server(%s)",
             channel.client_messages().has_messages() ? "no" : "yes",
             channel.server_messages().has_unacknowledged_requests() ? "no" : "yes");
     }
+
     void clear_unacknowledged_requests() {
 
     }
