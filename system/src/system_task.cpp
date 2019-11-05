@@ -52,14 +52,54 @@
 #if HAL_PLATFORM_BLE
 #include "ble_hal.h"
 #include "system_control_internal.h"
-
-using namespace particle;
-
 #endif /* HAL_PLATFORM_BLE */
 
+namespace particle {
+
+#ifndef SPARK_NO_CLOUD
+
+namespace {
+
+// Handshake state
+CloudHandshakeState g_cloudHandshakeState = CloudHandshakeState::PENDING;
+
+bool hasPendingClientMessages() {
+    protocol_status status = {};
+    status.size = sizeof(status);
+    const auto p = spark_protocol_instance();
+    const int r = spark_protocol_get_status(p, &status, nullptr);
+    if (r != 0) {
+        return false;
+    }
+    return (status.flags & PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES);
+}
+
+} // namespace
+
+// TODO: Move this function to system_cloud_internal.cpp
+void cloudHandshakeMessagesProcessed() {
+    switch (g_cloudHandshakeState) {
+    case CloudHandshakeState::WAIT_HANDSHAKE_ACKS: {
+        g_cloudHandshakeState = CloudHandshakeState::SEND_COMPLETE;
+        LOG(TRACE, "Received ACKs for protocol/application handshake messages");
+        break;
+    }
+    case CloudHandshakeState::WAIT_COMPLETE_ACK: {
+        g_cloudHandshakeState = CloudHandshakeState::DONE;
+        LOG(TRACE, "Received ACK for HandshakeComplete message");
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+#endif // !defined(SPARK_NO_CLOUD)
+
+} // namespace particle
+
+using namespace particle;
 using spark::Network;
-using particle::LEDStatus;
-using particle::CloudDiagnostics;
 
 volatile system_tick_t spark_loop_total_millis = 0;
 
@@ -347,78 +387,99 @@ int cloud_handshake()
  * Manages the handshake and cloud events when the cloud has a socket connected.
  * @param force_events
  */
+// TODO: Move this function to system_cloud_internal.cpp
 void handle_cloud_connection(bool force_events)
 {
-    if (SPARK_CLOUD_SOCKETED)
-    {
-        if (!SPARK_CLOUD_CONNECTED && !SPARK_CLOUD_HANDSHAKE_PENDING)
-        {
-            int err = 0;
-            if (SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE) {
-                // TODO: There's no protocol API to get the current session state, so we're running
-                // one more iteration of the communication loop to make sure all handshake messages
-                // have been acknowledged successfully
-                if (!Spark_Communication_Loop()) {
-                    err = particle::protocol::MESSAGE_TIMEOUT;
+    if (!SPARK_CLOUD_SOCKETED) {
+        return;
+    }
+    if (!SPARK_CLOUD_CONNECTED) {
+        int err = 0;
+        if (g_cloudHandshakeState == CloudHandshakeState::PENDING) {
+            LED_SIGNAL_START(CLOUD_HANDSHAKE, NORMAL);
+            err = cloud_handshake();
+            if (err == 0) {
+                if (hasPendingClientMessages()) {
+                    g_cloudHandshakeState = CloudHandshakeState::WAIT_HANDSHAKE_ACKS;
+                    LOG(TRACE, "Waiting ACKs for protocol/application handshake messages");
                 } else {
-                    INFO("Cloud connected");
-                    SPARK_CLOUD_CONNECTED = 1;
-                    SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
-                    cloud_failed_connection_attempts = 0;
-                    CloudDiagnostics::instance()->status(CloudDiagnostics::CONNECTED);
-                    system_notify_event(cloud_status, cloud_status_connected);
-                    if (system_mode() == SAFE_MODE) {
-/* FIXME: there should be macro that checks for NetworkManager availability */
-                        // Connected to the cloud while in safe mode
-#if !HAL_PLATFORM_IFAPI
-                        LED_SIGNAL_START(SAFE_MODE, BACKGROUND);
-#else
-                        LED_SIGNAL_START(SAFE_MODE, NORMAL);
-#endif /* !HAL_PLATFORM_IFAPI */
-                    } else {
-/* FIXME: there should be macro that checks for NetworkManager availability */
-#if !HAL_PLATFORM_IFAPI
-                        LED_SIGNAL_START(CLOUD_CONNECTED, BACKGROUND);
-#else
-                        LED_SIGNAL_START(CLOUD_CONNECTED, NORMAL);
-#endif /* !HAL_PLATFORM_IFAPI */
-                    }
-                    LED_SIGNAL_STOP(CLOUD_CONNECTING);
-                    LED_SIGNAL_STOP(CLOUD_HANDSHAKE);
+                    g_cloudHandshakeState = CloudHandshakeState::SEND_COMPLETE;
                 }
-            } else { // !SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE
-                LED_SIGNAL_START(CLOUD_HANDSHAKE, NORMAL);
-                err = cloud_handshake();
-            }
-            if (err)
-            {
-                if (!SPARK_WLAN_RESET && !network_listening(0, 0, 0))
-                {
-                    cloud_connection_failed();
-                    uint32_t color = RGB_COLOR_RED;
-                    if (particle::protocol::DECRYPTION_ERROR==err)
-                        color = RGB_COLOR_ORANGE;
-                    else if (particle::protocol::AUTHENTICATION_ERROR==err)
-                        color = RGB_COLOR_MAGENTA;
-                    WARN("Cloud handshake failed, code=%d", err);
-                    LEDStatus led(color, LED_PRIORITY_IMPORTANT);
-                    led.setActive();
-                    // delay a little to be sure the user sees the LED color, since
-                    // the socket may quickly disconnect and the connection retried, turning
-                    // the LED back to cyan
-                    system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-                    // allow time for the LED to be flashed
-                    while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
-                }
-                const auto diag = CloudDiagnostics::instance();
-                diag->lastError(err);
-                cloud_disconnect();
             }
         }
-        if (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL || system_thread_get_state(NULL)==spark::feature::ENABLED)
-        {
-            Spark_Process_Events();
+        if (g_cloudHandshakeState == CloudHandshakeState::SEND_COMPLETE) {
+            const auto p = spark_protocol_instance();
+            err = spark_protocol_command(p, ProtocolCommands::HANDSHAKE_COMPLETE);
+            if (err == 0) {
+                if (hasPendingClientMessages()) {
+                    g_cloudHandshakeState = CloudHandshakeState::WAIT_COMPLETE_ACK;
+                    LOG(TRACE, "Waiting ACK for HandshakeComplete message");
+                } else {
+                    g_cloudHandshakeState = CloudHandshakeState::DONE;
+                }
+            } else if (err == protocol::ProtocolError::NOT_IMPLEMENTED) { // Core?
+                g_cloudHandshakeState = CloudHandshakeState::DONE;
+                err = 0;
+            }
         }
+        if (g_cloudHandshakeState == CloudHandshakeState::DONE) {
+            // TODO: There's no protocol API to get the current session state, so we're running
+            // one more iteration of the communication loop to make sure all handshake messages
+            // have been acknowledged successfully
+            if (!Spark_Communication_Loop()) {
+                err = particle::protocol::MESSAGE_TIMEOUT;
+            } else {
+                INFO("Cloud connected");
+                SPARK_CLOUD_CONNECTED = 1;
+                cloud_failed_connection_attempts = 0;
+                CloudDiagnostics::instance()->status(CloudDiagnostics::CONNECTED);
+                system_notify_event(cloud_status, cloud_status_connected);
+                if (system_mode() == SAFE_MODE) {
+// FIXME: there should be macro that checks for NetworkManager availability
+#if !HAL_PLATFORM_IFAPI
+                    // Connected to the cloud while in safe mode
+                    LED_SIGNAL_START(SAFE_MODE, BACKGROUND);
+#else
+                    LED_SIGNAL_START(SAFE_MODE, NORMAL);
+#endif /* !HAL_PLATFORM_IFAPI */
+                } else {
+// FIXME: there should be macro that checks for NetworkManager availability
+#if !HAL_PLATFORM_IFAPI
+                    LED_SIGNAL_START(CLOUD_CONNECTED, BACKGROUND);
+#else
+                    LED_SIGNAL_START(CLOUD_CONNECTED, NORMAL);
+#endif /* !HAL_PLATFORM_IFAPI */
+                }
+                LED_SIGNAL_STOP(CLOUD_CONNECTING);
+                LED_SIGNAL_STOP(CLOUD_HANDSHAKE);
+            }
+        }
+        if (err) {
+            if (!SPARK_WLAN_RESET && !network_listening(0, 0, 0)) {
+                cloud_connection_failed();
+                uint32_t color = RGB_COLOR_RED;
+                if (particle::protocol::DECRYPTION_ERROR==err)
+                    color = RGB_COLOR_ORANGE;
+                else if (particle::protocol::AUTHENTICATION_ERROR==err)
+                    color = RGB_COLOR_MAGENTA;
+                WARN("Cloud handshake failed, code=%d", err);
+                LEDStatus led(color, LED_PRIORITY_IMPORTANT);
+                led.setActive();
+                // delay a little to be sure the user sees the LED color, since
+                // the socket may quickly disconnect and the connection retried, turning
+                // the LED back to cyan
+                system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+                // allow time for the LED to be flashed
+                while ((HAL_Timer_Get_Milli_Seconds()-start)<250);
+            }
+            const auto diag = CloudDiagnostics::instance();
+            diag->lastError(err);
+            cloud_disconnect();
+            return; // Prevent the event loop from running
+        }
+    }
+    if (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL || system_thread_get_state(nullptr) == spark::feature::ENABLED) {
+        Spark_Process_Events();
     }
 }
 
@@ -596,9 +657,9 @@ void cloud_disconnect(bool closeSocket, bool graceful, cloud_disconnect_reason r
 
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;
-        SPARK_CLOUD_HANDSHAKE_PENDING = 0;
-        SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
         SPARK_CLOUD_SOCKETED = 0;
+
+        g_cloudHandshakeState = CloudHandshakeState::PENDING;
 
         LED_SIGNAL_STOP(CLOUD_CONNECTED);
         LED_SIGNAL_STOP(CLOUD_HANDSHAKE);

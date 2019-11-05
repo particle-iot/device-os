@@ -71,6 +71,17 @@ extern ProtocolFacade* sp;
 
 namespace particle {
 
+/**
+ * Cloud handshake state.
+ */
+enum class CloudHandshakeState {
+    PENDING = 0, ///< Send protocol and application handshake messages.
+    WAIT_HANDSHAKE_ACKS = 1, ///< Wait until the handshake messages are acknowledged.
+    SEND_COMPLETE = 2, ///< Send a HandshakeComplete message.
+    WAIT_COMPLETE_ACK = 3, ///< Wait until the HandshakeComplete message is acknowledged.
+    DONE = 4 ///< Handshake is done.
+};
+
 class CloudDiagnostics {
 public:
     // Note: Use odd numbers to encode transitional states
@@ -135,6 +146,11 @@ private:
 inline bool publishEvent(const char* event, const char* data = nullptr, unsigned flags = 0) {
     return spark_send_event(event, data, DEFAULT_CLOUD_EVENT_TTL, flags | PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
 }
+
+/**
+ * Updates the state of the cloud handshake.
+ */
+void cloudHandshakeMessagesProcessed();
 
 } // namespace particle
 

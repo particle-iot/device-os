@@ -46,8 +46,6 @@ inline uint8_t decode_uint8(unsigned char* buf) {
 class Messages
 {
 public:
-	static const size_t MAX_HANDSHAKE_COMPLETE_MESSAGE_SIZE;
-
 	static CoAPMessageType::Enum decodeType(const uint8_t* buf, size_t length);
 	static size_t describe_post_header(uint8_t buf[], size_t buffer_size, uint16_t message_id, uint8_t desc_flags);
 	static size_t hello(uint8_t* buf, message_id_t message_id, uint8_t flags,

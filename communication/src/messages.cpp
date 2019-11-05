@@ -381,7 +381,7 @@ size_t Messages::handshake_complete(unsigned char* buf, size_t size, message_id_
 	b.append((message_id >> 8) & 0xff); // Message ID
 	b.append(message_id & 0xff);
 	b.append(0xb1); // Uri-Path (11), length: 1
-	b.append('C');
+	b.append('H');
 	if (!confirmable) {
 		// No-Response (258), length: 0
 		b.append(0xd0);
@@ -389,7 +389,5 @@ size_t Messages::handshake_complete(unsigned char* buf, size_t size, message_id_
 	}
 	return b.dataSize();
 }
-
-const size_t Messages::MAX_HANDSHAKE_COMPLETE_MESSAGE_SIZE = 8; // CoAP header, options
 
 }}

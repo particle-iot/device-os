@@ -562,10 +562,8 @@ const uint32_t LEDCloudSignalStatus::COLORS[] = { 0xEE82EE, 0x4B0082, 0x0000FF, 
 const size_t LEDCloudSignalStatus::COLOR_COUNT = sizeof(LEDCloudSignalStatus::COLORS) / sizeof(LEDCloudSignalStatus::COLORS[0]);
 
 void clientMessagesProcessed(void* reserved) {
-    if (SPARK_CLOUD_HANDSHAKE_PENDING) {
-        SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 1;
-        SPARK_CLOUD_HANDSHAKE_PENDING = 0;
-        LOG(INFO, "All handshake messages have been processed");
+    if (!SPARK_CLOUD_CONNECTED) {
+        particle::cloudHandshakeMessagesProcessed();
     }
 }
 
@@ -1029,19 +1027,6 @@ int Spark_Handshake(bool presence_announce)
         ultoa((unsigned long)particle_key_errors, buf, 10);
         LOG(INFO,"Send event spark/device/key/error=%s", buf);
         publishEvent("spark/device/key/error", buf);
-    }
-    if (err == 0) {
-        protocol_status status = {};
-        status.size = sizeof(status);
-        err = spark_protocol_get_status(sp, &status, nullptr);
-        if (err == 0) {
-            if (status.flags & PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES) {
-                SPARK_CLOUD_HANDSHAKE_PENDING = 1;
-                LOG(TRACE, "Waiting until all handshake messages are processed by the protocol layer");
-            } else {
-                SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 1;
-            }
-        }
     }
     return err;
 }
