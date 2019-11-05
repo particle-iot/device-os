@@ -101,6 +101,10 @@ public:
 			}
 			break;
 		}
+		case ProtocolCommands::HANDSHAKE_COMPLETE: {
+			result = send_handshake_complete();
+			break;
+		}
 		}
 		return result;
 	}

@@ -34,6 +34,9 @@ int LightSSLProtocol::command(ProtocolCommands::Enum command, uint32_t data)
     ack_handlers.clear();
     result = NO_ERROR;
     break;
+  case ProtocolCommands::HANDSHAKE_COMPLETE:
+    result = send_handshake_complete();
+    break;
   }
   return result;
 }

@@ -212,6 +212,21 @@ protected:
 	}
 
 	/**
+	 * Send a HandshakeComplete message over the channel.
+	 */
+	ProtocolError send_handshake_complete()
+	{
+		Message msg;
+		channel.create(msg);
+		const size_t n = Messages::handshake_complete(msg.buf(), msg.capacity(), 0, channel.is_unreliable());
+		if (n > msg.capacity()) {
+			return INSUFFICIENT_STORAGE;
+		}
+		msg.set_length(n);
+		return channel.send(msg);
+	}
+
+	/**
 	 * Background processing when there are no messages to handle.
 	 */
 	ProtocolError event_loop_idle()

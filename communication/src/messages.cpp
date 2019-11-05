@@ -19,6 +19,8 @@
 
 #include "messages.h"
 
+#include "appender.h"
+
 namespace particle { namespace protocol {
 
 CoAPMessageType::Enum Messages::decodeType(const uint8_t* buf, size_t length)
@@ -369,5 +371,25 @@ size_t Messages::coded_ack(uint8_t* buf, uint8_t token, uint8_t code,
 
     return sz;
 }
+
+size_t Messages::handshake_complete(unsigned char* buf, size_t size, message_id_t message_id, bool confirmable)
+{
+	// TODO: Use the unified buffer appender from #1899 here
+	BufferAppender2 b((char*)buf, size);
+	b.append(0x40); // Confirmable, no token
+	b.append(0x02); // POST
+	b.append((message_id >> 8) & 0xff); // Message ID
+	b.append(message_id & 0xff);
+	b.append(0xb1); // Uri-Path (11), length: 1
+	b.append('C');
+	if (!confirmable) {
+		// No-Response (258), length: 0
+		b.append(0xd0);
+		b.append(0xea); // 258 - 11 - 13
+	}
+	return b.dataSize();
+}
+
+const size_t Messages::MAX_HANDSHAKE_COMPLETE_MESSAGE_SIZE = 8; // CoAP header, options
 
 }}

@@ -103,6 +103,8 @@ namespace particle {
 // Buffer appender that never fails and stores an actual size of the data
 class BufferAppender2: public Appender {
 public:
+    using Appender::append;
+
     BufferAppender2(char* buf, size_t size) :
             buf_(buf),
             bufSize_(size),
