@@ -128,7 +128,7 @@ class Protocol
 
 	uint8_t initialized;
 
-	uint8_t flags;
+	uint32_t flags;
 
 	bool handshake_complete_enabled;
 
@@ -166,7 +166,7 @@ protected:
 	CompletionHandlerMap<message_id_t> ack_handlers;
 
 
-	void set_protocol_flags(int flags)
+	void set_protocol_flags(uint32_t flags)
 	{
 		this->flags = flags;
 	}
@@ -220,7 +220,8 @@ protected:
 	{
 		Message msg;
 		channel.create(msg);
-		const size_t n = Messages::handshake_complete(msg.buf(), msg.capacity(), 0, channel.is_unreliable());
+		const bool session_resumed = (flags & SKIP_SESSION_RESUME_HELLO);
+		const size_t n = Messages::handshake_complete(msg.buf(), msg.capacity(), 0, session_resumed, channel.is_unreliable());
 		if (n > msg.capacity()) {
 			return INSUFFICIENT_STORAGE;
 		}
@@ -321,6 +322,7 @@ public:
 			publisher(this),
 			last_ack_handlers_update(0),
 			initialized(false),
+			flags(0),
 			handshake_complete_enabled(false)
 	{
 	}

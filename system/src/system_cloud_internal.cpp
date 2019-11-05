@@ -789,9 +789,6 @@ void Spark_Protocol_Init(void)
 
     if (!spark_protocol_is_initialized(sp))
     {
-        spark_protocol_set_connection_property(sp, particle::protocol::Connection::HANDSHAKE_COMPLETE_ENABLED, 1 /* enabled */,
-                nullptr, nullptr);
-
         product_details_t info;
         info.size = sizeof(info);
         spark_protocol_get_product_details(sp, &info);
@@ -904,6 +901,9 @@ void Spark_Protocol_Init(void)
         uint8_t id[id_length];
         HAL_device_ID(id, id_length);
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
+
+        spark_protocol_set_connection_property(sp, particle::protocol::Connection::HANDSHAKE_COMPLETE_ENABLED, 1 /* enabled */,
+                nullptr, nullptr);
 
         Particle.subscribe("spark", SystemEvents, MY_DEVICES);
         Particle.subscribe("particle", SystemEvents, MY_DEVICES);

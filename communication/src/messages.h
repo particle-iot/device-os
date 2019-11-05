@@ -164,7 +164,8 @@ public:
         return content(buf, message_id, token);
     }
 
-    static size_t handshake_complete(unsigned char* buf, size_t size, message_id_t message_id, bool confirmable);
+    static size_t handshake_complete(unsigned char* buf, size_t size, message_id_t message_id, bool session_resumed,
+            bool confirmable);
 };
 
 

@@ -23,6 +23,12 @@
 
 namespace particle { namespace protocol {
 
+namespace {
+
+const unsigned HANDSHAKE_COMPLETE_SESSION_RESUMED_FLAG = 0x01;
+
+} // namespace
+
 CoAPMessageType::Enum Messages::decodeType(const uint8_t* buf, size_t length)
 {
     if (length<4)
@@ -372,7 +378,8 @@ size_t Messages::coded_ack(uint8_t* buf, uint8_t token, uint8_t code,
     return sz;
 }
 
-size_t Messages::handshake_complete(unsigned char* buf, size_t size, message_id_t message_id, bool confirmable)
+size_t Messages::handshake_complete(unsigned char* buf, size_t size, message_id_t message_id, bool session_resumed,
+		bool confirmable)
 {
 	// TODO: Use the unified buffer appender from #1899 here
 	BufferAppender2 b((char*)buf, size);
@@ -387,6 +394,12 @@ size_t Messages::handshake_complete(unsigned char* buf, size_t size, message_id_
 		b.append(0xd0);
 		b.append(0xea); // 258 - 11 - 13
 	}
+	b.append(0xff); // Payload marker
+	uint8_t flags = 0;
+	if (session_resumed) {
+		flags |= HANDSHAKE_COMPLETE_SESSION_RESUMED_FLAG;
+	}
+	b.append(flags); // Flags
 	return b.dataSize();
 }
 

@@ -292,8 +292,8 @@ int Protocol::begin()
 	ack_handlers.clear();
 	last_ack_handlers_update = callbacks.millis();
 
-	uint32_t channel_flags = 0;
-	ProtocolError error = channel.establish(channel_flags, application_state_checksum());
+	flags &= ~SKIP_SESSION_RESUME_HELLO;
+	ProtocolError error = channel.establish(flags, application_state_checksum());
 	bool session_resumed = (error==SESSION_RESUMED);
 	if (error && !session_resumed) {
 		LOG(ERROR,"handshake failed with code %d", error);
@@ -304,9 +304,6 @@ int Protocol::begin()
 	{
 		// for now, unconditionally move the session on resumption
 		channel.command(MessageChannel::MOVE_SESSION, nullptr);
-		if (channel_flags & SKIP_SESSION_RESUME_HELLO) {
-			flags |= SKIP_SESSION_RESUME_HELLO;
-		}
 	}
 
 	// hello not needed because it's already been sent and the server maintains device state
