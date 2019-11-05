@@ -130,6 +130,8 @@ class Protocol
 
 	uint8_t flags;
 
+	bool handshake_complete_enabled;
+
 public:
 	enum Flags
 	{
@@ -318,7 +320,8 @@ public:
 			product_firmware_version(PRODUCT_FIRMWARE_VERSION),
 			publisher(this),
 			last_ack_handlers_update(0),
-			initialized(false)
+			initialized(false),
+			handshake_complete_enabled(false)
 	{
 	}
 
@@ -340,6 +343,11 @@ public:
 	void set_fast_ota(unsigned data)
 	{
 		chunkedTransfer.set_fast_ota(data);
+	}
+
+	void set_handshake_complete_enabled(bool enabled)
+	{
+		handshake_complete_enabled = enabled;
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)

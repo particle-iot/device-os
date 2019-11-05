@@ -111,10 +111,14 @@ enum DescriptionType {
 
 namespace Connection
 {
+/**
+ * Connection properties.
+ */
 enum Enum
 {
-    PING = 0,
-    FAST_OTA = 1
+    PING = 0, ///< Set keepalive interval.
+    FAST_OTA = 1, ///< Enable/disable fast OTA.
+    HANDSHAKE_COMPLETE_ENABLED = 2 ///< Enable/disable HandshakeComplete message.
 };
 }
 

@@ -313,9 +313,12 @@ int Protocol::begin()
 	if (session_resumed && channel.is_unreliable() && (flags & SKIP_SESSION_RESUME_HELLO))
 	{
 		LOG(INFO,"resumed session - not sending HELLO message");
-		const auto r = ping(true);
-		if (r != NO_ERROR) {
-			error = r;
+		// Do not send PING if the system supports HandshakeComplete
+		if (!handshake_complete_enabled) {
+			const auto r = ping(true);
+			if (r != NO_ERROR) {
+				error = r;
+			}
 		}
 		// Note: Make sure SESSION_RESUMED gets returned to the calling code
 		return error;
@@ -346,6 +349,7 @@ int Protocol::begin()
 const auto HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL = 1;
 const auto HELLO_FLAG_DIAGNOSTICS_SUPPORT = 2;
 const auto HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT = 4;
+const auto HELLO_FLAG_HANDSHAKE_COMPLETE_ENABLED = 8;
 
 /**
  * Send the hello message over the channel.
@@ -356,8 +360,13 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 	Message message;
 	channel.create(message);
 
-	uint8_t flags = was_ota_upgrade_successful ? HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL : 0;
-	flags |= HELLO_FLAG_DIAGNOSTICS_SUPPORT | HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT;
+	uint8_t flags = HELLO_FLAG_DIAGNOSTICS_SUPPORT | HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT;
+	if (was_ota_upgrade_successful) {
+		flags |= HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL;
+	}
+	if (handshake_complete_enabled) {
+		flags |= HELLO_FLAG_HANDSHAKE_COMPLETE_ENABLED;
+	}
 	size_t len = build_hello(message, flags);
 	message.set_length(len);
 	message.set_confirm_received(true);

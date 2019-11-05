@@ -194,15 +194,24 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
                                            unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved)
 {
     ASSERT_ON_SYSTEM_THREAD();
-    if (property_id == particle::protocol::Connection::PING)
-    {
+    switch (property_id) {
+    case particle::protocol::Connection::PING: {
         protocol->set_keepalive(data, conn_prop->keepalive_source);
-    } else if (property_id == particle::protocol::Connection::FAST_OTA)
-    {
-        protocol->set_fast_ota(data);
+        return 0;
     }
-    return 0;
+    case particle::protocol::Connection::FAST_OTA: {
+        protocol->set_fast_ota(data);
+        return 0;
+    }
+    case particle::protocol::Connection::HANDSHAKE_COMPLETE_ENABLED: {
+        protocol->set_handshake_complete_enabled(data);
+        return 0;
+    }
+    default:
+        return particle::protocol::NOT_IMPLEMENTED;
+    }
 }
+
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
 {
     ASSERT_ON_SYSTEM_THREAD();
@@ -351,7 +360,7 @@ void spark_protocol_get_product_details(CoreProtocol* protocol, product_details_
 int spark_protocol_set_connection_property(CoreProtocol* protocol, unsigned property_id,
                                            unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved)
 {
-    return 0;
+    return particle::protocol::NOT_IMPLEMENTED;
 }
 
 int spark_protocol_command(CoreProtocol* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)

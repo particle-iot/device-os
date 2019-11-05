@@ -789,6 +789,9 @@ void Spark_Protocol_Init(void)
 
     if (!spark_protocol_is_initialized(sp))
     {
+        spark_protocol_set_connection_property(sp, particle::protocol::Connection::HANDSHAKE_COMPLETE_ENABLED, 1 /* enabled */,
+                nullptr, nullptr);
+
         product_details_t info;
         info.size = sizeof(info);
         spark_protocol_get_product_details(sp, &info);
