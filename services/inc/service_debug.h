@@ -72,7 +72,7 @@ extern thread_current_fn application_thread_current_;
 #define DEBUG_D(fmt, ...) LOG_DEBUG_PRINTF(TRACE, fmt, ##__VA_ARGS__)
 
 #if PLATFORM_ID != 3
-#define SPARK_ASSERT(predicate) do { if (!(predicate)) PANIC(AssertionFailure,"AssertionFailure "#predicate);} while(0);
+#define SPARK_ASSERT(predicate) do { if (!(predicate)) PANIC(AssertionFailure,"AssertionFailure");} while(0);
 #else
 #define SPARK_ASSERT(predicate) assert(predicate)
 #endif

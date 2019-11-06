@@ -1705,7 +1705,7 @@
  *
  * Set the maximum log level in compile time.
  */
-#define MBEDTLS_DEBUG_COMPILE_TIME_LEVEL 1
+#define MBEDTLS_DEBUG_COMPILE_TIME_LEVEL 0
 
 /**
  * \def MBEDTLS_DES_C

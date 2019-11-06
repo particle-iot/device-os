@@ -15,13 +15,20 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_NONE
+#endif
+
 #include "logging.h"
 LOG_SOURCE_CATEGORY("hal.ble")
 
 #include "ble_hal.h"
 
 #if HAL_PLATFORM_BLE
+
+#ifdef DEBUG_BUILD
 #define LOG_CHECKED_ERRORS 1
+#endif // DEBUG_BUILD
 
 /* Headers included from nRF5_SDK/components/softdevice/s140/headers */
 #include "ble.h"
