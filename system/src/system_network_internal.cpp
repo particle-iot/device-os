@@ -36,7 +36,7 @@ bool turnOffNetworkIfNeeded(network_interface_index iface) {
 
 void resetNetworkInterfaces() {
     // FIXME: network_off() on Gen 3 disconnects the cloud only if the interface is set to NETWORK_INTERFACE_ALL
-    cloud_disconnect(true /* close_socket */, true /* graceful */, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
+    cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, NETWORK_DISCONNECT_REASON_RESET);
     // TODO: There's no cross-platform API to enumerate available network interfaces
 #if HAL_PLATFORM_MESH
     const bool resetMesh = turnOffNetworkIfNeeded(NETWORK_INTERFACE_MESH);
