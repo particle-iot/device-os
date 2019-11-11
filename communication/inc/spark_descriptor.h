@@ -48,6 +48,7 @@ namespace SparkAppStateSelector {
 		DESCRIBE_APP,
 		DESCRIBE_SYSTEM,
 		SUBSCRIPTIONS,
+		PROTOCOL_FLAGS
 	};
 }
 
