@@ -21,7 +21,7 @@
 #include "stddef.h"
 
 // The size of the persisted data
-#define SessionPersistBaseSize 208
+#define SessionPersistBaseSize 212
 
 // variable size due to int/size_t members
 #define SessionPersistVariableSize (sizeof(int)+sizeof(int)+sizeof(size_t))
@@ -96,7 +96,10 @@ struct __attribute__((packed)) SessionPersistData
 	  * Checksum of the system describe message.
 	  */
 	uint32_t describe_system_crc;
-
+	/**
+	  * Protocol flags.
+	  */
+	uint32_t protocol_flags;
 };
 
 class __attribute__((packed)) SessionPersistOpaque : public SessionPersistData

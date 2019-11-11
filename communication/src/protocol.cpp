@@ -266,6 +266,16 @@ void Protocol::update_subscription_crc()
 	}
 }
 
+void Protocol::update_protocol_flags()
+{
+	if (descriptor.app_state_selector_info)
+	{
+		this->channel.command(Channel::SAVE_SESSION);
+		descriptor.app_state_selector_info(SparkAppStateSelector::PROTOCOL_FLAGS, SparkAppStateUpdate::PERSIST, flags, nullptr);
+		this->channel.command(Channel::LOAD_SESSION);
+	}
+}
+
 AppStateDescriptor Protocol::app_state_descriptor()
 {
 	if (!descriptor.app_state_selector_info) {
@@ -331,6 +341,8 @@ int Protocol::begin()
 		if (error)
 			return error;
 	}
+	update_protocol_flags();
+
 	LOG(INFO,"Handshake completed");
 	channel.notify_established();
 	return error;
