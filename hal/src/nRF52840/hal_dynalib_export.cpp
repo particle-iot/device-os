@@ -50,3 +50,5 @@
 #ifndef HAL_BOOTLOADER_EXCLUDE
 #include "hal_dynalib_bootloader.h"
 #endif
+
+#include "hal_dynalib_posix_syscall.h"
