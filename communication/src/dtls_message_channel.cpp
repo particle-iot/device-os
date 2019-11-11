@@ -369,7 +369,7 @@ ProtocolError DTLSMessageChannel::establish(uint32_t& flags, const AppStateDescr
 		const AppStateDescriptor cached = sessionPersist.app_state_descriptor();
 		if (cached==app_state) {
 			LOG(WARN,"skipping hello message");
-			flags |= Protocol::SKIP_SESSION_RESUME_HELLO;
+			flags |= MessageChannel::SKIP_SESSION_RESUME_HELLO;
 		}
 		LOG(INFO,"restored session from persisted session data. next_msg_id=%d", *coap_state);
 		return SESSION_RESUMED;
