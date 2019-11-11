@@ -343,7 +343,16 @@ int SaraNcpClient::updateFirmware(InputStream* file, size_t size) {
 }
 
 int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
-    return muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, data, size);
+    int err = muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, data, size);
+
+    if (err) {
+        // Make sure we are going into an error state if muxer for some reason fails
+        // to write into the data channel.
+        disable();
+        connectionState(NcpConnectionState::DISCONNECTED);
+    }
+
+    return err;
 }
 
 void SaraNcpClient::processEvents() {

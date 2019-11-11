@@ -643,12 +643,23 @@ int Esp32NcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Channel
 }
 
 int Esp32NcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
+    int err = SYSTEM_ERROR_NONE;
     if (id == 0) {
-        return muxer_.writeChannel(ESP32_NCP_STA_CHANNEL, data, size);
+        err = muxer_.writeChannel(ESP32_NCP_STA_CHANNEL, data, size);
     } else if (id == 1) {
-        return muxer_.writeChannel(ESP32_NCP_AP_CHANNEL, data, size);
+        err = muxer_.writeChannel(ESP32_NCP_AP_CHANNEL, data, size);
+    } else {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    return SYSTEM_ERROR_INVALID_ARGUMENT;
+
+    if (err) {
+        // Make sure we are going into an error state if muxer for some reason fails
+        // to write into the data channel.
+        disable();
+        connectionState(NcpConnectionState::DISCONNECTED);
+    }
+
+    return err;
 }
 
 } // particle
