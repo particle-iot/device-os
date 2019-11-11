@@ -492,19 +492,32 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 			update_persisted_state([](SessionPersistData& data){
 				data.describe_app_crc = compute_describe_app_checksum();
 			});
-            break;
+			break;
 		case SparkAppStateSelector::DESCRIBE_SYSTEM:
 			update_persisted_state([](SessionPersistData& data){
 				data.describe_system_crc = compute_describe_system_checksum();
 			});
-            break;
+			break;
 		}
 	}
-	else if (operation==SparkAppStateUpdate::PERSIST && stateSelector==SparkAppStateSelector::SUBSCRIPTIONS)
+	else if (operation==SparkAppStateUpdate::PERSIST)
 	{
-		update_persisted_state([value](SessionPersistData& data){
-			data.subscriptions_crc = value;
-		});
+		switch (stateSelector) {
+		case SparkAppStateSelector::SUBSCRIPTIONS: {
+			update_persisted_state([value](SessionPersistData& data){
+				data.subscriptions_crc = value;
+			});
+			break;
+		}
+		case SparkAppStateSelector::PROTOCOL_FLAGS: {
+			update_persisted_state([value](SessionPersistData& data){
+				data.protocol_flags = value;
+			});
+			break;
+		}
+		default:
+			break;
+		}
 	}
 	else if (operation==SparkAppStateUpdate::COMPUTE)
 	{

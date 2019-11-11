@@ -276,6 +276,16 @@ void Protocol::update_subscription_crc()
 	}
 }
 
+void Protocol::update_protocol_flags()
+{
+	if (descriptor.app_state_selector_info)
+	{
+		this->channel.command(Channel::SAVE_SESSION);
+		descriptor.app_state_selector_info(SparkAppStateSelector::PROTOCOL_FLAGS, SparkAppStateUpdate::PERSIST, flags, nullptr);
+		this->channel.command(Channel::LOAD_SESSION);
+	}
+}
+
 /**
  * Computes the current checksum from the application cloud state
  */
@@ -342,6 +352,8 @@ int Protocol::begin()
 		if (error)
 			return error;
 	}
+	update_protocol_flags();
+
 	LOG(INFO,"Handshake completed");
 	channel.notify_established();
 	return error;
@@ -372,7 +384,7 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 	flags |= HELLO_FLAG_DIAGNOSTICS_SUPPORT | HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT;
 	size_t len = build_hello(message, flags);
 	message.set_length(len);
-	message.set_confirm_received(true);
+	message.set_confirm_received(true); // Send synchronously
 	last_message_millis = callbacks.millis();
 	return channel.send(message);
 }
