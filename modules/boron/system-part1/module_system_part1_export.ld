@@ -38,3 +38,4 @@ PROVIDE ( dynalib_location_hal_cellular = system_part1_module_table + 92 );
 PROVIDE ( dynalib_location_hal_ble = system_part1_module_table + 96 );
 PROVIDE ( dynalib_location_hal_nfc = system_part1_module_table + 100 );
 PROVIDE ( dynalib_location_hal_mesh = system_part1_module_table + 104 );
+PROVIDE ( dynalib_location_hal_posix_syscall = system_part1_module_table + 108 );

@@ -15,6 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+// FIXME: this is a dirty hack in order for newlib headers to provide prototypes for us
+#define _COMPILING_NEWLIB
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -26,6 +28,7 @@
 #include "check.h"
 #include "intrusive_list.h"
 #include "scope_guard.h"
+#include "rtc_hal.h"
 
 using namespace particle::fs;
 
@@ -55,6 +58,19 @@ int lfsErrorToErrno(int err) {
             return EILSEQ;
         default:
             return err;
+    }
+}
+
+lfs_whence_flags posixWhenceToLfs(int whence) {
+    switch (whence) {
+        case SEEK_SET:
+            return LFS_SEEK_SET;
+        case SEEK_CUR:
+            return LFS_SEEK_CUR;
+        case SEEK_END:
+            return LFS_SEEK_END;
+        default:
+            return (lfs_whence_flags)whence;
     }
 }
 
@@ -98,10 +114,37 @@ int posixOpenFlagsToLfs(int flags) {
 }
 
 struct FdEntry {
+    FdEntry(const char* pathname, bool isFile) {
+        if (isFile) {
+            file = new lfs_file_t();
+        } else {
+            dir = new lfs_dir_t();
+        }
+        if (pathname) {
+            name = strdup(pathname);
+        }
+    }
+    ~FdEntry() {
+        if (file) {
+            delete file;
+        }
+        if (dir) {
+            delete dir;
+        }
+        if (dent) {
+            delete dent;
+        }
+        if (name) {
+            delete name;
+        }
+    }
     int fd = -1;
 
-    lfs_file_t* file;
-    lfs_dir_t* dir;
+    lfs_file_t* file = nullptr;
+    lfs_dir_t* dir = nullptr;
+    struct dirent* dent = nullptr;
+
+    char* name = nullptr;
 
     FdEntry* next = nullptr;
 };
@@ -112,9 +155,7 @@ public:
     ~FdMap() = default;
 
     FdEntry* get(int fd, bool isFile = true) {
-        if (fd < MINIMAL_FD) {
-            return nullptr;
-        }
+        CHECK_TRUE(fd >= MINIMAL_FD && fd <= MAXIMUM_FD, nullptr);
 
         for (auto entry = fds_.front(); entry != nullptr; entry = entry->next) {
             if (entry->fd == fd && (isFile ? entry->file != nullptr : entry->dir != nullptr)) {
@@ -125,19 +166,16 @@ public:
         return nullptr;
     }
 
-    FdEntry* create(bool isFile = true) {
-        FdEntry* entry = new FdEntry();
+    FdEntry* create(const char* pathname, bool isFile = true) {
+        FdEntry* entry = new FdEntry(pathname, isFile);
         CHECK_TRUE(entry, nullptr);
 
-        if (isFile) {
-            entry->file = new lfs_file_t();
-        } else {
-            entry->dir = new lfs_dir_t();
-        }
-        if (entry->file || entry->dir) {
+        if (entry->name && (entry->file || entry->dir)) {
             entry->fd = nextFd();
-            fds_.pushFront(entry);
-            return entry;
+            if (entry->fd >= 0) {
+                fds_.pushFront(entry);
+                return entry;
+            }
         }
 
         delete entry;
@@ -145,9 +183,7 @@ public:
     }
 
     bool remove(int fd) {
-        if (fd < MINIMAL_FD) {
-            return false;
-        }
+        CHECK_TRUE(fd >= MINIMAL_FD && fd <= MAXIMUM_FD, false);
 
         for (auto entry = fds_.front(), prev = (FdEntry*)nullptr; entry != nullptr; prev = entry, entry = entry->next) {
             if (entry->fd == fd) {
@@ -170,19 +206,18 @@ public:
     }
 
 private:
-    static constexpr const int MINIMAL_FD = STDERR_FILENO + 1;
+    static constexpr int MINIMAL_FD = STDERR_FILENO + 1;
+    static constexpr int MAXIMUM_FD = HAL_PLATFORM_FILE_MAXIMUM_FD;
 
     particle::IntrusiveList<FdEntry> fds_;
-    int nextFd_ = MINIMAL_FD;
 
     int nextFd() {
-        while (get(nextFd_)) {
-            ++nextFd_;
-            if (nextFd_ < MINIMAL_FD) {
-                nextFd_ = MINIMAL_FD;
+        for (int i = MINIMAL_FD; i <= MAXIMUM_FD; i++) {
+            if (!get(i)) {
+                return i;
             }
         }
-        return nextFd_;
+        return -1;
     }
 };
 
@@ -190,24 +225,30 @@ FdMap s_fdMap;
 
 } // anonymous namespace
 
-#define CHECK_LFS_ERRNO(_expr) \
+#define CHECK_LFS_ERRNO_VAL(_expr, _val) \
         ({ \
             const auto _ret = _expr; \
             errno = lfsErrorToErrno(_ret); \
             if (_ret < 0) { \
                 _LOG_CHECKED_ERROR(_expr, _ret); \
-                return -1; \
+                return _val; \
             } \
             _ret; \
         })
 
+#define CHECK_LFS_ERRNO(_expr) CHECK_LFS_ERRNO_VAL(_expr, -1)
+
 extern "C" {
 
 int _open(const char* pathname, int flags, ... /* arg */) {
+    if (!pathname) {
+        errno = EINVAL;
+        return -1;
+    }
     auto lfs = filesystem_get_instance(nullptr);
     FsLock lk(lfs);
 
-    auto entry = s_fdMap.create();
+    auto entry = s_fdMap.create(pathname);
     if (!entry) {
         errno = ENOMEM;
         return -1;
@@ -225,7 +266,7 @@ int _open(const char* pathname, int flags, ... /* arg */) {
 
     CHECK_LFS_ERRNO(lfs_file_open(&lfs->instance, entry->file, pathname, lfsFlags));
     g.dismiss();
-    return 0;
+    return entry->fd;
 }
 
 int _write(int fd, const void* buf, size_t count) {
@@ -257,7 +298,16 @@ int _read(int fd, void* buf, size_t count) {
 }
 
 int _fstat(int fd, struct stat* buf) {
-    return -1;
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    auto entry = s_fdMap.get(fd);
+    if (!entry) {
+        errno = EBADF;
+        return -1;
+    }
+
+    return stat(entry->name, buf);
 }
 
 int _close(int fd) {
@@ -302,8 +352,15 @@ pid_t _getpid(void) {
     return 1;
 }
 
-int _gettimeofday(struct timeval* tv, struct timezone* tz) {
-    return -1;
+int _gettimeofday(struct timeval* tv, void* tz) {
+    if (tv) {
+        time_t t = HAL_RTC_Get_UnixTime();
+        tv->tv_sec = t;
+        tv->tv_usec = 0;
+    }
+    // tz argument is obsolete
+    (void)tz;
+    return 0;
 }
 
 int _isatty(int fd) {
@@ -319,15 +376,31 @@ int _kill(pid_t pid, int sig) {
 }
 
 int _link(const char* oldpath, const char* newpath) {
+    // Not implemented, LittleFS doesn't support symlinks
+    errno = ENOSYS;
     return -1;
 }
 
-int _lseek(int fd, off_t offset, int whence) {
-    return -1;
+off_t _lseek(int fd, off_t offset, int whence) {
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    auto entry = s_fdMap.get(fd);
+    if (!entry) {
+        errno = EBADF;
+        return -1;
+    }
+
+    CHECK_LFS_ERRNO(lfs_file_seek(&lfs->instance, entry->file, offset, posixWhenceToLfs(whence)));
+    return 0;
 }
 
 int _mkdir(const char* pathname, mode_t mode) {
-    return -1;
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    CHECK_LFS_ERRNO(lfs_mkdir(&lfs->instance, pathname));
+    return 0;
 }
 
 void* _sbrk(intptr_t increment) {
@@ -336,16 +409,37 @@ void* _sbrk(intptr_t increment) {
     return nullptr;
 }
 
-int _stat(const char* pathname, struct stat* buf) {
-    return -1;
+int stat(const char* pathname, struct stat* buf) {
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    struct lfs_info info = {};
+    CHECK_LFS_ERRNO(lfs_stat(&lfs->instance, pathname, &info));
+
+    if (buf) {
+        buf->st_size = info.size;
+        if (info.type == LFS_TYPE_REG) {
+            buf->st_mode = S_IRWXU | S_IRWXG | S_IRWXO | S_IFREG;
+        } else if (info.type == LFS_TYPE_DIR) {
+            buf->st_mode = S_IRWXU | S_IRWXG | S_IRWXO | S_IFDIR;
+        }
+    }
+
+    return 0;
 }
 
 clock_t _times(struct tms* buf) {
+    // Not implemented
+    errno = ENOSYS;
     return (clock_t)-1;
 }
 
 int _unlink(const char* pathname) {
-    return -1;
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    CHECK_LFS_ERRNO(lfs_remove(&lfs->instance, pathname));
+    return 0;
 }
 
 pid_t _wait(int* status) {
@@ -355,29 +449,167 @@ pid_t _wait(int* status) {
 }
 
 DIR* _opendir(const char* name) {
-    return nullptr;
+    if (!name) {
+        errno = EINVAL;
+        return nullptr;
+    }
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    auto entry = s_fdMap.create(name, false);
+    if (!entry) {
+        errno = ENOMEM;
+        return nullptr;
+    }
+
+    NAMED_SCOPE_GUARD(g, {
+        s_fdMap.remove(entry);
+    });
+
+    CHECK_LFS_ERRNO_VAL(lfs_dir_open(&lfs->instance, entry->dir, name), nullptr);
+    g.dismiss();
+    // XXX: simply cast int fd to DIR*
+    return (DIR*)entry->fd;
 }
 
 struct dirent* _readdir(DIR* dirp) {
-    return nullptr;
+    struct dirent* result = nullptr;
+    readdir_r(dirp, nullptr, &result);
+    return result;
 }
 
 long _telldir(DIR* pdir) {
-    return -1;
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    auto entry = s_fdMap.get((int)pdir, false);
+    if (!entry) {
+        errno = EBADF;
+        return -1;
+    }
+
+
+    return CHECK_LFS_ERRNO(lfs_dir_tell(&lfs->instance, entry->dir));
 }
 
 void _seekdir(DIR* pdir, long loc) {
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    auto entry = s_fdMap.get((int)pdir, false);
+    if (!entry) {
+        errno = EBADF;
+        return;
+    }
+
+    lfs_dir_seek(&lfs->instance, entry->dir, loc);
 }
 
 void _rewinddir(DIR* pdir) {
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    auto entry = s_fdMap.get((int)pdir, false);
+    if (!entry) {
+        errno = EBADF;
+        return;
+    }
+
+    lfs_dir_rewind(&lfs->instance, entry->dir);
 }
 
-int _readdir_r(DIR* pdir, struct dirent* entry, struct dirent** out_dirent) {
-    return -1;
+int _readdir_r(DIR* pdir, struct dirent* dentry, struct dirent** out_dirent) {
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    auto entry = s_fdMap.get((int)pdir, false);
+    if (!entry) {
+        errno = EBADF;
+        return -1;
+    }
+
+    struct lfs_info info = {};
+    int r = lfs_dir_read(&lfs->instance, entry->dir, &info);
+    if (r <= 0) {
+        if (out_dirent) {
+            *out_dirent = nullptr;
+        }
+        errno = lfsErrorToErrno(r);
+        return -1;
+    }
+
+    size_t dentrySize = offsetof(struct dirent, d_name) + strlen(info.name) + 1;
+
+    if (!dentry) {
+        entry->dent = static_cast<struct dirent*>(realloc(entry->dent, dentrySize));
+        if (!entry->dent) {
+            errno = ENOMEM;
+            return -1;
+        }
+        dentry = entry->dent;
+    }
+    memset(dentry, 0, dentrySize);
+    if (info.type == LFS_TYPE_REG) {
+        dentry->d_type = DT_REG;
+    } else if (info.type == LFS_TYPE_DIR) {
+        dentry->d_type = DT_DIR;
+    }
+    dentry->d_reclen = dentrySize;
+    strcpy(dentry->d_name, info.name);
+    if (out_dirent) {
+        *out_dirent = dentry;
+    }
+    return 0;
 }
 
 int _closedir(DIR* dirp) {
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    auto entry = s_fdMap.get((int)dirp, false);
+    if (!entry) {
+        errno = EBADF;
+        return -1;
+    }
+
+    SCOPE_GUARD({
+        s_fdMap.remove(entry);
+    });
+
+    CHECK_LFS_ERRNO(lfs_dir_close(&lfs->instance, entry->dir));
+
+    return 0;
+}
+
+int _chdir(const char* path) {
+    // Not implemented
+    errno = ENOSYS;
     return -1;
+}
+
+int _fchdir(int fd) {
+    // Not implemented
+    errno = ENOSYS;
+    return -1;
+}
+
+char* getcwd(char* buf, size_t size) {
+    if (!buf || size < 2) {
+        errno = ERANGE;
+        return nullptr;
+    }
+    // XXX: chdir() is not supported, so always return '/'
+    buf[0] = '/';
+    buf[1] = '\0';
+    return buf;
+}
+
+int _rename(const char* oldpath, const char* newpath) {
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    CHECK_LFS_ERRNO(lfs_rename(&lfs->instance, oldpath, newpath));
+    return 0;
 }
 
 // Current newlib doesn't implement or handle these, so we manually alias _ to non-_
@@ -388,5 +620,7 @@ void seekdir(DIR* pdir, long loc) __attribute__((alias("_seekdir")));
 void rewinddir(DIR* pdir) __attribute__((alias("_rewinddir")));
 int readdir_r(DIR* pdir, struct dirent* entry, struct dirent** out_dirent) __attribute__((alias("_readdir_r")));
 int closedir(DIR* pdir) __attribute__((alias("_closedir")));
+int chdir(const char* path) __attribute__((alias("_chdir")));
+int fchdir(int fd) __attribute__((alias("_chdir")));
 
 } // extern "C"

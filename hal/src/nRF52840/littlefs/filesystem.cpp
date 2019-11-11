@@ -302,6 +302,11 @@ int filesystem_mount(filesystem_t* fs) {
 
     if (!ret) {
         fs->state = true;
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        // Make sure /usr folder exists
+        int r = lfs_mkdir(&fs->instance, "/usr");
+        SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     }
 
     SPARK_ASSERT(fs->state);
