@@ -306,7 +306,10 @@ protected:
 	 */
 	void update_subscription_crc();
 
-	uint32_t application_state_checksum();
+	/**
+	 * Returns the descriptor of the current application state.
+	 */
+	AppStateDescriptor app_state_descriptor();
 
 public:
 	Protocol(MessageChannel& channel) :
@@ -349,15 +352,6 @@ public:
 	{
 		ack_handlers.addHandler(msg_id, std::move(handler), timeout);
 	}
-
-	/**
-	 * Determines the checksum of the application state.
-	 * Application state comprises cloud functinos, variables and subscriptions.
-	 */
-	static uint32_t application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len), uint32_t subscriptions_crc,
-			uint32_t describe_app_crc, uint32_t describe_system_crc);
-
-
 
 	/**
 	 * Establish a secure connection and send and process the hello message.

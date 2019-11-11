@@ -105,7 +105,7 @@ public:
 
 	SessionPersistOpaque()
 	{
-		size = 0; persistent = 0;
+		memset(this, 0, sizeof(*this));
 	}
 
 	bool is_valid() { return size==sizeof(*this); }
@@ -248,7 +248,7 @@ public:
 	 */
 	RestoreStatus restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* message, restore_fn_t restorer, save_fn_t saver);
 
-	uint32_t application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len));
+	AppStateDescriptor app_state_descriptor();
 
 	SessionPersistData& as_data() { return *this; }
 };
@@ -256,7 +256,7 @@ public:
 static_assert(sizeof(SessionPersist)==SessionPersistBaseSize+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression), "SessionPersist size");
 static_assert(sizeof(SessionPersist)==sizeof(SessionPersistDataOpaque), "SessionPersistDataOpaque size == sizeof(SessionPersist)");
 
-#endif
+#endif // defined(MBEDTLS_SSL_H)
 
 // the connection buffer is used by external code to store connection data in the session
 // it must be binary compatible with previous releases
@@ -267,7 +267,7 @@ static_assert((sizeof(SessionPersistData)==sizeof(SessionPersistDataOpaque)), "s
 
 static_assert(sizeof(SessionPersistDataOpaque)==SessionPersistBaseSize+SessionPersistVariableSize, "SessionPersistDataOpque size should be SessionPersistBaseSize+SessionPersistVariableSize");
 
-#endif
+#endif // defined(__cplusplus)
 
 
 
