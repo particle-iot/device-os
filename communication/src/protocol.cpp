@@ -255,16 +255,6 @@ void Protocol::init(const SparkCallbacks &callbacks,
 	initialized = true;
 }
 
-uint32_t Protocol::application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len), uint32_t subscriptions_crc,
-		uint32_t describe_app_crc, uint32_t describe_system_crc)
-{
-	uint32_t chk[3];
-	chk[0] = subscriptions_crc;
-	chk[1] = describe_app_crc;
-	chk[2] = describe_system_crc;
-	return calc_crc((uint8_t*)chk, sizeof(chk));
-}
-
 void Protocol::update_subscription_crc()
 {
 	if (descriptor.app_state_selector_info)
@@ -286,16 +276,16 @@ void Protocol::update_protocol_flags()
 	}
 }
 
-/**
- * Computes the current checksum from the application cloud state
- */
-uint32_t Protocol::application_state_checksum()
+AppStateDescriptor Protocol::app_state_descriptor()
 {
-	return descriptor.app_state_selector_info ? application_state_checksum(callbacks.calculate_crc,
+	if (!descriptor.app_state_selector_info) {
+		return AppStateDescriptor();
+	}
+	return AppStateDescriptor(
 			subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc),
 			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE, 0, nullptr),
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr))
-			: 0;
+			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr),
+			flags);
 }
 
 /**
@@ -310,7 +300,7 @@ int Protocol::begin()
 	last_ack_handlers_update = callbacks.millis();
 
 	uint32_t channel_flags = 0;
-	ProtocolError error = channel.establish(channel_flags, application_state_checksum());
+	ProtocolError error = channel.establish(channel_flags, app_state_descriptor());
 	bool session_resumed = (error==SESSION_RESUMED);
 	if (error && !session_resumed) {
 		LOG(ERROR,"handshake failed with code %d", error);
