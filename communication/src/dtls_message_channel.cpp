@@ -368,7 +368,7 @@ ProtocolError DTLSMessageChannel::establish(uint32_t& flags, uint32_t app_state_
 		LOG(INFO,"app state crc: cached: %x, actual: %x", (unsigned)cached, (unsigned)app_state_crc);
 		if (cached==app_state_crc) {
 			LOG(WARN,"skipping hello message");
-			flags |= Protocol::SKIP_SESSION_RESUME_HELLO;
+			flags |= MessageChannel::SKIP_SESSION_RESUME_HELLO;
 		}
 		LOG(INFO,"restored session from persisted session data. next_msg_id=%d", *coap_state);
 		return SESSION_RESUMED;
