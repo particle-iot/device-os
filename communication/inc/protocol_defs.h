@@ -139,4 +139,70 @@ enum Enum {
 };
 }
 
-}}
+/**
+ * Application state descriptor.
+ */
+class AppStateDescriptor {
+public:
+    /**
+     * Construct an invalid descriptor.
+     */
+    AppStateDescriptor() :
+            subscrCrc_(0),
+            appDescCrc_(0),
+            systemDescCrc_(0),
+            protocolFlags_(0),
+            valid_(false) {
+    }
+
+    /**
+     * Construct a descriptor.
+     *
+     * @param subscriptionsCrc Checksum of the application subscriptions.
+     * @param appDescribeCrc Checksum of the application functions and variables.
+     * @param systemDescribeCrc Checksum of the system info.
+     * @param protocolFlags Protocol flags (see `Protocol::Flags`).
+     */
+    AppStateDescriptor(uint32_t subscriptionsCrc, uint32_t appDescribeCrc, uint32_t systemDescribeCrc, uint32_t protocolFlags) :
+            subscrCrc_(subscriptionsCrc),
+            appDescCrc_(appDescribeCrc),
+            systemDescCrc_(systemDescribeCrc),
+            protocolFlags_(protocolFlags),
+            valid_(true) {
+    }
+
+    /**
+     * Returns `true` if `other` is equal to this descriptor, otherwise returns `false`.
+     *
+     * An invalid descriptor is never equal to any other descriptor.
+     */
+    bool operator==(const AppStateDescriptor& other) const {
+        return (valid_ && other.valid_ && subscrCrc_ == other.subscrCrc_ && appDescCrc_ == other.appDescCrc_ &&
+                systemDescCrc_ == other.systemDescCrc_ && protocolFlags_ == other.protocolFlags_);
+    }
+
+    /**
+     * Returns `true` if `other` is not equal to this descriptor, otherwise returns `false`.
+     *
+     * An invalid descriptor is never equal to any other descriptor.
+     */
+    bool operator!=(const AppStateDescriptor& other) const {
+        return !operator==(other);
+    }
+
+    /**
+     * Returns `true` if this descriptor is valid.
+     */
+    bool isValid() const {
+        return valid_;
+    }
+
+private:
+    uint32_t subscrCrc_;
+    uint32_t appDescCrc_;
+    uint32_t systemDescCrc_;
+    uint32_t protocolFlags_;
+    bool valid_;
+};
+
+}} // namespace particle::protocol

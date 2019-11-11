@@ -540,10 +540,10 @@ public:
 	/**
 	 * Establish this channel for communication.
 	 */
-	ProtocolError establish(uint32_t& flags, uint32_t app_crc) override
+	ProtocolError establish(uint32_t& flags, const AppStateDescriptor& app_state) override
 	{
 		reset();
-		return channel::establish(flags, app_crc);
+		return channel::establish(flags, app_state);
 	}
 
 	/**
