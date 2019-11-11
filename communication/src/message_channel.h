@@ -206,6 +206,16 @@ struct Channel
  */
 struct MessageChannel : public Channel
 {
+	/**
+	 * Channel flags.
+	 */
+	enum ChannelFlag {
+		/**
+		 * Used by the protocol to disable sending a hello on session resume. Set if sending a hello
+		 * response on resuming a session isn't required.
+		 */
+		SKIP_SESSION_RESUME_HELLO = 0x01
+	};
 
 	virtual ~MessageChannel() {}
 

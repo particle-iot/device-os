@@ -311,13 +311,10 @@ int Protocol::begin()
 	{
 		// for now, unconditionally move the session on resumption
 		channel.command(MessageChannel::MOVE_SESSION, nullptr);
-		if (channel_flags & SKIP_SESSION_RESUME_HELLO) {
-			flags |= SKIP_SESSION_RESUME_HELLO;
-		}
 	}
 
 	// hello not needed because it's already been sent and the server maintains device state
-	if (session_resumed && channel.is_unreliable() && (flags & SKIP_SESSION_RESUME_HELLO))
+	if (session_resumed && channel.is_unreliable() && (channel_flags & MessageChannel::SKIP_SESSION_RESUME_HELLO))
 	{
 		LOG(INFO,"resumed session - not sending HELLO message");
 		const auto r = ping(true);

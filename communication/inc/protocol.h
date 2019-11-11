@@ -128,22 +128,18 @@ class Protocol
 
 	uint8_t initialized;
 
-	uint8_t flags;
+	uint32_t flags;
 
 public:
+	/**
+	 * Protocol flags.
+	 */
 	enum Flags
 	{
 		/**
 		 * Set when the protocol expects a hello response from the server.
 		 */
 		REQUIRE_HELLO_RESPONSE = 1<<0,
-
-		/**
-		 * Internal flag. Used by the protocol to disable sending a hello on session resume.
-		 * Set if sending a hello response on resuming a session isn't required.
-		 */
-		SKIP_SESSION_RESUME_HELLO = 1<<1,
-
 		/**
 		 * send ping as an empty message - this functions as
 		 * a keep-alive for UDP
@@ -164,7 +160,7 @@ protected:
 	CompletionHandlerMap<message_id_t> ack_handlers;
 
 
-	void set_protocol_flags(int flags)
+	void set_protocol_flags(uint32_t flags)
 	{
 		this->flags = flags;
 	}
@@ -322,7 +318,8 @@ public:
 			variables(this),
 			publisher(this),
 			last_ack_handlers_update(0),
-			initialized(false)
+			initialized(false),
+			flags(0)
 	{
 	}
 
