@@ -883,7 +883,7 @@ SCENARIO("sending a message and re-establishing the connection clears existing m
 			{
 				When(Method(mock,establish)).Return(NO_ERROR);
 				uint32_t flags;
-				channel.establish(flags, 0);
+				channel.establish(flags, AppStateDescriptor());
 				THEN("the message store is cleared")
 				{
 					REQUIRE(channel.client_messages().from_id(0x1234)==nullptr);		// message has been sent and registered
