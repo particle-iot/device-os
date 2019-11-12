@@ -219,8 +219,6 @@ int QuectelNcpClient::off() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     muxer_.stop();
-    // Disable voltage translator
-    modemSetUartState(false);
     // Power down
     modemPowerOff();
     ready_ = false;
@@ -545,8 +543,6 @@ int QuectelNcpClient::waitReady() {
     muxer_.stop();
     CHECK(serial_->setBaudRate(QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE));
     CHECK(initParser(serial_.get()));
-    // Enable voltage translator
-    CHECK(modemSetUartState(true));
     skipAll(serial_.get(), 1000);
     parser_.reset();
     ready_ = waitAtResponse(20000) == 0;
@@ -567,8 +563,6 @@ int QuectelNcpClient::waitReady() {
     }
 
     if (!ready_) {
-        // Disable voltage translator
-        modemSetUartState(false);
         // Hard reset the modem
         modemHardReset(true);
         ncpState(NcpState::OFF);
@@ -946,10 +940,6 @@ int QuectelNcpClient::modemPowerOn() const {
 int QuectelNcpClient::modemPowerOff() const {
     if (modemPowerState()) {
         LOG(TRACE, "Powering modem off");
-        // Important! We need to disable voltage translator here
-        // otherwise V_INT will never go low
-        modemSetUartState(false);
-
         // Power off, power off pulse >= 650ms
         HAL_GPIO_Write(BGPWR, 1);
         HAL_Delay_Milliseconds(650);
@@ -996,9 +986,9 @@ bool QuectelNcpClient::modemPowerState() const {
     return !HAL_GPIO_Read(BGVINT);
 }
 
-int QuectelNcpClient::modemSetUartState(bool state) const {
-    // Use BG96 status pin to enable/disable voltage convert IC Automatically
-    return 0;
-}
+// // Use BG96 status pin to enable/disable voltage convert IC Automatically
+// int QuectelNcpClient::modemSetUartState(bool state) const {
+//     return 0;
+// }
 
 } // namespace particle
