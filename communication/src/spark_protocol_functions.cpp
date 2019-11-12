@@ -193,15 +193,24 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
                                            unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved)
 {
     ASSERT_ON_SYSTEM_THREAD();
-    if (property_id == particle::protocol::Connection::PING)
-    {
+    switch (property_id) {
+    case particle::protocol::Connection::PING: {
         protocol->set_keepalive(data, conn_prop->keepalive_source);
-    } else if (property_id == particle::protocol::Connection::FAST_OTA)
-    {
-        protocol->set_fast_ota(data);
+        return 0;
     }
-    return 0;
+    case particle::protocol::Connection::FAST_OTA: {
+        protocol->set_fast_ota(data);
+        return 0;
+    }
+    case particle::protocol::Connection::GOODBYE_ENABLED: {
+        protocol->set_goodbye_enabled(data);
+        return 0;
+    }
+    default:
+        return particle::protocol::NOT_IMPLEMENTED;
+    }
 }
+
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value, const void* param)
 {
     ASSERT_ON_SYSTEM_THREAD();

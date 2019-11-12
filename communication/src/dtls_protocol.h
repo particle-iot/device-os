@@ -86,7 +86,7 @@ public:
 				if (p->timeout != 0) {
 					timeout = p->timeout;
 				}
-				if (p->cloud_reason != CLOUD_DISCONNECT_REASON_NONE) {
+				if ((protocol_flags() & Flags::SEND_GOODBYE_MESSAGE) && (p->cloud_reason != CLOUD_DISCONNECT_REASON_NONE)) {
 					r = send_goodbye((cloud_disconnect_reason)p->cloud_reason, (network_disconnect_reason)p->network_reason,
 							(System_Reset_Reason)p->reset_reason, p->sleep_duration);
 				}

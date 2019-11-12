@@ -145,6 +145,10 @@ public:
 		 * a keep-alive for UDP
 		 */
 		PING_AS_EMPTY_MESSAGE = 1<<2,
+		/**
+		 * Send a Goodbye message when disconnecting from the server.
+		 */
+		SEND_GOODBYE_MESSAGE = 1<<3
 	};
 
 
@@ -163,6 +167,11 @@ protected:
 	void set_protocol_flags(uint32_t flags)
 	{
 		this->flags = flags;
+	}
+
+	uint32_t protocol_flags() const
+	{
+		return flags;
 	}
 
 	/**
@@ -347,6 +356,15 @@ public:
 	void set_fast_ota(unsigned data)
 	{
 		chunkedTransfer.set_fast_ota(data);
+	}
+
+	void set_goodbye_enabled(bool enabled)
+	{
+		if (enabled) {
+			flags |= Flags::SEND_GOODBYE_MESSAGE;
+		} else {
+			flags &= ~Flags::SEND_GOODBYE_MESSAGE;
+		}
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)
