@@ -178,7 +178,13 @@ public:
     }
 };
 
-GpioPinMap PIN_MAP;
+GpioPinMap& _fetch_PIN_MAP()
+{
+    static GpioPinMap pinMap;
+    return pinMap;
+}
+
+#define PIN_MAP _fetch_PIN_MAP()
 
 
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
