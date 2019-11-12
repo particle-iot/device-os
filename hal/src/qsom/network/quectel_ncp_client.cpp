@@ -614,6 +614,26 @@ int QuectelNcpClient::initReady() {
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
+    if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+        // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
+        // Scan LTE only, take effect immediately
+        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+        // Configure Network Category to be Searched under LTE RAT
+        // Only use LTE Cat M1, take effect immediately
+        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+
+        // Force eDRX mode to be disabled.
+        CHECK_PARSER(parser_.execCommand("AT+CEDRXS=0"));
+
+        // Disable Power Saving Mode
+        CHECK_PARSER(parser_.execCommand("AT+CPSMS=0"));
+    }
+
+    // Select (U)SIM card in slot 1, EG91 has two SIM card slots
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG91) {
+        CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
+    }
+
     // Change the baudrate to 921600
     CHECK(changeBaudRate(QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
     // Check that the modem is responsive at the new baudrate
