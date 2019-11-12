@@ -570,13 +570,7 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, netwo
             system_notify_event(cloud_status, cloud_status_disconnecting);
         }
 
-        bool graceful = flags & CLOUD_DISCONNECT_GRACEFULLY;
-        if (graceful) {
-            // Graceful disconnection setting can be overridden globally
-            uint8_t flag = 0;
-            system_get_flag(SYSTEM_FLAG_DISCONNECT_IMMEDIATELY, &flag, nullptr);
-            graceful = !flag;
-        }
+        const bool graceful = flags & CLOUD_DISCONNECT_GRACEFULLY;
         if (SPARK_CLOUD_CONNECTED) {
             if (graceful) {
                 // Notify the cloud that we're about to disconnect
