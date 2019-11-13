@@ -74,7 +74,7 @@ static_assert(SYSTEM_FLAG_PUBLISH_RESET_INFO == 6, "system flag value");
 static_assert(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS == 7, "system flag value");
 static_assert(SYSTEM_FLAG_PM_DETECTION == 8, "system flag value");
 static_assert(SYSTEM_FLAG_OTA_UPDATE_FORCED == 9, "system flag value");
-static_assert(SYSTEM_FLAG_DISABLE_GOODBYE == 10, "system flag value");
+static_assert(SYSTEM_FLAG_SEND_GOODBYE == 10, "system flag value");
 static_assert(SYSTEM_FLAG_MAX == 11, "system flag max value");
 
 volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
@@ -86,7 +86,7 @@ volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
     1,    // SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS
     0,    // UNUSED (SYSTEM_FLAG_PM_DETECTION)
     0,    // SYSTEM_FLAG_OTA_UPDATE_FORCED
-    0     // SYSTEM_FLAG_DISABLE_GOODBYE
+    1     // SYSTEM_FLAG_SEND_GOODBYE
 };
 
 const uint16_t SAFE_MODE_LISTEN = 0x5A1B;

@@ -108,7 +108,7 @@ public:
 
 	SessionPersistOpaque()
 	{
-		size = 0; persistent = 0;
+		memset(this, 0, sizeof(*this));
 	}
 
 	bool is_valid() { return size==sizeof(*this); }

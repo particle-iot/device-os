@@ -130,7 +130,7 @@ class Protocol
 
 	uint32_t flags;
 
-public:
+protected:
 	/**
 	 * Protocol flags.
 	 */
@@ -141,18 +141,15 @@ public:
 		 */
 		REQUIRE_HELLO_RESPONSE = 1<<0,
 		/**
-		 * send ping as an empty message - this functions as
-		 * a keep-alive for UDP
-		 */
-		PING_AS_EMPTY_MESSAGE = 1<<2,
-		/**
 		 * Send a Goodbye message when disconnecting from the server.
 		 */
-		SEND_GOODBYE_MESSAGE = 1<<3
+		SEND_GOODBYE_MESSAGE = 1<<1,
+		/**
+		 * Send ping as an empty message - this functions as a keep-alive for UDP.
+		 */
+		PING_AS_EMPTY_MESSAGE = 1<<2
 	};
 
-
-protected:
 	/**
 	 * Manages Ping functionality.
 	 */
