@@ -67,7 +67,7 @@ size_t Print::print(unsigned char b, int base)
 
 size_t Print::print(int n, int base)
 {
-  return print((long) n, base);
+  return print((long long) n, base);
 }
 
 size_t Print::print(unsigned int n, int base)
@@ -76,6 +76,11 @@ size_t Print::print(unsigned int n, int base)
 }
 
 size_t Print::print(long n, int base)
+{
+  return print((long long) n, base);
+}
+
+size_t Print::print(long long n, int base)
 {
   if (base == 0) {
     return write(n);
@@ -189,8 +194,9 @@ size_t Print::println(const __FlashStringHelper* str)
 
 // Private Methods /////////////////////////////////////////////////////////////
 
-size_t Print::printNumber(unsigned long n, uint8_t base) {
-  char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
+size_t Print::printNumber(unsigned long long n, uint8_t base) 
+{
+  char buf[8 * sizeof(long long) + 1]; // Assumes 8-bit chars plus zero byte.
   char *str = &buf[sizeof(buf) - 1];
 
   *str = '\0';
@@ -199,7 +205,7 @@ size_t Print::printNumber(unsigned long n, uint8_t base) {
   if (base < 2) base = 10;
 
   do {
-    unsigned long m = n;
+    unsigned long long m = n;
     n /= base;
     char c = m - base * n;
     *--str = c < 10 ? c + '0' : c + 'A' - 10;
