@@ -53,9 +53,9 @@ int SystemClass::sleep(const SystemSleepConfiguration& config) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    if (config.sleepMode() == SystemSleepMode::STANDBY ||
-        config.sleepMode() == SystemSleepMode::HIBERNATE ||
-        config.sleepMode() == SystemSleepMode::SHUTDOWN ||) {
+    if ((config.sleepMode() == SystemSleepMode::STOP && !config.wakeupSourceFeatured(HAL_CORE_WAKEUP_SOURCE_TYPE_NETWORK)) ||
+         config.sleepMode() == SystemSleepMode::HIBERNATE ||
+         config.sleepMode() == SystemSleepMode::SHUTDOWN ||) {
         // save the current state so it can be restored on wakeup
 #ifndef SPARK_NO_CLOUD
         cloudConnect = spark_cloud_flag_auto_connect();
@@ -74,7 +74,7 @@ int SystemClass::sleep(const SystemSleepConfiguration& config) {
     // Now enter sleep mode
     ret = hal_core_sleep(config.halCoreSleepConfig(), nullptr);
 
-    if (config.sleepMode() == SystemSleepMode::STANDBY) {
+    if (config.sleepMode() == SystemSleepMode::STOP && !config.wakeupSourceFeatured(HAL_CORE_WAKEUP_SOURCE_TYPE_NETWORK) {
         // Set the system flags that triggers the wifi/cloud reconnection in the background loop
         if (wifiConnect || wifiEnabled) {
            // at present, no way to get the background loop to only turn on wifi.
