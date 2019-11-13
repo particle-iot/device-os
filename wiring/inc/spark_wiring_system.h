@@ -136,6 +136,7 @@ public:
         }
     }
 
+    // Getters
     hal_core_sleep_config_t* halCoreSleepConfig() const {
         return &config_;
     }
@@ -144,6 +145,18 @@ public:
         return static_cast<SystemSleepMode>(config_.mode);
     }
 
+    bool wakeupSourceFeatured(hal_core_wakeup_source_type_t type) const {
+        auto wakeup = config_.wakeup_sources;
+        while (!wakeup) {
+            if (wakeup->type == type) {
+                return true;
+            }
+            wakeup = wakeup->next;
+        }
+        return false;
+    }
+
+    // Setters
     SystemSleepConfiguration& mode(SystemSleepMode mode) {
         config_.mode = static_cast<hal_core_sleep_mode_t>(mode);
         return *this;

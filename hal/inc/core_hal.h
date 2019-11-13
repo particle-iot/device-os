@@ -30,7 +30,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "system_defs.h"
 #include "interrupts_hal.h"
 
 /* Exported types ------------------------------------------------------------*/
