@@ -57,10 +57,11 @@
 
 #include <type_traits>
 
-// XXX: casting is not allowed in constexpr functions (at least since C++14).
+// XXX: casting is not allowed in constant expressions (at least since C++14).
 // We were previously casting to const void* in dynalib_checked_cast(), which resulted in
 // dynalib tables being placed into .bss section with certain GCC versions.
 // Miraculously, everything works correctly if the cast is outside of the constexpr function.
+// TODO: consider adding std::is_constant_evaluated() check in the future (available in C++20)
 
 template<typename T1, typename T2>
 constexpr T2* dynalib_checked_cast(T2 *p) {
