@@ -47,7 +47,7 @@ class Print
 {
   private:
     int write_error;
-    size_t printNumber(unsigned long, uint8_t);
+    size_t printNumber(unsigned long long, uint8_t);
     size_t printFloat(double, uint8_t);
   protected:
     void setWriteError(int err = 1) { write_error = err; }
@@ -71,6 +71,7 @@ class Print
     size_t print(char);
     size_t print(unsigned char, int = DEC);
     size_t print(int, int = DEC);
+    size_t print(long long, int = DEC);
     size_t print(unsigned int, int = DEC);
     size_t print(long, int = DEC);
     size_t print(unsigned long, int = DEC);
@@ -82,6 +83,7 @@ class Print
     size_t println(char);
     size_t println(unsigned char, int = DEC);
     size_t println(int, int = DEC);
+    size_t println(long long, int = DEC);
     size_t println(unsigned int, int = DEC);
     size_t println(long, int = DEC);
     size_t println(unsigned long, int = DEC);
