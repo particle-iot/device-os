@@ -88,11 +88,11 @@ public:
         return append((const uint8_t*)buf, n);
     }
 
-    bool append(const char* str) {
+    bool append(const char* str) { // Deprecated, use appendString()
         return appendString(str);
     }
 
-    bool append(char c) {
+    bool append(char c) { // Deprecated, use appendChar()
         return appendChar(c);
     }
 

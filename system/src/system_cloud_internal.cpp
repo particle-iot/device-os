@@ -989,9 +989,9 @@ void Spark_Protocol_Init(void)
         HAL_device_ID(id, id_length);
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
-        uint8_t disableGoodbye = 0;
-        system_get_flag(SYSTEM_FLAG_DISABLE_GOODBYE, &disableGoodbye, nullptr);
-        spark_protocol_set_connection_property(sp, particle::protocol::Connection::GOODBYE_ENABLED, !disableGoodbye, nullptr, nullptr);
+        uint8_t goodbyeEnabled = 0;
+        system_get_flag(SYSTEM_FLAG_SEND_GOODBYE, &goodbyeEnabled, nullptr);
+        spark_protocol_set_connection_property(sp, particle::protocol::Connection::GOODBYE_ENABLED, goodbyeEnabled, nullptr, nullptr);
 
         Particle.subscribe("spark", SystemEvents, MY_DEVICES);
         Particle.subscribe("particle", SystemEvents, MY_DEVICES);
