@@ -116,7 +116,6 @@ void _exit(int status) {
 }
 
 // Saves a few kB of flash.
-// FIXME: strerror() probably needs to be overriden for all the modules on all the platforms
 char* strerror(int errnum) {
     return (char*)"";
 }

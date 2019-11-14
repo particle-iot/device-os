@@ -78,6 +78,11 @@ void _exit(int status) {
     }
 }
 
+// Saves a few kB of flash.
+char* strerror(int errnum) {
+    return (char*)"";
+}
+
 /* Default implementation for call made to pure virtual function. */
 void __cxa_pure_virtual() {
   PANIC(PureVirtualCall,"Call on pure virtual");

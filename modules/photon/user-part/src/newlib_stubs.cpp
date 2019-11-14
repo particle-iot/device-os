@@ -77,6 +77,7 @@ void _exit(int status) {
     }
 }
 
+// Saves a few kB of flash.
 char* strerror(int errnum) {
     return (char*)"";
 }
