@@ -30,7 +30,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "interrupts_hal.h"
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -284,100 +283,6 @@ typedef enum {
 typedef void(*HAL_Event_Callback)(int event, int flags, void* data);
 
 void HAL_Set_Event_Callback(HAL_Event_Callback callback, void* reserved);
-
-
-#define HAL_CORE_SLEEP_VERSION 2
-
-typedef enum hal_core_wakeup_source_type_t {
-    HAL_CORE_WAKEUP_SOURCE_TYPE_UNKNOWN = 0,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_GPIO = 1,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_ADC = 2,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_DAC = 3,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_RTC = 4,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_LPCOMP = 5,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_UART = 6,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_I2C = 7,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_SPI = 8,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_TIMER = 9,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_CAN = 10,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_USB = 11,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_BLE = 12,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_NFC = 13,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_NETWORK = 14,
-    HAL_CORE_WAKEUP_SOURCE_TYPE_MAX = 0x7FFFF
-} hal_core_wakeup_source_type_t;
-static_assert(sizeof(hal_core_wakeup_source_type_t) == 2, "length of hal_core_wakeup_source_type_t should be 2-bytes aligned.");
-
-/**
- * Stop mode:
- *     Only the wakyup sources specified by user are enabled during in stop mode.
- *     Other peripherals will be temporarily disabled, but their configurations are cached
- *     before entering stop mode.
- *     Flash and RAM memory are always on during this mode.
- *     System clocks that are utilized to drive the specified wakeup sources remain working,
- *     otherwise, they are disabled for saving power.
- *     Once device is wakeup, device restores peripherals' configurations and connitue running as normal.
- * 
- * Hibernate mode:
- *     Only some of the wakeup sources are available to wakeup device.
- *     Otehr peripherals are completely shut off, without caching their configurations.
- *     Flash and RAM memory are disabled, while the retention RAM keeps on to store power-cycle data.
- *     Once device is wakeup, it performs a reset.
- * 
- * Shutdown mode:
- *     Only certain GPIO can be the wakeup source.
- *     CPU, every peripherals, system clock and all flash and RAM memory are completely shut off.
- *     Once device is wakeup, it performs a reset.
- */
-typedef enum hal_core_sleep_mode_t {
-    HAL_CORE_SLEEP_MODE_NONE = 0,
-    HAL_CORE_SLEEP_MODE_STOP = 1,
-    HAL_CORE_SLEEP_MODE_HIBERNATE = 2,
-    HAL_CORE_SLEEP_MODE_SHUTDOWN = 3,
-    HAL_CORE_SLEEP_MODE_MAX = 0x7FFFF
-} hal_core_sleep_mode_t;
-static_assert(sizeof(hal_core_sleep_mode_t) == 2, "length of hal_core_sleep_mode_t should be 2-bytes aligned.");
-
-/**
- * HAL sleep wakeup source: GPIO
- */
-typedef struct hal_core_wakeup_source_gpio_t {
-    uint16_t pin;
-    InterruptMode mode; // Caution: This might not be 1-byte length, depending on linker options.
-    uint8_t reserved;
-} hal_core_wakeup_source_gpio_t;
-
-/**
- * HAL sleep wakeup source: RTC
- */
-typedef struct hal_core_wakeup_source_rtc_t {
-    system_tick_t ms;
-} hal_core_wakeup_source_rtc_t;
-
-/**
- * HAL sleep wakeup source configurations
- */
-typedef struct hal_core_wakeup_source_t {
-    uint16_t size;
-    uint16_t version;
-    hal_core_wakeup_source_type_t type;
-    uint16_t reserved;
-    union {
-        hal_core_wakeup_source_gpio_t gpio;
-        hal_core_wakeup_source_rtc_t rtc;
-    } source;
-    hal_core_wakeup_source_t* next;
-} hal_core_wakeup_source_t;
-
-typedef struct hal_core_sleep_config_t {
-    uint16_t size;
-    uint16_t version;
-    hal_core_sleep_mode_t mode;
-    uint16_t reserved;
-    hal_core_wakeup_source_t* wakeup_sources;
-} hal_core_sleep_config_t;
-
-int hal_core_sleep(const hal_core_sleep_config_t* config, void* reserved);
 
 #ifdef __cplusplus
 }
