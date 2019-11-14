@@ -508,7 +508,7 @@ static void fpu_sleep_prepare(void) {
     __DMB();
     NVIC_ClearPendingIRQ(FPU_IRQn);
 
-    /**
+    /*__
      * Assert no critical FPU exception is signaled:
      * - IOC - Invalid Operation cumulative exception bit.
      * - DZC - Division by Zero cumulative exception bit.
@@ -1018,11 +1018,6 @@ int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
 }
 
 void HAL_Core_Execute_Standby_Mode(void) {
-}
-
-int hal_core_sleep(const hal_core_sleep_config_t* config, void* reserved) {
-    CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
-
 }
 
 bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {

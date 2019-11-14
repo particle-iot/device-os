@@ -251,3 +251,16 @@ int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMo
     network_connect_cancel(0, 1, 0, 0);
     return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);
 }
+
+int system_sleep_ext(const SystemSleepConfiguration& config, void* reserved) {
+    int ret;
+
+    // Deal with something that sleep HAL cannot handle before entering sleep mode.
+
+    // Now enter sleep mode
+    ret = hal_sleep(config.halSleepConfig(), nullptr);
+
+    // Do somthing that sleep HAL cannot handler after exiting from sleep mode.
+
+    return ret;
+}
