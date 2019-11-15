@@ -67,7 +67,6 @@ typedef enum hal_sleep_mode_t {
     HAL_SLEEP_MODE_SHUTDOWN = 6,
     HAL_SLEEP_MODE_MAX = 0x7F
 } hal_sleep_mode_t;
-static_assert(sizeof(hal_sleep_mode_t) == 1, "length of hal_sleep_mode_t should be 1-bytes aligned.");
 
 typedef enum hal_wakeup_source_type_t {
     HAL_WAKEUP_SOURCE_TYPE_UNKNOWN = 0,
@@ -87,7 +86,11 @@ typedef enum hal_wakeup_source_type_t {
     HAL_WAKEUP_SOURCE_TYPE_NETWORK = 14,
     HAL_WAKEUP_SOURCE_TYPE_MAX = 0x7FFF
 } hal_wakeup_source_type_t;
+
+#if PLATFORM_ID > 3
+static_assert(sizeof(hal_sleep_mode_t) == 1, "length of hal_sleep_mode_t should be 1-bytes aligned.");
 static_assert(sizeof(hal_wakeup_source_type_t) == 2, "length of hal_wakeup_source_type_t should be 2-bytes aligned.");
+#endif
 
 /**
  * HAL sleep wakeup source base
