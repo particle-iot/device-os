@@ -52,8 +52,6 @@
 #include "hw_ticks.h"
 #endif
 
-using spark::Vector;
-
 class Stream;
 
 struct SleepOptionFlagType; // Tag type for System.sleep() flags

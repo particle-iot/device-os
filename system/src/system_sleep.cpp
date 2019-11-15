@@ -33,6 +33,7 @@
 #include "spark_wiring_system.h"
 #include "spark_wiring_platform.h"
 #include "system_power.h"
+#include "check.h"
 
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
 # include "parser.h"
@@ -252,15 +253,46 @@ int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMo
     return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);
 }
 
-int system_sleep_ext(const SystemSleepConfiguration& config, void* reserved) {
+int system_sleep_ext(const SystemSleepConfiguration* config, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext(config, reserved));
     int ret;
 
-    // Deal with something that sleep HAL cannot handle before entering sleep mode.
+    CHECK_TRUE(config->valid(), SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    // Cancel on-going network connection.
+    CHECK(network_connect_cancel(0, 1, 0, 0));
+
+    // Make sure all confirmable UDP messages are sent and acknowledged before sleeping
+    if (spark_cloud_flag_connected() && config->sleepWait() == SystemSleepWait::NETWORK) {
+        Spark_Sleep();
+    }
+
+    if (config->networkSuspend()) {
+        network_suspend();
+    }
+
+    led_set_update_enabled(0, nullptr); // Disable background LED updates
+    LED_Off(LED_RGB);
+	system_power_management_sleep();
 
     // Now enter sleep mode
-    ret = hal_sleep(config.halSleepConfig(), nullptr);
+    ret = hal_sleep(config->halSleepConfig(), nullptr);
 
-    // Do somthing that sleep HAL cannot handler after exiting from sleep mode.
+    led_set_update_enabled(1, nullptr); // Enable background LED updates
+
+    if (config->networkResume()) {
+        network_resume();   // asynchronously bring up the network/cloud
+    }
+
+    // if single-threaded, managed mode then reconnect to the cloud (for up to 60 seconds)
+    auto mode = system_mode();
+    if (system_thread_get_state(nullptr)==spark::feature::DISABLED && (mode==AUTOMATIC || mode==SEMI_AUTOMATIC) && spark_cloud_flag_auto_connect()) {
+        waitFor(spark_cloud_flag_connected, 60000);
+    }
+
+    if (spark_cloud_flag_connected()) {
+        Spark_Wake();
+    }
 
     return ret;
 }
