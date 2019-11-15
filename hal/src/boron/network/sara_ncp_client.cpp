@@ -779,13 +779,9 @@ int SaraNcpClient::initReady() {
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard());
 
-    // Just in case disconnect
-    int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2,2"));
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
-    r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
+    int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
 
     if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         // Change the baudrate to 921600
@@ -821,11 +817,15 @@ int SaraNcpClient::initReady() {
         r = CHECK_PARSER(resp.scanf("+UMNOPROF: %d", &umnoprof));
         CHECK_PARSER_OK(resp.readResult());
         if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::SW_DEFAULT) {
-            // This is a persistent setting
-            auto respUmno = parser_.sendCommand(1000, "AT+UMNOPROF=%d", static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT));
-            respUmno.readResult();
-            // Not checking for error since we will reset either way
-            reset = true;
+            // Disconnect before making changes to the UMNOPROF
+            r = CHECK_PARSER(parser_.execCommand("AT+COPS=2,2"));
+            if (r == AtResponse::OK) {
+                // This is a persistent setting
+                auto respUmno = parser_.sendCommand(1000, "AT+UMNOPROF=%d", static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT));
+                respUmno.readResult();
+                // Not checking for error since we will reset either way
+                reset = true;
+            }
         }
         if (reset) {
             const int respCfun = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
@@ -843,8 +843,12 @@ int SaraNcpClient::initReady() {
         resp.readResult();
         if (r > 0) {
             if (selectAct != 7 || (r >= 2 && preferAct1 != 7) || (r >= 3 && preferAct2 != 7)) { // 7: LTE Cat M1
-                // This is a persistent setting
-                CHECK_PARSER_OK(parser_.execCommand("AT+URAT=7"));
+                // Disconnect before making changes to URAT
+                r = CHECK_PARSER(parser_.execCommand("AT+COPS=2,2"));
+                if (r == AtResponse::OK) {
+                    // This is a persistent setting
+                    CHECK_PARSER_OK(parser_.execCommand("AT+URAT=7"));
+                }
             }
         }
 
@@ -1150,7 +1154,10 @@ int SaraNcpClient::processEventsImpl() {
             millis() - regStartTime_ >= REGISTRATION_TIMEOUT) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
         muxer_.stop();
-        modemHardReset(); // FIXME: This should cleanly switch off/on power instead of hard resetting
+        int rv = modemPowerOff();
+        if (rv != 0) {
+            modemHardReset(true);
+        }
         ncpState(NcpState::OFF);
     }
     return 0;
