@@ -1,6 +1,5 @@
 
 #include "core_hal.h"
-#include "sleep_hal.h"
 #include "rtc_hal.h"
 #include "rgbled.h"
 #include "spark_wiring_wifi.h"
@@ -43,7 +42,7 @@ void SystemClass::reset(uint32_t data)
 }
 
 int SystemClass::sleep(const SystemSleepConfiguration& config) {
-    return system_sleep_ext(config, nullptr);
+    return system_sleep_ext(&config, nullptr);
 }
 
 SleepResult SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, SleepOptionFlags flags)

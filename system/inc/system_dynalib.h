@@ -106,10 +106,11 @@ DYNALIB_FN(BASE_IDX + 17, system, system_power_management_set_config, int(const 
 #define BASE_IDX1 (BASE_IDX + 17)
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
 
-// Continue with BASE_IDX1
+DYNALIB_FN(BASE_IDX1 + 0, system, system_sleep_ext, int(const SystemSleepConfiguration*, void*))
 
 DYNALIB_END(system)
 
 #undef BASE_IDX
+#undef BASE_IDX1
 
 #endif	/* SYSTEM_DYNALIB_H */

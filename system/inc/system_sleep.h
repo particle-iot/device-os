@@ -46,11 +46,19 @@ typedef enum System_Sleep_Flag
 } System_Sleep_Flag;
 
 
-enum class SystemSleepMode: uint16_t {
-    NONE        = HAL_SLEEP_MODE_NONE,
-    STOP        = HAL_SLEEP_MODE_STOP,
-    HIBERNATE   = HAL_SLEEP_MODE_HIBERNATE,
-    SHUTDOWN    = HAL_SLEEP_MODE_SHUTDOWN
+enum class SystemSleepMode: uint8_t {
+    NONE            = HAL_SLEEP_MODE_NONE,
+    STOP            = HAL_SLEEP_MODE_STOP,
+    NETWORK_STANDBY = HAL_SLEEP_MODE_NETWORK_STANDBY,
+    NETWORK_OFF     = HAL_SLEEP_MODE_NETWORK_OFF,
+    ULTRA_LOW_POWER = HAL_SLEEP_MODE_ULTRA_LOW_POWER,
+    HIBERNATE       = HAL_SLEEP_MODE_HIBERNATE,
+    SHUTDOWN        = HAL_SLEEP_MODE_SHUTDOWN
+};
+
+enum class SystemSleepWait: uint8_t {
+    NO_WAIT,
+    NETWORK
 };
 
 class SystemSleepConfiguration {
@@ -58,6 +66,7 @@ public:
     // Constructor
     SystemSleepConfiguration()
             : config_(),
+              wait_(SystemSleepWait::NETWORK),
               valid_(true) {
         config_ = {};
         config_.size = sizeof(hal_sleep_config_t);
@@ -66,9 +75,10 @@ public:
         config_.wakeup_sources = nullptr;
     }
     // Move constructor
-    SystemSleepConfiguration(SystemSleepConfiguration&& config) {
+    SystemSleepConfiguration(SystemSleepConfiguration&& config)
+            : wait_(config.wait_),
+              valid_(config.valid_) {
         memcpy(&config_, &config.config_, sizeof(hal_sleep_config_t));
-        valid_ = config.valid_;
         config.config_.wakeup_sources = nullptr;
     }
     // Copy constructor
@@ -87,6 +97,26 @@ public:
     }
 
     // Getters
+    bool valid() const {
+        return valid_;
+    }
+
+    bool networkSuspend() const {
+        return (config_.mode == HAL_SLEEP_MODE_NETWORK_STANDBY ||
+                config_.mode == HAL_SLEEP_MODE_NETWORK_OFF ||
+                config_.mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER ||
+                config_.mode == HAL_SLEEP_MODE_HIBERNATE ||
+                config_.mode == HAL_SLEEP_MODE_SHUTDOWN);
+    }
+
+    bool networkResume() const {
+        return (config_.mode == HAL_SLEEP_MODE_NETWORK_STANDBY);
+    }
+
+    SystemSleepWait sleepWait() const {
+        return wait_;
+    }
+
     const hal_sleep_config_t* halSleepConfig() const {
         return &config_;
     }
@@ -111,6 +141,11 @@ public:
     // Setters
     SystemSleepConfiguration& mode(SystemSleepMode mode) {
         config_.mode = static_cast<hal_sleep_mode_t>(mode);
+        return *this;
+    }
+
+    SystemSleepConfiguration& wait(SystemSleepWait wait) {
+        wait_ = wait;
         return *this;
     }
 
@@ -175,6 +210,7 @@ public:
 
 private:
     hal_sleep_config_t config_;
+    SystemSleepWait wait_;
     bool valid_;
 };
 
@@ -185,7 +221,7 @@ private:
 int system_sleep(Spark_Sleep_TypeDef mode, long seconds, uint32_t param, void* reserved);
 int system_sleep_pin(uint16_t pin, uint16_t mode, long seconds, uint32_t param, void* reserved);
 int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved);
-int system_sleep_ext(const SystemSleepConfiguration& config, void* reserved);
+int system_sleep_ext(const SystemSleepConfiguration* config, void* reserved);
 
 #ifdef __cplusplus
 }

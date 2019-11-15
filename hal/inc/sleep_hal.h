@@ -28,30 +28,43 @@
 
 /**
  * Stop mode:
- *     Only the wakyup sources specified by user are enabled during in stop mode.
- *     Other peripherals will be temporarily disabled, but their configurations are cached
- *     before entering stop mode.
- *     Flash and RAM memory are always on during this mode.
- *     System clocks that are utilized to drive the specified wakeup sources remain working,
- *     otherwise, they are disabled for saving power.
- *     Once device is wakeup, device restores peripherals' configurations and connitue running as normal.
+ *     What's disabled: The resources occupied by system, e.g. CPU, RGB, external flash etc.
+ *     Wakeup sources: Any source that the platform supported.
+ *     On-exit: It resumes the disabled resources and continue running.
+ * 
+ * Network standby mode:
+ *     What's disabled: The resources occupied by system and network interfaces.
+ *     Wakeup sources: Any source that the platform supported except network interface.
+ *     On-exit: It resumes the disabled resources (no need to restoring peripherals' configuration) and network connection if necessary and continue running.
+ * 
+ * Network off mode:
+ *     What's disabled: The resources occupied by system and network interfaces.
+ *     Wakeup sources: Any source that the platform supported except network interface.
+ *     On-exit: It resumes the disabled resources and continue running.
+ * 
+ * Ultra-Low power mode:
+ *     What's disabled: The resources occupied by system and all other sources those are not featured as wakeup source.
+ *     Wakeup sources: Any source that the platform supported
+ *     On-exit: It resumes the disabled resources (by restoring peripherals' configuration) and network connection if necessary and continue running.
  * 
  * Hibernate mode:
- *     Only some of the wakeup sources are available to wakeup device.
- *     Otehr peripherals are completely shut off, without caching their configurations.
- *     Flash and RAM memory are disabled, while the retention RAM keeps on to store power-cycle data.
- *     Once device is wakeup, it performs a reset.
+ *     What's disabled: Most of resources except particular pins and retention RAM
+ *     Wakeup sources: Particular pins
+ *     On-exit: Reset
  * 
  * Shutdown mode:
- *     Only certain GPIO can be the wakeup source.
- *     CPU, every peripherals, system clock and all flash and RAM memory are completely shut off.
- *     Once device is wakeup, it performs a reset.
+ *     What's disabled: Most of resources except particular pins
+ *     Wakeup sources: Particular pins
+ *     On-exit: Reset
  */
 typedef enum hal_sleep_mode_t {
     HAL_SLEEP_MODE_NONE = 0,
     HAL_SLEEP_MODE_STOP = 1,
-    HAL_SLEEP_MODE_HIBERNATE = 2,
-    HAL_SLEEP_MODE_SHUTDOWN = 3,
+    HAL_SLEEP_MODE_NETWORK_STANDBY = 2,
+    HAL_SLEEP_MODE_NETWORK_OFF = 3,
+    HAL_SLEEP_MODE_ULTRA_LOW_POWER = 4,
+    HAL_SLEEP_MODE_HIBERNATE = 5,
+    HAL_SLEEP_MODE_SHUTDOWN = 6,
     HAL_SLEEP_MODE_MAX = 0x7F
 } hal_sleep_mode_t;
 static_assert(sizeof(hal_sleep_mode_t) == 1, "length of hal_sleep_mode_t should be 1-bytes aligned.");
