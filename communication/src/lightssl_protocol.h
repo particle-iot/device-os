@@ -106,6 +106,7 @@ public:
 
     bool cancel_message(message_handle_t msg) {
         // over TCP this is a no-op due to the speed of the connection.
+        // todo - but we should still invoke completion handlers.
         return false;
     }
 
