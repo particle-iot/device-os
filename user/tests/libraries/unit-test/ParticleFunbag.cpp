@@ -57,10 +57,6 @@ public:
     }
 };
 
-
-
-SparkTestRunner _runner;
-
 bool requestStart = false;
 bool _enterDFU = false;
 
@@ -107,7 +103,7 @@ void unit_test_setup()
 #endif
     print_status(Serial);
     Particle.variable("log", buf, STRING);
-    _runner.begin();
+    SparkTestRunner::instance()->begin();
 }
 
 String readLine(Stream& stream)
@@ -210,12 +206,13 @@ void unit_test_loop(bool runImmediately, bool runTest)
     if (_enterDFU)
         System.dfu();
 
-    if (!_runner.isStarted() && isStartRequested(runImmediately)) {
+    const auto runner = SparkTestRunner::instance();
+    if (!runner->isStarted() && isStartRequested(runImmediately)) {
         Serial.println("Running tests");
-        _runner.start();
+        runner->start();
     }
 
-    if (runTest && _runner.isStarted()) {
+    if (runTest && runner->isStarted()) {
         Test::run();
     }
 }
@@ -238,7 +235,7 @@ int advanceLog() {
     int end = sizeof(buf)-1;
     int read = cblog->read_soft(buf, end);
     buf[read] = 0;  // terminate string
-    if (!read && _runner.isComplete())
+    if (!read && SparkTestRunner::instance()->isComplete())
         read = -1;  // end of stream.
     return read;
 #else
@@ -280,3 +277,7 @@ void SparkTestRunner::begin() {
     setState(WAITING);
 }
 
+SparkTestRunner* SparkTestRunner::instance() {
+    static SparkTestRunner runner;
+    return &runner;
+}

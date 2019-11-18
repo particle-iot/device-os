@@ -91,9 +91,9 @@ public:
     void testDone() {
         updateLEDStatus();
     }
-};
 
-extern SparkTestRunner _runner;
+    static SparkTestRunner* instance();
+};
 
 #define UNIT_TEST_SETUP() \
     void setup() { unit_test_setup(); }
