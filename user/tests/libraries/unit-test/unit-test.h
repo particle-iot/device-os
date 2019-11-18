@@ -33,31 +33,87 @@ enum RunnerState {
 };
 
 class SparkTestRunner {
-
-private:
-    int _state;
-
 public:
-    SparkTestRunner() : _state(INIT) {
+    SparkTestRunner();
 
-    }
-
-    void begin();
+    void setup();
+    void loop();
 
     bool isStarted() {
-        return _state>=RUNNING;
+        return state_ >= RUNNING;
     }
 
     bool isComplete() {
-        return _state==COMPLETE;
+        return state_ == COMPLETE;
     }
 
     void start() {
-        if (!isStarted())
+        if (!isStarted()) {
             setState(RUNNING);
+        }
     }
 
-    const char* nameForState(RunnerState state) {
+    RunnerState state() const { return (RunnerState)state_; }
+
+    void setState(RunnerState newState) {
+        if (newState != state_) {
+            state_ = newState;
+            const char* stateName = nameForState((RunnerState)state_);
+            if (isStarted()) {
+                updateLEDStatus();
+            }
+            if (cloudEnabled_) {
+                Particle.publish("state", stateName);
+            }
+        }
+    }
+
+    void testDone() {
+        updateLEDStatus();
+    }
+
+    SparkTestRunner& ledIndicationEnabled(bool enabled) {
+        ledEnabled_ = enabled;
+        return *this;
+    }
+
+    SparkTestRunner& serialInterfaceEnabled(bool enabled) {
+        serialEnabled_ = enabled;
+        return *this;
+    }
+
+    SparkTestRunner& cloudInterfaceEnabled(bool enabled) {
+        cloudEnabled_ = enabled;
+        return *this;
+    }
+
+    SparkTestRunner& usbInterfaceEnabled(bool enabled) {
+        usbEnabled_ = enabled;
+        return *this;
+    }
+
+    SparkTestRunner& runImmediately(bool enabled) {
+        startRequested_ = enabled;
+        return *this;
+    }
+
+    static SparkTestRunner* instance();
+
+private:
+    bool ledEnabled_;
+    bool serialEnabled_;
+    bool cloudEnabled_;
+    bool usbEnabled_;
+    bool startRequested_;
+    bool dfuRequested_;
+    int state_;
+
+    void runSerialConsole();
+    void updateLEDStatus();
+
+    static int testCmd(String arg);
+
+    static const char* nameForState(RunnerState state) {
         switch (state) {
             case INIT: return "init";
             case WAITING: return "waiting";
@@ -67,39 +123,13 @@ public:
                 return "";
         }
     }
-
-    int testStatusColor();
-
-    void updateLEDStatus() {
-        int rgb = testStatusColor();
-        RGB.control(true);
-        RGB.color(rgb);
-    }
-
-    RunnerState state() const { return (RunnerState)_state; }
-
-    void setState(RunnerState newState) {
-        if (newState!=_state) {
-            _state = newState;
-            const char* stateName = nameForState((RunnerState)_state);
-            if (isStarted())
-                updateLEDStatus();
-            Particle.publish("state", stateName);
-        }
-    }
-
-    void testDone() {
-        updateLEDStatus();
-    }
-
-    static SparkTestRunner* instance();
 };
 
 #define UNIT_TEST_SETUP() \
-    void setup() { unit_test_setup(); }
+    void setup() { SparkTestRunner::instance()->setup(); }
 
 #define UNIT_TEST_LOOP() \
-    void loop() { unit_test_loop(); }
+    void loop() { SparkTestRunner::instance()->loop(); }
 
 #define UNIT_TEST_APP() \
     UNIT_TEST_SETUP(); UNIT_TEST_LOOP();
