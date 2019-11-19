@@ -30,6 +30,7 @@
 #ifndef __USB_DFU_CORE_H_
 #define __USB_DFU_CORE_H_
 
+#include  "usbd_conf.h"
 #include  "usbd_ioreq.h"
 #include  "usbd_dfu_mal.h"
 
