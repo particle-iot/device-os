@@ -17,28 +17,68 @@
 
 #include "check.h"
 #include "core_hal.h"
+#include "interrupts_hal.h"
 #include "sleep_hal.h"
+#include "spark_wiring_vector.h"
 
-int hal_sleep(const hal_sleep_config_t* config, void* reserved) {
+using spark::Vector;
+
+static int hal_sleep_enter_stop_mode(const hal_sleep_config_t* config) {
+    Vector<uint16_t> pins;
+    Vector<InterruptMode> modes;
+    long seconds = 0;
+
+    auto wakeupSource = config->wakeup_sources;
+    while (wakeupSource) {
+        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+            if (!pins.append(reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource)->pin)) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+            if (!modes.append(reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource)->mode)) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+            seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms;
+        }
+        wakeupSource = wakeupSource->next;
+    }
+
+    return HAL_Core_Enter_Stop_Mode_Ext(pins.data(), pins.size(), modes.data(), modes.size(), seconds, nullptr);
+}
+
+static int hal_sleep_enter_hibernate_mode(const hal_sleep_config_t* config) {
+    long seconds = 0;
+    uint32_t flags = HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN;
+
+    auto wakeupSource = config->wakeup_sources;
+    while (wakeupSource) {
+        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+            // Hotfix for Gen2 platforms. As long as user specifies pins as wakeup source.
+            flags &= ~HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN;
+        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+            seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms;
+        }
+        wakeupSource = wakeupSource->next;
+    }
+
+    return HAL_Core_Enter_Standby_Mode(seconds, flags);
+}
+
+int hal_sleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    int ret = SYSTEM_ERROR_NOT_SUPPORTED;
 
     switch (config->mode) {
         case HAL_SLEEP_MODE_STOP: {
-            break;
-        }
-        case HAL_SLEEP_MODE_NETWORK_STANDBY: {
-            break;
-        }
-        case HAL_SLEEP_MODE_NETWORK_OFF: {
+            ret = hal_sleep_enter_stop_mode(config);
             break;
         }
         case HAL_SLEEP_MODE_ULTRA_LOW_POWER: {
             break;
         }
         case HAL_SLEEP_MODE_HIBERNATE: {
-            break;
-        }
-        case HAL_SLEEP_MODE_SHUTDOWN: {
+            ret = hal_sleep_enter_hibernate_mode(config);
             break;
         }
         default: {
@@ -46,5 +86,5 @@ int hal_sleep(const hal_sleep_config_t* config, void* reserved) {
         }
     }
 
-    return SYSTEM_ERROR_NONE;
+    return ret;
 }

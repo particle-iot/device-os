@@ -60,11 +60,8 @@
 typedef enum hal_sleep_mode_t {
     HAL_SLEEP_MODE_NONE = 0,
     HAL_SLEEP_MODE_STOP = 1,
-    HAL_SLEEP_MODE_NETWORK_STANDBY = 2,
-    HAL_SLEEP_MODE_NETWORK_OFF = 3,
-    HAL_SLEEP_MODE_ULTRA_LOW_POWER = 4,
-    HAL_SLEEP_MODE_HIBERNATE = 5,
-    HAL_SLEEP_MODE_SHUTDOWN = 6,
+    HAL_SLEEP_MODE_ULTRA_LOW_POWER = 2,
+    HAL_SLEEP_MODE_HIBERNATE = 3,
     HAL_SLEEP_MODE_MAX = 0x7F
 } hal_sleep_mode_t;
 
@@ -87,9 +84,16 @@ typedef enum hal_wakeup_source_type_t {
     HAL_WAKEUP_SOURCE_TYPE_MAX = 0x7FFF
 } hal_wakeup_source_type_t;
 
+typedef enum hal_sleep_wait_t {
+    HAL_SLEEP_WAIT_NO_WAIT = 0,
+    HAL_SLEEP_WAIT_CLOUD = 1,
+    HAL_SLEEP_WAIT_MAX = 0x7F,
+} hal_sleep_wait_t;
+
 #if PLATFORM_ID > 3
 static_assert(sizeof(hal_sleep_mode_t) == 1, "length of hal_sleep_mode_t should be 1-bytes aligned.");
 static_assert(sizeof(hal_wakeup_source_type_t) == 2, "length of hal_wakeup_source_type_t should be 2-bytes aligned.");
+static_assert(sizeof(hal_sleep_wait_t) == 1, "length of hal_sleep_wait_t should be 1-bytes aligned.");
 #endif
 
 /**
@@ -107,7 +111,7 @@ typedef struct hal_wakeup_source_base_t {
  * HAL sleep wakeup source: GPIO
  */
 typedef struct hal_wakeup_source_gpio_t {
-    hal_wakeup_source_base_t base;
+    hal_wakeup_source_base_t base; // This must come first in order to use casting.
     uint16_t pin;
     InterruptMode mode; // Caution: This might not be 1-byte length, depending on linker options.
     uint8_t reserved;
@@ -117,7 +121,7 @@ typedef struct hal_wakeup_source_gpio_t {
  * HAL sleep wakeup source: RTC
  */
 typedef struct hal_wakeup_source_rtc_t {
-    hal_wakeup_source_base_t base;
+    hal_wakeup_source_base_t base; // This must come first in order to use casting.
     system_tick_t ms;
 } hal_wakeup_source_rtc_t;
 
@@ -128,7 +132,7 @@ typedef struct hal_sleep_config_t {
     uint16_t size;
     uint16_t version;
     hal_sleep_mode_t mode;
-    uint8_t reserved;
+    hal_sleep_wait_t wait;
     hal_wakeup_source_base_t* wakeup_sources;
 } hal_sleep_config_t;
 
@@ -136,7 +140,7 @@ typedef struct hal_sleep_config_t {
 extern "C" {
 #endif
 
-int hal_sleep(const hal_sleep_config_t* config, void* reserved);
+int hal_sleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"
