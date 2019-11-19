@@ -40,51 +40,51 @@ namespace protocol {
 class LightSSLProtocol : public ProtocolMixin<LightSSLProtocol, Protocol>
 {
     friend class ProtocolMixin<LightSSLProtocol, Protocol>;
-	CoAPChannel<LightSSLMessageChannel> channel;
+    CoAPChannel<LightSSLMessageChannel> channel;
 
-	static void handle_seed(const uint8_t* data, size_t len)
-	{
+    static void handle_seed(const uint8_t* data, size_t len)
+    {
 
-	}
+    }
 
 public:
 
-	LightSSLProtocol() : ProtocolMixin(channel) {}
+    LightSSLProtocol() : ProtocolMixin(channel) {}
 
-	void init(const char *id,
-	          const SparkKeys &keys,
-	          const SparkCallbacks &callbacks,
-	          const SparkDescriptor &descriptor) override
-	{
-		set_protocol_flags(REQUIRE_HELLO_RESPONSE);
+    void init(const char *id,
+              const SparkKeys &keys,
+              const SparkCallbacks &callbacks,
+              const SparkDescriptor &descriptor) override
+    {
+        set_protocol_flags(REQUIRE_HELLO_RESPONSE);
 
-		LightSSLMessageChannel::Callbacks channelCallbacks;
-		channelCallbacks.millis = callbacks.millis;
-		channelCallbacks.handle_seed = handle_seed;
-		channelCallbacks.receive = callbacks.receive;
-		channelCallbacks.send = callbacks.send;
-		channel.init(keys.core_private, keys.server_public, (const uint8_t*)id, channelCallbacks, &channel.next_id_ref());
+        LightSSLMessageChannel::Callbacks channelCallbacks;
+        channelCallbacks.millis = callbacks.millis;
+        channelCallbacks.handle_seed = handle_seed;
+        channelCallbacks.receive = callbacks.receive;
+        channelCallbacks.send = callbacks.send;
+        channel.init(keys.core_private, keys.server_public, (const uint8_t*)id, channelCallbacks, &channel.next_id_ref());
         Protocol::init(callbacks, descriptor);
         initialize_ping(15000,10000);
-	}
+    }
 
-	size_t build_hello(Message& message, uint8_t flags) override
-	{
-		product_details_t deets;
-		deets.size = sizeof(deets);
-		get_product_details(deets);
+    size_t build_hello(Message& message, uint8_t flags) override
+    {
+        product_details_t deets;
+        deets.size = sizeof(deets);
+        get_product_details(deets);
 
-		size_t len = Messages::hello(message.buf(), 0,
-				flags, PLATFORM_ID, deets.product_id,
-				deets.product_version, false, nullptr, 0);
-		return len;
-	}
+        size_t len = Messages::hello(message.buf(), 0,
+                flags, PLATFORM_ID, deets.product_id,
+                deets.product_version, false, nullptr, 0);
+        return len;
+    }
 
-	void wake() {
-	    // nothing to do here. On waking up the cloud connection and session is started anew.
-	};
+    void wake() {
+        // nothing to do here. On waking up the cloud connection and session is started anew.
+    };
 
-	bool has_unacknowledged_requests() {
+    bool has_unacknowledged_requests() {
         return ack_handlers.size() > 0;
     }
 
@@ -97,16 +97,15 @@ public:
         ack_handlers.clear();
     }
 
-	virtual int get_status(protocol_status* status) const override
-	{
-		SPARK_ASSERT(status);
-		status->flags = 0;
-		return 0;
+    virtual int get_status(protocol_status* status) const override
+    {
+        SPARK_ASSERT(status);
+        status->flags = 0;
+        return 0;
     }
 
     bool cancel_message(message_handle_t msg) {
         // over TCP this is a no-op due to the speed of the connection.
-        // todo - but we should still invoke completion handlers.
         return false;
     }
 

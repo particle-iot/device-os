@@ -45,33 +45,33 @@ public:
         int result = UNKNOWN;
         switch (command)
         {
-        case ProtocolCommands::SLEEP:
-            result = wait_confirmable();
-            break;
-        case ProtocolCommands::DISCONNECT:
-            result = wait_confirmable();
-            this->ack_handlers.clear();
-            break;
-        case ProtocolCommands::WAKE:
-            subclass()->wake();
-            result = NO_ERROR;
-            break;
-        case ProtocolCommands::TERMINATE:
-            this->ack_handlers.clear();
-            result = NO_ERROR;
-            break;
-        case ProtocolCommands::FORCE_PING: {
-            if (!this->pinger.is_expecting_ping_ack()) {
-                LOG(INFO, "Forcing a cloud ping");
-                this->pinger.process(std::numeric_limits<system_tick_t>::max(), [this] {
-                    return this->ping(true);
-                });
+            case ProtocolCommands::SLEEP:
+                result = wait_confirmable();
+                break;
+            case ProtocolCommands::DISCONNECT:
+                result = wait_confirmable();
+                this->ack_handlers.clear();
+                break;
+            case ProtocolCommands::WAKE:
+                subclass()->wake();
+                result = NO_ERROR;
+                break;
+            case ProtocolCommands::TERMINATE:
+                this->ack_handlers.clear();
+                result = NO_ERROR;
+                break;
+            case ProtocolCommands::FORCE_PING: {
+                if (!this->pinger.is_expecting_ping_ack()) {
+                    LOG(INFO, "Forcing a cloud ping");
+                    this->pinger.process(std::numeric_limits<system_tick_t>::max(), [this] {
+                        return this->ping(true);
+                    });
+                }
+                break;
             }
-            break;
-        }
-        case ProtocolCommands::CANCEL_MESSAGE: {
-            subclass()->cancel_message(message_handle_t(data));
-        }
+            case ProtocolCommands::CANCEL_MESSAGE: {
+                subclass()->cancel_message(message_handle_t(data));
+            }
         }
         return result;
     }

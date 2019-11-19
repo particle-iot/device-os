@@ -44,51 +44,51 @@ class DTLSProtocol : public ProtocolMixin<DTLSProtocol, Protocol>
 {
     friend class ProtocolMixin<DTLSProtocol, Protocol>;
 
-	CoAPChannel<CoAPReliableChannel<DTLSMessageChannel, decltype(SparkCallbacks::millis)>> channel;
+    CoAPChannel<CoAPReliableChannel<DTLSMessageChannel, decltype(SparkCallbacks::millis)>> channel;
 
 
-	static void handle_seed(const uint8_t* data, size_t len)
-	{
+    static void handle_seed(const uint8_t* data, size_t len)
+    {
 
-	}
+    }
 
-	uint8_t device_id[12];
+    uint8_t device_id[12];
 
 public:
     // todo - this a duplicate of LightSSLProtocol - factor out
 
-	DTLSProtocol() : ProtocolMixin(channel) {}
+    DTLSProtocol() : ProtocolMixin(channel) {}
 
-	void init(const char *id,
-	          const SparkKeys &keys,
-	          const SparkCallbacks &callbacks,
-	          const SparkDescriptor &descriptor) override;
+    void init(const char *id,
+              const SparkKeys &keys,
+              const SparkCallbacks &callbacks,
+              const SparkDescriptor &descriptor) override;
 
-	size_t build_hello(Message& message, uint8_t flags) override
-	{
-		product_details_t deets;
-		deets.size = sizeof(deets);
-		get_product_details(deets);
-		size_t len = Messages::hello(message.buf(), 0,
-				flags, PLATFORM_ID, deets.product_id,
-				deets.product_version, true,
-				device_id, sizeof(device_id));
-		return len;
-	}
+    size_t build_hello(Message& message, uint8_t flags) override
+    {
+        product_details_t deets;
+        deets.size = sizeof(deets);
+        get_product_details(deets);
+        size_t len = Messages::hello(message.buf(), 0,
+                flags, PLATFORM_ID, deets.product_id,
+                deets.product_version, true,
+                device_id, sizeof(device_id));
+        return len;
+    }
 
-	void wake()
-	{
-		ping();
-	}
+    void wake()
+    {
+        ping();
+    }
 
-	int get_status(protocol_status* status) const override {
-		SPARK_ASSERT(status);
-		status->flags = 0;
-		if (channel.has_unacknowledged_client_requests()) {
-			status->flags |= PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES;
-		}
-		return NO_ERROR;
-	}
+    int get_status(protocol_status* status) const override {
+        SPARK_ASSERT(status);
+        status->flags = 0;
+        if (channel.has_unacknowledged_client_requests()) {
+            status->flags |= PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES;
+        }
+        return NO_ERROR;
+    }
 
     bool has_unacknowledged_requests() {
         return channel.has_unacknowledged_requests();
@@ -101,7 +101,9 @@ public:
     }
 
     void clear_unacknowledged_requests() {
-
+        // this is empty because the original DTLSProtocol::wait_confirmable method did not clear unacknowledged requests after a timeout
+        // this should be reviewed and reconsidered so we are sure this is the correct behavior.
+        // ack_handlers.clear();
     }
 
     bool cancel_message(message_handle_t msg) {
