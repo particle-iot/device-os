@@ -64,7 +64,7 @@ typedef uint16_t chunk_index_t;
 
 typedef int32_t message_handle_t;
 
-const message_handle_t MESSAGE_HANDLE_INVALID = uint16_t(-1);
+const message_handle_t MESSAGE_HANDLE_INVALID = message_handle_t(-1);
 
 
 

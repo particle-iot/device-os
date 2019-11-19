@@ -64,9 +64,9 @@ class Message
 public:
 	Message() : Message(nullptr, 0, 0) {}
 
-	Message(uint8_t* buf, size_t buflen, size_t msglen=0) : buffer(buf), buffer_length(buflen), message_length(msglen), id(-1), confirm_received(false) {}
+	Message(uint8_t* buf, size_t buflen, size_t msglen=0) : buffer(buf), buffer_length(buflen), message_length(msglen), id(MESSAGE_HANDLE_INVALID), confirm_received(false) {}
 
-	void clear() { id = -1; }
+	void clear() { id = MESSAGE_HANDLE_INVALID; }
 
 	size_t capacity() const { return buffer_length; }
 	uint8_t* buf() const { return buffer; }
@@ -76,7 +76,12 @@ public:
 	void set_buffer(uint8_t* buffer, size_t length) { this->buffer = buffer; buffer_length = length; message_length = 0; }
 
     void set_id(message_id_t id) { this->id = id; }
-    bool has_id() { return id>=0; }
+    bool has_id() { return is_valid_handle(id); }
+
+    static bool is_valid_handle(message_handle_t handle) {
+        return handle>=0;
+    }
+
     message_id_t get_id() { return message_id_t(id); }
 
     /**
