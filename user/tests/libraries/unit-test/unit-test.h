@@ -25,7 +25,11 @@
 #include "FakeStream.h"
 #include "FakeStreamBuffer.h"
 
+#include "spark_wiring_cloud.h"
+
 #include <memory>
+
+class Test;
 
 namespace particle {
 
@@ -43,6 +47,11 @@ public:
 
     void setup();
     void loop();
+
+    /**
+     * Reset the runner state.
+     */
+    void reset();
 
     bool isStarted() {
         return state_ >= RUNNING;
@@ -65,11 +74,11 @@ public:
     void setState(State newState) {
         if (newState != state_) {
             state_ = newState;
-            const char* stateName = nameForState((State)state_);
             if (isStarted()) {
                 updateLEDStatus();
             }
             if (cloudEnabled_) {
+                const char* stateName = nameForState((State)state_);
                 Particle.publish("state", stateName);
             }
         }
@@ -79,23 +88,38 @@ public:
         updateLEDStatus();
     }
 
-    TestRunner& ledIndicationEnabled(bool enabled) {
+    /**
+     * Get the log buffer.
+     *
+     * @note The data in the log buffer is not null-terminated. Use `logSize()` to get the actual
+     *       size of the data.
+     */
+    const char* logBuffer() const;
+
+    /**
+     * Get the size of the data in the log buffer.
+     *
+     * @see `logBuffer()`
+     */
+    size_t logSize() const;
+
+    TestRunner& ledEnabled(bool enabled) {
         ledEnabled_ = enabled;
         return *this;
     }
 
-    TestRunner& serialInterfaceEnabled(bool enabled) {
+    TestRunner& serialEnabled(bool enabled) {
         serialEnabled_ = enabled;
         return *this;
     }
 
-    TestRunner& cloudInterfaceEnabled(bool enabled) {
+    TestRunner& cloudEnabled(bool enabled) {
         cloudEnabled_ = enabled;
         return *this;
     }
 
-    TestRunner& logBufferEnabled(bool enabled) {
-        logBufferEnabled_ = enabled;
+    TestRunner& logEnabled(bool enabled) {
+        logEnabled_ = enabled;
         return *this;
     }
 
@@ -113,13 +137,15 @@ private:
     std::unique_ptr<LogBufferData> logBuf_;
     std::unique_ptr<CloudLogData> cloudLog_;
 
+    Test* firstTest_;
+    int state_;
+
     bool ledEnabled_;
     bool serialEnabled_;
     bool cloudEnabled_;
-    bool logBufferEnabled_;
+    bool logEnabled_;
     bool startRequested_;
     bool dfuRequested_;
-    int state_;
 
     void runSerialConsole();
     void updateLEDStatus();
@@ -661,7 +687,7 @@ static unsigned exclude(const char *pattern);
 /**
  * invoke a lambda for all tests
  */
-template <typename T> static void for_each(T& t) {
+template <typename T> static void for_each(T&& t) {
 	  for (Test *p = root; p != nullptr; p=p->next) {
 		  t(*p);
 	  }

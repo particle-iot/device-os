@@ -221,13 +221,14 @@ struct TestRunner::CloudLogData {
 };
 
 TestRunner::TestRunner() :
+        firstTest_(nullptr),
+        state_(INIT),
         ledEnabled_(true),
         serialEnabled_(true),
         cloudEnabled_(true),
-        logBufferEnabled_(false),
+        logEnabled_(false),
         startRequested_(false),
-        dfuRequested_(false),
-        state_(INIT) {
+        dfuRequested_(false) {
 }
 
 TestRunner::~TestRunner() {
@@ -268,12 +269,13 @@ void TestRunner::setup() {
         Particle.variable("state", &state_, INT);
         Particle.function("cmd", testCmd);
     }
-    if (logBufferEnabled_) {
+    if (logEnabled_) {
         logBuf_.reset(new(std::nothrow) LogBufferData(*Test::out));
         if (logBuf_) {
             Test::out = &logBuf_->tee;
         }
     }
+    firstTest_ = Test::root;
     setState(WAITING);
 }
 
@@ -295,6 +297,34 @@ void TestRunner::loop() {
     } else {
         Test::run();
     }
+}
+
+void TestRunner::reset() {
+    if (state_ <= WAITING) {
+        return;
+    }
+    Test::root = firstTest_;
+    for (auto t = Test::root; t; t = t->next) {
+        t->state = Test::UNSETUP;
+    }
+    Test::passed = 0;
+    Test::failed = 0;
+    Test::skipped = 0;
+    setState(WAITING);
+}
+
+const char* TestRunner::logBuffer() const {
+    if (logBuf_) {
+        return logBuf_->stream.data();
+    }
+    return nullptr;
+}
+
+size_t TestRunner::logSize() const {
+    if (logBuf_) {
+        return logBuf_->stream.dataSize();
+    }
+    return 0;
 }
 
 void TestRunner::runSerialConsole() {
