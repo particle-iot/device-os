@@ -80,7 +80,7 @@ DYNALIB_FN(32, hal_core, HAL_Set_Event_Callback, void(HAL_Event_Callback, void*)
 DYNALIB_FN(33, hal_core, HAL_Core_Enter_Stop_Mode_Ext, int(const uint16_t*, size_t, const InterruptMode*, size_t, long, void*))
 DYNALIB_FN(34, hal_core, HAL_Core_Execute_Standby_Mode_Ext, int(uint32_t, void*))
 
-DYNALIB_FN(35, hal_core, hal_sleep, int(const hal_sleep_config_t*, void*))
+DYNALIB_FN(35, hal_core, hal_sleep, int(const hal_sleep_config_t*, hal_wakeup_source_base_t**, void*))
 
 DYNALIB_END(hal_core)
 

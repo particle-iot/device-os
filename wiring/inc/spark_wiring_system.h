@@ -73,13 +73,6 @@ enum WiFiTesterFeature {
     FEATURE_WIFITESTER = 1
 };
 
-enum WakeupReason {
-    WAKEUP_REASON_NONE = 0,
-    WAKEUP_REASON_PIN = 1,
-    WAKEUP_REASON_RTC = 2,
-    WAKEUP_REASON_PIN_OR_RTC = 3
-};
-
 struct SleepResult {
     SleepResult() {}
     SleepResult(WakeupReason r, system_error_t e, pin_t p = std::numeric_limits<pin_t>::max());
@@ -148,7 +141,7 @@ public:
     }
 #endif
 
-    static int sleep(const SystemSleepConfiguration& config);
+    static SleepResult sleep(const SystemSleepConfiguration& config);
 
     static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
     inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, std::chrono::seconds s, SleepOptionFlags flag=SLEEP_NETWORK_OFF) { return sleep(sleepMode, s.count(), flag); }

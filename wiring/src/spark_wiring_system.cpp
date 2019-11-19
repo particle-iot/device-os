@@ -41,8 +41,15 @@ void SystemClass::reset(uint32_t data)
     HAL_Core_System_Reset_Ex(RESET_REASON_USER, data, nullptr);
 }
 
-int SystemClass::sleep(const SystemSleepConfiguration& config) {
-    return system_sleep_ext(&config, nullptr);
+SleepResult SystemClass::sleep(const SystemSleepConfiguration& config) {
+    if (!config.valid()) {
+        System.sleepResult_ = SleepResult(WAKEUP_REASON_NONE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    } else {
+        WakeupReason reason = WAKEUP_REASON_NONE;
+        int ret = system_sleep_ext(config.halConfig(), &reason, nullptr);
+        System.sleepResult_ = SleepResult(reason, static_cast<system_error_t>(ret));
+    }
+    return System.sleepResult_;
 }
 
 SleepResult SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, SleepOptionFlags flags)

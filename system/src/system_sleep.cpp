@@ -253,46 +253,145 @@ int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMo
     return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);
 }
 
-int system_sleep_ext(const SystemSleepConfiguration* config, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext(config, reserved));
+
+static bool system_sleep_network_suspend(network_interface_index index) {
+    bool resume = false;
+    // Disconnect from network
+    if (network_connecting(index, 0, NULL) || network_ready(index, 0, NULL)) {
+        if (network_connecting(index, 0, NULL)) {
+            network_connect_cancel(index, 1, 0, 0);
+        }
+        network_disconnect(index, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
+        resume = true;
+    }
+    // Turn off the modem
+    network_off(index, 0, 0, NULL);
+    return resume;
+}
+
+static int system_sleep_network_resume(network_interface_index index) {
+    network_on(NETWORK_INTERFACE_ETHERNET, 0, 0, nullptr);
+    network_connect(NETWORK_INTERFACE_ETHERNET, 0, 0, nullptr);
+    return SYSTEM_ERROR_NONE;
+}
+
+int system_sleep_ext(hal_sleep_config_t* config, WakeupReason* reason, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext(config, reason, reserved));
+
+    SystemSleepConfigurationHelper configHelper(config);
     int ret;
 
-    CHECK_TRUE(config->valid(), SYSTEM_ERROR_INVALID_ARGUMENT);
-
-    // Cancel on-going network connection.
-    CHECK(network_connect_cancel(0, 1, 0, 0));
-
+#ifndef SPARK_NO_CLOUD
+    bool cloudResume = false;
+    // Disconnect from cloud is necessary.
     // Make sure all confirmable UDP messages are sent and acknowledged before sleeping
-    if (spark_cloud_flag_connected() && config->sleepWait() == SystemSleepWait::NETWORK) {
-        Spark_Sleep();
+    if (configHelper.cloudDisconnectRequested() && spark_cloud_flag_connected()) {
+        if (configHelper.sleepWait() == SystemSleepWait::CLOUD) {
+            Spark_Sleep();
+        }
+        cloudResume = spark_cloud_flag_auto_connect();
+        // Clear the auto connect status
+        spark_cloud_flag_disconnect();
     }
+#endif
 
-    if (config->networkSuspend()) {
-        network_suspend();
+    // Network disconnect
+#if HAL_PLATFORM_CELLULAR
+    bool cellularResume = false;
+    if (configHelper.networkDisconnectRequested(NETWORK_INTERFACE_CELLULAR)) {
+        if (system_sleep_network_suspend(NETWORK_INTERFACE_CELLULAR)) {
+            cellularResume = true;
+        }
+    } else {
+        // Pause the modem Serial, while leaving the modem keeps running.
+        cellular_pause(nullptr);
     }
+#endif
+#if HAL_PLATFORM_WIFI
+    bool wifiResume = false;
+    if (configHelper.networkDisconnectRequested(NETWORK_INTERFACE_WIFI_STA)) {
+        if (system_sleep_network_suspend(NETWORK_INTERFACE_WIFI_STA)) {
+            wifiResume = true;
+        }
+    }
+#endif
+#if HAL_PLATFORM_MESH
+    bool meshResume = false;
+    if (configHelper.networkDisconnectRequested(NETWORK_INTERFACE_MESH)) {
+        if (system_sleep_network_suspend(NETWORK_INTERFACE_MESH)) {
+            meshResume = true;
+        }
+    }
+#endif
+#if HAL_PLATFORM_ETHERNET
+    bool ethernetResume = false;
+    if (configHelper.networkDisconnectRequested(NETWORK_INTERFACE_ETHERNET)) {
+        if (system_sleep_network_suspend(NETWORK_INTERFACE_ETHERNET)) {
+            ethernetResume = true;
+        }
+    }
+#endif
+    // Let the sleep HAL layer to turn off the NCP interface if necessary.
 
+    // Stop RGB signaling
     led_set_update_enabled(0, nullptr); // Disable background LED updates
     LED_Off(LED_RGB);
+
 	system_power_management_sleep();
 
     // Now enter sleep mode
-    ret = hal_sleep(config->halSleepConfig(), nullptr);
+    hal_wakeup_source_base_t* wakeupSource = nullptr;
+    ret = hal_sleep(configHelper.halConfig(), &wakeupSource, nullptr);
+    if (wakeupSource) {
+        // FIXME: wakeup source type to wakeup reason
+        *reason = static_cast<WakeupReason>(wakeupSource->type);
+    }
 
+    // Start RGB signaling.
     led_set_update_enabled(1, nullptr); // Enable background LED updates
 
-    if (config->networkResume()) {
-        network_resume();   // asynchronously bring up the network/cloud
+    // Network resume
+#if HAL_PLATFORM_CELLULAR
+    if (cellularResume) {
+        system_sleep_network_resume(NETWORK_INTERFACE_CELLULAR);
+    } else {
+        cellular_resume(nullptr);
     }
+#endif
+#if HAL_PLATFORM_WIFI
+    if (wifiResume) {
+        SPARK_WLAN_SLEEP = 0;
+        system_sleep_network_resume(NETWORK_INTERFACE_WIFI_STA);
+    }
+#endif
+#if HAL_PLATFORM_MESH
+    if (meshResume) {
+        // FIXME: we need to bring Mesh interface back up because we've turned it off
+        // despite SLEEP_NETWORK_STANDBY
+        system_sleep_network_resume(NETWORK_INTERFACE_MESH);
+    }
+#endif
+#if HAL_PLATFORM_ETHERNET
+    if (ethernetResume) {
+        system_sleep_network_resume(NETWORK_INTERFACE_ETHERNET);
+    }
+#endif
 
-    // if single-threaded, managed mode then reconnect to the cloud (for up to 60 seconds)
-    auto mode = system_mode();
-    if (system_thread_get_state(nullptr)==spark::feature::DISABLED && (mode==AUTOMATIC || mode==SEMI_AUTOMATIC) && spark_cloud_flag_auto_connect()) {
-        waitFor(spark_cloud_flag_connected, 60000);
-    }
+#ifndef SPARK_NO_CLOUD
+    if (cloudResume) {
+        // Resume cloud connection.
+        spark_cloud_flag_connect();
 
-    if (spark_cloud_flag_connected()) {
-        Spark_Wake();
+        // if single-threaded, managed mode then reconnect to the cloud (for up to 60 seconds)
+        auto mode = system_mode();
+        if (system_thread_get_state(nullptr)==spark::feature::DISABLED && (mode==AUTOMATIC || mode==SEMI_AUTOMATIC) && spark_cloud_flag_auto_connect()) {
+            waitFor(spark_cloud_flag_connected, 60000);
+        }
+        if (spark_cloud_flag_connected()) {
+            Spark_Wake();
+        }
     }
+#endif
 
     return ret;
 }
