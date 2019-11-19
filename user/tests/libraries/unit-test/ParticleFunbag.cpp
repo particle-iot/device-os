@@ -6,6 +6,8 @@
 #include "flashee-eeprom.h"
 #endif
 
+namespace particle {
+
 namespace {
 
 /**
@@ -20,6 +22,87 @@ public:
     size_t write(const uint8_t* buffer, size_t size) override {
         return size;
     }
+
+    static NullPrint* instance() {
+        static NullPrint print;
+        return &print;
+    }
+};
+
+/**
+ * A circular buffer for logging output.
+ */
+class LogBuffer: public Print {
+public:
+    static const size_t DEFAULT_BUFFER_SIZE = 1024;
+
+    explicit LogBuffer(size_t size = DEFAULT_BUFFER_SIZE) :
+            bufSize_(0),
+            dataSize_(0) {
+        resetBuffer(size);
+    }
+
+    size_t write(uint8_t b) override {
+        return write(&b, 1);
+    }
+
+    size_t write(const uint8_t* data, size_t size) override {
+        size_t n = size;
+        if (n > bufSize_ - dataSize_) {
+            size_t offs = 0;
+            if (n > bufSize_) {
+                data += n - bufSize_;
+                n = bufSize_;
+            } else {
+                offs = bufSize_ - n;
+                memmove(buf_.get(), buf_.get() + offs, dataSize_ - offs);
+            }
+            memcpy(buf_.get() + offs, data, n);
+            if (bufSize_) {
+                buf_[0] = '~';
+            }
+            dataSize_ = bufSize_;
+        } else {
+            memcpy(buf_.get() + dataSize_, data, n);
+            dataSize_ += n;
+        }
+        return size;
+    }
+
+    bool resetBuffer(size_t size) {
+        std::unique_ptr<char[]> buf;
+        if (size > 0) {
+            buf.reset(new(std::nothrow) char[size]);
+            if (!buf) {
+                return false;
+            }
+        }
+        std::swap(buf_, buf);
+        bufSize_ = size;
+        dataSize_ = 0;
+        return true;
+    }
+
+    size_t bufferSize() const {
+        return bufSize_;
+    }
+
+    const char* data() const {
+        return buf_.get();
+    }
+
+    size_t dataSize() const {
+        return dataSize_;
+    }
+
+    void clear() {
+        dataSize_ = 0;
+    }
+
+private:
+    std::unique_ptr<char[]> buf_;
+    size_t bufSize_;
+    size_t dataSize_;
 };
 
 /**
@@ -73,24 +156,14 @@ public:
     }
 };
 
-const size_t LOG_BUFFER_SIZE = 601;
-
-std::unique_ptr<Flashee::CircularBuffer> g_flashBuf;
-std::unique_ptr<CircularBufferPrint> g_flashPrint;
-std::unique_ptr<PrintTee> g_flashTee;
-std::unique_ptr<uint8_t[]> g_logBuf;
-
 /**
  * Advances the log to the next block of data.
  * Returns the number of bytes of data available in the variable
  */
-int advanceLog() {
-    if (!g_logBuf) {
-        return -1;
-    }
-    int read = g_flashBuf->read_soft(g_logBuf.get(), LOG_BUFFER_SIZE - 1);
-    g_logBuf[read] = 0;  // terminate string
-    if (!read && SparkTestRunner::instance()->isComplete()) {
+int advanceLog(Flashee::CircularBuffer* cblog, uint8_t* buf, size_t size) {
+    int read = cblog->read_soft(buf, size - 1);
+    buf[read] = 0;  // terminate string
+    if (!read && TestRunner::instance()->isComplete()) {
         read = -1;  // end of stream.
     }
     return read;
@@ -120,26 +193,54 @@ String readLine(Stream& stream)
 	return String(buf);
 }
 
-NullPrint g_nullPrint;
-
 } // namespace
 
-SparkTestRunner::SparkTestRunner() :
+struct TestRunner::LogBufferData {
+    LogBuffer stream;
+    PrintTee tee;
+
+    explicit LogBufferData(Print& otherStream) :
+            tee(stream, otherStream) {
+    }
+};
+
+struct TestRunner::CloudLogData {
+#ifdef FLASHEE_EEPROM
+    std::unique_ptr<Flashee::CircularBuffer> cblog;
+    CircularBufferPrint stream;
+    PrintTee tee;
+    uint8_t buf[601];
+
+    CloudLogData(Flashee::CircularBuffer* flashBuf, BufferFullCallback callback, Print& otherStream) :
+            cblog(flashBuf),
+            stream(*cblog, callback),
+            tee(stream, otherStream),
+            buf() {
+    }
+#endif // defined(FLASHEE_EEPROM)
+};
+
+TestRunner::TestRunner() :
         ledEnabled_(true),
         serialEnabled_(true),
         cloudEnabled_(true),
-        usbEnabled_(false),
+        logBufferEnabled_(false),
         startRequested_(false),
         dfuRequested_(false),
         state_(INIT) {
 }
 
-void SparkTestRunner::setup() {
-    Test::out = &g_nullPrint;
+TestRunner::~TestRunner() {
+    Test::out = NullPrint::instance();
+}
+
+void TestRunner::setup() {
     if (serialEnabled_) {
         Serial.begin();
         printStatus(Serial);
         Test::out = &Serial;
+    } else {
+        Test::out = NullPrint::instance();
     }
     if (cloudEnabled_) {
 #ifdef FLASHEE_EEPROM
@@ -148,15 +249,16 @@ void SparkTestRunner::setup() {
         int pageSize = store.pageSize();
         int pages = 64*1024/pageSize;
         // store circular buffer at end of external flash.
-        g_flashBuf.reset(Flashee::Devices::createCircularBuffer((store.pageCount() - pages) * pageSize, store.length()));
-        // direct output to Serial and to the circular buffer
-        g_flashPrint.reset(new CircularBufferPrint(*g_flashBuf, spark_process));
-        g_flashTee.reset(new PrintTee(*Test::out, *g_flashPrint));
-        Test::out = g_flashTee.get();
-        g_logBuf.reset(new(std::nothrow) uint8_t[LOG_BUFFER_SIZE]);
-        if (g_logBuf) {
-            g_logBuf[0] = 0;
-            Particle.variable("log", g_logBuf.get(), STRING);
+        std::unique_ptr<Flashee::CircularBuffer> buf;
+        buf.reset(Flashee::Devices::createCircularBuffer((store.pageCount() - pages) * pageSize, store.length()));
+        if (buf) {
+            // direct output to the circular buffer
+            cloudLog_.reset(new(std::nothrow) CloudLogData(buf.get(), spark_process, *Test::out));
+            if (cloudLog_) {
+                buf.release(); // Transfer ownership
+                Particle.variable("log", cloudLog_->buf, STRING);
+                Test::out = &cloudLog_->tee;
+            }
         }
 #endif // defined(FLASHEE_EEPROM)
         Particle.variable("passed", &Test::passed, INT);
@@ -166,31 +268,36 @@ void SparkTestRunner::setup() {
         Particle.variable("state", &state_, INT);
         Particle.function("cmd", testCmd);
     }
+    if (logBufferEnabled_) {
+        logBuf_.reset(new(std::nothrow) LogBufferData(*Test::out));
+        if (logBuf_) {
+            Test::out = &logBuf_->tee;
+        }
+    }
     setState(WAITING);
 }
 
-void SparkTestRunner::loop() {
+void TestRunner::loop() {
     if (dfuRequested_) {
         System.dfu();
     }
 
-    const auto runner = SparkTestRunner::instance();
-    if (!runner->isStarted()) {
+    if (!isStarted()) {
         if (serialEnabled_) {
             runSerialConsole();
         }
         if (startRequested_) {
-            Serial.println("Running tests");
-            runner->start();
+            if (serialEnabled_) {
+                Serial.println("Running tests");
+            }
+            start();
         }
-    }
-
-    if (runner->isStarted()) {
+    } else {
         Test::run();
     }
 }
 
-void SparkTestRunner::runSerialConsole() {
+void TestRunner::runSerialConsole() {
     static bool firstFilter = true;
     if (Serial.available()) {
         char c = Serial.read();
@@ -270,10 +377,10 @@ void SparkTestRunner::runSerialConsole() {
     }
 }
 
-int SparkTestRunner::testCmd(String arg) {
+int TestRunner::testCmd(String arg) {
     int result = 0;
     if (arg.equals("start")) {
-        SparkTestRunner::instance()->startRequested_ = true;
+        TestRunner::instance()->startRequested_ = true;
     }
     else if (arg.startsWith("exclude=")) {
         String pattern = arg.substring(8);
@@ -284,11 +391,14 @@ int SparkTestRunner::testCmd(String arg) {
         Test::include(pattern.c_str());
     }
     else if (arg.equals("enterDFU")) {
-        SparkTestRunner::instance()->dfuRequested_ = true;
+        TestRunner::instance()->dfuRequested_ = true;
     }
 #ifdef FLASHEE_EEPROM
     else if (arg.equals("log")) {
-        result = advanceLog();
+        const auto d = TestRunner::instance()->cloudLog_.get();
+        if (d) {
+            result = advanceLog(d->cblog.get(), d->buf, sizeof(d->buf));
+        }
     }
 #endif
     else {
@@ -297,7 +407,7 @@ int SparkTestRunner::testCmd(String arg) {
     return result;
 }
 
-void SparkTestRunner::updateLEDStatus() {
+void TestRunner::updateLEDStatus() {
     if (!ledEnabled_) {
         return;
     }
@@ -313,7 +423,9 @@ void SparkTestRunner::updateLEDStatus() {
     RGB.color(color);
 }
 
-SparkTestRunner* SparkTestRunner::instance() {
-    static SparkTestRunner runner;
+TestRunner* TestRunner::instance() {
+    static TestRunner runner;
     return &runner;
 }
+
+} // namespace particle

@@ -1,4 +1,3 @@
-#pragma once
 /**
  * Copyright 2014  Matthew McGowan
  *
@@ -21,20 +20,26 @@
  header.
 */
 
+#pragma once
 
 #include "FakeStream.h"
 #include "FakeStreamBuffer.h"
 
-enum RunnerState {
-    INIT,
-    WAITING,
-    RUNNING,
-    COMPLETE
-};
+#include <memory>
 
-class SparkTestRunner {
+namespace particle {
+
+class TestRunner {
 public:
-    SparkTestRunner();
+    enum State {
+        INIT,
+        WAITING,
+        RUNNING,
+        COMPLETE
+    };
+
+    TestRunner();
+    ~TestRunner();
 
     void setup();
     void loop();
@@ -53,12 +58,14 @@ public:
         }
     }
 
-    RunnerState state() const { return (RunnerState)state_; }
+    State state() const {
+        return (State)state_;
+    }
 
-    void setState(RunnerState newState) {
+    void setState(State newState) {
         if (newState != state_) {
             state_ = newState;
-            const char* stateName = nameForState((RunnerState)state_);
+            const char* stateName = nameForState((State)state_);
             if (isStarted()) {
                 updateLEDStatus();
             }
@@ -72,38 +79,44 @@ public:
         updateLEDStatus();
     }
 
-    SparkTestRunner& ledIndicationEnabled(bool enabled) {
+    TestRunner& ledIndicationEnabled(bool enabled) {
         ledEnabled_ = enabled;
         return *this;
     }
 
-    SparkTestRunner& serialInterfaceEnabled(bool enabled) {
+    TestRunner& serialInterfaceEnabled(bool enabled) {
         serialEnabled_ = enabled;
         return *this;
     }
 
-    SparkTestRunner& cloudInterfaceEnabled(bool enabled) {
+    TestRunner& cloudInterfaceEnabled(bool enabled) {
         cloudEnabled_ = enabled;
         return *this;
     }
 
-    SparkTestRunner& usbInterfaceEnabled(bool enabled) {
-        usbEnabled_ = enabled;
+    TestRunner& logBufferEnabled(bool enabled) {
+        logBufferEnabled_ = enabled;
         return *this;
     }
 
-    SparkTestRunner& runImmediately(bool enabled) {
+    TestRunner& runImmediately(bool enabled) {
         startRequested_ = enabled;
         return *this;
     }
 
-    static SparkTestRunner* instance();
+    static TestRunner* instance();
 
 private:
+    struct LogBufferData;
+    struct CloudLogData;
+
+    std::unique_ptr<LogBufferData> logBuf_;
+    std::unique_ptr<CloudLogData> cloudLog_;
+
     bool ledEnabled_;
     bool serialEnabled_;
     bool cloudEnabled_;
-    bool usbEnabled_;
+    bool logBufferEnabled_;
     bool startRequested_;
     bool dfuRequested_;
     int state_;
@@ -113,7 +126,7 @@ private:
 
     static int testCmd(String arg);
 
-    static const char* nameForState(RunnerState state) {
+    static const char* nameForState(State state) {
         switch (state) {
             case INIT: return "init";
             case WAITING: return "waiting";
@@ -125,11 +138,13 @@ private:
     }
 };
 
+} // namespace particle
+
 #define UNIT_TEST_SETUP() \
-    void setup() { SparkTestRunner::instance()->setup(); }
+    void setup() { ::particle::TestRunner::instance()->setup(); }
 
 #define UNIT_TEST_LOOP() \
-    void loop() { SparkTestRunner::instance()->loop(); }
+    void loop() { ::particle::TestRunner::instance()->loop(); }
 
 #define UNIT_TEST_APP() \
     UNIT_TEST_SETUP(); UNIT_TEST_LOOP();
@@ -475,9 +490,9 @@ Variables you might want to adjust:
 */
 class Test
 {
-    friend class SparkTestRunner;
-
  private:
+  friend class particle::TestRunner;
+
   // allows for both ram/progmem based names
   class TestString : public Printable {
   public:
@@ -884,20 +899,3 @@ is in another file (or defined after the assertion on it). */
 
 /** macro generates optional output and calls fail() followed by a return if false. */
 #define assertTestNotSkip(name) assertNotEqual(test_##name##_instance.state,Test::DONE_SKIP)
-
-
-/**
- * A convenience method to setup serial.
- */
-void unit_test_setup();
-/*
- * A convenience method to run tests as part of the main loop after a character
- * is received over serial.
- *
- * @param runImmediately    When true, the test runner is started on first call to this function.
- *  Otherwise the test runner is only started when an external start signal is received.
- * @param
- **/
-void unit_test_loop(bool runImmediately=false, bool runTest=true);
-
-int testCmd(String arg);
