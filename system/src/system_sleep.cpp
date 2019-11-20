@@ -254,6 +254,7 @@ int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMo
 }
 
 
+#if HAL_PLATFORM_CELLULAR || HAL_PLATFORM_WIFI || HAL_PLATFORM_MESH || HAL_PLATFORM_ETHERNET
 static bool system_sleep_network_suspend(network_interface_index index) {
     bool resume = false;
     // Disconnect from network
@@ -274,6 +275,7 @@ static int system_sleep_network_resume(network_interface_index index) {
     network_connect(NETWORK_INTERFACE_ETHERNET, 0, 0, nullptr);
     return SYSTEM_ERROR_NONE;
 }
+#endif
 
 int system_sleep_ext(hal_sleep_config_t* config, WakeupReason* reason, void* reserved) {
     SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext(config, reason, reserved));
@@ -298,7 +300,7 @@ int system_sleep_ext(hal_sleep_config_t* config, WakeupReason* reason, void* res
     // Network disconnect
 #if HAL_PLATFORM_CELLULAR
     bool cellularResume = false;
-    if (configHelper.networkDisconnectRequested(NETWORK_INTERFACE_CELLULAR)) {
+    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_CELLULAR)) {
         if (system_sleep_network_suspend(NETWORK_INTERFACE_CELLULAR)) {
             cellularResume = true;
         }
@@ -309,7 +311,7 @@ int system_sleep_ext(hal_sleep_config_t* config, WakeupReason* reason, void* res
 #endif
 #if HAL_PLATFORM_WIFI
     bool wifiResume = false;
-    if (configHelper.networkDisconnectRequested(NETWORK_INTERFACE_WIFI_STA)) {
+    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA)) {
         if (system_sleep_network_suspend(NETWORK_INTERFACE_WIFI_STA)) {
             wifiResume = true;
         }
@@ -317,7 +319,7 @@ int system_sleep_ext(hal_sleep_config_t* config, WakeupReason* reason, void* res
 #endif
 #if HAL_PLATFORM_MESH
     bool meshResume = false;
-    if (configHelper.networkDisconnectRequested(NETWORK_INTERFACE_MESH)) {
+    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_MESH)) {
         if (system_sleep_network_suspend(NETWORK_INTERFACE_MESH)) {
             meshResume = true;
         }
@@ -325,7 +327,7 @@ int system_sleep_ext(hal_sleep_config_t* config, WakeupReason* reason, void* res
 #endif
 #if HAL_PLATFORM_ETHERNET
     bool ethernetResume = false;
-    if (configHelper.networkDisconnectRequested(NETWORK_INTERFACE_ETHERNET)) {
+    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
         if (system_sleep_network_suspend(NETWORK_INTERFACE_ETHERNET)) {
             ethernetResume = true;
         }
@@ -337,7 +339,7 @@ int system_sleep_ext(hal_sleep_config_t* config, WakeupReason* reason, void* res
     led_set_update_enabled(0, nullptr); // Disable background LED updates
     LED_Off(LED_RGB);
 
-	system_power_management_sleep();
+    system_power_management_sleep();
 
     // Now enter sleep mode
     hal_wakeup_source_base_t* wakeupSource = nullptr;

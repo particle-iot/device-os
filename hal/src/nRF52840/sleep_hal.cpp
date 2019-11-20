@@ -53,8 +53,7 @@ static int hal_sleep_enter_hibernate_mode(const hal_sleep_config_t* config) {
     auto wakeupSource = config->wakeup_sources;
     while (wakeupSource) {
         if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            // Hotfix for Gen2 platforms. As long as user specifies pins as wakeup source.
-            flags &= ~HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN;
+            // FIXME on Gen3 platforms
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms;
         }

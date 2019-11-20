@@ -78,9 +78,9 @@ public:
         return true; 
     }
 
-    bool networkDisconnectRequested(network_interface_index index) const {
+    bool wakeupByNetworkInterface(network_interface_index index) const {
         // TODO: If the given network interface is not specified as wakeup source, suspend it.
-        return true;
+        return false;
     }
 
     hal_sleep_config_t* halConfig() const {
