@@ -32,16 +32,6 @@
  *     Wakeup sources: Any source that the platform supported.
  *     On-exit: It resumes the disabled resources and continue running.
  * 
- * Network standby mode:
- *     What's disabled: The resources occupied by system and network interfaces.
- *     Wakeup sources: Any source that the platform supported except network interface.
- *     On-exit: It resumes the disabled resources (no need to restoring peripherals' configuration) and network connection if necessary and continue running.
- * 
- * Network off mode:
- *     What's disabled: The resources occupied by system and network interfaces.
- *     Wakeup sources: Any source that the platform supported except network interface.
- *     On-exit: It resumes the disabled resources and continue running.
- * 
  * Ultra-Low power mode:
  *     What's disabled: The resources occupied by system and all other sources those are not featured as wakeup source.
  *     Wakeup sources: Any source that the platform supported
@@ -49,11 +39,6 @@
  * 
  * Hibernate mode:
  *     What's disabled: Most of resources except particular pins and retention RAM
- *     Wakeup sources: Particular pins
- *     On-exit: Reset
- * 
- * Shutdown mode:
- *     What's disabled: Most of resources except particular pins
  *     Wakeup sources: Particular pins
  *     On-exit: Reset
  */

@@ -26,19 +26,10 @@ int hal_sleep(const hal_sleep_config_t* config, void* reserved) {
         case HAL_SLEEP_MODE_STOP: {
             break;
         }
-        case HAL_SLEEP_MODE_NETWORK_STANDBY: {
-            break;
-        }
-        case HAL_SLEEP_MODE_NETWORK_OFF: {
-            break;
-        }
         case HAL_SLEEP_MODE_ULTRA_LOW_POWER: {
             break;
         }
         case HAL_SLEEP_MODE_HIBERNATE: {
-            break;
-        }
-        case HAL_SLEEP_MODE_SHUTDOWN: {
             break;
         }
         default: {
