@@ -38,7 +38,7 @@ static int hal_sleep_enter_stop_mode(const hal_sleep_config_t* config) {
                 return SYSTEM_ERROR_NO_MEMORY;
             }
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms;
+            seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms / 1000;
         }
         wakeupSource = wakeupSource->next;
     }
@@ -56,7 +56,7 @@ static int hal_sleep_enter_hibernate_mode(const hal_sleep_config_t* config) {
             // Hotfix for Gen2 platforms. As long as user specifies pins as wakeup source.
             flags &= ~HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN;
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms;
+            seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms / 1000;
         }
         wakeupSource = wakeupSource->next;
     }
@@ -64,7 +64,7 @@ static int hal_sleep_enter_hibernate_mode(const hal_sleep_config_t* config) {
     return HAL_Core_Enter_Standby_Mode(seconds, flags);
 }
 
-int hal_sleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
+int hal_sleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source, void* reserved) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     int ret = SYSTEM_ERROR_NOT_SUPPORTED;

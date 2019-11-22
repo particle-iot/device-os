@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "system_tick_hal.h"
+#include "system_network.h"
 #include "interrupts_hal.h"
 
 #define HAL_SLEEP_VERSION 2
@@ -111,6 +112,14 @@ typedef struct hal_wakeup_source_rtc_t {
 } hal_wakeup_source_rtc_t;
 
 /**
+ * HAL sleep wakeup source: network
+ */
+typedef struct hal_wakeup_source_network_t {
+    hal_wakeup_source_base_t base; // This must come first in order to use casting.
+    network_interface_index index;
+} hal_wakeup_source_network_t;
+
+/**
  * HAL sleep configuration: speicify sleep mode and wakeup sources.
  */
 typedef struct hal_sleep_config_t {
@@ -118,6 +127,7 @@ typedef struct hal_sleep_config_t {
     uint16_t version;
     hal_sleep_mode_t mode;
     hal_sleep_wait_t wait;
+    uint16_t reserved;
     hal_wakeup_source_base_t* wakeup_sources;
 } hal_sleep_config_t;
 
@@ -125,7 +135,16 @@ typedef struct hal_sleep_config_t {
 extern "C" {
 #endif
 
-int hal_sleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved);
+/**
+ * Makes the device enter one of supported sleep modes.
+ *
+ * @param[in]     config          Sleep configuration that specifies sleep mode, wakeup sources etc.
+ * @param[in,out] wakeup_source   Pointer to the wakeup source structure, which is allocated in heap.
+ *                                It is caller's responsibility to free this piece of memory.
+ *
+ * @returns     System error code.
+ */
+int hal_sleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"

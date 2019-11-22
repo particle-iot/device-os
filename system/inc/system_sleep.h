@@ -26,12 +26,16 @@
 #include <memory>
 #include <string.h>
 #include "system_network.h"
+#include "system_error.h"
 #include "interrupts_hal.h"
 #include "sleep_hal.h"
+#include "spark_wiring_network.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+using spark::NetworkClass; 
 
 typedef enum
 {
@@ -46,14 +50,10 @@ typedef enum System_Sleep_Flag
     SYSTEM_SLEEP_FLAG_NO_WAIT = 0x04
 } System_Sleep_Flag;
 
-enum WakeupReason {
-    WAKEUP_REASON_NONE = 0,
-    WAKEUP_REASON_PIN = 1,
-    WAKEUP_REASON_RTC = 2,
-    WAKEUP_REASON_PIN_OR_RTC = 3
-};
 
-
+/**
+ * Since sleep 2.0
+ */
 enum class SystemSleepMode: uint8_t {
     NONE            = HAL_SLEEP_MODE_NONE,
     STOP            = HAL_SLEEP_MODE_STOP,
@@ -66,25 +66,64 @@ enum class SystemSleepWait: uint8_t {
     CLOUD   = HAL_SLEEP_WAIT_CLOUD
 };
 
+enum class SystemSleepWakeupReason: uint16_t {
+    UNKNOWN = HAL_WAKEUP_SOURCE_TYPE_UNKNOWN,
+    GPIO = HAL_WAKEUP_SOURCE_TYPE_GPIO,
+    ADC = HAL_WAKEUP_SOURCE_TYPE_ADC,
+    DAC = HAL_WAKEUP_SOURCE_TYPE_DAC,
+    RTC = HAL_WAKEUP_SOURCE_TYPE_RTC,
+    LPCOMP = HAL_WAKEUP_SOURCE_TYPE_LPCOMP,
+    UART = HAL_WAKEUP_SOURCE_TYPE_UART,
+    I2C = HAL_WAKEUP_SOURCE_TYPE_I2C,
+    SPI = HAL_WAKEUP_SOURCE_TYPE_SPI,
+    TIMER = HAL_WAKEUP_SOURCE_TYPE_TIMER,
+    CAN = HAL_WAKEUP_SOURCE_TYPE_CAN,
+    USB = HAL_WAKEUP_SOURCE_TYPE_USB,
+    BLE = HAL_WAKEUP_SOURCE_TYPE_BLE,
+    NFC = HAL_WAKEUP_SOURCE_TYPE_NFC,
+    NETWORK = HAL_WAKEUP_SOURCE_TYPE_NETWORK,
+};
+
 class SystemSleepConfigurationHelper {
 public:
-    SystemSleepConfigurationHelper(hal_sleep_config_t* config)
+    SystemSleepConfigurationHelper(const hal_sleep_config_t* config)
         : config_(config) {
     }
 
     bool cloudDisconnectRequested() const {
-        // TODO: As long as one of the network interfaces is specified as wakeup source,
-        // we should not disconnect from the cloud
+#if HAL_PLATFORM_CELLULAR
+        if (wakeupByNetworkInterface(NETWORK_INTERFACE_CELLULAR)) {
+            return false;
+        }
+#endif
+#if HAL_PLATFORM_WIFI
+        if (wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA)) {
+            return false;
+        }
+#endif
+#if HAL_PLATFORM_MESH
+        if (wakeupByNetworkInterface(NETWORK_INTERFACE_MESH)) {
+            return false;
+        }
+#endif
+#if HAL_PLATFORM_ETHERNET
+        if (wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
+            return false;
+        }
+#endif
         return true; 
     }
 
     bool wakeupByNetworkInterface(network_interface_index index) const {
-        // TODO: If the given network interface is not specified as wakeup source, suspend it.
+        auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK);
+        while (wakeup) {
+            auto networkWakeup = reinterpret_cast<const hal_wakeup_source_network_t*>(wakeup);
+            if (networkWakeup->index == index) {
+                return true;
+            }
+            wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK, wakeup->next);
+        }
         return false;
-    }
-
-    hal_sleep_config_t* halConfig() const {
-        return config_;
     }
 
     SystemSleepWait sleepWait() const {
@@ -95,11 +134,7 @@ public:
         return static_cast<SystemSleepMode>(config_->mode);
     }
 
-    const hal_wakeup_source_base_t* wakeupSourceFeatured(hal_wakeup_source_type_t type, hal_wakeup_source_base_t* start = nullptr) const {
-        return wakeupSourceFeatured(type, start);
-    }
-
-    hal_wakeup_source_base_t* wakeupSourceFeatured(hal_wakeup_source_type_t type, hal_wakeup_source_base_t* start = nullptr) {
+    hal_wakeup_source_base_t* wakeupSourceFeatured(hal_wakeup_source_type_t type, hal_wakeup_source_base_t* start = nullptr) const {
         if (!start) {
             start = config_->wakeup_sources;
         }
@@ -113,10 +148,10 @@ public:
     }
 
 private:
-    hal_sleep_config_t* config_;
+    const hal_sleep_config_t* config_;
 };
 
-class SystemSleepConfiguration: public SystemSleepConfigurationHelper {
+class SystemSleepConfiguration: protected SystemSleepConfigurationHelper {
 public:
     // Constructor
     SystemSleepConfiguration()
@@ -126,7 +161,7 @@ public:
         config_.size = sizeof(hal_sleep_config_t);
         config_.version = HAL_SLEEP_VERSION;
         config_.mode = HAL_SLEEP_MODE_NONE;
-        config_.wait = HAL_SLEEP_WAIT_NO_WAIT;
+        config_.wait = HAL_SLEEP_WAIT_CLOUD;
         config_.wakeup_sources = nullptr;
     }
 
@@ -153,6 +188,10 @@ public:
             delete wakeupSource;
             wakeupSource = next;
         }
+    }
+
+    const hal_sleep_config_t* halConfig() const {
+        return &config_;
     }
 
     bool valid() const {
@@ -225,9 +264,131 @@ public:
         return duration(ms.count());
     }
 
+    SystemSleepConfiguration& network(const NetworkClass& network) {
+        auto index = static_cast<network_interface_t>(network);
+        auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK);
+        while (wakeup) {
+            auto networkWakeup = reinterpret_cast<hal_wakeup_source_network_t*>(wakeup);
+            if (networkWakeup->index == index) {
+                return *this;
+            }
+            wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK, wakeup->next);
+        }
+        auto wakeupSource = new(std::nothrow) hal_wakeup_source_network_t();
+        if (!wakeupSource) {
+            valid_ = false;
+            return *this;
+        }
+        wakeupSource->base.size = sizeof(hal_wakeup_source_gpio_t);
+        wakeupSource->base.version = HAL_SLEEP_VERSION;
+        wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_NETWORK;
+        wakeupSource->base.next = config_.wakeup_sources;
+        wakeupSource->index = static_cast<network_interface_index>(index);
+        config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
+        valid_= true;
+        return *this;
+    }
+
 private:
     hal_sleep_config_t config_;
     bool valid_; // TODO: This should be an enum value instead to indicate different errors.
+};
+
+class SystemSleepResult {
+public:
+    SystemSleepResult()
+            : wakeupSource_(nullptr),
+              error_(SYSTEM_ERROR_NONE) {
+    }
+
+    SystemSleepResult(hal_wakeup_source_base_t* source, system_error_t error)
+            : SystemSleepResult() {
+        copyWakeupSource(source);
+        error_ = error;
+    }
+
+    SystemSleepResult(system_error_t error)
+            : SystemSleepResult() {
+        error_ = error;
+    }
+
+    // Copy constructor
+    SystemSleepResult(const SystemSleepResult& result)
+            : error_(result.error_) {
+        copyWakeupSource(result.wakeupSource_);
+    }
+
+    SystemSleepResult& operator=(const SystemSleepResult& result) {
+        error_ = result.error_;
+        copyWakeupSource(result.wakeupSource_);
+        return *this;
+    }
+
+    // Move constructor
+    SystemSleepResult(SystemSleepResult&& result)
+            : error_(result.error_) {
+        freeWakeupSourceMemory();
+        if (result.wakeupSource_) {
+            wakeupSource_ = result.wakeupSource_;
+            result.wakeupSource_ = nullptr;
+        }
+    }
+
+    ~SystemSleepResult() {
+        freeWakeupSourceMemory();
+    }
+
+    hal_wakeup_source_base_t** halWakeupSource() {
+        return &wakeupSource_;
+    }
+
+    SystemSleepWakeupReason wakeupReason() const {
+        if (wakeupSource_) {
+            return static_cast<SystemSleepWakeupReason>(wakeupSource_->type);
+        } else {
+            return SystemSleepWakeupReason::UNKNOWN;
+        }
+    }
+
+    pin_t wakeupPin() const {
+        if (wakeupReason() == SystemSleepWakeupReason::GPIO) {
+            return reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource_)->pin;
+        } else {
+            return std::numeric_limits<pin_t>::max();
+        }
+    }
+
+    void setError(system_error_t error) {
+        error_ = error;
+    }
+
+    system_error_t error() const {
+        return error_;
+    }
+
+private:
+    void freeWakeupSourceMemory() {
+        if (wakeupSource_) {
+            free(wakeupSource_);
+            wakeupSource_ = nullptr;
+        }
+    }
+
+    int copyWakeupSource(hal_wakeup_source_base_t* source) {
+        freeWakeupSourceMemory();
+        if (source) {
+            wakeupSource_ = (hal_wakeup_source_base_t*)malloc(source->size);
+            if (wakeupSource_) {
+                memcpy(wakeupSource_, source, source->size);
+            } else {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    hal_wakeup_source_base_t* wakeupSource_;
+    system_error_t error_;
 };
 
 
@@ -237,7 +398,7 @@ private:
 int system_sleep(Spark_Sleep_TypeDef mode, long seconds, uint32_t param, void* reserved);
 int system_sleep_pin(uint16_t pin, uint16_t mode, long seconds, uint32_t param, void* reserved);
 int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved);
-int system_sleep_ext(hal_sleep_config_t* config, WakeupReason*, void* reserved);
+int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved);
 
 #ifdef __cplusplus
 }
