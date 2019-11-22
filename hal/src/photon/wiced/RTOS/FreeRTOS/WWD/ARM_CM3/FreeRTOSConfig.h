@@ -87,6 +87,9 @@ extern "C" {
 #define INCLUDE_xTaskIsTaskFinished                 ( 1 )
 #define INCLUDE_xTaskGetCurrentTaskHandle           ( 1 )
 
+// Allocate newlib's reent structure for each task
+#define configUSE_NEWLIB_REENTRANT                  ( 1 )
+
 /* This is the raw value as per the Cortex-M3 NVIC.  Values can be 255
  (lowest) to 0 (1?) (highest). */
 #define configKERNEL_INTERRUPT_PRIORITY             ( 0xF0 )
