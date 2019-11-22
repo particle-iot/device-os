@@ -54,14 +54,24 @@ endif
 quote="
 lt=\<
 dollar=$$
-arm_gcc_version:=$(strip $(shell $(CC) -dumpversion))
+arm_gcc_version_str:=$(strip $(shell $(CC) -dumpversion))
 expected_version:=5.3.1
-#$(info result $(shell test $(quote)$(arm_gcc_version)$(quote) $(lt) $(quote)$(expected_version)$(quote);echo $$?))
-ifeq ($(shell test $(quote)$(arm_gcc_version)$(quote) $(lt) $(quote)$(expected_version)$(quote); echo $$?),0)
-     $(error "ARM gcc version $(expected_version) or later required, but found $(arm_gcc_version)")
+#$(info result $(shell test $(quote)$(arm_gcc_version_str)$(quote) $(lt) $(quote)$(expected_version)$(quote);echo $$?))
+ifeq ($(shell test $(quote)$(arm_gcc_version_str)$(quote) $(lt) $(quote)$(expected_version)$(quote); echo $$?),0)
+     $(error "ARM gcc version $(expected_version) or later required, but found $(arm_gcc_version_str)")
 endif
 
+arm_gcc_version_major:=$(word 1,$(subst ., ,$(arm_gcc_version_str)))
+arm_gcc_version_minor:=$(word 2,$(subst ., ,$(arm_gcc_version_str)))
+arm_gcc_version_patch:=$(word 3,$(subst ., ,$(arm_gcc_version_str)))
+arm_gcc_version:=$(shell echo $(($(arm_gcc_version_major) * 10000 + $(arm_gcc_version_minor) * 100 + $(arm_gcc_version_patch))))
 
-ifeq ($(shell test $(quote)$(arm_gcc_version)$(quote) $(lt) $(quote)4.9.0$(quote); echo $$?),0)
+ifeq ($(shell test $(quote)$(arm_gcc_version_str)$(quote) $(lt) $(quote)4.9.0$(quote); echo $$?),0)
      NANO_SUFFIX=_s
+endif
+
+# GCC 8 linker is broken and doesn't support LENGTH(region) when defining another memory region within
+# MEMORY block
+ifeq ($(arm_gcc_version_major),8)
+	LDFLAGS += -Wl,--defsym=GCC_LD_BROKEN=1
 endif
