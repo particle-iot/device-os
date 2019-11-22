@@ -60,7 +60,7 @@ public:
     virtual uint16_t getListenTimeout();
     virtual bool listening();
 
-    operator network_interface_t() {
+    operator network_interface_t() const {
         return iface_;
     }
 

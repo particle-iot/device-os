@@ -73,6 +73,13 @@ enum WiFiTesterFeature {
     FEATURE_WIFITESTER = 1
 };
 
+enum WakeupReason {
+    WAKEUP_REASON_NONE = 0,
+    WAKEUP_REASON_PIN = 1,
+    WAKEUP_REASON_RTC = 2,
+    WAKEUP_REASON_PIN_OR_RTC = 3
+};
+
 struct SleepResult {
     SleepResult() {}
     SleepResult(WakeupReason r, system_error_t e, pin_t p = std::numeric_limits<pin_t>::max());
@@ -141,7 +148,7 @@ public:
     }
 #endif
 
-    static SleepResult sleep(const SystemSleepConfiguration& config);
+    static SystemSleepResult sleep(const SystemSleepConfiguration& config);
 
     static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
     inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, std::chrono::seconds s, SleepOptionFlags flag=SLEEP_NETWORK_OFF) { return sleep(sleepMode, s.count(), flag); }
@@ -430,6 +437,7 @@ public:
 
 private:
     SleepResult sleepResult_;
+    SystemSleepResult systemSleepResult_;
 
     static inline uint8_t get_flag(system_flag_t flag)
     {
@@ -441,6 +449,16 @@ private:
     static inline void set_flag(system_flag_t flag, uint8_t value)
     {
         system_set_flag(flag, value, nullptr);
+    }
+
+    void toSleepResult() {
+        if (systemSleepResult_.wakeupReason() == SystemSleepWakeupReason::GPIO) {
+            sleepResult_ = SleepResult(WAKEUP_REASON_PIN, systemSleepResult_.error(), systemSleepResult_.wakeupPin());
+        } else if (systemSleepResult_.wakeupReason() == SystemSleepWakeupReason::RTC) {
+            sleepResult_ = SleepResult(WAKEUP_REASON_RTC, systemSleepResult_.error(), systemSleepResult_.wakeupPin());
+        } else {
+            sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
+        }
     }
 
     static SleepResult sleepPinImpl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, SleepOptionFlags flags);
