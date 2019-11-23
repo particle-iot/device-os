@@ -27,6 +27,7 @@
 #include "inet_hal.h"
 #include "wlan_hal.h"
 #include "spark_macros.h"
+#include "system_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,6 +42,7 @@ typedef enum network_interface_index {
     NETWORK_INTERFACE_WIFI_STA = 4,
     NETWORK_INTERFACE_WIFI_AP = 5
 } network_interface_index;
+
 
 typedef enum network_disconnect_reason {
     NETWORK_DISCONNECT_REASON_NONE = 0,

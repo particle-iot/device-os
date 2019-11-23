@@ -25,6 +25,7 @@
 #include <chrono>
 #include <memory>
 #include <string.h>
+#include <stdlib.h>
 #include "system_network.h"
 #include "system_error.h"
 #include "interrupts_hal.h"
@@ -68,20 +69,20 @@ enum class SystemSleepWait: uint8_t {
 
 enum class SystemSleepWakeupReason: uint16_t {
     UNKNOWN = HAL_WAKEUP_SOURCE_TYPE_UNKNOWN,
-    GPIO = HAL_WAKEUP_SOURCE_TYPE_GPIO,
-    ADC = HAL_WAKEUP_SOURCE_TYPE_ADC,
-    DAC = HAL_WAKEUP_SOURCE_TYPE_DAC,
-    RTC = HAL_WAKEUP_SOURCE_TYPE_RTC,
-    LPCOMP = HAL_WAKEUP_SOURCE_TYPE_LPCOMP,
-    UART = HAL_WAKEUP_SOURCE_TYPE_UART,
-    I2C = HAL_WAKEUP_SOURCE_TYPE_I2C,
-    SPI = HAL_WAKEUP_SOURCE_TYPE_SPI,
-    TIMER = HAL_WAKEUP_SOURCE_TYPE_TIMER,
-    CAN = HAL_WAKEUP_SOURCE_TYPE_CAN,
-    USB = HAL_WAKEUP_SOURCE_TYPE_USB,
-    BLE = HAL_WAKEUP_SOURCE_TYPE_BLE,
-    NFC = HAL_WAKEUP_SOURCE_TYPE_NFC,
-    NETWORK = HAL_WAKEUP_SOURCE_TYPE_NETWORK,
+    BY_GPIO = HAL_WAKEUP_SOURCE_TYPE_GPIO,
+    BY_ADC = HAL_WAKEUP_SOURCE_TYPE_ADC,
+    BY_DAC = HAL_WAKEUP_SOURCE_TYPE_DAC,
+    BY_RTC = HAL_WAKEUP_SOURCE_TYPE_RTC,
+    BY_LPCOMP = HAL_WAKEUP_SOURCE_TYPE_LPCOMP,
+    BY_UART = HAL_WAKEUP_SOURCE_TYPE_UART,
+    BY_I2C = HAL_WAKEUP_SOURCE_TYPE_I2C,
+    BY_SPI = HAL_WAKEUP_SOURCE_TYPE_SPI,
+    BY_TIMER = HAL_WAKEUP_SOURCE_TYPE_TIMER,
+    BY_CAN = HAL_WAKEUP_SOURCE_TYPE_CAN,
+    BY_USB = HAL_WAKEUP_SOURCE_TYPE_USB,
+    BY_BLE = HAL_WAKEUP_SOURCE_TYPE_BLE,
+    BY_NFC = HAL_WAKEUP_SOURCE_TYPE_NFC,
+    BY_NETWORK = HAL_WAKEUP_SOURCE_TYPE_NETWORK,
 };
 
 class SystemSleepConfigurationHelper {
@@ -351,7 +352,7 @@ public:
     }
 
     pin_t wakeupPin() const {
-        if (wakeupReason() == SystemSleepWakeupReason::GPIO) {
+        if (wakeupReason() == SystemSleepWakeupReason::BY_GPIO) {
             return reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource_)->pin;
         } else {
             return std::numeric_limits<pin_t>::max();

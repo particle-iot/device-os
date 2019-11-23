@@ -22,7 +22,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "system_tick_hal.h"
-#include "system_network.h"
+#include "system_defs.h"
 #include "interrupts_hal.h"
 
 #define HAL_SLEEP_VERSION 2
