@@ -27,6 +27,7 @@
 #include "inet_hal.h"
 #include "wlan_hal.h"
 #include "spark_macros.h"
+#include "system_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,16 +41,6 @@ extern "C" {
 #undef SPARK_NO_CLOUD
 #define SPARK_NO_CLOUD 1
 #endif
-
-typedef enum network_interface_index {
-    NETWORK_INTERFACE_ALL = 0,
-    NETWORK_INTERFACE_LOOPBACK = 1,
-    NETWORK_INTERFACE_MESH = 2,
-    NETWORK_INTERFACE_ETHERNET = 3,
-    NETWORK_INTERFACE_CELLULAR = 4,
-    NETWORK_INTERFACE_WIFI_STA = 4,
-    NETWORK_INTERFACE_WIFI_AP = 5
-} network_interface_index;
 
 typedef enum network_disconnect_reason {
     NETWORK_DISCONNECT_REASON_NONE = 0,

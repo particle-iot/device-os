@@ -452,9 +452,9 @@ private:
     }
 
     void toSleepResult() {
-        if (systemSleepResult_.wakeupReason() == SystemSleepWakeupReason::GPIO) {
+        if (systemSleepResult_.wakeupReason() == SystemSleepWakeupReason::BY_GPIO) {
             sleepResult_ = SleepResult(WAKEUP_REASON_PIN, systemSleepResult_.error(), systemSleepResult_.wakeupPin());
-        } else if (systemSleepResult_.wakeupReason() == SystemSleepWakeupReason::RTC) {
+        } else if (systemSleepResult_.wakeupReason() == SystemSleepWakeupReason::BY_RTC) {
             sleepResult_ = SleepResult(WAKEUP_REASON_RTC, systemSleepResult_.error(), systemSleepResult_.wakeupPin());
         } else {
             sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
