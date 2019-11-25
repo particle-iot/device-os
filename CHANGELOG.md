@@ -1,3 +1,15 @@
+## 1.4.3
+
+>**Note:** If your Gen 2 Photon/P1 or Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release).
+>**Note:** If your Gen 3 device does not have a Cloud connection, this release will also require manually updating the SoftDevice via CLI. The instructions are available in the release notes and the SoftDevice binaries are available in the Github release.
+>
+>This release contains v501 bootloaders.
+
+### BUGFIXES
+
+- [Photon/P1/Electron] Fixes thread-safety issues with non-reentrant C standard library functions requiring temporary thread-local storage [#1970](https://github.com/particle-iot/device-os/pull/1970)
+
+
 ## 1.4.2
 
 >**Note:** If your Gen 2 Photon/P1 or Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release).
