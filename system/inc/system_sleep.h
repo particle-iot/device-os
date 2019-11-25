@@ -315,7 +315,8 @@ public:
 
     // Copy constructor
     SystemSleepResult(const SystemSleepResult& result)
-            : error_(result.error_) {
+            : SystemSleepResult() {
+        error_ = result.error_;
         copyWakeupSource(result.wakeupSource_);
     }
 
@@ -327,7 +328,8 @@ public:
 
     // Move constructor
     SystemSleepResult(SystemSleepResult&& result)
-            : error_(result.error_) {
+            : SystemSleepResult() {
+        error_ = result.error_;
         freeWakeupSourceMemory();
         if (result.wakeupSource_) {
             wakeupSource_ = result.wakeupSource_;
