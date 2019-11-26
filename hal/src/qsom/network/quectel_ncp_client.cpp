@@ -624,7 +624,7 @@ int QuectelNcpClient::initReady() {
     }
 
     // Select (U)SIM card in slot 1, EG91 has two SIM card slots
-    if (ncpId() == PLATFORM_NCP_QUECTEL_EG91) {
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E || ncpId() == PLATFORM_NCP_QUECTEL_EG91_NA) {
         CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
     }
 

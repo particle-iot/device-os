@@ -28,7 +28,8 @@ const uintptr_t NCP_ID_OTP_ADDRESS = 0x00000020;
 bool isValidNcpId(uint8_t id) {
     switch (id) {
     case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_BG96:
-    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_EG91:
+    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_EG91_E:
+    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_EG91_NA:
         return true;
     default:
         return false;
