@@ -23,10 +23,11 @@
 
 using spark::Vector;
 
-static int hal_sleep_enter_stop_mode(const hal_sleep_config_t* config) {
+static int hal_sleep_enter_stop_mode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source) {
     Vector<uint16_t> pins;
     Vector<InterruptMode> modes;
     long seconds = 0;
+    uint32_t flag = 0; // Magic number
 
     auto wakeupSource = config->wakeup_sources;
     while (wakeupSource) {
@@ -39,14 +40,39 @@ static int hal_sleep_enter_stop_mode(const hal_sleep_config_t* config) {
             }
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms / 1000;
+        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
+            flag = 0x01;
         }
         wakeupSource = wakeupSource->next;
     }
 
-    return HAL_Core_Enter_Stop_Mode_Ext(pins.data(), pins.size(), modes.data(), modes.size(), seconds, nullptr);
+    int ret = HAL_Core_Enter_Stop_Mode_Ext(pins.data(), pins.size(), modes.data(), modes.size(), seconds, &flag);
+    if (ret < 0) {
+        return ret;
+    } 
+
+    // IMPORTANT: It's the caller's responsibility to free this memory.
+    if (ret == 0) {
+        hal_wakeup_source_rtc_t* rtc_wakeup = (hal_wakeup_source_rtc_t*)malloc(sizeof(hal_wakeup_source_rtc_t));
+        rtc_wakeup->base.size = sizeof(hal_wakeup_source_rtc_t);
+        rtc_wakeup->base.version = HAL_SLEEP_VERSION;
+        rtc_wakeup->base.type = HAL_WAKEUP_SOURCE_TYPE_RTC;
+        rtc_wakeup->base.next = nullptr;
+        rtc_wakeup->ms = 0;
+        *wakeup_source = reinterpret_cast<hal_wakeup_source_base_t*>(rtc_wakeup);
+    } else {
+        hal_wakeup_source_gpio_t* gpio_wakeup = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
+        gpio_wakeup->base.size = sizeof(hal_wakeup_source_gpio_t);
+        gpio_wakeup->base.version = HAL_SLEEP_VERSION;
+        gpio_wakeup->base.type = HAL_WAKEUP_SOURCE_TYPE_RTC;
+        gpio_wakeup->base.next = nullptr;
+        gpio_wakeup->pin = ret;
+        *wakeup_source = reinterpret_cast<hal_wakeup_source_base_t*>(gpio_wakeup);
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
-static int hal_sleep_enter_hibernate_mode(const hal_sleep_config_t* config) {
+static int hal_sleep_enter_hibernate_mode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source) {
     long seconds = 0;
     uint32_t flags = HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN;
 
@@ -70,14 +96,14 @@ int hal_sleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeu
 
     switch (config->mode) {
         case HAL_SLEEP_MODE_STOP: {
-            ret = hal_sleep_enter_stop_mode(config);
+            ret = hal_sleep_enter_stop_mode(config, wakeup_source);
             break;
         }
         case HAL_SLEEP_MODE_ULTRA_LOW_POWER: {
             break;
         }
         case HAL_SLEEP_MODE_HIBERNATE: {
-            ret = hal_sleep_enter_hibernate_mode(config);
+            ret = hal_sleep_enter_hibernate_mode(config, wakeup_source);
             break;
         }
         default: {
