@@ -310,6 +310,9 @@ void TestRunner::reset() {
     Test::passed = 0;
     Test::failed = 0;
     Test::skipped = 0;
+    if (logBuf_) {
+        logBuf_->stream.clear();
+    }
     setState(WAITING);
 }
 

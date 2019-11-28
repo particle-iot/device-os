@@ -15,9 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "suite.h"
-
-#include "request_handler.h"
+#include "test_suite.h"
 
 #include "platform_headers.h"
 #include "check.h"
@@ -26,62 +24,58 @@
 
 namespace particle {
 
-namespace test {
-
 namespace {
-
-using namespace spark;
 
 const uint32_t MAGIC_NUMBER = 0x0ff1c1a1;
 
-struct CurrentSuiteConfig {
+struct CurrentConfig {
     size_t size;
     uint32_t magicNumber;
     System_Mode_TypeDef systemMode;
     bool systemThreadEnabled;
 };
 
-retained CurrentSuiteConfig g_config;
+retained CurrentConfig g_config;
 
 } // namespace
 
-Suite::Suite() :
+TestSuite::TestSuite() :
         inited_(false) {
 }
 
-Suite::~Suite() {
+TestSuite::~TestSuite() {
     destroy();
 }
 
-int Suite::init() {
+int TestSuite::init() {
     // Set system mode
-    if (g_config.size != sizeof(CurrentSuiteConfig) || g_config.magicNumber != MAGIC_NUMBER) {
-        g_config.size = sizeof(CurrentSuiteConfig);
+    if (g_config.size != sizeof(CurrentConfig) || g_config.magicNumber != MAGIC_NUMBER) {
+        g_config.size = sizeof(CurrentConfig);
         g_config.magicNumber = MAGIC_NUMBER;
-        g_config.systemMode = SuiteConfig::DEFAULT_SYSTEM_MODE;
-        g_config.systemThreadEnabled = SuiteConfig::DEFAULT_SYSTEM_THREAD_ENABLED;
+        g_config.systemMode = TestSuiteConfig::DEFAULT_SYSTEM_MODE;
+        g_config.systemThreadEnabled = TestSuiteConfig::DEFAULT_SYSTEM_THREAD_ENABLED;
     }
     set_system_mode(g_config.systemMode);
-    system_thread_set_state(g_config.systemThreadEnabled ? feature::ENABLED : feature::DISABLED, nullptr);
-    // Initialize request handler
-    CHECK(RequestHandler::instance()->init());
+    system_thread_set_state(g_config.systemThreadEnabled ? spark::feature::ENABLED : spark::feature::DISABLED, nullptr);
     // Configure test runner
     const auto runner = TestRunner::instance();
-    runner->ledEnabled(false);
-    runner->serialEnabled(false);
     runner->cloudEnabled(false);
+    runner->serialEnabled(false);
+    runner->ledEnabled(false);
     runner->logEnabled(true);
+    // Initialize request handler
+    CHECK(reqHandler_.init());
     inited_ = true;
     return 0;
 }
 
-void Suite::destroy() {
-    RequestHandler::instance()->destroy();
+void TestSuite::destroy() {
+    reqHandler_.destroy();
     memset(&g_config, 0, sizeof(g_config));
     inited_ = false;
 }
 
-int Suite::config(const SuiteConfig& config) {
+int TestSuite::config(const TestSuiteConfig& config) {
     CHECK_TRUE(inited_, SYSTEM_ERROR_INVALID_STATE);
     if (g_config.systemMode != config.systemMode() || g_config.systemThreadEnabled != config.systemThreadEnabled()) {
         g_config.systemMode = config.systemMode();
@@ -91,11 +85,14 @@ int Suite::config(const SuiteConfig& config) {
     return 0;
 }
 
-Suite* Suite::instance() {
-    static Suite suite;
+TestSuite* TestSuite::instance() {
+    static TestSuite suite;
     return &suite;
 }
 
-} // namespace test
-
 } // namespace particle
+
+void ctrl_request_custom_handler(ctrl_request* req) {
+    const auto handler = particle::TestSuite::instance()->requestHandler();
+    handler->process(req);
+}

@@ -17,7 +17,7 @@
 
 #include "request_handler.h"
 
-#include "suite.h"
+#include "test_suite.h"
 
 #include "spark_wiring_system.h"
 #include "spark_wiring_json.h"
@@ -26,8 +26,6 @@
 #include "unit-test/unit-test.h"
 
 namespace particle {
-
-namespace test {
 
 namespace {
 
@@ -86,13 +84,13 @@ public:
         CHECK_TRUE(req_, SYSTEM_ERROR_INVALID_STATE);
         // Calculate the size of the reply data
         JSONBufferWriter writer(nullptr, 0);
-        CHECK(fn(writer));
+        fn(writer);
         const size_t size = writer.dataSize();
         CHECK_TRUE(size > 0, SYSTEM_ERROR_INTERNAL);
         CHECK(system_ctrl_alloc_reply_data(req_, size, nullptr));
         // Serialize the reply
         writer = JSONBufferWriter(req_->reply_data, req_->reply_size);
-        CHECK(fn(writer));
+        fn(writer);
         CHECK_TRUE(writer.dataSize() == size, SYSTEM_ERROR_INTERNAL);
         return 0;
     }
@@ -147,6 +145,13 @@ void RequestHandler::destroy() {
     inited_ = false;
 }
 
+void RequestHandler::process(ctrl_request* ctrlReq) {
+    const int r = request(ctrlReq);
+    if (r < 0) {
+        system_ctrl_set_result(ctrlReq, r, nullptr, nullptr, nullptr);
+    }
+}
+
 int RequestHandler::request(ctrl_request* ctrlReq) {
     CHECK_TRUE(inited_, SYSTEM_ERROR_INVALID_STATE);
     Request req;
@@ -175,7 +180,7 @@ int RequestHandler::request(Request* req) {
 }
 
 int RequestHandler::initSuite(Request* req) {
-    SuiteConfig conf;
+    TestSuiteConfig conf;
     if (req->has("m")) { // System mode
         const auto val = req->get("m").toString();
         if (val == "d") { // Default
@@ -196,7 +201,8 @@ int RequestHandler::initSuite(Request* req) {
         const auto val = req->get("t").toInt();
         conf.systemThreadEnabled((bool)val);
     }
-    return Suite::instance()->config(conf);
+    const auto suite = TestSuite::instance();
+    return suite->config(conf);
 }
 
 int RequestHandler::listTests(Request* req) {
@@ -206,7 +212,6 @@ int RequestHandler::listTests(Request* req) {
             w.value((const char*)t.name.data);
         });
         w.endArray();
-        return 0;
     }));
     return 0;
 }
@@ -216,40 +221,34 @@ int RequestHandler::startTest(Request* req) {
     CHECK_TRUE(!name.isEmpty(), SYSTEM_ERROR_INVALID_ARGUMENT);
     const auto runner = TestRunner::instance();
     runner->reset();
+    Test::exclude("*");
     const auto count = Test::include(name.data());
-    CHECK_TRUE(count != 0, SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(count > 0, SYSTEM_ERROR_NOT_FOUND);
     runner->start();
     return 0;
 }
 
 int RequestHandler::getStatus(Request* req) {
-    const char* status = "w"; // Waiting
     const auto runner = TestRunner::instance();
     if (runner->isComplete()) {
-        if (Test::getCurrentPassed() > 0) {
-            status = "p"; // Passed
-        } else if (Test::getCurrentFailed() > 0) {
-            status = "f"; // Failed
+        if (Test::getCurrentFailed() > 0) {
+            return Result::STATUS_FAILED;
+        } if (Test::getCurrentPassed() > 0) {
+            return Result::STATUS_PASSED;
         } else {
-            status = "s"; // Skipped
+            return Result::STATUS_SKIPPED;
         }
     } else if (runner->isStarted()) {
-        status = "r"; // Running
+        return Result::STATUS_RUNNING;
+    } else {
+        return Result::STATUS_WAITING;
     }
-    CHECK(req->reply([status](JSONWriter& w) {
-        w.value(status);
-        return 0;
-    }));
-    return 0;
 }
 
 int RequestHandler::getLog(Request* req) {
     CHECK(req->reply([](JSONWriter& w) {
         const auto runner = TestRunner::instance();
-        const auto data = runner->logBuffer();
-        const auto size = runner->logSize();
-        w.value(data, size);
-        return 0;
+        w.value(runner->logBuffer(), runner->logSize());
     }));
     return 0;
 }
@@ -259,14 +258,4 @@ RequestHandler* RequestHandler::instance() {
     return &handler;
 }
 
-} // namespace test
-
 } // namespace particle
-
-void ctrl_request_custom_handler(ctrl_request* req) {
-    const int r = particle::test::RequestHandler::instance()->request(req);
-    if (r < 0) {
-        // Handle an early processing error
-        system_ctrl_set_result(req, r, nullptr, nullptr, nullptr);
-    }
-}

@@ -21,17 +21,16 @@
 
 namespace particle {
 
-namespace test {
-
 // Handler for test runner requests
 class RequestHandler {
 public:
+    RequestHandler();
     ~RequestHandler();
 
     int init();
     void destroy();
 
-    int request(ctrl_request* ctrlReq);
+    void process(ctrl_request* ctrlReq);
 
     static RequestHandler* instance();
 
@@ -40,8 +39,7 @@ private:
 
     bool inited_;
 
-    RequestHandler();
-
+    int request(ctrl_request* ctrlReq);
     int request(Request* req);
     int initSuite(Request* req);
     int listTests(Request* req);
@@ -49,7 +47,5 @@ private:
     int getStatus(Request* req);
     int getLog(Request* req);
 };
-
-} // namespace test
 
 } // namespace particle

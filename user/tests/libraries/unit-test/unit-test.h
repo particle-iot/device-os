@@ -79,7 +79,7 @@ public:
             }
             if (cloudEnabled_) {
                 const char* stateName = nameForState((State)state_);
-                Particle.publish("state", stateName);
+                Particle.publish("state", stateName, PRIVATE);
             }
         }
     }

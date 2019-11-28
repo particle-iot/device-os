@@ -1,5 +1,5 @@
 #include "application.h"
-#include "unit-test/unit-test.h"
+#include "test.h"
 
 test(particle_publish_publishes_an_event) {
     Particle.connect();

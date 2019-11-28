@@ -17,28 +17,33 @@
 
 #pragma once
 
+#include "request_handler.h"
+
 #include "system_mode.h"
 
 namespace particle {
 
-namespace test {
-
 // Custom result codes
 enum Result {
-    RESET_PENDING = 1
+    STATUS_PASSED = 1,
+    STATUS_FAILED = 2,
+    STATUS_SKIPPED = 3,
+    STATUS_RUNNING = 4,
+    STATUS_WAITING = 5,
+    RESET_PENDING = 6
 };
 
-class SuiteConfig {
+class TestSuiteConfig {
 public:
     static const System_Mode_TypeDef DEFAULT_SYSTEM_MODE = MANUAL;
     static const bool DEFAULT_SYSTEM_THREAD_ENABLED = false;
 
-    SuiteConfig();
+    TestSuiteConfig();
 
-    SuiteConfig& systemMode(System_Mode_TypeDef mode);
+    TestSuiteConfig& systemMode(System_Mode_TypeDef mode);
     System_Mode_TypeDef systemMode() const;
 
-    SuiteConfig& systemThreadEnabled(bool enabled);
+    TestSuiteConfig& systemThreadEnabled(bool enabled);
     bool systemThreadEnabled() const;
 
 private:
@@ -46,46 +51,51 @@ private:
     bool systemThreadEnabled_;
 };
 
-class Suite {
+class TestSuite {
 public:
-    ~Suite();
+    ~TestSuite();
 
     int init();
     void destroy();
 
-    int config(const SuiteConfig& config);
+    RequestHandler* requestHandler();
 
-    static Suite* instance();
+    int config(const TestSuiteConfig& config);
+
+    static TestSuite* instance();
 
 private:
-    Suite();
+    TestSuite();
 
+    RequestHandler reqHandler_;
     bool inited_;
 };
 
-inline SuiteConfig::SuiteConfig() :
+inline TestSuiteConfig::TestSuiteConfig() :
         systemMode_(DEFAULT_SYSTEM_MODE),
         systemThreadEnabled_(DEFAULT_SYSTEM_THREAD_ENABLED) {
 }
 
-inline SuiteConfig& SuiteConfig::systemMode(System_Mode_TypeDef mode) {
+inline TestSuiteConfig& TestSuiteConfig::systemMode(System_Mode_TypeDef mode) {
     systemMode_ = mode;
     return *this;
 }
 
-inline System_Mode_TypeDef SuiteConfig::systemMode() const {
+inline System_Mode_TypeDef TestSuiteConfig::systemMode() const {
     return systemMode_;
 }
 
-inline SuiteConfig& SuiteConfig::systemThreadEnabled(bool enabled) {
+inline TestSuiteConfig& TestSuiteConfig::systemThreadEnabled(bool enabled) {
     systemThreadEnabled_ = enabled;
     return *this;
 }
 
-inline bool SuiteConfig::systemThreadEnabled() const {
+inline bool TestSuiteConfig::systemThreadEnabled() const {
     return systemThreadEnabled_;
 }
 
-} // namespace test
+inline RequestHandler* TestSuite::requestHandler() {
+    return &reqHandler_;
+}
 
 } // namespace particle
