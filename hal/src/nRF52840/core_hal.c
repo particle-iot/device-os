@@ -106,6 +106,12 @@ extern void* malloc_heap_end();
 void* module_user_pre_init();
 #endif
 
+// C file cannot include header file including C++ grammar.
+extern int hal_ble_stack_init(void* reserved);
+extern int hal_ble_stack_deinit(void* reserved);
+extern bool hal_ble_gap_is_advertising(void* reserved);
+extern int hal_ble_gap_start_advertising(void* reserved);
+
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
     away as the variables never actually get used.  If the debugger won't show the
@@ -519,7 +525,7 @@ static void fpu_sleep_prepare(void) {
 
 int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved) {
     // Initial sanity check
-    if ((pins_count == 0 || mode_count == 0 || pins == NULL || mode == NULL) && seconds <= 0) {
+    if ((pins_count == 0 || mode_count == 0 || pins == NULL || mode == NULL) && seconds <= 0 && reserved == NULL) {
         return SYSTEM_ERROR_NOT_ALLOWED;
     }
 
@@ -542,6 +548,14 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
                 break;
             default:
                 return SYSTEM_ERROR_NOT_ALLOWED;
+        }
+    }
+
+    bool wakeup_by_ble = false;
+    if (reserved) {
+        uint32_t flag = *((uint32_t*)reserved);
+        if (flag & 0x01) {
+            wakeup_by_ble = true;
         }
     }
 
@@ -751,7 +765,12 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
     // Masks all interrupts lower than softdevice. This allows us to be woken ONLY by softdevice
     // or GPIOTE and RTC.
     // IMPORTANT: No SoftDevice API calls are allowed until HAL_enable_irq()
-    int hst = HAL_disable_irq();
+    int hst = 0;
+    bool advertising = hal_ble_gap_is_advertising(NULL); // We can now only restore advertising after exiting sleep mode.
+    if (!wakeup_by_ble) {
+        hal_ble_stack_deinit(NULL);
+        hst = HAL_disable_irq();
+    }
 
     // Remember original priorities
     uint32_t gpiote_priority = NVIC_GetPriority(GPIOTE_IRQn);
@@ -793,49 +812,51 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
     __DSB();
     __ISB();
 
-
+    // bool wakeup = false;
     while (true) {
         if ((exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) && NVIC_GetPendingIRQ(RTC2_IRQn)) {
             // Woken up by RTC
             reason = 0;
             break;
-        } else if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
-            if (NVIC_GetPendingIRQ(GPIOTE_IRQn)) {
-                // Woken up by a pin, figure out which one
-                if (nrf_gpiote_event_is_set(NRF_GPIOTE_EVENTS_PORT)) {
-                    // PORT event
-                    for (int i = 0; i < pins_count; i++) {
-                        pin_t wake_up_pin = pins[i];
-                        uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[wake_up_pin].gpio_port, PIN_MAP[wake_up_pin].gpio_pin);
-                        nrf_gpio_pin_sense_t sense = nrf_gpio_pin_sense_get(nrf_pin);
-                        if (sense != NRF_GPIO_PIN_NOSENSE) {
-                            uint32_t state = nrf_gpio_pin_read(nrf_pin);
-                            if ((state && sense == NRF_GPIO_PIN_SENSE_HIGH) ||
-                                    (!state && sense == NRF_GPIO_PIN_SENSE_LOW)) {
-                                reason = i + 1;
-                                break;
-                            }
+        } else if ((exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) && NVIC_GetPendingIRQ(GPIOTE_IRQn)) {
+            // Woken up by a pin, figure out which one
+            if (nrf_gpiote_event_is_set(NRF_GPIOTE_EVENTS_PORT)) {
+                // PORT event
+                for (int i = 0; i < pins_count; i++) {
+                    pin_t wake_up_pin = pins[i];
+                    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[wake_up_pin].gpio_port, PIN_MAP[wake_up_pin].gpio_pin);
+                    nrf_gpio_pin_sense_t sense = nrf_gpio_pin_sense_get(nrf_pin);
+                    if (sense != NRF_GPIO_PIN_NOSENSE) {
+                        uint32_t state = nrf_gpio_pin_read(nrf_pin);
+                        if ((state && sense == NRF_GPIO_PIN_SENSE_HIGH) ||
+                                (!state && sense == NRF_GPIO_PIN_SENSE_LOW)) {
+                            reason = i + 1;
+                            break;
                         }
                     }
-                } else {
-                    // Check IN events
-                    for (unsigned i = 0; i < GPIOTE_CH_NUM && reason < 0; ++i) {
-                        if (NRF_GPIOTE->EVENTS_IN[i] && nrf_gpiote_int_is_enabled(NRF_GPIOTE_INT_IN0_MASK << i)) {
-                            pin_t pin = NRF_PIN_LOOKUP_TABLE[nrf_gpiote_event_pin_get(i)];
-                            if (pin != PIN_INVALID) {
-                                for (unsigned p = 0; p < pins_count; ++p) {
-                                    pin_t wake_up_pin = pins[p];
-                                    if (wake_up_pin == pin) {
-                                        reason = p + 1;
-                                        break;
-                                    }
+                }
+            } else {
+                // Check IN events
+                for (unsigned i = 0; i < GPIOTE_CH_NUM && reason < 0; ++i) {
+                    if (NRF_GPIOTE->EVENTS_IN[i] && nrf_gpiote_int_is_enabled(NRF_GPIOTE_INT_IN0_MASK << i)) {
+                        pin_t pin = NRF_PIN_LOOKUP_TABLE[nrf_gpiote_event_pin_get(i)];
+                        if (pin != PIN_INVALID) {
+                            for (unsigned p = 0; p < pins_count; ++p) {
+                                pin_t wake_up_pin = pins[p];
+                                if (wake_up_pin == pin) {
+                                    reason = p + 1;
+                                    break;
                                 }
                             }
                         }
                     }
                 }
-                break;
             }
+            break;
+        } else if (wakeup_by_ble && NVIC_GetPendingIRQ(SD_EVT_IRQn)) {
+            // FIXME: temporarily treat it as RTC wakeup reason.
+            reason = 0;
+            break;
         }
 
         {
@@ -930,7 +951,13 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
     sd_nvic_critical_region_exit(st);
 
     // Unmasks all non-softdevice interrupts
-    HAL_enable_irq(hst);
+    if (!wakeup_by_ble) {
+        HAL_enable_irq(hst);
+        hal_ble_stack_init(NULL);
+        if (advertising) {
+            hal_ble_gap_start_advertising(NULL);
+        }
+    }
 
     // Release LFCLK
     nrf_drv_clock_lfclk_release();

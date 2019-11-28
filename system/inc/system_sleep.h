@@ -290,6 +290,27 @@ public:
         return *this;
     }
 
+    SystemSleepConfiguration& ble() {
+        // Check if BLE has been configured as wakeup source.
+        auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_BLE);
+        if (wakeup) {
+            return *this;
+        }
+        // Otherwise, configure BLE as wakeup source.
+        auto wakeupSource = new(std::nothrow) hal_wakeup_source_base_t();
+        if (!wakeupSource) {
+            valid_ = false;
+            return *this;
+        }
+        wakeupSource->size = sizeof(hal_wakeup_source_base_t);
+        wakeupSource->version = HAL_SLEEP_VERSION;
+        wakeupSource->type = HAL_WAKEUP_SOURCE_TYPE_BLE;
+        wakeupSource->next = config_.wakeup_sources;
+        config_.wakeup_sources = wakeupSource;
+        valid_ = true;
+        return *this;
+    }
+
 private:
     hal_sleep_config_t config_;
     bool valid_; // TODO: This should be an enum value instead to indicate different errors.
