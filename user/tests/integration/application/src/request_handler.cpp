@@ -173,6 +173,8 @@ int RequestHandler::request(Request* req) {
         CHECK(getStatus(req));
     } else if (cmd == "L") { // Get log
         CHECK(getLog(req));
+    } else if (cmd == "r") { // Reset
+        CHECK(reset(req));
     } else {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -201,8 +203,7 @@ int RequestHandler::initSuite(Request* req) {
         const auto val = req->get("t").toInt();
         conf.systemThreadEnabled((bool)val);
     }
-    const auto suite = TestSuite::instance();
-    return suite->config(conf);
+    return TestSuite::instance()->config(conf);
 }
 
 int RequestHandler::listTests(Request* req) {
@@ -251,6 +252,11 @@ int RequestHandler::getLog(Request* req) {
         w.value(runner->logBuffer(), runner->logSize());
     }));
     return 0;
+}
+
+int RequestHandler::reset(Request* req) {
+    TestSuite::instance()->destroy();
+    return Result::RESET_PENDING;
 }
 
 RequestHandler* RequestHandler::instance() {

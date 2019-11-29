@@ -46,6 +46,7 @@ private:
     int startTest(Request* req);
     int getStatus(Request* req);
     int getLog(Request* req);
+    int reset(Request* req);
 };
 
 } // namespace particle
