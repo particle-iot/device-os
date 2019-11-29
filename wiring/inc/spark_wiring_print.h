@@ -131,7 +131,7 @@ size_t Print::print(T n, int base)
         } else {
             val = n;
         }
-        return printNumber(val, 10) + t;
+        return printNumber(val, base) + t;
     }
 }
 #endif
