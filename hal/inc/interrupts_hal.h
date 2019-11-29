@@ -68,6 +68,13 @@ typedef struct HAL_InterruptCallback {
     void* data;
 } HAL_InterruptCallback;
 
+typedef struct hal_pins_interrupt_config_t {
+    uint16_t* pins;
+    uint32_t pins_count;
+    InterruptMode* modes;
+    uint32_t modes_count;
+} hal_pins_interrupt_config_t;
+
 #define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1 4
 #define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2 5
 #define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2

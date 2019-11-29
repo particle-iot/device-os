@@ -73,20 +73,30 @@ static int hal_sleep_enter_stop_mode(const hal_sleep_config_t* config, hal_wakeu
 }
 
 static int hal_sleep_enter_hibernate_mode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source) {
-    long seconds = 0;
-    uint32_t flags = HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN;
+    Vector<uint16_t> pins;
+    Vector<InterruptMode> modes;
+    hal_pins_interrupt_config_t pins_config = {}; 
 
     auto wakeupSource = config->wakeup_sources;
     while (wakeupSource) {
         if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            // FIXME on Gen3 platforms
+            if (!pins.append(reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource)->pin)) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+            if (!modes.append(reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource)->mode)) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms / 1000;
+            // Not supported
         }
         wakeupSource = wakeupSource->next;
     }
 
-    return HAL_Core_Enter_Standby_Mode(seconds, flags);
+    pins_config.pins = pins.data();
+    pins_config.pins_count = pins.size();
+    pins_config.modes = modes.data();
+    pins_config.modes_count = modes.size();
+    return HAL_Core_Execute_Standby_Mode_Ext(0, &pins_config);
 }
 
 int hal_sleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source, void* reserved) {
