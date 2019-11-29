@@ -8,6 +8,8 @@ set(CMAKE_CXX_EXTENSIONS ON)
 
 set(CMAKE_C_STANDARD 11)
 
+set(Boost_USE_STATIC_LIBS ON)
+
 # Create variables for commonly referenced directories
 get_filename_component(
   DEVICE_OS_DIR
