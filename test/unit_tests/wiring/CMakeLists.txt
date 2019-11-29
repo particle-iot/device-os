@@ -6,7 +6,9 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/services/src/completion_handler.cpp
   ${DEVICE_OS_DIR}/services/src/system_error.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_async.cpp
+  ${DEVICE_OS_DIR}/wiring/src/spark_wiring_print.cpp
   async.cpp
+  print.cpp
 )
 
 # Set defines specific to target
