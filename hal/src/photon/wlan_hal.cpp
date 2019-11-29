@@ -187,7 +187,7 @@ bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
     if (force || wifi_config->device_configured != WICED_TRUE ||
         wifi_config->country_code != country)
     {
-        if (!wifi_config->device_configured)
+        if (wifi_config->device_configured != WICED_TRUE)
         {
             memset(wifi_config, 0, sizeof(*wifi_config));
         }
