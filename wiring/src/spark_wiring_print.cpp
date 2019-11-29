@@ -60,6 +60,11 @@ size_t Print::print(char c)
   return write(c);
 }
 
+size_t Print::print(float n, int digits)
+{
+  return printFloat((double)n, digits);
+}
+
 size_t Print::print(double n, int digits)
 {
   return printFloat(n, digits);
@@ -94,6 +99,11 @@ size_t Print::println(char c)
   size_t n = print(c);
   n += println();
   return n;
+}
+
+size_t Print::println(float num, int digits)
+{
+    return println((double)num, digits);
 }
 
 size_t Print::println(double num, int digits)
