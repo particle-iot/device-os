@@ -135,9 +135,13 @@ public:
         return static_cast<SystemSleepMode>(config_->mode);
     }
 
-    hal_wakeup_source_base_t* wakeupSourceFeatured(hal_wakeup_source_type_t type, hal_wakeup_source_base_t* start = nullptr) const {
+    hal_wakeup_source_base_t* wakeupSourceFeatured(hal_wakeup_source_type_t type) const {
+        return wakeupSourceFeatured(type, config_->wakeup_sources);
+    }
+
+    hal_wakeup_source_base_t* wakeupSourceFeatured(hal_wakeup_source_type_t type, hal_wakeup_source_base_t* start) const {
         if (!start) {
-            start = config_->wakeup_sources;
+            return nullptr;
         }
         while (start) {
             if (start->type == type) {

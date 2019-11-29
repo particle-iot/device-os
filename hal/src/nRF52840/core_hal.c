@@ -994,6 +994,42 @@ int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 
+    hal_pins_interrupt_config_t* pins_config = NULL;
+    const uint16_t* pins;
+    size_t pins_count;
+    const InterruptMode* modes;
+    size_t modes_count;
+
+    if (reserved) {
+        pins_config = (hal_pins_interrupt_config_t*)reserved;
+        pins = pins_config->pins;
+        pins_count = pins_config->pins_count;
+        modes = pins_config->modes;
+        modes_count = pins_config->modes_count;
+        if ((pins_count == 0 || modes_count == 0 || pins == NULL || modes == NULL)) {
+            pins_config = NULL;
+        }
+        for (unsigned i = 0; i < pins_count; i++) {
+            if (pins[i] >= TOTAL_PINS) {
+                pins_config = NULL;
+                break;
+            }
+        }
+        for (int i = 0; i < modes_count; i++) {
+            switch (modes[i]) {
+                case RISING:
+                case FALLING:
+                case CHANGE: {
+                    break;
+                }
+                default: {
+                    pins_config = NULL;
+                    break;
+                }
+            }
+        }
+    }
+
     // Make sure we acquire exflash lock BEFORE going into a critical section
     hal_exflash_lock();
 
@@ -1026,10 +1062,55 @@ int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved) {
     // Clear any GPIOTE events
     nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
 
-    // Configure wakeup pin
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[WKP].gpio_port, PIN_MAP[WKP].gpio_pin);
-    nrf_gpio_cfg_sense_input(nrf_pin, NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
+
+    // Configure wakeup pin
+    if (!pins_config) {
+        uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[WKP].gpio_port, PIN_MAP[WKP].gpio_pin);
+        nrf_gpio_cfg_sense_input(nrf_pin, NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
+    } else {
+        for (int i = 0; i < pins_count; i++) {
+            pin_t wake_up_pin = pins[i];
+            InterruptMode edge_trigger_mode = (i < modes_count) ? modes[i] : modes[modes_count - 1];
+            nrf_gpio_pin_pull_t wake_up_pin_mode;
+            nrf_gpio_pin_sense_t wake_up_pin_sense;
+
+            // Set required pin_mode based on edge_trigger_mode
+            switch(edge_trigger_mode) {
+                case RISING: {
+                    wake_up_pin_mode = NRF_GPIO_PIN_PULLDOWN;
+                    wake_up_pin_sense = NRF_GPIO_PIN_SENSE_HIGH;
+                    break;
+                }
+                case FALLING: {
+                    wake_up_pin_mode = NRF_GPIO_PIN_PULLUP;
+                    wake_up_pin_sense = NRF_GPIO_PIN_SENSE_LOW;
+                    break;
+                }
+                case CHANGE:
+                default: {
+                    wake_up_pin_mode = NRF_GPIO_PIN_NOPULL;
+                    break;
+                }
+            }
+            uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[wake_up_pin].gpio_port, PIN_MAP[wake_up_pin].gpio_pin);
+            // Set pin mode
+            if (wake_up_pin_mode == NRF_GPIO_PIN_NOPULL) {
+                nrf_gpio_cfg_input(nrf_pin, wake_up_pin_mode);
+                // Read current state, choose sense accordingly
+                // Dummy read just in case
+                (void)nrf_gpio_pin_read(nrf_pin);
+                uint32_t cur_state = nrf_gpio_pin_read(nrf_pin);
+                if (cur_state) {
+                    nrf_gpio_cfg_sense_set(nrf_pin, NRF_GPIO_PIN_SENSE_LOW);
+                } else {
+                    nrf_gpio_cfg_sense_set(nrf_pin, NRF_GPIO_PIN_SENSE_HIGH);
+                }
+            } else {
+                nrf_gpio_cfg_sense_input(nrf_pin, wake_up_pin_mode, wake_up_pin_sense);
+            }
+        }
+    }
 
     // Disable PWM
     nrf_pwm_disable(NRF_PWM0);
