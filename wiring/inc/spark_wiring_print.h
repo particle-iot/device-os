@@ -83,6 +83,7 @@ class Print
     template <typename T, std::enable_if_t<std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
         std::is_convertible<T, long long>::value, int> = 0>
     size_t print(T, int = DEC);
+    size_t print(float, int = 2);
     size_t print(double, int = 2);
     size_t print(const Printable&);
     size_t print(const __FlashStringHelper*);
@@ -96,6 +97,7 @@ class Print
         n += println();
         return n;
     }
+    size_t println(float, int = 2);
     size_t println(double, int = 2);
     size_t println(const Printable&);
     size_t println(void);
