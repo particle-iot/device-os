@@ -22,6 +22,56 @@
 
 namespace particle {
 
+template <typename T, typename Enable = void>
+class BitMaskFlags;
+
+// template< typename T, typename = typename std::enable_if_t<std::is_enum<T>::value> >
+// class BitMaskFlags<T> {
+template< typename T>
+class BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>> {
+public:
+    BitMaskFlags();
+    BitMaskFlags(T value);
+
+    BitMaskFlags<T> operator&(T value);
+    BitMaskFlags<T>& operator&=(T value);
+    BitMaskFlags<T> operator&(BitMaskFlags<T> flags);
+    BitMaskFlags<T>& operator&=(BitMaskFlags<T> flags);
+    BitMaskFlags<T> operator|(T value);
+    BitMaskFlags<T>& operator|=(T value);
+    BitMaskFlags<T> operator|(BitMaskFlags<T> flags);
+    BitMaskFlags<T>& operator|=(BitMaskFlags<T> flags);
+    BitMaskFlags<T> operator^(T value);
+    BitMaskFlags<T> operator^=(T value);
+    BitMaskFlags<T> operator^(BitMaskFlags<T> flags);
+    BitMaskFlags<T>& operator^=(BitMaskFlags<T> flags);
+
+    typename std::underlying_type<T>::type value();
+
+    // Used for the case: if ( true && BitMaskFlags<T>) {}
+    operator bool() {
+        return (value_ != 0);
+    }
+
+private:
+    typename std::underlying_type<T>::type value_;
+};
+
+template< typename T, typename = typename std::enable_if_t<std::is_enum<T>::value> >
+inline BitMaskFlags<T> operator&(T lhs, T rhs) {
+    return BitMaskFlags<T>(lhs) & BitMaskFlags<T>(rhs);
+}
+
+template< typename T, typename = typename std::enable_if_t<std::is_enum<T>::value> >
+inline BitMaskFlags<T> operator|(T& lhs, T rhs) {
+    return BitMaskFlags<T>(lhs) | BitMaskFlags<T>(rhs);
+}
+
+template< typename T, typename = typename std::enable_if_t<std::is_enum<T>::value> >
+inline BitMaskFlags<T> operator^(T& lhs, T rhs) {
+    return BitMaskFlags<T>(lhs) ^ BitMaskFlags<T>(rhs);
+}
+
 template <typename E>
 constexpr auto to_underlying(E e) noexcept
 {
@@ -29,5 +79,92 @@ constexpr auto to_underlying(E e) noexcept
 }
 
 } /* particle */
+
+template< typename T>
+inline particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::BitMaskFlags()
+        : value_(0) {
+}
+
+template< typename T>
+inline particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::BitMaskFlags(T value) {
+    value_ = static_cast< typename std::underlying_type<T>::type >(value);
+}
+
+template< typename T>
+inline BitMaskFlags<T> particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator&(T value) {
+    value_ &= BitMaskFlags<T>(value);
+    return *this;
+}
+
+template< typename T>
+inline BitMaskFlags<T>& particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator&=(T value) {
+    value_ &= BitMaskFlags<T>(value);
+    return *this;
+}
+
+template< typename T>
+inline BitMaskFlags<T> particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator&(BitMaskFlags<T> flags) {
+    value_ &= flags.value_;
+    return *this;
+}
+
+template< typename T>
+inline BitMaskFlags<T>& particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator&=(BitMaskFlags<T> flags) {
+    value_ &= flags.value_;
+    return *this;
+}
+
+template< typename T>
+inline BitMaskFlags<T> particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator|(T value) {
+    value_ |= BitMaskFlags<T>(value);
+    return *this;
+}
+
+template< typename T>
+inline BitMaskFlags<T>& particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator|=(T value) {
+    value_ |= BitMaskFlags<T>(value);
+    return *this;
+}
+
+template< typename T>
+inline BitMaskFlags<T> particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator|(BitMaskFlags<T> flags) {
+    value_ |= flags.value_;
+    return *this;
+}
+
+template< typename T>
+inline BitMaskFlags<T>& particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator|=(BitMaskFlags<T> flags) {
+    value_ |= flags.value_;
+    return *this;
+}
+
+template< typename T>
+inline BitMaskFlags<T> particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator^(T value) {
+    value_ ^= BitMaskFlags<T>(value);
+    return *this;
+}
+
+template< typename T>
+inline BitMaskFlags<T> particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator^=(T value) {
+    value_ ^= BitMaskFlags<T>(value);
+    return *this;
+}
+
+template< typename T>
+inline BitMaskFlags<T> particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator^(BitMaskFlags<T> flags) {
+    value_ ^= flags.value_;
+    return *this;
+}
+
+template< typename T>
+inline BitMaskFlags<T>& particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator^=(BitMaskFlags<T> flags) {
+    value_ ^= flags.value_;
+    return *this;
+}
+
+template< typename T>
+inline typename std::underlying_type<T>::type particle::BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::value() {
+    return value_;
+}
 
 #endif /* SERVICES_ENUMCLASS_H */
