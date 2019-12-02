@@ -25,8 +25,6 @@ namespace particle {
 template <typename T, typename Enable = void>
 class BitMaskFlags;
 
-// template< typename T, typename = typename std::enable_if_t<std::is_enum<T>::value> >
-// class BitMaskFlags<T> {
 template< typename T>
 class BitMaskFlags<T, typename std::enable_if_t<std::is_enum<T>::value>> {
 public:
