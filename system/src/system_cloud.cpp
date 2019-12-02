@@ -61,6 +61,13 @@ VitalsPublisher<Timer> _vitals;
 VitalsPublisher<particle::NullTimer> _vitals;
 #endif // PLATFORM_THREADING
 
+int spark_cloud_disconnect_impl(unsigned flags) {
+    cloud_disconnect(!(flags & CLOUD_DISCONNECT_DONT_CLOSE), // closeSocket
+            flags & CLOUD_DISCONNECT_GRACEFULLY, // graceful
+            CLOUD_DISCONNECT_REASON_USER);
+    return 0;
+}
+
 } // namespace
 
 #ifndef SPARK_NO_CLOUD
@@ -258,4 +265,13 @@ int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void
 #endif // SPARK_NO_CLOUD
 
     return 0;
+}
+
+int spark_cloud_disconnect(spark_cloud_disconnect_param* param) {
+    const unsigned flags = param ? param->flags : 0;
+    if (flags & CLOUD_DISCONNECT_SYNC) {
+        SYSTEM_THREAD_CONTEXT_SYNC_CALL_RESULT(spark_cloud_disconnect_impl(flags));
+    } else {
+        SYSTEM_THREAD_CONTEXT_ASYNC_CALL_RESULT(spark_cloud_disconnect_impl(flags), 0);
+    }
 }

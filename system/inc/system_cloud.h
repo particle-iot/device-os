@@ -240,6 +240,28 @@ void spark_cloud_flag_disconnect(void);    // should be set connected since it m
  */
 bool spark_cloud_flag_auto_connect(void);
 
+/**
+ * Option flags changing the behavior of `spark_cloud_disconnect()`.
+ */
+typedef enum cloud_disconnect_flag {
+    CLOUD_DISCONNECT_GRACEFULLY = 0x01, ///< Disconnect gracefully.
+    CLOUD_DISCONNECT_DONT_CLOSE = 0x02, ///< Do not close the socket.
+    CLOUD_DISCONNECT_SYNC = 0x04 ///< Disconnect synchronously.
+} cloud_disconnect_flag;
+
+/**
+ * Parameters for `spark_cloud_disconnect()`.
+ */
+typedef struct spark_cloud_disconnect_param {
+    uint16_t size; ///< Size of this structure.
+    uint16_t flags; ///< Option flags (see `cloud_disconnect_flag`).
+} spark_cloud_disconnect_param;
+
+/**
+ * Close the cloud connection.
+ */
+int spark_cloud_disconnect(spark_cloud_disconnect_param* param);
+
 ProtocolFacade* system_cloud_protocol_instance(void);
 
 int spark_set_connection_property(unsigned property_id, unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved);
