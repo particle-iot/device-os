@@ -31,6 +31,7 @@
 #include "spark_wiring_flags.h"
 #include "ble_hal.h"
 #include <memory>
+#include "enumclass.h"
 
 namespace particle {
 
@@ -64,28 +65,7 @@ enum class BleCharacteristicProperty : uint8_t {
     AUTH_SIGN_WRITES    = BLE_SIG_CHAR_PROP_AUTH_SIGN_WRITES,
     EXTENDED_PROP       = BLE_SIG_CHAR_PROP_EXTENDED_PROP
 };
-
-inline BleCharacteristicProperty operator&(BleCharacteristicProperty lhs, BleCharacteristicProperty rhs) {
-    return static_cast<BleCharacteristicProperty>(
-        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(lhs) &
-        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(rhs)
-    );
-}
-
-inline BleCharacteristicProperty& operator|=(BleCharacteristicProperty& lhs, BleCharacteristicProperty rhs) {
-    lhs = static_cast<BleCharacteristicProperty> (
-        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(lhs) |
-        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(rhs)
-    );
-    return lhs;
-}
-
-inline BleCharacteristicProperty operator|(BleCharacteristicProperty lhs, BleCharacteristicProperty rhs) {
-    return static_cast<BleCharacteristicProperty> (
-        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(lhs) |
-        static_cast<std::underlying_type<BleCharacteristicProperty>::type>(rhs)
-    );
-}
+ENABLE_ENUM_CLASS_BITWISE(BleCharacteristicProperty);
 
 enum class BleAdvertisingDataType : uint8_t {
     FLAGS                               = BLE_SIG_AD_TYPE_FLAGS,
@@ -367,20 +347,20 @@ class BleCharacteristic {
 public:
     BleCharacteristic();
     BleCharacteristic(const BleCharacteristic& characteristic);
-    BleCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
-    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
+    BleCharacteristic(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
+    BleCharacteristic(const String& desc, BitMaskFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
             : BleCharacteristic(desc.c_str(), properties, callback, context) {
     }
 
     template<typename T1, typename T2>
-    BleCharacteristic(const char* desc, BleCharacteristicProperty properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
+    BleCharacteristic(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
         BleUuid cUuid(charUuid);
         BleUuid sUuid(svcUuid);
         construct(desc, properties, cUuid, sUuid, callback, context);
     }
 
     template<typename T1, typename T2>
-    BleCharacteristic(const String& desc, BleCharacteristicProperty properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
+    BleCharacteristic(const String& desc, BitMaskFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
             : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context) {
     }
     ~BleCharacteristic();
@@ -390,7 +370,7 @@ public:
     bool valid() const;
 
     BleUuid UUID() const;
-    BleCharacteristicProperty properties() const;
+    BitMaskFlags<BleCharacteristicProperty> properties() const;
     String description() const;
     size_t description(char* buf, size_t len) const;
 
@@ -425,7 +405,7 @@ public:
     }
 
 private:
-    void construct(const char* desc, BleCharacteristicProperty properties,
+    void construct(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties,
             BleUuid& charUuid, BleUuid& svcUuid,
             BleOnDataReceivedCallback callback, void* context);
 
@@ -574,18 +554,18 @@ public:
 
     // Access local characteristics
     BleCharacteristic addCharacteristic(const BleCharacteristic& characteristic);
-    BleCharacteristic addCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
-    BleCharacteristic addCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
+    BleCharacteristic addCharacteristic(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
+    BleCharacteristic addCharacteristic(const String& desc, BitMaskFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
 
     template<typename T1, typename T2>
-    BleCharacteristic addCharacteristic(const char* desc, BleCharacteristicProperty properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
+    BleCharacteristic addCharacteristic(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
         BleCharacteristic characteristic(desc, properties, charUuid, svcUuid, callback, context);
         addCharacteristic(characteristic);
         return characteristic;
     }
 
     template<typename T1, typename T2>
-    BleCharacteristic addCharacteristic(const String& desc, BleCharacteristicProperty properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
+    BleCharacteristic addCharacteristic(const String& desc, BitMaskFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
         BleCharacteristic characteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context);
         addCharacteristic(characteristic);
         return characteristic;
