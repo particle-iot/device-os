@@ -56,6 +56,7 @@
 #include "lwip/dhcp.h"
 #endif // LWIP_DHCP
 #include "tls_cipher_suites.h"
+#include "check.h"
 
 uint64_t tls_host_get_time_ms_local() {
     uint64_t time_ms;
@@ -186,7 +187,7 @@ bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
     if (force || wifi_config->device_configured != WICED_TRUE ||
         wifi_config->country_code != country)
     {
-        if (!wifi_config->device_configured)
+        if (wifi_config->device_configured != WICED_TRUE)
         {
             memset(wifi_config, 0, sizeof(*wifi_config));
         }
@@ -561,6 +562,43 @@ int wlan_restart(void* reserved) {
     return 0;
 }
 
+static bool is_ap_entry_valid(const wiced_config_ap_entry_t& ap) {
+    // Validate SSID
+    CHECK_TRUE(ap.details.SSID.length > 0 && ap.details.SSID.length <= sizeof(ap.details.SSID.value), false);
+    // Validate security/cipher type and security key
+    switch (ap.details.security) {
+        case WICED_SECURITY_WEP_PSK:
+        case WICED_SECURITY_WEP_SHARED:
+        case WICED_SECURITY_WPA_TKIP_PSK:
+        case WICED_SECURITY_WPA_AES_PSK:
+        case WICED_SECURITY_WPA_MIXED_PSK:
+        case WICED_SECURITY_WPA2_AES_PSK:
+        case WICED_SECURITY_WPA2_TKIP_PSK:
+        case WICED_SECURITY_WPA2_MIXED_PSK: {
+            // PSK types
+            CHECK_TRUE(ap.security_key_length > 0 && ap.security_key_length <= sizeof(ap.security_key), false);
+            break;
+        }
+        case WICED_SECURITY_OPEN:
+        case WICED_SECURITY_WPA_TKIP_ENT:
+        case WICED_SECURITY_WPA_AES_ENT:
+        case WICED_SECURITY_WPA_MIXED_ENT:
+        case WICED_SECURITY_WPA2_TKIP_ENT:
+        case WICED_SECURITY_WPA2_AES_ENT:
+        case WICED_SECURITY_WPA2_MIXED_ENT: {
+            // Ok
+            // WPA Enterprise credentials will be validated separately
+            break;
+        }
+        default: {
+            // Unknown
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /*
  * We need to manually loop through the APs here in order to know when to start
  * WPA Enterprise supplicant.
@@ -584,7 +622,8 @@ static wiced_result_t wlan_join() {
         for (unsigned i = 0; i < CONFIG_AP_LIST_SIZE; i++) {
             const wiced_config_ap_entry_t& ap = wifi_config->stored_ap_list[i];
 
-            if (ap.details.SSID.length == 0) {
+            if (!is_ap_entry_valid(ap)) {
+                // Skip invalid entries
                 continue;
             }
 
