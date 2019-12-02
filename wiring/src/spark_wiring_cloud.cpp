@@ -76,3 +76,9 @@ Future<bool> CloudClass::publish_event(const char *eventName, const char *eventD
 int CloudClass::publishVitals(system_tick_t period_s_) {
     return spark_publish_vitals(period_s_, nullptr);
 }
+
+void CloudClass::cancel() {
+    spark_cloud_flag_disconnect();
+    spark_cloud_disconnect(0, nullptr);
+    waitUntil(Particle.disconnected);
+}

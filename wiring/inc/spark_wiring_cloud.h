@@ -375,6 +375,14 @@ class CloudClass {
     inline static void keepAlive(std::chrono::seconds s) { keepAlive(s.count()); }
 #endif
 
+    /**
+     * Synchronously cancel all pending cloud operations and disconnect from the cloud.
+     *
+     * Calling this method resets the auto-connection flag. The system will not attempt to reconnect
+     * to the cloud until `Particle.connect()` is called.
+     */
+    static void cancel();
+
 private:
 
     static bool register_function(cloud_function_t fn, void* data, const char* funcKey);

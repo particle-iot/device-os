@@ -114,10 +114,6 @@ FFL(F const &func)
     SYSTEM_THREAD_CONTEXT_ASYNC(fn); \
     fn;
 
-#define SYSTEM_THREAD_CONTEXT_ASYNC_CALL_RESULT(fn, result) \
-    SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(fn, result); \
-    return fn;
-
 #define SYSTEM_THREAD_CONTEXT_SYNC_CALL(fn) \
     SYSTEM_THREAD_CONTEXT_SYNC(fn); \
     fn;

@@ -245,22 +245,17 @@ bool spark_cloud_flag_auto_connect(void);
  */
 typedef enum cloud_disconnect_flag {
     CLOUD_DISCONNECT_GRACEFULLY = 0x01, ///< Disconnect gracefully.
-    CLOUD_DISCONNECT_DONT_CLOSE = 0x02, ///< Do not close the socket.
-    CLOUD_DISCONNECT_SYNC = 0x04 ///< Disconnect synchronously.
+    CLOUD_DISCONNECT_DONT_CLOSE = 0x02 ///< Do not close the socket.
 } cloud_disconnect_flag;
 
 /**
- * Parameters for `spark_cloud_disconnect()`.
- */
-typedef struct spark_cloud_disconnect_param {
-    uint16_t size; ///< Size of this structure.
-    uint16_t flags; ///< Option flags (see `cloud_disconnect_flag`).
-} spark_cloud_disconnect_param;
-
-/**
  * Close the cloud connection.
+ *
+ * @param flags Option flags (see `cloud_disconnect_flag`).
+ * @param reserved This argument should be set to NULL.
+ * @return 0 on success or a negative result code in case of an error.
  */
-int spark_cloud_disconnect(spark_cloud_disconnect_param* param);
+int spark_cloud_disconnect(unsigned flags, void* reserved);
 
 ProtocolFacade* system_cloud_protocol_instance(void);
 
