@@ -380,8 +380,10 @@ class CloudClass {
      *
      * Calling this method resets the auto-connection flag. The system will not attempt to reconnect
      * to the cloud until `Particle.connect()` is called.
+     *
+     * @note This method is experimental and is subject to change in future releases of Device OS.
      */
-    static void cancel();
+    static void _cancel();
 
 private:
 
