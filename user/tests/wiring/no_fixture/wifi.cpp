@@ -19,6 +19,7 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include "scope_guard.h"
 
 #if Wiring_WiFi == 1
 
@@ -225,6 +226,58 @@ test(WIFI_13_restore_connection)
     {
         Particle.connect();
     }
+}
+
+test(WIFI_14_wifi_class_methods_work_correctly_when_wifi_interface_is_off) {
+    Particle.disconnect();
+    WiFi.disconnect();
+    WiFi.off();
+    delay(1000);
+    SCOPE_GUARD({
+        // Restore the connection
+        WiFi.on();
+        WiFi.connect();
+        Particle.connect();
+    });
+    assertEqual(WiFi.ready(), false);
+
+    uint8_t tmp[6];
+
+    // These methods should still work correctly while the WiFi interface
+    // is turned off
+
+    // Don't care about the result. Some platforms
+    // might be able to provide the MAC with WiFi interface off,
+    // some might not.
+    (void)WiFi.macAddress(tmp);
+
+    // The rest of the functions use this method and some of them
+    // don't have nullptr checks.
+    auto conf = WiFi.wifi_config();
+    assertFalse(conf == nullptr);
+
+    // All these should be 0.0.0.0
+    IPAddress zeroAddr;
+    assertEqual(WiFi.localIP(), zeroAddr);
+    assertEqual(WiFi.subnetMask(), zeroAddr);
+    assertEqual(WiFi.gatewayIP(), zeroAddr);
+    assertEqual(WiFi.dnsServerIP(), zeroAddr);
+    assertEqual(WiFi.dhcpServerIP(), zeroAddr);
+    auto sig = WiFi.RSSI();
+    assertEqual(sig.getQuality(), -1.0f);
+    assertEqual(sig.getQualityValue(), 0.0f);
+    assertEqual(sig.getStrength(), -1.0f);
+    assertEqual(sig.getStrengthValue(), 0.0f);
+    assertNotEqual(WiFi.getAntenna(), ANT_NONE);
+    auto ssid = WiFi.SSID();
+    if (ssid) {
+        assertEqual(strlen(WiFi.SSID()), 0);
+    }
+    // 00:00:00:00:00:00 or ff:ff:ff:ff:ff:ff
+    auto bssid = WiFi.BSSID(tmp);
+    const uint8_t bssidRef[6] = {};
+    const uint8_t bssidRefFf[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    assertTrue(!memcmp(bssidRef, bssid, sizeof(bssidRef)) || !memcmp(bssidRefFf, bssid, sizeof(bssidRefFf)));
 }
 
 #endif
