@@ -1,3 +1,15 @@
+## 1.4.4
+
+>**Note:** If your Gen 2 Photon/P1 or Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release).
+>**Note:** If your Gen 3 device does not have a Cloud connection, this release will also require manually updating the SoftDevice via CLI. The instructions are available in the release notes and the SoftDevice binaries are available in the Github release.
+>
+>This release contains v501 bootloaders.
+
+### BUGFIXES
+
+- [Photon/P1] Fixes handling of invalid WiFi access point config entries in DCT [#1976](https://github.com/particle-iot/device-os/pull/1976)
+
+
 ## 1.4.3
 
 >**Note:** If your Gen 2 Photon/P1 or Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release).
