@@ -63,6 +63,7 @@ int TestSuite::init() {
     runner->serialEnabled(false);
     runner->ledEnabled(false);
     runner->logEnabled(true);
+    Test::max_verbosity = TEST_VERBOSITY_ASSERTIONS_FAILED;
     // Initialize request handler
     CHECK(reqHandler_.init());
     inited_ = true;
