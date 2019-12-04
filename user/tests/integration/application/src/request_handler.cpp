@@ -41,7 +41,8 @@ JSONValue getValue(const JSONValue& obj, const char* name) {
     return JSONValue();
 }
 
-void systemReset() {
+// Completion handler for Request::done()
+void systemReset(int result, void* data) {
     System.reset();
 }
 
@@ -50,9 +51,6 @@ void systemReset() {
 // Wrapper for a control request handle
 class RequestHandler::Request {
 public:
-    // Completion callback for Request::done()
-    typedef void(*CompleteFn)();
-
     Request() :
             req_(nullptr) {
     }
@@ -62,10 +60,12 @@ public:
     }
 
     int init(ctrl_request* req) {
-        // Parse request
-        auto d = JSONValue::parse(req->request_data, req->request_size);
-        CHECK_TRUE(d.isObject(), SYSTEM_ERROR_BAD_DATA);
-        data_ = std::move(d);
+        if (req->request_size > 0) {
+            // Parse request
+            auto d = JSONValue::parse(req->request_data, req->request_size);
+            CHECK_TRUE(d.isObject(), SYSTEM_ERROR_BAD_DATA);
+            data_ = std::move(d);
+        }
         req_ = req;
         return 0;
     }
@@ -95,20 +95,12 @@ public:
         return 0;
     }
 
-    void done(CompleteFn fn = nullptr) {
-        if (!req_) {
-            return;
+    void done(int result, ctrl_completion_handler_fn fn = nullptr, void* data = nullptr) {
+        if (req_) {
+            system_ctrl_set_result(req_, result, fn, data, nullptr);
+            req_ = nullptr;
+            destroy();
         }
-        if (fn) {
-            system_ctrl_set_result(req_, SYSTEM_ERROR_NONE, [](int result, void* data) {
-                const auto fn = (CompleteFn)data;
-                fn();
-            }, (void*)fn, nullptr);
-        } else {
-            system_ctrl_set_result(req_, SYSTEM_ERROR_NONE, nullptr, nullptr, nullptr);
-        }
-        req_ = nullptr;
-        destroy();
     }
 
     JSONValue get(const char* name) const {
@@ -121,6 +113,10 @@ public:
 
     const JSONValue& data() const {
         return data_;
+    }
+
+    bool isEmpty() const {
+        return !data_.isValid();
     }
 
 private:
@@ -157,28 +153,29 @@ int RequestHandler::request(ctrl_request* ctrlReq) {
     Request req;
     CHECK(req.init(ctrlReq));
     const int r = CHECK(request(&req));
-    req.done((r == Result::RESET_PENDING) ? systemReset : nullptr);
+    req.done(r, (r == Result::RESET_PENDING) ? systemReset : nullptr);
     return 0;
 }
 
 int RequestHandler::request(Request* req) {
     const auto cmd = req->get("c").toString(); // Command
     if (cmd == "i") { // Init suite
-        CHECK(initSuite(req));
+        return initSuite(req);
     } else if (cmd == "l") { // List tests
-        CHECK(listTests(req));
+        return listTests(req);
     } else if (cmd == "t") { // Start test
-        CHECK(startTest(req));
+        return startTest(req);
     } else if (cmd == "s") { // Get status
-        CHECK(getStatus(req));
+        return getStatus(req);
     } else if (cmd == "L") { // Get log
-        CHECK(getLog(req));
+        return getLog(req);
     } else if (cmd == "r") { // Reset
-        CHECK(reset(req));
+        return reset(req);
+    } else if (req->isEmpty()) { // Ping request
+        return SYSTEM_ERROR_NONE;
     } else {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    return 0;
 }
 
 int RequestHandler::initSuite(Request* req) {
