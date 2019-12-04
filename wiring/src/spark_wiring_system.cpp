@@ -91,14 +91,11 @@ SleepResult SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, Slee
             config.wait(SystemSleepWait::NO_WAIT);
         }
 
-        uint32_t wakePinDisable = flags.value() & SYSTEM_SLEEP_FLAG_DISABLE_WKP_PIN;
-        uint32_t* reserved = wakePinDisable ? &wakePinDisable : nullptr;
-        SystemSleepResult result;
-        int ret = system_sleep_ext(config.halConfig(), result.halWakeupSource(), reserved);
-        result.setError(static_cast<system_error_t>(ret));
-        System.systemSleepResult_ = result;
+        if (!(flags.value() & SYSTEM_SLEEP_FLAG_DISABLE_WKP_PIN)) {
+            config.gpio(WKP, RISING);
+        }
 
-        System.toSleepResult();
+        System.sleep(config);
         return System.sleepResult_;
     }
 }

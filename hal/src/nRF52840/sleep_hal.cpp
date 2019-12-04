@@ -64,7 +64,7 @@ static int hal_sleep_enter_stop_mode(const hal_sleep_config_t* config, hal_wakeu
         hal_wakeup_source_gpio_t* gpio_wakeup = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
         gpio_wakeup->base.size = sizeof(hal_wakeup_source_gpio_t);
         gpio_wakeup->base.version = HAL_SLEEP_VERSION;
-        gpio_wakeup->base.type = HAL_WAKEUP_SOURCE_TYPE_RTC;
+        gpio_wakeup->base.type = HAL_WAKEUP_SOURCE_TYPE_GPIO;
         gpio_wakeup->base.next = nullptr;
         gpio_wakeup->pin = ret;
         *wakeup_source = reinterpret_cast<hal_wakeup_source_base_t*>(gpio_wakeup);
