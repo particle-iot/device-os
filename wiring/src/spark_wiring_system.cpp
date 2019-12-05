@@ -49,6 +49,7 @@ void SystemClass::reset(uint32_t data)
 
 SystemSleepResult SystemClass::sleep(const SystemSleepConfiguration& config) {
     if (!config.valid()) {
+        LOG(ERROR, "System sleep configuration is invalid.");
         System.systemSleepResult_ = SystemSleepResult(SYSTEM_ERROR_INVALID_ARGUMENT);
     } else {
         SystemSleepResult result;

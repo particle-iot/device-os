@@ -135,6 +135,10 @@ public:
         return static_cast<SystemSleepMode>(config_->mode);
     }
 
+    hal_wakeup_source_base_t*wakeupSource() const {
+        return config_->wakeup_sources;
+    }
+
     hal_wakeup_source_base_t* wakeupSourceFeatured(hal_wakeup_source_type_t type) const {
         return wakeupSourceFeatured(type, config_->wakeup_sources);
     }
@@ -162,7 +166,7 @@ public:
     SystemSleepConfiguration()
             : SystemSleepConfigurationHelper(&config_),
               config_(),
-              valid_(false) {
+              valid_(true) {
         config_.size = sizeof(hal_sleep_config_t);
         config_.version = HAL_SLEEP_VERSION;
         config_.mode = HAL_SLEEP_MODE_NONE;
@@ -199,69 +203,83 @@ public:
         return &config_;
     }
 
+    // It doesn't guarantee the combination of sleep mode and
+    // wakeup sources that the platform supports.
     bool valid() const {
-        return valid_;
+        if (!valid_) {
+            return valid_;
+        }
+        if (sleepMode() == SystemSleepMode::NONE || wakeupSource() == nullptr) {
+            return false;
+        }
+        return true;
     }
 
     // Setters
     SystemSleepConfiguration& mode(SystemSleepMode mode) {
-        config_.mode = static_cast<hal_sleep_mode_t>(mode);
+        if (valid_) {
+            config_.mode = static_cast<hal_sleep_mode_t>(mode);
+        }
         return *this;
     }
 
     SystemSleepConfiguration& wait(SystemSleepWait wait) {
-        config_.wait = static_cast<hal_sleep_wait_t>(wait);
+        if (valid_) {
+            config_.wait = static_cast<hal_sleep_wait_t>(wait);
+        }
         return *this;
     }
 
     SystemSleepConfiguration& gpio(pin_t pin, InterruptMode mode) {
-        // Check if this pin has been featured.
-        auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_GPIO);
-        while (wakeup) {
-            auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeup);
-            if (gpioWakeup->pin == pin) {
-                gpioWakeup->mode = mode;
+        if (valid_) {
+            // Check if this pin has been featured.
+            auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_GPIO);
+            while (wakeup) {
+                auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeup);
+                if (gpioWakeup->pin == pin) {
+                    gpioWakeup->mode = mode;
+                    return *this;
+                }
+                wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_GPIO, wakeup->next);
+            }
+            // Otherwise, configure this pin as wakeup source.
+            auto wakeupSource = new(std::nothrow) hal_wakeup_source_gpio_t();
+            if (!wakeupSource) {
+                valid_ = false;
                 return *this;
             }
-            wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_GPIO, wakeup->next);
+            wakeupSource->base.size = sizeof(hal_wakeup_source_gpio_t);
+            wakeupSource->base.version = HAL_SLEEP_VERSION;
+            wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_GPIO;
+            wakeupSource->base.next = config_.wakeup_sources;
+            wakeupSource->pin = pin;
+            wakeupSource->mode = mode;
+            config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
         }
-        // Otherwise, configure this pin as wakeup source.
-        auto wakeupSource = new(std::nothrow) hal_wakeup_source_gpio_t();
-        if (!wakeupSource) {
-            valid_ = false;
-            return *this;
-        }
-        wakeupSource->base.size = sizeof(hal_wakeup_source_gpio_t);
-        wakeupSource->base.version = HAL_SLEEP_VERSION;
-        wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_GPIO;
-        wakeupSource->base.next = config_.wakeup_sources;
-        wakeupSource->pin = pin;
-        wakeupSource->mode = mode;
-        config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
-        valid_= true;
         return *this;
     }
 
     SystemSleepConfiguration& duration(system_tick_t ms) {
-        // Check if RTC has been configured as wakeup source.
-        auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_RTC);
-        if (wakeup) {
-            reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeup)->ms = ms;
-            return *this;
+        if (valid_) {
+            // Check if RTC has been configured as wakeup source.
+            auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_RTC);
+            if (wakeup) {
+                reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeup)->ms = ms;
+                return *this;
+            }
+            // Otherwise, configure RTC as wakeup source.
+            auto wakeupSource = new(std::nothrow) hal_wakeup_source_rtc_t();
+            if (!wakeupSource) {
+                valid_ = false;
+                return *this;
+            }
+            wakeupSource->base.size = sizeof(hal_wakeup_source_rtc_t);
+            wakeupSource->base.version = HAL_SLEEP_VERSION;
+            wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_RTC;
+            wakeupSource->base.next = config_.wakeup_sources;
+            wakeupSource->ms = ms;
+            config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
         }
-        // Otherwise, configure RTC as wakeup source.
-        auto wakeupSource = new(std::nothrow) hal_wakeup_source_rtc_t();
-        if (!wakeupSource) {
-            valid_ = false;
-            return *this;
-        }
-        wakeupSource->base.size = sizeof(hal_wakeup_source_rtc_t);
-        wakeupSource->base.version = HAL_SLEEP_VERSION;
-        wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_RTC;
-        wakeupSource->base.next = config_.wakeup_sources;
-        wakeupSource->ms = ms;
-        config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
-        valid_ = true;
         return *this;
     }
 
@@ -270,54 +288,58 @@ public:
     }
 
     SystemSleepConfiguration& network(const NetworkClass& network) {
-        auto index = static_cast<network_interface_t>(network);
-        auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK);
-        while (wakeup) {
-            auto networkWakeup = reinterpret_cast<hal_wakeup_source_network_t*>(wakeup);
-            if (networkWakeup->index == index) {
+        if (valid_) {
+            auto index = static_cast<network_interface_t>(network);
+            auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK);
+            while (wakeup) {
+                auto networkWakeup = reinterpret_cast<hal_wakeup_source_network_t*>(wakeup);
+                if (networkWakeup->index == index) {
+                    return *this;
+                }
+                wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK, wakeup->next);
+            }
+            auto wakeupSource = new(std::nothrow) hal_wakeup_source_network_t();
+            if (!wakeupSource) {
+                valid_ = false;
                 return *this;
             }
-            wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK, wakeup->next);
+            wakeupSource->base.size = sizeof(hal_wakeup_source_gpio_t);
+            wakeupSource->base.version = HAL_SLEEP_VERSION;
+            wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_NETWORK;
+            wakeupSource->base.next = config_.wakeup_sources;
+            wakeupSource->index = static_cast<network_interface_index>(index);
+            config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
         }
-        auto wakeupSource = new(std::nothrow) hal_wakeup_source_network_t();
-        if (!wakeupSource) {
-            valid_ = false;
-            return *this;
-        }
-        wakeupSource->base.size = sizeof(hal_wakeup_source_gpio_t);
-        wakeupSource->base.version = HAL_SLEEP_VERSION;
-        wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_NETWORK;
-        wakeupSource->base.next = config_.wakeup_sources;
-        wakeupSource->index = static_cast<network_interface_index>(index);
-        config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
-        valid_= true;
         return *this;
     }
 
+#if HAL_PLATFORM_BLE
     SystemSleepConfiguration& ble() {
-        // Check if BLE has been configured as wakeup source.
-        auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_BLE);
-        if (wakeup) {
-            return *this;
+        if (valid_) {
+            // Check if BLE has been configured as wakeup source.
+            auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_BLE);
+            if (wakeup) {
+                return *this;
+            }
+            // Otherwise, configure BLE as wakeup source.
+            auto wakeupSource = new(std::nothrow) hal_wakeup_source_base_t();
+            if (!wakeupSource) {
+                valid_ = false;
+                return *this;
+            }
+            wakeupSource->size = sizeof(hal_wakeup_source_base_t);
+            wakeupSource->version = HAL_SLEEP_VERSION;
+            wakeupSource->type = HAL_WAKEUP_SOURCE_TYPE_BLE;
+            wakeupSource->next = config_.wakeup_sources;
+            config_.wakeup_sources = wakeupSource;
         }
-        // Otherwise, configure BLE as wakeup source.
-        auto wakeupSource = new(std::nothrow) hal_wakeup_source_base_t();
-        if (!wakeupSource) {
-            valid_ = false;
-            return *this;
-        }
-        wakeupSource->size = sizeof(hal_wakeup_source_base_t);
-        wakeupSource->version = HAL_SLEEP_VERSION;
-        wakeupSource->type = HAL_WAKEUP_SOURCE_TYPE_BLE;
-        wakeupSource->next = config_.wakeup_sources;
-        config_.wakeup_sources = wakeupSource;
-        valid_ = true;
         return *this;
     }
+#endif
 
 private:
     hal_sleep_config_t config_;
-    bool valid_; // TODO: This should be an enum value instead to indicate different errors.
+    bool valid_;
 };
 
 class SystemSleepResult {
