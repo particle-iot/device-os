@@ -209,9 +209,11 @@ public:
         if (!valid_) {
             return valid_;
         }
-        if (sleepMode() == SystemSleepMode::NONE || wakeupSource() == nullptr) {
+        if (sleepMode() == SystemSleepMode::NONE) {
             return false;
         }
+        // Wakeup source can be nullptr herein. HAL sleep API will check
+        // if target platform supports not being woken up by any wakeup source.
         return true;
     }
 

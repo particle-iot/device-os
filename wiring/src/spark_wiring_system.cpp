@@ -71,7 +71,11 @@ SleepResult SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, Slee
     } else {
         SystemSleepConfiguration config;
         // For backward compatibility. This API will make device enter HIBERNATE mode.
-        config.mode(SystemSleepMode::HIBERNATE).duration(seconds * 1000);
+        config.mode(SystemSleepMode::HIBERNATE);
+
+        if (seconds > 0) {
+            config.duration(seconds * 1000);
+        }
 
         if (sleepMode == SLEEP_MODE_DEEP && (flags.value() & SYSTEM_SLEEP_FLAG_NETWORK_STANDBY)) {
 #if HAL_PLATFORM_CELLULAR
@@ -104,7 +108,11 @@ SleepResult SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, Slee
 SleepResult SystemClass::sleepPinImpl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, SleepOptionFlags flags) {
     SystemSleepConfiguration config;
     // For backward compatibility. This API will make device enter STOP mode.
-    config.mode(SystemSleepMode::STOP).duration(seconds * 1000);
+    config.mode(SystemSleepMode::STOP);
+
+    if (seconds > 0) {
+        config.duration(seconds * 1000);
+    }
 
     for (size_t i = 0; i < pins_count; i++) {
         config.gpio(pins[i], ((i < modes_count) ? modes[i] : modes[modes_count - 1]));
@@ -127,6 +135,10 @@ SleepResult SystemClass::sleepPinImpl(const uint16_t* pins, size_t pins_count, c
 
     if (flags.value() & SYSTEM_SLEEP_FLAG_NO_WAIT) {
         config.wait(SystemSleepWait::NO_WAIT);
+    }
+
+    if (!(flags.value() & SYSTEM_SLEEP_FLAG_DISABLE_WKP_PIN)) {
+        config.gpio(WKP, RISING);
     }
 
     System.sleep(config);

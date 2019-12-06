@@ -46,6 +46,9 @@ static bool isWakeupSourceSupportedGpio(hal_sleep_mode_t mode, const hal_wakeup_
 }
 
 static bool isWakeupSourceSupportedRtc(hal_sleep_mode_t mode, const hal_wakeup_source_rtc_t* rtc) {
+    if (rtc->ms == 0) {
+        return false;
+    }
     return true;
 }
 
@@ -142,6 +145,10 @@ int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved) 
 
     // Checks the wakeup sources
     auto wakeupSource = config->wakeup_sources;
+    // For backward compatibility, Gen2 platforms can disable WKP pin.
+    // if (!wakeupSource) {
+    //     return SYSTEM_ERROR_INVALID_ARGUMENT;
+    // }
     while (wakeupSource) {
         if (!isWakeupSourceSupported(config->mode, wakeupSource)) {
             return SYSTEM_ERROR_NOT_SUPPORTED;
