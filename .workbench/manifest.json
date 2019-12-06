@@ -3,7 +3,7 @@
     "toolchains": [
         {
             "firmware": "deviceOS@source",
-            "compilers": "gcc-arm@5.3.1",
+            "compilers": "gcc-arm@8.3.1",
             "debuggers": "openocd@0.11.2-adhoc6ea4372.0",
             "platforms": [6, 8, 10, 12, 13, 14, 22, 23, 24],
             "scripts": "buildscripts@1.8.0",
@@ -15,10 +15,10 @@
             "x64": [
                 {
                     "name": "gcc-arm",
-                    "version": "5.3.1",
+                    "version": "8.3.1",
                     "main": "./bin",
-                    "url": "https://binaries.particle.io/gcc-arm/windows/x64/gcc-arm-v5.3.1.tar.gz",
-                    "sha256": "9d5106811e6ad8f3fd63ac266fb3e6e31798e14333b50f849130f604e331ba3d"
+                    "url": "https://binaries.particle.io/gcc-arm/windows/x64/gcc-arm-v8.3.1.tar.gz",
+                    "sha256": "f677b13807d76271f57c160c095225710c3d14f70af70736a5bcf0537dd35298"
                 }
             ],
             "x86": []
@@ -27,10 +27,10 @@
             "x64": [
                 {
                     "name": "gcc-arm",
-                    "version": "5.3.1",
+                    "version": "8.3.1",
                     "main": "./bin",
-                    "url": "https://binaries.particle.io/gcc-arm/darwin/x64/gcc-arm-v5.3.1.tar.gz",
-                    "sha256": "f41f32436188c3017422635b187378c8bf0938a3ad396506b2d3b8ce1fb402c9"
+                    "url": "https://binaries.particle.io/gcc-arm/darwin/x64/gcc-arm-v8.3.1.tar.gz",
+                    "sha256": "20297b21b9a6af340799458e0adbe3798ce89ef5c82c7cef91bd44aea2aa7914"
                 }
             ],
             "x86": []
@@ -39,10 +39,10 @@
             "x64": [
                 {
                     "name": "gcc-arm",
-                    "version": "5.3.1",
+                    "version": "8.3.1",
                     "main": "./bin",
-                    "url": "https://binaries.particle.io/gcc-arm/linux/x64/gcc-arm-v5.3.1.tar.gz",
-                    "sha256": "99c8dc248a6f39c92268d680fc661b51b38b773db1148204cdf59792d170bfdc"
+                    "url": "https://binaries.particle.io/gcc-arm/linux/x64/gcc-arm-v8.3.1.tar.gz",
+                    "sha256": "2ffa3eb85099eddd9f231fc7df278cba06aabb58f7bff4475bb10b4cd34828f7"
                 }
             ],
             "x86": []
