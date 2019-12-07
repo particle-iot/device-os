@@ -136,6 +136,15 @@ extern "C" {
 #endif
 
 /**
+ * Check if the given sleep configuration is valid or not.
+ *
+ * @param[in]     config          Sleep configuration that specifies sleep mode, wakeup sources etc.
+ *
+ * @returns     System error code.
+ */
+int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved);
+
+/**
  * Makes the device enter one of supported sleep modes.
  *
  * @param[in]     config          Sleep configuration that specifies sleep mode, wakeup sources etc.
@@ -144,7 +153,7 @@ extern "C" {
  *
  * @returns     System error code.
  */
-int hal_sleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source, void* reserved);
+int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -280,6 +280,10 @@ static int system_sleep_network_resume(network_interface_index index) {
 int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
     SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext(config, reason, reserved));
 
+    // Validates the sleep configuration previous to disconnecting network,
+    // so that the network status remains if the configuration is invalid.
+    CHECK(hal_sleep_validate_config(config, nullptr));
+
     SystemSleepConfigurationHelper configHelper(config);
     int ret;
 
@@ -342,7 +346,7 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     system_power_management_sleep();
 
     // Now enter sleep mode
-    ret = hal_sleep(config, reason, reserved);
+    ret = hal_sleep_enter(config, reason, nullptr);
 
     // Start RGB signaling.
     led_set_update_enabled(1, nullptr); // Enable background LED updates

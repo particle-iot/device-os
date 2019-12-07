@@ -19,7 +19,11 @@
 #include "core_hal.h"
 #include "sleep_hal.h"
 
-int hal_sleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source, void* reserved) {
+int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved) {
+    return SYSTEM_ERROR_NONE;
+}
+
+int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source, void* reserved) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     switch (config->mode) {
