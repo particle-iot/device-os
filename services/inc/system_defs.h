@@ -8,34 +8,24 @@
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHAN'TABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "check.h"
-#include "core_hal.h"
-#include "sleep_hal.h"
+#pragma once
 
-int hal_sleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source, void* reserved) {
-    CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
-
-    switch (config->mode) {
-        case HAL_SLEEP_MODE_STOP: {
-            break;
-        }
-        case HAL_SLEEP_MODE_ULTRA_LOW_POWER: {
-            break;
-        }
-        case HAL_SLEEP_MODE_HIBERNATE: {
-            break;
-        }
-        default: {
-            break;
-        }
-    }
-
-    return SYSTEM_ERROR_NONE;
-}
+/**
+ * Network interfaces.
+ */
+typedef enum network_interface_index {
+    NETWORK_INTERFACE_ALL = 0,
+    NETWORK_INTERFACE_LOOPBACK = 1,
+    NETWORK_INTERFACE_MESH = 2,
+    NETWORK_INTERFACE_ETHERNET = 3,
+    NETWORK_INTERFACE_CELLULAR = 4,
+    NETWORK_INTERFACE_WIFI_STA = 4,
+    NETWORK_INTERFACE_WIFI_AP = 5
+} network_interface_index;

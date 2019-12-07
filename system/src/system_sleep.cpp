@@ -253,7 +253,7 @@ int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMo
     return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);
 }
 
-
+// Since sleep 2.0
 #if HAL_PLATFORM_CELLULAR || HAL_PLATFORM_WIFI || HAL_PLATFORM_MESH || HAL_PLATFORM_ETHERNET
 static bool system_sleep_network_suspend(network_interface_index index) {
     bool resume = false;
@@ -277,7 +277,7 @@ static int system_sleep_network_resume(network_interface_index index) {
 }
 #endif
 
-int system_sleep_ext(hal_sleep_config_t* config, WakeupReason* reason, void* reserved) {
+int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
     SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext(config, reason, reserved));
 
     SystemSleepConfigurationHelper configHelper(config);
@@ -342,12 +342,7 @@ int system_sleep_ext(hal_sleep_config_t* config, WakeupReason* reason, void* res
     system_power_management_sleep();
 
     // Now enter sleep mode
-    hal_wakeup_source_base_t* wakeupSource = nullptr;
-    ret = hal_sleep(configHelper.halConfig(), &wakeupSource, nullptr);
-    if (wakeupSource) {
-        // FIXME: wakeup source type to wakeup reason
-        *reason = static_cast<WakeupReason>(wakeupSource->type);
-    }
+    ret = hal_sleep(config, reason, reserved);
 
     // Start RGB signaling.
     led_set_update_enabled(1, nullptr); // Enable background LED updates
