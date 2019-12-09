@@ -104,10 +104,10 @@ void HAL_RTC_Configuration(void)
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	/* Check if the StandBy flag is set */
-	if(PWR_GetFlagStatus(PWR_FLAG_SB) != RESET)
+	/* Check if the StandBy flag is set and whether the LSE is running */
+	if(PWR_GetFlagStatus(PWR_FLAG_SB) != RESET && RCC_GetFlagStatus(RCC_FLAG_LSERDY) != RESET)
 	{
-		/* System resumed from STANDBY mode */
+		/* System resumed from STANDBY mode and LSE is running */
 
 		/* Wait for RTC APB registers synchronisation */
 		RTC_WaitForSynchro();
@@ -154,12 +154,12 @@ void HAL_RTC_Configuration(void)
 		    /* Check on RTC init */
 		    if (RTC_Init(&RTC_InitStructure) != ERROR)
 		    {
-                        /* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
-                        /* Set date/time to 2000/01/01 00:00:00 */
-                        HAL_RTC_Initialize_UnixTime();
+				/* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
+				/* Set date/time to 2000/01/01 00:00:00 */
+				HAL_RTC_Initialize_UnixTime();
 
-                        /* Indicator for the RTC configuration */
-                        RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
+				/* Indicator for the RTC configuration */
+				RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
 		    }
 		}
 	}
