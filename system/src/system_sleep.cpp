@@ -227,29 +227,6 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
     return ret;
 }
 
-/**
- * Wraps the actual implementation, which has to return a value as part of the threaded implementation.
- */
-int system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
-{
-    // Cancel current connection attempt to unblock the system thread
-    network_connect_cancel(0, 1, 0, 0);
-    InterruptMode m = (InterruptMode)edgeTriggerMode;
-    return system_sleep_pin_impl(&wakeUpPin, 1, &m, 1, seconds, param, reserved);
-}
-
-int system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
-{
-    network_connect_cancel(0, 1, 0, 0);
-    return system_sleep_impl(sleepMode, seconds, param, reserved);
-}
-
-int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved)
-{
-    network_connect_cancel(0, 1, 0, 0);
-    return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);
-}
-
 #if HAL_PLATFORM_SLEEP_2_0
 
 #if HAL_PLATFORM_CELLULAR || HAL_PLATFORM_WIFI || HAL_PLATFORM_MESH || HAL_PLATFORM_ETHERNET
@@ -403,3 +380,119 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 }
 
 #endif // HAL_PLATFORM_SLEEP_2_0
+
+/**
+ * Wraps the actual implementation, which has to return a value as part of the threaded implementation.
+ */
+int system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
+{
+    // Cancel current connection attempt to unblock the system thread
+    network_connect_cancel(0, 1, 0, 0);
+    InterruptMode m = (InterruptMode)edgeTriggerMode;
+    return system_sleep_pin_impl(&wakeUpPin, 1, &m, 1, seconds, param, reserved);
+}
+
+int system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
+{
+#if HAL_PLATFORM_SLEEP_2_0
+    if (sleepMode == SLEEP_MODE_WLAN) {
+        network_connect_cancel(0, 1, 0, 0);
+        return system_sleep_impl(sleepMode, seconds, param, reserved);
+    } else {
+        SystemSleepConfiguration config;
+        // For backward compatibility. This API will make device enter HIBERNATE mode.
+        config.mode(SystemSleepMode::HIBERNATE);
+
+        if (seconds > 0) {
+            config.duration(seconds * 1000);
+        }
+
+        if (sleepMode == SLEEP_MODE_DEEP && (param & SYSTEM_SLEEP_FLAG_NETWORK_STANDBY)) {
+#if HAL_PLATFORM_CELLULAR
+            config.network(NETWORK_INTERFACE_CELLULAR);
+#endif // HAL_PLATFORM_CELLULAR
+
+#if HAL_PLATFORM_WIFI
+            config.network(NETWORK_INTERFACE_WIFI_STA);
+#endif // HAL_PLATFORM_WIFI
+
+#if HAL_PLATFORM_MESH
+            config.network(NETWORK_INTERFACE_MESH);
+#endif // HAL_PLATFORM_MESH
+
+#if HAL_PLATFORM_ETHERNET
+            config.network(NETWORK_INTERFACE_ETHERNET);
+#endif // HAL_PLATFORM_ETHERNET
+        }
+
+        if (param & SYSTEM_SLEEP_FLAG_NO_WAIT) {
+            config.wait(SystemSleepWait::NO_WAIT);
+        }
+
+        if (!(param & SYSTEM_SLEEP_FLAG_DISABLE_WKP_PIN)) {
+            config.gpio(WKP, RISING);
+        }
+
+        return system_sleep_ext(config.halConfig(), nullptr, nullptr);
+    }
+#else
+    network_connect_cancel(0, 1, 0, 0);
+    return system_sleep_impl(sleepMode, seconds, param, reserved);
+#endif // HAL_PLATFORM_SLEEP_2_0
+}
+
+int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved)
+{
+#if HAL_PLATFORM_SLEEP_2_0
+    SystemSleepConfiguration config;
+    // For backward compatibility. This API will make device enter STOP mode.
+    config.mode(SystemSleepMode::STOP);
+
+    if (seconds > 0) {
+        config.duration(seconds * 1000);
+    }
+
+    for (size_t i = 0; i < pins_count; i++) {
+        config.gpio(pins[i], ((i < modes_count) ? modes[i] : modes[modes_count - 1]));
+    }
+
+    if (param & SYSTEM_SLEEP_FLAG_NETWORK_STANDBY) {
+#if HAL_PLATFORM_CELLULAR
+        config.network(NETWORK_INTERFACE_CELLULAR);
+#endif // HAL_PLATFORM_CELLULAR
+
+#if HAL_PLATFORM_WIFI
+        config.network(NETWORK_INTERFACE_WIFI_STA);
+#endif // HAL_PLATFORM_WIFI
+
+#if HAL_PLATFORM_MESH
+        config.network(NETWORK_INTERFACE_MESH);
+#endif // HAL_PLATFORM_MESH
+
+#if HAL_PLATFORM_ETHERNET
+        config.network(NETWORK_INTERFACE_ETHERNET);
+#endif // HAL_PLATFORM_ETHERNET
+    }
+
+    if (param & SYSTEM_SLEEP_FLAG_NO_WAIT) {
+        config.wait(SystemSleepWait::NO_WAIT);
+    }
+
+    if (!(param & SYSTEM_SLEEP_FLAG_DISABLE_WKP_PIN)) {
+        config.gpio(WKP, RISING);
+    }
+
+    SystemSleepResult result;
+    int ret = system_sleep_ext(config.halConfig(), result.halWakeupSource(), nullptr);
+    CHECK(ret);
+
+    if (result.wakeupReason() == SystemSleepWakeupReason::BY_GPIO) {
+        return result.wakeupPin();
+    } else {
+        return 0; // Any other wakeup sources are treated as RTC for backward compatibility.
+    }
+#else
+    network_connect_cancel(0, 1, 0, 0);
+    return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);
+#endif // HAL_PLATFORM_SLEEP_2_0
+}

@@ -310,13 +310,12 @@ public:
         return duration(ms.count());
     }
 
-    SystemSleepConfiguration& network(const NetworkClass& network) {
+    SystemSleepConfiguration& network(network_interface_t netif) {
         if (valid_) {
-            auto index = static_cast<network_interface_t>(network);
             auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK);
             while (wakeup) {
                 auto networkWakeup = reinterpret_cast<hal_wakeup_source_network_t*>(wakeup);
-                if (networkWakeup->index == index) {
+                if (networkWakeup->index == netif) {
                     return *this;
                 }
                 wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK, wakeup->next);
@@ -330,7 +329,7 @@ public:
             wakeupSource->base.version = HAL_SLEEP_VERSION;
             wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_NETWORK;
             wakeupSource->base.next = config_.wakeup_sources;
-            wakeupSource->index = static_cast<network_interface_index>(index);
+            wakeupSource->index = static_cast<network_interface_index>(netif);
             config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
         }
         return *this;

@@ -5,16 +5,10 @@
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_logging.h"
-#include "spark_wiring_wifi.h"
-#include "spark_wiring_cellular.h"
-#include "spark_wiring_mesh.h"
-#include "spark_wiring_ethernet.h"
 #include "system_task.h"
 #include "system_control.h"
 #include "system_network.h"
 #include "spark_wiring_wifitester.h"
-
-using namespace spark;
 
 #if Wiring_LogConfig
 extern void(*log_process_ctrl_request_callback)(ctrl_request* req);
@@ -61,91 +55,8 @@ SystemSleepResult SystemClass::sleep(const SystemSleepConfiguration& config) {
     System.toSleepResult();
     return System.systemSleepResult_;
 }
-
-SleepResult SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, SleepOptionFlags flags)
-{
-    if (sleepMode == SLEEP_MODE_WLAN) {
-        // Just for backward compatible.
-        int ret = system_sleep(sleepMode, seconds, flags.value(), NULL);
-        System.sleepResult_ = SleepResult(WAKEUP_REASON_NONE, static_cast<system_error_t>(ret));
-        return System.sleepResult_;
-    } else {
-        SystemSleepConfiguration config;
-        // For backward compatibility. This API will make device enter HIBERNATE mode.
-        config.mode(SystemSleepMode::HIBERNATE);
-
-        if (seconds > 0) {
-            config.duration(seconds * 1000);
-        }
-
-        if (sleepMode == SLEEP_MODE_DEEP && (flags.value() & SYSTEM_SLEEP_FLAG_NETWORK_STANDBY)) {
-#if HAL_PLATFORM_CELLULAR
-            config.network(Cellular);
 #endif
-#if HAL_PLATFORM_WIFI
-            config.network(WiFi);
-#endif
-#if HAL_PLATFORM_MESH
-            config.network(Mesh);
-#endif
-#if HAL_PLATFORM_ETHERNET
-            config.network(Ethernet);
-#endif
-        }
 
-        if (flags.value() & SYSTEM_SLEEP_FLAG_NO_WAIT) {
-            config.wait(SystemSleepWait::NO_WAIT);
-        }
-
-        if (!(flags.value() & SYSTEM_SLEEP_FLAG_DISABLE_WKP_PIN)) {
-            config.gpio(WKP, RISING);
-        }
-
-        System.sleep(config);
-        return System.sleepResult_;
-    }
-}
-
-SleepResult SystemClass::sleepPinImpl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, SleepOptionFlags flags) {
-    SystemSleepConfiguration config;
-    // For backward compatibility. This API will make device enter STOP mode.
-    config.mode(SystemSleepMode::STOP);
-
-    if (seconds > 0) {
-        config.duration(seconds * 1000);
-    }
-
-    for (size_t i = 0; i < pins_count; i++) {
-        config.gpio(pins[i], ((i < modes_count) ? modes[i] : modes[modes_count - 1]));
-    }
-
-    if (flags.value() & SYSTEM_SLEEP_FLAG_NETWORK_STANDBY) {
-#if HAL_PLATFORM_CELLULAR
-        config.network(Cellular);
-#endif
-#if HAL_PLATFORM_WIFI
-        config.network(WiFi);
-#endif
-#if HAL_PLATFORM_MESH
-        config.network(Mesh);
-#endif
-#if HAL_PLATFORM_ETHERNET
-        config.network(Ethernet);
-#endif
-    }
-
-    if (flags.value() & SYSTEM_SLEEP_FLAG_NO_WAIT) {
-        config.wait(SystemSleepWait::NO_WAIT);
-    }
-
-    if (!(flags.value() & SYSTEM_SLEEP_FLAG_DISABLE_WKP_PIN)) {
-        config.gpio(WKP, RISING);
-    }
-
-    System.sleep(config);
-    return System.sleepResult_;
-}
-#else
 SleepResult SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, SleepOptionFlags flags)
 {
     int ret = system_sleep(sleepMode, seconds, flags.value(), NULL);
@@ -158,7 +69,6 @@ SleepResult SystemClass::sleepPinImpl(const uint16_t* pins, size_t pins_count, c
     System.sleepResult_ = SleepResult(ret, pins, pins_count);
     return System.sleepResult_;
 }
-#endif // HAL_PLATFORM_SLEEP_2_0
 
 uint32_t SystemClass::freeMemory()
 {
