@@ -17,7 +17,7 @@
 
 #pragma once
 
-#if PLATFORM_ID == PLATFORM_QSOM
+#if PLATFORM_ID == PLATFORM_B5SOM
 
 #define TOTAL_PINS 38
 #define TOTAL_ANALOG_PINS 8
@@ -94,4 +94,4 @@
 
 #define LOW_BAT_UC A6
 
-#endif // PLATFORM_ID == PLATFORM_QSOM
+#endif // PLATFORM_ID == PLATFORM_B5SOM

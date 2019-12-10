@@ -8,7 +8,7 @@ function display_help ()
     echo '
 usage: release.sh [--output-directory=<binary_output_directory>]
                   (--platform=<argon|asom|boron|bsom...
-                  |core|electron|p1|photon|xenon|xsom|qsom>...
+                  |core|electron|p1|photon|xenon|xsom|b5som>...
                   | --platform-id=<0|6|8|10|12|13|14|22|23|24|25>)
                   [--debug] [--help] [--tests]
 
@@ -251,7 +251,7 @@ elif [ ! -z $PLATFORM ]; then
             PLATFORM_ID="24"
             MESH=true
             ;;
-        "qsom")
+        "b5som")
             PLATFORM_ID="25"
             MESH=true
             ;;
@@ -304,7 +304,7 @@ else
             MESH=true
             ;;
         25)
-            PLATFORM="qsom"
+            PLATFORM="b5som"
             MESH=true
             ;;
         *)

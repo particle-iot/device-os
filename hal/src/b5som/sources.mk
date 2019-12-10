@@ -1,9 +1,9 @@
-HAL_SRC_QSOM_PATH = $(TARGET_HAL_PATH)/src/qsom
+HAL_SRC_B5SOM_PATH = $(TARGET_HAL_PATH)/src/b5som
 
-INCLUDE_DIRS += $(HAL_SRC_QSOM_PATH)
+INCLUDE_DIRS += $(HAL_SRC_B5SOM_PATH)
 
-CSRC += $(call target_files,$(HAL_SRC_QSOM_PATH)/,*.c)
-CPPSRC += $(call target_files,$(HAL_SRC_QSOM_PATH)/,*.cpp)
+CSRC += $(call target_files,$(HAL_SRC_B5SOM_PATH)/,*.c)
+CPPSRC += $(call target_files,$(HAL_SRC_B5SOM_PATH)/,*.cpp)
 
 CSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/cellular/,*.c)
 CPPSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/cellular/,*.cpp)

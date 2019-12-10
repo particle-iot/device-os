@@ -135,7 +135,7 @@ inline int32_t pinReadFast(pin_t _pin)
 }
 #elif PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || \
       PLATFORM_ID == PLATFORM_XSOM || PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM || \
-      PLATFORM_ID == PLATFORM_QSOM
+      PLATFORM_ID == PLATFORM_B5SOM
 
 #include "nrf_gpio.h"
 #include "pinmap_impl.h"

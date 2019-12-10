@@ -17,7 +17,7 @@
 
 #include "pinmap_hal.h"
 
-#if PLATFORM_ID == PLATFORM_QSOM
+#if PLATFORM_ID == PLATFORM_B5SOM
 
 static Hal_Pin_Info s_pin_map[TOTAL_PINS] = {
 /* D0            - 00 */ { NRF_PORT_0,    26, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE},
@@ -80,4 +80,4 @@ Hal_Pin_Info* HAL_Pin_Map(void) {
     return s_pin_map;
 }
 
-#endif // PLATFORM_ID == PLATFORM_QSOM
+#endif // PLATFORM_ID == PLATFORM_B5SOM

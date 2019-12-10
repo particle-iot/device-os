@@ -43,7 +43,7 @@ env:
     - BUILD_PLATFORM="electron core gcc"
     - BUILD_PLATFORM="xenon asom newhal"
     - BUILD_PLATFORM="argon bsom boron"
-    - BUILD_PLATFORM="xsom qsom"
+    - BUILD_PLATFORM="xsom b5som"
 
   # matrix:
   #   - BUILD_PLATFORM=unit-test gcc

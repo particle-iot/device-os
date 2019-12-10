@@ -149,7 +149,7 @@ private:
 #elif PLATFORM_ID == 24
 # define USBD_PRODUCT_NAME              "X SoM"
 #elif PLATFORM_ID == 25
-# define USBD_PRODUCT_NAME              "Q SoM"
+# define USBD_PRODUCT_NAME              "B5 SoM"
 #endif
 #define USBD_PRODUCT_STRING             USBD_PRODUCT_NAME " " "DFU Mode"
 #define USBD_CONFIGURATION_STRING       USBD_PRODUCT_STRING
