@@ -27,7 +27,7 @@ namespace particle {
 template<bool S, size_t bits, typename T>
 struct bits_fit_in_type {
     using type = typename std::conditional<S, typename std::make_signed<T>::type, typename std::make_unsigned<T>::type>::type;
-    static const bool value = (bits < std::numeric_limits<type>::digits);
+    static const bool value = (bits <= std::numeric_limits<type>::digits);
 };
 
 template<bool S, size_t bits>

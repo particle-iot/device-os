@@ -24,6 +24,7 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
+#include "usbd_conf.h"
 #include "usbd_dfu_core.h"
 #include "usbd_usr.h"
 #include "usbd_desc.h"

@@ -26,6 +26,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "usbd_conf.h"
 #include "usbd_core.h"
 #include "usbd_req.h"
 #include "usbd_ioreq.h"

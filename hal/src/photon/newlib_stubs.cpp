@@ -27,6 +27,7 @@
 #include <malloc.h>
 /* Define abort() */
 #include <stdlib.h>
+#include <string.h>
 #include "debug.h"
 extern "C" {
   void _exit(int status);
@@ -114,4 +115,19 @@ void _exit(int status) {
 	while (1);
 }
 
+// Saves a few kB of flash.
+char* strerror(int errnum) {
+    return (char*)"";
+}
+
+// FIXME: a correct version when __ctype_ptr__ is no longer available
+// needs to be put in here
+#if __GNUC__ >= 6
+extern const char _ctype_[];
+// XXX: This is a hack in order to support the GCC toolchain use by WICED (4.9.0)
+// We are casting a const pointer to a non const one
+// This should work as long as nothing is going to modify data within __ctype_ptr__
+// and the contents are ABI compatible (they should be).
+char *__ctype_ptr__ = (char*)_ctype_;
+#endif // __GNUC__ >= 6
 }
