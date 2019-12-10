@@ -57,6 +57,7 @@
 #include "flash_common.h"
 #include <nrf_pwm.h>
 #include "concurrent_hal.h"
+#include "ble_hal.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -105,12 +106,6 @@ extern void* malloc_heap_end();
 #if defined(MODULAR_FIRMWARE)
 void* module_user_pre_init();
 #endif
-
-// C file cannot include header file including C++ grammar.
-extern int hal_ble_stack_init(void* reserved);
-extern int hal_ble_stack_deinit(void* reserved);
-extern bool hal_ble_gap_is_advertising(void* reserved);
-extern int hal_ble_gap_start_advertising(void* reserved);
 
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
@@ -812,7 +807,6 @@ int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const 
     __DSB();
     __ISB();
 
-    // bool wakeup = false;
     while (true) {
         if ((exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) && NVIC_GetPendingIRQ(RTC2_IRQn)) {
             // Woken up by RTC

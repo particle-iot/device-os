@@ -275,4 +275,8 @@
 #define HAL_PLATFORM_BACKUP_RAM (0)
 #endif /* HAL_PLATFORM_BACKUP_RAM */
 
+#ifndef HAL_PLATFORM_SLEEP_2_0
+#define HAL_PLATFORM_SLEEP_2_0 (0)
+#endif
+
 #endif /* HAL_PLATFORM_H */

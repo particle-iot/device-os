@@ -250,7 +250,8 @@ int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMo
     return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);
 }
 
-// Since sleep 2.0
+#if HAL_PLATFORM_SLEEP_2_0
+
 #if HAL_PLATFORM_CELLULAR || HAL_PLATFORM_WIFI || HAL_PLATFORM_MESH || HAL_PLATFORM_ETHERNET
 static bool system_sleep_network_suspend(network_interface_index index) {
     bool resume = false;
@@ -268,11 +269,11 @@ static bool system_sleep_network_suspend(network_interface_index index) {
 }
 
 static int system_sleep_network_resume(network_interface_index index) {
-    network_on(NETWORK_INTERFACE_ETHERNET, 0, 0, nullptr);
-    network_connect(NETWORK_INTERFACE_ETHERNET, 0, 0, nullptr);
+    network_on(index, 0, 0, nullptr);
+    network_connect(index, 0, 0, nullptr);
     return SYSTEM_ERROR_NONE;
 }
-#endif
+#endif // HAL_PLATFORM_CELLULAR || HAL_PLATFORM_WIFI || HAL_PLATFORM_MESH || HAL_PLATFORM_ETHERNET
 
 int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
     SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext(config, reason, reserved));
@@ -296,7 +297,7 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
         // Clear the auto connect status
         spark_cloud_flag_disconnect();
     }
-#endif
+#endif // SPARK_NO_CLOUD
 
     // Network disconnect
 #if HAL_PLATFORM_CELLULAR
@@ -309,7 +310,8 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
         // Pause the modem Serial, while leaving the modem keeps running.
         cellular_pause(nullptr);
     }
-#endif
+#endif // HAL_PLATFORM_CELLULAR
+
 #if HAL_PLATFORM_WIFI
     bool wifiResume = false;
     if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA)) {
@@ -317,7 +319,8 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
             wifiResume = true;
         }
     }
-#endif
+#endif // HAL_PLATFORM_WIFI
+
 #if HAL_PLATFORM_MESH
     bool meshResume = false;
     if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_MESH)) {
@@ -325,7 +328,8 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
             meshResume = true;
         }
     }
-#endif
+#endif // HAL_PLATFORM_MESH
+
 #if HAL_PLATFORM_ETHERNET
     bool ethernetResume = false;
     if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
@@ -333,7 +337,8 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
             ethernetResume = true;
         }
     }
-#endif
+#endif // HAL_PLATFORM_ETHERNET
+
     // Let the sleep HAL layer to turn off the NCP interface if necessary.
 
     // Stop RGB signaling
@@ -355,25 +360,28 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     } else {
         cellular_resume(nullptr);
     }
-#endif
+#endif // HAL_PLATFORM_CELLULAR
+
 #if HAL_PLATFORM_WIFI
     if (wifiResume) {
         SPARK_WLAN_SLEEP = 0;
         system_sleep_network_resume(NETWORK_INTERFACE_WIFI_STA);
     }
-#endif
+#endif // HAL_PLATFORM_WIFI
+
 #if HAL_PLATFORM_MESH
     if (meshResume) {
         // FIXME: we need to bring Mesh interface back up because we've turned it off
         // despite SLEEP_NETWORK_STANDBY
         system_sleep_network_resume(NETWORK_INTERFACE_MESH);
     }
-#endif
+#endif // HAL_PLATFORM_MESH
+
 #if HAL_PLATFORM_ETHERNET
     if (ethernetResume) {
         system_sleep_network_resume(NETWORK_INTERFACE_ETHERNET);
     }
-#endif
+#endif // HAL_PLATFORM_ETHERNET
 
 #ifndef SPARK_NO_CLOUD
     if (cloudResume) {
@@ -389,7 +397,9 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
             Spark_Wake();
         }
     }
-#endif
+#endif // SPARK_NO_CLOUD
 
     return ret;
 }
+
+#endif // HAL_PLATFORM_SLEEP_2_0

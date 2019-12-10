@@ -22,21 +22,24 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "interrupts_hal.h"
+
+#if HAL_PLATFORM_SLEEP_2_0
 #include <chrono>
 #include <memory>
 #include <string.h>
 #include <stdlib.h>
 #include "system_network.h"
 #include "system_error.h"
-#include "interrupts_hal.h"
 #include "sleep_hal.h"
 #include "spark_wiring_network.h"
+
+using spark::NetworkClass; 
+#endif // HAL_PLATFORM_SLEEP_2_0
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-using spark::NetworkClass; 
 
 typedef enum
 {
@@ -51,10 +54,16 @@ typedef enum System_Sleep_Flag
     SYSTEM_SLEEP_FLAG_NO_WAIT = 0x04
 } System_Sleep_Flag;
 
-
 /**
- * Since sleep 2.0
+ * @param param A SystemSleepNetwork enum cast as an integer.
  */
+int system_sleep(Spark_Sleep_TypeDef mode, long seconds, uint32_t param, void* reserved);
+int system_sleep_pin(uint16_t pin, uint16_t mode, long seconds, uint32_t param, void* reserved);
+int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved);
+
+
+#if HAL_PLATFORM_SLEEP_2_0
+
 enum class SystemSleepMode: uint8_t {
     NONE            = HAL_SLEEP_MODE_NONE,
     STOP            = HAL_SLEEP_MODE_STOP,
@@ -96,22 +105,26 @@ public:
         if (wakeupByNetworkInterface(NETWORK_INTERFACE_CELLULAR)) {
             return false;
         }
-#endif
+#endif // HAL_PLATFORM_CELLULAR
+
 #if HAL_PLATFORM_WIFI
         if (wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA)) {
             return false;
         }
-#endif
+#endif // HAL_PLATFORM_WIFI
+
 #if HAL_PLATFORM_MESH
         if (wakeupByNetworkInterface(NETWORK_INTERFACE_MESH)) {
             return false;
         }
-#endif
+#endif // HAL_PLATFORM_MESH
+
 #if HAL_PLATFORM_ETHERNET
         if (wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
             return false;
         }
-#endif
+#endif // HAL_PLATFORM_ETHERNET
+
         return true; 
     }
 
@@ -135,7 +148,7 @@ public:
         return static_cast<SystemSleepMode>(config_->mode);
     }
 
-    hal_wakeup_source_base_t*wakeupSource() const {
+    hal_wakeup_source_base_t* wakeupSource() const {
         return config_->wakeup_sources;
     }
 
@@ -185,8 +198,16 @@ public:
     // Copy constructor
     SystemSleepConfiguration(const SystemSleepConfiguration& config) = delete;
 
-    // Copy operator
+    // Copy assignment operator
     SystemSleepConfiguration& operator=(const SystemSleepConfiguration& config) = delete;
+
+    // move assignment operator
+    SystemSleepConfiguration& operator=(SystemSleepConfiguration&& config) {
+        valid_ = config.valid_;
+        memcpy(&config_, &config.config_, sizeof(hal_sleep_config_t));
+        config.config_.wakeup_sources = nullptr;
+        return *this;
+    }
 
     // Destructor
     ~SystemSleepConfiguration() {
@@ -337,7 +358,7 @@ public:
         }
         return *this;
     }
-#endif
+#endif // HAL_PLATFORM_BLE
 
 private:
     hal_sleep_config_t config_;
@@ -443,14 +464,9 @@ private:
     system_error_t error_;
 };
 
-
-/**
- * @param param A SystemSleepNetwork enum cast as an integer.
- */
-int system_sleep(Spark_Sleep_TypeDef mode, long seconds, uint32_t param, void* reserved);
-int system_sleep_pin(uint16_t pin, uint16_t mode, long seconds, uint32_t param, void* reserved);
-int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved);
 int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved);
+
+#endif // HAL_PLATFORM_SLEEP_2_0
 
 #ifdef __cplusplus
 }

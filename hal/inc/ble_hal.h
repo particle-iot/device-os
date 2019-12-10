@@ -28,6 +28,11 @@
 #include "ble_hal_defines.h"
 #include "ble_hal_impl.h"
 #include "radio_hal.h"
+#include "assert.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @addtogroup ble_api
@@ -237,13 +242,13 @@ typedef struct hal_ble_adv_evt_t {
 typedef struct hal_ble_scan_result_evt_t {
     int8_t rssi;
     uint8_t reserved;
-    struct {
+    struct type {
         uint16_t connectable   : 1;     /**< Connectable advertising event type. */
         uint16_t scannable     : 1;     /**< Scannable advertising event type. */
         uint16_t directed      : 1;     /**< Directed advertising event type. */
         uint16_t extended_pdu  : 1;     /**< Received an extended advertising set. */
     } type;
-    static_assert(sizeof(type) == sizeof(uint16_t), "Advertising event type length mismatch.");
+    static_assert(sizeof(struct type) == sizeof(uint16_t), "Advertising event type length mismatch.");
     uint8_t* adv_data;
     uint8_t* sr_data;
     uint16_t adv_data_len;
@@ -351,10 +356,6 @@ typedef struct hal_ble_cccd_config_t {
     hal_ble_attr_handle_t value_handle;
     ble_sig_cccd_value_t cccd_value;
 } hal_ble_cccd_config_t;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * Acquires the lock for exclusive access to the BLE API.

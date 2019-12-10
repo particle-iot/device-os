@@ -18,12 +18,17 @@
  #ifndef __SLEEP_HAL_H
  #define __SLEEP_HAL_H
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_SLEEP_2_0
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include "system_tick_hal.h"
 #include "system_defs.h"
 #include "interrupts_hal.h"
+#include "platforms.h"
 
 #define HAL_SLEEP_VERSION 2
 
@@ -76,7 +81,7 @@ typedef enum hal_sleep_wait_t {
     HAL_SLEEP_WAIT_MAX = 0x7F,
 } hal_sleep_wait_t;
 
-#if PLATFORM_ID > 3
+#if PLATFORM_ID > PLATFORM_GCC
 static_assert(sizeof(hal_sleep_mode_t) == 1, "length of hal_sleep_mode_t should be 1-bytes aligned.");
 static_assert(sizeof(hal_wakeup_source_type_t) == 2, "length of hal_wakeup_source_type_t should be 2-bytes aligned.");
 static_assert(sizeof(hal_sleep_wait_t) == 1, "length of hal_sleep_wait_t should be 1-bytes aligned.");
@@ -158,5 +163,7 @@ int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t**
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+#endif // HAL_PLATFORM_SLEEP_2_0
 
 #endif /* __SLEEP_HAL_H */

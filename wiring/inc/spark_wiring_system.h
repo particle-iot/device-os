@@ -149,7 +149,9 @@ public:
     }
 #endif
 
+#if HAL_PLATFORM_SLEEP_2_0
     static SystemSleepResult sleep(const SystemSleepConfiguration& config);
+#endif
 
     static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
     inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, std::chrono::seconds s, SleepOptionFlags flag=SLEEP_NETWORK_OFF) { return sleep(sleepMode, s.count(), flag); }
@@ -473,7 +475,9 @@ public:
 
 private:
     SleepResult sleepResult_;
+#if HAL_PLATFORM_SLEEP_2_0
     SystemSleepResult systemSleepResult_;
+#endif
 
     static inline uint8_t get_flag(system_flag_t flag)
     {
@@ -487,6 +491,7 @@ private:
         system_set_flag(flag, value, nullptr);
     }
 
+#if HAL_PLATFORM_SLEEP_2_0
     void toSleepResult() {
         if (systemSleepResult_.wakeupReason() == SystemSleepWakeupReason::BY_GPIO) {
             sleepResult_ = SleepResult(WAKEUP_REASON_PIN, systemSleepResult_.error(), systemSleepResult_.wakeupPin());
@@ -496,6 +501,7 @@ private:
             sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
         }
     }
+#endif
 
     static SleepResult sleepPinImpl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, SleepOptionFlags flags);
 };

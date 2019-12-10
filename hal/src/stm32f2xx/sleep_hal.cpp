@@ -15,10 +15,13 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "sleep_hal.h"
+
+#if HAL_PLATFORM_SLEEP_2_0
+
 #include "check.h"
 #include "core_hal.h"
 #include "interrupts_hal.h"
-#include "sleep_hal.h"
 #include "spark_wiring_vector.h"
 
 using spark::Vector;
@@ -187,3 +190,5 @@ int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t**
 
     return ret;
 }
+
+#endif // HAL_PLATFORM_SLEEP_2_0
