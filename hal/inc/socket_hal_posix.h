@@ -288,6 +288,29 @@ int sock_select(int nfds, fd_set* readfds, fd_set* writefds,
                 fd_set* exceptfds, struct timeval* timeout);
 
 /**
+ * Receive data from the socket.
+ *
+ * @param[in]  s        a socket that has been created with sock_socket()
+ * @param      message  message to receive
+ * @param[in]  flags    a combination of MSG_DONTWAIT, MSG_PEEK and MSG_TRUNC
+ *
+ * @return     The number of bytes received or -1 on error, with errno set
+ *             accordingly.
+ */
+ssize_t sock_recvmsg(int s, struct msghdr *message, int flags);
+
+/**
+ * Send the data through the socket.
+ *
+ * @param[in]  s        a socket that has been created with sock_socket()
+ * @param      message  message to send
+ * @param[in]  flags    a combination of MSG_MORE and MSG_DONTWAIT
+ *
+ * @return     The number of bytes sent or -1 on error, with errno set
+ *             accordingly.
+ */
+ssize_t sock_sendmsg(int s, const struct msghdr *message, int flags);
+/**
  * @}
  *
  */

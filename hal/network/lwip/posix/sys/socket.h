@@ -43,5 +43,7 @@
 #define socket(domain, type, protocol) sock_socket(domain, type, protocol)
 #define poll(fds, nfds, timeout) sock_poll(fds, nfds, timeout)
 #define select(nfds, readfds, writefds, exceptfds, timeout) sock_select(nfds, readfds, writefds, exceptfds, timeout)
+#define recvmsg(s, message,flags) sock_recvmsg(s, message, flags)
+#define sendmsg(s, message,flags) sock_sendmsg(s, message, flags)
 
 #endif /* SYS_SOCKET_H */

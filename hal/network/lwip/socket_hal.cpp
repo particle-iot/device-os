@@ -103,3 +103,11 @@ int sock_select(int nfds, fd_set* readfds, fd_set* writefds,
                 fd_set* exceptfds, struct timeval* timeout) {
   return lwip_select(nfds, readfds, writefds, exceptfds, timeout);
 }
+
+ssize_t sock_recvmsg(int s, struct msghdr *message, int flags) {
+  return lwip_recvmsg(s, message, flags);
+}
+
+ssize_t sock_sendmsg(int s, const struct msghdr *message, int flags) {
+  return lwip_sendmsg(s, message, flags);
+}
