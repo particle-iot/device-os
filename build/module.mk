@@ -66,6 +66,8 @@ LIBCSRC += $(call target_files_dirs,$(MODULE_LIBSV1),,*.c)
 LIBCPPSRC += $(call target_files_dirs,$(MODULE_LIBSV2)/,src/,*.cpp)
 LIBCSRC += $(call target_files_dirs,$(MODULE_LIBSV2)/,src/,*.c)
 
+LIBARCHIVES = $(call wildcard,$(APPDIR)/lib-static/*.a)
+LDFLAGS += $(addprefix -Bstatic , $(LIBARCHIVES))
 
 CPPSRC += $(LIBCPPSRC)
 CSRC += $(LIBCSRC)
@@ -90,6 +92,8 @@ ALLOBJ += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o.d)))
+
+LINKER_DEPS += $(LIBARCHIVES)
 
 CLOUD_FLASH_URL ?= https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token=$(SPARK_ACCESS_TOKEN)
 
