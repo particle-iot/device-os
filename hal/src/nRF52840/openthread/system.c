@@ -58,7 +58,7 @@ extern bool gPlatformPseudoResetWasRequested;
 
 static void selectAntenna(bool external) {
     // Mesh SoM don't have on-board antenna switch.
-#if (PLATFORM_ID == PLATFORM_XSOM) || (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM)
+#if (PLATFORM_ID == PLATFORM_XSOM) || (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
     return;
 #else
     HAL_Pin_Mode(ANTSW1, OUTPUT);
