@@ -155,7 +155,7 @@ if [ $PLATFORM = "all" ]; then
 	release_platform "photon"
 	release_platform "xenon"
 	release_platform "xsom"
-    release_platform "b5som"
+	release_platform "b5som"
 else
 	release_platform "$PLATFORM"
 fi

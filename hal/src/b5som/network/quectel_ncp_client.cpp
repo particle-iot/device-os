@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -130,7 +130,7 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     parserError_ = 0;
     ready_ = false;
     resetRegistrationState();
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void QuectelNcpClient::destroy() {
@@ -156,12 +156,12 @@ int QuectelNcpClient::initParser(Stream* stream) {
                                     CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
                                     // Home network or roaming
                                     if (val[r - 1] == 1 || val[r - 1] == 5) {
-                                        self->creg_ = RegistrationState::Registered;
+                                        self->creg_ = RegistrationState::REGISTERED;
                                     } else {
-                                        self->creg_ = RegistrationState::NotRegistered;
+                                        self->creg_ = RegistrationState::NOT_REGISTERED;
                                     }
                                     self->checkRegistrationState();
-                                    return 0;
+                                    return SYSTEM_ERROR_NONE;
                                 },
                                 this));
     CHECK(parser_.addUrcHandler("+CGREG",
@@ -172,12 +172,12 @@ int QuectelNcpClient::initParser(Stream* stream) {
                                     CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
                                     // Home network or roaming
                                     if (val[r - 1] == 1 || val[r - 1] == 5) {
-                                        self->cgreg_ = RegistrationState::Registered;
+                                        self->cgreg_ = RegistrationState::REGISTERED;
                                     } else {
-                                        self->cgreg_ = RegistrationState::NotRegistered;
+                                        self->cgreg_ = RegistrationState::NOT_REGISTERED;
                                     }
                                     self->checkRegistrationState();
-                                    return 0;
+                                    return SYSTEM_ERROR_NONE;
                                 },
                                 this));
     CHECK(parser_.addUrcHandler("+CEREG",
@@ -188,15 +188,15 @@ int QuectelNcpClient::initParser(Stream* stream) {
                                     CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
                                     // Home network or roaming
                                     if (val[r - 1] == 1 || val[r - 1] == 5) {
-                                        self->cereg_ = RegistrationState::Registered;
+                                        self->cereg_ = RegistrationState::REGISTERED;
                                     } else {
-                                        self->cereg_ = RegistrationState::NotRegistered;
+                                        self->cereg_ = RegistrationState::NOT_REGISTERED;
                                     }
                                     self->checkRegistrationState();
-                                    return 0;
+                                    return SYSTEM_ERROR_NONE;
                                 },
                                 this));
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::on() {
@@ -205,12 +205,12 @@ int QuectelNcpClient::on() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (ncpState_ == NcpState::ON) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     // Power on the modem
     CHECK(modemPowerOn());
     CHECK(waitReady());
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::off() {
@@ -223,13 +223,13 @@ int QuectelNcpClient::off() {
     modemPowerOff();
     ready_ = false;
     ncpState(NcpState::OFF);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::enable() {
     const NcpClientLock lock(this);
     if (ncpState_ != NcpState::DISABLED) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     serial_->enabled(true);
     muxerAtStream_->enabled(true);
@@ -261,7 +261,7 @@ int QuectelNcpClient::disconnect() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (connState_ == NcpConnectionState::DISCONNECTED) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     CHECK(checkParser());
     const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
@@ -271,7 +271,7 @@ int QuectelNcpClient::disconnect() {
     resetRegistrationState();
 
     connectionState(NcpConnectionState::DISCONNECTED);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 NcpConnectionState QuectelNcpClient::connectionState() {
@@ -285,7 +285,7 @@ int QuectelNcpClient::getFirmwareVersionString(char* buf, size_t size) {
     CHECK_PARSER(resp.readLine(buf, size));
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::getFirmwareModuleVersion(uint16_t* ver) {
@@ -320,7 +320,7 @@ int QuectelNcpClient::connect(const CellularNetworkConfig& conf) {
 
     checkRegistrationState();
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::getIccid(char* buf, size_t size) {
@@ -479,27 +479,26 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
     }
 
     switch (qual->qualityUnits()) {
-    case CellularQualityUnits::RXQUAL:
-    case CellularQualityUnits::MEAN_BEP: {
-        qual->quality(rxqual);
-        break;
+        case CellularQualityUnits::RXQUAL:
+        case CellularQualityUnits::MEAN_BEP: {
+            qual->quality(rxqual);
+            break;
+        }
+        case CellularQualityUnits::ECN0: {
+            qual->quality((rxqual != 99) ? std::min((7 + (7 - rxqual) * 6), 44) : 255);
+            break;
+        }
+        case CellularQualityUnits::RSRQ: {
+            qual->quality((rxqual != 99) ? (rxqual * 34) / 7 : 255);
+            break;
+        }
+        default: {
+            // Do nothing
+            break;
+        }
     }
-    case CellularQualityUnits::ECN0: {
-        qual->quality((rxqual != 99) ? std::min((7 + (7 - rxqual) * 6), 44) : 255);
-        break;
-    }
-    case CellularQualityUnits::RSRQ: {
-        qual->quality((rxqual != 99) ? (rxqual * 34) / 7 : 255);
-        break;
-    }
-    default: {
-        // Do nothing
-        break;
-    }
-    }
-    // }
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::checkParser() {
@@ -515,7 +514,7 @@ int QuectelNcpClient::checkParser() {
         }
     }
     CHECK(waitReady());
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) {
@@ -526,7 +525,7 @@ int QuectelNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) 
             return r;
         }
         if (r == AtResponse::OK) {
-            return 0;
+            return SYSTEM_ERROR_NONE;
         }
         const auto t2 = HAL_Timer_Get_Milli_Seconds();
         if (t2 - t1 >= timeout) {
@@ -538,7 +537,7 @@ int QuectelNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) 
 
 int QuectelNcpClient::waitReady() {
     if (ready_) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     muxer_.stop();
     CHECK(serial_->setBaudRate(QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE));
@@ -570,7 +569,7 @@ int QuectelNcpClient::waitReady() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::selectSimCard() {
@@ -673,7 +672,7 @@ int QuectelNcpClient::initReady() {
 
     muxerSg.dismiss();
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::checkSimCard() {
@@ -686,7 +685,7 @@ int QuectelNcpClient::checkSimCard() {
     if (!strcmp(code, "READY")) {
         r = parser_.execCommand("AT+CCID");
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     return SYSTEM_ERROR_UNKNOWN;
 }
@@ -710,7 +709,7 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
             netConf_.hasApn() ? netConf_.apn() : "");
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::registerNet() {
@@ -744,7 +743,7 @@ int QuectelNcpClient::registerNet() {
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void QuectelNcpClient::ncpState(NcpState state) {
@@ -790,7 +789,7 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
                                        if (handler) {
                                            handler(0, data, size, self->conf_.dataHandlerData());
                                        }
-                                       return 0;
+                                       return SYSTEM_ERROR_NONE;
                                    },
                                    this);
         if (r) {
@@ -838,20 +837,20 @@ int QuectelNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Chann
         }
     }
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void QuectelNcpClient::resetRegistrationState() {
-    creg_ = RegistrationState::NotRegistered;
-    cgreg_ = RegistrationState::NotRegistered;
-    cereg_ = RegistrationState::NotRegistered;
+    creg_ = RegistrationState::NOT_REGISTERED;
+    cgreg_ = RegistrationState::NOT_REGISTERED;
+    cereg_ = RegistrationState::NOT_REGISTERED;
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
 }
 
 void QuectelNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
-        if ((creg_ == RegistrationState::Registered && cgreg_ == RegistrationState::Registered) || cereg_ == RegistrationState::Registered) {
+        if ((creg_ == RegistrationState::REGISTERED && cgreg_ == RegistrationState::REGISTERED) || cereg_ == RegistrationState::REGISTERED) {
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
             connectionState(NcpConnectionState::CONNECTING);
@@ -866,7 +865,7 @@ int QuectelNcpClient::processEventsImpl() {
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
     if (connState_ != NcpConnectionState::CONNECTING || millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     SCOPE_GUARD({ regCheckTime_ = millis(); });
 
@@ -881,7 +880,7 @@ int QuectelNcpClient::processEventsImpl() {
         modemHardReset();
         ncpState(NcpState::OFF);
     }
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::modemInit() const {
@@ -902,7 +901,7 @@ int QuectelNcpClient::modemInit() const {
 
     LOG(TRACE, "Modem low level initialization OK");
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::modemPowerOn() const {
@@ -934,7 +933,7 @@ int QuectelNcpClient::modemPowerOn() const {
     }
     CHECK_TRUE(modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::modemPowerOff() const {
@@ -967,7 +966,7 @@ int QuectelNcpClient::modemPowerOff() const {
     }
 
     CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::modemHardReset(bool powerOff) const {
@@ -978,7 +977,7 @@ int QuectelNcpClient::modemHardReset(bool powerOff) const {
     HAL_Delay_Milliseconds(300);
     HAL_GPIO_Write(BGRST, 0);
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 bool QuectelNcpClient::modemPowerState() const {
@@ -988,7 +987,7 @@ bool QuectelNcpClient::modemPowerState() const {
 
 // // Use BG96 status pin to enable/disable voltage convert IC Automatically
 // int QuectelNcpClient::modemSetUartState(bool state) const {
-//     return 0;
+//     return SYSTEM_ERROR_NONE;
 // }
 
 } // namespace particle

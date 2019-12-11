@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -80,13 +80,13 @@ private:
     CellularGlobalIdentity cgi_;
 
     enum class RegistrationState {
-        NotRegistered = 0,
-        Registered    = 1,
+        NOT_REGISTERED = 0,
+        REGISTERED    = 1,
     };
 
-    RegistrationState creg_ = RegistrationState::NotRegistered;
-    RegistrationState cgreg_ = RegistrationState::NotRegistered;
-    RegistrationState cereg_ = RegistrationState::NotRegistered;
+    RegistrationState creg_ = RegistrationState::NOT_REGISTERED;
+    RegistrationState cgreg_ = RegistrationState::NOT_REGISTERED;
+    RegistrationState cereg_ = RegistrationState::NOT_REGISTERED;
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
 

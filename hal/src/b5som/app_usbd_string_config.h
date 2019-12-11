@@ -82,9 +82,7 @@
  *
  * List of product names defined the same way like in @ref APP_USBD_STRINGS_MANUFACTURER
  */
-#if PLATFORM_ID == PLATFORM_B5SOM 
 #define APP_USBD_STRINGS_PRODUCT    APP_USBD_STRING_DESC("B5 SOM CDC Mode")
-#endif
 
 /**
  * @brief Define whether @ref APP_USBD_STRINGS_PRODUCT is created by @ref APP_USBD_STRING_DESC
@@ -125,12 +123,10 @@
  *                Then use X(USBD_STRING_WINUSB, =0xEE, (APP_USBD_STRING_DESC(...)))
  * - @c ...     : List of string descriptors for each defined language.
  */
-#if PLATFORM_ID == PLATFORM_B5SOM 
 #define APP_USBD_STRINGS_USER \
     X(APP_USER_1, , APP_USBD_STRING_DESC("B5SOM Serial")) \
     X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC("B5SOM Control Interface")) \
     X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC("MSFT100\xee"))
-#endif
 
 /** @} */
 #endif /* APP_USBD_STRING_CONFIG_H */
