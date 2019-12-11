@@ -83,7 +83,7 @@
  * List of product names defined the same way like in @ref APP_USBD_STRINGS_MANUFACTURER
  */
 #if PLATFORM_ID == PLATFORM_B5SOM 
-#define APP_USBD_STRINGS_PRODUCT    APP_USBD_STRING_DESC("B5SOM CDC Mode")
+#define APP_USBD_STRINGS_PRODUCT    APP_USBD_STRING_DESC("B5 SOM CDC Mode")
 #endif
 
 /**
