@@ -29,7 +29,7 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "enumclass.h"
 #include "system_commands.h"
 #if HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
-#include "network/ncp.h"
+#include "ncp.h"
 #include "wifi_network_manager.h"
 #endif // HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
 #if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR

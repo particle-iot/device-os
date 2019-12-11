@@ -80,7 +80,7 @@
 #endif /* HAL_PLATFORM_IFAPI */
 
 #if HAL_PLATFORM_NCP
-#include "network/ncp.h"
+#include "ncp.h"
 #endif
 
 #if HAL_PLATFORM_MESH

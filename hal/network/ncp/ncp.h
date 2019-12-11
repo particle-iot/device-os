@@ -1,6 +1,5 @@
 /*
- ******************************************************************************
- *  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,8 +13,21 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
- ******************************************************************************
  */
 
-// TODO: Move this header to a common directory
-#include "../../electron/modem/enums_hal.h"
+#pragma once
+
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
+#include "wifi_network_manager.h"
+#elif PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BSOM || PLATFORM_B5SOM
+#include "cellular_network_manager.h"
+#endif
+
+
+namespace particle {
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
+WifiNetworkManager* wifiNetworkManager();
+#elif PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BSOM || PLATFORM_B5SOM
+CellularNetworkManager* cellularNetworkManager();
+#endif
+} // particle

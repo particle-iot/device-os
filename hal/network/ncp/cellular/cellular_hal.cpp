@@ -17,9 +17,9 @@
 
 #include "cellular_hal.h"
 
-#include "network/ncp/cellular_network_manager.h"
-#include "network/ncp/cellular_ncp_client.h"
-#include "network/ncp.h"
+#include "cellular_network_manager.h"
+#include "cellular_ncp_client.h"
+#include "ncp.h"
 #include "ifapi.h"
 
 #include "system_network.h" // FIXME: For network_interface_index
@@ -32,7 +32,7 @@
 #include "at_parser.h"
 #include "at_command.h"
 #include "at_response.h"
-#include "modem/enums_hal.h"
+#include "enums_hal.h"
 
 #include <limits>
 
@@ -194,6 +194,15 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     CHECK(client->getImei(info->imei, sizeof(info->imei)));
     if (info->size >= offsetof(CellularDevice, dev) + sizeof(CellularDevice::dev)) {
         switch (client->ncpId()) {
+        case PLATFORM_NCP_SARA_U201:
+            info->dev = DEV_SARA_U201;
+            break;
+        case PLATFORM_NCP_SARA_G350:
+            info->dev = DEV_SARA_G350;
+            break;
+        case PLATFORM_NCP_SARA_R410:
+            info->dev = DEV_SARA_R410;
+            break;
         case PLATFORM_NCP_QUECTEL_BG96:
             info->dev = DEV_QUECTEL_BG96;
             break;

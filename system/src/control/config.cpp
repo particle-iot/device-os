@@ -41,7 +41,7 @@
 #endif
 
 #if HAL_PLATFORM_NCP
-#include "network/ncp.h"
+#include "ncp.h"
 #include "wifi_network_manager.h"
 #include "wifi_ncp_client.h"
 #endif

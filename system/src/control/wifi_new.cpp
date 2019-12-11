@@ -22,7 +22,7 @@
 
 #include "common.h"
 
-#include "network/ncp.h"
+#include "ncp.h"
 #include "wifi_network_manager.h"
 #include "wifi_ncp_client.h"
 
