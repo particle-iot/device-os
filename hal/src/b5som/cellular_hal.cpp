@@ -192,6 +192,22 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     CHECK(client->on());
     CHECK(client->getIccid(info->iccid, sizeof(info->iccid)));
     CHECK(client->getImei(info->imei, sizeof(info->imei)));
+    if (info->size >= offsetof(CellularDevice, dev) + sizeof(CellularDevice::dev)) {
+        switch (client->ncpId()) {
+        case PLATFORM_NCP_QUECTEL_BG96:
+            info->dev = DEV_QUECTEL_BG96;
+            break;
+        case PLATFORM_NCP_QUECTEL_EG91_E:
+            info->dev = DEV_QUECTEL_EG91_E;
+            break;
+        case PLATFORM_NCP_QUECTEL_EG91_NA:
+            info->dev = DEV_QUECTEL_EG91_NA;
+            break;
+        default:
+            info->dev = DEV_UNKNOWN;
+            break;
+        }
+    }
     return 0;
 }
 

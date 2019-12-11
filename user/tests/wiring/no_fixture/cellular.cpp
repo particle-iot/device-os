@@ -228,6 +228,14 @@ static int atCallback(int type, const char* buf, int len, int* lines) {
 }
 
 test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_controlled) {
+    if (cellular_modem_type() == DEV_QUECTEL_BG96 || \
+        cellular_modem_type() == DEV_QUECTEL_EG91_E || \
+        cellular_modem_type() == DEV_QUECTEL_EG91_NA) {
+        Serial.println("TODO: find a command with long response on Quectel NCP");
+        skip();
+        return;
+    }
+
     // TODO: Add back this test when SARA R410 supports HW Flow Control?
     if (cellular_modem_type() == DEV_SARA_R410) {
         skip_r410 = true;
