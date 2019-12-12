@@ -19,6 +19,7 @@
 #define USBD_DFU_MAL_H
 
 #include "usbd_dfu.h"
+#include "platforms.h"
 
 
 #define INTERNAL_FLASH_START_ADD        0x00000000
@@ -30,8 +31,13 @@
 #define DCD_IF_STRING                   "@DCD Flash   /0x00000000/1*016Ke";
 
 #define EXTERNAL_FLASH_START_ADD        0x00000000
+#if PLATFORM_ID == PLATFORM_B5SOM
+#define EXTERNAL_FLASH_END_ADDR         0x00800000
+#define EXTERNAL_FLASH_IF_STRING        "@External Flash   /0x80000000/1024*008Kg";
+#else
 #define EXTERNAL_FLASH_END_ADDR         0x00400000
 #define EXTERNAL_FLASH_IF_STRING        "@External Flash   /0x80000000/1024*004Kg";
+#endif
 
 
 namespace particle { namespace usbd { namespace dfu { namespace mal {
