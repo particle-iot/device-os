@@ -81,30 +81,209 @@ enum WakeupReason {
     WAKEUP_REASON_PIN_OR_RTC = 3
 };
 
-struct SleepResult {
-    SleepResult() {}
-    SleepResult(WakeupReason r, system_error_t e, pin_t p = std::numeric_limits<pin_t>::max());
-    SleepResult(int ret, const pin_t* pins, size_t pinsSize);
-
-    WakeupReason reason() const;
-    bool wokenUpByRtc() const;
-    bool wokenUpByPin() const;
-
-    pin_t pin() const;
-    bool rtc() const;
-    system_error_t error() const;
-
-private:
-    WakeupReason reason_ = WAKEUP_REASON_NONE;
-    system_error_t err_ = SYSTEM_ERROR_NONE;
-    pin_t pin_ = std::numeric_limits<pin_t>::max();
+enum class SystemSleepWakeupReason: uint16_t {
+    UNKNOWN = HAL_WAKEUP_SOURCE_TYPE_UNKNOWN,
+    BY_GPIO = HAL_WAKEUP_SOURCE_TYPE_GPIO,
+    BY_ADC = HAL_WAKEUP_SOURCE_TYPE_ADC,
+    BY_DAC = HAL_WAKEUP_SOURCE_TYPE_DAC,
+    BY_RTC = HAL_WAKEUP_SOURCE_TYPE_RTC,
+    BY_LPCOMP = HAL_WAKEUP_SOURCE_TYPE_LPCOMP,
+    BY_UART = HAL_WAKEUP_SOURCE_TYPE_UART,
+    BY_I2C = HAL_WAKEUP_SOURCE_TYPE_I2C,
+    BY_SPI = HAL_WAKEUP_SOURCE_TYPE_SPI,
+    BY_TIMER = HAL_WAKEUP_SOURCE_TYPE_TIMER,
+    BY_CAN = HAL_WAKEUP_SOURCE_TYPE_CAN,
+    BY_USB = HAL_WAKEUP_SOURCE_TYPE_USB,
+    BY_BLE = HAL_WAKEUP_SOURCE_TYPE_BLE,
+    BY_NFC = HAL_WAKEUP_SOURCE_TYPE_NFC,
+    BY_NETWORK = HAL_WAKEUP_SOURCE_TYPE_NETWORK,
 };
 
-inline SleepResult::SleepResult(WakeupReason r, system_error_t e, pin_t p)
-    : reason_(r),
-      err_(e),
-      pin_(p) {
-}
+class SystemSleepResult {
+public:
+    SystemSleepResult()
+            : wakeupSource_(nullptr),
+              error_(SYSTEM_ERROR_NONE) {
+    }
+
+    SystemSleepResult(hal_wakeup_source_base_t* source, system_error_t error)
+            : SystemSleepResult() {
+        copyWakeupSource(source);
+        error_ = error;
+    }
+
+    SystemSleepResult(system_error_t error)
+            : SystemSleepResult() {
+        error_ = error;
+    }
+
+    // Copy constructor
+    SystemSleepResult(const SystemSleepResult& result)
+            : SystemSleepResult() {
+        error_ = result.error_;
+        copyWakeupSource(result.wakeupSource_);
+    }
+
+    SystemSleepResult& operator=(const SystemSleepResult& result) {
+        error_ = result.error_;
+        copyWakeupSource(result.wakeupSource_);
+        return *this;
+    }
+
+    // Move constructor
+    SystemSleepResult(SystemSleepResult&& result)
+            : SystemSleepResult() {
+        error_ = result.error_;
+        freeWakeupSourceMemory();
+        if (result.wakeupSource_) {
+            wakeupSource_ = result.wakeupSource_;
+            result.wakeupSource_ = nullptr;
+        }
+    }
+
+    SystemSleepResult& operator=(SystemSleepResult&& result) {
+        error_ = result.error_;
+        freeWakeupSourceMemory();
+        if (result.wakeupSource_) {
+            wakeupSource_ = result.wakeupSource_;
+            result.wakeupSource_ = nullptr;
+        }
+        return *this;
+    }
+
+    ~SystemSleepResult() {
+        freeWakeupSourceMemory();
+    }
+
+    void setError(system_error_t error) {
+        error_ = error;
+        freeWakeupSourceMemory();
+    }
+
+    int setWakeupPin(pin_t pin, system_error_t error = SYSTEM_ERROR_NONE) {
+        error_ = error;
+        freeWakeupSourceMemory();
+        auto source = new(std::nothrow) hal_wakeup_source_gpio_t();
+        if (!source) {
+            error_ = SYSTEM_ERROR_NO_MEMORY;
+            return error_;
+        }
+        source->base.size = sizeof(hal_wakeup_source_gpio_t);
+        source->base.version = HAL_SLEEP_VERSION;
+        source->base.type = HAL_WAKEUP_SOURCE_TYPE_GPIO;
+        source->base.next = nullptr;
+        source->pin = pin;
+        wakeupSource_ = reinterpret_cast<hal_wakeup_source_base_t*>(source);
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int setWakeupRtc(system_error_t error = SYSTEM_ERROR_NONE) {
+        error_ = error;
+        freeWakeupSourceMemory();
+        auto source = new(std::nothrow) hal_wakeup_source_base_t();
+        if (!source) {
+            error_ = SYSTEM_ERROR_NO_MEMORY;
+            return error_;
+        }
+        source->size = sizeof(hal_wakeup_source_rtc_t);
+        source->version = HAL_SLEEP_VERSION;
+        source->type = HAL_WAKEUP_SOURCE_TYPE_RTC;
+        source->next = nullptr;
+        wakeupSource_ = source;
+        return SYSTEM_ERROR_NONE;
+    }
+
+    hal_wakeup_source_base_t** halWakeupSource() {
+        return &wakeupSource_;
+    }
+
+    SystemSleepWakeupReason wakeupReason() const {
+        if (wakeupSource_) {
+            return static_cast<SystemSleepWakeupReason>(wakeupSource_->type);
+        } else {
+            return SystemSleepWakeupReason::UNKNOWN;
+        }
+    }
+
+    pin_t wakeupPin() const {
+        if (wakeupReason() == SystemSleepWakeupReason::BY_GPIO) {
+            return reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource_)->pin;
+        } else {
+            return std::numeric_limits<pin_t>::max();
+        }
+    }
+
+    system_error_t error() const {
+        return error_;
+    }
+
+private:
+    void freeWakeupSourceMemory() {
+        if (wakeupSource_) {
+            free(wakeupSource_);
+            wakeupSource_ = nullptr;
+        }
+    }
+
+    int copyWakeupSource(hal_wakeup_source_base_t* source) {
+        freeWakeupSourceMemory();
+        if (source) {
+            wakeupSource_ = (hal_wakeup_source_base_t*)malloc(source->size);
+            if (wakeupSource_) {
+                memcpy(wakeupSource_, source, source->size);
+            } else {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    hal_wakeup_source_base_t* wakeupSource_;
+    system_error_t error_;
+};
+
+struct SleepResult {
+    SleepResult() {}
+    SleepResult(const SystemSleepResult& result)
+            : result_(result) {
+    }
+    SleepResult(SystemSleepResult&& result)
+            : result_(result) {
+    }
+
+    WakeupReason reason() const {
+        if (result_.wakeupReason() == SystemSleepWakeupReason::BY_GPIO) {
+            return WAKEUP_REASON_PIN;
+        } else if (result_.wakeupReason() == SystemSleepWakeupReason::BY_RTC) {
+            return WAKEUP_REASON_RTC;
+        } else {
+            return WAKEUP_REASON_PIN_OR_RTC;
+        }
+    }
+
+    bool wokenUpByRtc() const {
+        return (reason() == WAKEUP_REASON_RTC || reason() == WAKEUP_REASON_PIN_OR_RTC);
+    }
+
+    bool wokenUpByPin() const {
+        return (reason() == WAKEUP_REASON_PIN || reason() == WAKEUP_REASON_PIN_OR_RTC);
+    }
+
+    pin_t pin() const {
+        return result_.wakeupPin();
+    }
+
+    bool rtc() const {
+        return wokenUpByRtc();
+    }
+
+    system_error_t error() const {
+        return result_.error();
+    }
+
+private:
+    SystemSleepResult result_;
+};
 
 
 class SystemClass {
@@ -149,7 +328,7 @@ public:
     }
 #endif
 
-#if HAL_PLATFORM_SLEEP_2_0
+#if HAL_PLATFORM_SLEEP20
     static SystemSleepResult sleep(const SystemSleepConfiguration& config);
 #endif
 
@@ -409,10 +588,12 @@ public:
             f = true;
             if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
                 // Woken up from standby mode
-                sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
+                systemSleepResult_.setError(SYSTEM_ERROR_NONE);
+            } else if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
+
             }
         }
-        return sleepResult_;
+        return SleepResult(systemSleepResult_);
     }
 
     inline system_error_t sleepError() {
@@ -474,10 +655,7 @@ public:
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
 
 private:
-    SleepResult sleepResult_;
-#if HAL_PLATFORM_SLEEP_2_0
     SystemSleepResult systemSleepResult_;
-#endif
 
     static inline uint8_t get_flag(system_flag_t flag)
     {
@@ -490,18 +668,6 @@ private:
     {
         system_set_flag(flag, value, nullptr);
     }
-
-#if HAL_PLATFORM_SLEEP_2_0
-    void toSleepResult() {
-        if (systemSleepResult_.wakeupReason() == SystemSleepWakeupReason::BY_GPIO) {
-            sleepResult_ = SleepResult(WAKEUP_REASON_PIN, systemSleepResult_.error(), systemSleepResult_.wakeupPin());
-        } else if (systemSleepResult_.wakeupReason() == SystemSleepWakeupReason::BY_RTC) {
-            sleepResult_ = SleepResult(WAKEUP_REASON_RTC, systemSleepResult_.error(), systemSleepResult_.wakeupPin());
-        } else {
-            sleepResult_ = SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP);
-        }
-    }
-#endif
 
     static SleepResult sleepPinImpl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, SleepOptionFlags flags);
 };

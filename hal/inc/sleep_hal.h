@@ -20,7 +20,7 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_SLEEP_2_0
+#if HAL_PLATFORM_SLEEP20
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -166,6 +166,6 @@ int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t**
 } // extern "C"
 #endif
 
-#endif // HAL_PLATFORM_SLEEP_2_0
+#endif // HAL_PLATFORM_SLEEP20
 
 #endif /* __SLEEP_HAL_H */

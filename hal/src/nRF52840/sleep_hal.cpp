@@ -17,7 +17,7 @@
 
 #include "sleep_hal.h"
 
-#if HAL_PLATFORM_SLEEP_2_0
+#if HAL_PLATFORM_SLEEP20
 
 #include <nrfx_types.h>
 #include <nrf_mbr.h>
@@ -750,4 +750,4 @@ int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t**
     return ret;
 }
 
-#endif // HAL_PLATFORM_SLEEP_2_0
+#endif // HAL_PLATFORM_SLEEP20

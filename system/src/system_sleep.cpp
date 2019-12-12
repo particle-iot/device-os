@@ -227,7 +227,7 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
     return ret;
 }
 
-#if HAL_PLATFORM_SLEEP_2_0
+#if HAL_PLATFORM_SLEEP20
 
 #if HAL_PLATFORM_CELLULAR || HAL_PLATFORM_WIFI || HAL_PLATFORM_MESH || HAL_PLATFORM_ETHERNET
 static bool system_sleep_network_suspend(network_interface_index index) {
@@ -381,7 +381,7 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     return ret;
 }
 
-#endif // HAL_PLATFORM_SLEEP_2_0
+#endif // HAL_PLATFORM_SLEEP20
 
 /**
  * Wraps the actual implementation, which has to return a value as part of the threaded implementation.
@@ -396,7 +396,7 @@ int system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds,
 
 int system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
 {
-#if HAL_PLATFORM_SLEEP_2_0
+#if HAL_PLATFORM_SLEEP20
     if (sleepMode == SLEEP_MODE_WLAN) {
         network_connect_cancel(0, 1, 0, 0);
         return system_sleep_impl(sleepMode, seconds, param, reserved);
@@ -441,12 +441,12 @@ int system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, vo
 #else
     network_connect_cancel(0, 1, 0, 0);
     return system_sleep_impl(sleepMode, seconds, param, reserved);
-#endif // HAL_PLATFORM_SLEEP_2_0
+#endif // HAL_PLATFORM_SLEEP20
 }
 
 int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved)
 {
-#if HAL_PLATFORM_SLEEP_2_0
+#if HAL_PLATFORM_SLEEP20
     SystemSleepConfiguration config;
     // For backward compatibility. This API will make device enter STOP mode.
     config.mode(SystemSleepMode::STOP);
@@ -486,17 +486,25 @@ int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMo
         config.gpio(WKP, RISING);
     }
 
-    SystemSleepResult result;
-    int ret = system_sleep_ext(config.halConfig(), result.halWakeupSource(), nullptr);
+    hal_wakeup_source_base_t* wakeupSource = nullptr;
+    int ret = system_sleep_ext(config.halConfig(), &wakeupSource, nullptr);
     CHECK(ret);
 
-    if (result.wakeupReason() == SystemSleepWakeupReason::BY_GPIO) {
-        return result.wakeupPin();
-    } else {
-        return 0; // Any other wakeup sources are treated as RTC for backward compatibility.
+    ret = 0; // 0 for RTC wakeup reason.
+    if (wakeupSource) {
+        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+            for (size_t i = 0; i < pins_count; i++) {
+                if (pins[i] == reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource)->pin) {
+                    ret = i + 1;
+                    break;
+                }
+            }
+        }
+        free(wakeupSource);
     }
+    return ret;
 #else
     network_connect_cancel(0, 1, 0, 0);
     return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);
-#endif // HAL_PLATFORM_SLEEP_2_0
+#endif // HAL_PLATFORM_SLEEP20
 }

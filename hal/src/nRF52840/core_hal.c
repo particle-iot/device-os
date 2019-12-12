@@ -57,7 +57,6 @@
 #include "flash_common.h"
 #include <nrf_pwm.h>
 #include "concurrent_hal.h"
-#include "sleep_hal.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));

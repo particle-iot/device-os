@@ -41,7 +41,7 @@ void SystemClass::reset(uint32_t data)
     HAL_Core_System_Reset_Ex(RESET_REASON_USER, data, nullptr);
 }
 
-#if HAL_PLATFORM_SLEEP_2_0
+#if HAL_PLATFORM_SLEEP20
 SystemSleepResult SystemClass::sleep(const SystemSleepConfiguration& config) {
     if (!config.valid()) {
         LOG(ERROR, "System sleep configuration is invalid.");
@@ -52,7 +52,6 @@ SystemSleepResult SystemClass::sleep(const SystemSleepConfiguration& config) {
         result.setError(static_cast<system_error_t>(ret));
         System.systemSleepResult_ = result;
     }
-    System.toSleepResult();
     return System.systemSleepResult_;
 }
 #endif
@@ -60,14 +59,22 @@ SystemSleepResult SystemClass::sleep(const SystemSleepConfiguration& config) {
 SleepResult SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, SleepOptionFlags flags)
 {
     int ret = system_sleep(sleepMode, seconds, flags.value(), NULL);
-    System.sleepResult_ = SleepResult(WAKEUP_REASON_NONE, static_cast<system_error_t>(ret));
-    return System.sleepResult_;
+    System.systemSleepResult_.setError(static_cast<system_error_t>(ret));
+    return SleepResult(System.systemSleepResult_);
 }
 
 SleepResult SystemClass::sleepPinImpl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, SleepOptionFlags flags) {
     int ret = system_sleep_pins(pins, pins_count, modes, modes_count, seconds, flags.value(), nullptr);
-    System.sleepResult_ = SleepResult(ret, pins, pins_count);
-    return System.sleepResult_;
+    if (ret < 0) {
+        System.systemSleepResult_.setError(static_cast<system_error_t>(ret));
+    } else {
+        if (ret == 0) {
+            System.systemSleepResult_.setWakeupRtc();
+        } else {
+            System.systemSleepResult_.setWakeupPin(pins[ret - 1]);
+        }
+    }
+    return SleepResult(System.systemSleepResult_);
 }
 
 uint32_t SystemClass::freeMemory()
@@ -89,45 +96,4 @@ bool SystemClass::enableFeature(LoggingFeature) {
 bool SystemClass::enableFeature(const WiFiTesterFeature feature) {
     WiFiTester::init();
     return true;
-}
-
-SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
-    if (ret > 0) {
-        // pin
-        --ret;
-        if ((size_t)ret < pinsSize) {
-            pin_ = pins[ret];
-            reason_ = WAKEUP_REASON_PIN;
-            err_ = SYSTEM_ERROR_NONE;
-        }
-    } else if (ret == 0) {
-        reason_ = WAKEUP_REASON_RTC;
-        err_ = SYSTEM_ERROR_NONE;
-    } else {
-        err_ = static_cast<system_error_t>(ret);
-    }
-}
-
-WakeupReason SleepResult::reason() const {
-    return reason_;
-}
-
-bool SleepResult::wokenUpByRtc() const {
-    return reason_ == WAKEUP_REASON_RTC || reason_ == WAKEUP_REASON_PIN_OR_RTC;
-}
-
-bool SleepResult::wokenUpByPin() const {
-    return reason_ == WAKEUP_REASON_PIN || reason_ == WAKEUP_REASON_PIN_OR_RTC;
-}
-
-pin_t SleepResult::pin() const {
-    return pin_;
-}
-
-bool SleepResult::rtc() const {
-    return wokenUpByRtc();
-}
-
-system_error_t SleepResult::error() const {
-    return err_;
 }

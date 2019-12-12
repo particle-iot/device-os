@@ -24,7 +24,7 @@
 #include <stddef.h>
 #include "interrupts_hal.h"
 
-#if HAL_PLATFORM_SLEEP_2_0
+#if HAL_PLATFORM_SLEEP20
 #include <chrono>
 #include <memory>
 #include <string.h>
@@ -33,9 +33,7 @@
 #include "system_error.h"
 #include "sleep_hal.h"
 #include "spark_wiring_network.h"
-
-using spark::NetworkClass; 
-#endif // HAL_PLATFORM_SLEEP_2_0
+#endif // HAL_PLATFORM_SLEEP20
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,7 +60,7 @@ int system_sleep_pin(uint16_t pin, uint16_t mode, long seconds, uint32_t param, 
 int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved);
 
 
-#if HAL_PLATFORM_SLEEP_2_0
+#if HAL_PLATFORM_SLEEP20
 
 enum class SystemSleepMode: uint8_t {
     NONE            = HAL_SLEEP_MODE_NONE,
@@ -74,24 +72,6 @@ enum class SystemSleepMode: uint8_t {
 enum class SystemSleepWait: uint8_t {
     NO_WAIT = HAL_SLEEP_WAIT_NO_WAIT,
     CLOUD   = HAL_SLEEP_WAIT_CLOUD
-};
-
-enum class SystemSleepWakeupReason: uint16_t {
-    UNKNOWN = HAL_WAKEUP_SOURCE_TYPE_UNKNOWN,
-    BY_GPIO = HAL_WAKEUP_SOURCE_TYPE_GPIO,
-    BY_ADC = HAL_WAKEUP_SOURCE_TYPE_ADC,
-    BY_DAC = HAL_WAKEUP_SOURCE_TYPE_DAC,
-    BY_RTC = HAL_WAKEUP_SOURCE_TYPE_RTC,
-    BY_LPCOMP = HAL_WAKEUP_SOURCE_TYPE_LPCOMP,
-    BY_UART = HAL_WAKEUP_SOURCE_TYPE_UART,
-    BY_I2C = HAL_WAKEUP_SOURCE_TYPE_I2C,
-    BY_SPI = HAL_WAKEUP_SOURCE_TYPE_SPI,
-    BY_TIMER = HAL_WAKEUP_SOURCE_TYPE_TIMER,
-    BY_CAN = HAL_WAKEUP_SOURCE_TYPE_CAN,
-    BY_USB = HAL_WAKEUP_SOURCE_TYPE_USB,
-    BY_BLE = HAL_WAKEUP_SOURCE_TYPE_BLE,
-    BY_NFC = HAL_WAKEUP_SOURCE_TYPE_NFC,
-    BY_NETWORK = HAL_WAKEUP_SOURCE_TYPE_NETWORK,
 };
 
 class SystemSleepConfigurationHelper {
@@ -364,108 +344,9 @@ private:
     bool valid_;
 };
 
-class SystemSleepResult {
-public:
-    SystemSleepResult()
-            : wakeupSource_(nullptr),
-              error_(SYSTEM_ERROR_NONE) {
-    }
-
-    SystemSleepResult(hal_wakeup_source_base_t* source, system_error_t error)
-            : SystemSleepResult() {
-        copyWakeupSource(source);
-        error_ = error;
-    }
-
-    SystemSleepResult(system_error_t error)
-            : SystemSleepResult() {
-        error_ = error;
-    }
-
-    // Copy constructor
-    SystemSleepResult(const SystemSleepResult& result)
-            : SystemSleepResult() {
-        error_ = result.error_;
-        copyWakeupSource(result.wakeupSource_);
-    }
-
-    SystemSleepResult& operator=(const SystemSleepResult& result) {
-        error_ = result.error_;
-        copyWakeupSource(result.wakeupSource_);
-        return *this;
-    }
-
-    // Move constructor
-    SystemSleepResult(SystemSleepResult&& result)
-            : SystemSleepResult() {
-        error_ = result.error_;
-        freeWakeupSourceMemory();
-        if (result.wakeupSource_) {
-            wakeupSource_ = result.wakeupSource_;
-            result.wakeupSource_ = nullptr;
-        }
-    }
-
-    ~SystemSleepResult() {
-        freeWakeupSourceMemory();
-    }
-
-    hal_wakeup_source_base_t** halWakeupSource() {
-        return &wakeupSource_;
-    }
-
-    SystemSleepWakeupReason wakeupReason() const {
-        if (wakeupSource_) {
-            return static_cast<SystemSleepWakeupReason>(wakeupSource_->type);
-        } else {
-            return SystemSleepWakeupReason::UNKNOWN;
-        }
-    }
-
-    pin_t wakeupPin() const {
-        if (wakeupReason() == SystemSleepWakeupReason::BY_GPIO) {
-            return reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource_)->pin;
-        } else {
-            return std::numeric_limits<pin_t>::max();
-        }
-    }
-
-    void setError(system_error_t error) {
-        error_ = error;
-    }
-
-    system_error_t error() const {
-        return error_;
-    }
-
-private:
-    void freeWakeupSourceMemory() {
-        if (wakeupSource_) {
-            free(wakeupSource_);
-            wakeupSource_ = nullptr;
-        }
-    }
-
-    int copyWakeupSource(hal_wakeup_source_base_t* source) {
-        freeWakeupSourceMemory();
-        if (source) {
-            wakeupSource_ = (hal_wakeup_source_base_t*)malloc(source->size);
-            if (wakeupSource_) {
-                memcpy(wakeupSource_, source, source->size);
-            } else {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
-        }
-        return SYSTEM_ERROR_NONE;
-    }
-
-    hal_wakeup_source_base_t* wakeupSource_;
-    system_error_t error_;
-};
-
 int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved);
 
-#endif // HAL_PLATFORM_SLEEP_2_0
+#endif // HAL_PLATFORM_SLEEP20
 
 #ifdef __cplusplus
 }
