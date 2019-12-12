@@ -17,9 +17,9 @@
 
 #include "cellular_hal.h"
 
-#include "cellular_network_manager.h"
-#include "cellular_ncp_client.h"
-#include "ncp.h"
+#include "network/ncp/cellular/cellular_network_manager.h"
+#include "network/ncp/cellular/cellular_ncp_client.h"
+#include "network/ncp/cellular/ncp.h"
 #include "ifapi.h"
 
 #include "system_network.h" // FIXME: For network_interface_index

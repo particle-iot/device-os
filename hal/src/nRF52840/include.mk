@@ -17,6 +17,7 @@ INCLUDE_DIRS += $(HAL_INCL_NRF52840_PATH)/freertos
 INCLUDE_DIRS += $(HAL_INCL_NRF52840_PATH)/openthread
 INCLUDE_DIRS += $(HAL_INCL_NRF52840_PATH)/mbedtls
 INCLUDE_DIRS += $(HAL_INCL_NRF52840_PATH)/littlefs
+INCLUDE_DIRS += $(HAL_MODULE_PATH)
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/api
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip/posix
@@ -24,8 +25,6 @@ INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/openthread
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip/wiznet
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/ncp
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/ncp/at_parser
-INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/ncp/wifi
-INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/ncp/cellular
 endif
 
 HAL_LINK ?= $(findstring hal,$(MAKE_DEPENDENCIES))

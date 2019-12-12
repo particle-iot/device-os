@@ -37,7 +37,7 @@ LOG_SOURCE_CATEGORY("net.esp32ncp")
 #include <lwip/dns.h>
 #include <algorithm>
 #include "lwiplock.h"
-#include "wifi_ncp_client.h"
+#include "network/ncp/wifi/wifi_ncp_client.h"
 #include "concurrent_hal.h"
 #include "deviceid_hal.h"
 #include "bytes2hexbuf.h"

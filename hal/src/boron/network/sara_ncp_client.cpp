@@ -20,7 +20,7 @@
 
 #include "at_command.h"
 #include "at_response.h"
-#include "network_config_db.h"
+#include "network/ncp/cellular/network_config_db.h"
 
 #include "serial_stream.h"
 #include "check.h"

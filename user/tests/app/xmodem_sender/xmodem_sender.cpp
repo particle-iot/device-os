@@ -4,7 +4,7 @@
 
 #include "xmodem_sender.h"
 #include "check.h"
-#include "ncp.h"
+#include "network/ncp/wifi/ncp.h"
 
 #include "../../../../services/inc/stream.h"
 

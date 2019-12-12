@@ -23,9 +23,9 @@
 
 #include "common.h"
 
-#include "cellular_network_manager.h"
-#include "cellular_ncp_client.h"
-#include "ncp.h"
+#include "network/ncp/cellular/cellular_network_manager.h"
+#include "network/ncp/cellular/cellular_ncp_client.h"
+#include "network/ncp/cellular/ncp.h"
 
 #include "check.h"
 

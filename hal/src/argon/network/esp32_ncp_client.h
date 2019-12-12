@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "wifi_ncp_client.h"
+#include "network/ncp/wifi/wifi_ncp_client.h"
 #include "at_parser.h"
 #include "platform_ncp.h"
 #include "spark_wiring_thread.h"

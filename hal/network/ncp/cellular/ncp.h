@@ -17,17 +17,10 @@
 
 #pragma once
 
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
-#include "wifi_network_manager.h"
-#elif PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BSOM || PLATFORM_B5SOM
 #include "cellular_network_manager.h"
-#endif
-
 
 namespace particle {
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
-WifiNetworkManager* wifiNetworkManager();
-#elif PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BSOM || PLATFORM_B5SOM
+
 CellularNetworkManager* cellularNetworkManager();
-#endif
+
 } // particle

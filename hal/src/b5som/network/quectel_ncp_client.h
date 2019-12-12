@@ -19,7 +19,7 @@
 
 #include <cstdlib>
 
-#include "cellular_ncp_client.h"
+#include "network/ncp/cellular/cellular_ncp_client.h"
 #include "platform_ncp.h"
 
 #include "at_parser.h"
