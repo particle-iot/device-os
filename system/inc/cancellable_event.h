@@ -33,19 +33,22 @@ public:
         return error;
     }
 
+protected:
+    virtual void on_event_complete(int error) { };
+
 private:
 
-    void event_complete() {
+    void event_complete(int error) {
         previous_event = MESSAGE_HANDLE_INVALID;
+        on_event_complete(error);
     }
 
     static void event_completion_handler(int error, const void* data, void* callback_data, void* reserved) {
         const auto target = reinterpret_cast<SendEventCancelPrevious*>(callback_data);
         if (target) {
-            target->event_complete();
+            target->event_complete(error);
         }
     }
-
 
     void clear_previous_event() {
         if (previous_event != MESSAGE_HANDLE_INVALID) {

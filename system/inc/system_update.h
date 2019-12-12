@@ -157,6 +157,12 @@ int system_get_flag(system_flag_t flag, uint8_t* value,void* reserved);
 int system_refresh_flag(system_flag_t flag);
 
 /**
+ * Perform background process updates that communicate with the cloud.
+ * @param force when true, does not check the connected status of the cloud. This can be used to send events during the handshake.
+ */
+int system_process_updates(bool force=false);
+
+/**
  * Formats the diagnostic data using an appender function.
  *
  * @param id Array of data source IDs. This argument can be set to NULL to format all registered data sources.

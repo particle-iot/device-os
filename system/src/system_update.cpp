@@ -44,6 +44,7 @@
 #include "bytes2hexbuf.h"
 #include "system_threading.h"
 #include "cancellable_event.h"
+#include "check.h"
 #if HAL_PLATFORM_DCT
 #include "dct.h"
 #endif // HAL_PLATFORM_DCT
@@ -90,21 +91,63 @@ volatile uint8_t systemFlags[SYSTEM_FLAG_MAX] = {
 
 const uint16_t SAFE_MODE_LISTEN = 0x5A1B;
 
-const char* UPDATES_ENABLED_EVENT = "particle/device/updates/enabled";
-const char* UPDATES_FORCED_EVENT = "particle/device/updates/forced";
-
 const char* flag_to_string(uint8_t flag) {
     return flag ? "true" : "false";
 }
 
-SendEventCancelPrevious updates_enabled_event;
+// since there's only one of these, the constant members are pulled out as template arguments
+template<uint8_t systemFlagIndex_, const char* eventName_> class UpdateFlagPublisher : SendEventCancelPrevious {
+
+    /**
+     * The value of the flag being communicated to the cloud, either 0 or 1.
+     * If this is 2 then the value in the cloud is indeterminate.
+     */
+    uint8_t value_;
+
+    uint8_t current_flag_value() {
+        return systemFlags[systemFlagIndex_];
+    }
+
+    static constexpr const uint8_t invalidated = 2;
+
+protected:
+
+    /**
+     * The completion handler for the event.
+     */
+    virtual void on_event_complete(int error) override {
+        if (error) {
+            // This will ensure the device tries again to send the message to the cloud
+            // Todo - this may end up using a lot of data in regions of poor connectivity
+            // After failure, should not attempt to send any events until the comms layer has been established
+            invalidate();
+        }
+    }
+
+public:
+    UpdateFlagPublisher() :
+        value_(invalidated)
+    {}
+
+    void invalidate() {
+        value_ = invalidated;
+    }
+
+    int process_update() {
+        ASSERT_ON_SYSTEM_THREAD();
+        int result = 0;
+        uint8_t current = current_flag_value();
+        if (current!=value_) {
+            result = send_event(eventName_, flag_to_string(current), DEFAULT_CLOUD_EVENT_TTL, PUBLISH_EVENT_FLAG_PRIVATE);
+            value_ = current;
+        }
+        return result;
+    }
+};
+
+constexpr const char UPDATES_ENABLED_EVENT[] = "particle/device/updates/enabled";
+static UpdateFlagPublisher<SYSTEM_FLAG_OTA_UPDATE_ENABLED, UPDATES_ENABLED_EVENT> updates_enabled_flag;
 SendEventCancelPrevious updates_forced_event;
-
-void send_state_event(SendEventCancelPrevious* event, const char* name, const char* data) {
-    SYSTEM_THREAD_CONTEXT_ASYNC(send_state_event(event, name, data));
-
-    event->send_event(name, data, DEFAULT_CLOUD_EVENT_TTL, PUBLISH_EVENT_FLAG_PRIVATE);
-}
 
 void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
 {
@@ -122,15 +165,9 @@ void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
         }
     }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
-    else if (flag == SYSTEM_FLAG_OTA_UPDATE_ENABLED)
-    {
-        // publish the firmware enabled event
-        send_state_event(&updates_enabled_event, UPDATES_ENABLED_EVENT, flag_to_string(newValue));
-    }
     else if (flag == SYSTEM_FLAG_OTA_UPDATE_FORCED)
     {
-        // acknowledge to the cloud that system updates are forced. It helps avoid a race condition where we might try sending firmware before the event has been received.
-        send_state_event(&updates_forced_event, UPDATES_FORCED_EVENT, flag_to_string(newValue));
+        updates_forced_event.send_event("particle/device/updates/forced", flag_to_string(newValue), DEFAULT_CLOUD_EVENT_TTL, PUBLISH_EVENT_FLAG_PRIVATE);
     }
     else if (flag == SYSTEM_FLAG_OTA_UPDATE_PENDING)
     {
@@ -157,6 +194,7 @@ int system_set_flag(system_flag_t flag, uint8_t value, void*)
     if (flag>=SYSTEM_FLAG_MAX)
         return -1;
 
+    // todo - shouldn't these flags be atomic variables?
     if (systemFlags[flag] != value || flag == SYSTEM_FLAG_STARTUP_LISTEN_MODE || flag == SYSTEM_FLAG_PM_DETECTION) {
         uint8_t oldValue = systemFlags[flag];
         systemFlags[flag] = value;
@@ -196,6 +234,20 @@ int system_get_flag(system_flag_t flag, uint8_t* value, void*)
     return 0;
 }
 
+/**
+ * Called as part of the background processing.
+ */
+int system_process_updates(bool force)
+{
+    if (force) {
+        // no connection so assume no known value in the cloud.
+        updates_enabled_flag.invalidate();
+    }
+    if (force || spark_cloud_flag_connected()) {
+        CHECK(updates_enabled_flag.process_update());
+    }
+    return 0;
+}
 
 void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler)
 {

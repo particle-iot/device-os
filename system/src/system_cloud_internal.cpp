@@ -929,11 +929,8 @@ int Send_Firmware_Update_Flags()
       This feature will be reworked in a later release to allow
       synchronization with less data use.
      */
-    if (true || !System.updatesEnabled()) {
-    	// force the event to be resent. The cloud assumes updates
-    	// are enabled by default.
-    	system_refresh_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED);
-    }
+
+    system_process_updates(true);
 
     if (true || System.updatesForced()) {
     	system_refresh_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED);
@@ -947,7 +944,7 @@ int Spark_Handshake(bool presence_announce)
     cloud_socket_aborted = false; // Clear cancellation flag for socket operations
     LOG(INFO,"Starting handshake: presense_announce=%d", presence_announce);
     int err = spark_protocol_handshake(sp);
-    if (!err)
+    if (!err)   // a new session
     {
         char buf[CLAIM_CODE_SIZE + 1];
         if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && buf[0] != 0 && (uint8_t)buf[0] != 0xff)
@@ -1024,6 +1021,8 @@ int Spark_Handshake(bool presence_announce)
             Spark_Process_Events();
         }
     }
+
+
     if (particle_key_errors != NO_ERROR) {
         char buf[sizeof(unsigned long)*8+1];
         ultoa((unsigned long)particle_key_errors, buf, 10);

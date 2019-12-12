@@ -30,7 +30,7 @@ namespace std {
 
 #if 0
 	/**
-	 * Imlementation of conditional varaible in terms of the HAL. This has
+	 * Implementation of conditional variable in terms of the HAL. This has
 	 * a potential race condition due to the placement of the critical section,
 	 * so has been commented out. https://github.com/spark/firmware/pull/614#discussion-diff-39882530
 	 */

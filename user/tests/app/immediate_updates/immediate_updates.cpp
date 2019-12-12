@@ -57,7 +57,9 @@ void setup() {
 
 void updateVariables() {
 	updatesEnabled = System.updatesEnabled();
-	updatesForced = System.updatesForced();
+#ifdef SYSTEM_VERSION_121	
+updatesForced = System.updatesForced();
+#endif
 	updatesPending = System.updatesPending();
 }
 
