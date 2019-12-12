@@ -32,7 +32,7 @@
 #include "at_parser.h"
 #include "at_command.h"
 #include "at_response.h"
-#include "enums_hal.h"
+#include "cellular_enums_hal.h"
 
 #include <limits>
 

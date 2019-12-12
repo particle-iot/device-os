@@ -28,7 +28,7 @@
 #include "electronserialpipe_hal.h"
 #include "pinmap_hal.h"
 #include "system_tick_hal.h"
-#include "enums_hal.h"
+#include "cellular_enums_hal.h"
 #include "mdm_debug.h"
 
 /** basic modem parser class

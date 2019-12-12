@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "enums_hal.h"
+#include "cellular_enums_hal.h"
 
 namespace particle {
 
