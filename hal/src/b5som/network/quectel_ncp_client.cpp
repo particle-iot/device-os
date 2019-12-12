@@ -156,9 +156,9 @@ int QuectelNcpClient::initParser(Stream* stream) {
                                     CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
                                     // Home network or roaming
                                     if (val[r - 1] == 1 || val[r - 1] == 5) {
-                                        self->creg_ = RegistrationState::REGISTERED;
+                                        self->creg_ = RegistrationState::Registered;
                                     } else {
-                                        self->creg_ = RegistrationState::NOT_REGISTERED;
+                                        self->creg_ = RegistrationState::NotRegistered;
                                     }
                                     self->checkRegistrationState();
                                     return SYSTEM_ERROR_NONE;
@@ -172,9 +172,9 @@ int QuectelNcpClient::initParser(Stream* stream) {
                                     CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
                                     // Home network or roaming
                                     if (val[r - 1] == 1 || val[r - 1] == 5) {
-                                        self->cgreg_ = RegistrationState::REGISTERED;
+                                        self->cgreg_ = RegistrationState::Registered;
                                     } else {
-                                        self->cgreg_ = RegistrationState::NOT_REGISTERED;
+                                        self->cgreg_ = RegistrationState::NotRegistered;
                                     }
                                     self->checkRegistrationState();
                                     return SYSTEM_ERROR_NONE;
@@ -188,9 +188,9 @@ int QuectelNcpClient::initParser(Stream* stream) {
                                     CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
                                     // Home network or roaming
                                     if (val[r - 1] == 1 || val[r - 1] == 5) {
-                                        self->cereg_ = RegistrationState::REGISTERED;
+                                        self->cereg_ = RegistrationState::Registered;
                                     } else {
-                                        self->cereg_ = RegistrationState::NOT_REGISTERED;
+                                        self->cereg_ = RegistrationState::NotRegistered;
                                     }
                                     self->checkRegistrationState();
                                     return SYSTEM_ERROR_NONE;
@@ -841,16 +841,16 @@ int QuectelNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Chann
 }
 
 void QuectelNcpClient::resetRegistrationState() {
-    creg_ = RegistrationState::NOT_REGISTERED;
-    cgreg_ = RegistrationState::NOT_REGISTERED;
-    cereg_ = RegistrationState::NOT_REGISTERED;
+    creg_ = RegistrationState::NotRegistered;
+    cgreg_ = RegistrationState::NotRegistered;
+    cereg_ = RegistrationState::NotRegistered;
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
 }
 
 void QuectelNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
-        if ((creg_ == RegistrationState::REGISTERED && cgreg_ == RegistrationState::REGISTERED) || cereg_ == RegistrationState::REGISTERED) {
+        if ((creg_ == RegistrationState::Registered && cgreg_ == RegistrationState::Registered) || cereg_ == RegistrationState::Registered) {
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
             connectionState(NcpConnectionState::CONNECTING);

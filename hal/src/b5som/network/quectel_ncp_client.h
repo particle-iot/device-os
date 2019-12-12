@@ -80,13 +80,13 @@ private:
     CellularGlobalIdentity cgi_;
 
     enum class RegistrationState {
-        NOT_REGISTERED = 0,
-        REGISTERED    = 1,
+        NotRegistered = 0,
+        Registered    = 1,
     };
 
-    RegistrationState creg_ = RegistrationState::NOT_REGISTERED;
-    RegistrationState cgreg_ = RegistrationState::NOT_REGISTERED;
-    RegistrationState cereg_ = RegistrationState::NOT_REGISTERED;
+    RegistrationState creg_ = RegistrationState::NotRegistered;
+    RegistrationState cgreg_ = RegistrationState::NotRegistered;
+    RegistrationState cereg_ = RegistrationState::NotRegistered;
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
 
