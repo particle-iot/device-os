@@ -64,9 +64,6 @@
 
 extern char link_heap_location, link_heap_location_end;
 
-#define STOP_MODE_EXIT_CONDITION_PIN 0x01
-#define STOP_MODE_EXIT_CONDITION_RTC 0x02
-
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress )
@@ -608,217 +605,35 @@ void HAL_Core_Enter_Safe_Mode(void* reserved)
 
 int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved)
 {
-    // Initial sanity check
-    if ((pins_count == 0 || mode_count == 0 || pins == NULL || mode == NULL) && seconds <= 0) {
-        return SYSTEM_ERROR_NOT_ALLOWED;
-    }
-
-    // Validate pins and modes
-    if ((pins_count > 0 && pins == NULL) || (pins_count > 0 && mode_count == 0) || (mode_count > 0 && mode == NULL)) {
-        return SYSTEM_ERROR_NOT_ALLOWED;
-    }
-
-    for (unsigned i = 0; i < pins_count; i++) {
-        if (pins[i] >= TOTAL_PINS) {
-            return SYSTEM_ERROR_NOT_ALLOWED;
-        }
-    }
-
-    for (unsigned i = 0; i < mode_count; i++) {
-        switch(mode[i]) {
-            case RISING:
-            case FALLING:
-            case CHANGE:
-                break;
-            default:
-                return SYSTEM_ERROR_NOT_ALLOWED;
-        }
-    }
-
-    SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
-
-    // Detach USB
-    HAL_USB_Detach();
-
-    // Flush all USARTs
-    for (int usart = 0; usart < TOTAL_USARTS; usart++)
-    {
-        if (HAL_USART_Is_Enabled(usart))
-        {
-            HAL_USART_Flush_Data(usart);
-        }
-    }
-
-    int32_t state = HAL_disable_irq();
-
-    uint32_t exit_conditions = 0x00;
-
-    // Suspend all EXTI interrupts
-    HAL_Interrupts_Suspend();
-
-    for (unsigned i = 0; i < pins_count; i++) {
-        pin_t wakeUpPin = pins[i];
-        InterruptMode edgeTriggerMode = (i < mode_count) ? mode[i] : mode[mode_count - 1];
-
-        PinMode wakeUpPinMode = INPUT;
-        /* Set required pinMode based on edgeTriggerMode */
-        switch(edgeTriggerMode)
-        {
-        case RISING:
-            wakeUpPinMode = INPUT_PULLDOWN;
-            break;
-        case FALLING:
-            wakeUpPinMode = INPUT_PULLUP;
-            break;
-        case CHANGE:
-        default:
-            wakeUpPinMode = INPUT;
-            break;
-        }
-
-        HAL_Pin_Mode(wakeUpPin, wakeUpPinMode);
-        HAL_InterruptExtraConfiguration irqConf = {0};
-        irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
-        irqConf.IRQChannelPreemptionPriority = 0;
-        irqConf.IRQChannelSubPriority = 0;
-        irqConf.keepHandler = 1;
-        irqConf.keepPriority = 1;
-        HAL_Interrupts_Attach(wakeUpPin, NULL, NULL, edgeTriggerMode, &irqConf);
-
-        exit_conditions |= STOP_MODE_EXIT_CONDITION_PIN;
-    }
-
-    // Configure RTC wake-up
-    if (seconds > 0) {
-        /*
-         * - To wake up from the Stop mode with an RTC alarm event, it is necessary to:
-         * - Configure the EXTI Line 17 to be sensitive to rising edges (Interrupt
-         * or Event modes) using the EXTI_Init() function.
-         *
-         */
-        HAL_RTC_Cancel_UnixAlarm();
-        HAL_RTC_Set_UnixAlarm((time_t) seconds);
-
-        // Connect RTC to EXTI line
-        EXTI_InitTypeDef EXTI_InitStructure = {0};
-        EXTI_InitStructure.EXTI_Line = EXTI_Line17;
-        EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-        EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-        EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-        EXTI_Init(&EXTI_InitStructure);
-
-        exit_conditions |= STOP_MODE_EXIT_CONDITION_RTC;
-    }
-
-    HAL_Core_Execute_Stop_Mode();
-
-    int32_t reason = SYSTEM_ERROR_UNKNOWN;
-
-    if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
-        Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-        for (unsigned i = 0; i < pins_count; i++) {
-            pin_t wakeUpPin = pins[i];
-            if (EXTI_GetITStatus(PIN_MAP[wakeUpPin].gpio_pin) != RESET) {
-                reason = i + 1;
-            }
-            /* Detach the Interrupt pin */
-            HAL_Interrupts_Detach_Ext(wakeUpPin, 1, NULL);
-        }
-    }
-
-    if (exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) {
-        if (NVIC_GetPendingIRQ(RTC_Alarm_IRQn)) {
-            reason = 0;
-        }
-        // No need to detach RTC Alarm from EXTI, since it will be detached in HAL_Interrupts_Restore()
-
-        // RTC Alarm should be canceled to avoid entering HAL_RTCAlarm_Handler or if we were woken up by pin
-        HAL_RTC_Cancel_UnixAlarm();
-    }
-
-    // Restore
-    HAL_Interrupts_Restore();
-
-    // Successfully exited STOP mode
-    HAL_enable_irq(state);
-
-    SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
-
-    HAL_USB_Attach();
-
-    return reason;
+    // Deprecated. See: hal/src/stm32f2xx/sleep_hal.cpp
+    return SYSTEM_ERROR_DEPRECATED;
 }
 
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
 {
-    InterruptMode m = (InterruptMode)edgeTriggerMode;
-    HAL_Core_Enter_Stop_Mode_Ext(&wakeUpPin, 1, &m, 1, seconds, NULL);
+    // Deprecated. See: hal/src/stm32f2xx/sleep_hal.cpp
 }
 
 void HAL_Core_Execute_Stop_Mode(void)
 {
-    /* Request to enter STOP mode with regulator in low power mode */
-    PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
-
-    /* At this stage the system has resumed from STOP mode */
-    /* Enable HSE, PLL and select PLL as system clock source after wake-up from STOP */
-
-    /* Enable HSE */
-    RCC_HSEConfig(RCC_HSE_ON);
-
-    /* Wait till HSE is ready */
-    if(RCC_WaitForHSEStartUp() != SUCCESS)
-    {
-        /* If HSE startup fails try to recover by system reset */
-        NVIC_SystemReset();
-    }
-
-    /* Enable PLL */
-    RCC_PLLCmd(ENABLE);
-
-    /* Wait till PLL is ready */
-    while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
-
-    /* Select PLL as system clock source */
-    RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
-
-    /* Wait till PLL is used as system clock source */
-    while(RCC_GetSYSCLKSource() != 0x08);
+    // Deprecated. See: hal/src/stm32f2xx/sleep_hal.cpp
 }
 
 int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
 {
-    // Configure RTC wake-up
-    if (seconds > 0) {
-        HAL_RTC_Cancel_UnixAlarm();
-        HAL_RTC_Set_UnixAlarm((time_t) seconds);
-    }
-
-    return HAL_Core_Execute_Standby_Mode_Ext(flags, NULL);
+    // Deprecated. See: hal/src/stm32f2xx/sleep_hal.cpp
+    return SYSTEM_ERROR_DEPRECATED;
 }
 
 int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved)
 {
-    if ((flags & HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN) == 0) {
-    /* Enable WKUP pin */
-    PWR_WakeUpPinCmd(ENABLE);
-    } else {
-        /* Disable WKUP pin */
-        PWR_WakeUpPinCmd(DISABLE);
-    }
-
-    /* Request to enter STANDBY mode */
-    PWR_EnterSTANDBYMode();
-
-    /* Following code will not be reached */
-    while(1);
-
-    return 0;
+    // Deprecated. See: hal/src/stm32f2xx/sleep_hal.cpp
+    return SYSTEM_ERROR_DEPRECATED;
 }
 
 void HAL_Core_Execute_Standby_Mode(void)
 {
-    HAL_Core_Execute_Standby_Mode_Ext(0, NULL);
+    // Deprecated. See: hal/src/stm32f2xx/sleep_hal.cpp
 }
 
 /**

@@ -276,7 +276,8 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     }
 #endif // SPARK_NO_CLOUD
 
-    // Network disconnect
+    // Network disconnect.
+    // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
 #if HAL_PLATFORM_CELLULAR
     bool cellularResume = false;
     if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_CELLULAR)) {
@@ -331,6 +332,7 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     led_set_update_enabled(1, nullptr); // Enable background LED updates
 
     // Network resume
+    // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
 #if HAL_PLATFORM_CELLULAR
     if (cellularResume) {
         system_sleep_network_resume(NETWORK_INTERFACE_CELLULAR);
@@ -389,7 +391,7 @@ int system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds,
     // Cancel current connection attempt to unblock the system thread
     network_connect_cancel(0, 1, 0, 0);
     InterruptMode m = (InterruptMode)edgeTriggerMode;
-    return system_sleep_pin_impl(&wakeUpPin, 1, &m, 1, seconds, param, reserved);
+    return system_sleep_pins(&wakeUpPin, 1, &m, 1, seconds, param, reserved);
 }
 
 int system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
@@ -408,6 +410,7 @@ int system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, vo
         }
 
         if (sleepMode == SLEEP_MODE_DEEP && (param & SYSTEM_SLEEP_FLAG_NETWORK_STANDBY)) {
+            // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
 #if HAL_PLATFORM_CELLULAR
             config.network(NETWORK_INTERFACE_CELLULAR);
 #endif // HAL_PLATFORM_CELLULAR
@@ -457,6 +460,7 @@ int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMo
     }
 
     if (param & SYSTEM_SLEEP_FLAG_NETWORK_STANDBY) {
+        // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
 #if HAL_PLATFORM_CELLULAR
         config.network(NETWORK_INTERFACE_CELLULAR);
 #endif // HAL_PLATFORM_CELLULAR

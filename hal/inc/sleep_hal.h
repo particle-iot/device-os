@@ -29,8 +29,13 @@
 #include "system_defs.h"
 #include "interrupts_hal.h"
 #include "platforms.h"
+#include "assert.h"
 
 #define HAL_SLEEP_VERSION 2
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Stop mode:
@@ -56,23 +61,24 @@ typedef enum hal_sleep_mode_t {
     HAL_SLEEP_MODE_MAX = 0x7F
 } hal_sleep_mode_t;
 
+// Bit mask enum value.
 typedef enum hal_wakeup_source_type_t {
-    HAL_WAKEUP_SOURCE_TYPE_UNKNOWN = 0,
-    HAL_WAKEUP_SOURCE_TYPE_GPIO = 1,
-    HAL_WAKEUP_SOURCE_TYPE_ADC = 2,
-    HAL_WAKEUP_SOURCE_TYPE_DAC = 3,
-    HAL_WAKEUP_SOURCE_TYPE_RTC = 4,
-    HAL_WAKEUP_SOURCE_TYPE_LPCOMP = 5,
-    HAL_WAKEUP_SOURCE_TYPE_UART = 6,
-    HAL_WAKEUP_SOURCE_TYPE_I2C = 7,
-    HAL_WAKEUP_SOURCE_TYPE_SPI = 8,
-    HAL_WAKEUP_SOURCE_TYPE_TIMER = 9,
-    HAL_WAKEUP_SOURCE_TYPE_CAN = 10,
-    HAL_WAKEUP_SOURCE_TYPE_USB = 11,
-    HAL_WAKEUP_SOURCE_TYPE_BLE = 12,
-    HAL_WAKEUP_SOURCE_TYPE_NFC = 13,
-    HAL_WAKEUP_SOURCE_TYPE_NETWORK = 14,
-    HAL_WAKEUP_SOURCE_TYPE_MAX = 0x7FFF
+    HAL_WAKEUP_SOURCE_TYPE_UNKNOWN = 0x00,
+    HAL_WAKEUP_SOURCE_TYPE_GPIO = 0x01,
+    HAL_WAKEUP_SOURCE_TYPE_ADC = 0x02,
+    HAL_WAKEUP_SOURCE_TYPE_DAC = 0x04,
+    HAL_WAKEUP_SOURCE_TYPE_RTC = 0x08,
+    HAL_WAKEUP_SOURCE_TYPE_LPCOMP = 0x10,
+    HAL_WAKEUP_SOURCE_TYPE_UART = 0x20,
+    HAL_WAKEUP_SOURCE_TYPE_I2C = 0x40,
+    HAL_WAKEUP_SOURCE_TYPE_SPI = 0x80,
+    HAL_WAKEUP_SOURCE_TYPE_TIMER = 0x100,
+    HAL_WAKEUP_SOURCE_TYPE_CAN = 0x200,
+    HAL_WAKEUP_SOURCE_TYPE_USB = 0x400,
+    HAL_WAKEUP_SOURCE_TYPE_BLE = 0x800,
+    HAL_WAKEUP_SOURCE_TYPE_NFC = 0x1000,
+    HAL_WAKEUP_SOURCE_TYPE_NETWORK = 0x2000,
+    HAL_WAKEUP_SOURCE_TYPE_MAX = 0x7FFFFFFF
 } hal_wakeup_source_type_t;
 
 typedef enum hal_sleep_wait_t {
@@ -83,18 +89,18 @@ typedef enum hal_sleep_wait_t {
 
 #if PLATFORM_ID > PLATFORM_GCC
 static_assert(sizeof(hal_sleep_mode_t) == 1, "length of hal_sleep_mode_t should be 1-bytes aligned.");
-static_assert(sizeof(hal_wakeup_source_type_t) == 2, "length of hal_wakeup_source_type_t should be 2-bytes aligned.");
+static_assert(sizeof(hal_wakeup_source_type_t) == 4, "length of hal_wakeup_source_type_t should be 4-bytes aligned.");
 static_assert(sizeof(hal_sleep_wait_t) == 1, "length of hal_sleep_wait_t should be 1-bytes aligned.");
 #endif
 
 /**
  * HAL sleep wakeup source base
  */
+typedef struct hal_wakeup_source_base_t hal_wakeup_source_base_t;
 typedef struct hal_wakeup_source_base_t {
     uint16_t size;
     uint16_t version;
     hal_wakeup_source_type_t type;
-    uint16_t reserved;
     hal_wakeup_source_base_t* next;
 } hal_wakeup_source_base_t;
 
@@ -135,10 +141,6 @@ typedef struct hal_sleep_config_t {
     uint16_t reserved;
     hal_wakeup_source_base_t* wakeup_sources;
 } hal_sleep_config_t;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * Check if the given sleep configuration is valid or not.
