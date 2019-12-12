@@ -197,9 +197,6 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
         case PLATFORM_NCP_SARA_U201:
             info->dev = DEV_SARA_U201;
             break;
-        case PLATFORM_NCP_SARA_G350:
-            info->dev = DEV_SARA_G350;
-            break;
         case PLATFORM_NCP_SARA_R410:
             info->dev = DEV_SARA_R410;
             break;
