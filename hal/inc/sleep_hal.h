@@ -20,8 +20,6 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_SLEEP20
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -96,12 +94,11 @@ static_assert(sizeof(hal_sleep_wait_t) == 1, "length of hal_sleep_wait_t should 
 /**
  * HAL sleep wakeup source base
  */
-typedef struct hal_wakeup_source_base_t hal_wakeup_source_base_t;
 typedef struct hal_wakeup_source_base_t {
     uint16_t size;
     uint16_t version;
     hal_wakeup_source_type_t type;
-    hal_wakeup_source_base_t* next;
+    struct hal_wakeup_source_base_t* next;
 } hal_wakeup_source_base_t;
 
 /**
@@ -165,7 +162,5 @@ int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t**
 #ifdef __cplusplus
 } // extern "C"
 #endif
-
-#endif // HAL_PLATFORM_SLEEP20
 
 #endif /* __SLEEP_HAL_H */

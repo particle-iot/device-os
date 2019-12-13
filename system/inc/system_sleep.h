@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "interrupts_hal.h"
+#include "sleep_hal.h"
 
 #if HAL_PLATFORM_SLEEP20
 #include <chrono>
@@ -31,7 +32,6 @@
 #include <stdlib.h>
 #include "system_network.h"
 #include "system_error.h"
-#include "sleep_hal.h"
 #include "spark_wiring_network.h"
 #endif // HAL_PLATFORM_SLEEP20
 

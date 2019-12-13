@@ -589,8 +589,6 @@ public:
             if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
                 // Woken up from standby mode
                 systemSleepResult_.setError(SYSTEM_ERROR_NONE);
-            } else if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
-
             }
         }
         return SleepResult(systemSleepResult_);
