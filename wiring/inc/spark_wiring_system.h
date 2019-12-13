@@ -155,9 +155,11 @@ public:
         freeWakeupSourceMemory();
     }
 
-    void setError(system_error_t error) {
+    void setError(system_error_t error, bool clear = false) {
         error_ = error;
-        freeWakeupSourceMemory();
+        if (clear) {
+            freeWakeupSourceMemory();
+        }
     }
 
     int setWakeupPin(pin_t pin, system_error_t error = SYSTEM_ERROR_NONE) {
@@ -588,7 +590,7 @@ public:
             f = true;
             if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
                 // Woken up from standby mode
-                systemSleepResult_.setError(SYSTEM_ERROR_NONE);
+                systemSleepResult_.setError(SYSTEM_ERROR_NONE, true);
             }
         }
         return SleepResult(systemSleepResult_);

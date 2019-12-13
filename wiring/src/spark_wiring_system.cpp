@@ -59,14 +59,14 @@ SystemSleepResult SystemClass::sleep(const SystemSleepConfiguration& config) {
 SleepResult SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, SleepOptionFlags flags)
 {
     int ret = system_sleep(sleepMode, seconds, flags.value(), NULL);
-    System.systemSleepResult_.setError(static_cast<system_error_t>(ret));
+    System.systemSleepResult_.setError(static_cast<system_error_t>(ret), true);
     return SleepResult(System.systemSleepResult_);
 }
 
 SleepResult SystemClass::sleepPinImpl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, SleepOptionFlags flags) {
     int ret = system_sleep_pins(pins, pins_count, modes, modes_count, seconds, flags.value(), nullptr);
     if (ret < 0) {
-        System.systemSleepResult_.setError(static_cast<system_error_t>(ret));
+        System.systemSleepResult_.setError(static_cast<system_error_t>(ret), true);
     } else {
         if (ret == 0) {
             System.systemSleepResult_.setWakeupRtc();

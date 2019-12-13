@@ -323,6 +323,9 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     led_set_update_enabled(0, nullptr); // Disable background LED updates
     LED_Off(LED_RGB);
 
+#if HAL_PLATFORM_SETUP_BUTTON_UX
+    sleep_fuel_gauge();
+#endif
     system_power_management_sleep();
 
     // Now enter sleep mode
