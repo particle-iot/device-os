@@ -17,6 +17,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
+#include "enumflags.h"
 
 /* This function is called once at start up ----------------------------------*/
 void setup()

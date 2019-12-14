@@ -749,7 +749,7 @@ public:
               context_(nullptr) {
     }
 
-    BleCharacteristicImpl(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context)
+    BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context)
             : BleCharacteristicImpl() {
         properties_ = properties;
         description_ = desc;
@@ -757,7 +757,7 @@ public:
         context_ = context;
     }
 
-    BleCharacteristicImpl(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context)
+    BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context)
             : BleCharacteristicImpl(desc, properties, callback, context) {
         charUuid_ = charUuid;
         svcUuid_ = svcUuid;
@@ -773,7 +773,7 @@ public:
         return connHandle_;
     }
 
-    BitMaskFlags<BleCharacteristicProperty>& properties() {
+    EnumFlags<BleCharacteristicProperty>& properties() {
         return properties_;
     }
 
@@ -831,7 +831,7 @@ public:
 private:
     bool isLocal_;
     BleConnectionHandle connHandle_; // For peer characteristic
-    BitMaskFlags<BleCharacteristicProperty> properties_;
+    EnumFlags<BleCharacteristicProperty> properties_;
     BleCharacteristicHandles attrHandles_;
     BleUuid charUuid_;
     BleUuid svcUuid_;
@@ -1081,7 +1081,7 @@ BleCharacteristic::BleCharacteristic(const BleCharacteristic& characteristic)
     DEBUG("BleCharacteristic(copy), 0x%08X => 0x%08X -> 0x%08X, count: %d", &characteristic, this, impl(), impl_.use_count());
 }
 
-BleCharacteristic::BleCharacteristic(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context)
+BleCharacteristic::BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context)
         : impl_(std::make_shared<BleCharacteristicImpl>(desc, properties, callback, context)) {
     if (!impl()) {
         SPARK_ASSERT(false);
@@ -1089,7 +1089,7 @@ BleCharacteristic::BleCharacteristic(const char* desc, BitMaskFlags<BleCharacter
     DEBUG("BleCharacteristic(...), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
 }
 
-void BleCharacteristic::construct(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context) {
+void BleCharacteristic::construct(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context) {
     impl_ = std::make_shared<BleCharacteristicImpl>(desc, properties, charUuid, svcUuid, callback, context);
     if (!impl()) {
         SPARK_ASSERT(false);
@@ -1117,7 +1117,7 @@ BleUuid BleCharacteristic::UUID() const {
     return impl()->charUUID();
 }
 
-BitMaskFlags<BleCharacteristicProperty> BleCharacteristic::properties() const {
+EnumFlags<BleCharacteristicProperty> BleCharacteristic::properties() const {
     return impl()->properties();
 }
 
@@ -2058,14 +2058,14 @@ BleCharacteristic BleLocalDevice::addCharacteristic(const BleCharacteristic& cha
     return characteristic;
 }
 
-BleCharacteristic BleLocalDevice::addCharacteristic(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
+BleCharacteristic BleLocalDevice::addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
     WiringBleLock lk;
     BleCharacteristic characteristic(desc, properties, callback, context);
     addCharacteristic(characteristic);
     return characteristic;
 }
 
-BleCharacteristic BleLocalDevice::addCharacteristic(const String& desc, BitMaskFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
+BleCharacteristic BleLocalDevice::addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
     WiringBleLock lk;
     return addCharacteristic(desc.c_str(), properties, callback, context);
 }

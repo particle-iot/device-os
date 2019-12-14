@@ -31,7 +31,7 @@
 #include "spark_wiring_flags.h"
 #include "ble_hal.h"
 #include <memory>
-#include "enumclass.h"
+#include "enumflags.h"
 
 namespace particle {
 
@@ -347,20 +347,20 @@ class BleCharacteristic {
 public:
     BleCharacteristic();
     BleCharacteristic(const BleCharacteristic& characteristic);
-    BleCharacteristic(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
-    BleCharacteristic(const String& desc, BitMaskFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
+    BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
+    BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
             : BleCharacteristic(desc.c_str(), properties, callback, context) {
     }
 
     template<typename T1, typename T2>
-    BleCharacteristic(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
+    BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
         BleUuid cUuid(charUuid);
         BleUuid sUuid(svcUuid);
         construct(desc, properties, cUuid, sUuid, callback, context);
     }
 
     template<typename T1, typename T2>
-    BleCharacteristic(const String& desc, BitMaskFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
+    BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
             : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context) {
     }
     ~BleCharacteristic();
@@ -370,7 +370,7 @@ public:
     bool valid() const;
 
     BleUuid UUID() const;
-    BitMaskFlags<BleCharacteristicProperty> properties() const;
+    EnumFlags<BleCharacteristicProperty> properties() const;
     String description() const;
     size_t description(char* buf, size_t len) const;
 
@@ -405,7 +405,7 @@ public:
     }
 
 private:
-    void construct(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties,
+    void construct(const char* desc, EnumFlags<BleCharacteristicProperty> properties,
             BleUuid& charUuid, BleUuid& svcUuid,
             BleOnDataReceivedCallback callback, void* context);
 
@@ -554,18 +554,18 @@ public:
 
     // Access local characteristics
     BleCharacteristic addCharacteristic(const BleCharacteristic& characteristic);
-    BleCharacteristic addCharacteristic(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
-    BleCharacteristic addCharacteristic(const String& desc, BitMaskFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
+    BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
+    BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
 
     template<typename T1, typename T2>
-    BleCharacteristic addCharacteristic(const char* desc, BitMaskFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
+    BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
         BleCharacteristic characteristic(desc, properties, charUuid, svcUuid, callback, context);
         addCharacteristic(characteristic);
         return characteristic;
     }
 
     template<typename T1, typename T2>
-    BleCharacteristic addCharacteristic(const String& desc, BitMaskFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
+    BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
         BleCharacteristic characteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context);
         addCharacteristic(characteristic);
         return characteristic;
