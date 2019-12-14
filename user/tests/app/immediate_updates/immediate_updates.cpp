@@ -1,7 +1,16 @@
 #include "Particle.h"
 
 #define VERSION 6
+
+
+#if PLATFORM_ID==6
 PRODUCT_ID(2448);
+#elif PLATFORM_ID==12
+PRODUCT_ID(9678);
+#else
+#error Platform does not have a corresponding product
+#endif
+
 PRODUCT_VERSION(VERSION);
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
@@ -51,7 +60,9 @@ void setup() {
    Particle.variable("updatesEnabled", updatesEnabled);
    Particle.variable("updatesForced", updatesForced);
    Particle.variable("updatesPending", updatesPending);
-   System.disableUpdates();
+   if (VERSION>3) {
+       System.disableUpdates();
+   }
    Particle.connect();
 }
 
@@ -71,5 +82,19 @@ void loop() {
 			Particle.process();
 		}
 		System.reset();
+	}
+
+	if (VERSION>=6) {
+	    uint8_t enabled = System.updatesEnabled();
+	    for (int i=0; i<10; i++) {
+	        System.enableUpdates();
+	        System.disableUpdates();
+	    }
+	    if (enabled) {
+	        System.enableUpdates();
+	    }
+	    else {
+	        System.disableUpdates();
+	    }
 	}
 }
