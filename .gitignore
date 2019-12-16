@@ -1,3 +1,6 @@
+# Log files
+*.log
+
 # Object files
 *.o
 
@@ -54,7 +57,6 @@ build/target/
 build/cores/
 hal/soft-ap/.idea/
 cmake-build-debug
-.vscode
 
 # Doxygen documentation
 docs/doxygen/html/
@@ -63,3 +65,7 @@ docs/doxygen/html/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
+.build/
+
+# VSCode
+.vscode
