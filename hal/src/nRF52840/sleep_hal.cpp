@@ -19,6 +19,7 @@
 
 #if HAL_PLATFORM_SLEEP20
 
+#include <malloc.h>
 #include <nrfx_types.h>
 #include <nrf_mbr.h>
 #include <nrf_sdm.h>
@@ -35,11 +36,9 @@
 #include "rtc_hal.h"
 #include "timer_hal.h"
 #include "ble_hal.h"
-#include "check.h"
 #include "interrupts_hal.h"
-#include "spark_wiring_vector.h"
-
-using spark::Vector;
+#include "concurrent_hal.h"
+#include "check.h"
 
 static int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_gpio_t* gpio) {
     switch(gpio->mode) {
@@ -95,18 +94,6 @@ static int validateWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_b
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-static uint32_t enabledWakeupSources(hal_wakeup_source_base_t* base) {
-    uint32_t types = HAL_WAKEUP_SOURCE_TYPE_UNKNOWN;
-    if (!base) {
-        return types;
-    }
-    while (base) {
-        types |= base->type;
-        base = base->next;
-    }
-    return types;
-}
-
 static void fpu_sleep_prepare(void) {
     uint32_t fpscr;
     fpscr = __get_FPSCR();
@@ -134,27 +121,8 @@ static void fpu_sleep_prepare(void) {
     SPARK_ASSERT((fpscr & 0x07) == 0);
 }
 
-static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source) {
+static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
     int ret = SYSTEM_ERROR_NONE;
-    Vector<uint16_t> pins;
-    Vector<InterruptMode> modes;
-    long seconds = 0;
-    uint32_t wakeupSourceTypes = enabledWakeupSources(config->wakeup_sources);
-
-    auto wakeupSource = config->wakeup_sources;
-    while (wakeupSource) {
-        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            if (!pins.append(reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource)->pin)) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
-            if (!modes.append(reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource)->mode)) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
-        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms / 1000;
-        }
-        wakeupSource = wakeupSource->next;
-    }
 
     // Detach USB
     HAL_USB_Detach();
@@ -168,6 +136,21 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
 
     // Make sure we acquire exflash lock BEFORE going into a critical section
     hal_exflash_lock();
+
+    // BLE events should be dealt before disabling thread scheduling.
+    bool bleEnabled = false;
+    auto wakeupSource = config->wakeup_sources;
+    while (wakeupSource) {
+        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
+            bleEnabled = true;
+            break;
+        }
+        wakeupSource = wakeupSource->next;
+    }
+    bool advertising = hal_ble_gap_is_advertising(NULL); // We can now only restore advertising after exiting sleep mode.
+    if (!bleEnabled) {
+        hal_ble_stack_deinit(NULL);
+    }
 
     // Disable thread scheduling
     os_thread_scheduling(false, NULL);
@@ -185,7 +168,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
 
     // Reducing power consumption
     // Suspend all PWM instance remembering their state
-    bool pwm_state[4] = {
+    bool pwmState[4] = {
         NRF_PWM0->ENABLE & PWM_ENABLE_ENABLE_Msk,
         NRF_PWM1->ENABLE & PWM_ENABLE_ENABLE_Msk,
         NRF_PWM2->ENABLE & PWM_ENABLE_ENABLE_Msk,
@@ -198,37 +181,33 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
 
     // _Attempt_ to disable HFCLK. This may not succeed, resulting in a higher current consumption
     // FIXME
-    bool hfclk_resume = false;
+    bool hfclkResume = false;
     if (nrf_drv_clock_hfclk_is_running()) {
-        hfclk_resume = true;
+        hfclkResume = true;
 
         // Temporarily enable SoftDevice API interrupts just in case
-        uint32_t base_pri = __get_BASEPRI();
+        uint32_t basePri = __get_BASEPRI();
         // We are also allowing IRQs with priority = 5, because that's what
         // OpenThread uses for its SWI3
         __set_BASEPRI(_PRIO_APP_LOW << (8 - __NVIC_PRIO_BITS));
         sd_nvic_critical_region_exit(st);
         {
             nrf_drv_clock_hfclk_release();
-            // while (nrf_drv_clock_hfclk_is_running()) {
-            //     ;
-            // }
+            // while (nrf_drv_clock_hfclk_is_running());
         }
         // And disable again
         sd_nvic_critical_region_enter(&st);
-        __set_BASEPRI(base_pri);
+        __set_BASEPRI(basePri);
     }
 
     // Remember current microsecond counter
-    uint64_t micros_before_sleep = hal_timer_micros(NULL);
+    uint64_t microsBeforeSleep = hal_timer_micros(NULL);
     // Disable hal_timer (RTC2)
     hal_timer_deinit(NULL);
 
     // Make sure LFCLK is running
     nrf_drv_clock_lfclk_request(NULL);
-    while (!nrf_drv_clock_lfclk_is_running()) {
-        ;
-    }
+    while (!nrf_drv_clock_lfclk_is_running());
 
     // Configure RTC2 to count at 125ms interval. This should allow us to sleep
     // (2^24 - 1) * 125ms = 24 days
@@ -261,90 +240,110 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     // Workaround for FPU anomaly
     fpu_sleep_prepare();
 
-    // Masks all interrupts lower than softdevice. This allows us to be woken ONLY by softdevice
-    // or GPIOTE and RTC.
-    // IMPORTANT: No SoftDevice API calls are allowed until HAL_enable_irq()
-    int hst = 0;
-    bool advertising = hal_ble_gap_is_advertising(NULL); // We can now only restore advertising after exiting sleep mode.
-    if (!(wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_BLE)) {
-        hal_ble_stack_deinit(NULL);
-        hst = HAL_disable_irq();
-    }
-
     // Suspend all GPIOTE interrupts
     HAL_Interrupts_Suspend();
 
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    uint32_t gpiotePriority = 0;
+    uint32_t rtc2Priority = 0;
 
-    // Enable GPIOTE interrupts if needed
-    if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-        uint32_t intenset = 0;
+    uint32_t gpioIntenSet = 0;
+    Hal_Pin_Info* halPinMap = HAL_Pin_Map();
 
-        // Configure GPIOTE for wakeup
-        for (int i = 0; i < pins.size(); i++) {
-            nrf_gpio_pin_pull_t wake_up_pin_mode;
-            nrf_gpio_pin_sense_t wake_up_pin_sense;
-            nrf_gpiote_polarity_t wake_up_pin_polarity;
-            switch(modes[i]) {
+    wakeupSource = config->wakeup_sources;
+    while (wakeupSource) {
+        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+            nrf_gpio_pin_pull_t wakeupPinMode;
+            nrf_gpio_pin_sense_t wakeupPinSense;
+            nrf_gpiote_polarity_t wakeupPinPolarity;
+            auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
+            switch(gpioWakeup->mode) {
                 case RISING: {
-                    wake_up_pin_mode = NRF_GPIO_PIN_PULLDOWN;
-                    wake_up_pin_sense = NRF_GPIO_PIN_SENSE_HIGH;
-                    wake_up_pin_polarity = NRF_GPIOTE_POLARITY_LOTOHI;
+                    wakeupPinMode = NRF_GPIO_PIN_PULLDOWN;
+                    wakeupPinSense = NRF_GPIO_PIN_SENSE_HIGH;
+                    wakeupPinPolarity = NRF_GPIOTE_POLARITY_LOTOHI;
                     break;
                 }
                 case FALLING: {
-                    wake_up_pin_mode = NRF_GPIO_PIN_PULLUP;
-                    wake_up_pin_sense = NRF_GPIO_PIN_SENSE_LOW;
-                    wake_up_pin_polarity = NRF_GPIOTE_POLARITY_HITOLO;
+                    wakeupPinMode = NRF_GPIO_PIN_PULLUP;
+                    wakeupPinSense = NRF_GPIO_PIN_SENSE_LOW;
+                    wakeupPinPolarity = NRF_GPIOTE_POLARITY_HITOLO;
                     break;
                 }
                 case CHANGE:
                 default: {
-                    wake_up_pin_mode = NRF_GPIO_PIN_NOPULL;
-                    wake_up_pin_polarity = NRF_GPIOTE_POLARITY_TOGGLE;
+                    wakeupPinMode = NRF_GPIO_PIN_NOPULL;
+                    wakeupPinPolarity = NRF_GPIOTE_POLARITY_TOGGLE;
                     break;
                 }
             }
-
             // For any pin that is not currently configured in GPIOTE with IN event
             // we are going to use low power PORT events
-            uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pins[i]].gpio_port, PIN_MAP[pins[i]].gpio_pin);
+            uint32_t nrfPin = NRF_GPIO_PIN_MAP(halPinMap[gpioWakeup->pin].gpio_port, halPinMap[gpioWakeup->pin].gpio_pin);
             // Set pin mode
-            nrf_gpio_cfg_input(nrf_pin, wake_up_pin_mode);
-            bool use_in = false;
+            nrf_gpio_cfg_input(nrfPin, wakeupPinMode);
+            bool usePortEvent = true;
             for (unsigned i = 0; i < GPIOTE_CH_NUM; ++i) {
-                if ((nrf_gpiote_event_pin_get(i) == nrf_pin) && nrf_gpiote_int_is_enabled(NRF_GPIOTE_INT_IN0_MASK << i)) {
+                if ((nrf_gpiote_event_pin_get(i) == nrfPin) && nrf_gpiote_int_is_enabled(NRF_GPIOTE_INT_IN0_MASK << i)) {
                     // We have to use IN event for this pin in order to successfully execute interrupt handler
-                    use_in = true;
-                    nrf_gpiote_event_configure(i, nrf_pin, wake_up_pin_polarity);
-                    intenset |= NRF_GPIOTE_INT_IN0_MASK << i;
+                    usePortEvent = false;
+                    nrf_gpiote_event_configure(i, nrfPin, wakeupPinPolarity);
+                    gpioIntenSet |= NRF_GPIOTE_INT_IN0_MASK << i;
                     break;
                 }
             }
-
-            if (!use_in) {
+            if (usePortEvent) {
                 // Use PORT for this pin
-                if (wake_up_pin_mode == NRF_GPIO_PIN_NOPULL) {
+                if (wakeupPinMode == NRF_GPIO_PIN_NOPULL) {
                     // Read current state, choose sense accordingly
                     // Dummy read just in case
-                    (void)nrf_gpio_pin_read(nrf_pin);
-                    uint32_t cur_state = nrf_gpio_pin_read(nrf_pin);
+                    (void)nrf_gpio_pin_read(nrfPin);
+                    uint32_t cur_state = nrf_gpio_pin_read(nrfPin);
                     if (cur_state) {
-                        nrf_gpio_cfg_sense_set(nrf_pin, NRF_GPIO_PIN_SENSE_LOW);
+                        nrf_gpio_cfg_sense_set(nrfPin, NRF_GPIO_PIN_SENSE_LOW);
                     } else {
-                        nrf_gpio_cfg_sense_set(nrf_pin, NRF_GPIO_PIN_SENSE_HIGH);
+                        nrf_gpio_cfg_sense_set(nrfPin, NRF_GPIO_PIN_SENSE_HIGH);
                     }
                 } else {
-                    nrf_gpio_cfg_sense_input(nrf_pin, wake_up_pin_mode, wake_up_pin_sense);
+                    nrf_gpio_cfg_sense_input(nrfPin, wakeupPinMode, wakeupPinSense);
                 }
-                intenset |= NRF_GPIOTE_INT_PORT_MASK;
+                gpioIntenSet |= NRF_GPIOTE_INT_PORT_MASK;
             }
-        }
-        // Disable unnecessary GPIOTE interrupts
-        uint32_t cur_intenset = NRF_GPIOTE->INTENSET;
-        nrf_gpiote_int_disable(cur_intenset ^ intenset);
-        nrf_gpiote_int_enable(intenset);
+        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+            auto rtcWakeup = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource);
+            long seconds = rtcWakeup->ms / 1000;
+            // Reconfigure RTC2 for wake-up
+            NVIC_ClearPendingIRQ(RTC2_IRQn);
 
+            nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_TICK);
+            nrf_rtc_event_enable(NRF_RTC2, RTC_EVTEN_TICK_Msk);
+            // Make sure that RTC is ticking
+            // See 'TASK and EVENT jitter/delay'
+            // http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.nrf52840.ps%2Frtc.html
+            while (!nrf_rtc_event_pending(NRF_RTC2, NRF_RTC_EVENT_TICK));
+
+            nrf_rtc_event_disable(NRF_RTC2, RTC_EVTEN_TICK_Msk);
+            nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_TICK);
+
+            nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_COMPARE_0);
+            nrf_rtc_event_disable(NRF_RTC2, RTC_EVTEN_COMPARE0_Msk);
+
+            // Configure CC0
+            uint32_t counter = nrf_rtc_counter_get(NRF_RTC2);
+            uint32_t cc = counter + seconds * 8;
+            NVIC_EnableIRQ(RTC2_IRQn);
+            nrf_rtc_cc_set(NRF_RTC2, 0, cc);
+            nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_COMPARE_0);
+            nrf_rtc_int_enable(NRF_RTC2, NRF_RTC_INT_COMPARE0_MASK);
+            nrf_rtc_event_enable(NRF_RTC2, RTC_EVTEN_COMPARE0_Msk);
+        }
+        wakeupSource = wakeupSource->next;
+    }
+
+    if (gpioIntenSet > 0) {
+        // Disable unnecessary GPIOTE interrupts
+        uint32_t curIntenSet = NRF_GPIOTE->INTENSET;
+        nrf_gpiote_int_disable(curIntenSet ^ gpioIntenSet);
+        nrf_gpiote_int_enable(gpioIntenSet);
         // Clear events and interrupts
         nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_0);
         nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_1);
@@ -356,135 +355,38 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_7);
         nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
         NVIC_ClearPendingIRQ(GPIOTE_IRQn);
-
         NVIC_EnableIRQ(GPIOTE_IRQn);
     }
 
-    // Enable RTC2 interrupts if needed
-    if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_RTC) {
-        // Reconfigure RTC2 for wake-up
-        NVIC_ClearPendingIRQ(RTC2_IRQn);
-
-        nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_TICK);
-        nrf_rtc_event_enable(NRF_RTC2, RTC_EVTEN_TICK_Msk);
-        // Make sure that RTC is ticking
-        // See 'TASK and EVENT jitter/delay'
-        // http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.nrf52840.ps%2Frtc.html
-        while (!nrf_rtc_event_pending(NRF_RTC2, NRF_RTC_EVENT_TICK)) {
-            ;
-        }
-        nrf_rtc_event_disable(NRF_RTC2, RTC_EVTEN_TICK_Msk);
-        nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_TICK);
-
-        nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_COMPARE_0);
-        nrf_rtc_event_disable(NRF_RTC2, RTC_EVTEN_COMPARE0_Msk);
-
-        // Configure CC0
-        uint32_t counter = nrf_rtc_counter_get(NRF_RTC2);
-        uint32_t cc = counter + seconds * 8;
-        NVIC_EnableIRQ(RTC2_IRQn);
-        nrf_rtc_cc_set(NRF_RTC2, 0, cc);
-        nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_COMPARE_0);
-        nrf_rtc_int_enable(NRF_RTC2, NRF_RTC_INT_COMPARE0_MASK);
-        nrf_rtc_event_enable(NRF_RTC2, RTC_EVTEN_COMPARE0_Msk);
+    // Masks all interrupts lower than softdevice. This allows us to be woken ONLY by softdevice
+    // or GPIOTE and RTC.
+    // IMPORTANT: No SoftDevice API calls are allowed until HAL_enable_irq()
+    int hst = 0;
+    if (!bleEnabled) {
+        hst = HAL_disable_irq();
     }
 
     __DSB();
     __ISB();
 
+    bool exitSleepMode = false;
     while (true) {
-        if ((wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_RTC) && NVIC_GetPendingIRQ(RTC2_IRQn)) {
-            // Woken up by RTC
-            if (wakeup_source) {
-                hal_wakeup_source_rtc_t* rtc_wakeup = (hal_wakeup_source_rtc_t*)malloc(sizeof(hal_wakeup_source_rtc_t));
-                if (!rtc_wakeup) {
-                    ret = SYSTEM_ERROR_NO_MEMORY;
-                    break;
-                }
-                rtc_wakeup->base.size = sizeof(hal_wakeup_source_rtc_t);
-                rtc_wakeup->base.version = HAL_SLEEP_VERSION;
-                rtc_wakeup->base.type = HAL_WAKEUP_SOURCE_TYPE_RTC;
-                rtc_wakeup->base.next = nullptr;
-                rtc_wakeup->ms = 0;
-                *wakeup_source = reinterpret_cast<hal_wakeup_source_base_t*>(rtc_wakeup);
-            }
-            break;
-        } else if ((wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_GPIO) && NVIC_GetPendingIRQ(GPIOTE_IRQn)) {
-            pin_t wakeupPin = PIN_INVALID;
-            // Woken up by a pin, figure out which one
-            if (nrf_gpiote_event_is_set(NRF_GPIOTE_EVENTS_PORT)) {
-                // PORT event
-                for (auto pin : pins) {
-                    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
-                    nrf_gpio_pin_sense_t sense = nrf_gpio_pin_sense_get(nrf_pin);
-                    if (sense != NRF_GPIO_PIN_NOSENSE) {
-                        uint32_t state = nrf_gpio_pin_read(nrf_pin);
-                        if ((state && sense == NRF_GPIO_PIN_SENSE_HIGH) || (!state && sense == NRF_GPIO_PIN_SENSE_LOW)) {
-                            wakeupPin = pin;
-                            break;
-                        }
-                    }
-                }
-            } else {
-                // Check IN events
-                for (unsigned i = 0; i < GPIOTE_CH_NUM && wakeupPin != PIN_INVALID; ++i) {
-                    if (NRF_GPIOTE->EVENTS_IN[i] && nrf_gpiote_int_is_enabled(NRF_GPIOTE_INT_IN0_MASK << i)) {
-                        pin_t pin = NRF_PIN_LOOKUP_TABLE[nrf_gpiote_event_pin_get(i)];
-                        if (pin != PIN_INVALID) {
-                            for (auto p : pins) {
-                                if (p == pin) {
-                                    wakeupPin = pin;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            if (wakeup_source) {
-                hal_wakeup_source_gpio_t* gpio_wakeup = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
-                if (!gpio_wakeup) {
-                    ret = SYSTEM_ERROR_NO_MEMORY;
-                    break;
-                }
-                gpio_wakeup->base.size = sizeof(hal_wakeup_source_gpio_t);
-                gpio_wakeup->base.version = HAL_SLEEP_VERSION;
-                gpio_wakeup->base.type = HAL_WAKEUP_SOURCE_TYPE_GPIO;
-                gpio_wakeup->base.next = nullptr;
-                gpio_wakeup->pin = wakeupPin;
-                *wakeup_source = reinterpret_cast<hal_wakeup_source_base_t*>(gpio_wakeup);
-            }
-            break;
-        } else if ((wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_BLE) && NVIC_GetPendingIRQ(SD_EVT_IRQn)) {
-            if (wakeup_source) {
-                hal_wakeup_source_base_t* ble_wakeup = (hal_wakeup_source_base_t*)malloc(sizeof(hal_wakeup_source_base_t));
-                if (!ble_wakeup) {
-                    ret = SYSTEM_ERROR_NO_MEMORY;
-                    break;
-                }
-                ble_wakeup->size = sizeof(hal_wakeup_source_gpio_t);
-                ble_wakeup->version = HAL_SLEEP_VERSION;
-                ble_wakeup->type = HAL_WAKEUP_SOURCE_TYPE_BLE;
-                ble_wakeup->next = nullptr;
-                *wakeup_source = ble_wakeup;
-            }
-            break;
-        }
-
         // Mask interrupts completely
         __disable_irq();
 
-        uint32_t gpiote_priority = 0;
-        uint32_t rtc2_priority = 0;
-
-        // Bump RTC2 and GPIOTE priorities if needed
-        if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            gpiote_priority = NVIC_GetPriority(GPIOTE_IRQn);
-            NVIC_SetPriority(GPIOTE_IRQn, 0);
-        }
-        if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            rtc2_priority = NVIC_GetPriority(RTC2_IRQn);
-            NVIC_SetPriority(RTC2_IRQn, 0);
+        // Bump the priority。
+        wakeupSource = config->wakeup_sources;
+        while (wakeupSource) {
+            if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+                // Remember the current priority before bumping the priority
+                gpiotePriority = NVIC_GetPriority(GPIOTE_IRQn);
+                NVIC_SetPriority(GPIOTE_IRQn, 0);
+            } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+                // Remember the current priority before bumping the priority
+                rtc2Priority = NVIC_GetPriority(RTC2_IRQn);
+                NVIC_SetPriority(RTC2_IRQn, 0);
+            }
+            wakeupSource = wakeupSource->next;
         }
 
         __DSB();
@@ -493,23 +395,113 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         // Go to sleep
         __WFI();
 
-        // Unbump RTC2 and GPIOTE priorities
-        if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            NVIC_SetPriority(GPIOTE_IRQn, gpiote_priority);
-        }
-        if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            NVIC_SetPriority(RTC2_IRQn, rtc2_priority);
+        // Figure out the wakeup source
+        wakeupSource = config->wakeup_sources;
+        while (wakeupSource) {
+            if (NVIC_GetPendingIRQ(GPIOTE_IRQn) && wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+                pin_t wakeupPin = PIN_INVALID;
+                auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
+                if (nrf_gpiote_event_is_set(NRF_GPIOTE_EVENTS_PORT)) {
+                    // PORT event
+                    uint32_t nrfPin = NRF_GPIO_PIN_MAP(halPinMap[gpioWakeup->pin].gpio_port, halPinMap[gpioWakeup->pin].gpio_pin);
+                    nrf_gpio_pin_sense_t sense = nrf_gpio_pin_sense_get(nrfPin);
+                    if (sense != NRF_GPIO_PIN_NOSENSE) {
+                        uint32_t state = nrf_gpio_pin_read(nrfPin);
+                        if ((state && sense == NRF_GPIO_PIN_SENSE_HIGH) || (!state && sense == NRF_GPIO_PIN_SENSE_LOW)) {
+                            wakeupPin = gpioWakeup->pin;
+                        }
+                    }
+                } else {
+                    // Check IN events
+                    for (unsigned i = 0; i < GPIOTE_CH_NUM && wakeupPin == PIN_INVALID; ++i) {
+                        if (NRF_GPIOTE->EVENTS_IN[i] && nrf_gpiote_int_is_enabled(NRF_GPIOTE_INT_IN0_MASK << i)) {
+                            pin_t pin = NRF_PIN_LOOKUP_TABLE[nrf_gpiote_event_pin_get(i)];
+                            if (pin == gpioWakeup->pin) {
+                                wakeupPin = gpioWakeup->pin;
+                                break; // This break the for() loop only.
+                            }
+                        }
+                    }
+                }
+                // Figured out the wakeup pin
+                if (wakeupPin != PIN_INVALID) {
+                    if (wakeupReason) {
+                        hal_wakeup_source_gpio_t* gpio = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
+                        if (gpio) {
+                            gpio->base.size = sizeof(hal_wakeup_source_gpio_t);
+                            gpio->base.version = HAL_SLEEP_VERSION;
+                            gpio->base.type = HAL_WAKEUP_SOURCE_TYPE_GPIO;
+                            gpio->base.next = nullptr;
+                            gpio->pin = wakeupPin;
+                            *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(gpio);
+                        } else {
+                            ret = SYSTEM_ERROR_NO_MEMORY;
+                        }
+                    }
+                    exitSleepMode = true;
+                    // Only if we've figured out the wakeup pin, then we stop traversing the wakeup sources list.
+                    break;
+                }
+            } else if (NVIC_GetPendingIRQ(RTC2_IRQn) && wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+                if (wakeupReason) {
+                    hal_wakeup_source_rtc_t* rtc = (hal_wakeup_source_rtc_t*)malloc(sizeof(hal_wakeup_source_rtc_t));
+                    if (rtc) {
+                        rtc->base.size = sizeof(hal_wakeup_source_rtc_t);
+                        rtc->base.version = HAL_SLEEP_VERSION;
+                        rtc->base.type = HAL_WAKEUP_SOURCE_TYPE_RTC;
+                        rtc->base.next = nullptr;
+                        rtc->ms = 0;
+                        *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(rtc);
+                    } else {
+                        ret = SYSTEM_ERROR_NO_MEMORY;
+                    }
+                }
+                exitSleepMode = true;
+                break; // Stop traversing the wakeup sources list.
+            } else if (NVIC_GetPendingIRQ(SD_EVT_IRQn) && wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
+                if (wakeupReason) {
+                    hal_wakeup_source_base_t* ble = (hal_wakeup_source_base_t*)malloc(sizeof(hal_wakeup_source_base_t));
+                    if (ble) {
+                        ble->size = sizeof(hal_wakeup_source_base_t);
+                        ble->version = HAL_SLEEP_VERSION;
+                        ble->type = HAL_WAKEUP_SOURCE_TYPE_BLE;
+                        ble->next = nullptr;
+                        *wakeupReason = ble;
+                    } else {
+                        ret = SYSTEM_ERROR_NO_MEMORY;
+                    }
+                }
+                exitSleepMode = true;
+                break; // Stop traversing the wakeup sources list.
+            }
+            wakeupSource = wakeupSource->next;
         }
 
-        // Unmask interrupts, we are still under the effect of HAL_disable_irq
-        // that masked all but SoftDevice interrupts using BASEPRI
+        // Unbump the priority before __enable_irq().
+        wakeupSource = config->wakeup_sources;
+        while (wakeupSource) {
+            if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+                NVIC_SetPriority(GPIOTE_IRQn, gpiotePriority);
+            } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+                NVIC_SetPriority(RTC2_IRQn, rtc2Priority);
+            }
+            wakeupSource = wakeupSource->next;
+        }
+
+        // Unmask interrupts so that SoftDevice can still process BLE events.
+        // we are still under the effect of HAL_disable_irq that masked all but SoftDevice interrupts using BASEPRI
         __enable_irq();
+
+        // Exit the while(true) loop to exit from sleep mode.
+        if (exitSleepMode) {
+            break;
+        }
     }
 
     // Restore HFCLK
-    if (hfclk_resume) {
+    if (hfclkResume) {
         // Temporarily enable SoftDevice API interrupts
-        uint32_t base_pri = __get_BASEPRI();
+        uint32_t basePri = __get_BASEPRI();
         __set_BASEPRI(_PRIO_SD_LOWEST << (8 - __NVIC_PRIO_BITS));
         {
             nrf_drv_clock_hfclk_request(NULL);
@@ -518,22 +510,21 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
             }
         }
         // And disable again
-        __set_BASEPRI(base_pri);
+        __set_BASEPRI(basePri);
     }
 
-
     // Count the number of microseconds we've slept and reconfigure hal_timer (RTC2)
-    uint64_t slept_for = (uint64_t)nrf_rtc_counter_get(NRF_RTC2) * 125000;
+    uint64_t microsAftereSleep = (uint64_t)nrf_rtc_counter_get(NRF_RTC2) * 125000;
     // Stop RTC2
     nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_STOP);
     nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_CLEAR);
     // Reconfigure it hal_timer_init() and apply the offset
-    hal_timer_init_config_t hal_timer_conf = {
+    hal_timer_init_config_t halTimerConfig = {
         .size = sizeof(hal_timer_init_config_t),
         .version = 0,
-        .base_clock_offset = micros_before_sleep + slept_for
+        .base_clock_offset = microsBeforeSleep + microsAftereSleep
     };
-    hal_timer_init(&hal_timer_conf);
+    hal_timer_init(&halTimerConfig);
 
     // Restore GPIOTE cionfiguration
     HAL_Interrupts_Restore();
@@ -547,10 +538,9 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         NRF_PWM_Type* const pwms[] = {NRF_PWM0, NRF_PWM1, NRF_PWM2, NRF_PWM3};
         for (unsigned i = 0; i < sizeof(pwms) / sizeof(pwms[0]); i++) {
             NRF_PWM_Type* pwm = pwms[i];
-            if (pwm_state[i]) {
+            if (pwmState[i]) {
                 nrf_pwm_enable(pwm);
-                if (nrf_pwm_event_check(pwm, NRF_PWM_EVENT_SEQEND0) ||
-                        nrf_pwm_event_check(pwm, NRF_PWM_EVENT_SEQEND1)) {
+                if (nrf_pwm_event_check(pwm, NRF_PWM_EVENT_SEQEND0) || nrf_pwm_event_check(pwm, NRF_PWM_EVENT_SEQEND1)) {
                     nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_SEQEND0);
                     nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_SEQEND1);
                     if (pwm->SEQ[0].PTR && pwm->SEQ[0].CNT) {
@@ -571,7 +561,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     sd_nvic_critical_region_exit(st);
 
     // Unmasks all non-softdevice interrupts
-    if (!(wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_BLE)) {
+    if (!bleEnabled) {
         HAL_enable_irq(hst);
         hal_ble_stack_init(NULL);
         if (advertising) {
@@ -594,24 +584,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     return ret;
 }
 
-static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source) {
-    Vector<uint16_t> pins;
-    Vector<InterruptMode> modes;
-    uint32_t wakeupSourceTypes = enabledWakeupSources(config->wakeup_sources);
-
-    auto wakeupSource = config->wakeup_sources;
-    while (wakeupSource) {
-        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            if (!pins.append(reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource)->pin)) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
-            if (!modes.append(reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource)->mode)) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
-        }
-        wakeupSource = wakeupSource->next;
-    }
-
+static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
     // Make sure we acquire exflash lock BEFORE going into a critical section
     hal_exflash_lock();
 
@@ -644,45 +617,48 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     // Clear any GPIOTE events
     nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
 
-    if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-        Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-        for (int i = 0; i < pins.size(); i++) {
-            nrf_gpio_pin_pull_t wake_up_pin_mode;
-            nrf_gpio_pin_sense_t wake_up_pin_sense;
-            switch(modes[i]) {
+    auto wakeupSource = config->wakeup_sources;
+    while (wakeupSource) {
+        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+            Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+            auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
+            nrf_gpio_pin_pull_t wakeupPinMode;
+            nrf_gpio_pin_sense_t wakeupPinSense;
+            switch(gpioWakeup->mode) {
                 case RISING: {
-                    wake_up_pin_mode = NRF_GPIO_PIN_PULLDOWN;
-                    wake_up_pin_sense = NRF_GPIO_PIN_SENSE_HIGH;
+                    wakeupPinMode = NRF_GPIO_PIN_PULLDOWN;
+                    wakeupPinSense = NRF_GPIO_PIN_SENSE_HIGH;
                     break;
                 }
                 case FALLING: {
-                    wake_up_pin_mode = NRF_GPIO_PIN_PULLUP;
-                    wake_up_pin_sense = NRF_GPIO_PIN_SENSE_LOW;
+                    wakeupPinMode = NRF_GPIO_PIN_PULLUP;
+                    wakeupPinSense = NRF_GPIO_PIN_SENSE_LOW;
                     break;
                 }
                 case CHANGE:
                 default: {
-                    wake_up_pin_mode = NRF_GPIO_PIN_NOPULL;
+                    wakeupPinMode = NRF_GPIO_PIN_NOPULL;
                     break;
                 }
             }
-            uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pins[i]].gpio_port, PIN_MAP[pins[i]].gpio_pin);
+            uint32_t nrfPin = NRF_GPIO_PIN_MAP(halPinMap[gpioWakeup->pin].gpio_port, halPinMap[gpioWakeup->pin].gpio_pin);
             // Set pin mode
-            if (wake_up_pin_mode == NRF_GPIO_PIN_NOPULL) {
-                nrf_gpio_cfg_input(nrf_pin, wake_up_pin_mode);
+            if (wakeupPinMode == NRF_GPIO_PIN_NOPULL) {
+                nrf_gpio_cfg_input(nrfPin, wakeupPinMode);
                 // Read current state, choose sense accordingly
                 // Dummy read just in case
-                (void)nrf_gpio_pin_read(nrf_pin);
-                uint32_t cur_state = nrf_gpio_pin_read(nrf_pin);
+                (void)nrf_gpio_pin_read(nrfPin);
+                uint32_t cur_state = nrf_gpio_pin_read(nrfPin);
                 if (cur_state) {
-                    nrf_gpio_cfg_sense_set(nrf_pin, NRF_GPIO_PIN_SENSE_LOW);
+                    nrf_gpio_cfg_sense_set(nrfPin, NRF_GPIO_PIN_SENSE_LOW);
                 } else {
-                    nrf_gpio_cfg_sense_set(nrf_pin, NRF_GPIO_PIN_SENSE_HIGH);
+                    nrf_gpio_cfg_sense_set(nrfPin, NRF_GPIO_PIN_SENSE_HIGH);
                 }
             } else {
-                nrf_gpio_cfg_sense_input(nrf_pin, wake_up_pin_mode, wake_up_pin_sense);
+                nrf_gpio_cfg_sense_input(nrfPin, wakeupPinMode, wakeupPinSense);
             }
         }
+        wakeupSource = wakeupSource->next;
     }
 
     // Disable PWM

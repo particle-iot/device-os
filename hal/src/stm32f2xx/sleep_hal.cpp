@@ -19,16 +19,14 @@
 
 #if HAL_PLATFORM_SLEEP20
 
+#include <malloc.h>
 #include "stm32f2xx.h"
 #include "gpio_hal.h"
 #include "rtc_hal.h"
 #include "usb_hal.h"
 #include "usart_hal.h"
-#include "check.h"
 #include "interrupts_hal.h"
-#include "spark_wiring_vector.h"
-
-using spark::Vector;
+#include "check.h"
 
 static int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_gpio_t* gpio) {
     switch(gpio->mode) {
@@ -79,39 +77,8 @@ static int validateWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_b
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-static uint32_t enabledWakeupSources(hal_wakeup_source_base_t* base) {
-    uint32_t types = HAL_WAKEUP_SOURCE_TYPE_UNKNOWN;
-    if (!base) {
-        return types;
-    }
-    while (base) {
-        types |= base->type;
-        base = base->next;
-    }
-    return types;
-}
-
-static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source) {
+static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
     int ret = SYSTEM_ERROR_NONE;
-    Vector<uint16_t> pins;
-    Vector<InterruptMode> modes;
-    long seconds = 0;
-    uint32_t wakeupSourceTypes = enabledWakeupSources(config->wakeup_sources);
-
-    auto wakeupSource = config->wakeup_sources;
-    while (wakeupSource) {
-        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            if (!pins.append(reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource)->pin)) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
-            if (!modes.append(reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource)->mode)) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
-        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms / 1000;
-        }
-        wakeupSource = wakeupSource->next;
-    }
 
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
@@ -130,11 +97,15 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     // Suspend all EXTI interrupts
     HAL_Interrupts_Suspend();
 
-    if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-        for (int i = 0; i < pins.size(); i++) {
+    Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+
+    auto wakeupSource = config->wakeup_sources;
+    while (wakeupSource) {
+        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+            auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
             PinMode wakeUpPinMode = INPUT;
             /* Set required pinMode based on edgeTriggerMode */
-            switch(modes[i]) {
+            switch(gpioWakeup->mode) {
                 case RISING: {
                     wakeUpPinMode = INPUT_PULLDOWN;
                     break;
@@ -149,36 +120,35 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
                     break;
                 }
             }
-
-            HAL_Pin_Mode(pins[i], wakeUpPinMode);
+            HAL_Pin_Mode(gpioWakeup->pin, wakeUpPinMode);
             HAL_InterruptExtraConfiguration irqConf = {0};
             irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
             irqConf.IRQChannelPreemptionPriority = 0;
             irqConf.IRQChannelSubPriority = 0;
             irqConf.keepHandler = 1;
             irqConf.keepPriority = 1;
-            HAL_Interrupts_Attach(pins[i], NULL, NULL, modes[i], &irqConf);
+            HAL_Interrupts_Attach(gpioWakeup->pin, NULL, NULL, gpioWakeup->mode, &irqConf);
+        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+            auto rtcWakeup = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource);
+            long seconds = rtcWakeup->ms / 1000;
+            /*
+             * - To wake up from the Stop mode with an RTC alarm event, it is necessary to:
+             * - Configure the EXTI Line 17 to be sensitive to rising edges (Interrupt
+             * or Event modes) using the EXTI_Init() function.
+             *
+             */
+            HAL_RTC_Cancel_UnixAlarm();
+            HAL_RTC_Set_UnixAlarm((time_t) seconds);
+
+            // Connect RTC to EXTI line
+            EXTI_InitTypeDef extiInitStructure = {0};
+            extiInitStructure.EXTI_Line = EXTI_Line17;
+            extiInitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+            extiInitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+            extiInitStructure.EXTI_LineCmd = ENABLE;
+            EXTI_Init(&extiInitStructure);
         }
-    }
-
-    // Configure RTC wake-up
-    if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_RTC) {
-        /*
-         * - To wake up from the Stop mode with an RTC alarm event, it is necessary to:
-         * - Configure the EXTI Line 17 to be sensitive to rising edges (Interrupt
-         * or Event modes) using the EXTI_Init() function.
-         *
-         */
-        HAL_RTC_Cancel_UnixAlarm();
-        HAL_RTC_Set_UnixAlarm((time_t) seconds);
-
-        // Connect RTC to EXTI line
-        EXTI_InitTypeDef EXTI_InitStructure = {0};
-        EXTI_InitStructure.EXTI_Line = EXTI_Line17;
-        EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-        EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-        EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-        EXTI_Init(&EXTI_InitStructure);
+        wakeupSource = wakeupSource->next;
     }
 
     {
@@ -212,53 +182,61 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         while (RCC_GetSYSCLKSource() != 0x08);
     }
 
-    if ((wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_RTC) && NVIC_GetPendingIRQ(RTC_Alarm_IRQn)) {
-        if (wakeup_source) {
-            hal_wakeup_source_rtc_t* rtc_wakeup = (hal_wakeup_source_rtc_t*)malloc(sizeof(hal_wakeup_source_rtc_t));
-            if (!rtc_wakeup) {
-                ret = SYSTEM_ERROR_NO_MEMORY;
-            } else {
-                rtc_wakeup->base.size = sizeof(hal_wakeup_source_rtc_t);
-                rtc_wakeup->base.version = HAL_SLEEP_VERSION;
-                rtc_wakeup->base.type = HAL_WAKEUP_SOURCE_TYPE_RTC;
-                rtc_wakeup->base.next = nullptr;
-                rtc_wakeup->ms = 0;
-                *wakeup_source = reinterpret_cast<hal_wakeup_source_base_t*>(rtc_wakeup);
+    wakeupSource = config->wakeup_sources;
+    while (wakeupSource) {
+        if (NVIC_GetPendingIRQ(RTC_Alarm_IRQn) && wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+            if (wakeupReason) {
+                hal_wakeup_source_rtc_t* rtc = (hal_wakeup_source_rtc_t*)malloc(sizeof(hal_wakeup_source_rtc_t));
+                if (rtc) {
+                    rtc->base.size = sizeof(hal_wakeup_source_rtc_t);
+                    rtc->base.version = HAL_SLEEP_VERSION;
+                    rtc->base.type = HAL_WAKEUP_SOURCE_TYPE_RTC;
+                    rtc->base.next = nullptr;
+                    rtc->ms = 0;
+                    *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(rtc);
+                } else {
+                    ret = SYSTEM_ERROR_NO_MEMORY;
+                }
             }
-        }
-    } else if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-        Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-        for (auto pin : pins) {
-            if (EXTI_GetITStatus(PIN_MAP[pin].gpio_pin) != RESET) {
-                if (wakeup_source) {
-                    hal_wakeup_source_gpio_t* gpio_wakeup = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
-                    if (!gpio_wakeup) {
-                        ret = SYSTEM_ERROR_NO_MEMORY;
+            break; // Stop traversing the wakeup sources list.
+        } else if ((NVIC_GetPendingIRQ(EXTI0_IRQn) || NVIC_GetPendingIRQ(EXTI1_IRQn) ||
+                    NVIC_GetPendingIRQ(EXTI2_IRQn) || NVIC_GetPendingIRQ(EXTI3_IRQn) ||
+                    NVIC_GetPendingIRQ(EXTI4_IRQn) || NVIC_GetPendingIRQ(EXTI9_5_IRQn) || NVIC_GetPendingIRQ(EXTI15_10_IRQn)) &&
+                    wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+            auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
+            if (EXTI_GetITStatus(halPinMap[gpioWakeup->pin].gpio_pin) != RESET) {
+                if (wakeupReason) {
+                    hal_wakeup_source_gpio_t* gpio = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
+                    if (gpio) {
+                        gpio->base.size = sizeof(hal_wakeup_source_gpio_t);
+                        gpio->base.version = HAL_SLEEP_VERSION;
+                        gpio->base.type = HAL_WAKEUP_SOURCE_TYPE_GPIO;
+                        gpio->base.next = nullptr;
+                        gpio->pin = gpioWakeup->pin;
+                        *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(gpio);
                     } else {
-                        gpio_wakeup->base.size = sizeof(hal_wakeup_source_gpio_t);
-                        gpio_wakeup->base.version = HAL_SLEEP_VERSION;
-                        gpio_wakeup->base.type = HAL_WAKEUP_SOURCE_TYPE_GPIO;
-                        gpio_wakeup->base.next = nullptr;
-                        gpio_wakeup->pin = pin;
-                        *wakeup_source = reinterpret_cast<hal_wakeup_source_base_t*>(gpio_wakeup);
+                        ret = SYSTEM_ERROR_NO_MEMORY;
                     }
                 }
-                break;
+                break; // Stop traversing the wakeup sources list.
             }
         }
+        wakeupSource = wakeupSource->next;
     }
 
-    if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-        for (auto pin : pins) {
-            /* Detach the Interrupt pin */
-            HAL_Interrupts_Detach_Ext(pin, 1, NULL);
+    // FIXME: SHould we enter sleep again if there is no pending IRQn in corresponding to the wakeup source?
+
+    wakeupSource = config->wakeup_sources;
+    while (wakeupSource) {
+        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+            // No need to detach RTC Alarm from EXTI, since it will be detached in HAL_Interrupts_Restore()
+            // RTC Alarm should be canceled to avoid entering HAL_RTCAlarm_Handler or if we were woken up by pin
+            HAL_RTC_Cancel_UnixAlarm();
+        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+            auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
+            HAL_Interrupts_Detach_Ext(gpioWakeup->pin, 1, NULL);
         }
-    }
-
-    if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_RTC) {
-        // No need to detach RTC Alarm from EXTI, since it will be detached in HAL_Interrupts_Restore()
-        // RTC Alarm should be canceled to avoid entering HAL_RTCAlarm_Handler or if we were woken up by pin
-        HAL_RTC_Cancel_UnixAlarm();
+        wakeupSource = wakeupSource->next;
     }
 
     // Restore
@@ -275,24 +253,20 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
 }
 
 static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source) {
-    long seconds = 0;
-    uint32_t wakeupSourceTypes = enabledWakeupSources(config->wakeup_sources);
-
+    bool enableWkpPin = false;
     auto wakeupSource = config->wakeup_sources;
     while (wakeupSource) {
         if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms / 1000;
+            long seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms / 1000;
+            HAL_RTC_Cancel_UnixAlarm();
+            HAL_RTC_Set_UnixAlarm((time_t) seconds);
+        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+            enableWkpPin = true;
         }
         wakeupSource = wakeupSource->next;
     }
 
-    // Configure RTC wake-up
-    if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_RTC) {
-        HAL_RTC_Cancel_UnixAlarm();
-        HAL_RTC_Set_UnixAlarm((time_t) seconds);
-    }
-
-    if (wakeupSourceTypes & HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+    if (enableWkpPin) {
         /* Enable WKUP pin */
         PWR_WakeUpPinCmd(ENABLE);
     } else {

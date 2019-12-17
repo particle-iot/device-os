@@ -132,7 +132,7 @@ test(05_System_Sleep_Mode_Deep_Wakeup_By_Wkp_Pin) {
 test(06_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
     if (phase == 0xbeef0004) {
         Serial.println("    >> Device enters hibernate mode.");
-        Serial.println("    >> Please reconnect serial and type 't' after you have a rising edge on WKP pin.");
+        Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
         delay(1000);
 
         phase = 0xbeef0005;
