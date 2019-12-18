@@ -45,6 +45,14 @@ public:
     EnumFlags(const T& value);
     EnumFlags(const EnumFlags<T>& flags);
 
+    EnumFlags<T>& set(const EnumFlags<T>& flags);
+    EnumFlags<T>& clear(const EnumFlags<T>& flags);
+
+    ValueType value() const;
+
+    bool isSet() const;
+    bool isSet(const EnumFlags<T>& flags) const;
+
     EnumFlags<T> operator&(const EnumFlags<T>& flags) const;
     EnumFlags<T>& operator&=(const EnumFlags<T>& flags);
 
@@ -60,10 +68,6 @@ public:
     EnumFlags<T>& operator<<=(size_t n);
     EnumFlags<T> operator>>(size_t n) const;
     EnumFlags<T>& operator>>=(size_t n);
-
-    ValueType value() const;
-
-    operator bool() const;
 
     bool operator==(const EnumFlags<T>& flags) const;
     bool operator!=(const EnumFlags<T>& flags) const;
@@ -85,7 +89,7 @@ inline EnumFlags<T> operator&(const T& lhs, const T& rhs) {
 
 template<typename T, typename = typename std::enable_if_t<std::is_enum<T>::value && EnableBitwise<T>::enable>>
 inline EnumFlags<T> operator&(const T& lhs, const EnumFlags<T>& rhs) {
-    return EnumFlags<T>(lhs) & EnumFlags<T>(rhs);
+    return EnumFlags<T>(lhs) & rhs;
 }
 
 template<typename T, typename = typename std::enable_if_t<std::is_enum<T>::value && EnableBitwise<T>::enable>>
@@ -95,7 +99,7 @@ inline EnumFlags<T> operator|(const T& lhs, const T& rhs) {
 
 template<typename T, typename = typename std::enable_if_t<std::is_enum<T>::value && EnableBitwise<T>::enable>>
 inline EnumFlags<T> operator|(const T& lhs, const EnumFlags<T>& rhs) {
-    return EnumFlags<T>(lhs) | EnumFlags<T>(rhs);
+    return EnumFlags<T>(lhs) | rhs;
 }
 
 template<typename T, typename = typename std::enable_if_t<std::is_enum<T>::value && EnableBitwise<T>::enable>>
@@ -105,7 +109,12 @@ inline EnumFlags<T> operator^(const T& lhs, const T& rhs) {
 
 template<typename T, typename = typename std::enable_if_t<std::is_enum<T>::value && EnableBitwise<T>::enable>>
 inline EnumFlags<T> operator^(const T& lhs, const EnumFlags<T>& rhs) {
-    return EnumFlags<T>(lhs) ^ EnumFlags<T>(rhs);
+    return EnumFlags<T>(lhs) ^ rhs;
+}
+
+template<typename T, typename = typename std::enable_if_t<std::is_enum<T>::value && EnableBitwise<T>::enable>>
+inline EnumFlags<T> operator~(const T& lhs) {
+    return ~EnumFlags<T>(lhs);
 }
 
 } /* particle */
@@ -130,6 +139,33 @@ inline particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>
 template<typename T>
 inline particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::EnumFlags(ValueType value)
         : value_(value) {
+}
+
+template<typename T>
+inline particle::EnumFlags<T>& particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::set(const EnumFlags<T>& flags) {
+    value_ |= flags.value_;
+    return *this;
+}
+
+template<typename T>
+inline particle::EnumFlags<T>& particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::clear(const EnumFlags<T>& flags) {
+    value_ &= (~flags.value_);
+    return *this;
+}
+
+template<typename T>
+inline typename std::underlying_type_t<T> particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::value() const {
+    return value_;
+}
+
+template<typename T>
+inline bool particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::isSet() const {
+    return (value_ > 0);
+}
+
+template<typename T>
+inline bool particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::isSet(const EnumFlags<T>& flags) const {
+    return ((value_ & flags.value_) == flags.value_);
 }
 
 template<typename T>
@@ -190,16 +226,6 @@ template<typename T>
 inline particle::EnumFlags<T>& particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator>>=(size_t n) {
     value_ >>= n;
     return *this;
-}
-
-template<typename T>
-inline typename std::underlying_type_t<T> particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::value() const {
-    return value_;
-}
-
-template<typename T>
-inline particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator bool() const {
-    return (value_ != 0);
 }
 
 template<typename T>

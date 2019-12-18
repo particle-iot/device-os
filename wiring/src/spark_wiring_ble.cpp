@@ -1143,22 +1143,22 @@ ssize_t BleCharacteristic::setValue(const uint8_t* buf, size_t len, BleTxRxType 
     if (impl()->local()) {
         int ret = SYSTEM_ERROR_NOT_SUPPORTED;
         // Updates the local characteristic value for peer to read.
-        if (impl()->properties() & BleCharacteristicProperty::READ) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::READ)) {
             ret = CHECK(hal_ble_gatt_server_set_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr));
         }
-        if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) && type != BleTxRxType::ACK) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::NOTIFY) && type != BleTxRxType::ACK) {
             return hal_ble_gatt_server_notify_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
         }
-        if ((impl()->properties() & BleCharacteristicProperty::INDICATE) && type != BleTxRxType::NACK) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::INDICATE) && type != BleTxRxType::NACK) {
             return hal_ble_gatt_server_indicate_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
         }
         return ret;
     }
     if (impl()->connHandle() != BLE_INVALID_CONN_HANDLE) {
-        if ((impl()->properties() & BleCharacteristicProperty::WRITE_WO_RSP) && type != BleTxRxType::ACK) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::WRITE_WO_RSP) && type != BleTxRxType::ACK) {
             return hal_ble_gatt_client_write_without_response(impl()->connHandle(), impl()->attrHandles().value_handle, buf, len, nullptr);
         }
-        if ((impl()->properties() & BleCharacteristicProperty::WRITE) && type != BleTxRxType::NACK) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::WRITE) && type != BleTxRxType::NACK) {
             return hal_ble_gatt_client_write_with_response(impl()->connHandle(), impl()->attrHandles().value_handle, buf, len, nullptr);
         }
         return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -1217,10 +1217,10 @@ int BleCharacteristic::subscribe(bool enable) const {
     config.value_handle = impl()->attrHandles().value_handle;
     config.cccd_value = BLE_SIG_CCCD_VAL_DISABLED;
     if (enable) {
-        if (impl()->properties() & BleCharacteristicProperty::INDICATE) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::INDICATE)) {
             config.cccd_value = BLE_SIG_CCCD_VAL_INDICATION;
         }
-        if (impl()->properties() & BleCharacteristicProperty::NOTIFY) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::NOTIFY)) {
             config.cccd_value = (ble_sig_cccd_value_t)(config.cccd_value | BLE_SIG_CCCD_VAL_NOTIFICATION);
         }
     }
