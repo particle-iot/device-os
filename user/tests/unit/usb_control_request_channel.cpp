@@ -338,26 +338,37 @@ private:
             break;
         }
         Buffer buf;
-        if (halReq.wLength > MIN_WLENGTH) {
-            // Request channel to allocate necessary buffer
+        if (halReq.bmRequestType == UsbRequestType::HOST_TO_DEVICE) {
+            if (halReq.wLength > MIN_WLENGTH) {
+                // Request channel to allocate necessary buffer
+                if (!invokeHalRequestCallback(&halReq)) {
+                    return false;
+                }
+                REQUIRE(halReq.data);
+            } else if (halReq.wLength != 0) {
+                // Provide internal buffer to the channel
+                buf = Buffer(MIN_WLENGTH);
+                halReq.data = (uint8_t*)buf.data();
+            }
+            assert(req.data_.size() == halReq.wLength);
+            memcpy(halReq.data, req.data_.data(), req.data_.size()); // Application data
+            // Process service request
             if (!invokeHalRequestCallback(&halReq)) {
                 return false;
             }
-            REQUIRE(halReq.data);
-        } else if (halReq.wLength != 0) {
-            // Provide internal buffer to the channel
-            buf = Buffer(MIN_WLENGTH);
-            halReq.data = (uint8_t*)buf.data();
-        }
-        if (halReq.bmRequestType == UsbRequestType::HOST_TO_DEVICE) {
-            assert(req.data_.size() == halReq.wLength);
-            memcpy(halReq.data, req.data_.data(), req.data_.size()); // Application data
-        }
-        // Process service request
-        if (!invokeHalRequestCallback(&halReq)) {
-            return false;
-        }
-        if (halReq.bmRequestType == UsbRequestType::DEVICE_TO_HOST) {
+        } else {
+            if (halReq.wLength != 0 && halReq.wLength <= MIN_WLENGTH) {
+                // Provide internal buffer to the channel
+                buf = Buffer(MIN_WLENGTH);
+                halReq.data = (uint8_t*)buf.data();
+            }
+            // Process service request
+            if (!invokeHalRequestCallback(&halReq)) {
+                return false;
+            }
+            if (halReq.wLength != 0) {
+                REQUIRE(halReq.data);
+            }
             const std::string data((const char*)halReq.data, halReq.wLength);
             if (req.serviceType_ == ServiceRequest::RECV) {
                 serviceRep_ = ServiceReply(data); // Application data
@@ -597,6 +608,29 @@ TEST_CASE("UsbControlRequestChannel") {
             CHECK(channel.serviceRequest(ServiceRequest::CHECK).id(id).send());
             CHECK(channel.serviceReply().status() == ServiceReply::PENDING);
         }
+        SECTION("can transfer request data in multiple chunks") {
+            std::string data = randomBytes(1024);
+            channel.requestHandler([=](ctrl_request* req, ControlRequestChannel* ch) {
+                CHECK(std::string(req->request_data, req->request_size) == data);
+            });
+            CHECK(channel.serviceRequest(ServiceRequest::INIT).type(TEST_REQ).size(data.size()).send());
+            uint16_t id = channel.serviceReply().id();
+            if (data.size() > USB_REQUEST_MAX_POOLED_BUFFER_SIZE) {
+                CHECK(processNextTask());
+            }
+            // Send 1st chunk
+            auto chunk = data.substr(0, data.size() / 2);
+            CHECK(channel.serviceRequest(ServiceRequest::SEND).id(id).data(chunk).send());
+            CHECK(channel.serviceRequest(ServiceRequest::CHECK).id(id).send());
+            CHECK(channel.serviceReply().status() == ServiceReply::OK);
+            // Send 2nd chunk
+            chunk = data.substr(data.size() / 2, data.size() - data.size() / 2);
+            CHECK(channel.serviceRequest(ServiceRequest::SEND).id(id).data(chunk).send());
+            CHECK(channel.serviceRequest(ServiceRequest::CHECK).id(id).send());
+            CHECK(channel.serviceReply().status() == ServiceReply::PENDING);
+            CHECK(processNextTask());
+            CHECK(channel.requestHandlerCalled());
+        }
         SECTION("fails when the request cannot be not found") {
             uint16_t id = 1234;
             std::string data = "test";
@@ -608,11 +642,11 @@ TEST_CASE("UsbControlRequestChannel") {
             uint16_t id = channel.serviceReply().id();
             CHECK_FALSE(channel.serviceRequest(ServiceRequest::SEND).id(id).data(data).send());
         }
-        SECTION("fails when an unexpected size of the request data is specified") {
+        SECTION("fails if the size of the transferred chunk exceeds the size of the request data") {
             std::string data = "test";
-            CHECK(channel.serviceRequest(ServiceRequest::INIT).type(TEST_REQ).size(data.size() + 1).send());
+            CHECK(channel.serviceRequest(ServiceRequest::INIT).type(TEST_REQ).size(data.size()).send());
             uint16_t id = channel.serviceReply().id();
-            CHECK_FALSE(channel.serviceRequest(ServiceRequest::SEND).id(id).data(data).send());
+            CHECK_FALSE(channel.serviceRequest(ServiceRequest::SEND).id(id).data(data + "more data").send());
         }
     }
 
@@ -651,12 +685,12 @@ TEST_CASE("UsbControlRequestChannel") {
         }
         SECTION("causes the completion handler to be invoked for a request with non-empty reply data") {
             size_t size = 1024;
-            bool called = false;
-            channel.requestHandler([=, &called](ctrl_request* req, ControlRequestChannel* ch) {
+            bool completed = false;
+            channel.requestHandler([=, &completed](ctrl_request* req, ControlRequestChannel* ch) {
                 REQUIRE(ch->allocReplyData(req, size) == 0);
                 ch->setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
                     *static_cast<bool*>(data) = true;
-                }, &called);
+                }, &completed);
             });
             CHECK(channel.serviceRequest(ServiceRequest::INIT).type(TEST_REQ).send());
             uint16_t id = channel.serviceReply().id();
@@ -665,11 +699,41 @@ TEST_CASE("UsbControlRequestChannel") {
             // The CHECK request should not cause the completion handler to be invoked for a request
             // with non-empty reply data
             CHECK_FALSE(processNextTask());
-            CHECK_FALSE(called);
+            CHECK_FALSE(completed);
             CHECK(channel.serviceRequest(ServiceRequest::RECV).id(id).size(size).send());
-            CHECK_FALSE(called); // Completion handler should be called asynchronously
+            CHECK_FALSE(completed); // Completion handler should be called asynchronously
             CHECK(processNextTask());
-            CHECK(called);
+            CHECK(completed);
+        }
+        SECTION("can transfer reply data in multiple chunks") {
+            std::string data = randomBytes(1024);
+            bool completed = false;
+            channel.requestHandler([=, &completed](ctrl_request* req, ControlRequestChannel* ch) {
+                REQUIRE(ch->allocReplyData(req, data.size()) == 0);
+                memcpy(req->reply_data, data.data(), data.size());
+                ch->setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+                    *static_cast<bool*>(data) = true;
+                }, &completed);
+            });
+            CHECK(channel.serviceRequest(ServiceRequest::INIT).type(TEST_REQ).send());
+            uint16_t id = channel.serviceReply().id();
+            CHECK(processNextTask());
+            // Receive 1st chunk
+            auto chunk = data.substr(0, data.size() / 2);
+            CHECK(channel.serviceRequest(ServiceRequest::RECV).id(id).size(chunk.size()).send());
+            CHECK(channel.serviceReply().data() == chunk);
+            CHECK_FALSE(processNextTask());
+            CHECK_FALSE(completed);
+            CHECK(channel.serviceRequest(ServiceRequest::CHECK).id(id).send());
+            CHECK(channel.serviceReply().status() == ServiceReply::OK);
+            // Receive 2nd chunk
+            chunk = data.substr(data.size() / 2, data.size() - data.size() / 2);
+            CHECK(channel.serviceRequest(ServiceRequest::RECV).id(id).size(chunk.size()).send());
+            CHECK(channel.serviceReply().data() == chunk);
+            CHECK(processNextTask());
+            CHECK(completed);
+            CHECK(channel.serviceRequest(ServiceRequest::CHECK).id(id).send());
+            CHECK(channel.serviceReply().status() == ServiceReply::NOT_FOUND);
         }
         SECTION("fails when the request cannot be not found") {
             uint16_t id = 1234;
@@ -682,7 +746,7 @@ TEST_CASE("UsbControlRequestChannel") {
             size_t size = 4;
             CHECK_FALSE(channel.serviceRequest(ServiceRequest::RECV).id(id).size(size).send());
         }
-        SECTION("fails when an unexpected size of the reply data is specified") {
+        SECTION("fails if the size of the requested chunk exceeds the size of the reply data") {
             std::string data = "test";
             channel.requestHandler([=](ctrl_request* req, ControlRequestChannel* ch) {
                 REQUIRE(ch->allocReplyData(req, data.size()) == 0);
