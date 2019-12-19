@@ -247,6 +247,15 @@ int getFeature(ctrl_request* req) {
     return 0;
 }
 
+int echo(ctrl_request* req) {
+    const int ret = system_ctrl_alloc_reply_data(req, req->request_size, nullptr);
+    if (ret != 0) {
+        return ret;
+    }
+    memcpy(req->reply_data, req->request_data, req->request_size);
+    return 0;
+}
+
 #if !HAL_PLATFORM_OPENTHREAD
 
 int handleSetSecurityKeyRequest(ctrl_request* req) {
