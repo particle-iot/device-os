@@ -1,4 +1,3 @@
-#pragma once
 /**
  * Copyright 2014  Matthew McGowan
  *
@@ -21,43 +20,139 @@
  header.
 */
 
+#pragma once
 
 #include "FakeStream.h"
 #include "FakeStreamBuffer.h"
 
-enum RunnerState {
-    INIT,
-    WAITING,
-    RUNNING,
-    COMPLETE
-};
+#include "spark_wiring_cloud.h"
 
-class SparkTestRunner {
+#include <memory>
 
-private:
-    int _state;
+class Test;
 
+namespace particle {
+
+class TestRunner {
 public:
-    SparkTestRunner() : _state(INIT) {
+    enum State {
+        INIT,
+        WAITING,
+        RUNNING,
+        COMPLETE
+    };
 
-    }
+    TestRunner();
+    ~TestRunner();
 
-    void begin();
+    void setup();
+    void loop();
+
+    /**
+     * Reset the runner state.
+     */
+    void reset();
 
     bool isStarted() {
-        return _state>=RUNNING;
+        return state_ >= RUNNING;
     }
 
     bool isComplete() {
-        return _state==COMPLETE;
+        return state_ == COMPLETE;
     }
 
     void start() {
-        if (!isStarted())
+        if (!isStarted()) {
             setState(RUNNING);
+        }
     }
 
-    const char* nameForState(RunnerState state) {
+    State state() const {
+        return (State)state_;
+    }
+
+    void setState(State newState) {
+        if (newState != state_) {
+            state_ = newState;
+            if (isStarted()) {
+                updateLEDStatus();
+            }
+            if (cloudEnabled_) {
+                const char* stateName = nameForState((State)state_);
+                Particle.publish("state", stateName, PRIVATE);
+            }
+        }
+    }
+
+    void testDone() {
+        updateLEDStatus();
+    }
+
+    /**
+     * Get the log buffer.
+     *
+     * @note The data in the log buffer is not null-terminated. Use `logSize()` to get the actual
+     *       size of the data.
+     */
+    const char* logBuffer() const;
+
+    /**
+     * Get the size of the data in the log buffer.
+     *
+     * @see `logBuffer()`
+     */
+    size_t logSize() const;
+
+    TestRunner& ledEnabled(bool enabled) {
+        ledEnabled_ = enabled;
+        return *this;
+    }
+
+    TestRunner& serialEnabled(bool enabled) {
+        serialEnabled_ = enabled;
+        return *this;
+    }
+
+    TestRunner& cloudEnabled(bool enabled) {
+        cloudEnabled_ = enabled;
+        return *this;
+    }
+
+    TestRunner& logEnabled(bool enabled) {
+        logEnabled_ = enabled;
+        return *this;
+    }
+
+    TestRunner& runImmediately(bool enabled) {
+        startRequested_ = enabled;
+        return *this;
+    }
+
+    static TestRunner* instance();
+
+private:
+    struct LogBufferData;
+    struct CloudLogData;
+
+    std::unique_ptr<LogBufferData> logBuf_;
+    std::unique_ptr<CloudLogData> cloudLog_;
+
+    Test* firstTest_;
+    int state_;
+
+    bool ledEnabled_;
+    bool serialEnabled_;
+    bool cloudEnabled_;
+    bool logEnabled_;
+    bool startRequested_;
+    bool dfuRequested_;
+
+    void runSerialConsole();
+    void updateLEDStatus();
+
+    static int testCmd(String arg);
+
+    static const char* nameForState(State state) {
         switch (state) {
             case INIT: return "init";
             case WAITING: return "waiting";
@@ -67,39 +162,15 @@ public:
                 return "";
         }
     }
-
-    int testStatusColor();
-
-    void updateLEDStatus() {
-        int rgb = testStatusColor();
-        RGB.control(true);
-        RGB.color(rgb);
-    }
-
-    RunnerState state() const { return (RunnerState)_state; }
-
-    void setState(RunnerState newState) {
-        if (newState!=_state) {
-            _state = newState;
-            const char* stateName = nameForState((RunnerState)_state);
-            if (isStarted())
-                updateLEDStatus();
-            Particle.publish("state", stateName);
-        }
-    }
-
-    void testDone() {
-        updateLEDStatus();
-    }
 };
 
-extern SparkTestRunner _runner;
+} // namespace particle
 
 #define UNIT_TEST_SETUP() \
-    void setup() { unit_test_setup(); }
+    void setup() { ::particle::TestRunner::instance()->setup(); }
 
 #define UNIT_TEST_LOOP() \
-    void loop() { unit_test_loop(); }
+    void loop() { ::particle::TestRunner::instance()->loop(); }
 
 #define UNIT_TEST_APP() \
     UNIT_TEST_SETUP(); UNIT_TEST_LOOP();
@@ -445,9 +516,9 @@ Variables you might want to adjust:
 */
 class Test
 {
-    friend class SparkTestRunner;
-
  private:
+  friend class particle::TestRunner;
+
   // allows for both ram/progmem based names
   class TestString : public Printable {
   public:
@@ -616,7 +687,7 @@ static unsigned exclude(const char *pattern);
 /**
  * invoke a lambda for all tests
  */
-template <typename T> static void for_each(T& t) {
+template <typename T> static void for_each(T&& t) {
 	  for (Test *p = root; p != nullptr; p=p->next) {
 		  t(*p);
 	  }
@@ -854,20 +925,3 @@ is in another file (or defined after the assertion on it). */
 
 /** macro generates optional output and calls fail() followed by a return if false. */
 #define assertTestNotSkip(name) assertNotEqual(test_##name##_instance.state,Test::DONE_SKIP)
-
-
-/**
- * A convenience method to setup serial.
- */
-void unit_test_setup();
-/*
- * A convenience method to run tests as part of the main loop after a character
- * is received over serial.
- *
- * @param runImmediately    When true, the test runner is started on first call to this function.
- *  Otherwise the test runner is only started when an external start signal is received.
- * @param
- **/
-void unit_test_loop(bool runImmediately=false, bool runTest=true);
-
-int testCmd(String arg);

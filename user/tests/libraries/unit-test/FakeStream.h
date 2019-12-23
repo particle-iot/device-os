@@ -21,6 +21,8 @@ THE SOFTWARE.
 */
 #pragma once
 
+#include "spark_wiring_stream.h"
+#include "spark_wiring_constants.h"
 
 /**
  * A fake stream which can be used in place of other streams

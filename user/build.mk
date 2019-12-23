@@ -24,9 +24,11 @@ endif
 
 ifdef TEST
 INCLUDE_PLATFORM?=1
-# Disable compiler warnings when deprecated APIs are used in test code
-CFLAGS+=-DPARTICLE_USING_DEPRECATED_API
 include $(MODULE_PATH)/tests/tests.mk
+# Include test application in the build if this is an integration test
+ifeq ($(firstword $(subst /, ,$(TEST))),integration)
+	include $(MODULE_PATH)/tests/integration/test.mk
+endif
 -include $(MODULE_PATH)/$(USRSRC)/test.mk
 endif
 

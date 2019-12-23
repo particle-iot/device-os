@@ -117,7 +117,7 @@ void Test::resolve()
     if (fail) ++Test::failed;
     if (skip) ++Test::skipped;
 
-    _runner.testDone();
+    TestRunner::instance()->testDone();
 
 #if TEST_VERBOSITY_EXISTS(TESTS_SKIPPED) || TEST_VERBOSITY_EXISTS(TESTS_PASSED) || TEST_VERBOSITY_EXISTS(TESTS_FAILED)
 
@@ -198,7 +198,8 @@ void Test::setup() {};
 
 void Test::run()
 {
-  _runner.setState(root ? RUNNING : COMPLETE);
+  const auto runner = TestRunner::instance();
+  runner->setState(root ? TestRunner::RUNNING : TestRunner::COMPLETE);
 
   for (Test **p = &root; (*p) != 0; ) {
     current = *p;
