@@ -190,6 +190,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::config::setStartupMode(req));
         break;
     }
+    case CTRL_REQUEST_ECHO: {
+        setResult(req, control::config::echo(req));
+        break;
+    }
     case CTRL_REQUEST_GET_MODULE_INFO: {
         setResult(req, control::getModuleInfo(req));
         break;
@@ -453,10 +457,6 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
     }
     case CTRL_REQUEST_MESH_GET_NETWORK_DIAGNOSTICS: {
         setResult(req, ctrl::mesh::getNetworkDiagnostics(req));
-        break;
-    }
-    case CTRL_REQUEST_MESH_TEST: { // FIXME
-        setResult(req, ctrl::mesh::test(req));
         break;
     }
 #endif // HAL_PLATFORM_MESH

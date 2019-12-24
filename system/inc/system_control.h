@@ -40,6 +40,7 @@ extern "C" {
 // Control request types
 typedef enum ctrl_request_type {
     CTRL_REQUEST_INVALID = 0,
+    CTRL_REQUEST_ECHO = 1,
     CTRL_REQUEST_APP_CUSTOM = 10,
     CTRL_REQUEST_DEVICE_ID = 20,
     CTRL_REQUEST_SERIAL_NUMBER = 21,
@@ -123,8 +124,7 @@ typedef enum ctrl_request_type {
     CTRL_REQUEST_MESH_LEAVE_NETWORK = 1009,
     CTRL_REQUEST_MESH_GET_NETWORK_INFO = 1010,
     CTRL_REQUEST_MESH_SCAN_NETWORKS = 1011,
-    CTRL_REQUEST_MESH_GET_NETWORK_DIAGNOSTICS = 1012,
-    CTRL_REQUEST_MESH_TEST = 1111 // FIXME
+    CTRL_REQUEST_MESH_GET_NETWORK_DIAGNOSTICS = 1012
 } ctrl_request_type;
 
 // Control request data

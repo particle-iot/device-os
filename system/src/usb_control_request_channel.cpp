@@ -298,6 +298,7 @@ bool particle::UsbControlRequestChannel::processInitRequest(HAL_USB_SetupRequest
     req->task.req = req;
     req->handler = nullptr;
     req->handlerData = nullptr;
+    req->offset = 0;
     req->result = SYSTEM_ERROR_UNKNOWN;
     req->id = ++lastReqId_;
     req->flags = 0;
@@ -395,24 +396,28 @@ bool particle::UsbControlRequestChannel::processSendRequest(HAL_USB_SetupRequest
     }
     if (!req || // Request not found
             req->state != RequestState::RECV_PAYLOAD || // Invalid request state
-            req->request_size != size) { // Unexpected size
+            req->offset + size > req->request_size) { // Unexpected size
         return false;
     }
     if (size <= MIN_WLENGTH) {
-        // Use an internal buffer provided by the HAL
+        // Use the internal buffer provided by the HAL
         if (!halReq->data) {
             return false;
         }
-        memcpy(req->request_data, halReq->data, size);
+        memcpy(req->request_data + req->offset, halReq->data, size);
     } else if (!halReq->data) {
         // Provide a buffer to the HAL
-        halReq->data = (uint8_t*)req->request_data;
+        halReq->data = (uint8_t*)req->request_data + req->offset;
         return true;
     }
-    // Invoke the request handler
-    req->task.func = invokeRequestHandler;
-    SystemISRTaskQueue.enqueue(&req->task);
-    req->state = RequestState::PENDING;
+    req->offset += size;
+    if (req->offset == req->request_size) {
+        // Invoke the request handler
+        req->task.func = invokeRequestHandler;
+        SystemISRTaskQueue.enqueue(&req->task);
+        req->offset = 0;
+        req->state = RequestState::PENDING;
+    }
     return true;
 }
 
@@ -428,19 +433,20 @@ bool particle::UsbControlRequestChannel::processRecvRequest(HAL_USB_SetupRequest
     }
     if (!req || // Request not found
             req->state != RequestState::DONE || // Invalid request state
-            req->reply_size != size || size == 0) { // Unexpected size
+            size == 0 || req->offset + size > req->reply_size) { // Unexpected size
         return false;
     }
     if (size <= MIN_WLENGTH) {
-        // Use an internal buffer provided by the HAL
+        // Use the internal buffer provided by the HAL
         if (!halReq->data) {
             return false;
         }
-        memcpy(halReq->data, req->reply_data, size);
+        memcpy(halReq->data, req->reply_data + req->offset, size);
     } else {
         // Provide a buffer to the HAL
-        halReq->data = (uint8_t*)req->reply_data;
+        halReq->data = (uint8_t*)req->reply_data + req->offset;
     }
+    req->offset += size;
     curReq_ = req;
     return true;
 }
@@ -655,10 +661,11 @@ uint8_t particle::UsbControlRequestChannel::halVendorRequestStateCallback(HAL_US
     const auto channel = static_cast<UsbControlRequestChannel*>(data);
     switch (state) {
     case HAL_USB_VENDOR_REQUEST_STATE_TX_COMPLETED: {
-        if (channel->curReq_) {
+        const auto req = channel->curReq_;
+        if (req && req->offset == req->reply_size) {
             // Set a result code that will be passed to the request completion handler
-            channel->curReq_->result = SYSTEM_ERROR_NONE;
-            channel->finishActiveRequest(channel->curReq_);
+            req->result = SYSTEM_ERROR_NONE;
+            channel->finishActiveRequest(req);
             channel->curReq_ = nullptr;
         }
         break;

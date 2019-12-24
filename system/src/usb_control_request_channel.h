@@ -79,6 +79,7 @@ private:
         Request* next; // Next element in a list
         ctrl_completion_handler_fn handler; // Completion handler
         void* handlerData; // Completion handler data
+        size_t offset; // Offset in the request or reply data
         int result; // Result code
         uint16_t id; // Request ID
         uint8_t state; // Request state

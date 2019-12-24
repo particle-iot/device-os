@@ -1735,15 +1735,6 @@ int getNetworkDiagnostics(ctrl_request* req) {
     return system_ctrl_alloc_reply_data(req, diagResult.written, nullptr);
 }
 
-int test(ctrl_request* req) {
-    const int ret = system_ctrl_alloc_reply_data(req, req->request_size, nullptr);
-    if (ret != 0) {
-        return ret;
-    }
-    memcpy(req->reply_data, req->request_data, req->request_size);
-    return 0;
-}
-
 } // particle::ctrl::mesh
 
 } // particle::ctrl
