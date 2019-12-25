@@ -749,7 +749,7 @@ public:
               context_(nullptr) {
     }
 
-    BleCharacteristicImpl(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback, void* context)
+    BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context)
             : BleCharacteristicImpl() {
         properties_ = properties;
         description_ = desc;
@@ -757,7 +757,7 @@ public:
         context_ = context;
     }
 
-    BleCharacteristicImpl(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context)
+    BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context)
             : BleCharacteristicImpl(desc, properties, callback, context) {
         charUuid_ = charUuid;
         svcUuid_ = svcUuid;
@@ -773,7 +773,7 @@ public:
         return connHandle_;
     }
 
-    BleCharacteristicProperty& properties() {
+    EnumFlags<BleCharacteristicProperty>& properties() {
         return properties_;
     }
 
@@ -831,7 +831,7 @@ public:
 private:
     bool isLocal_;
     BleConnectionHandle connHandle_; // For peer characteristic
-    BleCharacteristicProperty properties_;
+    EnumFlags<BleCharacteristicProperty> properties_;
     BleCharacteristicHandles attrHandles_;
     BleUuid charUuid_;
     BleUuid svcUuid_;
@@ -1081,7 +1081,7 @@ BleCharacteristic::BleCharacteristic(const BleCharacteristic& characteristic)
     DEBUG("BleCharacteristic(copy), 0x%08X => 0x%08X -> 0x%08X, count: %d", &characteristic, this, impl(), impl_.use_count());
 }
 
-BleCharacteristic::BleCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback, void* context)
+BleCharacteristic::BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context)
         : impl_(std::make_shared<BleCharacteristicImpl>(desc, properties, callback, context)) {
     if (!impl()) {
         SPARK_ASSERT(false);
@@ -1089,7 +1089,7 @@ BleCharacteristic::BleCharacteristic(const char* desc, BleCharacteristicProperty
     DEBUG("BleCharacteristic(...), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
 }
 
-void BleCharacteristic::construct(const char* desc, BleCharacteristicProperty properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context) {
+void BleCharacteristic::construct(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context) {
     impl_ = std::make_shared<BleCharacteristicImpl>(desc, properties, charUuid, svcUuid, callback, context);
     if (!impl()) {
         SPARK_ASSERT(false);
@@ -1117,7 +1117,7 @@ BleUuid BleCharacteristic::UUID() const {
     return impl()->charUUID();
 }
 
-BleCharacteristicProperty BleCharacteristic::properties() const {
+EnumFlags<BleCharacteristicProperty> BleCharacteristic::properties() const {
     return impl()->properties();
 }
 
@@ -1143,22 +1143,22 @@ ssize_t BleCharacteristic::setValue(const uint8_t* buf, size_t len, BleTxRxType 
     if (impl()->local()) {
         int ret = SYSTEM_ERROR_NOT_SUPPORTED;
         // Updates the local characteristic value for peer to read.
-        if ((impl()->properties() & BleCharacteristicProperty::READ) == BleCharacteristicProperty::READ) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::READ)) {
             ret = CHECK(hal_ble_gatt_server_set_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr));
         }
-        if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY && type != BleTxRxType::ACK) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::NOTIFY) && type != BleTxRxType::ACK) {
             return hal_ble_gatt_server_notify_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
         }
-        if ((impl()->properties() & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE && type != BleTxRxType::NACK) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::INDICATE) && type != BleTxRxType::NACK) {
             return hal_ble_gatt_server_indicate_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
         }
         return ret;
     }
     if (impl()->connHandle() != BLE_INVALID_CONN_HANDLE) {
-        if ((impl()->properties() & BleCharacteristicProperty::WRITE_WO_RSP) == BleCharacteristicProperty::WRITE_WO_RSP && type != BleTxRxType::ACK) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::WRITE_WO_RSP) && type != BleTxRxType::ACK) {
             return hal_ble_gatt_client_write_without_response(impl()->connHandle(), impl()->attrHandles().value_handle, buf, len, nullptr);
         }
-        if ((impl()->properties() & BleCharacteristicProperty::WRITE) == BleCharacteristicProperty::WRITE && type != BleTxRxType::NACK) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::WRITE) && type != BleTxRxType::NACK) {
             return hal_ble_gatt_client_write_with_response(impl()->connHandle(), impl()->attrHandles().value_handle, buf, len, nullptr);
         }
         return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -1217,10 +1217,10 @@ int BleCharacteristic::subscribe(bool enable) const {
     config.value_handle = impl()->attrHandles().value_handle;
     config.cccd_value = BLE_SIG_CCCD_VAL_DISABLED;
     if (enable) {
-        if ((impl()->properties() & BleCharacteristicProperty::INDICATE) == BleCharacteristicProperty::INDICATE) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::INDICATE)) {
             config.cccd_value = BLE_SIG_CCCD_VAL_INDICATION;
         }
-        if ((impl()->properties() & BleCharacteristicProperty::NOTIFY) == BleCharacteristicProperty::NOTIFY) {
+        if (impl()->properties().isSet(BleCharacteristicProperty::NOTIFY)) {
             config.cccd_value = (ble_sig_cccd_value_t)(config.cccd_value | BLE_SIG_CCCD_VAL_NOTIFICATION);
         }
     }
@@ -2042,7 +2042,7 @@ BleCharacteristic BleLocalDevice::addCharacteristic(const BleCharacteristic& cha
     charInit.version = BLE_API_VERSION;
     charInit.size = sizeof(hal_ble_char_init_t);
     charInit.uuid = charImpl->charUUID().halUUID();
-    charInit.properties = static_cast<uint8_t>(charImpl->properties());
+    charInit.properties = charImpl->properties().value();
     charInit.service_handle = service->impl()->startHandle();
     charInit.description = charImpl->description().c_str();
     charInit.callback = charImpl->onBleCharEvents;
@@ -2058,14 +2058,14 @@ BleCharacteristic BleLocalDevice::addCharacteristic(const BleCharacteristic& cha
     return characteristic;
 }
 
-BleCharacteristic BleLocalDevice::addCharacteristic(const char* desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback, void* context) {
+BleCharacteristic BleLocalDevice::addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
     WiringBleLock lk;
     BleCharacteristic characteristic(desc, properties, callback, context);
     addCharacteristic(characteristic);
     return characteristic;
 }
 
-BleCharacteristic BleLocalDevice::addCharacteristic(const String& desc, BleCharacteristicProperty properties, BleOnDataReceivedCallback callback, void* context) {
+BleCharacteristic BleLocalDevice::addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
     WiringBleLock lk;
     return addCharacteristic(desc.c_str(), properties, callback, context);
 }
