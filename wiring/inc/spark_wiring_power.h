@@ -67,7 +67,7 @@ public:
     bool setInputCurrentLimit(uint16_t current);
     uint16_t getInputCurrentLimit(void);
     bool setInputVoltageLimit(uint16_t voltage);
-    byte getInputVoltageLimit(void);
+    uint16_t getInputVoltageLimit(void);
 
     // Power ON configuration register
     bool enableCharging(void);
@@ -81,7 +81,9 @@ public:
 
     // Charge current control register
     bool setChargeCurrent(bool bit7, bool bit6, bool bit5, bool bit4, bool bit3, bool bit2);
+    bool setChargeCurrent(uint16_t current);
     byte getChargeCurrent(void);
+    uint16_t getChargeCurrentValue();
 
     //PreCharge/ Termination Current Control Register
     bool setPreChargeCurrent();
