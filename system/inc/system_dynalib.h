@@ -37,6 +37,7 @@
 #include "system_control.h"
 #include "system_led_signal.h"
 #include "system_setup.h"
+#include "system_power.h"
 #endif
 
 DYNALIB_BEGIN(system)
@@ -98,7 +99,14 @@ DYNALIB_FN(BASE_IDX + 13, system, system_pool_alloc, void*(size_t, void*))
 DYNALIB_FN(BASE_IDX + 14, system, system_pool_free, void(void*, void*))
 DYNALIB_FN(BASE_IDX + 15, system, system_sleep_pins, int(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
 DYNALIB_FN(BASE_IDX + 16, system, system_invoke_event_handler, int(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo, const char* event_name, const char* event_data, void* reserved))
+#if HAL_PLATFORM_POWER_MANAGEMENT
+DYNALIB_FN(BASE_IDX + 17, system, system_power_management_set_config, int(const hal_power_config*, void*))
+#define BASE_IDX1 (BASE_IDX + 18)
+#else
+#define BASE_IDX1 (BASE_IDX + 17)
+#endif // HAL_PLATFORM_POWER_MANAGEMENT
 
+// Continue with BASE_IDX1
 
 DYNALIB_END(system)
 

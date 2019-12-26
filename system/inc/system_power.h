@@ -20,15 +20,11 @@
 
 #include "system_tick_hal.h"
 #include "spark_wiring_diagnostics.h"
+#include "power_hal.h"
 
-namespace particle { namespace power {
-
-class BatteryChargeDiagnosticData: public AbstractIntegerDiagnosticData {
-public:
-    BatteryChargeDiagnosticData(uint16_t id, const char* name = nullptr);
-private:
-    virtual int get(IntType& val) override; // AbstractIntegerDiagnosticData
-};
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 typedef enum {
     BATTERY_STATE_UNKNOWN = 0,
@@ -49,11 +45,35 @@ typedef enum {
     POWER_SOURCE_BATTERY = 5
 } power_source_t;
 
+void system_power_management_init();
+void system_power_management_sleep(bool sleep = true);
+int system_power_management_set_config(const hal_power_config* conf, void* reserved);
+
+#ifdef __cplusplus
+}
+
+namespace particle { namespace power {
+
+class BatteryChargeDiagnosticData: public AbstractIntegerDiagnosticData {
+public:
+    BatteryChargeDiagnosticData(uint16_t id, const char* name = nullptr);
+private:
+    virtual int get(IntType& val) override; // AbstractIntegerDiagnosticData
+};
+
+using battery_state_t = ::battery_state_t;
+using power_source_t = ::power_source_t;
+
+// Exposed for tests
+constexpr uint16_t DEFAULT_INPUT_CURRENT_LIMIT = 900; // 900mA
+constexpr uint16_t DEFAULT_INPUT_VOLTAGE_LIMIT = 3880; // 3.88V
+constexpr uint16_t DEFAULT_CHARGE_CURRENT = 896; // 896mA
+constexpr uint16_t DEFAULT_TERMINATION_VOLTAGE = 4112; // 4.112V
+
 } } // particle::power
 
 extern particle::power::BatteryChargeDiagnosticData g_batteryCharge;
 extern particle::SimpleEnumDiagnosticData<particle::power::battery_state_t> g_batteryState;
 extern particle::SimpleEnumDiagnosticData<particle::power::power_source_t> g_powerSource;
 
-void system_power_management_init();
-void system_power_management_sleep(bool sleep = true);
+#endif // __cplusplus
