@@ -26,11 +26,6 @@ LOG_SOURCE_CATEGORY("sys.power");
 #include "debug.h"
 #include "spark_wiring_platform.h"
 #include "pinmap_hal.h"
-// For system flags
-#include "system_update.h"
-
-// #define HAL_PLATFORM_PMIC_BQ24195 1
-// #define HAL_PLATFORM_FUELGAUGE_MAX17043 1
 
 #if (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
 
