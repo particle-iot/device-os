@@ -35,6 +35,8 @@ CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/openthread/,*.cpp)
 
 CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/ncp/at_parser,*.cpp)
 
+CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/shared/,*.cpp)
+
 CSRC += $(TARGET_HAL_PATH)/src/portable/FreeRTOS/heap_4_lock.c
 
 # ASM source files included in this build.

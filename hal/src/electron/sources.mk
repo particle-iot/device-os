@@ -21,5 +21,7 @@ ASRC +=
 
 CPPSRC += $(call target_files,$(HAL_SRC_ELECTRON_PATH)/modem/,*.cpp)
 
+CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/shared/,*.cpp)
+
 # use malloc/free
 CSRC += $(TARGET_HAL_PATH)/src/portable/FreeRTOS/heap_4_lock.c
