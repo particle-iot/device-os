@@ -40,6 +40,8 @@
 #include <chrono>
 #include <limits>
 #include <mutex>
+#include "spark_wiring_system_power.h"
+#include "check.h"
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID!=3 && PLATFORM_ID != 20
 #define SYSTEM_HW_TICKS 1
@@ -431,6 +433,41 @@ public:
     static unsigned uptime() {
         return (hal_timer_millis(nullptr) / 1000);
     }
+
+#if HAL_PLATFORM_POWER_MANAGEMENT
+    int setPowerConfiguration(const particle::SystemPowerConfiguration& conf) {
+        return system_power_management_set_config(conf.config(), nullptr);
+    }
+
+    int powerSource() const {
+        particle::AbstractIntegerDiagnosticData::IntType val;
+        CHECK(particle::AbstractIntegerDiagnosticData::get(DIAG_ID_SYSTEM_POWER_SOURCE, val));
+        return val;
+    }
+
+    int batteryState() const {
+        particle::AbstractIntegerDiagnosticData::IntType val;
+        CHECK(particle::AbstractIntegerDiagnosticData::get(DIAG_ID_SYSTEM_BATTERY_STATE, val));
+        return val;
+    }
+
+    float batteryCharge() const {
+        // XXX: we could potentially simply call FuelGauge::getNormalizedSoC(),
+        // however in order to exactly match the vitals values sent to the cloud we are going to use
+        // diagnostic source as well.
+        particle::AbstractIntegerDiagnosticData::IntType val;
+        int r = particle::AbstractIntegerDiagnosticData::get(DIAG_ID_SYSTEM_BATTERY_CHARGE, val);
+        if (r) {
+            return -1.0f;
+        }
+
+        using SocFixedPointT = particle::FixedPointUQ<8, 8>;
+
+        SocFixedPointT soc(static_cast<typename SocFixedPointT::type>(val));
+        return soc.toFloat();
+    }
+
+#endif // HAL_PLATFORM_POWER_MANAGEMENT
 
 private:
     SleepResult sleepResult_;
