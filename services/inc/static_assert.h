@@ -10,6 +10,8 @@
 
 #ifdef	__cplusplus
 extern "C" {
+#else
+#include <assert.h>
 #endif
 
 #if defined(__cplusplus) && __cplusplus >= 201103L
