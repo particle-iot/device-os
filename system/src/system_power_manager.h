@@ -21,15 +21,9 @@
 #include "concurrent_hal.h"
 #include "hal_platform.h"
 #include "usb_hal.h"
+#include "power_hal.h"
 
 namespace particle { namespace power {
-
-static const uint16_t DEFAULT_INPUT_CURRENT_LIMIT = 1500;
-static const system_tick_t DEFAULT_FAULT_WINDOW = 1000;
-static const uint32_t DEFAULT_FAULT_COUNT_THRESHOLD = HAL_PLATFORM_PMIC_BQ24195_FAULT_COUNT_THRESHOLD;
-static const system_tick_t DEFAULT_FAULT_SUPPRESSION_PERIOD = 60000;
-static const system_tick_t DEFAULT_QUEUE_WAIT = 1000;
-static const system_tick_t DEFAULT_WATCHDOG_TIMEOUT = 60000;
 
 class PowerManager {
 public:
@@ -37,6 +31,7 @@ public:
 
   void init();
   void sleep(bool s = true);
+  int setConfig(const hal_power_config* conf);
 
 protected:
   PowerManager();
@@ -57,8 +52,16 @@ private:
   bool detect();
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
   void deinit();
+  void loadConfig();
+  void applyVinConfig();
+  void applyDefaultConfig();
 
 private:
+  enum class Event {
+    Update = 0,
+    ReloadConfig = 1
+  };
+
   static volatile bool update_;
   os_thread_t thread_ = nullptr;
   os_queue_t queue_ = nullptr;
@@ -68,10 +71,11 @@ private:
   system_tick_t possibleFaultTimestamp_ = 0;
   bool lowBatEnabled_ = true;
   system_tick_t chargingDisabledTimestamp_ = 0;
-
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
   bool detect_ = false;
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+
+  hal_power_config config_ = {};
 };
 
 
