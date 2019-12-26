@@ -338,3 +338,29 @@ test(system_uptime_millis) {
     (void)u64;
     (void)u;
 }
+
+#if HAL_PLATFORM_POWER_MANAGEMENT
+test(system_power_management) {
+    SystemPowerConfiguration conf;
+    API_COMPILE(conf.powerSourceMinVoltage(1234));
+    API_COMPILE(conf.powerSourceMaxCurrent(1234));
+    API_COMPILE(conf.batteryChargeVoltage(1234));
+    API_COMPILE(conf.batteryChargeCurrent(1234));
+    API_COMPILE(conf.feature(SystemPowerFeature::PMIC_DETECTION));
+
+    API_COMPILE(System.setPowerConfiguration(conf));
+
+    int state;
+    int source;
+    float charge;
+    bool test;
+    API_COMPILE(source = System.powerSource());
+
+    API_COMPILE(state = System.batteryState());
+
+    API_COMPILE(charge = System.batteryCharge());
+
+    API_COMPILE(test = source == POWER_SOURCE_VIN);
+    API_COMPILE(test = state == BATTERY_STATE_CHARGING);
+}
+#endif // HAL_PLATFORM_POWER_MANAGEMENT
