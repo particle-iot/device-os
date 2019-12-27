@@ -80,7 +80,7 @@ inline system_tick_t millis() {
 }
 
 const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
-const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;  // BG96 and EG91 support up to 460800bit/s
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 115200;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -627,14 +627,27 @@ int QuectelNcpClient::initReady() {
         CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
     }
 
-    // Change the baudrate to 921600
+    // Enable flow control and change to runtime baudrate
+    CHECK_PARSER(parser_.execCommand("AT+IFC=2,2"));
     CHECK(changeBaudRate(QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
     // Check that the modem is responsive at the new baudrate
     skipAll(serial_.get(), 1000);
     CHECK(waitAtResponse(10000));
 
     // Send AT+CMUX and initialize multiplexer
-    r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,1509,,,,,"));
+    int portspeed;
+    switch (QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE) {
+        case 9600: portspeed = 1; break;
+        case 19200: portspeed = 2; break;
+        case 38400: portspeed = 3; break;
+        case 57600: portspeed = 4; break;
+        case 115200: portspeed = 5; break;
+        case 230400: portspeed = 6; break;
+        case 460800: portspeed = 7; break;
+        default:
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,%d,1509,,,,,", portspeed));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     // Initialize muxer
@@ -704,8 +717,8 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
         netConf_ = networkConfigForImsi(buf, strlen(buf));
     }
     // FIXME: for now IPv4 context only
-    auto resp = parser_.sendCommand("AT+CGDCONT=1,\"IP\",\"%s%s\"", 
-            (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "", 
+    auto resp = parser_.sendCommand("AT+CGDCONT=1,\"IP\",\"%s%s\"",
+            (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
             netConf_.hasApn() ? netConf_.apn() : "");
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
