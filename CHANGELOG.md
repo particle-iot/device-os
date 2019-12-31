@@ -1,3 +1,9 @@
+## 1.4.5-b5som.2
+
+### BUGFIXES
+
+- [B5SoM] ncp: lowers the baudrate to 115200 and explicitly enables flow control with AT+IFC=2,2
+
 ## 1.4.5-b5som.1
 
 ### FEATURES
