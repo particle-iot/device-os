@@ -93,6 +93,16 @@ int IoExpander::reset() const {
     return io_expander_hard_reset();
 }
 
+int IoExpander::sleep() const {
+    // TODO: implementation
+    return SYSTEM_ERROR_NONE;
+}
+
+int IoExpander::wakeup() const {
+    // TODO: implementation
+    return SYSTEM_ERROR_NONE;
+}
+
 int IoExpander::configure(const IoExpanderPinConfig& config) {
     IoExpanderLock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);

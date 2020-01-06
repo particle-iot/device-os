@@ -80,11 +80,11 @@ class IoExpander {
 public:
     int init(uint8_t addr, pin_t resetPin, pin_t intPin);
     int deinit();
+    int reset() const;
+    int sleep() const;
+    int wakeup() const;
 
     int configure(const IoExpanderPinConfig& config);
-
-    int reset() const;
-
     int write(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue val);
     int read(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue& val);
 
