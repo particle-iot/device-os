@@ -90,7 +90,7 @@ struct IoExpanderControlBlock {
     void reset() {
         exit = false;
         handleInterruptThread = nullptr;
-        intSemaphore = nullptr;
+        queue = nullptr;
         address = INVALID_I2C_ADDRESS;
         resetPin = PIN_INVALID;
         intPin = PIN_INVALID;
@@ -104,7 +104,7 @@ struct IoExpanderControlBlock {
     RegisterValues regValues;
     Vector<IntterruptCallback> callbacks;
     os_thread_t handleInterruptThread;
-    os_semaphore_t intSemaphore;
+    os_queue_t queue;
     bool exit = false;
 };
 
@@ -130,12 +130,6 @@ int ioExpanderReadRegister(uint8_t reg, uint8_t* val) {
         *val = Wire.read();
     }
     return SYSTEM_ERROR_NONE;
-}
-
-void ioExpanderIsr(void) {
-    if (IoCtlBlk.intSemaphore) {
-        os_semaphore_give(IoCtlBlk.intSemaphore, false);
-    }
 }
 
 int ioExpanderWritePin(uint8_t port, uint8_t pin, IoExpanderPinValue val) {
@@ -267,6 +261,13 @@ int ioExpanderConfigureInterrupt(uint8_t port, uint8_t pin, bool enable) {
     return SYSTEM_ERROR_NONE;
 }
 
+void ioExpanderIsr(void) {
+    if (IoCtlBlk.queue) {
+        bool flag = true;
+        os_queue_put(IoCtlBlk.queue, &flag, 0, nullptr);
+    }
+}
+
 int ioExpanderEnableInterrupt() {
     static bool configured = false;
     CHECK_FALSE(configured, SYSTEM_ERROR_NONE);
@@ -277,7 +278,8 @@ int ioExpanderEnableInterrupt() {
 
 os_thread_return_t ioInterruptHandleThread(void* param) {
     while(!IoCtlBlk.exit) {
-        os_semaphore_take(IoCtlBlk.intSemaphore, CONCURRENT_WAIT_FOREVER, false);
+        bool flag;
+        os_queue_take(IoCtlBlk.queue, &flag, CONCURRENT_WAIT_FOREVER, nullptr);
         uint8_t input[2] = {0x00, 0x00};
         uint8_t intStatus[2] = {0x00, 0x00};
         if (ioExpanderReadRegister(inputPortReg[0], &input[0]) != SYSTEM_ERROR_NONE) {
@@ -315,13 +317,13 @@ int io_expander_init(uint8_t addr, pin_t reset, pin_t intPin) {
     IoCtlBlk.address = addr;
     IoCtlBlk.resetPin = reset;
     IoCtlBlk.intPin = intPin;
-    if (os_semaphore_create(&IoCtlBlk.intSemaphore, 1, 0)) {
-        IoCtlBlk.intSemaphore = nullptr;
-        LOG(ERROR, "os_semaphore_create() failed");
+    if (os_queue_create(&IoCtlBlk.queue, 1, 1, nullptr)) {
+        IoCtlBlk.queue = nullptr;
+        LOG(ERROR, "os_queue_create() failed");
     }
     if (os_thread_create(&IoCtlBlk.handleInterruptThread, "IO Expander Thread", OS_THREAD_PRIORITY_CRITICAL, ioInterruptHandleThread, nullptr, 512)) {
-        os_semaphore_destroy(IoCtlBlk.intSemaphore);
-        IoCtlBlk.intSemaphore = nullptr;
+        os_queue_destroy(IoCtlBlk.queue, nullptr);
+        IoCtlBlk.queue = nullptr;
         LOG(ERROR, "os_thread_create() failed");
     }
     Wire.setSpeed(CLOCK_SPEED_400KHZ);
@@ -330,18 +332,18 @@ int io_expander_init(uint8_t addr, pin_t reset, pin_t intPin) {
     return SYSTEM_ERROR_NONE;
 }
 
-int io_expander_deinit() {
+int io_expander_deinit(void) {
     IoCtlBlk.exit = true;
     os_thread_join(IoCtlBlk.handleInterruptThread);
     os_thread_cleanup(IoCtlBlk.handleInterruptThread);
-    os_semaphore_destroy(IoCtlBlk.intSemaphore);
+    os_queue_destroy(IoCtlBlk.queue, nullptr);
     CHECK(io_expander_hard_reset());
     IoCtlBlk.reset();
     Wire.end();
     return SYSTEM_ERROR_NONE;
 }
 
-int io_expander_hard_reset() {
+int io_expander_hard_reset(void) {
     CHECK_TRUE(IoCtlBlk.resetPin != PIN_INVALID, SYSTEM_ERROR_INVALID_ARGUMENT);
     // Assert reset pin
     pinMode(IoCtlBlk.resetPin, OUTPUT);

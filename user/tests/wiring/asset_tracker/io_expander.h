@@ -99,13 +99,13 @@ private:
 
 #define IOExpander IoExpander::getInstance()
 
+} // namespace particle
+
 int io_expander_init(uint8_t addr, pin_t resetPin, pin_t intPin);
-int io_expander_deinit();
-int io_expander_hard_reset();
+int io_expander_deinit(void);
+int io_expander_hard_reset(void);
 int io_expander_configure_pin(const IoExpanderPinConfig& config);
 int io_expander_write_pin(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue val);
 int io_expander_read_pin(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue& val);
-
-} // namespace particle
 
 #endif // IO_EXPANDER_H
