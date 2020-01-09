@@ -17,46 +17,9 @@
 
 #include "io_expander.h"
 
-class IoExpanderLock {
-public:
-    IoExpanderLock()
-            : locked_(false) {
-        lock();
-    }
-
-    IoExpanderLock(IoExpanderLock&& lock)
-            : locked_(lock.locked_) {
-        lock.locked_ = false;
-    }
-
-    IoExpanderLock(const IoExpanderLock&) = delete;
-    IoExpanderLock& operator=(const IoExpanderLock&) = delete;
-
-    ~IoExpanderLock() {
-        if (locked_) {
-            unlock();
-        }
-    }
-
-    void lock() {
-        mutex_.lock();
-        locked_ = true;
-    }
-
-    void unlock() {
-        mutex_.unlock();
-        locked_ = false;
-    }
-
-private:
-    bool locked_;
-    static RecursiveMutex mutex_;
-};
-
-RecursiveMutex IoExpanderLock::mutex_;
-
 using namespace particle;
 
+RecursiveMutex IoExpanderLock::mutex_;
 
 IoExpander::IoExpander()
         : initialized_(false) {
@@ -106,22 +69,17 @@ int IoExpander::wakeup() const {
 int IoExpander::configure(const IoExpanderPinConfig& config) {
     IoExpanderLock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK(io_expander_configure_pin(config));
-    return SYSTEM_ERROR_NONE;
+    return io_expander_configure_pin(config);
 }
 
 int IoExpander::write(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue val) {
     IoExpanderLock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK(io_expander_write_pin(port, pin, val));
-    return SYSTEM_ERROR_NONE;
+    return io_expander_write_pin(port, pin, val);
 }
 
 int IoExpander::read(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue& val) {
     IoExpanderLock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK(io_expander_read_pin(port, pin, val));
-    return SYSTEM_ERROR_NONE;
+    return io_expander_read_pin(port, pin, val);
 }
-
-
