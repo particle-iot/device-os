@@ -112,6 +112,8 @@ IoExpanderControlBlock IoCtlBlk;
 
 
 int ioExpanderWriteRegister(uint8_t reg, uint8_t val) {
+    IoExpanderLock lock;
+    LOG(TRACE, "ioExpanderWriteRegister(0x%02x, 0x%02x)", reg, val);
     uint8_t buf[2];
     buf[0] = reg;
     buf[1] = val;
@@ -121,6 +123,9 @@ int ioExpanderWriteRegister(uint8_t reg, uint8_t val) {
 }
 
 int ioExpanderReadRegister(uint8_t reg, uint8_t* val) {
+    IoExpanderLock lock;
+    // FIXME: Why does it run into hardfault if looging here?
+    // LOG(TRACE, "ioExpanderReadRegister(0x%02x)", reg);
     Wire.beginTransmission(IoCtlBlk.address);
     Wire.write(&reg, 1);
     CHECK_TRUE(Wire.endTransmission(false) == 0, SYSTEM_ERROR_INTERNAL);
@@ -132,6 +137,7 @@ int ioExpanderReadRegister(uint8_t reg, uint8_t* val) {
 }
 
 int ioExpanderWritePin(uint8_t port, uint8_t pin, IoExpanderPinValue val) {
+    IoExpanderLock lock;
     uint8_t newVal = IoCtlBlk.regValues.output[port];
     uint8_t bitMask = 0x01 << pin;
     if (val == IoExpanderPinValue::HIGH) {
@@ -147,6 +153,7 @@ int ioExpanderWritePin(uint8_t port, uint8_t pin, IoExpanderPinValue val) {
 }
 
 int ioExpanderReadPin(uint8_t port, uint8_t pin, IoExpanderPinValue& val) {
+    IoExpanderLock lock;
     uint8_t newVal = 0x00;
     uint8_t bitMask = 0x01 << pin;
     CHECK(ioExpanderReadRegister(inputPortReg[port], &newVal));
@@ -159,6 +166,7 @@ int ioExpanderReadPin(uint8_t port, uint8_t pin, IoExpanderPinValue& val) {
 }
 
 int ioExpanderConfigureDirection(uint8_t port, uint8_t pin, IoExpanderPinDir dir) {
+    IoExpanderLock lock;
     uint8_t newVal = IoCtlBlk.regValues.dir[port];
     uint8_t bitMask = 0x01 << pin;
     if (dir == IoExpanderPinDir::OUTPUT) {
@@ -174,6 +182,7 @@ int ioExpanderConfigureDirection(uint8_t port, uint8_t pin, IoExpanderPinDir dir
 }
 
 int ioExpanderConfigurePull(uint8_t port, uint8_t pin, IoExpanderPinPull pull) {
+    IoExpanderLock lock;
     uint8_t newPullEn = IoCtlBlk.regValues.pullEnable[port];
     uint8_t newPullSel = IoCtlBlk.regValues.pullSelect[port];
     uint8_t bitMask = 0x01 << pin;
@@ -203,6 +212,7 @@ int ioExpanderConfigurePull(uint8_t port, uint8_t pin, IoExpanderPinPull pull) {
 }
 
 int ioExpanderConfigureDrive(uint8_t port, uint8_t pin, IoExpanderPinDrive drive) {
+    IoExpanderLock lock;
     uint8_t regIdx = (port * 2) + (pin / 4);
     uint8_t newVal = IoCtlBlk.regValues.outputDrive[regIdx];
     uint8_t bitMask = 0x03 << ((pin % 4) * 2);
@@ -216,6 +226,7 @@ int ioExpanderConfigureDrive(uint8_t port, uint8_t pin, IoExpanderPinDrive drive
 }
 
 int ioExpanderConfigureLatch(uint8_t port, uint8_t pin, bool enable) {
+    IoExpanderLock lock;
     uint8_t newVal = IoCtlBlk.regValues.inputLatch[port];
     uint8_t bitMask = 0x01 << pin;
     if (enable) {
@@ -231,6 +242,7 @@ int ioExpanderConfigureLatch(uint8_t port, uint8_t pin, bool enable) {
 }
 
 int ioExpanderConfigureInverted(uint8_t port, uint8_t pin, bool enable) {
+    IoExpanderLock lock;
     uint8_t newVal = IoCtlBlk.regValues.inputInverted[port];
     uint8_t bitMask = 0x01 << pin;
     if (enable) {
@@ -246,6 +258,7 @@ int ioExpanderConfigureInverted(uint8_t port, uint8_t pin, bool enable) {
 }
 
 int ioExpanderConfigureInterrupt(uint8_t port, uint8_t pin, bool enable) {
+    IoExpanderLock lock;
     uint8_t newVal = IoCtlBlk.regValues.intMask[port];
     uint8_t bitMask = 0x01 << pin;
     if (enable) {
@@ -279,29 +292,32 @@ os_thread_return_t ioInterruptHandleThread(void* param) {
     while(!IoCtlBlk.exit) {
         bool flag;
         os_queue_take(IoCtlBlk.queue, &flag, CONCURRENT_WAIT_FOREVER, nullptr);
-        uint8_t input[2] = {0x00, 0x00};
-        uint8_t intStatus[2] = {0x00, 0x00};
-        if (ioExpanderReadRegister(inputPortReg[0], &input[0]) != SYSTEM_ERROR_NONE) {
-            continue;
-        }
-        if (ioExpanderReadRegister(inputPortReg[1], &input[1]) != SYSTEM_ERROR_NONE) {
-            continue;
-        }
-        if (ioExpanderReadRegister(intStatusReg[0], &intStatus[0]) != SYSTEM_ERROR_NONE) {
-            continue;
-        }
-        if (ioExpanderReadRegister(intStatusReg[1], &intStatus[1]) != SYSTEM_ERROR_NONE) {
-            continue;
-        }
-        for (const auto& callback : IoCtlBlk.callbacks) {
-            auto port = static_cast<uint8_t>(callback.port);
-            auto pin = static_cast<uint8_t>(callback.pin);
-            uint8_t bitMask = 0x01 << pin;
-            if (intStatus[port] & bitMask && callback.cb != nullptr) {
-                if ( ((callback.trig == IoExpanderIntTrigger::RISING) && (input[port] & bitMask)) ||
-                     ((callback.trig == IoExpanderIntTrigger::FALLING) && !(input[port] & bitMask)) ||
-                     (callback.trig == IoExpanderIntTrigger::CHANGE) ) {
-                    callback.cb();
+        {
+            IoExpanderLock lock;
+            uint8_t input[2] = {0x00, 0x00};
+            uint8_t intStatus[2] = {0x00, 0x00};
+            if (ioExpanderReadRegister(intStatusReg[0], &intStatus[0]) != SYSTEM_ERROR_NONE) {
+                continue;
+            }
+            if (ioExpanderReadRegister(intStatusReg[1], &intStatus[1]) != SYSTEM_ERROR_NONE) {
+                continue;
+            }
+            if (ioExpanderReadRegister(inputPortReg[0], &input[0]) != SYSTEM_ERROR_NONE) {
+                continue;
+            }
+            if (ioExpanderReadRegister(inputPortReg[1], &input[1]) != SYSTEM_ERROR_NONE) {
+                continue;
+            }
+            for (const auto& callback : IoCtlBlk.callbacks) {
+                auto port = static_cast<uint8_t>(callback.port);
+                auto pin = static_cast<uint8_t>(callback.pin);
+                uint8_t bitMask = 0x01 << pin;
+                if ((intStatus[port] & bitMask) && (callback.cb != nullptr)) {
+                    if ( ((callback.trig == IoExpanderIntTrigger::RISING) && (input[port] & bitMask)) ||
+                         ((callback.trig == IoExpanderIntTrigger::FALLING) && !(input[port] & bitMask)) ||
+                         (callback.trig == IoExpanderIntTrigger::CHANGE) ) {
+                        callback.cb();
+                    }
                 }
             }
         }
@@ -313,6 +329,7 @@ os_thread_return_t ioInterruptHandleThread(void* param) {
 
 
 int io_expander_init(uint8_t addr, pin_t reset, pin_t intPin) {
+    IoExpanderLock lock;
     IoCtlBlk.address = addr;
     IoCtlBlk.resetPin = reset;
     IoCtlBlk.intPin = intPin;
@@ -332,6 +349,7 @@ int io_expander_init(uint8_t addr, pin_t reset, pin_t intPin) {
 }
 
 int io_expander_deinit(void) {
+    IoExpanderLock lock;
     IoCtlBlk.exit = true;
     os_thread_join(IoCtlBlk.handleInterruptThread);
     os_thread_cleanup(IoCtlBlk.handleInterruptThread);
@@ -343,6 +361,7 @@ int io_expander_deinit(void) {
 }
 
 int io_expander_hard_reset(void) {
+    IoExpanderLock lock;
     CHECK_TRUE(IoCtlBlk.resetPin != PIN_INVALID, SYSTEM_ERROR_INVALID_ARGUMENT);
     // Assert reset pin
     pinMode(IoCtlBlk.resetPin, OUTPUT);
@@ -353,6 +372,7 @@ int io_expander_hard_reset(void) {
 }
 
 int io_expander_configure_pin(const IoExpanderPinConfig& config) {
+    IoExpanderLock lock;
     auto port = static_cast<uint8_t>(config.port);
     auto pin = static_cast<uint8_t>(config.pin);
     CHECK_TRUE(port < IO_EXPANDER_PORT_COUNT_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -381,6 +401,7 @@ int io_expander_configure_pin(const IoExpanderPinConfig& config) {
 }
 
 int io_expander_write_pin(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue val) {
+    IoExpanderLock lock;
     auto sPort = static_cast<uint8_t>(port);
     auto sPin = static_cast<uint8_t>(pin);
     uint8_t bitMask = 0x01 << sPin;
@@ -392,6 +413,7 @@ int io_expander_write_pin(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinV
 }
 
 int io_expander_read_pin(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue& val) {
+    IoExpanderLock lock;
     auto sPort = static_cast<uint8_t>(port);
     auto sPin = static_cast<uint8_t>(pin);
     CHECK_TRUE(sPort < IO_EXPANDER_PORT_COUNT_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);

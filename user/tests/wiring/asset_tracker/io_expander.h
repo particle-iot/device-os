@@ -101,6 +101,42 @@ private:
 
 } // namespace particle
 
+class IoExpanderLock {
+public:
+    IoExpanderLock()
+            : locked_(false) {
+        lock();
+    }
+
+    IoExpanderLock(IoExpanderLock&& lock)
+            : locked_(lock.locked_) {
+        lock.locked_ = false;
+    }
+
+    IoExpanderLock(const IoExpanderLock&) = delete;
+    IoExpanderLock& operator=(const IoExpanderLock&) = delete;
+
+    ~IoExpanderLock() {
+        if (locked_) {
+            unlock();
+        }
+    }
+
+    void lock() {
+        mutex_.lock();
+        locked_ = true;
+    }
+
+    void unlock() {
+        mutex_.unlock();
+        locked_ = false;
+    }
+
+private:
+    bool locked_;
+    static RecursiveMutex mutex_;
+};
+
 int io_expander_init(uint8_t addr, pin_t resetPin, pin_t intPin);
 int io_expander_deinit(void);
 int io_expander_hard_reset(void);
