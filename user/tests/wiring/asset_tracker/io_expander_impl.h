@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,8 +21,12 @@
 #include "Particle.h"
 
 
-#define IO_EXPANDER_PORT_COUNT_MAX              2
-#define IO_EXPANDER_PIN_COUNT_PER_PORT_MAX      8
+#define IO_EXPANDER_PORT_COUNT_MAX              (2)
+#define IO_EXPANDER_PIN_COUNT_PER_PORT_MAX      (8)
+
+#define IO_EXPANDER_I2C_ADDRESS                 (0x20)
+#define IO_EXPANDER_RESET_PIN                   (D23)
+#define IO_EXPANDER_INT_PIN                     (D22)
 
 // Ports on PCAL6416A
 enum class IoExpanderPort : uint8_t {
