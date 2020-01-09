@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -115,16 +115,15 @@ int ioExpanderWriteRegister(uint8_t reg, uint8_t val) {
     uint8_t buf[2];
     buf[0] = reg;
     buf[1] = val;
-    Wire.write(buf, sizeof(buf));
     Wire.beginTransmission(IoCtlBlk.address);
-    Wire.endTransmission();
-    return SYSTEM_ERROR_NONE;
+    Wire.write(buf, sizeof(buf));
+    return Wire.endTransmission();
 }
 
 int ioExpanderReadRegister(uint8_t reg, uint8_t* val) {
-    Wire.write(&reg, 1);
     Wire.beginTransmission(IoCtlBlk.address);
-    Wire.endTransmission(false);
+    Wire.write(&reg, 1);
+    CHECK_TRUE(Wire.endTransmission(false) == 0, SYSTEM_ERROR_INTERNAL);
     Wire.requestFrom(IoCtlBlk.address, (uint8_t)1);
     if (Wire.available()) {
         *val = Wire.read();
