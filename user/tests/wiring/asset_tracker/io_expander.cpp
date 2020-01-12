@@ -19,67 +19,57 @@
 
 using namespace particle;
 
-RecursiveMutex IoExpanderLock::mutex_;
-
-IoExpander::IoExpander()
-        : initialized_(false) {
+IoExpanderPinObj::IoExpanderPinObj()
+        : instance_(nullptr),
+          port_(PIN_INVALID),
+          pin_(PIN_INVALID),
+          configured_(false) {
 }
 
-IoExpander::~IoExpander() {
-    deinit();
+IoExpanderPinObj::IoExpanderPinObj(IoExpanderBase& instance, IoExpanderPort port, IoExpanderPin pin) {
+    instance_ = &instance;
+    port_ = static_cast<uint8_t>(port);
+    pin_ = static_cast<uint8_t>(pin);
+    configured_ = true;
 }
 
-IoExpander& IoExpander::getInstance() {
-    static IoExpander ioExpander;
-    return ioExpander;
+IoExpanderPinObj::~IoExpanderPinObj() {
+    if (configured_) {
+        mode(IoExpanderPinMode::INPUT);
+    }
 }
 
-int IoExpander::init(uint8_t addr, pin_t resetPin, pin_t intPin) {
-    IoExpanderLock lock;
-    CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
-    CHECK(io_expander_init(addr, resetPin, intPin));
-    initialized_ = true;
-    return SYSTEM_ERROR_NONE;
+int IoExpanderPinObj::mode(IoExpanderPinMode mode) const {
+    CHECK_TRUE(configured_, SYSTEM_ERROR_INVALID_STATE);
+    return instance_->setPinMode(port_, pin_, mode);
 }
 
-int IoExpander::deinit() {
-    IoExpanderLock lock;
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
-    CHECK(io_expander_deinit());
-    initialized_ = false;
-    return SYSTEM_ERROR_NONE;
+int IoExpanderPinObj::outputDrive(IoExpanderPinDrive drive) const {
+    CHECK_TRUE(configured_, SYSTEM_ERROR_INVALID_STATE);
+    return instance_->setPinOutputDrive(port_, pin_, drive);
 }
 
-int IoExpander::reset() const {
-    IoExpanderLock lock;
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    return io_expander_hard_reset();
+int IoExpanderPinObj::inputInverted(bool enable) const {
+    CHECK_TRUE(configured_, SYSTEM_ERROR_INVALID_STATE);
+    return instance_->setPinInputInverted(port_, pin_, enable);
 }
 
-int IoExpander::sleep() const {
-    // TODO: implementation
-    return SYSTEM_ERROR_NONE;
+int IoExpanderPinObj::inputLatch(bool enable) const {
+    CHECK_TRUE(configured_, SYSTEM_ERROR_INVALID_STATE);
+    return instance_->setPinInputLatch(port_, pin_, enable);
 }
 
-int IoExpander::wakeup() const {
-    // TODO: implementation
-    return SYSTEM_ERROR_NONE;
+int IoExpanderPinObj::write(IoExpanderPinValue value) const {
+    CHECK_TRUE(configured_, SYSTEM_ERROR_INVALID_STATE);
+    return instance_->writePinValue(port_, pin_, value);
 }
 
-int IoExpander::configure(const IoExpanderPinConfig& config) {
-    IoExpanderLock lock;
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    return io_expander_configure_pin(config);
+int IoExpanderPinObj::read(IoExpanderPinValue& value) const {
+    CHECK_TRUE(configured_, SYSTEM_ERROR_INVALID_STATE);
+    return instance_->readPinValue(port_, pin_, value);
 }
 
-int IoExpander::write(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue val) {
-    IoExpanderLock lock;
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    return io_expander_write_pin(port, pin, val);
-}
-
-int IoExpander::read(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue& val) {
-    IoExpanderLock lock;
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    return io_expander_read_pin(port, pin, val);
+int IoExpanderPinObj::attachInterrupt(IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback) const {
+    CHECK_TRUE(configured_, SYSTEM_ERROR_INVALID_STATE);
+    return instance_->attachPinInterrupt(port_, pin_, trig, callback);
 }

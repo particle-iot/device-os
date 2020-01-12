@@ -18,7 +18,7 @@
 #ifndef IO_EXPANDER_H
 #define IO_EXPANDER_H
 
-#include "io_expander_impl.h"
+#include "Particle.h"
 
 namespace particle {
 
@@ -29,15 +29,13 @@ enum class IoExpanderPinValue : uint8_t {
     LOW
 };
 
-enum class IoExpanderPinDir : uint8_t {
+enum class IoExpanderPinMode : uint8_t {
     INPUT,
-    OUTPUT
-};
-
-enum class IoExpanderPinPull : uint8_t {
-    NO_PULL,
-    PULL_UP,
-    PULL_DOWN
+    INPUT_PULLUP,
+    INPUT_PULLDOWN,
+    OUTPUT,
+    OUTPUT_PULLUP,
+    OUTPUT_PULLDOWN
 };
 
 enum class IoExpanderIntTrigger : uint8_t {
@@ -46,70 +44,45 @@ enum class IoExpanderIntTrigger : uint8_t {
     FALLING
 };
 
-struct IoExpanderPinConfig {
-    IoExpanderPinConfig()
-            : port(IoExpanderPort::INVALID),
-              pin(IoExpanderPin::INVALID),
-              dir(IoExpanderPinDir::INPUT),
-              pull(IoExpanderPinPull::NO_PULL),
-              drive(IoExpanderPinDrive::PERCENT100),
-              inputLatch(0),
-              inputInverted(0),
-              intEn(0),
-              trig(IoExpanderIntTrigger::CHANGE),
-              callback(nullptr) {
-    }
-    ~IoExpanderPinConfig() {}
-
-    IoExpanderPort port;
-    IoExpanderPin pin;
-    IoExpanderPinDir dir;
-    IoExpanderPinPull pull;
-    IoExpanderPinDrive drive;
-    uint8_t inputLatch      : 1;
-    uint8_t inputInverted   : 1;
-    uint8_t intEn           : 1;
-    IoExpanderIntTrigger trig;
-    uint8_t reserved;
-    IoExpanderOnInterruptCallback callback;
-};
-static_assert((sizeof(IoExpanderPinConfig) % 4) == 0, "Size of IoExpanderPinConfig should be 4-bytes aligned.");
-
-
-class IoExpander {
-public:
-    int init(uint8_t addr, pin_t resetPin, pin_t intPin);
-    int deinit();
-    int reset() const;
-    int sleep() const;
-    int wakeup() const;
-
-    int configure(const IoExpanderPinConfig& config);
-    int write(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue val);
-    int read(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue& val);
-
-    static IoExpander& getInstance();
-
-private:
-    IoExpander();
-    ~IoExpander();
-
-    bool initialized_;
+enum class IoExpanderPort : uint8_t {
+    // It must start from 0, as it is also the port index.
+    PORT0 = 0,
+    PORT1 = 1,
+    INVALID = 0x7F
 };
 
-#define IOExpander IoExpander::getInstance()
+enum class IoExpanderPin : uint8_t {
+    // It must start from 0, as it is also the bit index in registers.
+    PIN0 = 0,
+    PIN1 = 1,
+    PIN2 = 2,
+    PIN3 = 3,
+    PIN4 = 4,
+    PIN5 = 5,
+    PIN6 = 6,
+    PIN7 = 7,
+    INVALID = 0x7F
+};
 
-} // namespace particle
+enum class IoExpanderPinDrive : uint8_t {
+    PERCENT25 = 0x00,
+    PERCENT50 = 0x01,
+    PERCENT75 = 0x02,
+    PERCENT100 = 0x03
+};
+
 
 class IoExpanderLock {
 public:
-    IoExpanderLock()
-            : locked_(false) {
+    IoExpanderLock(RecursiveMutex& mutex)
+            : locked_(false),
+              mutex_(mutex) {
         lock();
     }
 
     IoExpanderLock(IoExpanderLock&& lock)
-            : locked_(lock.locked_) {
+            : locked_(lock.locked_),
+              mutex_(lock.mutex_) {
         lock.locked_ = false;
     }
 
@@ -134,14 +107,49 @@ public:
 
 private:
     bool locked_;
-    static RecursiveMutex mutex_;
+    RecursiveMutex& mutex_;
 };
 
-int io_expander_init(uint8_t addr, pin_t resetPin, pin_t intPin);
-int io_expander_deinit(void);
-int io_expander_hard_reset(void);
-int io_expander_configure_pin(const IoExpanderPinConfig& config);
-int io_expander_write_pin(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue val);
-int io_expander_read_pin(IoExpanderPort port, IoExpanderPin pin, IoExpanderPinValue& val);
+
+class IoExpanderBase {
+public:
+    virtual int begin(uint8_t address, pin_t resetPin, pin_t interruptPin) = 0;
+    virtual int end() = 0;
+    virtual int reset() = 0;
+    virtual int sleep() = 0;
+    virtual int wakeup() = 0;
+
+    virtual int setPinMode(uint8_t port, uint8_t pin, IoExpanderPinMode mode) = 0;
+    virtual int setPinOutputDrive(uint8_t port, uint8_t pin, IoExpanderPinDrive drive) = 0;
+    virtual int setPinInputInverted(uint8_t port, uint8_t pin, bool enable) = 0;
+    virtual int setPinInputLatch(uint8_t port, uint8_t pin, bool enable) = 0;
+    virtual int writePinValue(uint8_t port, uint8_t pin, IoExpanderPinValue value) = 0;
+    virtual int readPinValue(uint8_t port, uint8_t pin, IoExpanderPinValue& value) = 0;
+    virtual int attachPinInterrupt(uint8_t port, uint8_t pin, IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback) = 0;
+};
+
+
+class IoExpanderPinObj {
+public:
+    IoExpanderPinObj();
+    IoExpanderPinObj(IoExpanderBase& instance, IoExpanderPort port, IoExpanderPin pin);
+    ~IoExpanderPinObj();
+
+    int mode(IoExpanderPinMode mode) const;
+    int outputDrive(IoExpanderPinDrive drive) const;
+    int inputInverted(bool enable) const;
+    int inputLatch(bool enable) const;
+    int write(IoExpanderPinValue value) const;
+    int read(IoExpanderPinValue& value) const;
+    int attachInterrupt(IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback) const;
+
+private:
+    IoExpanderBase* instance_;
+    uint8_t port_;
+    uint8_t pin_;
+    bool configured_;
+};
+
+} // namespace particle
 
 #endif // IO_EXPANDER_H
