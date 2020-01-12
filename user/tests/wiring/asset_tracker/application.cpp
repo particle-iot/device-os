@@ -1,17 +1,23 @@
 #include "Particle.h"
-#include "io_expander.h"
+#include "pcal6416a.h"
 
-#define TEST_GPS                        0
-#define TEST_IO_EXP_INT                 1
+#define TEST_GPS                        1
+#define TEST_IO_EXP_INT                 0
 
 #if TEST_GPS
-#define GPS_RESET_PIN_PORT              (IoExpanderPort::PORT0)
-#define GPS_RESET_PIN                   (IoExpanderPin::PIN5)
-#define GPS_PW_EN_PIN_PORT              (IoExpanderPort::PORT0)
-#define GPS_PW_EN_PIN                   (IoExpanderPin::PIN4)
-#define GPS_CS_PIN_PORT                 (IoExpanderPort::PORT0)
-#define GPS_CS_PIN                      (IoExpanderPin::PIN3)
+IoExpanderPinObj gpsResetPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN5);
+IoExpanderPinObj gpsPwrEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN4);
+IoExpanderPinObj gpsCsPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN3);
+
+IoExpanderPinObj canCsPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN1);
+IoExpanderPinObj wifiCsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN1);
+IoExpanderPinObj accelCsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN4);
 #endif // TEST_GPS
+
+#if TEST_IO_EXP_INT
+IoExpanderPinObj intPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN7);
+IoExpanderPinObj trigPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN6);
+#endif
 
 // Enable threading if compiled with "USE_THREADING=y"
 #if PLATFORM_THREADING == 1 && USE_THREADING == 1
@@ -25,58 +31,31 @@ SerialLogHandler log(LOG_LEVEL_ALL);
 
 #if TEST_GPS
 static int deselectAllCsPins() {
-    IoExpanderPinConfig config = {};
-    config.dir = IoExpanderPinDir::OUTPUT;
-
-    config.port = IoExpanderPort::PORT0;
-    config.pin = IoExpanderPin::PIN1; // CAN bus /CS pin
-    CHECK(IOExpander.configure(config));
-    CHECK(IOExpander.write(IoExpanderPort::PORT0, IoExpanderPin::PIN1, IoExpanderPinValue::HIGH));
-
-    config.port = IoExpanderPort::PORT1;
-    config.pin = IoExpanderPin::PIN1; // Wi-Fi /CS pin
-    CHECK(IOExpander.configure(config));
-    CHECK(IOExpander.write(IoExpanderPort::PORT1, IoExpanderPin::PIN1, IoExpanderPinValue::HIGH));
-
-    config.port = IoExpanderPort::PORT1;
-    config.pin = IoExpanderPin::PIN4; // MEMS /CS pin
-    CHECK(IOExpander.configure(config));
-    CHECK(IOExpander.write(IoExpanderPort::PORT1, IoExpanderPin::PIN4, IoExpanderPinValue::HIGH));
-
-    return SYSTEM_ERROR_NONE;
+    CHECK(canCsPin.mode(IoExpanderPinMode::OUTPUT));
+    CHECK(canCsPin.write(IoExpanderPinValue::HIGH));
+    CHECK(wifiCsPin.mode(IoExpanderPinMode::OUTPUT));
+    CHECK(wifiCsPin.write(IoExpanderPinValue::HIGH));
+    CHECK(accelCsPin.mode(IoExpanderPinMode::OUTPUT));
+    return accelCsPin.write(IoExpanderPinValue::HIGH);
 }
 
 static int gpsConfigurePins() {
-    IoExpanderPinConfig config = {};
-    config.dir = IoExpanderPinDir::OUTPUT;
-
-    config.port = GPS_CS_PIN_PORT;
-    config.pin = GPS_CS_PIN; // /CS pin
-    CHECK(IOExpander.configure(config));
-    CHECK(IOExpander.write(GPS_CS_PIN_PORT, GPS_CS_PIN, IoExpanderPinValue::HIGH));
-
-    config.port = GPS_PW_EN_PIN_PORT;
-    config.pin = GPS_PW_EN_PIN; // PW_EN pin
-    CHECK(IOExpander.configure(config));
-    CHECK(IOExpander.write(GPS_PW_EN_PIN_PORT, GPS_PW_EN_PIN, IoExpanderPinValue::HIGH));
-
-    config.port = GPS_RESET_PIN_PORT;
-    config.pin = GPS_RESET_PIN; // /RESET pin
-    CHECK(IOExpander.configure(config));
-    CHECK(IOExpander.write(GPS_RESET_PIN_PORT, GPS_RESET_PIN, IoExpanderPinValue::LOW));
+    CHECK(gpsCsPin.mode(IoExpanderPinMode::OUTPUT));
+    CHECK(gpsCsPin.write(IoExpanderPinValue::HIGH));
+    CHECK(gpsPwrEnPin.mode(IoExpanderPinMode::OUTPUT));
+    CHECK(gpsPwrEnPin.write(IoExpanderPinValue::HIGH));
+    CHECK(gpsResetPin.mode(IoExpanderPinMode::OUTPUT));
+    CHECK(gpsResetPin.write(IoExpanderPinValue::LOW));
     delay(500);
-    CHECK(IOExpander.write(GPS_RESET_PIN_PORT, GPS_RESET_PIN, IoExpanderPinValue::HIGH));
-
-    return SYSTEM_ERROR_NONE;
+    return gpsResetPin.write(IoExpanderPinValue::HIGH);
 }
 
 static int gpsCsSelect(bool select) {
     if (select) {
-        CHECK(IOExpander.write(GPS_CS_PIN_PORT, GPS_CS_PIN, IoExpanderPinValue::LOW));
+        return gpsCsPin.write(IoExpanderPinValue::LOW);
     } else {
-        CHECK(IOExpander.write(GPS_CS_PIN_PORT, GPS_CS_PIN, IoExpanderPinValue::HIGH));
+        return gpsCsPin.write(IoExpanderPinValue::HIGH);
     }
-    return SYSTEM_ERROR_NONE;
 }
 #endif // TEST_GPS
 
@@ -86,34 +65,21 @@ static void onP07IntHandler() {
 }
 
 static int configureIntPin() {
-    IoExpanderPinConfig config = {};
-    config.port = IoExpanderPort::PORT0;
-    config.pin = IoExpanderPin::PIN7;
-    config.dir = IoExpanderPinDir::INPUT;
-    config.pull = IoExpanderPinPull::PULL_UP;
-    config.inputLatch = true;
-    config.intEn = true;
-    config.trig = IoExpanderIntTrigger::FALLING;
-    config.callback = onP07IntHandler;
-    return IOExpander.configure(config);
+    CHECK(intPin.mode(IoExpanderPinMode::INPUT_PULLUP));
+    return intPin.attachInterrupt(IoExpanderIntTrigger::FALLING, onP07IntHandler);
 }
 
 static int configureTrigPin() {
-    IoExpanderPinConfig config = {};
-    config.dir = IoExpanderPinDir::OUTPUT;
-    config.port = IoExpanderPort::PORT0;
-    config.pin = IoExpanderPin::PIN6;
-    CHECK(IOExpander.configure(config));
-    return IOExpander.write(IoExpanderPort::PORT0, IoExpanderPin::PIN6, IoExpanderPinValue::HIGH);
+    CHECK(trigPin.mode(IoExpanderPinMode::OUTPUT));
+    return trigPin.write(IoExpanderPinValue::HIGH);
 }
 
 static int setTriggerPin(bool val) {
     if (val) {
-        CHECK(IOExpander.write(IoExpanderPort::PORT0, IoExpanderPin::PIN6, IoExpanderPinValue::HIGH));
+        return trigPin.write(IoExpanderPinValue::HIGH);
     } else {
-        CHECK(IOExpander.write(IoExpanderPort::PORT0, IoExpanderPin::PIN6, IoExpanderPinValue::LOW));
+        return trigPin.write(IoExpanderPinValue::LOW);
     }
-    return SYSTEM_ERROR_NONE;
 }
 #endif // TEST_IO_EXP_INT
 
@@ -123,11 +89,8 @@ void setup() {
     Serial.println("Application started.");
 
     // I/O Expander initialization
-    if (IOExpander.init(IO_EXPANDER_I2C_ADDRESS, IO_EXPANDER_RESET_PIN, IO_EXPANDER_INT_PIN) != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "IOExpander.init() failed.");
-    }
-    if (IOExpander.reset() != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "IOExpander.reset() failed.");
+    if (PCAL6416A.begin(IO_EXPANDER_I2C_ADDRESS, IO_EXPANDER_RESET_PIN, IO_EXPANDER_INT_PIN) != SYSTEM_ERROR_NONE) {
+        LOG(ERROR, "PCAL6416A.begin() failed.");
     }
 
 #if TEST_IO_EXP_INT
