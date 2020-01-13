@@ -195,7 +195,7 @@ void Pcal6416a::resetRegValue() {
     portPullRegValue_ = 0x00;
 }
 
-int Pcal6416a::writeRegister(uint8_t reg, uint8_t val) {
+int Pcal6416a::writeRegister(const uint8_t reg, const uint8_t val) {
     LOG(TRACE, "writeRegister(0x%02x, 0x%02x)", reg, val);
     uint8_t buf[2];
     buf[0] = reg;
@@ -205,7 +205,7 @@ int Pcal6416a::writeRegister(uint8_t reg, uint8_t val) {
     return Wire.endTransmission();
 }
 
-int Pcal6416a::readRegister(uint8_t reg, uint8_t* val) {
+int Pcal6416a::readRegister(const uint8_t reg, uint8_t* const val) {
     Wire.beginTransmission(address_);
     Wire.write(&reg, 1);
     CHECK_TRUE(Wire.endTransmission(false) == 0, SYSTEM_ERROR_INTERNAL);

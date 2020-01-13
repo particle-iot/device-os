@@ -24,10 +24,12 @@
 #define IO_EXPANDER_PORT_COUNT_MAX              (2)
 #define IO_EXPANDER_PIN_COUNT_PER_PORT_MAX      (8)
 
-#define IO_EXPANDER_I2C_ADDRESS                 (0x20)
-#define IO_EXPANDER_RESET_PIN                   (D23)
-#define IO_EXPANDER_INT_PIN                     (D22)
+#define PCAL6416A_I2C_ADDRESS                   (0x20)
+#define PCAL6416A_RESET_PIN                     (D23)
+#define PCAL6416A_INT_PIN                       (D22)
 
+
+namespace particle {
 
 class Pcal6416a : public IoExpanderBase {
 public:
@@ -82,8 +84,8 @@ private:
     ~Pcal6416a();
 
     void resetRegValue();
-    int writeRegister(uint8_t reg, uint8_t val);
-    int readRegister(uint8_t reg, uint8_t* val);
+    int writeRegister(const uint8_t reg, const uint8_t val);
+    int readRegister(const uint8_t reg, uint8_t* const val);
     int configurePullAbility(uint8_t port, uint8_t pin, IoExpanderPinMode mode);
     int configureDirection(uint8_t port, uint8_t pin, IoExpanderPinMode mode);
     int configureOutputDrive(uint8_t port, uint8_t pin, IoExpanderPinDrive drive);
@@ -115,6 +117,8 @@ private:
 
     static RecursiveMutex mutex_;
 }; // class Pcal6416a
+
+} // namespace particle
 
 #define PCAL6416A Pcal6416a::getInstance()
 

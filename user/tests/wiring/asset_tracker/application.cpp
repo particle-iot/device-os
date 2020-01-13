@@ -1,7 +1,8 @@
 #include "Particle.h"
 #include "pcal6416a.h"
+#include "am18x5.h"
 
-#define TEST_GPS                        1
+#define TEST_GPS                        0
 #define TEST_IO_EXP_INT                 0
 
 #if TEST_GPS
@@ -89,8 +90,16 @@ void setup() {
     Serial.println("Application started.");
 
     // I/O Expander initialization
-    if (PCAL6416A.begin(IO_EXPANDER_I2C_ADDRESS, IO_EXPANDER_RESET_PIN, IO_EXPANDER_INT_PIN) != SYSTEM_ERROR_NONE) {
+    if (PCAL6416A.begin(PCAL6416A_I2C_ADDRESS, PCAL6416A_RESET_PIN, PCAL6416A_INT_PIN) != SYSTEM_ERROR_NONE) {
         LOG(ERROR, "PCAL6416A.begin() failed.");
+    }
+
+    AM18X5.begin(AM18X5_I2C_ADDRESS);
+    uint16_t partNumber;
+    if (AM18X5.getPartNumber(&partNumber) != SYSTEM_ERROR_NONE) {
+        LOG(ERROR, "AM18X5.getPartNumber() failed.");
+    } else {
+        LOG(INFO, "AM18X5 part number: 0x%04X", partNumber);
     }
 
 #if TEST_IO_EXP_INT
