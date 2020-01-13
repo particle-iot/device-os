@@ -3,7 +3,8 @@ WRITE_FILE_APPEND = $(shell echo "$(2)" >> $(1))
 
 COMMA := ,
 
-include ../../../build/common-tools.mk
+COMMON_BUILD=../../../build
+include $(COMMON_BUILD)/arm-tools.mk
 
 ifneq (,$(PREBUILD))
 # Should declare enough RAM for inermediate linker script: 89K
