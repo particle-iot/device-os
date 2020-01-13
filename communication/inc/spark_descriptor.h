@@ -63,6 +63,17 @@ struct SparkDescriptor
 {
     typedef std::function<bool(const void*, SparkReturnType::Enum)> FunctionResultCallback;
 
+    /**
+     * A callback invoked when the processing of a variable request is completed.
+     *
+     * @param result Result code (a value defined by the `system_error_t` enum).
+     * @param type Variable type (a value defined by the `SparkReturnType::Enum` enum).
+     * @param data Variable value. The ownership over the allocated memory is transferred to the callback.
+     * @param size Size of the variable value.
+     * @param context Context of the variable request.
+     */
+    typedef void (*GetVariableCallback)(int result, int type, void* data, size_t size, void* context);
+
     size_t size;
     int (*num_functions)(void);
     const char* (*get_function_key)(int function_index);
@@ -103,7 +114,14 @@ struct SparkDescriptor
      */
     bool (*append_metrics)(appender_fn appender, void* append, uint32_t flags, uint32_t page, void* reserved);
 
-    void* reserved[1];      // add a few additional pointers
+    /**
+     * Get the value of a variable asynchronously.
+     *
+     * @param name Variable name.
+     * @param callback Completion callback.
+     * @param context Context of the variable request. This argument needs to be passed to the completion callback.
+     */
+    void (*get_variable_async)(const char* name, GetVariableCallback callback, void* context);
 };
 
 PARTICLE_STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==60 || sizeof(void*)!=4);

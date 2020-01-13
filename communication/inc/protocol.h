@@ -301,6 +301,7 @@ public:
 			channel(channel),
 			product_id(PRODUCT_ID),
 			product_firmware_version(PRODUCT_FIRMWARE_VERSION),
+			variables(this),
 			publisher(this),
 			last_ack_handlers_update(0),
 			initialized(false)
@@ -518,6 +519,14 @@ public:
 #endif // HAL_PLATFORM_MESH
 
 	void notify_message_complete(message_id_t msg_id, CoAPCode::Enum responseCode);
+
+	const SparkDescriptor& getDescriptor() const {
+		return descriptor;
+	}
+
+	MessageChannel& getChannel() {
+		return channel;
+	}
 };
 
 }

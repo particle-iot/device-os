@@ -186,6 +186,7 @@ public:
 	}
     static CoAPCode::Enum code(const unsigned char *message);
     static CoAPType::Enum type(const unsigned char *message);
+    static size_t token(const unsigned char* message, token_t* token);
     static size_t option_decode(unsigned char **option);
 
     /**

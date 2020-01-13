@@ -24,6 +24,8 @@
   */
 #include "coap.h"
 
+#include <algorithm>
+
 namespace particle {
 namespace protocol {
 
@@ -66,6 +68,18 @@ CoAPType::Enum CoAP::type(const unsigned char *message) {
         case 0x30:
             return CoAPType::RESET;
     }
+}
+
+size_t CoAP::token(const unsigned char* message, token_t* token) {
+    const size_t size = (message[0] & 0x0f);
+    if (size > 8) {
+        return 0; // Lengths 9-15 are reserved
+    }
+    if (token) {
+        const size_t n = std::min(sizeof(token_t), size);
+        memcpy(token, message + 4, n);
+    }
+    return size;
 }
 
 size_t CoAP::option_decode(unsigned char **option) {

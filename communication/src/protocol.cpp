@@ -49,7 +49,12 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	message_type = Messages::decodeType(queue, message.length());
 	// todo - not all requests/responses have tokens. These device requests do not use tokens:
 	// Update Done, ChunkMissed, event, ping, hello
-	token_t token = queue[4];
+	token_t token = 0;
+	size_t token_len = CoAP::token(queue, &token);
+	if (token_len > 0 && token_len != sizeof(token_t)) {
+		LOG(ERROR, "Unsupported token length: %u", (unsigned)token_len);
+		token_len = 0;
+	}
 	message_id_t msg_id = CoAP::message_id(queue);
 	CoAPCode::Enum code = CoAP::code(queue);
 	CoAPType::Enum type = CoAP::type(queue);
@@ -84,16 +89,22 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	}
 
 	case CoAPMessageType::FUNCTION_CALL:
+	{
+		if (!token_len) {
+			LOG(ERROR, "Missing request token");
+			return ProtocolError::MISSING_REQUEST_TOKEN;
+		}
 		return functions.handle_function_call(token, msg_id, message, channel,
 				descriptor.call_function);
+	}
 
 	case CoAPMessageType::VARIABLE_REQUEST:
 	{
-		char variable_key[MAX_VARIABLE_KEY_LENGTH+1];
-		variables.decode_variable_request(variable_key, message);
-		return variables.handle_variable_request(variable_key, message,
-				channel, token, msg_id,
-				descriptor.variable_type, descriptor.get_variable);
+		if (!token_len) {
+			LOG(ERROR, "Missing request token");
+			return ProtocolError::MISSING_REQUEST_TOKEN;
+		}
+		return variables.handle_request(message, token);
 	}
 	case CoAPMessageType::SAVE_BEGIN:
 		// fall through

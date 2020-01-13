@@ -19,88 +19,50 @@
 
 #pragma once
 
-#include <string.h>
-#include "protocol_defs.h"
-#include "message_channel.h"
-#include "messages.h"
 #include "spark_descriptor.h"
+#include "protocol_defs.h"
+#include "coap.h"
 
+#include <cstddef>
 
-namespace particle
-{
-namespace protocol
-{
+namespace particle {
+
+namespace protocol {
+
+class Protocol;
+class Message;
 
 class Variables
 {
-
-
 public:
+    explicit Variables(Protocol* protocol);
 
-    ProtocolError decode_variable_request(char variable_key[MAX_VARIABLE_KEY_LENGTH+1], Message& message)
-    {
-        uint8_t* queue = message.buf();
-        uint8_t queue_offset = 8;
+    ProtocolError handle_request(Message& message, token_t token);
 
-        // copy the variable key
-        size_t variable_key_length;
-        if (queue[7] == 0x0d) {
-            variable_key_length = 0x0d + (queue[8] & 0xFF);
-            queue_offset++;
-        } else {
-            variable_key_length = queue[7] & 0x0F;
-        }
-        if (variable_key_length > MAX_VARIABLE_KEY_LENGTH) {
-            variable_key_length = MAX_VARIABLE_KEY_LENGTH;
-        }
+private:
+    struct Context;
 
-        memcpy(variable_key, queue + queue_offset, variable_key_length);
-        memset(variable_key + variable_key_length, 0, MAX_VARIABLE_KEY_LENGTH+1 - variable_key_length);
-        return NO_ERROR;
-    }
+    Protocol* protocol_;
 
-    ProtocolError handle_variable_request(char* variable_key, Message& message, MessageChannel& channel, token_t token, message_id_t message_id,
-        SparkReturnType::Enum (*variable_type)(const char *variable_key),
-        const void *(*get_variable)(const char *variable_key))
-    {
-        uint8_t* queue = message.buf();
-        message.set_id(message_id);
-        // get variable value according to type using the descriptor
-        SparkReturnType::Enum var_type = variable_type(variable_key);
-        size_t response = 0;
+    ProtocolError handle_request(Message& message, token_t token, const char* key);
+    ProtocolError handle_request_compat(Message& message, token_t token, const char* key);
 
-        if(SparkReturnType::BOOLEAN == var_type)
-        {
-            const bool *bool_val = (const bool *)get_variable(variable_key);
-            response = Messages::variable_value(queue, message_id, token, *bool_val);
-        }
-        else if(SparkReturnType::INT == var_type)
-        {
-            const int *int_val = (const int *)get_variable(variable_key);
-            response = Messages::variable_value(queue, message_id, token, *int_val);
-        }
-        else if(SparkReturnType::STRING == var_type)
-        {
-            const char *str_val = (const char *)get_variable(variable_key);
+    ProtocolError decode_request(Message& message, char* key);
+    ProtocolError encode_response(Message& message, token_t token, const void* value, size_t value_size, SparkReturnType::Enum value_type);
+    size_t encode_response(uint8_t* buffer, token_t token, const void* value, size_t value_size);
 
-            // 2-byte leading length, 16 potential padding bytes
-            int max_length = message.capacity();
-            int str_length = strlen(str_val);
-            if (str_length > max_length) {
-                str_length = max_length;
-            }
-            response = Messages::variable_value(queue, message_id, token, str_val, str_length);
-        }
-        else if(SparkReturnType::DOUBLE == var_type)
-        {
-            double *double_val = (double *)get_variable(variable_key);
-            response = Messages::variable_value(queue, message_id, token, *double_val);
-        }
+    ProtocolError send_response(token_t token, const void* value, size_t value_size, SparkReturnType::Enum value_type);
+    ProtocolError send_error_response(token_t token, uint8_t code);
+    ProtocolError send_error_response(Message& message, token_t token, uint8_t code);
+    ProtocolError send_empty_ack(Message& message, token_t token, uint8_t code);
 
-        message.set_length(response);
-        return channel.send(message);
-    }
+    static void get_variable_callback(int result, int type, void* data, size_t size, void* context); // SparkDescriptor::GetVariableCallback
 };
 
+inline Variables::Variables(Protocol* protocol) :
+        protocol_(protocol) {
+}
 
-}}
+} // namespace protocol
+
+} // namespace particle
