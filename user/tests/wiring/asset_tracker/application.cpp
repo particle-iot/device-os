@@ -3,7 +3,7 @@
 #include "am18x5.h"
 
 #define TEST_GPS                        0
-#define TEST_IO_EXP_INT                 0
+#define TEST_IO_EXP_INT                 1
 
 #if TEST_GPS
 IoExpanderPinObj gpsResetPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN5);
@@ -17,7 +17,9 @@ IoExpanderPinObj accelCsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN
 
 #if TEST_IO_EXP_INT
 IoExpanderPinObj intPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN7);
+IoExpanderPinObj intPin1(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN7);
 IoExpanderPinObj trigPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN6);
+IoExpanderPinObj trigPin1(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN6);
 #endif
 
 // Enable threading if compiled with "USE_THREADING=y"
@@ -61,18 +63,26 @@ static int gpsCsSelect(bool select) {
 #endif // TEST_GPS
 
 #if TEST_IO_EXP_INT
-static void onP07IntHandler() {
+static void onP07IntHandler(void* context) {
     Serial.println("Entered onP07IntHandler().");
+}
+
+static void onP17IntHandler(void* context) {
+    Serial.println("Entered onP17IntHandler().");
 }
 
 static int configureIntPin() {
     CHECK(intPin.mode(IoExpanderPinMode::INPUT_PULLUP));
-    return intPin.attachInterrupt(IoExpanderIntTrigger::FALLING, onP07IntHandler);
+    CHECK(intPin.attachInterrupt(IoExpanderIntTrigger::FALLING, onP07IntHandler, nullptr));
+    CHECK(intPin1.mode(IoExpanderPinMode::INPUT_PULLDOWN));
+    return intPin1.attachInterrupt(IoExpanderIntTrigger::RISING, onP17IntHandler, nullptr);
 }
 
 static int configureTrigPin() {
     CHECK(trigPin.mode(IoExpanderPinMode::OUTPUT));
-    return trigPin.write(IoExpanderPinValue::HIGH);
+    CHECK(trigPin.write(IoExpanderPinValue::HIGH));
+    CHECK(trigPin1.mode(IoExpanderPinMode::OUTPUT));
+    return trigPin1.write(IoExpanderPinValue::LOW);
 }
 
 static int setTriggerPin(bool val) {
@@ -80,6 +90,14 @@ static int setTriggerPin(bool val) {
         return trigPin.write(IoExpanderPinValue::HIGH);
     } else {
         return trigPin.write(IoExpanderPinValue::LOW);
+    }
+}
+
+static int setTriggerPin1(bool val) {
+    if (val) {
+        return trigPin1.write(IoExpanderPinValue::HIGH);
+    } else {
+        return trigPin1.write(IoExpanderPinValue::LOW);
     }
 }
 #endif // TEST_IO_EXP_INT
@@ -148,5 +166,8 @@ void loop() {
     delay(3000);
     setTriggerPin(0);
     setTriggerPin(1);
+    delay(3000);
+    setTriggerPin1(0);
+    setTriggerPin1(1);
 #endif
 }
