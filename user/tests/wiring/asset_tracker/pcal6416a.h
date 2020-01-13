@@ -46,7 +46,7 @@ public:
     int setPinInputLatch(uint8_t port, uint8_t pin, bool enable);
     int writePinValue(uint8_t port, uint8_t pin, IoExpanderPinValue value);
     int readPinValue(uint8_t port, uint8_t pin, IoExpanderPinValue& value);
-    int attachPinInterrupt(uint8_t port, uint8_t pin, IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback);
+    int attachPinInterrupt(uint8_t port, uint8_t pin, IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback, void* context);
 
     static Pcal6416a& getInstance();
 
@@ -55,7 +55,8 @@ private:
         IoPinInterruptConfig()
                 : port(PIN_INVALID),
                   pin(PIN_INVALID),
-                  cb(nullptr) {
+                  cb(nullptr),
+                  context(nullptr) {
         }
         ~IoPinInterruptConfig() {}
 
@@ -63,6 +64,7 @@ private:
         uint8_t pin;
         IoExpanderIntTrigger trig;
         IoExpanderOnInterruptCallback cb;
+        void* context;
     };
 
     const uint8_t INVALID_I2C_ADDRESS = 0x7F;

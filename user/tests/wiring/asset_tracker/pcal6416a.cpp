@@ -162,7 +162,7 @@ int Pcal6416a::readPinValue(uint8_t port, uint8_t pin, IoExpanderPinValue& value
     return readPin(port, pin, value);
 }
 
-int Pcal6416a::attachPinInterrupt(uint8_t port, uint8_t pin, IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback) {
+int Pcal6416a::attachPinInterrupt(uint8_t port, uint8_t pin, IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback, void* context) {
     IoExpanderLock lock(mutex_);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(port < IO_EXPANDER_PORT_COUNT_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -173,6 +173,7 @@ int Pcal6416a::attachPinInterrupt(uint8_t port, uint8_t pin, IoExpanderIntTrigge
         config.pin = pin;
         config.trig = trig;
         config.cb = callback;
+        config.context = context;
         CHECK_TRUE(intConfigs_.append(config), SYSTEM_ERROR_NO_MEMORY);
     }
     return configureIntMask(port, pin, true);
@@ -380,7 +381,7 @@ os_thread_return_t Pcal6416a::ioInterruptHandleThread(void* param) {
                     if ( ((config.trig == IoExpanderIntTrigger::RISING) && (input[config.port] & bitMask)) ||
                             ((config.trig == IoExpanderIntTrigger::FALLING) && !(input[config.port] & bitMask)) ||
                             (config.trig == IoExpanderIntTrigger::CHANGE) ) {
-                        config.cb();
+                        config.cb(config.context);
                     }
                 }
             }

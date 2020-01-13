@@ -69,7 +69,7 @@ int IoExpanderPinObj::read(IoExpanderPinValue& value) const {
     return instance_->readPinValue(port_, pin_, value);
 }
 
-int IoExpanderPinObj::attachInterrupt(IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback) const {
+int IoExpanderPinObj::attachInterrupt(IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback, void* context) const {
     CHECK_TRUE(configured_, SYSTEM_ERROR_INVALID_STATE);
-    return instance_->attachPinInterrupt(port_, pin_, trig, callback);
+    return instance_->attachPinInterrupt(port_, pin_, trig, callback, context);
 }

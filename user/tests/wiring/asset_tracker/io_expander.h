@@ -22,7 +22,7 @@
 
 namespace particle {
 
-typedef void (*IoExpanderOnInterruptCallback)(void);
+typedef void (*IoExpanderOnInterruptCallback)(void* context);
 
 enum class IoExpanderPinValue : uint8_t {
     HIGH,
@@ -125,7 +125,7 @@ public:
     virtual int setPinInputLatch(uint8_t port, uint8_t pin, bool enable) = 0;
     virtual int writePinValue(uint8_t port, uint8_t pin, IoExpanderPinValue value) = 0;
     virtual int readPinValue(uint8_t port, uint8_t pin, IoExpanderPinValue& value) = 0;
-    virtual int attachPinInterrupt(uint8_t port, uint8_t pin, IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback) = 0;
+    virtual int attachPinInterrupt(uint8_t port, uint8_t pin, IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback, void* context) = 0;
 };
 
 
@@ -141,7 +141,7 @@ public:
     int inputLatch(bool enable) const;
     int write(IoExpanderPinValue value) const;
     int read(IoExpanderPinValue& value) const;
-    int attachInterrupt(IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback) const;
+    int attachInterrupt(IoExpanderIntTrigger trig, IoExpanderOnInterruptCallback callback, void* context) const;
 
 private:
     IoExpanderBase* instance_;
