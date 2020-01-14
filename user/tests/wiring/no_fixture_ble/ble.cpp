@@ -403,5 +403,34 @@ test(BLE_10_Add_BLE_Local_Characteristics) {
     assertTrue(char4.description() == "char4");
 }
 
+test(BLE_11_BLE_UUID_Conversion) {
+    const char* longUuidStr = "6E401234-B5A3-F393-E0A9-E50E24DCCA9E";
+    const uint8_t longUuidArray[] = {0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x34, 0x12, 0x40, 0x6E};
+    const char* shortUuidStr = "5678";
+    uint16_t shortUuid = 0x5678;
+    uint8_t buffer[16];
+    const uint8_t* pUuid;
+
+    BleUuid longUuidFromArray(longUuidArray);
+    assertTrue(longUuidFromArray.shorted() == 0x1234);
+    assertTrue(longUuidFromArray.toString() == longUuidStr);
+    
+    BleUuid longUuidFromString(longUuidStr);
+    longUuidFromString.rawBytes(buffer);
+    assertTrue(!memcmp(buffer, longUuidArray, BLE_SIG_UUID_128BIT_LEN));
+    pUuid = longUuidFromString.rawBytes();
+    assertTrue(!memcmp(pUuid, longUuidArray, BLE_SIG_UUID_128BIT_LEN));
+
+    BleUuid shortUuidFromUint16(shortUuid);
+    assertTrue(shortUuidFromUint16.shorted() == 0x5678);
+    assertTrue(shortUuidFromUint16.toString() == shortUuidStr);
+
+    BleUuid shortUuidFromString(shortUuidStr);
+    shortUuidFromString.rawBytes(buffer);
+    assertTrue(!memcmp(buffer, &shortUuid, BLE_SIG_UUID_16BIT_LEN));
+    pUuid = shortUuidFromString.rawBytes();
+    assertTrue(!memcmp(pUuid, &shortUuid, BLE_SIG_UUID_16BIT_LEN));
+}
+
 #endif // #if Wiring_BLE == 1
 

@@ -328,15 +328,28 @@ hal_ble_uuid_t BleUuid::halUUID() {
 }
 
 uint16_t BleUuid::shorted() const {
-    return uuid_.uuid16;
+    if (type() == BleUuidType::SHORT) {
+        return uuid_.uuid16;
+    } else {
+        return ((uint16_t)uuid_.uuid128[12] | ((uint16_t)uuid_.uuid128[13] << 8));
+    }
 }
 
 void BleUuid::rawBytes(uint8_t uuid128[BLE_SIG_UUID_128BIT_LEN]) const {
-    memcpy(uuid128, uuid_.uuid128, BLE_SIG_UUID_128BIT_LEN);
+    if (type() == BleUuidType::SHORT) {
+        uuid128[0] = (uint8_t)(uuid_.uuid16 & 0x00FF);
+        uuid128[1] = (uint8_t)((uuid_.uuid16 & 0xFF00) >> 8);
+    } else {
+        memcpy(uuid128, uuid_.uuid128, BLE_SIG_UUID_128BIT_LEN);
+    }
 }
 
 const uint8_t* BleUuid::rawBytes() const {
-    return uuid_.uuid128;
+    if (type() == BleUuidType::SHORT) {
+        return (uint8_t*)&uuid_.uuid16;
+    } else {
+        return uuid_.uuid128;
+    }
 }
 
 String BleUuid::toString(bool stripped) const {
