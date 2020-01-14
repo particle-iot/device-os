@@ -6,7 +6,9 @@
 #define TEST_GPS                        0
 #define TEST_IO_EXP_INT                 0
 #define TEST_RTC                        0
-#define TEST_CAN_TRANSCEIVER            1
+#define TEST_CAN_TRANSCEIVER            0
+#define TEST_FUEL_GAUGE                 0
+#define TEST_PMIC                       1
 
 #if TEST_GPS
 IoExpanderPinObj gpsResetPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN5);
@@ -23,6 +25,14 @@ IoExpanderPinObj intPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN7);
 IoExpanderPinObj intPin1(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN6);
 IoExpanderPinObj trigPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN6);
 IoExpanderPinObj trigPin1(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN5);
+#endif
+
+#if TEST_FUEL_GAUGE
+    FuelGauge gauge(Wire, true);
+#endif
+
+#if TEST_PMIC
+PMIC pmic(true);
 #endif
 
 // Enable threading if compiled with "USE_THREADING=y"
@@ -150,6 +160,17 @@ void setup() {
     SPI.setClockSpeed(5 * 1000 * 1000);
     SPI.begin();
 #endif // TEST_GPS
+
+#if TEST_FUEL_GAUGE
+    FuelGauge gauge(Wire, true);
+    gauge.begin();
+    LOG(INFO, "Battery voltage: %f", gauge.getVCell());
+#endif
+
+#if TEST_PMIC
+    pmic.begin();
+    LOG(INFO, "PMIC version: 0x%02x", pmic.getVersion());
+#endif
 }
 
 void loop() {
@@ -190,5 +211,15 @@ void loop() {
         LOG(INFO, "MCP25625 CANCTRL: 0x%02X", val);
     }
     delay(3000);
+#endif
+
+#if TEST_FUEL_GAUGE
+    LOG(INFO, "Baterry level: %f", gauge.getNormalizedSoC());
+    delay(3000);
+#endif
+
+#if TEST_PMIC
+    LOG(INFO, "PMIC version: 0x%02x", pmic.getVersion());
+    delay(1000);
 #endif
 }
