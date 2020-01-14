@@ -116,6 +116,8 @@ private:
     int readRegister(const Am18x5Register reg, uint8_t* const val);
 
     uint8_t address_;
+    bool initialized_;
+    static RecursiveMutex mutex_;
 }; // class Am18x5
 
 #define AM18X5 Am18x5::getInstance()
