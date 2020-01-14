@@ -102,5 +102,21 @@ size_t CoAP::option_decode(unsigned char **option) {
     return option_length;
 }
 
+CoAPCode::Enum CoAP::codeForProtocolError(ProtocolError error) {
+    switch (error) {
+    case ProtocolError::NO_ERROR:
+        return CoAPCode::OK;
+    case ProtocolError::MALFORMED_MESSAGE:
+    case ProtocolError::MISSING_MESSAGE_ID:
+    case ProtocolError::MISSING_REQUEST_TOKEN:
+        return CoAPCode::BAD_REQUEST;
+    case ProtocolError::NOT_FOUND:
+        return CoAPCode::NOT_FOUND;
+    // TODO
+    default:
+        return CoAPCode::INTERNAL_SERVER_ERROR;
+    }
+}
+
 }
 }

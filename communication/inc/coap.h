@@ -24,6 +24,8 @@
   */
 #pragma once
 
+#include "protocol_defs.h"
+
 #include <string.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -240,6 +242,8 @@ public:
     	}
     	return result;
     }
+
+    static CoAPCode::Enum codeForProtocolError(ProtocolError error);
 };
 
 // this uses version 0 to maintain compatiblity with the original comms lib codes

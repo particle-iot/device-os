@@ -223,7 +223,8 @@ ProtocolError Variables::send_empty_ack(Message& message, token_t token, uint8_t
 void Variables::get_variable_callback(int result, int type, void* data, size_t size, void* context) {
     const auto p = (Context*)context;
     if (result != ProtocolError::NO_ERROR) {
-        p->self->send_error_response(p->token, CoAPCode::INTERNAL_SERVER_ERROR);
+        const auto code = CoAP::codeForProtocolError((ProtocolError)result);
+        p->self->send_error_response(p->token, code);
     } else {
         p->self->send_response(p->token, data, size, (SparkReturnType::Enum)type);
     }

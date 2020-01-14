@@ -54,6 +54,7 @@
 
 using particle::CloudDiagnostics;
 using particle::publishEvent;
+using particle::protocol::ProtocolError;
 
 extern uint8_t feature_cloud_udp;
 extern volatile bool cloud_socket_aborted;
@@ -66,7 +67,6 @@ const int CLAIM_CODE_SIZE = 63;
 using particle::LEDStatus;
 
 int userVarType(const char *varKey);
-const void *getUserVar(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
 
 static int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, void* module);
@@ -602,17 +602,64 @@ int userVarType(const char *varKey)
     return item ? item->userVarType : -1;
 }
 
-const void *getUserVar(const char *varKey)
+void getUserVarResult(int error, int type, void* data, size_t size, SparkDescriptor::GetVariableCallback callback,
+        void* context) {
+    SYSTEM_THREAD_CONTEXT_ASYNC(getUserVarResult(error, type, data, size, callback, context));
+    callback(error, type, data, size, context);
+}
+
+void getUserVarImpl(User_Var_Lookup_Table_t* item, SparkDescriptor::GetVariableCallback callback, void* context)
 {
-    User_Var_Lookup_Table_t* item = find_var_by_key(varKey);
-    const void* result = nullptr;
-    if (item) {
-    	if (item->update)
-            result = item->update(item->userVarKey, item->userVarType, item->userVar, nullptr);
-    	else
-            result = item->userVar;
+    APPLICATION_THREAD_CONTEXT_ASYNC(getUserVarImpl(item, callback, context));
+    const void* data = nullptr;
+    if (item->update) {
+        data = item->update(item->userVarKey, item->userVarType, item->userVar, nullptr);
+    } else {
+        data = item->userVar;
     }
-    return result;
+    auto type = SparkReturnType::STRING;
+    size_t size = 0;
+    if (data) {
+        switch (item->userVarType) {
+        case CLOUD_VAR_BOOLEAN:
+            type = SparkReturnType::BOOLEAN;
+            size = sizeof(bool);
+            break;
+        case CLOUD_VAR_INT:
+            type = SparkReturnType::INT;
+            size = sizeof(uint32_t);
+            break;
+        case CLOUD_VAR_DOUBLE:
+            type = SparkReturnType::DOUBLE;
+            size = sizeof(double);
+            break;
+        case CLOUD_VAR_STRING:
+            type = SparkReturnType::STRING;
+            size = strlen((const char*)data);
+            break;
+        default:
+            getUserVarResult(ProtocolError::NOT_IMPLEMENTED, 0 /* type */, nullptr /* data */, 0 /* size */, callback, context);
+            return;
+        }
+    }
+    // Copy the value and pass it over to the system thread
+    void* copy = malloc(size);
+    if (copy) {
+        memcpy(copy, data, size);
+        getUserVarResult(ProtocolError::NO_ERROR, type, copy, size, callback, context);
+    } else {
+        getUserVarResult(ProtocolError::INSUFFICIENT_STORAGE, 0, nullptr, 0, callback, context);
+    }
+}
+
+void getUserVar(const char* varKey, SparkDescriptor::GetVariableCallback callback, void* context)
+{
+    const auto item = find_var_by_key(varKey);
+    if (item) {
+        getUserVarImpl(item, callback, context);
+    } else {
+        callback(ProtocolError::NOT_FOUND, 0 /* type */, nullptr /* data */, 0 /* size */, context);
+    }
 }
 
 void userFuncScheduleImpl(User_Func_Lookup_Table_t* item, const char* paramString, bool freeParamString, SparkDescriptor::FunctionResultCallback callback)
@@ -853,7 +900,7 @@ void Spark_Protocol_Init(void)
         descriptor.num_variables = numUserVariables;
         descriptor.get_variable_key = getUserVariableKey;
         descriptor.variable_type = wrapVarTypeInEnum;
-        descriptor.get_variable = getUserVar;
+        descriptor.get_variable_async = getUserVar;
         descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
         descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
         descriptor.append_system_info = system_module_info;
