@@ -154,7 +154,8 @@ namespace {
 } // anonymous namespace
 
 Am18x5::Am18x5()
-        : address_(INVALID_I2C_ADDRESS) {
+        : address_(INVALID_I2C_ADDRESS),
+          initialized_(false) {
 
 }
 
@@ -168,23 +169,34 @@ Am18x5& Am18x5::getInstance() {
 }
 
 int Am18x5::begin(uint8_t address) {
+    ExtRtcLock lock(mutex_);
+    CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
     address_ = address;
+    initialized_ = true;
     return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::end() {
+    ExtRtcLock lock(mutex_);
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
     return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::sleep() {
+    ExtRtcLock lock(mutex_);
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::wakeup() {
+    ExtRtcLock lock(mutex_);
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::getPartNumber(uint16_t* id) {
+    ExtRtcLock lock(mutex_);
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t val;
     CHECK(readRegister(Am18x5Register::ID0, &val));
     *id = ((uint16_t)val) << 8;
@@ -213,3 +225,5 @@ int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val) {
     }
     return SYSTEM_ERROR_NONE;
 }
+
+RecursiveMutex Am18x5::mutex_;

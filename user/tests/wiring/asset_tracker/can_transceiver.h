@@ -15,41 +15,30 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EXT_RTC_H
-#define EXT_RTC_H
+#ifndef CAN_TRANSCEIVER_H
+#define CAN_TRANSCEIVER_H
 
 #include "Particle.h"
 
 
-enum class Weekday {
-    MONDAY = 0,
-    TUESDAY = 1,
-    WEDNESDAY = 2,
-    THURSDAY = 3,
-    FRIDAY = 4,
-    SATURDAY = 5,
-    SUNDAY = 6
-};
-
-
-class ExtRtcLock {
+class CanTransceiverLock {
 public:
-    ExtRtcLock(RecursiveMutex& mutex)
+    CanTransceiverLock(RecursiveMutex& mutex)
             : locked_(false),
               mutex_(mutex) {
         lock();
     }
 
-    ExtRtcLock(ExtRtcLock&& lock)
+    CanTransceiverLock(CanTransceiverLock&& lock)
             : locked_(lock.locked_),
               mutex_(lock.mutex_) {
         lock.locked_ = false;
     }
 
-    ExtRtcLock(const ExtRtcLock&) = delete;
-    ExtRtcLock& operator=(const ExtRtcLock&) = delete;
+    CanTransceiverLock(const CanTransceiverLock&) = delete;
+    CanTransceiverLock& operator=(const CanTransceiverLock&) = delete;
 
-    ~ExtRtcLock() {
+    ~CanTransceiverLock() {
         if (locked_) {
             unlock();
         }
@@ -71,14 +60,14 @@ private:
 };
 
 
-class ExtRtcBase {
+class CanTransceiverBase {
 public:
-    virtual int begin(uint8_t address) = 0;
+    virtual int begin() = 0;
     virtual int end() = 0;
     virtual int sleep() = 0;
     virtual int wakeup() = 0;
 
-    virtual int getPartNumber(uint16_t* id) = 0;
+    virtual int reset() = 0;
 };
 
-#endif // EXT_RTC_H
+#endif // CAN_TRANSCEIVER_H

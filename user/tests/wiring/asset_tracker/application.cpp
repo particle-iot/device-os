@@ -1,9 +1,12 @@
 #include "Particle.h"
 #include "pcal6416a.h"
 #include "am18x5.h"
+#include "mcp25625.h"
 
 #define TEST_GPS                        0
-#define TEST_IO_EXP_INT                 1
+#define TEST_IO_EXP_INT                 0
+#define TEST_RTC                        0
+#define TEST_CAN_TRANSCEIVER            1
 
 #if TEST_GPS
 IoExpanderPinObj gpsResetPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN5);
@@ -17,9 +20,9 @@ IoExpanderPinObj accelCsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN
 
 #if TEST_IO_EXP_INT
 IoExpanderPinObj intPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN7);
-IoExpanderPinObj intPin1(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN7);
+IoExpanderPinObj intPin1(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN6);
 IoExpanderPinObj trigPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN6);
-IoExpanderPinObj trigPin1(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN6);
+IoExpanderPinObj trigPin1(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN5);
 #endif
 
 // Enable threading if compiled with "USE_THREADING=y"
@@ -112,6 +115,7 @@ void setup() {
         LOG(ERROR, "PCAL6416A.begin() failed.");
     }
 
+#if TEST_RTC
     AM18X5.begin(AM18X5_I2C_ADDRESS);
     uint16_t partNumber;
     if (AM18X5.getPartNumber(&partNumber) != SYSTEM_ERROR_NONE) {
@@ -119,6 +123,13 @@ void setup() {
     } else {
         LOG(INFO, "AM18X5 part number: 0x%04X", partNumber);
     }
+#endif // TEST_RTC
+
+#if TEST_CAN_TRANSCEIVER
+    if (MCP25625.begin() != SYSTEM_ERROR_NONE) {
+        LOG(ERROR, "MCP25625.begin()  failed.");
+    }
+#endif // TEST_CAN_TRANSCEIVER
 
 #if TEST_IO_EXP_INT
     if (configureTrigPin() != SYSTEM_ERROR_NONE) {
@@ -169,5 +180,15 @@ void loop() {
     delay(3000);
     setTriggerPin1(0);
     setTriggerPin1(1);
+#endif
+
+#if TEST_CAN_TRANSCEIVER
+    uint8_t val;
+    if (MCP25625.getCanCtrl(&val) != SYSTEM_ERROR_NONE) {
+        LOG(ERROR, "MCP25625.getCanCtrl() failed.");
+    } else {
+        LOG(INFO, "MCP25625 CANCTRL: 0x%02X", val);
+    }
+    delay(3000);
 #endif
 }
