@@ -194,9 +194,7 @@ uint8_t spark_cloud_socket_closed()
 }
 
 void Spark_Abort() {
-#ifndef SPARK_NO_CLOUD
     cloud_socket_aborted = true;
-#endif
 }
 
 #if HAL_PLATFORM_CLOUD_UDP
@@ -289,7 +287,7 @@ int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags
         }
     }
 
-#if !defined(SPARK_NO_CLOUD) && HAL_PLATFORM_CLOUD_UDP
+#if HAL_PLATFORM_CLOUD_UDP
     // Check if connected
     if (spark_cloud_flag_connected() || (flags & 1)) {
         if (((sockaddr*)&g_system_cloud_session_data.address)->sa_family == af) {
@@ -302,7 +300,7 @@ int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags
                     value, &conn_prop, nullptr);
         }
     }
-#endif // !defined(SPARK_NO_CLOUD) && HAL_PLATFORM_CLOUD_UDP
+#endif // HAL_PLATFORM_CLOUD_UDP
     return 0;
 }
 

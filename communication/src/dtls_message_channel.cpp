@@ -22,7 +22,7 @@ LOG_SOURCE_CATEGORY("comm.dtls")
 
 #include "dtls_message_channel.h"
 
-#if HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+#if HAL_PLATFORM_CLOUD_UDP
 
 #include "protocol.h"
 #include "rng_hal.h"
@@ -572,4 +572,4 @@ extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
     return 0;  // return non-zero for error
 } // end _gettimeofday()
 
-#endif // HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+#endif // HAL_PLATFORM_CLOUD_UDP

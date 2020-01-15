@@ -22,28 +22,9 @@
 
 #define USE_MBEDTLS // Use mbedTLS for all platforms
 
-#ifndef PARTICLE_PROTOCOL
-#if PLATFORM_ID>2
-#define PARTICLE_PROTOCOL 1
-#else
-#define PARTICLE_PROTOCOL 0
-#endif
-#endif
-
-#if PARTICLE_PROTOCOL
 #ifdef __cplusplus
 namespace particle { namespace protocol { class Protocol; }}
 typedef particle::protocol::Protocol ProtocolFacade;
 #else
 typedef void* ProtocolFacade;
-#endif
-#else // !PARTICLE_PROTOCOL
-#ifdef __cplusplus
-class CoreProtocol;
-typedef CoreProtocol ProtocolFacade;
-#else
-struct CoreProtocol;
-typedef struct CoreProtocol ProtocolFacade;
-
-#endif
 #endif

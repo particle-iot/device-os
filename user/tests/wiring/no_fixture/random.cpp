@@ -82,7 +82,7 @@ test(RANDOM_09_zero_crossing_range_values_are_within_range) {
     assertRandomRange(-10,10, 1000);
 }
 
-#if defined(PARTICLE_PROTOCOL) && PARTICLE_PROTOCOL == 0
+#if 0  // TODO - this should work on modular platforms too. This was previously targeting the Core only.
 
 test(RANDOM_10_reseeded_from_cloud_on_reconnect) {
     rand_value_set = false;
@@ -94,4 +94,4 @@ test(RANDOM_10_reseeded_from_cloud_on_reconnect) {
     assertTrue(rand_value_set);
 }
 
-#endif // defined(PARTICLE_PROTOCOL) && PARTICLE_PROTOCOL == 0
+#endif // 0

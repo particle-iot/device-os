@@ -20,7 +20,7 @@
 
 #include "protocol_selector.h"
 
-#if HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+#if HAL_PLATFORM_CLOUD_UDP
 
 #include "service_debug.h"
 #include "device_keys.h"
@@ -162,4 +162,4 @@ private:
 
 }}
 
-#endif // HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+#endif // HAL_PLATFORM_CLOUD_UDP

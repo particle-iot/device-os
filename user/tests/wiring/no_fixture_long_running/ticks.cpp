@@ -7,7 +7,7 @@
 
 void assert_micros_millis(int duration, bool overflow = false)
 {
-#if PLATFORM_ID==0 || (PLATFORM_ID>=6 && PLATFORM_ID<=10)
+#if (PLATFORM_ID>=6 && PLATFORM_ID<=10)
     // Just in case
     NVIC_DisableIRQ(TIM4_IRQn);
 #endif
@@ -46,7 +46,7 @@ void assert_micros_millis(int duration, bool overflow = false)
 void assert_micros_millis_interrupts(int duration)
 {
     // TODO: nRF52 platforms
-#if PLATFORM_ID==0 || (PLATFORM_ID>=6 && PLATFORM_ID<=10)
+#if (PLATFORM_ID>=6 && PLATFORM_ID<=10)
     // Enable some high priority interrupt to run interference
     pinMode(D0, OUTPUT);
     // D0 uses TIM2 and channel 2 equally on Core and Photon/Electron
@@ -99,7 +99,7 @@ void assert_micros_millis_interrupts(int duration)
     }
     while (duration > 0);
 
-#if PLATFORM_ID==0 || (PLATFORM_ID>=6 && PLATFORM_ID<=10)
+#if (PLATFORM_ID>=6 && PLATFORM_ID<=10)
     NVIC_DisableIRQ(TIM4_IRQn);
     detachSystemInterrupt(SysInterrupt_TIM4_IRQ);
     TIM_ITConfig(TIM4, TIM_IT_CC2, DISABLE);

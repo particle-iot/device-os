@@ -117,7 +117,7 @@ program-openocd: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 
 endif
 
-# Program the core using dfu-util. The core should have been placed
+# Program the device using dfu-util. The device should have been placed
 # in bootloader mode before invoking 'make program-dfu'
 program-dfu: $(MAKE_DEPENDENCIES) $(TARGET_BASE).dfu
 ifdef START_DFU_FLASHER_SERIAL_SPEED
@@ -134,7 +134,7 @@ endif
 	@echo Flashing using dfu:
 	$(DFU) -d $(USBD_VID_SPARK):$(USBD_PID_DFU) -a 0 -s $(PLATFORM_DFU)$(if $(PLATFORM_DFU_LEAVE),:leave) -D $(lastword $^)
 
-# Program the core using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
+# Program the device using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
 # have been defined in the environment before invoking 'make program-cloud'
 program-cloud: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 	@echo Flashing using cloud API, CORE_ID=$(SPARK_CORE_ID):
@@ -142,7 +142,7 @@ program-cloud: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 
 program-serial: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 ifdef START_YMODEM_FLASHER_SERIAL_SPEED
-# Program core/photon using serial ymodem flasher.
+# Program the device using serial ymodem flasher.
 # Install 'sz' tool using: 'brew install lrzsz' on MAC OS X
 # PARTICLE_SERIAL_DEV should be set something like /dev/tty.usbxxxx and exported
 ifeq ("$(wildcard $(PARTICLE_SERIAL_DEV))","")

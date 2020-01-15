@@ -28,11 +28,11 @@ CFLAGS += -DSPARK_TEST_DRIVER=$(SPARK_TEST_DRIVER)
 endif
 
 ifeq ("$(SPARK_CLOUD)","n")
-CFLAGS += -DSPARK_NO_CLOUD
+$(call core_unsupported)
 endif
 
 ifeq ("$(SPARK_WIFI)","n")
-CFLAGS += -DPARTICLE_NO_NETWORK
+$(call core_unsupported)
 endif
 
 

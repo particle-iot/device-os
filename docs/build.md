@@ -6,14 +6,9 @@
 Running
 
 ```
-make
+make PLATFORM=<platform-name>
 ```
-For the core, or
-
-```
-make PLATFORM=photon
-```
-for the Photon, in the top-level directory creates the bootloader and firmware binaries for your device, which are output to subdirectories of the `build/target/` directory.
+in the top-level directory creates the bootloader and firmware binaries for the given platform, which are output to subdirectories of the `build/target/` directory.
 
 The top-level make is mainly a convenience to build `bootloader` and `main` projects. It
 supports these targets:
@@ -102,25 +97,26 @@ When building `main`:
 ## Platform name/IDs
 
 The Platform ID describes the target platform.
-If you are targeting the Spark Core, you can skip this section. A list of supported
-platform IDs are listed in [platform-id.mk]((../build/platform-id.mk). The most
+A list of supported platform IDs are listed in [platform-id.mk]((../build/platform-id.mk). The most
 common are listed here:
 
 | Name     | PLATFORM_ID |
 |----------|:-----------:|
-| core     | 0           |
 | gcc      | 3           |
 | photon   | 6           |
 | p1       | 8           |
 | electron | 10          |
+| argon    | 12          |
+| boron    | 13          |
+| xenon    | 14          |
 
-The platform is specified on the command line as
+The platform is specified on the command line using the platform ID
 
 ```
 PLATFORM_ID=<id>
 ```
 
-or as
+or the platform name
 
 ```
 PLATFORM=name
@@ -210,17 +206,7 @@ Will build the main firmware, and all the modules the main firmware depends on.
 
 ## Product ID
 
-By default, the build system targets the Spark Core (Product ID 0). If
-your product has been assigned product ID, you should pass this on the
-command line to specifically target your product. For example:
-
-```
-make PRODUCT_ID=2
-```
-
-Builds the firmware for product ID 2.
-
-Note that this method works only for the Core. On later platforms, the PRODUCT ID and version
+The Product ID and product firmware version
 is specified in your application code via the macros:
 
 ```
@@ -292,23 +278,22 @@ The directory is created if it doesn't exist.
 
 ## Changing the Target File name
 
-It's also possible to specify the name of the output file, e.g. to revert to the
-old naming convention of `core-firmware.bin`, set `TARGET_FILE`
+It's also possible to specify the name of the output file. To use a custom name, set `TARGET_FILE`
 like this:
 
 ```
-make APP=myapp TARGET_FILE=core-firmware
+make APP=myapp TARGET_FILE=firmware-v20
 ```
 
-This will build the firmware with output as `core-firmware.bin` in `build/target/main/platform-0/applications/myapp`.
+This will build the firmware with output as `firmware-v20.bin` in `build/target/main/platform-0/applications/myapp`.
 
 These can of course also be combined like so:
 
 ```
-make APP=myapp TARGET_DIR=myfolder TARGET_FILE=core-firmware
+make APP=myapp TARGET_DIR=myfolder TARGET_FILE=firmware-v20
 ```
 
-Which will produce `myfolder/core-firmware.elf`
+Which will produce `myfolder/firmware-v20.elf`
 
 
 ## Compiling an application outside the firmware source
@@ -402,10 +387,10 @@ make
 ## Platform Specific vs Platform Agnostic builds
 
 Currently the low level hardware specific details are abstracted away in the HAL (Hardware Abstraction Layer) implementation.
-By default the makefile will build for the Spark Core platform which will allow you to add direct hardware calls in your application firmware.
-You should however try to make use of the HAL functions and methods instead of making direct hardware calls, which will ensure your code is more future proof!
+Most platforms do provide access to the low-level hardware, e.g. via the CMSIS library on STM32.
+You should however try to make use of the HAL functions and methods instead of making direct hardware calls, which will ensure your code is more future proof by being easier to port to other platforms.
 To build the firmware as platform agnostic, first run `make clean`, then simply include `SPARK_NO_PLATFORM=y` in the make command.
-This is also a great way to find all of the places in your code that make hardware specific calls, as they should generate an error when building as platform agnostic.
+This is also a great way to find all of the places in your code that make hardware specific calls, as they will generate an error when building as platform agnostic.
 
 ```
 make APP=myapp SPARK_NO_PLATFORM=y
@@ -471,15 +456,6 @@ USE_SWD=y
 
 and perform a clean build. For more details on SWD-only debugging
 see https://github.com/spark/firmware/pull/337
-
-## Compilation without Cloud Support
-
-[Core only]
-
-To release more resources for applications that don't use the cloud, add
-SPARK_CLOUD=n to the make command line. This requires a clean build.
-
-After compiling, you should see a 3000 bytes reduction in statically allocated RAM and 35k reduction in flash use.
 
 
 ## Building the `develop` branch

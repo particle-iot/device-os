@@ -31,15 +31,9 @@
 
 /*
  * Serial1 Test requires TX to be jumpered to RX as follows:
- * valid for both Core and Photon
+ * on the photon Photon
  *           WIRE
  * (TX) --==========-- (RX)
- *
- * Serial2 Test requires D0 to be jumpered to D1 as follows:
- * only on Core (PLATFORM_ID = PLATFORM_SPARK_CORE)
- *
- *           WIRE
- * (D0) --==========-- (D1)
  *
  */
 

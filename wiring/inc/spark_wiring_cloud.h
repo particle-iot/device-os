@@ -48,12 +48,6 @@
 typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
 typedef std::function<void (const char*, const char*)> wiring_event_handler_t;
 
-#ifdef SPARK_NO_CLOUD
-#define CLOUD_FN(x,y) (y)
-#else
-#define CLOUD_FN(x,y) (x)
-#endif
-
 #ifndef __XSTRING
 #define	__STRING(x)	#x		/* stringify without expanding x */
 #define	__XSTRING(x)	__STRING(x)	/* expand x, then stringify */
@@ -148,17 +142,17 @@ class CloudClass {
 
     template<typename T> static inline bool _variable(const char *varKey, const typename T::varref userVar, const T& userVarType)
     {
-        return CLOUD_FN(spark_variable(varKey, (const void*)userVar, T::value(), NULL), false);
+        return spark_variable(varKey, (const void*)userVar, T::value(), NULL);
     }
 
     static inline bool _variable(const char *varKey, const int32_t* userVar, const CloudVariableTypeInt& userVarType)
     {
-        return CLOUD_FN(spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL), false);
+        return spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL);
     }
 
     static inline bool _variable(const char *varKey, const uint32_t* userVar, const CloudVariableTypeInt& userVarType)
     {
-        return CLOUD_FN(spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL), false);
+        return spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL);
     }
 
     // Return clear errors for common misuses of Particle.variable()
@@ -175,7 +169,7 @@ class CloudClass {
         spark_variable_t extra;
         extra.size = sizeof(extra);
         extra.update = update_string_variable;
-        return CLOUD_FN(spark_variable(varKey, userVar, CloudVariableTypeString::value(), &extra), false);
+        return spark_variable(varKey, userVar, CloudVariableTypeString::value(), &extra);
     }
 
     template<typename T>
@@ -196,14 +190,11 @@ class CloudClass {
 
     static bool _function(const char *funcKey, user_function_int_str_t* func)
     {
-        return CLOUD_FN(register_function(call_raw_user_function, (void*)func, funcKey), false);
+        return register_function(call_raw_user_function, (void*)func, funcKey);
     }
 
     static bool _function(const char *funcKey, user_std_function_int_str_t func, void* reserved=NULL)
     {
-#ifdef SPARK_NO_CLOUD
-        return false;
-#else
         bool success = false;
         if (func) // if the call-wrapper has wrapped a callable object
         {
@@ -213,7 +204,6 @@ class CloudClass {
             }
         }
         return success;
-#endif
     }
 
     template <typename T>
@@ -269,12 +259,12 @@ class CloudClass {
 
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
     {
-        return CLOUD_FN(spark_subscribe(eventName, handler, NULL, scope, NULL, NULL), false);
+        return spark_subscribe(eventName, handler, NULL, scope, NULL, NULL);
     }
 
     inline bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
-        return CLOUD_FN(spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL), false);
+        return spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL);
     }
 
     bool subscribe(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope)
@@ -309,7 +299,7 @@ class CloudClass {
 
     void unsubscribe()
     {
-        CLOUD_FN(spark_unsubscribe(NULL), (void)0);
+        spark_unsubscribe(NULL);
     }
 
     bool syncTime(void)
@@ -317,17 +307,17 @@ class CloudClass {
         if (!connected()) {
             return false;
         }
-        return CLOUD_FN(spark_sync_time(NULL), false);
+        return spark_sync_time(NULL);
     }
 
     bool syncTimePending(void)
     {
-        return connected() && CLOUD_FN(spark_sync_time_pending(nullptr), false);
+        return connected() && spark_sync_time_pending(nullptr);
     }
 
     bool syncTimeDone(void)
     {
-        return !CLOUD_FN(spark_sync_time_pending(nullptr), false) || disconnected();
+        return !spark_sync_time_pending(nullptr) || disconnected();
     }
 
     system_tick_t timeSyncedLast(void)
@@ -339,7 +329,7 @@ class CloudClass {
     system_tick_t timeSyncedLast(time_t& tm)
     {
         tm = 0;
-        return CLOUD_FN(spark_sync_time_last(&tm, nullptr), 0);
+        return spark_sync_time_last(&tm, nullptr);
     }
 
     static void sleep(long seconds) __attribute__ ((deprecated("Please use System.sleep() instead.")))
@@ -367,9 +357,8 @@ class CloudClass {
         particle::protocol::connection_properties_t conn_prop = {0};
         conn_prop.size = sizeof(conn_prop);
         conn_prop.keepalive_source = particle::protocol::KeepAliveSource::USER;
-        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING,
-                                               sec * 1000, &conn_prop, nullptr),
-                 (void)0);
+        spark_set_connection_property(particle::protocol::Connection::PING,
+                                               sec * 1000, &conn_prop, nullptr);
     }
 
     inline static void keepAlive(std::chrono::seconds s) { keepAlive(s.count()); }
@@ -392,9 +381,6 @@ private:
 
     bool subscribe_wiring(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope, const char *deviceID = NULL)
     {
-#ifdef SPARK_NO_CLOUD
-        return false;
-#else
         bool success = false;
         if (handler) // if the call-wrapper has wrapped a callable object
         {
@@ -404,7 +390,6 @@ private:
             }
         }
         return success;
-#endif
     }
 
     static const void* update_string_variable(const char* name, Spark_Data_TypeDef type, const void* var, void* reserved)

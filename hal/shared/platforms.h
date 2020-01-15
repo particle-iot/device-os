@@ -24,8 +24,6 @@
 #ifndef PLATFORMS_H
 #define	PLATFORMS_H
 
-#define PLATFORM_SPARK_CORE                 0
-#define PLATFORM_SPARK_CORE_HD              2
 #define PLATFORM_GCC                        3
 #define PLATFORM_PHOTON_DEV                 4
 #define PLATFORM_TEACUP_PIGTAIL_DEV         5

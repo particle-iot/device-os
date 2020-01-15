@@ -210,7 +210,6 @@ typedef struct {
  * @note At call time, a blocking call is made on the application thread. Any subsequent
  * timer-based calls are executed asynchronously.
  *
- * @note The periodic functionality is not available for the Spark Core.
  */
 int spark_publish_vitals(system_tick_t period_s, void *reserved);
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);
@@ -272,19 +271,11 @@ extern const unsigned char backup_tcp_public_server_address[18];
 #define USER_VAR_MAX_COUNT            (10)  // FIXME: NOT USED
 #define USER_FUNC_MAX_COUNT           (4)   // FIXME: NOT USED
 
-#if PLATFORM_ID<2
-    #define USER_FUNC_ARG_LENGTH      (64)  // FIXME: NOT USED
-    #define USER_VAR_KEY_LENGTH       (12)
-    #define USER_FUNC_KEY_LENGTH      (12)
-    #define USER_EVENT_NAME_LENGTH    (64)  // FIXME: NOT USED
-    #define USER_EVENT_DATA_LENGTH    (64)  // FIXME: NOT USED
-#else
-    #define USER_FUNC_ARG_LENGTH      (622) // FIXME: NOT USED
-    #define USER_VAR_KEY_LENGTH       (64)
-    #define USER_FUNC_KEY_LENGTH      (64)
-    #define USER_EVENT_NAME_LENGTH    (64)  // FIXME: NOT USED
-    #define USER_EVENT_DATA_LENGTH    (622) // FIXME: NOT USED
-#endif
+#define USER_FUNC_ARG_LENGTH      (622) // FIXME: NOT USED
+#define USER_VAR_KEY_LENGTH       (64)
+#define USER_FUNC_KEY_LENGTH      (64)
+#define USER_EVENT_NAME_LENGTH    (64)  // FIXME: NOT USED
+#define USER_EVENT_DATA_LENGTH    (622) // FIXME: NOT USED
 
 #ifdef __cplusplus
 }

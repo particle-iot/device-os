@@ -303,11 +303,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
 			}
 		}
     	else {
-	#if PLATFORM_ID<3
-			print("Your core id is ");
-	#else
 			print("Your device id is ");
-	#endif
 			String id = spark_deviceID();
 			print(id.c_str());
 			print("\r\n");
@@ -497,15 +493,6 @@ void WiFiSetupConsole::handle(char c)
             security_ = (WLanSecurityType)(security_type_string[0] - '0');
         }
 
-#if PLATFORM_ID<3
-        if (security_ == WLAN_SEC_WEP)
-        {
-            print("\r\n ** Even though the CC3000 supposedly supports WEP,");
-            print("\r\n ** we at Spark have never seen it work.");
-            print("\r\n ** If you control the network, we recommend changing it to WPA2.\r\n");
-        }
-#endif
-
         if (security_ != WLAN_SEC_UNSEC)
             password[0] = '1'; // non-empty password so security isn't set to None
 
@@ -633,22 +620,12 @@ void WiFiSetupConsole::handle(char c)
         }
 #endif
 
-        print("Thanks! Wait "
-#if PLATFORM_ID<3
-    "about 7 seconds "
-#endif
-            "while I save those credentials...\r\n\r\n");
+        print("Thanks! Wait while I save those credentials...\r\n\r\n");
         creds = credentials.getHalCredentials();
         if (this->config.connect_callback2(this->config.connect_callback_data, &creds, false)==0)
         {
             print("Awesome. Now we'll connect!\r\n\r\n");
-            print("If you see a pulsing cyan light, your "
-    #if PLATFORM_ID==0
-                "Spark Core"
-    #else
-                "device"
-    #endif
-                "\r\n");
+            print("If you see a pulsing cyan light, your device \r\n");
             print("has connected to the Cloud and is ready to go!\r\n\r\n");
             print("If your LED flashes red or you encounter any other problems,\r\n");
             print("visit https://www.particle.io/support to debug.\r\n\r\n");

@@ -44,7 +44,7 @@ Navigate to the `modules` folder under firmware
 
 This will clean build the system firmware and the default main application (`firmware/user/src/application.cpp`) which contains Tinker, but you may overwrite this with your own application and add any required dependencies. The `-s` silences the verbose output, so be patient while it builds.  If your device is in DFU mode, it will then download the 3 binaries one at a time.  For more custom application location solutions, see the [makefile documentation](build.md) and learn how to use the `APP=myapp` option.
 
-The [makefile documentation](build.md) describes the build options supported and how to target platforms other than the Core (i.e., Photon, P1, Electron, etc..)
+The [makefile documentation](build.md) describes the build options supported and how to target other platforms.
 
 ##### Common Errors
 

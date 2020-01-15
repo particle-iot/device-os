@@ -32,15 +32,6 @@
 extern "C" {
 #endif
 
-#ifndef PARTICLE_NO_NETWORK
-#define PARTICLE_NO_NETWORK 0
-#endif
-
-#if PARTICLE_NO_NETWORK
-#undef SPARK_NO_CLOUD
-#define SPARK_NO_CLOUD 1
-#endif
-
 typedef enum network_interface_index {
     NETWORK_INTERFACE_ALL = 0,
     NETWORK_INTERFACE_LOOPBACK = 1,

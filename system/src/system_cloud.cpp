@@ -63,8 +63,6 @@ VitalsPublisher<particle::NullTimer> _vitals;
 
 } // namespace
 
-#ifndef SPARK_NO_CLOUD
-
 SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_type)
 {
     return(subscription_type==MY_DEVICES) ? SubscriptionScope::MY_DEVICES : SubscriptionScope::FIREHOSE;
@@ -212,8 +210,6 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
     return result;
 }
 
-#endif // SPARK_NO_CLOUD
-
 bool spark_cloud_flag_connected(void)
 {
     if (SPARK_CLOUD_SOCKETED && SPARK_CLOUD_CONNECTED)
@@ -253,9 +249,6 @@ int spark_set_connection_property(unsigned property_id, unsigned data, particle:
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved)
 {
-#ifndef SPARK_NO_CLOUD
     random_seed_from_cloud_handler = handler;
-#endif // SPARK_NO_CLOUD
-
     return 0;
 }

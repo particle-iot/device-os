@@ -3,7 +3,7 @@
 #include "protocol_selector.h"
 #include "hal_platform.h"
 
-#if PARTICLE_PROTOCOL && HAL_PLATFORM_CLOUD_UDP
+#if HAL_PLATFORM_CLOUD_UDP
 #include "mbedtls/pk.h"
 #include "mbedtls/asn1.h"
 #include <string.h>

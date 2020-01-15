@@ -54,7 +54,7 @@ int spark_protocol_to_system_error (int error_) {
     return toSystemError(static_cast<particle::protocol::ProtocolError>(error_));
 }
 
-#if !PARTICLE_PROTOCOL || HAL_PLATFORM_CLOUD_TCP
+#if HAL_PLATFORM_CLOUD_TCP
 int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* plaintext, int32_t plaintext_len)
 {
     rsa_context rsa;
@@ -73,9 +73,8 @@ int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* 
     rsa_free(&rsa);
     return err ? -abs(err) : plaintext_len;
 }
-#endif // !PARTICLE_PROTOCOL || HAL_PLATFORM_CLOUD_TCP
+#endif // HAL_PLATFORM_CLOUD_TCP
 
-#if PARTICLE_PROTOCOL
 #include "hal_platform.h"
 
 #if HAL_PLATFORM_CLOUD_TCP
@@ -238,146 +237,3 @@ int spark_protocol_get_status(ProtocolFacade* protocol, protocol_status* status,
     return protocol->get_status(status);
 }
 
-#else // !PARTICLE_PROTOCOL
-
-#include "core_protocol.h"
-
-void spark_protocol_communications_handlers(CoreProtocol* protocol, CommunicationsHandlers* handlers)
-{
-    ASSERT_ON_SYSTEM_THREAD();
-    protocol->set_handlers(*handlers);
-}
-
-void spark_protocol_init(CoreProtocol* protocol, const char *id,
-          const SparkKeys &keys,
-          const SparkCallbacks &callbacks,
-          const SparkDescriptor &descriptor, void* reserved)
-{
-    ASSERT_ON_SYSTEM_THREAD();
-    (void)reserved;
-    protocol->init(id, keys, callbacks, descriptor);
-}
-
-int spark_protocol_handshake(CoreProtocol* protocol, void*) {
-    ASSERT_ON_SYSTEM_THREAD();
-    protocol->reset_updating();
-    return protocol->handshake();
-}
-
-bool spark_protocol_event_loop(CoreProtocol* protocol, void*) {
-    ASSERT_ON_SYSTEM_THREAD();
-    CoAPMessageType::Enum msgtype;
-    return protocol->event_loop(msgtype);
-}
-
-bool spark_protocol_is_initialized(CoreProtocol* protocol) {
-    ASSERT_ON_SYSTEM_THREAD();
-    return protocol->is_initialized();
-}
-
-int spark_protocol_presence_announcement(CoreProtocol* protocol, unsigned char *buf, const unsigned char *id, void*) {
-    ASSERT_ON_SYSTEM_THREAD();
-    return protocol->presence_announcement(buf, id);
-}
-
-int spark_protocol_post_description(CoreProtocol* protocol, int desc_flags, void* reserved) {
-    ASSERT_ON_SYSTEM_THREAD();
-    (void)reserved;
-    return protocol->post_description(desc_flags);
-}
-
-bool spark_protocol_send_event(CoreProtocol* protocol, const char *event_name, const char *data,
-                int ttl, uint32_t flags, void* reserved) {
-    ASSERT_ON_SYSTEM_THREAD();
-	CompletionHandler handler;
-	if (reserved) {
-		auto r = static_cast<const spark_protocol_send_event_data*>(reserved);
-		handler = CompletionHandler(r->handler_callback, r->handler_data);
-	}
-	EventType::Enum event_type = EventType::extract_event_type(flags);
-	return protocol->send_event(event_name, data, ttl, event_type, flags, std::move(handler));
-}
-
-bool spark_protocol_send_subscription_device(CoreProtocol* protocol, const char *event_name, const char *device_id, void*) {
-    ASSERT_ON_SYSTEM_THREAD();
-    return protocol->send_subscription(event_name, device_id);
-}
-
-bool spark_protocol_send_subscription_scope(CoreProtocol* protocol, const char *event_name, SubscriptionScope::Enum scope, void*) {
-    ASSERT_ON_SYSTEM_THREAD();
-    return protocol->send_subscription(event_name, scope);
-}
-
-bool spark_protocol_add_event_handler(CoreProtocol* protocol, const char *event_name,
-    EventHandler handler, SubscriptionScope::Enum scope, const char* device_id, void* handler_data) {
-    ASSERT_ON_SYSTEM_OR_MAIN_THREAD();
-    return protocol->add_event_handler(event_name, handler, handler_data, scope, device_id);
-}
-
-bool spark_protocol_send_time_request(CoreProtocol* protocol, void* reserved) {
-    ASSERT_ON_SYSTEM_THREAD();
-    (void)reserved;
-    return protocol->send_time_request();
-}
-
-void spark_protocol_send_subscriptions(CoreProtocol* protocol, void* reserved) {
-    ASSERT_ON_SYSTEM_THREAD();
-    (void)reserved;
-    protocol->send_subscriptions();
-}
-
-void spark_protocol_remove_event_handlers(CoreProtocol* protocol, const char* event_name, void* reserved) {
-    ASSERT_ON_SYSTEM_THREAD();
-    (void)reserved;
-    protocol->remove_event_handlers(event_name);
-}
-
-void spark_protocol_set_product_id(CoreProtocol* protocol, product_id_t product_id, unsigned, void*) {
-    ASSERT_ON_SYSTEM_THREAD();
-    protocol->set_product_id(product_id);
-}
-
-void spark_protocol_set_product_firmware_version(CoreProtocol* protocol, product_firmware_version_t product_firmware_version, unsigned, void*) {
-    ASSERT_ON_SYSTEM_THREAD();
-    protocol->set_product_firmware_version(product_firmware_version);
-}
-
-void spark_protocol_get_product_details(CoreProtocol* protocol, product_details_t* details, void* reserved) {
-    ASSERT_ON_SYSTEM_THREAD();
-    (void)reserved;
-    protocol->get_product_details(*details);
-}
-
-int spark_protocol_set_connection_property(CoreProtocol* protocol, unsigned property_id,
-                                           unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved)
-{
-    return 0;
-}
-
-int spark_protocol_command(CoreProtocol* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
-{
-    (void)reserved;
-	return protocol->command(cmd, data);
-}
-
-bool spark_protocol_time_request_pending(CoreProtocol* protocol, void* reserved)
-{
-    (void)reserved;
-    return protocol->time_request_pending();
-}
-system_tick_t spark_protocol_time_last_synced(CoreProtocol* protocol, time_t* tm, void* reserved)
-{
-    (void)reserved;
-    return protocol->time_last_synced(tm);
-}
-
-int spark_protocol_get_describe_data(CoreProtocol* protocol, spark_protocol_describe_data* data, void* reserved) {
-	return -1;
-}
-
-int spark_protocol_get_status(CoreProtocol* protocol, protocol_status* status, void* reserved)
-{
-    return protocol->get_status(status);
-}
-
-#endif

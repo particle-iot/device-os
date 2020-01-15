@@ -1,6 +1,6 @@
 #include "dtls_protocol.h"
 
-#if HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+#if HAL_PLATFORM_CLOUD_UDP
 
 #include "eckeygen.h"
 
@@ -91,4 +91,4 @@ int DTLSProtocol::wait_confirmable(uint32_t timeout)
 
 }}
 
-#endif // HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+#endif // HAL_PLATFORM_CLOUD_UDP

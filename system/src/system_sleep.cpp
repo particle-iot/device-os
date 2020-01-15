@@ -50,17 +50,14 @@ WakeupState wakeupState;
 
 static void network_suspend() {
     // save the current state so it can be restored on wakeup
-#ifndef SPARK_NO_CLOUD
+
     wakeupState.cloud = spark_cloud_flag_auto_connect();
-#endif
     wakeupState.wifi = !SPARK_WLAN_SLEEP;
     wakeupState.wifiConnected = wakeupState.cloud || network_ready(0, 0, NULL) || network_connecting(0, 0, NULL);
     // Disconnect the cloud and the network
     network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
-#ifndef SPARK_NO_CLOUD
     // Clear the auto connect status
     spark_cloud_flag_disconnect();
-#endif
     network_off(0, 0, 0, NULL);
 }
 
