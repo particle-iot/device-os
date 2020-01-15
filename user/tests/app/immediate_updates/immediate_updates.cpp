@@ -1,8 +1,12 @@
 #include "Particle.h"
 
-#define VERSION 6
+#define VERSION 11 
 
-
+#if VERSION>3 && VERSION<7
+#define DISABLE_UPDATES_ON_START 1
+#else
+#define DISABLE_UPDATES_ON_START 0
+#endif
 #if PLATFORM_ID==6
 PRODUCT_ID(2448);
 #elif PLATFORM_ID==12
@@ -60,7 +64,7 @@ void setup() {
    Particle.variable("updatesEnabled", updatesEnabled);
    Particle.variable("updatesForced", updatesForced);
    Particle.variable("updatesPending", updatesPending);
-   if (VERSION>3) {
+   if (DISABLE_UPDATES_ON_START) {
        System.disableUpdates();
    }
    Particle.connect();
@@ -83,8 +87,8 @@ void loop() {
 		}
 		System.reset();
 	}
-
-	if (VERSION>=6) {
+#ifdef SYSTEM_VERSION_150
+	if (VERSION>=6 ) {
 	    uint8_t enabled = System.updatesEnabled();
 	    for (int i=0; i<10; i++) {
 	        System.enableUpdates();
@@ -97,4 +101,5 @@ void loop() {
 	        System.disableUpdates();
 	    }
 	}
+#endif
 }
