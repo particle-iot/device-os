@@ -39,6 +39,9 @@
 
 #include <algorithm>
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 #define CHECK_PARSER(_expr) \
         ({ \
             const auto _r = _expr; \

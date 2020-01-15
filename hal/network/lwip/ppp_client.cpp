@@ -31,6 +31,10 @@ extern "C" {
 #include "system_error.h"
 #include "lwiplock.h"
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+LOG_SOURCE_CATEGORY("net.ppp.client");
+
 using namespace particle::net::ppp;
 
 std::once_flag Client::once_;
@@ -168,6 +172,7 @@ int Client::input(const uint8_t* data, size_t size) {
       case STATE_CONNECTING:
       case STATE_DISCONNECTING:
       case STATE_CONNECTED: {
+        LOG(TRACE, "RX: %lu", size);
         err_t err = pppos_input_tcpip(pcb_, (u8_t*)data, size);
         if (err) {
           return SYSTEM_ERROR_INTERNAL;
@@ -355,7 +360,7 @@ uint32_t Client::outputCb(ppp_pcb* pcb, uint8_t* data, uint32_t len, void* ctx) 
 }
 
 uint32_t Client::output(const uint8_t* data, size_t len) {
-  LOG_DEBUG(TRACE, "Outputing %lu bytes", len);
+  LOG(TRACE, "TX: %lu", len);
 
   if (oCb_) {
     auto r = oCb_(data, len, oCbCtx_);
