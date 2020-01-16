@@ -42,7 +42,8 @@ PMIC pmic(true);
 IoExpanderPinObj esp32BootPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN0);
 IoExpanderPinObj esp32CsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN1);
 IoExpanderPinObj esp32EnPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN2);
-#endif
+IoExpanderPinObj esp32WakeupPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN7);
+#endif // TEST_ESP32
 
 // Enable threading if compiled with "USE_THREADING=y"
 #if PLATFORM_THREADING == 1 && USE_THREADING == 1
@@ -123,6 +124,12 @@ static int setTriggerPin1(bool val) {
     }
 }
 #endif // TEST_IO_EXP_INT
+
+#if TEST_ESP32
+static void esp32WakeupPinHandler(void* context) {
+    Serial.println("Wakeup by ESP32!");
+}
+#endif // TEST_ESP32
 
 void setup() {
     // Serial.begin(115200);
@@ -205,7 +212,11 @@ void setup() {
     esp32EnPin.write(IoExpanderPinValue::LOW);
     delay(100);
     esp32EnPin.write(IoExpanderPinValue::HIGH);
-#endif
+
+    esp32WakeupPin.mode(IoExpanderPinMode::INPUT_PULLUP);
+    esp32WakeupPin.attachInterrupt(IoExpanderIntTrigger::FALLING, esp32WakeupPinHandler, nullptr);
+    esp32WakeupPin.inputLatch(true);
+#endif // TEST_ESP32
 }
 
 void loop() {
@@ -270,5 +281,5 @@ void loop() {
     Serial.printf("rx data: %s\r\n", rxBuffer);
     esp32CsPin.write(IoExpanderPinValue::HIGH);
     delay(2000);
-#endif
+#endif // TEST_ESP32
 }
