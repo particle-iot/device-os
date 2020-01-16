@@ -11,6 +11,7 @@
 #define TEST_FUEL_GAUGE                 0
 #define TEST_PMIC                       0
 #define TEST_SENSOR                     1
+#define TEST_ESP32                      0
 
 #if TEST_GPS
 IoExpanderPinObj gpsResetPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN5);
@@ -35,6 +36,12 @@ FuelGauge gauge(Wire, true);
 
 #if TEST_PMIC
 PMIC pmic(true);
+#endif
+
+#if TEST_ESP32
+IoExpanderPinObj esp32BootPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN0);
+IoExpanderPinObj esp32CsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN1);
+IoExpanderPinObj esp32EnPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN2);
 #endif
 
 // Enable threading if compiled with "USE_THREADING=y"
@@ -183,6 +190,22 @@ void setup() {
         LOG(INFO, "BMI160 chip ID: 0x%02x", chipId);
     }
 #endif
+
+#if TEST_ESP32
+    SPI.setDataMode(SPI_MODE0);
+    SPI.begin();
+
+    // Configure ESP32 pin
+    esp32CsPin.mode(IoExpanderPinMode::OUTPUT);
+    esp32CsPin.write(IoExpanderPinValue::HIGH);
+    esp32BootPin.mode(IoExpanderPinMode::OUTPUT);
+    esp32BootPin.write(IoExpanderPinValue::HIGH);
+    esp32EnPin.mode(IoExpanderPinMode::OUTPUT);
+    // Reset ESP32
+    esp32EnPin.write(IoExpanderPinValue::LOW);
+    delay(100);
+    esp32EnPin.write(IoExpanderPinValue::HIGH);
+#endif
 }
 
 void loop() {
@@ -233,5 +256,19 @@ void loop() {
 #if TEST_PMIC
     LOG(INFO, "PMIC version: 0x%02x", pmic.getVersion());
     delay(1000);
+#endif
+
+#if TEST_ESP32
+    const int len = strlen("This is the receiver, sending data for transmission number 0000");
+    static uint8_t rxBuffer[64];
+    static uint8_t txBuffer[64];
+    esp32CsPin.write(IoExpanderPinValue::LOW);
+    memset(rxBuffer, 0, sizeof(rxBuffer));
+    memset(txBuffer, 0, sizeof(txBuffer));
+    sprintf((char*)txBuffer, "Hello, I'm B5SoM!");
+    SPI.transfer(txBuffer, rxBuffer, len, nullptr);
+    Serial.printf("rx data: %s\r\n", rxBuffer);
+    esp32CsPin.write(IoExpanderPinValue::HIGH);
+    delay(2000);
 #endif
 }
