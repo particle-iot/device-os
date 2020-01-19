@@ -25,15 +25,15 @@
 #define IO_EXPANDER_PIN_COUNT_PER_PORT_MAX      (8)
 
 #define PCAL6416A_I2C_ADDRESS                   (0x20)
-#define PCAL6416A_RESET_PIN                     (D23)
-#define PCAL6416A_INT_PIN                       (D22)
+#define PCAL6416A_RESET_PIN                     (IOE_RST)
+#define PCAL6416A_INT_PIN                       (IOE_INT)
 
 
 namespace particle {
 
 class Pcal6416a : public IoExpanderBase {
 public:
-    int begin(uint8_t address, pin_t resetPin, pin_t interruptPin);
+    int begin(uint8_t address, pin_t resetPin, pin_t interruptPin, TwoWire* wire = &Wire1);
     int end();
     int reset();
     int sleep();
@@ -109,6 +109,7 @@ private:
     uint8_t portPullRegValue_;
 
     bool initialized_;
+    TwoWire* wire_;
     uint8_t address_;
     pin_t resetPin_;
     pin_t intPin_;

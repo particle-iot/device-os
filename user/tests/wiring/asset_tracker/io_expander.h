@@ -113,7 +113,7 @@ private:
 
 class IoExpanderBase {
 public:
-    virtual int begin(uint8_t address, pin_t resetPin, pin_t interruptPin) = 0;
+    virtual int begin(uint8_t address, pin_t resetPin, pin_t interruptPin, TwoWire* wire) = 0;
     virtual int end() = 0;
     virtual int reset() = 0;
     virtual int sleep() = 0;
