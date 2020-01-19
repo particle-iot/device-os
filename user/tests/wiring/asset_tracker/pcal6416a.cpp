@@ -35,10 +35,11 @@ Pcal6416a::~Pcal6416a() {
 
 }
 
-int Pcal6416a::begin(uint8_t address, pin_t resetPin, pin_t interruptPin) {
+int Pcal6416a::begin(uint8_t address, pin_t resetPin, pin_t interruptPin, TwoWire* wire) {
     IoExpanderLock lock(mutex_);
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
 
+    wire_ = wire;
     address_ = address;
     resetPin_ = resetPin;
     intPin_ = interruptPin;
@@ -55,8 +56,8 @@ int Pcal6416a::begin(uint8_t address, pin_t resetPin, pin_t interruptPin) {
         return SYSTEM_ERROR_INTERNAL;
     }
 
-    Wire.setSpeed(CLOCK_SPEED_400KHZ);
-    Wire.begin();
+    wire_->setSpeed(CLOCK_SPEED_400KHZ);
+    wire_->begin();
     pinMode(intPin_, INPUT_PULLUP);
     CHECK_TRUE(attachInterrupt(intPin_, ioExpanderInterruptHandler, FALLING), SYSTEM_ERROR_INTERNAL);
 
@@ -80,7 +81,7 @@ int Pcal6416a::end() {
     ioExpanderWorkerQueue_ = nullptr;
 
     CHECK(reset());
-    Wire.end();
+    wire_->end();
 
     address_ = INVALID_I2C_ADDRESS;
     resetPin_ = PIN_INVALID;
@@ -199,22 +200,24 @@ void Pcal6416a::resetRegValue() {
 }
 
 int Pcal6416a::writeRegister(const uint8_t reg, const uint8_t val) {
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
     LOG(TRACE, "writeRegister(0x%02x, 0x%02x)", reg, val);
     uint8_t buf[2];
     buf[0] = reg;
     buf[1] = val;
-    Wire.beginTransmission(address_);
-    Wire.write(buf, sizeof(buf));
-    return Wire.endTransmission();
+    wire_->beginTransmission(address_);
+    wire_->write(buf, sizeof(buf));
+    return wire_->endTransmission();
 }
 
 int Pcal6416a::readRegister(const uint8_t reg, uint8_t* const val) {
-    Wire.beginTransmission(address_);
-    Wire.write(&reg, 1);
-    CHECK_TRUE(Wire.endTransmission(false) == 0, SYSTEM_ERROR_INTERNAL);
-    Wire.requestFrom(address_, (uint8_t)1);
-    if (Wire.available()) {
-        *val = Wire.read();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
+    wire_->beginTransmission(address_);
+    wire_->write(&reg, 1);
+    CHECK_TRUE(wire_->endTransmission(false) == 0, SYSTEM_ERROR_INTERNAL);
+    wire_->requestFrom(address_, (uint8_t)1);
+    if (wire_->available()) {
+        *val = wire_->read();
     }
     return SYSTEM_ERROR_NONE;
 }
