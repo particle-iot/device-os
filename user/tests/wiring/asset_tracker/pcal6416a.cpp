@@ -57,6 +57,7 @@ int Pcal6416a::begin(uint8_t address, pin_t resetPin, pin_t interruptPin) {
 
     Wire.setSpeed(CLOCK_SPEED_400KHZ);
     Wire.begin();
+    pinMode(intPin_, INPUT_PULLUP);
     CHECK_TRUE(attachInterrupt(intPin_, ioExpanderInterruptHandler, FALLING), SYSTEM_ERROR_INTERNAL);
 
     initialized_ = true;
@@ -94,6 +95,7 @@ int Pcal6416a::reset() {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(resetPin_ != PIN_INVALID, SYSTEM_ERROR_INVALID_ARGUMENT);
     // Assert reset pin
+    digitalWrite(resetPin_, HIGH);
     pinMode(resetPin_, OUTPUT);
     digitalWrite(resetPin_, LOW);
     delayMicroseconds(1);
