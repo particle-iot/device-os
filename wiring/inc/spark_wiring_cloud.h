@@ -37,7 +37,9 @@
 #include "spark_wiring_global.h"
 #include "interrupts_hal.h"
 #include "system_mode.h"
+
 #include <functional>
+#include <type_traits>
 
 #define PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE \
         PARTICLE_DEPRECATED_API("Beginning with 0.8.0 release, Particle.publish() will require event scope to be specified explicitly.");
@@ -69,14 +71,14 @@ struct is_string_literal {
 };
 
 class CloudClass {
-  public:
-    template <typename T, class ... Types>
-    static inline bool variable(const T &name, const Types& ... args)
+public:
+    template <typename T, typename... ArgsT>
+    static inline bool variable(const T &name, ArgsT&&... args)
     {
         static_assert(!is_string_literal<T>::value || sizeof(name) <= USER_VAR_KEY_LENGTH + 1,
             "\n\nIn Particle.variable, name must be " __XSTRING(USER_VAR_KEY_LENGTH) " characters or less\n\n");
 
-        return _variable(name, args...);
+        return _variable(name, std::forward<ArgsT>(args)...);
     }
 
 
@@ -177,6 +179,17 @@ class CloudClass {
     {
         static_assert(sizeof(T)==0, "\n\nIn Particle.variable(\"name\", myVar, STRING); myVar must be declared as char myVar[] not String myVar\n\n");
         return false;
+    }
+
+    // TODO: Add support for std::function
+    template<typename T>
+    static bool _variable(const char *varKey, T fn)
+    {
+        using ResultT = typename std::result_of<T()>::type;
+        spark_variable_t extra = {};
+        extra.size = sizeof(extra);
+        extra.copy = copy_fn_variable<T>;
+        return CLOUD_FN(spark_variable(varKey, (const void*)fn, CloudVariableType<ResultT>::TYPE_ID, &extra), false);
     }
 
     template <typename T, class ... Types>
@@ -396,6 +409,22 @@ private:
     {
         const String* s = (const String*)var;
         return s->c_str();
+    }
+
+    template<typename T>
+    static int copy_fn_variable(const void* var, void** data, size_t* size)
+    {
+        using ResultType = typename std::result_of<T()>::type;
+        using ValueType = typename CloudVariableType<ResultType>::ValueType;
+        const auto fn = (T)var;
+        const ValueType val = fn();
+        *data = malloc(sizeof(val));
+        if (!*data) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        memcpy(*data, &val, sizeof(val));
+        *size = sizeof(val);
+        return 0;
     }
 };
 

@@ -51,6 +51,8 @@ system_error_t particle::protocol::toSystemError(ProtocolError error) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     case NOT_FOUND:
         return SYSTEM_ERROR_NOT_FOUND;
+    case NO_MEMORY:
+        return SYSTEM_ERROR_NO_MEMORY;
     default:
         return SYSTEM_ERROR_PROTOCOL; // Generic protocol error
     }

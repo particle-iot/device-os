@@ -49,6 +49,8 @@
 #include "system_cloud_connection.h"
 #include "system_network_internal.h"
 #include "str_util.h"
+#include "scope_guard.h"
+
 #include <stdio.h>
 #include <stdint.h>
 
@@ -129,9 +131,14 @@ template<typename T> T* add_if_sufficient_describe(append_list<T>& list, const c
 
 User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey, const void* userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra)
 {
-	User_Var_Lookup_Table_t item = { .userVar = userVar, .userVarType = userVarType, 0, 0};
+	User_Var_Lookup_Table_t item = {};
+	item.userVar = userVar;
+	item.userVarType = userVarType;
 	if (extra) {
 		item.update = extra->update;
+		if (offsetof(spark_variable_t, copy) + sizeof(spark_variable_t::copy) <= sizeof(spark_variable_t)) {
+			item.copy = extra->copy;
+		}
 	}
 	memcpy(item.userVarKey, varKey, USER_VAR_KEY_LENGTH);
 
@@ -602,6 +609,32 @@ int userVarType(const char *varKey)
     return item ? item->userVarType : -1;
 }
 
+SparkReturnType::Enum protocolVariableType(Spark_Data_TypeDef type) {
+    switch (type) {
+    case CLOUD_VAR_BOOLEAN:
+        return SparkReturnType::BOOLEAN;
+    case CLOUD_VAR_DOUBLE:
+        return SparkReturnType::DOUBLE;
+    case CLOUD_VAR_STRING:
+        return SparkReturnType::STRING;
+    default:
+        return SparkReturnType::INT;
+    }
+}
+
+size_t variableDataSize(const void* data, Spark_Data_TypeDef type) {
+    switch (type) {
+    case CLOUD_VAR_BOOLEAN:
+        return sizeof(bool);
+    case CLOUD_VAR_DOUBLE:
+        return sizeof(double);
+    case CLOUD_VAR_STRING:
+        return data ? strlen((const char*)data) : 0;
+    default:
+        return sizeof(uint32_t);
+    }
+}
+
 void getUserVarResult(int error, int type, void* data, size_t size, SparkDescriptor::GetVariableCallback callback,
         void* context) {
     SYSTEM_THREAD_CONTEXT_ASYNC(getUserVarResult(error, type, data, size, callback, context));
@@ -611,45 +644,35 @@ void getUserVarResult(int error, int type, void* data, size_t size, SparkDescrip
 void getUserVarImpl(User_Var_Lookup_Table_t* item, SparkDescriptor::GetVariableCallback callback, void* context)
 {
     APPLICATION_THREAD_CONTEXT_ASYNC(getUserVarImpl(item, callback, context));
-    const void* data = nullptr;
-    if (item->update) {
-        data = item->update(item->userVarKey, item->userVarType, item->userVar, nullptr);
-    } else {
-        data = item->userVar;
-    }
-    auto type = SparkReturnType::STRING;
     size_t size = 0;
-    if (data) {
-        switch (item->userVarType) {
-        case CLOUD_VAR_BOOLEAN:
-            type = SparkReturnType::BOOLEAN;
-            size = sizeof(bool);
-            break;
-        case CLOUD_VAR_INT:
-            type = SparkReturnType::INT;
-            size = sizeof(uint32_t);
-            break;
-        case CLOUD_VAR_DOUBLE:
-            type = SparkReturnType::DOUBLE;
-            size = sizeof(double);
-            break;
-        case CLOUD_VAR_STRING:
-            type = SparkReturnType::STRING;
-            size = strlen((const char*)data);
-            break;
-        default:
-            getUserVarResult(ProtocolError::NOT_IMPLEMENTED, 0 /* type */, nullptr /* data */, 0 /* size */, callback, context);
+    void* copy = nullptr;
+    NAMED_SCOPE_GUARD(copyGuard, {
+        free(copy);
+    });
+    if (item->copy) {
+        const int result = item->copy(item->userVar, &copy, &size);
+        if (result < 0) {
+            getUserVarResult(ProtocolError::NO_MEMORY, 0 /* type */, nullptr /* data */, 0 /* size */, callback, context);
             return;
         }
-    }
-    // Copy the value and pass it over to the system thread
-    void* copy = malloc(size);
-    if (copy) {
-        memcpy(copy, data, size);
-        getUserVarResult(ProtocolError::NO_ERROR, type, copy, size, callback, context);
     } else {
-        getUserVarResult(ProtocolError::INSUFFICIENT_STORAGE, 0, nullptr, 0, callback, context);
+        const void* data = nullptr;
+        if (item->update) {
+            data = item->update(item->userVarKey, item->userVarType, item->userVar, nullptr);
+        } else {
+            data = item->userVar;
+        }
+        size = variableDataSize(data, item->userVarType);
+        copy = malloc(size);
+        if (!copy) {
+            getUserVarResult(ProtocolError::NO_MEMORY, 0, nullptr, 0, callback, context);
+            return;
+        }
+        memcpy(copy, data, size);
     }
+    const auto type = protocolVariableType(item->userVarType); // Spark_Data_TypeDef -> SparkReturnType::Enum
+    getUserVarResult(ProtocolError::NO_ERROR, type, copy, size, callback, context);
+    copyGuard.dismiss();
 }
 
 void getUserVar(const char* varKey, SparkDescriptor::GetVariableCallback callback, void* context)

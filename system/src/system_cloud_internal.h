@@ -53,6 +53,7 @@ struct User_Var_Lookup_Table_t
     char userVarKey[USER_VAR_KEY_LENGTH+1];
 
     const void* (*update)(const char* name, Spark_Data_TypeDef varType, const void* var, void* reserved);
+    int (*copy)(const void* var, void** data, size_t* size);
 };
 
 
