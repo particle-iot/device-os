@@ -53,57 +53,54 @@ namespace particle {
     static const system_tick_t NOW = static_cast<system_tick_t>(-1);
 }
 
-struct CloudVariableTypeBase {};
-struct CloudVariableTypeBool : public CloudVariableTypeBase {
-    using vartype = bool;
-    using varref = const bool*;
-    static const Spark_Data_TypeDef vartypeid = CLOUD_VAR_BOOLEAN;
-    CloudVariableTypeBool(){};
-    static inline Spark_Data_TypeDef value() { return vartypeid; }
-};
-struct CloudVariableTypeInt : public CloudVariableTypeBase {
-    using vartype = int;
-    using varref = const int*;
-    static const Spark_Data_TypeDef vartypeid = CLOUD_VAR_INT;
-    CloudVariableTypeInt(){};
-    static inline Spark_Data_TypeDef value() { return vartypeid; }
-};
-struct CloudVariableTypeString : public CloudVariableTypeBase {
-    using vartype = const char*;
-    using varref = const char*;
-    static const Spark_Data_TypeDef vartypeid = CLOUD_VAR_STRING;
-    CloudVariableTypeString(){};
-    static inline Spark_Data_TypeDef value() { return vartypeid; }
-};
-struct CloudVariableTypeDouble : public CloudVariableTypeBase {
-    using vartype = double;
-    using varref = const double*;
-    static const Spark_Data_TypeDef vartypeid = CLOUD_VAR_DOUBLE;
-    CloudVariableTypeDouble(){};
-    static inline Spark_Data_TypeDef value() { return vartypeid; }
-};
-
 template<typename T, typename EnableT = void>
 struct CloudVariableType {
 };
 
 template<>
-struct CloudVariableType<bool, void> {
-    using ValueType = CloudVariableTypeBool::vartype;
-    static const auto TYPE_ID = CloudVariableTypeBool::vartypeid;
+struct CloudVariableType<bool> {
+    using ValueType = bool;
+    using PointerType = const bool*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_BOOLEAN;
 };
 
 template<typename T>
-struct CloudVariableType<T, typename std::enable_if<std::is_integral<T>::value>::type> {
-    using ValueType = CloudVariableTypeInt::vartype;
-    static const auto TYPE_ID = CloudVariableTypeInt::vartypeid;
+struct CloudVariableType<T, typename std::enable_if<std::is_integral<T>::value && sizeof(T) <= sizeof(int)>::type> {
+    using ValueType = int;
+    using PointerType = const int*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_INT;
 };
 
 template<typename T>
-struct CloudVariableType<T, typename std::enable_if<std::is_floating_point<T>::value>::type> {
-    using ValueType = CloudVariableTypeDouble::vartype;
-    static const auto TYPE_ID = CloudVariableTypeDouble::vartypeid;
+struct CloudVariableType<T, typename std::enable_if<std::is_floating_point<T>::value && sizeof(T) <= sizeof(double)>::type> {
+    using ValueType = double;
+    using PointerType = const double*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_DOUBLE;
 };
+
+template<>
+struct CloudVariableType<const char*> {
+    using ValueType = const char*;
+    using PointerType = const char*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_STRING;
+};
+
+template<>
+struct CloudVariableType<String> {
+    using ValueType = String;
+    using PointerType = const String*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_STRING;
+};
+
+typedef CloudVariableType<bool> CloudVariableTypeBool;
+typedef CloudVariableType<int> CloudVariableTypeInt;
+typedef CloudVariableType<double> CloudVariableTypeDouble;
+typedef CloudVariableType<const char*> CloudVariableTypeString;
 
 const CloudVariableTypeBool BOOLEAN;
 const CloudVariableTypeInt INT;
