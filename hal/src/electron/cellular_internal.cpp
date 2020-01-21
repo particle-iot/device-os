@@ -118,14 +118,14 @@ cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signa
         case ACT_LTE:
         case ACT_LTE_CAT_M1:
         case ACT_LTE_CAT_NB1:
-            // Convert to dBm [-140, -44], see 3GPP TS 36.133 subclause 9.1.4
+            // Convert to dBm [-141, -44], see 3GPP TS 36.133 subclause 9.1.4
             // Reported multiplied by 100
             signalext->rsrp = (status.rsrp != 255) ? (status.rsrp - 141) * 100 : std::numeric_limits<int32_t>::min();
-            // Convert to dB [-19.5, -3], see 3GPP TS 36.133 subclause 9.1.7
+            // Convert to dB [-20, -3], see 3GPP TS 36.133 subclause 9.1.7
             // Report multiplied by 100
             signalext->rsrq = (status.rsrq != 255) ? status.rsrq * 50 - 2000 : std::numeric_limits<int32_t>::min();
 
-            // RSRP in % [0, 100] based on [-140, -44] range mapped to [0, 65535] integer range
+            // RSRP in % [0, 100] based on [-141, -44] range mapped to [0, 65535] integer range
             signalext->strength = (status.rsrp != 255) ? status.rsrp * 65535 / 97 : std::numeric_limits<int32_t>::min();
             // Quality based on Ec/Io in % [0, 100] mapped to [0,65535] integer range
             signalext->quality = (status.rsrq != 255) ? status.rsrq * 65535 / 34 : std::numeric_limits<int32_t>::min();

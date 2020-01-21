@@ -5,6 +5,10 @@
 # . install_boost.sh
 # ./unit_tests.sh
 
+if [ -n "$BOOST_ROOT" ]; then
+    cmake_args="-DBoost_NO_SYSTEM_PATHS=TRUE"
+fi
+
 ci_dir=$(dirname $BASH_SOURCE)
 cd $ci_dir
 
@@ -49,6 +53,6 @@ set -x -e
 cd $unit_test_dir
 rm -rf .build/*
 mkdir .build -p && cd .build/
-cmake ..
+cmake $cmake_args ..
 # FIXME: coveralls disabled for now as the CI builds for some reason are failing
 make all test # coveralls
