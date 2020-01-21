@@ -41,9 +41,9 @@
 #endif
 
 #if HAL_PLATFORM_NCP
-#include "network/ncp.h"
-#include "wifi_network_manager.h"
-#include "wifi_ncp_client.h"
+#include "network/ncp/wifi/ncp.h"
+#include "network/ncp/wifi/wifi_network_manager.h"
+#include "network/ncp/wifi/wifi_ncp_client.h"
 #endif
 
 #include "config.pb.h"

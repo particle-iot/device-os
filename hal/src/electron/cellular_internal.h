@@ -20,7 +20,7 @@
 #ifndef CELLULAR_INTERNAL_H
 #define	CELLULAR_INTERNAL_H
 
-#include "modem/enums_hal.h"
+#include "cellular_enums_hal.h"
 #include "cellular_hal_constants.h"
 
 #ifdef __cplusplus

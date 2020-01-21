@@ -18,7 +18,7 @@ extern "C" {
 #include "pinmap_impl.h"
 #include "deepsleep_hal_impl.h"
 #if PLATFORM_ID == 10 // Electron
-#include "modem/enums_hal.h"
+#include "cellular_enums_hal.h"
 #endif
 #include "usb_settings.h"
 

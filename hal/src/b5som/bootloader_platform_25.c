@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,15 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HAL_ARGON_NETWORK_NCP_H
-#define HAL_ARGON_NETWORK_NCP_H
+const unsigned char bootloader_platform_25_bin_miniz[] = {
 
-#include "wifi_network_manager.h"
-
-namespace particle {
-
-WifiNetworkManager* wifiNetworkManager();
-
-} // particle
-
-#endif // HAL_ARGON_NETWORK_NCP_H
+};
+const unsigned int bootloader_platform_25_bin_miniz_len = 0;

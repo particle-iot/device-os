@@ -23,7 +23,7 @@
 #include <atomic>
 #include <lwip/netif.h>
 #include <lwip/pbuf.h>
-#include "wifi_network_manager.h"
+#include "network/ncp/wifi/wifi_network_manager.h"
 #include "ncp_client.h"
 #include <memory>
 

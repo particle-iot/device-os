@@ -399,7 +399,8 @@ void WiFiTester::checkWifiSerial(char c) {
             }
             if (ok) {
                 if (!strcmp("ALL", parts[1])) {
-#if HAL_PLATFORM_NRF52840
+#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || \
+    PLATFORM_ID == PLATFORM_XSOM || PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM
                     setPinOutputRange(A0, A5, pinValue);
                     setPinOutputRange(D0, D8, pinValue);
 #else

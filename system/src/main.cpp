@@ -79,8 +79,12 @@
 #include "system_listening_mode.h"
 #endif /* HAL_PLATFORM_IFAPI */
 
-#if HAL_PLATFORM_NCP
-#include "network/ncp.h"
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
+#include "network/ncp/wifi/ncp.h"
+#endif
+
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+#include "network/ncp/cellular/ncp.h"
 #endif
 
 #if HAL_PLATFORM_MESH

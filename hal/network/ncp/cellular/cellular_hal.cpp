@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,9 +17,9 @@
 
 #include "cellular_hal.h"
 
-#include "network/cellular_network_manager.h"
-#include "network/cellular_ncp_client.h"
-#include "network/ncp.h"
+#include "network/ncp/cellular/cellular_network_manager.h"
+#include "network/ncp/cellular/cellular_ncp_client.h"
+#include "network/ncp/cellular/ncp.h"
 #include "ifapi.h"
 
 #include "system_network.h" // FIXME: For network_interface_index
@@ -32,7 +32,7 @@
 #include "at_parser.h"
 #include "at_command.h"
 #include "at_response.h"
-#include "modem/enums_hal.h"
+#include "cellular_enums_hal.h"
 
 #include <limits>
 
@@ -203,6 +203,15 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
         case PLATFORM_NCP_SARA_R410:
             info->dev = DEV_SARA_R410;
             break;
+        case PLATFORM_NCP_QUECTEL_BG96:
+            info->dev = DEV_QUECTEL_BG96;
+            break;
+        case PLATFORM_NCP_QUECTEL_EG91_E:
+            info->dev = DEV_QUECTEL_EG91_E;
+            break;
+        case PLATFORM_NCP_QUECTEL_EG91_NA:
+            info->dev = DEV_QUECTEL_EG91_NA;
+            break;
         default:
             info->dev = DEV_UNKNOWN;
             break;
@@ -240,7 +249,7 @@ int cellular_credentials_clear(void* reserved) {
 }
 
 cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* reserved_) {
-    CellularGlobalIdentity cgi;  // Intentionally left uninitialized
+    CellularGlobalIdentity cgi;
 
     // Acquire Cellular NCP Client
     const auto mgr = cellularNetworkManager();

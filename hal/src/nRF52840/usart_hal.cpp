@@ -374,6 +374,11 @@ public:
             transmitting_ = false;
             startTransmission();
         }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ERROR)) {
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ERROR);
+            uint32_t uartErrorSource = nrf_uarte_errorsrc_get_and_clear(uarte_);
+            (void)uartErrorSource;
+        }
     }
 
 private:

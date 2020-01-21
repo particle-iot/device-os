@@ -2,4 +2,3 @@ BUILDPACK_FILES=$(mkdir buildpack && wget https://api.github.com/repos/particle-
 SHORT_REF=$(echo "$BUILDPACK_FILES" | head -n1 | cut -d '/' -f 1 | rev | cut -d '-' -f 1 | rev)
 mkdir buildpack/.git
 echo "${SHORT_REF}" > buildpack/.git/short_ref
-

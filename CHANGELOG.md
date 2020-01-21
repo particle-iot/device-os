@@ -1,3 +1,15 @@
+## 1.4.5-b5som.2
+
+### BUGFIXES
+
+- [B5SoM] ncp: lowers the baudrate to 115200 and explicitly enables flow control with AT+IFC=2,2
+
+## 1.4.5-b5som.1
+
+### FEATURES
+
+- [B5SoM] Initial support for the platform.
+
 ## 1.4.4
 
 >**Note:** If your Gen 2 Photon/P1 or Gen 3 device does not have a Cloud connection, it is recommended to update system firmware, and then the bootloader via CLI with `particle flash --serial bootloader.bin` (bootloaders found in Github release).

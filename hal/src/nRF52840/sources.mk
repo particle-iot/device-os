@@ -33,7 +33,7 @@ CPPSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/openthread/,*.cpp)
 CSRC += $(call target_files,$(HAL_MODULE_PATH)/network/openthread/,*.c)
 CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/openthread/,*.cpp)
 
-CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/ncp/,*.cpp)
+CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/ncp/at_parser,*.cpp)
 
 CSRC += $(TARGET_HAL_PATH)/src/portable/FreeRTOS/heap_4_lock.c
 

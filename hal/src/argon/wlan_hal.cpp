@@ -17,9 +17,9 @@
 
 #include "wlan_hal.h"
 
-#include "network/ncp.h"
-#include "wifi_network_manager.h"
-#include "wifi_ncp_client.h"
+#include "network/ncp/wifi/ncp.h"
+#include "network/ncp/wifi/wifi_network_manager.h"
+#include "network/ncp/wifi/wifi_ncp_client.h"
 #include "ifapi.h"
 
 #include "system_network.h" // FIXME: For network_interface_index

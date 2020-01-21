@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,12 +17,10 @@
 
 #pragma once
 
-#include <cstddef>
+#include "wifi_network_manager.h"
 
 namespace particle {
 
-class CellularNetworkConfig;
-
-CellularNetworkConfig networkConfigForImsi(const char* imsi, size_t size);
+WifiNetworkManager* wifiNetworkManager();
 
 } // particle

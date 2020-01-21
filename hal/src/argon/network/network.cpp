@@ -29,8 +29,8 @@
 #include "border_router_manager.h"
 #include <malloc.h>
 #include "esp32_ncp_client.h"
-#include "wifi_network_manager.h"
-#include "ncp.h"
+#include "network/ncp/wifi/wifi_network_manager.h"
+#include "network/ncp/wifi/ncp.h"
 #include "debug.h"
 #include "esp32/esp32ncpnetif.h"
 #include "lwip_util.h"

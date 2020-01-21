@@ -27,7 +27,7 @@
 #include <malloc.h>
 #include "serial_stream.h"
 #include "usart_hal.h"
-#include "ncp.h"
+#include "network/ncp/cellular/ncp.h"
 #include "pppncpnetif.h"
 #include "sara_ncp_client.h"
 #include "platform_ncp.h"

@@ -29,7 +29,7 @@
 #if Wiring_Cellular || defined(UNIT_TEST)
 
 #include "cellular_hal.h"
-#include "modem/enums_hal.h"
+#include "cellular_enums_hal.h"
 
 /*
  * CellularSignal
