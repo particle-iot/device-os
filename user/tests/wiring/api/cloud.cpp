@@ -23,6 +23,20 @@
 
 #include "testapi.h"
 
+namespace {
+
+template<typename T>
+T varFn() {
+    return T();
+}
+
+template<typename T>
+std::function<T()> varStdFn() {
+    return std::function<T()>(varFn<T>);
+}
+
+} // namespace
+
 test(api_spark_variable) {
 
     int valueInt = 0;
@@ -64,6 +78,29 @@ test(api_spark_variable) {
     API_COMPILE(Particle.variable("mystring", valueString));
     API_COMPILE(Particle.variable("mystring", constValueString));
     API_COMPILE(Particle.variable("mystring", valueSmartString));
+
+    // Variable functions
+    API_COMPILE(Particle.variable("fn", varFn<int8_t>));
+    API_COMPILE(Particle.variable("fn", varFn<uint8_t>));
+    API_COMPILE(Particle.variable("fn", varFn<int16_t>));
+    API_COMPILE(Particle.variable("fn", varFn<uint16_t>));
+    API_COMPILE(Particle.variable("fn", varFn<int32_t>));
+    API_COMPILE(Particle.variable("fn", varFn<uint32_t>));
+    API_COMPILE(Particle.variable("fn", varFn<float>));
+    API_COMPILE(Particle.variable("fn", varFn<double>));
+    API_COMPILE(Particle.variable("fn", varFn<const char*>));
+    API_COMPILE(Particle.variable("fn", varFn<String>));
+
+    API_COMPILE(Particle.variable("fn", varStdFn<int8_t>));
+    API_COMPILE(Particle.variable("fn", varStdFn<uint8_t>));
+    API_COMPILE(Particle.variable("fn", varStdFn<int16_t>));
+    API_COMPILE(Particle.variable("fn", varStdFn<uint16_t>));
+    API_COMPILE(Particle.variable("fn", varStdFn<int32_t>));
+    API_COMPILE(Particle.variable("fn", varStdFn<uint32_t>));
+    API_COMPILE(Particle.variable("fn", varStdFn<float>));
+    API_COMPILE(Particle.variable("fn", varStdFn<double>));
+    API_COMPILE(Particle.variable("fn", varStdFn<const char*>));
+    API_COMPILE(Particle.variable("fn", varStdFn<String>));
 
     // This should gives a compiler error about too long name
     //API_COMPILE(Particle.variable("mystring123456789", valueString));
