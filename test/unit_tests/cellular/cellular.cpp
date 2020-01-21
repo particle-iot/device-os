@@ -37,8 +37,7 @@ namespace {
 
     protected:
         virtual size_t write(uint8_t c) override {
-            append_.append(&c, 1);
-            return 1;
+            return (size_t)append_.append(&c, 1);
         }
 
     public:
@@ -52,7 +51,7 @@ namespace {
 using namespace detail;
 
 SCENARIO("IMSI range should default to Telefonica as Network Provider", "[cellular]") {
-    REQUIRE(_cellular_imsi_to_network_provider(NULL) == CELLULAR_NETPROV_TELEFONICA);
+    REQUIRE(_cellular_imsi_to_network_provider(nullptr) == CELLULAR_NETPROV_TELEFONICA);
     REQUIRE(_cellular_imsi_to_network_provider("")   == CELLULAR_NETPROV_TELEFONICA);
     REQUIRE(_cellular_imsi_to_network_provider("123456789012345") == CELLULAR_NETPROV_TELEFONICA);
     REQUIRE(_cellular_imsi_to_network_provider("2040")  == CELLULAR_NETPROV_TELEFONICA);
@@ -83,7 +82,7 @@ SCENARIO("IMSI range should set Telefonica as Network Provider", "[cellular]") {
 
 TEST_CASE("cellular_signal()") {
     SECTION("failure to query the modem") {
-        cellular_signal_t sig = {0};
+        cellular_signal_t sig = {};
         sig.size = sizeof(sig);
         REQUIRE(cellular_signal_impl(nullptr, &sig, false, NetStatus()) < SYSTEM_ERROR_NONE);
         REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_NONE);
@@ -100,14 +99,12 @@ TEST_CASE("cellular_signal()") {
     }
 
     SECTION("CellularSignalHal RSSI and QUAL") {
-        NetStatus status;
-        memset(&status, 0, sizeof(status));
+        NetStatus status = {};
         status.rssi = -50; // arbitrary non-zero values
         status.qual = 37;  //  "
 
         SECTION("CellularSignalHal::rssi and CellularSignalHal::qual are set to expected values") {
-            CellularSignalHal signal;
-            memset(&signal, 0, sizeof(signal));
+            CellularSignalHal signal = {};
             REQUIRE(cellular_signal_impl(&signal, nullptr, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(signal.rssi == -50);
             REQUIRE(signal.qual == 37);
@@ -115,8 +112,7 @@ TEST_CASE("cellular_signal()") {
     }
 
     SECTION("UNKNOWN") {
-        NetStatus status;
-        memset(&status, 0, sizeof(status));
+        NetStatus status = {};
         status.act = ACT_UNKNOWN;
 
         SECTION("values reported by ACT_UNKNOWN case") {
@@ -127,7 +123,7 @@ TEST_CASE("cellular_signal()") {
             status.rsrp = 10;
             status.rsrq = 10;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_UNKNOWN);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_NONE);
@@ -158,15 +154,14 @@ TEST_CASE("cellular_signal()") {
     }
 
     SECTION("GSM") {
-        NetStatus status;
-        memset(&status, 0, sizeof(status));
+        NetStatus status = {};
         status.act = ACT_GSM;
 
         SECTION("error values reported by the modem") {
             status.rxlev = 99;
             status.rxqual = 99;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_GSM);
@@ -190,7 +185,7 @@ TEST_CASE("cellular_signal()") {
             status.rxlev = 31;
             status.rxqual = 99;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_GSM);
@@ -214,7 +209,7 @@ TEST_CASE("cellular_signal()") {
             status.rxlev = 0;
             status.rxqual = 0;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_GSM);
@@ -239,7 +234,7 @@ TEST_CASE("cellular_signal()") {
             status.rxlev = 31;
             status.rxqual = 4;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_GSM);
@@ -263,7 +258,7 @@ TEST_CASE("cellular_signal()") {
             status.rxlev = 63;
             status.rxqual = 7;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_GSM);
@@ -295,15 +290,14 @@ TEST_CASE("cellular_signal()") {
     }
 
     SECTION("EDGE") {
-        NetStatus status;
-        memset(&status, 0, sizeof(status));
+        NetStatus status = {};
         status.act = ACT_EDGE;
 
         SECTION("error values reported by the modem") {
             status.rxlev = 99;
             status.rxqual = 99;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_EDGE);
@@ -327,7 +321,7 @@ TEST_CASE("cellular_signal()") {
             status.rxlev = 31;
             status.rxqual = 99;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_EDGE);
@@ -351,7 +345,7 @@ TEST_CASE("cellular_signal()") {
             status.rxlev = 0;
             status.rxqual = 0;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_EDGE);
@@ -376,7 +370,7 @@ TEST_CASE("cellular_signal()") {
             status.rxlev = 31;
             status.rxqual = 4;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_EDGE);
@@ -400,7 +394,7 @@ TEST_CASE("cellular_signal()") {
             status.rxlev = 63;
             status.rxqual = 7;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_EDGE);
@@ -423,15 +417,14 @@ TEST_CASE("cellular_signal()") {
     }
 
     SECTION("UMTS") {
-        NetStatus status;
-        memset(&status, 0, sizeof(status));
+        NetStatus status = {};
         status.act = ACT_UTRAN;
 
         SECTION("error values reported by the modem") {
             status.rscp = 255;
             status.ecno = 255;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UTRAN);
@@ -455,7 +448,7 @@ TEST_CASE("cellular_signal()") {
             status.rscp = -5;
             status.ecno = 0;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UTRAN);
@@ -479,7 +472,7 @@ TEST_CASE("cellular_signal()") {
             status.rscp = 43;
             status.ecno = 24;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UTRAN);
@@ -503,7 +496,7 @@ TEST_CASE("cellular_signal()") {
             status.rscp = 91;
             status.ecno = 49;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UTRAN);
@@ -525,8 +518,7 @@ TEST_CASE("cellular_signal()") {
     }
 
     SECTION("LTE/LTE_CAT_M1/LTE_CAT_NB1") {
-        NetStatus status;
-        memset(&status, 0, sizeof(status));
+        NetStatus status = {};
 
         // Expected { input, output } data table
         struct DataTable { AcT input_act; hal_net_access_tech_t expected_act; };
@@ -541,7 +533,7 @@ TEST_CASE("cellular_signal()") {
             status.rsrp = 255;
             status.rsrq = 255;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == data.expected_act);
@@ -565,7 +557,7 @@ TEST_CASE("cellular_signal()") {
             status.rsrp = 0;
             status.rsrq = 0;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == data.expected_act);
@@ -589,7 +581,7 @@ TEST_CASE("cellular_signal()") {
             status.rsrp = 48;
             status.rsrq = 17;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == data.expected_act);
@@ -613,7 +605,7 @@ TEST_CASE("cellular_signal()") {
             status.rsrp = 97;
             status.rsrq = 34;
 
-            cellular_signal_t sig = {0};
+            cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == data.expected_act);
@@ -636,10 +628,8 @@ TEST_CASE("cellular_signal()") {
 }
 
 TEST_CASE("cellular_printable") {
-
-    char output[32];
-    memset(&output, 0, sizeof(output));
-    FakeStream ser(output, 32);
+    char output[32] = {};
+    FakeStream ser(output, sizeof(output) - 1);
 
     SECTION("CellularSignal::printTo") {
         CellularSignal cs;
@@ -648,7 +638,7 @@ TEST_CASE("cellular_printable") {
 
         ser.print(cs);
         // printf("%s", output);
-        REQUIRE(strncmp(output, "-50,37", 32) == 0);
+        REQUIRE(strncmp(output, "-50,37", sizeof(output)) == 0);
     }
 
     SECTION("CellularData::printTo") {
@@ -661,7 +651,7 @@ TEST_CASE("cellular_printable") {
 
         ser.print(cd);
         // printf("%s", output);
-        REQUIRE(strncmp(output, "10,20,30,40,50", 32) == 0);
+        REQUIRE(strncmp(output, "10,20,30,40,50", sizeof(output)) == 0);
     }
 
     SECTION("CellularBand::printTo") {
@@ -675,6 +665,6 @@ TEST_CASE("cellular_printable") {
 
         ser.print(cb);
         // printf("%s", output);
-        REQUIRE(strncmp(output, "700,800,900,2100,2600", 32) == 0);
+        REQUIRE(strncmp(output, "700,800,900,2100,2600", sizeof(output)) == 0);
     }
 }
