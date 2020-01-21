@@ -6,29 +6,30 @@
 
 #define TEST_GPS                        0
 #define TEST_IO_EXP_INT                 0
-#define TEST_RTC                        1
+#define TEST_RTC                        0
 #define TEST_CAN_TRANSCEIVER            0
 #define TEST_FUEL_GAUGE                 0
 #define TEST_PMIC                       0
-#define TEST_SENSOR                     1
+#define TEST_SENSOR                     0
 #define TEST_ESP32                      0
 
 #if TEST_GPS
-IoExpanderPinObj gpsResetPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN5);
-IoExpanderPinObj gpsPwrEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN4);
-IoExpanderPinObj gpsCsPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN3);
-
-IoExpanderPinObj canCsPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN1);
-IoExpanderPinObj wifiCsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN1);
-IoExpanderPinObj accelCsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN4);
+IoExpanderPinObj gpsResetPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN7);
+IoExpanderPinObj gpsPwrEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN6);
+IoExpanderPinObj gpsCsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN2);
 #endif // TEST_GPS
 
-#if TEST_IO_EXP_INT
+#if TEST_IO_EXP_INT  // Cannot test on Asset Tracker SoM, only for protoboard
 IoExpanderPinObj intPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN7);
 IoExpanderPinObj intPin1(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN3);
 IoExpanderPinObj trigPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN6);
 IoExpanderPinObj trigPin1(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN5);
-#endif
+#endif // TEST_IO_EXP_INT
+
+#if TEST_CAN_TRANSCEIVER
+IoExpanderPinObj canCsPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN1);
+IoExpanderPinObj canPwrEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN0);
+#endif // TEST_CAN_TRANSCEIVER
 
 #if TEST_FUEL_GAUGE
 FuelGauge gauge(Wire, true);
@@ -36,13 +37,17 @@ FuelGauge gauge(Wire, true);
 
 #if TEST_PMIC
 PMIC pmic(true);
-#endif
+#endif // TEST_PMIC
+
+#if TEST_SENSOR
+IoExpanderPinObj accelEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN5);
+#endif // TEST_SENSOR
 
 #if TEST_ESP32
-IoExpanderPinObj esp32BootPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN0);
-IoExpanderPinObj esp32CsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN1);
-IoExpanderPinObj esp32EnPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN2);
-IoExpanderPinObj esp32WakeupPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN7);
+IoExpanderPinObj esp32BootPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN4);
+IoExpanderPinObj esp32CsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN5);
+IoExpanderPinObj esp32EnPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN7);
+IoExpanderPinObj esp32WakeupPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN6);
 #endif // TEST_ESP32
 
 // Enable threading if compiled with "USE_THREADING=y"
@@ -59,10 +64,7 @@ SerialLogHandler log(LOG_LEVEL_ALL);
 static int deselectAllCsPins() {
     CHECK(canCsPin.mode(IoExpanderPinMode::OUTPUT));
     CHECK(canCsPin.write(IoExpanderPinValue::HIGH));
-    CHECK(wifiCsPin.mode(IoExpanderPinMode::OUTPUT));
-    CHECK(wifiCsPin.write(IoExpanderPinValue::HIGH));
-    CHECK(accelCsPin.mode(IoExpanderPinMode::OUTPUT));
-    return accelCsPin.write(IoExpanderPinValue::HIGH);
+    return 0;
 }
 
 static int gpsConfigurePins() {
@@ -83,15 +85,21 @@ static int gpsCsSelect(bool select) {
         return gpsCsPin.write(IoExpanderPinValue::HIGH);
     }
 }
+
+static int lines;
+static int handler(int type, const char* buf, int len, int* lines) {
+    Log.info("type: %d, data: %s", type, buf);
+    return 0;
+}
 #endif // TEST_GPS
 
 #if TEST_IO_EXP_INT
 static void onP07IntHandler(void* context) {
-    Serial.println("Entered onP07IntHandler().");
+    Log.println("Entered onP07IntHandler().");
 }
 
 static void onP17IntHandler(void* context) {
-    Serial.println("Entered onP17IntHandler().");
+    Log.println("Entered onP17IntHandler().");
 }
 
 static int configureIntPin() {
@@ -127,14 +135,14 @@ static int setTriggerPin1(bool val) {
 
 #if TEST_ESP32
 static void esp32WakeupPinHandler(void* context) {
-    Serial.println("Wakeup by ESP32!");
+    Log.println("Wakeup by ESP32!");
 }
 #endif // TEST_ESP32
 
 void setup() {
     // Serial.begin(115200);
     while(!Serial.isConnected());
-    Serial.println("Application started.");
+    Log.info("Application started.");
 
     // I/O Expander initialization
     if (PCAL6416A.begin(PCAL6416A_I2C_ADDRESS, PCAL6416A_RESET_PIN, PCAL6416A_INT_PIN) != SYSTEM_ERROR_NONE) {
@@ -167,15 +175,30 @@ void setup() {
 #endif // TEST_IO_EXP_INT
 
 #if TEST_GPS
+    // Test ublox GPS
     deselectAllCsPins();
 
     if (gpsConfigurePins() != SYSTEM_ERROR_NONE) {
         LOG(ERROR, "configureGnssPins() failed.");
     }
-    SPI.setDataMode(SPI_MODE0);
-    SPI.setClockSpeed(5 * 1000 * 1000);
-    SPI.begin();
+    SPI1.setDataMode(SPI_MODE0);
+    SPI1.setClockSpeed(5 * 1000 * 1000);
+    SPI1.begin();
+
+    // Test EG91-NA GPS
+    Cellular.on();
+    // Must add delay here
+    delay(5000);
+    Cellular.command(handler, &lines, 5000, "AT+QGPS=1");
+    // Must add delay here
+    delay(5000);
+    Cellular.command(handler, &lines, 5000, "AT+QGPSCFG=\"outport\",\"uartdebug\"");
 #endif // TEST_GPS
+
+#if TEST_CAN_TRANSCEIVER
+    canPwrEnPin.mode(IoExpanderPinMode::OUTPUT);
+    canPwrEnPin.write(IoExpanderPinValue::HIGH);
+#endif // TEST_CAN_TRANSCEIVER
 
 #if TEST_FUEL_GAUGE
     FuelGauge gauge(Wire, true);
@@ -189,6 +212,8 @@ void setup() {
 #endif
 
 #if TEST_SENSOR
+    accelEnPin.mode(IoExpanderPinMode::OUTPUT);
+    accelEnPin.write(IoExpanderPinValue::HIGH);
     BMI160.begin(BMI160_I2C_ADDRESS);
     uint8_t chipId;
     if (BMI160.getChipId(&chipId) != SYSTEM_ERROR_NONE) {
@@ -199,8 +224,8 @@ void setup() {
 #endif
 
 #if TEST_ESP32
-    SPI.setDataMode(SPI_MODE0);
-    SPI.begin();
+    SPI1.setDataMode(SPI_MODE0);
+    SPI1.begin();
 
     // Configure ESP32 pin
     esp32CsPin.mode(IoExpanderPinMode::OUTPUT);
@@ -224,9 +249,9 @@ void loop() {
     if (gpsCsSelect(true) == SYSTEM_ERROR_NONE) {
         uint8_t in_byte;
         do {
-            in_byte = SPI.transfer(0xFF);
+            in_byte = SPI1.transfer(0xFF);
             if (in_byte != 0xFF) {
-                Serial.write(in_byte);
+                Log.write(in_byte);
             }
         } while (in_byte != 0xFF);
 
@@ -277,8 +302,8 @@ void loop() {
     memset(rxBuffer, 0, sizeof(rxBuffer));
     memset(txBuffer, 0, sizeof(txBuffer));
     sprintf((char*)txBuffer, "Hello, I'm B5SoM!");
-    SPI.transfer(txBuffer, rxBuffer, len, nullptr);
-    Serial.printf("rx data: %s\r\n", rxBuffer);
+    SPI1.transfer(txBuffer, rxBuffer, len, nullptr);
+    Log.printf("rx data: %s\r\n", rxBuffer);
     esp32CsPin.write(IoExpanderPinValue::HIGH);
     delay(2000);
 #endif // TEST_ESP32
