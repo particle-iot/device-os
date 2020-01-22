@@ -81,8 +81,9 @@ public:
         return _variable(name, std::forward<ArgsT>(args)...);
     }
 
-
-    static inline bool _variable(const char* varKey, const bool& var)
+    // Prevent unsupported functions from being registered as boolean variables
+    template<typename T, typename std::enable_if<std::is_same<T, bool>::value>::type* = nullptr>
+    static inline bool _variable(const char* varKey, const T& var)
     {
         return _variable(varKey, &var, BOOLEAN);
     }
