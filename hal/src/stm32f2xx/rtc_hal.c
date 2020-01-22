@@ -50,13 +50,17 @@ void setRTCTime(RTC_TimeTypeDef* RTC_TimeStructure, RTC_DateTypeDef* RTC_DateStr
 	/* Configure the RTC time register */
 	if(RTC_SetTime(RTC_Format_BIN, RTC_TimeStructure) == ERROR)
 	{
-		/* RTC Set Time failed */
+		/* RTC Set Time failed. Just in case exit initialization mode */
+		RTC_ExitInitMode();
+		RTC_WriteBackupRegister(RTC_BKP_DR0, 0xE1E1);
 	}
 
 	/* Configure the RTC date register */
 	if(RTC_SetDate(RTC_Format_BIN, RTC_DateStructure) == ERROR)
 	{
-		/* RTC Set Date failed */
+		/* RTC Set Date failed. Just in case exit initialization mode */
+		RTC_ExitInitMode();
+		RTC_WriteBackupRegister(RTC_BKP_DR0, 0xE2E2);
 	}
 }
 
@@ -144,23 +148,27 @@ void HAL_RTC_Configuration(void)
 		RTC_WaitForSynchro();
 
 		/* RTC register configuration done only once */
-		if (RTC_ReadBackupRegister(RTC_BKP_DR0) != 0xC1C1)
+		if (RTC_ReadBackupRegister(RTC_BKP_DR0) != 0xC1C1 || RTC_GetFlagStatus(RTC_FLAG_INITF) == SET)
 		{
-		    /* Configure the RTC data register and RTC prescaler */
-		    RTC_InitStructure.RTC_AsynchPrediv = AsynchPrediv;
-		    RTC_InitStructure.RTC_SynchPrediv = SynchPrediv;
-		    RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
+			/* Configure the RTC data register and RTC prescaler */
+			RTC_InitStructure.RTC_AsynchPrediv = AsynchPrediv;
+			RTC_InitStructure.RTC_SynchPrediv = SynchPrediv;
+			RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
 
-		    /* Check on RTC init */
-		    if (RTC_Init(&RTC_InitStructure) != ERROR)
-		    {
+			/* Check on RTC init */
+			if (RTC_Init(&RTC_InitStructure) != ERROR)
+			{
 				/* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
 				/* Set date/time to 2000/01/01 00:00:00 */
 				HAL_RTC_Initialize_UnixTime();
 
 				/* Indicator for the RTC configuration */
 				RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
-		    }
+			} else {
+				/* Clear RTC_BKP_DR0 */
+				RTC_WriteBackupRegister(RTC_BKP_DR0, 0xABAB);
+				/* RTC is not functioning. Panic here? */
+			}
 		}
 	}
 }
