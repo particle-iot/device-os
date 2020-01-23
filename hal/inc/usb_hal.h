@@ -180,7 +180,7 @@ void HAL_USB_Set_Vendor_Request_State_Callback(HAL_USB_Vendor_Request_State_Call
 void HAL_USB_Init();
 void HAL_USB_Attach();
 void HAL_USB_Detach();
-HAL_USB_State HAL_USB_Get_State();
+HAL_USB_State HAL_USB_Get_State(void* reserved);
 #endif
 
 #ifdef USB_CDC_ENABLE
