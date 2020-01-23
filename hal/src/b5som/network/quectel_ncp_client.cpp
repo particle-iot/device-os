@@ -113,7 +113,7 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     conf_ = static_cast<const CellularNcpClientConfig&>(conf);
 
     // Initialize serial stream
-    auto sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS;
+    auto sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_NONE; // TODO: replace with SERIAL_FLOW_CONTROL_RTS_CTS when HW is fixed.
 
     std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
@@ -631,7 +631,8 @@ int QuectelNcpClient::initReady() {
     }
 
     // Enable flow control and change to runtime baudrate
-    CHECK_PARSER(parser_.execCommand("AT+IFC=2,2"));
+    // TODO: Uncomment when hardware is rev'd to fix CTS/RTS swap.
+    // CHECK_PARSER(parser_.execCommand("AT+IFC=2,2"));
     CHECK(changeBaudRate(QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
     // Check that the modem is responsive at the new baudrate
     skipAll(serial_.get(), 1000);
