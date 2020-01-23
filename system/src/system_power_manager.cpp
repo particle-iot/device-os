@@ -203,27 +203,32 @@ void PowerManager::handleUpdate() {
   handleStateChange(g_batteryState, state, lowBat);
 
   power_source_t src = g_powerSource;
+
+  bool vin = config_.flags & HAL_POWER_USE_VIN_SETTINGS_WITH_USB_HOST;
+#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+  // Workaround:
+  // when Gen3 device is powered by VIN, USB peripheral gets no power supply.
+  // In this case BQ24195 will wrongly assume the device is connected to a USB host.
+  // This workaround is to manually increase input current limit/voltage limit same
+  // as when normally detecting being powered by VIN
+  // More details are in clubhouse [CH34730]
+  auto usb_state = HAL_USB_Get_State(nullptr);
+#endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+
   if (pwr_good) {
     uint8_t vbus_stat = status >> 6;
     switch (vbus_stat) {
       case 0x01: {
-        bool vin = config_.flags & HAL_POWER_USE_VIN_SETTINGS_WITH_USB_HOST;
 #if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
-        // Workaround: 
-        // when Gen3 device is powered by VIN, USB peripheral gets no power supply.
-        // In this case BQ24195 will wrongly assume the device is connected to a USB host.
-        // This workaround is to manually increase input current limit/voltage limit same
-        // as when normally detecting being powered by VIN
-        // More details are in clubhouse [CH34730]
-        auto usb_state = HAL_USB_Get_State();
-        vin = vin || usb_state <= HAL_USB_STATE_DETACHED;
-#endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+        if (vin || usb_state < HAL_USB_STATE_POWERED) {
+#else
         if (vin) {
+#endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
           src = POWER_SOURCE_VIN;
           applyVinConfig();
         } else {
           src = POWER_SOURCE_USB_HOST;
-          applyDefaultConfig();
+          applyDefaultConfig(src != g_powerSource);
         }
         break;
       }
@@ -294,12 +299,14 @@ void PowerManager::loop(void* arg) {
 
   Event ev;
   while (true) {
-    os_queue_take(self->queue_, &ev, DEFAULT_QUEUE_WAIT, nullptr);
-    if (ev == Event::ReloadConfig) {
-      self->loadConfig();
-      // Do not re-run DPDM
-      self->initDefault(false);
-      self->update_ = true;
+    int r = os_queue_take(self->queue_, &ev, DEFAULT_QUEUE_WAIT, nullptr);
+    if (!r) {
+      if (ev == Event::ReloadConfig) {
+        self->loadConfig();
+        // Do not re-run DPDM
+        self->initDefault(false);
+        self->update_ = true;
+      }
     }
     while (self->update_) {
       self->handleUpdate();
@@ -596,40 +603,37 @@ void PowerManager::loadConfig() {
     config_.termination_voltage = defaultPowerConfig.termination_voltage;
   }
 
-  LOG_DEBUG(TRACE, "Power configuration:");
-  LOG_DEBUG(TRACE, "VIN min voltage: %u", config_.vin_min_voltage);
-  LOG_DEBUG(TRACE, "VIN max current: %u", config_.vin_max_current);
-  LOG_DEBUG(TRACE, "Battery chrg. current: %u", config_.charge_current);
-  LOG_DEBUG(TRACE, "Battery term. voltage: %u", config_.termination_voltage);
+  logCurrentConfig();
 }
 
 void PowerManager::applyVinConfig() {
   PMIC power;
-  bool modified = false;
   if (power.getInputCurrentLimit() != mapInputCurrentLimit(config_.vin_max_current)) {
     power.setInputCurrentLimit(mapInputCurrentLimit(config_.vin_max_current));
-    modified = true;
   }
 
   if (power.getInputVoltageLimit() != mapInputVoltageLimit(config_.vin_min_voltage)) {
     power.setInputVoltageLimit(mapInputVoltageLimit(config_.vin_min_voltage));
-    modified = true;
   }
-
-#ifdef DEBUG_BUILD
-  if (modified) {
-    LOG_DEBUG(TRACE, "Input voltage limit: %u", mapInputVoltageLimit(config_.vin_min_voltage));
-    LOG_DEBUG(TRACE, "Input current limit: %u", mapInputCurrentLimit(config_.vin_max_current));
-  }
-#else
-  (void)modified;
-#endif // DEBUG_BUILD
 }
 
-void PowerManager::applyDefaultConfig() {
+void PowerManager::logCurrentConfig() {
+  LOG_DEBUG(TRACE, "Power configuration:");
+  LOG_DEBUG(TRACE, "VIN Vmin: %u", config_.vin_min_voltage);
+  LOG_DEBUG(TRACE, "VIN Imax: %u", config_.vin_max_current);
+  LOG_DEBUG(TRACE, "Ichg: %u", config_.charge_current);
+  LOG_DEBUG(TRACE, "Iterm: %u", config_.termination_voltage);
+}
+
+void PowerManager::applyDefaultConfig(bool dpdm) {
   PMIC power;
   if (power.getInputVoltageLimit() != DEFAULT_INPUT_VOLTAGE_LIMIT) {
     power.setInputVoltageLimit(DEFAULT_INPUT_VOLTAGE_LIMIT);
+  }
+  if (dpdm) {
+    // Force-start input current limit detection
+    LOG_DEBUG(TRACE, "Re-running DPDM");
+    power.enableDPDM();
   }
 }
 

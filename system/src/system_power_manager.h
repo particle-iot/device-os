@@ -54,7 +54,8 @@ private:
   void deinit();
   void loadConfig();
   void applyVinConfig();
-  void applyDefaultConfig();
+  void applyDefaultConfig(bool dpdm = false);
+  void logCurrentConfig();
 
 private:
   enum class Event {
