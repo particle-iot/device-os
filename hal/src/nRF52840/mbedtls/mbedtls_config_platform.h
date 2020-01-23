@@ -1698,7 +1698,8 @@
  *
  * This module provides debugging functions.
  */
-#define MBEDTLS_DEBUG_C
+// Disabled to reduce flash usage
+// #define MBEDTLS_DEBUG_C
 
 /**
  * \def MBEDTLS_DEBUG_COMPILE_TIME_LEVEL
