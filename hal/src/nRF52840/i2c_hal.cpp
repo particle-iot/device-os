@@ -153,7 +153,7 @@ static void twim_handler(nrfx_twim_evt_t const * p_event, void * p_context) {
 
     switch (p_event->type) {
         case NRFX_TWIM_EVT_DONE: {
-            LOG_DEBUG(TRACE, "NRFX_TWIM_EVT_DONE");
+            // LOG_DEBUG(TRACE, "NRFX_TWIM_EVT_DONE");
             m_i2c_map[inst_num].transfer_state = TRANSFER_STATE_IDLE;
             break;
         }
