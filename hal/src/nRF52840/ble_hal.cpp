@@ -16,12 +16,13 @@
  */
 
 #include "logging.h"
-LOG_SOURCE_CATEGORY("hal.ble")
+LOG_SOURCE_CATEGORY("hal.ble");
 
 #include "ble_hal.h"
 
 #if HAL_PLATFORM_BLE
-#define LOG_CHECKED_ERRORS 1
+// Uncomment to enable more error logs
+// #define LOG_CHECKED_ERRORS 1
 
 /* Headers included from nRF5_SDK/components/softdevice/s140/headers */
 #include "ble.h"
