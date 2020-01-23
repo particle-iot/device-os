@@ -26,7 +26,7 @@ int hal_power_load_config(hal_power_config* conf, void* reserved) {
     int err = dct_read_app_data_copy(DCT_POWER_CONFIG_OFFSET, conf, conf->size);
     if (!err) {
         // Invert first byte of the flags to keep compatibility for HAL_POWER_PMIC_DETECTION flag
-        uint32_t inverted = ~(conf->flags & 0x000000ff);
+        uint32_t inverted = (~conf->flags) & 0x000000ff;
         conf->flags &= 0xffffff00;
         conf->flags |= inverted;
     }
@@ -43,7 +43,7 @@ int hal_power_store_config(const hal_power_config* conf, void* reserved) {
 
     if (memcmp(&current, conf, std::min((size_t)std::min(current.size, conf->size), sizeof(hal_power_config)))) {
         // Invert first byte of the flags to keep compatibility for HAL_POWER_PMIC_DETECTION flag
-        uint32_t inverted = ~(conf->flags & 0x000000ff);
+        uint32_t inverted = ~(conf->flags) & 0x000000ff;
         hal_power_config tmp = *conf;
         tmp.flags &= 0xffffff00;
         tmp.flags |= inverted;
