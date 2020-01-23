@@ -213,9 +213,9 @@ ProtocolError Variables::send_error_response(Message& message, token_t token, ui
 
 ProtocolError Variables::send_empty_ack(Message& message, token_t token, uint8_t code) {
     const auto buf = message.buf();
+    const message_id_t id = CoAP::message_id(buf);
     const size_t size = Messages::coded_ack(buf, token, code, 0, 0);
     message.set_length(size);
-    const message_id_t id = CoAP::message_id(buf);
     message.set_id(id);
     return protocol_->getChannel().send(message);
 }
