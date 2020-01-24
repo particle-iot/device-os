@@ -397,6 +397,17 @@ size_t Messages::goodbye(unsigned char* buf, size_t size, message_id_t message_i
 const size_t Messages::MAX_GOODBYE_MESSAGE_SIZE = 9 + // CoAP header, options, payload marker
 		maxUnsignedVarintSize<unsigned>() * 5; // Flags, cloud disconnection reason, network disconnection reason, system reset reason, sleep duration
 
+size_t Messages::description(unsigned char *buf, message_id_t message_id, token_t token, bool confirmable)
+{
+	buf[0] = confirmable ? 0x41 : 0x51; // confirmable/non-confirmable, one-byte token
+	buf[1] = CoAPCode::CONTENT;
+	buf[2] = (message_id >> 8) & 0xff;
+	buf[3] = message_id & 0xff;
+	buf[4] = token;
+	buf[5] = 0xff;
+	return 6;
+}
+
 size_t Messages::response_size(size_t payload_size, bool has_token)
 {
 	return 4 + // Message header

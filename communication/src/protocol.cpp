@@ -612,13 +612,28 @@ ProtocolError Protocol::post_description(int desc_flags)
  */
 ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int desc_flags)
 {
-    Message message;
-    channel.create(message);
-    uint8_t* buf = message.buf();
-    message.set_id(msg_id);
-    size_t desc = Messages::description(buf, msg_id, token);
-
-    return generate_and_send_description(channel, message, desc, desc_flags);
+	// Acknowledge the request
+	Message msg;
+	ProtocolError error = channel.create(msg);
+	if (error != ProtocolError::NO_ERROR) {
+		return error;
+	}
+	uint8_t* buf = msg.buf();
+	size_t size = Messages::coded_ack(buf, token, CoAPCode::NONE, 0 /* message_id_msb */, 0 /* message_id_lsb */);
+	msg.set_length(size);
+	msg.set_id(msg_id);
+	error = channel.send(msg);
+	if (error != ProtocolError::NO_ERROR) {
+		return error;
+	}
+	// Send a reply
+	error = channel.create(msg);
+	if (error != ProtocolError::NO_ERROR) {
+		return error;
+	}
+	buf = msg.buf();
+	size = Messages::description(buf, 0 /* message_id */, token, channel.is_unreliable());
+	return generate_and_send_description(channel, msg, size, desc_flags);
 }
 
 int Protocol::ChunkedTransferCallbacks::prepare_for_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void* reserved)
