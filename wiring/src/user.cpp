@@ -128,7 +128,7 @@ void serialEventRun()
 #endif
 }
 
-#if defined(STM32F2XX)
+#if defined(HAL_PLATFORM_BACKUP_RAM)
 #define PLATFORM_BACKUP_RAM 1
 #else
 #define PLATFORM_BACKUP_RAM 0
