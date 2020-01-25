@@ -72,6 +72,9 @@
 // system_set_usb_request_app_handler() and system_set_usb_request_result() should be present
 // in system dynalib
 #define HAL_PLATFORM_KEEP_DEPRECATED_APP_USB_REQUEST_HANDLERS (1)
+
+#define HAL_PLATFORM_BACKUP_RAM (1)
+
 #endif // PLATFORM_ID >= PLATFORM_PHOTON_PRODUCTION
 
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
@@ -86,7 +89,5 @@
 #if HAL_PLATFORM_WIFI
 #define HAL_PLATFORM_NETWORK_MULTICAST (1)
 #endif // HAL_PLATFORM_WIFI
-
-#define HAL_PLATFORM_BACKUP_RAM (1)
 
 #endif /* HAL_PLATFORM_COMPAT_H */
