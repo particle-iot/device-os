@@ -144,10 +144,15 @@ public:
 
 	ProtocolError idle(MessageChannel& channel);
 
-	void set_fast_ota(unsigned data)
+	void set_fast_ota(bool enabled)
 	{
-		fast_ota_value = (data > 0) ? true : false;
+		fast_ota_value = enabled;
 		fast_ota_override = true;
+	}
+
+	bool get_fast_ota() const
+	{
+		return fast_ota_value;
 	}
 
 	bool is_updating()

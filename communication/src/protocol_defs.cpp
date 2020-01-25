@@ -49,6 +49,10 @@ system_error_t particle::protocol::toSystemError(ProtocolError error) {
         return SYSTEM_ERROR_TOO_LARGE;
     case NOT_IMPLEMENTED:
         return SYSTEM_ERROR_NOT_SUPPORTED;
+    case INVALID_PARAM:
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    case NOT_CHANGED:
+        return SYSTEM_ERROR_NOT_CHANGED;
     default:
         return SYSTEM_ERROR_PROTOCOL; // Generic protocol error
     }

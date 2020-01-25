@@ -317,14 +317,24 @@ public:
 		pinger.init(interval, timeout);
 	}
 
-	void set_keepalive(system_tick_t interval, keepalive_source_t source)
+	bool set_keepalive(system_tick_t interval, keepalive_source_t source)
 	{
-		pinger.set_interval(interval, source);
+		return pinger.set_interval(interval, source);
 	}
 
-	void set_fast_ota(unsigned data)
+	system_tick_t get_keepalive(keepalive_source_t* source = nullptr) const
 	{
-		chunkedTransfer.set_fast_ota(data);
+		return pinger.get_interval(source);
+	}
+
+	void set_fast_ota(bool enabled)
+	{
+		chunkedTransfer.set_fast_ota(enabled);
+	}
+
+	bool get_fast_ota() const
+	{
+		return chunkedTransfer.get_fast_ota();
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)

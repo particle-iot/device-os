@@ -50,6 +50,8 @@ enum ProtocolError
     /* 24 */ IO_ERROR_LIGHTSSL_HANDSHAKE_NONCE,
     /* 25 */ IO_ERROR_LIGHTSSL_HANDSHAKE_RECV_KEY,
     /* 26 */ NOT_IMPLEMENTED,
+    /* 27 */ INVALID_PARAM,
+    /* 28 */ NOT_CHANGED,
 
     /*
      * NOTE: when adding more ProtocolError codes, be sure to update toSystemError() in protocol_defs.cpp

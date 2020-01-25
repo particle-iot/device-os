@@ -242,7 +242,7 @@ bool spark_cloud_flag_auto_connect(void);
 
 ProtocolFacade* system_cloud_protocol_instance(void);
 
-int spark_set_connection_property(unsigned property_id, unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved);
+int spark_set_connection_property(unsigned property_id, unsigned value, const void* data, void* reserved);
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved);
 
