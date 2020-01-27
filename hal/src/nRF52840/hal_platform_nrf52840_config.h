@@ -92,3 +92,4 @@
 
 #define HAL_PLATFORM_BACKUP_RAM (1)
 
+#define HAL_PLATFORM_SLEEP20 (1)
