@@ -1883,7 +1883,7 @@ inline void CoreProtocol::coded_ack(unsigned char *buf,
 
 int CoreProtocol::command(ProtocolCommands::Enum command, uint32_t data)
 {
-  int result = UNKNOWN;
+  int result = NOT_IMPLEMENTED;
   switch (command) {
   case ProtocolCommands::SLEEP:
   case ProtocolCommands::DISCONNECT:

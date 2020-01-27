@@ -229,7 +229,8 @@ namespace ProtocolCommands {
     WAKE,
     DISCONNECT,
     TERMINATE,
-    FORCE_PING
+    FORCE_PING,
+    HANDSHAKE_COMPLETE
   };
 };
 
