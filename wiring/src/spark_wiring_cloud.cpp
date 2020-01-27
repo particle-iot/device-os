@@ -7,7 +7,6 @@ namespace {
 
 using namespace particle;
 
-#ifndef SPARK_NO_CLOUD
 void publishCompletionCallback(int error, const void* data, void* callbackData, void* reserved) {
     auto p = Promise<bool>::fromDataPtr(callbackData);
     if (error != Error::NONE) {
@@ -16,7 +15,6 @@ void publishCompletionCallback(int error, const void* data, void* callbackData, 
         p.setResult(true);
     }
 }
-#endif
 
 } // namespace
 
@@ -50,7 +48,6 @@ bool CloudClass::register_function(cloud_function_t fn, void* data, const char* 
 }
 
 Future<bool> CloudClass::publish_event(const char *eventName, const char *eventData, int ttl, PublishFlags flags) {
-#ifndef SPARK_NO_CLOUD
     if (!connected()) {
         return Future<bool>(Error::INVALID_STATE);
     }
@@ -68,9 +65,6 @@ Future<bool> CloudClass::publish_event(const char *eventName, const char *eventD
     }
 
     return p.future();
-#else
-    return Future<bool>(Error::NOT_SUPPORTED);
-#endif
 }
 
 int CloudClass::publishVitals(system_tick_t period_s_) {

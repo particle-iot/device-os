@@ -6,11 +6,6 @@ include ../build/platform-id.mk
 include ../build/top-level-module.mk
 include ../build/macros.mk
 
-ifeq ($(PLATFORM_ID),0)
-export COMPILE_LTO?=y
-endif
-
-
 ifeq ($(PLATFORM_ID),6)
 MODULAR?=y
 endif

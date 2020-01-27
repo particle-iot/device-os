@@ -37,14 +37,6 @@ extern "C" {
  */
 int HAL_core_subsystem_version(char* buf, int bufLen);
 
-#if PLATFORM_ID < 3
-    /**
-     * The event name to publish for this subsystem type.
-     */
-    #define SPARK_SUBSYSTEM_EVENT_NAME "cc3000-patch-version"
-
-#endif
-
 #ifdef	__cplusplus
 }
 #endif

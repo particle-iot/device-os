@@ -136,7 +136,6 @@ void TIM3_callback()
 }
 
 #if PLATFORM_ID >= 6 && PLATFORM_ID <= 10
-// system interrupt not available for the core yet.
 test(api_wiring_system_interrupt) {
 
     API_COMPILE(attachSystemInterrupt(SysInterrupt_TIM3_IRQ, TIM3_callback));

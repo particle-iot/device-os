@@ -20,15 +20,11 @@
 #define INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS
 #include "core_hal.h"
 
-#if PARTICLE_PROTOCOL
 #include "lightssl_protocol.h"
 #include "dtls_protocol.h"
-#else
-#include "core_protocol.h"
-#endif
 
 /**
- * Allocate an instance of the CoreProtocol. By doing it here rather than in system
+ * Allocate an instance of the Protocol. By doing it here rather than in system
  * we ensure the structure is allocated the correct amount of memory, cf. a system
  * module using a newer version of comms lib where the size has grown.
  *
@@ -36,9 +32,6 @@
  */
 ProtocolFacade* create_protocol(ProtocolFactory factory)
 {
-    	// if compile time only TCP, then that's the only option, otherwise
-    	// choose between UDP and TCP
-#if PARTICLE_PROTOCOL
 #if HAL_PLATFORM_CLOUD_UDP
     	if (factory==PROTOCOL_DTLS) {
     		DEBUG("creating DTLS protocol");
@@ -53,10 +46,6 @@ ProtocolFacade* create_protocol(ProtocolFactory factory)
     	}
 #endif
     	return nullptr;
-#else
-		DEBUG("creating CoreProtocol");
-		return new CoreProtocol();
-#endif
 }
 
 

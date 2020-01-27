@@ -75,7 +75,6 @@ test(SPI_01_computeClockSpeed)
     assertClockDivider(60*MHZ, 1*KHZ, SPI_CLOCK_DIV256, 234375*HZ);
 }
 
-#if PLATFORM_ID != PLATFORM_SPARK_CORE
 test(SPI_02_SPI_DMA_Transfers_Work_Correctly)
 {
     assertTrue(tempBuf != nullptr && tempBuf1 != nullptr);
@@ -114,7 +113,6 @@ test(SPI_02_SPI_DMA_Transfers_Work_Correctly)
 
     SPI.end();
 }
-#endif // PLATFORM_SPARK_CORE
 
 #if Wiring_SPI1
 test(SPI_03_SPI1_DMA_Transfers_Work_Correctly)

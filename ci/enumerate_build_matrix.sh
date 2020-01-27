@@ -45,10 +45,9 @@ MAKE=runmake
 # define build matrix dimensions
 # "" means execute execute the $MAKE command without that var specified
 DEBUG_BUILD=( y n )
-PLATFORM=( core photon p1 electron xenon argon boron xsom asom bsom b5som )
+PLATFORM=( photon p1 electron xenon argon boron xsom asom bsom b5som )
 # P1 bootloader built with gcc 4.8.4 doesn't fit flash, disabling for now
-PLATFORM_BOOTLOADER=( core photon electron xenon argon boron xsom asom bsom b5som )
-SPARK_CLOUD=( y n )
+PLATFORM_BOOTLOADER=( photon electron xenon argon boron xsom asom bsom b5som )
 APP=( "" tinker product_id_and_version)
 TEST=( wiring/api wiring/no_fixture )
 
@@ -100,30 +99,15 @@ for db in "${DEBUG_BUILD[@]}"
 do
   for p in "${PLATFORM[@]}"
   do
-    for sc in "${SPARK_CLOUD[@]}"
+    for app in "${APP[@]}"
     do
-      for app in "${APP[@]}"
-      do
-        # only do SPARK_CLOUD=n for core
-        if [[ "$sc" = "n" ]] && [[ "$p" != "core" ]]; then
-          continue
-        fi
-        c=n
-        if [[ "$p" = "core" ]]; then
-          c=y
-          # core debug build overflows at present
-          if [[ "$db" = "y" ]]; then
-            continue
-          fi
-        fi
-        if [[ "$app" = "" ]]; then
-          cmd="${MAKE} DEBUG_BUILD=\"$db\" PLATFORM=\"$p\" COMPILE_LTO=\"$c\" SPARK_CLOUD=\"$sc\""
-          BUILD_JOBS+=("main ${#BUILD_JOBS[@]} ${cmd}")
-        else
-          cmd="${MAKE} DEBUG_BUILD=\"$db\" PLATFORM=\"$p\" COMPILE_LTO=\"$c\" SPARK_CLOUD=\"$sc\" APP=\"$app\""
-          BUILD_JOBS+=("main ${#BUILD_JOBS[@]} ${cmd}")
-        fi
-      done
+      if [[ "$app" = "" ]]; then
+        cmd="${MAKE} DEBUG_BUILD=\"$db\" PLATFORM=\"$p\" COMPILE_LTO=\"n\""
+        BUILD_JOBS+=("main ${#BUILD_JOBS[@]} ${cmd}")
+      else
+        cmd="${MAKE} DEBUG_BUILD=\"$db\" PLATFORM=\"$p\" COMPILE_LTO=\"n\" APP=\"$app\""
+        BUILD_JOBS+=("main ${#BUILD_JOBS[@]} ${cmd}")
+      fi
     done
   done
 done

@@ -21,14 +21,6 @@ USBD_PID_DFU=0x607F
 USBD_PID_CDC=0x607D
 
 ifneq (,$(PLATFORM))
-ifeq ("$(PLATFORM)","core")
-PLATFORM_ID = 0
-endif
-
-ifeq ("$(PLATFORM)","core-hd")
-PLATFORM_ID = 2
-endif
-
 ifeq ("$(PLATFORM)","gcc")
 PLATFORM_ID = 3
 endif
@@ -107,48 +99,12 @@ endif
 endif
 
 ifndef PLATFORM_ID
-PLATFORM_ID=0
+$(error PLATFORM or PLATFORM_ID not set. Please specify the platform to build.")
 endif
 
 # Determine which is the target device
 
 ARCH=arm
-
-ifeq ("$(PLATFORM_ID)","0")
-STM32_DEVICE=STM32F10X_MD
-PLATFORM=core
-PLATFORM_GEN=1
-PLATFORM_NAME=core
-PLATFORM_MCU=STM32F1xx
-PLATFORM_NET=CC3000
-PRODUCT_DESC=Spark core
-USBD_VID_SPARK=0x1D50
-USBD_PID_DFU=0x607F
-USBD_PID_CDC=0x607D
-DEFAULT_PRODUCT_ID=0
-ARM_CPU=cortex-m3
-endif
-
-ifeq ("$(PLATFORM_ID)","1")
-# Not used. PRRODUCT_ID 1 is the original teacup pigtail - the platform
-# is the Spark Core
-DEFAULT_PRODUCT_ID=1
-endif
-
-ifeq ("$(PLATFORM_ID)","2")
-PLATFORM=core-hd
-STM32_DEVICE=STM32F10X_HD
-PLATFORM_NAME=core
-PLATFORM_GEN=1
-PLATFORM_MCU=STM32F1xx
-PLATFORM_NET=CC3000
-PRODUCT_DESC=Spark core-HD, 256k flash, 48k ram
-USBD_VID_SPARK=0x1D50
-USBD_PID_DFU=0x607F
-USBD_PID_CDC=0x607D
-DEFAULT_PRODUCT_ID=2
-ARM_CPU=cortex-m3
-endif
 
 ifeq ("$(PLATFORM_ID)","3")
 PLATFORM=gcc
@@ -445,10 +401,6 @@ DEFAULT_PRODUCT_ID=60000
 ARM_CPU=cortex-m3
 endif
 
-ifeq ("$(PLATFORM_NAME)","core")
-    PLATFORM_DFU ?= 0x08005000
-endif
-
 ifeq ("$(STM32_DEVICE)","STM32F2XX")
     PLATFORM_DFU ?= 0x08020000
     PLATFORM_THREADING=1
@@ -513,6 +465,5 @@ MODULE_FUNCTION_USER_PART       :=5
 MODULE_FUNCTION_SETTINGS        :=6
 MODULE_FUNCTION_NCP_FIRMWARE    :=7
 MODULE_FUNCTION_RADIO_STACK     :=8
-
 
 endif

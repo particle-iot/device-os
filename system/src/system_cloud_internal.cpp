@@ -55,8 +55,6 @@
 using particle::CloudDiagnostics;
 using particle::publishEvent;
 
-#ifndef SPARK_NO_CLOUD
-
 extern uint8_t feature_cloud_udp;
 extern volatile bool cloud_socket_aborted;
 
@@ -764,7 +762,6 @@ static void formatResetReasonEventData(int reason, uint32_t data, char *buf, siz
 
 bool system_cloud_active()
 {
-#ifndef SPARK_NO_CLOUD
     const int SYSTEM_CLOUD_TIMEOUT = 15*1000;
     if (!SPARK_CLOUD_SOCKETED)
         return false;
@@ -781,7 +778,6 @@ bool system_cloud_active()
             return false;
         }
     }
-#endif
     return true;
 }
 
@@ -978,13 +974,6 @@ int Spark_Handshake(bool presence_announce)
 
         publishSafeModeEventIfNeeded();
 
-#if defined(SPARK_SUBSYSTEM_EVENT_NAME)
-        if (!HAL_core_subsystem_version(buf, sizeof (buf)) && *buf)
-        {
-            LOG(INFO,"Send spark/" SPARK_SUBSYSTEM_EVENT_NAME " event");
-            publishEvent("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf);
-        }
-#endif
         uint8_t flag = 0;
         if (system_get_flag(SYSTEM_FLAG_PUBLISH_RESET_INFO, &flag, nullptr) == 0 && flag)
         {
@@ -1070,8 +1059,6 @@ void Spark_Process_Events()
     }
 }
 
-#endif // SPARK_NO_CLOUD
-
 namespace {
 
 CloudDiagnostics g_cloudDiagnostics;
@@ -1099,16 +1086,12 @@ String bytes2hex(const uint8_t* buf, unsigned len)
 
 void Spark_Sleep(void)
 {
-#ifndef SPARK_NO_CLOUD
 	spark_protocol_command(sp, ProtocolCommands::SLEEP);
-#endif
 }
 
 void Spark_Wake(void)
 {
-#ifndef SPARK_NO_CLOUD
 	spark_protocol_command(sp, ProtocolCommands::WAKE);
-#endif
 }
 
 CloudDiagnostics* CloudDiagnostics::instance() {

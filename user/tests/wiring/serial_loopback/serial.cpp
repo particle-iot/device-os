@@ -24,22 +24,13 @@
  */
 
 #include "application.h"
-#if (PLATFORM_ID == 0)
-#include "Serial2/Serial2.h"
-#endif
 #include "unit-test/unit-test.h"
 
 /*
  * Serial1 Test requires TX to be jumpered to RX as follows:
- * valid for both Core and Photon
+ * on the Photon
  *           WIRE
  * (TX) --==========-- (RX)
- *
- * Serial2 Test requires D0 to be jumpered to D1 as follows:
- * only on Core (PLATFORM_ID = PLATFORM_SPARK_CORE)
- *
- *           WIRE
- * (D0) --==========-- (D1)
  *
  */
 
@@ -458,33 +449,6 @@ test(SERIAL1_ReadWriteParity9N2SucceedsInLoopbackWithTxRxShorted) {
     assertEqual(test2, message2);
 }
 
-
-#if (PLATFORM_ID == 0)
-test(SERIAL2_ReadWriteSucceedsInLoopbackWithD0D1Shorted) {
-    //The following code will test all the important USART Serial1 routines
-    char test[] = "hello";
-    uint16_t message16[10];
-    char message[10];
-    int len = 0;
-    // when
-    Serial2.begin(9600);
-    assertEqual(Serial2.isEnabled(), true);
-    consume(Serial2);
-    printlnMasked(Serial2, test, (1 << 8)); // Set 9-th bit
-    len = serialReadLine16NoEcho(&Serial2, message16, 9, 1000);//1 sec timeout
-    Serial2.end();
-    // then
-    // Check that MSB is 0 in each uint16_t and copy into char buffer
-    for (int i = 0; i < len; i++) {
-        uint16_t msb = message16[i] & 0xFF00;
-        assertEqual(msb, 0x0000);
-        message[i] = (char)message16[i];
-    }
-    message[len] = '\0';
-    // Compare strings
-    assertTrue(strncmp(test, message, 5)==0);
-}
-#endif
 
 test(SERIAL1_AvailableForWriteWorksCorrectly) {
     Serial1.begin(9600);

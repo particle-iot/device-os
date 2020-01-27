@@ -3,7 +3,6 @@
 #include "unit-test/unit-test.h"
 #include "random.h"
 
-#if PLATFORM_ID >= 3
 test(SYSTEM_01_freeMemory)
 {
     // this test didn't work on the core attempting to allocate the current value of
@@ -20,7 +19,6 @@ test(SYSTEM_01_freeMemory)
         assertLess(free2, free1);
     }
 }
-#endif
 
 test(SYSTEM_02_version)
 {
@@ -136,7 +134,6 @@ test(SYSTEM_05_button_mirror_disable)
 
 #endif // !HAL_PLATFORM_NRF52840
 
-#if PLATFORM_ID!=0
 // platform supports out of memory notifiation
 
 bool oomEventReceived = false;
@@ -274,5 +271,3 @@ test(SYSTEM_09_out_of_memory_restore_state)
 	Particle.connect();
 	waitFor(Particle.connected, 6*60*1000);
 }
-
-#endif // PLATFORM_ID!=0

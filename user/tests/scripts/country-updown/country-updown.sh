@@ -177,7 +177,7 @@ usb() {
     eval $(screen $x);
   fi
 }
-# puts photon/p1/electron/core in Listening Mode
+# puts photon/p1/electron in Listening Mode
 ymodem() {
   eval $(stty -f ${PORT} 28800);
   # x=`compgen -f -- "/dev/tty.usbmodem"`;

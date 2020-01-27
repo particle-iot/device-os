@@ -1,5 +1,3 @@
-#if PLATFORM_ID>=3
-
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "pwm_hal.h"
@@ -14,9 +12,7 @@ static const uint32_t maxPulseSamples = 100;
 static const uint32_t minimumFrequency = 100;
 
 uint8_t pwm_pins[] = {
-#if (PLATFORM_ID == 0) // Core
-        A0, A1, A4, A5, A6, A7, D0, D1
-#elif (PLATFORM_ID == 6) // Photon
+#if (PLATFORM_ID == 6) // Photon
         D0, D1, D2, D3, A4, A5, WKP, RX, TX
 #elif (PLATFORM_ID == 8) // P1
         D0, D1, D2, D3, A4, A5, WKP, RX, TX, P1S0, P1S1, P1S6
@@ -156,5 +152,3 @@ test(PWM_99_P1S6CleanupForP1) {
     System.enableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
 }
 #endif
-
-#endif // PLATFORM_ID >= 3

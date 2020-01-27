@@ -2,7 +2,7 @@
 #include "unit-test.h"
 #include "rgbled.h"
 
-#ifdef FLASHEE_EEPROM
+#ifdef HAS_SERIAL_FLASH
 #include "flashee-eeprom.h"
 #endif
 
@@ -130,7 +130,7 @@ public:
     }
 };
 
-#ifdef FLASHEE_EEPROM
+#ifdef HAS_SERIAL_FLASH
 
 typedef void (*BufferFullCallback)();
 
@@ -169,7 +169,7 @@ int advanceLog(Flashee::CircularBuffer* cblog, uint8_t* buf, size_t size) {
     return read;
 }
 
-#endif // defined(FLASHEE_EEPROM)
+#endif // defined(HAS_SERIAL_FLASH)
 
 unsigned countTests()
 {
@@ -205,7 +205,7 @@ struct TestRunner::LogBufferData {
 };
 
 struct TestRunner::CloudLogData {
-#ifdef FLASHEE_EEPROM
+#ifdef HAS_SERIAL_FLASH
     std::unique_ptr<Flashee::CircularBuffer> cblog;
     CircularBufferPrint stream;
     PrintTee tee;
@@ -217,7 +217,7 @@ struct TestRunner::CloudLogData {
             tee(stream, otherStream),
             buf() {
     }
-#endif // defined(FLASHEE_EEPROM)
+#endif // defined(HAS_SERIAL_FLASH)
 };
 
 TestRunner::TestRunner() :
@@ -244,7 +244,7 @@ void TestRunner::setup() {
         Test::out = NullPrint::instance();
     }
     if (cloudEnabled_) {
-#ifdef FLASHEE_EEPROM
+#ifdef HAS_SERIAL_FLASH
         Flashee::FlashDevice& store = Flashee::Devices::userFlash();
         // 64k should be plenty for anyone.
         int pageSize = store.pageSize();
@@ -261,7 +261,7 @@ void TestRunner::setup() {
                 Test::out = &cloudLog_->tee;
             }
         }
-#endif // defined(FLASHEE_EEPROM)
+#endif // defined(HAS_SERIAL_FLASH)
         Particle.variable("passed", &Test::passed, INT);
         Particle.variable("failed", &Test::failed, INT);
         Particle.variable("skipped", &Test::skipped, INT);
@@ -426,14 +426,14 @@ int TestRunner::testCmd(String arg) {
     else if (arg.equals("enterDFU")) {
         TestRunner::instance()->dfuRequested_ = true;
     }
-#ifdef FLASHEE_EEPROM
+#ifdef HAS_SERIAL_FLASH
     else if (arg.equals("log")) {
         const auto d = TestRunner::instance()->cloudLog_.get();
         if (d) {
             result = advanceLog(d->cblog.get(), d->buf, sizeof(d->buf));
         }
     }
-#endif
+#endif // HAS_SERIAL_FLASH
     else {
         result = -1;
     }

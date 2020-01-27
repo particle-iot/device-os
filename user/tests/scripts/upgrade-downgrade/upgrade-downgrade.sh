@@ -260,7 +260,7 @@ usb() {
     eval $(screen $x);
   fi
 }
-# puts photon/p1/electron/core in Listening Mode
+# puts photon/p1/electron in Listening Mode
 ymodem() {
   set_baudrate 28800
 }

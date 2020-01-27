@@ -27,15 +27,6 @@ ifdef SPARK_TEST_DRIVER
 CFLAGS += -DSPARK_TEST_DRIVER=$(SPARK_TEST_DRIVER)
 endif
 
-ifeq ("$(SPARK_CLOUD)","n")
-CFLAGS += -DSPARK_NO_CLOUD
-endif
-
-ifeq ("$(SPARK_WIFI)","n")
-CFLAGS += -DPARTICLE_NO_NETWORK
-endif
-
-
 # disable COMPILE_LTO when JTAG is enabled since it obfuscates the symbol mapping
 # breaking step debugging
 ifeq ($(USE_SWD),y)

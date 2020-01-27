@@ -291,7 +291,6 @@ int system_internet_test(void* reserved)
 
 int system_multicast_announce_presence(void* reserved)
 {
-#ifndef SPARK_NO_CLOUD
     auto multicastSocket = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, NIF_DEFAULT);
     if (!socket_handle_valid(multicastSocket)) {
         LOG_DEBUG(TRACE, "socket_handle_valid() = %d", socket_handle_valid(multicastSocket));
@@ -325,7 +324,6 @@ int system_multicast_announce_presence(void* reserved)
     LOG_DEBUG(TRACE, "socket_close(multicastSocket)");
     socket_close(multicastSocket);
 
-#endif // SPARK_NO_CLOUD
     return 0;
 }
 
@@ -347,7 +345,6 @@ int system_cloud_is_connected(void* reserved)
     return !closed ? 0 : SYSTEM_ERROR_UNKNOWN;
 }
 
-#ifndef SPARK_NO_CLOUD
 void HAL_NET_notify_socket_closed(sock_handle_t socket)
 {
     if (s_state.socket == socket)
@@ -355,10 +352,5 @@ void HAL_NET_notify_socket_closed(sock_handle_t socket)
         cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_ERROR);
     }
 }
-#else
-void HAL_NET_notify_socket_closed(sock_handle_t socket)
-{
-}
-#endif /* SPARK_NO_CLOUD */
 
 #endif /* !HAL_USE_SOCKET_HAL_POSIX && HAL_USE_SOCKET_HAL_COMPAT */

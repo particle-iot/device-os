@@ -43,7 +43,6 @@ enum FrequencyScale
     MHZ = KHZ*1000,
     SPI_CLK_SYSTEM = 0,         // represents the system clock speed
     SPI_CLK_ARDUINO = 16*MHZ,
-    SPI_CLK_CORE = 72*MHZ,
     SPI_CLK_PHOTON = 60*MHZ
 };
 

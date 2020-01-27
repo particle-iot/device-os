@@ -33,9 +33,7 @@ struct EEPROMCustomObject{
 };
 
 test(EEPROM_01_Capacity) {
-#if (PLATFORM_ID == 0) // Core
-  uint16_t expectedCapacity = 128;
-#elif HAL_PLATFORM_FILESYSTEM // Xenon/Argon/Boron
+#if HAL_PLATFORM_FILESYSTEM // Xenon/Argon/Boron
   uint16_t expectedCapacity = 4096;
 #else // Photon/P1/Electron
   uint16_t expectedCapacity = 2048;

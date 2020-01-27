@@ -2,7 +2,7 @@
 LOG_SOURCE_CATEGORY("comm.lightssl")
 
 #include "protocol_selector.h"
-#if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+#if HAL_PLATFORM_CLOUD_TCP
 #include "lightssl_message_channel.h"
 
 #include "service_debug.h"
@@ -270,4 +270,4 @@ namespace protocol
 }
 }
 
-#endif // HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+#endif // HAL_PLATFORM_CLOUD_TCP

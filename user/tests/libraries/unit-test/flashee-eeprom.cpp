@@ -16,6 +16,8 @@
  */
 #include "flashee-eeprom.h"
 
+#include "platform_config.h"    // for HAS_SERIAL_FLASH
+
 #if FLASHEE_FAT_FS_SUPPORT
 #include "diskio.h"
 #include "FlashIO.h"
@@ -34,7 +36,7 @@
 
 #endif
 
-#ifdef FLASHEE_EEPROM
+#ifdef HAS_SERIAL_FLASH
 namespace Flashee {
 
 FlashDevice::~FlashDevice() { }

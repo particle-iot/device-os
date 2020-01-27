@@ -21,7 +21,7 @@
 
 #include "protocol_selector.h"
 
-#if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+#if HAL_PLATFORM_CLOUD_TCP
 
 #include <string.h>
 #include "protocol_defs.h"
@@ -94,4 +94,4 @@ public:
 
 }}
 
-#endif // HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+#endif // HAL_PLATFORM_CLOUD_TCP

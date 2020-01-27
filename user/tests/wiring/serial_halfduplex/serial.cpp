@@ -12,13 +12,6 @@
 #define TESTSERIAL2 Serial5
 #define TX1 C3
 #define TX2 C1
-#elif (PLATFORM_ID == 0)
-#include "Serial2/Serial2.h"
-#define TESTSERIAL1 Serial1
-#define TESTSERIAL2 Serial2
-#define TX1 TX
-#define TX2 D1
-#warning Core requires external pull-up resistor attached to TX or D1, as it doesn't support Open-Drain or Push-Pull mode with pull-up
 #else
 #error Unsupported platform
 #endif

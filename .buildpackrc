@@ -12,7 +12,7 @@ export BUILDPACK_VARIATION=gcc-arm-none-eabi-5_3-2016q1
 export RELEASE_PLATFORMS=( )
 
 # Platforms for which this firmware is considered experimental
-export PRERELEASE_PLATFORMS=( core photon p1 electron argon boron xenon asom bsom xsom b5som )
+export PRERELEASE_PLATFORMS=( photon p1 electron argon boron xenon asom bsom xsom b5som )
 # Note: a single platform should be only in release or prerelease list. If
 # added to both it will be considered a prerelease
 
@@ -20,5 +20,5 @@ export PRERELEASE_PLATFORMS=( core photon p1 electron argon boron xenon asom bso
 export MODULAR_PLATFORMS=( photon p1 electron argon boron xenon asom bsom xsom b5som )
 
 # Example GCC ARM version override for FOO platform
-# Replace FOO with (CORE, PHOTON, P1, ELECTRON)
+# Replace FOO with (PHOTON, P1, ELECTRON)
 export BUILDPACK_VARIATION_PLATFORM_FOO=gcc-arm-none-eabi-4_9-2015q3

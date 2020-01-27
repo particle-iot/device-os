@@ -85,7 +85,6 @@ ISRTaskQueue SystemISRTaskQueue;
 
 void Network_Setup(bool threaded)
 {
-#if !PARTICLE_NO_NETWORK
     network_setup(0, 0, 0);
 
     // don't automatically connect when threaded since we want the thread to start asap
@@ -93,12 +92,9 @@ void Network_Setup(bool threaded)
     {
         network_connect(0, 0, 0, 0);
     }
-#endif
 
-#ifndef SPARK_NO_CLOUD
     //Initialize spark protocol callbacks for all System modes
     Spark_Protocol_Init();
-#endif
 
 #if PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     system_cloud_set_inet_family_keepalive(AF_INET, HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL, 0);
@@ -117,8 +113,6 @@ void manage_serial_flasher()
         system_firmwareUpdate(&Serial);
     }
 }
-
-#ifndef SPARK_NO_CLOUD
 
 namespace {
 
@@ -213,10 +207,6 @@ void handle_cloud_errors()
     const uint8_t blinks = Spark_Error_Count;
     Spark_Error_Count = 0;
 
-#if PLATFORM_ID == 0
-    network.set_error_count(0); // Reset Error Count
-#endif /* PLATFORM_ID == 0 */
-
     LOG(WARN, "Handling cloud error: %d", (int)blinks);
 
     // cfod resets in orange since they are soft errors
@@ -282,7 +272,7 @@ void establish_cloud_connection()
         particle::protocol::connection_properties_t conn_prop = {0};
         conn_prop.size = sizeof(conn_prop);
         conn_prop.keepalive_source = particle::protocol::KeepAliveSource::SYSTEM;
-        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING, (provider_data.keepalive * 1000), &conn_prop, nullptr), (void)0);
+        spark_set_connection_property(particle::protocol::Connection::PING, (provider_data.keepalive * 1000), &conn_prop, nullptr);
         spark_cloud_udp_port_set(provider_data.port);
 #endif // PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
 
@@ -320,10 +310,6 @@ void establish_cloud_connection()
 
             cloud_connection_failed();
             handle_cfod();
-            /* FIXME: */
-#if PLATFORM_ID == 0
-            network.set_error_count(Spark_Error_Count);
-#endif /* PLATFORM_ID == 0 */
         }
 
         // Handle errors last to ensure they are shown
@@ -435,7 +421,6 @@ void manage_cloud_connection(bool force_events)
         handle_cloud_connection(force_events);
     }
 }
-#endif // !SPARK_NO_CLOUD
 
 static void process_isr_task_queue()
 {
@@ -468,7 +453,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
         manage_ip_config();
 
-        CLOUD_FN(manage_cloud_connection(force_events), (void)0);
+        manage_cloud_connection(force_events);
 
 // FIXME: there should be a separate feature macro
 #if HAL_PLATFORM_FILESYSTEM
@@ -571,8 +556,6 @@ void cloud_disconnect_graceful(bool closeSocket, cloud_disconnect_reason reason)
 
 void cloud_disconnect(bool closeSocket, bool graceful, cloud_disconnect_reason reason)
 {
-#ifndef SPARK_NO_CLOUD
-
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
         INFO("Cloud: disconnecting");
@@ -609,8 +592,6 @@ void cloud_disconnect(bool closeSocket, bool graceful, cloud_disconnect_reason r
         system_notify_event(cloud_status, cloud_status_disconnected);
     }
     Spark_Error_Count = 0;  // this is also used for CFOD/WiFi reset, and blocks the LED when set.
-
-#endif
 }
 
 uint8_t application_thread_current(void* reserved)

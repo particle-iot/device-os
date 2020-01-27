@@ -1286,7 +1286,7 @@ public:
 };
 
 
-#ifdef FLASHEE_EEPROM
+#ifdef HAS_SERIAL_FLASH
 class SparkExternalFlashDevice : public FlashDevice {
 
     /**

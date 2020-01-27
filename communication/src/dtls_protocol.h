@@ -21,7 +21,7 @@
 
 #include "protocol_selector.h"
 
-#if HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+#if HAL_PLATFORM_CLOUD_UDP
 
 #include <string.h>
 #include "protocol_defs.h"
@@ -130,4 +130,4 @@ public:
 
 }}
 
-#endif // HAL_PLATFORM_CLOUD_UDP && PARTICLE_PROTOCOL
+#endif // HAL_PLATFORM_CLOUD_UDP
