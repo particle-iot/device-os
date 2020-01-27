@@ -1286,4 +1286,80 @@ public:
 };
 
 
+#ifdef HAS_SERIAL_FLASH
+class SparkExternalFlashDevice : public FlashDevice {
+
+    /**
+     * @return The size of each page in this flash device.
+     */
+    virtual page_size_t pageSize() const {
+        return sFLASH_PAGESIZE;
+    }
+
+    /**
+     * @return The number of pages in this flash device.
+     */
+    virtual page_count_t pageCount() const {
+        return 512;
+    }
+
+    virtual bool erasePage(flash_addr_t address) {
+        bool success = false;
+        if (address < pageAddress(pageCount()) && (address % pageSize()) == 0) {
+            sFLASH_EraseSector(address);
+            success = true;
+        }
+        return success;
+    }
+
+    /**
+     * Writes directly to the flash. Depending upon the state of the flash, the
+     * write may provide the data required or it may not.
+     * @param data
+     * @param address
+     * @param length
+     * @return
+     */
+    virtual bool writePage(const void* data, flash_addr_t address, page_size_t length) {
+        // TODO: SPI interface shouldn't need mutable data buffer to write?
+        sFLASH_WriteBuffer(const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(data)), address, length);
+        return true;
+    }
+
+    virtual bool readPage(void* data, flash_addr_t address, page_size_t length) const {
+        sFLASH_ReadBuffer((uint8_t*) data, address, length);
+        return true;
+    }
+
+    /**
+     * Writes data to the flash memory, performing an erase beforehand if necessary
+     * to ensure the data is written correctly.
+     * @param data
+     * @param address
+     * @param length
+     * @return
+     */
+    virtual bool writeErasePage(const void* data, flash_addr_t address, page_size_t length) {
+        return false;
+    }
+
+    /**
+     * Internally re-reorganizes the page's storage by passing the page contents via
+     * a buffer through a handler function and then writing the buffer back to
+     * memory.
+     *
+     * @param address
+     * @param handler
+     * @param data
+     * @param buf
+     * @param bufSize
+     * @return
+     */
+    virtual bool copyPage(flash_addr_t address, TransferHandler handler, void* data, uint8_t* buf, page_size_t bufSize) {
+        return false;
+    }
+
+};
 #endif // SPARK
+
+#endif

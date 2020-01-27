@@ -36,6 +36,3 @@ This takes care of unlocking the protected memory regions, flashing the bootload
   ```none
   flash protect 0 0 on
   ```
-
-> *(Thanks to David for putting this together)*
-> Ref: https://community.spark.io/t/st-link-programmer-shield-only-so-youve-decided-you-want-to-update-your-bootloader-and-everything/2355

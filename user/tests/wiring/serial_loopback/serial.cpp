@@ -28,7 +28,7 @@
 
 /*
  * Serial1 Test requires TX to be jumpered to RX as follows:
- * on the photon Photon
+ * on the Photon
  *           WIRE
  * (TX) --==========-- (RX)
  *

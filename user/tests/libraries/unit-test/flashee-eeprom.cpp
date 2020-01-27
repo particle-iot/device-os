@@ -16,6 +16,8 @@
  */
 #include "flashee-eeprom.h"
 
+#include "platform_config.h"    // for HAS_SERIAL_FLASH
+
 #if FLASHEE_FAT_FS_SUPPORT
 #include "diskio.h"
 #include "FlashIO.h"

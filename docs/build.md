@@ -109,6 +109,8 @@ common are listed here:
 | argon    | 12          |
 | boron    | 13          |
 | xenon    | 14          |
+| bsom     | 23          |
+| b5som    | 25          |
 
 The platform is specified on the command line using the platform ID
 
