@@ -99,6 +99,7 @@ DYNALIB_FN(BASE_IDX + 13, system, system_pool_alloc, void*(size_t, void*))
 DYNALIB_FN(BASE_IDX + 14, system, system_pool_free, void(void*, void*))
 DYNALIB_FN(BASE_IDX + 15, system, system_sleep_pins, int(const uint16_t*, size_t, const InterruptMode*, size_t, long, uint32_t, void*))
 DYNALIB_FN(BASE_IDX + 16, system, system_invoke_event_handler, int(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo, const char* event_name, const char* event_data, void* reserved))
+
 #if HAL_PLATFORM_POWER_MANAGEMENT
 DYNALIB_FN(BASE_IDX + 17, system, system_power_management_set_config, int(const hal_power_config*, void*))
 #define BASE_IDX1 (BASE_IDX + 18)
@@ -106,11 +107,17 @@ DYNALIB_FN(BASE_IDX + 17, system, system_power_management_set_config, int(const 
 #define BASE_IDX1 (BASE_IDX + 17)
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
 
+#if HAL_PLATFORM_SLEEP20
 DYNALIB_FN(BASE_IDX1 + 0, system, system_sleep_ext, int(const hal_sleep_config_t*, hal_wakeup_source_base_t**, void*))
+#define BASE_IDX2 (BASE_IDX1 + 1)
+#else
+#define BASE_IDX2 (BASE_IDX1)
+#endif // HAL_PLATFORM_SLEEP20
 
 DYNALIB_END(system)
 
 #undef BASE_IDX
 #undef BASE_IDX1
+#undef BASE_IDX2
 
 #endif	/* SYSTEM_DYNALIB_H */
