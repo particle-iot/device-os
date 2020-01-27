@@ -44,17 +44,11 @@ typedef struct pwm_state_t {
 
 /* Private define ------------------------------------------------------------*/
 
-#if PLATFORM_ID == 0 // Core
-#define TIM_PWM_COUNTER_CLOCK_FREQ 24000000 //TIM Counter clock = 24MHz
-#define TIM_NUM 4
-#define TIM_PERIPHERAL_TO_STATE_IDX(tim) ((((uint32_t)tim) - APB1PERIPH_BASE) / (TIM3_BASE - TIM2_BASE))
-#else
 #define TIM_PWM_COUNTER_CLOCK_FREQ 30000000 //TIM Counter clock = 30MHz
 #define TIM_NUM 6
 #define TIM_PERIPHERAL_TO_STATE_IDX(tim) (((uint32_t)tim) >= APB2PERIPH_BASE ? \
                                          ((((uint32_t)tim) - APB2PERIPH_BASE) / (TIM8_BASE - TIM1_BASE)) : \
                                          (((((uint32_t)tim) - APB1PERIPH_BASE) / (TIM3_BASE - TIM2_BASE)) + 2))
-#endif
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -228,9 +222,6 @@ uint32_t HAL_PWM_Get_AnalogValue_Ext(uint16_t pin)
 
 uint32_t HAL_PWM_Base_Clock(uint16_t pin)
 {
-#if PLATFORM_ID == 0 // Core
-    return SystemCoreClock;
-#else
     Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     if(pin_info->timer_peripheral == TIM3 ||
@@ -243,23 +234,18 @@ uint32_t HAL_PWM_Base_Clock(uint16_t pin)
     {
         return SystemCoreClock;
     }
-#endif
 }
 
 uint8_t HAL_PWM_Timer_Resolution(uint16_t pin)
 {
-#if PLATFORM_ID == 0 // Core
-    return 16;
-#else
     Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     if(pin_info->timer_peripheral == TIM2 || pin_info->timer_peripheral == TIM5)
     {
         return 32;
     }
-    
+
     return 16;
-#endif
 }
 
 uint32_t HAL_PWM_Calculate_Max_Frequency(uint32_t clock, uint8_t resolution)
@@ -339,25 +325,6 @@ void HAL_PWM_Enable_TIM_Clock(uint16_t pin, uint32_t pwm_frequency)
 
 	// AFIO and TIM clock enable
 
-#if PLATFORM_ID == 0 // Core
-
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-
-	if(pin_info->timer_peripheral == TIM2)
-	{
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
-	}
-	else if(pin_info->timer_peripheral == TIM3)
-	{
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
-	}
-	else if(pin_info->timer_peripheral == TIM4)
-	{
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-	}
-
-#else
-
     if (pin_info->timer_peripheral == TIM1)
     {
         GPIO_PinAFConfig(pin_info->gpio_peripheral, pin_info->gpio_pin_source, GPIO_AF_TIM1);
@@ -389,8 +356,6 @@ void HAL_PWM_Enable_TIM_Clock(uint16_t pin, uint32_t pwm_frequency)
         GPIO_PinAFConfig(pin_info->gpio_peripheral, pin_info->gpio_pin_source, GPIO_AF_TIM8);
         RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
     }
-#endif
-
 #endif
 
     // Time base configuration

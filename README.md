@@ -58,7 +58,6 @@ To get started building firmware locally, see [Getting Started](docs/gettingstar
 
 The firmware uses the GNU GCC toolchain for ARM Cortex-M processors, ARM's CMSIS libraries, STM32 standard peripheral libraries and Arduino's implementation of Wiring.
 
-On the Core: TI's CC3000 host driver libraries,
 On the photon: Broadcom's WICED WiFi SDK.
 
 ### LICENSE

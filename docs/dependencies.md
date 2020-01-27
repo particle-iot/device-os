@@ -10,7 +10,7 @@ Building the firmware locally requires these dependencies ot be installed:
 6. [Command line tools](#6-command-line-tools)
 
 #### 1. GCC for ARM Cortex processors
-The Core/Photon uses an ARM Cortex M3 CPU based microcontroller. All of the code is built around the GNU GCC toolchain offered and maintained by ARM.
+The Photon uses an ARM Cortex M3 CPU based microcontroller. All of the code is built around the GNU GCC toolchain offered and maintained by ARM.
 
 The build requires version 5.3.1 20160307 or newer of ARM GCC and will print an error
 message if the version is older than this.

@@ -54,7 +54,7 @@ __attribute__((weak)) mbedtls_callbacks_t* mbedtls_get_callbacks(void* reserved)
 {
     return &s_callbacks;
 }
-#endif // defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS) || PLATFORM_ID == 0
+#endif // defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS)
 
 #if PLATFORM_ID!=3
 unsigned long mbedtls_timing_hardclock()

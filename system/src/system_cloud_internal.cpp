@@ -974,13 +974,6 @@ int Spark_Handshake(bool presence_announce)
 
         publishSafeModeEventIfNeeded();
 
-#if defined(SPARK_SUBSYSTEM_EVENT_NAME)
-        if (!HAL_core_subsystem_version(buf, sizeof (buf)) && *buf)
-        {
-            LOG(INFO,"Send spark/" SPARK_SUBSYSTEM_EVENT_NAME " event");
-            publishEvent("spark/" SPARK_SUBSYSTEM_EVENT_NAME, buf);
-        }
-#endif
         uint8_t flag = 0;
         if (system_get_flag(SYSTEM_FLAG_PUBLISH_RESET_INFO, &flag, nullptr) == 0 && flag)
         {

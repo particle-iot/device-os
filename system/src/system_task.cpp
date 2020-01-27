@@ -310,10 +310,6 @@ void establish_cloud_connection()
 
             cloud_connection_failed();
             handle_cfod();
-            /* FIXME: */
-#if PLATFORM_ID == 0
-            network.set_error_count(Spark_Error_Count);
-#endif /* PLATFORM_ID == 0 */
         }
 
         // Handle errors last to ensure they are shown

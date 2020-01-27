@@ -32,7 +32,6 @@
 #include "system_sleep.h"
 #include "system_cloud.h"
 #include "system_event.h"
-#include "core_hal.h"
 #include "interrupts_hal.h"
 #include "core_hal.h"
 #include "system_user.h"

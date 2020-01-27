@@ -21,14 +21,6 @@ USBD_PID_DFU=0x607F
 USBD_PID_CDC=0x607D
 
 ifneq (,$(PLATFORM))
-ifeq ("$(PLATFORM)","core")
-PLATFORM_ID = 0
-endif
-
-ifeq ("$(PLATFORM)","core-hd")
-PLATFORM_ID = 2
-endif
-
 ifeq ("$(PLATFORM)","gcc")
 PLATFORM_ID = 3
 endif
@@ -110,23 +102,9 @@ ifndef PLATFORM_ID
 $(error PLATFORM or PLATFORM_ID not set. Please specify the platform to build.")
 endif
 
-core_unsupported=$(error "From DeviceOS 1.5 onwards, the Spark Core is no longer supported. Please use DeviceOS 1.4.4 to continue targeting the Core platform.")
-
 # Determine which is the target device
 
 ARCH=arm
-
-ifeq ("$(PLATFORM_ID)","0")
-$(call core_unsupported)
-endif
-
-ifeq ("$(PLATFORM_ID)","1")
-$(call core_unsupported)
-endif
-
-ifeq ("$(PLATFORM_ID)","2")
-$(call core_unsupported)
-endif
 
 ifeq ("$(PLATFORM_ID)","3")
 PLATFORM=gcc
@@ -487,6 +465,5 @@ MODULE_FUNCTION_USER_PART       :=5
 MODULE_FUNCTION_SETTINGS        :=6
 MODULE_FUNCTION_NCP_FIRMWARE    :=7
 MODULE_FUNCTION_RADIO_STACK     :=8
-
 
 endif

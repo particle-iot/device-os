@@ -152,15 +152,7 @@ struct varstring_t {
     char string[33];
 };
 
-#if PLATFORM_ID>3
 extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result);
-#else // PLATFORM <= 3
-extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result) {
-    result->len = 4;
-    strcpy(result->string, "CORE-1234");
-    return true;
-}
-#endif
 
 bool WiFiTester::isPowerOn() {
     return power_state;

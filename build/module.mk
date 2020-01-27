@@ -41,9 +41,6 @@ CFLAGS += $(addprefix -D,$(GLOBAL_DEFINES))
 export GLOBAL_DEFINES
 endif
 
-# _WINSOCK_H prevents select.h from being used which conflicts with CC3000 headers
-CFLAGS += -D_WINSOCK_H
-
 ifneq (,$(NO_GNU_EXTENSIONS))
 # Stick to POSIX-conforming API
 CFLAGS += -D_POSIX_C_SOURCE=200809

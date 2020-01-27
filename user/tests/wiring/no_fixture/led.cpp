@@ -1,7 +1,4 @@
 
-// not hardware specific so test on the photon only to free up space for the core
-#if PLATFORM_ID>=3
-
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "rgbled.h"
@@ -300,5 +297,3 @@ test(LED_12_NoLeakWhenOnChangeHandlerIsOverridden) {
     RGB.onChange(nullptr);
     assertEqual(OnChangeHandler::instanceCount(), 0); // Current handler has been destroyed
 }
-
-#endif // PLATFORM_ID >= 3

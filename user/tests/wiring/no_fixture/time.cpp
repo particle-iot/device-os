@@ -23,8 +23,6 @@
  ******************************************************************************
  */
 
-#if PLATFORM_ID>=3
-
 #include "application.h"
 #include "unit-test/unit-test.h"
 
@@ -268,5 +266,3 @@ test(TIME_16_TimeChangedEvent) {
     assertMore(Particle.timeSyncedLast(), syncedLastMillis);
     assertEqual(s_time_changed_reason, (int)time_changed_sync);
 }
-
-#endif

@@ -1,5 +1,3 @@
-#if PLATFORM_ID>=3
-
 #include "application.h"
 #include "unit-test/unit-test.h"
 
@@ -106,5 +104,3 @@ test(TIME_02_SyncTimeInManualMode) {
         assertMore(syncedCurrentUnix, syncedLastUnix);
     } // for()
 }
-
-#endif

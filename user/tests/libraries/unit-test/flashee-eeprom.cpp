@@ -34,7 +34,7 @@
 
 #endif
 
-#ifdef FLASHEE_EEPROM
+#ifdef HAS_SERIAL_FLASH
 namespace Flashee {
 
 FlashDevice::~FlashDevice() { }
