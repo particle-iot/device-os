@@ -90,3 +90,5 @@
 
 #define HAL_PLATFORM_RADIO_STACK (1)
 
+#define HAL_PLATFORM_BACKUP_RAM (1)
+

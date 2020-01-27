@@ -128,13 +128,7 @@ void serialEventRun()
 #endif
 }
 
-#if defined(STM32F2XX)
-#define PLATFORM_BACKUP_RAM 1
-#else
-#define PLATFORM_BACKUP_RAM 0
-#endif
-
-#if PLATFORM_BACKUP_RAM
+#if HAL_PLATFORM_BACKUP_RAM
 extern char link_global_retained_initial_values;
 extern char link_global_retained_start;
 extern char link_global_retained_end;
@@ -199,7 +193,7 @@ static void ctrl_request_handler(ctrl_request* req) {
 
 void module_user_init_hook()
 {
-#if PLATFORM_BACKUP_RAM
+#if HAL_PLATFORM_BACKUP_RAM
     backup_ram_was_valid_ =  __backup_sram_signature==signature;
     if (!backup_ram_was_valid_) {
         system_initialize_user_backup_ram();
