@@ -46,12 +46,20 @@ void system_power_management_sleep(bool sleep) {
     PowerManager::instance()->sleep(sleep);
 }
 
+int system_power_management_set_config(const hal_power_config* conf, void* reserved) {
+    return PowerManager::instance()->setConfig(conf);
+}
+
 #else /* !HAL_PLATFORM_POWER_MANAGEMENT */
 
 void system_power_management_init() {
 }
 
 void system_power_management_sleep(bool sleep) {
+}
+
+int system_power_management_set_config(const hal_power_config* conf, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 #endif /* HAL_PLATFORM_POWER_MANAGEMENT */

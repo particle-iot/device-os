@@ -16,7 +16,7 @@
  */
 
 #include "logging.h"
-LOG_SOURCE_CATEGORY("sys.power")
+LOG_SOURCE_CATEGORY("sys.power");
 
 #include "system_power.h"
 #include "system_power_manager.h"
@@ -26,23 +26,77 @@ LOG_SOURCE_CATEGORY("sys.power")
 #include "debug.h"
 #include "spark_wiring_platform.h"
 #include "pinmap_hal.h"
-// For system flags
-#include "system_update.h"
 
 #if (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
 
+using namespace particle::power;
+
 namespace {
 
-const uint8_t BQ24195_VERSION = 0x23;
+constexpr uint8_t BQ24195_VERSION = 0x23;
+
+constexpr system_tick_t DEFAULT_FAULT_WINDOW = 1000;
+constexpr uint32_t DEFAULT_FAULT_COUNT_THRESHOLD = HAL_PLATFORM_PMIC_BQ24195_FAULT_COUNT_THRESHOLD;
+constexpr system_tick_t DEFAULT_FAULT_SUPPRESSION_PERIOD = 60000;
+
+constexpr system_tick_t DEFAULT_QUEUE_WAIT = 1000;
+constexpr system_tick_t DEFAULT_WATCHDOG_TIMEOUT = 60000;
+
+constexpr hal_power_config defaultPowerConfig = {
+  .flags = 0,
+  .version = 0,
+  .size = sizeof(hal_power_config),
+  .vin_min_voltage = DEFAULT_INPUT_VOLTAGE_LIMIT,
+  .vin_max_current = DEFAULT_INPUT_CURRENT_LIMIT,
+  .charge_current = DEFAULT_CHARGE_CURRENT,
+  .termination_voltage = DEFAULT_TERMINATION_VOLTAGE
+};
+
+uint16_t mapInputVoltageLimit(uint16_t value) {
+  uint16_t baseValue = 3880;
+  // Find closest matching voltage input limit value within [3880, 5080] >= 'value'
+  volatile uint16_t v = std::min(std::max(value, (uint16_t)baseValue), (uint16_t)5080) - baseValue;
+  v /= 80;
+  v *= 80;
+  v += baseValue;
+  return v;
+}
+
+uint16_t mapInputCurrentLimit(uint16_t value) {
+  // Find closest matching current input limit value <= 'value'
+  const uint16_t inputCurrentLimits[] = {
+    100, 150, 500, 900, 1200, 1500, 2000, 3000
+  };
+
+  uint16_t prev = inputCurrentLimits[0];
+  for(const auto v: inputCurrentLimits) {
+    if (v > value) {
+      return prev;
+    }
+    prev = v;
+  }
+
+  return prev;
+}
+
+template <typename T>
+bool isValid(T v) {
+  T zero, ff;
+  memset(&zero, 0x00, sizeof(zero));
+  memset(&ff, 0xff, sizeof(ff));
+  if (v == zero || v == ff) {
+    return false;
+  }
+
+  return true;
+}
 
 } // anonymous
-
-using namespace particle::power;
 
 volatile bool PowerManager::update_ = true;
 
 PowerManager::PowerManager() {
-  os_queue_create(&queue_, sizeof(update_), 1, nullptr);
+  os_queue_create(&queue_, sizeof(Event), 1, nullptr);
   SPARK_ASSERT(queue_ != nullptr);
 }
 
@@ -60,14 +114,15 @@ void PowerManager::init() {
 #endif // defined(DEBUIG_BUILD)
   SPARK_ASSERT(thread_ != nullptr);
 
-#if HAL_INCREASE_CHARGING_CURRENT_WHEN_POWERED_BY_VIN
+#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
   HAL_USB_Set_State_Change_Callback(usbStateChangeHandler, (void*)this, nullptr);
 #endif
 }
 
 void PowerManager::update() {
   update_ = true;
-  os_queue_put(queue_, (const void*)&update_, 0, nullptr);
+  Event ev = Event::Update;
+  os_queue_put(queue_, (const void*)&ev, 0, nullptr);
 }
 
 void PowerManager::sleep(bool s) {
@@ -148,50 +203,49 @@ void PowerManager::handleUpdate() {
   handleStateChange(g_batteryState, state, lowBat);
 
   power_source_t src = g_powerSource;
+
+  bool vin = config_.flags & HAL_POWER_USE_VIN_SETTINGS_WITH_USB_HOST;
+#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+  // Workaround:
+  // when Gen3 device is powered by VIN, USB peripheral gets no power supply.
+  // In this case BQ24195 will wrongly assume the device is connected to a USB host.
+  // This workaround is to manually increase input current limit/voltage limit same
+  // as when normally detecting being powered by VIN
+  // More details are in clubhouse [CH34730]
+  auto usb_state = HAL_USB_Get_State(nullptr);
+#endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+
   if (pwr_good) {
     uint8_t vbus_stat = status >> 6;
-    // LOG_DEBUG(INFO, "vbus_stat: 0x%x, usb state: %d, current limit: %d", vbus_stat, HAL_USB_Get_State(), power.getInputCurrentLimit());
     switch (vbus_stat) {
       case 0x01: {
-#if HAL_INCREASE_CHARGING_CURRENT_WHEN_POWERED_BY_VIN
-        // Workaround: 
-        // when Gen3 device is powered by VIN, USB peripheral gets no power supply.
-        // In this case BQ24195 will wrongly assume the device is connected to a USB host.
-        // This workaround is to manually increase charging current limit from 500mA to 900mA
-        // and decrease input voltage limit to 3880mV.
-        // More details are in clubhouse [CH34730]
-        auto usb_state = HAL_USB_Get_State();
-        if (usb_state <= HAL_USB_STATE_DETACHED) {
-          if (power.getInputCurrentLimit() != DEFAULT_INPUT_CURRENT_LIMIT) {
-            power.setInputCurrentLimit(DEFAULT_INPUT_CURRENT_LIMIT);
-            power.setInputVoltageLimit(3880);
-            // LOG_DEBUG(INFO, "DPDM Done-1! +++ current limit: %d", power.getInputCurrentLimit());
-          }
+#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+        if (vin || usb_state < HAL_USB_STATE_POWERED) {
+#else
+        if (vin) {
+#endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+          src = POWER_SOURCE_VIN;
+          applyVinConfig();
+        } else {
+          src = POWER_SOURCE_USB_HOST;
+          applyDefaultConfig(src != g_powerSource);
         }
-#endif
-        src = POWER_SOURCE_USB_HOST;
         break;
       }
       case 0x02:
         src = POWER_SOURCE_USB_ADAPTER;
+        applyDefaultConfig();
         break;
       case 0x03:
         src = POWER_SOURCE_USB_OTG;
+        applyDefaultConfig();
         break;
       case 0x00:
       default:
         if ((misc & 0x80) == 0x00) {
           // Not in DPDM detection anymore
           src = POWER_SOURCE_VIN;
-          // It's not easy to detect when DPDM detection actually finishes,
-          // so just check input current source register whenever we are in this state
-          if (power.getInputCurrentLimit() != DEFAULT_INPUT_CURRENT_LIMIT) {
-            power.setInputCurrentLimit(DEFAULT_INPUT_CURRENT_LIMIT);
-#if HAL_INCREASE_CHARGING_CURRENT_WHEN_POWERED_BY_VIN
-            power.setInputVoltageLimit(3880);
-#endif
-            // LOG_DEBUG(INFO, "DPDM Done-2! +++ current limit: %d", power.getInputCurrentLimit());
-          }
+          applyVinConfig();
         }
         break;
     }
@@ -221,6 +275,10 @@ void PowerManager::handleUpdate() {
 
 void PowerManager::loop(void* arg) {
   PowerManager* self = PowerManager::instance();
+
+  // Load configuration
+  self->loadConfig();
+
   {
     LOG_DEBUG(INFO, "Power Management Initializing.");
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
@@ -239,9 +297,17 @@ void PowerManager::loop(void* arg) {
     LOG_DEBUG(INFO, "Battery Voltage: %-4.2fV", fuel.getVCell());
   }
 
-  uint32_t tmp;
+  Event ev;
   while (true) {
-    os_queue_take(self->queue_, &tmp, DEFAULT_QUEUE_WAIT, nullptr);
+    int r = os_queue_take(self->queue_, &ev, DEFAULT_QUEUE_WAIT, nullptr);
+    if (!r) {
+      if (ev == Event::ReloadConfig) {
+        self->loadConfig();
+        // Do not re-run DPDM
+        self->initDefault(false);
+        self->update_ = true;
+      }
+    }
     while (self->update_) {
       self->handleUpdate();
     }
@@ -268,11 +334,11 @@ void PowerManager::initDefault(bool dpdm) {
   power.disableWatchdog();
 
   // Adjust charge voltage
-  power.setChargeVoltage(4112);        // 4.112V termination voltage
+  power.setChargeVoltage(config_.termination_voltage);
 
   // Set recharge threshold to default value - 100mV
   power.setRechargeThreshold(100);
-  power.setChargeCurrent(0,0,0,1,1,0); // 512mA + 256mA + 128mA = 896mA
+  power.setChargeCurrent(config_.charge_current);
   if (dpdm) {
     // Force-start input current limit detection
     power.enableDPDM();
@@ -281,17 +347,6 @@ void PowerManager::initDefault(bool dpdm) {
   power.enableCharging();
 
   faultSuppressed_ = 0;
-
-  /* This only disables currently running detection, whenever the power source changes,
-   * the DPDM detection will run again
-   */
-  // power.disableDPDM();
-
-  /* Every time the power source changes, bq24195 will run current limit detection
-   * and will change the limit anyway. This limit is instead adjusted in update()
-   * under certain conditions.
-   */
-  // power.setInputCurrentLimit(900);     // 900mA
 }
 
 void PowerManager::handleStateChange(battery_state_t from, battery_state_t to, bool low) {
@@ -354,8 +409,7 @@ void PowerManager::handleStateChange(battery_state_t from, battery_state_t to, b
       PMIC power;
       // Disable charging
       power.disableCharging();
-      // Enable watchdog that should re-enable charging in 40 seconds
-      // power.setWatchdog(0b01);
+      // Charging will be re-enabled after DEFAULT_WATCHDOG_TIMEOUT
       chargingDisabledTimestamp_ = millis();
       break;
     }
@@ -450,10 +504,8 @@ void PowerManager::logStat(uint8_t stat, uint8_t fault) {
 
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
 bool PowerManager::detect() {
-  // Check if runtime detection enabled (DCT flag)
-  uint8_t v;
-  system_get_flag(SYSTEM_FLAG_PM_DETECTION, &v, nullptr);
-  if (!v) {
+  // Check if runtime detection enabled
+  if (!(config_.flags & HAL_POWER_PMIC_DETECTION)) {
     LOG_DEBUG(INFO, "Runtime PMIC/FuelGauge detection is not enabled");
     return false;
   }
@@ -501,6 +553,88 @@ void PowerManager::deinit() {
   }
 
   detachInterrupt(LOW_BAT_UC);
+}
+
+int PowerManager::setConfig(const hal_power_config* conf) {
+  int ret = hal_power_store_config(conf, nullptr);
+  if (thread_) {
+    // Power manager is already running, ask it to reload the config
+    Event ev = Event::ReloadConfig;
+    os_queue_put(queue_, (const void*)&ev, CONCURRENT_WAIT_FOREVER, nullptr);
+  }
+  return ret;
+}
+
+void PowerManager::loadConfig() {
+  // Ignore errors since we are anyway sanitizing the config and setting some sane defaults
+  config_.size = sizeof(config_);
+  int err = hal_power_load_config(&config_, nullptr);
+
+  // Sanitize configuration
+  if (err || config_.version == 0xff || !isValid(config_.size)) {
+    // Flags require special processing even if the config is not valid
+    // in order to keep DCT compatibility for the HAL_POWER_PMIC_DETECTION feature flag
+    uint32_t flags = config_.flags;
+    config_ = defaultPowerConfig;
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+    if (!err) {
+      if (flags & HAL_POWER_PMIC_DETECTION) {
+        config_.flags |= HAL_POWER_PMIC_DETECTION;
+      }
+    }
+#else
+    (void)flags;
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+  }
+
+  if (!isValid(config_.vin_min_voltage)) {
+    config_.vin_min_voltage = defaultPowerConfig.vin_min_voltage;
+  }
+
+  if (!isValid(config_.vin_max_current)) {
+    config_.vin_max_current = defaultPowerConfig.vin_max_current;
+  }
+
+  if (!isValid(config_.charge_current)) {
+    config_.charge_current = defaultPowerConfig.charge_current;
+  }
+
+  if (!isValid(config_.termination_voltage)) {
+    config_.termination_voltage = defaultPowerConfig.termination_voltage;
+  }
+
+  logCurrentConfig();
+}
+
+void PowerManager::applyVinConfig() {
+  PMIC power;
+  if (power.getInputCurrentLimit() != mapInputCurrentLimit(config_.vin_max_current)) {
+    power.setInputCurrentLimit(mapInputCurrentLimit(config_.vin_max_current));
+  }
+
+  if (power.getInputVoltageLimit() != mapInputVoltageLimit(config_.vin_min_voltage)) {
+    power.setInputVoltageLimit(mapInputVoltageLimit(config_.vin_min_voltage));
+  }
+}
+
+void PowerManager::logCurrentConfig() {
+  LOG_DEBUG(TRACE, "Power configuration:");
+  LOG_DEBUG(TRACE, "VIN Vmin: %u", config_.vin_min_voltage);
+  LOG_DEBUG(TRACE, "VIN Imax: %u", config_.vin_max_current);
+  LOG_DEBUG(TRACE, "Ichg: %u", config_.charge_current);
+  LOG_DEBUG(TRACE, "Iterm: %u", config_.termination_voltage);
+}
+
+void PowerManager::applyDefaultConfig(bool dpdm) {
+  PMIC power;
+  if (power.getInputVoltageLimit() != DEFAULT_INPUT_VOLTAGE_LIMIT) {
+    power.setInputVoltageLimit(DEFAULT_INPUT_VOLTAGE_LIMIT);
+  }
+  if (dpdm) {
+    // Force-start input current limit detection
+    LOG_DEBUG(TRACE, "Re-running DPDM");
+    power.enableDPDM();
+  }
 }
 
 void PowerManager::usbStateChangeHandler(HAL_USB_State state, void* context) {

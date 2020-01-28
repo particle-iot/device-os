@@ -72,6 +72,20 @@ TwoWire* pmicWireInstance() {
     }
 }
 
+uint32_t findClosestMatchingSum(uint32_t value, uint32_t baseOffset, uint32_t bits, uint32_t bitsBaseShift) {
+    uint32_t best = 0;
+    int bestDelta = 0x7fffffff;
+    for (uint32_t mask = 0; mask <= (uint32_t)((1 << bits) - 1); mask++) {
+        uint32_t sum = baseOffset + (mask << bitsBaseShift);
+        int delta = std::abs((int)sum - (int)value);
+        if (delta < bestDelta && sum <= value) {
+            best = mask;
+            bestDelta = delta;
+        }
+    }
+    return best;
+}
+
 } // anonymous
 
 #include <mutex>
@@ -233,11 +247,12 @@ bool PMIC::setInputVoltageLimit(uint16_t voltage) {
  * Input          :
  * Return         :
  *******************************************************************************/
-byte PMIC::getInputVoltageLimit(void) {
-
-    //TODO
-    return 1;
-
+uint16_t PMIC::getInputVoltageLimit(void) {
+    std::lock_guard<PMIC> l(*this);
+    uint8_t isr = readRegister(INPUT_SOURCE_REGISTER);
+    isr = (isr >> 3) & 0b1111;
+    const uint16_t baseValue = 3880;
+    return baseValue + isr * 80;
 }
 
 /*******************************************************************************
@@ -585,6 +600,19 @@ byte PMIC::getChargeCurrent(void) {
 }
 
 /*******************************************************************************
+ * Function Name  : getChargeCurrentValue
+ * Description    : Returns charge current in mA
+ * Input          :
+ * Return         :
+ *******************************************************************************/
+uint16_t PMIC::getChargeCurrentValue(void) {
+    uint8_t ccr = readRegister(CHARGE_CURRENT_CONTROL_REGISTER);
+    const uint16_t baseValue = 512;
+    uint16_t v = (((uint16_t)ccr >> 2) & 0b111111) << 6;
+    return baseValue + v;
+}
+
+/*******************************************************************************
  * Function Name  : setChargeCurrent
  * Description    : The total charge current is the 512mA + the combination of the
                     current that the following bits represent
@@ -614,6 +642,36 @@ bool PMIC::setChargeCurrent(bool bit7, bool bit6, bool bit5, bool bit4, bool bit
     byte mask = DATA & 0b00000001;
     writeRegister(CHARGE_CURRENT_CONTROL_REGISTER, current | mask);
     return 1;
+}
+
+/*******************************************************************************
+ * Function Name  : setChargeCurrent
+ * Description    : The total charge current is the 512mA + the combination of the
+                    current that the following bits represent
+                    bit7 = 2048mA
+                    bit6 = 1024mA
+                    bit5 = 512mA
+                    bit4 = 256mA
+                    bit3 = 128mA
+                    bit2 = 64mA
+
+                    The resulting value will be the closest match not larger than
+                    input charge current
+ * Input          : charge current
+ * Return         : 0 Error, 1 Success
+ *******************************************************************************/
+bool PMIC::setChargeCurrent(uint16_t current) {
+    std::lock_guard<PMIC> l(*this);
+
+    const uint16_t baseValue = 512;
+
+    // Find closest matching value not larger than 'current'
+    uint8_t ccr = (uint8_t)(findClosestMatchingSum(current, baseValue, 6, 6) << 2);
+
+    uint8_t currentCcr = readRegister(CHARGE_CURRENT_CONTROL_REGISTER);
+    ccr |= (currentCcr & 0x01);
+    writeRegister(CHARGE_CURRENT_CONTROL_REGISTER, ccr);
+    return true;
 }
 
 /*
@@ -669,6 +727,8 @@ uint16_t PMIC::getChargeVoltageValue() {
                     bit4 = 64mV
                     bit3 = 32mV
                     bit2 = 16mV
+                    The resulting charge voltage will be the closest match not
+                    larger than the provided voltage
  * Input          : desired voltage (4208 or 4112 are the only options currently)
                     4208 is the default
                     4112 is a safer termination voltage if exposing the
@@ -677,24 +737,17 @@ uint16_t PMIC::getChargeVoltageValue() {
  *******************************************************************************/
 bool PMIC::setChargeVoltage(uint16_t voltage) {
     std::lock_guard<PMIC> l(*this);
-    byte DATA = readRegister(CHARGE_VOLTAGE_CONTROL_REGISTER);
-    byte mask = DATA & 0b000000011;
 
-    switch (voltage) {
+    const uint16_t baseValue = 3504;
+    // Find closest matching charge voltage not larger than 'voltage'
+    uint8_t cvcr = (uint8_t)(findClosestMatchingSum(voltage, baseValue, 6, 4) << 2);
 
-        case 4112:
-        writeRegister(CHARGE_VOLTAGE_CONTROL_REGISTER, (mask | 0b10011000));
-        break;
+    uint8_t currentCvcr = readRegister(CHARGE_VOLTAGE_CONTROL_REGISTER);
+    cvcr |= (currentCvcr & 0b11);
 
-        case 4208:
-        writeRegister(CHARGE_VOLTAGE_CONTROL_REGISTER, (mask | 0b10110000));
-        break;
+    writeRegister(CHARGE_VOLTAGE_CONTROL_REGISTER, cvcr);
 
-        default:
-        return 0; // return error since the value passed didn't match
-    }
-
-    return 1; // value was written successfully
+    return true;
 }
 
 /*

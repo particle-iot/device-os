@@ -104,11 +104,16 @@ void system_flag_changed(system_flag_t flag, uint8_t oldValue, uint8_t newValue)
     }
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
     else if (flag == SYSTEM_FLAG_PM_DETECTION) {
-        static_assert(DCT_PM_DETECT_SIZE == sizeof(newValue), "");
-        system_get_flag(flag, &oldValue, nullptr);
-        if (oldValue != newValue) {
-            newValue = !newValue;
-            dct_write_app_data(&newValue, DCT_PM_DETECT_OFFSET, sizeof(newValue));
+        hal_power_config conf = {};
+        conf.size = sizeof(conf);
+        int r = hal_power_load_config(&conf, nullptr);
+        if (!r) {
+            if (newValue) {
+                conf.flags |= HAL_POWER_PMIC_DETECTION;
+            } else {
+                conf.flags &= ~(HAL_POWER_PMIC_DETECTION);
+            }
+            hal_power_store_config(&conf, nullptr);
         }
     }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
@@ -170,11 +175,12 @@ int system_get_flag(system_flag_t flag, uint8_t* value, void*)
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
         else if (flag == SYSTEM_FLAG_PM_DETECTION)
         {
-            uint8_t v = 0;
-            static_assert(DCT_PM_DETECT_SIZE == sizeof(v), "");
-            auto r = dct_read_app_data_copy(DCT_PM_DETECT_OFFSET, &v, sizeof(v));
-            *value = !r && !v;
-            systemFlags[flag] = *value;
+            hal_power_config conf = {};
+            conf.size = sizeof(conf);
+            int r = hal_power_load_config(&conf, nullptr);
+            if (!r) {
+                *value = (conf.flags & HAL_POWER_PMIC_DETECTION);
+            }
         }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
         else

@@ -30,6 +30,7 @@ extern "C" {
 #include "hw_config.h"  // for button_config_t
 #include "rgbled_hal_impl.h" // for led_config_t
 #include <stdio.h>
+#include "power_hal.h"
 
 #define MAX_MODULES_SLOT    5 //Max modules
 #define FAC_RESET_SLOT      0 //Factory reset module index
@@ -102,7 +103,8 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t led_theme[64];               // LED signaling theme
     eap_config_t eap_config;             // WLAN EAP settings
     uint8_t device_secret[15];           // Device secret data (aka "mobile secret")
-    uint8_t reserved2[257];
+    hal_power_config power_config;       // Power management configuration
+    uint8_t reserved2[225];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -136,6 +138,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_LED_THEME_OFFSET (offsetof(application_dct_t, led_theme))
 #define DCT_EAP_CONFIG_OFFSET (offsetof(application_dct_t, eap_config))
 #define DCT_DEVICE_SECRET_OFFSET (offsetof(application_dct_t, device_secret))
+#define DCT_POWER_CONFIG_OFFSET (offsetof(application_dct_t, power_config))
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key))
@@ -165,6 +168,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_LED_THEME_SIZE (sizeof(application_dct_t::led_theme))
 #define DCT_EAP_CONFIG_SIZE (sizeof(application_dct_t::eap_config))
 #define DCT_DEVICE_SECRET_SIZE (sizeof(application_dct_t::device_secret))
+#define DCT_POWER_CONFIG_SIZE (sizeof(application_dct_t::power_config))
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
@@ -204,8 +208,9 @@ STATIC_ASSERT_DCT_OFFSET(led_mirror, 3663 /* 3631 + 32 */);
 STATIC_ASSERT_DCT_OFFSET(led_theme, 3759 /* 3663 + 24 * 4 */);
 STATIC_ASSERT_DCT_OFFSET(eap_config, 3823 /* 3759 + 64 */);
 STATIC_ASSERT_DCT_OFFSET(device_secret, 8119 /* 3823 + (196 + 4*1024 + 4) */);
-STATIC_ASSERT_DCT_OFFSET(reserved2, 8134 /* 8119 + 15 */);
-STATIC_ASSERT_DCT_OFFSET(end, 8391 /* 8134 + 257 */);
+STATIC_ASSERT_DCT_OFFSET(power_config, 8134 /* 8119 + 15 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 8166 /* 8134 + 32 */);
+STATIC_ASSERT_DCT_OFFSET(end, 8391 /* 8134 + 225 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);

@@ -126,7 +126,7 @@ int32_t USB_USART_Flush_Output(unsigned timeout, void* reserved)
     return 0;
 }
 
-HAL_USB_State HAL_USB_Get_State() {
+HAL_USB_State HAL_USB_Get_State(void* reserved) {
     return usb_hal_get_state();
 }
 
