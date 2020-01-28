@@ -145,10 +145,6 @@ private:
    */
   unsigned dividerReference;
 
-#if PLATFORM_THREADING
-  Mutex mutex_;
-#endif
-
 public:
   SPIClass(HAL_SPI_Interface spi);
   virtual ~SPIClass() {};
@@ -217,23 +213,19 @@ public:
 
   bool trylock()
   {
-#if PLATFORM_THREADING
-    return mutex_.trylock();
-#else
     return true;
-#endif
   }
 
   void lock()
   {
-#if PLATFORM_THREADING
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     HAL_SPI_Acquire(_spi, NULL);
 #endif
   }
 
   void unlock()
   {
-#if PLATFORM_THREADING
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     HAL_SPI_Release(_spi, NULL);
 #endif
   }
