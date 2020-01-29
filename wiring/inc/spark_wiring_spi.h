@@ -140,10 +140,20 @@ private:
   HAL_SPI_Interface _spi;
 
   /**
+   * \brief Divider Reference Clock
+   *
    * Set the divider reference clock.
    * The default is the system clock.
    */
-  unsigned dividerReference;
+  unsigned _dividerReference;
+
+  /**
+   * \brief Configuration Cache
+   *
+   * Allow multiple invocations of any SPI peripheral by persisting current
+   * settings and subsequently restoring them.
+   */
+  particle::__SPISettings _spi_settings_cache;
 
 public:
   SPIClass(HAL_SPI_Interface spi);
@@ -213,6 +223,7 @@ public:
 
   bool trylock()
   {
+    //TODO: Implement by extending HAL_SPI_Acquire with immediate timeout
     return true;
   }
 

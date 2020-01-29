@@ -28,162 +28,288 @@
 #include "core_hal.h"
 #include "spark_macros.h"
 
-static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
+namespace
 {
-  memset(info, 0, sizeof(hal_spi_info_t));
-  info->version = HAL_SPI_INFO_VERSION_1;
-  HAL_SPI_Info(spi, info, nullptr);
+/**
+ * The divisors. The index+1 is the power of 2 of the divisor.
+ */
+static uint8_t clock_divisors[] = {SPI_CLOCK_DIV2,   SPI_CLOCK_DIV4,  SPI_CLOCK_DIV8,
+                                   SPI_CLOCK_DIV16,  SPI_CLOCK_DIV32, SPI_CLOCK_DIV64,
+                                   SPI_CLOCK_DIV128, SPI_CLOCK_DIV256};
+
+/**
+ * \brief Divisor Shift Scale
+ *
+ * Calculates how far a clock value should be right-shifted
+ */
+uint8_t divisorShiftScale(uint8_t divider)
+{
+    unsigned result = 0;
+    for (; result < arraySize(clock_divisors); result++)
+    {
+        if (clock_divisors[result] == divider)
+            break;
+    }
+    return result + 1;
 }
 
+/**
+ * \brief Query SPI Info
+ *
+ * This method enables the inspection and caching of the SPI configuration,
+ * which allows multiple consumers to issue SPI transactions on the same SPI
+ * peripheral.
+ *
+ * \warning This method is NOT THREADSAFE and callers will need to utilize
+ *          HAL synchronization primatives.
+ */
+static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
+{
+    memset(info, 0, sizeof(hal_spi_info_t));
+    info->version = HAL_SPI_INFO_VERSION_1;
+    HAL_SPI_Info(spi, info, nullptr);
+}
+
+/**
+ * \brief Extract SPI Settings from SPI Info Structure
+ */
 static particle::__SPISettings spiSettingsFromSpiInfo(hal_spi_info_t* info)
 {
-  if (!info->enabled || info->default_settings)
-    return particle::__SPISettings();
-  return particle::__SPISettings(info->clock, info->bit_order, info->data_mode);
+    if (!info || !info->enabled || info->default_settings)
+    {
+        return particle::__SPISettings();
+    }
+    return particle::__SPISettings(info->clock, info->bit_order, info->data_mode);
 }
+} // namespace
 
 SPIClass::SPIClass(HAL_SPI_Interface spi)
 {
-  _spi = spi;
-  HAL_SPI_Init(_spi);
-  dividerReference = SPI_CLK_SYSTEM;     // 0 indicates the system clock
+    _spi = spi;
+    if (HAL_SPI_Acquire(_spi, nullptr))
+    {
+        // Unable to acquire lock
+    }
+    else
+    {
+        HAL_SPI_Init(_spi);
+        _dividerReference = SPI_CLK_SYSTEM; // 0 indicates the system clock
+        HAL_SPI_Release(_spi, nullptr);
+    }
 }
 
 void SPIClass::begin()
 {
-    // todo - fetch default pin from HAL
-  HAL_SPI_Begin(_spi, SPI_DEFAULT_SS);
+    // TODO: Fetch default pin from HAL
+    if (HAL_SPI_Acquire(_spi, nullptr))
+    {
+        // Unable to acquire lock
+    }
+    else
+    {
+        HAL_SPI_Begin(_spi, SPI_DEFAULT_SS);
+        HAL_SPI_Release(_spi, nullptr);
+    }
 }
 
 void SPIClass::begin(uint16_t ss_pin)
 {
-  if (ss_pin >= TOTAL_PINS)
-  {
-    return;
-  }
+    if (ss_pin >= TOTAL_PINS)
+    {
+        return;
+    }
 
-  HAL_SPI_Begin(_spi, ss_pin);
+    if (HAL_SPI_Acquire(_spi, nullptr))
+    {
+        // Unable to acquire lock
+    }
+    else
+    {
+        HAL_SPI_Begin(_spi, ss_pin);
+        HAL_SPI_Release(_spi, nullptr);
+    }
 }
 
 void SPIClass::begin(SPI_Mode mode, uint16_t ss_pin)
 {
-  if (ss_pin >= TOTAL_PINS)
-  {
-    return;
-  }
+    if (ss_pin >= TOTAL_PINS)
+    {
+        return;
+    }
 
-  HAL_SPI_Begin_Ext(_spi, mode, ss_pin, NULL);
+    if (HAL_SPI_Acquire(_spi, nullptr))
+    {
+        // Unable to acquire lock
+    }
+    else
+    {
+        HAL_SPI_Begin_Ext(_spi, mode, ss_pin, NULL);
+        HAL_SPI_Release(_spi, nullptr);
+    }
 }
 
 void SPIClass::end()
 {
-  trylock();
-  unlock();
-  HAL_SPI_End(_spi);
+    if (HAL_SPI_Acquire(_spi, nullptr))
+    {
+        // Unable to acquire lock
+    }
+    else
+    {
+        HAL_SPI_End(_spi);
+        HAL_SPI_Release(_spi, nullptr);
+    }
 }
 
 void SPIClass::setBitOrder(uint8_t bitOrder)
 {
-  HAL_SPI_Set_Bit_Order(_spi, bitOrder);
+    if (HAL_SPI_Acquire(_spi, nullptr))
+    {
+        // Unable to acquire lock
+    }
+    else
+    {
+        HAL_SPI_Set_Bit_Order(_spi, bitOrder);
+        HAL_SPI_Release(_spi, nullptr);
+    }
 }
 
 void SPIClass::setDataMode(uint8_t mode)
 {
-  HAL_SPI_Set_Data_Mode(_spi, mode);
+    if (HAL_SPI_Acquire(_spi, nullptr))
+    {
+        // Unable to acquire lock
+    }
+    else
+    {
+        HAL_SPI_Set_Data_Mode(_spi, mode);
+        HAL_SPI_Release(_spi, nullptr);
+    }
 }
 
 int32_t SPIClass::beginTransaction()
 {
-  lock();
-  return 0;
+    return HAL_SPI_Acquire(_spi, nullptr);
 }
 
 int32_t SPIClass::beginTransaction(const particle::__SPISettings& settings)
 {
-  lock();
-  // Get Current SPISettings
-  hal_spi_info_t info;
-  querySpiInfo(_spi, &info);
-  particle::__SPISettings current = spiSettingsFromSpiInfo(&info);
-  // If they differ, reconfigure SPI peripheral
-  if (settings != current)
-  {
-    if (!settings.default_) {
-      uint8_t divisor = 0;
-      unsigned int clock;
-      computeClockDivider((unsigned int)info.system_clock, settings.clock_, divisor, clock);
+    // Lock peripheral
+    CHECK(HAL_SPI_Acquire(_spi, nullptr));
 
-      if (!(current <= settings && clock == current.clock_)) {
-        HAL_SPI_Set_Settings(_spi, 0, divisor, settings.bitOrder_, settings.dataMode_, nullptr);
-      }
-    } else {
-      HAL_SPI_Set_Settings(_spi, 1, 0, 0, 0, nullptr);
+    // Collect existing SPI info
+    hal_spi_info_t spi_info;
+    querySpiInfo(_spi, &spi_info);
+
+    // Cache existing SPI settings
+    particle::__SPISettings _spi_settings_cache = spiSettingsFromSpiInfo(&spi_info);
+
+    // Reconfigure SPI peripheral (if necessary)
+    if (settings != _spi_settings_cache)
+    {
+        if (settings.default_)
+        {
+            HAL_SPI_Set_Settings(_spi, settings.default_, 0, 0, 0, nullptr);
+        }
+        else
+        {
+            // Compute valid clock value and clock divider from supplied clock value
+            uint8_t divisor = 0;
+            unsigned int clock; // intentionally left uninitialized
+            computeClockDivider((unsigned int)spi_info.system_clock, settings.clock_,
+                                divisor, clock);
+
+            // Ensure inequality aside from computed clock value
+            if (!(_spi_settings_cache <= settings && clock == _spi_settings_cache.clock_))
+            {
+                HAL_SPI_Set_Settings(_spi, settings.default_, divisor, settings.bitOrder_,
+                                     settings.dataMode_, nullptr);
+            }
+        }
     }
-  }
 
-  return 0;
+    return 0;
 }
 
 void SPIClass::endTransaction()
 {
-  unlock();
-}
+    // Restore previous configuration (if necessary)
+    hal_spi_info_t current_info;
+    querySpiInfo(_spi, &current_info);
+    particle::__SPISettings current_settings = spiSettingsFromSpiInfo(&current_info);
 
+    if (current_settings != _spi_settings_cache)
+    {
+        if (_spi_settings_cache.default_)
+        {
+            HAL_SPI_Set_Settings(_spi, _spi_settings_cache.default_, 0, 0, 0, nullptr);
+        }
+        else
+        {
+            // Calculate clock divisor from SPI settings
+            uint8_t divisor = 0;
+            unsigned int clock; // intentionally left uninitialized
+            computeClockDivider((unsigned int)current_info.system_clock, _spi_settings_cache.clock_,
+                                divisor, clock);
+
+            HAL_SPI_Set_Settings(_spi, _spi_settings_cache.default_, divisor,
+                                 _spi_settings_cache.bitOrder_, _spi_settings_cache.dataMode_,
+                                 nullptr);
+        }
+    }
+
+    // Release peripheral
+    HAL_SPI_Release(_spi, nullptr);
+}
 
 void SPIClass::setClockDividerReference(unsigned value, unsigned scale)
 {
-    dividerReference = value*scale;
-    // set the clock to 1/4 of the reference by default.
-    // We assume this is called before externally calling setClockDivider.
-    setClockDivider(SPI_CLOCK_DIV4);
-}
-
-/**
- * The divisors. The index+1 is the power of 2 of the divisor.
- */
-static uint8_t clock_divisors[] = {
-    SPI_CLOCK_DIV2,
-    SPI_CLOCK_DIV4,
-    SPI_CLOCK_DIV8,
-    SPI_CLOCK_DIV16,
-    SPI_CLOCK_DIV32,
-    SPI_CLOCK_DIV64,
-    SPI_CLOCK_DIV128,
-    SPI_CLOCK_DIV256
-};
-
-uint8_t divisorShiftScale(uint8_t divider)
-{
-    unsigned result = 0;
-    for (; result<arraySize(clock_divisors); result++)
+    if (HAL_SPI_Acquire(_spi, nullptr))
     {
-        if (clock_divisors[result]==divider)
-            break;
+        // Unable to acquire lock
     }
-    return result+1;
+    else
+    {
+        _dividerReference = (value * scale);
+        // set the clock to 1/4 of the reference by default.
+        // We assume this is called before externally calling setClockDivider.
+        setClockDivider(SPI_CLOCK_DIV4);
+        HAL_SPI_Release(_spi, nullptr);
+    }
 }
 
 void SPIClass::setClockDivider(uint8_t rate)
 {
-    if (dividerReference)
+    if (HAL_SPI_Acquire(_spi, nullptr))
     {
-        // determine the clock speed
-        uint8_t scale = divisorShiftScale(rate);
-        unsigned targetSpeed = dividerReference>>scale;
-        setClockSpeed(targetSpeed);
+        // Unable to acquire lock
     }
     else
     {
-        HAL_SPI_Set_Clock_Divider(_spi, rate);
+        // TODO: Understand purpose of `dividerReference`
+        if (_dividerReference)
+        {
+            // determine the clock speed
+            uint8_t scale = divisorShiftScale(rate);
+            unsigned targetSpeed = _dividerReference >> scale;
+            setClockSpeed(targetSpeed);
+        }
+        else
+        {
+            HAL_SPI_Set_Clock_Divider(_spi, rate);
+        }
     }
 }
 
-void SPIClass::computeClockDivider(unsigned reference, unsigned targetSpeed, uint8_t& divider, unsigned& clock)
+void SPIClass::computeClockDivider(unsigned reference, unsigned targetSpeed, uint8_t& divider,
+                                   unsigned& clock)
 {
+    // TODO: Can const be added to this function without breaking ABI?
     clock = reference;
     uint8_t scale = 0;
-    clock >>= 1;        // div2 is the first
-    while (clock > targetSpeed && scale<7) {
+    clock >>= 1; // div2 is the first
+    while (clock > targetSpeed && scale < 7)
+    {
         clock >>= 1;
         scale++;
     }
@@ -192,59 +318,97 @@ void SPIClass::computeClockDivider(unsigned reference, unsigned targetSpeed, uin
 
 unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
 {
-    // actual speed is the system clock divided by some scalar
-    unsigned targetSpeed = value*value_scale;
-    hal_spi_info_t info;
-    querySpiInfo(_spi, &info);
-    uint8_t rate;
     unsigned clock;
-    computeClockDivider(info.system_clock, targetSpeed, rate, clock);
-    HAL_SPI_Set_Clock_Divider(_spi, rate);
+
+    // actual speed is the system clock divided by some scalar
+    unsigned targetSpeed = value * value_scale;
+
+    if (HAL_SPI_Acquire(_spi, nullptr))
+    {
+        // Unable to acquire lock
+        clock = 0;
+    }
+    else
+    {
+        // Query SPI info
+        hal_spi_info_t info;
+        querySpiInfo(_spi, &info);
+
+        // Calculate clock divider
+        uint8_t divisor = 0;
+        computeClockDivider(info.system_clock, targetSpeed, divisor, clock);
+
+        // Update SPI peripheral
+        HAL_SPI_Set_Clock_Divider(_spi, divisor);
+    }
     return clock;
 }
 
 byte SPIClass::transfer(byte _data)
 {
-  return HAL_SPI_Send_Receive_Data(_spi, _data);
+    return HAL_SPI_Send_Receive_Data(_spi, _data);
 }
 
-void SPIClass::transfer(void* tx_buffer, void* rx_buffer, size_t length, wiring_spi_dma_transfercomplete_callback_t user_callback)
+void SPIClass::transfer(void* tx_buffer, void* rx_buffer, size_t length,
+                        wiring_spi_dma_transfercomplete_callback_t user_callback)
 {
-  HAL_SPI_DMA_Transfer(_spi, tx_buffer, rx_buffer, length, user_callback);
-  if (user_callback == NULL) {
-    HAL_SPI_TransferStatus st;
-    do {
-      HAL_SPI_DMA_Transfer_Status(_spi, &st);
-    } while(st.transfer_ongoing);
-  }
-}
-
-void SPIClass::attachInterrupt()
-{
-  //To Do
-}
-
-void SPIClass::detachInterrupt()
-{
-  //To Do
-}
-
-bool SPIClass::isEnabled()
-{
-  return HAL_SPI_Is_Enabled(_spi);
-}
-
-void SPIClass::onSelect(wiring_spi_select_callback_t user_callback)
-{
-  HAL_SPI_Set_Callback_On_Select(_spi, user_callback, NULL);
+    HAL_SPI_DMA_Transfer(_spi, tx_buffer, rx_buffer, length, user_callback);
+    if (user_callback == NULL)
+    {
+        HAL_SPI_TransferStatus st;
+        do
+        {
+            HAL_SPI_DMA_Transfer_Status(_spi, &st);
+        } while (st.transfer_ongoing);
+    }
 }
 
 void SPIClass::transferCancel()
 {
-  HAL_SPI_DMA_Transfer_Cancel(_spi);
+    HAL_SPI_DMA_Transfer_Cancel(_spi);
 }
 
 int32_t SPIClass::available()
 {
-  return HAL_SPI_DMA_Transfer_Status(_spi, NULL);
+    return HAL_SPI_DMA_Transfer_Status(_spi, NULL);
+}
+
+void SPIClass::attachInterrupt()
+{
+    // TODO: Implement
+}
+
+void SPIClass::detachInterrupt()
+{
+    // TODO: Implement
+}
+
+bool SPIClass::isEnabled()
+{
+    bool result;
+
+    // TODO: There is no meaningful way to indicate the inability to take the lock, perhaps the lock
+    // should not be acquired in this circumstance.
+    if (HAL_SPI_Acquire(_spi, nullptr))
+    {
+        // Unable to acquire lock
+        result = false;
+    }
+    else
+    {
+        result = HAL_SPI_Is_Enabled(_spi);
+    }
+    return result;
+}
+
+void SPIClass::onSelect(wiring_spi_select_callback_t user_callback)
+{
+    if (HAL_SPI_Acquire(_spi, nullptr))
+    {
+        // Unable to acquire lock
+    }
+    else
+    {
+        HAL_SPI_Set_Callback_On_Select(_spi, user_callback, NULL);
+    }
 }
