@@ -90,6 +90,7 @@ private:
     RegistrationState cereg_ = RegistrationState::NotRegistered;
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
+    unsigned registrationTimeout_;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
