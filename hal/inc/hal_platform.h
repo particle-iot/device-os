@@ -18,13 +18,15 @@
 #ifndef HAL_PLATFORM_H
 #define	HAL_PLATFORM_H
 
-#if PLATFORM_ID <= 10 || PLATFORM_ID == 60000
+#include "platforms.h"
+
+#if PLATFORM_ID <= PLATFORM_ELECTRON_PRODUCTION || PLATFORM_ID == PLATFORM_NEWHAL
 /* FIXME: create platform-specific hal_platform_config.h header for each of these platforms */
 #include "hal_platform_compat.h"
 #else
 /* Include platform-specific configuration header */
 #include "hal_platform_config.h"
-#endif /* PLATFORM_ID <= 10 || PLATFORM_ID == 60000 */
+#endif /* PLATFORM_ID <= PLATFORM_ELECTRON_PRODUCTION || PLATFORM_ID == PLATFORM_NEWHAL */
 
 /* Define the defaults */
 #ifndef HAL_PLATFORM_WIFI
