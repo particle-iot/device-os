@@ -727,8 +727,7 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
         netConf_ = networkConfigForImsi(buf, strlen(buf));
     }
     // FIXME: for now IPv4 context only
-    auto resp = parser_.sendCommand("AT+CGDCONT=1,\"IP\",\"%s%s\"",
-            (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
+    auto resp = parser_.sendCommand("AT+CGDCONT=1,\"IP\",\"%s\"",
             netConf_.hasApn() ? netConf_.apn() : "");
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
