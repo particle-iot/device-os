@@ -84,7 +84,8 @@ When building `main` or `modules`:
 - `TEST` builds the test application stored in `user/tests/$(TEST)`.
 - `USER_MAKEFILE`: when `APPDIR` is used this specifies the location of the makefile
     to include, relative to `APPDIR`. The default is `build.mk`.
-- `DEBUG_BUILD` described in [debugging](debugging.md)
+- `DEBUG_BUILD`: described in [debugging](debugging.md)
+- `EXTRA_CFLAGS`: custom flags used when compiling user app. Can be used to define custom symbols with `EXTRA_CFLAGS=-DMYVAR=123`
 
 When building `main`:
 
