@@ -140,6 +140,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     memoryIssuePresent_ = false;
     parserError_ = 0;
     ready_ = false;
+    registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
     return 0;
 }
@@ -990,6 +991,11 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
     return 0;
 }
 
+int SaraNcpClient::setRegistrationTimeout(unsigned timeout) {
+    registrationTimeout_ = std::max(timeout, REGISTRATION_CHECK_INTERVAL);
+    return 0;
+}
+
 int SaraNcpClient::registerNet() {
     int r = 0;
     if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
@@ -1163,7 +1169,7 @@ int SaraNcpClient::processEventsImpl() {
         CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     }
     if (connState_ == NcpConnectionState::CONNECTING &&
-            millis() - regStartTime_ >= REGISTRATION_TIMEOUT) {
+            millis() - regStartTime_ >= registrationTimeout_) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
         muxer_.stop();
         int rv = modemPowerOff();

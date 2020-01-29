@@ -276,6 +276,18 @@ cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* r
     return SYSTEM_ERROR_NONE;
 }
 
+cellular_result_t cellular_registration_timeout_set(system_tick_t timeout, void*) {
+    // Acquire Cellular NCP Client
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+
+    CHECK(client->setRegistrationTimeout(timeout));
+
+    return SYSTEM_ERROR_NONE;
+}
+
 bool cellular_sim_ready(void* reserved) {
     return false;
 }

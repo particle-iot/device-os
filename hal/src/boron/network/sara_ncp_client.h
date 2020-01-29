@@ -63,6 +63,7 @@ public:
     virtual int getIccid(char* buf, size_t size) override;
     virtual int getImei(char* buf, size_t size) override;
     virtual int getSignalQuality(CellularSignalQuality* qual) override;
+    virtual int setRegistrationTimeout(unsigned timeout) override;
 
 private:
     AtParser parser_;
@@ -92,6 +93,7 @@ private:
     system_tick_t registeredTime_;
     system_tick_t powerOnTime_;
     bool memoryIssuePresent_ = false;
+    unsigned registrationTimeout_;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
