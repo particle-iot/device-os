@@ -552,17 +552,19 @@ const uint8_t* fetch_device_public_key(uint8_t lock)
         return NULL;
     }
 
-    uint8_t pubkey[DCT_DEVICE_PUBLIC_KEY_SIZE];
-    memset(pubkey, 0, sizeof(pubkey));
     bool udp = false;
 #if HAL_PLATFORM_CLOUD_UDP
     udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 #endif
+
+    size_t key_size = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_SIZE : DCT_DEVICE_PUBLIC_KEY_SIZE;
+    uint8_t pubkey[key_size] = {};
+
     const uint8_t* priv = fetch_device_private_key(1);
     int extracted_length = 0;
 #if HAL_PLATFORM_CLOUD_UDP
     if (udp) {
-        extracted_length = extract_public_ec_key(pubkey, sizeof(pubkey), priv);
+        extracted_length = extract_public_ec_key(pubkey, key_size, priv);
     }
 #endif
 #if HAL_PLATFORM_CLOUD_TCP
@@ -574,9 +576,8 @@ const uint8_t* fetch_device_public_key(uint8_t lock)
     fetch_device_private_key(0);
 
     int offset = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET : DCT_DEVICE_PUBLIC_KEY_OFFSET;
-    size_t key_size = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_SIZE : DCT_DEVICE_PUBLIC_KEY_SIZE;
     const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data_lock(offset);
-    if ((extracted_length > 0) && memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
+    if ((extracted_length > 0) && memcmp(pubkey, flash_pub_key, key_size)) {
         dct_read_app_data_unlock(offset);
         dct_write_app_data(pubkey, offset, key_size);
         flash_pub_key = (const uint8_t*)dct_read_app_data_lock(offset);
