@@ -147,6 +147,15 @@ private:
    */
   unsigned _dividerReference;
 
+#if PLATFORM_THREADING
+  /**
+   * \brief Mutex for Gen2 platforms
+   *
+   * Enables Gen2 platforms to synchronize access to the SPI peripheral
+   */
+  Mutex _mutex;
+#endif
+
 public:
   SPIClass(HAL_SPI_Interface spi);
   virtual ~SPIClass() {};
@@ -219,10 +228,13 @@ public:
     return true;
   }
 
-  void lock()
+  int32_t lock()
   {
 #if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
-    HAL_SPI_Acquire(_spi, NULL);
+    return HAL_SPI_Acquire(_spi, NULL);
+#elif PLATFORM_THREADING
+    _mutex.lock();
+    return 0;
 #endif
   }
 
@@ -230,6 +242,8 @@ public:
   {
 #if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     HAL_SPI_Release(_spi, NULL);
+#elif PLATFORM_THREADING
+    _mutex.unlock();
 #endif
   }
 };
