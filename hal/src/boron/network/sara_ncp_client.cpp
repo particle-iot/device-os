@@ -83,7 +83,7 @@ inline system_tick_t millis() {
 }
 
 const auto UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
-const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2 = 921600;
+const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2 = 115200;
 
 const auto UBLOX_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto UBLOX_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -1011,8 +1011,9 @@ int SaraNcpClient::registerNet() {
     connectionState(NcpConnectionState::CONNECTING);
     registeredTime_ = 0;
 
-    // NOTE: up to 3 mins
-    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0,2"));
+    // NOTE: up to 3 mins (FIXME: there seems to be a bug where this timeout of 3 minutes
+    //       is not being respected by u-blox modems.  Setting to 5 for now.)
+    r = CHECK_PARSER(parser_.execCommand(5 * 60 * 1000, "AT+COPS=0,2"));
     // Ignore response code here
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
