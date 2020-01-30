@@ -85,17 +85,22 @@ static nrfx_err_t exflash_qspi_wait_completion() {
     exflash_qspi_activate();
 
     do {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         // Enter critical section
         os_thread_scheduling(false, NULL);
 
         // Run QSPI TASK_ACTIVATE task as a workaround for the anomaly 215
         exflash_qspi_activate();
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
         // This may block for up to 1ms (QSPI_DEF_WAIT_TIME_US * QSPI_DEF_WAIT_ATTEMPTS)
         err = nrfx_qspi_mem_busy_check();
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         // Exit critical section
         os_thread_scheduling(true, NULL);
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
     } while (err == NRFX_ERROR_BUSY);
 
     return err;
@@ -109,17 +114,21 @@ static nrfx_err_t exflash_qspi_cinstr_xfer(nrf_qspi_cinstr_conf_t const* p_confi
     // before applying workaround to decrease the time we are staying with RTOS scheduling disabled.
     exflash_qspi_activate();
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     // Enter critical section
     os_thread_scheduling(false, NULL);
 
     // Run QSPI TASK_ACTIVATE task as a workaround for the anomaly 215
     exflash_qspi_activate();
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
     // This may block for up to 1ms (QSPI_DEF_WAIT_TIME_US * QSPI_DEF_WAIT_ATTEMPTS)
     nrfx_err_t err = nrfx_qspi_cinstr_xfer(p_config, p_tx_buffer, p_rx_buffer);
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     // Exit critical section
     os_thread_scheduling(true, NULL);
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     return err;
 }
 
