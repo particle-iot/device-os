@@ -382,6 +382,11 @@ cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* r
     return SYSTEM_ERROR_NONE;
 }
 
+cellular_result_t cellular_registration_timeout_set(system_tick_t timeout, void*) {
+    // setting the registration timeout is not supported on the Electron/E-Series
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
 cellular_result_t cellular_sms_received_handler_set(_CELLULAR_SMS_CB_MDM cb, void* data,
                                                     void* reserved)
 {

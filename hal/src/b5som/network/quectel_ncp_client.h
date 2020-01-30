@@ -63,6 +63,7 @@ public:
     virtual int getIccid(char* buf, size_t size) override;
     virtual int getImei(char* buf, size_t size) override;
     virtual int getSignalQuality(CellularSignalQuality* qual) override;
+    virtual int setRegistrationTimeout(unsigned timeout) override;
 
 private:
     AtParser parser_;
@@ -89,6 +90,7 @@ private:
     RegistrationState cereg_ = RegistrationState::NotRegistered;
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
+    unsigned registrationTimeout_;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);

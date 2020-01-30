@@ -139,6 +139,13 @@ cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi, void* re
 bool cellular_sim_ready(void* reserved);
 
 /**
+ * Change the timeout a SIM has to register on the cellular network before the modem is reset
+ * 
+ * @param timeout: registration timeout in milliseconds
+ */
+cellular_result_t cellular_registration_timeout_set(system_tick_t timeout, void* reserved);
+
+/**
  * Attempts to stop/resume the cellular modem from performing AT operations.
  * Called from another thread or ISR context.
  *

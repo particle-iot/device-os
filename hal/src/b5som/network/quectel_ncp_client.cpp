@@ -132,6 +132,7 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     regCheckTime_ = 0;
     parserError_ = 0;
     ready_ = false;
+    registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
     return SYSTEM_ERROR_NONE;
 }
@@ -502,6 +503,11 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
     }
 
     return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::setRegistrationTimeout(unsigned timeout) {
+    registrationTimeout_ = std::max(timeout, REGISTRATION_CHECK_INTERVAL);
+    return 0;
 }
 
 int QuectelNcpClient::checkParser() {
@@ -891,7 +897,7 @@ int QuectelNcpClient::processEventsImpl() {
     CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
 
-    if (connState_ == NcpConnectionState::CONNECTING && millis() - regStartTime_ >= REGISTRATION_TIMEOUT) {
+    if (connState_ == NcpConnectionState::CONNECTING && millis() - regStartTime_ >= registrationTimeout_) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
         muxer_.stop();
         modemHardReset();
