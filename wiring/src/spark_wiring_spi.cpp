@@ -90,7 +90,7 @@ SPIClass::SPIClass(HAL_SPI_Interface spi)
     {
         HAL_SPI_Init(_spi);
         _dividerReference = SPI_CLK_SYSTEM; // 0 indicates the system clock
-        HAL_SPI_Release(_spi, nullptr);
+        unlock();
     }
 }
 
@@ -100,7 +100,7 @@ void SPIClass::begin()
     if (!lock())
     {
         HAL_SPI_Begin(_spi, SPI_DEFAULT_SS);
-        HAL_SPI_Release(_spi, nullptr);
+        unlock();
     }
 }
 
@@ -114,7 +114,7 @@ void SPIClass::begin(uint16_t ss_pin)
     if (!lock())
     {
         HAL_SPI_Begin(_spi, ss_pin);
-        HAL_SPI_Release(_spi, nullptr);
+        unlock();
     }
 }
 
@@ -128,7 +128,7 @@ void SPIClass::begin(SPI_Mode mode, uint16_t ss_pin)
     if (!lock())
     {
         HAL_SPI_Begin_Ext(_spi, mode, ss_pin, NULL);
-        HAL_SPI_Release(_spi, nullptr);
+        unlock();
     }
 }
 
@@ -137,7 +137,7 @@ void SPIClass::end()
     if (!lock())
     {
         HAL_SPI_End(_spi);
-        HAL_SPI_Release(_spi, nullptr);
+        unlock();
     }
 }
 
@@ -146,7 +146,7 @@ void SPIClass::setBitOrder(uint8_t bitOrder)
     if (!lock())
     {
         HAL_SPI_Set_Bit_Order(_spi, bitOrder);
-        HAL_SPI_Release(_spi, nullptr);
+        unlock();
     }
 }
 
@@ -155,7 +155,7 @@ void SPIClass::setDataMode(uint8_t mode)
     if (!lock())
     {
         HAL_SPI_Set_Data_Mode(_spi, mode);
-        HAL_SPI_Release(_spi, nullptr);
+        unlock();
     }
 }
 
@@ -206,7 +206,7 @@ int32_t SPIClass::beginTransaction(const particle::__SPISettings& settings)
 void SPIClass::endTransaction()
 {
     // Release peripheral
-    HAL_SPI_Release(_spi, nullptr);
+    unlock();
 }
 
 void SPIClass::setClockDividerReference(unsigned value, unsigned scale)
@@ -217,7 +217,7 @@ void SPIClass::setClockDividerReference(unsigned value, unsigned scale)
         // set the clock to 1/4 of the reference by default.
         // We assume this is called before externally calling setClockDivider.
         setClockDivider(SPI_CLOCK_DIV4);
-        HAL_SPI_Release(_spi, nullptr);
+        unlock();
     }
 }
 
@@ -236,7 +236,7 @@ void SPIClass::setClockDivider(uint8_t rate)
         {
             HAL_SPI_Set_Clock_Divider(_spi, rate);
         }
-        HAL_SPI_Release(_spi, nullptr);
+        unlock();
     }
 }
 
@@ -273,7 +273,7 @@ unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
 
         // Update SPI peripheral
         HAL_SPI_Set_Clock_Divider(_spi, divisor);
-        HAL_SPI_Release(_spi, nullptr);
+        unlock();
     }
     else
     {
@@ -330,7 +330,7 @@ bool SPIClass::isEnabled()
     if (!lock())
     {
         result = HAL_SPI_Is_Enabled(_spi);
-        HAL_SPI_Release(_spi, nullptr);
+        unlock();
     }
     else
     {
@@ -345,6 +345,6 @@ void SPIClass::onSelect(wiring_spi_select_callback_t user_callback)
     if (!lock())
     {
         HAL_SPI_Set_Callback_On_Select(_spi, user_callback, NULL);
-        HAL_SPI_Release(_spi, nullptr);
+        unlock();
     }
 }

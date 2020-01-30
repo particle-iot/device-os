@@ -224,14 +224,18 @@ public:
 
   bool trylock()
   {
+#if PLATFORM_THREADING
+    return _mutex.trylock();
+#else
     //TODO: Implement by extending HAL_SPI_Acquire with immediate timeout
     return true;
+#endif
   }
 
   int32_t lock()
   {
 #if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
-    return HAL_SPI_Acquire(_spi, NULL);
+    return HAL_SPI_Acquire(_spi, nullptr);
 #elif PLATFORM_THREADING
     _mutex.lock();
     return 0;
@@ -241,7 +245,7 @@ public:
   void unlock()
   {
 #if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
-    HAL_SPI_Release(_spi, NULL);
+    HAL_SPI_Release(_spi, nullptr);
 #elif PLATFORM_THREADING
     _mutex.unlock();
 #endif
