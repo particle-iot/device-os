@@ -86,8 +86,9 @@ hal_spi_info_t spi_ensure_configured(HAL_SPI_Interface spi, uint8_t clockdiv, ui
         HAL_SPI_Begin_Ext(spi, SPI_MODE_MASTER, PIN_INVALID, nullptr);
     }
 
-    if (info.mode != SPI_MODE_MASTER ||
-        info.bit_order != order ||
+    SPARK_ASSERT(info.mode == SPI_MODE_MASTER);
+
+    if (info.bit_order != order ||
         info.data_mode != mode ||
         calculateClockDivider(info.system_clock, info.clock) != clockdiv) {
         HAL_SPI_Set_Settings(spi, 0, clockdiv, order, mode, nullptr);

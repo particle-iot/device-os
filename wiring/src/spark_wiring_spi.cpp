@@ -33,9 +33,9 @@ namespace
 /**
  * The divisors. The index+1 is the power of 2 of the divisor.
  */
-static uint8_t clock_divisors[] = {SPI_CLOCK_DIV2,   SPI_CLOCK_DIV4,  SPI_CLOCK_DIV8,
-                                   SPI_CLOCK_DIV16,  SPI_CLOCK_DIV32, SPI_CLOCK_DIV64,
-                                   SPI_CLOCK_DIV128, SPI_CLOCK_DIV256};
+static const uint8_t clock_divisors[] = {SPI_CLOCK_DIV2,   SPI_CLOCK_DIV4,  SPI_CLOCK_DIV8,
+                                         SPI_CLOCK_DIV16,  SPI_CLOCK_DIV32, SPI_CLOCK_DIV64,
+                                         SPI_CLOCK_DIV128, SPI_CLOCK_DIV256};
 
 /**
  * \brief Divisor Shift Scale
@@ -286,31 +286,62 @@ unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
 
 byte SPIClass::transfer(byte _data)
 {
-    return HAL_SPI_Send_Receive_Data(_spi, _data);
+    uint16_t result;
+    if (!lock())
+    {
+        result = HAL_SPI_Send_Receive_Data(_spi, _data);
+        unlock();
+    }
+    else
+    {
+        // zero is an error code `HAL_SPI_DMA_Transfer_Status`
+        result = 0;
+    }
+    return static_cast<byte>(result);
 }
 
 void SPIClass::transfer(void* tx_buffer, void* rx_buffer, size_t length,
                         wiring_spi_dma_transfercomplete_callback_t user_callback)
 {
-    HAL_SPI_DMA_Transfer(_spi, tx_buffer, rx_buffer, length, user_callback);
-    if (user_callback == NULL)
+    if (!lock())
     {
-        HAL_SPI_TransferStatus st;
-        do
+        HAL_SPI_DMA_Transfer(_spi, tx_buffer, rx_buffer, length, user_callback);
+        if (user_callback == NULL)
         {
-            HAL_SPI_DMA_Transfer_Status(_spi, &st);
-        } while (st.transfer_ongoing);
+            HAL_SPI_TransferStatus st;
+            do
+            {
+                HAL_SPI_DMA_Transfer_Status(_spi, &st);
+            } while (st.transfer_ongoing);
+        }
+        unlock();
     }
 }
 
 void SPIClass::transferCancel()
 {
-    HAL_SPI_DMA_Transfer_Cancel(_spi);
+    if (!lock())
+    {
+        HAL_SPI_DMA_Transfer_Cancel(_spi);
+        unlock();
+    }
 }
 
 int32_t SPIClass::available()
 {
-    return HAL_SPI_DMA_Transfer_Status(_spi, NULL);
+    int32_t result;
+    if (!lock())
+    {
+        result = HAL_SPI_DMA_Transfer_Status(_spi, NULL);
+        unlock();
+    }
+    else
+    {
+        // Transfer length is returned from `HAL_SPI_DMA_Transfer_Status`, so
+        // returning zero makes sense as an error result.
+        result = 0;
+    }
+    return result;
 }
 
 void SPIClass::attachInterrupt()

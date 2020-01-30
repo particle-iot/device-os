@@ -224,7 +224,9 @@ public:
 
   bool trylock()
   {
-#if PLATFORM_THREADING
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+    return true;
+#elif PLATFORM_THREADING
     return _mutex.trylock();
 #else
     //TODO: Implement by extending HAL_SPI_Acquire with immediate timeout
