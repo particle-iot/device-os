@@ -383,11 +383,6 @@ void HAL_Core_Config(void)
     // fully intialize the RTOS.
     HAL_Core_Setup_override_interrupts();
 
-#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
-    // write protect system module parts if not already protected
-    FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
-#endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
-
 #ifdef HAS_SERIAL_FLASH
     //Initialize Serial Flash
     sFLASH_Init();
