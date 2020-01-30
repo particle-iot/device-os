@@ -145,7 +145,7 @@ test(api_cellular_lock_unlock) {
 }
 
 test(api_cellular_registration_timeout_set) {
-    API_COMPILE(cellular_registration_timeout_set(60 * 60 * 1000)); // 60 minutes
+    API_COMPILE(cellular_registration_timeout_set(60 * 60 * 1000, nullptr)); // 60 minutes
 }
 
 #endif

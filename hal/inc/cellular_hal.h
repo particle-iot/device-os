@@ -143,7 +143,7 @@ bool cellular_sim_ready(void* reserved);
  * 
  * @param timeout: registration timeout in milliseconds
  */
-cellular_result_t cellular_registration_timeout_set(system_tick_t timeout, void* reserved = NULL);
+cellular_result_t cellular_registration_timeout_set(system_tick_t timeout, void* reserved);
 
 /**
  * Attempts to stop/resume the cellular modem from performing AT operations.
