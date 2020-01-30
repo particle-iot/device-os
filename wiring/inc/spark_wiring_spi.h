@@ -147,14 +147,6 @@ private:
    */
   unsigned _dividerReference;
 
-  /**
-   * \brief Configuration Cache
-   *
-   * Allow multiple invocations of any SPI peripheral by persisting current
-   * settings and subsequently restoring them.
-   */
-  particle::__SPISettings _spi_settings_cache;
-
 public:
   SPIClass(HAL_SPI_Interface spi);
   virtual ~SPIClass() {};

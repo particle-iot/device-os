@@ -86,11 +86,7 @@ static particle::__SPISettings spiSettingsFromSpiInfo(hal_spi_info_t* info)
 SPIClass::SPIClass(HAL_SPI_Interface spi)
 {
     _spi = spi;
-    if (HAL_SPI_Acquire(_spi, nullptr))
-    {
-        // Unable to acquire lock
-    }
-    else
+    if (!HAL_SPI_Acquire(_spi, nullptr))
     {
         HAL_SPI_Init(_spi);
         _dividerReference = SPI_CLK_SYSTEM; // 0 indicates the system clock
@@ -101,11 +97,7 @@ SPIClass::SPIClass(HAL_SPI_Interface spi)
 void SPIClass::begin()
 {
     // TODO: Fetch default pin from HAL
-    if (HAL_SPI_Acquire(_spi, nullptr))
-    {
-        // Unable to acquire lock
-    }
-    else
+    if (!HAL_SPI_Acquire(_spi, nullptr))
     {
         HAL_SPI_Begin(_spi, SPI_DEFAULT_SS);
         HAL_SPI_Release(_spi, nullptr);
@@ -119,11 +111,7 @@ void SPIClass::begin(uint16_t ss_pin)
         return;
     }
 
-    if (HAL_SPI_Acquire(_spi, nullptr))
-    {
-        // Unable to acquire lock
-    }
-    else
+    if (!HAL_SPI_Acquire(_spi, nullptr))
     {
         HAL_SPI_Begin(_spi, ss_pin);
         HAL_SPI_Release(_spi, nullptr);
@@ -137,11 +125,7 @@ void SPIClass::begin(SPI_Mode mode, uint16_t ss_pin)
         return;
     }
 
-    if (HAL_SPI_Acquire(_spi, nullptr))
-    {
-        // Unable to acquire lock
-    }
-    else
+    if (!HAL_SPI_Acquire(_spi, nullptr))
     {
         HAL_SPI_Begin_Ext(_spi, mode, ss_pin, NULL);
         HAL_SPI_Release(_spi, nullptr);
@@ -150,11 +134,7 @@ void SPIClass::begin(SPI_Mode mode, uint16_t ss_pin)
 
 void SPIClass::end()
 {
-    if (HAL_SPI_Acquire(_spi, nullptr))
-    {
-        // Unable to acquire lock
-    }
-    else
+    if (!HAL_SPI_Acquire(_spi, nullptr))
     {
         HAL_SPI_End(_spi);
         HAL_SPI_Release(_spi, nullptr);
@@ -163,11 +143,7 @@ void SPIClass::end()
 
 void SPIClass::setBitOrder(uint8_t bitOrder)
 {
-    if (HAL_SPI_Acquire(_spi, nullptr))
-    {
-        // Unable to acquire lock
-    }
-    else
+    if (!HAL_SPI_Acquire(_spi, nullptr))
     {
         HAL_SPI_Set_Bit_Order(_spi, bitOrder);
         HAL_SPI_Release(_spi, nullptr);
@@ -176,11 +152,7 @@ void SPIClass::setBitOrder(uint8_t bitOrder)
 
 void SPIClass::setDataMode(uint8_t mode)
 {
-    if (HAL_SPI_Acquire(_spi, nullptr))
-    {
-        // Unable to acquire lock
-    }
-    else
+    if (!HAL_SPI_Acquire(_spi, nullptr))
     {
         HAL_SPI_Set_Data_Mode(_spi, mode);
         HAL_SPI_Release(_spi, nullptr);
@@ -201,11 +173,11 @@ int32_t SPIClass::beginTransaction(const particle::__SPISettings& settings)
     hal_spi_info_t spi_info;
     querySpiInfo(_spi, &spi_info);
 
-    // Cache existing SPI settings
-    particle::__SPISettings _spi_settings_cache = spiSettingsFromSpiInfo(&spi_info);
+    // Transform SPI info to SPI settings
+    particle::__SPISettings spi_settings = spiSettingsFromSpiInfo(&spi_info);
 
     // Reconfigure SPI peripheral (if necessary)
-    if (settings != _spi_settings_cache)
+    if (settings != spi_settings)
     {
         if (settings.default_)
         {
@@ -216,11 +188,11 @@ int32_t SPIClass::beginTransaction(const particle::__SPISettings& settings)
             // Compute valid clock value and clock divider from supplied clock value
             uint8_t divisor = 0;
             unsigned int clock; // intentionally left uninitialized
-            computeClockDivider((unsigned int)spi_info.system_clock, settings.clock_,
-                                divisor, clock);
+            computeClockDivider((unsigned int)spi_info.system_clock, settings.clock_, divisor,
+                                clock);
 
             // Ensure inequality aside from computed clock value
-            if (!(_spi_settings_cache <= settings && clock == _spi_settings_cache.clock_))
+            if (!(spi_settings <= settings && clock == spi_settings.clock_))
             {
                 HAL_SPI_Set_Settings(_spi, settings.default_, divisor, settings.bitOrder_,
                                      settings.dataMode_, nullptr);
@@ -233,42 +205,13 @@ int32_t SPIClass::beginTransaction(const particle::__SPISettings& settings)
 
 void SPIClass::endTransaction()
 {
-    // Restore previous configuration (if necessary)
-    hal_spi_info_t current_info;
-    querySpiInfo(_spi, &current_info);
-    particle::__SPISettings current_settings = spiSettingsFromSpiInfo(&current_info);
-
-    if (current_settings != _spi_settings_cache)
-    {
-        if (_spi_settings_cache.default_)
-        {
-            HAL_SPI_Set_Settings(_spi, _spi_settings_cache.default_, 0, 0, 0, nullptr);
-        }
-        else
-        {
-            // Calculate clock divisor from SPI settings
-            uint8_t divisor = 0;
-            unsigned int clock; // intentionally left uninitialized
-            computeClockDivider((unsigned int)current_info.system_clock, _spi_settings_cache.clock_,
-                                divisor, clock);
-
-            HAL_SPI_Set_Settings(_spi, _spi_settings_cache.default_, divisor,
-                                 _spi_settings_cache.bitOrder_, _spi_settings_cache.dataMode_,
-                                 nullptr);
-        }
-    }
-
     // Release peripheral
     HAL_SPI_Release(_spi, nullptr);
 }
 
 void SPIClass::setClockDividerReference(unsigned value, unsigned scale)
 {
-    if (HAL_SPI_Acquire(_spi, nullptr))
-    {
-        // Unable to acquire lock
-    }
-    else
+    if (!HAL_SPI_Acquire(_spi, nullptr))
     {
         _dividerReference = (value * scale);
         // set the clock to 1/4 of the reference by default.
@@ -280,11 +223,7 @@ void SPIClass::setClockDividerReference(unsigned value, unsigned scale)
 
 void SPIClass::setClockDivider(uint8_t rate)
 {
-    if (HAL_SPI_Acquire(_spi, nullptr))
-    {
-        // Unable to acquire lock
-    }
-    else
+    if (!HAL_SPI_Acquire(_spi, nullptr))
     {
         // TODO: Understand purpose of `dividerReference`
         if (_dividerReference)
@@ -298,6 +237,7 @@ void SPIClass::setClockDivider(uint8_t rate)
         {
             HAL_SPI_Set_Clock_Divider(_spi, rate);
         }
+        HAL_SPI_Release(_spi, nullptr);
     }
 }
 
@@ -323,12 +263,7 @@ unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
     // actual speed is the system clock divided by some scalar
     unsigned targetSpeed = value * value_scale;
 
-    if (HAL_SPI_Acquire(_spi, nullptr))
-    {
-        // Unable to acquire lock
-        clock = 0;
-    }
-    else
+    if (!HAL_SPI_Acquire(_spi, nullptr))
     {
         // Query SPI info
         hal_spi_info_t info;
@@ -340,7 +275,14 @@ unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
 
         // Update SPI peripheral
         HAL_SPI_Set_Clock_Divider(_spi, divisor);
+        HAL_SPI_Release(_spi, nullptr);
     }
+    else
+    {
+        // Unable to acquire lock
+        clock = 0;
+    }
+
     return clock;
 }
 
@@ -387,28 +329,24 @@ bool SPIClass::isEnabled()
 {
     bool result;
 
-    // TODO: There is no meaningful way to indicate the inability to take the lock, perhaps the lock
-    // should not be acquired in this circumstance.
-    if (HAL_SPI_Acquire(_spi, nullptr))
+    if (!HAL_SPI_Acquire(_spi, nullptr))
     {
-        // Unable to acquire lock
-        result = false;
+        result = HAL_SPI_Is_Enabled(_spi);
+        HAL_SPI_Release(_spi, nullptr);
     }
     else
     {
-        result = HAL_SPI_Is_Enabled(_spi);
+        // Unable to acquire lock
+        result = false;
     }
     return result;
 }
 
 void SPIClass::onSelect(wiring_spi_select_callback_t user_callback)
 {
-    if (HAL_SPI_Acquire(_spi, nullptr))
-    {
-        // Unable to acquire lock
-    }
-    else
+    if (!HAL_SPI_Acquire(_spi, nullptr))
     {
         HAL_SPI_Set_Callback_On_Select(_spi, user_callback, NULL);
+        HAL_SPI_Release(_spi, nullptr);
     }
 }
