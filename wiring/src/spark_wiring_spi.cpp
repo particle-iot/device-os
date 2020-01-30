@@ -225,7 +225,6 @@ void SPIClass::setClockDivider(uint8_t rate)
 {
     if (!lock())
     {
-        // TODO: Understand purpose of `dividerReference`
         if (_dividerReference)
         {
             // determine the clock speed
@@ -244,7 +243,6 @@ void SPIClass::setClockDivider(uint8_t rate)
 void SPIClass::computeClockDivider(unsigned reference, unsigned targetSpeed, uint8_t& divider,
                                    unsigned& clock)
 {
-    // TODO: Can const be added to this function without breaking ABI?
     clock = reference;
     uint8_t scale = 0;
     clock >>= 1; // div2 is the first

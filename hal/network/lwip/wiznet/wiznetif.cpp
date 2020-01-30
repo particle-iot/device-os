@@ -49,13 +49,9 @@ LOG_SOURCE_CATEGORY("net.en")
 #define WIZNET_SPI_MODE SPI_MODE3
 #endif /* WIZNET_SPI_MODE */
 
-#ifndef WIZNET_SPI_CLOCKDIV
-#define WIZNET_SPI_CLOCKDIV HAL_PLATFORM_ETHERNET_FEATHERWING_SPI_CLOCKDIV
-#endif /* WIZNET_SPI_CLOCKDIV */
-
 #define WIZNET_SPI_CLOCKDIV_VAL_1(d) SPI_CLOCK_DIV ## d
 #define WIZNET_SPI_CLOCKDIV_VAL_2(d) WIZNET_SPI_CLOCKDIV_VAL_1(d)
-#define WIZNET_SPI_CLOCKDIV_VAL WIZNET_SPI_CLOCKDIV_VAL_2(WIZNET_SPI_CLOCKDIV)
+#define WIZNET_SPI_CLOCKDIV_VAL WIZNET_SPI_CLOCKDIV_VAL_2(HAL_PLATFORM_ETHERNET_FEATHERWING_SPI_CLOCKDIV)
 
 #ifndef WIZNET_SPI_BITORDER
 #define WIZNET_SPI_BITORDER MSBFIRST
@@ -83,7 +79,7 @@ LOG_SOURCE_CATEGORY("net.en")
 
 namespace {
 
-void spi_ensure_configured(HAL_SPI_Interface spi, uint8_t clockdiv, uint8_t order, uint8_t mode) {
+hal_spi_info_t spi_ensure_configured(HAL_SPI_Interface spi, uint8_t clockdiv, uint8_t order, uint8_t mode) {
     hal_spi_info_t info = {.version = HAL_SPI_INFO_VERSION_2};
     HAL_SPI_Info(spi, &info, nullptr);
     if (!info.enabled || info.ss_pin != PIN_INVALID || info.mode != SPI_MODE_MASTER) {
@@ -93,9 +89,47 @@ void spi_ensure_configured(HAL_SPI_Interface spi, uint8_t clockdiv, uint8_t orde
     if (info.mode != SPI_MODE_MASTER ||
         info.bit_order != order ||
         info.data_mode != mode ||
-        info.clock != info.system_clock / WIZNET_SPI_CLOCKDIV) {
+        calculateClockDivider(info.system_clock, info.clock) != clockdiv) {
         HAL_SPI_Set_Settings(spi, 0, clockdiv, order, mode, nullptr);
     }
+
+    return info;
+}
+
+uint8_t calculateClockDivider (uint32_t system_clock, uint32_t clock) {
+    uint8_t result;
+
+    // Integer division results in clean values
+    switch (system_clock / clock) {
+      case 2:
+        result = SPI_CLOCK_DIV2;
+        break;
+      case 4:
+        result = SPI_CLOCK_DIV4;
+        break;
+      case 8:
+        result = SPI_CLOCK_DIV8;
+        break;
+      case 16:
+        result = SPI_CLOCK_DIV16;
+        break;
+      case 32:
+        result = SPI_CLOCK_DIV32;
+        break;
+      case 64:
+        result = SPI_CLOCK_DIV64;
+        break;
+      case 128:
+        result = SPI_CLOCK_DIV128;
+        break;
+      case 256:
+        result = SPI_CLOCK_DIV256;
+        break;
+      default:
+        result = 0;
+    }
+
+    return result;
 }
 
 const int WIZNET_DEFAULT_TIMEOUT = 100;
@@ -143,9 +177,11 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
         [](void) -> void {
             auto self = instance();
             HAL_SPI_Acquire(self->spi_, nullptr);
+            spi_info_cache_ = spi_ensure_configured(self->spi_, WIZNET_SPI_CLOCKDIV_VAL, WIZNET_SPI_BITORDER, WIZNET_SPI_MODE);
         },
         [](void) -> void {
             auto self = instance();
+            spi_ensure_configured(self->spi_, calculateClockDivider(spi_info_cache_.system_clock, spi_info_cache_.clock), spi_info_cache_.bit_order, spi_info_cache_.data_mode);
             HAL_SPI_Release(self->spi_, nullptr);
         }
     );
@@ -162,19 +198,16 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
     reg_wizchip_spi_cbfunc(
         [](void) -> uint8_t {
             auto self = instance();
-            spi_ensure_configured(self->spi_, WIZNET_SPI_CLOCKDIV_VAL, WIZNET_SPI_BITORDER, WIZNET_SPI_MODE);
             return HAL_SPI_Send_Receive_Data(self->spi_, 0xff);
         },
         [](uint8_t wb) -> void {
             auto self = instance();
-            spi_ensure_configured(self->spi_, WIZNET_SPI_CLOCKDIV_VAL, WIZNET_SPI_BITORDER, WIZNET_SPI_MODE);
             HAL_SPI_Send_Receive_Data(self->spi_, wb);
         }
     );
     reg_wizchip_spiburst_cbfunc(
         [](uint8_t* pBuf, uint16_t len) -> void {
             auto self = instance();
-            spi_ensure_configured(self->spi_, WIZNET_SPI_CLOCKDIV_VAL, WIZNET_SPI_BITORDER, WIZNET_SPI_MODE);
             size_t r = 0;
             while (r < len) {
                 /* FIXME: maximum DMA transfer size should be correctly handled by HAL */
@@ -190,7 +223,6 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
         },
         [](uint8_t* pBuf, uint16_t len) -> void {
             auto self = instance();
-            spi_ensure_configured(self->spi_, WIZNET_SPI_CLOCKDIV_VAL, WIZNET_SPI_BITORDER, WIZNET_SPI_MODE);
             size_t r = 0;
             while (r < len) {
                 /* FIXME: maximum DMA transfer size should be correctly handled by HAL */

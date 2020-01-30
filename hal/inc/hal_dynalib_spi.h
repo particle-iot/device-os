@@ -59,6 +59,9 @@ DYNALIB_FN(15, hal_spi, HAL_SPI_Set_Settings, int32_t(HAL_SPI_Interface, uint8_t
 #ifdef HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
 DYNALIB_FN(16, hal_spi, HAL_SPI_Acquire, int32_t(HAL_SPI_Interface, void*))
 DYNALIB_FN(17, hal_spi, HAL_SPI_Release, int32_t(HAL_SPI_Interface, void*))
+#define BASE_IDX 18
+#else
+#define BASE_IDX 16
 #endif
 DYNALIB_END(hal_spi)
 

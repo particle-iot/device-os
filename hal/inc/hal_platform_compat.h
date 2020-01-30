@@ -61,7 +61,6 @@
 >>>>>>> Update platform definitions
 #define HAL_PLATFORM_DCT 1
 #define HAL_PLATFORM_RNG 1
-#define HAL_PLATFORM_SPI_HAL_THREAD_SAFETY 1
 #endif
 
 #define HAL_PLATFORM_NCP 	(0)
