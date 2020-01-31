@@ -18,7 +18,7 @@
 #include "platforms.h"
 
 // Mesh signal strength/quality have not been implemented
-#if (PLATFORM_ID != PLATFORM_XENON) && (PLATFORM_ID != PLATFORM_XSOM)
+#if (PLATFORM_ID != PLATFORM_XENON)
 
 #include <string.h>
 

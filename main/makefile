@@ -24,13 +24,7 @@ endif
 ifeq ($(PLATFORM_ID),14)
 MODULAR?=y
 endif
-ifeq ($(PLATFORM_ID),22)
-MODULAR?=y
-endif
 ifeq ($(PLATFORM_ID),23)
-MODULAR?=y
-endif
-ifeq ($(PLATFORM_ID),24)
 MODULAR?=y
 endif
 ifeq ($(PLATFORM_ID),25)

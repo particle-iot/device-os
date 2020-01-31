@@ -214,9 +214,9 @@ int BorderRouterManager::enable() {
             LOG(TRACE, "Generating border router configuration");
             // FIXME: for now HIGH for Xenon with ethernet shield, medium for Argon,
             // and low for Boron
-#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_XSOM
+#if PLATFORM_ID == PLATFORM_XENON
             config_.mPreference = OT_ROUTE_PREFERENCE_HIGH;
-#elif PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
+#elif PLATFORM_ID == PLATFORM_ARGON
             config_.mPreference = OT_ROUTE_PREFERENCE_MED;
 #elif PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
             config_.mPreference = OT_ROUTE_PREFERENCE_LOW;
