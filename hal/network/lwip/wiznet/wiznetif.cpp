@@ -78,25 +78,6 @@ LOG_SOURCE_CATEGORY("net.en")
 })
 
 namespace {
-
-hal_spi_info_t spi_ensure_configured(HAL_SPI_Interface spi, uint8_t clockdiv, uint8_t order, uint8_t mode) {
-    hal_spi_info_t info = {.version = HAL_SPI_INFO_VERSION_2};
-    HAL_SPI_Info(spi, &info, nullptr);
-    if (!info.enabled || info.ss_pin != PIN_INVALID || info.mode != SPI_MODE_MASTER) {
-        HAL_SPI_Begin_Ext(spi, SPI_MODE_MASTER, PIN_INVALID, nullptr);
-    }
-
-    SPARK_ASSERT(info.mode == SPI_MODE_MASTER);
-
-    if (info.bit_order != order ||
-        info.data_mode != mode ||
-        calculateClockDivider(info.system_clock, info.clock) != clockdiv) {
-        HAL_SPI_Set_Settings(spi, 0, clockdiv, order, mode, nullptr);
-    }
-
-    return info;
-}
-
 uint8_t calculateClockDivider (uint32_t system_clock, uint32_t clock) {
     uint8_t result;
 
@@ -133,6 +114,24 @@ uint8_t calculateClockDivider (uint32_t system_clock, uint32_t clock) {
     return result;
 }
 
+hal_spi_info_t spi_ensure_configured(HAL_SPI_Interface spi, uint8_t clockdiv, uint8_t order, uint8_t mode) {
+    hal_spi_info_t info = {.version = HAL_SPI_INFO_VERSION_2};
+    HAL_SPI_Info(spi, &info, nullptr);
+    if (!info.enabled || info.ss_pin != PIN_INVALID || info.mode != SPI_MODE_MASTER) {
+        HAL_SPI_Begin_Ext(spi, SPI_MODE_MASTER, PIN_INVALID, nullptr);
+    }
+
+    SPARK_ASSERT(info.mode == SPI_MODE_MASTER);
+
+    if (info.bit_order != order ||
+        info.data_mode != mode ||
+        calculateClockDivider(info.system_clock, info.clock) != clockdiv) {
+        HAL_SPI_Set_Settings(spi, 0, clockdiv, order, mode, nullptr);
+    }
+
+    return info;
+}
+
 const int WIZNET_DEFAULT_TIMEOUT = 100;
 /* FIXME */
 const unsigned int WIZNET_INRECV_NEXT_BACKOFF = 50;
@@ -143,6 +142,7 @@ const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = 0xffffffff;
 using namespace particle::net;
 
 WizNetif* WizNetif::instance_ = nullptr;
+hal_spi_info_t WizNetif::spi_info_cache_;
 
 WizNetif::WizNetif() {
     /* FIXME */
