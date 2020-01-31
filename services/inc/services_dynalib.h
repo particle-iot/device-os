@@ -112,4 +112,6 @@ DYNALIB_FN(55, services, pb_encode_varint, bool(pb_ostream_t*, pb_uint64_t))
 
 DYNALIB_END(services)
 
+#undef BASE_IDX
+
 #endif	/* SERVICES_DYNALIB_H */
