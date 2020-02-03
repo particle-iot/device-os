@@ -77,7 +77,7 @@ CFLAGS += -DSPARK_PLATFORM_NET=$(PLATFORM_NET)
 BUILTINS_EXCLUDE = malloc free realloc
 CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
 
-CFLAGS += $(EXTRA_CFLAGS)
+CFLAGS += $(value EXTRA_CFLAGS)
 
 # Use application source info regardless of release/debug build
 CFLAGS += -DLOG_INCLUDE_SOURCE_INFO=1
