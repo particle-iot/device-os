@@ -30,17 +30,35 @@ STARTUP(System.enableFeature(FEATURE_RETAINED_MEMORY));
 
 namespace {
 
-constexpr uint32_t MAGICK = 0xbeef;
+constexpr uint32_t STATE0_MAGICK = 0xc00f;
+constexpr uint32_t STATE1_MAGICK = 0xbeef;
+constexpr uint32_t STATE2_MAGICK = 0xdeed;
+constexpr uint32_t STATE3_MAGICK = 0xc0fe;
 retained uint32_t g_state;
 
+bool inState() {
+    switch (g_state) {
+        case STATE0_MAGICK:
+        case STATE1_MAGICK:
+        case STATE2_MAGICK:
+        case STATE3_MAGICK: {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void startup() {
-    if (g_state != MAGICK) {
+    if (!inState()) {
         SystemPowerConfiguration conf;
         conf.feature(SystemPowerFeature::PMIC_DETECTION);
 #if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
         conf.feature(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST);
 #endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
         System.setPowerConfiguration(conf);
+        g_state = STATE0_MAGICK;
+        System.reset();
     }
 }
 
@@ -49,6 +67,11 @@ STARTUP(startup());
 } // anonymous
 
 test(POWER_00_PoweredByVinAndBatteryPresent) {
+    if (g_state != STATE0_MAGICK) {
+        skip();
+        return;
+    }
+
     delay(1000);
     assertEqual(System.powerSource(), (int)POWER_SOURCE_VIN);
     assertTrue(System.batteryState() != BATTERY_STATE_UNKNOWN &&
@@ -58,7 +81,7 @@ test(POWER_00_PoweredByVinAndBatteryPresent) {
 }
 
 test(POWER_01_ApplyingDefaultPowerManagementConfigurationInRuntimeWorksAsIntended) {
-    if (g_state == MAGICK) {
+    if (g_state != STATE0_MAGICK) {
         skip();
         return;
     }
@@ -71,7 +94,7 @@ test(POWER_01_ApplyingDefaultPowerManagementConfigurationInRuntimeWorksAsIntende
     assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
     delay(1000);
 
-    PMIC power;
+    PMIC power(true);
     assertEqual(power.getInputCurrentLimit(), particle::power::DEFAULT_INPUT_CURRENT_LIMIT);
     assertEqual(power.getInputVoltageLimit(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
     assertEqual(power.getChargeCurrentValue(), particle::power::DEFAULT_CHARGE_CURRENT);
@@ -79,7 +102,7 @@ test(POWER_01_ApplyingDefaultPowerManagementConfigurationInRuntimeWorksAsIntende
 }
 
 test(POWER_02_ApplyingCustomPowerManagementConfigurationInRuntimeWorksAsIntended) {
-    if (g_state == MAGICK) {
+    if (g_state != STATE0_MAGICK) {
         skip();
         return;
     }
@@ -100,36 +123,42 @@ test(POWER_02_ApplyingCustomPowerManagementConfigurationInRuntimeWorksAsIntended
     assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
     delay(1000);
 
-    PMIC power;
+    PMIC power(true);
     assertEqual(power.getInputCurrentLimit(), 500);
     assertEqual(power.getInputVoltageLimit(), 4280);
     assertEqual(power.getChargeCurrentValue(), 832);
     assertEqual(power.getChargeVoltageValue(), 4208);
+
+    g_state = STATE1_MAGICK;
+    delay(5000);
+    System.reset();
 }
 
 test(POWER_03_AppliedConfigurationIsPersisted) {
-    if (g_state != MAGICK) {
-        g_state = MAGICK;
-        delay(5000);
-        System.reset();
+    if (g_state != STATE1_MAGICK) {
+        skip();
         return;
     }
 
-    PMIC power;
+    PMIC power(true);
     assertEqual(power.getInputCurrentLimit(), 500);
     assertEqual(power.getInputVoltageLimit(), 4280);
     assertEqual(power.getChargeCurrentValue(), 832);
     assertEqual(power.getChargeVoltageValue(), 4208);
 }
 
-test(POWER_04_ResetState) {
-    g_state = 0x0000;
-}
+test(POWER_04_PmicDetectionFlagIsCompatibleWithOldDeviceOsVersions) {
+    if (g_state != STATE1_MAGICK) {
+        skip();
+        return;
+    }
 
-test(POWER_05_PmicDetectionFlagIsCompatibleWithOldDeviceOsVersions) {
     // Enable PMIC_DETECTION feature
     SystemPowerConfiguration conf;
     conf.feature(SystemPowerFeature::PMIC_DETECTION);
+#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+    conf.feature(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST);
+#endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
     assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
     delay(1000);
 
@@ -146,4 +175,31 @@ test(POWER_05_PmicDetectionFlagIsCompatibleWithOldDeviceOsVersions) {
     // Feature disabled
     assertEqual(dct_read_app_data_copy(DCT_POWER_CONFIG_OFFSET, &v, sizeof(v)), 0);
     assertTrue((v & 0x01) == 0x01);
+}
+
+test(POWER_05_DisableFeatureFlag) {
+    if (g_state == STATE1_MAGICK) {
+        // Set disabled feature flag
+        SystemPowerConfiguration conf;
+        conf.feature(SystemPowerFeature::DISABLE);
+#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+        conf.feature(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST);
+#endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+        // NOTE: this setting will require a reboot to be applied
+        assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
+        g_state = STATE2_MAGICK;
+        delay(5000);
+        System.reset();
+    } else if (g_state == STATE2_MAGICK) {
+        g_state = STATE3_MAGICK;
+        assertEqual(System.batteryState(), (int)BATTERY_STATE_UNKNOWN);
+        assertEqual(System.powerSource(), (int)POWER_SOURCE_UNKNOWN);
+    } else {
+        skip();
+        return;
+    }
+}
+
+test(POWER_06_ResetState) {
+    g_state = 0;
 }

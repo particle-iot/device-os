@@ -347,20 +347,13 @@ test(system_power_management) {
     API_COMPILE(conf.batteryChargeVoltage(1234));
     API_COMPILE(conf.batteryChargeCurrent(1234));
     API_COMPILE(conf.feature(SystemPowerFeature::PMIC_DETECTION));
+    API_COMPILE(conf.feature(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST));
+    API_COMPILE(conf.feature(SystemPowerFeature::DISABLE));
 
     API_COMPILE(System.setPowerConfiguration(conf));
 
-    int state;
-    int source;
-    float charge;
-    bool test;
-    API_COMPILE(source = System.powerSource());
-
-    API_COMPILE(state = System.batteryState());
-
-    API_COMPILE(charge = System.batteryCharge());
-
-    API_COMPILE(test = source == POWER_SOURCE_VIN);
-    API_COMPILE(test = state == BATTERY_STATE_CHARGING);
+    API_COMPILE({ auto source = System.powerSource() == POWER_SOURCE_VIN; });
+    API_COMPILE({ auto state = System.batteryState() == BATTERY_STATE_CHARGING; });
+    API_COMPILE({ auto charge = System.batteryCharge(); });
 }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
