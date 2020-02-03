@@ -579,11 +579,18 @@ HAL_USB_State usb_hal_get_state() {
     return m_usb_instance.state;
 }
 
+static void dummy_state_change_handler(HAL_USB_State state, void* context) {
+    (void)state;
+    (void)context;
+}
+
 int usb_hal_set_state_change_callback(HAL_USB_State_Callback cb, void* context, void* reserved) {
     for (int i = 0; i < MAX_USB_STATE_CB_NUM; i++) {
         if (m_usb_instance.state_callback[i] == NULL) {
-            m_usb_instance.state_callback[i] = cb;
+            // FIXME: a weird way to resolve a race condition between cb and context setting
+            m_usb_instance.state_callback[i] = dummy_state_change_handler;
             m_usb_instance.state_callback_context[i] = context;
+            m_usb_instance.state_callback[i] = cb;
             return 0;
         }
     }
