@@ -142,7 +142,6 @@ const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = 0xffffffff;
 using namespace particle::net;
 
 WizNetif* WizNetif::instance_ = nullptr;
-hal_spi_info_t WizNetif::spi_info_cache_;
 
 WizNetif::WizNetif() {
     /* FIXME */
@@ -178,11 +177,11 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
         [](void) -> void {
             auto self = instance();
             HAL_SPI_Acquire(self->spi_, nullptr);
-            spi_info_cache_ = spi_ensure_configured(self->spi_, WIZNET_SPI_CLOCKDIV_VAL, WIZNET_SPI_BITORDER, WIZNET_SPI_MODE);
+            self->spi_info_cache_ = spi_ensure_configured(self->spi_, WIZNET_SPI_CLOCKDIV_VAL, WIZNET_SPI_BITORDER, WIZNET_SPI_MODE);
         },
         [](void) -> void {
             auto self = instance();
-            spi_ensure_configured(self->spi_, calculateClockDivider(spi_info_cache_.system_clock, spi_info_cache_.clock), spi_info_cache_.bit_order, spi_info_cache_.data_mode);
+            spi_ensure_configured(self->spi_, calculateClockDivider(self->spi_info_cache_.system_clock, self->spi_info_cache_.clock), self->spi_info_cache_.bit_order, self->spi_info_cache_.data_mode);
             HAL_SPI_Release(self->spi_, nullptr);
         }
     );

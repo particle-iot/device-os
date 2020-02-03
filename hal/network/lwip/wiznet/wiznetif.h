@@ -92,7 +92,7 @@ private:
     static WizNetif* instance_;
 
     std::unique_ptr<char[]> hostname_;
-    static hal_spi_info_t spi_info_cache_;
+    hal_spi_info_t spi_info_cache_;
 };
 
 } } // namespace particle::net

@@ -147,7 +147,7 @@ private:
    */
   unsigned _dividerReference;
 
-#if PLATFORM_THREADING
+#if PLATFORM_THREADING && !HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
   /**
    * \brief Mutex for Gen2 platforms
    *
@@ -225,16 +225,16 @@ public:
   bool trylock()
   {
 #if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+    //TODO: Implement by extending HAL_SPI_Acquire with immediate timeout
     return true;
 #elif PLATFORM_THREADING
     return _mutex.trylock();
 #else
-    //TODO: Implement by extending HAL_SPI_Acquire with immediate timeout
     return true;
 #endif
   }
 
-  int32_t lock()
+  int lock()
   {
 #if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     return HAL_SPI_Acquire(_spi, nullptr);
