@@ -106,17 +106,14 @@ PowerManager* PowerManager::instance() {
 }
 
 void PowerManager::init() {
-  os_thread_create(&thread_, "pwr", OS_THREAD_PRIORITY_CRITICAL, &PowerManager::loop, nullptr,
+  os_thread_t th = nullptr;
+  os_thread_create(&th, "pwr", OS_THREAD_PRIORITY_CRITICAL, &PowerManager::loop, nullptr,
 #if defined(DEBUG_BUILD)
     4 * 1024);
 #else
     1024);
 #endif // defined(DEBUIG_BUILD)
-  SPARK_ASSERT(thread_ != nullptr);
-
-#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
-  HAL_USB_Set_State_Change_Callback(usbStateChangeHandler, (void*)this, nullptr);
-#endif
+  SPARK_ASSERT(th != nullptr);
 }
 
 void PowerManager::update() {
@@ -275,17 +272,26 @@ void PowerManager::handleUpdate() {
 
 void PowerManager::loop(void* arg) {
   PowerManager* self = PowerManager::instance();
-
-  // Load configuration
-  self->loadConfig();
+  self->thread_ = os_thread_current(nullptr);
 
   {
+    // FIXME: perform these before creating the thread
+
+    // Load configuration
+    self->loadConfig();
+
     LOG_DEBUG(INFO, "Power Management Initializing.");
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
     if (!self->detect()) {
       goto exit;
     }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+
+    if (self->config_.flags & HAL_POWER_MANAGEMENT_DISABLE) {
+      LOG(WARN, "Disabled by configuration");
+      goto exit;
+    }
+
     // IMPORTANT: attach the interrupt handler first
     attachInterrupt(LOW_BAT_UC, &PowerManager::isrHandler, FALLING);
     self->initDefault();
@@ -295,6 +301,10 @@ void PowerManager::loop(void* arg) {
     fuel.clearAlert(); // Ensure this is cleared, or interrupts will never occur
     LOG_DEBUG(INFO, "State of Charge: %-6.2f%%", fuel.getSoC());
     LOG_DEBUG(INFO, "Battery Voltage: %-4.2fV", fuel.getVCell());
+
+#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+    HAL_USB_Set_State_Change_Callback(usbStateChangeHandler, (void*)self, nullptr);
+#endif
   }
 
   Event ev;
@@ -315,9 +325,7 @@ void PowerManager::loop(void* arg) {
     self->checkWatchdog();
   }
 
-#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
 exit:
-#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
   self->deinit();
   os_thread_exit(nullptr);
 }
@@ -546,18 +554,24 @@ void PowerManager::deinit() {
   if (detect_) {
 #else
   {
+    // PMIC is most likely present
 #endif // #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
-    // PMIC is most likely present, return it to automatic mode
-    PMIC power(true);
-    power.setWatchdog(0b01);
+    // Return it to automatic mode if power management was not explicitly disabled
+    if (!(config_.flags & HAL_POWER_MANAGEMENT_DISABLE)) {
+      PMIC power(true);
+      power.setWatchdog(0b01);
+    }
   }
 
   detachInterrupt(LOW_BAT_UC);
+
+  g_batteryState = BATTERY_STATE_UNKNOWN;
+  g_powerSource = POWER_SOURCE_UNKNOWN;
 }
 
 int PowerManager::setConfig(const hal_power_config* conf) {
   int ret = hal_power_store_config(conf, nullptr);
-  if (thread_) {
+  if (isRunning()) {
     // Power manager is already running, ask it to reload the config
     Event ev = Event::ReloadConfig;
     os_queue_put(queue_, (const void*)&ev, CONCURRENT_WAIT_FOREVER, nullptr);
@@ -640,6 +654,10 @@ void PowerManager::applyDefaultConfig(bool dpdm) {
 void PowerManager::usbStateChangeHandler(HAL_USB_State state, void* context) {
   PowerManager* power = (PowerManager*)context;
   power->update();
+}
+
+bool PowerManager::isRunning() const {
+  return thread_ != nullptr;
 }
 
 #endif /* (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043) */

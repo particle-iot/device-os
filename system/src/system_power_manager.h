@@ -56,6 +56,7 @@ private:
   void applyVinConfig();
   void applyDefaultConfig(bool dpdm = false);
   void logCurrentConfig();
+  bool isRunning() const;
 
 private:
   enum class Event {
