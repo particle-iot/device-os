@@ -42,7 +42,6 @@ typedef enum hal_power_config_flags {
 
     // Disables power management leaving the control of PMIC
     // completely to the application
-    // TODO
     HAL_POWER_MANAGEMENT_DISABLE = 0x100,
     HAL_POWER_USE_VIN_SETTINGS_WITH_USB_HOST = 0x200,
 
