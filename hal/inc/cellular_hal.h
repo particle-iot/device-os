@@ -141,7 +141,7 @@ bool cellular_sim_ready(void* reserved);
 /**
  * Change the timeout a SIM has to register on the cellular network before the modem is reset
  * 
- * @param timeout: registration timeout in milliseconds
+ * @param timeout: registration timeout in milliseconds. Minimum value is 5 minutes
  */
 cellular_result_t cellular_registration_timeout_set(system_tick_t timeout, void* reserved);
 

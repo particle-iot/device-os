@@ -992,7 +992,7 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
 }
 
 int SaraNcpClient::setRegistrationTimeout(unsigned timeout) {
-    registrationTimeout_ = std::max(timeout, REGISTRATION_CHECK_INTERVAL);
+    registrationTimeout_ = std::max(timeout, REGISTRATION_TIMEOUT);
     return 0;
 }
 
