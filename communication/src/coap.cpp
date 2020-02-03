@@ -78,6 +78,7 @@ size_t CoAP::token(const unsigned char* message, token_t* token) {
     if (token) {
         const size_t n = std::min(sizeof(token_t), size);
         memcpy(token, message + 4, n);
+        memset((char*)token + n, 0, sizeof(token_t) - n);
     }
     return size;
 }
