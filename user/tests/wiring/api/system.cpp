@@ -40,10 +40,7 @@ test(system_api) {
     API_COMPILE(System.sleep(60));
     API_COMPILE(System.sleep(60s));
 
-#if HAL_PLATFORM_SLEEP20
     API_COMPILE(System.sleep(SystemSleepConfiguration()));
-#endif
-
 }
 
 test(system_sleep)
@@ -161,7 +158,6 @@ test(system_sleep)
     API_COMPILE(System.sleepResult());
     API_COMPILE(System.sleepError());
 
-#if HAL_PLATFORM_SLEEP20
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::HIBERNATE)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, RISING)); (void)r; });
@@ -172,8 +168,7 @@ test(system_sleep)
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1s)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1min)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1h)); (void)r; });
-    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().wait(SystemSleepWait::NO_WAIT)); (void)r; });
-    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().wait(SystemSleepWait::CLOUD)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().flag(SystemSleepFlag::WAIT_CLOUD)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_MESH)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_ETHERNET)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_CELLULAR)); (void)r; });
@@ -196,8 +191,6 @@ test(system_sleep)
         (void)r.wakeupPin();
         (void)r.error();
     });
-
-#endif
 }
 
 test(system_mode) {
