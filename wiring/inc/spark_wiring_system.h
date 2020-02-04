@@ -42,6 +42,7 @@
 #include <mutex>
 #include "spark_wiring_system_power.h"
 #include "check.h"
+#include "system_sleep_configuration.h"
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID!=3 && PLATFORM_ID != 20
 #define SYSTEM_HW_TICKS 1
@@ -78,7 +79,27 @@ enum WakeupReason {
     WAKEUP_REASON_NONE = 0,
     WAKEUP_REASON_PIN = 1,
     WAKEUP_REASON_RTC = 2,
-    WAKEUP_REASON_PIN_OR_RTC = 3
+    WAKEUP_REASON_PIN_OR_RTC = 3,
+    WAKEUP_REASON_UNKNOWN = 4
+};
+
+struct SleepResult {
+    SleepResult() {}
+    SleepResult(WakeupReason r, system_error_t e, pin_t p = std::numeric_limits<pin_t>::max());
+    SleepResult(int ret, const pin_t* pins, size_t pinsSize);
+
+    WakeupReason reason() const;
+    bool wokenUpByRtc() const;
+    bool wokenUpByPin() const;
+
+    pin_t pin() const;
+    bool rtc() const;
+    system_error_t error() const;
+
+private:
+    WakeupReason reason_ = WAKEUP_REASON_NONE;
+    system_error_t err_ = SYSTEM_ERROR_NONE;
+    pin_t pin_ = std::numeric_limits<pin_t>::max();
 };
 
 enum class SystemSleepWakeupReason: uint16_t {
@@ -104,6 +125,12 @@ public:
     SystemSleepResult()
             : wakeupSource_(nullptr),
               error_(SYSTEM_ERROR_NONE) {
+    }
+
+    SystemSleepResult(SleepResult r)
+            : wakeupSource_(nullptr),
+              error_(SYSTEM_ERROR_NONE),
+              compatResult_(r) {
     }
 
     SystemSleepResult(hal_wakeup_source_base_t* source, system_error_t error)
@@ -162,39 +189,6 @@ public:
         }
     }
 
-    int setWakeupPin(pin_t pin, system_error_t error = SYSTEM_ERROR_NONE) {
-        error_ = error;
-        freeWakeupSourceMemory();
-        auto source = new(std::nothrow) hal_wakeup_source_gpio_t();
-        if (!source) {
-            error_ = SYSTEM_ERROR_NO_MEMORY;
-            return error_;
-        }
-        source->base.size = sizeof(hal_wakeup_source_gpio_t);
-        source->base.version = HAL_SLEEP_VERSION;
-        source->base.type = HAL_WAKEUP_SOURCE_TYPE_GPIO;
-        source->base.next = nullptr;
-        source->pin = pin;
-        wakeupSource_ = reinterpret_cast<hal_wakeup_source_base_t*>(source);
-        return SYSTEM_ERROR_NONE;
-    }
-
-    int setWakeupRtc(system_error_t error = SYSTEM_ERROR_NONE) {
-        error_ = error;
-        freeWakeupSourceMemory();
-        auto source = new(std::nothrow) hal_wakeup_source_base_t();
-        if (!source) {
-            error_ = SYSTEM_ERROR_NO_MEMORY;
-            return error_;
-        }
-        source->size = sizeof(hal_wakeup_source_rtc_t);
-        source->version = HAL_SLEEP_VERSION;
-        source->type = HAL_WAKEUP_SOURCE_TYPE_RTC;
-        source->next = nullptr;
-        wakeupSource_ = source;
-        return SYSTEM_ERROR_NONE;
-    }
-
     hal_wakeup_source_base_t** halWakeupSource() {
         return &wakeupSource_;
     }
@@ -217,6 +211,30 @@ public:
 
     system_error_t error() const {
         return error_;
+    }
+
+    SleepResult toSleepResult() {
+        if (error_ || wakeupSource_) {
+            switch (wakeupReason()) {
+                case SystemSleepWakeupReason::BY_GPIO: {
+                    compatResult_ = SleepResult(WAKEUP_REASON_PIN, error(), wakeupPin());
+                    break;
+                }
+                case SystemSleepWakeupReason::BY_RTC: {
+                    compatResult_ = SleepResult(WAKEUP_REASON_RTC, error());
+                    break;
+                }
+                default: {
+                    compatResult_ = SleepResult(WAKEUP_REASON_UNKNOWN, error());
+                    break;
+                }
+            }
+        }
+        return compatResult_;
+    }
+
+    operator SleepResult() {
+        return toSleepResult();
     }
 
 private:
@@ -242,49 +260,7 @@ private:
 
     hal_wakeup_source_base_t* wakeupSource_;
     system_error_t error_;
-};
-
-struct SleepResult {
-    SleepResult() {}
-    SleepResult(const SystemSleepResult& result)
-            : result_(result) {
-    }
-    SleepResult(SystemSleepResult&& result)
-            : result_(result) {
-    }
-
-    WakeupReason reason() const {
-        if (result_.wakeupReason() == SystemSleepWakeupReason::BY_GPIO) {
-            return WAKEUP_REASON_PIN;
-        } else if (result_.wakeupReason() == SystemSleepWakeupReason::BY_RTC) {
-            return WAKEUP_REASON_RTC;
-        } else {
-            return WAKEUP_REASON_PIN_OR_RTC;
-        }
-    }
-
-    bool wokenUpByRtc() const {
-        return (reason() == WAKEUP_REASON_RTC || reason() == WAKEUP_REASON_PIN_OR_RTC);
-    }
-
-    bool wokenUpByPin() const {
-        return (reason() == WAKEUP_REASON_PIN || reason() == WAKEUP_REASON_PIN_OR_RTC);
-    }
-
-    pin_t pin() const {
-        return result_.wakeupPin();
-    }
-
-    bool rtc() const {
-        return wokenUpByRtc();
-    }
-
-    system_error_t error() const {
-        return result_.error();
-    }
-
-private:
-    SystemSleepResult result_;
+    SleepResult compatResult_;
 };
 
 
@@ -330,9 +306,7 @@ public:
     }
 #endif
 
-#if HAL_PLATFORM_SLEEP20
     static SystemSleepResult sleep(const SystemSleepConfiguration& config);
-#endif
 
     static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
     inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, std::chrono::seconds s, SleepOptionFlags flag=SLEEP_NETWORK_OFF) { return sleep(sleepMode, s.count(), flag); }
@@ -576,6 +550,7 @@ public:
         return sleepResult().pin();
     }
 
+    // FIXME: SystemSleepResult
     SleepResult sleepResult() {
         // FIXME: __once_proxy, std::get_once_mutex, std::set_once_functor_lock_ptr
         // static std::once_flag f;
@@ -590,10 +565,10 @@ public:
             f = true;
             if (resetReason() == RESET_REASON_POWER_MANAGEMENT) {
                 // Woken up from standby mode
-                systemSleepResult_.setError(SYSTEM_ERROR_NONE, true);
+                systemSleepResult_ = SystemSleepResult(SleepResult(WAKEUP_REASON_PIN_OR_RTC, SYSTEM_ERROR_NONE, WKP));
             }
         }
-        return SleepResult(systemSleepResult_);
+        return systemSleepResult_;
     }
 
     inline system_error_t sleepError() {
