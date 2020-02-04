@@ -130,7 +130,7 @@ class Protocol
 
 	uint32_t flags;
 
-public:
+protected:
 	/**
 	 * Protocol flags.
 	 */
@@ -141,13 +141,15 @@ public:
 		 */
 		REQUIRE_HELLO_RESPONSE = 1<<0,
 		/**
-		 * send ping as an empty message - this functions as
-		 * a keep-alive for UDP
+		 * Send ping as an empty message - this functions as a keep-alive for UDP.
 		 */
-		PING_AS_EMPTY_MESSAGE = 1<<2
+		PING_AS_EMPTY_MESSAGE = 1<<2,
+		/**
+		 * Application/system describe messages are initiated by the device.
+		 */
+		DEVICE_INITIATED_DESCRIBE = 1<<3
 	};
 
-protected:
 	/**
 	 * Manages Ping functionality.
 	 */
@@ -341,6 +343,15 @@ public:
 	void set_fast_ota(unsigned data)
 	{
 		chunkedTransfer.set_fast_ota(data);
+	}
+
+	void set_device_initiated_describe(bool enabled)
+	{
+		if (enabled) {
+			flags |= Flags::DEVICE_INITIATED_DESCRIBE;
+		} else {
+			flags &= ~(uint32_t)Flags::DEVICE_INITIATED_DESCRIBE;
+		}
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)

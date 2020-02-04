@@ -279,14 +279,17 @@ void Protocol::update_protocol_flags()
 
 AppStateDescriptor Protocol::app_state_descriptor()
 {
-	if (!descriptor.app_state_selector_info) {
-		return AppStateDescriptor();
+	AppStateDescriptor d;
+	if (descriptor.app_state_selector_info) {
+		d.protocolFlags(flags);
+		d.systemDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr));
+		if (!(flags & Flags::DEVICE_INITIATED_DESCRIBE)) {
+			// Include application state in the descriptor
+			d.appDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE, 0, nullptr));
+			d.subscriptionsCrc(subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc));
+		}
 	}
-	return AppStateDescriptor()
-			.systemDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr))
-			.appDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE, 0, nullptr))
-			.subscriptionsCrc(subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc))
-			.protocolFlags(flags);
+	return d;
 }
 
 /**
@@ -314,7 +317,7 @@ int Protocol::begin()
 
 		const auto currentState = app_state_descriptor();
 		const auto cachedState = channel.app_state_descriptor();
-		if (cachedState.equalsTo(currentState))
+		if (currentState.equalsTo(cachedState, currentState.stateFlags()))
 		{
 			LOG(INFO, "Skipping HELLO message");
 			const auto r = ping(true);
