@@ -102,6 +102,12 @@ private:
     pin_t pin_ = std::numeric_limits<pin_t>::max();
 };
 
+inline SleepResult::SleepResult(WakeupReason r, system_error_t e, pin_t p)
+    : reason_(r),
+      err_(e),
+      pin_(p) {
+}
+
 enum class SystemSleepWakeupReason: uint16_t {
     UNKNOWN = HAL_WAKEUP_SOURCE_TYPE_UNKNOWN,
     BY_GPIO = HAL_WAKEUP_SOURCE_TYPE_GPIO,

@@ -87,3 +87,44 @@ bool SystemClass::enableFeature(const WiFiTesterFeature feature) {
     WiFiTester::init();
     return true;
 }
+
+SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
+    if (ret > 0) {
+        // pin
+        --ret;
+        if ((size_t)ret < pinsSize) {
+            pin_ = pins[ret];
+            reason_ = WAKEUP_REASON_PIN;
+            err_ = SYSTEM_ERROR_NONE;
+        }
+    } else if (ret == 0) {
+        reason_ = WAKEUP_REASON_RTC;
+        err_ = SYSTEM_ERROR_NONE;
+    } else {
+        err_ = static_cast<system_error_t>(ret);
+    }
+}
+
+WakeupReason SleepResult::reason() const {
+    return reason_;
+}
+
+bool SleepResult::wokenUpByRtc() const {
+    return reason_ == WAKEUP_REASON_RTC || reason_ == WAKEUP_REASON_PIN_OR_RTC;
+}
+
+bool SleepResult::wokenUpByPin() const {
+    return reason_ == WAKEUP_REASON_PIN || reason_ == WAKEUP_REASON_PIN_OR_RTC;
+}
+
+pin_t SleepResult::pin() const {
+    return pin_;
+}
+
+bool SleepResult::rtc() const {
+    return wokenUpByRtc();
+}
+
+system_error_t SleepResult::error() const {
+    return err_;
+}

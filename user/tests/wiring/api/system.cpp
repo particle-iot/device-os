@@ -182,14 +182,12 @@ test(system_sleep)
         SystemSleepResult r;
         (void)r.setError(SYSTEM_ERROR_NONE);
         (void)r.setError(SYSTEM_ERROR_NONE, true);
-        (void)r.setWakeupPin(WKP);
-        (void)r.setWakeupPin(WKP, SYSTEM_ERROR_NONE);
-        (void)r.setWakeupRtc();
-        (void)r.setWakeupRtc(SYSTEM_ERROR_NONE);
-
         (void)r.wakeupReason();
         (void)r.wakeupPin();
         (void)r.error();
+        r = SystemSleepResult(SleepResult());
+        SleepResult test = r;
+        (void)test;
     });
 }
 
