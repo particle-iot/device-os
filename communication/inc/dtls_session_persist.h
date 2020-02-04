@@ -21,7 +21,7 @@
 #include "stddef.h"
 
 // The size of the persisted data
-#define SessionPersistBaseSize 212
+#define SessionPersistBaseSize 216
 
 // variable size due to int/size_t members
 #define SessionPersistVariableSize (sizeof(int)+sizeof(int)+sizeof(size_t))
@@ -100,6 +100,10 @@ struct __attribute__((packed)) SessionPersistData
 	  * Protocol flags.
 	  */
 	uint32_t protocol_flags;
+	/**
+	  * Application state flags (see the `AppStateDescriptor::StateFlag` enum).
+	  */
+	uint32_t app_state_flags;
 };
 
 class __attribute__((packed)) SessionPersistOpaque : public SessionPersistData

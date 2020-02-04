@@ -144,9 +144,8 @@ public:
 		 * send ping as an empty message - this functions as
 		 * a keep-alive for UDP
 		 */
-		PING_AS_EMPTY_MESSAGE = 1<<2,
+		PING_AS_EMPTY_MESSAGE = 1<<2
 	};
-
 
 protected:
 	/**
@@ -307,7 +306,7 @@ protected:
 	void update_protocol_flags();
 
 	/**
-	 * Returns the descriptor of the current application state.
+	 * Returns a descriptor of the current application state.
 	 */
 	AppStateDescriptor app_state_descriptor();
 

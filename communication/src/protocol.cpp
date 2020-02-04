@@ -18,6 +18,7 @@
  */
 
 #include "logging.h"
+
 LOG_SOURCE_CATEGORY("comm.protocol")
 
 #include "protocol.h"
@@ -281,10 +282,11 @@ AppStateDescriptor Protocol::app_state_descriptor()
 	if (!descriptor.app_state_selector_info) {
 		return AppStateDescriptor();
 	}
-	return AppStateDescriptor(
-			subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc),
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE, 0, nullptr),
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr));
+	return AppStateDescriptor()
+			.systemDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr))
+			.appDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE, 0, nullptr))
+			.subscriptionsCrc(subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc))
+			.protocolFlags(flags);
 }
 
 /**
@@ -298,11 +300,10 @@ int Protocol::begin()
 	reset();
 	last_ack_handlers_update = callbacks.millis();
 
-	uint32_t channel_flags = 0;
-	ProtocolError error = channel.establish(channel_flags, app_state_descriptor());
-	bool session_resumed = (error==SESSION_RESUMED);
+	ProtocolError error = channel.establish();
+	const bool session_resumed = (error == SESSION_RESUMED);
 	if (error && !session_resumed) {
-		LOG(ERROR,"handshake failed with code %d", error);
+		LOG(ERROR, "handshake failed with code %d", error);
 		return error;
 	}
 
@@ -310,18 +311,19 @@ int Protocol::begin()
 	{
 		// for now, unconditionally move the session on resumption
 		channel.command(MessageChannel::MOVE_SESSION, nullptr);
-	}
 
-	// hello not needed because it's already been sent and the server maintains device state
-	if (session_resumed && channel.is_unreliable() && (channel_flags & MessageChannel::SKIP_SESSION_RESUME_HELLO))
-	{
-		LOG(INFO,"resumed session - not sending HELLO message");
-		const auto r = ping(true);
-		if (r != NO_ERROR) {
-			error = r;
+		const auto currentState = app_state_descriptor();
+		const auto cachedState = channel.app_state_descriptor();
+		if (cachedState.equalsTo(currentState))
+		{
+			LOG(INFO, "Skipping HELLO message");
+			const auto r = ping(true);
+			if (r != NO_ERROR) {
+				error = r;
+			}
+			// Note: Make sure SESSION_RESUMED gets returned to the calling code
+			return error;
 		}
-		// Note: Make sure SESSION_RESUMED gets returned to the calling code
-		return error;
 	}
 
 	// todo - this will return code 0 even when the session was resumed,
@@ -616,11 +618,7 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 	if (error != ProtocolError::NO_ERROR) {
 		return error;
 	}
-	uint8_t* buf = msg.buf();
-	size_t size = Messages::coded_ack(buf, token, CoAPCode::NONE, 0 /* message_id_msb */, 0 /* message_id_lsb */);
-	msg.set_length(size);
-	msg.set_id(msg_id);
-	error = channel.send(msg);
+	error = send_empty_ack(msg, msg_id);
 	if (error != ProtocolError::NO_ERROR) {
 		return error;
 	}
@@ -629,8 +627,8 @@ ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int
 	if (error != ProtocolError::NO_ERROR) {
 		return error;
 	}
-	buf = msg.buf();
-	size = Messages::description(buf, 0 /* message_id */, token, channel.is_unreliable());
+	const auto buf = msg.buf();
+	const size_t size = Messages::description(buf, 0 /* message_id */, token, channel.is_unreliable());
 	return generate_and_send_description(channel, msg, size, desc_flags);
 }
 

@@ -85,7 +85,7 @@ public:
 	void init(const uint8_t* core_private, const uint8_t* server_public,
 			const uint8_t* device_id, Callbacks& callbacks, message_id_t* counter);
 
-	virtual ProtocolError establish(uint32_t& flags, const AppStateDescriptor& app_state) override
+	virtual ProtocolError establish() override
 	{
 		return handshake();
 	}
@@ -114,6 +114,10 @@ public:
 	}
 
 	void notify_client_messages_processed() override {
+	}
+
+	AppStateDescriptor app_state_descriptor() const override {
+		return AppStateDescriptor();
 	}
 
 protected:

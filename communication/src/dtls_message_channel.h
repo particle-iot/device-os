@@ -132,7 +132,7 @@ private:
 
 	virtual bool is_unreliable() override;
 
-	virtual ProtocolError establish(uint32_t& flags, const AppStateDescriptor& app_state) override;
+	virtual ProtocolError establish() override;
 
 	/**
 	 * Retrieve first the 2 byte length from the stream, which determines
@@ -160,6 +160,8 @@ private:
 
 	virtual void reset() override {
 	}
+
+	virtual AppStateDescriptor app_state_descriptor() const override;
 };
 
 

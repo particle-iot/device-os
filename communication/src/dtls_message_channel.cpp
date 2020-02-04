@@ -159,7 +159,7 @@ AppStateDescriptor SessionPersist::app_state_descriptor()
 	if (!is_valid()) {
 		return AppStateDescriptor();
 	}
-	return AppStateDescriptor(subscriptions_crc, describe_app_crc, describe_system_crc);
+	return AppStateDescriptor(app_state_flags, describe_system_crc, describe_app_crc, subscriptions_crc, protocol_flags);
 }
 
 SessionPersist sessionPersist;
@@ -346,7 +346,7 @@ ProtocolError DTLSMessageChannel::setup_context()
 	return NO_ERROR;
 }
 
-ProtocolError DTLSMessageChannel::establish(uint32_t& flags, const AppStateDescriptor& app_state)
+ProtocolError DTLSMessageChannel::establish()
 {
 	int ret = 0;
 	// LOG(INFO,"setup context");
@@ -366,11 +366,6 @@ ProtocolError DTLSMessageChannel::establish(uint32_t& flags, const AppStateDescr
 				sessionPersist.out_ctr[4],sessionPersist.out_ctr[5],sessionPersist.out_ctr[6],
 				sessionPersist.out_ctr[7], sessionPersist.next_coap_id);
 		sessionPersist.make_persistent();
-		const AppStateDescriptor cached = sessionPersist.app_state_descriptor();
-		if (cached==app_state) {
-			LOG(WARN,"skipping hello message");
-			flags |= MessageChannel::SKIP_SESSION_RESUME_HELLO;
-		}
 		LOG(INFO,"restored session from persisted session data. next_msg_id=%d", *coap_state);
 		return SESSION_RESUMED;
 	}
@@ -552,6 +547,11 @@ ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 		break;
 	}
 	return NO_ERROR;
+}
+
+AppStateDescriptor DTLSMessageChannel::app_state_descriptor() const
+{
+	return sessionPersist.app_state_descriptor();
 }
 
 

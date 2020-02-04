@@ -206,17 +206,6 @@ struct Channel
  */
 struct MessageChannel : public Channel
 {
-	/**
-	 * Channel flags.
-	 */
-	enum ChannelFlag {
-		/**
-		 * Used by the protocol to disable sending a hello on session resume. Set if sending a hello
-		 * response on resuming a session isn't required.
-		 */
-		SKIP_SESSION_RESUME_HELLO = 0x01
-	};
-
 	virtual ~MessageChannel() {}
 
 	/**
@@ -226,10 +215,8 @@ struct MessageChannel : public Channel
 
 	/**
 	 * Establish this channel for communication.
-	 * @param flags on return, SKIP_SESSION_RESUME_HELLO is set if the hello/vars/funcs/sucriptions regitration is not needed.
-	 * @param app_state Current application state.
 	 */
-	virtual ProtocolError establish(uint32_t& flags, const AppStateDescriptor& app_state)=0;
+	virtual ProtocolError establish()=0;
 
 	/**
 	 * Retrieves a new message object containing the message buffer.
@@ -257,6 +244,14 @@ struct MessageChannel : public Channel
 	 * Reset the channel state and free all allocated resources.
 	 */
 	virtual void reset()=0;
+
+	/**
+	 * Get a descriptor of the cached application state.
+	 *
+	 * TODO: This method shouldn't be a member of the message channel class, but in the current design,
+	 * message channels manage both the transport- and application-specific session data.
+	 */
+	virtual AppStateDescriptor app_state_descriptor() const = 0;
 };
 
 class AbstractMessageChannel : public MessageChannel
