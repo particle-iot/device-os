@@ -95,11 +95,7 @@ Esp32NcpClient::~Esp32NcpClient() {
 int Esp32NcpClient::init(const NcpClientConfig& conf) {
     // Make sure ESP32 is powered down
     HAL_Pin_Mode(ESPBOOT, OUTPUT);
-#if PLATFORM_ID == PLATFORM_ARGON
     HAL_Pin_Mode(ESPEN, OUTPUT_OPEN_DRAIN);
-#elif PLATFORM_ID == PLATFORM_ASOM
-    HAL_Pin_Mode(ESPEN, OUTPUT);
-#endif
     espOff();
     // Initialize serial stream
     std::unique_ptr<SerialStream> serial(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, 921600,

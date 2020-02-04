@@ -133,9 +133,7 @@ inline int32_t pinReadFast(pin_t _pin)
 {
 	return ((PIN_MAP[_pin].gpio_peripheral->IDR & PIN_MAP[_pin].gpio_pin) == 0 ? LOW : HIGH);
 }
-#elif PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || \
-      PLATFORM_ID == PLATFORM_XSOM || PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM || \
-      PLATFORM_ID == PLATFORM_B5SOM
+#elif HAL_PLATFORM_NRF52840
 
 #include "nrf_gpio.h"
 #include "pinmap_impl.h"
