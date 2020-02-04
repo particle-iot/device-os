@@ -17,8 +17,6 @@
 
 #pragma once
 
-#if PLATFORM_ID == PLATFORM_ARGON
-
 #define TOTAL_PINS 36
 #define TOTAL_ANALOG_PINS 6
 #define FIRST_ANALOG_PIN D14
@@ -86,6 +84,3 @@
 #define BATT 33
 #define PWR 34
 #define CHG 35
-
-#endif // PLATFORM_ID == PLATFORM_ARGON
-

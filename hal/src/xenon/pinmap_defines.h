@@ -17,8 +17,6 @@
 
 #pragma once
 
-#if PLATFORM_ID == PLATFORM_XENON
-
 #define TOTAL_PINS 31
 #define TOTAL_ANALOG_PINS 6
 #define FIRST_ANALOG_PIN D14
@@ -85,5 +83,3 @@
 #define NFC_PIN2 28
 #define ANTSW1 29
 #define ANTSW2 30
-
-#endif // PLATFORM_ID == PLATFORM_XENON

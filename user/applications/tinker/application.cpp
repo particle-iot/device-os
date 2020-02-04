@@ -56,7 +56,7 @@ const PinMapping g_pinmap[] = {
     ,
     PIN(D20), PIN(D21), PIN(D22), PIN(D23),
     PIN(A6), PIN(A7)
-# endif // PLATFORM_ID == PLATFORM_BSOM
+# endif // PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
 
 #else // HAL_PLATFORM_MESH
 # error Unsupported platform

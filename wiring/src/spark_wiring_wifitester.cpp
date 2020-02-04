@@ -391,8 +391,8 @@ void WiFiTester::checkWifiSerial(char c) {
             }
             if (ok) {
                 if (!strcmp("ALL", parts[1])) {
-#if PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || \
-    PLATFORM_ID == PLATFORM_BSOM
+                    // FIXME: review the range of pins here
+#if HAL_PLATFORM_NRF52840
                     setPinOutputRange(A0, A5, pinValue);
                     setPinOutputRange(D0, D8, pinValue);
 #else
