@@ -79,16 +79,16 @@ typedef enum hal_wakeup_source_type_t {
     HAL_WAKEUP_SOURCE_TYPE_MAX = 0x7FFF
 } hal_wakeup_source_type_t;
 
-typedef enum hal_sleep_wait_t {
-    HAL_SLEEP_WAIT_NO_WAIT = 0,
-    HAL_SLEEP_WAIT_CLOUD = 1,
-    HAL_SLEEP_WAIT_MAX = 0x7F,
-} hal_sleep_wait_t;
+typedef enum hal_sleep_flags_t {
+    HAL_SLEEP_FLAG_NONE = 0,
+    HAL_SLEEP_FLAG_WAIT_CLOUD = 0x01,
+    HAL_SLEEP_FLAG_MAX = 0x7FFFFFFF
+} hal_sleep_flags_t;
 
 #if PLATFORM_ID > PLATFORM_GCC
 static_assert(sizeof(hal_sleep_mode_t) == 1, "length of hal_sleep_mode_t should be 1-bytes aligned.");
 static_assert(sizeof(hal_wakeup_source_type_t) == 2, "length of hal_wakeup_source_type_t should be 2-bytes aligned.");
-static_assert(sizeof(hal_sleep_wait_t) == 1, "length of hal_sleep_wait_t should be 1-bytes aligned.");
+static_assert(sizeof(hal_sleep_flags_t) == 4, "length of hal_sleep_flags_t should be 4");
 #endif
 
 /**
@@ -135,10 +135,15 @@ typedef struct hal_sleep_config_t {
     uint16_t size;
     uint16_t version;
     hal_sleep_mode_t mode;
-    hal_sleep_wait_t wait;
-    uint16_t reserved;
+    uint8_t reserved;
+    uint16_t reserved1;
+    uint32_t flags; // hal_sleep_flags_t
     hal_wakeup_source_base_t* wakeup_sources;
 } hal_sleep_config_t;
+
+#if PLATFORM_ID > PLATFORM_GCC
+static_assert(sizeof(hal_sleep_config_t) == 16, "hal_sleep_config_t incorrect size");
+#endif // PLATFORM_ID > PLATFORM_GCC
 
 /**
  * Check if the given sleep configuration is valid or not.
