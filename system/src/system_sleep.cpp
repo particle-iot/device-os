@@ -28,6 +28,7 @@
 #include "system_mode.h"
 #include "spark_wiring_system.h"
 #include "led_service.h"
+#include "system_task.h"
 #if HAL_PLATFORM_CELLULAR
 #include "cellular_hal.h"
 #endif // HAL_PLATFORM_CELLULAR
