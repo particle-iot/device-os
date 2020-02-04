@@ -76,6 +76,8 @@ public:
     bool operator<(const EnumFlags<T>& flags) const;
     bool operator<=(const EnumFlags<T>& flags) const;
 
+    static EnumFlags<T> fromUnderlying(ValueType value);
+
 private:
     ValueType value_;
 
@@ -256,6 +258,11 @@ inline bool particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::va
 template<typename T>
 inline bool particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator<=(const EnumFlags<T>& flags) const {
     return (value_ <= flags.value_);
+}
+
+template<typename T>
+inline particle::EnumFlags<T> particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::fromUnderlying(ValueType value) {
+    return EnumFlags<T>(value);
 }
 
 #endif /* SERVICES_ENUMFLAGS_H */
