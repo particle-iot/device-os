@@ -110,14 +110,14 @@ int fetch_device_private_key_ex(uint8_t *key_buf, uint16_t length)
 
 int fetch_device_public_key_ex(void)
 {
-    uint8_t pubkey[DCT_DEVICE_PUBLIC_KEY_SIZE];
-    memset(pubkey, 0, sizeof(pubkey));
     bool udp = false;
 #if HAL_PLATFORM_CLOUD_UDP
     udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 #endif
-    uint8_t privkey[DCT_DEVICE_PRIVATE_KEY_SIZE];
-    memset(privkey, 0, sizeof(privkey));
+    size_t key_size = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_SIZE : DCT_DEVICE_PUBLIC_KEY_SIZE;
+    uint8_t pubkey[key_size] = {};
+
+    uint8_t privkey[DCT_DEVICE_PRIVATE_KEY_SIZE] = {};
     if (fetch_device_private_key_ex(privkey, sizeof(privkey)))
     {
         return -1;
@@ -135,15 +135,13 @@ int fetch_device_public_key_ex(void)
     }
 #endif
     int offset = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET : DCT_DEVICE_PUBLIC_KEY_OFFSET;
-    size_t key_size = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_SIZE : DCT_DEVICE_PUBLIC_KEY_SIZE;
-    uint8_t flash_pub_key[DCT_DEVICE_PUBLIC_KEY_SIZE];
-    memset(flash_pub_key, 0, sizeof(flash_pub_key));
-    if (dct_read_app_data_copy(offset, flash_pub_key, DCT_DEVICE_PUBLIC_KEY_SIZE))
+    uint8_t flash_pub_key[key_size] = {};
+    if (dct_read_app_data_copy(offset, flash_pub_key, key_size))
     {
         return -2;
     }
 
-    if ((extracted_length > 0) && memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
+    if ((extracted_length > 0) && memcmp(pubkey, flash_pub_key, key_size)) {
         if (dct_write_app_data(pubkey, offset, key_size))
         {
             return -3;

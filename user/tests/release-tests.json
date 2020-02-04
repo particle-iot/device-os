@@ -327,6 +327,12 @@
                 },
                 {
                     "enabled": true,
+                    "name": "no_fixture_stress",
+                    "path": "wiring",
+                    "use_threading": false
+                },
+                {
+                    "enabled": true,
                     "name": "ble_central",
                     "path": "wiring/ble_central_peripheral"
                 },
@@ -671,6 +677,12 @@
                     "name": "no_fixture_ble",
                     "path": "wiring",
                     "use_threading": true
+                },
+                {
+                    "enabled": true,
+                    "name": "no_fixture_stress",
+                    "path": "wiring",
+                    "use_threading": false
                 },
                 {
                     "enabled": true,
@@ -1027,6 +1039,12 @@
                 },
                 {
                     "enabled": true,
+                    "name": "no_fixture_stress",
+                    "path": "wiring",
+                    "use_threading": false
+                },
+                {
+                    "enabled": true,
                     "name": "ble_central",
                     "path": "wiring/ble_central_peripheral"
                 },
@@ -1380,6 +1398,12 @@
                 },
                 {
                     "enabled": true,
+                    "name": "no_fixture_stress",
+                    "path": "wiring",
+                    "use_threading": false
+                },
+                {
+                    "enabled": true,
                     "name": "ble_central",
                     "path": "wiring/ble_central_peripheral"
                 },
@@ -1730,6 +1754,12 @@
                     "name": "no_fixture_ble",
                     "path": "wiring",
                     "use_threading": true
+                },
+                {
+                    "enabled": true,
+                    "name": "no_fixture_stress",
+                    "path": "wiring",
+                    "use_threading": false
                 },
                 {
                     "enabled": true,
@@ -3572,6 +3602,12 @@
                 },
                 {
                     "enabled": true,
+                    "name": "no_fixture_stress",
+                    "path": "wiring",
+                    "use_threading": false
+                },
+                {
+                    "enabled": true,
                     "name": "ble_central",
                     "path": "wiring/ble_central_peripheral"
                 },
@@ -3922,6 +3958,12 @@
                     "name": "no_fixture_ble",
                     "path": "wiring",
                     "use_threading": true
+                },
+                {
+                    "enabled": true,
+                    "name": "no_fixture_stress",
+                    "path": "wiring",
+                    "use_threading": false
                 },
                 {
                     "enabled": true,

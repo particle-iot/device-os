@@ -31,9 +31,11 @@
 #include "logging.h"
 #include "flash_common.h"
 #include "nrf_nvic.h"
+#include "concurrent_hal.h"
 
 enum qspi_cmds_t {
     QSPI_STD_CMD_WRSR     = 0x01,
+    QSPI_STD_CMD_WREN     = 0x06,
     QSPI_STD_CMD_RSTEN    = 0x66,
     QSPI_STD_CMD_RST      = 0x99,
     QSPI_MX25_CMD_ENSO    = 0xb1,
@@ -45,10 +47,97 @@ enum qspi_cmds_t {
 
 static const size_t MX25_OTP_SECTOR_SIZE = 4096 / 8; /* 4Kb or 512B */
 
-#define WAIT_COMPLETION() while(nrfx_qspi_mem_busy_check() != NRF_SUCCESS);
+// Mitigations for nRF52840 anomaly 215
+// [215] QSPI: Reading QSPI registers after XIP might halt CPU
+// Conditions
+// Init and start QSPI, use XIP, then write to or read any QSPI register with an offset above 0x600.
+//
+// Consequences
+// CPU halts.
+//
+// Workaround
+// Trigger QSPI TASKS_ACTIVATE after XIP is used before accessing any QSPI register with an offset above 0x600.
+//
+// Our testing showed that another side effect of this anomaly is not a lockup
+// but a failure to perform any Custom Instructions that rely on CISTR* registers
+// of QSPI peripheral, which are located above offset 0x600.
+//
+// The mitigation that we are implementing is rather simple. We need to ensure that no XIP
+// access occurs while we are performing Custom Instructions and we need to apply the workaround mentioned
+// in the anomaly description (QSPI TASKS_ACTIVATE).
+// There is a performance penalty because we are disabling RTOS thread scheduling,
+// however because we are only doing this for CINSTR, it should be minimal.
 
-static int configure_memory()
-{
+static void exflash_qspi_activate() {
+    nrf_qspi_event_clear(NRF_QSPI, NRF_QSPI_EVENT_READY);
+    nrf_qspi_task_trigger(NRF_QSPI, NRF_QSPI_TASK_ACTIVATE);
+    while (!nrf_qspi_event_check(NRF_QSPI, NRF_QSPI_EVENT_READY));
+}
+
+static nrfx_err_t exflash_qspi_wait_completion() {
+    nrfx_err_t err = NRFX_ERROR_INTERNAL;
+
+    // Certain operations like block erasure, may leave the flash
+    // in a weird state where we can't talk to it for substantial periods of time
+    // (up to ~30ms, seen in practice). According to the datasheet, the erasure for example may take up to 200ms!
+    // Ensure we have initialized comms with the external flash properly by running TASK_ACTIVATE
+    // before applying workaround to decrease the time we are staying with RTOS scheduling disabled.
+    exflash_qspi_activate();
+
+    do {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        // Enter critical section
+        os_thread_scheduling(false, NULL);
+
+        // Run QSPI TASK_ACTIVATE task as a workaround for the anomaly 215
+        exflash_qspi_activate();
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
+        // This may block for up to 1ms (QSPI_DEF_WAIT_TIME_US * QSPI_DEF_WAIT_ATTEMPTS)
+        err = nrfx_qspi_mem_busy_check();
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        // Exit critical section
+        os_thread_scheduling(true, NULL);
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
+    } while (err == NRFX_ERROR_BUSY);
+
+    return err;
+}
+
+static nrfx_err_t exflash_qspi_cinstr_xfer(nrf_qspi_cinstr_conf_t const* p_config, void const* p_tx_buffer, void* p_rx_buffer) {
+    // Certain operations like block erasure, may leave the flash
+    // in a weird state where we can't talk to it for substantial periods of time
+    // (up to ~30ms, seen in practice). According to the datasheet, the erasure for example may take up to 200ms!
+    // Ensure we have initialized comms with the external flash properly by running TASK_ACTIVATE
+    // before applying workaround to decrease the time we are staying with RTOS scheduling disabled.
+    exflash_qspi_activate();
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    // Enter critical section
+    os_thread_scheduling(false, NULL);
+
+    // Run QSPI TASK_ACTIVATE task as a workaround for the anomaly 215
+    exflash_qspi_activate();
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
+    // This may block for up to 1ms (QSPI_DEF_WAIT_TIME_US * QSPI_DEF_WAIT_ATTEMPTS)
+    nrfx_err_t err = nrfx_qspi_cinstr_xfer(p_config, p_tx_buffer, p_rx_buffer);
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    // Exit critical section
+    os_thread_scheduling(true, NULL);
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    return err;
+}
+
+static nrfx_err_t exflash_qspi_cinstr_quick_send(uint8_t opcode, nrf_qspi_cinstr_len_t length, void const* p_tx_buffer) {
+    nrf_qspi_cinstr_conf_t config = NRFX_QSPI_DEFAULT_CINSTR(opcode, length);
+    return exflash_qspi_cinstr_xfer(&config, p_tx_buffer, NULL);
+}
+
+static int configure_memory() {
     uint8_t temporary = 0x40;
     uint32_t err_code;
     nrf_qspi_cinstr_conf_t cinstr_cfg = {
@@ -61,7 +150,7 @@ static int configure_memory()
     };
 
     // Send reset enable
-    err_code = nrfx_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
+    err_code = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
     if (err_code)
     {
         return -1;
@@ -69,7 +158,7 @@ static int configure_memory()
 
     // Send reset command
     cinstr_cfg.opcode = QSPI_STD_CMD_RST;
-    err_code = nrfx_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
+    err_code = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
     if (err_code)
     {
         return -2;
@@ -78,7 +167,7 @@ static int configure_memory()
     // Switch to qspi mode
     cinstr_cfg.opcode = QSPI_STD_CMD_WRSR;
     cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_2B;
-    err_code = nrfx_qspi_cinstr_xfer(&cinstr_cfg, &temporary, NULL);
+    err_code = exflash_qspi_cinstr_xfer(&cinstr_cfg, &temporary, NULL);
     if (err_code)
     {
         return -3;
@@ -92,11 +181,11 @@ static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
 }
 
 static int enter_secure_otp() {
-    return nrfx_qspi_cinstr_quick_send(QSPI_MX25_CMD_ENSO, 1, NULL);
+    return exflash_qspi_cinstr_quick_send(QSPI_MX25_CMD_ENSO, 1, NULL);
 }
 
 static int exit_secure_otp() {
-    return nrfx_qspi_cinstr_quick_send(QSPI_MX25_CMD_EXSO, 1, NULL);
+    return exflash_qspi_cinstr_quick_send(QSPI_MX25_CMD_EXSO, 1, NULL);
 }
 
 int hal_exflash_init(void)
@@ -181,7 +270,7 @@ int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size)
     hal_exflash_lock();
     int ret = hal_flash_common_write(addr, data_buf, data_size,
                                      &perform_write, &hal_flash_common_dummy_read);
-    WAIT_COMPLETION();
+    exflash_qspi_wait_completion();
     hal_exflash_unlock();
     return ret;
 }
@@ -206,8 +295,6 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size)
             if (ret != NRF_SUCCESS) {
                 goto hal_exflash_read_done;
             }
-
-            WAIT_COMPLETION();
 
             /* Move the data if necessary */
             if (dst_aligned != data_buf || src_aligned != addr) {
@@ -245,8 +332,6 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size)
             goto hal_exflash_read_done;
         }
 
-        WAIT_COMPLETION();
-
         const unsigned offset_front = addr - src_aligned;
 
         memcpy(data_buf, tmpbuf + offset_front, data_size);
@@ -274,7 +359,7 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, nrf_qspi_erase_
             goto erase_common_done;
         }
 
-        WAIT_COMPLETION();
+        exflash_qspi_wait_completion();
 
         start_addr += block_length;
     }
@@ -427,7 +512,7 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
             };
 
             /* Send sleep command */
-            ret = nrfx_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
+            ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
         } else if (cmd == HAL_EXFLASH_COMMAND_WAKEUP) {
             const nrf_qspi_cinstr_conf_t cinstr_cfg = {
                 .opcode    = QSPI_MX25_CMD_READ_ID,
@@ -439,7 +524,7 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
             };
 
             /* Wake up external flash from deep power down modeby sending read id command */
-            ret = nrfx_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
+            ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
         }
     } else if (sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP) {
         /* OTP-specific commands */
@@ -449,7 +534,7 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
              * This will block the whole OTP region.
              */
             uint8_t v = 0x01;
-            ret = nrfx_qspi_cinstr_quick_send(QSPI_MX25_CMD_WRSCUR, 2, &v);
+            ret = exflash_qspi_cinstr_quick_send(QSPI_MX25_CMD_WRSCUR, 2, &v);
         }
     }
 
