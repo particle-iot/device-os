@@ -85,8 +85,9 @@ int sockaddrToIpAddress(const sockaddr* saddr, PB(IpAddress)* addr) {
 PB(InterfaceType) ifaceTypeFromName(const char* name) {
     if (startsWith(name, "lo")) {
         return PB(InterfaceType_LOOPBACK);
-    } else if (startsWith(name, "th")) {
-        return PB(InterfaceType_THREAD);
+    // simulate mesh unavailable
+    // } else if (startsWith(name, "th")) {
+    //     return PB(InterfaceType_THREAD);
     } else if (startsWith(name, "en")) {
         return PB(InterfaceType_ETHERNET);
     } else if (startsWith(name, "wl")) {

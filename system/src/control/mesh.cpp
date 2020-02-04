@@ -820,6 +820,9 @@ int leaveNetwork(ctrl_request* req) {
 
 int getNetworkInfo(ctrl_request* req) {
     THREAD_LOCK(lock);
+    // simulate mesh unavailable
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+
     const auto thread = threadInstance();
     if (!thread) {
         return SYSTEM_ERROR_INVALID_STATE;
