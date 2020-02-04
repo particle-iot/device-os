@@ -17,8 +17,6 @@
 
 #include "sleep_hal.h"
 
-#if HAL_PLATFORM_SLEEP20
-
 #include <malloc.h>
 #include "stm32f2xx.h"
 #include "gpio_hal.h"
@@ -334,5 +332,3 @@ int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t**
 
     return ret;
 }
-
-#endif // HAL_PLATFORM_SLEEP20

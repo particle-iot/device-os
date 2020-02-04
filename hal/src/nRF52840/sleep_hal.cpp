@@ -17,8 +17,6 @@
 
 #include "sleep_hal.h"
 
-#if HAL_PLATFORM_SLEEP20
-
 #include <malloc.h>
 #include <nrfx_types.h>
 #include <nrf_mbr.h>
@@ -68,10 +66,7 @@ static int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sourc
 }
 
 static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_network_t* network) {
-    if (mode == HAL_SLEEP_MODE_HIBERNATE) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-    }
-    return SYSTEM_ERROR_NONE;
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 static int validateBleWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_base_t* base) {
@@ -147,13 +142,15 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         }
         wakeupSource = wakeupSource->next;
     }
-    bool advertising = hal_ble_gap_is_advertising(NULL); // We can now only restore advertising after exiting sleep mode.
+    bool advertising = hal_ble_gap_is_advertising(nullptr); // We can now only restore advertising after exiting sleep mode.
     if (!bleEnabled) {
-        hal_ble_stack_deinit(NULL);
+        // Make sure we acquire BLE lock BEFORE going into a critical section
+        hal_ble_lock(nullptr);
+        hal_ble_stack_deinit(nullptr);
     }
 
     // Disable thread scheduling
-    os_thread_scheduling(false, NULL);
+    os_thread_scheduling(false, nullptr);
 
     // This will disable all but SoftDevice interrupts (by modifying NVIC->ICER)
     uint8_t st = 0;
@@ -163,7 +160,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
     // Put external flash into sleep and disable QSPI peripheral
-    hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SLEEP, NULL, NULL, 0);
+    hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SLEEP, nullptr, nullptr, 0);
     hal_exflash_uninit();
 
     // Reducing power consumption
@@ -201,12 +198,12 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     }
 
     // Remember current microsecond counter
-    uint64_t microsBeforeSleep = hal_timer_micros(NULL);
+    uint64_t microsBeforeSleep = hal_timer_micros(nullptr);
     // Disable hal_timer (RTC2)
-    hal_timer_deinit(NULL);
+    hal_timer_deinit(nullptr);
 
     // Make sure LFCLK is running
-    nrf_drv_clock_lfclk_request(NULL);
+    nrf_drv_clock_lfclk_request(nullptr);
     while (!nrf_drv_clock_lfclk_is_running());
 
     // Configure RTC2 to count at 125ms interval. This should allow us to sleep
@@ -310,7 +307,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
             }
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             auto rtcWakeup = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource);
-            long seconds = rtcWakeup->ms / 1000;
+            uint32_t ticks = rtcWakeup->ms / 125;
             // Reconfigure RTC2 for wake-up
             NVIC_ClearPendingIRQ(RTC2_IRQn);
 
@@ -329,7 +326,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
 
             // Configure CC0
             uint32_t counter = nrf_rtc_counter_get(NRF_RTC2);
-            uint32_t cc = counter + seconds * 8;
+            uint32_t cc = counter + ticks;
             NVIC_EnableIRQ(RTC2_IRQn);
             nrf_rtc_cc_set(NRF_RTC2, 0, cc);
             nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_COMPARE_0);
@@ -504,7 +501,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         uint32_t basePri = __get_BASEPRI();
         __set_BASEPRI(_PRIO_SD_LOWEST << (8 - __NVIC_PRIO_BITS));
         {
-            nrf_drv_clock_hfclk_request(NULL);
+            nrf_drv_clock_hfclk_request(nullptr);
             while (!nrf_drv_clock_hfclk_is_running()) {
                 ;
             }
@@ -561,13 +558,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     sd_nvic_critical_region_exit(st);
 
     // Unmasks all non-softdevice interrupts
-    if (!bleEnabled) {
-        HAL_enable_irq(hst);
-        hal_ble_stack_init(NULL);
-        if (advertising) {
-            hal_ble_gap_start_advertising(NULL);
-        }
-    }
+    HAL_enable_irq(hst);
 
     // Release LFCLK
     nrf_drv_clock_lfclk_release();
@@ -578,8 +569,16 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     // Unlock external flash
     hal_exflash_unlock();
 
+    if (!bleEnabled) {
+        hal_ble_stack_init(nullptr);
+        if (advertising) {
+            hal_ble_gap_start_advertising(nullptr);
+        }
+        hal_ble_unlock(nullptr);
+    }
+
     // Enable thread scheduling
-    os_thread_scheduling(true, NULL);
+    os_thread_scheduling(true, nullptr);
 
     return ret;
 }
@@ -589,7 +588,7 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     hal_exflash_lock();
 
     // Disable thread scheduling
-    os_thread_scheduling(false, NULL);
+    os_thread_scheduling(false, nullptr);
 
     // This will disable all but SoftDevice interrupts (by modifying NVIC->ICER)
     uint8_t st = 0;
@@ -599,7 +598,7 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
     // Put external flash into sleep mode and disable QSPI peripheral
-    hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SLEEP, NULL, NULL, 0);
+    hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SLEEP, nullptr, nullptr, 0);
     hal_exflash_uninit();
 
     // Uninit GPIOTE
@@ -725,5 +724,3 @@ int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t**
 
     return ret;
 }
-
-#endif // HAL_PLATFORM_SLEEP20
