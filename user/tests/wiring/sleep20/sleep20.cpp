@@ -20,8 +20,6 @@
 
 //Serial1LogHandler logHandler(115200, LOG_LEVEL_INFO);
 
-#if HAL_PLATFORM_SLEEP20
-
 STARTUP(System.enableFeature(FEATURE_RETAINED_MEMORY));
 static retained uint32_t magick = 0;
 static retained uint32_t phase = 0;
@@ -222,5 +220,3 @@ test(11_System_Sleep_Mode_Stop_Wakeup_By_Rtc) {
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.reason(), (int)WAKEUP_REASON_RTC);
 }
-
-#endif // HAL_PLATFORM_SLEEP20
