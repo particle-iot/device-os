@@ -86,12 +86,8 @@ static particle::__SPISettings spiSettingsFromSpiInfo(hal_spi_info_t* info)
 SPIClass::SPIClass(HAL_SPI_Interface spi)
 {
     _spi = spi;
-    if (!lock())
-    {
-        HAL_SPI_Init(_spi);
-        _dividerReference = SPI_CLK_SYSTEM; // 0 indicates the system clock
-        unlock();
-    }
+    HAL_SPI_Init(_spi);
+    _dividerReference = SPI_CLK_SYSTEM; // 0 indicates the system clock
 }
 
 void SPIClass::begin()
@@ -256,7 +252,7 @@ void SPIClass::computeClockDivider(unsigned reference, unsigned targetSpeed, uin
 
 unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
 {
-    unsigned clock;
+    unsigned clock = 0;
 
     // actual speed is the system clock divided by some scalar
     unsigned targetSpeed = value * value_scale;
@@ -275,27 +271,17 @@ unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
         HAL_SPI_Set_Clock_Divider(_spi, divisor);
         unlock();
     }
-    else
-    {
-        // Unable to acquire lock
-        clock = 0;
-    }
 
     return clock;
 }
 
 byte SPIClass::transfer(byte _data)
 {
-    uint16_t result;
+    uint16_t result = 0;
     if (!lock())
     {
         result = HAL_SPI_Send_Receive_Data(_spi, _data);
         unlock();
-    }
-    else
-    {
-        // zero is an error code `HAL_SPI_DMA_Transfer_Status`
-        result = 0;
     }
     return static_cast<byte>(result);
 }
@@ -329,17 +315,11 @@ void SPIClass::transferCancel()
 
 int32_t SPIClass::available()
 {
-    int32_t result;
+    int32_t result = 0;
     if (!lock())
     {
         result = HAL_SPI_DMA_Transfer_Status(_spi, NULL);
         unlock();
-    }
-    else
-    {
-        // Transfer length is returned from `HAL_SPI_DMA_Transfer_Status`, so
-        // returning zero makes sense as an error result.
-        result = 0;
     }
     return result;
 }
@@ -356,17 +336,12 @@ void SPIClass::detachInterrupt()
 
 bool SPIClass::isEnabled()
 {
-    bool result;
+    bool result = false;
 
     if (!lock())
     {
         result = HAL_SPI_Is_Enabled(_spi);
         unlock();
-    }
-    else
-    {
-        // Unable to acquire lock
-        result = false;
     }
     return result;
 }
