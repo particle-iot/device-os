@@ -46,7 +46,7 @@ test(CELLULAR_CONN_01_conn_after_off)
     // Wait sometime for Particle.connect() to try
     delay(30000);
     // Verify that a connection attempt has been made
-    assertEqual(g_state_conn_attempt, true);
+    assertEqual(g_state_conn_attempt, 1);
 }
 
 #endif // Wiring_Cellular == 1
