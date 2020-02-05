@@ -40,6 +40,7 @@ test(system_api) {
     API_COMPILE(System.sleep(60));
     API_COMPILE(System.sleep(60s));
 
+    API_COMPILE(System.sleep(SystemSleepConfiguration()));
 }
 
 test(system_sleep)
@@ -156,6 +157,38 @@ test(system_sleep)
     API_COMPILE(System.wakeUpPin());
     API_COMPILE(System.sleepResult());
     API_COMPILE(System.sleepError());
+
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::HIBERNATE)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, RISING)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, FALLING)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, CHANGE)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1000)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1000ms)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1s)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1min)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1h)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().flag(SystemSleepFlag::WAIT_CLOUD)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_MESH)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_ETHERNET)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_CELLULAR)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_WIFI_STA)); (void)r; });
+
+#if HAL_PLATFORM_BLE
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().ble()); (void)r; });
+#endif
+
+    API_COMPILE({
+        SystemSleepResult r;
+        (void)r.setError(SYSTEM_ERROR_NONE);
+        (void)r.setError(SYSTEM_ERROR_NONE, true);
+        (void)r.wakeupReason();
+        (void)r.wakeupPin();
+        (void)r.error();
+        r = SystemSleepResult(SleepResult());
+        SleepResult test = r;
+        (void)test;
+    });
 }
 
 test(system_mode) {

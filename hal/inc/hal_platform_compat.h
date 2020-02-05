@@ -20,7 +20,7 @@
 
 #include "platforms.h"
 
-#if PLATFORM_ID<9
+#if PLATFORM_ID<9 || PLATFORM_ID == PLATFORM_NEWHAL
     #define HAL_PLATFORM_WIFI 1
 #endif
 
@@ -54,6 +54,7 @@
 #endif
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
+#define HAL_PLATFORM_STM32F2XX 1
 #define HAL_PLATFORM_DCT 1
 #define HAL_PLATFORM_RNG 1
 #endif

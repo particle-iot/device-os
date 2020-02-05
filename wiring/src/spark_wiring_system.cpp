@@ -41,17 +41,30 @@ void SystemClass::reset(uint32_t data)
     HAL_Core_System_Reset_Ex(RESET_REASON_USER, data, nullptr);
 }
 
+SystemSleepResult SystemClass::sleep(const SystemSleepConfiguration& config) {
+    if (!config.valid()) {
+        LOG(ERROR, "System sleep configuration is invalid.");
+        System.systemSleepResult_ = SystemSleepResult(SYSTEM_ERROR_INVALID_ARGUMENT);
+    } else {
+        SystemSleepResult result;
+        int ret = system_sleep_ext(config.halConfig(), result.halWakeupSource(), nullptr);
+        result.setError(static_cast<system_error_t>(ret));
+        System.systemSleepResult_ = result;
+    }
+    return System.systemSleepResult_;
+}
+
 SleepResult SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, SleepOptionFlags flags)
 {
     int ret = system_sleep(sleepMode, seconds, flags.value(), NULL);
-    System.sleepResult_ = SleepResult(WAKEUP_REASON_NONE, static_cast<system_error_t>(ret));
-    return System.sleepResult_;
+    System.systemSleepResult_ = SystemSleepResult(SleepResult(WAKEUP_REASON_NONE, static_cast<system_error_t>(ret)));
+    return System.systemSleepResult_;
 }
 
 SleepResult SystemClass::sleepPinImpl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, SleepOptionFlags flags) {
     int ret = system_sleep_pins(pins, pins_count, modes, modes_count, seconds, flags.value(), nullptr);
-    System.sleepResult_ = SleepResult(ret, pins, pins_count);
-    return System.sleepResult_;
+    System.systemSleepResult_ = SystemSleepResult(SleepResult(ret, pins, pins_count));
+    return System.systemSleepResult_;
 }
 
 uint32_t SystemClass::freeMemory()

@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "interrupts_hal.h"
+#include "sleep_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,11 +48,11 @@ typedef enum System_Sleep_Flag
 int system_sleep(Spark_Sleep_TypeDef mode, long seconds, uint32_t param, void* reserved);
 int system_sleep_pin(uint16_t pin, uint16_t mode, long seconds, uint32_t param, void* reserved);
 int system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved);
+int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved);
 
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif /* SYSTEM_SLEEP_H */
 
