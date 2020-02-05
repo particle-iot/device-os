@@ -99,10 +99,10 @@ void spi_slave_event_handler(nrfx_spis_evt_t const * p_event, void * p_context) 
         // LOG_DEBUG(TRACE, ">> spi: rx: %d, tx: %d", p_event->rx_amount, p_event->tx_amount);
 
         // Reset spi slave data buffer
-        SPARK_ASSERT(nrfx_spis_buffers_set(m_spi_map[spi].slave, 
-                                        (uint8_t *)m_spi_map[spi].slave_tx_buf, 
-                                        m_spi_map[spi].slave_buf_length, 
-                                        (uint8_t *)m_spi_map[spi].slave_rx_buf, 
+        SPARK_ASSERT(nrfx_spis_buffers_set(m_spi_map[spi].slave,
+                                        (uint8_t *)m_spi_map[spi].slave_tx_buf,
+                                        m_spi_map[spi].slave_buf_length,
+                                        (uint8_t *)m_spi_map[spi].slave_rx_buf,
                                         m_spi_map[spi].slave_buf_length) == NRF_SUCCESS);
     } else if (p_event->evt_type == NRFX_SPIS_BUFFERS_SET_DONE) {
         // LOG_DEBUG(TRACE, ">> NRFX_SPIS_BUFFERS_SET_DONE");
@@ -120,7 +120,7 @@ static void HAL_SPI_SS_Handler(void *data) {
 
 static inline nrf_spim_frequency_t get_nrf_spi_frequency(HAL_SPI_Interface spi, uint8_t clock_div) {
     switch (clock_div) {
-        case SPI_CLOCK_DIV2: 
+        case SPI_CLOCK_DIV2:
             if (spi == HAL_SPI_INTERFACE1) {
                 return NRF_SPIM_FREQ_32M;
             }
@@ -163,7 +163,7 @@ static void spi_init(HAL_SPI_Interface spi, SPI_Mode mode) {
         spim_config.sck_pin      = get_nrf_pin_num(m_spi_map[spi].sck_pin);
         spim_config.mosi_pin     = get_nrf_pin_num(m_spi_map[spi].mosi_pin);
         spim_config.miso_pin     = get_nrf_pin_num(m_spi_map[spi].miso_pin);
-        spim_config.ss_pin       = NRFX_SPIM_PIN_NOT_USED; 
+        spim_config.ss_pin       = NRFX_SPIM_PIN_NOT_USED;
         spim_config.irq_priority = m_spi_map[spi].priority;
         spim_config.orc          = 0xFF;
         spim_config.frequency    = get_nrf_spi_frequency(spi, m_spi_map[spi].clock);
@@ -429,10 +429,10 @@ void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffe
         m_spi_map[spi].slave_buf_length = length;
         m_spi_map[spi].slave_tx_buf = tx_buffer;
         m_spi_map[spi].slave_rx_buf = rx_buffer;
-        uint32_t err_code = nrfx_spis_buffers_set(m_spi_map[spi].slave, 
-                                            (uint8_t *)m_spi_map[spi].slave_tx_buf, 
-                                            m_spi_map[spi].slave_buf_length, 
-                                            (uint8_t *)m_spi_map[spi].slave_rx_buf, 
+        uint32_t err_code = nrfx_spis_buffers_set(m_spi_map[spi].slave,
+                                            (uint8_t *)m_spi_map[spi].slave_tx_buf,
+                                            m_spi_map[spi].slave_buf_length,
+                                            (uint8_t *)m_spi_map[spi].slave_rx_buf,
                                             m_spi_map[spi].slave_buf_length);
         if (err_code == NRF_ERROR_INVALID_STATE) {
             // LOG_DEBUG(WARN, "nrfx_spis_buffers_set, invalid state");

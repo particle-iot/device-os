@@ -140,13 +140,20 @@ private:
   HAL_SPI_Interface _spi;
 
   /**
+   * \brief Divider Reference Clock
+   *
    * Set the divider reference clock.
    * The default is the system clock.
    */
-  unsigned dividerReference;
+  unsigned _dividerReference;
 
-#if PLATFORM_THREADING
-  Mutex mutex_;
+#if PLATFORM_THREADING && !HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+  /**
+   * \brief Mutex for Gen2 platforms
+   *
+   * Enables Gen2 platforms to synchronize access to the SPI peripheral
+   */
+  Mutex _mutex;
 #endif
 
 public:
@@ -217,24 +224,34 @@ public:
 
   bool trylock()
   {
-#if PLATFORM_THREADING
-    return mutex_.trylock();
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+    //TODO: Implement by extending HAL_SPI_Acquire with immediate timeout
+    return true;
+#elif PLATFORM_THREADING
+    return _mutex.trylock();
 #else
     return true;
 #endif
   }
 
-  void lock()
+  int lock()
   {
-#if PLATFORM_THREADING
-    mutex_.lock();
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+    return HAL_SPI_Acquire(_spi, nullptr);
+#elif PLATFORM_THREADING
+    _mutex.lock();
+    return 0;
+#else
+    return 0;
 #endif
   }
 
   void unlock()
   {
-#if PLATFORM_THREADING
-    mutex_.unlock();
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+    HAL_SPI_Release(_spi, nullptr);
+#elif PLATFORM_THREADING
+    _mutex.unlock();
 #endif
   }
 };
