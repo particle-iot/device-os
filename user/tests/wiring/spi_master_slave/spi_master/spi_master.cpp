@@ -257,8 +257,13 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
         memset(SPI_Master_Rx_Buffer, 0, sizeof(SPI_Master_Rx_Buffer));
 
         // Select
+        // Workaround for some platforms requiring the CS to be high when configuring
+        // the DMA buffers
         digitalWrite(MY_CS, LOW);
         delay(SPI_DELAY);
+        digitalWrite(MY_CS, HIGH);
+        delay(SPI_DELAY);
+        digitalWrite(MY_CS, LOW);
 
         memcpy(SPI_Master_Tx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE));
         memcpy(SPI_Master_Tx_Buffer + sizeof(MASTER_TEST_MESSAGE), (void*)&requestedLength, sizeof(uint32_t));
