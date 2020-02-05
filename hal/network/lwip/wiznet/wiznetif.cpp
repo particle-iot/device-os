@@ -158,8 +158,9 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
 
     instance_ = this;
 
-    HAL_Pin_Mode(reset_, OUTPUT);
-    HAL_Pin_Mode(cs_, OUTPUT);
+    hal_gpio_config_t conf = {.size = sizeof(conf), .version = 0, .mode = OUTPUT, .set_value = true, .value = 1};
+    HAL_Pin_Configure(reset_, &conf);
+    HAL_Pin_Configure(cs_, &conf);
     /* There is an external 10k pull-up */
     HAL_Pin_Mode(interrupt_, INPUT);
 
@@ -167,11 +168,11 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
 
     if (!HAL_SPI_Is_Enabled(spi_)) {
         HAL_SPI_Init(spi_);
+        // Make sure the SPI peripheral is initialized with default settings
+        HAL_SPI_Acquire(spi_, nullptr);
+        HAL_SPI_Begin_Ext(spi_, SPI_MODE_MASTER, SPI_DEFAULT_SS, nullptr);
+        HAL_SPI_Release(spi_, nullptr);
     }
-
-    HAL_SPI_Acquire(spi_, nullptr);
-    spi_ensure_configured(spi_, WIZNET_SPI_CLOCKDIV_VAL, WIZNET_SPI_BITORDER, WIZNET_SPI_MODE);
-    HAL_SPI_Release(spi_, nullptr);
 
     reg_wizchip_cris_cbfunc(
         [](void) -> void {
