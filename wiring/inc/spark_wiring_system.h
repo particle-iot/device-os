@@ -154,11 +154,13 @@ public:
     SystemSleepResult(const SystemSleepResult& result)
             : SystemSleepResult() {
         error_ = result.error_;
+        compatResult_ = result.compatResult_;
         copyWakeupSource(result.wakeupSource_);
     }
 
     SystemSleepResult& operator=(const SystemSleepResult& result) {
         error_ = result.error_;
+        compatResult_ = result.compatResult_;
         copyWakeupSource(result.wakeupSource_);
         return *this;
     }
@@ -167,6 +169,7 @@ public:
     SystemSleepResult(SystemSleepResult&& result)
             : SystemSleepResult() {
         error_ = result.error_;
+        compatResult_ = result.compatResult_;
         freeWakeupSourceMemory();
         if (result.wakeupSource_) {
             wakeupSource_ = result.wakeupSource_;
@@ -176,6 +179,7 @@ public:
 
     SystemSleepResult& operator=(SystemSleepResult&& result) {
         error_ = result.error_;
+        compatResult_ = result.compatResult_;
         freeWakeupSourceMemory();
         if (result.wakeupSource_) {
             wakeupSource_ = result.wakeupSource_;
