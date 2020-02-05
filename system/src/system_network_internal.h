@@ -557,6 +557,8 @@ public:
             WLAN_CONNECTING = 0;
             WLAN_CONNECTED = 0;
             WLAN_DHCP_PENDING = 0;
+            CLR_WLAN_WD();
+            LOG(INFO, "Clearing WLAN WD in disconnect()");
 
             cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
             const auto diag = NetworkDiagnostics::instance();
