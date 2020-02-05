@@ -85,9 +85,8 @@ int sockaddrToIpAddress(const sockaddr* saddr, PB(IpAddress)* addr) {
 PB(InterfaceType) ifaceTypeFromName(const char* name) {
     if (startsWith(name, "lo")) {
         return PB(InterfaceType_LOOPBACK);
-    // simulate mesh unavailable
-    // } else if (startsWith(name, "th")) {
-    //     return PB(InterfaceType_THREAD);
+//    } else if (startsWith(name, "th")) {
+//        return PB(InterfaceType_THREAD);
     } else if (startsWith(name, "en")) {
         return PB(InterfaceType_ETHERNET);
     } else if (startsWith(name, "wl")) {
@@ -321,7 +320,7 @@ int getInterfaceList(ctrl_request* req) {
             }
             const auto type = ifaceTypeFromName(name);
             if (type == PB(InterfaceType_INVALID_INTERFACE_TYPE)) {
-                return false;
+                continue;
             }
             PB(InterfaceEntry) pbIface = {};
             EncodedString eName(&pbIface.name, name, strlen(name));
