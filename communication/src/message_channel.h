@@ -251,7 +251,7 @@ struct MessageChannel : public Channel
 	 * TODO: This method shouldn't be a member of the message channel class, but in the current design,
 	 * message channels manage both the transport- and application-specific session data.
 	 */
-	virtual AppStateDescriptor app_state_descriptor() const = 0;
+	virtual AppStateDescriptor cached_app_state_descriptor() const = 0;
 };
 
 class AbstractMessageChannel : public MessageChannel

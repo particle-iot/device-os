@@ -166,17 +166,17 @@ private:
 	 */
 	bool restore_this_from(restore_fn_t restorer)
 	{
-		if (restorer)
-		{
-			int size = restorer(this, sizeof(*this), SparkCallbacks::PERSIST_SESSION, nullptr);
-			if (size!=sizeof(*this)) {
-				DEBUG("restore size mismatch 1: %d/%d", size, sizeof(*this));
-				return false;
-			}
-			if (size!=sizeof(*this)) {
-				DEBUG("restore size mismatch 2: %d/%d", size, sizeof(*this));
-				return false;
-			}
+		if (!restorer) {
+			return false;
+		}
+		const int size = restorer(this, sizeof(*this), SparkCallbacks::PERSIST_SESSION, nullptr);
+		if (size != sizeof(*this)) {
+			DEBUG("restore size mismatch 1: %d/%d", size, sizeof(*this));
+			return false;
+		}
+		if (this->size != sizeof(*this)) {
+			DEBUG("restore size mismatch 2: %d/%d", (int)this->size, sizeof(*this));
+			return false;
 		}
 		return true;
 	}
@@ -194,8 +194,8 @@ public:
 
 	void clear(save_fn_t saver)
 	{
+		memset(this, 0, sizeof(*this));
 		persistent = 1;	// ensure it is saved
-		invalidate();
 		save_this_with(saver);
 		persistent = 0;	// do not make any subsequent saves until the context is marked as persistent.
 	}

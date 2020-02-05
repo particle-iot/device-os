@@ -124,17 +124,20 @@ class Protocol
 	 * The token ID for the next request made.
 	 * If we have a bone-fide CoAP layer this will eventually disappear into that layer, just like message-id has.
 	 */
-	token_t token;
+	token_t next_token;
+	token_t app_describe_token;
+	token_t system_describe_token;
+	token_t subscriptions_token;
 
 	uint8_t initialized;
 
-	uint32_t flags;
+	uint32_t protocol_flags;
 
 protected:
 	/**
 	 * Protocol flags.
 	 */
-	enum Flags
+	enum ProtocolFlag: uint32_t
 	{
 		/**
 		 * Set when the protocol expects a hello response from the server.
@@ -163,15 +166,18 @@ protected:
 
 	void set_protocol_flags(uint32_t flags)
 	{
-		this->flags = flags;
+		protocol_flags = flags;
 	}
 
 	/**
 	 * Retrieves the next token.
 	 */
-	uint8_t next_token()
+	token_t get_next_token()
 	{
-		return ++token;
+		if (!next_token) {
+			next_token = 1; // Skip all-zero tokens
+		}
+		return next_token++;
 	}
 
 	ProtocolError handle_key_change(Message& message);
@@ -197,7 +203,7 @@ protected:
 		Message message;
 		channel.create(message);
 		size_t len = 0;
-		if (!forceCoAP && (flags & PING_AS_EMPTY_MESSAGE)) {
+		if (!forceCoAP && (protocol_flags & ProtocolFlag::PING_AS_EMPTY_MESSAGE)) {
 			len = Messages::keep_alive(message.buf());
 		}
 		else {
@@ -265,10 +271,10 @@ protected:
 												size_t header_size, int desc_flags);
 
 	/**
-	 * Produces and transmits (PIGGYBACK) a describe message.
+	 * Produces a describe message and transmits it as a separate response.
 	 * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
 	 */
-	ProtocolError send_description(token_t token, message_id_t msg_id, int desc_flags);
+	ProtocolError send_description_response(token_t token, message_id_t msg_id, int desc_flags);
 
 	/**
 	 * Decodes and dispatches a received message to its handler.
@@ -321,7 +327,7 @@ public:
 			publisher(this),
 			last_ack_handlers_update(0),
 			initialized(false),
-			flags(0)
+			protocol_flags(0)
 	{
 	}
 
@@ -348,9 +354,9 @@ public:
 	void set_device_initiated_describe(bool enabled)
 	{
 		if (enabled) {
-			flags |= Flags::DEVICE_INITIATED_DESCRIBE;
+			protocol_flags |= ProtocolFlag::DEVICE_INITIATED_DESCRIBE;
 		} else {
-			flags &= ~(uint32_t)Flags::DEVICE_INITIATED_DESCRIBE;
+			protocol_flags &= ~ProtocolFlag::DEVICE_INITIATED_DESCRIBE;
 		}
 	}
 
@@ -408,12 +414,14 @@ public:
 	 * @arg \p DESCRIBE_METRICS
 	 * @arg \p DESCRIBE_SYSTEM
 	 *
+	 * @param force Ignore cached application state.
+	 *
 	 * @returns \s ProtocolError result value
 	 * @retval \p particle::protocol::NO_ERROR
 	 *
 	 * @sa particle::protocol::ProtocolError
 	 */
-	ProtocolError post_description(int desc_flags);
+	ProtocolError post_description(int desc_flags, bool force);
 
 	// Returns true on success, false on sending timeout or rate-limiting failure
 	bool send_event(const char *event_name, const char *data, int ttl,
@@ -509,7 +517,7 @@ public:
 		}
 
 		return timesync_.send_request(callbacks.millis(), [&]() {
-			uint8_t token = next_token();
+			uint8_t token = get_next_token();
 			Message message;
 			channel.create(message);
 			size_t len = Messages::time_request(message.buf(), 0, token);

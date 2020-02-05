@@ -18,6 +18,7 @@
  */
 
 #include "logging.h"
+
 LOG_SOURCE_CATEGORY("comm.dtls")
 
 #include "dtls_message_channel.h"
@@ -549,7 +550,7 @@ ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 	return NO_ERROR;
 }
 
-AppStateDescriptor DTLSMessageChannel::app_state_descriptor() const
+AppStateDescriptor DTLSMessageChannel::cached_app_state_descriptor() const
 {
 	return sessionPersist.app_state_descriptor();
 }

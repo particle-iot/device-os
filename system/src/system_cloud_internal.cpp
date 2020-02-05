@@ -444,8 +444,10 @@ void SystemEvents(const char* name, const char* data)
 }
 
 #if HAL_PLATFORM_CLOUD_UDP
+
 using particle::protocol::SessionPersistOpaque;
 using particle::protocol::SessionPersistData;
+using particle::protocol::AppStateDescriptor;
 
 int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 {
@@ -485,33 +487,37 @@ void update_persisted_state(std::function<void(SessionPersistOpaque&)> fn)
 
 uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector, SparkAppStateUpdate::Enum operation, uint32_t value, void* reserved)
 {
-	if (operation==SparkAppStateUpdate::COMPUTE_AND_PERSIST ) {
+	if (operation == SparkAppStateUpdate::COMPUTE_AND_PERSIST) {
 		switch (stateSelector)
 		{
 		case SparkAppStateSelector::DESCRIBE_APP:
 			update_persisted_state([](SessionPersistData& data){
 				data.describe_app_crc = compute_describe_app_checksum();
+				data.app_state_flags |= AppStateDescriptor::APP_DESCRIBE_CRC;
 			});
 			break;
 		case SparkAppStateSelector::DESCRIBE_SYSTEM:
 			update_persisted_state([](SessionPersistData& data){
 				data.describe_system_crc = compute_describe_system_checksum();
+				data.app_state_flags |= AppStateDescriptor::SYSTEM_DESCRIBE_CRC;
 			});
 			break;
 		}
 	}
-	else if (operation==SparkAppStateUpdate::PERSIST)
+	else if (operation == SparkAppStateUpdate::PERSIST)
 	{
 		switch (stateSelector) {
 		case SparkAppStateSelector::SUBSCRIPTIONS: {
 			update_persisted_state([value](SessionPersistData& data){
 				data.subscriptions_crc = value;
+				data.app_state_flags |= AppStateDescriptor::SUBSCRIPTIONS_CRC;
 			});
 			break;
 		}
 		case SparkAppStateSelector::PROTOCOL_FLAGS: {
 			update_persisted_state([value](SessionPersistData& data){
 				data.protocol_flags = value;
+				data.app_state_flags |= AppStateDescriptor::PROTOCOL_FLAGS;
 			});
 			break;
 		}
@@ -519,7 +525,7 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 			break;
 		}
 	}
-	else if (operation==SparkAppStateUpdate::COMPUTE)
+	else if (operation == SparkAppStateUpdate::COMPUTE)
 	{
 		switch (stateSelector)
 		{

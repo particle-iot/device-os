@@ -116,7 +116,7 @@ public:
 	void notify_client_messages_processed() override {
 	}
 
-	AppStateDescriptor app_state_descriptor() const override {
+	AppStateDescriptor cached_app_state_descriptor() const override {
 		return AppStateDescriptor();
 	}
 
