@@ -125,7 +125,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
             irqConf.IRQChannelSubPriority = 0;
             irqConf.keepHandler = 1;
             irqConf.keepPriority = 1;
-            HAL_Interrupts_Attach(gpioWakeup->pin, NULL, NULL, gpioWakeup->mode, &irqConf);
+            HAL_Interrupts_Attach(gpioWakeup->pin, nullptr, nullptr, gpioWakeup->mode, &irqConf);
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             auto rtcWakeup = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource);
             long seconds = rtcWakeup->ms / 1000;
@@ -232,7 +232,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
             HAL_RTC_Cancel_UnixAlarm();
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
             auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
-            HAL_Interrupts_Detach_Ext(gpioWakeup->pin, 1, NULL);
+            HAL_Interrupts_Detach_Ext(gpioWakeup->pin, 1, nullptr);
         }
         wakeupSource = wakeupSource->next;
     }
