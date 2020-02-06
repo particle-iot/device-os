@@ -13,23 +13,23 @@
 #define TEST_SENSOR                     0
 #define TEST_ESP32                      0
 
-#if TEST_GPS
+// GPS
 IoExpanderPinObj gpsResetPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN7);
 IoExpanderPinObj gpsPwrEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN6);
 IoExpanderPinObj gpsCsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN2);
-#endif // TEST_GPS
 
-#if TEST_IO_EXP_INT  // Cannot test on Asset Tracker SoM, only for protoboard
-IoExpanderPinObj intPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN7);
-IoExpanderPinObj intPin1(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN3);
-IoExpanderPinObj trigPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN6);
-IoExpanderPinObj trigPin1(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN5);
-#endif // TEST_IO_EXP_INT
-
-#if TEST_CAN_TRANSCEIVER
+// CAN_TRANSCEIVER
 IoExpanderPinObj canCsPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN1);
 IoExpanderPinObj canPwrEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN0);
-#endif // TEST_CAN_TRANSCEIVER
+
+// SENSOR
+IoExpanderPinObj accelEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN5);
+
+// ESP32
+IoExpanderPinObj esp32BootPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN4);
+IoExpanderPinObj esp32CsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN5);
+IoExpanderPinObj esp32EnPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN7);
+IoExpanderPinObj esp32WakeupPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN6);
 
 #if TEST_FUEL_GAUGE
 FuelGauge gauge(Wire, true);
@@ -38,17 +38,6 @@ FuelGauge gauge(Wire, true);
 #if TEST_PMIC
 PMIC pmic(true);
 #endif // TEST_PMIC
-
-#if TEST_SENSOR
-IoExpanderPinObj accelEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN5);
-#endif // TEST_SENSOR
-
-#if TEST_ESP32
-IoExpanderPinObj esp32BootPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN4);
-IoExpanderPinObj esp32CsPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN5);
-IoExpanderPinObj esp32EnPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN7);
-IoExpanderPinObj esp32WakeupPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN6);
-#endif // TEST_ESP32
 
 // Enable threading if compiled with "USE_THREADING=y"
 #if PLATFORM_THREADING == 1 && USE_THREADING == 1

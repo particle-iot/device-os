@@ -78,7 +78,7 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
 #endif // PLATFORM_ID == PLATFORM_B5SOM
 
 
-#if PLATFORM_ID == PLATFORM_ATSOM
+#if PLATFORM_ID == PLATFORM_TRACKER
 
 static Hal_Pin_Info s_pin_map[TOTAL_PINS] = {
 /* D0            - 00 */ { NRF_PORT_1,    15, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 0,                8, EXTI_CHANNEL_NONE},
@@ -136,7 +136,7 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
     30,          33,          2,           3,           17,          1,           32,          0,            /* P1.08 ~ P1.15 */
 };
 
-#endif // PLATFORM_ID == PLATFORM_ATSOM
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 
 
 Hal_Pin_Info* HAL_Pin_Map(void) {

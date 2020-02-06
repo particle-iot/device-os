@@ -133,7 +133,7 @@ int if_init_platform(void*) {
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
 #if PLATFORM_ID == PLATFORM_B5SOM
         en2 = new WizNetif(HAL_SPI_INTERFACE1, D8, A7, D22, mac);
-#elif PLATFORM_ID == PLATFORM_ATSOM
+#elif PLATFORM_ID == PLATFORM_TRACKER
         en2 = new WizNetif(HAL_SPI_INTERFACE1, D2, D3, D4, mac);
 #endif
     }

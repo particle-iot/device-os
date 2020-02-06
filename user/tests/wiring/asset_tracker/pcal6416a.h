@@ -28,7 +28,7 @@
 #if PLATFORM_ID == PLATFORM_B5SOM
 #define PCAL6416A_RESET_PIN                     (D23)
 #define PCAL6416A_INT_PIN                       (D22)
-#elif PLATFORM_ID == PLATFORM_ATSOM
+#elif PLATFORM_ID == PLATFORM_TRACKER
 #define PCAL6416A_RESET_PIN                     (IOE_RST)
 #define PCAL6416A_INT_PIN                       (IOE_INT)
 #endif
