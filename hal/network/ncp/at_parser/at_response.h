@@ -138,7 +138,7 @@ protected:
     AtResponseReader(AtResponseReader&& reader);
     virtual ~AtResponseReader();
 
-    int readLine(char* buf, size_t size, size_t offs);
+    int readLine(char** buf, size_t size, size_t offs);
     int error(int ret);
 
     AtResponseReader& operator=(AtResponseReader&& reader);

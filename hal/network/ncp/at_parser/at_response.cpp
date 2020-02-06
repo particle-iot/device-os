@@ -86,7 +86,7 @@ CString AtResponseReader::readLine() {
     NAMED_SCOPE_GUARD(g, {
         free(buf);
     });
-    const int ret = readLine(buf, size, 0);
+    const int ret = readLine(&buf, size, 0);
     if (ret < 0) {
         return CString();
     }
@@ -125,7 +125,7 @@ int AtResponseReader::vscanf(const char* fmt, va_list args) {
             free(buf2);
         });
         memcpy(buf2, buf, n);
-        CHECK(readLine(buf2, size, n));
+        CHECK(readLine(&buf2, size, n));
         n = vsscanf(buf2, fmt, args);
     }
     if (n < 0) {
@@ -135,9 +135,9 @@ int AtResponseReader::vscanf(const char* fmt, va_list args) {
     return n;
 }
 
-int AtResponseReader::readLine(char* buf, size_t size, size_t offs) {
+int AtResponseReader::readLine(char** buf, size_t size, size_t offs) {
     for (;;) {
-        const int n = parser_->readLine(buf + offs, size - offs - 1);
+        const int n = parser_->readLine(*buf + offs, size - offs - 1);
         if (n < 0) {
             return error(n);
         }
@@ -146,12 +146,13 @@ int AtResponseReader::readLine(char* buf, size_t size, size_t offs) {
             break;
         }
         size = incBufSize(size);
-        buf = (char*)realloc(buf, size);
-        if (!buf) {
+        const auto buf2 = (char*)realloc(*buf, size);
+        if (!buf2) {
             return error(SYSTEM_ERROR_NO_MEMORY);
         }
+        *buf = buf2;
     }
-    buf[offs] = '\0';
+    (*buf)[offs] = '\0';
     return offs;
 }
 
