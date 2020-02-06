@@ -201,7 +201,13 @@ test(SPI_05_SPI_Can_Be_Locked)
 {
     SPI.begin();
     assertTrue(SPI.trylock());
+    // FIXME: platforms with HAL_PLATFORM_SPI_HAL_THREAD_SAFETY use recursive mutex
+#if !HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     assertFalse(SPI.trylock());
+#else
+    assertTrue(SPI.trylock());
+    SPI.unlock();
+#endif // !HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     SPI.unlock();
     assertTrue(SPI.trylock());
     SPI.unlock();
@@ -213,7 +219,13 @@ test(SPI_06_SPI2_Can_Be_Locked)
 {
     SPI2.begin();
     assertTrue(SPI2.trylock());
+    // FIXME: platforms with HAL_PLATFORM_SPI_HAL_THREAD_SAFETY use recursive mutex
+#if !HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     assertFalse(SPI2.trylock());
+#else
+    assertTrue(SPI2.trylock());
+    SPI2.unlock();
+#endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     SPI2.unlock();
     assertTrue(SPI2.trylock());
     SPI2.unlock();
@@ -343,7 +355,12 @@ test(SPI_10_SPI_Begin_Transaction_Locks)
     assertTrue(SPI.trylock());
     SPI.unlock();
     SPI.beginTransaction(__SPISettings());
+#if !HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     assertFalse(SPI.trylock());
+#else
+    assertTrue(SPI.trylock());
+    SPI.unlock();
+#endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     SPI.endTransaction();
     assertTrue(SPI.trylock());
     SPI.unlock();
@@ -360,7 +377,12 @@ test(SPI_11_SPI1_Begin_Transaction_Locks)
     assertTrue(SPI1.trylock());
     SPI1.unlock();
     SPI1.beginTransaction(__SPISettings());
+#if !HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     assertFalse(SPI1.trylock());
+#else
+    assertTrue(SPI1.trylock());
+    SPI1.unlock();
+#endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     SPI1.endTransaction();
     assertTrue(SPI1.trylock());
     SPI1.unlock();
@@ -378,7 +400,12 @@ test(SPI_12_SPI2_Begin_Transaction_Locks)
     assertTrue(SPI2.trylock());
     SPI2.unlock();
     SPI2.beginTransaction(__SPISettings());
+#if !HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     assertFalse(SPI2.trylock());
+#else
+    assertTrue(SPI2.trylock());
+    SPI2.unlock();
+#endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     SPI2.endTransaction();
     assertTrue(SPI2.trylock());
     SPI2.unlock();
