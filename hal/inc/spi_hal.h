@@ -29,6 +29,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
+#include "system_tick_hal.h"
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum HAL_SPI_Interface {
@@ -105,6 +106,13 @@ typedef struct HAL_SPI_TransferStatus {
     uint8_t ss_state            : 1;
 } HAL_SPI_TransferStatus;
 
+typedef struct HAL_SPI_AcquireConfig {
+    uint16_t size;
+    uint16_t version;
+
+    system_tick_t timeout;
+} HAL_SPI_AcquireConfig;
+
 void HAL_SPI_Init(HAL_SPI_Interface spi);
 void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin);
 void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved);
@@ -124,7 +132,7 @@ int32_t HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatu
 // to avoid having to reconfigure SPI peripheral 3 times
 int32_t HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t clockdiv, uint8_t order, uint8_t mode, void* reserved);
 #if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
-int32_t HAL_SPI_Acquire(HAL_SPI_Interface spi, void* reserved);
+int32_t HAL_SPI_Acquire(HAL_SPI_Interface spi, const HAL_SPI_AcquireConfig* conf);
 int32_t HAL_SPI_Release(HAL_SPI_Interface spi, void* reserved);
 #endif
 
