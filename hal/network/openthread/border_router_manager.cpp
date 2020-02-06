@@ -218,7 +218,7 @@ int BorderRouterManager::enable() {
             config_.mPreference = OT_ROUTE_PREFERENCE_HIGH;
 #elif PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
             config_.mPreference = OT_ROUTE_PREFERENCE_MED;
-#elif PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_ATSOM
+#elif PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_TRACKER
             config_.mPreference = OT_ROUTE_PREFERENCE_LOW;
 #endif
             config_.mPreferred = 1;

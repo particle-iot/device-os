@@ -149,7 +149,7 @@ private:
 #elif PLATFORM_ID == 25
 # define USBD_PRODUCT_NAME              "B5 SoM"
 #elif PLATFORM_ID == 26
-# define USBD_PRODUCT_NAME              "Asset Tracker SoM"
+# define USBD_PRODUCT_NAME              "Asset Tracker"
 #endif
 #define USBD_PRODUCT_STRING             USBD_PRODUCT_NAME " " "DFU Mode"
 #define USBD_CONFIGURATION_STRING       USBD_PRODUCT_STRING
