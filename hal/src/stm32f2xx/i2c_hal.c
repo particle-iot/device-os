@@ -25,11 +25,16 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "i2c_hal.h"
+
+#include <stddef.h>
+#include <stdlib.h>
+
 #include "gpio_hal.h"
 #include "timer_hal.h"
 #include "pinmap_impl.h"
-#include <stddef.h>
+#include "platforms.h"
 #include "service_debug.h"
+#include "system_tick_hal.h"
 #include "interrupts_hal.h"
 #include "delay_hal.h"
 #include "concurrent_hal.h"
@@ -43,14 +48,13 @@ LOG_SOURCE_CATEGORY("hal.i2c")
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define BUFFER_LENGTH   (I2C_BUFFER_LENGTH)
-#define EVENT_TIMEOUT   100000 // 100ms
+#define EVENT_TIMEOUT   (HAL_I2C_DEFAULT_TIMEOUT_MS * 1000u)
 
 #define TRANSMITTER     0x00
 #define RECEIVER        0x01
 
 /* Private define ------------------------------------------------------------*/
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 #define TOTAL_I2C   3
 #else
 #define TOTAL_I2C   1
@@ -59,11 +63,11 @@ LOG_SOURCE_CATEGORY("hal.i2c")
 #define I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED_NO_ADDR ((uint32_t)0x00070080)
 
 #define WAIT_TIMED(what) ({ \
-    uint32_t _micros = HAL_Timer_Get_Micro_Seconds();                           \
+    system_tick_t _micros = HAL_Timer_Get_Micro_Seconds();                           \
     bool res = true;                                                            \
     while((what))                                                               \
     {                                                                           \
-        int32_t dt = (HAL_Timer_Get_Micro_Seconds() - _micros);                 \
+        system_tick_t dt = (HAL_Timer_Get_Micro_Seconds() - _micros);                 \
         bool nok = ((EVENT_TIMEOUT < dt)                                         \
                    && (what))                                                   \
                    || (dt < 0);                                                   \
@@ -112,14 +116,16 @@ typedef struct STM32_I2C_Info {
     uint32_t I2C_ClockSpeed;
     bool I2C_Enabled;
 
-    uint8_t rxBuffer[BUFFER_LENGTH];
-    uint8_t rxBufferIndex;
-    uint8_t rxBufferLength;
+    uint8_t *rxBuffer;
+    size_t rxBufferSize;
+    size_t rxIndexHead;
+    size_t rxIndexTail;
 
     uint8_t txAddress;
-    uint8_t txBuffer[BUFFER_LENGTH];
-    uint8_t txBufferIndex;
-    uint8_t txBufferLength;
+    uint8_t *txBuffer;
+    size_t txBufferSize;
+    size_t txIndexHead;
+    size_t txIndexTail;
 
     uint8_t transmitting;
 
@@ -187,7 +193,7 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
     {
         i2cMap[i2c] = &I2C_MAP[I2C1_D0_D1];
     }
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
     if(i2c == HAL_I2C_INTERFACE2 || i2c == HAL_I2C_INTERFACE1)
     {
     	   // these are co-dependent so initialize both
@@ -198,9 +204,7 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
     {
         i2cMap[i2c] = &I2C_MAP[I2C3_PM_SDA_SCL];
     }
-#endif
 
-#if PLATFORM_ID == 10
     // For now we only enable this for PMIC I2C bus
     if (i2c == HAL_I2C_INTERFACE3) {
         os_thread_scheduling(false, NULL);
@@ -210,17 +214,49 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
         HAL_I2C_Acquire(i2c, NULL);
         os_thread_scheduling(true, NULL);
     }
-#endif // PLATFORM_ID == 10
+#endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 
+    // Initialize internal data structure
+    HAL_I2C_Config *i2c_config = (HAL_I2C_Config *)reserved;
+    if ((i2c_config == NULL) ||
+        (i2c_config && (i2c_config->rx_buffer == NULL   ||
+                        i2c_config->rx_buffer_size == 0 ||
+                        i2c_config->tx_buffer == NULL   ||
+                        i2c_config->tx_buffer_size == 0)))
+    {
+        // Ensure multiple initializations do not result in multiple allocations
+		static uint8_t *p_rx_buffer[TOTAL_I2C] = {NULL, NULL};
+		static uint8_t *p_tx_buffer[TOTAL_I2C] = {NULL, NULL};
+
+        // Allocate default buffer
+		if (p_rx_buffer[i2c] == NULL) {
+			p_rx_buffer[i2c] = (uint8_t *)malloc(I2C_BUFFER_LENGTH);
+		}
+		if (p_tx_buffer[i2c] == NULL) {
+			p_tx_buffer[i2c] = (uint8_t *)malloc(I2C_BUFFER_LENGTH);
+		}
+
+        i2cMap[i2c]->rxBuffer = p_rx_buffer[i2c];
+        i2cMap[i2c]->rxBufferSize = I2C_BUFFER_LENGTH;
+        i2cMap[i2c]->txBuffer = p_tx_buffer[i2c];
+        i2cMap[i2c]->txBufferSize = I2C_BUFFER_LENGTH;
+    } else {
+        i2cMap[i2c]->rxBuffer = i2c_config->rx_buffer;
+        i2cMap[i2c]->rxBufferSize = i2c_config->rx_buffer_size;
+        i2cMap[i2c]->txBuffer = i2c_config->tx_buffer;
+        i2cMap[i2c]->txBufferSize = i2c_config->tx_buffer_size;
+    }
+
+    // Initialize I2C state
     i2cMap[i2c]->I2C_ClockSpeed = CLOCK_SPEED_100KHZ;
     i2cMap[i2c]->I2C_Enabled = false;
 
-    i2cMap[i2c]->rxBufferIndex = 0;
-    i2cMap[i2c]->rxBufferLength = 0;
+    i2cMap[i2c]->rxIndexHead = 0;
+    i2cMap[i2c]->rxIndexTail = 0;
 
     i2cMap[i2c]->txAddress = 0;
-    i2cMap[i2c]->txBufferIndex = 0;
-    i2cMap[i2c]->txBufferLength = 0;
+    i2cMap[i2c]->txIndexHead = 0;
+    i2cMap[i2c]->txIndexTail = 0;
 
     i2cMap[i2c]->transmitting = 0;
 
@@ -228,6 +264,9 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
     i2cMap[i2c]->prevEnding = I2C_ENDING_UNKNOWN;
 
     i2cMap[i2c]->clkStretchingEnabled = 1;
+    memset((void *)i2cMap[i2c]->rxBuffer, 0, i2cMap[i2c]->rxBufferSize);
+    memset((void *)i2cMap[i2c]->txBuffer, 0, i2cMap[i2c]->txBufferSize);
+
     HAL_I2C_Release(i2c, NULL);
 }
 
@@ -279,11 +318,14 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
     }
 #endif
 
-    i2cMap[i2c]->rxBufferIndex = 0;
-    i2cMap[i2c]->rxBufferLength = 0;
+    i2cMap[i2c]->rxIndexHead = 0;
+    i2cMap[i2c]->rxIndexTail = 0;
 
-    i2cMap[i2c]->txBufferIndex = 0;
-    i2cMap[i2c]->txBufferLength = 0;
+    i2cMap[i2c]->txIndexHead = 0;
+    i2cMap[i2c]->txIndexTail = 0;
+
+    memset((void *)i2cMap[i2c]->rxBuffer, 0, i2cMap[i2c]->rxBufferSize);
+    memset((void *)i2cMap[i2c]->txBuffer, 0, i2cMap[i2c]->txBufferSize);
 
     i2cMap[i2c]->mode = mode;
     i2cMap[i2c]->ackFailure = false;
@@ -374,9 +416,9 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
      */
 
     // clamp to buffer length
-    if(quantity > BUFFER_LENGTH)
+    if(quantity > i2cMap[i2c]->rxBufferSize)
     {
-        quantity = BUFFER_LENGTH;
+        quantity = i2cMap[i2c]->rxBufferSize;
     }
 
     // Pre-configure ACK/NACK
@@ -597,8 +639,8 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
     }
 
     // set rx buffer iterator vars
-    i2cMap[i2c]->rxBufferIndex = 0;
-    i2cMap[i2c]->rxBufferLength = bytesRead;
+    i2cMap[i2c]->rxIndexHead = 0;
+    i2cMap[i2c]->rxIndexTail = bytesRead;
     HAL_I2C_Release(i2c, NULL);
 
     return bytesRead;
@@ -612,8 +654,8 @@ void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, void* re
     // set address of targeted slave
     i2cMap[i2c]->txAddress = address << 1;
     // reset tx buffer iterator vars
-    i2cMap[i2c]->txBufferIndex = 0;
-    i2cMap[i2c]->txBufferLength = 0;
+    i2cMap[i2c]->txIndexHead = 0;
+    i2cMap[i2c]->txIndexTail = 0;
     HAL_I2C_Release(i2c, NULL);
 }
 
@@ -677,7 +719,7 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
     }
 
     uint8_t *pBuffer = i2cMap[i2c]->txBuffer;
-    uint8_t NumByteToWrite = i2cMap[i2c]->txBufferLength;
+    uint8_t NumByteToWrite = i2cMap[i2c]->txIndexTail;
 
     if (NumByteToWrite)
     {
@@ -733,8 +775,8 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
     }
 
     // reset tx buffer iterator vars
-    i2cMap[i2c]->txBufferIndex = 0;
-    i2cMap[i2c]->txBufferLength = 0;
+    i2cMap[i2c]->txIndexHead = 0;
+    i2cMap[i2c]->txIndexTail = 0;
 
     // indicate that we are done transmitting
     i2cMap[i2c]->transmitting = 0;
@@ -750,15 +792,15 @@ uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved)
     {
         // in master/slave transmitter mode
         // don't bother if buffer is full
-        if(i2cMap[i2c]->txBufferLength >= BUFFER_LENGTH)
+        if(i2cMap[i2c]->txIndexTail >= i2cMap[i2c]->txBufferSize)
         {
             HAL_I2C_Release(i2c, NULL);
             return 0;
         }
         // put byte in tx buffer
-        i2cMap[i2c]->txBuffer[i2cMap[i2c]->txBufferIndex++] = data;
+        i2cMap[i2c]->txBuffer[i2cMap[i2c]->txIndexHead++] = data;
         // update amount in buffer
-        i2cMap[i2c]->txBufferLength = i2cMap[i2c]->txBufferIndex;
+        i2cMap[i2c]->txIndexTail = i2cMap[i2c]->txIndexHead;
     }
     HAL_I2C_Release(i2c, NULL);
     return 1;
@@ -767,7 +809,7 @@ uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved)
 int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c, void* reserved)
 {
     HAL_I2C_Acquire(i2c, NULL);
-    int32_t available = i2cMap[i2c]->rxBufferLength - i2cMap[i2c]->rxBufferIndex;
+    int32_t available = i2cMap[i2c]->rxIndexTail - i2cMap[i2c]->rxIndexHead;
     HAL_I2C_Release(i2c, NULL);
     return available;
 }
@@ -778,9 +820,9 @@ int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c, void* reserved)
     int value = -1;
 
     // get each successive byte on each call
-    if(i2cMap[i2c]->rxBufferIndex < i2cMap[i2c]->rxBufferLength)
+    if(i2cMap[i2c]->rxIndexHead < i2cMap[i2c]->rxIndexTail)
     {
-        value = i2cMap[i2c]->rxBuffer[i2cMap[i2c]->rxBufferIndex++];
+        value = i2cMap[i2c]->rxBuffer[i2cMap[i2c]->rxIndexHead++];
     }
     HAL_I2C_Release(i2c, NULL);
     return value;
@@ -791,9 +833,9 @@ int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c, void* reserved)
     HAL_I2C_Acquire(i2c, NULL);
     int value = -1;
 
-    if(i2cMap[i2c]->rxBufferIndex < i2cMap[i2c]->rxBufferLength)
+    if(i2cMap[i2c]->rxIndexHead < i2cMap[i2c]->rxIndexTail)
     {
-        value = i2cMap[i2c]->rxBuffer[i2cMap[i2c]->rxBufferIndex];
+        value = i2cMap[i2c]->rxBuffer[i2cMap[i2c]->rxIndexHead];
     }
     HAL_I2C_Release(i2c, NULL);
     return value;
@@ -980,13 +1022,13 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
         I2C_StretchClockCmd(i2cMap[i2c]->I2C_Peripheral, i2cMap[i2c]->clkStretchingEnabled ? ENABLE : DISABLE);
         //I2C_Cmd(i2cMap[i2c]->I2C_Peripheral, ENABLE);
 
-        i2cMap[i2c]->rxBufferLength = i2cMap[i2c]->rxBufferIndex;
-        i2cMap[i2c]->rxBufferIndex = 0;
+        i2cMap[i2c]->rxIndexTail = i2cMap[i2c]->rxIndexHead;
+        i2cMap[i2c]->rxIndexHead = 0;
 
         if(NULL != i2cMap[i2c]->callback_onReceive)
         {
             // alert user program
-            i2cMap[i2c]->callback_onReceive(i2cMap[i2c]->rxBufferLength);
+            i2cMap[i2c]->callback_onReceive(i2cMap[i2c]->rxIndexTail);
         }
     }
 
@@ -1000,8 +1042,8 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
     /* Check on EV1 */
     case I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED:
         i2cMap[i2c]->transmitting = 1;
-        i2cMap[i2c]->txBufferIndex = 0;
-        i2cMap[i2c]->txBufferLength = 0;
+        i2cMap[i2c]->txIndexHead = 0;
+        i2cMap[i2c]->txIndexTail = 0;
 
         if(NULL != i2cMap[i2c]->callback_onRequest)
         {
@@ -1009,16 +1051,16 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
             i2cMap[i2c]->callback_onRequest();
         }
 
-        i2cMap[i2c]->txBufferIndex = 0;
+        i2cMap[i2c]->txIndexHead = 0;
 
         break;
 
     /* Check on EV3 */
     case I2C_EVENT_SLAVE_BYTE_TRANSMITTING:
     case I2C_EVENT_SLAVE_BYTE_TRANSMITTED:
-        if (i2cMap[i2c]->txBufferIndex < i2cMap[i2c]->txBufferLength)
+        if (i2cMap[i2c]->txIndexHead < i2cMap[i2c]->txIndexTail)
         {
-            I2C_SendData(i2cMap[i2c]->I2C_Peripheral, i2cMap[i2c]->txBuffer[i2cMap[i2c]->txBufferIndex++]);
+            I2C_SendData(i2cMap[i2c]->I2C_Peripheral, i2cMap[i2c]->txBuffer[i2cMap[i2c]->txIndexHead++]);
         }
         else
         {
@@ -1036,16 +1078,16 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
 
     /* check on EV1*/
     case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED:
-        i2cMap[i2c]->rxBufferIndex = 0;
-        i2cMap[i2c]->rxBufferLength = 0;
+        i2cMap[i2c]->rxIndexHead = 0;
+        i2cMap[i2c]->rxIndexTail = 0;
         break;
 
     /* Check on EV2*/
     case I2C_EVENT_SLAVE_BYTE_RECEIVED:
     case (I2C_EVENT_SLAVE_BYTE_RECEIVED | I2C_SR1_BTF):
         // Prevent RX buffer overflow
-        if (i2cMap[i2c]->rxBufferIndex < BUFFER_LENGTH)
-            i2cMap[i2c]->rxBuffer[i2cMap[i2c]->rxBufferIndex++] = I2C_ReceiveData(i2cMap[i2c]->I2C_Peripheral);
+        if (i2cMap[i2c]->rxIndexHead < i2cMap[i2c]->rxBufferSize)
+            i2cMap[i2c]->rxBuffer[i2cMap[i2c]->rxIndexHead++] = I2C_ReceiveData(i2cMap[i2c]->I2C_Peripheral);
         else
             (void)I2C_ReceiveData(i2cMap[i2c]->I2C_Peripheral);
         break;

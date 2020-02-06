@@ -27,19 +27,19 @@
 #include "interrupts_hal.h"
 #include "pinmap_impl.h"
 #include "logging.h"
+#include "system_tick_hal.h"
 #include "timer_hal.h"
 
 #define TOTAL_I2C                   2
-#define BUFFER_LENGTH               I2C_BUFFER_LENGTH
 #define I2C_IRQ_PRIORITY            APP_IRQ_PRIORITY_LOWEST
-#define EVENT_TIMEOUT               100000 // 100ms
+#define EVENT_TIMEOUT               (HAL_I2C_DEFAULT_TIMEOUT_MS * 1000u)
 
 #define WAIT_TIMED(what) ({ \
-    uint32_t _micros = HAL_Timer_Get_Micro_Seconds();                           \
+    system_tick_t _micros = HAL_Timer_Get_Micro_Seconds();                           \
     bool res = true;                                                            \
     while((what))                                                               \
     {                                                                           \
-        int32_t dt = (HAL_Timer_Get_Micro_Seconds() - _micros);                 \
+        system_tick_t dt = (HAL_Timer_Get_Micro_Seconds() - _micros);                 \
         bool nok = ((EVENT_TIMEOUT < dt)                                        \
                    && (what))                                                   \
                    || (dt < 0);                                                 \
@@ -79,12 +79,14 @@ typedef struct {
 
     uint8_t                     address;    // 7bit data
 
-    uint8_t                     rx_buf[BUFFER_LENGTH];
-    uint8_t                     rx_buf_index;
-    uint8_t                     rx_buf_length;
-    uint8_t                     tx_buf[BUFFER_LENGTH];
-    uint8_t                     tx_buf_index;
-    uint8_t                     tx_buf_length;
+    uint8_t*                    rx_buf;
+    size_t                      rx_buf_size;
+    size_t                      rx_index_head;
+    size_t                      rx_index_tail;
+    uint8_t*                    tx_buf;
+    size_t                      tx_buf_size;
+    size_t                      tx_index_head;
+    size_t                      tx_index_tail;
 
     os_mutex_recursive_t        mutex;
 
@@ -109,23 +111,23 @@ static void twis_handler(HAL_I2C_Interface i2c, nrfx_twis_evt_t const * p_event)
         case NRFX_TWIS_EVT_READ_REQ: {
             m_i2c_map[i2c].callback_on_request();
             if (p_event->data.buf_req) {
-                nrfx_twis_tx_prepare(m_i2c_map[i2c].slave, (void *)m_i2c_map[i2c].tx_buf, m_i2c_map[i2c].tx_buf_length);
+                nrfx_twis_tx_prepare(m_i2c_map[i2c].slave, (void *)m_i2c_map[i2c].tx_buf, m_i2c_map[i2c].tx_index_tail);
             }
             break;
         }
         case NRFX_TWIS_EVT_READ_DONE: {
-            m_i2c_map[i2c].tx_buf_length = m_i2c_map[i2c].tx_buf_index = 0;
+            m_i2c_map[i2c].tx_index_tail = m_i2c_map[i2c].tx_index_head = 0;
             break;
         }
         case NRFX_TWIS_EVT_WRITE_REQ: {
             if (p_event->data.buf_req) {
-                nrfx_twis_rx_prepare(m_i2c_map[i2c].slave, (void *)m_i2c_map[i2c].rx_buf, BUFFER_LENGTH);
+                nrfx_twis_rx_prepare(m_i2c_map[i2c].slave, (void *)m_i2c_map[i2c].rx_buf, m_i2c_map[i2c].rx_buf_size);
             }
             break;
         }
         case NRFX_TWIS_EVT_WRITE_DONE: {
-            m_i2c_map[i2c].rx_buf_index = 0;
-            m_i2c_map[i2c].rx_buf_length = p_event->data.rx_amount;
+            m_i2c_map[i2c].rx_index_head = 0;
+            m_i2c_map[i2c].rx_index_tail = p_event->data.rx_amount;
             m_i2c_map[i2c].callback_on_receive(p_event->data.rx_amount);
             break;
         }
@@ -197,10 +199,10 @@ static int twi_init(HAL_I2C_Interface i2c) {
     nrf_twim_frequency_t nrf_frequency = (m_i2c_map[i2c].speed == CLOCK_SPEED_400KHZ) ? NRF_TWIM_FREQ_400K : NRF_TWIM_FREQ_100K;
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    
+
     if (m_i2c_map[i2c].mode == I2C_MODE_MASTER) {
         const nrfx_twim_config_t twi_config = {
-        .scl                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_i2c_map[i2c].scl_pin].gpio_port, PIN_MAP[m_i2c_map[i2c].scl_pin].gpio_pin), 
+        .scl                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_i2c_map[i2c].scl_pin].gpio_port, PIN_MAP[m_i2c_map[i2c].scl_pin].gpio_pin),
         .sda                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_i2c_map[i2c].sda_pin].gpio_port, PIN_MAP[m_i2c_map[i2c].sda_pin].gpio_pin),
         .frequency          = nrf_frequency,
         .interrupt_priority = I2C_IRQ_PRIORITY,
@@ -215,7 +217,7 @@ static int twi_init(HAL_I2C_Interface i2c) {
     } else {
         const nrfx_twis_config_t twi_config = {
         .addr               = {m_i2c_map[i2c].address, 0},
-        .scl                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_i2c_map[i2c].scl_pin].gpio_port, PIN_MAP[m_i2c_map[i2c].scl_pin].gpio_pin), 
+        .scl                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_i2c_map[i2c].scl_pin].gpio_port, PIN_MAP[m_i2c_map[i2c].scl_pin].gpio_pin),
         .sda                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[m_i2c_map[i2c].sda_pin].gpio_port, PIN_MAP[m_i2c_map[i2c].sda_pin].gpio_pin),
         .scl_pull           = NRF_GPIO_PIN_NOPULL,
         .sda_pull           = NRF_GPIO_PIN_NOPULL,
@@ -236,6 +238,7 @@ static int twi_init(HAL_I2C_Interface i2c) {
 }
 
 void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved) {
+    // Disable threading to create the I2C mutex
     os_thread_scheduling(false, NULL);
     if (m_i2c_map[i2c].mutex == NULL) {
         os_mutex_recursive_create(&m_i2c_map[i2c].mutex);
@@ -245,19 +248,52 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved) {
         return;
     }
 
+    // Capture the mutex and re-enable threading
     HAL_I2C_Acquire(i2c, NULL);
     os_thread_scheduling(true, NULL);
 
+    // Initialize internal data structure
+    HAL_I2C_Config *i2c_config = reinterpret_cast<HAL_I2C_Config *>(reserved);
+    if ((i2c_config == NULL) ||
+        (i2c_config && (i2c_config->rx_buffer == NULL   ||
+                        i2c_config->rx_buffer_size == 0 ||
+                        i2c_config->tx_buffer == NULL   ||
+                        i2c_config->tx_buffer_size == 0)))
+    {
+        // Ensure multiple initializations do not result in multiple allocations
+		static uint8_t *p_rx_buffer[TOTAL_I2C] = {NULL, NULL};
+		static uint8_t *p_tx_buffer[TOTAL_I2C] = {NULL, NULL};
+
+        // Allocate default buffer
+		if (p_rx_buffer[i2c] == NULL) {
+			p_rx_buffer[i2c] = new uint8_t[I2C_BUFFER_LENGTH];
+		}
+		if (p_tx_buffer[i2c] == NULL) {
+			p_tx_buffer[i2c] = new uint8_t[I2C_BUFFER_LENGTH];
+		}
+
+        m_i2c_map[i2c].rx_buf = p_rx_buffer[i2c];
+        m_i2c_map[i2c].rx_buf_size = I2C_BUFFER_LENGTH;
+        m_i2c_map[i2c].tx_buf = p_tx_buffer[i2c];
+        m_i2c_map[i2c].tx_buf_size = I2C_BUFFER_LENGTH;
+    } else {
+        m_i2c_map[i2c].rx_buf = i2c_config->rx_buffer;
+        m_i2c_map[i2c].rx_buf_size = i2c_config->rx_buffer_size;
+        m_i2c_map[i2c].tx_buf = i2c_config->tx_buffer;
+        m_i2c_map[i2c].tx_buf_size = i2c_config->tx_buffer_size;
+    }
+
+    // Initialize I2C state
     m_i2c_map[i2c].enabled = false;
     m_i2c_map[i2c].mode = I2C_MODE_MASTER;
     m_i2c_map[i2c].transfer_state = TRANSFER_STATE_IDLE;
     m_i2c_map[i2c].speed = CLOCK_SPEED_100KHZ;
-    m_i2c_map[i2c].rx_buf_index = 0;
-    m_i2c_map[i2c].rx_buf_length = 0;
-    m_i2c_map[i2c].tx_buf_index = 0;
-    m_i2c_map[i2c].tx_buf_length = 0;
-    memset((void *)m_i2c_map[i2c].rx_buf, 0 , BUFFER_LENGTH);
-    memset((void *)m_i2c_map[i2c].tx_buf, 0 , BUFFER_LENGTH);
+    m_i2c_map[i2c].rx_index_head = 0;
+    m_i2c_map[i2c].rx_index_tail = 0;
+    m_i2c_map[i2c].tx_index_head = 0;
+    m_i2c_map[i2c].tx_index_tail = 0;
+    memset((void *)m_i2c_map[i2c].rx_buf, 0, m_i2c_map[i2c].rx_buf_size);
+    memset((void *)m_i2c_map[i2c].tx_buf, 0, m_i2c_map[i2c].tx_buf_size);
 
     HAL_I2C_Release(i2c, NULL);
 }
@@ -277,12 +313,12 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
 
     twi_uninit(i2c);
 
-    m_i2c_map[i2c].rx_buf_index = 0;
-    m_i2c_map[i2c].rx_buf_length = 0;
-    m_i2c_map[i2c].tx_buf_index = 0;
-    m_i2c_map[i2c].tx_buf_length = 0;
-    memset((void *)m_i2c_map[i2c].rx_buf, 0 , BUFFER_LENGTH);
-    memset((void *)m_i2c_map[i2c].tx_buf, 0 , BUFFER_LENGTH);
+    m_i2c_map[i2c].rx_index_head = 0;
+    m_i2c_map[i2c].rx_index_tail = 0;
+    m_i2c_map[i2c].tx_index_head = 0;
+    m_i2c_map[i2c].tx_index_tail = 0;
+    memset((void *)m_i2c_map[i2c].rx_buf, 0, m_i2c_map[i2c].rx_buf_size);
+    memset((void *)m_i2c_map[i2c].tx_buf, 0, m_i2c_map[i2c].tx_buf_size);
     m_i2c_map[i2c].mode = mode;
     m_i2c_map[i2c].address = address;
 
@@ -303,20 +339,21 @@ void HAL_I2C_End(HAL_I2C_Interface i2c,void* reserved) {
     HAL_I2C_Release(i2c, NULL);
 }
 
-uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop,void* reserved) {
+uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop, void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
     uint32_t err_code;
+    (void)stop;
 
     // clamp to buffer length
-    if(quantity > BUFFER_LENGTH) {
-        quantity = BUFFER_LENGTH;
+    if(quantity > m_i2c_map[i2c].rx_buf_size) {
+        quantity = m_i2c_map[i2c].rx_buf_size;
     }
 
     m_i2c_map[i2c].transfer_state = TRANSFER_STATE_BUSY;
     m_i2c_map[i2c].address = address;
     err_code = nrfx_twim_rx(m_i2c_map[i2c].master, m_i2c_map[i2c].address, (uint8_t *)m_i2c_map[i2c].rx_buf, quantity);
     if (err_code) {
-        // FIXME: There is a bug in nrfx_twim driver, if we call nrfx_twim_rx repeatedly and quickly, 
+        // FIXME: There is a bug in nrfx_twim driver, if we call nrfx_twim_rx repeatedly and quickly,
         // p_cb->busy will be set and never cleared, in this case nrfx_twim_rx always returns busy error
         LOG_DEBUG(TRACE, "BUSY ERROR, restore twi.");
         twi_uninit(i2c);
@@ -338,8 +375,8 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
 
 ret:
     m_i2c_map[i2c].transfer_state = TRANSFER_STATE_IDLE;
-    m_i2c_map[i2c].rx_buf_index = 0;
-    m_i2c_map[i2c].rx_buf_length = quantity;
+    m_i2c_map[i2c].rx_index_head = 0;
+    m_i2c_map[i2c].rx_index_tail = quantity;
     HAL_I2C_Release(i2c, NULL);
     return quantity;
 }
@@ -347,8 +384,8 @@ ret:
 void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address,void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
     m_i2c_map[i2c].address = address;
-    m_i2c_map[i2c].tx_buf_index = 0;
-    m_i2c_map[i2c].tx_buf_length = 0;
+    m_i2c_map[i2c].tx_index_head = 0;
+    m_i2c_map[i2c].tx_index_tail = 0;
     HAL_I2C_Release(i2c, NULL);
 }
 
@@ -359,8 +396,8 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
     uint8_t ret_code = 0;
 
     m_i2c_map[i2c].transfer_state = TRANSFER_STATE_BUSY;
-    err_code = nrfx_twim_tx(m_i2c_map[i2c].master, m_i2c_map[i2c].address, (uint8_t *)m_i2c_map[i2c].tx_buf, 
-                                    m_i2c_map[i2c].tx_buf_length, !stop);
+    err_code = nrfx_twim_tx(m_i2c_map[i2c].master, m_i2c_map[i2c].address, (uint8_t *)m_i2c_map[i2c].tx_buf,
+                                    m_i2c_map[i2c].tx_index_tail, !stop);
     if (err_code) {
         ret_code = 1;
         goto ret;
@@ -378,8 +415,8 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
 
 ret:
     m_i2c_map[i2c].transfer_state = TRANSFER_STATE_IDLE;
-    m_i2c_map[i2c].tx_buf_index = 0;
-    m_i2c_map[i2c].tx_buf_length = 0;
+    m_i2c_map[i2c].tx_index_head = 0;
+    m_i2c_map[i2c].tx_index_tail = 0;
     HAL_I2C_Release(i2c, NULL);
     return ret_code;
 }
@@ -389,14 +426,14 @@ uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data,void* reserved) 
 
     // in master/slave transmitter mode
     // don't bother if buffer is full
-    if (m_i2c_map[i2c].tx_buf_length >= BUFFER_LENGTH) {
+    if (m_i2c_map[i2c].tx_index_tail >= m_i2c_map[i2c].tx_buf_size) {
         HAL_I2C_Release(i2c, NULL);
         return 0;
     }
     // put byte in tx buffer
-    m_i2c_map[i2c].tx_buf[m_i2c_map[i2c].tx_buf_index++] = data;
+    m_i2c_map[i2c].tx_buf[m_i2c_map[i2c].tx_index_head++] = data;
     // update amount in buffer
-    m_i2c_map[i2c].tx_buf_length = m_i2c_map[i2c].tx_buf_index;
+    m_i2c_map[i2c].tx_index_tail = m_i2c_map[i2c].tx_index_head;
 
     HAL_I2C_Release(i2c, NULL);
     return 1;
@@ -404,7 +441,7 @@ uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data,void* reserved) 
 
 int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c,void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
-    int32_t available = m_i2c_map[i2c].rx_buf_length - m_i2c_map[i2c].rx_buf_index;
+    int32_t available = m_i2c_map[i2c].rx_index_tail - m_i2c_map[i2c].rx_index_head;
     HAL_I2C_Release(i2c, NULL);
     return available;
 }
@@ -414,8 +451,8 @@ int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c,void* reserved) {
     int value = -1;
 
     // get each successive byte on each call
-    if (m_i2c_map[i2c].rx_buf_index < m_i2c_map[i2c].rx_buf_length) {
-        value = m_i2c_map[i2c].rx_buf[m_i2c_map[i2c].rx_buf_index++];
+    if (m_i2c_map[i2c].rx_index_head < m_i2c_map[i2c].rx_index_tail) {
+        value = m_i2c_map[i2c].rx_buf[m_i2c_map[i2c].rx_index_head++];
     }
     HAL_I2C_Release(i2c, NULL);
     return value;
@@ -425,18 +462,18 @@ int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c,void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
     int value = -1;
 
-    if(m_i2c_map[i2c].rx_buf_index < m_i2c_map[i2c].rx_buf_length) {
-        value = m_i2c_map[i2c].rx_buf[m_i2c_map[i2c].rx_buf_index];
+    if(m_i2c_map[i2c].rx_index_head < m_i2c_map[i2c].rx_index_tail) {
+        value = m_i2c_map[i2c].rx_buf[m_i2c_map[i2c].rx_index_head];
     }
     HAL_I2C_Release(i2c, NULL);
     return value;
 }
 
 void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c,void* reserved) {
-    m_i2c_map[i2c].rx_buf_index = 0;
-    m_i2c_map[i2c].rx_buf_length = 0;
-    m_i2c_map[i2c].tx_buf_index = 0;
-    m_i2c_map[i2c].tx_buf_length = 0;
+    m_i2c_map[i2c].rx_index_head = 0;
+    m_i2c_map[i2c].rx_index_tail = 0;
+    m_i2c_map[i2c].tx_index_head = 0;
+    m_i2c_map[i2c].tx_index_tail = 0;
 }
 
 bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c,void* reserved) {

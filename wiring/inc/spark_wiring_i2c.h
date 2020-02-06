@@ -90,6 +90,8 @@ public:
  */
 #ifndef SPARK_WIRING_NO_I2C
 
+HAL_I2C_Config __attribute__((weak)) acquireI2cBuffer();
+
 #define Wire __fetch_global_Wire()
 TwoWire& __fetch_global_Wire();
 

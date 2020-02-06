@@ -28,13 +28,28 @@
 #include "i2c_hal.h"
 #include "spark_wiring_thread.h"
 
+// Open Functions //////////////////////////////////////////////////////////////
+
+HAL_I2C_Config __attribute__((weak)) acquireI2cBuffer()
+{
+  HAL_I2C_Config i2c_config;
+  i2c_config.version = HAL_I2C_CONFIG_VERSION_1;
+  i2c_config.size = sizeof(HAL_I2C_Config);
+  i2c_config.rx_buffer = new uint8_t[I2C_BUFFER_LENGTH];
+  i2c_config.rx_buffer_size = I2C_BUFFER_LENGTH;
+  i2c_config.tx_buffer = new uint8_t[I2C_BUFFER_LENGTH];
+  i2c_config.tx_buffer_size = I2C_BUFFER_LENGTH;
+
+  return i2c_config;
+}
+
 // Constructors ////////////////////////////////////////////////////////////////
 
 TwoWire::TwoWire(HAL_I2C_Interface i2c)
 {
   _i2c = i2c;
-  HAL_I2C_Init(_i2c, NULL);
-
+  HAL_I2C_Config i2c_config = acquireI2cBuffer();
+  HAL_I2C_Init(_i2c, &i2c_config);
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
