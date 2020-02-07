@@ -416,7 +416,8 @@ test(BLE_11_BLE_UUID_Conversion) {
     assertTrue(longUuidFromArray.toString() == longUuidStr);
     
     BleUuid longUuidFromString(longUuidStr);
-    longUuidFromString.rawBytes(buffer);
+    size_t len = longUuidFromString.rawBytes(buffer);
+    assertTrue(len == 16);
     assertTrue(!memcmp(buffer, longUuidArray, BLE_SIG_UUID_128BIT_LEN));
     pUuid = longUuidFromString.rawBytes();
     assertTrue(!memcmp(pUuid, longUuidArray, BLE_SIG_UUID_128BIT_LEN));
@@ -426,7 +427,8 @@ test(BLE_11_BLE_UUID_Conversion) {
     assertTrue(shortUuidFromUint16.toString() == shortUuidStr);
 
     BleUuid shortUuidFromString(shortUuidStr);
-    shortUuidFromString.rawBytes(buffer);
+    len = shortUuidFromString.rawBytes(buffer);
+    assertTrue(len == 2);
     assertTrue(!memcmp(buffer, &shortUuid, BLE_SIG_UUID_16BIT_LEN));
     pUuid = shortUuidFromString.rawBytes();
     assertTrue(!memcmp(pUuid, &shortUuid, BLE_SIG_UUID_16BIT_LEN));
