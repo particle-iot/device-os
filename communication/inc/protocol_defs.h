@@ -64,6 +64,10 @@ enum ProtocolError
 // Converts protocol error to system error code
 system_error_t toSystemError(ProtocolError error);
 
+typedef int32_t message_handle_t;
+
+const message_handle_t INVALID_MESSAGE_HANDLE = (message_handle_t)-1;
+
 typedef uint16_t chunk_index_t;
 
 const chunk_index_t NO_CHUNKS_MISSING = 65535;

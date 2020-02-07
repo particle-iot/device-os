@@ -73,36 +73,40 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	message_id_t msg_id = CoAP::message_id(queue);
 	CoAPCode::Enum code = CoAP::code(queue);
 	CoAPType::Enum type = CoAP::type(queue);
-	if (token_len > 0 && code >= CoAPCode::OK && code < CoAPCode::BAD_REQUEST) {
-		if (app_describe_token && app_describe_token == token) {
-			app_describe_token = 0;
-			if (descriptor.app_state_selector_info) {
-				// Update the application state's CRC in the session data
-				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
-						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-			}
-		}
-		if (system_describe_token && system_describe_token == token) {
-			system_describe_token = 0;
-			if (descriptor.app_state_selector_info) {
-				// Update the system state's CRC in the session data
-				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
-						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-			}
-		}
-		if (subscriptions_token && subscriptions_token == token) {
-			subscriptions_token = 0;
-		}
-	}
 	if (CoAPType::is_reply(type)) {
 		LOG(TRACE, "Reply recieved: type=%d, code=%d", type, code);
 		// todo - this is a little too simple in the case of an empty ACK for a separate response
 		// the message should then be bound to the token. see CH19037
-		if (type==CoAPType::RESET) {		// RST is sent with an empty code. It's like an unspecified error
+		if (type == CoAPType::RESET) { // RST is sent with an empty code. It's like an unspecified error
 			LOG(TRACE, "Reset received, setting error code to internal server error.");
 			code = CoAPCode::INTERNAL_SERVER_ERROR;
 		}
 		notify_message_complete(msg_id, code);
+		// Update application state checksums
+		if (msg_id == app_describe_msg_id) { // Application description
+			app_describe_msg_id = INVALID_MESSAGE_HANDLE;
+			if (type == CoAPType::ACK && descriptor.app_state_selector_info) {
+				channel.command(Channel::SAVE_SESSION);
+				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
+						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+				channel.command(Channel::LOAD_SESSION);
+			}
+		}
+		if (msg_id == system_describe_msg_id) { // System description
+			system_describe_msg_id = INVALID_MESSAGE_HANDLE;
+			if (type == CoAPType::ACK && descriptor.app_state_selector_info) {
+				channel.command(Channel::SAVE_SESSION);
+				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
+						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+				channel.command(Channel::LOAD_SESSION);
+			}
+		}
+		if (msg_id == subscriptions_msg_id) { // System/application subscriptions
+			subscriptions_msg_id = INVALID_MESSAGE_HANDLE;
+			if (type == CoAPType::ACK) {
+				update_subscription_crc();
+			}
+		}
 	}
 
 	ProtocolError error = NO_ERROR;
@@ -337,9 +341,9 @@ int Protocol::begin()
 
 	reset();
 	last_ack_handlers_update = callbacks.millis();
-	app_describe_token = 0;
-	system_describe_token = 0;
-	subscriptions_token = 0;
+	app_describe_msg_id = INVALID_MESSAGE_HANDLE;
+	system_describe_msg_id = INVALID_MESSAGE_HANDLE;
+	subscriptions_msg_id = INVALID_MESSAGE_HANDLE;
 
 	ProtocolError error = channel.establish();
 	const bool session_resumed = (error == SESSION_RESUMED);
@@ -436,10 +440,10 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 
 ProtocolError Protocol::hello_response()
 {
-	ProtocolError error = event_loop(CoAPMessageType::HELLO,  4000); // read the hello message from the server
+	ProtocolError error = event_loop(CoAPMessageType::HELLO, 4000); // read the hello message from the server
 	if (error)
 	{
-		LOG(ERROR,"Handshake: could not receive HELLO response %d", error);
+		LOG(ERROR, "Handshake: could not receive HELLO response %d", error);
 	}
 	return error;
 }
@@ -614,30 +618,15 @@ ProtocolError Protocol::generate_and_send_description(MessageChannel& channel, M
         desc_flags & DESCRIBE_APPLICATION ? "A" : "", desc_flags & DESCRIBE_METRICS ? "M" : "");
 
     error = channel.send(message);
-
-    if (error == NO_ERROR && descriptor.app_state_selector_info &&
-        (desc_flags & DESCRIBE_APPLICATION || desc_flags & DESCRIBE_SYSTEM))
-    {
-        this->channel.command(Channel::SAVE_SESSION);
-        if (desc_flags & DESCRIBE_APPLICATION)
-        {
-            // have sent the describe message to the cloud so update the crc
-            descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
-                                               SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0,
-                                               nullptr);
+    if (error == ProtocolError::NO_ERROR) {
+        const auto msg_id = message.get_id();
+        if (desc_flags & DescriptionType::DESCRIBE_APPLICATION) {
+        	app_describe_msg_id = msg_id;
         }
-        if (desc_flags & DESCRIBE_SYSTEM)
-        {
-            // have sent the describe message to the cloud so update the crc
-            descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
-                                               SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0,
-                                               nullptr);
+        if (desc_flags & DescriptionType::DESCRIBE_SYSTEM) {
+        	system_describe_msg_id = msg_id;
         }
-        this->channel.command(Channel::LOAD_SESSION);
-    }
-	// Log error code
-    else if (NO_ERROR != error)
-    {
+    } else {
         LOG(ERROR, "Channel failed to send message with error-code <%d>", error);
     }
 

@@ -125,13 +125,14 @@ class Protocol
 	 * If we have a bone-fide CoAP layer this will eventually disappear into that layer, just like message-id has.
 	 */
 	token_t next_token;
-	token_t app_describe_token;
-	token_t system_describe_token;
-	token_t subscriptions_token;
 
 	uint8_t initialized;
 
 	uint32_t protocol_flags;
+
+	message_handle_t app_describe_msg_id;
+	message_handle_t system_describe_msg_id;
+	message_handle_t subscriptions_msg_id;
 
 protected:
 	/**
@@ -174,9 +175,6 @@ protected:
 	 */
 	token_t get_next_token()
 	{
-		if (!next_token) {
-			next_token = 1; // Skip all-zero tokens
-		}
 		return next_token++;
 	}
 
