@@ -39,31 +39,31 @@ struct Variables::Context {
     token_t token;
 };
 
-ProtocolError Variables::handle_request(Message& message, token_t token) {
+ProtocolError Variables::handle_request(Message& message, token_t token, message_id_t id) {
     char key[MAX_VARIABLE_KEY_LENGTH + 1];
     auto result = decode_request(message, key);
     if (result != ProtocolError::NO_ERROR) {
-        return send_empty_ack(message, token, CoAPCode::BAD_REQUEST);
+        return send_error_ack(message, token, id, CoAPCode::BAD_REQUEST);
     }
     if (protocol_->getDescriptor().get_variable_async) {
-        result = handle_request(message, token, key);
+        result = handle_request(message, token, id, key);
     } else {
         // Use the compatibility callback
-        result = handle_request_compat(message, token, key);
+        result = handle_request_compat(message, token, id, key);
     }
     return result;
 }
 
-ProtocolError Variables::handle_request(Message& message, token_t token, const char* key) {
-    // Acknowledge the request
-    const auto result = send_empty_ack(message, token, CoAPCode::NONE);
-    if (result != ProtocolError::NO_ERROR) {
-        return result;
-    }
+ProtocolError Variables::handle_request(Message& message, token_t token, message_id_t id, const char* key) {
     // Allocate a context for the request
     std::unique_ptr<Context> ctx(new(std::nothrow) Context(this, token));
     if (!ctx) {
-        return send_error_response(token, CoAPCode::INTERNAL_SERVER_ERROR);
+        return send_error_ack(message, token, id, CoAPCode::INTERNAL_SERVER_ERROR);
+    }
+    // Acknowledge the request
+    const auto result = send_empty_ack(message, id);
+    if (result != ProtocolError::NO_ERROR) {
+        return result;
     }
     // Get the value asynchronously
     const auto& descriptor = protocol_->getDescriptor();
@@ -71,11 +71,11 @@ ProtocolError Variables::handle_request(Message& message, token_t token, const c
     return ProtocolError::NO_ERROR;
 }
 
-ProtocolError Variables::handle_request_compat(Message& message, token_t token, const char* key) {
+ProtocolError Variables::handle_request_compat(Message& message, token_t token, message_id_t id, const char* key) {
     const auto& descriptor = protocol_->getDescriptor();
     const auto value = descriptor.get_variable(key);
     if (!value) {
-        return send_empty_ack(message, token, CoAPCode::NOT_FOUND);
+        return send_error_ack(message, token, id, CoAPCode::NOT_FOUND);
     }
     const auto value_type = descriptor.variable_type(key);
     size_t value_size = 0;
@@ -97,10 +97,11 @@ ProtocolError Variables::handle_request_compat(Message& message, token_t token, 
         break;
     }
     default:
-        return send_empty_ack(message, token, CoAPCode::INTERNAL_SERVER_ERROR);
+        // Unsupported variable type
+        return send_error_ack(message, token, id, CoAPCode::INTERNAL_SERVER_ERROR);
     }
     // Acknowledge the request
-    const auto result = send_empty_ack(message, token, CoAPCode::NONE);
+    const auto result = send_empty_ack(message, id);
     if (result != ProtocolError::NO_ERROR) {
         return result;
     }
@@ -211,10 +212,17 @@ ProtocolError Variables::send_error_response(Message& message, token_t token, ui
     return channel.send(message);
 }
 
-ProtocolError Variables::send_empty_ack(Message& message, token_t token, uint8_t code) {
+ProtocolError Variables::send_empty_ack(Message& message, message_id_t id) {
     const auto buf = message.buf();
-    const message_id_t id = CoAP::message_id(buf);
-    const size_t size = Messages::coded_ack(buf, token, code, 0, 0);
+    const size_t size = Messages::coded_ack(buf, CoAPCode::NONE, 0 /* message_id_msb */, 0 /* message_id_lsb */);
+    message.set_length(size);
+    message.set_id(id);
+    return protocol_->getChannel().send(message);
+}
+
+ProtocolError Variables::send_error_ack(Message& message, token_t token, message_id_t id, uint8_t code) {
+    const auto buf = message.buf();
+    const size_t size = Messages::coded_ack(buf, token, code, 0 /* message_id_msb */, 0 /* message_id_lsb */);
     message.set_length(size);
     message.set_id(id);
     return protocol_->getChannel().send(message);

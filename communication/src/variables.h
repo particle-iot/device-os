@@ -37,15 +37,15 @@ class Variables
 public:
     explicit Variables(Protocol* protocol);
 
-    ProtocolError handle_request(Message& message, token_t token);
+    ProtocolError handle_request(Message& message, token_t token, message_id_t id);
 
 private:
     struct Context;
 
     Protocol* protocol_;
 
-    ProtocolError handle_request(Message& message, token_t token, const char* key);
-    ProtocolError handle_request_compat(Message& message, token_t token, const char* key);
+    ProtocolError handle_request(Message& message, token_t token, message_id_t id, const char* key);
+    ProtocolError handle_request_compat(Message& message, token_t token, message_id_t id, const char* key);
 
     ProtocolError decode_request(Message& message, char* key);
     ProtocolError encode_response(Message& message, token_t token, const void* value, size_t value_size, SparkReturnType::Enum value_type);
@@ -54,7 +54,9 @@ private:
     ProtocolError send_response(token_t token, const void* value, size_t value_size, SparkReturnType::Enum value_type);
     ProtocolError send_error_response(token_t token, uint8_t code);
     ProtocolError send_error_response(Message& message, token_t token, uint8_t code);
-    ProtocolError send_empty_ack(Message& message, token_t token, uint8_t code);
+
+    ProtocolError send_empty_ack(Message& message, message_id_t id);
+    ProtocolError send_error_ack(Message& message, token_t token, message_id_t id, uint8_t code);
 
     static void get_variable_callback(int result, int type, void* data, size_t size, void* context); // SparkDescriptor::GetVariableCallback
 };

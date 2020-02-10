@@ -104,7 +104,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 			LOG(ERROR, "Missing request token");
 			return ProtocolError::MISSING_REQUEST_TOKEN;
 		}
-		return variables.handle_request(message, token);
+		return variables.handle_request(message, token, msg_id);
 	}
 	case CoAPMessageType::SAVE_BEGIN:
 		// fall through
