@@ -70,6 +70,9 @@ extern volatile uint8_t SYSTEM_POWEROFF;
 
 extern volatile system_tick_t spark_loop_total_millis;
 
+// This variable is set to true when the application's setup() function returns
+extern bool APPLICATION_SETUP_DONE;
+
 void system_delay_ms(unsigned long ms, bool no_background_loop);
 
 /**

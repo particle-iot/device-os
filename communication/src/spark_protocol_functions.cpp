@@ -124,7 +124,7 @@ int spark_protocol_presence_announcement(ProtocolFacade* protocol, uint8_t *buf,
 int spark_protocol_post_description(ProtocolFacade* protocol, int desc_flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
     (void)reserved;
-    return protocol->post_description(desc_flags, true /* force */);
+    return protocol->post_description(desc_flags, false /* force */);
 }
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,

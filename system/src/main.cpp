@@ -457,6 +457,17 @@ bool semi_automatic_connecting(bool threaded) {
     return system_mode() == SEMI_AUTOMATIC && !threaded && spark_cloud_flag_auto_connect() && !spark_cloud_flag_connected();
 }
 
+namespace {
+
+void applicationSetupDone() {
+    APPLICATION_SETUP_DONE = true;
+    if (system_mode() == AUTOMATIC && spark_cloud_flag_connected()) {
+        particle::sendApplicationDescription();
+    }
+}
+
+} // namespace
+
 void app_loop(bool threaded)
 {
     DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
@@ -469,9 +480,9 @@ void app_loop(bool threaded)
     {
         if(threaded || !SPARK_FLASH_UPDATE)
         {
-                if (semi_automatic_connecting(threaded)) {
-                    break;
-                }
+            if (semi_automatic_connecting(threaded)) {
+                break;
+            }
 
 #if HAL_PLATFORM_IFAPI
             if (!threaded && particle::system::ListeningModeHandler::instance()->isActive()) {
@@ -479,20 +490,23 @@ void app_loop(bool threaded)
             }
 #endif // HAL_PLATFORM_IFAPI
 
-            if ((SPARK_WIRING_APPLICATION != 1))
-            {
+            if (SPARK_WIRING_APPLICATION != 1) {
                 //Execute user application setup only once
                 DECLARE_SYS_HEALTH(ENTERED_Setup);
-                if (system_mode()!=SAFE_MODE)
-                 setup();
+                if (system_mode() != SAFE_MODE) {
+                    setup();
+                }
                 SPARK_WIRING_APPLICATION = 1;
+                // In the automatic mode, application DESCRIBE and subscriptions are sent when
+                // the setup() function returns
+                SYSTEM_THREAD_CONTEXT_ASYNC_CALL(applicationSetupDone());
 #if !(defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE)
                 _post_loop();
 #endif
-                    if (semi_automatic_connecting(threaded)) {
-                        break;
-            }
+                if (semi_automatic_connecting(threaded)) {
+                    break;
                 }
+            }
 
             //Execute user application loop
             DECLARE_SYS_HEALTH(ENTERED_Loop);
