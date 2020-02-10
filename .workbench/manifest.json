@@ -6,7 +6,7 @@
             "compilers": "gcc-arm@5.3.1",
             "debuggers": "openocd@0.11.2-adhoc6ea4372.0",
             "platforms": [6, 8, 10, 12, 13, 14, 23, 25],
-            "scripts": "buildscripts@1.8.0",
+            "scripts": "buildscripts@1.9.2",
             "tools": "buildtools@1.1.1"
         }
     ],
@@ -133,10 +133,10 @@
             "x64": [
                 {
                     "name": "buildscripts",
-                    "version": "1.8.0",
+                    "version": "1.9.2",
                     "main": ".",
-                    "url": "https://binaries.particle.io/buildscripts/windows/x64/buildscripts-v1.8.0.tar.gz",
-                    "sha256": "78e73a1d1eaf0fcc38575d2f4476f097ec4f6ca930c3b517e43686aed865a4b4"
+                    "url": "https://binaries.particle.io/buildscripts/windows/x64/buildscripts-v1.9.2.tar.gz",
+                    "sha256": "dab1cd9cac10ab8bf5c572c3c0e4777714e97522b190af5f99c180740fb9a038"
                 }
             ],
             "x86": []
@@ -145,10 +145,10 @@
             "x64": [
                 {
                     "name": "buildscripts",
-                    "version": "1.8.0",
+                    "version": "1.9.2",
                     "main": ".",
-                    "url": "https://binaries.particle.io/buildscripts/darwin/x64/buildscripts-v1.8.0.tar.gz",
-                    "sha256": "78e73a1d1eaf0fcc38575d2f4476f097ec4f6ca930c3b517e43686aed865a4b4"
+                    "url": "https://binaries.particle.io/buildscripts/darwin/x64/buildscripts-v1.9.2.tar.gz",
+                    "sha256": "dab1cd9cac10ab8bf5c572c3c0e4777714e97522b190af5f99c180740fb9a038"
                 }
             ],
             "x86": []
@@ -157,10 +157,10 @@
             "x64": [
                 {
                     "name": "buildscripts",
-                    "version": "1.8.0",
+                    "version": "1.9.2",
                     "main": ".",
-                    "url": "https://binaries.particle.io/buildscripts/linux/x64/buildscripts-v1.8.0.tar.gz",
-                    "sha256": "78e73a1d1eaf0fcc38575d2f4476f097ec4f6ca930c3b517e43686aed865a4b4"
+                    "url": "https://binaries.particle.io/buildscripts/linux/x64/buildscripts-v1.9.2.tar.gz",
+                    "sha256": "dab1cd9cac10ab8bf5c572c3c0e4777714e97522b190af5f99c180740fb9a038"
                 }
             ],
             "x86": []
