@@ -3,6 +3,7 @@
 #if HAL_PLATFORM_CLOUD_UDP
 
 #include "eckeygen.h"
+#include "mbedtls_util.h"
 
 namespace particle { namespace protocol {
 
@@ -28,6 +29,9 @@ void DTLSProtocol::init(const char *id,
 	if (offsetof(SparkCallbacks, notify_client_messages_processed) + sizeof(SparkCallbacks::notify_client_messages_processed) <= callbacks.size) {
 		channelCallbacks.notify_client_messages_processed = callbacks.notify_client_messages_processed;
 	}
+
+	// TODO: Ideally, the next token value should be stored in the session data
+	mbedtls_default_rng(nullptr, &next_token, sizeof(next_token));
 
 	channel.set_millis(callbacks.millis);
 

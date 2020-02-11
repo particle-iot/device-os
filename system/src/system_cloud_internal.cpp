@@ -448,7 +448,6 @@ void SystemEvents(const char* name, const char* data)
 using particle::protocol::SessionPersistOpaque;
 using particle::protocol::SessionPersistData;
 using particle::protocol::AppStateDescriptor;
-using particle::protocol::DescriptionType;
 
 int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 {
@@ -1209,7 +1208,7 @@ namespace particle {
 
 int sendApplicationDescription() {
     LOG(INFO, "Send application DESCRIBE");
-    int r = spark_protocol_post_description(sp, DescriptionType::DESCRIBE_APPLICATION, nullptr);
+    int r = spark_protocol_post_description(sp, protocol::DescriptionType::DESCRIBE_APPLICATION, nullptr);
     if (r != 0) {
         return spark_protocol_to_system_error(r);
     }

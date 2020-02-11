@@ -25,7 +25,6 @@ LOG_SOURCE_CATEGORY("comm.protocol")
 #include "chunked_transfer.h"
 #include "subscriptions.h"
 #include "functions.h"
-#include "mbedtls_util.h"
 
 namespace particle { namespace protocol {
 
@@ -288,9 +287,6 @@ void Protocol::init(const SparkCallbacks &callbacks,
 			callbacks.size);
 	copy_and_init(&this->descriptor, sizeof(this->descriptor), &descriptor,
 			descriptor.size);
-
-	// TODO: Ideally, the next token value should be stored in the session data
-	mbedtls_default_rng(nullptr, &next_token, sizeof(next_token));
 
 	chunkedTransferCallbacks.init(&this->callbacks);
 	chunkedTransfer.init(&chunkedTransferCallbacks);

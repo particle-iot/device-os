@@ -31,6 +31,7 @@
 #include "protocol.h"
 #include "lightssl_message_channel.h"
 #include "coap_channel.h"
+#include "mbedtls_util.h"
 
 namespace particle {
 namespace protocol {
@@ -55,7 +56,7 @@ public:
 	          const SparkDescriptor &descriptor) override
 	{
 		set_protocol_flags(REQUIRE_HELLO_RESPONSE);
-
+		mbedtls_default_rng(nullptr, &next_token, sizeof(next_token));
 		LightSSLMessageChannel::Callbacks channelCallbacks;
 		channelCallbacks.millis = callbacks.millis;
 		channelCallbacks.handle_seed = handle_seed;

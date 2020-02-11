@@ -120,12 +120,6 @@ class Protocol
 	 */
 	system_tick_t last_ack_handlers_update;
 
-	/**
-	 * The token ID for the next request made.
-	 * If we have a bone-fide CoAP layer this will eventually disappear into that layer, just like message-id has.
-	 */
-	token_t next_token;
-
 	uint8_t initialized;
 
 	uint32_t protocol_flags;
@@ -164,6 +158,11 @@ protected:
 	 */
 	CompletionHandlerMap<message_id_t> ack_handlers;
 
+	/**
+	 * The token ID for the next request made.
+	 * If we have a bone-fide CoAP layer this will eventually disappear into that layer, just like message-id has.
+	 */
+	token_t next_token;
 
 	void set_protocol_flags(uint32_t flags)
 	{
