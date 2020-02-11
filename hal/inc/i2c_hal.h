@@ -76,7 +76,7 @@ typedef struct  __attribute__((__packed__)) {
 extern "C" {
 #endif
 
-void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved);
+int HAL_I2C_Init(HAL_I2C_Interface i2c, HAL_I2C_Config* i2c_config);
 void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved);
 void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable, void* reserved);
 void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved);

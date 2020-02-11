@@ -34,6 +34,7 @@
 #include "pinmap_impl.h"
 #include "platforms.h"
 #include "service_debug.h"
+#include "system_error.h"
 #include "system_tick_hal.h"
 #include "interrupts_hal.h"
 #include "delay_hal.h"
@@ -187,7 +188,7 @@ static void HAL_I2C_SoftwareReset(HAL_I2C_Interface i2c)
     i2cMap[i2c]->prevEnding = I2C_ENDING_UNKNOWN;
 }
 
-void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
+int HAL_I2C_Init(HAL_I2C_Interface i2c, HAL_I2C_Config* i2c_config)
 {
     if(i2c == HAL_I2C_INTERFACE1)
     {
@@ -217,7 +218,6 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
 #endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 
     // Initialize internal data structure
-    HAL_I2C_Config *i2c_config = (HAL_I2C_Config *)reserved;
     if ((i2c_config == NULL) ||
         (i2c_config && (i2c_config->rx_buffer == NULL   ||
                         i2c_config->rx_buffer_size == 0 ||
@@ -225,8 +225,8 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
                         i2c_config->tx_buffer_size == 0)))
     {
         // Ensure multiple initializations do not result in multiple allocations
-		static uint8_t *p_rx_buffer[TOTAL_I2C] = {NULL, NULL};
-		static uint8_t *p_tx_buffer[TOTAL_I2C] = {NULL, NULL};
+		static uint8_t *p_rx_buffer[TOTAL_I2C] = {NULL};
+		static uint8_t *p_tx_buffer[TOTAL_I2C] = {NULL};
 
         // Allocate default buffer
 		if (p_rx_buffer[i2c] == NULL) {
@@ -235,6 +235,7 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
 		if (p_tx_buffer[i2c] == NULL) {
 			p_tx_buffer[i2c] = (uint8_t *)malloc(I2C_BUFFER_LENGTH);
 		}
+        if (!p_rx_buffer[i2c] || !p_tx_buffer[i2c]) { return SYSTEM_ERROR_NO_MEMORY; }
 
         i2cMap[i2c]->rxBuffer = p_rx_buffer[i2c];
         i2cMap[i2c]->rxBufferSize = I2C_BUFFER_LENGTH;
@@ -268,6 +269,7 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
     memset((void *)i2cMap[i2c]->txBuffer, 0, i2cMap[i2c]->txBufferSize);
 
     HAL_I2C_Release(i2c, NULL);
+    return SYSTEM_ERROR_NONE;
 }
 
 void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved)

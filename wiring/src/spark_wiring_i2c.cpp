@@ -30,25 +30,64 @@
 
 // Open Functions //////////////////////////////////////////////////////////////
 
-HAL_I2C_Config __attribute__((weak)) acquireI2cBuffer()
+HAL_I2C_Config __attribute__((weak)) acquireWireBuffer()
 {
+  static uint8_t* rx_buffer = new uint8_t[I2C_BUFFER_LENGTH];
+  static uint8_t* tx_buffer = new uint8_t[I2C_BUFFER_LENGTH];
+
   HAL_I2C_Config i2c_config;
   i2c_config.version = HAL_I2C_CONFIG_VERSION_1;
   i2c_config.size = sizeof(HAL_I2C_Config);
-  i2c_config.rx_buffer = new uint8_t[I2C_BUFFER_LENGTH];
+  i2c_config.rx_buffer = rx_buffer;
   i2c_config.rx_buffer_size = I2C_BUFFER_LENGTH;
-  i2c_config.tx_buffer = new uint8_t[I2C_BUFFER_LENGTH];
+  i2c_config.tx_buffer = tx_buffer;
   i2c_config.tx_buffer_size = I2C_BUFFER_LENGTH;
 
   return i2c_config;
 }
+
+#if Wiring_Wire1
+HAL_I2C_Config __attribute__((weak)) acquireWire1Buffer()
+{
+  static uint8_t* rx_buffer = new uint8_t[I2C_BUFFER_LENGTH];
+  static uint8_t* tx_buffer = new uint8_t[I2C_BUFFER_LENGTH];
+
+  HAL_I2C_Config i2c_config;
+  i2c_config.version = HAL_I2C_CONFIG_VERSION_1;
+  i2c_config.size = sizeof(HAL_I2C_Config);
+  i2c_config.rx_buffer = rx_buffer;
+  i2c_config.rx_buffer_size = I2C_BUFFER_LENGTH;
+  i2c_config.tx_buffer = tx_buffer;
+  i2c_config.tx_buffer_size = I2C_BUFFER_LENGTH;
+
+  return i2c_config;
+}
+#endif
+
+#if Wiring_Wire3
+HAL_I2C_Config __attribute__((weak)) acquireWire3Buffer()
+{
+  static uint8_t* rx_buffer = new uint8_t[I2C_BUFFER_LENGTH];
+  static uint8_t* tx_buffer = new uint8_t[I2C_BUFFER_LENGTH];
+
+  HAL_I2C_Config i2c_config;
+  i2c_config.version = HAL_I2C_CONFIG_VERSION_1;
+  i2c_config.size = sizeof(HAL_I2C_Config);
+  i2c_config.rx_buffer = rx_buffer;
+  i2c_config.rx_buffer_size = I2C_BUFFER_LENGTH;
+  i2c_config.tx_buffer = tx_buffer;
+  i2c_config.tx_buffer_size = I2C_BUFFER_LENGTH;
+
+  return i2c_config;
+}
+#endif
 
 // Constructors ////////////////////////////////////////////////////////////////
 
 TwoWire::TwoWire(HAL_I2C_Interface i2c)
 {
   _i2c = i2c;
-  HAL_I2C_Config i2c_config = acquireI2cBuffer();
+  HAL_I2C_Config i2c_config = acquireWireBuffer();
   HAL_I2C_Init(_i2c, &i2c_config);
 }
 

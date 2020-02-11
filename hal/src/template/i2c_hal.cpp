@@ -26,9 +26,11 @@
 /* Includes ------------------------------------------------------------------*/
 #include "i2c_hal.h"
 #include "gpio_hal.h"
+#include "system_error.h"
 
-void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved)
+int HAL_I2C_Init(HAL_I2C_Interface i2c, HAL_I2C_Config* i2c_config)
 {
+  return SYSTEM_ERROR_NONE;
 }
 
 void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved)
@@ -49,7 +51,7 @@ void HAL_I2C_End(HAL_I2C_Interface i2c,void* reserved)
 
 uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop,void* reserved)
 {
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address,void* reserved)
@@ -58,27 +60,27 @@ void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address,void* res
 
 uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop,void* reserved)
 {
-  return 0;
+  return SYSTEM_ERROR_NONE;
 }
 
 uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data,void* reserved)
 {
-  return 0;
+  return SYSTEM_ERROR_NONE;
 }
 
 int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c,void* reserved)
 {
-  return 0;
+  return SYSTEM_ERROR_NONE;
 }
 
 int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c,void* reserved)
 {
-  return 0;
+  return SYSTEM_ERROR_NONE;
 }
 
 int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c,void* reserved)
 {
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c,void* reserved)
@@ -129,15 +131,15 @@ void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable,void* reserved)
 
 uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
 {
-  return 0;
+  return SYSTEM_ERROR_NONE;
 }
 
 int32_t HAL_I2C_Acquire(HAL_I2C_Interface i2c, void* reserved)
 {
-    return -1;
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 int32_t HAL_I2C_Release(HAL_I2C_Interface i2c, void* reserved)
 {
-    return -1;
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }

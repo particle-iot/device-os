@@ -27,6 +27,7 @@
 #include "interrupts_hal.h"
 #include "pinmap_impl.h"
 #include "logging.h"
+#include "system_error.h"
 #include "system_tick_hal.h"
 #include "timer_hal.h"
 
@@ -237,7 +238,7 @@ static int twi_init(HAL_I2C_Interface i2c) {
     return 0;
 }
 
-void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved) {
+int HAL_I2C_Init(HAL_I2C_Interface i2c, HAL_I2C_Config* i2c_config) {
     // Disable threading to create the I2C mutex
     os_thread_scheduling(false, NULL);
     if (m_i2c_map[i2c].mutex == NULL) {
@@ -245,7 +246,7 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved) {
     } else {
         // Already initialized
         os_thread_scheduling(true, NULL);
-        return;
+        return SYSTEM_ERROR_NONE;
     }
 
     // Capture the mutex and re-enable threading
@@ -253,7 +254,6 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved) {
     os_thread_scheduling(true, NULL);
 
     // Initialize internal data structure
-    HAL_I2C_Config *i2c_config = reinterpret_cast<HAL_I2C_Config *>(reserved);
     if ((i2c_config == NULL) ||
         (i2c_config && (i2c_config->rx_buffer == NULL   ||
                         i2c_config->rx_buffer_size == 0 ||
@@ -261,8 +261,8 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved) {
                         i2c_config->tx_buffer_size == 0)))
     {
         // Ensure multiple initializations do not result in multiple allocations
-		static uint8_t *p_rx_buffer[TOTAL_I2C] = {NULL, NULL};
-		static uint8_t *p_tx_buffer[TOTAL_I2C] = {NULL, NULL};
+		static uint8_t *p_rx_buffer[TOTAL_I2C] = {NULL};
+		static uint8_t *p_tx_buffer[TOTAL_I2C] = {NULL};
 
         // Allocate default buffer
 		if (p_rx_buffer[i2c] == NULL) {
@@ -271,6 +271,7 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved) {
 		if (p_tx_buffer[i2c] == NULL) {
 			p_tx_buffer[i2c] = new uint8_t[I2C_BUFFER_LENGTH];
 		}
+        if (!p_rx_buffer[i2c] || !p_tx_buffer[i2c]) { return SYSTEM_ERROR_NO_MEMORY; }
 
         m_i2c_map[i2c].rx_buf = p_rx_buffer[i2c];
         m_i2c_map[i2c].rx_buf_size = I2C_BUFFER_LENGTH;
@@ -296,6 +297,7 @@ void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved) {
     memset((void *)m_i2c_map[i2c].tx_buf, 0, m_i2c_map[i2c].tx_buf_size);
 
     HAL_I2C_Release(i2c, NULL);
+    return SYSTEM_ERROR_NONE;
 }
 
 void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved) {
