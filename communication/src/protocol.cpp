@@ -657,9 +657,7 @@ ProtocolError Protocol::post_description(int desc_flags, bool force)
 	if (error != ProtocolError::NO_ERROR) {
 		return error;
 	}
-	const token_t token = get_next_token();
-	const size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), 0 /* message_id */,
-			token, desc_flags);
+	const size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), 0 /* message_id */, desc_flags);
 	return generate_and_send_description(channel, message, header_size, desc_flags);
 }
 
@@ -683,6 +681,24 @@ ProtocolError Protocol::send_description_response(token_t token, message_id_t ms
 	const auto buf = msg.buf();
 	const size_t size = Messages::description_response(buf, 0 /* message_id */, token);
 	return generate_and_send_description(channel, msg, size, desc_flags);
+}
+
+ProtocolError Protocol::send_subscriptions(bool force)
+{
+	if (!force) {
+		const auto currentState = app_state_descriptor();
+		const auto cachedState = channel.cached_app_state_descriptor();
+		if (currentState.equalsTo(cachedState, AppStateDescriptor::SUBSCRIPTIONS_CRC)) {
+			LOG(INFO, "Not sending subscriptions");
+			return ProtocolError::NO_ERROR;
+		}
+	}
+	const ProtocolError error = subscriptions.send_subscriptions(channel);
+	if (error != ProtocolError::NO_ERROR) {
+		return error;
+	}
+	subscriptions_msg_id = subscriptions.last_request_message_id();
+	return ProtocolError::NO_ERROR;
 }
 
 int Protocol::ChunkedTransferCallbacks::prepare_for_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void* reserved)

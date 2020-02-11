@@ -36,21 +36,26 @@ public:
 
 private:
 	FilteringEventHandler event_handlers[MAX_SUBSCRIPTIONS];
+	message_handle_t last_req_msg_id;
 
 protected:
 
 	ProtocolError send_subscription(MessageChannel& channel, const char* filter, const char* device_id, SubscriptionScope::Enum scope)
 	{
-	    size_t msglen;
-	    Message message;
-	    channel.create(message);
-        if (device_id)
-       	  msglen = subscription(message.buf(), 0, filter, device_id);
-        else
-          msglen = subscription(message.buf(), 0, filter, scope);
-        message.set_length(msglen);
-        ProtocolError result = channel.send(message);
-        return result;
+		size_t msglen;
+		Message message;
+		channel.create(message);
+		if (device_id) {
+			msglen = subscription(message.buf(), 0, filter, device_id);
+		} else {
+			msglen = subscription(message.buf(), 0, filter, scope);
+		}
+		message.set_length(msglen);
+		ProtocolError result = channel.send(message);
+		if (result == ProtocolError::NO_ERROR) {
+			last_req_msg_id = message.get_id();
+		}
+		return result;
 	}
 
 	inline ProtocolError send_subscription(MessageChannel& channel, const FilteringEventHandler& handler)
@@ -60,7 +65,8 @@ protected:
 
 public:
 
-	Subscriptions()
+	Subscriptions() :
+			last_req_msg_id(INVALID_MESSAGE_HANDLE)
 	{
 		memset(&event_handlers, 0, sizeof(event_handlers));
 	}
@@ -329,6 +335,11 @@ public:
 	inline ProtocolError send_subscription(MessageChannel& channel, const char* filter, SubscriptionScope::Enum scope)
 	{
 		return send_subscription(channel, filter, nullptr, scope);
+	}
+
+	message_handle_t last_request_message_id() const
+	{
+		return last_req_msg_id;
 	}
 
 };

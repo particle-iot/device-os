@@ -473,13 +473,7 @@ public:
 				handler_data, scope, device_id);
 	}
 
-	inline bool send_subscriptions()
-	{
-		bool success = !subscriptions.send_subscriptions(channel);
-		if (success)
-			update_subscription_crc();
-		return success;
-	}
+	ProtocolError send_subscriptions(bool force);
 
 	inline bool remove_event_handlers(const char* name)
 	{

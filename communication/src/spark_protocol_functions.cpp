@@ -164,7 +164,7 @@ bool spark_protocol_send_time_request(ProtocolFacade* protocol, void* reserved) 
 void spark_protocol_send_subscriptions(ProtocolFacade* protocol, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
     (void)reserved;
-    protocol->send_subscriptions();
+    protocol->send_subscriptions(false /* force */);
 }
 
 void spark_protocol_remove_event_handlers(ProtocolFacade* protocol, const char* event_name, void* reserved) {
