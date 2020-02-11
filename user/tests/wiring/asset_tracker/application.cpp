@@ -4,6 +4,7 @@
 #include "mcp25625.h"
 #include "bmi160.h"
 
+#define TEST_CELLULAR                   1
 #define TEST_GPS                        0
 #define TEST_IO_EXP_INT                 0
 #define TEST_RTC                        0
@@ -49,6 +50,14 @@ SYSTEM_MODE(MANUAL);
 SerialLogHandler log(LOG_LEVEL_ALL);
 
 
+#if TEST_CELLULAR
+static int lines;
+static int handler(int type, const char* buf, int len, int* lines) {
+    Log.info("type: %d, data: %s", type, buf);
+    return 0;
+}
+#endif // TEST_CELLULAR
+
 #if TEST_GPS
 static int deselectAllCsPins() {
     CHECK(canCsPin.mode(IoExpanderPinMode::OUTPUT));
@@ -73,12 +82,6 @@ static int gpsCsSelect(bool select) {
     } else {
         return gpsCsPin.write(IoExpanderPinValue::HIGH);
     }
-}
-
-static int lines;
-static int handler(int type, const char* buf, int len, int* lines) {
-    Log.info("type: %d, data: %s", type, buf);
-    return 0;
 }
 #endif // TEST_GPS
 
@@ -173,7 +176,9 @@ void setup() {
     SPI1.setDataMode(SPI_MODE0);
     SPI1.setClockSpeed(5 * 1000 * 1000);
     SPI1.begin();
+#endif // TEST_GPS
 
+#if TEST_CELLULAR
     // Test EG91-NA GPS
     Cellular.on();
     // Must add delay here
@@ -182,7 +187,7 @@ void setup() {
     // Must add delay here
     delay(5000);
     Cellular.command(handler, &lines, 5000, "AT+QGPSCFG=\"outport\",\"uartdebug\"");
-#endif // TEST_GPS
+#endif // TEST_CELLULAR
 
 #if TEST_CAN_TRANSCEIVER
     canPwrEnPin.mode(IoExpanderPinMode::OUTPUT);
@@ -240,7 +245,7 @@ void loop() {
         do {
             in_byte = SPI1.transfer(0xFF);
             if (in_byte != 0xFF) {
-                Log.write(in_byte);
+                Log.printf("%c", in_byte);
             }
         } while (in_byte != 0xFF);
 
