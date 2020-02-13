@@ -261,10 +261,10 @@ BleUuid::BleUuid()
     memcpy(uuid128_, BASE_UUID, BLE_SIG_UUID_128BIT_LEN);
 }
 
-BleUuid::BleUuid(const hal_ble_uuid_t& uuid)
-        : BleUuid() {
+BleUuid::BleUuid(const hal_ble_uuid_t& uuid) {
     if (uuid.type == BLE_UUID_TYPE_16BIT || uuid.type == BLE_UUID_TYPE_128BIT_SHORTED) {
         type_ = BleUuidType::SHORT;
+        memcpy(uuid128_, BASE_UUID, BLE_SIG_UUID_128BIT_LEN);
         uuid128_[UUID16_LO] = (uint8_t)uuid.uuid16;
         uuid128_[UUID16_HI] = (uint8_t)(uuid.uuid16 >> 8);
     } else {
@@ -278,8 +278,7 @@ BleUuid::BleUuid(const BleUuid& uuid)
     memcpy(uuid128_, uuid.uuid128_, BLE_SIG_UUID_128BIT_LEN);
 }
 
-BleUuid::BleUuid(const uint8_t* uuid128, BleUuidOrder order)
-        : BleUuid() {
+BleUuid::BleUuid(const uint8_t* uuid128, BleUuidOrder order) {
     if (uuid128) {
         if (order == BleUuidOrder::LSB) {
             memcpy(uuid128_, uuid128, BLE_SIG_UUID_128BIT_LEN);
@@ -289,6 +288,8 @@ BleUuid::BleUuid(const uint8_t* uuid128, BleUuidOrder order)
             }
         }
         type_ = BleUuidType::LONG;
+    } else {
+        memset(uuid128_, 0x00, BLE_SIG_UUID_128BIT_LEN);
     }
 }
 
@@ -343,22 +344,12 @@ uint16_t BleUuid::shorted() const {
 }
 
 size_t BleUuid::rawBytes(uint8_t uuid128[BLE_SIG_UUID_128BIT_LEN]) const {
-    if (type() == BleUuidType::SHORT) {
-        uuid128[0] = uuid128_[UUID16_LO];
-        uuid128[1] = uuid128_[UUID16_HI];
-        return BLE_SIG_UUID_16BIT_LEN;
-    } else {
-        memcpy(uuid128, uuid128_, BLE_SIG_UUID_128BIT_LEN);
-        return BLE_SIG_UUID_128BIT_LEN;
-    }
+    memcpy(uuid128, uuid128_, BLE_SIG_UUID_128BIT_LEN);
+    return BLE_SIG_UUID_128BIT_LEN;
 }
 
 const uint8_t* BleUuid::rawBytes() const {
-    if (type() == BleUuidType::SHORT) {
-        return &uuid128_[UUID16_LO];
-    } else {
-        return uuid128_;
-    }
+    return uuid128_;
 }
 
 String BleUuid::toString(bool stripped) const {
@@ -499,6 +490,10 @@ void BleUuid::toBigEndian(uint8_t buf[BLE_SIG_UUID_128BIT_LEN]) const {
         buf[i] = uuid128_[j];
     }
 }
+
+constexpr uint8_t BleUuid::BASE_UUID[BLE_SIG_UUID_128BIT_LEN];
+constexpr uint8_t BleUuid::UUID16_LO;
+constexpr uint8_t BleUuid::UUID16_HI;
 
 
 /*******************************************************

@@ -253,9 +253,9 @@ private:
     void construct(const char* uuid);
     void toBigEndian(uint8_t buf[BLE_SIG_UUID_128BIT_LEN]) const;
 
-    const uint8_t BASE_UUID[BLE_SIG_UUID_128BIT_LEN] = {0xFB,0x34,0x9B,0x5F,0x80,0x00, 0x00,0x80, 0x00,0x10, 0x00,0x00, 0x00,0x00,0x00,0x00};
-    const uint8_t UUID16_LO = 12;
-    const uint8_t UUID16_HI = 13;
+    static constexpr uint8_t BASE_UUID[BLE_SIG_UUID_128BIT_LEN] = {0xFB,0x34,0x9B,0x5F,0x80,0x00, 0x00,0x80, 0x00,0x10, 0x00,0x00, 0x00,0x00,0x00,0x00};
+    static constexpr uint8_t UUID16_LO = 12;
+    static constexpr uint8_t UUID16_HI = 13;
 
     uint8_t uuid128_[BLE_SIG_UUID_128BIT_LEN];
     BleUuidType type_;
