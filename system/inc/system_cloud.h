@@ -66,7 +66,7 @@ struct CloudVariableType<bool> {
 };
 
 template<typename T>
-struct CloudVariableType<T, typename std::enable_if<std::is_integral<T>::value && sizeof(T) <= sizeof(int)>::type> {
+struct CloudVariableType<T, std::enable_if_t<std::is_integral<T>::value && sizeof(T) <= sizeof(int)>> {
     using ValueType = int;
     using PointerType = const int*;
 
@@ -74,7 +74,7 @@ struct CloudVariableType<T, typename std::enable_if<std::is_integral<T>::value &
 };
 
 template<typename T>
-struct CloudVariableType<T, typename std::enable_if<std::is_floating_point<T>::value && sizeof(T) <= sizeof(double)>::type> {
+struct CloudVariableType<T, std::enable_if_t<std::is_floating_point<T>::value && sizeof(T) <= sizeof(double)>> {
     using ValueType = double;
     using PointerType = const double*;
 
@@ -85,6 +85,14 @@ template<>
 struct CloudVariableType<const char*> {
     using ValueType = const char*;
     using PointerType = const char*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_STRING;
+};
+
+template<>
+struct CloudVariableType<char*> {
+    using ValueType = const char*;
+    using PointerType = char*;
 
     static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_STRING;
 };

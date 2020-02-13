@@ -82,7 +82,7 @@ public:
     }
 
     // Prevent unsupported functions from being registered as boolean variables
-    template<typename T, typename std::enable_if<std::is_same<T, bool>::value>::type* = nullptr>
+    template<typename T, std::enable_if_t<std::is_same<T, bool>::value, std::nullptr_t> = nullptr>
     static inline bool _variable(const char* varKey, const T& var)
     {
         return _variable(varKey, &var, BOOLEAN);
@@ -441,7 +441,7 @@ private:
     }
 
     // Registers a function as a variable
-    template<typename T, typename std::enable_if<std::is_function<T>::value>::type* = nullptr>
+    template<typename T, std::enable_if_t<std::is_function<T>::value, std::nullptr_t> = nullptr>
     static bool register_variable_fn(const char* varKey, const T& fn) {
         using VariableType = CloudVariableType<typename std::result_of<T&()>::type>;
         spark_variable_t extra = {};

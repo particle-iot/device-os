@@ -30,11 +30,6 @@ T varFn() {
     return T();
 }
 
-template<typename T>
-std::function<T()> makeVarStdFn() {
-    return std::function<T()>(varFn<T>);
-}
-
 } // namespace
 
 test(api_spark_variable) {
@@ -92,18 +87,20 @@ test(api_spark_variable) {
     API_COMPILE(Particle.variable("fn", varFn<float>));
     API_COMPILE(Particle.variable("fn", varFn<double>));
     API_COMPILE(Particle.variable("fn", varFn<const char*>));
+    API_COMPILE(Particle.variable("fn", varFn<char*>));
     API_COMPILE(Particle.variable("fn", varFn<String>));
 
-    API_COMPILE(Particle.variable("fn", makeVarStdFn<int8_t>()));
-    API_COMPILE(Particle.variable("fn", makeVarStdFn<uint8_t>()));
-    API_COMPILE(Particle.variable("fn", makeVarStdFn<int16_t>()));
-    API_COMPILE(Particle.variable("fn", makeVarStdFn<uint16_t>()));
-    API_COMPILE(Particle.variable("fn", makeVarStdFn<int32_t>()));
-    API_COMPILE(Particle.variable("fn", makeVarStdFn<uint32_t>()));
-    API_COMPILE(Particle.variable("fn", makeVarStdFn<float>()));
-    API_COMPILE(Particle.variable("fn", makeVarStdFn<double>()));
-    API_COMPILE(Particle.variable("fn", makeVarStdFn<const char*>()));
-    API_COMPILE(Particle.variable("fn", makeVarStdFn<String>()));
+    API_COMPILE(Particle.variable("fn", std::function<int8_t()>()));
+    API_COMPILE(Particle.variable("fn", std::function<uint8_t()>()));
+    API_COMPILE(Particle.variable("fn", std::function<int16_t()>()));
+    API_COMPILE(Particle.variable("fn", std::function<uint16_t()>()));
+    API_COMPILE(Particle.variable("fn", std::function<int32_t()>()));
+    API_COMPILE(Particle.variable("fn", std::function<uint32_t()>()));
+    API_COMPILE(Particle.variable("fn", std::function<float()>()));
+    API_COMPILE(Particle.variable("fn", std::function<double()>()));
+    API_COMPILE(Particle.variable("fn", std::function<const char*()>()));
+    API_COMPILE(Particle.variable("fn", std::function<char*()>()));
+    API_COMPILE(Particle.variable("fn", std::function<String()>()));
 
     // Registering an unsupported function causes a compilation error
     // API_COMPILE(Particle.variable("fn", varFn<uint64_t>))

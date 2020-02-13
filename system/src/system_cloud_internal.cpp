@@ -136,7 +136,7 @@ User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey, const void* 
 	item.userVarType = userVarType;
 	if (extra) {
 		item.update = extra->update;
-		if (offsetof(spark_variable_t, copy) + sizeof(spark_variable_t::copy) <= sizeof(spark_variable_t)) {
+		if (offsetof(spark_variable_t, copy) + sizeof(spark_variable_t::copy) <= extra->size) {
 			item.copy = extra->copy;
 		}
 	}
