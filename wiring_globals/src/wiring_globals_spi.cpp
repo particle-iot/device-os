@@ -6,15 +6,30 @@
 
 #ifndef SPARK_WIRING_NO_SPI
 
-SPIClass SPI(HAL_SPI_INTERFACE1);
+namespace particle {
+namespace globals {
+
+SPIClass& instanceSpi() {
+    static SPIClass instance(HAL_SPI_INTERFACE1);
+    return instance;
+}
 
 #if Wiring_SPI1
-SPIClass SPI1(HAL_SPI_INTERFACE2);
-#endif
+SPIClass& instanceSpi1() {
+    static SPIClass instance(HAL_SPI_INTERFACE2);
+    return instance;
+}
+#endif // Wiring_SPI1
 
 #if Wiring_SPI2
-SPIClass SPI2(HAL_SPI_INTERFACE3);
-#endif
+SPIClass& instanceSpi2() {
+    static SPIClass instance(HAL_SPI_INTERFACE3);
+    return instance;
+}
+
+#endif // Wiring_SPI2
+
+} } // particle::globals
 
 #endif //SPARK_WIRING_NO_SPI
 

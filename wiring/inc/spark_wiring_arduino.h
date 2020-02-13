@@ -72,4 +72,8 @@
 #define pgm_read_word_near(x) ((uint16_t)(*(x)))
 #endif
 
+#ifndef SPI_HAS_TRANSACTION
+#define SPI_HAS_TRANSACTION (1)
+#endif // SPI_HAS_TRANSACTION
+
 #endif	/* SPARK_WIRING_ARDUINO_H */
