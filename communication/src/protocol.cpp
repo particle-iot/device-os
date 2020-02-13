@@ -81,29 +81,39 @@ ProtocolError Protocol::handle_received_message(Message& message,
 			code = CoAPCode::INTERNAL_SERVER_ERROR;
 		}
 		notify_message_complete(msg_id, code);
-		// Update application state checksums
-		if (msg_id == app_describe_msg_id) { // Application description
-			app_describe_msg_id = INVALID_MESSAGE_HANDLE;
-			if (type == CoAPType::ACK && descriptor.app_state_selector_info) {
-				channel.command(Channel::SAVE_SESSION);
-				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
-						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-				channel.command(Channel::LOAD_SESSION);
-			}
-		}
-		if (msg_id == system_describe_msg_id) { // System description
-			system_describe_msg_id = INVALID_MESSAGE_HANDLE;
-			if (type == CoAPType::ACK && descriptor.app_state_selector_info) {
-				channel.command(Channel::SAVE_SESSION);
-				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
-						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-				channel.command(Channel::LOAD_SESSION);
-			}
-		}
-		if (msg_id == subscriptions_msg_id) { // System/application subscriptions
-			subscriptions_msg_id = INVALID_MESSAGE_HANDLE;
-			if (type == CoAPType::ACK) {
-				update_subscription_crc();
+		if (descriptor.app_state_selector_info) {
+			// Update application state checksums
+			if (subscription_msg_ids.removeOne(msg_id)) { // Event subscriptions
+				if (subscription_msg_ids.isEmpty() && type == CoAPType::ACK) {
+					LOG(TRACE, "Updating subscriptions checksum");
+					const uint32_t crc = subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc);
+					channel.command(Channel::SAVE_SESSION);
+					descriptor.app_state_selector_info(SparkAppStateSelector::SUBSCRIPTIONS,
+							SparkAppStateUpdate::PERSIST, crc, nullptr);
+					channel.command(Channel::LOAD_SESSION);
+				}
+			} else {
+				// A DESCRIBE message can carry both system and application descriptions
+				if (msg_id == app_describe_msg_id) { // Application description
+					app_describe_msg_id = INVALID_MESSAGE_HANDLE;
+					if (type == CoAPType::ACK) {
+						LOG(TRACE, "Updating application DESCRIBE checksum");
+						channel.command(Channel::SAVE_SESSION);
+						descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
+								SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+						channel.command(Channel::LOAD_SESSION);
+					}
+				}
+				if (msg_id == system_describe_msg_id) { // System description
+					system_describe_msg_id = INVALID_MESSAGE_HANDLE;
+					if (type == CoAPType::ACK) {
+						LOG(TRACE, "Updating system DESCRIBE checksum");
+						channel.command(Channel::SAVE_SESSION);
+						descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
+								SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+						channel.command(Channel::LOAD_SESSION);
+					}
+				}
 			}
 		}
 	}
@@ -294,37 +304,36 @@ void Protocol::init(const SparkCallbacks &callbacks,
 	initialized = true;
 }
 
-void Protocol::update_subscription_crc()
-{
-	if (descriptor.app_state_selector_info)
-	{
-		uint32_t crc = subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc);
-		this->channel.command(Channel::SAVE_SESSION);
-		descriptor.app_state_selector_info(SparkAppStateSelector::SUBSCRIPTIONS, SparkAppStateUpdate::PERSIST, crc, nullptr);
-		this->channel.command(Channel::LOAD_SESSION);
-	}
-}
-
 void Protocol::update_protocol_flags()
 {
 	if (descriptor.app_state_selector_info)
 	{
+		LOG(TRACE, "Updating protocol flags");
 		this->channel.command(Channel::SAVE_SESSION);
 		descriptor.app_state_selector_info(SparkAppStateSelector::PROTOCOL_FLAGS, SparkAppStateUpdate::PERSIST, protocol_flags, nullptr);
 		this->channel.command(Channel::LOAD_SESSION);
 	}
 }
 
-AppStateDescriptor Protocol::app_state_descriptor()
+AppStateDescriptor Protocol::app_state_descriptor(uint32_t stateFlags)
 {
 	if (!descriptor.app_state_selector_info) {
 		return AppStateDescriptor();
 	}
-	return AppStateDescriptor()
-		.systemDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr))
-		.appDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE, 0, nullptr))
-		.subscriptionsCrc(subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc))
-		.protocolFlags(protocol_flags);
+	AppStateDescriptor d;
+	if (stateFlags & AppStateDescriptor::SYSTEM_DESCRIBE_CRC) {
+		d.systemDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr));
+	}
+	if (stateFlags & AppStateDescriptor::APP_DESCRIBE_CRC) {
+		d.appDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE, 0, nullptr));
+	}
+	if (stateFlags & AppStateDescriptor::SUBSCRIPTIONS_CRC) {
+		d.subscriptionsCrc(subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc));
+	}
+	if (stateFlags & AppStateDescriptor::PROTOCOL_FLAGS) {
+		d.protocolFlags(protocol_flags);
+	}
+	return d;
 }
 
 /**
@@ -339,7 +348,7 @@ int Protocol::begin()
 	last_ack_handlers_update = callbacks.millis();
 	app_describe_msg_id = INVALID_MESSAGE_HANDLE;
 	system_describe_msg_id = INVALID_MESSAGE_HANDLE;
-	subscriptions_msg_id = INVALID_MESSAGE_HANDLE;
+	subscription_msg_ids.clear();
 
 	ProtocolError error = channel.establish();
 	const bool session_resumed = (error == SESSION_RESUMED);
@@ -352,22 +361,20 @@ int Protocol::begin()
 	{
 		// for now, unconditionally move the session on resumption
 		channel.command(MessageChannel::MOVE_SESSION, nullptr);
-
-		const auto currentState = app_state_descriptor();
-		const auto cachedState = channel.cached_app_state_descriptor();
 		uint32_t stateFlags = AppStateDescriptor::ALL;
 		if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
-			// The system controls when to send an application describe message
+			// The system controls when to send the application describe message
 			stateFlags = AppStateDescriptor::SYSTEM_DESCRIBE_CRC | AppStateDescriptor::PROTOCOL_FLAGS;
 		}
-		if (cachedState.equalsTo(currentState, stateFlags)) {
+		const auto currentState = app_state_descriptor(stateFlags);
+		const auto cachedState = channel.cached_app_state_descriptor();
+		if (currentState.equalsTo(cachedState, stateFlags)) {
 			LOG(INFO, "Skipping HELLO message");
-			const auto r = ping(true);
-			if (r != NO_ERROR) {
-				error = r;
+			error = ping(true);
+			if (error != ProtocolError::NO_ERROR) {
+				return error;
 			}
-			// Note: Make sure SESSION_RESUMED gets returned to the calling code
-			return error;
+			return ProtocolError::SESSION_RESUMED; // Not an error
 		}
 	}
 
@@ -392,10 +399,13 @@ int Protocol::begin()
 
 	LOG(INFO,"Handshake completed");
 	channel.notify_established();
+
+	// An ACK or a response for the Hello message has already been received at this point, so we can
+	// update the cached protocol flags
 	update_protocol_flags();
 
 	if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
-		// Send a system describe message automatically
+		// Send the system describe message automatically
 		error = post_description(DescriptionType::DESCRIBE_SYSTEM, true /* force */);
 	}
 
@@ -614,16 +624,16 @@ ProtocolError Protocol::generate_and_send_description(MessageChannel& channel, M
         desc_flags & DESCRIBE_APPLICATION ? "A" : "", desc_flags & DESCRIBE_METRICS ? "M" : "");
 
     error = channel.send(message);
-    if (error == ProtocolError::NO_ERROR) {
+    if (error != ProtocolError::NO_ERROR) {
+        LOG(ERROR, "Channel failed to send message; error code: %d", (int)error);
+    } else if (descriptor.app_state_selector_info) {
         const auto msg_id = message.get_id();
         if (desc_flags & DescriptionType::DESCRIBE_APPLICATION) {
-        	app_describe_msg_id = msg_id;
+            app_describe_msg_id = msg_id;
         }
         if (desc_flags & DescriptionType::DESCRIBE_SYSTEM) {
-        	system_describe_msg_id = msg_id;
+            system_describe_msg_id = msg_id;
         }
-    } else {
-        LOG(ERROR, "Channel failed to send message with error-code <%d>", error);
     }
 
     return error;
@@ -631,18 +641,21 @@ ProtocolError Protocol::generate_and_send_description(MessageChannel& channel, M
 
 ProtocolError Protocol::post_description(int desc_flags, bool force)
 {
-	if (!force) {
-		const auto currentState = app_state_descriptor();
+	if (!force && descriptor.app_state_selector_info) {
 		const auto cachedState = channel.cached_app_state_descriptor();
-		if ((desc_flags & DescriptionType::DESCRIBE_SYSTEM) &&
-				currentState.equalsTo(cachedState, AppStateDescriptor::SYSTEM_DESCRIBE_CRC)) {
-			desc_flags &= ~DescriptionType::DESCRIBE_SYSTEM;
-			LOG(INFO, "Not sending system DESCRIBE");
+		if (desc_flags & DescriptionType::DESCRIBE_SYSTEM) {
+			const auto currentState = app_state_descriptor(AppStateDescriptor::SYSTEM_DESCRIBE_CRC);
+			if (currentState.equalsTo(cachedState, AppStateDescriptor::SYSTEM_DESCRIBE_CRC)) {
+				LOG(INFO, "Checksum has not changed; skipping system DESCRIBE");
+				desc_flags &= ~DescriptionType::DESCRIBE_SYSTEM;
+			}
 		}
-		if ((desc_flags & DescriptionType::DESCRIBE_APPLICATION) &&
-				currentState.equalsTo(cachedState, AppStateDescriptor::APP_DESCRIBE_CRC)) {
-			desc_flags &= ~DescriptionType::DESCRIBE_APPLICATION;
-			LOG(INFO, "Not sending application DESCRIBE");
+		if (desc_flags & DescriptionType::DESCRIBE_APPLICATION) {
+			const auto currentState = app_state_descriptor(AppStateDescriptor::APP_DESCRIBE_CRC);
+			if (currentState.equalsTo(cachedState, AppStateDescriptor::APP_DESCRIBE_CRC)) {
+				LOG(INFO, "Checksum has not changed; skipping application DESCRIBE");
+				desc_flags &= ~DescriptionType::DESCRIBE_APPLICATION;
+			}
 		}
 	}
 	if (!desc_flags) {
@@ -679,22 +692,39 @@ ProtocolError Protocol::send_description_response(token_t token, message_id_t ms
 	return generate_and_send_description(channel, msg, size, desc_flags);
 }
 
+ProtocolError Protocol::send_subscription(const char *event_name, const char *device_id)
+{
+	const ProtocolError error = subscriptions.send_subscription(channel, event_name, device_id);
+	if (error == ProtocolError::NO_ERROR && descriptor.app_state_selector_info) {
+		subscription_msg_ids.append(subscriptions.subscription_message_ids());
+	}
+	return error;
+}
+
+ProtocolError Protocol::send_subscription(const char *event_name, SubscriptionScope::Enum scope)
+{
+	const ProtocolError error = subscriptions.send_subscription(channel, event_name, scope);
+	if (error == ProtocolError::NO_ERROR && descriptor.app_state_selector_info) {
+		subscription_msg_ids.append(subscriptions.subscription_message_ids());
+	}
+	return error;
+}
+
 ProtocolError Protocol::send_subscriptions(bool force)
 {
-	if (!force) {
-		const auto currentState = app_state_descriptor();
+	if (!force && descriptor.app_state_selector_info) {
+		const auto currentState = app_state_descriptor(AppStateDescriptor::SUBSCRIPTIONS_CRC);
 		const auto cachedState = channel.cached_app_state_descriptor();
 		if (currentState.equalsTo(cachedState, AppStateDescriptor::SUBSCRIPTIONS_CRC)) {
-			LOG(INFO, "Not sending subscriptions");
+			LOG(INFO, "Checksum has not changed; skipping subscriptions");
 			return ProtocolError::NO_ERROR;
 		}
 	}
 	const ProtocolError error = subscriptions.send_subscriptions(channel);
-	if (error != ProtocolError::NO_ERROR) {
-		return error;
+	if (error == ProtocolError::NO_ERROR && descriptor.app_state_selector_info) {
+		subscription_msg_ids.append(subscriptions.subscription_message_ids());
 	}
-	subscriptions_msg_id = subscriptions.last_request_message_id();
-	return ProtocolError::NO_ERROR;
+	return error;
 }
 
 int Protocol::ChunkedTransferCallbacks::prepare_for_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void* reserved)

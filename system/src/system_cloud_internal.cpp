@@ -997,7 +997,7 @@ void Spark_Protocol_Init(void)
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
         // Enable device-initiated describe messages
-        spark_protocol_set_connection_property(sp, particle::protocol::Connection::DEVICE_INITIATED_DESCRIBE, 1, nullptr, nullptr);
+        spark_protocol_set_connection_property(sp, particle::protocol::Connection::DEVICE_INITIATED_DESCRIBE, 0, nullptr, nullptr);
 
         Particle.subscribe("spark", SystemEvents, MY_DEVICES);
         Particle.subscribe("particle", SystemEvents, MY_DEVICES);
@@ -1045,13 +1045,12 @@ int Spark_Handshake(bool presence_announce)
     int err = spark_protocol_handshake(sp);
     if (err == particle::protocol::SESSION_RESUMED) {
         session_resumed = true;
-        err = 0;
     } else if (err != 0) {
         return err;
     }
     if (!session_resumed) {
         char buf[CLAIM_CODE_SIZE + 1];
-        if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && buf[0] != 0 && (uint8_t)buf[0] != 0xff) {
+        if (!HAL_Get_Claim_Code(buf, sizeof(buf)) && buf[0] != 0 && (uint8_t)buf[0] != 0xff) {
             LOG(INFO,"Send spark/device/claim/code event for code %s", buf);
             publishEvent("spark/device/claim/code", buf);
         }
@@ -1207,12 +1206,12 @@ CloudConnectionSettings* CloudConnectionSettings::instance() {
 namespace particle {
 
 int sendApplicationDescription() {
-    LOG(INFO, "Send application DESCRIBE");
+    LOG(INFO, "Sending application DESCRIBE");
     int r = spark_protocol_post_description(sp, protocol::DescriptionType::DESCRIBE_APPLICATION, nullptr);
     if (r != 0) {
         return spark_protocol_to_system_error(r);
     }
-    LOG(INFO, "Send subscriptions");
+    LOG(INFO, "Sending subscriptions");
     spark_protocol_send_subscriptions(sp);
     return 0;
 }

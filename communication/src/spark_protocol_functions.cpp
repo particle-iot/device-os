@@ -25,6 +25,7 @@
 #include <stdlib.h>
 
 using particle::CompletionHandler;
+using particle::protocol::ProtocolError;
 
 #ifdef USE_MBEDTLS
 #include "mbedtls/rsa.h"
@@ -141,12 +142,14 @@ bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name,
 
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void*) {
     ASSERT_ON_SYSTEM_THREAD();
-    return protocol->send_subscription(event_name, device_id);
+    const auto error = protocol->send_subscription(event_name, device_id);
+    return (error == ProtocolError::NO_ERROR);
 }
 
 bool spark_protocol_send_subscription_scope(ProtocolFacade* protocol, const char *event_name, SubscriptionScope::Enum scope, void*) {
     ASSERT_ON_SYSTEM_THREAD();
-    return protocol->send_subscription(event_name, scope);
+    const auto error = protocol->send_subscription(event_name, scope);
+    return (error == ProtocolError::NO_ERROR);
 }
 
 bool spark_protocol_add_event_handler(ProtocolFacade* protocol, const char *event_name,
@@ -203,7 +206,7 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
         return 0;
     }
     case particle::protocol::Connection::DEVICE_INITIATED_DESCRIBE: {
-        protocol->set_device_initiated_describe(data);
+        protocol->enable_device_initiated_describe();
         return 0;
     }
     default:

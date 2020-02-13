@@ -125,6 +125,7 @@ void spark_unsubscribe(void *reserved)
 {
     SYSTEM_THREAD_CONTEXT_ASYNC(spark_unsubscribe(reserved));
     spark_protocol_remove_event_handlers(sp, NULL);
+    // TODO: Notify the cloud that subscriptions have been cleared
 }
 
 static void spark_sync_time_impl()

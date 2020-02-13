@@ -122,7 +122,7 @@ enum Enum
 {
     PING = 0, ///< Set keepalive interval.
     FAST_OTA = 1, ///< Enable/disable fast OTA.
-    DEVICE_INITIATED_DESCRIBE = 2 ///< Enable/disable device-initiated describe messages.
+    DEVICE_INITIATED_DESCRIBE = 2 ///< Enable device-initiated describe messages.
 };
 
 }
@@ -165,12 +165,12 @@ public:
     /**
      * State flags.
      *
-     * These flags determine what info is available for this application state.
+     * These flags determine which fields are set for this application state.
      */
     enum StateFlag {
         SYSTEM_DESCRIBE_CRC = 0x01, ///< Checksum of the system description.
         APP_DESCRIBE_CRC = 0x02, ///< Checksum of the application description.
-        SUBSCRIPTIONS_CRC = 0x04, ///< Checksum of the system/application subscriptions.
+        SUBSCRIPTIONS_CRC = 0x04, ///< Checksum of the event subscriptions.
         PROTOCOL_FLAGS = 0x08, ///< Protocol flags.
         ALL = SYSTEM_DESCRIBE_CRC | APP_DESCRIBE_CRC | SUBSCRIPTIONS_CRC | PROTOCOL_FLAGS ///< All the defined fields.
     };
@@ -181,7 +181,7 @@ public:
      * @param stateFlags State flags.
      * @param systemDescrCrc Checksum of the system description.
      * @param appDescrCrc Checksum of the application description.
-     * @param subscrCrc Checksum of the system/application subscriptions.
+     * @param subscrCrc Checksum of the event subscriptions.
      * @param protocolFlags Protocol flags.
      */
     explicit AppStateDescriptor(uint32_t stateFlags = 0, uint32_t systemDescrCrc = 0, uint32_t appDescrCrc = 0,
@@ -212,7 +212,7 @@ public:
     }
 
     /**
-     * Set the checksum of the system/application subscriptions.
+     * Set the checksum of the event subscriptions.
      */
     AppStateDescriptor& subscriptionsCrc(uint32_t crc) {
         subscrCrc_ = crc;

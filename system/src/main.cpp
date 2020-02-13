@@ -461,7 +461,8 @@ namespace {
 
 void applicationSetupDone() {
     APPLICATION_SETUP_DONE = true;
-    if (system_mode() == AUTOMATIC && spark_cloud_flag_connected()) {
+    if (system_mode() == AUTOMATIC && (spark_cloud_flag_connected() || SPARK_CLOUD_HANDSHAKE_PENDING ||
+            SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE)) {
         particle::sendApplicationDescription();
     }
 }

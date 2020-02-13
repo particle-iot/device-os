@@ -115,24 +115,24 @@ class Protocol
 	Mesh mesh;
 #endif
 
+	Vector<message_handle_t> subscription_msg_ids;
+	message_handle_t app_describe_msg_id;
+	message_handle_t system_describe_msg_id;
+
 	/**
 	 * Completion handlers for messages with confirmable delivery.
 	 */
 	system_tick_t last_ack_handlers_update;
 
-	uint8_t initialized;
-
 	uint32_t protocol_flags;
 
-	message_handle_t app_describe_msg_id;
-	message_handle_t system_describe_msg_id;
-	message_handle_t subscriptions_msg_id;
+	uint8_t initialized;
 
 protected:
 	/**
 	 * Protocol flags.
 	 */
-	enum ProtocolFlag: uint32_t
+	enum ProtocolFlag
 	{
 		/**
 		 * Set when the protocol expects a hello response from the server.
@@ -302,10 +302,6 @@ protected:
 	void init(const SparkCallbacks &callbacks, const SparkDescriptor &descriptor);
 
 	/**
-	 * Updates the cached crc of subscriptions registered with the cloud.
-	 */
-	void update_subscription_crc();
-	/**
 	 * Updates the cached protocol flags.
 	 */
 	void update_protocol_flags();
@@ -313,7 +309,7 @@ protected:
 	/**
 	 * Returns a descriptor of the current application state.
 	 */
-	AppStateDescriptor app_state_descriptor();
+	AppStateDescriptor app_state_descriptor(uint32_t stateFlags = AppStateDescriptor::ALL);
 
 public:
 	Protocol(MessageChannel& channel) :
@@ -323,8 +319,8 @@ public:
 			variables(this),
 			publisher(this),
 			last_ack_handlers_update(0),
-			initialized(false),
-			protocol_flags(0)
+			protocol_flags(0),
+			initialized(false)
 	{
 	}
 
@@ -348,13 +344,9 @@ public:
 		chunkedTransfer.set_fast_ota(data);
 	}
 
-	void set_device_initiated_describe(bool enabled)
+	void enable_device_initiated_describe()
 	{
-		if (enabled) {
-			protocol_flags |= ProtocolFlag::DEVICE_INITIATED_DESCRIBE;
-		} else {
-			protocol_flags &= ~ProtocolFlag::DEVICE_INITIATED_DESCRIBE;
-		}
+		protocol_flags |= ProtocolFlag::DEVICE_INITIATED_DESCRIBE;
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)
@@ -439,23 +431,6 @@ public:
 		return true;
 	}
 
-	inline bool send_subscription(const char *event_name, const char *device_id)
-	{
-		bool success = !subscriptions.send_subscription(channel, event_name, device_id);
-		if (success)
-			update_subscription_crc();
-		return success;
-	}
-
-	inline bool send_subscription(const char *event_name,
-			SubscriptionScope::Enum scope)
-	{
-		bool success = !subscriptions.send_subscription(channel, event_name, scope);
-		if (success)
-			update_subscription_crc();
-		return success;
-	}
-
 	void build_describe_message(Appender& appender, int desc_flags);
 
 	inline bool add_event_handler(const char *event_name, EventHandler handler)
@@ -472,6 +447,8 @@ public:
 				handler_data, scope, device_id);
 	}
 
+	ProtocolError send_subscription(const char *event_name, const char *device_id);
+	ProtocolError send_subscription(const char *event_name, SubscriptionScope::Enum scope);
 	ProtocolError send_subscriptions(bool force);
 
 	inline bool remove_event_handlers(const char* name)
