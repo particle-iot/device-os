@@ -230,7 +230,7 @@ public:
 
     uint16_t shorted() const;
 
-    void rawBytes(uint8_t uuid128[BLE_SIG_UUID_128BIT_LEN]) const;
+    size_t rawBytes(uint8_t uuid128[BLE_SIG_UUID_128BIT_LEN]) const;
     const uint8_t* rawBytes() const;
 
     String toString(bool stripped = false) const;
@@ -253,7 +253,12 @@ private:
     void construct(const char* uuid);
     void toBigEndian(uint8_t buf[BLE_SIG_UUID_128BIT_LEN]) const;
 
-    hal_ble_uuid_t uuid_;
+    static constexpr uint8_t BASE_UUID[BLE_SIG_UUID_128BIT_LEN] = {0xFB,0x34,0x9B,0x5F,0x80,0x00, 0x00,0x80, 0x00,0x10, 0x00,0x00, 0x00,0x00,0x00,0x00};
+    static constexpr uint8_t UUID16_LO = 12;
+    static constexpr uint8_t UUID16_HI = 13;
+
+    uint8_t uuid128_[BLE_SIG_UUID_128BIT_LEN];
+    BleUuidType type_;
 };
 
 
