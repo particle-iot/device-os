@@ -77,3 +77,27 @@ TEST_CASE("Can format a string using printf like syntax") {
 TEST_CASE("Can convert a string to lowercase") {
     REQUIRE(String("In LOWERCAse").toLowerCase()==String("in lowercase"));
 }
+
+TEST_CASE("Substring allows selecting with left only") {
+    REQUIRE(String("test1234").substring(4)==String("1234"));
+}
+
+TEST_CASE("Substring with left after the end returns empty string") {
+    REQUIRE(String("test123").substring(99)==String());
+}
+
+TEST_CASE("Substring allows selecting with left and right") {
+    REQUIRE(String("test123").substring(3, 5)==String("t1"));
+}
+
+TEST_CASE("Substring with left after the end and right returns empty string") {
+    REQUIRE(String("test123").substring(99, 100)==String(""));
+}
+
+TEST_CASE("Substring with left and right after the end returns until the end of string") {
+    REQUIRE(String("test123").substring(4, 99)==String("123"));
+}
+
+TEST_CASE("Substring with flipped left and right returns the correct substring") {
+    REQUIRE(String("test123").substring(5, 3)==String("t1"));
+}
