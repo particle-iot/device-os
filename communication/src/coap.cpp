@@ -24,6 +24,8 @@
   */
 #include "coap.h"
 
+#include <algorithm>
+
 namespace particle {
 namespace protocol {
 
@@ -68,6 +70,19 @@ CoAPType::Enum CoAP::type(const unsigned char *message) {
     }
 }
 
+size_t CoAP::token(const unsigned char* message, token_t* token) {
+    const size_t size = (message[0] & 0x0f);
+    if (size > 8) {
+        return 0; // Lengths 9-15 are reserved
+    }
+    if (token) {
+        const size_t n = std::min(sizeof(token_t), size);
+        memcpy(token, message + 4, n);
+        memset((char*)token + n, 0, sizeof(token_t) - n);
+    }
+    return size;
+}
+
 size_t CoAP::option_decode(unsigned char **option) {
     unsigned char nibble = **option & 0x0f;
     size_t option_length;
@@ -86,6 +101,22 @@ size_t CoAP::option_decode(unsigned char **option) {
         option_length = 0;
     }
     return option_length;
+}
+
+CoAPCode::Enum CoAP::codeForProtocolError(ProtocolError error) {
+    switch (error) {
+    case ProtocolError::NO_ERROR:
+        return CoAPCode::OK;
+    case ProtocolError::MALFORMED_MESSAGE:
+    case ProtocolError::MISSING_MESSAGE_ID:
+    case ProtocolError::MISSING_REQUEST_TOKEN:
+        return CoAPCode::BAD_REQUEST;
+    case ProtocolError::NOT_FOUND:
+        return CoAPCode::NOT_FOUND;
+    // TODO
+    default:
+        return CoAPCode::INTERNAL_SERVER_ERROR;
+    }
 }
 
 }

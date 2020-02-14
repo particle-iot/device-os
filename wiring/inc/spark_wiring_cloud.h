@@ -37,7 +37,9 @@
 #include "spark_wiring_global.h"
 #include "interrupts_hal.h"
 #include "system_mode.h"
+
 #include <functional>
+#include <type_traits>
 
 #define PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE \
         PARTICLE_DEPRECATED_API("Beginning with 0.8.0 release, Particle.publish() will require event scope to be specified explicitly.");
@@ -69,18 +71,19 @@ struct is_string_literal {
 };
 
 class CloudClass {
-  public:
-    template <typename T, class ... Types>
-    static inline bool variable(const T &name, const Types& ... args)
+public:
+    template <typename T, typename... ArgsT>
+    static inline bool variable(const T &name, ArgsT&&... args)
     {
         static_assert(!is_string_literal<T>::value || sizeof(name) <= USER_VAR_KEY_LENGTH + 1,
             "\n\nIn Particle.variable, name must be " __XSTRING(USER_VAR_KEY_LENGTH) " characters or less\n\n");
 
-        return _variable(name, args...);
+        return _variable(name, std::forward<ArgsT>(args)...);
     }
 
-
-    static inline bool _variable(const char* varKey, const bool& var)
+    // Prevent unsupported functions from being registered as boolean variables
+    template<typename T, std::enable_if_t<std::is_same<T, bool>::value, std::nullptr_t> = nullptr>
+    static inline bool _variable(const char* varKey, const T& var)
     {
         return _variable(varKey, &var, BOOLEAN);
     }
@@ -140,19 +143,19 @@ class CloudClass {
         return _variable(varKey, (const char*)userVar, userVarType);
     }
 
-    template<typename T> static inline bool _variable(const char *varKey, const typename T::varref userVar, const T& userVarType)
+    template<typename T> static inline bool _variable(const char *varKey, typename T::PointerType userVar, const T& userVarType)
     {
-        return spark_variable(varKey, (const void*)userVar, T::value(), NULL);
+        return spark_variable(varKey, (const void*)userVar, T::TYPE_ID, NULL);
     }
 
     static inline bool _variable(const char *varKey, const int32_t* userVar, const CloudVariableTypeInt& userVarType)
     {
-        return spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL);
+        return spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::TYPE_ID, NULL);
     }
 
     static inline bool _variable(const char *varKey, const uint32_t* userVar, const CloudVariableTypeInt& userVarType)
     {
-        return spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL);
+        return spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::TYPE_ID, NULL);
     }
 
     // Return clear errors for common misuses of Particle.variable()
@@ -166,10 +169,10 @@ class CloudClass {
     template<typename T>
     static inline bool _variable(const T *varKey, const String *userVar, const CloudVariableTypeString& userVarType)
     {
-        spark_variable_t extra;
+        spark_variable_t extra = {};
         extra.size = sizeof(extra);
         extra.update = update_string_variable;
-        return spark_variable(varKey, userVar, CloudVariableTypeString::value(), &extra);
+        return spark_variable(varKey, userVar, CloudVariableTypeString::TYPE_ID, &extra);
     }
 
     template<typename T>
@@ -396,6 +399,84 @@ private:
     {
         const String* s = (const String*)var;
         return s->c_str();
+    }
+
+    // This method takes an argument of any callable type that requires no arguments and returns
+    // a value of one of the supported variable types
+    template<typename T, typename CloudVariableType<typename std::result_of<T()>::type>::ValueType* = nullptr>
+    static bool _variable(const char *varKey, T&& fn)
+    {
+        return register_variable_fn(varKey, std::forward<T>(fn));
+    }
+
+    template<typename T>
+    static int copy_variable_value(const T& val, void*& data, size_t& size) {
+        size = sizeof(T);
+        data = malloc(sizeof(T));
+        if (!data) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        memcpy(data, &val, sizeof(T));
+        return 0;
+    }
+
+    static int copy_variable_value(const char* str, void*& data, size_t& size) {
+        size = str ? strlen(str) : 0;
+        data = malloc(size);
+        if (!data) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        memcpy(data, str, size);
+        return 0;
+    }
+
+    static int copy_variable_value(const String& str, void*& data, size_t& size) {
+        size = str.length();
+        data = malloc(size);
+        if (!data) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        memcpy(data, str.c_str(), size);
+        return 0;
+    }
+
+    // Registers a function as a variable
+    template<typename T, std::enable_if_t<std::is_function<T>::value, std::nullptr_t> = nullptr>
+    static bool register_variable_fn(const char* varKey, const T& fn) {
+        using VariableType = CloudVariableType<typename std::result_of<T&()>::type>;
+        spark_variable_t extra = {};
+        extra.size = sizeof(extra);
+        extra.copy = [](const void* var, void** data, size_t* size) {
+            const auto fn = (const T*)var;
+            const typename VariableType::ValueType val = fn();
+            return copy_variable_value(val, *data, *size);
+        };
+        return spark_variable(varKey, (const void*)&fn, VariableType::TYPE_ID, &extra);
+    }
+
+    // Registers a callable object, e.g. an std::function, as a variable
+    template<typename T>
+    static bool register_variable_fn(const char* varKey, T&& fn) {
+        using CallableType = typename std::remove_reference<T>::type;
+        using VariableType = CloudVariableType<typename std::result_of<T()>::type>;
+        // Cloud variables cannot be unregistered so it's fine to allocate a copy of the callable on
+        // the heap and never free it
+        std::unique_ptr<CallableType> p(new(std::nothrow) CallableType(std::forward<T>(fn)));
+        if (!p) {
+            return false;
+        }
+        spark_variable_t extra = {};
+        extra.size = sizeof(extra);
+        extra.copy = [](const void* var, void** data, size_t* size) {
+            const auto p = (CallableType*)var;
+            const typename VariableType::ValueType val = (*p)();
+            return copy_variable_value(val, *data, *size);
+        };
+        const bool ok = spark_variable(varKey, p.get(), VariableType::TYPE_ID, &extra);
+        if (ok) {
+            p.release();
+        }
+        return ok;
     }
 };
 

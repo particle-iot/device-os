@@ -23,6 +23,8 @@
 #include "spark_protocol_functions.h"
 #include "system_tick_hal.h"
 #include "completion_handler.h"
+
+#include <type_traits>
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
@@ -51,32 +53,62 @@ namespace particle {
     static const system_tick_t NOW = static_cast<system_tick_t>(-1);
 }
 
-struct CloudVariableTypeBase {};
-struct CloudVariableTypeBool : public CloudVariableTypeBase {
-    using vartype = bool;
-    using varref = const bool*;
-    CloudVariableTypeBool(){};
-    static inline Spark_Data_TypeDef value() { return CLOUD_VAR_BOOLEAN; }
+template<typename T, typename EnableT = void>
+struct CloudVariableType {
 };
-struct CloudVariableTypeInt : public CloudVariableTypeBase {
-    using vartype = int;
-    using varref = const int*;
-    CloudVariableTypeInt(){};
-    static inline Spark_Data_TypeDef value() { return CLOUD_VAR_INT; }
-};
-struct CloudVariableTypeString : public CloudVariableTypeBase {
-    using vartype = const char*;
-    using varref = const char*;
-    CloudVariableTypeString(){};
-    static inline Spark_Data_TypeDef value() { return CLOUD_VAR_STRING; }
-};
-struct CloudVariableTypeDouble : public CloudVariableTypeBase {
-    using vartype = double;
-    using varref = const double*;
 
-    CloudVariableTypeDouble(){};
-    static inline Spark_Data_TypeDef value() { return CLOUD_VAR_DOUBLE; }
+template<>
+struct CloudVariableType<bool> {
+    using ValueType = bool;
+    using PointerType = const bool*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_BOOLEAN;
 };
+
+template<typename T>
+struct CloudVariableType<T, std::enable_if_t<std::is_integral<T>::value && sizeof(T) <= sizeof(int)>> {
+    using ValueType = int;
+    using PointerType = const int*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_INT;
+};
+
+template<typename T>
+struct CloudVariableType<T, std::enable_if_t<std::is_floating_point<T>::value && sizeof(T) <= sizeof(double)>> {
+    using ValueType = double;
+    using PointerType = const double*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_DOUBLE;
+};
+
+template<>
+struct CloudVariableType<const char*> {
+    using ValueType = const char*;
+    using PointerType = const char*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_STRING;
+};
+
+template<>
+struct CloudVariableType<char*> {
+    using ValueType = const char*;
+    using PointerType = char*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_STRING;
+};
+
+template<>
+struct CloudVariableType<String> {
+    using ValueType = String;
+    using PointerType = const String*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_STRING;
+};
+
+typedef CloudVariableType<bool> CloudVariableTypeBool;
+typedef CloudVariableType<int> CloudVariableTypeInt;
+typedef CloudVariableType<double> CloudVariableTypeDouble;
+typedef CloudVariableType<const char*> CloudVariableTypeString;
 
 const CloudVariableTypeBool BOOLEAN;
 const CloudVariableTypeInt INT;
@@ -161,7 +193,19 @@ PARTICLE_STATIC_ASSERT(cloud_function_descriptor_size, sizeof(cloud_function_des
 typedef struct spark_variable_t
 {
     uint16_t size;
-    const void* (*update)(const char* nane, Spark_Data_TypeDef type, const void* var, void* reserved);
+    const void* (*update)(const char* name, Spark_Data_TypeDef type, const void* var, void* reserved);
+
+    /**
+     * Copy variable data.
+     *
+     * The calling code takes ownership over the copied data.
+     *
+     * @param var Variable object.
+     * @param data[out] Variable data.
+     * @param size[out] Size of the variable data.
+     * @return 0 on success or a negative result code in case of an error.
+     */
+    int (*copy)(const void* var, void** data, size_t* size);
 } spark_variable_t;
 
 /**

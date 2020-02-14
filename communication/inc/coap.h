@@ -24,6 +24,8 @@
   */
 #pragma once
 
+#include "protocol_defs.h"
+
 #include <string.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -186,6 +188,7 @@ public:
 	}
     static CoAPCode::Enum code(const unsigned char *message);
     static CoAPType::Enum type(const unsigned char *message);
+    static size_t token(const unsigned char* message, token_t* token);
     static size_t option_decode(unsigned char **option);
 
     /**
@@ -239,6 +242,8 @@ public:
     	}
     	return result;
     }
+
+    static CoAPCode::Enum codeForProtocolError(ProtocolError error);
 };
 
 // this uses version 0 to maintain compatiblity with the original comms lib codes

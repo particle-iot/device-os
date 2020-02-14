@@ -10,6 +10,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/communication/src/messages.cpp
   ${DEVICE_OS_DIR}/communication/src/protocol.cpp
   ${DEVICE_OS_DIR}/communication/src/publisher.cpp
+  ${DEVICE_OS_DIR}/communication/src/variables.cpp
   coap_reliability.cpp
   coap.cpp
   forward_message_channel.cpp

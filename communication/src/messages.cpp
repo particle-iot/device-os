@@ -172,41 +172,6 @@ size_t Messages::function_return(unsigned char *buf, message_id_t message_id, to
 	return function_return_size;
 }
 
-size_t Messages::variable_value(unsigned char *buf, message_id_t message_id, token_t token, bool return_value)
-{
-	size_t size = content(buf, message_id, token);
-	buf[size++] = return_value ? 1 : 0;
-	return size;
-}
-
-size_t Messages::variable_value(unsigned char *buf, message_id_t message_id,
-		token_t token, int return_value)
-{
-	size_t size = content(buf, message_id, token);
-	buf[size++] = return_value >> 24;
-	buf[size++] = return_value >> 16 & 0xff;
-	buf[size++] = return_value >> 8 & 0xff;
-	buf[size++] = return_value & 0xff;
-	return size;
-}
-
-size_t Messages::variable_value(unsigned char *buf, message_id_t message_id,
-		token_t token, double return_value)
-{
-	size_t size = content(buf, message_id, token);
-	memcpy(buf + size, &return_value, 8);
-	return size+sizeof(double);
-}
-
-// Returns the length of the buffer to send
-size_t Messages::variable_value(unsigned char *buf, message_id_t message_id,
-		token_t token, const void *return_value, int length)
-{
-	size_t size = content(buf, message_id, token);
-	memcpy(buf + size, return_value, length);
-	return size + length;
-}
-
 size_t Messages::time_request(uint8_t* buf, uint16_t message_id, uint8_t token)
 {
 	unsigned char *p = buf;
@@ -303,7 +268,7 @@ size_t Messages::describe_post_header(uint8_t buf[], size_t buffer_size, uint16_
 }
 
 size_t Messages::separate_response_with_payload(unsigned char *buf, uint16_t message_id,
-		unsigned char token, unsigned char code, unsigned char* payload,
+		unsigned char token, unsigned char code, const unsigned char* payload,
 		unsigned payload_len, bool confirmable)
 {
 	buf[0] = confirmable ? 0x41 : 0x51; // confirmable/non-confirmable, one-byte token
@@ -368,6 +333,13 @@ size_t Messages::coded_ack(uint8_t* buf, uint8_t token, uint8_t code,
     }
 
     return sz;
+}
+
+size_t Messages::response_size(size_t payload_size, bool has_token)
+{
+	return 4 + // Message header
+			(payload_size ? payload_size + 1 : 0) + // Payload data with a marker
+			(has_token ? 1 : 0); // One-byte token
 }
 
 }}

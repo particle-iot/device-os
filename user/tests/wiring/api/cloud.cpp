@@ -23,6 +23,15 @@
 
 #include "testapi.h"
 
+namespace {
+
+template<typename T>
+T varFn() {
+    return T();
+}
+
+} // namespace
+
 test(api_spark_variable) {
 
     int valueInt = 0;
@@ -68,6 +77,35 @@ test(api_spark_variable) {
     // This should gives a compiler error about too long name
     //API_COMPILE(Particle.variable("mystring123456789", valueString));
 
+    // Variable functions
+    API_COMPILE(Particle.variable("fn", varFn<int8_t>));
+    API_COMPILE(Particle.variable("fn", varFn<uint8_t>));
+    API_COMPILE(Particle.variable("fn", varFn<int16_t>));
+    API_COMPILE(Particle.variable("fn", varFn<uint16_t>));
+    API_COMPILE(Particle.variable("fn", varFn<int32_t>));
+    API_COMPILE(Particle.variable("fn", varFn<uint32_t>));
+    API_COMPILE(Particle.variable("fn", varFn<float>));
+    API_COMPILE(Particle.variable("fn", varFn<double>));
+    API_COMPILE(Particle.variable("fn", varFn<const char*>));
+    API_COMPILE(Particle.variable("fn", varFn<char*>));
+    API_COMPILE(Particle.variable("fn", varFn<String>));
+
+    API_COMPILE(Particle.variable("fn", std::function<int8_t()>()));
+    API_COMPILE(Particle.variable("fn", std::function<uint8_t()>()));
+    API_COMPILE(Particle.variable("fn", std::function<int16_t()>()));
+    API_COMPILE(Particle.variable("fn", std::function<uint16_t()>()));
+    API_COMPILE(Particle.variable("fn", std::function<int32_t()>()));
+    API_COMPILE(Particle.variable("fn", std::function<uint32_t()>()));
+    API_COMPILE(Particle.variable("fn", std::function<float()>()));
+    API_COMPILE(Particle.variable("fn", std::function<double()>()));
+    API_COMPILE(Particle.variable("fn", std::function<const char*()>()));
+    API_COMPILE(Particle.variable("fn", std::function<char*()>()));
+    API_COMPILE(Particle.variable("fn", std::function<String()>()));
+
+    // Registering an unsupported function causes a compilation error
+    // API_COMPILE(Particle.variable("fn", varFn<uint64_t>))
+    // API_COMPILE(Particle.variable("fn", std::function<void()>()));
+    // API_COMPILE(Particle.variable("fn", std::function<int(int)>()));
 }
 
 test(api_spark_function) {

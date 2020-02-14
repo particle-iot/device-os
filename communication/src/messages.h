@@ -59,18 +59,6 @@ public:
 
 	static size_t function_return(unsigned char *buf, message_id_t message_id, token_t token, int return_value, bool confirmable);
 
-	static size_t variable_value(unsigned char *buf, message_id_t message_id, token_t token, bool return_value);
-
-	static size_t variable_value(unsigned char *buf, message_id_t message_id,
-			token_t token, int return_value);
-
-	static size_t variable_value(unsigned char *buf, message_id_t message_id,
-			token_t token, double return_value);
-
-	// Returns the length of the buffer to send
-	static size_t variable_value(unsigned char *buf, message_id_t message_id,
-			token_t token, const void *return_value, int length);
-
 	static size_t time_request(uint8_t* buf, uint16_t message_id, uint8_t token);
 
 	static size_t chunk_missed(uint8_t* buf, uint16_t message_id, chunk_index_t chunk_index);
@@ -83,7 +71,7 @@ public:
 	static size_t presence_announcement(unsigned char *buf, const char *id);
 
 	static size_t separate_response_with_payload(unsigned char *buf, uint16_t message_id,
-			unsigned char token, unsigned char code, unsigned char* payload,
+			unsigned char token, unsigned char code, const unsigned char* payload,
 			unsigned payload_len, bool confirmable);
 
 	static size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
@@ -164,6 +152,14 @@ public:
         return content(buf, message_id, token);
     }
 
+    /**
+     * Returns the size of a response message (an ACK or a separate response) without options.
+     *
+     * @param payload_size Size of the payload data.
+     * @param has_token `true` if the message has a non-empty token or `false` otherwise.
+     * @return Message size.
+     */
+    static size_t response_size(size_t payload_size, bool has_token);
 };
 
 
