@@ -102,11 +102,6 @@ void SPIClass::begin()
 
 void SPIClass::begin(uint16_t ss_pin)
 {
-    if (ss_pin >= TOTAL_PINS)
-    {
-        return;
-    }
-
     if (!lock())
     {
         HAL_SPI_Begin(_spi, ss_pin);
@@ -116,11 +111,6 @@ void SPIClass::begin(uint16_t ss_pin)
 
 void SPIClass::begin(SPI_Mode mode, uint16_t ss_pin)
 {
-    if (ss_pin >= TOTAL_PINS)
-    {
-        return;
-    }
-
     if (!lock())
     {
         HAL_SPI_Begin_Ext(_spi, mode, ss_pin, NULL);
