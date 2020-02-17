@@ -22,6 +22,8 @@
 
 namespace particle { namespace net { namespace ppp {
 
+using PacketPrinter = void (*)(void *, const char *, ...);
+
 enum ConfigurationOptionState {
   CONFIGURATION_OPTION_STATE_NONE = 0,
   CONFIGURATION_OPTION_STATE_REQ  = 1,
@@ -32,7 +34,8 @@ enum ConfigurationOptionState {
 };
 
 enum ConfigurationOptionFlags {
-  CONFIGURATION_OPTION_FLAG_REQUEST = 0x01
+  CONFIGURATION_OPTION_FLAG_REQUEST = 0x01,
+  CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS = 0x02
 };
 
 struct ConfigurationOption {
@@ -60,6 +63,8 @@ struct ConfigurationOption {
   virtual int sendConfigureRej(uint8_t* buf, size_t len) = 0;
   virtual int sendConfigureAck(uint8_t* buf, size_t len) = 0;
   virtual int sendConfigureNak(uint8_t* buf, size_t len) = 0;
+
+  virtual int print(const uint8_t* buf, size_t len, PacketPrinter printer, void* arg) = 0;
 
   int id = 0;
   size_t length = 0;

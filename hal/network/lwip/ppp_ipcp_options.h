@@ -69,6 +69,9 @@ struct CommonConfigurationOptionIpAddress : public ConfigurationOption {
   virtual int sendConfigureAck(uint8_t* buf, size_t len) override;
   virtual int sendConfigureNak(uint8_t* buf, size_t len) override;
 
+  virtual int print(const uint8_t* buf, size_t len, PacketPrinter printer, void* arg) override;
+  virtual const char* name() const = 0;
+
   ip4_addr_t local = {};
   ip4_addr_t peer = {};
   ip4_addr_t peerIdea = {};
@@ -78,11 +81,19 @@ struct IpAddressConfigurationOption : public CommonConfigurationOptionIpAddress 
   IpAddressConfigurationOption()
       : CommonConfigurationOptionIpAddress(CONFIGURATION_OPTION_IP_ADDRESS) {
   }
+
+  virtual const char* name() const override {
+    return "addr";
+  }
 };
 
 struct IpNetmaskConfigurationOption : public CommonConfigurationOptionIpAddress {
   IpNetmaskConfigurationOption()
       : CommonConfigurationOptionIpAddress(CONFIGURATION_OPTION_IP_NETMASK) {
+  }
+
+  virtual const char* name() const override {
+    return "netmask";
   }
 };
 
@@ -90,11 +101,19 @@ struct PrimaryDnsServerConfigurationOption : public CommonConfigurationOptionIpA
   PrimaryDnsServerConfigurationOption()
       : CommonConfigurationOptionIpAddress(CONFIGURATION_OPTION_PRIMARY_DNS_SERVER) {
   }
+
+  virtual const char* name() const override {
+    return "msdns1";
+  }
 };
 
 struct SecondaryDnsServerConfigurationOption : public CommonConfigurationOptionIpAddress {
   SecondaryDnsServerConfigurationOption()
       : CommonConfigurationOptionIpAddress(CONFIGURATION_OPTION_SECONDARY_DNS_SERVER) {
+  }
+
+  virtual const char* name() const override {
+    return "msdns2";
   }
 };
 
@@ -131,6 +150,8 @@ struct UnknownConfigurationOption : public ConfigurationOption {
   virtual int sendConfigureNak(uint8_t* buf, size_t len) override {
     return sendConfigureRej(buf, len);
   }
+
+  virtual int print(const uint8_t* buf, size_t len, PacketPrinter printer, void* arg) override;
 
   uint8_t* data = nullptr;
 };

@@ -24,6 +24,7 @@
 
 #include <netif/ppp/ipcp.h>
 #include "ppp_ipcp_options.h"
+#include <cctype>
 
 #ifdef __cplusplus
 
@@ -128,6 +129,102 @@ private:
 
   IpcpConfiguration config_ = {};
 };
+
+#if PRINTPKT_SUPPORT
+template<>
+inline int IpcpBase::printPacket(const uint8_t *p, int plen, PacketPrinter printer, void *arg) {
+  const int IPCP_HEADER_SIZE = 4;
+  if (plen < IPCP_HEADER_SIZE) {
+    return 0;
+  }
+
+  uint8_t code = p[0];
+  uint8_t ident = p[1];
+  uint16_t ipcpLen = *((uint16_t*)(p + 2));
+
+  if (ipcpLen < plen) {
+    return 0;
+  }
+
+  int available = plen - IPCP_HEADER_SIZE;
+  const uint8_t* buf = p + IPCP_HEADER_SIZE;
+
+  int result = 0;
+
+  static const char* ipcpCodes[] = {
+    "ConfReq",
+    "ConfAck",
+    "ConfNak",
+    "ConfRej",
+    "TermReq",
+    "TermAck",
+    "CodeRej"
+  };
+
+  if (code >= 1 && code <= sizeof(ipcpCodes) / sizeof(ipcpCodes[0])) {
+    printer(arg, " %s", ipcpCodes[code - 1]);
+  } else {
+    printer(arg, " code=0x%x", code);
+  }
+  printer(arg, " id=0x%x", ident);
+
+  while (available > 0) {
+    uint8_t id = *buf;
+    uint8_t len = *(buf + 1);
+    int processed = 0;
+
+    if (code == TERMACK || code == TERMREQ) {
+      if (std::isprint(*buf)) {
+        ppp_print_string(buf, available, printer, arg);
+      } else {
+        for (int i = 0; i < available; i++) {
+          printer(arg, " %.2x", buf[i]);
+        }
+      }
+      result = available;
+      break;
+    }
+
+    switch(id) {
+      case ipcp::CONFIGURATION_OPTION_IP_ADDRESS: {
+        ipcp::IpAddressConfigurationOption opt;
+        processed = opt.print(buf, len, printer, arg);
+        break;
+      }
+      case ipcp::CONFIGURATION_OPTION_PRIMARY_DNS_SERVER: {
+        ipcp::PrimaryDnsServerConfigurationOption opt;
+        processed = opt.print(buf, len, printer, arg);
+        break;
+      }
+      case ipcp::CONFIGURATION_OPTION_SECONDARY_DNS_SERVER: {
+        ipcp::SecondaryDnsServerConfigurationOption opt;
+        processed = opt.print(buf, len, printer, arg);
+        break;
+      }
+      case ipcp::CONFIGURATION_OPTION_IP_NETMASK: {
+        ipcp::IpNetmaskConfigurationOption opt;
+        processed = opt.print(buf, len, printer, arg);
+        break;
+      }
+    }
+
+    if (processed <= 0) {
+      ipcp::UnknownConfigurationOption unknownOpt;
+      processed = unknownOpt.print(buf, len, printer, arg);
+    }
+
+    if (len == processed) {
+      buf += len;
+      available -= len;
+      result += len;
+    } else {
+      break;
+    }
+  }
+
+  return result + IPCP_HEADER_SIZE;
+}
+#endif // PRINTPKT_SUPPORT
 
 } } } /* namespace particle::net::ppp */
 

@@ -88,10 +88,10 @@ public:
     }
   }
 
-  virtual void requestOption(int id) {
+  virtual void requestOption(int id, unsigned int opts = 0) {
     auto opt = findOption(id);
     if (opt != nullptr) {
-      opt->flagsLocal |= CONFIGURATION_OPTION_FLAG_REQUEST;
+      opt->flagsLocal |= CONFIGURATION_OPTION_FLAG_REQUEST | opts;
     }
   }
 
@@ -117,6 +117,10 @@ public:
   virtual void open() = 0;
   /* Close the protocol */
   virtual void close(const char* reason) = 0;
+#if PRINTPKT_SUPPORT
+  /* Print a packet in readable form */
+  static int printPacket(const uint8_t *p, int plen, PacketPrinter printer, void* arg);
+#endif // PRINTPKT_SUPPORT
 
   /* State machine callbacks */
   /* Reset our Configuration Information */
@@ -162,7 +166,7 @@ public:
       printPacketCb,
 #endif /* PRINTPKT_SUPPORT */
 #if PPP_DATAINPUT
-      NULL,
+      nullptr,
 #endif /* PPP_DATAINPUT */
 #if PRINTPKT_SUPPORT
       protoName,
@@ -200,8 +204,6 @@ protected:
   ConfigurationOption* options_ = nullptr;
 
 private:
-
-  using PacketPrinter = void (*)(void *, const char *, ...);
 
   static Ncp* getInstance(ppp_pcb* pcb) {
     if (pcb != nullptr) {
@@ -277,9 +279,11 @@ private:
     }
   }
 
+#if PRINTPKT_SUPPORT
   static int printPacketCb(const uint8_t *p, int plen, PacketPrinter printer, void *arg) {
-    return 0;
+    return Ncp::printPacket(p, plen, printer, arg);
   }
+#endif // PRINTPKT_SUPPORT
 
   /* State machine callbacks */
   /* Reset our Configuration Information */
