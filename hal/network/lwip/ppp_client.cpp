@@ -118,14 +118,15 @@ bool Client::prepareConnect() {
   ipcp_->init();
   ipcp_->disable();
   ipcp_->enable();
-  ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_IP_ADDRESS);
-  ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_PRIMARY_DNS_SERVER);
-  ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_SECONDARY_DNS_SERVER);
-  ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_IP_NETMASK);
-  LOCK_TCPIP_CORE();
-  if_.ip6_autoconfig_enabled = 1;
-  if_.flags |= NETIF_FLAG_MLD6;
-  UNLOCK_TCPIP_CORE();
+  ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_IP_ADDRESS, CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS);
+  ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_PRIMARY_DNS_SERVER, CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS);
+  ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_SECONDARY_DNS_SERVER, CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS);
+
+  // XXX: IPV6CP disabled
+  // LOCK_TCPIP_CORE();
+  // if_.ip6_autoconfig_enabled = 1;
+  // if_.flags |= NETIF_FLAG_MLD6;
+  // UNLOCK_TCPIP_CORE();
 
   // FIXME:
   static const char UBLOX_NCP_CONNECT_COMMAND[] = "ATD*99***1#\r\n";
