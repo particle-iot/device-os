@@ -111,9 +111,11 @@ int CommonConfigurationOptionIpAddress::recvConfigureAck(uint8_t* buf, size_t le
 int CommonConfigurationOptionIpAddress::recvConfigureNak(uint8_t* buf, size_t len) {
   if (validate(buf, len) && !compareLocal(buf, len)) {
     stateLocal = CONFIGURATION_OPTION_STATE_NAK;
-    if (ip4_addr_isany_val(local)) {
-      // Accept remote idea
-      ip4_addr_set_u32(&local, *(uint32_t*)(buf + 2));
+    uint32_t remoteOffer = *(uint32_t*)(buf + 2);
+    if (ip4_addr_isany_val(local) || ((flagsLocal & CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS) && remoteOffer)) {
+      // Accept remote idea if we don't have anything to offer, or we allow the remote side
+      // to override our choice (CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS)
+      ip4_addr_set_u32(&local, remoteOffer);
     }
     return length;
   }
@@ -182,6 +184,15 @@ int CommonConfigurationOptionIpAddress::sendConfigureNak(uint8_t* buf, size_t le
   return 0;
 }
 
+int CommonConfigurationOptionIpAddress::print(const uint8_t* buf, size_t len, PacketPrinter printer, void* arg) {
+  if (len >= length && buf[1] == length) {
+    printer(arg, " <%s %I>", name(), *((uint32_t*)(buf + 2)));
+    return length;
+  }
+
+  return 0;
+}
+
 bool UnknownConfigurationOption::validate(uint8_t* buf, size_t len) {
   if (len >= 2) {
     if (buf[1] <= len) {
@@ -216,6 +227,21 @@ int UnknownConfigurationOption::sendConfigureRej(uint8_t* buf, size_t len) {
   if (len >= length && data != nullptr) {
     memmove(buf, data, length);
     return length;
+  }
+
+  return 0;
+}
+
+int UnknownConfigurationOption::print(const uint8_t* buf, size_t len, PacketPrinter printer, void* arg) {
+  if (len >= OPTION_HEADER_SIZE) {
+    auto optId = buf[0];
+    auto optLen = buf[1];
+    printer(arg, " <opt=%.2x len=%u", optId, optLen);
+    for (const uint8_t* p = buf + 2; p - buf < optLen; ++p) {
+      printer(arg, " %.2x", *p);
+    }
+    printer(arg, ">");
+    return optLen;
   }
 
   return 0;
