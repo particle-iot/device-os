@@ -289,8 +289,13 @@ void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
 
 void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved)
 {
-    if (pin == SPI_DEFAULT_SS)
+    if (pin == SPI_DEFAULT_SS) {
         pin = spiMap[spi].SPI_SS_Pin;
+    }
+
+    if (pin >= TOTAL_PINS) {
+        return;
+    }
 
     spiState[spi].SPI_SS_Pin = pin;
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();

@@ -162,7 +162,7 @@ public:
 
   void begin();
   void begin(uint16_t);
-  void begin(SPI_Mode mode, uint16_t);
+  void begin(SPI_Mode mode, uint16_t ss_pin = SPI_DEFAULT_SS);
   void end();
 
   void setBitOrder(uint8_t);

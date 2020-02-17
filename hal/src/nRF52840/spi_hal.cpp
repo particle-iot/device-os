@@ -299,6 +299,9 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
             // m_spi_map[spi].ss_pin = PIN_INVALID;
         }
     } else {
+        if (pin >= TOTAL_PINS) {
+            return;
+        }
         m_spi_map[spi].ss_pin = pin;
     }
 
