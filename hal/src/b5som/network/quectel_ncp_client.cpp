@@ -695,6 +695,10 @@ int QuectelNcpClient::initReady() {
 
     muxerSg.dismiss();
 
+    // Make sure that we receive URCs only on AT channel, ignore response code
+    // just in case
+    CHECK_PARSER(parser_.execCommand("AT+QCFG=\"cmux/urcport\",1"));
+
     return SYSTEM_ERROR_NONE;
 }
 
