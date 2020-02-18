@@ -131,7 +131,7 @@
 /**
  * PPP_IPV6_SUPPORT==1: Enable PPP IPv6 support
  */
-#define PPP_IPV6_SUPPORT                (LWIP_IPV6)
+#define PPP_IPV6_SUPPORT                0
 
 /**
  * PPP_IPV6CP_OVERRIDE==1: third-party IPV6CP implementation
