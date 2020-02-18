@@ -116,14 +116,14 @@ void Ipcp::open() {
 }
 
 void Ipcp::close(const char* reason) {
-  LOG(TRACE, "lose");
+  LOG(TRACE, "close");
   fsm_close(&fsm_, reason);
 }
 
 /* State machine callbacks */
 /* Reset our Configuration Information */
 void Ipcp::resetConfigurationInformation() {
-  LOG(TRACE, "Resetting CI");
+  LOG(TRACE, "resetting CI");
 
   const auto& conf = config_;
 
@@ -172,7 +172,7 @@ int Ipcp::getConfigurationInformationLength() {
     }
   });
 
-  LOG(TRACE, "Our CI length: %lu", len);
+  LOG(TRACE, "iur CI length: %lu", len);
   return len;
 }
 
