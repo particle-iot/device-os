@@ -20,6 +20,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "socket_hal.h"
+#include "random.h"
 
 #if Wiring_Cellular == 1
 bool skip_r410 = false;
@@ -156,8 +157,6 @@ test(CELLULAR_07_rssi_is_valid) {
     assertMoreOrEqual(s.rssi, -150);
 }
 
-#define LOREM "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque ut elit nec mi bibendum mollis. Nam nec nisl mi. Donec dignissim iaculis purus, ut condimentum arcu semper quis. Phasellus efficitur ut arcu ac dignissim. In interdum sem id dictum luctus. Ut nec mattis sem. Nullam in aliquet lacus. Donec egestas nisi volutpat lobortis sodales. Aenean elementum magna ipsum, vitae pretium tellus lacinia eu. Phasellus commodo nisi at quam tincidunt, tempor gravida mauris facilisis. Duis tristique ligula ac pulvinar consectetur. Cras aliquam, leo ut eleifend molestie, arcu odio semper odio, quis sollicitudin metus libero et lorem. Donec venenatis congue commodo. Vivamus mattis elit metus, sed fringilla neque viverra eu. Phasellus leo urna, elementum vel pharetra sit amet, auctor non sapien. Phasellus at justo ac augue rutrum vulputate. In hac habitasse platea dictumst. Pellentesque nibh eros, placerat id laoreet sed, dapibus efficitur augue. Praesent pretium diam ac sem varius fermentum. Nunc suscipit dui risus sed"
-
 test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
 
 #if HAL_PLATFORM_NCP
@@ -169,7 +168,16 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
 #endif // HAL_PLATFORM_NCP
 
     // https://github.com/spark/firmware/issues/1104
-    const char request[] =
+
+    const int dataSize = 1024;
+    const int bufferSize = 2048;
+    auto randData = std::make_unique<char[]>(1024);
+    assertTrue((bool)randData);
+
+    Random rand;
+    rand.genBase32(randData.get(), dataSize);
+
+    static const char requestFormat[] =
         "POST /post HTTP/1.1\r\n"
         "Host: httpbin.org\r\n"
         "Connection: close\r\n"
@@ -179,9 +187,16 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
         "---------------aaaaaaaa\r\n"
         "Content-Disposition: form-data; name=\"field\"\r\n"
         "\r\n"
-        LOREM "\r\n"
+        "%s\r\n"
         "---------------aaaaaaaa--\r\n";
-    const int requestSize = sizeof(request) - 1;
+
+    auto request = std::make_unique<char[]>(bufferSize);
+    assertTrue((bool)request);
+    memset(request.get(), 0, bufferSize);
+
+    snprintf(request.get(), bufferSize, requestFormat, randData.get());
+
+    const int requestSize = strlen(request.get());
 
     Cellular.connect();
     waitFor(Cellular.ready, 120000);
@@ -190,16 +205,17 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
     int res = c.connect("httpbin.org", 80);
     (void)res;
 
-    int sz = c.write((const uint8_t*)request, requestSize);
+    int sz = c.write((const uint8_t*)request.get(), requestSize);
     assertEqual(sz, requestSize);
 
-    char* responseBuf = new char[2048];
-    memset(responseBuf, 0, 2048);
+    auto responseBuf = std::make_unique<char[]>(bufferSize);
+    assertTrue((bool)responseBuf);
+    memset(responseBuf.get(), 0, bufferSize);
     int responseSize = 0;
     uint32_t mil = millis();
     while(1) {
         while (c.available()) {
-            responseBuf[responseSize++] = c.read();
+            responseBuf.get()[responseSize++] = c.read();
         }
         if (!c.connected())
             break;
@@ -213,10 +229,8 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
 
     bool contains = false;
     if (responseSize > 0 && !c.connected()) {
-        contains = strstr(responseBuf, LOREM) != nullptr;
+        contains = strstr(responseBuf.get(), randData.get()) != nullptr;
     }
-
-    delete responseBuf;
 
     assertTrue(contains);
 }
