@@ -116,7 +116,7 @@ void Ipcp::open() {
 }
 
 void Ipcp::close(const char* reason) {
-  LOG(TRACE, "lose");
+  LOG(TRACE, "close");
   fsm_close(&fsm_, reason);
 }
 
