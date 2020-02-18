@@ -16,7 +16,7 @@
  */
 
 #include "device_code.h"
-
+#include "hal_platform.h"
 #include "deviceid_hal.h"
 
 #include "str_util.h"
@@ -90,8 +90,8 @@ int get_device_name(char* buf, size_t size) {
             return ret;
         }
         // Get platform name
-        const char* const platform = PP_STR(PLATFORM_NAME);
-        nameSize = sizeof(PP_STR(PLATFORM_NAME)) - 1; // Exclude term. null
+        const char* const platform = PRODUCT_SERIES;
+        nameSize = sizeof(PRODUCT_SERIES) - 1; // Exclude term. null
         if (nameSize + SETUP_CODE_SIZE + 1 > DEVICE_NAME_MAX_SIZE) { // Reserve 1 character for '-'
             nameSize = DEVICE_NAME_MAX_SIZE - SETUP_CODE_SIZE - 1;
         }
