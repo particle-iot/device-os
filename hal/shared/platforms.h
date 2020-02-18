@@ -39,5 +39,40 @@
 #define PLATFORM_B5SOM                      25
 #define PLATFORM_NEWHAL                     60000
 
+#if PLATFORM_ID == PLATFORM_GCC
+#define PRODUCT_SERIES                      "gcc"
+#endif
+
+#if PLATFORM_ID == PLATFORM_PHOTON_DEV || \
+    PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV || \
+    PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || \
+    PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_PRODUCTION || \
+    PLATFORM_ID == PLATFORM_P1 || \
+    PLATFORM_ID == PLATFORM_ETHERNET_PROTO
+#define PRODUCT_SERIES                      "photon"
+#endif
+
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+#define PRODUCT_SERIES                      "electron"
+#endif
+
+#if PLATFORM_ID == PLATFORM_ARGON
+#define PRODUCT_SERIES                      "argon"
+#endif
+
+#if PLATFORM_ID == PLATFORM_BORON || \
+    PLATFORM_ID == PLATFORM_BSOM || \
+    PLATFORM_ID == PLATFORM_B5SOM
+#define PRODUCT_SERIES                      "boron"
+#endif
+
+#if PLATFORM_ID == PLATFORM_XENON
+#define PRODUCT_SERIES                      "xenon"
+#endif
+
+#if PLATFORM_ID == PLATFORM_NEWHAL
+#define PRODUCT_SERIES                      "newhal"
+#endif
+
 #endif	/* PLATFORMS_H */
 
