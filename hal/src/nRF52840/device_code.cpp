@@ -16,7 +16,7 @@
  */
 
 #include "device_code.h"
-
+#include "hal_platform.h"
 #include "deviceid_hal.h"
 
 #include "str_util.h"

@@ -91,4 +91,20 @@
 #define HAL_PLATFORM_NETWORK_MULTICAST (1)
 #endif // HAL_PLATFORM_WIFI
 
+#if PLATFORM_ID == PLATFORM_GCC
+#define PRODUCT_SERIES                      "gcc"
+#endif
+
+#if PLATFORM_ID == PLATFORM_NEWHAL
+#define PRODUCT_SERIES                      "newhal"
+#endif
+
+#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1
+#define PRODUCT_SERIES                      "photon"
+#endif
+
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+#define PRODUCT_SERIES                      "electron"
+#endif
+
 #endif /* HAL_PLATFORM_COMPAT_H */
