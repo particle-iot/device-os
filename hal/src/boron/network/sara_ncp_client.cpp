@@ -503,6 +503,7 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         auto resp = parser_.sendCommand("AT+CESQ");
         int r = CHECK_PARSER(resp.scanf("+CESQ: %d,%d,%d,%d,%d,%d", &rxlev, &rxqual,
                 &rscp, &ecn0, &rsrq, &rsrp));
+        //r = 4;
         CHECK_TRUE(r == 6, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         r = CHECK_PARSER(resp.readResult());
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
@@ -544,9 +545,10 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
                 break;
             }
         }
-    } else {
+    } else {        // U201 Boron 2G/3G? Gen3 SARA radios - 
         int rxlev, rxqual;
         auto resp = parser_.sendCommand("AT+CSQ");
+        LOG(INFO, "sara_ncp_client tp1");
         int r = CHECK_PARSER(resp.scanf("+CSQ: %d,%d", &rxlev, &rxqual));
         CHECK_TRUE(r == 2, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         r = CHECK_PARSER(resp.readResult());
@@ -864,6 +866,9 @@ int SaraNcpClient::initReady() {
                 }
             }
         }
+
+        // Add UCGED here - k0217
+        CHECK_PARSER_OK(parser_.execCommand("AT+UCGED=5"));
 
         // Force eDRX mode to be disabled. AT+CEDRXS=0 doesn't seem disable eDRX completely, so
         // so we're disabling it for each reported RAT individually

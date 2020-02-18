@@ -96,6 +96,7 @@ std::recursive_mutex mdm_mutex;
 #define UMNOPROF_TIMEOUT  ( 1 * 1000)
 #define CEDRXS_TIMEOUT    (  1 * 1000)
 #define CFUN_TIMEOUT      (180 * 1000)
+#define UCGED_TIMEOUT       (  1 * 1000)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -965,6 +966,11 @@ bool MDMParser::init(DevStatus* status)
             waitFinalResp(); // Not checking for error since we will reset either way
             goto reset_failure;
         }
+        // Set UCGED to mode 5 for R410M for signal strength measurements
+        sendFormated("AT+UCGED=5\r\n");
+        if (RESP_OK != waitFinalResp()) {
+            goto failure;
+        }
         // Force Power Saving mode to be disabled
         //
         // TODO: if we enable this feature in the future update the logic in MDMParser::_atOk
@@ -1396,9 +1402,22 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
             goto failure;
         }
         // get the signal strength indication
-        sendFormated("AT+CSQ\r\n");
-        if (RESP_OK != waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
-            goto failure;
+        if (_dev.dev == DEV_SARA_R410) {
+            LOG(INFO, "R410M - use UCGED Here");
+            //sendFormated("AT+UCGED=5\r\n"); // need to send this only once during modem on
+            sendFormated("AT+UCGED?\r\n");
+            LOG(INFO, "mdm_hal tp4");
+            if (RESP_OK != waitFinalResp(_cbUCGED, &_net, UCGED_TIMEOUT)) {
+                goto failure;
+            }
+        }
+        else
+        {
+            sendFormated("AT+CSQ\r\n"); // k1
+            LOG(INFO, "mdm_hal tp3");
+            if (RESP_OK != waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
+                goto failure;
+            }
         }
         // +CREG, +CGREG, +COPS do not contain <AcT> for G350 devices.
         // Force _net.act to ACT_GSM to ensure Device Diagnostics and
@@ -1427,7 +1446,7 @@ failure:
     return false;
 }
 
-bool MDMParser::getSignalStrength(NetStatus &status)
+bool MDMParser::getSignalStrength(NetStatus &status)        // gen2 publish vitals coming from here
 {
     bool ok = false;
     LOCK();
@@ -1458,10 +1477,23 @@ bool MDMParser::getSignalStrength(NetStatus &status)
             _net.act = ACT_GSM;
         }
 
-        sendFormated("AT+CSQ\r\n");
-        if (RESP_OK == waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
-            ok = true;
-            status = _net;
+        if (_dev.dev == DEV_SARA_R410) {
+            LOG(INFO, "R410M - use UCGED Here - getSignalStrength");
+            //sendFormated("AT+UCGED=5\r\n"); // need to send this only once during modem on
+            sendFormated("AT+UCGED?\r\n");
+            LOG(INFO, "mdm_hal getSignalStrength tp7");
+            if (RESP_OK == waitFinalResp(_cbUCGED, &_net, UCGED_TIMEOUT)) {
+                ok = true;
+                status = _net;
+            }
+        }
+        else {
+            sendFormated("AT+CSQ\r\n"); // k2
+            LOG(INFO, "mdmhal tp4");
+            if (RESP_OK == waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
+                ok = true;
+                status = _net;
+            }
         }
     }
 
@@ -1764,6 +1796,31 @@ int MDMParser::_cbCSQ(int type, const char* buf, int len, NetStatus* status)
                 status->aqual = std::numeric_limits<int32_t>::min();
                 break;
             }
+        }
+    }
+    return WAIT;
+}
+
+int MDMParser::_cbUCGED(int type, const char* buf, int len, NetStatus* status)  // k0217 - fix this with type, check others
+{
+    LOG(INFO,"mdmhal tp6");
+    LOG(INFO,"type: %d", type); // type differs between RSRP string (type: %d : 4194304) and RSRQ string (type: 0).
+    LOG(INFO,"status: %d", status);
+    if (status){
+        int rsrp,rsrq;
+        //LOG(INFO,"buf: %s", buf);
+        // AT+UCGED?
+        // +RSRP: 314,5110,"-102.60",163,5110,"-097.90",173,5110,"-100.40",
+        // +RSRQ: 314,5110,"-19.60",163,5110,"-16.60",173,5110,"-18.60",
+        if (sscanf(buf, "\r\n+RSRP: %*d,%*d,\"%d\"",&rsrp) == 1){
+            LOG(INFO,"mdmhal rsrp detected tp5");
+            LOG(INFO,"RSRP: %d",rsrp);
+            status->rsrp = rsrp;
+        }
+        if (sscanf(buf, "\r\n+RSRQ: %*d,%*d,\"%d\"",&rsrq) == 1){
+            LOG(INFO,"mdmhal rsrp detected tp6");
+            LOG(INFO,"RSRQ: %d",rsrq);
+            status->rsrq = rsrq;
         }
     }
     return WAIT;

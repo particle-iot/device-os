@@ -41,6 +41,8 @@ namespace spark {
         }
         sig.rssi = sig_hal.rssi;
         sig.qual = sig_hal.qual;
+        LOG(INFO, "keer - sig.rssi TP1: %d", sig.rssi);
+        LOG(INFO, "keer - sig.qual TP1: %d", sig.qual);
         if (sig.rssi == 0) {
             sig.rssi = 2;
         }

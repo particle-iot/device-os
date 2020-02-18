@@ -102,7 +102,7 @@ public:
     */
     bool checkNetStatus(NetStatus* status = NULL);
 
-    /** checks the signal strength
+    /** checks the sinal strength
         \param status an optional structure that will have current network information
                and updated RSSI and QUAL values.
         \return true if successful, false otherwise
@@ -560,6 +560,7 @@ protected:
     struct CGDCONTparam { char type[8]; char apn[32]; };
     static int _cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param);
     static int _cbURAT(int type, const char *buf, int len, bool *matched_default);
+    static int _cbUCGED(int type, const char* buf, int len, NetStatus* status);
     // sockets
     static int _cbCMIP(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUPSND(int type, const char* buf, int len, int* act);

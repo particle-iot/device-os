@@ -305,6 +305,10 @@ int cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalExt) {
     CHECK(client->getSignalQuality(&s));
     const auto strn = s.strength();
     const auto qual = s.quality();
+
+    LOG(INFO, "keer - signalExt->rsrp TP1: %d", signalExt->rsrp);
+    LOG(INFO, "keer - signalExt->rsrq TP1: %d", signalExt->rsrq);
+
     if (signal) {
         // Compatibility with Gen 2
         if (strn != 99 && strn != 255) {
@@ -321,7 +325,7 @@ int cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalExt) {
             }
             case CellularStrengthUnits::RSRP: {
                 // Simply remap from [0-97] to [0-63]
-                compatStrn = (compatStrn * 63) / 97;
+                compatStrn = (compatStrn * 63) / 97;    // add if condition if dev != R410
                 break;
             }
             }
@@ -345,7 +349,7 @@ int cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalExt) {
             }
             case CellularQualityUnits::RSRQ: {
                 // Re-map from [0-34] to [0-7]. Table in UBX-13002752 - R62 (7.2.4)
-                compatQual = (compatQual < 10) ? (compatQual / 5) : ((std::min(compatQual, 30) - 10) / 4) + 2;
+                compatQual = (compatQual < 10) ? (compatQual / 5) : ((std::min(compatQual, 30) - 10) / 4) + 2;  // add if condition if dev != R410
                 break;
             }
             }
@@ -375,7 +379,7 @@ int cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalExt) {
             signalExt->strength = (strn != 255) ? (strn + 5) * 65535 / 96 : std::numeric_limits<int32_t>::min();
             break;
         }
-        case CellularStrengthUnits::RSRP: {
+        case CellularStrengthUnits::RSRP: {         // add if condition if dev != R410
             // Convert to dBm [-141, -44], see 3GPP TS 36.133 subclause 9.1.4
             // Reported multiplied by 100
             signalExt->rsrp = (strn != 255) ? (strn - 141) * 100 : std::numeric_limits<int32_t>::min();
@@ -423,7 +427,7 @@ int cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalExt) {
             signalExt->quality = (qual != 255) ? qual * 65535 / 49 : std::numeric_limits<int32_t>::min();
             break;
         }
-        case CellularQualityUnits::RSRQ: {
+        case CellularQualityUnits::RSRQ: {              // add if condition if dev != R410, if dev == R410, just multiply by 100. Can put conditional inside the same statement
             // Convert to dB [-19.5, -3], see 3GPP TS 36.133 subclause 9.1.7
             // Report multiplied by 100
             signalExt->rsrq = (qual != 255) ? qual * 50 - 2000 : std::numeric_limits<int32_t>::min();

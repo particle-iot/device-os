@@ -454,6 +454,7 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
     int rxlev, rxqual;
     auto resp = parser_.sendCommand("AT+CSQ");
     int r = CHECK_PARSER(resp.scanf("+CSQ: %d,%d", &rxlev, &rxqual));
+    LOG(INFO, "quectel_ncp_client tp2");
     CHECK_TRUE(r == 2, SYSTEM_ERROR_BAD_DATA);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
