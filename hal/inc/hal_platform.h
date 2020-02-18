@@ -28,6 +28,10 @@
 #include "hal_platform_config.h"
 #endif /* PLATFORM_ID <= PLATFORM_ELECTRON_PRODUCTION || PLATFORM_ID == PLATFORM_NEWHAL */
 
+#ifndef PRODUCT_SERIES
+#error "PRODUCT_SERIES is not defined!"
+#endif
+
 /* Define the defaults */
 #ifndef HAL_PLATFORM_WIFI
 #define HAL_PLATFORM_WIFI 0
