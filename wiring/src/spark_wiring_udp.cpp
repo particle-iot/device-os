@@ -77,6 +77,8 @@ void UDP::releaseBuffer()
 
 uint8_t UDP::begin(uint16_t port, network_interface_t nif)
 {
+    stop();
+
     bool bound = 0;
     if(Network.from(nif).ready())
     {
