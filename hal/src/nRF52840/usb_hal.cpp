@@ -81,6 +81,10 @@ int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial) {
 }
 
 int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek) {
+    if (usb_uart_available_rx_data() == 0) {
+        return -1;
+    }
+
     if (peek) {
         return usb_uart_peek_rx_data(0);
     } else {
