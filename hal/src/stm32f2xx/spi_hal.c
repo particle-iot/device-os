@@ -293,7 +293,7 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
         pin = spiMap[spi].SPI_SS_Pin;
     }
 
-    if (pin >= TOTAL_PINS) {
+    if (mode == SPI_MODE_SLAVE && !HAL_Pin_Is_Valid(pin)) {
         return;
     }
 
@@ -315,7 +315,7 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
     HAL_Pin_Mode(spiMap[spi].SPI_MISO_Pin, AF_OUTPUT_PUSHPULL);
     HAL_Pin_Mode(spiMap[spi].SPI_MOSI_Pin, AF_OUTPUT_PUSHPULL);
 
-    if (mode == SPI_MODE_MASTER)
+    if (mode == SPI_MODE_MASTER && HAL_Pin_Is_Valid(pin))
     {
         // Ensure that there is no glitch on SS pin
         PIN_MAP[pin].gpio_peripheral->BSRRL = PIN_MAP[pin].gpio_pin;
