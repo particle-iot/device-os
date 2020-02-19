@@ -28,7 +28,7 @@
 #include "gpio_hal.h"
 #include "system_error.h"
 
-int HAL_I2C_Init(HAL_I2C_Interface i2c, HAL_I2C_Config* i2c_config)
+int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config)
 {
   return SYSTEM_ERROR_NONE;
 }

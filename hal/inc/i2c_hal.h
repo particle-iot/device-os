@@ -47,19 +47,18 @@ typedef enum HAL_I2C_Interface {
 } HAL_I2C_Interface;
 
 /*! I2c Config Structure Version */
-typedef enum __attribute__((__packed__))
-{
-    HAL_I2C_CONFIG_VERSION_1,
+typedef enum HAL_I2C_Config_Version {
+    HAL_I2C_CONFIG_VERSION_1 = 0,
     HAL_I2C_CONFIG_VERSION_LATEST = HAL_I2C_CONFIG_VERSION_1,
 } HAL_I2C_Config_Version;
 
-typedef struct  __attribute__((__packed__)) {
-  uint16_t size;
-  uint16_t version;
-  uint8_t* rx_buffer;
-  size_t rx_buffer_size;
-  uint8_t* tx_buffer;
-  size_t tx_buffer_size;
+typedef struct HAL_I2C_Config {
+    uint16_t size;
+    uint16_t version;
+    uint8_t* rx_buffer;
+    uint32_t rx_buffer_size;
+    uint8_t* tx_buffer;
+    uint32_t tx_buffer_size;
 } HAL_I2C_Config;
 
 /* Exported constants --------------------------------------------------------*/
@@ -76,7 +75,7 @@ typedef struct  __attribute__((__packed__)) {
 extern "C" {
 #endif
 
-int HAL_I2C_Init(HAL_I2C_Interface i2c, HAL_I2C_Config* i2c_config);
+int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config);
 void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved);
 void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable, void* reserved);
 void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved);
