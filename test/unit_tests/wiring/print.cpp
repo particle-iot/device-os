@@ -12,6 +12,10 @@ enum TestEnum {
 
 class PrintTest : public Print {
 public:
+    PrintTest()
+            : data_{},
+              size_{0} {
+    }
     static constexpr const size_t MAX_DATA_BUFFER_SIZE = 200;
     size_t write(const uint8_t* buffer, size_t size) override {
         if (size_ + size >= MAX_DATA_BUFFER_SIZE) {
