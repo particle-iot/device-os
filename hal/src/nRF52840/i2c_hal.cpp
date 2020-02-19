@@ -30,6 +30,7 @@
 #include "system_error.h"
 #include "system_tick_hal.h"
 #include "timer_hal.h"
+#include <memory>
 
 #define TOTAL_I2C                   2
 #define I2C_IRQ_PRIORITY            APP_IRQ_PRIORITY_LOWEST
@@ -238,7 +239,19 @@ static int twi_init(HAL_I2C_Interface i2c) {
     return 0;
 }
 
-int HAL_I2C_Init(HAL_I2C_Interface i2c, HAL_I2C_Config* i2c_config) {
+static bool HAL_I2C_Config_Is_Valid(const HAL_I2C_Config* config) {
+    if ((config == nullptr) ||
+            (config->rx_buffer == nullptr ||
+             config->rx_buffer_size == 0 ||
+             config->tx_buffer == nullptr ||
+             config->tx_buffer_size == 0)) {
+        return false;
+    }
+
+    return true;
+}
+
+int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config) {
     // Disable threading to create the I2C mutex
     os_thread_scheduling(false, NULL);
     if (m_i2c_map[i2c].mutex == NULL) {
@@ -254,34 +267,17 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, HAL_I2C_Config* i2c_config) {
     os_thread_scheduling(true, NULL);
 
     // Initialize internal data structure
-    if ((i2c_config == NULL) ||
-        (i2c_config && (i2c_config->rx_buffer == NULL   ||
-                        i2c_config->rx_buffer_size == 0 ||
-                        i2c_config->tx_buffer == NULL   ||
-                        i2c_config->tx_buffer_size == 0)))
-    {
-        // Ensure multiple initializations do not result in multiple allocations
-		static uint8_t *p_rx_buffer[TOTAL_I2C] = {NULL};
-		static uint8_t *p_tx_buffer[TOTAL_I2C] = {NULL};
-
-        // Allocate default buffer
-		if (p_rx_buffer[i2c] == NULL) {
-			p_rx_buffer[i2c] = new uint8_t[I2C_BUFFER_LENGTH];
-		}
-		if (p_tx_buffer[i2c] == NULL) {
-			p_tx_buffer[i2c] = new uint8_t[I2C_BUFFER_LENGTH];
-		}
-        if (!p_rx_buffer[i2c] || !p_tx_buffer[i2c]) { return SYSTEM_ERROR_NO_MEMORY; }
-
-        m_i2c_map[i2c].rx_buf = p_rx_buffer[i2c];
-        m_i2c_map[i2c].rx_buf_size = I2C_BUFFER_LENGTH;
-        m_i2c_map[i2c].tx_buf = p_tx_buffer[i2c];
-        m_i2c_map[i2c].tx_buf_size = I2C_BUFFER_LENGTH;
+    if (HAL_I2C_Config_Is_Valid(config)) {
+        m_i2c_map[i2c].rx_buf = config->rx_buffer;
+        m_i2c_map[i2c].rx_buf_size = config->rx_buffer_size;
+        m_i2c_map[i2c].tx_buf = config->tx_buffer;
+        m_i2c_map[i2c].tx_buf_size = config->tx_buffer_size;
     } else {
-        m_i2c_map[i2c].rx_buf = i2c_config->rx_buffer;
-        m_i2c_map[i2c].rx_buf_size = i2c_config->rx_buffer_size;
-        m_i2c_map[i2c].tx_buf = i2c_config->tx_buffer;
-        m_i2c_map[i2c].tx_buf_size = i2c_config->tx_buffer_size;
+        // Allocate default buffers
+        m_i2c_map[i2c].rx_buf = new (std::nothrow) uint8_t[I2C_BUFFER_LENGTH];
+        m_i2c_map[i2c].rx_buf_size = I2C_BUFFER_LENGTH;
+        m_i2c_map[i2c].tx_buf = new (std::nothrow) uint8_t[I2C_BUFFER_LENGTH];
+        m_i2c_map[i2c].tx_buf_size = I2C_BUFFER_LENGTH;
     }
 
     // Initialize I2C state
