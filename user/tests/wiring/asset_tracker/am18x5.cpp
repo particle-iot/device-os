@@ -17,6 +17,12 @@
 
 #include "am18x5.h"
 
+#if PLATFORM_ID == PLATFORM_B5SOM
+#define WIREIF                           Wire
+#elif PLATFORM_ID == PLATFORM_TRACKER
+#define WIREIF                           Wire1
+#endif
+
 using namespace spark;
 using namespace particle;
 
@@ -210,18 +216,18 @@ int Am18x5::writeRegister(const Am18x5Register reg, const uint8_t val) {
     uint8_t buf[2];
     buf[0] = static_cast<uint8_t>(reg);
     buf[1] = val;
-    Wire1.beginTransmission(address_);
-    Wire1.write(buf, sizeof(buf));
-    return Wire1.endTransmission();
+    WIREIF.beginTransmission(address_);
+    WIREIF.write(buf, sizeof(buf));
+    return WIREIF.endTransmission();
 }
 
 int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val) {
-    Wire1.beginTransmission(address_);
-    Wire1.write(reinterpret_cast<const uint8_t*>(&reg), 1);
-    CHECK_TRUE(Wire1.endTransmission(false) == 0, SYSTEM_ERROR_INTERNAL);
-    Wire1.requestFrom(address_, (uint8_t)1);
-    if (Wire1.available()) {
-        *val = Wire1.read();
+    WIREIF.beginTransmission(address_);
+    WIREIF.write(reinterpret_cast<const uint8_t*>(&reg), 1);
+    CHECK_TRUE(WIREIF.endTransmission(false) == 0, SYSTEM_ERROR_INTERNAL);
+    WIREIF.requestFrom(address_, (uint8_t)1);
+    if (WIREIF.available()) {
+        *val = WIREIF.read();
     }
     return SYSTEM_ERROR_NONE;
 }

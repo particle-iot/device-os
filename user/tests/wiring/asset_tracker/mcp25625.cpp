@@ -17,6 +17,12 @@
 
 #include "mcp25625.h"
 
+#if PLATFORM_ID == PLATFORM_B5SOM
+#define SPIIF                           SPI
+#elif PLATFORM_ID == PLATFORM_TRACKER
+#define SPIIF                           SPII1
+#endif
+
 using namespace spark;
 using namespace particle;
 
@@ -52,9 +58,9 @@ int Mcp25625::begin() {
     CHECK(resetPin_.write(IoExpanderPinValue::LOW));
     delay(100);
     CHECK(resetPin_.write(IoExpanderPinValue::HIGH));
-    SPI1.setDataMode(SPI_MODE0);
-    SPI1.setClockSpeed(5 * 1000 * 1000);
-    SPI1.begin();
+    SPIIF.setDataMode(SPI_MODE0);
+    SPIIF.setClockSpeed(5 * 1000 * 1000);
+    SPIIF.begin();
     initialized_ = true;
     CHECK(reset());
     return SYSTEM_ERROR_NONE;
@@ -82,7 +88,7 @@ int Mcp25625::reset() {
     CanTransceiverLock lock(mutex_);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK(csPin_.write(IoExpanderPinValue::LOW));
-    SPI1.transfer(static_cast<uint8_t>(Mcp25625Instruction::RESET_REG));
+    SPIIF.transfer(static_cast<uint8_t>(Mcp25625Instruction::RESET_REG));
     return csPin_.write(IoExpanderPinValue::HIGH);
 }
 
@@ -98,9 +104,9 @@ int Mcp25625::readRegister(const uint8_t reg, uint8_t* const val) {
     CanTransceiverLock lock(mutex_);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK(csPin_.write(IoExpanderPinValue::LOW));
-    SPI1.transfer(static_cast<uint8_t>(Mcp25625Instruction::READ)); // Instruction
-    SPI1.transfer(reg); // Address
-    *val = SPI1.transfer(reg); // Value
+    SPIIF.transfer(static_cast<uint8_t>(Mcp25625Instruction::READ)); // Instruction
+    SPIIF.transfer(reg); // Address
+    *val = SPIIF.transfer(reg); // Value
     return csPin_.write(IoExpanderPinValue::HIGH);
 }
 

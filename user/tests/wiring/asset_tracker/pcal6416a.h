@@ -38,7 +38,7 @@ namespace particle {
 
 class Pcal6416a : public IoExpanderBase {
 public:
-    int begin(uint8_t address, pin_t resetPin, pin_t interruptPin, TwoWire* wire = &Wire1);
+    int begin(uint8_t address, pin_t resetPin, pin_t interruptPin, TwoWire* wire = &Wire);
     int end();
     int reset();
     int sleep();
