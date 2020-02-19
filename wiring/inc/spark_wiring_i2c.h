@@ -38,7 +38,7 @@ private:
   HAL_I2C_Interface _i2c;
 
 public:
-  TwoWire(HAL_I2C_Interface i2c);
+  TwoWire(HAL_I2C_Interface i2c, const HAL_I2C_Config& config);
   virtual ~TwoWire() {};
   inline void setClock(uint32_t speed) {
 	  setSpeed(speed);
