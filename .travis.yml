@@ -42,7 +42,7 @@ env:
     - BUILD_PLATFORM="gcc unit-test newhal"
     - BUILD_PLATFORM="electron boron"
     - BUILD_PLATFORM="xenon argon"
-    - BUILD_PLATFORM="bsom b5som"
+    - BUILD_PLATFORM="bsom b5som tracker"
 
   # matrix:
   #   - BUILD_PLATFORM=unit-test gcc

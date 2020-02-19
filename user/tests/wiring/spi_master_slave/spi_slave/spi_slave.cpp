@@ -32,6 +32,18 @@
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
 
+#elif (PLATFORM_ID == PLATFORM_TRACKER)
+
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
+#define MY_SPI SPI
+#define MY_CS D0 // FIXME
+#pragma message "Compiling for SPI, MY_CS set to D0"
+#elif (USE_SPI == 2) || (USE_SPI == 1)
+#error "SPI2 not supported for bsom and b5som"
+#else
+#error "Not supported for Gen 3"
+#endif // (USE_SPI == 0 || USE_SPI == 255)
+
 #else // xenon, argon, boron
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
