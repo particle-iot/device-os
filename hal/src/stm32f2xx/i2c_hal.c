@@ -117,13 +117,13 @@ typedef struct STM32_I2C_Info {
     uint32_t I2C_ClockSpeed;
     bool I2C_Enabled;
 
-    uint8_t *rxBuffer;
+    uint8_t* rxBuffer;
     size_t rxBufferSize;
     size_t rxIndexHead;
     size_t rxIndexTail;
 
     uint8_t txAddress;
-    uint8_t *txBuffer;
+    uint8_t* txBuffer;
     size_t txBufferSize;
     size_t txIndexHead;
     size_t txIndexTail;
@@ -188,7 +188,31 @@ static void HAL_I2C_SoftwareReset(HAL_I2C_Interface i2c)
     i2cMap[i2c]->prevEnding = I2C_ENDING_UNKNOWN;
 }
 
-int HAL_I2C_Init(HAL_I2C_Interface i2c, HAL_I2C_Config* i2c_config)
+static bool HAL_I2C_Config_Is_Valid(const HAL_I2C_Config* config) {
+    if ((config == NULL) ||
+            (config->rx_buffer == NULL ||
+             config->rx_buffer_size == 0 ||
+             config->tx_buffer == NULL ||
+             config->tx_buffer_size == 0))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+static bool HAL_I2C_Buffers_Initialized(HAL_I2C_Interface i2c) {
+    if (i2cMap[i2c]->rxBuffer == NULL ||
+            i2cMap[i2c]->rxBufferSize == 0 ||
+            i2cMap[i2c]->txBuffer == NULL ||
+            i2cMap[i2c]->txBufferSize == 0) {
+        return false;
+    }
+
+    return true;
+}
+
+int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config)
 {
     if(i2c == HAL_I2C_INTERFACE1)
     {
@@ -197,9 +221,9 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, HAL_I2C_Config* i2c_config)
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
     if(i2c == HAL_I2C_INTERFACE2 || i2c == HAL_I2C_INTERFACE1)
     {
-    	   // these are co-dependent so initialize both
-       i2cMap[HAL_I2C_INTERFACE1] = &I2C_MAP[I2C1_D0_D1];
-       i2cMap[HAL_I2C_INTERFACE2] = &I2C_MAP[I2C3_C4_C5];
+        // these are co-dependent so initialize both
+        i2cMap[HAL_I2C_INTERFACE1] = &I2C_MAP[I2C1_D0_D1];
+        i2cMap[HAL_I2C_INTERFACE2] = &I2C_MAP[I2C3_C4_C5];
     }
     else if(i2c == HAL_I2C_INTERFACE3)
     {
@@ -211,6 +235,10 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, HAL_I2C_Config* i2c_config)
         os_thread_scheduling(false, NULL);
         if (i2cMap[i2c]->mutex == NULL) {
             os_mutex_recursive_create(&i2cMap[i2c]->mutex);
+        } else {
+            // Already initialized
+            os_thread_scheduling(true, NULL);
+            return SYSTEM_ERROR_NONE;
         }
         HAL_I2C_Acquire(i2c, NULL);
         os_thread_scheduling(true, NULL);
@@ -218,34 +246,17 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, HAL_I2C_Config* i2c_config)
 #endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 
     // Initialize internal data structure
-    if ((i2c_config == NULL) ||
-        (i2c_config && (i2c_config->rx_buffer == NULL   ||
-                        i2c_config->rx_buffer_size == 0 ||
-                        i2c_config->tx_buffer == NULL   ||
-                        i2c_config->tx_buffer_size == 0)))
+    if (HAL_I2C_Config_Is_Valid(config))
     {
-        // Ensure multiple initializations do not result in multiple allocations
-		static uint8_t *p_rx_buffer[TOTAL_I2C] = {NULL};
-		static uint8_t *p_tx_buffer[TOTAL_I2C] = {NULL};
-
-        // Allocate default buffer
-		if (p_rx_buffer[i2c] == NULL) {
-			p_rx_buffer[i2c] = (uint8_t *)malloc(I2C_BUFFER_LENGTH);
-		}
-		if (p_tx_buffer[i2c] == NULL) {
-			p_tx_buffer[i2c] = (uint8_t *)malloc(I2C_BUFFER_LENGTH);
-		}
-        if (!p_rx_buffer[i2c] || !p_tx_buffer[i2c]) { return SYSTEM_ERROR_NO_MEMORY; }
-
-        i2cMap[i2c]->rxBuffer = p_rx_buffer[i2c];
+        i2cMap[i2c]->rxBuffer = config->rx_buffer;
+        i2cMap[i2c]->rxBufferSize = config->rx_buffer_size;
+        i2cMap[i2c]->txBuffer = config->tx_buffer;
+        i2cMap[i2c]->txBufferSize = config->tx_buffer_size;
+    } else if (!HAL_I2C_Buffers_Initialized(i2c)) {
+        i2cMap[i2c]->rxBuffer = (uint8_t*)malloc(I2C_BUFFER_LENGTH);
         i2cMap[i2c]->rxBufferSize = I2C_BUFFER_LENGTH;
-        i2cMap[i2c]->txBuffer = p_tx_buffer[i2c];
+        i2cMap[i2c]->txBuffer = (uint8_t*)malloc(I2C_BUFFER_LENGTH);
         i2cMap[i2c]->txBufferSize = I2C_BUFFER_LENGTH;
-    } else {
-        i2cMap[i2c]->rxBuffer = i2c_config->rx_buffer;
-        i2cMap[i2c]->rxBufferSize = i2c_config->rx_buffer_size;
-        i2cMap[i2c]->txBuffer = i2c_config->tx_buffer;
-        i2cMap[i2c]->txBufferSize = i2c_config->tx_buffer_size;
     }
 
     // Initialize I2C state
