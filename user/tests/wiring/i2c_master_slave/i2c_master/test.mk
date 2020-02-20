@@ -14,10 +14,10 @@ USE_WIRE=Wire
 USE_ACQUIRE_WIRE_BUFFER=acquireWireBuffer
 else ifeq ("${USE_WIRE}","Wire1")
 USE_WIRE=Wire1
-USE_ACQUIRE_WIRE_BUFFER=acquireWireBuffer1
+USE_ACQUIRE_WIRE_BUFFER=acquireWire1Buffer
 else ifeq ("${USE_WIRE}","Wire3")
 USE_WIRE=Wire3
-USE_ACQUIRE_WIRE_BUFFER=acquireWireBuffer3
+USE_ACQUIRE_WIRE_BUFFER=acquireWire3Buffer
 else
 USE_WIRE=Wire
 USE_ACQUIRE_WIRE_BUFFER=acquireWireBuffer
