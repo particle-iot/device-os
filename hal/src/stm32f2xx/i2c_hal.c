@@ -193,8 +193,7 @@ static bool HAL_I2C_Config_Is_Valid(const HAL_I2C_Config* config) {
             (config->rx_buffer == NULL ||
              config->rx_buffer_size == 0 ||
              config->tx_buffer == NULL ||
-             config->tx_buffer_size == 0))
-    {
+             config->tx_buffer_size == 0)) {
         return false;
     }
 
@@ -257,6 +256,7 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config)
         i2cMap[i2c]->rxBufferSize = I2C_BUFFER_LENGTH;
         i2cMap[i2c]->txBuffer = (uint8_t*)malloc(I2C_BUFFER_LENGTH);
         i2cMap[i2c]->txBufferSize = I2C_BUFFER_LENGTH;
+        SPARK_ASSERT(i2cMap[i2c]->rxBuffer && i2cMap[i2c]->txBuffer);
     }
 
     // Initialize I2C state

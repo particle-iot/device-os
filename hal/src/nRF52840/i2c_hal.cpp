@@ -37,7 +37,7 @@
 #define EVENT_TIMEOUT               (HAL_I2C_DEFAULT_TIMEOUT_MS * 1000)
 
 #define WAIT_TIMED(what) ({ \
-    system_tick_t _micros = HAL_Timer_Get_Micro_Seconds();                           \
+    system_tick_t _micros = HAL_Timer_Get_Micro_Seconds();                      \
     bool res = true;                                                            \
     while((what))                                                               \
     {                                                                           \
@@ -278,6 +278,8 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config) {
         m_i2c_map[i2c].rx_buf_size = I2C_BUFFER_LENGTH;
         m_i2c_map[i2c].tx_buf = new (std::nothrow) uint8_t[I2C_BUFFER_LENGTH];
         m_i2c_map[i2c].tx_buf_size = I2C_BUFFER_LENGTH;
+
+        SPARK_ASSERT(m_i2c_map[i2c].rx_buf && m_i2c_map[i2c].tx_buf);
     }
 
     // Initialize I2C state
