@@ -232,7 +232,7 @@ test(api_wire)
     API_COMPILE({ auto w = testWire(Wire1); (void)w; });
 #endif // Wiring_Wire1
 #if Wiring_Wire3
-    API_COMPILE({ auto w = testWire(Wire1); (void)w; });
+    API_COMPILE({ auto w = testWire(Wire3); (void)w; });
 #endif // Wiring_Wire1
 }
 
