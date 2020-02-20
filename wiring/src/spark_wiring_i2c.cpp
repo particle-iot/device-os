@@ -75,25 +75,29 @@ void TwoWire::end()
 	HAL_I2C_End(_i2c, NULL);
 }
 
-uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop)
+size_t TwoWire::requestFrom(uint8_t address, size_t quantity, uint8_t sendStop)
 {
-  uint8_t result = HAL_I2C_Request_Data(_i2c, address, quantity, sendStop, NULL);
-  return result;
+  return requestFrom(WireTransmission(address).quantity(quantity).stop(sendStop));
 }
 
-uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity)
+size_t TwoWire::requestFrom(uint8_t address, size_t quantity)
 {
-  return requestFrom((uint8_t)address, (uint8_t)quantity, (uint8_t)true);
+  return requestFrom(address, quantity, (uint8_t)true);
 }
 
-uint8_t TwoWire::requestFrom(int address, int quantity)
+size_t TwoWire::requestFrom(int address, int quantity)
 {
-  return requestFrom((uint8_t)address, (uint8_t)quantity, (uint8_t)true);
+  return requestFrom((uint8_t)address, (size_t)quantity, (uint8_t)true);
 }
 
-uint8_t TwoWire::requestFrom(int address, int quantity, int sendStop)
+size_t TwoWire::requestFrom(int address, int quantity, int sendStop)
 {
-  return requestFrom((uint8_t)address, (uint8_t)quantity, (uint8_t)sendStop);
+  return requestFrom((uint8_t)address, (size_t)quantity, (uint8_t)sendStop);
+}
+
+size_t TwoWire::requestFrom(const WireTransmission& transfer) {
+  auto conf = transfer.halConfig();
+  return HAL_I2C_Request_Data_Ex(_i2c, &conf, nullptr);
 }
 
 void TwoWire::beginTransmission(uint8_t address)
@@ -104,6 +108,11 @@ void TwoWire::beginTransmission(uint8_t address)
 void TwoWire::beginTransmission(int address)
 {
   beginTransmission((uint8_t)address);
+}
+
+void TwoWire::beginTransmission(const WireTransmission& transfer) {
+  auto conf = transfer.halConfig();
+  HAL_I2C_Begin_Transmission(_i2c, conf.address, &conf);
 }
 
 //

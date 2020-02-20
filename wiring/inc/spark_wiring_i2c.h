@@ -30,7 +30,57 @@
 #include "spark_wiring_stream.h"
 #include "spark_wiring_platform.h"
 #include "i2c_hal.h"
+#include <chrono>
 
+class WireTransmission {
+public:
+  WireTransmission(uint8_t address)
+      : address_{address},
+        size_{0},
+        stop_{true},
+        timeout_{HAL_I2C_DEFAULT_TIMEOUT_MS} {
+  }
+
+  WireTransmission() = delete;
+
+  WireTransmission& quantity(size_t size) {
+    size_ = size;
+    return *this;
+  }
+
+  WireTransmission& timeout(system_tick_t ms) {
+    timeout_ = ms;
+    return *this;
+  }
+
+  WireTransmission& timeout(std::chrono::milliseconds ms) {
+    return timeout((system_tick_t)ms.count());
+  }
+
+  WireTransmission& stop(bool stop) {
+    stop_ = stop;
+    return *this;
+  }
+
+  HAL_I2C_Transmission_Config halConfig() const {
+    HAL_I2C_Transmission_Config conf = {
+      .size = sizeof(HAL_I2C_Transmission_Config),
+      .version = 0,
+      .address = address_,
+      .reserved = {0},
+      .quantity = size_,
+      .timeout_ms = timeout_,
+      .flags = (uint32_t)(stop_ ? HAL_I2C_TRANSMISSION_FLAG_STOP : 0)
+    };
+    return conf;
+  }
+
+private:
+  uint8_t address_;
+  size_t size_;
+  bool stop_;
+  system_tick_t timeout_;
+};
 
 class TwoWire : public Stream
 {
@@ -51,13 +101,15 @@ public:
   void begin(int);
   void beginTransmission(uint8_t);
   void beginTransmission(int);
+  void beginTransmission(const WireTransmission& transfer);
   void end();
   uint8_t endTransmission(void);
   uint8_t endTransmission(uint8_t);
-  uint8_t requestFrom(uint8_t, uint8_t);
-  uint8_t requestFrom(uint8_t, uint8_t, uint8_t);
-  uint8_t requestFrom(int, int);
-  uint8_t requestFrom(int, int, int);
+  size_t requestFrom(uint8_t, size_t);
+  size_t requestFrom(uint8_t, size_t, uint8_t);
+  size_t requestFrom(int, int);
+  size_t requestFrom(int, int, int);
+  size_t requestFrom(const WireTransmission& transfer);
   virtual size_t write(uint8_t);
   virtual size_t write(const uint8_t *, size_t);
   virtual int available(void);
