@@ -68,7 +68,7 @@ public:
       .version = 0,
       .address = address_,
       .reserved = {0},
-      .quantity = size_,
+      .quantity = (uint32_t)size_,
       .timeout_ms = timeout_,
       .flags = (uint32_t)(stop_ ? HAL_I2C_TRANSMISSION_FLAG_STOP : 0)
     };
