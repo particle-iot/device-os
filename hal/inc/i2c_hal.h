@@ -66,7 +66,7 @@ typedef struct HAL_I2C_Config {
 /* Exported macros -----------------------------------------------------------*/
 #define CLOCK_SPEED_100KHZ         (uint32_t)100000
 #define CLOCK_SPEED_400KHZ         (uint32_t)400000
-#define HAL_I2C_DEFAULT_TIMEOUT_MS (system_tick_t)100
+#define HAL_I2C_DEFAULT_TIMEOUT_MS (100)
 #define I2C_BUFFER_LENGTH          (uint8_t)32
 
 /* Exported functions --------------------------------------------------------*/

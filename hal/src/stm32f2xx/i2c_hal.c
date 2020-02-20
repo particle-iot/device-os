@@ -49,7 +49,7 @@ LOG_SOURCE_CATEGORY("hal.i2c")
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
-#define EVENT_TIMEOUT   (HAL_I2C_DEFAULT_TIMEOUT_MS * 1000u)
+#define EVENT_TIMEOUT   (HAL_I2C_DEFAULT_TIMEOUT_MS * 1000)
 
 #define TRANSMITTER     0x00
 #define RECEIVER        0x01
@@ -68,7 +68,7 @@ LOG_SOURCE_CATEGORY("hal.i2c")
     bool res = true;                                                            \
     while((what))                                                               \
     {                                                                           \
-        system_tick_t dt = (HAL_Timer_Get_Micro_Seconds() - _micros);                 \
+        int32_t dt = (HAL_Timer_Get_Micro_Seconds() - _micros);                 \
         bool nok = ((EVENT_TIMEOUT < dt)                                         \
                    && (what))                                                   \
                    || (dt < 0);                                                   \
