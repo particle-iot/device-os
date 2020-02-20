@@ -49,12 +49,17 @@ void HAL_I2C_End(HAL_I2C_Interface i2c,void* reserved)
 {
 }
 
-uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop,void* reserved)
+uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop, void* reserved)
 {
-    return SYSTEM_ERROR_NONE;
+  return SYSTEM_ERROR_NONE;
 }
 
-void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address,void* reserved)
+int32_t HAL_I2C_Request_Data_Ex(HAL_I2C_Interface i2c, const HAL_I2C_Transmission_Config* config, void* reserved)
+{
+    return 0;
+}
+
+void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, const HAL_I2C_Transmission_Config* config)
 {
 }
 
