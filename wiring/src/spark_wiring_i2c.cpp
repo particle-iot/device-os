@@ -30,11 +30,10 @@
 
 // Constructors ////////////////////////////////////////////////////////////////
 
-TwoWire::TwoWire(HAL_I2C_Interface i2c)
+TwoWire::TwoWire(HAL_I2C_Interface i2c, const HAL_I2C_Config& conf)
 {
   _i2c = i2c;
-  HAL_I2C_Init(_i2c, NULL);
-
+  HAL_I2C_Init(_i2c, &conf);
 }
 
 // Public Methods //////////////////////////////////////////////////////////////

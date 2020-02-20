@@ -28,8 +28,10 @@
 #define __I2C_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
+#include <stddef.h>
 #include "pinmap_hal.h"
 #include "platforms.h"
+#include "system_tick_hal.h"
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -44,11 +46,28 @@ typedef enum HAL_I2C_Interface {
     HAL_I2C_INTERFACE3 = 2
 } HAL_I2C_Interface;
 
+/*! I2c Config Structure Version */
+typedef enum HAL_I2C_Config_Version {
+    HAL_I2C_CONFIG_VERSION_1 = 0,
+    HAL_I2C_CONFIG_VERSION_LATEST = HAL_I2C_CONFIG_VERSION_1,
+} HAL_I2C_Config_Version;
+
+typedef struct HAL_I2C_Config {
+    uint16_t size;
+    uint16_t version;
+    uint8_t* rx_buffer;
+    uint32_t rx_buffer_size;
+    uint8_t* tx_buffer;
+    uint32_t tx_buffer_size;
+} HAL_I2C_Config;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
-#define CLOCK_SPEED_100KHZ      (uint32_t)100000
-#define CLOCK_SPEED_400KHZ      (uint32_t)400000
+#define CLOCK_SPEED_100KHZ         (uint32_t)100000
+#define CLOCK_SPEED_400KHZ         (uint32_t)400000
+#define HAL_I2C_DEFAULT_TIMEOUT_MS (100)
+#define I2C_BUFFER_LENGTH          (uint8_t)32
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -56,7 +75,7 @@ typedef enum HAL_I2C_Interface {
 extern "C" {
 #endif
 
-void HAL_I2C_Init(HAL_I2C_Interface i2c, void* reserved);
+int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config);
 void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved);
 void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable, void* reserved);
 void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved);
@@ -94,12 +113,6 @@ void HAL_I2C_Flush_Data_v1(void);
 bool HAL_I2C_Is_Enabled_v1(void);
 void HAL_I2C_Set_Callback_On_Receive_v1(void (*function)(int));
 void HAL_I2C_Set_Callback_On_Request_v1(void (*function)(void));
-
-
-
-#define I2C_BUFFER_LENGTH 32
-
-#define I2C_BUFFER_LENGTH 32
 
 #ifdef __cplusplus
 }

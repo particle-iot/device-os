@@ -8,16 +8,52 @@
 
 #ifndef SPARK_WIRING_NO_I2C
 
+namespace {
+
+HAL_I2C_Config defaultWireConfig() {
+	HAL_I2C_Config config = {
+		.size = sizeof(HAL_I2C_Config),
+		.version = HAL_I2C_CONFIG_VERSION_1,
+		.rx_buffer = new (std::nothrow) uint8_t[I2C_BUFFER_LENGTH],
+		.rx_buffer_size = I2C_BUFFER_LENGTH,
+		.tx_buffer = new (std::nothrow) uint8_t[I2C_BUFFER_LENGTH],
+		.tx_buffer_size = I2C_BUFFER_LENGTH
+	};
+
+	return config;
+}
+
+} // anonymous
+
+HAL_I2C_Config __attribute__((weak)) acquireWireBuffer()
+{
+	return defaultWireConfig();
+}
+
+#if Wiring_Wire1
+HAL_I2C_Config __attribute__((weak)) acquireWire1Buffer()
+{
+	return defaultWireConfig();
+}
+#endif
+
+#if Wiring_Wire3
+HAL_I2C_Config __attribute__((weak)) acquireWire3Buffer()
+{
+	return defaultWireConfig();
+}
+#endif
+
 TwoWire& __fetch_global_Wire()
 {
-	static TwoWire wire(HAL_I2C_INTERFACE1);
+	static TwoWire wire(HAL_I2C_INTERFACE1, acquireWireBuffer());
 	return wire;
 }
 
 #if Wiring_Wire1
 TwoWire& __fetch_global_Wire1()
 {
-	static TwoWire wire(HAL_I2C_INTERFACE2);
+	static TwoWire wire(HAL_I2C_INTERFACE2, acquireWire1Buffer());
 	return wire;
 }
 
@@ -27,7 +63,7 @@ TwoWire& __fetch_global_Wire1()
 #if Wiring_Wire3
 TwoWire& __fetch_global_Wire3()
 {
-	static TwoWire wire(HAL_I2C_INTERFACE3);
+	static TwoWire wire(HAL_I2C_INTERFACE3, acquireWire3Buffer());
 	return wire;
 }
 
