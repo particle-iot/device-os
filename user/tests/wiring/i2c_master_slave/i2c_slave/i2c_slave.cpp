@@ -44,7 +44,7 @@ void I2C_Slave_On_Receive_Callback(int) {
         done = 1;
 }
 
-test(I2C_Master_Slave_Slave_Transfer)
+test(I2C_01_Master_Slave_Slave_Transfer)
 {
     Serial.println("This is Slave");
     Serial.printlnf("Master message: %s", MASTER_TEST_MESSAGE);
