@@ -641,11 +641,13 @@ void PowerManager::applyVinConfig() {
 }
 
 void PowerManager::logCurrentConfig() {
+#if defined(DEBUG_BUILD) && 0
   LOG_DEBUG(TRACE, "Power configuration:");
   LOG_DEBUG(TRACE, "VIN Vmin: %u", config_.vin_min_voltage);
   LOG_DEBUG(TRACE, "VIN Imax: %u", config_.vin_max_current);
   LOG_DEBUG(TRACE, "Ichg: %u", config_.charge_current);
   LOG_DEBUG(TRACE, "Iterm: %u", config_.termination_voltage);
+#endif // defined(DEBUG_BUILD) && 0
 }
 
 void PowerManager::applyDefaultConfig(bool dpdm) {
