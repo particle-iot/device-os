@@ -171,7 +171,7 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
 
     const int dataSize = 1024;
     const int bufferSize = 2048;
-    auto randData = std::make_unique<char[]>(1024);
+    auto randData = std::make_unique<char[]>(dataSize);
     assertTrue((bool)randData);
 
     Random rand;
@@ -214,7 +214,7 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
     int responseSize = 0;
     uint32_t mil = millis();
     while(1) {
-        while (c.available()) {
+        while (c.available() && responseSize < bufferSize) {
             responseBuf.get()[responseSize++] = c.read();
         }
         if (!c.connected())
