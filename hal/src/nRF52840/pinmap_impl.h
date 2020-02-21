@@ -33,6 +33,10 @@ typedef struct Hal_Pin_Info {
     uint8_t     pwm_channel;    // 4 channels in each instance, range: 0~3
     uint8_t     pwm_resolution; // default 8bit, max 15bit
     uint8_t     exti_channel;   // 16 channels
+#if HAL_PLATFORM_IO_EXPANDER
+    uint8_t     is_expander;
+    uint16_t    reserved;
+#endif // HAL_PLATFORM_IO_EXPANDER
     uint32_t    user_data;
 } Hal_Pin_Info;
 

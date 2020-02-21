@@ -3,10 +3,12 @@
 #include "am18x5.h"
 #include "mcp25625.h"
 #include "bmi160.h"
+#include "mcp23s17.h"
+
+#define USE_MCP23S17                    1
 
 #define TEST_CELLULAR                   0
 #define TEST_GPS                        1
-#define TEST_IO_EXP_INT                 0
 #define TEST_RTC                        0
 #define TEST_CAN_TRANSCEIVER            0
 #define TEST_FUEL_GAUGE                 0
@@ -21,6 +23,39 @@
 #endif
 
 #if PLATFORM_ID == PLATFORM_B5SOM
+
+# if USE_MCP23S17
+
+// GPS
+#  define GPS_RST_PORT                  0
+#  define GPS_RST_PIN                   5
+#  define GPS_PWR_PORT                  0
+#  define GPS_PWR_PIN                   4
+#  define GPS_CS_PORT                   0
+#  define GPS_CS_PIN                    3
+
+// ESP32
+#  define ESP_BOOT_PORT                 1
+#  define ESP_BOOT_PIN                  0
+#  define ESP_CS_PORT                   1
+#  define ESP_CS_PIN                    1
+#  define ESP_EN_PORT                   1
+#  define ESP_EN_PIN                    2
+#  define ESP_WKP_PORT                  0
+#  define ESP_WKP_PIN                   7
+
+// SENSOR
+#  define ACCEL_EN_PORT                 1
+#  define ACCEL_EN_PIN                  5
+
+// CAN_TRANSCEIVER
+#  define CAN_CS_PORT                   0
+#  define CAN_CS_PIN                    1
+#  define CAN_PWR_PORT                  0
+#  define CAN_PWR_PIN                   0
+
+# else
+
 // GPS
 IoExpanderPinObj gpsResetPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN5);
 IoExpanderPinObj gpsPwrEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN4);
@@ -39,7 +74,10 @@ IoExpanderPinObj accelEnPin(PCAL6416A, IoExpanderPort::PORT1, IoExpanderPin::PIN
 IoExpanderPinObj canCsPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN1);
 IoExpanderPinObj canPwrEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN0);
 
-#elif PLATFORM_ID == PLATFORM_TRACKER
+# endif // // # if USE_MCP23S17
+
+#elif PLATFORM_ID == PLATFORM_TRACKER // PLATFORM_ID == PLATFORM_B5SOM
+
 // GPS
 IoExpanderPinObj gpsResetPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN7);
 IoExpanderPinObj gpsPwrEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN6);
@@ -57,7 +95,8 @@ IoExpanderPinObj accelEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN
 // CAN_TRANSCEIVER
 IoExpanderPinObj canCsPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN1);
 IoExpanderPinObj canPwrEnPin(PCAL6416A, IoExpanderPort::PORT0, IoExpanderPin::PIN0);
-#endif
+
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 
 
 #if TEST_FUEL_GAUGE
@@ -79,12 +118,21 @@ SerialLogHandler log(LOG_LEVEL_ALL);
 
 
 static int deselectAllCsPins() {
+#if USE_MCP23S17
+    MCP23S17.setPinMode(CAN_CS_PORT, CAN_CS_PIN, OUTPUT);
+    MCP23S17.writePinValue(CAN_CS_PORT, CAN_CS_PIN, HIGH);
+    MCP23S17.setPinMode(ESP_CS_PORT, ESP_CS_PIN, OUTPUT);
+    MCP23S17.writePinValue(ESP_CS_PORT, ESP_CS_PIN, HIGH);
+    MCP23S17.setPinMode(GPS_CS_PORT, GPS_CS_PIN, OUTPUT);
+    MCP23S17.writePinValue(GPS_CS_PORT, GPS_CS_PIN, HIGH);
+#else
     CHECK(canCsPin.mode(IoExpanderPinMode::OUTPUT));
     CHECK(canCsPin.write(IoExpanderPinValue::HIGH));
     CHECK(esp32CsPin.mode(IoExpanderPinMode::OUTPUT));
     CHECK(esp32CsPin.write(IoExpanderPinValue::HIGH));
     CHECK(gpsCsPin.mode(IoExpanderPinMode::OUTPUT));
     CHECK(gpsCsPin.write(IoExpanderPinValue::HIGH));
+#endif
     return 0;
 }
 
@@ -98,62 +146,39 @@ static int handler(int type, const char* buf, int len, int* lines) {
 
 #if TEST_GPS
 static int gpsConfigurePins() {
+#if USE_MCP23S17
+    MCP23S17.setPinMode(GPS_PWR_PORT, GPS_PWR_PIN, OUTPUT);
+    MCP23S17.writePinValue(GPS_PWR_PORT, GPS_PWR_PIN, HIGH);
+    MCP23S17.setPinMode(GPS_RST_PORT, GPS_RST_PIN, OUTPUT);
+    MCP23S17.writePinValue(GPS_RST_PORT, GPS_RST_PIN, LOW);
+    delay(500);
+    return MCP23S17.writePinValue(GPS_RST_PORT, GPS_RST_PIN, HIGH);
+#else
     CHECK(gpsPwrEnPin.mode(IoExpanderPinMode::OUTPUT));
     CHECK(gpsPwrEnPin.write(IoExpanderPinValue::HIGH));
     CHECK(gpsResetPin.mode(IoExpanderPinMode::OUTPUT));
     CHECK(gpsResetPin.write(IoExpanderPinValue::LOW));
     delay(500);
     return gpsResetPin.write(IoExpanderPinValue::HIGH);
+#endif
 }
 
 static int gpsCsSelect(bool select) {
+#if USE_MCP23S17
+    if (select) {
+        return MCP23S17.writePinValue(GPS_CS_PORT, GPS_CS_PIN, LOW, false); // Do not verify the register, otherwise both GPS /CS pin and IO expander /CS pin is asserted.
+    } else {
+        return MCP23S17.writePinValue(GPS_CS_PORT, GPS_CS_PIN, HIGH, false);
+    }
+#else
     if (select) {
         return gpsCsPin.write(IoExpanderPinValue::LOW);
     } else {
         return gpsCsPin.write(IoExpanderPinValue::HIGH);
     }
+#endif
 }
 #endif // TEST_GPS
-
-#if TEST_IO_EXP_INT
-static void onP07IntHandler(void* context) {
-    Log.println("Entered onP07IntHandler().");
-}
-
-static void onP17IntHandler(void* context) {
-    Log.println("Entered onP17IntHandler().");
-}
-
-static int configureIntPin() {
-    CHECK(intPin.mode(IoExpanderPinMode::INPUT_PULLUP));
-    CHECK(intPin.attachInterrupt(IoExpanderIntTrigger::FALLING, onP07IntHandler, nullptr));
-    CHECK(intPin1.mode(IoExpanderPinMode::INPUT_PULLDOWN));
-    return intPin1.attachInterrupt(IoExpanderIntTrigger::RISING, onP17IntHandler, nullptr);
-}
-
-static int configureTrigPin() {
-    CHECK(trigPin.mode(IoExpanderPinMode::OUTPUT));
-    CHECK(trigPin.write(IoExpanderPinValue::HIGH));
-    CHECK(trigPin1.mode(IoExpanderPinMode::OUTPUT));
-    return trigPin1.write(IoExpanderPinValue::LOW);
-}
-
-static int setTriggerPin(bool val) {
-    if (val) {
-        return trigPin.write(IoExpanderPinValue::HIGH);
-    } else {
-        return trigPin.write(IoExpanderPinValue::LOW);
-    }
-}
-
-static int setTriggerPin1(bool val) {
-    if (val) {
-        return trigPin1.write(IoExpanderPinValue::HIGH);
-    } else {
-        return trigPin1.write(IoExpanderPinValue::LOW);
-    }
-}
-#endif // TEST_IO_EXP_INT
 
 #if TEST_ESP32
 static void esp32WakeupPinHandler(void* context) {
@@ -168,11 +193,15 @@ void setup() {
 
     // I/O Expander initialization
 #if PLATFORM_ID == PLATFORM_B5SOM
+# if USE_MCP23S17
+    if (MCP23S17.begin() != SYSTEM_ERROR_NONE) {
+# else
     if (PCAL6416A.begin(PCAL6416A_I2C_ADDRESS, PCAL6416A_RESET_PIN, PCAL6416A_INT_PIN) != SYSTEM_ERROR_NONE) {
+# endif
 #elif PLATFORM_ID == PLATFORM_TRACKER
     if (PCAL6416A.begin(PCAL6416A_I2C_ADDRESS, PCAL6416A_RESET_PIN, PCAL6416A_INT_PIN, &Wire1) != SYSTEM_ERROR_NONE) {
 #endif
-        LOG(ERROR, "PCAL6416A.begin() failed.");
+        LOG(ERROR, "IO expander begin() failed.");
     }
 
     deselectAllCsPins();
@@ -196,15 +225,6 @@ void setup() {
     }
 #endif // TEST_CAN_TRANSCEIVER
 
-#if TEST_IO_EXP_INT
-    if (configureTrigPin() != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "configureTrigPin() failed.");
-    }
-    if (configureIntPin() != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "configureIntPin() failed.");
-    }
-#endif // TEST_IO_EXP_INT
-
 #if TEST_GPS
     // Test ublox GPS
     if (gpsConfigurePins() != SYSTEM_ERROR_NONE) {
@@ -224,8 +244,13 @@ void setup() {
 #endif // TEST_CELLULAR
 
 #if TEST_CAN_TRANSCEIVER
+# if USE_MCP23S17
+    MCP23S17.setPinMode(CAN_PWR_PORT, CAN_PWR_PIN, OUTPUT);
+    MCP23S17.writePinValue(CAN_PWR_PORT, CAN_PWR_PIN, HIGH);
+# else
     canPwrEnPin.mode(IoExpanderPinMode::OUTPUT);
     canPwrEnPin.write(IoExpanderPinValue::HIGH);
+# endif
 #endif // TEST_CAN_TRANSCEIVER
 
 #if TEST_FUEL_GAUGE
@@ -240,8 +265,13 @@ void setup() {
 #endif
 
 #if TEST_SENSOR
+# if USE_MCP23S17
+    MCP23S17.setPinMode(ACCEL_EN_PORT, ACCEL_EN_PIN, OUTPUT);
+    MCP23S17.writePinValue(ACCEL_EN_PORT, ACCEL_EN_PIN, HIGH);
+# else
     accelEnPin.mode(IoExpanderPinMode::OUTPUT);
     accelEnPin.write(IoExpanderPinValue::HIGH);
+# endif
     BMI160.begin(BMI160_I2C_ADDRESS);
     uint8_t chipId;
     if (BMI160.getChipId(&chipId) != SYSTEM_ERROR_NONE) {
@@ -252,9 +282,19 @@ void setup() {
 #endif
 
 #if TEST_ESP32
+# if USE_MCP23S17
+    MCP23S17.setPinMode(ESP_BOOT_PORT, ESP_BOOT_PIN, OUTPUT);
+    MCP23S17.writePinValue(ESP_BOOT_PORT, ESP_BOOT_PIN, HIGH);
+    MCP23S17.setPinMode(ESP_EN_PORT, ESP_EN_PIN, OUTPUT);
+    // Reset ESP32
+    MCP23S17.writePinValue(ESP_BOOT_PORT, ESP_BOOT_PIN, LOW);
+    delay(100);
+    MCP23S17.writePinValue(ESP_BOOT_PORT, ESP_BOOT_PIN, HIGH);
+
+    MCP23S17.setPinMode(ESP_WKP_PORT, ESP_WKP_PIN, INPUT_PULLUP);
+    MCP23S17.attachPinInterrupt(ESP_WKP_PORT, ESP_WKP_PIN, FALLING, esp32WakeupPinHandler, nullptr);
+# else
     // Configure ESP32 pin
-    esp32CsPin.mode(IoExpanderPinMode::OUTPUT);
-    esp32CsPin.write(IoExpanderPinValue::HIGH);
     esp32BootPin.mode(IoExpanderPinMode::OUTPUT);
     esp32BootPin.write(IoExpanderPinValue::HIGH);
     esp32EnPin.mode(IoExpanderPinMode::OUTPUT);
@@ -266,11 +306,13 @@ void setup() {
     esp32WakeupPin.mode(IoExpanderPinMode::INPUT_PULLUP);
     esp32WakeupPin.attachInterrupt(IoExpanderIntTrigger::FALLING, esp32WakeupPinHandler, nullptr);
     esp32WakeupPin.inputLatch(true);
+# endif
 #endif // TEST_ESP32
 }
 
 void loop() {
 #if TEST_GPS
+    LOG(INFO, "Reading GPS data...");
     if (gpsCsSelect(true) == SYSTEM_ERROR_NONE) {
         uint8_t in_byte;
         do {
@@ -289,15 +331,6 @@ void loop() {
     }
     delay(2000);
 #endif // TEST_GPS
-
-#if TEST_IO_EXP_INT
-    delay(3000);
-    setTriggerPin(0);
-    setTriggerPin(1);
-    delay(3000);
-    setTriggerPin1(0);
-    setTriggerPin1(1);
-#endif
 
 #if TEST_CAN_TRANSCEIVER
     uint8_t val;
@@ -323,13 +356,21 @@ void loop() {
     const int len = strlen("This is the receiver, sending data for transmission number 0000");
     static uint8_t rxBuffer[64];
     static uint8_t txBuffer[64];
+# if USE_MCP23S17
+    MCP23S17.writePinValue(ESP_CS_PORT, ESP_CS_PIN, LOW, false);
+# else
     esp32CsPin.write(IoExpanderPinValue::LOW);
+# endif
     memset(rxBuffer, 0, sizeof(rxBuffer));
     memset(txBuffer, 0, sizeof(txBuffer));
     sprintf((char*)txBuffer, "Hello, I'm B5SoM!");
     SPIIF.transfer(txBuffer, rxBuffer, len, nullptr);
     Log.printf("rx data: %s\r\n", rxBuffer);
+# if USE_MCP23S17
+    MCP23S17.writePinValue(ESP_CS_PORT, ESP_CS_PIN, HIGH, false);
+# else
     esp32CsPin.write(IoExpanderPinValue::HIGH);
+#endif
     delay(2000);
 #endif // TEST_ESP32
 }
