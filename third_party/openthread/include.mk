@@ -11,9 +11,9 @@ ifeq ($(PLATFORM_OPENTHREAD),nrf52840)
 CFLAGS += -DENABLE_FEM=1
 CFLAGS += -DNRF_802154_PROJECT_CONFIG=\"openthread-platform-config.h\"
 CFLAGS += -DRAAL_SOFTDEVICE=1
-INCLUDE_DIRS += $(TARGET_OPENTHREAD_PATH)/openthread/third_party/NordicSemiconductor/drivers/radio
-INCLUDE_DIRS += $(TARGET_OPENTHREAD_PATH)/openthread/third_party/NordicSemiconductor/drivers/radio/hal
-INCLUDE_DIRS += $(TARGET_OPENTHREAD_PATH)/openthread/third_party/NordicSemiconductor/drivers/radio/rsch
-INCLUDE_DIRS += $(TARGET_OPENTHREAD_PATH)/openthread/third_party/NordicSemiconductor/drivers/radio/rsch/raal
-INCLUDE_DIRS += $(TARGET_OPENTHREAD_PATH)/openthread/third_party/NordicSemiconductor/drivers/radio/rsch/raal/softdevice
+INCLUDE_DIRS += $(TARGET_OPENTHREAD_PATH)/openthread/radio
+INCLUDE_DIRS += $(TARGET_OPENTHREAD_PATH)/openthread/radio/hal
+INCLUDE_DIRS += $(TARGET_OPENTHREAD_PATH)/openthread/radio/rsch
+INCLUDE_DIRS += $(TARGET_OPENTHREAD_PATH)/openthread/radio/rsch/raal
+INCLUDE_DIRS += $(TARGET_OPENTHREAD_PATH)/openthread/radio/rsch/raal/softdevice
 endif
