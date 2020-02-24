@@ -34,17 +34,14 @@
 
 #define TOTAL_I2C                   2
 #define I2C_IRQ_PRIORITY            APP_IRQ_PRIORITY_LOWEST
-#define EVENT_TIMEOUT               (HAL_I2C_DEFAULT_TIMEOUT_MS * 1000)
 
-#define WAIT_TIMED(what) ({ \
+#define WAIT_TIMED(timeout_ms, what) ({ \
     system_tick_t _micros = HAL_Timer_Get_Micro_Seconds();                      \
     bool res = true;                                                            \
     while((what))                                                               \
     {                                                                           \
-        int32_t dt = (HAL_Timer_Get_Micro_Seconds() - _micros);                 \
-        bool nok = ((EVENT_TIMEOUT < dt)                                        \
-                   && (what))                                                   \
-                   || (dt < 0);                                                 \
+        system_tick_t dt = (HAL_Timer_Get_Micro_Seconds() - _micros);           \
+        bool nok = (((timeout_ms * 1000) < dt) && (what));                      \
         if (nok)                                                                \
         {                                                                       \
             res = false;                                                        \
@@ -94,6 +91,8 @@ typedef struct {
 
     void (*callback_on_request)(void);
     void (*callback_on_receive)(int);
+
+    HAL_I2C_Transmission_Config transfer_config;
 } nrf5x_i2c_info_t;
 
 static void twis0_handler(nrfx_twis_evt_t const * p_event);
@@ -107,6 +106,23 @@ nrf5x_i2c_info_t m_i2c_map[TOTAL_I2C] = {
     {&m_twim1, &m_twis1, twis1_handler, D3, D2}
 #endif
 };
+
+static void HAL_I2C_Set_Config_Or_Default(HAL_I2C_Interface i2c, const HAL_I2C_Transmission_Config* config) {
+    memset(&m_i2c_map[i2c].transfer_config, 0, sizeof(m_i2c_map[i2c].transfer_config));
+    if (config) {
+        memcpy(&m_i2c_map[i2c].transfer_config, config, std::min((size_t)config->size, sizeof(m_i2c_map[i2c].transfer_config)));
+    } else {
+        m_i2c_map[i2c].transfer_config = {
+            .size = sizeof(HAL_I2C_Transmission_Config),
+            .version = 0,
+            .address = 0xff,
+            .reserved = {0},
+            .quantity = 0,
+            .timeout_ms = HAL_I2C_DEFAULT_TIMEOUT_MS,
+            .flags = HAL_I2C_TRANSMISSION_FLAG_STOP
+        };
+    }
+}
 
 static void twis_handler(HAL_I2C_Interface i2c, nrfx_twis_evt_t const * p_event) {
     switch (p_event->type) {
@@ -340,18 +356,37 @@ void HAL_I2C_End(HAL_I2C_Interface i2c,void* reserved) {
 }
 
 uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop, void* reserved) {
+    HAL_I2C_Transmission_Config conf = {
+        .size = sizeof(HAL_I2C_Transmission_Config),
+        .version = 0,
+        .address = address,
+        .reserved = {0},
+        .quantity = quantity,
+        .timeout_ms = HAL_I2C_DEFAULT_TIMEOUT_MS,
+        .flags = (uint32_t)(stop ? HAL_I2C_TRANSMISSION_FLAG_STOP : 0)
+    };
+    return HAL_I2C_Request_Data_Ex(i2c, &conf, nullptr);
+}
+
+int32_t HAL_I2C_Request_Data_Ex(HAL_I2C_Interface i2c, const HAL_I2C_Transmission_Config* config, void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
+
     uint32_t err_code;
-    (void)stop;
+    size_t quantity = 0;
+
+    if (!config) {
+        goto ret;
+    }
+
+    quantity = config->quantity;
 
     // clamp to buffer length
-    if(quantity > m_i2c_map[i2c].rx_buf_size) {
+    if (quantity > m_i2c_map[i2c].rx_buf_size) {
         quantity = m_i2c_map[i2c].rx_buf_size;
     }
 
     m_i2c_map[i2c].transfer_state = TRANSFER_STATE_BUSY;
-    m_i2c_map[i2c].address = address;
-    err_code = nrfx_twim_rx(m_i2c_map[i2c].master, m_i2c_map[i2c].address, (uint8_t *)m_i2c_map[i2c].rx_buf, quantity);
+    err_code = nrfx_twim_rx(m_i2c_map[i2c].master, config->address, (uint8_t *)m_i2c_map[i2c].rx_buf, quantity);
     if (err_code) {
         // FIXME: There is a bug in nrfx_twim driver, if we call nrfx_twim_rx repeatedly and quickly,
         // p_cb->busy will be set and never cleared, in this case nrfx_twim_rx always returns busy error
@@ -362,7 +397,7 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
         goto ret;
     }
 
-    if (!WAIT_TIMED(m_i2c_map[i2c].transfer_state == TRANSFER_STATE_BUSY)) {
+    if (!WAIT_TIMED(config->timeout_ms, m_i2c_map[i2c].transfer_state == TRANSFER_STATE_BUSY)) {
         quantity = 0;
         goto ret;
     }
@@ -381,11 +416,12 @@ ret:
     return quantity;
 }
 
-void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address,void* reserved) {
+void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, const HAL_I2C_Transmission_Config* config) {
     HAL_I2C_Acquire(i2c, NULL);
     m_i2c_map[i2c].address = address;
     m_i2c_map[i2c].tx_index_head = 0;
     m_i2c_map[i2c].tx_index_tail = 0;
+    HAL_I2C_Set_Config_Or_Default(i2c, config);
     HAL_I2C_Release(i2c, NULL);
 }
 
@@ -395,6 +431,10 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
     uint32_t err_code;
     uint8_t ret_code = 0;
 
+    if (m_i2c_map[i2c].transfer_config.address != 0xff) {
+        stop = m_i2c_map[i2c].transfer_config.flags & HAL_I2C_TRANSMISSION_FLAG_STOP;
+    }
+
     m_i2c_map[i2c].transfer_state = TRANSFER_STATE_BUSY;
     err_code = nrfx_twim_tx(m_i2c_map[i2c].master, m_i2c_map[i2c].address, (uint8_t *)m_i2c_map[i2c].tx_buf,
                                     m_i2c_map[i2c].tx_index_tail, !stop);
@@ -403,7 +443,7 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
         goto ret;
     }
 
-    if (!WAIT_TIMED(m_i2c_map[i2c].transfer_state == TRANSFER_STATE_BUSY)) {
+    if (!WAIT_TIMED(m_i2c_map[i2c].transfer_config.timeout_ms, m_i2c_map[i2c].transfer_state == TRANSFER_STATE_BUSY)) {
         ret_code = 2;
         goto ret;
     }
@@ -421,7 +461,7 @@ ret:
     return ret_code;
 }
 
-uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data,void* reserved) {
+uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved) {
     HAL_I2C_Acquire(i2c, NULL);
 
     // in master/slave transmitter mode

@@ -2,28 +2,23 @@
 #include "unit-test/unit-test.h"
 #include "../common/common.inc"
 
-static int I2C_Test_Counter = 2;
-
 static void I2C_Master_Configure()
 {
     USE_WIRE.setSpeed(400000);
     USE_WIRE.begin();
 }
 
-test(I2C_Master_Slave_Master_Variable_Length_Transfer)
+test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
 {
-    if (I2C_Test_Counter == 2) {
-        Serial.println("This is Master");
-        Serial.printlnf("Master message: %s", MASTER_TEST_MESSAGE);
-        Serial.printlnf("Slave message: %s", SLAVE_TEST_MESSAGE);
-    }
-    I2C_Test_Counter--;
+    Serial.println("This is Master");
+    Serial.printlnf("Master message: %s", MASTER_TEST_MESSAGE);
+    Serial.printlnf("Slave message: %s", SLAVE_TEST_MESSAGE);
     uint32_t requestedLength = TEST_I2C_BUFFER_SIZE;
     I2C_Master_Configure();
 
     while (requestedLength >= 0)
     {
-        if (requestedLength == 0 && I2C_Test_Counter != 0)
+        if (requestedLength == 0)
         {
             /* Zero-length request instructs Slave to finish running its own test. */
             break;
@@ -40,7 +35,7 @@ test(I2C_Master_Slave_Master_Variable_Length_Transfer)
         USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
         
         // End with STOP
-        USE_WIRE.endTransmission(true);
+        assertEqual(USE_WIRE.endTransmission(true), 0);
         // delay(I2C_DELAY);
 
         // Serial.print("> ");
@@ -68,25 +63,19 @@ test(I2C_Master_Slave_Master_Variable_Length_Transfer)
     USE_WIRE.end();
 }
 
-test(I2C_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underflow)
+test(I2C_02_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underflow)
 {
     /* This test requests the slave to prepare N bytes for transmission, but the actual
      * number of bytes clocked by the Master is N + 1. This will cause tx buffer underrun on the Slave.
      * When clock stretching is enabled, the I2C peripheral in Slave mode by default will continue pulling SCL low,
      * until the data is loaded into the DR register. This might cause the bus to enter an unrecoverable state.
      */
-    if (I2C_Test_Counter == 2) {
-        Serial.println("This is Master");
-        Serial.printlnf("Master message: %s", MASTER_TEST_MESSAGE);
-        Serial.printlnf("Slave message: %s", SLAVE_TEST_MESSAGE);
-    }
-    I2C_Test_Counter--;
     uint32_t requestedLength = TEST_I2C_BUFFER_SIZE - 1;
     I2C_Master_Configure();
 
     while (requestedLength >= 0)
     {
-        if (requestedLength == 0 && I2C_Test_Counter != 0)
+        if (requestedLength == 0)
         {
             /* Zero-length request instructs Slave to finish running its own test. */
             break;
@@ -103,7 +92,7 @@ test(I2C_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underflow)
         USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
         
         // End with STOP
-        USE_WIRE.endTransmission(true);
+        assertEqual(USE_WIRE.endTransmission(true), 0);
         // delay(I2C_DELAY);
 
         if (requestedLength == 0)
@@ -131,6 +120,105 @@ test(I2C_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underflow)
                 assertTrue(false);
             }
         }
+
+        requestedLength--;
+    }
+
+    USE_WIRE.end();
+}
+
+test(I2C_04_Master_Slave_Master_WireTransmission_And_Short_Timeout)
+{
+    uint32_t requestedLength = TEST_I2C_BUFFER_SIZE;
+    I2C_Master_Configure();
+
+    while (requestedLength >= 0)
+    {
+        if (requestedLength == 0)
+        {
+            /* Zero-length request instructs Slave to finish running its own test. */
+            break;
+        }
+        memset(I2C_Test_Tx_Buffer, 0, sizeof(I2C_Test_Tx_Buffer));
+        memset(I2C_Test_Rx_Buffer, 0, sizeof(I2C_Test_Rx_Buffer));
+
+        memcpy(I2C_Test_Tx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE));
+        memcpy(I2C_Test_Tx_Buffer + sizeof(MASTER_TEST_MESSAGE), (void*)&requestedLength, sizeof(uint32_t));
+
+        // NOTE: wrong address
+        USE_WIRE.beginTransmission(WireTransmission(I2C_ADDRESS + 1).timeout(1ms));
+        USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
+
+        // End with STOP (set in beginTransmission())
+        auto t1 = millis();
+        assertNotEqual(USE_WIRE.endTransmission(), 0);
+        auto t2 = millis();
+        assertLessOrEqual(t2 - t1, 50);
+
+        if (requestedLength == 0)
+            break;
+
+        // Now read out requestedLength bytes
+        memset(I2C_Test_Rx_Buffer, 0, sizeof(I2C_Test_Rx_Buffer));
+        t1 = millis();
+        // NOTE: wrong address
+        USE_WIRE.requestFrom(WireTransmission(I2C_ADDRESS + 1).quantity(requestedLength).timeout(1ms));
+        t2 = millis();
+        assertLessOrEqual(t2 - t1, 50);
+        assertNotEqual(requestedLength, USE_WIRE.available());
+
+        requestedLength--;
+    }
+
+    USE_WIRE.end();
+}
+
+
+test(I2C_04_Master_Slave_Master_Variable_Length_Transfer_With_WireTransmission_And_Standard_Timeout)
+{
+    uint32_t requestedLength = TEST_I2C_BUFFER_SIZE;
+    I2C_Master_Configure();
+
+    while (requestedLength >= 0)
+    {
+        // if (requestedLength == 0)
+        // {
+        //     /* Zero-length request instructs Slave to finish running its own test. */
+        //     break;
+        // }
+        memset(I2C_Test_Tx_Buffer, 0, sizeof(I2C_Test_Tx_Buffer));
+        memset(I2C_Test_Rx_Buffer, 0, sizeof(I2C_Test_Rx_Buffer));
+
+        // delay(I2C_DELAY);
+
+        memcpy(I2C_Test_Tx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE));
+        memcpy(I2C_Test_Tx_Buffer + sizeof(MASTER_TEST_MESSAGE), (void*)&requestedLength, sizeof(uint32_t));
+
+        USE_WIRE.beginTransmission(WireTransmission(I2C_ADDRESS).timeout(100ms));
+        USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
+
+        // End with STOP (set in beginTransmission())
+        assertEqual(USE_WIRE.endTransmission(), 0);
+        // delay(I2C_DELAY);
+
+        // Serial.print("> ");
+        // Serial.println((const char *)I2C_Test_Tx_Buffer);
+
+        if (requestedLength == 0)
+            break;
+
+        // Now read out requestedLength bytes
+        memset(I2C_Test_Rx_Buffer, 0, sizeof(I2C_Test_Rx_Buffer));
+        USE_WIRE.requestFrom(WireTransmission(I2C_ADDRESS).quantity(requestedLength).timeout(100ms));
+        assertEqual(requestedLength, USE_WIRE.available());
+
+        uint32_t count = 0;
+        while(USE_WIRE.available()) {
+            I2C_Test_Rx_Buffer[count++] = USE_WIRE.read();
+        }
+        // Serial.print("< ");
+        // Serial.println((const char *)I2C_Test_Rx_Buffer);
+        assertTrue(strncmp((const char *)I2C_Test_Rx_Buffer, SLAVE_TEST_MESSAGE, requestedLength) == 0);
 
         requestedLength--;
     }

@@ -190,12 +190,52 @@ test(api_servo_trim)
     servo.setTrim(234);
 }
 
+TwoWire& testWire(TwoWire& wire)
+{
+    API_COMPILE(wire.begin());
+    API_COMPILE(wire.reset());
+    API_COMPILE(wire.end());
+
+    API_COMPILE(wire.setSpeed(123));
+    API_COMPILE(wire.setClock(123));
+    API_COMPILE(wire.enableDMAMode(true));
+    API_COMPILE(wire.stretchClock(true));
+    API_COMPILE(wire.begin(123));
+    API_COMPILE(wire.beginTransmission(123));
+    API_COMPILE({ uint8_t v = wire.endTransmission(); (void)v; });
+    API_COMPILE({ uint8_t v = wire.endTransmission(true); (void)v; });
+    API_COMPILE({ size_t v = wire.requestFrom(123, 123, true); (void)v; });
+    API_COMPILE({ size_t v = wire.requestFrom(123, 123); (void)v; });
+    API_COMPILE({ size_t v = wire.write(123); (void)v; });
+    API_COMPILE({ size_t v = wire.write(nullptr, 123); (void)v; });
+    API_COMPILE({ int v = wire.available(); (void)v; });
+    API_COMPILE({ int v = wire.read(); (void)v; });
+    API_COMPILE({ int v = wire.peek(); (void)v; });
+    API_COMPILE(wire.flush());
+    API_COMPILE(wire.onReceive([](int) -> void {
+    }));
+    API_COMPILE(wire.onRequest([](void) -> void {
+    }));
+    API_COMPILE({ bool v = wire.lock(); (void)v; });
+    API_COMPILE({ bool v = wire.unlock(); (void)v; });
+    API_COMPILE(wire.reset());
+    API_COMPILE({ bool v = wire.isEnabled(); (void)v; });
+    API_COMPILE(wire.requestFrom(WireTransmission(123).timeout(123ms).quantity(123).stop(true)));
+    API_COMPILE(wire.beginTransmission(WireTransmission(123).timeout(123ms).quantity(123).stop(true)));
+    return wire;
+}
+
 test(api_wire)
 {
-    API_COMPILE(Wire.begin());
-    API_COMPILE(Wire.reset());
-    API_COMPILE(Wire.end());
+    API_COMPILE({ auto w = testWire(Wire); (void)w; });
+#if Wiring_Wire1
+    API_COMPILE({ auto w = testWire(Wire1); (void)w; });
+#endif // Wiring_Wire1
+#if Wiring_Wire3
+    API_COMPILE({ auto w = testWire(Wire3); (void)w; });
+#endif // Wiring_Wire1
 }
+
 
 test(api_map)
 {

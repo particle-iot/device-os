@@ -61,6 +61,22 @@ typedef struct HAL_I2C_Config {
     uint32_t tx_buffer_size;
 } HAL_I2C_Config;
 
+typedef enum HAL_I2C_Transmission_Flag {
+    HAL_I2C_TRANSMISSION_FLAG_NONE = 0x00,
+    HAL_I2C_TRANSMISSION_FLAG_STOP = 0x01
+} HAL_I2C_Transmission_Flag;
+
+typedef struct HAL_I2C_Transmission_Config {
+    uint16_t size;
+    uint16_t version;
+
+    uint8_t address;
+    uint8_t reserved[3];
+    uint32_t quantity;
+    system_tick_t timeout_ms;
+    uint32_t flags;
+} HAL_I2C_Transmission_Config;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
@@ -82,7 +98,8 @@ void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved);
 void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved);
 void HAL_I2C_End(HAL_I2C_Interface i2c, void* reserved);
 uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop, void* reserved);
-void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, void* reserved);
+int32_t HAL_I2C_Request_Data_Ex(HAL_I2C_Interface i2c, const HAL_I2C_Transmission_Config* config, void* reserved);
+void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, const HAL_I2C_Transmission_Config* config);
 uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* reserved);
 uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved);
 int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c, void* reserved);
