@@ -38,6 +38,7 @@
 #include "spark_wiring_vector.h"
 
 #include <algorithm>
+#include <limits>
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -162,19 +163,26 @@ int SaraNcpClient::initParser(Stream* stream) {
             .commandTerminator(AtCommandTerminator::CRLF);
     parser_.destroy();
     CHECK(parser_.init(std::move(parserConf)));
+
+    // NOTE: These URC handlers need to take care of both the URCs and direct responses to the commands.
+    // See CH28408
+
+    using LacType = decltype(CellularGlobalIdentity::location_area_code);
+    using CidType = decltype(CellularGlobalIdentity::cell_id);
+
     // +CREG: <stat>[,<lac>,<ci>[,<AcTStatus>]]
     CHECK(parser_.addUrcHandler("+CREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
-        int val[4] = {-1,-1,-1,-1};
-        char atResponse[64] = {0};
+        unsigned int val[4] = {};
+        char atResponse[64] = {};
         // Take a copy of AT response for multi-pass scanning
         CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
         // Parse response ignoring mode (replicate URC response)
-        int r = ::sscanf(atResponse, "+CREG: %*d,%d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]);
+        int r = ::sscanf(atResponse, "+CREG: %*u,%u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]);
         // Reparse URC as direct response
         if (0 >= r) {
             r = CHECK_PARSER_URC(
-                ::sscanf(atResponse, "+CREG: %d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
+                ::sscanf(atResponse, "+CREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         // Home network or roaming
@@ -185,24 +193,24 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
-        self->cgi_.location_area_code = static_cast<uint16_t>(val[1]);
-        self->cgi_.cell_id = val[2];
+        self->cgi_.location_area_code = r >= 2 ? static_cast<LacType>(val[1]) : std::numeric_limits<LacType>::max();
+        self->cgi_.cell_id = r >= 3 ? static_cast<CidType>(val[2]) : std::numeric_limits<CidType>::max();
         return 0;
     }, this));
     // n={0,1} +CGREG: <stat>
     // n=2     +CGREG: <stat>[,<lac>,<ci>[,<AcT>,<rac>]]
     CHECK(parser_.addUrcHandler("+CGREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
-        int val[4] = {-1,-1,-1,-1};
-        char atResponse[64] = {0};
+        unsigned int val[4] = {};
+        char atResponse[64] = {};
         // Take a copy of AT response for multi-pass scanning
         CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
         // Parse response ignoring mode (replicate URC response)
-        int r = ::sscanf(atResponse, "+CGREG: %*d,%d,\"%x\",\"%x\",%d,\"%*x\"", &val[0], &val[1], &val[2], &val[3]);
+        int r = ::sscanf(atResponse, "+CGREG: %*u,%u,\"%x\",\"%x\",%u,\"%*x\"", &val[0], &val[1], &val[2], &val[3]);
         // Reparse URC as direct response
         if (0 >= r) {
             r = CHECK_PARSER_URC(
-                ::sscanf(atResponse, "+CGREG: %d,\"%x\",\"%x\",%d,\"%*x\"", &val[0], &val[1], &val[2], &val[3]));
+                ::sscanf(atResponse, "+CGREG: %u,\"%x\",\"%x\",%u,\"%*x\"", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         // Home network or roaming
@@ -213,23 +221,23 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
-        self->cgi_.location_area_code = val[1];
-        self->cgi_.cell_id = val[2];
+        self->cgi_.location_area_code = r >= 2 ? static_cast<LacType>(val[1]) : std::numeric_limits<LacType>::max();
+        self->cgi_.cell_id = r >= 3 ? static_cast<CidType>(val[2]) : std::numeric_limits<CidType>::max();
         return 0;
     }, this));
     // +CEREG: <stat>[,[<tac>],[<ci>],[<AcT>][,<cause_type>,<reject_cause>[,[<Active_Time>],[<Periodic_TAU>]]]]
     CHECK(parser_.addUrcHandler("+CEREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
-        int val[4] = {-1,-1,-1,-1};
-        char atResponse[64] = {0};
+        unsigned int val[4] = {};
+        char atResponse[64] = {};
         // Take a copy of AT response for multi-pass scanning
         CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
         // Parse response ignoring mode (replicate URC response)
-        int r = ::sscanf(atResponse, "+CEREG: %*d,%d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]);
+        int r = ::sscanf(atResponse, "+CEREG: %*u,%u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]);
         // Reparse URC as direct response
         if (0 >= r) {
             r = CHECK_PARSER_URC(
-                ::sscanf(atResponse, "+CEREG: %d,\"%x\",\"%x\",%d", &val[0], &val[1], &val[2], &val[3]));
+                ::sscanf(atResponse, "+CEREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         // Home network or roaming
@@ -240,8 +248,8 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
-        self->cgi_.location_area_code = val[1];
-        self->cgi_.cell_id = val[2];
+        self->cgi_.location_area_code = r >= 2 ? static_cast<LacType>(val[1]) : std::numeric_limits<LacType>::max();
+        self->cgi_.cell_id = r >= 3 ? static_cast<CidType>(val[2]) : std::numeric_limits<CidType>::max();
         return 0;
     }, this));
     return 0;

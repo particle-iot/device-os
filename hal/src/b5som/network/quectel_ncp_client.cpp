@@ -38,6 +38,7 @@
 #include "spark_wiring_vector.h"
 
 #include <algorithm>
+#include <limits>
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -152,54 +153,97 @@ int QuectelNcpClient::initParser(Stream* stream) {
     auto parserConf = AtParserConfig().stream(stream).commandTerminator(AtCommandTerminator::CRLF);
     parser_.destroy();
     CHECK(parser_.init(std::move(parserConf)));
-    CHECK(parser_.addUrcHandler("+CREG",
-                                [](AtResponseReader* reader, const char* prefix, void* data) -> int {
-                                    const auto self = (QuectelNcpClient*)data;
-                                    int val[2];
-                                    int r = CHECK_PARSER_URC(reader->scanf("+CREG: %d,%d", &val[0], &val[1]));
-                                    CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
-                                    // Home network or roaming
-                                    if (val[r - 1] == 1 || val[r - 1] == 5) {
-                                        self->creg_ = RegistrationState::Registered;
-                                    } else {
-                                        self->creg_ = RegistrationState::NotRegistered;
-                                    }
-                                    self->checkRegistrationState();
-                                    return SYSTEM_ERROR_NONE;
-                                },
-                                this));
-    CHECK(parser_.addUrcHandler("+CGREG",
-                                [](AtResponseReader* reader, const char* prefix, void* data) -> int {
-                                    const auto self = (QuectelNcpClient*)data;
-                                    int val[2];
-                                    int r = CHECK_PARSER_URC(reader->scanf("+CGREG: %d,%d", &val[0], &val[1]));
-                                    CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
-                                    // Home network or roaming
-                                    if (val[r - 1] == 1 || val[r - 1] == 5) {
-                                        self->cgreg_ = RegistrationState::Registered;
-                                    } else {
-                                        self->cgreg_ = RegistrationState::NotRegistered;
-                                    }
-                                    self->checkRegistrationState();
-                                    return SYSTEM_ERROR_NONE;
-                                },
-                                this));
-    CHECK(parser_.addUrcHandler("+CEREG",
-                                [](AtResponseReader* reader, const char* prefix, void* data) -> int {
-                                    const auto self = (QuectelNcpClient*)data;
-                                    int val[2];
-                                    int r = CHECK_PARSER_URC(reader->scanf("+CEREG: %d,%d", &val[0], &val[1]));
-                                    CHECK_TRUE(r >= 1, SYSTEM_ERROR_UNKNOWN);
-                                    // Home network or roaming
-                                    if (val[r - 1] == 1 || val[r - 1] == 5) {
-                                        self->cereg_ = RegistrationState::Registered;
-                                    } else {
-                                        self->cereg_ = RegistrationState::NotRegistered;
-                                    }
-                                    self->checkRegistrationState();
-                                    return SYSTEM_ERROR_NONE;
-                                },
-                                this));
+
+    // NOTE: These URC handlers need to take care of both the URCs and direct responses to the commands.
+    // See CH28408
+
+    using LacType = decltype(CellularGlobalIdentity::location_area_code);
+    using CidType = decltype(CellularGlobalIdentity::cell_id);
+
+    //+CREG: <n>,<stat>[,<lac>,<ci>[,<Act>]]
+    //+CREG: <stat>[,<lac>,<ci>[,<Act>]]
+    CHECK(parser_.addUrcHandler("+CREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
+        const auto self = (QuectelNcpClient*)data;
+        unsigned int val[4] = {};
+        char atResponse[64] = {};
+        // Take a copy of AT response for multi-pass scanning
+        CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
+        // Parse response ignoring mode (replicate URC response)
+        int r = ::sscanf(atResponse, "+CREG: %*u,%u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]);
+        // Reparse URC as direct response
+        if (0 >= r) {
+            r = CHECK_PARSER_URC(
+                ::sscanf(atResponse, "+CREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
+        }
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+        // Home network or roaming
+        if (val[0] == 1 || val[0] == 5) {
+            self->creg_ = RegistrationState::Registered;
+        } else {
+            self->creg_ = RegistrationState::NotRegistered;
+        }
+        self->checkRegistrationState();
+        // Cellular Global Identity (partial)
+        self->cgi_.location_area_code = r >= 2 ? static_cast<LacType>(val[1]) : std::numeric_limits<LacType>::max();
+        self->cgi_.cell_id = r >= 3 ? static_cast<CidType>(val[2]) : std::numeric_limits<CidType>::max();
+        return SYSTEM_ERROR_NONE;
+    }, this));
+    //+CGREG: <n>,<stat>[,<lac>,<ci>[,<Act>]]
+    //+CGREG: <stat>[,<lac>,<ci>[,<Act>]]
+    CHECK(parser_.addUrcHandler("+CGREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
+        const auto self = (QuectelNcpClient*)data;
+        unsigned int val[4] = {};
+        char atResponse[64] = {};
+        // Take a copy of AT response for multi-pass scanning
+        CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
+        // Parse response ignoring mode (replicate URC response)
+        int r = ::sscanf(atResponse, "+CGREG: %*u,%u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]);
+        // Reparse URC as direct response
+        if (0 >= r) {
+            r = CHECK_PARSER_URC(
+                ::sscanf(atResponse, "+CGREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
+        }
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+        // Home network or roaming
+        if (val[0] == 1 || val[0] == 5) {
+            self->cgreg_ = RegistrationState::Registered;
+        } else {
+            self->cgreg_ = RegistrationState::NotRegistered;
+        }
+        self->checkRegistrationState();
+        // Cellular Global Identity (partial)
+        self->cgi_.location_area_code = r >= 2 ? static_cast<LacType>(val[1]) : std::numeric_limits<LacType>::max();
+        self->cgi_.cell_id = r >= 3 ? static_cast<CidType>(val[2]) : std::numeric_limits<CidType>::max();
+        return SYSTEM_ERROR_NONE;
+    }, this));
+    //+CEREG: <n>,<stat>[,<tac>,<ci>[,<Act>]]
+    //+CEREG: <stat>[,<tac>,<ci>[,<Act>]]
+    CHECK(parser_.addUrcHandler("+CEREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
+        const auto self = (QuectelNcpClient*)data;
+        unsigned int val[4] = {};
+        char atResponse[64] = {};
+        // Take a copy of AT response for multi-pass scanning
+        CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
+        // Parse response ignoring mode (replicate URC response)
+        int r = ::sscanf(atResponse, "+CEREG: %*u,%u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]);
+        // Reparse URC as direct response
+        if (0 >= r) {
+            r = CHECK_PARSER_URC(
+                ::sscanf(atResponse, "+CEREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
+        }
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+        // Home network or roaming
+        if (val[0] == 1 || val[0] == 5) {
+            self->cereg_ = RegistrationState::Registered;
+        } else {
+            self->cereg_ = RegistrationState::NotRegistered;
+        }
+        self->checkRegistrationState();
+        // Cellular Global Identity (partial)
+        self->cgi_.location_area_code = r >= 2 ? static_cast<LacType>(val[1]) : std::numeric_limits<LacType>::max();
+        self->cgi_.cell_id = r >= 3 ? static_cast<CidType>(val[2]) : std::numeric_limits<CidType>::max();
+        return SYSTEM_ERROR_NONE;
+    }, this));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -373,6 +417,15 @@ int QuectelNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
     CHECK_TRUE(r == 3, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
+    // Preserve digit format data
+    const int mnc_digits = ::strnlen(mobileNetworkCode, sizeof(mobileNetworkCode));
+    CHECK_TRUE((2 == mnc_digits || 3 == mnc_digits), SYSTEM_ERROR_BAD_DATA);
+    if (2 == mnc_digits) {
+        cgi_.cgi_flags |= CGI_FLAG_TWO_DIGIT_MNC;
+    } else {
+        cgi_.cgi_flags &= ~CGI_FLAG_TWO_DIGIT_MNC;
+    }
 
     // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
     cgi_.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
