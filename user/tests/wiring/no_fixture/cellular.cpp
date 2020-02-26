@@ -157,6 +157,65 @@ test(CELLULAR_07_rssi_is_valid) {
     assertMoreOrEqual(s.rssi, -150);
 }
 
+// Collects cellular signal strength and quality and validates Accesstechnology (RAT)
+test(CELLULAR_08_sigstr_is_valid) {
+    connect_to_cloud(6*60*1000);
+    assertTrue(Particle.connected());
+    CellularSignal s;
+    bool values_in_range = false;
+    const int num_retries = 10;
+    // Checks 10 times with 500ms gap to get valid signal strength
+    for (int x = 0; x < num_retries; x++) {
+        s = Cellular.RSSI();
+        // Verify that strength and quality values are in range for the given AccessTechnology
+        switch (s.getAccessTechnology()) {
+            case NET_ACCESS_TECHNOLOGY_GSM:     // GSM strength [-111, -48] and quality [-3.70, -0.60]
+                if ((s.getStrengthValue() <= -48.0f && s.getStrengthValue() >= -111.0f)
+                    && (s.getQualityValue() <= -0.6f && s.getQualityValue() >= -3.7f)) {
+                        values_in_range = true;
+                        x = num_retries;
+                        break;
+                }
+                Serial.printlnf("StrV: %.2f, QualV: %.2f, RAT: %d", s.getStrengthValue(), s.getQualityValue(), s.getAccessTechnology());
+                break;
+            case NET_ACCESS_TECHNOLOGY_EDGE:     // EDGE strength [-111, -48] and quality [-3.70, -0.60]
+                if ((s.getStrengthValue() <= -48.0f && s.getStrengthValue() >= -111.0f)
+                    && (s.getQualityValue() <= -0.6f && s.getQualityValue() >= -3.7f)) {
+                        values_in_range = true;
+                        x = num_retries;
+                        break;
+                }
+                Serial.printlnf("StrV: %.2f, QualV: %.2f, RAT: %d", s.getStrengthValue(), s.getQualityValue(), s.getAccessTechnology());
+                break;
+            case NET_ACCESS_TECHNOLOGY_UTRAN:     // UTRAN strength [-121, -25] and quality [-24.5, 0]
+                if ((s.getStrengthValue() <= -25.0f && s.getStrengthValue() >= -121.0f)
+                    && (s.getQualityValue() <= -0.0f && s.getQualityValue() >= -25.4f)) {
+                        values_in_range = true;
+                        x = num_retries;
+                        break;
+                }
+                Serial.printlnf("StrV: %.2f, QualV: %.2f, RAT: %d", s.getStrengthValue(), s.getQualityValue(), s.getAccessTechnology());
+                break;
+            case NET_ACCESS_TECHNOLOGY_LTE:
+            case NET_ACCESS_TECHNOLOGY_LTE_CAT_M1:  // LTE CAT-M1 strength [-141, -44] and quality [-20, -3]
+            case NET_ACCESS_TECHNOLOGY_LTE_CAT_NB1:
+                if ((s.getStrengthValue() <= -44.0f && s.getStrengthValue() >= -141.0f)
+                    && (s.getQualityValue() <= -3.0f && s.getQualityValue() >= -20.0f)) {
+                        values_in_range = true;
+                        x = num_retries;
+                        break;
+                }
+                Serial.printlnf("StrV: %.2f, QualV: %.2f, RAT: %d", s.getStrengthValue(), s.getQualityValue(), s.getAccessTechnology());
+                break;
+            default:
+                break;
+        }
+        delay(500);
+    }
+    assertFalse((s.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_UNKNOWN) || (s.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_NONE));
+    assertTrue(values_in_range);
+}
+
 test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
 
 #if HAL_PLATFORM_NCP
