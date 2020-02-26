@@ -649,6 +649,9 @@ void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved)
         info->mode = spiState[spi].mode;
         info->bit_order = spiState[spi].SPI_InitStructure.SPI_FirstBit == SPI_FirstBit_MSB ? MSBFIRST : LSBFIRST;
         info->data_mode = spiState[spi].SPI_InitStructure.SPI_CPOL | spiState[spi].SPI_InitStructure.SPI_CPHA;
+        if (info->version >= HAL_SPI_INFO_VERSION_2) {
+            info->ss_pin = spiState[spi].SPI_SS_Pin;
+        }
         HAL_enable_irq(state);
     }
 }
