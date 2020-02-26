@@ -50,7 +50,7 @@ Ipcp::~Ipcp() {
 }
 
 void Ipcp::enable() {
-  LOG(TRACE, "IPCP: enable %d %d %d", admState_, lowerState_, state_);
+  LOG(TRACE, "enable %d %d %d", admState_, lowerState_, state_);
   if (!admState_) {
     admState_ = true;
     if (lowerState_ && !state_) {
@@ -60,7 +60,7 @@ void Ipcp::enable() {
 }
 
 void Ipcp::disable() {
-  LOG(TRACE, "IPCP: disable %d %d %d", admState_, lowerState_, state_);
+  LOG(TRACE, "disable %d %d %d", admState_, lowerState_, state_);
   if (admState_) {
     admState_ = false;
     if (lowerState_ && state_) {
@@ -74,18 +74,18 @@ void Ipcp::setDnsEntryIndex(int idx) {
 }
 
 void Ipcp::init() {
-  LOG(TRACE, "IPCP: init");
+  LOG(TRACE, "init");
 
   fsm_init(&fsm_);
 }
 
 void Ipcp::input(uint8_t* pkt, int len) {
-  LOG(TRACE, "IPCP: input %d", len);
+  LOG(TRACE, "input %d", len);
   fsm_input(&fsm_, pkt, len);
 }
 
 void Ipcp::protocolReject() {
-  LOG(TRACE, "IPCP: Protocol-Reject");
+  LOG(TRACE, "Protocol-Reject");
   /* RFC 1661:
    * Upon reception of a Protocol-Reject, the implementation MUST stop
    * sending packets of the indicated protocol at the earliest
@@ -95,19 +95,19 @@ void Ipcp::protocolReject() {
 }
 
 void Ipcp::lowerUp() {
-  LOG(TRACE, "IPCP: lowerUp");
+  LOG(TRACE, "lowerUp");
   lowerState_= true;
   fsm_lowerup(&fsm_);
 }
 
 void Ipcp::lowerDown() {
-  LOG(TRACE, "IPCP: lowerDown");
+  LOG(TRACE, "lowerDown");
   lowerState_ = false;
   fsm_lowerdown(&fsm_);
 }
 
 void Ipcp::open() {
-  LOG(TRACE, "IPCP: open");
+  LOG(TRACE, "open");
   if (admState_) {
     fsm_open(&fsm_);
   } else {
@@ -116,14 +116,14 @@ void Ipcp::open() {
 }
 
 void Ipcp::close(const char* reason) {
-  LOG(TRACE, "ipcp:close");
+  LOG(TRACE, "close");
   fsm_close(&fsm_, reason);
 }
 
 /* State machine callbacks */
 /* Reset our Configuration Information */
 void Ipcp::resetConfigurationInformation() {
-  LOG(TRACE, "IPCP: reset ci");
+  LOG(TRACE, "resetting CI");
 
   const auto& conf = config_;
 
@@ -162,7 +162,6 @@ void Ipcp::resetConfigurationInformation() {
 
 /* Length of our Configuration Information */
 int Ipcp::getConfigurationInformationLength() {
-  LOG(TRACE, "IPCP: get ci length");
   size_t len = 0;
 
   forEachOption([&len](auto opt) {
@@ -173,7 +172,7 @@ int Ipcp::getConfigurationInformationLength() {
     }
   });
 
-  LOG(TRACE, "IPCP: Our CI length: %lu", len);
+  LOG(TRACE, "iur CI length: %lu", len);
   return len;
 }
 
@@ -195,8 +194,6 @@ void Ipcp::addConfigurationInformation(uint8_t* buf, int* len) {
 
 /* ACK our Configuration Information */
 int Ipcp::ackConfigurationInformation(uint8_t* buf, int len) {
-  LOG(TRACE, "IPCP: ack ci");
-
   while (len > 0) {
     uint8_t id = *buf;
     auto opt = findOption(id);
@@ -218,8 +215,6 @@ int Ipcp::ackConfigurationInformation(uint8_t* buf, int len) {
 
 /* NAK our Configuration Information */
 int Ipcp::nakConfigurationInformation(uint8_t* buf, int len, int treatAsReject) {
-  LOG(TRACE, "IPCP: nak ci");
-
   while (len > 0) {
     uint8_t id = *buf;
     auto opt = findOption(id);
@@ -241,8 +236,6 @@ int Ipcp::nakConfigurationInformation(uint8_t* buf, int len, int treatAsReject) 
 
 /* Reject our Configuration Information */
 int Ipcp::rejectConfigurationInformation(uint8_t* buf, int len) {
-  LOG(TRACE, "IPCP: reject ci");
-
   while (len > 0) {
     uint8_t id = *buf;
     auto opt = findOption(id);
@@ -264,7 +257,6 @@ int Ipcp::rejectConfigurationInformation(uint8_t* buf, int len) {
 
 /* Request peer's Configuration Information */
 int Ipcp::requestConfigurationInformation(uint8_t* buf, int* len, int rejectIfDisagree) {
-  LOG(TRACE, "IPCP: request ci");
   ConfigurationOptionState resultingState = CONFIGURATION_OPTION_STATE_ACK;
 
   int available = *len;
@@ -335,7 +327,7 @@ int Ipcp::requestConfigurationInformation(uint8_t* buf, int* len, int rejectIfDi
 
 /* Called when fsm reaches PPP_FSM_OPENED state */
 void Ipcp::up() {
-  LOG(TRACE, "IPCP: up");
+  LOG(TRACE, "up");
 
   auto ip = getNegotiatedLocalAddress();
   auto peer = getNegotiatedPeerAddress();
@@ -347,39 +339,47 @@ void Ipcp::up() {
   }
 #endif
 
-  if (!ip4_addr_isany_val(ip) && !ip4_addr_isany_val(peer)) {
-    sifup(pcb_);
-
-    auto mask = getNegotiatedNetmask();
-    netif_set_addr(pcb_->netif, &ip, &mask, &peer);
-
-    auto pdns = getNegotiatedPrimaryDns();
-    auto sdns = getNegotiatedSecondaryDns();
-    if (!ip4_addr_isany_val(pdns)) {
-      ip_addr_t tmp;
-      ip_addr_copy_from_ip4(tmp, pdns);
-      dns_setserver(dnsIndex_, &tmp);
-    }
-
-    if (!ip4_addr_isany_val(sdns)) {
-      ip_addr_t tmp;
-      ip_addr_copy_from_ip4(tmp, sdns);
-      dns_setserver(dnsIndex_ + 1, &tmp);
-    }
-
-    if (!state_) {
-      state_ = true;
-      np_up(pcb_, fsm_.protocol);
-    }
-  } else {
+  if (ip4_addr_isany_val(ip) || ip4_addr_isany_val(peer)) {
     // Teardown
     close("Failed to negotiate local or peer IP");
+    return;
+  }
+
+  auto pdns = getNegotiatedPrimaryDns();
+  auto sdns = getNegotiatedSecondaryDns();
+
+  if (ip4_addr_isany_val(pdns) && ip4_addr_isany_val(sdns)) {
+    // Teardown
+    close("Failed to negotiate DNS servers");
+    return;
+  }
+
+  sifup(pcb_);
+
+  auto mask = getNegotiatedNetmask();
+  netif_set_addr(pcb_->netif, &ip, &mask, &peer);
+
+  if (!ip4_addr_isany_val(pdns)) {
+    ip_addr_t tmp;
+    ip_addr_copy_from_ip4(tmp, pdns);
+    dns_setserver(dnsIndex_, &tmp);
+  }
+
+  if (!ip4_addr_isany_val(sdns)) {
+    ip_addr_t tmp;
+    ip_addr_copy_from_ip4(tmp, sdns);
+    dns_setserver(dnsIndex_ + 1, &tmp);
+  }
+
+  if (!state_) {
+    state_ = true;
+    np_up(pcb_, fsm_.protocol);
   }
 }
 
 /* Called when fsm leaves PPP_FSM_OPENED state */
 void Ipcp::down() {
-  LOG(TRACE, "IPCP: down");
+  LOG(TRACE, "down");
 
   sifdown(pcb_);
 
@@ -393,17 +393,17 @@ void Ipcp::down() {
 
 /* Called when we want the lower layer */
 void Ipcp::starting() {
-  LOG(TRACE, "IPCP: starting");
+  LOG(TRACE, "starting");
 }
 
 /* Called when we don't want the lower layer */
 void Ipcp::finished() {
-  LOG(TRACE, "IPCP: finished");
+  LOG(TRACE, "finished");
 }
 
 /* Called when unknown code received */
 int Ipcp::extCode(int code, int id, uint8_t* buf, int len) {
-  LOG(TRACE, "IPCP: ext code %d %d", code, id);
+  LOG(TRACE, "ext code %d %d", code, id);
   return 0;
 }
 

@@ -112,7 +112,11 @@
  *
  * Mandatory for debugging, it displays exchanged packet content in debug trace.
  */
+#ifndef DEBUG_BUILD
 #define PRINTPKT_SUPPORT                0
+#else
+#define PRINTPKT_SUPPORT                1
+#endif // DEBUG_BUILD
 
 /**
  * PPP_IPV4_SUPPORT==1: Enable PPP IPv4 support
@@ -127,7 +131,7 @@
 /**
  * PPP_IPV6_SUPPORT==1: Enable PPP IPv6 support
  */
-#define PPP_IPV6_SUPPORT                (LWIP_IPV6)
+#define PPP_IPV6_SUPPORT                0
 
 /**
  * PPP_IPV6CP_OVERRIDE==1: third-party IPV6CP implementation
