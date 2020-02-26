@@ -18,10 +18,13 @@
 #ifndef MCP23S17_H
 #define MCP23S17_H
 
-#include "Particle.h"
-// #include "pinmap_defines.h"
-// #include "pinmap_hal.h"
-// #include "interrupts_hal.h"
+#include "static_recursive_mutex.h"
+#include "pinmap_defines.h"
+#include "pinmap_hal.h"
+#include "spi_hal.h"
+#include "interrupts_hal.h"
+#include "concurrent_hal.h"
+#include "spark_wiring_vector.h"
 
 #define MCP23S17_PORT_COUNT             (2)
 #define MCP23S17_PIN_COUNT_PER_PORT     (8)
@@ -40,9 +43,8 @@ class Mcp23s17 {
 public:
     int begin();
     int end();
+    bool initialized() const;
     int reset(bool verify = true);
-    int sleep();
-    int wakeup();
     int sync();
 
     int setPinMode(uint8_t port, uint8_t pin, PinMode mode, bool verify = true);
@@ -52,6 +54,8 @@ public:
     int attachPinInterrupt(uint8_t port, uint8_t pin, InterruptMode trig, Mcp23s17InterruptCallback callback, void* context, bool verify = true);
 
     static Mcp23s17& getInstance();
+    static int lock();
+    static int unlock();
 
 private:
     struct IoPinInterruptConfig {
@@ -70,6 +74,15 @@ private:
         void* context;
     };
 
+    Mcp23s17();
+    ~Mcp23s17();
+
+    void resetRegValue();
+    int writeRegister(const uint8_t addr, const uint8_t val) const;
+    int readRegister(const uint8_t addr, uint8_t* const val) const;
+    int readContinuousRegisters(const uint8_t start_addr, uint8_t* const val, uint8_t len) const;
+    static os_thread_return_t ioInterruptHandleThread(void* param);
+
     // Resister address
     const uint8_t IODIR_ADDR[2]     = {0x00, 0x01};
     const uint8_t IPOL_ADDR[2]      = {0x02, 0x03};
@@ -87,14 +100,6 @@ private:
     const uint8_t MCP23S17_CMD_READ = 0x41;
     const uint8_t MCP23S17_CMD_WRITE = 0x40;
 
-    Mcp23s17();
-    ~Mcp23s17();
-
-    void resetRegValue();
-    int writeRegister(const uint8_t addr, const uint8_t val);
-    int readRegister(const uint8_t addr, uint8_t* const val);
-    static os_thread_return_t ioInterruptHandleThread(void* param);
-
     uint8_t iodir_[2];
     uint8_t ipol_[2];
     uint8_t gpinten_[2];
@@ -109,33 +114,20 @@ private:
 
     bool initialized_;
     HAL_SPI_Interface spi_;
-    pin_t csPin_;
-    pin_t resetPin_;
-    pin_t intPin_;
     os_thread_t ioExpanderWorkerThread_;
     os_queue_t ioExpanderWorkerQueue_;
     bool ioExpanderWorkerThreadExit_;
     Vector<IoPinInterruptConfig> intConfigs_;
 
-    static RecursiveMutex mutex_;
+    static StaticRecursiveMutex mutex_;
 }; // class Mcp23s17
 
 class Mcp23s17Lock {
 public:
-    Mcp23s17Lock(RecursiveMutex& mutex)
-            : locked_(false),
-              mutex_(mutex) {
+    Mcp23s17Lock()
+            : locked_(false) {
         lock();
     }
-
-    Mcp23s17Lock(Mcp23s17Lock&& lock)
-            : locked_(lock.locked_),
-              mutex_(lock.mutex_) {
-        lock.locked_ = false;
-    }
-
-    Mcp23s17Lock(const Mcp23s17Lock&) = delete;
-    Mcp23s17Lock& operator=(const Mcp23s17Lock&) = delete;
 
     ~Mcp23s17Lock() {
         if (locked_) {
@@ -143,24 +135,30 @@ public:
         }
     }
 
+    Mcp23s17Lock(Mcp23s17Lock&& lock)
+            : locked_(lock.locked_) {
+        lock.locked_ = false;
+    }
+
     void lock() {
-        mutex_.lock();
+        Mcp23s17::lock();
         locked_ = true;
     }
 
     void unlock() {
-        mutex_.unlock();
+        Mcp23s17::unlock();
         locked_ = false;
     }
 
+    Mcp23s17Lock(const Mcp23s17Lock&) = delete;
+    Mcp23s17Lock& operator=(const Mcp23s17Lock&) = delete;
+
 private:
     bool locked_;
-    RecursiveMutex& mutex_;
 };
 
 } // namespace particle
 
-#define MCP23S17 Mcp23s17::getInstance()
-
+#define MCP23S17 particle::Mcp23s17::getInstance()
 
 #endif // MCP23S17_H
