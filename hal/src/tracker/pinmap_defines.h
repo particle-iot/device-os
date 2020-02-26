@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,83 +19,136 @@
 
 #if PLATFORM_ID == PLATFORM_TRACKER
 
-#define TOTAL_PINS 38
-#define TOTAL_ANALOG_PINS 8
-#define FIRST_ANALOG_PIN D5
+#define TOTAL_PINS              59
+#define TOTAL_ANALOG_PINS       8
+#define FIRST_ANALOG_PIN        0
 
 // Digital pins
-#define D0 0
-#define D1 1
-#define D2 2
-#define D3 3
-#define D4 4
-#define D5 5
-#define D6 6
-#define D7 7
-#define D8 8
-#define D9 9
-#define D10 10
-#define D11 11
-#define D12 12
-#define D13 13
-#define D14 14
+#define D0                      0
+#define D1                      1
+#define D2                      2
+#define D3                      3
+#define D4                      4
+#define D5                      5
+#define D6                      6
+#define D7                      7
+#define D8                      8
+#define D9                      9
 
 // Analog pins
-#define A0 D12
-#define A1 D11
-#define A2 D10
-#define A3 D9
-#define A4 D8
-#define A5 D7
-#define A6 D6
-#define A7 D5
+#define A0                      D0
+#define A1                      D1
+#define A2                      D2
+#define A3                      D3
+#define A4                      D4
+#define A5                      D5
+#define A6                      D6
+#define A7                      D7
 
-#define NFC_PIN1 15
-#define NFC_PIN2 16
+// I2C
+#define SDA                     D0
+#define SCL                     D1
 
-#define BTN 17
-#define RGBR 18
-#define RGBG 19
-#define RGBB 20
+// UART
+#define TX                      D2
+#define RX                      D3
+#define CTS                     D4
+#define RTS                     D5
 
-#define SDA D0
-#define SCL D1
+// SPI
+#define SS                      D6
+#define SCK                     D7
+#define MOSI                    D8
+#define MISO                    D9
 
-#define SDA1 21
-#define SCL1 22
+// Wakeup pin
+#define WKP                     D8
 
-#define PMIC_SDA SDA1
-#define PMIC_SCL SCL1
+// RGB
+#define RGBR                    10
+#define RGBG                    11
+#define RGBB                    12
 
-#define TX D13
-#define RX D14
-#define CTS D3
-#define RTS D2
+// Mode Button
+#define BTN                     13
 
-#define SS A0
-#define SCK D2
-#define MOSI D3
-#define MISO D4
+// I2C1
+#define SDA1                    14
+#define SCL1                    15
 
-#define SCK1 23
-#define MOSI1 24
-#define MISO1 25
+// SPI1, SS pin not specified
+#define SCK1                    16
+#define MOSI1                   17
+#define MISO1                   18
 
-#define TX1 26
-#define RX1 27
-#define CTS1 28
-#define RTS1 29
+// UART1
+#define TX1                     19
+#define RX1                     20
+#define RTS1                    21
+#define CTS1                    22
 
-#define WKP A7
+// PMIC
+#define PMIC_INT                23
+#define PMIC_SDA                SDA1
+#define PMIC_SCL                SCL1
 
-#define BGPWR 30
-#define BGRST 31
-#define BGVINT 32
-#define BGDTR 33
+// Fuel Gauge
+#define LOW_BAT_UC              43
 
-#define IOE_INT 34
-#define IOE_RST 35
-#define RTC_INT 36
-#define LOW_BAT_UC 37
+// RTC
+#define RTC_INT                 24
+#define RTC_WDI                 42
+#define RTC_SDA                 SDA1
+#define RTC_SCL                 SCL1
+
+// Cellular
+#define BGRST                   25
+#define BGPWR                   26
+#define BGVINT                  27
+#define BGDTR                   41
+
+// CAN Transciever
+#define CAN_INT                 28
+#define CAN_RST                 48
+#define CAN_PWR                 49
+#define CAN_STBY                50
+#define CAN_RTS2                51
+#define CAN_RTS1                52
+#define CAN_RTS0                53
+#define CAN_CS                  58
+
+// IO Expander
+#define IOE_INT                 29
+#define IOE_RST                 30
+#define IOE_CS                  55
+
+// Sensor
+#define SEN_INT                 31
+#define SEN_CS                  56
+
+// NFC
+#define NFC_PIN1                32
+#define NFC_PIN2                33
+
+// Demux IC
+#define DEMUX_A                 36
+#define DEMUX_B                 35
+#define DEMUX_C                 34
+
+// BLE Antenna Switch
+#define BLE_ANT_SW              37
+
+// Wi-Fi
+#define WIFI_EN                 38
+#define WIFI_INT                39
+#define WIFI_BOOT               40
+#define WIFI_CS                 57
+
+// GPS
+#define GPS_PWR                 44
+#define GPS_INT                 45
+#define GPS_BOOT                46
+#define GPS_RST                 47
+#define GPS_CS                  54
 
 #endif // PLATFORM_ID == PLATFORM_TRACKER

@@ -23,8 +23,10 @@
 #include <stddef.h>
 #include "check.h"
 #include "system_error.h"
+
 #if HAL_PLATFORM_IO_EXPANDER
 #include "mcp23s17.h"
+#include "demux.h"
 #endif // HAL_PLATFORM_IO_EXPANDER
 
 inline bool is_valid_pin(pin_t pin) __attribute__((always_inline));
@@ -59,7 +61,7 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 #if HAL_PLATFORM_IO_EXPANDER
-    if (PIN_MAP[pin].is_expander) {
+    if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
         PinMode mode = conf ? conf->mode : PIN_MODE_NONE;
 
         // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
@@ -72,14 +74,16 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
         // Pre-set the output value if requested to avoid a glitch
         if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN)) {
             if (conf->value) {
-                MCP23S17.writePinValue(PIN_MAP[pin].port, PIN_MAP[pin].pin, 1);
+                MCP23S17.writePinValue(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, 1);
             } else {
-                MCP23S17.writePinValue(PIN_MAP[pin].port, PIN_MAP[pin].pin, 0);
+                MCP23S17.writePinValue(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, 0);
             }
         }
 
-        MCP23S17.setPinMode(PIN_MAP[pin].port, PIN_MAP[pin].pin, mode);
+        MCP23S17.setPinMode(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, mode);
         PIN_MAP[pin].pin_mode = mode;
+    } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
+        return 0;
     } else
 #endif // HAL_PLATFORM_IO_EXPANDER
     {
@@ -182,8 +186,10 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value) {
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 #if HAL_PLATFORM_IO_EXPANDER
-    if (PIN_MAP[pin].is_expander) {
-        MCP23S17.writePinValue(PIN_MAP[pin].port, PIN_MAP[pin].pin, value);
+    if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+        MCP23S17.writePinValue(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, value);
+    } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
+        DEMUX.write(PIN_MAP[pin].gpio_pin, value);
     } else
 #endif // HAL_PLATFORM_IO_EXPANDER
     {
@@ -213,19 +219,21 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 #if HAL_PLATFORM_IO_EXPANDER
-    if (PIN_MAP[pin].is_expander) {
+    if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
         if ((PIN_MAP[pin].pin_mode == INPUT) ||
             (PIN_MAP[pin].pin_mode == INPUT_PULLUP) ||
             (PIN_MAP[pin].pin_mode == INPUT_PULLDOWN))
         {
             uint8_t value = 0x00;
-            MCP23S17.readPinValue(PIN_MAP[pin].port, PIN_MAP[pin].pin, &value);
+            MCP23S17.readPinValue(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, &value);
             return value;
         } else if (PIN_MAP[pin].pin_mode == OUTPUT || PIN_MAP[pin].pin_mode == OUTPUT_OPEN_DRAIN) {
             // TODO: read output value
         } else {
             return 0;
         }
+    } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
+        return 0;
     } else
 #endif // HAL_PLATFORM_IO_EXPANDER
     {
@@ -242,6 +250,7 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
             return 0;
         }
     }
+    return 0;
 }
 
 /*
