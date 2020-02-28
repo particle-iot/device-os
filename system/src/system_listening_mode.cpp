@@ -37,6 +37,8 @@ LOG_SOURCE_CATEGORY("system.listen")
 
 using particle::LEDStatus;
 
+extern template class SystemSetupConsole<SystemSetupConsoleConfig>;
+
 namespace {
 
 using namespace particle::system;

@@ -24,7 +24,7 @@
 #include "boost_asio_wrap.h"
 #pragma GCC diagnostic pop
 
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include "boost_posix_time_wrap.h"
 
 #include <boost/asio/ip/icmp.hpp>
 

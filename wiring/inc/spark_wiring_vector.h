@@ -462,7 +462,7 @@ inline T spark::Vector<T, AllocatorT>::takeAt(int i) {
     p->~T();
     move(p, p + 1, data_ + size_);
     --size_;
-    return std::move(v);
+    return v;
 }
 
 template<typename T, typename AllocatorT>

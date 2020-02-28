@@ -679,3 +679,5 @@ void CellularSetupConsole::handle(char c)
 }
 
 #endif
+
+template class SystemSetupConsole<SystemSetupConsoleConfig>;

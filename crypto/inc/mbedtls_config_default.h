@@ -1983,7 +1983,10 @@
  * Remove unused functions from oid.c that cause unused strings to get pulled in
  *
  */
+// FIXME: some platforms cannot include platforms.h here
+#if PLATFORM_ID != 3
 #define MBEDTLS_OID_OPTIMIZE_STRINGS
+#endif // PLATFORM_ID != 3
 
 /**
  * \def MBEDTLS_PADLOCK_C

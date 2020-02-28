@@ -21,3 +21,7 @@
 int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
+
+int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}

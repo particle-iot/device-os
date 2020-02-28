@@ -17,6 +17,7 @@
 #include "hal_platform.h"
 #include "core_hal.h"
 
+LOG_SOURCE_CATEGORY("panic");
 
 #define LOOPSPERMSEC 5483
 
