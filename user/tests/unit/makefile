@@ -29,6 +29,7 @@ TARGET=runner
 
 include $(SRC_ROOT)/build/version.mk
 include $(SRC_ROOT)/build/lang-std.mk
+include $(SRC_ROOT)/build/os.mk
 CCFLAGS += $(CONLYFLAGS)
 
 BUILD_PATH=$(TARGETDIR)core-firmware/
@@ -149,6 +150,10 @@ CFLAGS += $(DEFINES:%=-D%)
 CPPFLAGS += -DCATCH_CONFIG_SFINAE
 
 LDFLAGS += $(LIB_DIRS:%=-L%) $(LIBS:%=-l%)
+
+ifeq ("$(MAKE_OS)", "LINUX")
+LDFLAGS +=  -pthread
+endif
 
 # Collect all object and dep files
 ALLOBJ += $(addprefix $(BUILD_PATH), $(CSRC:.c=.o))
