@@ -21,7 +21,7 @@ set(THIRD_PARTY_DIR ${DEVICE_OS_DIR}/third_party)
 
 # Add Boost from git submodule
 find_package(Boost
-  1.59.0 EXACT
+  1.59.0
   REQUIRED
   COMPONENTS program_options random regex system thread
 )
