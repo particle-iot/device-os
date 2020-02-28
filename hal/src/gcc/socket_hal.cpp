@@ -306,7 +306,7 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
         sock_result_t result = write(socket, boost::asio::buffer(buffer, len));
         return result;
     }
-    catch (boost::system::system_error e)
+    catch (const boost::system::system_error& e)
     {
         return -1;
     }

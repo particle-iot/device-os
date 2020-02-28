@@ -147,7 +147,7 @@ void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
 {
     int offset = (udp) ? SERVER_ADDRESS_OFFSET_EC : SERVER_ADDRESS_OFFSET;
-    memcpy(&deviceConfig.server_key+offset, buf, SERVER_ADDRESS_SIZE);
+    memcpy(deviceConfig.server_key+offset, buf, SERVER_ADDRESS_SIZE);
 }
 
 bool HAL_OTA_Flashed_GetStatus(void)

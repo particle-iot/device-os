@@ -21,6 +21,8 @@
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
 
+#include "platforms.h"
+
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 #include "mbedtls_config_photon.h"
 #else
@@ -1983,7 +1985,9 @@
  * Remove unused functions from oid.c that cause unused strings to get pulled in
  *
  */
+#if PLATFORM_ID != PLATFORM_GCC
 #define MBEDTLS_OID_OPTIMIZE_STRINGS
+#endif // PLATFORM_ID != PLATFORM_GCC
 
 /**
  * \def MBEDTLS_PADLOCK_C

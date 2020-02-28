@@ -28,9 +28,11 @@ bool system_firmwareUpdate(Stream* stream, void* reserved=NULL);
 
 
 struct system_file_transfer_t {
-    system_file_transfer_t() {
-        memset(this, 0, sizeof(*this));
-        size = sizeof(*this);
+    system_file_transfer_t()
+            : size{sizeof(*this)},
+              padding{0},
+              stream{nullptr},
+              descriptor{} {
     }
 
     uint16_t size;

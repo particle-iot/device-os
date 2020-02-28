@@ -2,7 +2,7 @@
 #include "rtc_hal.h"
 
 
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include "boost_posix_time_wrap.h"
 #include <boost/version.hpp>
 
 

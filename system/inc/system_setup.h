@@ -109,8 +109,6 @@ private:
 #endif
 };
 
-template class SystemSetupConsole<SystemSetupConsoleConfig>;
-
 #if Wiring_WiFi
 class WiFiSetupConsole : public SystemSetupConsole<WiFiSetupConsoleConfig>
 {
