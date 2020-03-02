@@ -18,11 +18,12 @@
 #ifndef AM18X5_H
 #define AM18X5_H
 
-#include "Particle.h"
-#include "ext_rtc.h"
+#include "hal_platform.h"
 
-#define AM18X5_I2C_ADDRESS                      (0x69)
-#define AM18X5_I2C_INTERFACE                    (HAL_I2C_INTERFACE2)
+#if HAL_PLATFORM_EXTERNAL_RTC
+
+#include "static_recursive_mutex.h"
+#include "i2c_hal.h"
 
 
 namespace particle {
@@ -37,7 +38,6 @@ enum class Am18x5Register : uint8_t {
     MONTHS                          = 0x05,
     YEARS                           = 0x06,
     WEEKDAY                         = 0x07,
-
     // Alarm Registers
     HUNDREDTHS_ALARM                = 0x08,
     SECONDS_ALARM                   = 0x09,
@@ -46,35 +46,28 @@ enum class Am18x5Register : uint8_t {
     DATE_ALARM                      = 0x0C,
     MONTHS_ALARM                    = 0x0D,
     WEEKDAY_ALARM                   = 0x0E,
-
     // Configuration Registers
     STATUS                          = 0x0F,
     CONTROL1                        = 0x10,
     CONTROL2                        = 0x11,
     INT_MASK                        = 0x12,
     SQW                             = 0x13,
-
     // Calibration Registers
     CAL_XT                          = 0x14,
     CAL_RC_HI                       = 0x15,
     CAL_RC_LO                       = 0x16,
-
     // Sleep Control Register
     SLEEP_CONTROL                   = 0x17,
-
     // Timer Registers
     TIMER_CONTROL                   = 0x18,
     TIMER                           = 0x19,
     TIMER_INITIAL                   = 0x1A,
     WDT                             = 0x1B,
-
     // Oscillator Registers
     OSC_CONTROL                     = 0x1C,
     OSC_STATUS                      = 0x1D,
-
     // Miscellaneous Registers
     CONFIG_KEY                      = 0x1F,
-
     // Analog Control Registers
     TRICKLE                         = 0x20,
     BREF_CONTROL                    = 0x21,
@@ -82,7 +75,6 @@ enum class Am18x5Register : uint8_t {
     BATMODE_IO                      = 0x27,
     ANALOG_STATUS                   = 0X2F,
     OUTPUT_CTRL                     = 0x30,
-
     // ID Registers
     ID0                             = 0x28,
     ID1                             = 0x29,
@@ -91,9 +83,14 @@ enum class Am18x5Register : uint8_t {
     ID4                             = 0x2C,
     ID5                             = 0x2D,
     ID6                             = 0x2E,
-    
     // RAM Registers
     EXTENSION_RAM_ADDRESS           = 0x3F
+};
+
+enum class HourFormat {
+    HOUR24,
+    HOUR12_AM,
+    HOUR12_PM
 };
 
 enum class Weekday {
@@ -110,12 +107,30 @@ class Am18x5 {
 public:
     int begin();
     int end();
-    int sleep();
-    int wakeup();
 
-    int getPartNumber(uint16_t* id);
+    int setHundredths(uint8_t hundredths, bool alarm = false) const;
+    int setSeconds(uint8_t seconds, bool alarm = false) const;
+    int setMinutes(uint8_t minutes, bool alarm = false) const;
+    int setHours(uint8_t hours, HourFormat format, bool alarm = false) const;
+    int setDate(uint8_t date, bool alarm = false) const;
+    int setMonths(uint8_t months, bool alarm = false) const;
+    int setYears(uint8_t years) const;
+    int setWeekday(uint8_t weekday, bool alarm = false) const;
+
+    int getHundredths() const;
+    int getSeconds() const;
+    int getMinutes() const;
+    int getHours(HourFormat* format) const;
+    int getDate() const;
+    int getMonths() const;
+    int getYears() const;
+    int getWeekday() const;
+
+    int getPartNumber(uint16_t* id) const;
 
     static Am18x5& getInstance();
+    static int lock();
+    static int unlock();
 
 private:
     const uint8_t INVALID_I2C_ADDRESS = 0x7F;
@@ -123,27 +138,25 @@ private:
     Am18x5();
     ~Am18x5();
 
-    int writeRegister(const Am18x5Register reg, const uint8_t val);
-    int readRegister(const Am18x5Register reg, uint8_t* const val);
+    int writeRegister(const Am18x5Register reg, uint8_t val, bool bcd = false, bool rw = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
+    int readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
 
     bool initialized_;
     uint8_t address_;
     HAL_I2C_Interface wire_;
-    static RecursiveMutex mutex_;
+    static StaticRecursiveMutex mutex_;
 }; // class Am18x5
 
 
 class Am18x5Lock {
 public:
-    Am18x5Lock(RecursiveMutex& mutex)
-            : locked_(false),
-              mutex_(mutex) {
+    Am18x5Lock()
+            : locked_(false) {
         lock();
     }
 
     Am18x5Lock(Am18x5Lock&& lock)
-            : locked_(lock.locked_),
-              mutex_(lock.mutex_) {
+            : locked_(lock.locked_) {
         lock.locked_ = false;
     }
 
@@ -157,22 +170,23 @@ public:
     }
 
     void lock() {
-        mutex_.lock();
+        Am18x5::lock();
         locked_ = true;
     }
 
     void unlock() {
-        mutex_.unlock();
+        Am18x5::unlock();
         locked_ = false;
     }
 
 private:
     bool locked_;
-    RecursiveMutex& mutex_;
 };
 
 } // namespace particle
 
-#define AM18X5 Am18x5::getInstance()
+#define AM18X5 particle::Am18x5::getInstance()
+
+#endif // HAL_PLATFORM_EXTERNAL_RTC
 
 #endif // AM18X5_H
