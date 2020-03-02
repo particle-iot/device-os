@@ -17,13 +17,12 @@
 
 #include "am18x5.h"
 
-#if PLATFORM_ID == PLATFORM_B5SOM
-#define WIREIF                           Wire
-#elif PLATFORM_ID == PLATFORM_TRACKER
-#define WIREIF                           Wire1
-#endif
+#if HAL_PLATFORM_EXTERNAL_RTC
 
-using namespace spark;
+#include "check.h"
+#include "system_error.h"
+#include "bcd_to_dec.h"
+
 using namespace particle;
 
 namespace {
@@ -61,6 +60,7 @@ namespace {
 // Control 1 Bits Mask
 #define CONTROL1_STOP_MASK          0x80
 #define CONTROL1_1224_MASK          0x40
+#define CONTROL1_1224_SHIFT         (6)
 #define CONTROL1_OUTB_MASK          0x20
 #define CONTROL1_OUT_MASK           0x10
 #define CONTROL1_RSP_MASK           0x08
@@ -161,8 +161,8 @@ namespace {
 
 Am18x5::Am18x5()
         : initialized_(false),
-          address_(AM18X5_I2C_ADDRESS),
-          wire_(AM18X5_I2C_INTERFACE) {
+          address_(HAL_PLATFORM_EXTERNAL_RTC_I2C_ADDR),
+          wire_(HAL_PLATFORM_EXTERNAL_RTC_I2C) {
 
 }
 
@@ -171,12 +171,12 @@ Am18x5::~Am18x5() {
 }
 
 Am18x5& Am18x5::getInstance() {
-    static Am18x5 newExtRtc;
-    return newExtRtc;
+    static Am18x5 am18x5;
+    return am18x5;
 }
 
 int Am18x5::begin() {
-    Am18x5Lock lock(mutex_);
+    Am18x5Lock lock();
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
     CHECK(HAL_I2C_Init(wire_, nullptr));
     HAL_I2C_Set_Speed(wire_, CLOCK_SPEED_400KHZ, nullptr);
@@ -185,27 +185,24 @@ int Am18x5::begin() {
 }
 
 int Am18x5::end() {
-    Am18x5Lock lock(mutex_);
+    Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
+    initialized_ = false;
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::sleep() {
-    Am18x5Lock lock(mutex_);
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    return SYSTEM_ERROR_NONE;
+int Am18x5::lock() {
+    return !mutex_.lock();
 }
 
-int Am18x5::wakeup() {
-    Am18x5Lock lock(mutex_);
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    return SYSTEM_ERROR_NONE;
+int Am18x5::unlock() {
+    return !mutex_.unlock();
 }
 
-int Am18x5::getPartNumber(uint16_t* id) {
-    Am18x5Lock lock(mutex_);
+int Am18x5::getPartNumber(uint16_t* id) const {
+    Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    uint8_t val;
+    uint8_t val = 0x00;
     CHECK(readRegister(Am18x5Register::ID0, &val));
     *id = ((uint16_t)val) << 8;
     CHECK(readRegister(Am18x5Register::ID1, &val));
@@ -213,8 +210,191 @@ int Am18x5::getPartNumber(uint16_t* id) {
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::writeRegister(const Am18x5Register reg, const uint8_t val) {
+int Am18x5::setHundredths(uint8_t hundredths, bool alarm) const {
+    Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    if (alarm) {
+        return writeRegister(Am18x5Register::HUNDREDTHS_ALARM, hundredths, true);
+    } else {
+        return writeRegister(Am18x5Register::HUNDREDTHS, hundredths, true);
+    }
+}
+
+int Am18x5::getHundredths() const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t hundredths = 0;
+    CHECK(readRegister(Am18x5Register::HUNDREDTHS, &hundredths, true));
+    return hundredths;
+}
+
+int Am18x5::setSeconds(uint8_t seconds, bool alarm) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(seconds <= 59, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    if (alarm) {
+        return writeRegister(Am18x5Register::SECONDS_ALARM, seconds, true, false, SECONDS_MASK);
+    } else {
+        return writeRegister(Am18x5Register::SECONDS, seconds, true, false, SECONDS_MASK);
+    }
+}
+
+int Am18x5::getSeconds() const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t seconds = 0;
+    CHECK(readRegister(Am18x5Register::SECONDS, &seconds, true, SECONDS_MASK));
+    return seconds;
+}
+
+int Am18x5::setMinutes(uint8_t minutes, bool alarm) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(minutes <= 59, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    if (alarm) {
+        return writeRegister(Am18x5Register::MINUTES_ALARM, minutes, true, false, MINUTES_MASK);
+    } else {
+        return writeRegister(Am18x5Register::MINUTES, minutes, true, false, MINUTES_MASK);
+    }
+}
+
+int Am18x5::getMinutes() const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t minutes = 0;
+    CHECK(readRegister(Am18x5Register::MINUTES, &minutes, true, MINUTES_MASK));
+    return minutes;
+}
+
+int Am18x5::setHours(uint8_t hours, HourFormat format, bool alarm) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    if (format == HourFormat::HOUR24) {
+        CHECK_TRUE(hours <= 23, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK(writeRegister(Am18x5Register::CONTROL1, 0, false, true, CONTROL1_1224_MASK, CONTROL1_1224_SHIFT));
+        if (alarm) {
+            return writeRegister(Am18x5Register::HOURS_ALARM, hours, true, false, HOURS_24_MASK);
+        } else {
+            return writeRegister(Am18x5Register::HOURS, hours, true, false, HOURS_24_MASK);
+        }
+    } else {
+        CHECK_TRUE(hours <= 11, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK(writeRegister(Am18x5Register::CONTROL1, 1, false, true, CONTROL1_1224_MASK, CONTROL1_1224_SHIFT));
+        CHECK(hours = decToBcd(hours));
+        if (format == HourFormat::HOUR12_PM) {
+            hours |= HOURS_AM_PM_MASK;
+        }
+        if (alarm) {
+            return writeRegister(Am18x5Register::HOURS_ALARM, hours, false, false);
+        } else {
+            return writeRegister(Am18x5Register::HOURS, hours, false, false);
+        }
+    }
+}
+
+int Am18x5::getHours(HourFormat* format) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(format, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t control1 = 0x00;
+    CHECK(readRegister(Am18x5Register::CONTROL1, &control1, false, CONTROL1_1224_MASK));
+    uint8_t hours = 0;
+    if (control1) {
+        // 12 hour mode
+        CHECK(readRegister(Am18x5Register::HOURS, &hours, false));
+        *format = (hours & HOURS_AM_PM_MASK) ? HourFormat::HOUR12_PM : HourFormat::HOUR12_AM;
+        hours &= ~HOURS_AM_PM_MASK;
+        CHECK(hours = bcdToDec(hours));
+    } else {
+        *format = HourFormat::HOUR24;
+        CHECK(readRegister(Am18x5Register::HOURS, &hours, true, HOURS_24_MASK));
+    }
+    return hours;
+}
+
+int Am18x5::setDate(uint8_t date, bool alarm) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(date > 0 && date <= 31, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    if (alarm) {
+        return writeRegister(Am18x5Register::DATE_ALARM, date, true, false, DATE_MASK);
+    } else {
+        return writeRegister(Am18x5Register::DATE, date, true, false, DATE_MASK);
+    }
+}
+
+int Am18x5::getDate() const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t date = 0;
+    CHECK(readRegister(Am18x5Register::DATE, &date, true, DATE_MASK));
+    return date;
+}
+
+int Am18x5::setMonths(uint8_t months, bool alarm) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(months > 0 && months <= 12, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    if (alarm) {
+        return writeRegister(Am18x5Register::MONTHS_ALARM, months, true, false, MONTHS_MASK);
+    } else {
+        return writeRegister(Am18x5Register::MONTHS, months, true, false, MONTHS_MASK);
+    }
+}
+
+int Am18x5::getMonths() const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t months = 0;
+    CHECK(readRegister(Am18x5Register::MONTHS, &months, true, MONTHS_MASK));
+    return months;
+}
+
+int Am18x5::setYears(uint8_t years) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    return writeRegister(Am18x5Register::YEARS, years, true, false);
+}
+
+int Am18x5::getYears() const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t years = 0;
+    CHECK(readRegister(Am18x5Register::YEARS, &years, true));
+    return years;
+}
+
+int Am18x5::setWeekday(uint8_t weekday, bool alarm) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(weekday > 0 && weekday <= 7, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    if (alarm) {
+        return writeRegister(Am18x5Register::WEEKDAY_ALARM, weekday, true, false, WEEKDAY_MASK);
+    } else {
+        return writeRegister(Am18x5Register::WEEKDAY, weekday, true, false, WEEKDAY_MASK);
+    }
+}
+
+int Am18x5::getWeekday() const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t weekday = 0;
+    CHECK(readRegister(Am18x5Register::WEEKDAY, &weekday, true, WEEKDAY_MASK));
+    return weekday;
+}
+
+int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool rw, uint8_t mask, uint8_t shift) const {
+    uint8_t currValue = 0x00;
+    if (rw) {
+        CHECK(readRegister(reg, &currValue));
+    }
+    currValue &= ~mask;
+    if (bcd) {
+        CHECK(val = decToBcd(val));
+    }
+    val &= mask;
+    val <<= shift;
+    val |= currValue;
     HAL_I2C_Acquire(wire_, nullptr);
     HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
     HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(reg), nullptr);
@@ -224,8 +404,7 @@ int Am18x5::writeRegister(const Am18x5Register reg, const uint8_t val) {
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val) {
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd, uint8_t mask, uint8_t shift) const {
     HAL_I2C_Acquire(wire_, nullptr);
     HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
     HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(reg), nullptr);
@@ -235,7 +414,14 @@ int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val) {
     }
     *val = HAL_I2C_Read_Data(wire_, nullptr);
     HAL_I2C_Release(wire_, nullptr);
+    *val &= mask;
+    *val >>= shift;
+    if (bcd) {
+        CHECK(*val = bcdToDec(*val));
+    }
     return SYSTEM_ERROR_NONE;
 }
 
-RecursiveMutex Am18x5::mutex_;
+StaticRecursiveMutex Am18x5::mutex_;
+
+#endif // HAL_PLATFORM_EXTERNAL_RTC
