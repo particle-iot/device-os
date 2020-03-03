@@ -84,21 +84,21 @@ private:
     static os_thread_return_t ioInterruptHandleThread(void* param);
 
     // Resister address
-    const uint8_t IODIR_ADDR[2]     = {0x00, 0x01};
-    const uint8_t IPOL_ADDR[2]      = {0x02, 0x03};
-    const uint8_t GPINTEN_ADDR[2]   = {0x04, 0x05};
-    const uint8_t DEFVAL_ADDR[2]    = {0x06, 0x07};
-    const uint8_t INTCON_ADDR[2]    = {0x08, 0x09};
-    const uint8_t IOCON_ADDR[2]     = {0x0A, 0x0B};
-    const uint8_t GPPU_ADDR[2]      = {0x0C, 0x0D};
-    const uint8_t INTF_ADDR[2]      = {0x0E, 0x0F};
-    const uint8_t INTCAP_ADDR[2]    = {0x10, 0x11};
-    const uint8_t GPIO_ADDR[2]      = {0x12, 0x13};
-    const uint8_t OLAT_ADDR[2]      = {0x14, 0x15};
+    static constexpr uint8_t IODIR_ADDR[2]     = {0x00, 0x01};
+    static constexpr uint8_t IPOL_ADDR[2]      = {0x02, 0x03};
+    static constexpr uint8_t GPINTEN_ADDR[2]   = {0x04, 0x05};
+    static constexpr uint8_t DEFVAL_ADDR[2]    = {0x06, 0x07};
+    static constexpr uint8_t INTCON_ADDR[2]    = {0x08, 0x09};
+    static constexpr uint8_t IOCON_ADDR[2]     = {0x0A, 0x0B};
+    static constexpr uint8_t GPPU_ADDR[2]      = {0x0C, 0x0D};
+    static constexpr uint8_t INTF_ADDR[2]      = {0x0E, 0x0F};
+    static constexpr uint8_t INTCAP_ADDR[2]    = {0x10, 0x11};
+    static constexpr uint8_t GPIO_ADDR[2]      = {0x12, 0x13};
+    static constexpr uint8_t OLAT_ADDR[2]      = {0x14, 0x15};
 
     // Read/write coomand
-    const uint8_t MCP23S17_CMD_READ = 0x41;
-    const uint8_t MCP23S17_CMD_WRITE = 0x40;
+    static constexpr uint8_t MCP23S17_CMD_READ = 0x41;
+    static constexpr uint8_t MCP23S17_CMD_WRITE = 0x40;
 
     uint8_t iodir_[2];
     uint8_t ipol_[2];

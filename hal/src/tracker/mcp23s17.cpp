@@ -388,4 +388,19 @@ os_thread_return_t Mcp23s17::ioInterruptHandleThread(void* param) {
     os_thread_exit(instance->ioExpanderWorkerThread_);
 }
 
+constexpr uint8_t Mcp23s17::IODIR_ADDR[2];
+constexpr uint8_t Mcp23s17::IPOL_ADDR[2];
+constexpr uint8_t Mcp23s17::GPINTEN_ADDR[2];
+constexpr uint8_t Mcp23s17::DEFVAL_ADDR[2];
+constexpr uint8_t Mcp23s17::INTCON_ADDR[2];
+constexpr uint8_t Mcp23s17::IOCON_ADDR[2];
+constexpr uint8_t Mcp23s17::GPPU_ADDR[2];
+constexpr uint8_t Mcp23s17::INTF_ADDR[2];
+constexpr uint8_t Mcp23s17::INTCAP_ADDR[2];
+constexpr uint8_t Mcp23s17::GPIO_ADDR[2];
+constexpr uint8_t Mcp23s17::OLAT_ADDR[2];
+
+constexpr uint8_t Mcp23s17::MCP23S17_CMD_READ;
+constexpr uint8_t Mcp23s17::MCP23S17_CMD_WRITE;
+
 StaticRecursiveMutex Mcp23s17::mutex_;

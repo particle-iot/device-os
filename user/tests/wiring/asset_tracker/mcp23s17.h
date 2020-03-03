@@ -83,7 +83,7 @@ private:
     const uint8_t GPIO_ADDR[2]      = {0x12, 0x13};
     const uint8_t OLAT_ADDR[2]      = {0x14, 0x15};
 
-    // Read/write coomand
+    // Read/write command
     const uint8_t MCP23S17_CMD_READ = 0x41;
     const uint8_t MCP23S17_CMD_WRITE = 0x40;
 
