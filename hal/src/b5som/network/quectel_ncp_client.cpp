@@ -31,6 +31,7 @@
 #include "timer_hal.h"
 #include "delay_hal.h"
 #include "core_hal.h"
+#include "deviceid_hal.h"
 
 #include "stream_util.h"
 
@@ -101,6 +102,13 @@ const auto QUECTEL_NCP_SIM_SELECT_PIN = 23;
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 5 * 60 * 1000;
 
+// Undefine hardware version
+const auto HW_VERSION_UNDEFINED = 0xFF;
+
+// Hardware version
+// V003 - 0x00 (disable hwfc)
+// V004 - 0x01 (enable hwfc)
+const auto HAL_VERSION_B5SOM_V003 = 0x00;
 } // namespace
 
 QuectelNcpClient::QuectelNcpClient() {}
@@ -114,7 +122,14 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     conf_ = static_cast<const CellularNcpClientConfig&>(conf);
 
     // Initialize serial stream
-    auto sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_NONE; // TODO: replace with SERIAL_FLOW_CONTROL_RTS_CTS when HW is fixed.
+    auto sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS;
+
+    uint32_t hwVersion = HW_VERSION_UNDEFINED;
+    auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
+    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
+        sconf = SERIAL_8N1;
+        LOG(TRACE, "Disable Hardware Flow control!");
+    }
 
     std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
@@ -685,21 +700,31 @@ int QuectelNcpClient::initReady() {
     }
 
     // Select (U)SIM card in slot 1, EG91 has two SIM card slots
-    if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E || ncpId() == PLATFORM_NCP_QUECTEL_EG91_NA) {
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E || \
+        ncpId() == PLATFORM_NCP_QUECTEL_EG91_NA || \
+        ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
         CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
     }
 
     // Enable flow control and change to runtime baudrate
-    // TODO: Uncomment when hardware is rev'd to fix CTS/RTS swap.
-    // CHECK_PARSER(parser_.execCommand("AT+IFC=2,2"));
-    CHECK(changeBaudRate(QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
+    auto runtimeBaudrate = QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE;
+    uint32_t hwVersion = HW_VERSION_UNDEFINED;
+    auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
+    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
+        CHECK_PARSER(parser_.execCommand("AT+IFC=0,0"));
+    } else {
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
+        CHECK_PARSER(parser_.execCommand("AT+IFC=2,2"));
+    }
+    CHECK(changeBaudRate(runtimeBaudrate));
+
     // Check that the modem is responsive at the new baudrate
     skipAll(serial_.get(), 1000);
     CHECK(waitAtResponse(10000));
 
     // Send AT+CMUX and initialize multiplexer
     int portspeed;
-    switch (QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE) {
+    switch (runtimeBaudrate) {
         case 9600: portspeed = 1; break;
         case 19200: portspeed = 2; break;
         case 38400: portspeed = 3; break;

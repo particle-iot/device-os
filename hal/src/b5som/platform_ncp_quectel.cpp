@@ -30,6 +30,7 @@ bool isValidNcpId(uint8_t id) {
     case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_BG96:
     case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_EG91_E:
     case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_EG91_NA:
+    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_EG91_EX:
         return true;
     default:
         return false;

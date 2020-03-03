@@ -35,6 +35,7 @@ const uint32_t DEVICE_ID_PREFIX = 0x68ce0fe0;
 
 const uintptr_t SERIAL_NUMBER_OTP_ADDRESS = 0x00000000;
 const uintptr_t DEVICE_SECRET_OTP_ADDRESS = 0x00000010;
+const uintptr_t HW_DATA_OTP_ADDRESS = 0x00000020;
 
 } // namespace
 
@@ -76,6 +77,22 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved)
         }
     }
     return HAL_DEVICE_SERIAL_NUMBER_SIZE;
+}
+
+int hal_get_device_hw_version(uint32_t* revision, void* reserved)
+{
+    // HW Data format: | NCP_ID | HW_VERSION | HW Feature Flags |
+    //                 | byte 0 |   byte 1   |    byte 2/3      |
+    uint8_t hw_data[4] = {};
+    int r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, HW_DATA_OTP_ADDRESS, hw_data, 4);
+    if (r) {
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    if (hw_data[1] == 0xFF) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    *revision = hw_data[1];
+    return SYSTEM_ERROR_NONE;
 }
 
 #ifndef HAL_DEVICE_ID_NO_DCT
