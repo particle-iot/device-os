@@ -31,6 +31,7 @@
 #include "timer_hal.h"
 #include "delay_hal.h"
 #include "core_hal.h"
+#include "deviceid_hal.h"
 
 #include "stream_util.h"
 
@@ -84,7 +85,7 @@ inline system_tick_t millis() {
 }
 
 const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
-const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 115200;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -114,7 +115,15 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     conf_ = static_cast<const CellularNcpClientConfig&>(conf);
 
     // Initialize serial stream
-    auto sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_NONE; // TODO: replace with SERIAL_FLOW_CONTROL_RTS_CTS when HW is fixed.
+    auto sconf = SERIAL_8N1;
+
+    // Hardware version
+    // V003 - 0x00 (disable hwfc)
+    // V004 - 0x01 (enable hwfc)
+    if (hal_get_device_hw_version() > 0x00) {
+        sconf |= SERIAL_FLOW_CONTROL_RTS_CTS;
+        LOG(TRACE, "Enable Hardware Flow control!");
+    }
 
     std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
@@ -690,16 +699,22 @@ int QuectelNcpClient::initReady() {
     }
 
     // Enable flow control and change to runtime baudrate
-    // TODO: Uncomment when hardware is rev'd to fix CTS/RTS swap.
-    // CHECK_PARSER(parser_.execCommand("AT+IFC=2,2"));
-    CHECK(changeBaudRate(QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
+    auto runtimeBaudrate = QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE;
+    if (hal_get_device_hw_version() > 0x00) {
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
+        CHECK_PARSER(parser_.execCommand("AT+IFC=2,2"));
+    } else {
+        CHECK_PARSER(parser_.execCommand("AT+IFC=0,0"));
+    }
+    CHECK(changeBaudRate(runtimeBaudrate));
+
     // Check that the modem is responsive at the new baudrate
     skipAll(serial_.get(), 1000);
     CHECK(waitAtResponse(10000));
 
     // Send AT+CMUX and initialize multiplexer
     int portspeed;
-    switch (QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE) {
+    switch (runtimeBaudrate) {
         case 9600: portspeed = 1; break;
         case 19200: portspeed = 2; break;
         case 38400: portspeed = 3; break;
