@@ -102,6 +102,13 @@ const auto QUECTEL_NCP_SIM_SELECT_PIN = 23;
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 5 * 60 * 1000;
 
+// Undefine hardware version
+const auto HW_VERSION_UNDEFINED = 0xFF;
+
+// Hardware version
+// V003 - 0x00 (disable hwfc)
+// V004 - 0x01 (enable hwfc)
+const auto HAL_VERSION_B5SOM_V003 = 0x00;
 } // namespace
 
 QuectelNcpClient::QuectelNcpClient() {}
@@ -117,12 +124,9 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     // Initialize serial stream
     auto sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS;
 
-    // Hardware version
-    // V003 - 0x00 (disable hwfc)
-    // V004 - 0x01 (enable hwfc)
-    uint32_t hwVersion = 0xFF;
-    hal_get_device_hw_version(&hwVersion, nullptr);
-    if (hwVersion == 0x00) {
+    uint32_t hwVersion = HW_VERSION_UNDEFINED;
+    CHECK(hal_get_device_hw_version(&hwVersion, nullptr));
+    if (hwVersion == HAL_VERSION_B5SOM_V003) {
         sconf = SERIAL_8N1;
         LOG(TRACE, "Disable Hardware Flow control!");
     }
@@ -704,9 +708,9 @@ int QuectelNcpClient::initReady() {
 
     // Enable flow control and change to runtime baudrate
     auto runtimeBaudrate = QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE;
-    uint32_t hwVersion = 0xFF;
-    hal_get_device_hw_version(&hwVersion, nullptr);
-    if (hwVersion == 0x00) {
+    uint32_t hwVersion = HW_VERSION_UNDEFINED;
+    CHECK(hal_get_device_hw_version(&hwVersion, nullptr));
+    if (hwVersion == HAL_VERSION_B5SOM_V003) {
         CHECK_PARSER(parser_.execCommand("AT+IFC=0,0"));
     } else {
         runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
