@@ -24,10 +24,10 @@
 #include "check.h"
 #include "system_error.h"
 
-#if HAL_PLATFORM_IO_EXPANDER
+#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #include "mcp23s17.h"
 #include "demux.h"
-#endif // HAL_PLATFORM_IO_EXPANDER
+#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 inline bool is_valid_pin(pin_t pin) __attribute__((always_inline));
 inline bool is_valid_pin(pin_t pin) {
@@ -60,7 +60,7 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
-#if HAL_PLATFORM_IO_EXPANDER
+#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
         PinMode mode = conf ? conf->mode : PIN_MODE_NONE;
 
@@ -85,7 +85,7 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
     } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
         return 0;
     } else
-#endif // HAL_PLATFORM_IO_EXPANDER
+#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     {
         uint32_t nrfPin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
@@ -185,13 +185,13 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value) {
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
-#if HAL_PLATFORM_IO_EXPANDER
+#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
         MCP23S17.writePinValue(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, value);
     } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
         DEMUX.write(PIN_MAP[pin].gpio_pin, value);
     } else
-#endif // HAL_PLATFORM_IO_EXPANDER
+#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     {
         uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
@@ -218,7 +218,7 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
-#if HAL_PLATFORM_IO_EXPANDER
+#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
         if ((PIN_MAP[pin].pin_mode == INPUT) ||
             (PIN_MAP[pin].pin_mode == INPUT_PULLUP) ||
@@ -235,7 +235,7 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
     } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
         return 0;
     } else
-#endif // HAL_PLATFORM_IO_EXPANDER
+#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     {
         uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
@@ -259,9 +259,9 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
 *          returns 0 on 3 second timeout error, or invalid pin.
 */
 uint32_t HAL_Pulse_In(pin_t pin, uint16_t value) {
-#if HAL_PLATFORM_IO_EXPANDER
+#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     return 0;
-#endif // HAL_PLATFORM_IO_EXPANDER
+#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
     #define FAST_READ(pin)  ((reg->IN >> pin) & 1UL)
 
