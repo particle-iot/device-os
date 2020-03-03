@@ -30,8 +30,6 @@ namespace {
 const auto UNIX_TIME_201801010000 = 1514764800; // 2018/01/01 00:00:00
 const auto UNIX_TIME_YEAR_BASE = 118; // 2018 - 1900
 
-hal_exrtc_alarm_handler_t alarmHandler = nullptr;
-void* alarmContext = nullptr;
 uint8_t alarmYear = 0;
 
 } // anonymous
@@ -83,13 +81,12 @@ int hal_exrtc_set_unix_alarm(time_t unixtime, hal_exrtc_alarm_handler_t handler,
     CHECK(AM18X5.setHours(calendar->tm_hour, HourFormat::HOUR24, true));
     CHECK(AM18X5.setMinutes(calendar->tm_min, true));
     CHECK(AM18X5.setSeconds(calendar->tm_sec, true));
-    alarmHandler = handler;
-    alarmContext = context;
+    CHECK(AM18X5.enableAlarm(true, static_cast<Am18x5::AlarmHandler>(handler), context));
     return SYSTEM_ERROR_NONE;
 }
 
 int hal_exrtc_cancel_unixalarm(void* reserved) {
-    return SYSTEM_ERROR_NONE;
+    return AM18X5.enableAlarm(false, nullptr, nullptr);
 }
 
 bool hal_exrtc_time_is_valid(void* reserved) {
