@@ -709,6 +709,7 @@ int QuectelNcpClient::initReady() {
     if (hwVersion == 0x00) {
         CHECK_PARSER(parser_.execCommand("AT+IFC=0,0"));
     } else {
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
         CHECK_PARSER(parser_.execCommand("AT+IFC=2,2"));
     }
     CHECK(changeBaudRate(runtimeBaudrate));
