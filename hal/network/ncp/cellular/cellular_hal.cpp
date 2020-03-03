@@ -212,6 +212,9 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
         case PLATFORM_NCP_QUECTEL_EG91_NA:
             info->dev = DEV_QUECTEL_EG91_NA;
             break;
+        case PLATFORM_NCP_QUECTEL_EG91_EX:
+            info->dev = DEV_QUECTEL_EG91_EX;
+            break;
         default:
             info->dev = DEV_UNKNOWN;
             break;
