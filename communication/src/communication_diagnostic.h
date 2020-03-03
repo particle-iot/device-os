@@ -2,3 +2,5 @@
 
 extern particle::SimpleIntegerDiagnosticData g_rateLimitedEventsCounter;
 extern particle::SimpleIntegerDiagnosticData g_unacknowledgedMessageCounter;
+extern particle::SimpleIntegerDiagnosticData g_trasmittedMessageCounter;
+extern particle::SimpleIntegerDiagnosticData g_retransmittedMessageCounter;
