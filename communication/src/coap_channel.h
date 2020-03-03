@@ -24,6 +24,8 @@
 #include "stdlib.h"
 #include "service_debug.h"
 
+#include "communication_diagnostic.h"
+
 namespace particle
 {
 namespace protocol
@@ -222,6 +224,11 @@ public:
 		CoAPType::Enum coapType = CoAP::type(get_data());
 		if (coapType==CoAPType::CON) {
 			timeout = now + transmit_timeout(transmit_count);
+			if (transmit_count == 0) {
+				g_trasmittedMessageCounter++;
+			} else {
+				g_retransmittedMessageCounter++;
+			}
 			transmit_count++;
 			return transmit_count <= MAX_RETRANSMIT+1;
 		}
