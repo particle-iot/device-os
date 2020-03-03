@@ -22,6 +22,8 @@
 #include "check.h"
 #include "system_error.h"
 #include "bcd_to_dec.h"
+#include "interrupts_hal.h"
+#include "gpio_hal.h"
 
 using namespace particle;
 
@@ -79,6 +81,7 @@ namespace {
 #define INTERRUPT_BLIE_MASK         0x10
 #define INTERRUPT_TIE_MASK          0x08
 #define INTERRUPT_AIE_MASK          0x04
+#define INTERRUPT_AIE_SHIFT         (2)
 #define INTERRUPT_EX2E_MASK         0x02
 #define INTERRUPT_EX1E_MASK         0x01
 
@@ -157,12 +160,23 @@ namespace {
 #define OUTPUT_CTRL_O3EN_MASK       0x02
 #define OUTPUT_CTRL_O1EN_MASK       0x01
 
+
+void exRtcInterruptHandler(void* data) {
+    auto instance = static_cast<Am18x5*>(data);
+    instance->sync();
+}
+
 } // anonymous namespace
 
 Am18x5::Am18x5()
         : initialized_(false),
           address_(HAL_PLATFORM_EXTERNAL_RTC_I2C_ADDR),
-          wire_(HAL_PLATFORM_EXTERNAL_RTC_I2C) {
+          wire_(HAL_PLATFORM_EXTERNAL_RTC_I2C),
+          alarmHandler_(nullptr),
+          alarmHandlerContext_(nullptr),
+          exRtcWorkerThread_(nullptr),
+          exRtcWorkerQueue_(nullptr),
+          exRtcWorkerThreadExit_(false)  {
 
 }
 
@@ -178,6 +192,24 @@ Am18x5& Am18x5::getInstance() {
 int Am18x5::begin() {
     Am18x5Lock lock();
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
+
+    if (os_queue_create(&exRtcWorkerQueue_, 1, 1, nullptr)) {
+        exRtcWorkerQueue_ = nullptr;
+        LOG(ERROR, "os_queue_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    if (os_thread_create(&exRtcWorkerThread_, "IO Expander Thread", OS_THREAD_PRIORITY_NETWORK, exRtcInterruptHandleThread, this, 512)) {
+        os_queue_destroy(exRtcWorkerQueue_, nullptr);
+        exRtcWorkerQueue_ = nullptr;
+        LOG(ERROR, "os_thread_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
+    HAL_Pin_Mode(RTC_INT, INPUT_PULLUP);
+    HAL_InterruptExtraConfiguration extra = {0};
+    extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
+    CHECK(HAL_Interrupts_Attach(RTC_INT, exRtcInterruptHandler, this, FALLING, &extra));
+    
     CHECK(HAL_I2C_Init(wire_, nullptr));
     HAL_I2C_Set_Speed(wire_, CLOCK_SPEED_400KHZ, nullptr);
     HAL_I2C_Begin(wire_, I2C_MODE_MASTER, 0x00, nullptr);
@@ -187,6 +219,15 @@ int Am18x5::begin() {
 int Am18x5::end() {
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
+
+    exRtcWorkerThreadExit_ = true;
+    os_thread_join(exRtcWorkerThread_);
+    os_thread_cleanup(exRtcWorkerThread_);
+    os_queue_destroy(exRtcWorkerQueue_, nullptr);
+    exRtcWorkerThreadExit_ = false;
+    exRtcWorkerThread_ = nullptr;
+    exRtcWorkerQueue_ = nullptr;
+
     initialized_ = false;
     return SYSTEM_ERROR_NONE;
 }
@@ -383,6 +424,20 @@ int Am18x5::getWeekday() const {
     return weekday;
 }
 
+int Am18x5::enableAlarm(bool enable, Am18x5::AlarmHandler handler, void* context) {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    alarmHandler_ = handler;
+    alarmHandlerContext_ = context;
+    return writeRegister(Am18x5Register::INT_MASK, enable, false, true, INTERRUPT_AIE_MASK, INTERRUPT_AIE_SHIFT);
+}
+
+void Am18x5::alarm() const {
+    if (alarmHandler_) {
+        alarmHandler_(alarmHandlerContext_);
+    }
+}
+
 int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool rw, uint8_t mask, uint8_t shift) const {
     uint8_t currValue = 0x00;
     if (rw) {
@@ -420,6 +475,34 @@ int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd,
         CHECK(*val = bcdToDec(*val));
     }
     return SYSTEM_ERROR_NONE;
+}
+
+int Am18x5::sync() {
+    if (exRtcWorkerQueue_) {
+        bool flag = true;
+        os_queue_put(exRtcWorkerQueue_, &flag, 0, nullptr);
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+os_thread_return_t Am18x5::exRtcInterruptHandleThread(void* param) {
+    auto instance = static_cast<Am18x5*>(param);
+    while(!instance->exRtcWorkerThreadExit_) {
+        bool flag;
+        os_queue_take(instance->exRtcWorkerQueue_, &flag, CONCURRENT_WAIT_FOREVER, nullptr);
+        {
+            Am18x5Lock lock();
+
+            uint8_t alm = 0;
+            if (instance->readRegister(Am18x5Register::STATUS, &alm, false, STATUS_ALM_MASK) != SYSTEM_ERROR_NONE) {
+                continue;
+            }
+            if (alm) {
+                instance->alarm();
+            }
+        }
+    }
+    os_thread_exit(instance->exRtcWorkerThread_);
 }
 
 StaticRecursiveMutex Am18x5::mutex_;

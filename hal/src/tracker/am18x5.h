@@ -23,6 +23,7 @@
 #if HAL_PLATFORM_EXTERNAL_RTC
 
 #include "static_recursive_mutex.h"
+#include "concurrent_hal.h"
 #include "i2c_hal.h"
 
 
@@ -105,8 +106,10 @@ enum class Weekday {
 
 class Am18x5 {
 public:
+    typedef void (*AlarmHandler)(void* context);
     int begin();
     int end();
+    int sync();
 
     int setHundredths(uint8_t hundredths, bool alarm = false) const;
     int setSeconds(uint8_t seconds, bool alarm = false) const;
@@ -116,6 +119,8 @@ public:
     int setMonths(uint8_t months, bool alarm = false) const;
     int setYears(uint8_t years) const;
     int setWeekday(uint8_t weekday, bool alarm = false) const;
+
+    int enableAlarm(bool enable, AlarmHandler handler, void* context);
 
     int getHundredths() const;
     int getSeconds() const;
@@ -127,6 +132,8 @@ public:
     int getWeekday() const;
 
     int getPartNumber(uint16_t* id) const;
+
+    void alarm() const;
 
     static Am18x5& getInstance();
     static int lock();
@@ -140,10 +147,16 @@ private:
 
     int writeRegister(const Am18x5Register reg, uint8_t val, bool bcd = false, bool rw = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
     int readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
+    static os_thread_return_t exRtcInterruptHandleThread(void* param);
 
     bool initialized_;
     uint8_t address_;
     HAL_I2C_Interface wire_;
+    AlarmHandler alarmHandler_;
+    void* alarmHandlerContext_;
+    os_thread_t exRtcWorkerThread_;
+    os_queue_t exRtcWorkerQueue_;
+    bool exRtcWorkerThreadExit_;
     static StaticRecursiveMutex mutex_;
 }; // class Am18x5
 
