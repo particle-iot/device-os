@@ -86,7 +86,7 @@ int hal_get_device_secret(char* data, size_t size, void* reserved);
 /**
  * Get the device's hardware version.
  */
-int hal_get_device_hw_version();
+int hal_get_device_hw_version(uint32_t* revision, void* reserved);
 
 #ifdef	__cplusplus
 }

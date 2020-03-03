@@ -79,17 +79,20 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved)
     return HAL_DEVICE_SERIAL_NUMBER_SIZE;
 }
 
-int hal_get_device_hw_version()
+int hal_get_device_hw_version(uint32_t* revision, void* reserved)
 {
     // HW Data format: | NCP_ID | HW_VERSION | HW Feature Flags |
     //                 | byte 0 |   byte 1   |    byte 2/3      |
     uint8_t hw_data[4] = {};
     int r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, HW_DATA_OTP_ADDRESS, hw_data, 4);
-
-    if (r != 0 || hw_data[1] == 0xFF) {
-        return -1;
+    if (r) {
+        return SYSTEM_ERROR_INTERNAL;
     }
-    return hw_data[1];
+    if (hw_data[1] == 0xFF) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    *revision = hw_data[1];
+    return SYSTEM_ERROR_NONE;
 }
 
 #ifndef HAL_DEVICE_ID_NO_DCT
