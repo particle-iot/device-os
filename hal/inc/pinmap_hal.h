@@ -63,7 +63,7 @@ void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func);
 
 #include "pinmap_impl.h"
 
-#define HAL_Pin_Is_Valid(pin) (pin < TOTAL_PINS)
+#define HAL_Pin_Is_Valid(pin) ((pin) < TOTAL_PINS)
 
 #ifdef __cplusplus
 }
