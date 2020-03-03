@@ -20,7 +20,7 @@
 #if PLATFORM_ID == PLATFORM_B5SOM
 #define SPIIF                           SPI
 #elif PLATFORM_ID == PLATFORM_TRACKER
-#define SPIIF                           SPII1
+#define SPIIF                           SPI1
 #endif
 
 using namespace spark;
