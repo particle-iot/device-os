@@ -64,7 +64,7 @@ include $(COMMON_BUILD)/recurse.mk
 include $(COMMON_BUILD)/verbose.mk
 
 
-.PNONY: st-flash program-dfu clean all
+.PHONY: st-flash program-dfu clean all
 
 else
 
