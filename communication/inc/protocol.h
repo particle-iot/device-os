@@ -232,11 +232,6 @@ protected:
 	}
 
 	/**
-	 * The number of missed chunks to send in a single flight.
-	 */
-	const int MISSED_CHUNKS_TO_SEND = 50;
-
-	/**
 	 * @brief Generates and sends describe message
 	 *
 	 * @param channel The message channel used to send the message

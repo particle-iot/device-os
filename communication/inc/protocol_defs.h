@@ -4,6 +4,7 @@
 #include "system_tick_hal.h"
 
 #include "system_error.h"
+#include "platforms.h"
 
 typedef uint16_t product_id_t;
 typedef uint16_t product_firmware_version_t;
@@ -67,7 +68,13 @@ typedef uint16_t chunk_index_t;
 
 const chunk_index_t NO_CHUNKS_MISSING = 65535;
 const chunk_index_t MAX_CHUNKS        = 65535;
-const size_t MISSED_CHUNKS_TO_SEND    = 40u;
+
+#if PLATFORM_ID == PLATFORM_ARGON
+const size_t MISSED_CHUNKS_TO_SEND = 18; // FIXME
+#else
+const size_t MISSED_CHUNKS_TO_SEND = 40;
+#endif
+
 const size_t MINIMUM_CHUNK_INCREASE   = 2u;
 const size_t MAX_EVENT_TTL_SECONDS    = 16777215;
 const size_t MAX_OPTION_DELTA_LENGTH  = 12;
