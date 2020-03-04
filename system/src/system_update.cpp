@@ -463,11 +463,15 @@ public:
 	AppendData(appender_fn fn, void* data) : AppendBase(fn, data) {}
 
     bool write(uint16_t value) {
-    		return writeDirect(value);
+		return writeDirect(value);
     }
 
     bool write(int32_t value) {
-    		return writeDirect(value);
+		return writeDirect(value);
+    }
+
+	bool write(uint32_t value) {
+		return writeDirect(value);
     }
 
 };
@@ -513,6 +517,12 @@ public:
     bool write(int value) {
         char buf[12];
         return write(itoa(value, buf, 10));
+    }
+
+    bool write(unsigned int value) {
+        char buf[12] = {};
+        snprintf(buf, sizeof(buf), "%u", value);
+        return write(buf);
     }
 
     inline bool write(char c) {
@@ -743,19 +753,27 @@ protected:
 		if (!fmt.isSourceOk(src)) {
 			return 0;
 		}
-	    switch (src->type) {
-	    case DIAG_TYPE_INT: {
-	        AbstractIntegerDiagnosticData::IntType val = 0;
-	        const int ret = AbstractIntegerDiagnosticData::get(src, val);
-	        if ((ret == 0 && !fmt.formatSourceInt(src, val)) || (ret != 0 && !fmt.formatSourceError(src, ret))) {
-	            return SYSTEM_ERROR_TOO_LARGE;
-	        }
-	        break;
-	    }
-	    default:
-	        return SYSTEM_ERROR_NOT_SUPPORTED;
-	    }
-	    return 0;
+		switch (src->type) {
+		case DIAG_TYPE_INT: {
+			AbstractIntegerDiagnosticData::IntType val = 0;
+			const int ret = AbstractIntegerDiagnosticData::get(src, val);
+			if ((ret == 0 && !fmt.formatSourceInt(src, val)) || (ret != 0 && !fmt.formatSourceError(src, ret))) {
+				return SYSTEM_ERROR_TOO_LARGE;
+			}
+			break;
+		}
+		case DIAG_TYPE_UINT: {
+			AbstractUnsignedIntegerDiagnosticData::IntType val = 0;
+			const int ret = AbstractUnsignedIntegerDiagnosticData::get(src, val);
+			if ((ret == 0 && !fmt.formatSourceUnsignedInt(src, val)) || (ret != 0 && !fmt.formatSourceError(src, ret))) {
+				return SYSTEM_ERROR_TOO_LARGE;
+			}
+			break;
+		}
+		default:
+			return SYSTEM_ERROR_NOT_SUPPORTED;
+		}
+		return 0;
 	}
 
 	static int formatSources(T& formatter, const uint16_t* id, size_t count, unsigned flags) {
@@ -827,6 +845,10 @@ public:
 	inline bool formatSourceInt(const diag_source* src, AbstractIntegerDiagnosticData::IntType val) {
 		return json.write_value(src->name, val);
 	}
+
+	inline bool formatSourceUnsignedInt(const diag_source* src, AbstractUnsignedIntegerDiagnosticData::IntType val) {
+		return json.write_value(src->name, val);
+	}
 };
 
 
@@ -834,6 +856,7 @@ class BinaryDiagnosticsFormatter : public AbstractDiagnosticsFormatter<BinaryDia
 
 	AppendData& data;
 
+	// FIXME: single size for all the diagnostics is just plain wrong
 	using value = AbstractIntegerDiagnosticData::IntType;
 	using id = typeof(diag_source::id);
 
@@ -862,6 +885,10 @@ public:
 	}
 
 	inline bool formatSourceInt(const diag_source* src, AbstractIntegerDiagnosticData::IntType val) {
+		return data.write(src->id) && data.write(val);
+	}
+
+	inline bool formatSourceUnsignedInt(const diag_source* src, AbstractUnsignedIntegerDiagnosticData::IntType val) {
 		return data.write(src->id) && data.write(val);
 	}
 

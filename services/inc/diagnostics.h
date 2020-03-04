@@ -110,7 +110,8 @@ typedef enum diag_id {
 
 // Data types
 typedef enum diag_type {
-    DIAG_TYPE_INT = 1 // 32-bit integer
+    DIAG_TYPE_INT = 1, // 32-bit signed integer
+    DIAG_TYPE_UINT = 2 // 32-bit unsigned integer
 } diag_type;
 
 // Data source commands
