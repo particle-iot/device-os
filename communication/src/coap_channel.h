@@ -27,15 +27,6 @@
 #include "communication_diagnostic.h"
 #include <limits>
 
-namespace {
-template <typename T>
-void safeIntegerDiagnosticIncrement(particle::IntegerDiagnosticData<T>& d) {
-       // Cast to underlying
-       auto val = static_cast<typename particle::IntegerDiagnosticData<T>::IntType>(d);
-       d = (val < std::numeric_limits<decltype(val)>::max()) ? val + 1 : 0;
-}
-} // anonymous
-
 namespace particle
 {
 namespace protocol
@@ -235,10 +226,10 @@ public:
 		if (coapType==CoAPType::CON) {
 			timeout = now + transmit_timeout(transmit_count);
 			if (transmit_count == 0) {
-				safeIntegerDiagnosticIncrement(g_trasmittedMessageCounter);
+				g_trasmittedMessageCounter++;
 			}
 			else {
-				safeIntegerDiagnosticIncrement(g_retransmittedMessageCounter);
+				g_retransmittedMessageCounter++;
 			}
 			transmit_count++;
 			return transmit_count <= MAX_RETRANSMIT+1;
