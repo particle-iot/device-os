@@ -69,6 +69,7 @@ public:
 private:
 	uint8_t updating;
 	system_tick_t last_chunk_millis;
+	system_tick_t update_begin_millis;
 	FileTransfer::Descriptor file;
 
 	/**
@@ -140,7 +141,7 @@ public:
 
 	ProtocolError handle_update_done(token_t token, Message& message, MessageChannel& channel);
 
-	ProtocolError send_missing_chunks(MessageChannel& channel, size_t count);
+	ProtocolError send_missing_chunks(MessageChannel& channel, size_t& count);
 
 	ProtocolError idle(MessageChannel& channel);
 

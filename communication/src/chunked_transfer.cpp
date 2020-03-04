@@ -17,6 +17,10 @@
  ******************************************************************************
  */
 
+#include "logging.h"
+
+LOG_SOURCE_CATEGORY("comm.ota")
+
 #include "chunked_transfer.h"
 #include "service_debug.h"
 #include "coap.h"
@@ -27,6 +31,8 @@ namespace particle { namespace protocol {
 ProtocolError ChunkedTransfer::handle_update_begin(
         token_t token, Message& message, MessageChannel& channel)
 {
+    update_begin_millis = callbacks->millis();
+    LOG(INFO, "Received UpdateBegin");
     uint8_t flags = 0;
     chunk_count = 0;
     int actual_len = message.length();
@@ -42,7 +48,7 @@ ProtocolError ChunkedTransfer::handle_update_begin(
             } else {
                 flags &= ~(1<<0); // disabled
             }
-            DEBUG("Fast OTA: %s", fast_ota_value?"enabled":"disabled");
+            LOG(INFO, "Fast OTA override: %d", (int)fast_ota_value);
         }
 
         file.chunk_size = decode_uint16(queue + 9);
@@ -73,16 +79,16 @@ ProtocolError ChunkedTransfer::handle_update_begin(
     response.set_length(size);
     response.set_id(msg_id);
     ProtocolError error = channel.send(response);
-    if (error)
+    if (error) {
         return error;
+    }
 
     if (success)
     {
         if (!callbacks->prepare_for_firmware_update(file, 0, NULL))
         {
-            DEBUG("starting file length %d chunks %d chunk_size %d",
-                    file.file_length, file.chunk_count(file.chunk_size),
-                    file.chunk_size);
+            LOG(INFO, "File size: %u; chunk size: %u; chunk count: %u", (unsigned)file.file_length,
+                    (unsigned)file.chunk_size, (unsigned)file.chunk_count(file.chunk_size));
             last_chunk_millis = callbacks->millis();
             chunk_index = 0;
             chunk_size = file.chunk_size; // save chunk size since the descriptor size is overwritten
@@ -103,8 +109,9 @@ ProtocolError ChunkedTransfer::handle_update_begin(
             updateReady.set_length(size);
             updateReady.set_confirm_received(true);
             error = channel.send(updateReady);
-            if (error)
-                DEBUG("error sending updateReady");
+            if (error) {
+                LOG(ERROR, "Error sending UpdateReady");
+            }
         }
     }
     return error;
@@ -122,10 +129,9 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
     channel.response(message, response, 16);
     uint8_t* queue = message.buf();
 
-    DEBUG("chunk");
     if (!is_updating())
     {
-        WARN("got chunk when not updating");
+        LOG(WARN, "Received chunk when not updating");
         // TODO: return INVALID_STATE after we add a way to have
         // the server ACK our UpdateDone ACK before we reset_updating().
         return NO_ERROR;
@@ -152,6 +158,8 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
         payload += (queue[payload] & 0xF) + 1; // increase by the size. todo handle > 11
     }
 
+    LOG_DEBUG(TRACE, "Received chunk; index: %u", (unsigned)chunk_index);
+
     if (!fast_ota)
     {
         // send ACK
@@ -160,8 +168,9 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
         response.set_id(msg_id);
         response.set_length(response_size);
         error = channel.send(response);
-        if (error)
+        if (error) {
             return error;
+        }
     }
 
     channel.create(response);
@@ -174,14 +183,12 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
         file.chunk_address = file.file_address + (chunk_index * chunk_size);
         if (chunk_index >= MAX_CHUNKS)
         {
-            WARN("invalid chunk index %d", chunk_index);
+            LOG(WARN, "Invalid chunk index: %u", (unsigned)chunk_index);
             return NO_ERROR;
         }
         uint32_t crc = callbacks->calculate_crc(chunk, file.chunk_size);
         uint16_t response_size = 0;
         bool crc_valid = (crc == given_crc);
-        DEBUG("chunk idx=%d crc=%d fast=%d updating=%d", chunk_index,
-                crc_valid, fast_ota, updating);
         if (crc_valid)
         {
             callbacks->save_firmware_chunk(file, chunk, NULL);
@@ -195,7 +202,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
         }
         else
         {
-            WARN("chunk crc bad %d: wanted %x got %x", chunk_index, given_crc, crc);
+            LOG(WARN, "Invalid chunk CRC: 0x%08x; expected CRC: 0x%08x; chunk index: %u", (unsigned)crc, (unsigned)given_crc, (unsigned)chunk_index);
             if (!fast_ota)
             {
                 response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::BAD, channel.is_unreliable());
@@ -206,8 +213,9 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
         {
             response.set_length(response_size);
             error = channel.send(response);
-            if (error)
+            if (error) {
                 return error;
+            }
         }
     }
     return NO_ERROR;
@@ -226,6 +234,10 @@ size_t ChunkedTransfer::notify_update_done(Message& msg, Message& response, Mess
         if (data_len) {
             msgsz = ((data_len + 7) / 16) * 16;
             msgsz = msgsz ? msgsz : 16;
+            buf[data_len] = '\0';
+            LOG(TRACE, "UpdateDone response:");
+            LOG_PRINT(TRACE, buf);
+            LOG_PRINT(TRACE, "\r\n");
         }
     }
 
@@ -239,9 +251,6 @@ size_t ChunkedTransfer::notify_update_done(Message& msg, Message& response, Mess
         msgsz = Messages::update_done(response.buf(), 0, (uint8_t*)buf, data_len, channel.is_unreliable());
     }
 
-    LOG(INFO, "Update done %02x", code);
-    LOG_DEBUG(TRACE, "%s", buf);
-
     response.set_length(msgsz);
 
     return msgsz;
@@ -249,10 +258,9 @@ size_t ChunkedTransfer::notify_update_done(Message& msg, Message& response, Mess
 
 ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& message, MessageChannel& channel)
 {
+    LOG(TRACE, "Received UpdateDone; chunk count: %u", (unsigned)chunk_count);
     // send ACK 2.04
     Message response;
-
-    DEBUG("update done received");
     chunk_index_t index = next_chunk_missing(0);
     bool missing = index != NO_CHUNKS_MISSING;
     uint8_t* queue = message.buf();
@@ -263,8 +271,9 @@ ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& messag
                        missing ? ChunkReceivedCode::BAD : ChunkReceivedCode::OK);
     ProtocolError error = channel.send(response);
     // how can we busy wait for the server to ACK this?
-    if (error)
+    if (error) {
         return error;
+    }
 
     if (!is_updating()) {
         // TODO: return INVALID_STATE after we add a way to have
@@ -274,26 +283,26 @@ ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& messag
 
     if (!missing)
     {
-        DEBUG("update done - all done!");
+        const auto t = (callbacks->millis() - update_begin_millis) / 1000;
+        LOG(INFO, "Update done in %u seconds", (unsigned)t);
         reset_updating();
         callbacks->finish_firmware_update(file, UpdateFlag::SUCCESS, NULL);
     }
     else
     {
         updating = 2;       // flag that we are sending missing chunks.
-        DEBUG("update done - missing chunks starting at %d", index);
-        chunk_index_t increase = std::max(unsigned(chunk_count*0.2), (unsigned)MINIMUM_CHUNK_INCREASE);	// ensure always some growth
-        chunk_index_t resend_chunk_count = std::min(unsigned(chunk_count+increase), (unsigned)MISSED_CHUNKS_TO_SEND);
+        const size_t increase = std::max<size_t>(chunk_count * 0.2, MINIMUM_CHUNK_INCREASE); // ensure always some growth
+        size_t resend_chunk_count = std::min<size_t>(chunk_count + increase, MISSED_CHUNKS_TO_SEND);
         chunk_count = 0;
 
         error = send_missing_chunks(channel, resend_chunk_count);
+        LOG(TRACE, "Requested %u chunks starting at %u", (unsigned)resend_chunk_count, (unsigned)index);
         last_chunk_millis = callbacks->millis();
     }
     return error;
 }
 
-ProtocolError ChunkedTransfer::send_missing_chunks(MessageChannel& channel,
-        size_t count)
+ProtocolError ChunkedTransfer::send_missing_chunks(MessageChannel& channel, size_t& count)
 {
     size_t sent = 0;
     chunk_index_t idx = 0;
@@ -322,14 +331,15 @@ ProtocolError ChunkedTransfer::send_missing_chunks(MessageChannel& channel,
 
     if (sent > 0)
     {
-        DEBUG("Sent %d missing chunks", sent);
         size_t message_size = 7 + (sent * 2);
         message.set_length(message_size);
         message.set_confirm_received(true); // send synchronously
         ProtocolError error = channel.send(message);
-        if (error)
+        if (error) {
             return error;
+        }
     }
+    count = sent;
     return NO_ERROR;
 }
 
@@ -345,7 +355,7 @@ void ChunkedTransfer::cancel()
     if (is_updating())
     {
         // was updating but had an error, inform the client
-        WARN("handle received message failed - aborting transfer");
+        LOG(WARN, "Aborting transfer");
         callbacks->finish_firmware_update(file, 0, NULL);
     }
 }
