@@ -69,7 +69,6 @@ public:
 private:
 	uint8_t updating;
 	system_tick_t last_chunk_millis;
-	system_tick_t update_begin_millis;
 	FileTransfer::Descriptor file;
 
 	/**

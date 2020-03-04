@@ -31,7 +31,6 @@ namespace particle { namespace protocol {
 ProtocolError ChunkedTransfer::handle_update_begin(
         token_t token, Message& message, MessageChannel& channel)
 {
-    update_begin_millis = callbacks->millis();
     LOG(INFO, "Received UpdateBegin");
     uint8_t flags = 0;
     chunk_count = 0;
@@ -283,8 +282,7 @@ ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& messag
 
     if (!missing)
     {
-        const auto t = (callbacks->millis() - update_begin_millis) / 1000;
-        LOG(INFO, "Update done in %u seconds", (unsigned)t);
+        LOG(INFO, "Update done");
         reset_updating();
         callbacks->finish_firmware_update(file, UpdateFlag::SUCCESS, NULL);
     }
