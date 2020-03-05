@@ -43,6 +43,7 @@
 #include "system_network_internal.h"
 #include "bytes2hexbuf.h"
 #include "system_threading.h"
+#include <cstdio>
 #if HAL_PLATFORM_DCT
 #include "dct.h"
 #endif // HAL_PLATFORM_DCT
