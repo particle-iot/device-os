@@ -190,8 +190,8 @@ private:
     // the networking service thread
     AtomicEnumDiagnosticData<Status> status_;
     AtomicEnumDiagnosticData<network_disconnect_reason> disconnReason_;
-    AtomicIntegerDiagnosticData disconnCount_;
-    SimpleIntegerDiagnosticData connCount_;
+    AtomicUnsignedIntegerDiagnosticData disconnCount_;
+    SimpleUnsignedIntegerDiagnosticData connCount_;
     SimpleIntegerDiagnosticData lastError_;
 };
 
