@@ -127,8 +127,8 @@ private:
     // the networking service thread
     AtomicEnumDiagnosticData<Status> status_;
     AtomicEnumDiagnosticData<cloud_disconnect_reason> disconnReason_;
-    SimpleIntegerDiagnosticData disconnCount_;
-    SimpleIntegerDiagnosticData connCount_;
+    SimpleUnsignedIntegerDiagnosticData disconnCount_;
+    SimpleUnsignedIntegerDiagnosticData connCount_;
     SimpleIntegerDiagnosticData lastError_;
 };
 
