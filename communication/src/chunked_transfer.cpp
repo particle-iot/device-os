@@ -17,6 +17,8 @@
  ******************************************************************************
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+
 #include "logging.h"
 
 LOG_SOURCE_CATEGORY("comm.ota")
@@ -106,7 +108,7 @@ ProtocolError ChunkedTransfer::handle_update_begin(
             // send update_reaady - use fast OTA if available
             size_t size = Messages::update_ready(updateReady.buf(), 0, token, (flags & 0x1), channel.is_unreliable());
             updateReady.set_length(size);
-            updateReady.set_confirm_received(true);
+            // updateReady.set_confirm_received(true); // send synchronously
             error = channel.send(updateReady);
             if (error) {
                 LOG(ERROR, "Error sending UpdateReady");
@@ -308,7 +310,7 @@ ProtocolError ChunkedTransfer::send_missing_chunks(MessageChannel& channel, size
     channel.create(message, 7+(count*2));
 
     uint8_t* buf = message.buf();
-    buf[0] = 0x40; // confirmable, no token
+    buf[0] = channel.is_unreliable() ? 0x40 : 0x50; // confirmable/non-confirmable, no token
     buf[1] = 0x01; // code 0.01 GET
     buf[2] = 0;
     buf[3] = 0;
@@ -331,7 +333,7 @@ ProtocolError ChunkedTransfer::send_missing_chunks(MessageChannel& channel, size
     {
         size_t message_size = 7 + (sent * 2);
         message.set_length(message_size);
-        message.set_confirm_received(true); // send synchronously
+        // message.set_confirm_received(true); // send synchronously
         ProtocolError error = channel.send(message);
         if (error) {
             return error;
