@@ -574,6 +574,7 @@ private:
 typedef IntegerDiagnosticData<NoConcurrency> SimpleIntegerDiagnosticData;
 typedef UnsignedIntegerDiagnosticData<NoConcurrency> SimpleUnsignedIntegerDiagnosticData;
 typedef IntegerDiagnosticData<AtomicConcurrency> AtomicIntegerDiagnosticData;
+typedef UnsignedIntegerDiagnosticData<AtomicConcurrency> AtomicUnsignedIntegerDiagnosticData;
 typedef RetainedDiagnosticDataStorage<AbstractIntegerDiagnosticData::IntType> RetainedIntegerDiagnosticDataStorage;
 
 template<typename EnumT>
