@@ -30,9 +30,6 @@
 #define MCP23S17_PIN_COUNT_PER_PORT     (8)
 
 #define MCP23S17_SPI_INTERFACE          (HAL_SPI_INTERFACE1)
-#define MCP23S17_SPI_CS_PIN             (SS)
-#define MCP23S17_RESET_PIN              (A0)
-#define MCP23S17_INT_PIN                (A1)
 
 
 namespace particle {
@@ -52,6 +49,7 @@ public:
     int writePinValue(uint8_t port, uint8_t pin, uint8_t value, bool verify = true);
     int readPinValue(uint8_t port, uint8_t pin, uint8_t* value);
     int attachPinInterrupt(uint8_t port, uint8_t pin, InterruptMode trig, Mcp23s17InterruptCallback callback, void* context, bool verify = true);
+    int detachPinInterrupt(uint8_t port, uint8_t pin, bool verify = true);
 
     static Mcp23s17& getInstance();
     static int lock();
@@ -66,6 +64,10 @@ private:
                   context(nullptr) {
         }
         ~IoPinInterruptConfig() {}
+
+        bool operator==(const IoPinInterruptConfig& config) const {
+            return (port == config.port && pin == config.pin);
+        }
 
         uint8_t port;
         uint8_t pin;
@@ -115,8 +117,8 @@ private:
     bool initialized_;
     HAL_SPI_Interface spi_;
     os_thread_t ioExpanderWorkerThread_;
-    os_queue_t ioExpanderWorkerQueue_;
     bool ioExpanderWorkerThreadExit_;
+    os_semaphore_t ioExpanderWorkerSemaphore_;
     Vector<IoPinInterruptConfig> intConfigs_;
 
     static StaticRecursiveMutex mutex_;

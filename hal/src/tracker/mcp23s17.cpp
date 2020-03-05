@@ -33,10 +33,10 @@ void ioExpanderInterruptHandler(void* data) {
 
 Mcp23s17::Mcp23s17()
         : initialized_(false),
-          spi_(MCP23S17_SPI_INTERFACE),
+          spi_(HAL_PLATFORM_IO_EXPANDER_SPI),
           ioExpanderWorkerThread_(nullptr),
-          ioExpanderWorkerQueue_(nullptr),
-          ioExpanderWorkerThreadExit_(false) {
+          ioExpanderWorkerThreadExit_(false),
+          ioExpanderWorkerSemaphore_(nullptr) {
 }
 
 Mcp23s17::~Mcp23s17() {
@@ -47,14 +47,14 @@ int Mcp23s17::begin() {
     Mcp23s17Lock lock();
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
 
-    if (os_queue_create(&ioExpanderWorkerQueue_, 1, 1, nullptr)) {
-        ioExpanderWorkerQueue_ = nullptr;
-        LOG(ERROR, "os_queue_create() failed");
+    if (os_semaphore_create(&ioExpanderWorkerSemaphore_, 1, 0)) {
+        ioExpanderWorkerSemaphore_ = nullptr;
+        LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
     if (os_thread_create(&ioExpanderWorkerThread_, "IO Expander Thread", OS_THREAD_PRIORITY_NETWORK, ioInterruptHandleThread, this, 512)) {
-        os_queue_destroy(ioExpanderWorkerQueue_, nullptr);
-        ioExpanderWorkerQueue_ = nullptr;
+        os_semaphore_destroy(ioExpanderWorkerSemaphore_);
+        ioExpanderWorkerSemaphore_ = nullptr;
         LOG(ERROR, "os_thread_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
@@ -85,15 +85,16 @@ int Mcp23s17::end() {
     Mcp23s17Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
 
+    CHECK(reset());
+
     ioExpanderWorkerThreadExit_ = true;
     os_thread_join(ioExpanderWorkerThread_);
     os_thread_cleanup(ioExpanderWorkerThread_);
-    os_queue_destroy(ioExpanderWorkerQueue_, nullptr);
+    os_semaphore_destroy(ioExpanderWorkerSemaphore_);
+    ioExpanderWorkerSemaphore_ = nullptr;
     ioExpanderWorkerThreadExit_ = false;
     ioExpanderWorkerThread_ = nullptr;
-    ioExpanderWorkerQueue_ = nullptr;
 
-    CHECK(reset());
     intConfigs_.clear();
     initialized_ = false;
 
@@ -258,15 +259,27 @@ int Mcp23s17::attachPinInterrupt(uint8_t port, uint8_t pin, InterruptMode trig, 
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(port < MCP23S17_PORT_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(pin < MCP23S17_PIN_COUNT_PER_PORT, SYSTEM_ERROR_INVALID_ARGUMENT);
-    if (callback != nullptr) {
-        IoPinInterruptConfig config = {};
-        config.port = port;
-        config.pin = pin;
-        config.trig = trig;
-        config.cb = callback;
-        config.context = context;
-        CHECK_TRUE(intConfigs_.append(config), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(callback, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    // Avoid duplicated int configuration for the same pin.
+    for (auto& config : intConfigs_) {
+        if (config.port == port && config.pin == pin) {
+            config.trig = trig;
+            config.cb = callback;
+            config.context = context;
+            // The interrupt has been enabled previously.
+            return SYSTEM_ERROR_NONE;
+        }
     }
+
+    IoPinInterruptConfig config = {};
+    config.port = port;
+    config.pin = pin;
+    config.trig = trig;
+    config.cb = callback;
+    config.context = context;
+    CHECK_TRUE(intConfigs_.append(config), SYSTEM_ERROR_NO_MEMORY);
+
     uint8_t newVal = gpinten_[port];
     uint8_t bitMask = 0x01 << pin;
     CHECK_FALSE((newVal & bitMask), SYSTEM_ERROR_NONE);
@@ -278,6 +291,33 @@ int Mcp23s17::attachPinInterrupt(uint8_t port, uint8_t pin, InterruptMode trig, 
         CHECK_TRUE(tmp == newVal, SYSTEM_ERROR_INTERNAL);
     }
     gpinten_[port] = newVal;
+    return SYSTEM_ERROR_NONE;
+}
+
+int Mcp23s17::detachPinInterrupt(uint8_t port, uint8_t pin, bool verify) {
+    Mcp23s17Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(port < MCP23S17_PORT_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(pin < MCP23S17_PIN_COUNT_PER_PORT, SYSTEM_ERROR_INVALID_ARGUMENT);
+    
+    for (auto& config : intConfigs_) {
+        if (config.port == port && config.pin == pin) {
+            intConfigs_.removeOne(config);
+
+            uint8_t newVal = gpinten_[port];
+            uint8_t bitMask = 0x01 << pin;
+            CHECK_TRUE((newVal & bitMask), SYSTEM_ERROR_NONE);
+            newVal &= ~bitMask;
+            CHECK(writeRegister(GPINTEN_ADDR[port], newVal));
+            if (verify) {
+                uint8_t tmp;
+                CHECK(readRegister(GPINTEN_ADDR[port], &tmp));
+                CHECK_TRUE(tmp == newVal, SYSTEM_ERROR_INTERNAL);
+            }
+            gpinten_[port] = newVal;
+        }
+    }
+
     return SYSTEM_ERROR_NONE;
 }
 
@@ -350,9 +390,8 @@ int Mcp23s17::readContinuousRegisters(const uint8_t start_addr, uint8_t* const v
 }
 
 int Mcp23s17::sync() {
-    if (ioExpanderWorkerQueue_) {
-        bool flag = true;
-        os_queue_put(ioExpanderWorkerQueue_, &flag, 0, nullptr);
+    if (ioExpanderWorkerSemaphore_) {
+        return os_semaphore_give(ioExpanderWorkerSemaphore_, false);
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -360,8 +399,7 @@ int Mcp23s17::sync() {
 os_thread_return_t Mcp23s17::ioInterruptHandleThread(void* param) {
     auto instance = static_cast<Mcp23s17*>(param);
     while(!instance->ioExpanderWorkerThreadExit_) {
-        bool flag;
-        os_queue_take(instance->ioExpanderWorkerQueue_, &flag, CONCURRENT_WAIT_FOREVER, nullptr);
+        os_semaphore_take(instance->ioExpanderWorkerSemaphore_, CONCURRENT_WAIT_FOREVER, false);
         {
             Mcp23s17Lock lock();
             uint8_t intStatus;
