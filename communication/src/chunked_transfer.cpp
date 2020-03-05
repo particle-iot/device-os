@@ -187,6 +187,10 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
             LOG(WARN, "Invalid chunk index: %u", (unsigned)chunk_index);
             return NO_ERROR;
         }
+        if (fast_ota && is_chunk_received(chunk_index)) {
+            LOG_DEBUG(TRACE, "Duplicate chunk; index: %u", (unsigned)chunk_index);
+            return NO_ERROR;
+        }
         uint32_t crc = callbacks->calculate_crc(chunk, file.chunk_size);
         uint16_t response_size = 0;
         bool crc_valid = (crc == given_crc);
