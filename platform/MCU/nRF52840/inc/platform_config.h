@@ -49,7 +49,11 @@
 
 #define USE_SERIAL_FLASH
 #define sFLASH_PAGESIZE                     0x1000 /* 4096 bytes sector size that needs to be erased */
-#define sFLASH_PAGECOUNT                    1024   /* 4MByte storage */
+# if PLATFORM_ID == PLATFORM_TRACKER
+    #define sFLASH_PAGECOUNT                2048   /* 8MByte storage */
+# else
+    #define sFLASH_PAGECOUNT                1024   /* 4MByte storage */
+# endif
 #endif
 
 #define FLASH_UPDATE_MODULES
