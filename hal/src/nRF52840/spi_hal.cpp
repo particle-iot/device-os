@@ -173,8 +173,16 @@ static void spi_init(HAL_SPI_Interface spi, SPI_Mode mode) {
         err_code = nrfx_spim_init(m_spi_map[spi].master, &spim_config, spi_master_event_handler, (void *)((int)spi));
         SPARK_ASSERT(err_code == NRF_SUCCESS);
 
-        HAL_GPIO_Write(m_spi_map[spi].ss_pin, 1);
-        HAL_Pin_Mode(m_spi_map[spi].ss_pin, OUTPUT);
+        if (HAL_Pin_Is_Valid(m_spi_map[spi].ss_pin)) {
+            hal_gpio_config_t conf = {
+                .size = sizeof(conf),
+                .version = 0,
+                .mode = OUTPUT,
+                .set_value = true,
+                .value = 1
+            };
+            HAL_Pin_Configure(m_spi_map[spi].ss_pin, &conf);
+        }
     } else {
         static const nrf_spis_mode_t nrf_spis_mode[4] = {NRF_SPIS_MODE_0, NRF_SPIS_MODE_1, NRF_SPIS_MODE_2, NRF_SPIS_MODE_3};
         nrfx_spis_config_t spis_config;
@@ -286,7 +294,9 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
     }
 
     if (m_spi_map[spi].enabled) {
+        // Make sure we reset the enabled state
         spi_uninit(spi);
+        m_spi_map[spi].enabled = false;
     }
 
     if (pin == SPI_DEFAULT_SS) {
@@ -295,11 +305,15 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
         } else if (spi == HAL_SPI_INTERFACE2) {
             m_spi_map[spi].ss_pin = D5;
         } else {
-            // This generates a warning with -Warray-bounds enabled
-            // m_spi_map[spi].ss_pin = PIN_INVALID;
+            m_spi_map[spi].ss_pin = PIN_INVALID;
         }
     } else {
         m_spi_map[spi].ss_pin = pin;
+    }
+
+    if (mode == SPI_MODE_SLAVE && !HAL_Pin_Is_Valid(m_spi_map[spi].ss_pin)) {
+        // Slave mode requires a valid pin
+        return;
     }
 
     m_spi_map[spi].spi_mode = mode;

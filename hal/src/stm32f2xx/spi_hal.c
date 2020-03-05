@@ -289,8 +289,13 @@ void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
 
 void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved)
 {
-    if (pin == SPI_DEFAULT_SS)
+    if (pin == SPI_DEFAULT_SS) {
         pin = spiMap[spi].SPI_SS_Pin;
+    }
+
+    if (mode == SPI_MODE_SLAVE && !HAL_Pin_Is_Valid(pin)) {
+        return;
+    }
 
     spiState[spi].SPI_SS_Pin = pin;
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
@@ -310,7 +315,7 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
     HAL_Pin_Mode(spiMap[spi].SPI_MISO_Pin, AF_OUTPUT_PUSHPULL);
     HAL_Pin_Mode(spiMap[spi].SPI_MOSI_Pin, AF_OUTPUT_PUSHPULL);
 
-    if (mode == SPI_MODE_MASTER)
+    if (mode == SPI_MODE_MASTER && HAL_Pin_Is_Valid(pin))
     {
         // Ensure that there is no glitch on SS pin
         PIN_MAP[pin].gpio_peripheral->BSRRL = PIN_MAP[pin].gpio_pin;
@@ -644,6 +649,9 @@ void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved)
         info->mode = spiState[spi].mode;
         info->bit_order = spiState[spi].SPI_InitStructure.SPI_FirstBit == SPI_FirstBit_MSB ? MSBFIRST : LSBFIRST;
         info->data_mode = spiState[spi].SPI_InitStructure.SPI_CPOL | spiState[spi].SPI_InitStructure.SPI_CPHA;
+        if (info->version >= HAL_SPI_INFO_VERSION_2) {
+            info->ss_pin = spiState[spi].SPI_SS_Pin;
+        }
         HAL_enable_irq(state);
     }
 }
