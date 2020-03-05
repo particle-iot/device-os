@@ -70,7 +70,8 @@ const chunk_index_t NO_CHUNKS_MISSING = 65535;
 const chunk_index_t MAX_CHUNKS        = 65535;
 
 #if PLATFORM_ID == PLATFORM_ARGON
-const size_t MISSED_CHUNKS_TO_SEND = 18; // FIXME
+// FIXME: Argon doesn't seem to be able to process more than 20 chunks per flight
+const size_t MISSED_CHUNKS_TO_SEND = 18;
 #else
 const size_t MISSED_CHUNKS_TO_SEND = 40;
 #endif
