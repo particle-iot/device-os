@@ -900,15 +900,11 @@ int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
 
     if (bufferSize & 0x3) /* Not an aligned data */
     {
-        char buf[4];
-        memset(buf, 0xFF, 4);
-
-        for (index = bufferSize&3; index -->0; )
+        for (; index < bufferSize; index++)
         {
-            buf[index] = pBuffer[ (bufferSize & 0xFFFC)+index ];
+            FLASH_ProgramByte(address, pBuffer[index]);
+            ++address;
         }
-        FLASH_ProgramWord(address, *(uint32_t *)(pBuffer + index));
-
     }
 
     /* Lock the internal flash */
