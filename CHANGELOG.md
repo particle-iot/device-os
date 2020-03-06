@@ -1,3 +1,36 @@
+## 1.5.0-rc.2
+
+### FEATURES
+
+- Introduce configurable I2C buffer [#2022](https://github.com/particle-iot/device-os/pull/2022)
+- Support for > 255 I2C buffers and transfers, configurable timeouts [#2035](https://github.com/particle-iot/device-os/pull/2035)
+- Thread-safe cloud variables [#1998](https://github.com/particle-iot/device-os/pull/1998)
+
+### ENHANCEMENTS
+
+- [B5 SoM] Enable hardware flow control for Quectel modem during runtime and add support for EG91-EX [#2042](https://github.com/particle-iot/device-os/pull/2042)
+
+### BUGFIXES
+
+- [Workbench] Workaround for failing Device OS builds on Windows [#2037](https://github.com/particle-iot/device-os/pull/2037)
+- [Gen 2] platform: fix `FLASH_Update()` for unaligned writes [#2036](https://github.com/particle-iot/device-os/pull/2036)
+- Fixes the issue with SPI default SS pin being not configured [#2039](https://github.com/particle-iot/device-os/pull/2039)
+- [gcc] fixes builds on osx and enables usage of the latest gcc versions [#2041](https://github.com/particle-iot/device-os/pull/2041)
+- [Gen 3] Fixes renegotiation of options and adds IPCP packet parsing [#2029](https://github.com/particle-iot/device-os/pull/2029)
+- [Gen 3] Fix parsing of large AT command responses [#2017](https://github.com/particle-iot/device-os/pull/2017)
+- String::substring() unnecessarily modifies the source buffer [#2026](https://github.com/particle-iot/device-os/pull/2026)
+- [B5 SoM] Fix CGI for Quectel modems [#2019](https://github.com/particle-iot/device-os/pull/2019)
+- [Gen 2] Fixes socket leak in `UDP.begin()` [#2031](https://github.com/particle-iot/device-os/pull/2031)
+- [Gen 3] Fixes `Serial.read()` returning -1 instead of 0 when there's no data to read [#2034](https://github.com/particle-iot/device-os/pull/2034)
+- [Gen 3] Fixes BLE UUID conversion issue [#1997](https://github.com/particle-iot/device-os/pull/1997)
+- [wiring] Fixes a regression in SPI due to thread-safety additions from [#1879](https://github.com/particle-iot/device-os/pull/1879) [#2023](https://github.com/particle-iot/device-os/pull/2023)
+
+### INTERNAL
+
+- [test] unit: fixes Print tests failing [#2027](https://github.com/particle-iot/device-os/pull/2027)
+- [B5 SoM] Change the prefix of BLE broadcasting name for B5SoM [#2030](https://github.com/particle-iot/device-os/pull/2030)
+- update workbench manifest with latest `buildscripts` dependency [#2020](https://github.com/particle-iot/device-os/pull/2020)
+
 ## 1.5.0-rc.1
 
 ### DEPRECATION
