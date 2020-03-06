@@ -6,7 +6,7 @@ function display_help ()
     echo '
 usage: make_release.sh [--debug] [--help]
                        [--output-directory=<binary_output_directory>]
-                       [--platform=<all|argon|boron|bsom...
+                       [--platform=<all|argon|asom|boron|bsom...
                        |b5som|electron|p1|photon|xenon>]
                        [--publish=<semantic_version_string>] [--tests]
 
@@ -129,7 +129,7 @@ function valid_platform()
     platform=$1
 
     # Validate platform (result of expression returned to caller)
-    [ "$platform" = "all" ] || [ "$platform" = "argon" ] || [ "$platform" = "boron" ] || [ "$platform" = "bsom" ] || [ "$platform" = "b5som" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ] || [ "$platform" = "xenon" ]
+    [ "$platform" = "all" ] || [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || [ "$platform" = "boron" ] || [ "$platform" = "bsom" ] || [ "$platform" = "b5som" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ] || [ "$platform" = "xenon" ]
 }
 
 if !(valid_platform $PLATFORM); then
@@ -146,6 +146,7 @@ fi
 # Release platform(s)
 if [ $PLATFORM = "all" ]; then
 	release_platform "argon"
+	# release_platform "asom"
 	release_platform "boron"
 	release_platform "bsom"
 	release_platform "electron"

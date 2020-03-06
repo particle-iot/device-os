@@ -5,7 +5,7 @@
             "firmware": "deviceOS@source",
             "compilers": "gcc-arm@5.3.1",
             "debuggers": "openocd@0.11.2-adhoc6ea4372.0",
-            "platforms": [6, 8, 10, 12, 13, 14, 23, 25],
+            "platforms": [6, 8, 10, 12, 13, 14, 22, 23, 25],
             "scripts": "buildscripts@1.9.2",
             "tools": "buildtools@1.1.1"
         }
@@ -115,6 +115,11 @@
         {
             "id": 14,
             "name": "xenon",
+            "generation": 3
+        },
+        {
+            "id": 22,
+            "name": "asom",
             "generation": 3
         },
         {

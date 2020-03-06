@@ -48,6 +48,7 @@ class Platform(IntEnum):
     ARGON = 12
     BORON = 13
     XENON = 14
+    ASOM = 22
     BSOM = 23
     B5SOM = 25
 
@@ -229,7 +230,7 @@ def parse_dependency(dep):
         return ModuleDependency(func, version, index)
     return ModuleDependency()
 
-GEN3_PLATFORMS = [Platform.ARGON, Platform.BORON, Platform.XENON, Platform.BSOM, Platform.B5SOM]
+GEN3_PLATFORMS = [Platform.ARGON, Platform.BORON, Platform.XENON, Platform.ASOM, Platform.BSOM, Platform.B5SOM]
 GEN3_RADIO_STACK_VERSION_OFFSET = 0x300c
 GEN3_RADIO_STACK_MBR_OFFSET = 0x1000
 GEN3_RADIO_STACK_FLAGS = ModuleFlags.DROP_MODULE_INFO

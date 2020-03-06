@@ -75,7 +75,7 @@ int selectExtenalAntenna() {
     HAL_GPIO_Write(ANTSW1, 0);
     HAL_GPIO_Write(ANTSW2, 1);
 // SoM platforms have only an external antenna
-#elif PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM
+#elif PLATFORM_ID != PLATFORM_ASOM && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM
 #error "Unsupported platform"
 #endif
     return 0;

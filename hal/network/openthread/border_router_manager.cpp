@@ -216,7 +216,7 @@ int BorderRouterManager::enable() {
             // and low for Boron
 #if PLATFORM_ID == PLATFORM_XENON
             config_.mPreference = OT_ROUTE_PREFERENCE_HIGH;
-#elif PLATFORM_ID == PLATFORM_ARGON
+#elif PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
             config_.mPreference = OT_ROUTE_PREFERENCE_MED;
 #elif PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
             config_.mPreference = OT_ROUTE_PREFERENCE_LOW;

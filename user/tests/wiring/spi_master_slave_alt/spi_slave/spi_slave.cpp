@@ -13,7 +13,7 @@
 #endif // #ifndef USE_CS
 
 #if HAL_PLATFORM_NRF52840
-#if (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
+#if (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
 #define MY_SPI SPI
@@ -24,7 +24,7 @@
 #define MY_CS D5
 #pragma message "Compiling for SPI1, MY_CS set to D5"
 #elif (USE_SPI == 2)
-#error "SPI2 not supported for bsom and b5som"
+#error "SPI2 not supported for asom, bsom or b5som"
 #else
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
@@ -45,7 +45,7 @@
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
 
-#endif // #if (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
+#endif // #if (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
 
 #else // Gen 2
 
