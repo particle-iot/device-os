@@ -7,6 +7,7 @@ SYSTEM_PART3_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 
 RELEASE_080_MODULE_VERSION_BASE ?= 300
 RELEASE_070_MODULE_VERSION ?= 207
+RELEASE_110_MODULE_VERSION ?= 1102
 
 ifneq (,$(filter $(PLATFORM_ID),6 8))
 ifeq ($(shell test $(SYSTEM_PART2_MODULE_VERSION) -ge $(RELEASE_080_MODULE_VERSION_BASE); echo $$?),0)
@@ -49,4 +50,10 @@ endif
 ifeq ($(PLATFORM_GEN),3)
 # SoftDevice S140 7.0.1
 SOFTDEVICE_DEPENDENCY = 202
+endif
+
+# Gen 3 platforms require an intermediate update through 1.1.0 to avoid IRQ priority configuration
+# issue in DeviceOS < 1.1.0 which presents itself with >= 501 bootloaders
+ifneq (,$(filter $(PLATFORM_ID),12 13 14 23))
+BOOTLOADER_MODULE_DEPENDENCY=${MODULE_FUNCTION_SYSTEM_PART},1,${RELEASE_110_MODULE_VERSION}
 endif
