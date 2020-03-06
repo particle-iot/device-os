@@ -621,6 +621,6 @@ void rewinddir(DIR* pdir) __attribute__((alias("_rewinddir")));
 int readdir_r(DIR* pdir, struct dirent* entry, struct dirent** out_dirent) __attribute__((alias("_readdir_r")));
 int closedir(DIR* pdir) __attribute__((alias("_closedir")));
 int chdir(const char* path) __attribute__((alias("_chdir")));
-int fchdir(int fd) __attribute__((alias("_chdir")));
+int fchdir(int fd) __attribute__((alias("_fchdir")));
 
 } // extern "C"
