@@ -65,6 +65,11 @@ void __assert_func(const char *file, int line, const char* func, const char* exp
     while(1);
 }
 
+// Saves a few kB of flash.
+char* strerror(int errnum) {
+    return (char*)"";
+}
+
 } /* extern "C" */
 
 

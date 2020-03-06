@@ -57,9 +57,4 @@ void CallConstructors(void)
 
 void *__dso_handle = NULL;
 
-// Saves a few kB of flash.
-char* strerror(int errnum) {
-    return (char*)"";
-}
-
 }
