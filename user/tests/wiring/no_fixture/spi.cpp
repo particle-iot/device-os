@@ -79,6 +79,7 @@ test(SPI_02_SPI_DMA_Transfers_Work_Correctly)
 {
     assertTrue(tempBuf != nullptr && tempBuf1 != nullptr);
     SPI.begin();
+    SPI.beginTransaction();
     uint32_t m;
 
     DMA_Completed_Flag = 0;
@@ -110,7 +111,7 @@ test(SPI_02_SPI_DMA_Transfers_Work_Correctly)
     for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
         assertNotEqual(*v, 0xAA);
     }
-
+    SPI.endTransaction();
     SPI.end();
 }
 
@@ -119,6 +120,7 @@ test(SPI_03_SPI1_DMA_Transfers_Work_Correctly)
 {
     assertTrue(tempBuf != nullptr && tempBuf1 != nullptr);
     SPI1.begin();
+    SPI1.beginTransaction();
     uint32_t m;
 
     DMA_Completed_Flag = 0;
@@ -151,6 +153,7 @@ test(SPI_03_SPI1_DMA_Transfers_Work_Correctly)
         assertNotEqual(*v, 0xAA);
     }
 
+    SPI1.endTransaction();
     SPI1.end();
 }
 #endif
@@ -160,6 +163,7 @@ test(SPI_04_SPI2_DMA_Transfers_Work_Correctly)
 {
     assertTrue(tempBuf != nullptr && tempBuf1 != nullptr);
     SPI2.begin();
+    SPI2.beginTransaction();
     uint32_t m;
 
     DMA_Completed_Flag = 0;
@@ -192,6 +196,7 @@ test(SPI_04_SPI2_DMA_Transfers_Work_Correctly)
         assertNotEqual(*v, 0xAA);
     }
 
+    SPI2.endTransaction();
     SPI2.end();
 }
 #endif

@@ -49,13 +49,13 @@ LOG_SOURCE_CATEGORY("net.en")
 #define WIZNET_SPI_MODE SPI_MODE3
 #endif /* WIZNET_SPI_MODE */
 
-#define WIZNET_SPI_CLOCKDIV_VAL_1(d) SPI_CLOCK_DIV ## d
-#define WIZNET_SPI_CLOCKDIV_VAL_2(d) WIZNET_SPI_CLOCKDIV_VAL_1(d)
-#define WIZNET_SPI_CLOCKDIV_VAL WIZNET_SPI_CLOCKDIV_VAL_2(HAL_PLATFORM_ETHERNET_FEATHERWING_SPI_CLOCKDIV)
-
 #ifndef WIZNET_SPI_BITORDER
 #define WIZNET_SPI_BITORDER MSBFIRST
 #endif /* WIZNET_SPI_BITORDER */
+
+#ifndef WIZNET_SPI_CLOCK
+#define WIZNET_SPI_CLOCK (HAL_PLATFORM_ETHERNET_FEATHERWING_SPI_CLOCK)
+#endif /* WIZNET_SPI_CLOCK */
 
 #define WAIT_TIMED(timeout, expr) ({                                            \
     uint32_t _millis = HAL_Timer_Get_Milli_Seconds();                           \
@@ -78,55 +78,69 @@ LOG_SOURCE_CATEGORY("net.en")
 })
 
 namespace {
+
+const hal_spi_info_t WIZNET_DEFAULT_CONFIG = {
+    .version = HAL_SPI_INFO_VERSION_2,
+    .system_clock = 0,
+    .default_settings = 0,
+    .enabled = true,
+    .mode = SPI_MODE_MASTER,
+    .clock = WIZNET_SPI_CLOCK,
+    .bit_order = WIZNET_SPI_BITORDER,
+    .data_mode = WIZNET_SPI_MODE,
+    .ss_pin = PIN_INVALID
+};
+
 uint8_t calculateClockDivider (uint32_t system_clock, uint32_t clock) {
     uint8_t result;
 
     // Integer division results in clean values
-    switch (system_clock / clock) {
-      case 2:
+    switch ((clock > 0) ? (system_clock / clock) : 0) {
+    case 2:
         result = SPI_CLOCK_DIV2;
         break;
-      case 4:
+    case 4:
         result = SPI_CLOCK_DIV4;
         break;
-      case 8:
+    case 8:
         result = SPI_CLOCK_DIV8;
         break;
-      case 16:
+    case 16:
         result = SPI_CLOCK_DIV16;
         break;
-      case 32:
+    case 32:
         result = SPI_CLOCK_DIV32;
         break;
-      case 64:
+    case 64:
         result = SPI_CLOCK_DIV64;
         break;
-      case 128:
+    case 128:
         result = SPI_CLOCK_DIV128;
         break;
-      case 256:
+    case 256:
+    default:
         result = SPI_CLOCK_DIV256;
         break;
-      default:
-        result = 0;
     }
 
     return result;
 }
 
-hal_spi_info_t spi_ensure_configured(HAL_SPI_Interface spi, uint8_t clockdiv, uint8_t order, uint8_t mode) {
-    hal_spi_info_t info = {.version = HAL_SPI_INFO_VERSION_2};
+hal_spi_info_t spiConfigure(HAL_SPI_Interface spi, const hal_spi_info_t* conf) {
+    hal_spi_info_t info = { .version = HAL_SPI_INFO_VERSION_2 };
     HAL_SPI_Info(spi, &info, nullptr);
-    if (!info.enabled || info.ss_pin != PIN_INVALID || info.mode != SPI_MODE_MASTER) {
-        HAL_SPI_Begin_Ext(spi, SPI_MODE_MASTER, PIN_INVALID, nullptr);
-    }
 
     SPARK_ASSERT(info.mode == SPI_MODE_MASTER);
 
-    if (info.bit_order != order ||
-        info.data_mode != mode ||
-        calculateClockDivider(info.system_clock, info.clock) != clockdiv) {
-        HAL_SPI_Set_Settings(spi, 0, clockdiv, order, mode, nullptr);
+    if (!info.enabled || info.ss_pin != conf->ss_pin) {
+        HAL_SPI_Begin_Ext(spi, SPI_MODE_MASTER, PIN_INVALID, nullptr);
+    }
+
+    if (conf->default_settings != info.default_settings ||
+            conf->bit_order != info.bit_order ||
+            conf->data_mode != info.data_mode ||
+            conf->clock != info.clock) {
+        HAL_SPI_Set_Settings(spi, conf->default_settings, calculateClockDivider(info.system_clock, conf->clock), conf->bit_order, conf->data_mode, nullptr);
     }
 
     return info;
@@ -178,11 +192,11 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
         [](void) -> void {
             auto self = instance();
             HAL_SPI_Acquire(self->spi_, nullptr);
-            self->spi_info_cache_ = spi_ensure_configured(self->spi_, WIZNET_SPI_CLOCKDIV_VAL, WIZNET_SPI_BITORDER, WIZNET_SPI_MODE);
+            self->spi_info_cache_ = spiConfigure(self->spi_, &WIZNET_DEFAULT_CONFIG);
         },
         [](void) -> void {
             auto self = instance();
-            spi_ensure_configured(self->spi_, calculateClockDivider(self->spi_info_cache_.system_clock, self->spi_info_cache_.clock), self->spi_info_cache_.bit_order, self->spi_info_cache_.data_mode);
+            spiConfigure(self->spi_, &self->spi_info_cache_);
             HAL_SPI_Release(self->spi_, nullptr);
         }
     );
