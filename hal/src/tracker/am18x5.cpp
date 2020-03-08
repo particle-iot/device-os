@@ -19,6 +19,7 @@
 
 #if HAL_PLATFORM_EXTERNAL_RTC
 
+#include <memory>
 #include "check.h"
 #include "system_error.h"
 #include "bcd_to_dec.h"
@@ -175,9 +176,9 @@ Am18x5::Am18x5()
           alarmHandler_(nullptr),
           alarmHandlerContext_(nullptr),
           exRtcWorkerThread_(nullptr),
-          exRtcWorkerQueue_(nullptr),
+          exRtcWorkerSemaphore_(nullptr),
           exRtcWorkerThreadExit_(false)  {
-
+    begin();
 }
 
 Am18x5::~Am18x5() {
@@ -193,26 +194,30 @@ int Am18x5::begin() {
     Am18x5Lock lock();
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
 
-    if (os_queue_create(&exRtcWorkerQueue_, 1, 1, nullptr)) {
-        exRtcWorkerQueue_ = nullptr;
-        LOG(ERROR, "os_queue_create() failed");
+    HAL_Pin_Mode(RTC_INT, INPUT_PULLUP);
+    
+    if (!HAL_I2C_Is_Enabled(wire_, nullptr)) {
+        CHECK(HAL_I2C_Init(wire_, nullptr));
+        HAL_I2C_Set_Speed(wire_, CLOCK_SPEED_400KHZ, nullptr);
+        HAL_I2C_Begin(wire_, I2C_MODE_MASTER, 0x00, nullptr);
+    }
+
+    if (os_semaphore_create(&exRtcWorkerSemaphore_, 1, 0)) {
+        exRtcWorkerSemaphore_ = nullptr;
+        LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
     if (os_thread_create(&exRtcWorkerThread_, "IO Expander Thread", OS_THREAD_PRIORITY_NETWORK, exRtcInterruptHandleThread, this, 512)) {
-        os_queue_destroy(exRtcWorkerQueue_, nullptr);
-        exRtcWorkerQueue_ = nullptr;
+        os_semaphore_destroy(exRtcWorkerSemaphore_);
+        exRtcWorkerSemaphore_ = nullptr;
         LOG(ERROR, "os_thread_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
 
-    HAL_Pin_Mode(RTC_INT, INPUT_PULLUP);
     HAL_InterruptExtraConfiguration extra = {0};
     extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
     CHECK(HAL_Interrupts_Attach(RTC_INT, exRtcInterruptHandler, this, FALLING, &extra));
-    
-    CHECK(HAL_I2C_Init(wire_, nullptr));
-    HAL_I2C_Set_Speed(wire_, CLOCK_SPEED_400KHZ, nullptr);
-    HAL_I2C_Begin(wire_, I2C_MODE_MASTER, 0x00, nullptr);
+
     return SYSTEM_ERROR_NONE;
 }
 
@@ -223,21 +228,21 @@ int Am18x5::end() {
     exRtcWorkerThreadExit_ = true;
     os_thread_join(exRtcWorkerThread_);
     os_thread_cleanup(exRtcWorkerThread_);
-    os_queue_destroy(exRtcWorkerQueue_, nullptr);
+    os_semaphore_destroy(exRtcWorkerSemaphore_);
     exRtcWorkerThreadExit_ = false;
     exRtcWorkerThread_ = nullptr;
-    exRtcWorkerQueue_ = nullptr;
+    exRtcWorkerSemaphore_ = nullptr;
 
     initialized_ = false;
     return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::lock() {
-    return !mutex_.lock();
+    return HAL_I2C_Acquire(wire_, nullptr);
 }
 
 int Am18x5::unlock() {
-    return !mutex_.unlock();
+    return HAL_I2C_Release(wire_, nullptr);
 }
 
 int Am18x5::getPartNumber(uint16_t* id) const {
@@ -251,14 +256,68 @@ int Am18x5::getPartNumber(uint16_t* id) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::setHundredths(uint8_t hundredths, bool alarm) const {
+int Am18x5::setCalendar(const struct tm* calendar) const {
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    if (alarm) {
-        return writeRegister(Am18x5Register::HUNDREDTHS_ALARM, hundredths, true);
-    } else {
-        return writeRegister(Am18x5Register::HUNDREDTHS, hundredths, true);
-    }
+    CHECK_TRUE(calendar, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(calendar->tm_year >= UNIX_TIME_YEAR_BASE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    uint8_t buff[7] = {0};
+    CHECK(buff[0] = decToBcd(calendar->tm_sec));
+    CHECK(buff[1] = decToBcd(calendar->tm_min));
+    CHECK(buff[2] = decToBcd(calendar->tm_hour));
+    CHECK(buff[3] = decToBcd(calendar->tm_mday));
+    CHECK(buff[4] = decToBcd(calendar->tm_mon));
+    CHECK(buff[5] = decToBcd(calendar->tm_year - UNIX_TIME_YEAR_BASE));
+    CHECK(buff[6] = decToBcd(calendar->tm_wday));
+    CHECK(writeContinuouseRegisters(Am18x5Register::SECONDS, buff, sizeof(buff)));
+    return SYSTEM_ERROR_NONE;
+}
+
+int Am18x5::getCalendar(struct tm* calendar) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(calendar, SYSTEM_ERROR_INVALID_ARGUMENT);
+    uint8_t buff[7] = {0};
+    CHECK(readContinuouseRegisters(Am18x5Register::SECONDS, buff, sizeof(buff)));
+    CHECK(calendar->tm_sec = bcdToDec(buff[0]));
+    CHECK(calendar->tm_min = bcdToDec(buff[1]));
+    CHECK(calendar->tm_hour = bcdToDec(buff[2]));
+    CHECK(calendar->tm_mday = bcdToDec(buff[3]));
+    CHECK(calendar->tm_mon = bcdToDec(buff[4]));
+    CHECK(calendar->tm_year = bcdToDec(buff[5]));
+    calendar->tm_year += UNIX_TIME_YEAR_BASE;
+    CHECK(calendar->tm_wday = bcdToDec(buff[6]));
+    return SYSTEM_ERROR_NONE;
+}
+
+int Am18x5::setAlarm(const struct tm* calendar) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(calendar, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(calendar->tm_year >= UNIX_TIME_YEAR_BASE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    uint8_t buff[6] = {0};
+    CHECK(buff[0] = decToBcd(calendar->tm_sec));
+    CHECK(buff[1] = decToBcd(calendar->tm_min));
+    CHECK(buff[2] = decToBcd(calendar->tm_hour));
+    CHECK(buff[3] = decToBcd(calendar->tm_mday));
+    CHECK(buff[4] = decToBcd(calendar->tm_mon));
+    CHECK(buff[5] = decToBcd(calendar->tm_wday));
+    CHECK(writeContinuouseRegisters(Am18x5Register::SECONDS_ALARM, buff, sizeof(buff)));
+    return SYSTEM_ERROR_NONE;
+}
+
+int Am18x5::enableAlarm(bool enable, Am18x5::AlarmHandler handler, void* context) {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    alarmHandler_ = handler;
+    alarmHandlerContext_ = context;
+    return writeRegister(Am18x5Register::INT_MASK, enable, false, true, INTERRUPT_AIE_MASK, INTERRUPT_AIE_SHIFT);
+}
+
+int Am18x5::setHundredths(uint8_t hundredths) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    return writeRegister(Am18x5Register::HUNDREDTHS, hundredths, true);
 }
 
 int Am18x5::getHundredths() const {
@@ -269,15 +328,11 @@ int Am18x5::getHundredths() const {
     return hundredths;
 }
 
-int Am18x5::setSeconds(uint8_t seconds, bool alarm) const {
+int Am18x5::setSeconds(uint8_t seconds) const {
     Am18x5Lock lock();
     CHECK_TRUE(seconds <= 59, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    if (alarm) {
-        return writeRegister(Am18x5Register::SECONDS_ALARM, seconds, true, false, SECONDS_MASK);
-    } else {
-        return writeRegister(Am18x5Register::SECONDS, seconds, true, false, SECONDS_MASK);
-    }
+    return writeRegister(Am18x5Register::SECONDS, seconds, true, false, SECONDS_MASK);
 }
 
 int Am18x5::getSeconds() const {
@@ -288,15 +343,11 @@ int Am18x5::getSeconds() const {
     return seconds;
 }
 
-int Am18x5::setMinutes(uint8_t minutes, bool alarm) const {
+int Am18x5::setMinutes(uint8_t minutes) const {
     Am18x5Lock lock();
     CHECK_TRUE(minutes <= 59, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    if (alarm) {
-        return writeRegister(Am18x5Register::MINUTES_ALARM, minutes, true, false, MINUTES_MASK);
-    } else {
-        return writeRegister(Am18x5Register::MINUTES, minutes, true, false, MINUTES_MASK);
-    }
+    return writeRegister(Am18x5Register::MINUTES, minutes, true, false, MINUTES_MASK);
 }
 
 int Am18x5::getMinutes() const {
@@ -307,17 +358,13 @@ int Am18x5::getMinutes() const {
     return minutes;
 }
 
-int Am18x5::setHours(uint8_t hours, HourFormat format, bool alarm) const {
+int Am18x5::setHours(uint8_t hours, HourFormat format) const {
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     if (format == HourFormat::HOUR24) {
         CHECK_TRUE(hours <= 23, SYSTEM_ERROR_INVALID_ARGUMENT);
         CHECK(writeRegister(Am18x5Register::CONTROL1, 0, false, true, CONTROL1_1224_MASK, CONTROL1_1224_SHIFT));
-        if (alarm) {
-            return writeRegister(Am18x5Register::HOURS_ALARM, hours, true, false, HOURS_24_MASK);
-        } else {
-            return writeRegister(Am18x5Register::HOURS, hours, true, false, HOURS_24_MASK);
-        }
+        return writeRegister(Am18x5Register::HOURS, hours, true, false, HOURS_24_MASK);
     } else {
         CHECK_TRUE(hours <= 11, SYSTEM_ERROR_INVALID_ARGUMENT);
         CHECK(writeRegister(Am18x5Register::CONTROL1, 1, false, true, CONTROL1_1224_MASK, CONTROL1_1224_SHIFT));
@@ -325,11 +372,7 @@ int Am18x5::setHours(uint8_t hours, HourFormat format, bool alarm) const {
         if (format == HourFormat::HOUR12_PM) {
             hours |= HOURS_AM_PM_MASK;
         }
-        if (alarm) {
-            return writeRegister(Am18x5Register::HOURS_ALARM, hours, false, false);
-        } else {
-            return writeRegister(Am18x5Register::HOURS, hours, false, false);
-        }
+        return writeRegister(Am18x5Register::HOURS_ALARM, hours, false, false);
     }
 }
 
@@ -353,15 +396,11 @@ int Am18x5::getHours(HourFormat* format) const {
     return hours;
 }
 
-int Am18x5::setDate(uint8_t date, bool alarm) const {
+int Am18x5::setDate(uint8_t date) const {
     Am18x5Lock lock();
     CHECK_TRUE(date > 0 && date <= 31, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    if (alarm) {
-        return writeRegister(Am18x5Register::DATE_ALARM, date, true, false, DATE_MASK);
-    } else {
-        return writeRegister(Am18x5Register::DATE, date, true, false, DATE_MASK);
-    }
+    return writeRegister(Am18x5Register::DATE, date, true, false, DATE_MASK);
 }
 
 int Am18x5::getDate() const {
@@ -372,15 +411,11 @@ int Am18x5::getDate() const {
     return date;
 }
 
-int Am18x5::setMonths(uint8_t months, bool alarm) const {
+int Am18x5::setMonths(uint8_t months) const {
     Am18x5Lock lock();
     CHECK_TRUE(months > 0 && months <= 12, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    if (alarm) {
-        return writeRegister(Am18x5Register::MONTHS_ALARM, months, true, false, MONTHS_MASK);
-    } else {
-        return writeRegister(Am18x5Register::MONTHS, months, true, false, MONTHS_MASK);
-    }
+    return writeRegister(Am18x5Register::MONTHS, months, true, false, MONTHS_MASK);
 }
 
 int Am18x5::getMonths() const {
@@ -405,15 +440,11 @@ int Am18x5::getYears() const {
     return years;
 }
 
-int Am18x5::setWeekday(uint8_t weekday, bool alarm) const {
+int Am18x5::setWeekday(uint8_t weekday) const {
     Am18x5Lock lock();
     CHECK_TRUE(weekday > 0 && weekday <= 7, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    if (alarm) {
-        return writeRegister(Am18x5Register::WEEKDAY_ALARM, weekday, true, false, WEEKDAY_MASK);
-    } else {
-        return writeRegister(Am18x5Register::WEEKDAY, weekday, true, false, WEEKDAY_MASK);
-    }
+    return writeRegister(Am18x5Register::WEEKDAY, weekday, true, false, WEEKDAY_MASK);
 }
 
 int Am18x5::getWeekday() const {
@@ -422,20 +453,6 @@ int Am18x5::getWeekday() const {
     uint8_t weekday = 0;
     CHECK(readRegister(Am18x5Register::WEEKDAY, &weekday, true, WEEKDAY_MASK));
     return weekday;
-}
-
-int Am18x5::enableAlarm(bool enable, Am18x5::AlarmHandler handler, void* context) {
-    Am18x5Lock lock();
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    alarmHandler_ = handler;
-    alarmHandlerContext_ = context;
-    return writeRegister(Am18x5Register::INT_MASK, enable, false, true, INTERRUPT_AIE_MASK, INTERRUPT_AIE_SHIFT);
-}
-
-void Am18x5::alarm() const {
-    if (alarmHandler_) {
-        alarmHandler_(alarmHandlerContext_);
-    }
 }
 
 int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool rw, uint8_t mask, uint8_t shift) const {
@@ -459,6 +476,18 @@ int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool 
     return SYSTEM_ERROR_NONE;
 }
 
+int Am18x5::writeContinuouseRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const {
+    HAL_I2C_Acquire(wire_, nullptr);
+    HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
+    HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(start_reg), nullptr);
+    for (size_t i = 0; i < len; i++) {
+        HAL_I2C_Write_Data(wire_, buff[i], nullptr);
+    }
+    HAL_I2C_End_Transmission(wire_, true, nullptr);
+    HAL_I2C_Release(wire_, nullptr);
+    return len;
+}
+
 int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd, uint8_t mask, uint8_t shift) const {
     HAL_I2C_Acquire(wire_, nullptr);
     HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
@@ -477,10 +506,29 @@ int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd,
     return SYSTEM_ERROR_NONE;
 }
 
+int Am18x5::readContinuouseRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const {
+    HAL_I2C_Acquire(wire_, nullptr);
+    HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
+    HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(start_reg), nullptr);
+    HAL_I2C_End_Transmission(wire_, false, nullptr);
+    if (HAL_I2C_Request_Data(wire_, address_, len, true, nullptr) == 0) {
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    int32_t size = HAL_I2C_Available_Data(wire_, nullptr);
+    if (size <= 0) {
+        return size;
+    }
+    size = std::min((size_t)size, len);
+    for (int32_t i = 0; i < size; i++) {
+        buff[i] = HAL_I2C_Read_Data(wire_, nullptr);
+    }
+    HAL_I2C_Release(wire_, nullptr);
+    return size;
+}
+
 int Am18x5::sync() {
-    if (exRtcWorkerQueue_) {
-        bool flag = true;
-        os_queue_put(exRtcWorkerQueue_, &flag, 0, nullptr);
+    if (exRtcWorkerSemaphore_) {
+        os_semaphore_give(exRtcWorkerSemaphore_, false);
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -488,8 +536,7 @@ int Am18x5::sync() {
 os_thread_return_t Am18x5::exRtcInterruptHandleThread(void* param) {
     auto instance = static_cast<Am18x5*>(param);
     while(!instance->exRtcWorkerThreadExit_) {
-        bool flag;
-        os_queue_take(instance->exRtcWorkerQueue_, &flag, CONCURRENT_WAIT_FOREVER, nullptr);
+        os_semaphore_take(instance->exRtcWorkerSemaphore_, CONCURRENT_WAIT_FOREVER, false);
         {
             Am18x5Lock lock();
 
@@ -498,13 +545,15 @@ os_thread_return_t Am18x5::exRtcInterruptHandleThread(void* param) {
                 continue;
             }
             if (alm) {
-                instance->alarm();
+                if (instance->alarmHandler_) {
+                    instance->alarmHandler_(instance->alarmHandlerContext_);
+                }
             }
         }
     }
     os_thread_exit(instance->exRtcWorkerThread_);
 }
 
-StaticRecursiveMutex Am18x5::mutex_;
+constexpr uint16_t Am18x5::UNIX_TIME_YEAR_BASE;
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC

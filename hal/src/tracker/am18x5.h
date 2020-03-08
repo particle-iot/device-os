@@ -22,6 +22,7 @@
 
 #if HAL_PLATFORM_EXTERNAL_RTC
 
+#include "time.h"
 #include "static_recursive_mutex.h"
 #include "concurrent_hal.h"
 #include "i2c_hal.h"
@@ -111,16 +112,31 @@ public:
     int end();
     int sync();
 
-    int setHundredths(uint8_t hundredths, bool alarm = false) const;
-    int setSeconds(uint8_t seconds, bool alarm = false) const;
-    int setMinutes(uint8_t minutes, bool alarm = false) const;
-    int setHours(uint8_t hours, HourFormat format, bool alarm = false) const;
-    int setDate(uint8_t date, bool alarm = false) const;
-    int setMonths(uint8_t months, bool alarm = false) const;
-    int setYears(uint8_t years) const;
-    int setWeekday(uint8_t weekday, bool alarm = false) const;
+    int setCalendar(const struct tm* calendar) const;
+    int getCalendar(struct tm* calendar) const;
 
+    int setAlarm(const struct tm* calendar) const;
     int enableAlarm(bool enable, AlarmHandler handler, void* context);
+
+    int getPartNumber(uint16_t* id) const;
+
+    int lock();
+    int unlock();
+
+    static Am18x5& getInstance();
+
+private:
+    Am18x5();
+    ~Am18x5();
+
+    int setHundredths(uint8_t hundredths) const;
+    int setSeconds(uint8_t seconds) const;
+    int setMinutes(uint8_t minutes) const;
+    int setHours(uint8_t hours, HourFormat format) const;
+    int setDate(uint8_t datee) const;
+    int setMonths(uint8_t months) const;
+    int setYears(uint8_t years) const;
+    int setWeekday(uint8_t weekday) const;
 
     int getHundredths() const;
     int getSeconds() const;
@@ -131,23 +147,13 @@ public:
     int getYears() const;
     int getWeekday() const;
 
-    int getPartNumber(uint16_t* id) const;
-
-    void alarm() const;
-
-    static Am18x5& getInstance();
-    static int lock();
-    static int unlock();
-
-private:
-    const uint8_t INVALID_I2C_ADDRESS = 0x7F;
-
-    Am18x5();
-    ~Am18x5();
-
     int writeRegister(const Am18x5Register reg, uint8_t val, bool bcd = false, bool rw = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
+    int writeContinuouseRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const;
     int readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
+    int readContinuouseRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const;
     static os_thread_return_t exRtcInterruptHandleThread(void* param);
+
+    static constexpr uint16_t UNIX_TIME_YEAR_BASE = 118; // 2018 - 1900
 
     bool initialized_;
     uint8_t address_;
@@ -155,9 +161,8 @@ private:
     AlarmHandler alarmHandler_;
     void* alarmHandlerContext_;
     os_thread_t exRtcWorkerThread_;
-    os_queue_t exRtcWorkerQueue_;
+    os_queue_t exRtcWorkerSemaphore_;
     bool exRtcWorkerThreadExit_;
-    static StaticRecursiveMutex mutex_;
 }; // class Am18x5
 
 
@@ -183,12 +188,12 @@ public:
     }
 
     void lock() {
-        Am18x5::lock();
+        Am18x5::getInstance().lock();
         locked_ = true;
     }
 
     void unlock() {
-        Am18x5::unlock();
+        Am18x5::getInstance().unlock();
         locked_ = false;
     }
 
@@ -197,8 +202,6 @@ private:
 };
 
 } // namespace particle
-
-#define AM18X5 particle::Am18x5::getInstance()
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC
 

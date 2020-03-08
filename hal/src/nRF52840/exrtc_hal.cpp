@@ -30,7 +30,7 @@ namespace {
 const auto UNIX_TIME_201801010000 = 1514764800; // 2018/01/01 00:00:00
 const auto UNIX_TIME_YEAR_BASE = 118; // 2018 - 1900
 
-uint8_t alarmYear = 0;
+uint16_t alarmYear = 0;
 
 } // anonymous
 
@@ -39,31 +39,13 @@ int hal_exrtc_set_unixtime(time_t unixtime, void* reserved) {
     if (!calendar) {
         return SYSTEM_ERROR_INTERNAL;
     }
-    CHECK_TRUE(calendar->tm_year >= UNIX_TIME_YEAR_BASE, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK(AM18X5.setWeekday(calendar->tm_wday));
-    CHECK(AM18X5.setYears(calendar->tm_year - UNIX_TIME_YEAR_BASE));
-    CHECK(AM18X5.setMonths(calendar->tm_mon));
-    CHECK(AM18X5.setDate(calendar->tm_mday));
-    CHECK(AM18X5.setHours(calendar->tm_hour, HourFormat::HOUR24));
-    CHECK(AM18X5.setMinutes(calendar->tm_min));
-    CHECK(AM18X5.setSeconds(calendar->tm_sec));
+    CHECK(Am18x5::getInstance().setCalendar(calendar));
     return SYSTEM_ERROR_NONE;
 }
 
 time_t hal_exrtc_get_unixtime(time_t* unixtime, void* reserved) {
     struct tm calendar;
-    CHECK(calendar.tm_sec = AM18X5.getSeconds());
-    CHECK(calendar.tm_min = AM18X5.getMinutes());
-    HourFormat format = HourFormat::HOUR24;
-    CHECK(calendar.tm_hour = AM18X5.getHours(&format));
-    if (format == HourFormat::HOUR12_PM) {
-        calendar.tm_hour += 12;
-    }
-    CHECK(calendar.tm_mday = AM18X5.getDate());
-    CHECK(calendar.tm_mon = AM18X5.getMonths());
-    CHECK(calendar.tm_year = AM18X5.getYears());
-    calendar.tm_year += UNIX_TIME_YEAR_BASE;
-    CHECK(calendar.tm_wday = AM18X5.getWeekday());
+    CHECK(Am18x5::getInstance().getCalendar(&calendar));
     *unixtime = mktime(&calendar);
     return SYSTEM_ERROR_NONE;
 }
@@ -74,19 +56,13 @@ int hal_exrtc_set_unix_alarm(time_t unixtime, hal_exrtc_alarm_handler_t handler,
     if (!calendar) {
         return SYSTEM_ERROR_INTERNAL;
     }
-    CHECK_TRUE(calendar->tm_year >= UNIX_TIME_YEAR_BASE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK(Am18x5::getInstance().setAlarm(calendar));
     alarmYear = calendar->tm_year - UNIX_TIME_YEAR_BASE;
-    CHECK(AM18X5.setMonths(calendar->tm_mon, true));
-    CHECK(AM18X5.setDate(calendar->tm_mday, true));
-    CHECK(AM18X5.setHours(calendar->tm_hour, HourFormat::HOUR24, true));
-    CHECK(AM18X5.setMinutes(calendar->tm_min, true));
-    CHECK(AM18X5.setSeconds(calendar->tm_sec, true));
-    CHECK(AM18X5.enableAlarm(true, static_cast<Am18x5::AlarmHandler>(handler), context));
     return SYSTEM_ERROR_NONE;
 }
 
 int hal_exrtc_cancel_unixalarm(void* reserved) {
-    return AM18X5.enableAlarm(false, nullptr, nullptr);
+    return Am18x5::getInstance().enableAlarm(false, nullptr, nullptr);
 }
 
 bool hal_exrtc_time_is_valid(void* reserved) {
