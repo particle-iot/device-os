@@ -37,6 +37,7 @@ Mcp23s17::Mcp23s17()
           ioExpanderWorkerThread_(nullptr),
           ioExpanderWorkerThreadExit_(false),
           ioExpanderWorkerSemaphore_(nullptr) {
+    begin();
 }
 
 Mcp23s17::~Mcp23s17() {
@@ -47,33 +48,33 @@ int Mcp23s17::begin() {
     Mcp23s17Lock lock();
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
 
-    if (os_semaphore_create(&ioExpanderWorkerSemaphore_, 1, 0)) {
-        ioExpanderWorkerSemaphore_ = nullptr;
-        LOG(ERROR, "os_semaphore_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
-    }
-    if (os_thread_create(&ioExpanderWorkerThread_, "IO Expander Thread", OS_THREAD_PRIORITY_NETWORK, ioInterruptHandleThread, this, 512)) {
-        os_semaphore_destroy(ioExpanderWorkerSemaphore_);
-        ioExpanderWorkerSemaphore_ = nullptr;
-        LOG(ERROR, "os_thread_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
-    }
-
     HAL_Pin_Mode(IOE_CS, OUTPUT);
     HAL_GPIO_Write(IOE_CS, 1);
     HAL_Pin_Mode(IOE_RST, OUTPUT);
     HAL_GPIO_Write(IOE_RST, 1);
     HAL_Pin_Mode(IOE_INT, INPUT_PULLUP);
 
-    HAL_InterruptExtraConfiguration extra = {0};
-    extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
-    CHECK(HAL_Interrupts_Attach(IOE_INT, ioExpanderInterruptHandler, this, FALLING, &extra));
-
     HAL_SPI_Init(spi_);
     HAL_SPI_Set_Bit_Order(spi_, MSBFIRST);
     HAL_SPI_Set_Data_Mode(spi_, SPI_MODE0);
     HAL_SPI_Set_Clock_Divider(spi_, SPI_CLOCK_DIV2);
     HAL_SPI_Begin(spi_, PIN_INVALID);
+
+    if (os_semaphore_create(&ioExpanderWorkerSemaphore_, 1, 0)) {
+        ioExpanderWorkerSemaphore_ = nullptr;
+        LOG(ERROR, "os_semaphore_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    if (os_thread_create(&ioExpanderWorkerThread_, "IO Expander Thread", OS_THREAD_PRIORITY_CRITICAL, ioInterruptHandleThread, this, 512)) {
+        os_semaphore_destroy(ioExpanderWorkerSemaphore_);
+        ioExpanderWorkerSemaphore_ = nullptr;
+        LOG(ERROR, "os_thread_create() failed");
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
+    HAL_InterruptExtraConfiguration extra = {0};
+    extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
+    CHECK(HAL_Interrupts_Attach(IOE_INT, ioExpanderInterruptHandler, this, FALLING, &extra));
 
     initialized_ = true;
     CHECK(reset());
@@ -116,29 +117,11 @@ int Mcp23s17::reset(bool verify) {
     HAL_Delay_Milliseconds(10);
 
     if (verify) {
-        uint8_t tmp[22];
+        uint8_t tmp[22] = {0x00};
         CHECK(readContinuousRegisters(IODIR_ADDR[0], tmp, sizeof(tmp)));
-        CHECK_TRUE(tmp[0] == 0xFF, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[1] == 0xFF, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[2] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[3] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[4] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[5] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[6] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[7] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[8] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[9] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[10] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[11] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[12] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[13] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[14] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[15] == 0x00, SYSTEM_ERROR_INTERNAL);
         // The value of INTCAP registers are unknown after reset
-        CHECK_TRUE(tmp[18] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[19] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[20] == 0x00, SYSTEM_ERROR_INTERNAL);
-        CHECK_TRUE(tmp[21] == 0x00, SYSTEM_ERROR_INTERNAL);
+        tmp[16] = tmp[17] = 0x00;
+        CHECK_TRUE(memcmp(tmp, DEFAULT_REGS_VALUE, sizeof(tmp)) == 0, SYSTEM_ERROR_INTERNAL);
     }
     resetRegValue();
     return SYSTEM_ERROR_NONE;
@@ -323,18 +306,15 @@ int Mcp23s17::detachPinInterrupt(uint8_t port, uint8_t pin, bool verify) {
 
 Mcp23s17& Mcp23s17::getInstance() {
     static Mcp23s17 mcp23s17;
-    if (!mcp23s17.initialized()) {
-        mcp23s17.begin();
-    }
     return mcp23s17;
 }
 
 int Mcp23s17::lock() {
-    return !mutex_.lock();
+    return HAL_SPI_Acquire(spi_, nullptr);
 }
 
 int Mcp23s17::unlock() {
-    return !mutex_.unlock();
+    return HAL_SPI_Release(spi_, nullptr);
 }
 
 void Mcp23s17::resetRegValue() {
@@ -441,4 +421,4 @@ constexpr uint8_t Mcp23s17::OLAT_ADDR[2];
 constexpr uint8_t Mcp23s17::MCP23S17_CMD_READ;
 constexpr uint8_t Mcp23s17::MCP23S17_CMD_WRITE;
 
-StaticRecursiveMutex Mcp23s17::mutex_;
+constexpr uint8_t Mcp23s17::DEFAULT_REGS_VALUE[22];

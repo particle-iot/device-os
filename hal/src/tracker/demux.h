@@ -21,18 +21,24 @@
 #include "static_recursive_mutex.h"
 #include "pinmap_defines.h"
 #include "pinmap_hal.h"
+#include "nrf_gpio.h"
 
 
 #define DEMUX_MAX_PIN_COUNT     8
+#define DEMUX_NRF_PORT          (NRF_P1)
+#define DEMUX_PIN_A_MASK        0x00002000
+#define DEMUX_PIN_B_MASK        0x00000800
+#define DEMUX_PIN_C_MASK        0x00000400
 
 namespace particle {
 
 class Demux {
 public:
     int write(uint8_t pin, uint8_t value);
+    uint8_t read(uint8_t pin) const;
+    int lock();
+    int unlock();
     static Demux& getInstance();
-    static int lock();
-    static int unlock();
 
 private:
     Demux();
@@ -42,11 +48,11 @@ private:
     uint8_t getPinValue(uint8_t pin) const;
     void setPinValue(uint8_t pin, uint8_t value);
 
-    const uint8_t DEFAULT_PINS_VALUE = 0x7F;
+    static constexpr uint8_t DEFAULT_PINS_VALUE = 0x7F;
 
     bool initialized_;
     uint8_t pinValue_; // Bitmask
-    static StaticRecursiveMutex mutex_;
+    StaticRecursiveMutex mutex_;
 }; // class Demux
 
 class DemuxLock {
@@ -68,12 +74,12 @@ public:
     }
 
     void lock() {
-        Demux::lock();
+        Demux::getInstance().lock();
         locked_ = true;
     }
 
     void unlock() {
-        Demux::unlock();
+        Demux::getInstance().unlock();
         locked_ = false;
     }
 
@@ -85,8 +91,5 @@ private:
 };
 
 } // namespace particle
-
-#define DEMUX particle::Demux::getInstance()
-
 
 #endif // DEMUX_H
