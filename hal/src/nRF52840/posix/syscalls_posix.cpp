@@ -57,6 +57,9 @@ int lfsErrorToErrno(int err) {
         case LFS_ERR_CORRUPT:
             return EILSEQ;
         default:
+            if (err > 0) {
+                return 0;
+            }
             return err;
     }
 }
@@ -279,8 +282,7 @@ int _write(int fd, const void* buf, size_t count) {
         return -1;
     }
 
-    CHECK_LFS_ERRNO(lfs_file_write(&lfs->instance, entry->file, buf, count));
-    return 0;
+    return CHECK_LFS_ERRNO(lfs_file_write(&lfs->instance, entry->file, buf, count));
 }
 
 int _read(int fd, void* buf, size_t count) {
@@ -293,8 +295,7 @@ int _read(int fd, void* buf, size_t count) {
         return -1;
     }
 
-    CHECK_LFS_ERRNO(lfs_file_read(&lfs->instance, entry->file, buf, count));
-    return 0;
+    return CHECK_LFS_ERRNO(lfs_file_read(&lfs->instance, entry->file, buf, count));
 }
 
 int _fstat(int fd, struct stat* buf) {
@@ -391,8 +392,7 @@ off_t _lseek(int fd, off_t offset, int whence) {
         return -1;
     }
 
-    CHECK_LFS_ERRNO(lfs_file_seek(&lfs->instance, entry->file, offset, posixWhenceToLfs(whence)));
-    return 0;
+    return CHECK_LFS_ERRNO(lfs_file_seek(&lfs->instance, entry->file, offset, posixWhenceToLfs(whence)));
 }
 
 int _mkdir(const char* pathname, mode_t mode) {
@@ -401,6 +401,10 @@ int _mkdir(const char* pathname, mode_t mode) {
 
     CHECK_LFS_ERRNO(lfs_mkdir(&lfs->instance, pathname));
     return 0;
+}
+
+int rmdir(const char* pathname) {
+    return _unlink(pathname);
 }
 
 void* _sbrk(intptr_t increment) {
@@ -622,5 +626,6 @@ int readdir_r(DIR* pdir, struct dirent* entry, struct dirent** out_dirent) __att
 int closedir(DIR* pdir) __attribute__((alias("_closedir")));
 int chdir(const char* path) __attribute__((alias("_chdir")));
 int fchdir(int fd) __attribute__((alias("_fchdir")));
+int mkdir(const char* pathname, mode_t mode) __attribute__((alias("_mkdir")));
 
 } // extern "C"
