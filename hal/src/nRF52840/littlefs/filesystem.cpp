@@ -271,7 +271,11 @@ int filesystem_mount(filesystem_t* fs) {
          * metadata-pair linked-list: when pair == tail (which means that the next entry is
          * the current pair, lfs_deorphan() will return LFS_ERR_CORRUPT).
          */
-        ret = lfs_deorphan(&fs->instance);
+        /* IMPORTANT: this should no longer be necessary, as we've mostly figured out what
+         * caused the filesystem corruption. Depending on the size of the fs, this might take a while.
+         * Disabled for now.
+         */
+        // ret = lfs_deorphan(&fs->instance);
     }
     if (ret) {
         SPARK_ASSERT(!(ret==LFS_ERR_IO));
