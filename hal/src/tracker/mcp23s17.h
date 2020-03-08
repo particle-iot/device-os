@@ -29,9 +29,6 @@
 #define MCP23S17_PORT_COUNT             (2)
 #define MCP23S17_PIN_COUNT_PER_PORT     (8)
 
-#define MCP23S17_SPI_INTERFACE          (HAL_SPI_INTERFACE1)
-
-
 namespace particle {
 
 typedef void (*Mcp23s17InterruptCallback)(void* context);
@@ -51,9 +48,10 @@ public:
     int attachPinInterrupt(uint8_t port, uint8_t pin, InterruptMode trig, Mcp23s17InterruptCallback callback, void* context, bool verify = true);
     int detachPinInterrupt(uint8_t port, uint8_t pin, bool verify = true);
 
+    int lock();
+    int unlock();
+
     static Mcp23s17& getInstance();
-    static int lock();
-    static int unlock();
 
 private:
     struct IoPinInterruptConfig {
@@ -102,6 +100,10 @@ private:
     static constexpr uint8_t MCP23S17_CMD_READ = 0x41;
     static constexpr uint8_t MCP23S17_CMD_WRITE = 0x40;
 
+    static constexpr uint8_t DEFAULT_REGS_VALUE[22] = {
+        0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    };
+
     uint8_t iodir_[2];
     uint8_t ipol_[2];
     uint8_t gpinten_[2];
@@ -120,8 +122,6 @@ private:
     bool ioExpanderWorkerThreadExit_;
     os_semaphore_t ioExpanderWorkerSemaphore_;
     Vector<IoPinInterruptConfig> intConfigs_;
-
-    static StaticRecursiveMutex mutex_;
 }; // class Mcp23s17
 
 class Mcp23s17Lock {
@@ -143,12 +143,12 @@ public:
     }
 
     void lock() {
-        Mcp23s17::lock();
+        Mcp23s17::getInstance().lock();
         locked_ = true;
     }
 
     void unlock() {
-        Mcp23s17::unlock();
+        Mcp23s17::getInstance().unlock();
         locked_ = false;
     }
 
@@ -160,7 +160,5 @@ private:
 };
 
 } // namespace particle
-
-#define MCP23S17 particle::Mcp23s17::getInstance()
 
 #endif // MCP23S17_H

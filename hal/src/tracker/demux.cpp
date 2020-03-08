@@ -18,13 +18,13 @@
 #include "check.h"
 #include "system_error.h"
 #include "demux.h"
-#include "gpio_hal.h"
 
 using namespace particle;
 
 Demux::Demux()
         : initialized_(false),
           pinValue_(DEFAULT_PINS_VALUE) {
+    init();
 }
 
 Demux::~Demux() {
@@ -34,39 +34,33 @@ Demux::~Demux() {
 int Demux::write(uint8_t pin, uint8_t value) {
     DemuxLock lock();
     CHECK_TRUE(pin < DEMUX_MAX_PIN_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
-    if (!initialized_) {
-        init();
-    }
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     if (getPinValue(pin) == value) {
         return SYSTEM_ERROR_NONE;
     }
-    // Warning: there is a short glitch on other pins, since we don't have control pin to
-    // disable all outputs before selecting target pin.
+    uint32_t bitSetMask = 0x00000000;
     if (value == 0) {
-        if (pin < 4) {
-            HAL_GPIO_Write(DEMUX_C, 0);
-        } else {
-            HAL_GPIO_Write(DEMUX_C, 1);
+        if (pin >= 4) {
+            bitSetMask |= DEMUX_PIN_C_MASK;
         }
-        if ((pin % 4) < 2) {
-            HAL_GPIO_Write(DEMUX_B, 0);
-        } else {
-            HAL_GPIO_Write(DEMUX_B, 1);
+        if ((pin % 4) >= 2) {
+            bitSetMask |= DEMUX_PIN_B_MASK;
         }
-        if ((pin % 2) == 0) {
-            HAL_GPIO_Write(DEMUX_A, 0);
-        } else {
-            HAL_GPIO_Write(DEMUX_A, 1);
+        if ((pin % 2) == 1) {
+            bitSetMask |= DEMUX_PIN_A_MASK;
         }
+        nrf_gpio_port_out_set(DEMUX_NRF_PORT, bitSetMask);
         setPinValue(pin, value);
     } else {
-        // FIXME: We don't connect EN pin and Y7 is not connected, just select Y7 to make other pins output 1.
-        HAL_GPIO_Write(DEMUX_C, 1);
-        HAL_GPIO_Write(DEMUX_B, 1);
-        HAL_GPIO_Write(DEMUX_A, 1);
-        setPinValue(7, 0);
+        // Select Y0 by default.
+        nrf_gpio_port_out_clear(DEMUX_NRF_PORT, DEMUX_PIN_A_MASK | DEMUX_PIN_B_MASK | DEMUX_PIN_C_MASK);
+        setPinValue(0, 0);
     }
     return SYSTEM_ERROR_NONE;
+}
+
+uint8_t Demux::read(uint8_t pin) const {
+    return getPinValue(pin);
 }
 
 Demux& Demux::getInstance() {
@@ -83,12 +77,9 @@ int Demux::unlock() {
 }
 
 void Demux::init() {
-    HAL_Pin_Mode(DEMUX_A, OUTPUT);
-    HAL_Pin_Mode(DEMUX_B, OUTPUT);
-    HAL_Pin_Mode(DEMUX_C, OUTPUT);
-    HAL_GPIO_Write(DEMUX_A, 1);
-    HAL_GPIO_Write(DEMUX_B, 1);
-    HAL_GPIO_Write(DEMUX_C, 1);
+    nrf_gpio_port_dir_output_set(DEMUX_NRF_PORT, DEMUX_PIN_A_MASK | DEMUX_PIN_B_MASK | DEMUX_PIN_C_MASK);
+    // Select Y0 by default.
+    nrf_gpio_port_out_clear(DEMUX_NRF_PORT, DEMUX_PIN_A_MASK | DEMUX_PIN_B_MASK | DEMUX_PIN_C_MASK);
     initialized_ = true;
 }
 
@@ -101,9 +92,8 @@ void Demux::setPinValue(uint8_t pin, uint8_t value) {
         pinValue_ |= (0x01 << pin);
     } else {
         // Only one pin is active 0 at a time
-        pinValue_ = DEFAULT_PINS_VALUE;
-        pinValue_ &= ~(0x01 << pin);
+        pinValue_ = ~(0x01 << pin) & DEFAULT_PINS_VALUE;
     }
 }
 
-StaticRecursiveMutex Demux::mutex_;
+constexpr uint8_t Demux::DEFAULT_PINS_VALUE;
