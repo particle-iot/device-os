@@ -69,7 +69,7 @@ typedef uint16_t chunk_index_t;
 const chunk_index_t NO_CHUNKS_MISSING = 65535;
 const chunk_index_t MAX_CHUNKS        = 65535;
 
-#if PLATFORM_ID == PLATFORM_ARGON
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
 // FIXME: Argon doesn't seem to be able to process more than 25 chunks per flight
 const size_t MISSED_CHUNKS_TO_SEND = 20;
 #else
