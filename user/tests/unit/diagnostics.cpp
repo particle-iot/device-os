@@ -53,6 +53,17 @@ public:
         return 0;
     }
 
+    int setUInt(uint32_t val) {
+        if (d_->data) {
+            if (d_->data_size < sizeof(uint32_t)) {
+                return SYSTEM_ERROR_TOO_LARGE;
+            }
+            *(uint32_t*)d_->data = val;
+        }
+        d_->data_size = sizeof(uint32_t);
+        return 0;
+    }
+
 private:
     diag_source_get_cmd_data* d_;
 };
@@ -601,6 +612,37 @@ TEST_CASE("Wiring API") {
             SECTION("forwards getter errors to the caller code") {
                 int32_t val = 0;
                 CHECK(AbstractIntegerDiagnosticData::get(&d2, val) == SYSTEM_ERROR_UNKNOWN);
+            }
+        }
+    }
+
+
+    SECTION("AbstractUnsignedIntegerDiagnosticData") {
+        SECTION("get()") {
+            auto d1 = DiagSource(1).type(DIAG_TYPE_UINT).get([](GetData d) {
+                return d.setUInt(1234);
+            }).add();
+            auto d2 = DiagSource(2).type(DIAG_TYPE_UINT).get([](GetData) {
+                return SYSTEM_ERROR_UNKNOWN;
+            }).add();
+
+            diag.start();
+
+            SECTION("can access a data source by ID") {
+                uint32_t val = 0;
+                CHECK(AbstractUnsignedIntegerDiagnosticData::get(1, val) == 0);
+                CHECK(val == 1234);
+            }
+
+            SECTION("can access a data source via handle") {
+                uint32_t val = 0;
+                CHECK(AbstractUnsignedIntegerDiagnosticData::get(&d1, val) == 0);
+                CHECK(val == 1234);
+            }
+
+            SECTION("forwards getter errors to the caller code") {
+                uint32_t val = 0;
+                CHECK(AbstractUnsignedIntegerDiagnosticData::get(&d2, val) == SYSTEM_ERROR_UNKNOWN);
             }
         }
     }
