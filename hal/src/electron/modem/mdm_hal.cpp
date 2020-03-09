@@ -96,6 +96,7 @@ std::recursive_mutex mdm_mutex;
 #define UMNOPROF_TIMEOUT  ( 1 * 1000)
 #define CEDRXS_TIMEOUT    (  1 * 1000)
 #define CFUN_TIMEOUT      (180 * 1000)
+#define UCGED_TIMEOUT     (  1 * 1000)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -965,6 +966,12 @@ bool MDMParser::init(DevStatus* status)
             waitFinalResp(); // Not checking for error since we will reset either way
             goto reset_failure;
         }
+
+        // For signal strength RSRP/RSRQ values on R410M
+        sendFormated("AT+UCGED=5\r\n");
+        if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+            goto failure;
+        }
         // Force Power Saving mode to be disabled
         //
         // TODO: if we enable this feature in the future update the logic in MDMParser::_atOk
@@ -1395,11 +1402,29 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
             goto failure;
         }
-        // get the signal strength indication
-        sendFormated("AT+CSQ\r\n");
-        if (RESP_OK != waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
-            goto failure;
+        // AT command used to collect signal stregnth is different for R410M radio
+        if (_dev.dev == DEV_SARA_R410) {
+            sendFormated("AT+UCGED=5\r\n");
+            if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+                goto failure;
+            }
+
+            // Default to 255 because UCGED response is multi-line
+            _net.rsrp = 255;
+            _net.rsrq = 255;
+            sendFormated("AT+UCGED?\r\n");
+            if (RESP_OK != waitFinalResp(_cbUCGED, &_net, UCGED_TIMEOUT)) {
+                goto failure;
+            }
         }
+        else
+        {
+            sendFormated("AT+CSQ\r\n");
+            if (RESP_OK != waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
+                goto failure;
+            }
+        }
+
         // +CREG, +CGREG, +COPS do not contain <AcT> for G350 devices.
         // Force _net.act to ACT_GSM to ensure Device Diagnostics and
         // RSSI() API's have a RAT for conversion lookup purposes.
@@ -1458,10 +1483,29 @@ bool MDMParser::getSignalStrength(NetStatus &status)
             _net.act = ACT_GSM;
         }
 
-        sendFormated("AT+CSQ\r\n");
-        if (RESP_OK == waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
-            ok = true;
-            status = _net;
+        // AT command used to collect signal stregnth is different for R410M radio
+        if (_dev.dev == DEV_SARA_R410) {
+            sendFormated("AT+UCGED=5\r\n");
+            if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+                goto cleanup;
+            }
+
+            // Default to 255 because UCGED response is multi-line
+            _net.rsrp = 255;
+            _net.rsrq = 255;
+            sendFormated("AT+UCGED?\r\n");
+            if (RESP_OK == waitFinalResp(_cbUCGED, &_net, UCGED_TIMEOUT)) {
+                ok = true;
+                status = _net;
+            }
+        }
+        else
+        {
+            sendFormated("AT+CSQ\r\n");
+            if (RESP_OK == waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
+                ok = true;
+                status = _net;
+            }
         }
     }
 
@@ -1727,6 +1771,52 @@ int MDMParser::_cbCNUM(int type, const char* buf, int len, char* num)
         int a;
         if ((sscanf(buf, "\r\n+CNUM: \"My Number\",\"%31[^\"]\",%d", num, &a) == 2) &&
             ((a == 129) || (a == 145))) {
+        }
+    }
+    return WAIT;
+}
+
+int MDMParser::_cbUCGED(int type, const char* buf, int len, NetStatus* status)
+{
+    const int min_rsrq_mul_by_100 = -1950;
+    const int max_rsrq_mul_by_100 = -300;
+
+    if ((type == TYPE_PLUS || type == TYPE_UNKNOWN) && status) {
+        int rsrp;
+        int rsrq_n;
+        unsigned long rsrq_f;
+        // AT+UCGED?
+        // +RSRP: 314,5110,"-102.60",163,5110,"-097.90",173,5110,"-100.40",
+        // +RSRQ: 314,5110,"-19.60",163,5110,"-16.60",173,5110,"-18.60",
+
+        // RSRP maps from dBm [-141,-44] to [0,97]
+        // We are defining hard boundaries for RSRP to be between [-200,0],
+        // and consider other values as error and call it 255
+        if (sscanf(buf, "\r\n+RSRP: %*d,%*d,\"%d.%*u\"", &rsrp) == 1) {
+            if (rsrp < -141 && rsrp >= -200) {
+                status->rsrp = 0;
+            } else if (rsrp >= -44 && rsrp <=0) {
+                status->rsrp = 97;
+            } else if (rsrp >= -141 && rsrp < -44) {
+                status->rsrp = rsrp + 141;
+            } else {
+                status->rsrp = 255;
+            }
+        }
+        // RSRQ maps from dBm [-20,-3] to [0,34]
+        // We are defining hard boundaries for RSRP to be between [],
+        // and consider other values as error and call it 255
+        if (sscanf(buf, "\r\n+RSRQ: %*d,%*d,\"%d.%lu\"", &rsrq_n, &rsrq_f) == 2) {
+            int rsrq_mul_100 = rsrq_n * 100 - rsrq_f;
+            if (rsrq_mul_100 < min_rsrq_mul_by_100 && rsrq_mul_100 >= -2000) {
+                status->rsrq = 0;
+            } else if (rsrq_mul_100 >= max_rsrq_mul_by_100 && rsrq_mul_100 <= 0) {
+                status->rsrq = 34;
+            } else if (rsrq_mul_100 >= min_rsrq_mul_by_100 && rsrq_mul_100 < max_rsrq_mul_by_100) {
+                status->rsrq = (rsrq_mul_100 + 2000)/50;
+            } else {
+                status->rsrq = 255;
+            }
         }
     }
     return WAIT;
