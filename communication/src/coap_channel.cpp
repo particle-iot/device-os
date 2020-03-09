@@ -56,10 +56,11 @@ bool CoAPMessageStore::retransmit(CoAPMessage* msg, Channel& channel, system_tic
 
 void CoAPMessageStore::message_timeout(CoAPMessage& msg, Channel& channel)
 {
-	g_unacknowledgedMessageCounter++;
 	msg.notify_timeout();
-	if (msg.is_request())
+	if (msg.is_request()) {
+		g_unacknowledgedMessageCounter++;
 		channel.command(MessageChannel::CLOSE);
+	}
 }
 
 /**
