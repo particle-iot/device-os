@@ -506,52 +506,63 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
     CHECK(checkParser());
     CHECK(queryAndParseAtCops(qual));
 
+    // Min and max RSRQ index values multiplied by 100
+    // Min: -19.5 and max: -3
+    const int min_rsrq_mul_by_100 = -1950;
+    const int max_rsrq_mul_by_100 = -300;
+
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
-        int rxlev, rxqual, rscp, ecn0, rsrq, rsrp;
-        auto resp = parser_.sendCommand("AT+CESQ");
-        int r = CHECK_PARSER(resp.scanf("+CESQ: %d,%d,%d,%d,%d,%d", &rxlev, &rxqual,
-                &rscp, &ecn0, &rsrq, &rsrp));
-        CHECK_TRUE(r == 6, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        r = CHECK_PARSER(resp.readResult());
+        int rsrp;
+        int rsrq_n;
+        unsigned long rsrq_f;
+
+        // Default to 255 in case RSRP/Q are not found
+        qual->strength(255);
+        qual->quality(255);
+
+        // Set UCGED to mode 5 for RSRP/RSRQ values on R410M
+        CHECK_PARSER_OK(parser_.execCommand("AT+UCGED=5"));
+        auto resp = parser_.sendCommand("AT+UCGED?");
+
+        int val;
+        unsigned long val2;
+        while (resp.hasNextLine()) {
+            char type = 0;
+            const int r = CHECK_PARSER(resp.scanf("+RSR%c: %*d,%*d,\"%d.%lu\"", &type, &val, &val2));
+            if (r >= 2) {
+                if (type == 'P') {
+                    rsrp = val;
+                    if (rsrp < -141 && rsrp >= -200) {
+                        qual->strength(0);
+                    } else if (rsrp >= -44 && rsrp <=0) {
+                        qual->strength(97);
+                    } else if (rsrp >= -141 && rsrp < -44) {
+                        qual->strength(rsrp + 140);
+                    } else {
+                        // If RSRP is not in the expected range
+                        qual->strength(255);
+                    }
+                } else if (type == 'Q' && r == 3) {
+                    rsrq_n = val;
+                    rsrq_f = val2;
+                    int rsrq_mul_100 = rsrq_n * 100 - rsrq_f;
+                    if (rsrq_mul_100 < min_rsrq_mul_by_100 && rsrq_mul_100 >= -2000) {
+                        qual->quality(0);
+                    } else if (rsrq_mul_100 >= max_rsrq_mul_by_100 && rsrq_mul_100 <=0) {
+                        qual->quality(34);
+                    } else if (rsrq_mul_100 >= min_rsrq_mul_by_100 && rsrq_mul_100 < max_rsrq_mul_by_100) {
+                        qual->quality((rsrq_mul_100 + 2000)/50);
+                    } else {
+                        // If RSRQ is not in the expected range
+                        qual->quality(255);
+                    }
+                }
+            }
+        }
+
+        const int r = CHECK_PARSER(resp.readResult());
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
-        switch (qual->strengthUnits()) {
-            case CellularStrengthUnits::RXLEV: {
-                qual->strength(rxlev);
-                break;
-            }
-            case CellularStrengthUnits::RSCP: {
-                qual->strength(rscp);
-                break;
-            }
-            case CellularStrengthUnits::RSRP: {
-                qual->strength(rsrp);
-                break;
-            }
-            default: {
-                // Do nothing
-                break;
-            }
-        }
-
-        switch (qual->qualityUnits()) {
-            case CellularQualityUnits::RXQUAL: {
-                qual->quality(rxqual);
-                break;
-            }
-            case CellularQualityUnits::ECN0: {
-                qual->quality(ecn0);
-                break;
-            }
-            case CellularQualityUnits::RSRQ: {
-                qual->quality(rsrq);
-                break;
-            }
-            default: {
-                // Do nothing
-                break;
-            }
-        }
     } else {
         int rxlev, rxqual;
         auto resp = parser_.sendCommand("AT+CSQ");
