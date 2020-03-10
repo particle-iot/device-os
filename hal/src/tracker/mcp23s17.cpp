@@ -15,6 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+//#define LOG_CHECKED_ERRORS 1
+
 #include "check.h"
 #include "system_error.h"
 #include "mcp23s17.h"
@@ -54,11 +56,9 @@ int Mcp23s17::begin() {
     HAL_GPIO_Write(IOE_RST, 1);
     HAL_Pin_Mode(IOE_INT, INPUT_PULLUP);
 
-    HAL_SPI_Init(spi_);
-    HAL_SPI_Set_Bit_Order(spi_, MSBFIRST);
-    HAL_SPI_Set_Data_Mode(spi_, SPI_MODE0);
-    HAL_SPI_Set_Clock_Divider(spi_, SPI_CLOCK_DIV2);
-    HAL_SPI_Begin(spi_, PIN_INVALID);
+    if (!HAL_SPI_Is_Enabled(spi_)) {
+        HAL_SPI_Init(spi_);
+    }
 
     if (os_semaphore_create(&ioExpanderWorkerSemaphore_, 1, 0)) {
         ioExpanderWorkerSemaphore_ = nullptr;
@@ -119,8 +119,8 @@ int Mcp23s17::reset(bool verify) {
     if (verify) {
         uint8_t tmp[22] = {0x00};
         CHECK(readContinuousRegisters(IODIR_ADDR[0], tmp, sizeof(tmp)));
-        // The value of INTCAP registers are unknown after reset
-        tmp[16] = tmp[17] = 0x00;
+        // The value of INTCAP registers are unknown after reset, reading port returns current pin value.
+        tmp[16] = tmp[17] = tmp[18] = tmp[19] = 0x00;
         CHECK_TRUE(memcmp(tmp, DEFAULT_REGS_VALUE, sizeof(tmp)) == 0, SYSTEM_ERROR_INTERNAL);
     }
     resetRegValue();
@@ -333,31 +333,29 @@ void Mcp23s17::resetRegValue() {
 
 int Mcp23s17::writeRegister(const uint8_t addr, const uint8_t val) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
-    HAL_SPI_Acquire(spi_, nullptr);
+    Mcp23s17SpiConfigurationGuarder spiGuarder(spi_);
     HAL_GPIO_Write(IOE_CS, 0);
     HAL_SPI_Send_Receive_Data(spi_, MCP23S17_CMD_WRITE);
     HAL_SPI_Send_Receive_Data(spi_, addr);
     HAL_SPI_Send_Receive_Data(spi_, val);
     HAL_GPIO_Write(IOE_CS, 1);
-    HAL_SPI_Release(spi_, nullptr);
     return SYSTEM_ERROR_NONE;
 }
 
 int Mcp23s17::readRegister(const uint8_t addr, uint8_t* const val) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
-    HAL_SPI_Acquire(spi_, nullptr);
+    Mcp23s17SpiConfigurationGuarder spiGuarder(spi_);
     HAL_GPIO_Write(IOE_CS, 0);
     HAL_SPI_Send_Receive_Data(spi_, MCP23S17_CMD_READ);
     HAL_SPI_Send_Receive_Data(spi_, addr);
     *val = HAL_SPI_Send_Receive_Data(spi_, 0xFF);
     HAL_GPIO_Write(IOE_CS, 1);
-    HAL_SPI_Release(spi_, nullptr);
     return SYSTEM_ERROR_NONE;
 }
 
 int Mcp23s17::readContinuousRegisters(const uint8_t start_addr, uint8_t* const val, uint8_t len) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
-    HAL_SPI_Acquire(spi_, nullptr);
+    Mcp23s17SpiConfigurationGuarder spiGuarder(spi_);
     HAL_GPIO_Write(IOE_CS, 0);
     HAL_SPI_Send_Receive_Data(spi_, MCP23S17_CMD_READ);
     HAL_SPI_Send_Receive_Data(spi_, start_addr);
@@ -365,7 +363,6 @@ int Mcp23s17::readContinuousRegisters(const uint8_t start_addr, uint8_t* const v
         val[i] = HAL_SPI_Send_Receive_Data(spi_, 0xFF);
     }
     HAL_GPIO_Write(IOE_CS, 1);
-    HAL_SPI_Release(spi_, nullptr);
     return SYSTEM_ERROR_NONE;
 }
 

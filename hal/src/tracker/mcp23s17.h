@@ -74,6 +74,86 @@ private:
         void* context;
     };
 
+    // TODO: This class can be shared potentially with other system drivers.
+    class Mcp23s17SpiConfigurationGuarder {
+    public:
+        Mcp23s17SpiConfigurationGuarder() = delete;
+        Mcp23s17SpiConfigurationGuarder(HAL_SPI_Interface spi)
+                : spi_(spi) {
+            HAL_SPI_Acquire(spi_, nullptr);
+            memset(&spiInfoCache_, 0x00, sizeof(spiInfoCache_));
+            spiInfoCache_.version = HAL_SPI_INFO_VERSION_2;
+            HAL_SPI_Info(spi_, &spiInfoCache_, nullptr);
+            if (spiInfoCache_.bit_order != MSBFIRST) {
+                HAL_SPI_Set_Bit_Order(spi_, MSBFIRST);
+            }
+            if (spiInfoCache_.data_mode != SPI_MODE0) {
+                HAL_SPI_Set_Data_Mode(spi_, SPI_MODE0);
+            }
+            if (calculateClockDivider(spiInfoCache_.system_clock, spiInfoCache_.clock) != SPI_CLOCK_DIV256) {
+                HAL_SPI_Set_Clock_Divider(spi_, SPI_CLOCK_DIV256);
+            }
+            if (!spiInfoCache_.enabled || spiInfoCache_.ss_pin != PIN_INVALID || spiInfoCache_.mode != SPI_MODE_MASTER) {
+                HAL_SPI_Begin(spi_, PIN_INVALID);
+            }
+        }
+        ~Mcp23s17SpiConfigurationGuarder() {
+            if (spiInfoCache_.bit_order != MSBFIRST) {
+                HAL_SPI_Set_Bit_Order(spi_, spiInfoCache_.bit_order);
+            }
+            if (spiInfoCache_.data_mode != SPI_MODE0) {
+                HAL_SPI_Set_Data_Mode(spi_, spiInfoCache_.data_mode);
+            }
+            uint8_t preClockDiv = calculateClockDivider(spiInfoCache_.system_clock, spiInfoCache_.clock);
+            if (preClockDiv != SPI_CLOCK_DIV256) {
+                HAL_SPI_Set_Clock_Divider(spi_, preClockDiv);
+            }
+            if (spiInfoCache_.ss_pin != PIN_INVALID || spiInfoCache_.mode != SPI_MODE_MASTER) {
+                HAL_SPI_Begin_Ext(spi_, spiInfoCache_.mode, spiInfoCache_.ss_pin, nullptr);
+            }
+            HAL_SPI_Release(spi_, nullptr);
+        }
+
+        private:
+        // FIXME: This should be resided in SPI HAL.
+        uint8_t calculateClockDivider(uint32_t system_clock, uint32_t clock) {
+            uint8_t result;
+            // Integer division results in clean values
+            switch (system_clock / clock) {
+            case 2:
+                result = SPI_CLOCK_DIV2;
+                break;
+            case 4:
+                result = SPI_CLOCK_DIV4;
+                break;
+            case 8:
+                result = SPI_CLOCK_DIV8;
+                break;
+            case 16:
+                result = SPI_CLOCK_DIV16;
+                break;
+            case 32:
+                result = SPI_CLOCK_DIV32;
+                break;
+            case 64:
+                result = SPI_CLOCK_DIV64;
+                break;
+            case 128:
+                result = SPI_CLOCK_DIV128;
+                break;
+            case 256:
+                result = SPI_CLOCK_DIV256;
+                break;
+            default:
+                result = 0;
+            }
+            return result;
+        }
+
+        HAL_SPI_Interface spi_;
+        hal_spi_info_t spiInfoCache_;
+    };
+
     Mcp23s17();
     ~Mcp23s17();
 
