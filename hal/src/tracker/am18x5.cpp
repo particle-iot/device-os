@@ -19,6 +19,8 @@
 
 #if HAL_PLATFORM_EXTERNAL_RTC
 
+// #define LOG_CHECKED_ERRORS 1
+
 #include <memory>
 #include "check.h"
 #include "system_error.h"
@@ -68,6 +70,7 @@ namespace {
 #define CONTROL1_OUT_MASK           0x10
 #define CONTROL1_RSP_MASK           0x08
 #define CONTROL1_ARST_MASK          0x04
+#define CONTROL1_ARST_SHIFT         (2)
 #define CONTROL1_PWR2_MASK          0x02
 #define CONTROL1_WRTC_MASK          0x01
 
@@ -109,6 +112,7 @@ namespace {
 #define TIMER_CONTROL_TM_MASK       0x40
 #define TIMER_CONTROL_TRPT_MASK     0x20
 #define TIMER_CONTROL_RPT_MASK      0x1C
+#define TIMER_CONTROL_RPT_SHIFT     (2)
 #define TIMER_CONTROL_TFS_MASK      0x03
 
 // WDT Bits Mask
@@ -121,8 +125,10 @@ namespace {
 
 // OSC Control Bits Mask
 #define OSC_CONTROL_OSEL_MASK       0x80
+#define OSC_CONTROL_OSEL_SHIFT      (7)
 #define OSC_CONTROL_ACAL_MASK       0x60
 #define OSC_CONTROL_AOS_MASK        0x10
+#define OSC_CONTROL_AOS_SHIFT       (4)
 #define OSC_CONTROL_FOS_MASK        0x08
 #define OSC_CONTROL_PWGT_MASK       0x04
 #define OSC_CONTROL_OFIE_MASK       0x02
@@ -173,6 +179,7 @@ Am18x5::Am18x5()
         : initialized_(false),
           address_(HAL_PLATFORM_EXTERNAL_RTC_I2C_ADDR),
           wire_(HAL_PLATFORM_EXTERNAL_RTC_I2C),
+          alarmYear_(0),
           alarmHandler_(nullptr),
           alarmHandlerContext_(nullptr),
           exRtcWorkerThread_(nullptr),
@@ -193,8 +200,6 @@ Am18x5& Am18x5::getInstance() {
 int Am18x5::begin() {
     Am18x5Lock lock();
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
-
-    HAL_Pin_Mode(RTC_INT, INPUT_PULLUP);
     
     if (!HAL_I2C_Is_Enabled(wire_, nullptr)) {
         CHECK(HAL_I2C_Init(wire_, nullptr));
@@ -214,9 +219,22 @@ int Am18x5::begin() {
         return SYSTEM_ERROR_INTERNAL;
     }
 
+    HAL_Pin_Mode(RTC_INT, INPUT_PULLUP);
     HAL_InterruptExtraConfiguration extra = {0};
     extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
     CHECK(HAL_Interrupts_Attach(RTC_INT, exRtcInterruptHandler, this, FALLING, &extra));
+
+    initialized_ = true;
+
+    uint16_t partNumber = 0;
+    CHECK(getPartNumber(&partNumber));
+    CHECK_TRUE(partNumber == PART_NUMBER, SYSTEM_ERROR_INTERNAL);
+
+    // Automatically switch to internal RC oscillator when using VBAT as the power supply.
+    CHECK(enableAutoSwitchOnBattery(true));
+
+    // Automatically clear interrupt flags after reading the the status register.
+    CHECK(writeRegister(Am18x5Register::CONTROL1, 1, false, true, CONTROL1_ARST_MASK, CONTROL1_ARST_SHIFT));
 
     return SYSTEM_ERROR_NONE;
 }
@@ -266,7 +284,7 @@ int Am18x5::setCalendar(const struct tm* calendar) const {
     CHECK(buff[1] = decToBcd(calendar->tm_min));
     CHECK(buff[2] = decToBcd(calendar->tm_hour));
     CHECK(buff[3] = decToBcd(calendar->tm_mday));
-    CHECK(buff[4] = decToBcd(calendar->tm_mon));
+    CHECK(buff[4] = decToBcd(calendar->tm_mon + 1)); // Month in tm structure ranges from 0 - 11.
     CHECK(buff[5] = decToBcd(calendar->tm_year - UNIX_TIME_YEAR_BASE));
     CHECK(buff[6] = decToBcd(calendar->tm_wday));
     CHECK(writeContinuouseRegisters(Am18x5Register::SECONDS, buff, sizeof(buff)));
@@ -284,13 +302,14 @@ int Am18x5::getCalendar(struct tm* calendar) const {
     CHECK(calendar->tm_hour = bcdToDec(buff[2]));
     CHECK(calendar->tm_mday = bcdToDec(buff[3]));
     CHECK(calendar->tm_mon = bcdToDec(buff[4]));
+    calendar->tm_mon -= 1;
     CHECK(calendar->tm_year = bcdToDec(buff[5]));
     calendar->tm_year += UNIX_TIME_YEAR_BASE;
     CHECK(calendar->tm_wday = bcdToDec(buff[6]));
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::setAlarm(const struct tm* calendar) const {
+int Am18x5::setAlarm(const struct tm* calendar) {
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(calendar, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -300,7 +319,8 @@ int Am18x5::setAlarm(const struct tm* calendar) const {
     CHECK(buff[1] = decToBcd(calendar->tm_min));
     CHECK(buff[2] = decToBcd(calendar->tm_hour));
     CHECK(buff[3] = decToBcd(calendar->tm_mday));
-    CHECK(buff[4] = decToBcd(calendar->tm_mon));
+    CHECK(buff[4] = decToBcd(calendar->tm_mon + 1)); // Month in tm structure ranges from 0 - 11.
+    alarmYear_ = calendar->tm_year - UNIX_TIME_YEAR_BASE;
     CHECK(buff[5] = decToBcd(calendar->tm_wday));
     CHECK(writeContinuouseRegisters(Am18x5Register::SECONDS_ALARM, buff, sizeof(buff)));
     return SYSTEM_ERROR_NONE;
@@ -311,6 +331,7 @@ int Am18x5::enableAlarm(bool enable, Am18x5::AlarmHandler handler, void* context
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     alarmHandler_ = handler;
     alarmHandlerContext_ = context;
+    CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, 1, false, true, TIMER_CONTROL_RPT_MASK, TIMER_CONTROL_RPT_SHIFT));
     return writeRegister(Am18x5Register::INT_MASK, enable, false, true, INTERRUPT_AIE_MASK, INTERRUPT_AIE_SHIFT);
 }
 
@@ -455,6 +476,22 @@ int Am18x5::getWeekday() const {
     return weekday;
 }
 
+int Am18x5::selectOscillator(Am18x5Oscillator oscillator) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t val = 0;
+    if (oscillator == Am18x5Oscillator::INTERNAL_RC) {
+        val = 1;
+    }
+    return writeRegister(Am18x5Register::OSC_CONTROL, val, false, true, OSC_CONTROL_OSEL_MASK, OSC_CONTROL_OSEL_SHIFT);
+}
+
+int Am18x5::enableAutoSwitchOnBattery(bool enable) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    return writeRegister(Am18x5Register::OSC_CONTROL, enable, false, true, OSC_CONTROL_AOS_MASK, OSC_CONTROL_AOS_SHIFT);
+}
+
 int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool rw, uint8_t mask, uint8_t shift) const {
     uint8_t currValue = 0x00;
     if (rw) {
@@ -464,13 +501,11 @@ int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool 
     if (bcd) {
         CHECK(val = decToBcd(val));
     }
-    val &= mask;
-    val <<= shift;
-    val |= currValue;
+    currValue |= (val << shift);
     HAL_I2C_Acquire(wire_, nullptr);
     HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
     HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(reg), nullptr);
-    HAL_I2C_Write_Data(wire_, val, nullptr);
+    HAL_I2C_Write_Data(wire_, currValue, nullptr);
     HAL_I2C_End_Transmission(wire_, true, nullptr);
     HAL_I2C_Release(wire_, nullptr);
     return SYSTEM_ERROR_NONE;
@@ -545,7 +580,11 @@ os_thread_return_t Am18x5::exRtcInterruptHandleThread(void* param) {
                 continue;
             }
             if (alm) {
-                if (instance->alarmHandler_) {
+                int currYear = instance->getYears();
+                if (currYear < 0) {
+                    continue;
+                }
+                if (instance->alarmYear_ == currYear && instance->alarmHandler_) {
                     instance->alarmHandler_(instance->alarmHandlerContext_);
                 }
             }
@@ -555,5 +594,6 @@ os_thread_return_t Am18x5::exRtcInterruptHandleThread(void* param) {
 }
 
 constexpr uint16_t Am18x5::UNIX_TIME_YEAR_BASE;
+constexpr uint16_t Am18x5::PART_NUMBER;
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC

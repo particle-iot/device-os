@@ -19,6 +19,8 @@
 
 #if HAL_PLATFORM_EXTERNAL_RTC
 
+// #define LOG_CHECKED_ERRORS 1
+
 #include "check.h"
 #include "system_error.h"
 #include "am18x5.h"
@@ -29,8 +31,6 @@ namespace {
 
 const auto UNIX_TIME_201801010000 = 1514764800; // 2018/01/01 00:00:00
 const auto UNIX_TIME_YEAR_BASE = 118; // 2018 - 1900
-
-uint16_t alarmYear = 0;
 
 } // anonymous
 
@@ -43,11 +43,10 @@ int hal_exrtc_set_unixtime(time_t unixtime, void* reserved) {
     return SYSTEM_ERROR_NONE;
 }
 
-time_t hal_exrtc_get_unixtime(time_t* unixtime, void* reserved) {
+time_t hal_exrtc_get_unixtime(void* reserved) {
     struct tm calendar;
     CHECK(Am18x5::getInstance().getCalendar(&calendar));
-    *unixtime = mktime(&calendar);
-    return SYSTEM_ERROR_NONE;
+    return mktime(&calendar);
 }
 
 int hal_exrtc_set_unix_alarm(time_t unixtime, hal_exrtc_alarm_handler_t handler, void* context, void* reserved) {
@@ -57,8 +56,7 @@ int hal_exrtc_set_unix_alarm(time_t unixtime, hal_exrtc_alarm_handler_t handler,
         return SYSTEM_ERROR_INTERNAL;
     }
     CHECK(Am18x5::getInstance().setAlarm(calendar));
-    alarmYear = calendar->tm_year - UNIX_TIME_YEAR_BASE;
-    return SYSTEM_ERROR_NONE;
+    return Am18x5::getInstance().enableAlarm(true, handler, context);
 }
 
 int hal_exrtc_cancel_unixalarm(void* reserved) {
@@ -67,7 +65,7 @@ int hal_exrtc_cancel_unixalarm(void* reserved) {
 
 bool hal_exrtc_time_is_valid(void* reserved) {
     time_t unixtime = 0;
-    CHECK(hal_exrtc_get_unixtime(&unixtime, nullptr));
+    CHECK(hal_exrtc_get_unixtime(nullptr));
     return unixtime > UNIX_TIME_201801010000;
 }
 
