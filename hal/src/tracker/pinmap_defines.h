@@ -19,7 +19,7 @@
 
 #if PLATFORM_ID == PLATFORM_TRACKER
 
-#define TOTAL_PINS              59
+#define TOTAL_PINS              56
 #define TOTAL_ANALOG_PINS       8
 #define FIRST_ANALOG_PIN        0
 
