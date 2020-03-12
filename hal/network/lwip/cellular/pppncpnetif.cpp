@@ -84,7 +84,7 @@ PppNcpNetif::~PppNcpNetif() {
 
 void PppNcpNetif::init() {
     registerHandlers();
-    SPARK_ASSERT(os_thread_create(&thread_, "pppncp", OS_THREAD_PRIORITY_NETWORK, &PppNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
+    SPARK_ASSERT(os_thread_create(&thread_, "pppncp", OS_THREAD_PRIORITY_DEFAULT, &PppNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
 }
 
 void PppNcpNetif::setCellularManager(CellularNetworkManager* celMan) {

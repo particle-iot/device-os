@@ -84,7 +84,7 @@ Esp32NcpNetif::~Esp32NcpNetif() {
 
 void Esp32NcpNetif::init() {
     registerHandlers();
-    SPARK_ASSERT(os_thread_create(&thread_, "esp32ncp", OS_THREAD_PRIORITY_NETWORK, &Esp32NcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
+    SPARK_ASSERT(os_thread_create(&thread_, "esp32ncp", OS_THREAD_PRIORITY_DEFAULT, &Esp32NcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
 }
 
 void Esp32NcpNetif::setWifiManager(particle::WifiNetworkManager* wifiMan) {
