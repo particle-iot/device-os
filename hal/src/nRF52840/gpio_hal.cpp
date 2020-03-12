@@ -24,11 +24,15 @@
 #include "check.h"
 #include "system_error.h"
 
-#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_MCP23S17
 #include "mcp23s17.h"
+#endif
+#if HAL_PLATFORM_DEMUX
 #include "demux.h"
+#endif
 using namespace particle;
-#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#endif
 
 inline bool is_valid_pin(pin_t pin) __attribute__((always_inline));
 inline bool is_valid_pin(pin_t pin) {
@@ -63,7 +67,7 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
 
     PinMode mode = conf ? conf->mode : PIN_MODE_NONE;
 
-#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
 #endif
         uint32_t nrfPin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
@@ -120,8 +124,10 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
         }
 
         PIN_MAP[pin].pin_mode = mode;
-#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    }
+#if HAL_PLATFORM_MCP23S17
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
         CHECK_TRUE(mode == INPUT || mode == INPUT_PULLUP || mode == OUTPUT, SYSTEM_ERROR_INVALID_ARGUMENT);
 
         // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
@@ -138,16 +144,21 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
 
         CHECK(Mcp23s17::getInstance().setPinMode(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, mode));
         PIN_MAP[pin].pin_mode = mode;
-    } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
+    }
+#endif // HAL_PLATFORM_MCP23S17
+#if HAL_PLATFORM_DEMUX
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
         CHECK_TRUE(mode == OUTPUT, SYSTEM_ERROR_INVALID_ARGUMENT);
         if (conf->set_value) {
             Demux::getInstance().write(PIN_MAP[pin].gpio_pin, conf->value);
         }
         return 0;
-    } else {
+    }
+#endif // HAL_PLATFORM_DEMUX
+    else {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
-#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#endif
 
     return 0;
 }
@@ -190,7 +201,7 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value) {
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
-#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
 #endif
         uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
@@ -205,13 +216,19 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value) {
         } else {
             nrf_gpio_pin_set(nrf_pin);
         }
-#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    }
+#if HAL_PLATFORM_MCP23S17
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
         Mcp23s17::getInstance().writePinValue(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, value);
-    } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
+    }
+#endif
+#if HAL_PLATFORM_DEMUX
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
         Demux::getInstance().write(PIN_MAP[pin].gpio_pin, value);
     }
-#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#endif
+#endif
 }
 
 /*
@@ -224,7 +241,7 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
-#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
 #endif
         uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
@@ -239,8 +256,10 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
         } else {
             return 0;
         }
-#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    }
+#if HAL_PLATFORM_MCP23S17
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
         if ((PIN_MAP[pin].pin_mode == INPUT) ||
             (PIN_MAP[pin].pin_mode == INPUT_PULLUP)) {
             uint8_t value = 0x00;
@@ -251,12 +270,17 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
         } else {
             return 0;
         }
-    } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
+    }
+#endif
+#if HAL_PLATFORM_DEMUX
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
         return Demux::getInstance().read(PIN_MAP[pin].gpio_pin);
-    } else {
+    }
+#endif
+    else {
         return 0;
     }
-#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#endif
 
     return 0;
 }
@@ -275,7 +299,7 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value) {
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
-#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
 #endif
         uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
@@ -313,11 +337,9 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value) {
         }
 
         return (SYSTEM_TICK_COUNTER - pulse_start) / SYSTEM_US_TICKS;
-#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER || PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
-        return 0;
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     } else {
         return 0;
     }
-#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#endif
 }

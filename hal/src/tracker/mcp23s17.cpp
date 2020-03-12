@@ -15,11 +15,14 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "mcp23s17.h"
+
+#if HAL_PLATFORM_MCP23S17
+
 //#define LOG_CHECKED_ERRORS 1
 
 #include "check.h"
 #include "system_error.h"
-#include "mcp23s17.h"
 #include "gpio_hal.h"
 #include "delay_hal.h"
 
@@ -35,7 +38,7 @@ void ioExpanderInterruptHandler(void* data) {
 
 Mcp23s17::Mcp23s17()
         : initialized_(false),
-          spi_(HAL_PLATFORM_IO_EXPANDER_SPI),
+          spi_(HAL_PLATFORM_MCP23S17_SPI),
           ioExpanderWorkerThread_(nullptr),
           ioExpanderWorkerThreadExit_(false),
           ioExpanderWorkerSemaphore_(nullptr) {
@@ -419,3 +422,5 @@ constexpr uint8_t Mcp23s17::MCP23S17_CMD_READ;
 constexpr uint8_t Mcp23s17::MCP23S17_CMD_WRITE;
 
 constexpr uint8_t Mcp23s17::DEFAULT_REGS_VALUE[22];
+
+#endif // HAL_PLATFORM_MCP23S17

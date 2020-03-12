@@ -18,6 +18,10 @@
 #ifndef DEMUX_H
 #define DEMUX_H
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_DEMUX
+
 #include "static_recursive_mutex.h"
 #include "pinmap_defines.h"
 #include "pinmap_hal.h"
@@ -26,9 +30,9 @@
 
 #define DEMUX_MAX_PIN_COUNT     8
 #define DEMUX_NRF_PORT          (NRF_P1)
-#define DEMUX_PIN_A_MASK        0x00002000
+#define DEMUX_PIN_A_MASK        0x00000400
 #define DEMUX_PIN_B_MASK        0x00000800
-#define DEMUX_PIN_C_MASK        0x00000400
+#define DEMUX_PIN_C_MASK        0x00001000
 
 namespace particle {
 
@@ -91,5 +95,7 @@ private:
 };
 
 } // namespace particle
+
+#endif // HAL_PLATFORM_DEMUX
 
 #endif // DEMUX_H
