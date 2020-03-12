@@ -36,11 +36,11 @@ Demux::~Demux() {
 
 int Demux::write(uint8_t pin, uint8_t value) {
     DemuxLock lock();
-    CHECK_TRUE(pin < DEMUX_MAX_PIN_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(pin < DEMUX_MAX_PIN_COUNT && pin != 0, SYSTEM_ERROR_INVALID_ARGUMENT); // Y0 is not available for user's usage.
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    if (getPinValue(pin) == value) {
-        return SYSTEM_ERROR_NONE;
-    }
+    // Select Y0 by default, so that all other pins output high.
+    nrf_gpio_port_out_clear(DEMUX_NRF_PORT, DEMUX_PIN_A_MASK | DEMUX_PIN_B_MASK | DEMUX_PIN_C_MASK);
+    setPinValue(0, 0);
     uint32_t bitSetMask = 0x00000000;
     if (value == 0) {
         if (pin >= 4) {
@@ -54,10 +54,6 @@ int Demux::write(uint8_t pin, uint8_t value) {
         }
         nrf_gpio_port_out_set(DEMUX_NRF_PORT, bitSetMask);
         setPinValue(pin, value);
-    } else {
-        // Select Y0 by default.
-        nrf_gpio_port_out_clear(DEMUX_NRF_PORT, DEMUX_PIN_A_MASK | DEMUX_PIN_B_MASK | DEMUX_PIN_C_MASK);
-        setPinValue(0, 0);
     }
     return SYSTEM_ERROR_NONE;
 }
