@@ -105,9 +105,15 @@ enum class Weekday {
     SUNDAY = 6
 };
 
+enum class Am18x5Oscillator {
+    INTERNAL_RC,
+    EXTERNAL_CRYSTAL
+};
+
 class Am18x5 {
 public:
     typedef void (*AlarmHandler)(void* context);
+
     int begin();
     int end();
     int sync();
@@ -115,7 +121,7 @@ public:
     int setCalendar(const struct tm* calendar) const;
     int getCalendar(struct tm* calendar) const;
 
-    int setAlarm(const struct tm* calendar) const;
+    int setAlarm(const struct tm* calendar);
     int enableAlarm(bool enable, AlarmHandler handler, void* context);
 
     int getPartNumber(uint16_t* id) const;
@@ -147,6 +153,9 @@ private:
     int getYears() const;
     int getWeekday() const;
 
+    int selectOscillator(Am18x5Oscillator oscillator) const;
+    int enableAutoSwitchOnBattery(bool enable) const;
+
     int writeRegister(const Am18x5Register reg, uint8_t val, bool bcd = false, bool rw = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
     int writeContinuouseRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const;
     int readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
@@ -154,10 +163,12 @@ private:
     static os_thread_return_t exRtcInterruptHandleThread(void* param);
 
     static constexpr uint16_t UNIX_TIME_YEAR_BASE = 118; // 2018 - 1900
+    static constexpr uint16_t PART_NUMBER = 0x1805;
 
     bool initialized_;
     uint8_t address_;
     HAL_I2C_Interface wire_;
+    uint8_t alarmYear_;
     AlarmHandler alarmHandler_;
     void* alarmHandlerContext_;
     os_thread_t exRtcWorkerThread_;

@@ -32,7 +32,7 @@ extern "C" {
 typedef void (*hal_exrtc_alarm_handler_t)(void* context);
 
 int hal_exrtc_set_unixtime(time_t unixtime, void* reserved);
-time_t hal_exrtc_get_unixtime(time_t* unixtime, void* reserved);
+time_t hal_exrtc_get_unixtime(void* reserved);
 int hal_exrtc_set_unix_alarm(time_t unixtime, hal_exrtc_alarm_handler_t handler, void* context, void* reserved);
 int hal_exrtc_cancel_unixalarm(void* reserved);
 bool hal_exrtc_time_is_valid(void* reserved);
