@@ -15,9 +15,12 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "demux.h"
+
+#if HAL_PLATFORM_DEMUX
+
 #include "check.h"
 #include "system_error.h"
-#include "demux.h"
 
 using namespace particle;
 
@@ -97,3 +100,5 @@ void Demux::setPinValue(uint8_t pin, uint8_t value) {
 }
 
 constexpr uint8_t Demux::DEFAULT_PINS_VALUE;
+
+#endif // HAL_PLATFORM_DEMUX

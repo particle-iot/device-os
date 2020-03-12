@@ -24,10 +24,12 @@
 #include "gpio_hal.h"
 #include "system_error.h"
 
-#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_MCP23S17
 #include "mcp23s17.h"
+#endif
 using namespace particle;
-#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#endif
 
 // 8 high accuracy GPIOTE channels
 #define GPIOTE_CHANNEL_NUM              8
@@ -110,14 +112,9 @@ static nrfx_gpiote_in_config_t get_gpiote_config(uint16_t pin, InterruptMode mod
 int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config) {
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
-#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
-        return Mcp23s17::getInstance().attachPinInterrupt(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, mode, static_cast<particle::Mcp23s17InterruptCallback>(handler), data);
-    } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-    } else
-#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    {
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
+#endif
         uint8_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
         nrfx_gpiote_in_config_t in_config;
@@ -161,7 +158,17 @@ int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data
 
         nrfx_gpiote_in_event_enable(nrf_pin, true);
         return SYSTEM_ERROR_NONE;
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     }
+#if HAL_PLATFORM_MCP23S17
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+        return Mcp23s17::getInstance().attachPinInterrupt(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, mode, static_cast<particle::Mcp23s17InterruptCallback>(handler), data);
+    }
+#endif
+    else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+#endif
 }
 
 int HAL_Interrupts_Detach(uint16_t pin) {
@@ -171,14 +178,9 @@ int HAL_Interrupts_Detach(uint16_t pin) {
 int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved) {
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
-#if HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
-        return Mcp23s17::getInstance().detachPinInterrupt(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
-    } else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-    } else
-#endif // HAL_PLATFORM_IO_EXPANDER && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    {
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
+#endif
         if (PIN_MAP[pin].exti_channel == EXTI_CHANNEL_NONE) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
@@ -197,7 +199,17 @@ int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
         PIN_MAP[pin].exti_channel = EXTI_CHANNEL_NONE;
         HAL_Set_Pin_Function(pin, PF_NONE);
         return SYSTEM_ERROR_NONE;
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     }
+#if HAL_PLATFORM_MCP23S17
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+        return Mcp23s17::getInstance().detachPinInterrupt(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
+    } 
+#endif
+    else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+#endif
 }
 
 void HAL_Interrupts_Enable_All(void) {

@@ -18,6 +18,10 @@
 #ifndef MCP23S17_H
 #define MCP23S17_H
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_MCP23S17
+
 #include "static_recursive_mutex.h"
 #include "pinmap_defines.h"
 #include "pinmap_hal.h"
@@ -240,5 +244,7 @@ private:
 };
 
 } // namespace particle
+
+#endif // HAL_PLATFORM_MCP23S17
 
 #endif // MCP23S17_H

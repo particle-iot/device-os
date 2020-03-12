@@ -93,11 +93,11 @@
 #define PMIC_SCL                SCL1
 
 // Fuel Gauge
-#define LOW_BAT_UC              43
+#define LOW_BAT_UC              40
 
 // RTC
 #define RTC_INT                 24
-#define RTC_WDI                 42
+#define RTC_WDI                 39
 #define RTC_SDA                 SDA1
 #define RTC_SCL                 SCL1
 
@@ -105,50 +105,45 @@
 #define BGRST                   25
 #define BGPWR                   26
 #define BGVINT                  27
-#define BGDTR                   41
+#define BGDTR                   38
 
 // CAN Transciever
 #define CAN_INT                 28
-#define CAN_RST                 48
-#define CAN_PWR                 49
-#define CAN_STBY                50
-#define CAN_RTS2                51
-#define CAN_RTS1                52
-#define CAN_RTS0                53
-#define CAN_CS                  58
+#define CAN_RST                 45
+#define CAN_PWR                 46
+#define CAN_STBY                47
+#define CAN_RTS2                48
+#define CAN_RTS1                49
+#define CAN_RTS0                50
+#define CAN_CS                  55
 
 // IO Expander
 #define IOE_INT                 29
 #define IOE_RST                 30
-#define IOE_CS                  55
+#define IOE_CS                  52
 
 // Sensor
 #define SEN_INT                 31
-#define SEN_CS                  56
+#define SEN_CS                  53
 
 // NFC
 #define NFC_PIN1                32
 #define NFC_PIN2                33
 
-// Demux IC
-#define DEMUX_A                 36
-#define DEMUX_B                 35
-#define DEMUX_C                 34
-
 // BLE Antenna Switch
-#define BLE_ANT_SW              37
+#define BLE_ANT_SW              34
 
 // Wi-Fi
-#define WIFI_EN                 38
-#define WIFI_INT                39
-#define WIFI_BOOT               40
-#define WIFI_CS                 57
+#define WIFI_EN                 35
+#define WIFI_INT                36
+#define WIFI_BOOT               37
+#define WIFI_CS                 54
 
 // GPS
-#define GPS_PWR                 44
-#define GPS_INT                 45
-#define GPS_BOOT                46
-#define GPS_RST                 47
-#define GPS_CS                  54
+#define GPS_PWR                 41
+#define GPS_INT                 42
+#define GPS_BOOT                43
+#define GPS_RST                 44
+#define GPS_CS                  51
 
 #endif // PLATFORM_ID == PLATFORM_TRACKER
