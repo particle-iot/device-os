@@ -56,6 +56,7 @@
 #define DIAG_NAME_CLOUD_RETRANSMITTED_MESSAGES "coap:retransmit"
 #define DIAG_NAME_CLOUD_UNACKNOWLEDGED_MESSAGES "coap:unack"
 #define DIAG_NAME_CLOUD_TRANSMITTED_MESSAGES "coap:transmit"
+#define DIAG_NAME_CLOUD_COAP_LATENCY "coap:latency"
 #define DIAG_NAME_CLOUD_RATE_LIMITED_EVENTS "pub:limit"
 #define DIAG_NAME_SYSTEM_TOTAL_RAM "sys:tram"
 #define DIAG_NAME_SYSTEM_USED_RAM "sys:uram"
@@ -105,6 +106,7 @@ typedef enum diag_id {
     DIAG_ID_CLOUD_RATE_LIMITED_EVENTS = 20, // pub:throttle
     DIAG_ID_SYSTEM_TOTAL_RAM = 25, // sys:tram
     DIAG_ID_SYSTEM_USED_RAM = 26, // sys:uram
+    DIAG_ID_CLOUD_COAP_LATENCY = 31, // coap:latency
     DIAG_ID_USER = 32768 // Base value for application-specific source IDs
 } diag_id;
 

@@ -1,0 +1,81 @@
+diff --git communication/src/coap_channel.cpp communication/src/coap_channel.cpp
+index 1eb8175b8..fb29627d4 100644
+--- communication/src/coap_channel.cpp
++++ communication/src/coap_channel.cpp
+@@ -21,6 +21,7 @@
+ #include "service_debug.h"
+ #include "messages.h"
+ #include "communication_diagnostic.h"
++#include "timer_hal.h"
+ 
+ namespace particle { namespace protocol {
+ 
+@@ -87,6 +88,8 @@ void CoAPMessageStore::process(system_tick_t time, Channel& channel)
+ 	}
+ }
+ 
++int start_time_rtt_k;
++int rtt_k;
+ 
+ /**
+  * Registers that this message has been sent from the application.
+@@ -105,8 +108,10 @@ ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
+ 		CoAPMessage* coapmsg = CoAPMessage::create(msg);
+ 		if (coapmsg==nullptr)
+ 			return INSUFFICIENT_STORAGE;
+-		if (coapType==CoAPType::CON)
++		if (coapType==CoAPType::CON) {
++			coapmsg->send_time = time; //??
+ 			coapmsg->prepare_retransmit(time);
++		}
+ 		else
+ 			coapmsg->set_expiration(time+CoAPMessage::MAX_TRANSMIT_SPAN);
+ 		add(*coapmsg);
+@@ -114,6 +119,8 @@ ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
+ 	return NO_ERROR;
+ }
+ 
++unsigned int g_k_ackCount;
++int blah_time;
+ /**
+  * Notifies the message store that a message has been received.
+  */
+@@ -123,9 +130,12 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
+ 	msg.decode_id();
+ 	if (msgtype==CoAPType::ACK || msgtype==CoAPType::RESET)
+ 	{
+-		message_id_t id = msg.get_id();
++		message_id_t id = msg.get_id();	// this is the acknoledgement/reset
++		// time the ack was received. subtract both and store in a diagnostics variable
++		//blah_time = time - msg->send_time;
++		//LOG(INFO, "blah_time : %u", blah_time);
+ 		if (msgtype==CoAPType::RESET) {
+-			CoAPMessage* msg = from_id(id);
++			CoAPMessage* msg = from_id(id);	// this is the original msg
+ 			if (msg) {
+ 				msg->notify_delivered_nak();
+ 			}
+@@ -135,6 +145,8 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
+ 			channel.command(Channel::DISCARD_SESSION, nullptr);
+ 		}
+ 		DEBUG("recieved ACK for message id=%x", id);
++
++		g_k_ackCount++;
+ 		if (!clear_message(id)) {		// message didn't exist, means it's already been acknoweldged or is unknown.
+ 			msg.set_length(0);
+ 		}
+diff --git communication/src/coap_channel.h communication/src/coap_channel.h
+index 7c8912759..b10e2f4f7 100644
+--- communication/src/coap_channel.h
++++ communication/src/coap_channel.h
+@@ -166,6 +166,10 @@ public:
+ 	 */
+ 	static const uint8_t NSTART = 1;
+ 
++	/**
++	 * Add a time stamp for send time of a message to calculat CoAP latency
++	 */
++	system_tick_t send_time;
+ 
+ 	CoAPMessage(message_id_t id_) : next(nullptr), timeout(0), id(id_), transmit_count(0), delivered(nullptr), data_len(0) {
+ 		message_count++;

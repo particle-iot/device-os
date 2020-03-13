@@ -1,0 +1,97 @@
+diff --git communication/src/coap_channel.cpp communication/src/coap_channel.cpp
+index 1eb8175b8..b2ab99941 100644
+--- communication/src/coap_channel.cpp
++++ communication/src/coap_channel.cpp
+@@ -103,12 +103,19 @@ ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
+ 	{
+ 		// confirmable message, create a CoAPMessage for this
+ 		CoAPMessage* coapmsg = CoAPMessage::create(msg);
+-		if (coapmsg==nullptr)
++
++		if (coapmsg==nullptr) {
+ 			return INSUFFICIENT_STORAGE;
+-		if (coapType==CoAPType::CON)
++		}
++		if (coapType==CoAPType::CON) {
++			LOG(INFO, "TP10 - time: %u", time);
++			coapmsg->setTime(time);
+ 			coapmsg->prepare_retransmit(time);
+-		else
++			LOG(INFO, "TP11 - time: %u", time);
++		}
++		else {
+ 			coapmsg->set_expiration(time+CoAPMessage::MAX_TRANSMIT_SPAN);
++		}
+ 		add(*coapmsg);
+ 	}
+ 	return NO_ERROR;
+@@ -124,15 +131,17 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
+ 	if (msgtype==CoAPType::ACK || msgtype==CoAPType::RESET)
+ 	{
+ 		message_id_t id = msg.get_id();
+-		if (msgtype==CoAPType::RESET) {
+-			CoAPMessage* msg = from_id(id);
+-			if (msg) {
+-				msg->notify_delivered_nak();
++		CoAPMessage* coapMessage = from_id(id);
++		if(coapMessage) {
++			LOG(INFO,"\n\nTP3: time: %u - %u", time, coapMessage->getTime());
++			LOG(INFO, "blah: %u", time - coapMessage->getTime());
++			if (msgtype==CoAPType::RESET) {
++				coapMessage->notify_delivered_nak();
++				// a RESET indicates that the session is invalid.
++				// Currently the device never sends a RESET, but if it were to do that
++				// then we should track which direction we are sending
++				channel.command(Channel::DISCARD_SESSION, nullptr);
+ 			}
+-			// a RESET indicates that the session is invalid.
+-			// Currently the device never sends a RESET, but if it were to do that
+-			// then we should track which direction we are sending
+-			channel.command(Channel::DISCARD_SESSION, nullptr);
+ 		}
+ 		DEBUG("recieved ACK for message id=%x", id);
+ 		if (!clear_message(id)) {		// message didn't exist, means it's already been acknoweldged or is unknown.
+diff --git communication/src/coap_channel.h communication/src/coap_channel.h
+index dce3db8ec..603f9293a 100644
+--- communication/src/coap_channel.h
++++ communication/src/coap_channel.h
+@@ -127,6 +127,10 @@ private:
+ 	// uint8_t reserved;
+ 	std::function<void(Delivery)>* delivered;
+ 
++	/**
++	 * Send_time for coap message
++	 */
++	system_tick_t send_time;
+ 
+ 	/**
+ 	 * How many data bytes follow.
+@@ -164,7 +168,7 @@ public:
+ 	static const uint8_t NSTART = 1;
+ 
+ 
+-	CoAPMessage(message_id_t id_) : next(nullptr), timeout(0), id(id_), transmit_count(0), delivered(nullptr), data_len(0) {
++	CoAPMessage(message_id_t id_) : next(nullptr), timeout(0), id(id_), transmit_count(0), delivered(nullptr), send_time(0), data_len(0) {
+ 		message_count++;
+ 	}
+ 
+@@ -229,6 +233,19 @@ public:
+ 		return false;
+ 	}
+ 
++	bool setTime(system_tick_t setTime)
++	{
++		this->send_time = setTime;
++		LOG(INFO,"\n\nTP1: %u", this->send_time);
++		return true;
++	}
++
++	system_tick_t getTime()
++	{
++		LOG(INFO,"TP2: %u", this->send_time);
++		return this->send_time;
++	}
++
+ 	/**
+ 	 * Determines the transmit timeout for the given transmission count.
+ 	 */
