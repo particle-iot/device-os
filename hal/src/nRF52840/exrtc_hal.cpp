@@ -50,7 +50,6 @@ time_t hal_exrtc_get_unixtime(void* reserved) {
 }
 
 int hal_exrtc_set_unix_alarm(time_t unixtime, hal_exrtc_alarm_handler_t handler, void* context, void* reserved) {
-    CHECK_TRUE(handler, SYSTEM_ERROR_INVALID_ARGUMENT);
     struct tm* calendar = gmtime(&unixtime);
     if (!calendar) {
         return SYSTEM_ERROR_INTERNAL;

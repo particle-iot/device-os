@@ -493,6 +493,7 @@ int Am18x5::enableAutoSwitchOnBattery(bool enable) const {
 }
 
 int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool rw, uint8_t mask, uint8_t shift) const {
+    Am18x5Lock lock();
     uint8_t currValue = 0x00;
     if (rw) {
         CHECK(readRegister(reg, &currValue));
@@ -502,29 +503,26 @@ int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool 
         CHECK(val = decToBcd(val));
     }
     currValue |= (val << shift);
-    HAL_I2C_Acquire(wire_, nullptr);
     HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
     HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(reg), nullptr);
     HAL_I2C_Write_Data(wire_, currValue, nullptr);
     HAL_I2C_End_Transmission(wire_, true, nullptr);
-    HAL_I2C_Release(wire_, nullptr);
     return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::writeContinuouseRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const {
-    HAL_I2C_Acquire(wire_, nullptr);
+    Am18x5Lock lock();
     HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
     HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(start_reg), nullptr);
     for (size_t i = 0; i < len; i++) {
         HAL_I2C_Write_Data(wire_, buff[i], nullptr);
     }
     HAL_I2C_End_Transmission(wire_, true, nullptr);
-    HAL_I2C_Release(wire_, nullptr);
     return len;
 }
 
 int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd, uint8_t mask, uint8_t shift) const {
-    HAL_I2C_Acquire(wire_, nullptr);
+    Am18x5Lock lock();
     HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
     HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(reg), nullptr);
     HAL_I2C_End_Transmission(wire_, false, nullptr);
@@ -532,7 +530,6 @@ int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd,
         return SYSTEM_ERROR_INTERNAL;
     }
     *val = HAL_I2C_Read_Data(wire_, nullptr);
-    HAL_I2C_Release(wire_, nullptr);
     *val &= mask;
     *val >>= shift;
     if (bcd) {
@@ -542,7 +539,7 @@ int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd,
 }
 
 int Am18x5::readContinuouseRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const {
-    HAL_I2C_Acquire(wire_, nullptr);
+    Am18x5Lock lock();
     HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
     HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(start_reg), nullptr);
     HAL_I2C_End_Transmission(wire_, false, nullptr);
@@ -557,7 +554,6 @@ int Am18x5::readContinuouseRegisters(const Am18x5Register start_reg, uint8_t* bu
     for (int32_t i = 0; i < size; i++) {
         buff[i] = HAL_I2C_Read_Data(wire_, nullptr);
     }
-    HAL_I2C_Release(wire_, nullptr);
     return size;
 }
 
