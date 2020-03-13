@@ -104,11 +104,18 @@ ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
 		// confirmable message, create a CoAPMessage for this
 		CoAPMessage* coapmsg = CoAPMessage::create(msg);
 		if (coapmsg==nullptr)
+		{
 			return INSUFFICIENT_STORAGE;
+		}
 		if (coapType==CoAPType::CON)
+		{
+			coapmsg->set_send_time(time);
 			coapmsg->prepare_retransmit(time);
+		}
 		else
+		{
 			coapmsg->set_expiration(time+CoAPMessage::MAX_TRANSMIT_SPAN);
+		}
 		add(*coapmsg);
 	}
 	return NO_ERROR;
@@ -124,15 +131,17 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 	if (msgtype==CoAPType::ACK || msgtype==CoAPType::RESET)
 	{
 		message_id_t id = msg.get_id();
-		if (msgtype==CoAPType::RESET) {
-			CoAPMessage* msg = from_id(id);
-			if (msg) {
-				msg->notify_delivered_nak();
+		CoAPMessage* coap_msg = from_id(id);
+		if (coap_msg)
+		{
+			g_coapLatencyMSec = time - coap_msg->get_send_time();
+			if (msgtype==CoAPType::RESET) {
+				coap_msg->notify_delivered_nak();
+				// a RESET indicates that the session is invalid.
+				// Currently the device never sends a RESET, but if it were to do that
+				// then we should track which direction we are sending
+				channel.command(Channel::DISCARD_SESSION, nullptr);
 			}
-			// a RESET indicates that the session is invalid.
-			// Currently the device never sends a RESET, but if it were to do that
-			// then we should track which direction we are sending
-			channel.command(Channel::DISCARD_SESSION, nullptr);
 		}
 		DEBUG("recieved ACK for message id=%x", id);
 		if (!clear_message(id)) {		// message didn't exist, means it's already been acknoweldged or is unknown.
