@@ -128,28 +128,31 @@ class Protocol
 
 	uint8_t initialized;
 
-	uint32_t flags;
+	uint8_t flags;
 
-protected:
-	/**
-	 * Protocol flags.
-	 */
+public:
 	enum Flags
 	{
 		/**
 		 * Set when the protocol expects a hello response from the server.
 		 */
 		REQUIRE_HELLO_RESPONSE = 1<<0,
+
 		/**
-		 * Send a Goodbye message when disconnecting from the server.
+		 * Internal flag. Used by the protocol to disable sending a hello on session resume.
+		 * Set if sending a hello response on resuming a session isn't required.
 		 */
-		SEND_GOODBYE_MESSAGE = 1<<1,
+		SKIP_SESSION_RESUME_HELLO = 1<<1,
+
 		/**
-		 * Send ping as an empty message - this functions as a keep-alive for UDP.
+		 * send ping as an empty message - this functions as
+		 * a keep-alive for UDP
 		 */
-		PING_AS_EMPTY_MESSAGE = 1<<2
+		PING_AS_EMPTY_MESSAGE = 1<<2,
 	};
 
+
+protected:
 	/**
 	 * Manages Ping functionality.
 	 */
@@ -161,14 +164,9 @@ protected:
 	CompletionHandlerMap<message_id_t> ack_handlers;
 
 
-	void set_protocol_flags(uint32_t flags)
+	void set_protocol_flags(int flags)
 	{
 		this->flags = flags;
-	}
-
-	uint32_t protocol_flags() const
-	{
-		return flags;
 	}
 
 	/**
@@ -308,14 +306,8 @@ protected:
 	 * Updates the cached crc of subscriptions registered with the cloud.
 	 */
 	void update_subscription_crc();
-	/**
-	 * Updates the cached protocol flags.
-	 */
-	void update_protocol_flags();
-	/**
-	 * Returns a descriptor of the current application state.
-	 */
-	AppStateDescriptor app_state_descriptor();
+
+	uint32_t application_state_checksum();
 
 public:
 	Protocol(MessageChannel& channel) :
@@ -325,8 +317,7 @@ public:
 			variables(this),
 			publisher(this),
 			last_ack_handlers_update(0),
-			initialized(false),
-			flags(0)
+			initialized(false)
 	{
 	}
 
@@ -350,15 +341,6 @@ public:
 		chunkedTransfer.set_fast_ota(data);
 	}
 
-	void set_goodbye_enabled(bool enabled)
-	{
-		if (enabled) {
-			flags |= Flags::SEND_GOODBYE_MESSAGE;
-		} else {
-			flags &= ~Flags::SEND_GOODBYE_MESSAGE;
-		}
-	}
-
 	void set_handlers(CommunicationsHandlers& handlers)
 	{
 		copy_and_init(&this->handlers, sizeof(this->handlers), &handlers, handlers.size);
@@ -368,6 +350,15 @@ public:
 	{
 		ack_handlers.addHandler(msg_id, std::move(handler), timeout);
 	}
+
+	/**
+	 * Determines the checksum of the application state.
+	 * Application state comprises cloud functinos, variables and subscriptions.
+	 */
+	static uint32_t application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len), uint32_t subscriptions_crc,
+			uint32_t describe_app_crc, uint32_t describe_system_crc);
+
+
 
 	/**
 	 * Establish a secure connection and send and process the hello message.

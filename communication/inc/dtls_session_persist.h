@@ -21,7 +21,7 @@
 #include "stddef.h"
 
 // The size of the persisted data
-#define SessionPersistBaseSize 212
+#define SessionPersistBaseSize 208
 
 // variable size due to int/size_t members
 #define SessionPersistVariableSize (sizeof(int)+sizeof(int)+sizeof(size_t))
@@ -96,10 +96,7 @@ struct __attribute__((packed)) SessionPersistData
 	  * Checksum of the system describe message.
 	  */
 	uint32_t describe_system_crc;
-	/**
-	  * Protocol flags.
-	  */
-	uint32_t protocol_flags;
+
 };
 
 class __attribute__((packed)) SessionPersistOpaque : public SessionPersistData
@@ -108,7 +105,7 @@ public:
 
 	SessionPersistOpaque()
 	{
-		memset(this, 0, sizeof(*this));
+		size = 0; persistent = 0;
 	}
 
 	bool is_valid() { return size==sizeof(*this); }
@@ -251,7 +248,7 @@ public:
 	 */
 	RestoreStatus restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* message, restore_fn_t restorer, save_fn_t saver);
 
-	AppStateDescriptor app_state_descriptor();
+	uint32_t application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len));
 
 	SessionPersistData& as_data() { return *this; }
 };
@@ -259,7 +256,7 @@ public:
 static_assert(sizeof(SessionPersist)==SessionPersistBaseSize+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression), "SessionPersist size");
 static_assert(sizeof(SessionPersist)==sizeof(SessionPersistDataOpaque), "SessionPersistDataOpaque size == sizeof(SessionPersist)");
 
-#endif // defined(MBEDTLS_SSL_H)
+#endif
 
 // the connection buffer is used by external code to store connection data in the session
 // it must be binary compatible with previous releases
@@ -270,7 +267,7 @@ static_assert((sizeof(SessionPersistData)==sizeof(SessionPersistDataOpaque)), "s
 
 static_assert(sizeof(SessionPersistDataOpaque)==SessionPersistBaseSize+SessionPersistVariableSize, "SessionPersistDataOpque size should be SessionPersistBaseSize+SessionPersistVariableSize");
 
-#endif // defined(__cplusplus)
+#endif
 
 
 

@@ -149,12 +149,6 @@ typedef enum
 	 */
     SYSTEM_FLAG_OTA_UPDATE_FORCED,
 
-    /**
-     * When 1 (default), the system sends a Goodbye message when disconnecting from the cloud.
-     * When 0, the system disconnects without sending a notification to the cloud.
-     */
-    SYSTEM_FLAG_SEND_GOODBYE,
-
     SYSTEM_FLAG_MAX
 
 } system_flag_t;

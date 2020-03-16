@@ -30,6 +30,7 @@
 #include "eckeygen.h"
 #include "file_transfer.h"
 #include "protocol_selector.h"
+#include "protocol_defs.h"
 #include "system_defs.h"
 #include "completion_handler.h"
 #include "hal_platform.h"
@@ -241,7 +242,7 @@ typedef struct spark_disconnect_command {
     unsigned cloud_reason; ///< Cloud disconnection reason (a value defined by the `cloud_disconnect_reason` enum).
     unsigned network_reason; ///< Network disconnection reason (a value defined by the `network_disconnect_reason` enum).
     unsigned reset_reason; ///< System reset reason (a value defined by the `System_Reset_Reason` enum).
-    unsigned sleep_duration; ///< Duration of the system sleep in seconds.
+    unsigned sleep_duration; ///< Sleep duration in seconds.
     unsigned timeout; ///< Maximum time in milliseconds to spend waiting for acknowledgements.
 } spark_disconnect_command;
 

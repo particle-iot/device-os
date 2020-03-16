@@ -255,6 +255,16 @@ void Protocol::init(const SparkCallbacks &callbacks,
 	initialized = true;
 }
 
+uint32_t Protocol::application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len), uint32_t subscriptions_crc,
+		uint32_t describe_app_crc, uint32_t describe_system_crc)
+{
+	uint32_t chk[3];
+	chk[0] = subscriptions_crc;
+	chk[1] = describe_app_crc;
+	chk[2] = describe_system_crc;
+	return calc_crc((uint8_t*)chk, sizeof(chk));
+}
+
 void Protocol::update_subscription_crc()
 {
 	if (descriptor.app_state_selector_info)
@@ -266,26 +276,16 @@ void Protocol::update_subscription_crc()
 	}
 }
 
-void Protocol::update_protocol_flags()
+/**
+ * Computes the current checksum from the application cloud state
+ */
+uint32_t Protocol::application_state_checksum()
 {
-	if (descriptor.app_state_selector_info)
-	{
-		this->channel.command(Channel::SAVE_SESSION);
-		descriptor.app_state_selector_info(SparkAppStateSelector::PROTOCOL_FLAGS, SparkAppStateUpdate::PERSIST, flags, nullptr);
-		this->channel.command(Channel::LOAD_SESSION);
-	}
-}
-
-AppStateDescriptor Protocol::app_state_descriptor()
-{
-	if (!descriptor.app_state_selector_info) {
-		return AppStateDescriptor();
-	}
-	return AppStateDescriptor(
+	return descriptor.app_state_selector_info ? application_state_checksum(callbacks.calculate_crc,
 			subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc),
 			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE, 0, nullptr),
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr),
-			flags);
+			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr))
+			: 0;
 }
 
 /**
@@ -300,7 +300,7 @@ int Protocol::begin()
 	last_ack_handlers_update = callbacks.millis();
 
 	uint32_t channel_flags = 0;
-	ProtocolError error = channel.establish(channel_flags, app_state_descriptor());
+	ProtocolError error = channel.establish(channel_flags, application_state_checksum());
 	bool session_resumed = (error==SESSION_RESUMED);
 	if (error && !session_resumed) {
 		LOG(ERROR,"handshake failed with code %d", error);
@@ -311,10 +311,13 @@ int Protocol::begin()
 	{
 		// for now, unconditionally move the session on resumption
 		channel.command(MessageChannel::MOVE_SESSION, nullptr);
+		if (channel_flags & SKIP_SESSION_RESUME_HELLO) {
+			flags |= SKIP_SESSION_RESUME_HELLO;
+		}
 	}
 
 	// hello not needed because it's already been sent and the server maintains device state
-	if (session_resumed && channel.is_unreliable() && (channel_flags & MessageChannel::SKIP_SESSION_RESUME_HELLO))
+	if (session_resumed && channel.is_unreliable() && (flags & SKIP_SESSION_RESUME_HELLO))
 	{
 		LOG(INFO,"resumed session - not sending HELLO message");
 		const auto r = ping(true);
@@ -344,7 +347,6 @@ int Protocol::begin()
 	}
 	LOG(INFO,"Handshake completed");
 	channel.notify_established();
-	update_protocol_flags();
 	return error;
 }
 
@@ -359,7 +361,7 @@ void Protocol::reset() {
 const auto HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL = 1;
 const auto HELLO_FLAG_DIAGNOSTICS_SUPPORT = 2;
 const auto HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT = 4;
-const auto HELLO_FLAG_GOODBYE_ENABLED = 16;
+const auto HELLO_FLAG_GOODBYE_SUPPORT = 16;
 
 /**
  * Send the hello message over the channel.
@@ -370,12 +372,10 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 	Message message;
 	channel.create(message);
 
-	uint8_t helloFlags = HELLO_FLAG_DIAGNOSTICS_SUPPORT | HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT;
+	uint8_t helloFlags = HELLO_FLAG_DIAGNOSTICS_SUPPORT | HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT |
+			HELLO_FLAG_GOODBYE_SUPPORT;
 	if (was_ota_upgrade_successful) {
 		helloFlags |= HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL;
-	}
-	if (flags & Flags::SEND_GOODBYE_MESSAGE) {
-		helloFlags |= HELLO_FLAG_GOODBYE_ENABLED;
 	}
 	size_t len = build_hello(message, helloFlags);
 	message.set_length(len);

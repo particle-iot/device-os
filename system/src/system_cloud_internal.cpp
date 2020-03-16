@@ -500,24 +500,11 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 			break;
 		}
 	}
-	else if (operation==SparkAppStateUpdate::PERSIST)
+	else if (operation==SparkAppStateUpdate::PERSIST && stateSelector==SparkAppStateSelector::SUBSCRIPTIONS)
 	{
-		switch (stateSelector) {
-		case SparkAppStateSelector::SUBSCRIPTIONS: {
-			update_persisted_state([value](SessionPersistData& data){
-				data.subscriptions_crc = value;
-			});
-			break;
-		}
-		case SparkAppStateSelector::PROTOCOL_FLAGS: {
-			update_persisted_state([value](SessionPersistData& data){
-				data.protocol_flags = value;
-			});
-			break;
-		}
-		default:
-			break;
-		}
+		update_persisted_state([value](SessionPersistData& data){
+			data.subscriptions_crc = value;
+		});
 	}
 	else if (operation==SparkAppStateUpdate::COMPUTE)
 	{
@@ -988,10 +975,6 @@ void Spark_Protocol_Init(void)
         uint8_t id[id_length];
         HAL_device_ID(id, id_length);
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
-
-        uint8_t goodbyeEnabled = 0;
-        system_get_flag(SYSTEM_FLAG_SEND_GOODBYE, &goodbyeEnabled, nullptr);
-        spark_protocol_set_connection_property(sp, particle::protocol::Connection::GOODBYE_ENABLED, goodbyeEnabled, nullptr, nullptr);
 
         Particle.subscribe("spark", SystemEvents, MY_DEVICES);
         Particle.subscribe("particle", SystemEvents, MY_DEVICES);

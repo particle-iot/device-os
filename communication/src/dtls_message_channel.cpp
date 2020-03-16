@@ -154,13 +154,11 @@ auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uin
 	}
 }
 
-AppStateDescriptor SessionPersist::app_state_descriptor()
+uint32_t SessionPersist::application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len))
 {
-	if (!is_valid()) {
-		return AppStateDescriptor();
-	}
-	return AppStateDescriptor(subscriptions_crc, describe_app_crc, describe_system_crc, protocol_flags);
+	return Protocol::application_state_checksum(calc_crc, subscriptions_crc, describe_app_crc, describe_system_crc);
 }
+
 
 SessionPersist sessionPersist;
 
@@ -346,7 +344,7 @@ ProtocolError DTLSMessageChannel::setup_context()
 	return NO_ERROR;
 }
 
-ProtocolError DTLSMessageChannel::establish(uint32_t& flags, const AppStateDescriptor& app_state)
+ProtocolError DTLSMessageChannel::establish(uint32_t& flags, uint32_t app_state_crc)
 {
 	int ret = 0;
 	// LOG(INFO,"setup context");
@@ -366,10 +364,11 @@ ProtocolError DTLSMessageChannel::establish(uint32_t& flags, const AppStateDescr
 				sessionPersist.out_ctr[4],sessionPersist.out_ctr[5],sessionPersist.out_ctr[6],
 				sessionPersist.out_ctr[7], sessionPersist.next_coap_id);
 		sessionPersist.make_persistent();
-		const AppStateDescriptor cached = sessionPersist.app_state_descriptor();
-		if (cached==app_state) {
+		const uint32_t cached = sessionPersist.application_state_checksum(this->callbacks.calculate_crc);
+		LOG(INFO,"app state crc: cached: %x, actual: %x", (unsigned)cached, (unsigned)app_state_crc);
+		if (cached==app_state_crc) {
 			LOG(WARN,"skipping hello message");
-			flags |= MessageChannel::SKIP_SESSION_RESUME_HELLO;
+			flags |= Protocol::SKIP_SESSION_RESUME_HELLO;
 		}
 		LOG(INFO,"restored session from persisted session data. next_msg_id=%d", *coap_state);
 		return SESSION_RESUMED;
