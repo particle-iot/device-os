@@ -348,13 +348,6 @@ size_t Messages::coded_ack(uint8_t* buf, uint8_t token, uint8_t code,
     return sz;
 }
 
-size_t Messages::response_size(size_t payload_size, bool has_token)
-{
-	return 4 + // Message header
-			(payload_size ? payload_size + 1 : 0) + // Payload data with a marker
-			(has_token ? 1 : 0); // One-byte token
-}
-
 size_t Messages::goodbye(unsigned char* buf, size_t size, message_id_t message_id, cloud_disconnect_reason cloud_reason,
 		network_disconnect_reason network_reason, System_Reset_Reason reset_reason, unsigned sleep_duration, bool confirmable)
 {
@@ -403,6 +396,13 @@ size_t Messages::goodbye(unsigned char* buf, size_t size, message_id_t message_i
 
 const size_t Messages::MAX_GOODBYE_MESSAGE_SIZE = 9 + // CoAP header, options, payload marker
 		maxUnsignedVarintSize<unsigned>() * 5; // Flags, cloud disconnection reason, network disconnection reason, system reset reason, sleep duration
+
+size_t Messages::response_size(size_t payload_size, bool has_token)
+{
+	return 4 + // Message header
+			(payload_size ? payload_size + 1 : 0) + // Payload data with a marker
+			(has_token ? 1 : 0); // One-byte token
+}
 
 } // particle::protocol
 
