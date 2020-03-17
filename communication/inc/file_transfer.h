@@ -61,7 +61,12 @@ namespace FileTransfer {
 
     struct Descriptor : public Chunk
     {
-        Descriptor() { size = sizeof(*this); }
+        Descriptor() :
+                Chunk(),
+                file_length(0),
+                file_address(0) {
+            size = sizeof(*this);
+        }
 
         /**
          * The length of the file data.
