@@ -133,7 +133,7 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 		message_id_t id = msg.get_id();
 		CoAPMessage* coap_msg = from_id(id);
 		if (coap_msg) {
-			g_coapLatencyMSec = time - coap_msg->get_send_time();
+			g_coapRoundTripMSec = time - coap_msg->get_send_time();
 		}
 		if (msgtype==CoAPType::RESET) {
 			if (coap_msg) {
