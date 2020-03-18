@@ -21,6 +21,8 @@ namespace particle { namespace protocol {
 
 #define MAX_SUBSCRIPTIONS (6)       // 2 system and 4 application
 
+#define PROTOCOL_SYSTEM_CONNECTION_PROPERTY_BASE 1000
+
 enum ProtocolError
 {
     /* 00 */ NO_ERROR,
@@ -113,7 +115,8 @@ namespace Connection
 enum Enum
 {
     PING = 0,
-    FAST_OTA = 1
+    FAST_OTA = 1,
+    SYSTEM_BASE = PROTOCOL_SYSTEM_CONNECTION_PROPERTY_BASE ///< Base value for system connection properties.
 };
 }
 

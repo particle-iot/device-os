@@ -23,6 +23,7 @@
 #include "spark_protocol_functions.h"
 #include "system_tick_hal.h"
 #include "system_defs.h"
+#include "protocol_defs.h"
 #include "completion_handler.h"
 
 #include <type_traits>
@@ -295,16 +296,50 @@ void spark_cloud_flag_connect(void);
 /**
  * Sets the auto-connect state to false. The cloud will be disconnected by the system.
  */
-void spark_cloud_flag_disconnect(void);    // should be set connected since it manages the connection state)
+void spark_cloud_flag_disconnect(void);
 
 /**
  * Determines if the system will attempt to connect or disconnect from the cloud.
  */
 bool spark_cloud_flag_auto_connect(void);
 
+/**
+ * Option flags for `spark_cloud_disconnect()`.
+ */
+typedef enum spark_cloud_disconnect_flag {
+    SPARK_CLOUD_DISCONNECT_FLAG_GRACEFUL_SET = 0x01, ///< The graceful disconnection option is set.
+    SPARK_CLOUD_DISCONNECT_FLAG_TIMEOUT_SET = 0x02 ///< The timeout option is set.
+} spark_cloud_disconnect_flag;
+
+/**
+ * Options for `spark_cloud_disconnect()`.
+ */
+typedef struct spark_cloud_disconnect_options {
+    uint16_t size; ///< Size of this structure.
+    uint8_t flags; ///< Option flags (see `spark_cloud_disconnect_flag`).
+    uint8_t graceful; ///< Set to a non-zero value if graceful disconnection is enabled.
+    unsigned timeout; ///< Maximum time in milliseconds to wait for message acknowledgements.
+} spark_cloud_disconnect_options;
+
+/**
+ * Disconnect from the cloud.
+ *
+ * @param options Options.
+ * @param reserved This argument should be set to NULL.
+ * @return 0 on success or a negative result code in case of an error.
+ */
+int spark_cloud_disconnect(const spark_cloud_disconnect_options* options, void* reserved);
+
 ProtocolFacade* system_cloud_protocol_instance(void);
 
-int spark_set_connection_property(unsigned property_id, unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved);
+/**
+ * System cloud connection properties.
+ */
+typedef enum spark_cloud_connection_property {
+    SPARK_CLOUD_CONNECTION_PROPERTY_DISCONNECT_OPTIONS = PROTOCOL_SYSTEM_CONNECTION_PROPERTY_BASE ///< Default disconnection options.
+} spark_cloud_connection_property;
+
+int spark_set_connection_property(unsigned property_id, unsigned data, const void* conn_prop, void* reserved);
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved);
 

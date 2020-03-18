@@ -55,6 +55,7 @@
 #include <stdint.h>
 
 using particle::CloudDiagnostics;
+using particle::CloudConnectionSettings;
 using particle::publishEvent;
 using particle::protocol::ProtocolError;
 
@@ -1172,4 +1173,9 @@ void Spark_Wake(void)
 
 CloudDiagnostics* CloudDiagnostics::instance() {
     return &g_cloudDiagnostics;
+}
+
+CloudConnectionSettings* CloudConnectionSettings::instance() {
+    static CloudConnectionSettings conf;
+    return &conf;
 }

@@ -31,6 +31,7 @@
 #include "protocol_defs.h"
 #include "spark_wiring_string.h"
 #include "spark_wiring_timer.h"
+#include "spark_wiring_cloud.h"
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
 #include "system_publish_vitals.h"
@@ -218,6 +219,19 @@ bool spark_cloud_flag_connected(void)
         return false;
 }
 
+int spark_cloud_disconnect(const spark_cloud_disconnect_options* options, void* reserved)
+{
+    if (spark_cloud_flag_connected()) {
+        CloudDisconnectOptions opts;
+        if (options) {
+            opts = CloudDisconnectOptions::fromSystemOptions(options);
+        }
+        particle::CloudConnectionSettings::instance()->setPendingDisconnectOptions(std::move(opts));
+    }
+    spark_cloud_flag_disconnect();
+    return 0;
+}
+
 void spark_process(void)
 {
 	// application thread will pump application messages
@@ -241,10 +255,21 @@ String spark_deviceID(void)
     return bytes2hex(id, len);
 }
 
-int spark_set_connection_property(unsigned property_id, unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved)
+int spark_set_connection_property(unsigned property_id, unsigned data, const void* conn_prop, void* reserved)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_set_connection_property(property_id, data, conn_prop, reserved));
-    return spark_protocol_set_connection_property(sp, property_id, data, conn_prop, reserved);
+    switch (property_id) {
+    case SPARK_CLOUD_CONNECTION_PROPERTY_DISCONNECT_OPTIONS: {
+        const auto p = (const spark_cloud_disconnect_options*)conn_prop;
+        auto opts = CloudDisconnectOptions::fromSystemOptions(p);
+        particle::CloudConnectionSettings::instance()->setDefaultDisconnectOptions(std::move(opts));
+        return 0;
+    }
+    default: {
+        SYSTEM_THREAD_CONTEXT_SYNC(spark_set_connection_property(property_id, data, conn_prop, reserved));
+        const auto p = (const particle::protocol::connection_properties_t*)conn_prop;
+        return spark_protocol_set_connection_property(sp, property_id, data, p, reserved);
+    }
+    }
 }
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved)

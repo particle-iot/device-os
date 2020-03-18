@@ -24,6 +24,8 @@
 #include "ota_flash_hal.h"
 #include "socket_hal.h"
 #include "spark_wiring_diagnostics.h"
+#include "spark_wiring_cloud.h"
+#include "spark_wiring_thread.h"
 
 void Spark_Signal(bool on, unsigned, void*);
 void Spark_SetTime(unsigned long dateTime);
@@ -130,6 +132,41 @@ private:
     SimpleUnsignedIntegerDiagnosticData disconnCount_;
     SimpleUnsignedIntegerDiagnosticData connCount_;
     SimpleIntegerDiagnosticData lastError_;
+};
+
+class CloudConnectionSettings {
+public:
+    CloudConnectionSettings() = default;
+
+    void setDefaultDisconnectOptions(CloudDisconnectOptions options) {
+        const std::lock_guard<Mutex> lock(mutex_);
+        defaultDisconnectOptions_ = std::move(options);
+    }
+
+    CloudDisconnectOptions getDefaultDisconnectOptions() const {
+        const std::lock_guard<Mutex> lock(mutex_);
+        return defaultDisconnectOptions_;
+    }
+
+    void setPendingDisconnectOptions(CloudDisconnectOptions options) {
+        const std::lock_guard<Mutex> lock(mutex_);
+        pendingDisconnectOptions_ = std::move(options);
+    }
+
+    CloudDisconnectOptions takePendingDisconnectOptions() {
+        const std::lock_guard<Mutex> lock(mutex_);
+        CloudDisconnectOptions opts;
+        using std::swap;
+        swap(opts, pendingDisconnectOptions_);
+        return opts;
+    }
+
+    static CloudConnectionSettings* instance();
+
+private:
+    CloudDisconnectOptions defaultDisconnectOptions_;
+    CloudDisconnectOptions pendingDisconnectOptions_;
+    mutable Mutex mutex_;
 };
 
 // Use this function instead of Particle.publish() in the system code

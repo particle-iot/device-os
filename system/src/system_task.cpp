@@ -570,7 +570,19 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, netwo
             system_notify_event(cloud_status, cloud_status_disconnecting);
         }
 
-        const bool graceful = flags & CLOUD_DISCONNECT_GRACEFULLY;
+        // Get disconnection options
+        const auto conf = CloudConnectionSettings::instance();
+        const auto defaultOpts = conf->getDefaultDisconnectOptions();
+        const auto pendingOpts = conf->takePendingDisconnectOptions();
+
+        bool graceful = (flags & CLOUD_DISCONNECT_GRACEFULLY);
+        if (graceful) {
+            if (pendingOpts.isDisconnectGracefullySet()) {
+                graceful = pendingOpts.disconnectGracefully();
+            } else if (defaultOpts.isDisconnectGracefullySet()) {
+                graceful = defaultOpts.disconnectGracefully();
+            }
+        }
         if (SPARK_CLOUD_CONNECTED) {
             if (graceful) {
                 // Notify the cloud that we're about to disconnect
@@ -580,7 +592,11 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, netwo
                 cmd.network_reason = networkReason;
                 cmd.reset_reason = resetReason;
                 cmd.sleep_duration = sleepDuration;
-                // TODO: Use a shorter timeout than the default one?
+                if (pendingOpts.isDisconnectTimeoutSet()) {
+                    cmd.timeout = pendingOpts.disconnectTimeout();
+                } else if (defaultOpts.isDisconnectTimeoutSet()) {
+                    cmd.timeout = defaultOpts.disconnectTimeout();
+                }
                 const int r = spark_protocol_command(spark_protocol_instance(), ProtocolCommands::DISCONNECT, 0, &cmd);
                 if (r != protocol::NO_ERROR) {
                     LOG(WARN, "cloud_disconnect(): DISCONNECT command failed: %d", r);

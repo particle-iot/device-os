@@ -190,7 +190,7 @@ void spark_protocol_get_product_details(ProtocolFacade* protocol, product_detail
 }
 
 int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id,
-                                           unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved)
+        unsigned data, const particle::protocol::connection_properties_t* conn_prop, void* reserved)
 {
     ASSERT_ON_SYSTEM_THREAD();
     if (property_id == particle::protocol::Connection::PING)

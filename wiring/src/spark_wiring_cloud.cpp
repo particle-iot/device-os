@@ -18,6 +18,21 @@ void publishCompletionCallback(int error, const void* data, void* callbackData, 
 
 } // namespace
 
+spark_cloud_disconnect_options CloudDisconnectOptions::toSystemOptions() const
+{
+    spark_cloud_disconnect_options opts = {};
+    opts.size = sizeof(opts);
+    opts.flags = optionFlags_;
+    opts.graceful = disconnectGracefully_;
+    opts.timeout = disconnectTimeout_;
+    return opts;
+}
+
+CloudDisconnectOptions CloudDisconnectOptions::fromSystemOptions(const spark_cloud_disconnect_options* options)
+{
+    return CloudDisconnectOptions(options->flags, options->timeout, options->graceful);
+}
+
 int CloudClass::call_raw_user_function(void* data, const char* param, void* reserved)
 {
     user_function_int_str_t* fn = (user_function_int_str_t*)(data);
@@ -69,4 +84,14 @@ Future<bool> CloudClass::publish_event(const char *eventName, const char *eventD
 
 int CloudClass::publishVitals(system_tick_t period_s_) {
     return spark_publish_vitals(period_s_, nullptr);
+}
+
+void CloudClass::disconnect(const CloudDisconnectOptions& options) {
+    const auto opts = options.toSystemOptions();
+    spark_cloud_disconnect(&opts, nullptr /* reserved */);
+}
+
+void CloudClass::setDisconnectOptions(const CloudDisconnectOptions& options) {
+    const auto opts = options.toSystemOptions();
+    spark_set_connection_property(SPARK_CLOUD_CONNECTION_PROPERTY_DISCONNECT_OPTIONS, 0 /* data */, &opts, nullptr /* reserved */);
 }
