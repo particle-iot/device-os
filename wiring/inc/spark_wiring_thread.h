@@ -235,6 +235,10 @@ public:
         os_mutex_create(&handle_);
     }
 
+    ~Mutex() {
+        dispose();
+    }
+
     void dispose()
     {
         if (handle_) {
@@ -262,6 +266,10 @@ public:
     RecursiveMutex() : handle_(nullptr)
     {
         os_mutex_recursive_create(&handle_);
+    }
+
+    ~RecursiveMutex() {
+        dispose();
     }
 
     void dispose()
