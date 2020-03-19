@@ -462,6 +462,13 @@ spark::JSONWriter& spark::JSONWriter::value(unsigned val) {
     return *this;
 }
 
+spark::JSONWriter& spark::JSONWriter::value(double val, int precision) {
+    writeSeparator();
+    printf("%.*lf", precision, val);
+    state_ = NEXT;
+    return *this;
+}
+
 spark::JSONWriter& spark::JSONWriter::value(double val) {
     writeSeparator();
     printf("%g", val);

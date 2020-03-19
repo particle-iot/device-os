@@ -9,6 +9,7 @@
 #include <deque>
 #include <string>
 #include <cstdlib>
+#include <cfloat> // for constants
 
 namespace {
 
@@ -448,6 +449,252 @@ TEST_CASE("Writing JSON") {
             SECTION("3.40282e+38") {
                 json.value(3.40282e+38); // ~FLT_MAX
                 check(data).equals("3.40282e+38");
+            }
+            SECTION("DBL_MIN") {
+                json.value(DBL_MIN);
+                check(data).equals("2.22507e-308"); // Based on DBL_DIG significant digits for '%g' format specifier
+            }
+            SECTION("DBL_MAX") {
+                json.value(DBL_MAX);
+                check(data).equals("1.79769e+308"); // Based on DBL_DIG significant digits for '%g' format specifier
+            }
+
+
+            // Precision related tests
+
+            SECTION("0.0 precision 0") {
+                json.value(0.0, 0);
+                check(data).equals("0");
+            }
+            SECTION("0.0 precision 1") {
+                json.value(0.0, 1);
+                check(data).equals("0.0");
+            }
+            SECTION("0.0 precision 2") {
+                json.value(0.0, 2);
+                check(data).equals("0.00");
+            }
+            SECTION("0.0 precision 6") {
+                json.value(0.0, 6);
+                check(data).equals("0.000000");
+            }
+            SECTION("0.0 precision 10") {
+                json.value(0.0, 10);
+                check(data).equals("0.0000000000");
+            }
+
+            SECTION("-0.0 precision 0") {
+                json.value(-0.0, 0);
+                check(data).equals("-0");
+            }
+            SECTION("-0.0 precision 1") {
+                json.value(-0.0, 1);
+                check(data).equals("-0.0");
+            }
+            SECTION("-0.0 precision 2") {
+                json.value(-0.0, 2);
+                check(data).equals("-0.00");
+            }
+            SECTION("-0.0 precision 6") {
+                json.value(-0.0, 6);
+                check(data).equals("-0.000000");
+            }
+            SECTION("-0.0 precision 10") {
+                json.value(-0.0, 10);
+                check(data).equals("-0.0000000000");
+            }
+
+            SECTION("0.00001 precision 0") {
+                json.value(0.00001, 0);
+                check(data).equals("0"); // Round down
+            }
+            SECTION("0.00001 precision 1") {
+                json.value(0.00001, 1);
+                check(data).equals("0.0"); // Round down
+            }
+            SECTION("0.00001 precision 2") {
+                json.value(0.00001, 2);
+                check(data).equals("0.00"); // Round down
+            }
+            SECTION("0.00001 precision 3") {
+                json.value(0.00001, 3);
+                check(data).equals("0.000"); // Round down
+            }
+            SECTION("0.00001 precision 4") {
+                json.value(0.00001, 4);
+                check(data).equals("0.0000"); // Round down
+            }
+            SECTION("0.00001 precision 5") {
+                json.value(0.00001, 5);
+                check(data).equals("0.00001");
+            }
+            SECTION("0.00001 precision 6") {
+                json.value(0.00001, 6);
+                check(data).equals("0.000010");
+            }
+
+            SECTION("-0.00001 precision 0") {
+                json.value(-0.00001, 0);
+                check(data).equals("-0"); // Round down (up)
+            }
+            SECTION("-0.00001 precision 1") {
+                json.value(-0.00001, 1);
+                check(data).equals("-0.0"); // Round down (up)
+            }
+            SECTION("-0.00001 precision 2") {
+                json.value(-0.00001, 2);
+                check(data).equals("-0.00"); // Round down (up)
+            }
+            SECTION("-0.00001 precision 3") {
+                json.value(-0.00001, 3);
+                check(data).equals("-0.000"); // Round down (up)
+            }
+            SECTION("-0.00001 precision 4") {
+                json.value(-0.00001, 4);
+                check(data).equals("-0.0000"); // Round down (up)
+            }
+            SECTION("-0.00001 precision 5") {
+                json.value(-0.00001, 5);
+                check(data).equals("-0.00001");
+            }
+            SECTION("-0.00001 precision 6") {
+                json.value(-0.00001, 6);
+                check(data).equals("-0.000010");
+            }
+
+            SECTION("0.00005 precision 0") {
+                json.value(0.00005, 0);
+                check(data).equals("0"); // Round down
+            }
+            SECTION("0.00005 precision 1") {
+                json.value(0.00005, 1);
+                check(data).equals("0.0"); // Round down
+            }
+            SECTION("0.00005 precision 2") {
+                json.value(0.00005, 2);
+                check(data).equals("0.00"); // Round down
+            }
+            SECTION("0.00005 precision 3") {
+                json.value(0.00005, 3);
+                check(data).equals("0.000"); // Round down
+            }
+            SECTION("0.00005 precision 4") {
+                json.value(0.00005, 4);
+                check(data).equals("0.0001"); // Round up
+            }
+            SECTION("0.00005 precision 5") {
+                json.value(0.00005, 5);
+                check(data).equals("0.00005");
+            }
+            SECTION("0.00005 precision 6") {
+                json.value(0.00005, 6);
+                check(data).equals("0.000050");
+            }
+
+            SECTION("-0.00005 precision 0") {
+                json.value(-0.00005, 0);
+                check(data).equals("-0"); // Round down (up)
+            }
+            SECTION("-0.00005 precision 1") {
+                json.value(-0.00005, 1);
+                check(data).equals("-0.0"); // Round down (up)
+            }
+            SECTION("-0.00005 precision 2") {
+                json.value(-0.00005, 2);
+                check(data).equals("-0.00"); // Round down (up)
+            }
+            SECTION("-0.00005 precision 3") {
+                json.value(-0.00005, 3);
+                check(data).equals("-0.000"); // Round down (up)
+            }
+            SECTION("-0.00005 precision 4") {
+                json.value(-0.00005, 4);
+                check(data).equals("-0.0001"); // Round up (down)
+            }
+            SECTION("-0.00005 precision 5") {
+                json.value(-0.00005, 5);
+                check(data).equals("-0.00005");
+            }
+            SECTION("-0.00005 precision 6") {
+                json.value(-0.00005, 6);
+                check(data).equals("-0.000050");
+            }
+
+            SECTION("3.14159265358979323846 precision 0") {
+                json.value(3.14159265358979323846, 0);
+                check(data).equals("3"); // Round down
+            }
+            SECTION("3.14159265358979323846 precision 1") {
+                json.value(3.14159265358979323846, 1);
+                check(data).equals("3.1"); // Round down
+            }
+            SECTION("3.14159265358979323846 precision 2") {
+                json.value(3.14159265358979323846, 2);
+                check(data).equals("3.14"); // Round down
+            }
+            SECTION("3.14159265358979323846 precision 6") {
+                json.value(3.14159265358979323846, 6);
+                check(data).equals("3.141593"); // Round up
+            }
+            SECTION("3.14159265358979323846 precision 12") {
+                json.value(3.14159265358979323846, 12);
+                check(data).equals("3.141592653590"); // Round up
+            }
+
+            SECTION("-3.14159265358979323846 precision 0") {
+                json.value(-3.14159265358979323846, 0);
+                check(data).equals("-3"); // Round down (up)
+            }
+            SECTION("-3.14159265358979323846 precision 1") {
+                json.value(-3.14159265358979323846, 1);
+                check(data).equals("-3.1"); // Round down (up)
+            }
+            SECTION("-3.14159265358979323846 precision 2") {
+                json.value(-3.14159265358979323846, 2);
+                check(data).equals("-3.14"); // Round down (up)
+            }
+            SECTION("-3.14159265358979323846 precision 6") {
+                json.value(-3.14159265358979323846, 6);
+                check(data).equals("-3.141593"); // Round up (down)
+            }
+            SECTION("-3.14159265358979323846 precision 12") {
+                json.value(-3.14159265358979323846, 12);
+                check(data).equals("-3.141592653590"); // Round up (down)
+            }
+
+            SECTION("DBL_MIN precision 0") {
+                json.value(DBL_MIN, 0);
+                check(data).equals("0");
+            }
+            SECTION("-DBL_MIN precision 0") {
+                json.value(-DBL_MIN, 0);
+                check(data).equals("-0");
+            }
+            SECTION("DBL_MIN precision 12") {
+                json.value(DBL_MIN, 12);
+                check(data).equals("0.000000000000");
+            }
+            SECTION("-DBL_MIN precision 12") {
+                json.value(-DBL_MIN, 12);
+                check(data).equals("-0.000000000000");
+            }
+
+            SECTION("DBL_MAX precision 0") {
+                json.value(DBL_MAX, 0);
+                check(data).equals("179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368");
+            }
+            SECTION("-DBL_MAX precision 0") {
+                json.value(-DBL_MAX, 0);
+                check(data).equals("-179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368");
+            }
+
+            SECTION("DBL_MAX precision 12") {
+                json.value(DBL_MAX, 12);
+                check(data).equals("179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000000000");
+            }
+            SECTION("-DBL_MAX precision 12") {
+                json.value(-DBL_MAX, 12);
+                check(data).equals("-179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000000000");
             }
         }
     }

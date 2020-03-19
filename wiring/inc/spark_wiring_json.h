@@ -175,6 +175,7 @@ public:
     JSONWriter& value(bool val);
     JSONWriter& value(int val);
     JSONWriter& value(unsigned val);
+    JSONWriter& value(double val, int precision);
     JSONWriter& value(double val);
     JSONWriter& value(const char *val);
     JSONWriter& value(const char *val, size_t size);
