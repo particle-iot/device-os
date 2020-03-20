@@ -135,8 +135,7 @@ int Mcp23s17::setPinMode(uint8_t port, uint8_t pin, PinMode mode, bool verify) {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(port < MCP23S17_PORT_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(pin < MCP23S17_PIN_COUNT_PER_PORT, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(mode != INPUT_PULLDOWN, SYSTEM_ERROR_NOT_SUPPORTED);
-    // TODO: return on invalid pin mode
+    CHECK_TRUE(mode == INPUT_PULLUP || mode == INPUT || mode == OUTPUT, SYSTEM_ERROR_NOT_SUPPORTED);
     uint8_t newVal = gppu_[port];
     uint8_t bitMask = 0x01 << pin;
     if (mode == INPUT_PULLUP) {
@@ -159,7 +158,7 @@ int Mcp23s17::setPinMode(uint8_t port, uint8_t pin, PinMode mode, bool verify) {
     }
     
     newVal = iodir_[port];
-    if (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN) {
+    if (mode == OUTPUT) {
         CHECK_TRUE((newVal & bitMask), SYSTEM_ERROR_NONE);
         newVal &= ~bitMask;
     } else {

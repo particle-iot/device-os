@@ -38,23 +38,38 @@ int Demux::write(uint8_t pin, uint8_t value) {
     DemuxLock lock();
     CHECK_TRUE(pin < DEMUX_MAX_PIN_COUNT && pin != 0, SYSTEM_ERROR_INVALID_ARGUMENT); // Y0 is not available for user's usage.
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    // Select Y0 by default, so that all other pins output high.
-    nrf_gpio_port_out_clear(DEMUX_NRF_PORT, DEMUX_PIN_A_MASK | DEMUX_PIN_B_MASK | DEMUX_PIN_C_MASK);
-    setPinValue(0, 0);
-    uint32_t bitSetMask = 0x00000000;
-    if (value == 0) {
-        if (pin >= 4) {
-            bitSetMask |= DEMUX_PIN_C_MASK;
-        }
-        if ((pin % 4) >= 2) {
-            bitSetMask |= DEMUX_PIN_B_MASK;
-        }
-        if ((pin % 2) == 1) {
-            bitSetMask |= DEMUX_PIN_A_MASK;
-        }
-        nrf_gpio_port_out_set(DEMUX_NRF_PORT, bitSetMask);
-        setPinValue(pin, value);
+    // We can do it in this way for now, since the control pins are continuous.
+    // Otherwise, we should use the general method below.
+    uint32_t currOut = (nrf_gpio_port_out_read(DEMUX_NRF_PORT) >> 10) & 0x00000007;
+    if ((currOut == pin && value == 0) || (currOut != pin && value == 1)) {
+        return SYSTEM_ERROR_NONE;
     }
+    if (value) {
+        // Select Y0 by default, so that all other pins output high.
+        nrf_gpio_port_out_clear(DEMUX_NRF_PORT, DEMUX_PIN_A_MASK | DEMUX_PIN_B_MASK | DEMUX_PIN_C_MASK);
+        setPinValue(0, 0);
+    } else {
+        nrf_gpio_port_out_set(DEMUX_NRF_PORT, ((uint32_t)pin) << 10);
+        setPinValue(pin, 0);
+    }
+
+    // Select Y0 by default, so that all other pins output high.
+    // nrf_gpio_port_out_clear(DEMUX_NRF_PORT, DEMUX_PIN_A_MASK | DEMUX_PIN_B_MASK | DEMUX_PIN_C_MASK);
+    // setPinValue(0, 0);
+    // uint32_t bitSetMask = 0x00000000;
+    // if (value == 0) {
+    //     if (pin >= 4) {
+    //         bitSetMask |= DEMUX_PIN_C_MASK;
+    //     }
+    //     if ((pin % 4) >= 2) {
+    //         bitSetMask |= DEMUX_PIN_B_MASK;
+    //     }
+    //     if ((pin % 2) == 1) {
+    //         bitSetMask |= DEMUX_PIN_A_MASK;
+    //     }
+    //     nrf_gpio_port_out_set(DEMUX_NRF_PORT, bitSetMask);
+    //     setPinValue(pin, value);
+    // }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -68,11 +83,11 @@ Demux& Demux::getInstance() {
 }
 
 int Demux::lock() {
-    return !mutex_.lock();
+    return mutex_.lock();
 }
 
 int Demux::unlock() {
-    return !mutex_.unlock();
+    return mutex_.unlock();
 }
 
 void Demux::init() {
