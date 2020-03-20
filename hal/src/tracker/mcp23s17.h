@@ -83,9 +83,9 @@ private:
     public:
         Mcp23s17SpiConfigurationGuarder() = delete;
         Mcp23s17SpiConfigurationGuarder(HAL_SPI_Interface spi)
-                : spi_(spi) {
+                : spi_(spi),
+                  spiInfoCache_{} {
             HAL_SPI_Acquire(spi_, nullptr);
-            memset(&spiInfoCache_, 0x00, sizeof(spiInfoCache_));
             spiInfoCache_.version = HAL_SPI_INFO_VERSION_2;
             HAL_SPI_Info(spi_, &spiInfoCache_, nullptr);
             if (spiInfoCache_.bit_order != MSBFIRST) {
@@ -123,7 +123,7 @@ private:
         uint8_t calculateClockDivider(uint32_t system_clock, uint32_t clock) {
             uint8_t result;
             // Integer division results in clean values
-            switch (system_clock / clock) {
+            switch (clock > 0 ? (system_clock / clock) : 0) {
             case 2:
                 result = SPI_CLOCK_DIV2;
                 break;
