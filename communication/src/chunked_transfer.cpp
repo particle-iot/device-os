@@ -121,6 +121,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
     ProtocolError error;
     channel.response(message, response, 16);
     uint8_t* queue = message.buf();
+    const CoAPType::Enum msg_type = CoAP::type(queue);
 
     DEBUG("chunk");
     if (!is_updating())
@@ -190,7 +191,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
                 // message is confirmable for regular OTA or when
                 response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::OK, channel.is_unreliable());
             }
-            else
+            else if (msg_type == CoAPType::CON)
             {
                 // PoC: Acknowledge fast OTA chunk
                 const message_id_t msg_id = CoAP::message_id(queue);
@@ -207,7 +208,7 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
             {
                 response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::BAD, channel.is_unreliable());
             }
-            else
+            else if (msg_type == CoAPType::CON)
             {
                 // PoC: Acknowledge fast OTA chunk
                 const message_id_t msg_id = CoAP::message_id(queue);
