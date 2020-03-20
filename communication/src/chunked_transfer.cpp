@@ -190,6 +190,13 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
                 // message is confirmable for regular OTA or when
                 response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::OK, channel.is_unreliable());
             }
+            else
+            {
+                // PoC: Acknowledge fast OTA chunk
+                const message_id_t msg_id = CoAP::message_id(queue);
+                response_size = Messages::empty_ack(response.buf(), 0, 0);
+                response.set_id(msg_id);
+            }
             flag_chunk_received(chunk_index);
             chunk_index++;
         }
@@ -200,7 +207,13 @@ ProtocolError ChunkedTransfer::handle_chunk(token_t token, Message& message,
             {
                 response_size = Messages::chunk_received(response.buf(), 0, token, ChunkReceivedCode::BAD, channel.is_unreliable());
             }
-            // fast OTA will request the chunk later
+            else
+            {
+                // PoC: Acknowledge fast OTA chunk
+                const message_id_t msg_id = CoAP::message_id(queue);
+                response_size = Messages::coded_ack(response.buf(), CoAPCode::BAD_REQUEST, 0, 0);
+                response.set_id(msg_id);
+            }
         }
         if (response_size)
         {
