@@ -152,7 +152,7 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
         if (conf->set_value) {
             Demux::getInstance().write(PIN_MAP[pin].gpio_pin, conf->value);
         }
-        return 0;
+        PIN_MAP[pin].pin_mode = mode;
     }
 #endif // HAL_PLATFORM_DEMUX
     else {

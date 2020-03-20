@@ -50,19 +50,19 @@
 #define SCL                     D1
 
 // UART
-#define TX                      D2
-#define RX                      D3
-#define CTS                     D4
-#define RTS                     D5
+#define TX                      D8
+#define RX                      D9
+#define CTS                     D6
+#define RTS                     D7
 
 // SPI
-#define SS                      D6
-#define SCK                     D7
-#define MOSI                    D8
-#define MISO                    D9
+#define SS                      D2
+#define SCK                     D3
+#define MOSI                    D4
+#define MISO                    D5
 
 // Wakeup pin
-#define WKP                     D8
+#define WKP                     D2
 
 // RGB
 #define RGBR                    10
@@ -93,11 +93,11 @@
 #define PMIC_SCL                SCL1
 
 // Fuel Gauge
-#define LOW_BAT_UC              40
+#define LOW_BAT_UC              35
 
 // RTC
 #define RTC_INT                 24
-#define RTC_WDI                 39
+#define RTC_WDI                 36
 #define RTC_SDA                 SDA1
 #define RTC_SCL                 SCL1
 
@@ -105,26 +105,26 @@
 #define BGRST                   25
 #define BGPWR                   26
 #define BGVINT                  27
-#define BGDTR                   38
+#define BGDTR                   48
 
 // CAN Transciever
 #define CAN_INT                 28
-#define CAN_RST                 45
-#define CAN_PWR                 46
-#define CAN_STBY                47
-#define CAN_RTS2                48
-#define CAN_RTS1                49
-#define CAN_RTS0                50
+#define CAN_RST                 49
+#define CAN_PWR                 50
+#define CAN_STBY                37
+#define CAN_RTS2                46
+#define CAN_RTS1                45
+#define CAN_RTS0                47
 #define CAN_CS                  55
 
 // IO Expander
 #define IOE_INT                 29
 #define IOE_RST                 30
-#define IOE_CS                  52
+#define IOE_CS                  54
 
 // Sensor
 #define SEN_INT                 31
-#define SEN_CS                  53
+#define SEN_CS                  51
 
 // NFC
 #define NFC_PIN1                32
@@ -134,16 +134,16 @@
 #define BLE_ANT_SW              34
 
 // Wi-Fi
-#define WIFI_EN                 35
-#define WIFI_INT                36
-#define WIFI_BOOT               37
-#define WIFI_CS                 54
+#define WIFI_EN                 38
+#define WIFI_INT                39
+#define WIFI_BOOT               40
+#define WIFI_CS                 52
 
 // GPS
 #define GPS_PWR                 41
 #define GPS_INT                 42
 #define GPS_BOOT                43
 #define GPS_RST                 44
-#define GPS_CS                  51
+#define GPS_CS                  53
 
 #endif // PLATFORM_ID == PLATFORM_TRACKER
