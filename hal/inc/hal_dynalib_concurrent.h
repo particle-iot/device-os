@@ -64,6 +64,12 @@ DYNALIB_FN(27, hal_concurrent, os_thread_exit, os_result_t(os_thread_t))
 
 DYNALIB_FN(28, hal_concurrent, os_timer_set_id, int(os_timer_t, void*))
 DYNALIB_FN(29, hal_concurrent, os_thread_current, os_thread_t(void*))
+
+DYNALIB_FN(30, hal_concurrent, os_semaphore_create, int(os_semaphore_t*, unsigned, unsigned))
+DYNALIB_FN(31, hal_concurrent, os_semaphore_destroy, int(os_semaphore_t))
+DYNALIB_FN(32, hal_concurrent, os_semaphore_take, int(os_semaphore_t, system_tick_t, bool))
+DYNALIB_FN(33, hal_concurrent, os_semaphore_give, int(os_semaphore_t, bool))
+DYNALIB_FN(34, hal_concurrent, os_scheduler_get_state, os_scheduler_state_t(void*))
 #endif // PLATFORM_THREADING
 
 DYNALIB_END(hal_concurrent)
