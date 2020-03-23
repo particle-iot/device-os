@@ -91,7 +91,7 @@ const hal_spi_info_t WIZNET_DEFAULT_CONFIG = {
     .ss_pin = PIN_INVALID
 };
 
-uint8_t calculateClockDivider (uint32_t system_clock, uint32_t clock) {
+inline uint8_t calculateClockDivider (uint32_t system_clock, uint32_t clock) {
     uint8_t result;
 
     // Integer division results in clean values
@@ -126,7 +126,9 @@ uint8_t calculateClockDivider (uint32_t system_clock, uint32_t clock) {
     return result;
 }
 
-hal_spi_info_t spiConfigure(HAL_SPI_Interface spi, const hal_spi_info_t* conf) {
+// FIXME/IMPORTANT: On certain platforms (b5som) leaving this function non-inlineable results in stack corruption/clashing
+// Forcing the function to be always_inline until we can figure out what exactly causes the problem / switch to another compiler version.
+inline hal_spi_info_t __attribute__ ((always_inline)) spiConfigure(HAL_SPI_Interface spi, const hal_spi_info_t* conf) {
     hal_spi_info_t info = { .version = HAL_SPI_INFO_VERSION_2 };
     HAL_SPI_Info(spi, &info, nullptr);
 
