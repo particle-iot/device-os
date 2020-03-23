@@ -844,7 +844,7 @@ bool system_cloud_active()
         if (SPARK_CLOUD_CONNECTED && ((now-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
         {
             WARN("Disconnecting cloud due to inactivity! %d, %d", now, lastCloudEvent);
-            cloud_disconnect(false); // TODO: Do we need to specify a reason of the disconnection here?
+            cloud_disconnect(HAL_PLATFORM_MAY_LEAK_SOCKETS ? false : true, false, CLOUD_DISCONNECT_REASON_ERROR);
             return false;
         }
     }
@@ -1121,7 +1121,7 @@ void Spark_Process_Events()
     if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
     {
         WARN("Communication loop error, closing cloud socket");
-        cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_ERROR);
+        cloud_disconnect(HAL_PLATFORM_MAY_LEAK_SOCKETS ? false : true, false, CLOUD_DISCONNECT_REASON_ERROR);
     }
     else
     {
