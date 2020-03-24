@@ -628,7 +628,6 @@ int Esp32NcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Channel
         switch (channel) {
             case 0:
                 // Muxer stopped
-                self->connectionState(NcpConnectionState::DISCONNECTED);
                 self->disable();
                 break;
             case ESP32_NCP_STA_CHANNEL: {
@@ -656,11 +655,6 @@ int Esp32NcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     if (err) {
         // Make sure we are going into an error state if muxer for some reason fails
         // to write into the data channel.
-        connectionState(NcpConnectionState::DISCONNECTED);
-        // disable() sets the ncpState_ to NcpState::DISABLED which prevents connectionState()
-        // from even trying to send events to the PPP client to go to a LOWER_DOWN state,
-        // and it might still not get there if connState_ is already DISCONNECTED, but order matters.
-        // Call disable() after connectionState()
         disable();
     }
 
