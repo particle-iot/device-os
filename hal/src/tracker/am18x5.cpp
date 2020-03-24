@@ -27,146 +27,11 @@
 #include "bcd_to_dec.h"
 #include "interrupts_hal.h"
 #include "gpio_hal.h"
+#include "am18x5_defines.h"
 
 using namespace particle;
 
 namespace {
-
-// Time and Date Bits Mask
-#define SECONDS_MASK                0x7F
-#define MINUTES_MASK                0x7F
-#define HOURS_12_MASK               0x1F
-#define HOURS_AM_PM_MASK            0x20
-#define HOURS_24_MASK               0x3F
-#define DATE_MASK                   0x3F
-#define MONTHS_MASK                 0x1F
-#define WEEKDAY_MASK                0x07
-
-// Alarm Bits Mask
-#define SECONDS_ALARM_MASK          0x7F
-#define MINUTES_ALARM_MASK          0x7F
-#define HOURS_12_ALARM_MASK         0x1F
-#define HOURS_AM_PM_ALARM_MASK      0x20
-#define HOURS_24_ALARM_MASK         0x3F
-#define DATE_ALARM_MASK             0x3F
-#define MONTHS_ALARM_MASK           0x1F
-#define WEEKDAY_ALARM_MASK          0x07
-
-// Status Bit Mask
-#define STATUS_CB_MASK              0x80
-#define STATUS_BAT_MASK             0x40
-#define STATUS_WDT_MASK             0x20
-#define STATUS_BL_MASK              0x10
-#define STATUS_TIM_MASK             0x08
-#define STATUS_ALM_MASK             0x04
-#define STATUS_EX2_MASK             0x02
-#define STATUS_EX1_MASK             0x01
-
-// Control 1 Bits Mask
-#define CONTROL1_STOP_MASK          0x80
-#define CONTROL1_1224_MASK          0x40
-#define CONTROL1_1224_SHIFT         (6)
-#define CONTROL1_OUTB_MASK          0x20
-#define CONTROL1_OUT_MASK           0x10
-#define CONTROL1_RSP_MASK           0x08
-#define CONTROL1_ARST_MASK          0x04
-#define CONTROL1_ARST_SHIFT         (2)
-#define CONTROL1_PWR2_MASK          0x02
-#define CONTROL1_WRTC_MASK          0x01
-
-// Control 2 Bits Mask
-#define CONTROL2_RS1E_MASK          0x20
-#define CONTROL2_OUT2S_MASK         0x1C
-#define CONTROL2_OUT1S_MASK         0x03
-
-// Interrupt Bits Mask
-#define INTERRUPT_CEB_MASK          0x80
-#define INTERRUPT_IM_MASK           0x60
-#define INTERRUPT_BLIE_MASK         0x10
-#define INTERRUPT_TIE_MASK          0x08
-#define INTERRUPT_AIE_MASK          0x04
-#define INTERRUPT_AIE_SHIFT         (2)
-#define INTERRUPT_EX2E_MASK         0x02
-#define INTERRUPT_EX1E_MASK         0x01
-
-// SQW Bit Mask
-#define SQW_SQWE_MASK               0x80
-#define SQW_SQFS_MASK               0x1F
-
-// Calibration Bits Mask
-#define CAL_XT_CMDX_MASK            0x80
-#define CAL_XT_OFFSETX_MASK         0x7F
-#define CAL_RC_HI_CMDR_MASK         0xC0
-#define CAL_RC_HI_OFFSETRU_MASK     0x3F
-
-// Sleep Control Bit Mask
-#define SLEEP_CONTROL_SLP_MASK      0x80
-#define SLEEP_CONTROL_SLRES_MASK    0x40 // When 1, assert nRST low when the Power Control SM is in the SLEEP state.
-#define SLEEP_CONTROL_EX2P_MASK     0x20 // When 1, the external interrupt XT2 will trigger on a rising edge of the WDI pin.
-#define SLEEP_CONTROL_EX1P_MASK     0x10 // When 1, the external interrupt XT1 will trigger on a rising edge of the EXTI pin.
-#define SLEEP_CONTROL_SLST_MASK     0x08 // Set when the AM18X5 enters Sleep Mode
-#define SLEEP_CONTROL_SLTO_MASK     0x07 // The number of 7.8 ms periods after SLP is set until the Power Control SM goes into the SLEEP state.
-
-// Countdown Timer Control Bits Mask
-#define TIMER_CONTROL_TE_MASK       0x80
-#define TIMER_CONTROL_TM_MASK       0x40
-#define TIMER_CONTROL_TRPT_MASK     0x20
-#define TIMER_CONTROL_RPT_MASK      0x1C
-#define TIMER_CONTROL_RPT_SHIFT     (2)
-#define TIMER_CONTROL_TFS_MASK      0x03
-
-// WDT Bits Mask
-#define WDT_REGISTER_WDS_MASK       0x80
-#define WDT_REGISTER_BMB_MASK       0x7C
-#define WDT_REGISTER_WRB_MASK       0x03
-
-//outcontrol sleep mode value
-// #define CCTRL_SLEEP_MODE_MASK 0xC0 //清除 WDDS,EXDS,RSEN,O4EN,O3EN,O1EN
-
-// OSC Control Bits Mask
-#define OSC_CONTROL_OSEL_MASK       0x80
-#define OSC_CONTROL_OSEL_SHIFT      (7)
-#define OSC_CONTROL_ACAL_MASK       0x60
-#define OSC_CONTROL_AOS_MASK        0x10
-#define OSC_CONTROL_AOS_SHIFT       (4)
-#define OSC_CONTROL_FOS_MASK        0x08
-#define OSC_CONTROL_PWGT_MASK       0x04
-#define OSC_CONTROL_OFIE_MASK       0x02
-#define OSC_CONTROL_ACIE_MASK       0x01
-
-// OSC Status Bits Mask
-#define OSC_STATUS_XTCAL_MASK       0xC0
-#define OSC_STATUS_LKO2_MASK        0x20
-#define OSC_STATUS_OMODE_MASK       0x10
-#define OSC_STATUS_OF_MASK          0x02
-#define OSC_STATUS_ACF_MASK         0x01
-
-// Trickle Bits Mask
-#define TRICKLE_TCS_MASK            0xF0
-#define TRICKLE_DIODE_MASK          0x0C
-#define TRICKLE_ROUT_MASK           0x03
-
-// BREF Control Bits Mask
-#define BREF_MASK                   0xF0
-
-// Batmode IO Bit Mask
-#define BATMODE_IO_MASK             0x80
-
-// Analog Status Bits Mask
-#define ANALOG_STATUS_BBOD_MASK     0x80
-#define ANALOG_STATUS_BMIN_MASK     0x40
-#define ANALOG_STATUS_VINIT_MASK    0x02
-
-// Out Control Bit Mask
-#define OUTPUT_CTRL_WDBM_MASK       0x80
-#define OUTPUT_CTRL_EXBM_MASK       0x40
-#define OUTPUT_CTRL_WDDS_MASK       0x20
-#define OUTPUT_CTRL_EXDS_MASK       0x10
-#define OUTPUT_CTRL_RSEN_MASK       0x08
-#define OUTPUT_CTRL_O4EN_MASK       0x04
-#define OUTPUT_CTRL_O3EN_MASK       0x02
-#define OUTPUT_CTRL_O1EN_MASK       0x01
-
 
 void exRtcInterruptHandler(void* data) {
     auto instance = static_cast<Am18x5*>(data);
@@ -218,6 +83,9 @@ int Am18x5::begin() {
         LOG(ERROR, "os_thread_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
+
+    HAL_Pin_Mode(RTC_WDI, OUTPUT);
+    HAL_GPIO_Write(RTC_WDI, 1);
 
     HAL_Pin_Mode(RTC_INT, INPUT_PULLUP);
     HAL_InterruptExtraConfiguration extra = {0};
@@ -280,14 +148,14 @@ int Am18x5::setCalendar(const struct tm* calendar) const {
     CHECK_TRUE(calendar, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(calendar->tm_year >= UNIX_TIME_YEAR_BASE, SYSTEM_ERROR_INVALID_ARGUMENT);
     uint8_t buff[7] = {0};
-    CHECK(buff[0] = decToBcd(calendar->tm_sec));
-    CHECK(buff[1] = decToBcd(calendar->tm_min));
-    CHECK(buff[2] = decToBcd(calendar->tm_hour));
-    CHECK(buff[3] = decToBcd(calendar->tm_mday));
-    CHECK(buff[4] = decToBcd(calendar->tm_mon + 1)); // Month in tm structure ranges from 0 - 11.
-    CHECK(buff[5] = decToBcd(calendar->tm_year - UNIX_TIME_YEAR_BASE));
-    CHECK(buff[6] = decToBcd(calendar->tm_wday));
-    CHECK(writeContinuouseRegisters(Am18x5Register::SECONDS, buff, sizeof(buff)));
+    buff[0] = CHECK(decToBcd(calendar->tm_sec));
+    buff[1] = CHECK(decToBcd(calendar->tm_min));
+    buff[2] = CHECK(decToBcd(calendar->tm_hour));
+    buff[3] = CHECK(decToBcd(calendar->tm_mday));
+    buff[4] = CHECK(decToBcd(calendar->tm_mon + 1)); // Month in tm structure ranges from 0 - 11.
+    buff[5] = CHECK(decToBcd(calendar->tm_year - UNIX_TIME_YEAR_BASE));
+    buff[6] = CHECK(decToBcd(calendar->tm_wday));
+    CHECK(writeContinuousRegisters(Am18x5Register::SECONDS, buff, sizeof(buff)));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -296,16 +164,16 @@ int Am18x5::getCalendar(struct tm* calendar) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(calendar, SYSTEM_ERROR_INVALID_ARGUMENT);
     uint8_t buff[7] = {0};
-    CHECK(readContinuouseRegisters(Am18x5Register::SECONDS, buff, sizeof(buff)));
-    CHECK(calendar->tm_sec = bcdToDec(buff[0]));
-    CHECK(calendar->tm_min = bcdToDec(buff[1]));
-    CHECK(calendar->tm_hour = bcdToDec(buff[2]));
-    CHECK(calendar->tm_mday = bcdToDec(buff[3]));
-    CHECK(calendar->tm_mon = bcdToDec(buff[4]));
+    CHECK(readContinuousRegisters(Am18x5Register::SECONDS, buff, sizeof(buff)));
+    calendar->tm_sec = CHECK(bcdToDec(buff[0]));
+    calendar->tm_min = CHECK(bcdToDec(buff[1]));
+    calendar->tm_hour = CHECK(bcdToDec(buff[2]));
+    calendar->tm_mday = CHECK(bcdToDec(buff[3]));
+    calendar->tm_mon = CHECK(bcdToDec(buff[4]));
     calendar->tm_mon -= 1;
-    CHECK(calendar->tm_year = bcdToDec(buff[5]));
+    calendar->tm_year = CHECK(bcdToDec(buff[5]));
     calendar->tm_year += UNIX_TIME_YEAR_BASE;
-    CHECK(calendar->tm_wday = bcdToDec(buff[6]));
+    calendar->tm_wday = CHECK(bcdToDec(buff[6]));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -315,14 +183,14 @@ int Am18x5::setAlarm(const struct tm* calendar) {
     CHECK_TRUE(calendar, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(calendar->tm_year >= UNIX_TIME_YEAR_BASE, SYSTEM_ERROR_INVALID_ARGUMENT);
     uint8_t buff[6] = {0};
-    CHECK(buff[0] = decToBcd(calendar->tm_sec));
-    CHECK(buff[1] = decToBcd(calendar->tm_min));
-    CHECK(buff[2] = decToBcd(calendar->tm_hour));
-    CHECK(buff[3] = decToBcd(calendar->tm_mday));
-    CHECK(buff[4] = decToBcd(calendar->tm_mon + 1)); // Month in tm structure ranges from 0 - 11.
+    buff[0] = CHECK(decToBcd(calendar->tm_sec));
+    buff[1] = CHECK(decToBcd(calendar->tm_min));
+    buff[2] = CHECK(decToBcd(calendar->tm_hour));
+    buff[3] = CHECK(decToBcd(calendar->tm_mday));
+    buff[4] = CHECK(decToBcd(calendar->tm_mon + 1)); // Month in tm structure ranges from 0 - 11.
     alarmYear_ = calendar->tm_year - UNIX_TIME_YEAR_BASE;
-    CHECK(buff[5] = decToBcd(calendar->tm_wday));
-    CHECK(writeContinuouseRegisters(Am18x5Register::SECONDS_ALARM, buff, sizeof(buff)));
+    buff[5] = CHECK(decToBcd(calendar->tm_wday));
+    CHECK(writeContinuousRegisters(Am18x5Register::SECONDS_ALARM, buff, sizeof(buff)));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -333,6 +201,33 @@ int Am18x5::enableAlarm(bool enable, Am18x5::AlarmHandler handler, void* context
     alarmHandlerContext_ = context;
     CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, 1, false, true, TIMER_CONTROL_RPT_MASK, TIMER_CONTROL_RPT_SHIFT));
     return writeRegister(Am18x5Register::INT_MASK, enable, false, true, INTERRUPT_AIE_MASK, INTERRUPT_AIE_SHIFT);
+}
+
+int Am18x5::enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(value < 32, SYSTEM_ERROR_INVALID_ARGUMENT);
+    uint8_t regValue = WDT_REGISTER_WDS_MASK;
+    regValue |= (value << WDT_REGISTER_BMB_SHIFT);
+    regValue |= static_cast<uint8_t>(frequency);
+    return writeRegister(Am18x5Register::WDT, regValue);
+}
+
+int Am18x5::disableWatchdog() const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    return writeRegister(Am18x5Register::WDT, 0, false, true, WDT_REGISTER_BMB_MASK, WDT_REGISTER_BMB_SHIFT);
+}
+
+int Am18x5::feedWatchdog() const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    if (HAL_GPIO_Read(RTC_WDI) == 1) {
+        HAL_GPIO_Write(RTC_WDI, 0);
+    } else {
+        HAL_GPIO_Write(RTC_WDI, 1);
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::setHundredths(uint8_t hundredths) const {
@@ -510,7 +405,7 @@ int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool 
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::writeContinuouseRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const {
+int Am18x5::writeContinuousRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const {
     Am18x5Lock lock();
     HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
     HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(start_reg), nullptr);
@@ -538,7 +433,7 @@ int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd,
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::readContinuouseRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const {
+int Am18x5::readContinuousRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const {
     Am18x5Lock lock();
     HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
     HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(start_reg), nullptr);

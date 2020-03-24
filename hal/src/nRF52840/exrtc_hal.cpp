@@ -68,4 +68,33 @@ bool hal_exrtc_time_is_valid(void* reserved) {
     return unixtime > UNIX_TIME_201801010000;
 }
 
+int hal_exrtc_enable_watchdog(time_t ms, void* reserved) {
+    uint8_t value; // Maximum 31.
+    Am18x5WatchdogFrequency frequency;
+    if (ms < 1937) { // 31 * 1000 / 16
+        frequency = Am18x5WatchdogFrequency::HZ_16;
+        value = ms * 16 / 1000;
+    } else if (ms <= 7750) {
+        frequency = Am18x5WatchdogFrequency::HZ_4;
+        value = ms * 4 / 1000;
+    } else if (ms <= 31000) {
+        frequency = Am18x5WatchdogFrequency::HZ_1;
+        value = ms / 1000;
+    } else if (ms <= 124000) {
+        frequency = Am18x5WatchdogFrequency::HZ_1_4;
+        value = ms / 4 / 1000;
+    } else {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    return Am18x5::getInstance().enableWatchdog(value, frequency);
+}
+
+int hal_exrtc_disable_watchdog(void* reserved) {
+    return Am18x5::getInstance().disableWatchdog();
+}
+
+int hal_exrtc_feed_watchdog(void* reserved) {
+    return Am18x5::getInstance().feedWatchdog();
+}
+
 #endif // HAL_PLATFORM_EXTERNAL_RTC

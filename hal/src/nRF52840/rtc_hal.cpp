@@ -50,7 +50,11 @@ os_timer_t s_alarm_timer = nullptr; // software alarm timer
 } // anonymous
 
 void HAL_RTC_Configuration(void) {
+#if HAL_PLATFORM_EXTERNAL_RTC
+    HAL_RTC_Set_UnixTime(hal_exrtc_get_unixtime(nullptr));
+#else
     // Do nothing
+#endif
 }
 
 void HAL_RTC_Set_UnixTime(time_t value) {

@@ -110,6 +110,13 @@ enum class Am18x5Oscillator {
     EXTERNAL_CRYSTAL
 };
 
+enum class Am18x5WatchdogFrequency {
+    HZ_16 = 0x00,
+    HZ_4 = 0x01,
+    HZ_1 = 0x02,
+    HZ_1_4 = 0x03
+};
+
 class Am18x5 {
 public:
     typedef void (*AlarmHandler)(void* context);
@@ -123,6 +130,10 @@ public:
 
     int setAlarm(const struct tm* calendar);
     int enableAlarm(bool enable, AlarmHandler handler, void* context);
+
+    int enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) const;
+    int disableWatchdog() const;
+    int feedWatchdog() const;
 
     int getPartNumber(uint16_t* id) const;
 
@@ -157,9 +168,9 @@ private:
     int enableAutoSwitchOnBattery(bool enable) const;
 
     int writeRegister(const Am18x5Register reg, uint8_t val, bool bcd = false, bool rw = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
-    int writeContinuouseRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const;
+    int writeContinuousRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const;
     int readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
-    int readContinuouseRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const;
+    int readContinuousRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const;
     static os_thread_return_t exRtcInterruptHandleThread(void* param);
 
     static constexpr uint16_t UNIX_TIME_YEAR_BASE = 118; // 2018 - 1900
