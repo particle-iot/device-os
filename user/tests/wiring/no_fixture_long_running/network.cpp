@@ -152,3 +152,45 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 
     assertTrue((mtu - IPV4_PLUS_UDP_HEADER_LENGTH) >= MBEDTLS_SSL_MAX_CONTENT_LEN);
 }
+
+#if HAL_PLATFORM_NCP_AT
+test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
+    const system_tick_t WAIT_TIMEOUT = 5 * 60 * 1000;
+    const system_tick_t NCP_FAILURE_TIMEOUT = 15000;
+    SCOPE_GUARD({
+        Particle.disconnect();
+        Network.disconnect();
+        Network.off();
+    });
+
+    Network.on();
+    Network.connect();
+    Particle.connect();
+    waitFor(Particle.connected, WAIT_TIMEOUT);
+    assertTrue(Particle.connected());
+
+    // Simulate NCP failure by reconfiguring the NCP serial port with a baudrate
+    // setting different from expected.
+    // FIXME: when a new platform is added not using HAL_USART_SERIAL2 or not using
+    // UART for talking to NCP.
+    SINGLE_THREADED_BLOCK() {
+        HAL_USART_End(HAL_USART_SERIAL2);
+        HAL_USART_BeginConfig(HAL_USART_SERIAL2, 57600, SERIAL_8N1, nullptr);
+    }
+
+    delay(NCP_FAILURE_TIMEOUT);
+
+    // Eventually cloud connection is going to be restored and we should receive an ACK to a publish
+    auto start = millis();
+    bool published = false;
+    while (millis() - start <= WAIT_TIMEOUT) {
+        published = Particle.publish("test", "123", WITH_ACK);
+        if (published) {
+            break;
+        }
+        delay(5000);
+    }
+
+    assertTrue(published);
+}
+#endif // HAL_PLATFORM_NCP_AT
