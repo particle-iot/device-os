@@ -206,6 +206,8 @@ TwoWire& testWire(TwoWire& wire)
     API_COMPILE({ uint8_t v = wire.endTransmission(true); (void)v; });
     API_COMPILE({ size_t v = wire.requestFrom(123, 123, true); (void)v; });
     API_COMPILE({ size_t v = wire.requestFrom(123, 123); (void)v; });
+    API_COMPILE({ size_t v = wire.requestFrom((int)123, (int)123, (int)1); (void)v; });
+    API_COMPILE({ size_t v = wire.requestFrom((int)123, (int)123); (void)v; });
     API_COMPILE({ size_t v = wire.write(123); (void)v; });
     API_COMPILE({ size_t v = wire.write(nullptr, 123); (void)v; });
     API_COMPILE({ int v = wire.available(); (void)v; });
