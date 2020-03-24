@@ -382,6 +382,21 @@ int _link(const char* oldpath, const char* newpath) {
     return -1;
 }
 
+int _fsync(int fd) {
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    auto entry = s_fdMap.get(fd);
+    if (!entry) {
+        errno = EBADF;
+        return -1;
+    }
+
+    CHECK_LFS_ERRNO(lfs_file_sync(&lfs->instance, entry->file));
+
+    return 0;
+}
+
 off_t _lseek(int fd, off_t offset, int whence) {
     auto lfs = filesystem_get_instance(nullptr);
     FsLock lk(lfs);
@@ -627,5 +642,6 @@ int closedir(DIR* pdir) __attribute__((alias("_closedir")));
 int chdir(const char* path) __attribute__((alias("_chdir")));
 int fchdir(int fd) __attribute__((alias("_fchdir")));
 int mkdir(const char* pathname, mode_t mode) __attribute__((alias("_mkdir")));
+int fsync(int fd) __attribute__((alias("_fsync")));
 
 } // extern "C"
