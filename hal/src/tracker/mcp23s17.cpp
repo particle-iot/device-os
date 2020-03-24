@@ -230,7 +230,12 @@ int Mcp23s17::readPinValue(uint8_t port, uint8_t pin, uint8_t* value) {
     CHECK_TRUE(pin < MCP23S17_PIN_COUNT_PER_PORT, SYSTEM_ERROR_INVALID_ARGUMENT);
     uint8_t newVal = 0x00;
     uint8_t bitMask = 0x01 << pin;
-    CHECK(readRegister(GPIO_ADDR[port], &newVal));
+    CHECK(readRegister(IODIR_ADDR[port], &newVal));
+    if (newVal & bitMask) { // Read input value
+        CHECK(readRegister(GPIO_ADDR[port], &newVal));
+    } else {
+        CHECK(readRegister(OLAT_ADDR[port], &newVal));
+    }
     if (newVal & bitMask) {
         *value = 1;
     } else {

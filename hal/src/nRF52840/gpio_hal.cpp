@@ -261,7 +261,8 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
 #if HAL_PLATFORM_MCP23S17
     else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
         if ((PIN_MAP[pin].pin_mode == INPUT) ||
-            (PIN_MAP[pin].pin_mode == INPUT_PULLUP)) {
+            (PIN_MAP[pin].pin_mode == INPUT_PULLUP) ||
+            (PIN_MAP[pin].pin_mode == OUTPUT)) {
             uint8_t value = 0x00;
             Mcp23s17::getInstance().readPinValue(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, &value);
             return value;
