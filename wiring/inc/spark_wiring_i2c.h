@@ -107,8 +107,6 @@ public:
   uint8_t endTransmission(uint8_t);
   size_t requestFrom(uint8_t, size_t);
   size_t requestFrom(uint8_t, size_t, uint8_t);
-  size_t requestFrom(int, int);
-  size_t requestFrom(int, int, int);
   size_t requestFrom(const WireTransmission& transfer);
   virtual size_t write(uint8_t);
   virtual size_t write(const uint8_t *, size_t);
