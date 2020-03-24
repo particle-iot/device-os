@@ -1,4 +1,4 @@
-BUILDPACK_FILES=$(mkdir buildpack && wget https://api.github.com/repos/particle-iot/firmware-buildpack-builder/tarball/0.0.8 -O - | tar -xvz -C buildpack --strip-components 1)
+BUILDPACK_FILES=$(mkdir buildpack && wget https://github.com/particle-iot/firmware-buildpack-builder/tarball/0.0.8 -O - | tar -xvz -C buildpack --strip-components 1)
 SHORT_REF=$(echo "$BUILDPACK_FILES" | head -n1 | cut -d '/' -f 1 | rev | cut -d '-' -f 1 | rev)
 mkdir buildpack/.git
 echo "${SHORT_REF}" > buildpack/.git/short_ref
