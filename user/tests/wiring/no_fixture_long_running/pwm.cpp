@@ -2,6 +2,7 @@
 #include "unit-test/unit-test.h"
 #include "pwm_hal.h"
 #include <cmath>
+#include "scope_guard.h"
 
 #ifdef ABS
 #undef ABS
@@ -45,6 +46,34 @@ template <typename F> void for_all_pwm_pins(F callback)
 test(PWM_00_P1S6SetupForP1) {
     // disable POWERSAVE_CLOCK on P1S6
     System.disableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
+
+    pinMode(P1S6, OUTPUT);
+    digitalWrite(P1S6, HIGH);
+
+    // https://github.com/particle-iot/device-os/issues/1763
+    // Make sure that WICED wifi stack deactivations/reactivations
+    // keep the 32khz clock setting and the pin is not oscillating.
+    SCOPE_GUARD({
+        WiFi.disconnect();
+        WiFi.off();
+    });
+    WiFi.on();
+    WiFi.connect();
+    waitFor(WiFi.ready, 30000);
+    assertTrue(WiFi.ready());
+
+    // Simple test that its state has not been changed
+    assertEqual(digitalRead(P1S6), (int)HIGH);
+
+    // Otherwise try to calculate pulse width
+    uint32_t avgPulseLow = 0;
+    const int iters = 3;
+    for(int i = 0; i < iters; i++) {
+        avgPulseLow += pulseIn(P1S6, LOW);
+    }
+    avgPulseLow /= iters;
+    // avgPulseLow should not be around 32KHz (31.25us +- 10%)
+    assertEqual(avgPulseLow, 0);
 }
 #endif
 
