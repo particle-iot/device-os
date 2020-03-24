@@ -37,6 +37,10 @@ int hal_exrtc_set_unix_alarm(time_t unixtime, hal_exrtc_alarm_handler_t handler,
 int hal_exrtc_cancel_unixalarm(void* reserved);
 bool hal_exrtc_time_is_valid(void* reserved);
 
+int hal_exrtc_enable_watchdog(time_t ms, void* reserved);
+int hal_exrtc_disable_watchdog(void* reserved);
+int hal_exrtc_feed_watchdog(void* reserved);
+
 #ifdef __cplusplus
 }
 #endif
