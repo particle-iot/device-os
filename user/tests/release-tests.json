@@ -1956,7 +1956,7 @@
                     "path": "app"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep_multiple_pins",
                     "path": "app"
                 },
@@ -2021,7 +2021,7 @@
                     "path": "app"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "weather3",
                     "path": "app"
                 },
@@ -2041,12 +2041,12 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "i2c_master",
                     "path": "wiring/i2c_master_slave"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "i2c_slave",
                     "path": "wiring/i2c_master_slave"
                 },
@@ -2056,7 +2056,7 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "i2c_mcp23017",
                     "path": "wiring"
                 },
@@ -2071,25 +2071,25 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "no_fixture",
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "no_fixture",
                     "path": "wiring",
                     "use_threading": true
                 },
                 {
                     "comment": "this test should be run without anything connected to the device (and must connect a battery for cellular or else PMIC interrupt is evil)",
-                    "enabled": false,
+                    "enabled": true,
                     "name": "no_fixture_long_running",
                     "path": "wiring"
                 },
                 {
                     "comment": "this test should be run without anything connected to the device (and must connect a battery for cellular or else PMIC interrupt is evil)",
-                    "enabled": false,
+                    "enabled": true,
                     "name": "no_fixture_long_running",
                     "path": "wiring",
                     "use_threading": true
@@ -2115,17 +2115,39 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
+                    "name": "spi_master",
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "enabled": true,
                     "name": "spi_slave",
-                    "path": "wiring/spi_master_slave"
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI"
+                    }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
+                    "name": "spi_slave",
+                    "path": "wiring/spi_master_slave",
+                    "user_args": {
+                         "USE_SPI": "SPI1"
+                    }
+                },
+                {
+                    "enabled": true,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -2133,7 +2155,7 @@
                     }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -2141,7 +2163,7 @@
                     }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_slave",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
@@ -2149,7 +2171,7 @@
                     }
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "spi_slave",
                     "path": "wiring/spi_master_slave_alt",
                     "user_args": {
