@@ -153,7 +153,7 @@ private:
    *
    * Enables Gen2 platforms to synchronize access to the SPI peripheral
    */
-  Mutex _mutex;
+  RecursiveMutex _mutex;
 #endif
 
 public:
