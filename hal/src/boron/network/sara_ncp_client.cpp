@@ -361,7 +361,6 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
         // Make sure we are going into an error state if muxer for some reason fails
         // to write into the data channel.
         disable();
-        connectionState(NcpConnectionState::DISCONNECTED);
     }
 
     return err;
@@ -1123,19 +1122,24 @@ int SaraNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelS
     // This callback is executed from the multiplexer thread, not safe to use the lock here
     // because it might get called while blocked inside some muxer function
 
+    // Also please note that connectionState() should never be called with the CONNECTED state
+    // from this callback.
+
     // We are only interested in Closed state
     if (newState == decltype(muxer_)::ChannelState::Closed) {
         switch (channel) {
             case 0: {
                 // Muxer stopped
                 self->disable();
-                self->connState_ = NcpConnectionState::DISCONNECTED;
                 break;
             }
             case UBLOX_NCP_PPP_CHANNEL: {
                 // PPP channel closed
                 if (self->connState_ != NcpConnectionState::DISCONNECTED) {
-                    self->connState_ = NcpConnectionState::CONNECTING;
+                    // It should be safe to notify the PPP netif/client about a change of state
+                    // here exactly because the muxer channel is closed and there is no
+                    // chance for a deadlock.
+                    self->connectionState(NcpConnectionState::CONNECTING);
                 }
                 break;
             }
