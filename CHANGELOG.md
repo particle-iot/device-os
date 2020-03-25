@@ -1,3 +1,89 @@
+## 1.5.0
+
+### DEPRECATION
+
+- Spark Core End-Of-Life. 1.5.x+ releases no longer support Spark Core [#2003](https://github.com/particle-iot/device-os/pull/2003)
+
+### FEATURES
+
+- Introduce configurable I2C buffer [#2022](https://github.com/particle-iot/device-os/pull/2022)
+- Support for > 255 I2C buffers and transfers, configurable timeouts [#2035](https://github.com/particle-iot/device-os/pull/2035)
+- Thread-safe cloud variables [#1998](https://github.com/particle-iot/device-os/pull/1998)
+- Sleep 2.0 [#1986](https://github.com/particle-iot/device-os/pull/1986)
+- Enables C++14 chrono string literals for wiring APIs [#1709](https://github.com/particle-iot/device-os/pull/1709)
+- [Gen 3] Implements persistent antenna selection (`Mesh.selectAntenna()`) [#1933](https://github.com/particle-iot/device-os/pull/1933)
+- GCC 8 support [#1971](https://github.com/particle-iot/device-os/pull/1971)
+- [B5 SoM] B5 SoM platform support
+- [Boron/Electron/B5 SoM] Reverts default PMIC settings changes, adds higher level power configuration API [#1992](https://github.com/particle-iot/device-os/pull/1992)
+
+### ENHANCEMENTS
+
+- Replace AT+CSQ/CESQ usage on ublox-based LTE devices with AT+UCGED [#2033](https://github.com/particle-iot/device-os/pull/2033) [#2038](https://github.com/particle-iot/device-os/pull/2038)
+- [wiring] Specify floating precision in JSON library [#2054](https://github.com/particle-iot/device-os/pull/2054)
+- Expose full concurrent HAL APIs to the application [#2052](https://github.com/particle-iot/device-os/pull/2052)
+- Close cloud socket on communication errors on all platforms except for Electron [#2056](https://github.com/particle-iot/device-os/pull/2056)
+- [B5 SoM] Enable hardware flow control for Quectel modem during runtime and add support for EG91-EX [#2042](https://github.com/particle-iot/device-os/pull/2042)
+- Enables Workbench DeviceOS local development (deviceOS@source) [#1957](https://github.com/particle-iot/device-os/pull/1957)
+- [Gen 3/Cellular] Enables logging of modem AT commands and data transmissions by default in modular builds [#1994](https://github.com/particle-iot/device-os/pull/1994)
+- [Gen 2] Removes write protection enforcement of system firmware on boot [#2009](https://github.com/particle-iot/device-os/pull/2009)
+- [Cellular] Adds `SystemPowerFeature::DISABLE` to disable system power management [#2015](https://github.com/particle-iot/device-os/pull/2015)
+
+### BUGFIXES
+
+- Only increment unacknowledged counter for requests, not acknowledgements [#2046](https://github.com/particle-iot/device-os/pull/2046)
+- Fix YModem transfer regression introduced in 1.5.0-rc.2 [#2051](https://github.com/particle-iot/device-os/pull/2051)
+- [wiring] Fixes a memory leakage in `Mutex` and `RecursiveMutex` classes [#2053](https://github.com/particle-iot/device-os/pull/2053)
+- [B5 SoM] Fixes a hardfault when Ethernet is enabled [#2057](https://github.com/particle-iot/device-os/pull/2057)
+- [P1] Enable power save clock (32KHz) only if not disabled by feature flag [#2058](https://github.com/particle-iot/device-os/pull/2058)
+- [wiring] Fixes multiple conflicting candidates when calling `Wire.requestFrom()` [#2059](https://github.com/particle-iot/device-os/pull/2059)
+- [Gen 2] Fix `SPI.beginTransaction()` deadlocking [#2060](https://github.com/particle-iot/device-os/pull/2060)
+- [Gen 3] Fix a race condition in NCP client when the GSM0710 muxer connection to the NCP is abruptly broken [#2049](https://github.com/particle-iot/device-os/pull/2049)
+- [Workbench] Workaround for failing Device OS builds on Windows [#2037](https://github.com/particle-iot/device-os/pull/2037)
+- [Gen 2] platform: fix `FLASH_Update()` for unaligned writes [#2036](https://github.com/particle-iot/device-os/pull/2036)
+- Fixes the issue with SPI default SS pin being not configured [#2039](https://github.com/particle-iot/device-os/pull/2039)
+- [gcc] fixes builds on osx and enables usage of the latest gcc versions [#2041](https://github.com/particle-iot/device-os/pull/2041)
+- [Gen 3] Fixes renegotiation of options and adds IPCP packet parsing [#2029](https://github.com/particle-iot/device-os/pull/2029)
+- [Gen 3] Fix parsing of large AT command responses [#2017](https://github.com/particle-iot/device-os/pull/2017)
+- String::substring() unnecessarily modifies the source buffer [#2026](https://github.com/particle-iot/device-os/pull/2026)
+- [B5 SoM] Fix CGI for Quectel modems [#2019](https://github.com/particle-iot/device-os/pull/2019)
+- [Gen 2] Fixes socket leak in `UDP.begin()` [#2031](https://github.com/particle-iot/device-os/pull/2031)
+- [Gen 3] Fixes `Serial.read()` returning -1 instead of 0 when there's no data to read [#2034](https://github.com/particle-iot/device-os/pull/2034)
+- [Gen 3] Fixes BLE UUID conversion issue [#1997](https://github.com/particle-iot/device-os/pull/1997)
+- [wiring] Fixes a regression in SPI due to thread-safety additions from [#1879](https://github.com/particle-iot/device-os/pull/1879) [#2023](https://github.com/particle-iot/device-os/pull/2023)
+- [Boron/BSoM] Enables advance SETUP/MODE button features (single click - RSSI, double click - soft poweroff) [#1918](https://github.com/particle-iot/device-os/pull/1918)
+- Fixes a call to objdump when the compiler is not in PATH [#1961](https://github.com/particle-iot/device-os/pull/1961)
+- [gcc] Ensure GPIO pinmap is initialized on first use [#1963](https://github.com/particle-iot/device-os/pull/1963)
+- [Gen 3] Fixes too many connection attempts with deactivated SIM [#1969](https://github.com/particle-iot/device-os/pull/1969)
+- [Gen 3] Fixes NCP issue with devices stuck in a seemingly connected state [#1980](https://github.com/particle-iot/device-os/pull/1980)
+- [Photon/P1] Fixes a hardfault when calling certain `WiFI` class methods with WICED networking stack uninitialized [#1949](https://github.com/particle-iot/device-os/pull/1949)
+- [Gen 3] Fixes `.particle/toolchains/gcc-arm/5.3.1/bin/objdump: not found` issues in Workbench [#1996](https://github.com/particle-iot/device-os/pull/1996)
+- [B5 SoM] Temporarily disables hardware flow control [#1999](https://github.com/particle-iot/device-os/pull/1999)
+- [Gen 3] Fixes retained variables first-time initialization [#2001](https://github.com/particle-iot/device-os/pull/2001)
+- [B5 SoM] Removes unsupported `AT+CGDCONT` call with `CHAP:<APN>` [#2006](https://github.com/particle-iot/device-os/pull/2006)
+- [Boron] Increases `AT+COPS=0` timeout, lowers baudrate to 115200 [#2008](https://github.com/particle-iot/device-os/pull/2008)
+- Prevents expansion of `EXTRA_CFLAGS` variable [#2012](https://github.com/particle-iot/device-os/pull/2012)
+- [Gen 3] Workaround for QSPI/XIP nRF52840 hardware anomaly 215 [#2010](https://github.com/particle-iot/device-os/pull/2010)
+- Fixes a potential buffer overflow in `Time.format()` [#1973](https://github.com/particle-iot/device-os/pull/1973)
+- [Gen 2] Clear WLAN_WD when `disconnect()` is called [#2016](https://github.com/particle-iot/device-os/pull/2016)
+- [Gen 3] Fixes concurrency/thread-safety SPI issues with Ethernet Featherwing [#1879](https://github.com/particle-iot/device-os/pull/1879)
+
+### INTERNAL
+
+- Fix building of boost on macOS [#2044](https://github.com/particle-iot/device-os/pull/2044)
+- [ci] Workaround GitHub rate limiting by using github.com/xxx/yyy/tarball instead of api.github.com
+- [test] unit: fixes Print tests failing [#2027](https://github.com/particle-iot/device-os/pull/2027)
+- [B5 SoM] Change the prefix of BLE broadcasting name for B5SoM [#2030](https://github.com/particle-iot/device-os/pull/2030)
+- update workbench manifest with latest `buildscripts` dependency [#2020](https://github.com/particle-iot/device-os/pull/2020)
+- Increase `VitalsPublisher` test coverage [#1920](https://github.com/particle-iot/device-os/pull/1920)
+- Adds missing platforms to manifest.json [#1959](https://github.com/particle-iot/device-os/pull/1959)
+- Add support for control requests sent by the test runner [#1987](https://github.com/particle-iot/device-os/pull/1987)
+- Add support for chunked transfer of USB request/reply data [#1991](https://github.com/particle-iot/device-os/pull/1991)
+- Implements `EnumFlags` class for bitwise operations on C++ enum classes [#1978](https://github.com/particle-iot/device-os/pull/1933)
+- Improves cellular test coverage [#1930](https://github.com/particle-iot/device-os/pull/193)
+- [Gen 3] Frees up some flash space in system-part1 [#2000](https://github.com/particle-iot/device-os/pull/2000)
+- [Cellular] Internal function to modify cellular registration timeout [#2007](https://github.com/particle-iot/device-os/pull/2007) [#2014](https://github.com/particle-iot/device-os/pull/2014)
+- Removes xsom platform [#2011](https://github.com/particle-iot/device-os/pull/2011)
+
 ## 1.5.0-rc.2
 
 ### FEATURES
