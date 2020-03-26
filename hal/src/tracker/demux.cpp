@@ -39,7 +39,6 @@ int Demux::write(uint8_t pin, uint8_t value) {
     CHECK_TRUE(pin < DEMUX_MAX_PIN_COUNT && pin != 0, SYSTEM_ERROR_INVALID_ARGUMENT); // Y0 is not available for user's usage.
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     // We can do it in this way for now, since the control pins are continuous.
-    // Otherwise, we should use the general method below.
     uint32_t currOut = (nrf_gpio_port_out_read(DEMUX_NRF_PORT) >> DEMUX_PINS_SHIFT) & 0x00000007;
     if ((currOut == pin && value == 0) || (currOut != pin && value == 1)) {
         return SYSTEM_ERROR_NONE;
@@ -52,24 +51,6 @@ int Demux::write(uint8_t pin, uint8_t value) {
         nrf_gpio_port_out_set(DEMUX_NRF_PORT, ((uint32_t)pin) << DEMUX_PINS_SHIFT);
         setPinValue(pin, 0);
     }
-
-    // Select Y0 by default, so that all other pins output high.
-    // nrf_gpio_port_out_clear(DEMUX_NRF_PORT, DEMUX_PIN_0_MASK | DEMUX_PIN_1_MASK | DEMUX_PIN_2_MASK);
-    // setPinValue(0, 0);
-    // uint32_t bitSetMask = 0x00000000;
-    // if (value == 0) {
-    //     if (pin >= 4) {
-    //         bitSetMask |= DEMUX_PIN_2_MASK;
-    //     }
-    //     if ((pin % 4) >= 2) {
-    //         bitSetMask |= DEMUX_PIN_1_MASK;
-    //     }
-    //     if ((pin % 2) == 1) {
-    //         bitSetMask |= DEMUX_PIN_0_MASK;
-    //     }
-    //     nrf_gpio_port_out_set(DEMUX_NRF_PORT, bitSetMask);
-    //     setPinValue(pin, value);
-    // }
     return SYSTEM_ERROR_NONE;
 }
 
