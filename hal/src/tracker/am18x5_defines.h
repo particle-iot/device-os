@@ -67,6 +67,7 @@
 // Control 2 Bits Mask
 #define CONTROL2_RS1E_MASK          0x20
 #define CONTROL2_OUT2S_MASK         0x1C
+#define CONTROL2_OUT2S_SHIFT        (2)
 #define CONTROL2_OUT1S_MASK         0x03
 
 // Interrupt Bits Mask
@@ -74,6 +75,7 @@
 #define INTERRUPT_IM_MASK           0x60
 #define INTERRUPT_BLIE_MASK         0x10
 #define INTERRUPT_TIE_MASK          0x08
+#define INTERRUPT_TIE_SHIFT         (3)
 #define INTERRUPT_AIE_MASK          0x04
 #define INTERRUPT_AIE_SHIFT         (2)
 #define INTERRUPT_EX2E_MASK         0x02
@@ -91,6 +93,7 @@
 
 // Sleep Control Bit Mask
 #define SLEEP_CONTROL_SLP_MASK      0x80
+#define SLEEP_CONTROL_SLP_SHIFT     (7)
 #define SLEEP_CONTROL_SLRES_MASK    0x40 // When 1, assert nRST low when the Power Control SM is in the SLEEP state.
 #define SLEEP_CONTROL_EX2P_MASK     0x20 // When 1, the external interrupt XT2 will trigger on a rising edge of the WDI pin.
 #define SLEEP_CONTROL_EX1P_MASK     0x10 // When 1, the external interrupt XT1 will trigger on a rising edge of the EXTI pin.
@@ -99,6 +102,7 @@
 
 // Countdown Timer Control Bits Mask
 #define TIMER_CONTROL_TE_MASK       0x80
+#define TIMER_CONTROL_TE_SHIFT      (7)
 #define TIMER_CONTROL_TM_MASK       0x40
 #define TIMER_CONTROL_TRPT_MASK     0x20
 #define TIMER_CONTROL_RPT_MASK      0x1C

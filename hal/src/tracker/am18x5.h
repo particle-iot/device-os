@@ -117,6 +117,12 @@ enum class Am18x5WatchdogFrequency {
     HZ_1_4 = 0x03
 };
 
+enum class Am18x5TimerFrequency {
+    HZ_64 = 0x01,
+    HZ_1 = 0x02,
+    HZ_1_60 = 0x03
+};
+
 class Am18x5 {
 public:
     typedef void (*AlarmHandler)(void* context);
@@ -134,6 +140,10 @@ public:
     int enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) const;
     int disableWatchdog() const;
     int feedWatchdog() const;
+
+    // TODO: woken up by alarm and watchdog timer.
+    // If multiple wakeup sources are configured, sleep mode exits on one wakeup source satisfied.
+    int sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const;
 
     int getPartNumber(uint16_t* id) const;
 
