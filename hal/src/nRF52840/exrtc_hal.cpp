@@ -86,6 +86,7 @@ int hal_exrtc_enable_watchdog(time_t ms, void* reserved) {
     } else {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    CHECK_TRUE(value > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     return Am18x5::getInstance().enableWatchdog(value, frequency);
 }
 
@@ -95,6 +96,26 @@ int hal_exrtc_disable_watchdog(void* reserved) {
 
 int hal_exrtc_feed_watchdog(void* reserved) {
     return Am18x5::getInstance().feedWatchdog();
+}
+
+int hal_exrtc_sleep_timer(time_t ms, void* reserved) {
+    uint8_t ticks;
+    Am18x5TimerFrequency frequency;
+    if (ms <= 3984) { // 255 * 1000 / 64
+        frequency = Am18x5TimerFrequency::HZ_64;
+        ticks = ms * 64 / 1000;
+    } else if (ms <= 255000) {
+        frequency = Am18x5TimerFrequency::HZ_1;
+        ticks = ms / 1000;
+    } else if (ms <= 15300000) {
+        frequency = Am18x5TimerFrequency::HZ_1_60;
+        ticks = ms / 60 / 1000;
+    } else {
+        // TODO: use alarm or watchdog as the wakeup source
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    CHECK_TRUE(ticks > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+    return Am18x5::getInstance().sleep(ticks, frequency);
 }
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC

@@ -41,6 +41,8 @@ int hal_exrtc_enable_watchdog(time_t ms, void* reserved);
 int hal_exrtc_disable_watchdog(void* reserved);
 int hal_exrtc_feed_watchdog(void* reserved);
 
+int hal_exrtc_sleep_timer(time_t ms, void* reserved);
+
 #ifdef __cplusplus
 }
 #endif

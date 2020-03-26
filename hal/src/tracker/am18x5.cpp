@@ -230,6 +230,29 @@ int Am18x5::feedWatchdog() const {
     return SYSTEM_ERROR_NONE;
 }
 
+int Am18x5::sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    // Stop the count down timer just in case
+    CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, 0, false, true, TIMER_CONTROL_TE_MASK, TIMER_CONTROL_TE_SHIFT));
+    // Set PSW/nIRQ2 to be working in SLEEP mode
+    CHECK(writeRegister(Am18x5Register::CONTROL2, 6, false, true, CONTROL2_OUT2S_MASK, CONTROL2_OUT2S_SHIFT));
+    // Enable count down timer interrupt
+    CHECK(writeRegister(Am18x5Register::INT_MASK, 1, false, true, INTERRUPT_TIE_MASK, INTERRUPT_TIE_SHIFT));
+    // Set count down timer's current value
+    CHECK(writeRegister(Am18x5Register::TIMER, ticks));
+    // Configure and start the count down timer
+    uint8_t newValue = 0x00;
+    CHECK(readRegister(Am18x5Register::TIMER_CONTROL, &newValue));
+    newValue |= TIMER_CONTROL_TE_MASK; // Enable the count down timer
+    newValue &= ~TIMER_CONTROL_TRPT_MASK; // Do not repeat
+    newValue &= ~TIMER_CONTROL_TFS_MASK;
+    newValue |= static_cast<uint8_t>(frequency); // Set the count down timer frequency
+    CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, newValue));
+    // Transfer to SLEEP state without any delay
+    return writeRegister(Am18x5Register::SLEEP_CONTROL, 1, false, true, SLEEP_CONTROL_SLP_MASK, SLEEP_CONTROL_SLP_SHIFT);
+}
+
 int Am18x5::setHundredths(uint8_t hundredths) const {
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
