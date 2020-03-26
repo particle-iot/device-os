@@ -531,12 +531,12 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
             if (r >= 2) {
                 if (type == 'P') {
                     rsrp = val;
-                    if (rsrp < -141 && rsrp >= -200) {
+                    if (rsrp < -140 && rsrp >= -200) {
                         qual->strength(0);
-                    } else if (rsrp >= -44 && rsrp <=0) {
+                    } else if (rsrp >= -44 && rsrp <= 0) {
                         qual->strength(97);
-                    } else if (rsrp >= -141 && rsrp < -44) {
-                        qual->strength(rsrp + 140);
+                    } else if (rsrp >= -140 && rsrp < -44) {
+                        qual->strength(rsrp + 141);
                     } else {
                         // If RSRP is not in the expected range
                         qual->strength(255);
