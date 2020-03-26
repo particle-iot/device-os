@@ -51,7 +51,7 @@ static int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sour
 }
 
 static int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_rtc_t* rtc) {
-    if (rtc->ms == 0) {
+    if (rtc->ms < 1000) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     return SYSTEM_ERROR_NONE;

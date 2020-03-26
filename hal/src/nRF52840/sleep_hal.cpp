@@ -66,7 +66,8 @@ static int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sourc
 }
 
 static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_network_t* network) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    // FIXME: this is actually not implemented
+    return SYSTEM_ERROR_NONE;
 }
 
 static int validateBleWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_base_t* base) {
