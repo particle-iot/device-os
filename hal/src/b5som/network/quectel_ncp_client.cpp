@@ -527,9 +527,120 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         qual->accessTechnology(static_cast<CellularAccessTechnology>(act));
     }
 
+    // Using AT+QCSQ first
+    struct RatMap {
+        const char* name;
+        CellularAccessTechnology rat;
+    };
+
+    static const RatMap ratMap[] = {
+        {"NOSERVICE", CellularAccessTechnology::NONE},
+        {"WCDMA", CellularAccessTechnology::UTRAN},
+        {"TDSCDMA", CellularAccessTechnology::UTRAN},
+        {"LTE", CellularAccessTechnology::LTE},
+        {"CAT-M1", CellularAccessTechnology::EC_GSM_IOT},
+        {"CAT-NB1", CellularAccessTechnology::E_UTRAN}
+    };
+
+    int vals[5] = {};
+    char sysmode[32] = {};
+
+    auto resp = parser_.sendCommand("AT+QCSQ");
+    int r = CHECK_PARSER(resp.scanf("+QCSQ: \"%31[^\"]\",%d,%d,%d,%d,%d", sysmode, &vals[0], &vals[1], &vals[2], &vals[3], &vals[4]));
+    CHECK_TRUE(r >= 2, SYSTEM_ERROR_BAD_DATA);
+    int qcsqVals = r;
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+    bool qcsqOk = false;
+    for (const auto& v: ratMap) {
+        if (!strcmp(sysmode, v.name)) {
+            switch (v.rat) {
+                case CellularAccessTechnology::UTRAN:
+                case CellularAccessTechnology::UTRAN_HSDPA:
+                case CellularAccessTechnology::UTRAN_HSUPA:
+                case CellularAccessTechnology::UTRAN_HSDPA_HSUPA: {
+                    if (qcsqVals >= 4) {
+                        auto rscp = vals[1];
+                        auto ecno = vals[2];
+                        if (rscp < -120) {
+                            rscp = 0;
+                        } else if (rscp >= -25) {
+                            rscp = 96;
+                        } else if (rscp >= -120 && rscp < -25) {
+                            rscp = rscp / 100 + 116;
+                        } else {
+                            rscp = 255;
+                        }
+
+                        if (ecno < -24) {
+                            ecno = 0;
+                        } else if (ecno >= 0) {
+                            ecno = 49;
+                        } else if (ecno >= -24 && ecno < 0) {
+                            ecno = (ecno + 2450) / 50;
+                        } else {
+                            ecno = 255;
+                        }
+
+                        qual->accessTechnology(v.rat);
+                        qual->strength(rscp);
+                        qual->quality(ecno);
+                        qcsqOk = true;
+                    }
+                    break;
+                }
+                case CellularAccessTechnology::LTE:
+                case CellularAccessTechnology::EC_GSM_IOT:
+                case CellularAccessTechnology::E_UTRAN: {
+                    if (qcsqVals >= 5) {
+                        const int min_rsrq_mul_by_100 = -1950;
+                        const int max_rsrq_mul_by_100 = -300;
+
+                        auto rsrp = vals[1];
+                        auto rsrq_mul_100 = vals[3] * 100;
+
+                        qual->accessTechnology(v.rat);
+
+                        if (rsrp < -140 && rsrp >= -200) {
+                            qual->strength(0);
+                        } else if (rsrp >= -44 && rsrp <= 0) {
+                            qual->strength(97);
+                        } else if (rsrp >= -140 && rsrp < -44) {
+                            qual->strength(rsrp + 141);
+                        } else {
+                            // If RSRP is not in the expected range
+                            qual->strength(255);
+                        }
+
+                        if (rsrq_mul_100 < min_rsrq_mul_by_100 && rsrq_mul_100 >= -2000) {
+                            qual->quality(0);
+                        } else if (rsrq_mul_100 >= max_rsrq_mul_by_100 && rsrq_mul_100 <=0) {
+                            qual->quality(34);
+                        } else if (rsrq_mul_100 >= min_rsrq_mul_by_100 && rsrq_mul_100 < max_rsrq_mul_by_100) {
+                            qual->quality((rsrq_mul_100 + 2000) / 50);
+                        } else {
+                            // If RSRQ is not in the expected range
+                            qual->quality(255);
+                        }
+                        qcsqOk = true;
+                    }
+                    break;
+                }
+            }
+
+            break;
+        }
+    }
+
+    if (qcsqOk) {
+        return SYSTEM_ERROR_NONE;
+    }
+
+    // Fall-back to AT+CSQ on errors or 2G as AT+QCSQ does not provide quality for GSM
     int rxlev, rxqual;
-    auto resp = parser_.sendCommand("AT+CSQ");
-    int r = CHECK_PARSER(resp.scanf("+CSQ: %d,%d", &rxlev, &rxqual));
+    resp = parser_.sendCommand("AT+CSQ");
+    r = CHECK_PARSER(resp.scanf("+CSQ: %d,%d", &rxlev, &rxqual));
     CHECK_TRUE(r == 2, SYSTEM_ERROR_BAD_DATA);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
