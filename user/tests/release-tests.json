@@ -233,8 +233,13 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep",
+                    "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "sleep20",
                     "path": "wiring"
                 },
                 {
@@ -586,8 +591,13 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep",
+                    "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "sleep20",
                     "path": "wiring"
                 },
                 {
@@ -945,8 +955,13 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep",
+                    "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "sleep20",
                     "path": "wiring"
                 },
                 {
@@ -1304,8 +1319,13 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep",
+                    "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "sleep20",
                     "path": "wiring"
                 },
                 {
@@ -1434,86 +1454,72 @@
             "platform": "electron",
             "tests": [
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "backup_ram",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "band_select",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "band_select",
                     "path": "app",
                     "use_threading": true
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "blank",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "button_event",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "cloudtest",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "diagnostics",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "echo_server",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "listenting_mode_delay_issue_1013",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "listen_mode",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "manual_mode_threading",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "mcp23017",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "otacontrol",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "particle_connect_semi_automatic_issue_1399",
                     "path": "app"
@@ -1524,163 +1530,136 @@
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "pub_no_ack",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "rsakeygen",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "sleep_multiple_pins",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "socket_create",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "softap_http",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "stop_mode_power_usage_issue_1098",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "tcp_client",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "tcp_server",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "softap_http",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "stop_mode_power_usage_issue_1098",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "tcp_client",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "tcp_server",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "testmodepin",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "tinker_thready",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "usb_ctrl_request",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "weather3",
                     "path": "app"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "adc_dac",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "api",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "cloud",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "i2c_master",
                     "path": "wiring/i2c_master_slave"
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "i2c_slave",
                     "path": "wiring/i2c_master_slave"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "i2c_master_slave_old",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "i2c_mcp23017",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "i2c_shield",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "networking",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "no_fixture",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "no_fixture",
                     "path": "wiring",
@@ -1688,45 +1667,43 @@
                 },
                 {
                     "comment": "this test should be run without anything connected to the device (and must connect a battery for cellular or else PMIC interrupt is evil)",
-                    "debug_build": true,
                     "enabled": true,
                     "name": "no_fixture_long_running",
                     "path": "wiring"
                 },
                 {
                     "comment": "this test should be run without anything connected to the device (and must connect a battery for cellular or else PMIC interrupt is evil)",
-                    "debug_build": true,
                     "enabled": true,
                     "name": "no_fixture_long_running",
                     "path": "wiring",
                     "use_threading": true
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "persistence",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "serial_halfduplex",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "serial_loopback",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
+                    "enabled": true,
+                    "name": "sleep20",
+                    "path": "wiring"
+                },
+                {
                     "enabled": true,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave",
@@ -1735,7 +1712,6 @@
                     }
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave",
@@ -1744,7 +1720,6 @@
                     }
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "spi_master",
                     "path": "wiring/spi_master_slave",
@@ -1753,7 +1728,6 @@
                     }
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "spi_slave",
                     "path": "wiring/spi_master_slave",
@@ -1762,7 +1736,6 @@
                     }
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "spi_slave",
                     "path": "wiring/spi_master_slave",
@@ -1771,7 +1744,6 @@
                     }
                 },
                 {
-                    "debug_build": true,
                     "enabled": true,
                     "name": "spi_slave",
                     "path": "wiring/spi_master_slave",
@@ -1828,49 +1800,41 @@
                     }
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "spi_shield",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "system",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "threading",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "threading_no_threading_delay",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "usbhid",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "usbhid2",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "usbserial",
                     "path": "wiring"
                 },
                 {
-                    "debug_build": true,
                     "enabled": false,
                     "name": "wifi",
                     "path": "wiring"
@@ -2110,8 +2074,13 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep",
+                    "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "sleep20",
                     "path": "wiring"
                 },
                 {
@@ -2453,8 +2422,13 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep",
+                    "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "sleep20",
                     "path": "wiring"
                 },
                 {
@@ -2796,8 +2770,13 @@
                     "path": "wiring"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "name": "sleep",
+                    "path": "wiring"
+                },
+                {
+                    "enabled": true,
+                    "name": "sleep20",
                     "path": "wiring"
                 },
                 {
