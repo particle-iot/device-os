@@ -571,25 +571,6 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
         // Fixup values
-        switch (qual->strengthUnits()) {
-            case CellularStrengthUnits::RXLEV: {
-                qual->strength((rxlev != 99) ? (2 * rxlev) : rxlev);
-                break;
-            }
-            case CellularStrengthUnits::RSCP: {
-                qual->strength((rxlev != 99) ? (3 + 2 * rxlev) : 255);
-                break;
-            }
-            case CellularStrengthUnits::RSRP: {
-                qual->strength((rxlev != 99) ? (rxlev * 97) / 31 : 255);
-                break;
-            }
-            default: {
-                // Do nothing
-                break;
-            }
-        }
-
         if (qual->accessTechnology() == CellularAccessTechnology::GSM_EDGE) {
             qual->qualityUnits(CellularQualityUnits::MEAN_BEP);
         }
@@ -606,6 +587,50 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
             }
             case CellularQualityUnits::RSRQ: {
                 qual->quality((rxqual != 99) ? (rxqual * 34) / 7 : 255);
+                break;
+            }
+            default: {
+                // Do nothing
+                break;
+            }
+        }
+
+        switch (qual->strengthUnits()) {
+            case CellularStrengthUnits::RXLEV: {
+                qual->strength((rxlev != 99) ? (2 * rxlev) : rxlev);
+                break;
+            }
+            case CellularStrengthUnits::RSCP: {
+                if (qual->quality() != 255) {
+                    // Convert to Ec/Io in dB * 100
+                    auto ecio100 = qual->quality() * 50 - 2450;
+                    // RSCP = RSSI + Ec/Io
+                    // Based on Table 4: Mapping between <signal_power> reported from UE and the RSSI when the P-CPICH= -2 dB (UBX-13002752 - R65)
+                    if (rxlev != 99) {
+                        auto rssi100 = -11250 + 500 * rxlev / 2;
+                        auto rscp = (rssi100 + ecio100) / 100;
+                        // Convert from dBm [-121, -25] to RSCP_LEV number, see 3GPP TS 25.133 9.1.1.3
+                        if (rscp < -120) {
+                            rscp = 0;
+                        } else if (rscp >= -25) {
+                            rscp = 96;
+                        } else if (rscp >= -120 && rscp < -25) {
+                            rscp = rscp + 121;
+                        } else {
+                            rscp = 255;
+                        }
+                        qual->strength(rscp);
+                    } else {
+                        qual->strength(255);
+                    }
+                } else {
+                    // Naively map to CESQ range (which is wrong)
+                    qual->strength((rxlev != 99) ? (3 + 2 * rxlev) : 255);
+                }
+                break;
+            }
+            case CellularStrengthUnits::RSRP: {
+                qual->strength((rxlev != 99) ? (rxlev * 97) / 31 : 255);
                 break;
             }
             default: {

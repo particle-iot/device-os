@@ -105,13 +105,13 @@ cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signa
         case ACT_UTRAN:
             // Convert to dBm [-121, -25], see 3GPP TS 25.133 9.1.1.3
             // Reported multiplied by 100
-            signalext->rscp = (status.rscp != 255) ? (status.rscp - 116) * 100 : std::numeric_limits<int32_t>::min();
+            signalext->rscp = (status.rscp != 255) ? (status.rscp - 121) * 100 : std::numeric_limits<int32_t>::min();
             // Convert to Ec/Io (dB) [-24.5, 0], see 3GPP TS 25.133 9.1.2.3
             // Report multiplied by 100
             signalext->ecno = (status.ecno != 255) ? status.ecno * 50 - 2450 : std::numeric_limits<int32_t>::min();
 
             // RSCP in % [0, 100] based on [-121, -25] range mapped to [0, 65535] integer range
-            signalext->strength = (status.rscp != 255) ? (status.rscp + 5) * 65535 / 96 : std::numeric_limits<int32_t>::min();
+            signalext->strength = (status.rscp != 255) ? status.rscp * 65535 / 96 : std::numeric_limits<int32_t>::min();
             // Quality based on Ec/Io in % [0, 100] mapped to [0,65535] integer range
             signalext->quality = (status.ecno != 255) ? status.ecno * 65535 / 49 : std::numeric_limits<int32_t>::min();
             break;

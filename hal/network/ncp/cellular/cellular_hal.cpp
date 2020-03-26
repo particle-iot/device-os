@@ -373,9 +373,9 @@ int cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalExt) {
         case CellularStrengthUnits::RSCP: {
             // Convert to dBm [-121, -25], see 3GPP TS 25.133 9.1.1.3
             // Reported multiplied by 100
-            signalExt->rscp = (strn != 255) ? (strn - 116) * 100 : std::numeric_limits<int32_t>::min();
+            signalExt->rscp = (strn != 255) ? (strn - 121) * 100 : std::numeric_limits<int32_t>::min();
             // RSCP in % [0, 100] based on [-121, -25] range mapped to [0, 65535] integer range
-            signalExt->strength = (strn != 255) ? (strn + 5) * 65535 / 96 : std::numeric_limits<int32_t>::min();
+            signalExt->strength = (strn != 255) ? strn * 65535 / 96 : std::numeric_limits<int32_t>::min();
             break;
         }
         case CellularStrengthUnits::RSRP: {

@@ -1839,8 +1839,33 @@ int MDMParser::_cbCSQ(int type, const char* buf, int len, NetStatus* status)
                 status->rxqual = b;
                 break;
             case ACT_UTRAN:
-                status->rscp = (a != 99) ? (status->rssi + 116) : 255;
                 status->ecno = (b != 99) ? std::min((7 + (7 - b) * 6), 44) : 255;
+                if (status->ecno != 255) {
+                    // Convert to Ec/Io in dB * 100
+                    auto ecio100 = status->ecno * 50 - 2450;
+                    // RSCP = RSSI + Ec/Io
+                    // Based on Table 4: Mapping between <signal_power> reported from UE and the RSSI when the P-CPICH= -2 dB (UBX-13002752 - R65)
+                    if (a != 99) {
+                        auto rssi100 = -11250 + 500 * a / 2;
+                        auto rscp = (rssi100 + ecio100) / 100;
+                        // Convert from dBm [-121, -25] to RSCP_LEV number, see 3GPP TS 25.133 9.1.1.3
+                        if (rscp < -120) {
+                            rscp = 0;
+                        } else if (rscp >= -25) {
+                            rscp = 96;
+                        } else if (rscp >= -120 && rscp < -25) {
+                            rscp = rscp + 121;
+                        } else {
+                            rscp = 255;
+                        }
+                        status->rscp = rscp;
+                    } else {
+                        status->rscp = 255;
+                    }
+                } else {
+                    // Naively map to CESQ range (which is wrong)
+                    status->rscp = (a != 99) ? (3 + 2 * a) : 255;
+                }
                 break;
             case ACT_LTE:
             case ACT_LTE_CAT_M1:

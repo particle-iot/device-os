@@ -568,7 +568,7 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
                         } else if (rscp >= -25) {
                             rscp = 96;
                         } else if (rscp >= -120 && rscp < -25) {
-                            rscp = rscp / 100 + 116;
+                            rscp = rscp + 121;
                         } else {
                             rscp = 255;
                         }
@@ -578,7 +578,7 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
                         } else if (ecno >= 0) {
                             ecno = 49;
                         } else if (ecno >= -24 && ecno < 0) {
-                            ecno = (ecno + 2450) / 50;
+                            ecno = (ecno * 100 + 2450) / 50;
                         } else {
                             ecno = 255;
                         }
