@@ -302,6 +302,7 @@ void PowerManager::loop(void* arg) {
     }
 
     // IMPORTANT: attach the interrupt handler first
+    attachInterrupt(PMIC_INT, &PowerManager::isrHandler, FALLING);
     attachInterrupt(LOW_BAT_UC, &PowerManager::isrHandler, FALLING);
     self->initDefault();
     FuelGauge fuel(true);
