@@ -195,10 +195,9 @@ int SaraNcpClient::initParser(Stream* stream) {
         // Cellular Global Identity (partial)
         // Only update if unset
         if (r >= 3) {
-            if (self->cgi_.location_area_code != std::numeric_limits<LacType>::max()) {
+            if (self->cgi_.location_area_code == std::numeric_limits<LacType>::max() &&
+                    self->cgi_.cell_id == std::numeric_limits<CidType>::max()) {
                 self->cgi_.location_area_code = static_cast<LacType>(val[1]);
-            }
-            if (self->cgi_.cell_id != std::numeric_limits<CidType>::max()) {
                 self->cgi_.cell_id = static_cast<CidType>(val[2]);
             }
         }
