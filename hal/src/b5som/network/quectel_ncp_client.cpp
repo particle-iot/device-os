@@ -109,6 +109,8 @@ const auto HW_VERSION_UNDEFINED = 0xFF;
 // V003 - 0x00 (disable hwfc)
 // V004 - 0x01 (enable hwfc)
 const auto HAL_VERSION_B5SOM_V003 = 0x00;
+
+const auto ICCID_MAX_LENGTH = 20;
 } // namespace
 
 QuectelNcpClient::QuectelNcpClient() {}
@@ -404,7 +406,13 @@ int QuectelNcpClient::getIccid(char* buf, size_t size) {
     CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    size_t n = std::min(strlen(iccid), size);
+    auto iccidLen = strlen(iccid);
+    // Strip padding F, as for certain SIMs Quectel's AT+CCID does not strip it on its own
+    if (iccidLen == ICCID_MAX_LENGTH && (iccid[iccidLen - 1] == 'F' || iccid[iccidLen - 1] == 'f')) {
+        iccid[iccidLen - 1] = '\0';
+        --iccidLen;
+    }
+    size_t n = std::min(iccidLen, size);
     memcpy(buf, iccid, n);
     if (size > 0) {
         if (n == size) {
@@ -486,7 +494,20 @@ int QuectelNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     CHECK(checkParser());
     CHECK(queryAndParseAtCops(nullptr));
 
-    *cgi = cgi_;
+    switch (cgi->version)
+    {
+    case CGI_VERSION_1:
+    default:
+    {
+        // Confirm user is expecting the correct amount of data
+        CHECK_TRUE((cgi->size >= sizeof(cgi_)), SYSTEM_ERROR_INVALID_ARGUMENT);
+
+        *cgi = cgi_;
+        cgi->size = sizeof(cgi_);
+        cgi->version = CGI_VERSION_1;
+        break;
+    }
+    }
 
     return SYSTEM_ERROR_NONE;
 }
@@ -496,36 +517,7 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
     CHECK_TRUE(connState_ != NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(qual, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK(checkParser());
-
-    {
-        int act;
-        int v;
-        auto resp = parser_.sendCommand("AT+COPS?");
-        int r = CHECK_PARSER(resp.scanf("+COPS: %d,%*d,\"%*[^\"]\",%d", &v, &act));
-        CHECK_TRUE(r == 2, SYSTEM_ERROR_UNKNOWN);
-        r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-
-        switch (static_cast<CellularAccessTechnology>(act)) {
-            case CellularAccessTechnology::NONE:
-            case CellularAccessTechnology::GSM:
-            case CellularAccessTechnology::GSM_COMPACT:
-            case CellularAccessTechnology::UTRAN:
-            case CellularAccessTechnology::GSM_EDGE:
-            case CellularAccessTechnology::UTRAN_HSDPA:
-            case CellularAccessTechnology::UTRAN_HSUPA:
-            case CellularAccessTechnology::UTRAN_HSDPA_HSUPA:
-            case CellularAccessTechnology::LTE:
-            case CellularAccessTechnology::EC_GSM_IOT:
-            case CellularAccessTechnology::E_UTRAN: {
-                break;
-            }
-            default: {
-                return SYSTEM_ERROR_BAD_DATA;
-            }
-        }
-        qual->accessTechnology(static_cast<CellularAccessTechnology>(act));
-    }
+    CHECK(queryAndParseAtCops(qual));
 
     // Using AT+QCSQ first
     struct RatMap {
