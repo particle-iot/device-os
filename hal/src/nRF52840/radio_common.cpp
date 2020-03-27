@@ -50,6 +50,9 @@ int selectInternalAntenna() {
     HAL_Pin_Mode(ANTSW2, OUTPUT);
     HAL_GPIO_Write(ANTSW1, 1);
     HAL_GPIO_Write(ANTSW2, 0);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    HAL_Pin_Mode(ANTSW1, OUTPUT);
+    HAL_GPIO_Write(ANTSW1, 1);
 #else
 #error "Unsupported platform"
 #endif
@@ -74,8 +77,11 @@ int selectExtenalAntenna() {
     HAL_Pin_Mode(ANTSW2, OUTPUT);
     HAL_GPIO_Write(ANTSW1, 0);
     HAL_GPIO_Write(ANTSW2, 1);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    HAL_Pin_Mode(ANTSW1, OUTPUT);
+    HAL_GPIO_Write(ANTSW1, 0);
 // SoM platforms have only an external antenna
-#elif PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM && PLATFORM_ID != PLATFORM_TRACKER
+#elif PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM
 #error "Unsupported platform"
 #endif
     return 0;

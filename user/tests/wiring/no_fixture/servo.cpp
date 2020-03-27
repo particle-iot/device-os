@@ -33,6 +33,8 @@ static const pin_t pin = D0, pin2 = D1; // Pins sharing the same hardware timer
 static const pin_t pin = A0, pin2 = A1;
 #endif
 
+// All of exposed pins on the Asset Tracker is timer capable.
+#if PLATFORM_ID != PLATFORM_TRACKER 
 test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
 #if HAL_PLATFORM_NRF52840
     pin_t pin = D0;
@@ -47,6 +49,7 @@ test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
     assertNotEqual(HAL_Servo_Read_Frequency(pin), SERVO_TIM_PWM_FREQ);
     //To Do : Add test for remaining pins if required
 }
+#endif
 
 test(SERVO_02_CannotAttachWhenPinSelectedIsOutOfRange) {
     pin_t pin = 51;//pin under test (not a valid user pin)

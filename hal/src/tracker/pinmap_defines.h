@@ -131,7 +131,7 @@
 #define NFC_PIN2                33
 
 // BLE Antenna Switch
-#define BLE_ANT_SW              34
+#define ANTSW1                  34
 
 // Wi-Fi
 #define WIFI_EN                 38

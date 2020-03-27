@@ -32,7 +32,8 @@ static const pin_t pin = D1;//pin under test
 #else
 static const pin_t pin = A1;//pin under test
 #endif
-
+// All of exposed pins on the Asset Tracker is timer capable.
+#if PLATFORM_ID != PLATFORM_TRACKER 
 test(TONE_01_NoGenerateWhenPinSelectedIsNotTimerChannel) {
 #if HAL_PLATFORM_NRF52840
     pin_t pin = D0;
@@ -47,6 +48,7 @@ test(TONE_01_NoGenerateWhenPinSelectedIsNotTimerChannel) {
     assertNotEqual(HAL_Tone_Is_Stopped(pin), false);
     //To Do : Add test for remaining pins if required
 }
+#endif
 
 test(TONE_02_GeneratedOnPinResultsInCorrectFrequency) {
     uint32_t frequency = 500;
