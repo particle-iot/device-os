@@ -18,6 +18,7 @@
 
 ### ENHANCEMENTS
 
+- Replace AT+CSQ usage on Quectel-based devices with AT+QCSQ [147f654](https://github.com/particle-iot/device-os/commit/147f65472596017176498db4edec2dcc72c67215)
 - Replace AT+CSQ/CESQ usage on ublox-based LTE devices with AT+UCGED [#2033](https://github.com/particle-iot/device-os/pull/2033) [#2038](https://github.com/particle-iot/device-os/pull/2038)
 - [wiring] Specify floating precision in JSON library [#2054](https://github.com/particle-iot/device-os/pull/2054)
 - Expose full concurrent HAL APIs to the application [#2052](https://github.com/particle-iot/device-os/pull/2052)
@@ -30,6 +31,7 @@
 
 ### BUGFIXES
 
+- Fix 3G signal strength calculation on ublox-based cellular devices [553af7b](https://github.com/particle-iot/device-os/commit/553af7b89d969517b02c8a3b3ef4875a31f2cf27)
 - Only increment unacknowledged counter for requests, not acknowledgements [#2046](https://github.com/particle-iot/device-os/pull/2046)
 - Fix YModem transfer regression introduced in 1.5.0-rc.2 [#2051](https://github.com/particle-iot/device-os/pull/2051)
 - [wiring] Fixes a memory leakage in `Mutex` and `RecursiveMutex` classes [#2053](https://github.com/particle-iot/device-os/pull/2053)
@@ -69,6 +71,7 @@
 
 ### INTERNAL
 
+- [test] Removes A6 pin from PWM tests on B5 SoM [d9c859c](https://github.com/particle-iot/device-os/commit/d9c859c3b26b4d416104930e9c37ab95ec6112fa)
 - Fix building of boost on macOS [#2044](https://github.com/particle-iot/device-os/pull/2044)
 - [ci] Workaround GitHub rate limiting by using github.com/xxx/yyy/tarball instead of api.github.com
 - [test] unit: fixes Print tests failing [#2027](https://github.com/particle-iot/device-os/pull/2027)
