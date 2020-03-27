@@ -194,7 +194,7 @@ int SaraNcpClient::initParser(Stream* stream) {
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         // Only update if unset
-        if (r >= 2 && r >= 3) {
+        if (r >= 3) {
             if (self->cgi_.location_area_code != std::numeric_limits<LacType>::max()) {
                 self->cgi_.location_area_code = static_cast<LacType>(val[1]);
             }
@@ -228,8 +228,9 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
-        if (r >= 2 && r >= 3) {
-            switch (self->act_) {
+        if (r >= 3) {
+            auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
+            switch (rat) {
                 case CellularAccessTechnology::GSM:
                 case CellularAccessTechnology::GSM_COMPACT:
                 case CellularAccessTechnology::UTRAN:
@@ -268,8 +269,9 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
-        if (r >= 2 && r >= 3) {
-            switch (self->act_) {
+        if (r >= 3) {
+            auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
+            switch (rat) {
                 case CellularAccessTechnology::LTE:
                 case CellularAccessTechnology::EC_GSM_IOT:
                 case CellularAccessTechnology::E_UTRAN: {
