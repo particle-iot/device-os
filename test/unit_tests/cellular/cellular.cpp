@@ -445,7 +445,7 @@ TEST_CASE("cellular_signal()") {
         }
 
         SECTION("minimum RSCP and ECNO") {
-            status.rscp = -5;
+            status.rscp = 0;
             status.ecno = 0;
 
             cellular_signal_t sig = {};
@@ -469,7 +469,7 @@ TEST_CASE("cellular_signal()") {
         }
 
         SECTION("middle RSCP and ECNO") {
-            status.rscp = 43;
+            status.rscp = 48;
             status.ecno = 24;
 
             cellular_signal_t sig = {};
@@ -493,7 +493,7 @@ TEST_CASE("cellular_signal()") {
         }
 
         SECTION("max RSCP and ECNO") {
-            status.rscp = 91;
+            status.rscp = 96;
             status.ecno = 49;
 
             cellular_signal_t sig = {};
