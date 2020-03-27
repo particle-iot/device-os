@@ -111,6 +111,10 @@ const auto HW_VERSION_UNDEFINED = 0xFF;
 const auto HAL_VERSION_B5SOM_V003 = 0x00;
 
 const auto ICCID_MAX_LENGTH = 20;
+
+using LacType = decltype(CellularGlobalIdentity::location_area_code);
+using CidType = decltype(CellularGlobalIdentity::cell_id);
+
 } // namespace
 
 QuectelNcpClient::QuectelNcpClient() {}
@@ -174,9 +178,6 @@ int QuectelNcpClient::initParser(Stream* stream) {
     // NOTE: These URC handlers need to take care of both the URCs and direct responses to the commands.
     // See CH28408
 
-    using LacType = decltype(CellularGlobalIdentity::location_area_code);
-    using CidType = decltype(CellularGlobalIdentity::cell_id);
-
     //+CREG: <n>,<stat>[,<lac>,<ci>[,<Act>]]
     //+CREG: <stat>[,<lac>,<ci>[,<Act>]]
     CHECK(parser_.addUrcHandler("+CREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
@@ -201,8 +202,14 @@ int QuectelNcpClient::initParser(Stream* stream) {
         }
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
-        self->cgi_.location_area_code = r >= 2 ? static_cast<LacType>(val[1]) : std::numeric_limits<LacType>::max();
-        self->cgi_.cell_id = r >= 3 ? static_cast<CidType>(val[2]) : std::numeric_limits<CidType>::max();
+        // Only update if unset
+        if (r >= 3) {
+            if (self->cgi_.location_area_code == std::numeric_limits<LacType>::max() &&
+                    self->cgi_.cell_id == std::numeric_limits<CidType>::max()) {
+                self->cgi_.location_area_code = static_cast<LacType>(val[1]);
+                self->cgi_.cell_id = static_cast<CidType>(val[2]);
+            }
+        }
         return SYSTEM_ERROR_NONE;
     }, this));
     //+CGREG: <n>,<stat>[,<lac>,<ci>[,<Act>]]
@@ -229,8 +236,22 @@ int QuectelNcpClient::initParser(Stream* stream) {
         }
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
-        self->cgi_.location_area_code = r >= 2 ? static_cast<LacType>(val[1]) : std::numeric_limits<LacType>::max();
-        self->cgi_.cell_id = r >= 3 ? static_cast<CidType>(val[2]) : std::numeric_limits<CidType>::max();
+        if (r >= 3) {
+            auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
+            switch (rat) {
+                case CellularAccessTechnology::GSM:
+                case CellularAccessTechnology::GSM_COMPACT:
+                case CellularAccessTechnology::UTRAN:
+                case CellularAccessTechnology::GSM_EDGE:
+                case CellularAccessTechnology::UTRAN_HSDPA:
+                case CellularAccessTechnology::UTRAN_HSUPA:
+                case CellularAccessTechnology::UTRAN_HSDPA_HSUPA: {
+                    self->cgi_.location_area_code = static_cast<LacType>(val[1]);
+                    self->cgi_.cell_id = static_cast<CidType>(val[2]);
+                    break;
+                }
+            }
+        }
         return SYSTEM_ERROR_NONE;
     }, this));
     //+CEREG: <n>,<stat>[,<tac>,<ci>[,<Act>]]
@@ -257,8 +278,18 @@ int QuectelNcpClient::initParser(Stream* stream) {
         }
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
-        self->cgi_.location_area_code = r >= 2 ? static_cast<LacType>(val[1]) : std::numeric_limits<LacType>::max();
-        self->cgi_.cell_id = r >= 3 ? static_cast<CidType>(val[2]) : std::numeric_limits<CidType>::max();
+        if (r >= 3) {
+            auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
+            switch (rat) {
+                case CellularAccessTechnology::LTE:
+                case CellularAccessTechnology::EC_GSM_IOT:
+                case CellularAccessTechnology::E_UTRAN: {
+                    self->cgi_.location_area_code = static_cast<LacType>(val[1]);
+                    self->cgi_.cell_id = static_cast<CidType>(val[2]);
+                    break;
+                }
+            }
+        }
         return SYSTEM_ERROR_NONE;
     }, this));
     return SYSTEM_ERROR_NONE;
@@ -492,7 +523,21 @@ int QuectelNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     CHECK_TRUE(connState_ != NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(cgi, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK(checkParser());
-    CHECK(queryAndParseAtCops(nullptr));
+
+    // FIXME: this is a workaround for CH28408
+    CellularSignalQuality qual;
+    CHECK(queryAndParseAtCops(&qual));
+    CHECK_TRUE(qual.accessTechnology() != CellularAccessTechnology::NONE, SYSTEM_ERROR_INVALID_STATE);
+    // Update current RAT
+    act_ = qual.accessTechnology();
+    // Invalidate LAC and Cell ID
+    cgi_.location_area_code = std::numeric_limits<LacType>::max();
+    cgi_.cell_id = std::numeric_limits<CidType>::max();
+    // Fill in LAC and Cell ID based on current RAT, prefer PSD and EPS
+    // fallback to CSD
+    CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
 
     switch (cgi->version)
     {
