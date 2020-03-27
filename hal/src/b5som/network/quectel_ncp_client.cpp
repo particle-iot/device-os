@@ -556,6 +556,10 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
     for (const auto& v: ratMap) {
         if (!strcmp(sysmode, v.name)) {
             switch (v.rat) {
+                case CellularAccessTechnology::NONE: {
+                    qcsqOk = true;
+                    break;
+                }
                 case CellularAccessTechnology::UTRAN:
                 case CellularAccessTechnology::UTRAN_HSDPA:
                 case CellularAccessTechnology::UTRAN_HSUPA:
