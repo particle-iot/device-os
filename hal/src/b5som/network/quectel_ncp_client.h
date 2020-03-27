@@ -78,7 +78,8 @@ private:
     gsm0710::Muxer<particle::Stream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
     CellularNetworkConfig netConf_;
-    CellularGlobalIdentity cgi_;
+    CellularGlobalIdentity cgi_ = {};
+    CellularAccessTechnology act_ = CellularAccessTechnology::NONE;
 
     enum class RegistrationState {
         NotRegistered = 0,
