@@ -146,7 +146,7 @@ test(SPI_4_SPI_Begin_With_Master_Ss_Pin)
     assertEqual(info.mode, SPI_MODE_MASTER);
 #if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_XENON
     assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM
+#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
 #else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
