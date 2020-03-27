@@ -101,6 +101,9 @@ const auto UBLOX_NCP_SIM_SELECT_PIN = 23;
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 5 * 60 * 1000;
 
+using LacType = decltype(CellularGlobalIdentity::location_area_code);
+using CidType = decltype(CellularGlobalIdentity::cell_id);
+
 } // anonymous
 
 SaraNcpClient::SaraNcpClient() {
@@ -167,9 +170,6 @@ int SaraNcpClient::initParser(Stream* stream) {
     // NOTE: These URC handlers need to take care of both the URCs and direct responses to the commands.
     // See CH28408
 
-    using LacType = decltype(CellularGlobalIdentity::location_area_code);
-    using CidType = decltype(CellularGlobalIdentity::cell_id);
-
     // +CREG: <stat>[,<lac>,<ci>[,<AcTStatus>]]
     CHECK(parser_.addUrcHandler("+CREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (SaraNcpClient*)data;
@@ -193,8 +193,15 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
-        self->cgi_.location_area_code = r >= 2 ? static_cast<LacType>(val[1]) : std::numeric_limits<LacType>::max();
-        self->cgi_.cell_id = r >= 3 ? static_cast<CidType>(val[2]) : std::numeric_limits<CidType>::max();
+        // Only update if unset
+        if (r >= 2 && r >= 3) {
+            if (self->cgi_.location_area_code != std::numeric_limits<LacType>::max()) {
+                self->cgi_.location_area_code = static_cast<LacType>(val[1]);
+            }
+            if (self->cgi_.cell_id != std::numeric_limits<CidType>::max()) {
+                self->cgi_.cell_id = static_cast<CidType>(val[2]);
+            }
+        }
         return 0;
     }, this));
     // n={0,1} +CGREG: <stat>
@@ -221,8 +228,21 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
-        self->cgi_.location_area_code = r >= 2 ? static_cast<LacType>(val[1]) : std::numeric_limits<LacType>::max();
-        self->cgi_.cell_id = r >= 3 ? static_cast<CidType>(val[2]) : std::numeric_limits<CidType>::max();
+        if (r >= 2 && r >= 3) {
+            switch (self->act_) {
+                case CellularAccessTechnology::GSM:
+                case CellularAccessTechnology::GSM_COMPACT:
+                case CellularAccessTechnology::UTRAN:
+                case CellularAccessTechnology::GSM_EDGE:
+                case CellularAccessTechnology::UTRAN_HSDPA:
+                case CellularAccessTechnology::UTRAN_HSUPA:
+                case CellularAccessTechnology::UTRAN_HSDPA_HSUPA: {
+                    self->cgi_.location_area_code = static_cast<LacType>(val[1]);
+                    self->cgi_.cell_id = static_cast<CidType>(val[2]);
+                    break;
+                }
+            }
+        }
         return 0;
     }, this));
     // +CEREG: <stat>[,[<tac>],[<ci>],[<AcT>][,<cause_type>,<reject_cause>[,[<Active_Time>],[<Periodic_TAU>]]]]
@@ -248,8 +268,17 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
-        self->cgi_.location_area_code = r >= 2 ? static_cast<LacType>(val[1]) : std::numeric_limits<LacType>::max();
-        self->cgi_.cell_id = r >= 3 ? static_cast<CidType>(val[2]) : std::numeric_limits<CidType>::max();
+        if (r >= 2 && r >= 3) {
+            switch (self->act_) {
+                case CellularAccessTechnology::LTE:
+                case CellularAccessTechnology::EC_GSM_IOT:
+                case CellularAccessTechnology::E_UTRAN: {
+                    self->cgi_.location_area_code = static_cast<LacType>(val[1]);
+                    self->cgi_.cell_id = static_cast<CidType>(val[2]);
+                    break;
+                }
+            }
+        }
         return 0;
     }, this));
     return 0;
@@ -478,7 +507,25 @@ int SaraNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     CHECK_TRUE(connState_ != NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(cgi, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK(checkParser());
-    CHECK(queryAndParseAtCops(nullptr));
+
+    // FIXME: this is a workaround for CH28408
+    CellularSignalQuality qual;
+    CHECK(queryAndParseAtCops(&qual));
+    CHECK_TRUE(qual.accessTechnology() != CellularAccessTechnology::NONE, SYSTEM_ERROR_INVALID_STATE);
+    // Update current RAT
+    act_ = qual.accessTechnology();
+    // Invalidate LAC and Cell ID
+    cgi_.location_area_code = std::numeric_limits<LacType>::max();
+    cgi_.cell_id = std::numeric_limits<CidType>::max();
+    // Fill in LAC and Cell ID based on current RAT, prefer PSD and EPS
+    // fallback to CSD
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+    } else {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+    }
 
     switch (cgi->version)
     {
