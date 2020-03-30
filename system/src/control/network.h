@@ -23,14 +23,6 @@ namespace particle {
 namespace control {
 namespace network {
 
-#if !HAL_PLATFORM_MESH
-
-int handleGetConfigurationRequest(ctrl_request* req);
-int handleGetStatusRequest(ctrl_request* req);
-int handleSetConfigurationRequest(ctrl_request* req);
-
-#endif // !HAL_PLATFORM_MESH
-
 int getInterfaceList(ctrl_request* req);
 int getInterface(ctrl_request* req);
 
