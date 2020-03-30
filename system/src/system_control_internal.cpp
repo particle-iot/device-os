@@ -316,26 +316,6 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::firmwareUpdateDataRequest(req));
         break;
     }
-    case CTRL_REQUEST_DESCRIBE_STORAGE: {
-        setResult(req, control::describeStorageRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_READ_SECTION_DATA: {
-        setResult(req, control::readSectionDataRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_WRITE_SECTION_DATA: {
-        setResult(req, control::writeSectionDataRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_CLEAR_SECTION_DATA: {
-        setResult(req, control::clearSectionDataRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_GET_SECTION_DATA_SIZE: {
-        setResult(req, control::getSectionDataSizeRequest(req));
-        break;
-    }
     case CTRL_REQUEST_CLOUD_GET_CONNECTION_STATUS: {
         setResult(req, ctrl::cloud::getConnectionStatus(req));
         break;
