@@ -30,7 +30,6 @@
 #include "hal_platform.h"
 
 #include "control/network.h"
-#include "control/wifi.h"
 #include "control/wifi_new.h"
 #include "control/cellular.h"
 #include "control/config.h"
@@ -213,48 +212,6 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         }
         break;
     }
-#if Wiring_WiFi == 1 && !HAL_PLATFORM_NCP
-    /* wifi requests */
-    case CTRL_REQUEST_WIFI_GET_ANTENNA: {
-        setResult(req, control::wifi::handleGetAntennaRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_WIFI_SET_ANTENNA: {
-        setResult(req, control::wifi::handleSetAntennaRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_WIFI_SCAN: {
-        setResult(req, control::wifi::handleScanRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_WIFI_GET_CREDENTIALS: {
-        setResult(req, control::wifi::handleGetCredentialsRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_WIFI_SET_CREDENTIALS: {
-        setResult(req, control::wifi::handleSetCredentialsRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_WIFI_CLEAR_CREDENTIALS: {
-        setResult(req, control::wifi::handleClearCredentialsRequest(req));
-        break;
-    }
-#endif // Wiring_WiFi && !HAL_PLATFORM_NCP
-#if !HAL_PLATFORM_MESH
-    /* network requests */
-    case CTRL_REQUEST_NETWORK_GET_CONFIGURATION: {
-        setResult(req, control::network::handleGetConfigurationRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_NETWORK_GET_STATUS: {
-        setResult(req, control::network::handleGetStatusRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_NETWORK_SET_CONFIGURATION: {
-        setResult(req, control::network::handleSetConfigurationRequest(req));
-        break;
-    }
-#endif // !HAL_PLATFORM_MESH
     /* config requests */
     case CTRL_REQUEST_SET_CLAIM_CODE: {
         setResult(req, control::config::handleSetClaimCodeRequest(req));
