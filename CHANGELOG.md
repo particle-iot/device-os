@@ -31,6 +31,8 @@
 
 ### BUGFIXES
 
+- [Boron/B SoM/B5 SoM] Fix Cellular Global Identity generation [#2062](https://github.com/particle-iot/device-os/pull/2062)
+- [B5 SoM] Strip padding `F` from ICCID [4aa1746](https://github.com/particle-iot/device-os/commit/4aa1746dd0f8fbffbca4e1ca898e609a738a756d)
 - Fix 3G signal strength calculation on ublox-based cellular devices [553af7b](https://github.com/particle-iot/device-os/commit/553af7b89d969517b02c8a3b3ef4875a31f2cf27)
 - Only increment unacknowledged counter for requests, not acknowledgements [#2046](https://github.com/particle-iot/device-os/pull/2046)
 - Fix YModem transfer regression introduced in 1.5.0-rc.2 [#2051](https://github.com/particle-iot/device-os/pull/2051)
