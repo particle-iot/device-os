@@ -156,7 +156,6 @@ int DecompressStream::write(const char* buffer, const size_t length)  {
 
 } // namespace particle
 
-#ifdef HAL_REPLACE_BOOTLOADER_OTA
 int bootloader_update(const void* bootloader_image, unsigned length)
 {
     HAL_Bootloader_Lock(false);
@@ -166,12 +165,6 @@ int bootloader_update(const void* bootloader_image, unsigned length)
     HAL_Bootloader_Lock(true);
     return result;
 }
-#else
-int bootloader_update(const void*, unsigned)
-{
-    return FLASH_ACCESS_RESULT_ERROR;
-}
-#endif // HAL_REPLACE_BOOTLOADER_OTA
 
 #ifdef HAL_REPLACE_BOOTLOADER
 

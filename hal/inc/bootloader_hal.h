@@ -31,11 +31,7 @@ extern "C" {
 #if /*PLATFORM_ID==6 || PLATFORM_ID==8 ||*/ PLATFORM_ID==10 /*|| HAL_PLATFORM_MESH*/
 #define HAL_REPLACE_BOOTLOADER
 #endif
-#if PLATFORM_ID==6 || PLATFORM_ID==8 || PLATFORM_ID==10 || HAL_PLATFORM_MESH
-// TODO: Move to hal_platform.h
-#define HAL_REPLACE_BOOTLOADER_OTA
-#endif
-#endif
+#endif // !defined(SYSTEM_MINIMAL)
 
 
 const uint8_t* HAL_Bootloader_Image(uint32_t* size, void* reserved);
