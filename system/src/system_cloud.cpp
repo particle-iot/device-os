@@ -62,6 +62,12 @@ VitalsPublisher<Timer> _vitals;
 VitalsPublisher<particle::NullTimer> _vitals;
 #endif // PLATFORM_THREADING
 
+// These properties are forwarded to the protocol instance as is
+static_assert(SPARK_CLOUD_PING_INTERVAL == (int)particle::protocol::Connection::PING,
+        "The value of SPARK_CLOUD_PING_INTERVAL has changed");
+static_assert(SPARK_CLOUD_FAST_OTA_ENABLED == (int)particle::protocol::Connection::FAST_OTA,
+        "The value of SPARK_CLOUD_FAST_OTA_ENABLED has changed");
+
 } // namespace
 
 SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_type)
@@ -213,10 +219,7 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
 
 bool spark_cloud_flag_connected(void)
 {
-    if (SPARK_CLOUD_SOCKETED && SPARK_CLOUD_CONNECTED)
-        return true;
-    else
-        return false;
+    return (SPARK_CLOUD_SOCKETED && SPARK_CLOUD_CONNECTED);
 }
 
 int spark_cloud_disconnect(const spark_cloud_disconnect_options* options, void* reserved)
@@ -255,20 +258,25 @@ String spark_deviceID(void)
     return bytes2hex(id, len);
 }
 
-int spark_set_connection_property(unsigned property_id, unsigned data, const void* conn_prop, void* reserved)
+int spark_set_connection_property(unsigned property, unsigned value, const void* data, void* reserved)
 {
-    switch (property_id) {
-    case SPARK_CLOUD_CONNECTION_PROPERTY_DISCONNECT_OPTIONS: {
-        const auto p = (const spark_cloud_disconnect_options*)conn_prop;
-        auto opts = CloudDisconnectOptions::fromSystemOptions(p);
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_set_connection_property(property, value, data, reserved));
+    switch (property) {
+    case SPARK_CLOUD_DISCONNECT_OPTIONS: {
+        const auto d = (const spark_cloud_disconnect_options*)data;
+        auto opts = CloudDisconnectOptions::fromSystemOptions(d);
         particle::CloudConnectionSettings::instance()->setDefaultDisconnectOptions(std::move(opts));
         return 0;
     }
-    default: {
-        SYSTEM_THREAD_CONTEXT_SYNC(spark_set_connection_property(property_id, data, conn_prop, reserved));
-        const auto p = (const particle::protocol::connection_properties_t*)conn_prop;
-        return spark_protocol_set_connection_property(sp, property_id, data, p, reserved);
+    // These properties are forwarded to the protocol instance as is
+    case SPARK_CLOUD_PING_INTERVAL:
+    case SPARK_CLOUD_FAST_OTA_ENABLED: {
+        const auto d = (const particle::protocol::connection_properties_t*)data;
+        const auto r = spark_protocol_set_connection_property(sp, property, value, d, reserved);
+        return spark_protocol_to_system_error(r);
     }
+    default:
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 }
 

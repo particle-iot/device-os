@@ -19,7 +19,7 @@
 
 #include "system_mode.h"
 #include "system_task.h"
-#include "system_cloud.h"
+#include "system_cloud_internal.h"
 #include "system_threading.h"
 
 #include "core_hal.h"
@@ -56,9 +56,11 @@ int systemResetImpl(system_reset_mode mode, System_Reset_Reason reason, unsigned
 
 void spark_cloud_flag_connect(void)
 {
-    //Schedule cloud connection and handshake
+    // Schedule cloud connection and handshake
     SPARK_CLOUD_AUTO_CONNECT = 1;
     SPARK_WLAN_SLEEP = 0;
+    // Reset disconnection options
+    particle::CloudConnectionSettings::instance()->takePendingDisconnectOptions();
 }
 
 void spark_cloud_flag_disconnect(void)

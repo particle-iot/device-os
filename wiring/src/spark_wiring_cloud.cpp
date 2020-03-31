@@ -22,9 +22,9 @@ spark_cloud_disconnect_options CloudDisconnectOptions::toSystemOptions() const
 {
     spark_cloud_disconnect_options opts = {};
     opts.size = sizeof(opts);
-    opts.flags = optionFlags_;
-    opts.graceful = disconnectGracefully_;
-    opts.timeout = disconnectTimeout_;
+    opts.flags = flags_;
+    opts.graceful = graceful_;
+    opts.timeout = timeout_;
     return opts;
 }
 
@@ -93,5 +93,5 @@ void CloudClass::disconnect(const CloudDisconnectOptions& options) {
 
 void CloudClass::setDisconnectOptions(const CloudDisconnectOptions& options) {
     const auto opts = options.toSystemOptions();
-    spark_set_connection_property(SPARK_CLOUD_CONNECTION_PROPERTY_DISCONNECT_OPTIONS, 0 /* data */, &opts, nullptr /* reserved */);
+    spark_set_connection_property(SPARK_CLOUD_DISCONNECT_OPTIONS, 0 /* value */, &opts, nullptr /* reserved */);
 }

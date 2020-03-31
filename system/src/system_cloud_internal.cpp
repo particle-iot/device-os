@@ -1139,6 +1139,7 @@ void Spark_Process_Events()
 namespace {
 
 CloudDiagnostics g_cloudDiagnostics;
+CloudConnectionSettings g_cloudConnectionSettings;
 
 } // namespace
 
@@ -1176,6 +1177,5 @@ CloudDiagnostics* CloudDiagnostics::instance() {
 }
 
 CloudConnectionSettings* CloudConnectionSettings::instance() {
-    static CloudConnectionSettings conf;
-    return &conf;
+    return &g_cloudConnectionSettings;
 }

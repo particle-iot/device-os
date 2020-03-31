@@ -72,30 +72,30 @@ struct is_string_literal {
 
 class CloudDisconnectOptions {
 public:
-    enum OptionFlag {
-        DISCONNECT_GRACEFULLY = SPARK_CLOUD_DISCONNECT_FLAG_GRACEFUL_SET,
-        DISCONNECT_TIMEOUT = SPARK_CLOUD_DISCONNECT_FLAG_TIMEOUT_SET
-    };
-
     CloudDisconnectOptions();
 
-    void setDisconnectGracefully(bool enabled);
-    bool disconnectGracefully() const;
-    bool isDisconnectGracefullySet() const;
+    CloudDisconnectOptions& graceful(bool enabled);
+    bool graceful() const;
+    bool isGracefulSet() const;
 
-    void setDisconnectTimeout(unsigned timeout);
-    unsigned disconnectTimeout() const;
-    bool isDisconnectTimeoutSet() const;
+    CloudDisconnectOptions& timeout(unsigned timeout);
+    unsigned timeout() const;
+    bool isTimeoutSet() const;
 
     spark_cloud_disconnect_options toSystemOptions() const;
     static CloudDisconnectOptions fromSystemOptions(const spark_cloud_disconnect_options* options);
 
 private:
-    unsigned optionFlags_;
-    unsigned disconnectTimeout_;
-    bool disconnectGracefully_;
+    enum OptionFlag {
+        GRACEFUL = SPARK_CLOUD_DISCONNECT_FLAG_GRACEFUL,
+        TIMEOUT = SPARK_CLOUD_DISCONNECT_FLAG_TIMEOUT
+    };
 
-    CloudDisconnectOptions(unsigned optionFlags, unsigned disconnectTimeout, bool disconnectGracefully);
+    unsigned flags_; // TODO: Use std::optional (C++17)
+    unsigned timeout_;
+    bool graceful_;
+
+    CloudDisconnectOptions(unsigned flags, unsigned timeout, bool graceful);
 };
 
 class CloudClass {
@@ -388,15 +388,14 @@ public:
         particle::protocol::connection_properties_t conn_prop = {0};
         conn_prop.size = sizeof(conn_prop);
         conn_prop.keepalive_source = particle::protocol::KeepAliveSource::USER;
-        spark_set_connection_property(particle::protocol::Connection::PING,
-                                               sec * 1000, &conn_prop, nullptr);
+        spark_set_connection_property(SPARK_CLOUD_PING_INTERVAL, sec * 1000, &conn_prop, nullptr);
     }
 
     inline static void keepAlive(std::chrono::seconds s) { keepAlive(s.count()); }
 #endif
 
     /**
-     * Set default cloud disconnection options.
+     * Set the default cloud disconnection options.
      *
      * @param options Options.
      *
@@ -524,37 +523,38 @@ inline CloudDisconnectOptions::CloudDisconnectOptions() :
         CloudDisconnectOptions(0, 0, false) {
 }
 
-inline CloudDisconnectOptions::CloudDisconnectOptions(unsigned optionFlags, unsigned disconnectTimeout,
-            bool disconnectGracefully) :
-        optionFlags_(optionFlags),
-        disconnectTimeout_(disconnectTimeout),
-        disconnectGracefully_(disconnectGracefully) {
+inline CloudDisconnectOptions::CloudDisconnectOptions(unsigned flags, unsigned timeout, bool graceful) :
+        flags_(flags),
+        timeout_(timeout),
+        graceful_(graceful) {
 }
 
-inline void CloudDisconnectOptions::setDisconnectGracefully(bool enabled) {
-    disconnectGracefully_ = enabled;
-    optionFlags_ |= OptionFlag::DISCONNECT_GRACEFULLY;
+inline CloudDisconnectOptions& CloudDisconnectOptions::graceful(bool enabled) {
+    graceful_ = enabled;
+    flags_ |= OptionFlag::GRACEFUL;
+    return *this;
 }
 
-inline bool CloudDisconnectOptions::disconnectGracefully() const {
-    return disconnectGracefully_;
+inline bool CloudDisconnectOptions::graceful() const {
+    return graceful_;
 }
 
-inline bool CloudDisconnectOptions::isDisconnectGracefullySet() const {
-    return (optionFlags_ & OptionFlag::DISCONNECT_GRACEFULLY);
+inline bool CloudDisconnectOptions::isGracefulSet() const {
+    return (flags_ & OptionFlag::GRACEFUL);
 }
 
-inline void CloudDisconnectOptions::setDisconnectTimeout(unsigned timeout) {
-    disconnectTimeout_ = timeout;
-    optionFlags_ |= OptionFlag::DISCONNECT_TIMEOUT;
+inline CloudDisconnectOptions& CloudDisconnectOptions::timeout(unsigned timeout) {
+    timeout_ = timeout;
+    flags_ |= OptionFlag::TIMEOUT;
+    return *this;
 }
 
-inline unsigned CloudDisconnectOptions::disconnectTimeout() const {
-    return disconnectTimeout_;
+inline unsigned CloudDisconnectOptions::timeout() const {
+    return timeout_;
 }
 
-inline bool CloudDisconnectOptions::isDisconnectTimeoutSet() const {
-    return (optionFlags_ & OptionFlag::DISCONNECT_TIMEOUT);
+inline bool CloudDisconnectOptions::isTimeoutSet() const {
+    return (flags_ & OptionFlag::TIMEOUT);
 }
 
 // Deprecated methods

@@ -571,18 +571,8 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, netwo
         }
 
         // Get disconnection options
-        const auto conf = CloudConnectionSettings::instance();
-        const auto defaultOpts = conf->getDefaultDisconnectOptions();
-        const auto pendingOpts = conf->takePendingDisconnectOptions();
-
-        bool graceful = (flags & CLOUD_DISCONNECT_GRACEFULLY);
-        if (graceful) {
-            if (pendingOpts.isDisconnectGracefullySet()) {
-                graceful = pendingOpts.disconnectGracefully();
-            } else if (defaultOpts.isDisconnectGracefullySet()) {
-                graceful = defaultOpts.disconnectGracefully();
-            }
-        }
+        const auto opts = CloudConnectionSettings::instance()->takePendingDisconnectOptions();
+        const bool graceful = (flags & CLOUD_DISCONNECT_GRACEFULLY) && opts.graceful();
         if (SPARK_CLOUD_CONNECTED) {
             if (graceful) {
                 // Notify the cloud that we're about to disconnect
@@ -592,11 +582,7 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, netwo
                 cmd.network_reason = networkReason;
                 cmd.reset_reason = resetReason;
                 cmd.sleep_duration = sleepDuration;
-                if (pendingOpts.isDisconnectTimeoutSet()) {
-                    cmd.timeout = pendingOpts.disconnectTimeout();
-                } else if (defaultOpts.isDisconnectTimeoutSet()) {
-                    cmd.timeout = defaultOpts.disconnectTimeout();
-                }
+                cmd.timeout = opts.timeout();
                 const int r = spark_protocol_command(spark_protocol_instance(), ProtocolCommands::DISCONNECT, 0, &cmd);
                 if (r != protocol::NO_ERROR) {
                     LOG(WARN, "cloud_disconnect(): DISCONNECT command failed: %d", r);
@@ -606,6 +592,7 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, netwo
             }
         }
         if (!(flags & CLOUD_DISCONNECT_DONT_CLOSE)) {
+            // TODO: Graceful disconnection of a TCP socket should also have a timeout
             spark_cloud_socket_disconnect(graceful);
         }
 

@@ -304,11 +304,11 @@ void spark_cloud_flag_disconnect(void);
 bool spark_cloud_flag_auto_connect(void);
 
 /**
- * Option flags for `spark_cloud_disconnect()`.
+ * Option flags for `spark_cloud_disconnect_options`.
  */
 typedef enum spark_cloud_disconnect_flag {
-    SPARK_CLOUD_DISCONNECT_FLAG_GRACEFUL_SET = 0x01, ///< The graceful disconnection option is set.
-    SPARK_CLOUD_DISCONNECT_FLAG_TIMEOUT_SET = 0x02 ///< The timeout option is set.
+    SPARK_CLOUD_DISCONNECT_FLAG_GRACEFUL = 0x01, ///< The graceful disconnection option is set.
+    SPARK_CLOUD_DISCONNECT_FLAG_TIMEOUT = 0x02 ///< The timeout option is set.
 } spark_cloud_disconnect_flag;
 
 /**
@@ -333,13 +333,17 @@ int spark_cloud_disconnect(const spark_cloud_disconnect_options* options, void* 
 ProtocolFacade* system_cloud_protocol_instance(void);
 
 /**
- * System cloud connection properties.
+ * Cloud connection properties.
+ *
+ * @see `spark_set_connection_property()`
  */
-typedef enum spark_cloud_connection_property {
-    SPARK_CLOUD_CONNECTION_PROPERTY_DISCONNECT_OPTIONS = PROTOCOL_SYSTEM_CONNECTION_PROPERTY_BASE ///< Default disconnection options.
-} spark_cloud_connection_property;
+typedef enum spark_connection_property {
+    SPARK_CLOUD_PING_INTERVAL = 0, ///< Ping interval in milliseconds.
+    SPARK_CLOUD_FAST_OTA_ENABLED = 1, ///< Fast OTA override.
+    SPARK_CLOUD_DISCONNECT_OPTIONS = 2 ///< Default disconnection options.
+} spark_connection_property;
 
-int spark_set_connection_property(unsigned property_id, unsigned data, const void* conn_prop, void* reserved);
+int spark_set_connection_property(unsigned property, unsigned value, const void* data, void* reserved);
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved);
 
