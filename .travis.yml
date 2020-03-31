@@ -12,6 +12,8 @@ services:
   - docker
 
 install:
+  - wget http://ftp.debian.org/debian/pool/main/n/netselect/netselect_0.3.ds1-28+b1_amd64.deb && sudo dpkg -i netselect_0.3.ds1-28+b1_amd64.deb
+  - sudo netselect -s 20 -t 40 $(wget -qO - mirrors.ubuntu.com/mirrors.txt)
   - scripts/docker-hub-login
   - scripts/fetch-buildpack
   - buildpack/scripts/build-image
