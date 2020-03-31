@@ -837,6 +837,18 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
 }
 
 int QuectelNcpClient::initReady() {
+    // Enable flow control and change to runtime baudrate
+    auto runtimeBaudrate = QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE;
+    uint32_t hwVersion = HW_VERSION_UNDEFINED;
+    auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
+    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
+        CHECK_PARSER(parser_.execCommand("AT+IFC=0,0"));
+    } else {
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
+        CHECK_PARSER(parser_.execCommand("AT+IFC=2,2"));
+    }
+    CHECK(changeBaudRate(runtimeBaudrate));
+
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard());
 
@@ -865,18 +877,6 @@ int QuectelNcpClient::initReady() {
         ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
         CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
     }
-
-    // Enable flow control and change to runtime baudrate
-    auto runtimeBaudrate = QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE;
-    uint32_t hwVersion = HW_VERSION_UNDEFINED;
-    auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
-    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
-        CHECK_PARSER(parser_.execCommand("AT+IFC=0,0"));
-    } else {
-        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
-        CHECK_PARSER(parser_.execCommand("AT+IFC=2,2"));
-    }
-    CHECK(changeBaudRate(runtimeBaudrate));
 
     // Check that the modem is responsive at the new baudrate
     skipAll(serial_.get(), 1000);
