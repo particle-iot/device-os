@@ -40,7 +40,7 @@ test(SPI_1_SPI_Begin_Without_Argument)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
-#else // Photon, P1 and Electron
+#else // Photon, P1, Electron and Asset Tracker
     assertEqual(info.ss_pin, A2);
 #endif
     SPI.end();
@@ -61,7 +61,7 @@ test(SPI_2_SPI_Begin_With_Ss_Pin)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
-#else // Photon, P1 and Electron
+#else // Photon, P1, Electron and Asset Tracker
     assertEqual(info.ss_pin, A2);
 #endif
     SPI.end();
@@ -109,7 +109,7 @@ test(SPI_3_SPI_Begin_With_Mode)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin,D8);
-#else // Photon, P1 and Electron
+#else // Photon, P1, Electron and Asset Tracker
     assertEqual(info.ss_pin, A2);
 #endif
     SPI.end();
@@ -126,7 +126,7 @@ test(SPI_3_SPI_Begin_With_Mode)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
-#else // Photon, P1 and Electron
+#else // Photon, P1, Electron and Asset Tracker
     assertEqual(info.ss_pin, A2);
 #endif
     SPI.end();
@@ -148,7 +148,7 @@ test(SPI_4_SPI_Begin_With_Master_Ss_Pin)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
-#else // Photon, P1 and Electron
+#else // Photon, P1, Electron and Asset Tracker
     assertEqual(info.ss_pin, A2);
 #endif
     SPI.end();
