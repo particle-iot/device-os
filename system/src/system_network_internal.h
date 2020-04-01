@@ -623,6 +623,8 @@ public:
         LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
         {
+            // It's expected that the system calls disconnect() before turning off the network to
+            // update the last disconnection reason correctly
             disconnect(NETWORK_DISCONNECT_REASON_UNKNOWN);
 
             const auto diag = NetworkDiagnostics::instance();
@@ -669,8 +671,7 @@ public:
     void notify_disconnected()
     {
         LOG_NETWORK_STATE();
-        // Don't close the socket on the callback since this causes a lockup on the Core
-        cloud_disconnect(CLOUD_DISCONNECT_DONT_CLOSE, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
+        cloud_disconnect(0 /* flags */, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
         if (WLAN_CONNECTING || WLAN_CONNECTED) {
             // This code is executed only in case of an unsolicited disconnection, since the disconnect() method
             // resets the WLAN_CONNECTING and WLAN_CONNECTED flags prior to closing the connection

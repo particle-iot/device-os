@@ -404,7 +404,7 @@ void manage_network_connection() {
     /* FIXME: refactor */
     if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP) {
         auto wasSleeping = SPARK_WLAN_SLEEP;
-        network_disconnect(0, SPARK_WLAN_RESET ? NETWORK_DISCONNECT_REASON_RESET : NETWORK_DISCONNECT_REASON_UNKNOWN, nullptr);
+        network_disconnect(0, SPARK_WLAN_SLEEP ? NETWORK_DISCONNECT_REASON_UNKNOWN : NETWORK_DISCONNECT_REASON_RESET, nullptr);
         network_off(0, 0, 0, 0);
         SPARK_WLAN_RESET = 0;
         SPARK_WLAN_SLEEP = wasSleeping;

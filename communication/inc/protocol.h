@@ -222,7 +222,6 @@ protected:
 		const size_t n = Messages::goodbye(msg.buf(), msg.capacity(), 0, cloud_reason, network_reason, reset_reason,
 				sleep_duration, channel.is_unreliable());
 		if (n > msg.capacity()) {
-			LOG(ERROR, "Insufficient storage for Goodbye message data");
 			return INSUFFICIENT_STORAGE;
 		}
 		msg.set_length(n);
@@ -526,7 +525,7 @@ public:
 
 	system_tick_t millis() { return callbacks.millis(); }
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* param)=0;
+	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* data)=0;
 
 	virtual int get_describe_data(spark_protocol_describe_data* data, void* reserved);
 

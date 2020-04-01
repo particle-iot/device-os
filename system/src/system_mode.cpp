@@ -26,6 +26,8 @@
 
 namespace {
 
+using namespace particle;
+
 System_Mode_TypeDef current_mode = DEFAULT;
 
 volatile uint8_t SPARK_CLOUD_AUTO_CONNECT = 1; //default is AUTOMATIC mode
@@ -60,7 +62,7 @@ void spark_cloud_flag_connect(void)
     SPARK_CLOUD_AUTO_CONNECT = 1;
     SPARK_WLAN_SLEEP = 0;
     // Reset disconnection options
-    particle::CloudConnectionSettings::instance()->takePendingDisconnectOptions();
+    CloudConnectionSettings::instance()->takePendingDisconnectOptions();
 }
 
 void spark_cloud_flag_disconnect(void)
@@ -160,8 +162,12 @@ int system_reset(unsigned mode, unsigned reason, unsigned value, unsigned flags,
     if (reason == RESET_REASON_NONE) {
         reason = defaultReason;
     }
-    // Reset immediately if requested or if we're not connected to the cloud
-    if (HAL_IsISR() || !spark_cloud_flag_connected()) {
+    // Reset immediately if any of the following conditions is met:
+    // - This function in called from an ISR;
+    // - Connection with the cloud is closed;
+    // - Graceful cloud disconnection is disabled globally.
+    if (HAL_IsISR() || !spark_cloud_flag_connected() ||
+            !CloudConnectionSettings::instance()->defaultDisconnectGracefully()) {
         flags |= SYSTEM_RESET_FLAG_NO_WAIT;
     }
     if (flags & SYSTEM_RESET_FLAG_NO_WAIT) {

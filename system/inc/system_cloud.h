@@ -306,17 +306,17 @@ bool spark_cloud_flag_auto_connect(void);
 /**
  * Option flags for `spark_cloud_disconnect_options`.
  */
-typedef enum spark_cloud_disconnect_flag {
-    SPARK_CLOUD_DISCONNECT_FLAG_GRACEFUL = 0x01, ///< The graceful disconnection option is set.
-    SPARK_CLOUD_DISCONNECT_FLAG_TIMEOUT = 0x02 ///< The timeout option is set.
-} spark_cloud_disconnect_flag;
+typedef enum spark_cloud_disconnect_option_flag {
+    SPARK_CLOUD_DISCONNECT_OPTION_GRACEFUL = 0x01, ///< The graceful disconnection option is set.
+    SPARK_CLOUD_DISCONNECT_OPTION_TIMEOUT = 0x02 ///< The timeout option is set.
+} spark_cloud_disconnect_option_flag;
 
 /**
  * Options for `spark_cloud_disconnect()`.
  */
 typedef struct spark_cloud_disconnect_options {
     uint16_t size; ///< Size of this structure.
-    uint8_t flags; ///< Option flags (see `spark_cloud_disconnect_flag`).
+    uint8_t flags; ///< Option flags (see `spark_cloud_disconnect_option_flag`).
     uint8_t graceful; ///< Set to a non-zero value if graceful disconnection is enabled.
     unsigned timeout; ///< Maximum time in milliseconds to wait for message acknowledgements.
 } spark_cloud_disconnect_options;

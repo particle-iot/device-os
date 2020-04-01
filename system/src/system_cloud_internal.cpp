@@ -58,6 +58,7 @@ using particle::CloudDiagnostics;
 using particle::CloudConnectionSettings;
 using particle::publishEvent;
 using particle::protocol::ProtocolError;
+using particle::BufferAppender;
 
 extern uint8_t feature_cloud_udp;
 extern volatile bool cloud_socket_aborted;
@@ -68,8 +69,6 @@ uint32_t particle_key_errors = NO_ERROR;
 const int CLAIM_CODE_SIZE = 63;
 
 using particle::LEDStatus;
-using particle::BufferAppender;
-using particle::protocol::ProtocolError;
 
 int userVarType(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
@@ -493,12 +492,12 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 			update_persisted_state([](SessionPersistData& data){
 				data.describe_app_crc = compute_describe_app_checksum();
 			});
-			break;
+            break;
 		case SparkAppStateSelector::DESCRIBE_SYSTEM:
 			update_persisted_state([](SessionPersistData& data){
 				data.describe_system_crc = compute_describe_system_checksum();
 			});
-			break;
+            break;
 		}
 	}
 	else if (operation==SparkAppStateUpdate::PERSIST && stateSelector==SparkAppStateSelector::SUBSCRIPTIONS)
@@ -850,8 +849,9 @@ bool system_cloud_active()
         if (SPARK_CLOUD_CONNECTED && ((now-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
         {
             WARN("Disconnecting cloud due to inactivity! %d, %d", now, lastCloudEvent);
-            // TODO: Do we need to specify a disconnection reason here?
-            cloud_disconnect(HAL_PLATFORM_MAY_LEAK_SOCKETS ? CLOUD_DISCONNECT_DONT_CLOSE : 0);
+            // TODO: Not sure if we want to specify a disconnection reason here
+            cloud_disconnect(HAL_PLATFORM_MAY_LEAK_SOCKETS ? CLOUD_DISCONNECT_DONT_CLOSE : 0,
+                    CLOUD_DISCONNECT_REASON_NONE);
             return false;
         }
     }

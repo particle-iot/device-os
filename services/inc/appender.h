@@ -21,9 +21,7 @@
  */
 
 #ifndef APPENDER_H
-#define	APPENDER_H
-
-#include "varint.h"
+#define APPENDER_H
 
 #include <stdint.h>
 #include <stddef.h>

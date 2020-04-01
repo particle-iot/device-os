@@ -74,22 +74,22 @@ public:
 		return len;
 	}
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* param) override
+	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* data) override
 	{
 		switch (command)
 		{
-		case ProtocolCommands::SLEEP:
+		case ProtocolCommands::SLEEP: // Deprecated
 		case ProtocolCommands::DISCONNECT: {
 			int r = ProtocolError::NO_ERROR;
 			unsigned timeout = DEFAULT_DISCONNECT_COMMAND_TIMEOUT;
-			if (param) {
-				const auto p = (const spark_disconnect_command*)param;
-				if (p->timeout != 0) {
-					timeout = p->timeout;
+			if (data) {
+				const auto d = (const spark_disconnect_command*)data;
+				if (d->timeout != 0) {
+					timeout = d->timeout;
 				}
-				if (p->cloud_reason != CLOUD_DISCONNECT_REASON_NONE) {
-					r = send_goodbye((cloud_disconnect_reason)p->cloud_reason, (network_disconnect_reason)p->network_reason,
-							(System_Reset_Reason)p->reset_reason, p->sleep_duration);
+				if (d->cloud_reason != CLOUD_DISCONNECT_REASON_NONE) {
+					r = send_goodbye((cloud_disconnect_reason)d->cloud_reason, (network_disconnect_reason)d->network_reason,
+							(System_Reset_Reason)d->reset_reason, d->sleep_duration);
 				}
 			}
 			if (r == ProtocolError::NO_ERROR) {
@@ -102,7 +102,7 @@ public:
 			reset();
 			return ProtocolError::NO_ERROR;
 		}
-		case ProtocolCommands::WAKE:
+		case ProtocolCommands::WAKE: // Deprecated
 		case ProtocolCommands::PING: {
 			int r = ProtocolError::NO_ERROR;
 			if (!pinger.is_expecting_ping_ack()) {

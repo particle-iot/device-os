@@ -235,7 +235,7 @@ namespace ProtocolCommands {
 };
 
 /**
- * Parameters of the DISCONNECT command.
+ * Parameters of a DISCONNECT command.
  */
 typedef struct spark_disconnect_command {
     uint16_t size; ///< Size of this structure.
@@ -246,7 +246,7 @@ typedef struct spark_disconnect_command {
     unsigned timeout; ///< Maximum time in milliseconds to spend waiting for acknowledgements.
 } spark_disconnect_command;
 
-int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value = 0, const void* param = NULL);
+int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value = 0, const void* data = NULL);
 
 #if HAL_PLATFORM_MESH
 namespace MeshCommand {

@@ -592,7 +592,6 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, netwo
             }
         }
         if (!(flags & CLOUD_DISCONNECT_DONT_CLOSE)) {
-            // TODO: Graceful disconnection of a TCP socket should also have a timeout
             spark_cloud_socket_disconnect(graceful);
         }
 

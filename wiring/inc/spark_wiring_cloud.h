@@ -87,8 +87,8 @@ public:
 
 private:
     enum OptionFlag {
-        GRACEFUL = SPARK_CLOUD_DISCONNECT_FLAG_GRACEFUL,
-        TIMEOUT = SPARK_CLOUD_DISCONNECT_FLAG_TIMEOUT
+        GRACEFUL = SPARK_CLOUD_DISCONNECT_OPTION_GRACEFUL,
+        TIMEOUT = SPARK_CLOUD_DISCONNECT_OPTION_TIMEOUT
     };
 
     unsigned flags_; // TODO: Use std::optional (C++17)

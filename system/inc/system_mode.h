@@ -51,7 +51,7 @@ uint16_t system_button_pushed_duration(uint8_t button, void* reserved);
  * System reset mode.
  */
 typedef enum system_reset_mode {
-    SYSTEM_RESET_MODE_INVALID_ = 0, ///< Invalid reset mode.
+    SYSTEM_RESET_MODE_INVALID = 0, ///< Invalid reset mode.
     SYSTEM_RESET_MODE_NORMAL = 1, ///< Normal system reset.
     SYSTEM_RESET_MODE_DFU = 2, ///< Reset into DFU mode.
     SYSTEM_RESET_MODE_SAFE = 3, ///< Reset into safe mode.

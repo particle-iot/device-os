@@ -36,7 +36,7 @@ public:
 		return 0;
 	}
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* param)
+	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* data)
 	{
 		return 0;
 	}

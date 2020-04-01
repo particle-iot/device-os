@@ -32,11 +32,9 @@ typedef enum network_interface_index {
 
 /**
  * System reset reason.
- *
- * @note These reason codes get converted to string identifiers and then published via the
- * spark/device/last_reset event. When adding a new reason code, make sure to update the
- * mappings as well.
  */
+// When adding a new reason code here, make sure to update the system's resetReasonString()
+// function accordingly
 typedef enum System_Reset_Reason {
     RESET_REASON_NONE = 0, ///< Invalid reason code.
     RESET_REASON_UNKNOWN = 10, ///< Unspecified reason.
@@ -67,7 +65,7 @@ typedef enum cloud_disconnect_reason {
     CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT = 3, ///< Disconnected due to a network disconnection.
     CLOUD_DISCONNECT_REASON_LISTENING = 4, ///< Disconnected to enter the listening mode.
     CLOUD_DISCONNECT_REASON_SYSTEM_RESET = 5, ///< Disconnected due to a system reset.
-    CLOUD_DISCONNECT_REASON_SLEEP = 6, ///< Disconnected to enter the sleep mode.
+    CLOUD_DISCONNECT_REASON_SLEEP = 6, ///< Disconnected to enter a sleep mode.
     CLOUD_DISCONNECT_REASON_UNKNOWN = 7 ///< Unspecified disconnection reason.
 } cloud_disconnect_reason;
 
@@ -80,7 +78,7 @@ typedef enum network_disconnect_reason {
     NETWORK_DISCONNECT_REASON_USER = 2, ///< Disconnected at the user's request.
     NETWORK_DISCONNECT_REASON_NETWORK_OFF = 3, ///< Disconnected due to a network shutdown (deprecated).
     NETWORK_DISCONNECT_REASON_LISTENING = 4, ///< Disconnected to enter the listening mode.
-    NETWORK_DISCONNECT_REASON_SLEEP = 5, ///< Disconnected to enter the sleep mode.
+    NETWORK_DISCONNECT_REASON_SLEEP = 5, ///< Disconnected to enter a sleep mode.
     NETWORK_DISCONNECT_REASON_RESET = 6, ///< Disconnected to recover from a cloud connection error.
     NETWORK_DISCONNECT_REASON_UNKNOWN = 7 ///< Unspecified disconnection reason.
 } network_disconnect_reason;

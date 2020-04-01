@@ -249,7 +249,7 @@ void manage_network_connection()
             // before the networking layer, and due to current recovery logic, which resets the network,
             // it's difficult to say whether the network has actually failed or not. In this case we
             // disconnect from the network with the RESET reason code
-            network_disconnect(0, SPARK_WLAN_RESET ? NETWORK_DISCONNECT_REASON_RESET : NETWORK_DISCONNECT_REASON_UNKNOWN, 0);
+            network_disconnect(0, SPARK_WLAN_SLEEP ? NETWORK_DISCONNECT_REASON_UNKNOWN : NETWORK_DISCONNECT_REASON_RESET, 0);
             network_off(0, 0, 0, 0);
             CLR_WLAN_WD();
             SPARK_WLAN_RESET = 0;
