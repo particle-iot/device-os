@@ -251,8 +251,10 @@ int cellular_credentials_clear(void* reserved) {
     return 0;
 }
 
-cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* reserved_) {
-    CellularGlobalIdentity cgi;
+cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi, void* reserved) {
+    // Validate Argument(s)
+    (void)reserved;
+    CHECK_TRUE((nullptr != cgi), SYSTEM_ERROR_INVALID_ARGUMENT);
 
     // Acquire Cellular NCP Client
     const auto mgr = cellularNetworkManager();
@@ -260,21 +262,14 @@ cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* r
     const auto client = mgr->ncpClient();
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
 
-    // Validate Argument(s)
-    (void)reserved_;
-    CHECK_TRUE((nullptr != cgi_), SYSTEM_ERROR_INVALID_ARGUMENT);
-
     // Load cached data into result struct
-    CHECK(client->getCellularGlobalIdentity(&cgi));
+    CHECK(client->getCellularGlobalIdentity(cgi));
 
     // Validate cache
-    CHECK_TRUE(0 != cgi.mobile_country_code, SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(0 != cgi.mobile_network_code, SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(0xFFFF != cgi.location_area_code, SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(0xFFFFFFFF != cgi.cell_id, SYSTEM_ERROR_BAD_DATA);
-
-    // Update result
-    *cgi_ = cgi;
+    CHECK_TRUE(0 != cgi->mobile_country_code, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0 != cgi->mobile_network_code, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0xFFFF != cgi->location_area_code, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0xFFFFFFFF != cgi->cell_id, SYSTEM_ERROR_BAD_DATA);
 
     return SYSTEM_ERROR_NONE;
 }
