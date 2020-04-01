@@ -58,7 +58,7 @@ static void ble_on_scan_result(const hal_ble_gap_on_scan_result_evt_t* event, vo
         memcpy(devName, &event->data[5], devNameLen);
         devName[devNameLen] = '\0';
         LOG(TRACE, "Found device: %s", devName);
-        if (!strcmp((const char*)devName, "Xenon BLE Sample")) {
+        if (!strcmp((const char*)devName, "Argon BLE Sample")) {
             ble_gap_stop_scan();
             auxPeripheralAddr = event->peer_addr;
             auxPeripheralFound = true;

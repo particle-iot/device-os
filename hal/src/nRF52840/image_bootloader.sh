@@ -30,4 +30,4 @@ function update_bl()
 command -v miniz_compress  >/dev/null 2>&1 || die "miniz_compress not found"
 update_bl 12 argon
 update_bl 13 boron
-update_bl 14 xenon
+

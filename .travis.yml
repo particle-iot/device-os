@@ -39,16 +39,9 @@ env:
   matrix:
   # Travis doesn't like to spin up more than 5 concurrent jobs at a time
     - BUILD_PLATFORM="photon p1"
-    - BUILD_PLATFORM="gcc unit-test newhal"
-    - BUILD_PLATFORM="electron boron"
-    - BUILD_PLATFORM="xenon argon"
+    - BUILD_PLATFORM="gcc unit-test newhal electron"
+    - BUILD_PLATFORM="argon boron"
     - BUILD_PLATFORM="bsom b5som"
-
-  # matrix:
-  #   - BUILD_PLATFORM=unit-test gcc
-  #   - BUILD_PLATFORM=photon p1
-  #   - BUILD_PLATFORM=newhal
-  #   - BUILD_PLATFORM=electron xenon
 
   # matrix:
   # - UNIT_TEST=y

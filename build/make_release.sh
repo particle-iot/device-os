@@ -7,7 +7,7 @@ function display_help ()
 usage: make_release.sh [--debug] [--help]
                        [--output-directory=<binary_output_directory>]
                        [--platform=<all|argon|asom|boron|bsom...
-                       |b5som|electron|p1|photon|xenon>]
+                       |b5som|electron|p1|photon>]
                        [--publish=<semantic_version_string>] [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
@@ -129,7 +129,7 @@ function valid_platform()
     platform=$1
 
     # Validate platform (result of expression returned to caller)
-    [ "$platform" = "all" ] || [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || [ "$platform" = "boron" ] || [ "$platform" = "bsom" ] || [ "$platform" = "b5som" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ] || [ "$platform" = "xenon" ]
+    [ "$platform" = "all" ] || [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || [ "$platform" = "boron" ] || [ "$platform" = "bsom" ] || [ "$platform" = "b5som" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ]
 }
 
 if !(valid_platform $PLATFORM); then
@@ -152,7 +152,6 @@ if [ $PLATFORM = "all" ]; then
 	release_platform "electron"
 	release_platform "p1"
 	release_platform "photon"
-	release_platform "xenon"
 	release_platform "b5som"
 else
 	release_platform "$PLATFORM"

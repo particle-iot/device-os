@@ -18,7 +18,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
-// make clean all TEST=hal/ble_peripheral PLATFORM=xenon DEBUG_BUILD=y
+// make clean all TEST=hal/ble_peripheral PLATFORM=argon DEBUG_BUILD=y
 //
 // Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
     // { "comm", LOG_LEVEL_NONE }, // filter out comm messages

@@ -168,7 +168,7 @@ test(api_rgb) {
     API_COMPILE(RGB.mirrorTo(A4, A5, A7, false));
     API_COMPILE(RGB.mirrorTo(A4, A5, A7, true, true));
 #else // HAL_PLATFORM_NRF52840 (GEN 3)
-#if (PLATFORM_ID == PLATFORM_XENON) || (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
+#if (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
     API_COMPILE(RGB.mirrorTo(A4, A5, A3));
     API_COMPILE(RGB.mirrorTo(A4, A5, A3, false));
     API_COMPILE(RGB.mirrorTo(A4, A5, A3, true, true));
@@ -177,7 +177,7 @@ test(api_rgb) {
     API_COMPILE(RGB.mirrorTo(A1, A0, A7));
     API_COMPILE(RGB.mirrorTo(A1, A0, A7, false));
     API_COMPILE(RGB.mirrorTo(A1, A0, A7, true, true));
-#endif // PLATFORM_ID == PLATFORM_XENON || PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
 #endif
     API_COMPILE(RGB.mirrorDisable());
     (void)flag; (void)value; // unused

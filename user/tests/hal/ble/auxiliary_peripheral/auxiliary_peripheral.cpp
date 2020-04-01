@@ -45,7 +45,7 @@ void setup()
     BLE.addCharacteristic(Characteristic3);
 
     BleAdvertisingData advData;
-    advData.appendLocalName("Xenon BLE Sample");
+    advData.appendLocalName("Argon BLE Sample");
     BLE.advertise(&advData);
 }
 

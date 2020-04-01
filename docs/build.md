@@ -109,7 +109,6 @@ common are listed here:
 | electron | 10          |
 | argon    | 12          |
 | boron    | 13          |
-| xenon    | 14          |
 | bsom     | 23          |
 | b5som    | 25          |
 
