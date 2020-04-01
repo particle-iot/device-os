@@ -29,7 +29,7 @@
 #include "usart_hal.h"
 #include "network/ncp/cellular/ncp.h"
 #include "pppncpnetif.h"
-#include "quectel_ncp_client.h"
+#include "network/ncp_client/quectel/quectel_ncp_client.h"
 #include "platform_ncp.h"
 #include "lwip_util.h"
 #include "core_hal.h"
@@ -131,7 +131,7 @@ int if_init_platform(void*) {
     }
 
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, D2, D3, D4, mac);
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, D2, D6, D7, mac);
     }
 
     uint8_t dummy;
