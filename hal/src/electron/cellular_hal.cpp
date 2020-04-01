@@ -359,25 +359,20 @@ cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reser
     return 0;
 }
 
-cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi_, void* reserved_)
+cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi, void* reserved)
 {
-    CellularGlobalIdentity cgi;  // Intentionally left uninitialized
-
     // Validate Argument(s)
-    (void)reserved_;
-    CHECK_TRUE((nullptr != cgi_), SYSTEM_ERROR_INVALID_ARGUMENT);
+    (void)reserved;
+    CHECK_TRUE((nullptr != cgi), SYSTEM_ERROR_INVALID_ARGUMENT);
 
     // Load cached data into result struct
-    CHECK_TRUE(electronMDM.getCellularGlobalIdentity(cgi), SYSTEM_ERROR_AT_NOT_OK);
+    CHECK_TRUE(electronMDM.getCellularGlobalIdentity(*cgi), SYSTEM_ERROR_AT_NOT_OK);
 
     // Validate cache
-    CHECK_TRUE(0 != cgi.mobile_country_code, SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(0 != cgi.mobile_network_code, SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(0xFFFF != cgi.location_area_code, SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(0xFFFFFFFF != cgi.cell_id, SYSTEM_ERROR_BAD_DATA);
-
-    // Update result
-    *cgi_ = cgi;
+    CHECK_TRUE(0 != cgi->mobile_country_code, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0 != cgi->mobile_network_code, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0xFFFF != cgi->location_area_code, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0xFFFFFFFF != cgi->cell_id, SYSTEM_ERROR_BAD_DATA);
 
     return SYSTEM_ERROR_NONE;
 }
