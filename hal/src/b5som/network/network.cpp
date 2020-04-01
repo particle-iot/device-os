@@ -29,7 +29,7 @@
 #include "usart_hal.h"
 #include "network/ncp/cellular/ncp.h"
 #include "pppncpnetif.h"
-#include "quectel_ncp_client.h"
+#include "network/ncp_client/quectel/quectel_ncp_client.h"
 #include "platform_ncp.h"
 #include "lwip_util.h"
 #include "core_hal.h"
