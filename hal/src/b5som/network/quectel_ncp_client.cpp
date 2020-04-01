@@ -1015,15 +1015,12 @@ int QuectelNcpClient::registerNet() {
     // Ignore response code here
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-    // if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
     r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     r = CHECK_PARSER(parser_.execCommand("AT+CGREG?"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    // } else {
     r = CHECK_PARSER(parser_.execCommand("AT+CEREG?"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    // }
 
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;

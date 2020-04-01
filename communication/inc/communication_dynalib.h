@@ -73,12 +73,12 @@ DYNALIB_FN(BASE_IDX2 + 1, communication, spark_protocol_command, int(ProtocolFac
 DYNALIB_FN(BASE_IDX2 + 2, communication, spark_protocol_time_request_pending, bool(ProtocolFacade*, void*))
 DYNALIB_FN(BASE_IDX2 + 3, communication, spark_protocol_time_last_synced, system_tick_t(ProtocolFacade*, time_t*, void*))
 
-#if HAL_PLATFORM_MESH
-DYNALIB_FN(BASE_IDX2 + 4, communication, spark_protocol_mesh_command, int(ProtocolFacade* protocol, MeshCommand::Enum cmd, uint32_t data, void* extraData, completion_handler_data* completion, void* reserved))
+#if HAL_PLATFORM_MESH_DEPRECATED
+DYNALIB_FN_PLACEHOLDER(BASE_IDX2 + 4, communication)
 #define BASE_IDX3 (BASE_IDX2 + 5)
-#else // !HAL_PLATFORM_MESH
+#else // !HAL_PLATFORM_MESH_DEPRECATED
 #define BASE_IDX3 (BASE_IDX2 + 4)
-#endif // HAL_PLATFORM_MESH
+#endif // HAL_PLATFORM_MESH_DEPRECATED
 
 DYNALIB_FN(BASE_IDX3 + 0, communication, spark_protocol_get_describe_data, int(ProtocolFacade*, spark_protocol_describe_data*, void*))
 DYNALIB_FN(BASE_IDX3 + 1, communication, spark_protocol_post_description, int(ProtocolFacade*, int, void*))

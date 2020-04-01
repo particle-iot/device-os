@@ -51,8 +51,6 @@
 #include MBEDTLS_CONFIG_FILE
 #endif
 
-#include <openthread-core-config.h>
-
 #include <stddef.h>
 #include <stdint.h>
 
@@ -73,14 +71,14 @@ extern "C" {
  */
 typedef struct
 {
-#if NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
     bool using_cc310;                               ///< Indicate whether it's using cc310 or not.
 #endif
 
-#if !NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if !(defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT)
     union
     {
-#endif // !NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#endif // !(defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT)
         struct
         {
             SaSiAesUserContext_t user_context;      ///< User context for CC310 AES.
@@ -94,9 +92,9 @@ typedef struct
             uint32_t *rk;                           ///<  AES round keys    */
             uint32_t  buf[68];                      ///<  unaligned data    */
        } software;
-#if !NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if !(defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT)
     };
-#endif // !NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#endif // !(defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT)
 }
 mbedtls_aes_context;
 

@@ -16,8 +16,6 @@
  */
 
 #include "ifapi.h"
-#include "ot_api.h"
-#include "openthread/lwip_openthreadif.h"
 #include "wiznet/wiznetif.h"
 #include "nat64.h"
 #include <mutex>
@@ -35,8 +33,6 @@ using namespace particle::net::nat;
 
 namespace {
 
-/* th1 - OpenThread */
-BaseNetif* th1 = nullptr;
 /* en2 - Ethernet FeatherWing */
 BaseNetif* en2 = nullptr;
 
@@ -47,8 +43,8 @@ int if_init_platform(void*) {
 
     /* lo0 (created by LwIP) */
 
-    /* th1 - OpenThread */
-    th1 = new OpenThreadNetif(ot_get_instance());
+    /* th1 - OpenThread (Deprecated) */
+    reserve_netif_index();
 
     /* en2 - Ethernet FeatherWing (optional) */
     uint8_t mac[6] = {};

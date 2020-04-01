@@ -159,7 +159,7 @@ void lwip_hook_memp_free(memp_t type, unsigned available, unsigned size);
 // #define LWIP_HOOK_IP4_INPUT(pbuf, input_netif) lwip_hook_ip4_input(pbuf, input_netif)
 
 // #define LWIP_HOOK_IP4_INPUT_POST_VALIDATION(pbuf, input_netif) lwip_hook_ip4_input_post_validation(pbuf, input_netif)
-#define LWIP_HOOK_IP4_INPUT_PRE_UPPER_LAYERS(pbuf, iphdr, input_netif) lwip_hook_ip4_input_pre_upper_layers(pbuf, iphdr, input_netif)
+// #define LWIP_HOOK_IP4_INPUT_PRE_UPPER_LAYERS(pbuf, iphdr, input_netif) lwip_hook_ip4_input_pre_upper_layers(pbuf, iphdr, input_netif)
 
 /**
  * LWIP_HOOK_IP4_ROUTE(dest):
@@ -231,7 +231,7 @@ void lwip_hook_memp_free(memp_t type, unsigned available, unsigned size);
 // #define LWIP_HOOK_IP6_INPUT_POST_LOCAL_HANDLING(pbuf, ip6hdr, input_netif, proto) lwip_hook_ip6_input_post_local_handling(pbuf, ip6hdr, input_netif, proto)
 // #define LWIP_HOOK_IP6_INPUT_POST_VALIDATION(pbuf, input_netif) lwip_hook_ip6_input_post_validation(pbuf, input_netif)
 // #define LWIP_HOOK_IP6_FORWARD_POST_ROUTING(pbuf, ip6hdr, input_netif, output_netif, flags) lwip_hook_ip6_forward_post_routing(pbuf, ip6hdr, input_netif, output_netif, flags)
-#define LWIP_HOOK_IP6_FORWARD_PRE_ROUTING(pbuf, ip6hdr, input_netif, flags) lwip_hook_ip6_forward_pre_routing(pbuf, ip6hdr, input_netif, flags)
+// #define LWIP_HOOK_IP6_FORWARD_PRE_ROUTING(pbuf, ip6hdr, input_netif, flags) lwip_hook_ip6_forward_pre_routing(pbuf, ip6hdr, input_netif, flags)
 
 /**
  * LWIP_HOOK_IP6_ROUTE(src, dest):

@@ -17,7 +17,7 @@
 
 #include "application.h"
 
-#if HAL_PLATFORM_MESH
+#if HAL_PLATFORM_NRF52840
 
 extern const pin_t g_pins[];
 extern const char* g_pin_names[];
@@ -73,4 +73,4 @@ const char* g_pin_names[] = {
 
 const size_t g_pin_count = sizeof(g_pins)/sizeof(*g_pins);
 
-#endif // HAL_PLATFORM_MESH
+#endif // HAL_PLATFORM_NRF52840

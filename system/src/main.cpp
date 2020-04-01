@@ -39,7 +39,6 @@
 #include "system_threading.h"
 #include "system_user.h"
 #include "system_update.h"
-#include "system_commands.h"
 #include "core_hal.h"
 #include "delay_hal.h"
 #include "syshealth_hal.h"
@@ -64,7 +63,6 @@
 #include "spark_wiring_wifi.h"
 
 // FIXME
-#include "system_openthread.h"
 #include "system_control_internal.h"
 
 #if HAL_PLATFORM_FILESYSTEM
@@ -85,10 +83,6 @@
 
 #if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
 #include "network/ncp/cellular/ncp.h"
-#endif
-
-#if HAL_PLATFORM_MESH
-#include <openthread/platform/settings.h>
 #endif
 
 #if HAL_PLATFORM_RADIO_STACK
@@ -662,13 +656,8 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     }
     SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
     Save_SystemFlags();
-#if HAL_PLATFORM_MESH
+#if HAL_PLATFORM_NRF52840
     LOG(WARN, "Resetting all settings to factory defaults");
-    // Clear OpenThread settings
-    otPlatSettingsInit(nullptr);
-    otPlatSettingsWipe(nullptr);
-    // Clear pending commands
-    system::system_command_clear();
 #if HAL_PLATFORM_WIFI
     // Clear WiFi credentials
     WifiNetworkManager::clearNetworkConfig();
@@ -690,7 +679,7 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     // Restore default server key and address
     CHECK(dct_write_app_data(backup_udp_public_server_key, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, backup_udp_public_server_key_size));
     CHECK(dct_write_app_data(backup_udp_public_server_address, DCT_ALT_SERVER_ADDRESS_OFFSET, backup_udp_public_server_address_size));
-#endif // HAL_PLATFORM_MESH
+#endif // HAL_PLATFORM_NRF52840
 #endif // !defined(SPARK_NO_PLATFORM) && HAL_PLATFORM_DCT
     return 0;
 }
@@ -768,10 +757,6 @@ void app_setup_and_loop(void)
 #if HAL_PLATFORM_LWIP
     if_init();
 #endif /* HAL_PLATFORM_LWIP */
-
-#if HAL_PLATFORM_OPENTHREAD
-    system::threadInit();
-#endif /* HAL_PLATFORM_OPENTHREAD */
 
 #if SYSTEM_CONTROL_ENABLED
     system::SystemControl::instance()->init();

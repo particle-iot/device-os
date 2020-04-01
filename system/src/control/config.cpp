@@ -34,7 +34,7 @@
 
 #include "dct.h"
 
-#if HAL_PLATFORM_OPENTHREAD
+#if HAL_PLATFORM_NRF52840
 #include "ota_flash_hal_impl.h"
 #else
 #include "ota_flash_hal_stm32f2xx.h"
@@ -258,7 +258,7 @@ int echo(ctrl_request* req) {
     return 0;
 }
 
-#if !HAL_PLATFORM_OPENTHREAD
+#if !HAL_PLATFORM_NRF52840
 
 int handleSetSecurityKeyRequest(ctrl_request* req) {
     particle_ctrl_SetSecurityKeyRequest pbReq = {};
@@ -381,7 +381,7 @@ int handleSetSoftapSsidRequest(ctrl_request* req) {
     return ret;
 }
 
-#else // HAL_PLATFORM_OPENTHREAD
+#else // HAL_PLATFORM_NRF52840
 
 // TODO
 int handleSetSecurityKeyRequest(ctrl_request*) {

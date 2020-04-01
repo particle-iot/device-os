@@ -18,7 +18,7 @@
 /**
  * @file
  * @brief
- *  This file defines the implementation details for POSIX-compatible netdb_hal for mesh-virtual platform.
+ *  This file defines the implementation details for POSIX-compatible netdb_hal for NCP-based platforms.
  */
 
 #ifndef NETDB_HAL_IMPL_H
@@ -34,7 +34,7 @@ extern "C" {
  * @addtogroup netdb_hal_impl
  *
  * @brief
- *   This module provides implementation details for POSIX-compatible netdb_hal for mesh-virtual platform.
+ *   This module provides implementation details for POSIX-compatible netdb_hal for NCP-based platforms.
  *
  * @{
  *

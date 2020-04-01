@@ -91,14 +91,14 @@ int selectAntenna(radio_antenna_type antenna) {
 #if HAL_PLATFORM_RADIO_ANTENNA_INTERNAL
     case RADIO_ANT_INTERNAL: {
         CHECK(selectInternalAntenna());
-        LOG(TRACE, "Using internal BLE/mesh antenna");
+        LOG(TRACE, "Using internal BLE antenna");
         break;
     }
 #endif
 #if HAL_PLATFORM_RADIO_ANTENNA_EXTERNAL
     case RADIO_ANT_EXTERNAL: {
         CHECK(selectExtenalAntenna());
-        LOG(TRACE, "Using external BLE/mesh antenna");
+        LOG(TRACE, "Using external BLE antenna");
         break;
     }
 #endif

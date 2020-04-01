@@ -109,7 +109,7 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t setup_done;                  // Setup done flag
     uint32_t ncp_id;                     // NCP identifier
     hal_power_config power_config;       // Power management configuration
-    uint8_t radio_antenna;               // Mesh/BLE antenna: 0x01 - internal, 0x02 - external, 0xff - default
+    uint8_t radio_antenna;               // BLE antenna: 0x01 - internal, 0x02 - external, 0xff - default
     uint8_t reserved2[219];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];

@@ -18,7 +18,7 @@
 /**
  * @file
  * @brief
- *  This file implements POSIX-compatible socket_hal for mesh-virtual platform.
+ *  This file implements POSIX-compatible socket_hal for NCP-based platforms.
  */
 
 /* socket_hal_posix_impl.h should get included from socket_hal.h automagically */

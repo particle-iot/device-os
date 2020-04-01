@@ -63,8 +63,6 @@ int32_t digitalRead(pin_t pin) {
 #define NETWORK WiFi
 #elif Wiring_Cellular
 #define NETWORK Cellular
-#elif Wiring_Mesh
-#define NETWORK Mesh
 #endif
 
 #ifdef NETWORK

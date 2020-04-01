@@ -281,7 +281,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     if ('i' == c)
     {
     	// see if we have any additional properties. This is true
-    	// for Cellular and Mesh devices.
+    	// for Cellular and Gen 3 devices.
     	hal_system_info_t info = {};
     	info.size = sizeof(info);
     	HAL_OTA_Add_System_Info(&info, true, nullptr);

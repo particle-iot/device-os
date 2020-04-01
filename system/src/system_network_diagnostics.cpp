@@ -17,9 +17,6 @@
 
 #include "platforms.h"
 
-// Mesh signal strength/quality have not been implemented
-#if (PLATFORM_ID != PLATFORM_XENON)
-
 #include <string.h>
 
 #include "cellular_hal.h"
@@ -40,12 +37,6 @@
 #include "system_network_cellular.h"
 #define Wiring_Network 1
 #endif
-
-#if Wiring_Mesh
-#include "spark_wiring_mesh.h"
-#include "system_network_mesh.h"
-#define Wiring_Network 1
-#endif /* Wiring_Mesh */
 
 #ifndef Wiring_Network
 #define Wiring_Network 0
@@ -109,8 +100,6 @@ private:
                                 .version = CGI_VERSION_LATEST};
 #elif Wiring_WiFi
     WiFiSignal sig_;
-#elif Wiring_Mesh
-    MeshSignal sig_;
 #endif
     system_tick_t ts_ = 0;
 
@@ -362,4 +351,3 @@ public:
 
 #endif // Wiring_Network
 
-#endif // (PLATFORM_ID != 14) && (PLATFORM_ID != 24)

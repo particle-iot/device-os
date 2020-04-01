@@ -18,7 +18,7 @@
 /**
  * @file
  * @brief
- *  This file defines the implementation details for POSIX-compatible inet_hal for mesh-virtual platform.
+ *  This file defines the implementation details for POSIX-compatible inet_hal for NCP-based platforms.
  */
 
 #ifndef INET_HAL_POSIX_IMPL_H
@@ -56,7 +56,7 @@ extern "C" {
  * @addtogroup inet_hal_posix_impl
  *
  * @brief
- *   This module provides implementation details for POSIX-compatible inet_hal for mesh-virtual platform.
+ *   This module provides implementation details for POSIX-compatible inet_hal for NCP-based platforms.
  *
  * @{
  *

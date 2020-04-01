@@ -39,19 +39,6 @@ STATIC_ASSERT(backup_udp_public_server_key_size, sizeof(backup_udp_public_server
 
 const size_t backup_udp_public_server_key_size = sizeof(backup_udp_public_server_key);
 
-# if HAL_PLATFORM_MESH
-
-// $id.udp-mesh.particle.io
-const unsigned char backup_udp_public_server_address[] = {
-  0x01, 0x18, 0x24, 0x69, 0x64, 0x2e, 0x75, 0x64, 0x70, 0x2d, 0x6d, 0x65,
-  0x73, 0x68, 0x2e, 0x70, 0x61, 0x72, 0x74, 0x69, 0x63, 0x6c, 0x65, 0x2e,
-  0x69, 0x6f, 0x00
-};
-
-STATIC_ASSERT(backup_udp_public_server_address_size, sizeof(backup_udp_public_server_address)==27);
-
-# else // HAL_PLATFORM_MESH
-
 // $id.udp.particle.io
 const unsigned char backup_udp_public_server_address[] = {
   0x01, 0x13, 0x24, 0x69, 0x64, 0x2e, 0x75, 0x64, 0x70, 0x2e, 0x70, 0x61,
@@ -59,8 +46,6 @@ const unsigned char backup_udp_public_server_address[] = {
 };
 
 STATIC_ASSERT(backup_udp_public_server_address_size, sizeof(backup_udp_public_server_address)==22);
-
-# endif // !HAL_PLATFORM_MESH
 
 const size_t backup_udp_public_server_address_size = sizeof(backup_udp_public_server_address);
 

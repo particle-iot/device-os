@@ -57,7 +57,7 @@ int store_server_address(server_protocol_type type, const ServerAddress* addr);
 void set_key_value(key_value* kv, const char* key, const char* value);
 
 /**
- * Fetches the key-value instances and the count of system properties for mesh.
+ * Fetches the key-value instances and the count of system properties for Gen 3 devices.
  * @param storage	When not-null, points to storage with keyCount free entries.
  * 					When null, is used to retrieve the number of keys available.
  * @return The number of keys available, when storage is null, or the number of keys
@@ -66,7 +66,7 @@ void set_key_value(key_value* kv, const char* key, const char* value);
 int fetch_system_properties(key_value* storage, int keyCount);
 
 /**
- * Adds the system properties for mesh devices to the system info, allocating the storage required
+ * Adds the system properties for Gen 3 devices to the system info, allocating the storage required
  * plus an additional amount for platform-specific properties.
  */
 int add_system_properties(hal_system_info_t* info, bool create, size_t additional);

@@ -212,39 +212,39 @@ elif [ ! -z $PLATFORM ]; then
     case "$PLATFORM" in
         "photon")
             PLATFORM_ID="6"
-            MESH=false
+            GEN3=false
             ;;
         "p1")
             PLATFORM_ID="8"
-            MESH=false
+            GEN3=false
             ;;
         "electron")
             PLATFORM_ID="10"
-            MESH=false
+            GEN3=false
             ;;
         "argon")
             PLATFORM_ID="12"
-            MESH=true
+            GEN3=true
             ;;
         "boron")
             PLATFORM_ID="13"
-            MESH=true
+            GEN3=true
             ;;
         "xenon")
             PLATFORM_ID="14"
-            MESH=true
+            GEN3=true
             ;;
         "asom")
             PLATFORM_ID="22"
-            MESH=true
+            GEN3=true
             ;;
         "bsom")
             PLATFORM_ID="23"
-            MESH=true
+            GEN3=true
             ;;
         "b5som")
             PLATFORM_ID="25"
-            MESH=true
+            GEN3=true
             ;;
         *)
             echo "ERROR: No rules to release platform: \"$PLATFORM\"!"
@@ -255,39 +255,39 @@ else
     case "$PLATFORM_ID" in
         6)
             PLATFORM="photon"
-            MESH=false
+            GEN3=false
             ;;
         8)
             PLATFORM="p1"
-            MESH=false
+            GEN3=false
             ;;
         10)
             PLATFORM="electron"
-            MESH=false
+            GEN3=false
             ;;
         12)
             PLATFORM="argon"
-            MESH=true
+            GEN3=true
             ;;
         13)
             PLATFORM="boron"
-            MESH=true
+            GEN3=true
             ;;
         14)
             PLATFORM="xenon"
-            MESH=true
+            GEN3=true
             ;;
         22)
             PLATFORM="asom"
-            MESH=true
+            GEN3=true
             ;;
         23)
             PLATFORM="bsom"
-            MESH=true
+            GEN3=true
             ;;
         25)
             PLATFORM="b5som"
-            MESH=true
+            GEN3=true
             ;;
         *)
             echo "ERROR: No rules to release platform id: $PLATFORM_ID!"
@@ -386,7 +386,7 @@ elif [ $PLATFORM_ID -eq 10 ]; then
         release_binary "user-part" "tinker" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
     done
 
-# Mesh
+# GEN3
 elif [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 14 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ]; then
     # Configure
     if [ $DEBUG = true ]; then
@@ -435,7 +435,7 @@ fi
 
 # Configure
 cd ../bootloader
-if [ $MESH = true ]; then
+if [ $GEN3 = true ]; then
     COMPILE_LTO="n"
     DEBUG_BUILD="n"
     SUFFIX="-m"

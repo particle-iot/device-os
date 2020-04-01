@@ -104,15 +104,6 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     }
 #endif // HAL_PLATFORM_WIFI
 
-#if HAL_PLATFORM_MESH
-    bool meshResume = false;
-    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_MESH)) {
-        if (system_sleep_network_suspend(NETWORK_INTERFACE_MESH)) {
-            meshResume = true;
-        }
-    }
-#endif // HAL_PLATFORM_MESH
-
 #if HAL_PLATFORM_ETHERNET
     bool ethernetResume = false;
     if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
@@ -154,14 +145,6 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
         system_sleep_network_resume(NETWORK_INTERFACE_WIFI_STA);
     }
 #endif // HAL_PLATFORM_WIFI
-
-#if HAL_PLATFORM_MESH
-    if (meshResume) {
-        // FIXME: we need to bring Mesh interface back up because we've turned it off
-        // despite SLEEP_NETWORK_STANDBY
-        system_sleep_network_resume(NETWORK_INTERFACE_MESH);
-    }
-#endif // HAL_PLATFORM_MESH
 
 #if HAL_PLATFORM_ETHERNET
     if (ethernetResume) {

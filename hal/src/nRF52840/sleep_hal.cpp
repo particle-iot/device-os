@@ -185,8 +185,8 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
 
         // Temporarily enable SoftDevice API interrupts just in case
         uint32_t basePri = __get_BASEPRI();
-        // We are also allowing IRQs with priority = 5, because that's what
-        // OpenThread uses for its SWI3
+        // We are also allowing IRQs with priority = 5
+        // FIXME: because that's what OpenThread used for its SWI3
         __set_BASEPRI(_PRIO_APP_LOW << (8 - __NVIC_PRIO_BITS));
         sd_nvic_critical_region_exit(st);
         {

@@ -44,21 +44,21 @@
 
 #include "mbedtls/aes.h"
 
-#include <openthread-core-config.h>
+// #include <openthread-core-config.h>
 #include <string.h>
 
 #ifdef MBEDTLS_AES_ALT
 
 #include "aes_alt_cc310.h"
 
-#if NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
 #include <nrf.h>
 #include "aes_alt_soft.h"
 #endif
 
 void mbedtls_aes_init(mbedtls_aes_context * ctx)
 {
-#if NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
     uint32_t  active_vector_id = (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) >> SCB_ICSR_VECTACTIVE_Pos;
 
     // Check if this function is called from main thread.
@@ -67,7 +67,7 @@ void mbedtls_aes_init(mbedtls_aes_context * ctx)
         aes_soft_init(ctx);
 #endif
         aes_cc310_init(ctx);
-#if NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
         ctx->using_cc310 = true;
     }
     else
@@ -80,12 +80,12 @@ void mbedtls_aes_init(mbedtls_aes_context * ctx)
 
 void mbedtls_aes_free(mbedtls_aes_context * ctx)
 {
-#if NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
     if (ctx->using_cc310)
     {
 #endif
         aes_cc310_free(ctx);
-#if NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
         aes_soft_free(ctx);
     }
     else
@@ -101,12 +101,12 @@ int mbedtls_aes_setkey_enc(mbedtls_aes_context * ctx,
 {
     int result;
 
-#if NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
     if (ctx->using_cc310 && keybits == 128)
     {
 #endif
         result = aes_cc310_setkey_enc(ctx, key, keybits);
-#if NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
     }
     else
     {
@@ -132,12 +132,12 @@ int mbedtls_aes_crypt_ecb(mbedtls_aes_context * ctx,
 {
     int result;
 
-#if NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
     if (ctx->using_cc310)
     {
 #endif
         result = aes_cc310_crypt_ecb(ctx, mode, input, output);
-#if NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
     }
     else
     {

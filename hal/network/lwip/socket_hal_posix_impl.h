@@ -18,7 +18,7 @@
 /**
  * @file
  * @brief
- *  This file defines the implementation details for POSIX-compatible socket_hal for mesh-virtual platform.
+ *  This file defines the implementation details for POSIX-compatible socket_hal for NCP-based platforms.
  */
 
 #ifndef SOCKET_HAL_POSIX_IMPL_H
@@ -34,7 +34,7 @@ extern "C" {
  * @addtogroup socket_hal_posix_impl
  *
  * @brief
- *   This module provides implementation details for POSIX-compatible socket_hal for mesh-virtual platform.
+ *   This module provides implementation details for POSIX-compatible socket_hal for NCP-based platforms.
  *
  * @{
  *

@@ -174,7 +174,6 @@ test(system_sleep)
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1min)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1h)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().flag(SystemSleepFlag::WAIT_CLOUD)); (void)r; });
-    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_MESH)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_ETHERNET)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_CELLULAR)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_WIFI_STA)); (void)r; });

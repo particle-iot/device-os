@@ -47,7 +47,6 @@
 #include "system_threading.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_led.h"
-#include "system_commands.h"
 
 #if HAL_PLATFORM_BLE
 #include "ble_hal.h"
@@ -456,11 +455,6 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         manage_ip_config();
 
         manage_cloud_connection(force_events);
-
-// FIXME: there should be a separate feature macro
-#if HAL_PLATFORM_FILESYSTEM
-        particle::system::fetchAndExecuteCommand(millis());
-#endif // HAL_PLATFORM_FILESYSTEM
     }
     else
     {
@@ -675,10 +669,10 @@ void system_pool_free(void* ptr, void* reserved) {
 int system_invoke_event_handler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
                 const char* event_name, const char* event_data, void* reserved)
 {
-#if HAL_PLATFORM_MESH
+#if HAL_PLATFORM_NRF52840
 	invokeEventHandler(handlerInfoSize, handlerInfo, event_name, event_data, reserved);
 	return SYSTEM_ERROR_NONE;
 #else
     return SYSTEM_ERROR_NOT_SUPPORTED;
-#endif // HAL_PLATFORM_MESH
+#endif // HAL_PLATFORM_NRF52840
 }

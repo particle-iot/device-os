@@ -17,21 +17,14 @@
 
 #pragma once
 
-#include <openthread/instance.h>
-#include <openthread/coap.h>
-#include <openthread/ip6.h>
+#include "dynalib.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
+#ifdef DYNALIB_EXPORT
+#include "mesh_hal_deprecated.h"
+#endif
 
-typedef void(*otExtParticleReceiveDeviceIdGetCallback)(otError err, otCoapCode coapResult,
-        const uint8_t* deviceId, size_t length, const otMessageInfo* msgInfo, void* ctx);
+DYNALIB_BEGIN(hal_mesh_deprecated)
 
-otError otExtParticleSetReceiveDeviceIdGetCallback(otInstance* instance,
-        otExtParticleReceiveDeviceIdGetCallback cb, void* ctx);
-otError otExtParticleSendDeviceIdGet(otInstance* instance, const otIp6Address* dest);
+DYNALIB_FN(0, hal_mesh, mesh_select_antenna_deprecated, int(int, void*))
 
-#ifdef __cplusplus
-}
-#endif // __cplusplus
+DYNALIB_END(hal_mesh_deprecated)

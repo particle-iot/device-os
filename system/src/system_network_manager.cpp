@@ -27,7 +27,6 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include <mutex>
 #include "system_led_signal.h"
 #include "enumclass.h"
-#include "system_commands.h"
 #if HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
 #include "network/ncp/wifi/ncp.h"
 #include "network/ncp/wifi/wifi_network_manager.h"
@@ -35,10 +34,6 @@ LOG_SOURCE_CATEGORY("system.nm")
 #if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
 #include "cellular_hal.h"
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
-#if HAL_PLATFORM_MESH
-#include "border_router_manager.h"
-#include "control/mesh.h"
-#endif // HAL_PLATFORM_MESH
 #include "check.h"
 #include "system_cloud.h"
 #include "system_threading.h"
@@ -61,15 +56,6 @@ LOG_SOURCE_CATEGORY("system.nm")
             } \
             _ret; \
         })
-
-#if HAL_PLATFORM_OPENTHREAD
-#include "system_openthread.h"
-#include <openthread/dataset.h>
-#include <openthread/thread.h>
-#include <openthread/instance.h>
-#endif /* HAL_PLATFORM_OPENTHREAD */
-
-using namespace particle::net;
 
 namespace particle { namespace system {
 
@@ -110,125 +96,6 @@ void forceCloudPingIfConnected() {
 }
 
 } /* anonymous */
-
-
-#if HAL_PLATFORM_MESH
-
-enum class BorderRouterPermission { NONE, YES, NO };
-
-/**
- * Setting of the border router on this device from the cloud.
- */
-volatile BorderRouterPermission br_permitted = BorderRouterPermission::NONE;
-/**
- * Flag to enable/disable the border router functionality locally.
- */
-volatile bool br_enabled = false;
-
-/**
- * For now poll the cloud. Later the cloud will send a message when the device
- * is eligible as a border router.
- */
-const uint32_t GATEWAY_CLOUD_REFRESH_MS = 5*60*1000;
-static os_timer_t g_brTimer = nullptr;
-
-/**
- * Destroy the border router timer
- */
-void brTimerCleanup() {
-    os_timer_t t = g_brTimer;
-    g_brTimer = nullptr;
-    if (t) {
-        os_timer_destroy(t, nullptr);
-    }
-}
-
-void updateBorderRouter();
-
-void brUpdateTimeout(os_timer_t timer) {
-    // clear the permitted flag so that it is re-evaluated.
-    br_permitted = BorderRouterPermission::NONE;
-    updateBorderRouter();
-}
-
-/**
- * Schedules a query to be sent to the device cloud about the border router
- * eligibility.
- */
-void scheduleBrUpdate(uint32_t period) {
-    if (!g_brTimer) {
-        // since this is the only thread that creates the timer this is as good as single-threaded code.
-        os_timer_create(&g_brTimer, period, brUpdateTimeout, nullptr, true, nullptr);
-    }
-    if (g_brTimer && !os_timer_is_active(g_brTimer, nullptr)) {
-        if (os_timer_change(g_brTimer, OS_TIMER_CHANGE_START, false, period, 0xffffffff, nullptr)) {
-            brTimerCleanup();
-        }
-    }
-}
-
-void updateBorderRouter() {
-    const auto task = new(std::nothrow) ISRTaskQueue::Task();
-    if (!task) {
-        return;
-    }
-    task->func = [](ISRTaskQueue::Task* task) {
-        delete task;
-        LOG_DEBUG(TRACE, "br_enabled=%d, br_permitted=%d", br_enabled, br_permitted);
-        if (br_enabled) {
-            switch (br_permitted) {
-            case BorderRouterPermission::YES:
-                // all flags are allowing it
-                if (!BorderRouterManager::instance()->start()) {
-                    LOG(INFO, "Starting gateway");
-                    brTimerCleanup();
-                }
-                // for now, once enabled we rely on explicit notification
-                // from the cloud to disable. This ensures the BR remains active
-                // should the cloud connection become unreliable.
-                // scheduleBrUpdate(GATEWAY_CLOUD_REFRESH_MS);
-                break;
-
-            case BorderRouterPermission::NO:
-                if (!BorderRouterManager::instance()->stop()) {
-                    LOG(WARN, "Stopping non permitted gateway");
-                }
-                scheduleBrUpdate(GATEWAY_CLOUD_REFRESH_MS);
-                break;
-
-            default: // not set, so get retrieving it.
-                LOG(INFO, "Checking gateway status with the device cloud");
-                // we only inform when the device wants to become a gateway
-                particle::ctrl::mesh::notifyBorderRouter(true);
-                break;
-            } // switch
-        } else {
-            if (!BorderRouterManager::instance()->stop()) {
-                LOG(INFO, "stopping disabled gateway");
-            }
-        }
-    };
-    SystemISRTaskQueue.enqueue(task);
-}
-
-void setBorderRouterPermitted(bool permitted) {
-    const auto p = permitted ? BorderRouterPermission::YES : BorderRouterPermission::NO;
-    if (p != br_permitted) {
-        LOG(TRACE, "br_permitted=%d", permitted);
-    }
-    br_permitted = p;
-    updateBorderRouter();
-}
-
-void setBorderRouterState(bool start) {
-    if (start != br_enabled) {
-        LOG(TRACE, "br_enabled=%d", start);
-    }
-    br_enabled = start;
-    updateBorderRouter();
-}
-
-#endif // HAL_PLATFORM_MESH
 
 NetworkManager::NetworkManager() {
     state_ = State::NONE;
@@ -431,28 +298,6 @@ int NetworkManager::clearConfiguration(if_t oIface) {
             return;
         }
 
-        // NOTE: there used to be a check here preventing credentials to be cleared
-        // if the interface is up, which introduced a difference between Gen 2 and Gen 3.
-        // For now the only network interface that really requires to be down
-        // before clearing credentials is OpenThread mesh. So, we specifically
-        // down it, in all the other cases, we may clear the credentials notwithstanding
-        // the current state.
-
-#if HAL_PLATFORM_OPENTHREAD
-        if (!strncmp(name, "th", 2)) {
-            // OpenThread iface
-
-            // IMPORTANT: mesh interface needs to be down, before we may
-            // clear mesh credentials.
-            if_clear_flags(iface, IFF_UP);
-            ThreadLock lk;
-            otMasterKey key = {};
-            otThreadSetMasterKey(threadInstance(), &key);
-            otInstanceErasePersistentInfo(threadInstance());
-            system_command_clear();
-            ret = SYSTEM_ERROR_NONE;
-        }
-#endif /* HAL_PLATFORM_OPENTHREAD */
 #if HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
         else if (!strncmp(name, "wl", 2)) {
             auto wifiMan = wifiNetworkManager();
@@ -506,9 +351,6 @@ void NetworkManager::transition(State state) {
                 ip6State_ = ProtocolState::UNCONFIGURED;
                 dns4State_ = DnsState::UNCONFIGURED;
                 dns6State_ = DnsState::UNCONFIGURED;
-#if HAL_PLATFORM_MESH
-                setBorderRouterState(false);
-#endif // HAL_PLATFORM_MESH
             }
             break;
         }
@@ -772,15 +614,6 @@ void NetworkManager::refreshIpState() {
     ip4State_ = ip4;
     ip6State_ = ip6;
 
-#if HAL_PLATFORM_MESH
-    // FIXME: for now only checking ip4 state
-    if (ip4State_ == ProtocolState::CONFIGURED && dns4State_ == DnsState::CONFIGURED) {
-        setBorderRouterState(true);
-    } else {
-        setBorderRouterState(false);
-    }
-#endif // HAL_PLATFORM_MESH
-
     const bool ipConfigured = (ip4 == ProtocolState::CONFIGURED && dns4State_ == DnsState::CONFIGURED) ||
             (ip6 == ProtocolState::CONFIGURED && dns6State_ == DnsState::CONFIGURED);
 
@@ -824,14 +657,6 @@ void NetworkManager::refreshDnsState() {
 bool NetworkManager::haveLowerLayerConfiguration(if_t iface) const {
     char name[IF_NAMESIZE] = {};
     if_get_name(iface, name);
-
-#if HAL_PLATFORM_OPENTHREAD
-    if (!strncmp(name, "th", 2)) {
-        /* OpenThread iface */
-        ThreadLock lk;
-        return otDatasetIsCommissioned(threadInstance());
-    }
-#endif /* HAL_PLATFORM_OPENTHREAD */
 
 #if HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
     if (!strncmp(name, "wl", 2)) {

@@ -34,7 +34,6 @@
 #include "control/cellular.h"
 #include "control/config.h"
 #include "control/storage.h"
-#include "control/mesh.h"
 #include "control/cloud.h"
 
 namespace particle {
@@ -347,56 +346,6 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
-#if HAL_PLATFORM_MESH
-    case CTRL_REQUEST_MESH_AUTH: {
-        setResult(req, ctrl::mesh::auth(req));
-        break;
-    }
-    case CTRL_REQUEST_MESH_CREATE_NETWORK: {
-        setResult(req, ctrl::mesh::createNetwork(req));
-        break;
-    }
-    case CTRL_REQUEST_MESH_START_COMMISSIONER: {
-        setResult(req, ctrl::mesh::startCommissioner(req));
-        break;
-    }
-    case CTRL_REQUEST_MESH_STOP_COMMISSIONER: {
-        setResult(req, ctrl::mesh::stopCommissioner(req));
-        break;
-    }
-    case CTRL_REQUEST_MESH_PREPARE_JOINER: {
-        setResult(req, ctrl::mesh::prepareJoiner(req));
-        break;
-    }
-    case CTRL_REQUEST_MESH_ADD_JOINER: {
-        setResult(req, ctrl::mesh::addJoiner(req));
-        break;
-    }
-    case CTRL_REQUEST_MESH_REMOVE_JOINER: {
-        setResult(req, ctrl::mesh::removeJoiner(req));
-        break;
-    }
-    case CTRL_REQUEST_MESH_JOIN_NETWORK: {
-        setResult(req, ctrl::mesh::joinNetwork(req));
-        break;
-    }
-    case CTRL_REQUEST_MESH_LEAVE_NETWORK: {
-        setResult(req, ctrl::mesh::leaveNetwork(req));
-        break;
-    }
-    case CTRL_REQUEST_MESH_GET_NETWORK_INFO: {
-        setResult(req, ctrl::mesh::getNetworkInfo(req));
-        break;
-    }
-    case CTRL_REQUEST_MESH_SCAN_NETWORKS: {
-        setResult(req, ctrl::mesh::scanNetworks(req));
-        break;
-    }
-    case CTRL_REQUEST_MESH_GET_NETWORK_DIAGNOSTICS: {
-        setResult(req, ctrl::mesh::getNetworkDiagnostics(req));
-        break;
-    }
-#endif // HAL_PLATFORM_MESH
     default:
         // Forward the request to the application thread
         if (appReqHandler_) {

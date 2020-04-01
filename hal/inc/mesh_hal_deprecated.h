@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,15 +15,23 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
+#include "radio_hal.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
- * @file
- * @brief
- *  This is a POSIX wrapper for inet_hal_posix
+ * Select the antenna for mesh radio.
+ *
+ * @param antenna Antenna type (a value defined by the `radio_antenna_type` enum).
+ *
+ * @return `0` on success or a negative result code in case of an error.
  */
+int mesh_select_antenna_deprecated(int antenna, void* reserved);
 
-#ifndef NETINET_IN_H
-#define NETINET_IN_H
-
-#include "inet_hal.h"
-
-#endif /* NETINET_IN_H */
+#ifdef __cplusplus
+} // extern "C"
+#endif
