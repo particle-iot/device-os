@@ -38,9 +38,9 @@ git:
 env:
   matrix:
   # Travis doesn't like to spin up more than 5 concurrent jobs at a time
-    - BUILD_PLATFORM="photon p1"
+    - BUILD_PLATFORM="photon argon"
     - BUILD_PLATFORM="gcc unit-test newhal electron"
-    - BUILD_PLATFORM="argon boron"
+    - BUILD_PLATFORM="p1 boron"
     - BUILD_PLATFORM="bsom b5som"
 
   # matrix:
