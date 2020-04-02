@@ -94,7 +94,7 @@ public:
         \param timeout_ms -1 blocking, else non blocking timeout in ms
         \return true if successful and connected to network, false otherwise
     */
-    bool registerNet(const char* apn = nullptr, NetStatus* status = NULL, system_tick_t timeout_ms = 300000);
+    bool registerNet(const char* apn = nullptr, NetStatus* status = NULL, system_tick_t timeout_ms = 10 * 60 * 1000);
 
     /** check if the network is available
         \param status an optional structure to with network information

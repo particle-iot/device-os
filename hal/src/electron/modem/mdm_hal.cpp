@@ -1251,7 +1251,7 @@ int MDMParser::_cbURAT(int type, const char *buf, int len, bool *matched_default
     return WAIT;
 }
 
-bool MDMParser::registerNet(const char* apn, NetStatus* status /*= NULL*/, system_tick_t timeout_ms /*= 180000*/)
+bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t timeout_ms)
 {
     LOCK();
     if (_init && _pwr && _dev.dev != DEV_UNKNOWN) {
