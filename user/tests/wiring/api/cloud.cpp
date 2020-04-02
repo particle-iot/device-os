@@ -223,6 +223,7 @@ test(api_spark_connection) {
     connected++;
     API_COMPILE(Particle.connect());
     API_COMPILE(Particle.disconnect());
+    API_COMPILE(Particle.disconnect(CloudDisconnectOptions().graceful(true).timeout(60000)));
     API_COMPILE(Particle.process());
 
 #if HAL_PLATFORM_CLOUD_UDP
@@ -232,6 +233,8 @@ test(api_spark_connection) {
     API_COMPILE(Particle.keepAlive(1200s));
     API_COMPILE(Particle.keepAlive(20min));
 #endif
+
+    API_COMPILE(Particle.setDisconnectOptions(CloudDisconnectOptions().graceful(true).timeout(60000)));
 }
 
 test(api_spark_deviceID) {

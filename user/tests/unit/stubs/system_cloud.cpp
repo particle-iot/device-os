@@ -24,6 +24,9 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, netwo
 		System_Reset_Reason resetReason, unsigned sleepDuration) {
 }
 
+void spark_cloud_flag_disconnect() {
+}
+
 bool spark_cloud_flag_connected() {
 	return false;
 }

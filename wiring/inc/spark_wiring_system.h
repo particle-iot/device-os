@@ -41,7 +41,6 @@
 #include <limits>
 #include <mutex>
 #include "spark_wiring_system_power.h"
-#include "check.h"
 #include "system_sleep_configuration.h"
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID!=3 && PLATFORM_ID != 20
@@ -618,13 +617,19 @@ public:
 
     int powerSource() const {
         particle::AbstractIntegerDiagnosticData::IntType val;
-        CHECK(particle::AbstractIntegerDiagnosticData::get(DIAG_ID_SYSTEM_POWER_SOURCE, val));
+        const auto r = particle::AbstractIntegerDiagnosticData::get(DIAG_ID_SYSTEM_POWER_SOURCE, val);
+        if (r < 0) {
+            return r;
+        }
         return val;
     }
 
     int batteryState() const {
         particle::AbstractIntegerDiagnosticData::IntType val;
-        CHECK(particle::AbstractIntegerDiagnosticData::get(DIAG_ID_SYSTEM_BATTERY_STATE, val));
+        const auto r = particle::AbstractIntegerDiagnosticData::get(DIAG_ID_SYSTEM_BATTERY_STATE, val);
+        if (r < 0) {
+            return r;
+        }
         return val;
     }
 

@@ -27,6 +27,7 @@
 #include "spark_wiring_spi.h"
 #include "core_hal.h"
 #include "spark_macros.h"
+#include "check.h"
 
 namespace
 {
