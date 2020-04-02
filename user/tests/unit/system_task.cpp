@@ -70,7 +70,7 @@ SCENARIO("System version info is retrieved", "[system,version]") {
     } else if ((SYSTEM_VERSION & 0xC0) == 0x00) {
         sprintf(expected, "%d.%d.%d-alpha.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1), BYTE_N(info.versionNumber,0) & 0x3F);
     } else if ((SYSTEM_VERSION & 0xC0) == 0x40) {
-        sprintf(expected, "%d.%d.%d-beta.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1), BYTE_N(info.versionNumber,0) & 0x3F);
+        sprintf(expected, "%d.%d.%d-tracker.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1), BYTE_N(info.versionNumber,0) & 0x3F);
     } else if ((SYSTEM_VERSION & 0xC0) == 0x80) {
         sprintf(expected, "%d.%d.%d-rc.%d", BYTE_N(info.versionNumber,3), BYTE_N(info.versionNumber,2), BYTE_N(info.versionNumber,1), BYTE_N(info.versionNumber,0) & 0x3F);
     } else if ((SYSTEM_VERSION & 0xC0) >= 0xC0) {

@@ -32,7 +32,7 @@ test(SYSTEM_02_version)
     } else if ((SYSTEM_VERSION & 0xC0) == 0x00) {
         sprintf(expected, "%d.%d.%d-alpha.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0) & 0x3F);
     } else if ((SYSTEM_VERSION & 0xC0) == 0x40) {
-        sprintf(expected, "%d.%d.%d-beta.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0) & 0x3F);
+        sprintf(expected, "%d.%d.%d-tracker.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0) & 0x3F);
     } else if ((SYSTEM_VERSION & 0xC0) == 0x80) {
         sprintf(expected, "%d.%d.%d-rc.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0) & 0x3F);
     } else if ((SYSTEM_VERSION & 0xC0) >= 0xC0) {
