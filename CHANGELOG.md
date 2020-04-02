@@ -1,3 +1,9 @@
+## 1.5.1-tracker.1
+
+### FEATURES
+
+- Platform support for Asset Tracker SoM (`tracker` platform id 26)
+
 ## 1.5.0
 
 ### DEPRECATION

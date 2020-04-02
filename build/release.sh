@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o errexit -o pipefail -o noclobber -o nounset
 
-VERSION="1.5.0"
+VERSION="1.5.1-tracker.1"
 
 function display_help ()
 {
@@ -9,7 +9,7 @@ function display_help ()
 usage: release.sh [--output-directory=<binary_output_directory>]
                   (--platform=<argon|boron|bsom...
                   |b5som|electron|p1|photon|xenon|tracker>...
-                  | --platform-id=<6|8|10|12|13|14|23|25>)
+                  | --platform-id=<6|8|10|12|13|14|23|25|26>)
                   [--debug] [--help] [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
