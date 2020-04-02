@@ -1,5 +1,7 @@
 #include "application.h"
 
+SYSTEM_MODE(SEMI_AUTOMATIC)
+
 STARTUP(System.enableFeature(FEATURE_RETAINED_MEMORY))
 
 namespace {
@@ -38,6 +40,9 @@ void setup() {
     } else {
         ++step;
     }
+    // Enable graceful disconnection globally
+    Particle.setDisconnectOptions(CloudDisconnectOptions().graceful(true).timeout(5000));
+    Particle.connect();
 }
 
 void loop() {
