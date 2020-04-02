@@ -99,7 +99,7 @@ const auto UBLOX_NCP_PPP_CHANNEL = 2;
 const auto UBLOX_NCP_SIM_SELECT_PIN = 23;
 
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
-const unsigned REGISTRATION_TIMEOUT = 5 * 60 * 1000;
+const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
 using CidType = decltype(CellularGlobalIdentity::cell_id);
