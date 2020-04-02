@@ -848,6 +848,9 @@ int QuectelNcpClient::initReady() {
         CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
     }
     CHECK(changeBaudRate(runtimeBaudrate));
+    // Check that the modem is responsive at the new baudrate
+    skipAll(serial_.get(), 1000);
+    CHECK(waitAtResponse(10000));
 
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard());
@@ -877,10 +880,6 @@ int QuectelNcpClient::initReady() {
         ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
         CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
     }
-
-    // Check that the modem is responsive at the new baudrate
-    skipAll(serial_.get(), 1000);
-    CHECK(waitAtResponse(10000));
 
     // Send AT+CMUX and initialize multiplexer
     int portspeed;
