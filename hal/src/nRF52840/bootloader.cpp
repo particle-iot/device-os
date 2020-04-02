@@ -1,4 +1,3 @@
-
 #include <stdint.h>
 #include "core_hal.h"
 #include "flash_mal.h"
@@ -6,16 +5,21 @@
 #include "module_info.h"
 #include "bootloader_hal.h"
 #include "ota_flash_hal_impl.h"
-#include "miniz.h"
-#include "stream.h"
 #include "check.h"
-#include "ota_flash_hal_impl.h"
+#include "stream.h"
+
+#if HAL_PLATFORM_COMPRESSED_BINARIES
+#include "miniz.h"
+#endif
+
 #include <memory>
 
 
 #define BOOTLOADER_ADDR (module_bootloader.start_address)
 
 namespace particle {
+
+#if HAL_PLATFORM_COMPRESSED_BINARIES
 
 class OTAUpdateStream : public OutputStream {
 	size_t destAddress_;
@@ -148,9 +152,10 @@ int DecompressStream::write(const char* buffer, const size_t length)  {
 	return (status<TINFL_STATUS_DONE) ? status : consumed;
 }
 
+#endif // HAL_PLATFORM_COMPRESSED_BINARIES
+
 } // namespace particle
 
-#ifdef HAL_REPLACE_BOOTLOADER_OTA
 int bootloader_update(const void* bootloader_image, unsigned length)
 {
     HAL_Bootloader_Lock(false);
@@ -160,12 +165,6 @@ int bootloader_update(const void* bootloader_image, unsigned length)
     HAL_Bootloader_Lock(true);
     return result;
 }
-#else
-int bootloader_update(const void*, unsigned)
-{
-    return FLASH_ACCESS_RESULT_ERROR;
-}
-#endif // HAL_REPLACE_BOOTLOADER_OTA
 
 #ifdef HAL_REPLACE_BOOTLOADER
 
@@ -198,6 +197,7 @@ bool bootloader_update_if_needed()
 {
     bool updated = false;
 
+#if HAL_PLATFORM_COMPRESSED_BINARIES
     bool requires_update = false;
 
     uint32_t bootloader_image_size = 0;
@@ -221,10 +221,18 @@ bool bootloader_update_if_needed()
         decompress->write((const char*)bootloader_image, bootloader_image_size);
         updated = !decompress->flush();
     }
+#else // !HAL_PLATFORM_COMPRESSED_BINARIES
+    uint32_t bootloader_image_size = 0;
+    const uint8_t* bootloader_image = HAL_Bootloader_Image(&bootloader_image_size, nullptr);
+    if (bootloader_requires_update(bootloader_image, bootloader_image_size)) {
+        updated = bootloader_update(bootloader_image, bootloader_image_size);
+    }
+#endif
+
     return updated;
 }
 
-#else
+#else // !defined(HAL_REPLACE_BOOTLOADER)
 
 bool bootloader_requires_update()
 {

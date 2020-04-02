@@ -28,12 +28,6 @@ void finishFirmwareUpdateRequest(ctrl_request* req);
 int cancelFirmwareUpdateRequest(ctrl_request* req);
 int firmwareUpdateDataRequest(ctrl_request* req);
 
-int describeStorageRequest(ctrl_request* req);
-int readSectionDataRequest(ctrl_request* req);
-int writeSectionDataRequest(ctrl_request* req);
-int clearSectionDataRequest(ctrl_request* req);
-int getSectionDataSizeRequest(ctrl_request* req);
-
 int getModuleInfo(ctrl_request* req);
 
 } // namespace particle::control
