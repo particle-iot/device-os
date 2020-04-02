@@ -17,14 +17,18 @@
 
 #include "Particle.h"
 
-#define IO_EXPANDER_THREAD_PRESENT          1
-#define GNSS_THREAD_PRESENT                 1
-#define BMI160_THREAD_PRESENT               1
+#include "port.h"
+#include "sdspi_host.h"
+#include <cstdlib>
+#include <string>
+
+#define IO_EXPANDER_THREAD_PRESENT          0
+#define GNSS_THREAD_PRESENT                 0
+#define BMI160_THREAD_PRESENT               0
+#define ESP32_THREAD_PRESENT                1
 
 SYSTEM_MODE(MANUAL);
 SYSTEM_THREAD(ENABLED);
-
-STARTUP(System.enable(SYSTEM_FLAG_PM_DETECTION));
 
 SerialLogHandler log(LOG_LEVEL_ALL);
 
@@ -85,7 +89,6 @@ os_thread_return_t gnssThread(void *param) {
                 dummyBytes = 0;
             }
         }
-
         digitalWrite(GPS_CS, HIGH);
         SPI1.endTransaction();
 
@@ -125,6 +128,83 @@ os_thread_return_t bmi160Thread(void *param) {
 }
 #endif
 
+#if ESP32_THREAD_PRESENT
+uint32_t esp32Failure = 0;
+uint8_t txStr[] = "AT\r\n";
+uint8_t echoStr[] = "OK\r\n";
+spi_context_t context;
+os_semaphore_t echoSem;
+
+os_thread_return_t esp32TxThread(void *param) {
+    while (1) {
+        delay(5000);
+        LOG(TRACE, "Sending AT command.");
+
+        SPI1.beginTransaction(__SPISettings(1*MHZ, MSBFIRST, SPI_MODE0));
+        esp_err_t ret = at_sdspi_send_packet(&context, txStr, 4, UINT32_MAX);
+        LOG(TRACE, "Waiting for OK.");
+        SPI1.endTransaction();
+        if (ret != ESP_OK) {
+            LOG(TRACE, "Sending to ESP32 failed: %d", ret);
+            esp32Failure++;
+            continue;
+        }
+
+        if (os_semaphore_take(echoSem, 5000/*ms*/, false)) {
+            LOG(TRACE, "Receiving OK failed.");
+            esp32Failure++;
+        }
+    }
+    LOG(TRACE, "esp32TxThread exited.");
+}
+
+os_thread_return_t esp32RxThread(void *param) {
+    esp_err_t ret;
+    uint32_t intr_raw;
+    while (1) {
+        at_spi_wait_int(CONCURRENT_WAIT_FOREVER);
+
+        SCOPE_GUARD ({
+            SPI1.endTransaction();
+            LOG(TRACE, "Finish reading data from ESP32.");
+        });
+
+        SPI1.beginTransaction(__SPISettings(1*MHZ, MSBFIRST, SPI_MODE0));
+        if ((ret = at_sdspi_get_intr(&intr_raw)) != ESP_OK) {
+            LOG(TRACE, "at_sdspi_get_intr() failed: %d", ret);
+            continue;
+        }
+        if ((ret = at_sdspi_clear_intr(intr_raw)) !=ESP_OK) {
+            LOG(TRACE, "at_sdspi_clear_intr() failed: %d", ret);
+            continue;
+        }
+
+        LOG(TRACE, "Received data from ESP32.");
+
+        if (intr_raw & HOST_SLC0_RX_NEW_PACKET_INT_ST) {
+            uint8_t buf[16] = {0};
+            size_t readBytes = 0;
+            ret = at_sdspi_get_packet(&context, buf, sizeof(buf), &readBytes);
+            if (ret == ESP_ERR_NOT_FOUND) {
+                LOG(TRACE, "ESP32 interrupt but no data can be read");
+                continue;
+            } else if (ret != ESP_OK && ret != ESP_ERR_NOT_FINISHED) {
+                LOG(TRACE, "ESP32 rx packet error: %08X", ret);
+                continue;
+            }
+            for (uint8_t i = 0; i < readBytes; i++) {
+                Serial.printf("%c", buf[i]);
+            }
+            if (!memcmp(buf, echoStr, 4)) {
+                os_semaphore_give(echoSem, false);
+            }
+        } else {
+            LOG(TRACE, "!(intr_raw & HOST_SLC0_RX_NEW_PACKET_INT_ST)");
+        }
+    }
+}
+#endif
+
 void setup() {
     Serial.begin(115200);
     while(!Serial.isConnected());
@@ -142,9 +222,33 @@ void setup() {
 #if BMI160_THREAD_PRESENT
     Thread* thread3 = new Thread("bmi160Thread", bmi160Thread);
 #endif
+
+#if ESP32_THREAD_PRESENT
+    PORT_SPI.setDataMode(SPI_MODE0);
+    PORT_SPI.begin();
+
+    pinMode(PORT_CS_PIN, OUTPUT);
+    digitalWrite(PORT_CS_PIN, HIGH);
+    pinMode(PORT_BOOT_PIN, OUTPUT);
+    digitalWrite(PORT_BOOT_PIN, HIGH);
+    pinMode(PORT_EN_PIN, OUTPUT);
+    digitalWrite(PORT_EN_PIN, LOW);
+    delay(500);
+    digitalWrite(PORT_EN_PIN, HIGH);
+
+    if (at_sdspi_init() == ESP_OK) {
+        memset(&context, 0x0, sizeof(spi_context_t));
+        if (!os_semaphore_create(&echoSem, 1, 0)) {
+            Thread* thread4 = new Thread("esp32TxThread", esp32TxThread);
+            Thread* thread5 = new Thread("esp32RxThread", esp32RxThread);
+        }
+    }
+#endif
 }
 
 void loop() {
+    delay(10000);
+
 #if IO_EXPANDER_THREAD_PRESENT
     LOG(INFO, "IO Expander failure: %d", ioExpanderFailure);
 #endif
@@ -157,5 +261,7 @@ void loop() {
     LOG(INFO, "BMI160 failure: %d", bmi160Failure);
 #endif
 
-    delay(10000);
+#if ESP32_THREAD_PRESENT
+    LOG(INFO, "ESP32 failure: %d", esp32Failure);
+#endif
 }
