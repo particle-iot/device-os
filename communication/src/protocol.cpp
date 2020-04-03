@@ -17,6 +17,9 @@
  ******************************************************************************
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 #include "logging.h"
 
 LOG_SOURCE_CATEGORY("comm.protocol")
@@ -131,11 +134,12 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		// 4 bytes header, 1 byte token, 2 bytes Uri-Path
 		// 2 bytes optional single character Uri-Query for describe flags
 		int descriptor_type = DESCRIBE_DEFAULT;
-		if (message.length()>8 && queue[8] <= DESCRIBE_MAX) {
+		if (message.length() > 8 && queue[8] <= DESCRIBE_MAX) {
 			descriptor_type = queue[8];
 		} else if (message.length() > 8) {
-			LOG(WARN, "Invalid DESCRIBE flags %02x", queue[8]);
+			LOG(WARN, "Invalid DESCRIBE flags: 0x%02x", (unsigned)queue[8]);
 		}
+		LOG(INFO, "Received DESCRIBE request; flags: 0x%02x", (unsigned)descriptor_type);
 		error = send_description_response(token, msg_id, descriptor_type);
 		break;
 	}
@@ -217,7 +221,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 void Protocol::notify_message_complete(message_id_t msg_id, CoAPCode::Enum responseCode) {
 	const auto codeClass = (int)responseCode >> 5;
 	const auto codeDetail = (int)responseCode & 0x1f;
-	LOG(INFO, "message id %d complete with code %d.%02d", msg_id, codeClass, codeDetail);
+	LOG(TRACE, "message id %d complete with code %d.%02d", msg_id, codeClass, codeDetail);
 	if (CoAPCode::is_success(responseCode)) {
 		ack_handlers.setResult(msg_id);
 	} else {
@@ -375,7 +379,7 @@ int Protocol::begin()
 		}
 	}
 
-	LOG(INFO,"Sending HELLO message");
+	LOG(INFO, "Sending HELLO message");
 	error = hello(descriptor.was_ota_upgrade_successful());
 	if (error) {
 		LOG(ERROR,"Could not send HELLO message: %d", error);
@@ -383,14 +387,14 @@ int Protocol::begin()
 	}
 
 	if (protocol_flags & ProtocolFlag::REQUIRE_HELLO_RESPONSE) {
-		LOG(INFO,"Receiving HELLO response");
+		LOG(INFO, "Receiving HELLO response");
 		error = hello_response();
 		if (error) {
 			return error;
 		}
 	}
 
-	LOG(INFO,"Handshake completed");
+	LOG(INFO, "Handshake completed");
 	channel.notify_established();
 
 	// An ACK or a response for the Hello message has already been received at this point, so we can
@@ -505,7 +509,7 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 		if (message.length())
 		{
 			error = handle_received_message(message, message_type);
-			LOG(INFO,"rcv'd message type=%d", (int)message_type);
+			LOG(TRACE, "rcv'd message type=%d", (int)message_type);
 		}
 		else
 		{
@@ -722,6 +726,7 @@ ProtocolError Protocol::send_subscriptions(bool force)
 			return ProtocolError::NO_ERROR;
 		}
 	}
+	LOG(INFO, "Sending subscriptions");
 	const ProtocolError error = subscriptions.send_subscriptions(channel);
 	if (error == ProtocolError::NO_ERROR && descriptor.app_state_selector_info) {
 		subscription_msg_ids.append(subscriptions.subscription_message_ids());
