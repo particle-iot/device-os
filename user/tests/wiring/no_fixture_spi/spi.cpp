@@ -40,7 +40,9 @@ test(SPI_01_SPI_Begin_Without_Argument)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
-#else // Photon, P1, Electron and Asset Tracker
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    assertEqual(info.ss_pin, D7);
+#else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
 #endif
     SPI.end();
@@ -61,7 +63,9 @@ test(SPI_02_SPI_Begin_With_Ss_Pin)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
-#else // Photon, P1, Electron and Asset Tracker
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    assertEqual(info.ss_pin, D7);
+#else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
 #endif
     SPI.end();
@@ -109,7 +113,9 @@ test(SPI_03_SPI_Begin_With_Mode)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin,D8);
-#else // Photon, P1, Electron and Asset Tracker
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    assertEqual(info.ss_pin, D7);
+#else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
 #endif
     SPI.end();
@@ -126,7 +132,9 @@ test(SPI_03_SPI_Begin_With_Mode)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
-#else // Photon, P1, Electron and Asset Tracker
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    assertEqual(info.ss_pin, D7);
+#else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
 #endif
     SPI.end();
@@ -148,7 +156,9 @@ test(SPI_04_SPI_Begin_With_Master_Ss_Pin)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
-#else // Photon, P1, Electron and Asset Tracker
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    assertEqual(info.ss_pin, D7);
+#else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
 #endif
     SPI.end();

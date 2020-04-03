@@ -52,17 +52,17 @@
 // UART
 #define TX                      D8
 #define RX                      D9
-#define CTS                     D6
-#define RTS                     D7
+#define CTS                     D2
+#define RTS                     D3
 
 // SPI
-#define SS                      D2
-#define SCK                     D3
+#define SS                      D7
+#define SCK                     D6
 #define MOSI                    D4
 #define MISO                    D5
 
 // Wakeup pin
-#define WKP                     D2
+#define WKP                     D7
 
 // RGB
 #define RGBR                    10
