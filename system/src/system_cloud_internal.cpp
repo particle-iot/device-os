@@ -536,6 +536,16 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 			return compute_describe_system_checksum();
 		}
 	}
+	else if (operation == SparkAppStateUpdate::RESET && stateSelector == SparkAppStateSelector::ALL)
+	{
+		update_persisted_state([](SessionPersistData& data) {
+			data.describe_system_crc = 0;
+			data.describe_app_crc = 0;
+			data.subscriptions_crc = 0;
+			data.protocol_flags = 0;
+			data.app_state_flags = 0;
+		});
+	}
 	return 0;
 }
 #endif /* HAL_PLATFORM_CLOUD_UDP */
@@ -1046,7 +1056,7 @@ int Spark_Handshake(bool presence_announce)
     if (err == particle::protocol::SESSION_RESUMED) {
         session_resumed = true;
     } else if (err != 0) {
-        return err;
+        return spark_protocol_to_system_error(err);
     }
     if (!session_resumed) {
         char buf[CLAIM_CODE_SIZE + 1];
@@ -1124,7 +1134,7 @@ int Spark_Handshake(bool presence_announce)
     status.size = sizeof(status);
     err = spark_protocol_get_status(sp, &status, nullptr);
     if (err != 0) {
-        return err;
+        return spark_protocol_to_system_error(err);
     }
     if (status.flags & PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES) {
         SPARK_CLOUD_HANDSHAKE_PENDING = 1;

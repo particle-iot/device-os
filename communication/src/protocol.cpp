@@ -35,7 +35,7 @@ enum HelloFlag {
 	HELLO_FLAG_DIAGNOSTICS_SUPPORT = 0x02,
 	HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT = 0x04,
 	// Flag 0x08 is reserved to indicate support for the HandshakeComplete message
-	HELLO_FLAG_GOODBYE_SUPPORT = 0x10;
+	HELLO_FLAG_GOODBYE_SUPPORT = 0x10,
 	HELLO_FLAG_DEVICE_INITIATED_DESCRIBE = 0x20
 };
 
@@ -84,7 +84,10 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		if (descriptor.app_state_selector_info) {
 			// Update application state checksums
 			if (subscription_msg_ids.removeOne(msg_id)) { // Event subscriptions
-				if (subscription_msg_ids.isEmpty() && type == CoAPType::ACK) {
+				if (type != CoAPType::ACK) {
+					// Make sure the checksum won't be updated if any of the messages has been NAK'ed
+					subscription_msg_ids.clear();
+				} else if (subscription_msg_ids.isEmpty()) {
 					LOG(TRACE, "Updating subscriptions checksum");
 					const uint32_t crc = subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc);
 					channel.command(Channel::SAVE_SESSION);
@@ -93,7 +96,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 					channel.command(Channel::LOAD_SESSION);
 				}
 			} else {
-				// A DESCRIBE message can carry both system and application descriptions
+				// A Describe message can carry both the system and application descriptions
 				if (msg_id == app_describe_msg_id) { // Application description
 					app_describe_msg_id = INVALID_MESSAGE_HANDLE;
 					if (type == CoAPType::ACK) {
@@ -304,17 +307,6 @@ void Protocol::init(const SparkCallbacks &callbacks,
 	initialized = true;
 }
 
-void Protocol::update_protocol_flags()
-{
-	if (descriptor.app_state_selector_info)
-	{
-		LOG(TRACE, "Updating protocol flags");
-		this->channel.command(Channel::SAVE_SESSION);
-		descriptor.app_state_selector_info(SparkAppStateSelector::PROTOCOL_FLAGS, SparkAppStateUpdate::PERSIST, protocol_flags, nullptr);
-		this->channel.command(Channel::LOAD_SESSION);
-	}
-}
-
 AppStateDescriptor Protocol::app_state_descriptor(uint32_t stateFlags)
 {
 	if (!descriptor.app_state_selector_info) {
@@ -353,17 +345,16 @@ int Protocol::begin()
 	ProtocolError error = channel.establish();
 	const bool session_resumed = (error == SESSION_RESUMED);
 	if (error && !session_resumed) {
-		LOG(ERROR, "handshake failed with code %d", error);
+		LOG(ERROR, "Handshake failed: %d", error);
 		return error;
 	}
 
-	if (session_resumed)
-	{
+	if (session_resumed) {
 		// for now, unconditionally move the session on resumption
 		channel.command(MessageChannel::MOVE_SESSION, nullptr);
 		uint32_t stateFlags = AppStateDescriptor::ALL;
 		if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
-			// The system controls when to send the application describe message
+			// The system controls when to send application Describe and subscriptions
 			stateFlags = AppStateDescriptor::SYSTEM_DESCRIBE_CRC | AppStateDescriptor::PROTOCOL_FLAGS;
 		}
 		const auto currentState = app_state_descriptor(stateFlags);
@@ -375,16 +366,18 @@ int Protocol::begin()
 				return error;
 			}
 			return ProtocolError::SESSION_RESUMED; // Not an error
+		} else {
+			// TODO: For now, make sure application Describe and subscriptions will be sent if the
+			// system state has changed
+			channel.command(Channel::SAVE_SESSION);
+			descriptor.app_state_selector_info(SparkAppStateSelector::ALL, SparkAppStateUpdate::RESET, 0, nullptr);
+			channel.command(Channel::LOAD_SESSION);
 		}
 	}
 
-	// todo - this will return code 0 even when the session was resumed,
-	// causing all the application events to be sent.
-
 	LOG(INFO,"Sending HELLO message");
 	error = hello(descriptor.was_ota_upgrade_successful());
-	if (error)
-	{
+	if (error) {
 		LOG(ERROR,"Could not send HELLO message: %d", error);
 		return error;
 	}
@@ -401,15 +394,24 @@ int Protocol::begin()
 	channel.notify_established();
 
 	// An ACK or a response for the Hello message has already been received at this point, so we can
-	// update the cached protocol flags
-	update_protocol_flags();
-
-	if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
-		// Send the system describe message automatically
-		error = post_description(DescriptionType::DESCRIBE_SYSTEM, true /* force */);
+	// update cached protocol flags
+	if (descriptor.app_state_selector_info) {
+		LOG(TRACE, "Updating protocol flags");
+		channel.command(Channel::SAVE_SESSION);
+		descriptor.app_state_selector_info(SparkAppStateSelector::PROTOCOL_FLAGS, SparkAppStateUpdate::PERSIST, protocol_flags, nullptr);
+		channel.command(Channel::LOAD_SESSION);
 	}
 
-	return error;
+	if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
+		// Send system Describe
+		error = post_description(DescriptionType::DESCRIBE_SYSTEM, true /* force */);
+		if (error) {
+			return error;
+		}
+	}
+
+	// TODO: This will cause all the application events to be sent even if the session was resumed
+	return 0;
 }
 
 void Protocol::reset() {
@@ -527,7 +529,7 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
 	if (descriptor.append_metrics && (desc_flags == DESCRIBE_METRICS))
 	{
 		appender.append(char(0));	// null byte means binary data
-		appender.append(char(DESCRIBE_METRICS)); 									// uint16 describes the type of binary packet
+		appender.append(char(DESCRIBE_METRICS));	// uint16 describes the type of binary packet
 		appender.append(char(0));	//
 		const int flags = 1;		// binary
 		const int page = 0;
@@ -646,14 +648,14 @@ ProtocolError Protocol::post_description(int desc_flags, bool force)
 		if (desc_flags & DescriptionType::DESCRIBE_SYSTEM) {
 			const auto currentState = app_state_descriptor(AppStateDescriptor::SYSTEM_DESCRIBE_CRC);
 			if (currentState.equalsTo(cachedState, AppStateDescriptor::SYSTEM_DESCRIBE_CRC)) {
-				LOG(INFO, "Checksum has not changed; skipping system DESCRIBE");
+				LOG(INFO, "Checksum has not changed; not sending system DESCRIBE");
 				desc_flags &= ~DescriptionType::DESCRIBE_SYSTEM;
 			}
 		}
 		if (desc_flags & DescriptionType::DESCRIBE_APPLICATION) {
 			const auto currentState = app_state_descriptor(AppStateDescriptor::APP_DESCRIBE_CRC);
 			if (currentState.equalsTo(cachedState, AppStateDescriptor::APP_DESCRIBE_CRC)) {
-				LOG(INFO, "Checksum has not changed; skipping application DESCRIBE");
+				LOG(INFO, "Checksum has not changed; not sending application DESCRIBE");
 				desc_flags &= ~DescriptionType::DESCRIBE_APPLICATION;
 			}
 		}
@@ -716,7 +718,7 @@ ProtocolError Protocol::send_subscriptions(bool force)
 		const auto currentState = app_state_descriptor(AppStateDescriptor::SUBSCRIPTIONS_CRC);
 		const auto cachedState = channel.cached_app_state_descriptor();
 		if (currentState.equalsTo(cachedState, AppStateDescriptor::SUBSCRIPTIONS_CRC)) {
-			LOG(INFO, "Checksum has not changed; skipping subscriptions");
+			LOG(INFO, "Checksum has not changed; not sending subscriptions");
 			return ProtocolError::NO_ERROR;
 		}
 	}

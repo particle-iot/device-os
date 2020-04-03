@@ -302,11 +302,6 @@ protected:
 	void init(const SparkCallbacks &callbacks, const SparkDescriptor &descriptor);
 
 	/**
-	 * Updates the cached protocol flags.
-	 */
-	void update_protocol_flags();
-
-	/**
 	 * Returns a descriptor of the current application state.
 	 */
 	AppStateDescriptor app_state_descriptor(uint32_t stateFlags = AppStateDescriptor::ALL);
