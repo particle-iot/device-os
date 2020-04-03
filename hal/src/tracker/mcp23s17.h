@@ -94,8 +94,8 @@ private:
             if (spiInfoCache_.data_mode != SPI_MODE0) {
                 HAL_SPI_Set_Data_Mode(spi_, SPI_MODE0);
             }
-            if (calculateClockDivider(spiInfoCache_.system_clock, spiInfoCache_.clock) != SPI_CLOCK_DIV256) {
-                HAL_SPI_Set_Clock_Divider(spi_, SPI_CLOCK_DIV256);
+            if (calculateClockDivider(spiInfoCache_.system_clock, spiInfoCache_.clock) != SPI_CLOCK_DIV4) {
+                HAL_SPI_Set_Clock_Divider(spi_, SPI_CLOCK_DIV4);
             }
             if (!spiInfoCache_.enabled || spiInfoCache_.ss_pin != PIN_INVALID || spiInfoCache_.mode != SPI_MODE_MASTER) {
                 HAL_SPI_Begin(spi_, PIN_INVALID);
@@ -109,7 +109,7 @@ private:
                 HAL_SPI_Set_Data_Mode(spi_, spiInfoCache_.data_mode);
             }
             uint8_t preClockDiv = calculateClockDivider(spiInfoCache_.system_clock, spiInfoCache_.clock);
-            if (preClockDiv != SPI_CLOCK_DIV256) {
+            if (preClockDiv != SPI_CLOCK_DIV4) {
                 HAL_SPI_Set_Clock_Divider(spi_, preClockDiv);
             }
             if (spiInfoCache_.ss_pin != PIN_INVALID || spiInfoCache_.mode != SPI_MODE_MASTER) {
