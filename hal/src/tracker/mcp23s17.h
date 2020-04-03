@@ -94,8 +94,8 @@ private:
             if (spiInfoCache_.data_mode != SPI_MODE0) {
                 HAL_SPI_Set_Data_Mode(spi_, SPI_MODE0);
             }
-            if (calculateClockDivider(spiInfoCache_.system_clock, spiInfoCache_.clock) != SPI_CLOCK_DIV4) {
-                HAL_SPI_Set_Clock_Divider(spi_, SPI_CLOCK_DIV4);
+            if (spiInfoCache_.clock != HAL_PLATFORM_MCP23S17_SPI_CLOCK) {
+                HAL_SPI_Set_Clock_Divider(spi_, calculateClockDivider(spiInfoCache_.system_clock, HAL_PLATFORM_MCP23S17_SPI_CLOCK));
             }
             if (!spiInfoCache_.enabled || spiInfoCache_.ss_pin != PIN_INVALID || spiInfoCache_.mode != SPI_MODE_MASTER) {
                 HAL_SPI_Begin(spi_, PIN_INVALID);
@@ -108,9 +108,8 @@ private:
             if (spiInfoCache_.data_mode != SPI_MODE0) {
                 HAL_SPI_Set_Data_Mode(spi_, spiInfoCache_.data_mode);
             }
-            uint8_t preClockDiv = calculateClockDivider(spiInfoCache_.system_clock, spiInfoCache_.clock);
-            if (preClockDiv != SPI_CLOCK_DIV4) {
-                HAL_SPI_Set_Clock_Divider(spi_, preClockDiv);
+            if (spiInfoCache_.clock != HAL_PLATFORM_MCP23S17_SPI_CLOCK) {
+                HAL_SPI_Set_Clock_Divider(spi_, calculateClockDivider(spiInfoCache_.system_clock, spiInfoCache_.clock));
             }
             if (spiInfoCache_.ss_pin != PIN_INVALID || spiInfoCache_.mode != SPI_MODE_MASTER) {
                 HAL_SPI_Begin_Ext(spi_, spiInfoCache_.mode, spiInfoCache_.ss_pin, nullptr);
