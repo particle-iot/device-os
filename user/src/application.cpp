@@ -140,10 +140,8 @@ os_thread_return_t esp32TxThread(void *param) {
         delay(5000);
         LOG(TRACE, "Sending AT command.");
 
-        SPI1.beginTransaction(__SPISettings(1*MHZ, MSBFIRST, SPI_MODE0));
         esp_err_t ret = at_sdspi_send_packet(&context, txStr, 4, UINT32_MAX);
         LOG(TRACE, "Waiting for OK.");
-        SPI1.endTransaction();
         if (ret != ESP_OK) {
             LOG(TRACE, "Sending to ESP32 failed: %d", ret);
             esp32Failure++;
@@ -164,12 +162,6 @@ os_thread_return_t esp32RxThread(void *param) {
     while (1) {
         at_spi_wait_int(CONCURRENT_WAIT_FOREVER);
 
-        SCOPE_GUARD ({
-            SPI1.endTransaction();
-            LOG(TRACE, "Finish reading data from ESP32.");
-        });
-
-        SPI1.beginTransaction(__SPISettings(1*MHZ, MSBFIRST, SPI_MODE0));
         if ((ret = at_sdspi_get_intr(&intr_raw)) != ESP_OK) {
             LOG(TRACE, "at_sdspi_get_intr() failed: %d", ret);
             continue;

@@ -149,7 +149,7 @@ typedef struct {
 
 #define BIT(x)  (uint32_t)1<<(x)
 
-#define assert(x)   do { if (!(x)) { printf("SDIO SPI error %s %u\r\n", __FILE__, __LINE__); while(1);}} while (0)
+// #define assert(x)   do { if (!(x)) { printf("SDIO SPI error %s %u\r\n", __FILE__, __LINE__); while(1);}} while (0)
 
 /**
  * SD/MMC command response buffer
