@@ -22,10 +22,18 @@
 #include <cstdlib>
 #include <string>
 
-#define IO_EXPANDER_THREAD_PRESENT          0
-#define GNSS_THREAD_PRESENT                 0
-#define BMI160_THREAD_PRESENT               0
+#define IO_EXPANDER_THREAD_PRESENT          1
+#define GNSS_THREAD_PRESENT                 1
+#define BMI160_THREAD_PRESENT               1
 #define ESP32_THREAD_PRESENT                1
+#define CAN_THREAD_PRESENT                  1
+
+// In ms
+#define IO_EXPANDER_ACCESS_PERIOD           100
+#define GNSS_ACCESS_PERIOD                  1000
+#define BMI160_ACESS_PERIOD                 100
+#define ESP32_ACCESS_PERIOD                 1000
+#define CAN_ACCESS_PERIOD                   100
 
 SYSTEM_MODE(MANUAL);
 SYSTEM_THREAD(ENABLED);
@@ -39,17 +47,19 @@ os_thread_return_t ioExpanderThread(void *param) {
     while (1) {
         digitalWrite(RTC_WDI, HIGH);
         if (digitalRead(RTC_WDI) != 1) {
-            LOG(TRACE, "IO Expander output high failed.");
+            LOG(ERROR, "IO Expander output high failed.");
             ioExpanderFailure++;
         }
 
-        delay(100);
+        delay(IO_EXPANDER_ACCESS_PERIOD);
 
         digitalWrite(RTC_WDI, LOW);
         if (digitalRead(RTC_WDI) != 0) {
-            LOG(TRACE, "IO Expander output low failed.");
+            LOG(ERROR, "IO Expander output low failed.");
             ioExpanderFailure++;
         }
+
+        delay(IO_EXPANDER_ACCESS_PERIOD);
     }
 }
 #endif
@@ -76,7 +86,7 @@ os_thread_return_t gnssThread(void *param) {
         uint8_t dummyBytes = 0;
         bool echoed = false;
 
-        SPI1.beginTransaction(__SPISettings(1*MHZ, MSBFIRST, SPI_MODE0));
+        SPI1.beginTransaction(__SPISettings(16*MHZ, MSBFIRST, SPI_MODE0));
         digitalWrite(GPS_CS, LOW);
         delay(1000);
         while (dummyBytes < 50) {
@@ -84,7 +94,6 @@ os_thread_return_t gnssThread(void *param) {
             if (gpsData == 0xFF)
                 dummyBytes++;
             else {
-                // Serial.printf("%c", gpsData);
                 echoed = true;
                 dummyBytes = 0;
             }
@@ -93,10 +102,10 @@ os_thread_return_t gnssThread(void *param) {
         SPI1.endTransaction();
 
         if (!echoed) {
-            LOG(TRACE, "Reading GPS data failed.");
+            LOG(ERROR, "Reading GPS data failed.");
             gnssFailure++;
         }
-        delay(5000);
+        delay(GNSS_ACCESS_PERIOD);
     }
 }
 #endif
@@ -112,7 +121,7 @@ os_thread_return_t bmi160Thread(void *param) {
     SPI1.begin();
 
     while (1) {
-        SPI1.beginTransaction(__SPISettings(1*MHZ, MSBFIRST, SPI_MODE3));
+        SPI1.beginTransaction(__SPISettings(16*MHZ, MSBFIRST, SPI_MODE3));
         digitalWrite(SEN_CS, LOW);
         SPI1.transfer(0x80); // R/W bit along with register address
         uint8_t id = SPI1.transfer(0xFF);
@@ -120,10 +129,10 @@ os_thread_return_t bmi160Thread(void *param) {
         SPI1.endTransaction();
 
         if (id != 0xD1) {
-            LOG(TRACE, "Reading BMI160 failed.");
+            LOG(ERROR, "Reading BMI160 failed.");
             bmi160Failure++;
         }
-        delay(100);
+        delay(BMI160_ACESS_PERIOD);
     }
 }
 #endif
@@ -137,23 +146,18 @@ os_semaphore_t echoSem;
 
 os_thread_return_t esp32TxThread(void *param) {
     while (1) {
-        delay(5000);
-        LOG(TRACE, "Sending AT command.");
-
+        delay(ESP32_ACCESS_PERIOD);
         esp_err_t ret = at_sdspi_send_packet(&context, txStr, 4, UINT32_MAX);
-        LOG(TRACE, "Waiting for OK.");
         if (ret != ESP_OK) {
-            LOG(TRACE, "Sending to ESP32 failed: %d", ret);
+            LOG(ERROR, "Sending to ESP32 failed: %d", ret);
             esp32Failure++;
             continue;
         }
-
         if (os_semaphore_take(echoSem, 5000/*ms*/, false)) {
-            LOG(TRACE, "Receiving OK failed.");
+            LOG(ERROR, "Receiving OK failed.");
             esp32Failure++;
         }
     }
-    LOG(TRACE, "esp32TxThread exited.");
 }
 
 os_thread_return_t esp32RxThread(void *param) {
@@ -163,36 +167,68 @@ os_thread_return_t esp32RxThread(void *param) {
         at_spi_wait_int(CONCURRENT_WAIT_FOREVER);
 
         if ((ret = at_sdspi_get_intr(&intr_raw)) != ESP_OK) {
-            LOG(TRACE, "at_sdspi_get_intr() failed: %d", ret);
+            LOG(ERROR, "at_sdspi_get_intr() failed: %d", ret);
             continue;
         }
         if ((ret = at_sdspi_clear_intr(intr_raw)) !=ESP_OK) {
-            LOG(TRACE, "at_sdspi_clear_intr() failed: %d", ret);
+            LOG(ERROR, "at_sdspi_clear_intr() failed: %d", ret);
             continue;
         }
-
-        LOG(TRACE, "Received data from ESP32.");
-
         if (intr_raw & HOST_SLC0_RX_NEW_PACKET_INT_ST) {
-            uint8_t buf[16] = {0};
+            uint8_t readBuf[16] = {};
             size_t readBytes = 0;
-            ret = at_sdspi_get_packet(&context, buf, sizeof(buf), &readBytes);
+            ret = at_sdspi_get_packet(&context, readBuf, sizeof(readBuf), &readBytes);
             if (ret == ESP_ERR_NOT_FOUND) {
-                LOG(TRACE, "ESP32 interrupt but no data can be read");
+                LOG(ERROR, "ESP32 interrupt but no data can be read");
                 continue;
             } else if (ret != ESP_OK && ret != ESP_ERR_NOT_FINISHED) {
-                LOG(TRACE, "ESP32 rx packet error: %08X", ret);
+                LOG(ERROR, "ESP32 rx packet error: %08X", ret);
                 continue;
             }
-            for (uint8_t i = 0; i < readBytes; i++) {
-                Serial.printf("%c", buf[i]);
-            }
-            if (!memcmp(buf, echoStr, 4)) {
+            if (strstr((const char*)readBuf, "OK")) {
                 os_semaphore_give(echoSem, false);
             }
         } else {
-            LOG(TRACE, "!(intr_raw & HOST_SLC0_RX_NEW_PACKET_INT_ST)");
+            LOG(ERROR, "!(intr_raw & HOST_SLC0_RX_NEW_PACKET_INT_ST)");
         }
+    }
+}
+#endif
+
+#if CAN_THREAD_PRESENT
+uint32_t canFailure = 0;
+os_thread_return_t canThread(void *param) {
+    pinMode(CAN_CS, OUTPUT);
+    digitalWrite(CAN_CS, HIGH);
+    pinMode(CAN_PWR, OUTPUT);
+    digitalWrite(CAN_PWR, HIGH);
+    pinMode(CAN_RST, OUTPUT);
+    digitalWrite(CAN_RST, LOW);
+    delay(100);
+    digitalWrite(CAN_RST, HIGH);
+
+    SPI1.begin();
+
+    SPI1.beginTransaction(__SPISettings(16*MHZ, MSBFIRST, SPI_MODE0));
+    digitalWrite(CAN_CS, LOW);
+    SPI1.transfer(0xC0); // CMD: Reset registers
+    digitalWrite(CAN_CS, HIGH);
+    SPI1.endTransaction();
+
+    while (1) {
+        SPI1.beginTransaction(__SPISettings(1*MHZ, MSBFIRST, SPI_MODE0));
+        digitalWrite(CAN_CS, LOW);
+        SPI1.transfer(0x03); // CMD: Read
+        SPI1.transfer(0x7F); // Register Address
+        uint8_t canCtrlReg = SPI1.transfer(0xFF); // Value
+        digitalWrite(CAN_CS, HIGH);
+        SPI1.endTransaction();
+
+        if (canCtrlReg != 0x87) {
+            LOG(ERROR, "Reading MCP25625 failed.");
+            canFailure++;
+        }
+        delay(CAN_ACCESS_PERIOD);
     }
 }
 #endif
@@ -236,6 +272,10 @@ void setup() {
         }
     }
 #endif
+
+#if CAN_THREAD_PRESENT
+    Thread* thread6 = new Thread("canThread", canThread);
+#endif
 }
 
 void loop() {
@@ -256,4 +296,10 @@ void loop() {
 #if ESP32_THREAD_PRESENT
     LOG(INFO, "ESP32 failure: %d", esp32Failure);
 #endif
+
+#if CAN_THREAD_PRESENT
+    LOG(INFO, "CAN bus failure: %d", canFailure);
+#endif
+
+    LOG(INFO, "");
 }
