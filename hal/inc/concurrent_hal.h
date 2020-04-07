@@ -183,6 +183,15 @@ int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay, void* 
  * @return
  */
 int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void* reserved);
+
+/**
+ * Return 0 on success.
+ * @param queue
+ * @param item
+ * @param delay
+ * @return
+ */
+int os_queue_peek(os_queue_t queue, void* item, system_tick_t delay, void* reserved);
 int os_queue_destroy(os_queue_t queue, void* reserved);
 
 int os_mutex_create(os_mutex_t* mutex);

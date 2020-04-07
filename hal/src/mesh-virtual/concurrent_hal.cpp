@@ -313,6 +313,11 @@ int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void*)
     return xQueueReceive(queue, item, delay)!=pdTRUE;
 }
 
+int os_queue_peek(os_queue_t queue, void* item, system_tick_t delay, void*)
+{
+    return xQueuePeek(queue, item, delay)!=pdTRUE;
+}
+
 int os_queue_destroy(os_queue_t queue, void*)
 {
     vQueueDelete(queue);
