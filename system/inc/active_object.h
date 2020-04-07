@@ -383,7 +383,12 @@ protected:
 
     virtual bool put(Item& item)
     {
-    		return !os_queue_put(queue, &item, configuration.put_wait, nullptr);
+        return !os_queue_put(queue, &item, configuration.put_wait, nullptr);
+    }
+
+    virtual bool peek(Item& item)
+    {
+        return !os_queue_peek(queue, &item, configuration.put_wait, nullptr);
     }
 
     void createQueue()
