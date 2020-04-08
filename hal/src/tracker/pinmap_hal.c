@@ -21,14 +21,14 @@
 
 static Hal_Pin_Info s_pin_map[TOTAL_PINS] = {
 /* User space */
-/* D0            - 00 */ { NRF_PORT_0, 3,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 0,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
-/* D1            - 01 */ { NRF_PORT_0, 2,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 1,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
-/* D2            - 02 */ { NRF_PORT_0, 28, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 2,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
-/* D3            - 03 */ { NRF_PORT_0, 30, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 3,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
-/* D4            - 04 */ { NRF_PORT_0, 31, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 0,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
-/* D5            - 05 */ { NRF_PORT_0, 29, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 1,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
-/* D6            - 06 */ { NRF_PORT_0, 4,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 2,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
-/* D7            - 07 */ { NRF_PORT_0, 5,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 3,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
+/* D0            - 00 */ { NRF_PORT_0, 3,  PIN_MODE_NONE, PF_NONE, 1,                0,                 0,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
+/* D1            - 01 */ { NRF_PORT_0, 2,  PIN_MODE_NONE, PF_NONE, 0,                0,                 1,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
+/* D2            - 02 */ { NRF_PORT_0, 28, PIN_MODE_NONE, PF_NONE, 4,                0,                 2,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
+/* D3            - 03 */ { NRF_PORT_0, 30, PIN_MODE_NONE, PF_NONE, 6,                0,                 3,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
+/* D4            - 04 */ { NRF_PORT_0, 31, PIN_MODE_NONE, PF_NONE, 7,                1,                 0,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
+/* D5            - 05 */ { NRF_PORT_0, 29, PIN_MODE_NONE, PF_NONE, 5,                1,                 1,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
+/* D6            - 06 */ { NRF_PORT_0, 4,  PIN_MODE_NONE, PF_NONE, 2,                1,                 2,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
+/* D7            - 07 */ { NRF_PORT_0, 5,  PIN_MODE_NONE, PF_NONE, 3,                1,                 3,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
 /* D8            - 08 */ { NRF_PORT_0, 6,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 2,                 0,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
 /* D9            - 09 */ { NRF_PORT_0, 8,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 2,                 1,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU},
 
