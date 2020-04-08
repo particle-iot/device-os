@@ -37,10 +37,9 @@ LOG_SOURCE_CATEGORY("net.pppncp")
 #include "interrupts_hal.h"
 #include "ringbuffer.h"
 #include "network/ncp/cellular/cellular_ncp_client.h"
-
 #include "concurrent_hal.h"
-
 #include "platform_config.h"
+#include "memp_hook.h"
 
 using namespace particle::net;
 
@@ -54,8 +53,6 @@ enum class NetifEvent {
     PowerOff = 4,
     PowerOn = 5
 };
-
-unsigned NCP_SARA_R410_MTU = 1000;
 
 } // anonymous
 
@@ -84,6 +81,7 @@ PppNcpNetif::~PppNcpNetif() {
 
 void PppNcpNetif::init() {
     registerHandlers();
+    SPARK_ASSERT(lwip_memp_event_handler_add(mempEventHandler, MEMP_PBUF_POOL, this) == 0);
     SPARK_ASSERT(os_thread_create(&thread_, "pppncp", OS_THREAD_PRIORITY_NETWORK, &PppNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
 }
 
@@ -229,13 +227,6 @@ void PppNcpNetif::pppEventHandler(uint64_t ev) {
     if (ev == particle::net::ppp::Client::EVENT_UP) {
         unsigned mtu = client_.getIf()->mtu;
         LOG(TRACE, "Negotiated MTU: %u", mtu);
-        if (celMan_->ncpClient()->ncpId() == PLATFORM_NCP_SARA_R410) {
-            // This is a workaround for SARA R410 02B, where the default MTU
-            // causes the PPP session to get broken
-            client_.getIf()->mtu = std::min(mtu, NCP_SARA_R410_MTU);
-            mtu = client_.getIf()->mtu;
-            LOG(INFO, "Updating MTU to: %u", mtu);
-        }
     }
 }
 
@@ -262,7 +253,18 @@ void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
     }
 }
 
-void PppNcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx) {
+int PppNcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx) {
     PppNcpNetif* self = static_cast<PppNcpNetif*>(ctx);
-    self->client_.input(data, size);
+    int r = self->client_.input(data, size);
+    if (r == SYSTEM_ERROR_NO_MEMORY) {
+        self->celMan_->ncpClient()->dataChannelFlowControl(true);
+    }
+    return r;
+}
+
+void PppNcpNetif::mempEventHandler(memp_t type, unsigned available, unsigned size, void* ctx) {
+    PppNcpNetif* self = static_cast<PppNcpNetif*>(ctx);
+    if (available > HAL_PLATFORM_PACKET_BUFFER_FLOW_CONTROL_THRESHOLD) {
+        self->celMan_->ncpClient()->dataChannelFlowControl(false);
+    }
 }

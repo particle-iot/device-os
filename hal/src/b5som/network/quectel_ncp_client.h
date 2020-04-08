@@ -27,6 +27,7 @@
 #include "spark_wiring_thread.h"
 #include "gsm0710muxer/channel_stream.h"
 #include "static_recursive_mutex.h"
+#include "serial_stream.h"
 
 namespace particle {
 
@@ -51,6 +52,7 @@ public:
     int getFirmwareModuleVersion(uint16_t* ver) override;
     int updateFirmware(InputStream* file, size_t size) override;
     int dataChannelWrite(int id, const uint8_t* data, size_t size) override;
+    int dataChannelFlowControl(bool state) override;
     void processEvents() override;
     AtParser* atParser() override;
     void lock() override;
@@ -65,6 +67,10 @@ public:
     virtual int getSignalQuality(CellularSignalQuality* qual) override;
     virtual int setRegistrationTimeout(unsigned timeout) override;
 
+    auto getMuxer() {
+        return &muxer_;
+    }
+
 private:
     AtParser parser_;
     std::unique_ptr<SerialStream> serial_;
@@ -75,7 +81,7 @@ private:
     volatile NcpConnectionState connState_ = NcpConnectionState::DISCONNECTED;
     int parserError_ = 0;
     bool ready_ = false;
-    gsm0710::Muxer<particle::Stream, StaticRecursiveMutex> muxer_;
+    gsm0710::Muxer<particle::SerialStream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
     CellularNetworkConfig netConf_;
     CellularGlobalIdentity cgi_ = {};
@@ -92,6 +98,7 @@ private:
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
     unsigned registrationTimeout_;
+    volatile bool inFlowControl_ = false;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);

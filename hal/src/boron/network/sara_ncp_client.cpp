@@ -39,6 +39,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <lwip/memp.h>
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -84,7 +85,7 @@ inline system_tick_t millis() {
 }
 
 const auto UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
-const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2 = 115200;
+const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2 = 921600;
 
 const auto UBLOX_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto UBLOX_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -386,14 +387,32 @@ int SaraNcpClient::updateFirmware(InputStream* file, size_t size) {
 
 int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     int err = muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, data, size);
+    if (err == gsm0710::GSM0710_ERROR_FLOW_CONTROL) {
+        // Not an error
+        LOG_DEBUG(WARN, "Remote side flow control");
+        err = 0;
+    }
 
     if (err) {
         // Make sure we are going into an error state if muxer for some reason fails
         // to write into the data channel.
+        LOG(ERROR, "Failed to write into data channel %d", err);
         disable();
     }
 
     return err;
+}
+
+int SaraNcpClient::dataChannelFlowControl(bool state) {
+    CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    if (state && !inFlowControl_) {
+        inFlowControl_ = true;
+        muxer_.suspendChannel(UBLOX_NCP_PPP_CHANNEL);
+    } else if (!state && inFlowControl_) {
+        inFlowControl_ = false;
+        muxer_.resumeChannel(UBLOX_NCP_PPP_CHANNEL);
+    }
+    return 0;
 }
 
 void SaraNcpClient::processEvents() {
@@ -998,19 +1017,13 @@ int SaraNcpClient::initReady() {
     // Initialize muxer
     muxer_.setStream(serial_.get());
     muxer_.setMaxFrameSize(UBLOX_NCP_MAX_MUXER_FRAME_SIZE);
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
-        muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD);
-        muxer_.setKeepAliveMaxMissed(UBLOX_NCP_KEEPALIVE_MAX_MISSED);
-        muxer_.setMaxRetransmissions(10);
-        muxer_.setAckTimeout(100);
-        muxer_.setControlResponseTimeout(500);
-    } else {
-        muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD * 2);
-        muxer_.setKeepAliveMaxMissed(UBLOX_NCP_KEEPALIVE_MAX_MISSED);
+    muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD * 2);
+    muxer_.setKeepAliveMaxMissed(UBLOX_NCP_KEEPALIVE_MAX_MISSED);
+    muxer_.setMaxRetransmissions(3);
+    muxer_.setAckTimeout(2530);
+    muxer_.setControlResponseTimeout(2540);
+    if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
         muxer_.useMscAsKeepAlive(true);
-        muxer_.setMaxRetransmissions(3);
-        muxer_.setAckTimeout(2530);
-        muxer_.setControlResponseTimeout(2540);
     }
 
     // Set channel state handler
@@ -1159,18 +1172,20 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
     connState_ = state;
 
     if (connState_ == NcpConnectionState::CONNECTED) {
-        // Open data channel
+        inFlowControl_ = false;
+        // Open data channel and resume it just in case
         int r = muxer_.openChannel(UBLOX_NCP_PPP_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
             auto self = (SaraNcpClient*)ctx;
             const auto handler = self->conf_.dataHandler();
             if (handler) {
                 handler(0, data, size, self->conf_.dataHandlerData());
             }
-            return 0;
+            return SYSTEM_ERROR_NONE;
         }, this);
         if (r) {
             connState_ = NcpConnectionState::DISCONNECTED;
         }
+        muxer_.resumeChannel(UBLOX_NCP_PPP_CHANNEL);
     }
 
     const auto handler = conf_.eventHandler();
