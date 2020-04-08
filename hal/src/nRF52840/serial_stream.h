@@ -18,6 +18,7 @@
 #pragma once
 
 #include "usart_hal.h"
+#include "usart_hal_private.h"
 #include "stream.h"
 #include <memory>
 
@@ -43,6 +44,8 @@ public:
     void enabled(bool enabled);
     bool enabled() const;
 
+    EventGroupHandle_t eventGroup();
+
 private:
     HAL_USART_Serial serial_;
     std::unique_ptr<char[]> rxBuffer_;
@@ -58,5 +61,8 @@ inline void SerialStream::enabled(bool enabled) {
 inline bool SerialStream::enabled() const {
     return enabled_;
 }
+
+static_assert((int)SerialStream::READABLE == (int)HAL_USART_PVT_EVENT_READABLE, "Serial::READABLE needs to match HAL_USART_PVT_EVENT_READABLE");
+static_assert((int)SerialStream::WRITABLE == (int)HAL_USART_PVT_EVENT_WRITABLE, "Serial::WRITABLE needs to match HAL_USART_PVT_EVENT_WRITABLE");
 
 } // particle

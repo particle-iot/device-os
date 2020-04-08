@@ -138,30 +138,10 @@ int SerialStream::waitEvent(unsigned flags, unsigned timeout) {
     if (!flags) {
         return 0;
     }
-    if (!(flags & (Stream::READABLE | Stream::WRITABLE))) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    unsigned f = 0;
-    const auto t = HAL_Timer_Get_Milli_Seconds();
-    for (;;) {
-        if (HAL_USART_Available_Data(serial_) > 0) {
-            f |= Stream::READABLE;
-        }
-        if (HAL_USART_Available_Data_For_Write(serial_) > 0) {
-            f |= Stream::WRITABLE;
-        }
-        if (f &= flags) {
-            break;
-        }
-        if (timeout > 0 && HAL_Timer_Get_Milli_Seconds() - t >= timeout) {
-            return SYSTEM_ERROR_TIMEOUT;
-        }
-        os_thread_yield();
-        if (!enabled_) {
-            return SYSTEM_ERROR_INVALID_STATE;
-        }
-    }
-    return f;
+
+    // NOTE: non-Stream events may be passed here
+
+    return HAL_USART_Pvt_Wait_Event(serial_, flags, timeout);
 }
 
 int SerialStream::setBaudRate(unsigned int baudrate) {
@@ -171,6 +151,12 @@ int SerialStream::setBaudRate(unsigned int baudrate) {
     HAL_USART_End(serial_);
     HAL_USART_BeginConfig(serial_, baudrate, config_, 0);
     return 0;
+}
+
+EventGroupHandle_t SerialStream::eventGroup() {
+    EventGroupHandle_t ev = nullptr;
+    HAL_USART_Pvt_Get_Event_Group_Handle(serial_, &ev);
+    return ev;
 }
 
 } // particle
