@@ -30,6 +30,7 @@ extern "C" {
 #include "inet_hal.h"
 #include "system_error.h"
 #include "lwiplock.h"
+#include <lwip/stats.h>
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -174,8 +175,32 @@ int Client::input(const uint8_t* data, size_t size) {
       case STATE_CONNECTING:
       case STATE_DISCONNECTING:
       case STATE_CONNECTED: {
-        LOG(TRACE, "RX: %lu", size);
+        LOG_DEBUG(TRACE, "RX: %lu", size);
+#if !PPP_INPROC_IRQ_SAFE
         err_t err = pppos_input_tcpip(pcb_, (u8_t*)data, size);
+#else
+        // We can safely pass the data directly to PPPoS without going
+        // through TCPIP thread mailbox and wasting a buffer for each tiny chunk of data
+#ifdef DEBUG_BUILD
+        auto linkDropBefore = lwip_stats.link.drop;
+#endif // DEBUG_BUILD
+
+        pppos_input(pcb_, (u8_t*)data, size);
+
+#ifdef DEBUG_BUILD
+        auto linkDropAfter = lwip_stats.link.drop;
+        if (linkDropAfter > linkDropBefore) {
+          LOG(WARN, "May have dropped %u bytes/packets (received %u bytes)", linkDropAfter - linkDropBefore, size);
+        }
+#endif // DEBUG_BUILD
+        // FIXME
+        err_t err = ERR_OK;
+        int poolAvail = MEMP_STATS_GET(avail, MEMP_PBUF_POOL) - MEMP_STATS_GET(used, MEMP_PBUF_POOL);
+        if (poolAvail <= HAL_PLATFORM_PACKET_BUFFER_FLOW_CONTROL_THRESHOLD) {
+          LOG_DEBUG(WARN, "Almost out of pbufs");
+          return SYSTEM_ERROR_NO_MEMORY;
+        }
+#endif // PPP_INPROC_IRQ_SAFE
         if (err) {
           return SYSTEM_ERROR_INTERNAL;
         }
@@ -362,7 +387,7 @@ uint32_t Client::outputCb(ppp_pcb* pcb, uint8_t* data, uint32_t len, void* ctx) 
 }
 
 uint32_t Client::output(const uint8_t* data, size_t len) {
-  LOG(TRACE, "TX: %lu", len);
+  LOG_DEBUG(TRACE, "TX: %lu", len);
 
   if (oCb_) {
     auto r = oCb_(data, len, oCbCtx_);
