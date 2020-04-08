@@ -30,6 +30,11 @@
 #include "hal_irq_flag.h"
 #include "delay_hal.h"
 #include "interrupts_hal.h"
+#include "usart_hal_private.h"
+#include "timer_hal.h"
+
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_NONE
 
 namespace {
 
@@ -106,7 +111,10 @@ public:
               rtsPin_(rts),
               transmitting_(false),
               receiving_(0),
-              rxConsumed_(0) {
+              rxConsumed_(0),
+              evGroup_(nullptr) {
+        evGroup_ = xEventGroupCreate();
+        SPARK_ASSERT(evGroup_);
     }
 
     struct Config {
@@ -353,6 +361,31 @@ public:
     }
 
     void interruptHandler() {
+        BaseType_t yield = pdFALSE;
+        bool eventGenerated = false;
+
+        if (nrf_uarte_int_enable_check(uarte_, NRF_UARTE_INT_RXDRDY_MASK)) {
+            if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXDRDY)) {
+                nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_RXDRDY_MASK);
+                nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
+                if (xEventGroupSetBitsFromISR(evGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
+                    eventGenerated = true;
+                }
+            }
+        }
+
+        if (nrf_uarte_int_enable_check(uarte_, NRF_UARTE_INT_TXDRDY_MASK)) {
+            if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXDRDY)) {
+                nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_TXDRDY_MASK);
+                nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDRDY);
+                BaseType_t yieldTx = pdFALSE;
+                if (xEventGroupSetBitsFromISR(evGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yieldTx) != pdFAIL) {
+                    eventGenerated = true;
+                }
+                yield = yield || yieldTx;
+            }
+        }
+
         if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDRX)) {
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
@@ -370,6 +403,7 @@ public:
         }
         if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDTX)) {
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
+            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDRDY);
             txBuffer_.consumeCommit(nrf_uarte_tx_amount_get(uarte_));
             transmitting_ = false;
             startTransmission();
@@ -379,6 +413,67 @@ public:
             uint32_t uartErrorSource = nrf_uarte_errorsrc_get_and_clear(uarte_);
             (void)uartErrorSource;
         }
+
+        if (eventGenerated) {
+            portYIELD_FROM_ISR(yield);
+        }
+    }
+
+    EventGroupHandle_t eventGroup() {
+        return evGroup_;
+    }
+
+    int enableEvent(HAL_USART_Pvt_Events event) {
+        if (event & HAL_USART_PVT_EVENT_READABLE) {
+            if (data() <= 0) {
+                LOG(TRACE, "Subscribing to READABLE");
+                nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_RXDRDY_MASK);
+                nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
+                nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_RXDRDY_MASK);
+            } else {
+                LOG(TRACE, "Already READABLE");
+                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
+            }
+        }
+
+        if (event & HAL_USART_PVT_EVENT_WRITABLE) {
+            if (space() <= 0) {
+                LOG(TRACE, "Subscribing to WRITEABLE");
+                nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_TXDRDY_MASK);
+                nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDRDY);
+                nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_TXDRDY_MASK);
+            } else {
+                LOG(TRACE, "Already WRITEABLE");
+                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
+            }
+        }
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int disableEvent(HAL_USART_Pvt_Events event) {
+        if (event & HAL_USART_PVT_EVENT_READABLE) {
+            nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_RXDRDY_MASK);
+            xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
+        }
+
+        if (event & HAL_USART_PVT_EVENT_WRITABLE) {
+            nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_TXDRDY_MASK);
+            xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
+        }
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int waitEvent(uint32_t events, system_tick_t timeout) {
+        LOG(TRACE, "waitEvent %x %u ms", events, timeout);
+        CHECK(enableEvent((HAL_USART_Pvt_Events)events));
+
+        auto t1 = HAL_Timer_Get_Milli_Seconds();
+        auto res = xEventGroupWaitBits(evGroup_, events, pdTRUE, pdFALSE, timeout / portTICK_RATE_MS);
+        auto t2 = HAL_Timer_Get_Milli_Seconds();
+        LOG(TRACE, "Waited for %u ms, events = %x (%x)", t2 - t1, res, events);
+        return res;
     }
 
 private:
@@ -609,6 +704,8 @@ private:
 
     particle::services::RingBuffer<uint8_t> txBuffer_;
     particle::services::RingBuffer<uint8_t> rxBuffer_;
+
+    EventGroupHandle_t evGroup_;
 };
 
 constexpr const Usart::BaudrateMap Usart::baudrateMap_[];
@@ -777,4 +874,27 @@ uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial) {
 
 void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool enable) {
     // Unsupported
+}
+
+int HAL_USART_Pvt_Get_Event_Group_Handle(HAL_USART_Serial serial, EventGroupHandle_t* handle) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    auto grp = usart->eventGroup();
+    CHECK_TRUE(grp, SYSTEM_ERROR_INVALID_STATE);
+    *handle = grp;
+    return SYSTEM_ERROR_NONE;
+}
+
+int HAL_USART_Pvt_Enable_Event(HAL_USART_Serial serial, HAL_USART_Pvt_Events events) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->enableEvent(events);
+}
+
+int HAL_USART_Pvt_Disable_Event(HAL_USART_Serial serial, HAL_USART_Pvt_Events events) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->disableEvent(events);
+}
+
+int HAL_USART_Pvt_Wait_Event(HAL_USART_Serial serial, uint32_t events, system_tick_t timeout) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->waitEvent(events, timeout);
 }
