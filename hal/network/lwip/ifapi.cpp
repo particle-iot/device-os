@@ -172,15 +172,17 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
     char name[IF_NAMESIZE] = {};
     if_get_name(netif, name);
 
+    netif_nsc_reason_t reasonPatched = reason;
+
     if (reason & (LWIP_NSC_IPV4_ADDRESS_CHANGED |
                   LWIP_NSC_IPV4_NETMASK_CHANGED |
                   LWIP_NSC_IPV4_GATEWAY_CHANGED |
                   LWIP_NSC_IPV4_SETTINGS_CHANGED)) {
         /* Patch the reason */
-        reason = LWIP_NSC_IPV4_SETTINGS_CHANGED;
+        reasonPatched = LWIP_NSC_IPV4_SETTINGS_CHANGED;
     }
 
-    switch (reason) {
+    switch (reasonPatched) {
         case LWIP_NSC_NETIF_ADDED: {
             LOG(INFO, "Netif %s added", name);
 
@@ -234,13 +236,13 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
             newaddr.netmask = (sockaddr*)&addrs[4];
             newaddr.gw = (sockaddr*)&addrs[5];
 
-            if (args->ipv4_changed.old_address) {
+            if ((reason & LWIP_NSC_IPV4_ADDRESS_CHANGED) && args->ipv4_changed.old_address) {
                 ipaddr_port_to_sockaddr(args->ipv4_changed.old_address, 0, oldaddr.addr);
             } else {
                 ipaddr_port_to_sockaddr(netif_ip_addr4(netif), 0, oldaddr.addr);
             }
 
-            if (args->ipv4_changed.old_netmask) {
+            if ((reason & LWIP_NSC_IPV4_NETMASK_CHANGED) && args->ipv4_changed.old_netmask) {
                 ipaddr_port_to_sockaddr(args->ipv4_changed.old_netmask, 0, oldaddr.netmask);
                 oldaddr.prefixlen = ip4_netmask_to_prefix_length(ip_2_ip4(args->ipv4_changed.old_netmask));
             } else {
@@ -248,7 +250,7 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
                 oldaddr.prefixlen = ip4_netmask_to_prefix_length(netif_ip4_netmask(netif));
             }
 
-            if (args->ipv4_changed.old_gw) {
+            if ((reason & LWIP_NSC_IPV4_GATEWAY_CHANGED) && args->ipv4_changed.old_gw) {
                 ipaddr_port_to_sockaddr(args->ipv4_changed.old_gw, 0, oldaddr.gw);
             } else {
                 ipaddr_port_to_sockaddr(netif_ip_gw4(netif), 0, oldaddr.gw);
