@@ -27,6 +27,8 @@
 #include <task.h>
 #include <event_groups.h>
 #include <mutex>
+#include "usart_hal_private.h"
+#include "hal_platform.h"
 
 namespace gsm0710 {
 namespace portable {
@@ -41,8 +43,16 @@ const auto taskPriority = OS_THREAD_PRIORITY_NETWORK;
 #define GSM0710_ASSERT(x) SPARK_ASSERT(x)
 
 // #define GSM0710_MODEM_STATUS_SEND_EMPTY_BREAK
-#define GSM0710_PUMP_INPUT_DATA 50
+// #define GSM0710_PUMP_INPUT_DATA 50
 // #define GSM0710_ENABLE_DEBUG_LOGGING
+#define GSM0710_SHARED_STREAM_EVENT_GROUP
+#define GSM0710_SHARED_STREAM_EVENT_BASE (HAL_USART_PVT_EVENT_END - 1)
+
+#if HAL_PLATFORM_WIFI
+#define GSM0710_FLOW_CONTROL_RTR
+#endif // HAL_PLATFORM_WIFI
+
+#define GSM0710_RELAX_WHEN_CHANNEL_IN_FLOW_CONTROL (15)
 
 } // portable
 } // gsm0710
