@@ -47,6 +47,11 @@
 #define PPPOS_SUPPORT                   PPP_SUPPORT
 
 /**
+ * PPPOS_PBUF_RAM_TX_BUFFER==1: Use PBUF_RAM TX buffer
+ */
+#define PPPOS_PBUF_RAM_TX_BUFFER        1
+
+/**
  * LWIP_PPP_API==1: Enable PPP API (in pppapi.c)
  */
 #define LWIP_PPP_API                    (PPP_SUPPORT && (NO_SYS == 0))
@@ -105,7 +110,7 @@
  *
  * Please read the "PPPoS input path" chapter in the PPP documentation about this option.
  */
-#define PPP_INPROC_IRQ_SAFE             0
+#define PPP_INPROC_IRQ_SAFE             1
 
 /**
  * PRINTPKT_SUPPORT==1: Enable PPP print packet support
