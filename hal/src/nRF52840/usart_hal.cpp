@@ -33,9 +33,6 @@
 #include "usart_hal_private.h"
 #include "timer_hal.h"
 
-#undef LOG_COMPILE_TIME_LEVEL
-#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_NONE
-
 namespace {
 
 // Copied from spark_wiring_interrupts.h
@@ -426,24 +423,20 @@ public:
     int enableEvent(HAL_USART_Pvt_Events event) {
         if (event & HAL_USART_PVT_EVENT_READABLE) {
             if (data() <= 0) {
-                LOG(TRACE, "Subscribing to READABLE");
                 nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_RXDRDY_MASK);
                 nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
                 nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_RXDRDY_MASK);
             } else {
-                LOG(TRACE, "Already READABLE");
                 xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
             }
         }
 
         if (event & HAL_USART_PVT_EVENT_WRITABLE) {
             if (space() <= 0) {
-                LOG(TRACE, "Subscribing to WRITEABLE");
                 nrf_uarte_int_disable(uarte_, NRF_UARTE_INT_TXDRDY_MASK);
                 nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDRDY);
                 nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_TXDRDY_MASK);
             } else {
-                LOG(TRACE, "Already WRITEABLE");
                 xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
             }
         }
@@ -466,13 +459,9 @@ public:
     }
 
     int waitEvent(uint32_t events, system_tick_t timeout) {
-        LOG(TRACE, "waitEvent %x %u ms", events, timeout);
         CHECK(enableEvent((HAL_USART_Pvt_Events)events));
 
-        auto t1 = HAL_Timer_Get_Milli_Seconds();
         auto res = xEventGroupWaitBits(evGroup_, events, pdTRUE, pdFALSE, timeout / portTICK_RATE_MS);
-        auto t2 = HAL_Timer_Get_Milli_Seconds();
-        LOG(TRACE, "Waited for %u ms, events = %x (%x)", t2 - t1, res, events);
         return res;
     }
 
