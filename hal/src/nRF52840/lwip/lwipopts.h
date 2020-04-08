@@ -221,7 +221,7 @@ void sys_unlock_tcpip_core(void);
  * If the application sends a lot of data out of ROM (or other static memory),
  * this should be set high.
  */
-#define MEMP_NUM_PBUF                   16
+#define MEMP_NUM_PBUF                   (PBUF_POOL_SIZE * 2)
 
 /**
  * MEMP_NUM_RAW_PCB: Number of raw connection PCBs
