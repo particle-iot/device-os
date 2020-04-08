@@ -385,7 +385,7 @@ void sys_unlock_tcpip_core(void);
  *  unresolved address by other network layers. Defaults to 3, 0 means disabled.
  *  Old packets are dropped, new packets are queued.
  */
-#define ARP_QUEUE_LEN                   3
+#define ARP_QUEUE_LEN                   6
 
 /**
  * ETHARP_SUPPORT_VLAN==1: support receiving and sending ethernet packets with
