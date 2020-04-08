@@ -294,7 +294,17 @@ int system_cloud_disconnect(int flags)
 int system_cloud_send(const uint8_t* buf, size_t buflen, int flags)
 {
     (void)flags;
-    return sock_send(s_state.socket, buf, buflen, 0);
+    int r = sock_send(s_state.socket, buf, buflen, 0);
+    if (r < 0) {
+        if (errno == ENOMEM) {
+            /* Not an error */
+            r = 0;
+        } else {
+            LOG(ERROR, "sock_send returned %d %d", r, errno);
+        }
+    }
+
+    return r;
 }
 
 int system_cloud_recv(uint8_t* buf, size_t buflen, int flags)
@@ -302,9 +312,11 @@ int system_cloud_recv(uint8_t* buf, size_t buflen, int flags)
     (void)flags;
     int recvd = sock_recv(s_state.socket, buf, buflen, MSG_DONTWAIT);
     if (recvd < 0) {
-        if (errno == EWOULDBLOCK || errno == EAGAIN) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN || errno == ENOMEM) {
             /* Not an error */
             recvd = 0;
+        } else {
+            LOG(ERROR, "sock_recv returned %d %d", recvd, errno);
         }
     }
 
