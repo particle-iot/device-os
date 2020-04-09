@@ -22,8 +22,12 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
-#include "application.h"
+
 #include "port.h"
+
+#if PLATFORM_ID == PLATFORM_TRACKER
+
+#include "application.h"
 #include "concurrent_hal.h"
 #include "delay_hal.h"
 #include "sdspi_host.h"
@@ -120,3 +124,5 @@ void at_mutex_free(AT_MUTEX_T pxMutex) {
     os_mutex_destroy(pxMutex);
     pxMutex = NULL;
 }
+
+#endif // PLATFORM_ID == PLATFORM_TRACKER

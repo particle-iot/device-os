@@ -30,6 +30,7 @@
 #include "service_debug.h"
 #include "platforms.h"
 
+#if PLATFORM_ID == PLATFORM_TRACKER
 
 #if PLATFORM_ID == PLATFORM_TRACKER
 #define PORT_SPI        SPI1
@@ -180,3 +181,5 @@ void at_mutex_free(AT_MUTEX_T pxMutex);
 #ifdef __cplusplus
 }
 #endif
+
+#endif // PLATFORM_ID == PLATFORM_TRACKER

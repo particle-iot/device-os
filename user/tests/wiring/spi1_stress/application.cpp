@@ -17,6 +17,12 @@
 
 #include "Particle.h"
 
+#if PLATFORM_ID != PLATFORM_TRACKER
+#error "This test is not applicable for the specified platform."
+#endif
+
+#if PLATFORM_ID == PLATFORM_TRACKER
+
 #include "port.h"
 #include "sdspi_host.h"
 #include <cstdlib>
@@ -428,3 +434,5 @@ void loop() {
 
     Serial.println("");
 }
+
+#endif // PLATFORM_TRACKER
