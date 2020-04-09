@@ -34,15 +34,15 @@
 #define ESP32_THREAD_PRESENT                1
 #define CAN_THREAD_PRESENT                  1
 
-#define GNSS_LOG_VERBOSE                    0
-#define GNSS_ENABLE_TX_READY                1
+#define GNSS_LOG_VERBOSE                    1
+#define GNSS_ENABLE_TX_READY                0
 
 // In ms
-#define IO_EXPANDER_ACCESS_PERIOD           50
+#define IO_EXPANDER_ACCESS_PERIOD           100
 #define GNSS_ACCESS_PERIOD                  1000
-#define BMI160_ACESS_PERIOD                 50
-#define ESP32_ACCESS_PERIOD                 50
-#define CAN_ACCESS_PERIOD                   50
+#define BMI160_ACESS_PERIOD                 100
+#define ESP32_ACCESS_PERIOD                 100
+#define CAN_ACCESS_PERIOD                   100
 
 SYSTEM_MODE(MANUAL);
 SYSTEM_THREAD(ENABLED);

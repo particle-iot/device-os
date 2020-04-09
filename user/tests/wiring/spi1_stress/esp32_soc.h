@@ -15,6 +15,8 @@
 #ifndef _ESP32_SOC_H_
 #define _ESP32_SOC_H_
 
+#include "platforms.h"
+
 #if PLATFORM_ID == PLATFORM_TRACKER
 
 #ifndef __ASSEMBLER__
