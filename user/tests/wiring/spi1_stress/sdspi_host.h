@@ -22,6 +22,8 @@
  *
  */
 
+#include "platforms.h"
+
 #if PLATFORM_ID == PLATFORM_TRACKER
 
 #include <stdio.h>
