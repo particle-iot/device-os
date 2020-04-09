@@ -15,6 +15,8 @@
 #ifndef _ESP32_SOC_H_
 #define _ESP32_SOC_H_
 
+#if PLATFORM_ID == PLATFORM_TRACKER
+
 #ifndef __ASSEMBLER__
 #include <stdint.h>
 // #include "esp_assert.h"
@@ -450,5 +452,7 @@
 
 //Invalid interrupt for number interrupt matrix
 #define ETS_INVALID_INUM                        6
+
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 
 #endif /* _ESP32_SOC_H_ */

@@ -21,6 +21,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
+
+#if PLATFORM_ID == PLATFORM_TRACKER
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -1154,3 +1157,5 @@ esp_err_t at_sdspi_init()
 
     return err;
 }
+
+#endif // PLATFORM_ID == PLATFORM_TRACKER

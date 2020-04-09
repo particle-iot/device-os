@@ -22,6 +22,8 @@
  *
  */
 
+#if PLATFORM_ID == PLATFORM_TRACKER
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -243,4 +245,6 @@ esp_err_t at_sdspi_init(void);
 #ifdef __cplusplus
 }
 #endif
+
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 
