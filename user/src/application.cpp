@@ -22,11 +22,13 @@
 #include <cstdlib>
 #include <string>
 
-#define IO_EXPANDER_THREAD_PRESENT          1
+#define IO_EXPANDER_THREAD_PRESENT          0
 #define GNSS_THREAD_PRESENT                 1
-#define BMI160_THREAD_PRESENT               1
-#define ESP32_THREAD_PRESENT                1
-#define CAN_THREAD_PRESENT                  1
+#define BMI160_THREAD_PRESENT               0
+#define ESP32_THREAD_PRESENT                0
+#define CAN_THREAD_PRESENT                  0
+
+#define GNSS_ENABLE_TX_READY                1
 
 // In ms
 #define IO_EXPANDER_ACCESS_PERIOD           100
@@ -66,6 +68,26 @@ os_thread_return_t ioExpanderThread(void *param) {
 
 #if GNSS_THREAD_PRESENT
 uint32_t gnssFailure = 0;
+
+#if GNSS_ENABLE_TX_READY
+os_semaphore_t gnssReadySem = nullptr;
+// Dirty hack!
+uint8_t ubxCfgMsg[] = {
+    0xb5, 0x62, 0x06, 0x00, 0x14, 0x00, 0x04, 0x00, 0x3b, 0x01,
+    0x00, 0x32, 0x00,0x00,0x00,0x00,0x00,0x00,0x07,0x00,0x03,0x00,0x00,0x00,0x00, 
+    0x00,0x96,0x07,
+    0xb5, 0x62, 0x06,0x00,0x01,0x00,0x04,0x0b,0x25,
+    0xb5, 0x62, 0x06, 0x00, 0x14, 0x00, 0x04, 0x00, 0x3b, 0x01,
+    0x00, 0x32, 0x00,0x00,0x00,0x00,0x00,0x00,0x07,0x00,0x03,0x00,0x00,0x00,0x00,
+    0x00,0x96,0x07
+};
+void gnssIntHandler(void) {
+    if (gnssReadySem) {
+        os_semaphore_give(gnssReadySem, false);
+    }
+}
+#endif
+
 os_thread_return_t gnssThread(void *param) {
     pinMode(GPS_BOOT, OUTPUT);
     digitalWrite(GPS_BOOT, HIGH);
@@ -81,31 +103,71 @@ os_thread_return_t gnssThread(void *param) {
 
     SPI1.begin();
 
-    while (1) {
-        uint8_t gpsData;
-        uint8_t dummyBytes = 0;
-        bool echoed = false;
+#if GNSS_ENABLE_TX_READY
+    attachInterrupt(GPS_INT, gnssIntHandler, FALLING);
+    // Enable TX-ready
+    SPI1.beginTransaction(__SPISettings(5*MHZ, MSBFIRST, SPI_MODE0));
+    digitalWrite(GPS_CS, LOW);
+    delayMicroseconds(50);
+    uint8_t in_byte;
+    for (int i=0; i < sizeof(ubxCfgMsg); i++) {
+        in_byte = SPI1.transfer(ubxCfgMsg[i]);
+        if (in_byte != 0xFF) {
+            Serial.write(in_byte);
+        }
+        delay(10);
+    }
+    digitalWrite(GPS_CS, HIGH);
+    delay(5);
+    SPI1.endTransaction();
+#endif
 
-        SPI1.beginTransaction(__SPISettings(16*MHZ, MSBFIRST, SPI_MODE0));
+    while (1) {
+#if GNSS_ENABLE_TX_READY
+        if (os_semaphore_take(gnssReadySem, 5000/*ms*/, false)) {
+            LOG(ERROR, "Wait GNSS data timeout.");
+            gnssFailure++;
+            continue;
+        }
+        // Read data
+        SPI1.beginTransaction(__SPISettings(5*MHZ, MSBFIRST, SPI_MODE0));
         digitalWrite(GPS_CS, LOW);
-        delay(1000);
-        while (dummyBytes < 50) {
-            gpsData = SPI1.transfer(0xFF);
-            if (gpsData == 0xFF)
-                dummyBytes++;
-            else {
+        delayMicroseconds(50);
+        uint8_t temp;
+        while(SPI1.transfer(0xFF) == 0xFF); // Just in case
+        do {
+            temp = SPI1.transfer(0xFF);
+            Serial.printf("%c", temp);
+        } while (temp != 0xFF);
+        digitalWrite(GPS_CS, HIGH);
+        delay(10);
+        SPI1.endTransaction();
+#else
+        bool echoed = false;
+        system_tick_t start = millis();
+        SPI1.beginTransaction(__SPISettings(5*MHZ, MSBFIRST, SPI_MODE0));
+        digitalWrite(GPS_CS, LOW);
+        delayMicroseconds(50);
+        while ((millis() - start) < 2000) {
+            if (SPI1.transfer(0xFF) != 0xFF) {
                 echoed = true;
-                dummyBytes = 0;
+                // while(SPI1.transfer(0xFF) != 0xFF); // Read rest data
+                uint8_t temp;
+                do {
+                    temp = SPI1.transfer(0xFF);
+                    Serial.printf("%c", temp);
+                } while (temp != 0xFF);
+                break;
             }
         }
         digitalWrite(GPS_CS, HIGH);
         SPI1.endTransaction();
-
         if (!echoed) {
             LOG(ERROR, "Reading GPS data failed.");
             gnssFailure++;
         }
         delay(GNSS_ACCESS_PERIOD);
+#endif
     }
 }
 #endif
@@ -244,7 +306,15 @@ void setup() {
 #endif
 
 #if GNSS_THREAD_PRESENT
+#if GNSS_ENABLE_TX_READY
+    if (!os_semaphore_create(&gnssReadySem, 1, 0)) {
+        Thread* thread2 = new Thread("gnssThread", gnssThread);
+    } else {
+        LOG(ERROR, "Creating GNSS ready semophore failed.");
+    }
+#else
     Thread* thread2 = new Thread("gnssThread", gnssThread);
+#endif
 #endif
 
 #if BMI160_THREAD_PRESENT
