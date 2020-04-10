@@ -26,6 +26,3 @@
 #define MINIZ_NO_TIME
 #define MINIZ_NO_ZLIB_APIS
 #define MINIZ_NO_MALLOC
-
-// Note: Make sure the compressor tool uses the same dictionary size
-#define MINIZ_LZ_DICT_SIZE 1024

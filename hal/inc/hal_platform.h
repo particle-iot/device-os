@@ -239,7 +239,15 @@
 
 #ifndef HAL_PLATFORM_COMPRESSED_BINARIES
 #define HAL_PLATFORM_COMPRESSED_BINARIES (0)
+#elif HAL_PLATFORM_COMPRESSED_BINARIES
+// TODO: This feature macro was used to enable rudimentary support for compressed firmware
+// binaries, which is incompatible with OTA updates. We need to remove that code
+#warning "HAL_PLATFORM_COMPRESSED_BINARIES is deprecated"
 #endif // HAL_PLATFORM_COMPRESSED_BINARIES
+
+#ifndef HAL_PLATFORM_COMPRESSED_MODULES
+#define HAL_PLATFORM_COMPRESSED_MODULES (0)
+#endif // HAL_PLATFORM_COMPRESSED_MODULES
 
 #ifndef HAL_PLATFORM_NETWORK_MULTICAST
 #define HAL_PLATFORM_NETWORK_MULTICAST (0)

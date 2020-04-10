@@ -399,45 +399,55 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
     hal_update_complete_t result = HAL_UPDATE_ERROR;
 
     bool module_fetched = !HAL_FLASH_OTA_Validate(&module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
-	LOG(INFO, "module fetched %d, checks=%x, result=%x", module_fetched, module.validity_checked, module.validity_result);
+    LOG(INFO, "module fetched %d, checks=%x, result=%x", module_fetched, module.validity_checked, module.validity_result);
     if (module_fetched && (module.validity_checked==module.validity_result))
     {
-    	uint8_t mcu_identifier = module_mcu_target(module.info);
-    	uint8_t current_mcu_identifier = platform_current_ncp_identifier();
-    	if (mcu_identifier==HAL_PLATFORM_MCU_DEFAULT) {
-            uint32_t moduleLength = module_length(module.info);
-            module_function_t function = module_function(module.info);
-            // bootloader is copied directly
+        module_function_t function = module_function(module.info);
+        const bool compressed = (module.info->flags & MODULE_INFO_FLAG_COMPRESSED);
+        // TODO: Compression is only supported for user and system part modules
+        if (!compressed || function == MODULE_FUNCTION_SYSTEM_PART || function == MODULE_FUNCTION_USER_PART)
+        {
+            uint8_t mcu_identifier = module_mcu_target(module.info);
+            uint8_t current_mcu_identifier = platform_current_ncp_identifier();
+            if (mcu_identifier==HAL_PLATFORM_MCU_DEFAULT) {
+                uint32_t moduleLength = module_length(module.info);
+                // bootloader is copied directly
 
-			if (function==MODULE_FUNCTION_BOOTLOADER) {
-				result = flash_bootloader(&module, moduleLength);
-			}
-			else if (function == MODULE_FUNCTION_RADIO_STACK) {
-				result = platform_radio_stack_update_module(&module);
-			}
-			else {
-				if (FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS,
-					FLASH_INTERNAL, uint32_t(module.info->module_start_address),
-					(moduleLength + 4),//+4 to copy the CRC too
-					function,
-					MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION)) { //true to verify the CRC during copy also
-						result = HAL_UPDATE_APPLIED_PENDING_RESTART;
-						DEBUG("OTA module applied - device will restart");
-						FLASH_End();
-				}
-			}
-    	}
-
-    	else if (mcu_identifier==current_mcu_identifier) {
+                if (function==MODULE_FUNCTION_BOOTLOADER) {
+                    result = flash_bootloader(&module, moduleLength);
+                }
+                else if (function == MODULE_FUNCTION_RADIO_STACK) {
+                    result = platform_radio_stack_update_module(&module);
+                }
+                else {
+                    uint8_t slot_flags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
+                    if (compressed) {
+                        slot_flags |= MODULE_COMPRESSED;
+                    }
+                    if (FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS, FLASH_INTERNAL,
+                            (uint32_t)module.info->module_start_address, moduleLength + 4 /* +4 to copy the CRC too */,
+                            function, slot_flags)) {
+                        result = HAL_UPDATE_APPLIED_PENDING_RESTART;
+                        DEBUG("OTA module applied - device will restart");
+                        FLASH_End();
+                    }
+                }
+            }
+            else if (mcu_identifier==current_mcu_identifier) {
 #if HAL_PLATFORM_NCP_UPDATABLE
-    		result = platform_ncp_update_module(&module);
+                result = platform_ncp_update_module(&module);
 #else
-    		LOG(ERROR, "NCP module is not updatable on this platform");
+                LOG(ERROR, "NCP module is not updatable on this platform");
 #endif
-		}
-    	else {
-    		LOG(ERROR, "NCP module is not for this platform. module NCP: %x, current NCP: %x", mcu_identifier, current_mcu_identifier);
-    	}
+            }
+            else {
+                LOG(ERROR, "NCP module is not for this platform. module NCP: %x, current NCP: %x", mcu_identifier, current_mcu_identifier);
+            }
+        }
+        else
+        {
+            LOG(ERROR, "Unsupported compressed module");
+        }
     }
     else
     {
