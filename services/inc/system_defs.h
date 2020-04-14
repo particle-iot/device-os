@@ -26,8 +26,17 @@ typedef enum network_interface_index {
     // NETWORK_INTERFACE_MESH = 2, // Deprecated
     NETWORK_INTERFACE_ETHERNET = 3,
     NETWORK_INTERFACE_CELLULAR = 4,
+#if !(HAL_PLATFORM_CELLULAR && HAL_PLATFORM_WIFI)
+    // XXX: we cannot easily change these numbers for existing platforms,
+    // as it will break ABI compatibility.
     NETWORK_INTERFACE_WIFI_STA = 4,
     NETWORK_INTERFACE_WIFI_AP = 5
+#else
+    // For new platforms that have both cellular and wifi interfaces available
+    // we use new correct definitions.
+    NETWORK_INTERFACE_WIFI_STA = 5,
+    NETWORK_INTERFACE_WIFI_AP = 6
+#endif // !(HAL_PLATFORM_CELLULAR && HAL_PLATFORM_WIFI)
 } network_interface_index;
 
 /**

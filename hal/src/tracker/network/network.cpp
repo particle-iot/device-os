@@ -43,6 +43,8 @@ namespace {
 BaseNetif* en2 = nullptr;
 /* pp3 - Cellular */
 BaseNetif* pp3 = nullptr;
+/* wl4 - ESP32 NCP Station */
+BaseNetif* wl4 = nullptr;
 
 bool netifCanForwardIpv4(netif* iface) {
     if (iface && netif_is_up(iface) && netif_is_link_up(iface)) {
@@ -94,12 +96,48 @@ private:
     }
 };
 
+class WifiNetworkManagerInit {
+public:
+    WifiNetworkManagerInit() {
+        const int ret = init();
+        SPARK_ASSERT(ret == 0);
+    }
+
+    WifiNetworkManager* instance() const {
+        return mgr_.get();
+    }
+
+private:
+    std::unique_ptr<WifiNcpClient> ncpClient_;
+    std::unique_ptr<WifiNetworkManager> mgr_;
+
+    int init() {
+        // Initialize NCP client
+        std::unique_ptr<WifiNcpClient> ncpClient(new(std::nothrow) Esp32NcpClient);
+        CHECK_TRUE(ncpClient, SYSTEM_ERROR_NO_MEMORY);
+        auto conf = NcpClientConfig()
+                .eventHandler(Esp32NcpNetif::ncpEventHandlerCb, wl4)
+                .dataHandler(Esp32NcpNetif::ncpDataHandlerCb, wl4);
+        CHECK(ncpClient->init(std::move(conf)));
+        // Initialize network manager
+        mgr_.reset(new(std::nothrow) WifiNetworkManager(ncpClient.get()));
+        CHECK_TRUE(mgr_, SYSTEM_ERROR_NO_MEMORY);
+        ncpClient_ = std::move(ncpClient);
+        return 0;
+    }
+};
+
 } /* anonymous */
 
 namespace particle {
 
 CellularNetworkManager* cellularNetworkManager() {
     static CellularNetworkManagerInit mgr;
+    return mgr.instance();
+}
+
+WifiNetworkManager* wifiNetworkManager() {
+    static WifiNetworkManagerInit mgr;
     return mgr.instance();
 }
 
