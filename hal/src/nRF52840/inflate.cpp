@@ -24,8 +24,12 @@
 #include "check.h"
 
 int inflate_create(inflate_ctx** ctx, const inflate_opts* opts, inflate_output output, void* user_data) {
+    CHECK_TRUE(output, SYSTEM_ERROR_INVALID_ARGUMENT);
     size_t bufSize = (1 << INFLATE_MAX_WINDOW_BITS);
     if (opts && opts->window_bits) {
+        if (opts->window_bits < INFLATE_MIN_WINDOW_BITS || opts->window_bits > INFLATE_MAX_WINDOW_BITS) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
         bufSize = (1 << opts->window_bits);
     }
     char* buf = nullptr;

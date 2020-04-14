@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define INFLATE_MIN_WINDOW_BITS 8
 #define INFLATE_MAX_WINDOW_BITS 15
 
 typedef struct inflate_ctx inflate_ctx;
