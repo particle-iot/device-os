@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -34,21 +34,22 @@
 #define ESP32_THREAD_PRESENT                1
 #define CAN_THREAD_PRESENT                  1
 
-#define GNSS_LOG_VERBOSE                    1
+#define GNSS_LOG_VERBOSE                    0
 #define GNSS_ENABLE_TX_READY                0
 
 // In ms
-#define IO_EXPANDER_ACCESS_PERIOD           100
+#define IO_EXPANDER_ACCESS_PERIOD           10
 #define GNSS_ACCESS_PERIOD                  1000
-#define BMI160_ACESS_PERIOD                 100
-#define ESP32_ACCESS_PERIOD                 100
-#define CAN_ACCESS_PERIOD                   100
+#define BMI160_ACESS_PERIOD                 10
+#define ESP32_ACCESS_PERIOD                 10
+#define CAN_ACCESS_PERIOD                   10
 
 SYSTEM_MODE(MANUAL);
 SYSTEM_THREAD(ENABLED);
 
 SerialLogHandler log(LOG_LEVEL_ALL);
 
+// This thread simply toggles the RTC_WDI pin for stress test purpose.
 #if IO_EXPANDER_THREAD_PRESENT
 uint32_t ioExpanderFailure = 0;
 uint32_t ioExpanderAccessCnt = 0, preIoExpanderAccessCnt = 0;
@@ -111,8 +112,6 @@ os_thread_return_t gnssThread(void *param) {
     digitalWrite(GPS_RST, LOW);
     delay(50);
     digitalWrite(GPS_RST, HIGH);
-
-    SPI1.begin();
 
 #if GNSS_ENABLE_TX_READY
     attachInterrupt(GPS_INT, gnssIntHandler, FALLING);
@@ -202,7 +201,13 @@ os_thread_return_t bmi160Thread(void *param) {
     delay(50);
     digitalWrite(SEN_CS, HIGH); //Rising edge on the /CSB pin to select SPI interface.
 
-    SPI1.begin();
+    // Perform a single read access to the 0x7F register before actual communication.
+    SPI1.beginTransaction(__SPISettings(16*MHZ, MSBFIRST, SPI_MODE3));
+    digitalWrite(SEN_CS, LOW);
+    SPI1.transfer(0xFF); // R/W bit along with register address
+    SPI1.transfer(0xFF);
+    digitalWrite(SEN_CS, HIGH);
+    SPI1.endTransaction();
 
     while (1) {
         SPI1.beginTransaction(__SPISettings(16*MHZ, MSBFIRST, SPI_MODE3));
@@ -228,10 +233,11 @@ uint32_t esp32Failure = 0;
 uint8_t txStr[] = "AT\r\n";
 uint8_t echoStr[] = "OK\r\n";
 spi_context_t context;
-os_semaphore_t echoSem;
+os_mutex_t echoMutex;
 uint32_t esp32AccessCnt = 0, preEsp32AccessCnt = 0;
 
 os_thread_return_t esp32TxThread(void *param) {
+    os_mutex_lock(echoMutex);
     while (1) {
         delay(ESP32_ACCESS_PERIOD);
         esp_err_t ret = at_sdspi_send_packet(&context, txStr, 4, UINT32_MAX);
@@ -240,7 +246,7 @@ os_thread_return_t esp32TxThread(void *param) {
             esp32Failure++;
             continue;
         }
-        if (os_semaphore_take(echoSem, 5000/*ms*/, false)) {
+        if (os_mutex_lock(echoMutex)) {
             LOG(ERROR, "Receiving OK failed.");
             esp32Failure++;
         } else {
@@ -275,7 +281,7 @@ os_thread_return_t esp32RxThread(void *param) {
                 continue;
             }
             if (strstr((const char*)readBuf, "OK")) {
-                os_semaphore_give(echoSem, false);
+                os_mutex_unlock(echoMutex);
             }
         } else {
             LOG(ERROR, "!(intr_raw & HOST_SLC0_RX_NEW_PACKET_INT_ST)");
@@ -296,8 +302,6 @@ os_thread_return_t canThread(void *param) {
     digitalWrite(CAN_RST, LOW);
     delay(100);
     digitalWrite(CAN_RST, HIGH);
-
-    SPI1.begin();
 
     SPI1.beginTransaction(__SPISettings(16*MHZ, MSBFIRST, SPI_MODE0));
     digitalWrite(CAN_CS, LOW);
@@ -331,6 +335,8 @@ void setup() {
     delay(500);
     LOG(TRACE, "Test application started.");
 
+    SPI1.begin();
+
 #if IO_EXPANDER_THREAD_PRESENT
     Thread* thread1 = new Thread("ioExpanderThread", ioExpanderThread);
 #endif // IO_EXPANDER_THREAD_PRESENT
@@ -353,7 +359,6 @@ void setup() {
 
 #if ESP32_THREAD_PRESENT
     PORT_SPI.setDataMode(SPI_MODE0);
-    PORT_SPI.begin();
 
     pinMode(PORT_CS_PIN, OUTPUT);
     digitalWrite(PORT_CS_PIN, HIGH);
@@ -366,7 +371,7 @@ void setup() {
 
     if (at_sdspi_init() == ESP_OK) {
         memset(&context, 0x0, sizeof(spi_context_t));
-        if (!os_semaphore_create(&echoSem, 1, 0)) {
+        if (!os_mutex_create(&echoMutex)) {
             Thread* thread4 = new Thread("esp32TxThread", esp32TxThread);
             Thread* thread5 = new Thread("esp32RxThread", esp32RxThread);
         }
