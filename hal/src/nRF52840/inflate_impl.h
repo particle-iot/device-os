@@ -28,9 +28,10 @@ struct inflate_ctx {
     size_t buf_size;
     size_t buf_offs;
     size_t buf_avail;
-    tinfl_status last_status;
     inflate_output output;
     void* user_data;
+    int result;
+    bool done;
 };
 
 #ifdef __cplusplus
