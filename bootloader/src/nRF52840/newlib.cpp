@@ -71,7 +71,10 @@ void _exit(int status) {
     }
 }
 
-
+void __assert_func(const char *file, int line, const char* func, const char* expr) {
+    PANIC(AssertionFailure, expr);
+    while (1);
+}
 
 /* Default implementation for call made to pure virtual function. */
 void __cxa_pure_virtual() {
