@@ -67,11 +67,6 @@ static struct Last_Reset_Info {
     uint32_t data;
 } last_reset_info = { RESET_REASON_NONE, 0 };
 
-typedef enum Feature_Flag {
-    FEATURE_FLAG_RESET_INFO = 0x01,
-    FEATURE_FLAG_ETHERNET_DETECTION = 0x02
-} Feature_Flag;
-
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
 void HardFault_Handler(void);
@@ -320,8 +315,13 @@ void HAL_Core_Config(void) {
 #endif
 
     // TODO: Use current LED theme
-    LED_SetRGBColor(RGB_COLOR_WHITE);
-    LED_On(LED_RGB);
+    if (HAL_Feature_Get(FEATURE_LED_OVERRIDDEN)) {
+        // Just in case
+        LED_Off(LED_RGB);
+    } else {
+        LED_SetRGBColor(RGB_COLOR_WHITE);
+        LED_On(LED_RGB);
+    }
 
     FLASH_AddToFactoryResetModuleSlot(
       FLASH_INTERNAL, EXTERNAL_FLASH_FAC_XIP_ADDRESS,
@@ -684,6 +684,10 @@ int main(void) {
     init_malloc_mutex();
     xTaskCreate( application_task_start, "app_thread", APPLICATION_STACK_SIZE/sizeof( portSTACK_TYPE ), NULL, 2, &app_thread_handle);
 
+    if (HAL_Feature_Get(FEATURE_LED_OVERRIDDEN)) {
+        LED_Signaling_Start();
+    }
+
     vTaskStartScheduler();
 
     /* we should never get here */
@@ -753,6 +757,9 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled) {
         case FEATURE_ETHERNET_DETECTION: {
             return Write_Feature_Flag(FEATURE_FLAG_ETHERNET_DETECTION, enabled, NULL);
         }
+        case FEATURE_LED_OVERRIDDEN: {
+            return Write_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, enabled, NULL);
+        }
     }
 
     return -1;
@@ -769,6 +776,10 @@ bool HAL_Feature_Get(HAL_Feature feature) {
         case FEATURE_ETHERNET_DETECTION: {
             bool value = false;
             return (Read_Feature_Flag(FEATURE_FLAG_ETHERNET_DETECTION, &value) == 0) ? value : false;
+        }
+        case FEATURE_LED_OVERRIDDEN: {
+            bool value = false;
+            return (Read_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, &value) == 0) ? value : false;
         }
     }
     return false;

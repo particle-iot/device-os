@@ -30,11 +30,11 @@
 #include "hw_config.h"
 #include "rgbled.h"
 #include "button_hal.h"
+#include "dct.h"
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 #define LOAD_DCT_FUNCTIONS
 #include "bootloader_dct.h"
-#include "dct.h"
 #endif
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
@@ -75,21 +75,25 @@ static uint32_t FirmwareUpdateColor = RGB_COLOR_MAGENTA;
 static uint32_t SafeModeColor = RGB_COLOR_MAGENTA;
 static uint32_t DFUModeColor = RGB_COLOR_YELLOW;
 
+static bool LedOverridden;
+
 /* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
 void flashModulesCallback(bool isUpdating)
 {
-    if(isUpdating)
-    {
-        OTA_FLASH_AVAILABLE = 1;
-        LED_SetRGBColor(FirmwareUpdateColor);
-    }
-    else
-    {
-        OTA_FLASH_AVAILABLE = 0;
-        LED_Off(LED_RGB);
+    if (!LedOverridden) {
+        if(isUpdating)
+        {
+            OTA_FLASH_AVAILABLE = 1;
+            LED_SetRGBColor(FirmwareUpdateColor);
+        }
+        else
+        {
+            OTA_FLASH_AVAILABLE = 0;
+            LED_Off(LED_RGB);
+        }
     }
 }
 
@@ -133,7 +137,18 @@ int main(void)
     Set_System();
     BUTTON_Init_Ext();
 
-    //--------------------------------------------------------------------------
+    // Load led overridden flag before SysTick Timer being initialized
+    uint32_t flags = 0;
+    if (dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags))) {
+        LedOverridden = false; // Do not override system LED signaling
+    } else {
+#if HAL_PLATFORM_NRF52840
+        // NOTE: inverted logic!
+        LedOverridden = (flags & FEATURE_FLAG_LED_OVERRIDDEN) ? false : true;
+#else // Gen2 platforms
+        LedOverridden = (flags & FEATURE_FLAG_LED_OVERRIDDEN) ? true : false;
+#endif
+    }
 
     // Setup SysTick Timer for 1 msec interrupts to call Timing_Decrement()
     SysTick_Configuration();
@@ -518,19 +533,21 @@ void Timing_Decrement(void)
         TimingBUTTON--;
     }
 
-    if (TimingLED != 0x00)
-    {
-        TimingLED--;
-    }
-    else if(FACTORY_RESET_MODE || REFLASH_FROM_BACKUP || OTA_FLASH_AVAILABLE || RESET_SETTINGS)
-    {
-        LED_Toggle(LED_RGB);
-        TimingLED = 50;
-    }
-    else if(SAFE_MODE || USB_DFU_MODE)
-    {
-        LED_Toggle(LED_RGB);
-        TimingLED = 100;
+    if (!LedOverridden) {
+        if (TimingLED != 0x00)
+        {
+            TimingLED--;
+        }
+        else if(FACTORY_RESET_MODE || REFLASH_FROM_BACKUP || OTA_FLASH_AVAILABLE || RESET_SETTINGS)
+        {
+            LED_Toggle(LED_RGB);
+            TimingLED = 50;
+        }
+        else if(SAFE_MODE || USB_DFU_MODE)
+        {
+            LED_Toggle(LED_RGB);
+            TimingLED = 100;
+        }
     }
 
     DFU_Check_Reset();
