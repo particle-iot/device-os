@@ -140,7 +140,7 @@ public:
 
 	ProtocolError handle_update_done(token_t token, Message& message, MessageChannel& channel);
 
-	ProtocolError send_missing_chunks(MessageChannel& channel, size_t count);
+	ProtocolError send_missing_chunks(MessageChannel& channel, size_t& count);
 
 	ProtocolError idle(MessageChannel& channel);
 
