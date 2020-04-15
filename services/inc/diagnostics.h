@@ -53,8 +53,9 @@
 #define DIAG_NAME_CLOUD_DISCONNECTS "cloud:dconn"
 #define DIAG_NAME_CLOUD_CONNECTION_ATTEMPTS "cloud:connatt"
 #define DIAG_NAME_CLOUD_DISCONNECTION_REASON "cloud:dconnrsn"
-#define DIAG_NAME_CLOUD_REPEATED_MESSAGES "coap:resend"
+#define DIAG_NAME_CLOUD_RETRANSMITTED_MESSAGES "coap:retransmit"
 #define DIAG_NAME_CLOUD_UNACKNOWLEDGED_MESSAGES "coap:unack"
+#define DIAG_NAME_CLOUD_TRANSMITTED_MESSAGES "coap:transmit"
 #define DIAG_NAME_CLOUD_RATE_LIMITED_EVENTS "pub:limit"
 #define DIAG_NAME_SYSTEM_TOTAL_RAM "sys:tram"
 #define DIAG_NAME_SYSTEM_USED_RAM "sys:uram"
@@ -98,8 +99,9 @@ typedef enum diag_id {
     DIAG_ID_CLOUD_DISCONNECTS = 14, // cloud:dconn
     DIAG_ID_CLOUD_CONNECTION_ATTEMPTS = 29, // cloud:connatt
     DIAG_ID_CLOUD_DISCONNECTION_REASON = 30, // cloud:dconnrsn
-    DIAG_ID_CLOUD_REPEATED_MESSAGES = 21, // coap:resend
+    DIAG_ID_CLOUD_RETRANSMITTED_MESSAGES = 21, // coap:retransmit
     DIAG_ID_CLOUD_UNACKNOWLEDGED_MESSAGES = 22, // coap:unack
+    DIAG_ID_CLOUD_TRANSMITTED_MESSAGES = 23, // coap:transmit
     DIAG_ID_CLOUD_RATE_LIMITED_EVENTS = 20, // pub:throttle
     DIAG_ID_SYSTEM_TOTAL_RAM = 25, // sys:tram
     DIAG_ID_SYSTEM_USED_RAM = 26, // sys:uram
@@ -108,7 +110,8 @@ typedef enum diag_id {
 
 // Data types
 typedef enum diag_type {
-    DIAG_TYPE_INT = 1 // 32-bit integer
+    DIAG_TYPE_INT = 1, // 32-bit signed integer
+    DIAG_TYPE_UINT = 2 // 32-bit unsigned integer
 } diag_type;
 
 // Data source commands

@@ -66,9 +66,27 @@ private:
 };
 
 // Base abstract class for a data source containing an integer value
-class AbstractIntegerDiagnosticData: public AbstractDiagnosticData {
+template<typename UnderlyingTypeT>
+class AbstractTypeDiagnosticData: public AbstractDiagnosticData {
 public:
-    typedef int32_t IntType; // Underlying integer type
+    using UnderlyingType = UnderlyingTypeT;
+
+    static int get(DiagnosticDataId id, UnderlyingTypeT& val);
+    static int get(const diag_source* src, UnderlyingTypeT& val);
+
+protected:
+    AbstractTypeDiagnosticData(DiagnosticDataId id, const char* name, diag_type type);
+
+    virtual int get(UnderlyingTypeT& val) = 0;
+
+private:
+    virtual int get(void* data, size_t& size) override; // AbstractDiagnosticData
+};
+
+// Base abstract class for a data source containing an integer value
+class AbstractIntegerDiagnosticData: public AbstractTypeDiagnosticData<int32_t> {
+public:
+    typedef UnderlyingType IntType; // Underlying integer type
 
     static int get(DiagnosticDataId id, IntType& val);
     static int get(const diag_source* src, IntType& val);
@@ -77,9 +95,20 @@ protected:
     explicit AbstractIntegerDiagnosticData(DiagnosticDataId id, const char* name = nullptr);
 
     virtual int get(IntType& val) = 0;
+};
 
-private:
-    virtual int get(void* data, size_t& size) override; // AbstractDiagnosticData
+// Base abstract class for a data source containing an unsigned integer value
+class AbstractUnsignedIntegerDiagnosticData: public AbstractTypeDiagnosticData<uint32_t> {
+public:
+    typedef UnderlyingType IntType; // Underlying integer type
+
+    static int get(DiagnosticDataId id, IntType& val);
+    static int get(const diag_source* src, IntType& val);
+
+protected:
+    explicit AbstractUnsignedIntegerDiagnosticData(DiagnosticDataId id, const char* name = nullptr);
+
+    virtual int get(IntType& val) = 0;
 };
 
 template<typename ConcurrencyT = NoConcurrency>
@@ -139,6 +168,87 @@ public:
     }
 
     IntegerDiagnosticData& operator=(IntType val) {
+        const auto lock = ConcurrencyT::lock();
+        val_ = val;
+        ConcurrencyT::unlock(lock);
+        return *this;
+    }
+
+    operator IntType() const {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = val_;
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+private:
+    IntType val_;
+
+    virtual int get(IntType& val) override { // AbstractIntegerDiagnosticData
+        const auto lock = ConcurrencyT::lock();
+        val = val_;
+        ConcurrencyT::unlock(lock);
+        return SYSTEM_ERROR_NONE;
+    }
+};
+
+template<typename ConcurrencyT = NoConcurrency>
+class UnsignedIntegerDiagnosticData:
+        public AbstractUnsignedIntegerDiagnosticData,
+        private ConcurrencyT {
+public:
+    explicit UnsignedIntegerDiagnosticData(DiagnosticDataId id, IntType val = 0) :
+            UnsignedIntegerDiagnosticData(id, nullptr, val) {
+    }
+
+    UnsignedIntegerDiagnosticData(DiagnosticDataId id, const char* name, IntType val = 0) :
+            AbstractUnsignedIntegerDiagnosticData(id, name),
+            val_(val) {
+    }
+
+    IntType operator++() {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = ++val_;
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+    IntType operator++(int) {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = val_++;
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+    IntType operator--() {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = --val_;
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+    IntType operator--(int) {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = val_--;
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+    IntType operator+=(IntType val) {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = (val_ += val);
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+    IntType operator-=(IntType val) {
+        const auto lock = ConcurrencyT::lock();
+        const IntType v = (val_ -= val);
+        ConcurrencyT::unlock(lock);
+        return v;
+    }
+
+    UnsignedIntegerDiagnosticData& operator=(IntType val) {
         const auto lock = ConcurrencyT::lock();
         val_ = val;
         ConcurrencyT::unlock(lock);
@@ -462,7 +572,9 @@ private:
 
 // Convenience typedefs
 typedef IntegerDiagnosticData<NoConcurrency> SimpleIntegerDiagnosticData;
+typedef UnsignedIntegerDiagnosticData<NoConcurrency> SimpleUnsignedIntegerDiagnosticData;
 typedef IntegerDiagnosticData<AtomicConcurrency> AtomicIntegerDiagnosticData;
+typedef UnsignedIntegerDiagnosticData<AtomicConcurrency> AtomicUnsignedIntegerDiagnosticData;
 typedef RetainedDiagnosticDataStorage<AbstractIntegerDiagnosticData::IntType> RetainedIntegerDiagnosticDataStorage;
 
 template<typename EnumT>
@@ -518,11 +630,13 @@ inline int AbstractDiagnosticData::callback(const diag_source* src, int cmd, voi
     }
 }
 
-inline AbstractIntegerDiagnosticData::AbstractIntegerDiagnosticData(DiagnosticDataId id, const char* name) :
-        AbstractDiagnosticData(id, name, DIAG_TYPE_INT) {
+template<typename UnderlyingTypeT>
+inline AbstractTypeDiagnosticData<UnderlyingTypeT>::AbstractTypeDiagnosticData(DiagnosticDataId id, const char* name, diag_type type) :
+        AbstractDiagnosticData(id, name, type) {
 }
 
-inline int AbstractIntegerDiagnosticData::get(DiagnosticDataId id, IntType& val) {
+template<typename UnderlyingTypeT>
+inline int AbstractTypeDiagnosticData<UnderlyingTypeT>::get(DiagnosticDataId id, UnderlyingTypeT& val) {
     const diag_source* src = nullptr;
     const int ret = diag_get_source(id, &src, nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
@@ -531,25 +645,52 @@ inline int AbstractIntegerDiagnosticData::get(DiagnosticDataId id, IntType& val)
     return get(src, val);
 }
 
-inline int AbstractIntegerDiagnosticData::get(const diag_source* src, IntType& val) {
-    SPARK_ASSERT(src->type == DIAG_TYPE_INT);
-    size_t size = sizeof(IntType);
+template<typename UnderlyingTypeT>
+inline int AbstractTypeDiagnosticData<UnderlyingTypeT>::get(const diag_source* src, UnderlyingTypeT& val) {
+    size_t size = sizeof(UnderlyingTypeT);
     return AbstractDiagnosticData::get(src, &val, size);
 }
 
-inline int AbstractIntegerDiagnosticData::get(void* data, size_t& size) {
+template<typename UnderlyingTypeT>
+inline int AbstractTypeDiagnosticData<UnderlyingTypeT>::get(void* data, size_t& size) {
     if (!data) {
-        size = sizeof(IntType);
+        size = sizeof(UnderlyingTypeT);
         return SYSTEM_ERROR_NONE;
     }
-    if (size < sizeof(IntType)) {
+    if (size < sizeof(UnderlyingTypeT)) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
-    const int ret = get(*(IntType*)data);
+    const int ret = get(*(UnderlyingTypeT*)data);
     if (ret == SYSTEM_ERROR_NONE) {
-        size = sizeof(IntType);
+        size = sizeof(UnderlyingTypeT);
     }
     return ret;
+}
+
+inline AbstractIntegerDiagnosticData::AbstractIntegerDiagnosticData(DiagnosticDataId id, const char* name) :
+        AbstractTypeDiagnosticData<int32_t>(id, name, DIAG_TYPE_INT) {
+}
+
+inline int AbstractIntegerDiagnosticData::get(DiagnosticDataId id, IntType& val) {
+    return AbstractTypeDiagnosticData<IntType>::get(id, val);
+}
+
+inline int AbstractIntegerDiagnosticData::get(const diag_source* src, IntType& val) {
+    SPARK_ASSERT(src->type == DIAG_TYPE_INT);
+    return AbstractTypeDiagnosticData<IntType>::get(src, val);
+}
+
+inline AbstractUnsignedIntegerDiagnosticData::AbstractUnsignedIntegerDiagnosticData(DiagnosticDataId id, const char* name) :
+        AbstractTypeDiagnosticData<uint32_t>(id, name, DIAG_TYPE_UINT) {
+}
+
+inline int AbstractUnsignedIntegerDiagnosticData::get(DiagnosticDataId id, IntType& val) {
+    return AbstractTypeDiagnosticData<IntType>::get(id, val);
+}
+
+inline int AbstractUnsignedIntegerDiagnosticData::get(const diag_source* src, IntType& val) {
+    SPARK_ASSERT(src->type == DIAG_TYPE_UINT);
+    return AbstractTypeDiagnosticData<IntType>::get(src, val);
 }
 
 } // namespace particle

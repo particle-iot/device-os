@@ -605,10 +605,10 @@ private:
     }
 };
 
-class UptimeDiagnosticData: public AbstractIntegerDiagnosticData {
+class UptimeDiagnosticData: public AbstractUnsignedIntegerDiagnosticData {
 public:
     UptimeDiagnosticData() :
-            AbstractIntegerDiagnosticData(DIAG_ID_SYSTEM_UPTIME, DIAG_NAME_SYSTEM_UPTIME) {
+            AbstractUnsignedIntegerDiagnosticData(DIAG_ID_SYSTEM_UPTIME, DIAG_NAME_SYSTEM_UPTIME) {
     }
 
     virtual int get(IntType& val) override {
