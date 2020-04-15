@@ -240,11 +240,18 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
 typedef enum HAL_Feature {
     FEATURE_RETAINED_MEMORY=1,       // [write only] retained memory on backup power
     FEATURE_WARM_START,              // [read only] set to true if previous retained memory contents are available]
-    FEATURE_CLOUD_UDP,				// [read only] true if the UDP implementation should be used.
+    FEATURE_CLOUD_UDP,               // [read only] true if the UDP implementation should be used.
     FEATURE_RESET_INFO,              // [read/write] enables handling of last reset info (may affect backup registers)
-    FEATURE_WIFI_POWERSAVE_CLOCK,	// [write only] enables/disables the WiFi powersave clock on the TESTMODE pin. This setting is persisted to the DCT.
-    FEATURE_ETHERNET_DETECTION      // [read/write] enables Ethernet FeatherWing detection on boot
+    FEATURE_WIFI_POWERSAVE_CLOCK,    // [write only] enables/disables the WiFi powersave clock on the TESTMODE pin. This setting is persisted to the DCT.
+    FEATURE_ETHERNET_DETECTION,      // [read/write] enables Ethernet FeatherWing detection on boot
+    FEATURE_LED_OVERRIDDEN           // [read/write] override system RGB signaling on boot.
 } HAL_Feature;
+
+typedef enum Feature_Flag {
+    FEATURE_FLAG_RESET_INFO = 0x01,
+    FEATURE_FLAG_ETHERNET_DETECTION = 0x02,
+    FEATURE_FLAG_LED_OVERRIDDEN = 0x04,
+} Feature_Flag;
 
 int HAL_Feature_Set(HAL_Feature feature, bool enabled);
 bool HAL_Feature_Get(HAL_Feature feature);

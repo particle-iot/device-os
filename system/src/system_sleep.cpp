@@ -119,8 +119,7 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 
     // Let the sleep HAL layer to turn off the NCP interface if necessary.
 
-    // Stop RGB signaling
-    led_set_update_enabled(0, nullptr); // Disable background LED updates
+    // Turn off RGB no matter whether it is controlled by system or user application.
     LED_Off(LED_RGB);
 
     system_power_management_sleep();
@@ -130,8 +129,8 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 
     system_power_management_sleep(false);
 
-    // Start RGB signaling.
-    led_set_update_enabled(1, nullptr); // Enable background LED updates
+    // Turn on RGB. It starts signaling according to the previous status before entering sleep mode.
+    LED_On(LED_RGB);
 
     // Network resume
     // FIXME: if_get_list() can be potentially used, instead of using pre-processor.

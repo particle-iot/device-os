@@ -222,11 +222,10 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
     }
 #endif // HAL_PLATFORM_MESH
 
-    led_set_update_enabled(0, nullptr); // Disable background LED updates
     LED_Off(LED_RGB);
 	system_power_management_sleep();
     int ret = system_sleep_enter_stop_compat(pins, pins_count, modes, modes_count, seconds);
-    led_set_update_enabled(1, nullptr); // Enable background LED updates
+    LED_On(LED_RGB);
 
 #if HAL_PLATFORM_CELLULAR
     if (!network_sleep_flag(param)) {
