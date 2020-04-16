@@ -31,6 +31,7 @@
 #include "file_transfer.h"
 #include "protocol_selector.h"
 #include "protocol_defs.h"
+#include "system_defs.h"
 #include "completion_handler.h"
 #include "hal_platform.h"
 
@@ -188,7 +189,7 @@ void spark_protocol_set_product_id(ProtocolFacade* protocol, product_id_t produc
 void spark_protocol_set_product_firmware_version(ProtocolFacade* protocol, product_firmware_version_t product_firmware_version, unsigned int param=0, void* reserved = NULL);
 void spark_protocol_get_product_details(ProtocolFacade* protocol, product_details_t* product_details, void* reserved=NULL);
 
-int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id, unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved);
+int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id, unsigned data, const particle::protocol::connection_properties_t* conn_prop, void* reserved);
 bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved=NULL);
 system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved=NULL);
 
@@ -225,16 +226,27 @@ int spark_protocol_post_description(ProtocolFacade* protocol, int desc_flags=par
 
 namespace ProtocolCommands {
   enum Enum {
-    SLEEP,
-    WAKE,
-    DISCONNECT,
-    TERMINATE,
-    FORCE_PING
+    SLEEP = 0, // Deprecated, use DISCONNECT instead
+    WAKE = 1, // Deprecated, use PING instead
+    DISCONNECT = 2,
+    TERMINATE = 3,
+    PING = 4
   };
 };
 
+/**
+ * Parameters of a DISCONNECT command.
+ */
+typedef struct spark_disconnect_command {
+    uint16_t size; ///< Size of this structure.
+    uint16_t cloud_reason; ///< Cloud disconnection reason (a value defined by the `cloud_disconnect_reason` enum).
+    uint16_t network_reason; ///< Network disconnection reason (a value defined by the `network_disconnect_reason` enum).
+    uint16_t reset_reason; ///< System reset reason (a value defined by the `System_Reset_Reason` enum).
+    uint32_t sleep_duration; ///< Sleep duration in seconds.
+    uint32_t timeout; ///< Maximum time in milliseconds to spend waiting for acknowledgements.
+} spark_disconnect_command;
 
-int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data=0, void* reserved=NULL);
+int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value = 0, const void* data = NULL);
 
 #if HAL_PLATFORM_MESH
 namespace MeshCommand {

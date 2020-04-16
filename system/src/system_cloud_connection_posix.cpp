@@ -264,27 +264,20 @@ int system_cloud_disconnect(int flags)
         ret = sock_shutdown(s_state.socket, SHUT_WR);
         if (!ret) {
             LOG_DEBUG(TRACE, "Half-closed cloud socket");
-            if (!spark_protocol_command(sp, ProtocolCommands::DISCONNECT, 0, nullptr)) {
-                /* Wait for an error (which means that the server closed our connection). */
-                system_tick_t start = millis();
-                while (millis() - start < CLOUD_SOCKET_HALF_CLOSED_WAIT_TIMEOUT) {
-                    if (!spark_protocol_event_loop(system_cloud_protocol_instance())) {
-                        break;
-                    }
-                }
-            }
-        } else {
-            spark_protocol_command(sp, ProtocolCommands::DISCONNECT, 0, nullptr);
+            // Keep reading and discarding socket data until an error occurs (which would mean that
+            // the server closed our connection)
+            uint8_t buf[32];
+            int sockRet = 0;
+            system_tick_t start = millis();
+            do {
+                sockRet = system_cloud_recv(buf, sizeof(buf), 0);
+            } while (sockRet >= 0 && millis() - start < CLOUD_SOCKET_HALF_CLOSED_WAIT_TIMEOUT);
         }
     }
 
     LOG_DEBUG(TRACE, "Close Attempt");
     ret = sock_close(s_state.socket);
     LOG_DEBUG(TRACE, "sock_close()=%s", (ret ? "fail":"success"));
-
-    if (!(flags & SYSTEM_CLOUD_DISCONNECT_GRACEFULLY)) {
-        spark_protocol_command(sp, ProtocolCommands::TERMINATE, 0, nullptr);
-    }
 
     s_state.socket = -1;
 

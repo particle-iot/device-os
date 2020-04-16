@@ -69,7 +69,12 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     // Make sure all confirmable UDP messages are sent and acknowledged before sleeping
     if (configHelper.cloudDisconnectRequested() && spark_cloud_flag_connected()) {
         if (configHelper.sleepFlags().isSet(SystemSleepFlag::WAIT_CLOUD)) {
-            Spark_Sleep();
+            unsigned duration = 0; // Sleep duration in seconds
+            const auto src = (const hal_wakeup_source_rtc_t*)configHelper.wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_RTC);
+            if (src) {
+                duration = src->ms / 1000;
+            }
+            Spark_Sleep(duration);
         }
         cloudResume = spark_cloud_flag_auto_connect();
         // Clear the auto connect status

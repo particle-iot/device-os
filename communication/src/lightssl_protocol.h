@@ -45,6 +45,7 @@ class LightSSLProtocol : public Protocol
 	}
 
 public:
+	static const unsigned DEFAULT_DISCONNECT_COMMAND_TIMEOUT = 5000;
 
 	LightSSLProtocol() : Protocol(channel) {}
 
@@ -77,7 +78,7 @@ public:
 		return len;
 	}
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t data) override;
+	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* data) override;
 
 	virtual int get_status(protocol_status* status) const override
 	{
@@ -86,7 +87,7 @@ public:
 		return 0;
 	}
 
-	int wait_confirmable(uint32_t timeout=5000);
+	int wait_confirmable(uint32_t timeout);
 
 };
 

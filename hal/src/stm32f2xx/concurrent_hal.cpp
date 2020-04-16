@@ -532,7 +532,8 @@ int os_timer_is_active(os_timer_t timer, void* reserved)
     return xTimerIsTimerActive(static_cast<TimerHandle_t>(timer)) != pdFALSE;
 }
 
-static AtomicFlagMutex<os_result_t, os_thread_yield> flash_lock;
+static particle::AtomicFlagMutex<os_result_t, os_thread_yield> flash_lock;
+
 void __flash_acquire() {
     if (!rtos_started) {
         return;

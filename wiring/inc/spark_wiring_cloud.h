@@ -70,6 +70,35 @@ struct is_string_literal {
     static constexpr bool value = std::is_array<T>::value && std::is_same<typename std::remove_extent<T>::type, char>::value;
 };
 
+class CloudDisconnectOptions {
+public:
+    CloudDisconnectOptions();
+
+    CloudDisconnectOptions& graceful(bool enabled);
+    bool graceful() const;
+    bool isGracefulSet() const;
+
+    CloudDisconnectOptions& timeout(system_tick_t timeout);
+    CloudDisconnectOptions& timeout(std::chrono::milliseconds ms);
+    system_tick_t timeout() const;
+    bool isTimeoutSet() const;
+
+    spark_cloud_disconnect_options toSystemOptions() const;
+    static CloudDisconnectOptions fromSystemOptions(const spark_cloud_disconnect_options* options);
+
+private:
+    enum OptionFlag {
+        GRACEFUL = SPARK_CLOUD_DISCONNECT_OPTION_GRACEFUL,
+        TIMEOUT = SPARK_CLOUD_DISCONNECT_OPTION_TIMEOUT
+    };
+
+    unsigned flags_; // TODO: Use std::optional (C++17)
+    system_tick_t timeout_;
+    bool graceful_;
+
+    CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful);
+};
+
 class CloudClass {
 public:
     template <typename T, typename... ArgsT>
@@ -347,7 +376,7 @@ public:
     static void connect(void) {
         spark_cloud_flag_connect();
     }
-    static void disconnect(void) { spark_cloud_flag_disconnect(); }
+    static void disconnect(const CloudDisconnectOptions& options = CloudDisconnectOptions());
     static void process(void) {
     		application_checkin();
     		spark_process();
@@ -360,12 +389,20 @@ public:
         particle::protocol::connection_properties_t conn_prop = {0};
         conn_prop.size = sizeof(conn_prop);
         conn_prop.keepalive_source = particle::protocol::KeepAliveSource::USER;
-        spark_set_connection_property(particle::protocol::Connection::PING,
-                                               sec * 1000, &conn_prop, nullptr);
+        spark_set_connection_property(SPARK_CLOUD_PING_INTERVAL, sec * 1000, &conn_prop, nullptr);
     }
 
     inline static void keepAlive(std::chrono::seconds s) { keepAlive(s.count()); }
 #endif
+
+    /**
+     * Set the default cloud disconnection options.
+     *
+     * @param options Options.
+     *
+     * @see `disconnect()`
+     */
+    static void setDisconnectOptions(const CloudDisconnectOptions& options);
 
 private:
 
@@ -482,6 +519,48 @@ private:
 
 extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));
 extern CloudClass Particle;
+
+inline CloudDisconnectOptions::CloudDisconnectOptions() :
+        CloudDisconnectOptions(0, 0, false) {
+}
+
+inline CloudDisconnectOptions::CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful) :
+        flags_(flags),
+        timeout_(timeout),
+        graceful_(graceful) {
+}
+
+inline CloudDisconnectOptions& CloudDisconnectOptions::graceful(bool enabled) {
+    graceful_ = enabled;
+    flags_ |= OptionFlag::GRACEFUL;
+    return *this;
+}
+
+inline bool CloudDisconnectOptions::graceful() const {
+    return graceful_;
+}
+
+inline bool CloudDisconnectOptions::isGracefulSet() const {
+    return (flags_ & OptionFlag::GRACEFUL);
+}
+
+inline CloudDisconnectOptions& CloudDisconnectOptions::timeout(system_tick_t timeout) {
+    timeout_ = timeout;
+    flags_ |= OptionFlag::TIMEOUT;
+    return *this;
+}
+
+inline CloudDisconnectOptions& CloudDisconnectOptions::timeout(std::chrono::milliseconds ms) {
+    return timeout(ms.count());
+}
+
+inline system_tick_t CloudDisconnectOptions::timeout() const {
+    return timeout_;
+}
+
+inline bool CloudDisconnectOptions::isTimeoutSet() const {
+    return (flags_ & OptionFlag::TIMEOUT);
+}
 
 // Deprecated methods
 inline particle::Future<bool> CloudClass::publish(const char* name) {

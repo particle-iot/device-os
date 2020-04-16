@@ -325,7 +325,7 @@ protected:
         WLAN_SERIAL_CONFIG_DONE = 0;
         bool wlanStarted = SPARK_WLAN_STARTED;
 
-        cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_LISTENING);
+        cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_LISTENING);
 
         if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
             LED_SIGNAL_START(LISTENING_MODE, NORMAL);
@@ -546,7 +546,7 @@ public:
         }
     }
 
-    void disconnect(network_disconnect_reason reason = NETWORK_DISCONNECT_REASON_NONE) override
+    void disconnect(network_disconnect_reason reason = NETWORK_DISCONNECT_REASON_UNKNOWN) override
     {
         LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
@@ -560,7 +560,7 @@ public:
             CLR_WLAN_WD();
             LOG(INFO, "Clearing WLAN WD in disconnect()");
 
-            cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
+            cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, reason);
             const auto diag = NetworkDiagnostics::instance();
             if (was_connected) {
                 diag->resetConnectionAttempts();
@@ -623,6 +623,8 @@ public:
         LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
         {
+            // TODO: We should report NETWORK_DISCONNECT_REASON_USER if the network interface is
+            // being turned off at the user's request
             disconnect(NETWORK_DISCONNECT_REASON_NETWORK_OFF);
 
             const auto diag = NetworkDiagnostics::instance();
@@ -669,8 +671,7 @@ public:
     void notify_disconnected()
     {
         LOG_NETWORK_STATE();
-        // Don't close the socket on the callback since this causes a lockup on the Core
-        cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
+        cloud_disconnect(0 /* flags */, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
         if (WLAN_CONNECTING || WLAN_CONNECTED) {
             // This code is executed only in case of an unsolicited disconnection, since the disconnect() method
             // resets the WLAN_CONNECTING and WLAN_CONNECTED flags prior to closing the connection

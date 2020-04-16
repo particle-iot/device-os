@@ -54,7 +54,7 @@ int formatReplyData(ctrl_request* req, ReplyFormatterCallback callback, void* da
             system_ctrl_alloc_reply_data(req, 0, nullptr);
             return ret;
         }
-        BufferAppender2 appender(req->reply_data, bufSize);
+        BufferAppender appender(req->reply_data, bufSize);
         ret = callback(&appender, data);
         if (ret != 0) {
             system_ctrl_alloc_reply_data(req, 0, nullptr);
@@ -204,7 +204,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         } else {
             struct Formatter {
                 static int callback(Appender* appender, void* data) {
-                    return system_format_diag_data(nullptr, 0, 0, append_instance, appender, nullptr);
+                    return system_format_diag_data(nullptr, 0, 0, Appender::callback, appender, nullptr);
                 }
             };
             const int ret = formatReplyData(req, Formatter::callback);

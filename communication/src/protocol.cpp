@@ -295,12 +295,8 @@ int Protocol::begin()
 {
 	LOG_CATEGORY("comm.protocol.handshake");
 	LOG(INFO,"Establish secure connection");
-	chunkedTransfer.reset();
-	pinger.reset();
-	timesync_.reset();
 
-	// FIXME: Pending completion handlers should be cancelled at the end of a previous session
-	ack_handlers.clear();
+	reset();
 	last_ack_handlers_update = callbacks.millis();
 
 	uint32_t channel_flags = 0;
@@ -354,9 +350,19 @@ int Protocol::begin()
 	return error;
 }
 
+void Protocol::reset() {
+	chunkedTransfer.reset();
+	pinger.reset();
+	timesync_.reset();
+	ack_handlers.clear();
+	channel.reset();
+}
+
 const auto HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL = 1;
 const auto HELLO_FLAG_DIAGNOSTICS_SUPPORT = 2;
 const auto HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT = 4;
+// Flag 0x08 is reserved to indicate support for the HandshakeComplete message
+const auto HELLO_FLAG_GOODBYE_SUPPORT = 16;
 
 /**
  * Send the hello message over the channel.
@@ -367,11 +373,14 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 	Message message;
 	channel.create(message);
 
-	uint8_t flags = was_ota_upgrade_successful ? HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL : 0;
-	flags |= HELLO_FLAG_DIAGNOSTICS_SUPPORT | HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT;
-	size_t len = build_hello(message, flags);
+	uint8_t helloFlags = HELLO_FLAG_DIAGNOSTICS_SUPPORT | HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT |
+			HELLO_FLAG_GOODBYE_SUPPORT;
+	if (was_ota_upgrade_successful) {
+		helloFlags |= HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL;
+	}
+	size_t len = build_hello(message, helloFlags);
 	message.set_length(len);
-	message.set_confirm_received(true);
+	message.set_confirm_received(true); // Send synchronously
 	last_message_millis = callbacks.millis();
 	return channel.send(message);
 }
@@ -463,7 +472,7 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
 		appender.append(char(0));	//
 		const int flags = 1;		// binary
 		const int page = 0;
-		descriptor.append_metrics(append_instance, &appender, flags, page, nullptr);
+		descriptor.append_metrics(Appender::callback, &appender, flags, page, nullptr);
 	}
 	else {
 		appender.append("{");
@@ -525,7 +534,7 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
 				appender.append(',');
 			}
 			has_content = true;
-			descriptor.append_system_info(append_instance, &appender, nullptr);
+			descriptor.append_system_info(Appender::callback, &appender, nullptr);
 		}
 		appender.append('}');
 	}
@@ -539,18 +548,18 @@ ProtocolError Protocol::generate_and_send_description(MessageChannel& channel, M
     BufferAppender appender((message.buf() + header_size), (message.capacity() - header_size));
     build_describe_message(appender, desc_flags);
 
-    const size_t msglen = (appender.next() - (uint8_t*)message.buf());
-    message.set_length(msglen);
-    if (appender.overflowed())
+    if (appender.dataSize() > appender.bufferSize())
     {
-        LOG(ERROR, "Describe message overflowed by %d bytes", appender.overflowed());
+        LOG(ERROR, "Describe message overflowed by %u bytes", (unsigned)(appender.dataSize() - appender.bufferSize()));
         // There is no point in continuing to run, the device will be constantly reconnecting
         // to the cloud. It's better to clearly indicate that the describe message is never going
         // to go through to the cloud by going into a panic state, otherwise one would have to
         // sift through logs to find 'Describe message overflowed by %d bytes' message to understand
         // what's going on.
-        SPARK_ASSERT(!appender.overflowed());
+        SPARK_ASSERT(false);
     }
+
+    message.set_length(header_size + appender.dataSize());
 
     LOG(INFO, "Posting '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
         desc_flags & DESCRIBE_APPLICATION ? "A" : "", desc_flags & DESCRIBE_METRICS ? "M" : "");
@@ -640,7 +649,7 @@ system_tick_t Protocol::ChunkedTransferCallbacks::millis()
 int Protocol::get_describe_data(spark_protocol_describe_data* data, void* reserved)
 {
 	data->maximum_size = 768;  // a conservative guess based on dtls and lightssl encryption overhead and the CoAP data
-	BufferAppender2 appender(nullptr,  0);	// don't need to store the data, just count the size
+	BufferAppender appender(nullptr,  0);	// don't need to store the data, just count the size
 	build_describe_message(appender, data->flags);
 	data->current_size = appender.dataSize();
 	return 0;

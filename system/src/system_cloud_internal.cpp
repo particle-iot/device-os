@@ -55,8 +55,10 @@
 #include <stdint.h>
 
 using particle::CloudDiagnostics;
+using particle::CloudConnectionSettings;
 using particle::publishEvent;
 using particle::protocol::ProtocolError;
+using particle::BufferAppender;
 
 extern uint8_t feature_cloud_udp;
 extern volatile bool cloud_socket_aborted;
@@ -724,7 +726,7 @@ int formatOtaUpdateStatusEventData(uint32_t flags, int result, hal_module_t* mod
 
     if (flags & 1) {
         appender.append(",");
-        res = ota_update_info(append_instance, &appender, module, false, NULL);
+        res = ota_update_info(Appender::callback, &appender, module, false, NULL);
     }
 
     appender.append("}");
@@ -806,6 +808,9 @@ static const char* panicCodeString(ePanicCode code)
 
 static void formatResetReasonEventData(int reason, uint32_t data, char *buf, size_t size)
 {
+    // TODO: Consider using numeric reason codes instead of string identifiers for uniformity
+    // with the CoAP protocol
+
     // Reset reason
     int n = 0;
     const char* s = resetReasonString((System_Reset_Reason)reason);
@@ -844,7 +849,9 @@ bool system_cloud_active()
         if (SPARK_CLOUD_CONNECTED && ((now-lastCloudEvent))>SYSTEM_CLOUD_TIMEOUT)
         {
             WARN("Disconnecting cloud due to inactivity! %d, %d", now, lastCloudEvent);
-            cloud_disconnect(HAL_PLATFORM_MAY_LEAK_SOCKETS ? false : true, false, CLOUD_DISCONNECT_REASON_ERROR);
+            // TODO: Not sure if we want to specify a disconnection reason here
+            cloud_disconnect(HAL_PLATFORM_MAY_LEAK_SOCKETS ? CLOUD_DISCONNECT_DONT_CLOSE : 0,
+                    CLOUD_DISCONNECT_REASON_NONE);
             return false;
         }
     }
@@ -1121,7 +1128,7 @@ void Spark_Process_Events()
     if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
     {
         WARN("Communication loop error, closing cloud socket");
-        cloud_disconnect(HAL_PLATFORM_MAY_LEAK_SOCKETS ? false : true, false, CLOUD_DISCONNECT_REASON_ERROR);
+        cloud_disconnect(HAL_PLATFORM_MAY_LEAK_SOCKETS ? CLOUD_DISCONNECT_DONT_CLOSE : 0, CLOUD_DISCONNECT_REASON_ERROR);
     }
     else
     {
@@ -1132,6 +1139,7 @@ void Spark_Process_Events()
 namespace {
 
 CloudDiagnostics g_cloudDiagnostics;
+CloudConnectionSettings g_cloudConnectionSettings;
 
 } // namespace
 
@@ -1154,16 +1162,20 @@ String bytes2hex(const uint8_t* buf, unsigned len)
     return result;
 }
 
-void Spark_Sleep(void)
+void Spark_Sleep(unsigned duration)
 {
-	spark_protocol_command(sp, ProtocolCommands::SLEEP);
+    cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SLEEP, NETWORK_DISCONNECT_REASON_NONE,
+            RESET_REASON_NONE, duration);
 }
 
 void Spark_Wake(void)
 {
-	spark_protocol_command(sp, ProtocolCommands::WAKE);
 }
 
 CloudDiagnostics* CloudDiagnostics::instance() {
     return &g_cloudDiagnostics;
+}
+
+CloudConnectionSettings* CloudConnectionSettings::instance() {
+    return &g_cloudConnectionSettings;
 }

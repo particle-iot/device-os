@@ -24,10 +24,12 @@
 #include "ota_flash_hal.h"
 #include "socket_hal.h"
 #include "spark_wiring_diagnostics.h"
+#include "spark_wiring_cloud.h"
+#include "atomic_flag_mutex.h"
 
 void Spark_Signal(bool on, unsigned, void*);
 void Spark_SetTime(unsigned long dateTime);
-void Spark_Sleep();
+void Spark_Sleep(unsigned duration);
 void Spark_Wake();
 int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved);
 int Spark_Restore(void* buffer, size_t max_length, uint8_t type, void* reserved);
@@ -130,6 +132,67 @@ private:
     SimpleUnsignedIntegerDiagnosticData disconnCount_;
     SimpleUnsignedIntegerDiagnosticData connCount_;
     SimpleIntegerDiagnosticData lastError_;
+};
+
+class CloudConnectionSettings {
+public:
+    // Default disconnection settings
+    static const bool DEFAULT_DISCONNECT_GRACEFULLY = false;
+    static const unsigned DEFAULT_DISCONNECT_TIMEOUT = 30000;
+
+    CloudConnectionSettings() :
+            defaultDisconnectTimeout_(DEFAULT_DISCONNECT_TIMEOUT),
+            defaultDisconnectGracefully_(DEFAULT_DISCONNECT_GRACEFULLY) {
+    }
+
+    void setDefaultDisconnectOptions(const CloudDisconnectOptions& options) {
+        if (options.isGracefulSet()) {
+            defaultDisconnectGracefully_ = options.graceful();
+        }
+        if (options.isTimeoutSet()) {
+            defaultDisconnectTimeout_ = options.timeout();
+        }
+    }
+
+    bool defaultDisconnectGracefully() const {
+        return defaultDisconnectGracefully_;
+    }
+
+    void setPendingDisconnectOptions(CloudDisconnectOptions options) {
+        const std::lock_guard<SimpleAtomicFlagMutex> lock(mutex_);
+        pendingDisconnectOptions_ = std::move(options);
+    }
+
+    CloudDisconnectOptions takePendingDisconnectOptions() {
+        CloudDisconnectOptions pending;
+        std::unique_lock<SimpleAtomicFlagMutex> lock(mutex_);
+        using std::swap;
+        swap(pending, pendingDisconnectOptions_);
+        lock.unlock();
+        CloudDisconnectOptions result;
+        if (pending.isGracefulSet()) {
+            result.graceful(pending.graceful());
+        } else {
+            result.graceful(defaultDisconnectGracefully_);
+        }
+        if (pending.isTimeoutSet()) {
+            result.timeout(pending.timeout());
+        } else {
+            result.timeout(defaultDisconnectTimeout_);
+        }
+        return result;
+    }
+
+    static CloudConnectionSettings* instance();
+
+private:
+    SimpleAtomicFlagMutex mutex_;
+    // Default disconnection options can only be set in the context of the system thread.
+    // defaultDisconnectGracefully_ may also be accessed from an ISR
+    unsigned defaultDisconnectTimeout_;
+    volatile bool defaultDisconnectGracefully_;
+    // Pending disconnection options are set atomically and guarded by a spinlock
+    CloudDisconnectOptions pendingDisconnectOptions_;
 };
 
 // Use this function instead of Particle.publish() in the system code

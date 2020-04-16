@@ -217,7 +217,7 @@ struct MessageChannel : public Channel
 	/**
 	 * Establish this channel for communication.
 	 * @param flags on return, SKIP_SESSION_RESUME_HELLO is set if the hello/vars/funcs/sucriptions regitration is not needed.
-	 * @param app_state_crc	The crc of the current application state.
+	 * @param app_state_crc The crc of the current application state.
 	 */
 	virtual ProtocolError establish(uint32_t& flags, uint32_t app_state_crc)=0;
 
@@ -242,6 +242,11 @@ struct MessageChannel : public Channel
 	 * Notify the upper layer that all client messages have been processed.
 	 */
 	virtual void notify_client_messages_processed()=0;
+
+	/**
+	 * Reset the channel state and free all allocated resources.
+	 */
+	virtual void reset()=0;
 };
 
 class AbstractMessageChannel : public MessageChannel

@@ -412,7 +412,7 @@ void manage_cloud_connection(bool force_events)
 {
     if (spark_cloud_flag_auto_connect() == 0)
     {
-        cloud_disconnect_graceful(true, CLOUD_DISCONNECT_REASON_USER);
+        cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_USER);
     }
     else // cloud connection is wanted
     {
@@ -462,7 +462,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     }
     else
     {
-        system_pending_shutdown();
+        system_pending_shutdown(RESET_REASON_USER);
     }
 #if HAL_PLATFORM_BLE
     // TODO: Process BLE channel events in a separate thread
@@ -549,12 +549,8 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
     }
 }
 
-void cloud_disconnect_graceful(bool closeSocket, cloud_disconnect_reason reason)
-{
-    cloud_disconnect(closeSocket, true, reason);
-}
-
-void cloud_disconnect(bool closeSocket, bool graceful, cloud_disconnect_reason reason)
+void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, network_disconnect_reason networkReason,
+        System_Reset_Reason resetReason, unsigned sleepDuration)
 {
     if (SPARK_CLOUD_SOCKETED || SPARK_CLOUD_CONNECTED)
     {
@@ -563,9 +559,9 @@ void cloud_disconnect(bool closeSocket, bool graceful, cloud_disconnect_reason r
         if (SPARK_CLOUD_CONNECTED)
         {
             diag->resetConnectionAttempts();
-            if (reason != CLOUD_DISCONNECT_REASON_NONE) {
-                diag->disconnectionReason(reason);
-                if (reason == CLOUD_DISCONNECT_REASON_ERROR) {
+            if (cloudReason != CLOUD_DISCONNECT_REASON_NONE) {
+                diag->disconnectionReason(cloudReason);
+                if (cloudReason == CLOUD_DISCONNECT_REASON_ERROR) {
                     diag->disconnectedUnexpectedly();
                 }
             }
@@ -574,8 +570,30 @@ void cloud_disconnect(bool closeSocket, bool graceful, cloud_disconnect_reason r
             system_notify_event(cloud_status, cloud_status_disconnecting);
         }
 
-        if (closeSocket)
+        // Get disconnection options
+        const auto opts = CloudConnectionSettings::instance()->takePendingDisconnectOptions();
+        const bool graceful = (flags & CLOUD_DISCONNECT_GRACEFULLY) && opts.graceful();
+        if (SPARK_CLOUD_CONNECTED) {
+            if (graceful) {
+                // Notify the cloud that we're about to disconnect
+                spark_disconnect_command cmd = {};
+                cmd.size = sizeof(cmd);
+                cmd.cloud_reason = cloudReason;
+                cmd.network_reason = networkReason;
+                cmd.reset_reason = resetReason;
+                cmd.sleep_duration = sleepDuration;
+                cmd.timeout = opts.timeout();
+                const int r = spark_protocol_command(spark_protocol_instance(), ProtocolCommands::DISCONNECT, 0, &cmd);
+                if (r != protocol::NO_ERROR) {
+                    LOG(WARN, "cloud_disconnect(): DISCONNECT command failed: %d", r);
+                }
+            } else {
+                spark_protocol_command(spark_protocol_instance(), ProtocolCommands::TERMINATE, 0, nullptr);
+            }
+        }
+        if (!(flags & CLOUD_DISCONNECT_DONT_CLOSE)) {
             spark_cloud_socket_disconnect(graceful);
+        }
 
         SPARK_FLASH_UPDATE = 0;
         SPARK_CLOUD_CONNECTED = 0;

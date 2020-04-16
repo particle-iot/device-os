@@ -41,7 +41,6 @@
 #include <limits>
 #include <mutex>
 #include "spark_wiring_system_power.h"
-#include "check.h"
 #include "system_sleep_configuration.h"
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID!=3 && PLATFORM_ID != 20
@@ -64,6 +63,13 @@ const SleepOptionFlag SLEEP_NETWORK_OFF(System_Sleep_Flag::SYSTEM_SLEEP_FLAG_NET
 const SleepOptionFlag SLEEP_NETWORK_STANDBY(System_Sleep_Flag::SYSTEM_SLEEP_FLAG_NETWORK_STANDBY);
 const SleepOptionFlag SLEEP_DISABLE_WKP_PIN(System_Sleep_Flag::SYSTEM_SLEEP_FLAG_DISABLE_WKP_PIN);
 const SleepOptionFlag SLEEP_NO_WAIT(System_Sleep_Flag::SYSTEM_SLEEP_FLAG_NO_WAIT);
+
+struct SystemResetFlagType; // Tag type for System.reset() flags
+typedef particle::Flags<SystemResetFlagType, uint32_t> SystemResetFlags;
+typedef SystemResetFlags::FlagType SystemResetFlag;
+
+const SystemResetFlag RESET_NO_WAIT(system_reset_flag::SYSTEM_RESET_FLAG_NO_WAIT);
+const SystemResetFlag RESET_PERSIST_DFU(system_reset_flag::SYSTEM_RESET_FLAG_PERSIST_DFU);
 
 #if Wiring_LogConfig
 enum LoggingFeature {
@@ -289,14 +295,14 @@ public:
         return system_firmwareUpdate(serialObj);
     }
 
-    static void factoryReset(void);
-    static void dfu(bool persist=false);
-    static void reset(void);
-    static void reset(uint32_t data);
+    static void factoryReset(SystemResetFlags flags = SystemResetFlags());
+    static void dfu(SystemResetFlags flags = SystemResetFlags());
+    static void dfu(bool persist);
+    static void reset();
+    static void reset(SystemResetFlags flags);
+    static void reset(uint32_t data, SystemResetFlags flags = SystemResetFlags());
 
-    static void enterSafeMode(void) {
-        HAL_Core_Enter_Safe_Mode(NULL);
-    }
+    static void enterSafeMode(SystemResetFlags flags = SystemResetFlags());
 
 #if SYSTEM_HW_TICKS
     static inline uint32_t ticksPerMicrosecond()
@@ -611,13 +617,19 @@ public:
 
     int powerSource() const {
         particle::AbstractIntegerDiagnosticData::IntType val;
-        CHECK(particle::AbstractIntegerDiagnosticData::get(DIAG_ID_SYSTEM_POWER_SOURCE, val));
+        const auto r = particle::AbstractIntegerDiagnosticData::get(DIAG_ID_SYSTEM_POWER_SOURCE, val);
+        if (r < 0) {
+            return r;
+        }
         return val;
     }
 
     int batteryState() const {
         particle::AbstractIntegerDiagnosticData::IntType val;
-        CHECK(particle::AbstractIntegerDiagnosticData::get(DIAG_ID_SYSTEM_BATTERY_STATE, val));
+        const auto r = particle::AbstractIntegerDiagnosticData::get(DIAG_ID_SYSTEM_BATTERY_STATE, val);
+        if (r < 0) {
+            return r;
+        }
         return val;
     }
 

@@ -4,6 +4,8 @@ set(target_name services)
 add_executable( ${target_name}
   ${DEVICE_OS_DIR}/services/src/str_util.cpp
   str_util.cpp
+  varint.cpp
+  main.cpp
 )
 
 # Set defines specific to target

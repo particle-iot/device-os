@@ -21,20 +21,21 @@
  */
 
 #ifndef APPENDER_H
-#define	APPENDER_H
+#define APPENDER_H
 
 #include <stdint.h>
 #include <stddef.h>
-#include <string.h>
-
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 typedef bool (*appender_fn)(void* appender, const uint8_t* data, size_t length);
 
 #ifdef	__cplusplus
-} // extern "C"
+
+#include "varint.h"
+#include "endian_util.h"
+
+#include <cstring>
+
+namespace particle {
 
 /**
  * OO version of the appender function.
@@ -43,68 +44,93 @@ class Appender {
 public:
     virtual bool append(const uint8_t* data, size_t length)=0;
 
-    bool append(const char* data) {
-        return append((const uint8_t*)data, strlen(data));
+    bool appendString(const char* str, size_t size) {
+        return append((const uint8_t*)str, size);
     }
-    bool append(char c) {
+
+    bool appendString(const char* str) {
+        return append((const uint8_t*)str, strlen(str));
+    }
+
+    bool appendChar(char c) {
         return append((const uint8_t*)&c, 1);
     }
+
+    bool appendInt8(int8_t val) {
+        return append((const uint8_t*)&val, 1);
+    }
+
+    bool appendUInt8(uint8_t val) {
+        return append(&val, 1);
+    }
+
+    bool appendInt16LE(int16_t val) {
+        val = nativeToLittleEndian(val);
+        return append((const uint8_t*)&val, sizeof(val));
+    }
+
+    bool appendInt16BE(int16_t val) {
+        val = nativeToBigEndian(val);
+        return append((const uint8_t*)&val, sizeof(val));
+    }
+
+    bool appendUInt16LE(uint16_t val) {
+        val = nativeToLittleEndian(val);
+        return append((const uint8_t*)&val, sizeof(val));
+    }
+
+    bool appendUInt16BE(uint16_t val) {
+        val = nativeToBigEndian(val);
+        return append((const uint8_t*)&val, sizeof(val));
+    }
+
+    bool appendInt32LE(int32_t val) {
+        val = nativeToLittleEndian(val);
+        return append((const uint8_t*)&val, sizeof(val));
+    }
+
+    bool appendInt32BE(int32_t val) {
+        val = nativeToBigEndian(val);
+        return append((const uint8_t*)&val, sizeof(val));
+    }
+
+    bool appendUInt32LE(uint32_t val) {
+        val = nativeToLittleEndian(val);
+        return append((const uint8_t*)&val, sizeof(val));
+    }
+
+    bool appendUInt32BE(uint32_t val) {
+        val = nativeToBigEndian(val);
+        return append((const uint8_t*)&val, sizeof(val));
+    }
+
+    bool appendUnsignedVarint(unsigned val) {
+        char buf[maxUnsignedVarintSize<unsigned>()] = {};
+        const size_t n = encodeUnsignedVarint(buf, sizeof(buf), val);
+        return append((const uint8_t*)buf, n);
+    }
+
+    bool append(const char* str) { // Deprecated, use appendString()
+        return appendString(str);
+    }
+
+    bool append(char c) { // Deprecated, use appendChar()
+        return appendChar(c);
+    }
+
+    static bool callback(void* appender, const uint8_t* data, size_t length) { // appender_fn
+        Appender* a = (Appender*)appender;
+        return a->append(data, length);
+    }
 };
 
-inline bool append_instance(void* appender, const uint8_t* data, size_t length) {
-    Appender* a = (Appender*)appender;
-    return a->append(data, length);
-}
-
-class BufferAppender : public Appender {
-    uint8_t* buffer;
-    uint8_t* end;
-    uint8_t* start;
-    uint16_t overflow;
+// Buffer appender that never fails and stores the actual size of the data
+class BufferAppender: public Appender {
 public:
+    using Appender::append;
 
-    BufferAppender(uint8_t* start, size_t length) : overflow(0) {
-        this->buffer = start;
-        this->end = start + length;
-        this->start = start;
-    }
-
-    bool append(const uint8_t* data, size_t length) {
-    	// note that this simple implementation will overflow when the lenghth to write won't fit. E.g.
-    	// trying to write 20 bytes to an Appender with only
-    	bool has_space = (size_t(end-buffer)>=length);
-        if (has_space && !overflow) {
-            memcpy(buffer, data, length);
-            buffer += length;
-        }
-        else {
-        	overflow += length;
-        }
-        return has_space;
-    }
-
-    bool append(const char* data) {
-        return Appender::append(data);
-    }
-    bool append(char c) {
-        return Appender::append(c);
-    }
-    size_t size() const {
-        return (buffer - start);
-    }
-
-    const uint16_t overflowed() const { return overflow; }
-
-    const uint8_t* next() { return buffer; }
-};
-
-namespace particle {
-
-// Buffer appender that never fails and stores an actual size of the data
-class BufferAppender2: public Appender {
-public:
-    BufferAppender2(char* buf, size_t size) :
-            buf_(buf),
+    BufferAppender(void* buf, size_t size) :
+            buf_((char*)buf),
             bufSize_(size),
             dataSize_(0) {
     }

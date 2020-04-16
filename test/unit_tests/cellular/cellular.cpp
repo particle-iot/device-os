@@ -31,20 +31,22 @@
 
 namespace {
 
-    class FakeStream: public Print {
-    private:
-        BufferAppender append_;
+using namespace particle;
 
-    protected:
-        virtual size_t write(uint8_t c) override {
-            return (size_t)append_.append(&c, 1);
-        }
+class FakeStream: public Print {
+private:
+    BufferAppender append_;
 
-    public:
-        FakeStream(char* buf, size_t size) :
-                append_((uint8_t*)buf, size) {
-        }
-    };
+protected:
+    virtual size_t write(uint8_t c) override {
+        return (size_t)append_.append(&c, 1);
+    }
+
+public:
+    FakeStream(char* buf, size_t size) :
+            append_((uint8_t*)buf, size) {
+    }
+};
 
 } // namespace
 

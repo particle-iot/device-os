@@ -22,6 +22,8 @@
 #include "spark_wiring_string.h"
 #include "spark_protocol_functions.h"
 #include "system_tick_hal.h"
+#include "system_defs.h"
+#include "protocol_defs.h"
 #include "completion_handler.h"
 
 #include <type_traits>
@@ -115,6 +117,35 @@ const CloudVariableTypeInt INT;
 const CloudVariableTypeString STRING;
 const CloudVariableTypeDouble DOUBLE;
 
+/**
+ * Flags for `cloud_disconnect()`.
+ */
+enum CloudDisconnectFlag {
+    CLOUD_DISCONNECT_GRACEFULLY = 0x01, ///< Disconnect gracefully.
+    CLOUD_DISCONNECT_DONT_CLOSE = 0x02 ///< Do not close the socket.
+};
+
+/**
+ * Close the cloud connection.
+ *
+ * @param flags Disconnection flags (a combination of flags defined by `cloud_disconnect_flag`).
+ * @param cloudReason Cloud disconnection reason.
+ * @param networkReason Network disconnection reason.
+ * @param resetReason System reset reason.
+ * @param sleepDuration Sleep duration in seconds.
+ */
+void cloud_disconnect(unsigned flags = 0, cloud_disconnect_reason cloudReason = CLOUD_DISCONNECT_REASON_UNKNOWN,
+        network_disconnect_reason networkReason = NETWORK_DISCONNECT_REASON_NONE,
+        System_Reset_Reason resetReason = RESET_REASON_NONE, unsigned sleepDuration = 0);
+
+inline void cloud_disconnect(unsigned flags, network_disconnect_reason networkReason) {
+    cloud_disconnect(flags, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT, networkReason, RESET_REASON_NONE, 0);
+}
+
+inline void cloud_disconnect(unsigned flags, System_Reset_Reason resetReason) {
+    cloud_disconnect(flags, CLOUD_DISCONNECT_REASON_SYSTEM_RESET, NETWORK_DISCONNECT_REASON_NONE, resetReason, 0);
+}
+
 #if PLATFORM_ID==3
 // avoid a c-linkage incompatible with C error on newer versions of gcc
 String spark_deviceID(void);
@@ -124,20 +155,9 @@ String spark_deviceID(void);
 extern "C" {
 #endif
 
-typedef enum cloud_disconnect_reason {
-    CLOUD_DISCONNECT_REASON_NONE = 0,
-    CLOUD_DISCONNECT_REASON_ERROR = 1, // Disconnected due to an error
-    CLOUD_DISCONNECT_REASON_USER = 2, // Disconnected at the user's request
-    CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT = 3, // Disconnected due to the network disconnection
-    CLOUD_DISCONNECT_REASON_LISTENING = 4 // Disconnected due to the listening mode
-} cloud_disconnect_reason;
-
 #if PLATFORM_ID!=3
 String spark_deviceID(void);
 #endif
-
-void cloud_disconnect(bool closeSocket=true, bool graceful=false, cloud_disconnect_reason reason = CLOUD_DISCONNECT_REASON_NONE);
-void cloud_disconnect_graceful(bool closeSocket=true, cloud_disconnect_reason reason = CLOUD_DISCONNECT_REASON_NONE);
 
 class String;
 
@@ -276,16 +296,54 @@ void spark_cloud_flag_connect(void);
 /**
  * Sets the auto-connect state to false. The cloud will be disconnected by the system.
  */
-void spark_cloud_flag_disconnect(void);    // should be set connected since it manages the connection state)
+void spark_cloud_flag_disconnect(void);
 
 /**
  * Determines if the system will attempt to connect or disconnect from the cloud.
  */
 bool spark_cloud_flag_auto_connect(void);
 
+/**
+ * Option flags for `spark_cloud_disconnect_options`.
+ */
+typedef enum spark_cloud_disconnect_option_flag {
+    SPARK_CLOUD_DISCONNECT_OPTION_GRACEFUL = 0x01, ///< The graceful disconnection option is set.
+    SPARK_CLOUD_DISCONNECT_OPTION_TIMEOUT = 0x02 ///< The timeout option is set.
+} spark_cloud_disconnect_option_flag;
+
+/**
+ * Options for `spark_cloud_disconnect()`.
+ */
+typedef struct spark_cloud_disconnect_options {
+    uint16_t size; ///< Size of this structure.
+    uint8_t flags; ///< Option flags (see `spark_cloud_disconnect_option_flag`).
+    uint8_t graceful; ///< Set to a non-zero value if graceful disconnection is enabled.
+    uint32_t timeout; ///< Maximum time in milliseconds to wait for message acknowledgements.
+} spark_cloud_disconnect_options;
+
+/**
+ * Disconnect from the cloud.
+ *
+ * @param options Options.
+ * @param reserved This argument should be set to NULL.
+ * @return 0 on success or a negative result code in case of an error.
+ */
+int spark_cloud_disconnect(const spark_cloud_disconnect_options* options, void* reserved);
+
 ProtocolFacade* system_cloud_protocol_instance(void);
 
-int spark_set_connection_property(unsigned property_id, unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved);
+/**
+ * Cloud connection properties.
+ *
+ * @see `spark_set_connection_property()`
+ */
+typedef enum spark_connection_property {
+    SPARK_CLOUD_PING_INTERVAL = 0, ///< Ping interval in milliseconds.
+    SPARK_CLOUD_FAST_OTA_ENABLED = 1, ///< Fast OTA override.
+    SPARK_CLOUD_DISCONNECT_OPTIONS = 2 ///< Default disconnection options.
+} spark_connection_property;
+
+int spark_set_connection_property(unsigned property, unsigned value, const void* data, void* reserved);
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved);
 

@@ -15,18 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "system_cloud.h"
+#define CATCH_CONFIG_MAIN
 
-void Spark_Abort() {
-}
-
-void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, network_disconnect_reason networkReason,
-		System_Reset_Reason resetReason, unsigned sleepDuration) {
-}
-
-void spark_cloud_flag_disconnect() {
-}
-
-bool spark_cloud_flag_connected() {
-	return false;
-}
+#include <catch2/catch.hpp>

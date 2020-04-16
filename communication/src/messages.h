@@ -20,6 +20,7 @@
 
 #include "coap.h"
 #include "protocol_defs.h"
+#include "system_defs.h"
 #include "events.h"
 
 namespace particle
@@ -46,6 +47,8 @@ inline uint8_t decode_uint8(unsigned char* buf) {
 class Messages
 {
 public:
+	static const size_t MAX_GOODBYE_MESSAGE_SIZE;
+
 	static CoAPMessageType::Enum decodeType(const uint8_t* buf, size_t length);
 	static size_t describe_post_header(uint8_t buf[], size_t buffer_size, uint16_t message_id, uint8_t desc_flags);
 	static size_t hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
@@ -151,6 +154,10 @@ public:
     {
         return content(buf, message_id, token);
     }
+
+    static size_t goodbye(unsigned char* buf, size_t size, message_id_t message_id, cloud_disconnect_reason cloud_reason,
+            network_disconnect_reason network_reason, System_Reset_Reason reset_reason, unsigned sleep_duration,
+            bool confirmable);
 
     /**
      * Returns the size of a response message (an ACK or a separate response) without options.

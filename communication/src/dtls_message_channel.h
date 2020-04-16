@@ -157,6 +157,9 @@ private:
 			callbacks.notify_client_messages_processed(nullptr);
 		}
 	}
+
+	virtual void reset() override {
+	}
 };
 
 

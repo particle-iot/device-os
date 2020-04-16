@@ -19,7 +19,20 @@
 
 #include "messages.h"
 
-namespace particle { namespace protocol {
+#include "appender.h"
+
+namespace particle {
+
+namespace protocol {
+
+namespace {
+
+const unsigned GOODBYE_CLOUD_DISCONNECT_REASON_FLAG = 0x01;
+const unsigned GOODBYE_SYSTEM_RESET_REASON_FLAG = 0x02;
+const unsigned GOODBYE_SLEEP_DURATION_FLAG = 0x04;
+const unsigned GOODBYE_NETWORK_DISCONNECT_REASON_FLAG = 0x08;
+
+} // unnamed
 
 CoAPMessageType::Enum Messages::decodeType(const uint8_t* buf, size_t length)
 {
@@ -335,6 +348,55 @@ size_t Messages::coded_ack(uint8_t* buf, uint8_t token, uint8_t code,
     return sz;
 }
 
+size_t Messages::goodbye(unsigned char* buf, size_t size, message_id_t message_id, cloud_disconnect_reason cloud_reason,
+		network_disconnect_reason network_reason, System_Reset_Reason reset_reason, unsigned sleep_duration, bool confirmable)
+{
+	BufferAppender b(buf, size);
+	b.appendChar(confirmable ? 0x40 : 0x50); // No token
+	b.appendChar(0x02); // POST
+	b.appendUInt16BE(message_id);
+	b.appendChar(0xb1); // Uri-Path (11), length: 1
+	b.appendChar('x');
+	if (!confirmable) {
+		// No-Response (258), length: 0
+		b.appendChar(0xd0);
+		b.appendChar(0xea); // 258 - 11 - 13
+	}
+	b.appendChar(0xff); // Payload marker
+	// Field flags
+	unsigned flags = 0;
+	if (cloud_reason != CLOUD_DISCONNECT_REASON_NONE) {
+		flags |= GOODBYE_CLOUD_DISCONNECT_REASON_FLAG;
+	}
+	if (reset_reason != RESET_REASON_NONE) {
+		flags |= GOODBYE_SYSTEM_RESET_REASON_FLAG;
+	}
+	if (sleep_duration != 0) {
+		flags |= GOODBYE_SLEEP_DURATION_FLAG;
+	}
+	if (network_reason != NETWORK_DISCONNECT_REASON_NONE) {
+		flags |= GOODBYE_NETWORK_DISCONNECT_REASON_FLAG;
+	}
+	b.appendUnsignedVarint(flags);
+	// Field values
+	if (flags & GOODBYE_CLOUD_DISCONNECT_REASON_FLAG) {
+		b.appendUnsignedVarint(cloud_reason);
+	}
+	if (flags & GOODBYE_SYSTEM_RESET_REASON_FLAG) {
+		b.appendUnsignedVarint(reset_reason);
+	}
+	if (flags & GOODBYE_SLEEP_DURATION_FLAG) {
+		b.appendUnsignedVarint(sleep_duration);
+	}
+	if (flags & GOODBYE_NETWORK_DISCONNECT_REASON_FLAG) {
+		b.appendUnsignedVarint(network_reason);
+	}
+	return b.dataSize();
+}
+
+const size_t Messages::MAX_GOODBYE_MESSAGE_SIZE = 9 + // CoAP header, options, payload marker
+		maxUnsignedVarintSize<unsigned>() * 5; // Flags, cloud disconnection reason, network disconnection reason, system reset reason, sleep duration
+
 size_t Messages::response_size(size_t payload_size, bool has_token)
 {
 	return 4 + // Message header
@@ -342,4 +404,6 @@ size_t Messages::response_size(size_t payload_size, bool has_token)
 			(has_token ? 1 : 0); // One-byte token
 }
 
-}}
+} // particle::protocol
+
+} // particle

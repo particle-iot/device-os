@@ -212,6 +212,23 @@ protected:
 	}
 
 	/**
+	 * Send a Goodbye message over the channel.
+	 */
+	ProtocolError send_goodbye(cloud_disconnect_reason cloud_reason, network_disconnect_reason network_reason,
+			System_Reset_Reason reset_reason, unsigned sleep_duration)
+	{
+		Message msg;
+		channel.create(msg);
+		const size_t n = Messages::goodbye(msg.buf(), msg.capacity(), 0, cloud_reason, network_reason, reset_reason,
+				sleep_duration, channel.is_unreliable());
+		if (n > msg.capacity()) {
+			return INSUFFICIENT_STORAGE;
+		}
+		msg.set_length(n);
+		return channel.send(msg);
+	}
+
+	/**
 	 * Background processing when there are no messages to handle.
 	 */
 	ProtocolError event_loop_idle()
@@ -346,6 +363,11 @@ public:
 	 * Establish a secure connection and send and process the hello message.
 	 */
 	int begin();
+
+	/**
+	 * Reset the protocol state and free all allocated resources.
+	 */
+	void reset();
 
 	/**
 	 * Wait for a specific message type to be received.
@@ -503,7 +525,7 @@ public:
 
 	system_tick_t millis() { return callbacks.millis(); }
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t data)=0;
+	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* data)=0;
 
 	virtual int get_describe_data(spark_protocol_describe_data* data, void* reserved);
 

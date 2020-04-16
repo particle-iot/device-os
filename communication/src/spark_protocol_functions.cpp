@@ -190,7 +190,7 @@ void spark_protocol_get_product_details(ProtocolFacade* protocol, product_detail
 }
 
 int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id,
-                                           unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved)
+        unsigned data, const particle::protocol::connection_properties_t* conn_prop, void* reserved)
 {
     ASSERT_ON_SYSTEM_THREAD();
     if (property_id == particle::protocol::Connection::PING)
@@ -202,10 +202,10 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
     }
     return 0;
 }
-int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t data, void* reserved)
+int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value, const void* data)
 {
     ASSERT_ON_SYSTEM_THREAD();
-    return protocol->command(cmd, data);
+    return protocol->command(cmd, value, data);
 }
 
 bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved)
@@ -236,4 +236,3 @@ int spark_protocol_get_status(ProtocolFacade* protocol, protocol_status* status,
     ASSERT_ON_SYSTEM_THREAD();
     return protocol->get_status(status);
 }
-
