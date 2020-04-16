@@ -79,6 +79,7 @@ public:
     bool isGracefulSet() const;
 
     CloudDisconnectOptions& timeout(system_tick_t timeout);
+    CloudDisconnectOptions& timeout(std::chrono::milliseconds ms);
     system_tick_t timeout() const;
     bool isTimeoutSet() const;
 
@@ -547,6 +548,10 @@ inline CloudDisconnectOptions& CloudDisconnectOptions::timeout(system_tick_t tim
     timeout_ = timeout;
     flags_ |= OptionFlag::TIMEOUT;
     return *this;
+}
+
+inline CloudDisconnectOptions& CloudDisconnectOptions::timeout(std::chrono::milliseconds ms) {
+    return timeout(ms.count());
 }
 
 inline system_tick_t CloudDisconnectOptions::timeout() const {
