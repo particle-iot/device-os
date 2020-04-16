@@ -583,7 +583,7 @@ public:
 	{
 		server.clear();
 		client.clear();
-		T::reset();
+		channel::reset();
 	}
 
 	/**

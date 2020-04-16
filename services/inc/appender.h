@@ -56,26 +56,50 @@ public:
         return append((const uint8_t*)&c, 1);
     }
 
-    bool appendInt8(uint8_t val) {
+    bool appendInt8(int8_t val) {
+        return append((const uint8_t*)&val, 1);
+    }
+
+    bool appendUInt8(uint8_t val) {
         return append(&val, 1);
     }
 
-    bool appendInt16Le(uint16_t val) {
+    bool appendInt16LE(int16_t val) {
         val = nativeToLittleEndian(val);
         return append((const uint8_t*)&val, sizeof(val));
     }
 
-    bool appendInt16Be(uint16_t val) {
+    bool appendInt16BE(int16_t val) {
         val = nativeToBigEndian(val);
         return append((const uint8_t*)&val, sizeof(val));
     }
 
-    bool appendInt32Le(uint32_t val) {
+    bool appendUInt16LE(uint16_t val) {
         val = nativeToLittleEndian(val);
         return append((const uint8_t*)&val, sizeof(val));
     }
 
-    bool appendInt32Be(uint32_t val) {
+    bool appendUInt16BE(uint16_t val) {
+        val = nativeToBigEndian(val);
+        return append((const uint8_t*)&val, sizeof(val));
+    }
+
+    bool appendInt32LE(int32_t val) {
+        val = nativeToLittleEndian(val);
+        return append((const uint8_t*)&val, sizeof(val));
+    }
+
+    bool appendInt32BE(int32_t val) {
+        val = nativeToBigEndian(val);
+        return append((const uint8_t*)&val, sizeof(val));
+    }
+
+    bool appendUInt32LE(uint32_t val) {
+        val = nativeToLittleEndian(val);
+        return append((const uint8_t*)&val, sizeof(val));
+    }
+
+    bool appendUInt32BE(uint32_t val) {
         val = nativeToBigEndian(val);
         return append((const uint8_t*)&val, sizeof(val));
     }

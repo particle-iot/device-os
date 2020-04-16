@@ -78,8 +78,8 @@ public:
     bool graceful() const;
     bool isGracefulSet() const;
 
-    CloudDisconnectOptions& timeout(unsigned timeout);
-    unsigned timeout() const;
+    CloudDisconnectOptions& timeout(system_tick_t timeout);
+    system_tick_t timeout() const;
     bool isTimeoutSet() const;
 
     spark_cloud_disconnect_options toSystemOptions() const;
@@ -92,10 +92,10 @@ private:
     };
 
     unsigned flags_; // TODO: Use std::optional (C++17)
-    unsigned timeout_;
+    system_tick_t timeout_;
     bool graceful_;
 
-    CloudDisconnectOptions(unsigned flags, unsigned timeout, bool graceful);
+    CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful);
 };
 
 class CloudClass {
@@ -523,7 +523,7 @@ inline CloudDisconnectOptions::CloudDisconnectOptions() :
         CloudDisconnectOptions(0, 0, false) {
 }
 
-inline CloudDisconnectOptions::CloudDisconnectOptions(unsigned flags, unsigned timeout, bool graceful) :
+inline CloudDisconnectOptions::CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful) :
         flags_(flags),
         timeout_(timeout),
         graceful_(graceful) {
@@ -543,13 +543,13 @@ inline bool CloudDisconnectOptions::isGracefulSet() const {
     return (flags_ & OptionFlag::GRACEFUL);
 }
 
-inline CloudDisconnectOptions& CloudDisconnectOptions::timeout(unsigned timeout) {
+inline CloudDisconnectOptions& CloudDisconnectOptions::timeout(system_tick_t timeout) {
     timeout_ = timeout;
     flags_ |= OptionFlag::TIMEOUT;
     return *this;
 }
 
-inline unsigned CloudDisconnectOptions::timeout() const {
+inline system_tick_t CloudDisconnectOptions::timeout() const {
     return timeout_;
 }
 

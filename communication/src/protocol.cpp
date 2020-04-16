@@ -361,6 +361,7 @@ void Protocol::reset() {
 const auto HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL = 1;
 const auto HELLO_FLAG_DIAGNOSTICS_SUPPORT = 2;
 const auto HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT = 4;
+// Flag 0x08 is reserved to indicate support for the HandshakeComplete message
 const auto HELLO_FLAG_GOODBYE_SUPPORT = 16;
 
 /**

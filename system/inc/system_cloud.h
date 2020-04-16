@@ -318,7 +318,7 @@ typedef struct spark_cloud_disconnect_options {
     uint16_t size; ///< Size of this structure.
     uint8_t flags; ///< Option flags (see `spark_cloud_disconnect_option_flag`).
     uint8_t graceful; ///< Set to a non-zero value if graceful disconnection is enabled.
-    unsigned timeout; ///< Maximum time in milliseconds to wait for message acknowledgements.
+    uint32_t timeout; ///< Maximum time in milliseconds to wait for message acknowledgements.
 } spark_cloud_disconnect_options;
 
 /**

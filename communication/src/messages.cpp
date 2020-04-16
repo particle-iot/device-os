@@ -354,7 +354,7 @@ size_t Messages::goodbye(unsigned char* buf, size_t size, message_id_t message_i
 	BufferAppender b(buf, size);
 	b.appendChar(confirmable ? 0x40 : 0x50); // No token
 	b.appendChar(0x02); // POST
-	b.appendInt16Be(message_id);
+	b.appendUInt16BE(message_id);
 	b.appendChar(0xb1); // Uri-Path (11), length: 1
 	b.appendChar('x');
 	if (!confirmable) {

@@ -289,7 +289,9 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
      */
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL([&]() {
         if (network != NETWORK_INTERFACE_ALL) {
-            network_disconnect(network, NETWORK_DISCONNECT_REASON_UNKNOWN, nullptr);
+            // TODO: We should report NETWORK_DISCONNECT_REASON_USER if the network interface is
+            // being turned off at the user's request
+            network_disconnect(network, NETWORK_DISCONNECT_REASON_NETWORK_OFF, nullptr);
             if_t iface;
             if (!if_get_by_index(network, &iface)) {
                 if_req_power req = {};
@@ -301,7 +303,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
         if (network == NETWORK_INTERFACE_ALL || NetworkManager::instance()->countEnabledInterfaces() == 0) {
             SPARK_WLAN_STARTED = 0;
             SPARK_WLAN_SLEEP = 1;
-            network_disconnect(0, NETWORK_DISCONNECT_REASON_UNKNOWN, nullptr);
+            network_disconnect(0, NETWORK_DISCONNECT_REASON_NETWORK_OFF, nullptr);
             /* FIXME: should not loop in here */
             NetworkManager::instance()->disableNetworking();
 

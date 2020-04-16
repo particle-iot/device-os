@@ -239,11 +239,11 @@ namespace ProtocolCommands {
  */
 typedef struct spark_disconnect_command {
     uint16_t size; ///< Size of this structure.
-    unsigned cloud_reason; ///< Cloud disconnection reason (a value defined by the `cloud_disconnect_reason` enum).
-    unsigned network_reason; ///< Network disconnection reason (a value defined by the `network_disconnect_reason` enum).
-    unsigned reset_reason; ///< System reset reason (a value defined by the `System_Reset_Reason` enum).
-    unsigned sleep_duration; ///< Sleep duration in seconds.
-    unsigned timeout; ///< Maximum time in milliseconds to spend waiting for acknowledgements.
+    uint16_t cloud_reason; ///< Cloud disconnection reason (a value defined by the `cloud_disconnect_reason` enum).
+    uint16_t network_reason; ///< Network disconnection reason (a value defined by the `network_disconnect_reason` enum).
+    uint16_t reset_reason; ///< System reset reason (a value defined by the `System_Reset_Reason` enum).
+    uint32_t sleep_duration; ///< Sleep duration in seconds.
+    uint32_t timeout; ///< Maximum time in milliseconds to spend waiting for acknowledgements.
 } spark_disconnect_command;
 
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value = 0, const void* data = NULL);

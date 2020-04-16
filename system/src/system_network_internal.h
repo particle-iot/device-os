@@ -623,9 +623,9 @@ public:
         LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
         {
-            // It's expected that the system calls disconnect() before turning off the network to
-            // update the last disconnection reason correctly
-            disconnect(NETWORK_DISCONNECT_REASON_UNKNOWN);
+            // TODO: We should report NETWORK_DISCONNECT_REASON_USER if the network interface is
+            // being turned off at the user's request
+            disconnect(NETWORK_DISCONNECT_REASON_NETWORK_OFF);
 
             const auto diag = NetworkDiagnostics::instance();
             diag->status(NetworkDiagnostics::TURNING_OFF);
