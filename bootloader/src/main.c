@@ -31,6 +31,7 @@
 #include "rgbled.h"
 #include "button_hal.h"
 #include "dct.h"
+#include "feature_flags.h"
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 #define LOAD_DCT_FUNCTIONS
@@ -83,15 +84,17 @@ static bool LedOverridden;
 
 void flashModulesCallback(bool isUpdating)
 {
-    if (!LedOverridden) {
-        if(isUpdating)
-        {
-            OTA_FLASH_AVAILABLE = 1;
+    if(isUpdating)
+    {
+        OTA_FLASH_AVAILABLE = 1;
+        if (!LedOverridden) {
             LED_SetRGBColor(FirmwareUpdateColor);
         }
-        else
-        {
-            OTA_FLASH_AVAILABLE = 0;
+    }
+    else
+    {
+        OTA_FLASH_AVAILABLE = 0;
+        if (!LedOverridden) {
             LED_Off(LED_RGB);
         }
     }
@@ -138,17 +141,7 @@ int main(void)
     BUTTON_Init_Ext();
 
     // Load led overridden flag before SysTick Timer being initialized
-    uint32_t flags = 0;
-    if (dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags))) {
-        LedOverridden = false; // Do not override system LED signaling
-    } else {
-#if HAL_PLATFORM_NRF52840
-        // NOTE: inverted logic!
-        LedOverridden = (flags & FEATURE_FLAG_LED_OVERRIDDEN) ? false : true;
-#else // Gen2 platforms
-        LedOverridden = (flags & FEATURE_FLAG_LED_OVERRIDDEN) ? true : false;
-#endif
-    }
+    LedOverridden = feature_is_enabled(FEATURE_FLAG_LED_OVERRIDDEN);
 
     // Setup SysTick Timer for 1 msec interrupts to call Timing_Decrement()
     SysTick_Configuration();

@@ -285,8 +285,10 @@ void set_flag(void* flag)
 	*p = true;
 }
 
+namespace {
 // FIXME: Dirty hack
-static bool ledIsOverridden = false;
+bool ledIsOverridden = false;
+} // namespace
 
 int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
 {
