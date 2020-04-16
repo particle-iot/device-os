@@ -442,15 +442,26 @@ public:
 				handler_data, scope, device_id);
 	}
 
-	ProtocolError send_subscription(const char *event_name, const char *device_id);
-	ProtocolError send_subscription(const char *event_name, SubscriptionScope::Enum scope);
-	ProtocolError send_subscriptions(bool force);
-
 	inline bool remove_event_handlers(const char* name)
 	{
 		subscriptions.remove_event_handlers(name);
 		return true;
 	}
+
+	ProtocolError send_subscription(const char *event_name, const char *device_id);
+	ProtocolError send_subscription(const char *event_name, SubscriptionScope::Enum scope);
+	ProtocolError send_subscriptions(bool force);
+
+	/**
+	 * Process a response for the previously sent system/application describe or subscriptions message.
+	 *
+	 * This method updates the cached application state.
+	 *
+	 * @param msg_id ID of the original request message.
+	 * @param code Response code.
+	 * @return `true` if the message has been handled or `false` otherwise.
+	 */
+	bool handle_app_state_reply(message_id_t msg_id, CoAPCode::Enum code);
 
 	inline void set_product_id(product_id_t product_id)
 	{

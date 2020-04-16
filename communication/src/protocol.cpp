@@ -84,44 +84,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 			code = CoAPCode::INTERNAL_SERVER_ERROR;
 		}
 		notify_message_complete(msg_id, code);
-		if (descriptor.app_state_selector_info) {
-			// Update application state checksums
-			if (subscription_msg_ids.removeOne(msg_id)) { // Event subscriptions
-				if (type != CoAPType::ACK) {
-					// Make sure the checksum won't be updated if any of the messages has been NAK'ed
-					subscription_msg_ids.clear();
-				} else if (subscription_msg_ids.isEmpty()) {
-					LOG(TRACE, "Updating subscriptions checksum");
-					const uint32_t crc = subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc);
-					channel.command(Channel::SAVE_SESSION);
-					descriptor.app_state_selector_info(SparkAppStateSelector::SUBSCRIPTIONS,
-							SparkAppStateUpdate::PERSIST, crc, nullptr);
-					channel.command(Channel::LOAD_SESSION);
-				}
-			} else {
-				// A Describe message can carry both the system and application descriptions
-				if (msg_id == app_describe_msg_id) { // Application description
-					app_describe_msg_id = INVALID_MESSAGE_HANDLE;
-					if (type == CoAPType::ACK) {
-						LOG(TRACE, "Updating application DESCRIBE checksum");
-						channel.command(Channel::SAVE_SESSION);
-						descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
-								SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-						channel.command(Channel::LOAD_SESSION);
-					}
-				}
-				if (msg_id == system_describe_msg_id) { // System description
-					system_describe_msg_id = INVALID_MESSAGE_HANDLE;
-					if (type == CoAPType::ACK) {
-						LOG(TRACE, "Updating system DESCRIBE checksum");
-						channel.command(Channel::SAVE_SESSION);
-						descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
-								SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-						channel.command(Channel::LOAD_SESSION);
-					}
-				}
-			}
-		}
+		handle_app_state_reply(msg_id, code);
 	}
 
 	ProtocolError error = NO_ERROR;
@@ -732,6 +695,53 @@ ProtocolError Protocol::send_subscriptions(bool force)
 		subscription_msg_ids.append(subscriptions.subscription_message_ids());
 	}
 	return error;
+}
+
+bool Protocol::handle_app_state_reply(message_id_t msg_id, CoAPCode::Enum code)
+{
+	if (!descriptor.app_state_selector_info) {
+		return false;
+	}
+	// Update application state checksums
+	if (subscription_msg_ids.removeOne(msg_id)) { // Event subscriptions
+		if (!CoAPCode::is_success(code)) {
+			// Make sure the checksum won't be updated if any of the messages has been NAK'ed
+			subscription_msg_ids.clear();
+		} else if (subscription_msg_ids.isEmpty()) {
+			LOG(TRACE, "Updating subscriptions checksum");
+			const uint32_t crc = subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc);
+			channel.command(Channel::SAVE_SESSION);
+			descriptor.app_state_selector_info(SparkAppStateSelector::SUBSCRIPTIONS,
+					SparkAppStateUpdate::PERSIST, crc, nullptr);
+			channel.command(Channel::LOAD_SESSION);
+		}
+		return true;
+	}
+	// A Describe message can carry both the system and application descriptions
+	if (msg_id == app_describe_msg_id || msg_id == system_describe_msg_id) {
+		if (msg_id == app_describe_msg_id) { // Application description
+			app_describe_msg_id = INVALID_MESSAGE_HANDLE;
+			if (CoAPCode::is_success(code)) {
+				LOG(TRACE, "Updating application DESCRIBE checksum");
+				channel.command(Channel::SAVE_SESSION);
+				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
+						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+				channel.command(Channel::LOAD_SESSION);
+			}
+		}
+		if (msg_id == system_describe_msg_id) { // System description
+			system_describe_msg_id = INVALID_MESSAGE_HANDLE;
+			if (CoAPCode::is_success(code)) {
+				LOG(TRACE, "Updating system DESCRIBE checksum");
+				channel.command(Channel::SAVE_SESSION);
+				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
+						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+				channel.command(Channel::LOAD_SESSION);
+			}
+		}
+		return true;
+	}
+	return false;
 }
 
 int Protocol::ChunkedTransferCallbacks::prepare_for_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void* reserved)

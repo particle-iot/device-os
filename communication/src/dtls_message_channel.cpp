@@ -77,7 +77,8 @@ void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver, messa
 	}
 }
 
-auto SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* next_id, restore_fn_t restorer, save_fn_t saver) -> RestoreStatus
+SessionPersist::RestoreStatus SessionPersist::restore(mbedtls_ssl_context* context, bool renegotiate,
+		uint32_t keys_checksum, message_id_t* next_id, restore_fn_t restorer, save_fn_t saver)
 {
 	if (!restore_this_from(restorer)) {
 		return NO_SESSION;

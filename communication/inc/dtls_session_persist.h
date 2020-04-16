@@ -110,16 +110,17 @@ class __attribute__((packed)) SessionPersistOpaque : public SessionPersistData
 {
 public:
 
-	SessionPersistOpaque()
-	{
-		memset(this, 0, sizeof(*this));
+	SessionPersistOpaque() {
+		invalidate();
 	}
 
 	bool is_valid() { return size==sizeof(*this); }
 
 	uint8_t* connection_data() { return connection; }
 
-	void invalidate() { size = 0; }
+	void invalidate() {
+		memset(this, 0, sizeof(*this));
+	}
 
 	void increment_use_count() { use_counter++; }
 	void clear_use_count() { use_counter = 0; }
@@ -194,7 +195,7 @@ public:
 
 	void clear(save_fn_t saver)
 	{
-		memset(this, 0, sizeof(*this));
+		invalidate();
 		persistent = 1;	// ensure it is saved
 		save_this_with(saver);
 		persistent = 0;	// do not make any subsequent saves until the context is marked as persistent.
