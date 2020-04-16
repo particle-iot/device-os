@@ -158,10 +158,10 @@ private:
 		}
 	}
 
+	virtual AppStateDescriptor cached_app_state_descriptor() const override;
+
 	virtual void reset() override {
 	}
-
-	virtual AppStateDescriptor cached_app_state_descriptor() const override;
 };
 
 

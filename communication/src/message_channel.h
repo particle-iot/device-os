@@ -241,17 +241,17 @@ struct MessageChannel : public Channel
 	virtual void notify_client_messages_processed()=0;
 
 	/**
-	 * Reset the channel state and free all allocated resources.
-	 */
-	virtual void reset()=0;
-
-	/**
 	 * Get a descriptor of the cached application state.
 	 *
 	 * TODO: This method shouldn't be a member of the message channel class, but in the current design,
 	 * message channels manage both the transport- and application-specific session data.
 	 */
 	virtual AppStateDescriptor cached_app_state_descriptor() const = 0;
+
+	/**
+	 * Reset the channel state and free all allocated resources.
+	 */
+	virtual void reset()=0;
 };
 
 class AbstractMessageChannel : public MessageChannel

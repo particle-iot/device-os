@@ -78,13 +78,13 @@ public:
 		channel->notify_client_messages_processed();
 	}
 
-	virtual void reset() override
-	{
-	}
-
 	virtual AppStateDescriptor cached_app_state_descriptor() const override
 	{
 		return AppStateDescriptor();
+	}
+
+	virtual void reset() override
+	{
 	}
 };
 

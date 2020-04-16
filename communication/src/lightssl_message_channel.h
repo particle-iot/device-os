@@ -90,10 +90,6 @@ public:
 		return handshake();
 	}
 
-	virtual void reset() override
-	{
-	}
-
 	/**
 	 * Retrieve first the 2 byte length from the stream, which determines
 	 */
@@ -118,6 +114,9 @@ public:
 
 	AppStateDescriptor cached_app_state_descriptor() const override {
 		return AppStateDescriptor();
+	}
+
+	void reset() override {
 	}
 
 protected:

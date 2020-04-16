@@ -305,9 +305,6 @@ int Protocol::begin()
 
 	reset();
 	last_ack_handlers_update = callbacks.millis();
-	app_describe_msg_id = INVALID_MESSAGE_HANDLE;
-	system_describe_msg_id = INVALID_MESSAGE_HANDLE;
-	subscription_msg_ids.clear();
 
 	ProtocolError error = channel.establish();
 	const bool session_resumed = (error == SESSION_RESUMED);
@@ -387,6 +384,9 @@ void Protocol::reset() {
 	timesync_.reset();
 	ack_handlers.clear();
 	channel.reset();
+	app_describe_msg_id = INVALID_MESSAGE_HANDLE;
+	system_describe_msg_id = INVALID_MESSAGE_HANDLE;
+	subscription_msg_ids.clear();
 }
 
 /**
