@@ -645,7 +645,7 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
 
                         if (rsrp < -140 && rsrp >= -200) {
                             qual->strength(0);
-                        } else if (rsrp >= -44 && rsrp <= 0) {
+                        } else if (rsrp >= -44 && rsrp < 0) {
                             qual->strength(97);
                         } else if (rsrp >= -140 && rsrp < -44) {
                             qual->strength(rsrp + 141);
@@ -656,7 +656,7 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
 
                         if (rsrq_mul_100 < min_rsrq_mul_by_100 && rsrq_mul_100 >= -2000) {
                             qual->quality(0);
-                        } else if (rsrq_mul_100 >= max_rsrq_mul_by_100 && rsrq_mul_100 <=0) {
+                        } else if (rsrq_mul_100 >= max_rsrq_mul_by_100 && rsrq_mul_100 < 0) {
                             qual->quality(34);
                         } else if (rsrq_mul_100 >= min_rsrq_mul_by_100 && rsrq_mul_100 < max_rsrq_mul_by_100) {
                             qual->quality((rsrq_mul_100 + 2000) / 50);
