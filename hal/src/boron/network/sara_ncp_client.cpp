@@ -938,7 +938,9 @@ int SaraNcpClient::initReady() {
                 int r = changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
                 if (r != SYSTEM_ERROR_AT_NOT_OK) {
                     return r;
-                } else {
+                }
+
+                if (r == SYSTEM_ERROR_NONE) {
                     // Make sure flow control is enabled as well
                     CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
                 }
