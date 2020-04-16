@@ -123,6 +123,7 @@ private:
     bool modemPowerState() const;
     int modemSetUartState(bool state) const;
     void waitForPowerOff();
+    int getAppFirmwareVersion();
 };
 
 inline AtParser* SaraNcpClient::atParser() {
