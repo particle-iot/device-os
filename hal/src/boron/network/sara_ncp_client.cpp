@@ -86,6 +86,10 @@ inline system_tick_t millis() {
 
 const auto UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
 const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2 = 921600;
+const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 = 460800;
+const auto UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE = 200;
+const auto UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN = 200;
+const auto UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX = 203;
 
 const auto UBLOX_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto UBLOX_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -118,15 +122,8 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     modemInit();
     conf_ = static_cast<const CellularNcpClientConfig&>(conf);
     // Initialize serial stream
-    auto sconf = SERIAL_8N1;
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
-        sconf |= SERIAL_FLOW_CONTROL_RTS_CTS;
-    } else {
-        HAL_Pin_Mode(RTS1, OUTPUT);
-        HAL_GPIO_Write(RTS1, 0);
-    }
     std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2,
-            UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
+            UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
     // Initialize muxed channel stream
     decltype(muxerAtStream_) muxStrm(new(std::nothrow) decltype(muxerAtStream_)::element_type(&muxer_, UBLOX_NCP_AT_CHANNEL));
@@ -898,6 +895,24 @@ int SaraNcpClient::changeBaudRate(unsigned int baud) {
     return serial_->setBaudRate(baud);
 }
 
+int SaraNcpClient::getAppFirmwareVersion() {
+    // ATI9 (get version and app version)
+    // example output
+    // "08.90,A01.13" G350 (newer)
+    // "08.70,A00.02" G350 (older)
+    // "L0.0.00.00.05.06,A.02.00" (memory issue)
+    // "L0.0.00.00.05.07,A.02.02" (demonstrator)
+    // "L0.0.00.00.05.08,A.02.04" (maintenance)
+    auto resp = parser_.sendCommand("ATI9");
+    int major = 0;
+    int minor = 0;
+    int r = CHECK_PARSER(resp.scanf("%*[^,],%*[A.]%d.%d", &major, &minor));
+    CHECK_TRUE(r == 2, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    CHECK_PARSER_OK(resp.readResult());
+    LOG(TRACE, "App firmware: %d", major * 100 + minor);
+    return major * 100 + minor;
+}
+
 int SaraNcpClient::initReady() {
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard());
@@ -909,32 +924,35 @@ int SaraNcpClient::initReady() {
     if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         // Change the baudrate to 921600
         CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
-        // Check that the modem is responsive at the new baudrate
-        skipAll(serial_.get(), 1000);
-        CHECK(waitAtResponse(10000));
+    } else {
+        int fwVersion = getAppFirmwareVersion();
+        if (fwVersion > 0) {
+            // L0.0.00.00.05.06,A.02.00 has a memory issue
+            memoryIssuePresent_ = (fwVersion == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
+            // There is a set of other revisions which do not have hardware flow control
+            if (!(fwVersion >= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN &&
+                    fwVersion <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX)) {
+                // Change the baudrate to 460800
+                // NOTE: ignoring AT errors just in case to accommodate for some revisions
+                // potentially not supporting anything other than 115200
+                int r = changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
+                if (r != SYSTEM_ERROR_AT_NOT_OK) {
+                    return r;
+                } else {
+                    // Make sure flow control is enabled as well
+                    CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
+                }
+            }
+        }
     }
 
-    if (ncpId() == PLATFORM_NCP_SARA_R410) {
-        // ATI9 (get version and app version)
-        // example output
-        // 16 "\r\n08.90,A01.13\r\n" G350 (newer)
-        // 16 "\r\n08.70,A00.02\r\n" G350 (older)
-        // 28 "\r\nL0.0.00.00.05.06,A.02.00\r\n" (memory issue)
-        // 28 "\r\nL0.0.00.00.05.07,A.02.02\r\n" (demonstrator)
-        // 28 "\r\nL0.0.00.00.05.08,A.02.04\r\n" (maintenance)
-        auto resp = parser_.sendCommand("ATI9");
-        char verExtended[33] = {};
-        memoryIssuePresent_ = false;
-        int r = CHECK_PARSER(resp.scanf("%32[^\n]", verExtended));
-        CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-        if (!strcmp(verExtended, "L0.0.00.00.05.06,A.02.00")) {
-            memoryIssuePresent_ = true;
-        }
+    // Check that the modem is responsive at the new baudrate
+    skipAll(serial_.get(), 1000);
+    CHECK(waitAtResponse(10000));
 
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
         // Set UMNOPROF = SIM_SELECT
-        resp = parser_.sendCommand("AT+UMNOPROF?");
+        auto resp = parser_.sendCommand("AT+UMNOPROF?");
         bool reset = false;
         int umnoprof = static_cast<int>(UbloxSaraUmnoprof::NONE);
         r = CHECK_PARSER(resp.scanf("+UMNOPROF: %d", &umnoprof));
