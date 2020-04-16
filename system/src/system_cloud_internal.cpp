@@ -444,8 +444,10 @@ void SystemEvents(const char* name, const char* data)
 }
 
 #if HAL_PLATFORM_CLOUD_UDP
+
 using particle::protocol::SessionPersistOpaque;
 using particle::protocol::SessionPersistData;
+using particle::protocol::AppStateDescriptor;
 
 int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 {
@@ -485,28 +487,45 @@ void update_persisted_state(std::function<void(SessionPersistOpaque&)> fn)
 
 uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector, SparkAppStateUpdate::Enum operation, uint32_t value, void* reserved)
 {
-	if (operation==SparkAppStateUpdate::COMPUTE_AND_PERSIST ) {
+	if (operation == SparkAppStateUpdate::COMPUTE_AND_PERSIST) {
 		switch (stateSelector)
 		{
 		case SparkAppStateSelector::DESCRIBE_APP:
 			update_persisted_state([](SessionPersistData& data){
 				data.describe_app_crc = compute_describe_app_checksum();
+				data.app_state_flags |= AppStateDescriptor::APP_DESCRIBE_CRC;
 			});
-            break;
+			break;
 		case SparkAppStateSelector::DESCRIBE_SYSTEM:
 			update_persisted_state([](SessionPersistData& data){
 				data.describe_system_crc = compute_describe_system_checksum();
+				data.app_state_flags |= AppStateDescriptor::SYSTEM_DESCRIBE_CRC;
 			});
-            break;
+			break;
 		}
 	}
-	else if (operation==SparkAppStateUpdate::PERSIST && stateSelector==SparkAppStateSelector::SUBSCRIPTIONS)
+	else if (operation == SparkAppStateUpdate::PERSIST)
 	{
-		update_persisted_state([value](SessionPersistData& data){
-			data.subscriptions_crc = value;
-		});
+		switch (stateSelector) {
+		case SparkAppStateSelector::SUBSCRIPTIONS: {
+			update_persisted_state([value](SessionPersistData& data){
+				data.subscriptions_crc = value;
+				data.app_state_flags |= AppStateDescriptor::SUBSCRIPTIONS_CRC;
+			});
+			break;
+		}
+		case SparkAppStateSelector::PROTOCOL_FLAGS: {
+			update_persisted_state([value](SessionPersistData& data){
+				data.protocol_flags = value;
+				data.app_state_flags |= AppStateDescriptor::PROTOCOL_FLAGS;
+			});
+			break;
+		}
+		default:
+			break;
+		}
 	}
-	else if (operation==SparkAppStateUpdate::COMPUTE)
+	else if (operation == SparkAppStateUpdate::COMPUTE)
 	{
 		switch (stateSelector)
 		{
@@ -516,6 +535,16 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 		case SparkAppStateSelector::DESCRIBE_SYSTEM:
 			return compute_describe_system_checksum();
 		}
+	}
+	else if (operation == SparkAppStateUpdate::RESET && stateSelector == SparkAppStateSelector::ALL)
+	{
+		update_persisted_state([](SessionPersistData& data) {
+			data.describe_system_crc = 0;
+			data.describe_app_crc = 0;
+			data.subscriptions_crc = 0;
+			data.protocol_flags = 0;
+			data.app_state_flags = 0;
+		});
 	}
 	return 0;
 }
@@ -907,9 +936,9 @@ void Spark_Protocol_Init(void)
         else
 #endif
         {
-                callbacks.send = Spark_Send;
-                callbacks.receive = Spark_Receive;
-                callbacks.transport_context = nullptr;
+            callbacks.send = Spark_Send;
+            callbacks.receive = Spark_Receive;
+            callbacks.transport_context = nullptr;
         }
         callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
         //callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
@@ -977,6 +1006,9 @@ void Spark_Protocol_Init(void)
         HAL_device_ID(id, id_length);
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
+        // Enable device-initiated describe messages
+        spark_protocol_set_connection_property(sp, particle::protocol::Connection::DEVICE_INITIATED_DESCRIBE, 0, nullptr, nullptr);
+
         Particle.subscribe("spark", SystemEvents, MY_DEVICES);
         Particle.subscribe("particle", SystemEvents, MY_DEVICES);
 
@@ -1019,12 +1051,16 @@ int Spark_Handshake(bool presence_announce)
 {
     cloud_socket_aborted = false; // Clear cancellation flag for socket operations
     LOG(INFO,"Starting handshake: presense_announce=%d", presence_announce);
+    bool session_resumed = false;
     int err = spark_protocol_handshake(sp);
-    if (!err)
-    {
+    if (err == particle::protocol::SESSION_RESUMED) {
+        session_resumed = true;
+    } else if (err != 0) {
+        return spark_protocol_to_system_error(err);
+    }
+    if (!session_resumed) {
         char buf[CLAIM_CODE_SIZE + 1];
-        if (!HAL_Get_Claim_Code(buf, sizeof (buf)) && buf[0] != 0 && (uint8_t)buf[0] != 0xff)
-        {
+        if (!HAL_Get_Claim_Code(buf, sizeof(buf)) && buf[0] != 0 && (uint8_t)buf[0] != 0xff) {
             LOG(INFO,"Send spark/device/claim/code event for code %s", buf);
             publishEvent("spark/device/claim/code", buf);
         }
@@ -1071,23 +1107,21 @@ int Spark_Handshake(bool presence_announce)
         if (presence_announce) {
             Multicast_Presence_Announcement();
         }
-        LOG(INFO,"Send subscriptions");
-        spark_protocol_send_subscriptions(sp);
-        // important this comes at the end since it requires a response from the cloud.
         spark_protocol_send_time_request(sp);
-        Spark_Process_Events();
-    }
-    if (err==particle::protocol::SESSION_RESUMED)
-    {
+    } else {
         LOG(INFO,"cloud connected from existing session.");
-        err = 0;
 
         publishSafeModeEventIfNeeded();
         Send_Firmware_Update_Flags();
 
         if (!HAL_RTC_Time_Is_Valid(nullptr) && spark_sync_time_last(nullptr, nullptr) == 0) {
             spark_protocol_send_time_request(sp);
-            Spark_Process_Events();
+        }
+    }
+    if (system_mode() != AUTOMATIC || APPLICATION_SETUP_DONE) {
+        err = particle::sendApplicationDescription();
+        if (err != 0) {
+            return err;
         }
     }
     if (particle_key_errors != NO_ERROR) {
@@ -1096,20 +1130,19 @@ int Spark_Handshake(bool presence_announce)
         LOG(INFO,"Send event spark/device/key/error=%s", buf);
         publishEvent("spark/device/key/error", buf);
     }
-    if (err == 0) {
-        protocol_status status = {};
-        status.size = sizeof(status);
-        err = spark_protocol_get_status(sp, &status, nullptr);
-        if (err == 0) {
-            if (status.flags & PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES) {
-                SPARK_CLOUD_HANDSHAKE_PENDING = 1;
-                LOG(TRACE, "Waiting until all handshake messages are processed by the protocol layer");
-            } else {
-                SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 1;
-            }
-        }
+    protocol_status status = {};
+    status.size = sizeof(status);
+    err = spark_protocol_get_status(sp, &status, nullptr);
+    if (err != 0) {
+        return spark_protocol_to_system_error(err);
     }
-    return err;
+    if (status.flags & PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES) {
+        SPARK_CLOUD_HANDSHAKE_PENDING = 1;
+        LOG(TRACE, "Waiting until all handshake messages are processed by the protocol layer");
+    } else {
+        SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 1;
+    }
+    return 0;
 }
 
 // Returns true if all's well or
@@ -1179,3 +1212,18 @@ CloudDiagnostics* CloudDiagnostics::instance() {
 CloudConnectionSettings* CloudConnectionSettings::instance() {
     return &g_cloudConnectionSettings;
 }
+
+namespace particle {
+
+int sendApplicationDescription() {
+    LOG(INFO, "Sending application DESCRIBE");
+    int r = spark_protocol_post_description(sp, protocol::DescriptionType::DESCRIBE_APPLICATION, nullptr);
+    if (r != 0) {
+        return spark_protocol_to_system_error(r);
+    }
+    LOG(INFO, "Sending subscriptions");
+    spark_protocol_send_subscriptions(sp);
+    return 0;
+}
+
+} // namespace particle

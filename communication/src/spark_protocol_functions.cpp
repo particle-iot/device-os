@@ -25,6 +25,7 @@
 #include <stdlib.h>
 
 using particle::CompletionHandler;
+using particle::protocol::ProtocolError;
 
 #ifdef USE_MBEDTLS
 #include "mbedtls/rsa.h"
@@ -124,7 +125,7 @@ int spark_protocol_presence_announcement(ProtocolFacade* protocol, uint8_t *buf,
 int spark_protocol_post_description(ProtocolFacade* protocol, int desc_flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
     (void)reserved;
-    return protocol->post_description(desc_flags);
+    return protocol->post_description(desc_flags, false /* force */);
 }
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
@@ -141,12 +142,14 @@ bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name,
 
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void*) {
     ASSERT_ON_SYSTEM_THREAD();
-    return protocol->send_subscription(event_name, device_id);
+    const auto error = protocol->send_subscription(event_name, device_id);
+    return (error == ProtocolError::NO_ERROR);
 }
 
 bool spark_protocol_send_subscription_scope(ProtocolFacade* protocol, const char *event_name, SubscriptionScope::Enum scope, void*) {
     ASSERT_ON_SYSTEM_THREAD();
-    return protocol->send_subscription(event_name, scope);
+    const auto error = protocol->send_subscription(event_name, scope);
+    return (error == ProtocolError::NO_ERROR);
 }
 
 bool spark_protocol_add_event_handler(ProtocolFacade* protocol, const char *event_name,
@@ -164,7 +167,7 @@ bool spark_protocol_send_time_request(ProtocolFacade* protocol, void* reserved) 
 void spark_protocol_send_subscriptions(ProtocolFacade* protocol, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
     (void)reserved;
-    protocol->send_subscriptions();
+    protocol->send_subscriptions(false /* force */);
 }
 
 void spark_protocol_remove_event_handlers(ProtocolFacade* protocol, const char* event_name, void* reserved) {
@@ -193,14 +196,22 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
         unsigned data, const particle::protocol::connection_properties_t* conn_prop, void* reserved)
 {
     ASSERT_ON_SYSTEM_THREAD();
-    if (property_id == particle::protocol::Connection::PING)
-    {
+    switch (property_id) {
+    case particle::protocol::Connection::PING: {
         protocol->set_keepalive(data, conn_prop->keepalive_source);
-    } else if (property_id == particle::protocol::Connection::FAST_OTA)
-    {
-        protocol->set_fast_ota(data);
+        return 0;
     }
-    return 0;
+    case particle::protocol::Connection::FAST_OTA: {
+        protocol->set_fast_ota(data);
+        return 0;
+    }
+    case particle::protocol::Connection::DEVICE_INITIATED_DESCRIBE: {
+        protocol->enable_device_initiated_describe();
+        return 0;
+    }
+    default:
+        return particle::protocol::ProtocolError::NOT_IMPLEMENTED;
+    }
 }
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value, const void* data)
 {

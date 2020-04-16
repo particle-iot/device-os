@@ -63,6 +63,8 @@ using particle::CloudDiagnostics;
 
 volatile system_tick_t spark_loop_total_millis = 0;
 
+bool APPLICATION_SETUP_DONE = false;
+
 // Auth options are WLAN_SEC_UNSEC, WLAN_SEC_WPA, WLAN_SEC_WEP, and WLAN_SEC_WPA2
 unsigned char _auth = WLAN_SEC_WPA2;
 

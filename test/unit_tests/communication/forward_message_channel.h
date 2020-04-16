@@ -57,9 +57,9 @@ public:
 		return channel->create(msg, size);
 	}
 
-	virtual ProtocolError establish(uint32_t& flags, uint32_t app_state_crc) override
+	virtual ProtocolError establish() override
 	{
-		return channel->establish(flags, app_state_crc);
+		return channel->establish();
 	}
 
 	virtual ProtocolError response(Message& original, Message& response, size_t required) override
@@ -76,6 +76,11 @@ public:
 	virtual void notify_client_messages_processed() override
 	{
 		channel->notify_client_messages_processed();
+	}
+
+	virtual AppStateDescriptor cached_app_state_descriptor() const override
+	{
+		return AppStateDescriptor();
 	}
 
 	virtual void reset() override

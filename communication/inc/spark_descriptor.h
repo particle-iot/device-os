@@ -45,9 +45,11 @@ namespace SparkReturnType {
  */
 namespace SparkAppStateSelector {
 	enum Enum {
-		DESCRIBE_APP,
-		DESCRIBE_SYSTEM,
-		SUBSCRIPTIONS,
+		DESCRIBE_APP = 0,
+		DESCRIBE_SYSTEM = 1,
+		SUBSCRIPTIONS = 2,
+		PROTOCOL_FLAGS = 3,
+		ALL = 4
 	};
 }
 
@@ -55,7 +57,8 @@ namespace SparkAppStateUpdate {
 	enum Enum {
 		COMPUTE = 1,
 		PERSIST = 2,
-		COMPUTE_AND_PERSIST = 3
+		COMPUTE_AND_PERSIST = 3,
+		RESET = 4
 	};
 }
 

@@ -29,8 +29,13 @@ extern uint16_t tempFlag;
 
 #define CORE_FW_ADDRESS         0
 
-#define RESET                   0
 #define RCC_FLAG_IWDGRST        0
+
+// FIXME: These flag names are too common to be defined globally
+typedef enum FlagStatus {
+    RESET = 0,
+    SET = 1
+} FlagStatus;
 
 inline int RCC_GetFlagStatus(int reg) { return RESET; }
 inline void RCC_ClearFlag() {}

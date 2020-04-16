@@ -200,6 +200,9 @@ inline bool publishEvent(const char* event, const char* data = nullptr, unsigned
     return spark_send_event(event, data, DEFAULT_CLOUD_EVENT_TTL, flags | PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
 }
 
+// Sends application DESCRIBE and subscriptions
+int sendApplicationDescription();
+
 } // namespace particle
 
 #ifdef __cplusplus

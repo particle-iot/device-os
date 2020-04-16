@@ -64,6 +64,10 @@ enum ProtocolError
 // Converts protocol error to system error code
 system_error_t toSystemError(ProtocolError error);
 
+typedef int32_t message_handle_t;
+
+const message_handle_t INVALID_MESSAGE_HANDLE = (message_handle_t)-1;
+
 typedef uint16_t chunk_index_t;
 
 const chunk_index_t NO_CHUNKS_MISSING = 65535;
@@ -110,11 +114,17 @@ enum DescriptionType {
 
 namespace Connection
 {
+
+/**
+ * Connection properties.
+ */
 enum Enum
 {
-    PING = 0,
-    FAST_OTA = 1
+    PING = 0, ///< Set keepalive interval.
+    FAST_OTA = 1, ///< Enable/disable fast OTA.
+    DEVICE_INITIATED_DESCRIBE = 2 ///< Enable device-initiated describe messages.
 };
+
 }
 
 typedef std::function<system_tick_t()> millis_callback;
@@ -147,4 +157,128 @@ enum Enum {
 };
 }
 
-}}
+/**
+ * Application state descriptor.
+ */
+class AppStateDescriptor {
+public:
+    /**
+     * State flags.
+     *
+     * These flags determine which fields are set for this application state.
+     */
+    enum StateFlag {
+        SYSTEM_DESCRIBE_CRC = 0x01, ///< Checksum of the system description.
+        APP_DESCRIBE_CRC = 0x02, ///< Checksum of the application description.
+        SUBSCRIPTIONS_CRC = 0x04, ///< Checksum of the event subscriptions.
+        PROTOCOL_FLAGS = 0x08, ///< Protocol flags.
+        ALL = SYSTEM_DESCRIBE_CRC | APP_DESCRIBE_CRC | SUBSCRIPTIONS_CRC | PROTOCOL_FLAGS ///< All the defined fields.
+    };
+
+    /**
+     * Construct a descriptor.
+     *
+     * @param stateFlags State flags.
+     * @param systemDescrCrc Checksum of the system description.
+     * @param appDescrCrc Checksum of the application description.
+     * @param subscrCrc Checksum of the event subscriptions.
+     * @param protocolFlags Protocol flags.
+     */
+    explicit AppStateDescriptor(uint32_t stateFlags = 0, uint32_t systemDescrCrc = 0, uint32_t appDescrCrc = 0,
+                uint32_t subscrCrc = 0, uint32_t protocolFlags = 0) :
+            stateFlags_(stateFlags),
+            systemDescrCrc_(systemDescrCrc),
+            appDescrCrc_(appDescrCrc),
+            subscrCrc_(subscrCrc),
+            protocolFlags_(protocolFlags) {
+    }
+
+    /**
+     * Set the checksum of the system description.
+     */
+    AppStateDescriptor& systemDescribeCrc(uint32_t crc) {
+        systemDescrCrc_ = crc;
+        stateFlags_ |= StateFlag::SYSTEM_DESCRIBE_CRC;
+        return *this;
+    }
+
+    /**
+     * Set the checksum of the application description.
+     */
+    AppStateDescriptor& appDescribeCrc(uint32_t crc) {
+        appDescrCrc_ = crc;
+        stateFlags_ |= StateFlag::APP_DESCRIBE_CRC;
+        return *this;
+    }
+
+    /**
+     * Set the checksum of the event subscriptions.
+     */
+    AppStateDescriptor& subscriptionsCrc(uint32_t crc) {
+        subscrCrc_ = crc;
+        stateFlags_ |= StateFlag::SUBSCRIPTIONS_CRC;
+        return *this;
+    }
+
+    /**
+     * Set the protocol flags.
+     */
+    AppStateDescriptor& protocolFlags(uint32_t flags) {
+        protocolFlags_ = flags;
+        stateFlags_ |= StateFlag::PROTOCOL_FLAGS;
+        return *this;
+    }
+
+    /**
+     * Returns `true` if `other` is equal to this descriptor, otherwise returns `false`.
+     *
+     * The `flags` argument determines which fields of the application state are compared (see the `StateFlag` enum).
+     */
+    bool equalsTo(const AppStateDescriptor& other, uint32_t flags = StateFlag::ALL) const {
+        if ((stateFlags_ & flags) != (other.stateFlags_ & flags)) {
+            return false;
+        }
+        if ((flags & StateFlag::SUBSCRIPTIONS_CRC) && (stateFlags_ & StateFlag::SUBSCRIPTIONS_CRC) &&
+                (subscrCrc_ != other.subscrCrc_)) {
+            return false;
+        }
+        if ((flags & StateFlag::APP_DESCRIBE_CRC) && (stateFlags_ & StateFlag::APP_DESCRIBE_CRC) &&
+                (appDescrCrc_ != other.appDescrCrc_)) {
+            return false;
+        }
+        if ((flags & StateFlag::SYSTEM_DESCRIBE_CRC) && (stateFlags_ & StateFlag::SYSTEM_DESCRIBE_CRC) &&
+                (systemDescrCrc_ != other.systemDescrCrc_)) {
+            return false;
+        }
+        if ((flags & StateFlag::PROTOCOL_FLAGS) && (stateFlags_ & StateFlag::PROTOCOL_FLAGS) &&
+                (protocolFlags_ != other.protocolFlags_)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Returns the state flags.
+     */
+    uint32_t stateFlags() const {
+        return stateFlags_;
+    }
+
+    /**
+     * Returns `true` if this descriptor is empty, otherwise returns `false`.
+     *
+     * An empty descriptor has all state flags cleared.
+     */
+    bool isEmpty() const {
+        return !stateFlags_;
+    }
+
+private:
+    uint32_t stateFlags_;
+    uint32_t systemDescrCrc_;
+    uint32_t appDescrCrc_;
+    uint32_t subscrCrc_;
+    uint32_t protocolFlags_;
+};
+
+}} // namespace particle::protocol

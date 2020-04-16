@@ -22,24 +22,24 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <stdint.h>
+#define RCC_FLAG_IWDGRST 0
 
-#define SET                     1
-#define RESET                   0
-
-#define RCC_FLAG_IWDGRST        0
-
+// FIXME: These flag names are too common to be defined globally
+typedef enum FlagStatus {
+    RESET = 0,
+    SET = 1
+} FlagStatus;
 
 void Save_Reset_Syndrome();
 uint8_t RCC_GetFlagStatus(uint8_t flag);
 void RCC_ClearFlag(void);
 
-
 #ifdef __cplusplus
 }
 #endif
-

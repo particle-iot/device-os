@@ -115,44 +115,39 @@ class Protocol
 	Mesh mesh;
 #endif
 
+	Vector<message_handle_t> subscription_msg_ids;
+	message_handle_t app_describe_msg_id;
+	message_handle_t system_describe_msg_id;
+
 	/**
 	 * Completion handlers for messages with confirmable delivery.
 	 */
 	system_tick_t last_ack_handlers_update;
 
-	/**
-	 * The token ID for the next request made.
-	 * If we have a bone-fide CoAP layer this will eventually disappear into that layer, just like message-id has.
-	 */
-	token_t token;
+	uint32_t protocol_flags;
 
 	uint8_t initialized;
 
-	uint8_t flags;
-
-public:
-	enum Flags
+protected:
+	/**
+	 * Protocol flags.
+	 */
+	enum ProtocolFlag
 	{
 		/**
 		 * Set when the protocol expects a hello response from the server.
 		 */
 		REQUIRE_HELLO_RESPONSE = 1<<0,
-
 		/**
-		 * Internal flag. Used by the protocol to disable sending a hello on session resume.
-		 * Set if sending a hello response on resuming a session isn't required.
-		 */
-		SKIP_SESSION_RESUME_HELLO = 1<<1,
-
-		/**
-		 * send ping as an empty message - this functions as
-		 * a keep-alive for UDP
+		 * Send ping as an empty message - this functions as a keep-alive for UDP.
 		 */
 		PING_AS_EMPTY_MESSAGE = 1<<2,
+		/**
+		 * Application/system describe messages are initiated by the device.
+		 */
+		DEVICE_INITIATED_DESCRIBE = 1<<3
 	};
 
-
-protected:
 	/**
 	 * Manages Ping functionality.
 	 */
@@ -163,18 +158,23 @@ protected:
 	 */
 	CompletionHandlerMap<message_id_t> ack_handlers;
 
+	/**
+	 * The token ID for the next request made.
+	 * If we have a bone-fide CoAP layer this will eventually disappear into that layer, just like message-id has.
+	 */
+	token_t next_token;
 
-	void set_protocol_flags(int flags)
+	void set_protocol_flags(uint32_t flags)
 	{
-		this->flags = flags;
+		protocol_flags = flags;
 	}
 
 	/**
 	 * Retrieves the next token.
 	 */
-	uint8_t next_token()
+	token_t get_next_token()
 	{
-		return ++token;
+		return next_token++;
 	}
 
 	ProtocolError handle_key_change(Message& message);
@@ -200,7 +200,7 @@ protected:
 		Message message;
 		channel.create(message);
 		size_t len = 0;
-		if (!forceCoAP && (flags & PING_AS_EMPTY_MESSAGE)) {
+		if (!forceCoAP && (protocol_flags & ProtocolFlag::PING_AS_EMPTY_MESSAGE)) {
 			len = Messages::keep_alive(message.buf());
 		}
 		else {
@@ -268,10 +268,10 @@ protected:
 												size_t header_size, int desc_flags);
 
 	/**
-	 * Produces and transmits (PIGGYBACK) a describe message.
+	 * Produces a describe message and transmits it as a separate response.
 	 * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
 	 */
-	ProtocolError send_description(token_t token, message_id_t msg_id, int desc_flags);
+	ProtocolError send_description_response(token_t token, message_id_t msg_id, int desc_flags);
 
 	/**
 	 * Decodes and dispatches a received message to its handler.
@@ -302,11 +302,9 @@ protected:
 	void init(const SparkCallbacks &callbacks, const SparkDescriptor &descriptor);
 
 	/**
-	 * Updates the cached crc of subscriptions registered with the cloud.
+	 * Returns a descriptor of the current application state.
 	 */
-	void update_subscription_crc();
-
-	uint32_t application_state_checksum();
+	AppStateDescriptor app_state_descriptor(uint32_t stateFlags = AppStateDescriptor::ALL);
 
 public:
 	Protocol(MessageChannel& channel) :
@@ -316,6 +314,7 @@ public:
 			variables(this),
 			publisher(this),
 			last_ack_handlers_update(0),
+			protocol_flags(0),
 			initialized(false)
 	{
 	}
@@ -340,6 +339,11 @@ public:
 		chunkedTransfer.set_fast_ota(data);
 	}
 
+	void enable_device_initiated_describe()
+	{
+		protocol_flags |= ProtocolFlag::DEVICE_INITIATED_DESCRIBE;
+	}
+
 	void set_handlers(CommunicationsHandlers& handlers)
 	{
 		copy_and_init(&this->handlers, sizeof(this->handlers), &handlers, handlers.size);
@@ -349,15 +353,6 @@ public:
 	{
 		ack_handlers.addHandler(msg_id, std::move(handler), timeout);
 	}
-
-	/**
-	 * Determines the checksum of the application state.
-	 * Application state comprises cloud functinos, variables and subscriptions.
-	 */
-	static uint32_t application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len), uint32_t subscriptions_crc,
-			uint32_t describe_app_crc, uint32_t describe_system_crc);
-
-
 
 	/**
 	 * Establish a secure connection and send and process the hello message.
@@ -403,12 +398,14 @@ public:
 	 * @arg \p DESCRIBE_METRICS
 	 * @arg \p DESCRIBE_SYSTEM
 	 *
+	 * @param force Ignore cached application state.
+	 *
 	 * @returns \s ProtocolError result value
 	 * @retval \p particle::protocol::NO_ERROR
 	 *
 	 * @sa particle::protocol::ProtocolError
 	 */
-	ProtocolError post_description(int desc_flags);
+	ProtocolError post_description(int desc_flags, bool force);
 
 	// Returns true on success, false on sending timeout or rate-limiting failure
 	bool send_event(const char *event_name, const char *data, int ttl,
@@ -429,23 +426,6 @@ public:
 		return true;
 	}
 
-	inline bool send_subscription(const char *event_name, const char *device_id)
-	{
-		bool success = !subscriptions.send_subscription(channel, event_name, device_id);
-		if (success)
-			update_subscription_crc();
-		return success;
-	}
-
-	inline bool send_subscription(const char *event_name,
-			SubscriptionScope::Enum scope)
-	{
-		bool success = !subscriptions.send_subscription(channel, event_name, scope);
-		if (success)
-			update_subscription_crc();
-		return success;
-	}
-
 	void build_describe_message(Appender& appender, int desc_flags);
 
 	inline bool add_event_handler(const char *event_name, EventHandler handler)
@@ -462,19 +442,26 @@ public:
 				handler_data, scope, device_id);
 	}
 
-	inline bool send_subscriptions()
-	{
-		bool success = !subscriptions.send_subscriptions(channel);
-		if (success)
-			update_subscription_crc();
-		return success;
-	}
-
 	inline bool remove_event_handlers(const char* name)
 	{
 		subscriptions.remove_event_handlers(name);
 		return true;
 	}
+
+	ProtocolError send_subscription(const char *event_name, const char *device_id);
+	ProtocolError send_subscription(const char *event_name, SubscriptionScope::Enum scope);
+	ProtocolError send_subscriptions(bool force);
+
+	/**
+	 * Process a response for the previously sent system/application describe or subscriptions message.
+	 *
+	 * This method updates the cached application state.
+	 *
+	 * @param msg_id ID of the original request message.
+	 * @param code Response code.
+	 * @return `true` if the message has been handled or `false` otherwise.
+	 */
+	bool handle_app_state_reply(message_id_t msg_id, CoAPCode::Enum code);
 
 	inline void set_product_id(product_id_t product_id)
 	{
@@ -504,7 +491,7 @@ public:
 		}
 
 		return timesync_.send_request(callbacks.millis(), [&]() {
-			uint8_t token = next_token();
+			uint8_t token = get_next_token();
 			Message message;
 			channel.create(message);
 			size_t len = Messages::time_request(message.buf(), 0, token);

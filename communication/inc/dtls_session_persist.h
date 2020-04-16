@@ -21,7 +21,7 @@
 #include "stddef.h"
 
 // The size of the persisted data
-#define SessionPersistBaseSize 208
+#define SessionPersistBaseSize 216
 
 // variable size due to int/size_t members
 #define SessionPersistVariableSize (sizeof(int)+sizeof(int)+sizeof(size_t))
@@ -96,23 +96,31 @@ struct __attribute__((packed)) SessionPersistData
 	  * Checksum of the system describe message.
 	  */
 	uint32_t describe_system_crc;
-
+	/**
+	  * Protocol flags.
+	  */
+	uint32_t protocol_flags;
+	/**
+	  * Application state flags (see the `AppStateDescriptor::StateFlag` enum).
+	  */
+	uint32_t app_state_flags;
 };
 
 class __attribute__((packed)) SessionPersistOpaque : public SessionPersistData
 {
 public:
 
-	SessionPersistOpaque()
-	{
-		size = 0; persistent = 0;
+	SessionPersistOpaque() {
+		invalidate();
 	}
 
 	bool is_valid() { return size==sizeof(*this); }
 
 	uint8_t* connection_data() { return connection; }
 
-	void invalidate() { size = 0; }
+	void invalidate() {
+		memset(this, 0, sizeof(*this));
+	}
 
 	void increment_use_count() { use_counter++; }
 	void clear_use_count() { use_counter = 0; }
@@ -159,17 +167,17 @@ private:
 	 */
 	bool restore_this_from(restore_fn_t restorer)
 	{
-		if (restorer)
-		{
-			int size = restorer(this, sizeof(*this), SparkCallbacks::PERSIST_SESSION, nullptr);
-			if (size!=sizeof(*this)) {
-				DEBUG("restore size mismatch 1: %d/%d", size, sizeof(*this));
-				return false;
-			}
-			if (size!=sizeof(*this)) {
-				DEBUG("restore size mismatch 2: %d/%d", size, sizeof(*this));
-				return false;
-			}
+		if (!restorer) {
+			return false;
+		}
+		const int size = restorer(this, sizeof(*this), SparkCallbacks::PERSIST_SESSION, nullptr);
+		if (size != sizeof(*this)) {
+			DEBUG("restore size mismatch 1: %d/%d", size, sizeof(*this));
+			return false;
+		}
+		if (this->size != sizeof(*this)) {
+			DEBUG("restore size mismatch 2: %d/%d", (int)this->size, sizeof(*this));
+			return false;
 		}
 		return true;
 	}
@@ -187,8 +195,8 @@ public:
 
 	void clear(save_fn_t saver)
 	{
-		persistent = 1;	// ensure it is saved
 		invalidate();
+		persistent = 1;	// ensure it is saved
 		save_this_with(saver);
 		persistent = 0;	// do not make any subsequent saves until the context is marked as persistent.
 	}
@@ -248,7 +256,7 @@ public:
 	 */
 	RestoreStatus restore(mbedtls_ssl_context* context, bool renegotiate, uint32_t keys_checksum, message_id_t* message, restore_fn_t restorer, save_fn_t saver);
 
-	uint32_t application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len));
+	AppStateDescriptor app_state_descriptor();
 
 	SessionPersistData& as_data() { return *this; }
 };
@@ -256,7 +264,7 @@ public:
 static_assert(sizeof(SessionPersist)==SessionPersistBaseSize+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression), "SessionPersist size");
 static_assert(sizeof(SessionPersist)==sizeof(SessionPersistDataOpaque), "SessionPersistDataOpaque size == sizeof(SessionPersist)");
 
-#endif
+#endif // defined(MBEDTLS_SSL_H)
 
 // the connection buffer is used by external code to store connection data in the session
 // it must be binary compatible with previous releases
@@ -267,7 +275,7 @@ static_assert((sizeof(SessionPersistData)==sizeof(SessionPersistDataOpaque)), "s
 
 static_assert(sizeof(SessionPersistDataOpaque)==SessionPersistBaseSize+SessionPersistVariableSize, "SessionPersistDataOpque size should be SessionPersistBaseSize+SessionPersistVariableSize");
 
-#endif
+#endif // defined(__cplusplus)
 
 
 

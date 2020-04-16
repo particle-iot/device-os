@@ -19,15 +19,18 @@
 
 #pragma once
 
+#include "protocol_defs.h"
+#include "events.h"
+#include "message_channel.h"
+
+#include "spark_wiring_vector.h"
+
+#include <stdint.h>
+
 namespace particle
 {
 namespace protocol
 {
-
-#include "protocol_defs.h"
-#include "events.h"
-#include "message_channel.h"
-#include <stdint.h>
 
 class Subscriptions
 {
@@ -36,21 +39,26 @@ public:
 
 private:
 	FilteringEventHandler event_handlers[MAX_SUBSCRIPTIONS];
+	Vector<message_handle_t> subscription_msg_ids;
 
 protected:
 
 	ProtocolError send_subscription(MessageChannel& channel, const char* filter, const char* device_id, SubscriptionScope::Enum scope)
 	{
-	    size_t msglen;
-	    Message message;
-	    channel.create(message);
-        if (device_id)
-       	  msglen = subscription(message.buf(), 0, filter, device_id);
-        else
-          msglen = subscription(message.buf(), 0, filter, scope);
-        message.set_length(msglen);
-        ProtocolError result = channel.send(message);
-        return result;
+		size_t msglen;
+		Message message;
+		channel.create(message);
+		if (device_id) {
+			msglen = subscription(message.buf(), 0, filter, device_id);
+		} else {
+			msglen = subscription(message.buf(), 0, filter, scope);
+		}
+		message.set_length(msglen);
+		ProtocolError result = channel.send(message);
+		if (result == ProtocolError::NO_ERROR) {
+			subscription_msg_ids.append(message.get_id());
+		}
+		return result;
 	}
 
 	inline ProtocolError send_subscription(MessageChannel& channel, const FilteringEventHandler& handler)
@@ -314,6 +322,7 @@ public:
 
 	inline ProtocolError send_subscriptions(MessageChannel& channel)
 	{
+		subscription_msg_ids.clear();
 		ProtocolError result = for_each([&](const FilteringEventHandler& handler){return send_subscription(channel, handler);});
 		if (result==NO_ERROR) {
 			//
@@ -323,12 +332,19 @@ public:
 
 	inline ProtocolError send_subscription(MessageChannel& channel, const char* filter, const char* device_id)
 	{
+		subscription_msg_ids.clear();
 		return send_subscription(channel, filter, device_id, SubscriptionScope::MY_DEVICES);
 	}
 
 	inline ProtocolError send_subscription(MessageChannel& channel, const char* filter, SubscriptionScope::Enum scope)
 	{
+		subscription_msg_ids.clear();
 		return send_subscription(channel, filter, nullptr, scope);
+	}
+
+	const Vector<message_handle_t>& subscription_message_ids() const
+	{
+		return subscription_msg_ids;
 	}
 
 };
