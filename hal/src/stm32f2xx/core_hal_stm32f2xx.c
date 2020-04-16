@@ -1211,7 +1211,8 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
         }
 #endif // HAL_PLATFORM_CLOUD_UDP
         case FEATURE_LED_OVERRIDDEN: {
-            return Write_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, enabled, NULL);
+            // Inverted logic for this bit specifically
+            return Write_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, !enabled, NULL);
         }
     }
     return -1;
@@ -1248,7 +1249,11 @@ bool HAL_Feature_Get(HAL_Feature feature)
         }
         case FEATURE_LED_OVERRIDDEN: {
             bool value = false;
-            return (Read_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, &value) == 0) ? value : false;
+            if (Read_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, &value) == 0) {
+                // Inverted logic for this bit specifically
+                value = !value;
+            }
+            return value;
         }
     }
     return false;

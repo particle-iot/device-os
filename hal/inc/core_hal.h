@@ -247,12 +247,6 @@ typedef enum HAL_Feature {
     FEATURE_LED_OVERRIDDEN           // [read/write] override system RGB signaling on boot.
 } HAL_Feature;
 
-typedef enum Feature_Flag {
-    FEATURE_FLAG_RESET_INFO = 0x01,
-    FEATURE_FLAG_ETHERNET_DETECTION = 0x02,
-    FEATURE_FLAG_LED_OVERRIDDEN = 0x04,
-} Feature_Flag;
-
 int HAL_Feature_Set(HAL_Feature feature, bool enabled);
 bool HAL_Feature_Get(HAL_Feature feature);
 
