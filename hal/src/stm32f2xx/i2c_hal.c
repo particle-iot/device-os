@@ -237,6 +237,8 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config)
     if(i2c == HAL_I2C_INTERFACE1)
     {
         i2cMap[i2c] = &I2C_MAP[I2C1_D0_D1];
+        HAL_Pin_Mode(i2cMap[i2c]->I2C_SDA_Pin, INPUT);
+        HAL_Pin_Mode(i2cMap[i2c]->I2C_SCL_Pin, INPUT);
     }
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
     if(i2c == HAL_I2C_INTERFACE2 || i2c == HAL_I2C_INTERFACE1)
