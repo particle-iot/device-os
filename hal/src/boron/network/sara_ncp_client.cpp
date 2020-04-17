@@ -935,14 +935,15 @@ int SaraNcpClient::initReady() {
                 // Change the baudrate to 460800
                 // NOTE: ignoring AT errors just in case to accommodate for some revisions
                 // potentially not supporting anything other than 115200
-                int r = changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
-                if (r != SYSTEM_ERROR_AT_NOT_OK) {
-                    return r;
-                }
 
-                if (r == SYSTEM_ERROR_NONE) {
-                    // Make sure flow control is enabled as well
-                    CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
+                // FIXME: AT+IPR setting is persistent on SARA R4
+                // Still using 115200 for now to avoid bricking devices until we can figure out
+                // how to make the setting non persistent as we need to be backwards compatible
+                // with DeviceOS versions that only talk @ 115200 to SARA R4 modems.
+                // int r = changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
+                int r = changeBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
+                if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_AT_NOT_OK) {
+                    return r;
                 }
             }
         }
@@ -951,6 +952,10 @@ int SaraNcpClient::initReady() {
     // Check that the modem is responsive at the new baudrate
     skipAll(serial_.get(), 1000);
     CHECK(waitAtResponse(10000));
+
+    // Make sure flow control is enabled as well
+    // NOTE: this should work fine on SARA R4 firmware revisions that don't support it as well
+    CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
 
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
         // Set UMNOPROF = SIM_SELECT
