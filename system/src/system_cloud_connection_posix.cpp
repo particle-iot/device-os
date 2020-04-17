@@ -291,6 +291,7 @@ int system_cloud_send(const uint8_t* buf, size_t buflen, int flags)
     if (r < 0) {
         if (errno == ENOMEM) {
             /* Not an error */
+            LOG_DEBUG(WARN, "sock_send ENOMEM");
             r = 0;
         } else {
             LOG(ERROR, "sock_send returned %d %d", r, errno);
@@ -307,6 +308,9 @@ int system_cloud_recv(uint8_t* buf, size_t buflen, int flags)
     if (recvd < 0) {
         if (errno == EWOULDBLOCK || errno == EAGAIN || errno == ENOMEM) {
             /* Not an error */
+            if (errno == ENOMEM) {
+                LOG_DEBUG(WARN, "sock_recv ENOMEM");
+            }
             recvd = 0;
         } else {
             LOG(ERROR, "sock_recv returned %d %d", recvd, errno);
