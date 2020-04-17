@@ -1811,7 +1811,7 @@ int BleLocalDevice::advertise(const iBeacon& beacon) const {
     BleAdvertisingData* advData = new(std::nothrow) BleAdvertisingData(beacon);
     SCOPE_GUARD ({
         if (advData) {
-            free(advData);
+            delete advData;
         }
     });
     CHECK_TRUE(advData, SYSTEM_ERROR_NO_MEMORY);
