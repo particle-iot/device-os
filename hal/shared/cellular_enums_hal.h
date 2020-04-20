@@ -99,8 +99,8 @@ typedef enum {
     UBLOX_SARA_RAT_UTRAN_HSUPA       = 5,
     UBLOX_SARA_RAT_UTRAN_HSDPA_HSUPA = 6,
     UBLOX_SARA_RAT_LTE               = 7,
-    UBLOX_SARA_RAT_EC_GSM_IOT        = 8,
-    UBLOX_SARA_RAT_E_UTRAN           = 9
+    UBLOX_SARA_RAT_LTE_CAT_M1        = 8,
+    UBLOX_SARA_RAT_LTE_NB_IOT        = 9
 } UbloxSaraCellularAccessTechnology;
 //! Ublox UMNOPROF settings
 typedef enum {

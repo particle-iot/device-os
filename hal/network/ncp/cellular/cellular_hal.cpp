@@ -96,9 +96,9 @@ hal_net_access_tech_t fromCellularAccessTechnology(CellularAccessTechnology rat)
         return NET_ACCESS_TECHNOLOGY_UTRAN;
     case CellularAccessTechnology::LTE:
         return NET_ACCESS_TECHNOLOGY_LTE;
-    case CellularAccessTechnology::EC_GSM_IOT:
+    case CellularAccessTechnology::LTE_CAT_M1:
         return NET_ACCESS_TECHNOLOGY_LTE_CAT_M1;
-    case CellularAccessTechnology::E_UTRAN:
+    case CellularAccessTechnology::LTE_NB_IOT:
         return NET_ACCESS_TECHNOLOGY_LTE_CAT_NB1;
     default:
         return NET_ACCESS_TECHNOLOGY_UNKNOWN;
