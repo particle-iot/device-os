@@ -90,6 +90,8 @@ private:
 	bool fast_ota_override;
 	bool fast_ota_value;
 
+	system_tick_t update_begin_;
+
 protected:
 
 	unsigned chunk_bitmap_size()
@@ -118,7 +120,11 @@ protected:
 public:
 
 	ChunkedTransfer() :
-			updating(false), callbacks(nullptr), fast_ota_override(false), fast_ota_value(true)
+			updating(false),
+			callbacks(nullptr),
+			fast_ota_override(false),
+			fast_ota_value(true),
+			update_begin_(0)
 	{
 	}
 

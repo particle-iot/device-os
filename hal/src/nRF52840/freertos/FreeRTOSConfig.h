@@ -145,7 +145,7 @@ extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPe
 #define configUSE_CO_ROUTINES       0
 #define configMAX_CO_ROUTINE_PRIORITIES ( 2 )
 #define configUSE_TIMERS                (1)
-#define configTIMER_TASK_PRIORITY                   ( 2 )
+#define configTIMER_TASK_PRIORITY                   ( configMAX_PRIORITIES - 1 )
 #define configTIMER_QUEUE_LENGTH                    ( 5 )
 #define configTIMER_TASK_STACK_DEPTH                ( ( unsigned short ) (1024 / sizeof( portSTACK_TYPE )) )
 
@@ -164,6 +164,7 @@ to exclude the API function. */
 #define INCLUDE_vTaskDelay              1
 #define INCLUDE_eTaskGetState           1
 #define INCLUDE_xTaskGetIdleTaskHandle  1
+#define INCLUDE_xTimerPendFunctionCall  1
 
 /* The lowest interrupt priority that can be used in a call to a "set priority"
 function. */

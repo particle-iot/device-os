@@ -40,6 +40,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <lwip/memp.h>
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -85,7 +86,7 @@ inline system_tick_t millis() {
 }
 
 const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
-const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 115200;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -115,9 +116,10 @@ const auto ICCID_MAX_LENGTH = 20;
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
 using CidType = decltype(CellularGlobalIdentity::cell_id);
 
-} // namespace
+} // anonymous
 
-QuectelNcpClient::QuectelNcpClient() {}
+QuectelNcpClient::QuectelNcpClient() {
+}
 
 QuectelNcpClient::~QuectelNcpClient() {
     destroy();
@@ -394,14 +396,32 @@ int QuectelNcpClient::updateFirmware(InputStream* file, size_t size) {
 
 int QuectelNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     int err = muxer_.writeChannel(QUECTEL_NCP_PPP_CHANNEL, data, size);
+    if (err == gsm0710::GSM0710_ERROR_FLOW_CONTROL) {
+        LOG_DEBUG(WARN, "Remote side flow control");
+        // Not an error
+        err = 0;
+    }
 
     if (err) {
         // Make sure we are going into an error state if muxer for some reason fails
         // to write into the data channel.
+        LOG(ERROR, "Failed to write into data channel %d", err);
         disable();
     }
 
     return err;
+}
+
+int QuectelNcpClient::dataChannelFlowControl(bool state) {
+    CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    if (state && !inFlowControl_) {
+        inFlowControl_ = true;
+        muxer_.suspendChannel(QUECTEL_NCP_PPP_CHANNEL);
+    } else if (!state && inFlowControl_) {
+        inFlowControl_ = false;
+        muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL);
+    }
+    return 0;
 }
 
 void QuectelNcpClient::processEvents() {
@@ -838,15 +858,14 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
 
 int QuectelNcpClient::initReady() {
     // Enable flow control and change to runtime baudrate
-    auto runtimeBaudrate = QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE;
     uint32_t hwVersion = HW_VERSION_UNDEFINED;
     auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
     if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
         CHECK_PARSER_OK(parser_.execCommand("AT+IFC=0,0"));
     } else {
-        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
         CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
     }
+    auto runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
     CHECK(changeBaudRate(runtimeBaudrate));
     // Check that the modem is responsive at the new baudrate
     skipAll(serial_.get(), 1000);
@@ -902,7 +921,6 @@ int QuectelNcpClient::initReady() {
     muxer_.setMaxFrameSize(QUECTEL_NCP_MAX_MUXER_FRAME_SIZE);
     muxer_.setKeepAlivePeriod(QUECTEL_NCP_KEEPALIVE_PERIOD * 2);
     muxer_.setKeepAliveMaxMissed(QUECTEL_NCP_KEEPALIVE_MAX_MISSED);
-    muxer_.useMscAsKeepAlive(true);
     muxer_.setMaxRetransmissions(3);
     muxer_.setAckTimeout(2530);
     muxer_.setControlResponseTimeout(2540);
@@ -989,7 +1007,7 @@ int QuectelNcpClient::registerNet() {
     connectionState(NcpConnectionState::CONNECTING);
 
     // NOTE: up to 3 mins
-    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0"));
+    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0,2"));
     // Ignore response code here
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
@@ -1044,20 +1062,20 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
     connState_ = state;
 
     if (connState_ == NcpConnectionState::CONNECTED) {
-        // Open data channel
-        int r = muxer_.openChannel(QUECTEL_NCP_PPP_CHANNEL,
-                                   [](const uint8_t* data, size_t size, void* ctx) -> int {
-                                       auto self = (QuectelNcpClient*)ctx;
-                                       const auto handler = self->conf_.dataHandler();
-                                       if (handler) {
-                                           handler(0, data, size, self->conf_.dataHandlerData());
-                                       }
-                                       return SYSTEM_ERROR_NONE;
-                                   },
-                                   this);
+        inFlowControl_ = false;
+        // Open data channel and resume it just in case
+        int r = muxer_.openChannel(QUECTEL_NCP_PPP_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
+            auto self = (QuectelNcpClient*)ctx;
+            const auto handler = self->conf_.dataHandler();
+            if (handler) {
+                handler(0, data, size, self->conf_.dataHandlerData());
+            }
+            return SYSTEM_ERROR_NONE;
+        }, this);
         if (r) {
             connState_ = NcpConnectionState::DISCONNECTED;
         }
+        muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL);
     }
 
     const auto handler = conf_.eventHandler();

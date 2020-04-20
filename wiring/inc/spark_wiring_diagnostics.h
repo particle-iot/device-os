@@ -31,11 +31,11 @@
 
 #define PARTICLE_RETAINED_INTEGER_DIAGNOSTIC_DATA(_var, _id, _name, _val, ...) \
         PARTICLE_RETAINED ::particle::RetainedIntegerDiagnosticDataStorage _storage##_id; \
-        ::particle::PersistentIntegerDiagnosticData<decltype(_storage##_id), ##__VA_ARGS__> _var(_storage##_id, _id, _val);
+        ::particle::PersistentIntegerDiagnosticData<decltype(_storage##_id), ##__VA_ARGS__> _var(_storage##_id, _id, _name, _val);
 
 #define PARTICLE_RETAINED_ENUM_DIAGNOSTIC_DATA(_var, _id, _name, _val, ...) \
         PARTICLE_RETAINED ::particle::RetainedEnumDiagnosticDataStorage<decltype(_val)> _storage##_id; \
-        ::particle::PersistentEnumDiagnosticData<decltype(_val), decltype(_storage##_id), ##__VA_ARGS__> _var(_storage##_id, _id, _val);
+        ::particle::PersistentEnumDiagnosticData<decltype(_val), decltype(_storage##_id), ##__VA_ARGS__> _var(_storage##_id, _id, _name, _val);
 
 namespace particle {
 

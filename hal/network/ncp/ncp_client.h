@@ -55,7 +55,7 @@ struct NcpConnectionStateChangedEvent: NcpEvent {
 };
 
 typedef void(*NcpEventHandler)(const NcpEvent& event, void* data);
-typedef void(*NcpDataHandler)(int id, const uint8_t* data, size_t size, void* ctx);
+typedef int(*NcpDataHandler)(int id, const uint8_t* data, size_t size, void* ctx);
 
 class NcpClientConfig {
 public:
@@ -97,6 +97,7 @@ public:
     virtual int updateFirmware(InputStream* file, size_t size) = 0;
 
     virtual int dataChannelWrite(int id, const uint8_t* data, size_t size) = 0;
+    virtual int dataChannelFlowControl(bool state) = 0;
     virtual void processEvents() = 0;
 
     virtual AtParser* atParser();

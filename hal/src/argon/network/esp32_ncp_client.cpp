@@ -321,18 +321,20 @@ int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecur
     CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK(checkParser());
 
-    // Open data channel
+    // Open data channel and resume it just in case
+    inFlowControl_ = false;
     int r = muxer_.openChannel(ESP32_NCP_STA_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
         auto self = (Esp32NcpClient*)ctx;
         const auto handler = self->conf_.dataHandler();
         if (handler) {
             handler(0, data, size, self->conf_.dataHandlerData());
         }
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }, this);
     // We are running an older NCP firmware without muxer support, ignore error here
     CHECK_TRUE(r == 0 || (r == gsm0710::GSM0710_ERROR_INVALID_STATE && muxerNotStarted_),
             SYSTEM_ERROR_UNKNOWN);
+    muxer_.resumeChannel(ESP32_NCP_STA_CHANNEL);
 
     auto cmd = parser_.command();
     char escSsid[MAX_SSID_SIZE * 2 + 1] = {}; // Escaped SSID
@@ -531,13 +533,11 @@ int Esp32NcpClient::initMuxer() {
     // Initialize muxer
     muxer_.setStream(serial_.get());
     muxer_.setMaxFrameSize(ESP32_NCP_MAX_MUXER_FRAME_SIZE);
-    muxer_.setKeepAlivePeriod(ESP32_NCP_KEEPALIVE_PERIOD);
+    muxer_.setKeepAlivePeriod(ESP32_NCP_KEEPALIVE_PERIOD * 2);
     muxer_.setKeepAliveMaxMissed(ESP32_NCP_KEEPALIVE_MAX_MISSED);
-
-    // XXX: we might need to adjust these:
-    muxer_.setMaxRetransmissions(10);
-    muxer_.setAckTimeout(100);
-    muxer_.setControlResponseTimeout(500);
+    muxer_.setMaxRetransmissions(3);
+    muxer_.setAckTimeout(2530);
+    muxer_.setControlResponseTimeout(2540);
 
     // Set channel state handler
     muxer_.setChannelStateHandler(muxChannelStateCb, this);
@@ -655,13 +655,33 @@ int Esp32NcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
+    if (err == gsm0710::GSM0710_ERROR_FLOW_CONTROL) {
+        // Not an error
+        LOG_DEBUG(WARN, "Remote side flow control");
+        err = 0;
+    }
+
     if (err) {
         // Make sure we are going into an error state if muxer for some reason fails
         // to write into the data channel.
+        LOG(ERROR, "Failed to write into data channel %d", err);
         disable();
     }
 
     return err;
+}
+
+int Esp32NcpClient::dataChannelFlowControl(bool state) {
+    // FIXME: only STA channel
+    CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    if (state && !inFlowControl_) {
+        inFlowControl_ = true;
+        muxer_.suspendChannel(ESP32_NCP_STA_CHANNEL);
+    } else if (!state && inFlowControl_) {
+        inFlowControl_ = false;
+        muxer_.resumeChannel(ESP32_NCP_STA_CHANNEL);
+    }
+    return 0;
 }
 
 } // particle

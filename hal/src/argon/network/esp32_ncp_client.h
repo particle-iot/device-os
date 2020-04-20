@@ -25,6 +25,7 @@
 #include "static_recursive_mutex.h"
 #include "gsm0710muxer/muxer.h"
 #include "gsm0710muxer/channel_stream.h"
+#include "serial_stream.h"
 
 namespace particle {
 
@@ -49,6 +50,7 @@ public:
     int getFirmwareModuleVersion(uint16_t* ver) override;
     int updateFirmware(InputStream* file, size_t size) override;
     int dataChannelWrite(int id, const uint8_t* data, size_t size) override;
+    int dataChannelFlowControl(bool state) override;
     void processEvents() override;
     AtParser* atParser() override;
     void lock() override;
@@ -71,9 +73,10 @@ private:
     volatile NcpConnectionState connState_;
     int parserError_;
     bool ready_;
-    gsm0710::Muxer<particle::Stream, StaticRecursiveMutex> muxer_;
+    gsm0710::Muxer<particle::SerialStream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
     bool muxerNotStarted_;
+    volatile bool inFlowControl_ = false;
 
     int initParser(Stream* stream);
     int checkParser();

@@ -113,6 +113,8 @@ ProtocolError ChunkedTransfer::handle_update_begin(
             if (error) {
                 LOG(ERROR, "Error sending UpdateReady");
             }
+            // FIXME: this is not entirely accurate, set on first chunk perhaps?
+            update_begin_ = callbacks->millis();
         }
     }
     return error;
@@ -288,7 +290,8 @@ ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& messag
 
     if (!missing)
     {
-        LOG(INFO, "Update done");
+        auto duration = (callbacks->millis() - update_begin_) / 1000;
+        LOG(INFO, "Update done in %us; avg rate %u B/s", duration, file.file_length / duration);
         reset_updating();
         callbacks->finish_firmware_update(file, UpdateFlag::SUCCESS, NULL);
     }

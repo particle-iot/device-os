@@ -41,10 +41,10 @@ LOG_SOURCE_CATEGORY("net.esp32ncp")
 #include "concurrent_hal.h"
 #include "deviceid_hal.h"
 #include "bytes2hexbuf.h"
-
 #include "platform_config.h"
-
 #include "check.h"
+#include <lwip/stats.h>
+#include "memp_hook.h"
 
 namespace {
 
@@ -84,6 +84,7 @@ Esp32NcpNetif::~Esp32NcpNetif() {
 
 void Esp32NcpNetif::init() {
     registerHandlers();
+    SPARK_ASSERT(lwip_memp_event_handler_add(mempEventHandler, MEMP_PBUF_POOL, this) == 0);
     SPARK_ASSERT(os_thread_create(&thread_, "esp32ncp", OS_THREAD_PRIORITY_NETWORK, &Esp32NcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
 }
 
@@ -258,7 +259,7 @@ void Esp32NcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
     }
 }
 
-void Esp32NcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx) {
+int Esp32NcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx) {
     Esp32NcpNetif* self = static_cast<Esp32NcpNetif*>(ctx);
     size_t pktSize = size;
 #if ETH_PAD_SIZE
@@ -267,6 +268,7 @@ void Esp32NcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, v
 #endif /* ETH_PAD_SIZE */
 
     pbuf* p = pbuf_alloc(PBUF_RAW, pktSize, PBUF_POOL);
+    err_t err = ERR_OK;
     if (p != nullptr) {
 #if ETH_PAD_SIZE
         /* drop the padding word */
@@ -279,11 +281,25 @@ void Esp32NcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, v
 #endif /* ETH_PAD_SIZE */
 
         LwipTcpIpCoreLock lk;
-        if (self->interface()->input(p, self->interface()) != ERR_OK) {
-            LOG(ERROR, "Error inputing packet");
+        err = self->interface()->input(p, self->interface());
+        if (err != ERR_OK) {
+            LOG_DEBUG(WARN, "Error inputing packet %d", err);
             pbuf_free(p);
         }
     }
+
+    int poolAvail = MEMP_STATS_GET(avail, MEMP_PBUF_POOL) - MEMP_STATS_GET(used, MEMP_PBUF_POOL);
+
+    if (!p || err == ERR_MEM || poolAvail <= HAL_PLATFORM_PACKET_BUFFER_FLOW_CONTROL_THRESHOLD) {
+        self->wifiMan_->ncpClient()->dataChannelFlowControl(true);
+#ifdef DEBUG_BUILD
+        if (!p || err == ERR_MEM) {
+            LOG_DEBUG(WARN, "May have dropped %u bytes", size);
+        }
+#endif // DEBUG_BUILD
+    }
+
+    return 0;
 }
 
 int Esp32NcpNetif::downImpl() {
@@ -341,4 +357,11 @@ void Esp32NcpNetif::ifEventHandler(const if_event* ev) {
 
 void Esp32NcpNetif::netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
     /* Nothing to do here */
+}
+
+void Esp32NcpNetif::mempEventHandler(memp_t type, unsigned available, unsigned size, void* ctx) {
+    Esp32NcpNetif* self = static_cast<Esp32NcpNetif*>(ctx);
+    if (available > HAL_PLATFORM_PACKET_BUFFER_FLOW_CONTROL_THRESHOLD) {
+        self->wifiMan_->ncpClient()->dataChannelFlowControl(false);
+    }
 }

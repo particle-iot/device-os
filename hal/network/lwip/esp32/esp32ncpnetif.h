@@ -42,7 +42,7 @@ public:
     virtual int powerUp() override;
     virtual int powerDown() override;
 
-    static void ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx);
+    static int ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx);
     static void ncpEventHandlerCb(const NcpEvent& ev, void* ctx);
 
 protected:
@@ -67,6 +67,8 @@ private:
     /* LwIP netif linkoutput callback */
     static err_t linkOutputCb(netif* netif, pbuf* p);
     err_t linkOutput(pbuf* p);
+
+    static void mempEventHandler(memp_t type, unsigned available, unsigned size, void* ctx);
 
 private:
     os_thread_t thread_ = nullptr;

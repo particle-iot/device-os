@@ -401,7 +401,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
         if (file.store==FileTransfer::Store::FIRMWARE)
         {
             hal_update_complete_t result = HAL_FLASH_End(module ? (hal_module_t*)module : &mod);
-            system_notify_event(firmware_update, result<=HAL_UPDATE_ERROR ? firmware_update_complete : firmware_update_failed, &file);
+            system_notify_event(firmware_update, result<=HAL_UPDATE_ERROR ? firmware_update_failed : firmware_update_complete, &file);
             res = (result <= HAL_UPDATE_ERROR);
 
             // always restart for now

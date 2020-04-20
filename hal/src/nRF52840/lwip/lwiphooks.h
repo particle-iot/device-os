@@ -42,6 +42,8 @@ int lwip_hook_ip6_forward_post_routing(struct pbuf* p, struct ip6_hdr* ip6hdr, s
 struct netif* lwip_hook_ip6_route(const ip6_addr_t* src, const ip6_addr_t* dst);
 #endif /* LWIP_IPV6 */
 
+void lwip_hook_memp_free(memp_t type, unsigned available, unsigned size);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
@@ -311,7 +313,16 @@ struct netif* lwip_hook_ip6_route(const ip6_addr_t* src, const ip6_addr_t* dst);
  *   void my_hook(memp_t type);
  * \endcode
  */
-// #define LWIP_HOOK_MEMP_AVAILABLE(memp_t_type)
+// #define LWIP_HOOK_MEMP_AVAILABLE(memp_t_type) lwip_hook_memp_available(memp_t_type)
+
+/**
+ * LWIP_HOOK_MEMP_FREE(memp_t_type):
+ * Called from memp_free() when memp_free is called
+ * Signature:\code{.c}
+ *   void my_hook(memp_t type, unsigned avail, unsigned size);
+ * \endcode
+ */
+#define LWIP_HOOK_MEMP_FREE(memp_t_type, avail, size) lwip_hook_memp_free(memp_t_type, avail, size)
 
 /**
  * LWIP_HOOK_UNKNOWN_ETH_PROTOCOL(pbuf, netif):
