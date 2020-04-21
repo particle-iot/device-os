@@ -162,6 +162,14 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
             bool hybrid_module_found = false;
 #endif
             for (unsigned i=0; i<count; i++) {
+                const auto module_func = module_bounds[i]->module_function;
+                if (module_func == MODULE_FUNCTION_NCP_FIRMWARE || module_func == MODULE_FUNCTION_RADIO_STACK) {
+                    const auto module = info->modules + i;
+                    memset(module, 0, sizeof(hal_module_t));
+                    module->bounds = *module_bounds[i];
+                    // These modules will be fetched in HAL_OTA_Add_System_Info()
+                    continue;
+                }
                 fetch_module(info->modules+i, module_bounds[i], false, MODULE_VALIDATION_INTEGRITY);
 #if defined(HYBRID_BUILD)
 #ifndef MODULAR_FIRMWARE

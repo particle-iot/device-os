@@ -118,6 +118,8 @@ int platform_ncp_fetch_module_info(hal_system_info_t* sys_info, bool create) {
                 info->module_function = MODULE_FUNCTION_NCP_FIRMWARE;
 
                 // assume all checks pass since it was validated when being flashed to the NCP
+                module->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES |
+                        MODULE_VALIDATION_PLATFORM | MODULE_VALIDATION_INTEGRITY;
                 module->validity_result = module->validity_checked;
 
                 // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change

@@ -38,6 +38,8 @@ int platform_radio_stack_fetch_module_info(hal_system_info_t* sys_info, bool cre
             info->module_function = MODULE_FUNCTION_RADIO_STACK;
 
             // FIXME: assuming that all checks passed for now
+            module->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES |
+                    MODULE_VALIDATION_PLATFORM | MODULE_VALIDATION_INTEGRITY;
             module->validity_result = module->validity_checked;
 
             // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change
