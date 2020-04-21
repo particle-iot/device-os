@@ -182,7 +182,6 @@ static void twim_handler(nrfx_twim_evt_t const * p_event, void * p_context) {
             m_i2c_map[inst_num].transfer_state = TRANSFER_STATE_ERROR_ADDRESS;
             break;
         }
-            break;
         case NRFX_TWIM_EVT_DATA_NACK: {
             LOG_DEBUG(TRACE, "NRFX_TWIM_EVT_DATA_NACK");
             m_i2c_map[inst_num].transfer_state = TRANSFER_STATE_ERROR_DATA;
@@ -391,19 +390,20 @@ int32_t HAL_I2C_Request_Data_Ex(HAL_I2C_Interface i2c, const HAL_I2C_Transmissio
         // FIXME: There is a bug in nrfx_twim driver, if we call nrfx_twim_rx repeatedly and quickly,
         // p_cb->busy will be set and never cleared, in this case nrfx_twim_rx always returns busy error
         LOG_DEBUG(TRACE, "BUSY ERROR, restore twi.");
-        twi_uninit(i2c);
-        twi_init(i2c);
+        HAL_I2C_Reset(i2c, 0, nullptr);
         quantity = 0;
         goto ret;
     }
 
     if (!WAIT_TIMED(config->timeout_ms, m_i2c_map[i2c].transfer_state == TRANSFER_STATE_BUSY)) {
+        HAL_I2C_Reset(i2c, 0, nullptr);
         quantity = 0;
         goto ret;
     }
 
     if (m_i2c_map[i2c].transfer_state != TRANSFER_STATE_IDLE) {
         // Get into error state
+        HAL_I2C_Reset(i2c, 0, nullptr);
         quantity = 0;
         goto ret;
     }
@@ -439,16 +439,19 @@ uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* rese
     err_code = nrfx_twim_tx(m_i2c_map[i2c].master, m_i2c_map[i2c].address, (uint8_t *)m_i2c_map[i2c].tx_buf,
                                     m_i2c_map[i2c].tx_index_tail, !stop);
     if (err_code) {
+        HAL_I2C_Reset(i2c, 0, nullptr);
         ret_code = 1;
         goto ret;
     }
 
     if (!WAIT_TIMED(m_i2c_map[i2c].transfer_config.timeout_ms, m_i2c_map[i2c].transfer_state == TRANSFER_STATE_BUSY)) {
+        HAL_I2C_Reset(i2c, 0, nullptr);
         ret_code = 2;
         goto ret;
     }
 
     if (m_i2c_map[i2c].transfer_state != TRANSFER_STATE_IDLE) {
+        HAL_I2C_Reset(i2c, 0, nullptr);
         ret_code = 3;
         goto ret;
     }
