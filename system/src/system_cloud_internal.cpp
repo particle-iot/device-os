@@ -747,7 +747,7 @@ int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescript
     return 0;
 }
 
-int formatOtaUpdateStatusEventData(uint32_t flags, int result, hal_module_t* module, uint8_t *buf, size_t size)
+int formatOtaUpdateStatusEventData(uint32_t flags, int result, const hal_module_t* module, uint8_t *buf, size_t size)
 {
     int res = 1;
     memset(buf, 0, size);

@@ -66,6 +66,7 @@ typedef struct {
     const module_info_suffix_t* suffix;
     uint16_t validity_checked;    // the flags that were checked
     uint16_t validity_result;     // the result of the checks
+    uint32_t module_info_offset;  // offset of the module info
 } hal_module_t;
 
 typedef struct key_value {

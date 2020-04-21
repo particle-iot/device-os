@@ -23,6 +23,14 @@
 #include "flash_mal.h"
 #include "ota_module.h"
 
+namespace {
+
+const module_info_t* get_module_info(const module_bounds_t* bounds, uint32_t* offset = nullptr) {
+    return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address, offset);
+}
+
+} // namespace
+
 /**
  * Determines if a given address is in range.
  * @param test      The address to test
@@ -43,7 +51,7 @@ inline bool in_range(uint32_t test, uint32_t start, uint32_t end)
  * @return
  */
 const module_info_t* locate_module(const module_bounds_t* bounds) {
-    return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address, nullptr);
+    return get_module_info(bounds);
 }
 
 
@@ -59,7 +67,7 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
     memset(target, 0, sizeof(*target));
 
     target->bounds = *bounds;
-    if (NULL!=(target->info = locate_module(bounds)))
+    if (NULL!=(target->info = get_module_info(bounds, &target->module_info_offset)))
     {
         target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
         target->validity_result = 0;

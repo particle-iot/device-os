@@ -140,6 +140,7 @@ int platform_ncp_fetch_module_info(hal_system_info_t* sys_info, bool create) {
 
                 module->info = info;
                 module->suffix = suffix;
+                module->module_info_offset = 0;
             }
             else {
                 delete module->info;

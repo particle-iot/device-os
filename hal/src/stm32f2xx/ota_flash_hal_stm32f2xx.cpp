@@ -48,7 +48,7 @@
 #define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
 #define BOOTLOADER_RANDOM_BACKOFF_MAX  (1000)
 
-static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t moduleLength);
+static hal_update_complete_t flash_bootloader(const hal_module_t* mod, uint32_t moduleLength);
 
 /**
  * Finds the location where a given module is stored. The module is identified
@@ -250,7 +250,7 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return FLASH_Update(pBuffer, address, length);
 }
 
-static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t moduleLength)
+static hal_update_complete_t flash_bootloader(const hal_module_t* mod, uint32_t moduleLength)
 {
     hal_update_complete_t result = HAL_UPDATE_ERROR;
     uint32_t attempt = 0;

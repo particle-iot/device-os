@@ -56,6 +56,7 @@ int platform_radio_stack_fetch_module_info(hal_system_info_t* sys_info, bool cre
 
             module->info = info;
             module->suffix = suffix;
+            module->module_info_offset = 0;
         } else {
             delete module->info;
             delete ((module_info_suffix_t*)module->suffix);

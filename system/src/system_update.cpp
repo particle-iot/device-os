@@ -692,13 +692,13 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
     return result;
 }
 
-bool ota_update_info(appender_fn append, void* append_data, void* mod, bool full, void* reserved)
+bool ota_update_info(appender_fn append, void* append_data, const void* mod, bool full, void* reserved)
 {
     bool result = true;
     AppendJson json(append, append_data);
     //result &= json.write('{');
     result &= json.write_attribute("u");
-    result &= module_info_to_json(append, append_data, (hal_module_t*)mod, MODULE_INFO_JSON_INCLUDE_PLATFORM_ID);
+    result &= module_info_to_json(append, append_data, (const hal_module_t*)mod, MODULE_INFO_JSON_INCLUDE_PLATFORM_ID);
     if (full) {
         result &= json.write(",");
         result &= json.write_attribute("s");
