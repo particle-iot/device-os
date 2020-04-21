@@ -222,15 +222,17 @@ void spark_process(void)
 {
 	// application thread will pump application messages
 #if PLATFORM_THREADING
-    if (system_thread_get_state(NULL) && APPLICATION_THREAD_CURRENT())
-    {
-        ApplicationThread.process();
-        return;
+    if (APPLICATION_THREAD_CURRENT()) {
+        if (system_thread_get_state(NULL)) {
+            ApplicationThread.process();
+        } else {
+            Spark_Idle_Events(true);
+        }
     }
-#endif // PLATFORM_THREADING
-
+#else
     // run the background processing loop, and specifically also pump cloud events
     Spark_Idle_Events(true);
+#endif // PLATFORM_THREADING
 }
 
 String spark_deviceID(void)
