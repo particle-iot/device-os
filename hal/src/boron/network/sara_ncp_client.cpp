@@ -40,6 +40,7 @@
 #include <algorithm>
 #include <limits>
 #include <lwip/memp.h>
+#include "enumclass.h"
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -270,8 +271,8 @@ int SaraNcpClient::initParser(Stream* stream) {
             auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
             switch (rat) {
                 case CellularAccessTechnology::LTE:
-                case CellularAccessTechnology::EC_GSM_IOT:
-                case CellularAccessTechnology::E_UTRAN: {
+                case CellularAccessTechnology::LTE_CAT_M1:
+                case CellularAccessTechnology::LTE_NB_IOT: {
                     self->cgi_.location_area_code = static_cast<LacType>(val[1]);
                     self->cgi_.cell_id = static_cast<CidType>(val[2]);
                     break;
@@ -494,6 +495,12 @@ int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
     cgi_.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
     cgi_.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
 
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+        if (act == particle::to_underlying(CellularAccessTechnology::LTE)) {
+            act = particle::to_underlying(CellularAccessTechnology::LTE_CAT_M1);
+        }
+    }
+
     switch (static_cast<CellularAccessTechnology>(act)) {
         case CellularAccessTechnology::NONE:
         case CellularAccessTechnology::GSM:
@@ -504,8 +511,8 @@ int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
         case CellularAccessTechnology::UTRAN_HSUPA:
         case CellularAccessTechnology::UTRAN_HSDPA_HSUPA:
         case CellularAccessTechnology::LTE:
-        case CellularAccessTechnology::EC_GSM_IOT:
-        case CellularAccessTechnology::E_UTRAN: {
+        case CellularAccessTechnology::LTE_CAT_M1:
+        case CellularAccessTechnology::LTE_NB_IOT: {
             break;
         }
         default: {

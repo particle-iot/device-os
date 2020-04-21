@@ -75,8 +75,8 @@ enum class CellularAccessTechnology {
     UTRAN_HSUPA = 5,
     UTRAN_HSDPA_HSUPA = 6,
     LTE = 7,
-    EC_GSM_IOT = 8,
-    E_UTRAN = 9
+    LTE_CAT_M1 = 8,
+    LTE_NB_IOT = 9
 };
 
 enum class CellularStrengthUnits {
@@ -187,8 +187,8 @@ inline CellularStrengthUnits CellularSignalQuality::strengthUnits() const {
             return CellularStrengthUnits::RSCP;
         }
         case CellularAccessTechnology::LTE:
-        case CellularAccessTechnology::EC_GSM_IOT:
-        case CellularAccessTechnology::E_UTRAN: {
+        case CellularAccessTechnology::LTE_CAT_M1:
+        case CellularAccessTechnology::LTE_NB_IOT: {
             return CellularStrengthUnits::RSRP;
         }
         default: {
@@ -228,8 +228,8 @@ inline CellularQualityUnits CellularSignalQuality::qualityUnits() const {
             return CellularQualityUnits::ECN0;
         }
         case CellularAccessTechnology::LTE:
-        case CellularAccessTechnology::EC_GSM_IOT:
-        case CellularAccessTechnology::E_UTRAN: {
+        case CellularAccessTechnology::LTE_CAT_M1:
+        case CellularAccessTechnology::LTE_NB_IOT: {
             return CellularQualityUnits::RSRQ;
         }
         default: {

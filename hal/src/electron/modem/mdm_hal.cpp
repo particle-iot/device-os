@@ -147,9 +147,9 @@ AcT toCellularAccessTechnology(int rat) {
             return ACT_UTRAN;
         case UBLOX_SARA_RAT_LTE:
             return ACT_LTE;
-        case UBLOX_SARA_RAT_EC_GSM_IOT:
+        case UBLOX_SARA_RAT_LTE_CAT_M1:
             return ACT_LTE_CAT_M1;
-        case UBLOX_SARA_RAT_E_UTRAN:
+        case UBLOX_SARA_RAT_LTE_NB_IOT:
             return ACT_LTE_CAT_NB1;
         default:
             return ACT_UNKNOWN;
@@ -1484,6 +1484,12 @@ bool MDMParser::getSignalStrength(NetStatus &status)
         // RSSI() API's have a RAT for conversion lookup purposes.
         if (_dev.dev == DEV_SARA_G350) {
             _net.act = ACT_GSM;
+        }
+
+        // R410M modems report AcT as LTE and LTE-M1 when connecting
+        // on LTE-M1. If AcT is reported as LTE, change it to report LTE-M1
+        if (_dev.dev == DEV_SARA_R410 && _net.act == ACT_LTE) {
+            _net.act = ACT_LTE_CAT_M1;
         }
 
         // AT command used to collect signal stregnth is different for R410M radio

@@ -284,8 +284,8 @@ int QuectelNcpClient::initParser(Stream* stream) {
             auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
             switch (rat) {
                 case CellularAccessTechnology::LTE:
-                case CellularAccessTechnology::EC_GSM_IOT:
-                case CellularAccessTechnology::E_UTRAN: {
+                case CellularAccessTechnology::LTE_CAT_M1:
+                case CellularAccessTechnology::LTE_NB_IOT: {
                     self->cgi_.location_area_code = static_cast<LacType>(val[1]);
                     self->cgi_.cell_id = static_cast<CidType>(val[2]);
                     break;
@@ -523,8 +523,8 @@ int QuectelNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
         case CellularAccessTechnology::UTRAN_HSUPA:
         case CellularAccessTechnology::UTRAN_HSDPA_HSUPA:
         case CellularAccessTechnology::LTE:
-        case CellularAccessTechnology::EC_GSM_IOT:
-        case CellularAccessTechnology::E_UTRAN: {
+        case CellularAccessTechnology::LTE_CAT_M1:
+        case CellularAccessTechnology::LTE_NB_IOT: {
             break;
         }
         default: {
@@ -595,8 +595,8 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         {"WCDMA", CellularAccessTechnology::UTRAN},
         {"TDSCDMA", CellularAccessTechnology::UTRAN},
         {"LTE", CellularAccessTechnology::LTE},
-        {"CAT-M1", CellularAccessTechnology::EC_GSM_IOT},
-        {"CAT-NB1", CellularAccessTechnology::E_UTRAN}
+        {"CAT-M1", CellularAccessTechnology::LTE_CAT_M1},
+        {"CAT-NB1", CellularAccessTechnology::LTE_NB_IOT}
     };
 
     int vals[5] = {};
@@ -652,8 +652,8 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
                     break;
                 }
                 case CellularAccessTechnology::LTE:
-                case CellularAccessTechnology::EC_GSM_IOT:
-                case CellularAccessTechnology::E_UTRAN: {
+                case CellularAccessTechnology::LTE_CAT_M1:
+                case CellularAccessTechnology::LTE_NB_IOT: {
                     if (qcsqVals >= 5) {
                         const int min_rsrq_mul_by_100 = -1950;
                         const int max_rsrq_mul_by_100 = -300;
