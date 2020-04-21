@@ -29,11 +29,6 @@ extern "C" {
  */
 int platform_radio_stack_fetch_module_info(hal_system_info_t* sys_info, bool create);
 
-/**
- * Update the radio stack from the given module. The module has been validated for integrity and matching platform and dependencies checked.
- */
-hal_update_complete_t platform_radio_stack_update_module(const hal_module_t* module);
-
 #ifdef __cplusplus
 }
 #endif // __cplusplus

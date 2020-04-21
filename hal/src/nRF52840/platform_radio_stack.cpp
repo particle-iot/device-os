@@ -68,24 +68,3 @@ int platform_radio_stack_fetch_module_info(hal_system_info_t* sys_info, bool cre
     }
     return 0;
 }
-
-hal_update_complete_t platform_radio_stack_update_module(const hal_module_t* module) {
-    // We are using the standard update mechanism here, but instruct the module will also instruct the bootloader
-    // (via MODULE_INFO_FLAG_DROP_MODULE_INFO) to strip out the module header when copying from OTA into its rightful place.
-    //
-    // NOTE: MODULE_INFO_FLAG_DROP_MODULE_INFO is a new feature, which might not be supported by the bootloader currently
-    // on the device, however we won't even attempt to update in this case, because SoftDevice modules we generate
-    // have a dependency on a particular bootloader version.
-
-    // Just in case check that MODULE_INFO_FLAG_DROP_MODULE_INFO is present
-    CHECK_TRUE(module->info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO, HAL_UPDATE_ERROR);
-
-    auto r = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS, // source
-            FLASH_INTERNAL, (uint32_t)(module->info->module_start_address), // destination
-            module_length(module->info) + 4, // + 4 to copy the CRC too
-            module_function(module->info),
-            (MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION));
-
-    CHECK_TRUE(r, HAL_UPDATE_ERROR);
-    return HAL_UPDATE_APPLIED_PENDING_RESTART;
-}

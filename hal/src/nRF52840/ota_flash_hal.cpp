@@ -401,69 +401,79 @@ int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_vali
     return (int)!module_fetched;
 }
 
-hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
+hal_update_complete_t HAL_FLASH_End(hal_module_t* moduleOut)
 {
-    hal_module_t module;
+    hal_module_t module = {};
+    int r = HAL_FLASH_OTA_Validate(&module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY |
+            MODULE_VALIDATION_DEPENDENCIES_FULL), nullptr);
+    if (r != 0) {
+        LOG(ERROR, "Unable to validate module");
+        return HAL_UPDATE_ERROR;
+    }
+    if (module.validity_checked != module.validity_result) {
+        LOG(ERROR, "Module validation failed; checked: 0x%x; result: 0x%x", (unsigned)module.validity_checked,
+                (unsigned)module.validity_result);
+        return HAL_UPDATE_ERROR;
+    }
+    const bool dropModuleInfo = (module.info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO);
+    if (dropModuleInfo && module.module_info_offset > 0) {
+        LOG(ERROR, "Unable to apply a module that has a vector table and DROP_MODULE_INFO flag set");
+        return HAL_UPDATE_ERROR;
+    }
+    const auto moduleFunc = module_function(module.info);
+    const bool compressed = (module.info->flags & MODULE_INFO_FLAG_COMPRESSED);
+    if (compressed && moduleFunc != MODULE_FUNCTION_USER_PART && moduleFunc != MODULE_FUNCTION_SYSTEM_PART) {
+        LOG(ERROR, "Unsupported compressed module"); // TODO
+        return HAL_UPDATE_ERROR;
+    }
+    const auto moduleSize = module_length(module.info);
     hal_update_complete_t result = HAL_UPDATE_ERROR;
-
-    bool module_fetched = !HAL_FLASH_OTA_Validate(&module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
-    LOG(INFO, "module fetched %d, checks=%x, result=%x", module_fetched, module.validity_checked, module.validity_result);
-    if (module_fetched && (module.validity_checked==module.validity_result))
-    {
-        module_function_t function = module_function(module.info);
-        const bool compressed = (module.info->flags & MODULE_INFO_FLAG_COMPRESSED);
-        // TODO: Compression is only supported for user and system part modules
-        if (!compressed || function == MODULE_FUNCTION_SYSTEM_PART || function == MODULE_FUNCTION_USER_PART)
-        {
-            uint8_t mcu_identifier = module_mcu_target(module.info);
-            uint8_t current_mcu_identifier = platform_current_ncp_identifier();
-            if (mcu_identifier==HAL_PLATFORM_MCU_DEFAULT) {
-                uint32_t moduleLength = module_length(module.info);
-                // bootloader is copied directly
-
-                if (function==MODULE_FUNCTION_BOOTLOADER) {
-                    result = flash_bootloader(&module, moduleLength);
-                }
-                else if (function == MODULE_FUNCTION_RADIO_STACK) {
-                    result = platform_radio_stack_update_module(&module);
-                }
-                else {
-                    uint8_t slot_flags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
-                    if (compressed) {
-                        slot_flags |= MODULE_COMPRESSED;
-                    }
-                    if (FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS, FLASH_INTERNAL,
-                            (uint32_t)module.info->module_start_address, moduleLength + 4 /* +4 to copy the CRC too */,
-                            function, slot_flags)) {
-                        result = HAL_UPDATE_APPLIED_PENDING_RESTART;
-                        DEBUG("OTA module applied - device will restart");
-                        FLASH_End();
-                    }
-                }
-            }
-            else if (mcu_identifier==current_mcu_identifier) {
+    if (moduleFunc == MODULE_FUNCTION_NCP_FIRMWARE) {
 #if HAL_PLATFORM_NCP_UPDATABLE
-                result = platform_ncp_update_module(&module);
+        const auto moduleNcp = module_mcu_target(module.info);
+        const auto currentNcp = platform_current_ncp_identifier();
+        if (moduleNcp != currentNcp) {
+            LOG(ERROR, "NCP module is not for this platform; module NCP: 0x%x; current NCP: 0x%x",
+                    (unsigned)moduleNcp, (unsigned)currentNcp);
+            return HAL_UPDATE_ERROR;
+        }
+        result = platform_ncp_update_module(&module);
+        if (result <= HAL_UPDATE_ERROR) {
+            LOG(ERROR, "Unable to update NCP firmware");
+            return result;
+        }
 #else
-                LOG(ERROR, "NCP module is not updatable on this platform");
-#endif
-            }
-            else {
-                LOG(ERROR, "NCP module is not for this platform. module NCP: %x, current NCP: %x", mcu_identifier, current_mcu_identifier);
-            }
+        LOG(ERROR, "NCP module is not updatable on this platform");
+        return HAL_UPDATE_ERROR;
+#endif // !HAL_PLATFORM_NCP_UPDATABLE
+    } else if (moduleFunc == MODULE_FUNCTION_BOOTLOADER) {
+        result = flash_bootloader(&module, moduleSize);
+        if (result <= HAL_UPDATE_ERROR) {
+            LOG(ERROR, "Unable to update bootloader");
+            return result;
         }
-        else
-        {
-            LOG(ERROR, "Unsupported compressed module");
+    } else { // User part, system part or a radio stack module
+        uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
+        if (dropModuleInfo) {
+            slotFlags |= MODULE_DROP_MODULE_INFO;
         }
+        if (compressed) {
+            slotFlags |= MODULE_COMPRESSED;
+        }
+        const bool ok = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS, FLASH_INTERNAL,
+                (uint32_t)module.info->module_start_address, moduleSize + 4 /* CRC-32 */, moduleFunc, slotFlags);
+        if (!ok) {
+            LOG(ERROR, "No module slot available");
+            return HAL_UPDATE_ERROR;
+        }
+        FLASH_End();
+        result = HAL_UPDATE_APPLIED_PENDING_RESTART;
     }
-    else
-    {
-        WARN("OTA module not applied");
-    }
-    if (mod)
-    {
-        memcpy(mod, &module, sizeof(hal_module_t));
+    if (result > HAL_UPDATE_ERROR) {
+        if (moduleOut) {
+            memcpy(moduleOut, &module, sizeof(hal_module_t));
+        }
+        LOG(INFO, "Module has been applied successfully");
     }
     return result;
 }

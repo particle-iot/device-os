@@ -137,6 +137,7 @@ bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved);
 int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved);
 
 typedef enum {
+    // Add new error codes here
     HAL_UPDATE_ERROR,
     HAL_UPDATE_APPLIED_PENDING_RESTART,
     HAL_UPDATE_APPLIED
