@@ -77,7 +77,7 @@ void system_part2_pre_init() {
 #else
     const uintptr_t module_addr = module_system_part1.start_address;
 #endif
-    const module_info_t* const module_info = FLASH_ModuleInfo(FLASH_INTERNAL, module_addr);
+    const module_info_t* const module_info = FLASH_ModuleInfo(FLASH_INTERNAL, module_addr, NULL);
     if (module_info->module_version >= MODULE_VERSION_V1_3_0 && heap_end > malloc_heap_start()) {
         malloc_set_heap_end(heap_end);
     }

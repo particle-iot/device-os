@@ -31,7 +31,8 @@
 // This should probably be changed to a single flag called MODULE_VERIFY_FUNCTION_AND_LENGTH
 #define MODULE_VERIFY_FUNCTION                          (1<<3)
 #define MODULE_VERIFY_LENGTH                            (1<<3)
-#define MODULE_COMPRESSED                               (1<<4)
+#define MODULE_DROP_MODULE_INFO                         (1<<4)
+#define MODULE_COMPRESSED                               (1<<5)
 
 #define MODULE_VERIFY_MASK \
             (MODULE_VERIFY_CRC | \

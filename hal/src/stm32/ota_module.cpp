@@ -43,7 +43,7 @@ inline bool in_range(uint32_t test, uint32_t start, uint32_t end)
  * @return
  */
 const module_info_t* locate_module(const module_bounds_t* bounds) {
-    return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address);
+    return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address, nullptr);
 }
 
 
