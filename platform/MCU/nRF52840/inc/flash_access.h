@@ -34,9 +34,6 @@ int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                           flash_device_t destinationDeviceID, uint32_t destinationAddress,
                           uint32_t length, uint8_t module_function, uint8_t flags);
 
-/**
- * @param validateDestinationAddress checks if the destination address corresponds with the start address in the module
- */
 int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
                      uint32_t length, uint8_t module_function, uint8_t flags);

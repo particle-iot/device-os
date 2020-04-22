@@ -32,15 +32,209 @@
 #include "flash_mal.h"
 #include "flash_hal.h"
 #include "exflash_hal.h"
+#include "hal_platform.h"
+#include "inflate.h"
 
+// Decompression of firmware modules is only supported in the bootloader
+#if (HAL_PLATFORM_COMPRESSED_MODULES) && (MODULE_FUNCTION == MOD_FUNC_BOOTLOADER)
+#define HAS_COMPRESSED_MODULES_SUPPORT 1
+#else
+#define HAS_COMPRESSED_MODULES_SUPPORT 0
+#endif
 
 #define CEIL_DIV(A, B)        (((A) + (B) - 1) / (B))
 
-#define MAX_COPY_LENGTH     256
+#define COPY_BLOCK_SIZE 256
 
+static bool flash_read(flash_device_t dev, uintptr_t addr, uint8_t* buf, size_t size) {
+    bool ok = false;;
+    switch (dev) {
+    case FLASH_INTERNAL: {
+        ok = (hal_flash_read(addr, buf, size) == 0);
+        break;
+    }
+#ifdef USE_SERIAL_FLASH
+    case FLASH_SERIAL: {
+        ok = (hal_exflash_read(addr, buf, size) == 0);
+        break;
+    }
+#endif // USE_SERIAL_FLASH
+    }
+    return ok;
+}
 
-/* Private functions ---------------------------------------------------------*/
+static bool flash_write(flash_device_t dev, uintptr_t addr, const uint8_t* buf, size_t size) {
+    bool ok = false;;
+    switch (dev) {
+    case FLASH_INTERNAL: {
+        ok = (hal_flash_write(addr, buf, size) == 0);
+        break;
+    }
+#ifdef USE_SERIAL_FLASH
+    case FLASH_SERIAL: {
+        ok = (hal_exflash_write(addr, buf, size) == 0);
+        break;
+    }
+#endif // USE_SERIAL_FLASH
+    }
+    return ok;
+}
 
+static bool flash_copy(flash_device_t src_dev, uintptr_t src_addr, flash_device_t dest_dev, uintptr_t dest_addr, size_t size) {
+    uint8_t buf[COPY_BLOCK_SIZE];
+    const uintptr_t src_end_addr = src_addr + size;
+    while (src_addr < src_end_addr) {
+        size_t n = src_end_addr - src_addr;
+        if (n > sizeof(buf)) {
+            n = sizeof(buf);
+        }
+        if (!flash_read(src_dev, src_addr, buf, n)) {
+            return false;
+        }
+        if (!flash_write(dest_dev, dest_addr, buf, n)) {
+            return false;
+        }
+        src_addr += n;
+        dest_addr += n;
+    }
+    return true;
+}
+
+static bool verify_module(flash_device_t src_dev, uintptr_t src_addr, size_t src_size, flash_device_t dest_dev,
+        uintptr_t dest_addr, size_t dest_size, uint8_t module_func, uint8_t flags) {
+    if (!FLASH_CheckValidAddressRange(src_dev, src_addr, src_size)) {
+        return false;
+    }
+    if (!FLASH_CheckValidAddressRange(dest_dev, dest_addr, dest_size)) {
+        return false;
+    }
+    if ((flags & MODULE_COMPRESSED) && !HAS_COMPRESSED_MODULES_SUPPORT) {
+        return false;
+    }
+    if (flags & MODULE_VERIFY_MASK) {
+        uintptr_t module_info_start_addr = 0;
+        size_t module_info_size = 0;
+        int module_info_platform_id = -1;
+        int module_info_func = -1;
+        const module_info_t* const info = FLASH_ModuleInfo(src_dev, src_addr, NULL);
+        if (info) {
+            module_info_start_addr = (uintptr_t)info->module_start_address;
+            module_info_size = info->module_start_address - info->module_end_address;
+            module_info_platform_id = info->platform_id;
+            module_info_func = info->module_function;
+        }
+        if (module_info_func != MODULE_FUNCTION_RESOURCE && module_info_platform_id != PLATFORM_ID) {
+            return false;
+        }
+        if((flags & (MODULE_VERIFY_LENGTH | MODULE_VERIFY_CRC)) && src_size < module_info_size + 4) {
+            return false;
+        }
+        if ((flags & MODULE_VERIFY_DESTINATION_IS_START_ADDRESS) && module_info_start_addr != dest_addr) {
+            return false;
+        }
+        if ((flags & MODULE_VERIFY_FUNCTION) && module_info_func != module_func) {
+            return false;
+        }
+        if ((flags & MODULE_VERIFY_CRC) && !FLASH_VerifyCRC32(src_dev, src_addr, module_info_size)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+#if HAS_COMPRESSED_MODULES_SUPPORT
+
+typedef struct inflate_output_ctx {
+    uint8_t buf[COPY_BLOCK_SIZE];
+    size_t buf_offs;
+    uintptr_t flash_addr;
+    flash_device_t flash_dev;
+} inflate_output_ctx;
+
+static int inflate_output_callback(const char* data, size_t size, void* user_data) {
+    inflate_output_ctx* out = (inflate_output_ctx*)user_data;
+    const size_t avail = sizeof(out->buf) - out->buf_offs;
+    if (size > avail) {
+        size = avail;
+    }
+    memcpy(out->buf + out->buf_offs, data, size);
+    out->buf_offs += size;
+    if (out->buf_offs == sizeof(out->buf)) {
+        if (!flash_write(out->flash_dev, out->flash_addr, out->buf, sizeof(out->buf))) {
+            return -1;
+        }
+        out->flash_addr += sizeof(out->buf);
+        out->buf_offs = 0;
+    }
+    return size;
+}
+
+static bool parse_compressed_module_header(flash_device_t dev, uintptr_t addr, size_t size, compressed_module_header* header) {
+    if (size < sizeof(module_info_t) + sizeof(compressed_module_header)) {
+        return false;
+    }
+    if (!flash_read(dev, addr + sizeof(module_info_t), (uint8_t*)header, sizeof(compressed_module_header))) {
+        return false;
+    }
+    if (header->size > sizeof(compressed_module_header) && size < sizeof(module_info_t) + header->size) {
+        return false;
+    }
+    if (header->method != 0) { // Raw Deflate
+        return false;
+    }
+    return true;
+}
+
+static bool flash_decompress(flash_device_t src_dev, uintptr_t src_addr, size_t src_size, flash_device_t dest_dev,
+        uintptr_t dest_addr, size_t dest_size) {
+    uint8_t in_buf[COPY_BLOCK_SIZE];
+    inflate_output_ctx out = {};
+    out.buf_offs = 0;
+    out.flash_dev = dest_dev;
+    out.flash_addr = dest_addr;
+    inflate_ctx* infl = NULL;
+    int r = inflate_create(&infl, NULL, inflate_output_callback, &out);
+    if (r != 0) {
+        goto error;
+    }
+    uintptr_t src_end_addr = src_addr + src_size;
+    while (src_addr < src_end_addr) {
+        size_t in_bytes = src_end_addr - src_addr;
+        if (in_bytes > sizeof(in_buf)) {
+            in_bytes = sizeof(in_buf);
+        }
+        if (!flash_read(src_dev, src_addr, in_buf, in_bytes)) {
+            goto error;
+        }
+        size_t in_buf_offs = 0;
+        do {
+            size_t n = in_bytes - in_buf_offs;
+            r = inflate_input(infl, (const char*)in_buf + in_buf_offs, &n, INFLATE_HAS_MORE_INPUT);
+            if (r < 0) {
+                goto error;
+            }
+            if (r == INFLATE_DONE) {
+                goto done;
+            }
+            in_buf_offs += n;
+        } while (in_buf_offs < in_bytes);
+    }
+done:
+    if (r != INFLATE_DONE) {
+        return false; // Incomplete module data
+    }
+    // Flush the output buffer
+    if (out.buf_offs > 0 && !flash_write(dest_dev, out.flash_addr, out.buf, out.buf_offs)) {
+        return false;
+    }
+    inflate_destroy(infl);
+    return true;
+error:
+    inflate_destroy(infl);
+    return false;
+}
+
+#endif // HAS_COMPRESSED_MODULES_SUPPORT
 
 bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length)
 {
@@ -108,48 +302,22 @@ int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                       flash_device_t destinationDeviceID, uint32_t destinationAddress,
                       uint32_t length, uint8_t module_function, uint8_t flags)
 {
-    if (!FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length))
-    {
+    size_t dest_size = length;
+    if (flags & MODULE_COMPRESSED) {
+#if HAS_COMPRESSED_MODULES_SUPPORT
+        compressed_module_header header = { 0 };
+        if (!parse_compressed_module_header(sourceDeviceID, sourceAddress, length, &header)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        dest_size = header.original_size;
+#else
         return FLASH_ACCESS_RESULT_BADARG;
+#endif // !HAS_COMPRESSED_MODULES_SUPPORT
     }
-
-    if (!FLASH_CheckValidAddressRange(destinationDeviceID, destinationAddress, length))
-    {
-        return FLASH_ACCESS_RESULT_BADARG;
+    if (!verify_module(sourceDeviceID, sourceAddress, length, destinationDeviceID, destinationAddress, dest_size,
+            module_function, flags)) {
+        return FLASH_ACCESS_RESULT_ERROR;
     }
-
-    if (flags & MODULE_VERIFY_MASK)
-    {
-        uint32_t moduleLength = FLASH_ModuleLength(sourceDeviceID, sourceAddress);
-
-        if((flags & (MODULE_VERIFY_LENGTH|MODULE_VERIFY_CRC)) && (length < moduleLength+4))
-        {
-            return FLASH_ACCESS_RESULT_BADARG;
-        }
-
-        const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress, NULL);
-        if ((info->module_function != MODULE_FUNCTION_RESOURCE) && (info->platform_id != PLATFORM_ID))
-        {
-            return FLASH_ACCESS_RESULT_BADARG;
-        }
-
-        // verify destination address
-        if ((flags & MODULE_VERIFY_DESTINATION_IS_START_ADDRESS) && (((uint32_t)info->module_start_address) != destinationAddress))
-        {
-            return FLASH_ACCESS_RESULT_BADARG;
-        }
-
-        if ((flags & MODULE_VERIFY_FUNCTION) && (info->module_function != module_function))
-        {
-            return FLASH_ACCESS_RESULT_BADARG;
-        }
-
-        if ((flags & MODULE_VERIFY_CRC) && !FLASH_VerifyCRC32(sourceDeviceID, sourceAddress, moduleLength))
-        {
-            return FLASH_ACCESS_RESULT_BADARG;
-        }
-    }
-
     return FLASH_ACCESS_RESULT_OK;
 }
 
@@ -157,104 +325,59 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
                      uint32_t length, uint8_t module_function, uint8_t flags)
 {
-    uint32_t endAddress = sourceAddress + length;
-
-    if (FLASH_CheckCopyMemory(sourceDeviceID, sourceAddress, destinationDeviceID, destinationAddress, length, module_function, flags) != FLASH_ACCESS_RESULT_OK)
-    {
+    size_t dest_size = length;
+#if HAS_COMPRESSED_MODULES_SUPPORT
+    compressed_module_header comp_header = { 0 };
+    if (flags & MODULE_COMPRESSED) {
+        if (!parse_compressed_module_header(sourceDeviceID, sourceAddress, length, &comp_header)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        dest_size = comp_header.original_size;
+    }
+#else
+    if (flags & MODULE_COMPRESSED) {
         return FLASH_ACCESS_RESULT_BADARG;
     }
-
-    // erase sectors
-    uint16_t sector_num;
-    if (destinationDeviceID == FLASH_SERIAL)
-    {
-        sector_num = CEIL_DIV(length, sFLASH_PAGESIZE);
-        if (hal_exflash_erase_sector(destinationAddress, sector_num))
-        {
+#endif // !HAS_COMPRESSED_MODULES_SUPPORT
+    if (!verify_module(sourceDeviceID, sourceAddress, length, destinationDeviceID, destinationAddress, dest_size,
+            module_function, flags)) {
+        return FLASH_ACCESS_RESULT_ERROR;
+    }
+    if (!FLASH_EraseMemory(destinationDeviceID, destinationAddress, dest_size)) {
+        return FLASH_ACCESS_RESULT_ERROR;
+    }
+    if (!(flags & MODULE_COMPRESSED)) {
+        if (flags & MODULE_DROP_MODULE_INFO) {
+            // Skip the module info header
+            if (length < sizeof(module_info_t)) { // Sanity check
+                return FLASH_ACCESS_RESULT_ERROR;
+            }
+            sourceAddress += sizeof(module_info_t);
+            length -= sizeof(module_info_t);
+        }
+        if (!flash_copy(sourceDeviceID, sourceAddress, destinationDeviceID, destinationAddress, length)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
     }
-    else if (destinationDeviceID == FLASH_INTERNAL)
-    {
-        sector_num = CEIL_DIV(length, INTERNAL_FLASH_PAGE_SIZE);
-        if (hal_flash_erase_sector(destinationAddress, sector_num))
-        {
+#if HAS_COMPRESSED_MODULES_SUPPORT
+    else {
+        // Skip the module info and compressed data headers
+        if (length < sizeof(module_info_t) + comp_header.size + 2 /* Prefix size */ + 4 /* CRC-32 */) { // Sanity check
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        sourceAddress += sizeof(module_info_t) + comp_header.size;
+        length -= sizeof(module_info_t) + comp_header.size;
+        // Determine where the compressed data ends
+        uint16_t prefix_size = 0;
+        if (!flash_read(sourceDeviceID, sourceAddress + length - 6, (uint8_t*)&prefix_size, 2) || length < prefix_size + 4) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        length -= prefix_size + 4;
+        if (!flash_decompress(sourceDeviceID, sourceAddress, length, destinationDeviceID, destinationAddress, dest_size)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
     }
-    else
-    {
-        return FLASH_ACCESS_RESULT_BADARG;
-    }
-
-    uint8_t data_buf[MAX_COPY_LENGTH];
-    uint32_t copy_len = 0;
-
-    // We may only check the module header if we've been asked to verify it
-    if (flags & MODULE_VERIFY_MASK)
-    {
-        const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress, NULL);
-        if (info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
-            // NB: We have corner cases where the module info is not located in the
-            // front of the module but for example after the vector table and we
-            // only want to enable this feature in the case it is in the front,
-            // hence the module_info_t located at the the source address check.
-            module_info_t front = {0};
-            if (sourceDeviceID == FLASH_SERIAL) {
-                hal_exflash_read(sourceAddress, (uint8_t*)&front, sizeof(front));
-            } else {
-                hal_flash_read(sourceAddress, (uint8_t*)&front, sizeof(front));
-            }
-            if (!memcmp(info, &front, sizeof(module_info_t))) {
-                // Skip module header
-                sourceAddress += sizeof(module_info_t);
-            } else {
-                return FLASH_ACCESS_RESULT_ERROR;
-            }
-        }
-    }
-
-    /* Program source to destination */
-    while (sourceAddress < endAddress)
-    {
-        copy_len = (endAddress - sourceAddress) >= MAX_COPY_LENGTH ? MAX_COPY_LENGTH : (endAddress - sourceAddress);
-
-        // Read data from source memory address
-        if (sourceDeviceID == FLASH_SERIAL)
-        {
-            if (hal_exflash_read(sourceAddress, data_buf, copy_len))
-            {
-                return FLASH_ACCESS_RESULT_ERROR;
-            }
-        }
-        else
-        {
-            if (hal_flash_read(sourceAddress, data_buf, copy_len))
-            {
-                return FLASH_ACCESS_RESULT_ERROR;
-            }
-        }
-
-        // Program data to destination memory address
-        if (destinationDeviceID == FLASH_SERIAL)
-        {
-            if (hal_exflash_write(destinationAddress, data_buf, copy_len))
-            {
-                return FLASH_ACCESS_RESULT_ERROR;
-            }
-        }
-        else
-        {
-            if (hal_flash_write(destinationAddress, data_buf, copy_len))
-            {
-                return FLASH_ACCESS_RESULT_ERROR;
-            }
-        }
-
-        sourceAddress += copy_len;
-        destinationAddress += copy_len;
-    }
-
+#endif // HAS_COMPRESSED_MODULES_SUPPORT
     return FLASH_ACCESS_RESULT_OK;
 }
 
@@ -275,14 +398,14 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         return false;
     }
 
-    uint8_t src_buf[MAX_COPY_LENGTH];
-    uint8_t dest_buf[MAX_COPY_LENGTH];
+    uint8_t src_buf[COPY_BLOCK_SIZE];
+    uint8_t dest_buf[COPY_BLOCK_SIZE];
     uint32_t copy_len = 0;
 
     /* Program source to destination */
     while (sourceAddress < endAddress)
     {
-        copy_len = (endAddress - sourceAddress) >= MAX_COPY_LENGTH ? MAX_COPY_LENGTH : (endAddress - sourceAddress);
+        copy_len = (endAddress - sourceAddress) >= COPY_BLOCK_SIZE ? COPY_BLOCK_SIZE : (endAddress - sourceAddress);
 
         // Read data from source memory address
         if (sourceDeviceID == FLASH_SERIAL)

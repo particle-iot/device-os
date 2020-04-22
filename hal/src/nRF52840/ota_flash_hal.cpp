@@ -416,12 +416,13 @@ hal_update_complete_t HAL_FLASH_End(hal_module_t* moduleOut)
         return HAL_UPDATE_ERROR;
     }
     const bool dropModuleInfo = (module.info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO);
-    if (dropModuleInfo && module.module_info_offset > 0) {
-        LOG(ERROR, "Unable to apply a module that has a vector table and DROP_MODULE_INFO flag set");
+    const bool compressed = (module.info->flags & MODULE_INFO_FLAG_COMPRESSED);
+    if (module.module_info_offset > 0 && (dropModuleInfo || compressed)) {
+        // Module with the DROP_MODULE_INFO or COMPRESSED flag set can't have a vector table
+        LOG(ERROR, "Invalid module format");
         return HAL_UPDATE_ERROR;
     }
     const auto moduleFunc = module_function(module.info);
-    const bool compressed = (module.info->flags & MODULE_INFO_FLAG_COMPRESSED);
     if (compressed && moduleFunc != MODULE_FUNCTION_USER_PART && moduleFunc != MODULE_FUNCTION_SYSTEM_PART) {
         LOG(ERROR, "Unsupported compressed module"); // TODO
         return HAL_UPDATE_ERROR;
