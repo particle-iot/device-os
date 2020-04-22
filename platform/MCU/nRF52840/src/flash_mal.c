@@ -148,6 +148,7 @@ typedef struct inflate_output_ctx {
     uint8_t buf[COPY_BLOCK_SIZE];
     size_t buf_offs;
     uintptr_t flash_addr;
+    uintptr_t flash_end_addr;
     flash_device_t flash_dev;
 } inflate_output_ctx;
 
@@ -160,6 +161,10 @@ static int inflate_output_callback(const char* data, size_t size, void* user_dat
     memcpy(out->buf + out->buf_offs, data, size);
     out->buf_offs += size;
     if (out->buf_offs == sizeof(out->buf)) {
+        // Flush the output buffer
+        if (out->flash_addr + sizeof(out->buf) > out->flash_end_addr) {
+            return -1;
+        }
         if (!flash_write(out->flash_dev, out->flash_addr, out->buf, sizeof(out->buf))) {
             return -1;
         }
@@ -169,22 +174,6 @@ static int inflate_output_callback(const char* data, size_t size, void* user_dat
     return size;
 }
 
-static bool parse_compressed_module_header(flash_device_t dev, uintptr_t addr, size_t size, compressed_module_header* header) {
-    if (size < sizeof(module_info_t) + sizeof(compressed_module_header)) {
-        return false;
-    }
-    if (!flash_read(dev, addr + sizeof(module_info_t), (uint8_t*)header, sizeof(compressed_module_header))) {
-        return false;
-    }
-    if (header->size > sizeof(compressed_module_header) && size < sizeof(module_info_t) + header->size) {
-        return false;
-    }
-    if (header->method != 0) { // Raw Deflate
-        return false;
-    }
-    return true;
-}
-
 static bool flash_decompress(flash_device_t src_dev, uintptr_t src_addr, size_t src_size, flash_device_t dest_dev,
         uintptr_t dest_addr, size_t dest_size) {
     uint8_t in_buf[COPY_BLOCK_SIZE];
@@ -192,6 +181,7 @@ static bool flash_decompress(flash_device_t src_dev, uintptr_t src_addr, size_t 
     out.buf_offs = 0;
     out.flash_dev = dest_dev;
     out.flash_addr = dest_addr;
+    out.flash_end_addr = dest_addr + dest_size;
     inflate_ctx* infl = NULL;
     int r = inflate_create(&infl, NULL, inflate_output_callback, &out);
     if (r != 0) {
@@ -221,17 +211,39 @@ static bool flash_decompress(flash_device_t src_dev, uintptr_t src_addr, size_t 
     }
 done:
     if (r != INFLATE_DONE) {
-        return false; // Incomplete module data
+        goto error;
     }
-    // Flush the output buffer
-    if (out.buf_offs > 0 && !flash_write(dest_dev, out.flash_addr, out.buf, out.buf_offs)) {
-        return false;
+    if (out.buf_offs > 0) {
+        // Flush the output buffer
+        if (!flash_write(dest_dev, out.flash_addr, out.buf, out.buf_offs)) {
+            goto error;
+        }
+        out.flash_addr += out.buf_offs;
+    }
+    if (out.flash_addr != out.flash_end_addr) {
+        goto error;
     }
     inflate_destroy(infl);
     return true;
 error:
     inflate_destroy(infl);
     return false;
+}
+
+static bool parse_compressed_module_header(flash_device_t dev, uintptr_t addr, size_t size, compressed_module_header* header) {
+    if (size < sizeof(module_info_t) + sizeof(compressed_module_header)) {
+        return false;
+    }
+    if (!flash_read(dev, addr + sizeof(module_info_t), (uint8_t*)header, sizeof(compressed_module_header))) {
+        return false;
+    }
+    if (header->size > sizeof(compressed_module_header) && size < sizeof(module_info_t) + header->size) {
+        return false;
+    }
+    if (header->method != 0) { // Raw Deflate
+        return false;
+    }
+    return true;
 }
 
 #endif // HAS_COMPRESSED_MODULES_SUPPORT
