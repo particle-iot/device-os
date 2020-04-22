@@ -67,7 +67,8 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
     memset(target, 0, sizeof(*target));
 
     target->bounds = *bounds;
-    if (NULL!=(target->info = get_module_info(bounds, &target->module_info_offset)))
+    target->info = get_module_info(bounds, &target->module_info_offset);
+    if (target->info)
     {
         target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
         target->validity_result = 0;

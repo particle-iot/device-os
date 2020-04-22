@@ -41,10 +41,9 @@ typedef struct module_dependency_t {
 typedef enum module_info_flags_t {
     MODULE_INFO_FLAG_NONE               = 0x00,
     MODULE_INFO_FLAG_DROP_MODULE_INFO   = 0x01, // Indicates that the module_info_t header preceding the actual binary
-                                                // and potentially module_info_suffix_t + CRC in the end of the binary (depending on platform/module)
                                                 // need to be skipped when copying/writing this module into its target location.
     MODULE_INFO_FLAG_COMPRESSED         = 0x02, // Indicates that the module data is compressed.
-    MODULE_INFO_FLAG_COMBINED           = 0x04  // Indicates that there's another module immediately following this module.
+    MODULE_INFO_FLAG_COMBINED           = 0x04  // Indicates that this module is combined with another module.
 } module_info_flags_t;
 
 /**
