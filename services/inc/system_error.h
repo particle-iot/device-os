@@ -45,6 +45,7 @@
         (INTERNAL, "Internal error", -250), \
         (NO_MEMORY, "Memory allocation error", -260), \
         (INVALID_ARGUMENT, "Invalid argument", -270), \
+        (VALIDATION_FAILED, "Validation failed", -271), \
         (BAD_DATA, "Invalid data format", -280), \
         (OUT_OF_RANGE, "Out of range", -290), \
         (DEPRECATED, "Deprecated", -300), \

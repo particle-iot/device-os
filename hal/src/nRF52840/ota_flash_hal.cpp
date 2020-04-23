@@ -43,6 +43,7 @@
 #include "deviceid_hal.h"
 #include <memory>
 #include "platform_radio_stack.h"
+#include "check.h"
 
 #define OTA_CHUNK_SIZE                 (512)
 #define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
@@ -387,96 +388,177 @@ static hal_update_complete_t flash_bootloader(const hal_module_t* mod, uint32_t 
     return result;
 }
 
-int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved)
-{
-    hal_module_t module;
+namespace {
 
-    bool module_fetched = fetch_module(&module, &module_ota, userDepsOptional, flags);
-
-    if (mod) 
-    {
-        memcpy(mod, &module, sizeof(hal_module_t));
-    }
-
-    return (int)!module_fetched;
+// TODO: The current design of the OTA subsystem and the protocol doesn't allow for updating
+// multiple modules at once. As a "temporary" workaround, multiple modules can be combined
+// into a single binary
+int fetchModules(hal_module_t* modules, size_t moduleCount, bool userDepsOptional, unsigned flags) {
+    hal_module_t module = {};
+    module_bounds_t bounds = module_ota;
+    size_t count = 0;
+    bool hasNext = true;
+    do {
+        if (!fetch_module(&module, &bounds, userDepsOptional, flags)) {
+            LOG(ERROR, "Unable to fetch module");
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+        if (count < moduleCount) {
+            memcpy(modules + count, &module, sizeof(hal_module_t));
+        }
+        ++count;
+        const auto info = module.info;
+        LOG(INFO, "Fetched module; type: %u; index: %u", (unsigned)module_function(info), (unsigned)module_index(info));
+        hasNext = (info->flags & MODULE_INFO_FLAG_COMBINED);
+        if (hasNext) {
+            // Forge a module bounds structure for the next module in the OTA region
+            const size_t moduleSize = module_length(info) + 4 /* CRC-32 */;
+            if (bounds.maximum_size < moduleSize) {
+                return SYSTEM_ERROR_OUT_OF_RANGE;
+            }
+            bounds.start_address += moduleSize;
+            bounds.maximum_size -= moduleSize;
+        }
+    } while (hasNext);
+    return count;
 }
 
-hal_update_complete_t HAL_FLASH_End(hal_module_t* moduleOut)
-{
-    hal_module_t module = {};
-    int r = HAL_FLASH_OTA_Validate(&module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY |
-            MODULE_VALIDATION_DEPENDENCIES_FULL), nullptr);
-    if (r != 0) {
-        LOG(ERROR, "Unable to validate module");
-        return HAL_UPDATE_ERROR;
+int validateModule(const hal_module_t* module) {
+    if (module->validity_checked != module->validity_result) {
+        LOG(ERROR, "Module validation failed; checked: 0x%02x; result: 0x%02x", (unsigned)module->validity_checked,
+                (unsigned)module->validity_result);
+        return SYSTEM_ERROR_VALIDATION_FAILED;
     }
-    if (module.validity_checked != module.validity_result) {
-        LOG(ERROR, "Module validation failed; checked: 0x%x; result: 0x%x", (unsigned)module.validity_checked,
-                (unsigned)module.validity_result);
-        return HAL_UPDATE_ERROR;
-    }
-    const bool dropModuleInfo = (module.info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO);
-    const bool compressed = (module.info->flags & MODULE_INFO_FLAG_COMPRESSED);
-    if (module.module_info_offset > 0 && (dropModuleInfo || compressed)) {
+    const auto info = module->info;
+    const bool dropModuleInfo = (info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO);
+    const bool compressed = (info->flags & MODULE_INFO_FLAG_COMPRESSED);
+    if (module->module_info_offset > 0 && (dropModuleInfo || compressed)) {
         // Module with the DROP_MODULE_INFO or COMPRESSED flag set can't have a vector table
         LOG(ERROR, "Invalid module format");
-        return HAL_UPDATE_ERROR;
+        return SYSTEM_ERROR_VALIDATION_FAILED;
     }
-    const auto moduleFunc = module_function(module.info);
+    const auto moduleFunc = module_function(info);
     if (compressed && moduleFunc != MODULE_FUNCTION_USER_PART && moduleFunc != MODULE_FUNCTION_SYSTEM_PART) {
         LOG(ERROR, "Unsupported compressed module"); // TODO
-        return HAL_UPDATE_ERROR;
+        return SYSTEM_ERROR_VALIDATION_FAILED;
     }
-    const auto moduleSize = module_length(module.info);
-    hal_update_complete_t result = HAL_UPDATE_ERROR;
     if (moduleFunc == MODULE_FUNCTION_NCP_FIRMWARE) {
 #if HAL_PLATFORM_NCP_UPDATABLE
-        const auto moduleNcp = module_mcu_target(module.info);
+        const auto moduleNcp = module_mcu_target(info);
         const auto currentNcp = platform_current_ncp_identifier();
         if (moduleNcp != currentNcp) {
-            LOG(ERROR, "NCP module is not for this platform; module NCP: 0x%x; current NCP: 0x%x",
+            LOG(ERROR, "NCP module is not for this platform; module NCP: 0x%02x; current NCP: 0x%02x",
                     (unsigned)moduleNcp, (unsigned)currentNcp);
-            return HAL_UPDATE_ERROR;
-        }
-        result = platform_ncp_update_module(&module);
-        if (result <= HAL_UPDATE_ERROR) {
-            LOG(ERROR, "Unable to update NCP firmware");
-            return result;
+            return SYSTEM_ERROR_VALIDATION_FAILED;
         }
 #else
         LOG(ERROR, "NCP module is not updatable on this platform");
-        return HAL_UPDATE_ERROR;
+        return SYSTEM_ERROR_VALIDATION_FAILED;
 #endif // !HAL_PLATFORM_NCP_UPDATABLE
-    } else if (moduleFunc == MODULE_FUNCTION_BOOTLOADER) {
-        result = flash_bootloader(&module, moduleSize);
-        if (result <= HAL_UPDATE_ERROR) {
-            LOG(ERROR, "Unable to update bootloader");
-            return result;
-        }
-    } else { // User part, system part or a radio stack module
-        uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
-        if (dropModuleInfo) {
-            slotFlags |= MODULE_DROP_MODULE_INFO;
-        }
-        if (compressed) {
-            slotFlags |= MODULE_COMPRESSED;
-        }
-        const bool ok = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS, FLASH_INTERNAL,
-                (uint32_t)module.info->module_start_address, moduleSize + 4 /* CRC-32 */, moduleFunc, slotFlags);
-        if (!ok) {
-            LOG(ERROR, "No module slot available");
+    }
+    return 0;
+}
+
+// TODO: Anything above 2 will almost certainly fail the dependency check
+const size_t MAX_COMBINED_MODULE_COUNT = 2;
+
+} // namespace
+
+int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved)
+{
+    hal_module_t modules[MAX_COMBINED_MODULE_COUNT] = {};
+    size_t moduleCount = CHECK(fetchModules(modules, MAX_COMBINED_MODULE_COUNT, userDepsOptional, flags));
+    if (moduleCount == 0) { // Sanity check
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    if (moduleCount > MAX_COMBINED_MODULE_COUNT) {
+        LOG(WARN, "Got more than %u combined modules", (unsigned)moduleCount);
+        moduleCount = MAX_COMBINED_MODULE_COUNT;
+    }
+    for (size_t i = 0; i < moduleCount; ++i) {
+        const auto module = &modules[i];
+        const auto info = module->info;
+        LOG(INFO, "Validating module; type: %u; index: %u", (unsigned)module_function(info), (unsigned)module_index(info));
+        CHECK(validateModule(module));
+    }
+    if (mod) {
+        memcpy(mod, &modules[0], sizeof(hal_module_t)); // FIXME
+    }
+    return 0;
+}
+
+hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
+{
+    hal_module_t modules[MAX_COMBINED_MODULE_COUNT] = {};
+    int moduleCount = fetchModules(modules, MAX_COMBINED_MODULE_COUNT, true /* userDepsOptional */,
+            MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL);
+    if (moduleCount <= 0) {
+        return HAL_UPDATE_ERROR;
+    }
+    if ((unsigned)moduleCount > MAX_COMBINED_MODULE_COUNT) {
+        LOG(WARN, "Got more than %u combined modules", (unsigned)moduleCount);
+        moduleCount = MAX_COMBINED_MODULE_COUNT;
+    }
+    for (size_t i = 0; i < (unsigned)moduleCount; ++i) {
+        const auto module = &modules[i];
+        const auto info = module->info;
+        LOG(INFO, "Validating module; type: %u; index: %u", (unsigned)module_function(info), (unsigned)module_index(info));
+        if (validateModule(modules) != 0) {
             return HAL_UPDATE_ERROR;
         }
-        FLASH_End();
-        result = HAL_UPDATE_APPLIED_PENDING_RESTART;
     }
-    if (result > HAL_UPDATE_ERROR) {
-        if (moduleOut) {
-            memcpy(moduleOut, &module, sizeof(hal_module_t));
+    bool restartPending = false;
+    for (size_t i = 0; i < (unsigned)moduleCount; ++i) {
+        const auto module = &modules[i];
+        const auto info = module->info;
+        const auto moduleFunc = module_function(info);
+        const auto moduleSize = module_length(info);
+        LOG(INFO, "Applying module; type: %u; index: %u", (unsigned)moduleFunc, (unsigned)module_index(info));
+        hal_update_complete_t result = HAL_UPDATE_ERROR;
+        switch (moduleFunc) {
+#if HAL_PLATFORM_NCP_UPDATABLE
+        case MODULE_FUNCTION_NCP_FIRMWARE: {
+            result = platform_ncp_update_module(module);
+            break;
         }
-        LOG(INFO, "Module has been applied successfully");
+#endif // HAL_PLATFORM_NCP_UPDATABLE
+        case MODULE_FUNCTION_BOOTLOADER: {
+            result = flash_bootloader(module, moduleSize);
+            break;
+        }
+        default: { // User part, system part or a radio stack module
+            uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
+            if (info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
+                slotFlags |= MODULE_DROP_MODULE_INFO;
+            }
+            if (info->flags & MODULE_INFO_FLAG_COMPRESSED) {
+                slotFlags |= MODULE_COMPRESSED;
+            }
+            // Convert the module's XIP address to an address in the external flash :sweat_smile:
+            const uintptr_t otaAddr = EXTERNAL_FLASH_OTA_ADDRESS + module->bounds.start_address - EXTERNAL_FLASH_OTA_XIP_ADDRESS;
+            const bool ok = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, otaAddr, FLASH_INTERNAL,
+                    (uint32_t)info->module_start_address, moduleSize + 4 /* CRC-32 */, moduleFunc, slotFlags);
+            if (!ok) {
+                LOG(ERROR, "No module slot available");
+                result = HAL_UPDATE_ERROR;
+            } else {
+                result = HAL_UPDATE_APPLIED_PENDING_RESTART;
+            }
+            break;
+        }
+        }
+        if (result <= HAL_UPDATE_ERROR) {
+            LOG(ERROR, "Unable to apply module");
+            return result;
+        }
+        if (result == HAL_UPDATE_APPLIED_PENDING_RESTART) {
+            restartPending = true;
+        }
     }
-    return result;
+    if (mod) {
+        memcpy(mod, &modules[0], sizeof(hal_module_t)); // FIXME
+    }
+    return restartPending ? HAL_UPDATE_APPLIED_PENDING_RESTART : HAL_UPDATE_APPLIED;
 }
 
 // Todo this code and much of the code here is duplicated between Gen2 and Gen3
