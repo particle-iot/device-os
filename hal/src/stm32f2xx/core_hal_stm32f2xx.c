@@ -57,7 +57,7 @@
 #include "hal_event.h"
 #include "system_error.h"
 
-#if PLATFORM_ID==PLATFORM_P1
+#if PLATFORM_ID == PLATFORM_P1
 #include "wwd_management.h"
 #include "wlan_hal.h"
 #endif
@@ -360,7 +360,7 @@ void HAL_Core_Config(void)
     }
 #endif
 
-#if PLATFORM_ID==8
+#if PLATFORM_ID == PLATFORM_P1
     if (isWiFiPowersaveClockDisabled()) {
         HAL_Pin_Mode(30, INPUT); // Wi-Fi Powersave clock is disabled, default to INPUT
     }
@@ -964,7 +964,7 @@ void TIM8_TRG_COM_TIM14_irq(void)
 
 void TIM8_CC_irq(void)
 {
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
     if(NULL != HAL_TIM8_Handler)
     {
         HAL_TIM8_Handler();
@@ -1190,7 +1190,7 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
             return Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
         }
 
-#if PLATFORM_ID==PLATFORM_P1
+#if PLATFORM_ID == PLATFORM_P1
         case FEATURE_WIFI_POWERSAVE_CLOCK:
         {
             wwd_set_wlan_sleep_clock_enabled(enabled);
@@ -1351,10 +1351,10 @@ static inline uint32_t Tim_Peripheral_To_Af(TIM_TypeDef* tim) {
             return GPIO_AF_TIM4;
         case (uint32_t)TIM5:
             return GPIO_AF_TIM5;
-#if PLATFORM_ID == 10
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
         case (uint32_t)TIM8:
             return GPIO_AF_TIM8;
-#endif // PLATFORM_ID == 10
+#endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
     }
 
     return 0;
