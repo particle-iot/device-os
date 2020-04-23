@@ -292,10 +292,10 @@ int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved) 
 
     // Checks the wakeup sources
     auto wakeupSource = config->wakeup_sources;
-    // For backward compatibility, Gen2 platforms can disable WKP pin.
-    // if (!wakeupSource) {
-    //     return SYSTEM_ERROR_INVALID_ARGUMENT;
-    // }
+    // At least one wakeup source should be configured for stop mode.
+    if (config->mode == HAL_SLEEP_MODE_STOP && !wakeupSource) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     while (wakeupSource) {
         CHECK(validateWakeupSource(config->mode, wakeupSource));
         wakeupSource = wakeupSource->next;

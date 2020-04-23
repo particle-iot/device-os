@@ -24,37 +24,71 @@ STARTUP(System.enableFeature(FEATURE_RETAINED_MEMORY));
 static retained uint32_t magick = 0;
 static retained uint32_t phase = 0;
 
-#if HAL_PLATFORM_NRF52840
-test(01_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_D0) {
+test(01_System_Sleep_With_Configuration_Object_Hibernate_Mode_Without_Wakeup) {
     if (magick != 0xdeadbeef) {
         magick = 0xdeadbeef;
         phase = 0xbeef0001;
     }
     if (phase == 0xbeef0001) {
         Serial.println("    >> Device enters hibernate mode.");
-        Serial.println("    >> Please reconnect serial and type 't' after you have a rising edge on D0.");
+        Serial.println("    >> Please reconnect serial and type 't' after you pressing the reset button.");
         delay(1000);
 
         phase = 0xbeef0002;
+
+        SystemSleepConfiguration config;
+        config.mode(SystemSleepMode::HIBERNATE);
+        SystemSleepResult result = System.sleep(config);
+        assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    } else if (phase == 0xbeef0002) {
+        Serial.println("    >> Device is reset from hibernate mode.");
+        assertEqual(System.resetReason(), (int)RESET_REASON_PIN_RESET);
+    }
+}
+
+test(02_System_Sleep_Mode_Deep_Without_Wakeup) {
+    if (phase == 0xbeef0002) {
+        Serial.println("    >> Device enters hibernate mode.");
+        Serial.println("    >> Please reconnect serial and type 't' after you pressing the reset button.");
+        delay(1000);
+
+        phase = 0xbeef0003;
+
+        SleepResult result = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN);
+        assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    } else if (phase == 0xbeef0003) {
+        Serial.println("    >> Device is reset from hibernate mode.");
+        assertEqual(System.resetReason(), (int)RESET_REASON_PIN_RESET);
+    }
+}
+
+#if HAL_PLATFORM_NRF52840
+test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_D0) {
+    if (phase == 0xbeef0003) {
+        Serial.println("    >> Device enters hibernate mode.");
+        Serial.println("    >> Please reconnect serial and type 't' after you have a rising edge on D0.");
+        delay(1000);
+
+        phase = 0xbeef0004;
 
         SystemSleepConfiguration config;
         config.mode(SystemSleepMode::HIBERNATE)
               .gpio(D0, RISING);
         SystemSleepResult result = System.sleep(config);
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
-    } else if (phase == 0xbeef0002) {
+    } else if (phase == 0xbeef0004) {
         Serial.println("    >> Device is woken up from hibernate mode.");
         assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
     }
 }
 
-test(02_System_Sleep_Mode_Deep_Wakeup_By_WKP_Pin) {
-    if (phase == 0xbeef0002) {
+test(04_System_Sleep_Mode_Deep_Wakeup_By_D8) {
+    if (phase == 0xbeef0004) {
         Serial.println("    >> Device enters hibernate mode.");
         Serial.println("    >> Please reconnect serial and type 't' after you have a rising edge on WKP pin.");
         delay(1000);
 
-        phase = 0xbeef0003;
+        phase = 0xbeef0005;
 
         SleepResult result = {};
 
@@ -66,7 +100,7 @@ test(02_System_Sleep_Mode_Deep_Wakeup_By_WKP_Pin) {
 
         result = System.sleep(SLEEP_MODE_DEEP);
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
-    } else if (phase == 0xbeef0003) {
+    } else if (phase == 0xbeef0005) {
         Serial.println("    >> Device is woken up from hibernate mode.");
         assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
     }
@@ -74,36 +108,36 @@ test(02_System_Sleep_Mode_Deep_Wakeup_By_WKP_Pin) {
 
 // Asset Tracker support waking up device from hibernate mode by external RTC
 #if PLATFORM_ID == PLATFORM_TRACKER
-test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_External_Rtc) {
-    if (phase == 0xbeef0003) {
+test(05_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_External_Rtc) {
+    if (phase == 0xbeef0005) {
         Serial.println("    >> Device enters hibernate mode.");
         Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
         delay(1000);
 
-        phase = 0xbeef0004;
+        phase = 0xbeef0006;
 
         SystemSleepConfiguration config;
         config.mode(SystemSleepMode::HIBERNATE)
               .duration(3s);
         SystemSleepResult result = System.sleep(config);
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
-    } else if (phase == 0xbeef0004) {
+    } else if (phase == 0xbeef0006) {
         Serial.println("    >> Device is woken up from hibernate mode.");
         assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
     }
 }
 
-test(04_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
-    if (phase == 0xbeef0004) {
+test(06_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
+    if (phase == 0xbeef0006) {
         Serial.println("    >> Device enters hibernate mode.");
         Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
         delay(1000);
 
-        phase = 0xbeef0005;
+        phase = 0xbeef0007;
 
         SleepResult result = System.sleep(SLEEP_MODE_DEEP, 3s);
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
-    } else if (phase == 0xbeef0005) {
+    } else if (phase == 0xbeef0007) {
         Serial.println("    >> Device is woken up from hibernate mode.");
         assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
     }
@@ -114,48 +148,6 @@ test(04_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
 
 #if HAL_PLATFORM_STM32F2XX
 test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Wkp_Pin) {
-    if (magick != 0xdeadbeef) {
-        magick = 0xdeadbeef;
-        phase = 0xbeef0001;
-    }
-    if (phase == 0xbeef0001) {
-        Serial.println("    >> Device enters hibernate mode.");
-        Serial.println("    >> Please reconnect serial and type 't' after you have a rising edge on WKP pin.");
-        delay(1000);
-
-        phase = 0xbeef0002;
-
-        SystemSleepConfiguration config;
-        config.mode(SystemSleepMode::HIBERNATE)
-              .gpio(WKP, RISING);
-        SystemSleepResult result = System.sleep(config);
-        assertEqual(result.error(), SYSTEM_ERROR_NONE);
-    } else if (phase == 0xbeef0002) {
-        Serial.println("    >> Device is woken up from hibernate mode.");
-        assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
-    }
-}
-
-test(04_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Rtc) {
-    if (phase == 0xbeef0002) {
-        Serial.println("    >> Device enters hibernate mode.");
-        Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
-        delay(1000);
-
-        phase = 0xbeef0003;
-
-        SystemSleepConfiguration config;
-        config.mode(SystemSleepMode::HIBERNATE)
-              .duration(3s);
-        SystemSleepResult result = System.sleep(config);
-        assertEqual(result.error(), SYSTEM_ERROR_NONE);
-    } else if (phase == 0xbeef0003) {
-        Serial.println("    >> Device is woken up from hibernate mode.");
-        assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
-    }
-}
-
-test(05_System_Sleep_Mode_Deep_Wakeup_By_Wkp_Pin) {
     if (phase == 0xbeef0003) {
         Serial.println("    >> Device enters hibernate mode.");
         Serial.println("    >> Please reconnect serial and type 't' after you have a rising edge on WKP pin.");
@@ -163,7 +155,10 @@ test(05_System_Sleep_Mode_Deep_Wakeup_By_Wkp_Pin) {
 
         phase = 0xbeef0004;
 
-        SleepResult result = System.sleep(SLEEP_MODE_DEEP);
+        SystemSleepConfiguration config;
+        config.mode(SystemSleepMode::HIBERNATE)
+              .gpio(WKP, RISING);
+        SystemSleepResult result = System.sleep(config);
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
     } else if (phase == 0xbeef0004) {
         Serial.println("    >> Device is woken up from hibernate mode.");
@@ -171,7 +166,7 @@ test(05_System_Sleep_Mode_Deep_Wakeup_By_Wkp_Pin) {
     }
 }
 
-test(06_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
+test(04_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Rtc) {
     if (phase == 0xbeef0004) {
         Serial.println("    >> Device enters hibernate mode.");
         Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
@@ -179,9 +174,44 @@ test(06_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
 
         phase = 0xbeef0005;
 
-        SleepResult result = System.sleep(SLEEP_MODE_DEEP, 3s, SLEEP_DISABLE_WKP_PIN); // Disable WKP pin.
+        SystemSleepConfiguration config;
+        config.mode(SystemSleepMode::HIBERNATE)
+              .duration(3s);
+        SystemSleepResult result = System.sleep(config);
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
     } else if (phase == 0xbeef0005) {
+        Serial.println("    >> Device is woken up from hibernate mode.");
+        assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
+    }
+}
+
+test(05_System_Sleep_Mode_Deep_Wakeup_By_Wkp_Pin) {
+    if (phase == 0xbeef0005) {
+        Serial.println("    >> Device enters hibernate mode.");
+        Serial.println("    >> Please reconnect serial and type 't' after you have a rising edge on WKP pin.");
+        delay(1000);
+
+        phase = 0xbeef0006;
+
+        SleepResult result = System.sleep(SLEEP_MODE_DEEP);
+        assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    } else if (phase == 0xbeef0006) {
+        Serial.println("    >> Device is woken up from hibernate mode.");
+        assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
+    }
+}
+
+test(06_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
+    if (phase == 0xbeef0006) {
+        Serial.println("    >> Device enters hibernate mode.");
+        Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
+        delay(1000);
+
+        phase = 0xbeef0007;
+
+        SleepResult result = System.sleep(SLEEP_MODE_DEEP, 3s, SLEEP_DISABLE_WKP_PIN); // Disable WKP pin.
+        assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    } else if (phase == 0xbeef0007) {
         Serial.println("    >> Device is woken up from hibernate mode.");
         assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
     }
@@ -263,4 +293,16 @@ test(11_System_Sleep_Mode_Stop_Wakeup_By_Rtc) {
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.reason(), (int)WAKEUP_REASON_RTC);
+}
+
+test(12_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::STOP);
+    SystemSleepResult result = System.sleep(config);
+    assertEqual(result.error(), SYSTEM_ERROR_INVALID_ARGUMENT);
+}
+
+test(13_System_Sleep_Mode_Stop_Without_Wakeup) {
+    SleepResult result = System.sleep(nullptr, 0, nullptr, 0, 0);
+    assertEqual(result.error(), SYSTEM_ERROR_INVALID_ARGUMENT);
 }
