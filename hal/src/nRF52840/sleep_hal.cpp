@@ -685,8 +685,8 @@ int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved) 
 
     // Checks the wakeup sources
     auto wakeupSource = config->wakeup_sources;
-    // At least one wakeup source should be configured.
-    if (!wakeupSource) {
+    // At least one wakeup source should be configured for stop mode.
+    if (config->mode == HAL_SLEEP_MODE_STOP && !wakeupSource) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     while (wakeupSource) {
