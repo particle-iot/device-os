@@ -520,10 +520,7 @@ void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c,void* reserved) {
 }
 
 bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c,void* reserved) {
-    HAL_I2C_Acquire(i2c, NULL);
-    bool en = m_i2c_map[i2c].enabled;
-    HAL_I2C_Release(i2c, NULL);
-    return en;
+    return m_i2c_map[i2c].enabled;
 }
 
 void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int),void* reserved) {
