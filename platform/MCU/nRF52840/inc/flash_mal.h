@@ -60,6 +60,12 @@ extern "C" {
 #define APP_START_MASK              ((uint32_t)0x2FFC0000)
 
 #define EXTERNAL_FLASH_XIP_BASE     (0x12000000)
+#if PLATFORM_ID == PLATFORM_TRACKER
+#    define EXTERNAL_FLASH_XIP_LENGTH   (0x800000)
+#else
+#    define EXTERNAL_FLASH_XIP_LENGTH   (0x400000)
+#endif
+#define EXTERNAL_FLASH_XIP_ADDRESS_END (EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_XIP_LENGTH)
 
 /* Internal Flash page size */
 #define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x1000) //4K (256 sectors of 4K each used by main firmware)
@@ -81,7 +87,11 @@ extern "C" {
 #    endif
 
 #    ifdef USE_SERIAL_FLASH
-#        define EXTERNAL_FLASH_SYSTEM_STORE         (0x200000)          // 2M
+#        if PLATFORM_ID == PLATFORM_TRACKER
+#            define EXTERNAL_FLASH_SYSTEM_STORE     (0x400000)          // 4M
+#        else
+#            define EXTERNAL_FLASH_SYSTEM_STORE     (0x200000)          // 2M
+#        endif
 #        define EXTERNAL_FLASH_FAC_ADDRESS          (EXTERNAL_FLASH_SYSTEM_STORE)
 #        define EXTERNAL_FLASH_FAC_XIP_ADDRESS      (EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_XIP_BASE)
 #        define EXTERNAL_FLASH_FAC_LENGTH           (128*1024)
@@ -90,9 +100,13 @@ extern "C" {
 #        define EXTERNAL_FLASH_RESERVED_XIP_ADDRESS (EXTERNAL_FLASH_RESERVED_ADDRESS + EXTERNAL_FLASH_XIP_BASE)
 #        define EXTERNAL_FLASH_RESERVED_LENGTH      (420*1024)
 
-#        define EXTERNAL_FLASH_OTA_LENGTH           (1500*1024)
+#        if PLATFORM_ID == PLATFORM_TRACKER
+#            define EXTERNAL_FLASH_OTA_LENGTH           (3548*1024)
+#        else
+#            define EXTERNAL_FLASH_OTA_LENGTH           (1500*1024)
+#        endif
          /* External Flash memory address where Factory programmed core firmware is located */
-#        /* External Flash memory address where OTA upgraded core firmware will be saved */
+         /* External Flash memory address where OTA upgraded core firmware will be saved */
 #        define EXTERNAL_FLASH_OTA_ADDRESS          ((uint32_t)(EXTERNAL_FLASH_RESERVED_ADDRESS + EXTERNAL_FLASH_RESERVED_LENGTH))
 #        define EXTERNAL_FLASH_OTA_XIP_ADDRESS      (EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_XIP_BASE)
 #    endif
@@ -116,7 +130,11 @@ extern "C" {
 #    define INTERNAL_FLASH_OTA_ADDRESS  ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
 
 #    ifdef USE_SERIAL_FLASH
-#        define EXTERNAL_FLASH_SYSTEM_STORE         (0x200000)          // 2M
+#        if PLATFORM_ID == PLATFORM_TRACKER
+#            define EXTERNAL_FLASH_SYSTEM_STORE     (0x400000)          // 4M
+#        else
+#            define EXTERNAL_FLASH_SYSTEM_STORE     (0x200000)          // 2M
+#        endif
 #        define EXTERNAL_FLASH_FAC_ADDRESS          (EXTERNAL_FLASH_SYSTEM_STORE)
 #        define EXTERNAL_FLASH_FAC_XIP_ADDRESS      (EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_XIP_BASE)
 #        define EXTERNAL_FLASH_FAC_LENGTH           (128*1024)
@@ -125,9 +143,13 @@ extern "C" {
 #        define EXTERNAL_FLASH_RESERVED_XIP_ADDRESS (EXTERNAL_FLASH_RESERVED_ADDRESS + EXTERNAL_FLASH_XIP_BASE)
 #        define EXTERNAL_FLASH_RESERVED_LENGTH      (420*1024)
 
-#        define EXTERNAL_FLASH_OTA_LENGTH           (1500*1024)
+#        if PLATFORM_ID == PLATFORM_TRACKER
+#            define EXTERNAL_FLASH_OTA_LENGTH           (3548*1024)
+#        else
+#            define EXTERNAL_FLASH_OTA_LENGTH           (1500*1024)
+#        endif
          /* External Flash memory address where Factory programmed core firmware is located */
-#        /* External Flash memory address where OTA upgraded core firmware will be saved */
+         /* External Flash memory address where OTA upgraded core firmware will be saved */
 #        define EXTERNAL_FLASH_OTA_ADDRESS          ((uint32_t)(EXTERNAL_FLASH_RESERVED_ADDRESS + EXTERNAL_FLASH_RESERVED_LENGTH))
 #        define EXTERNAL_FLASH_OTA_XIP_ADDRESS      (EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_XIP_BASE)
 #    endif
