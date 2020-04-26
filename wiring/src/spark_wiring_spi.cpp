@@ -267,30 +267,20 @@ unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
 
 byte SPIClass::transfer(byte _data)
 {
-    uint16_t result = 0;
-    if (!lock())
-    {
-        result = HAL_SPI_Send_Receive_Data(_spi, _data);
-        unlock();
-    }
-    return static_cast<byte>(result);
+    return static_cast<byte>(HAL_SPI_Send_Receive_Data(_spi, _data));
 }
 
 void SPIClass::transfer(void* tx_buffer, void* rx_buffer, size_t length,
                         wiring_spi_dma_transfercomplete_callback_t user_callback)
 {
-    if (!lock())
+    HAL_SPI_DMA_Transfer(_spi, tx_buffer, rx_buffer, length, user_callback);
+    if (user_callback == NULL)
     {
-        HAL_SPI_DMA_Transfer(_spi, tx_buffer, rx_buffer, length, user_callback);
-        if (user_callback == NULL)
+        HAL_SPI_TransferStatus st;
+        do
         {
-            HAL_SPI_TransferStatus st;
-            do
-            {
-                HAL_SPI_DMA_Transfer_Status(_spi, &st);
-            } while (st.transfer_ongoing);
-        }
-        unlock();
+            HAL_SPI_DMA_Transfer_Status(_spi, &st);
+        } while (st.transfer_ongoing);
     }
 }
 
