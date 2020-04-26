@@ -1,3 +1,32 @@
+## 1.5.1-tracker.2
+
+### FEATURES
+
+- [Asset Tracker] Persistent feature flag (`FEATURE_FLAG_LED_OVERRIDDEN`) for taking over control of the RGB LED from the system #285
+
+### ENHANCEMENTS
+
+- [Asset Tracker] Increase SPI clock speed for IO expander #281
+- [Argon] Increase the size of the ARP queue [#2075](https://github.com/particle-iot/device-os/pull/2075)
+- [Cellular] Increase registration timeout to 10 minutes [#2072](https://github.com/particle-iot/device-os/pull/2072)
+- [Electron / Boron] Make sure that SARA R4-based LTE devices report LTE Cat M1 access technology [#2083](https://github.com/particle-iot/device-os/pull/2083)
+
+### BUGFIXES
+
+- [Asset Tracker] Update pinmap #282
+- [Asset Tracker] Fix `analogRead()` not functioning #283
+- [Asset Tracker] Fix OTA section and filesystem overlap #286
+- [Cellular] Fixes an issue with CGI (Cellular Global Identity) not available on some devices [#2067](https://github.com/particle-iot/device-os/pull/2067)
+- [Electron] Compatibility CellularSignal `rssi` and `qual` values generation for LTE devices using `AT+UCGED` [#2070](https://github.com/particle-iot/device-os/pull/2070)
+- [B5 SoM / Asset Tracker] Zero RSRP/RSRQ values from `AT+QCSQ` treated as errors [#2078](https://github.com/particle-iot/device-os/pull/2078)
+- [wiring] BLE: use `delete` for objects allocated with `new` [#2081](https://github.com/particle-iot/device-os/pull/2081)
+- [Gen 3] I2C HAL recovers the I2C bus on transmission errors [#2084](https://github.com/particle-iot/device-os/pull/2084)
+- [Gen 3] Devices should be able to enter STANDBY / Hibernate sleep mode without specifying any wake-up sources [#2086](https://github.com/particle-iot/device-os/pull/2086)
+
+### INTERNAL
+
+- [Asset Tracker] Add `SPI1` stress tests #284
+
 ## 1.5.1-tracker.1
 
 ### FEATURES

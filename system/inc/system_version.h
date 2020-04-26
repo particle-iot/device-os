@@ -147,7 +147,8 @@ extern "C" {
 #define SYSTEM_VERSION_v150RC2        SYSTEM_VERSION_RC(1, 5, 0, 2)
 #define SYSTEM_VERSION_v150         SYSTEM_VERSION_DEFAULT(1, 5, 0)
 #define SYSTEM_VERSION_v151TRACKER1 SYSTEM_VERSION_BETA(1, 5, 1, 1)
-#define SYSTEM_VERSION SYSTEM_VERSION_v151TRACKER1
+#define SYSTEM_VERSION_v151TRACKER2 SYSTEM_VERSION_BETA(1, 5, 1, 2)
+#define SYSTEM_VERSION SYSTEM_VERSION_v151TRACKER2
 
 /**
  * Previously we would set the least significant byte to 0 for the final release, but to make
@@ -259,6 +260,7 @@ extern "C" {
 #define SYSTEM_VERSION_150RC2
 #define SYSTEM_VERSION_150
 #define SYSTEM_VERSION_151TRACKER1
+#define SYSTEM_VERSION_151TRACKER2
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {
