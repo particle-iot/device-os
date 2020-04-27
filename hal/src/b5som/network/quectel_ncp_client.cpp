@@ -16,6 +16,9 @@
  */
 
 #define NO_STATIC_ASSERT
+#include "logging.h"
+LOG_SOURCE_CATEGORY("ncp.client");
+
 #include "quectel_ncp_client.h"
 
 #include "at_command.h"
@@ -306,8 +309,11 @@ int QuectelNcpClient::on() {
         return SYSTEM_ERROR_NONE;
     }
     // Power on the modem
-    CHECK(modemPowerOn());
-    CHECK(waitReady());
+    auto r = modemPowerOn();
+    if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
+        return r;
+    }
+    CHECK(waitReady(r == SYSTEM_ERROR_NONE /* powerOn */));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -796,30 +802,60 @@ int QuectelNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) 
     return SYSTEM_ERROR_TIMEOUT;
 }
 
-int QuectelNcpClient::waitReady() {
+int QuectelNcpClient::waitReady(bool powerOn) {
     if (ready_) {
         return SYSTEM_ERROR_NONE;
     }
-    muxer_.stop();
-    CHECK(serial_->setBaudRate(QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE));
-    CHECK(initParser(serial_.get()));
-    skipAll(serial_.get(), 1000);
-    parser_.reset();
-    ready_ = waitAtResponse(20000) == 0;
+
+    ModemState modemState = ModemState::Unknown;
+
+    if (powerOn) {
+        LOG_DEBUG(TRACE, "Waiting for modem to be ready from power on");
+        muxer_.stop();
+        CHECK(serial_->setBaudRate(QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE));
+        CHECK(initParser(serial_.get()));
+        skipAll(serial_.get(), 1000);
+        parser_.reset();
+        ready_ = waitAtResponse(20000) == 0;
+        modemState = ModemState::DefaultBaudrate;
+    } else if (ncpState() == NcpState::OFF) {
+        LOG_DEBUG(TRACE, "Waiting for modem to be ready from current unknown state");
+        ready_ = checkRuntimeState(modemState) == 0;
+        if (ready_) {
+            LOG_DEBUG(TRACE, "Runtime state %d", (int)modemState);
+        }
+    } else {
+        // Most likely we just had a parser error, try to get a response from the modem as-is
+        LOG_DEBUG(TRACE, "Waiting for modem to be ready after parser error");
+        auto stream = parser_.config().stream();
+        if (stream) {
+            skipAll(stream, 1000);
+            parser_.reset();
+            ready_ = waitAtResponse(2000) == 0;
+            if (muxer_.isRunning()) {
+                modemState = ModemState::MuxerAtChannel;
+            } else {
+                // FIXME: we need to be able to tell which baudrate we are currently running at
+                modemState = ModemState::DefaultBaudrate;
+            }
+        }
+    }
 
     if (ready_) {
-        skipAll(serial_.get(), 1000);
+        skipAll(serial_.get());
         parser_.reset();
         parserError_ = 0;
         LOG(TRACE, "NCP ready to accept AT commands");
 
-        auto r = initReady();
+        auto r = initReady(modemState);
         if (r != SYSTEM_ERROR_NONE) {
             LOG(ERROR, "Failed to perform early initialization");
             ready_ = false;
         }
     } else {
         LOG(ERROR, "No response from NCP");
+        // Make sure the muxer is stopped
+        muxer_.stop();
     }
 
     if (!ready_) {
@@ -860,82 +896,75 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
     return serial_->setBaudRate(baud);
 }
 
-int QuectelNcpClient::initReady() {
-    // Enable flow control and change to runtime baudrate
-    uint32_t hwVersion = HW_VERSION_UNDEFINED;
-    auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
-    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
-        CHECK_PARSER_OK(parser_.execCommand("AT+IFC=0,0"));
-    } else {
-        CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
+int QuectelNcpClient::initReady(ModemState state) {
+    if (state != ModemState::MuxerAtChannel) {
+        // Enable flow control and change to runtime baudrate
+        uint32_t hwVersion = HW_VERSION_UNDEFINED;
+        auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
+        if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
+            CHECK_PARSER_OK(parser_.execCommand("AT+IFC=0,0"));
+        } else {
+            CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
+            CHECK(waitAtResponse(10000));
+        }
+        auto runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
+        CHECK(changeBaudRate(runtimeBaudrate));
+        // Check that the modem is responsive at the new baudrate
+        skipAll(serial_.get(), 1000);
+        CHECK(waitAtResponse(10000));
+
+        // Select either internal or external SIM card slot depending on the configuration
+        CHECK(selectSimCard());
+
+        // Just in case disconnect
+        int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+        // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+        if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+            // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
+            // Scan LTE only, take effect immediately
+            CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+            // Configure Network Category to be Searched under LTE RAT
+            // Only use LTE Cat M1, take effect immediately
+            CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+
+            // Force eDRX mode to be disabled.
+            CHECK_PARSER(parser_.execCommand("AT+CEDRXS=0"));
+
+            // Disable Power Saving Mode
+            CHECK_PARSER(parser_.execCommand("AT+CPSMS=0"));
+        }
+
+        // Select (U)SIM card in slot 1, EG91 has two SIM card slots
+        if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E || \
+            ncpId() == PLATFORM_NCP_QUECTEL_EG91_NA || \
+            ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
+            CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
+        }
+
+        // Send AT+CMUX and initialize multiplexer
+        int portspeed;
+        switch (runtimeBaudrate) {
+            case 9600: portspeed = 1; break;
+            case 19200: portspeed = 2; break;
+            case 38400: portspeed = 3; break;
+            case 57600: portspeed = 4; break;
+            case 115200: portspeed = 5; break;
+            case 230400: portspeed = 6; break;
+            case 460800: portspeed = 7; break;
+            default:
+                return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,%d,1509,,,,,", portspeed));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+        // Initialize muxer
+        CHECK(initMuxer());
     }
-    auto runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
-    CHECK(changeBaudRate(runtimeBaudrate));
-    // Check that the modem is responsive at the new baudrate
-    skipAll(serial_.get(), 1000);
-    CHECK(waitAtResponse(10000));
 
-    // Select either internal or external SIM card slot depending on the configuration
-    CHECK(selectSimCard());
-
-    // Just in case disconnect
-    int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-
-    if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
-        // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
-        // Scan LTE only, take effect immediately
-        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
-        // Configure Network Category to be Searched under LTE RAT
-        // Only use LTE Cat M1, take effect immediately
-        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
-
-        // Force eDRX mode to be disabled.
-        CHECK_PARSER(parser_.execCommand("AT+CEDRXS=0"));
-
-        // Disable Power Saving Mode
-        CHECK_PARSER(parser_.execCommand("AT+CPSMS=0"));
-    }
-
-    // Select (U)SIM card in slot 1, EG91 has two SIM card slots
-    if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E || \
-        ncpId() == PLATFORM_NCP_QUECTEL_EG91_NA || \
-        ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
-        CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
-    }
-
-    // Send AT+CMUX and initialize multiplexer
-    int portspeed;
-    switch (runtimeBaudrate) {
-        case 9600: portspeed = 1; break;
-        case 19200: portspeed = 2; break;
-        case 38400: portspeed = 3; break;
-        case 57600: portspeed = 4; break;
-        case 115200: portspeed = 5; break;
-        case 230400: portspeed = 6; break;
-        case 460800: portspeed = 7; break;
-        default:
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,%d,1509,,,,,", portspeed));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-
-    // Initialize muxer
-    muxer_.setStream(serial_.get());
-    muxer_.setMaxFrameSize(QUECTEL_NCP_MAX_MUXER_FRAME_SIZE);
-    muxer_.setKeepAlivePeriod(QUECTEL_NCP_KEEPALIVE_PERIOD * 2);
-    muxer_.setKeepAliveMaxMissed(QUECTEL_NCP_KEEPALIVE_MAX_MISSED);
-    muxer_.setMaxRetransmissions(3);
-    muxer_.setAckTimeout(2530);
-    muxer_.setControlResponseTimeout(2540);
-
-    // Set channel state handler
-    muxer_.setChannelStateHandler(muxChannelStateCb, this);
-
-    NAMED_SCOPE_GUARD(muxerSg, { muxer_.stop(); });
-
-    // Start muxer (blocking call)
-    CHECK_TRUE(muxer_.start(true) == 0, SYSTEM_ERROR_UNKNOWN);
+    NAMED_SCOPE_GUARD(muxerSg, {
+        muxer_.stop();
+    });
 
     // Open AT channel and connect it to AT channel stream
     if (muxer_.openChannel(QUECTEL_NCP_AT_CHANNEL, muxerAtStream_->channelDataCb, muxerAtStream_.get())) {
@@ -943,7 +972,7 @@ int QuectelNcpClient::initReady() {
         return SYSTEM_ERROR_UNKNOWN;
     }
     // Just in case resume AT channel
-    muxer_.resumeChannel(QUECTEL_NCP_AT_CHANNEL);
+    CHECK_TRUE(muxer_.resumeChannel(QUECTEL_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_UNKNOWN);
 
     // Reinitialize parser with a muxer-based stream
     CHECK(initParser(muxerAtStream_.get()));
@@ -959,6 +988,97 @@ int QuectelNcpClient::initReady() {
     CHECK_PARSER(parser_.execCommand("AT+QCFG=\"cmux/urcport\",1"));
 
     return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::checkRuntimeState(ModemState& state) {
+    // Assume we are running at the runtime baudrate
+    CHECK(serial_->setBaudRate(QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
+
+    // Feeling optimistic, try to see if the muxer is already available
+    if (!muxer_.isRunning()) {
+        LOG_DEBUG(TRACE, "Muxer is not currently running");
+        // Attempt to check whether we are already in muxer state
+        // This call will automatically attempt to open/reopen channel 0 (main)
+        // It should timeout within T2 * N2, which is 300ms * 3 ~= 1s for Quectel devices
+        if (initMuxer() != SYSTEM_ERROR_NONE) {
+            muxer_.stop();
+        } else {
+            LOG_DEBUG(TRACE, "Resumed muxed session");
+        }
+    }
+
+    if (muxer_.isRunning()) {
+        // Muxer is running and channel 0 is already open
+        // Open AT channel and connect it to AT channel stream
+        if (muxer_.openChannel(QUECTEL_NCP_AT_CHANNEL, muxerAtStream_->channelDataCb, muxerAtStream_.get())) {
+            // Failed to open AT channel
+            LOG_DEBUG(TRACE, "Failed to open AT channel");
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+        // Just in case resume AT channel
+        CHECK_TRUE(muxer_.resumeChannel(QUECTEL_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_UNKNOWN);
+
+        CHECK(initParser(muxerAtStream_.get()));
+        skipAll(muxerAtStream_.get());
+        parser_.reset();
+        if (!waitAtResponse(10000)) {
+            // We are in muxed mode already with AT channel open
+            state = ModemState::MuxerAtChannel;
+            return 0;
+        }
+
+        // Something went wrong, we are supposed to be in multiplexed mode, however we are not receiving
+        // responses from the modem.
+        // Stop the muxer and error out
+        muxer_.stop();
+        LOG_DEBUG(TRACE, "Modem failed to respond on a muxed AT channel after resuming muxed session");
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    // We are not in the mulitplexed mode yet
+    // Check if the modem is responsive at the runtime baudrate
+    CHECK(initParser(serial_.get()));
+    skipAll(serial_.get());
+    parser_.reset();
+    if (!waitAtResponse(1000)) {
+        state = ModemState::RuntimeBaudrate;
+        return 0;
+    }
+
+    LOG_DEBUG(TRACE, "Modem is not responsive @ %u baudrate", QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE);
+
+    // The modem is not responsive at the runtime baudrate, check default
+    CHECK(serial_->setBaudRate(QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE));
+    CHECK(initParser(serial_.get()));
+    skipAll(serial_.get());
+    parser_.reset();
+    if (!waitAtResponse(20000)) {
+        state = ModemState::DefaultBaudrate;
+        return 0;
+    }
+
+    LOG_DEBUG(TRACE, "Modem is not responsive @ %u baudrate", QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE);
+
+    state = ModemState::Unknown;
+    return SYSTEM_ERROR_UNKNOWN;
+}
+
+int QuectelNcpClient::initMuxer() {
+    muxer_.setStream(serial_.get());
+    muxer_.setMaxFrameSize(QUECTEL_NCP_MAX_MUXER_FRAME_SIZE);
+    muxer_.setKeepAlivePeriod(QUECTEL_NCP_KEEPALIVE_PERIOD);
+    muxer_.setKeepAliveMaxMissed(QUECTEL_NCP_KEEPALIVE_MAX_MISSED);
+    muxer_.setMaxRetransmissions(gsm0710::proto::DEFAULT_N2);
+    muxer_.setAckTimeout(gsm0710::proto::DEFAULT_T1);
+    muxer_.setControlResponseTimeout(gsm0710::proto::DEFAULT_T2);
+
+    // Set channel state handler
+    muxer_.setChannelStateHandler(muxChannelStateCb, this);
+
+    // Start muxer (blocking call)
+    CHECK_TRUE(muxer_.start(true) == 0, SYSTEM_ERROR_UNKNOWN);
+
+    return 0;
 }
 
 int QuectelNcpClient::checkSimCard() {
@@ -1097,6 +1217,11 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
 
 int QuectelNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState, decltype(muxer_)::ChannelState newState, void* ctx) {
     auto self = (QuectelNcpClient*)ctx;
+
+    // Ignore state changes unless we are in an ON state
+    if (self->ncpState() != NcpState::ON) {
+        return 0;
+    }
     // This callback is executed from the multiplexer thread, not safe to use the lock here
     // because it might get called while blocked inside some muxer function
 
@@ -1217,8 +1342,10 @@ int QuectelNcpClient::modemPowerOn() const {
         }
     } else {
         LOG(TRACE, "Modem already on");
+        // FIXME:
+        return SYSTEM_ERROR_ALREADY_EXISTS;
     }
-    CHECK_TRUE(modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(modemPowerState(), SYSTEM_ERROR_TIMEOUT);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -1263,6 +1390,7 @@ int QuectelNcpClient::modemHardReset(bool powerOff) const {
     HAL_GPIO_Write(BGRST, 1);
     HAL_Delay_Milliseconds(300);
     HAL_GPIO_Write(BGRST, 0);
+    HAL_Delay_Milliseconds(160);
 
     return SYSTEM_ERROR_NONE;
 }
