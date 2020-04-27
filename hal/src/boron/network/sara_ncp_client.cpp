@@ -16,6 +16,10 @@
  */
 
 #define NO_STATIC_ASSERT
+
+#include "logging.h"
+LOG_SOURCE_CATEGORY("ncp.client");
+
 #include "sara_ncp_client.h"
 
 #include "at_command.h"
@@ -87,7 +91,7 @@ inline system_tick_t millis() {
 
 const auto UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
 const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2 = 921600;
-const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 = 460800;
+const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 = 115200; // FIXME: 460800;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE = 200;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN = 200;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX = 203;
@@ -106,6 +110,9 @@ const auto UBLOX_NCP_SIM_SELECT_PIN = 23;
 
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
+
+const auto UBLOX_MUXER_T1 = 2530;
+const auto UBLOX_MUXER_T2 = 2540;
 
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
 using CidType = decltype(CellularGlobalIdentity::cell_id);
@@ -297,8 +304,11 @@ int SaraNcpClient::on() {
         return 0;
     }
     // Power on the modem
-    CHECK(modemPowerOn());
-    CHECK(waitReady());
+    auto r = modemPowerOn();
+    if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
+        return r;
+    }
+    CHECK(waitReady(r == SYSTEM_ERROR_NONE /* powerOn */));
     return 0;
 }
 
@@ -784,29 +794,60 @@ int SaraNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) {
     return SYSTEM_ERROR_TIMEOUT;
 }
 
-int SaraNcpClient::waitReady() {
+int SaraNcpClient::waitReady(bool powerOn) {
     if (ready_) {
         return 0;
     }
-    muxer_.stop();
-    CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
-    CHECK(initParser(serial_.get()));
-    // Enable voltage translator
+
+    ModemState modemState = ModemState::Unknown;
+
+    // Just in case make sure that the voltage translator is on
     CHECK(modemSetUartState(true));
-    skipAll(serial_.get(), 1000);
-    parser_.reset();
-    ready_ = waitAtResponse(20000) == 0;
+    HAL_Delay_Milliseconds(100);
+    CHECK(modemSetUartState(false));
+    HAL_Delay_Milliseconds(100);
+    CHECK(modemSetUartState(true));
+
+    if (powerOn) {
+        LOG_DEBUG(TRACE, "Waiting for modem to be ready from power on");
+        CHECK(defaultParserConfig());
+        ready_ = waitAtResponse(20000) == 0;
+        modemState = ModemState::DefaultBaudrate;
+    } else if (ncpState() == NcpState::OFF) {
+        LOG_DEBUG(TRACE, "Waiting for modem to be ready from current unknown state");
+        ready_ = checkRuntimeState(modemState) == 0;
+        if (ready_) {
+            LOG_DEBUG(TRACE, "Runtime state %d", (int)modemState);
+        }
+    } else {
+        // Most likely we just had a parser error, try to get a response from the modem as-is
+        LOG_DEBUG(TRACE, "Waiting for modem to be ready after parser error");
+        auto stream = parser_.config().stream();
+        if (stream) {
+            skipAll(stream, 1000);
+            parser_.reset();
+            ready_ = waitAtResponse(2000) == 0;
+            if (muxer_.isRunning()) {
+                modemState = ModemState::MuxerAtChannel;
+            } else {
+                // FIXME: we need to be able to tell which baudrate we are currently running at
+                modemState = ModemState::DefaultBaudrate;
+            }
+        }
+    }
 
     if (ready_) {
         // start power on timer for memory issue power off delays, assume not registered
-        powerOnTime_ = millis();
-        registeredTime_ = 0;
-        skipAll(serial_.get(), 1000);
+        if (powerOn) {
+            powerOnTime_ = millis();
+            registeredTime_ = 0;
+        }
+        skipAll(serial_.get());
         parser_.reset();
         parserError_ = 0;
         LOG(TRACE, "NCP ready to accept AT commands");
 
-        auto r = initReady();
+        auto r = initReady(modemState);
         if (r != SYSTEM_ERROR_NONE) {
             LOG(ERROR, "Failed to perform early initialization");
             ready_ = false;
@@ -828,7 +869,7 @@ int SaraNcpClient::waitReady() {
     return 0;
 }
 
-int SaraNcpClient::selectSimCard() {
+int SaraNcpClient::selectSimCard(ModemState& state) {
     // Read current GPIO configuration
     int mode = -1;
     int value = -1;
@@ -913,6 +954,7 @@ int SaraNcpClient::selectSimCard() {
             HAL_Delay_Milliseconds(10000);
         }
 
+        CHECK(defaultParserConfig());
         CHECK(waitAtResponse(20000));
     }
 
@@ -928,7 +970,53 @@ int SaraNcpClient::selectSimCard() {
         }
         HAL_Delay_Milliseconds(1000);
     }
-    return simState;
+
+    if (simState != SYSTEM_ERROR_NONE) {
+        return simState;
+    }
+
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+        // Set UMNOPROF = SIM_SELECT
+        auto resp = parser_.sendCommand("AT+UMNOPROF?");
+        reset = false;
+        int umnoprof = static_cast<int>(UbloxSaraUmnoprof::NONE);
+        auto r = CHECK_PARSER(resp.scanf("+UMNOPROF: %d", &umnoprof));
+        CHECK_PARSER_OK(resp.readResult());
+        if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::SW_DEFAULT) {
+            // Disconnect before making changes to the UMNOPROF
+            r = CHECK_PARSER(parser_.execCommand("AT+COPS=2,2"));
+            if (r == AtResponse::OK) {
+                // This is a persistent setting
+                auto respUmno = parser_.sendCommand(1000, "AT+UMNOPROF=%d", static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT));
+                respUmno.readResult();
+                // Not checking for error since we will reset either way
+                reset = true;
+            }
+        }
+        if (reset) {
+            const int respCfun = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
+            CHECK_TRUE(respCfun == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+            HAL_Delay_Milliseconds(10000);
+            CHECK(defaultParserConfig());
+            CHECK(waitAtResponse(20000));
+        }
+    }
+
+    if (reset) {
+        state = ModemState::DefaultBaudrate;
+    }
+
+    return 0;
+}
+
+int SaraNcpClient::defaultParserConfig() {
+    // Make sure we reset back to using hardware serial port @ default baudrate
+    muxer_.stop();
+    CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
+    CHECK(initParser(serial_.get()));
+    skipAll(serial_.get(), 1000);
+    parser_.reset();
+    return 0;
 }
 
 int SaraNcpClient::changeBaudRate(unsigned int baud) {
@@ -956,81 +1044,59 @@ int SaraNcpClient::getAppFirmwareVersion() {
     return major * 100 + minor;
 }
 
-int SaraNcpClient::initReady() {
+int SaraNcpClient::initReady(ModemState state) {
     // Select either internal or external SIM card slot depending on the configuration
-    CHECK(selectSimCard());
+    CHECK(selectSimCard(state));
+
+    // Make sure flow control is enabled as well
+    // NOTE: this should work fine on SARA R4 firmware revisions that don't support it as well
+    CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
+    CHECK(waitAtResponse(10000));
 
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
 
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
-        // Change the baudrate to 921600
-        CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
-    } else {
-        fwVersion_ = getAppFirmwareVersion();
-        if (fwVersion_ > 0) {
-            // L0.0.00.00.05.06,A.02.00 has a memory issue
-            memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
-            // There is a set of other revisions which do not have hardware flow control
-            if (!(fwVersion_ >= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN &&
-                    fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX)) {
-                // Change the baudrate to 460800
-                // NOTE: ignoring AT errors just in case to accommodate for some revisions
-                // potentially not supporting anything other than 115200
+    if (state != ModemState::MuxerAtChannel) {
+        if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+            // Change the baudrate to 921600
+            CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
+        } else {
+            fwVersion_ = getAppFirmwareVersion();
+            if (fwVersion_ > 0) {
+                // L0.0.00.00.05.06,A.02.00 has a memory issue
+                memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
+                // There is a set of other revisions which do not have hardware flow control
+                if (!(fwVersion_ >= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN &&
+                        fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX)) {
+                    // Change the baudrate to 460800
+                    // NOTE: ignoring AT errors just in case to accommodate for some revisions
+                    // potentially not supporting anything other than 115200
 
-                // FIXME: AT+IPR setting is persistent on SARA R4
-                // Still using 115200 for now to avoid bricking devices until we can figure out
-                // how to make the setting non persistent as we need to be backwards compatible
-                // with DeviceOS versions that only talk @ 115200 to SARA R4 modems.
-                // int r = changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
-                int r = changeBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
-                if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_AT_NOT_OK) {
-                    return r;
+                    // FIXME: AT+IPR setting is persistent on SARA R4
+                    // Still using 115200 for now to avoid bricking devices until we can figure out
+                    // how to make the setting non persistent as we need to be backwards compatible
+                    // with DeviceOS versions that only talk @ 115200 to SARA R4 modems.
+                    int r = changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
+                    if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_AT_NOT_OK) {
+                        return r;
+                    }
                 }
             }
         }
+
+        // Check that the modem is responsive at the new baudrate
+        skipAll(serial_.get(), 1000);
+        CHECK(waitAtResponse(10000));
     }
 
-    // Check that the modem is responsive at the new baudrate
-    skipAll(serial_.get(), 1000);
-    CHECK(waitAtResponse(10000));
-
-    // Make sure flow control is enabled as well
-    // NOTE: this should work fine on SARA R4 firmware revisions that don't support it as well
-    CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
-
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
-        // Set UMNOPROF = SIM_SELECT
-        auto resp = parser_.sendCommand("AT+UMNOPROF?");
-        bool reset = false;
-        int umnoprof = static_cast<int>(UbloxSaraUmnoprof::NONE);
-        r = CHECK_PARSER(resp.scanf("+UMNOPROF: %d", &umnoprof));
-        CHECK_PARSER_OK(resp.readResult());
-        if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::SW_DEFAULT) {
-            // Disconnect before making changes to the UMNOPROF
-            r = CHECK_PARSER(parser_.execCommand("AT+COPS=2,2"));
-            if (r == AtResponse::OK) {
-                // This is a persistent setting
-                auto respUmno = parser_.sendCommand(1000, "AT+UMNOPROF=%d", static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT));
-                respUmno.readResult();
-                // Not checking for error since we will reset either way
-                reset = true;
-            }
-        }
-        if (reset) {
-            const int respCfun = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
-            CHECK_TRUE(respCfun == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-            HAL_Delay_Milliseconds(10000);
-            CHECK(waitAtResponse(20000));
-        }
-
         // Force Cat M1-only mode
         // We may encounter a CME ERROR response with u-blox firmware 05.08,A.02.04 and in that case Cat-M1 mode is
         // already enforced properly based on the UMNOPROF setting.
-        resp = parser_.sendCommand("AT+URAT?");
+        auto resp = parser_.sendCommand("AT+URAT?");
         unsigned selectAct = 0, preferAct1 = 0, preferAct2 = 0;
-        r = resp.scanf("+URAT: %u,%u,%u", &selectAct, &preferAct1, &preferAct2);
+        auto r = resp.scanf("+URAT: %u,%u,%u", &selectAct, &preferAct1, &preferAct2);
         resp.readResult();
         if (r > 0) {
             if (selectAct != 7 || (r >= 2 && preferAct1 != 7) || (r >= 3 && preferAct2 != 7)) { // 7: LTE Cat M1
@@ -1078,31 +1144,21 @@ int SaraNcpClient::initReady() {
         CHECK_PARSER_OK(parser_.execCommand("AT+UPSV=0"));
     }
 
-    // Send AT+CMUX and initialize multiplexer
-    r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,%u,,,,,", UBLOX_NCP_MAX_MUXER_FRAME_SIZE));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+    if (state != ModemState::MuxerAtChannel) {
+        // Send AT+CMUX and initialize multiplexer
+        r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,%u,,,,,", UBLOX_NCP_MAX_MUXER_FRAME_SIZE));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
-    // Initialize muxer
-    muxer_.setStream(serial_.get());
-    muxer_.setMaxFrameSize(UBLOX_NCP_MAX_MUXER_FRAME_SIZE);
-    muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD * 2);
-    muxer_.setKeepAliveMaxMissed(UBLOX_NCP_KEEPALIVE_MAX_MISSED);
-    muxer_.setMaxRetransmissions(3);
-    muxer_.setAckTimeout(2530);
-    muxer_.setControlResponseTimeout(2540);
-    if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
-        muxer_.useMscAsKeepAlive(true);
+        // Initialize muxer
+        CHECK(initMuxer());
+
+        // Start muxer (blocking call)
+        CHECK_TRUE(muxer_.start(true) == 0, SYSTEM_ERROR_UNKNOWN);
     }
-
-    // Set channel state handler
-    muxer_.setChannelStateHandler(muxChannelStateCb, this);
 
     NAMED_SCOPE_GUARD(muxerSg, {
         muxer_.stop();
     });
-
-    // Start muxer (blocking call)
-    CHECK_TRUE(muxer_.start(true) == 0, SYSTEM_ERROR_UNKNOWN);
 
     // Open AT channel and connect it to AT channel stream
     if (muxer_.openChannel(UBLOX_NCP_AT_CHANNEL, muxerAtStream_->channelDataCb, muxerAtStream_.get())) {
@@ -1124,6 +1180,125 @@ int SaraNcpClient::initReady() {
     LOG_DEBUG(TRACE, "Muxer AT channel live");
 
     muxerSg.dismiss();
+
+    return 0;
+}
+
+int SaraNcpClient::checkRuntimeState(ModemState& state) {
+    // Assume we are running at the runtime baudrate
+    unsigned runtimeBaudrate = ncpId() == PLATFORM_NCP_SARA_R410 ? UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 :
+            UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2;
+
+    CHECK(serial_->setBaudRate(runtimeBaudrate));
+
+    // Feeling optimistic, try to see if the muxer is already available
+    if (!muxer_.isRunning()) {
+        LOG(TRACE, "Muxer is not currently running");
+        // Attempt to check whether we are already in muxer state
+        // This call will automatically attempt to open/reopen channel 0 (main)
+        // It should timeout within T2 * N2, which is 300ms * 3 ~= 1s
+        bool stop = true;
+        SCOPE_GUARD({
+            if (stop) {
+                muxer_.stop();
+            }
+        });
+        if (!initMuxer()) {
+            muxer_.setAckTimeout(gsm0710::proto::DEFAULT_T1);
+            muxer_.setControlResponseTimeout(gsm0710::proto::DEFAULT_T2);
+            LOG(TRACE, "Initialized muxer");
+            if (!muxer_.start(true /* initiator */, false /* don't open channel 0 */)) {
+                if (!muxer_.forceOpenChannel(0) && !muxer_.ping()) {
+                    LOG(TRACE, "Resumed muxed session");
+                    stop = false;
+                }
+            }
+        }
+    }
+
+    if (muxer_.isRunning()) {
+        // Muxer is running and channel 0 is already open
+        // Open AT channel and connect it to AT channel stream
+        if (muxer_.openChannel(UBLOX_NCP_AT_CHANNEL, muxerAtStream_->channelDataCb, muxerAtStream_.get())) {
+            // Failed to open AT channel
+            // Force open
+            if (muxer_.forceOpenChannel(UBLOX_NCP_AT_CHANNEL)) {
+                LOG(TRACE, "Failed to open AT channel");
+                return SYSTEM_ERROR_UNKNOWN;
+            } else {
+                muxer_.forceOpenChannel(UBLOX_NCP_PPP_CHANNEL);
+                muxer_.closeChannel(UBLOX_NCP_PPP_CHANNEL);
+            }
+            muxer_.setChannelDataHandler(UBLOX_NCP_AT_CHANNEL, muxerAtStream_->channelDataCb, muxerAtStream_.get());
+        }
+        // Attempt to resume AT channel
+        CHECK_TRUE(muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_UNKNOWN);
+
+        CHECK(initParser(muxerAtStream_.get()));
+        skipAll(muxerAtStream_.get());
+        parser_.reset();
+        if (!waitAtResponse(10000)) {
+            // We are in muxed mode already with AT channel open
+            state = ModemState::MuxerAtChannel;
+
+            // Restore defaults
+            muxer_.setAckTimeout(UBLOX_MUXER_T1);
+            muxer_.setControlResponseTimeout(UBLOX_MUXER_T2);
+
+            return 0;
+        }
+
+        // Something went wrong, we are supposed to be in multiplexed mode, however we are not receiving
+        // responses from the modem.
+        // Stop the muxer and error out
+        muxer_.stop();
+        LOG(TRACE, "Modem failed to respond on a muxed AT channel after resuming muxed session");
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    // We are not in the mulitplexed mode yet
+    // Check if the modem is responsive at the runtime baudrate
+    CHECK(initParser(serial_.get()));
+    skipAll(serial_.get());
+    parser_.reset();
+    if (!waitAtResponse(1000)) {
+        state = ModemState::RuntimeBaudrate;
+        return 0;
+    }
+
+    LOG(TRACE, "Modem is not responsive @ %u baudrate", runtimeBaudrate);
+
+    // The modem is not responsive at the runtime baudrate, check default
+    CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
+    CHECK(initParser(serial_.get()));
+    skipAll(serial_.get());
+    parser_.reset();
+    if (!waitAtResponse(20000)) {
+        state = ModemState::DefaultBaudrate;
+        return 0;
+    }
+
+    LOG(TRACE, "Modem is not responsive @ %u baudrate", UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
+
+    state = ModemState::Unknown;
+    return SYSTEM_ERROR_UNKNOWN;
+}
+
+int SaraNcpClient::initMuxer() {
+    // Initialize muxer
+    muxer_.setStream(serial_.get());
+    muxer_.setMaxFrameSize(UBLOX_NCP_MAX_MUXER_FRAME_SIZE);
+    muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD);
+    muxer_.setKeepAliveMaxMissed(UBLOX_NCP_KEEPALIVE_MAX_MISSED);
+    muxer_.setMaxRetransmissions(3);
+    muxer_.setAckTimeout(UBLOX_MUXER_T1);
+    muxer_.setControlResponseTimeout(UBLOX_MUXER_T2);
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+        muxer_.useMscAsKeepAlive(true);
+    }
+
+    // Set channel state handler
+    muxer_.setChannelStateHandler(muxChannelStateCb, this);
 
     return 0;
 }
@@ -1155,6 +1330,7 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         netConf_ = networkConfigForImsi(buf, strlen(buf));
     }
     // FIXME: for now IPv4 context only
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGDCONT?"));
     auto resp = parser_.sendCommand("AT+CGDCONT=1,\"IP\",\"%s%s\"",
             (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
             netConf_.hasApn() ? netConf_.apn() : "");
@@ -1182,6 +1358,8 @@ int SaraNcpClient::registerNet() {
 
     connectionState(NcpConnectionState::CONNECTING);
     registeredTime_ = 0;
+
+    CHECK_PARSER_OK(parser_.execCommand("AT+COPS?"));
 
     // NOTE: up to 3 mins (FIXME: there seems to be a bug where this timeout of 3 minutes
     //       is not being respected by u-blox modems.  Setting to 5 for now.)
@@ -1275,6 +1453,11 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
 int SaraNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
         decltype(muxer_)::ChannelState newState, void* ctx) {
     auto self = (SaraNcpClient*)ctx;
+
+    // Ignore state changes unless we are in an ON state
+    if (self->ncpState() != NcpState::ON) {
+        return 0;
+    }
     // This callback is executed from the multiplexer thread, not safe to use the lock here
     // because it might get called while blocked inside some muxer function
 
@@ -1370,11 +1553,10 @@ int SaraNcpClient::modemInit() const {
         .value = 1
     };
 
-    // Configure PWR_ON and RESET_N pins as Open-Drain and set to high by default
+    // Configure PWR_ON and RESET_N pins as OUTPUT and set to high by default
     CHECK(HAL_Pin_Configure(UBPWR, &conf));
     CHECK(HAL_Pin_Configure(UBRST, &conf));
 
-    conf.mode = OUTPUT;
     // Configure BUFEN as Push-Pull Output and default to 1 (disabled)
     CHECK(HAL_Pin_Configure(BUFEN, &conf));
 
@@ -1423,8 +1605,10 @@ int SaraNcpClient::modemPowerOn() const {
         }
     } else {
         LOG(TRACE, "Modem already on");
+        // FIXME:
+        return SYSTEM_ERROR_ALREADY_EXISTS;
     }
-    CHECK_TRUE(modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(modemPowerState(), SYSTEM_ERROR_TIMEOUT);
 
     return 0;
 }

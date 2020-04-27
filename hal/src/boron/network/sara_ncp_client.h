@@ -89,6 +89,13 @@ private:
         Registered    = 1,
     };
 
+    enum class ModemState {
+        Unknown = 0,
+        MuxerAtChannel = 1,
+        RuntimeBaudrate = 2,
+        DefaultBaudrate = 3
+    };
+
     RegistrationState creg_ = RegistrationState::NotRegistered;
     RegistrationState cgreg_ = RegistrationState::NotRegistered;
     RegistrationState cereg_ = RegistrationState::NotRegistered;
@@ -107,10 +114,12 @@ private:
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
     int checkParser();
-    int waitReady();
-    int initReady();
+    int waitReady(bool powerOn = false);
+    int initReady(ModemState state);
+    int checkRuntimeState(ModemState& state);
+    int initMuxer();
     int waitAtResponse(unsigned int timeout, unsigned int period = 1000);
-    int selectSimCard();
+    int selectSimCard(ModemState& state);
     int checkSimCard();
     int configureApn(const CellularNetworkConfig& conf);
     int registerNet();
@@ -132,6 +141,7 @@ private:
     int modemSetUartState(bool state) const;
     void waitForPowerOff();
     int getAppFirmwareVersion();
+    int defaultParserConfig();
 };
 
 inline AtParser* SaraNcpClient::atParser() {
