@@ -10,9 +10,9 @@ ifneq (,$(PREBUILD))
 # Should declare enough RAM for inermediate linker script: 89K
 USER_SRAM_LENGTH = 89K
 else
-DATA_SECTION_LEN  = $(shell $(OBJDUMP) -h --section=.data $(INTERMEDIATE_ELF) | grep .data)
+DATA_SECTION_LEN  = $(shell $(OBJDUMP) -h --section=.data $(INTERMEDIATE_ELF) | grep -E '^\s*[0-9]+\s+\.data\s+')
 DATA_SECTION_LEN := 0x$(word 3,$(DATA_SECTION_LEN))
-BSS_SECTION_LEN   = $(shell $(OBJDUMP) -h --section=.bss $(INTERMEDIATE_ELF) | grep .bss)
+BSS_SECTION_LEN   = $(shell $(OBJDUMP) -h --section=.bss $(INTERMEDIATE_ELF) | grep -E '^\s*[0-9]+\s+\.bss\s+')
 BSS_SECTION_LEN  := 0x$(word 3,$(BSS_SECTION_LEN))
 
 # Note: reserving 16 bytes for alignment just in case
