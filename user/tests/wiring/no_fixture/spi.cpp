@@ -24,7 +24,7 @@ static __SPISettings spiSettingsFromSpiInfo(hal_spi_info_t* info)
   return __SPISettings(info->clock, info->bit_order, info->data_mode);
 }
 
-static bool spiSettingsApplyCheck(SPIClass& spi, const __SPISettings& settings, HAL_SPI_Interface interface = HAL_SPI_INTERFACE1)
+static bool spiSettingsApplyCheck(auto& spi, const __SPISettings& settings, HAL_SPI_Interface interface = HAL_SPI_INTERFACE1)
 {
     hal_spi_info_t info;
     spi.beginTransaction(settings);

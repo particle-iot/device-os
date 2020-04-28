@@ -9,27 +9,16 @@
 namespace particle {
 namespace globals {
 
-SPIClass& instanceSpi() {
-    static SPIClass instance(HAL_SPI_INTERFACE1);
-    return instance;
-}
+::particle::SpiProxy<HAL_SPI_INTERFACE1> SPI;
 
 #if Wiring_SPI1
-SPIClass& instanceSpi1() {
-    static SPIClass instance(HAL_SPI_INTERFACE2);
-    return instance;
-}
+::particle::SpiProxy<HAL_SPI_INTERFACE2> SPI1;
 #endif // Wiring_SPI1
 
 #if Wiring_SPI2
-SPIClass& instanceSpi2() {
-    static SPIClass instance(HAL_SPI_INTERFACE3);
-    return instance;
-}
-
+::particle::SpiProxy<HAL_SPI_INTERFACE3> SPI2;
 #endif // Wiring_SPI2
 
 } } // particle::globals
 
 #endif //SPARK_WIRING_NO_SPI
-
