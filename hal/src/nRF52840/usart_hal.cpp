@@ -683,7 +683,7 @@ private:
     pin_t rtsPin_;
 
     bool configured_ = false;
-    bool enabled_ = false;
+    volatile bool enabled_ = false;
 
     volatile bool transmitting_;
     volatile uint8_t receiving_;

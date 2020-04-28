@@ -116,7 +116,7 @@ typedef struct STM32_I2C_Info {
     I2C_InitTypeDef I2C_InitStructure;
 
     uint32_t I2C_ClockSpeed;
-    bool I2C_Enabled;
+    volatile bool I2C_Enabled;
 
     uint8_t* rxBuffer;
     size_t rxBufferSize;

@@ -75,7 +75,7 @@ typedef struct SPI_State
     bool SPI_Bit_Order_Set;
     bool SPI_Data_Mode_Set;
     bool SPI_Clock_Divider_Set;
-    bool SPI_Enabled;
+    volatile bool SPI_Enabled;
 
     HAL_SPI_DMA_UserCallback SPI_DMA_UserCallback;
 
