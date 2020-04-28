@@ -25,7 +25,7 @@ static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
     HAL_SPI_Info(spi, info, nullptr);
 }
 
-test(SPI_1_SPI_Begin_Without_Argument)
+test(SPI_01_SPI_Begin_Without_Argument)
 {
     // Just in case
     SPI.end();
@@ -46,7 +46,7 @@ test(SPI_1_SPI_Begin_Without_Argument)
     SPI.end();
 }
 
-test(SPI_2_SPI_Begin_With_Ss_Pin)
+test(SPI_02_SPI_Begin_With_Ss_Pin)
 {
     // Just in case
     SPI.end();
@@ -94,7 +94,7 @@ test(SPI_2_SPI_Begin_With_Ss_Pin)
     SPI.end();
 }
 
-test(SPI_3_SPI_Begin_With_Mode)
+test(SPI_03_SPI_Begin_With_Mode)
 {
     // Just in case
     SPI.end();
@@ -133,7 +133,7 @@ test(SPI_3_SPI_Begin_With_Mode)
 #endif // HAL_PLATFORM_STM32F2XX
 }
 
-test(SPI_4_SPI_Begin_With_Master_Ss_Pin)
+test(SPI_04_SPI_Begin_With_Master_Ss_Pin)
 {
     // Just in case
     SPI.end();
@@ -146,7 +146,7 @@ test(SPI_4_SPI_Begin_With_Master_Ss_Pin)
     assertEqual(info.mode, SPI_MODE_MASTER);
 #if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_XENON
     assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM
+#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
 #else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
@@ -183,7 +183,7 @@ test(SPI_4_SPI_Begin_With_Master_Ss_Pin)
 
 // HAL_SPI_INTERFACE1 does not support slave mode on Gen3 device
 #if HAL_PLATFORM_STM32F2XX
-test(SPI_5_SPI_Begin_With_Slave_Ss_Pin)
+test(SPI_05_SPI_Begin_With_Slave_Ss_Pin)
 {
     // Just in case
     SPI.end();
@@ -223,7 +223,7 @@ test(SPI_5_SPI_Begin_With_Slave_Ss_Pin)
 #endif // HAL_PLATFORM_STM32F2XX
 
 #if Wiring_SPI1
-test(SPI_6_SPI1_Begin_Without_Argument)
+test(SPI_06_SPI1_Begin_Without_Argument)
 {
     // Just in case
     SPI1.end();
@@ -239,7 +239,7 @@ test(SPI_6_SPI1_Begin_Without_Argument)
     SPI1.end();
 }
 
-test(SPI_7_SPI1_Begin_With_Ss_Pin)
+test(SPI_07_SPI1_Begin_With_Ss_Pin)
 {
     // Just in case
     SPI1.end();
@@ -282,7 +282,7 @@ test(SPI_7_SPI1_Begin_With_Ss_Pin)
     SPI1.end();
 }
 
-test(SPI_8_SPI1_Begin_With_Mode)
+test(SPI_08_SPI1_Begin_With_Mode)
 {
     // Just in case
     SPI1.end();
@@ -308,7 +308,7 @@ test(SPI_8_SPI1_Begin_With_Mode)
     SPI1.end();
 }
 
-test(SPI_9_SPI1_Begin_With_Master_Ss_Pin)
+test(SPI_09_SPI1_Begin_With_Master_Ss_Pin)
 {
     // Just in case
     SPI1.end();
@@ -391,3 +391,241 @@ test(SPI_10_SPI1_Begin_With_Slave_Ss_Pin)
 }
 #endif // Wiring_SPI1
 
+namespace {
+
+template <unsigned int clockSpeed, unsigned int transferSize, unsigned int overheadNs, unsigned int iterations>
+constexpr system_tick_t calculateExpectedTime() {
+    constexpr uint64_t microsInSecond = 1000000ULL;
+    constexpr uint64_t nanosInSecond = 1000000000ULL;
+    constexpr uint64_t spiTransferTime = (nanosInSecond * transferSize * 8 + clockSpeed - 1) / clockSpeed;
+    constexpr uint64_t expectedTransferTime = spiTransferTime + overheadNs;
+
+    return (expectedTransferTime * iterations) / microsInSecond;
+}
+
+// Common settings for all performance tests
+constexpr unsigned int SPI_ITERATIONS = 10000;
+
+#if HAL_PLATFORM_NRF52840
+constexpr unsigned int SPI_CLOCK_SPEED = 8000000; // 8MHz
+constexpr unsigned int SPI_NODMA_OVERHEAD = 11800; // 12us ~= 750 clock cycles @ 64MHz
+constexpr unsigned int SPI_DMA_OVERHEAD = SPI_NODMA_OVERHEAD; // Gen 3 always uses DMA underneath
+#elif HAL_PLATFORM_STM32F2XX
+constexpr unsigned int SPI_CLOCK_SPEED = 7500000; // 7.5MHz
+constexpr unsigned int SPI_NODMA_OVERHEAD = 1600; // 1.6us ~= 190 clock cycles @ 120MHz
+constexpr unsigned int SPI_DMA_OVERHEAD = 11500; // 11.5us ~= 1380 clock cycles @ 120MHz
+#endif // HAL_PLATFORM_NRF52840
+
+} // anonymous
+
+test(SPI_11_SPI_Clock_Speed)
+{
+    SPI.begin();
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    hal_spi_info_t info = {};
+    querySpiInfo(HAL_SPI_INTERFACE1, &info);
+    SPI.end();
+
+    assertEqual(info.clock, SPI_CLOCK_SPEED);
+}
+
+test(SPI_12_SPI_Transfer_1_Bytes_Per_Transmission_No_Locking)
+{
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 1;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
+
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
+    {
+        SPI.transfer(0x55);
+    }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.end();
+
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime);
+}
+
+test(SPI_13_SPI_Transfer_1_Bytes_Per_Transmission_Locking)
+{
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 1;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
+
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    SPI.beginTransaction();
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
+    {
+        SPI.transfer(0x55);
+    }
+    SPI.endTransaction();
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.end();
+
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime);
+}
+
+test(SPI_14_SPI_Transfer_2_Bytes_Per_Transmission_Locking)
+{
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 2;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
+
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    SPI.beginTransaction();
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i+=2)
+    {
+        SPI.transfer(0x55);
+        SPI.transfer(0x55);
+    }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.endTransaction();
+    SPI.end();
+
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime);
+}
+
+test(SPI_15_SPI_Transfer_1_Bytes_Per_DMA_Transmission_No_Locking)
+{
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 1;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
+
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    uint8_t temp = 0x55;
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
+    {
+        SPI.transfer(&temp, nullptr, transferSize, nullptr);
+    }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.end();
+
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime);
+}
+
+test(SPI_16_SPI_Transfer_1_Bytes_Per_DMA_Transmission_Locking)
+{
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 1;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
+
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    SPI.beginTransaction();
+    uint8_t temp = 0x55;
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
+    {
+        SPI.transfer(&temp, nullptr, transferSize, nullptr);
+    }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.endTransaction();
+    SPI.end();
+
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime);
+}
+
+test(SPI_17_SPI_Transfer_2_Bytes_Per_DMA_Transmission_Locking)
+{
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 2;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
+
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    SPI.beginTransaction();
+    uint8_t temp[transferSize] = {};
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
+    {
+        SPI.transfer(temp, nullptr, transferSize, nullptr);
+    }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.endTransaction();
+    SPI.end();
+
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime);
+}
+
+test(SPI_18_SPI_Transfer_16_Bytes_Per_DMA_Transmission_Locking)
+{
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 16;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
+
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    SPI.beginTransaction();
+    uint8_t temp[transferSize] = {};
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
+    {
+        SPI.transfer(temp, nullptr, transferSize, nullptr);
+    }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.endTransaction();
+    SPI.end();
+
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime);
+}
+
+test(SPI_19_SPI_Transfer_128_Bytes_Per_DMA_Transmission_Locking)
+{
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 128;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
+
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    SPI.beginTransaction();
+    uint8_t temp[transferSize] = {};
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
+    {
+        SPI.transfer(temp, nullptr, transferSize, nullptr);
+    }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.endTransaction();
+    SPI.end();
+
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime);
+}
+
+test(SPI_20_SPI_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
+{
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 1024;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
+
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    SPI.beginTransaction();
+    uint8_t temp[transferSize] = {};
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
+    {
+        SPI.transfer(temp, nullptr, transferSize, nullptr);
+    }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.endTransaction();
+    SPI.end();
+
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime);
+}

@@ -56,7 +56,7 @@ typedef struct {
     HAL_SPI_DMA_UserCallback            spi_dma_user_callback;
     HAL_SPI_Select_UserCallback         spi_select_user_callback;
 
-    bool                                enabled;
+    volatile bool                       enabled;
     volatile bool                       transmitting;
     volatile uint16_t                   transfer_length;
 

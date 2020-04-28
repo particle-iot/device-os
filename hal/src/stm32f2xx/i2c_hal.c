@@ -116,7 +116,7 @@ typedef struct STM32_I2C_Info {
     I2C_InitTypeDef I2C_InitStructure;
 
     uint32_t I2C_ClockSpeed;
-    bool I2C_Enabled;
+    volatile bool I2C_Enabled;
 
     uint8_t* rxBuffer;
     size_t rxBufferSize;
@@ -906,10 +906,7 @@ void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c, void* reserved)
 
 bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c, void* reserved)
 {
-    HAL_I2C_Acquire(i2c, NULL);
-    bool en = i2cMap[i2c]->I2C_Enabled;
-    HAL_I2C_Release(i2c, NULL);
-    return en;
+    return i2cMap[i2c]->I2C_Enabled;
 }
 
 void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int), void* reserved)
