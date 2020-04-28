@@ -1,3 +1,9 @@
+## 1.5.1-tracker.3
+
+### BUGFIXES
+
+- [Asset Tracker] Use `EXTERNAL_FLASH_SIZE` in address check used before erasing OTA region #287
+
 ## 1.5.1-tracker.2
 
 ### FEATURES
