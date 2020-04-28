@@ -391,170 +391,241 @@ test(SPI_10_SPI1_Begin_With_Slave_Ss_Pin)
 }
 #endif // Wiring_SPI1
 
-// Performance tests. All SPI interfaces share the same driver. Testing on SPI only is sufficient.
-constexpr uint32_t calculateExpectedTime(uint32_t spiClockSpeed, uint32_t spiTransferSize, float allowedOverhead) {
-    return ((((float)spiTransferSize / (spiClockSpeed / 8 /* 8 clocks per byte */)) * 1000) * allowedOverhead);
+namespace {
+
+template <unsigned int clockSpeed, unsigned int transferSize, unsigned int overheadNs, unsigned int iterations>
+constexpr system_tick_t calculateExpectedTime() {
+    constexpr uint64_t microsInSecond = 1000000ULL;
+    constexpr uint64_t nanosInSecond = 1000000000ULL;
+    constexpr uint64_t spiTransferTime = (nanosInSecond * transferSize * 8 + clockSpeed - 1) / clockSpeed;
+    constexpr uint64_t expectedTransferTime = spiTransferTime + overheadNs;
+
+    return (expectedTransferTime * iterations) / microsInSecond;
 }
 
-test(SPI_11_SPI_Transfer_1_Bytes_Per_Transmission_No_Locking)
-{
-    constexpr auto SPI_TRANSFER_SIZE = 10000;
-    constexpr auto SPI_TRANSFER_OVERHEAD = 7.0; // This value should be adjusted if either SPI clock or transfer size is changed.
-    constexpr auto SPI_CLOCK_SPEED_MHZ = 4;
-    constexpr auto expectedTime = calculateExpectedTime(SPI_CLOCK_SPEED_MHZ * 1000000, SPI_TRANSFER_SIZE, SPI_TRANSFER_OVERHEAD);
+// Common settings for all performance tests
+constexpr unsigned int SPI_ITERATIONS = 10000;
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED_MHZ, MHZ);
+#if HAL_PLATFORM_NRF52840
+constexpr unsigned int SPI_CLOCK_SPEED = 8000000; // 8MHz
+constexpr unsigned int SPI_NODMA_OVERHEAD = 11800; // 12us ~= 750 clock cycles @ 64MHz
+constexpr unsigned int SPI_DMA_OVERHEAD = SPI_NODMA_OVERHEAD; // Gen 3 always uses DMA underneath
+#elif HAL_PLATFORM_STM32F2XX
+constexpr unsigned int SPI_CLOCK_SPEED = 7500000; // 7.5MHz
+constexpr unsigned int SPI_NODMA_OVERHEAD = 1600; // 1.6us ~= 190 clock cycles @ 120MHz
+constexpr unsigned int SPI_DMA_OVERHEAD = 11500; // 11.5us ~= 1380 clock cycles @ 120MHz
+#endif // HAL_PLATFORM_NRF52840
+
+} // anonymous
+
+test(SPI_11_SPI_Clock_Speed)
+{
     SPI.begin();
-    system_tick_t start = millis();
-    for(unsigned int i = 0; i < SPI_TRANSFER_SIZE; i++)
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    hal_spi_info_t info = {};
+    querySpiInfo(HAL_SPI_INTERFACE1, &info);
+    SPI.end();
+
+    assertEqual(info.clock, SPI_CLOCK_SPEED);
+}
+
+test(SPI_12_SPI_Transfer_1_Bytes_Per_Transmission_No_Locking)
+{
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 1;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
+
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
     {
         SPI.transfer(0x55);
     }
-    system_tick_t transferTime = millis() - start;
-    SPI1.end();
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.end();
 
-    Serial.printf("in %d ms, expected: %d\r\n", transferTime, expectedTime);
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
     assertLessOrEqual(transferTime, expectedTime);
 }
 
-test(SPI_12_SPI_Transfer_1_Bytes_Per_Transmission_Locking)
+test(SPI_13_SPI_Transfer_1_Bytes_Per_Transmission_Locking)
 {
-    constexpr auto SPI_TRANSFER_SIZE = 10000;
-    constexpr auto SPI_TRANSFER_OVERHEAD = 7.0; // This value should be adjusted if either SPI clock or transfer size is changed.
-    constexpr auto SPI_CLOCK_SPEED_MHZ = 4;
-    constexpr auto expectedTime = calculateExpectedTime(SPI_CLOCK_SPEED_MHZ * 1000000, SPI_TRANSFER_SIZE, SPI_TRANSFER_OVERHEAD);
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 1;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED_MHZ, MHZ);
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
     SPI.beginTransaction();
-    system_tick_t start = millis();
-    for(unsigned int i = 0; i < SPI_TRANSFER_SIZE; i++)
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
     {
         SPI.transfer(0x55);
     }
     SPI.endTransaction();
-    system_tick_t transferTime = millis() - start;
-    SPI1.end();
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.end();
 
-    Serial.printf("in %d ms, expected: %d\r\n", transferTime, expectedTime);
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
     assertLessOrEqual(transferTime, expectedTime);
 }
 
-test(SPI_13_SPI_Transfer_2_Bytes_Per_Transmission_Locking)
+test(SPI_14_SPI_Transfer_2_Bytes_Per_Transmission_Locking)
 {
-    constexpr auto SPI_TRANSFER_SIZE = 10000;
-    constexpr auto SPI_TRANSFER_OVERHEAD = 7.0; // This value should be adjusted if either SPI clock or transfer size is changed.
-    constexpr auto SPI_CLOCK_SPEED_MHZ = 4;
-    constexpr auto expectedTime = calculateExpectedTime(SPI_CLOCK_SPEED_MHZ * 1000000, SPI_TRANSFER_SIZE, SPI_TRANSFER_OVERHEAD);
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 2;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED_MHZ, MHZ);
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
     SPI.beginTransaction();
-    system_tick_t start = millis();
-    for(unsigned int i = 0; i < SPI_TRANSFER_SIZE; i += 2)
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i+=2)
     {
         SPI.transfer(0x55);
         SPI.transfer(0x55);
     }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
     SPI.endTransaction();
-    system_tick_t transferTime = millis() - start;
-    SPI1.end();
+    SPI.end();
 
-    Serial.printf("in %d ms, expected: %d\r\n", transferTime, expectedTime);
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
     assertLessOrEqual(transferTime, expectedTime);
 }
 
-test(SPI_14_SPI_Transfer_1_Bytes_Per_DMA_Transmission_No_Locking)
+test(SPI_15_SPI_Transfer_1_Bytes_Per_DMA_Transmission_No_Locking)
 {
-    constexpr auto SPI_TRANSFER_SIZE = 10000;
-    constexpr auto SPI_TRANSFER_OVERHEAD = 7.0; // This value should be adjusted if either SPI clock or transfer size is changed.
-    constexpr auto SPI_CLOCK_SPEED_MHZ = 4;
-    constexpr auto expectedTime = calculateExpectedTime(SPI_CLOCK_SPEED_MHZ * 1000000, SPI_TRANSFER_SIZE, SPI_TRANSFER_OVERHEAD);
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 1;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED_MHZ, MHZ);
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
-    system_tick_t start = millis();
     uint8_t temp = 0x55;
-    for(unsigned int i = 0; i < SPI_TRANSFER_SIZE; i++)
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
     {
-        SPI.transfer(&temp, nullptr, 1, nullptr); 
+        SPI.transfer(&temp, nullptr, transferSize, nullptr);
     }
-    system_tick_t transferTime = millis() - start;
-    SPI1.end();
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.end();
 
-    Serial.printf("in %d ms, expected: %d\r\n", transferTime, expectedTime);
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
     assertLessOrEqual(transferTime, expectedTime);
 }
 
-test(SPI_15_SPI_Transfer_1_Bytes_Per_DMA_Transmission_Locking)
+test(SPI_16_SPI_Transfer_1_Bytes_Per_DMA_Transmission_Locking)
 {
-    constexpr auto SPI_TRANSFER_SIZE = 10000;
-    constexpr auto SPI_TRANSFER_OVERHEAD = 7.0; // This value should be adjusted if either SPI clock or transfer size is changed.
-    constexpr auto SPI_CLOCK_SPEED_MHZ = 4;
-    constexpr auto expectedTime = calculateExpectedTime(SPI_CLOCK_SPEED_MHZ * 1000000, SPI_TRANSFER_SIZE, SPI_TRANSFER_OVERHEAD);
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 1;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED_MHZ, MHZ);
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
     SPI.beginTransaction();
-    system_tick_t start = millis();
     uint8_t temp = 0x55;
-    for(unsigned int i = 0; i < SPI_TRANSFER_SIZE; i++)
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
     {
-        SPI.transfer(&temp, nullptr, 1, nullptr); 
+        SPI.transfer(&temp, nullptr, transferSize, nullptr);
     }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
     SPI.endTransaction();
-    system_tick_t transferTime = millis() - start;
-    SPI1.end();
+    SPI.end();
 
-    Serial.printf("in %d ms, expected: %d\r\n", transferTime, expectedTime);
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
     assertLessOrEqual(transferTime, expectedTime);
 }
 
-test(SPI_16_SPI_Transfer_2_Bytes_Per_DMA_Transmission_Locking)
+test(SPI_17_SPI_Transfer_2_Bytes_Per_DMA_Transmission_Locking)
 {
-    constexpr auto SPI_TRANSFER_SIZE = 10000;
-    constexpr auto SPI_TRANSFER_OVERHEAD = 3.8; // This value should be adjusted if either SPI clock or transfer size is changed.
-    constexpr auto SPI_CLOCK_SPEED_MHZ = 4;
-    constexpr auto expectedTime = calculateExpectedTime(SPI_CLOCK_SPEED_MHZ * 1000000, SPI_TRANSFER_SIZE, SPI_TRANSFER_OVERHEAD);
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 2;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED_MHZ, MHZ);
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
     SPI.beginTransaction();
-    system_tick_t start = millis();
-    uint8_t temp[2] = {0x55};
-    for(unsigned int i = 0; i < SPI_TRANSFER_SIZE; i += 2)
+    uint8_t temp[transferSize] = {};
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
     {
-        SPI.transfer(&temp, nullptr, 2, nullptr); 
+        SPI.transfer(temp, nullptr, transferSize, nullptr);
     }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
     SPI.endTransaction();
-    system_tick_t transferTime = millis() - start;
-    SPI1.end();
+    SPI.end();
 
-    Serial.printf("in %d ms, expected: %d\r\n", transferTime, expectedTime);
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
     assertLessOrEqual(transferTime, expectedTime);
 }
 
-test(SPI_17_SPI_Transfer_10_Bytes_Per_DMA_Transmission_Locking)
+test(SPI_18_SPI_Transfer_16_Bytes_Per_DMA_Transmission_Locking)
 {
-    constexpr auto SPI_TRANSFER_SIZE = 10000;
-    constexpr auto SPI_TRANSFER_OVERHEAD = 1.75; // This value should be adjusted if either SPI clock or transfer size is changed.
-    constexpr auto SPI_CLOCK_SPEED_MHZ = 4;
-    constexpr auto expectedTime = calculateExpectedTime(SPI_CLOCK_SPEED_MHZ * 1000000, SPI_TRANSFER_SIZE, SPI_TRANSFER_OVERHEAD);
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 16;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED_MHZ, MHZ);
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
     SPI.beginTransaction();
-    system_tick_t start = millis();
-    uint8_t temp[2] = {0x55};
-    for(unsigned int i = 0; i < SPI_TRANSFER_SIZE; i += 10)
+    uint8_t temp[transferSize] = {};
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
     {
-        SPI.transfer(&temp, nullptr, 10, nullptr); 
+        SPI.transfer(temp, nullptr, transferSize, nullptr);
     }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
     SPI.endTransaction();
-    system_tick_t transferTime = millis() - start;
-    SPI1.end();
+    SPI.end();
 
-    Serial.printf("in %d ms, expected: %d\r\n", transferTime, expectedTime);
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
     assertLessOrEqual(transferTime, expectedTime);
 }
 
+test(SPI_19_SPI_Transfer_128_Bytes_Per_DMA_Transmission_Locking)
+{
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 128;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
+
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    SPI.beginTransaction();
+    uint8_t temp[transferSize] = {};
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
+    {
+        SPI.transfer(temp, nullptr, transferSize, nullptr);
+    }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.endTransaction();
+    SPI.end();
+
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime);
+}
+
+test(SPI_20_SPI_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
+{
+    SINGLE_THREADED_SECTION();
+    constexpr unsigned int transferSize = 1024;
+    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
+
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    SPI.beginTransaction();
+    uint8_t temp[transferSize] = {};
+    system_tick_t start = DWT->CYCCNT;
+    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
+    {
+        SPI.transfer(temp, nullptr, transferSize, nullptr);
+    }
+    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    SPI.endTransaction();
+    SPI.end();
+
+    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime);
+}
