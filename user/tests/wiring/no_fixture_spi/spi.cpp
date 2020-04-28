@@ -25,7 +25,7 @@ static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
     HAL_SPI_Info(spi, info, nullptr);
 }
 
-test(SPI_1_SPI_Begin_Without_Argument)
+test(SPI_01_SPI_Begin_Without_Argument)
 {
     // Just in case
     SPI.end();
@@ -46,7 +46,7 @@ test(SPI_1_SPI_Begin_Without_Argument)
     SPI.end();
 }
 
-test(SPI_2_SPI_Begin_With_Ss_Pin)
+test(SPI_02_SPI_Begin_With_Ss_Pin)
 {
     // Just in case
     SPI.end();
@@ -94,7 +94,7 @@ test(SPI_2_SPI_Begin_With_Ss_Pin)
     SPI.end();
 }
 
-test(SPI_3_SPI_Begin_With_Mode)
+test(SPI_03_SPI_Begin_With_Mode)
 {
     // Just in case
     SPI.end();
@@ -133,7 +133,7 @@ test(SPI_3_SPI_Begin_With_Mode)
 #endif // HAL_PLATFORM_STM32F2XX
 }
 
-test(SPI_4_SPI_Begin_With_Master_Ss_Pin)
+test(SPI_04_SPI_Begin_With_Master_Ss_Pin)
 {
     // Just in case
     SPI.end();
@@ -146,7 +146,7 @@ test(SPI_4_SPI_Begin_With_Master_Ss_Pin)
     assertEqual(info.mode, SPI_MODE_MASTER);
 #if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_XENON
     assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM
+#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
 #else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
@@ -183,7 +183,7 @@ test(SPI_4_SPI_Begin_With_Master_Ss_Pin)
 
 // HAL_SPI_INTERFACE1 does not support slave mode on Gen3 device
 #if HAL_PLATFORM_STM32F2XX
-test(SPI_5_SPI_Begin_With_Slave_Ss_Pin)
+test(SPI_05_SPI_Begin_With_Slave_Ss_Pin)
 {
     // Just in case
     SPI.end();
@@ -223,7 +223,7 @@ test(SPI_5_SPI_Begin_With_Slave_Ss_Pin)
 #endif // HAL_PLATFORM_STM32F2XX
 
 #if Wiring_SPI1
-test(SPI_6_SPI1_Begin_Without_Argument)
+test(SPI_06_SPI1_Begin_Without_Argument)
 {
     // Just in case
     SPI1.end();
@@ -239,7 +239,7 @@ test(SPI_6_SPI1_Begin_Without_Argument)
     SPI1.end();
 }
 
-test(SPI_7_SPI1_Begin_With_Ss_Pin)
+test(SPI_07_SPI1_Begin_With_Ss_Pin)
 {
     // Just in case
     SPI1.end();
@@ -282,7 +282,7 @@ test(SPI_7_SPI1_Begin_With_Ss_Pin)
     SPI1.end();
 }
 
-test(SPI_8_SPI1_Begin_With_Mode)
+test(SPI_08_SPI1_Begin_With_Mode)
 {
     // Just in case
     SPI1.end();
@@ -308,7 +308,7 @@ test(SPI_8_SPI1_Begin_With_Mode)
     SPI1.end();
 }
 
-test(SPI_9_SPI1_Begin_With_Master_Ss_Pin)
+test(SPI_09_SPI1_Begin_With_Master_Ss_Pin)
 {
     // Just in case
     SPI1.end();
@@ -390,4 +390,118 @@ test(SPI_10_SPI1_Begin_With_Slave_Ss_Pin)
     SPI1.end();
 }
 #endif // Wiring_SPI1
+
+// Performance tests. All SPI interfaces share the same driver. Testing on SPI only is sufficient.
+test(SPI_11_SPI_Transfer_10000_Bytes_No_Locking_Less_Than_135_Ms)
+{
+    SPI.setClockSpeed(5, MHZ);
+    SPI.begin();
+    system_tick_t start = millis();
+    for(unsigned int i=0; i < 10000; i++)
+    {
+        SPI.transfer(0x55);
+    }
+    Serial.printf("%d ms\r\n", millis() - start);
+    assertTrue(millis() - start < 135);
+    SPI1.end();
+}
+
+test(SPI_12_SPI_Transfer_10000_Bytes_Locking_Less_Than_135_Ms)
+{
+    SPI.setClockSpeed(5, MHZ);
+    SPI.begin();
+    SPI.beginTransaction();
+    system_tick_t start = millis();
+    for(unsigned int i=0; i < 10000; i++)
+    {
+        SPI.transfer(0x55);
+    }
+    SPI.endTransaction();
+    Serial.printf("%d ms\r\n", millis() - start);
+    assertTrue(millis() - start < 135);
+    SPI1.end();
+}
+
+test(SPI_13_SPI_Transfer_2_Miltiply_5000_Bytes_Locking_Less_Than_135_Ms)
+{
+    SPI.setClockSpeed(5, MHZ);
+    SPI.begin();
+    SPI.beginTransaction();
+    system_tick_t start = millis();
+    for(unsigned int i=0; i < 5000; i++)
+    {
+        SPI.transfer(0x55);
+        SPI.transfer(0x55);
+    }
+    SPI.endTransaction();
+    Serial.printf("%d ms\r\n", millis() - start);
+    assertTrue(millis() - start < 135);
+    SPI1.end();
+}
+
+test(SPI_14_SPI_Transfer_10000_Bytes_DMA_No_Locking_Less_Than_140_Ms)
+{
+    SPI.setClockSpeed(5, MHZ);
+    SPI.begin();
+    system_tick_t start = millis();
+    uint8_t temp = 0x55;
+    for(unsigned int i=0; i < 10000; i++)
+    {
+        SPI.transfer(&temp, nullptr, 1, nullptr); 
+    }
+    Serial.printf("%d ms\r\n", millis() - start);
+    assertTrue(millis() - start < 140);
+    SPI1.end();
+}
+
+test(SPI_15_SPI_Transfer_10000_Bytes_DMA_Locking_Less_Than_140_Ms)
+{
+    SPI.setClockSpeed(5, MHZ);
+    SPI.begin();
+    SPI.beginTransaction();
+    system_tick_t start = millis();
+    uint8_t temp = 0x55;
+    for(unsigned int i=0; i < 10000; i++)
+    {
+        SPI.transfer(&temp, nullptr, 1, nullptr); 
+    }
+    SPI.endTransaction();
+    Serial.printf("%d ms\r\n", millis() - start);
+    assertTrue(millis() - start < 140);
+    SPI1.end();
+}
+
+test(SPI_16_SPI_Transfer_2_Multiply_5000_Bytes_DMA_Locking_Less_Than_85_Ms)
+{
+    SPI.setClockSpeed(5, MHZ);
+    SPI.begin();
+    SPI.beginTransaction();
+    system_tick_t start = millis();
+    uint8_t temp[2] = {0x55};
+    for(unsigned int i=0; i < 5000; i++)
+    {
+        SPI.transfer(&temp, nullptr, 2, nullptr); 
+    }
+    SPI.endTransaction();
+    Serial.printf("%d ms\r\n", millis() - start);
+    assertTrue(millis() - start < 85);
+    SPI1.end();
+}
+
+test(SPI_17_SPI_Transfer_10_Multiply_1000_Bytes_DMA_Locking_Less_Than_40_Ms)
+{
+    SPI.setClockSpeed(5, MHZ);
+    SPI.begin();
+    SPI.beginTransaction();
+    system_tick_t start = millis();
+    uint8_t temp[10] = {0x55};
+    for(unsigned int i=0; i < 1000; i++)
+    {
+        SPI.transfer(&temp, nullptr, 10, nullptr); 
+    }
+    SPI.endTransaction();
+    Serial.printf("%d ms\r\n", millis() - start);
+    assertTrue(millis() - start < 40);
+    SPI1.end();
+}
 
