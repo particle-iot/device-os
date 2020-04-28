@@ -385,8 +385,8 @@ test(system_power_management) {
 
     API_COMPILE(System.setPowerConfiguration(conf));
 
-    API_COMPILE({ auto source = System.powerSource() == POWER_SOURCE_VIN; });
-    API_COMPILE({ auto state = System.batteryState() == BATTERY_STATE_CHARGING; });
-    API_COMPILE({ auto charge = System.batteryCharge(); });
+    API_COMPILE({ auto source = System.powerSource() == POWER_SOURCE_VIN; (void)source; });
+    API_COMPILE({ auto state = System.batteryState() == BATTERY_STATE_CHARGING; (void)state; });
+    API_COMPILE({ auto charge = System.batteryCharge(); (void)charge; });
 }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
