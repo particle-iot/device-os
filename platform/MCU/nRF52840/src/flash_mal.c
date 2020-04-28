@@ -44,6 +44,7 @@
 
 bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length)
 {
+    // FIXME: remove magic numbers
     uint32_t endAddress = startAddress + length - 1;
 
     if (flashDeviceID == FLASH_INTERNAL)
@@ -54,7 +55,7 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
     else if (flashDeviceID == FLASH_SERIAL)
     {
 #ifdef USE_SERIAL_FLASH
-        return startAddress >= 0x00000000 && endAddress <= 0x400000;
+        return startAddress >= 0x00000000 && endAddress <= EXTERNAL_FLASH_SIZE;
 #else
         return false;
 #endif
