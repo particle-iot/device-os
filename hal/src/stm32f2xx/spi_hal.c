@@ -321,7 +321,7 @@ void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void*
         PIN_MAP[pin].gpio_peripheral->BSRRL = PIN_MAP[pin].gpio_pin;
         HAL_Pin_Mode(pin, OUTPUT);
     }
-    else
+    else if (mode == SPI_MODE_SLAVE)
     {
         HAL_Pin_Mode(pin, INPUT);
     }
