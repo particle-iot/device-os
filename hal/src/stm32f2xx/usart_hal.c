@@ -70,7 +70,7 @@ typedef struct STM32_USART_Info {
 	Ring_Buffer* usart_tx_buffer;
 	Ring_Buffer* usart_rx_buffer;
 
-	bool usart_enabled;
+	volatile bool usart_enabled;
 	bool usart_transmitting;
 
 	uint32_t usart_config;

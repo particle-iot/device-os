@@ -71,7 +71,7 @@ typedef struct {
     uint8_t                     scl_pin;
     uint8_t                     sda_pin;
 
-    bool                        enabled;
+    volatile bool               enabled;
     volatile transfer_state_t   transfer_state;
     I2C_Mode                    mode;
     uint32_t                    speed;
