@@ -22,6 +22,11 @@ extern "C" {
 #endif
 #include "usb_settings.h"
 
+// Make sure we are not polluting global namespace with these generic macro names
+#undef SPI
+#undef SPI1
+#undef SPI2
+
 #ifdef	__cplusplus
 }
 #endif
