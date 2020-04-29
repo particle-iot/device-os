@@ -365,7 +365,11 @@ elif [ $PLATFORM_ID -eq 10 ]; then
     # Configure
     cd ../modules
     MODULAR="y"
-    declare -a debugBuildOptions=("y" "n")
+    if [ $DEBUG = true ]; then
+        declare -a debugBuildOptions=("y" "n")
+    else
+        declare -a debugBuildOptions=("n")
+    fi
 
     for debugBuildOption in ${debugBuildOptions[@]}; do
         DEBUG_BUILD=$debugBuildOption
