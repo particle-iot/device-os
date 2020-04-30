@@ -3,11 +3,7 @@ USER_MODULE_PATH=.
 
 BUILD_PATH_EXT = $(USER_BUILD_PATH_EXT)
 
-DEPENDENCIES = wiring system services communication hal
-
-ifdef TEST
-DEPENDENCIES += crypto
-endif
+DEPENDENCIES = wiring system services communication hal crypto
 
 include ../build/platform-id.mk
 

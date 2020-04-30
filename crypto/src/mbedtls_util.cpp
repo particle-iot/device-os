@@ -27,7 +27,7 @@
 #include "rng_hal.h"
 #include "timer_hal.h"
 
-int mbedtls_default_rng(void*, unsigned char* data, size_t size) {
+__attribute__((weak)) int mbedtls_default_rng(void*, unsigned char* data, size_t size) {
     while (size >= 4) {
         *((uint32_t*)data) = HAL_RNG_GetRandomNumber();
         data += 4;

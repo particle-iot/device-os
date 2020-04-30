@@ -79,4 +79,28 @@ int mbedtls_internal_sha1_process( mbedtls_sha1_context *ctx,
     return mbedtls_sha1_update_ret( ctx, data, 64 );
 }
 
+void mbedtls_sha1_process( mbedtls_sha1_context *ctx,
+                           const unsigned char data[64] )
+{
+    mbedtls_internal_sha1_process( ctx, data );
+}
+
+void mbedtls_sha1_starts( mbedtls_sha1_context *ctx )
+{
+    mbedtls_sha1_starts_ret( ctx );
+}
+
+void mbedtls_sha1_update( mbedtls_sha1_context *ctx,
+                          const unsigned char *input,
+                          size_t ilen )
+{
+    mbedtls_sha1_update_ret( ctx, input, ilen );
+}
+
+void mbedtls_sha1_finish( mbedtls_sha1_context *ctx,
+                          unsigned char output[20] )
+{
+    mbedtls_sha1_finish_ret( ctx, output );
+}
+
 #endif // MBEDTLS_SHA1_ALT
