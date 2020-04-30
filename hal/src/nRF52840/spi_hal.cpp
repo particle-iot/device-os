@@ -369,11 +369,17 @@ uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data) {
     tx_buffer = data;
 
     m_spi_map[spi].spi_dma_user_callback = NULL;
-    spi_tx_rx(spi, &tx_buffer, &rx_buffer, 1);
+    SPARK_ASSERT(spi_tx_rx(spi, &tx_buffer, &rx_buffer, 1) == 1);
 
     // Wait for SPI transfer finished
     while(m_spi_map[spi].transmitting) {
-        ;
+        // FIXME: This is a dirty hack to fix SPI race condition which is caused by invoking `CRITICAL_REGION_EXIT()` somewhere, e.g. USB stack.
+        if (nrf_spim_event_check(m_spi_map[spi].master->p_reg, NRF_SPIM_EVENT_END)) {
+            nrf_spim_event_clear(m_spi_map[spi].master->p_reg, NRF_SPIM_EVENT_END);
+            m_spi_map[spi].transmitting = false;
+            // Reset the transmission statue in nrfx_spim.c
+            HAL_SPI_Begin_Ext(spi, m_spi_map[spi].spi_mode, m_spi_map[spi].ss_pin, nullptr);
+        }
     }
 
     return rx_buffer;
@@ -437,6 +443,18 @@ void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffe
     m_spi_map[spi].spi_dma_user_callback = userCallback;
     if (m_spi_map[spi].spi_mode == SPI_MODE_MASTER) {
         SPARK_ASSERT(spi_tx_rx(spi, (uint8_t *)tx_buffer, (uint8_t *)rx_buffer, length) == length);
+        if (!userCallback) {
+            // FIXME: This is a dirty hack to fix SPI race condition which is caused by invoking `CRITICAL_REGION_EXIT()` somewhere, e.g. USB stack.
+            // Wait for SPI transfer finished
+            while(m_spi_map[spi].transmitting) {
+                if (nrf_spim_event_check(m_spi_map[spi].master->p_reg, NRF_SPIM_EVENT_END)) {
+                    nrf_spim_event_clear(m_spi_map[spi].master->p_reg, NRF_SPIM_EVENT_END);
+                    m_spi_map[spi].transmitting = false;
+                    // Reset the transmission statue in nrfx_spim.c
+                    HAL_SPI_Begin_Ext(spi, m_spi_map[spi].spi_mode, m_spi_map[spi].ss_pin, nullptr);
+                }
+            }
+        }
     } else {
         // reset transfer length
         m_spi_map[spi].transfer_length = 0;
