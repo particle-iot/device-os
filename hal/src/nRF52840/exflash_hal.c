@@ -32,6 +32,7 @@
 #include "flash_common.h"
 #include "nrf_nvic.h"
 #include "concurrent_hal.h"
+#include "gpio_hal.h"
 
 enum qspi_cmds_t {
     QSPI_STD_CMD_WRSR     = 0x01,
@@ -42,7 +43,8 @@ enum qspi_cmds_t {
     QSPI_MX25_CMD_EXSO    = 0xc1,
     QSPI_MX25_CMD_WRSCUR  = 0x2f,
     QSPI_MX25_CMD_SLEEP   = 0xB9,
-    QSPI_MX25_CMD_READ_ID = 0xAB
+    QSPI_MX25_CMD_READ_ID = 0xAB,
+    QSPI_STD_CMD_PGMERS_SUSPEND = 0xB0
 };
 
 static const size_t MX25_OTP_SECTOR_SIZE = 4096 / 8; /* 4Kb or 512B */
@@ -138,7 +140,6 @@ static nrfx_err_t exflash_qspi_cinstr_quick_send(uint8_t opcode, nrf_qspi_cinstr
 }
 
 static int configure_memory() {
-    uint8_t temporary = 0x40;
     uint32_t err_code;
     nrf_qspi_cinstr_conf_t cinstr_cfg = {
         .opcode    = QSPI_STD_CMD_RSTEN,
@@ -164,10 +165,11 @@ static int configure_memory() {
         return -2;
     }
 
+    uint8_t temporary[3] = { 0x40, 0x00, 0x02 };
     // Switch to qspi mode
     cinstr_cfg.opcode = QSPI_STD_CMD_WRSR;
-    cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_2B;
-    err_code = exflash_qspi_cinstr_xfer(&cinstr_cfg, &temporary, NULL);
+    cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_4B;
+    err_code = exflash_qspi_cinstr_xfer(&cinstr_cfg, temporary, NULL);
     if (err_code)
     {
         return -3;
@@ -223,11 +225,22 @@ int hal_exflash_init(void)
             .dpmen      = false
         },
     };
-
+HAL_Pin_Mode(4, OUTPUT);
+HAL_GPIO_Write(4,1);
     ret = nrfx_qspi_init(&config, NULL, NULL);
     if (ret)
     {
-        goto hal_exflash_init_done;
+        if (ret == NRFX_ERROR_TIMEOUT) {
+            // Could have timed out because the flash chip might be in an ongoing program/erase operation.
+            // Suspend it.
+            HAL_GPIO_Write(4,0);
+            LOG_DEBUG(TRACE, "QSPI NRFX timeout error. Suspend pgm/ers op.");
+            ret = hal_exflash_special_command(HAL_EXFLASH_COMMAND_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
+            if (ret)
+            {
+                goto hal_exflash_init_done;
+            }
+        }
     }
     LOG_DEBUG(TRACE, "QSPI initialized.");
 
@@ -246,7 +259,7 @@ int hal_exflash_init(void)
 
 hal_exflash_init_done:
     hal_exflash_unlock();
-    return 0;
+    return ret;
 }
 
 int hal_exflash_uninit(void)
@@ -524,6 +537,17 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
             };
 
             /* Wake up external flash from deep power down modeby sending read id command */
+            ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
+        } else if (cmd == HAL_EXFLASH_COMMAND_SUSPEND_PGMERS) {
+            const nrf_qspi_cinstr_conf_t cinstr_cfg = {
+                .opcode    = QSPI_STD_CMD_PGMERS_SUSPEND,
+                .length    = NRF_QSPI_CINSTR_LEN_1B,
+                .io2_level = true,
+                .io3_level = true,
+                .wipwait   = true,
+                .wren      = true
+            };
+            /* suspend an ongoing program or erase operation */
             ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
         }
     } else if (sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP) {

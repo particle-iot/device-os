@@ -265,6 +265,10 @@ int filesystem_mount(filesystem_t* fs) {
 #endif /* LFS_NO_MALLOC */
 
     ret = lfs_mount(&fs->instance, &fs->config);
+    if (ret) {
+        SPARK_ASSERT(!(ret==LFS_ERR_IO));
+    }
+
     if (!ret) {
         /* IMPORTANT: manually calling deorphan here to validate the filesystem.
          * We've added another check to avoid inifite loop when traversing
