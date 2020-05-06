@@ -102,6 +102,14 @@ public:
     void unlock() {
         return instance().unlock();
     }
+
+    operator SPIClass&() {
+        return instance();
+    }
+
+    SPIClass* operator&() {
+        return &instance();
+    }
 };
 
 } // particle

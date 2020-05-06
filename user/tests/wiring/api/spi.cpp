@@ -1,6 +1,77 @@
 
 #include "testapi.h"
 
+// without Arduino.h we should not get a clash redefining SPISettings
+class SPISettings {};
+
+namespace api_test_namespace {
+// We should be able to define variables and types named SPI, SPI1 and SPI2
+
+struct DummyStruct {
+};
+
+DummyStruct SPI;
+DummyStruct SPI1;
+DummyStruct SPI2;
+
+
+namespace test {
+
+struct SPI {
+};
+
+struct SPI1 {
+};
+
+struct SPI2 {
+};
+
+} // test
+
+namespace proxy {
+
+void spiFuncRef(SPIClass& spi) {
+    spi.begin();
+}
+
+void spiFuncCref(const SPIClass& spi) {
+    (void)spi;
+}
+
+void spiFuncPtr(SPIClass* spi) {
+    spi->begin();
+}
+
+void spiFuncCptr(const SPIClass* spi) {
+    (void)spi;
+}
+
+} // proxy
+
+} // api_test_namespace
+
+test(spi_proxy_compatibility) {
+    using namespace api_test_namespace::proxy;
+    API_COMPILE(spiFuncRef(SPI));
+    API_COMPILE(spiFuncCref(SPI));
+    API_COMPILE(spiFuncPtr(&SPI));
+    API_COMPILE(spiFuncCptr(&SPI));
+
+#if Wiring_SPI1
+    API_COMPILE(spiFuncRef(SPI1));
+    API_COMPILE(spiFuncCref(SPI1));
+    API_COMPILE(spiFuncPtr(&SPI1));
+    API_COMPILE(spiFuncCptr(&SPI1));
+#endif // Wiring_SPI1
+
+#if Wiring_SPI2
+    API_COMPILE(spiFuncRef(SPI2));
+    API_COMPILE(spiFuncCref(SPI2));
+    API_COMPILE(spiFuncPtr(&SPI2));
+    API_COMPILE(spiFuncCptr(&SPI2));
+#endif // Wiring_SPI2
+}
+
 test(spi)
 {
     API_COMPILE(SPI.begin());
@@ -131,32 +202,3 @@ test(spi_lock)
     API_COMPILE(SPI2.unlock());
 #endif // Wiring_SPI2
 }
-
-// without Arduino.h we should not get a clash redefining SPISettings
-class SPISettings {};
-
-namespace api_test_namespace {
-// We should be able to define variables and types named SPI, SPI1 and SPI2
-
-struct DummyStruct {
-};
-
-DummyStruct SPI;
-DummyStruct SPI1;
-DummyStruct SPI2;
-
-
-namespace test {
-
-struct SPI {
-};
-
-struct SPI1 {
-};
-
-struct SPI2 {
-};
-
-} // test
-
-} // api_test_namespace
