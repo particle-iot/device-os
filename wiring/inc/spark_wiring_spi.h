@@ -162,6 +162,10 @@ public:
   SPIClass(HAL_SPI_Interface spi);
   ~SPIClass() = default;
 
+  // Prevent copying
+  SPIClass(const SPIClass&) = delete;
+  SPIClass& operator=(const SPIClass&) = delete;
+
   void begin();
   void begin(uint16_t);
   void begin(SPI_Mode mode, uint16_t ss_pin = SPI_DEFAULT_SS);
