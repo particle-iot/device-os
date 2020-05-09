@@ -36,10 +36,10 @@
 #include "inflate.h"
 
 // Decompression of firmware modules is only supported in the bootloader
-#if (HAL_PLATFORM_COMPRESSED_MODULES) && (MODULE_FUNCTION == MOD_FUNC_BOOTLOADER)
-#define HAS_COMPRESSED_MODULES_SUPPORT 1
+#if (HAL_PLATFORM_COMPRESSED_OTA) && (MODULE_FUNCTION == MOD_FUNC_BOOTLOADER)
+#define HAS_COMPRESSED_OTA 1
 #else
-#define HAS_COMPRESSED_MODULES_SUPPORT 0
+#define HAS_COMPRESSED_OTA 0
 #endif
 
 #define CEIL_DIV(A, B)        (((A) + (B) - 1) / (B))
@@ -108,7 +108,7 @@ static bool verify_module(flash_device_t src_dev, uintptr_t src_addr, size_t src
     if (!FLASH_CheckValidAddressRange(dest_dev, dest_addr, dest_size)) {
         return false;
     }
-    if ((flags & MODULE_COMPRESSED) && !HAS_COMPRESSED_MODULES_SUPPORT) {
+    if ((flags & MODULE_COMPRESSED) && !HAS_COMPRESSED_OTA) {
         return false;
     }
     if (flags & MODULE_VERIFY_MASK) {
@@ -142,7 +142,7 @@ static bool verify_module(flash_device_t src_dev, uintptr_t src_addr, size_t src
     return true;
 }
 
-#if HAS_COMPRESSED_MODULES_SUPPORT
+#if HAS_COMPRESSED_OTA
 
 typedef struct inflate_output_ctx {
     uint8_t buf[COPY_BLOCK_SIZE];
@@ -247,7 +247,7 @@ static bool parse_compressed_module_header(flash_device_t dev, uintptr_t addr, s
     return true;
 }
 
-#endif // HAS_COMPRESSED_MODULES_SUPPORT
+#endif // HAS_COMPRESSED_OTA
 
 bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length)
 {
@@ -317,7 +317,7 @@ int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
 {
     size_t dest_size = length;
     if (flags & MODULE_COMPRESSED) {
-#if HAS_COMPRESSED_MODULES_SUPPORT
+#if HAS_COMPRESSED_OTA
         compressed_module_header header = { 0 };
         if (!parse_compressed_module_header(sourceDeviceID, sourceAddress, length, &header)) {
             return FLASH_ACCESS_RESULT_ERROR;
@@ -325,7 +325,7 @@ int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         dest_size = header.original_size;
 #else
         return FLASH_ACCESS_RESULT_BADARG;
-#endif // !HAS_COMPRESSED_MODULES_SUPPORT
+#endif // !HAS_COMPRESSED_OTA
     }
     if (!verify_module(sourceDeviceID, sourceAddress, length, destinationDeviceID, destinationAddress, dest_size,
             module_function, flags)) {
@@ -339,7 +339,7 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                      uint32_t length, uint8_t module_function, uint8_t flags)
 {
     size_t dest_size = length;
-#if HAS_COMPRESSED_MODULES_SUPPORT
+#if HAS_COMPRESSED_OTA
     compressed_module_header comp_header = { 0 };
     if (flags & MODULE_COMPRESSED) {
         if (!parse_compressed_module_header(sourceDeviceID, sourceAddress, length, &comp_header)) {
@@ -347,7 +347,7 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         }
         dest_size = comp_header.original_size;
     }
-#endif // HAS_COMPRESSED_MODULES_SUPPORT
+#endif // HAS_COMPRESSED_OTA
     if (!verify_module(sourceDeviceID, sourceAddress, length, destinationDeviceID, destinationAddress, dest_size,
             module_function, flags)) {
         return FLASH_ACCESS_RESULT_BADARG;
@@ -356,7 +356,7 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         return FLASH_ACCESS_RESULT_ERROR;
     }
     if (flags & MODULE_COMPRESSED) {
-#if HAS_COMPRESSED_MODULES_SUPPORT
+#if HAS_COMPRESSED_OTA
         // Skip the module info and compressed data headers
         if (length < sizeof(module_info_t) + comp_header.size + 2 /* Prefix size */ + 4 /* CRC-32 */) { // Sanity check
             return FLASH_ACCESS_RESULT_BADARG;
@@ -377,7 +377,7 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         }
 #else
         return FLASH_ACCESS_RESULT_BADARG;
-#endif // !HAS_COMPRESSED_MODULES_SUPPORT
+#endif // !HAS_COMPRESSED_OTA
     } else {
         if (flags & MODULE_DROP_MODULE_INFO) {
             // Skip the module info header

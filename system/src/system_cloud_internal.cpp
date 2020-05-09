@@ -618,9 +618,10 @@ bool publishSafeModeEventIfNeeded() {
     return true; // ok
 }
 
-#if HAL_PLATFORM_COMPRESSED_MODULES
-const uint16_t MIN_BOOTLOADER_VERSION = 2000; // 2.0.0
-#endif
+#if HAL_PLATFORM_COMPRESSED_OTA
+// Minimum bootloader version required to support compressed/combined OTA updates
+const uint16_t COMPRESSED_OTA_MIN_BOOTLOADER_VERSION = 2000; // 2.0.0
+#endif // HAL_PLATFORM_COMPRESSED_OTA
 
 } // namespace
 
@@ -1018,12 +1019,12 @@ void Spark_Protocol_Init(void)
         // Enable device-initiated describe messages
         spark_protocol_set_connection_property(sp, particle::protocol::Connection::DEVICE_INITIATED_DESCRIBE, 0, nullptr, nullptr);
 
-#if HAL_PLATFORM_COMPRESSED_MODULES
+#if HAL_PLATFORM_COMPRESSED_OTA
         // Enable compressed/combined OTA updates
-        if (get_bootloader_version() >= MIN_BOOTLOADER_VERSION) {
-            spark_protocol_set_connection_property(sp, particle::protocol::Connection::OTA_COMPRESSION, 0, nullptr, nullptr);
+        if (get_bootloader_version() >= COMPRESSED_OTA_MIN_BOOTLOADER_VERSION) {
+            spark_protocol_set_connection_property(sp, particle::protocol::Connection::COMPRESSED_OTA, 0, nullptr, nullptr);
         }
-#endif // HAL_PLATFORM_COMPRESSED_MODULES
+#endif // HAL_PLATFORM_COMPRESSED_OTA
 
         Particle.subscribe("spark", SystemEvents, MY_DEVICES);
         Particle.subscribe("particle", SystemEvents, MY_DEVICES);

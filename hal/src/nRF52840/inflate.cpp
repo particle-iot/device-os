@@ -17,7 +17,7 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_COMPRESSED_MODULES
+#if HAL_PLATFORM_COMPRESSED_OTA
 
 #include "inflate_impl.h"
 
@@ -130,4 +130,4 @@ int inflate_input(inflate_ctx* ctx, const char* data, size_t* size, unsigned fla
     return ctx->result;
 }
 
-#endif // HAL_PLATFORM_COMPRESSED_MODULES
+#endif // HAL_PLATFORM_COMPRESSED_OTA

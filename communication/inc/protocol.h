@@ -144,7 +144,7 @@ protected:
 		/**
 		 * Support for compressed/combined OTA updates.
 		 */
-		OTA_COMPRESSION = 0x10
+		COMPRESSED_OTA = 0x10
 	};
 
 	/**
@@ -343,9 +343,9 @@ public:
 		protocol_flags |= ProtocolFlag::DEVICE_INITIATED_DESCRIBE;
 	}
 
-	void enable_ota_compression()
+	void enable_compressed_ota()
 	{
-		protocol_flags |= ProtocolFlag::OTA_COMPRESSION;
+		protocol_flags |= ProtocolFlag::COMPRESSED_OTA;
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)

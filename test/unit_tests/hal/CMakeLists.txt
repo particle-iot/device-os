@@ -11,7 +11,7 @@ add_executable( ${target_name}
 # Set defines specific to target
 target_compile_definitions( ${target_name}
   PRIVATE PLATFORM_ID=3
-  PRIVATE HAL_PLATFORM_COMPRESSED_MODULES=1
+  PRIVATE HAL_PLATFORM_COMPRESSED_OTA=1
 )
 
 # Set include path specific to target

@@ -17,7 +17,7 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_COMPRESSED_MODULES
+#if HAL_PLATFORM_COMPRESSED_OTA
 
 #include "inflate_impl.h"
 
@@ -44,4 +44,4 @@ void inflate_free_ctx(inflate_ctx* ctx, char* buf) {
     delete[] buf;
 }
 
-#endif // HAL_PLATFORM_COMPRESSED_MODULES
+#endif // HAL_PLATFORM_COMPRESSED_OTA
