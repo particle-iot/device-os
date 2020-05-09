@@ -132,15 +132,19 @@ protected:
 		/**
 		 * Set when the protocol expects a hello response from the server.
 		 */
-		REQUIRE_HELLO_RESPONSE = 1<<0,
+		REQUIRE_HELLO_RESPONSE = 0x01,
 		/**
 		 * Send ping as an empty message - this functions as a keep-alive for UDP.
 		 */
-		PING_AS_EMPTY_MESSAGE = 1<<2,
+		PING_AS_EMPTY_MESSAGE = 0x04,
 		/**
 		 * Application/system describe messages are initiated by the device.
 		 */
-		DEVICE_INITIATED_DESCRIBE = 1<<3
+		DEVICE_INITIATED_DESCRIBE = 0x08,
+		/**
+		 * Support for compressed/combined OTA updates.
+		 */
+		OTA_COMPRESSION = 0x10
 	};
 
 	/**
@@ -337,6 +341,11 @@ public:
 	void enable_device_initiated_describe()
 	{
 		protocol_flags |= ProtocolFlag::DEVICE_INITIATED_DESCRIBE;
+	}
+
+	void enable_ota_compression()
+	{
+		protocol_flags |= ProtocolFlag::OTA_COMPRESSION;
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)

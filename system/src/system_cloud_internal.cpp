@@ -42,6 +42,7 @@
 #include "string_convert.h"
 #include "core_hal.h"
 #include "hal_platform.h"
+#include "bootloader.h"
 #include "system_string_interpolate.h"
 #include "dtls_session_persist.h"
 #include "bytes2hexbuf.h"
@@ -617,6 +618,10 @@ bool publishSafeModeEventIfNeeded() {
     return true; // ok
 }
 
+#if HAL_PLATFORM_COMPRESSED_MODULES
+const uint16_t MIN_BOOTLOADER_VERSION = 2000; // 2.0.0
+#endif
+
 } // namespace
 
 void Spark_Signal(bool on, unsigned, void*)
@@ -1012,6 +1017,13 @@ void Spark_Protocol_Init(void)
 
         // Enable device-initiated describe messages
         spark_protocol_set_connection_property(sp, particle::protocol::Connection::DEVICE_INITIATED_DESCRIBE, 0, nullptr, nullptr);
+
+#if HAL_PLATFORM_COMPRESSED_MODULES
+        // Enable compressed/combined OTA updates
+        if (get_bootloader_version() >= MIN_BOOTLOADER_VERSION) {
+            spark_protocol_set_connection_property(sp, particle::protocol::Connection::OTA_COMPRESSION, 0, nullptr, nullptr);
+        }
+#endif // HAL_PLATFORM_COMPRESSED_MODULES
 
         Particle.subscribe("spark", SystemEvents, MY_DEVICES);
         Particle.subscribe("particle", SystemEvents, MY_DEVICES);

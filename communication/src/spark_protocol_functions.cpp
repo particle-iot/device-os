@@ -209,6 +209,10 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
         protocol->enable_device_initiated_describe();
         return 0;
     }
+    case particle::protocol::Connection::OTA_COMPRESSION: {
+        protocol->enable_ota_compression();
+        return 0;
+    }
     default:
         return particle::protocol::ProtocolError::NOT_IMPLEMENTED;
     }

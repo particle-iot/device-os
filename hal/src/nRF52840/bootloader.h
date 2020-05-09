@@ -19,6 +19,7 @@ bool bootloader_update_if_needed();
 
 int bootloader_update(const void* bootloader_image, unsigned length);
 
+uint16_t get_bootloader_version(void);
 
 #ifdef __cplusplus
 }
