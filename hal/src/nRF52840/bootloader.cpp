@@ -54,7 +54,7 @@ public:
 	}
 
 	int flush() override {
-		return HAL_FLASH_End(nullptr)!=HAL_UPDATE_ERROR;
+		return HAL_FLASH_End(nullptr);
 	}
 };
 

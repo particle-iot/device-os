@@ -54,8 +54,6 @@ bool system_module_info(appender_fn appender, void* append_data, void* reserved=
 bool system_metrics(appender_fn appender, void* append_data, uint32_t flags, uint32_t page, void* reserved=NULL);
 bool append_system_version_info(Appender* appender);
 
-bool ota_update_info(appender_fn append, void* append_data, const void* mod, bool full, void* reserved);
-
 typedef enum {
     MODULE_INFO_JSON_INCLUDE_PLATFORM_ID = 0x0001
 } module_info_json_flags_t;
@@ -76,7 +74,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
  * @param reserved NULL
  * @return 0 on success.
  */
-int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* module);
+int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved);
 
 /**
  * Provides a chunk of the file data.

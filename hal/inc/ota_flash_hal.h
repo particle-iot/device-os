@@ -121,7 +121,7 @@ uint16_t HAL_OTA_ChunkSize();
 
 flash_device_t HAL_OTA_FlashDevice();
 
-int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved);
+int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved);
 
 /**
  * Erase a region of flash in preparation for flashing content.
@@ -137,20 +137,24 @@ bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved);
 int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved);
 
 typedef enum {
-    // Add new error codes here
-    HAL_UPDATE_ERROR,
-    HAL_UPDATE_APPLIED_PENDING_RESTART,
-    HAL_UPDATE_APPLIED
+    HAL_UPDATE_APPLIED_PENDING_RESTART = 0,
+    HAL_UPDATE_APPLIED = 1
 } hal_update_complete_t;
 
-hal_update_complete_t HAL_FLASH_End(hal_module_t* module);
+/**
+ * Apply the OTA update.
+ *
+ * @return A value defined by `hal_update_complete_t` or a negative result code in case of an error.
+ */
+int HAL_FLASH_End(void* reserved);
 
 /**
  * @param module Optional pointer to a module that receives the module definition of the firmware that was flashed.
  * @param dryRun when true, only test that the system has a pending update in memory. When false, the test is performed and the module
  *   applied if valid (or the bootloader instructed to apply it.)
+ * @return A value defined by `hal_update_complete_t` or a negative result code in case of an error.
  */
-hal_update_complete_t HAL_FLASH_ApplyPendingUpdate(hal_module_t* module, bool dryRun, void* reserved);
+int HAL_FLASH_ApplyPendingUpdate(bool dryRun, void* reserved);
 
 uint32_t HAL_FLASH_ModuleAddress(uint32_t address);
 uint32_t HAL_FLASH_ModuleLength(uint32_t address);

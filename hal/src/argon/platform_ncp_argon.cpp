@@ -70,10 +70,10 @@ private:
 // FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
 // some not entirely clear circumstances. Disabling compiler optimizations helps to work around
 // the problem
-__attribute__((optimize("O0"))) hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
+__attribute__((optimize("O0"))) int platform_ncp_update_module(const hal_module_t* module) {
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
-    CHECK_RETURN(ncpClient->on(), HAL_UPDATE_ERROR);
+    CHECK(ncpClient->on());
     // we pass only the actual binary after the module info and up to the suffix
     const uint8_t* start = (const uint8_t*)module->info;
     static_assert(sizeof(module_info_t)==24, "expected module info size to be 24");
@@ -88,7 +88,7 @@ __attribute__((optimize("O0"))) hal_update_complete_t platform_ncp_update_module
     }
     r = ncpClient->updateFirmware(&moduleStream, length);
     LED_On(LED_RGB);
-    CHECK_RETURN(r, HAL_UPDATE_ERROR);
+    CHECK(r);
     r = ncpClient->getFirmwareModuleVersion(&version);
     if (r == 0) {
         LOG(INFO, "ESP32 firmware version updated to version %d", version);

@@ -64,7 +64,7 @@ PlatformNCPIdentifier platform_current_ncp_identifier();
 /**
  * Update the NCP firmware from the given module. The module has been validated for integrity and matching platform and dependencies checked.
  */
-hal_update_complete_t platform_ncp_update_module(const hal_module_t* module);
+int platform_ncp_update_module(const hal_module_t* module);
 
 /**
  * Augments the module info with data retrieved from the NCP.

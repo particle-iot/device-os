@@ -41,6 +41,7 @@
 // For ATOMIC_BLOCK
 #include "spark_wiring_interrupts.h"
 #include "deviceid_hal.h"
+#include "check.h"
 
 #include <memory>
 
@@ -48,7 +49,7 @@
 #define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
 #define BOOTLOADER_RANDOM_BACKOFF_MAX  (1000)
 
-static hal_update_complete_t flash_bootloader(const hal_module_t* mod, uint32_t moduleLength);
+static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength);
 
 /**
  * Finds the location where a given module is stored. The module is identified
@@ -250,11 +251,11 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return FLASH_Update(pBuffer, address, length);
 }
 
-static hal_update_complete_t flash_bootloader(const hal_module_t* mod, uint32_t moduleLength)
+static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength)
 {
-    hal_update_complete_t result = HAL_UPDATE_ERROR;
+    bool ok = false;
     uint32_t attempt = 0;
-    do {
+    for (;;) {
         int fres = FLASH_ACCESS_RESULT_ERROR;
         if (attempt++ > 0) {
             ATOMIC_BLOCK() {
@@ -269,14 +270,13 @@ static hal_update_complete_t flash_bootloader(const hal_module_t* mod, uint32_t 
             hal_module_t module;
             bool module_fetched = fetch_module(&module, &module_bootloader, true, MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL);
             if (module_fetched && (module.validity_checked == module.validity_result)) {
-                result = HAL_UPDATE_APPLIED;
+                ok = true;
                 break;
             }
         }
 
         if (fres == FLASH_ACCESS_RESULT_BADARG) {
             // The bootloader is still intact, for some reason the module being copied has failed some checks.
-            result = HAL_UPDATE_ERROR;
             break;
         }
 
@@ -284,71 +284,88 @@ static hal_update_complete_t flash_bootloader(const hal_module_t* mod, uint32_t 
         system_tick_t period = random(BOOTLOADER_RANDOM_BACKOFF_MIN, BOOTLOADER_RANDOM_BACKOFF_MAX);
         LOG_DEBUG(WARN, "Failed to flash bootloader. Retrying in %lu ms", period);
         HAL_Delay_Milliseconds(period);
-    } while ((result == HAL_UPDATE_ERROR));
-    return result;
-}
-
-int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved) {
-    hal_module_t module;
-
-    bool module_fetched = fetch_module(&module, &module_ota, userDepsOptional, flags);
-
-    if (mod) {
-        memcpy(mod, &module, sizeof(hal_module_t));
     }
-
-    return (int)!module_fetched;
+    return ok ? (int)HAL_UPDATE_APPLIED : SYSTEM_ERROR_UNKNOWN;
 }
 
-hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
+namespace {
+
+int validityResultToSystemError(unsigned result, unsigned checked) {
+    if (result == checked) {
+        return 0;
+    }
+    if ((checked & MODULE_VALIDATION_INTEGRITY) && !(result & MODULE_VALIDATION_INTEGRITY)) {
+        return SYSTEM_ERROR_OTA_INTEGRITY_CHECK_FAILED;
+    }
+    if ((checked & (MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_DEPENDENCIES_FULL)) && !(result & MODULE_VALIDATION_DEPENDENCIES)) {
+        return SYSTEM_ERROR_OTA_DEPENDENCY_CHECK_FAILED;
+    }
+    if ((checked & MODULE_VALIDATION_RANGE) && !(result & MODULE_VALIDATION_RANGE)) {
+        return SYSTEM_ERROR_OTA_INVALID_ADDRESS;
+    }
+    if ((checked & MODULE_VALIDATION_PLATFORM) && !(result & MODULE_VALIDATION_PLATFORM)) {
+        return SYSTEM_ERROR_OTA_INVALID_PLATFORM;
+    }
+    return SYSTEM_ERROR_OTA_VALIDATION_FAILED;
+}
+
+int fetchAndValidateModule(hal_module_t* module, bool userDepsOptional, unsigned flags) {
+    if (!fetch_module(module, &module_ota, userDepsOptional, flags)) {
+        LOG(ERROR, "Unable to fetch module");
+        return SYSTEM_ERROR_OTA_MODULE_NOT_FOUND;
+    }
+    const auto info = module->info;
+    LOG(INFO, "Validating module; type: %u; index: %u; version: %u", (unsigned)module_function(info),
+            (unsigned)module_index(info), (unsigned)module_version(info));
+    if (module->validity_result != module->validity_checked) {
+        LOG(ERROR, "Validation failed; result: 0x%02x; checked: 0x%02x", (unsigned)module->validity_result,
+                (unsigned)module->validity_checked);
+        return validityResultToSystemError(module->validity_result, module->validity_checked);
+    }
+    return 0;
+}
+
+} // namespace
+
+int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved) {
+    hal_module_t module = {};
+    CHECK(fetchAndValidateModule(&module, userDepsOptional, flags));
+    return 0;
+}
+
+int HAL_FLASH_End(void* reserved)
 {
-    hal_module_t module;
-    hal_update_complete_t result = HAL_UPDATE_ERROR;
-
-    bool module_fetched = !HAL_FLASH_OTA_Validate(&module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
-	DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
-    if (module_fetched && (module.validity_checked==module.validity_result))
-    {
-        uint32_t moduleLength = module_length(module.info);
-        module_function_t function = module_function(module.info);
-
-        // bootloader is copied directly
-        if (function==MODULE_FUNCTION_BOOTLOADER) {
-            result = flash_bootloader(&module, moduleLength);
+    hal_module_t module = {};
+    CHECK(fetchAndValidateModule(&module, true /* userDepsOptional */, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY |
+            MODULE_VALIDATION_DEPENDENCIES_FULL)));
+    int result = SYSTEM_ERROR_UNKNOWN;
+    uint32_t moduleLength = module_length(module.info);
+    module_function_t function = module_function(module.info);
+    // bootloader is copied directly
+    if (function == MODULE_FUNCTION_BOOTLOADER) {
+        result = flash_bootloader(&module, moduleLength);
+    } else {
+        const uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
+        if (FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, module_ota.start_address, FLASH_INTERNAL,
+                (uint32_t)module.info->module_start_address, moduleLength + 4 /* CRC-32 */, function, slotFlags)) {
+            result = HAL_UPDATE_APPLIED_PENDING_RESTART;
         }
-        else
-        {
-            if (FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, module_ota.start_address,
-                FLASH_INTERNAL, uint32_t(module.info->module_start_address),
-                (moduleLength + 4),//+4 to copy the CRC too
-                function,
-                MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION)) { //true to verify the CRC during copy also
-                    result = HAL_UPDATE_APPLIED_PENDING_RESTART;
-                    DEBUG("OTA module applied - device will restart");
-            }
-        }
-
         FLASH_End();
     }
-    else
-    {
-    		WARN("OTA module not applied");
-    }
-    if (mod)
-    {
-        memcpy(mod, &module, sizeof(hal_module_t));
+    if (result < 0) {
+        LOG(ERROR, "Unable to apply module");
     }
     return result;
 }
 
 // Todo this code and much of the code here is duplicated between Gen2 and Gen3
 // This should be factored out into directory shared by both platforms.
-hal_update_complete_t HAL_FLASH_ApplyPendingUpdate(hal_module_t* module, bool dryRun, void* reserved)
+int HAL_FLASH_ApplyPendingUpdate(bool dryRun, void* reserved)
 {
     uint8_t otaUpdateFlag = DCT_OTA_UPDATE_FLAG_CLEAR;
     STATIC_ASSERT(sizeof(otaUpdateFlag)==DCT_OTA_UPDATE_FLAG_SIZE, "expected ota update flag size to be 1");
     dct_read_app_data_copy(DCT_OTA_UPDATE_FLAG_OFFSET, &otaUpdateFlag, DCT_OTA_UPDATE_FLAG_SIZE);
-    hal_update_complete_t result = HAL_UPDATE_ERROR;
+    int result = SYSTEM_ERROR_UNKNOWN;
     if (otaUpdateFlag==DCT_OTA_UPDATE_FLAG_SET) {
         if (dryRun) {
             // todo - we should probably check the module integrity too
@@ -359,7 +376,7 @@ hal_update_complete_t HAL_FLASH_ApplyPendingUpdate(hal_module_t* module, bool dr
             // clear the flag
             otaUpdateFlag = DCT_OTA_UPDATE_FLAG_CLEAR;
             dct_write_app_data(&otaUpdateFlag, DCT_OTA_UPDATE_FLAG_OFFSET, DCT_OTA_UPDATE_FLAG_SIZE);
-            result = HAL_FLASH_End(module);
+            result = HAL_FLASH_End(nullptr);
         }
     }
     return result;
