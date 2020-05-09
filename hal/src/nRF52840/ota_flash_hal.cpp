@@ -396,7 +396,10 @@ int validityResultToSystemError(unsigned result, unsigned checked) {
     if ((checked & MODULE_VALIDATION_INTEGRITY) && !(result & MODULE_VALIDATION_INTEGRITY)) {
         return SYSTEM_ERROR_OTA_INTEGRITY_CHECK_FAILED;
     }
-    if ((checked & (MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_DEPENDENCIES_FULL)) && !(result & MODULE_VALIDATION_DEPENDENCIES)) {
+    if ((checked & MODULE_VALIDATION_DEPENDENCIES) && !(result & MODULE_VALIDATION_DEPENDENCIES)) {
+        return SYSTEM_ERROR_OTA_DEPENDENCY_CHECK_FAILED;
+    }
+    if ((checked & MODULE_VALIDATION_DEPENDENCIES_FULL) && !(result & MODULE_VALIDATION_DEPENDENCIES_FULL)) {
         return SYSTEM_ERROR_OTA_DEPENDENCY_CHECK_FAILED;
     }
     if ((checked & MODULE_VALIDATION_RANGE) && !(result & MODULE_VALIDATION_RANGE)) {
@@ -411,7 +414,7 @@ int validityResultToSystemError(unsigned result, unsigned checked) {
 // TODO: Current design of the OTA subsystem and the protocol doesn't allow for updating
 // multiple modules at once. As a "temporary" workaround, multiple modules can be combined
 // into a single binary
-int fetchModules(hal_module_t* modules, size_t moduleCount, bool userDepsOptional, unsigned flags) {
+int fetchModules(hal_module_t* modules, size_t maxModuleCount, bool userDepsOptional, unsigned flags) {
     hal_module_t module = {};
     module_bounds_t bounds = module_ota;
     size_t count = 0;
@@ -421,7 +424,7 @@ int fetchModules(hal_module_t* modules, size_t moduleCount, bool userDepsOptiona
             LOG(ERROR, "Unable to fetch module");
             return SYSTEM_ERROR_OTA_MODULE_NOT_FOUND;
         }
-        if (count < moduleCount) {
+        if (count < maxModuleCount) {
             memcpy(modules + count, &module, sizeof(hal_module_t));
         }
         ++count;
@@ -516,7 +519,7 @@ int HAL_FLASH_End(void* reserved)
     }
     CHECK(validateModules(modules, moduleCount));
     bool restartPending = false;
-    for (size_t i = 0; i < (unsigned)moduleCount; ++i) {
+    for (size_t i = 0; i < moduleCount; ++i) {
         const auto module = &modules[i];
         const auto info = module->info;
         const auto moduleFunc = module_function(info);
@@ -558,6 +561,7 @@ int HAL_FLASH_End(void* reserved)
         }
         if (result < 0) {
             LOG(ERROR, "Unable to apply module");
+            // TODO: Clear module slots in DCT?
             return result;
         }
         if (result == HAL_UPDATE_APPLIED_PENDING_RESTART) {

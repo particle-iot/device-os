@@ -47,7 +47,7 @@
 #define COPY_BLOCK_SIZE 256
 
 static bool flash_read(flash_device_t dev, uintptr_t addr, uint8_t* buf, size_t size) {
-    bool ok = false;;
+    bool ok = false;
     switch (dev) {
     case FLASH_INTERNAL: {
         ok = (hal_flash_read(addr, buf, size) == 0);
@@ -64,7 +64,7 @@ static bool flash_read(flash_device_t dev, uintptr_t addr, uint8_t* buf, size_t 
 }
 
 static bool flash_write(flash_device_t dev, uintptr_t addr, const uint8_t* buf, size_t size) {
-    bool ok = false;;
+    bool ok = false;
     switch (dev) {
     case FLASH_INTERNAL: {
         ok = (hal_flash_write(addr, buf, size) == 0);
