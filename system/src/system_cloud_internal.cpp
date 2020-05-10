@@ -620,7 +620,7 @@ bool publishSafeModeEventIfNeeded() {
 
 #if HAL_PLATFORM_COMPRESSED_OTA
 // Minimum bootloader version required to support compressed/combined OTA updates
-const uint16_t COMPRESSED_OTA_MIN_BOOTLOADER_VERSION = 2000; // 2.0.0
+const uint16_t COMPRESSED_OTA_MIN_BOOTLOADER_VERSION = 1000; // 2.0.0
 #endif // HAL_PLATFORM_COMPRESSED_OTA
 
 } // namespace
