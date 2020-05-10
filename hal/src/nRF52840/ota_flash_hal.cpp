@@ -15,6 +15,10 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+
+LOG_SOURCE_CATEGORY("hal.ota")
+
 #include "ota_flash_hal.h"
 #include "ota_flash_hal_impl.h"
 #include "dct_hal.h"

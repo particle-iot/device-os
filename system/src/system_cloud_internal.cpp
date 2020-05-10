@@ -775,7 +775,7 @@ int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, v
 
     int result = Spark_Finish_Firmware_Update(file, flags, nullptr);
 
-    if (buf && (flags & (UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY)) == (UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY)) {
+    if (buf && (flags & UpdateFlag::SUCCESS)) {
         formatOtaUpdateStatusEventData(flags, result, (uint8_t*)buf, 255 /* :( */);
     }
 

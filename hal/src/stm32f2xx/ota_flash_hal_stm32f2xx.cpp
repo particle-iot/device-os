@@ -17,6 +17,9 @@
  ******************************************************************************
  */
 
+#include "logging.h"
+
+LOG_SOURCE_CATEGORY("hal.ota")
 
 #include "core_hal.h"
 #include "ota_flash_hal.h"
