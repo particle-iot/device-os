@@ -305,11 +305,9 @@ bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor& fil
     int32_t size = ymodem->receive_file(file, desc);
     if (size > 0)
     {
-        hal_module_t module;
-        int update_result = Spark_Finish_Firmware_Update(file, size>0 ? 1 : 0, &module);
-        module_validation_flags_t validation_result = (module_validation_flags_t)(module.validity_checked ^ module.validity_result);
+        int update_result = Spark_Finish_Firmware_Update(file, size>0 ? 1 : 0, nullptr);
 
-        if (!update_result && (validation_result == MODULE_VALIDATION_PASSED))
+        if (update_result >= 0)
         {
             // Respond to EOT with ACK
             ymodem->send_byte(YModem::ACK);
@@ -328,7 +326,7 @@ bool Ymodem_Serial_Flash_Update(Stream *serialObj, FileTransfer::Descriptor& fil
             // Respond to EOT with CANCEL
             ymodem->send_byte(YModem::CA);
             ymodem->send_byte(YModem::CA);
-            serialObj->printf("Validation failed: 0x%x\r\n", (uint32_t)validation_result);
+            serialObj->printf("Validation failed: %d\r\n", update_result);
         }
     } else {
         ymodem->send_byte(YModem::CA);
