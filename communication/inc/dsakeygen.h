@@ -30,7 +30,7 @@ extern "C" {
 
 /**
  * Generates a DER formatted RSA PCKS#1 private key.
- * @param buffer            The buffer to recieve the DER file.
+ * @param buffer            The buffer to receive the DER file.
  * @param max_length        The length of the buffer
  * @param f_rng             A random number generator
  * @param p_rng             The argument to the random number generator
