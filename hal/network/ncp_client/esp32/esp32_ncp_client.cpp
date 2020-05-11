@@ -68,6 +68,7 @@ const auto ESP32_NCP_KEEPALIVE_MAX_MISSED = 5;
 const auto ESP32_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
 
 const auto ESP32_NCP_DEFAULT_SERIAL_BAUDRATE = 921600;
+const auto ESP32_NCP_DEFAULT_SDIO_SPEED = 8000000;  // 8MHz
 
 const auto ESP32_NCP_AT_CHANNEL = 1;
 const auto ESP32_NCP_STA_CHANNEL = 2;
@@ -95,20 +96,32 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     HAL_Pin_Mode(ESPBOOT, OUTPUT);
 #if PLATFORM_ID == PLATFORM_ARGON
     HAL_Pin_Mode(ESPEN, OUTPUT_OPEN_DRAIN);
-#elif PLATFORM_ID == PLATFORM_ASOM
+#elif PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_TRACKER
     HAL_Pin_Mode(ESPEN, OUTPUT);
 #endif
     espOff();
+
+    // FIXME: should we add a configuration for the communication interface instead of using conditional compilation
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
     // Initialize serial stream
     std::unique_ptr<SerialStream> serial(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, ESP32_NCP_DEFAULT_SERIAL_BAUDRATE,
             SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    std::unique_ptr<SdioStream> sdio(new(std::nothrow) SdioStream(HAL_SPI_INTERFACE2, ESP32_NCP_DEFAULT_SDIO_SPEED, WIFI_CS, WIFI_INT));
+    CHECK_TRUE(sdio, SYSTEM_ERROR_NO_MEMORY);
+#endif
     // Initialize muxed channel stream
     decltype(muxerAtStream_) muxStrm(new(std::nothrow) decltype(muxerAtStream_)::element_type(&muxer_, ESP32_NCP_AT_CHANNEL));
     CHECK_TRUE(muxStrm, SYSTEM_ERROR_NO_MEMORY);
     CHECK(muxStrm->init(ESP32_NCP_AT_CHANNEL_RX_BUFFER_SIZE));
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
     CHECK(initParser(serial.get()));
     serial_ = std::move(serial);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    CHECK(initParser(sdio.get()));
+    sdio_ = std::move(sdio);
+#endif
     muxerAtStream_ = std::move(muxStrm);
     conf_ = conf;
     ncpState_ = NcpState::OFF;
@@ -145,7 +158,11 @@ void Esp32NcpClient::destroy() {
     }
     parser_.destroy();
     muxerAtStream_.reset();
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
     serial_.reset();
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    sdio_.reset();
+#endif
 }
 
 int Esp32NcpClient::on() {
@@ -187,7 +204,11 @@ int Esp32NcpClient::enable() {
     if (ncpState_ != NcpState::DISABLED) {
         return 0;
     }
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
     serial_->enabled(true);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    sdio_->enabled(true);
+#endif
     muxerAtStream_->enabled(true);
     ncpState_ = prevNcpState_;
     off();
@@ -203,7 +224,11 @@ void Esp32NcpClient::disable() {
     }
     prevNcpState_ = state;
     ncpState_ = NcpState::DISABLED;
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
     serial_->enabled(false);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    sdio_->enabled(false);
+#endif
     muxerAtStream_->enabled(false);
 }
 
@@ -465,10 +490,18 @@ int Esp32NcpClient::waitReady() {
         return 0;
     }
     muxer_.stop();
+    espReset();
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
     CHECK(serial_->setBaudRate(ESP32_NCP_DEFAULT_SERIAL_BAUDRATE));
     CHECK(initParser(serial_.get()));
-    espReset();
     skipAll(serial_.get(), 1000);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    // SDIO bus initialization only performs right after power on
+    CHECK(sdio_->init());
+    CHECK(initParser(sdio_.get()));
+    skipAll(sdio_.get(), 1000);
+#endif
+
     parser_.reset();
     const unsigned timeout = 10000;
     const auto t1 = HAL_Timer_Get_Milli_Seconds();
@@ -488,7 +521,11 @@ int Esp32NcpClient::waitReady() {
     }
 
     if (ready_) {
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
         skipAll(serial_.get(), 1000);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+        skipAll(sdio_.get(), 1000);
+#endif
         parser_.reset();
         parserError_ = 0;
         LOG(TRACE, "NCP ready to accept AT commands");
@@ -541,7 +578,11 @@ int Esp32NcpClient::initReady() {
 
 int Esp32NcpClient::initMuxer() {
     // Initialize muxer
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
     muxer_.setStream(serial_.get());
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    muxer_.setStream(sdio_.get());
+#endif
     muxer_.setMaxFrameSize(ESP32_NCP_MAX_MUXER_FRAME_SIZE);
     muxer_.setKeepAlivePeriod(ESP32_NCP_KEEPALIVE_PERIOD * 2);
     muxer_.setKeepAliveMaxMissed(ESP32_NCP_KEEPALIVE_MAX_MISSED);

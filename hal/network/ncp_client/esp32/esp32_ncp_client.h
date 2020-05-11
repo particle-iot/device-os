@@ -26,6 +26,7 @@
 #include "gsm0710muxer/muxer.h"
 #include "gsm0710muxer/channel_stream.h"
 #include "serial_stream.h"
+#include "sdio_stream.h"
 
 namespace particle {
 
@@ -68,6 +69,7 @@ public:
 private:
     AtParser parser_;
     std::unique_ptr<SerialStream> serial_;
+    std::unique_ptr<SdioStream> sdio_;
     RecursiveMutex mutex_;
     NcpClientConfig conf_;
     volatile NcpState ncpState_;
