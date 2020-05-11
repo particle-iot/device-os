@@ -635,7 +635,7 @@ protected:
             case 4:
             // sec
             // Why are we receiving WICED-specific security type here?
-            credentials.setSecurity((WLanSecurityType)toSecurityType((wiced_security_t)atoi(str)));
+            credentials.setSecurity((spark::SecurityType)toSecurityType((wiced_security_t)atoi(str)));
             break;
             case 5:
             // eap

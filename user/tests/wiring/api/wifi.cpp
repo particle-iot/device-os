@@ -88,6 +88,12 @@ test(api_wifi_set_credentials)
     (void)ok; // avoid unused warning
 }
 
+test(api_wifi_set_security)
+{
+    WiFiCredentials credentials;
+    credentials.setSecurity(WPA2);
+}
+
 test(api_wifi_setStaticIP)
 {
     IPAddress myAddress(192,168,1,100);
