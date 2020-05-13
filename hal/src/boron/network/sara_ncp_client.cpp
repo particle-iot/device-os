@@ -110,6 +110,9 @@ const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
 using CidType = decltype(CellularGlobalIdentity::cell_id);
 
+const system_tick_t largePacketTimeoutMs_ = 250;
+const unsigned int TX_DELAY_IN_DATA_CHANNEL_MSEC = 1000;
+
 } // anonymous
 
 SaraNcpClient::SaraNcpClient() {
@@ -469,6 +472,10 @@ int SaraNcpClient::getImei(char* buf, size_t size) {
     const size_t n = CHECK_PARSER(resp.readLine(buf, size));
     CHECK_PARSER_OK(resp.readResult());
     return n;
+}
+
+int SaraNcpClient::getTxDelayInDataChannel(void) {
+    return (ncpId() == PLATFORM_NCP_SARA_R410) ? TX_DELAY_IN_DATA_CHANNEL_MSEC : 0;
 }
 
 int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {

@@ -97,7 +97,6 @@ private:
     bool memoryIssuePresent_ = false;
     unsigned registrationTimeout_;
 
-    const system_tick_t largePacketTimeoutMs_ = 250;
     const size_t largePacketThresholdBytes_ = 512;
     system_tick_t lastLargePacket_ = 0;
 
