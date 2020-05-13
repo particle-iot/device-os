@@ -50,7 +50,10 @@
 #include "system_network_internal.h"
 #include "str_util.h"
 #include "scope_guard.h"
-#include "platform_ncp.h"
+#if HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
+#include "network/ncp/cellular/ncp.h"
+#include "network/ncp/cellular/cellular_ncp_client.h"
+#endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 
 #include <stdio.h>
 #include <stdint.h>
