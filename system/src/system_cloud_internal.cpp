@@ -1053,6 +1053,14 @@ int Spark_Handshake(bool presence_announce)
     LOG(INFO,"Starting handshake: presense_announce=%d", presence_announce);
     bool session_resumed = false;
     int err = spark_protocol_handshake(sp);
+
+    // Adding a delay only for platforms Boron and BSom, because older cell versions of
+    // Boron R410M modems crash when handshake messages are sent without gap
+    if (HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX) {
+        // TODO: Make this only for R410M
+        HAL_Delay_Milliseconds(1000);
+    }
+
     if (err == particle::protocol::SESSION_RESUMED) {
         session_resumed = true;
     } else if (err != 0) {
