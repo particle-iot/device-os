@@ -613,7 +613,7 @@ private:
         // 1. Globally
         // 2. Application interrupts through SoftDevice
         // 3. Via BASEPRI
-        if ((__get_PRIMASK() & 1) || nrf_nvic_state.__cr_flag || __get_BASEPRI() >= prio_) {
+        if (HAL_IsIrqMasked(nrfx_get_irq_number((void*)uarte_)) || nrf_nvic_state.__cr_flag) {
             return false;
         }
 
