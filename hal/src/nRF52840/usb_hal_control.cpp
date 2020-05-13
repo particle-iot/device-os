@@ -227,6 +227,12 @@ ret_code_t usbd_control_setup_handler(app_usbd_class_inst_t const* inst,
         return NRF_ERROR_INVALID_STATE;
     }
 
+    // Due to how things are implemented within Nordic SDK, this handler might be getting some non-vendor
+    // requests. We need to filter them out.
+    if (app_usbd_setup_req_typ(req->bmRequestType) != APP_USBD_SETUP_REQTYPE_VENDOR) {
+        return NRF_ERROR_NOT_SUPPORTED;
+    }
+
     s_usb_setup_request.bmRequestType = req->bmRequestType;
     s_usb_setup_request.bRequest = req->bRequest;
     s_usb_setup_request.wValue = req->wValue.w;
