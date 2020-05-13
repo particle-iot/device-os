@@ -131,6 +131,17 @@ static inline int32_t HAL_ServicedIRQn()
   return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) - 16;
 }
 
+static inline uint32_t HAL_GetBasePri()
+{
+  return (__get_BASEPRI() >> (8 - __NVIC_PRIO_BITS));
+}
+
+static inline bool HAL_IsIrqMasked(int32_t irqn)
+{
+  uint32_t basepri = HAL_GetBasePri();
+  return __get_PRIMASK() || (basepri > 0 && NVIC_GetPriority((IRQn_Type)irqn) >= basepri);
+}
+
 static inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2)
 {
   if (irqn1 == irqn2)
