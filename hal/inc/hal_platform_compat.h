@@ -108,8 +108,4 @@
 #define PRODUCT_SERIES                      "electron"
 #endif
 
-#if PLATFORM_ID == PLATFORM_BSOM
-#define HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX (1)
-#endif // PLATFORM_ID == PLATFORM_BSOM
-
 #endif /* HAL_PLATFORM_COMPAT_H */

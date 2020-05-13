@@ -100,7 +100,6 @@ private:
     unsigned registrationTimeout_;
     volatile bool inFlowControl_ = false;
 
-    const system_tick_t largePacketTimeoutMs_ = 250;
     const size_t largePacketThresholdBytes_ = 512;
     system_tick_t lastLargePacket_ = 0;
 
