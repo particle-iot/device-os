@@ -50,6 +50,7 @@
 #include "system_network_internal.h"
 #include "str_util.h"
 #include "scope_guard.h"
+#include "platform_ncp.h"
 
 #include <stdio.h>
 #include <stdint.h>
