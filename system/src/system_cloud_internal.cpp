@@ -50,6 +50,7 @@
 #include "system_network_internal.h"
 #include "str_util.h"
 #include "scope_guard.h"
+#include "platform_ncp.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -1056,10 +1057,11 @@ int Spark_Handshake(bool presence_announce)
 
     // Adding a delay only for platforms Boron and BSom, because older cell versions of
     // Boron R410M modems crash when handshake messages are sent without gap
-    if (HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX) {
-        // TODO: Make this only for R410M
-        HAL_Delay_Milliseconds(1000);
-    }
+#if HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
+        if (platform_current_ncp_identifier() == PLATFORM_NCP_SARA_R410) {
+            HAL_Delay_Milliseconds(1000);
+        }
+#endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 
     if (err == particle::protocol::SESSION_RESUMED) {
         session_resumed = true;
