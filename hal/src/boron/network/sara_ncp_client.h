@@ -66,6 +66,7 @@ public:
     virtual int getImei(char* buf, size_t size) override;
     virtual int getSignalQuality(CellularSignalQuality* qual) override;
     virtual int setRegistrationTimeout(unsigned timeout) override;
+    virtual int getTxDelayInDataChannel() override;
 
 private:
     AtParser parser_;
@@ -95,12 +96,11 @@ private:
     system_tick_t regCheckTime_;
     system_tick_t registeredTime_;
     system_tick_t powerOnTime_;
-    unsigned int fwVersion_;
+    unsigned int fwVersion_ = 0;
     bool memoryIssuePresent_ = false;
     unsigned registrationTimeout_;
     volatile bool inFlowControl_ = false;
 
-    const size_t largePacketThresholdBytes_ = 512;
     system_tick_t lastLargePacket_ = 0;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);

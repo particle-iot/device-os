@@ -110,8 +110,8 @@ const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
 using CidType = decltype(CellularGlobalIdentity::cell_id);
 
-const system_tick_t largePacketTimeoutMs_ = 250;
-const unsigned int TX_DELAY_IN_DATA_CHANNEL_MSEC = 1000;
+const system_tick_t UBLOX_NCP_R4_LARGE_PACKET_TIMEOUT_MS = 250;
+const size_t UBLOX_NCP_R4_LARGE_PACKET_THRESHOLD_SIZE = 512;
 
 } // anonymous
 
@@ -390,11 +390,11 @@ int SaraNcpClient::updateFirmware(InputStream* file, size_t size) {
 * This is a callback that writes data into muxer channel 2 (data PPP channel)
 * Whenever we encounter a large packet, we enforce a certain number of ms to pass before
 * transmitting anything else on this channel. After we send large packet, we drop messages(bytes)
-* for a certain amount of time defined by largePacketTimeoutMs_
+* for a certain amount of time defined by UBLOX_NCP_R4_LARGE_PACKET_TIMEOUT_MS
 */
 int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     if (fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
-        if (lastLargePacket_ && (HAL_Timer_Get_Milli_Seconds() - lastLargePacket_) < largePacketTimeoutMs_) {
+        if (lastLargePacket_ && (HAL_Timer_Get_Milli_Seconds() - lastLargePacket_) < UBLOX_NCP_R4_LARGE_PACKET_TIMEOUT_MS) {
             // Drop
             LOG_DEBUG(WARN, "Dropping");
             return 0;
@@ -408,7 +408,7 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
         err = 0;
     }
     if (fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
-        if (size >= largePacketThresholdBytes_) {
+        if (size >= UBLOX_NCP_R4_LARGE_PACKET_THRESHOLD_SIZE) {
             lastLargePacket_ = HAL_Timer_Get_Milli_Seconds();
         } else {
             lastLargePacket_ = 0;
@@ -487,8 +487,11 @@ int SaraNcpClient::getImei(char* buf, size_t size) {
     return n;
 }
 
-int SaraNcpClient::getTxDelayInDataChannel(void) {
-    return (ncpId() == PLATFORM_NCP_SARA_R410) ? TX_DELAY_IN_DATA_CHANNEL_MSEC : 0;
+int SaraNcpClient::getTxDelayInDataChannel() {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
+        return UBLOX_NCP_R4_LARGE_PACKET_TIMEOUT_MS * 2;
+    }
+    return 0;
 }
 
 int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
