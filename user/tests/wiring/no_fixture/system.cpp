@@ -165,7 +165,8 @@ test(SYSTEM_06_out_of_memory)
 
 	const size_t size = 1024*1024*1024;
 	register_oom();
-	malloc(size);
+	auto ptr = malloc(size);
+	(void)ptr;
 	Particle.process();
 	unregister_oom();
 
@@ -257,7 +258,8 @@ test(SYSTEM_08_out_of_memory_not_raised_for_0_size_malloc)
 {
 	const size_t size = 0;
 	register_oom();
-	malloc(size);
+	auto ptr = malloc(size);
+	(void)ptr;
 	Particle.process();
 	unregister_oom();
 
