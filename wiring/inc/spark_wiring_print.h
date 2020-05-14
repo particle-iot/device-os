@@ -126,12 +126,10 @@ size_t Print::print(T n, int base)
     } else {
         size_t t = 0;
         using PrintNumberType = typename PrintNumberTypeSelector<T>::type;
-        PrintNumberType val;
-        if ((std::is_signed<T>() && n < 0) && base == 10) {
+        PrintNumberType val = static_cast<PrintNumberType>(n);
+        if (val < 0 && base == 10) {
             t = print('-');
-            val = -n;
-        } else {
-            val = n;
+            val = -val;
         }
         return printNumber(val, base) + t;
     }
