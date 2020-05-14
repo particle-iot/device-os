@@ -197,9 +197,9 @@ test(system_sleep)
 
 test(system_mode) {
     API_COMPILE(System.mode());
-    API_COMPILE(SystemClass(AUTOMATIC));
-    API_COMPILE(SystemClass(SEMI_AUTOMATIC));
-    API_COMPILE(SystemClass(MANUAL));
+    API_COMPILE(SystemClass dummy(AUTOMATIC));
+    API_COMPILE(SystemClass dummy(SEMI_AUTOMATIC));
+    API_COMPILE(SystemClass dummy(MANUAL));
 
     // braces are required since the macro evaluates to a declaration
     API_COMPILE({ SYSTEM_MODE(AUTOMATIC) });
