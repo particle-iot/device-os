@@ -1080,11 +1080,14 @@ byte PMIC::getVersion() {
 byte PMIC::readRegister(byte startAddress) {
     std::lock_guard<PMIC> l(*this);
     byte DATA = 0;
-    pmicWireInstance()->beginTransmission(PMIC_ADDRESS);
+    WireTransmission config(PMIC_ADDRESS);
+    config.timeout(PMIC_DEFAULT_TIMEOUT);
+    pmicWireInstance()->beginTransmission(config);
     pmicWireInstance()->write(startAddress);
     pmicWireInstance()->endTransmission(true);
 
-    pmicWireInstance()->requestFrom(PMIC_ADDRESS, 1, true);
+    config.quantity(1);
+    pmicWireInstance()->requestFrom(config);
     DATA = pmicWireInstance()->read();
     return DATA;
 }
@@ -1098,7 +1101,9 @@ byte PMIC::readRegister(byte startAddress) {
  *******************************************************************************/
 void PMIC::writeRegister(byte address, byte DATA) {
     std::lock_guard<PMIC> l(*this);
-    pmicWireInstance()->beginTransmission(PMIC_ADDRESS);
+    WireTransmission config(PMIC_ADDRESS);
+    config.timeout(PMIC_DEFAULT_TIMEOUT);
+    pmicWireInstance()->beginTransmission(config);
     pmicWireInstance()->write(address);
     pmicWireInstance()->write(DATA);
     pmicWireInstance()->endTransmission(true);
