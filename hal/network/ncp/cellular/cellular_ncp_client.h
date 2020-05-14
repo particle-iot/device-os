@@ -127,6 +127,7 @@ public:
     virtual int getImei(char* buf, size_t size) = 0;
     virtual int getSignalQuality(CellularSignalQuality* qual) = 0;
     virtual int setRegistrationTimeout(unsigned timeout) = 0;
+    virtual int getTxDelayInDataChannel() = 0;
 };
 
 inline CellularNcpClientConfig::CellularNcpClientConfig() :

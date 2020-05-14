@@ -110,6 +110,9 @@ const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
 using CidType = decltype(CellularGlobalIdentity::cell_id);
 
+const system_tick_t UBLOX_NCP_R4_LARGE_PACKET_TIMEOUT_MS = 250;
+const size_t UBLOX_NCP_R4_LARGE_PACKET_THRESHOLD_SIZE = 512;
+
 } // anonymous
 
 SaraNcpClient::SaraNcpClient() {
@@ -383,21 +386,40 @@ int SaraNcpClient::updateFirmware(InputStream* file, size_t size) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
+/*
+* This is a callback that writes data into muxer channel 2 (data PPP channel)
+* Whenever we encounter a large packet, we enforce a certain number of ms to pass before
+* transmitting anything else on this channel. After we send large packet, we drop messages(bytes)
+* for a certain amount of time defined by UBLOX_NCP_R4_LARGE_PACKET_TIMEOUT_MS
+*/
 int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
+    if (fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
+        if (lastLargePacket_ && (HAL_Timer_Get_Milli_Seconds() - lastLargePacket_) < UBLOX_NCP_R4_LARGE_PACKET_TIMEOUT_MS) {
+            // Drop
+            LOG_DEBUG(WARN, "Dropping");
+            return 0;
+        }
+    }
+
     int err = muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, data, size);
     if (err == gsm0710::GSM0710_ERROR_FLOW_CONTROL) {
         // Not an error
         LOG_DEBUG(WARN, "Remote side flow control");
         err = 0;
     }
-
+    if (fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
+        if (size >= UBLOX_NCP_R4_LARGE_PACKET_THRESHOLD_SIZE) {
+            lastLargePacket_ = HAL_Timer_Get_Milli_Seconds();
+        } else {
+            lastLargePacket_ = 0;
+        }
+    }
     if (err) {
         // Make sure we are going into an error state if muxer for some reason fails
         // to write into the data channel.
         LOG(ERROR, "Failed to write into data channel %d", err);
         disable();
     }
-
     return err;
 }
 
@@ -463,6 +485,13 @@ int SaraNcpClient::getImei(char* buf, size_t size) {
     const size_t n = CHECK_PARSER(resp.readLine(buf, size));
     CHECK_PARSER_OK(resp.readResult());
     return n;
+}
+
+int SaraNcpClient::getTxDelayInDataChannel() {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
+        return UBLOX_NCP_R4_LARGE_PACKET_TIMEOUT_MS * 2;
+    }
+    return 0;
 }
 
 int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
@@ -932,13 +961,13 @@ int SaraNcpClient::initReady() {
         // Change the baudrate to 921600
         CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
     } else {
-        int fwVersion = getAppFirmwareVersion();
-        if (fwVersion > 0) {
+        fwVersion_ = getAppFirmwareVersion();
+        if (fwVersion_ > 0) {
             // L0.0.00.00.05.06,A.02.00 has a memory issue
-            memoryIssuePresent_ = (fwVersion == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
+            memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
             // There is a set of other revisions which do not have hardware flow control
-            if (!(fwVersion >= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN &&
-                    fwVersion <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX)) {
+            if (!(fwVersion_ >= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN &&
+                    fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX)) {
                 // Change the baudrate to 460800
                 // NOTE: ignoring AT errors just in case to accommodate for some revisions
                 // potentially not supporting anything other than 115200
@@ -1043,7 +1072,7 @@ int SaraNcpClient::initReady() {
     }
 
     // Send AT+CMUX and initialize multiplexer
-    r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,1509,,,,,"));
+    r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,%u,,,,,", UBLOX_NCP_MAX_MUXER_FRAME_SIZE));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     // Initialize muxer

@@ -50,6 +50,10 @@
 #include "system_network_internal.h"
 #include "str_util.h"
 #include "scope_guard.h"
+#if HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
+#include "network/ncp/cellular/ncp.h"
+#include "network/ncp/cellular/cellular_ncp_client.h"
+#endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 
 #include <stdio.h>
 #include <stdint.h>
@@ -1053,6 +1057,19 @@ int Spark_Handshake(bool presence_announce)
     LOG(INFO,"Starting handshake: presense_announce=%d", presence_announce);
     bool session_resumed = false;
     int err = spark_protocol_handshake(sp);
+
+#if HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
+    // XXX: Adding a delay only for platforms Boron and BSoM, because older cell versions of
+    // Boron R410M modems crash when handshake messages are sent without gap.
+    // We have a workaround for this issue in the NCP client, so the modem should no longer crash
+    // in any case, but we want to avoid dropping a set of publishes which are generated below,
+    // hence a delay here as a workaround.
+    auto timeout = particle::cellularNetworkManager()->ncpClient()->getTxDelayInDataChannel();
+    if (timeout > 0) {
+        HAL_Delay_Milliseconds(timeout);
+    }
+#endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
+
     if (err == particle::protocol::SESSION_RESUMED) {
         session_resumed = true;
     } else if (err != 0) {
