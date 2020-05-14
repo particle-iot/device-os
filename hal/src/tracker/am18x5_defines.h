@@ -131,6 +131,7 @@
 
 // OSC Status Bits Mask
 #define OSC_STATUS_XTCAL_MASK       0xC0
+#define OSC_STATUS_XTCAL_SHIFT      (6)
 #define OSC_STATUS_LKO2_MASK        0x20
 #define OSC_STATUS_OMODE_MASK       0x10
 #define OSC_STATUS_OF_MASK          0x02

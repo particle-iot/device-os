@@ -147,6 +147,25 @@ public:
 
     int getPartNumber(uint16_t* id) const;
 
+    /*
+     * The XT oscillator calibration value is determined by the following process:
+     * 1. Set the OFFSETX, CMDX and XTCAL register fields to 0 to ensure calibration is not occurring.
+     * 2. Select the XT oscillator by setting the OSEL bit to 0.
+     * 3. Configure a 32768 Hz frequency square wave output on one of the output pins.
+     * 4. Precisely measure the exact frequency, Fmeas, at the output pin in Hz.
+     * 5. Compute the adjustment value required in ppm as ((32768 – Fmeas)*1000000)/32768 = PAdj
+     * 6. Compute the adjustment value in steps as PAdj/(1000000/2^19) = PAdj/(1.90735) = Adj
+     * 7. If Adj < -320, the XT frequency is too high to be calibrated
+     * 8. Else if Adj < -256, set XTCAL = 3, CMDX = 1, OFFSETX = (Adj + 192) / 2
+     * 9. Else if Adj < -192, set XTCAL = 3, CMDX = 0, OFFSETX = Adj + 192
+     * 10. Else if Adj < -128, set XTCAL = 2, CMDX = 0, OFFSETX = Adj + 128
+     * 11. Else if Adj < -64, set XTCAL = 1, CMDX = 0, OFFSETX = Adj + 64
+     * 12. Else if Adj < 64, set XTCAL = 0, CMDX = 0, OFFSETX = Adj
+     * 13. Else if Adj < 128, set XTCAL = 0, CMDX = 1, OFFSETX = Adj/2
+     * 14. Else the XT frequency is too low to be calibrated
+     */
+    int xtOscillatorDigitalCalibration(int adjVal) const;
+
     int lock();
     int unlock();
 

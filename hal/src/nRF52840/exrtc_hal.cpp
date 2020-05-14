@@ -118,4 +118,8 @@ int hal_exrtc_sleep_timer(time_t ms, void* reserved) {
     return Am18x5::getInstance().sleep(ticks, frequency);
 }
 
+int hal_exrtc_calibrate_xt(int adjValue, void* reserved) {
+    return Am18x5::getInstance().xtOscillatorDigitalCalibration(adjValue);
+}
+
 #endif // HAL_PLATFORM_EXTERNAL_RTC

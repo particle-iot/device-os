@@ -99,7 +99,10 @@ int Am18x5::begin() {
     CHECK_TRUE(partNumber == PART_NUMBER, SYSTEM_ERROR_INTERNAL);
 
     // Automatically switch to internal RC oscillator when using VBAT as the power supply.
-    CHECK(enableAutoSwitchOnBattery(true));
+    // CHECK(enableAutoSwitchOnBattery(true));
+
+    // Digital calibration to improve accuracy.
+    xtOscillatorDigitalCalibration(-40);
 
     // Automatically clear interrupt flags after reading the the status register.
     CHECK(writeRegister(Am18x5Register::CONTROL1, 1, false, true, CONTROL1_ARST_MASK, CONTROL1_ARST_SHIFT));
@@ -233,6 +236,11 @@ int Am18x5::feedWatchdog() const {
 int Am18x5::sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const {
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    // Enable to access the BATMODE_IO and OUTPUT_CTRL registers
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, 0x9D));
+    // Configure RTC pins to minimize power leakage
+    CHECK(writeRegister(Am18x5Register::BATMODE_IO, 0x00));
+    CHECK(writeRegister(Am18x5Register::OUTPUT_CTRL, 0x30));
     // Stop the count down timer just in case
     CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, 0, false, true, TIMER_CONTROL_TE_MASK, TIMER_CONTROL_TE_SHIFT));
     // Set PSW/nIRQ2 to be working in SLEEP mode
@@ -392,6 +400,48 @@ int Am18x5::getWeekday() const {
     uint8_t weekday = 0;
     CHECK(readRegister(Am18x5Register::WEEKDAY, &weekday, true, WEEKDAY_MASK));
     return weekday;
+}
+
+int Am18x5::xtOscillatorDigitalCalibration(int adjVal) const {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t xtcal, cmdx;
+    int offsetx;
+    if (adjVal < -320 || adjVal >= 128) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if (adjVal < -256) {
+        xtcal = 3;
+        cmdx = 1;
+        offsetx = (adjVal + 192) / 2;
+    } else if (adjVal < -192) {
+        xtcal = 3;
+        cmdx = 0;
+        offsetx = adjVal + 192;
+    } else if (adjVal < -128) {
+        xtcal = 2;
+        cmdx = 0;
+        offsetx = adjVal + 128;
+    } else if (adjVal < -64) {
+        xtcal = 1;
+        cmdx = 0;
+        offsetx = adjVal + 64;
+    } else if (adjVal < 64) {
+        xtcal = 0;
+        cmdx = 0;
+        offsetx = adjVal;
+    } else {
+        xtcal = 0;
+        cmdx = 1;
+        offsetx = adjVal / 2;
+    }
+    CHECK(writeRegister(Am18x5Register::OSC_STATUS, xtcal, false, true, OSC_STATUS_XTCAL_MASK, OSC_STATUS_XTCAL_SHIFT));
+    uint8_t calibration = (uint8_t)offsetx & 0x7F;
+    if (cmdx) {
+        calibration |= 0x80;
+    }
+    CHECK(writeRegister(Am18x5Register::CAL_XT, calibration));
+    return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::selectOscillator(Am18x5Oscillator oscillator) const {
