@@ -1016,7 +1016,7 @@ void Spark_Protocol_Init(void)
 
 #if HAL_PLATFORM_COMPRESSED_OTA
         // Enable compressed/combined OTA updates
-        if (get_bootloader_version() >= COMPRESSED_OTA_MIN_BOOTLOADER_VERSION) {
+        if (bootloader_get_version() >= COMPRESSED_OTA_MIN_BOOTLOADER_VERSION) {
             spark_protocol_set_connection_property(sp, particle::protocol::Connection::COMPRESSED_OTA, 0, nullptr, nullptr);
         }
 #endif // HAL_PLATFORM_COMPRESSED_OTA
