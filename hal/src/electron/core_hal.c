@@ -42,9 +42,9 @@
 /**
  * Start of interrupt vector table.
  */
-extern char link_interrupt_vectors_location;
-extern char link_ram_interrupt_vectors_location;
-extern char link_ram_interrupt_vectors_location_end;
+extern uintptr_t link_interrupt_vectors_location[];
+extern uintptr_t link_ram_interrupt_vectors_location[];
+extern uintptr_t link_ram_interrupt_vectors_location_end;
 
 void SysTickChain();
 
@@ -170,7 +170,7 @@ void HAL_Core_Config_systick_configuration(void) {
  */
 void HAL_Core_Setup_override_interrupts(void)
 {
-    memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
+    memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, (uintptr_t)&link_ram_interrupt_vectors_location_end-(uintptr_t)&link_ram_interrupt_vectors_location);
     uint32_t* isrs                          = (uint32_t*)&link_ram_interrupt_vectors_location;
     SCB->VTOR = (unsigned long)isrs;
 }

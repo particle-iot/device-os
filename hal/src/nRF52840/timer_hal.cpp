@@ -63,7 +63,7 @@ volatile uint32_t sTickCountAtLastOverflow = 0; ///< DWT->CYCCNT value at the ti
 volatile uint64_t sTimerMicrosAtLastOverflow = 0; ///< microseconds at the time latest overflow occured
 volatile uint64_t sTimerMicrosBaseOffset = 0; ///< Base offset for Particle-specific microsecond counter
 
-constexpr auto RTC_INSTANCE = NRF_RTC2;
+auto RTC_INSTANCE = NRF_RTC2;
 constexpr auto RTC_IRQN = RTC2_IRQn;
 constexpr auto RTC_IRQ_PRIORITY = 6;
 constexpr auto RTC_USECS_PER_SEC = 1000000ULL;

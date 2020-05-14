@@ -86,9 +86,9 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info);
 void app_error_handler_bare(uint32_t err);
 
 extern char link_heap_location, link_heap_location_end;
-extern char link_interrupt_vectors_location;
-extern char link_ram_interrupt_vectors_location;
-extern char link_ram_interrupt_vectors_location_end;
+extern uintptr_t link_interrupt_vectors_location[];
+extern uintptr_t link_ram_interrupt_vectors_location[];
+extern uintptr_t link_ram_interrupt_vectors_location_end;
 extern char _Stack_Init;
 
 static void* new_heap_end = &link_heap_location_end;
@@ -288,7 +288,7 @@ void HAL_Core_Config(void) {
 #endif
 
     /* Forward interrupts */
-    memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
+    memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, (uintptr_t)&link_ram_interrupt_vectors_location_end-(uintptr_t)&link_ram_interrupt_vectors_location);
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     SCB->VTOR = (uint32_t)isrs;
 
