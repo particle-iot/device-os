@@ -830,9 +830,3 @@ String String::format(const char* fmt, ...)
     }
     return result;
 }
-
-std::ostream& operator << ( std::ostream& os, const String& value ) {
-    os << '"' << value.c_str() << '"';
-    return os;
-}
-
