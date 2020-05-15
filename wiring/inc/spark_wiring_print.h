@@ -126,11 +126,21 @@ size_t Print::print(T n, int base)
     } else {
         size_t t = 0;
         using PrintNumberType = typename PrintNumberTypeSelector<T>::type;
-        PrintNumberType val = static_cast<PrintNumberType>(n);
-        if (val < 0 && base == 10) {
+        PrintNumberType val;
+// FIXME: avoids 'comparison of constant '0' with boolean expression is always false'
+#if __GNUC__ >= 9
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wbool-compare"
+#endif // __GNUC__ >= 9
+        if (n < 0 && base == 10) {
             t = print('-');
-            val = -val;
+            val = -n;
+        } else {
+            val = n;
         }
+#if __GNUC__ >= 9
+#pragma GCC diagnostic pop
+#endif // __GNUC__ >= 9
         return printNumber(val, base) + t;
     }
 }
