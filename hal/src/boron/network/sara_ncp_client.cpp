@@ -91,7 +91,7 @@ inline system_tick_t millis() {
 
 const auto UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
 const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2 = 921600;
-const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 = 115200; // FIXME: 460800;
+const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 = 460800;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE = 200;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN = 200;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX = 203;
@@ -1073,10 +1073,7 @@ int SaraNcpClient::initReady(ModemState state) {
                     // NOTE: ignoring AT errors just in case to accommodate for some revisions
                     // potentially not supporting anything other than 115200
 
-                    // FIXME: AT+IPR setting is persistent on SARA R4
-                    // Still using 115200 for now to avoid bricking devices until we can figure out
-                    // how to make the setting non persistent as we need to be backwards compatible
-                    // with DeviceOS versions that only talk @ 115200 to SARA R4 modems.
+                    // XXX: AT+IPR setting is persistent on SARA R4!
                     int r = changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
                     if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_AT_NOT_OK) {
                         return r;
