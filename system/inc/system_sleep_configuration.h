@@ -58,12 +58,6 @@ public:
         }
 #endif // HAL_PLATFORM_WIFI
 
-#if HAL_PLATFORM_MESH
-        if (wakeupByNetworkInterface(NETWORK_INTERFACE_MESH)) {
-            return false;
-        }
-#endif // HAL_PLATFORM_MESH
-
 #if HAL_PLATFORM_ETHERNET
         if (wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
             return false;

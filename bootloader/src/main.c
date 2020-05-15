@@ -470,7 +470,7 @@ int main(void)
             __set_MSP(*(__IO uint32_t*) ApplicationAddress);
             Jump_To_Application();
         }
-#if !HAL_PLATFORM_MESH
+#if !HAL_PLATFORM_NRF52840
         else
         {
             LED_SetRGBColor(RGB_COLOR_RED);

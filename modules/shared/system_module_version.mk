@@ -54,6 +54,6 @@ endif
 
 # Gen 3 platforms require an intermediate update through 1.1.0 to avoid IRQ priority configuration
 # issue in DeviceOS < 1.1.0 which presents itself with >= 501 bootloaders
-ifneq (,$(filter $(PLATFORM_ID),12 13 14 22 23))
+ifneq (,$(filter $(PLATFORM_ID),12 13 22 23))
 BOOTLOADER_MODULE_DEPENDENCY=${MODULE_FUNCTION_SYSTEM_PART},1,${RELEASE_110_MODULE_VERSION}
 endif

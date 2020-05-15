@@ -26,10 +26,6 @@
 	path = third_party/nanopb/nanopb
 	url = https://github.com/particle-iot/nanopb.git
 	branch = particle
-[submodule "third_party/openthread/openthread"]
-	path = third_party/openthread/openthread
-	url = https://github.com/particle-iot/openthread.git
-	branch = particle
 [submodule "third_party/littlefs/littlefs"]
 	path = third_party/littlefs/littlefs
 	url = https://github.com/particle-iot/littlefs.git

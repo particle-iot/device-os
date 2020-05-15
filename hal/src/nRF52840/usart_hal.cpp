@@ -701,11 +701,7 @@ constexpr const Usart::BaudrateMap Usart::baudrateMap_[];
 
 const auto UARTE0_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_LOW;
 // TODO: move this to hal_platform_config.h ?
-#if PLATFORM_ID == PLATFORM_XENON
-const auto UARTE1_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_LOW;
-#else
 const auto UARTE1_INTERRUPT_PRIORITY = (app_irq_priority_t)_PRIO_SD_LOWEST;
-#endif // PLATFORM_ID == PLATFORM_XENON
 
 Usart* getInstance(HAL_USART_Serial serial) {
     static Usart usartMap[] = {

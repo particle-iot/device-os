@@ -70,13 +70,13 @@ public:
     void setCredentials(const char* apn, const char* username, const char* password) {
         cellular_credentials_set(apn, username, password, nullptr);
     }
-#if HAL_PLATFORM_MESH
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
 // FIXME: there should be a separate macro to indicate that this functionality
 // is available
     void clearCredentials() {
         cellular_credentials_clear(nullptr);
     }
-#endif // HAL_PLATFORM_MESH
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
 
     void listen(bool begin=true) {
         network_listen(*this, begin ? 0 : 1, NULL);
@@ -147,7 +147,7 @@ public:
     }
 #endif // !HAL_USE_INET_HAL_POSIX
 
-#if HAL_PLATFORM_MESH
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
 // FIXME: there should be a separate macro to indicate that this functionality
 // is available
     int setActiveSim(SimType sim) {
@@ -162,7 +162,7 @@ public:
         }
         return (SimType)sim;
     }
-#endif // HAL_PLATFORM_MESH
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
 
     void lock()
     {

@@ -16,14 +16,11 @@
  */
 
 #include "ifapi.h"
-#include "ot_api.h"
-#include "openthread/lwip_openthreadif.h"
 #include "wiznet/wiznetif.h"
 #include "nat64.h"
 #include <mutex>
 #include <nrf52840.h>
 #include "random.h"
-#include "border_router_manager.h"
 #include <malloc.h>
 #include "serial_stream.h"
 #include "usart_hal.h"
@@ -40,8 +37,6 @@ using namespace particle::net::nat;
 
 namespace {
 
-/* th1 - OpenThread */
-BaseNetif* th1 = nullptr;
 /* en2 - Ethernet FeatherWing */
 BaseNetif* en2 = nullptr;
 /* pp3 - Cellular */
@@ -109,12 +104,10 @@ CellularNetworkManager* cellularNetworkManager() {
 } // particle
 
 int if_init_platform(void*) {
-    CHECK(ot_init(nullptr, nullptr));
-
     /* lo0 (created by LwIP) */
 
-    /* th1 - OpenThread */
-    th1 = new OpenThreadNetif(ot_get_instance());
+    /* th1 - OpenThread (Deprecated) */
+    reserve_netif_index();
 
     /* en2 - Ethernet FeatherWing (optional) */
     uint8_t mac[6] = {};
@@ -172,32 +165,6 @@ struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* d
     }
 
     return nullptr;
-}
-
-int lwip_hook_ip6_forward_pre_routing(struct pbuf* p, struct ip6_hdr* ip6hdr, struct netif* inp, u32_t* flags) {
-    auto nat64 = BorderRouterManager::instance()->getNat64();
-    if (nat64) {
-        return nat64->ip6Input(p, ip6hdr, inp);
-    }
-
-    /* Do not forward */
-    return 1;
-}
-
-int lwip_hook_ip4_input_pre_upper_layers(struct pbuf* p, const struct ip_hdr* iphdr, struct netif* inp) {
-    auto nat64 = BorderRouterManager::instance()->getNat64();
-    if (nat64) {
-        int r = nat64->ip4Input(p, (ip_hdr*)iphdr, inp);
-        if (r) {
-            /* Ip4 hooks do not free the packet if it has been handled by the hook */
-            pbuf_free(p);
-        }
-
-        return r;
-    }
-
-    /* Try to handle locally if not consumed by NAT64 */
-    return 0;
 }
 
 }

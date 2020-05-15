@@ -13,7 +13,6 @@
 #include "subscriptions.h"
 #include "variables.h"
 #include "hal_platform.h"
-#include "mesh.h"
 #include "timesyncmanager.h"
 #include "hal_platform.h"
 
@@ -110,10 +109,6 @@ class Protocol
 	 * Manages time sync requests
 	 */
 	TimeSyncManager timesync_;
-
-#if HAL_PLATFORM_MESH
-	Mesh mesh;
-#endif
 
 	Vector<message_handle_t> subscription_msg_ids;
 	message_handle_t app_describe_msg_id;
@@ -517,10 +512,6 @@ public:
 	virtual int get_describe_data(spark_protocol_describe_data* data, void* reserved);
 
 	virtual int get_status(protocol_status* status) const = 0;
-
-#if HAL_PLATFORM_MESH
-	int mesh_command(MeshCommand::Enum cmd, uint32_t data, void* extraData, completion_handler_data* completion);
-#endif // HAL_PLATFORM_MESH
 
 	void notify_message_complete(message_id_t msg_id, CoAPCode::Enum responseCode);
 

@@ -15,35 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "hal_platform.h"
 
-#include "system_control.h"
-
-namespace particle {
-
-namespace ctrl {
-
-namespace mesh {
-
-int auth(ctrl_request* req);
-int createNetwork(ctrl_request* req);
-int startCommissioner(ctrl_request* req);
-int stopCommissioner(ctrl_request* req);
-int prepareJoiner(ctrl_request* req);
-int addJoiner(ctrl_request* req);
-int removeJoiner(ctrl_request* req);
-int joinNetwork(ctrl_request* req);
-int leaveNetwork(ctrl_request* req);
-int getNetworkInfo(ctrl_request* req);
-int scanNetworks(ctrl_request* req);
-int getNetworkDiagnostics(ctrl_request* req);
-
-int test(ctrl_request* req); // FIXME
-
-int notifyBorderRouter(bool active);
-
-} // particle::ctrl::mesh
-
-} // particle::ctrl
-
-} // particle
+#if HAL_PLATFORM_MESH_DEPRECATED
+#include "hal_dynalib_mesh_deprecated.h"
+#endif // HAL_PLATFORM_MESH_DEPRECATED

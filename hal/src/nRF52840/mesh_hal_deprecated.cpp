@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,38 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-/**
- * @file
- * @brief
- *  This file defines the implementation details for POSIX-compatible inet_hal for mesh-virtual platform.
- */
+#include "mesh_hal_deprecated.h"
 
-#ifndef INET_HAL_POSIX_IMPL_H
-#define INET_HAL_POSIX_IMPL_H
+#include "radio_common.h"
 
-#include <lwip/inet.h>
+#include "check.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+using namespace particle;
 
-/**
- * @addtogroup inet_hal_posix_impl
- *
- * @brief
- *   This module provides implementation details for POSIX-compatible inet_hal for mesh-virtual platform.
- *
- * @{
- *
- */
-
-/**
- * @}
- *
- */
-
-#ifdef __cplusplus
+int mesh_select_antenna_deprecated(int antenna, void* reserved) {
+	CHECK(selectRadioAntenna((radio_antenna_type)antenna));
+	return 0;
 }
-#endif /* __cplusplus */
-
-#endif /* INET_HAL_POSIX_IMPL_H */

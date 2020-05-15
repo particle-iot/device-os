@@ -214,14 +214,6 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
     }
 #endif // HAL_PLATFORM_CELLULAR
 
-#if HAL_PLATFORM_MESH
-    // FIXME: We are still going to turn off OpenThread with SLEEP_NETWORK_STANDBY, otherwise
-    // there are various issues with sleep
-    if (!network_sleep_flag(param)) {
-        network_off(NETWORK_INTERFACE_MESH, 0, 0, nullptr);
-    }
-#endif // HAL_PLATFORM_MESH
-
     led_set_update_enabled(0, nullptr); // Disable background LED updates
     LED_Off(LED_RGB);
 	system_power_management_sleep();
@@ -234,14 +226,6 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
         cellular_resume(nullptr);
     }
 #endif // HAL_PLATFORM_CELLULAR
-
-#if HAL_PLATFORM_MESH
-    // FIXME: we need to bring Mesh interface back up because we've turned it off
-    // despite SLEEP_NETWORK_STANDBY
-    if (!network_sleep_flag(param)) {
-        network_on(NETWORK_INTERFACE_MESH, 0, 0, nullptr);
-    }
-#endif // HAL_PLATFORM_MESH
 
     if (network_sleep)
     {

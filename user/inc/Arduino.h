@@ -179,7 +179,7 @@ typedef volatile uint32_t RwReg;
 // LED
 #if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || \
     PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION || \
-    HAL_PLATFORM_MESH
+    HAL_PLATFORM_NRF52840
 # ifndef LED_BUILTIN
 # define LED_BUILTIN D7
 # endif
@@ -190,7 +190,7 @@ typedef volatile uint32_t RwReg;
 
 #endif // PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION ||
        // PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION ||
-       // HAL_PLATFORM_MESH
+       // HAL_PLATFORM_NRF52840
 
 // C++ only
 #ifdef __cplusplus

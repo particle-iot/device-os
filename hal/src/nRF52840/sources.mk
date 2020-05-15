@@ -27,12 +27,6 @@ CPPSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/api/,*.cpp)
 CSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/wiznet/,*.c)
 CPPSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/wiznet/,*.cpp)
 
-CSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/openthread/,*.c)
-CPPSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/openthread/,*.cpp)
-
-CSRC += $(call target_files,$(HAL_MODULE_PATH)/network/openthread/,*.c)
-CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/openthread/,*.cpp)
-
 CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/ncp/at_parser,*.cpp)
 
 CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/shared/,*.cpp)

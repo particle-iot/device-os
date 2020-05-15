@@ -45,14 +45,14 @@
 #ifndef AES_ALT_SOFT_H
 #define AES_ALT_SOFT_H
 
-#include <openthread-core-config.h>
+// #include <openthread-core-config.h>
 
 #include <stddef.h>
 #include <stdint.h>
 
 #ifdef MBEDTLS_AES_ALT
 
-#if NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
+#if defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT
 
 #include "aes_alt.h"
 
@@ -106,7 +106,7 @@ int aes_soft_crypt_ecb(mbedtls_aes_context * ctx,
 }
 #endif
 
-#endif /* NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT */
+#endif /* defined(NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT) && NRF_MBEDTLS_AES_ALT_INTERRUPT_CONTEXT */
 
 #endif /* MBEDTLS_AES_ALT */
 

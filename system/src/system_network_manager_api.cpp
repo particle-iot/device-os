@@ -211,14 +211,8 @@ bool network_ready(network_handle_t network, uint32_t type, void* reserved) {
                 auto ip4 = NetworkManager::instance()->getInterfaceIp4State(iface);
                 auto ip6 = NetworkManager::instance()->getInterfaceIp6State(iface);
                 if ((network_ready_type)type == NETWORK_READY_TYPE_ANY) {
-                    if (network != NETWORK_INTERFACE_MESH) {
-                        if (ip4 == NetworkManager::ProtocolState::CONFIGURED || ip6 == NetworkManager::ProtocolState::CONFIGURED) {
-                            return true;
-                        }
-                    } else {
-                        if (ip4 != NetworkManager::ProtocolState::UNCONFIGURED || ip6 != NetworkManager::ProtocolState::UNCONFIGURED) {
-                            return true;
-                        }
+                    if (ip4 == NetworkManager::ProtocolState::CONFIGURED || ip6 == NetworkManager::ProtocolState::CONFIGURED) {
+                        return true;
                     }
                 } else {
                     if ((network_ready_type)type == NETWORK_READY_TYPE_IPV4) {

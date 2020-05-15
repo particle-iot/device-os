@@ -21,8 +21,7 @@
 #include "concurrent_hal.h"
 #include "service_debug.h"
 
-// This implementation uses timer_hal, which in turn relies on alarm implementation
-// necessary for OpenThread functionality. See timer_hal.cpp for additional information
+// This implementation uses timer_hal. See timer_hal.cpp for additional information
 // on millisecond and microsecond counter source and their properties.
 
 namespace {

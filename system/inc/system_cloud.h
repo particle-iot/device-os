@@ -364,11 +364,11 @@ extern const unsigned char backup_tcp_public_server_address[18];
 #define SPARK_LOOP_DELAY_MILLIS       1000    //1sec
 #define SPARK_RECEIVE_DELAY_MILLIS    10      //10ms
 
-#if PLATFORM_ID==10 || HAL_PLATFORM_MESH
+#if HAL_PLATFORM_CELLULAR || HAL_PLATFORM_NCP
 #define TIMING_FLASH_UPDATE_TIMEOUT   (300000) // 300sec
-#else
+#else // HAL_PLATFORM_CELLULAR || HAL_PLATFORM_NCP
 #define TIMING_FLASH_UPDATE_TIMEOUT   (30000)  // 30sec
-#endif
+#endif // HAL_PLATFORM_CELLULAR || HAL_PLATFORM_NCP
 
 #define USER_VAR_MAX_COUNT            (10)  // FIXME: NOT USED
 #define USER_FUNC_MAX_COUNT           (4)   // FIXME: NOT USED

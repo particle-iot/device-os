@@ -18,7 +18,7 @@
 /**
  * @file
  * @brief
- *  This file implements POSIX-compatible netdb_hal for mesh-virtual platform.
+ *  This file implements POSIX-compatible netdb_hal for NCP-based platforms.
  */
 
 /* netdb_hal_impl.h should get included from netdb_hal.h automagically */

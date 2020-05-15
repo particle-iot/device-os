@@ -72,18 +72,10 @@ DYNALIB_FN(BASE_IDX2 + 0, communication, spark_protocol_set_connection_property,
 DYNALIB_FN(BASE_IDX2 + 1, communication, spark_protocol_command, int(ProtocolFacade*, ProtocolCommands::Enum, uint32_t, const void*))
 DYNALIB_FN(BASE_IDX2 + 2, communication, spark_protocol_time_request_pending, bool(ProtocolFacade*, void*))
 DYNALIB_FN(BASE_IDX2 + 3, communication, spark_protocol_time_last_synced, system_tick_t(ProtocolFacade*, time_t*, void*))
-
-#if HAL_PLATFORM_MESH
-DYNALIB_FN(BASE_IDX2 + 4, communication, spark_protocol_mesh_command, int(ProtocolFacade* protocol, MeshCommand::Enum cmd, uint32_t data, void* extraData, completion_handler_data* completion, void* reserved))
-#define BASE_IDX3 (BASE_IDX2 + 5)
-#else // !HAL_PLATFORM_MESH
-#define BASE_IDX3 (BASE_IDX2 + 4)
-#endif // HAL_PLATFORM_MESH
-
-DYNALIB_FN(BASE_IDX3 + 0, communication, spark_protocol_get_describe_data, int(ProtocolFacade*, spark_protocol_describe_data*, void*))
-DYNALIB_FN(BASE_IDX3 + 1, communication, spark_protocol_post_description, int(ProtocolFacade*, int, void*))
-DYNALIB_FN(BASE_IDX3 + 2, communication, spark_protocol_to_system_error, int(int))
-DYNALIB_FN(BASE_IDX3 + 3, communication, spark_protocol_get_status, int(ProtocolFacade*, protocol_status*, void*))
+DYNALIB_FN(BASE_IDX2 + 4, communication, spark_protocol_get_describe_data, int(ProtocolFacade*, spark_protocol_describe_data*, void*))
+DYNALIB_FN(BASE_IDX2 + 5, communication, spark_protocol_post_description, int(ProtocolFacade*, int, void*))
+DYNALIB_FN(BASE_IDX2 + 6, communication, spark_protocol_to_system_error, int(int))
+DYNALIB_FN(BASE_IDX2 + 7, communication, spark_protocol_get_status, int(ProtocolFacade*, protocol_status*, void*))
 
 DYNALIB_END(communication)
 

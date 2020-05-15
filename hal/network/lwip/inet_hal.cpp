@@ -18,7 +18,7 @@
 /**
  * @file
  * @brief
- *  This file implements POSIX-compatible inet_hal for mesh-virtual platform.
+ *  This file implements POSIX-compatible inet_hal for NCP-based platforms.
  */
 
 /* inet_hal_posix_impl.h should get included from inet_hal.h automagically */

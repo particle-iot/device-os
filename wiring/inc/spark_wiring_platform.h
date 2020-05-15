@@ -94,15 +94,7 @@
 #define Wiring_SetupButtonUX HAL_PLATFORM_SETUP_BUTTON_UX
 #endif
 
-#if PLATFORM_ID==20      // mesh-virtual
-#define Wiring_WiFi 1
-#define Wiring_IPv6 0
-#define Wiring_SPI1 1
-#define Wiring_LogConfig 1 // for testing purposes
-#endif
-
-#if HAL_PLATFORM_MESH
-#define Wiring_Mesh 1
+#if HAL_PLATFORM_NRF52840
 #define Wiring_SPI1 1
 #define Wiring_LogConfig 1
 //#ifdef DEBUG_BUILD
@@ -226,9 +218,11 @@
 #define Wiring_Mouse 0
 #endif // Wiring_Mouse
 
+#if HAL_PLATFORM_MESH_DEPRECATED
 #ifndef Wiring_Mesh
 #define Wiring_Mesh 0
 #endif // Wiring_Mesh
+#endif // HAL_PLATFORM_MESH_DEPRECATED
 
 #endif	/* SPARK_WIRING_PLATFORM_H */
 

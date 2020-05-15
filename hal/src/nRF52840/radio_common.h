@@ -22,14 +22,14 @@
 namespace particle {
 
 /**
- * Load the mesh/BLE antenna setting from the DCT and select that antenna.
+ * Load the BLE antenna setting from the DCT and select that antenna.
  *
  * @return 0 on success or a negative result code in case of an error.
  */
 int initRadioAntenna();
 
 /**
- * Select the mesh/BLE antenna and store the setting in the DCT.
+ * Select the BLE antenna and store the setting in the DCT.
  *
  * @param antenna Antenna type.
  * @return 0 on success or a negative result code in case of an error.

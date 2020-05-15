@@ -86,7 +86,7 @@ typedef struct {
 /**
  * The flag indicates the content is for the cloud describe message.
  * Some details may be omitted if they are already known in the cloud to reduce overhead.
- * The Mesh Serial Number and Device Secret are not added as keys when this flag is set.
+ * The Device Serial Number and Device Secret are not added as keys when this flag is set.
  */
 #define HAL_SYSTEM_INFO_FLAGS_CLOUD (0x01)
 

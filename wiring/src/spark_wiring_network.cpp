@@ -19,7 +19,6 @@
 
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_cellular.h"
-#include "spark_wiring_mesh.h"
 #include "spark_wiring_ethernet.h"
 #include "hal_platform.h"
 #if HAL_USE_INET_HAL_POSIX
@@ -32,10 +31,6 @@ NetworkClass Network(NETWORK_INTERFACE_ALL);
 
 NetworkClass& NetworkClass::from(network_interface_t nif) {
     switch (nif) {
-#if Wiring_Mesh
-    case NETWORK_INTERFACE_MESH:
-        return Mesh;
-#endif
 #if Wiring_Ethernet
     case NETWORK_INTERFACE_ETHERNET:
         return Ethernet;

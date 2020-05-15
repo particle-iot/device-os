@@ -83,30 +83,30 @@ test(BLE_02_Set_BLE_Device_Name) {
     size_t len = BLE.getDeviceName(buf, sizeof(buf));
     assertTrue(buf[len] == '\0');
 
-    ret = BLE.setDeviceName("Xenon-test1");
+    ret = BLE.setDeviceName("Argon-test1");
     assertEqual(ret, 0);
     getName = BLE.getDeviceName();
-    assertTrue(getName == "Xenon-test1");
+    assertTrue(getName == "Argon-test1");
 
-    ret = BLE.setDeviceName("Xenon-test01234567890123456789");
+    ret = BLE.setDeviceName("Argon-test01234567890123456789");
     assertEqual(ret, 0);
     getName = BLE.getDeviceName();
-    assertTrue(getName == "Xenon-test0123456789");
+    assertTrue(getName == "Argon-test0123456789");
 
-    ret = BLE.setDeviceName("Xenon-test0123456789012", 5);
+    ret = BLE.setDeviceName("Argon-test0123456789012", 5);
     assertEqual(ret, 0);
     getName = BLE.getDeviceName();
-    assertTrue(getName == "Xenon");
+    assertTrue(getName == "Argon");
 
-    ret = BLE.setDeviceName("Xenon-test2", BLE_MAX_DEV_NAME_LEN);
+    ret = BLE.setDeviceName("Argon-test2", BLE_MAX_DEV_NAME_LEN);
     assertEqual(ret, 0);
     getName = BLE.getDeviceName();
-    assertTrue(getName == "Xenon-test2");
+    assertTrue(getName == "Argon-test2");
 
-    ret = BLE.setDeviceName(String("Xenon-test3"));
+    ret = BLE.setDeviceName(String("Argon-test3"));
     assertEqual(ret, 0);
     getName = BLE.getDeviceName();
-    assertTrue(getName == "Xenon-test3");
+    assertTrue(getName == "Argon-test3");
 
     // Restore default device name
     ret = BLE.setDeviceName(nullptr);
@@ -295,7 +295,7 @@ test(BLE_08_BLE_Advertising_Control) {
     BleAdvertisingData getAdvData = {};
     BleAdvertisingData getSrData = {};
 
-    setAdvData.appendLocalName("Xenon");
+    setAdvData.appendLocalName("Argon");
     setSrData.appendServiceUUID("1234");
     ret = BLE.advertise(&setAdvData, &setSrData);
     assertEqual(ret, 0);
@@ -309,7 +309,7 @@ test(BLE_08_BLE_Advertising_Control) {
     assertEqual(getSrData.length(), 4);
 
     String name = getAdvData.deviceName();
-    assertTrue(name == "Xenon");
+    assertTrue(name == "Argon");
     BleUuid uuid;
     ret = getSrData.serviceUUID(&uuid, 1);
     assertEqual(ret, 1);

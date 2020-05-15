@@ -36,7 +36,7 @@ test(SPI_01_SPI_Begin_Without_Argument)
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_XENON
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
@@ -57,7 +57,7 @@ test(SPI_02_SPI_Begin_With_Ss_Pin)
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_XENON
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
@@ -105,7 +105,7 @@ test(SPI_03_SPI_Begin_With_Mode)
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_XENON
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin,D8);
@@ -122,7 +122,7 @@ test(SPI_03_SPI_Begin_With_Mode)
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_SLAVE);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_XENON
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
@@ -144,7 +144,7 @@ test(SPI_04_SPI_Begin_With_Master_Ss_Pin)
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_XENON
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);

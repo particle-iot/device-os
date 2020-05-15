@@ -72,16 +72,16 @@ DYNALIB_FN(31, hal_cellular, cellular_lock, int(void*))
 DYNALIB_FN(32, hal_cellular, cellular_unlock, void(void*))
 DYNALIB_FN(33, hal_cellular, cellular_set_power_mode, void(int mode, void* reserved))
 
-#if !HAL_PLATFORM_MESH
+#if !HAL_PLATFORM_NCP
 DYNALIB_FN(34, hal_cellular, cellular_connect, cellular_result_t(void*))
 DYNALIB_FN(35, hal_cellular, cellular_disconnect, cellular_result_t(void*))
 #define BASE_CELL_IDX 36 // Base index for all subsequent functions
-#else // HAL_PLATFORM_MESH
+#else // HAL_PLATFORM_NCP
 DYNALIB_FN(34, hal_cellular, cellular_set_active_sim, cellular_result_t(int, void*))
 DYNALIB_FN(35, hal_cellular, cellular_get_active_sim, cellular_result_t(int*, void*))
 DYNALIB_FN(36, hal_cellular, cellular_credentials_clear, int(void*))
 #define BASE_CELL_IDX 37 // Base index for all subsequent functions
-#endif // !HAL_PLATFORM_MESH
+#endif // !HAL_PLATFORM_NCP
 
 DYNALIB_FN(BASE_CELL_IDX + 0, hal_cellular, cellular_global_identity, cellular_result_t(CellularGlobalIdentity*, void*))
 DYNALIB_FN(BASE_CELL_IDX + 1, hal_cellular, cellular_registration_timeout_set, cellular_result_t(system_tick_t, void*))

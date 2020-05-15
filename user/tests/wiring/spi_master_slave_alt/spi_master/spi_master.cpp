@@ -29,7 +29,7 @@
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
 
-#else // xenon, argon, boron
+#else // argon, boron
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
 #define MY_SPI SPI
@@ -40,7 +40,7 @@
 #define MY_CS D5
 #pragma message "Compiling for SPI1, MY_CS set to D5"
 #elif (USE_SPI == 2)
-#error "SPI2 not supported for xenon, argon or boron"
+#error "SPI2 not supported for argon or boron"
 #else
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
