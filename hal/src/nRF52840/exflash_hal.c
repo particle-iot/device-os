@@ -165,11 +165,21 @@ static int configure_memory() {
         return -2;
     }
 
+    //Switch to qpsi mode
+#if HAL_PLATFORM_FLASH_MX25R6435FZNIL0
     uint8_t temporary[3] = { 0x40, 0x00, 0x02 };
-    // Switch to qspi mode
-    cinstr_cfg.opcode = QSPI_STD_CMD_WRSR;
     cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_4B;
+    cinstr_cfg.opcode = QSPI_STD_CMD_WRSR;
     err_code = exflash_qspi_cinstr_xfer(&cinstr_cfg, temporary, NULL);
+#elif HAL_PLATFORM_FLASH_MX25L3233F
+    uint8_t temporary[1] = { 0x40 };
+    cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_2B;
+    cinstr_cfg.opcode = QSPI_STD_CMD_WRSR;
+    err_code = exflash_qspi_cinstr_xfer(&cinstr_cfg, temporary, NULL);
+#else
+#error "Unsupported platform for external flash"
+#endif
+
     if (err_code)
     {
         return -3;
@@ -229,16 +239,16 @@ int hal_exflash_init(void)
     ret = nrfx_qspi_init(&config, NULL, NULL);
     if (ret)
     {
-        if (ret == NRFX_ERROR_TIMEOUT) {
+        if (ret == NRFX_ERROR_TIMEOUT)
+        {
             // Could have timed out because the flash chip might be in an ongoing program/erase operation.
             // Suspend it.
             LOG_DEBUG(TRACE, "QSPI NRFX timeout error. Suspend pgm/ers op.");
-            auto ret_splcmd = hal_exflash_special_command(HAL_EXFLASH_COMMAND_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
-            if (ret_splcmd)
+            ret = hal_exflash_special_command(HAL_EXFLASH_COMMAND_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
+            if (ret)
             {
-                ret = ret_splcmd;
+                goto hal_exflash_init_done;
             }
-            goto hal_exflash_init_done;
         }
     }
     LOG_DEBUG(TRACE, "QSPI initialized.");
