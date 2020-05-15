@@ -101,7 +101,8 @@ private:
     unsigned registrationTimeout_;
     volatile bool inFlowControl_ = false;
 
-    system_tick_t lastLargePacket_ = 0;
+    system_tick_t lastWindow_ = 0;
+    size_t bytesInWindow_ = 0;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
