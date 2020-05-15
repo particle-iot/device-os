@@ -24,6 +24,7 @@
  */
 
 #include "ota_flash_hal.h"
+#include "system_error.h"
 
 void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
