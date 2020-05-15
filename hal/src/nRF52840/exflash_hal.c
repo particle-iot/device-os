@@ -225,21 +225,20 @@ int hal_exflash_init(void)
             .dpmen      = false
         },
     };
-HAL_Pin_Mode(4, OUTPUT);
-HAL_GPIO_Write(4,1);
+
     ret = nrfx_qspi_init(&config, NULL, NULL);
     if (ret)
     {
         if (ret == NRFX_ERROR_TIMEOUT) {
             // Could have timed out because the flash chip might be in an ongoing program/erase operation.
             // Suspend it.
-            HAL_GPIO_Write(4,0);
             LOG_DEBUG(TRACE, "QSPI NRFX timeout error. Suspend pgm/ers op.");
-            ret = hal_exflash_special_command(HAL_EXFLASH_COMMAND_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
-            if (ret)
+            auto ret_splcmd = hal_exflash_special_command(HAL_EXFLASH_COMMAND_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
+            if (ret_splcmd)
             {
-                goto hal_exflash_init_done;
+                ret = ret_splcmd;
             }
+            goto hal_exflash_init_done;
         }
     }
     LOG_DEBUG(TRACE, "QSPI initialized.");
