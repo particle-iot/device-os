@@ -110,8 +110,9 @@ const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
 using CidType = decltype(CellularGlobalIdentity::cell_id);
 
-const system_tick_t UBLOX_NCP_R4_LARGE_PACKET_TIMEOUT_MS = 250;
-const size_t UBLOX_NCP_R4_LARGE_PACKET_THRESHOLD_SIZE = 512;
+const size_t UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD = 512;
+const system_tick_t UBLOX_NCP_R4_WINDOW_SIZE_MS = 50;
+
 
 } // anonymous
 
@@ -390,13 +391,18 @@ int SaraNcpClient::updateFirmware(InputStream* file, size_t size) {
 * This is a callback that writes data into muxer channel 2 (data PPP channel)
 * Whenever we encounter a large packet, we enforce a certain number of ms to pass before
 * transmitting anything else on this channel. After we send large packet, we drop messages(bytes)
-* for a certain amount of time defined by UBLOX_NCP_R4_LARGE_PACKET_TIMEOUT_MS
+* for a certain amount of time defined by UBLOX_NCP_R4_WINDOW_SIZE_MS
 */
 int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
-    if (fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
-        if (lastLargePacket_ && (HAL_Timer_Get_Milli_Seconds() - lastLargePacket_) < UBLOX_NCP_R4_LARGE_PACKET_TIMEOUT_MS) {
-            // Drop
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
+        if ((HAL_Timer_Get_Milli_Seconds() - lastWindow_) >= UBLOX_NCP_R4_WINDOW_SIZE_MS) {
+            lastWindow_ = HAL_Timer_Get_Milli_Seconds();
+            bytesInWindow_ = 0;
+        }
+
+        if (bytesInWindow_ >= UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD) {
             LOG_DEBUG(WARN, "Dropping");
+            // Not an error
             return 0;
         }
     }
@@ -407,11 +413,10 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
         LOG_DEBUG(WARN, "Remote side flow control");
         err = 0;
     }
-    if (fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
-        if (size >= UBLOX_NCP_R4_LARGE_PACKET_THRESHOLD_SIZE) {
-            lastLargePacket_ = HAL_Timer_Get_Milli_Seconds();
-        } else {
-            lastLargePacket_ = 0;
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
+        bytesInWindow_ += size;
+        if (bytesInWindow_ >= UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD) {
+            lastWindow_ = HAL_Timer_Get_Milli_Seconds();
         }
     }
     if (err) {
@@ -430,6 +435,8 @@ int SaraNcpClient::dataChannelFlowControl(bool state) {
         muxer_.suspendChannel(UBLOX_NCP_PPP_CHANNEL);
     } else if (!state && inFlowControl_) {
         inFlowControl_ = false;
+        lastWindow_ = 0;
+        bytesInWindow_ = 0;
         muxer_.resumeChannel(UBLOX_NCP_PPP_CHANNEL);
     }
     return 0;
@@ -489,7 +496,7 @@ int SaraNcpClient::getImei(char* buf, size_t size) {
 
 int SaraNcpClient::getTxDelayInDataChannel() {
     if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
-        return UBLOX_NCP_R4_LARGE_PACKET_TIMEOUT_MS * 2;
+        return UBLOX_NCP_R4_WINDOW_SIZE_MS * 2;
     }
     return 0;
 }
