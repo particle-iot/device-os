@@ -66,15 +66,18 @@ volatile uint64_t sTimerMicrosBaseOffset = 0; ///< Base offset for Particle-spec
 constexpr auto RTC_INSTANCE = NRF_RTC2;
 constexpr auto RTC_IRQN = RTC2_IRQn;
 constexpr auto RTC_IRQ_PRIORITY = 6;
-constexpr auto US_PER_OVERFLOW = (512UL * 1000000ULL);  ///< Time that has passed between overflow events. On full RTC speed, it occurs every 512 s.
+constexpr auto RTC_USECS_PER_SEC = 1000000ULL;
+constexpr auto US_PER_OVERFLOW = (512UL * RTC_USECS_PER_SEC);  ///< Time that has passed between overflow events. On full RTC speed, it occurs every 512 s.
 #define RTC_IRQ_HANDLER RTC2_IRQHandler
+constexpr auto RTC_FREQUENCY = 32768ULL;
+constexpr auto RTC_FREQUENCY_US_PER_S_GCD_BITS = 6;
 
 constexpr uint64_t divideAndCeil(uint64_t a, uint64_t b) {
     return ((a + b - 1) / b);
 }
 
 constexpr uint64_t ticksToTime(uint64_t ticks) {
-    return divideAndCeil(ticks * (1000000 >> 6), 32768 >> 6);
+    return divideAndCeil(ticks * (RTC_USECS_PER_SEC >> RTC_FREQUENCY_US_PER_S_GCD_BITS), RTC_FREQUENCY >> RTC_FREQUENCY_US_PER_S_GCD_BITS);
 }
 
 inline bool mutexGet() {
@@ -224,16 +227,19 @@ int hal_timer_init(const hal_timer_init_config_t* conf) {
     nrf_rtc_int_enable(RTC_INSTANCE, NRF_RTC_INT_OVERFLOW_MASK);
 
     nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_0);
-    nrf_rtc_event_disable(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_0);
+    nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTEN_COMPARE0_Msk);
     nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_COMPARE0_MASK);
+
     nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_1);
-    nrf_rtc_event_disable(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_1);
+    nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTEN_COMPARE1_Msk);
     nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_COMPARE1_MASK);
+
     nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_2);
-    nrf_rtc_event_disable(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_2);
+    nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTEN_COMPARE2_Msk);
     nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_COMPARE2_MASK);
+
     nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_3);
-    nrf_rtc_event_disable(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_3);
+    nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTEN_COMPARE3_Msk);
     nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_COMPARE3_MASK);
 
     int pri = __get_PRIMASK();
