@@ -167,10 +167,10 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     // Reducing power consumption
     // Suspend all PWM instance remembering their state
     bool pwmState[4] = {
-        NRF_PWM0->ENABLE & PWM_ENABLE_ENABLE_Msk,
-        NRF_PWM1->ENABLE & PWM_ENABLE_ENABLE_Msk,
-        NRF_PWM2->ENABLE & PWM_ENABLE_ENABLE_Msk,
-        NRF_PWM3->ENABLE & PWM_ENABLE_ENABLE_Msk,
+        (bool)(NRF_PWM0->ENABLE & PWM_ENABLE_ENABLE_Msk),
+        (bool)(NRF_PWM1->ENABLE & PWM_ENABLE_ENABLE_Msk),
+        (bool)(NRF_PWM2->ENABLE & PWM_ENABLE_ENABLE_Msk),
+        (bool)(NRF_PWM3->ENABLE & PWM_ENABLE_ENABLE_Msk),
     };
     nrf_pwm_disable(NRF_PWM0);
     nrf_pwm_disable(NRF_PWM1);

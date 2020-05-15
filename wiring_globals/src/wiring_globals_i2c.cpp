@@ -5,6 +5,7 @@
 
 #include "spark_wiring_i2c.h"
 #include "i2c_hal.h"
+#include <new>
 
 #ifndef SPARK_WIRING_NO_I2C
 

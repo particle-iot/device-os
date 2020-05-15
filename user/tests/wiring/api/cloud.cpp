@@ -220,7 +220,7 @@ test(api_spark_sleep) {
 test(api_spark_connection) {
     bool connected = false;
     API_COMPILE(connected=Particle.connected());
-    connected++;
+    (void)connected;
     API_COMPILE(Particle.connect());
     API_COMPILE(Particle.disconnect());
     API_COMPILE(Particle.disconnect(CloudDisconnectOptions().graceful(true).timeout(60000)));

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bits/gthr-default.h>
 #include <time.h>
 
 // redefine these for the underlying concurrency primitives available in the RTOS
@@ -17,3 +18,15 @@ typedef struct timespec __gthread_time_t;
 
 #define OS_THREAD_PRIORITY_DEFAULT (0)
 #define OS_THREAD_STACK_SIZE_DEFAULT (0)
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+int __gthread_mutex_timedlock (__gthread_mutex_t* mutex, const __gthread_time_t* timeout);
+
+int __gthread_recursive_mutex_timedlock (__gthread_recursive_mutex_t* mutex, const __gthread_time_t* timeout);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus

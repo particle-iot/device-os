@@ -44,9 +44,9 @@ struct hal_interrupts_suspend_data_t {
 
 static hal_interrupts_suspend_data_t s_suspend_data = {};
 
-extern char link_interrupt_vectors_location;
-extern char link_ram_interrupt_vectors_location;
-extern char link_ram_interrupt_vectors_location_end;
+extern uintptr_t link_interrupt_vectors_location[];
+extern uintptr_t link_ram_interrupt_vectors_location[];
+extern uintptr_t link_ram_interrupt_vectors_location_end;
 
 static void gpiote_interrupt_handler(nrfx_gpiote_pin_t nrf_pin, nrf_gpiote_polarity_t action) {
     uint8_t pin = NRF_PIN_LOOKUP_TABLE[nrf_pin];

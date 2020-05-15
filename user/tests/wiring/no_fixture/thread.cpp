@@ -199,7 +199,7 @@ test(THREAD_07_particle_process_behavior_when_threading_enabled)
 
 
 
-volatile bool timeout_called = 0;
+volatile int timeout_called = 0;
 void timeout()
 {
 	timeout_called++;
@@ -219,7 +219,7 @@ test(APPLICATION_WATCHDOG_01_fires_timeout)
 	ApplicationWatchdog wd(5, timeout);
 	HAL_Delay_Milliseconds(10);
 
-	assertEqual(timeout_called, 1);
+	assertEqual((int)timeout_called, 1);
 	waitForComplete(wd);
 }
 
@@ -235,7 +235,7 @@ test(APPLICATION_WATCHDOG_02_doesnt_fire_when_app_checks_in)
 		// this for() loop should consume more than t(seconds), about 2x as much
 		for (int i=0; i<10; i++) {
 			HAL_Delay_Milliseconds(t/5);
-			assertEqual(timeout_called, 0);
+			assertEqual((int)timeout_called, 0);
 			application_checkin();
 			os_thread_yield();
 		}
@@ -243,7 +243,7 @@ test(APPLICATION_WATCHDOG_02_doesnt_fire_when_app_checks_in)
 		// Worst case scenario it may take two application watchdog loop iterations
 		HAL_Delay_Milliseconds(t * 2);
 		// LOG_DEBUG(INFO, "TIME: %d, R %d:%s", millis()-startTime, x, timeout_called?"pass":"fail");
-		assertEqual(timeout_called, 1);
+		assertEqual((int)timeout_called, 1);
 		waitForComplete(wd);
 		uint32_t endTime = millis();
 		const auto expected = t * 4; // should be t*4

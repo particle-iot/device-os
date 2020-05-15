@@ -90,9 +90,9 @@ test(map) {
 }
 
 test(trigs) {
-	sin(0.5);
-	cos(0.5);
-	tan(0.5);
+	API_COMPILE((void)sin(0.5));
+	API_COMPILE((void)cos(0.5));
+	API_COMPILE((void)tan(0.5));
 }
 
 test(LED_BUILTIN) {

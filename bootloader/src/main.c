@@ -47,6 +47,10 @@
 
 void platform_startup();
 
+__attribute__((naked)) static void jump_to_system(uint32_t addr, uint32_t sp) {
+    asm("msr msp, %1\n"
+        "bx %0\n" : : "r" (addr), "r" (sp));
+}
 
 /* Private typedef -----------------------------------------------------------*/
 typedef  void (*pFunction)(void);
@@ -62,8 +66,6 @@ volatile uint8_t FACTORY_RESET_MODE = 0;		//0, 1
 volatile uint8_t SAFE_MODE = 0;
 volatile uint8_t RESET_SETTINGS = 0;
 
-pFunction Jump_To_Application;
-uint32_t JumpAddress;
 uint32_t ApplicationAddress;
 
 volatile uint32_t TimingBUTTON;
@@ -446,10 +448,6 @@ int main(void)
         // Test if user code is programmed starting from ApplicationAddress
         if (is_application_valid(ApplicationAddress))
         {
-            // Jump to user application
-            JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
-            Jump_To_Application = (pFunction) JumpAddress;
-
             uint8_t disable_iwdg = 0;
 #ifdef CHECK_FIRMWARE
             // Pre-0.7.0 firmwares were expecting IWDG flag to be set in the DCT, now it's stored in
@@ -466,9 +464,10 @@ int main(void)
 
             Reset_System();
 
-            // Initialize user application's Stack Pointer
-            __set_MSP(*(__IO uint32_t*) ApplicationAddress);
-            Jump_To_Application();
+            // Jump to system firmware
+            uint32_t addr = *(volatile uint32_t*)(ApplicationAddress + 4);
+            uint32_t stack = *(volatile uint32_t*)ApplicationAddress;
+            jump_to_system(addr, stack);
         }
 #if !HAL_PLATFORM_NRF52840
         else

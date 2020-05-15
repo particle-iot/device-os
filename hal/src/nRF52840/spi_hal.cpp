@@ -27,8 +27,6 @@
 #include "concurrent_hal.h"
 #include "delay_hal.h"
 
-
-
 #define DEFAULT_SPI_MODE        SPI_MODE_MASTER
 #define DEFAULT_DATA_MODE       SPI_MODE3
 #define DEFAULT_BIT_ORDER       MSBFIRST
@@ -288,6 +286,10 @@ void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin) {
 }
 
 void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved) {
+    if (spi >= TOTAL_SPI) {
+        return;
+    }
+
     if (spi == HAL_SPI_INTERFACE1 && mode == SPI_MODE_SLAVE) {
         // HAL_SPI_INTERFACE1 does not support slave mode
         return;

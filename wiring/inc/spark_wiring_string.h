@@ -235,9 +235,5 @@ public:
 	StringSumHelper(unsigned long num) : String(num) {}
 };
 
-#include <ostream>
-std::ostream& operator << ( std::ostream& os, const String& value );
-
-
 #endif  // __cplusplus
 #endif  // String_class_h

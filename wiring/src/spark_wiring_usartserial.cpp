@@ -27,6 +27,7 @@
 #include "spark_wiring_usartserial.h"
 #include "spark_wiring_constants.h"
 #include "module_info.h"
+#include <algorithm>
 
 // Constructors ////////////////////////////////////////////////////////////////
 
