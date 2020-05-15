@@ -102,7 +102,7 @@ int Am18x5::begin() {
     // CHECK(enableAutoSwitchOnBattery(true));
 
     // Digital calibration to improve accuracy.
-    xtOscillatorDigitalCalibration(-40);
+    xtOscillatorDigitalCalibration(HAL_PLATFORM_EXTERNAL_RTC_CAL_XT);
 
     // Automatically clear interrupt flags after reading the the status register.
     CHECK(writeRegister(Am18x5Register::CONTROL1, 1, false, true, CONTROL1_ARST_MASK, CONTROL1_ARST_SHIFT));
