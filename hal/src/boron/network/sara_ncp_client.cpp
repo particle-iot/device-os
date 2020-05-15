@@ -87,6 +87,9 @@ inline system_tick_t millis() {
 const auto UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
 const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2 = 115200;
 
+// Forward-compatibility with persistent 460800 baudrate in 2.0+
+const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 = 460800;
+
 const auto UBLOX_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto UBLOX_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
 const auto UBLOX_NCP_KEEPALIVE_MAX_MISSED = 5;
@@ -745,6 +748,16 @@ int SaraNcpClient::waitReady() {
     parser_.reset();
     ready_ = waitAtResponse(20000) == 0;
 
+    if (!ready_ && ncpId() == PLATFORM_NCP_SARA_R410) {
+        // Forward-compatibility with persistent 460800 setting in 2.x
+        // Additionally attempt to talk @ 460800, if successfull, we'll later
+        // on revert to 115200.
+        CHECK(serial_->setBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4));
+        skipAll(serial_.get(), 1000);
+        parser_.reset();
+        ready_ = waitAtResponse(20000) == 0;
+    }
+
     if (ready_) {
         // start power on timer for memory issue power off delays, assume not registered
         powerOnTime_ = millis();
@@ -895,12 +908,16 @@ int SaraNcpClient::initReady() {
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
 
     if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
-        // Change the baudrate to 921600
         CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
-        // Check that the modem is responsive at the new baudrate
-        skipAll(serial_.get(), 1000);
-        CHECK(waitAtResponse(10000));
+    } else {
+        // Revert to 115200 on SARA R4-based devices, as AT+IPR setting
+        // is persistent and DeviceOS <1.5.2 only supports 115200.
+        CHECK(changeBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
     }
+
+    // Check that the modem is responsive at the new baudrate
+    skipAll(serial_.get(), 1000);
+    CHECK(waitAtResponse(10000));
 
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
         // ATI9 (get version and app version)
