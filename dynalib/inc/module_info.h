@@ -40,11 +40,13 @@ typedef struct module_dependency_t {
 
 typedef enum module_info_flags_t {
     MODULE_INFO_FLAG_NONE               = 0x00,
-    MODULE_INFO_FLAG_DROP_MODULE_INFO   = 0x01  // Indicates that the module_info_t header preceding the actual binary
+    MODULE_INFO_FLAG_DROP_MODULE_INFO   = 0x01, // Indicates that the module_info_t header preceding the actual binary
                                                 // and potentially module_info_suffix_t + CRC in the end of the binary (depending on platform/module)
                                                 // need to be skipped when copying/writing this module into its target location.
+    MODULE_INFO_FLAG_COMPRESSED         = 0x02, // Indicates that the module data is compressed.
+    MODULE_INFO_FLAG_COMBINED           = 0x04  // Indicates that this module is combined with another module.
 } module_info_flags_t;
-\
+
 /**
  * Describes the module info struct placed at the start of
  */
@@ -59,7 +61,7 @@ typedef struct module_info_t {
     uint8_t  module_index;              /* distinguish modules of the same type */
     module_dependency_t dependency;
     module_dependency_t dependency2;
-} module_info_t;
+} __attribute__((__packed__)) module_info_t;
 
 #define STATIC_ASSERT_MODULE_INFO_OFFSET(field, expected) PARTICLE_STATIC_ASSERT( module_info_##field, offsetof(module_info_t, field)==expected || sizeof(void*)!=4)
 
@@ -148,6 +150,7 @@ module_function_t  module_function(const module_info_t* mi);
 module_store_t module_store(const module_info_t* mi);
 uint32_t module_length(const module_info_t* mi);
 uint8_t module_index(const module_info_t* mi);
+uint16_t module_version(const module_info_t* mi);
 
 uint16_t module_platform_id(const module_info_t* mi);
 
@@ -166,6 +169,36 @@ module_scheme_t module_scheme(const module_info_t* mi);
  * @return
  */
 uint8_t module_info_matches_platform(const module_info_t* mi);
+
+/**
+ * Compressed module header.
+ *
+ * In a compressed module, this header immediately follows the module info header (`module_info_t`) and
+ * precedes the compressed data.
+ */
+typedef struct compressed_module_header {
+    /**
+     * Header size.
+     */
+    uint16_t size;
+    /**
+     * Compression method.
+     *
+     * As of now, the only supported method is raw Deflate (0).
+     */
+    uint8_t method;
+    /**
+     * Base two logarithm of the window size used when compressing this module.
+     *
+     * For raw Deflate the valid range is [8, 15]. The value of 0 corresponds to the default window
+     * size of 15 bits.
+     */
+    uint8_t window_bits;
+    /**
+     * Size of the uncompressed data.
+     */
+    uint32_t original_size;
+} __attribute__((__packed__)) compressed_module_header;
 
 /*
  * The structure is a suffix to the module, placed before the end symbol

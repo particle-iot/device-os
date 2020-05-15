@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,18 +17,30 @@
 
 #pragma once
 
-#include "module_info.h"
-#include "ota_flash_hal.h"
+#include "inflate.h"
+
+#include "miniz.h"
+#include "miniz_tinfl.h"
+
+struct inflate_ctx {
+    tinfl_decompressor decomp;
+    char* buf;
+    size_t buf_size;
+    size_t buf_offs;
+    size_t buf_avail;
+    inflate_output output;
+    void* user_data;
+    int result;
+    bool done;
+};
 
 #ifdef __cplusplus
 extern "C" {
-#endif // __cplusplus
+#endif
 
-/**
- * Augments the module info with radio stack module info.
- */
-int platform_radio_stack_fetch_module_info(hal_system_info_t* sys_info, bool create);
+int inflate_alloc_ctx(inflate_ctx** ctx, char** buf, size_t buf_size);
+void inflate_free_ctx(inflate_ctx* ctx, char* buf);
 
 #ifdef __cplusplus
-}
-#endif // __cplusplus
+} // extern "C"
+#endif

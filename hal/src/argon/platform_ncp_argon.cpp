@@ -70,10 +70,10 @@ private:
 // FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
 // some not entirely clear circumstances. Disabling compiler optimizations helps to work around
 // the problem
-__attribute__((optimize("O0"))) hal_update_complete_t platform_ncp_update_module(const hal_module_t* module) {
+__attribute__((optimize("O0"))) int platform_ncp_update_module(const hal_module_t* module) {
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
-    CHECK_RETURN(ncpClient->on(), HAL_UPDATE_ERROR);
+    CHECK(ncpClient->on());
     // we pass only the actual binary after the module info and up to the suffix
     const uint8_t* start = (const uint8_t*)module->info;
     static_assert(sizeof(module_info_t)==24, "expected module info size to be 24");
@@ -88,7 +88,7 @@ __attribute__((optimize("O0"))) hal_update_complete_t platform_ncp_update_module
     }
     r = ncpClient->updateFirmware(&moduleStream, length);
     LED_On(LED_RGB);
-    CHECK_RETURN(r, HAL_UPDATE_ERROR);
+    CHECK(r);
     r = ncpClient->getFirmwareModuleVersion(&version);
     if (r == 0) {
         LOG(INFO, "ESP32 firmware version updated to version %d", version);
@@ -118,6 +118,8 @@ int platform_ncp_fetch_module_info(hal_system_info_t* sys_info, bool create) {
                 info->module_function = MODULE_FUNCTION_NCP_FIRMWARE;
 
                 // assume all checks pass since it was validated when being flashed to the NCP
+                module->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES |
+                        MODULE_VALIDATION_PLATFORM | MODULE_VALIDATION_INTEGRITY;
                 module->validity_result = module->validity_checked;
 
                 // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change
@@ -140,6 +142,7 @@ int platform_ncp_fetch_module_info(hal_system_info_t* sys_info, bool create) {
 
                 module->info = info;
                 module->suffix = suffix;
+                module->module_info_offset = 0;
             }
             else {
                 delete module->info;

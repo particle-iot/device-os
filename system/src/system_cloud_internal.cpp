@@ -42,6 +42,7 @@
 #include "string_convert.h"
 #include "core_hal.h"
 #include "hal_platform.h"
+#include "bootloader.h"
 #include "system_string_interpolate.h"
 #include "dtls_session_persist.h"
 #include "bytes2hexbuf.h"
@@ -617,6 +618,11 @@ bool publishSafeModeEventIfNeeded() {
     return true; // ok
 }
 
+#if HAL_PLATFORM_COMPRESSED_OTA
+// Minimum bootloader version required to support compressed/combined OTA updates
+const uint16_t COMPRESSED_OTA_MIN_BOOTLOADER_VERSION = 1000; // 2.0.0
+#endif // HAL_PLATFORM_COMPRESSED_OTA
+
 } // namespace
 
 void Spark_Signal(bool on, unsigned, void*)
@@ -747,35 +753,30 @@ int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescript
     return 0;
 }
 
-int formatOtaUpdateStatusEventData(uint32_t flags, int result, hal_module_t* module, uint8_t *buf, size_t size)
+int formatOtaUpdateStatusEventData(uint32_t flags, int result, uint8_t *buf, size_t size)
 {
-    int res = 1;
     memset(buf, 0, size);
 
     BufferAppender appender(buf, size);
-    appender.append("{");
-    appender.append("\"r\":");
-    appender.append(result ? "\"error\"" : "\"ok\"");
+    appender.append("{\"r\":");
 
-    if (flags & 1) {
-        appender.append(",");
-        res = ota_update_info(Appender::callback, &appender, module, false, NULL);
-    }
+    char str[12] = {};
+    snprintf(str, sizeof(str), "%d", result);
 
+    appender.append(str);
     appender.append("}");
 
-    return res;
+    return 0;
 }
 
 int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, void* buf)
 {
     using namespace particle::protocol;
-    hal_module_t module;
 
-    int result = Spark_Finish_Firmware_Update(file, flags, &module);
+    int result = Spark_Finish_Firmware_Update(file, flags, nullptr);
 
-    if (buf && (flags & (UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY)) == (UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY)) {
-        formatOtaUpdateStatusEventData(flags, result, &module, (uint8_t*)buf, 255);
+    if (buf && (flags & UpdateFlag::SUCCESS)) {
+        formatOtaUpdateStatusEventData(flags, result, (uint8_t*)buf, 255 /* :( */);
     }
 
     return result;
@@ -1012,6 +1013,13 @@ void Spark_Protocol_Init(void)
 
         // Enable device-initiated describe messages
         spark_protocol_set_connection_property(sp, particle::protocol::Connection::DEVICE_INITIATED_DESCRIBE, 0, nullptr, nullptr);
+
+#if HAL_PLATFORM_COMPRESSED_OTA
+        // Enable compressed/combined OTA updates
+        if (bootloader_get_version() >= COMPRESSED_OTA_MIN_BOOTLOADER_VERSION) {
+            spark_protocol_set_connection_property(sp, particle::protocol::Connection::COMPRESSED_OTA, 0, nullptr, nullptr);
+        }
+#endif // HAL_PLATFORM_COMPRESSED_OTA
 
         Particle.subscribe("spark", SystemEvents, MY_DEVICES);
         Particle.subscribe("particle", SystemEvents, MY_DEVICES);

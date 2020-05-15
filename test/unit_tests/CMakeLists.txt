@@ -23,7 +23,7 @@ set(THIRD_PARTY_DIR ${DEVICE_OS_DIR}/third_party)
 find_package(Boost
   1.59.0
   REQUIRED
-  COMPONENTS program_options random regex system thread
+  COMPONENTS program_options random regex system thread iostreams
 )
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
@@ -57,6 +57,7 @@ add_subdirectory(cloud)
 add_subdirectory(communication)
 add_subdirectory(services)
 add_subdirectory(wiring)
+add_subdirectory(hal)
 
 # Create `coverage` target in the `make` command
 add_custom_target( coverage

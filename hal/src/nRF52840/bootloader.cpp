@@ -54,7 +54,7 @@ public:
 	}
 
 	int flush() override {
-		return HAL_FLASH_End(nullptr)!=HAL_UPDATE_ERROR;
+		return HAL_FLASH_End(nullptr);
 	}
 };
 
@@ -245,3 +245,9 @@ bool bootloader_update_if_needed()
 }
 
 #endif
+
+uint16_t bootloader_get_version(void)
+{
+    const auto info = FLASH_ModuleInfo(FLASH_INTERNAL, BOOTLOADER_ADDR, nullptr);
+    return info ? info->module_version : 0;
+}

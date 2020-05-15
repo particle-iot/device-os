@@ -12,7 +12,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-inline const module_info_t* FLASH_ModuleInfo(flash_device_t device, uint32_t address) { return (module_info_t*)0; }
+inline const module_info_t* FLASH_ModuleInfo(flash_device_t device, uint32_t address, uint32_t* offset) {
+    return NULL;
+}
 
 inline void Set_System() {}
 inline void SysTick_Configuration() {}

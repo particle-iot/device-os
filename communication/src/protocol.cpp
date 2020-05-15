@@ -39,7 +39,8 @@ enum HelloFlag {
 	HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT = 0x04,
 	// Flag 0x08 is reserved to indicate support for the HandshakeComplete message
 	HELLO_FLAG_GOODBYE_SUPPORT = 0x10,
-	HELLO_FLAG_DEVICE_INITIATED_DESCRIBE = 0x20
+	HELLO_FLAG_DEVICE_INITIATED_DESCRIBE = 0x20,
+	HELLO_FLAG_COMPRESSED_OTA = 0x40
 };
 
 } // namespace
@@ -405,6 +406,9 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 	}
 	if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
 		flags |= HELLO_FLAG_DEVICE_INITIATED_DESCRIBE;
+	}
+	if (protocol_flags & ProtocolFlag::COMPRESSED_OTA) {
+		flags |= HELLO_FLAG_COMPRESSED_OTA;
 	}
 	size_t len = build_hello(message, flags);
 	message.set_length(len);

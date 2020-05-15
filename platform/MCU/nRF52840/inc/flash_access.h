@@ -34,9 +34,6 @@ int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                           flash_device_t destinationDeviceID, uint32_t destinationAddress,
                           uint32_t length, uint8_t module_function, uint8_t flags);
 
-/**
- * @param validateDestinationAddress checks if the destination address corresponds with the start address in the module
- */
 int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
                      uint32_t length, uint8_t module_function, uint8_t flags);
@@ -58,7 +55,7 @@ bool FLASH_ClearFactoryResetModuleSlot(void);
 bool FLASH_RestoreFromFactoryResetModuleSlot(void);
 bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
-const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress);
+const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset);
 uint32_t FLASH_ModuleAddress(flash_device_t flashDeviceID, uint32_t startAddress);
 uint32_t FLASH_ModuleLength(flash_device_t flashDeviceID, uint32_t startAddress);
 uint16_t FLASH_ModuleVersion(flash_device_t flashDeviceID, uint32_t startAddress);

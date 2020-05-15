@@ -46,21 +46,21 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return 0;
 }
 
-int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved)
+int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
 {
   return 0;
 }
 
- hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
+int HAL_FLASH_End(void* reserved)
 {
 	 fclose(output_file);
 	 output_file = NULL;
      return HAL_UPDATE_APPLIED;
 }
 
-hal_update_complete_t HAL_FLASH_ApplyPendingUpdate(hal_module_t* module, bool dryRun, void* reserved)
+int HAL_FLASH_ApplyPendingUpdate(bool dryRun, void* reserved)
 {
-    return HAL_UPDATE_ERROR;
+    return SYSTEM_ERROR_UNKNOWN;
 }
 
 /**

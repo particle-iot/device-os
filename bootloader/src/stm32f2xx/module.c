@@ -16,7 +16,7 @@ const module_bounds_t* get_module_bounds(uint8_t module_func, uint8_t module_ind
 }
 
 const module_info_t* get_module_info(const module_bounds_t* bounds) {
-    const module_info_t* module = FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address);
+    const module_info_t* module = FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address, NULL);
     // Check primary module info
     if (!module || module->platform_id != PLATFORM_ID || module->module_function != bounds->module_function ||
             module->module_index != bounds->module_index) {

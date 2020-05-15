@@ -49,6 +49,10 @@ uint8_t module_index(const module_info_t* mi) {
     return mi ? module_index_(mi->module_index) : 0xFF;
 }
 
+uint16_t module_version(const module_info_t* mi) {
+    return mi ? mi->module_version : 0xFFFF;
+}
+
 uint16_t module_platform_id(const module_info_t* mi) {
     return mi ? mi->platform_id : 0xFFFF;
 }

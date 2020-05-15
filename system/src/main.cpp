@@ -779,7 +779,7 @@ void app_setup_and_loop(void)
     // In that case, HAL_UPDATE_APPLIED is returned and a reset is required to ensure we don't
     // remain in Safe Mode due to bootloader dependency checks.  HAL_UPDATE_APPLIED_PENDING_RESTART won't
     // be returned when updating the bootloader, but we check for it just in case so we can reset if necessary.
-    hal_update_complete_t pendingUpdateResult = HAL_FLASH_ApplyPendingUpdate(nullptr /*module*/, false /*dryRun*/, nullptr /*reserved*/);
+    int pendingUpdateResult = HAL_FLASH_ApplyPendingUpdate(false /*dryRun*/, nullptr /*reserved*/);
     if (pendingUpdateResult == HAL_UPDATE_APPLIED_PENDING_RESTART || pendingUpdateResult == HAL_UPDATE_APPLIED) {
         // the regular OTA update delays 100 milliseconds so maintaining the same behavior.
         HAL_Delay_Milliseconds(100);

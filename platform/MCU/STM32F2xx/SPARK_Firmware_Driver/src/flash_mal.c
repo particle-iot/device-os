@@ -278,7 +278,7 @@ int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
             return FLASH_ACCESS_RESULT_BADARG;
         }
 
-        const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress);
+        const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress, NULL);
         if ((info->module_function != MODULE_FUNCTION_RESOURCE) && (info->platform_id != PLATFORM_ID))
         {
             return FLASH_ACCESS_RESULT_BADARG;
@@ -658,26 +658,33 @@ bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
     return true;
 }
 
-const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress)
+const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset)
 {
+    const module_info_t* info = NULL;
+    uint32_t offset = 0;
+
     if(flashDeviceID == FLASH_INTERNAL)
     {
         if (((*(__IO uint32_t*)startAddress) & APP_START_MASK) == 0x20000000)
         {
-            startAddress += 0x184;
+            offset = 0x184;
+            startAddress += offset;
         }
 
-        const module_info_t* module_info = (const module_info_t*)startAddress;
-
-        return module_info;
+        info = (const module_info_t*)startAddress;
     }
 
-    return NULL;
+    if (infoOffset && info)
+    {
+        *infoOffset = offset;
+    }
+
+    return info;
 }
 
 uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress)
 {
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
+    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL);
 
     if (module_info != NULL)
     {
@@ -689,7 +696,7 @@ uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress)
 
 uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
 {
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
+    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL);
 
     if (module_info != NULL)
     {
@@ -701,7 +708,7 @@ uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
 
 bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress)
 {
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
+    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL);
 
     return (module_info != NULL
             && ((uint32_t)(module_info->module_start_address) == expectedAddress)

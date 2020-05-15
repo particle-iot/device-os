@@ -38,6 +38,8 @@ int platform_radio_stack_fetch_module_info(hal_system_info_t* sys_info, bool cre
             info->module_function = MODULE_FUNCTION_RADIO_STACK;
 
             // FIXME: assuming that all checks passed for now
+            module->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES |
+                    MODULE_VALIDATION_PLATFORM | MODULE_VALIDATION_INTEGRITY;
             module->validity_result = module->validity_checked;
 
             // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change
@@ -56,6 +58,7 @@ int platform_radio_stack_fetch_module_info(hal_system_info_t* sys_info, bool cre
 
             module->info = info;
             module->suffix = suffix;
+            module->module_info_offset = 0;
         } else {
             delete module->info;
             delete ((module_info_suffix_t*)module->suffix);
@@ -64,25 +67,4 @@ int platform_radio_stack_fetch_module_info(hal_system_info_t* sys_info, bool cre
         break;
     }
     return 0;
-}
-
-hal_update_complete_t platform_radio_stack_update_module(const hal_module_t* module) {
-    // We are using the standard update mechanism here, but instruct the module will also instruct the bootloader
-    // (via MODULE_INFO_FLAG_DROP_MODULE_INFO) to strip out the module header when copying from OTA into its rightful place.
-    //
-    // NOTE: MODULE_INFO_FLAG_DROP_MODULE_INFO is a new feature, which might not be supported by the bootloader currently
-    // on the device, however we won't even attempt to update in this case, because SoftDevice modules we generate
-    // have a dependency on a particular bootloader version.
-
-    // Just in case check that MODULE_INFO_FLAG_DROP_MODULE_INFO is present
-    CHECK_TRUE(module->info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO, HAL_UPDATE_ERROR);
-
-    auto r = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS, // source
-            FLASH_INTERNAL, (uint32_t)(module->info->module_start_address), // destination
-            module_length(module->info) + 4, // + 4 to copy the CRC too
-            module_function(module->info),
-            (MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION));
-
-    CHECK_TRUE(r, HAL_UPDATE_ERROR);
-    return HAL_UPDATE_APPLIED_PENDING_RESTART;
 }
