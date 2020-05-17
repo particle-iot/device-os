@@ -86,7 +86,7 @@ LOG_SOURCE_CATEGORY("hal.i2c")
 /* Private typedef -----------------------------------------------------------*/
 typedef enum I2C_Num_Def {
     I2C1_D0_D1 = 0
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
    ,I2C3_C4_C5 = 1
    ,I2C3_PM_SDA_SCL = 2
 #endif
@@ -150,7 +150,7 @@ typedef struct STM32_I2C_Info {
 STM32_I2C_Info I2C_MAP[TOTAL_I2C] =
 {
         { I2C1, &RCC->APB1ENR, RCC_APB1Periph_I2C1, I2C1_ER_IRQn, I2C1_EV_IRQn, D0, D1, GPIO_AF_I2C1, .mutex = NULL }
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
        ,{ I2C1, &RCC->APB1ENR, RCC_APB1Periph_I2C1, I2C1_ER_IRQn, I2C1_EV_IRQn, C4, C5, GPIO_AF_I2C1, .mutex = NULL }
        ,{ I2C3, &RCC->APB1ENR, RCC_APB1Periph_I2C3, I2C3_ER_IRQn, I2C3_EV_IRQn, PM_SDA_UC, PM_SCL_UC, GPIO_AF_I2C3, .mutex = NULL }
 #endif
@@ -337,7 +337,7 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
     HAL_I2C_Acquire(i2c, NULL);
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
-#if PLATFORM_ID == 10
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
     /*
      * On Electron both I2C_INTERFACE1 and I2C_INTERFACE2 use the same peripheral - I2C1,
      * but on different pins. We cannot enable both of them at the same time.
@@ -1028,7 +1028,7 @@ static void HAL_I2C_ER_InterruptHandler(HAL_I2C_Interface i2c)
  */
 void I2C1_ER_irq(void)
 {
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
     if (HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE1, NULL))
     {
         HAL_I2C_ER_InterruptHandler(HAL_I2C_INTERFACE1);
@@ -1042,7 +1042,7 @@ void I2C1_ER_irq(void)
 #endif
 }
 
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
 /**
  * @brief  This function handles I2C3 Error interrupt request.
  * @param  None
@@ -1159,7 +1159,7 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
  */
 void I2C1_EV_irq(void)
 {
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
     if (HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE1, NULL))
     {
         HAL_I2C_EV_InterruptHandler(HAL_I2C_INTERFACE1);
@@ -1173,7 +1173,7 @@ void I2C1_EV_irq(void)
 #endif
 }
 
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
 /**
  * @brief  This function handles I2C3 event interrupt request.
  * @param  None

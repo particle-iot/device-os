@@ -32,4 +32,6 @@
 #define HAL_PLATFORM_EXTERNAL_RTC_I2C_ADDR (0x69)
 #define HAL_PLATFORM_EXTERNAL_RTC_CAL_XT (-45) // This value should be calculated and averaged at 25 celsius degrees during manufacturing
 
+#define HAL_PLATFORM_I2C3 (1)
+
 #define PRODUCT_SERIES "boron"

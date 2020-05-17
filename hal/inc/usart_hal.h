@@ -30,12 +30,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <unistd.h>
+#include "platforms.h"
 
 /* Includes ------------------------------------------------------------------*/
 // #include "pinmap_hal.h"
 
 /* Exported defines ----------------------------------------------------------*/
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
 	#define TOTAL_USARTS		5
 #else
 	#define TOTAL_USARTS		2
@@ -126,7 +127,7 @@ typedef struct Ring_Buffer
 typedef enum HAL_USART_Serial {
   HAL_USART_SERIAL1 = 0,    //maps to USART_TX_RX
   HAL_USART_SERIAL2 = 1     //maps to USART_RGBG_RGBB
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
   ,HAL_USART_SERIAL3 = 2    //maps to USART_TXD_UC_RXD_UC
   ,HAL_USART_SERIAL4 = 3    //maps to USART_C3_C2
   ,HAL_USART_SERIAL5 = 4    //maps to USART_C1_C0
