@@ -1,3 +1,15 @@
+## 1.5.2
+
+### BUGFIXES
+
+- [Boron / B SoM] LTE-M1 (SARA R4) radio unresponsive when sending certain amount of data within a period of time [#2100](https://github.com/particle-iot/device-os/pull/2100) [#2105](https://github.com/particle-iot/device-os/pull/2105)
+- [B5 SoM] Suspend program/erase opertion when QSPI flash init gives timeout error
+
+### ENHANCEMENTS
+
+- [Boron/B SoM] Forward compatibility with 460800 baudrate on SARA R4-based devices to support >= 2.x downgrades [#2104](https://github.com/particle-iot/device-os/pull/2104)
+- [Boron/B SoM] Enables hardware flow control on SARA R4-based devices with appropriate modem firmware version [#2079](https://github.com/particle-iot/device-os/pull/2079) [cc7adb7c46ea82383a5f948ea1dc898270a27a3c](https://github.com/particle-iot/device-os/commit/cc7adb7c46ea82383a5f948ea1dc898270a27a3c)
+
 ## 1.5.1
 
 ### ENHANCEMENTS
