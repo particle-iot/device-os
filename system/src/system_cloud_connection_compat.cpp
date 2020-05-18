@@ -32,6 +32,7 @@
 #include "delay_hal.h"
 #include "system_string_interpolate.h"
 #include "endian_util.h"
+#include "simple_ntp_client.h"
 
 namespace {
 
@@ -280,6 +281,14 @@ int system_internet_test(void* reserved)
 
     // if connection fails, testResult returns negative error code
     return testResult;
+
+#if !HAL_PLATFORM_MAY_LEAK_SOCKETS
+    particle::SimpleNtpClient ntp;
+#else
+    // Reusing cloud socket
+    particle::SimpleNtpClient ntp(s_state.socket);
+#endif // !HAL_PLATFORM_MAY_LEAK_SOCKETS
+    return ntp.ntpDate(nullptr);
 }
 
 int system_multicast_announce_presence(void* reserved)
