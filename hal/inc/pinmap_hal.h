@@ -58,7 +58,6 @@ typedef enum PinFunction {
 Hal_Pin_Info* HAL_Pin_Map(void);
 PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
 void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func);
-PinFunction HAL_Get_Pin_Function(pin_t pin);
 
 #define PIN_INVALID 0xff
 

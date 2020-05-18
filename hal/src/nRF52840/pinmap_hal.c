@@ -46,14 +46,3 @@ void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func) {
     PIN_MAP[pin].pin_func = pin_func;
 #endif
 }
-
-PinFunction HAL_Get_Pin_Function(pin_t pin) {
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    if (pin >= TOTAL_PINS) {
-        return PF_NONE;
-    }
-
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    return PIN_MAP[pin].pin_func;
-#endif
-}

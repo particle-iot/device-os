@@ -324,11 +324,10 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config) {
 }
 
 void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved) {
-    HAL_I2C_Acquire(i2c, nullptr);
     if (i2c >= TOTAL_I2C) {
-        HAL_I2C_Release(i2c, nullptr);
         return;
     }
+    HAL_I2C_Acquire(i2c, nullptr);
     m_i2c_map[i2c].speed = speed;
     HAL_I2C_Release(i2c, nullptr);
 }
@@ -338,11 +337,10 @@ void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved) 
 }
 
 void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved) {
-    HAL_I2C_Acquire(i2c, nullptr);
     if (i2c >= TOTAL_I2C) {
-        HAL_I2C_Release(i2c, nullptr);
         return;
     }
+    HAL_I2C_Acquire(i2c, nullptr);
 
 #if PLATFORM_ID == PLATFORM_TRACKER
     /*
@@ -389,10 +387,10 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
 }
 
 void HAL_I2C_End(HAL_I2C_Interface i2c,void* reserved) {
-    HAL_I2C_Acquire(i2c, nullptr);
     if (i2c >= TOTAL_I2C) {
         return;
     }
+    HAL_I2C_Acquire(i2c, nullptr);
     if (HAL_I2C_Is_Enabled(i2c, nullptr)) {
         if (twi_uninit(i2c) == 0) {
             m_i2c_map[i2c].enabled = false;
@@ -415,12 +413,10 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
 }
 
 int32_t HAL_I2C_Request_Data_Ex(HAL_I2C_Interface i2c, const HAL_I2C_Transmission_Config* config, void* reserved) {
-    HAL_I2C_Acquire(i2c, nullptr);
-
     if (i2c >= TOTAL_I2C || !HAL_I2C_Is_Enabled(i2c, nullptr)) {
-        HAL_I2C_Release(i2c, nullptr);
         return 0;
     }
+    HAL_I2C_Acquire(i2c, nullptr);
 
     uint32_t err_code;
     size_t quantity = 0;
@@ -469,11 +465,10 @@ ret:
 }
 
 void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, const HAL_I2C_Transmission_Config* config) {
-    HAL_I2C_Acquire(i2c, nullptr);
     if (i2c >= TOTAL_I2C || !HAL_I2C_Is_Enabled(i2c, nullptr)) {
-        HAL_I2C_Release(i2c, nullptr);
         return;
     }
+    HAL_I2C_Acquire(i2c, nullptr);
     m_i2c_map[i2c].address = address;
     m_i2c_map[i2c].tx_index_head = 0;
     m_i2c_map[i2c].tx_index_tail = 0;
@@ -482,11 +477,13 @@ void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, const HA
 }
 
 uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* reserved) {
-    HAL_I2C_Acquire(i2c, nullptr);
-    if (i2c >= TOTAL_I2C || !HAL_I2C_Is_Enabled(i2c, nullptr)) {
-        HAL_I2C_Release(i2c, nullptr);
-        return 4;
+    if (i2c >= TOTAL_I2C) {
+        return 6;
     }
+    if (!HAL_I2C_Is_Enabled(i2c, nullptr)) {
+        return 7;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
 
     uint32_t err_code;
     uint8_t ret_code = 0;
@@ -525,15 +522,10 @@ ret:
 }
 
 uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved) {
+    if (i2c >= TOTAL_I2C || !HAL_I2C_Is_Enabled(i2c, nullptr)) {
+        return 0;
+    }
     HAL_I2C_Acquire(i2c, nullptr);
-    if (i2c >= TOTAL_I2C) {
-        HAL_I2C_Release(i2c, nullptr);
-        return 0;
-    }
-    if (!HAL_I2C_Is_Enabled(i2c, nullptr)) {
-        HAL_I2C_Release(i2c, nullptr);
-        return 0;
-    }
 
     // in master/slave transmitter mode
     // don't bother if buffer is full
@@ -550,23 +542,21 @@ uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved)
     return 1;
 }
 
-int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c,void* reserved) {
-    HAL_I2C_Acquire(i2c, nullptr);
+int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c, void* reserved) {
     if (i2c >= TOTAL_I2C) {
-        HAL_I2C_Release(i2c, nullptr);
         return 0;
     }
+    HAL_I2C_Acquire(i2c, nullptr);
     int32_t available = m_i2c_map[i2c].rx_index_tail - m_i2c_map[i2c].rx_index_head;
     HAL_I2C_Release(i2c, nullptr);
     return available;
 }
 
-int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c,void* reserved) {
-    HAL_I2C_Acquire(i2c, nullptr);
+int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c, void* reserved) {
     if (i2c >= TOTAL_I2C) {
-        HAL_I2C_Release(i2c, nullptr);
         return -1;
     }
+    HAL_I2C_Acquire(i2c, nullptr);
     int value = -1;
 
     // get each successive byte on each call
@@ -577,12 +567,11 @@ int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c,void* reserved) {
     return value;
 }
 
-int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c,void* reserved) {
-    HAL_I2C_Acquire(i2c, nullptr);
+int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c, void* reserved) {
     if (i2c >= TOTAL_I2C) {
-        HAL_I2C_Release(i2c, nullptr);
         return -1;
     }
+    HAL_I2C_Acquire(i2c, nullptr);
     int value = -1;
 
     if(m_i2c_map[i2c].rx_index_head < m_i2c_map[i2c].rx_index_tail) {
@@ -592,7 +581,7 @@ int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c,void* reserved) {
     return value;
 }
 
-void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c,void* reserved) {
+void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c, void* reserved) {
     if (i2c >= TOTAL_I2C) {
         return;
     }
@@ -607,21 +596,19 @@ bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c,void* reserved) {
 }
 
 void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int),void* reserved) {
-    HAL_I2C_Acquire(i2c, nullptr);
     if (i2c >= TOTAL_I2C) {
-        HAL_I2C_Release(i2c, nullptr);
         return;
     }
+    HAL_I2C_Acquire(i2c, nullptr);
     m_i2c_map[i2c].callback_on_receive = function;
     HAL_I2C_Release(i2c, nullptr);
 }
 
 void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void),void* reserved) {
-    HAL_I2C_Acquire(i2c, nullptr);
     if (i2c >= TOTAL_I2C) {
-        HAL_I2C_Release(i2c, nullptr);
         return;
     }
+    HAL_I2C_Acquire(i2c, nullptr);
     m_i2c_map[i2c].callback_on_request = function;
     HAL_I2C_Release(i2c, nullptr);
 }
@@ -631,11 +618,10 @@ void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable,void* reserved) 
 }
 
 uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1) {
-    HAL_I2C_Acquire(i2c, nullptr);
     if (i2c >= TOTAL_I2C) {
-        HAL_I2C_Release(i2c, nullptr);
         return 1;
     }
+    HAL_I2C_Acquire(i2c, nullptr);
     if (HAL_I2C_Is_Enabled(i2c, nullptr)) {
         HAL_I2C_End(i2c, nullptr);
 
