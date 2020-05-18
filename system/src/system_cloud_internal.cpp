@@ -55,6 +55,7 @@
 #include "network/ncp/cellular/ncp.h"
 #include "network/ncp/cellular/cellular_ncp_client.h"
 #endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
+#include "system_version.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -633,15 +634,24 @@ void Spark_Signal(bool on, unsigned, void*)
 
 size_t system_interpolate_cloud_server_hostname(const char* var, size_t var_len, char* buf, size_t buf_len)
 {
-	if (var_len==2 && memcmp("id", var, 2)==0)
-	{
-		String deviceID = spark_deviceID();
-		if (buf_len>deviceID.length()) {
-			memcpy(buf, deviceID.c_str(), deviceID.length());
-			return deviceID.length();
-		}
-	}
-	return 0;
+    if (var_len==2 && memcmp("id", var, 2)==0)
+    {
+        String deviceID = spark_deviceID();
+        size_t id_len = deviceID.length();
+
+        SystemVersionInfo sys_ver;
+        system_version_info(&sys_ver, nullptr);
+        uint8_t mv = BYTE_N(sys_ver.versionNumber, 3);
+        String majorVer = String::format(".v%d", mv);
+        size_t mv_len = majorVer.length();
+
+        if (buf_len > (id_len + mv_len)) {
+            memcpy(buf, deviceID.c_str(), id_len);
+            memcpy(buf + id_len, majorVer.c_str(), mv_len);
+            return id_len + mv_len;
+        }
+    }
+    return 0;
 }
 
 int userVarType(const char *varKey)

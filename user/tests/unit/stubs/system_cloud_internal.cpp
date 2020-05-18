@@ -15,22 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "system_cloud.h"
+#include "system_cloud_internal.h"
 
-void Spark_Abort() {
-}
-
-void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, network_disconnect_reason networkReason,
-		System_Reset_Reason resetReason, unsigned sleepDuration) {
-}
-
-void spark_cloud_flag_disconnect() {
-}
-
-bool spark_cloud_flag_connected() {
-	return false;
-}
-
-String spark_deviceID(void) {
-    return "_THIS_IS_STUB_DEVICE_ID_";
+size_t system_interpolate_cloud_server_hostname(const char* var, size_t var_len, char* buf, size_t buf_len)
+{
+    return 0;
 }

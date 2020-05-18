@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
-  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+  Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -27,10 +27,10 @@ inline bool is_variable_char(char c)
 }
 
 /**
- * Determines the length of an interpolatable varaible.
+ * Determines the length of an interpolatable variable.
  * @param s the buffer containing the variable name
  *
- * The variable name may be zero terminated, or impliicitly terminated
+ * The variable name may be zero terminated, or implicitly terminated
  * by the next non-alphanumeric or non-underscore character.
  */
 size_t variable_length(const char* s)
@@ -40,33 +40,45 @@ size_t variable_length(const char* s)
 	return s-start;
 }
 
+/**
+ * Replaces variable length "$token" with characters from callback function string_interpolate_source_t
+ * @param source the buffer containing the source character array
+ * @param dest the buffer containing the destination character array
+ * @param dest_len must contain the sizeof(dest) buffer
+ * @param vars the string_interpolate_source_t callback function that performs the "$token" interpolation
+ *
+ * Returns the number of characters written, not including the null terminator
+ */
 size_t system_string_interpolate(const char* source, char* dest, size_t dest_len, string_interpolate_source_t vars)
 {
-	char* dest_end = dest+dest_len;
-	for (;dest<dest_end;)
-	{
-		char c = *source++;
-		if (!c) {
-			*dest = 0;
-			break;
-		}
-		if (c=='$')
+	if (source && dest) {
+		char* dest_end = dest+dest_len;
+		for (;dest<dest_end;)
 		{
-			// here source points to the first char in the variable name
-			size_t variable_len = variable_length(source);
-			if (variable_len)
+			char c = *source++;
+			if (!c) {
+				*dest++ = 0;
+				break;
+			}
+			if (c=='$')
 			{
-				size_t added = vars(source, variable_len, dest, dest_end-dest);
-				dest += added;
-				source += variable_len;
+				// here source points to the first char in the variable name
+				size_t variable_len = variable_length(source);
+				if (variable_len)
+				{
+					size_t added = vars(source, variable_len, dest, dest_end-dest);
+					dest += added;
+					source += variable_len;
+				}
+			}
+			else
+			{
+				*dest++ = c;
 			}
 		}
-		else
-		{
-			*dest++ = c;
-		}
+		*(dest_end-1) = 0;
+		return dest_len-(dest_end-dest)-1;
 	}
-	*(dest_end-1) = 0;
-	return dest_len-(dest_end-dest);
+	return 0;
 }
 
