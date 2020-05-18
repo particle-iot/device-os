@@ -738,10 +738,6 @@ int QuectelNcpClient::setRegistrationTimeout(unsigned timeout) {
     return 0;
 }
 
-int QuectelNcpClient::getTxDelayInDataChannel() {
-    return 0;
-}
-
 int QuectelNcpClient::checkParser() {
     if (ncpState_ != NcpState::ON) {
         return SYSTEM_ERROR_INVALID_STATE;

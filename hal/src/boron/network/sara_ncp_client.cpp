@@ -479,13 +479,6 @@ int SaraNcpClient::getImei(char* buf, size_t size) {
     return n;
 }
 
-int SaraNcpClient::getTxDelayInDataChannel() {
-    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
-        return UBLOX_NCP_R4_WINDOW_SIZE_MS * 2;
-    }
-    return 0;
-}
-
 int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
     int act;
     char mobileCountryCode[4] = {0};

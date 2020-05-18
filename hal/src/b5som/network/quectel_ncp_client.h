@@ -64,7 +64,6 @@ public:
     virtual int getImei(char* buf, size_t size) override;
     virtual int getSignalQuality(CellularSignalQuality* qual) override;
     virtual int setRegistrationTimeout(unsigned timeout) override;
-    virtual int getTxDelayInDataChannel() override;
 
 private:
     AtParser parser_;
