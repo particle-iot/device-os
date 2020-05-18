@@ -57,7 +57,7 @@
 #include "hal_event.h"
 #include "system_error.h"
 
-#if PLATFORM_ID==PLATFORM_P1
+#if PLATFORM_ID == PLATFORM_P1
 #include "wwd_management.h"
 #include "wlan_hal.h"
 #endif
@@ -345,20 +345,25 @@ void HAL_Core_Config(void)
     PWR_WakeUpPinCmd(DISABLE);
 
     //Wiring pins default to inputs
-#if !defined(USE_SWD_JTAG) && !defined(USE_SWD)
-    for (pin_t pin=0; pin<=19; pin++)
+    for (pin_t pin = 0; pin < TOTAL_ESSENTIAL_PINS; pin++) {
+#if defined(USE_SWD_JTAG) || defined(USE_SWD)
+        if (pin >= D3 && pin <= D7) { // JTAG pins
+            continue;
+        }
+#endif
         HAL_Pin_Mode(pin, INPUT);
-#if PLATFORM_ID==8 // Additional pins for P1
-    for (pin_t pin=24; pin<=29; pin++)
+    }
+
+#if HAS_EXTRA_PINS
+    for (pin_t pin = FIRST_EXTRA_PIN; pin <= LAST_EXTRA_PIN; pin++) {
         HAL_Pin_Mode(pin, INPUT);
+    }
+#endif
+
+#if PLATFORM_ID == PLATFORM_P1
     if (isWiFiPowersaveClockDisabled()) {
         HAL_Pin_Mode(30, INPUT); // Wi-Fi Powersave clock is disabled, default to INPUT
     }
-#endif
-#if PLATFORM_ID==10 // Additional pins for Electron
-    for (pin_t pin=24; pin<=35; pin++)
-        HAL_Pin_Mode(pin, INPUT);
-#endif
 #endif
 
     HAL_Core_Config_systick_configuration();
@@ -959,7 +964,7 @@ void TIM8_TRG_COM_TIM14_irq(void)
 
 void TIM8_CC_irq(void)
 {
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
     if(NULL != HAL_TIM8_Handler)
     {
         HAL_TIM8_Handler();
@@ -1185,7 +1190,7 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
             return Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
         }
 
-#if PLATFORM_ID==PLATFORM_P1
+#if PLATFORM_ID == PLATFORM_P1
         case FEATURE_WIFI_POWERSAVE_CLOCK:
         {
             wwd_set_wlan_sleep_clock_enabled(enabled);
@@ -1346,10 +1351,10 @@ static inline uint32_t Tim_Peripheral_To_Af(TIM_TypeDef* tim) {
             return GPIO_AF_TIM4;
         case (uint32_t)TIM5:
             return GPIO_AF_TIM5;
-#if PLATFORM_ID == 10
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
         case (uint32_t)TIM8:
             return GPIO_AF_TIM8;
-#endif // PLATFORM_ID == 10
+#endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
     }
 
     return 0;

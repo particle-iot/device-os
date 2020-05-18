@@ -23,6 +23,8 @@
 #define TOTAL_DAC_PINS 2
 #define TOTAL_ANALOG_PINS 8
 #define FIRST_ANALOG_PIN 10
+#define TOTAL_ESSENTIAL_PINS 20
+#define HAS_EXTRA_PINS 0
 
 // Digital pins
 #define D0 0
@@ -93,6 +95,10 @@
 #define TOTAL_DAC_PINS 2
 #define TOTAL_ANALOG_PINS 13
 #define FIRST_ANALOG_PIN 10
+#define TOTAL_ESSENTIAL_PINS 20
+#define HAS_EXTRA_PINS 1
+#define FIRST_EXTRA_PIN 24
+#define LAST_EXTRA_PIN 29
 
 // Digital pins
 #define D0 0
