@@ -138,12 +138,16 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     // Initialize serial stream
     auto sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS;
 
+// Our first board reversed RTS and CTS pin, we gave them the hwVersion 0x00,
+// Disabling hwfc should not only depend on hwVersion but also platform
+#if PLATFORM_ID == PLATFORM_B5SOM
     uint32_t hwVersion = HW_VERSION_UNDEFINED;
     auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
     if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
         sconf = SERIAL_8N1;
         LOG(TRACE, "Disable Hardware Flow control!");
     }
+#endif
 
     std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
