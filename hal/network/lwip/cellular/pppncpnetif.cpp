@@ -96,24 +96,19 @@ if_t PppNcpNetif::interface() {
 void PppNcpNetif::loop(void* arg) {
     PppNcpNetif* self = static_cast<PppNcpNetif*>(arg);
     unsigned int timeout = 100;
-    // Off by default
-    self->celMan_->ncpClient()->off();
     while(!self->exit_) {
-        self->celMan_->ncpClient()->enable(); // Make sure the client is enabled
         NetifEvent ev;
         const int r = os_queue_take(self->queue_, &ev, timeout, nullptr);
+        self->celMan_->ncpClient()->enable(); // Make sure the client is enabled
         if (!r) {
             // Event
             switch (ev) {
                 case NetifEvent::Up: {
-                    if (self->upImpl()) {
-                        self->celMan_->ncpClient()->off();
-                    }
+                    self->upImpl();
                     break;
                 }
                 case NetifEvent::Down: {
                     self->downImpl();
-                    // self->celMan_->ncpClient()->off();
                     break;
                 }
                 case NetifEvent::PowerOff: {
@@ -126,14 +121,8 @@ void PppNcpNetif::loop(void* arg) {
                     break;
                 }
             }
-        } else {
-            if (self->up_) {
-                if (self->celMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED) {
-                    if (self->upImpl()) {
-                        self->celMan_->ncpClient()->off();
-                    }
-                }
-            }
+        } else if (self->up_ && self->celMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED) {
+            self->upImpl();
         }
         self->celMan_->ncpClient()->processEvents();
     }
@@ -172,36 +161,51 @@ int PppNcpNetif::powerDown() {
 int PppNcpNetif::upImpl() {
     up_ = true;
     auto r = celMan_->ncpClient()->on();
-    if (r) {
-        LOG(TRACE, "Failed to initialize ublox NCP client: %d", r);
+    if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
+        LOG(ERROR, "Failed to initialize cellular NCP client: %d", r);
         return r;
     }
-    // Ensure that we are disconnected
-    downImpl();
-    // Restore up flag
-    up_ = true;
-    client_.setOutputCallback([](const uint8_t* data, size_t size, void* ctx) -> int {
-        auto c = (CellularNcpClient*)ctx;
-        int r = c->dataChannelWrite(0, data, size);
-        if (!r) {
-            return size;
+
+    if (celMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED) {
+        client_.setOutputCallback([](const uint8_t* data, size_t size, void* ctx) -> int {
+            auto c = (CellularNcpClient*)ctx;
+            int r = c->dataChannelWrite(0, data, size);
+            if (!r) {
+                return size;
+            }
+            return r;
+        }, celMan_->ncpClient());
+        // Initialize PPP client
+        client_.connect();
+
+        r = celMan_->connect();
+        if (r) {
+            LOG(TRACE, "Failed to connect to cellular network: %d", r);
+            // Make sure to re-enable NCP client
+            celMan_->ncpClient()->enable();
+            // And turn it off just in case
+            celMan_->ncpClient()->off();
         }
-        return r;
-    }, celMan_->ncpClient());
-    client_.connect();
-    r = celMan_->connect();
-    if (r) {
-        LOG(TRACE, "Failed to connect to cellular network: %d", r);
     }
     return r;
 }
 
 int PppNcpNetif::downImpl() {
-    up_ = false;
-    client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
-    client_.disconnect();
-    celMan_->ncpClient()->disconnect();
-    return 0;
+    int r = SYSTEM_ERROR_NONE;
+    if (up_) {
+        up_ = false;
+        client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
+        client_.disconnect();
+
+        if (celMan_->ncpClient()->connectionState() != NcpConnectionState::DISCONNECTED) {
+            r = celMan_->ncpClient()->disconnect();
+            if (r != SYSTEM_ERROR_NONE) {
+                // Make sure to re-enable NCP client
+                celMan_->ncpClient()->enable();
+            }
+        }
+    }
+    return r;
 }
 
 void PppNcpNetif::ifEventHandler(const if_event* ev) {
