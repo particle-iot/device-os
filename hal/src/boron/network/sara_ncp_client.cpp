@@ -973,6 +973,7 @@ int SaraNcpClient::initReady() {
     // Make sure flow control is enabled as well
     // NOTE: this should work fine on SARA R4 firmware revisions that don't support it as well
     CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
+    CHECK(waitAtResponse(10000));
 
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
         // Set UMNOPROF = SIM_SELECT
