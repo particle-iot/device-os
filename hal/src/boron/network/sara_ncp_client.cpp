@@ -810,9 +810,7 @@ int SaraNcpClient::waitReady(bool powerOn) {
 
     if (powerOn) {
         LOG_DEBUG(TRACE, "Waiting for modem to be ready from power on");
-        CHECK(defaultParserConfig());
-        ready_ = waitAtResponse(20000) == 0;
-        modemState = ModemState::DefaultBaudrate;
+        ready_ = waitAtResponseFromPowerOn(modemState) == 0;
     } else if (ncpState() == NcpState::OFF) {
         LOG_DEBUG(TRACE, "Waiting for modem to be ready from current unknown state");
         ready_ = checkRuntimeState(modemState) == 0;
@@ -954,8 +952,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
             HAL_Delay_Milliseconds(10000);
         }
 
-        CHECK(defaultParserConfig());
-        CHECK(waitAtResponse(20000));
+        CHECK(waitAtResponseFromPowerOn(state));
     }
 
     // Using numeric CME ERROR codes
@@ -997,26 +994,50 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
             const int respCfun = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
             CHECK_TRUE(respCfun == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
             HAL_Delay_Milliseconds(10000);
-            CHECK(defaultParserConfig());
-            CHECK(waitAtResponse(20000));
+            CHECK(waitAtResponseFromPowerOn(state));
         }
-    }
-
-    if (reset) {
-        state = ModemState::DefaultBaudrate;
     }
 
     return 0;
 }
 
-int SaraNcpClient::defaultParserConfig() {
+int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState) {
     // Make sure we reset back to using hardware serial port @ default baudrate
     muxer_.stop();
-    CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
+
+    unsigned int defaultBaudrate = ncpId() != PLATFORM_NCP_SARA_R410 ?
+            UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE :
+            UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4;
+
+    CHECK(serial_->setBaudRate(defaultBaudrate));
     CHECK(initParser(serial_.get()));
     skipAll(serial_.get(), 1000);
     parser_.reset();
-    return 0;
+
+    int r = SYSTEM_ERROR_TIMEOUT;
+
+    if (ncpId() != PLATFORM_NCP_SARA_R410) {
+        r = waitAtResponse(20000);
+        if (!r) {
+            modemState = ModemState::DefaultBaudrate;
+        }
+    } else {
+        r = waitAtResponse(5000);
+        if (r) {
+            CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
+            CHECK(initParser(serial_.get()));
+            skipAll(serial_.get());
+            parser_.reset();
+            r = waitAtResponse(5000);
+            if (!r) {
+                modemState = ModemState::DefaultBaudrate;
+            }
+        } else {
+            modemState = ModemState::RuntimeBaudrate;
+        }
+    }
+
+    return r;
 }
 
 int SaraNcpClient::changeBaudRate(unsigned int baud) {
@@ -1258,7 +1279,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     CHECK(initParser(serial_.get()));
     skipAll(serial_.get());
     parser_.reset();
-    if (!waitAtResponse(1000)) {
+    if (!waitAtResponse(2000)) {
         state = ModemState::RuntimeBaudrate;
         return 0;
     }
@@ -1270,7 +1291,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     CHECK(initParser(serial_.get()));
     skipAll(serial_.get());
     parser_.reset();
-    if (!waitAtResponse(20000)) {
+    if (!waitAtResponse(5000)) {
         state = ModemState::DefaultBaudrate;
         return 0;
     }

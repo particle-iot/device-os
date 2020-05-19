@@ -141,7 +141,7 @@ private:
     int modemSetUartState(bool state) const;
     void waitForPowerOff();
     int getAppFirmwareVersion();
-    int defaultParserConfig();
+    int waitAtResponseFromPowerOn(ModemState& modemState);
 };
 
 inline AtParser* SaraNcpClient::atParser() {
