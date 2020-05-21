@@ -93,6 +93,7 @@ void serial_at_response_out(void* data, const char* msg)
             else if (a == 6) *reg = REG_HOME;     // 6: registered, sms only, home
             if ((r >= 3) && (b != (int)0xFFFF))      _net.cgi.location_area_code = b;
             if ((r >= 4) && (c != (int)0xFFFFFFFF))  _net.cgi.cell_id  = c;
+            // access technology
             if (r >= 5) {
                 if      (d == 0) _net.act = ACT_GSM;      // 0: GSM
                 else if (d == 1) _net.act = ACT_GSM;      // 1: GSM COMPACT
@@ -167,8 +168,8 @@ void setup()
         Serial.println("OK! Power on.");
         RGB_BLUE;
 
-        // Ensure we are connected to the network
-        if (!connectEPS()) {
+        // Ensure we are disconnected from the network
+        if (!cellularDisableEPSreg()) {
             RGB_RED;
         }
     }
@@ -225,11 +226,36 @@ void loop()
                     RGB_BLUE;
                 }
             }
+            else if(cmd == ":cloud1;" || cmd == ":CLOUD1;") {
+                RGB.control(false);
+                Particle.connect();
+            }
+            else if(cmd == ":cloud0;" || cmd == ":CLOUD0;") {
+                Particle.disconnect();
+                waitFor(Particle.disconnected, 150000);
+                RGB.control(true);
+                if (!Particle.connected() && Cellular.ready()) {
+                    RGB_GREEN;
+                } else {
+                    RGB_BLUE;
+                }
+            }
+            else if(cmd == ":prof1;" || cmd == ":PROF1;") {
+                Cellular.command("AT+COPS=2\r\n");
+                Cellular.command("AT+UMNOPROF=2\r\n");
+                Cellular.command("AT+CFUN=15\r\n");
+            }
+            else if(cmd == ":prof0;" || cmd == ":PROF0;") {
+                Cellular.command("AT+COPS=2\r\n");
+                Cellular.command("AT+UMNOPROF=0\r\n");
+                Cellular.command("AT+CFUN=15\r\n");
+            }
             else if(cmd == ":help;" || cmd == ":HELP;") {
                 showHelp();
             }
             else if(cmd != "") {
                 Cellular.command("%s\r\n", cmd.c_str());
+                last_cmd = cmd;
             }
             cmd = "";
         }
@@ -289,10 +315,8 @@ void updateRegistrationStatus() {
 
 bool cellularRegisterEPS()
 {
-    if (!cellularCheckRegisterEPS()) {
-        Cellular.command("AT+CEREG=2\r\n");
-    }
-
+    Cellular.command("AT+CEREG=2\r\n");
+    cellularCheckRegisterEPS();
     return REG_OK(_net.eps);
 }
 
@@ -304,6 +328,7 @@ bool cellularCheckRegisterEPS()
 
 void cellularStopEPSstatusUpdates()
 {
+    Cellular.command(COPS_TIMEOUT, "AT+COPS?\r\n");
     // Update the timer such that it won't attempt to poll for EPS status
     updateRegistrationTime = millis() - 2*60*1000UL;
 }
@@ -326,7 +351,7 @@ bool cellularSetAPN(const char* apn)
     // workaround the code below sets a blank APN if it detects that the current context is
     // configured to use the dual stack IPv4/IPv6 capability ("IPV4V6"), which is the case for
     // the factory default settings. Ideally, setting of a default APN should be based on IMSI
-    if (strcmp(ctx.type, "IP") != 0 || strcmp(ctx.apn, apn ? apn : "") != 0) {
+    if (strcmp(ctx.apn, apn ? apn : "") != 0) {
         // Stop the network registration and update the context settings
         if (RESP_OK != Cellular.command(COPS_TIMEOUT, "AT+COPS=2\r\n")) {
             return false;
@@ -353,5 +378,9 @@ void showHelp() {
                    "\r\n[:assist0;] turns off ESC, BACKSPACE and UP ARROW keyboard assistance"
                    "\r\n[:con;    ] Start the EPS connection process, LED=GREEN (EPS)"
                    "\r\n[:dis;    ] Network disconnect and stop polling the EPS status (default), LED=BLUE"
+                   "\r\n[:cloud1; ] Connect to the Particle Cloud, LED=CYAN"
+                   "\r\n[:cloud0; ] Disconnect from the Particle Cloud, LED=GREEN"
+                   "\r\n[:prof1;  ] Set MNO profile +UMNOPROF to (AT&T)"
+                   "\r\n[:prof0;  ] Set MNO profile +UMNOPROF to (default)"
                    "\r\n[:help;   ] show this help menu\r\n");
 }

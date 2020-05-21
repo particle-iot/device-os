@@ -28,6 +28,7 @@ SYSTEM_MODE(SEMI_AUTOMATIC);
 #define RGB_RED     RGB.color(255,0,0)
 #define RGB_GREEN   RGB.color(0,255,0)
 #define RGB_YELLOW  RGB.color(255,255,0)
+#define RGB_WHITE   RGB.color(255,255,255)
 #define RGB_MAGENTA RGB.color(255,0,255)
 #define RGB_CYAN    RGB.color(0,255,255)
 #define RGB_BLUE    RGB.color(0,0,255)
@@ -38,6 +39,7 @@ SYSTEM_MODE(SEMI_AUTOMATIC);
 #define TIMEOUT(t, ms)  ((ms != -1) && ((millis() - t) > ms))
 //! registration ok check helper
 #define REG_OK(r)       ((r == REG_HOME) || (r == REG_ROAMING))
+#define COPS_TIMEOUT (3 * 60 * 1000)
 
 uint32_t lastUpdate = 0;
 uint32_t updateRegistrationTime = 0;
@@ -49,7 +51,9 @@ bool cellularRegisterGPRS();
 bool cellularCheckRegisterGSM();
 bool cellularCheckRegisterGPRS();
 void updateRegistrationStatus();
+void cellularStopGSMandGPRSstatusUpdates();
 bool cellularDisableGSMandGPRSreg();
+void showHelp();
 
 void serial_at_response_out(void* data, const char* msg)
 {
@@ -65,8 +69,14 @@ void serial_at_response_out(void* data, const char* msg)
     if (r <= 1)
         r = sscanf(cmd, "%s %d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
     if (r >= 2) {
-        Reg *reg = !strcmp(s, "CREG:")  ? &_net.csd :
-                   !strcmp(s, "CGREG:") ? &_net.psd : NULL;
+        Reg* reg = nullptr;
+            if (strcmp(s, "CREG:") == 0) {
+                reg = &_net.csd;
+            } else if (strcmp(s, "CGREG:") == 0) {
+                reg = &_net.psd;
+            } else if (strcmp(s, "CEREG:") == 0) {
+                reg = &_net.eps;
+            }
         if (reg) {
             // network status
             if      (a == 0) *reg = REG_NONE;     // 0: not registered, home network
@@ -75,8 +85,9 @@ void serial_at_response_out(void* data, const char* msg)
             else if (a == 3) *reg = REG_DENIED;   // 3: registration denied
             else if (a == 4) *reg = REG_UNKNOWN;  // 4: unknown
             else if (a == 5) *reg = REG_ROAMING;  // 5: registered, roaming
-            if ((r >= 3) && (b != (int)0xFFFF))      _net.lac = b; // location area code
-            if ((r >= 4) && (c != (int)0xFFFFFFFF))  _net.ci  = c; // cell ID
+            else if (a == 6) *reg = REG_HOME;     // 6: registered, sms only, home
+            if ((r >= 3) && (b != (int)0xFFFF))      _net.cgi.location_area_code = b;
+            if ((r >= 4) && (c != (int)0xFFFFFFFF))  _net.cgi.cell_id  = c;
             // access technology
             if (r >= 5) {
                 if      (d == 0) _net.act = ACT_GSM;      // 0: GSM
@@ -86,6 +97,9 @@ void serial_at_response_out(void* data, const char* msg)
                 else if (d == 4) _net.act = ACT_UTRAN;    // 4: UTRAN with HSDPA availability
                 else if (d == 5) _net.act = ACT_UTRAN;    // 5: UTRAN with HSUPA availability
                 else if (d == 6) _net.act = ACT_UTRAN;    // 6: UTRAN with HSDPA and HSUPA availability
+                else if (d == 7) _net.act = ACT_LTE;         // 7: LTE
+                else if (d == 8) _net.act = ACT_LTE_CAT_M1;  // 8: LTE CAT-M1
+                else if (d == 9) _net.act = ACT_LTE_CAT_NB1; // 9: LTE CAT-NB1
             }
             // DEBUG_D("%d,%d\r\n",a,d);
         }
@@ -103,6 +117,10 @@ bool connectGSMandGPRS() {
         Serial.println("ERROR!\r\nFailed modem initialization! Did you turn the modem on? SIM installed?");
     }
     else {
+        // Make sure automatic network registration is enabled
+        if (RESP_OK != Cellular.command(COPS_TIMEOUT, "AT+COPS=0\r\n")) {
+            return false;
+        }
         cellularRegisterGSM();
         cellularRegisterGPRS();
         updateRegistrationTime = millis();
@@ -133,10 +151,7 @@ void setup()
         RGB_BLUE;
 
         // START THE GSM and GPRS CONNECTION PROCESS
-        // if (!connectGSMandGPRS()) {
-        //     RGB_RED;
-        // }
-        if (!cellularDisableGSMandGPRSreg()) {
+        if (!connectGSMandGPRS()) {
             RGB_RED;
         }
     }
@@ -146,17 +161,26 @@ void loop()
 {
     // AT commands received over USB serial
     static String cmd = "";
+    static String last_cmd = "";
     static bool echo_commands = true;
     static bool assist = true;
     if (Serial.available() > 0) {
         char c = Serial.read();
         if (c == '\r') {
             Serial.println();
-            if(cmd == ":power1;" || cmd == ":POWER1;") {
-                cellular_on(NULL);
+            if(cmd == ":on;" || cmd == ":ON;") {
+                if (0 == cellular_on(NULL)) {
+                    RGB_BLUE;
+                } else {
+                    RGB_RED;
+                }
             }
-            else if(cmd == ":power0;" || cmd == ":POWER0;") {
-                cellular_off(NULL);
+            else if(cmd == ":off;" || cmd == ":OFF;") {
+                if (0 == cellular_off(NULL)) {
+                    RGB_WHITE;
+                } else {
+                    RGB_RED;
+                }
             }
             else if(cmd == ":echo1;" || cmd == ":ECHO1;") {
                 echo_commands = true;
@@ -170,16 +194,38 @@ void loop()
             else if(cmd == ":assist0;" || cmd == ":ASSIST0;") {
                 assist = false;
             }
-            else if(cmd == ":update1;" || cmd == ":UPDATE1;") {
-                updateRegistrationTime = millis();
+            else if(cmd == ":con;" || cmd == ":CON;") {
+                // START THE GSM/GPRS CONNECTION PROCESS
+                if (!connectGSMandGPRS()) {
+                    RGB_RED;
+                }
             }
-            else if(cmd == ":update0;" || cmd == ":UPDATE0;") {
-                updateRegistrationTime = millis() - 2*60*1000UL;
+            else if(cmd == ":dis;" || cmd == ":DIS;") {
+                // STOP polling the GSM/GPRS status
+                if (!cellularDisableGSMandGPRSreg()) {
+                    RGB_RED;
+                } else {
+                    RGB_BLUE;
+                }
+            }
+            else if(cmd == ":help;" || cmd == ":HELP;") {
+                showHelp();
             }
             else if(cmd != "") {
                 Cellular.command("%s\r\n", cmd.c_str());
+                last_cmd = cmd;
             }
             cmd = "";
+        }
+        else if (assist && c == '[') { // UP ARROW ("ESC [A")
+            delay(1);
+            if (Serial.available() > 0) {
+                char c = Serial.read();
+                if (c == 'A') {
+                    cmd = last_cmd;
+                    if (echo_commands) Serial.print(cmd.c_str());
+                }
+            }
         }
         else if (assist && c == 27) { // ESC
             if (cmd.length() > 0 && echo_commands) {
@@ -206,12 +252,12 @@ void loop()
     } // END if (Serial.available() > 0)
 
     // Update GSM and GPRS registration status every 5 seconds for 2 minutes
-    // if (millis() - updateRegistrationTime < 2*60*1000UL) {
-    //     if (millis() - lastUpdate > 5000UL) {
-    //         lastUpdate = millis();
-    //         updateRegistrationStatus();
-    //     }
-    // }
+    if (millis() - updateRegistrationTime < 2*60*1000UL) {
+        if (millis() - lastUpdate > 5000UL) {
+            lastUpdate = millis();
+            updateRegistrationStatus();
+        }
+    }
 
     // Receive all URCs
     cellular_urcs_get(NULL);
@@ -219,44 +265,29 @@ void loop()
 
 void updateRegistrationStatus() {
     if (cellularCheckRegisterGSM() && cellularCheckRegisterGPRS()) {
-        RGB_MAGENTA;
+        RGB_GREEN;
+        cellularStopGSMandGPRSstatusUpdates();
         // DEBUG("GSM & GPRS - CSD: %d PSD: %d", REG_OK(_net.csd), REG_OK(_net.psd));
     }
     else if (cellularCheckRegisterGSM()) {
-        RGB_GREEN;
         // DEBUG("GSM ONLY - CSD: %d & PSD: %d", REG_OK(_net.csd), REG_OK(_net.psd));
     }
     else if (cellularCheckRegisterGPRS()) {
-        RGB_YELLOW;
         // DEBUG("GPRS ONLY - CSD: %d & PSD: %d", REG_OK(_net.csd), REG_OK(_net.psd));
     }
 }
 
 bool cellularRegisterGSM()
 {
-    // system_tick_t start = millis();
-    DEBUG_D("\r\n[ cellularRegisterGSM ] = = = = = = = = = = = = = =\r\n");
-    if (!cellularCheckRegisterGSM()) Cellular.command("AT+CREG=2\r\n");
-    // while (!cellularCheckRegisterGSM() && !TIMEOUT(start, (5*60*1000) )) {
-    //     system_tick_t start = millis();
-    //     while (millis() - start < 15000UL); // just wait
-    // }
-    // if (_net.csd == REG_DENIED) DEBUG_D("CSD Registration Denied\r\n");
-    // DEBUG("%d", REG_OK(_net.csd));
+    Cellular.command("AT+CREG=2\r\n");
+    cellularCheckRegisterGSM();
     return REG_OK(_net.csd);
 }
 
 bool cellularRegisterGPRS()
 {
-    // system_tick_t start = millis();
-    DEBUG_D("\r\n[ cellularRegisterGPRS ] = = = = = = = = = = = = = =\r\n");
-    if (!cellularCheckRegisterGPRS()) Cellular.command("AT+CGREG=2\r\n");
-    // while (!cellularCheckRegisterGPRS() && !TIMEOUT(start, (5*60*1000) )) {
-    //     system_tick_t start = millis();
-    //     while (millis() - start < 15000UL); // just wait
-    // }
-    // if (_net.psd == REG_DENIED) DEBUG_D("PSD Registration Denied\r\n");
-    // DEBUG("%d", REG_OK(_net.psd));
+    Cellular.command("AT+CGREG=2\r\n");
+    cellularCheckRegisterGPRS();
     return REG_OK(_net.psd);
 }
 
@@ -272,7 +303,28 @@ bool cellularCheckRegisterGPRS()
     return REG_OK(_net.psd);
 }
 
+void cellularStopGSMandGPRSstatusUpdates()
+{
+    Cellular.command(COPS_TIMEOUT, "AT+COPS?\r\n");
+    // Update the timer such that it won't attempt to poll for GSM/GPRS status
+    updateRegistrationTime = millis() - 2*60*1000UL;
+}
+
 bool cellularDisableGSMandGPRSreg()
 {
-    return (RESP_OK == Cellular.command("AT+COPS=2\r\n", 10000));
+    cellularStopGSMandGPRSstatusUpdates();
+    return (RESP_OK != Cellular.command(COPS_TIMEOUT, "AT+COPS=2\r\n"));
+}
+
+void showHelp() {
+    Serial.println("\r\nCommands supported:"
+                   "\r\n[:on;     ] turn the cellular modem ON (default), LED=BLUE"
+                   "\r\n[:off;    ] turn the cellular modem OFF, LED=WHITE"
+                   "\r\n[:echo1;  ] AT command echo ON (default)"
+                   "\r\n[:echo0;  ] AT command echo OFF"
+                   "\r\n[:assist1;] turns on ESC, BACKSPACE and UP ARROW keyboard assistance (default)"
+                   "\r\n[:assist0;] turns off ESC, BACKSPACE and UP ARROW keyboard assistance"
+                   "\r\n[:con;    ] Start the GSM/GPRS connection process, LED=GREEN (GSM & GPRS)"
+                   "\r\n[:dis;    ] Network disconnect and stop polling the GSM/GPRS status (default), LED=BLUE"
+                   "\r\n[:help;   ] show this help menu\r\n");
 }

@@ -21,7 +21,6 @@
 #include "application.h"
 #include "cellular_hal.h"
 
-// USBSerial1LogHandler logHandler(LOG_LEVEL_ALL); // for full debugging
 Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL); // for full debugging
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
@@ -41,23 +40,19 @@ SYSTEM_MODE(SEMI_AUTOMATIC);
 //! registration ok check helper
 #define REG_OK(r)       ((r == REG_HOME) || (r == REG_ROAMING))
 #define COPS_TIMEOUT (3 * 60 * 1000)
-// ID of the PDP context used to configure the default EPS bearer when registering in an LTE network
-// Note: There are no PDP contexts in LTE, SARA-R4 uses this naming for the sake of simplicity
-#define PDP_CONTEXT 1
 
 uint32_t lastUpdate = 0;
 uint32_t updateRegistrationTime = 0;
 
 NetStatus _net;
 
-struct CGDCONTparam { char type[8]; char apn[32]; };
-
-bool cellularRegisterEPS();
-bool cellularCheckRegisterEPS();
+bool cellularRegisterGSM();
+bool cellularRegisterGPRS();
+bool cellularCheckRegisterGSM();
+bool cellularCheckRegisterGPRS();
 void updateRegistrationStatus();
-bool cellularDisableEPSreg();
-void cellularStopEPSstatusUpdates();
-bool cellularSetAPN(const char* apn);
+void cellularStopGSMandGPRSstatusUpdates();
+bool cellularDisableGSMandGPRSreg();
 void showHelp();
 
 void serial_at_response_out(void* data, const char* msg)
@@ -111,29 +106,9 @@ void serial_at_response_out(void* data, const char* msg)
     }
 }
 
-int _cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param) {
-    if (type == TYPE_PLUS || type == TYPE_UNKNOWN) {
-        buf = (const char*)memchr(buf, '+', len); // Skip leading new line characters
-        if (buf) {
-            int id;
-            CGDCONTparam p = {};
-            static_assert(sizeof(p.type) == 8 && sizeof(p.apn) == 32, "The format string below needs to be updated accordingly");
-            if (sscanf(buf, "+CGDCONT: %d,\"%7[^,],\"%31[^,],", &id, p.type, p.apn) == 3 && id == PDP_CONTEXT) {
-                p.type[strlen(p.type) - 1] = '\0'; // Trim trailing quote character
-                p.apn[strlen(p.apn) - 1] = '\0';
-                *param = p;
-            }
-        }
-    }
-    return WAIT;
-}
+STARTUP(cellular_at_response_handler_set(serial_at_response_out, NULL, NULL));
 
-STARTUP(
-    cellular_at_response_handler_set(serial_at_response_out, NULL, NULL);
-    // cellular_credentials_set("m2m.com.attz", "", "", NULL);
-);
-
-bool connectEPS() {
+bool connectGSMandGPRS() {
     memset(&_net, 0, sizeof(_net));
     cellular_result_t result = -1;
     Serial.print("Connecting to the cellular network: ");
@@ -142,9 +117,12 @@ bool connectEPS() {
         Serial.println("ERROR!\r\nFailed modem initialization! Did you turn the modem on? SIM installed?");
     }
     else {
-        // cellularSetAPN("m2m.com.attz");
-        cellularSetAPN("");
-        cellularRegisterEPS();
+        // Make sure automatic network registration is enabled
+        if (RESP_OK != Cellular.command(COPS_TIMEOUT, "AT+COPS=0\r\n")) {
+            return false;
+        }
+        cellularRegisterGSM();
+        cellularRegisterGPRS();
         updateRegistrationTime = millis();
         return true;
     }
@@ -160,8 +138,6 @@ void setup()
     RGB_BLUE; delay(250);
     RGB_IDLE;
 
-    Particle.keepAlive(23*60);
-
     // POWER ON THE MODEM
     Serial.print("Turning on the modem: ");
     cellular_result_t result = -1;
@@ -174,16 +150,16 @@ void setup()
         Serial.println("OK! Power on.");
         RGB_BLUE;
 
-        // Ensure we are disconnected from the network
-        if (!cellularDisableEPSreg()) {
+        // START THE GSM and GPRS CONNECTION PROCESS
+        // if (!connectGSMandGPRS()) {
+        //     RGB_RED;
+        // }
+        if (!cellularDisableGSMandGPRSreg()) {
             RGB_RED;
         }
     }
 }
 
-bool cloud_disconnected() {
-    return !Particle.connected();
-}
 void loop()
 {
     // AT commands received over USB serial
@@ -222,42 +198,18 @@ void loop()
                 assist = false;
             }
             else if(cmd == ":con;" || cmd == ":CON;") {
-                // START THE EPS CONNECTION PROCESS
-                if (!connectEPS()) {
+                // START THE GSM/GPRS CONNECTION PROCESS
+                if (!connectGSMandGPRS()) {
                     RGB_RED;
                 }
             }
             else if(cmd == ":dis;" || cmd == ":DIS;") {
-                // STOP polling the EPS status
-                if (!cellularDisableEPSreg()) {
+                // STOP polling the GSM/GPRS status
+                if (!cellularDisableGSMandGPRSreg()) {
                     RGB_RED;
                 } else {
                     RGB_BLUE;
                 }
-            }
-            else if(cmd == ":cloud1;" || cmd == ":CLOUD1;") {
-                RGB.control(false);
-                Particle.connect();
-            }
-            else if(cmd == ":cloud0;" || cmd == ":CLOUD0;") {
-                Particle.disconnect();
-                waitFor(cloud_disconnected, 150000);
-                RGB.control(true);
-                if (!Particle.connected() && Cellular.ready()) {
-                    RGB_GREEN;
-                } else {
-                    RGB_BLUE;
-                }
-            }
-            else if(cmd == ":prof1;" || cmd == ":PROF1;") {
-                Cellular.command("AT+COPS=2\r\n");
-                Cellular.command("AT+UMNOPROF=2\r\n");
-                Cellular.command("AT+CFUN=15\r\n");
-            }
-            else if(cmd == ":prof0;" || cmd == ":PROF0;") {
-                Cellular.command("AT+COPS=2\r\n");
-                Cellular.command("AT+UMNOPROF=0\r\n");
-                Cellular.command("AT+CFUN=15\r\n");
             }
             else if(cmd == ":help;" || cmd == ":HELP;") {
                 showHelp();
@@ -302,7 +254,7 @@ void loop()
         }
     } // END if (Serial.available() > 0)
 
-    // Update EPS registration status every 5 seconds for 2 minutes
+    // Update GSM and GPRS registration status every 5 seconds for 2 minutes
     if (millis() - updateRegistrationTime < 2*60*1000UL) {
         if (millis() - lastUpdate > 5000UL) {
             lastUpdate = millis();
@@ -315,67 +267,56 @@ void loop()
 }
 
 void updateRegistrationStatus() {
-    if (cellularCheckRegisterEPS()) {
+    if (cellularCheckRegisterGSM() && cellularCheckRegisterGPRS()) {
         RGB_GREEN;
-        cellularStopEPSstatusUpdates();
-        // DEBUG("EPS: %d", REG_OK(_net.eps));
+        cellularStopGSMandGPRSstatusUpdates();
+        // DEBUG("GSM & GPRS - CSD: %d PSD: %d", REG_OK(_net.csd), REG_OK(_net.psd));
+    }
+    else if (cellularCheckRegisterGSM()) {
+        // DEBUG("GSM ONLY - CSD: %d & PSD: %d", REG_OK(_net.csd), REG_OK(_net.psd));
+    }
+    else if (cellularCheckRegisterGPRS()) {
+        // DEBUG("GPRS ONLY - CSD: %d & PSD: %d", REG_OK(_net.csd), REG_OK(_net.psd));
     }
 }
 
-bool cellularRegisterEPS()
+bool cellularRegisterGSM()
 {
-    if (!cellularCheckRegisterEPS()) {
-        Cellular.command("AT+CEREG=2\r\n");
-    }
-
-    return REG_OK(_net.eps);
+    Cellular.command("AT+CREG=2\r\n");
+    cellularCheckRegisterGSM();
+    return REG_OK(_net.csd);
 }
 
-bool cellularCheckRegisterEPS()
+bool cellularRegisterGPRS()
 {
-    Cellular.command("AT+CEREG?\r\n");
-    return REG_OK(_net.eps);
+    Cellular.command("AT+CGREG=2\r\n");
+    cellularCheckRegisterGPRS();
+    return REG_OK(_net.psd);
 }
 
-void cellularStopEPSstatusUpdates()
+bool cellularCheckRegisterGSM()
 {
-    // Update the timer such that it won't attempt to poll for EPS status
+    Cellular.command("AT+CREG?\r\n");
+    return REG_OK(_net.csd);
+}
+
+bool cellularCheckRegisterGPRS()
+{
+    Cellular.command("AT+CGREG?\r\n");
+    return REG_OK(_net.psd);
+}
+
+void cellularStopGSMandGPRSstatusUpdates()
+{
+    Cellular.command(COPS_TIMEOUT, "AT+COPS?\r\n");
+    // Update the timer such that it won't attempt to poll for GSM/GPRS status
     updateRegistrationTime = millis() - 2*60*1000UL;
 }
 
-bool cellularDisableEPSreg()
+bool cellularDisableGSMandGPRSreg()
 {
-    cellularStopEPSstatusUpdates();
-    return (RESP_OK == Cellular.command(COPS_TIMEOUT, "AT+COPS=2\r\n"));
-}
-
-bool cellularSetAPN(const char* apn)
-{
-    // Get default context settings
-    CGDCONTparam ctx = {};
-    if (RESP_OK != Cellular.command(_cbCGDCONT, &ctx, 10000, "AT+CGDCONT?\r\n")) {
-        return false;
-    }
-    // TODO: SARA-R410-01B modules come preconfigured with AT&T's APN ("broadband"), which may
-    // cause network registration issues with MVNO providers and third party SIM cards. As a
-    // workaround the code below sets a blank APN if it detects that the current context is
-    // configured to use the dual stack IPv4/IPv6 capability ("IPV4V6"), which is the case for
-    // the factory default settings. Ideally, setting of a default APN should be based on IMSI
-    if (strcmp(ctx.apn, apn ? apn : "") != 0) {
-        // Stop the network registration and update the context settings
-        if (RESP_OK != Cellular.command(COPS_TIMEOUT, "AT+COPS=2\r\n")) {
-            return false;
-        }
-        if (RESP_OK != Cellular.command("AT+CGDCONT=%d,\"IP\",\"%s\"\r\n", PDP_CONTEXT, apn ? apn : "")) {
-            return false;
-        }
-    }
-    // Make sure automatic network registration is enabled
-    if (RESP_OK != Cellular.command(COPS_TIMEOUT, "AT+COPS=0\r\n")) {
-        return false;
-    }
-
-    return true;
+    cellularStopGSMandGPRSstatusUpdates();
+    return (RESP_OK != Cellular.command(COPS_TIMEOUT, "AT+COPS=2\r\n"));
 }
 
 void showHelp() {
@@ -386,11 +327,7 @@ void showHelp() {
                    "\r\n[:echo0;  ] AT command echo OFF"
                    "\r\n[:assist1;] turns on ESC, BACKSPACE and UP ARROW keyboard assistance (default)"
                    "\r\n[:assist0;] turns off ESC, BACKSPACE and UP ARROW keyboard assistance"
-                   "\r\n[:con;    ] Start the EPS connection process, LED=GREEN (EPS)"
-                   "\r\n[:dis;    ] Network disconnect and stop polling the EPS status (default), LED=BLUE"
-                   "\r\n[:cloud1; ] Connect to the Particle Cloud, LED=CYAN"
-                   "\r\n[:cloud0; ] Disconnect from the Particle Cloud, LED=GREEN"
-                   "\r\n[:prof1;  ] Set MNO profile +UMNOPROF to (AT&T)"
-                   "\r\n[:prof0;  ] Set MNO profile +UMNOPROF to (default)"
+                   "\r\n[:con;    ] Start the GSM/GPRS connection process, LED=GREEN (GSM & GPRS)"
+                   "\r\n[:dis;    ] Network disconnect and stop polling the GSM/GPRS status (default), LED=BLUE"
                    "\r\n[:help;   ] show this help menu\r\n");
 }
