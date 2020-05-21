@@ -34,4 +34,6 @@
 
 #define HAL_PLATFORM_I2C3 (1)
 
+#define HAL_PLATFORM_FLASH_MX25R6435FZNIL0 (1)
+
 #define PRODUCT_SERIES "boron"
