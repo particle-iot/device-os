@@ -112,6 +112,9 @@
 | 501 | 1500 | 1.5.0-rc.1    |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
 | 501 | 1501 | 1.5.0-rc.2    |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
 | 501 | 1502 | 1.5.0         |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
+| 501 | 1503 | 1.5.1-tracker.1 |     Asset Tracker |
+| 501 | 1504 | 1.5.1-tracker.2 |     Asset Tracker |
+| 501 | 1505 | 1.5.1-tracker.3 |     Asset Tracker |
 | 501 | 1510 | 1.5.1-rc.1    |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
 | 501 | 1511 | 1.5.1         |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
 | 502 | 1512 | 1.5.2         |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
