@@ -1,3 +1,19 @@
+## 1.5.3-tracker.1
+
+### FEATURES
+
+- [Gen 3] Add API to read OTP hardware version and model information
+- [Asset Tracker] Alternate I2C interface on D8/D9
+
+### ENHANCEMENTS
+
+- [Asset Tracker] Improve external RTC accuracy
+
+### BUGFIXES
+
+- [Asset Tracker] Hardware flow control should not be disable for revision 0 devices
+- [Asset Tracker] Suspend program/erase opertion when QSPI flash init gives timeout error
+
 ## 1.5.2
 
 ### BUGFIXES
