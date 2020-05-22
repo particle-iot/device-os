@@ -64,15 +64,22 @@ void assert_micros_millis_interrupts(int duration)
     });
 #endif
 
-    system_tick_t last_millis_64 = System.millis();
+    uint64_t last_millis_64 = System.millis();
     system_tick_t last_millis = millis();
     system_tick_t last_micros = micros();
 
     do
     {
-        system_tick_t now_millis_64 = System.millis();
-        system_tick_t now_millis = millis();
-        system_tick_t now_micros = micros();
+        uint64_t now_millis_64;
+        system_tick_t now_millis, now_micros;
+        // FIXME: acquiring these three atomically, as there is no guarantee
+        // that we are not interrupted/pre-empted between the calls, which breaks
+        // the assumptions below.
+        ATOMIC_BLOCK() {
+            now_millis_64 = System.millis();
+            now_millis = millis();
+            now_micros = micros();
+        }
 
         assertMoreOrEqual(now_millis_64, last_millis_64);
         assertMoreOrEqual(now_millis, last_millis);
@@ -81,11 +88,6 @@ void assert_micros_millis_interrupts(int duration)
         // micros always at least (millis()*1000)
         // even with overflow
         assertMoreOrEqual(now_micros, now_millis * 1000);
-        // 1ms millis() advancement
-        assertTrue(((int64_t)now_millis_64 - (int64_t)last_millis_64) <= 1);
-        assertTrue(((int32_t)now_millis - (int32_t)last_millis) <= 1);
-        // 1ms micros() advancement
-        assertTrue(((int32_t)now_micros - (int32_t)last_micros) <= 1000);
         // at most 1.5ms difference between micros() and millis()
         assertTrue(std::abs((int32_t)now_micros - (int32_t)now_millis * 1000) <= 1500);
         // at most 1ms difference between millis() and lower 32 bits of System.millis()
