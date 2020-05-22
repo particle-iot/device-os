@@ -59,17 +59,17 @@ enum SecurityType {
 class WiFiCredentials {
 public:
     WiFiCredentials(SecurityType security = UNSEC) {
-        setSecurity((WLanSecurityType)security);
+        setSecurity(security);
     }
 
     WiFiCredentials(const char* ssid, SecurityType security = UNSEC) {
-        setSecurity((WLanSecurityType)security);
+        setSecurity(security);
         setSsid(ssid);
     }
 
     virtual ~WiFiCredentials() {}
 
-    virtual WiFiCredentials& setSecurity(WLanSecurityType security) {
+    virtual WiFiCredentials& setSecurity(SecurityType security) {
         creds_.security = (WLanSecurityType)security;
         return *this;
     }

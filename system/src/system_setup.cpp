@@ -498,7 +498,7 @@ void WiFiSetupConsole::handle(char c)
 
         credentials.setSsid(ssid);
         credentials.setPassword(password);
-        credentials.setSecurity(security_);
+        credentials.setSecurity((spark::SecurityType)security_);
         credentials.setCipher(cipher_);
 
         // dry run
