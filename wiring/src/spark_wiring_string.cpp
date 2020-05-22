@@ -310,7 +310,8 @@ unsigned char String::concat(const char *cstr, unsigned int length)
 	if (!cstr) return 0;
 	if (length == 0) return 1;
 	if (!reserve(newlen)) return 0;
-	strcpy(buffer + len, cstr);
+	memcpy(buffer + len, cstr, length);
+	buffer[newlen] = '\0';
 	len = newlen;
 	return 1;
 }
@@ -327,10 +328,7 @@ unsigned char String::concat(const __FlashStringHelper * str) {
 
 unsigned char String::concat(char c)
 {
-	char buf[2];
-	buf[0] = c;
-	buf[1] = 0;
-	return concat(buf, 1);
+	return concat(&c, 1);
 }
 
 unsigned char String::concat(unsigned char num)
@@ -342,14 +340,14 @@ unsigned char String::concat(unsigned char num)
 
 unsigned char String::concat(int num)
 {
-	char buf[7];
+	char buf[12];
 	itoa(num, buf, 10);
 	return concat(buf, strlen(buf));
 }
 
 unsigned char String::concat(unsigned int num)
 {
-	char buf[6];
+	char buf[12];
 	utoa(num, buf, 10);
 	return concat(buf, strlen(buf));
 }
@@ -363,7 +361,7 @@ unsigned char String::concat(long num)
 
 unsigned char String::concat(unsigned long num)
 {
-	char buf[11];
+	char buf[12];
 	ultoa(num, buf, DEC);
 	return concat(buf, strlen(buf));
 }
