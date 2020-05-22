@@ -231,6 +231,19 @@ private:
     size_t bufSize_, n_;
 };
 
+class JSONStringWriter: public JSONWriter {
+public:
+    explicit JSONStringWriter(String& str);
+
+    const String& string() const;
+
+protected:
+    virtual void write(const char *data, size_t size) override;
+
+private:
+    String& str_;
+};
+
 bool operator==(const char *str1, const JSONString &str2);
 bool operator!=(const char *str1, const JSONString &str2);
 bool operator==(const String &str1, const JSONString &str2);
@@ -423,6 +436,19 @@ inline size_t spark::JSONBufferWriter::bufferSize() const {
 
 inline size_t spark::JSONBufferWriter::dataSize() const {
     return n_;
+}
+
+// spark::JSONStringWriter
+inline spark::JSONStringWriter::JSONStringWriter(String& str) :
+        str_(str) {
+}
+
+inline const String& spark::JSONStringWriter::string() const {
+    return str_;
+}
+
+inline void spark::JSONStringWriter::write(const char *data, size_t size) {
+    str_.concat(data, size);
 }
 
 // spark::

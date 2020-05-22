@@ -1117,3 +1117,22 @@ TEST_CASE("JSONBufferWriter") {
         CHECK(buf.isPaddingValid());
     }
 }
+
+TEST_CASE("JSONStringWriter") {
+    SECTION("construction") {
+        String str;
+        JSONStringWriter w(str);
+        CHECK(&w.string() == &str);
+    }
+
+    SECTION("appending to string") {
+        String str("[");
+        JSONStringWriter w(str);
+        CHECK(str.length() == 1);
+        w.beginObject().name("a");
+        CHECK(str == "[{\"a\"");
+        w.value(1).endObject();
+        str += ']';
+        CHECK(str == "[{\"a\":1}]");
+    }
+}
