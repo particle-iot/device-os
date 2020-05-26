@@ -920,6 +920,14 @@ int QuectelNcpClient::initReady(ModemState state) {
         int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
         // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
+        if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+            // Force eDRX mode to be disabled.
+            CHECK_PARSER(parser_.execCommand("AT+CEDRXS=0"));
+
+            // Disable Power Saving Mode
+            CHECK_PARSER(parser_.execCommand("AT+CPSMS=0"));
+        }
+
         // Select (U)SIM card in slot 1, EG91 has two SIM card slots
         if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E || \
             ncpId() == PLATFORM_NCP_QUECTEL_EG91_NA || \
@@ -1127,12 +1135,6 @@ int QuectelNcpClient::registerNet() {
         // Configure Network Category to be Searched under LTE RAT
         // Only use LTE Cat M1, take effect immediately
         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
-
-        // Force eDRX mode to be disabled.
-        CHECK_PARSER(parser_.execCommand("AT+CEDRXS=0"));
-
-        // Disable Power Saving Mode
-        CHECK_PARSER(parser_.execCommand("AT+CPSMS=0"));
     }
 
     r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
