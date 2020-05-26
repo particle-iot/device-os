@@ -238,6 +238,7 @@ public:
     }
 #endif // !HAL_USE_INET_HAL_POSIX
 
+#if !HAL_PLATFORM_NCP
     void setStaticIP(const IPAddress& host, const IPAddress& netmask,
         const IPAddress& gateway, const IPAddress& dns)
     {
@@ -248,6 +249,7 @@ public:
     {
         setIPAddressSource(STATIC_IP);
     }
+#endif //!HAL_PLATFORM_NCP
 
     void useDynamicIP()
     {
@@ -267,6 +269,7 @@ public:
 
     int getCredentials(WiFiAccessPoint* results, size_t result_count);
 
+#if !HAL_PLATFORM_NCP
     String hostname()
     {
         const size_t maxHostname = 64;
@@ -284,6 +287,8 @@ public:
     {
         return network_set_hostname(*this, 0, hostname, nullptr);
     }
+#endif //!HAL_PLATFORM_NCP
+
 };
 
 extern WiFiClass WiFi;
