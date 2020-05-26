@@ -197,6 +197,23 @@ os_result_t os_thread_delay_until(system_tick_t *previousWakeTime, system_tick_t
     return 0;
 }
 
+os_thread_notify_t os_thread_wait(system_tick_t ms, void* reserved)
+{
+    return ulTaskNotifyTake(pdTRUE, ms);
+}
+
+int os_thread_notify(os_thread_t thread, void* reserved)
+{
+    if (!HAL_IsISR()) {
+        return xTaskNotifyGive(static_cast<TaskHandle_t>(thread)) != pdTRUE;
+    } else {
+        BaseType_t woken = pdFALSE;
+        vTaskNotifyGiveFromISR(static_cast<TaskHandle_t>(thread), &woken);
+        portYIELD_FROM_ISR(woken);
+        return 0;
+    }
+}
+
 class ThreadQueue
 {
     QueueHandle_t queue;

@@ -310,6 +310,19 @@ ssize_t sock_recvmsg(int s, struct msghdr *message, int flags);
  *             accordingly.
  */
 ssize_t sock_sendmsg(int s, const struct msghdr *message, int flags);
+
+/**
+ * Send the data through the socket.
+ *
+ * @param[in]  s        a socket that has been created with sock_socket()
+ * @param      cmd      request code
+ * @param[in]  argp     request argument
+ *
+ * @retval  0  Success
+ * @retval -1  Error, errno is set appropriately.
+ */
+int sock_ioctl(int s, long cmd, void* argp);
+
 /**
  * @}
  *

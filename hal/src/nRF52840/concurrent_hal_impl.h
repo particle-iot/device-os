@@ -41,6 +41,8 @@ typedef uint8_t os_thread_prio_t;
 #define OS_THREAD_STACK_SIZE_DEFAULT_HIGH (4*1024)
 #define OS_THREAD_STACK_SIZE_DEFAULT_NETWORK (6*1024)
 
+typedef uint32_t os_thread_notify_t;
+
 typedef void* os_mutex_t;
 typedef void* os_mutex_recursive_t;
 typedef void* condition_variable_t;

@@ -29,6 +29,9 @@
 #include "timer_hal.h"
 #include "rng_hal.h"
 
+// FIXME:
+extern ActiveObjectThreadQueue SystemThread;
+
 void ActiveObjectBase::start_thread()
 {
     const auto r = os_thread_create(&_thread, "active_object", configuration.priority, run_active_object, this,
@@ -52,20 +55,25 @@ void ActiveObjectBase::run()
     // This ensures that rand() is properly seeded in the system thread
     srand(HAL_RNG_GetRandomNumber());
 
-    uint32_t last_background_run = 0;
+// FIXME: some other feature flag?
+#if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
     for (;;)
     {
-    	uint32_t now;
-        if (!process())
-		{
-        	configuration.background_task();
-        }
-        else if ((now=HAL_Timer_Get_Milli_Seconds())-last_background_run > configuration.take_wait)
-        {
-        	last_background_run = now;
-        	configuration.background_task();
+        process();
+        configuration.background_task();
+    }
+#else // !HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+    uint32_t last_background_run = 0;
+    for (;;) {
+        uint32_t now;
+        if (!process()) {
+            configuration.background_task();
+        } else if ((now=HAL_Timer_Get_Milli_Seconds())-last_background_run > configuration.take_wait) {
+               last_background_run = now;
+               configuration.background_task();
         }
     }
+#endif // !HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
 }
 
 bool ActiveObjectBase::process()
@@ -100,6 +108,10 @@ void ISRTaskQueue::enqueue(Task* task) {
         task->next = nullptr;
         lastTask_ = task;
     }
+// FIXME: some other feature flag?
+#if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+    SystemThread.notify();
+#endif // HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
 }
 
 bool ISRTaskQueue::process() {

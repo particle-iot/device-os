@@ -27,6 +27,9 @@
 #include "spark_wiring_ticks.h"
 #include <arpa/inet.h>
 #include "spark_wiring_cloud.h"
+#if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+#include "system_mode.h"
+#endif // HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
 
 namespace {
 
@@ -240,6 +243,13 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
         unsigned int keepalive = 0;
         system_cloud_get_inet_family_keepalive(a->ai_family, &keepalive);
         system_cloud_set_inet_family_keepalive(a->ai_family, keepalive, 1);
+
+#if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+        if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
+            auto thread = os_thread_current(nullptr);
+            sock_ioctl(s, SIOCSPGRP, (void*)&thread);
+        }
+#endif // HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
 
         break;
     }

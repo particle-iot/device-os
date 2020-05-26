@@ -1416,6 +1416,12 @@ void sys_unlock_tcpip_core(void);
  */
 #define LWIP_SOCKET_POLL                1
 
+/**
+ * LWIP_SOCKET_NOETIFY_THREAD==0 (default): enable SIOCSPGRP ioctl for
+ * sockets.
+ */
+#define LWIP_SOCKET_NOTIFY_THREAD       1
+
 /*
    ----------------------------------------
    ---------- Statistics options ----------

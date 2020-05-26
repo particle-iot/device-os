@@ -518,6 +518,11 @@ sys_thread_new(const char *name, lwip_thread_fn thread, void *arg, int stacksize
   return lwip_thread;
 }
 
+void sys_arch_thread_notify(void* thread)
+{
+  xTaskNotifyGive((TaskHandle_t)thread);
+}
+
 #if LWIP_NETCONN_SEM_PER_THREAD
 #if configNUM_THREAD_LOCAL_STORAGE_POINTERS > 0
 

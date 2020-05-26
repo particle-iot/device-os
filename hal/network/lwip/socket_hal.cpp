@@ -111,3 +111,7 @@ ssize_t sock_recvmsg(int s, struct msghdr *message, int flags) {
 ssize_t sock_sendmsg(int s, const struct msghdr *message, int flags) {
   return lwip_sendmsg(s, message, flags);
 }
+
+int sock_ioctl(int s, long cmd, void* argp) {
+  return lwip_ioctl(s, cmd, argp);
+}
