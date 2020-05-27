@@ -67,7 +67,11 @@ static const nrfx_spis_t m_spis2 = NRFX_SPIS_INSTANCE(2);
 
 static nrf5x_spi_info_t m_spi_map[TOTAL_SPI] = {
     {&m_spim3, NULL, APP_IRQ_PRIORITY_HIGH, PIN_INVALID, SCK, MOSI, MISO}, // TODO: SPI3 doesn't support SPI slave mode
+#if PLATFORM_ID == PLATFORM_TRACKER
+    {&m_spim2, &m_spis2, APP_IRQ_PRIORITY_HIGH, PIN_INVALID, SCK1, MOSI1, MISO1},
+#else
     {&m_spim2, &m_spis2, APP_IRQ_PRIORITY_HIGH, PIN_INVALID, D2, D3, D4},  // TODO: Change pin number
+#endif
 };
 
 static void spi_master_event_handler(nrfx_spim_evt_t const * p_event, void * p_context) {

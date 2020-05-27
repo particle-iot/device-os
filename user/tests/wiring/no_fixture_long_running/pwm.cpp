@@ -25,6 +25,8 @@ uint8_t pwm_pins[] = {
         ,
         A6
 # endif // PLATFORM_ID != PLATFORM_BSOM || !HAL_PLATFORM_POWER_MANAGEMENT
+#elif (PLATFORM_ID == PLATFORM_TRACKER) // Asset Tracker
+        D0, D1, D2, D3, D4, D5, D6, D7 /* , RGBR, RGBG, RGBB */
 #elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
         D2, D3, D4, D5, D6, /* D7, */ D8, A0, A1, A2, A3, A4, A5 /* , RGBR, RGBG, RGBB */
 #else
@@ -88,7 +90,13 @@ test(PWM_01_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
 
 test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
 #if HAL_PLATFORM_NRF52840
+#if PLATFORM_ID != PLATFORM_TRACKER
     pin_t pin = D0;  //pin under test, D0 is not a Timer channel
+#else
+    // There are no non-PWM pins that we can safely use
+    pin_t pin = PIN_INVALID;
+    skip();
+#endif
 #else
     pin_t pin = D5;  //pin under test, D5 is not a Timer channel
 #endif
@@ -102,7 +110,7 @@ test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
 }
 
 test(PWM_03_NoAnalogWriteWhenPinSelectedIsOutOfRange) {
-    pin_t pin = 51; // pin under test (not a valid user pin)
+    pin_t pin = TOTAL_PINS; // pin under test (not a valid user pin)
     // when
     pinMode(pin, OUTPUT); // will simply return
     analogWrite(pin, 100); // will simply return

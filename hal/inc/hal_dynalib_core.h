@@ -83,6 +83,9 @@ DYNALIB_FN(34, hal_core, HAL_Core_Execute_Standby_Mode_Ext, int(uint32_t, void*)
 DYNALIB_FN(35, hal_core, hal_sleep_validate_config, int(const hal_sleep_config_t*, void*))
 DYNALIB_FN(36, hal_core, hal_sleep_enter, int(const hal_sleep_config_t*, hal_wakeup_source_base_t**, void*))
 
+DYNALIB_FN(37, hal_core, hal_get_device_hw_version, int(uint32_t*, void*))
+DYNALIB_FN(38, hal_core, hal_get_device_hw_model, int(uint32_t*, uint32_t*, void*))
+
 DYNALIB_END(hal_core)
 
 #endif	/* HAL_DYNALIB_CORE_H */

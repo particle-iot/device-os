@@ -37,6 +37,9 @@
 #include "interrupts_hal.h"
 #include "concurrent_hal.h"
 #include "check.h"
+#if HAL_PLATFORM_EXTERNAL_RTC
+#include "exrtc_hal.h"
+#endif
 
 static int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_gpio_t* gpio) {
     switch(gpio->mode) {
@@ -60,7 +63,13 @@ static int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sourc
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (mode == HAL_SLEEP_MODE_HIBERNATE) {
+#if HAL_PLATFORM_EXTERNAL_RTC
+        if ((rtc->ms / 1000) == 0) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+#else
         return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -585,6 +594,20 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
 }
 
 static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
+#if HAL_PLATFORM_EXTERNAL_RTC
+    auto source = config->wakeup_sources;
+    while (source) {
+        if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+            time_t now = 0;
+            CHECK(now = hal_exrtc_get_unixtime(nullptr));
+            auto rtcWakeup = reinterpret_cast<hal_wakeup_source_rtc_t*>(source);
+            time_t alarm = now + rtcWakeup->ms / 1000;
+            CHECK(hal_exrtc_set_unix_alarm(alarm, nullptr, nullptr, nullptr));
+        }
+        source = source->next;
+    }
+ #endif
+
     // Make sure we acquire exflash lock BEFORE going into a critical section
     hal_exflash_lock();
 
@@ -658,6 +681,13 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
                 nrf_gpio_cfg_sense_input(nrfPin, wakeupPinMode, wakeupPinSense);
             }
         }
+#if HAL_PLATFORM_EXTERNAL_RTC
+        else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+            Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+            uint32_t nrfPin = NRF_GPIO_PIN_MAP(halPinMap[RTC_INT].gpio_port, halPinMap[RTC_INT].gpio_pin);
+            nrf_gpio_cfg_sense_input(nrfPin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+        }
+ #endif
         wakeupSource = wakeupSource->next;
     }
 

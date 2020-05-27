@@ -559,7 +559,9 @@ AppStateDescriptor DTLSMessageChannel::cached_app_state_descriptor() const
 
 }}
 
-#include "sys/time.h"
+// FIXME:
+#if !HAL_PLATFORM_FILESYSTEM
+#include <sys/time.h>
 
 extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
 {
@@ -574,5 +576,6 @@ extern "C" int _gettimeofday( struct timeval *tv, void *tzvp )
     tv->tv_usec = ( t % 1000 )*1000;  // get remaining microseconds
     return 0;  // return non-zero for error
 } // end _gettimeofday()
+#endif // HAL_PLATFORM_FILESYSTEM
 
 #endif // HAL_PLATFORM_CLOUD_UDP

@@ -36,6 +36,7 @@ const uint32_t DEVICE_ID_PREFIX = 0x68ce0fe0;
 const uintptr_t SERIAL_NUMBER_OTP_ADDRESS = 0x00000000;
 const uintptr_t DEVICE_SECRET_OTP_ADDRESS = 0x00000010;
 const uintptr_t HW_DATA_OTP_ADDRESS = 0x00000020;
+const uintptr_t HW_MODEL_OTP_ADDRESS = 0x00000024;
 
 } // namespace
 
@@ -92,6 +93,21 @@ int hal_get_device_hw_version(uint32_t* revision, void* reserved)
         return SYSTEM_ERROR_BAD_DATA;
     }
     *revision = hw_data[1];
+    return SYSTEM_ERROR_NONE;
+}
+
+int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved)
+{
+    // HW Model format: | Model Number LSB | Model Number MSB | Model Variant LSB | Model Variant MSB |
+    //                  |      byte 0      |      byte 1      |      byte 2       |      byte 3       |
+    uint8_t hw_model[4] = {};
+    int r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, HW_MODEL_OTP_ADDRESS, hw_model, 4);
+    if (r) {
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    // Model and variant values of 0xFFFF are acceptable
+    *model = ((uint32_t)hw_model[1] << 8) | (uint32_t)hw_model[0];
+    *variant = ((uint32_t)hw_model[3] << 8) | (uint32_t)hw_model[2];
     return SYSTEM_ERROR_NONE;
 }
 

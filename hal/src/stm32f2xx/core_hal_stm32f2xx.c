@@ -184,10 +184,6 @@ typedef struct Last_Reset_Info {
     uint32_t data;
 } Last_Reset_Info;
 
-typedef enum Feature_Flag {
-    FEATURE_FLAG_RESET_INFO = 0x01 // HAL_Feature::FEATURE_RESET_INFO
-} Feature_Flag;
-
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
@@ -377,8 +373,13 @@ void HAL_Core_Config(void)
 #endif
 
     // TODO: Use current LED theme
-    LED_SetRGBColor(RGB_COLOR_WHITE);
-    LED_On(LED_RGB);
+    if (HAL_Feature_Get(FEATURE_LED_OVERRIDDEN)) {
+        // Just in case
+        LED_Off(LED_RGB);
+    } else {
+        LED_SetRGBColor(RGB_COLOR_WHITE);
+        LED_On(LED_RGB);
+    }
 
     // override the WICED interrupts, specifically SysTick - there is a bug
     // where WICED isn't ready for a SysTick until after main() has been called to
@@ -403,6 +404,10 @@ void HAL_Core_Setup(void) {
 
     /* Reset system to disable IWDG if enabled in bootloader */
     IWDG_Reset_Enable(0);
+
+    if (HAL_Feature_Get(FEATURE_LED_OVERRIDDEN)) {
+        LED_Signaling_Start();
+    }
 
     HAL_Core_Setup_finalize();
 
@@ -1210,6 +1215,10 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
             return dct_write_app_data(&data, DCT_CLOUD_TRANSPORT_OFFSET, sizeof(data));
         }
 #endif // HAL_PLATFORM_CLOUD_UDP
+        case FEATURE_LED_OVERRIDDEN: {
+            // Inverted logic for this bit specifically
+            return Write_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, !enabled, NULL);
+        }
     }
     return -1;
 }
@@ -1242,6 +1251,14 @@ bool HAL_Feature_Get(HAL_Feature feature)
         {
             bool value = false;
             return (Read_Feature_Flag(FEATURE_FLAG_RESET_INFO, &value) == 0) ? value : false;
+        }
+        case FEATURE_LED_OVERRIDDEN: {
+            bool value = false;
+            if (Read_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, &value) == 0) {
+                // Inverted logic for this bit specifically
+                value = !value;
+            }
+            return value;
         }
     }
     return false;

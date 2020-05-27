@@ -25,7 +25,7 @@
 #include "random.h"
 #include "check.h"
 #include <malloc.h>
-#include "esp32_ncp_client.h"
+#include "network/ncp_client/esp32/esp32_ncp_client.h"
 #include "network/ncp/wifi/wifi_network_manager.h"
 #include "network/ncp/wifi/ncp.h"
 #include "debug.h"

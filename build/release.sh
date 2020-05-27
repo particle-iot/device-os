@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o errexit -o pipefail -o noclobber -o nounset
 
-VERSION="1.5.1"
+VERSION="1.5.3-tracker.1"
 
 function display_help ()
 {
@@ -9,7 +9,7 @@ function display_help ()
 usage: release.sh [--output-directory=<binary_output_directory>]
                   (--platform=<argon|asom|boron|bsom...
                   |b5som|electron|p1|photon>...
-                  | --platform-id=<6|8|10|12|13|22|23|25>)
+                  | --platform-id=<6|8|10|12|13|22|23|25|26>)
                   [--debug] [--help] [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
@@ -242,6 +242,10 @@ elif [ ! -z $PLATFORM ]; then
             PLATFORM_ID="25"
             GEN3=true
             ;;
+        "tracker")
+            PLATFORM_ID="26"
+            MESH=true
+            ;;
         *)
             echo "ERROR: No rules to release platform: \"$PLATFORM\"!"
             exit 6
@@ -280,6 +284,10 @@ else
         25)
             PLATFORM="b5som"
             GEN3=true
+            ;;
+        26)
+            PLATFORM="tracker"
+            MESH=true
             ;;
         *)
             echo "ERROR: No rules to release platform id: $PLATFORM_ID!"
@@ -379,7 +387,7 @@ elif [ $PLATFORM_ID -eq 10 ]; then
     done
 
 # GEN3
-elif [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ]; then
+elif [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ]; then
     # Configure
     if [ $DEBUG = true ]; then
         cd ../main

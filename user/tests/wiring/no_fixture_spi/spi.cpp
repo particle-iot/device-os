@@ -40,6 +40,8 @@ test(SPI_01_SPI_Begin_Without_Argument)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    assertEqual(info.ss_pin, D7);
 #else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
 #endif
@@ -61,6 +63,8 @@ test(SPI_02_SPI_Begin_With_Ss_Pin)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    assertEqual(info.ss_pin, D7);
 #else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
 #endif
@@ -109,6 +113,8 @@ test(SPI_03_SPI_Begin_With_Mode)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin,D8);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    assertEqual(info.ss_pin, D7);
 #else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
 #endif
@@ -126,6 +132,8 @@ test(SPI_03_SPI_Begin_With_Mode)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    assertEqual(info.ss_pin, D7);
 #else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
 #endif
@@ -148,6 +156,8 @@ test(SPI_04_SPI_Begin_With_Master_Ss_Pin)
     assertEqual(info.ss_pin, D14);
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     assertEqual(info.ss_pin, D8);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    assertEqual(info.ss_pin, D7);
 #else // Photon, P1 and Electron
     assertEqual(info.ss_pin, A2);
 #endif
@@ -408,7 +418,7 @@ constexpr unsigned int SPI_ITERATIONS = 10000;
 
 #if HAL_PLATFORM_NRF52840
 constexpr unsigned int SPI_CLOCK_SPEED = 8000000; // 8MHz
-constexpr unsigned int SPI_NODMA_OVERHEAD = 11800; // 12us ~= 750 clock cycles @ 64MHz
+constexpr unsigned int SPI_NODMA_OVERHEAD = 12000; // 12us ~= 750 clock cycles @ 64MHz
 constexpr unsigned int SPI_DMA_OVERHEAD = SPI_NODMA_OVERHEAD; // Gen 3 always uses DMA underneath
 #elif HAL_PLATFORM_STM32F2XX
 constexpr unsigned int SPI_CLOCK_SPEED = 7500000; // 7.5MHz

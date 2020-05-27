@@ -32,7 +32,7 @@ const module_bounds_t module_ota = {
 
     };
 
-STATIC_ASSERT(Expected_OTA_region_at_end_of_external_flash, (EXTERNAL_FLASH_OTA_XIP_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH)==0x12400000);
+STATIC_ASSERT(Expected_OTA_region_at_end_of_external_flash, (EXTERNAL_FLASH_OTA_XIP_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH) == EXTERNAL_FLASH_XIP_ADDRESS_END);
 
 
 // Modular firmware

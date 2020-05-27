@@ -1,3 +1,31 @@
+## 1.5.3-tracker.1
+
+### FEATURES
+
+- [Gen 3] Add API to read OTP hardware version and model information
+- [Asset Tracker] Alternate I2C interface on D8/D9
+
+### ENHANCEMENTS
+
+- [Asset Tracker] Improve external RTC accuracy
+
+### BUGFIXES
+
+- [Asset Tracker] Hardware flow control should not be disable for revision 0 devices
+- [Asset Tracker] Suspend program/erase opertion when QSPI flash init gives timeout error
+
+## 1.5.2
+
+### BUGFIXES
+
+- [Boron / B SoM] LTE-M1 (SARA R4) radio unresponsive when sending certain amount of data within a period of time [#2100](https://github.com/particle-iot/device-os/pull/2100) [#2105](https://github.com/particle-iot/device-os/pull/2105)
+- [B5 SoM] Suspend program/erase opertion when QSPI flash init gives timeout error
+
+### ENHANCEMENTS
+
+- [Boron/B SoM] Forward compatibility with 460800 baudrate on SARA R4-based devices to support >= 2.x downgrades [#2104](https://github.com/particle-iot/device-os/pull/2104)
+- [Boron/B SoM] Enables hardware flow control on SARA R4-based devices with appropriate modem firmware version [#2079](https://github.com/particle-iot/device-os/pull/2079) [cc7adb7c46ea82383a5f948ea1dc898270a27a3c](https://github.com/particle-iot/device-os/commit/cc7adb7c46ea82383a5f948ea1dc898270a27a3c)
+
 ## 1.5.1
 
 ### ENHANCEMENTS
@@ -57,6 +85,47 @@
 - [system] `firmware_update_failed` and `firmware_update_complete` are mixed up [71a8eb56f8d34efbda46f5d547c92e32a42a2148](https://github.com/particle-iot/device-os/commit/71a8eb56f8d34efbda46f5d547c92e32a42a2148)
 - [system] Do not propagate non-critical network errors to communication layer [ba6c9d863ed79cd036848329c3b89b3c0e84dbd0](https://github.com/particle-iot/device-os/commit/ba6c9d863ed79cd036848329c3b89b3c0e84dbd0)
 - [Gen 3] Fix a crash in `netif_ext_callback_handler()` when parsing unset event fields [dd01b12ea6166b6b175c46348a2b4c180d779ead](https://github.com/particle-iot/device-os/commit/dd01b12ea6166b6b175c46348a2b4c180d779ead)
+
+## 1.5.1-tracker.3
+
+### BUGFIXES
+
+- [Asset Tracker] Use `EXTERNAL_FLASH_SIZE` in address check used before erasing OTA region #287
+
+## 1.5.1-tracker.2
+
+### FEATURES
+
+- [Asset Tracker] Persistent feature flag (`FEATURE_FLAG_LED_OVERRIDDEN`) for taking over control of the RGB LED from the system #285
+
+### ENHANCEMENTS
+
+- [Asset Tracker] Increase SPI clock speed for IO expander #281
+- [Argon] Increase the size of the ARP queue [#2075](https://github.com/particle-iot/device-os/pull/2075)
+- [Cellular] Increase registration timeout to 10 minutes [#2072](https://github.com/particle-iot/device-os/pull/2072)
+- [Electron / Boron] Make sure that SARA R4-based LTE devices report LTE Cat M1 access technology [#2083](https://github.com/particle-iot/device-os/pull/2083)
+
+### BUGFIXES
+
+- [Asset Tracker] Update pinmap #282
+- [Asset Tracker] Fix `analogRead()` not functioning #283
+- [Asset Tracker] Fix OTA section and filesystem overlap #286
+- [Cellular] Fixes an issue with CGI (Cellular Global Identity) not available on some devices [#2067](https://github.com/particle-iot/device-os/pull/2067)
+- [Electron] Compatibility CellularSignal `rssi` and `qual` values generation for LTE devices using `AT+UCGED` [#2070](https://github.com/particle-iot/device-os/pull/2070)
+- [B5 SoM / Asset Tracker] Zero RSRP/RSRQ values from `AT+QCSQ` treated as errors [#2078](https://github.com/particle-iot/device-os/pull/2078)
+- [wiring] BLE: use `delete` for objects allocated with `new` [#2081](https://github.com/particle-iot/device-os/pull/2081)
+- [Gen 3] I2C HAL recovers the I2C bus on transmission errors [#2084](https://github.com/particle-iot/device-os/pull/2084)
+- [Gen 3] Devices should be able to enter STANDBY / Hibernate sleep mode without specifying any wake-up sources [#2086](https://github.com/particle-iot/device-os/pull/2086)
+
+### INTERNAL
+
+- [Asset Tracker] Add `SPI1` stress tests #284
+
+## 1.5.1-tracker.1
+
+### FEATURES
+
+- Platform support for Asset Tracker SoM (`tracker` platform id 26)
 
 ## 1.5.0
 

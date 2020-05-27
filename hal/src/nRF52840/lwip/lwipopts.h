@@ -1332,6 +1332,7 @@ void sys_unlock_tcpip_core(void);
  * re implement read/write/close/ioctl/fnctl to send the requested action to the right
  * library (sharing select will need more work though).
  */
+// FIXME: increasing requires some additional work to handle select()
 #define LWIP_SOCKET_OFFSET              0
 
 /**

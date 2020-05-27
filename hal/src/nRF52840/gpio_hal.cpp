@@ -24,6 +24,16 @@
 #include "check.h"
 #include "system_error.h"
 
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_MCP23S17
+#include "mcp23s17.h"
+#endif
+#if HAL_PLATFORM_DEMUX
+#include "demux.h"
+#endif
+using namespace particle;
+#endif
+
 inline bool is_valid_pin(pin_t pin) __attribute__((always_inline));
 inline bool is_valid_pin(pin_t pin) {
     return pin < TOTAL_PINS;
@@ -54,62 +64,101 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
     CHECK_TRUE(is_valid_pin(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint32_t nrfPin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
     PinMode mode = conf ? conf->mode : PIN_MODE_NONE;
 
-    // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
-    if (mode != PIN_MODE_NONE) {
-        HAL_Set_Pin_Function(pin, PF_DIO);
-    } else {
-        HAL_Set_Pin_Function(pin, PF_NONE);
-    }
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
+#endif
+        uint32_t nrfPin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
-    // Pre-set the output value if requested to avoid a glitch
-    if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN)) {
-        if (conf->value) {
-            nrf_gpio_pin_set(nrfPin);
+        // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
+        if (mode != PIN_MODE_NONE) {
+            HAL_Set_Pin_Function(pin, PF_DIO);
         } else {
-            nrf_gpio_pin_clear(nrfPin);
+            HAL_Set_Pin_Function(pin, PF_NONE);
         }
-    }
 
-    switch (mode) {
-        case OUTPUT: {
-            nrf_gpio_cfg_output(nrfPin);
-            break;
+        // Pre-set the output value if requested to avoid a glitch
+        if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN)) {
+            if (conf->value) {
+                nrf_gpio_pin_set(nrfPin);
+            } else {
+                nrf_gpio_pin_clear(nrfPin);
+            }
         }
-        case INPUT: {
-            nrf_gpio_cfg_input(nrfPin, NRF_GPIO_PIN_NOPULL);
-            break;
-        }
-        case INPUT_PULLUP: {
-            nrf_gpio_cfg_input(nrfPin, NRF_GPIO_PIN_PULLUP);
-            break;
-        }
-        case INPUT_PULLDOWN: {
-            nrf_gpio_cfg_input(nrfPin, NRF_GPIO_PIN_PULLDOWN);
-            break;
-        }
-        case OUTPUT_OPEN_DRAIN: {
-            nrf_gpio_cfg(nrfPin,
-                    NRF_GPIO_PIN_DIR_OUTPUT,
-                    NRF_GPIO_PIN_INPUT_DISCONNECT,
-                    NRF_GPIO_PIN_NOPULL,
-                    NRF_GPIO_PIN_H0D1, // High drive up to 5mA
-                    NRF_GPIO_PIN_NOSENSE);
-            break;
-        }
-        case PIN_MODE_NONE: {
-            nrf_gpio_cfg_default(nrfPin);
-            break;
-        }
-        default: {
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
-        }
-    }
 
-    PIN_MAP[pin].pin_mode = mode;
+        switch (mode) {
+            case OUTPUT: {
+                nrf_gpio_cfg_output(nrfPin);
+                break;
+            }
+            case INPUT: {
+                nrf_gpio_cfg_input(nrfPin, NRF_GPIO_PIN_NOPULL);
+                break;
+            }
+            case INPUT_PULLUP: {
+                nrf_gpio_cfg_input(nrfPin, NRF_GPIO_PIN_PULLUP);
+                break;
+            }
+            case INPUT_PULLDOWN: {
+                nrf_gpio_cfg_input(nrfPin, NRF_GPIO_PIN_PULLDOWN);
+                break;
+            }
+            case OUTPUT_OPEN_DRAIN: {
+                nrf_gpio_cfg(nrfPin,
+                        NRF_GPIO_PIN_DIR_OUTPUT,
+                        NRF_GPIO_PIN_INPUT_DISCONNECT,
+                        NRF_GPIO_PIN_NOPULL,
+                        NRF_GPIO_PIN_H0D1, // High drive up to 5mA
+                        NRF_GPIO_PIN_NOSENSE);
+                break;
+            }
+            case PIN_MODE_NONE: {
+                nrf_gpio_cfg_default(nrfPin);
+                break;
+            }
+            default: {
+                return SYSTEM_ERROR_INVALID_ARGUMENT;
+            }
+        }
+
+        PIN_MAP[pin].pin_mode = mode;
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    }
+#if HAL_PLATFORM_MCP23S17
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+        CHECK_TRUE(mode == INPUT || mode == INPUT_PULLUP || mode == OUTPUT, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+        // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
+        if (mode != PIN_MODE_NONE) {
+            HAL_Set_Pin_Function(pin, PF_DIO);
+        } else {
+            HAL_Set_Pin_Function(pin, PF_NONE);
+        }
+
+        // Pre-set the output value if requested to avoid a glitch
+        if (conf->set_value && mode == OUTPUT) {
+            CHECK(Mcp23s17::getInstance().writePinValue(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, conf->value));
+        }
+
+        CHECK(Mcp23s17::getInstance().setPinMode(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, mode));
+        PIN_MAP[pin].pin_mode = mode;
+    }
+#endif // HAL_PLATFORM_MCP23S17
+#if HAL_PLATFORM_DEMUX
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
+        CHECK_TRUE(mode == OUTPUT, SYSTEM_ERROR_INVALID_ARGUMENT);
+        if (conf->set_value) {
+            Demux::getInstance().write(PIN_MAP[pin].gpio_pin, conf->value);
+        }
+        PIN_MAP[pin].pin_mode = mode;
+    }
+#endif // HAL_PLATFORM_DEMUX
+    else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+#endif
 
     return 0;
 }
@@ -151,18 +200,35 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value) {
     }
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
-    // PWM have conflict with GPIO OUTPUT mode on nRF52
-    if (PIN_MAP[pin].pin_func == PF_PWM) {
-        HAL_Pin_Mode(pin, OUTPUT);
-    }
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
+#endif
+        uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
-    if(value == 0) {
-        nrf_gpio_pin_clear(nrf_pin);
-    } else {
-        nrf_gpio_pin_set(nrf_pin);
+        // PWM have conflict with GPIO OUTPUT mode on nRF52
+        if (PIN_MAP[pin].pin_func == PF_PWM) {
+            HAL_Pin_Mode(pin, OUTPUT);
+        }
+
+        if(value == 0) {
+            nrf_gpio_pin_clear(nrf_pin);
+        } else {
+            nrf_gpio_pin_set(nrf_pin);
+        }
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     }
+#if HAL_PLATFORM_MCP23S17
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+        Mcp23s17::getInstance().writePinValue(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, value);
+    }
+#endif
+#if HAL_PLATFORM_DEMUX
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
+        Demux::getInstance().write(PIN_MAP[pin].gpio_pin, value);
+    }
+#endif
+#endif
 }
 
 /*
@@ -174,18 +240,50 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
     }
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
-    if ((PIN_MAP[pin].pin_mode == INPUT) ||
-        (PIN_MAP[pin].pin_mode == INPUT_PULLUP) ||
-        (PIN_MAP[pin].pin_mode == INPUT_PULLDOWN))
-    {
-        return nrf_gpio_pin_read(nrf_pin);
-    } else if (PIN_MAP[pin].pin_mode == OUTPUT || PIN_MAP[pin].pin_mode == OUTPUT_OPEN_DRAIN) {
-        return nrf_gpio_pin_out_read(nrf_pin);
-    } else {
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
+#endif
+        uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
+
+        if ((PIN_MAP[pin].pin_mode == INPUT) ||
+            (PIN_MAP[pin].pin_mode == INPUT_PULLUP) ||
+            (PIN_MAP[pin].pin_mode == INPUT_PULLDOWN))
+        {
+            return nrf_gpio_pin_read(nrf_pin);
+        } else if (PIN_MAP[pin].pin_mode == OUTPUT || PIN_MAP[pin].pin_mode == OUTPUT_OPEN_DRAIN) {
+            return nrf_gpio_pin_out_read(nrf_pin);
+        } else {
+            return 0;
+        }
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    }
+#if HAL_PLATFORM_MCP23S17
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+        if ((PIN_MAP[pin].pin_mode == INPUT) ||
+            (PIN_MAP[pin].pin_mode == INPUT_PULLUP) ||
+            (PIN_MAP[pin].pin_mode == OUTPUT)) {
+            uint8_t value = 0x00;
+            Mcp23s17::getInstance().readPinValue(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, &value);
+            return value;
+        } else if (PIN_MAP[pin].pin_mode == OUTPUT) {
+            // TODO: read output value
+        } else {
+            return 0;
+        }
+    }
+#endif
+#if HAL_PLATFORM_DEMUX
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_DEMUX) {
+        return Demux::getInstance().read(PIN_MAP[pin].gpio_pin);
+    }
+#endif
+    else {
         return 0;
     }
+#endif
+
+    return 0;
 }
 
 /*
@@ -194,7 +292,6 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
 *          returns 0 on 3 second timeout error, or invalid pin.
 */
 uint32_t HAL_Pulse_In(pin_t pin, uint16_t value) {
-
     #define FAST_READ(pin)  ((reg->IN >> pin) & 1UL)
 
     if (!is_valid_pin(pin)) {
@@ -202,39 +299,48 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value) {
     }
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
-    NRF_GPIO_Type *reg = nrf_gpio_pin_port_decode(&nrf_pin);
 
-    volatile uint32_t timeout_start = SYSTEM_TICK_COUNTER;
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
+#endif
+        uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
+        NRF_GPIO_Type *reg = nrf_gpio_pin_port_decode(&nrf_pin);
 
-    /* If already on the value we want to measure, wait for the next one.
-     * Time out after 3 seconds so we don't block the background tasks
-     */
-    // while (nrf_gpio_pin_read(gpio_pin_map) == value)
-    while (FAST_READ(nrf_pin) == value) {
-        if (SYSTEM_TICK_COUNTER - timeout_start > 192000000UL) {
-            return 0;
+        volatile uint32_t timeout_start = SYSTEM_TICK_COUNTER;
+
+        /* If already on the value we want to measure, wait for the next one.
+        * Time out after 3 seconds so we don't block the background tasks
+        */
+        // while (nrf_gpio_pin_read(gpio_pin_map) == value)
+        while (FAST_READ(nrf_pin) == value) {
+            if (SYSTEM_TICK_COUNTER - timeout_start > 192000000UL) {
+                return 0;
+            }
         }
-    }
 
-    /* Wait until the start of the pulse.
-     * Time out after 3 seconds so we don't block the background tasks
-     */
-    while (FAST_READ(nrf_pin) != value) {
-        if (SYSTEM_TICK_COUNTER - timeout_start > 192000000UL) {
-            return 0;
+        /* Wait until the start of the pulse.
+        * Time out after 3 seconds so we don't block the background tasks
+        */
+        while (FAST_READ(nrf_pin) != value) {
+            if (SYSTEM_TICK_COUNTER - timeout_start > 192000000UL) {
+                return 0;
+            }
         }
-    }
 
-    /* Wait until this value changes, this will be our elapsed pulse width.
-     * Time out after 3 seconds so we don't block the background tasks
-     */
-    volatile uint32_t pulse_start = SYSTEM_TICK_COUNTER;
-    while (FAST_READ(nrf_pin) == value) {
-        if (SYSTEM_TICK_COUNTER - timeout_start > 192000000UL) {
-            return 0;
+        /* Wait until this value changes, this will be our elapsed pulse width.
+        * Time out after 3 seconds so we don't block the background tasks
+        */
+        volatile uint32_t pulse_start = SYSTEM_TICK_COUNTER;
+        while (FAST_READ(nrf_pin) == value) {
+            if (SYSTEM_TICK_COUNTER - timeout_start > 192000000UL) {
+                return 0;
+            }
         }
-    }
 
-    return (SYSTEM_TICK_COUNTER - pulse_start) / SYSTEM_US_TICKS;
+        return (SYSTEM_TICK_COUNTER - pulse_start) / SYSTEM_US_TICKS;
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    } else {
+        return 0;
+    }
+#endif
 }

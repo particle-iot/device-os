@@ -190,7 +190,7 @@ test(THREAD_07_particle_process_behavior_when_threading_enabled)
 	assertEqual((int)test_val_fn1, 1);
 	// Unblock system thread
 	test_val = 0;
-	HAL_Delay_Milliseconds(500);
+	HAL_Delay_Milliseconds(5000);
 	assertFalse(Particle.connected());
 }
 

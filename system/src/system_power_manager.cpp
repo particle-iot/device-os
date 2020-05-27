@@ -302,6 +302,9 @@ void PowerManager::loop(void* arg) {
     }
 
     // IMPORTANT: attach the interrupt handler first
+#if HAL_PLATFORM_PMIC_INT_PIN_PRESENT
+    attachInterrupt(PMIC_INT, &PowerManager::isrHandler, FALLING);
+#endif
     attachInterrupt(LOW_BAT_UC, &PowerManager::isrHandler, FALLING);
     self->initDefault();
     FuelGauge fuel(true);

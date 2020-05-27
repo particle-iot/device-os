@@ -35,7 +35,11 @@ static const pin_t pin = A0, pin2 = A1;
 
 test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
 #if HAL_PLATFORM_NRF52840
+# if PLATFORM_ID == PLATFORM_TRACKER
+    pin_t pin = BTN;
+# else
     pin_t pin = D0;
+# endif
 #else
     pin_t pin = D5;
 #endif

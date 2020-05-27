@@ -34,7 +34,8 @@ typedef enum {
     HAL_EXFLASH_COMMAND_NONE            = 0,
     HAL_EXFLASH_COMMAND_LOCK_ENTIRE_OTP = 1,
     HAL_EXFLASH_COMMAND_SLEEP           = 2,
-    HAL_EXFLASH_COMMAND_WAKEUP          = 3
+    HAL_EXFLASH_COMMAND_WAKEUP          = 3,
+    HAL_EXFLASH_COMMAND_SUSPEND_PGMERS  = 4
 } hal_exflash_command_t;
 
 int hal_exflash_init(void);
