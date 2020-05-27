@@ -344,7 +344,7 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
 
 #if PLATFORM_ID == PLATFORM_TRACKER
     /*
-     * On Asset Tracker both I2C_INTERFACE1 and I2C_INTERFACE3 use the same peripheral - m_twim0,
+     * On Tracker both I2C_INTERFACE1 and I2C_INTERFACE3 use the same peripheral - m_twim0,
      * but on different pins. We cannot enable both of them at the same time.
      */
     if (i2c == HAL_I2C_INTERFACE1 || i2c == HAL_I2C_INTERFACE3) {
@@ -356,7 +356,7 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
         }
     }
     /*
-     * On Asset Tracker both I2C_INTERFACE3 and USART_SERIAL1 use the same pins - D8 and D9,
+     * On Tracker both I2C_INTERFACE3 and USART_SERIAL1 use the same pins - D8 and D9,
      * We cannot enable both of them at the same time.
      */
     if (i2c == HAL_I2C_INTERFACE3) {

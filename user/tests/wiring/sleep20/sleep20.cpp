@@ -92,7 +92,7 @@ test(04_System_Sleep_Mode_Deep_Wakeup_By_WKP_Pin) {
 
         SleepResult result = {};
 
-// Asset Tracker support waking up device from hibernate mode by external RTC
+// Tracker support waking up device from hibernate mode by external RTC
 #if PLATFORM_ID != PLATFORM_TRACKER
         result = System.sleep(SLEEP_MODE_DEEP, 3s);
         assertNotEqual(result.error(), SYSTEM_ERROR_NONE); // Gen3 doesn't support RTC wakeup source.
@@ -106,7 +106,7 @@ test(04_System_Sleep_Mode_Deep_Wakeup_By_WKP_Pin) {
     }
 }
 
-// Asset Tracker support waking up device from hibernate mode by external RTC
+// Tracker support waking up device from hibernate mode by external RTC
 #if PLATFORM_ID == PLATFORM_TRACKER
 test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_External_Rtc) {
     if (phase == 0xbeef0003) {
