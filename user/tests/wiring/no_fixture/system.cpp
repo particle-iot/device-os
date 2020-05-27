@@ -25,17 +25,17 @@ test(SYSTEM_02_version)
     uint32_t versionNumber = System.versionNumber();
     // Serial.println(System.versionNumber()); // 16908417 -> 0x01020081
     // Serial.println(System.version().c_str()); // 1.2.0-rc.1
-    char expected[20];
+    char expected[64] = {};
     // Order of testing here is important to retain
-    if ((SYSTEM_VERSION & 0xFF) == 0xFF) {
+    if ((versionNumber & 0xFF) == 0xFF) {
         sprintf(expected, "%d.%d.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1));
-    } else if ((SYSTEM_VERSION & 0xC0) == 0x00) {
+    } else if ((versionNumber & 0xC0) == 0x00) {
         sprintf(expected, "%d.%d.%d-alpha.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0) & 0x3F);
-    } else if ((SYSTEM_VERSION & 0xC0) == 0x40) {
+    } else if ((versionNumber & 0xC0) == 0x40) {
         sprintf(expected, "%d.%d.%d-beta.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0) & 0x3F);
-    } else if ((SYSTEM_VERSION & 0xC0) == 0x80) {
+    } else if ((versionNumber & 0xC0) == 0x80) {
         sprintf(expected, "%d.%d.%d-rc.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0) & 0x3F);
-    } else if ((SYSTEM_VERSION & 0xC0) >= 0xC0) {
+    } else if ((versionNumber & 0xC0) >= 0xC0) {
         Serial.println("expected \"alpha\", \"beta\", \"rc\", or \"default\" version!");
         fail();
     }
