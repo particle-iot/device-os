@@ -18,7 +18,6 @@
 #define NO_STATIC_ASSERT
 #include "ifapi.h"
 #include "wiznet/wiznetif.h"
-#include "nat64.h"
 #include <mutex>
 #include <memory>
 #include <nrf52840.h>
@@ -35,7 +34,6 @@
 
 using namespace particle;
 using namespace particle::net;
-using namespace particle::net::nat;
 
 namespace particle {
 

@@ -244,7 +244,7 @@ elif [ ! -z $PLATFORM ]; then
             ;;
         "tracker")
             PLATFORM_ID="26"
-            MESH=true
+            GEN3=true
             ;;
         *)
             echo "ERROR: No rules to release platform: \"$PLATFORM\"!"
@@ -287,7 +287,7 @@ else
             ;;
         26)
             PLATFORM="tracker"
-            MESH=true
+            GEN3=true
             ;;
         *)
             echo "ERROR: No rules to release platform id: $PLATFORM_ID!"

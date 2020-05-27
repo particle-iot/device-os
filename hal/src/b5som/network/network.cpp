@@ -17,7 +17,6 @@
 
 #include "ifapi.h"
 #include "wiznet/wiznetif.h"
-#include "nat64.h"
 #include <mutex>
 #include <nrf52840.h>
 #include "random.h"
@@ -33,7 +32,6 @@
 
 using namespace particle;
 using namespace particle::net;
-using namespace particle::net::nat;
 
 namespace {
 
