@@ -25,7 +25,7 @@ uint8_t pwm_pins[] = {
         ,
         A6
 # endif // PLATFORM_ID != PLATFORM_BSOM || !HAL_PLATFORM_POWER_MANAGEMENT
-#elif (PLATFORM_ID == PLATFORM_TRACKER) // Asset Tracker
+#elif (PLATFORM_ID == PLATFORM_TRACKER)
         D0, D1, D2, D3, D4, D5, D6, D7 /* , RGBR, RGBG, RGBB */
 #elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
         D2, D3, D4, D5, D6, /* D7, */ D8, A0, A1, A2, A3, A4, A5 /* , RGBR, RGBG, RGBB */

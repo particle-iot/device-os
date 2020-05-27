@@ -754,7 +754,7 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer* rxBuffer, Ring_Buffer*
 void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void*) {
 #if PLATFORM_ID == PLATFORM_TRACKER
     /*
-     * On Asset Tracker both I2C_INTERFACE3 and USART_SERIAL1 use the same pins - D8 and D9,
+     * On Tracker both I2C_INTERFACE3 and USART_SERIAL1 use the same pins - D8 and D9,
      * We cannot enable both of them at the same time.
      */
     if (serial == HAL_USART_SERIAL1) {
