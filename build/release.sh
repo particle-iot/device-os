@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o errexit -o pipefail -o noclobber -o nounset
 
-VERSION="1.5.3-tracker.1"
+VERSION="2.0.0-alpha.1"
 
 function display_help ()
 {

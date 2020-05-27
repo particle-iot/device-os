@@ -1,7 +1,7 @@
-VERSION_STRING = 1.5.3-tracker.1
+VERSION_STRING = 2.0.0-alpha.1
 
 # PRODUCT_FIRMWARE_VERSION reported by default
 # FIXME: Unclear if this is used, PRODUCT_FIRMWARE_VERSION defaults to 65535 every release
-VERSION = 1513
+VERSION = 2000
 
 CFLAGS += -DSYSTEM_VERSION_STRING=$(VERSION_STRING)
