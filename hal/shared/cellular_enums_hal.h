@@ -67,7 +67,7 @@ typedef struct {
     char meid[18+1];    //!< Mobile Equipment IDentifier
     char manu[16];      //!< Manufacturer (u-blox)
     char model[16];     //!< Model Name (LISA-U200, LISA-C200 or SARA-G350)
-    char ver[16];       //!< Software Version
+    char ver[16+1];       //!< Software Version
 } DevStatus;
 //! Registration Status
 typedef enum {
