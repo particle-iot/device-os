@@ -120,8 +120,8 @@ SessionPersist::RestoreStatus SessionPersist::restore(mbedtls_ssl_context* conte
 		context->in_epoch = in_epoch;
 		memcpy(context->cur_out_ctr, &out_ctr, sizeof(out_ctr));
 		memcpy(context->handshake->randbytes, randbytes, sizeof(randbytes));
-		context->transform_negotiate->ciphersuite_info = mbedtls_ssl_ciphersuite_from_id(ciphersuite);
-		if (!context->transform_negotiate->ciphersuite_info)
+		const auto ciphersuiteInfo = mbedtls_ssl_ciphersuite_from_id(ciphersuite);
+		if (!ciphersuiteInfo)
 		{
 			LOG(ERROR,"unknown ciphersuite with id %d", ciphersuite);
 			return ERROR;
