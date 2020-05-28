@@ -29,7 +29,7 @@
 #include "platforms.h"
 #include "assert.h"
 
-#define HAL_SLEEP_VERSION 2
+#define HAL_SLEEP_VERSION 3
 
 #ifdef __cplusplus
 extern "C" {

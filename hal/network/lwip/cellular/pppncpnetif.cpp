@@ -256,22 +256,21 @@ void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
         self->client_.setAuth(cev.user, cev.password);
     } else if (ev.type == NcpEvent::POWER_STATE_CHANGED) {
         const auto& cev = static_cast<const NcpPowerStateChangedEvent&>(ev);
-        if_event evt = {};
-        struct if_event_power_state ev_if_power_state = {};
-        evt.ev_len = sizeof(if_event);
-        evt.ev_type = IF_EVENT_POWER_STATE;
-        evt.ev_power_state = &ev_if_power_state;
-        if (cev.state == NcpPowerState::ON) {
-            evt.ev_power_state->state = IF_POWER_STATE_UP;
-            LOG(TRACE, "NCP power state changed: IF_POWER_STATE_UP");
-        } else if (cev.state == NcpPowerState::OFF) {
-            evt.ev_power_state->state = IF_POWER_STATE_DOWN;
-            LOG(TRACE, "NCP power state changed: IF_POWER_STATE_DOWN");
-        } else {
-            evt.ev_power_state->state = IF_POWER_STATE_NONE;
-            LOG(WARN, "NCP power state changed: IF_POWER_STATE_NONE");
+        if (cev.state != NcpPowerState::UNKNOWN) {
+            if_event evt = {};
+            struct if_event_power_state ev_if_power_state = {};
+            evt.ev_len = sizeof(if_event);
+            evt.ev_type = IF_EVENT_POWER_STATE;
+            evt.ev_power_state = &ev_if_power_state;
+            if (cev.state == NcpPowerState::ON) {
+                evt.ev_power_state->state = IF_POWER_STATE_UP;
+                LOG(TRACE, "NCP power state changed: IF_POWER_STATE_UP");
+            } else {
+                evt.ev_power_state->state = IF_POWER_STATE_DOWN;
+                LOG(TRACE, "NCP power state changed: IF_POWER_STATE_DOWN");
+            }
+            if_notify_event(self->interface(), &evt, nullptr);
         }
-        if_notify_event(self->interface(), &evt, nullptr);
     }
 }
 

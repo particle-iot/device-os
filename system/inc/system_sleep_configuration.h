@@ -88,6 +88,9 @@ public:
     }
 
     EnumFlags<SystemSleepNetworkFlag> networkFlags(network_interface_index index) const {
+        if (config_->version < HAL_SLEEP_VERSION) {
+            return EnumFlags<SystemSleepNetworkFlag>(SystemSleepNetworkFlag::NONE);
+        }
         auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK);
         while (wakeup) {
             auto networkWakeup = reinterpret_cast<const hal_wakeup_source_network_t*>(wakeup);

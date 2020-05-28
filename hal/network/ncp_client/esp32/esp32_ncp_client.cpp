@@ -207,7 +207,7 @@ NcpState Esp32NcpClient::ncpState() {
     return ncpState_;
 }
 
-NcpPowerState SaraNcpClient::ncpPowerState() {
+NcpPowerState Esp32NcpClient::ncpPowerState() {
     return pwrState_;
 }
 
@@ -609,7 +609,7 @@ void Esp32NcpClient::ncpState(NcpState state) {
     }
 }
 
-void SaraNcpClient::ncpPowerState(NcpPowerState state) {
+void Esp32NcpClient::ncpPowerState(NcpPowerState state) {
     pwrState_ = state;
     const auto handler = conf_.eventHandler();
     if (handler) {

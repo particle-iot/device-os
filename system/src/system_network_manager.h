@@ -115,7 +115,7 @@ private:
         if_t iface = nullptr;
         std::atomic<ProtocolState> ip4State;
         std::atomic<ProtocolState> ip6State;
-        volatile std::atomic_bool on;
+        std::atomic_bool on;
     };
 
     void transition(State state);

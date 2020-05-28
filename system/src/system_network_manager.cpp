@@ -544,9 +544,6 @@ void NetworkManager::handleIfPowerState(if_t iface, const struct if_event* ev) {
         state->on = true;
     } else if (ev->ev_power_state->state == IF_POWER_STATE_DOWN) {
         state->on = false;
-    } else {
-        // FIXME: assume it to be off?
-        state->on = false;
     }
 }
 

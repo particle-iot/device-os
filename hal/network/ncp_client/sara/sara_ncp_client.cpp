@@ -1461,6 +1461,9 @@ void SaraNcpClient::ncpState(NcpState state) {
 }
 
 void SaraNcpClient::ncpPowerState(NcpPowerState state) {
+    if (pwrState_ == state) {
+        return;
+    }
     pwrState_ = state;
     const auto handler = conf_.eventHandler();
     if (handler) {
@@ -1749,12 +1752,16 @@ int SaraNcpClient::modemPowerOff() {
 int SaraNcpClient::modemSoftPowerOff() {
     if (modemPowerState()) {
         LOG(TRACE, "Powering modem off using AT command");
-        int r = CHECK_PARSER(parser_.execCommand("AT+CPWROFF"));
-        if (r == AtResponse::OK) {
-            // WARN: We assume that the modem can turn off itself reliably.
-            ncpPowerState(NcpPowerState::OFF);
+        if (ready_) {
+            int r = CHECK_PARSER(parser_.execCommand("AT+CPWROFF"));
+            if (r == AtResponse::OK) {
+                // WARN: We assume that the modem can turn off itself reliably.
+                ncpPowerState(NcpPowerState::OFF);
+            } else {
+                return SYSTEM_ERROR_AT_NOT_OK;
+            }
         } else {
-            return SYSTEM_ERROR_AT_NOT_OK;
+            return SYSTEM_ERROR_INVALID_STATE;
         }
     } else {
         LOG(TRACE, "Modem already off");
