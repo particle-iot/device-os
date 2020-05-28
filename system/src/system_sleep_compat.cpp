@@ -35,6 +35,8 @@
 #include "system_sleep_configuration.h"
 #include "check.h"
 
+using namespace particle;
+
 
 struct WakeupState
 {

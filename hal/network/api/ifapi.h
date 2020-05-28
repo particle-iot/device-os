@@ -254,6 +254,7 @@ if_event_handler_cookie_t if_event_handler_self(if_t iface, if_event_handler_t h
 int if_event_handler_del(if_event_handler_cookie_t cookie);
 
 int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved);
+void if_notify_event(if_t iface, const struct if_event* evt, void* reserved);
 
 #ifdef __cplusplus
 }

@@ -38,6 +38,8 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "system_cloud.h"
 #include "system_threading.h"
 #include "system_event.h"
+#include "timer_hal.h"
+#include "delay_hal.h"
 
 #define CHECKV(_expr) \
         ({ \
@@ -438,6 +440,10 @@ void NetworkManager::ifEventHandler(if_t iface, const struct if_event* ev) {
             handleIfLinkLayerAddr(iface, ev);
             break;
         }
+        case IF_EVENT_POWER_STATE: {
+            handleIfPowerState(iface, ev);
+            break;
+        }
     }
 }
 
@@ -527,6 +533,21 @@ unsigned int NetworkManager::countIfacesWithFlags(unsigned int flags) const {
     });
 
     return count;
+}
+
+void NetworkManager::handleIfPowerState(if_t iface, const struct if_event* ev) {
+    auto state = getInterfaceRuntimeState(iface);
+    if (!state) {
+        return;
+    }
+    if (ev->ev_power_state->state == IF_POWER_STATE_UP) {
+        state->on = true;
+    } else if (ev->ev_power_state->state == IF_POWER_STATE_DOWN) {
+        state->on = false;
+    } else {
+        // FIXME: assume it to be off?
+        state->on = false;
+    }
 }
 
 void NetworkManager::refreshIpState() {
@@ -810,6 +831,25 @@ void NetworkManager::resetInterfaceProtocolState(if_t iface) {
             item->ip6State = ProtocolState::UNCONFIGURED;
         }
     }
+}
+
+int NetworkManager::waitModemOff(if_t iface, system_tick_t timeout) const {
+    auto state = getInterfaceRuntimeState(iface);
+    CHECK_TRUE(state, SYSTEM_ERROR_NOT_FOUND);
+    if (!state->on) {
+        return SYSTEM_ERROR_NONE;
+    }
+    system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    while (state->on) {
+        HAL_Delay_Milliseconds(100);
+        if (HAL_Timer_Get_Milli_Seconds() - now > timeout) {
+            break;
+        }
+    }
+    if (state->on) {
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 }} /* namespace particle::system */

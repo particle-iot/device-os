@@ -121,6 +121,7 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     parserError_ = 0;
     ready_ = false;
     muxerNotStarted_ = false;
+    pwrState_ = NcpPowerState::UNKNOWN;
     return 0;
 }
 
@@ -160,6 +161,7 @@ int Esp32NcpClient::on() {
         return 0;
     }
     CHECK(waitReady());
+    ncpPowerState(NcpPowerState::ON);
     return 0;
 }
 
@@ -172,6 +174,7 @@ int Esp32NcpClient::off() {
     espOff();
     ready_ = false;
     ncpState(NcpState::OFF);
+    ncpPowerState(NcpPowerState::OFF);
     return 0;
 }
 
@@ -202,6 +205,10 @@ void Esp32NcpClient::disable() {
 
 NcpState Esp32NcpClient::ncpState() {
     return ncpState_;
+}
+
+NcpPowerState SaraNcpClient::ncpPowerState() {
+    return pwrState_;
 }
 
 int Esp32NcpClient::disconnect() {
@@ -598,6 +605,17 @@ void Esp32NcpClient::ncpState(NcpState state) {
         NcpStateChangedEvent event = {};
         event.type = NcpEvent::NCP_STATE_CHANGED;
         event.state = ncpState_;
+        handler(event, conf_.eventHandlerData());
+    }
+}
+
+void SaraNcpClient::ncpPowerState(NcpPowerState state) {
+    pwrState_ = state;
+    const auto handler = conf_.eventHandler();
+    if (handler) {
+        NcpPowerStateChangedEvent event = {};
+        event.type = NcpEvent::POWER_STATE_CHANGED;
+        event.state = pwrState_;
         handler(event, conf_.eventHandlerData());
     }
 }

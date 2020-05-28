@@ -30,6 +30,12 @@ enum class NcpState {
     DISABLED = 2
 };
 
+enum class NcpPowerState {
+    OFF = 0,
+    ON = 1,
+    UNKNOWN = 2
+};
+
 enum class NcpConnectionState {
     DISCONNECTED = 0,
     CONNECTING = 1,
@@ -40,6 +46,7 @@ struct NcpEvent {
     enum Type {
         NCP_STATE_CHANGED = 1,
         CONNECTION_STATE_CHANGED = 2,
+        POWER_STATE_CHANGED = 3,
         CUSTOM_EVENT_TYPE_BASE = 100
     };
 
@@ -52,6 +59,10 @@ struct NcpStateChangedEvent: NcpEvent {
 
 struct NcpConnectionStateChangedEvent: NcpEvent {
     NcpConnectionState state;
+};
+
+struct NcpPowerStateChangedEvent: NcpEvent {
+    NcpPowerState state;
 };
 
 typedef void(*NcpEventHandler)(const NcpEvent& event, void* data);
@@ -88,6 +99,7 @@ public:
     virtual int enable() = 0;
     virtual void disable() = 0;
     virtual NcpState ncpState() = 0;
+    virtual NcpPowerState ncpPowerState() = 0;
 
     virtual int disconnect() = 0;
     virtual NcpConnectionState connectionState() = 0;

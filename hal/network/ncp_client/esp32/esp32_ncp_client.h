@@ -44,6 +44,7 @@ public:
     int enable() override;
     void disable() override;
     NcpState ncpState() override;
+    NcpPowerState ncpPowerState() override;
     int disconnect() override;
     NcpConnectionState connectionState() override;
     int getFirmwareVersionString(char* buf, size_t size) override;
@@ -71,6 +72,7 @@ private:
     volatile NcpState ncpState_;
     volatile NcpState prevNcpState_;
     volatile NcpConnectionState connState_;
+    volatile NcpPowerState pwrState_;
     int parserError_;
     bool ready_;
     gsm0710::Muxer<particle::SerialStream, StaticRecursiveMutex> muxer_;
@@ -86,6 +88,7 @@ private:
     static int muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
             decltype(muxer_)::ChannelState newState, void* ctx);
     void ncpState(NcpState state);
+    void ncpPowerState(NcpPowerState state);
     void connectionState(NcpConnectionState state);
     void parserError(int error);
     int getFirmwareModuleVersionImpl(uint16_t* ver);

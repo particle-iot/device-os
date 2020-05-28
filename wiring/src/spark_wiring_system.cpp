@@ -58,7 +58,7 @@ void SystemClass::enterSafeMode(SystemResetFlags flags)
     system_reset(SYSTEM_RESET_MODE_SAFE, 0, 0, flags.value(), nullptr);
 }
 
-SystemSleepResult SystemClass::sleep(const SystemSleepConfiguration& config) {
+SystemSleepResult SystemClass::sleep(const particle::SystemSleepConfiguration& config) {
     if (!config.valid()) {
         LOG(ERROR, "System sleep configuration is invalid.");
         System.systemSleepResult_ = SystemSleepResult(SYSTEM_ERROR_INVALID_ARGUMENT);

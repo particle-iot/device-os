@@ -34,6 +34,8 @@
 #endif // HAL_PLATFORM_CELLULAR
 #include "check.h"
 
+using namespace particle;
+
 static bool system_sleep_network_suspend(network_interface_index index) {
     bool resume = false;
     // Disconnect from network
@@ -86,8 +88,15 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 #if HAL_PLATFORM_CELLULAR
     bool cellularResume = false;
     if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_CELLULAR)) {
-        if (system_sleep_network_suspend(NETWORK_INTERFACE_CELLULAR)) {
-            cellularResume = true;
+        if (configHelper.networkFlags(NETWORK_INTERFACE_CELLULAR).isSet(SystemSleepNetworkFlag::INACTIVE_STANDBY)) {
+            // Pause the modem Serial, while leaving the modem keeps running.
+            cellular_pause(nullptr);
+        } else {
+            if (system_sleep_network_suspend(NETWORK_INTERFACE_CELLULAR)) {
+                cellularResume = true;
+            }
+            // There might be up to 30s delay to turn off the modem for particular platforms.
+            CHECK(network_wait_modem_off(NETWORK_INTERFACE_CELLULAR, 60000/*ms*/, nullptr));
         }
     } else {
         // Pause the modem Serial, while leaving the modem keeps running.

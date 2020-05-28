@@ -46,6 +46,7 @@ public:
     int enable() override;
     void disable() override;
     NcpState ncpState() override;
+    NcpPowerState ncpPowerState() override;
     int disconnect() override;
     NcpConnectionState connectionState() override;
     int getFirmwareVersionString(char* buf, size_t size) override;
@@ -76,6 +77,7 @@ private:
     volatile NcpState ncpState_ = NcpState::OFF;
     volatile NcpState prevNcpState_;
     volatile NcpConnectionState connState_ = NcpConnectionState::DISCONNECTED;
+    volatile NcpPowerState pwrState_ = NcpPowerState::UNKNOWN;
     int parserError_ = 0;
     bool ready_ = false;
     gsm0710::Muxer<particle::SerialStream, StaticRecursiveMutex> muxer_;
@@ -127,6 +129,7 @@ private:
     static int muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
             decltype(muxer_)::ChannelState newState, void* ctx);
     void ncpState(NcpState state);
+    void ncpPowerState(NcpPowerState state);
     void connectionState(NcpConnectionState state);
     void parserError(int error);
     void resetRegistrationState();
@@ -134,8 +137,9 @@ private:
     int processEventsImpl();
 
     int modemInit() const;
-    int modemPowerOn() const;
+    int modemPowerOn();
     int modemPowerOff();
+    int modemSoftPowerOff();
     int modemHardReset(bool powerOff = false);
     bool modemPowerState() const;
     int modemSetUartState(bool state) const;

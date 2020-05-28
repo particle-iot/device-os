@@ -164,6 +164,7 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     ready_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
+    ncpPowerState(modemPowerState() ? NcpPowerState::ON : NcpPowerState::OFF);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -327,7 +328,10 @@ int QuectelNcpClient::off() {
     }
     muxer_.stop();
     // Power down
-    modemPowerOff();
+    // Try using AT command to turn off the modem first.
+    if (modemSoftPowerOff() != 0) {
+        modemPowerOff();
+    }
     ready_ = false;
     ncpState(NcpState::OFF);
     return SYSTEM_ERROR_NONE;
@@ -360,6 +364,10 @@ void QuectelNcpClient::disable() {
 
 NcpState QuectelNcpClient::ncpState() {
     return ncpState_;
+}
+
+NcpPowerState SaraNcpClient::ncpPowerState() {
+    return pwrState_;
 }
 
 int QuectelNcpClient::disconnect() {
@@ -1198,6 +1206,17 @@ void QuectelNcpClient::ncpState(NcpState state) {
     }
 }
 
+void SaraNcpClient::ncpPowerState(NcpPowerState state) {
+    pwrState_ = state;
+    const auto handler = conf_.eventHandler();
+    if (handler) {
+        NcpPowerStateChangedEvent event = {};
+        event.type = NcpEvent::POWER_STATE_CHANGED;
+        event.state = pwrState_;
+        handler(event, conf_.eventHandlerData());
+    }
+}
+
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;
@@ -1343,7 +1362,7 @@ int QuectelNcpClient::modemInit() const {
     return SYSTEM_ERROR_NONE;
 }
 
-int QuectelNcpClient::modemPowerOn() const {
+int QuectelNcpClient::modemPowerOn() {
     if (!modemPowerState()) {
         LOG(TRACE, "Powering modem on");
         // Power on, power on pulse >= 500ms
@@ -1364,6 +1383,7 @@ int QuectelNcpClient::modemPowerOn() const {
         }
         if (powerGood) {
             LOG(TRACE, "Modem powered on");
+            ncpPowerState(NcpPowerState::ON);
         } else {
             LOG(ERROR, "Failed to power on modem");
         }
@@ -1377,7 +1397,7 @@ int QuectelNcpClient::modemPowerOn() const {
     return SYSTEM_ERROR_NONE;
 }
 
-int QuectelNcpClient::modemPowerOff() const {
+int QuectelNcpClient::modemPowerOff() {
     if (modemPowerState()) {
         LOG(TRACE, "Powering modem off");
         // Power off, power off pulse >= 650ms
@@ -1398,6 +1418,7 @@ int QuectelNcpClient::modemPowerOff() const {
         }
         if (!powerGood) {
             LOG(TRACE, "Modem powered off");
+            ncpPowerState(NcpPowerState::OFF);
         } else {
             LOG(ERROR, "Failed to power off modem, try hard reset");
             modemHardReset(true);
@@ -1408,6 +1429,22 @@ int QuectelNcpClient::modemPowerOff() const {
 
     CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
     return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::modemSoftPowerOff() {
+    if (modemPowerState()) {
+        LOG(TRACE, "Powering modem off using AT command");
+        int r = CHECK_PARSER(parser_.execCommand("AT+CPWROFF"));
+        if (r == AtResponse::OK) {
+            // WARN: We assume that the modem can turn off itself reliably.
+            ncpPowerState(NcpPowerState::OFF);
+        } else {
+            return SYSTEM_ERROR_AT_NOT_OK;
+        }
+    } else {
+        LOG(TRACE, "Modem already off");
+    }
+    return 0;
 }
 
 int QuectelNcpClient::modemHardReset(bool powerOff) const {
