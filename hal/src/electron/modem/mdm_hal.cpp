@@ -464,7 +464,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
 
                 // GSM/UMTS Specific -------------------------------------------
                 // +UUPSDD: <profile_id>
-                if (sscanf(cmd, "UUPSDD: %s", s) == 1) {
+                if (sscanf(cmd, "UUPSDD: %31s", s) == 1) {
                     MDM_PRINTF("UUPSDD: %s matched\r\n", PROFILE);
                     if ( !strcmp(s, PROFILE) ) {
                         _ip = NOIP;
@@ -478,9 +478,9 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                     // +CREG|CGREG: <n>,<stat>[,<lac>,<ci>[,AcT[,<rac>]]] // reply to AT+CREG|AT+CGREG
                     // +CREG|CGREG: <stat>[,<lac>,<ci>[,AcT[,<rac>]]]     // URC
                     b = (int)0xFFFF; c = (int)0xFFFFFFFF; d = -1;
-                    r = sscanf(cmd, "%s %*d,%d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);    // XXX: Fix for buffer overrun if applicable
+                    r = sscanf(cmd, "%31s %*d,%d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
                     if (r <= 1)
-                        r = sscanf(cmd, "%s %d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);    // XXX: Fix for buffer overrun if applicable
+                        r = sscanf(cmd, "%31s %d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
                     if (r >= 2) {
                         Reg *reg = !strcmp(s, "CREG:")  ? &_net.csd :
                                    !strcmp(s, "CGREG:") ? &_net.psd :
@@ -1213,7 +1213,7 @@ int MDMParser::_cbCPIN(int type, const char* buf, int len, Sim* sim)
     if (sim) {
         if (type == TYPE_PLUS){
             char s[16];
-            if (sscanf(buf, "\r\n+CPIN: %16[^\r]\r\n", s) >= 1)
+            if (sscanf(buf, "\r\n+CPIN: %15[^\r]\r\n", s) >= 1)
                 *sim = (0 == strcmp("READY", s)) ? SIM_READY : SIM_PIN;
         } else if (type == TYPE_ERROR) {
             if (strstr(buf, "+CME ERROR: SIM not inserted"))
@@ -1228,7 +1228,7 @@ int MDMParser::_cbCCID(int type, const char* buf, int len, CStringHelper* str)
     if (str && str->str && (str->size > 1) && (type == TYPE_PLUS)) {
         char format[32] = {};
         snprintf(format, sizeof(format), "\r\n+CCID: %%%u[^\r]\r\n", str->size-1);
-        if (sscanf(buf, "\r\n+CCID: %[^\r]\r\n", str->str) == 1) {
+        if (sscanf(buf, format, str->str) == 1) {
             //MDM_PRINTF("Got CCID: %s\r\n", ccid);
         }
     }
@@ -3285,7 +3285,7 @@ int MDMParser::_cbURDFILE(int type, const char* buf, int len, URDFILEparam* para
     if ((type == TYPE_PLUS) && param && param->filename && param->buf) {
         char filename[48];
         int sz;
-        if ((sscanf(buf, "\r\n+URDFILE: \"%[^\"]\",%d,", filename, &sz) == 2) &&
+        if ((sscanf(buf, "\r\n+URDFILE: \"%47[^\"]\",%d,", filename, &sz) == 2) &&
             (0 == strcmp(param->filename, filename)) &&
             (buf[len-sz-2] == '\"') && (buf[len-1] == '\"')) {
             param->len = (sz < param->sz) ? sz : param->sz;
