@@ -359,7 +359,7 @@ bool MDMParser::_atOk(void)
 
 int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                              void* param /* = NULL*/,
-                             system_tick_t timeout_ms /*= 5000*/)
+                             system_tick_t timeout_ms /*= 10000*/)
 {
     if (_cancel_all_operations) return WAIT;
 
@@ -478,9 +478,9 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                     // +CREG|CGREG: <n>,<stat>[,<lac>,<ci>[,AcT[,<rac>]]] // reply to AT+CREG|AT+CGREG
                     // +CREG|CGREG: <stat>[,<lac>,<ci>[,AcT[,<rac>]]]     // URC
                     b = (int)0xFFFF; c = (int)0xFFFFFFFF; d = -1;
-                    r = sscanf(cmd, "%s %*d,%d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
+                    r = sscanf(cmd, "%s %*d,%d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);    // XXX: Fix for buffer overrun if applicable
                     if (r <= 1)
-                        r = sscanf(cmd, "%s %d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
+                        r = sscanf(cmd, "%s %d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);    // XXX: Fix for buffer overrun if applicable
                     if (r >= 2) {
                         Reg *reg = !strcmp(s, "CREG:")  ? &_net.csd :
                                    !strcmp(s, "CGREG:") ? &_net.psd :
@@ -562,10 +562,12 @@ int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
     return WAIT;
 }
 
-int MDMParser::_cbString(int type, const char* buf, int len, char* str)
+int MDMParser::_cbString(int type, const char* buf, int len, CStringHelper* str)
 {
-    if (str && (type == TYPE_UNKNOWN)) {
-        if (sscanf(buf, "\r\n%s\r\n", str) == 1)
+    if (str && str->str && (str->size > 1) && (type == TYPE_UNKNOWN)) {
+        char format[32] = {};
+        snprintf(format, sizeof(format), "\r\n%%%us\r\n", str->size - 1);
+        if (sscanf(buf, format, str->str) == 1)
             /*nothing*/;
     }
     return WAIT;
@@ -872,6 +874,15 @@ bool MDMParser::init(DevStatus* status)
 {
     LOCK();
     MDM_INFO("\r\n[ Modem::init ] = = = = = = = = = = = = = = =");
+
+    // Define all cstringhelpers up here, because "goto"s do not like bypassing inits
+    CStringHelper str_imei(_dev.imei, sizeof(_dev.imei));
+    CStringHelper str_manu(_dev.manu, sizeof(_dev.manu));
+    CStringHelper str_ver(_dev.ver, sizeof(_dev.ver));
+    CStringHelper str_imsi(_dev.imsi, sizeof(_dev.imsi));
+    CStringHelper str_verExt(_verExtended, sizeof(_verExtended));
+    CStringHelper str_ccid(_dev.ccid, sizeof(_dev.ccid));
+
     if (_dev.dev == DEV_SARA_R410) {
         // TODO: Without this delay, some commands, such as +CIMI, may return a SIM failure error.
         // This probably has something to do with the SIM initialization. Should we check the SIM
@@ -880,7 +891,7 @@ bool MDMParser::init(DevStatus* status)
     }
     // Returns the product serial number, IMEI (International Mobile Equipment Identity)
     sendFormated("AT+CGSN\r\n");
-    if (RESP_OK != waitFinalResp(_cbString, _dev.imei))
+    if (RESP_OK != waitFinalResp(_cbString, &str_imei))
         goto failure;
 
     if (_dev.sim != SIM_READY) {
@@ -890,11 +901,11 @@ bool MDMParser::init(DevStatus* status)
     }
     // get the manufacturer
     sendFormated("AT+CGMI\r\n");
-    if (RESP_OK != waitFinalResp(_cbString, _dev.manu))
+    if (RESP_OK != waitFinalResp(_cbString, &str_manu))
         goto failure;
     // get the version
     sendFormated("AT+CGMR\r\n");
-    if (RESP_OK != waitFinalResp(_cbString, _dev.ver))
+    if (RESP_OK != waitFinalResp(_cbString, &str_ver))
         goto failure;
     // ATI9 (get version and app version)
     // example output
@@ -905,7 +916,7 @@ bool MDMParser::init(DevStatus* status)
     // 28 "\r\nL0.0.00.00.05.08,A.02.04\r\n" (maintenance)
     memset(_verExtended, 0, sizeof(_verExtended));
     sendFormated("ATI9\r\n");
-    if (RESP_OK != waitFinalResp(_cbString, _verExtended))
+    if (RESP_OK != waitFinalResp(_cbString, &str_verExt))
         goto failure;
     // Test for Memory Issue version
     _memoryIssuePresent = false;
@@ -916,7 +927,7 @@ bool MDMParser::init(DevStatus* status)
     // Returns the ICCID (Integrated Circuit Card ID) of the SIM-card.
     // ICCID is a serial number identifying the SIM.
     sendFormated("AT+CCID\r\n");
-    if (RESP_OK != waitFinalResp(_cbCCID, _dev.ccid))
+    if (RESP_OK != waitFinalResp(_cbCCID, &str_ccid))
         goto failure;
     // Setup SMS in text mode
     sendFormated("AT+CMGF=1\r\n");
@@ -928,7 +939,7 @@ bool MDMParser::init(DevStatus* status)
         goto failure;
     // Request IMSI (International Mobile Subscriber Identification)
     sendFormated("AT+CIMI\r\n");
-    if (RESP_OK != waitFinalResp(_cbString, _dev.imsi))
+    if (RESP_OK != waitFinalResp(_cbString, &str_imsi))
         goto failure;
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
@@ -1202,7 +1213,7 @@ int MDMParser::_cbCPIN(int type, const char* buf, int len, Sim* sim)
     if (sim) {
         if (type == TYPE_PLUS){
             char s[16];
-            if (sscanf(buf, "\r\n+CPIN: %[^\r]\r\n", s) >= 1)
+            if (sscanf(buf, "\r\n+CPIN: %16[^\r]\r\n", s) >= 1)
                 *sim = (0 == strcmp("READY", s)) ? SIM_READY : SIM_PIN;
         } else if (type == TYPE_ERROR) {
             if (strstr(buf, "+CME ERROR: SIM not inserted"))
@@ -1212,10 +1223,12 @@ int MDMParser::_cbCPIN(int type, const char* buf, int len, Sim* sim)
     return WAIT;
 }
 
-int MDMParser::_cbCCID(int type, const char* buf, int len, char* ccid)
+int MDMParser::_cbCCID(int type, const char* buf, int len, CStringHelper* str)
 {
-    if ((type == TYPE_PLUS) && ccid) {
-        if (sscanf(buf, "\r\n+CCID: %[^\r]\r\n", ccid) == 1) {
+    if (str && str->str && (str->size > 1) && (type == TYPE_PLUS)) {
+        char format[32] = {};
+        snprintf(format, sizeof(format), "\r\n+CCID: %%%u[^\r]\r\n", str->size-1);
+        if (sscanf(buf, "\r\n+CCID: %[^\r]\r\n", str->str) == 1) {
             //MDM_PRINTF("Got CCID: %s\r\n", ccid);
         }
     }
@@ -2133,11 +2146,13 @@ failure:
     return NOIP;
 }
 
-int MDMParser::_cbUDOPN(int type, const char* buf, int len, char* mccmnc)
+int MDMParser::_cbUDOPN(int type, const char* buf, int len, CStringHelper* str)
 {
-    if ((type == TYPE_PLUS) && mccmnc) {
-        if (sscanf(buf, "\r\n+UDOPN: 0,\"%[^\"]\"", mccmnc) == 1)
-            ;
+    if (str && str->str && (str->size > 1) && (type == TYPE_PLUS)) {
+        char format[32] = {};
+        snprintf(format, sizeof(format), "\r\n+UDOPN: 0,\"%%%u[^\"]\"", str->size - 1);
+        if (sscanf(buf, format, str->str) == 1)
+            /*nothing*/;
     }
     return WAIT;
 }
@@ -3186,6 +3201,7 @@ bool MDMParser::smsRead(int ix, char* num, char* buf, int len)
     param.num = num;
     param.buf = buf;
     sendFormated("AT+CMGR=%d\r\n",ix);
+    // FIXME: check for SMS buffer size when smsRead() is being used
     ok = (RESP_OK == waitFinalResp(_cbCMGR, &param));
     UNLOCK();
     return ok;
@@ -3206,6 +3222,7 @@ int MDMParser::_cbCUSD(int type, const char* buf, int len, char* resp)
 
 bool MDMParser::ussdCommand(const char* cmd, char* buf)
 {
+    // FIXME: check for buffer size to prevent buffer overrun
     bool ok = false;
     LOCK();
     *buf = '\0';

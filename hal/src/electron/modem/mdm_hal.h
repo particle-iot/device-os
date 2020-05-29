@@ -527,13 +527,25 @@ protected:
     void SMSreceived(int index);
 
 protected:
+    // String helper to prevent buffer overrun
+    struct CStringHelper {
+        CStringHelper(char* s, size_t sz)
+            : str{s},
+            size{sz} {
+        }
+        CStringHelper() = delete;
+
+        char* str;
+        size_t size;
+    };
+
     // parsing callbacks for different AT commands and their parameter arguments
-    static int _cbString(int type, const char* buf, int len, char* str);
+    static int _cbString(int type, const char* buf, int len, CStringHelper* str);
     static int _cbInt(int type, const char* buf, int len, int* val);
     // device
     static int _cbCGMM(int type, const char* buf, int len, DevStatus* s);
     static int _cbCPIN(int type, const char* buf, int len, Sim* sim);
-    static int _cbCCID(int type, const char* buf, int len, char* ccid);
+    static int _cbCCID(int type, const char* buf, int len, CStringHelper* ccid);
     // network
     static int _cbUMNOPROF(int type, const char *buf, int len, int* i);
     #define MDM_R410_EDRX_ACTS_MAX (4) //!< maximum number of AcTs for eDRX mode on SARA-R410M-02B
@@ -555,7 +567,7 @@ protected:
     static int _cbCOPS(int type, const char* buf, int len, NetStatus* status);
     static int _cbCNUM(int type, const char* buf, int len, char* num);
     static int _cbUACTIND(int type, const char* buf, int len, int* i);
-    static int _cbUDOPN(int type, const char* buf, int len, char* mccmnc);
+    static int _cbUDOPN(int type, const char* buf, int len, CStringHelper* str);
     static int _cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUCGED(int type, const char* buf, int len, NetStatus* status);
     struct CGDCONTparam { char type[8]; char apn[32]; };
