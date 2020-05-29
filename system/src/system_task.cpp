@@ -184,19 +184,24 @@ private:
  * Time in millis of the last cloud connection attempt.
  * The next attempt isn't made until the backoff period has elapsed.
  */
-static int cloud_backoff_start = 0;
+static system_tick_t cloud_backoff_start = 0;
+
+/**
+ * Timestamp (millis) of the first failed connection attempt
+ */
+static system_tick_t cloud_first_failed_connection = 0;
+
+static const system_tick_t MS_IN_MIN = 60 * 1000;
+/**
+ * Determines for how long we are going to attempt connecting to the cloud
+ * before resetting the network interfaces.
+ */
+static const system_tick_t NETWORK_RESET_TIMEOUT_ON_CLOUD_CONNECTION_ERRORS = 5 * MS_IN_MIN; // 5 minutes
 
 /**
  * The number of connection attempts.
  */
 static uint8_t cloud_failed_connection_attempts = 0;
-
-void cloud_connection_failed()
-{
-    if (cloud_failed_connection_attempts<255)
-        cloud_failed_connection_attempts++;
-    cloud_backoff_start = HAL_Timer_Get_Milli_Seconds();
-}
 
 inline uint8_t in_cloud_backoff_period()
 {
@@ -205,6 +210,10 @@ inline uint8_t in_cloud_backoff_period()
 
 void handle_cloud_errors()
 {
+    if (Spark_Error_Count == 0) {
+        return;
+    }
+
     const uint8_t blinks = Spark_Error_Count;
     Spark_Error_Count = 0;
 
@@ -222,31 +231,46 @@ void handle_cfod()
 {
     uint8_t reset = 0;
     system_get_flag(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS, &reset, nullptr);
-    if (reset && ++cfod_count >= MAX_FAILED_CONNECTS)
-    {
-        SPARK_WLAN_RESET = 1;
-        WARN("Resetting WLAN due to %d failed connect attempts", MAX_FAILED_CONNECTS);
+
+    if (cfod_count++ == 0) {
+        cloud_first_failed_connection = HAL_Timer_Get_Milli_Seconds();
     }
 
-    if (Internet_Test() < 0)
-    {
-        WARN("Internet Test Failed!");
-        if (reset && ++cfod_count >= MAX_FAILED_CONNECTS)
-        {
-            SPARK_WLAN_RESET = 1;
-            WARN("Resetting WLAN due to %d failed connect attempts", MAX_FAILED_CONNECTS);
+    if (reset && (HAL_Timer_Get_Milli_Seconds() - cloud_first_failed_connection) >= NETWORK_RESET_TIMEOUT_ON_CLOUD_CONNECTION_ERRORS) {
+        LOG(WARN, "Resetting network interfaces due to failed connection attempts for %u minutes",
+                NETWORK_RESET_TIMEOUT_ON_CLOUD_CONNECTION_ERRORS / MS_IN_MIN);
+        SPARK_WLAN_RESET = 1;
+        cloud_first_failed_connection = 0;
+        cfod_count = 0;
+    } else {
+        auto r = Internet_Test();
+        if (r != 0) {
+            const char* reason = "network";
+            if (r == SYSTEM_ERROR_NOT_FOUND) {
+                reason = "DNS";
+            } else if (r == SYSTEM_ERROR_TIMEOUT) {
+                reason = "timeout";
+            }
+            LOG(WARN, "Internet test failed: %s", reason);
+            Spark_Error_Count = 2;
+        } else {
+            LOG(WARN, "Internet available, cloud not reachable");
+            Spark_Error_Count = 3;
         }
-        Spark_Error_Count = 2;
-    }
-    else
-    {
-        WARN("Internet available, Cloud not reachable!");
-        Spark_Error_Count = 3;
     }
 
     if (reset == 0) {
         CLR_WLAN_WD();
     }
+}
+
+void cloud_connection_failed()
+{
+    if (cloud_failed_connection_attempts<255)
+        cloud_failed_connection_attempts++;
+    cloud_backoff_start = HAL_Timer_Get_Milli_Seconds();
+
+    handle_cfod();
 }
 
 /**
@@ -285,7 +309,6 @@ void establish_cloud_connection()
         int connect_result = spark_cloud_socket_connect();
         if (connect_result >= 0)
         {
-            cfod_count = 0;
             SPARK_CLOUD_SOCKETED = 1;
             INFO("Cloud socket connected");
             // "Connected" event is generated only after a successful handshake
@@ -310,14 +333,10 @@ void establish_cloud_connection()
             }
 
             cloud_connection_failed();
-            handle_cfod();
         }
 
         // Handle errors last to ensure they are shown
-        if (Spark_Error_Count > 0)
-        {
-            handle_cloud_errors();
-        }
+        handle_cloud_errors();
     }
 }
 
@@ -400,6 +419,8 @@ void handle_cloud_connection(bool force_events)
                 const auto diag = CloudDiagnostics::instance();
                 diag->lastError(err);
                 cloud_disconnect();
+            } else {
+                cfod_count = 0;
             }
         }
         if (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL || system_thread_get_state(NULL)==spark::feature::ENABLED)

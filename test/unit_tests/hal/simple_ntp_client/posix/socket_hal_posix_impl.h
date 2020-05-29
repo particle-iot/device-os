@@ -17,25 +17,5 @@
 
 #pragma once
 
-#include <cstdint>
-#include <memory>
-#include "socket_hal.h"
-
-namespace particle {
-
-// Forward declaration
-class UdpSocket;
-
-class SimpleNtpClient {
-public:
-    SimpleNtpClient();
-    SimpleNtpClient(sock_handle_t sock);
-    ~SimpleNtpClient();
-
-    int ntpDate(uint64_t* timestamp, const char* hostname = nullptr, system_tick_t timeout = 10000);
-
-private:
-    std::unique_ptr<UdpSocket> sock_;
-};
-
-} // particle
+#include <sys/socket.h>
+#include <poll.h>

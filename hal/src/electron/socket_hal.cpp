@@ -65,6 +65,7 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
 	result = electronMDM.socketRecvFrom(sock, &ip, &port, (char*)buffer, bufLen);
     if (result > 0) {
         uint32_t ipv4 = ip;
+        addr->sa_family = AF_INET;
         addr->sa_data[0] = (port>>8) & 0xFF;
         addr->sa_data[1] = port & 0xFF;
         addr->sa_data[2] = (ipv4 >> 24) & 0xFF;

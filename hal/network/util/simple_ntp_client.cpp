@@ -31,6 +31,8 @@ LOG_SOURCE_CATEGORY("serivce.ntp");
 #include <arpa/inet.h>
 #else
 #include "inet_hal_compat.h"
+#include "delay_hal.h"
+#include "system_defs.h"
 #endif // HAL_USE_SOCKET_HAL_POSIX
 
 #include "random.h"
@@ -38,22 +40,25 @@ LOG_SOURCE_CATEGORY("serivce.ntp");
 #include "rtc_hal.h"
 #include <ctime>
 #include "timer_hal.h"
+#include <cstdio>
+#include "simple_ntp_client_detail.h"
 
 namespace particle {
 
 class UdpSocket {
 public:
-    UdpSocket() :
-            UdpSocket(-1) {
+    UdpSocket()
+            : UdpSocket(-1) {
     }
 
     UdpSocket(sock_handle_t sock)
             : sock_{sock},
-              close_{sock < 0 ? true : false},
 #if HAL_USE_SOCKET_HAL_POSIX
+              close_{sock >= 0 ? false : true},
               addr_{nullptr},
               cached_{nullptr} {
 #else
+              close_{socket_handle_valid(sock) ? false : true},
               addr_{} {
 #endif // HAL_USE_SOCKET_HAL_POSIX
     }
@@ -98,7 +103,7 @@ int UdpSocket::connect(const char* hostname, uint16_t port) {
         hints.ai_family = AF_INET;
         char tmpserv[8] = {};
         snprintf(tmpserv, sizeof(tmpserv), "%u", port);
-        CHECK_TRUE(netdb_getaddrinfo(hostname, tmpserv, &hints, &addr_) == 0 && addr_, SYSTEM_ERROR_NETWORK);
+        CHECK_TRUE(netdb_getaddrinfo(hostname, tmpserv, &hints, &addr_) == 0 && addr_, SYSTEM_ERROR_NOT_FOUND);
         cached_ = addr_;
     }
 
@@ -106,12 +111,18 @@ int UdpSocket::connect(const char* hostname, uint16_t port) {
     for (; cached_ != nullptr && sock < 0; cached_ = cached_->ai_next) {
         /* Iterate over all the addresses and attempt to connect */
 
-        int s = sock_socket(cached_->ai_family, cached_->ai_socktype, cached_->ai_protocol);
-        if (s < 0) {
-            continue;
+        int s = -1;
+        if (sock_ < 0) {
+            s = sock_socket(cached_->ai_family, cached_->ai_socktype, cached_->ai_protocol);
+            if (s < 0) {
+                continue;
+            }
+        } else {
+            s = sock_;
         }
 
-        LOG(TRACE, "SNTP socket=%d, family=%d, type=%d, protocol=%d", s, cached_->ai_family, cached_->ai_socktype, cached_->ai_protocol);
+#ifdef DEBUG_BUILD
+        LOG_DEBUG(TRACE, "SNTP socket=%d, family=%d, type=%d, protocol=%d", s, cached_->ai_family, cached_->ai_socktype, cached_->ai_protocol);
 
         char serverHost[INET6_ADDRSTRLEN] = {};
         uint16_t serverPort = 0;
@@ -127,16 +138,19 @@ int UdpSocket::connect(const char* hostname, uint16_t port) {
                 break;
             }
         }
-        LOG(TRACE, "SNTP socket=%d, connecting to %s#%u", s, serverHost, serverPort);
+        LOG_DEBUG(TRACE, "SNTP socket=%d, connecting to %s#%u", s, serverHost, serverPort);
+#endif // DEBUG_BUILD
 
         int r = sock_connect(s, cached_->ai_addr, cached_->ai_addrlen);
         if (r) {
-            sock_close(s);
+            if (s != sock_ || close_) {
+                sock_close(s);
+            }
             continue;
         }
 
         sock = s;
-        LOG(TRACE, "SNTP connected");
+        LOG_DEBUG(TRACE, "SNTP connected");
     }
 
     CHECK_TRUE(sock >= 0, SYSTEM_ERROR_NETWORK);
@@ -172,7 +186,7 @@ ssize_t UdpSocket::send(const uint8_t* buf, size_t size) {
 }
 
 void UdpSocket::close() {
-    if (close_) {
+    if (close_ && sock_ >= 0) {
         sock_close(sock_);
         sock_ = -1;
     }
@@ -188,18 +202,59 @@ UdpSocket::~UdpSocket() {
 
 #else // !HAL_USE_SOCKET_HAL_POSIX
 
-int UdpSocket::connect(const char* hostname) {
+int UdpSocket::connect(const char* hostname, uint16_t port) {
+    close();
+
+    HAL_IPAddress ipAddr = {};
+    int r = inet_gethostbyname(hostname, strlen(hostname), &ipAddr, NETWORK_INTERFACE_ALL, nullptr);
+    if (r != 0) {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+
+    // XXX:
+    addr_.sa_family = AF_INET;
+    addr_.sa_data[0] = (port >> 8) & 0xff;
+    addr_.sa_data[1] = (port & 0xff);
+    addr_.sa_data[2] = (ipAddr.ipv4 >> 24) & 0xff;
+    addr_.sa_data[3] = (ipAddr.ipv4 >> 16) & 0xff;
+    addr_.sa_data[4] = (ipAddr.ipv4 >> 8) & 0xff;
+    addr_.sa_data[5] = (ipAddr.ipv4) & 0xff;
+
+    if (!socket_handle_valid(sock_)) {
+        sock_ = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, NETWORK_INTERFACE_ALL);
+        if (!socket_handle_valid(sock_)) {
+            return SYSTEM_ERROR_INTERNAL;
+        }
+    }
+
+    return 0;
 }
 
 ssize_t UdpSocket::recv(uint8_t* buf, size_t size, system_tick_t timeout) {
+    // FIXME: there should really be a way to use blocking/timeouts here
+    auto start = HAL_Timer_Get_Milli_Seconds();
+    while (HAL_Timer_Get_Milli_Seconds() - start < timeout) {
+        sockaddr_t remote = {};
+        socklen_t remoteLen = sizeof(remote);
+        ssize_t r = socket_receivefrom(sock_, buf, size, 0, &remote, &remoteLen);
+        if (r >= 0) {
+            if (remote.sa_family == addr_.sa_family &&
+                    !memcmp(remote.sa_data, addr_.sa_data, sizeof(uint32_t) + sizeof(uint16_t))) {
+                return r;
+            }
+        }
+        HAL_Delay_Milliseconds(1);
+    }
+    return SYSTEM_ERROR_TIMEOUT;
 }
 
 ssize_t UdpSocket::send(const uint8_t* buf, size_t size) {
+    return socket_sendto(sock_, buf, size, 0, &addr_, sizeof(addr_));
 }
 
 void UdpSocket::close() {
-    if (close_) {
-        sock_close(sock_);
+    if (close_ && socket_handle_valid(sock_)) {
+        socket_close(sock_);
         sock_ = -1;
     }
 }
@@ -211,76 +266,6 @@ UdpSocket::~UdpSocket() {
 #endif // HAL_USE_SOCKET_HAL_POSIX
 
 namespace ntp {
-
-const char DEFAULT_SERVER[] = "pool.ntp.org";
-const uint16_t PORT = 123;
-const system_tick_t RETRY_INTERVAL = 2000;
-
-const uint8_t LI_MASK = 0x03 << 6;
-const uint8_t VERSION_MASK = 0x07 << 3;
-const uint8_t MODE_MASK = 0x07;
-const uint8_t VERSION = 4 << 3;
-
-enum Li {
-    LI_NO_WARNING = 0 << 6,
-    LI_LAST_MINUTE_61 = 1 << 6,
-    LI_LAST_MINUTE_59 = 2 << 6,
-    LI_ALARM = 3 << 6
-};
-
-enum Mode {
-    MODE_RESERVED = 0,
-    MODE_SYMMETRIC_ACTIVE = 1,
-    MODE_SYMMETRIC_PASSIVE = 2,
-    MODE_CLIENT = 3,
-    MODE_SERVER = 4,
-    MODE_BROADCAST = 5,
-    MODE_RESERVED_CONTROL_MESSAGE = 6,
-    MODE_RESERVED_PRIVATE = 7,
-};
-
-enum Stratum {
-    STRATUM_KOD = 0
-};
-
-const uint32_t SECONDS_FROM_1970_TO_1900 = 2208988800UL;
-const uint32_t USEC_IN_SEC = 1000000;
-const uint32_t FRACTIONS_IN_SEC_POW = 32;
-
-struct Timestamp {
-    uint32_t seconds;
-    uint32_t fraction;
-
-    static Timestamp fromUnixtime(uint64_t unixMicros) {
-        uint32_t seconds = unixMicros / USEC_IN_SEC;
-        uint32_t frac = ((unixMicros - seconds) << FRACTIONS_IN_SEC_POW) / USEC_IN_SEC;
-        particle::Random rand;
-        rand.gen((char*)&frac, sizeof(char));
-        return {htonl(seconds + SECONDS_FROM_1970_TO_1900), htonl(frac)};
-    }
-
-    uint64_t toUnixtime() const {
-        uint64_t unixMicros = (uint64_t)(ntohl(seconds) - SECONDS_FROM_1970_TO_1900) * USEC_IN_SEC;
-        uint64_t frac = (((uint64_t)ntohl(fraction)) * USEC_IN_SEC) >> FRACTIONS_IN_SEC_POW;
-        return unixMicros + frac;
-    }
-} __attribute__((packed));
-
-struct Message {
-    uint8_t liVnMode; // LI + VN + mode
-    uint8_t stratum; // stratum
-    uint8_t poll; // poll exponent
-    uint8_t precision; // precision exponent
-    uint32_t rootDelay; // rootdelay
-    uint32_t rootDisp; // rootdisp
-    uint32_t refId; // refid
-    Timestamp refTime; // reftime
-    Timestamp originTimestamp; // org
-    Timestamp receiveTimestamp; // rec
-    Timestamp destinationTimestamp; // dst
-    // uint32_t keyId; // key identifier
-    // uint8_t digest[16]; // message digest
-} __attribute__((packed));
 
 int parseResponse(uint64_t* timestamp, Message& msg, size_t size);
 
@@ -320,15 +305,15 @@ int SimpleNtpClient::ntpDate(uint64_t* timestamp, const char* hostname, system_t
         msg.liVnMode = ntp::MODE_CLIENT | ntp::VERSION;
         msg.originTimestamp = ntp::Timestamp::fromUnixtime(getRtcTime());
 
-        LOG(TRACE, "Sending request");
+        LOG_DEBUG(TRACE, "Sending request");
         lastError = sock_->send((const uint8_t*)&msg, sizeof(msg));
         if (lastError < 0) {
             CHECK(sock_->connect(hostname, ntp::PORT));
         }
 
-        LOG(TRACE, "Waiting for response");
+        LOG_DEBUG(TRACE, "Waiting for response");
         auto r = sock_->recv((uint8_t*)&msg, sizeof(msg), ntp::RETRY_INTERVAL);
-        LOG(TRACE, "Response %ld", r);
+        LOG_DEBUG(TRACE, "Response %ld", r);
         if (r < 0) {
             if (r == SYSTEM_ERROR_TIMEOUT) {
                 lastError = r;
@@ -341,6 +326,8 @@ int SimpleNtpClient::ntpDate(uint64_t* timestamp, const char* hostname, system_t
         lastError = ntp::parseResponse(timestamp, msg, r);
         if (!lastError) {
             break;
+        } else {
+            LOG(WARN, "Failed to parse NTP response");
         }
     }
 
@@ -349,14 +336,20 @@ int SimpleNtpClient::ntpDate(uint64_t* timestamp, const char* hostname, system_t
 
 void ntp::dumpNtpTime(uint64_t timestamp) {
     time_t unixTime = timestamp / USEC_IN_SEC;
+    unsigned usecs = timestamp - unixTime;
+
+    char buf[64] = {};
+#if HAL_PLATFORM_GEN >= 3
     struct tm tm = {};
     localtime_r(&unixTime, &tm);
-    uint32_t usecs = timestamp - unixTime;
-
     char format[32] = {};
-    char buf[64] = {};
-    snprintf(format, sizeof(format), "%s.%luZ", NTP_STRFTIME_FORMAT, usecs);
+    snprintf(format, sizeof(format), "%s.%uZ", NTP_STRFTIME_FORMAT, usecs);
     std::strftime(buf, sizeof(buf), format, &tm);
+#else
+    // We don't have much flash space on certain platforms, so we opt not
+    // to pull in strftime unnecessarily just to log the time.
+    snprintf(buf, sizeof(buf), "%u.%u", (unsigned)unixTime, usecs);
+#endif // HAL_PLATFORM_GEN >= 3
     LOG(TRACE, "NTP time: %s", buf);
 }
 

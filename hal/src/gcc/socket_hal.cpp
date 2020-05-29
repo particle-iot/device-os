@@ -331,6 +331,7 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
 
 	int count = socket.receive_from(boost::asio::buffer(buffer, bufLen), endpoint, 0, ec);
 	if (addr && addrsize && *addrsize>=6u) {
+		addr->sa_family = AF_INET;
 		uint16_t port = endpoint.port();
 		addr->sa_data[0] = port >> 8;
 		addr->sa_data[1] = port & 0xFF;
