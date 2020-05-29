@@ -307,13 +307,13 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
     }());
 }
 
-int network_wait_modem_off(network_handle_t network, system_tick_t timeout, void*) {
+int network_wait_off(network_handle_t network, system_tick_t timeout, void*) {
     if (network != NETWORK_INTERFACE_ALL) {
         if_t iface;
         if (if_get_by_index(network, &iface) != 0) {
             return SYSTEM_ERROR_NOT_FOUND;
         }
-        return NetworkManager::instance()->waitModemOff(iface, timeout);
+        return NetworkManager::instance()->waitInterfaceOff(iface, timeout);
     }
     if (network == NETWORK_INTERFACE_ALL) {
         // TODO: wait all active modems off.

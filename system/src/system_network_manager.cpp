@@ -18,6 +18,9 @@
 #include "logging.h"
 LOG_SOURCE_CATEGORY("system.nm")
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 #include "hal_platform.h"
 
 #if HAL_PLATFORM_IFAPI
@@ -538,11 +541,14 @@ unsigned int NetworkManager::countIfacesWithFlags(unsigned int flags) const {
 void NetworkManager::handleIfPowerState(if_t iface, const struct if_event* ev) {
     auto state = getInterfaceRuntimeState(iface);
     if (!state) {
+        LOG(ERROR, "Interface is not populated");
         return;
     }
     if (ev->ev_power_state->state == IF_POWER_STATE_UP) {
+        LOG(TRACE, "Interface is on now");
         state->on = true;
     } else if (ev->ev_power_state->state == IF_POWER_STATE_DOWN) {
+        LOG(TRACE, "Interface is off now");
         state->on = false;
     }
 }
@@ -725,6 +731,12 @@ void NetworkManager::populateInterfaceRuntimeState(bool st) {
         }
         if (state) {
             state->enabled = st;
+            if_power_state_t s;
+            if_get_power_state(iface, &s);
+            state->on = (s == IF_POWER_STATE_UP) ? true : false;
+            uint8_t index;
+            if_get_index(iface, &index);
+            LOG(TRACE, "Interface %d power state: %s", index, state->on ? "IF_POWER_STATE_UP" : "IF_POWER_STATE_DOWN");
         }
     });
 }
@@ -830,7 +842,7 @@ void NetworkManager::resetInterfaceProtocolState(if_t iface) {
     }
 }
 
-int NetworkManager::waitModemOff(if_t iface, system_tick_t timeout) const {
+int NetworkManager::waitInterfaceOff(if_t iface, system_tick_t timeout) const {
     auto state = getInterfaceRuntimeState(iface);
     CHECK_TRUE(state, SYSTEM_ERROR_NOT_FOUND);
     if (!state->on) {

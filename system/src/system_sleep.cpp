@@ -36,7 +36,13 @@
 
 using namespace particle;
 
+LOG_SOURCE_CATEGORY("system.sleep");
+
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 static bool system_sleep_network_suspend(network_interface_index index) {
+    LOG(TRACE, "system_sleep_network_suspend(%d)", index);
     bool resume = false;
     // Disconnect from network
     if (network_connecting(index, 0, NULL) || network_ready(index, 0, NULL)) {
@@ -48,6 +54,11 @@ static bool system_sleep_network_suspend(network_interface_index index) {
     }
     // Turn off the modem
     network_off(index, 0, 0, NULL);
+    LOG(TRACE, "Waiting interface to be off...");
+    system_tick_t now = millis();
+    // There might be up to 30s delay to turn off the modem for particular platforms.
+    network_wait_off(index, 60000/*ms*/, nullptr);
+    LOG(TRACE, "It takes %d ms to turn off modem", millis() - now);
     return resume;
 }
 
@@ -59,6 +70,8 @@ static int system_sleep_network_resume(network_interface_index index) {
 
 int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
     SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext(config, reason, reserved));
+
+    LOG(TRACE, "Entering system_sleep_ext()");
 
     // Validates the sleep configuration previous to disconnecting network,
     // so that the network status remains if the configuration is invalid.
@@ -83,6 +96,8 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
         spark_cloud_flag_disconnect();
     }
 
+    // TODO: restore network state if network is disconnected but it failed to enter sleep mode.
+
     // Network disconnect.
     // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
 #if HAL_PLATFORM_CELLULAR
@@ -95,8 +110,6 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
             if (system_sleep_network_suspend(NETWORK_INTERFACE_CELLULAR)) {
                 cellularResume = true;
             }
-            // There might be up to 30s delay to turn off the modem for particular platforms.
-            CHECK(network_wait_modem_off(NETWORK_INTERFACE_CELLULAR, 60000/*ms*/, nullptr));
         }
     } else {
         // Pause the modem Serial, while leaving the modem keeps running.

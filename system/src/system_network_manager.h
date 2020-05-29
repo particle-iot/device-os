@@ -70,7 +70,7 @@ public:
     int countEnabledInterfaces();
     int syncInterfaceStates();
 
-    int waitModemOff(if_t iface, system_tick_t timeout) const;
+    int waitInterfaceOff(if_t iface, system_tick_t timeout) const;
 
     enum class State {
         NONE,

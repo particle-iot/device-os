@@ -102,6 +102,7 @@ void PppNcpNetif::loop(void* arg) {
         self->celMan_->ncpClient()->enable(); // Make sure the client is enabled
         if (!r) {
             // Event
+            LOG(TRACE, "PPP netif event from queue: %d", ev);
             switch (ev) {
                 case NetifEvent::Up: {
                     self->upImpl();
@@ -156,6 +157,18 @@ int PppNcpNetif::powerUp() {
 int PppNcpNetif::powerDown() {
     NetifEvent ev = NetifEvent::PowerOff;
     return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+}
+
+int PppNcpNetif::getPowerState(if_power_state_t* state) const {
+    auto s = celMan_->ncpClient()->ncpPowerState();
+    if (s == NcpPowerState::ON) {
+        *state = IF_POWER_STATE_UP;
+    } else if (s == NcpPowerState::OFF) {
+        *state = IF_POWER_STATE_DOWN;
+    } else {
+        *state = IF_POWER_STATE_NONE;
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 int PppNcpNetif::upImpl() {

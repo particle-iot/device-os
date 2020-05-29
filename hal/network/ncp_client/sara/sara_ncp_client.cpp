@@ -322,11 +322,11 @@ int SaraNcpClient::off() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     muxer_.stop();
-    // Disable voltage translator
-    modemSetUartState(false);
-    // Power down
     // Try using AT command to turn off the modem first.
     if (modemSoftPowerOff() != 0) {
+        // Disable voltage translator
+        modemSetUartState(false);
+        // Power down using hardware
         modemPowerOff();
     }
     ready_ = false;
@@ -1701,7 +1701,7 @@ int SaraNcpClient::modemPowerOff() {
     });
 
     if (modemPowerState()) {
-        LOG(TRACE, "Powering modem off");
+        LOG(TRACE, "Powering modem off using hardware control");
         // Important! We need to disable voltage translator here
         // otherwise V_INT will never go low
         modemSetUartState(false);
@@ -1751,16 +1751,21 @@ int SaraNcpClient::modemPowerOff() {
 
 int SaraNcpClient::modemSoftPowerOff() {
     if (modemPowerState()) {
-        LOG(TRACE, "Powering modem off using AT command");
+        LOG(TRACE, "Try powering modem off using AT command");
         if (ready_) {
             int r = CHECK_PARSER(parser_.execCommand("AT+CPWROFF"));
             if (r == AtResponse::OK) {
+                LOG(TRACE, "Modem is powered off");
+                // Disable voltage translator
+                modemSetUartState(false);
                 // WARN: We assume that the modem can turn off itself reliably.
                 ncpPowerState(NcpPowerState::OFF);
             } else {
+                LOG(TRACE, "AT+CPWROFF command is not echoed");
                 return SYSTEM_ERROR_AT_NOT_OK;
             }
         } else {
+            LOG(TRACE, "NCP client is not ready");
             return SYSTEM_ERROR_INVALID_STATE;
         }
     } else {

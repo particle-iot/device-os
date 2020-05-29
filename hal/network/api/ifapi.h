@@ -256,6 +256,8 @@ int if_event_handler_del(if_event_handler_cookie_t cookie);
 int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved);
 void if_notify_event(if_t iface, const struct if_event* evt, void* reserved);
 
+int if_get_power_state(if_t iface, if_power_state_t* state);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

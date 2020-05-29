@@ -610,6 +610,9 @@ void Esp32NcpClient::ncpState(NcpState state) {
 }
 
 void Esp32NcpClient::ncpPowerState(NcpPowerState state) {
+    if (pwrState_ == state) {
+        return;
+    }
     pwrState_ = state;
     const auto handler = conf_.eventHandler();
     if (handler) {

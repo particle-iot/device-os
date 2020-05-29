@@ -420,6 +420,11 @@ int WizNetif::powerDown() {
     return down();
 }
 
+int WizNetif::getPowerState(if_power_state_t* state) const {
+    // TODO: implement it
+    return 0;
+}
+
 int WizNetif::openRaw() {
     LwipTcpIpCoreLock lk;
 
