@@ -33,6 +33,10 @@
 #include "usart_hal_private.h"
 #include "timer_hal.h"
 
+#if PLATFORM_ID == PLATFORM_TRACKER
+#include "i2c_hal.h"
+#endif
+
 namespace {
 
 // Copied from spark_wiring_interrupts.h
@@ -748,6 +752,19 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer* rxBuffer, Ring_Buffer*
 }
 
 void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void*) {
+#if PLATFORM_ID == PLATFORM_TRACKER
+    /*
+     * On Tracker both I2C_INTERFACE3 and USART_SERIAL1 use the same pins - D8 and D9,
+     * We cannot enable both of them at the same time.
+     */
+    if (serial == HAL_USART_SERIAL1) {
+        if (HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE3, nullptr)) {
+            // Unfortunately we cannot return an error code here
+            return;
+        }
+    }
+#endif
+
     auto usart = getInstance(serial);
     // FIXME: CHECK_XXX that doesn't return anything?
     if (!usart) {

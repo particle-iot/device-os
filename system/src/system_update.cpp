@@ -286,6 +286,11 @@ void set_flag(void* flag)
 	*p = true;
 }
 
+namespace {
+// FIXME: Dirty hack
+bool ledIsOverridden = false;
+} // namespace
+
 int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
 {
     if (file.store==FileTransfer::Store::FIRMWARE)
@@ -306,10 +311,16 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
 		}
 		else {
             system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 0, nullptr);
-            RGB.control(true);
-            // Get base color used for the update process indication
-            const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
-            RGB.color(status ? status->color : RGB_COLOR_MAGENTA);
+            // FIXME: use the APIs in system_led_signal.h instead.
+            // The RGB may behave weirdly if multi-threading is enabled and user application
+            // also wants to control the RGB.
+            ledIsOverridden = LED_RGB_IsOverRidden();
+            if (!ledIsOverridden) {
+                RGB.control(true);
+                // Get base color used for the update process indication
+                const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
+                RGB.color(status ? status->color : RGB_COLOR_MAGENTA);
+            }
             SPARK_FLASH_UPDATE = 1;
             TimingFlashUpdateTimeout = 0;
             system_notify_event(firmware_update, firmware_update_begin, &file);
@@ -413,7 +424,12 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
         system_notify_event(firmware_update, firmware_update_failed, &file);
     }
 
-    RGB.control(false);
+    // FIXME: use APIs in system_led_signal.h instead
+    // It might lease the control that user application just takes over.
+    if (!ledIsOverridden) {
+        RGB.control(false);
+    }
+
     return result;
 }
 
@@ -425,7 +441,10 @@ int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chu
     if (file.store==FileTransfer::Store::FIRMWARE)
     {
         result = HAL_FLASH_Update(chunk, file.chunk_address, file.chunk_size, NULL);
-        LED_Toggle(LED_RGB);
+        // FIXME: use APIs in system_led_signal.h instead
+        if (!ledIsOverridden) {
+            LED_Toggle(LED_RGB);
+        }
     }
     return result;
 }

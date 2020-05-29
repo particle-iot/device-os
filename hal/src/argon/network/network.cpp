@@ -18,14 +18,13 @@
 #define NO_STATIC_ASSERT
 #include "ifapi.h"
 #include "wiznet/wiznetif.h"
-#include "nat64.h"
 #include <mutex>
 #include <memory>
 #include <nrf52840.h>
 #include "random.h"
 #include "check.h"
 #include <malloc.h>
-#include "esp32_ncp_client.h"
+#include "network/ncp_client/esp32/esp32_ncp_client.h"
 #include "network/ncp/wifi/wifi_network_manager.h"
 #include "network/ncp/wifi/ncp.h"
 #include "debug.h"
@@ -35,7 +34,6 @@
 
 using namespace particle;
 using namespace particle::net;
-using namespace particle::net::nat;
 
 namespace particle {
 

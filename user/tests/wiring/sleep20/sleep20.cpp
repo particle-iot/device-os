@@ -82,16 +82,21 @@ test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_D0) {
     }
 }
 
-test(04_System_Sleep_Mode_Deep_Wakeup_By_D8) {
+test(04_System_Sleep_Mode_Deep_Wakeup_By_WKP_Pin) {
     if (phase == 0xbeef0004) {
         Serial.println("    >> Device enters hibernate mode.");
-        Serial.println("    >> Please reconnect serial and type 't' after you have a rising edge on D8(WKP) pin.");
+        Serial.println("    >> Please reconnect serial and type 't' after you have a rising edge on WKP pin.");
         delay(1000);
 
         phase = 0xbeef0005;
 
-        SleepResult result = System.sleep(SLEEP_MODE_DEEP, 3s);
+        SleepResult result = {};
+
+// Tracker support waking up device from hibernate mode by external RTC
+#if PLATFORM_ID != PLATFORM_TRACKER
+        result = System.sleep(SLEEP_MODE_DEEP, 3s);
         assertNotEqual(result.error(), SYSTEM_ERROR_NONE); // Gen3 doesn't support RTC wakeup source.
+#endif
 
         result = System.sleep(SLEEP_MODE_DEEP);
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
@@ -100,6 +105,45 @@ test(04_System_Sleep_Mode_Deep_Wakeup_By_D8) {
         assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
     }
 }
+
+// Tracker support waking up device from hibernate mode by external RTC
+#if PLATFORM_ID == PLATFORM_TRACKER
+test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_External_Rtc) {
+    if (phase == 0xbeef0003) {
+        Serial.println("    >> Device enters hibernate mode.");
+        Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
+        delay(1000);
+
+        phase = 0xbeef0004;
+
+        SystemSleepConfiguration config;
+        config.mode(SystemSleepMode::HIBERNATE)
+              .duration(3s);
+        SystemSleepResult result = System.sleep(config);
+        assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    } else if (phase == 0xbeef0004) {
+        Serial.println("    >> Device is woken up from hibernate mode.");
+        assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
+    }
+}
+
+test(04_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
+    if (phase == 0xbeef0004) {
+        Serial.println("    >> Device enters hibernate mode.");
+        Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
+        delay(1000);
+
+        phase = 0xbeef0005;
+
+        SleepResult result = System.sleep(SLEEP_MODE_DEEP, 3s);
+        assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    } else if (phase == 0xbeef0005) {
+        Serial.println("    >> Device is woken up from hibernate mode.");
+        assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
+    }
+}
+#endif // PLATFORM_ID != PLATFORM_TRACKER
+
 #endif // HAL_PLATFORM_NRF52840
 
 #if HAL_PLATFORM_STM32F2XX

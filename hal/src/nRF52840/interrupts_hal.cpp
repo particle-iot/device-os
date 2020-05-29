@@ -24,6 +24,13 @@
 #include "gpio_hal.h"
 #include "system_error.h"
 
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_MCP23S17
+#include "mcp23s17.h"
+#endif
+using namespace particle;
+#endif
+
 // 8 high accuracy GPIOTE channels
 #define GPIOTE_CHANNEL_NUM              8
 // 8 low accuracy port event channels
@@ -104,49 +111,64 @@ static nrfx_gpiote_in_config_t get_gpiote_config(uint16_t pin, InterruptMode mod
 
 int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config) {
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    uint8_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
-    nrfx_gpiote_in_config_t in_config;
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
+#endif
+        uint8_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 
-    in_config = get_gpiote_config(pin, mode, true);
-    uint32_t err_code = nrfx_gpiote_in_init(nrf_pin, &in_config, gpiote_interrupt_handler);
-    if (err_code == NRFX_ERROR_NO_MEM) {
-        // High accuracy channels have been used up, use low accuracy channels
-        in_config = get_gpiote_config(pin, mode, false);
-        err_code = nrfx_gpiote_in_init(nrf_pin, &in_config, gpiote_interrupt_handler);
-    }
+        nrfx_gpiote_in_config_t in_config;
 
-    if (err_code == NRF_SUCCESS) {
-        // Add interrupt handler
-        for (int i = 0; i < EXTI_CHANNEL_NUM; i++) {
-            if (m_exti_channels[i].pin == PIN_INVALID) {
-                m_exti_channels[i].pin = pin;
-                m_exti_channels[i].interrupt_callback.handler = handler;
-                m_exti_channels[i].interrupt_callback.data = data;
-                PIN_MAP[pin].exti_channel = i;
-
-                break;
-            }
+        in_config = get_gpiote_config(pin, mode, true);
+        uint32_t err_code = nrfx_gpiote_in_init(nrf_pin, &in_config, gpiote_interrupt_handler);
+        if (err_code == NRFX_ERROR_NO_MEM) {
+            // High accuracy channels have been used up, use low accuracy channels
+            in_config = get_gpiote_config(pin, mode, false);
+            err_code = nrfx_gpiote_in_init(nrf_pin, &in_config, gpiote_interrupt_handler);
         }
-    } else if (err_code == NRFX_ERROR_INVALID_STATE) {
-        if (!config->keepHandler) {
-            // This pin is used by GPIOTE, Change interrupt handler if necessary
+
+        if (err_code == NRF_SUCCESS) {
+            // Add interrupt handler
             for (int i = 0; i < EXTI_CHANNEL_NUM; i++) {
-                if (m_exti_channels[i].pin == pin) {
+                if (m_exti_channels[i].pin == PIN_INVALID) {
+                    m_exti_channels[i].pin = pin;
                     m_exti_channels[i].interrupt_callback.handler = handler;
                     m_exti_channels[i].interrupt_callback.data = data;
+                    PIN_MAP[pin].exti_channel = i;
 
                     break;
                 }
             }
-        }
-    } else if (err_code == NRFX_ERROR_NO_MEM) {
-        // All channels have been used up
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
+        } else if (err_code == NRFX_ERROR_INVALID_STATE) {
+            if (!config->keepHandler) {
+                // This pin is used by GPIOTE, Change interrupt handler if necessary
+                for (int i = 0; i < EXTI_CHANNEL_NUM; i++) {
+                    if (m_exti_channels[i].pin == pin) {
+                        m_exti_channels[i].interrupt_callback.handler = handler;
+                        m_exti_channels[i].interrupt_callback.data = data;
 
-    nrfx_gpiote_in_event_enable(nrf_pin, true);
-    return SYSTEM_ERROR_NONE;
+                        break;
+                    }
+                }
+            }
+        } else if (err_code == NRFX_ERROR_NO_MEM) {
+            // All channels have been used up
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+
+        nrfx_gpiote_in_event_enable(nrf_pin, true);
+        return SYSTEM_ERROR_NONE;
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    }
+#if HAL_PLATFORM_MCP23S17
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+        return Mcp23s17::getInstance().attachPinInterrupt(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, mode, static_cast<particle::Mcp23s17InterruptCallback>(handler), data);
+    }
+#endif
+    else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+#endif
 }
 
 int HAL_Interrupts_Detach(uint16_t pin) {
@@ -155,24 +177,39 @@ int HAL_Interrupts_Detach(uint16_t pin) {
 
 int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved) {
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    if (PIN_MAP[pin].exti_channel == EXTI_CHANNEL_NONE) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
 
-    uint8_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
-    nrfx_gpiote_in_event_disable(nrf_pin);
-    if (keepHandler) {
-        // Only disable events for this pin and keep handlers
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
+#endif
+        if (PIN_MAP[pin].exti_channel == EXTI_CHANNEL_NONE) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+
+        uint8_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
+        nrfx_gpiote_in_event_disable(nrf_pin);
+        if (keepHandler) {
+            // Only disable events for this pin and keep handlers
+            return SYSTEM_ERROR_NONE;
+        }
+        nrfx_gpiote_in_uninit(nrf_pin);
+
+        m_exti_channels[PIN_MAP[pin].exti_channel].pin = PIN_INVALID;
+        m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler = NULL;
+        m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.data = NULL;
+        PIN_MAP[pin].exti_channel = EXTI_CHANNEL_NONE;
+        HAL_Set_Pin_Function(pin, PF_NONE);
         return SYSTEM_ERROR_NONE;
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     }
-    nrfx_gpiote_in_uninit(nrf_pin);
-
-    m_exti_channels[PIN_MAP[pin].exti_channel].pin = PIN_INVALID;
-    m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler = NULL;
-    m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.data = NULL;
-    PIN_MAP[pin].exti_channel = EXTI_CHANNEL_NONE;
-    HAL_Set_Pin_Function(pin, PF_NONE);
-    return SYSTEM_ERROR_NONE;
+#if HAL_PLATFORM_MCP23S17
+    else if (PIN_MAP[pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+        return Mcp23s17::getInstance().detachPinInterrupt(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
+    } 
+#endif
+    else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+#endif
 }
 
 void HAL_Interrupts_Enable_All(void) {

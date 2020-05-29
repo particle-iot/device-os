@@ -9,7 +9,7 @@ include $(call rwildcard,$(HAL_PLATFORM_SRC_PATH)/,sources.mk)
 
 LOG_MODULE_CATEGORY = hal
 
-ifneq (,$(filter $(PLATFORM_ID),13 23 25))
+ifneq (,$(filter $(PLATFORM_ID),13 23 25 26))
 ifneq ($(DEBUG_BUILD),y)
 ifneq ($(HYBRID_BUILD),y)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ERROR

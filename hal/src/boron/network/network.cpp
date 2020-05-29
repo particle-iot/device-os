@@ -17,7 +17,6 @@
 
 #include "ifapi.h"
 #include "wiznet/wiznetif.h"
-#include "nat64.h"
 #include <mutex>
 #include <nrf52840.h>
 #include "random.h"
@@ -26,14 +25,13 @@
 #include "usart_hal.h"
 #include "network/ncp/cellular/ncp.h"
 #include "pppncpnetif.h"
-#include "sara_ncp_client.h"
+#include "network/ncp_client/sara/sara_ncp_client.h"
 #include "platform_ncp.h"
 #include "lwip_util.h"
 #include "core_hal.h"
 
 using namespace particle;
 using namespace particle::net;
-using namespace particle::net::nat;
 
 namespace {
 

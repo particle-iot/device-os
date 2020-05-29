@@ -20,9 +20,16 @@
 #include "hal_irq_flag.h"
 #include "concurrent_hal.h"
 #include "service_debug.h"
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_EXTERNAL_RTC
+#include "exrtc_hal.h"
+#endif
 
 // This implementation uses timer_hal. See timer_hal.cpp for additional information
 // on millisecond and microsecond counter source and their properties.
+
+extern "C" void HAL_RTCAlarm_Handler(void);
 
 namespace {
 
@@ -30,14 +37,23 @@ const auto UNIX_TIME_201801010000 = 1514764800; // 2018/01/01 00:00:00
 
 time_t s_unix_time_base = 946684800; // Default date/time to 2000/01/01 00:00:00
 uint64_t s_unix_time_base_ms = 0; // Millisecond clock reference to the s_unix_time_base
+
+#if HAL_PLATFORM_EXTERNAL_RTC
+void exRtcAlarmHandler(void* context) {
+    HAL_RTCAlarm_Handler();
+}
+#else
 os_timer_t s_alarm_timer = nullptr; // software alarm timer
+#endif
 
 } // anonymous
 
-extern "C" void HAL_RTCAlarm_Handler(void);
-
 void HAL_RTC_Configuration(void) {
+#if HAL_PLATFORM_EXTERNAL_RTC
+    HAL_RTC_Set_UnixTime(hal_exrtc_get_unixtime(nullptr));
+#else
     // Do nothing
+#endif
 }
 
 void HAL_RTC_Set_UnixTime(time_t value) {
@@ -46,6 +62,9 @@ void HAL_RTC_Set_UnixTime(time_t value) {
     s_unix_time_base = value;
     s_unix_time_base_ms = ms;
     HAL_enable_irq(st);
+#if HAL_PLATFORM_EXTERNAL_RTC
+    hal_exrtc_set_unixtime(value, nullptr);
+#endif
 }
 
 time_t HAL_RTC_Get_UnixTime(void) {
@@ -58,6 +77,9 @@ time_t HAL_RTC_Get_UnixTime(void) {
 }
 
 void HAL_RTC_Set_UnixAlarm(time_t value) {
+#if HAL_PLATFORM_EXTERNAL_RTC
+    hal_exrtc_set_unix_alarm(value, exRtcAlarmHandler, nullptr, nullptr);
+#else
     // This implementation is only used for System.sleep(seconds) (network sleep)
     // on Gen3 devices.
     if (!s_alarm_timer) {
@@ -73,14 +95,19 @@ void HAL_RTC_Set_UnixAlarm(time_t value) {
     // start the timer.
     os_timer_change(s_alarm_timer, OS_TIMER_CHANGE_PERIOD, false, value * 1000,
             0xffffffff, nullptr);
+#endif
 }
 
 void HAL_RTC_Cancel_UnixAlarm(void) {
+#if HAL_PLATFORM_EXTERNAL_RTC
+    hal_exrtc_cancel_unixalarm(nullptr);
+#else
     // This implementation is only used for System.sleep(seconds) (network sleep)
     // on Gen3 devices.
     if (s_alarm_timer) {
         os_timer_change(s_alarm_timer, OS_TIMER_CHANGE_STOP, false, 0, 0xffffffff, nullptr);
     }
+#endif
 }
 
 uint8_t HAL_RTC_Time_Is_Valid(void* reserved) {

@@ -31,8 +31,15 @@
 #include "system_tick_hal.h"
 #include "timer_hal.h"
 #include <memory>
+#include "check.h"
 
+#if PLATFORM_ID == PLATFORM_TRACKER
+#include "usart_hal.h"
+#define TOTAL_I2C                   3
+#else
 #define TOTAL_I2C                   2
+#endif
+
 #define I2C_IRQ_PRIORITY            APP_IRQ_PRIORITY_LOWEST
 
 #define WAIT_TIMED(timeout_ms, what) ({ \
@@ -99,11 +106,14 @@ static void twis0_handler(nrfx_twis_evt_t const * p_event);
 static void twis1_handler(nrfx_twis_evt_t const * p_event);
 
 nrf5x_i2c_info_t m_i2c_map[TOTAL_I2C] = {
-    {&m_twim0, &m_twis0, twis0_handler, SCL, SDA},
-#if PLATFORM_ID == PLATFORM_BORON
-    {&m_twim1, &m_twis1, twis1_handler, PMIC_SCL, PMIC_SDA}
+    {&m_twim0, &m_twis0, twis0_handler, SCL, SDA}
+#if PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_TRACKER
+    ,{&m_twim1, &m_twis1, twis1_handler, PMIC_SCL, PMIC_SDA}
 #else
-    {&m_twim1, &m_twis1, twis1_handler, D3, D2}
+    ,{&m_twim1, &m_twis1, twis1_handler, D3, D2}
+#endif
+#if PLATFORM_ID == PLATFORM_TRACKER
+    ,{&m_twim0, &m_twis0, twis0_handler, D8, D9}, // Shared with UART TX/RX
 #endif
 };
 
@@ -204,9 +214,8 @@ static int twi_uninit(HAL_I2C_Interface i2c) {
     }
 
     // Reset pin function
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    PIN_MAP[m_i2c_map[i2c].scl_pin].pin_func = PF_NONE;
-    PIN_MAP[m_i2c_map[i2c].sda_pin].pin_func = PF_NONE;
+    HAL_Set_Pin_Function(m_i2c_map[i2c].scl_pin, PF_NONE);
+    HAL_Set_Pin_Function(m_i2c_map[i2c].sda_pin, PF_NONE);
 
     return 0;
 }
@@ -248,8 +257,8 @@ static int twi_init(HAL_I2C_Interface i2c) {
     }
 
     // Set pin function
-    PIN_MAP[m_i2c_map[i2c].scl_pin].pin_func = PF_I2C;
-    PIN_MAP[m_i2c_map[i2c].sda_pin].pin_func = PF_I2C;
+    HAL_Set_Pin_Function(m_i2c_map[i2c].scl_pin, PF_I2C);
+    HAL_Set_Pin_Function(m_i2c_map[i2c].sda_pin, PF_I2C);
 
     return 0;
 }
@@ -267,19 +276,20 @@ static bool HAL_I2C_Config_Is_Valid(const HAL_I2C_Config* config) {
 }
 
 int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config) {
+    CHECK_TRUE(i2c < TOTAL_I2C, SYSTEM_ERROR_INVALID_ARGUMENT);
     // Disable threading to create the I2C mutex
-    os_thread_scheduling(false, NULL);
-    if (m_i2c_map[i2c].mutex == NULL) {
+    os_thread_scheduling(false, nullptr);
+    if (m_i2c_map[i2c].mutex == nullptr) {
         os_mutex_recursive_create(&m_i2c_map[i2c].mutex);
     } else {
         // Already initialized
-        os_thread_scheduling(true, NULL);
+        os_thread_scheduling(true, nullptr);
         return SYSTEM_ERROR_NONE;
     }
 
     // Capture the mutex and re-enable threading
-    HAL_I2C_Acquire(i2c, NULL);
-    os_thread_scheduling(true, NULL);
+    HAL_I2C_Acquire(i2c, nullptr);
+    os_thread_scheduling(true, nullptr);
 
     // Initialize internal data structure
     if (HAL_I2C_Config_Is_Valid(config)) {
@@ -309,14 +319,17 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config) {
     memset((void *)m_i2c_map[i2c].rx_buf, 0, m_i2c_map[i2c].rx_buf_size);
     memset((void *)m_i2c_map[i2c].tx_buf, 0, m_i2c_map[i2c].tx_buf_size);
 
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
     return SYSTEM_ERROR_NONE;
 }
 
 void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved) {
-    HAL_I2C_Acquire(i2c, NULL);
+    if (i2c >= TOTAL_I2C) {
+        return;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
     m_i2c_map[i2c].speed = speed;
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
 }
 
 void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved) {
@@ -324,7 +337,36 @@ void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved) 
 }
 
 void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved) {
-    HAL_I2C_Acquire(i2c, NULL);
+    if (i2c >= TOTAL_I2C) {
+        return;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
+
+#if PLATFORM_ID == PLATFORM_TRACKER
+    /*
+     * On Tracker both I2C_INTERFACE1 and I2C_INTERFACE3 use the same peripheral - m_twim0,
+     * but on different pins. We cannot enable both of them at the same time.
+     */
+    if (i2c == HAL_I2C_INTERFACE1 || i2c == HAL_I2C_INTERFACE3) {
+        HAL_I2C_Interface dependent = (i2c == HAL_I2C_INTERFACE1 ? HAL_I2C_INTERFACE3 : HAL_I2C_INTERFACE1);
+        if (HAL_I2C_Is_Enabled(dependent, nullptr)) {
+            // Unfortunately we cannot return an error code here
+            HAL_I2C_Release(i2c, nullptr);
+            return;
+        }
+    }
+    /*
+     * On Tracker both I2C_INTERFACE3 and USART_SERIAL1 use the same pins - D8 and D9,
+     * We cannot enable both of them at the same time.
+     */
+    if (i2c == HAL_I2C_INTERFACE3) {
+        if (HAL_USART_Is_Enabled(HAL_USART_SERIAL1)) {
+            // Unfortunately we cannot return an error code here
+            HAL_I2C_Release(i2c, nullptr);
+            return;
+        }
+    }
+#endif
 
     twi_uninit(i2c);
 
@@ -341,17 +383,20 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
         m_i2c_map[i2c].enabled = true;
     }
 
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
 }
 
 void HAL_I2C_End(HAL_I2C_Interface i2c,void* reserved) {
-    HAL_I2C_Acquire(i2c, NULL);
-    if (m_i2c_map[i2c].enabled) {
+    if (i2c >= TOTAL_I2C) {
+        return;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
+    if (HAL_I2C_Is_Enabled(i2c, nullptr)) {
         if (twi_uninit(i2c) == 0) {
             m_i2c_map[i2c].enabled = false;
         }
     }
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
 }
 
 uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop, void* reserved) {
@@ -368,7 +413,10 @@ uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t qu
 }
 
 int32_t HAL_I2C_Request_Data_Ex(HAL_I2C_Interface i2c, const HAL_I2C_Transmission_Config* config, void* reserved) {
-    HAL_I2C_Acquire(i2c, NULL);
+    if (i2c >= TOTAL_I2C || !HAL_I2C_Is_Enabled(i2c, nullptr)) {
+        return 0;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
 
     uint32_t err_code;
     size_t quantity = 0;
@@ -412,21 +460,30 @@ ret:
     m_i2c_map[i2c].transfer_state = TRANSFER_STATE_IDLE;
     m_i2c_map[i2c].rx_index_head = 0;
     m_i2c_map[i2c].rx_index_tail = quantity;
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
     return quantity;
 }
 
 void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, const HAL_I2C_Transmission_Config* config) {
-    HAL_I2C_Acquire(i2c, NULL);
+    if (i2c >= TOTAL_I2C || !HAL_I2C_Is_Enabled(i2c, nullptr)) {
+        return;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
     m_i2c_map[i2c].address = address;
     m_i2c_map[i2c].tx_index_head = 0;
     m_i2c_map[i2c].tx_index_tail = 0;
     HAL_I2C_Set_Config_Or_Default(i2c, config);
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
 }
 
 uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* reserved) {
-    HAL_I2C_Acquire(i2c, NULL);
+    if (i2c >= TOTAL_I2C) {
+        return 6;
+    }
+    if (!HAL_I2C_Is_Enabled(i2c, nullptr)) {
+        return 7;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
 
     uint32_t err_code;
     uint8_t ret_code = 0;
@@ -460,17 +517,20 @@ ret:
     m_i2c_map[i2c].transfer_state = TRANSFER_STATE_IDLE;
     m_i2c_map[i2c].tx_index_head = 0;
     m_i2c_map[i2c].tx_index_tail = 0;
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
     return ret_code;
 }
 
 uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved) {
-    HAL_I2C_Acquire(i2c, NULL);
+    if (i2c >= TOTAL_I2C || !HAL_I2C_Is_Enabled(i2c, nullptr)) {
+        return 0;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
 
     // in master/slave transmitter mode
     // don't bother if buffer is full
     if (m_i2c_map[i2c].tx_index_tail >= m_i2c_map[i2c].tx_buf_size) {
-        HAL_I2C_Release(i2c, NULL);
+        HAL_I2C_Release(i2c, nullptr);
         return 0;
     }
     // put byte in tx buffer
@@ -478,41 +538,53 @@ uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved)
     // update amount in buffer
     m_i2c_map[i2c].tx_index_tail = m_i2c_map[i2c].tx_index_head;
 
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
     return 1;
 }
 
-int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c,void* reserved) {
-    HAL_I2C_Acquire(i2c, NULL);
+int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c, void* reserved) {
+    if (i2c >= TOTAL_I2C) {
+        return 0;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
     int32_t available = m_i2c_map[i2c].rx_index_tail - m_i2c_map[i2c].rx_index_head;
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
     return available;
 }
 
-int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c,void* reserved) {
-    HAL_I2C_Acquire(i2c, NULL);
+int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c, void* reserved) {
+    if (i2c >= TOTAL_I2C) {
+        return -1;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
     int value = -1;
 
     // get each successive byte on each call
     if (m_i2c_map[i2c].rx_index_head < m_i2c_map[i2c].rx_index_tail) {
         value = m_i2c_map[i2c].rx_buf[m_i2c_map[i2c].rx_index_head++];
     }
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
     return value;
 }
 
-int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c,void* reserved) {
-    HAL_I2C_Acquire(i2c, NULL);
+int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c, void* reserved) {
+    if (i2c >= TOTAL_I2C) {
+        return -1;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
     int value = -1;
 
     if(m_i2c_map[i2c].rx_index_head < m_i2c_map[i2c].rx_index_tail) {
         value = m_i2c_map[i2c].rx_buf[m_i2c_map[i2c].rx_index_head];
     }
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
     return value;
 }
 
-void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c,void* reserved) {
+void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c, void* reserved) {
+    if (i2c >= TOTAL_I2C) {
+        return;
+    }
     m_i2c_map[i2c].rx_index_head = 0;
     m_i2c_map[i2c].rx_index_tail = 0;
     m_i2c_map[i2c].tx_index_head = 0;
@@ -524,15 +596,21 @@ bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c,void* reserved) {
 }
 
 void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int),void* reserved) {
-    HAL_I2C_Acquire(i2c, NULL);
+    if (i2c >= TOTAL_I2C) {
+        return;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
     m_i2c_map[i2c].callback_on_receive = function;
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
 }
 
 void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void),void* reserved) {
-    HAL_I2C_Acquire(i2c, NULL);
+    if (i2c >= TOTAL_I2C) {
+        return;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
     m_i2c_map[i2c].callback_on_request = function;
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
 }
 
 void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable,void* reserved) {
@@ -540,9 +618,12 @@ void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable,void* reserved) 
 }
 
 uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1) {
-    HAL_I2C_Acquire(i2c, NULL);
-    if (HAL_I2C_Is_Enabled(i2c, NULL)) {
-        HAL_I2C_End(i2c, NULL);
+    if (i2c >= TOTAL_I2C) {
+        return 1;
+    }
+    HAL_I2C_Acquire(i2c, nullptr);
+    if (HAL_I2C_Is_Enabled(i2c, nullptr)) {
+        HAL_I2C_End(i2c, nullptr);
 
         HAL_Pin_Mode(m_i2c_map[i2c].sda_pin, INPUT_PULLUP); //Turn SCA into high impedance input
         HAL_Pin_Mode(m_i2c_map[i2c].scl_pin, OUTPUT);       //Turn SCL into a normal GPO
@@ -559,17 +640,19 @@ uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
         //Change SCL to be an input
         HAL_Pin_Mode(m_i2c_map[i2c].scl_pin, INPUT_PULLUP);
 
-        HAL_I2C_Begin(i2c, m_i2c_map[i2c].mode, m_i2c_map[i2c].address, NULL);
+        HAL_I2C_Begin(i2c, m_i2c_map[i2c].mode, m_i2c_map[i2c].address, nullptr);
         HAL_Delay_Milliseconds(50);
-        HAL_I2C_Release(i2c, NULL);
+        HAL_I2C_Release(i2c, nullptr);
         return 0;
     }
-    HAL_I2C_Release(i2c, NULL);
+    HAL_I2C_Release(i2c, nullptr);
     return 1;
 }
 
-int32_t HAL_I2C_Acquire(HAL_I2C_Interface i2c, void* reserved)
-{
+int32_t HAL_I2C_Acquire(HAL_I2C_Interface i2c, void* reserved) {
+    if (i2c >= TOTAL_I2C) {
+        return -1;
+    }
     if (!HAL_IsISR()) {
         os_mutex_recursive_t mutex = m_i2c_map[i2c].mutex;
         if (mutex) {
@@ -579,8 +662,10 @@ int32_t HAL_I2C_Acquire(HAL_I2C_Interface i2c, void* reserved)
     return -1;
 }
 
-int32_t HAL_I2C_Release(HAL_I2C_Interface i2c, void* reserved)
-{
+int32_t HAL_I2C_Release(HAL_I2C_Interface i2c, void* reserved) {
+    if (i2c >= TOTAL_I2C) {
+        return -1;
+    }
     if (!HAL_IsISR()) {
         os_mutex_recursive_t mutex = m_i2c_map[i2c].mutex;
         if (mutex) {

@@ -65,13 +65,10 @@ void __assert_func(const char *file, int line, const char* func, const char* exp
     while(1);
 }
 
-int _write(int file, char *ptr, int len) { return 0; }
-int _read(int file, char *ptr, int len) { return 0; }
-int _close(int file) { return 0; }
-int _lseek(int file, int ptr, int dir) { return 0; }
-int _fstat(int file, void *sbuf) { return 0; }
-int _isatty(int file) { return 0; }
-
+// Saves a few kB of flash.
+char* strerror(int errnum) {
+    return (char*)"";
+}
 
 } /* extern "C" */
 

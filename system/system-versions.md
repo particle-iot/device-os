@@ -112,8 +112,14 @@
 | 501 | 1500 | 1.5.0-rc.1    |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
 | 501 | 1501 | 1.5.0-rc.2    |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
 | 501 | 1502 | 1.5.0         |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
+| 501 | 1503 | 1.5.1-tracker.1 |     Tracker |
+| 501 | 1504 | 1.5.1-tracker.2 |     Tracker |
+| 501 | 1505 | 1.5.1-tracker.3 |     Tracker |
 | 501 | 1510 | 1.5.1-rc.1    |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
 | 501 | 1511 | 1.5.1         |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
+| 502 | 1512 | 1.5.2         |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
+| 502 | 1513 | 1.5.3-tracker.1 |     Tracker |
+| 1000 | 2000 | 2.0.0-alpha.1 |      Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM, Tracker |
 
 [1] For 0.8.0-rc.1, The v101 bootloader was also released in the Github releases as v200. Thus the next released bootloader in the 0.8.x line should be v201. As of 4/5/2018: 22 device had v200 bootloaders.
 

@@ -125,3 +125,13 @@ int hal_get_device_secret(char* data, size_t size, void* reserved)
     return HAL_DEVICE_SECRET_SIZE;
 }
 #endif /* HAL_DEVICE_ID_NO_DCT */
+
+int hal_get_device_hw_version(uint32_t* revision, void* reserved)
+{
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved)
+{
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
