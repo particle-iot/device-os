@@ -2,18 +2,20 @@
 INCLUDE platform_user_ram.ld
 
 INCLUDE platform_ram.ld
-INCLUDE softdevice.ld
-INCLUDE ../../shared/nRF52840/common.ld
+INCLUDE platform_flash.ld
 
 MEMORY
 {
-    INCLUDE backup_ram_memory.ld
-    APP_FLASH (rx) : ORIGIN = 0x000d4000, LENGTH = 128K
-    SRAM (rwx) : ORIGIN = _user_part_static_ram_start, LENGTH = _user_part_static_ram_size
+    INCLUDE memory_backup_ram.ld
+    
+    APP_FLASH (rx)  : ORIGIN = platform_user_part_flash_start,      LENGTH = platform_user_part_flash_size
+    SRAM      (rwx) : ORIGIN = platform_user_part_static_ram_start, LENGTH = platform_user_part_static_ram_size
 }
 
+/* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
 INCLUDE module_system_part1_export.ld
 
-INCLUDE ../../shared/nRF52840/module_user_export.ld
+/* Definitions for the static parts of the user module */
+INCLUDE module_user_export.ld
 
-INCLUDE ../../shared/nRF52840/user.ld
+INCLUDE linker_user_part_common.ld
