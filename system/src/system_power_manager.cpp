@@ -143,6 +143,8 @@ void PowerManager::sleep(bool s) {
       initDefault();
       update();
       gauge.wakeup();
+      // Delay for at least 500ms to make sure the fuelgauge is ready to function after woken up.
+      HAL_Delay_Milliseconds(500);
     }
   }
 }
