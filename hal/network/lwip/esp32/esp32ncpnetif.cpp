@@ -224,6 +224,18 @@ int Esp32NcpNetif::powerDown() {
     return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }
 
+int Esp32NcpNetif::getPowerState(if_power_state_t* state) const {
+    auto s = wifiMan_->ncpClient()->ncpPowerState();
+    if (s == NcpPowerState::ON) {
+        *state = IF_POWER_STATE_UP;
+    } else if (s == NcpPowerState::OFF) {
+        *state = IF_POWER_STATE_DOWN;
+    } else {
+        *state = IF_POWER_STATE_NONE;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 int Esp32NcpNetif::upImpl() {
     up_ = true;
     auto r = queryMacAddress();

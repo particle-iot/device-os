@@ -27,6 +27,8 @@
 #include "spark_wiring_network.h"
 #include "enumflags.h"
 
+#define SYSTEM_SLEEP_NETWORK_FLAG_SUPPORTED_VER     (3)
+
 namespace particle {
 
 enum class SystemSleepMode: uint8_t {
@@ -88,7 +90,7 @@ public:
     }
 
     EnumFlags<SystemSleepNetworkFlag> networkFlags(network_interface_index index) const {
-        if (config_->version < 3) {
+        if (config_->version < SYSTEM_SLEEP_NETWORK_FLAG_SUPPORTED_VER) {
             return EnumFlags<SystemSleepNetworkFlag>(SystemSleepNetworkFlag::NONE);
         }
         auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK);

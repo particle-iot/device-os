@@ -1761,11 +1761,11 @@ int SaraNcpClient::modemSoftPowerOff() {
                 // WARN: We assume that the modem can turn off itself reliably.
                 ncpPowerState(NcpPowerState::OFF);
             } else {
-                LOG(TRACE, "AT+CPWROFF command is not echoed");
+                LOG(ERROR, "AT+CPWROFF command is not responding");
                 return SYSTEM_ERROR_AT_NOT_OK;
             }
         } else {
-            LOG(TRACE, "NCP client is not ready");
+            LOG(ERROR, "NCP client is not ready");
             return SYSTEM_ERROR_INVALID_STATE;
         }
     } else {

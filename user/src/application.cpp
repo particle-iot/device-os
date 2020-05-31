@@ -1,26 +1,30 @@
-#include "Particle.h"
+/*
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHAN'TABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
 
-SYSTEM_MODE(MANUAL);
+/* Includes ------------------------------------------------------------------*/
+#include "application.h"
 
-SYSTEM_THREAD(ENABLED);
-
-Serial1LogHandler log(LOG_LEVEL_ALL);
-
-void setup() {
-    // Serial1.begin(9600);
-
-    LOG(TRACE, "Application started.");
-
-    LOG(TRACE, "Call Cellular.on()");
-    Cellular.on();
-    LOG(TRACE, "After Cellular.on()");
-
-    delay(5000);
+/* This function is called once at start up ----------------------------------*/
+void setup()
+{
 }
 
-void loop() {
-    LOG(TRACE, "Device is going to enter sleep mode.");
-    SystemSleepConfiguration config;
-    config.mode(SystemSleepMode::STOP).gpio(D0, RISING);
-    System.sleep(config);
+/* This function loops forever -----------------------------------------------*/
+void loop()
+{
+    // This will run in a loop
 }
