@@ -418,8 +418,6 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                     MDM_PRINTF("New SMS at index %d\r\n", a);
                     if (sms_cb) SMSreceived(a);
                 }
-                // TODO: This should include other LTE devices,
-                // perhaps adding _net.act < 7
                 else if ((_dev.dev != DEV_SARA_R410) && (sscanf(cmd, "CIEV: 9,%d", &a) == 1)) {
                     MDM_PRINTF("CIEV matched: 9,%d\r\n", a);
                     // Wait until the system is attached before attempting to act on GPRS detach
@@ -493,6 +491,16 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                             else if (a == 3) *reg = REG_DENIED;   // 3: registration denied
                             else if (a == 4) *reg = REG_UNKNOWN;  // 4: unknown
                             else if (a == 5) *reg = REG_ROAMING;  // 5: registered, roaming
+
+                            // R410 : Look out for a CEREG: de-registration URC while attached
+                            if (_dev.dev == DEV_SARA_R410 && _attached && !REG_OK(*reg) && !strcmp(s, "CEREG:")) {
+                                MDM_PRINTF("Cell de-registered\r\n");
+                                _attached_urc = 0;
+                                _ip = NOIP;
+                                _attached = false;
+                                HAL_NET_notify_disconnected();
+                            }
+
                             if ((r >= 3) && (b != (int)0xFFFF))      _net.cgi.location_area_code = b;
                             if ((r >= 4) && (c != (int)0xFFFFFFFF))  _net.cgi.cell_id  = c;
                             // access technology
