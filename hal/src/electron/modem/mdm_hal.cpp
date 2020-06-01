@@ -1608,7 +1608,7 @@ failure:
 void MDMParser::_setBandSelectString(MDM_BandSelect &data, char* bands, int index /*= 0*/) {
     char band[5];
     for (int x=index; x<data.count; x++) {
-        sprintf(band, "%d", data.band[x]);
+        snprintf(band, 5, "%d", data.band[x]);
         strcat(bands, band);
         if ((x+1) < data.count) strcat(bands, ",");
     }
