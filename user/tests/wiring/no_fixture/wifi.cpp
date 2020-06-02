@@ -181,6 +181,7 @@ test(WIFI_07_restore_connection)
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 
+#if !HAL_PLATFORM_NCP
 test(WIFI_08_reset_hostname)
 {
     assertEqual(WiFi.setHostname(NULL), 0);
@@ -204,6 +205,7 @@ test(WIFI_11_restore_default_hostname)
 {
     assertEqual(WiFi.setHostname(NULL), 0);
 }
+#endif //!HAL_PLATFORM_NCP
 
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 
