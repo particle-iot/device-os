@@ -733,10 +733,13 @@ void NetworkManager::populateInterfaceRuntimeState(bool st) {
             state->enabled = st;
             if_power_state_t s;
             if_get_power_state(iface, &s);
-            state->on = (s == IF_POWER_STATE_UP) ? true : false;
-            uint8_t index;
-            if_get_index(iface, &index);
-            LOG(TRACE, "Interface %d power state: %s", index, state->on ? "IF_POWER_STATE_UP" : "IF_POWER_STATE_DOWN");
+            auto curr = (s == IF_POWER_STATE_UP) ? true : false;
+            if (curr != state->on) {
+                state->on = curr;
+                uint8_t index;
+                if_get_index(iface, &index);
+                LOG(TRACE, "Interface %d power state: %s", index, state->on ? "on" : "off");
+            }
         }
     });
 }

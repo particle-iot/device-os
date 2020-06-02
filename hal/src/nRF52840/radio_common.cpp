@@ -19,7 +19,7 @@
 
 #include "dct.h"
 #include "gpio_hal.h"
-
+#include "system_error.h"
 #include "check.h"
 
 namespace particle {
@@ -33,6 +33,8 @@ const auto DEFAULT_ANTENNA = RADIO_ANT_EXTERNAL;
 #else
 #error "Unsupported platform"
 #endif
+
+radio_antenna_type currAntenna = DEFAULT_ANTENNA;
 
 #if HAL_PLATFORM_RADIO_ANTENNA_INTERNAL
 
@@ -51,7 +53,8 @@ int selectInternalAntenna() {
 #else
 #error "Unsupported platform"
 #endif
-    return 0;
+    currAntenna = RADIO_ANT_INTERNAL;
+    return SYSTEM_ERROR_NONE;
 }
 
 #endif // HAL_PLATFORM_RADIO_ANTENNA_INTERNAL
@@ -74,7 +77,8 @@ int selectExtenalAntenna() {
 #elif PLATFORM_ID != PLATFORM_ASOM && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM
 #error "Unsupported platform"
 #endif
-    return 0;
+    currAntenna = RADIO_ANT_EXTERNAL;
+    return SYSTEM_ERROR_NONE;
 }
 
 #endif // HAL_PLATFORM_RADIO_ANTENNA_EXTERNAL
@@ -101,7 +105,7 @@ int selectAntenna(radio_antenna_type antenna) {
     default:
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 } // namespace
@@ -116,7 +120,27 @@ int initRadioAntenna() {
         antenna = (radio_antenna_type)dctAntenna;
     }
     CHECK(selectAntenna(antenna));
-    return 0;
+    return SYSTEM_ERROR_NONE;
+}
+
+int disableRadioAntenna() {
+#if PLATFORM_ID == PLATFORM_ARGON
+    HAL_Pin_Mode(ANTSW1, INPUT);
+    HAL_Pin_Mode(ANTSW2, INPUT);
+#elif PLATFORM_ID == PLATFORM_BORON
+    HAL_Pin_Mode(ANTSW1, INPUT);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    HAL_Pin_Mode(ANTSW1, INPUT);
+// SoM platforms have only an external antenna
+#elif PLATFORM_ID != PLATFORM_ASOM && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM
+#error "Unsupported platform"
+#endif
+    return SYSTEM_ERROR_NONE;
+}
+
+int enableRadioAntenna() {
+    CHECK(selectAntenna(currAntenna));
+    return SYSTEM_ERROR_NONE;
 }
 
 int selectRadioAntenna(radio_antenna_type antenna) {
@@ -129,7 +153,7 @@ int selectRadioAntenna(radio_antenna_type antenna) {
         LOG(ERROR, "Unable to save antenna settings");
         return SYSTEM_ERROR_UNKNOWN;
     }
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 } // namespace particle

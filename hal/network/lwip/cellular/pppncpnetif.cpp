@@ -283,6 +283,8 @@ void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
                 LOG(TRACE, "NCP power state changed: IF_POWER_STATE_DOWN");
             }
             if_notify_event(self->interface(), &evt, nullptr);
+        } else {
+            LOG(ERROR, "NCP power state unknown");
         }
     }
 }

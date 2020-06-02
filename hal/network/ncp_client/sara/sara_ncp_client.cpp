@@ -160,7 +160,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
     ncpPowerState(modemPowerState() ? NcpPowerState::ON : NcpPowerState::OFF);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void SaraNcpClient::destroy() {
@@ -215,7 +215,7 @@ int SaraNcpClient::initParser(Stream* stream) {
                 self->cgi_.cell_id = static_cast<CidType>(val[2]);
             }
         }
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }, this));
     // n={0,1} +CGREG: <stat>
     // n=2     +CGREG: <stat>[,<lac>,<ci>[,<AcT>,<rac>]]
@@ -257,7 +257,7 @@ int SaraNcpClient::initParser(Stream* stream) {
                 }
             }
         }
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }, this));
     // +CEREG: <stat>[,[<tac>],[<ci>],[<AcT>][,<cause_type>,<reject_cause>[,[<Active_Time>],[<Periodic_TAU>]]]]
     CHECK(parser_.addUrcHandler("+CEREG", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
@@ -294,9 +294,9 @@ int SaraNcpClient::initParser(Stream* stream) {
                 }
             }
         }
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }, this));
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::on() {
@@ -305,7 +305,7 @@ int SaraNcpClient::on() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (ncpState_ == NcpState::ON) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     // Power on the modem
     auto r = modemPowerOn();
@@ -313,7 +313,7 @@ int SaraNcpClient::on() {
         return r;
     }
     CHECK(waitReady(r == SYSTEM_ERROR_NONE /* powerOn */));
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::off() {
@@ -321,29 +321,48 @@ int SaraNcpClient::off() {
     if (ncpState_ == NcpState::DISABLED) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    muxer_.stop();
     // Try using AT command to turn off the modem first.
-    if (modemSoftPowerOff() != 0) {
-        // Disable voltage translator
-        modemSetUartState(false);
+    int r = modemSoftPowerOff();
+
+    // Disable ourselves/channel, so that the muxer can potentially stop faster non-gracefully
+    serial_->enabled(false);
+    muxer_.stop();
+    serial_->enabled(true);
+
+    // Disable voltage translator
+    modemSetUartState(false);
+
+    if (!r) {
+        LOG(TRACE, "Soft power off modem successfully");
+        // WARN: We assume that the modem can turn off itself reliably.
+        ncpPowerState(NcpPowerState::OFF);
+    } else {
         // Power down using hardware
-        modemPowerOff();
+        if (!modemPowerOff()) {
+            ncpPowerState(NcpPowerState::OFF);
+        }
+        // FIXME: else there is power leakage still.
     }
+
+    // Disable the UART interface.
+    LOG(TRACE, "Deinit modem serial.");
+    serial_.reset();
+
     ready_ = false;
     ncpState(NcpState::OFF);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::enable() {
     const NcpClientLock lock(this);
     if (ncpState_ != NcpState::DISABLED) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     serial_->enabled(true);
     muxerAtStream_->enabled(true);
     ncpState_ = prevNcpState_;
     off();
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void SaraNcpClient::disable() {
@@ -373,7 +392,7 @@ int SaraNcpClient::disconnect() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (connState_ == NcpConnectionState::DISCONNECTED) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     CHECK(checkParser());
     const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2,2"));
@@ -383,7 +402,7 @@ int SaraNcpClient::disconnect() {
     resetRegistrationState();
 
     connectionState(NcpConnectionState::DISCONNECTED);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 NcpConnectionState SaraNcpClient::connectionState() {
@@ -397,7 +416,7 @@ int SaraNcpClient::getFirmwareVersionString(char* buf, size_t size) {
     CHECK_PARSER(resp.readLine(buf, size));
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::getFirmwareModuleVersion(uint16_t* ver) {
@@ -424,7 +443,7 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
         if (bytesInWindow_ >= UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD) {
             LOG_DEBUG(WARN, "Dropping");
             // Not an error
-            return 0;
+            return SYSTEM_ERROR_NONE;
         }
     }
 
@@ -460,7 +479,7 @@ int SaraNcpClient::dataChannelFlowControl(bool state) {
         bytesInWindow_ = 0;
         muxer_.resumeChannel(UBLOX_NCP_PPP_CHANNEL);
     }
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void SaraNcpClient::processEvents() {
@@ -483,7 +502,7 @@ int SaraNcpClient::connect(const CellularNetworkConfig& conf) {
 
     checkRegistrationState();
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::getIccid(char* buf, size_t size) {
@@ -519,7 +538,7 @@ int SaraNcpClient::getTxDelayInDataChannel() {
     if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
         return UBLOX_NCP_R4_WINDOW_SIZE_MS * 2;
     }
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
@@ -768,7 +787,7 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         }
     }
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::checkParser() {
@@ -784,7 +803,7 @@ int SaraNcpClient::checkParser() {
         }
     }
     CHECK(waitReady());
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) {
@@ -795,7 +814,7 @@ int SaraNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) {
             return r;
         }
         if (r == AtResponse::OK) {
-            return 0;
+            return SYSTEM_ERROR_NONE;
         }
         const auto t2 = HAL_Timer_Get_Milli_Seconds();
         if (t2 - t1 >= timeout) {
@@ -807,7 +826,7 @@ int SaraNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) {
 
 int SaraNcpClient::waitReady(bool powerOn) {
     if (ready_) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     ModemState modemState = ModemState::Unknown;
@@ -875,7 +894,7 @@ int SaraNcpClient::waitReady(bool powerOn) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::selectSimCard(ModemState& state) {
@@ -1009,7 +1028,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
         }
     }
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState) {
@@ -1213,7 +1232,7 @@ int SaraNcpClient::initReady(ModemState state) {
 
     muxerSg.dismiss();
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::checkRuntimeState(ModemState& state) {
@@ -1277,7 +1296,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
             muxer_.setAckTimeout(UBLOX_MUXER_T1);
             muxer_.setControlResponseTimeout(UBLOX_MUXER_T2);
 
-            return 0;
+            return SYSTEM_ERROR_NONE;
         }
 
         // Something went wrong, we are supposed to be in multiplexed mode, however we are not receiving
@@ -1295,7 +1314,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     parser_.reset();
     if (!waitAtResponse(2000)) {
         state = ModemState::RuntimeBaudrate;
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     LOG(TRACE, "Modem is not responsive @ %u baudrate", runtimeBaudrate);
@@ -1307,7 +1326,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     parser_.reset();
     if (!waitAtResponse(5000)) {
         state = ModemState::DefaultBaudrate;
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     LOG(TRACE, "Modem is not responsive @ %u baudrate", UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
@@ -1332,7 +1351,7 @@ int SaraNcpClient::initMuxer() {
     // Set channel state handler
     muxer_.setChannelStateHandler(muxChannelStateCb, this);
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::checkSimCard() {
@@ -1345,7 +1364,7 @@ int SaraNcpClient::checkSimCard() {
     if (!strcmp(code, "READY")) {
         r = parser_.execCommand("AT+CCID");
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     return SYSTEM_ERROR_UNKNOWN;
 }
@@ -1380,12 +1399,12 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
             netConf_.hasApn() ? netConf_.apn() : "");
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::setRegistrationTimeout(unsigned timeout) {
     registrationTimeout_ = std::max(timeout, REGISTRATION_TIMEOUT);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::registerNet() {
@@ -1433,7 +1452,7 @@ int SaraNcpClient::registerNet() {
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void SaraNcpClient::ncpState(NcpState state) {
@@ -1524,7 +1543,7 @@ int SaraNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelS
 
     // Ignore state changes unless we are in an ON state
     if (self->ncpState() != NcpState::ON) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     // This callback is executed from the multiplexer thread, not safe to use the lock here
     // because it might get called while blocked inside some muxer function
@@ -1553,7 +1572,7 @@ int SaraNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelS
         }
     }
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void SaraNcpClient::resetRegistrationState() {
@@ -1588,7 +1607,7 @@ int SaraNcpClient::processEventsImpl() {
     checkRegistrationState();
     if (connState_ != NcpConnectionState::CONNECTING ||
             millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     SCOPE_GUARD({
         regCheckTime_ = millis();
@@ -1609,7 +1628,7 @@ int SaraNcpClient::processEventsImpl() {
         }
         ncpState(NcpState::OFF);
     }
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::modemInit() const {
@@ -1634,10 +1653,43 @@ int SaraNcpClient::modemInit() const {
 
     LOG(TRACE, "Modem low level initialization OK");
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
+}
+
+bool SaraNcpClient::waitModemPowerOff(system_tick_t timeout) const {
+   bool powerGood;
+   system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+   while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
+       powerGood = modemPowerState();
+       if (!powerGood) {
+           break;
+       }
+       HAL_Delay_Milliseconds(5);
+   }
+   return !powerGood;
+}
+
+bool SaraNcpClient::waitModemPowerOn(system_tick_t timeout) const {
+   bool powerGood;
+   system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+   while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
+       powerGood = modemPowerState();
+       if (powerGood) {
+           break;
+       }
+       HAL_Delay_Milliseconds(5);
+   }
+   return powerGood;
 }
 
 int SaraNcpClient::modemPowerOn() {
+    // The serial_ is always released if powering down the modem is requested.
+    if (!serial_.get()) {
+        serial_.reset(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
+        CHECK_TRUE(serial_.get(), SYSTEM_ERROR_NO_MEMORY);
+        CHECK(initParser(serial_.get()));
+    }
+
     if (!modemPowerState()) {
         LOG(TRACE, "Powering modem on");
         // Perform power-on sequence depending on the NCP type
@@ -1657,16 +1709,8 @@ int SaraNcpClient::modemPowerOn() {
             HAL_GPIO_Write(UBPWR, 1);
         }
 
-        bool powerGood;
         // Verify that the module was powered up by checking the VINT pin up to 1 sec
-        for (unsigned i = 0; i < 10; i++) {
-            powerGood = modemPowerState();
-            if (powerGood) {
-                break;
-            }
-            HAL_Delay_Milliseconds(100);
-        }
-        if (powerGood) {
+        if (waitModemPowerOn(1000)) {
             LOG(TRACE, "Modem powered on");
             ncpPowerState(NcpPowerState::ON);
         } else {
@@ -1679,7 +1723,7 @@ int SaraNcpClient::modemPowerOn() {
     }
     CHECK_TRUE(modemPowerState(), SYSTEM_ERROR_TIMEOUT);
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::modemPowerOff() {
@@ -1726,18 +1770,9 @@ int SaraNcpClient::modemPowerOff() {
             HAL_GPIO_Write(UBPWR, 1);
         }
 
-        bool powerGood;
         // Verify that the module was powered down by checking the VINT pin up to 10 sec
-        for (unsigned i = 0; i < 100; i++) {
-            powerGood = modemPowerState();
-            if (!powerGood) {
-                break;
-            }
-            HAL_Delay_Milliseconds(100);
-        }
-        if (!powerGood) {
+        if (waitModemPowerOff(10000)) {
             LOG(TRACE, "Modem powered off");
-            ncpPowerState(NcpPowerState::OFF);
         } else {
             LOG(ERROR, "Failed to power off modem");
         }
@@ -1746,7 +1781,7 @@ int SaraNcpClient::modemPowerOff() {
     }
 
     CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::modemSoftPowerOff() {
@@ -1755,11 +1790,14 @@ int SaraNcpClient::modemSoftPowerOff() {
         if (ready_) {
             int r = CHECK_PARSER(parser_.execCommand("AT+CPWROFF"));
             if (r == AtResponse::OK) {
-                LOG(TRACE, "Modem is powered off");
-                // Disable voltage translator
-                modemSetUartState(false);
-                // WARN: We assume that the modem can turn off itself reliably.
-                ncpPowerState(NcpPowerState::OFF);
+                system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+                LOG(TRACE, "Waiting the modem to be turned off...");
+                // Verify that the module was powered down by checking the VINT pin up to 10 sec
+                if (waitModemPowerOff(10000)) {
+                    LOG(TRACE, "It takes %d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
+                } else {
+                    LOG(ERROR, "Failed to power off modem using AT command");
+                }
             } else {
                 LOG(ERROR, "AT+CPWROFF command is not responding");
                 return SYSTEM_ERROR_AT_NOT_OK;
@@ -1771,7 +1809,9 @@ int SaraNcpClient::modemSoftPowerOff() {
     } else {
         LOG(TRACE, "Modem already off");
     }
-    return 0;
+
+    CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::modemHardReset(bool powerOff) {
@@ -1813,9 +1853,12 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
             return modemPowerOn();
         } else {
             ncpPowerState(NcpPowerState::OFF);
+            // Disable the UART interface.
+            LOG(TRACE, "Deinit modem serial.");
+            serial_.reset();
         }
     }
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 bool SaraNcpClient::modemPowerState() const {
@@ -1825,7 +1868,7 @@ bool SaraNcpClient::modemPowerState() const {
 int SaraNcpClient::modemSetUartState(bool state) const {
     LOG(TRACE, "Setting UART voltage translator state %d", state);
     HAL_GPIO_Write(BUFEN, state ? 0 : 1);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void SaraNcpClient::waitForPowerOff() {

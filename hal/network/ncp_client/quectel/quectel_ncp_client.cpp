@@ -326,12 +326,30 @@ int QuectelNcpClient::off() {
     if (ncpState_ == NcpState::DISABLED) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    muxer_.stop();
-    // Power down
     // Try using AT command to turn off the modem first.
-    if (modemSoftPowerOff() != 0) {
-        modemPowerOff();
+    int r = modemSoftPowerOff();
+
+    // Disable ourselves/channel, so that the muxer can potentially stop faster non-gracefully
+    serial_->enabled(false);
+    muxer_.stop();
+    serial_->enabled(true);
+
+    if (!r) {
+        LOG(TRACE, "Soft power off modem successfully");
+        // WARN: We assume that the modem can turn off itself reliably.
+        ncpPowerState(NcpPowerState::OFF);
+    } else {
+        // Power down using hardware
+        if (!modemPowerOff()) {
+            ncpPowerState(NcpPowerState::OFF);
+        }
+        // FIXME: else there is power leakage still.
     }
+
+    // Disable the UART interface.
+    LOG(TRACE, "Deinit modem serial.");
+    serial_.reset();
+
     ready_ = false;
     ncpState(NcpState::OFF);
     return SYSTEM_ERROR_NONE;
@@ -346,7 +364,7 @@ int QuectelNcpClient::enable() {
     muxerAtStream_->enabled(true);
     ncpState_ = prevNcpState_;
     off();
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void QuectelNcpClient::disable() {
@@ -438,7 +456,7 @@ int QuectelNcpClient::dataChannelFlowControl(bool state) {
         inFlowControl_ = false;
         muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL);
     }
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void QuectelNcpClient::processEvents() {
@@ -772,11 +790,11 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
 
 int QuectelNcpClient::setRegistrationTimeout(unsigned timeout) {
     registrationTimeout_ = std::max(timeout, REGISTRATION_TIMEOUT);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::getTxDelayInDataChannel() {
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::checkParser() {
@@ -1034,7 +1052,7 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
         if (!waitAtResponse(10000)) {
             // We are in muxed mode already with AT channel open
             state = ModemState::MuxerAtChannel;
-            return 0;
+            return SYSTEM_ERROR_NONE;
         }
 
         // Something went wrong, we are supposed to be in multiplexed mode, however we are not receiving
@@ -1052,7 +1070,7 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
     parser_.reset();
     if (!waitAtResponse(1000)) {
         state = ModemState::RuntimeBaudrate;
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     LOG_DEBUG(TRACE, "Modem is not responsive @ %u baudrate", QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE);
@@ -1064,7 +1082,7 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
     parser_.reset();
     if (!waitAtResponse(20000)) {
         state = ModemState::DefaultBaudrate;
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     LOG_DEBUG(TRACE, "Modem is not responsive @ %u baudrate", QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE);
@@ -1088,7 +1106,7 @@ int QuectelNcpClient::initMuxer() {
     // Start muxer (blocking call)
     CHECK_TRUE(muxer_.start(true) == 0, SYSTEM_ERROR_UNKNOWN);
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::checkSimCard() {
@@ -1210,6 +1228,7 @@ void QuectelNcpClient::ncpPowerState(NcpPowerState state) {
     if (pwrState_ == state) {
         return;
     }
+    pwrState_ = state;
     const auto handler = conf_.eventHandler();
     if (handler) {
         NcpPowerStateChangedEvent event = {};
@@ -1268,7 +1287,7 @@ int QuectelNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Chann
 
     // Ignore state changes unless we are in an ON state
     if (self->ncpState() != NcpState::ON) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     // This callback is executed from the multiplexer thread, not safe to use the lock here
     // because it might get called while blocked inside some muxer function
@@ -1364,7 +1383,47 @@ int QuectelNcpClient::modemInit() const {
     return SYSTEM_ERROR_NONE;
 }
 
+bool QuectelNcpClient::waitModemPowerOff(system_tick_t timeout) const {
+   bool powerGood;
+   system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+   while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
+       powerGood = modemPowerState();
+       if (!powerGood) {
+           break;
+       }
+       HAL_Delay_Milliseconds(5);
+   }
+   return !powerGood;
+}
+
+bool QuectelNcpClient::waitModemPowerOn(system_tick_t timeout) const {
+   bool powerGood;
+   system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+   while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
+       powerGood = modemPowerState();
+       if (powerGood) {
+           break;
+       }
+       HAL_Delay_Milliseconds(5);
+   }
+   return powerGood;
+}
+
 int QuectelNcpClient::modemPowerOn() {
+    // The serial_ is always released if powering down the modem is requested.
+    if (!serial_.get()) {
+        auto sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS;
+        uint32_t hwVersion = HW_VERSION_UNDEFINED;
+        auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
+        if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
+            sconf = SERIAL_8N1;
+            LOG(TRACE, "Disable Hardware Flow control!");
+        }
+        serial_.reset(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
+        CHECK_TRUE(serial_.get(), SYSTEM_ERROR_NO_MEMORY);
+        CHECK(initParser(serial_.get()));
+    }
+
     if (!modemPowerState()) {
         LOG(TRACE, "Powering modem on");
         // Power on, power on pulse >= 500ms
@@ -1372,18 +1431,10 @@ int QuectelNcpClient::modemPowerOn() {
         HAL_Delay_Milliseconds(500);
         HAL_GPIO_Write(BGPWR, 0);
 
-        bool powerGood;
         // After power on the device, we can't assume the device is ready for operation:
         // BG96: status pin ready requires >= 4.8s, uart ready requires >= 4.9s
         // EG91: status pin ready requires >= 10s, uart ready requires >= 12s
-        for (unsigned i = 0; i < 100; i++) {
-            powerGood = modemPowerState();
-            if (powerGood) {
-                break;
-            }
-            HAL_Delay_Milliseconds(150);
-        }
-        if (powerGood) {
+        if (waitModemPowerOn(15000)) {
             LOG(TRACE, "Modem powered on");
             ncpPowerState(NcpPowerState::ON);
         } else {
@@ -1407,20 +1458,11 @@ int QuectelNcpClient::modemPowerOff() {
         HAL_Delay_Milliseconds(650);
         HAL_GPIO_Write(BGPWR, 0);
 
-        bool powerGood;
         // Verify that the module was powered down by checking the status pin (BGVINT)
         // BG96: >=2s
         // EG91: >=30s
-        for (unsigned i = 0; i < 100; i++) {
-            powerGood = modemPowerState();
-            if (!powerGood) {
-                break;
-            }
-            HAL_Delay_Milliseconds(300);
-        }
-        if (!powerGood) {
+        if (waitModemPowerOff(30000)) {
             LOG(TRACE, "Modem powered off");
-            ncpPowerState(NcpPowerState::OFF);
         } else {
             LOG(ERROR, "Failed to power off modem, try hard reset");
             modemHardReset(true);
@@ -1435,22 +1477,32 @@ int QuectelNcpClient::modemPowerOff() {
 
 int QuectelNcpClient::modemSoftPowerOff() {
     if (modemPowerState()) {
-        LOG(TRACE, "Powering modem off using AT command");
+        LOG(TRACE, "Try powering modem off using AT command");
         if (ready_) {
             int r = CHECK_PARSER(parser_.execCommand("AT+QPOWD"));
             if (r == AtResponse::OK) {
-                // WARN: We assume that the modem can turn off itself reliably.
-                ncpPowerState(NcpPowerState::OFF);
+                system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+                LOG(TRACE, "Waiting the modem to be turned off...");
+                // Verify that the module was powered down by checking the VINT pin up to 10 sec
+                if (waitModemPowerOff(10000)) {
+                    LOG(TRACE, "It takes %d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
+                } else {
+                    LOG(ERROR, "Failed to power off modem using AT command");
+                }
             } else {
+                LOG(ERROR, "AT+CPWROFF command is not responding");
                 return SYSTEM_ERROR_AT_NOT_OK;
             }
         } else {
+            LOG(ERROR, "NCP client is not ready");
             return SYSTEM_ERROR_INVALID_STATE;
         }
     } else {
         LOG(TRACE, "Modem already off");
     }
-    return 0;
+
+    CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::modemHardReset(bool powerOff) const {
@@ -1461,6 +1513,21 @@ int QuectelNcpClient::modemHardReset(bool powerOff) const {
     HAL_Delay_Milliseconds(300);
     HAL_GPIO_Write(BGRST, 0);
     HAL_Delay_Milliseconds(160);
+
+    // The modem restarts automatically after hard reset.
+    if (powerOff) {
+        // Power off, power off pulse >= 650ms
+        HAL_GPIO_Write(BGPWR, 1);
+        HAL_Delay_Milliseconds(650);
+        HAL_GPIO_Write(BGPWR, 0);
+
+        // Verify that the module was powered down by checking the status pin (BGVINT)
+        // BG96: >=2s
+        // EG91: >=30s
+        if (waitModemPowerOff(30000)) {
+            LOG(TRACE, "Modem powered off");
+        } 
+    }
 
     return SYSTEM_ERROR_NONE;
 }

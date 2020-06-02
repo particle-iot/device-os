@@ -42,7 +42,6 @@ LOG_SOURCE_CATEGORY("system.sleep");
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 
 static bool system_sleep_network_suspend(network_interface_index index) {
-    LOG(TRACE, "system_sleep_network_suspend(%d)", index);
     bool resume = false;
     // Disconnect from network
     if (network_connecting(index, 0, NULL) || network_ready(index, 0, NULL)) {
@@ -55,10 +54,8 @@ static bool system_sleep_network_suspend(network_interface_index index) {
     // Turn off the modem
     network_off(index, 0, 0, NULL);
     LOG(TRACE, "Waiting interface to be off...");
-    system_tick_t now = millis();
     // There might be up to 30s delay to turn off the modem for particular platforms.
     network_wait_off(index, 60000/*ms*/, nullptr);
-    LOG(TRACE, "It takes %d ms to turn off modem", millis() - now);
     return resume;
 }
 

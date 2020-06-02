@@ -4,23 +4,23 @@ SYSTEM_MODE(MANUAL);
 
 SYSTEM_THREAD(ENABLED);
 
-Serial1LogHandler log(LOG_LEVEL_ALL);
+Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
 void setup() {
-    // Serial1.begin(9600);
-
     LOG(TRACE, "Application started.");
 
-    LOG(TRACE, "Call Cellular.on()");
-    // Cellular.on();
-    LOG(TRACE, "After Cellular.on()");
+    pinMode(A1, INPUT_PULLUP);
 
-    delay(5000);
+    Cellular.on();
 }
 
 void loop() {
-    LOG(TRACE, "Device is going to enter sleep mode.");
-    SystemSleepConfiguration config;
-    config.mode(SystemSleepMode::STOP).gpio(D0, RISING);
-    System.sleep(config);
+    if (digitalRead(A1) == 0) {
+        LOG(TRACE, "Device is going to enter sleep mode.");
+        SystemSleepConfiguration config;
+        config.mode(SystemSleepMode::STOP).gpio(A0, RISING);
+        System.sleep(config);
+
+        Cellular.on();
+    }
 }
