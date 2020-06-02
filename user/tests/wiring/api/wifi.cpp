@@ -94,6 +94,7 @@ test(api_wifi_set_security)
     credentials.setSecurity(WPA2);
 }
 
+#if !HAL_PLATFORM_NCP
 test(api_wifi_setStaticIP)
 {
     IPAddress myAddress(192,168,1,100);
@@ -106,6 +107,7 @@ test(api_wifi_setStaticIP)
     WiFi.useStaticIP();
     WiFi.useDynamicIP();
 }
+#endif //!HAL_PLATFORM_NCP
 
 test(api_wifi_scan_buffer)
 {
@@ -202,6 +204,7 @@ test(api_wifi_get_credentials)
     }
 }
 
+#if !HAL_PLATFORM_NCP
 test(api_wifi_hostname)
 {
     String hostname;
@@ -210,5 +213,6 @@ test(api_wifi_hostname)
     API_COMPILE(WiFi.setHostname(hostname));
     API_COMPILE(WiFi.setHostname(shostname));
 }
+#endif //!HAL_PLATFORM_NCP
 
 #endif
