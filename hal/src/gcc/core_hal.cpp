@@ -43,6 +43,7 @@
 
 #include "eeprom_file.h"
 #include "eeprom_hal.h"
+#include "rtc_hal.h"
 
 using std::cout;
 
@@ -342,6 +343,7 @@ void HAL_Notify_WDT()
 
 void HAL_Core_Init(void)
 {
+    hal_rtc_init();
 }
 
 void HAL_Bootloader_Lock(bool lock)

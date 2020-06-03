@@ -342,7 +342,7 @@ void HAL_Core_Setup(void) {
     // Initialize stdlib PRNG with a seed from hardware RNG
     srand(HAL_RNG_GetRandomNumber());
 
-    HAL_RTC_Configuration();
+    hal_rtc_init();
 
 #if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
     module_user_init_hook();

@@ -129,14 +129,14 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             auto rtcWakeup = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource);
             long seconds = rtcWakeup->ms / 1000;
+
             /*
              * - To wake up from the Stop mode with an RTC alarm event, it is necessary to:
              * - Configure the EXTI Line 17 to be sensitive to rising edges (Interrupt
              * or Event modes) using the EXTI_Init() function.
              *
              */
-            HAL_RTC_Cancel_UnixAlarm();
-            HAL_RTC_Set_UnixAlarm((time_t) seconds);
+            hal_rtc_cancel_alarm();
 
             // Connect RTC to EXTI line
             EXTI_InitTypeDef extiInitStructure = {0};
@@ -145,6 +145,12 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
             extiInitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
             extiInitStructure.EXTI_LineCmd = ENABLE;
             EXTI_Init(&extiInitStructure);
+
+            struct timeval tv = {
+                .tv_sec = seconds,
+                .tv_usec = 0
+            };
+            CHECK(hal_rtc_set_alarm(&tv, HAL_RTC_ALARM_FLAG_IN, nullptr, nullptr, nullptr));
         }
         wakeupSource = wakeupSource->next;
     }
@@ -229,7 +235,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             // No need to detach RTC Alarm from EXTI, since it will be detached in HAL_Interrupts_Restore()
             // RTC Alarm should be canceled to avoid entering HAL_RTCAlarm_Handler or if we were woken up by pin
-            HAL_RTC_Cancel_UnixAlarm();
+            hal_rtc_cancel_alarm();
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
             auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
             HAL_Interrupts_Detach_Ext(gpioWakeup->pin, 1, nullptr);
@@ -256,8 +262,13 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     while (wakeupSource) {
         if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             long seconds = reinterpret_cast<hal_wakeup_source_rtc_t*>(wakeupSource)->ms / 1000;
-            HAL_RTC_Cancel_UnixAlarm();
-            HAL_RTC_Set_UnixAlarm((time_t) seconds);
+
+            struct timeval tv = {
+                .tv_sec = seconds,
+                .tv_usec = 0
+            };
+            hal_rtc_cancel_alarm();
+            CHECK(hal_rtc_set_alarm(&tv, HAL_RTC_ALARM_FLAG_IN, nullptr, nullptr, nullptr));
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
             enableWkpPin = true;
         }
