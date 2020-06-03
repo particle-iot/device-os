@@ -354,10 +354,10 @@ pid_t _getpid(void) {
 }
 
 int _gettimeofday(struct timeval* tv, void* tz) {
-    if (tv) {
-        time_t t = HAL_RTC_Get_UnixTime();
-        tv->tv_sec = t;
-        tv->tv_usec = 0;
+    int r = hal_rtc_get_time(tv, nullptr);
+    if (r) {
+        errno = EFAULT;
+        return -1;
     }
     // tz argument is obsolete
     (void)tz;

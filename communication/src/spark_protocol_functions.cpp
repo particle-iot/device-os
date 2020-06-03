@@ -228,10 +228,17 @@ bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserve
     (void)reserved;
     return protocol->time_request_pending();
 }
-system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved)
+system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time32_t* tm32, time_t* tm)
 {
-    (void)reserved;
-    return protocol->time_last_synced(tm);
+    time_t t;
+    auto ms = protocol->time_last_synced(&t);
+    if (tm32) {
+        *tm32 = (time32_t)t;
+    }
+    if (tm) {
+        *tm = t;
+    }
+    return ms;
 }
 
 int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* data, void* reserved)

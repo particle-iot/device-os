@@ -39,7 +39,7 @@ int Spark_Handshake(bool presence_announce);
 bool Spark_Communication_Loop(void);
 void Spark_Process_Events();
 
-void system_set_time(time_t time, unsigned param, void* reserved);
+void system_set_time(uint32_t time, unsigned param, void* reserved);
 
 String bytes2hex(const uint8_t* buf, unsigned len);
 

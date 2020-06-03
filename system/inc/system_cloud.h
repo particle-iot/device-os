@@ -30,6 +30,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
+#include "time_compat.h"
 
 #define DEFAULT_CLOUD_EVENT_TTL 60
 
@@ -282,7 +283,7 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
 void spark_unsubscribe(void *reserved);
 bool spark_sync_time(void *reserved);
 bool spark_sync_time_pending(void* reserved);
-system_tick_t spark_sync_time_last(time_t* tm, void* reserved);
+system_tick_t spark_sync_time_last(time32_t* tm32, time_t* tm);
 
 
 void spark_process(void);

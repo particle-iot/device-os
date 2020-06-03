@@ -146,10 +146,10 @@ bool spark_sync_time_pending(void* reserved)
     return spark_protocol_time_request_pending(sp, nullptr);
 }
 
-system_tick_t spark_sync_time_last(time_t* tm, void* reserved)
+system_tick_t spark_sync_time_last(time32_t* tm32, time_t* tm)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_sync_time_last(tm, reserved));
-    return spark_protocol_time_last_synced(sp, tm, nullptr);
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_sync_time_last(tm32, tm));
+    return spark_protocol_time_last_synced(sp, tm32, tm);
 }
 
 /**

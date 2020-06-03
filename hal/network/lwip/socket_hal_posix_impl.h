@@ -25,6 +25,7 @@
 #define SOCKET_HAL_POSIX_IMPL_H
 
 #include <lwip/sockets.h>
+#include "time_compat.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,6 +56,11 @@ struct sockaddr_ll {
     u8_t sll_halen;
     u8_t sll_addr[8];
 };
+
+#ifdef LIBC_64_BIT_TIME_T
+int sock_select32(int nfds, fd_set* readfds, fd_set* writefds,
+                  fd_set* exceptfds, LIBC_TIMEVAL32* timeout);
+#endif // LIBC_64_BIT_TIME_T
 
 /**
  * @}

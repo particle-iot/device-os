@@ -34,6 +34,7 @@
 #include "system_defs.h"
 #include "completion_handler.h"
 #include "hal_platform.h"
+#include "time_compat.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -96,7 +97,7 @@ struct SparkCallbacks
 	/**
 	* Sets the time. Time is given in milliseconds since the epoch, UCT.
 	*/
-	void (*set_time)(time_t t, unsigned int param, void* reserved);
+	void (*set_time)(uint32_t t, unsigned int param, void* reserved);
 
 	// size == 40
 
@@ -191,7 +192,7 @@ void spark_protocol_get_product_details(ProtocolFacade* protocol, product_detail
 
 int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id, unsigned data, const particle::protocol::connection_properties_t* conn_prop, void* reserved);
 bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved=NULL);
-system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time_t* tm, void* reserved=NULL);
+system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time32_t* tm32, time_t* tm);
 
 int spark_protocol_to_system_error (int error);
 

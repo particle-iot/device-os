@@ -556,9 +556,13 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 }
 #endif /* HAL_PLATFORM_CLOUD_UDP */
 
-void system_set_time(time_t time, unsigned param, void*)
+void system_set_time(uint32_t time, unsigned param, void*)
 {
-    HAL_RTC_Set_UnixTime(time);
+    struct timeval tv = {
+        .tv_sec = (time_t)time,
+        .tv_usec = 0
+    };
+    hal_rtc_set_time(&tv, nullptr);
     system_notify_event(time_changed, time_changed_sync);
 }
 
@@ -1149,7 +1153,7 @@ int Spark_Handshake(bool presence_announce)
         publishSafeModeEventIfNeeded();
         Send_Firmware_Update_Flags();
 
-        if (!HAL_RTC_Time_Is_Valid(nullptr) && spark_sync_time_last(nullptr, nullptr) == 0) {
+        if (!hal_rtc_time_is_valid(nullptr) && spark_sync_time_last(nullptr, nullptr) == 0) {
             spark_protocol_send_time_request(sp);
         }
     }

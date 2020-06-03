@@ -46,10 +46,37 @@ int sock_getsockname(int s, struct sockaddr* name, socklen_t* namelen) {
 }
 
 int sock_getsockopt(int s, int level, int optname, void* optval, socklen_t* optlen) {
+#ifdef LIBC_64_BIT_TIME_T
+  if (optname == SO_SNDTIMEO || optname == SO_RCVTIMEO) {
+    if (optlen && *optlen == sizeof(LIBC_TIMEVAL32) && optval) {
+      struct timeval tv = {};
+      socklen_t sz = sizeof(tv);
+      int r = lwip_getsockopt(s, level, optname, &tv, &sz);
+      if (!r) {
+        LIBC_TIMEVAL32* tv32 = (LIBC_TIMEVAL32*)optval;
+        tv32->tv_sec = tv.tv_sec;
+        tv32->tv_usec = tv.tv_usec;
+        return r;
+      }
+    }
+  }
+#endif // LIBC_64_BIT_TIME_T
   return lwip_getsockopt(s, level, optname, optval, optlen);
 }
 
 int sock_setsockopt(int s, int level, int optname, const void* optval, socklen_t optlen) {
+#ifdef LIBC_64_BIT_TIME_T
+  if (optname == SO_SNDTIMEO || optname == SO_RCVTIMEO) {
+    if (optlen == sizeof(LIBC_TIMEVAL32) && optval) {
+      LIBC_TIMEVAL32* tv32 = (LIBC_TIMEVAL32*)optval;
+      struct timeval tv = {
+        .tv_sec = tv32->tv_sec,
+        .tv_usec = tv32->tv_usec
+      };
+      return lwip_setsockopt(s, level, optname, &tv, sizeof(tv));
+    }
+  }
+#endif // LIBC_64_BIT_TIME_T
   return lwip_setsockopt(s, level, optname, optval, optlen);
 }
 
@@ -103,6 +130,19 @@ int sock_select(int nfds, fd_set* readfds, fd_set* writefds,
                 fd_set* exceptfds, struct timeval* timeout) {
   return lwip_select(nfds, readfds, writefds, exceptfds, timeout);
 }
+
+#ifdef LIBC_64_BIT_TIME_T
+int sock_select32(int nfds, fd_set* readfds, fd_set* writefds,
+                  fd_set* exceptfds, LIBC_TIMEVAL32* timeout) {
+  struct timeval tv = {};
+  if (timeout) {
+    tv.tv_sec = timeout->tv_sec;
+    tv.tv_usec = timeout->tv_usec;
+    return sock_select(nfds, readfds, writefds, exceptfds, &tv);
+  }
+  return sock_select(nfds, readfds, writefds, exceptfds, nullptr);
+}
+#endif // LIBC_64_BIT_TIME_T
 
 ssize_t sock_recvmsg(int s, struct msghdr *message, int flags) {
   return lwip_recvmsg(s, message, flags);
