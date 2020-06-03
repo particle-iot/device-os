@@ -745,7 +745,7 @@ SUITE(CoreProtocolConstruction)
     core_protocol.handshake();
     bytes_received[0] = bytes_sent[0] = 0;
     core_protocol.event_loop();
-    CHECK_EQUAL(1398367917, set_time_called_with);
+    CHECK_EQUAL(1398367917LL, set_time_called_with);
   }
 
   TEST(IsInitializedIsFalse)

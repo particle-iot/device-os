@@ -38,6 +38,16 @@ void exRtcInterruptHandler(void* data) {
     instance->sync();
 }
 
+const long MICROS_IN_HUNDREDTH = 10000;
+const auto UNIX_TIME_YEAR_BASE = 118; // 2018 - 1900
+
+int timevalToCalendar(const struct timeval* tv, struct tm* calendar) {
+    CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(gmtime_r(&tv->tv_sec, calendar), SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(calendar->tm_year >= UNIX_TIME_YEAR_BASE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    return 0;
+}
+
 } // anonymous namespace
 
 Am18x5::Am18x5()
@@ -77,7 +87,7 @@ int Am18x5::begin() {
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
-    if (os_thread_create(&exRtcWorkerThread_, "IO Expander Thread", OS_THREAD_PRIORITY_NETWORK, exRtcInterruptHandleThread, this, 512)) {
+    if (os_thread_create(&exRtcWorkerThread_, "exrtc", OS_THREAD_PRIORITY_NETWORK, exRtcInterruptHandleThread, this, 512)) {
         os_semaphore_destroy(exRtcWorkerSemaphore_);
         exRtcWorkerSemaphore_ = nullptr;
         LOG(ERROR, "os_thread_create() failed");
@@ -145,55 +155,67 @@ int Am18x5::getPartNumber(uint16_t* id) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::setCalendar(const struct tm* calendar) const {
+int Am18x5::setTime(const struct timeval* tv) const {
+    struct tm calendar;
+    CHECK(timevalToCalendar(tv, &calendar));
+
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK_TRUE(calendar, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(calendar->tm_year >= UNIX_TIME_YEAR_BASE, SYSTEM_ERROR_INVALID_ARGUMENT);
-    uint8_t buff[7] = {0};
-    buff[0] = CHECK(decToBcd(calendar->tm_sec));
-    buff[1] = CHECK(decToBcd(calendar->tm_min));
-    buff[2] = CHECK(decToBcd(calendar->tm_hour));
-    buff[3] = CHECK(decToBcd(calendar->tm_mday));
-    buff[4] = CHECK(decToBcd(calendar->tm_mon + 1)); // Month in tm structure ranges from 0 - 11.
-    buff[5] = CHECK(decToBcd(calendar->tm_year - UNIX_TIME_YEAR_BASE));
-    buff[6] = CHECK(decToBcd(calendar->tm_wday));
-    CHECK(writeContinuousRegisters(Am18x5Register::SECONDS, buff, sizeof(buff)));
+    uint8_t buff[8] = {0};
+    buff[0] = CHECK(decToBcd(tv->tv_usec / MICROS_IN_HUNDREDTH));
+    buff[1] = CHECK(decToBcd(calendar.tm_sec));
+    buff[2] = CHECK(decToBcd(calendar.tm_min));
+    buff[3] = CHECK(decToBcd(calendar.tm_hour));
+    buff[4] = CHECK(decToBcd(calendar.tm_mday));
+    buff[5] = CHECK(decToBcd(calendar.tm_mon + 1)); // Month in tm structure ranges from 0 - 11.
+    buff[6] = CHECK(decToBcd(calendar.tm_year - UNIX_TIME_YEAR_BASE));
+    buff[7] = CHECK(decToBcd(calendar.tm_wday));
+    CHECK(writeContinuousRegisters(Am18x5Register::HUNDREDTHS, buff, sizeof(buff)));
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::getCalendar(struct tm* calendar) const {
+int Am18x5::getTime(struct timeval* tv) const {
+    CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
+
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK_TRUE(calendar, SYSTEM_ERROR_INVALID_ARGUMENT);
-    uint8_t buff[7] = {0};
-    CHECK(readContinuousRegisters(Am18x5Register::SECONDS, buff, sizeof(buff)));
-    calendar->tm_sec = CHECK(bcdToDec(buff[0]));
-    calendar->tm_min = CHECK(bcdToDec(buff[1]));
-    calendar->tm_hour = CHECK(bcdToDec(buff[2]));
-    calendar->tm_mday = CHECK(bcdToDec(buff[3]));
-    calendar->tm_mon = CHECK(bcdToDec(buff[4]));
-    calendar->tm_mon -= 1;
-    calendar->tm_year = CHECK(bcdToDec(buff[5]));
-    calendar->tm_year += UNIX_TIME_YEAR_BASE;
-    calendar->tm_wday = CHECK(bcdToDec(buff[6]));
+    uint8_t buff[8] = {0};
+    CHECK(readContinuousRegisters(Am18x5Register::HUNDREDTHS, buff, sizeof(buff)));
+
+    struct tm calendar = {};
+    calendar.tm_sec = CHECK(bcdToDec(buff[1]));
+    calendar.tm_min = CHECK(bcdToDec(buff[2]));
+    calendar.tm_hour = CHECK(bcdToDec(buff[3]));
+    calendar.tm_mday = CHECK(bcdToDec(buff[4]));
+    calendar.tm_mon = CHECK(bcdToDec(buff[5]));
+    calendar.tm_mon -= 1;
+    calendar.tm_year = CHECK(bcdToDec(buff[6]));
+    calendar.tm_year += UNIX_TIME_YEAR_BASE;
+    calendar.tm_wday = CHECK(bcdToDec(buff[7]));
+    calendar.tm_isdst = -1;
+
+    tv->tv_sec = mktime(&calendar);
+    tv->tv_usec = (long)buff[0] * MICROS_IN_HUNDREDTH;
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::setAlarm(const struct tm* calendar) {
+int Am18x5::setAlarm(const struct timeval* tv) {
+    struct tm calendar;
+    CHECK(timevalToCalendar(tv, &calendar));
+
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK_TRUE(calendar, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(calendar->tm_year >= UNIX_TIME_YEAR_BASE, SYSTEM_ERROR_INVALID_ARGUMENT);
-    uint8_t buff[6] = {0};
-    buff[0] = CHECK(decToBcd(calendar->tm_sec));
-    buff[1] = CHECK(decToBcd(calendar->tm_min));
-    buff[2] = CHECK(decToBcd(calendar->tm_hour));
-    buff[3] = CHECK(decToBcd(calendar->tm_mday));
-    buff[4] = CHECK(decToBcd(calendar->tm_mon + 1)); // Month in tm structure ranges from 0 - 11.
-    alarmYear_ = calendar->tm_year - UNIX_TIME_YEAR_BASE;
-    buff[5] = CHECK(decToBcd(calendar->tm_wday));
-    CHECK(writeContinuousRegisters(Am18x5Register::SECONDS_ALARM, buff, sizeof(buff)));
+    uint8_t buff[7] = {0};
+    buff[0] = CHECK(decToBcd(tv->tv_usec / MICROS_IN_HUNDREDTH));
+    buff[1] = CHECK(decToBcd(calendar.tm_sec));
+    buff[2] = CHECK(decToBcd(calendar.tm_min));
+    buff[3] = CHECK(decToBcd(calendar.tm_hour));
+    buff[4] = CHECK(decToBcd(calendar.tm_mday));
+    buff[5] = CHECK(decToBcd(calendar.tm_mon + 1)); // Month in tm structure ranges from 0 - 11.
+    alarmYear_ = calendar.tm_year - UNIX_TIME_YEAR_BASE;
+    buff[6] = CHECK(decToBcd(calendar.tm_wday));
+    CHECK(writeContinuousRegisters(Am18x5Register::HUNDREDTHS_ALARM, buff, sizeof(buff)));
+
     return SYSTEM_ERROR_NONE;
 }
 
@@ -202,8 +224,34 @@ int Am18x5::enableAlarm(bool enable, Am18x5::AlarmHandler handler, void* context
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     alarmHandler_ = handler;
     alarmHandlerContext_ = context;
+
     CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, 1, false, true, TIMER_CONTROL_RPT_MASK, TIMER_CONTROL_RPT_SHIFT));
     return writeRegister(Am18x5Register::INT_MASK, enable, false, true, INTERRUPT_AIE_MASK, INTERRUPT_AIE_SHIFT);
+}
+
+int Am18x5::getAlarm(struct timeval* tv) const {
+    if (tv) {
+        uint8_t buff[7] = {};
+        CHECK(readContinuousRegisters(Am18x5Register::HUNDREDTHS_ALARM, buff, sizeof(buff)));
+
+        struct tm calendar = {};
+        calendar.tm_sec = CHECK(bcdToDec(buff[1]));
+        calendar.tm_min = CHECK(bcdToDec(buff[2]));
+        calendar.tm_hour = CHECK(bcdToDec(buff[3]));
+        calendar.tm_mday = CHECK(bcdToDec(buff[4]));
+        calendar.tm_mon = CHECK(bcdToDec(buff[5]));
+        calendar.tm_mon -= 1;
+        // NOTE: alarmYear_ needs to be valid
+        calendar.tm_year = alarmYear_ + UNIX_TIME_YEAR_BASE;
+        calendar.tm_wday = CHECK(bcdToDec(buff[6]));
+        calendar.tm_isdst = -1;
+
+        tv->tv_sec = mktime(&calendar);
+        tv->tv_usec = (long)buff[0] * MICROS_IN_HUNDREDTH;
+    }
+    uint8_t alm;
+    CHECK(readRegister(Am18x5Register::STATUS, &alm, false, STATUS_ALM_MASK));
+    return (int)alm;
 }
 
 int Am18x5::enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) const {
@@ -557,7 +605,6 @@ os_thread_return_t Am18x5::exRtcInterruptHandleThread(void* param) {
     os_thread_exit(instance->exRtcWorkerThread_);
 }
 
-constexpr uint16_t Am18x5::UNIX_TIME_YEAR_BASE;
 constexpr uint16_t Am18x5::PART_NUMBER;
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC

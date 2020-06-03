@@ -24,6 +24,8 @@
 
 #include "dynalib.h"
 
+#include "time_compat.h"
+
 #ifdef DYNALIB_EXPORT
 #include "rng_hal.h"
 #include "eeprom_hal.h"
@@ -60,10 +62,13 @@ DYNALIB_FN(BASE_IDX + 1, hal, HAL_Delay_Microseconds, void(uint32_t))
 DYNALIB_FN(BASE_IDX + 2, hal, HAL_Timer_Get_Micro_Seconds, system_tick_t(void))
 DYNALIB_FN(BASE_IDX + 3, hal, HAL_Timer_Get_Milli_Seconds, system_tick_t(void))
 
-DYNALIB_FN(BASE_IDX + 4, hal, HAL_RTC_Configuration, void(void))
-DYNALIB_FN(BASE_IDX + 5, hal, HAL_RTC_Get_UnixTime, time_t(void))
-DYNALIB_FN(BASE_IDX + 6, hal, HAL_RTC_Set_UnixTime, void(time_t))
-DYNALIB_FN(BASE_IDX + 7, hal, HAL_RTC_Set_UnixAlarm, void(time_t))
+DYNALIB_FN(BASE_IDX + 4, hal, hal_rtc_init, void(void))
+
+// These functions are deprecated
+DYNALIB_FN(BASE_IDX + 5, hal, hal_rtc_get_unixtime_deprecated, time32_t(void))
+DYNALIB_FN(BASE_IDX + 6, hal, hal_rtc_set_unixtime_deprecated, void(time32_t))
+
+DYNALIB_FN(BASE_IDX + 7, hal, hal_rtc_set_alarm, int(const struct timeval*, uint32_t, hal_rtc_alarm_handler, void*, void*))
 
 DYNALIB_FN(BASE_IDX + 8, hal, HAL_EEPROM_Init, void(void))
 DYNALIB_FN(BASE_IDX + 9, hal, HAL_EEPROM_Read, uint8_t(uint32_t))
@@ -72,17 +77,21 @@ DYNALIB_FN(BASE_IDX + 11, hal, HAL_EEPROM_Length, size_t(void))
 
 DYNALIB_FN(BASE_IDX + 12, hal, HAL_disable_irq, int(void))
 DYNALIB_FN(BASE_IDX + 13, hal, HAL_enable_irq, void(int))
-DYNALIB_FN(BASE_IDX + 14, hal, HAL_RTC_Cancel_UnixAlarm, void(void))
+DYNALIB_FN(BASE_IDX + 14, hal, hal_rtc_cancel_alarm, void(void))
 
-DYNALIB_FN(BASE_IDX + 15, hal,HAL_EEPROM_Get, void(uint32_t, void *, size_t))
-DYNALIB_FN(BASE_IDX + 16, hal,HAL_EEPROM_Put, void(uint32_t, const void *, size_t))
-DYNALIB_FN(BASE_IDX + 17, hal,HAL_EEPROM_Clear, void(void))
-DYNALIB_FN(BASE_IDX + 18, hal,HAL_EEPROM_Has_Pending_Erase, bool(void))
-DYNALIB_FN(BASE_IDX + 19, hal,HAL_EEPROM_Perform_Pending_Erase, void(void))
-DYNALIB_FN(BASE_IDX + 20, hal, HAL_RTC_Time_Is_Valid, uint8_t(void*))
+DYNALIB_FN(BASE_IDX + 15, hal, HAL_EEPROM_Get, void(uint32_t, void *, size_t))
+DYNALIB_FN(BASE_IDX + 16, hal, HAL_EEPROM_Put, void(uint32_t, const void *, size_t))
+DYNALIB_FN(BASE_IDX + 17, hal, HAL_EEPROM_Clear, void(void))
+DYNALIB_FN(BASE_IDX + 18, hal, HAL_EEPROM_Has_Pending_Erase, bool(void))
+DYNALIB_FN(BASE_IDX + 19, hal, HAL_EEPROM_Perform_Pending_Erase, void(void))
+DYNALIB_FN(BASE_IDX + 20, hal, hal_rtc_time_is_valid, bool(void*))
 
 DYNALIB_FN(BASE_IDX + 21, hal, hal_timer_millis, uint64_t(void*))
 DYNALIB_FN(BASE_IDX + 22, hal, hal_timer_micros, uint64_t(void*))
+
+DYNALIB_FN(BASE_IDX + 23, hal, hal_rtc_get_time, int(struct timeval*, void*))
+DYNALIB_FN(BASE_IDX + 24, hal, hal_rtc_set_time, int(const struct timeval*, void*))
+
 
 DYNALIB_END(hal)
 

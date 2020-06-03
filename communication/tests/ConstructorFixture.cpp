@@ -137,7 +137,7 @@ bool ConstructorFixture::nothing_to_receive = false;
 bool ConstructorFixture::function_called = false;
 int ConstructorFixture::variable_to_get = -98765;
 bool ConstructorFixture::signal_called_with = false;
-time_t ConstructorFixture::set_time_called_with = -1;
+int64_t ConstructorFixture::set_time_called_with = -1;
 EventHandlerCalledWith ConstructorFixture::event_handlers_called_with[2];
 
 ConstructorFixture::ConstructorFixture()
@@ -361,7 +361,7 @@ SparkReturnType::Enum ConstructorFixture::mock_variable_type(const char *variabl
   return SparkReturnType::INT;
 }
 
-void ConstructorFixture::mock_set_time(time_t t, unsigned int, void*)
+void ConstructorFixture::mock_set_time(uint32_t t, unsigned int, void*)
 {
   set_time_called_with = t;
 }

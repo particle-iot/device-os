@@ -25,6 +25,7 @@
 #include "dynalib.h"
 #include "protocol_selector.h"
 #include "hal_platform.h"
+#include "time_compat.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -71,7 +72,7 @@ DYNALIB_FN(BASE_IDX + 2, communication, extract_public_ec_key, int(uint8_t*, siz
 DYNALIB_FN(BASE_IDX2 + 0, communication, spark_protocol_set_connection_property, int(ProtocolFacade*, unsigned, unsigned, const particle::protocol::connection_properties_t*, void*))
 DYNALIB_FN(BASE_IDX2 + 1, communication, spark_protocol_command, int(ProtocolFacade*, ProtocolCommands::Enum, uint32_t, const void*))
 DYNALIB_FN(BASE_IDX2 + 2, communication, spark_protocol_time_request_pending, bool(ProtocolFacade*, void*))
-DYNALIB_FN(BASE_IDX2 + 3, communication, spark_protocol_time_last_synced, system_tick_t(ProtocolFacade*, time_t*, void*))
+DYNALIB_FN(BASE_IDX2 + 3, communication, spark_protocol_time_last_synced, system_tick_t(ProtocolFacade*, time32_t*, time_t*))
 DYNALIB_FN(BASE_IDX2 + 4, communication, spark_protocol_get_describe_data, int(ProtocolFacade*, spark_protocol_describe_data*, void*))
 DYNALIB_FN(BASE_IDX2 + 5, communication, spark_protocol_post_description, int(ProtocolFacade*, int, void*))
 DYNALIB_FN(BASE_IDX2 + 6, communication, spark_protocol_to_system_error, int(int))

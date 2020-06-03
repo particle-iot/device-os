@@ -30,45 +30,56 @@ using namespace particle;
 namespace {
 
 const auto UNIX_TIME_201801010000 = 1514764800; // 2018/01/01 00:00:00
-const auto UNIX_TIME_YEAR_BASE = 118; // 2018 - 1900
 
 } // anonymous
 
-int hal_exrtc_set_unixtime(time_t unixtime, void* reserved) {
-    struct tm* calendar = gmtime(&unixtime);
-    if (!calendar) {
-        return SYSTEM_ERROR_INTERNAL;
+int hal_exrtc_init(void* reserved) {
+    (void)Am18x5::getInstance();
+    return 0;
+}
+
+int hal_exrtc_set_time(const struct timeval* tv, void* reserved) {
+    return Am18x5::getInstance().setTime(tv);
+}
+
+int hal_exrtc_get_time(struct timeval* tv, void* reserved) {
+    return Am18x5::getInstance().getTime(tv);
+}
+
+int hal_exrtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_exrtc_alarm_handler handler, void* context, void* reserved) {
+    CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
+    struct timeval alarm = *tv;
+    if (flags & HAL_RTC_ALARM_FLAG_IN) {
+        struct timeval now;
+        CHECK(hal_exrtc_get_time(&now, nullptr));
+        timeradd(&now, tv, &alarm);
     }
-    CHECK(Am18x5::getInstance().setCalendar(calendar));
-    return SYSTEM_ERROR_NONE;
-}
+    CHECK(Am18x5::getInstance().setAlarm(&alarm));
+    CHECK(Am18x5::getInstance().enableAlarm(true, handler, context));
 
-time_t hal_exrtc_get_unixtime(void* reserved) {
-    struct tm calendar;
-    CHECK(Am18x5::getInstance().getCalendar(&calendar));
-    return mktime(&calendar);
-}
-
-int hal_exrtc_set_unix_alarm(time_t unixtime, hal_exrtc_alarm_handler_t handler, void* context, void* reserved) {
-    struct tm* calendar = gmtime(&unixtime);
-    if (!calendar) {
-        return SYSTEM_ERROR_INTERNAL;
+    int res = CHECK(Am18x5::getInstance().getAlarm(&alarm));
+    struct timeval now;
+    CHECK(hal_exrtc_get_time(&now, nullptr));
+    // If alarm time is in the past and it hasn't fired
+    if (timercmp(&alarm, &now, <) && res == 0) {
+        return SYSTEM_ERROR_TIMEOUT;
     }
-    CHECK(Am18x5::getInstance().setAlarm(calendar));
-    return Am18x5::getInstance().enableAlarm(true, handler, context);
+    return 0;
 }
 
-int hal_exrtc_cancel_unixalarm(void* reserved) {
+int hal_exrtc_cancel_alarm(void* reserved) {
     return Am18x5::getInstance().enableAlarm(false, nullptr, nullptr);
 }
 
 bool hal_exrtc_time_is_valid(void* reserved) {
-    time_t unixtime = 0;
-    CHECK(hal_exrtc_get_unixtime(nullptr));
-    return unixtime > UNIX_TIME_201801010000;
+    struct timeval tv;
+    if (!hal_exrtc_get_time(&tv, nullptr)) {
+        return tv.tv_sec > UNIX_TIME_201801010000;
+    }
+    return false;
 }
 
-int hal_exrtc_enable_watchdog(time_t ms, void* reserved) {
+int hal_exrtc_enable_watchdog(system_tick_t ms, void* reserved) {
     uint8_t value; // Maximum 31.
     Am18x5WatchdogFrequency frequency;
     if (ms < 1937) { // 31 * 1000 / 16
@@ -98,7 +109,7 @@ int hal_exrtc_feed_watchdog(void* reserved) {
     return Am18x5::getInstance().feedWatchdog();
 }
 
-int hal_exrtc_sleep_timer(time_t ms, void* reserved) {
+int hal_exrtc_sleep_timer(system_tick_t ms, void* reserved) {
     uint8_t ticks;
     Am18x5TimerFrequency frequency;
     if (ms <= 3984) { // 255 * 1000 / 64

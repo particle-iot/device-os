@@ -55,7 +55,7 @@ quote="
 lt=\<
 dollar=$$
 arm_gcc_version_str:=$(strip $(shell $(CC) -dumpversion))
-expected_version:=5.3.1
+expected_version:=9.2.1
 #$(info result $(shell test $(quote)$(arm_gcc_version_str)$(quote) $(lt) $(quote)$(expected_version)$(quote);echo $$?))
 ifeq ($(shell test $(quote)$(arm_gcc_version_str)$(quote) $(lt) $(quote)$(expected_version)$(quote); echo $$?),0)
      $(error "ARM gcc version $(expected_version) or later required, but found $(arm_gcc_version_str)")

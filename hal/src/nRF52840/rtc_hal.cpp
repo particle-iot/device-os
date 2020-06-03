@@ -21,6 +21,7 @@
 #include "concurrent_hal.h"
 #include "service_debug.h"
 #include "hal_platform.h"
+#include "check.h"
 
 #if HAL_PLATFORM_EXTERNAL_RTC
 #include "exrtc_hal.h"
@@ -33,74 +34,127 @@ extern "C" void HAL_RTCAlarm_Handler(void);
 
 namespace {
 
-const auto UNIX_TIME_201801010000 = 1514764800; // 2018/01/01 00:00:00
+const uint64_t UNIX_TIME_201801010000 = 1514764800000000; // 2018/01/01 00:00:00
 
-time_t s_unix_time_base = 946684800; // Default date/time to 2000/01/01 00:00:00
-uint64_t s_unix_time_base_ms = 0; // Millisecond clock reference to the s_unix_time_base
+uint64_t s_unix_time_base = 946684800000000; // Default date/time to 2000/01/01 00:00:00
+uint64_t s_unix_time_base_us = 0; // Microsecond clock reference to the s_unix_time_base
 
-#if HAL_PLATFORM_EXTERNAL_RTC
-void exRtcAlarmHandler(void* context) {
-    HAL_RTCAlarm_Handler();
-}
-#else
+const uint64_t US_IN_SECONDS = 1000000ULL;
+
+#if !HAL_PLATFORM_EXTERNAL_RTC
 os_timer_t s_alarm_timer = nullptr; // software alarm timer
-#endif
+hal_rtc_alarm_handler s_alarm_handler = nullptr;
+void* s_alarm_context = nullptr;
+#endif // !HAL_PLATFORM_EXTERNAL_RTC
+
+uint64_t getUsUnixTime() {
+    int st = HAL_disable_irq();
+    auto unix_time_base = s_unix_time_base;
+    auto unix_time_base_us = s_unix_time_base_us;
+    HAL_enable_irq(st);
+    uint64_t us = hal_timer_micros(nullptr);
+    uint64_t unixTimeUs = unix_time_base + (us - unix_time_base_us);
+    return unixTimeUs;
+}
+
+void timevalFromUsUnixtime(struct timeval* tv, uint64_t us) {
+    tv->tv_sec = us / US_IN_SECONDS;
+    tv->tv_usec = (us - (tv->tv_sec * US_IN_SECONDS));
+}
+
+uint64_t usUnixtimeFromTimeval(const struct timeval* tv) {
+    return (tv->tv_sec * US_IN_SECONDS + tv->tv_usec);
+}
 
 } // anonymous
 
-void HAL_RTC_Configuration(void) {
+void hal_rtc_init(void) {
 #if HAL_PLATFORM_EXTERNAL_RTC
-    HAL_RTC_Set_UnixTime(hal_exrtc_get_unixtime(nullptr));
+    hal_exrtc_init(nullptr);
+    struct timeval tv = {};
+    if (!hal_exrtc_get_time(&tv, nullptr)) {
+        hal_rtc_set_time(&tv, nullptr);
+    }
 #else
     // Do nothing
 #endif
 }
 
-void HAL_RTC_Set_UnixTime(time_t value) {
-    uint64_t ms = hal_timer_millis(nullptr);
+bool hal_rtc_time_is_valid(void* reserved) {
+    return s_unix_time_base > UNIX_TIME_201801010000;
+}
+
+int hal_rtc_get_time(struct timeval* tv, void* reserved) {
+    CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
+    auto unixTimeUs = getUsUnixTime();
+    timevalFromUsUnixtime(tv, unixTimeUs);
+    return 0;
+}
+
+int hal_rtc_set_time(const struct timeval* tv, void* reserved) {
+    CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
+    uint64_t us = hal_timer_micros(nullptr);
     int st = HAL_disable_irq();
-    s_unix_time_base = value;
-    s_unix_time_base_ms = ms;
+    s_unix_time_base = usUnixtimeFromTimeval(tv);
+    s_unix_time_base_us = us;
     HAL_enable_irq(st);
 #if HAL_PLATFORM_EXTERNAL_RTC
-    hal_exrtc_set_unixtime(value, nullptr);
+    CHECK(hal_exrtc_set_time(tv, nullptr));
 #endif
+    return 0;
 }
 
-time_t HAL_RTC_Get_UnixTime(void) {
-    int st = HAL_disable_irq();
-    auto unix_time_base = s_unix_time_base;
-    auto unix_time_base_ms = s_unix_time_base_ms;
-    HAL_enable_irq(st);
-    uint64_t ms = hal_timer_millis(nullptr);
-    return unix_time_base + (time_t)((ms - unix_time_base_ms) / 1000);
-}
-
-void HAL_RTC_Set_UnixAlarm(time_t value) {
+int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context, void* reserved) {
 #if HAL_PLATFORM_EXTERNAL_RTC
-    hal_exrtc_set_unix_alarm(value, exRtcAlarmHandler, nullptr, nullptr);
+    return hal_exrtc_set_alarm(tv, flags, handler, context, nullptr);
 #else
+    CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
+    struct timeval alarm = *tv;
+    if (flags & HAL_RTC_ALARM_FLAG_IN) {
+        struct timeval now;
+        CHECK(hal_rtc_get_time(&now, nullptr));
+        timeradd(&alarm, &now, &alarm);
+    }
+    auto unixTimeMs = getUsUnixTime() / 1000;
+    auto alarmTimeMs = usUnixtimeFromTimeval(&alarm) / 1000;
+    if (alarmTimeMs <= unixTimeMs) {
+        // Too late to set such an alarm
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+
     // This implementation is only used for System.sleep(seconds) (network sleep)
     // on Gen3 devices.
     if (!s_alarm_timer) {
         os_timer_create(&s_alarm_timer, 0, [](os_timer_t timer) {
-            HAL_RTCAlarm_Handler();
+            if (s_alarm_handler) {
+                s_alarm_handler(s_alarm_context);
+            }
         }, nullptr, true, nullptr);
         SPARK_ASSERT(s_alarm_timer);
     }
 
-    HAL_RTC_Cancel_UnixAlarm();
+    hal_rtc_cancel_alarm();
 
+    s_alarm_context = context;
+    s_alarm_handler = handler;
+
+    unsigned diffMs = (unsigned)(alarmTimeMs - unixTimeMs);
     // NOTE: changing the period of a timer in a dormant state will also
     // start the timer.
-    os_timer_change(s_alarm_timer, OS_TIMER_CHANGE_PERIOD, false, value * 1000,
+    int r = os_timer_change(s_alarm_timer, OS_TIMER_CHANGE_PERIOD, false, diffMs,
             0xffffffff, nullptr);
+
+    if (r != 0) {
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
+    return r;
 #endif
 }
 
-void HAL_RTC_Cancel_UnixAlarm(void) {
+void hal_rtc_cancel_alarm(void) {
 #if HAL_PLATFORM_EXTERNAL_RTC
-    hal_exrtc_cancel_unixalarm(nullptr);
+    hal_exrtc_cancel_alarm(nullptr);
 #else
     // This implementation is only used for System.sleep(seconds) (network sleep)
     // on Gen3 devices.
@@ -110,6 +164,17 @@ void HAL_RTC_Cancel_UnixAlarm(void) {
 #endif
 }
 
-uint8_t HAL_RTC_Time_Is_Valid(void* reserved) {
-    return HAL_RTC_Get_UnixTime() > UNIX_TIME_201801010000;
+// These are deprecated due to time_t size changes
+void hal_rtc_set_unixtime_deprecated(time32_t value) {
+    struct timeval tv = {
+        .tv_sec = value,
+        .tv_usec = 0
+    };
+    hal_rtc_set_time(&tv, nullptr);
+}
+
+time32_t hal_rtc_get_unixtime_deprecated(void) {
+    struct timeval tv = {};
+    hal_rtc_get_time(&tv, nullptr);
+    return (time32_t)tv.tv_sec;
 }

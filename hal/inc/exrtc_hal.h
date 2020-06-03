@@ -22,6 +22,8 @@
 
 #if HAL_PLATFORM_EXTERNAL_RTC
 
+#include "rtc_hal.h"
+#include "system_tick_hal.h"
 #include <stdint.h>
 #include <time.h>
 
@@ -29,19 +31,21 @@
 extern "C" {
 #endif
 
-typedef void (*hal_exrtc_alarm_handler_t)(void* context);
+typedef hal_rtc_alarm_handler hal_exrtc_alarm_handler;
+typedef hal_rtc_alarm_flags hal_exrtc_alarm_flags;
 
-int hal_exrtc_set_unixtime(time_t unixtime, void* reserved);
-time_t hal_exrtc_get_unixtime(void* reserved);
-int hal_exrtc_set_unix_alarm(time_t unixtime, hal_exrtc_alarm_handler_t handler, void* context, void* reserved);
-int hal_exrtc_cancel_unixalarm(void* reserved);
+int hal_exrtc_init(void* reserved);
+int hal_exrtc_set_time(const struct timeval* tv, void* reserved);
+int hal_exrtc_get_time(struct timeval* tv, void* reserved);
+int hal_exrtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_exrtc_alarm_handler handler, void* context, void* reserved);
+int hal_exrtc_cancel_alarm(void* reserved);
 bool hal_exrtc_time_is_valid(void* reserved);
 
-int hal_exrtc_enable_watchdog(time_t ms, void* reserved);
+int hal_exrtc_enable_watchdog(system_tick_t ms, void* reserved);
 int hal_exrtc_disable_watchdog(void* reserved);
 int hal_exrtc_feed_watchdog(void* reserved);
 
-int hal_exrtc_sleep_timer(time_t ms, void* reserved);
+int hal_exrtc_sleep_timer(system_tick_t ms, void* reserved);
 
 int hal_exrtc_calibrate_xt(int adjValue, void* reserved);
 

@@ -361,7 +361,7 @@ public:
     system_tick_t timeSyncedLast(time_t& tm)
     {
         tm = 0;
-        return spark_sync_time_last(&tm, nullptr);
+        return spark_sync_time_last(nullptr, &tm);
     }
 
     static void sleep(long seconds) __attribute__ ((deprecated("Please use System.sleep() instead.")))

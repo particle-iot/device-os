@@ -73,7 +73,7 @@ static void network_resume() {
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-extern "C" void HAL_RTCAlarm_Handler(void)
+void system_sleep_rtc_alarm_handler(void* context)
 {
     /* Wake up from System.sleep mode(SLEEP_MODE_WLAN) */
     network_resume();
@@ -167,7 +167,15 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
         case SLEEP_MODE_WLAN:
             if (seconds)
             {
-                HAL_RTC_Set_UnixAlarm((time_t) seconds);
+                struct timeval tv = {
+                    .tv_sec = seconds,
+                    .tv_usec = 0
+                };
+                int r = hal_rtc_set_alarm(&tv, HAL_RTC_ALARM_FLAG_IN, system_sleep_rtc_alarm_handler, nullptr, nullptr);
+                if (r) {
+                    system_sleep_rtc_alarm_handler(nullptr);
+                    return r;
+                }
             }
             break;
 

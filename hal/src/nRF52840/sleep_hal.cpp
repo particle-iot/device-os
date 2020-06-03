@@ -598,11 +598,13 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     auto source = config->wakeup_sources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            time_t now = 0;
-            CHECK(now = hal_exrtc_get_unixtime(nullptr));
-            auto rtcWakeup = reinterpret_cast<hal_wakeup_source_rtc_t*>(source);
-            time_t alarm = now + rtcWakeup->ms / 1000;
-            CHECK(hal_exrtc_set_unix_alarm(alarm, nullptr, nullptr, nullptr));
+            auto rtcWakeup = reinterpret_cast<const hal_wakeup_source_rtc_t*>(source);
+            auto seconds = rtcWakeup->ms / 1000;
+            struct timeval tv = {
+                .tv_sec = seconds,
+                .tv_usec = 0
+            };
+            CHECK(hal_exrtc_set_alarm(&tv, HAL_RTC_ALARM_FLAG_IN, nullptr, nullptr, nullptr));
         }
         source = source->next;
     }

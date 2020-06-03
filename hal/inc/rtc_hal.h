@@ -29,6 +29,8 @@
 
 #include <stdint.h>
 #include <time.h>
+#include <stdbool.h>
+#include "time_compat.h"
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -42,13 +44,25 @@
 extern "C" {
 #endif
 
-void HAL_RTC_Configuration(void);
+typedef void (*hal_rtc_alarm_handler)(void* context);
 
-time_t HAL_RTC_Get_UnixTime(void);
-void HAL_RTC_Set_UnixTime(time_t value);
-void HAL_RTC_Set_UnixAlarm(time_t value);
-void HAL_RTC_Cancel_UnixAlarm(void);
-uint8_t HAL_RTC_Time_Is_Valid(void* reserved);
+typedef enum hal_rtc_alarm_flags {
+    HAL_RTC_ALARM_FLAG_IN = 0x01 // In provided amount of time, instead of an absolute timestamp
+} hal_rtc_alarm_flags;
+
+void hal_rtc_init(void);
+int hal_rtc_get_time(struct timeval* tv, void* reserved);
+int hal_rtc_set_time(const struct timeval* tv, void* reserved);
+bool hal_rtc_time_is_valid(void* reserved);
+// XXX: only one alarm and its handler can be registered at a time
+int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context, void* reserved);
+void hal_rtc_cancel_alarm(void);
+
+// These functions are deprecated and are only used for backwards compatibility
+// due to time_t size change
+time32_t hal_rtc_get_unixtime_deprecated(void);
+void hal_rtc_set_unixtime_deprecated(time32_t value);
+//
 
 #ifdef __cplusplus
 }
