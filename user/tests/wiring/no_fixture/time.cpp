@@ -25,6 +25,7 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include "rtc_hal.h"
 
 test(TIME_01_NowReturnsCorrectUnixTime) {
     // when
@@ -265,4 +266,80 @@ test(TIME_16_TimeChangedEvent) {
     Particle.process();
     assertMore(Particle.timeSyncedLast(), syncedLastMillis);
     assertEqual(s_time_changed_reason, (int)time_changed_sync);
+}
+
+test(TIME_17_RtcAlarmFiresCorrectly) {
+    if (Particle.syncTimePending()) {
+        waitFor(Particle.syncTimeDone, 60000);
+        assertTrue(Particle.syncTimeDone());
+        assertTrue(Time.isValid());
+    }
+
+    // Absolute time
+    struct timeval now;
+    assertEqual(0, hal_rtc_get_time(&now, nullptr));
+    now.tv_sec += 5;
+    static volatile bool alarmFired = false;
+    auto ms = millis();
+    int r = hal_rtc_set_alarm(&now, 0, [](void* ctx) -> void {
+        volatile bool* alarmFired = (volatile bool*)ctx;
+        *alarmFired = true;
+    }, (void*)&alarmFired, nullptr);
+    assertEqual(r, 0);
+    while (!alarmFired && (millis() - ms) <= 6000) {
+        delay(1);
+    }
+    assertLessOrEqual(millis() - ms, 6000);
+    hal_rtc_cancel_alarm();
+    assertTrue((bool)alarmFired);
+
+    // In some amount of time
+    alarmFired = false;
+    now.tv_sec = 5;
+    now.tv_usec = 0;
+    ms = millis();
+    r = hal_rtc_set_alarm(&now, HAL_RTC_ALARM_FLAG_IN, [](void* ctx) -> void {
+        volatile bool* alarmFired = (volatile bool*)ctx;
+        *alarmFired = true;
+    }, (void*)&alarmFired, nullptr);
+    assertEqual(r, 0);
+    while (!alarmFired && (millis() - ms) <= 6000) {
+        delay(1);
+    }
+    assertLessOrEqual(millis() - ms, 6000);
+    hal_rtc_cancel_alarm();
+    assertTrue((bool)alarmFired);
+}
+
+test(TIME_18_RtcAlarmReturnsAnErrorWhenTimeInThePast) {
+    if (Particle.syncTimePending()) {
+        waitFor(Particle.syncTimeDone, 60000);
+        assertTrue(Particle.syncTimeDone());
+        assertTrue(Time.isValid());
+    }
+
+    // Absolute time
+    struct timeval now;
+    assertEqual(0, hal_rtc_get_time(&now, nullptr));
+    now.tv_sec -= 60;
+    static volatile bool alarmFired = false;
+    int r = hal_rtc_set_alarm(&now, 0, [](void* ctx) -> void {
+        volatile bool* alarmFired = (volatile bool*)ctx;
+        *alarmFired = true;
+    }, (void*)&alarmFired, nullptr);
+    hal_rtc_cancel_alarm();
+    assertFalse((bool)alarmFired);
+    assertEqual(r, (int)SYSTEM_ERROR_TIMEOUT);
+
+    // In some amount of time
+    alarmFired = false;
+    now.tv_sec = -5;
+    now.tv_usec = 0;
+    r = hal_rtc_set_alarm(&now, HAL_RTC_ALARM_FLAG_IN, [](void* ctx) -> void {
+        volatile bool* alarmFired = (volatile bool*)ctx;
+        *alarmFired = true;
+    }, (void*)&alarmFired, nullptr);
+    hal_rtc_cancel_alarm();
+    assertFalse((bool)alarmFired);
+    assertEqual(r, (int)SYSTEM_ERROR_TIMEOUT);
 }
