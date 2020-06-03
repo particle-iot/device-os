@@ -148,6 +148,9 @@ os_result_t os_thread_yield(void);
  */
 os_result_t os_thread_delay_until(system_tick_t *previousWakeTime, system_tick_t timeIncrement);
 
+os_thread_notify_t os_thread_wait(system_tick_t ms, void* reserved);
+int os_thread_notify(os_thread_t thread, void* reserved);
+
 int os_condition_variable_create(condition_variable_t* var);
 void os_condition_variable_destroy(condition_variable_t var);
 

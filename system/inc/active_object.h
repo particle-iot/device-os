@@ -30,6 +30,7 @@
 
 #include "channel.h"
 #include "concurrent_hal.h"
+#include "hal_platform.h"
 
 /**
  * Configuratino data for an active object.
@@ -371,9 +372,9 @@ public:
 
 class ActiveObjectQueue : public ActiveObjectBase
 {
-    os_queue_t  queue;
-
 protected:
+
+    os_queue_t  queue;
 
     virtual bool take(Item& result)
     {
@@ -436,6 +437,34 @@ class ActiveObjectThreadQueue : public ActiveObjectQueue
 public:
 
     ActiveObjectThreadQueue(const ActiveObjectConfiguration& config) : ActiveObjectQueue(config) {}
+
+// FIXME: some other feature flag?
+#if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+    virtual bool take(Item& result) override
+    {
+        auto r = os_thread_wait(configuration.take_wait, nullptr);
+        if (!os_queue_take(queue, &result, 0, nullptr)) {
+            return true;
+        }
+        return r;
+    }
+
+    virtual bool put(Item& item) override
+    {
+        bool r = ActiveObjectQueue::put(item);
+        if (r && _thread != OS_THREAD_INVALID_HANDLE) {
+            os_thread_notify(_thread, nullptr);
+        }
+        return r;
+    }
+
+    void notify()
+    {
+        if (_thread != OS_THREAD_INVALID_HANDLE) {
+            os_thread_notify(_thread, nullptr);
+        }
+    }
+#endif // HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
 
     void start()
     {

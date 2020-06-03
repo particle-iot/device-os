@@ -21,6 +21,8 @@ const os_thread_prio_t OS_THREAD_PRIORITY_DEFAULT = 2;
 const os_thread_prio_t OS_THREAD_PRIORITY_CRITICAL = 9;
 const size_t OS_THREAD_STACK_SIZE_DEFAULT = 3*1024;
 
+typedef uint32_t os_thread_notify_t;
+
 typedef void* os_mutex_t;
 typedef void* os_mutex_recursive_t;
 typedef void* condition_variable_t;

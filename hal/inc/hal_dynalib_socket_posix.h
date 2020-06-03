@@ -52,6 +52,7 @@ DYNALIB_FN(16, hal_socket, sock_poll, int(struct pollfd*, nfds_t, int))
 DYNALIB_FN(17, hal_socket, sock_select, int(int, fd_set*, fd_set*, fd_set*, struct timeval*))
 DYNALIB_FN(18, hal_socket, sock_recvmsg, int(int, struct msghdr*, int))
 DYNALIB_FN(19, hal_socket, sock_sendmsg, int(int, const struct msghdr*, int))
+DYNALIB_FN(20, hal_socket, sock_ioctl, int(int, long, void*))
 
 DYNALIB_END(hal_socket)
 

@@ -134,6 +134,7 @@ extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPe
 #define configTIMER_TASK_PRIORITY                   ( 2 )
 #define configTIMER_QUEUE_LENGTH                    ( 5 )
 #define configTIMER_TASK_STACK_DEPTH                ( ( unsigned short ) (1024 / sizeof( portSTACK_TYPE )) )
+#define configUSE_TASK_NOTIFICATIONS    (1)
 
 // Allocate newlib's reent structure for each task
 #define configUSE_NEWLIB_REENTRANT 1
