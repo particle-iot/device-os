@@ -165,6 +165,10 @@ int PppNcpNetif::getPowerState(if_power_state_t* state) const {
         *state = IF_POWER_STATE_UP;
     } else if (s == NcpPowerState::OFF) {
         *state = IF_POWER_STATE_DOWN;
+    } else if (s == NcpPowerState::TRASIENT_ON) {
+        *state = IF_POWER_STATE_POWERING_UP;
+    } else if (s == NcpPowerState::TRASIENT_OFF) {
+        *state = IF_POWER_STATE_POWERING_DOWN;
     } else {
         *state = IF_POWER_STATE_NONE;
     }
@@ -278,9 +282,15 @@ void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
             if (cev.state == NcpPowerState::ON) {
                 evt.ev_power_state->state = IF_POWER_STATE_UP;
                 LOG(TRACE, "NCP power state changed: IF_POWER_STATE_UP");
-            } else {
+            } else if (cev.state == NcpPowerState::OFF) {
                 evt.ev_power_state->state = IF_POWER_STATE_DOWN;
                 LOG(TRACE, "NCP power state changed: IF_POWER_STATE_DOWN");
+            } else if (cev.state == NcpPowerState::TRASIENT_ON) {
+                evt.ev_power_state->state = IF_POWER_STATE_POWERING_UP;
+                LOG(TRACE, "NCP power state changed: IF_POWER_STATE_POWERING_UP");
+            } else {
+                evt.ev_power_state->state = IF_POWER_STATE_POWERING_DOWN;
+                LOG(TRACE, "NCP power state changed: IF_POWER_STATE_POWERING_DOWN");
             }
             if_notify_event(self->interface(), &evt, nullptr);
         } else {

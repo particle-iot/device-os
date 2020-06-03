@@ -544,12 +544,11 @@ void NetworkManager::handleIfPowerState(if_t iface, const struct if_event* ev) {
         LOG(ERROR, "Interface is not populated");
         return;
     }
-    if (ev->ev_power_state->state == IF_POWER_STATE_UP) {
-        LOG(TRACE, "Interface is on now");
-        state->on = true;
-    } else if (ev->ev_power_state->state == IF_POWER_STATE_DOWN) {
-        LOG(TRACE, "Interface is off now");
-        state->on = false;
+    if (state->pwrState != ev->ev_power_state->state) {
+        state->pwrState = static_cast<if_power_state_t>(ev->ev_power_state->state);
+        uint8_t index;
+        if_get_index(iface, &index);
+        LOG(TRACE, "Interface %d power state changed: %d", index, state->pwrState.load());
     }
 }
 
@@ -731,14 +730,13 @@ void NetworkManager::populateInterfaceRuntimeState(bool st) {
         }
         if (state) {
             state->enabled = st;
-            if_power_state_t s;
-            if_get_power_state(iface, &s);
-            auto curr = (s == IF_POWER_STATE_UP) ? true : false;
-            if (curr != state->on) {
-                state->on = curr;
+            if_power_state_t pwr;
+            if_get_power_state(iface, &pwr);
+            if (state->pwrState != pwr) {
+                state->pwrState = pwr;
                 uint8_t index;
                 if_get_index(iface, &index);
-                LOG(TRACE, "Interface %d power state: %s", index, state->on ? "on" : "off");
+                LOG(TRACE, "Interface %d power state: %d", index, state->pwrState.load());
             }
         }
     });
@@ -845,20 +843,50 @@ void NetworkManager::resetInterfaceProtocolState(if_t iface) {
     }
 }
 
+int NetworkManager::powerInterface(if_t iface, bool enable) {
+    auto ifState = getInterfaceRuntimeState(iface);
+    if (!ifState) {
+        LOG(ERROR, "Interface is not populated");
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    if_req_power req = {};
+    if (enable) {
+        req.state = IF_POWER_STATE_UP;
+        // Update the interface power here to avoid race condition
+        // The power state will be updated on NCP power events
+        ifState->pwrState = IF_POWER_STATE_POWERING_UP;
+        LOG(TRACE, "Request to power on the interface");
+    } else {
+        req.state = IF_POWER_STATE_DOWN;
+        // Update the interface power here to avoid race condition
+        // The power state will be updated on NCP power events
+        ifState->pwrState = IF_POWER_STATE_POWERING_DOWN;
+        LOG(TRACE, "Request to power off the interface");
+    }
+    if (iface == nullptr) {
+        CHECK(for_each_iface([&](if_t iface, unsigned int flags) {
+            return if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
+        }));
+    } else {
+        return if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 int NetworkManager::waitInterfaceOff(if_t iface, system_tick_t timeout) const {
     auto state = getInterfaceRuntimeState(iface);
     CHECK_TRUE(state, SYSTEM_ERROR_NOT_FOUND);
-    if (!state->on) {
+    if (state->pwrState == IF_POWER_STATE_DOWN) {
         return SYSTEM_ERROR_NONE;
     }
     system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-    while (state->on) {
+    while (state->pwrState != IF_POWER_STATE_DOWN) {
         HAL_Delay_Milliseconds(100);
         if (HAL_Timer_Get_Milli_Seconds() - now > timeout) {
             break;
         }
     }
-    if (state->on) {
+    if (state->pwrState != IF_POWER_STATE_DOWN) {
         return SYSTEM_ERROR_TIMEOUT;
     }
     return SYSTEM_ERROR_NONE;

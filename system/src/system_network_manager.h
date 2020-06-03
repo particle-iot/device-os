@@ -70,6 +70,8 @@ public:
     int countEnabledInterfaces();
     int syncInterfaceStates();
 
+    int powerInterface(if_t iface = nullptr, bool enable = true);
+
     int waitInterfaceOff(if_t iface, system_tick_t timeout) const;
 
     enum class State {
@@ -108,14 +110,14 @@ private:
         InterfaceRuntimeState()
                 : ip4State(ProtocolState::UNCONFIGURED),
                   ip6State(ProtocolState::UNCONFIGURED),
-                  on(false) {
+                  pwrState(IF_POWER_STATE_DOWN) {
         }
         InterfaceRuntimeState* next = nullptr;
         bool enabled = false;
         if_t iface = nullptr;
         std::atomic<ProtocolState> ip4State;
         std::atomic<ProtocolState> ip6State;
-        std::atomic_bool on;
+        std::atomic<if_power_state_t> pwrState;
     };
 
     void transition(State state);

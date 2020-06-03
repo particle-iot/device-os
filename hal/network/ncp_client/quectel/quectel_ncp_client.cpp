@@ -89,7 +89,7 @@ inline system_tick_t millis() {
 }
 
 const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
-const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 230400;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -1363,20 +1363,35 @@ int QuectelNcpClient::processEventsImpl() {
 }
 
 int QuectelNcpClient::modemInit() const {
-    hal_gpio_config_t conf = {.size = sizeof(conf), .version = 0, .mode = OUTPUT, .set_value = false, .value = 0};
-
-    // Configure PWR_ON and RESET_N pins as Open-Drain and set to high by default
-    CHECK(HAL_Pin_Configure(BGPWR, &conf));
-    CHECK(HAL_Pin_Configure(BGRST, &conf));
-    CHECK(HAL_Pin_Configure(BGDTR, &conf)); // Set DTR=0 to wake up modem
-
-    // BGDTR=1: normal mode, BGDTR=0: sleep mode
-    conf.value = 1;
-    CHECK(HAL_Pin_Configure(BGDTR, &conf));
-
+    hal_gpio_config_t conf = {
+        .size = sizeof(conf),
+        .version = 0,
+        .mode = INPUT_PULLUP,
+        .set_value = false,
+        .value = 0};
     // Configure VINT as Input for modem power state monitoring
+    // NOTE: The BGVINT pin is inverted
     conf.mode = INPUT_PULLUP;
     CHECK(HAL_Pin_Configure(BGVINT, &conf));
+
+    if (modemPowerState() == 1) {
+        LOG(TRACE, "Startup: Modem is on");
+    } else {
+        LOG(TRACE, "Startup: Modem is off");
+    }
+
+    // Configure PWR_ON and RESET_N pins as OUTPUT and set to high by default
+    conf.mode = OUTPUT;
+    conf.set_value = true;
+    // NOTE: The BGPWR/BGRST pins are inverted
+    conf.value = 0;
+    CHECK(HAL_Pin_Configure(BGPWR, &conf));
+    CHECK(HAL_Pin_Configure(BGRST, &conf));
+
+    // DTR=0: normal mode, DTR=1: sleep mode
+    // NOTE: The BGDTR pins is inverted
+    conf.value = 1; 
+    CHECK(HAL_Pin_Configure(BGDTR, &conf));
 
     LOG(TRACE, "Modem low level initialization OK");
 
@@ -1425,10 +1440,13 @@ int QuectelNcpClient::modemPowerOn() {
     }
 
     if (!modemPowerState()) {
+        ncpPowerState(NcpPowerState::TRASIENT_ON);
+
         LOG(TRACE, "Powering modem on");
-        // Power on, power on pulse >= 500ms
+        // Power on, power on pulse >= 100ms
+        // NOTE: The BGPWR pin is inverted
         HAL_GPIO_Write(BGPWR, 1);
-        HAL_Delay_Milliseconds(500);
+        HAL_Delay_Milliseconds(200);
         HAL_GPIO_Write(BGPWR, 0);
 
         // After power on the device, we can't assume the device is ready for operation:
@@ -1452,8 +1470,11 @@ int QuectelNcpClient::modemPowerOn() {
 
 int QuectelNcpClient::modemPowerOff() {
     if (modemPowerState()) {
+        ncpPowerState(NcpPowerState::TRASIENT_OFF);
+
         LOG(TRACE, "Powering modem off");
         // Power off, power off pulse >= 650ms
+        // NOTE: The BGRST pin is inverted
         HAL_GPIO_Write(BGPWR, 1);
         HAL_Delay_Milliseconds(650);
         HAL_GPIO_Write(BGPWR, 0);
@@ -1481,10 +1502,11 @@ int QuectelNcpClient::modemSoftPowerOff() {
         if (ready_) {
             int r = CHECK_PARSER(parser_.execCommand("AT+QPOWD"));
             if (r == AtResponse::OK) {
+                ncpPowerState(NcpPowerState::TRASIENT_OFF);
                 system_tick_t now = HAL_Timer_Get_Milli_Seconds();
                 LOG(TRACE, "Waiting the modem to be turned off...");
-                // Verify that the module was powered down by checking the VINT pin up to 10 sec
-                if (waitModemPowerOff(10000)) {
+                // Verify that the module was powered down by checking the VINT pin up to 30 sec
+                if (waitModemPowerOff(30000)) {
                     LOG(TRACE, "It takes %d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
                 } else {
                     LOG(ERROR, "Failed to power off modem using AT command");
@@ -1505,18 +1527,32 @@ int QuectelNcpClient::modemSoftPowerOff() {
     return SYSTEM_ERROR_NONE;
 }
 
-int QuectelNcpClient::modemHardReset(bool powerOff) const {
+int QuectelNcpClient::modemHardReset(bool powerOff) {
     LOG(TRACE, "Hard resetting the modem");
 
     // BG96 reset, 150ms <= reset pulse <= 460ms
+    // NOTE: The BGRST pin is inverted
     HAL_GPIO_Write(BGRST, 1);
-    HAL_Delay_Milliseconds(300);
+    HAL_Delay_Milliseconds(400);
     HAL_GPIO_Write(BGRST, 0);
-    HAL_Delay_Milliseconds(160);
+
+    LOG(TRACE, "Waiting the modem to restart.");
+    if (waitModemPowerOn(30000)) {
+        LOG(TRACE, "Successfully reset the modem.");
+    } else {
+        LOG(ERROR, "Failed to reset the modem.");
+    }
 
     // The modem restarts automatically after hard reset.
     if (powerOff) {
+        // Need to delay at least 5s, otherwise, the modem cannot be powered off.
+        HAL_Delay_Milliseconds(5000);
+
+        ncpPowerState(NcpPowerState::TRASIENT_OFF);
+
+        LOG(TRACE, "Powering modem off");
         // Power off, power off pulse >= 650ms
+        // NOTE: The BGPWR pin is inverted
         HAL_GPIO_Write(BGPWR, 1);
         HAL_Delay_Milliseconds(650);
         HAL_GPIO_Write(BGPWR, 0);
@@ -1526,7 +1562,10 @@ int QuectelNcpClient::modemHardReset(bool powerOff) const {
         // EG91: >=30s
         if (waitModemPowerOff(30000)) {
             LOG(TRACE, "Modem powered off");
-        } 
+            ncpPowerState(NcpPowerState::OFF);
+        } else {
+            LOG(ERROR, "Failed to power off modem");
+        }
     }
 
     return SYSTEM_ERROR_NONE;
@@ -1534,6 +1573,7 @@ int QuectelNcpClient::modemHardReset(bool powerOff) const {
 
 bool QuectelNcpClient::modemPowerState() const {
     // LOG(TRACE, "BGVINT: %d", HAL_GPIO_Read(BGVINT));
+    // NOTE: The BGVINT pin is inverted
     return !HAL_GPIO_Read(BGVINT);
 }
 

@@ -139,7 +139,7 @@ private:
     int modemPowerOn();
     int modemPowerOff();
     int modemSoftPowerOff();
-    int modemHardReset(bool powerOff = false) const;
+    int modemHardReset(bool powerOff = false);
     bool modemPowerState() const;
     int modemSetUartState(bool state) const;
 };

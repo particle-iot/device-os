@@ -159,7 +159,9 @@ enum if_link_state_t {
 enum if_power_state_t {
     IF_POWER_STATE_NONE = 0x00,
     IF_POWER_STATE_DOWN = 0x01,
-    IF_POWER_STATE_UP   = 0x02
+    IF_POWER_STATE_UP   = 0x02,
+    IF_POWER_STATE_POWERING_DOWN = 0x03,
+    IF_POWER_STATE_POWERING_UP = 0x04,
 };
 
 struct if_event_state {

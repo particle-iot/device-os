@@ -251,9 +251,7 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
         if (network != NETWORK_INTERFACE_ALL) {
             if_t iface;
             if (!if_get_by_index(network, &iface)) {
-                if_req_power req = {};
-                req.state = IF_POWER_STATE_UP;
-                if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
+                NetworkManager::instance()->powerInterface(iface, true);
             }
         }
 
@@ -287,9 +285,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
             network_disconnect(network, NETWORK_DISCONNECT_REASON_NETWORK_OFF, nullptr);
             if_t iface;
             if (!if_get_by_index(network, &iface)) {
-                if_req_power req = {};
-                req.state = IF_POWER_STATE_DOWN;
-                if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
+                NetworkManager::instance()->powerInterface(iface, false);
             }
         }
 
