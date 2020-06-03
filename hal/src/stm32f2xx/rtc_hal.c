@@ -24,6 +24,12 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
+
+// For some reason on some platforms this is not defined
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif // _DEFAULT_SOURCE
+
 #include "rtc_hal.h"
 #include "stm32f2xx_rtc.h"
 #include "hw_config.h"
