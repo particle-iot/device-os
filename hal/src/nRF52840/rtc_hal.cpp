@@ -144,7 +144,7 @@ int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_ha
     int r = os_timer_change(s_alarm_timer, OS_TIMER_CHANGE_PERIOD, false, diffMs,
             0xffffffff, nullptr);
 
-    if (r <= 0) {
+    if (r != 0) {
         return SYSTEM_ERROR_INTERNAL;
     }
 
