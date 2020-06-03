@@ -26,29 +26,24 @@
 /* Includes ------------------------------------------------------------------*/
 #include "rtc_hal.h"
 
-time_t HAL_RTC_Get_UnixTime(void)
-{
+void hal_rtc_init(void) {
+}
+
+int hal_rtc_get_time(struct timeval* tv, void* reserved) {
     return 0;
 }
 
-void HAL_RTC_Set_Alarm(uint32_t value)
-{
-}
-
-void HAL_RTC_Set_UnixAlarm(time_t value)
-{
-
-}
-
-void HAL_RTC_Cancel_UnixAlarm(void)
-{
-}
-
-void HAL_RTC_Set_UnixTime(time_t value)
-{
-}
-
-uint8_t HAL_RTC_Time_Is_Valid(void* reserved)
-{
+int hal_rtc_set_time(const struct timeval* tv, void* reserved) {
     return 0;
+}
+
+bool hal_rtc_time_is_valid(void* reserved) {
+    return false;
+}
+
+int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context, void* reserved) {
+    return 0;
+}
+
+void hal_rtc_cancel_alarm(void) {
 }
