@@ -56,8 +56,8 @@ int sock_getsockopt(int s, int level, int optname, void* optval, socklen_t* optl
         LIBC_TIMEVAL32* tv32 = (LIBC_TIMEVAL32*)optval;
         tv32->tv_sec = tv.tv_sec;
         tv32->tv_usec = tv.tv_usec;
-        return r;
       }
+      return r;
     }
   }
 #endif // LIBC_64_BIT_TIME_T
@@ -142,6 +142,9 @@ int sock_select32(int nfds, fd_set* readfds, fd_set* writefds,
   }
   return sock_select(nfds, readfds, writefds, exceptfds, nullptr);
 }
+#else
+int sock_select32(int nfds, fd_set* readfds, fd_set* writefds,
+                  fd_set* exceptfds, LIBC_TIMEVAL32* timeout) __attribute__((alias("sock_select")));
 #endif // LIBC_64_BIT_TIME_T
 
 ssize_t sock_recvmsg(int s, struct msghdr *message, int flags) {

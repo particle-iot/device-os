@@ -54,6 +54,7 @@ void hal_rtc_init(void);
 int hal_rtc_get_time(struct timeval* tv, void* reserved);
 int hal_rtc_set_time(const struct timeval* tv, void* reserved);
 bool hal_rtc_time_is_valid(void* reserved);
+// XXX: only one alarm and its handler can be registered at a time
 int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context, void* reserved);
 void hal_rtc_cancel_alarm(void);
 

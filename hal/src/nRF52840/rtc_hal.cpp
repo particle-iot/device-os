@@ -70,6 +70,7 @@ uint64_t usUnixtimeFromTimeval(const struct timeval* tv) {
 
 void hal_rtc_init(void) {
 #if HAL_PLATFORM_EXTERNAL_RTC
+    hal_exrtc_init(nullptr);
     struct timeval tv = {};
     if (!hal_exrtc_get_time(&tv, nullptr)) {
         hal_rtc_set_time(&tv, nullptr);
@@ -143,7 +144,7 @@ int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_ha
     int r = os_timer_change(s_alarm_timer, OS_TIMER_CHANGE_PERIOD, false, diffMs,
             0xffffffff, nullptr);
 
-    if (r < 0) {
+    if (r <= 0) {
         return SYSTEM_ERROR_INTERNAL;
     }
 
