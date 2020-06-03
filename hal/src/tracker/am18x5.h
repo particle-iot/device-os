@@ -131,10 +131,11 @@ public:
     int end();
     int sync();
 
-    int setCalendar(const struct tm* calendar) const;
-    int getCalendar(struct tm* calendar) const;
+    int setTime(const struct timeval* tv) const;
+    int getTime(struct timeval* tv) const;
 
-    int setAlarm(const struct tm* calendar);
+    int setAlarm(const struct timeval* tv);
+    int getAlarm(struct timeval* tv) const;
     int enableAlarm(bool enable, AlarmHandler handler, void* context);
 
     int enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) const;
@@ -202,7 +203,6 @@ private:
     int readContinuousRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const;
     static os_thread_return_t exRtcInterruptHandleThread(void* param);
 
-    static constexpr uint16_t UNIX_TIME_YEAR_BASE = 118; // 2018 - 1900
     static constexpr uint16_t PART_NUMBER = 0x1805;
 
     bool initialized_;
