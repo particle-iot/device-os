@@ -1606,9 +1606,9 @@ failure:
 }
 
 void MDMParser::_setBandSelectString(MDM_BandSelect &data, char* bands, int index /*= 0*/) {
-    char band[5];
+    char band[6];
     for (int x=index; x<data.count; x++) {
-        sprintf(band, "%d", data.band[x]);
+        snprintf(band, sizeof(band), "%d", data.band[x]);
         strcat(bands, band);
         if ((x+1) < data.count) strcat(bands, ",");
     }
@@ -1621,7 +1621,7 @@ bool MDMParser::setBandSelect(MDM_BandSelect &data)
     if (_init && _pwr) {
         MDM_INFO("\r\n[ Modem::setBandSelect ] = = = = = = = = = =");
 
-        char bands_to_set[22] = "";
+        char bands_to_set[25] = ""; // 5 bands at 4 char each plus commas
         _setBandSelectString(data, bands_to_set, 0);
         if (strcmp(bands_to_set,"") == 0)
             goto failure;
@@ -1631,7 +1631,7 @@ bool MDMParser::setBandSelect(MDM_BandSelect &data)
         if (!getBandAvailable(band_avail))
             goto failure;
 
-        char band_defaults[22] = "";
+        char band_defaults[25] = "";
         if (band_avail.band[0] == BAND_DEFAULT)
             _setBandSelectString(band_avail, band_defaults, 1);
 
@@ -1640,7 +1640,7 @@ bool MDMParser::setBandSelect(MDM_BandSelect &data)
         if (!getBandSelect(band_sel))
             goto failure;
 
-        char bands_selected[22] = "";
+        char bands_selected[25] = "";
         _setBandSelectString(band_sel, bands_selected, 0);
 
         if (strcmp(bands_to_set, "0") == 0) {

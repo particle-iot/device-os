@@ -103,17 +103,17 @@ bool set_each_band_as_a_string_and_verify_is_selected(CellularBand& band_avail)
     return true;
 }
 void get_band_select_string(CellularBand &data, char* bands, int index) {
-    char band[5];
+    char band[6];
     for (int x=index; x<data.count; x++) {
-        sprintf(band, "%d", data.band[x]);
+        snprintf(band, sizeof(band), "%d", data.band[x]);
         strcat(bands, band);
         if ((x+1) < data.count) strcat(bands, ",");
     }
 }
 bool is_bands_selected_not_equal_to_default_bands(CellularBand& band_sel, CellularBand& band_avail) {
     // create default bands string
-    char band_defaults[22] = "";
-    char bands_selected[22] = "";
+    char band_defaults[25] = "";
+    char bands_selected[25] = "";
     if (band_avail.band[0] != BAND_DEFAULT) return false;
     get_band_select_string(band_avail, band_defaults, 1);
     get_band_select_string(band_sel, bands_selected, 0);
