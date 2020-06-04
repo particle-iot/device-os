@@ -1691,7 +1691,7 @@ int SaraNcpClient::modemPowerOn() {
     }
 
     if (!modemPowerState()) {
-        ncpPowerState(NcpPowerState::TRASIENT_ON);
+        ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
         LOG(TRACE, "Powering modem on");
         // Perform power-on sequence depending on the NCP type
@@ -1747,7 +1747,7 @@ int SaraNcpClient::modemPowerOff() {
     });
 
     if (modemPowerState()) {
-        ncpPowerState(NcpPowerState::TRASIENT_OFF);
+        ncpPowerState(NcpPowerState::TRANSIENT_OFF);
 
         LOG(TRACE, "Powering modem off using hardware control");
         // Important! We need to disable voltage translator here
@@ -1794,7 +1794,7 @@ int SaraNcpClient::modemSoftPowerOff() {
         if (ready_) {
             int r = CHECK_PARSER(parser_.execCommand("AT+CPWROFF"));
             if (r == AtResponse::OK) {
-                ncpPowerState(NcpPowerState::TRASIENT_OFF);
+                ncpPowerState(NcpPowerState::TRANSIENT_OFF);
                 system_tick_t now = HAL_Timer_Get_Milli_Seconds();
                 LOG(TRACE, "Waiting the modem to be turned off...");
                 // Verify that the module was powered down by checking the VINT pin up to 10 sec

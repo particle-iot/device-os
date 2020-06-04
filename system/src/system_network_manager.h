@@ -110,7 +110,7 @@ private:
         InterfaceRuntimeState()
                 : ip4State(ProtocolState::UNCONFIGURED),
                   ip6State(ProtocolState::UNCONFIGURED),
-                  pwrState(IF_POWER_STATE_DOWN) {
+                  pwrState(IF_POWER_STATE_NONE) {
         }
         InterfaceRuntimeState* next = nullptr;
         bool enabled = false;

@@ -34,8 +34,8 @@ enum class NcpPowerState {
     UNKNOWN = 0,
     OFF = 1,
     ON = 2,
-    TRASIENT_OFF = 3,
-    TRASIENT_ON = 4
+    TRANSIENT_OFF = 3,
+    TRANSIENT_ON = 4
 };
 
 enum class NcpConnectionState {

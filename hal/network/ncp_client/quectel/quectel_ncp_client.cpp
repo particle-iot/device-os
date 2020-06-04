@@ -89,7 +89,7 @@ inline system_tick_t millis() {
 }
 
 const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
-const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 230400;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -1440,7 +1440,7 @@ int QuectelNcpClient::modemPowerOn() {
     }
 
     if (!modemPowerState()) {
-        ncpPowerState(NcpPowerState::TRASIENT_ON);
+        ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
         LOG(TRACE, "Powering modem on");
         // Power on, power on pulse >= 100ms
@@ -1470,7 +1470,7 @@ int QuectelNcpClient::modemPowerOn() {
 
 int QuectelNcpClient::modemPowerOff() {
     if (modemPowerState()) {
-        ncpPowerState(NcpPowerState::TRASIENT_OFF);
+        ncpPowerState(NcpPowerState::TRANSIENT_OFF);
 
         LOG(TRACE, "Powering modem off");
         // Power off, power off pulse >= 650ms
@@ -1502,7 +1502,7 @@ int QuectelNcpClient::modemSoftPowerOff() {
         if (ready_) {
             int r = CHECK_PARSER(parser_.execCommand("AT+QPOWD"));
             if (r == AtResponse::OK) {
-                ncpPowerState(NcpPowerState::TRASIENT_OFF);
+                ncpPowerState(NcpPowerState::TRANSIENT_OFF);
                 system_tick_t now = HAL_Timer_Get_Milli_Seconds();
                 LOG(TRACE, "Waiting the modem to be turned off...");
                 // Verify that the module was powered down by checking the VINT pin up to 30 sec
@@ -1548,7 +1548,7 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
         // Need to delay at least 5s, otherwise, the modem cannot be powered off.
         HAL_Delay_Milliseconds(5000);
 
-        ncpPowerState(NcpPowerState::TRASIENT_OFF);
+        ncpPowerState(NcpPowerState::TRANSIENT_OFF);
 
         LOG(TRACE, "Powering modem off");
         // Power off, power off pulse >= 650ms

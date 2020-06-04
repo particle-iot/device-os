@@ -230,9 +230,9 @@ int Esp32NcpNetif::getPowerState(if_power_state_t* state) const {
         *state = IF_POWER_STATE_UP;
     } else if (s == NcpPowerState::OFF) {
         *state = IF_POWER_STATE_DOWN;
-    } else if (s == NcpPowerState::TRASIENT_ON) {
+    } else if (s == NcpPowerState::TRANSIENT_ON) {
         *state = IF_POWER_STATE_POWERING_UP;
-    } else if (s == NcpPowerState::TRASIENT_OFF) {
+    } else if (s == NcpPowerState::TRANSIENT_OFF) {
         *state = IF_POWER_STATE_POWERING_DOWN;
     } else {
         *state = IF_POWER_STATE_NONE;
@@ -286,7 +286,7 @@ void Esp32NcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
             } else if (cev.state == NcpPowerState::OFF) {
                 evt.ev_power_state->state = IF_POWER_STATE_DOWN;
                 LOG(TRACE, "NCP power state changed: IF_POWER_STATE_DOWN");
-            } else if (cev.state == NcpPowerState::TRASIENT_ON) {
+            } else if (cev.state == NcpPowerState::TRANSIENT_ON) {
                 evt.ev_power_state->state = IF_POWER_STATE_POWERING_UP;
                 LOG(TRACE, "NCP power state changed: IF_POWER_STATE_POWERING_UP");
             } else {

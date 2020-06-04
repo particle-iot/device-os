@@ -160,7 +160,7 @@ int Esp32NcpClient::on() {
     if (ncpState_ == NcpState::ON) {
         return 0;
     }
-    ncpPowerState(NcpPowerState::TRASIENT_ON);
+    ncpPowerState(NcpPowerState::TRANSIENT_ON);
     CHECK(waitReady());
     ncpPowerState(NcpPowerState::ON);
     return 0;
@@ -172,7 +172,7 @@ int Esp32NcpClient::off() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     muxer_.stop();
-    ncpPowerState(NcpPowerState::TRASIENT_OFF);
+    ncpPowerState(NcpPowerState::TRANSIENT_OFF);
     espOff();
     ready_ = false;
     ncpState(NcpState::OFF);
