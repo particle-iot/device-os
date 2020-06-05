@@ -178,74 +178,74 @@ static SocketUsartClient usart2 = SocketUsartClient();
 
 }
 
-void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
+void hal_usart_init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
 {
     usartMap(serial).init(rx_buffer, tx_buffer);
 }
 
-void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud)
+void hal_usart_begin(HAL_USART_Serial serial, uint32_t baud)
 {
     //usartMap(serial).begin(baud);
 }
 
-void HAL_USART_End(HAL_USART_Serial serial)
+void hal_usart_end(HAL_USART_Serial serial)
 {
     //usartMap(serial).end();
 }
 
-int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial)
+int32_t hal_usart_available_data_for_write(HAL_USART_Serial serial)
 {
     return usartMap(serial).availableForWrite();
 }
 
-uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data)
+uint32_t hal_usart_write(HAL_USART_Serial serial, uint8_t data)
 {
     return usartMap(serial).write(data);
 }
 
-int32_t HAL_USART_Available_Data(HAL_USART_Serial serial)
+int32_t hal_usart_available(HAL_USART_Serial serial)
 {
     return usartMap(serial).available();
 }
 
-int32_t HAL_USART_Read_Data(HAL_USART_Serial serial)
+int32_t hal_usart_read(HAL_USART_Serial serial)
 {
     return usartMap(serial).read();
 }
 
-int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial)
+int32_t hal_usart_peek(HAL_USART_Serial serial)
 {
     return usartMap(serial).peek();
 }
 
-void HAL_USART_Flush_Data(HAL_USART_Serial serial)
+void hal_usart_flush(HAL_USART_Serial serial)
 {
     usartMap(serial).flush();
 }
 
-bool HAL_USART_Is_Enabled(HAL_USART_Serial serial)
+bool hal_usart_is_enabled(HAL_USART_Serial serial)
 {
     return usartMap(serial).enabled();
 }
 
-void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
+void hal_usart_half_duplex(HAL_USART_Serial serial, bool Enable)
 {
 }
 
-void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void *ptr)
+void hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void *ptr)
 {
 }
 
-uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data)
+uint32_t hal_usart_write_nine_bits(HAL_USART_Serial serial, uint16_t data)
 {
     return usartMap(serial).write((uint8_t) data);
 }
 
-void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved)
+void hal_usart_send_break(HAL_USART_Serial serial, void* reserved)
 {
 }
 
-uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial)
+uint8_t hal_usart_break_detected(HAL_USART_Serial serial)
 {
   return 0;
 }

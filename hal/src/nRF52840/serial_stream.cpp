@@ -57,13 +57,13 @@ SerialStream::SerialStream(HAL_USART_Serial serial, uint32_t baudrate, uint32_t 
     c.tx_buffer = (uint8_t*)txBuffer_.get();
     c.rx_buffer_size = rxBufferSize;
     c.tx_buffer_size = txBufferSize;
-    HAL_USART_Init_Ex(serial_, &c, nullptr);
-    HAL_USART_BeginConfig(serial_, baudrate, config, 0);
+    hal_usart_init_ex(serial_, &c, nullptr);
+    hal_usart_begin_config(serial_, baudrate, config, 0);
     phyOn_ = true;
 }
 
 SerialStream::~SerialStream() {
-    HAL_USART_End(serial_);
+    hal_usart_end(serial_);
 }
 
 int SerialStream::read(char* data, size_t size) {
@@ -73,7 +73,7 @@ int SerialStream::read(char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    auto r = HAL_USART_Read(serial_, data, size, sizeof(char));
+    auto r = hal_usart_read_buffer(serial_, data, size, sizeof(char));
     if (r == SYSTEM_ERROR_NO_MEMORY) {
         return 0;
     }
@@ -87,7 +87,7 @@ int SerialStream::peek(char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    auto r = HAL_USART_Peek(serial_, data, size, sizeof(char));
+    auto r = hal_usart_peak_buffer(serial_, data, size, sizeof(char));
     if (r == SYSTEM_ERROR_NO_MEMORY) {
         return 0;
     }
@@ -105,7 +105,7 @@ int SerialStream::write(const char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    auto r = HAL_USART_Write(serial_, data, size, sizeof(char));
+    auto r = hal_usart_write_buffer(serial_, data, size, sizeof(char));
     if (r == SYSTEM_ERROR_NO_MEMORY) {
         return 0;
     }
@@ -116,7 +116,7 @@ int SerialStream::flush() {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    HAL_USART_Flush_Data(serial_);
+    hal_usart_flush(serial_);
     return 0;
 }
 
@@ -124,14 +124,14 @@ int SerialStream::availForRead() {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    return HAL_USART_Available_Data(serial_);
+    return hal_usart_available(serial_);
 }
 
 int SerialStream::availForWrite() {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    return HAL_USART_Available_Data_For_Write(serial_);
+    return hal_usart_available_data_for_write(serial_);
 }
 
 int SerialStream::waitEvent(unsigned flags, unsigned timeout) {
@@ -144,26 +144,26 @@ int SerialStream::waitEvent(unsigned flags, unsigned timeout) {
 
     // NOTE: non-Stream events may be passed here
 
-    return HAL_USART_Pvt_Wait_Event(serial_, flags, timeout);
+    return hal_usart_pvt_wait_event(serial_, flags, timeout);
 }
 
 int SerialStream::setBaudRate(unsigned int baudrate) {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    HAL_USART_End(serial_);
-    HAL_USART_BeginConfig(serial_, baudrate, config_, 0);
+    hal_usart_end(serial_);
+    hal_usart_begin_config(serial_, baudrate, config_, 0);
     return 0;
 }
 
 int SerialStream::on(bool on) {
     if (on) {
         CHECK_FALSE(phyOn_, SYSTEM_ERROR_NONE);
-        HAL_USART_BeginConfig(serial_, baudrate_, config_, 0);
+        hal_usart_begin_config(serial_, baudrate_, config_, 0);
         phyOn_ = true;
     } else {
         CHECK_TRUE(phyOn_, SYSTEM_ERROR_NONE);
-        HAL_USART_End(serial_);
+        hal_usart_end(serial_);
         phyOn_ = false;
     }
     return SYSTEM_ERROR_NONE;
@@ -171,7 +171,7 @@ int SerialStream::on(bool on) {
 
 EventGroupHandle_t SerialStream::eventGroup() {
     EventGroupHandle_t ev = nullptr;
-    HAL_USART_Pvt_Get_Event_Group_Handle(serial_, &ev);
+    hal_usart_pvt_get_event_group_handle(serial_, &ev);
     return ev;
 }
 

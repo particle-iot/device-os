@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -124,11 +124,11 @@ public:
     };
 
     int init(const HAL_USART_Buffer_Config& conf) {
-        if (isEnabled()) {
+        if (enabled_) {
             CHECK(end());
         }
 
-        if (isConfigured()) {
+        if (configured_) {
             CHECK(deInit());
         }
 
@@ -142,23 +142,25 @@ public:
 
         configured_ = true;
 
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     int deInit() {
         configured_ = false;
 
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     int begin(const Config& conf) {
-        CHECK_TRUE(isConfigured(), SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(configured_, SYSTEM_ERROR_INVALID_STATE);
         CHECK_TRUE(validateConfig(conf.config), SYSTEM_ERROR_INVALID_ARGUMENT);
         auto nrfBaudRate = CHECK_RETURN(getNrfBaudrate(conf.baudRate), SYSTEM_ERROR_INVALID_ARGUMENT);
 
         AtomicSection lk;
 
-        if (isEnabled()) {
+        suspend_ = false;
+
+        if (enabled_) {
             end();
         }
 
@@ -226,12 +228,16 @@ public:
         enableTimer();
         startReceiver();
 
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
-    int end() {
+    int end(bool cacheConfig = false) {
         CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
         AtomicSection lk;
+
+        if (!cacheConfig) {
+            suspend_ = false;
+        }
 
         disableInterrupts();
 
@@ -262,17 +268,33 @@ public:
         disableTimer();
 
         enabled_ = false;
-        config_ = {};
+        if (!cacheConfig) {
+            config_ = {};
+            rxBuffer_.reset();
+        }
         transmitting_ = false;
         receiving_ = 0;
-        rxBuffer_.reset();
         txBuffer_.reset();
 
-        return 0;
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int suspend() {
+        CHECK_TRUE(enabled_, SYSTEM_ERROR_NONE);
+        CHECK_FALSE(suspend_, SYSTEM_ERROR_NONE);
+        suspend_ = true;
+        flush();
+        return end(true);
+    }
+
+    int restore() {
+        CHECK_TRUE(configured_, SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(suspend_, SYSTEM_ERROR_NONE);
+        return begin(config_);
     }
 
     ssize_t data() {
-        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
         RxLock lk(uarte_);
         ssize_t d = rxBuffer_.data();
         if (receiving_) {
@@ -287,13 +309,13 @@ public:
     }
 
     ssize_t space() {
-        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
         TxLock lk(uarte_);
         return txBuffer_.space();
     }
 
     ssize_t read(uint8_t* buffer, size_t size) {
-        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
         const ssize_t maxRead = CHECK(data());
         const size_t readSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(readSize > 0, SYSTEM_ERROR_NO_MEMORY);
@@ -309,7 +331,7 @@ public:
     }
 
     ssize_t peek(uint8_t* buffer, size_t size) {
-        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
         const ssize_t maxRead = CHECK(data());
         const size_t peekSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(peekSize > 0, SYSTEM_ERROR_NO_MEMORY);
@@ -318,7 +340,7 @@ public:
     }
 
     ssize_t write(const uint8_t* buffer, size_t size) {
-        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
         const ssize_t canWrite = CHECK(space());
         const size_t writeSize = std::min((size_t)canWrite, size);
         CHECK_TRUE(writeSize > 0, SYSTEM_ERROR_NO_MEMORY);
@@ -356,7 +378,7 @@ public:
     }
 
     void pump() {
-        if (!willPreempt() && isEnabled()) {
+        if (!willPreempt() && enabled_) {
             interruptHandler();
         }
     }
@@ -688,6 +710,7 @@ private:
 
     bool configured_ = false;
     volatile bool enabled_ = false;
+    volatile bool suspend_ = false;
 
     volatile bool transmitting_;
     volatile uint8_t receiving_;
@@ -732,14 +755,14 @@ extern "C" void UARTE1_IRQHandler(void) {
     uarte1InterruptHandler();
 }
 
-int HAL_USART_Init_Ex(HAL_USART_Serial serial, const HAL_USART_Buffer_Config* config, void*) {
+int hal_usart_init_ex(HAL_USART_Serial serial, const HAL_USART_Buffer_Config* config, void*) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     return usart->init(*config);
 }
 
-void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer* rxBuffer, Ring_Buffer* txBuffer) {
+void hal_usart_init(HAL_USART_Serial serial, Ring_Buffer* rxBuffer, Ring_Buffer* txBuffer) {
     HAL_USART_Buffer_Config conf = {
         .size = sizeof(HAL_USART_Buffer_Config),
         .rx_buffer = rxBuffer->buffer,
@@ -748,10 +771,10 @@ void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer* rxBuffer, Ring_Buffer*
         .tx_buffer_size = sizeof(txBuffer->buffer)
     };
 
-    HAL_USART_Init_Ex(serial, &conf, nullptr);
+    hal_usart_init_ex(serial, &conf, nullptr);
 }
 
-void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void*) {
+void hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void*) {
 #if PLATFORM_ID == PLATFORM_TRACKER
     /*
      * On Tracker both I2C_INTERFACE3 and USART_SERIAL1 use the same pins - D8 and D9,
@@ -779,11 +802,11 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
     usart->begin(conf);
 }
 
-void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud) {
-    HAL_USART_BeginConfig(serial, baud, SERIAL_8N1, nullptr);
+void hal_usart_begin(HAL_USART_Serial serial, uint32_t baud) {
+    hal_usart_begin_config(serial, baud, SERIAL_8N1, nullptr);
 }
 
-void HAL_USART_End(HAL_USART_Serial serial) {
+void hal_usart_end(HAL_USART_Serial serial) {
     auto usart = getInstance(serial);
     // FIXME: CHECK_XXX?
     if (!usart) {
@@ -793,17 +816,17 @@ void HAL_USART_End(HAL_USART_Serial serial) {
     usart->end();
 }
 
-int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial) {
+int32_t hal_usart_available_data_for_write(HAL_USART_Serial serial) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     return usart->space();
 }
 
-int32_t HAL_USART_Available_Data(HAL_USART_Serial serial) {
+int32_t hal_usart_available(HAL_USART_Serial serial) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     return usart->data();
 }
 
-void HAL_USART_Flush_Data(HAL_USART_Serial serial) {
+void hal_usart_flush(HAL_USART_Serial serial) {
     auto usart = getInstance(serial);
     // FIXME: CHECK_XXX?
     if (!usart) {
@@ -813,50 +836,50 @@ void HAL_USART_Flush_Data(HAL_USART_Serial serial) {
     usart->flush();
 }
 
-bool HAL_USART_Is_Enabled(HAL_USART_Serial serial) {
+bool hal_usart_is_enabled(HAL_USART_Serial serial) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), false);
 
     return usart->isEnabled();
 }
 
-ssize_t HAL_USART_Write(HAL_USART_Serial serial, const void* buffer, size_t size, size_t elementSize) {
+ssize_t hal_usart_write_buffer(HAL_USART_Serial serial, const void* buffer, size_t size, size_t elementSize) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(elementSize == sizeof(uint8_t), SYSTEM_ERROR_INVALID_ARGUMENT);
     usart->pump();
     return usart->write((const uint8_t*)buffer, size);
 }
 
-ssize_t HAL_USART_Read(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize) {
+ssize_t hal_usart_read_buffer(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(elementSize == sizeof(uint8_t), SYSTEM_ERROR_INVALID_ARGUMENT);
     return usart->read((uint8_t*)buffer, size);
 }
 
-ssize_t HAL_USART_Peek(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize) {
+ssize_t hal_usart_peak_buffer(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(elementSize == sizeof(uint8_t), SYSTEM_ERROR_INVALID_ARGUMENT);
     return usart->peek((uint8_t*)buffer, size);
 }
 
-int32_t HAL_USART_Read_Data(HAL_USART_Serial serial) {
+int32_t hal_usart_read(HAL_USART_Serial serial) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     uint8_t c;
     CHECK(usart->read(&c, sizeof(c)));
     return c;
 }
 
-int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial) {
+int32_t hal_usart_peek(HAL_USART_Serial serial) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     uint8_t c;
     CHECK(usart->peek(&c, sizeof(c)));
     return c;
 }
 
-uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data) {
-    return HAL_USART_Write_Data(serial, data);
+uint32_t hal_usart_write_nine_bits(HAL_USART_Serial serial, uint16_t data) {
+    return hal_usart_write(serial, data);
 }
 
-uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data) {
+uint32_t hal_usart_write(HAL_USART_Serial serial, uint8_t data) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     // Blocking!
     while(usart->isEnabled() && usart->space() <= 0) {
@@ -865,20 +888,20 @@ uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data) {
     return CHECK_RETURN(usart->write(&data, sizeof(data)), 0);
 }
 
-void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved) {
+void hal_usart_send_break(HAL_USART_Serial serial, void* reserved) {
     // Unsupported
 }
 
-uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial) {
+uint8_t hal_usart_break_detected(HAL_USART_Serial serial) {
     // Unsupported
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
-void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool enable) {
+void hal_usart_half_duplex(HAL_USART_Serial serial, bool enable) {
     // Unsupported
 }
 
-int HAL_USART_Pvt_Get_Event_Group_Handle(HAL_USART_Serial serial, EventGroupHandle_t* handle) {
+int hal_usart_pvt_get_event_group_handle(HAL_USART_Serial serial, EventGroupHandle_t* handle) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     auto grp = usart->eventGroup();
     CHECK_TRUE(grp, SYSTEM_ERROR_INVALID_STATE);
@@ -886,17 +909,26 @@ int HAL_USART_Pvt_Get_Event_Group_Handle(HAL_USART_Serial serial, EventGroupHand
     return SYSTEM_ERROR_NONE;
 }
 
-int HAL_USART_Pvt_Enable_Event(HAL_USART_Serial serial, HAL_USART_Pvt_Events events) {
+int hal_usart_pvt_enable_event(HAL_USART_Serial serial, HAL_USART_Pvt_Events events) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     return usart->enableEvent(events);
 }
 
-int HAL_USART_Pvt_Disable_Event(HAL_USART_Serial serial, HAL_USART_Pvt_Events events) {
+int hal_usart_pvt_disable_event(HAL_USART_Serial serial, HAL_USART_Pvt_Events events) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     return usart->disableEvent(events);
 }
 
-int HAL_USART_Pvt_Wait_Event(HAL_USART_Serial serial, uint32_t events, system_tick_t timeout) {
+int hal_usart_pvt_wait_event(HAL_USART_Serial serial, uint32_t events, system_tick_t timeout) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     return usart->waitEvent(events, timeout);
+}
+
+int hal_usart_sleep(HAL_USART_Serial serial, bool sleep, void* reserved) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    if (sleep) {
+        return usart->suspend();
+    } else {
+        return usart->restore();
+    }
 }

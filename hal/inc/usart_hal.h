@@ -1,26 +1,25 @@
-/**
- ******************************************************************************
+/******************************************************************************
  * @file    usart_hal.h
  * @author  Satish Nair, Brett Walach
  * @version V1.0.0
  * @date    12-Sept-2014
  * @brief
- ******************************************************************************
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
-
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation, either
-  version 3 of the License, or (at your option) any later version.
-
-  This library is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
-
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, see <http://www.gnu.org/licenses/>.
- ******************************************************************************
+ ******************************************************************************/
+/*
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHAN'TABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
@@ -37,10 +36,11 @@
 
 /* Exported defines ----------------------------------------------------------*/
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
-	#define TOTAL_USARTS		5
+    #define TOTAL_USARTS		5
 #else
-	#define TOTAL_USARTS		2
+    #define TOTAL_USARTS		2
 #endif
+
 #define SERIAL_BUFFER_SIZE      64
 
 // Pre-defined USART configurations
@@ -115,63 +115,57 @@
 
 #define SERIAL_TX_PULL_UP             ((uint32_t)0x8000)
 
-
 /* Exported types ------------------------------------------------------------*/
-typedef struct Ring_Buffer
-{
-  uint16_t buffer[SERIAL_BUFFER_SIZE];
-  volatile uint16_t head;
-  volatile uint16_t tail;
+typedef struct Ring_Buffer {
+    uint16_t buffer[SERIAL_BUFFER_SIZE];
+    volatile uint16_t head;
+    volatile uint16_t tail;
 } Ring_Buffer;
 
 typedef enum HAL_USART_Serial {
-  HAL_USART_SERIAL1 = 0,    //maps to USART_TX_RX
-  HAL_USART_SERIAL2 = 1     //maps to USART_RGBG_RGBB
+    HAL_USART_SERIAL1 = 0,    //maps to USART_TX_RX
+    HAL_USART_SERIAL2 = 1     //maps to USART_RGBG_RGBB
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
-  ,HAL_USART_SERIAL3 = 2    //maps to USART_TXD_UC_RXD_UC
-  ,HAL_USART_SERIAL4 = 3    //maps to USART_C3_C2
-  ,HAL_USART_SERIAL5 = 4    //maps to USART_C1_C0
+    ,HAL_USART_SERIAL3 = 2    //maps to USART_TXD_UC_RXD_UC
+    ,HAL_USART_SERIAL4 = 3    //maps to USART_C3_C2
+    ,HAL_USART_SERIAL5 = 4    //maps to USART_C1_C0
 #endif
 } HAL_USART_Serial;
 
-/* Exported constants --------------------------------------------------------*/
-
-/* Exported macros -----------------------------------------------------------*/
-
-/* Exported functions --------------------------------------------------------*/
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct HAL_USART_Buffer_Config {
-  uint16_t size;
-  void* rx_buffer;
-  uint16_t rx_buffer_size;
-  void* tx_buffer;
-  uint16_t tx_buffer_size;
+    uint16_t size;
+    void* rx_buffer;
+    uint16_t rx_buffer_size;
+    void* tx_buffer;
+    uint16_t tx_buffer_size;
 } HAL_USART_Buffer_Config;
 
-int HAL_USART_Init_Ex(HAL_USART_Serial serial, const HAL_USART_Buffer_Config* config, void*);
-void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer);
-void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud);
-void HAL_USART_End(HAL_USART_Serial serial);
-uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data);
-int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial);
-int32_t HAL_USART_Available_Data(HAL_USART_Serial serial);
-int32_t HAL_USART_Read_Data(HAL_USART_Serial serial);
-int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial);
-void HAL_USART_Flush_Data(HAL_USART_Serial serial);
-bool HAL_USART_Is_Enabled(HAL_USART_Serial serial);
-void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable);
-void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void*);
-uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data);
-void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved);
-uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial);
+int      hal_usart_init_ex(HAL_USART_Serial serial, const HAL_USART_Buffer_Config* config, void*);
+void     hal_usart_init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer);
+void     hal_usart_begin(HAL_USART_Serial serial, uint32_t baud);
+void     hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void*);
+void     hal_usart_end(HAL_USART_Serial serial);
+uint32_t hal_usart_write(HAL_USART_Serial serial, uint8_t data);
+int32_t  hal_usart_available_data_for_write(HAL_USART_Serial serial);
+int32_t  hal_usart_available(HAL_USART_Serial serial);
+int32_t  hal_usart_read(HAL_USART_Serial serial);
+int32_t  hal_usart_peek(HAL_USART_Serial serial);
+void     hal_usart_flush(HAL_USART_Serial serial);
+bool     hal_usart_is_enabled(HAL_USART_Serial serial);
+void     hal_usart_half_duplex(HAL_USART_Serial serial, bool enable);
+uint32_t hal_usart_write_nine_bits(HAL_USART_Serial serial, uint16_t data);
+void     hal_usart_send_break(HAL_USART_Serial serial, void* reserved);
+uint8_t  hal_usart_break_detected(HAL_USART_Serial serial);
+int      hal_usart_sleep(HAL_USART_Serial serial, bool sleep, void* reserved);
 
-ssize_t HAL_USART_Write(HAL_USART_Serial serial, const void* buffer, size_t size, size_t elementSize);
-ssize_t HAL_USART_Read(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize);
-ssize_t HAL_USART_Peek(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize);
+ssize_t  hal_usart_write_buffer(HAL_USART_Serial serial, const void* buffer, size_t size, size_t elementSize);
+ssize_t  hal_usart_read_buffer(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize);
+ssize_t  hal_usart_peak_buffer(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize);
 
 #ifdef __cplusplus
 }
