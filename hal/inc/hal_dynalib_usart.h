@@ -22,7 +22,7 @@
  */
 
 #ifndef HAL_DYNALIB_USART_H
-#define	HAL_DYNALIB_USART_H
+#define HAL_DYNALIB_USART_H
 
 #include "dynalib.h"
 #include "hal_platform.h"
@@ -86,5 +86,5 @@ DYNALIB_END(hal_usart)
 #undef BASE_IDX
 #undef BASE_IDX2
 
-#endif	/* HAL_DYNALIB_USART_H */
+#endif /* HAL_DYNALIB_USART_H */
 

@@ -36,9 +36,9 @@
 
 /* Exported defines ----------------------------------------------------------*/
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
-    #define TOTAL_USARTS		5
+    #define TOTAL_USARTS        5
 #else
-    #define TOTAL_USARTS		2
+    #define TOTAL_USARTS        2
 #endif
 
 #define SERIAL_BUFFER_SIZE      64

@@ -48,8 +48,8 @@ typedef enum usart_ports {
 #define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 0  //Enabling this => 1 is not working at present
 
 typedef struct usart_config {
-	uint32_t baud_rate;
-	uint32_t config;
+    uint32_t baud_rate;
+    uint32_t config;
 } usart_config;
 
 /* Private variables ---------------------------------------------------------*/
@@ -76,9 +76,9 @@ typedef struct stm32_usart_info {
     Ring_Buffer* usart_tx_buffer;
     Ring_Buffer* usart_rx_buffer;
 
-	bool usart_configured;
+    bool usart_configured;
     volatile bool usart_enabled;
-	volatile bool usart_suspended;
+    volatile bool usart_suspended;
     bool usart_transmitting;
 
     usart_config conf;
@@ -88,7 +88,7 @@ typedef struct stm32_usart_info {
  * USART mapping
  */
 stm32_usart_info USART_MAP[TOTAL_USARTS] = {
-	/*
+    /*
      * USART_peripheral (USARTx/UARTx; not using others)
      * clock control register (APBxENR)
      * clock enable bit value (RCC_APBxPeriph_USARTx/RCC_APBxPeriph_UARTx)
@@ -144,24 +144,24 @@ uint8_t calculateWordLength(uint32_t config, uint8_t noparity) {
         case SERIAL_DATA_BITS_7: {
             wlen += 7;
             break;
-		}
+        }
         case SERIAL_DATA_BITS_8: {
             wlen += 8;
             break;
-		}
+        }
         case SERIAL_DATA_BITS_9: {
             wlen += 9;
             break;
-		}
+        }
     }
 
     if ((config & SERIAL_PARITY) && !noparity) {
         wlen++;
-	}
+    }
 
     if (wlen > 9 || wlen < (noparity ? 7 : 8)) {
         wlen = 0;
-	}
+    }
 
     return wlen;
 }
@@ -174,30 +174,30 @@ uint8_t validateConfig(uint32_t config) {
     // Total word length should be either 8 or 9 bits
     if (calculateWordLength(config, 0) == 0) {
         return 0;
-	}
+    }
     // Either No, Even or Odd parity
     if ((config & SERIAL_PARITY) == (SERIAL_PARITY_EVEN | SERIAL_PARITY_ODD)) {
         return 0;
-	}
+    }
     if ((config & SERIAL_HALF_DUPLEX) && (config & LIN_MODE)) {
         return 0;
-	}
+    }
 
     if (config & LIN_MODE) {
         // Either Master or Slave mode
         // Break detection can still be enabled in both Master and Slave modes
         if ((config & LIN_MODE_MASTER) && (config & LIN_MODE_SLAVE)) {
             return 0;
-		}
+        }
         switch (config & LIN_BREAK_BITS) {
             case LIN_BREAK_13B:
             case LIN_BREAK_10B:
             case LIN_BREAK_11B: {
                 break;
-			}
+            }
             default: {
                 return 0;
-			}
+            }
         }
     }
 
@@ -286,13 +286,13 @@ void usartEndImpl(HAL_USART_Serial serial, bool cache) {
     // Disable USART Clock
     *usartMap[serial]->usart_apbReg &= ~usartMap[serial]->usart_clock_en;
 
-	if (!cache) {
-		// clear any received data
-		usartMap[serial]->usart_rx_buffer->head = usartMap[serial]->usart_rx_buffer->tail;
-		// Undo any pin re-mapping done for this USART
-		// ...
-		memset(usartMap[serial]->usart_rx_buffer, 0, sizeof(Ring_Buffer));
-	}
+    if (!cache) {
+        // clear any received data
+        usartMap[serial]->usart_rx_buffer->head = usartMap[serial]->usart_rx_buffer->tail;
+        // Undo any pin re-mapping done for this USART
+        // ...
+        memset(usartMap[serial]->usart_rx_buffer, 0, sizeof(Ring_Buffer));
+    }
 
     memset(usartMap[serial]->usart_tx_buffer, 0, sizeof(Ring_Buffer));
 
@@ -301,7 +301,7 @@ void usartEndImpl(HAL_USART_Serial serial, bool cache) {
 }
 
 void hal_usart_init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer) {
-	usartMap[serial]->usart_configured = false;
+    usartMap[serial]->usart_configured = false;
 
     if (serial == HAL_USART_SERIAL1) {
         usartMap[serial] = &USART_MAP[USART_TX_RX];
@@ -327,7 +327,7 @@ void hal_usart_init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer
     usartMap[serial]->usart_enabled = false;
     usartMap[serial]->usart_transmitting = false;
 
-	usartMap[serial]->usart_configured = true;
+    usartMap[serial]->usart_configured = true;
 }
 
 void hal_usart_begin(HAL_USART_Serial serial, uint32_t baud) {
@@ -335,16 +335,16 @@ void hal_usart_begin(HAL_USART_Serial serial, uint32_t baud) {
 }
 
 void hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void *ptr) {
-	if (!usartMap[serial]->usart_configured) {
-		return;
-	}
+    if (!usartMap[serial]->usart_configured) {
+        return;
+    }
     // Verify UART configuration, exit if it's invalid.
     if (!validateConfig(config)) {
         usartMap[serial]->usart_enabled = false;
         return;
     }
 
-	usartMap[serial]->usart_suspended = false;
+    usartMap[serial]->usart_suspended = false;
 
     USART_DeInit(usartMap[serial]->usart_peripheral);
 
@@ -387,20 +387,20 @@ void hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t con
         case SERIAL_FLOW_CONTROL_CTS: {
             usartInitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_CTS;
             break;
-		}
+        }
         case SERIAL_FLOW_CONTROL_RTS: {
             usartInitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS;
             break;
-		}
+        }
         case SERIAL_FLOW_CONTROL_RTS_CTS: {
             usartInitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_RTS_CTS;
             break;
-		}
+        }
         case SERIAL_FLOW_CONTROL_NONE:
         default: {
             usartInitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
             break;
-		}
+        }
     }
 
     if (serial == HAL_USART_SERIAL1) {
@@ -426,23 +426,23 @@ void hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t con
             HAL_Pin_Mode(usartMap[serial]->usart_cts_pin, AF_OUTPUT_PUSHPULL);
             GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_cts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->usart_cts_pin].gpio_pin_source, usartMap[serial]->usart_af_map);
             break;
-		}
+        }
         case USART_HardwareFlowControl_RTS: {
             HAL_Pin_Mode(usartMap[serial]->usart_rts_pin, AF_OUTPUT_PUSHPULL);
             GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_rts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->usart_rts_pin].gpio_pin_source, usartMap[serial]->usart_af_map);
             break;
-		}
+        }
         case USART_HardwareFlowControl_RTS_CTS: {
             HAL_Pin_Mode(usartMap[serial]->usart_cts_pin, AF_OUTPUT_PUSHPULL);
             HAL_Pin_Mode(usartMap[serial]->usart_rts_pin, AF_OUTPUT_PUSHPULL);
             GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_cts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->usart_cts_pin].gpio_pin_source, usartMap[serial]->usart_af_map);
             GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->usart_rts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->usart_rts_pin].gpio_pin_source, usartMap[serial]->usart_af_map);
             break;
-		}
+        }
         case USART_HardwareFlowControl_None:
         default: {
             break;
-		}
+        }
     }
 
     // Stop bit configuration.
@@ -450,22 +450,22 @@ void hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t con
         case SERIAL_STOP_BITS_1: { // 1 stop bit
             usartInitStructure.USART_StopBits = USART_StopBits_1;
             break;
-		}
+        }
         case SERIAL_STOP_BITS_2: { // 2 stop bits
             usartInitStructure.USART_StopBits = USART_StopBits_2;
             break;
-		}
+        }
         case SERIAL_STOP_BITS_0_5: { // 0.5 stop bits
             usartInitStructure.USART_StopBits = USART_StopBits_0_5;
             break;
-		}
+        }
         case SERIAL_STOP_BITS_1_5: { // 1.5 stop bits
             usartInitStructure.USART_StopBits = USART_StopBits_1_5;
             break;
-		}
-		default: {
-			break;
-		}
+        }
+        default: {
+            break;
+        }
     }
 
     // Data bits configuration
@@ -473,14 +473,14 @@ void hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t con
         case 8: {
             usartInitStructure.USART_WordLength = USART_WordLength_8b;
             break;
-		}
+        }
         case 9: {
             usartInitStructure.USART_WordLength = USART_WordLength_9b;
             break;
-		}
-		default: {
-			break;
-		}
+        }
+        default: {
+            break;
+        }
     }
 
     // Parity configuration
@@ -488,18 +488,18 @@ void hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t con
         case SERIAL_PARITY_NO: {
             usartInitStructure.USART_Parity = USART_Parity_No;
             break;
-		}
+        }
         case SERIAL_PARITY_EVEN: {
             usartInitStructure.USART_Parity = USART_Parity_Even;
             break;
-		}
+        }
         case SERIAL_PARITY_ODD: {
             usartInitStructure.USART_Parity = USART_Parity_Odd;
             break;
-		}
-		default: {
-			break;
-		}
+        }
+        default: {
+            break;
+        }
     }
 
     // Disable LIN mode just in case
@@ -515,18 +515,18 @@ void hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t con
             case LIN_BREAK_10B: {
                 USART_LINBreakDetectLengthConfig(usartMap[serial]->usart_peripheral, USART_LINBreakDetectLength_10b);
                 break;
-			}
+            }
             case LIN_BREAK_11B: {
                 USART_LINBreakDetectLengthConfig(usartMap[serial]->usart_peripheral, USART_LINBreakDetectLength_11b);
                 break;
-			}
-			default: {
-				break;
-			}
+            }
+            default: {
+                break;
+            }
         }
     }
 
-	usartMap[serial]->conf.baud_rate = baud;
+    usartMap[serial]->conf.baud_rate = baud;
     usartMap[serial]->conf.config = config;
     if (config & SERIAL_HALF_DUPLEX) {
         hal_usart_half_duplex(serial, ENABLE);
@@ -550,7 +550,7 @@ void hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t con
 }
 
 void hal_usart_end(HAL_USART_Serial serial) {
-	usartMap[serial]->usart_suspended = true;
+    usartMap[serial]->usart_suspended = true;
     usartEndImpl(serial, false);
 }
 
@@ -726,18 +726,18 @@ static void usartIntHandler(HAL_USART_Serial serial) {
 }
 
 int hal_usart_sleep(HAL_USART_Serial serial, bool sleep, void* reserved) {
-	if (sleep) {
+    if (sleep) {
         CHECK_TRUE(usartMap[serial]->usart_enabled, SYSTEM_ERROR_NONE);
         CHECK_FALSE(usartMap[serial]->usart_suspended, SYSTEM_ERROR_NONE);
-		usartMap[serial]->usart_suspended = true;
-		hal_usart_flush(serial);
-		usartEndImpl(serial, true);
-	} else {
-		CHECK_TRUE(usartMap[serial]->usart_configured, SYSTEM_ERROR_INVALID_STATE);
-		CHECK_TRUE(usartMap[serial]->usart_suspended, SYSTEM_ERROR_NONE);
-		hal_usart_begin_config(serial, usartMap[serial]->conf.baud_rate, usartMap[serial]->conf.config, NULL);
-	}
-	return SYSTEM_ERROR_NONE;
+        usartMap[serial]->usart_suspended = true;
+        hal_usart_flush(serial);
+        usartEndImpl(serial, true);
+    } else {
+        CHECK_TRUE(usartMap[serial]->usart_configured, SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(usartMap[serial]->usart_suspended, SYSTEM_ERROR_NONE);
+        hal_usart_begin_config(serial, usartMap[serial]->conf.baud_rate, usartMap[serial]->conf.config, NULL);
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 // Serial1 interrupt handler
