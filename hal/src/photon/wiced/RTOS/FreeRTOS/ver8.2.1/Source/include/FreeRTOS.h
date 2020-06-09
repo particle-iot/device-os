@@ -707,6 +707,10 @@ extern "C" {
 	#define configUSE_NEWLIB_REENTRANT 0
 #endif
 
+#ifndef configNEWLIB_EXTERN
+	#define configNEWLIB_EXTERN 0
+#endif
+
 #ifndef configUSE_STATS_FORMATTING_FUNCTIONS
 	#define configUSE_STATS_FORMATTING_FUNCTIONS 0
 #endif
