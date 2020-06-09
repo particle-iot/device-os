@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_NEWLIB
+
 #include <sys/reent.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -39,3 +43,5 @@ void newlib_impure_ptr_change_module(struct _reent* r, size_t size, uint32_t ver
 #ifdef __cplusplus
 }
 #endif // __cplusplus
+
+#endif // HAL_PLATFORM_NEWLIB

@@ -193,9 +193,11 @@ static void ctrl_request_handler(ctrl_request* req) {
 
 void module_user_init_hook()
 {
+#if HAL_PLATFORM_NEWLIB
     newlib_impure_ptr_callback([](struct _reent* r, size_t size, uint32_t version, void* ctx) -> void {
         _impure_ptr = r;
     }, nullptr);
+#endif // HAL_PLATFORM_NEWLIB
 
 #if HAL_PLATFORM_BACKUP_RAM
     backup_ram_was_valid_ =  __backup_sram_signature==signature;

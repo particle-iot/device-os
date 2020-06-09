@@ -16,6 +16,9 @@
  */
 
 #include "newlib_impure.h"
+
+#if HAL_PLATFORM_NEWLIB
+
 #include "concurrent_hal.h"
 
 namespace {
@@ -45,3 +48,5 @@ void newlib_impure_ptr_change(struct _reent* r) {
 __attribute__((weak)) void newlib_impure_ptr_change_module(struct _reent* r, size_t size, uint32_t version) {
     // Default implementation
 }
+
+#endif // HAL_PLATFORM_NEWLIB
