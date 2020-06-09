@@ -13,7 +13,7 @@ ifneq (,$(HAL_LINK))
 LINKER_FILE=$(HAL_SRC_NEWHAL_PATH)/linker.ld
 LINKER_DEPS=$(LINKER_FILE)
 
-LDFLAGS += --specs=nano.specs -lc -lnosys
+LDFLAGS += -lc -lnosys
 LDFLAGS += -T$(LINKER_FILE)
 # support for external linker file
 # LD_FLAGS += -L/some/directory

@@ -51,7 +51,7 @@ LINKER_DEPS += $(LINKER_FILE)
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
 NANO_SUFFIX ?= _nano
 
-LDFLAGS += -lnosys --specs=nano.specs
+LDFLAGS += -lnosys
 LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
 LDFLAGS += -L$(USER_PART_MODULE_PATH)
 LDFLAGS += -L$(TARGET_BASE_DIR)

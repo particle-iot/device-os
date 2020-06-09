@@ -33,7 +33,7 @@ LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_part2_export.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
 LINKER_DEPS += $(USER_PART_MODULE_PATH)/module_user_export.ld
 
-LDFLAGS += --specs=nano.specs -lnosys
+LDFLAGS += -lnosys
 LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
 LDFLAGS += -L$(SYSTEM_PART2_MODULE_PATH)
 LDFLAGS += -L$(SYSTEM_PART3_MODULE_PATH)

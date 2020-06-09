@@ -50,6 +50,9 @@ CFLAGS += -flto
 LDFLAGS += -flto -Os -fuse-linker-plugin
 endif
 
+# We are using newlib-nano for all the platforms
+CFLAGS += --specs=nano.specs
+
 # Check if the compiler version is the minimum required
 quote="
 lt=\<

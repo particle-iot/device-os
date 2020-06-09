@@ -63,7 +63,7 @@ LINKER_DEPS=$(LINKER_FILE) $(HAL_WICED_LIB_FILES)
 
 # use our version of newlib nano
 LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
-LDFLAGS += --specs=nano.specs --specs=$(NEWLIB_TWEAK_SPECS)
+LDFLAGS += --specs=$(NEWLIB_TWEAK_SPECS)
 LDFLAGS += -Wl,--whole-archive $(HAL_WICED_LIB_FILES) -Wl,--no-whole-archive
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -L$(COMMON_BUILD)/arm/linker/stm32f2xx

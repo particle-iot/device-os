@@ -59,7 +59,7 @@ LINKER_DEPS += $(SYSTEM_PART3_MODULE_PATH)/module_system_part3_export.ld
 endif
 NANO_SUFFIX ?= _nano
 
-LDFLAGS += -lnosys --specs=nano.specs
+LDFLAGS += -lnosys
 ifneq (,$(MODULE_HAS_SYSTEM_PART3))
 LDFLAGS += -L$(SYSTEM_PART3_MODULE_PATH)
 endif

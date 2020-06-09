@@ -45,7 +45,7 @@ LINKER_DEPS=$(LINKER_FILE)
 
 LDFLAGS += -L$(COMMON_BUILD)/arm/linker/$(STM32_DEVICE_LC)
 LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
-LDFLAGS += --specs=nano.specs --specs=$(NEWLIB_TWEAK_SPECS)
+LDFLAGS += --specs=$(NEWLIB_TWEAK_SPECS)
 LDFLAGS += -T$(LINKER_FILE)
 # Minimum main stack size with S140 softdevice is 1536 bytes
 MAIN_STACK_SIZE = 2048
