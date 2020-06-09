@@ -29,10 +29,10 @@ void newlib_impure_ptr_callback(newlib_impure_cb cb, void* ctx) {
     os_thread_scheduling(false, nullptr);
     s_impure_cb = cb;
     s_impure_cb_ctx = ctx;
+    os_thread_scheduling(true, nullptr);
     if (cb) {
         cb(_impure_ptr, sizeof(struct _reent), NEWLIB_VERSION_NUM, ctx);
     }
-    os_thread_scheduling(true, nullptr);
 }
 
 void newlib_impure_ptr_change(struct _reent* r) {
