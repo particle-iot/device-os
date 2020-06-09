@@ -37,7 +37,7 @@ caddr_t _sbrk(int incr)
 
 // Naive memXXX functions
 
-void* memcpy(void *dest, const void *src, size_t n) {
+__attribute__((used)) void* memcpy(void *dest, const void *src, size_t n) {
     const uint8_t* p = src;
     uint8_t* q = dest;
     while (n--) {
