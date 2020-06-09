@@ -27,6 +27,8 @@
 #ifdef DYNALIB_EXPORT
 #include <errno.h>
 #include <assert.h>
+#include <sys/reent.h>
+#include <stddef.h>
 #endif
 
 DYNALIB_BEGIN(rt)
@@ -55,6 +57,7 @@ DYNALIB_FN(15, rt, __errno, int*())
 
 #if defined(DYNALIB_IMPORT) && !defined(RT_DYNALIB_NO_DEPENDENCY_BREAKING_IMPORTS)
 DYNALIB_FN(16, rt, __assert_func, void(const char*, int, const char*, const char*))
+DYNALIB_FN(17, rt, newlib_impure_ptr_callback, void(void (*)(struct _reent*, size_t, uint32_t, void*), void*))
 #endif // defined(DYNALIB_IMPORT) && !defined(RT_DYNALIB_NO_DEPENDENCY_BREAKING_IMPORTS)
 
 DYNALIB_END(rt)

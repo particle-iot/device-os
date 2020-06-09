@@ -2,6 +2,7 @@
 #include "ota_flash_hal.h"
 #include "flash_mal.h"
 #include "module_info.h"
+#include "newlib_impure.h"
 
 #include <string.h>
 
@@ -84,6 +85,8 @@ void system_part2_pre_init() {
 
     malloc_enable(1);
 
+    newlib_impure_ptr_change_module(_impure_ptr, sizeof(struct _reent), NEWLIB_VERSION_NUM);
+
     // now call any C++ constructors in this module's dependencies
 #if defined(MODULE_HAS_SYSTEM_PART3) && MODULE_HAS_SYSTEM_PART3
     module_system_part3_init();
@@ -136,6 +139,13 @@ void* module_system_part2_pre_init() {
     }
     memset(&link_bss_location, 0, link_bss_size);
     return link_end_of_static_ram;
+}
+
+void newlib_impure_ptr_change_module(struct _reent* r, size_t size, uint32_t version) {
+#if defined(MODULE_HAS_SYSTEM_PART3) && MODULE_HAS_SYSTEM_PART3
+    module_system_part3_newlib_impure_set(r, size, version, NULL);
+#endif // defined(MODULE_HAS_SYSTEM_PART3) && MODULE_HAS_SYSTEM_PART3
+    module_system_part1_newlib_impure_set(r, size, version, NULL);
 }
 
 __attribute__((externally_visible, section(".module_pre_init"))) const void* system_part2_pre_init_fn = (const void*)system_part2_pre_init;

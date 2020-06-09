@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <string.h>
+#include <stdint.h>
 
 /**
  * An empty no arg, no result function
@@ -54,6 +55,10 @@ void module_system_part3_init()
         link_constructors_location[ctor_num]();
     }
 
+}
+
+void module_system_part3_newlib_impure_set(struct _reent* r, size_t size, uint32_t version, void* ctx) {
+    _impure_ptr = r;
 }
 
 // todo - this file is a copy/paste of system_part1_loader.c

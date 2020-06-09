@@ -139,6 +139,12 @@ extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPe
 // Allocate newlib's reent structure for each task
 #define configUSE_NEWLIB_REENTRANT 1
 
+// This macro allows us to understand when we are included from FreeRTOS sources
+#ifdef MPU_WRAPPERS_INCLUDED_FROM_API_FILE
+extern void newlib_impure_ptr_change(struct _reent* r);
+#define traceTASK_SWITCHED_IN() newlib_impure_ptr_change(&(pxCurrentTCB->xNewLib_reent))
+#endif // MPU_WRAPPERS_INCLUDED_FROM_API_FILE
+
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
 
