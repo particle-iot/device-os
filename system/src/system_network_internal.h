@@ -398,6 +398,7 @@ protected:
             // TODO: Process BLE channel events in a separate thread
             system::SystemControl::instance()->run();
 #endif
+            system_shutdown_if_needed();
         // while (network_listening(0, 0, NULL))
         } start_listening_timer_destroy(); // immediately destroy timer if we are on our way out
 
