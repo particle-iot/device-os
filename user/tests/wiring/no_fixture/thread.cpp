@@ -211,24 +211,24 @@ test(THREAD_08_newlib_reent_impure_ptr_changes_on_context_switch)
 	extern uintptr_t link_bss_location;
 	extern uintptr_t link_bss_end;
 
-    volatile bool threadRan = false;
+	volatile bool threadRan = false;
 	volatile struct _reent* threadImpure = nullptr;
 	struct _reent* testImpure = _impure_ptr;
 
 	assertFalse(isInRangeIncl((uintptr_t)testImpure, (uintptr_t)&link_global_data_start, (uintptr_t)&link_global_data_end));
 	assertFalse(isInRangeIncl((uintptr_t)testImpure, (uintptr_t)&link_bss_location, (uintptr_t)&link_bss_end));
 
-    testThread = Thread("test", [&]() {
+	testThread = Thread("test", [&]() {
 		threadImpure = _impure_ptr;
-        threadRan = true;
-    }, OS_THREAD_PRIORITY_DEFAULT, 4096);
+		threadRan = true;
+	}, OS_THREAD_PRIORITY_DEFAULT, 4096);
 
-    for(int tries = 5; !threadRan && tries >= 0; tries--) {
-        delay(100);
-    }
-    testThread.dispose();
+	for(int tries = 5; !threadRan && tries >= 0; tries--) {
+		delay(100);
+	}
+	testThread.dispose();
 
-    assertTrue((bool)threadRan);
+	assertTrue((bool)threadRan);
 	assertNotEqual((uintptr_t)threadImpure, (uintptr_t)nullptr);
 	assertNotEqual((uintptr_t)_impure_ptr, (uintptr_t)nullptr);
 	assertNotEqual((uintptr_t)_impure_ptr, (uintptr_t)threadImpure);
