@@ -1435,7 +1435,7 @@ int QuectelNcpClient::modemPowerOn() {
             LOG(TRACE, "Disable Hardware Flow control!");
         }
         serial_.reset(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
-        CHECK_TRUE(serial_.get(), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(serial_, SYSTEM_ERROR_NO_MEMORY);
         CHECK(initParser(serial_.get()));
     }
 

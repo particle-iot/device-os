@@ -600,6 +600,7 @@ int AtParserImpl::nextLine(unsigned* timeout) {
 int AtParserImpl::readMore(unsigned* timeout) {
     assert(bufPos_ < INPUT_BUF_SIZE);
     const auto strm = conf_.stream();
+    CHECK_TRUE(strm, SYSTEM_ERROR_INVALID_STATE);
     size_t bytesRead = 0;
     for (;;) {
         bytesRead = CHECK(strm->read(buf_ + bufPos_, INPUT_BUF_SIZE - bufPos_));
@@ -647,6 +648,7 @@ int AtParserImpl::flushCommand(unsigned* timeout) {
 
 int AtParserImpl::write(const char* data, size_t* size, unsigned* timeout) {
     const auto strm = conf_.stream();
+    CHECK_TRUE(strm, SYSTEM_ERROR_INVALID_STATE);
     const auto end = data + *size;
     auto t = millis();
     // The number of bytes gets reported to the calling code even if the operation fails

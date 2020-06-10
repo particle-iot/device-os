@@ -160,6 +160,12 @@ int Esp32NcpClient::on() {
     if (ncpState_ == NcpState::ON) {
         return 0;
     }
+    // The serial_ is always released if powering down the modem is requested.
+    if (!serial_.get()) {
+        serial_.reset(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, ESP32_NCP_DEFAULT_SERIAL_BAUDRATE, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
+        CHECK_TRUE(serial_, SYSTEM_ERROR_NO_MEMORY);
+        CHECK(initParser(serial_.get()));
+    }
     ncpPowerState(NcpPowerState::TRANSIENT_ON);
     CHECK(waitReady());
     ncpPowerState(NcpPowerState::ON);
@@ -176,6 +182,10 @@ int Esp32NcpClient::off() {
     espOff();
     ready_ = false;
     ncpState(NcpState::OFF);
+    parser_.destroy();
+    // Disable the UART interface.
+    LOG(TRACE, "Deinit modem serial.");
+    serial_.reset();
     ncpPowerState(NcpPowerState::OFF);
     return 0;
 }
@@ -274,6 +284,7 @@ int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
     LOG(TRACE, "Initiating XMODEM transfer");
     parser_.reset();
     const auto strm = parser_.config().stream();
+    CHECK_TRUE(strm, SYSTEM_ERROR_INVALID_STATE);
     CHECK(skipWhitespace(strm, 1000));
     XmodemSender sender;
     CHECK(sender.init(strm, file, size));
