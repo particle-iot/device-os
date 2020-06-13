@@ -82,39 +82,39 @@ private:
     class Mcp23s17SpiConfigurationGuarder {
     public:
         Mcp23s17SpiConfigurationGuarder() = delete;
-        Mcp23s17SpiConfigurationGuarder(HAL_SPI_Interface spi)
+        Mcp23s17SpiConfigurationGuarder(hal_spi_interface_t spi)
                 : spi_(spi),
                   spiInfoCache_{} {
-            HAL_SPI_Acquire(spi_, nullptr);
+            hal_spi_acquire(spi_, nullptr);
             spiInfoCache_.version = HAL_SPI_INFO_VERSION_2;
-            HAL_SPI_Info(spi_, &spiInfoCache_, nullptr);
+            hal_spi_info(spi_, &spiInfoCache_, nullptr);
             if (spiInfoCache_.bit_order != MSBFIRST) {
-                HAL_SPI_Set_Bit_Order(spi_, MSBFIRST);
+                hal_spi_set_bit_order(spi_, MSBFIRST);
             }
             if (spiInfoCache_.data_mode != SPI_MODE0) {
-                HAL_SPI_Set_Data_Mode(spi_, SPI_MODE0);
+                hal_spi_set_data_mode(spi_, SPI_MODE0);
             }
             if (spiInfoCache_.clock != HAL_PLATFORM_MCP23S17_SPI_CLOCK) {
-                HAL_SPI_Set_Clock_Divider(spi_, calculateClockDivider(spiInfoCache_.system_clock, HAL_PLATFORM_MCP23S17_SPI_CLOCK));
+                hal_spi_set_clock_divider(spi_, calculateClockDivider(spiInfoCache_.system_clock, HAL_PLATFORM_MCP23S17_SPI_CLOCK));
             }
             if (!spiInfoCache_.enabled || spiInfoCache_.ss_pin != PIN_INVALID || spiInfoCache_.mode != SPI_MODE_MASTER) {
-                HAL_SPI_Begin(spi_, PIN_INVALID);
+                hal_spi_begin(spi_, PIN_INVALID);
             }
         }
         ~Mcp23s17SpiConfigurationGuarder() {
             if (spiInfoCache_.bit_order != MSBFIRST) {
-                HAL_SPI_Set_Bit_Order(spi_, spiInfoCache_.bit_order);
+                hal_spi_set_bit_order(spi_, spiInfoCache_.bit_order);
             }
             if (spiInfoCache_.data_mode != SPI_MODE0) {
-                HAL_SPI_Set_Data_Mode(spi_, spiInfoCache_.data_mode);
+                hal_spi_set_data_mode(spi_, spiInfoCache_.data_mode);
             }
             if (spiInfoCache_.clock != HAL_PLATFORM_MCP23S17_SPI_CLOCK) {
-                HAL_SPI_Set_Clock_Divider(spi_, calculateClockDivider(spiInfoCache_.system_clock, spiInfoCache_.clock));
+                hal_spi_set_clock_divider(spi_, calculateClockDivider(spiInfoCache_.system_clock, spiInfoCache_.clock));
             }
             if (spiInfoCache_.ss_pin != PIN_INVALID || spiInfoCache_.mode != SPI_MODE_MASTER) {
-                HAL_SPI_Begin_Ext(spi_, spiInfoCache_.mode, spiInfoCache_.ss_pin, nullptr);
+                hal_spi_begin_ext(spi_, spiInfoCache_.mode, spiInfoCache_.ss_pin, nullptr);
             }
-            HAL_SPI_Release(spi_, nullptr);
+            hal_spi_release(spi_, nullptr);
         }
 
         private:
@@ -153,7 +153,7 @@ private:
             return result;
         }
 
-        HAL_SPI_Interface spi_;
+        hal_spi_interface_t spi_;
         hal_spi_info_t spiInfoCache_;
     };
 
@@ -200,7 +200,7 @@ private:
     uint8_t olat_[2];
 
     bool initialized_;
-    HAL_SPI_Interface spi_;
+    hal_spi_interface_t spi_;
     os_thread_t ioExpanderWorkerThread_;
     bool ioExpanderWorkerThreadExit_;
     os_semaphore_t ioExpanderWorkerSemaphore_;

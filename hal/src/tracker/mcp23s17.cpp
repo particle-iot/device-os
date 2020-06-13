@@ -59,8 +59,8 @@ int Mcp23s17::begin() {
     HAL_GPIO_Write(IOE_RST, 1);
     HAL_Pin_Mode(IOE_INT, INPUT_PULLUP);
 
-    if (!HAL_SPI_Is_Enabled(spi_)) {
-        HAL_SPI_Init(spi_);
+    if (!hal_spi_is_enabled(spi_)) {
+        hal_spi_init(spi_);
     }
 
     if (os_semaphore_create(&ioExpanderWorkerSemaphore_, 1, 0)) {
@@ -317,11 +317,11 @@ Mcp23s17& Mcp23s17::getInstance() {
 }
 
 int Mcp23s17::lock() {
-    return HAL_SPI_Acquire(spi_, nullptr);
+    return hal_spi_acquire(spi_, nullptr);
 }
 
 int Mcp23s17::unlock() {
-    return HAL_SPI_Release(spi_, nullptr);
+    return hal_spi_release(spi_, nullptr);
 }
 
 void Mcp23s17::resetRegValue() {
@@ -342,9 +342,9 @@ int Mcp23s17::writeRegister(const uint8_t addr, const uint8_t val) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
     Mcp23s17SpiConfigurationGuarder spiGuarder(spi_);
     HAL_GPIO_Write(IOE_CS, 0);
-    HAL_SPI_Send_Receive_Data(spi_, MCP23S17_CMD_WRITE);
-    HAL_SPI_Send_Receive_Data(spi_, addr);
-    HAL_SPI_Send_Receive_Data(spi_, val);
+    hal_spi_transfer(spi_, MCP23S17_CMD_WRITE);
+    hal_spi_transfer(spi_, addr);
+    hal_spi_transfer(spi_, val);
     HAL_GPIO_Write(IOE_CS, 1);
     return SYSTEM_ERROR_NONE;
 }
@@ -353,9 +353,9 @@ int Mcp23s17::readRegister(const uint8_t addr, uint8_t* const val) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
     Mcp23s17SpiConfigurationGuarder spiGuarder(spi_);
     HAL_GPIO_Write(IOE_CS, 0);
-    HAL_SPI_Send_Receive_Data(spi_, MCP23S17_CMD_READ);
-    HAL_SPI_Send_Receive_Data(spi_, addr);
-    *val = HAL_SPI_Send_Receive_Data(spi_, 0xFF);
+    hal_spi_transfer(spi_, MCP23S17_CMD_READ);
+    hal_spi_transfer(spi_, addr);
+    *val = hal_spi_transfer(spi_, 0xFF);
     HAL_GPIO_Write(IOE_CS, 1);
     return SYSTEM_ERROR_NONE;
 }
@@ -364,10 +364,10 @@ int Mcp23s17::readContinuousRegisters(const uint8_t start_addr, uint8_t* const v
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
     Mcp23s17SpiConfigurationGuarder spiGuarder(spi_);
     HAL_GPIO_Write(IOE_CS, 0);
-    HAL_SPI_Send_Receive_Data(spi_, MCP23S17_CMD_READ);
-    HAL_SPI_Send_Receive_Data(spi_, start_addr);
+    hal_spi_transfer(spi_, MCP23S17_CMD_READ);
+    hal_spi_transfer(spi_, start_addr);
     for (uint8_t i = 0; i < len; i++) {
-        val[i] = HAL_SPI_Send_Receive_Data(spi_, 0xFF);
+        val[i] = hal_spi_transfer(spi_, 0xFF);
     }
     HAL_GPIO_Write(IOE_CS, 1);
     return SYSTEM_ERROR_NONE;

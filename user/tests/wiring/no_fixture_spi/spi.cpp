@@ -14,7 +14,7 @@ static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
 {
   memset(info, 0, sizeof(hal_spi_info_t));
   info->version = HAL_SPI_INFO_VERSION_1;
-  HAL_SPI_Info(spi, info, nullptr);
+  hal_spi_info(spi, info, nullptr);
 }
 
 static SPISettings spiSettingsFromSpiInfo(hal_spi_info_t* info)

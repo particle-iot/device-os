@@ -189,7 +189,7 @@ static void SPI_DMA_Completed_Callback()
     DMA_Completed_Flag = 1;
 }
 
-static inline void SPI_Transfer_DMA(uint8_t *tx, uint8_t *rx, int length, HAL_SPI_DMA_UserCallback cb)
+static inline void SPI_Transfer_DMA(uint8_t *tx, uint8_t *rx, int length, hal_spi_dma_user_callback cb)
 {
     while (true)
     {

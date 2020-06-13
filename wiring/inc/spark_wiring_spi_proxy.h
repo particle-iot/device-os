@@ -19,7 +19,7 @@
 
 namespace particle {
 
-template <HAL_SPI_Interface Interface>
+template <hal_spi_interface_t Interface>
 class SpiProxy {
 public:
     static SPIClass& instance() {
@@ -33,7 +33,7 @@ public:
     void begin(uint16_t ss_pin) {
         instance().begin(ss_pin);
     }
-    void begin(SPI_Mode mode, uint16_t ss_pin = SPI_DEFAULT_SS) {
+    void begin(hal_spi_mode_t mode, uint16_t ss_pin = SPI_DEFAULT_SS) {
         instance().begin(mode, ss_pin);
     }
     void end() {
