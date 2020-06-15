@@ -28,10 +28,13 @@ void firmwareUpdateEvent(system_event_t event, int param, void* data) {
         lastProgressUpdate = millis();
         break;
     }
-    case firmware_update_failed: // FIXME
     case firmware_update_complete: {
         const auto t = millis();
         Log.info("Firmware update completed in %us", (unsigned)(t - updateStart) / 1000);
+        break;
+    }
+    case firmware_update_failed: {
+        Log.error("Firmware update failed");
         break;
     }
     case firmware_update_progress: {
@@ -94,7 +97,7 @@ void cloudStatusEvent(system_event_t event, int param, void* data) {
 }
 
 void resetPendingEvent(system_event_t event, int param, void* data) {
-    HAL_Delay_Milliseconds(1000);
+    HAL_Delay_Milliseconds(500);
 }
 
 const SerialLogHandler logHandler(LOG_LEVEL_WARN, {
@@ -113,6 +116,7 @@ void setup() {
     waitUntil(Serial.isConnected);
 
     Log.info("========================================");
+    Log.info("System version: %s", System.version().c_str());
 
     System.on(firmware_update, firmwareUpdateEvent);
     System.on(time_changed, timeChangedEvent);
