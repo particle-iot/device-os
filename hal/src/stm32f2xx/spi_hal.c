@@ -29,6 +29,7 @@
 #include "pinmap_impl.h"
 #include "interrupts_hal.h"
 #include "debug.h"
+#include "check.h"
 
 /* Private define ------------------------------------------------------------*/
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
@@ -72,12 +73,13 @@ typedef struct spi_state_t {
     bool data_mode_set;
     bool clock_divider_set;
     volatile bool enabled;
+    volatile bool suspended;
 
     hal_spi_dma_user_callback dma_user_callback;
 
     uint16_t ss_pin;
     hal_spi_mode_t mode;
-    hal_spi_select_user_callback on_select_user_callback;
+    hal_spi_select_user_callback select_user_callback;
     uint32_t dma_last_transfer_length;
     uint32_t dma_current_transfer_length;
     volatile uint8_t ss_state;
@@ -247,6 +249,7 @@ void hal_spi_init(hal_spi_interface_t spi) {
     spiState[spi].data_mode_set = false;
     spiState[spi].clock_divider_set = false;
     spiState[spi].enabled = false;
+    spiState[spi].suspended = false;
 
     spiState[spi].ss_pin = spiMap[spi].ss_pin;
     spiState[spi].mode = SPI_MODE_MASTER;
@@ -270,6 +273,8 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
     if (mode == SPI_MODE_SLAVE && !HAL_Pin_Is_Valid(pin)) {
         return;
     }
+
+    spiState[spi].suspended = false;
 
     spiState[spi].ss_pin = pin;
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
@@ -347,6 +352,7 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
 }
 
 void hal_spi_end(hal_spi_interface_t spi) {
+    spiState[spi].suspended = false;
     if(spiState[spi].enabled != false) {
         if (spiState[spi].mode == SPI_MODE_SLAVE) {
             HAL_Interrupts_Detach(spiState[spi].ss_pin);
@@ -506,7 +512,7 @@ int32_t hal_spi_transfer_dma_status(hal_spi_interface_t spi, hal_spi_transfer_st
 }
 
 void hal_spi_set_callback_on_selected(hal_spi_interface_t spi, hal_spi_select_user_callback cb, void* reserved) {
-    spiState[spi].on_select_user_callback = cb;
+    spiState[spi].select_user_callback = cb;
 }
 
 bool hal_spi_is_enabled(hal_spi_interface_t spi) {
@@ -618,7 +624,23 @@ static void spiOnSelectedHandler(void *data) {
         }
     }
 
-    if (spiState[spi].on_select_user_callback) {
-        spiState[spi].on_select_user_callback(state);
+    if (spiState[spi].select_user_callback) {
+        spiState[spi].select_user_callback(state);
     }
+}
+
+int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
+    if (sleep) {
+        CHECK_TRUE(hal_spi_is_enabled(spi), SYSTEM_ERROR_NONE);
+        CHECK_FALSE(spiState[spi].suspended, SYSTEM_ERROR_NONE);
+        hal_spi_transfer_dma_cancel(spi);
+        hal_spi_end(spi); // It doesn't clear spi settings, so we can reuse the previous settings on woken up.
+        // TODO: configure SPI pins to appropriate mode
+        spiState[spi].suspended = true;
+    } else {
+        CHECK_TRUE(spiState[spi].suspended, SYSTEM_ERROR_NONE);
+        hal_spi_begin_ext(spi, spiState[spi].mode, spiState[spi].ss_pin, NULL);
+        spiState[spi].suspended = false;
+    }
+    return SYSTEM_ERROR_NONE;
 }

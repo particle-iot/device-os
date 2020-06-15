@@ -26,6 +26,7 @@
 #include "interrupts_hal.h"
 #include "concurrent_hal.h"
 #include "delay_hal.h"
+#include "check.h"
 
 #define TOTAL_SPI               2
 
@@ -53,12 +54,13 @@ typedef struct {
     void                                *slave_rx_buf;
     uint32_t                            slave_buf_length;
 
-    hal_spi_dma_user_callback           spi_dma_user_callback;
-    hal_spi_select_user_callback   spi_select_user_callback;
+    hal_spi_dma_user_callback           dma_user_callback;
+    hal_spi_select_user_callback        select_user_callback;
 
     volatile bool                       enabled;
     volatile bool                       transmitting;
     volatile uint16_t                   transfer_length;
+    volatile bool                       suspended;
 
     os_mutex_recursive_t                mutex;
 } nrf5x_spi_info_t;
@@ -82,8 +84,8 @@ static void spiMasterEventHandler(nrfx_spim_evt_t const * p_event, void * p_cont
         int spi = (int)p_context;
         spiMap[spi].transmitting = false;
 
-        if (spiMap[spi].spi_dma_user_callback) {
-            (*spiMap[spi].spi_dma_user_callback)();
+        if (spiMap[spi].dma_user_callback) {
+            (*spiMap[spi].dma_user_callback)();
         }
     }
 }
@@ -96,8 +98,8 @@ static void spiSlaveEventHandler(nrfx_spis_evt_t const * p_event, void * p_conte
         spiMap[spi].transmitting = false;
 
         if (p_event->rx_amount) {
-            if (spiMap[spi].spi_dma_user_callback) {
-                (*spiMap[spi].spi_dma_user_callback)();
+            if (spiMap[spi].dma_user_callback) {
+                (*spiMap[spi].dma_user_callback)();
             }
         }
         // LOG_DEBUG(TRACE, ">> spi: rx: %d, tx: %d", p_event->rx_amount, p_event->tx_amount);
@@ -117,8 +119,8 @@ static void spiOnSelectedHandler(void *data) {
     int spi = (int)data;
     uint8_t state = !HAL_GPIO_Read(spiMap[spi].ss_pin);
     spiMap[spi].spi_ss_state = state;
-    if (spiMap[spi].spi_select_user_callback) {
-        spiMap[spi].spi_select_user_callback(state);
+    if (spiMap[spi].select_user_callback) {
+        spiMap[spi].select_user_callback(state);
     }
 }
 
@@ -273,14 +275,15 @@ void hal_spi_init(hal_spi_interface_t spi) {
 
     // Default: SPI_MODE_MASTER, SPI_MODE3, MSBFIRST, 16MHZ
     spiMap[spi].enabled = false;
+    spiMap[spi].suspended = false;
     spiMap[spi].transmitting = false;
     spiMap[spi].spi_mode = DEFAULT_SPI_MODE;
     spiMap[spi].bit_order = DEFAULT_BIT_ORDER;
     spiMap[spi].data_mode = DEFAULT_DATA_MODE;
     spiMap[spi].clock = DEFAULT_SPI_CLOCK;
     spiMap[spi].spi_ss_state = 0;
-    spiMap[spi].spi_dma_user_callback = nullptr;
-    spiMap[spi].spi_select_user_callback = nullptr;
+    spiMap[spi].dma_user_callback = nullptr;
+    spiMap[spi].select_user_callback = nullptr;
     spiMap[spi].transfer_length = 0;
 
     hal_spi_release(spi, nullptr);
@@ -300,6 +303,8 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
         // HAL_SPI_INTERFACE1 does not support slave mode
         return;
     }
+
+    spiMap[spi].suspended = false;
 
     if (spiMap[spi].enabled) {
         // Make sure we reset the enabled state
@@ -330,6 +335,7 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
 }
 
 void hal_spi_end(hal_spi_interface_t spi) {
+    spiMap[spi].suspended = false;
     if (spiMap[spi].enabled) {
         spiUninit(spi);
         spiMap[spi].enabled = false;
@@ -376,7 +382,7 @@ uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data) {
 
     tx_buffer = data;
 
-    spiMap[spi].spi_dma_user_callback = nullptr;
+    spiMap[spi].dma_user_callback = nullptr;
     spiTransfer(spi, &tx_buffer, &rx_buffer, 1);
 
     // Wait for SPI transfer finished
@@ -430,7 +436,7 @@ void hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved)
 }
 
 void hal_spi_set_callback_on_selected(hal_spi_interface_t spi, hal_spi_select_user_callback cb, void* reserved) {
-    spiMap[spi].spi_select_user_callback = cb;
+    spiMap[spi].select_user_callback = cb;
 }
 
 void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback) {
@@ -442,7 +448,7 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buf
         ;
     }
 
-    spiMap[spi].spi_dma_user_callback = userCallback;
+    spiMap[spi].dma_user_callback = userCallback;
     if (spiMap[spi].spi_mode == SPI_MODE_MASTER) {
         SPARK_ASSERT(spiTransfer(spi, (uint8_t *)tx_buffer, (uint8_t *)rx_buffer, length) == length);
     } else {
@@ -469,7 +475,7 @@ void hal_spi_transfer_dma_cancel(hal_spi_interface_t spi) {
     if (spiMap[spi].spi_mode == SPI_MODE_MASTER) {
         spiTransferCancel(spi);
         spiMap[spi].transmitting = false;
-        spiMap[spi].spi_dma_user_callback = nullptr;
+        spiMap[spi].dma_user_callback = nullptr;
     } else {
         // Not supported by SPI Slave
     }
@@ -511,6 +517,23 @@ int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8
     }
 
     return 0;
+}
+
+int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
+    if (sleep) {
+        CHECK_TRUE(hal_spi_is_enabled(spi), SYSTEM_ERROR_NONE);
+        CHECK_FALSE(spiMap[spi].suspended, SYSTEM_ERROR_NONE);
+        hal_spi_transfer_dma_cancel(spi);
+        while (spiMap[spi].transmitting);
+        hal_spi_end(spi); // It doesn't clear spi settings, so we can reuse the previous settings on woken up.
+        // TODO: configure SPI pins to appropriate mode
+        spiMap[spi].suspended = true;
+    } else {
+        CHECK_TRUE(spiMap[spi].suspended, SYSTEM_ERROR_NONE);
+        hal_spi_begin_ext(spi, spiMap[spi].spi_mode, spiMap[spi].ss_pin, nullptr);
+        spiMap[spi].suspended = false;
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 int32_t hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t* conf) {

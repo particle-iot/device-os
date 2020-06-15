@@ -126,6 +126,7 @@ bool     hal_spi_is_enabled_deprecated();
 bool     hal_spi_is_enabled(hal_spi_interface_t spi);
 void     hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved);
 void     hal_spi_set_callback_on_selected(hal_spi_interface_t spi, hal_spi_select_user_callback cb, void* reserved);
+int      hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved);
 
 #if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
 int32_t  hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t* conf);
