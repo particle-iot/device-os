@@ -275,8 +275,10 @@ void dumpNtpTime(uint64_t timestamp);
 } // ntp
 
 uint64_t getRtcTime() {
-    uint64_t unixtime = HAL_RTC_Get_UnixTime() * ntp::USEC_IN_SEC;
-    unixtime += hal_timer_micros(nullptr) % ntp::USEC_IN_SEC;
+    struct timeval tv = {};
+    hal_rtc_get_time(&tv, nullptr);
+    uint64_t unixtime = tv.tv_sec * ntp::USEC_IN_SEC;
+    unixtime += tv.tv_usec;
     return unixtime;
 }
 

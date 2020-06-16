@@ -117,7 +117,14 @@ public:
         });
 
         mocks_.OnCallFunc(HAL_RNG_GetRandomNumber).Return(12345);
-        mocks_.OnCallFunc(HAL_RTC_Get_UnixTime).Return(DEFAULT_UNIXTIME);
+        mocks_.OnCallFunc(hal_rtc_get_time).Do([&](struct timeval* tv, void* reserved) -> int {
+            if (tv) {
+                tv->tv_sec = DEFAULT_UNIXTIME;
+                tv->tv_usec = 0;
+                return 0;
+            }
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        });
         mocks_.OnCallFunc(sock_setsockopt).Return(0);
         mocks_.OnCallFunc(sock_connect).With(123, (struct sockaddr*)&v4SockAddr_, sizeof(v4SockAddr_)).Return(0);
         mocks_.OnCallFunc(sock_connect).With(123, (struct sockaddr*)&v6SockAddr_, sizeof(v6SockAddr_)).Return(0);

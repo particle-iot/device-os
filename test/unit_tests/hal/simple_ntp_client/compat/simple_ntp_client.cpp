@@ -80,7 +80,14 @@ public:
         });
 
         mocks_.OnCallFunc(HAL_RNG_GetRandomNumber).Return(12345);
-        mocks_.OnCallFunc(HAL_RTC_Get_UnixTime).Return(DEFAULT_UNIXTIME);
+        mocks_.OnCallFunc(hal_rtc_get_time).Do([&](struct timeval* tv, void* reserved) -> int {
+            if (tv) {
+                tv->tv_sec = DEFAULT_UNIXTIME;
+                tv->tv_usec = 0;
+                return 0;
+            }
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        });
         mocks_.OnCallFunc(socket_sendto).Do([&](sock_handle_t sd, const void* buffer, socklen_t len, uint32_t flags, sockaddr_t* addr, socklen_t addr_size) {
             CHECK(len == sizeof(request_));
             CHECK(addr_size >= sizeof(sockaddr_t));
