@@ -35,7 +35,7 @@
 // #include "pinmap_hal.h"
 
 /* Exported defines ----------------------------------------------------------*/
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
     #define TOTAL_USARTS        5
 #else
     #define TOTAL_USARTS        2
@@ -116,56 +116,58 @@
 #define SERIAL_TX_PULL_UP             ((uint32_t)0x8000)
 
 /* Exported types ------------------------------------------------------------*/
-typedef struct Ring_Buffer {
+typedef struct hal_usart_ring_buffer_t {
     uint16_t buffer[SERIAL_BUFFER_SIZE];
     volatile uint16_t head;
     volatile uint16_t tail;
-} Ring_Buffer;
+} hal_usart_ring_buffer_t;
+typedef hal_usart_ring_buffer_t Ring_Buffer; // For backwards compatibility
 
-typedef enum HAL_USART_Serial {
+typedef enum hal_usart_interface_t {
     HAL_USART_SERIAL1 = 0,    //maps to USART_TX_RX
     HAL_USART_SERIAL2 = 1     //maps to USART_RGBG_RGBB
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
-    ,HAL_USART_SERIAL3 = 2    //maps to USART_TXD_UC_RXD_UC
-    ,HAL_USART_SERIAL4 = 3    //maps to USART_C3_C2
-    ,HAL_USART_SERIAL5 = 4    //maps to USART_C1_C0
+   ,HAL_USART_SERIAL3 = 2    //maps to USART_TXD_UC_RXD_UC
+   ,HAL_USART_SERIAL4 = 3    //maps to USART_C3_C2
+   ,HAL_USART_SERIAL5 = 4    //maps to USART_C1_C0
 #endif
-} HAL_USART_Serial;
-
+} hal_usart_interface_t;
+typedef hal_usart_interface_t HAL_USART_Serial; // For backwards compatibility
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct HAL_USART_Buffer_Config {
+typedef struct hal_usart_buffer_config_t {
     uint16_t size;
     void* rx_buffer;
     uint16_t rx_buffer_size;
     void* tx_buffer;
     uint16_t tx_buffer_size;
-} HAL_USART_Buffer_Config;
+} hal_usart_buffer_config_t;
+typedef hal_usart_buffer_config_t HAL_USART_Buffer_Config; // For backwards compatibility
 
-int      hal_usart_init_ex(HAL_USART_Serial serial, const HAL_USART_Buffer_Config* config, void*);
-void     hal_usart_init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer);
-void     hal_usart_begin(HAL_USART_Serial serial, uint32_t baud);
-void     hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void*);
-void     hal_usart_end(HAL_USART_Serial serial);
-uint32_t hal_usart_write(HAL_USART_Serial serial, uint8_t data);
-int32_t  hal_usart_available_data_for_write(HAL_USART_Serial serial);
-int32_t  hal_usart_available(HAL_USART_Serial serial);
-int32_t  hal_usart_read(HAL_USART_Serial serial);
-int32_t  hal_usart_peek(HAL_USART_Serial serial);
-void     hal_usart_flush(HAL_USART_Serial serial);
-bool     hal_usart_is_enabled(HAL_USART_Serial serial);
-void     hal_usart_half_duplex(HAL_USART_Serial serial, bool enable);
-uint32_t hal_usart_write_nine_bits(HAL_USART_Serial serial, uint16_t data);
-void     hal_usart_send_break(HAL_USART_Serial serial, void* reserved);
-uint8_t  hal_usart_break_detected(HAL_USART_Serial serial);
-int      hal_usart_sleep(HAL_USART_Serial serial, bool sleep, void* reserved);
+int hal_usart_init_ex(hal_usart_interface_t serial, const hal_usart_buffer_config_t* config, void*);
+void hal_usart_init(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer);
+void hal_usart_begin(hal_usart_interface_t serial, uint32_t baud);
+void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_t config, void*);
+void hal_usart_end(hal_usart_interface_t serial);
+uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data);
+int32_t hal_usart_available_data_for_write(hal_usart_interface_t serial);
+int32_t hal_usart_available(hal_usart_interface_t serial);
+int32_t hal_usart_read(hal_usart_interface_t serial);
+int32_t hal_usart_peek(hal_usart_interface_t serial);
+void hal_usart_flush(hal_usart_interface_t serial);
+bool hal_usart_is_enabled(hal_usart_interface_t serial);
+void hal_usart_half_duplex(hal_usart_interface_t serial, bool enable);
+uint32_t hal_usart_write_nine_bits(hal_usart_interface_t serial, uint16_t data);
+void hal_usart_send_break(hal_usart_interface_t serial, void* reserved);
+uint8_t hal_usart_break_detected(hal_usart_interface_t serial);
+int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved);
 
-ssize_t  hal_usart_write_buffer(HAL_USART_Serial serial, const void* buffer, size_t size, size_t elementSize);
-ssize_t  hal_usart_read_buffer(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize);
-ssize_t  hal_usart_peak_buffer(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize);
+ssize_t hal_usart_write_buffer(hal_usart_interface_t serial, const void* buffer, size_t size, size_t elementSize);
+ssize_t hal_usart_read_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
+ssize_t hal_usart_peak_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
 
 #ifdef __cplusplus
 }

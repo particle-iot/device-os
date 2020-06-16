@@ -31,7 +31,7 @@
 
 // Constructors ////////////////////////////////////////////////////////////////
 
-USARTSerial::USARTSerial(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
+USARTSerial::USARTSerial(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer)
 {
   _serial = serial;
   // Default is blocking mode
@@ -125,11 +125,11 @@ bool USARTSerial::breakRx() {
 #ifndef SPARK_WIRING_NO_USART_SERIAL
 // Preinstantiate Objects //////////////////////////////////////////////////////
 #if ((MODULE_FUNCTION == MOD_FUNC_USER_PART) || (MODULE_FUNCTION == MOD_FUNC_MONO_FIRMWARE))
-static Ring_Buffer serial1_rx_buffer;
-static Ring_Buffer serial1_tx_buffer;
+static hal_usart_ring_buffer_t serial1_rx_buffer;
+static hal_usart_ring_buffer_t serial1_tx_buffer;
 #else
-static Ring_Buffer* serial1_rx_buffer = nullptr;
-static Ring_Buffer* serial1_tx_buffer = nullptr;
+static hal_usart_ring_buffer_t* serial1_rx_buffer = nullptr;
+static hal_usart_ring_buffer_t* serial1_tx_buffer = nullptr;
 #endif
 
 USARTSerial& __fetch_global_Serial1()
@@ -138,10 +138,10 @@ USARTSerial& __fetch_global_Serial1()
 	static USARTSerial serial1(HAL_USART_SERIAL1, &serial1_rx_buffer, &serial1_tx_buffer);
 #else
   if (!serial1_rx_buffer) {
-    serial1_rx_buffer = new Ring_Buffer();
+    serial1_rx_buffer = new hal_usart_ring_buffer_t();
   }
   if (!serial1_tx_buffer) {
-    serial1_tx_buffer = new Ring_Buffer();
+    serial1_tx_buffer = new hal_usart_ring_buffer_t();
   }
   static USARTSerial serial1(HAL_USART_SERIAL1, serial1_rx_buffer, serial1_tx_buffer);
 #endif

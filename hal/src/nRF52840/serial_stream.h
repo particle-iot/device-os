@@ -27,7 +27,7 @@ namespace particle {
 
 class SerialStream: public Stream {
 public:
-    SerialStream(HAL_USART_Serial serial, uint32_t baudrate, uint32_t config,
+    SerialStream(hal_usart_interface_t serial, uint32_t baudrate, uint32_t config,
             size_t rxBufferSize = 0, size_t txBufferSize = 0);
     ~SerialStream();
 
@@ -51,7 +51,7 @@ public:
     EventGroupHandle_t eventGroup();
 
 private:
-    HAL_USART_Serial serial_;
+    hal_usart_interface_t serial_;
     std::unique_ptr<char[]> rxBuffer_;
     std::unique_ptr<char[]> txBuffer_;
     uint32_t config_;

@@ -85,8 +85,8 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
 
     // Flush all USARTs
     for (int usart = 0; usart < TOTAL_USARTS; usart++) {
-        if (hal_usart_is_enabled(static_cast<HAL_USART_Serial>(usart))) {
-            hal_usart_flush(static_cast<HAL_USART_Serial>(usart));
+        if (hal_usart_is_enabled(static_cast<hal_usart_interface_t>(usart))) {
+            hal_usart_flush(static_cast<hal_usart_interface_t>(usart));
         }
     }
 

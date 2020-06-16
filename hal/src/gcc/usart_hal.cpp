@@ -3,7 +3,7 @@
 #include "socket_hal.h"
 
 struct Usart {
-    virtual void init(Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)=0;
+    virtual void init(hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer)=0;
     virtual void begin(uint32_t baud)=0;
     virtual void end()=0;
     virtual int32_t available()=0;
@@ -21,8 +21,8 @@ const sock_handle_t SOCKET_INVALID = sock_handle_t(-1);
 class SocketUsartBase : public Usart
 {
     private:
-        Ring_Buffer* rx;
-        Ring_Buffer* tx;
+        hal_usart_ring_buffer_t* rx;
+        hal_usart_ring_buffer_t* tx;
 
     protected:
         sock_handle_t socket;
@@ -68,7 +68,7 @@ class SocketUsartBase : public Usart
 
 
     public:
-        virtual void init(Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer) override
+        virtual void init(hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer) override
         {
             this->rx = rx_buffer;
             this->tx = tx_buffer;
@@ -178,74 +178,74 @@ static SocketUsartClient usart2 = SocketUsartClient();
 
 }
 
-void hal_usart_init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
+void hal_usart_init(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer)
 {
     usartMap(serial).init(rx_buffer, tx_buffer);
 }
 
-void hal_usart_begin(HAL_USART_Serial serial, uint32_t baud)
+void hal_usart_begin(hal_usart_interface_t serial, uint32_t baud)
 {
     //usartMap(serial).begin(baud);
 }
 
-void hal_usart_end(HAL_USART_Serial serial)
+void hal_usart_end(hal_usart_interface_t serial)
 {
     //usartMap(serial).end();
 }
 
-int32_t hal_usart_available_data_for_write(HAL_USART_Serial serial)
+int32_t hal_usart_available_data_for_write(hal_usart_interface_t serial)
 {
     return usartMap(serial).availableForWrite();
 }
 
-uint32_t hal_usart_write(HAL_USART_Serial serial, uint8_t data)
+uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data)
 {
     return usartMap(serial).write(data);
 }
 
-int32_t hal_usart_available(HAL_USART_Serial serial)
+int32_t hal_usart_available(hal_usart_interface_t serial)
 {
     return usartMap(serial).available();
 }
 
-int32_t hal_usart_read(HAL_USART_Serial serial)
+int32_t hal_usart_read(hal_usart_interface_t serial)
 {
     return usartMap(serial).read();
 }
 
-int32_t hal_usart_peek(HAL_USART_Serial serial)
+int32_t hal_usart_peek(hal_usart_interface_t serial)
 {
     return usartMap(serial).peek();
 }
 
-void hal_usart_flush(HAL_USART_Serial serial)
+void hal_usart_flush(hal_usart_interface_t serial)
 {
     usartMap(serial).flush();
 }
 
-bool hal_usart_is_enabled(HAL_USART_Serial serial)
+bool hal_usart_is_enabled(hal_usart_interface_t serial)
 {
     return usartMap(serial).enabled();
 }
 
-void hal_usart_half_duplex(HAL_USART_Serial serial, bool Enable)
+void hal_usart_half_duplex(hal_usart_interface_t serial, bool Enable)
 {
 }
 
-void hal_usart_begin_config(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void *ptr)
+void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_t config, void *ptr)
 {
 }
 
-uint32_t hal_usart_write_nine_bits(HAL_USART_Serial serial, uint16_t data)
+uint32_t hal_usart_write_nine_bits(hal_usart_interface_t serial, uint16_t data)
 {
     return usartMap(serial).write((uint8_t) data);
 }
 
-void hal_usart_send_break(HAL_USART_Serial serial, void* reserved)
+void hal_usart_send_break(hal_usart_interface_t serial, void* reserved)
 {
 }
 
-uint8_t hal_usart_break_detected(HAL_USART_Serial serial)
+uint8_t hal_usart_break_detected(hal_usart_interface_t serial)
 {
   return 0;
 }

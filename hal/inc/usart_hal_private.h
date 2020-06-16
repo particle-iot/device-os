@@ -34,10 +34,10 @@ typedef enum HAL_USART_Pvt_Events {
     HAL_USART_PVT_EVENT_MAX = HAL_USART_PVT_EVENT_WRITABLE
 } HAL_USART_Pvt_Events;
 
-int hal_usart_pvt_get_event_group_handle(HAL_USART_Serial serial, EventGroupHandle_t* handle);
-int hal_usart_pvt_enable_event(HAL_USART_Serial serial, HAL_USART_Pvt_Events events);
-int hal_usart_pvt_disable_event(HAL_USART_Serial serial, HAL_USART_Pvt_Events events);
-int hal_usart_pvt_wait_event(HAL_USART_Serial serial, uint32_t events, system_tick_t timeout);
+int hal_usart_pvt_get_event_group_handle(hal_usart_interface_t serial, EventGroupHandle_t* handle);
+int hal_usart_pvt_enable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events);
+int hal_usart_pvt_disable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events);
+int hal_usart_pvt_wait_event(hal_usart_interface_t serial, uint32_t events, system_tick_t timeout);
 
 #ifdef __cplusplus
 }

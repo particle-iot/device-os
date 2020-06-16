@@ -21,8 +21,8 @@
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
-Ring_Buffer uart_tx_buffer;
-Ring_Buffer uart_rx_buffer;
+hal_usart_ring_buffer_t uart_tx_buffer;
+hal_usart_ring_buffer_t uart_rx_buffer;
 
 
 /* executes once at startup */
