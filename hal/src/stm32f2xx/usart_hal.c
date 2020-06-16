@@ -133,7 +133,7 @@ static uint32_t calculateDataBitsMask(uint32_t config);
 static uint8_t validateConfig(uint32_t config);
 static void configureTransmitReceive(hal_usart_interface_t serial, uint8_t transmit, uint8_t receive);
 static void configurePinsMode(hal_usart_interface_t serial, uint32_t config);
-static void usartEndImpl(hal_usart_interface_t serial, bool cache);
+static void usartEndImpl(hal_usart_interface_t serial);
 
 uint8_t calculateWordLength(uint32_t config, uint8_t noparity) {
     // STM32F2 USARTs support only 8-bit or 9-bit communication, however
@@ -254,7 +254,7 @@ void configurePinsMode(hal_usart_interface_t serial, uint32_t config) {
     }
 }
 
-void usartEndImpl(hal_usart_interface_t serial, bool cache) {
+void usartEndImpl(hal_usart_interface_t serial) {
     // Wait for transmission of outgoing data
     while (usartMap[serial]->tx_buffer->head != usartMap[serial]->tx_buffer->tail);
 
@@ -262,8 +262,8 @@ void usartEndImpl(hal_usart_interface_t serial, bool cache) {
     USART_Cmd(usartMap[serial]->peripheral, DISABLE);
 
     // Switch pins to INPUT
-    HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, INPUT);
-    HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, INPUT_PULLUP);
+    HAL_Pin_Mode(usartMap[serial]->rx_pin, INPUT);
+    HAL_Pin_Mode(usartMap[serial]->tx_pin, INPUT_PULLUP);
 
     // Disable LIN mode
     USART_LINCmd(usartMap[serial]->peripheral, DISABLE);
@@ -286,14 +286,11 @@ void usartEndImpl(hal_usart_interface_t serial, bool cache) {
     // Disable USART Clock
     *usartMap[serial]->apb_reg &= ~usartMap[serial]->clock_enabled;
 
-    if (!cache) {
-        // clear any received data
-        usartMap[serial]->rx_buffer->head = usartMap[serial]->rx_buffer->tail;
-        // Undo any pin re-mapping done for this USART
-        // ...
-        memset(usartMap[serial]->rx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
-    }
-
+    // clear any received data
+    usartMap[serial]->rx_buffer->head = usartMap[serial]->rx_buffer->tail;
+    // Undo any pin re-mapping done for this USART
+    // ...
+    memset(usartMap[serial]->rx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
     memset(usartMap[serial]->tx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
 
     usartMap[serial]->enabled = false;
@@ -550,8 +547,8 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
 }
 
 void hal_usart_end(hal_usart_interface_t serial) {
-    usartMap[serial]->usart_suspended = false;
-    usartEndImpl(serial, false);
+    usartMap[serial]->suspended = false;
+    usartEndImpl(serial);
 }
 
 uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data) {
@@ -731,7 +728,7 @@ int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved) {
         CHECK_FALSE(usartMap[serial]->suspended, SYSTEM_ERROR_NONE);
         usartMap[serial]->suspended = true;
         hal_usart_flush(serial);
-        usartEndImpl(serial, true);
+        usartEndImpl(serial);
     } else {
         CHECK_TRUE(usartMap[serial]->configured, SYSTEM_ERROR_INVALID_STATE);
         CHECK_TRUE(usartMap[serial]->suspended, SYSTEM_ERROR_NONE);

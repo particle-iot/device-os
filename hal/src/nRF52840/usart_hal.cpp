@@ -289,6 +289,7 @@ public:
         enabled_ = false;
         transmitting_ = false;
         receiving_ = 0;
+        rxBuffer_.reset();
         txBuffer_.reset();
 
         return SYSTEM_ERROR_NONE;

@@ -19,36 +19,59 @@
 #include "unit-test/unit-test.h"
 #include "random.h"
 
-test(SERIAL_00_LoopbackNoDataLossAndAvailableIsCorrect) {
-    const size_t TEST_BUFFER_SIZE_MIN = 8;
-    const size_t TEST_BUFFER_SIZE_MAX = SERIAL_BUFFER_SIZE / 2;
-    const unsigned ITERATIONS = 10000;
-    const unsigned BAUD_RATE = 115200;
-
+void runLoopback(size_t buffer_size_min, size_t buffer_size_max) {
     particle::Random rand;
+
+    size_t bufferSize = random(buffer_size_min, buffer_size_max);
+    // Generate random data
+    char txBuf[bufferSize + 1] = {};
+    rand.genBase32(txBuf, bufferSize);
+
+    Serial1.write(txBuf);
+    Serial1.flush();
+
+    size_t pos = 0;
+    char rxBuf[bufferSize] = {};
+    do {
+        size_t available = bufferSize - pos;
+        assertEqual(available, Serial1.available());
+        if (available) {
+            rxBuf[pos] = (char)Serial1.read();
+        }
+    } while (++pos <= bufferSize);
+
+    assertTrue(!strncmp(txBuf, rxBuf, bufferSize));
+}
+
+test(SERIAL_00_LoopbackNoDataLossAndAvailableIsCorrect) {
+    constexpr size_t TEST_BUFFER_SIZE_MIN = 8;
+    constexpr size_t TEST_BUFFER_SIZE_MAX = SERIAL_BUFFER_SIZE / 2;
+    constexpr unsigned ITERATIONS = 10000;
+    constexpr unsigned BAUD_RATE = 115200;
 
     Serial1.end();
     Serial1.begin(BAUD_RATE);
 
     for (unsigned i = 0; i < ITERATIONS; ++i) {
-        size_t bufferSize = random(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX);
-        // Generate random data
-        char txBuf[bufferSize + 1] = {};
-        rand.genBase32(txBuf, bufferSize);
-
-        Serial1.write(txBuf);
-        Serial1.flush();
-
-        size_t pos = 0;
-        char rxBuf[bufferSize] = {};
-        do {
-            size_t available = bufferSize - pos;
-            assertEqual(available, Serial1.available());
-            if (available) {
-                rxBuf[pos] = (char)Serial1.read();
-            }
-        } while (++pos <= bufferSize);
-
-        assertTrue(!strncmp(txBuf, rxBuf, bufferSize));
+        runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX);
     }
+}
+
+test(SERIAL_01_LoopbackSleepWakeupShouldSucceed) {
+    constexpr size_t TEST_BUFFER_SIZE_MIN = 8;
+    constexpr size_t TEST_BUFFER_SIZE_MAX = SERIAL_BUFFER_SIZE / 2;
+    constexpr unsigned BAUD_RATE = 115200;
+
+    Serial1.end();
+    Serial1.begin(BAUD_RATE);
+
+    int ret = hal_usart_sleep(HAL_USART_SERIAL1, true, nullptr);
+    assertEqual(ret, (int)SYSTEM_ERROR_NONE);
+    assertFalse(Serial1.isEnabled());
+
+    ret = hal_usart_sleep(HAL_USART_SERIAL1, false, nullptr);
+    assertEqual(ret, (int)SYSTEM_ERROR_NONE);
+    assertTrue(Serial1.isEnabled());
+
+    runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX);
 }
