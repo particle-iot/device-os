@@ -247,5 +247,10 @@ void hal_usart_send_break(hal_usart_interface_t serial, void* reserved)
 
 uint8_t hal_usart_break_detected(hal_usart_interface_t serial)
 {
-  return 0;
+    return 0;
+}
+
+int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved)
+{
+    return 0;
 }

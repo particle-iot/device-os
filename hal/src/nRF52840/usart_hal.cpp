@@ -231,49 +231,34 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
-    int end(bool cacheConfig = false) {
+    int end() {
         CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
         AtomicSection lk;
 
-        if (!cacheConfig) {
-            suspend_ = false;
-        }
+        suspend_ = false;
 
-        disableInterrupts();
+        CHECK(disable());
 
-        stopTransmission();
-        stopReceiver();
-
-        nrf_uarte_disable(uarte_);
-
-        nrf_uarte_txrx_pins_disconnect(uarte_);
-        nrf_uarte_hwfc_pins_disconnect(uarte_);
-
-        HAL_Pin_Mode(txPin_, INPUT);
+        // Configuring the input pins' mode to PIN_MODE_NONE will disconnect input buffer to enable power savings
+        // Configuring the output pins' mode to INPUT_PULLUP to not polluting the state on other side.
+        HAL_Pin_Mode(txPin_, INPUT_PULLUP);
         HAL_Set_Pin_Function(txPin_, PF_NONE);
-        HAL_Pin_Mode(rxPin_, INPUT);
+        HAL_Pin_Mode(rxPin_, PIN_MODE_NONE);
         HAL_Set_Pin_Function(rxPin_, PF_NONE);
-
         if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
-            HAL_Pin_Mode(ctsPin_, INPUT);
+            HAL_Pin_Mode(ctsPin_, PIN_MODE_NONE);
             HAL_Set_Pin_Function(ctsPin_, PF_NONE);
         }
         if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
-            HAL_Pin_Mode(rtsPin_, INPUT);
+            HAL_Pin_Mode(rtsPin_, INPUT_PULLUP);
             HAL_Set_Pin_Function(rtsPin_, PF_NONE);
         }
 
-        nrfx_prs_release(uarte_);
-
-        disableTimer();
-
         enabled_ = false;
-        if (!cacheConfig) {
-            config_ = {};
-            rxBuffer_.reset();
-        }
         transmitting_ = false;
         receiving_ = 0;
+        config_ = {};
+        rxBuffer_.reset();
         txBuffer_.reset();
 
         return SYSTEM_ERROR_NONE;
@@ -282,13 +267,34 @@ public:
     int suspend() {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_NONE);
         CHECK_FALSE(suspend_, SYSTEM_ERROR_NONE);
-        suspend_ = true;
+
+        AtomicSection lk;
+
         flush();
-        return end(true);
+        CHECK(disable());
+
+        // Configuring the input pins' mode to PIN_MODE_NONE will disconnect input buffer to enable power savings
+        // Configuring the output pins' mode to INPUT_PULLUP to not polluting the state on other side.
+        // NOTE: Do not reset pin function!
+        HAL_Pin_Mode(txPin_, INPUT_PULLUP);
+        HAL_Pin_Mode(rxPin_, PIN_MODE_NONE);
+        if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
+            HAL_Pin_Mode(ctsPin_, PIN_MODE_NONE);
+        }
+        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+            HAL_Pin_Mode(rtsPin_, INPUT_PULLUP);
+        }
+
+        suspend_ = true;
+        enabled_ = false;
+        transmitting_ = false;
+        receiving_ = 0;
+        txBuffer_.reset();
+
+        return SYSTEM_ERROR_NONE;
     }
 
     int restore() {
-        CHECK_TRUE(isConfigured(), SYSTEM_ERROR_INVALID_STATE);
         CHECK_TRUE(suspend_, SYSTEM_ERROR_NONE);
         return begin(config_);
     }
@@ -492,6 +498,23 @@ public:
     }
 
 private:
+    int disable() {
+        CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
+
+        disableInterrupts();
+        stopTransmission();
+        stopReceiver();
+
+        nrf_uarte_disable(uarte_);
+        nrf_uarte_txrx_pins_disconnect(uarte_);
+        nrf_uarte_hwfc_pins_disconnect(uarte_);
+        nrfx_prs_release(uarte_);
+
+        disableTimer();
+
+        return SYSTEM_ERROR_NONE;
+    }
+
     void startTransmission() {
         size_t consumable;
         if (!transmitting_ && (consumable = txBuffer_.consumable())) {

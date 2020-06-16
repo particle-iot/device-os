@@ -127,9 +127,9 @@ typedef enum hal_usart_interface_t {
     HAL_USART_SERIAL1 = 0,    //maps to USART_TX_RX
     HAL_USART_SERIAL2 = 1     //maps to USART_RGBG_RGBB
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
-   ,HAL_USART_SERIAL3 = 2    //maps to USART_TXD_UC_RXD_UC
-   ,HAL_USART_SERIAL4 = 3    //maps to USART_C3_C2
-   ,HAL_USART_SERIAL5 = 4    //maps to USART_C1_C0
+   ,HAL_USART_SERIAL3 = 2     //maps to USART_TXD_UC_RXD_UC
+   ,HAL_USART_SERIAL4 = 3     //maps to USART_C3_C2
+   ,HAL_USART_SERIAL5 = 4     //maps to USART_C1_C0
 #endif
 } hal_usart_interface_t;
 typedef hal_usart_interface_t HAL_USART_Serial; // For backwards compatibility

@@ -262,8 +262,8 @@ void usartEndImpl(hal_usart_interface_t serial, bool cache) {
     USART_Cmd(usartMap[serial]->peripheral, DISABLE);
 
     // Switch pins to INPUT
-    HAL_Pin_Mode(usartMap[serial]->rx_pin, INPUT);
-    HAL_Pin_Mode(usartMap[serial]->tx_pin, INPUT);
+    HAL_Pin_Mode(usartMap[serial]->usart_rx_pin, INPUT);
+    HAL_Pin_Mode(usartMap[serial]->usart_tx_pin, INPUT_PULLUP);
 
     // Disable LIN mode
     USART_LINCmd(usartMap[serial]->peripheral, DISABLE);
@@ -550,7 +550,7 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
 }
 
 void hal_usart_end(hal_usart_interface_t serial) {
-    usartMap[serial]->suspended = true;
+    usartMap[serial]->usart_suspended = false;
     usartEndImpl(serial, false);
 }
 

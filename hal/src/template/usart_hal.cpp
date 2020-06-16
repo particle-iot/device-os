@@ -40,7 +40,7 @@ void hal_usart_end(hal_usart_interface_t serial)
 
 uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data)
 {
-  return 0;
+    return 0;
 }
 
 int32_t hal_usart_available(hal_usart_interface_t serial)
@@ -72,6 +72,11 @@ void hal_usart_half_duplex(hal_usart_interface_t serial, bool Enable)
 }
 
 int32_t hal_usart_available_data_for_write(hal_usart_interface_t serial)
+{
+    return 0;
+}
+
+int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved)
 {
     return 0;
 }
