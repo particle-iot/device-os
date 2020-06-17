@@ -23,7 +23,7 @@ void firmwareUpdateEvent(system_event_t event, int param, void* data) {
     switch (param) {
     case firmware_update_begin: {
         const auto file = (FileTransfer::Descriptor*)data;
-        Log.info("Firmware update started, file size: %uK", (unsigned)file->file_length / 1024);
+        Log.info("Firmware update started, file size: %u", (unsigned)file->file_length);
         updateStart = millis();
         lastProgressUpdate = millis();
         break;

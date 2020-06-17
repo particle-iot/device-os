@@ -1,0 +1,9 @@
+CPPSRC += $(call target_files,$(USRSRC_SLASH),*.cpp)
+
+ifeq ("${SEMI_AUTOMATIC}","y")
+  USE_SEMI_AUTOMATIC=1
+else
+  USE_SEMI_AUTOMATIC=0
+endif
+
+CFLAGS += -DUSE_SEMI_AUTOMATIC=${USE_SEMI_AUTOMATIC}
