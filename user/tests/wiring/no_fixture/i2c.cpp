@@ -65,20 +65,3 @@ test(I2C_04_Serial1_Cannot_Be_Enabled_While_Wire3_Is_Enabled) {
 }
 
 #endif // PLATFORM_ID == PLATFORM_TRACKER
-
-test(I2C_05_Hal_Sleep_API_Test) {
-    HAL_I2C_Config config = acquireWireBuffer();
-    assertEqual(HAL_I2C_Init(HAL_I2C_INTERFACE1, &config), (int)SYSTEM_ERROR_NONE);
-
-    // Suspend and resotre I2C
-    HAL_I2C_Begin(HAL_I2C_INTERFACE1, I2C_MODE_MASTER, 0x00, NULL);
-    assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);  // Suspend
-    assertFalse(HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE1, NULL));
-    assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE); // Restore
-    assertTrue(HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE1, NULL));
-
-    // Retore API should not re-initialize the disabled I2C
-    HAL_I2C_Begin(HAL_I2C_INTERFACE1, I2C_MODE_MASTER, 0x00, NULL);
-    HAL_I2C_End(HAL_I2C_INTERFACE1, NULL);
-    assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
-}

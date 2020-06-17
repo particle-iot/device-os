@@ -31,6 +31,9 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
         memcpy(I2C_Test_Tx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE));
         memcpy(I2C_Test_Tx_Buffer + sizeof(MASTER_TEST_MESSAGE), (void*)&requestedLength, sizeof(uint32_t));
 
+        // Exit sleep
+        assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
+
         USE_WIRE.beginTransmission(I2C_ADDRESS);
         USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
         
@@ -58,6 +61,9 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
         assertTrue(strncmp((const char *)I2C_Test_Rx_Buffer, SLAVE_TEST_MESSAGE, requestedLength) == 0);
 
         requestedLength--;
+
+        // Enter sleep
+        assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
@@ -87,6 +93,9 @@ test(I2C_02_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underfl
 
         memcpy(I2C_Test_Tx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE));
         memcpy(I2C_Test_Tx_Buffer + sizeof(MASTER_TEST_MESSAGE), (void*)&requestedLength, sizeof(uint32_t));
+
+        // Exit sleep
+        assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
 
         USE_WIRE.beginTransmission(I2C_ADDRESS);
         USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
@@ -122,6 +131,9 @@ test(I2C_02_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underfl
         }
 
         requestedLength--;
+
+        // Enter sleep
+        assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
@@ -144,6 +156,9 @@ test(I2C_04_Master_Slave_Master_WireTransmission_And_Short_Timeout)
 
         memcpy(I2C_Test_Tx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE));
         memcpy(I2C_Test_Tx_Buffer + sizeof(MASTER_TEST_MESSAGE), (void*)&requestedLength, sizeof(uint32_t));
+
+        // Exit sleep
+        assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
 
         // NOTE: wrong address
         USE_WIRE.beginTransmission(WireTransmission(I2C_ADDRESS + 1).timeout(1ms));
@@ -168,6 +183,9 @@ test(I2C_04_Master_Slave_Master_WireTransmission_And_Short_Timeout)
         assertNotEqual(requestedLength, USE_WIRE.available());
 
         requestedLength--;
+
+        // Enter sleep
+        assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
@@ -193,6 +211,9 @@ test(I2C_04_Master_Slave_Master_Variable_Length_Transfer_With_WireTransmission_A
 
         memcpy(I2C_Test_Tx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE));
         memcpy(I2C_Test_Tx_Buffer + sizeof(MASTER_TEST_MESSAGE), (void*)&requestedLength, sizeof(uint32_t));
+
+        // Exit sleep
+        assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
 
         USE_WIRE.beginTransmission(WireTransmission(I2C_ADDRESS).timeout(100ms));
         USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
@@ -221,7 +242,27 @@ test(I2C_04_Master_Slave_Master_Variable_Length_Transfer_With_WireTransmission_A
         assertTrue(strncmp((const char *)I2C_Test_Rx_Buffer, SLAVE_TEST_MESSAGE, requestedLength) == 0);
 
         requestedLength--;
+
+        // Enter sleep
+        assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
+}
+
+test(I2C_05_Hal_Sleep_API_Test) {
+    HAL_I2C_Config config = acquireWireBuffer();
+    assertEqual(HAL_I2C_Init(HAL_I2C_INTERFACE1, &config), (int)SYSTEM_ERROR_NONE);
+
+    // Suspend and resotre I2C
+    HAL_I2C_Begin(HAL_I2C_INTERFACE1, I2C_MODE_MASTER, 0x00, NULL);
+    assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);  // Suspend
+    assertFalse(HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE1, NULL));
+    assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE); // Restore
+    assertTrue(HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE1, NULL));
+
+    // Retore API should not re-initialize the disabled I2C
+    HAL_I2C_Begin(HAL_I2C_INTERFACE1, I2C_MODE_MASTER, 0x00, NULL);
+    HAL_I2C_End(HAL_I2C_INTERFACE1, NULL);
+    assertEqual(HAL_I2C_Sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
 }
