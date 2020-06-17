@@ -89,3 +89,7 @@ int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8
 {
   return 0;
 }
+
+int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
+    return 0;
+}
