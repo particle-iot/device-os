@@ -10,28 +10,13 @@ SYSTEM_THREAD(DISABLED)
 
 namespace {
 
-retained unsigned counter = 0;
-retained uint32_t magic = 0;
-
-void cloudStatusEvent(system_event_t event, int param, void* data) {
-    switch (param) {
-    case cloud_status_connecting: {
-        Log.info("Connecting to the cloud");
-        break;
-    }
-    case cloud_status_connected: {
-        Log.info("Connected to the cloud");
-        break;
-    }
-    default:
-        break;
-    }
-}
-
 const SerialLogHandler logHandler(LOG_LEVEL_WARN, {
     { "comm.protocol", LOG_LEVEL_INFO },
     { "app", LOG_LEVEL_ALL }
 });
+
+retained unsigned counter = 0;
+retained uint32_t magic = 0;
 
 String cloudVar = "This is a test variable";
 
@@ -57,6 +42,21 @@ void registerCloudFunc() {
 void subscribeToCloudEvents() {
     Particle.subscribe("event", cloudEvent, MY_DEVICES);
     Log.info("Subscribed to events: \"event\"");
+}
+
+void cloudStatusEvent(system_event_t event, int param, void* data) {
+    switch (param) {
+    case cloud_status_connecting: {
+        Log.info("Connecting to the cloud");
+        break;
+    }
+    case cloud_status_connected: {
+        Log.info("Connected to the cloud");
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 } // namespace
