@@ -635,7 +635,6 @@ int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
         CHECK_FALSE(spiState[spi].suspended, SYSTEM_ERROR_NONE);
         hal_spi_transfer_dma_cancel(spi);
         hal_spi_end(spi); // It doesn't clear spi settings, so we can reuse the previous settings on woken up.
-        // TODO: configure SPI pins to appropriate mode
         spiState[spi].suspended = true;
     } else {
         CHECK_TRUE(spiState[spi].suspended, SYSTEM_ERROR_NONE);

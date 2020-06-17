@@ -40,7 +40,7 @@ typedef enum hal_spi_interface_t {
 } hal_spi_interface_t;
 typedef hal_spi_interface_t HAL_SPI_Interface; // For backwards compatibility
 
-typedef enum {
+typedef enum hal_spi_mode_t {
     SPI_MODE_MASTER = 0,
     SPI_MODE_SLAVE = 1
 } hal_spi_mode_t;
@@ -73,7 +73,7 @@ typedef void (*hal_spi_select_user_callback)(uint8_t);
 extern "C" {
 #endif
 
-typedef enum {
+typedef enum hal_spi_info_version_t {
     HAL_SPI_INFO_VERSION_1 = 11,
     HAL_SPI_INFO_VERSION_2 = 12
 } hal_spi_info_version_t;
@@ -108,29 +108,29 @@ typedef struct hal_spi_acquire_config_t {
 } hal_spi_acquire_config_t;
 typedef hal_spi_acquire_config_t HAL_SPI_AcquireConfig;
 
-void     hal_spi_init(hal_spi_interface_t spi);
-void     hal_spi_begin(hal_spi_interface_t spi, uint16_t pin);
-void     hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, void* reserved);
-void     hal_spi_end(hal_spi_interface_t spi);
-void     hal_spi_set_bit_order(hal_spi_interface_t spi, uint8_t order);
-void     hal_spi_set_data_mode(hal_spi_interface_t spi, uint8_t mode);
-void     hal_spi_set_clock_divider(hal_spi_interface_t spi, uint8_t rate);
+void hal_spi_init(hal_spi_interface_t spi);
+void hal_spi_begin(hal_spi_interface_t spi, uint16_t pin);
+void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, void* reserved);
+void hal_spi_end(hal_spi_interface_t spi);
+void hal_spi_set_bit_order(hal_spi_interface_t spi, uint8_t order);
+void hal_spi_set_data_mode(hal_spi_interface_t spi, uint8_t mode);
+void hal_spi_set_clock_divider(hal_spi_interface_t spi, uint8_t rate);
 // hal_spi_set_bit_order, hal_spi_set_data_mode and hal_spi_set_clock_divider in one go
 // to avoid having to reconfigure SPI peripheral 3 times
-int32_t  hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8_t clockdiv, uint8_t order, uint8_t mode, void* reserved);
+int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8_t clockdiv, uint8_t order, uint8_t mode, void* reserved);
 uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data);
-void     hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback);
-void     hal_spi_transfer_dma_cancel(hal_spi_interface_t spi);
-int32_t  hal_spi_transfer_dma_status(hal_spi_interface_t spi, hal_spi_transfer_status_t* st);
-bool     hal_spi_is_enabled_deprecated();
-bool     hal_spi_is_enabled(hal_spi_interface_t spi);
-void     hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved);
-void     hal_spi_set_callback_on_selected(hal_spi_interface_t spi, hal_spi_select_user_callback cb, void* reserved);
-int      hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved);
+void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback);
+void hal_spi_transfer_dma_cancel(hal_spi_interface_t spi);
+int32_t hal_spi_transfer_dma_status(hal_spi_interface_t spi, hal_spi_transfer_status_t* st);
+bool hal_spi_is_enabled_deprecated();
+bool hal_spi_is_enabled(hal_spi_interface_t spi);
+void hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved);
+void hal_spi_set_callback_on_selected(hal_spi_interface_t spi, hal_spi_select_user_callback cb, void* reserved);
+int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved);
 
 #if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
-int32_t  hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t* conf);
-int32_t  hal_spi_release(hal_spi_interface_t spi, void* reserved);
+int32_t hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t* conf);
+int32_t hal_spi_release(hal_spi_interface_t spi, void* reserved);
 #endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
 
 #ifdef __cplusplus

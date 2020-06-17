@@ -526,7 +526,10 @@ int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
         hal_spi_transfer_dma_cancel(spi);
         while (spiMap[spi].transmitting);
         hal_spi_end(spi); // It doesn't clear spi settings, so we can reuse the previous settings on woken up.
-        // TODO: configure SPI pins to appropriate mode
+        // hal_spi_end() clears pin function, retrieve it.
+        HAL_Set_Pin_Function(spiMap[spi].sck_pin, PF_SPI);
+        HAL_Set_Pin_Function(spiMap[spi].mosi_pin, PF_SPI);
+        HAL_Set_Pin_Function(spiMap[spi].miso_pin, PF_SPI);
         spiMap[spi].suspended = true;
     } else {
         CHECK_TRUE(spiMap[spi].suspended, SYSTEM_ERROR_NONE);
