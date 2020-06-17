@@ -23,23 +23,23 @@ SYSTEM_MODE(MANUAL);
 
 static void rgb_red()
 {
-    HAL_PWM_Write(RGBR,  0);
-    HAL_PWM_Write(RGBG,  255);
-    HAL_PWM_Write(RGBB,  255);
+    hal_pwm_write(RGBR,  0);
+    hal_pwm_write(RGBG,  255);
+    hal_pwm_write(RGBB,  255);
 }
 
 static void rgb_green()
 {
-    HAL_PWM_Write(RGBR,  255);
-    HAL_PWM_Write(RGBG,  0);
-    HAL_PWM_Write(RGBB,  255);
+    hal_pwm_write(RGBR,  255);
+    hal_pwm_write(RGBG,  0);
+    hal_pwm_write(RGBB,  255);
 }
 
 static void rgb_blue()
 {
-    HAL_PWM_Write(RGBR,  255);
-    HAL_PWM_Write(RGBG,  255);
-    HAL_PWM_Write(RGBB,  0);
+    hal_pwm_write(RGBR,  255);
+    hal_pwm_write(RGBG,  255);
+    hal_pwm_write(RGBB,  0);
 }
 
 /* executes once at startup */
@@ -49,26 +49,26 @@ void setup() {
 	pinMode(D4, OUTPUT);
 	analogWrite(D4, 255);
 
-	HAL_PWM_Set_Resolution(D6, 15);
-    HAL_PWM_Write_With_Frequency_Ext(D6, 0x3000, 10*1000);
-	HAL_PWM_Set_Resolution(D7, 15);
-    HAL_PWM_Write_With_Frequency_Ext(D7, 0x5000, 10*1000);
-	HAL_PWM_Set_Resolution(D8, 15);
-    HAL_PWM_Write_With_Frequency_Ext(D8, 0x7000, 10*1000);
+	hal_pwm_set_resolution(D6, 15);
+    hal_pwm_write_with_frequency_ext(D6, 0x3000, 10*1000);
+	hal_pwm_set_resolution(D7, 15);
+    hal_pwm_write_with_frequency_ext(D7, 0x5000, 10*1000);
+	hal_pwm_set_resolution(D8, 15);
+    hal_pwm_write_with_frequency_ext(D8, 0x7000, 10*1000);
 
     // PWM Group, other channels are RGB
-	HAL_PWM_Set_Resolution(D5, 15);
-    HAL_PWM_Write_With_Frequency_Ext(D5,  0x2000, 500);
+	hal_pwm_set_resolution(D5, 15);
+    hal_pwm_write_with_frequency_ext(D5,  0x2000, 500);
  
     // PWM Group 
-	HAL_PWM_Set_Resolution(A0, 15);
-    HAL_PWM_Write_With_Frequency_Ext(A0, 0x3000, 80*1000);
-	HAL_PWM_Set_Resolution(A1, 15);
-    HAL_PWM_Write_With_Frequency_Ext(A1, 0x3000, 80*1000);
-	HAL_PWM_Set_Resolution(A2, 15);
-    HAL_PWM_Write_With_Frequency_Ext(A2, 0x3000, 80*1000);
-	HAL_PWM_Set_Resolution(A3, 15);
-    HAL_PWM_Write_With_Frequency_Ext(A3, 0x3000, 80*1000);
+	hal_pwm_set_resolution(A0, 15);
+    hal_pwm_write_with_frequency_ext(A0, 0x3000, 80*1000);
+	hal_pwm_set_resolution(A1, 15);
+    hal_pwm_write_with_frequency_ext(A1, 0x3000, 80*1000);
+	hal_pwm_set_resolution(A2, 15);
+    hal_pwm_write_with_frequency_ext(A2, 0x3000, 80*1000);
+	hal_pwm_set_resolution(A3, 15);
+    hal_pwm_write_with_frequency_ext(A3, 0x3000, 80*1000);
 }
 
 /* executes continuously after setup() runs */

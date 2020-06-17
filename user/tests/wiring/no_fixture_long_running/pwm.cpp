@@ -84,7 +84,7 @@ test(PWM_01_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
     pinMode(pin, INPUT);//pin set to INPUT mode
     analogWrite(pin, 50);
     // then
-    assertNotEqual(HAL_PWM_Get_AnalogValue_Ext(pin), 50);
+    assertNotEqual(hal_pwm_get_analog_value_ext(pin), 50);
     //To Do : Add test for remaining pins if required
 }
 
@@ -105,7 +105,7 @@ test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
     analogWrite(pin, 100);
     // then
     //analogWrite has a default PWM frequency of 500Hz
-    assertNotEqual(HAL_PWM_Get_Frequency_Ext(pin), TIM_PWM_FREQ);
+    assertNotEqual(hal_pwm_get_frequency_ext(pin), TIM_PWM_FREQ);
     //To Do : Add test for remaining pins if required
 }
 
@@ -130,28 +130,28 @@ test(PWM_04_AnalogWriteOnPinResultsInCorrectFrequency) {
     analogWrite(pin, 150);
     // then
     //analogWrite has a default PWM frequency of 500Hz
-    assertEqual(HAL_PWM_Get_Frequency_Ext(pin), TIM_PWM_FREQ);
+    assertEqual(hal_pwm_get_frequency_ext(pin), TIM_PWM_FREQ);
 
     // 4-bit resolution
     analogWriteResolution(pin, 4);
     assertEqual(analogWriteResolution(pin), 4);
     analogWrite(pin, 9);
     // then
-    assertEqual(HAL_PWM_Get_Frequency_Ext(pin), TIM_PWM_FREQ);
+    assertEqual(hal_pwm_get_frequency_ext(pin), TIM_PWM_FREQ);
 
     // 12-bit resolution
     analogWriteResolution(pin, 12);
     assertEqual(analogWriteResolution(pin), 12);
     analogWrite(pin, 1900);
     // then
-    assertEqual(HAL_PWM_Get_Frequency_Ext(pin), TIM_PWM_FREQ);
+    assertEqual(hal_pwm_get_frequency_ext(pin), TIM_PWM_FREQ);
 
     // 15-bit resolution
     analogWriteResolution(pin, 15);
     assertEqual(analogWriteResolution(pin), 15);
     analogWrite(pin, 15900);
     // then
-    assertEqual(HAL_PWM_Get_Frequency_Ext(pin), TIM_PWM_FREQ);
+    assertEqual(hal_pwm_get_frequency_ext(pin), TIM_PWM_FREQ);
 
     pinMode(pin, INPUT);
     });
@@ -167,28 +167,28 @@ test(PWM_05_AnalogWriteOnPinResultsInCorrectAnalogValue) {
     assertEqual(analogWriteResolution(pin), 8);
 	analogWrite(pin, 200);
 	// then
-	assertEqual(HAL_PWM_Get_AnalogValue_Ext(pin), 200);
+	assertEqual(hal_pwm_get_analog_value_ext(pin), 200);
 
     // 4-bit resolution
     analogWriteResolution(pin, 4);
     assertEqual(analogWriteResolution(pin), 4);
     analogWrite(pin, 9);
     // then
-    assertEqual(HAL_PWM_Get_AnalogValue_Ext(pin), 9);
+    assertEqual(hal_pwm_get_analog_value_ext(pin), 9);
 
     // 12-bit resolution
     analogWriteResolution(pin, 12);
     assertEqual(analogWriteResolution(pin), 12);
     analogWrite(pin, 1900);
     // then
-    assertEqual(HAL_PWM_Get_AnalogValue_Ext(pin), 1900);
+    assertEqual(hal_pwm_get_analog_value_ext(pin), 1900);
 
     // 15-bit resolution
     analogWriteResolution(pin, 15);
     assertEqual(analogWriteResolution(pin), 15);
     analogWrite(pin, 15900);
     // then
-    assertEqual(HAL_PWM_Get_AnalogValue_Ext(pin), 15900);
+    assertEqual(hal_pwm_get_analog_value_ext(pin), 15900);
 
 	pinMode(pin, INPUT);
 	});
@@ -205,7 +205,7 @@ test(PWM_06_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
     analogWrite(pin, 150, analogWriteMaxFrequency(pin) / 2);
     // then
     // 1 digit error is acceptible due to rounding at higher frequencies
-    assertLessOrEqual((int32_t)HAL_PWM_Get_Frequency_Ext(pin) - analogWriteMaxFrequency(pin) / 2, 1);
+    assertLessOrEqual((int32_t)hal_pwm_get_frequency_ext(pin) - analogWriteMaxFrequency(pin) / 2, 1);
 
     // 4-bit resolution
     analogWriteResolution(pin, 4);
@@ -213,7 +213,7 @@ test(PWM_06_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
     analogWrite(pin, 9, analogWriteMaxFrequency(pin) / 2);
     // then
     // 1 digit error is acceptible due to rounding at higher frequencies
-    assertLessOrEqual((int32_t)HAL_PWM_Get_Frequency_Ext(pin) - analogWriteMaxFrequency(pin) / 2, 1);
+    assertLessOrEqual((int32_t)hal_pwm_get_frequency_ext(pin) - analogWriteMaxFrequency(pin) / 2, 1);
 
     // 12-bit resolution
     analogWriteResolution(pin, 12);
@@ -221,7 +221,7 @@ test(PWM_06_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
     analogWrite(pin, 1900, analogWriteMaxFrequency(pin) / 2);
     // then
     // 1 digit error is acceptible due to rounding at higher frequencies
-    assertLessOrEqual((int32_t)HAL_PWM_Get_Frequency_Ext(pin) - analogWriteMaxFrequency(pin) / 2, 1);
+    assertLessOrEqual((int32_t)hal_pwm_get_frequency_ext(pin) - analogWriteMaxFrequency(pin) / 2, 1);
 
     // 15-bit resolution
     analogWriteResolution(pin, 15);
@@ -229,7 +229,7 @@ test(PWM_06_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
     analogWrite(pin, 15900, analogWriteMaxFrequency(pin) / 2);
     // then
     // 1 digit error is acceptible due to rounding at higher frequencies
-    assertLessOrEqual((int32_t)HAL_PWM_Get_Frequency_Ext(pin) - analogWriteMaxFrequency(pin) / 2, 1);
+    assertLessOrEqual((int32_t)hal_pwm_get_frequency_ext(pin) - analogWriteMaxFrequency(pin) / 2, 1);
 
 	pinMode(pin, INPUT);
 	});
@@ -245,28 +245,28 @@ test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
     assertEqual(analogWriteResolution(pin), 8);
     analogWrite(pin, 200, analogWriteMaxFrequency(pin) / 2);
     // then
-    assertEqual(HAL_PWM_Get_AnalogValue_Ext(pin), 200);
+    assertEqual(hal_pwm_get_analog_value_ext(pin), 200);
 
     // 4-bit resolution
     analogWriteResolution(pin, 4);
     assertEqual(analogWriteResolution(pin), 4);
     analogWrite(pin, 9, analogWriteMaxFrequency(pin) / 2);
     // then
-    assertEqual(HAL_PWM_Get_AnalogValue_Ext(pin), 9);
+    assertEqual(hal_pwm_get_analog_value_ext(pin), 9);
 
     // 12-bit resolution
     analogWriteResolution(pin, 12);
     assertEqual(analogWriteResolution(pin), 12);
     analogWrite(pin, 1900, analogWriteMaxFrequency(pin) / 2);
     // then
-    assertEqual(HAL_PWM_Get_AnalogValue_Ext(pin), 1900);
+    assertEqual(hal_pwm_get_analog_value_ext(pin), 1900);
 
     // 15-bit resolution
     analogWriteResolution(pin, 15);
     assertEqual(analogWriteResolution(pin), 15);
     analogWrite(pin, 15900, analogWriteMaxFrequency(pin) / 2);
     // then
-    assertEqual(HAL_PWM_Get_AnalogValue_Ext(pin), 15900);
+    assertEqual(hal_pwm_get_analog_value_ext(pin), 15900);
 
     pinMode(pin, INPUT);
 	});
@@ -607,7 +607,7 @@ test(PWM_11_CompherensiveResolutionFrequency) {
                     uint32_t value = (uint32_t)(((double)duty / 100.0) * (double)maxVal);
                     analogWrite(pin, value, freq);
                     // Check if the write resulted in correct analog value
-                    assertEqual(HAL_PWM_Get_AnalogValue_Ext(pin), value);
+                    assertEqual(hal_pwm_get_analog_value_ext(pin), value);
 
                     double refPulseWidthUs = ((double)duty/100.0) * (1000000.0 / (double)freq);
                     // pulseIn cannot measure pulses shorter than 10us reliably, limit to 20us

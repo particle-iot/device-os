@@ -35,7 +35,7 @@ static void Set_LED_Value(Led_TypeDef led, uint16_t value)
     const uint32_t pwmMax = (((uint32_t)1 << 15) - 1);
     uint32_t corrected = (uint32_t)value * pwmMax / Get_RGB_LED_Max_Value();
     if (ledc->is_hal_pin && ledc->is_active && ledc->is_pwm) {
-        HAL_PWM_Write_Ext(ledc->hal_pin, ledc->is_inverted ? (pwmMax - corrected) : corrected);
+        hal_pwm_write_ext(ledc->hal_pin, ledc->is_inverted ? (pwmMax - corrected) : corrected);
     }
 }
 
@@ -62,7 +62,7 @@ static void LED_Init_Hal(Led_TypeDef led)
         // Enable PWM
         // 15-bit resolution is supported by all PWM pins on STM32F2
         ledc->is_pwm = 1;
-        HAL_PWM_Set_Resolution(ledc->hal_pin, 15);
+        hal_pwm_set_resolution(ledc->hal_pin, 15);
         // Set to maximum
         Set_LED_Value(led, Get_RGB_LED_Max_Value());
     } else {

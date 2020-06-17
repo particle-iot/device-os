@@ -33,7 +33,7 @@ static void stop_tone_timer(os_timer_t timer) {
         if (g_tone[i].timer == timer) {
             os_timer_destroy(g_tone[i].timer, nullptr);
             g_tone[i].timer = nullptr;
-            HAL_PWM_Reset_Pin(g_tone[i].pin);
+            hal_pwm_reset_pin(g_tone[i].pin);
             break;
         }
     }
@@ -80,8 +80,8 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration) {
         return;
     }
 
-    HAL_PWM_Set_Resolution(pin, 8);
-    HAL_PWM_Write_With_Frequency_Ext(pin, 127, frequency);
+    hal_pwm_set_resolution(pin, 8);
+    hal_pwm_write_with_frequency_ext(pin, 127, frequency);
 }
 
 void HAL_Tone_Stop(uint8_t pin) {
@@ -96,7 +96,7 @@ void HAL_Tone_Stop(uint8_t pin) {
 uint32_t HAL_Tone_Get_Frequency(uint8_t pin) {
     for (int i = 0; i < MAX_PWM_NUM; i++) {
         if (g_tone[i].timer && g_tone[i].pin == pin) {
-            return HAL_PWM_Get_Frequency_Ext(pin);
+            return hal_pwm_get_frequency_ext(pin);
         }
     }
     return 0;

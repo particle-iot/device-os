@@ -43,7 +43,7 @@ static void set_led_value(Led_TypeDef led, uint16_t value) {
 
     if (HAL_Leds[led].is_active) {
         uint32_t pwm_max = Get_RGB_LED_Max_Value();
-        HAL_PWM_Write_Ext(HAL_Leds[led].pin, HAL_Leds[led].is_inverted ? (pwm_max - value) : value);
+        hal_pwm_write_ext(HAL_Leds[led].pin, HAL_Leds[led].is_inverted ? (pwm_max - value) : value);
     }
 }
 
@@ -67,21 +67,21 @@ void Get_RGB_LED_Values(uint16_t* values) {
     uint32_t pwm_max = Get_RGB_LED_Max_Value();
 
     values[0] = HAL_Leds[LED_RED].is_inverted ?
-                (pwm_max - HAL_PWM_Get_AnalogValue(HAL_Leds[LED_RED].pin)) :
-                HAL_PWM_Get_AnalogValue(HAL_Leds[LED_RED].pin);
+                (pwm_max - hal_pwm_get_analog_value(HAL_Leds[LED_RED].pin)) :
+                hal_pwm_get_analog_value(HAL_Leds[LED_RED].pin);
     values[1] = HAL_Leds[LED_GREEN].is_inverted ?
-                (pwm_max - HAL_PWM_Get_AnalogValue(HAL_Leds[LED_GREEN].pin)) :
-                HAL_PWM_Get_AnalogValue(HAL_Leds[LED_GREEN].pin);
+                (pwm_max - hal_pwm_get_analog_value(HAL_Leds[LED_GREEN].pin)) :
+                hal_pwm_get_analog_value(HAL_Leds[LED_GREEN].pin);
     values[2] = HAL_Leds[LED_BLUE].is_inverted ?
-                (pwm_max - HAL_PWM_Get_AnalogValue(HAL_Leds[LED_BLUE].pin)) :
-                HAL_PWM_Get_AnalogValue(HAL_Leds[LED_BLUE].pin);
+                (pwm_max - hal_pwm_get_analog_value(HAL_Leds[LED_BLUE].pin)) :
+                hal_pwm_get_analog_value(HAL_Leds[LED_BLUE].pin);
 }
 
 /**
  * @brief  Get RGB LED max value
  */
 uint16_t Get_RGB_LED_Max_Value(void) {
-    return (1 << HAL_PWM_Get_Resolution(HAL_Leds[LED_RED].pin)) - 1;
+    return (1 << hal_pwm_get_resolution(HAL_Leds[LED_RED].pin)) - 1;
 }
 
 /**
@@ -228,7 +228,7 @@ void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* rese
     led_config_t* ledc = HAL_Led_Get_Configuration(led, NULL);
     if (ledc->is_active) {
         ledc->is_active = 0;
-        HAL_PWM_Reset_Pin(ledc->pin);
+        hal_pwm_reset_pin(ledc->pin);
         HAL_Pin_Mode(ledc->pin, PIN_MODE_NONE);
     }
     HAL_enable_irq(state);
@@ -278,7 +278,7 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
 void RGB_LED_Uninit() {
     for (int i = 0; i < LEDn; i++) {
         if (HAL_Leds[i].is_active) {
-            HAL_PWM_Reset_Pin(HAL_Leds[i].pin);
+            hal_pwm_reset_pin(HAL_Leds[i].pin);
         }
     }
 }
