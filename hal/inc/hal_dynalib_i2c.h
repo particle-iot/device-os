@@ -86,6 +86,7 @@ DYNALIB_FN(BASE_IDX + 17, hal_i2c, HAL_I2C_Reset, uint8_t(HAL_I2C_Interface, uin
 DYNALIB_FN(BASE_IDX + 18, hal_i2c, HAL_I2C_Acquire, int32_t(HAL_I2C_Interface, void*))
 DYNALIB_FN(BASE_IDX + 19, hal_i2c, HAL_I2C_Release, int32_t(HAL_I2C_Interface, void*))
 DYNALIB_FN(BASE_IDX + 20, hal_i2c, HAL_I2C_Request_Data_Ex, int32_t(HAL_I2C_Interface, const HAL_I2C_Transmission_Config*, void*))
+DYNALIB_FN(BASE_IDX + 21, hal_i2c, HAL_I2C_Sleep, int(HAL_I2C_Interface i2c, bool sleep, void* reserved))
 
 DYNALIB_END(hal_i2c)
 

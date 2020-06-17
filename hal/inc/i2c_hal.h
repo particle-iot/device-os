@@ -113,6 +113,7 @@ uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserve1);
 
 int32_t HAL_I2C_Acquire(HAL_I2C_Interface i2c, void* reserved);
 int32_t HAL_I2C_Release(HAL_I2C_Interface i2c, void* reserved);
+int HAL_I2C_Sleep(HAL_I2C_Interface i2c, bool sleep, void* reserved);
 
 void HAL_I2C_Set_Speed_v1(uint32_t speed);
 void HAL_I2C_Enable_DMA_Mode_v1(bool enable);

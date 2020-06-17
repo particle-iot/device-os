@@ -117,6 +117,7 @@ typedef struct {
     void (*callback_on_receive)(int);
 
     HAL_I2C_Transmission_Config transfer_config;
+    bool                        suspended;
 } nrf5x_i2c_info_t;
 
 static void twis0_handler(nrfx_twis_evt_t const * p_event);
@@ -231,6 +232,8 @@ static int twi_uninit(HAL_I2C_Interface i2c) {
     }
 
     // Reset pin function
+    HAL_Pin_Mode(m_i2c_map[i2c].scl_pin, PIN_MODE_NONE);
+    HAL_Pin_Mode(m_i2c_map[i2c].sda_pin, PIN_MODE_NONE);
     HAL_Set_Pin_Function(m_i2c_map[i2c].scl_pin, PF_NONE);
     HAL_Set_Pin_Function(m_i2c_map[i2c].sda_pin, PF_NONE);
 
@@ -395,6 +398,7 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
 
     if (twi_init(i2c) == 0) {
         m_i2c_map[i2c].enabled = true;
+        m_i2c_map[i2c].suspended = false;
     }
 }
 
@@ -407,6 +411,7 @@ void HAL_I2C_End(HAL_I2C_Interface i2c,void* reserved) {
     if (HAL_I2C_Is_Enabled(i2c, nullptr)) {
         if (twi_uninit(i2c) == 0) {
             m_i2c_map[i2c].enabled = false;
+            m_i2c_map[i2c].suspended = false;
         }
     }
 }
@@ -680,4 +685,27 @@ int32_t HAL_I2C_Release(HAL_I2C_Interface i2c, void* reserved) {
         }
     }
     return -1;
+}
+
+int HAL_I2C_Sleep(HAL_I2C_Interface i2c, bool sleep, void* reserved) {
+    if (i2c >= TOTAL_I2C) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    I2cLock lk(i2c);
+    if (sleep) {
+        // Suspend I2C
+        CHECK_TRUE(m_i2c_map[i2c].enabled, SYSTEM_ERROR_NONE);
+        CHECK_FALSE(m_i2c_map[i2c].suspended, SYSTEM_ERROR_NONE);
+        HAL_I2C_Flush_Data(i2c, nullptr);
+        HAL_I2C_End(i2c, nullptr);
+        m_i2c_map[i2c].suspended = true;
+    } else {
+        // Restore I2C
+        CHECK_TRUE(m_i2c_map[i2c].suspended, SYSTEM_ERROR_NONE);
+        HAL_I2C_Begin(i2c, m_i2c_map[i2c].mode, m_i2c_map[i2c].address, nullptr);
+        m_i2c_map[i2c].suspended = false;
+    }
+
+    return SYSTEM_ERROR_NONE;
 }

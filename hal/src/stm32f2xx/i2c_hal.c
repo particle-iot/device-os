@@ -39,6 +39,7 @@
 #include "interrupts_hal.h"
 #include "delay_hal.h"
 #include "concurrent_hal.h"
+#include "check.h"
 
 #ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -142,6 +143,7 @@ typedef struct STM32_I2C_Info {
     os_mutex_recursive_t mutex;
 
     HAL_I2C_Transmission_Config transferConfig;
+    bool suspended;
 } STM32_I2C_Info;
 
 /*
@@ -283,6 +285,7 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config)
     // Initialize I2C state
     i2cMap[i2c]->I2C_ClockSpeed = CLOCK_SPEED_100KHZ;
     i2cMap[i2c]->I2C_Enabled = false;
+    i2cMap[i2c]->suspended = false;
 
     i2cMap[i2c]->rxIndexHead = 0;
     i2cMap[i2c]->rxIndexTail = 0;
@@ -424,6 +427,7 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
     I2C_Init(i2cMap[i2c]->I2C_Peripheral, &i2cMap[i2c]->I2C_InitStructure);
 
     i2cMap[i2c]->I2C_Enabled = true;
+    i2cMap[i2c]->suspended = false;
     HAL_I2C_Release(i2c, NULL);
 }
 
@@ -435,6 +439,7 @@ void HAL_I2C_End(HAL_I2C_Interface i2c, void* reserved)
         I2C_Cmd(i2cMap[i2c]->I2C_Peripheral, DISABLE);
 
         i2cMap[i2c]->I2C_Enabled = false;
+        i2cMap[i2c]->suspended = false;
     }
     HAL_I2C_Release(i2c, NULL);
 }
@@ -1205,6 +1210,36 @@ int32_t HAL_I2C_Release(HAL_I2C_Interface i2c, void* reserved)
         }
     }
     return -1;
+}
+
+int HAL_I2C_Sleep(HAL_I2C_Interface i2c, bool sleep, void* reserved)
+{
+    HAL_I2C_Acquire(i2c, NULL);
+    if (sleep) {
+        // Suspend I2C
+        if (!i2cMap[i2c]->I2C_Enabled) {
+            HAL_I2C_Release(i2c, NULL);
+            return SYSTEM_ERROR_NONE;
+        }
+        if (i2cMap[i2c]->suspended) {
+            HAL_I2C_Release(i2c, NULL);
+            return SYSTEM_ERROR_NONE;
+        }
+        HAL_I2C_Flush_Data(i2c, NULL);
+        HAL_I2C_End(i2c, NULL);
+        i2cMap[i2c]->suspended = true;
+    } else {
+        // Restore I2C
+        if (!i2cMap[i2c]->suspended) {
+            HAL_I2C_Release(i2c, NULL);
+            return SYSTEM_ERROR_NONE;
+        }
+        HAL_I2C_Begin(i2c, i2cMap[i2c]->mode, i2cMap[i2c]->I2C_InitStructure.I2C_OwnAddress1 >> 1, NULL);
+        i2cMap[i2c]->suspended = false;
+    }
+
+    HAL_I2C_Release(i2c, NULL);
+    return SYSTEM_ERROR_NONE;
 }
 
 // On the Photon/P1 the I2C interface selector was added after the first release.
