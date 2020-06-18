@@ -151,6 +151,8 @@ test(LED_06_SettingRGBAfterOverrideShouldChangeLED) {
 
 test(LED_07_SettingRGBWithoutOverrideShouldNotChangeLED) {
     // given
+    RGB.control(true);
+    RGB.color(1, 2, 3);
     RGB.control(false);
 
     // when

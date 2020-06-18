@@ -1,3 +1,4 @@
+#ifndef PARTICLE_TEST_RUNNER
 #include "application.h"
 #include "unit-test/unit-test.h"
 
@@ -15,3 +16,5 @@ UNIT_TEST_APP();
 #if PLATFORM_THREADING == 1 && USE_THREADING == 1
 SYSTEM_THREAD(ENABLED);
 #endif
+
+#endif // PARTICLE_TEST_RUNNER

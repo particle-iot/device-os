@@ -44,10 +44,10 @@ test(SYSTEM_02_version)
 }
 
 // todo - use platform feature flags
-#if defined(STM32F2XX)
-    // subtract 4 bytes for signature (3068 bytes)
-    #define USER_BACKUP_RAM ((1024*3)-4)
-#endif // defined(STM32F2XX)
+#if HAL_PLATFORM_BACKUP_RAM
+	// subtract 64 bytes for test runner purposes
+    #define USER_BACKUP_RAM ((1024*3)-64)
+#endif // HAL_PLATFORM_BACKUP_RAM
 
 #if defined(USER_BACKUP_RAM)
 
@@ -71,22 +71,20 @@ test(SYSTEM_03_user_backup_ram)
     assertTrue(total_backup==(USER_BACKUP_RAM));
     assertTrue(total_ram==(USER_BACKUP_RAM));
 
-    if (int(&app_backup) < 0x40024000) {
-        Serial.printlnf("ERROR: expected app_backup in user backup memory, but was at %x", &app_backup);
-    }
-    assertTrue(int(&app_backup)>=0x40024000);
+	extern char link_global_data_start;
+	extern char link_bss_end;
 
-    if (int(&app_ram) >= 0x40024000) {
-        Serial.printlnf("ERROR: expected app_ram in user sram memory, but was at %x", &app_ram);
-    }
-    assertTrue(int(&app_ram)<0x40024000);
+	uintptr_t ramStart = (uintptr_t)&link_global_data_start;
+	uintptr_t ramEnd = (uintptr_t)&link_bss_end;
+
+	assertFalse((uintptr_t)app_backup >= ramStart && (uintptr_t)app_backup <= ramEnd);
 }
 
 #endif // defined(USER_BACKUP_RAM)
 
 #if !HAL_PLATFORM_NRF52840 // TODO
 
-#if defined(BUTTON1_MIRROR_SUPPORTED)
+#if defined(BUTTON1_MIRROR_SUPPORTED) && PLATFORM_ID != PLATFORM_P1
 static int s_button_clicks = 0;
 static void onButtonClick(system_event_t ev, int data) {
     s_button_clicks = data;

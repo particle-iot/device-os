@@ -255,7 +255,7 @@ test(TIME_16_TimeChangedEvent) {
     system_tick_t syncedLastMillis = Particle.timeSyncedLast();
 
     System.on(time_changed, time_changed_handler);
-    Time.setTime(946684800);
+    Time.setTime(1514764800);
     assertEqual(s_time_changed_reason, (int)time_changed_manually);
     s_time_changed_reason = -1;
 
