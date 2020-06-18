@@ -48,7 +48,7 @@ typedef struct pwm_state_t {
                                          (((((uint32_t)tim) - APB1PERIPH_BASE) / (TIM3_BASE - TIM2_BASE)) + 2))
 
 /* Private variables ---------------------------------------------------------*/
-static pwm_state_t PWM_State[TIM_NUM] = {
+static pwm_state_t pwmState[TIM_NUM] = {
     // Initialise all timers to 8-bit resolution
     [0 ... (TIM_NUM - 1)].resolution = 8
 };
@@ -177,7 +177,7 @@ uint32_t hal_pwm_get_analog_value_ext(uint16_t pin) {
     pwm_analog_value = pulse_width == period + 1 ? max_value : DIV_ROUND_CLOSEST((uint64_t)pulse_width * max_value, period);
 #else
     // Use floating point calculations on Electron to save flash space without involving 64-bit integer division
-    pwm_analog_value = pulse_width == period + 1 ? max_value : (uint32_t)ceil(((double)pulse_width/(double)period) * max_value);
+    pwm_analog_value = pulse_width == period + 1 ? max_value : (uint32_t)ceil(((double)pulse_width / (double)period) * max_value);
 #endif
 
     return pwm_analog_value;
@@ -399,7 +399,7 @@ uint8_t hal_pwm_get_resolution(uint16_t pin) {
     Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     if (pin_info->timer_peripheral) {
-        return PWM_State[TIM_PERIPHERAL_TO_STATE_IDX(pin_info->timer_peripheral)].resolution;
+        return pwmState[TIM_PERIPHERAL_TO_STATE_IDX(pin_info->timer_peripheral)].resolution;
     }
 
     return 0;
@@ -410,7 +410,12 @@ void hal_pwm_set_resolution(uint16_t pin, uint8_t resolution) {
 
     if (pin_info->timer_peripheral) {
         if (resolution > 1 && resolution <= (timerResolution(pin) - 1)) {
-            PWM_State[TIM_PERIPHERAL_TO_STATE_IDX(pin_info->timer_peripheral)].resolution = resolution;
+            pwmState[TIM_PERIPHERAL_TO_STATE_IDX(pin_info->timer_peripheral)].resolution = resolution;
         }
     }
+}
+
+int hal_pwm_sleep(bool sleep, void* reserved) {
+    // TODO
+    return SYSTEM_ERROR_NONE;
 }

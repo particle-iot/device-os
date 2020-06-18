@@ -82,3 +82,8 @@ uint8_t hal_pwm_get_resolution(uint16_t pin)
 void hal_pwm_set_resolution(uint16_t pin, uint8_t resolution)
 {
 }
+
+int hal_pwm_sleep(bool sleep, void* reserved)
+{
+    return 0;
+}

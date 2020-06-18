@@ -53,6 +53,7 @@ void hal_pwm_update_duty_cycle_ext(uint16_t pin, uint32_t value);
 uint8_t hal_pwm_get_resolution(uint16_t pin);
 void hal_pwm_set_resolution(uint16_t pin, uint8_t resolution);
 void hal_pwm_reset_pin(uint16_t pin);
+int hal_pwm_sleep(bool sleep, void* reserved);
 
 #ifdef __cplusplus
 }
