@@ -1246,6 +1246,8 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
             return 0;
         }, this);
         if (r) {
+            LOG(ERROR, "Failed to open data channel");
+            ready_ = false;
             connState_ = NcpConnectionState::DISCONNECTED;
         }
     }

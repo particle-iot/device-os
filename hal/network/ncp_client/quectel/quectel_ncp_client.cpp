@@ -1080,6 +1080,8 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
                                    },
                                    this);
         if (r) {
+            LOG(ERROR, "Failed to open data channel");
+            ready_ = false;
             connState_ = NcpConnectionState::DISCONNECTED;
         }
     }
