@@ -115,7 +115,10 @@ const auto ICCID_MAX_LENGTH = 20;
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
 using CidType = decltype(CellularGlobalIdentity::cell_id);
 
-} // namespace
+const int QUECTEL_DEFAULT_CID = 1;
+const char QUECTEL_DEFAULT_PDP_TYPE[] = "IP";
+
+} // anonymous
 
 QuectelNcpClient::QuectelNcpClient() {}
 
@@ -976,7 +979,8 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
         netConf_ = networkConfigForImsi(buf, strlen(buf));
     }
     // FIXME: for now IPv4 context only
-    auto resp = parser_.sendCommand("AT+CGDCONT=1,\"IP\",\"%s\"",
+    auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s\"",
+            QUECTEL_DEFAULT_CID, QUECTEL_DEFAULT_PDP_TYPE,
             netConf_.hasApn() ? netConf_.apn() : "");
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
@@ -997,7 +1001,19 @@ int QuectelNcpClient::registerNet() {
     connectionState(NcpConnectionState::CONNECTING);
 
     // NOTE: up to 3 mins
-    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0"));
+    auto resp = parser_.sendCommand("AT+COPS?");
+    int copsState = -1;
+    r = CHECK_PARSER(resp.scanf("+COPS: %d", &copsState));
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
+    // NOTE: up to 3 mins
+    if (copsState != 0) {
+        // If the set command with <mode>=0 is issued, a further set
+        // command with <mode>=0 is managed as a user reselection
+        r = CHECK_PARSER(parser_.execCommand(5 * 60 * 1000, "AT+COPS=0,2"));
+    }
     // Ignore response code here
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
