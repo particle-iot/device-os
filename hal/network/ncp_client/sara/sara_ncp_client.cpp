@@ -120,6 +120,9 @@ using CidType = decltype(CellularGlobalIdentity::cell_id);
 const size_t UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD = 512;
 const system_tick_t UBLOX_NCP_R4_WINDOW_SIZE_MS = 50;
 
+const int UBLOX_DEFAULT_CID = 1;
+const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
+
 
 } // anonymous
 
@@ -1347,9 +1350,9 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         netConf_ = networkConfigForImsi(buf, strlen(buf));
     }
-    // FIXME: for now IPv4 context only
-    CHECK_PARSER_OK(parser_.execCommand("AT+CGDCONT?"));
-    auto resp = parser_.sendCommand("AT+CGDCONT=1,\"IP\",\"%s%s\"",
+
+    auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s%s\"",
+            UBLOX_DEFAULT_CID, UBLOX_DEFAULT_PDP_TYPE,
             (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
             netConf_.hasApn() ? netConf_.apn() : "");
     const int r = CHECK_PARSER(resp.readResult());
@@ -1377,11 +1380,20 @@ int SaraNcpClient::registerNet() {
     connectionState(NcpConnectionState::CONNECTING);
     registeredTime_ = 0;
 
-    CHECK_PARSER_OK(parser_.execCommand("AT+COPS?"));
+    auto resp = parser_.sendCommand("AT+COPS?");
+    int copsState = -1;
+    r = CHECK_PARSER(resp.scanf("+COPS: %d", &copsState));
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     // NOTE: up to 3 mins (FIXME: there seems to be a bug where this timeout of 3 minutes
     //       is not being respected by u-blox modems.  Setting to 5 for now.)
-    r = CHECK_PARSER(parser_.execCommand(5 * 60 * 1000, "AT+COPS=0,2"));
+    if (copsState != 0) {
+        // If the set command with <mode>=0 is issued, a further set
+        // command with <mode>=0 is managed as a user reselection
+        r = CHECK_PARSER(parser_.execCommand(5 * 60 * 1000, "AT+COPS=0,2"));
+    }
     // Ignore response code here
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
