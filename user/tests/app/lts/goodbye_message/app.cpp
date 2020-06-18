@@ -30,7 +30,7 @@ void loop() {
         delay(DELAY);
 
         Log.info("Publishing an event");
-        Particle.publish("event", PRIVATE);
+        Particle.publish("test", PRIVATE);
 
         Log.info("Disconnecting from the cloud");
         Particle.disconnect(CloudDisconnectOptions().graceful(true));
