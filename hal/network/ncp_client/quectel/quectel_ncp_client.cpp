@@ -1131,19 +1131,7 @@ int QuectelNcpClient::registerNet() {
     connectionState(NcpConnectionState::CONNECTING);
 
     // NOTE: up to 3 mins
-    auto resp = parser_.sendCommand("AT+COPS?");
-    int copsState = -1;
-    r = CHECK_PARSER(resp.scanf("+COPS: %d", &copsState));
-    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-    r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-
-    // NOTE: up to 3 mins
-    if (copsState != 0) {
-        // If the set command with <mode>=0 is issued, a further set
-        // command with <mode>=0 is managed as a user reselection
-        r = CHECK_PARSER(parser_.execCommand(5 * 60 * 1000, "AT+COPS=0,2"));
-    }
+    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0,2"));
     // Ignore response code here
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
