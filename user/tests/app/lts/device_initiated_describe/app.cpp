@@ -47,7 +47,7 @@ void subscribeToCloudEvents() {
 void cloudStatusEvent(system_event_t event, int param, void* data) {
     switch (param) {
     case cloud_status_connecting: {
-        Log.info("Connecting to the cloud");
+        Log.info("Connecting to the cloud...");
         break;
     }
     case cloud_status_connected: {
