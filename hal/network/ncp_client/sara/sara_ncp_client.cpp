@@ -1459,9 +1459,10 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
             return SYSTEM_ERROR_NONE;
         }, this);
         if (r) {
+            LOG(ERROR, "Failed to open data channel");
+            ready_ = false;
             connState_ = NcpConnectionState::DISCONNECTED;
         }
-        muxer_.resumeChannel(UBLOX_NCP_PPP_CHANNEL);
     }
 
     const auto handler = conf_.eventHandler();
