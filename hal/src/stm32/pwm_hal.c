@@ -27,6 +27,7 @@
 #include "pwm_hal.h"
 #include "gpio_hal.h"
 #include "pinmap_impl.h"
+#include "check.h"
 
 #define DIV_ROUND_CLOSEST(n, d) ((n + d/2)/d)
 
