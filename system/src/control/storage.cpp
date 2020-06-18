@@ -75,7 +75,7 @@ void cancelFirmwareUpdate() {
         return;
     }
     const int ret = Spark_Finish_Firmware_Update(g_update->descr, UpdateFlag::ERROR, nullptr);
-    if (ret != 0) {
+    if (ret < 0) {
         LOG(WARN, "Spark_Finish_Firmware_Update(UpdateFlag::ERROR) failed: %d", ret);
     }
     g_update.reset();
@@ -170,11 +170,11 @@ void finishFirmwareUpdateRequest(ctrl_request* req) {
         // Apply the update
         ret = Spark_Finish_Firmware_Update(g_update->descr, UpdateFlag::SUCCESS | UpdateFlag::DONT_RESET, nullptr);
         g_update.reset();
-        if (ret != 0) {
+        if (ret < 0) {
             goto done;
         }
         // Reply to the host and reset the device
-        system_ctrl_set_result(req, ret, firmwareUpdateCompletionHandler, nullptr, nullptr);
+        system_ctrl_set_result(req, 0 /* result */, firmwareUpdateCompletionHandler, nullptr, nullptr);
         return;
     }
     // Validate the firmware binary
