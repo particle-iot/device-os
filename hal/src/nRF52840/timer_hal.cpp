@@ -270,6 +270,7 @@ int hal_timer_deinit(void* reserved) {
 extern "C" void RTC_IRQ_HANDLER(void) {
     // Handle overflow.
     if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW)) {
+        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW);
         // Disable OVERFLOW interrupt to prevent lock-up in interrupt context while mutex is locked from lower priority
         // context and OVERFLOW event flag is stil up. OVERFLOW interrupt will be re-enabled when mutex is released -
         // either from this handler, or from lower priority context, that locked the mutex.
@@ -284,6 +285,16 @@ extern "C" void RTC_IRQ_HANDLER(void) {
         sTimerMicrosAtLastOverflow = getCurrentTime();
         sTickCountAtLastOverflow = DWT->CYCCNT;
         __set_PRIMASK(pri);
+    } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_TICK)) {
+        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_TICK);
+    } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_0)) {
+        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_0);
+    } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_1)) {
+        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_1);
+    } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_2)) {
+        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_2);
+    } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_3)) {
+        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_3);
     }
 }
 
