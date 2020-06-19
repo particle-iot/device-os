@@ -28,6 +28,8 @@
 #include "gpio_hal.h"
 #include "pinmap_hal.h"
 #include "pinmap_impl.h"
+#include "system_error.h"
+#include <stddef.h>
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -42,8 +44,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 __IO uint16_t ADC_ConvertedValues[ADC_DMA_BUFFERSIZE];
-uint8_t adcInitFirstTime = true;
-uint8_t adcChannelConfigured = ADC_CHANNEL_NONE;
+static bool adcInitialized = false;
+static bool adcSuspended = false;
+static uint8_t adcChannelConfigured = ADC_CHANNEL_NONE;
 static uint8_t ADC_Sample_Time = ADC_SAMPLING_TIME;
 
 /* Extern variables ----------------------------------------------------------*/
@@ -93,10 +96,9 @@ int32_t HAL_ADC_Read(uint16_t pin)
         HAL_Pin_Mode(pin, AN_INPUT);
     }
 
-    if (adcInitFirstTime == true)
+    if (!adcInitialized)
     {
         HAL_ADC_DMA_Init();
-        adcInitFirstTime = false;
     }
 
     if (adcChannelConfigured != PIN_MAP[pin].adc_channel)
@@ -222,4 +224,52 @@ void HAL_ADC_DMA_Init()
     ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
     ADC_InitStructure.ADC_NbrOfConversion = 1;
     ADC_Init(ADC2, &ADC_InitStructure);
+
+    adcInitialized = true;
+    adcSuspended = false;
+}
+
+/*
+ * @brief Uninitialize the ADC peripheral.
+ */
+int HAL_ADC_DMA_Uninit(void* reserved)
+{
+    // Disable DMA2 clock
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, DISABLE);
+
+    // Disable ADC1 and ADC2 clock
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 | RCC_APB2Periph_ADC2, DISABLE);
+
+    adcInitialized = false;
+    adcSuspended = false;
+
+    return SYSTEM_ERROR_NONE;
+}
+
+/*
+ * @brief ADC peripheral enters sleep mode
+ */
+int HAL_ADC_Sleep(bool sleep, void* reserved)
+{
+    if (sleep) {
+        // Suspend ADC
+        if (!adcInitialized) {
+            return SYSTEM_ERROR_NONE;
+        }
+        if (adcSuspended) {
+            return SYSTEM_ERROR_NONE;
+        }
+        HAL_ADC_DMA_Uninit(NULL);
+        adcSuspended = true;
+    } else {
+        // Restore ADC
+        if (!adcSuspended) {
+            return SYSTEM_ERROR_NONE;
+        }
+        HAL_ADC_DMA_Init();
+        adcSuspended = false;
+    }
+
+    return SYSTEM_ERROR_NONE;
+
 }

@@ -86,6 +86,7 @@ DYNALIB_FN(33, hal_gpio, HAL_PWM_Get_AnalogValue_Ext, uint32_t(uint16_t))
 DYNALIB_FN(34, hal_gpio, HAL_PWM_Get_Max_Frequency, uint32_t(uint16_t))
 DYNALIB_FN(35, hal_gpio, HAL_Interrupts_Detach_Ext, int(uint16_t, uint8_t, void*))
 DYNALIB_FN(36, hal_gpio, HAL_Set_Direct_Interrupt_Handler, int(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved))
+DYNALIB_FN(37, hal_gpio, HAL_ADC_Sleep, int(bool sleep, void* reserved))
 
 DYNALIB_END(hal_gpio)
 

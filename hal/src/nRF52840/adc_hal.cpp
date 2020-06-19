@@ -19,8 +19,10 @@
 #include "nrfx_saadc.h"
 #include "adc_hal.h"
 #include "pinmap_impl.h"
+#include "check.h"
 
 static volatile bool m_adc_initiated = false;
+static volatile bool m_adc_suspended = false;
 
 static const nrfx_saadc_config_t saadc_config = 
 {
@@ -48,7 +50,6 @@ int32_t HAL_ADC_Read(uint16_t pin)
 {
     if (!m_adc_initiated)
     {
-        m_adc_initiated = true;
         HAL_ADC_DMA_Init();
     }
 
@@ -122,6 +123,41 @@ err_ret:
  */
 void HAL_ADC_DMA_Init()
 {
+    m_adc_initiated = true;
+    m_adc_suspended = false;
     uint32_t err_code = nrfx_saadc_init(&saadc_config, analog_in_event_handler);
     SPARK_ASSERT(err_code == NRF_SUCCESS);
 }
+
+/*
+ * @brief Uninitialize the ADC peripheral.
+ */
+int HAL_ADC_DMA_Uninit(void* reserved)
+{
+    m_adc_initiated = false;
+    m_adc_suspended = false;
+    nrfx_saadc_uninit();
+    return SYSTEM_ERROR_NONE;
+}
+
+/*
+ * @brief ADC peripheral enters sleep mode
+ */
+int HAL_ADC_Sleep(bool sleep, void* reserved)
+{
+    if (sleep) {
+        // Suspend ADC
+        CHECK_TRUE(m_adc_initiated, SYSTEM_ERROR_NONE);
+        CHECK_FALSE(m_adc_suspended, SYSTEM_ERROR_NONE);
+        HAL_ADC_DMA_Uninit(nullptr);
+        m_adc_suspended = true;
+    } else {
+        // Restore ADC
+        CHECK_TRUE(m_adc_suspended, SYSTEM_ERROR_NONE);
+        HAL_ADC_DMA_Init();
+        m_adc_suspended = false;
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
