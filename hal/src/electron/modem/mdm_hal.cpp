@@ -2578,11 +2578,17 @@ bool MDMParser::socketConnect(int socket, const MDM_IP& ip, int port)
             UNLOCK();
             return false;
         }
+        sendFormated("AT+USOCTL=%d,10\r\n", _sockets[socket].handle);
+        waitFinalResp(nullptr,nullptr,1000);
+        sendFormated("AT+USORD=%d,0\r\n", _sockets[socket].handle);
+        waitFinalResp(nullptr,nullptr,1000);
         MDM_PRINTF("socketConnect(%d,port:%d)\r\n", socket,port);
         sendFormated("AT+USOCO=%d,\"" IPSTR "\",%d\r\n", _sockets[socket].handle, IPNUM(ip), port);
         if (RESP_OK == waitFinalResp(nullptr, nullptr, USOCO_TIMEOUT)) {
             ok = _sockets[socket].connected = true;
         }
+        sendFormated("AT+USOCTL=%d,10\r\n", _sockets[socket].handle);
+        waitFinalResp(nullptr,nullptr,1000);
     }
     UNLOCK();
     return ok;
@@ -2627,13 +2633,24 @@ bool MDMParser::socketClose(int socket)
         MDM_PRINTF("socketClose(%d)(%s)\r\n", socket,
             (socket_type == 17) ? "UDP" : (socket_type == 6) ? "TCP" : "UNK");
         if (_checkEpsReg()) {
-            sendFormated("AT+USOCL=%d\r\n", _sockets[socket].handle);
-            if (RESP_ERROR == waitFinalResp(nullptr, nullptr,
-                (socket_type == 17) ? USOCL_UDP_TIMEOUT : USOCL_TCP_TIMEOUT)) {
-                if (_dev.dev != DEV_SARA_R410) {
-                    sendFormated("AT+CEER\r\n"); // For logging visibility
-                    waitFinalResp(nullptr, nullptr, CEER_TIMEOUT);
+            if (_sockets[socket].handle != MDM_SOCKET_ERROR) {
+                sendFormated("AT+USORD=%d,0\r\n", _sockets[socket].handle);
+                waitFinalResp(nullptr,nullptr,1000);
+                sendFormated("AT+USOCTL=%d,10\r\n", _sockets[socket].handle);
+                waitFinalResp(nullptr,nullptr,1000);
+                MDM_PRINTF("TP1 handle: %d socket: %d,", _sockets[socket].handle, socket, _sockets[socket]);
+                sendFormated("AT+USOCL=%d\r\n", _sockets[socket].handle);
+                if (RESP_ERROR == waitFinalResp(nullptr, nullptr,
+                    (socket_type == 17) ? USOCL_UDP_TIMEOUT : USOCL_TCP_TIMEOUT)) {
+                    if (_dev.dev != DEV_SARA_R410) {
+                        sendFormated("AT+CEER\r\n"); // For logging visibility
+                        waitFinalResp(nullptr, nullptr, CEER_TIMEOUT);
+                    }
                 }
+                sendFormated("AT+USOCTL=%d,10\r\n", _sockets[socket].handle);
+                waitFinalResp(nullptr,nullptr,1000);
+                sendFormated("AT+USORD=%d,0\r\n", _sockets[socket].handle);
+                waitFinalResp(nullptr,nullptr,1000);
             }
         }
         // Assume RESP_OK in most situations, and assume closed
@@ -3017,7 +3034,7 @@ int MDMParser::socketRecv(int socket, char* buf, int len)
         waitFinalResp(NULL, NULL, USORD_TIMEOUT);
     }
     UNLOCK();
-    // MDM_PRINTF("socketRecv: %d \"%*s\"\r\n", cnt, cnt, buf-cnt);
+    MDM_PRINTF("socketRecv: %d \"%*s\"\r\n", cnt, cnt, buf-cnt);
     return cnt;
 }
 
