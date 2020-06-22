@@ -327,7 +327,6 @@ int system_cloud_recv(uint8_t* buf, size_t buflen, int flags)
             LOG(ERROR, "sock_recv returned %d %d", recvd, errno);
         }
     }
-    recvd = 0;
 
     return recvd;
 }
