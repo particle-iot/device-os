@@ -46,6 +46,15 @@ HAL_WICED_LIB_FILES += $(HAL_SRC_COREV2_PATH)/lib/BESL.ARM_CM3.release.a
 
 HAL_LINK ?= $(findstring hal,$(MAKE_DEPENDENCIES))
 
+HAL_DEPS = third_party/miniz
+HAL_DEPS_INCLUDE_SCRIPTS =$(foreach module,$(HAL_DEPS),$(PROJECT_ROOT)/$(module)/import.mk)
+include $(HAL_DEPS_INCLUDE_SCRIPTS)
+
+ifneq ($(filter hal,$(LIBS)),)
+LIB_DIRS += $(MINIZ_LIB_DIR)
+LIBS += $(notdir $(HAL_DEPS))
+endif
+
 # if hal is used as a make dependency (linked) then add linker commands
 ifneq (,$(HAL_LINK))
 LINKER_FILE=$(WICED_MCU)/app_no_bootloader.ld
