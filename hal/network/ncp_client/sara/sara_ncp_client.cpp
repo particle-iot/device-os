@@ -1077,6 +1077,7 @@ int SaraNcpClient::initReady(ModemState state) {
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGEREP=1,0"));
 
     if (state != ModemState::MuxerAtChannel) {
         if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
@@ -1536,7 +1537,7 @@ int SaraNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
-    if (connState_ != NcpConnectionState::CONNECTING ||
+    if (/*connState_ != NcpConnectionState::CONNECTING ||*/
             millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return 0;
     }
@@ -1549,6 +1550,12 @@ int SaraNcpClient::processEventsImpl() {
     } else {
         CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     }
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGCLASS?"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGACT?"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGATT?"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGPADDR=1"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGDCONT?"));
+
     if (connState_ == NcpConnectionState::CONNECTING &&
             millis() - regStartTime_ >= registrationTimeout_) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
