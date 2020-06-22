@@ -88,6 +88,12 @@ typedef enum {
     TRANSFER_STATE_ERROR_DATA
 } transfer_state_t;
 
+typedef enum hal_i2c_state_t {
+    HAL_I2C_STATE_DISABLED,
+    HAL_I2C_STATE_ENABLED,
+    HAL_I2C_STATE_SUSPENDED
+} hal_i2c_state_t;
+
 typedef struct {
     nrfx_twim_t                 *master;
     nrfx_twis_t                 *slave;
@@ -95,7 +101,7 @@ typedef struct {
     uint8_t                     scl_pin;
     uint8_t                     sda_pin;
 
-    volatile bool               enabled;
+    volatile hal_i2c_state_t    state;
     volatile transfer_state_t   transfer_state;
     I2C_Mode                    mode;
     uint32_t                    speed;
@@ -117,7 +123,6 @@ typedef struct {
     void (*callback_on_receive)(int);
 
     HAL_I2C_Transmission_Config transfer_config;
-    bool                        suspended;
 } nrf5x_i2c_info_t;
 
 static void twis0_handler(nrfx_twis_evt_t const * p_event);
@@ -221,8 +226,8 @@ static void twim_handler(nrfx_twim_evt_t const * p_event, void * p_context) {
 }
 
 static int twi_uninit(HAL_I2C_Interface i2c) {
-    if (!m_i2c_map[i2c].enabled) {
-        return -1;
+    if (m_i2c_map[i2c].state == HAL_I2C_STATE_DISABLED) {
+        return SYSTEM_ERROR_NONE;
     }
 
     if (m_i2c_map[i2c].mode == I2C_MODE_MASTER) {
@@ -237,7 +242,7 @@ static int twi_uninit(HAL_I2C_Interface i2c) {
     HAL_Set_Pin_Function(m_i2c_map[i2c].scl_pin, PF_NONE);
     HAL_Set_Pin_Function(m_i2c_map[i2c].sda_pin, PF_NONE);
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 static int twi_init(HAL_I2C_Interface i2c) {
@@ -280,7 +285,7 @@ static int twi_init(HAL_I2C_Interface i2c) {
     HAL_Set_Pin_Function(m_i2c_map[i2c].scl_pin, PF_I2C);
     HAL_Set_Pin_Function(m_i2c_map[i2c].sda_pin, PF_I2C);
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 static bool HAL_I2C_Config_Is_Valid(const HAL_I2C_Config* config) {
@@ -328,7 +333,7 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config) {
     }
 
     // Initialize I2C state
-    m_i2c_map[i2c].enabled = false;
+    m_i2c_map[i2c].state = HAL_I2C_STATE_DISABLED;
     m_i2c_map[i2c].mode = I2C_MODE_MASTER;
     m_i2c_map[i2c].transfer_state = TRANSFER_STATE_IDLE;
     m_i2c_map[i2c].speed = CLOCK_SPEED_100KHZ;
@@ -396,9 +401,8 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
     m_i2c_map[i2c].mode = mode;
     m_i2c_map[i2c].address = address;
 
-    if (twi_init(i2c) == 0) {
-        m_i2c_map[i2c].enabled = true;
-        m_i2c_map[i2c].suspended = false;
+    if (twi_init(i2c) == SYSTEM_ERROR_NONE) {
+        m_i2c_map[i2c].state = HAL_I2C_STATE_ENABLED;
     }
 }
 
@@ -409,9 +413,8 @@ void HAL_I2C_End(HAL_I2C_Interface i2c,void* reserved) {
 
     I2cLock lk(i2c);
     if (HAL_I2C_Is_Enabled(i2c, nullptr)) {
-        if (twi_uninit(i2c) == 0) {
-            m_i2c_map[i2c].enabled = false;
-            m_i2c_map[i2c].suspended = false;
+        if (twi_uninit(i2c) == SYSTEM_ERROR_NONE) {
+            m_i2c_map[i2c].state = HAL_I2C_STATE_DISABLED;
         }
     }
 }
@@ -597,6 +600,7 @@ void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c, void* reserved) {
     if (i2c >= TOTAL_I2C) {
         return;
     }
+    I2cLock lk(i2c);
     m_i2c_map[i2c].rx_index_head = 0;
     m_i2c_map[i2c].rx_index_tail = 0;
     m_i2c_map[i2c].tx_index_head = 0;
@@ -604,7 +608,7 @@ void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c, void* reserved) {
 }
 
 bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c,void* reserved) {
-    return m_i2c_map[i2c].enabled;
+    return m_i2c_map[i2c].state == HAL_I2C_STATE_ENABLED;
 }
 
 void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int),void* reserved) {
@@ -695,16 +699,15 @@ int HAL_I2C_Sleep(HAL_I2C_Interface i2c, bool sleep, void* reserved) {
     I2cLock lk(i2c);
     if (sleep) {
         // Suspend I2C
-        CHECK_TRUE(m_i2c_map[i2c].enabled, SYSTEM_ERROR_NONE);
-        CHECK_FALSE(m_i2c_map[i2c].suspended, SYSTEM_ERROR_NONE);
         HAL_I2C_Flush_Data(i2c, nullptr);
+        CHECK_TRUE(m_i2c_map[i2c].state == HAL_I2C_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
         HAL_I2C_End(i2c, nullptr);
-        m_i2c_map[i2c].suspended = true;
+        m_i2c_map[i2c].state = HAL_I2C_STATE_SUSPENDED;
     } else {
         // Restore I2C
-        CHECK_TRUE(m_i2c_map[i2c].suspended, SYSTEM_ERROR_NONE);
+        CHECK_TRUE(m_i2c_map[i2c].state == HAL_I2C_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
         HAL_I2C_Begin(i2c, m_i2c_map[i2c].mode, m_i2c_map[i2c].address, nullptr);
-        m_i2c_map[i2c].suspended = false;
+        m_i2c_map[i2c].state = HAL_I2C_STATE_ENABLED;
     }
 
     return SYSTEM_ERROR_NONE;

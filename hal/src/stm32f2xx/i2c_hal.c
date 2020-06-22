@@ -99,6 +99,12 @@ typedef enum I2C_Transaction_Ending_Condition {
     I2C_ENDING_START
 } I2C_Transaction_Ending_Condition;
 
+typedef enum hal_i2c_state_t {
+    HAL_I2C_STATE_DISABLED,
+    HAL_I2C_STATE_ENABLED,
+    HAL_I2C_STATE_SUSPENDED
+} hal_i2c_state_t;
+
 /* Private variables ---------------------------------------------------------*/
 typedef struct STM32_I2C_Info {
     I2C_TypeDef* I2C_Peripheral;
@@ -117,7 +123,7 @@ typedef struct STM32_I2C_Info {
     I2C_InitTypeDef I2C_InitStructure;
 
     uint32_t I2C_ClockSpeed;
-    volatile bool I2C_Enabled;
+    volatile hal_i2c_state_t state;
 
     uint8_t* rxBuffer;
     size_t rxBufferSize;
@@ -143,7 +149,6 @@ typedef struct STM32_I2C_Info {
     os_mutex_recursive_t mutex;
 
     HAL_I2C_Transmission_Config transferConfig;
-    bool suspended;
 } STM32_I2C_Info;
 
 /*
@@ -284,8 +289,7 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config)
 
     // Initialize I2C state
     i2cMap[i2c]->I2C_ClockSpeed = CLOCK_SPEED_100KHZ;
-    i2cMap[i2c]->I2C_Enabled = false;
-    i2cMap[i2c]->suspended = false;
+    i2cMap[i2c]->state = HAL_I2C_STATE_DISABLED;
 
     i2cMap[i2c]->rxIndexHead = 0;
     i2cMap[i2c]->rxIndexTail = 0;
@@ -426,20 +430,17 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
     /* Apply I2C configuration after enabling it */
     I2C_Init(i2cMap[i2c]->I2C_Peripheral, &i2cMap[i2c]->I2C_InitStructure);
 
-    i2cMap[i2c]->I2C_Enabled = true;
-    i2cMap[i2c]->suspended = false;
+    i2cMap[i2c]->state = HAL_I2C_STATE_ENABLED;
     HAL_I2C_Release(i2c, NULL);
 }
 
 void HAL_I2C_End(HAL_I2C_Interface i2c, void* reserved)
 {
     HAL_I2C_Acquire(i2c, NULL);
-    if(i2cMap[i2c]->I2C_Enabled != false)
+    if(i2cMap[i2c]->state != HAL_I2C_STATE_DISABLED)
     {
         I2C_Cmd(i2cMap[i2c]->I2C_Peripheral, DISABLE);
-
-        i2cMap[i2c]->I2C_Enabled = false;
-        i2cMap[i2c]->suspended = false;
+        i2cMap[i2c]->state = HAL_I2C_STATE_DISABLED;
     }
     HAL_I2C_Release(i2c, NULL);
 }
@@ -911,7 +912,7 @@ void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c, void* reserved)
 
 bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c, void* reserved)
 {
-    return i2cMap[i2c]->I2C_Enabled;
+    return i2cMap[i2c]->state == HAL_I2C_STATE_ENABLED;
 }
 
 void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int), void* reserved)
@@ -1217,25 +1218,21 @@ int HAL_I2C_Sleep(HAL_I2C_Interface i2c, bool sleep, void* reserved)
     HAL_I2C_Acquire(i2c, NULL);
     if (sleep) {
         // Suspend I2C
-        if (!i2cMap[i2c]->I2C_Enabled) {
+        if (i2cMap[i2c]->state != HAL_I2C_STATE_ENABLED) {
             HAL_I2C_Release(i2c, NULL);
-            return SYSTEM_ERROR_NONE;
-        }
-        if (i2cMap[i2c]->suspended) {
-            HAL_I2C_Release(i2c, NULL);
-            return SYSTEM_ERROR_NONE;
+            return SYSTEM_ERROR_INVALID_STATE;
         }
         HAL_I2C_Flush_Data(i2c, NULL);
         HAL_I2C_End(i2c, NULL);
-        i2cMap[i2c]->suspended = true;
+        i2cMap[i2c]->state = HAL_I2C_STATE_SUSPENDED;
     } else {
         // Restore I2C
-        if (!i2cMap[i2c]->suspended) {
+        if (i2cMap[i2c]->state != HAL_I2C_STATE_SUSPENDED) {
             HAL_I2C_Release(i2c, NULL);
-            return SYSTEM_ERROR_NONE;
+            return SYSTEM_ERROR_INVALID_STATE;
         }
         HAL_I2C_Begin(i2c, i2cMap[i2c]->mode, i2cMap[i2c]->I2C_InitStructure.I2C_OwnAddress1 >> 1, NULL);
-        i2cMap[i2c]->suspended = false;
+        i2cMap[i2c]->state = HAL_I2C_STATE_ENABLED;
     }
 
     HAL_I2C_Release(i2c, NULL);
