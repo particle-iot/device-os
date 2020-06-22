@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,6 +51,7 @@ int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, ui
 int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, const uint8_t* data_buf, size_t data_size);
 int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, size_t size);
 int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_command_t cmd, const uint8_t* data, uint8_t* result, size_t size);
+int hal_exflash_sleep(bool sleep, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"

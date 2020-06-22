@@ -33,6 +33,7 @@
 #include "nrf_nvic.h"
 #include "concurrent_hal.h"
 #include "gpio_hal.h"
+#include "system_error.h"
 
 enum qspi_cmds_t {
     QSPI_STD_CMD_WRSR     = 0x01,
@@ -48,6 +49,9 @@ enum qspi_cmds_t {
 };
 
 static const size_t MX25_OTP_SECTOR_SIZE = 4096 / 8; /* 4Kb or 512B */
+
+static bool qspi_initialized = false;;
+static bool qspi_suspended = false;
 
 // Mitigations for nRF52840 anomaly 215
 // [215] QSPI: Reading QSPI registers after XIP might halt CPU
@@ -252,6 +256,8 @@ int hal_exflash_init(void)
         }
     }
     LOG_DEBUG(TRACE, "QSPI initialized.");
+    qspi_initialized = true;
+    qspi_suspended = false;
 
     // Wake up external flash from deep power down mode
     ret = hal_exflash_special_command(HAL_EXFLASH_COMMAND_NONE, HAL_EXFLASH_COMMAND_WAKEUP, NULL, NULL, 0);
@@ -282,6 +288,10 @@ int hal_exflash_uninit(void)
     nrf_gpio_cfg_input(QSPI_FLASH_IO1_PIN, NRF_GPIO_PIN_PULLDOWN);
     // The nrfx_qspi driver doesn't clear pending IRQ
     sd_nvic_ClearPendingIRQ(QSPI_IRQn);
+
+    qspi_initialized = false;
+    qspi_suspended = false;
+
     hal_exflash_unlock();
 
     return 0;
@@ -573,4 +583,33 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
 
     hal_exflash_unlock();
     return ret;
+}
+
+int hal_exflash_sleep(bool sleep, void* reserved) {
+    hal_exflash_lock();
+    if (sleep) {
+        // Suspend I2C
+        if (!qspi_initialized) {
+            hal_exflash_unlock();
+            return SYSTEM_ERROR_NONE;
+        }
+        if (qspi_suspended) {
+            hal_exflash_unlock();
+            return SYSTEM_ERROR_NONE;
+        }
+        // Put external flash into sleep and disable QSPI peripheral
+        hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SLEEP, NULL, NULL, 0);
+        hal_exflash_uninit();
+        qspi_suspended = true;
+    } else {
+        // Restore I2C
+        if (!qspi_suspended) {
+            hal_exflash_unlock();
+            return SYSTEM_ERROR_NONE;
+        }
+        hal_exflash_init();
+        qspi_suspended = false;
+    }
+    hal_exflash_unlock();
+    return SYSTEM_ERROR_NONE;
 }
