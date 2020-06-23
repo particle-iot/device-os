@@ -719,7 +719,7 @@ static int32_t x509_parse_certificate_data_impl(x509_cert* crt, const unsigned c
             }
             ret = x509_crt_parse_der_core(cc, p + total_len, len - total_len);
             if (ret == 0) {
-                total_len += c->raw.len;
+                total_len += cc->raw.len;
             } else {
                 if (prev) {
                     prev->next = NULL;
