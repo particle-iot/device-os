@@ -29,6 +29,7 @@
 #include "intrusive_list.h"
 #include "scope_guard.h"
 #include "rtc_hal.h"
+#include <sys/reent.h>
 
 using namespace particle::fs;
 
@@ -377,9 +378,33 @@ int _kill(pid_t pid, int sig) {
 }
 
 int _link(const char* oldpath, const char* newpath) {
+#ifdef HAVE_RENAME
     // Not implemented, LittleFS doesn't support symlinks
     errno = ENOSYS;
     return -1;
+#else
+    // Nano versions of newlib do not support _rename, instead it's
+    // implemented as _link + _unlink.
+
+    // As a workaround we'll temporarily store the oldpath into unused
+    // entry in the reentrant struct and will ignore error in _unlink
+    // if it maches.
+    if (_rename(oldpath, newpath)) {
+        return -1;
+    }
+
+    auto r = _REENT;
+
+    if (r) {
+        if (r->_signal_buf) {
+            free(r->_signal_buf);
+            r->_signal_buf = nullptr;
+        }
+        r->_signal_buf = strdup(oldpath);
+    }
+
+    return 0;
+#endif // HAVE_RENAME
 }
 
 int _fsync(int fd) {
@@ -457,8 +482,18 @@ int _unlink(const char* pathname) {
     auto lfs = filesystem_get_instance(nullptr);
     FsLock lk(lfs);
 
-    CHECK_LFS_ERRNO(lfs_remove(&lfs->instance, pathname));
-    return 0;
+    int ret = lfs_remove(&lfs->instance, pathname);
+    // See explanation in _link()
+    if (ret == LFS_ERR_NOENT) {
+        auto r = _REENT;
+        if (r && r->_signal_buf && !strcmp(pathname, r->_signal_buf)) {
+            free(r->_signal_buf);
+            r->_signal_buf = nullptr;
+            errno = 0;
+            return 0;
+        }
+    }
+    return CHECK_LFS_ERRNO(ret);
 }
 
 pid_t _wait(int* status) {
