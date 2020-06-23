@@ -1,641 +1,412 @@
-/*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation, either
- * version 3 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, see <http://www.gnu.org/licenses/>.
- */
 
-#include "Particle.h"
+#include "application.h"
 #include "unit-test/unit-test.h"
+
+#define SPI_BUF_SIZE 256
+
+static volatile uint8_t DMA_Completed_Flag = 0;
+static uint8_t* tempBuf = nullptr;
+static uint8_t* tempBuf1 = nullptr;
+
+using particle::__SPISettings;
 
 static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
 {
-    memset(info, 0, sizeof(hal_spi_info_t));
-    info->version = HAL_SPI_INFO_VERSION;
-    HAL_SPI_Info(spi, info, nullptr);
+  memset(info, 0, sizeof(hal_spi_info_t));
+  info->version = HAL_SPI_INFO_VERSION_1;
+  HAL_SPI_Info(spi, info, nullptr);
 }
 
-test(SPI_01_SPI_Begin_Without_Argument)
+static __SPISettings spiSettingsFromSpiInfo(hal_spi_info_t* info)
 {
-    // Just in case
-    SPI.end();
+  if (!info->enabled || info->default_settings)
+    return __SPISettings();
+  return __SPISettings(info->clock, info->bit_order, info->data_mode);
+}
 
-    hal_spi_info_t info = {};
+static bool spiSettingsApplyCheck(SPIClass& spi, const __SPISettings& settings, HAL_SPI_Interface interface = HAL_SPI_INTERFACE1)
+{
+    hal_spi_info_t info;
+    spi.beginTransaction(settings);
+    querySpiInfo(interface, &info);
+    auto current = spiSettingsFromSpiInfo(&info);
+    spi.endTransaction();
+    // Serial.print(settings);
+    // Serial.print(" - ");
+    // Serial.println(current);
+    unsigned clock;
+    uint8_t divider;
 
+    SPI.computeClockDivider(info.system_clock, settings.getClock(), divider, clock);
+    return (current == settings) || (current <= settings && clock == current.getClock());
+}
+
+static void SPI_DMA_Completed_Callback()
+{
+    DMA_Completed_Flag = 1;
+}
+
+void assertClockDivider(unsigned reference, unsigned desired, uint8_t expected_divider, unsigned expected_clock)
+{
+    unsigned clock;
+    uint8_t divider;
+
+    SPI.computeClockDivider(reference, desired, divider, clock);
+    assertEqual(expected_divider, divider);
+    assertEqual(expected_clock, clock);
+}
+
+test(SPI_00_Allocate_Buffers)
+{
+    tempBuf = (uint8_t*)malloc(SPI_BUF_SIZE);
+    tempBuf1 = (uint8_t*)malloc(SPI_BUF_SIZE);
+
+    assertTrue(tempBuf != nullptr && tempBuf1 != nullptr);
+}
+
+test(SPI_01_computeClockSpeed)
+{
+    assertClockDivider(60*MHZ, 120*MHZ, SPI_CLOCK_DIV2, 30*MHZ);
+    assertClockDivider(60*MHZ, 30*MHZ, SPI_CLOCK_DIV2, 30*MHZ);
+    assertClockDivider(60*MHZ, 20*MHZ, SPI_CLOCK_DIV4, 15*MHZ);
+    assertClockDivider(60*MHZ, 8*MHZ, SPI_CLOCK_DIV8, 7500*KHZ);
+    assertClockDivider(60*MHZ, 7*MHZ, SPI_CLOCK_DIV16, 3750*KHZ);
+    assertClockDivider(60*MHZ, 300*KHZ, SPI_CLOCK_DIV256, 234375*HZ);
+    assertClockDivider(60*MHZ, 1*KHZ, SPI_CLOCK_DIV256, 234375*HZ);
+}
+
+test(SPI_02_SPI_DMA_Transfers_Work_Correctly)
+{
+    assertTrue(tempBuf != nullptr && tempBuf1 != nullptr);
     SPI.begin();
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
-    assertEqual(info.ss_pin, D8);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    assertEqual(info.ss_pin, D7);
-#else // Photon, P1 and Electron
-    assertEqual(info.ss_pin, A2);
-#endif
+    SPI.beginTransaction();
+    uint32_t m;
+
+    DMA_Completed_Flag = 0;
+    SPI.transfer(tempBuf, 0, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
+    m = millis();
+    while(!DMA_Completed_Flag) {
+        assertLessOrEqual((millis() - m), 2000);
+    }
+
+    memset(tempBuf, 0xAA, SPI_BUF_SIZE);
+    DMA_Completed_Flag = 0;
+    SPI.transfer(0, tempBuf, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
+    m = millis();
+    while(!DMA_Completed_Flag) {
+        assertLessOrEqual((millis() - m), 2000);
+    }
+    for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
+        assertNotEqual(*v, 0xAA);
+    }
+
+    memset(tempBuf, 0xAA, SPI_BUF_SIZE);
+    DMA_Completed_Flag = 0;
+    SPI.transfer(tempBuf1, tempBuf, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
+    m = millis();
+    while(!DMA_Completed_Flag) {
+        assertLessOrEqual((millis() - m), 2000);
+    }
+
+    for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
+        assertNotEqual(*v, 0xAA);
+    }
+    SPI.endTransaction();
     SPI.end();
 }
-
-test(SPI_02_SPI_Begin_With_Ss_Pin)
-{
-    // Just in case
-    SPI.end();
-
-    hal_spi_info_t info = {};
-
-    SPI.begin(SPI_DEFAULT_SS);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
-    assertEqual(info.ss_pin, D8);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    assertEqual(info.ss_pin, D7);
-#else // Photon, P1 and Electron
-    assertEqual(info.ss_pin, A2);
-#endif
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI.begin(D0);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    assertEqual(info.ss_pin, D0);
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI.begin(PIN_INVALID);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    assertEqual(info.ss_pin, PIN_INVALID);
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI.begin(123);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    assertEqual(info.ss_pin, 123);
-    SPI.end();
-}
-
-test(SPI_03_SPI_Begin_With_Mode)
-{
-    // Just in case
-    SPI.end();
-
-    hal_spi_info_t info = {};
-
-    SPI.begin(SPI_MODE_MASTER);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
-    assertEqual(info.ss_pin,D8);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    assertEqual(info.ss_pin, D7);
-#else // Photon, P1 and Electron
-    assertEqual(info.ss_pin, A2);
-#endif
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    // HAL_SPI_INTERFACE1 does not support slave mode on Gen3 device
-#if HAL_PLATFORM_STM32F2XX
-    SPI.begin(SPI_MODE_SLAVE);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_SLAVE);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
-    assertEqual(info.ss_pin, D8);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    assertEqual(info.ss_pin, D7);
-#else // Photon, P1 and Electron
-    assertEqual(info.ss_pin, A2);
-#endif
-    SPI.end();
-#endif // HAL_PLATFORM_STM32F2XX
-}
-
-test(SPI_04_SPI_Begin_With_Master_Ss_Pin)
-{
-    // Just in case
-    SPI.end();
-
-    hal_spi_info_t info = {};
-
-    SPI.begin(SPI_MODE_MASTER, SPI_DEFAULT_SS);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
-    assertEqual(info.ss_pin, D8);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    assertEqual(info.ss_pin, D7);
-#else // Photon, P1 and Electron
-    assertEqual(info.ss_pin, A2);
-#endif
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI.begin(SPI_MODE_MASTER, D0);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    assertEqual(info.ss_pin, D0);
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI.begin(SPI_MODE_MASTER, PIN_INVALID);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    assertEqual(info.ss_pin, PIN_INVALID);
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI.begin(SPI_MODE_MASTER, 123);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    assertEqual(info.ss_pin, 123);
-    SPI.end();
-}
-
-// HAL_SPI_INTERFACE1 does not support slave mode on Gen3 device
-#if HAL_PLATFORM_STM32F2XX
-test(SPI_05_SPI_Begin_With_Slave_Ss_Pin)
-{
-    // Just in case
-    SPI.end();
-
-    hal_spi_info_t info = {};
-
-    SPI.begin(SPI_MODE_SLAVE, SPI_DEFAULT_SS);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_SLAVE);
-    assertEqual(info.ss_pin, A2);
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI.begin(SPI_MODE_SLAVE, D0);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_SLAVE);
-    assertEqual(info.ss_pin, D0);
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI.begin(SPI_MODE_SLAVE, PIN_INVALID);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertFalse(info.enabled);
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI.begin(SPI_MODE_SLAVE, 123);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertFalse(info.enabled);
-    SPI.end();
-}
-#endif // HAL_PLATFORM_STM32F2XX
 
 #if Wiring_SPI1
-test(SPI_06_SPI1_Begin_Without_Argument)
+test(SPI_03_SPI1_DMA_Transfers_Work_Correctly)
+{
+    assertTrue(tempBuf != nullptr && tempBuf1 != nullptr);
+    SPI1.begin();
+    SPI1.beginTransaction();
+    uint32_t m;
+
+    DMA_Completed_Flag = 0;
+    SPI1.transfer(tempBuf, 0, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
+    m = millis();
+    while(!DMA_Completed_Flag) {
+        assertLessOrEqual((millis() - m), 2000);
+    }
+
+    memset(tempBuf, 0xAA, SPI_BUF_SIZE);
+    DMA_Completed_Flag = 0;
+    SPI1.transfer(0, tempBuf, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
+    m = millis();
+    while(!DMA_Completed_Flag) {
+        assertLessOrEqual((millis() - m), 2000);
+    }
+    for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
+        assertNotEqual(*v, 0xAA);
+    }
+
+    memset(tempBuf, 0xAA, SPI_BUF_SIZE);
+    DMA_Completed_Flag = 0;
+    SPI1.transfer(tempBuf1, tempBuf, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
+    m = millis();
+    while(!DMA_Completed_Flag) {
+        assertLessOrEqual((millis() - m), 2000);
+    }
+
+    for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
+        assertNotEqual(*v, 0xAA);
+    }
+
+    SPI1.endTransaction();
+    SPI1.end();
+}
+#endif
+
+#if Wiring_SPI2
+test(SPI_04_SPI2_DMA_Transfers_Work_Correctly)
+{
+    assertTrue(tempBuf != nullptr && tempBuf1 != nullptr);
+    SPI2.begin();
+    SPI2.beginTransaction();
+    uint32_t m;
+
+    DMA_Completed_Flag = 0;
+    SPI2.transfer(tempBuf, 0, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
+    m = millis();
+    while(!DMA_Completed_Flag) {
+        assertLessOrEqual((millis() - m), 2000);
+    }
+
+    memset(tempBuf, 0xAA, SPI_BUF_SIZE);
+    DMA_Completed_Flag = 0;
+    SPI2.transfer(0, tempBuf, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
+    m = millis();
+    while(!DMA_Completed_Flag) {
+        assertLessOrEqual((millis() - m), 2000);
+    }
+    for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
+        assertNotEqual(*v, 0xAA);
+    }
+
+    memset(tempBuf, 0xAA, SPI_BUF_SIZE);
+    DMA_Completed_Flag = 0;
+    SPI2.transfer(tempBuf1, tempBuf, SPI_BUF_SIZE, SPI_DMA_Completed_Callback);
+    m = millis();
+    while(!DMA_Completed_Flag) {
+        assertLessOrEqual((millis() - m), 2000);
+    }
+
+    for (uint8_t* v = tempBuf; v < tempBuf + SPI_BUF_SIZE; v++) {
+        assertNotEqual(*v, 0xAA);
+    }
+
+    SPI2.endTransaction();
+    SPI2.end();
+}
+#endif
+
+#if PLATFORM_THREADING
+test(SPI_05_SPI_Can_Be_Locked)
+{
+    SPI.begin();
+    assertTrue(SPI.trylock());
+    assertTrue(SPI.trylock());
+    SPI.unlock();
+    SPI.unlock();
+    assertTrue(SPI.trylock());
+    SPI.unlock();
+    SPI.end();
+}
+
+#if Wiring_SPI2
+test(SPI_06_SPI2_Can_Be_Locked)
+{
+    SPI2.begin();
+    assertTrue(SPI2.trylock());
+    assertTrue(SPI2.trylock());
+    SPI2.unlock();
+    SPI2.unlock();
+    assertTrue(SPI2.trylock());
+    SPI2.unlock();
+    SPI2.end();
+}
+#endif // Wiring_SPI2
+#endif // PLATFORM_THREADING
+
+test(SPI_07_SPI_Settings_Are_Applied_In_Begin_Transaction)
+{
+    // Just in case
+    SPI.end();
+
+    SPI.begin();
+
+    // Get current SPISettings
+    hal_spi_info_t info;
+    __SPISettings current, settings;
+    querySpiInfo(HAL_SPI_INTERFACE1, &info);
+    settings = spiSettingsFromSpiInfo(&info);
+
+    // Configure SPI with default settings
+    SPI.beginTransaction(__SPISettings());
+    querySpiInfo(HAL_SPI_INTERFACE1, &info);
+    current = spiSettingsFromSpiInfo(&info);
+    assertEqual(current, settings);
+    SPI.endTransaction();
+
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE0)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE1)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE2)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE3)));
+
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE0)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE1)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE2)));
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE3)));
+
+    assertTrue(spiSettingsApplyCheck(SPI, __SPISettings()));
+
+    SPI.end();
+}
+
+#if Wiring_SPI1
+test(SPI_08_SPI1_Settings_Are_Applied_In_Begin_Transaction)
 {
     // Just in case
     SPI1.end();
-
-    hal_spi_info_t info = {};
 
     SPI1.begin();
+
+    // Get current SPISettings
+    hal_spi_info_t info;
+    __SPISettings current, settings;
+
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    // D5 is the default SS pin for all platforms
-    assertEqual(info.ss_pin, D5);
-    SPI1.end();
-}
+    settings = spiSettingsFromSpiInfo(&info);
 
-test(SPI_07_SPI1_Begin_With_Ss_Pin)
-{
-    // Just in case
-    SPI1.end();
-
-    hal_spi_info_t info = {};
-
-    SPI1.begin(SPI_DEFAULT_SS);
+    // Configure SPI with default settings
+    SPI1.beginTransaction(__SPISettings());
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    // D5 is the default SS pin for all platforms
-    assertEqual(info.ss_pin, D5);
-    SPI1.end();
+    current = spiSettingsFromSpiInfo(&info);
+    assertEqual(current, settings);
+    SPI1.endTransaction();
 
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE2));
 
-    SPI1.begin(D0);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    assertEqual(info.ss_pin, D0);
-    SPI1.end();
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE2));
 
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
+    assertTrue(spiSettingsApplyCheck(SPI1, __SPISettings(), HAL_SPI_INTERFACE2));
 
-    SPI1.begin(PIN_INVALID);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    assertEqual(info.ss_pin, PIN_INVALID);
-    SPI1.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI1.begin(123);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    assertEqual(info.ss_pin, 123);
-    SPI1.end();
-}
-
-test(SPI_08_SPI1_Begin_With_Mode)
-{
-    // Just in case
-    SPI1.end();
-
-    hal_spi_info_t info = {};
-
-    SPI1.begin(SPI_MODE_MASTER);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    // D5 is the default SS pin for all platforms
-    assertEqual(info.ss_pin, D5);
-    SPI1.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI1.begin(SPI_MODE_SLAVE);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_SLAVE);
-    // D5 is the default SS pin for all platforms
-    assertEqual(info.ss_pin, D5);
-    SPI1.end();
-}
-
-test(SPI_09_SPI1_Begin_With_Master_Ss_Pin)
-{
-    // Just in case
-    SPI1.end();
-
-    hal_spi_info_t info = {};
-
-    SPI1.begin(SPI_MODE_MASTER, SPI_DEFAULT_SS);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    // D5 is the default SS pin for all platforms
-    assertEqual(info.ss_pin, D5);
-    SPI1.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI1.begin(SPI_MODE_MASTER, D0);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    assertEqual(info.ss_pin, D0);
-    SPI1.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI1.begin(SPI_MODE_MASTER, PIN_INVALID);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    assertEqual(info.ss_pin, PIN_INVALID);
-    SPI1.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI1.begin(SPI_MODE_MASTER, 123);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_MASTER);
-    assertEqual(info.ss_pin, 123);
-    SPI1.end();
-}
-
-test(SPI_10_SPI1_Begin_With_Slave_Ss_Pin)
-{
-    // Just in case
-    SPI1.end();
-
-    hal_spi_info_t info = {};
-
-    SPI1.begin(SPI_MODE_SLAVE, SPI_DEFAULT_SS);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_SLAVE);
-    // D5 is the default SS pin for all platforms
-    assertEqual(info.ss_pin, D5);
-    SPI1.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI1.begin(SPI_MODE_SLAVE, D0);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_SLAVE);
-    assertEqual(info.ss_pin, D0);
-    SPI1.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI1.begin(SPI_MODE_SLAVE, PIN_INVALID);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertFalse(info.enabled);
-    SPI1.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI1.begin(SPI_MODE_SLAVE, 123);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertFalse(info.enabled);
     SPI1.end();
 }
 #endif // Wiring_SPI1
 
-namespace {
-
-template <unsigned int clockSpeed, unsigned int transferSize, unsigned int overheadNs, unsigned int iterations>
-constexpr system_tick_t calculateExpectedTime() {
-    constexpr uint64_t microsInSecond = 1000000ULL;
-    constexpr uint64_t nanosInSecond = 1000000000ULL;
-    constexpr uint64_t spiTransferTime = (nanosInSecond * transferSize * 8 + clockSpeed - 1) / clockSpeed;
-    constexpr uint64_t expectedTransferTime = spiTransferTime + overheadNs;
-
-    return (expectedTransferTime * iterations) / microsInSecond;
-}
-
-// Common settings for all performance tests
-constexpr unsigned int SPI_ITERATIONS = 10000;
-
-#if HAL_PLATFORM_NRF52840
-constexpr unsigned int SPI_CLOCK_SPEED = 8000000; // 8MHz
-constexpr unsigned int SPI_NODMA_OVERHEAD = 12000; // 12us ~= 750 clock cycles @ 64MHz
-constexpr unsigned int SPI_DMA_OVERHEAD = SPI_NODMA_OVERHEAD; // Gen 3 always uses DMA underneath
-#elif HAL_PLATFORM_STM32F2XX
-constexpr unsigned int SPI_CLOCK_SPEED = 7500000; // 7.5MHz
-constexpr unsigned int SPI_NODMA_OVERHEAD = 1600; // 1.6us ~= 190 clock cycles @ 120MHz
-constexpr unsigned int SPI_DMA_OVERHEAD = 11500; // 11.5us ~= 1380 clock cycles @ 120MHz
-#endif // HAL_PLATFORM_NRF52840
-
-} // anonymous
-
-test(SPI_11_SPI_Clock_Speed)
+#if Wiring_SPI2
+test(SPI_09_SPI2_Settings_Are_Applied_In_Begin_Transaction)
 {
-    SPI.begin();
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
-    hal_spi_info_t info = {};
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
+    // Just in case
+    SPI2.end();
+
+    SPI2.begin();
+
+    // Get current SPISettings
+    hal_spi_info_t info;
+    __SPISettings current, settings;
+
+    querySpiInfo(HAL_SPI_INTERFACE3, &info);
+    settings = spiSettingsFromSpiInfo(&info);
+
+    // Configure SPI with default settings
+    SPI2.beginTransaction(__SPISettings());
+    querySpiInfo(HAL_SPI_INTERFACE3, &info);
+    current = spiSettingsFromSpiInfo(&info);
+    assertEqual(current, settings);
+    SPI2.endTransaction();
+
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE3));
+
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE3));
+
+    assertTrue(spiSettingsApplyCheck(SPI2, __SPISettings(), HAL_SPI_INTERFACE3));
+
+    SPI2.end();
+}
+#endif // Wiring_SPI2
+
+#if PLATFORM_THREADING
+test(SPI_10_SPI_Begin_Transaction_Locks)
+{
+    // Just in case
     SPI.end();
 
-    assertEqual(info.clock, SPI_CLOCK_SPEED);
-}
-
-test(SPI_12_SPI_Transfer_1_Bytes_Per_Transmission_No_Locking)
-{
-    SINGLE_THREADED_SECTION();
-    constexpr unsigned int transferSize = 1;
-    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
-
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
-    system_tick_t start = DWT->CYCCNT;
-    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
-    {
-        SPI.transfer(0x55);
-    }
-    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
-    SPI.end();
-
-    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
-}
-
-test(SPI_13_SPI_Transfer_1_Bytes_Per_Transmission_Locking)
-{
-    SINGLE_THREADED_SECTION();
-    constexpr unsigned int transferSize = 1;
-    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
-
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
-    SPI.begin();
-    SPI.beginTransaction();
-    system_tick_t start = DWT->CYCCNT;
-    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
-    {
-        SPI.transfer(0x55);
-    }
+    assertTrue(SPI.trylock());
+    SPI.unlock();
+    SPI.beginTransaction(__SPISettings());
+    assertTrue(SPI.trylock());
+    SPI.unlock();
     SPI.endTransaction();
-    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
+    assertTrue(SPI.trylock());
+    SPI.unlock();
     SPI.end();
-
-    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
 }
 
-test(SPI_14_SPI_Transfer_2_Bytes_Per_Transmission_Locking)
+#if Wiring_SPI1
+test(SPI_11_SPI1_Begin_Transaction_Locks)
 {
-    SINGLE_THREADED_SECTION();
-    constexpr unsigned int transferSize = 2;
-    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
+    // Just in case
+    SPI1.end();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
-    SPI.begin();
-    SPI.beginTransaction();
-    system_tick_t start = DWT->CYCCNT;
-    for(unsigned int i = 0; i < SPI_ITERATIONS; i+=2)
-    {
-        SPI.transfer(0x55);
-        SPI.transfer(0x55);
-    }
-    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
-    SPI.endTransaction();
-    SPI.end();
-
-    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
+    SPI1.begin();
+    assertTrue(SPI1.trylock());
+    SPI1.unlock();
+    SPI1.beginTransaction(__SPISettings());
+    assertTrue(SPI1.trylock());
+    SPI1.unlock();
+    SPI1.endTransaction();
+    assertTrue(SPI1.trylock());
+    SPI1.unlock();
+    SPI1.end();
 }
+#endif // Wiring_SPI1
 
-test(SPI_15_SPI_Transfer_1_Bytes_Per_DMA_Transmission_No_Locking)
+#if Wiring_SPI2
+test(SPI_12_SPI2_Begin_Transaction_Locks)
 {
-    SINGLE_THREADED_SECTION();
-    constexpr unsigned int transferSize = 1;
-    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
+    // Just in case
+    SPI2.end();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
-    SPI.begin();
-    uint8_t temp = 0x55;
-    system_tick_t start = DWT->CYCCNT;
-    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
-    {
-        SPI.transfer(&temp, nullptr, transferSize, nullptr);
-    }
-    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
-    SPI.end();
-
-    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
+    SPI2.begin();
+    assertTrue(SPI2.trylock());
+    SPI2.unlock();
+    SPI2.beginTransaction(__SPISettings());
+    assertTrue(SPI2.trylock());
+    SPI2.unlock();
+    SPI2.endTransaction();
+    assertTrue(SPI2.trylock());
+    SPI2.unlock();
+    SPI2.end();
 }
+#endif // Wiring_SPI1
 
-test(SPI_16_SPI_Transfer_1_Bytes_Per_DMA_Transmission_Locking)
+test(SPI_13_Free_Buffers)
 {
-    SINGLE_THREADED_SECTION();
-    constexpr unsigned int transferSize = 1;
-    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
-
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
-    SPI.begin();
-    SPI.beginTransaction();
-    uint8_t temp = 0x55;
-    system_tick_t start = DWT->CYCCNT;
-    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
-    {
-        SPI.transfer(&temp, nullptr, transferSize, nullptr);
+    if (tempBuf != nullptr) {
+        free(tempBuf);
     }
-    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
-    SPI.endTransaction();
-    SPI.end();
 
-    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
+    if (tempBuf1 != nullptr) {
+        free(tempBuf1);
+    }
+
+    tempBuf = tempBuf1 = nullptr;
 }
 
-test(SPI_17_SPI_Transfer_2_Bytes_Per_DMA_Transmission_Locking)
-{
-    SINGLE_THREADED_SECTION();
-    constexpr unsigned int transferSize = 2;
-    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
-
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
-    SPI.begin();
-    SPI.beginTransaction();
-    uint8_t temp[transferSize] = {};
-    system_tick_t start = DWT->CYCCNT;
-    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
-    {
-        SPI.transfer(temp, nullptr, transferSize, nullptr);
-    }
-    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
-    SPI.endTransaction();
-    SPI.end();
-
-    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
-}
-
-test(SPI_18_SPI_Transfer_16_Bytes_Per_DMA_Transmission_Locking)
-{
-    SINGLE_THREADED_SECTION();
-    constexpr unsigned int transferSize = 16;
-    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
-
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
-    SPI.begin();
-    SPI.beginTransaction();
-    uint8_t temp[transferSize] = {};
-    system_tick_t start = DWT->CYCCNT;
-    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
-    {
-        SPI.transfer(temp, nullptr, transferSize, nullptr);
-    }
-    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
-    SPI.endTransaction();
-    SPI.end();
-
-    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
-}
-
-test(SPI_19_SPI_Transfer_128_Bytes_Per_DMA_Transmission_Locking)
-{
-    SINGLE_THREADED_SECTION();
-    constexpr unsigned int transferSize = 128;
-    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
-
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
-    SPI.begin();
-    SPI.beginTransaction();
-    uint8_t temp[transferSize] = {};
-    system_tick_t start = DWT->CYCCNT;
-    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
-    {
-        SPI.transfer(temp, nullptr, transferSize, nullptr);
-    }
-    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
-    SPI.endTransaction();
-    SPI.end();
-
-    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
-}
-
-test(SPI_20_SPI_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
-{
-    SINGLE_THREADED_SECTION();
-    constexpr unsigned int transferSize = 1024;
-    constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
-
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
-    SPI.begin();
-    SPI.beginTransaction();
-    uint8_t temp[transferSize] = {};
-    system_tick_t start = DWT->CYCCNT;
-    for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
-    {
-        SPI.transfer(temp, nullptr, transferSize, nullptr);
-    }
-    system_tick_t transferTime = (DWT->CYCCNT - start) / SYSTEM_US_TICKS / 1000;
-    SPI.endTransaction();
-    SPI.end();
-
-    // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
-}
+#endif // PLATFORM_THREADING

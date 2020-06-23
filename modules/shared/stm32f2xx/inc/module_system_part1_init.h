@@ -24,6 +24,10 @@
 #ifndef MODULE_SYSTEM_PART1_INIT_H
 #define	MODULE_SYSTEM_PART1_INIT_H
 
+#include <sys/reent.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -40,6 +44,8 @@ void* module_system_part1_pre_init();
  * perform any final initialization of the module, such as calling constructors on static instances.
  */
 void module_system_part1_init();
+
+void module_system_part1_newlib_impure_set(struct _reent* r, size_t size, uint32_t version, void* ctx);
 
 #ifdef __cplusplus
 }

@@ -27,6 +27,9 @@
 #ifdef DYNALIB_EXPORT
 #include <errno.h>
 #include <assert.h>
+#include <sys/reent.h>
+#include <stddef.h>
+#include "newlib_impure.h"
 #endif
 
 DYNALIB_BEGIN(rt)
@@ -53,8 +56,9 @@ DYNALIB_FN(15, rt, __errno, int*())
 // RT is currently being imported into system-part1 from system-part2,
 // which is the reverse direction.
 
-#if defined(DYNALIB_IMPORT) && !defined(RT_DYNALIB_NO_DEPENDENCY_BREAKING_IMPORTS)
+#if defined(DYNALIB_EXPORT) || (defined(DYNALIB_IMPORT) && !defined(RT_DYNALIB_NO_DEPENDENCY_BREAKING_IMPORTS))
 DYNALIB_FN(16, rt, __assert_func, void(const char*, int, const char*, const char*))
-#endif // defined(DYNALIB_IMPORT) && !defined(RT_DYNALIB_NO_DEPENDENCY_BREAKING_IMPORTS)
+DYNALIB_FN(17, rt, newlib_impure_ptr_callback, void(void (*)(struct _reent*, size_t, uint32_t, void*), void*))
+#endif // defined(DYNALIB_EXPORT) || (defined(DYNALIB_IMPORT) && !defined(RT_DYNALIB_NO_DEPENDENCY_BREAKING_IMPORTS))
 
 DYNALIB_END(rt)

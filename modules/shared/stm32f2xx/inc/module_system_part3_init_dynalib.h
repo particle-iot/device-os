@@ -25,6 +25,11 @@
 
 #include "dynalib.h"
 
+#ifdef DYNALIB_EXPORT
+#include <stddef.h>
+#include <sys/reent.h>
+#endif // DYNALIB_EXPORT
+
 /**
     Module-management functions
  */
@@ -33,6 +38,7 @@ DYNALIB_BEGIN(system_module_part3)
 
 DYNALIB_FN(0, system_module_part3, module_system_part3_pre_init, void*(void))
 DYNALIB_FN(1, system_module_part3, module_system_part3_init, void(void))
+DYNALIB_FN(2, system_module_part3, module_system_part3_newlib_impure_set, void(struct _reent*, size_t, uint32_t, void*))
 
 DYNALIB_END(system_module_part3)
 
