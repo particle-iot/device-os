@@ -231,7 +231,7 @@ typedef struct _ssl_context ssl_context;
 
 struct _ssl_session
 {
-    time_t start;                                 /*!< starting time      */
+    int32_t start;                                /*!< starting time      */
     const cipher_suite_t* cipher;                 /*!< chosen cipher      */
     int32_t length;                               /*!< session id length  */
     unsigned char id[SIZEOF_SESSION_ID];          /*!< session identifier */
