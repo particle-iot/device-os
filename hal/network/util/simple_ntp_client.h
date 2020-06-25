@@ -30,7 +30,7 @@ class UdpSocket;
 class SimpleNtpClient {
 public:
     SimpleNtpClient();
-    SimpleNtpClient(sock_handle_t sock);
+    explicit SimpleNtpClient(sock_handle_t sock);
     ~SimpleNtpClient();
 
     int ntpDate(uint64_t* timestamp, const char* hostname = nullptr, system_tick_t timeout = 10000);

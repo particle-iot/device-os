@@ -54,11 +54,11 @@ public:
     UdpSocket(sock_handle_t sock)
             : sock_{sock},
 #if HAL_USE_SOCKET_HAL_POSIX
-              close_{sock >= 0 ? false : true},
+              isSockExternal_{sock >= 0 ? false : true},
               addr_{nullptr},
               cached_{nullptr} {
 #else
-              close_{socket_handle_valid(sock) ? false : true},
+              isSockExternal_{socket_handle_valid(sock) ? false : true},
               addr_{} {
 #endif // HAL_USE_SOCKET_HAL_POSIX
     }
@@ -72,7 +72,7 @@ public:
 
 private:
     sock_handle_t sock_;
-    bool close_;
+    bool isSockExternal_;
 
 #if HAL_USE_SOCKET_HAL_POSIX
     struct addrinfo* addr_;
@@ -129,12 +129,12 @@ int UdpSocket::connect(const char* hostname, uint16_t port) {
         switch (cached_->ai_family) {
             case AF_INET: {
                 inet_inet_ntop(cached_->ai_family, &((sockaddr_in*)cached_->ai_addr)->sin_addr, serverHost, sizeof(serverHost));
-                serverPort = ntohs(((sockaddr_in*)cached_->ai_addr)->sin_port);
+                serverPort = bigEndianToNative(((sockaddr_in*)cached_->ai_addr)->sin_port);
                 break;
             }
             case AF_INET6: {
                 inet_inet_ntop(cached_->ai_family, &((sockaddr_in6*)cached_->ai_addr)->sin6_addr, serverHost, sizeof(serverHost));
-                serverPort = ntohs(((sockaddr_in6*)cached_->ai_addr)->sin6_port);
+                serverPort = bigEndianToNative(((sockaddr_in6*)cached_->ai_addr)->sin6_port);
                 break;
             }
         }
@@ -143,7 +143,7 @@ int UdpSocket::connect(const char* hostname, uint16_t port) {
 
         int r = sock_connect(s, cached_->ai_addr, cached_->ai_addrlen);
         if (r) {
-            if (s != sock_ || close_) {
+            if (s != sock_ || isSockExternal_) {
                 sock_close(s);
             }
             continue;
@@ -186,7 +186,7 @@ ssize_t UdpSocket::send(const uint8_t* buf, size_t size) {
 }
 
 void UdpSocket::close() {
-    if (close_ && sock_ >= 0) {
+    if (isSockExternal_ && sock_ >= 0) {
         sock_close(sock_);
         sock_ = -1;
     }
@@ -243,7 +243,7 @@ ssize_t UdpSocket::recv(uint8_t* buf, size_t size, system_tick_t timeout) {
                 return r;
             }
         }
-        HAL_Delay_Milliseconds(1);
+        HAL_Delay_Milliseconds(10);
     }
     return SYSTEM_ERROR_TIMEOUT;
 }
@@ -253,7 +253,7 @@ ssize_t UdpSocket::send(const uint8_t* buf, size_t size) {
 }
 
 void UdpSocket::close() {
-    if (close_ && socket_handle_valid(sock_)) {
+    if (isSockExternal_ && socket_handle_valid(sock_)) {
         socket_close(sock_);
         sock_ = -1;
     }
@@ -301,6 +301,7 @@ int SimpleNtpClient::ntpDate(uint64_t* timestamp, const char* hostname, system_t
 
     const auto retries = std::max<unsigned>(timeout / ntp::RETRY_INTERVAL, 1);
     int lastError = SYSTEM_ERROR_UNKNOWN;
+    // TODO: adjust the time based on the number of clock cycles
     for (unsigned retry = 0; retry < retries; retry++) {
         // Construct a request
         ntp::Message msg = {};
@@ -308,10 +309,7 @@ int SimpleNtpClient::ntpDate(uint64_t* timestamp, const char* hostname, system_t
         msg.originTimestamp = ntp::Timestamp::fromUnixtime(getRtcTime());
 
         LOG_DEBUG(TRACE, "Sending request");
-        lastError = sock_->send((const uint8_t*)&msg, sizeof(msg));
-        if (lastError < 0) {
-            CHECK(sock_->connect(hostname, ntp::PORT));
-        }
+        CHECK(sock_->send((const uint8_t*)&msg, sizeof(msg)));
 
         LOG_DEBUG(TRACE, "Waiting for response");
         auto r = sock_->recv((uint8_t*)&msg, sizeof(msg), ntp::RETRY_INTERVAL);
@@ -338,7 +336,7 @@ int SimpleNtpClient::ntpDate(uint64_t* timestamp, const char* hostname, system_t
 
 void ntp::dumpNtpTime(uint64_t timestamp) {
     time_t unixTime = timestamp / USEC_IN_SEC;
-    unsigned usecs = timestamp - unixTime;
+    unsigned usecs = timestamp * USEC_IN_SEC - unixTime;
 
     char buf[64] = {};
 #if HAL_PLATFORM_GEN >= 3
