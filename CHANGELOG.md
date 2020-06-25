@@ -1,3 +1,11 @@
+## 1.5.4-rc.1
+
+### BUGFIXES
+
+- [Electron] Fixes buffer overrun in modem HAL [#2115](https://github.com/particle-iot/device-os/pull/2115)
+- [Electron] Process 'CEREG: 0' URCs on R410M [#2119](https://github.com/particle-iot/device-os/pull/2119)
+- [Photon] Fix WPA Enterprise X509 certificate parsing [428940879f5fd1d5a3bdd658260ee45a9f7aca90](https://github.com/particle-iot/device-os/commit/428940879f5fd1d5a3bdd658260ee45a9f7aca90)
+
 ## 1.5.3-tracker.1
 
 ### FEATURES
