@@ -47,9 +47,9 @@ enum FrequencyScale
 };
 
 namespace particle {
-class __SPISettings : public Printable {
+class SPISettings : public Printable {
 public:
-  __SPISettings(uint32_t clock, uint8_t bitOrder, uint8_t dataMode)
+  SPISettings(uint32_t clock, uint8_t bitOrder, uint8_t dataMode)
     : default_{false},
       clock_{clock},
       bitOrder_{bitOrder},
@@ -57,11 +57,11 @@ public:
   {
   }
 
-  __SPISettings()
+  SPISettings()
   {
   }
 
-  bool operator==(const __SPISettings& other) const
+  bool operator==(const SPISettings& other) const
   {
     if (default_ && other.default_)
       return true;
@@ -77,7 +77,7 @@ public:
     return false;
   }
 
-  bool operator>=(const __SPISettings& other) const
+  bool operator>=(const SPISettings& other) const
   {
     if (default_ && other.default_)
       return true;
@@ -93,7 +93,7 @@ public:
     return false;
   }
 
-  bool operator<=(const __SPISettings& other) const
+  bool operator<=(const SPISettings& other) const
   {
     if (default_ && other.default_)
       return true;
@@ -109,7 +109,7 @@ public:
     return false;
   }
 
-  bool operator!=(const __SPISettings& other) const
+  bool operator!=(const SPISettings& other) const
   {
     return !(other == *this);
   }
@@ -133,6 +133,7 @@ private:
   uint8_t bitOrder_ = 0;
   uint8_t dataMode_ = 0;
 };
+typedef SPISettings __SPISettings;
 }
 
 // NOTE: when modifying this class (method signatures, adding/removing methods)
