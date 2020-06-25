@@ -1097,6 +1097,7 @@ sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLe
             uint16_t port;
             if ((result=wiced_udp_packet_get_info(packet, &wiced_ip_addr, &port))==WICED_SUCCESS) {
                 uint32_t ipv4 = GET_IPV4_ADDRESS(wiced_ip_addr);
+                addr->sa_family = AF_INET;
                 addr->sa_data[0] = (port>>8) & 0xFF;
                 addr->sa_data[1] = port & 0xFF;
                 addr->sa_data[2] = (ipv4 >> 24) & 0xFF;

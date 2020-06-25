@@ -134,7 +134,6 @@ const CellularConfig* cellularConfig() {
 } /* anonymous */
 
 void network_setup(network_handle_t network, uint32_t flags, void* reserved) {
-    system_set_flag(SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS, 0, nullptr);
     NetworkManager::instance()->init();
     // Populate the list
     NetworkManager::instance()->disableInterface();

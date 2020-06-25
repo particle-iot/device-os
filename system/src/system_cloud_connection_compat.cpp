@@ -32,6 +32,7 @@
 #include "delay_hal.h"
 #include "system_string_interpolate.h"
 #include "endian_util.h"
+#include "simple_ntp_client.h"
 
 namespace {
 
@@ -247,39 +248,13 @@ int system_cloud_recv(uint8_t* buf, size_t buflen, int flags)
 
 int system_internet_test(void* reserved)
 {
-    LOG_DEBUG(TRACE, "Internet test socket");
-    auto testSocket = socket_create(AF_INET, SOCK_STREAM, IPPROTO_TCP, 53, NIF_DEFAULT);
-    LOG_DEBUG(TRACE, "socketed testSocket=%d", testSocket);
-
-    if (!socket_handle_valid(testSocket)) {
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-
-    sockaddr_t saddr = {};
-    // the family is always AF_INET
-    saddr.sa_family = AF_INET;
-
-    // the destination port: 53
-    saddr.sa_data[0] = 0;
-    saddr.sa_data[1] = 53;
-
-    // the destination IP address: 8.8.8.8
-    saddr.sa_data[2] = 8;
-    saddr.sa_data[3] = 8;
-    saddr.sa_data[4] = 8;
-    saddr.sa_data[5] = 8;
-
-    uint32_t ot = HAL_NET_SetNetWatchDog(S2M(MAX_SEC_WAIT_CONNECT));
-    LOG_DEBUG(TRACE, "Connect Attempt");
-    int testResult = socket_connect(testSocket, &saddr, sizeof(saddr));
-    LOG_DEBUG(TRACE, "socket_connect()=%s", (testResult ? "fail":"success"));
-    HAL_NET_SetNetWatchDog(ot);
-
-    LOG_DEBUG(TRACE, "Close");
-    socket_close(testSocket);
-
-    // if connection fails, testResult returns negative error code
-    return testResult;
+#if !HAL_PLATFORM_MAY_LEAK_SOCKETS
+    particle::SimpleNtpClient ntp;
+#else
+    // Reusing cloud socket
+    particle::SimpleNtpClient ntp(s_state.socket);
+#endif // !HAL_PLATFORM_MAY_LEAK_SOCKETS
+    return ntp.ntpDate(nullptr);
 }
 
 int system_multicast_announce_presence(void* reserved)

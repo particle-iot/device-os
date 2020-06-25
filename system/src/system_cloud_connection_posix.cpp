@@ -30,6 +30,7 @@
 #if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
 #include "system_mode.h"
 #endif // HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+#include "simple_ntp_client.h"
 
 namespace {
 
@@ -332,7 +333,8 @@ int system_cloud_recv(uint8_t* buf, size_t buflen, int flags)
 
 int system_internet_test(void* reserved)
 {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    particle::SimpleNtpClient ntp;
+    return ntp.ntpDate(nullptr);
 }
 
 int system_multicast_announce_presence(void* reserved)
