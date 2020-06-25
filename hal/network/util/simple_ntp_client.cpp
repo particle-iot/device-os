@@ -336,7 +336,7 @@ int SimpleNtpClient::ntpDate(uint64_t* timestamp, const char* hostname, system_t
 
 void ntp::dumpNtpTime(uint64_t timestamp) {
     time_t unixTime = timestamp / USEC_IN_SEC;
-    unsigned usecs = timestamp * USEC_IN_SEC - unixTime;
+    unsigned usecs = timestamp - unixTime * USEC_IN_SEC;
 
     char buf[64] = {};
 #if HAL_PLATFORM_GEN >= 3
