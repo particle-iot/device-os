@@ -986,6 +986,9 @@ int QuectelNcpClient::initReady(ModemState state) {
     // just in case
     CHECK_PARSER(parser_.execCommand("AT+QCFG=\"cmux/urcport\",1"));
 
+    // Enable packet domain error reporting
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGEREP=1,0"));
+
     return SYSTEM_ERROR_NONE;
 }
 

@@ -1081,6 +1081,9 @@ int SaraNcpClient::initReady(ModemState state) {
     // (allows the capture of `mcc` and `mnc`)
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
 
+    // Enable packet domain error reporting
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGEREP=1,0"));
+
     if (state != ModemState::MuxerAtChannel) {
         if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
             // Change the baudrate to 921600
