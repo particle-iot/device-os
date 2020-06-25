@@ -276,7 +276,7 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
         while (c.available() && responseSize < bufferSize) {
             responseBuf.get()[responseSize++] = c.read();
         }
-        if (!c.connected())
+        if (!c.connected() && c.available() <= 0)
             break;
         if (millis() - mil >= 20000UL) {
             if (c.connected()) {
