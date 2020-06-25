@@ -54,11 +54,11 @@ public:
     UdpSocket(sock_handle_t sock)
             : sock_{sock},
 #if HAL_USE_SOCKET_HAL_POSIX
-              isSockExternal_{sock >= 0 ? false : true},
+              isOwnSock_{sock >= 0 ? false : true},
               addr_{nullptr},
               cached_{nullptr} {
 #else
-              isSockExternal_{socket_handle_valid(sock) ? false : true},
+              isOwnSock_{socket_handle_valid(sock) ? false : true},
               addr_{} {
 #endif // HAL_USE_SOCKET_HAL_POSIX
     }
@@ -72,7 +72,7 @@ public:
 
 private:
     sock_handle_t sock_;
-    bool isSockExternal_;
+    bool isOwnSock_;
 
 #if HAL_USE_SOCKET_HAL_POSIX
     struct addrinfo* addr_;
@@ -143,7 +143,7 @@ int UdpSocket::connect(const char* hostname, uint16_t port) {
 
         int r = sock_connect(s, cached_->ai_addr, cached_->ai_addrlen);
         if (r) {
-            if (s != sock_ || isSockExternal_) {
+            if (s != sock_ || isOwnSock_) {
                 sock_close(s);
             }
             continue;
@@ -186,7 +186,7 @@ ssize_t UdpSocket::send(const uint8_t* buf, size_t size) {
 }
 
 void UdpSocket::close() {
-    if (isSockExternal_ && sock_ >= 0) {
+    if (isOwnSock_ && sock_ >= 0) {
         sock_close(sock_);
         sock_ = -1;
     }
@@ -253,7 +253,7 @@ ssize_t UdpSocket::send(const uint8_t* buf, size_t size) {
 }
 
 void UdpSocket::close() {
-    if (isSockExternal_ && socket_handle_valid(sock_)) {
+    if (isOwnSock_ && socket_handle_valid(sock_)) {
         socket_close(sock_);
         sock_ = -1;
     }
