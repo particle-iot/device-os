@@ -19,7 +19,7 @@
 #include "unit-test/unit-test.h"
 #include "random.h"
 
-void runLoopback(size_t buffer_size_min, size_t buffer_size_max) {
+void runLoopback(size_t buffer_size_min, size_t buffer_size_max, bool sleep) {
     particle::Random rand;
 
     size_t bufferSize = random(buffer_size_min, buffer_size_max);
@@ -29,6 +29,16 @@ void runLoopback(size_t buffer_size_min, size_t buffer_size_max) {
 
     Serial1.write(txBuf);
     Serial1.flush();
+
+    if (sleep) {
+        int ret = hal_usart_sleep(HAL_USART_SERIAL1, true, nullptr);
+        assertEqual(ret, (int)SYSTEM_ERROR_NONE);
+        assertFalse(Serial1.isEnabled());
+
+        ret = hal_usart_sleep(HAL_USART_SERIAL1, false, nullptr);
+        assertEqual(ret, (int)SYSTEM_ERROR_NONE);
+        assertTrue(Serial1.isEnabled());
+    }
 
     size_t pos = 0;
     char rxBuf[bufferSize] = {};
@@ -53,13 +63,14 @@ test(SERIAL_00_LoopbackNoDataLossAndAvailableIsCorrect) {
     Serial1.begin(BAUD_RATE);
 
     for (unsigned i = 0; i < ITERATIONS; ++i) {
-        runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX);
+        runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, false);
     }
 }
 
 test(SERIAL_01_LoopbackSleepWakeupShouldSucceed) {
     constexpr size_t TEST_BUFFER_SIZE_MIN = 8;
     constexpr size_t TEST_BUFFER_SIZE_MAX = SERIAL_BUFFER_SIZE / 2;
+    constexpr unsigned ITERATIONS = 10000;
     constexpr unsigned BAUD_RATE = 115200;
 
     Serial1.end();
@@ -73,5 +84,21 @@ test(SERIAL_01_LoopbackSleepWakeupShouldSucceed) {
     assertEqual(ret, (int)SYSTEM_ERROR_NONE);
     assertTrue(Serial1.isEnabled());
 
-    runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX);
+    for (unsigned i = 0; i < ITERATIONS; ++i) {
+        runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, false);
+    }
+}
+
+test(SERIAL_02_LoopbackReceivedDataShouldRetainAfterSleepWakeup) {
+    constexpr size_t TEST_BUFFER_SIZE_MIN = 8;
+    constexpr size_t TEST_BUFFER_SIZE_MAX = SERIAL_BUFFER_SIZE / 2;
+    constexpr unsigned ITERATIONS = 10000;
+    constexpr unsigned BAUD_RATE = 115200;
+
+    Serial1.end();
+    Serial1.begin(BAUD_RATE);
+
+    for (unsigned i = 0; i < ITERATIONS; ++i) {
+        runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, false);
+    }
 }

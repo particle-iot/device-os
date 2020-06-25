@@ -239,19 +239,18 @@ public:
 
         CHECK(disable());
 
-        // Configuring the input pins' mode to PIN_MODE_NONE will disconnect input buffer to enable power savings
-        // Configuring the output pins' mode to INPUT_PULLUP to not polluting the state on other side.
-        HAL_Pin_Mode(txPin_, INPUT_PULLUP);
+        // Configuring the pin mode to PIN_MODE_NONE will disconnect input buffer to enable power savings
+        HAL_Pin_Mode(txPin_, PIN_MODE_NONE);
         HAL_Set_Pin_Function(txPin_, PF_NONE);
         HAL_Pin_Mode(rxPin_, PIN_MODE_NONE);
         HAL_Set_Pin_Function(rxPin_, PF_NONE);
+        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+            HAL_Pin_Mode(rtsPin_, PIN_MODE_NONE);
+            HAL_Set_Pin_Function(rtsPin_, PF_NONE);
+        }
         if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
             HAL_Pin_Mode(ctsPin_, PIN_MODE_NONE);
             HAL_Set_Pin_Function(ctsPin_, PF_NONE);
-        }
-        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
-            HAL_Pin_Mode(rtsPin_, INPUT_PULLUP);
-            HAL_Set_Pin_Function(rtsPin_, PF_NONE);
         }
 
         enabled_ = false;
@@ -268,9 +267,13 @@ public:
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_NONE);
         CHECK_FALSE(suspend_, SYSTEM_ERROR_NONE);
 
+        flush();
+
         AtomicSection lk;
 
-        flush();
+        // Update current available received data
+        data();
+        
         CHECK(disable());
 
         // Configuring the input pins' mode to PIN_MODE_NONE will disconnect input buffer to enable power savings
@@ -278,24 +281,25 @@ public:
         // NOTE: Do not reset pin function!
         HAL_Pin_Mode(txPin_, INPUT_PULLUP);
         HAL_Pin_Mode(rxPin_, PIN_MODE_NONE);
-        if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
-            HAL_Pin_Mode(ctsPin_, PIN_MODE_NONE);
-        }
         if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
             HAL_Pin_Mode(rtsPin_, INPUT_PULLUP);
+        }
+        if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
+            HAL_Pin_Mode(ctsPin_, PIN_MODE_NONE);
         }
 
         suspend_ = true;
         enabled_ = false;
         transmitting_ = false;
         receiving_ = 0;
-        rxBuffer_.reset();
+        rxBuffer_.prune();
         txBuffer_.reset();
 
         return SYSTEM_ERROR_NONE;
     }
 
     int restore() {
+        AtomicSection lk;
         CHECK_TRUE(suspend_, SYSTEM_ERROR_NONE);
         return begin(config_);
     }

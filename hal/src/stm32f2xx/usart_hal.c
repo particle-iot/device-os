@@ -261,10 +261,6 @@ void usartEndImpl(hal_usart_interface_t serial) {
     // Disable the USART
     USART_Cmd(usartMap[serial]->peripheral, DISABLE);
 
-    // Switch pins to INPUT
-    HAL_Pin_Mode(usartMap[serial]->rx_pin, INPUT);
-    HAL_Pin_Mode(usartMap[serial]->tx_pin, INPUT_PULLUP);
-
     // Disable LIN mode
     USART_LINCmd(usartMap[serial]->peripheral, DISABLE);
 
@@ -285,16 +281,6 @@ void usartEndImpl(hal_usart_interface_t serial) {
 
     // Disable USART Clock
     *usartMap[serial]->apb_reg &= ~usartMap[serial]->clock_enabled;
-
-    // clear any received data
-    usartMap[serial]->rx_buffer->head = usartMap[serial]->rx_buffer->tail;
-    // Undo any pin re-mapping done for this USART
-    // ...
-    memset(usartMap[serial]->rx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
-    memset(usartMap[serial]->tx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
-
-    usartMap[serial]->enabled = false;
-    usartMap[serial]->transmitting = false;
 }
 
 void hal_usart_init(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer) {
@@ -549,6 +535,38 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
 void hal_usart_end(hal_usart_interface_t serial) {
     usartMap[serial]->suspended = false;
     usartEndImpl(serial);
+
+    // Switch pins to INPUT
+    HAL_Pin_Mode(usartMap[serial]->rx_pin, INPUT);
+    HAL_Pin_Mode(usartMap[serial]->tx_pin, INPUT);
+    switch (usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL) {
+        case SERIAL_FLOW_CONTROL_CTS: {
+            HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
+            break;
+        }
+        case SERIAL_FLOW_CONTROL_RTS: {
+            HAL_Pin_Mode(usartMap[serial]->rts_pin, INPUT);
+            break;
+        }
+        case SERIAL_FLOW_CONTROL_RTS_CTS: {
+            HAL_Pin_Mode(usartMap[serial]->rts_pin, INPUT);
+            HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+
+    // clear any received data
+    usartMap[serial]->rx_buffer->head = usartMap[serial]->rx_buffer->tail;
+    // Undo any pin re-mapping done for this USART
+    // ...
+    memset(usartMap[serial]->rx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
+    memset(usartMap[serial]->tx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
+
+    usartMap[serial]->enabled = false;
+    usartMap[serial]->transmitting = false;
 }
 
 uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data) {
@@ -729,6 +747,30 @@ int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved) {
         usartMap[serial]->suspended = true;
         hal_usart_flush(serial);
         usartEndImpl(serial);
+        // Switch pins to INPUT
+        HAL_Pin_Mode(usartMap[serial]->rx_pin, INPUT);
+        HAL_Pin_Mode(usartMap[serial]->tx_pin, INPUT_PULLUP);
+        switch (usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL) {
+            case SERIAL_FLOW_CONTROL_CTS: {
+                HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
+                break;
+            }
+            case SERIAL_FLOW_CONTROL_RTS: {
+                HAL_Pin_Mode(usartMap[serial]->rts_pin, INPUT_PULLUP);
+                break;
+            }
+            case SERIAL_FLOW_CONTROL_RTS_CTS: {
+                HAL_Pin_Mode(usartMap[serial]->rts_pin, INPUT_PULLUP);
+                HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+        memset(usartMap[serial]->tx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
+        usartMap[serial]->enabled = false;
+        usartMap[serial]->transmitting = false;
     } else {
         CHECK_TRUE(usartMap[serial]->configured, SYSTEM_ERROR_INVALID_STATE);
         CHECK_TRUE(usartMap[serial]->suspended, SYSTEM_ERROR_NONE);
