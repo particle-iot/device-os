@@ -24,6 +24,7 @@
 #include "system_task.h"
 #include "system_threading.h"
 
+#include "core_hal.h"
 #include "deviceid_hal.h"
 
 #include "spark_wiring_interrupts.h"
@@ -166,19 +167,32 @@ inline bool isServiceRequestType(uint8_t bRequest) {
 }
 
 // Note: This function is called from an ISR
-inline void cancelNetworkConnectionIfNeeded(uint16_t type) {
+void cancelNetworkConnection(bool disconnect) {
+    if (disconnect) {
+        // Do not reconnect to the cloud/network
+        spark_cloud_flag_disconnect();
+        SPARK_WLAN_SLEEP = 1;
+    }
+    // Cancel the network connection attempt
+    network_connect_cancel(NETWORK_INTERFACE_ALL, 1, 0, nullptr);
+    // Abort the cloud connection
+    Spark_Abort();
+}
+
+// Note: This function is called from an ISR
+void cancelNetworkConnectionIfNeeded(uint16_t type) {
     switch (type) {
     case CTRL_REQUEST_RESET:
     case CTRL_REQUEST_FACTORY_RESET:
     case CTRL_REQUEST_DFU_MODE:
-    case CTRL_REQUEST_SAFE_MODE:
+    case CTRL_REQUEST_SAFE_MODE: {
+        // Prevent the system from reconnecting to the cloud as the device is going to be reset anyway
+        cancelNetworkConnection(true);
+        break;
+    }
     case CTRL_REQUEST_START_LISTENING: {
-        network_connect_cancel(NETWORK_INTERFACE_ALL, 1, 0, nullptr); // Cancel network connection attempt
-        Spark_Abort(); // Abort cloud connection
-        if (type != CTRL_REQUEST_START_LISTENING) {
-            // Prevent the system from reconnecting to the cloud if the device is going to be reset
-            spark_cloud_flag_disconnect();
-        }
+        // Abort the cloud connection but do not change the cloud connection flag
+        cancelNetworkConnection(false);
         break;
     }
     default:
@@ -521,6 +535,15 @@ bool particle::UsbControlRequestChannel::processVendorRequest(HAL_USB_SetupReque
     } else {
         // Host-to-device
         switch (req->wIndex) {
+        case CTRL_REQUEST_RESET: {
+            // TODO: This will cause an error at the host side
+            HAL_Core_System_Reset_Ex(RESET_REASON_USER, 0, nullptr);
+            break;
+        }
+        case CTRL_REQUEST_CLOUD_DISCONNECT: {
+            cancelNetworkConnection(true /* disconnect */);
+            break;
+        }
         default:
             return false; // Unknown request type
         }
