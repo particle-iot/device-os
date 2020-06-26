@@ -34,6 +34,13 @@
 #define MAX_RESOLUTION_BITS                 15
 
 
+typedef enum pwm_state_t {
+    PWM_STATE_UNKNOWN,
+    PWM_STATE_DISABLED,
+    PWM_STATE_ENABLED,
+    PWM_STATE_SUSPENDED
+} pwm_state_t;
+
 typedef struct pwm_setting_t {
     nrf_pwm_values_common_t                 duty_hwu;    // duty
     nrf_pwm_clk_t                           pwm_clock;   // for base clock, base clock and period_hwu decide the period time
@@ -45,8 +52,7 @@ typedef struct nrf5x_pwm_info_t {
     uint32_t                                frequency;
     uint8_t                                 pins[4];
     uint32_t                                values[4];
-    volatile bool                           enabled;
-    volatile bool                           suspended;
+    volatile pwm_state_t                    state;
     nrf_pwm_values_individual_t             seq_value;
 } nrf5x_pwm_info_t;
 
@@ -171,8 +177,7 @@ static int pwmInit(uint8_t instance, const pwm_setting_t* setting) {
     if (nrfx_pwm_init(&pwmMap[instance].pwm, &config, nullptr)) {
         return -1;
     }
-    pwmMap[instance].enabled = true;
-    pwmMap[instance].suspended = false;
+    pwmMap[instance].state = PWM_STATE_ENABLED;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -188,9 +193,9 @@ static int uninitPwmPin(uint16_t pin) {
     pwmMap[pwm_num].pins[pwm_channel] = NRFX_PWM_PIN_NOT_USED;
     pwmMap[pwm_num].values[pwm_channel] = 0;
 
-    if (pwmMap[pwm_num].enabled) {
+    if (pwmMap[pwm_num].state == PWM_STATE_ENABLED) {
         nrfx_pwm_uninit(&pwmMap[pwm_num].pwm);
-        pwmMap[pwm_num].enabled = false;
+        pwmMap[pwm_num].state = PWM_STATE_DISABLED;
     }
 
     // reset pin mode, don't call HAL_Set_Pin_Function or will enter a loop
@@ -232,10 +237,10 @@ static int initPwmPin(uint32_t pin, uint32_t value, uint32_t frequency) {
     pwm_setting_t setting = {};
     CHECK(updatePwmSetting(pwm_num, frequency, &setting));
 
-    if (!pwmMap[pwm_num].enabled || reconfig) {
-        if (pwmMap[pwm_num].enabled) {
+    if (pwmMap[pwm_num].state != PWM_STATE_ENABLED || reconfig) {
+        if (pwmMap[pwm_num].state == PWM_STATE_ENABLED) {
             nrfx_pwm_uninit(&pwmMap[pwm_num].pwm);
-            pwmMap[pwm_num].enabled = false;
+            pwmMap[pwm_num].state = PWM_STATE_DISABLED;
         }
         CHECK(pwmInit(pwm_num, &setting));
     }
@@ -343,7 +348,7 @@ uint32_t hal_pwm_get_analog_value_ext(uint16_t pin) {
         return 0;
     }
 
-    if (!pwmMap[pwm_num].enabled) {
+    if (pwmMap[pwm_num].state != PWM_STATE_ENABLED) {
         return 0;
     }
 
@@ -384,25 +389,24 @@ int hal_pwm_sleep(bool sleep, void* reserved) {
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (sleep) {
         for (uint8_t pwm_num = 0; pwm_num < NRF5X_PWM_COUNT; pwm_num++) {
-            if (pwmMap[pwm_num].enabled) {
+            if (pwmMap[pwm_num].state == PWM_STATE_ENABLED) {
                 nrfx_pwm_uninit(&pwmMap[pwm_num].pwm);
                 for (const auto pin : pwmMap[pwm_num].pins) {
                     if (pin != NRFX_PWM_PIN_NOT_USED) {
                         nrf_gpio_cfg_default(NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin));
                     }
                 }
-                pwmMap[pwm_num].enabled = false;
-                pwmMap[pwm_num].suspended = true;
+                pwmMap[pwm_num].state = PWM_STATE_SUSPENDED;
             }
         }
     } else {
         for (uint8_t pwm_num = 0; pwm_num < NRF5X_PWM_COUNT; pwm_num++) {
-            if (pwmMap[pwm_num].suspended) {
+            if (pwmMap[pwm_num].state == PWM_STATE_SUSPENDED) {
                 pwm_setting_t setting = {};
                 CHECK(updatePwmSetting(pwm_num, pwmMap[pwm_num].frequency, &setting));
                 CHECK(pwmInit(pwm_num, &setting));
                 CHECK(pwmStart(pwm_num));
-                pwmMap[pwm_num].suspended = false;
+                pwmMap[pwm_num].state = PWM_STATE_ENABLED;
             }
         }
     }
