@@ -1,9 +1,6 @@
 
 #include "testapi.h"
 
-// without Arduino.h we should not get a clash redefining SPISettings
-class SPISettings {};
-
 namespace api_test_namespace {
 // We should be able to define variables and types named SPI, SPI1 and SPI2
 
