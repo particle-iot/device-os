@@ -1367,7 +1367,8 @@ int QuectelNcpClient::modemInit() const {
         .version = 0,
         .mode = INPUT_PULLUP,
         .set_value = false,
-        .value = 0};
+        .value = 0
+    };
     // Configure VINT as Input for modem power state monitoring
     // NOTE: The BGVINT pin is inverted
     conf.mode = INPUT_PULLUP;
@@ -1397,30 +1398,15 @@ int QuectelNcpClient::modemInit() const {
     return SYSTEM_ERROR_NONE;
 }
 
-bool QuectelNcpClient::waitModemPowerOff(system_tick_t timeout) const {
-   bool powerGood;
-   system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-   while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
-       powerGood = modemPowerState();
-       if (!powerGood) {
-           break;
-       }
-       HAL_Delay_Milliseconds(5);
-   }
-   return !powerGood;
-}
-
-bool QuectelNcpClient::waitModemPowerOn(system_tick_t timeout) const {
-   bool powerGood;
-   system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-   while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
-       powerGood = modemPowerState();
-       if (powerGood) {
-           break;
-       }
-       HAL_Delay_Milliseconds(5);
-   }
-   return powerGood;
+bool QuectelNcpClient::waitModemPowerState(bool onOff, system_tick_t timeout) const {
+    system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
+        if (modemPowerState() == onOff) {
+            return true;
+        }
+        HAL_Delay_Milliseconds(5);
+    }
+    return false;
 }
 
 int QuectelNcpClient::modemPowerOn() {
@@ -1440,7 +1426,7 @@ int QuectelNcpClient::modemPowerOn() {
         // After power on the device, we can't assume the device is ready for operation:
         // BG96: status pin ready requires >= 4.8s, uart ready requires >= 4.9s
         // EG91: status pin ready requires >= 10s, uart ready requires >= 12s
-        if (waitModemPowerOn(15000)) {
+        if (waitModemPowerState(1, 15000)) {
             LOG(TRACE, "Modem powered on");
             ncpPowerState(NcpPowerState::ON);
         } else {
@@ -1470,7 +1456,7 @@ int QuectelNcpClient::modemPowerOff() {
         // Verify that the module was powered down by checking the status pin (BGVINT)
         // BG96: >=2s
         // EG91: >=30s
-        if (waitModemPowerOff(30000)) {
+        if (waitModemPowerState(0, 30000)) {
             LOG(TRACE, "Modem powered off");
         } else {
             LOG(ERROR, "Failed to power off modem, try hard reset");
@@ -1487,25 +1473,23 @@ int QuectelNcpClient::modemPowerOff() {
 int QuectelNcpClient::modemSoftPowerOff() {
     if (modemPowerState()) {
         LOG(TRACE, "Try powering modem off using AT command");
-        if (ready_) {
-            int r = CHECK_PARSER(parser_.execCommand("AT+QPOWD"));
-            if (r == AtResponse::OK) {
-                ncpPowerState(NcpPowerState::TRANSIENT_OFF);
-                system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-                LOG(TRACE, "Waiting the modem to be turned off...");
-                // Verify that the module was powered down by checking the VINT pin up to 30 sec
-                if (waitModemPowerOff(30000)) {
-                    LOG(TRACE, "It takes %d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
-                } else {
-                    LOG(ERROR, "Failed to power off modem using AT command");
-                }
-            } else {
-                LOG(ERROR, "AT+CPWROFF command is not responding");
-                return SYSTEM_ERROR_AT_NOT_OK;
-            }
-        } else {
+        if (!ready_) {
             LOG(ERROR, "NCP client is not ready");
             return SYSTEM_ERROR_INVALID_STATE;
+        }
+        int r = CHECK_PARSER(parser_.execCommand("AT+QPOWD"));
+        if (r != AtResponse::OK) {
+            LOG(ERROR, "AT+CPWROFF command is not responding");
+            return SYSTEM_ERROR_AT_NOT_OK;
+        }
+        ncpPowerState(NcpPowerState::TRANSIENT_OFF);
+        system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+        LOG(TRACE, "Waiting the modem to be turned off...");
+        // Verify that the module was powered down by checking the VINT pin up to 30 sec
+        if (waitModemPowerState(0, 30000)) {
+            LOG(TRACE, "It takes %d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
+        } else {
+            LOG(ERROR, "Failed to power off modem using AT command");
         }
     } else {
         LOG(TRACE, "Modem already off");
@@ -1525,7 +1509,7 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
     HAL_GPIO_Write(BGRST, 0);
 
     LOG(TRACE, "Waiting the modem to restart.");
-    if (waitModemPowerOn(30000)) {
+    if (waitModemPowerState(1, 30000)) {
         LOG(TRACE, "Successfully reset the modem.");
     } else {
         LOG(ERROR, "Failed to reset the modem.");
@@ -1548,7 +1532,7 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
         // Verify that the module was powered down by checking the status pin (BGVINT)
         // BG96: >=2s
         // EG91: >=30s
-        if (waitModemPowerOff(30000)) {
+        if (waitModemPowerState(0, 30000)) {
             LOG(TRACE, "Modem powered off");
             ncpPowerState(NcpPowerState::OFF);
         } else {

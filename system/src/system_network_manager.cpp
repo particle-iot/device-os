@@ -730,8 +730,10 @@ void NetworkManager::populateInterfaceRuntimeState(bool st) {
         }
         if (state) {
             state->enabled = st;
-            if_power_state_t pwr;
-            if_get_power_state(iface, &pwr);
+            if_power_state_t pwr = IF_POWER_STATE_NONE;
+            if (if_get_power_state(iface, &pwr) != SYSTEM_ERROR_NONE) {
+                return;
+            }
             if (state->pwrState != pwr) {
                 state->pwrState = pwr;
                 uint8_t index;
@@ -863,14 +865,7 @@ int NetworkManager::powerInterface(if_t iface, bool enable) {
         ifState->pwrState = IF_POWER_STATE_POWERING_DOWN;
         LOG(TRACE, "Request to power off the interface");
     }
-    if (iface == nullptr) {
-        CHECK(for_each_iface([&](if_t iface, unsigned int flags) {
-            return if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
-        }));
-    } else {
-        return if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
-    }
-    return SYSTEM_ERROR_NONE;
+    return if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
 }
 
 int NetworkManager::waitInterfaceOff(if_t iface, system_tick_t timeout) const {

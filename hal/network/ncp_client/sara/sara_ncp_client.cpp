@@ -1655,30 +1655,15 @@ int SaraNcpClient::modemInit() const {
     return SYSTEM_ERROR_NONE;
 }
 
-bool SaraNcpClient::waitModemPowerOff(system_tick_t timeout) const {
-   bool powerGood;
-   system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-   while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
-       powerGood = modemPowerState();
-       if (!powerGood) {
-           break;
-       }
-       HAL_Delay_Milliseconds(5);
-   }
-   return !powerGood;
-}
-
-bool SaraNcpClient::waitModemPowerOn(system_tick_t timeout) const {
-   bool powerGood;
-   system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-   while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
-       powerGood = modemPowerState();
-       if (powerGood) {
-           break;
-       }
-       HAL_Delay_Milliseconds(5);
-   }
-   return powerGood;
+bool SaraNcpClient::waitModemPowerState(bool onOff, system_tick_t timeout) const {
+    system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
+        if (modemPowerState() == onOff) {
+            return true;
+        }
+        HAL_Delay_Milliseconds(5);
+    }
+    return false;
 }
 
 int SaraNcpClient::modemPowerOn() {
@@ -1707,7 +1692,7 @@ int SaraNcpClient::modemPowerOn() {
         }
 
         // Verify that the module was powered up by checking the VINT pin up to 1 sec
-        if (waitModemPowerOn(1000)) {
+        if (waitModemPowerState(1, 1000)) {
             LOG(TRACE, "Modem powered on");
             ncpPowerState(NcpPowerState::ON);
         } else {
@@ -1770,7 +1755,7 @@ int SaraNcpClient::modemPowerOff() {
         }
 
         // Verify that the module was powered down by checking the VINT pin up to 10 sec
-        if (waitModemPowerOff(10000)) {
+        if (waitModemPowerState(0, 10000)) {
             LOG(TRACE, "Modem powered off");
         } else {
             LOG(ERROR, "Failed to power off modem");
@@ -1786,25 +1771,23 @@ int SaraNcpClient::modemPowerOff() {
 int SaraNcpClient::modemSoftPowerOff() {
     if (modemPowerState()) {
         LOG(TRACE, "Try powering modem off using AT command");
-        if (ready_) {
-            int r = CHECK_PARSER(parser_.execCommand("AT+CPWROFF"));
-            if (r == AtResponse::OK) {
-                ncpPowerState(NcpPowerState::TRANSIENT_OFF);
-                system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-                LOG(TRACE, "Waiting the modem to be turned off...");
-                // Verify that the module was powered down by checking the VINT pin up to 10 sec
-                if (waitModemPowerOff(10000)) {
-                    LOG(TRACE, "It takes %d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
-                } else {
-                    LOG(ERROR, "Failed to power off modem using AT command");
-                }
-            } else {
-                LOG(ERROR, "AT+CPWROFF command is not responding");
-                return SYSTEM_ERROR_AT_NOT_OK;
-            }
-        } else {
+        if (!ready_) {
             LOG(ERROR, "NCP client is not ready");
             return SYSTEM_ERROR_INVALID_STATE;
+        }
+        int r = CHECK_PARSER(parser_.execCommand("AT+CPWROFF"));
+        if (r != AtResponse::OK) {
+            LOG(ERROR, "AT+CPWROFF command is not responding");
+            return SYSTEM_ERROR_AT_NOT_OK;
+        }
+        ncpPowerState(NcpPowerState::TRANSIENT_OFF);
+        system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+        LOG(TRACE, "Waiting the modem to be turned off...");
+        // Verify that the module was powered down by checking the VINT pin up to 10 sec
+        if (waitModemPowerState(0, 10000)) {
+            LOG(TRACE, "It takes %d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
+        } else {
+            LOG(ERROR, "Failed to power off modem using AT command");
         }
     } else {
         LOG(TRACE, "Modem already off");
