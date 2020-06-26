@@ -24,12 +24,10 @@
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
 #define MY_SPI SPI
-#define MY_SPI_IF HAL_SPI_INTERFACE1
 #define MY_CS D8
 #pragma message "Compiling for SPI, MY_CS set to D8"
 #elif (USE_SPI == 1)
 #define MY_SPI SPI1
-#define MY_SPI_IF HAL_SPI_INTERFACE2
 #define MY_CS D5
 #pragma message "Compiling for SPI1, MY_CS set to D5"
 #elif (USE_SPI == 2)
@@ -42,7 +40,6 @@
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
 #define MY_SPI SPI
-#define MY_SPI_IF HAL_SPI_INTERFACE1
 #define MY_CS D0 // FIXME
 #pragma message "Compiling for SPI, MY_CS set to D0"
 #elif (USE_SPI == 2) || (USE_SPI == 1)
@@ -55,12 +52,10 @@
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
 #define MY_SPI SPI
-#define MY_SPI_IF HAL_SPI_INTERFACE1
 #define MY_CS D14
 #pragma message "Compiling for SPI, MY_CS set to D14"
 #elif (USE_SPI == 1)
 #define MY_SPI SPI1
-#define MY_SPI_IF HAL_SPI_INTERFACE2
 #define MY_CS D5
 #pragma message "Compiling for SPI1, MY_CS set to D5"
 #elif (USE_SPI == 2)
@@ -75,17 +70,14 @@
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
 #define MY_SPI SPI
-#define MY_SPI_IF HAL_SPI_INTERFACE1
 #define MY_CS A2
 #pragma message "Compiling for SPI, MY_CS set to A2"
 #elif (USE_SPI == 1)
 #define MY_SPI SPI1
-#define MY_SPI_IF HAL_SPI_INTERFACE2
 #define MY_CS D5
 #pragma message "Compiling for SPI1, MY_CS set to D5"
 #elif (USE_SPI == 2)
 #define MY_SPI SPI2
-#define MY_SPI_IF HAL_SPI_INTERFACE3
 #define MY_CS C0
 #pragma message "Compiling for SPI2, MY_CS set to C0"
 #else
@@ -233,9 +225,6 @@ test(SPI_Master_Slave_Slave_Transfer)
 {
     /* Test will alternate between asynchronous and synchronous SPI.transfer() */
     Serial.println("This is Slave");
-#ifdef SPI_SLEEP
-    Serial.println("SPI power saving is enabled.");
-#endif
 
     // Default SPI_MODE3, MSBFIRST
     SPI_Init(SPI_MODE3, MSBFIRST);
@@ -246,10 +235,8 @@ test(SPI_Master_Slave_Slave_Transfer)
 
     while (true)
     {
-#ifdef SPI_SLEEP
-        int ret = hal_spi_sleep(MY_SPI_IF, false, nullptr);
+        int ret = hal_spi_sleep(MY_SPI.interface(), false, nullptr);
         assertEqual(ret, (int)SYSTEM_ERROR_NONE);
-#endif
         memset(SPI_Slave_Tx_Buffer, 0, sizeof(SPI_Slave_Tx_Buffer));
         memset(SPI_Slave_Rx_Buffer, 0, sizeof(SPI_Slave_Rx_Buffer));
 
@@ -315,10 +302,8 @@ test(SPI_Master_Slave_Slave_Transfer)
 
         count++;
 
-#ifdef SPI_SLEEP
-        ret = hal_spi_sleep(MY_SPI_IF, true, nullptr);
+        ret = hal_spi_sleep(MY_SPI.interface(), true, nullptr);
         assertEqual(ret, (int)SYSTEM_ERROR_NONE);
-#endif
     }
 }
 

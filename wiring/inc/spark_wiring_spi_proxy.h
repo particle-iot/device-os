@@ -27,6 +27,9 @@ public:
         return instance;
     }
 
+    hal_spi_interface_t interface() {
+         return instance().interface();
+    }
     void begin() {
         instance().begin();
     }

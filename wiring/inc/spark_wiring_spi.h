@@ -167,6 +167,10 @@ public:
   SPIClass(const SPIClass&) = delete;
   SPIClass& operator=(const SPIClass&) = delete;
 
+  hal_spi_interface_t interface() const {
+    return _spi;
+  }
+
   void begin();
   void begin(uint16_t);
   void begin(hal_spi_mode_t mode, uint16_t ss_pin = SPI_DEFAULT_SS);
