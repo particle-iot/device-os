@@ -346,7 +346,7 @@ int SaraNcpClient::off() {
 
     // Disable the UART interface.
     LOG(TRACE, "Deinit modem serial.");
-    serial_.reset();
+    serial_.on(false);
 
     ready_ = false;
     ncpState(NcpState::OFF);
@@ -1682,13 +1682,9 @@ bool SaraNcpClient::waitModemPowerOn(system_tick_t timeout) const {
 }
 
 int SaraNcpClient::modemPowerOn() {
-    // The serial_ is always released if powering down the modem is requested.
-    if (!serial_.get()) {
-        serial_.reset(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
-        CHECK_TRUE(serial_, SYSTEM_ERROR_NO_MEMORY);
-        CHECK(initParser(serial_.get()));
+    if (!serial_.on()) {
+        CHECK(serial_.on(true));
     }
-
     if (!modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
@@ -1859,7 +1855,7 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
             ncpPowerState(NcpPowerState::OFF);
             // Disable the UART interface.
             LOG(TRACE, "Deinit modem serial.");
-            serial_.reset();
+            serial_.on(false);
         }
     }
     return SYSTEM_ERROR_NONE;

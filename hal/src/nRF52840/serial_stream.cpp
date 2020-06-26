@@ -35,7 +35,9 @@ SerialStream::SerialStream(HAL_USART_Serial serial, uint32_t baudrate, uint32_t 
         size_t rxBufferSize, size_t txBufferSize)
         : serial_(serial),
           config_(config),
-          enabled_(true) {
+          baudrate_(baudrate),
+          enabled_(true),
+          phyOn_(false) {
 
     if (!rxBufferSize) {
         rxBufferSize = SERIAL_STREAM_BUFFER_SIZE_RX;
@@ -57,6 +59,7 @@ SerialStream::SerialStream(HAL_USART_Serial serial, uint32_t baudrate, uint32_t 
     c.tx_buffer_size = txBufferSize;
     HAL_USART_Init_Ex(serial_, &c, nullptr);
     HAL_USART_BeginConfig(serial_, baudrate, config, 0);
+    phyOn_ = true;
 }
 
 SerialStream::~SerialStream() {
@@ -64,7 +67,7 @@ SerialStream::~SerialStream() {
 }
 
 int SerialStream::read(char* data, size_t size) {
-    if (!enabled_) {
+    if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (size == 0) {
@@ -78,7 +81,7 @@ int SerialStream::read(char* data, size_t size) {
 }
 
 int SerialStream::peek(char* data, size_t size) {
-    if (!enabled_) {
+    if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (size == 0) {
@@ -96,7 +99,7 @@ int SerialStream::skip(size_t size) {
 }
 
 int SerialStream::write(const char* data, size_t size) {
-    if (!enabled_) {
+    if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (size == 0) {
@@ -110,7 +113,7 @@ int SerialStream::write(const char* data, size_t size) {
 }
 
 int SerialStream::flush() {
-    if (!enabled_) {
+    if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     HAL_USART_Flush_Data(serial_);
@@ -118,21 +121,21 @@ int SerialStream::flush() {
 }
 
 int SerialStream::availForRead() {
-    if (!enabled_) {
+    if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     return HAL_USART_Available_Data(serial_);
 }
 
 int SerialStream::availForWrite() {
-    if (!enabled_) {
+    if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     return HAL_USART_Available_Data_For_Write(serial_);
 }
 
 int SerialStream::waitEvent(unsigned flags, unsigned timeout) {
-    if (!enabled_) {
+    if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (!flags) {
@@ -145,12 +148,25 @@ int SerialStream::waitEvent(unsigned flags, unsigned timeout) {
 }
 
 int SerialStream::setBaudRate(unsigned int baudrate) {
-    if (!enabled_) {
+    if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     HAL_USART_End(serial_);
     HAL_USART_BeginConfig(serial_, baudrate, config_, 0);
     return 0;
+}
+
+int SerialStream::on(bool on) {
+    if (on) {
+        CHECK_FALSE(phyOn_, SYSTEM_ERROR_NONE);
+        HAL_USART_BeginConfig(serial_, baudrate_, config_, 0);
+        phyOn_ = true;
+    } else {
+        CHECK_TRUE(phyOn_, SYSTEM_ERROR_NONE);
+        HAL_USART_End(serial_);
+        phyOn_ = false;
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 EventGroupHandle_t SerialStream::eventGroup() {

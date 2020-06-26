@@ -160,11 +160,8 @@ int Esp32NcpClient::on() {
     if (ncpState_ == NcpState::ON) {
         return 0;
     }
-    // The serial_ is always released if powering down the modem is requested.
-    if (!serial_.get()) {
-        serial_.reset(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, ESP32_NCP_DEFAULT_SERIAL_BAUDRATE, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
-        CHECK_TRUE(serial_, SYSTEM_ERROR_NO_MEMORY);
-        CHECK(initParser(serial_.get()));
+    if (!serial_.on()) {
+        CHECK(serial_.on(true));
     }
     ncpPowerState(NcpPowerState::TRANSIENT_ON);
     CHECK(waitReady());
@@ -184,7 +181,7 @@ int Esp32NcpClient::off() {
     ncpState(NcpState::OFF);
     // Disable the UART interface.
     LOG(TRACE, "Deinit modem serial.");
-    serial_.reset();
+    serial_.on(false);
     ncpPowerState(NcpPowerState::OFF);
     return 0;
 }

@@ -348,7 +348,7 @@ int QuectelNcpClient::off() {
 
     // Disable the UART interface.
     LOG(TRACE, "Deinit modem serial.");
-    serial_.reset();
+    serial_.on(false);
 
     ready_ = false;
     ncpState(NcpState::OFF);
@@ -1424,20 +1424,9 @@ bool QuectelNcpClient::waitModemPowerOn(system_tick_t timeout) const {
 }
 
 int QuectelNcpClient::modemPowerOn() {
-    // The serial_ is always released if powering down the modem is requested.
-    if (!serial_.get()) {
-        auto sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS;
-        uint32_t hwVersion = HW_VERSION_UNDEFINED;
-        auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
-        if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
-            sconf = SERIAL_8N1;
-            LOG(TRACE, "Disable Hardware Flow control!");
-        }
-        serial_.reset(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
-        CHECK_TRUE(serial_, SYSTEM_ERROR_NO_MEMORY);
-        CHECK(initParser(serial_.get()));
+    if (!serial_.on()) {
+        CHECK(serial_.on(true));
     }
-
     if (!modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
