@@ -344,7 +344,6 @@ int SaraNcpClient::off() {
         // FIXME: else there is power leakage still.
     }
 
-    parser_.destroy();
     // Disable the UART interface.
     LOG(TRACE, "Deinit modem serial.");
     serial_.reset();
@@ -792,9 +791,8 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
 }
 
 int SaraNcpClient::checkParser() {
-    if (ncpState_ != NcpState::ON) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
+    CHECK_TRUE(pwrState_ == NcpPowerState::ON, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     if (ready_ && parserError_ != 0) {
         const int r = parser_.execCommand(1000, "AT");
         if (r == AtResponse::OK) {
@@ -1859,7 +1857,6 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
             return modemPowerOn();
         } else {
             ncpPowerState(NcpPowerState::OFF);
-            parser_.destroy();
             // Disable the UART interface.
             LOG(TRACE, "Deinit modem serial.");
             serial_.reset();

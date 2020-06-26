@@ -182,7 +182,6 @@ int Esp32NcpClient::off() {
     espOff();
     ready_ = false;
     ncpState(NcpState::OFF);
-    parser_.destroy();
     // Disable the UART interface.
     LOG(TRACE, "Deinit modem serial.");
     serial_.reset();
@@ -284,7 +283,6 @@ int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
     LOG(TRACE, "Initiating XMODEM transfer");
     parser_.reset();
     const auto strm = parser_.config().stream();
-    CHECK_TRUE(strm, SYSTEM_ERROR_INVALID_STATE);
     CHECK(skipWhitespace(strm, 1000));
     XmodemSender sender;
     CHECK(sender.init(strm, file, size));
@@ -455,9 +453,8 @@ int Esp32NcpClient::getMacAddress(MacAddress* addr) {
 }
 
 int Esp32NcpClient::checkParser() {
-    if (ncpState_ != NcpState::ON) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
+    CHECK_TRUE(pwrState_ == NcpPowerState::ON, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     if (ready_ && parserError_ != 0) {
         const int r = parser_.execCommand(1000, "AT");
         if (r == AtResponse::OK) {

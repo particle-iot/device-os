@@ -798,9 +798,8 @@ int QuectelNcpClient::getTxDelayInDataChannel() {
 }
 
 int QuectelNcpClient::checkParser() {
-    if (ncpState_ != NcpState::ON) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
+    CHECK_TRUE(pwrState_ == NcpPowerState::ON, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     if (ready_ && parserError_ != 0) {
         const int r = parser_.execCommand(1000, "AT");
         if (r == AtResponse::OK) {
