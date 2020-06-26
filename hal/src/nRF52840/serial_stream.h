@@ -20,6 +20,7 @@
 #include "usart_hal.h"
 #include "usart_hal_private.h"
 #include "stream.h"
+#include "check.h"
 #include <memory>
 
 namespace particle {

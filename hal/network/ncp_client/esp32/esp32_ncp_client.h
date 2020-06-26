@@ -53,6 +53,7 @@ public:
     int dataChannelWrite(int id, const uint8_t* data, size_t size) override;
     int dataChannelFlowControl(bool state) override;
     void processEvents() override;
+    int checkParser() override;
     AtParser* atParser() override;
     void lock() override;
     void unlock() override;
@@ -81,7 +82,6 @@ private:
     volatile bool inFlowControl_ = false;
 
     int initParser(Stream* stream);
-    int checkParser();
     int waitReady();
     int initReady();
     int initMuxer();

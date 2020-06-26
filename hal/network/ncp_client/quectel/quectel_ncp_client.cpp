@@ -348,7 +348,7 @@ int QuectelNcpClient::off() {
 
     // Disable the UART interface.
     LOG(TRACE, "Deinit modem serial.");
-    serial_.on(false);
+    serial_->on(false);
 
     ready_ = false;
     ncpState(NcpState::OFF);
@@ -1410,8 +1410,8 @@ bool QuectelNcpClient::waitModemPowerState(bool onOff, system_tick_t timeout) co
 }
 
 int QuectelNcpClient::modemPowerOn() {
-    if (!serial_.on()) {
-        CHECK(serial_.on(true));
+    if (!serial_->on()) {
+        CHECK(serial_->on(true));
     }
     if (!modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);

@@ -160,8 +160,8 @@ int Esp32NcpClient::on() {
     if (ncpState_ == NcpState::ON) {
         return 0;
     }
-    if (!serial_.on()) {
-        CHECK(serial_.on(true));
+    if (!serial_->on()) {
+        CHECK(serial_->on(true));
     }
     ncpPowerState(NcpPowerState::TRANSIENT_ON);
     CHECK(waitReady());
@@ -181,7 +181,7 @@ int Esp32NcpClient::off() {
     ncpState(NcpState::OFF);
     // Disable the UART interface.
     LOG(TRACE, "Deinit modem serial.");
-    serial_.on(false);
+    serial_->on(false);
     ncpPowerState(NcpPowerState::OFF);
     return 0;
 }

@@ -55,6 +55,7 @@ public:
     int dataChannelWrite(int id, const uint8_t* data, size_t size) override;
     int dataChannelFlowControl(bool state) override;
     void processEvents() override;
+    int checkParser() override;
     AtParser* atParser() override;
     void lock() override;
     void unlock() override;
@@ -112,7 +113,6 @@ private:
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
-    int checkParser();
     int waitReady(bool powerOn = false);
     int initReady(ModemState state);
     int checkRuntimeState(ModemState& state);

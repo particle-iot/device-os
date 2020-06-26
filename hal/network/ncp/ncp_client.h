@@ -114,6 +114,7 @@ public:
     virtual int dataChannelFlowControl(bool state) = 0;
     virtual void processEvents() = 0;
 
+    virtual int checkParser() = 0;
     virtual AtParser* atParser();
 
     virtual void lock() = 0;
