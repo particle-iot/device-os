@@ -99,12 +99,6 @@ typedef enum I2C_Transaction_Ending_Condition {
     I2C_ENDING_START
 } I2C_Transaction_Ending_Condition;
 
-typedef enum hal_i2c_state_t {
-    HAL_I2C_STATE_DISABLED,
-    HAL_I2C_STATE_ENABLED,
-    HAL_I2C_STATE_SUSPENDED
-} hal_i2c_state_t;
-
 /* Private variables ---------------------------------------------------------*/
 typedef struct STM32_I2C_Info {
     I2C_TypeDef* I2C_Peripheral;

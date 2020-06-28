@@ -88,12 +88,6 @@ typedef enum {
     TRANSFER_STATE_ERROR_DATA
 } transfer_state_t;
 
-typedef enum hal_i2c_state_t {
-    HAL_I2C_STATE_DISABLED,
-    HAL_I2C_STATE_ENABLED,
-    HAL_I2C_STATE_SUSPENDED
-} hal_i2c_state_t;
-
 typedef struct {
     nrfx_twim_t                 *master;
     nrfx_twis_t                 *slave;

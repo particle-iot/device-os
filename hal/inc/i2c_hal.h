@@ -77,6 +77,12 @@ typedef struct HAL_I2C_Transmission_Config {
     uint32_t flags;
 } HAL_I2C_Transmission_Config;
 
+typedef enum hal_i2c_state_t {
+    HAL_I2C_STATE_DISABLED,
+    HAL_I2C_STATE_ENABLED,
+    HAL_I2C_STATE_SUSPENDED
+} hal_i2c_state_t;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
