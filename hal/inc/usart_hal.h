@@ -134,6 +134,13 @@ typedef enum hal_usart_interface_t {
 } hal_usart_interface_t;
 typedef hal_usart_interface_t HAL_USART_Serial; // For backwards compatibility
 
+typedef enum hal_usart_state_t {
+    HAL_USART_STATE_UNKNOWN,
+    HAL_USART_STATE_ENABLED,
+    HAL_USART_STATE_DISABLED,
+    HAL_USART_STATE_SUSPENDED
+} hal_usart_state_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

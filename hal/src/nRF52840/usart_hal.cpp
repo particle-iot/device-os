@@ -158,8 +158,6 @@ public:
 
         AtomicSection lk;
 
-        suspend_ = false;
-
         if (isEnabled()) {
             end();
         }
@@ -223,7 +221,7 @@ public:
         nrf_uarte_enable(uarte_);
 
         config_ = conf;
-        enabled_ = true;
+        state_ = HAL_USART_STATE_ENABLED;
 
         enableTimer();
         startReceiver();
@@ -232,10 +230,8 @@ public:
     }
 
     int end() {
-        CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(state_ != HAL_USART_STATE_DISABLED, SYSTEM_ERROR_INVALID_STATE);
         AtomicSection lk;
-
-        suspend_ = false;
 
         CHECK(disable());
 
@@ -253,7 +249,7 @@ public:
             HAL_Set_Pin_Function(ctsPin_, PF_NONE);
         }
 
-        enabled_ = false;
+        state_ = HAL_USART_STATE_DISABLED;
         transmitting_ = false;
         receiving_ = 0;
         config_ = {};
@@ -265,7 +261,6 @@ public:
 
     int suspend() {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_NONE);
-        CHECK_FALSE(suspend_, SYSTEM_ERROR_NONE);
 
         flush();
 
@@ -288,8 +283,7 @@ public:
             HAL_Pin_Mode(ctsPin_, PIN_MODE_NONE);
         }
 
-        suspend_ = true;
-        enabled_ = false;
+        state_ = HAL_USART_STATE_SUSPENDED;
         transmitting_ = false;
         receiving_ = 0;
         rxBuffer_.prune();
@@ -300,7 +294,7 @@ public:
 
     int restore() {
         AtomicSection lk;
-        CHECK_TRUE(suspend_, SYSTEM_ERROR_NONE);
+        CHECK_TRUE(state_ == HAL_USART_STATE_SUSPENDED, SYSTEM_ERROR_NONE);
         return begin(config_);
     }
 
@@ -372,7 +366,7 @@ public:
             }
             {
                 TxLock lk(uarte_);
-                if (!enabled_ || txBuffer_.empty()) {
+                if (!isEnabled() || txBuffer_.empty()) {
                     break;
                 }
             }
@@ -385,7 +379,7 @@ public:
     }
 
     bool isEnabled() const {
-        return enabled_;
+        return state_ == HAL_USART_STATE_ENABLED;
     }
 
     void pump() {
@@ -504,7 +498,7 @@ public:
 
 private:
     int disable() {
-        CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
 
         disableInterrupts();
         stopTransmission();
@@ -737,8 +731,7 @@ private:
     pin_t rtsPin_;
 
     bool configured_ = false;
-    volatile bool enabled_ = false;
-    volatile bool suspend_ = false;
+    volatile hal_usart_state_t state_ = HAL_USART_STATE_DISABLED;
 
     volatile bool transmitting_;
     volatile uint8_t receiving_;

@@ -34,7 +34,7 @@
 #include "system_error.h"
 
 /* Private typedef -----------------------------------------------------------*/
-typedef enum usart_ports_t {
+typedef enum stm32_usart_ports_t {
     USART_TX_RX = 0,
     USART_RGBG_RGBB = 1
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
@@ -42,15 +42,15 @@ typedef enum usart_ports_t {
     ,USART_C3_C2 = 3
     ,USART_C1_C0 = 4
 #endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-} usart_ports_t;
+} stm32_usart_ports_t;
 
 /* Private macro -------------------------------------------------------------*/
 #define USE_USART3_HARDWARE_FLOW_CONTROL_RTS_CTS 0  //Enabling this => 1 is not working at present
 
-typedef struct usart_config_t {
+typedef struct stm32_usart_config_t {
     uint32_t baud_rate;
     uint32_t config;
-} usart_config_t;
+} stm32_usart_config_t;
 
 /* Private variables ---------------------------------------------------------*/
 typedef struct stm32_usart_info_t {
@@ -77,11 +77,10 @@ typedef struct stm32_usart_info_t {
     hal_usart_ring_buffer_t* rx_buffer;
 
     bool configured;
-    volatile bool enabled;
-    volatile bool suspended;
+    volatile hal_usart_state_t state;
     bool transmitting;
 
-    usart_config_t conf;
+    stm32_usart_config_t conf;
 } stm32_usart_info_t;
 
 /*
@@ -307,7 +306,7 @@ void hal_usart_init(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_bu
     memset(usartMap[serial]->rx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
     memset(usartMap[serial]->tx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
 
-    usartMap[serial]->enabled = false;
+    usartMap[serial]->state = HAL_USART_STATE_DISABLED;
     usartMap[serial]->transmitting = false;
 
     usartMap[serial]->configured = true;
@@ -323,15 +322,11 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
     }
     // Verify UART configuration, exit if it's invalid.
     if (!validateConfig(config)) {
-        usartMap[serial]->enabled = false;
         return;
     }
 
-    usartMap[serial]->suspended = false;
-
     USART_DeInit(usartMap[serial]->peripheral);
-
-    usartMap[serial]->enabled = false;
+    usartMap[serial]->state = HAL_USART_STATE_DISABLED;
 
     configurePinsMode(serial, config);
 
@@ -524,7 +519,7 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
         USART_LINCmd(usartMap[serial]->peripheral, ENABLE);
     }
 
-    usartMap[serial]->enabled = true;
+    usartMap[serial]->state = HAL_USART_STATE_ENABLED;
     usartMap[serial]->transmitting = false;
 
     // Enable USART Receive and Transmit interrupts
@@ -533,7 +528,6 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
 }
 
 void hal_usart_end(hal_usart_interface_t serial) {
-    usartMap[serial]->suspended = false;
     usartEndImpl(serial);
 
     // Switch pins to INPUT
@@ -565,7 +559,7 @@ void hal_usart_end(hal_usart_interface_t serial) {
     memset(usartMap[serial]->rx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
     memset(usartMap[serial]->tx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
 
-    usartMap[serial]->enabled = false;
+    usartMap[serial]->state = HAL_USART_STATE_DISABLED;
     usartMap[serial]->transmitting = false;
 }
 
@@ -653,7 +647,7 @@ void hal_usart_flush(hal_usart_interface_t serial) {
 }
 
 bool hal_usart_is_enabled(hal_usart_interface_t serial) {
-    return usartMap[serial]->enabled;
+    return usartMap[serial]->state == HAL_USART_STATE_ENABLED;
 }
 
 void hal_usart_half_duplex(hal_usart_interface_t serial, bool enable) {
@@ -742,9 +736,7 @@ static void usartIntHandler(hal_usart_interface_t serial) {
 
 int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved) {
     if (sleep) {
-        CHECK_TRUE(usartMap[serial]->enabled, SYSTEM_ERROR_NONE);
-        CHECK_FALSE(usartMap[serial]->suspended, SYSTEM_ERROR_NONE);
-        usartMap[serial]->suspended = true;
+        CHECK_TRUE(usartMap[serial]->state == HAL_USART_STATE_ENABLED, SYSTEM_ERROR_NONE);
         hal_usart_flush(serial);
         usartEndImpl(serial);
         // Switch pins to INPUT
@@ -769,11 +761,10 @@ int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved) {
             }
         }
         memset(usartMap[serial]->tx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
-        usartMap[serial]->enabled = false;
+        usartMap[serial]->state = HAL_USART_STATE_SUSPENDED;
         usartMap[serial]->transmitting = false;
     } else {
-        CHECK_TRUE(usartMap[serial]->configured, SYSTEM_ERROR_INVALID_STATE);
-        CHECK_TRUE(usartMap[serial]->suspended, SYSTEM_ERROR_NONE);
+        CHECK_TRUE(usartMap[serial]->state == HAL_USART_STATE_SUSPENDED, SYSTEM_ERROR_NONE);
         hal_usart_begin_config(serial, usartMap[serial]->conf.baud_rate, usartMap[serial]->conf.config, NULL);
     }
     return SYSTEM_ERROR_NONE;
