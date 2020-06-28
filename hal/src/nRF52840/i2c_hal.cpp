@@ -226,8 +226,8 @@ static void twim_handler(nrfx_twim_evt_t const * p_event, void * p_context) {
 }
 
 static int twi_uninit(HAL_I2C_Interface i2c) {
-    if (m_i2c_map[i2c].state == HAL_I2C_STATE_DISABLED) {
-        return SYSTEM_ERROR_NONE;
+    if (m_i2c_map[i2c].state != HAL_I2C_STATE_ENABLED) {
+        return SYSTEM_ERROR_INVALID_STATE;
     }
 
     if (m_i2c_map[i2c].mode == I2C_MODE_MASTER) {
@@ -332,6 +332,9 @@ int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config) {
         SPARK_ASSERT(m_i2c_map[i2c].rx_buf && m_i2c_map[i2c].tx_buf);
     }
 
+    // Uninitialize I2C no matter in which state
+    twi_uninit(i2c);
+
     // Initialize I2C state
     m_i2c_map[i2c].state = HAL_I2C_STATE_DISABLED;
     m_i2c_map[i2c].mode = I2C_MODE_MASTER;
@@ -390,18 +393,23 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
     }
 #endif
 
-    twi_uninit(i2c);
+    if (twi_uninit(i2c) == SYSTEM_ERROR_NONE) {
+        m_i2c_map[i2c].state = HAL_I2C_STATE_DISABLED;
+    }
 
-    m_i2c_map[i2c].rx_index_head = 0;
-    m_i2c_map[i2c].rx_index_tail = 0;
-    m_i2c_map[i2c].tx_index_head = 0;
-    m_i2c_map[i2c].tx_index_tail = 0;
-    memset((void *)m_i2c_map[i2c].rx_buf, 0, m_i2c_map[i2c].rx_buf_size);
-    memset((void *)m_i2c_map[i2c].tx_buf, 0, m_i2c_map[i2c].tx_buf_size);
+    if (m_i2c_map[i2c].state == HAL_I2C_STATE_DISABLED) {
+        m_i2c_map[i2c].rx_index_head = 0;
+        m_i2c_map[i2c].rx_index_tail = 0;
+        m_i2c_map[i2c].tx_index_head = 0;
+        m_i2c_map[i2c].tx_index_tail = 0;
+        memset((void *)m_i2c_map[i2c].rx_buf, 0, m_i2c_map[i2c].rx_buf_size);
+        memset((void *)m_i2c_map[i2c].tx_buf, 0, m_i2c_map[i2c].tx_buf_size);
+    }
+
     m_i2c_map[i2c].mode = mode;
     m_i2c_map[i2c].address = address;
 
-    if (twi_init(i2c) == SYSTEM_ERROR_NONE) {
+    if (m_i2c_map[i2c].state != HAL_I2C_STATE_ENABLED && twi_init(i2c) == SYSTEM_ERROR_NONE) {
         m_i2c_map[i2c].state = HAL_I2C_STATE_ENABLED;
     }
 }
@@ -639,7 +647,6 @@ uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
     }
 
     I2cLock lk(i2c);
-
     if (HAL_I2C_Is_Enabled(i2c, nullptr)) {
         HAL_I2C_End(i2c, nullptr);
 
@@ -699,7 +706,6 @@ int HAL_I2C_Sleep(HAL_I2C_Interface i2c, bool sleep, void* reserved) {
     I2cLock lk(i2c);
     if (sleep) {
         // Suspend I2C
-        HAL_I2C_Flush_Data(i2c, nullptr);
         CHECK_TRUE(m_i2c_map[i2c].state == HAL_I2C_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
         HAL_I2C_End(i2c, nullptr);
         m_i2c_map[i2c].state = HAL_I2C_STATE_SUSPENDED;

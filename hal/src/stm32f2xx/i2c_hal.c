@@ -359,14 +359,14 @@ void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* 
     }
 #endif
 
-    i2cMap[i2c]->rxIndexHead = 0;
-    i2cMap[i2c]->rxIndexTail = 0;
-
-    i2cMap[i2c]->txIndexHead = 0;
-    i2cMap[i2c]->txIndexTail = 0;
-
-    memset((void *)i2cMap[i2c]->rxBuffer, 0, i2cMap[i2c]->rxBufferSize);
-    memset((void *)i2cMap[i2c]->txBuffer, 0, i2cMap[i2c]->txBufferSize);
+    if (i2cMap[i2c]->state == HAL_I2C_STATE_DISABLED) {
+        i2cMap[i2c]->rxIndexHead = 0;
+        i2cMap[i2c]->rxIndexTail = 0;
+        i2cMap[i2c]->txIndexHead = 0;
+        i2cMap[i2c]->txIndexTail = 0;
+        memset((void *)i2cMap[i2c]->rxBuffer, 0, i2cMap[i2c]->rxBufferSize);
+        memset((void *)i2cMap[i2c]->txBuffer, 0, i2cMap[i2c]->txBufferSize);
+    }
 
     i2cMap[i2c]->mode = mode;
     i2cMap[i2c]->ackFailure = false;
@@ -1222,7 +1222,6 @@ int HAL_I2C_Sleep(HAL_I2C_Interface i2c, bool sleep, void* reserved)
             HAL_I2C_Release(i2c, NULL);
             return SYSTEM_ERROR_INVALID_STATE;
         }
-        HAL_I2C_Flush_Data(i2c, NULL);
         HAL_I2C_End(i2c, NULL);
         i2cMap[i2c]->state = HAL_I2C_STATE_SUSPENDED;
     } else {
