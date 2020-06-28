@@ -23,20 +23,16 @@
  ******************************************************************************
  */
 
-/* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __ADC_HAL_H
 #define __ADC_HAL_H
 
-/* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
 
-/* Exported types ------------------------------------------------------------*/
-
-/* Exported constants --------------------------------------------------------*/
-
-/* Exported macros -----------------------------------------------------------*/
-
-/* Exported functions --------------------------------------------------------*/
+typedef enum hal_adc_state_t {
+    HAL_ADC_STATE_DISABLED,
+    HAL_ADC_STATE_ENABLED,
+    HAL_ADC_STATE_SUSPENDED
+} hal_adc_state_t;
 
 #ifdef __cplusplus
 extern "C" {

@@ -44,8 +44,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 __IO uint16_t ADC_ConvertedValues[ADC_DMA_BUFFERSIZE];
-static bool adcInitialized = false;
-static bool adcSuspended = false;
+static hal_adc_state_t adcState = HAL_ADC_STATE_DISABLED;
 static uint8_t adcChannelConfigured = ADC_CHANNEL_NONE;
 static uint8_t ADC_Sample_Time = ADC_SAMPLING_TIME;
 
@@ -96,7 +95,7 @@ int32_t HAL_ADC_Read(uint16_t pin)
         HAL_Pin_Mode(pin, AN_INPUT);
     }
 
-    if (!adcInitialized)
+    if (adcState != HAL_ADC_STATE_ENABLED)
     {
         HAL_ADC_DMA_Init();
     }
@@ -225,8 +224,7 @@ void HAL_ADC_DMA_Init()
     ADC_InitStructure.ADC_NbrOfConversion = 1;
     ADC_Init(ADC2, &ADC_InitStructure);
 
-    adcInitialized = true;
-    adcSuspended = false;
+    adcState = HAL_ADC_STATE_ENABLED;
 }
 
 /*
@@ -240,8 +238,7 @@ int HAL_ADC_DMA_Uninit(void* reserved)
     // Disable ADC1 and ADC2 clock
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 | RCC_APB2Periph_ADC2, DISABLE);
 
-    adcInitialized = false;
-    adcSuspended = false;
+    adcState = HAL_ADC_STATE_DISABLED;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -253,21 +250,18 @@ int HAL_ADC_Sleep(bool sleep, void* reserved)
 {
     if (sleep) {
         // Suspend ADC
-        if (!adcInitialized) {
-            return SYSTEM_ERROR_NONE;
-        }
-        if (adcSuspended) {
-            return SYSTEM_ERROR_NONE;
+        if (adcState != HAL_ADC_STATE_ENABLED) {
+            return SYSTEM_ERROR_INVALID_STATE;
         }
         HAL_ADC_DMA_Uninit(NULL);
-        adcSuspended = true;
+        adcState = HAL_ADC_STATE_SUSPENDED;
     } else {
         // Restore ADC
-        if (!adcSuspended) {
-            return SYSTEM_ERROR_NONE;
+        if (adcState != HAL_ADC_STATE_SUSPENDED) {
+            return SYSTEM_ERROR_INVALID_STATE;
         }
         HAL_ADC_DMA_Init();
-        adcSuspended = false;
+        adcState = HAL_ADC_STATE_ENABLED;
     }
 
     return SYSTEM_ERROR_NONE;

@@ -21,8 +21,7 @@
 #include "pinmap_impl.h"
 #include "check.h"
 
-static volatile bool m_adc_initiated = false;
-static volatile bool m_adc_suspended = false;
+static volatile hal_adc_state_t m_adc_state = HAL_ADC_STATE_DISABLED;
 
 static const nrfx_saadc_config_t saadc_config = 
 {
@@ -48,7 +47,7 @@ void HAL_ADC_Set_Sample_Time(uint8_t ADC_SampleTime)
  */
 int32_t HAL_ADC_Read(uint16_t pin)
 {
-    if (!m_adc_initiated)
+    if (m_adc_state != HAL_ADC_STATE_ENABLED)
     {
         HAL_ADC_DMA_Init();
     }
@@ -123,8 +122,7 @@ err_ret:
  */
 void HAL_ADC_DMA_Init()
 {
-    m_adc_initiated = true;
-    m_adc_suspended = false;
+    m_adc_state = HAL_ADC_STATE_ENABLED;
     uint32_t err_code = nrfx_saadc_init(&saadc_config, analog_in_event_handler);
     SPARK_ASSERT(err_code == NRF_SUCCESS);
 }
@@ -134,8 +132,7 @@ void HAL_ADC_DMA_Init()
  */
 int HAL_ADC_DMA_Uninit(void* reserved)
 {
-    m_adc_initiated = false;
-    m_adc_suspended = false;
+    m_adc_state = HAL_ADC_STATE_DISABLED;
     nrfx_saadc_uninit();
     return SYSTEM_ERROR_NONE;
 }
@@ -147,15 +144,14 @@ int HAL_ADC_Sleep(bool sleep, void* reserved)
 {
     if (sleep) {
         // Suspend ADC
-        CHECK_TRUE(m_adc_initiated, SYSTEM_ERROR_NONE);
-        CHECK_FALSE(m_adc_suspended, SYSTEM_ERROR_NONE);
+        CHECK_TRUE(m_adc_state == HAL_ADC_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
         HAL_ADC_DMA_Uninit(nullptr);
-        m_adc_suspended = true;
+        m_adc_state = HAL_ADC_STATE_SUSPENDED;
     } else {
         // Restore ADC
-        CHECK_TRUE(m_adc_suspended, SYSTEM_ERROR_NONE);
+        CHECK_TRUE(m_adc_state == HAL_ADC_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
         HAL_ADC_DMA_Init();
-        m_adc_suspended = false;
+        m_adc_state = HAL_ADC_STATE_ENABLED;
     }
 
     return SYSTEM_ERROR_NONE;
