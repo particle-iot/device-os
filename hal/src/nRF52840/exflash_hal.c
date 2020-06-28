@@ -50,8 +50,7 @@ enum qspi_cmds_t {
 
 static const size_t MX25_OTP_SECTOR_SIZE = 4096 / 8; /* 4Kb or 512B */
 
-static bool qspi_initialized = false;;
-static bool qspi_suspended = false;
+static exflash_state_t qspi_state = HAL_EXFLASH_STATE_DISABLED;
 
 // Mitigations for nRF52840 anomaly 215
 // [215] QSPI: Reading QSPI registers after XIP might halt CPU
@@ -256,8 +255,7 @@ int hal_exflash_init(void)
         }
     }
     LOG_DEBUG(TRACE, "QSPI initialized.");
-    qspi_initialized = true;
-    qspi_suspended = false;
+    qspi_state = HAL_EXFLASH_STATE_ENABLED;
 
     // Wake up external flash from deep power down mode
     ret = hal_exflash_special_command(HAL_EXFLASH_COMMAND_NONE, HAL_EXFLASH_COMMAND_WAKEUP, NULL, NULL, 0);
@@ -289,8 +287,7 @@ int hal_exflash_uninit(void)
     // The nrfx_qspi driver doesn't clear pending IRQ
     sd_nvic_ClearPendingIRQ(QSPI_IRQn);
 
-    qspi_initialized = false;
-    qspi_suspended = false;
+    qspi_state = HAL_EXFLASH_STATE_DISABLED;
 
     hal_exflash_unlock();
 
@@ -589,26 +586,27 @@ int hal_exflash_sleep(bool sleep, void* reserved) {
     hal_exflash_lock();
     if (sleep) {
         // Suspend I2C
-        if (!qspi_initialized) {
+        if (qspi_state != HAL_EXFLASH_STATE_ENABLED) {
             hal_exflash_unlock();
-            return SYSTEM_ERROR_NONE;
-        }
-        if (qspi_suspended) {
-            hal_exflash_unlock();
-            return SYSTEM_ERROR_NONE;
+            return SYSTEM_ERROR_INVALID_STATE;
         }
         // Put external flash into sleep and disable QSPI peripheral
-        hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SLEEP, NULL, NULL, 0);
-        hal_exflash_uninit();
-        qspi_suspended = true;
+        if (hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SLEEP, NULL, NULL, 0) != SYSTEM_ERROR_NONE ||
+            hal_exflash_uninit() != SYSTEM_ERROR_NONE) {
+            hal_exflash_unlock();
+            return SYSTEM_ERROR_INTERNAL;
+        }
+        qspi_state = HAL_EXFLASH_STATE_SUSPENDED;
     } else {
         // Restore I2C
-        if (!qspi_suspended) {
+        if (qspi_state != HAL_EXFLASH_STATE_SUSPENDED) {
             hal_exflash_unlock();
-            return SYSTEM_ERROR_NONE;
+            return SYSTEM_ERROR_INVALID_STATE;
         }
-        hal_exflash_init();
-        qspi_suspended = false;
+        if (hal_exflash_init() != SYSTEM_ERROR_NONE) {
+            hal_exflash_unlock();
+            return SYSTEM_ERROR_INTERNAL;
+        }
     }
     hal_exflash_unlock();
     return SYSTEM_ERROR_NONE;

@@ -39,6 +39,12 @@ typedef enum {
     HAL_EXFLASH_COMMAND_SUSPEND_PGMERS  = 4
 } hal_exflash_command_t;
 
+typedef enum exflash_state_t {
+    HAL_EXFLASH_STATE_DISABLED,
+    HAL_EXFLASH_STATE_ENABLED,
+    HAL_EXFLASH_STATE_SUSPENDED
+} exflash_state_t;
+
 int hal_exflash_init(void);
 int hal_exflash_uninit(void);
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size);
