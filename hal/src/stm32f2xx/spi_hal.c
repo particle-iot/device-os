@@ -38,7 +38,7 @@
 #define TOTAL_SPI   2
 #endif
 
-/* Private variables ---------------------------------------------------------*/
+
 typedef struct stm32_spi_info_t {
     SPI_TypeDef* peripheral;
 
@@ -66,14 +66,13 @@ typedef struct stm32_spi_info_t {
     uint8_t af_mapping;
 } stm32_spi_info_t;
 
-typedef struct spi_state_t {
+typedef struct stm32_spi_state_t {
     SPI_InitTypeDef init_structure;
 
     bool bit_order_set;
     bool data_mode_set;
     bool clock_divider_set;
-    volatile bool enabled;
-    volatile bool suspended;
+    volatile hal_spi_state_t state;
 
     hal_spi_dma_user_callback dma_user_callback;
 
@@ -88,7 +87,7 @@ typedef struct spi_state_t {
 
     __attribute__((aligned(4))) uint8_t temp_memory_rx;
     __attribute__((aligned(4))) uint8_t temp_memory_tx;
-} spi_state_t;
+} stm32_spi_state_t;
 
 static void spiOnSelectedHandler(void *data);
 
@@ -115,7 +114,7 @@ typedef enum spi_ports_t {
 #endif
 } spi_ports_t;
 
-spi_state_t spiState[TOTAL_SPI];
+stm32_spi_state_t spiState[TOTAL_SPI];
 
 
 static void spiDmaConfig(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length) {
@@ -248,8 +247,7 @@ void hal_spi_init(hal_spi_interface_t spi) {
     spiState[spi].bit_order_set = false;
     spiState[spi].data_mode_set = false;
     spiState[spi].clock_divider_set = false;
-    spiState[spi].enabled = false;
-    spiState[spi].suspended = false;
+    spiState[spi].state = HAL_SPI_STATE_DISABLED;
 
     spiState[spi].ss_pin = spiMap[spi].ss_pin;
     spiState[spi].mode = SPI_MODE_MASTER;
@@ -273,8 +271,6 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
     if (mode == SPI_MODE_SLAVE && !HAL_Pin_Is_Valid(pin)) {
         return;
     }
-
-    spiState[spi].suspended = false;
 
     spiState[spi].ss_pin = pin;
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
@@ -348,19 +344,18 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
         SPI_Cmd(spiMap[spi].peripheral, ENABLE);
     }
 
-    spiState[spi].enabled = true;
+    spiState[spi].state = HAL_SPI_STATE_ENABLED;
 }
 
 void hal_spi_end(hal_spi_interface_t spi) {
-    spiState[spi].suspended = false;
-    if(spiState[spi].enabled != false) {
+    if(spiState[spi].state != HAL_SPI_STATE_DISABLED) {
         if (spiState[spi].mode == SPI_MODE_SLAVE) {
             HAL_Interrupts_Detach(spiState[spi].ss_pin);
         }
         SPI_Cmd(spiMap[spi].peripheral, DISABLE);
         hal_spi_transfer_dma_cancel(spi);
         SPI_DeInit(spiMap[spi].peripheral);
-        spiState[spi].enabled = false;
+        spiState[spi].state = HAL_SPI_STATE_DISABLED;
     }
 }
 
@@ -375,7 +370,7 @@ static inline void spiSetBitOrderImpl(hal_spi_interface_t spi, uint8_t order) {
 void hal_spi_set_bit_order(hal_spi_interface_t spi, uint8_t order) {
     spiSetBitOrderImpl(spi, order);
 
-    if(spiState[spi].enabled != false) {
+    if(spiState[spi].state == HAL_SPI_STATE_ENABLED) {
         SPI_Cmd(spiMap[spi].peripheral, DISABLE);
         SPI_Init(spiMap[spi].peripheral, &spiState[spi].init_structure);
         SPI_Cmd(spiMap[spi].peripheral, ENABLE);
@@ -415,7 +410,7 @@ static inline void spiSetDataModeImpl(hal_spi_interface_t spi, uint8_t mode) {
 void hal_spi_set_data_mode(hal_spi_interface_t spi, uint8_t mode) {
     spiSetDataModeImpl(spi, mode);
 
-    if(spiState[spi].enabled != false) {
+    if(spiState[spi].state == HAL_SPI_STATE_ENABLED) {
         SPI_Cmd(spiMap[spi].peripheral, DISABLE);
         SPI_Init(spiMap[spi].peripheral, &spiState[spi].init_structure);
         SPI_Cmd(spiMap[spi].peripheral, ENABLE);
@@ -450,7 +445,7 @@ int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8
     if (set_default) {
         // hal_spi_end(spi);
         hal_spi_begin_ext(spi, spiState[spi].mode, spiState[spi].ss_pin, NULL);
-    } else if (spiState[spi].enabled != false) {
+    } else if (spiState[spi].state == HAL_SPI_STATE_ENABLED) {
         SPI_Cmd(spiMap[spi].peripheral, DISABLE);
         SPI_Init(spiMap[spi].peripheral, &spiState[spi].init_structure);
         SPI_Cmd(spiMap[spi].peripheral, ENABLE);
@@ -461,6 +456,9 @@ int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8
 
 uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data) {
     if (spiState[spi].mode == SPI_MODE_SLAVE) {
+        return 0;
+    }
+    if (spiState[spi].state != HAL_SPI_STATE_ENABLED) {
         return 0;
     }
     /* Wait for SPI Tx buffer empty */
@@ -475,6 +473,9 @@ uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data) {
 }
 
 void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback) {
+    if (spiState[spi].state != HAL_SPI_STATE_ENABLED) {
+        return;
+    }
     int32_t state = HAL_disable_irq();
     spiState[spi].dma_user_callback = userCallback;
     /* Config and initiate DMA transfer */
@@ -516,7 +517,7 @@ void hal_spi_set_callback_on_selected(hal_spi_interface_t spi, hal_spi_select_us
 }
 
 bool hal_spi_is_enabled(hal_spi_interface_t spi) {
-    return spiState[spi].enabled;
+    return spiState[spi].state == HAL_SPI_STATE_ENABLED;
 }
 
 /**
@@ -582,14 +583,14 @@ void hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved)
     info->system_clock = spi==HAL_SPI_INTERFACE1 ? 60000000 : 30000000;
     if (info->version >= HAL_SPI_INFO_VERSION_1) {
         int32_t state = HAL_disable_irq();
-        if (spiState[spi].enabled) {
+        if (spiState[spi].state == HAL_SPI_STATE_ENABLED) {
             uint32_t prescaler = (1 << ((spiState[spi].init_structure.SPI_BaudRatePrescaler / 8) + 1));
             info->clock = info->system_clock / prescaler;
         } else {
             info->clock = 0;
         }
         info->default_settings = !(spiState[spi].clock_divider_set || spiState[spi].data_mode_set || spiState[spi].bit_order_set);
-        info->enabled = spiState[spi].enabled;
+        info->enabled = (spiState[spi].state == HAL_SPI_STATE_ENABLED);
         info->mode = spiState[spi].mode;
         info->bit_order = spiState[spi].init_structure.SPI_FirstBit == SPI_FirstBit_MSB ? MSBFIRST : LSBFIRST;
         info->data_mode = spiState[spi].init_structure.SPI_CPOL | spiState[spi].init_structure.SPI_CPHA;
@@ -632,15 +633,17 @@ static void spiOnSelectedHandler(void *data) {
 int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
     if (sleep) {
         CHECK_TRUE(hal_spi_is_enabled(spi), SYSTEM_ERROR_NONE);
-        CHECK_FALSE(spiState[spi].suspended, SYSTEM_ERROR_NONE);
         hal_spi_transfer_dma_cancel(spi);
         while (!spiState[spi].dma_aborted);
-        hal_spi_end(spi); // It doesn't clear spi settings, so we can reuse the previous settings on woken up.
-        spiState[spi].suspended = true;
+        if (spiState[spi].mode == SPI_MODE_SLAVE) {
+            HAL_Interrupts_Detach(spiState[spi].ss_pin);
+        }
+        SPI_Cmd(spiMap[spi].peripheral, DISABLE);
+        SPI_DeInit(spiMap[spi].peripheral);
+        spiState[spi].state = HAL_SPI_STATE_SUSPENDED;
     } else {
-        CHECK_TRUE(spiState[spi].suspended, SYSTEM_ERROR_NONE);
+        CHECK_TRUE(spiState[spi].state == HAL_SPI_STATE_SUSPENDED, SYSTEM_ERROR_NONE);
         hal_spi_begin_ext(spi, spiState[spi].mode, spiState[spi].ss_pin, NULL);
-        spiState[spi].suspended = false;
     }
     return SYSTEM_ERROR_NONE;
 }

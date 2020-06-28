@@ -35,7 +35,7 @@
 #define DEFAULT_BIT_ORDER       MSBFIRST
 #define DEFAULT_SPI_CLOCK       SPI_CLOCK_DIV256
 
-typedef struct {
+typedef struct nrf5x_spi_info_t {
     const nrfx_spim_t                   *master;
     const nrfx_spis_t                   *slave;
     app_irq_priority_t                  priority;
@@ -57,10 +57,9 @@ typedef struct {
     hal_spi_dma_user_callback           dma_user_callback;
     hal_spi_select_user_callback        select_user_callback;
 
-    volatile bool                       enabled;
+    volatile hal_spi_state_t            state;
     volatile bool                       transmitting;
     volatile uint16_t                   transfer_length;
-    volatile bool                       suspended;
 
     os_mutex_recursive_t                mutex;
 } nrf5x_spi_info_t;
@@ -269,13 +268,12 @@ void hal_spi_init(hal_spi_interface_t spi) {
 
     hal_spi_acquire(spi, nullptr);
 
-    if (spiMap[spi].enabled) {
+    if (spiMap[spi].state == HAL_SPI_STATE_ENABLED) {
         spiUninit(spi);
     }
 
     // Default: SPI_MODE_MASTER, SPI_MODE3, MSBFIRST, 16MHZ
-    spiMap[spi].enabled = false;
-    spiMap[spi].suspended = false;
+    spiMap[spi].state = HAL_SPI_STATE_DISABLED;
     spiMap[spi].transmitting = false;
     spiMap[spi].spi_mode = DEFAULT_SPI_MODE;
     spiMap[spi].bit_order = DEFAULT_BIT_ORDER;
@@ -304,12 +302,10 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
         return;
     }
 
-    spiMap[spi].suspended = false;
-
-    if (spiMap[spi].enabled) {
+    if (spiMap[spi].state == HAL_SPI_STATE_ENABLED) {
         // Make sure we reset the enabled state
         spiUninit(spi);
-        spiMap[spi].enabled = false;
+        spiMap[spi].state = HAL_SPI_STATE_DISABLED;
     }
 
     if (pin == SPI_DEFAULT_SS) {
@@ -331,20 +327,19 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
 
     spiMap[spi].spi_mode = mode;
     spiInit(spi, mode);
-    spiMap[spi].enabled = true;
+    spiMap[spi].state = HAL_SPI_STATE_ENABLED;
 }
 
 void hal_spi_end(hal_spi_interface_t spi) {
-    spiMap[spi].suspended = false;
-    if (spiMap[spi].enabled) {
+    if (spiMap[spi].state != HAL_SPI_STATE_DISABLED) {
         spiUninit(spi);
-        spiMap[spi].enabled = false;
+        spiMap[spi].state = HAL_SPI_STATE_DISABLED;
     }
 }
 
 void hal_spi_set_bit_order(hal_spi_interface_t spi, uint8_t order) {
     spiMap[spi].bit_order = order;
-    if (spiMap[spi].enabled) {
+    if (spiMap[spi].state == HAL_SPI_STATE_ENABLED) {
         spiUninit(spi);
         spiInit(spi, spiMap[spi].spi_mode);
     }
@@ -352,7 +347,7 @@ void hal_spi_set_bit_order(hal_spi_interface_t spi, uint8_t order) {
 
 void hal_spi_set_data_mode(hal_spi_interface_t spi, uint8_t mode) {
     spiMap[spi].data_mode = mode;
-    if (spiMap[spi].enabled) {
+    if (spiMap[spi].state == HAL_SPI_STATE_ENABLED) {
         spiUninit(spi);
         spiInit(spi, spiMap[spi].spi_mode);
     }
@@ -361,7 +356,7 @@ void hal_spi_set_data_mode(hal_spi_interface_t spi, uint8_t mode) {
 void hal_spi_set_clock_divider(hal_spi_interface_t spi, uint8_t rate) {
     // actual speed is the system clock divided by some scalar
     spiMap[spi].clock = rate;
-    if (spiMap[spi].enabled) {
+    if (spiMap[spi].state == HAL_SPI_STATE_ENABLED) {
         spiUninit(spi);
         spiInit(spi, spiMap[spi].spi_mode);
     }
@@ -369,6 +364,9 @@ void hal_spi_set_clock_divider(hal_spi_interface_t spi, uint8_t rate) {
 
 uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data) {
     if (spiMap[spi].spi_mode == SPI_MODE_SLAVE) {
+        return 0;
+    }
+    if (spiMap[spi].state != HAL_SPI_STATE_ENABLED) {
         return 0;
     }
 
@@ -394,7 +392,7 @@ uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data) {
 }
 
 bool hal_spi_is_enabled(hal_spi_interface_t spi) {
-    return spiMap[spi].enabled;
+    return spiMap[spi].state == HAL_SPI_STATE_ENABLED;
 }
 
 bool hal_spi_is_enabled_deprecated(void) {
@@ -405,7 +403,7 @@ void hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved)
     info->system_clock = 64000000;
     if (info->version >= HAL_SPI_INFO_VERSION_1) {
         int32_t state = HAL_disable_irq();
-        if (spiMap[spi].enabled) {
+        if (spiMap[spi].state == HAL_SPI_STATE_ENABLED) {
             switch (spiMap[spi].clock) {
                 case SPI_CLOCK_DIV2:   info->clock = info->system_clock / 2;   break;
                 case SPI_CLOCK_DIV4:   info->clock = info->system_clock / 4;   break;
@@ -424,7 +422,7 @@ void hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved)
                                   (spiMap[spi].bit_order == DEFAULT_BIT_ORDER) &&
                                   (spiMap[spi].data_mode == DEFAULT_DATA_MODE) &&
                                   (spiMap[spi].clock     == DEFAULT_SPI_CLOCK));
-        info->enabled = spiMap[spi].enabled;
+        info->enabled = (spiMap[spi].state == HAL_SPI_STATE_ENABLED);
         info->mode = spiMap[spi].spi_mode;
         info->bit_order = spiMap[spi].bit_order;
         info->data_mode = spiMap[spi].data_mode;
@@ -441,6 +439,9 @@ void hal_spi_set_callback_on_selected(hal_spi_interface_t spi, hal_spi_select_us
 
 void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback) {
     if (length == 0) {
+        return;
+    }
+    if (spiMap[spi].state != HAL_SPI_STATE_ENABLED) {
         return;
     }
 
@@ -511,7 +512,7 @@ int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8
         spiMap[spi].clock = clockdiv;
     }
 
-    if (spiMap[spi].enabled) {
+    if (spiMap[spi].state == HAL_SPI_STATE_ENABLED) {
         spiUninit(spi);
         spiInit(spi, spiMap[spi].spi_mode);
     }
@@ -522,19 +523,17 @@ int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8
 int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
     if (sleep) {
         CHECK_TRUE(hal_spi_is_enabled(spi), SYSTEM_ERROR_NONE);
-        CHECK_FALSE(spiMap[spi].suspended, SYSTEM_ERROR_NONE);
         hal_spi_transfer_dma_cancel(spi);
         while (spiMap[spi].transmitting);
-        hal_spi_end(spi); // It doesn't clear spi settings, so we can reuse the previous settings on woken up.
-        // hal_spi_end() clears pin function, retrieve it.
+        spiUninit(spi);
+        // spiUninit() clears pin function, retrieve it.
         HAL_Set_Pin_Function(spiMap[spi].sck_pin, PF_SPI);
         HAL_Set_Pin_Function(spiMap[spi].mosi_pin, PF_SPI);
         HAL_Set_Pin_Function(spiMap[spi].miso_pin, PF_SPI);
-        spiMap[spi].suspended = true;
+        spiMap[spi].state = HAL_SPI_STATE_SUSPENDED;
     } else {
-        CHECK_TRUE(spiMap[spi].suspended, SYSTEM_ERROR_NONE);
+        CHECK_TRUE(spiMap[spi].state == HAL_SPI_STATE_SUSPENDED, SYSTEM_ERROR_NONE);
         hal_spi_begin_ext(spi, spiMap[spi].spi_mode, spiMap[spi].ss_pin, nullptr);
-        spiMap[spi].suspended = false;
     }
     return SYSTEM_ERROR_NONE;
 }

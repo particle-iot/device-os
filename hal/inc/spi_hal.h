@@ -46,6 +46,13 @@ typedef enum hal_spi_mode_t {
 } hal_spi_mode_t;
 typedef hal_spi_mode_t SPI_Mode; // For backwards compatibility
 
+typedef enum hal_spi_state_t {
+    HAL_SPI_STATE_UNKNOWN,
+    HAL_SPI_STATE_ENABLED,
+    HAL_SPI_STATE_DISABLED,
+    HAL_SPI_STATE_SUSPENDED
+} hal_spi_state_t;
+
 typedef void (*hal_spi_dma_user_callback)(void);
 typedef void (*hal_spi_select_user_callback)(uint8_t);
 
