@@ -19,6 +19,9 @@
 
 #if defined(PPP_SUPPORT) && PPP_SUPPORT
 
+#undef DEBUG_BUILD
+#define DEBUG_BUILD
+
 #include "service_debug.h"
 extern "C" {
 #include <netif/ppp/pppos.h>
@@ -175,7 +178,7 @@ int Client::input(const uint8_t* data, size_t size) {
       case STATE_CONNECTING:
       case STATE_DISCONNECTING:
       case STATE_CONNECTED: {
-        LOG_DEBUG(TRACE, "RX: %lu", size);
+        // LOG_DEBUG(TRACE, "RX: %lu", size);
 #if !PPP_INPROC_IRQ_SAFE
         err_t err = pppos_input_tcpip(pcb_, (u8_t*)data, size);
 #else
@@ -264,7 +267,7 @@ void Client::loop() {
       case STATE_CONNECT: {
         prepareConnect();
         transition(STATE_CONNECTING);
-        err_t err = pppapi_connect(pcb_, 1);
+        err_t err = pppapi_connect(pcb_, 0);
         if (err != ERR_OK) {
           LOG(TRACE, "PPP error connecting: %x", err);
           transition(STATE_CONNECT);
@@ -387,7 +390,7 @@ uint32_t Client::outputCb(ppp_pcb* pcb, uint8_t* data, uint32_t len, void* ctx) 
 }
 
 uint32_t Client::output(const uint8_t* data, size_t len) {
-  LOG_DEBUG(TRACE, "TX: %lu", len);
+  // LOG_DEBUG(TRACE, "TX: %lu", len);
 
   if (oCb_) {
     auto r = oCb_(data, len, oCbCtx_);

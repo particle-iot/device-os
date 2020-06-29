@@ -414,7 +414,7 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
         }
 
         if (bytesInWindow_ >= UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD) {
-            LOG_DEBUG(WARN, "Dropping");
+            LOG(WARN, "Dropping");
             // Not an error
             return 0;
         }
@@ -423,7 +423,7 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     int err = muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, data, size);
     if (err == gsm0710::GSM0710_ERROR_FLOW_CONTROL) {
         // Not an error
-        LOG_DEBUG(WARN, "Remote side flow control");
+        LOG(WARN, "Remote side flow control");
         err = 0;
     }
     if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
@@ -1084,15 +1084,20 @@ int SaraNcpClient::initReady(ModemState state) {
     // Enable packet domain error reporting
     CHECK_PARSER_OK(parser_.execCommand("AT+CGEREP=1,0"));
 
+    if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
+        fwVersion_ = getAppFirmwareVersion();
+        if (fwVersion_ > 0) {
+            // L0.0.00.00.05.06,A.02.00 has a memory issue
+            memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
+        }
+    }
+
     if (state != ModemState::MuxerAtChannel) {
         if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
             // Change the baudrate to 921600
             CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
         } else {
-            fwVersion_ = getAppFirmwareVersion();
             if (fwVersion_ > 0) {
-                // L0.0.00.00.05.06,A.02.00 has a memory issue
-                memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
                 // There is a set of other revisions which do not have hardware flow control
                 if (!(fwVersion_ >= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN &&
                         fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX)) {
