@@ -1225,7 +1225,6 @@ int HAL_I2C_Sleep(HAL_I2C_Interface i2c, bool sleep, void* reserved)
             return SYSTEM_ERROR_INVALID_STATE;
         }
         HAL_I2C_Begin(i2c, i2cMap[i2c]->mode, i2cMap[i2c]->I2C_InitStructure.I2C_OwnAddress1 >> 1, NULL);
-        i2cMap[i2c]->state = HAL_I2C_STATE_ENABLED;
     }
 
     HAL_I2C_Release(i2c, NULL);

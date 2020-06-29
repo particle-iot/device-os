@@ -707,7 +707,6 @@ int HAL_I2C_Sleep(HAL_I2C_Interface i2c, bool sleep, void* reserved) {
         // Restore I2C
         CHECK_TRUE(m_i2c_map[i2c].state == HAL_I2C_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
         HAL_I2C_Begin(i2c, m_i2c_map[i2c].mode, m_i2c_map[i2c].address, nullptr);
-        m_i2c_map[i2c].state = HAL_I2C_STATE_ENABLED;
     }
 
     return SYSTEM_ERROR_NONE;
