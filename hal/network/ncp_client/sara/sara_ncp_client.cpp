@@ -1082,7 +1082,7 @@ int SaraNcpClient::initReady(ModemState state) {
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
 
     // Enable packet domain error reporting
-    CHECK_PARSER_OK(parser_.execCommand("AT+CGEREP=1,0"));
+    CHECK_PARSER(parser_.execCommand("AT+CGEREP=1,0"));
 
     if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
         fwVersion_ = getAppFirmwareVersion();

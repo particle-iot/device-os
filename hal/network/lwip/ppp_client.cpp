@@ -34,6 +34,7 @@ extern "C" {
 #include "system_error.h"
 #include "lwiplock.h"
 #include <lwip/stats.h>
+#include <algorithm>
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -175,7 +176,21 @@ bool Client::notifyEvent(uint64_t ev) {
 int Client::input(const uint8_t* data, size_t size) {
   if (running_) {
     switch (state_) {
-      case STATE_CONNECTING:
+      case STATE_CONNECTING: {
+        for (auto p = data, begin = (const uint8_t*)nullptr; p != data + size; ++p) {
+          if (!std::isprint(*p) || *p == '\r' || *p == '\n') {
+            if (begin && p - begin > 2) {
+              if (std::isalpha(*begin) || *begin == '+') {
+                LOG(TRACE, "< %.*s", p - begin, begin);
+              }
+            }
+            begin = nullptr;
+          } else if (!begin) {
+            begin = p;
+          }
+        }
+        // Fall through
+      }
       case STATE_DISCONNECTING:
       case STATE_CONNECTED: {
         // LOG_DEBUG(TRACE, "RX: %lu", size);
@@ -265,8 +280,8 @@ void Client::loop() {
 
     switch (state_) {
       case STATE_CONNECT: {
-        prepareConnect();
         transition(STATE_CONNECTING);
+        prepareConnect();
         err_t err = pppapi_connect(pcb_, 0);
         if (err != ERR_OK) {
           LOG(TRACE, "PPP error connecting: %x", err);
