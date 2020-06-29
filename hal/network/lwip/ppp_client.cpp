@@ -135,9 +135,10 @@ bool Client::prepareConnect() {
 #endif // PPP_IPV6_SUPPORT
 
   // FIXME:
-  static const char UBLOX_NCP_CONNECT_COMMAND[] = "ATD*99***1#\r\n";
-  output((const uint8_t*)UBLOX_NCP_CONNECT_COMMAND, sizeof(UBLOX_NCP_CONNECT_COMMAND) - 1);
-  return true;
+  static const char UBLOX_NCP_CONNECT_COMMAND[] = "~+++\r\nATD*99***1#\r\n";
+  const size_t cmdSize = sizeof(UBLOX_NCP_CONNECT_COMMAND) - 1;
+  auto size = output((const uint8_t*)UBLOX_NCP_CONNECT_COMMAND, cmdSize);
+  return size == cmdSize;
 }
 
 bool Client::start() {
@@ -281,7 +282,11 @@ void Client::loop() {
     switch (state_) {
       case STATE_CONNECT: {
         transition(STATE_CONNECTING);
-        prepareConnect();
+        if (!prepareConnect()) {
+          LOG(TRACE, "Failed to dial");
+          transition(STATE_CONNECT);
+          break;
+        }
         err_t err = pppapi_connect(pcb_, 1);
         if (err != ERR_OK) {
           LOG(TRACE, "PPP error connecting: %x", err);

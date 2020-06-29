@@ -1081,6 +1081,9 @@ int SaraNcpClient::initReady(ModemState state) {
     // (allows the capture of `mcc` and `mnc`)
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
 
+    // Enable packet domain error reporting
+    CHECK_PARSER(parser_.execCommand("AT+CGEREP=1,0"));
+
     if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
         fwVersion_ = getAppFirmwareVersion();
         if (fwVersion_ > 0) {
@@ -1088,9 +1091,6 @@ int SaraNcpClient::initReady(ModemState state) {
             memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
         }
         CHECK_PARSER(parser_.execCommand("AT+UBIP=1"));
-    } else {
-        // Enable packet domain error reporting
-        CHECK_PARSER(parser_.execCommand("AT+CGEREP=1,0"));
     }
 
     if (state != ModemState::MuxerAtChannel) {
@@ -1575,12 +1575,12 @@ int SaraNcpClient::processEventsImpl() {
         CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     }
 
-    CHECK_PARSER(parser_.execCommand("AT+CGCLASS?"));
-    CHECK_PARSER(parser_.execCommand("AT+CGACT?"));
-    CHECK_PARSER(parser_.execCommand("AT+CGATT?"));
-    CHECK_PARSER(parser_.execCommand("AT+CGPADDR=1"));
-    CHECK_PARSER(parser_.execCommand("AT+CGDCONT?"));
-    CHECK_PARSER(parser_.execCommand("AT+CEER"));
+    // CHECK_PARSER(parser_.execCommand("AT+CGCLASS?"));
+    // CHECK_PARSER(parser_.execCommand("AT+CGACT?"));
+    // CHECK_PARSER(parser_.execCommand("AT+CGATT?"));
+    // CHECK_PARSER(parser_.execCommand("AT+CGPADDR=1"));
+    // CHECK_PARSER(parser_.execCommand("AT+CGDCONT?"));
+    // CHECK_PARSER(parser_.execCommand("AT+CEER"));
 
     if (connState_ == NcpConnectionState::CONNECTING &&
             millis() - regStartTime_ >= registrationTimeout_) {
