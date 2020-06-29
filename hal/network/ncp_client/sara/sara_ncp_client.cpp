@@ -1081,15 +1081,16 @@ int SaraNcpClient::initReady(ModemState state) {
     // (allows the capture of `mcc` and `mnc`)
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
 
-    // Enable packet domain error reporting
-    CHECK_PARSER(parser_.execCommand("AT+CGEREP=1,0"));
-
     if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
         fwVersion_ = getAppFirmwareVersion();
         if (fwVersion_ > 0) {
             // L0.0.00.00.05.06,A.02.00 has a memory issue
             memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
         }
+        CHECK_PARSER(parser_.execCommand("AT+UBIP=1"));
+    } else {
+        // Enable packet domain error reporting
+        CHECK_PARSER(parser_.execCommand("AT+CGEREP=1,0"));
     }
 
     if (state != ModemState::MuxerAtChannel) {
@@ -1254,14 +1255,17 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
             if (muxer_.forceOpenChannel(UBLOX_NCP_AT_CHANNEL)) {
                 LOG(TRACE, "Failed to open AT channel");
                 return SYSTEM_ERROR_UNKNOWN;
-            } else {
-                muxer_.forceOpenChannel(UBLOX_NCP_PPP_CHANNEL);
-                muxer_.closeChannel(UBLOX_NCP_PPP_CHANNEL);
             }
             muxer_.setChannelDataHandler(UBLOX_NCP_AT_CHANNEL, muxerAtStream_->channelDataCb, muxerAtStream_.get());
         }
+
         // Attempt to resume AT channel
         CHECK_TRUE(muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_UNKNOWN);
+
+        // Force open and close PPP channel just in case
+        if (!muxer_.forceOpenChannel(UBLOX_NCP_PPP_CHANNEL)) {
+            muxer_.closeChannel(UBLOX_NCP_PPP_CHANNEL);
+        }
 
         CHECK(initParser(muxerAtStream_.get()));
         skipAll(muxerAtStream_.get());
@@ -1557,7 +1561,7 @@ int SaraNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
-    if (connState_ != NcpConnectionState::CONNECTING ||
+    if (/*connState_ != NcpConnectionState::CONNECTING || */
             millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return 0;
     }
@@ -1570,6 +1574,14 @@ int SaraNcpClient::processEventsImpl() {
     } else {
         CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     }
+
+    CHECK_PARSER(parser_.execCommand("AT+CGCLASS?"));
+    CHECK_PARSER(parser_.execCommand("AT+CGACT?"));
+    CHECK_PARSER(parser_.execCommand("AT+CGATT?"));
+    CHECK_PARSER(parser_.execCommand("AT+CGPADDR=1"));
+    CHECK_PARSER(parser_.execCommand("AT+CGDCONT?"));
+    CHECK_PARSER(parser_.execCommand("AT+CEER"));
+
     if (connState_ == NcpConnectionState::CONNECTING &&
             millis() - regStartTime_ >= registrationTimeout_) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");

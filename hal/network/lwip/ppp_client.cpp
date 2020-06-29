@@ -282,7 +282,7 @@ void Client::loop() {
       case STATE_CONNECT: {
         transition(STATE_CONNECTING);
         prepareConnect();
-        err_t err = pppapi_connect(pcb_, 0);
+        err_t err = pppapi_connect(pcb_, 1);
         if (err != ERR_OK) {
           LOG(TRACE, "PPP error connecting: %x", err);
           transition(STATE_CONNECT);
