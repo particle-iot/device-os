@@ -260,7 +260,7 @@ public:
     }
 
     int suspend() {
-        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_NONE);
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
 
         flush();
 
@@ -294,7 +294,7 @@ public:
 
     int restore() {
         AtomicSection lk;
-        CHECK_TRUE(state_ == HAL_USART_STATE_SUSPENDED, SYSTEM_ERROR_NONE);
+        CHECK_TRUE(state_ == HAL_USART_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
         return begin(config_);
     }
 

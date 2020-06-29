@@ -736,7 +736,7 @@ static void usartIntHandler(hal_usart_interface_t serial) {
 
 int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved) {
     if (sleep) {
-        CHECK_TRUE(usartMap[serial]->state == HAL_USART_STATE_ENABLED, SYSTEM_ERROR_NONE);
+        CHECK_TRUE(usartMap[serial]->state == HAL_USART_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
         hal_usart_flush(serial);
         usartEndImpl(serial);
         // Switch pins to INPUT
@@ -764,7 +764,7 @@ int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved) {
         usartMap[serial]->state = HAL_USART_STATE_SUSPENDED;
         usartMap[serial]->transmitting = false;
     } else {
-        CHECK_TRUE(usartMap[serial]->state == HAL_USART_STATE_SUSPENDED, SYSTEM_ERROR_NONE);
+        CHECK_TRUE(usartMap[serial]->state == HAL_USART_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
         hal_usart_begin_config(serial, usartMap[serial]->conf.baud_rate, usartMap[serial]->conf.config, NULL);
     }
     return SYSTEM_ERROR_NONE;
