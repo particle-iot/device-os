@@ -25,7 +25,7 @@ const char* defaultOrUserApn(const CellularCredentials& cred)
         return cred.apn;
     } else {
         // Determine APN based on IMSI
-        auto ret = cellular_imsi_to_network_provider(nullptr);
+        auto ret = cellular_sim_to_network_provider(nullptr);
         if (ret != 0) {
             // Should never get here since we always return 0 from above
             return cred.apn;
@@ -156,6 +156,7 @@ cellular_result_t cellular_connect(void* reserved)
     const CellularCredentials& cred = cellularCredentials;
     const char* apn = cred.apn;
     apn = defaultOrUserApn(cred);
+    LOG(INFO, "APN finally selected: %s", apn);
     CHECK_SUCCESS(electronMDM.connect(apn, cred.username, cred.password));
     return 0;
 }
@@ -404,10 +405,10 @@ cellular_result_t cellular_resume(void* reserved)
     return 0;
 }
 
-cellular_result_t cellular_imsi_to_network_provider(void* reserved)
+cellular_result_t cellular_sim_to_network_provider(void* reserved)
 {
     const DevStatus* status = electronMDM.getDevStatus();
-    cellularNetProv = detail::_cellular_imsi_to_network_provider(status->imsi);
+    cellularNetProv = detail::_cellular_sim_to_network_provider(status->imsi, status->ccid);
     return 0;
 }
 

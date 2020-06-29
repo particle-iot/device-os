@@ -12,8 +12,15 @@
 namespace detail {
 
 const int MCC_MNC_MIN_SIZE = 5;
+const int ICCID_MIN_SIZE = 19;
+const int ICCID_PREFIX_SIZE = 7;
 
-CellularNetProv _cellular_imsi_to_network_provider(const char* imsi) {
+CellularNetProv _cellular_sim_to_network_provider(const char* imsi, const char* iccid) {
+    if (iccid && strlen(iccid) >= ICCID_MIN_SIZE) {
+        if ((strncmp(iccid, "8988323",ICCID_PREFIX_SIZE) == 0) || (strncmp(iccid, "8988307",ICCID_PREFIX_SIZE) == 0)) {
+            return CELLULAR_NETPROV_TWILIO;
+        }
+    }
     if (imsi && strlen(imsi) >= MCC_MNC_MIN_SIZE) {
         if (strncmp(imsi, "21407", 5) == 0) {
             // LOG(INFO, "CELLULAR_NETPROV_TELEFONICA");

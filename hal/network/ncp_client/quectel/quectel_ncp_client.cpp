@@ -1101,15 +1101,27 @@ int QuectelNcpClient::checkSimCard() {
 int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
     netConf_ = conf;
     if (!netConf_.isValid()) {
-        // FIXME: CIMI may fail, need delay here
+        // First look for network settings based on ICCID
+        // FIXME: CCID may fail, need delay here
         HAL_Delay_Milliseconds(1000);
-        // Look for network settings based on IMSI
-        char buf[32] = {};
-        auto resp = parser_.sendCommand("AT+CIMI");
-        CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
+        char buf_iccid[32] = {};
+        auto resp = parser_.sendCommand("AT+CCID");
+        CHECK_PARSER(resp.readLine(buf_iccid, sizeof(buf_iccid)));
         const int r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-        netConf_ = networkConfigForImsi(buf, strlen(buf));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+        netConf_ = networkConfigForIccid(buf_iccid, strlen(buf_iccid));
+
+        // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
+        if (!netConf_.isValid()) {
+            // FIXME: CIMI may fail, need delay here
+            HAL_Delay_Milliseconds(1000);
+            char buf[32] = {};
+            auto resp = parser_.sendCommand("AT+CIMI");
+            CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
+            const int r = CHECK_PARSER(resp.readResult());
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            netConf_ = networkConfigForImsi(buf, strlen(buf));
+        }
     }
     // FIXME: for now IPv4 context only
     auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s\"",

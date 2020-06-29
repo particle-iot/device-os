@@ -24,5 +24,6 @@ namespace particle {
 class CellularNetworkConfig;
 
 CellularNetworkConfig networkConfigForImsi(const char* imsi, size_t size);
+CellularNetworkConfig networkConfigForIccid(const char* iccid, size_t size);
 
 } // particle

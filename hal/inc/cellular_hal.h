@@ -199,7 +199,7 @@ cellular_result_t cellular_resume(void* reserved);
 /**
  * Set the cellular network provider based on the IMSI of the SIM card inserted
  */
-cellular_result_t cellular_imsi_to_network_provider(void* reserved);
+cellular_result_t cellular_sim_to_network_provider(void* reserved);
 
 /**
  * Function for getting the cellular network provider data currently set

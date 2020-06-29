@@ -42,7 +42,7 @@ namespace detail {
 /**
  * Function for setting the cellular network provider based on the IMSI of the SIM card inserted, broken out for unit tests
  */
-CellularNetProv _cellular_imsi_to_network_provider(const char* imsi);
+CellularNetProv _cellular_sim_to_network_provider(const char* imsi, const char* iccid);
 
 cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signal_t* signalext, bool strengthResult, const NetStatus& status);
 
