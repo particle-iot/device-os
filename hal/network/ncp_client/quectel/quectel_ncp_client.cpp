@@ -119,6 +119,9 @@ const auto ICCID_MAX_LENGTH = 20;
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
 using CidType = decltype(CellularGlobalIdentity::cell_id);
 
+const int QUECTEL_DEFAULT_CID = 1;
+const char QUECTEL_DEFAULT_PDP_TYPE[] = "IP";
+
 } // anonymous
 
 QuectelNcpClient::QuectelNcpClient() {
@@ -983,6 +986,9 @@ int QuectelNcpClient::initReady(ModemState state) {
     // just in case
     CHECK_PARSER(parser_.execCommand("AT+QCFG=\"cmux/urcport\",1"));
 
+    // Enable packet domain error reporting
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGEREP=1,0"));
+
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1106,7 +1112,8 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
         netConf_ = networkConfigForImsi(buf, strlen(buf));
     }
     // FIXME: for now IPv4 context only
-    auto resp = parser_.sendCommand("AT+CGDCONT=1,\"IP\",\"%s\"",
+    auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s\"",
+            QUECTEL_DEFAULT_CID, QUECTEL_DEFAULT_PDP_TYPE,
             netConf_.hasApn() ? netConf_.apn() : "");
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
@@ -1199,9 +1206,10 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
             return SYSTEM_ERROR_NONE;
         }, this);
         if (r) {
+            LOG(ERROR, "Failed to open data channel");
+            ready_ = false;
             connState_ = NcpConnectionState::DISCONNECTED;
         }
-        muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL);
     }
 
     const auto handler = conf_.eventHandler();
