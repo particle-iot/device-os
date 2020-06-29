@@ -261,7 +261,6 @@ int HAL_ADC_Sleep(bool sleep, void* reserved)
             return SYSTEM_ERROR_INVALID_STATE;
         }
         HAL_ADC_DMA_Init();
-        adcState = HAL_ADC_STATE_ENABLED;
     }
 
     return SYSTEM_ERROR_NONE;

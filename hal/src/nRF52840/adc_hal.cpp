@@ -151,7 +151,6 @@ int HAL_ADC_Sleep(bool sleep, void* reserved)
         // Restore ADC
         CHECK_TRUE(m_adc_state == HAL_ADC_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
         HAL_ADC_DMA_Init();
-        m_adc_state = HAL_ADC_STATE_ENABLED;
     }
 
     return SYSTEM_ERROR_NONE;
