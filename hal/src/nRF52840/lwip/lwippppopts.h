@@ -47,6 +47,11 @@
 #define PPPOS_SUPPORT                   PPP_SUPPORT
 
 /**
+ * PPPOS_PBUF_RAM_TX_BUFFER==1: Use PBUF_RAM TX buffer
+ */
+#define PPPOS_PBUF_RAM_TX_BUFFER        1
+
+/**
  * LWIP_PPP_API==1: Enable PPP API (in pppapi.c)
  */
 #define LWIP_PPP_API                    (PPP_SUPPORT && (NO_SYS == 0))
@@ -94,11 +99,11 @@
 /**
  * PPP_DEBUG: Enable debugging for PPP.
  */
-#ifdef DEBUG_BUILD
+// #ifdef DEBUG_BUILD
 #define PPP_DEBUG                       LWIP_DBG_ON
-#else
-#define PPP_DEBUG                       LWIP_DBG_OFF
-#endif // DEBUG_BUILD
+// #else
+// #define PPP_DEBUG                       LWIP_DBG_OFF
+// #endif // DEBUG_BUILD
 
 /**
  * PPP_INPROC_IRQ_SAFE==1 call pppos_input() using tcpip_callback().
@@ -112,11 +117,11 @@
  *
  * Mandatory for debugging, it displays exchanged packet content in debug trace.
  */
-#ifndef DEBUG_BUILD
-#define PRINTPKT_SUPPORT                0
-#else
+// #ifndef DEBUG_BUILD
+// #define PRINTPKT_SUPPORT                0
+// #else
 #define PRINTPKT_SUPPORT                1
-#endif // DEBUG_BUILD
+// #endif // DEBUG_BUILD
 
 /**
  * PPP_IPV4_SUPPORT==1: Enable PPP IPv4 support
@@ -159,7 +164,7 @@
  * Setting PPP_USE_PBUF_RAM to 1 makes PPP use memory from heap where continuous
  * buffers are required, allowing you to use a smaller PBUF_POOL_BUFSIZE.
  */
-#define PPP_USE_PBUF_RAM                0
+#define PPP_USE_PBUF_RAM                1
 
 /**
  * PPP_FCS_TABLE: Keep a 256*2 byte table to speed up FCS calculation for PPPoS
@@ -237,7 +242,7 @@
  *
  * Currently only supported for PPPoS.
  */
-#define PPP_SERVER                      1
+#define PPP_SERVER                      0
 
 #if PPP_SERVER
 /*
@@ -260,7 +265,7 @@
  * PPP_MD5_RANDM==1: Use MD5 for better randomness.
  * Enabled by default if CHAP, EAP, or L2TP AUTH support is enabled.
  */
-#define PPP_MD5_RANDM                   (CHAP_SUPPORT || EAP_SUPPORT || PPPOL2TP_AUTH_SUPPORT)
+#define PPP_MD5_RANDM                   0
 
 /**
  * PolarSSL embedded library

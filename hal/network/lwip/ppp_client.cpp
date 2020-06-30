@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 #include "ppp_client.h"
 
 #if defined(PPP_SUPPORT) && PPP_SUPPORT
@@ -30,9 +33,9 @@ extern "C" {
 #include "inet_hal.h"
 #include "system_error.h"
 #include "lwiplock.h"
+#include <algorithm>
+#include "delay_hal.h"
 
-#undef LOG_COMPILE_TIME_LEVEL
-#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 LOG_SOURCE_CATEGORY("net.ppp.client");
 
 using namespace particle::net::ppp;
@@ -130,8 +133,18 @@ bool Client::prepareConnect() {
 #endif // PPP_IPV6_SUPPORT
 
   // FIXME:
-  static const char UBLOX_NCP_CONNECT_COMMAND[] = "ATD*99***1#\r\n";
-  output((const uint8_t*)UBLOX_NCP_CONNECT_COMMAND, sizeof(UBLOX_NCP_CONNECT_COMMAND) - 1);
+  static const char* UBLOX_NCP_CONNECT_COMMANDS[] = {
+    "~+++\r\n",
+    "ATH;D*99***1#\r\n",
+  };
+  for (const auto& cmd: UBLOX_NCP_CONNECT_COMMANDS) {
+    const auto cmdLen = strlen(cmd);
+    auto sz = output((const uint8_t*)cmd, cmdLen);
+    if (sz != cmdLen) {
+      return false;
+    }
+    HAL_Delay_Milliseconds(1000);
+  }
   return true;
 }
 
@@ -171,10 +184,24 @@ bool Client::notifyEvent(uint64_t ev) {
 int Client::input(const uint8_t* data, size_t size) {
   if (running_) {
     switch (state_) {
-      case STATE_CONNECTING:
+      case STATE_CONNECTING: {
+        for (auto p = data, begin = (const uint8_t*)nullptr; p != data + size; ++p) {
+          if (!std::isprint(*p) || *p == '\r' || *p == '\n') {
+            if (begin && p - begin > 2) {
+              if (std::isalpha(*begin) || *begin == '+') {
+                LOG(TRACE, "< %.*s", p - begin, begin);
+              }
+            }
+            begin = nullptr;
+          } else if (!begin) {
+            begin = p;
+          }
+        }
+        // Fall through
+      }
       case STATE_DISCONNECTING:
       case STATE_CONNECTED: {
-        LOG(TRACE, "RX: %lu", size);
+        // LOG(TRACE, "RX: %lu", size);
         err_t err = pppos_input_tcpip(pcb_, (u8_t*)data, size);
         if (err) {
           return SYSTEM_ERROR_INTERNAL;
@@ -237,8 +264,12 @@ void Client::loop() {
 
     switch (state_) {
       case STATE_CONNECT: {
-        prepareConnect();
         transition(STATE_CONNECTING);
+        if (!prepareConnect()) {
+          LOG(ERROR, "Failed to dial");
+          transition(STATE_CONNECT);
+          break;
+        }
         err_t err = pppapi_connect(pcb_, 1);
         if (err != ERR_OK) {
           LOG(TRACE, "PPP error connecting: %x", err);
@@ -362,7 +393,7 @@ uint32_t Client::outputCb(ppp_pcb* pcb, uint8_t* data, uint32_t len, void* ctx) 
 }
 
 uint32_t Client::output(const uint8_t* data, size_t len) {
-  LOG(TRACE, "TX: %lu", len);
+  // LOG(TRACE, "TX: %lu", len);
 
   if (oCb_) {
     auto r = oCb_(data, len, oCbCtx_);
@@ -382,7 +413,7 @@ void Client::notifyPhaseCb(ppp_pcb* pcb, uint8_t phase, void* ctx) {
 }
 
 void Client::notifyPhase(uint8_t phase) {
-  LOG(TRACE, "PPP phase -> %d", phase);
+  // LOG(TRACE, "PPP phase -> %d", phase);
 }
 
 void Client::notifyStatusCb(ppp_pcb* pcb, int err, void* ctx) {
@@ -393,7 +424,7 @@ void Client::notifyStatusCb(ppp_pcb* pcb, int err, void* ctx) {
 }
 
 void Client::notifyStatus(int err) {
-  LOG(TRACE, "PPP status -> %d", err);
+  // LOG(TRACE, "PPP status -> %d", err);
   switch (err) {
     case PPPERR_NONE: {
       /* Connected */
@@ -420,12 +451,12 @@ void Client::notifyNetifCb(netif* netif, netif_nsc_reason_t reason, const netif_
 }
 
 void Client::notifyNetif(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
-  LOG(TRACE, "PPP netif -> %x", reason);
+  // LOG(TRACE, "PPP netif -> %x", reason);
 }
 #endif /* defined(LWIP_NETIF_EXT_STATUS_CALLBACK) && LWIP_NETIF_EXT_STATUS_CALLBACK == 1 */
 
 void Client::transition(State newState) {
-  LOG(TRACE, "State %s -> %s", stateNames_[state_], stateNames_[newState]);
+  // LOG(TRACE, "State %s -> %s", stateNames_[state_], stateNames_[newState]);
   state_ = newState;
 
   {

@@ -16,6 +16,9 @@
  */
 
 #define NO_STATIC_ASSERT
+#include "logging.h"
+LOG_SOURCE_CATEGORY("ncp.client");
+
 #include "sara_ncp_client.h"
 
 #include "at_command.h"
@@ -105,6 +108,7 @@ const auto UBLOX_NCP_PPP_CHANNEL = 2;
 const auto UBLOX_NCP_SIM_SELECT_PIN = 23;
 
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
+const unsigned CONNECTED_CHECK_INTERVAL = 60 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
@@ -952,6 +956,9 @@ int SaraNcpClient::initReady() {
     // (allows the capture of `mcc` and `mnc`)
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
 
+    // Enable packet domain error reporting
+    CHECK_PARSER(parser_.execCommand("AT+CGEREP=1,0"));
+
     if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
     } else {
@@ -1164,9 +1171,20 @@ int SaraNcpClient::registerNet() {
     connectionState(NcpConnectionState::CONNECTING);
     registeredTime_ = 0;
 
+    auto resp = parser_.sendCommand("AT+COPS?");
+    int copsState = -1;
+    r = CHECK_PARSER(resp.scanf("+COPS: %d", &copsState));
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
     // NOTE: up to 3 mins (FIXME: there seems to be a bug where this timeout of 3 minutes
     //       is not being respected by u-blox modems.  Setting to 5 for now.)
-    r = CHECK_PARSER(parser_.execCommand(5 * 60 * 1000, "AT+COPS=0,2"));
+    if (copsState != 0) {
+        // If the set command with <mode>=0 is issued, a further set
+        // command with <mode>=0 is managed as a user reselection
+        r = CHECK_PARSER(parser_.execCommand(5 * 60 * 1000, "AT+COPS=0,2"));
+    }
     // Ignore response code here
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
@@ -1231,6 +1249,8 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
             return 0;
         }, this);
         if (r) {
+            LOG(ERROR, "Failed to open data channel");
+            ready_ = false;
             connState_ = NcpConnectionState::DISCONNECTED;
         }
     }
@@ -1314,8 +1334,8 @@ int SaraNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
-    if (connState_ != NcpConnectionState::CONNECTING ||
-            millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
+    if ((connState_ != NcpConnectionState::CONNECTING && millis() - regCheckTime_ < CONNECTED_CHECK_INTERVAL) || 
+        (connState_ == NcpConnectionState::CONNECTING && millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL)) {
         return 0;
     }
     SCOPE_GUARD({
@@ -1327,6 +1347,14 @@ int SaraNcpClient::processEventsImpl() {
     } else {
         CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     }
+
+    CHECK_PARSER(parser_.execCommand("AT+CGCLASS?"));
+    CHECK_PARSER(parser_.execCommand("AT+CGACT?"));
+    CHECK_PARSER(parser_.execCommand("AT+CGATT?"));
+    CHECK_PARSER(parser_.execCommand("AT+CGPADDR=1"));
+    CHECK_PARSER(parser_.execCommand("AT+CGDCONT?"));
+    CHECK_PARSER(parser_.execCommand("AT+CEER"));
+
     if (connState_ == NcpConnectionState::CONNECTING &&
             millis() - regStartTime_ >= registrationTimeout_) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
