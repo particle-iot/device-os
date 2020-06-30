@@ -110,7 +110,7 @@
  *
  * Please read the "PPPoS input path" chapter in the PPP documentation about this option.
  */
-#define PPP_INPROC_IRQ_SAFE             0
+#define PPP_INPROC_IRQ_SAFE             1
 
 /**
  * PRINTPKT_SUPPORT==1: Enable PPP print packet support
