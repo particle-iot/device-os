@@ -35,9 +35,6 @@
 
 #if PLATFORM_ID == PLATFORM_TRACKER
 #include "usart_hal.h"
-#define TOTAL_I2C                   3
-#else
-#define TOTAL_I2C                   2
 #endif
 
 #define I2C_IRQ_PRIORITY            APP_IRQ_PRIORITY_LOWEST

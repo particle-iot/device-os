@@ -28,8 +28,6 @@
 #include "delay_hal.h"
 #include "check.h"
 
-#define TOTAL_SPI               2
-
 #define DEFAULT_SPI_MODE        SPI_MODE_MASTER
 #define DEFAULT_DATA_MODE       SPI_MODE3
 #define DEFAULT_BIT_ORDER       MSBFIRST

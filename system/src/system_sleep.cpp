@@ -41,6 +41,9 @@ LOG_SOURCE_CATEGORY("system.sleep");
 
 using namespace particle;
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 static bool system_sleep_network_suspend(network_interface_index index) {
     bool resume = false;
     // Disconnect from network

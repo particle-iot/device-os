@@ -53,12 +53,6 @@ LOG_SOURCE_CATEGORY("hal.i2c")
 #define RECEIVER        0x01
 
 /* Private define ------------------------------------------------------------*/
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-#define TOTAL_I2C   3
-#else
-#define TOTAL_I2C   1
-#endif
-
 #define I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED_NO_ADDR ((uint32_t)0x00070080)
 
 #define WAIT_TIMED(timeout_ms, what) ({ \
