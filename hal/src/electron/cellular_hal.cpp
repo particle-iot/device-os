@@ -156,7 +156,6 @@ cellular_result_t cellular_connect(void* reserved)
     const CellularCredentials& cred = cellularCredentials;
     const char* apn = cred.apn;
     apn = defaultOrUserApn(cred);
-    LOG(INFO, "APN finally selected: %s", apn);
     CHECK_SUCCESS(electronMDM.connect(apn, cred.username, cred.password));
     return 0;
 }

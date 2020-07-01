@@ -197,7 +197,7 @@ cellular_result_t cellular_pause(void* reserved);
 cellular_result_t cellular_resume(void* reserved);
 
 /**
- * Set the cellular network provider based on the IMSI of the SIM card inserted
+ * Set the cellular network provider based on the ICCID and/or IMSI of the SIM card inserted
  */
 cellular_result_t cellular_sim_to_network_provider(void* reserved);
 

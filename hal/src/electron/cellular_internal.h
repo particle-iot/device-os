@@ -40,7 +40,7 @@ cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_Data
 /* detail functions defined for unit tests */
 namespace detail {
 /**
- * Function for setting the cellular network provider based on the IMSI of the SIM card inserted, broken out for unit tests
+ * Function for setting the cellular network provider based on the ICCID and/or IMSI of the SIM card inserted, broken out for unit tests
  */
 CellularNetProv _cellular_sim_to_network_provider(const char* imsi, const char* iccid);
 
