@@ -36,8 +36,6 @@
 
 using namespace particle;
 
-LOG_SOURCE_CATEGORY("system.sleep");
-
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 

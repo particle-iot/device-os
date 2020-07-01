@@ -30,6 +30,12 @@
 #include "pinmap_hal.h"
 #include "system_tick_hal.h"
 
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+#define TOTAL_SPI   3
+#else
+#define TOTAL_SPI   2
+#endif
+
 /* Exported types ------------------------------------------------------------*/
 typedef enum hal_spi_interface_t {
     HAL_SPI_INTERFACE1 = 0,    //maps to SPI1 (pins: A3, A4, A5)

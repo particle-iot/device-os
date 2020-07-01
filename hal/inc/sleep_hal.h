@@ -59,7 +59,6 @@ typedef enum hal_sleep_mode_t {
     HAL_SLEEP_MODE_MAX = 0x7F
 } hal_sleep_mode_t;
 
-// Bit mask enum value.
 typedef enum hal_wakeup_source_type_t {
     HAL_WAKEUP_SOURCE_TYPE_UNKNOWN = 0,
     HAL_WAKEUP_SOURCE_TYPE_GPIO = 1,
