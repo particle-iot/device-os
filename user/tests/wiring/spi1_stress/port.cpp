@@ -35,7 +35,7 @@ void at_cs_high(void) {
 
 /// Set CS low
 void at_cs_low(void) {
-    PORT_SPI.beginTransaction(__SPISettings(1*MHZ, MSBFIRST, SPI_MODE0));
+    PORT_SPI.beginTransaction(SPISettings(1*MHZ, MSBFIRST, SPI_MODE0));
     digitalWrite(PORT_CS_PIN, LOW);
 }
 

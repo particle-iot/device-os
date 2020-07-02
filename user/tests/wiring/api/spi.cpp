@@ -1,9 +1,6 @@
 
 #include "testapi.h"
 
-// without Arduino.h we should not get a clash redefining SPISettings
-class SPISettings {};
-
 namespace api_test_namespace {
 // We should be able to define variables and types named SPI, SPI1 and SPI2
 
@@ -143,7 +140,7 @@ test(spi_clock)
 test(spi_transfer)
 {
     API_COMPILE({ int32_t r = SPI.beginTransaction(); (void)r; });
-    API_COMPILE({ int32_t r = SPI.beginTransaction(__SPISettings(SPI_CLK_SYSTEM, SPI_MODE0, MSBFIRST)); (void)r; });
+    API_COMPILE({ int32_t r = SPI.beginTransaction(SPISettings(SPI_CLK_SYSTEM, SPI_MODE0, MSBFIRST)); (void)r; });
     API_COMPILE(SPI.transfer(0));
     API_COMPILE(SPI.transfer(NULL, NULL, 1, NULL));
     API_COMPILE(SPI.transferCancel());
@@ -151,7 +148,7 @@ test(spi_transfer)
 
 #if Wiring_SPI1
     API_COMPILE({ int32_t r = SPI1.beginTransaction(); (void)r; });
-    API_COMPILE({ int32_t r = SPI1.beginTransaction(__SPISettings(SPI_CLK_SYSTEM, SPI_MODE0, MSBFIRST)); (void)r; });
+    API_COMPILE({ int32_t r = SPI1.beginTransaction(SPISettings(SPI_CLK_SYSTEM, SPI_MODE0, MSBFIRST)); (void)r; });
     API_COMPILE(SPI1.transfer(0));
     API_COMPILE(SPI1.transfer(NULL, NULL, 1, NULL));
     API_COMPILE(SPI1.transferCancel());
@@ -160,7 +157,7 @@ test(spi_transfer)
 
 #if Wiring_SPI2
     API_COMPILE({ int32_t r = SPI2.beginTransaction(); (void)r; });
-    API_COMPILE({ int32_t r = SPI2.beginTransaction(__SPISettings(SPI_CLK_SYSTEM, SPI_MODE0, MSBFIRST)); (void)r; });
+    API_COMPILE({ int32_t r = SPI2.beginTransaction(SPISettings(SPI_CLK_SYSTEM, SPI_MODE0, MSBFIRST)); (void)r; });
     API_COMPILE(SPI2.transfer(0));
     API_COMPILE(SPI2.transfer(NULL, NULL, 1, NULL));
     API_COMPILE(SPI2.transferCancel());

@@ -116,7 +116,7 @@ os_thread_return_t gnssThread(void *param) {
 #if GNSS_ENABLE_TX_READY
     attachInterrupt(GPS_INT, gnssIntHandler, FALLING);
     // Enable TX-ready
-    SPI1.beginTransaction(__SPISettings(5*MHZ, MSBFIRST, SPI_MODE0));
+    SPI1.beginTransaction(SPISettings(5*MHZ, MSBFIRST, SPI_MODE0));
     digitalWrite(GPS_CS, LOW);
     delay(50);
     uint8_t in_byte;
@@ -140,7 +140,7 @@ os_thread_return_t gnssThread(void *param) {
             continue;
         }
         // Read data
-        SPI1.beginTransaction(__SPISettings(5*MHZ, MSBFIRST, SPI_MODE0));
+        SPI1.beginTransaction(SPISettings(5*MHZ, MSBFIRST, SPI_MODE0));
         digitalWrite(GPS_CS, LOW);
         delayMicroseconds(50);
         uint8_t temp;
@@ -160,7 +160,7 @@ os_thread_return_t gnssThread(void *param) {
 #else
         bool echoed = false;
         system_tick_t start = millis();
-        SPI1.beginTransaction(__SPISettings(5*MHZ, MSBFIRST, SPI_MODE0));
+        SPI1.beginTransaction(SPISettings(5*MHZ, MSBFIRST, SPI_MODE0));
         digitalWrite(GPS_CS, LOW);
         delayMicroseconds(50);
         while ((millis() - start) < 2000) {
@@ -202,7 +202,7 @@ os_thread_return_t bmi160Thread(void *param) {
     digitalWrite(SEN_CS, HIGH); //Rising edge on the /CSB pin to select SPI interface.
 
     // Perform a single read access to the 0x7F register before actual communication.
-    SPI1.beginTransaction(__SPISettings(16*MHZ, MSBFIRST, SPI_MODE3));
+    SPI1.beginTransaction(SPISettings(16*MHZ, MSBFIRST, SPI_MODE3));
     digitalWrite(SEN_CS, LOW);
     SPI1.transfer(0xFF); // R/W bit along with register address
     SPI1.transfer(0xFF);
@@ -210,7 +210,7 @@ os_thread_return_t bmi160Thread(void *param) {
     SPI1.endTransaction();
 
     while (1) {
-        SPI1.beginTransaction(__SPISettings(16*MHZ, MSBFIRST, SPI_MODE3));
+        SPI1.beginTransaction(SPISettings(16*MHZ, MSBFIRST, SPI_MODE3));
         digitalWrite(SEN_CS, LOW);
         SPI1.transfer(0x80); // R/W bit along with register address
         uint8_t id = SPI1.transfer(0xFF);
@@ -303,14 +303,14 @@ os_thread_return_t canThread(void *param) {
     delay(100);
     digitalWrite(CAN_RST, HIGH);
 
-    SPI1.beginTransaction(__SPISettings(16*MHZ, MSBFIRST, SPI_MODE0));
+    SPI1.beginTransaction(SPISettings(16*MHZ, MSBFIRST, SPI_MODE0));
     digitalWrite(CAN_CS, LOW);
     SPI1.transfer(0xC0); // CMD: Reset registers
     digitalWrite(CAN_CS, HIGH);
     SPI1.endTransaction();
 
     while (1) {
-        SPI1.beginTransaction(__SPISettings(1*MHZ, MSBFIRST, SPI_MODE0));
+        SPI1.beginTransaction(SPISettings(1*MHZ, MSBFIRST, SPI_MODE0));
         digitalWrite(CAN_CS, LOW);
         SPI1.transfer(0x03); // CMD: Read
         SPI1.transfer(0x7F); // Register Address
