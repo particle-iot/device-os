@@ -166,7 +166,7 @@ static bool usb_cdc_handle_rx() {
     m_usb_instance.rx_done = true;
     m_usb_instance.rx_state = false;
 
-    if (rx_data_size == 0 || usb_cdc_copy_from_rx_buffer()) {
+    if (m_usb_instance.rx_data_size == 0 || usb_cdc_copy_from_rx_buffer()) {
         // Reset receive status
         m_usb_instance.rx_done = false;
         m_usb_instance.rx_data_size = 0;
