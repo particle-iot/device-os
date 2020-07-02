@@ -98,13 +98,15 @@ test(LED_03_ControlledReturnsTrueWhenControlled) {
 }
 
 test(LED_04_ChangesWhenNotControlled) {
-    // when
-    RGB.control(false);
-    // then
     uint8_t rgbInitial[3];
     uint8_t rgbChanged[3];
+    // when
+    RGB.control(true);
+    RGB.color(1, 2, 3);
     LED_RGB_Get(rgbInitial);
-    delay(75);
+    RGB.control(false);
+    // then
+    delay(123);
     LED_RGB_Get(rgbChanged);
 
     assertFalse(rgbInitial[0]==rgbChanged[0] && rgbInitial[1]==rgbChanged[1] && rgbInitial[2]==rgbChanged[2]);
