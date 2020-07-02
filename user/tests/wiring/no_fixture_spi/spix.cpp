@@ -418,7 +418,7 @@ constexpr unsigned int SPI_ITERATIONS = 10000;
 
 #if HAL_PLATFORM_NRF52840
 constexpr unsigned int SPI_CLOCK_SPEED = 8000000; // 8MHz
-constexpr unsigned int SPI_NODMA_OVERHEAD = 12000; // 12us ~= 750 clock cycles @ 64MHz
+constexpr unsigned int SPI_NODMA_OVERHEAD = 12500; // 12us ~= 780 clock cycles @ 64MHz
 constexpr unsigned int SPI_DMA_OVERHEAD = SPI_NODMA_OVERHEAD; // Gen 3 always uses DMA underneath
 #elif HAL_PLATFORM_STM32F2XX
 constexpr unsigned int SPI_CLOCK_SPEED = 7500000; // 7.5MHz

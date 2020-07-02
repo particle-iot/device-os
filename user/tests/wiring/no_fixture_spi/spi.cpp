@@ -246,6 +246,7 @@ test(SPI_07_SPI_Settings_Are_Applied_In_Begin_Transaction)
     SPI.beginTransaction(SPISettings());
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     current = spiSettingsFromSpiInfo(&info);
+    settings = SPISettings();
     assertEqual(current, settings);
     SPI.endTransaction();
 

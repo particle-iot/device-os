@@ -63,6 +63,8 @@ bool udpEchoTest(UDP* udp, const IPAddress& ip, uint16_t port, const uint8_t* se
 } // anonymous
 
 test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
+    const system_tick_t WAIT_TIMEOUT = 5 * 60 * 1000;
+
     Network.on();
     Network.connect();
 
@@ -71,7 +73,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
         Network.off();
     });
 
-    waitFor(Network.ready, 60000);
+    waitFor(Network.ready, WAIT_TIMEOUT);
     assertTrue(Network.ready());
 
     struct State {
