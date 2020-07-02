@@ -166,7 +166,7 @@ static bool usb_cdc_handle_rx() {
     m_usb_instance.rx_done = true;
     m_usb_instance.rx_state = false;
 
-    if (usb_cdc_copy_from_rx_buffer()) {
+    if (rx_data_size == 0 || usb_cdc_copy_from_rx_buffer()) {
         // Reset receive status
         m_usb_instance.rx_done = false;
         m_usb_instance.rx_data_size = 0;
@@ -203,6 +203,7 @@ static void usb_cdc_change_port_state(bool state)
 
         if (state) {
             app_fifo_flush(&m_usb_instance.tx_fifo);
+            m_app_cdc_acm.specific.p_data->ctx.line_state |= APP_USBD_CDC_ACM_LINE_STATE_DTR;
             usb_cdc_schedule_rx();
         } else {
             // When going into closed state Nordic SDK
@@ -251,8 +252,6 @@ static void usb_cdc_schedule_tx() {
 static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
                                     app_usbd_cdc_acm_user_event_t event)
 {
-    app_usbd_cdc_acm_t const *cdc_acm_class = app_usbd_cdc_acm_class_get(p_inst);
-
     switch (event) {
         case APP_USBD_CDC_ACM_USER_EVT_SET_LINE_CODING: {
             if (m_usb_instance.bit_rate_changed_handler) {
@@ -283,12 +282,10 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
             break;
         }
         case APP_USBD_CDC_ACM_USER_EVT_RX_DONE: {
-            size_t rx_size = app_usbd_cdc_acm_rx_size(cdc_acm_class);
-
             // We are definitely open
             usb_cdc_change_port_state(true);
 
-            if (rx_size > 0 && usb_cdc_handle_rx()) {
+            if (usb_cdc_handle_rx()) {
                 // Setup next transfer.
                 usb_cdc_schedule_rx();
             }
@@ -335,10 +332,29 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
         }
         case APP_USBD_EVT_DRV_SUSPEND: {
             set_usb_state(HAL_USB_STATE_SUSPENDED);
+            usb_cdc_change_port_state(false);
+            nrf_drv_usbd_ep_abort(CDC_ACM_DATA_EPIN);
+            nrf_drv_usbd_ep_abort(CDC_ACM_DATA_EPOUT);
+            m_usb_instance.transmitting = false;
+            m_usb_instance.rx_state = false;
+            // Required so that we can restart rx transfers after waking up
+            m_app_cdc_acm.specific.p_data->ctx.rx_transfer[0].p_buf = NULL;
+            m_app_cdc_acm.specific.p_data->ctx.rx_transfer[1].p_buf = NULL;
+            m_app_cdc_acm.specific.p_data->ctx.bytes_left = 0;
+            m_app_cdc_acm.specific.p_data->ctx.bytes_read = 0;
+            m_app_cdc_acm.specific.p_data->ctx.last_read = 0;
+            m_app_cdc_acm.specific.p_data->ctx.cur_read = 0;
+            m_app_cdc_acm.specific.p_data->ctx.p_copy_pos = m_app_cdc_acm.specific.p_data->ctx.internal_rx_buf;
+            // IMPORTANT! Otherwise the state machine will fail
+            // to come out of the suspended state
+            app_usbd_suspend_req();
             break;
         }
         case APP_USBD_EVT_DRV_RESUME: {
             set_usb_state(nrf_usb_state_to_hal_usb_state(app_usbd_core_state_get()));
+            if (m_app_cdc_acm.specific.p_data->ctx.line_state & APP_USBD_CDC_ACM_LINE_STATE_DTR) {
+                usb_cdc_change_port_state(true);
+            }
             break;
         }
         case APP_USBD_EVT_START_REQ: {
