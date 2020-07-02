@@ -255,12 +255,26 @@ int hal_timer_deinit(void* reserved) {
     nrf_rtc_task_trigger(RTC_INSTANCE, NRF_RTC_TASK_STOP);
 
     nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_OVERFLOW_MASK);
+    nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_TICK_MASK);
+    nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_COMPARE0_MASK);
+    nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_COMPARE1_MASK);
+    nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_COMPARE2_MASK);
+    nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_COMPARE3_MASK);
     nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTEN_OVRFLW_Msk);
+    nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTEN_TICK_Msk);
+    nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTENSET_COMPARE0_Msk);
+    nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTENSET_COMPARE1_Msk);
+    nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTENSET_COMPARE2_Msk);
+    nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTENSET_COMPARE3_Msk);
     nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW);
+    nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_TICK);
+    nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_0);
+    nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_1);
+    nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_2);
+    nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_3);
 
     NVIC_DisableIRQ(RTC_IRQN);
     NVIC_ClearPendingIRQ(RTC_IRQN);
-    NVIC_SetPriority(RTC_IRQN, 0);
 
     nrf_drv_clock_lfclk_release();
 
@@ -270,6 +284,7 @@ int hal_timer_deinit(void* reserved) {
 extern "C" void RTC_IRQ_HANDLER(void) {
     // Handle overflow.
     if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW)) {
+        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW);
         // Disable OVERFLOW interrupt to prevent lock-up in interrupt context while mutex is locked from lower priority
         // context and OVERFLOW event flag is stil up. OVERFLOW interrupt will be re-enabled when mutex is released -
         // either from this handler, or from lower priority context, that locked the mutex.
@@ -284,6 +299,16 @@ extern "C" void RTC_IRQ_HANDLER(void) {
         sTimerMicrosAtLastOverflow = getCurrentTime();
         sTickCountAtLastOverflow = DWT->CYCCNT;
         __set_PRIMASK(pri);
+    } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_TICK)) {
+        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_TICK);
+    } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_0)) {
+        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_0);
+    } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_1)) {
+        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_1);
+    } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_2)) {
+        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_2);
+    } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_3)) {
+        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_3);
     }
 }
 

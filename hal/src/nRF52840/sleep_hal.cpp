@@ -218,18 +218,13 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
 
     // Configure RTC2 to count at 125ms interval. This should allow us to sleep
     // (2^24 - 1) * 125ms = 24 days
-    NVIC_SetPriority(RTC2_IRQn, 4);
+    NVIC_SetPriority(RTC2_IRQn, 6);
     // Make sure that the RTC is stopped and cleared
     nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_STOP);
     nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_CLEAR);
     __DSB();
     __ISB();
-    nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_TICK_MASK);
-    nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_OVERFLOW_MASK);
-    nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_COMPARE0_MASK);
-    nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_COMPARE1_MASK);
-    nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_COMPARE2_MASK);
-    nrf_rtc_int_disable(NRF_RTC2, NRF_RTC_INT_COMPARE3_MASK);
+
     // For some reason even though the RTC should be stopped by now,
     // the prescaler is still read-only. So, we loop here to make sure that the
     // prescaler settings does take effect.
@@ -376,6 +371,9 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     __DSB();
     __ISB();
 
+    hal_wakeup_source_type_t wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_UNKNOWN;
+    pin_t wakeupPin = PIN_INVALID;
+
     bool exitSleepMode = false;
     while (true) {
         // Mask interrupts completely
@@ -406,7 +404,6 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         wakeupSource = config->wakeup_sources;
         while (wakeupSource) {
             if (NVIC_GetPendingIRQ(GPIOTE_IRQn) && wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-                pin_t wakeupPin = PIN_INVALID;
                 auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
                 if (nrf_gpiote_event_is_set(NRF_GPIOTE_EVENTS_PORT)) {
                     // PORT event
@@ -432,52 +429,17 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
                 }
                 // Figured out the wakeup pin
                 if (wakeupPin != PIN_INVALID) {
-                    if (wakeupReason) {
-                        hal_wakeup_source_gpio_t* gpio = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
-                        if (gpio) {
-                            gpio->base.size = sizeof(hal_wakeup_source_gpio_t);
-                            gpio->base.version = HAL_SLEEP_VERSION;
-                            gpio->base.type = HAL_WAKEUP_SOURCE_TYPE_GPIO;
-                            gpio->base.next = nullptr;
-                            gpio->pin = wakeupPin;
-                            *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(gpio);
-                        } else {
-                            ret = SYSTEM_ERROR_NO_MEMORY;
-                        }
-                    }
+                    wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_GPIO;
                     exitSleepMode = true;
                     // Only if we've figured out the wakeup pin, then we stop traversing the wakeup sources list.
                     break;
                 }
             } else if (NVIC_GetPendingIRQ(RTC2_IRQn) && wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-                if (wakeupReason) {
-                    hal_wakeup_source_rtc_t* rtc = (hal_wakeup_source_rtc_t*)malloc(sizeof(hal_wakeup_source_rtc_t));
-                    if (rtc) {
-                        rtc->base.size = sizeof(hal_wakeup_source_rtc_t);
-                        rtc->base.version = HAL_SLEEP_VERSION;
-                        rtc->base.type = HAL_WAKEUP_SOURCE_TYPE_RTC;
-                        rtc->base.next = nullptr;
-                        rtc->ms = 0;
-                        *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(rtc);
-                    } else {
-                        ret = SYSTEM_ERROR_NO_MEMORY;
-                    }
-                }
+                wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_RTC;
                 exitSleepMode = true;
                 break; // Stop traversing the wakeup sources list.
             } else if (NVIC_GetPendingIRQ(SD_EVT_IRQn) && wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
-                if (wakeupReason) {
-                    hal_wakeup_source_base_t* ble = (hal_wakeup_source_base_t*)malloc(sizeof(hal_wakeup_source_base_t));
-                    if (ble) {
-                        ble->size = sizeof(hal_wakeup_source_base_t);
-                        ble->version = HAL_SLEEP_VERSION;
-                        ble->type = HAL_WAKEUP_SOURCE_TYPE_BLE;
-                        ble->next = nullptr;
-                        *wakeupReason = ble;
-                    } else {
-                        ret = SYSTEM_ERROR_NO_MEMORY;
-                    }
-                }
+                wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_BLE;
                 exitSleepMode = true;
                 break; // Stop traversing the wakeup sources list.
             }
@@ -589,6 +551,47 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
 
     // Enable thread scheduling
     os_thread_scheduling(true, nullptr);
+
+    if (wakeupReason) {
+        if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+            hal_wakeup_source_gpio_t* gpio = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
+            if (gpio) {
+                gpio->base.size = sizeof(hal_wakeup_source_gpio_t);
+                gpio->base.version = HAL_SLEEP_VERSION;
+                gpio->base.type = HAL_WAKEUP_SOURCE_TYPE_GPIO;
+                gpio->base.next = nullptr;
+                gpio->pin = wakeupPin;
+                *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(gpio);
+            } else {
+                ret = SYSTEM_ERROR_NO_MEMORY;
+            }
+        } else if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+            hal_wakeup_source_rtc_t* rtc = (hal_wakeup_source_rtc_t*)malloc(sizeof(hal_wakeup_source_rtc_t));
+            if (rtc) {
+                rtc->base.size = sizeof(hal_wakeup_source_rtc_t);
+                rtc->base.version = HAL_SLEEP_VERSION;
+                rtc->base.type = HAL_WAKEUP_SOURCE_TYPE_RTC;
+                rtc->base.next = nullptr;
+                rtc->ms = 0;
+                *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(rtc);
+            } else {
+                ret = SYSTEM_ERROR_NO_MEMORY;
+            }
+        } else if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_BLE) {
+            hal_wakeup_source_base_t* ble = (hal_wakeup_source_base_t*)malloc(sizeof(hal_wakeup_source_base_t));
+            if (ble) {
+                ble->size = sizeof(hal_wakeup_source_base_t);
+                ble->version = HAL_SLEEP_VERSION;
+                ble->type = HAL_WAKEUP_SOURCE_TYPE_BLE;
+                ble->next = nullptr;
+                *wakeupReason = ble;
+            } else {
+                ret = SYSTEM_ERROR_NO_MEMORY;
+            }
+        } else {
+            ret = SYSTEM_ERROR_INTERNAL;
+        }
+    }
 
     return ret;
 }
