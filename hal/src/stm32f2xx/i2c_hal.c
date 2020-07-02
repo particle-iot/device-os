@@ -390,6 +390,7 @@ void hal_i2c_end(hal_i2c_interface_t i2c, void* reserved) {
     hal_i2c_lock(i2c, NULL);
     if (i2cMap[i2c]->state != HAL_I2C_STATE_DISABLED) {
         I2C_Cmd(i2cMap[i2c]->peripheral, DISABLE);
+        I2C_DeInit(i2cMap[i2c]->I2C_Peripheral);
         i2cMap[i2c]->state = HAL_I2C_STATE_DISABLED;
     }
     hal_i2c_unlock(i2c, NULL);
