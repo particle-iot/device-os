@@ -19,9 +19,15 @@
 #include <nrf_nvic.h>
 #include <app_util_platform.h>
 
+#ifdef SOFTDEVICE_PRESENT
+/* Global nvic state instance, required by nrf_nvic.h */
+nrf_nvic_state_t nrf_nvic_state = {};
+#endif
+
 int HAL_disable_irq() {
     // We are blocking any interrupts with priorities >= 2, without
     // affecting SoftDevice interrupts which run with priorities 0 and 1.
+    // NOTE: SoftDevice SVC calls cannot be made!
     int st = __get_BASEPRI();
     __set_BASEPRI(APP_IRQ_PRIORITY_HIGHEST << (8 - __NVIC_PRIO_BITS));
     return st;
@@ -29,4 +35,16 @@ int HAL_disable_irq() {
 
 void HAL_enable_irq(int is) {
     __set_BASEPRI(is);
+}
+
+void app_util_critical_region_enter(uint8_t* nested) {
+    // We are blocking any interrupts with priorities >= 2, without
+    // affecting SoftDevice interrupts which run with priorities 0, 1 and 4.
+    // NOTE: SoftDevice SVC calls can be made here!
+    *nested = __get_BASEPRI();
+    __set_BASEPRI(_PRIO_SD_LOWEST << (8 - __NVIC_PRIO_BITS));
+}
+
+void app_util_critical_region_exit(uint8_t nested) {
+    __set_BASEPRI(nested);
 }
