@@ -50,8 +50,6 @@ struct tm* localtime32(const time32_t* tim_p) {
 
 } // anonymous
 
-Serial1LogHandler dbg(460800, LOG_LEVEL_ALL);
-
 STARTUP({
     Log.trace("Current time: %s", Time.timeStr().c_str());
 });
