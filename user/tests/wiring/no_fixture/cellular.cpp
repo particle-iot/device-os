@@ -21,6 +21,7 @@
 #include "unit-test/unit-test.h"
 #include "socket_hal.h"
 #include "random.h"
+#include "scope_guard.h"
 
 #if Wiring_Cellular == 1
 bool skip_r410 = false;
@@ -66,20 +67,38 @@ void connect_to_cloud(system_tick_t timeout)
 
 #if !HAL_USE_SOCKET_HAL_POSIX
 
-void consume_all_sockets(uint8_t protocol)
+Vector<sock_handle_t> consume_all_sockets(uint8_t protocol)
 {
     static int port = 9000;
-    int socket_handle;
-    do {
-        socket_handle = socket_create(AF_INET, SOCK_STREAM, protocol==IPPROTO_UDP ? IPPROTO_UDP : IPPROTO_TCP, port++, NIF_DEFAULT);
-    } while(socket_handle_valid(socket_handle));
+    Vector<sock_handle_t> socks;
+    for (;;) {
+        auto sock = socket_create(AF_INET, SOCK_STREAM, protocol==IPPROTO_UDP ? IPPROTO_UDP : IPPROTO_TCP, port++, NIF_DEFAULT);
+        if (!socket_handle_valid(sock)) {
+            break;
+        }
+        socks.append(sock);
+    }
+
+    return socks;
 }
+
+void close_consumed_sockets(const Vector<sock_handle_t>& socks)
+{
+    for (const auto sock: socks) {
+        socket_close(sock);
+    }
+}
+
 test(CELLULAR_01_device_will_connect_to_the_cloud_when_all_tcp_sockets_consumed) {
     //Serial.println("the device will connect to the cloud when all tcp sockets are consumed");
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
     // When all available TCP sockets are consumed
-    consume_all_sockets(IPPROTO_TCP);
+    auto socks = consume_all_sockets(IPPROTO_TCP);
+    SCOPE_GUARD({
+        // Close sockets
+        close_consumed_sockets(socks);
+    });
     // And the device attempts to connect to the Cloud
     connect_to_cloud(6*60*1000);
     // Then the device overcomes this socket obstacle and connects to the Cloud
@@ -98,7 +117,11 @@ test(CELLULAR_02_device_will_connect_to_the_cloud_when_all_udp_sockets_consumed)
     // Given the device is currently disconnected from the Cloud
     disconnect_from_cloud(30*1000);
     // When all available UDP sockets are consumed
-    consume_all_sockets(IPPROTO_UDP);
+    auto socks = consume_all_sockets(IPPROTO_UDP);
+    SCOPE_GUARD({
+        // Close sockets
+        close_consumed_sockets(socks);
+    });
     // And the device attempts to connect to the Cloud
     connect_to_cloud(6*60*1000);
     // Then the device overcomes this socket obstacle and connects to the Cloud
