@@ -50,6 +50,17 @@ bool dirExists(const char* path) {
     return false;
 }
 
+bool fileExists(const char* path) {
+    struct stat st;
+    if (!stat(path, &st)) {
+        if (S_ISREG(st.st_mode)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 struct FsEntryHelper {
     explicit FsEntryHelper(const char* n, int p = -1)
             : FsEntryHelper(n, dirExists(n), p) {
@@ -231,10 +242,18 @@ test(FS_POSIX_01_Directories) {
         assertTrue(dirExists(dirs[i]));
     }
 
+    auto dirMove = generateRandomFilenames(TEST_DIR, num);
+    for (int i = 0; i < num; i++) {
+        assertEqual(0, rename(dirs[i], dirMove[i]));
+        assertEqual(0, errno);
+        assertTrue(dirExists(dirMove[i]));
+        assertFalse(dirExists(dirs[i]));
+    }
+
     listFsContents();
 
     for (int i = 0; i < num; i++) {
-        assertEqual(0, rmdir(dirs[i]));
+        assertEqual(0, rmdir(dirMove[i]));
     }
 }
 
@@ -390,6 +409,13 @@ test(FS_POSIX_02_File) {
         close(fd);
     }
 
+    auto fileMove = generateRandomFilenames(TEST_DIR, num);
+    for (int i = 0; i < num; i++) {
+        assertEqual(0, rename(files[i], fileMove[i]));
+        assertEqual(0, errno);
+        assertTrue(fileExists(fileMove[i]));
+        assertFalse(fileExists(files[i]));
+    }
 }
 
 test(FS_POSIX_99_Cleanup) {
