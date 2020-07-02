@@ -219,6 +219,8 @@ test(WIFI_12_scan_returns_zero_result_or_error_when_wifi_is_off)
             assertTrue(false);
         }
     }
+    // Delay a bit here just in case
+    delay(5000);
     assertLessOrEqual(WiFi.scan(results, 5), 0);
 }
 

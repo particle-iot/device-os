@@ -10,6 +10,6 @@ using namespace particle;
 STARTUP({
     System.enableFeature(FEATURE_RETAINED_MEMORY);
     TestSuite::instance()->init();
-})
+});
 
-UNIT_TEST_APP()
+UNIT_TEST_APP();
