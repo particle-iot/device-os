@@ -2036,14 +2036,6 @@
 #define MBEDTLS_OID_OPTIMIZE_STRINGS
 
 /**
- * \def MBEDTLS_OID_OPTIMIZE_STRINGS
- *
- * Remove unused functions from oid.c that cause unused strings to get pulled in
- *
- */
-#define MBEDTLS_OID_OPTIMIZE_STRINGS
-
-/**
  * \def MBEDTLS_PADLOCK_C
  *
  * Enable VIA Padlock support on x86.
