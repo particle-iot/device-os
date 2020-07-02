@@ -21,6 +21,7 @@
 
 #include "spark_wiring_system.h"
 #include "spark_wiring_json.h"
+#include "delay_hal.h"
 #include "check.h"
 
 #include "unit-test/unit-test.h"
@@ -43,6 +44,7 @@ JSONValue getValue(const JSONValue& obj, const char* name) {
 
 // Completion handler for Request::done()
 void systemReset(int result, void* data) {
+    HAL_Delay_Milliseconds(1000);
     System.reset();
 }
 
