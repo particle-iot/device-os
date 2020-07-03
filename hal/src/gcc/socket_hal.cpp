@@ -326,8 +326,15 @@ sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port
 
 sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize)
 {
+    return socket_receivefrom_ex(sock, buffer, bufLen, flags, addr, addrsize, 0, nullptr);
+}
+
+sock_result_t socket_receivefrom_ex(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize, system_tick_t timeout, void* reserved)
+{
 	ip::udp::endpoint endpoint;
 	auto& socket = udp_from(sock);
+
+	// FIXME: handle timeouts
 
 	int count = socket.receive_from(boost::asio::buffer(buffer, bufLen), endpoint, 0, ec);
 	if (addr && addrsize && *addrsize>=6u) {

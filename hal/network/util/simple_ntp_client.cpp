@@ -230,19 +230,19 @@ int UdpSocket::connect(const char* hostname, uint16_t port) {
 }
 
 ssize_t UdpSocket::recv(uint8_t* buf, size_t size, system_tick_t timeout) {
-    // FIXME: there should really be a way to use blocking/timeouts here
     auto start = HAL_Timer_Get_Milli_Seconds();
-    while (HAL_Timer_Get_Milli_Seconds() - start < timeout) {
+    auto end = start + timeout;
+    system_tick_t now;
+    while ((now = HAL_Timer_Get_Milli_Seconds()) <= end) {
         sockaddr_t remote = {};
         socklen_t remoteLen = sizeof(remote);
-        ssize_t r = socket_receivefrom(sock_, buf, size, 0, &remote, &remoteLen);
+        ssize_t r = socket_receivefrom_ex(sock_, buf, size, 0, &remote, &remoteLen, end - now, nullptr);
         if (r >= 0) {
             if (remote.sa_family == addr_.sa_family &&
                     !memcmp(remote.sa_data, addr_.sa_data, sizeof(uint32_t) + sizeof(uint16_t))) {
                 return r;
             }
         }
-        HAL_Delay_Milliseconds(10);
     }
     return SYSTEM_ERROR_TIMEOUT;
 }

@@ -51,6 +51,11 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
     return 0;
 }
 
+sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize, system_tick_t timeout, void* reserved)
+{
+    return 0;
+}
+
 sock_result_t socket_bind(sock_handle_t sock, uint16_t port)
 {
     return 0;

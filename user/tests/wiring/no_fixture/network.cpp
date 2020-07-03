@@ -18,7 +18,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
-test(UDP_begin_does_not_leak_sockets_without_calling_stop) {
+test(NETWORK_00_UDP_begin_does_not_leak_sockets_without_calling_stop) {
     // Arbitrary number that is large enough to showcase the issue
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
     // There is a limited number of sockets available on Electrons, since we are using
@@ -38,4 +38,18 @@ test(UDP_begin_does_not_leak_sockets_without_calling_stop) {
         assertTrue((bool)udp->begin(12345));
         assertTrue((bool)socket_handle_valid(udp->socket()));
     }
+}
+
+test(NETWORK_01_UDP_sockets_can_be_read_with_timeout) {
+    auto udp = std::make_unique<UDP>();
+    assertTrue((bool)udp);
+
+    assertTrue(Network.ready());
+    assertTrue((bool)udp->begin(12345));
+
+    const system_tick_t timeout = 1000;
+
+    auto t = millis();
+    udp->parsePacket(timeout);
+    assertMoreOrEqual(millis(), t + timeout - timeout / 10);
 }

@@ -100,7 +100,7 @@ public:
             return len;
         });
 
-        mocks_.OnCallFunc(socket_receivefrom).Do([&](sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize) -> sock_result_t {
+        mocks_.OnCallFunc(socket_receivefrom_ex).Do([&](sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize, system_tick_t timeout, void* reserved) -> sock_result_t {
             if (enableResponse_) {
                 memset(&response_, 0, sizeof(response_));
                 response_.liVnMode = ntp::MODE_SERVER | request_.liVnMode & (ntp::VERSION_MASK | ntp::LI_MASK);
