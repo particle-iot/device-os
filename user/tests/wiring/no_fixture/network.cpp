@@ -52,4 +52,8 @@ test(NETWORK_01_UDP_sockets_can_be_read_with_timeout) {
     auto t = millis();
     udp->parsePacket(timeout);
     assertMoreOrEqual(millis(), t + timeout - timeout / 10);
+
+    t = millis();
+    udp->parsePacket(0);
+    assertLess(millis(), t + timeout / 2);
 }

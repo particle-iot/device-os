@@ -62,7 +62,7 @@ sock_result_t socket_receivefrom_ex(sock_handle_t sd, void* buffer, socklen_t le
     int port;
     MDM_IP ip;
 
-    electronMDM.socketSetBlocking(sd, _timeout);
+    electronMDM.socketSetBlocking(sd, timeout);
 
     sock_result_t result = electronMDM.socketReadable(sock);
     if (result < 0 || (timeout == 0 && result == 0)) { // error or no data
