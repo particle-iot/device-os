@@ -57,12 +57,12 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
     return socket_receivefrom_ex(sock, buffer, bufLen, flags, addr, addrsize, 0, nullptr);
 }
 
-sock_result_t socket_receivefrom_ex(sock_handle_t sd, void* buffer, socklen_t len, uint32_t flags, sockaddr_t* address, socklen_t* addr_size, system_tick_t timeout, void* reserved)
+sock_result_t socket_receivefrom_ex(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize, system_tick_t timeout, void* reserved)
 {
     int port;
     MDM_IP ip;
 
-    electronMDM.socketSetBlocking(sd, timeout);
+    electronMDM.socketSetBlocking(sock, timeout);
 
     sock_result_t result = electronMDM.socketReadable(sock);
     if (result < 0 || (timeout == 0 && result == 0)) { // error or no data

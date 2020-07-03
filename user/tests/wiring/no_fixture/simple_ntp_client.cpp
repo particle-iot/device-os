@@ -16,4 +16,4 @@
  */
 
 // FIXME
-#include "network/util/simple_ntp_client.cpp"
+#include "util/simple_ntp_client.cpp"
