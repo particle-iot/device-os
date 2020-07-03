@@ -192,9 +192,9 @@ test(CELLULAR_08_sigstr_is_valid) {
         s = Cellular.RSSI();
         // Verify that strength and quality values are in range for the given AccessTechnology
         switch (s.getAccessTechnology()) {
-            case NET_ACCESS_TECHNOLOGY_GSM:     // GSM strength [-111, -48] and quality [-3.70, -0.60]
+            case NET_ACCESS_TECHNOLOGY_GSM:     // GSM strength [-111, -48] and quality [0.14%, 18.10%]
                 if ((s.getStrengthValue() <= -48.0f && s.getStrengthValue() >= -111.0f)
-                    && (s.getQualityValue() <= -0.6f && s.getQualityValue() >= -3.7f)) {
+                    && (s.getQualityValue() <= 18.1f && s.getQualityValue() >= 0.14f)) {
                         values_in_range = true;
                         x = num_retries;
                         break;
