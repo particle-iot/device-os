@@ -26,6 +26,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "rtc_hal.h"
+#include "simple_ntp_client.h"
 
 test(TIME_01_NowReturnsCorrectUnixTime) {
     // when
@@ -342,4 +343,27 @@ test(TIME_18_RtcAlarmReturnsAnErrorWhenTimeInThePast) {
     hal_rtc_cancel_alarm();
     assertFalse((bool)alarmFired);
     assertEqual(r, (int)SYSTEM_ERROR_TIMEOUT);
+}
+
+test(TIME_19_LocalTimeIsCloseToNtpTime) {
+    auto client = std::make_unique<SimpleNtpClient>();
+
+    assertTrue((bool)client);
+
+    assertTrue(Particle.connected());
+    Particle.syncTime();
+    waitFor(Particle.syncTimeDone, 60000);
+    assertTrue(Particle.syncTimeDone());
+    assertTrue(Time.isValid());
+
+    uint64_t ntpTime = 0;
+    assertEqual(0, client->ntpDate(&ntpTime));
+
+    struct timeval tv = {};
+    assertEqual(0, hal_rtc_get_time(&tv, nullptr));
+    uint64_t now = tv.tv_sec * 1000000ULL + tv.tv_usec;
+
+    // Within 10 seconds
+    const int64_t diff = std::chrono::microseconds(10s).count();
+    assertLessOrEqual(std::abs((int64_t)now - (int64_t)ntpTime), diff);
 }
