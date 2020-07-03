@@ -9,7 +9,7 @@
 #endif
 #define ABS(x) ( ((x) < 0) ? -(x) : (x) )
 
-static const uint32_t maxPulseSamples = 100;
+static const uint32_t maxPulseSamples = 25;
 static const uint32_t minimumFrequency = 100;
 
 uint8_t pwm_pins[] = {
@@ -28,6 +28,10 @@ uint8_t pwm_pins[] = {
 #elif (PLATFORM_ID == PLATFORM_TRACKER)
         D0, D1, D2, D3, D4, D5, D6, D7 /* , RGBR, RGBG, RGBB */
 #elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
+        // NOTE: D7 is disable on Argon and Boron because it shares the PWM peripheral
+        // with RGB pins and testing it in a wide range of frequencies/settings will
+        // cause problems if the RGB led is enabled.
+        // PWM HAL also is not interrupt safe and RGB pins are modified in SysTick
         D2, D3, D4, D5, D6, /* D7, */ D8, A0, A1, A2, A3, A4, A5 /* , RGBR, RGBG, RGBB */
 #else
 #error "Unsupported platform"
@@ -38,10 +42,12 @@ static pin_t pin = pwm_pins[0];
 
 template <typename F> void for_all_pwm_pins(F callback)
 {
+    // RGB.control(true);
     for (uint8_t i = 0; i<arraySize(pwm_pins); i++)
     {
         callback(pwm_pins[i]);
     }
+    // RGB.control(false);
 }
 
 #if (PLATFORM_ID == PLATFORM_P1) // P1
@@ -290,6 +296,7 @@ test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
         // Dummy read to wait until the change of PWM takes effect
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
+        AtomicSection atomic;
 #endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }
@@ -313,6 +320,7 @@ test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
         // Dummy read to wait until the change of PWM takes effect
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
+        AtomicSection atomic;
 #endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }
@@ -336,6 +344,7 @@ test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
         // Dummy read to wait until the change of PWM takes effect
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
+        AtomicSection atomic;
 #endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }
@@ -359,6 +368,7 @@ test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
         // Dummy read to wait until the change of PWM takes effect
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
+        AtomicSection atomic;
 #endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }
@@ -391,6 +401,7 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
         // Dummy read to wait until the change of PWM takes effect
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
+        AtomicSection atomic;
 #endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }
@@ -412,6 +423,7 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
         // Dummy read to wait until the change of PWM takes effect
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
+        AtomicSection atomic;
 #endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }
@@ -426,14 +438,15 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     assertEqual(analogWriteResolution(pin), 12);
     // analogWrite(pin, 409, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
     // if (pin == D0) delay(5000);
-#if HAL_PLATFORM_NRF52840
-    // Dummy read to wait until the change of PWM takes effect
-    pulseIn(pin, HIGH);
-    pulseIn(pin, LOW);
-#endif
     avgPulseHigh = 0;
     for(int i=0; i<2; i++) {
         analogWrite(pin, 409, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
+#if HAL_PLATFORM_NRF52840
+        // Dummy read to wait until the change of PWM takes effect
+        pulseIn(pin, HIGH);
+        pulseIn(pin, LOW);
+        AtomicSection atomic;
+#endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }
     avgPulseHigh /= 2;
@@ -454,6 +467,7 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
         // Dummy read to wait until the change of PWM takes effect
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
+        AtomicSection atomic;
 #endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }
@@ -470,7 +484,6 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 
 test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 	for_all_pwm_pins([](uint16_t pin) {
-
 	// when
     pinMode(pin, OUTPUT);
 
@@ -486,6 +499,7 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
         // Dummy read to wait until the change of PWM takes effect
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
+        AtomicSection atomic;
 #endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }
@@ -507,6 +521,7 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
         // Dummy read to wait until the change of PWM takes effect
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
+        AtomicSection atomic;
 #endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }
@@ -549,6 +564,7 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
         // Dummy read to wait until the change of PWM takes effect
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
+        AtomicSection atomic;
 #endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }
@@ -634,6 +650,9 @@ test(PWM_11_CompherensiveResolutionFrequency) {
                                 assertEqual(digitalRead(pin), 0);
                                 break;
                             }
+                            // Relax a bit just in case
+                            delay(1);
+                            Particle.process();
                         }
                         double avgPulse = (double)pulseAcc / pulseSamples;
                         double err = ABS(avgPulse - refPulseWidthUs);
