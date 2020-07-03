@@ -25,7 +25,7 @@
 
 #include "adc_hal.h"
 
-void HAL_ADC_Set_Sample_Time(uint8_t ADC_SampleTime)
+void hal_adc_set_sample_time(uint8_t ADC_SampleTime)
 {
 }
 
@@ -34,7 +34,7 @@ void HAL_ADC_Set_Sample_Time(uint8_t ADC_SampleTime)
  * Should return a 16-bit value, 0-65536 (0 = LOW, 65536 = HIGH)
  * Note: ADC is 12-bit. Currently it returns 0-4096
  */
-int32_t HAL_ADC_Read(uint16_t pin)
+int32_t hal_adc_read(uint16_t pin)
 {
     return 0;
 }
@@ -42,6 +42,11 @@ int32_t HAL_ADC_Read(uint16_t pin)
 /*
  * @brief Initialize the ADC peripheral.
  */
-void HAL_ADC_DMA_Init()
+void hal_adc_dma_init()
 {
+}
+
+int hal_adc_sleep(bool sleep, void* reserved)
+{
+    return 0;
 }

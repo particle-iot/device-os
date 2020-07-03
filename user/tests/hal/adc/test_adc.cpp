@@ -24,17 +24,17 @@ Serial1LogHandler logHandler(115200);
 
 /* executes once at startup */
 void setup() {
-    HAL_ADC_DMA_Init();
+    hal_adc_dma_init();
 }
 
 /* executes continuously after setup() runs */
 void loop() {
     Log.info("A0: %d, A1: %d, A2: %d, A3: %d, A4: %d, A5: %d", 
-             HAL_ADC_Read(A0),
-             HAL_ADC_Read(A1),
-             HAL_ADC_Read(A2),
-             HAL_ADC_Read(A3),
-             HAL_ADC_Read(A4),
-             HAL_ADC_Read(A5));
+             hal_adc_read(A0),
+             hal_adc_read(A1),
+             hal_adc_read(A2),
+             hal_adc_read(A3),
+             hal_adc_read(A4),
+             hal_adc_read(A5));
     delay(500);
 }

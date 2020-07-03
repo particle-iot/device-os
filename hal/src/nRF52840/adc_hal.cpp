@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -8,7 +8,7 @@
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * MERCHAN'TABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
@@ -21,22 +21,19 @@
 #include "pinmap_impl.h"
 #include "check.h"
 
-static volatile hal_adc_state_t m_adc_state = HAL_ADC_STATE_DISABLED;
+static volatile hal_adc_state_t adcState = HAL_ADC_STATE_DISABLED;
 
-static const nrfx_saadc_config_t saadc_config = 
-{
+static const nrfx_saadc_config_t saadcConfig = {
     .resolution         = NRF_SAADC_RESOLUTION_12BIT,
     .oversample         = NRF_SAADC_OVERSAMPLE_DISABLED,
     .interrupt_priority = NRFX_SAADC_CONFIG_IRQ_PRIORITY
 };
 
-static void analog_in_event_handler(nrfx_saadc_evt_t const *p_event)
-{
+static void analog_in_event_handler(nrfx_saadc_evt_t const *p_event) {
     (void) p_event;
 }
 
-void HAL_ADC_Set_Sample_Time(uint8_t ADC_SampleTime)
-{
+void hal_adc_set_sample_time(uint8_t sample_time) {
     // deprecated
 }
 
@@ -45,39 +42,34 @@ void HAL_ADC_Set_Sample_Time(uint8_t ADC_SampleTime)
  * Should return a 16-bit value, 0-65536 (0 = LOW, 65536 = HIGH)
  * Note: ADC is 12-bit. Currently it returns 0-4096
  */
-int32_t HAL_ADC_Read(uint16_t pin)
-{
-    if (m_adc_state != HAL_ADC_STATE_ENABLED)
-    {
-        HAL_ADC_DMA_Init();
+int32_t hal_adc_read(uint16_t pin) {
+    if (adcState != HAL_ADC_STATE_ENABLED) {
+        hal_adc_dma_init();
     }
 
-    int16_t    adc_value = 0;
-    ret_code_t ret_code;
-    nrf_saadc_input_t nrf_adc_channel;
+    int16_t adcValue = 0;
+    ret_code_t ret;
+    nrf_saadc_input_t channel;
     Hal_Pin_Info *PIN_MAP = HAL_Pin_Map();
 
-    switch (PIN_MAP[pin].adc_channel)
-    {
-        case 0: nrf_adc_channel = NRF_SAADC_INPUT_AIN0; break;
-        case 1: nrf_adc_channel = NRF_SAADC_INPUT_AIN1; break;
-        case 2: nrf_adc_channel = NRF_SAADC_INPUT_AIN2; break;
-        case 3: nrf_adc_channel = NRF_SAADC_INPUT_AIN3; break;
-        case 4: nrf_adc_channel = NRF_SAADC_INPUT_AIN4; break;
-        case 5: nrf_adc_channel = NRF_SAADC_INPUT_AIN5; break;
-        case 6: nrf_adc_channel = NRF_SAADC_INPUT_AIN6; break;
-        case 7: nrf_adc_channel = NRF_SAADC_INPUT_AIN7; break;
-        default:
-            return 0;
+    switch (PIN_MAP[pin].adc_channel) {
+        case 0: channel = NRF_SAADC_INPUT_AIN0; break;
+        case 1: channel = NRF_SAADC_INPUT_AIN1; break;
+        case 2: channel = NRF_SAADC_INPUT_AIN2; break;
+        case 3: channel = NRF_SAADC_INPUT_AIN3; break;
+        case 4: channel = NRF_SAADC_INPUT_AIN4; break;
+        case 5: channel = NRF_SAADC_INPUT_AIN5; break;
+        case 6: channel = NRF_SAADC_INPUT_AIN6; break;
+        case 7: channel = NRF_SAADC_INPUT_AIN7; break;
+        default: return 0;
     }
 
-    if (PIN_MAP[pin].pin_func != PF_NONE && PIN_MAP[pin].pin_func != PF_DIO)
-    {
+    if (PIN_MAP[pin].pin_func != PF_NONE && PIN_MAP[pin].pin_func != PF_DIO) {
         return 0;
     }
 
      //Single ended, negative input to ADC shorted to GND.
-    nrf_saadc_channel_config_t channel_config = {                                                   
+    nrf_saadc_channel_config_t channelConfig = {                                                   
         .resistor_p = NRF_SAADC_RESISTOR_DISABLED,      \
         .resistor_n = NRF_SAADC_RESISTOR_DISABLED,      \
         .gain       = NRF_SAADC_GAIN1_4,                \
@@ -85,31 +77,26 @@ int32_t HAL_ADC_Read(uint16_t pin)
         .acq_time   = NRF_SAADC_ACQTIME_10US,           \
         .mode       = NRF_SAADC_MODE_SINGLE_ENDED,      \
         .burst      = NRF_SAADC_BURST_DISABLED,         \
-        .pin_p      = (nrf_saadc_input_t)(nrf_adc_channel),       \
+        .pin_p      = (nrf_saadc_input_t)(channel),       \
         .pin_n      = NRF_SAADC_INPUT_DISABLED          \
     };
 
-    ret_code = nrfx_saadc_channel_init(PIN_MAP[pin].adc_channel, &channel_config);
-    if (ret_code)
-    {
+    ret = nrfx_saadc_channel_init(PIN_MAP[pin].adc_channel, &channelConfig);
+    if (ret) {
         goto err_ret;
     }
 
-    ret_code = nrfx_saadc_sample_convert(PIN_MAP[pin].adc_channel, &adc_value);
-    if (ret_code)
-    {
+    ret = nrfx_saadc_sample_convert(PIN_MAP[pin].adc_channel, &adcValue);
+    if (ret) {
         goto err_ret;
     }
 
-    if (adc_value < 0)
-    {
+    if (adcValue < 0) {
         // Even in the single ended mode measured value can be negative value. Saturation for avoid casting to a big integer.
         goto err_ret;
-    }
-    else
-    {
+    } else {
         nrfx_saadc_channel_uninit(PIN_MAP[pin].adc_channel);
-        return (uint16_t) adc_value;
+        return (uint16_t) adcValue;
     }
 
 err_ret:
@@ -120,19 +107,17 @@ err_ret:
 /*
  * @brief Initialize the ADC peripheral.
  */
-void HAL_ADC_DMA_Init()
-{
-    m_adc_state = HAL_ADC_STATE_ENABLED;
-    uint32_t err_code = nrfx_saadc_init(&saadc_config, analog_in_event_handler);
+void hal_adc_dma_init() {
+    adcState = HAL_ADC_STATE_ENABLED;
+    uint32_t err_code = nrfx_saadc_init(&saadcConfig, analog_in_event_handler);
     SPARK_ASSERT(err_code == NRF_SUCCESS);
 }
 
 /*
  * @brief Uninitialize the ADC peripheral.
  */
-int HAL_ADC_DMA_Uninit(void* reserved)
-{
-    m_adc_state = HAL_ADC_STATE_DISABLED;
+int hal_adc_dma_uninit(void* reserved) {
+    adcState = HAL_ADC_STATE_DISABLED;
     nrfx_saadc_uninit();
     return SYSTEM_ERROR_NONE;
 }
@@ -140,19 +125,17 @@ int HAL_ADC_DMA_Uninit(void* reserved)
 /*
  * @brief ADC peripheral enters sleep mode
  */
-int HAL_ADC_Sleep(bool sleep, void* reserved)
-{
+int hal_adc_sleep(bool sleep, void* reserved) {
     if (sleep) {
         // Suspend ADC
-        CHECK_TRUE(m_adc_state == HAL_ADC_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
-        HAL_ADC_DMA_Uninit(nullptr);
-        m_adc_state = HAL_ADC_STATE_SUSPENDED;
+        CHECK_TRUE(adcState == HAL_ADC_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
+        hal_adc_dma_uninit(nullptr);
+        adcState = HAL_ADC_STATE_SUSPENDED;
     } else {
         // Restore ADC
-        CHECK_TRUE(m_adc_state == HAL_ADC_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
-        HAL_ADC_DMA_Init();
+        CHECK_TRUE(adcState == HAL_ADC_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
+        hal_adc_dma_init();
     }
-
     return SYSTEM_ERROR_NONE;
 }
 

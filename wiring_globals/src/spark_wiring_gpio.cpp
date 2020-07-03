@@ -175,7 +175,7 @@ int32_t analogRead(pin_t pin)
     return LOW;
   }
 
-  return HAL_ADC_Read(pin);
+  return hal_adc_read(pin);
 }
 
 /*
