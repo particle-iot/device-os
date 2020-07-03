@@ -758,7 +758,7 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
      * We cannot enable both of them at the same time.
      */
     if (serial == HAL_USART_SERIAL1) {
-        if (HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE3, nullptr)) {
+        if (hal_i2c_is_enabled(HAL_I2C_INTERFACE3, nullptr)) {
             // Unfortunately we cannot return an error code here
             return;
         }

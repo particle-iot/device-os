@@ -207,7 +207,7 @@ private:
 
     bool initialized_;
     uint8_t address_;
-    HAL_I2C_Interface wire_;
+    hal_i2c_interface_t wire_;
     uint8_t alarmYear_;
     AlarmHandler alarmHandler_;
     void* alarmHandlerContext_;

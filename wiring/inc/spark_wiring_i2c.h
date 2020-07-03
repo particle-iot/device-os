@@ -62,9 +62,9 @@ public:
     return *this;
   }
 
-  HAL_I2C_Transmission_Config halConfig() const {
-    HAL_I2C_Transmission_Config conf = {
-      .size = sizeof(HAL_I2C_Transmission_Config),
+  hal_i2c_transmission_config_t halConfig() const {
+    hal_i2c_transmission_config_t conf = {
+      .size = sizeof(hal_i2c_transmission_config_t),
       .version = 0,
       .address = address_,
       .reserved = {0},
@@ -85,10 +85,10 @@ private:
 class TwoWire : public Stream
 {
 private:
-  HAL_I2C_Interface _i2c;
+  hal_i2c_interface_t _i2c;
 
 public:
-  TwoWire(HAL_I2C_Interface i2c, const HAL_I2C_Config& config);
+  TwoWire(hal_i2c_interface_t i2c, const hal_i2c_config_t& config);
   virtual ~TwoWire() {};
   inline void setClock(uint32_t speed) {
 	  setSpeed(speed);
@@ -140,7 +140,7 @@ public:
  */
 #ifndef SPARK_WIRING_NO_I2C
 
-HAL_I2C_Config __attribute__((weak)) acquireWireBuffer();
+hal_i2c_config_t __attribute__((weak)) acquireWireBuffer();
 
 #define Wire __fetch_global_Wire()
 TwoWire& __fetch_global_Wire();
@@ -152,7 +152,7 @@ TwoWire& __fetch_global_Wire();
 
 #define Wire1 __fetch_global_Wire1()
 TwoWire& __fetch_global_Wire1();
-HAL_I2C_Config __attribute__((weak)) acquireWire1Buffer();
+hal_i2c_config_t __attribute__((weak)) acquireWire1Buffer();
 #endif  // Wiring_Wire1
 
 /* System PMIC and Fuel Guage I2C3 */
@@ -163,7 +163,7 @@ HAL_I2C_Config __attribute__((weak)) acquireWire1Buffer();
 
 #define Wire3 __fetch_global_Wire3()
 TwoWire& __fetch_global_Wire3();
-HAL_I2C_Config __attribute__((weak)) acquireWire3Buffer();
+hal_i2c_config_t __attribute__((weak)) acquireWire3Buffer();
 #endif  // Wiring_Wire3
 
 #endif

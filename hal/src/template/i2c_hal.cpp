@@ -28,82 +28,82 @@
 #include "gpio_hal.h"
 #include "system_error.h"
 
-int HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config)
+int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config)
 {
   return SYSTEM_ERROR_NONE;
 }
 
-void HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved)
+void hal_i2c_set_speed(hal_i2c_interface_t i2c, uint32_t speed, void* reserved)
 {
 }
 
-void HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved)
+void hal_i2c_stretch_clock(hal_i2c_interface_t i2c, bool stretch, void* reserved)
 {
 }
 
-void HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved)
+void hal_i2c_begin(hal_i2c_interface_t i2c, hal_i2c_mode_t mode, uint8_t address, void* reserved)
 {
 }
 
-void HAL_I2C_End(HAL_I2C_Interface i2c,void* reserved)
+void hal_i2c_end(hal_i2c_interface_t i2c,void* reserved)
 {
 }
 
-uint32_t HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop, void* reserved)
+uint32_t hal_i2c_request(hal_i2c_interface_t i2c, uint8_t address, uint8_t quantity, uint8_t stop, void* reserved)
 {
   return SYSTEM_ERROR_NONE;
 }
 
-int32_t HAL_I2C_Request_Data_Ex(HAL_I2C_Interface i2c, const HAL_I2C_Transmission_Config* config, void* reserved)
+int32_t hal_i2c_request_ex(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* config, void* reserved)
 {
     return 0;
 }
 
-void HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, const HAL_I2C_Transmission_Config* config)
+void hal_i2c_begin_transmission(hal_i2c_interface_t i2c, uint8_t address, const hal_i2c_transmission_config_t* config)
 {
 }
 
-uint8_t HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop,void* reserved)
-{
-  return SYSTEM_ERROR_NONE;
-}
-
-uint32_t HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data,void* reserved)
+uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop,void* reserved)
 {
   return SYSTEM_ERROR_NONE;
 }
 
-int32_t HAL_I2C_Available_Data(HAL_I2C_Interface i2c,void* reserved)
+uint32_t hal_i2c_write(hal_i2c_interface_t i2c, uint8_t data,void* reserved)
 {
   return SYSTEM_ERROR_NONE;
 }
 
-int32_t HAL_I2C_Read_Data(HAL_I2C_Interface i2c,void* reserved)
+int32_t hal_i2c_available(hal_i2c_interface_t i2c,void* reserved)
 {
   return SYSTEM_ERROR_NONE;
 }
 
-int32_t HAL_I2C_Peek_Data(HAL_I2C_Interface i2c,void* reserved)
+int32_t hal_i2c_read(hal_i2c_interface_t i2c,void* reserved)
+{
+  return SYSTEM_ERROR_NONE;
+}
+
+int32_t hal_i2c_peek(hal_i2c_interface_t i2c,void* reserved)
 {
     return SYSTEM_ERROR_NONE;
 }
 
-void HAL_I2C_Flush_Data(HAL_I2C_Interface i2c,void* reserved)
+void hal_i2c_flush(hal_i2c_interface_t i2c,void* reserved)
 {
   // XXX: to be implemented.
 }
 
-bool HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c,void* reserved)
+bool hal_i2c_is_enabled(hal_i2c_interface_t i2c,void* reserved)
 {
     return false;
 }
 
-void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int),void* reserved)
+void hal_i2c_set_callback_on_received(hal_i2c_interface_t i2c, void (*function)(int),void* reserved)
 {
 
 }
 
-void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void),void* reserved)
+void hal_i2c_set_callback_on_requested(hal_i2c_interface_t i2c, void (*function)(void),void* reserved)
 {
 
 }
@@ -130,21 +130,25 @@ void HAL_I2C1_ER_Handler(void)
 {
 }
 
-void HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable,void* reserved)
+void hal_i2c_enable_dma_mode(hal_i2c_interface_t i2c, bool enable,void* reserved)
 {
 }
 
-uint8_t HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1)
+uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1)
 {
   return SYSTEM_ERROR_NONE;
 }
 
-int32_t HAL_I2C_Acquire(HAL_I2C_Interface i2c, void* reserved)
+int HAL_I2C_Sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved) {
+    return 0;
+}
+
+int32_t hal_i2c_lock(hal_i2c_interface_t i2c, void* reserved)
 {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-int32_t HAL_I2C_Release(HAL_I2C_Interface i2c, void* reserved)
+int32_t hal_i2c_unlock(hal_i2c_interface_t i2c, void* reserved)
 {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
