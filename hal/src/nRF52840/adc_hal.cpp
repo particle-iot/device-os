@@ -20,14 +20,18 @@
 #include "adc_hal.h"
 #include "pinmap_impl.h"
 
+
 static volatile bool m_adc_initiated = false;
 
-static const nrfx_saadc_config_t saadc_config = 
+static const nrfx_saadc_config_t saadc_config =
 {
     .resolution         = NRF_SAADC_RESOLUTION_12BIT,
     .oversample         = NRF_SAADC_OVERSAMPLE_DISABLED,
     .interrupt_priority = NRFX_SAADC_CONFIG_IRQ_PRIORITY
 };
+
+nrf_saadc_reference_t VREF = NRF_SAADC_REFERENCE_VDD4;
+
 
 static void analog_in_event_handler(nrfx_saadc_evt_t const *p_event)
 {
@@ -38,6 +42,22 @@ void HAL_ADC_Set_Sample_Time(uint8_t ADC_SampleTime)
 {
     // deprecated
 }
+
+/*
+ * @brief @brief Set the ADC reference to either VDD / 4 (AR_DEFAULT) or the internal 0.6v (INTERNAL)
+ */
+#if (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_XENON)
+void HAL_ADC_Set_VREF(vref_e v_e){
+    switch (v_e) {
+        case AR_DEFAULT: VREF = NRF_SAADC_REFERENCE_VDD4; break;
+
+        case INTERNAL: VREF = NRF_SAADC_REFERENCE_INTERNAL; break;
+
+        default: VREF = NRF_SAADC_REFERENCE_VDD4; break;
+    }
+
+}
+#endif
 
 /*
  * @brief Read the analog value of a pin.
@@ -77,11 +97,11 @@ int32_t HAL_ADC_Read(uint16_t pin)
     }
 
      //Single ended, negative input to ADC shorted to GND.
-    nrf_saadc_channel_config_t channel_config = {                                                   
+    nrf_saadc_channel_config_t channel_config = {
         .resistor_p = NRF_SAADC_RESISTOR_DISABLED,      \
         .resistor_n = NRF_SAADC_RESISTOR_DISABLED,      \
         .gain       = NRF_SAADC_GAIN1_4,                \
-        .reference  = NRF_SAADC_REFERENCE_VDD4,         \
+        .reference  = VREF,                             \
         .acq_time   = NRF_SAADC_ACQTIME_10US,           \
         .mode       = NRF_SAADC_MODE_SINGLE_ENDED,      \
         .burst      = NRF_SAADC_BURST_DISABLED,         \
@@ -116,6 +136,8 @@ err_ret:
     nrfx_saadc_channel_uninit(PIN_MAP[pin].adc_channel);
     return 0;
 }
+
+
 
 /*
  * @brief Initialize the ADC peripheral.

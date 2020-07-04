@@ -25,11 +25,15 @@ Serial1LogHandler logHandler(115200);
 /* executes once at startup */
 void setup() {
     HAL_ADC_DMA_Init();
+    #if (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_XENON)
+    HAL_ADC_Set_VREF(INTERNAL);
+    HAL_ADC_Set_VREF(AR_DEFAULT);
+    #endif
 }
 
 /* executes continuously after setup() runs */
 void loop() {
-    Log.info("A0: %d, A1: %d, A2: %d, A3: %d, A4: %d, A5: %d", 
+    Log.info("A0: %d, A1: %d, A2: %d, A3: %d, A4: %d, A5: %d",
              HAL_ADC_Read(A0),
              HAL_ADC_Read(A1),
              HAL_ADC_Read(A2),

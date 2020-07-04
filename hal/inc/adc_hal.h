@@ -31,7 +31,13 @@
 #include "pinmap_hal.h"
 
 /* Exported types ------------------------------------------------------------*/
-
+#if (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_XENON)
+typedef enum
+{
+    AR_DEFAULT,
+    INTERNAL,
+} vref_e;
+#endif
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
@@ -45,6 +51,10 @@ extern "C" {
 void HAL_ADC_Set_Sample_Time(uint8_t ADC_SampleTime);
 int32_t HAL_ADC_Read(pin_t pin);
 void HAL_ADC_DMA_Init();
+
+#if (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_XENON)
+void HAL_ADC_Set_VREF(vref_e v_e);
+#endif
 
 #ifdef __cplusplus
 }
