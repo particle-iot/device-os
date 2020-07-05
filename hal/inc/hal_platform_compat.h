@@ -20,7 +20,7 @@
 
 #include "platforms.h"
 
-#if PLATFORM_ID == PLATFORM_NEWHAL
+#if PLATFORM_ID <= PLATFORM_P1 || PLATFORM_ID == PLATFORM_NEWHAL
     #define HAL_PLATFORM_WIFI 1
 #endif
 
