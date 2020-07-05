@@ -122,11 +122,13 @@ ret_code_t usbd_control_event_handler(app_usbd_class_inst_t const* inst,
     ret_code_t ret = NRF_SUCCESS;
     switch (event->app_evt.type) {
         case APP_USBD_EVT_DRV_RESET:
+        case APP_USBD_EVT_STOPPED: {
+            ret = usbd_control_reset();
+            break;
+        }
         case APP_USBD_EVT_STARTED:
-        case APP_USBD_EVT_STOPPED:
         case APP_USBD_EVT_DRV_SUSPEND:
         case APP_USBD_EVT_DRV_RESUME: {
-            ret = usbd_control_reset();
             break;
         }
         case APP_USBD_EVT_DRV_SETUP: {

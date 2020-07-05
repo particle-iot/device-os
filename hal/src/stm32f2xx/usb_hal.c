@@ -83,7 +83,7 @@ static USBD_Class_cb_TypeDef* USB_Composite_Instance = NULL;
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 
-#define USB_VENDOR_REQUEST_TIMEOUT 1000
+#define USB_VENDOR_REQUEST_TIMEOUT 30000
 
 void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* p)
 {
