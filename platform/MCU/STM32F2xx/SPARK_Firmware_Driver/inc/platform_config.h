@@ -78,32 +78,10 @@
 #define LED4_GPIO_PORT                      GPIOA                   //GREEN Led
 #define LED4_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //GREEN Led
 #define LED4_GPIO_MODE                      GPIO_Mode_AF            //GREEN Led
-#if   PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID
-//On Pigtail board with BM-14, RGB lines are reversed
-#define RGB_LINES_REVERSED
-#endif
 
 //Push Buttons
 #define BUTTONn                             1
-#if   PLATFORM_ID == PLATFORM_PHOTON_DEV
-#define BUTTON1_GPIO_PIN                    GPIO_Pin_2
-#define BUTTON1_GPIO_PORT                   GPIOC
-#define BUTTON1_GPIO_CLK                    RCC_AHB1Periph_GPIOC
-#define BUTTON1_GPIO_MODE		            GPIO_Mode_IN
-#define BUTTON1_GPIO_PUPD                   GPIO_PuPd_UP
-#define BUTTON1_PRESSED			            0x00
-#define BUTTON1_EXTI_LINE                   EXTI_Line2
-#define BUTTON1_EXTI_PORT_SOURCE            EXTI_PortSourceGPIOC
-#define BUTTON1_EXTI_PIN_SOURCE             EXTI_PinSource2
-#define BUTTON1_EXTI_IRQn                   EXTI2_IRQn
-#define BUTTON1_EXTI_IRQ_HANDLER            EXTI2_IRQHandler
-#define BUTTON1_EXTI_IRQ_PRIORITY           7
-#define BUTTON1_EXTI_IRQ_INDEX              24
-#define	BUTTON1_EXTI_TRIGGER		        EXTI_Trigger_Falling
-#define BUTTON1_MIRROR_SUPPORTED            1
-#elif PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID || \
-      PLATFORM_PHOTON_PRODUCTION == PLATFORM_ID || \
-      PLATFORM_TEACUP_PIGTAIL_PRODUCTION == PLATFORM_ID || \
+#if PLATFORM_PHOTON_PRODUCTION == PLATFORM_ID || \
       PLATFORM_P1 == PLATFORM_ID || \
       PLATFORM_ELECTRON_PRODUCTION == PLATFORM_ID
 #define BUTTON1_GPIO_PIN                    GPIO_Pin_7
@@ -127,24 +105,19 @@
 #define BUTTON_DEBOUNCE_INTERVAL            1000 / UI_TIMER_FREQUENCY
 
 //USB OTG Peripheral
-#if   PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID || \
-      PLATFORM_TEACUP_PIGTAIL_PRODUCTION == PLATFORM_ID || \
-      PLATFORM_P1 == PLATFORM_ID || \
+#if PLATFORM_P1 == PLATFORM_ID || \
       PLATFORM_ELECTRON_PRODUCTION == PLATFORM_ID
 //BM-14 and ELECTRON uses USB_OTG_FS peripheral
 #define USE_USB_OTG_FS
 #define USB_OTG_MAX_TX_FIFOS (4*2)
 //BM-14 has serial flash
-#elif   PLATFORM_PHOTON_DEV == PLATFORM_ID || \
-        PLATFORM_PHOTON_PRODUCTION == PLATFORM_ID
+#elif   PLATFORM_PHOTON_PRODUCTION == PLATFORM_ID
 //BM-09 uses USB_OTG_HS peripheral
 #define USE_USB_OTG_HS
 #define USB_OTG_MAX_TX_FIFOS (6*2)
 #endif
 
-#if   PLATFORM_TEACUP_PIGTAIL_DEV == PLATFORM_ID || \
-      PLATFORM_TEACUP_PIGTAIL_PRODUCTION == PLATFORM_ID || \
-      PLATFORM_P1 == PLATFORM_ID
+#if PLATFORM_P1 == PLATFORM_ID
 	#define HAS_SERIAL_FLASH
     #define sFLASH_PAGESIZE     0x1000 /* 4096 bytes sector size that needs to be erased */
     #define sFLASH_PAGECOUNT    256    /* 1MByte storage */
@@ -210,15 +183,9 @@
 #define PREPSTRING2(x) #x
 #define PREPSTRING(x) PREPSTRING2(x)
 
-#if PLATFORM_ID == PLATFORM_PHOTON_DEV
-    #define INTERNAL_FLASH_SIZE             (0x100000)
-#elif PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_DEV
-    #define INTERNAL_FLASH_SIZE             (0x100000)
-#elif   PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || \
+#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || \
         PLATFORM_ID == PLATFORM_P1 || \
         PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-    #define INTERNAL_FLASH_SIZE             (0x100000)
-#elif PLATFORM_ID == PLATFORM_TEACUP_PIGTAIL_PRODUCTION
     #define INTERNAL_FLASH_SIZE             (0x100000)
 #else
     #pragma message "PLATFORM_ID is " PREPSTRING(PLATFORM_ID)
