@@ -65,78 +65,6 @@ void connect_to_cloud(system_tick_t timeout)
     waitFor(Particle.connected, timeout);
 }
 
-#if !HAL_USE_SOCKET_HAL_POSIX
-
-Vector<sock_handle_t> consume_all_sockets(uint8_t protocol)
-{
-    static int port = 9000;
-    Vector<sock_handle_t> socks;
-    for (;;) {
-        auto sock = socket_create(AF_INET, SOCK_STREAM, protocol==IPPROTO_UDP ? IPPROTO_UDP : IPPROTO_TCP, port++, NIF_DEFAULT);
-        if (!socket_handle_valid(sock)) {
-            break;
-        }
-        socks.append(sock);
-    }
-
-    return socks;
-}
-
-void close_consumed_sockets(const Vector<sock_handle_t>& socks)
-{
-    for (const auto sock: socks) {
-        socket_close(sock);
-    }
-}
-
-test(CELLULAR_01_device_will_connect_to_the_cloud_when_all_tcp_sockets_consumed) {
-    //Serial.println("the device will connect to the cloud when all tcp sockets are consumed");
-    // Given the device is currently disconnected from the Cloud
-    disconnect_from_cloud(30*1000);
-    // When all available TCP sockets are consumed
-    auto socks = consume_all_sockets(IPPROTO_TCP);
-    SCOPE_GUARD({
-        // Close sockets
-        close_consumed_sockets(socks);
-    });
-    // And the device attempts to connect to the Cloud
-    connect_to_cloud(6*60*1000);
-    // Then the device overcomes this socket obstacle and connects to the Cloud
-    assertEqual(Particle.connected(), true);
-}
-/* Scenario: The device will connect to the Cloud even when all
- *           UDP socket types are consumed
- *
- * Given the device is currently disconnected from the Cloud
- * When all available UDP sockets are consumed
- * And the device attempts to connect to the Cloud
- * Then the device overcomes this socket obstacle and connects to the Cloud
- */
-test(CELLULAR_02_device_will_connect_to_the_cloud_when_all_udp_sockets_consumed) {
-    //Serial.println("the device will connect to the cloud when all udp sockets are consumed");
-    // Given the device is currently disconnected from the Cloud
-    disconnect_from_cloud(30*1000);
-    // When all available UDP sockets are consumed
-    auto socks = consume_all_sockets(IPPROTO_UDP);
-    SCOPE_GUARD({
-        // Close sockets
-        close_consumed_sockets(socks);
-    });
-    // And the device attempts to connect to the Cloud
-    connect_to_cloud(6*60*1000);
-    // Then the device overcomes this socket obstacle and connects to the Cloud
-    assertEqual(Particle.connected(), true);
-}
-
-test(CELLULAR_03_close_consumed_sockets) {
-    for (int i = 0; i < 7; i++) {
-        if (socket_handle_valid(i))
-            socket_close(i);
-    }
-}
-
-#endif // !HAL_USE_SOCKET_HAL_POSIX
-
 void checkIPAddress(const char* name, const IPAddress& address)
 {
     if (address.version()==0 || address[0]==0)
@@ -148,24 +76,24 @@ void checkIPAddress(const char* name, const IPAddress& address)
     }
 }
 
-test(CELLULAR_04_local_ip_cellular_config)
+test(CELLULAR_01_local_ip_cellular_config)
 {
     connect_to_cloud(6*60*1000);
     checkIPAddress("local", Cellular.localIP());
 }
 
-test(CELLULAR_05_resolve) {
+test(CELLULAR_02_resolve) {
     connect_to_cloud(6*60*1000);
     checkIPAddress("www.google.com", Cellular.resolve("www.google.com"));
 }
 
-test(CELLULAR_06_resolve) {
+test(CELLULAR_03_resolve) {
     connect_to_cloud(6*60*1000);
     IPAddress addr = Cellular.resolve("this.is.not.a.real.host");
     assertEqual(addr, 0);
 }
 
-test(CELLULAR_07_rssi_is_valid) {
+test(CELLULAR_04_rssi_is_valid) {
     connect_to_cloud(6*60*1000);
     CellularSignal s;
     for (int x = 0; x < 10; x++) {
@@ -181,7 +109,7 @@ test(CELLULAR_07_rssi_is_valid) {
 }
 
 // Collects cellular signal strength and quality and validates Accesstechnology (RAT)
-test(CELLULAR_08_sigstr_is_valid) {
+test(CELLULAR_05_sigstr_is_valid) {
     connect_to_cloud(6*60*1000);
     assertTrue(Particle.connected());
     CellularSignal s;

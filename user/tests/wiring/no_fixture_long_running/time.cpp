@@ -25,7 +25,7 @@ test(TIME_01_SyncTimeInAutomaticMode) {
         system_tick_t syncedLastMillis = Particle.timeSyncedLast(syncedLastUnix);
         // 2018/01/01 00:00:00
         Time.setTime(1514764800);
-        // assertFalse(Time.isValid());
+        assertEqual(Time.now(), 1514764800);
         Particle.disconnect();
         if (!waitFor(Particle.disconnected, 120000)) {
             Serial.println("Timed out waiting to disconnect!");
@@ -43,7 +43,9 @@ test(TIME_01_SyncTimeInAutomaticMode) {
             return;
         }
         // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
-        Particle.syncTime();
+        if (!Particle.syncTimePending()) {
+            Particle.syncTime();
+        }
         if (!waitFor(Particle.syncTimeDone, 120000)) {
             Serial.println("Timed out waiting for time sync!");
             fail();
@@ -51,6 +53,7 @@ test(TIME_01_SyncTimeInAutomaticMode) {
         }
 
         assertTrue(Time.isValid());
+        assertMore(Time.year(), 2018);
         syncedCurrentMillis = Particle.timeSyncedLast(syncedCurrentUnix);
         // Serial.printlnf("sCU-sLU: %d, sCM-sLM: %d",
         //     syncedCurrentUnix-syncedLastUnix, syncedCurrentMillis-syncedLastMillis);
@@ -66,8 +69,7 @@ test(TIME_02_SyncTimeInManualMode) {
         system_tick_t syncedLastMillis = Particle.timeSyncedLast(syncedLastUnix);
         // 2018/01/01 00:00:00
         Time.setTime(1514764800);
-        // assertFalse(Time.isValid());
-        // Serial.println("DISCONNECT");
+        assertEqual(Time.now(), 1514764800);
         Particle.disconnect();
         if (!waitFor(Particle.disconnected, 120000)) {
             Serial.println("Timed out waiting to disconnect!");
@@ -88,13 +90,16 @@ test(TIME_02_SyncTimeInManualMode) {
 
         // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
         // Serial.println("SYNC TIME");
-        Particle.syncTime();
+        if (!Particle.syncTimePending()) {
+            Particle.syncTime();
+        }
         if (!waitFor(Particle.syncTimeDone, 120000)) {
             Serial.println("Timed out waiting for time sync!");
             fail();
             return;
         }
         assertTrue(Time.isValid());
+        assertMore(Time.year(), 2018);
         syncedCurrentMillis = Particle.timeSyncedLast(syncedCurrentUnix);
         // Serial.printlnf("sCU-sLU: %d, sCM-sLM: %d",
         //     syncedCurrentUnix-syncedLastUnix, syncedCurrentMillis-syncedLastMillis);

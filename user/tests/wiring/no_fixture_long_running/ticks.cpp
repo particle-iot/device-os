@@ -77,6 +77,8 @@ void assert_micros_millis_interrupts(int duration)
     system_tick_t last_millis = millis();
     system_tick_t last_micros = micros();
 
+    system_tick_t last_relax = millis();
+
     do
     {
         uint64_t now_millis_64;
@@ -109,8 +111,17 @@ void assert_micros_millis_interrupts(int duration)
         last_micros = now_micros;
 
 #ifdef PARTICLE_TEST_RUNNER
-        // Relax a bit
-        Particle.process();
+        if (millis() - last_relax >= 10000) {
+#if HAL_PLATFORM_GEN == 2
+            NVIC_DisableIRQ(TIM4_IRQn);
+#endif // HAL_PLATFORM_GEN == 2
+            delay(10);
+            Particle.process();
+#if HAL_PLATFORM_GEN == 2
+            NVIC_EnableIRQ(TIM4_IRQn);
+#endif // HAL_PLATFORM_GEN == 2
+            last_relax = millis();
+        }
 #endif // PARTICLE_TEST_RUNNER
     }
     while (duration > 0);
@@ -123,7 +134,15 @@ void assert_micros_millis_interrupts(int duration)
 #endif
 }
 
-test(TICKS_00_millis_micros_baseline_test)
+test(TICKS_00_prepare)
+{
+    // Make sure we are disconnected from the cloud/network
+    Particle.disconnect();
+    Network.disconnect();
+    delay(5000);
+}
+
+test(TICKS_01_millis_micros_baseline_test)
 {
     const unsigned DELAY = 3 * 1000;
     // delay()
@@ -148,7 +167,7 @@ test(TICKS_00_millis_micros_baseline_test)
 #if (!defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE) && !defined(HAL_PLATFORM_NRF52840)
 // the __advance_system1MsTick isn't dynamically linked so we build this as a monolithic app
 #include "hw_ticks.h"
-test(TICKS_01_millis_and_micros_rollover)
+test(TICKS_02_millis_and_micros_rollover)
 {
     // this places the micros counter 3 seconds from rollover and the system ticks 5 seconds
     __advance_system1MsTick((uint64_t)-5000, 3000);
@@ -159,7 +178,7 @@ test(TICKS_01_millis_and_micros_rollover)
 }
 #endif
 
-test(TICKS_02_millis_and_micros_along_with_high_priority_interrupts)
+test(TICKS_03_millis_and_micros_along_with_high_priority_interrupts)
 {
     static const system_tick_t TWO_MINUTES = 2 * 60 * 1000;
     system_tick_t start = millis();
@@ -167,7 +186,7 @@ test(TICKS_02_millis_and_micros_along_with_high_priority_interrupts)
     assertMoreOrEqual(millis()-start,TWO_MINUTES);
 }
 
-test(TICKS_03_millis_and_micros_monotonically_increases)
+test(TICKS_04_millis_and_micros_monotonically_increases)
 {
     static const system_tick_t TWO_MINUTES = 2 * 60 * 1000;
     system_tick_t start = millis();
