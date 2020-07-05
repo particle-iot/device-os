@@ -78,14 +78,14 @@ std::recursive_mutex mdm_mutex;
                                           L0.0.00.00.05.08,A.02.04 background DNS lookup and other factors */
 #define USORF_TIMEOUT     ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
 #define CEER_TIMEOUT      (  1 * 1000)
-#define CEREG_TIMEOUT     (  1 * 1000)
+#define CEREG_TIMEOUT     ( 60 * 1000)
 #define CGDCONT_TIMEOUT   (  1 * 1000)
-#define CGREG_TIMEOUT     (  1 * 1000)
+#define CGREG_TIMEOUT     ( 60 * 1000)
 #define CGATT_TIMEOUT     (180 * 1000)
 #define CMGS_TIMEOUT      (150 * 1000) /* 180s for R4 (set to 150s to match previous implementation) */
 #define COPS_TIMEOUT      (180 * 1000)
 #define CPWROFF_TIMEOUT   ( 40 * 1000)
-#define CREG_TIMEOUT      (  1 * 1000)
+#define CREG_TIMEOUT      ( 60 * 1000)
 #define CSQ_TIMEOUT       (  1 * 1000)
 #define UBANDSEL_TIMEOUT  ( 40 * 1000)
 #define UDNSRN_TIMEOUT    ( 30 * 1000) /* 70s for R4 (set to 30s to match previous implementation) */
@@ -636,7 +636,8 @@ bool MDMParser::connect(
 
 bool MDMParser::disconnect() {
     if (!deactivate()) {
-        return false;
+        // Ignore, detach anyway
+        // return false;
     }
     if (!detach()) {
         return false;
@@ -1352,28 +1353,30 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                         }
                     }
                 }
-                // Make sure automatic network registration is enabled
-                if (!_atOk()) {
-                    goto failure;
-                }
-                _net.cops = -1;
-                sendFormated("AT+COPS?\r\n");
-                if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
-                    goto failure;
-                }
-                // If the set command with <mode>=0 is issued, a further set
-                // command with <mode>=0 is managed as a user reselection
-                if (_net.cops != 0) {
-                    sendFormated("AT+COPS=0,2\r\n");
-                    if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
-                        goto failure;
-                    }
-                }
             } else {
                 // Show enabled RATs
                 sendFormated("AT+URAT?\r\n");
                 waitFinalResp(nullptr, nullptr, URAT_TIMEOUT);
             }
+
+            // Make sure automatic network registration is enabled
+            if (!_atOk()) {
+                goto failure;
+            }
+            _net.cops = -1;
+            sendFormated("AT+COPS?\r\n");
+            if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
+                goto failure;
+            }
+            // If the set command with <mode>=0 is issued, a further set
+            // command with <mode>=0 is managed as a user reselection
+            if (_net.cops != 0) {
+                sendFormated("AT+COPS=0,2\r\n");
+                if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
+                    goto failure;
+                }
+            }
+
             // Now check every 15 seconds for 5 minutes to see if we're connected to the tower (GSM, GPRS and LTE)
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
             while (!(ok = checkNetStatus(status)) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
@@ -1410,15 +1413,21 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     if (_dev.dev == DEV_SARA_R410) {
         // check EPS registration (LTE)
         sendFormated("AT+CEREG?\r\n");
-        waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT);
+        if (RESP_OK != waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT)) {
+            goto failure;
+        }
     } else {
         // check CSD registration (GSM)
         sendFormated("AT+CREG?\r\n");
-        waitFinalResp(nullptr, nullptr, CREG_TIMEOUT); // don't fail as service could be not subscribed
+        if (RESP_OK != waitFinalResp(nullptr, nullptr, CREG_TIMEOUT)) {
+            goto failure;
+        }
 
         // check PSD registration (GPRS)
         sendFormated("AT+CGREG?\r\n");
-        waitFinalResp(nullptr, nullptr, CGREG_TIMEOUT); // don't fail as service could be not subscribed
+        if (RESP_OK != waitFinalResp(nullptr, nullptr, CGREG_TIMEOUT)) {
+            goto failure;
+        }
     }
     if (REG_OK(_net.csd) || REG_OK(_net.psd) || REG_OK(_net.eps)) {
         // get the current operator and radio access technology we are connected to
@@ -2328,27 +2337,13 @@ bool MDMParser::detach(void)
             resume(); // make sure we can use the AT parser
         }
         MDM_INFO("\r\n[ Modem::detach ] = = = = = = = = = = = = = = =");
-        if (_dev.dev == DEV_SARA_R410) {
-            // TODO: There's no GPRS service in LTE, although the GRPS detach command still disables
-            // the PSD connection. For now let's unregister from the network entirely, since the
-            // behavior of the detach command in relation to LTE is not documented
-            if (_atOk()) {
-                sendFormated("AT+COPS=2,2\r\n");
-                if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) == RESP_OK) {
-                    _activated = false;
-                    ok = true;
-                }
+        // Unregister from the network entirely
+        if (_atOk()) {
+            sendFormated("AT+COPS=2,2\r\n");
+            if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) == RESP_OK) {
+                _activated = false;
+                ok = true;
             }
-        } else if (_atOk()) {
-            // if (_ip != NOIP) {  // if we deactivate() first we won't have an IP
-                /* Detach from the GPRS network and conserve network resources. */
-                /* Any active PDP context will also be deactivated. */
-                sendFormated("AT+CGATT=0\r\n");
-                if (RESP_OK != waitFinalResp(NULL,NULL,CGATT_TIMEOUT)) {
-                    ok = true;
-                    _activated = false;
-                }
-            // }
         }
     }
     if (continue_cancel) cancel();
