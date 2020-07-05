@@ -3101,6 +3101,13 @@ int MDMParser::socketRecvFrom(int socket, MDM_IP* ip, int* port, char* buf, int 
         {
             LOCK();
             if (ISSOCKET(socket)) {
+                int available = socketReadable(socket);
+                if (available < 0)  {
+                    len = 0;
+                    ok = true;
+                } else if (blk > available) {
+                    blk = available;
+                }
                 if (blk > 0) {
                     sendFormated("AT+USORF=%d,%d\r\n",_sockets[socket].handle, blk);
                     USORFparam param;
