@@ -69,6 +69,8 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
 
     int ret = 0;
 
+    system_cloud_disconnect(false);
+
     if (saddrCache && saddrCache->sa_family != AF_UNSPEC) {
         memcpy(&saddr, saddrCache, sizeof(saddr));
     } else if (address) {
