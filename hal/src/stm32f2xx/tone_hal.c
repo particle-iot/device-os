@@ -258,7 +258,7 @@ uint32_t HAL_Tone_Get_Frequency(uint8_t pin)
         return Tone_Frequency;
     }
 
-    Tone_Frequency = (uint16_t)(TONE_TIM_COUNTER_CLOCK_FREQ / TIM_CCR);
+    Tone_Frequency = (uint16_t)((TONE_TIM_COUNTER_CLOCK_FREQ) / (2UL * TIM_CCR));
 
     return Tone_Frequency;
 }
