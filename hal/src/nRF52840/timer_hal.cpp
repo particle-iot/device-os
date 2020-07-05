@@ -59,8 +59,8 @@ volatile uint32_t sOverflowCounter = 0; ///< Counter of RTC overflowCounter, inc
 volatile uint8_t  sMutex = 0;           ///< Mutex for write access to @ref sOverflowCounter.
 volatile uint64_t sTimeOffset = 0;  ///< Time overflowCounter to keep track of current time (in millisecond).
 volatile bool     sEventPending = false;    ///< Timer fired and upper layer should be notified.
-volatile uint32_t sTickCountAtLastOverflow = 0; ///< DWT->CYCCNT value at the time latest overflow occurred
-volatile uint64_t sTimerMicrosAtLastOverflow = 0; ///< microseconds at the time latest overflow occured
+volatile uint32_t sDwtTickCountAtLastOverflow = 0; ///< DWT->CYCCNT value at the time latest overflow occurred
+volatile uint32_t sTimerTicksAtLastOverflow = 0; ///< RTC ticks at the time latest overflow occured
 volatile uint64_t sTimerMicrosBaseOffset = 0; ///< Base offset for Particle-specific microsecond counter
 
 auto RTC_INSTANCE = NRF_RTC2;
@@ -107,6 +107,10 @@ inline void mutexRelease() {
     sMutex = 0;
 }
 
+uint32_t getRtcCounter() {
+    return nrf_rtc_counter_get(RTC_INSTANCE);
+}
+
 uint32_t getOverflowCounter() {
     uint32_t overflowCounter;
 
@@ -143,6 +147,13 @@ uint32_t getOverflowCounter() {
             // Increment the counter for the second time, to allow instructions from other context get correct value of
             // the counter.
             sOverflowCounter++;
+
+            // Store current DWT->CYCCNT and RTC counter value
+            int pri = __get_PRIMASK();
+            __disable_irq();
+            sTimerTicksAtLastOverflow = getRtcCounter();
+            sDwtTickCountAtLastOverflow = DWT->CYCCNT;
+            __set_PRIMASK(pri);
         }
     } else {
         // Failed to acquire mutex.
@@ -159,41 +170,13 @@ uint32_t getOverflowCounter() {
     return overflowCounter;
 }
 
-uint32_t getRtcCounter() {
-    return nrf_rtc_counter_get(RTC_INSTANCE);
-}
-
-void getOffsetAndCounter(uint32_t* aOffset, uint32_t* aCounter) {
-    uint32_t offset1 = getOverflowCounter();
-
-    __DMB();
-
-    uint32_t rtcValue1 = getRtcCounter();
-
-    __DMB();
-
-    uint32_t offset2 = getOverflowCounter();
-
-    *aOffset  = offset2;
-    *aCounter = (offset1 == offset2) ? rtcValue1 : getRtcCounter();
-}
-
-uint64_t getCurrentTime() {
-    uint32_t offset;
-    uint32_t rtcCounter;
-
-    getOffsetAndCounter(&offset, &rtcCounter);
-
-    return (uint64_t)offset * US_PER_OVERFLOW + ticksToTime(rtcCounter);
-}
-
-uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
+uint64_t getCurrentTimeWithTicks(uint32_t* dwtTicks, uint32_t* elapsedRtcTicks) {
     uint32_t offset1 = getOverflowCounter();
     __DMB();
 
     uint32_t rtcValue = getRtcCounter();
-    *ticks = sTickCountAtLastOverflow;
-    *micros = sTimerMicrosAtLastOverflow;
+    *dwtTicks = sDwtTickCountAtLastOverflow;
+    uint32_t overflowTicks = sTimerTicksAtLastOverflow;
     __DMB();
 
     uint32_t offset2 = getOverflowCounter();
@@ -201,9 +184,10 @@ uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
     if (offset1 != offset2) {
         // Overflow occured between the calls
         rtcValue = getRtcCounter();
-        *ticks = sTickCountAtLastOverflow;
-        *micros = sTimerMicrosAtLastOverflow;
+        *dwtTicks = sDwtTickCountAtLastOverflow;
+        overflowTicks = sTimerTicksAtLastOverflow;
     }
+    *elapsedRtcTicks = (rtcValue - overflowTicks);
     return (uint64_t)offset2 * US_PER_OVERFLOW + ticksToTime(rtcValue);
 }
 
@@ -218,8 +202,8 @@ int hal_timer_init(const hal_timer_init_config_t* conf) {
     sOverflowCounter = 0;
     sMutex           = 0;
     sTimeOffset      = 0;
-    sTickCountAtLastOverflow = 0;
-    sTimerMicrosAtLastOverflow = 0;
+    sDwtTickCountAtLastOverflow = 0;
+    sTimerTicksAtLastOverflow = 0;
 
     // Setup low frequency clock.
     nrf_drv_clock_lfclk_request(NULL);
@@ -304,7 +288,6 @@ int hal_timer_deinit(void* reserved) {
 extern "C" void RTC_IRQ_HANDLER(void) {
     // Handle overflow.
     if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW)) {
-        nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW);
         // Disable OVERFLOW interrupt to prevent lock-up in interrupt context while mutex is locked from lower priority
         // context and OVERFLOW event flag is stil up. OVERFLOW interrupt will be re-enabled when mutex is released -
         // either from this handler, or from lower priority context, that locked the mutex.
@@ -312,13 +295,6 @@ extern "C" void RTC_IRQ_HANDLER(void) {
 
         // Handle OVERFLOW event by reading current value of overflow counter.
         (void)getOverflowCounter();
-
-        // Store current DWT->CYCCNT and RTC counter value
-        int pri = __get_PRIMASK();
-        __disable_irq();
-        sTimerMicrosAtLastOverflow = getCurrentTime();
-        sTickCountAtLastOverflow = DWT->CYCCNT;
-        __set_PRIMASK(pri);
     } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_TICK)) {
         nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_TICK);
     } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_0)) {
@@ -334,16 +310,15 @@ extern "C" void RTC_IRQ_HANDLER(void) {
 
 uint64_t hal_timer_micros(void* reserved) {
     // Extends the resolution from 31us to about 5us using DWT->CYCCNT
-    // Make sure that sTickCountAtLastOverflow and current timer values are fetched atomically
-    uint32_t lastOverflowTicks;
-    uint64_t lastOverflowMicros;
-    uint64_t curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros);
+    // Make sure that sDwtTickCountAtLastOverflow and current timer values are fetched atomically
+    uint32_t lastOverflowDwtTicks;
+    uint32_t elapsedRtcTicksSinceOverflow;
+    uint64_t curUs = getCurrentTimeWithTicks(&lastOverflowDwtTicks, &elapsedRtcTicksSinceOverflow);
 
     int usTicks = SYSTEM_US_TICKS;
 
-    uint64_t elapsedUs = curUs - lastOverflowMicros;
-    uint64_t elapsedTicks = elapsedUs * usTicks;
-    uint32_t syncTicks = (uint32_t)((uint64_t)lastOverflowTicks + elapsedTicks);
+    uint64_t elapsedTicks = ticksToTime(elapsedRtcTicksSinceOverflow) * usTicks;
+    uint32_t syncTicks = (uint32_t)((uint64_t)lastOverflowDwtTicks + elapsedTicks);
     uint32_t tickDiff = DWT->CYCCNT - syncTicks;
     int64_t tickDiffFinal;
     if (tickDiff > (US_PER_OVERFLOW / 10) * usTicks) {
