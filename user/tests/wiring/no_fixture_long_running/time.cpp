@@ -25,7 +25,7 @@ test(TIME_01_SyncTimeInAutomaticMode) {
         system_tick_t syncedLastMillis = Particle.timeSyncedLast(syncedLastUnix);
         // 2018/01/01 00:00:00
         Time.setTime(1514764800);
-        assertEqual(Time.now(), 1514764800);
+        assertLessOrEqual(Time.now(), 1514764800 + 60);
         Particle.disconnect();
         if (!waitFor(Particle.disconnected, 120000)) {
             Serial.println("Timed out waiting to disconnect!");
@@ -69,7 +69,7 @@ test(TIME_02_SyncTimeInManualMode) {
         system_tick_t syncedLastMillis = Particle.timeSyncedLast(syncedLastUnix);
         // 2018/01/01 00:00:00
         Time.setTime(1514764800);
-        assertEqual(Time.now(), 1514764800);
+        assertLessOrEqual(Time.now(), 1514764800 + 60);
         Particle.disconnect();
         if (!waitFor(Particle.disconnected, 120000)) {
             Serial.println("Timed out waiting to disconnect!");
