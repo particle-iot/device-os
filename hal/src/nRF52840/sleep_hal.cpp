@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -923,6 +923,23 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
 
     // Disable thread scheduling
     os_thread_scheduling(false, nullptr);
+
+    // Suspend USARTs
+    for (int usart = 0; usart < TOTAL_USARTS; usart++) {
+        hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), true, nullptr);
+    }
+    // Suspend SPIs
+    for (int spi = 0; spi < TOTAL_SPI; spi++) {
+        hal_spi_sleep(static_cast<hal_spi_interface_t>(spi), true, nullptr);
+    }
+    // Suspend I2Cs
+    for (int i2c = 0; i2c < TOTAL_I2C; i2c++) {
+        HAL_I2C_Sleep(static_cast<HAL_I2C_Interface>(i2c), true, nullptr);
+    }
+    // Suspend PWM modules
+    hal_pwm_sleep(true, nullptr);
+    // Suspend ADC module
+    HAL_ADC_Sleep(true, nullptr);
 
     // This will disable all but SoftDevice interrupts (by modifying NVIC->ICER)
     uint8_t st = 0;
