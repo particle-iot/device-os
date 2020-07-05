@@ -187,6 +187,26 @@ uint64_t getCurrentTime() {
     return (uint64_t)offset * US_PER_OVERFLOW + ticksToTime(rtcCounter);
 }
 
+uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
+    uint32_t offset1 = getOverflowCounter();
+    __DMB();
+
+    uint32_t rtcValue = getRtcCounter();
+    *ticks = sTickCountAtLastOverflow;
+    *micros = sTimerMicrosAtLastOverflow;
+    __DMB();
+
+    uint32_t offset2 = getOverflowCounter();
+
+    if (offset1 != offset2) {
+        // Overflow occured between the calls
+        rtcValue = getRtcCounter();
+        *ticks = sTickCountAtLastOverflow;
+        *micros = sTimerMicrosAtLastOverflow;
+    }
+    return (uint64_t)offset2 * US_PER_OVERFLOW + ticksToTime(rtcValue);
+}
+
 } // anonymous
 
 // Particle-specific
@@ -315,21 +335,16 @@ extern "C" void RTC_IRQ_HANDLER(void) {
 uint64_t hal_timer_micros(void* reserved) {
     // Extends the resolution from 31us to about 5us using DWT->CYCCNT
     // Make sure that sTickCountAtLastOverflow and current timer values are fetched atomically
-    nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_OVERFLOW_MASK);
-    __DMB();
-    // Volatile is most likely unnecessary here, leaving for now just in case
-    volatile uint64_t curUs = getCurrentTime();
-    volatile uint32_t lastOverflowTicks = sTickCountAtLastOverflow;
-    volatile uint64_t lastOverflowMicros = sTimerMicrosAtLastOverflow;
-    volatile uint32_t curTicks = DWT->CYCCNT;
-    nrf_rtc_int_enable(RTC_INSTANCE, NRF_RTC_INT_OVERFLOW_MASK);
+    uint32_t lastOverflowTicks;
+    uint64_t lastOverflowMicros;
+    uint64_t curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros);
 
     int usTicks = SYSTEM_US_TICKS;
 
     uint64_t elapsedUs = curUs - lastOverflowMicros;
     uint64_t elapsedTicks = elapsedUs * usTicks;
     uint32_t syncTicks = (uint32_t)((uint64_t)lastOverflowTicks + elapsedTicks);
-    uint32_t tickDiff = curTicks - syncTicks;
+    uint32_t tickDiff = DWT->CYCCNT - syncTicks;
     int64_t tickDiffFinal;
     if (tickDiff > (US_PER_OVERFLOW / 10) * usTicks) {
         tickDiff = 0xffffffff - tickDiff;
