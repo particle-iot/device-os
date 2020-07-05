@@ -23,8 +23,8 @@ test(TIME_01_SyncTimeInAutomaticMode) {
         time_t syncedLastUnix, syncedCurrentUnix;
         system_tick_t syncedCurrentMillis;
         system_tick_t syncedLastMillis = Particle.timeSyncedLast(syncedLastUnix);
-        // Invalid time (year = 00) 2000/01/01 00:00:00
-        Time.setTime(946684800);
+        // 2018/01/01 00:00:00
+        Time.setTime(1514764800);
         // assertFalse(Time.isValid());
         Particle.disconnect();
         if (!waitFor(Particle.disconnected, 120000)) {
@@ -64,8 +64,8 @@ test(TIME_02_SyncTimeInManualMode) {
         time_t syncedLastUnix, syncedCurrentUnix;
         system_tick_t syncedCurrentMillis;
         system_tick_t syncedLastMillis = Particle.timeSyncedLast(syncedLastUnix);
-        // Invalid time (year = 00) 2000/01/01 00:00:00
-        Time.setTime(946684800);
+        // 2018/01/01 00:00:00
+        Time.setTime(1514764800);
         // assertFalse(Time.isValid());
         // Serial.println("DISCONNECT");
         Particle.disconnect();
@@ -89,12 +89,10 @@ test(TIME_02_SyncTimeInManualMode) {
         // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
         // Serial.println("SYNC TIME");
         Particle.syncTime();
-        if (!Time.isValid()) {
-            if (!waitFor(Particle.syncTimeDone, 120000)) {
-                Serial.println("Timed out waiting for time sync!");
-                fail();
-                return;
-            }
+        if (!waitFor(Particle.syncTimeDone, 120000)) {
+            Serial.println("Timed out waiting for time sync!");
+            fail();
+            return;
         }
         assertTrue(Time.isValid());
         syncedCurrentMillis = Particle.timeSyncedLast(syncedCurrentUnix);

@@ -107,6 +107,11 @@ void assert_micros_millis_interrupts(int duration)
         last_millis_64 = now_millis_64;
         last_millis = now_millis;
         last_micros = now_micros;
+
+#ifdef PARTICLE_TEST_RUNNER
+        // Relax a bit
+        Particle.process();
+#endif // PARTICLE_TEST_RUNNER
     }
     while (duration > 0);
 

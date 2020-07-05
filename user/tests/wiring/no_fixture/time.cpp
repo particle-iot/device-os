@@ -105,10 +105,10 @@ test(TIME_06_DSTOffsetIsReturned) {
 test(TIME_07_SetTimeResultsInCorrectUnixTimeUpdate) {
     // when
     time_t current_time = Time.now();
-    Time.setTime(978307200);//set to 2001/01/01 00:00:00
+    Time.setTime(1514764800);//set to 2018/01/01 00:00:00
     // then
     time_t temp_time = Time.now();
-    assertEqual(temp_time, 978307200);
+    assertEqual(temp_time, 1514764800);
     // restore original time
     Time.setTime(current_time);
 }

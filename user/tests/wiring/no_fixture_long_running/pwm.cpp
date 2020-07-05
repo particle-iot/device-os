@@ -543,6 +543,7 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
         // Dummy read to wait until the change of PWM takes effect
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
+        AtomicSection atomic;
 #endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }

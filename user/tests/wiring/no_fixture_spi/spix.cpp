@@ -416,6 +416,8 @@ constexpr system_tick_t calculateExpectedTime() {
 // Common settings for all performance tests
 constexpr unsigned int SPI_ITERATIONS = 10000;
 
+constexpr unsigned int SPI_ERROR_MARGIN = 1; // 1%
+
 #if HAL_PLATFORM_NRF52840
 constexpr unsigned int SPI_CLOCK_SPEED = 8000000; // 8MHz
 constexpr unsigned int SPI_NODMA_OVERHEAD = 13500; // 13.5us ~= 860 clock cycles @ 64MHz
@@ -456,7 +458,7 @@ test(SPIX_12_SPI_Transfer_1_Bytes_Per_Transmission_No_Locking)
     SPI.end();
 
     // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
 test(SPIX_13_SPI_Transfer_1_Bytes_Per_Transmission_Locking)
@@ -478,7 +480,7 @@ test(SPIX_13_SPI_Transfer_1_Bytes_Per_Transmission_Locking)
     SPI.end();
 
     // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
 test(SPIX_14_SPI_Transfer_2_Bytes_Per_Transmission_Locking)
@@ -501,7 +503,7 @@ test(SPIX_14_SPI_Transfer_2_Bytes_Per_Transmission_Locking)
     SPI.end();
 
     // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
 test(SPIX_15_SPI_Transfer_1_Bytes_Per_DMA_Transmission_No_Locking)
@@ -522,7 +524,7 @@ test(SPIX_15_SPI_Transfer_1_Bytes_Per_DMA_Transmission_No_Locking)
     SPI.end();
 
     // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
 test(SPIX_16_SPI_Transfer_1_Bytes_Per_DMA_Transmission_Locking)
@@ -545,7 +547,7 @@ test(SPIX_16_SPI_Transfer_1_Bytes_Per_DMA_Transmission_Locking)
     SPI.end();
 
     // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
 test(SPIX_17_SPI_Transfer_2_Bytes_Per_DMA_Transmission_Locking)
@@ -568,7 +570,7 @@ test(SPIX_17_SPI_Transfer_2_Bytes_Per_DMA_Transmission_Locking)
     SPI.end();
 
     // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
 test(SPIX_18_SPI_Transfer_16_Bytes_Per_DMA_Transmission_Locking)
@@ -591,7 +593,7 @@ test(SPIX_18_SPI_Transfer_16_Bytes_Per_DMA_Transmission_Locking)
     SPI.end();
 
     // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
 test(SPIX_19_SPI_Transfer_128_Bytes_Per_DMA_Transmission_Locking)
@@ -614,7 +616,7 @@ test(SPIX_19_SPI_Transfer_128_Bytes_Per_DMA_Transmission_Locking)
     SPI.end();
 
     // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
 test(SPIX_20_SPI_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
@@ -637,5 +639,5 @@ test(SPIX_20_SPI_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
     SPI.end();
 
     // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
-    assertLessOrEqual(transferTime, expectedTime);
+    assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
