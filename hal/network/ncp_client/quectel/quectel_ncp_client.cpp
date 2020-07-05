@@ -1104,18 +1104,20 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
         // First look for network settings based on ICCID
         // FIXME: CCID may fail, need delay here
         HAL_Delay_Milliseconds(1000);
-        char buf_iccid[32] = {};
         auto resp = parser_.sendCommand("AT+CCID");
-        CHECK_PARSER(resp.readLine(buf_iccid, sizeof(buf_iccid)));
+        char buf[32] = {};
+        const int ret = CHECK_PARSER(resp.scanf("+CCID: %31s", buf));
         const int r = CHECK_PARSER(resp.readResult());
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-        netConf_ = networkConfigForIccid(buf_iccid, strlen(buf_iccid));
+        if (ret) {
+            netConf_ = networkConfigForIccid(buf, strlen(buf));
+        }
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
             // FIXME: CIMI may fail, need delay here
             HAL_Delay_Milliseconds(1000);
-            char buf[32] = {};
+            memset(buf, 0, sizeof(buf));
             auto resp = parser_.sendCommand("AT+CIMI");
             CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
             const int r = CHECK_PARSER(resp.readResult());
