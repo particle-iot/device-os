@@ -23,6 +23,8 @@
 #include <limits>
 #include "spark_wiring_cellular_printable.h"
 #include "appender.h"
+#include "ncp/cellular/network_config_db.h"
+#include "ncp/cellular/cellular_network_manager.h"
 
 #undef WARN
 #undef INFO
@@ -51,47 +53,58 @@ public:
 } // namespace
 
 using namespace detail;
+using namespace Catch::Matchers;
 
-SCENARIO("IMSI range should default to Telefonica as Network Provider", "[cellular]") {
-    REQUIRE(_cellular_sim_to_network_provider(nullptr, nullptr) == CELLULAR_NETPROV_TELEFONICA);
-    REQUIRE(_cellular_sim_to_network_provider("", nullptr)   == CELLULAR_NETPROV_TELEFONICA);
-    REQUIRE(_cellular_sim_to_network_provider("123456789012345", nullptr) == CELLULAR_NETPROV_TELEFONICA);
-    REQUIRE(_cellular_sim_to_network_provider("2040", nullptr)  == CELLULAR_NETPROV_TELEFONICA);
-    REQUIRE(_cellular_sim_to_network_provider("31041", nullptr) == CELLULAR_NETPROV_TELEFONICA);
-    REQUIRE(_cellular_sim_to_network_provider("2140", nullptr)  == CELLULAR_NETPROV_TELEFONICA);
-    REQUIRE(_cellular_sim_to_network_provider("0404", nullptr)  == CELLULAR_NETPROV_TELEFONICA);
-    REQUIRE(_cellular_sim_to_network_provider("10410", nullptr) == CELLULAR_NETPROV_TELEFONICA);
-    REQUIRE(_cellular_sim_to_network_provider("1407", nullptr)  == CELLULAR_NETPROV_TELEFONICA);
+TEST_CASE("Gen 2 credentials") {
+    SECTION("IMSI range should default to Telefonica as Network Provider", "[cellular]") {
+        REQUIRE(_cellular_sim_to_network_provider(nullptr, nullptr) == CELLULAR_NETPROV_TELEFONICA);
+        REQUIRE(_cellular_sim_to_network_provider("", nullptr)   == CELLULAR_NETPROV_TELEFONICA);
+        REQUIRE(_cellular_sim_to_network_provider("123456789012345", nullptr) == CELLULAR_NETPROV_TELEFONICA);
+        REQUIRE(_cellular_sim_to_network_provider("2040", nullptr)  == CELLULAR_NETPROV_TELEFONICA);
+        REQUIRE(_cellular_sim_to_network_provider("31041", nullptr) == CELLULAR_NETPROV_TELEFONICA);
+        REQUIRE(_cellular_sim_to_network_provider("2140", nullptr)  == CELLULAR_NETPROV_TELEFONICA);
+        REQUIRE(_cellular_sim_to_network_provider("0404", nullptr)  == CELLULAR_NETPROV_TELEFONICA);
+        REQUIRE(_cellular_sim_to_network_provider("10410", nullptr) == CELLULAR_NETPROV_TELEFONICA);
+        REQUIRE(_cellular_sim_to_network_provider("1407", nullptr)  == CELLULAR_NETPROV_TELEFONICA);
+    }
+
+    SECTION("IMSI range should set Kore Vodafone as Network Provider", "[cellular]") {
+        REQUIRE(_cellular_sim_to_network_provider("204040000000000", nullptr) == CELLULAR_NETPROV_KORE_VODAFONE);
+        REQUIRE(_cellular_sim_to_network_provider("204045555555555", nullptr) == CELLULAR_NETPROV_KORE_VODAFONE);
+        REQUIRE(_cellular_sim_to_network_provider("204049999999999", nullptr) == CELLULAR_NETPROV_KORE_VODAFONE);
+    }
+
+    SECTION("IMSI range should set Kore AT&T as Network Provider", "[cellular]") {
+        REQUIRE(_cellular_sim_to_network_provider("310410000000000", nullptr) == CELLULAR_NETPROV_KORE_ATT);
+        REQUIRE(_cellular_sim_to_network_provider("310410555555555", nullptr) == CELLULAR_NETPROV_KORE_ATT);
+        REQUIRE(_cellular_sim_to_network_provider("310410999999999", nullptr) == CELLULAR_NETPROV_KORE_ATT);
+    }
+
+    SECTION("IMSI range should set Telefonica as Network Provider", "[cellular]") {
+        REQUIRE(_cellular_sim_to_network_provider("214070000000000", nullptr) == CELLULAR_NETPROV_TELEFONICA);
+        REQUIRE(_cellular_sim_to_network_provider("214075555555555", nullptr) == CELLULAR_NETPROV_TELEFONICA);
+        REQUIRE(_cellular_sim_to_network_provider("214079999999999", nullptr) == CELLULAR_NETPROV_TELEFONICA);
+    }
+
+    SECTION("ICCID range should set Twilio as Network Provider", "[cellular]") {
+        REQUIRE(_cellular_sim_to_network_provider(nullptr, "89883235555555555555") == CELLULAR_NETPROV_TWILIO);
+        REQUIRE(_cellular_sim_to_network_provider(nullptr, "89883071111111111111") == CELLULAR_NETPROV_TWILIO);
+        REQUIRE(_cellular_sim_to_network_provider(nullptr, "89883231234567891011") == CELLULAR_NETPROV_TWILIO);
+    }
+
+    SECTION("ICCID range should set Twilio as Network Provider with a random IMSI set", "[cellular]") {
+        REQUIRE(_cellular_sim_to_network_provider("732123200003364", "89883234500011906351") == CELLULAR_NETPROV_TWILIO);   // Twilio IMSI and Twilio ICCID
+        REQUIRE(_cellular_sim_to_network_provider("214070000000000", "89883235555555555555") == CELLULAR_NETPROV_TWILIO);   // Kore IMSI and Twilio ICCID just in case
+        REQUIRE(_cellular_sim_to_network_provider("310410999999999", "89883071234567891011") == CELLULAR_NETPROV_TWILIO);   // Kore IMSI and Twilio ICCID just in case
+    }
 }
 
-SCENARIO("IMSI range should set Kore Vodafone as Network Provider", "[cellular]") {
-    REQUIRE(_cellular_sim_to_network_provider("204040000000000", nullptr) == CELLULAR_NETPROV_KORE_VODAFONE);
-    REQUIRE(_cellular_sim_to_network_provider("204045555555555", nullptr) == CELLULAR_NETPROV_KORE_VODAFONE);
-    REQUIRE(_cellular_sim_to_network_provider("204049999999999", nullptr) == CELLULAR_NETPROV_KORE_VODAFONE);
-}
-
-SCENARIO("IMSI range should set Kore AT&T as Network Provider", "[cellular]") {
-    REQUIRE(_cellular_sim_to_network_provider("310410000000000", nullptr) == CELLULAR_NETPROV_KORE_ATT);
-    REQUIRE(_cellular_sim_to_network_provider("310410555555555", nullptr) == CELLULAR_NETPROV_KORE_ATT);
-    REQUIRE(_cellular_sim_to_network_provider("310410999999999", nullptr) == CELLULAR_NETPROV_KORE_ATT);
-}
-
-SCENARIO("IMSI range should set Telefonica as Network Provider", "[cellular]") {
-    REQUIRE(_cellular_sim_to_network_provider("214070000000000", nullptr) == CELLULAR_NETPROV_TELEFONICA);
-    REQUIRE(_cellular_sim_to_network_provider("214075555555555", nullptr) == CELLULAR_NETPROV_TELEFONICA);
-    REQUIRE(_cellular_sim_to_network_provider("214079999999999", nullptr) == CELLULAR_NETPROV_TELEFONICA);
-}
-
-SCENARIO("ICCID range should set Twilio as Network Provider", "[cellular]") {
-    REQUIRE(_cellular_sim_to_network_provider(nullptr, "89883235555555555555") == CELLULAR_NETPROV_TWILIO);
-    REQUIRE(_cellular_sim_to_network_provider(nullptr, "89883071111111111111") == CELLULAR_NETPROV_TWILIO);
-    REQUIRE(_cellular_sim_to_network_provider(nullptr, "89883231234567891011") == CELLULAR_NETPROV_TWILIO);
-}
-
-SCENARIO("ICCID range should set Twilio as Network Provider with a random IMSI set", "[cellular]") {
-    REQUIRE(_cellular_sim_to_network_provider("732123200003364", "89883234500011906351") == CELLULAR_NETPROV_TWILIO);   // Twilio IMSI and Twilio ICCID
-    REQUIRE(_cellular_sim_to_network_provider("214070000000000", "89883235555555555555") == CELLULAR_NETPROV_TWILIO);   // Kore IMSI and Twilio ICCID just in case
-    REQUIRE(_cellular_sim_to_network_provider("310410999999999", "89883071234567891011") == CELLULAR_NETPROV_TWILIO);   // Kore IMSI and Twilio ICCID just in case
+TEST_CASE("Gen 3 cellular credentials") {
+    SECTION("Twilio") {
+        const char iccid[] = "89883234500011906351";
+        auto creds = networkConfigForIccid(iccid, sizeof(iccid) - 1);
+        CHECK_THAT(creds.apn(), Equals("super"));
+    }
 }
 
 TEST_CASE("cellular_signal()") {
