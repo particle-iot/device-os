@@ -588,6 +588,8 @@ test(PWM_11_CompherensiveResolutionFrequency) {
         // 2 or 3 bit resolution PWM is crude at best and hard to be accurate, we won't test it here.
         uint8_t resolution = 4;
 
+        system_tick_t lastProcess = millis();
+
         for (resolution = 4; ; resolution++) {
             // Set resolution
             analogWriteResolution(pin, resolution);
@@ -651,9 +653,16 @@ test(PWM_11_CompherensiveResolutionFrequency) {
                                 assertEqual(digitalRead(pin), 0);
                                 break;
                             }
+#ifdef PARTICLE_TEST_RUNNER
                             // Relax a bit just in case
-                            delay(1);
-                            Particle.process();
+                            if (millis() - lastProcess >= 5000) {
+                                for (int i = 0; i < 10; i++) {
+                                    Particle.process();
+                                    delay(10);
+                                }
+                                lastProcess = millis();
+                            }
+#endif // PARTICLE_TEST_RUNNER
                         }
                         double avgPulse = (double)pulseAcc / pulseSamples;
                         double err = ABS(avgPulse - refPulseWidthUs);

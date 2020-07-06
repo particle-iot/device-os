@@ -108,7 +108,14 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 
     // Resolve UDP echo server hostname to ip address, so that DNS resolutions
     // no longer affect us after this point
-    const auto udpEchoIp = Network.resolve(UDP_ECHO_SERVER);
+    IPAddress udpEchoIp;
+    for (int i = 0; i < 10; i++) {
+        udpEchoIp = Network.resolve(UDP_ECHO_SERVER);
+        if (udpEchoIp) {
+            break;
+        }
+        delay(3000);
+    }
     assertTrue(udpEchoIp);
 
     // Create UDP client

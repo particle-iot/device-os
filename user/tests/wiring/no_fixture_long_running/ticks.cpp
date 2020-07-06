@@ -5,6 +5,16 @@
 
 #include <cstdlib>
 
+namespace {
+
+#ifndef PARTICLE_TEST_RUNNER
+const int MILLIS_MICROS_MAX_DIFF = 1;
+#else
+const int MILLIS_MICROS_MAX_DIFF = 2;
+#endif // PARTICLE_TEST_RUNNER
+
+}
+
 void assert_micros_millis(int duration, bool overflow = false)
 {
 #if (PLATFORM_ID>=6 && PLATFORM_ID<=10)
@@ -39,9 +49,11 @@ void assert_micros_millis(int duration, bool overflow = false)
         // even with overflow
         assertMoreOrEqual(now_micros, now_millis * 1000);
         // at most 1.5ms difference between micros() and millis()
-        assertTrue(std::abs((int32_t)now_micros - (int32_t)now_millis * 1000) <= 1500);
+        int diff = (int32_t)now_micros - (int32_t)now_millis * 1000;
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF * 1000);
         // at most 1ms difference between millis() and lower 32 bits of System.millis()
-        assertTrue(std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull)) <= 1);
+        diff = std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull));
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF);
 
         duration -= now_millis - last_millis;
 
@@ -100,9 +112,11 @@ void assert_micros_millis_interrupts(int duration)
         // even with overflow
         assertMoreOrEqual(now_micros, now_millis * 1000);
         // at most 1.5ms difference between micros() and millis()
-        assertTrue(std::abs((int32_t)now_micros - (int32_t)now_millis * 1000) <= 1500);
+        int diff = (int32_t)now_micros - (int32_t)now_millis * 1000;
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF * 1000);
         // at most 1ms difference between millis() and lower 32 bits of System.millis()
-        assertTrue(std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull)) <= 1);
+        diff = std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull));
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF);
 
         duration -= now_millis - last_millis;
 
