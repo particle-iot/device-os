@@ -129,6 +129,13 @@ uint32_t getOverflowCounter() {
             nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW);
 
             // Result should be incremented. sOverflowCounter will be incremented after mutex is released.
+
+            // Store current DWT->CYCCNT and RTC counter value
+            int pri = __get_PRIMASK();
+            __disable_irq();
+            sTimerTicksAtLastOverflow = getRtcCounter();
+            sDwtTickCountAtLastOverflow = DWT->CYCCNT;
+            __set_PRIMASK(pri);
         } else {
             // Either overflow handling is not needed OR we acquired the mutex just after it was released.
             // Overflow is handled after mutex is released, but it cannot be assured that sOverflowCounter
@@ -147,13 +154,6 @@ uint32_t getOverflowCounter() {
             // Increment the counter for the second time, to allow instructions from other context get correct value of
             // the counter.
             sOverflowCounter++;
-
-            // Store current DWT->CYCCNT and RTC counter value
-            int pri = __get_PRIMASK();
-            __disable_irq();
-            sTimerTicksAtLastOverflow = getRtcCounter();
-            sDwtTickCountAtLastOverflow = DWT->CYCCNT;
-            __set_PRIMASK(pri);
         }
     } else {
         // Failed to acquire mutex.
