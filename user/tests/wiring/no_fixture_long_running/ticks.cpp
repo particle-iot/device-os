@@ -125,12 +125,14 @@ void assert_micros_millis_interrupts(int duration)
         last_micros = now_micros;
 
 #ifdef PARTICLE_TEST_RUNNER
-        if (millis() - last_relax >= 10000) {
+        if (millis() - last_relax >= 5000) {
 #if HAL_PLATFORM_GEN == 2
             NVIC_DisableIRQ(TIM4_IRQn);
 #endif // HAL_PLATFORM_GEN == 2
-            delay(10);
-            Particle.process();
+            for (int i = 0; i < 10; i++) {
+                Particle.process();
+                delay(10);
+            }
 #if HAL_PLATFORM_GEN == 2
             NVIC_EnableIRQ(TIM4_IRQn);
 #endif // HAL_PLATFORM_GEN == 2
