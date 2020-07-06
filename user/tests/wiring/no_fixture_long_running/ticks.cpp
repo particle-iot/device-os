@@ -4,6 +4,7 @@
 #include "unit-test/unit-test.h"
 
 #include <cstdlib>
+#include "random.h"
 
 namespace {
 
@@ -73,14 +74,14 @@ void assert_micros_millis_interrupts(int duration)
     // D0 uses TIM2 and channel 2 equally on Core and Photon/Electron
     // Run at 4khz (T=250us)
     analogWrite(D0, 1, 4000);
-    randomSeed(micros());
+    Random randInstance;
     // Set higher than SysTick_IRQn priority for TIM4_IRQn
     NVIC_SetPriority(TIM4_IRQn, 3);
     TIM_ITConfig(TIM4, TIM_IT_CC2, ENABLE);
     NVIC_EnableIRQ(TIM4_IRQn);
     attachSystemInterrupt(SysInterrupt_TIM4_IRQ, [&] {
         // Do some work up to 200 microseconds
-        delayMicroseconds(random(200));
+        delayMicroseconds(randInstance.gen<system_tick_t>() % 200);
         TIM_ClearITPendingBit(TIM4, TIM_IT_CC2);
     });
 #endif
@@ -125,7 +126,7 @@ void assert_micros_millis_interrupts(int duration)
         last_micros = now_micros;
 
 #ifdef PARTICLE_TEST_RUNNER
-        if (millis() - last_relax >= 5000) {
+        if (millis() - last_relax >= 10000) {
 #if HAL_PLATFORM_GEN == 2
             NVIC_DisableIRQ(TIM4_IRQn);
 #endif // HAL_PLATFORM_GEN == 2

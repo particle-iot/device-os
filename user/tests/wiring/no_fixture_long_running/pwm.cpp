@@ -46,6 +46,8 @@ template <typename F> void for_all_pwm_pins(F callback)
     for (uint8_t i = 0; i<arraySize(pwm_pins); i++)
     {
         callback(pwm_pins[i]);
+        // Make sure to disable PWM pins
+        pinMode(pwm_pins[i], INPUT);
     }
     // RGB.control(false);
 }
