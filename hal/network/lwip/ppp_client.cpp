@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 #include "ppp_client.h"
 
 #if defined(PPP_SUPPORT) && PPP_SUPPORT
@@ -31,9 +34,10 @@ extern "C" {
 #include "system_error.h"
 #include "lwiplock.h"
 #include <lwip/stats.h>
+#include <algorithm>
+#include "delay_hal.h"
+#include "platform_ncp.h"
 
-#undef LOG_COMPILE_TIME_LEVEL
-#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 LOG_SOURCE_CATEGORY("net.ppp.client");
 
 using namespace particle::net::ppp;
@@ -130,10 +134,30 @@ bool Client::prepareConnect() {
   UNLOCK_TCPIP_CORE();
 #endif // PPP_IPV6_SUPPORT
 
-  // FIXME:
-  static const char UBLOX_NCP_CONNECT_COMMAND[] = "ATD*99***1#\r\n";
-  output((const uint8_t*)UBLOX_NCP_CONNECT_COMMAND, sizeof(UBLOX_NCP_CONNECT_COMMAND) - 1);
+  // FIXME: this should be handled in the NCP client
+  static const char* NCP_CONNECT_COMMANDS[] = {
+    "ATH;D*99***1#\r\n",
+  };
+  for (const auto& cmd: NCP_CONNECT_COMMANDS) {
+    const auto cmdLen = strlen(cmd);
+    auto sz = output((const uint8_t*)cmd, cmdLen);
+    if (sz != cmdLen) {
+      return false;
+    }
+    HAL_Delay_Milliseconds(1000);
+  }
   return true;
+}
+
+void Client::postDisconnect() {
+  // FIXME: this should be handled in the NCP client
+  if (PLATFORM_NCP_MANUFACTURER(platform_current_ncp_identifier()) == PLATFORM_NCP_MANUFACTURER_UBLOX) {
+    const char cmd[] = "~+++";
+    output((const uint8_t*)cmd, sizeof(cmd) - 1);
+  } else {
+    const char cmd[] = "+++";
+    output((const uint8_t*)cmd, sizeof(cmd) - 1);
+  }
 }
 
 bool Client::start() {
@@ -172,7 +196,23 @@ bool Client::notifyEvent(uint64_t ev) {
 int Client::input(const uint8_t* data, size_t size) {
   if (running_) {
     switch (state_) {
-      case STATE_CONNECTING:
+      case STATE_CONNECTING: {
+#ifdef DEBUG_BUILD
+        for (auto p = data, begin = (const uint8_t*)nullptr; p != data + size; ++p) {
+          if (!std::isprint(*p) || *p == '\r' || *p == '\n') {
+            if (begin && p - begin > 2) {
+              if (std::isalpha(*begin) || *begin == '+') {
+                LOG_DEBUG(TRACE, "< %.*s", p - begin, begin);
+              }
+            }
+            begin = nullptr;
+          } else if (!begin) {
+            begin = p;
+          }
+        }
+#endif // DEBUG_BUILD
+        // Fall through
+      }
       case STATE_DISCONNECTING:
       case STATE_CONNECTED: {
         LOG_DEBUG(TRACE, "RX: %lu", size);
@@ -262,7 +302,11 @@ void Client::loop() {
 
     switch (state_) {
       case STATE_CONNECT: {
-        prepareConnect();
+        if (!prepareConnect()) {
+          LOG(ERROR, "Failed to dial");
+          transition(STATE_CONNECTED);
+          break;
+        }
         transition(STATE_CONNECTING);
         err_t err = pppapi_connect(pcb_, 1);
         if (err != ERR_OK) {
@@ -281,7 +325,8 @@ void Client::loop() {
 
       case STATE_DISCONNECT: {
         transition(STATE_DISCONNECTING);
-        pppapi_close(pcb_, 1);
+        // IMPORTANT: graceful disconnect!
+        pppapi_close(pcb_, 0);
         break;
       }
 
@@ -323,7 +368,8 @@ void Client::loop() {
           if (lowerState_) {
             lowerState_ = false;
             if (state_ == STATE_CONNECTED || state_ == STATE_CONNECTING || state_ == STATE_CONNECT) {
-              transition(STATE_DISCONNECT);
+              // Allow the PPP layer to lose carrier on its own
+              // transition(STATE_DISCONNECT);
             }
           }
           break;
@@ -367,6 +413,7 @@ void Client::loop() {
             transition(STATE_DISCONNECT);
           } else if (state_ == STATE_DISCONNECTING) {
             transition(STATE_DISCONNECTED);
+            postDisconnect();
           }
           break;
         }
@@ -418,7 +465,7 @@ void Client::notifyStatusCb(ppp_pcb* pcb, int err, void* ctx) {
 }
 
 void Client::notifyStatus(int err) {
-  LOG(TRACE, "PPP status -> %d", err);
+  LOG_DEBUG(TRACE, "PPP status -> %d", err);
   switch (err) {
     case PPPERR_NONE: {
       /* Connected */
@@ -445,7 +492,7 @@ void Client::notifyNetifCb(netif* netif, netif_nsc_reason_t reason, const netif_
 }
 
 void Client::notifyNetif(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
-  LOG(TRACE, "PPP netif -> %x", reason);
+  LOG_DEBUG(TRACE, "PPP netif -> %x", reason);
 }
 #endif /* defined(LWIP_NETIF_EXT_STATUS_CALLBACK) && LWIP_NETIF_EXT_STATUS_CALLBACK == 1 */
 

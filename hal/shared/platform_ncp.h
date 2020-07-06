@@ -30,6 +30,7 @@ enum PlatformNCPManufacturer {
 };
 
 #define PLATFORM_NCP_IDENTIFIER(mf,t) (t|(mf<<5))
+#define PLATFORM_NCP_MANUFACTURER(v) ((v) >> 5)
 
 enum PlatformNCPIdentifier {
     PLATFORM_NCP_UNKNOWN = -1,
