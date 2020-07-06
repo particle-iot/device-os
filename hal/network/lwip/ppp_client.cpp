@@ -325,8 +325,8 @@ void Client::loop() {
 
       case STATE_DISCONNECT: {
         transition(STATE_DISCONNECTING);
-        // IMPORTANT: graceful disconnect!
-        pppapi_close(pcb_, 0);
+        // FIXME: graceful disconnect
+        pppapi_close(pcb_, 1);
         break;
       }
 
@@ -368,8 +368,8 @@ void Client::loop() {
           if (lowerState_) {
             lowerState_ = false;
             if (state_ == STATE_CONNECTED || state_ == STATE_CONNECTING || state_ == STATE_CONNECT) {
-              // Allow the PPP layer to lose carrier on its own
-              // transition(STATE_DISCONNECT);
+              // FIXME: Allow the PPP layer to lose carrier on its own
+              transition(STATE_DISCONNECT);
             }
           }
           break;
