@@ -1444,18 +1444,24 @@ int SaraNcpClient::registerNet() {
     connectionState(NcpConnectionState::CONNECTING);
     registeredTime_ = 0;
 
+    bool needRegister = false;
     if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+        if (creg_ == RegistrationState::NotRegistering &&
+                cgreg_ == RegistrationState::NotRegistering) {
+            needRegister = true;
+        }
     } else {
         CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
+        if (cereg_ == RegistrationState::NotRegistering) {
+            needRegister = true;
+        }
     }
 
     // NOTE: up to 3 mins (FIXME: there seems to be a bug where this timeout of 3 minutes
     //       is not being respected by u-blox modems.  Setting to 5 for now.)
-    if (creg_ == RegistrationState::NotRegistering &&
-            cgreg_ == RegistrationState::NotRegistering &&
-            cereg_ == RegistrationState::NotRegistering) {
+    if (needRegister) {
         // If the set command with <mode>=0 is issued, a further set
         // command with <mode>=0 is managed as a user reselection
         r = CHECK_PARSER(parser_.execCommand(5 * 60 * 1000, "AT+COPS=0,2"));
