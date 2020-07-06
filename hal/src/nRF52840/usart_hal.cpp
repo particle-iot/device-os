@@ -400,7 +400,6 @@ public:
 
             --receiving_;
             startReceiver();
-            return;
         }
         if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDTX)) {
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);

@@ -120,6 +120,13 @@ uint32_t getOverflowCounter() {
 
         // Check if interrupt was handled already.
         if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW)) {
+            // Store current DWT->CYCCNT and RTC counter value
+            int pri = __get_PRIMASK();
+            __disable_irq();
+            sTimerTicksAtLastOverflow = getRtcCounter();
+            sDwtTickCountAtLastOverflow = DWT->CYCCNT;
+            __set_PRIMASK(pri);
+
             sOverflowCounter++;
             increasing = true;
 
@@ -129,13 +136,6 @@ uint32_t getOverflowCounter() {
             nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW);
 
             // Result should be incremented. sOverflowCounter will be incremented after mutex is released.
-
-            // Store current DWT->CYCCNT and RTC counter value
-            int pri = __get_PRIMASK();
-            __disable_irq();
-            sTimerTicksAtLastOverflow = getRtcCounter();
-            sDwtTickCountAtLastOverflow = DWT->CYCCNT;
-            __set_PRIMASK(pri);
         } else {
             // Either overflow handling is not needed OR we acquired the mutex just after it was released.
             // Overflow is handled after mutex is released, but it cannot be assured that sOverflowCounter
@@ -183,9 +183,9 @@ uint64_t getCurrentTimeWithTicks(uint32_t* dwtTicks, uint32_t* elapsedRtcTicks) 
 
     if (offset1 != offset2) {
         // Overflow occured between the calls
-        rtcValue = getRtcCounter();
         *dwtTicks = sDwtTickCountAtLastOverflow;
         overflowTicks = sTimerTicksAtLastOverflow;
+        rtcValue = getRtcCounter();
     }
     *elapsedRtcTicks = (rtcValue - overflowTicks);
     return (uint64_t)offset2 * US_PER_OVERFLOW + ticksToTime(rtcValue);
