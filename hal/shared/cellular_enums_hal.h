@@ -144,7 +144,6 @@ typedef struct {
 
     CellularGlobalIdentity cgi;  //!< Cellular Global Identity (MCC, MNC, LAC, CI)
     char num[32];   //!< Mobile Directory Number
-    int cops;       //!< COPS mode
 } NetStatus;
 
 #ifdef __cplusplus

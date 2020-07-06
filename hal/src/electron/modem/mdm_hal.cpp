@@ -1353,6 +1353,14 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                         }
                     }
                 }
+                // Make sure automatic network registration is enabled
+                if (!_atOk()) {
+                    goto failure;
+                }
+                sendFormated("AT+COPS=0,2\r\n");
+                if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
+                    goto failure;
+                }
             } else {
                 // Show enabled RATs
                 sendFormated("AT+URAT?\r\n");
@@ -1787,18 +1795,10 @@ int MDMParser::_cbCOPS(int type, const char* buf, int len, NetStatus* status)
         int act = 99;
         char mobileCountryCode[4] = {0};
         char mobileNetworkCode[4] = {0};
-        int mode = -1;
-
-        int r = ::sscanf(buf, "\r\n+COPS: %d,%*d,\"%3[0-9]%3[0-9]\",%d", &mode, mobileCountryCode,
-                mobileNetworkCode, &act);
 
         // +COPS: <mode>[,<format>,<oper>[,<AcT>]]
-        if (r >= 1)
-        {
-            status->cops = mode;
-        }
-
-        if (r >= 2)
+        if (::sscanf(buf, "\r\n+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobileCountryCode,
+                   mobileNetworkCode, &act) >= 1)
         {
             // Preserve digit format data
             const int mnc_digits = ::strnlen(mobileNetworkCode, sizeof(mobileNetworkCode));
