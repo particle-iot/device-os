@@ -485,7 +485,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                                    !strcmp(s, "CEREG:") ? &_net.eps : NULL;
                         if (reg) {
                             // network status
-                            if      (a == 0) *reg = REG_NONE;     // 0: not registered, home network
+                            if      (a == 0) *reg = REG_NOTREG;   // 0: not registered, the MT is not currently searching a new operator to register to
                             else if (a == 1) *reg = REG_HOME;     // 1: registered, home network
                             else if (a == 2) *reg = REG_NONE;     // 2: not registered, but MT is currently searching a new operator to register to
                             else if (a == 3) *reg = REG_DENIED;   // 3: registration denied
@@ -1371,14 +1371,19 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             if (!_atOk()) {
                 goto failure;
             }
-            _net.cops = -1;
-            sendFormated("AT+COPS?\r\n");
-            if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
-                goto failure;
+            bool needRegister = false;
+            if (_dev.dev != DEV_SARA_R410) {
+                if (_net.csd == REG_NOTREG && _net.psd == REG_NOTREG) {
+                    needRegister = true;
+                }
+            } else {
+                if (_net.eps == REG_NOTREG) {
+                    needRegister = true;
+                }
             }
             // If the set command with <mode>=0 is issued, a further set
             // command with <mode>=0 is managed as a user reselection
-            if (_net.cops != 0) {
+            if (needRegister) {
                 sendFormated("AT+COPS=0,2\r\n");
                 if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
                     goto failure;
