@@ -164,7 +164,7 @@
  * Setting PPP_USE_PBUF_RAM to 1 makes PPP use memory from heap where continuous
  * buffers are required, allowing you to use a smaller PBUF_POOL_BUFSIZE.
  */
-#define PPP_USE_PBUF_RAM                0
+#define PPP_USE_PBUF_RAM                1
 
 /**
  * PPP_FCS_TABLE: Keep a 256*2 byte table to speed up FCS calculation for PPPoS
@@ -242,7 +242,7 @@
  *
  * Currently only supported for PPPoS.
  */
-#define PPP_SERVER                      1
+#define PPP_SERVER                      0
 
 #if PPP_SERVER
 /*
@@ -265,7 +265,7 @@
  * PPP_MD5_RANDM==1: Use MD5 for better randomness.
  * Enabled by default if CHAP, EAP, or L2TP AUTH support is enabled.
  */
-#define PPP_MD5_RANDM                   (CHAP_SUPPORT || EAP_SUPPORT || PPPOL2TP_AUTH_SUPPORT)
+#define PPP_MD5_RANDM                   0
 
 /**
  * PolarSSL embedded library
