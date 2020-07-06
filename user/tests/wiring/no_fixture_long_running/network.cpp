@@ -109,7 +109,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     // Resolve UDP echo server hostname to ip address, so that DNS resolutions
     // no longer affect us after this point
     IPAddress udpEchoIp;
-    for (int i = 0; i < 10; i++) {
+    for (auto begin = millis(); millis() - begin < 60000;) {
         udpEchoIp = Network.resolve(UDP_ECHO_SERVER);
         if (udpEchoIp) {
             break;
@@ -164,7 +164,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 
 #if HAL_PLATFORM_NCP_AT
 test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
-    const system_tick_t WAIT_TIMEOUT = 5 * 60 * 1000;
+    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
     const system_tick_t NCP_FAILURE_TIMEOUT = 15000;
     SCOPE_GUARD({
         Particle.disconnect();
