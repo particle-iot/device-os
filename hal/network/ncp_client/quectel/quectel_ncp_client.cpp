@@ -206,6 +206,8 @@ int QuectelNcpClient::initParser(Stream* stream) {
         // Home network or roaming
         if (val[0] == 1 || val[0] == 5) {
             self->creg_ = RegistrationState::Registered;
+        } else if (val[0] == 0) {
+            self->creg_ = RegistrationState::NotRegistering;
         } else {
             self->creg_ = RegistrationState::NotRegistered;
         }
@@ -240,6 +242,8 @@ int QuectelNcpClient::initParser(Stream* stream) {
         // Home network or roaming
         if (val[0] == 1 || val[0] == 5) {
             self->cgreg_ = RegistrationState::Registered;
+        } else if (val[0] == 0) {
+            self->cgreg_ = RegistrationState::NotRegistering;
         } else {
             self->cgreg_ = RegistrationState::NotRegistered;
         }
@@ -282,6 +286,8 @@ int QuectelNcpClient::initParser(Stream* stream) {
         // Home network or roaming
         if (val[0] == 1 || val[0] == 5) {
             self->cereg_ = RegistrationState::Registered;
+        } else if (val[0] == 0) {
+            self->cereg_ = RegistrationState::NotRegistering;
         } else {
             self->cereg_ = RegistrationState::NotRegistered;
         }
@@ -1169,10 +1175,20 @@ int QuectelNcpClient::registerNet() {
 
     connectionState(NcpConnectionState::CONNECTING);
 
-    // NOTE: up to 3 mins
-    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0,2"));
-    // Ignore response code here
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
+
+    if (creg_ == RegistrationState::NotRegistering &&
+            cgreg_ == RegistrationState::NotRegistering &&
+            cereg_ == RegistrationState::NotRegistering) {
+        // Only run AT+COPS=0 if not currently registering, otherwise we will
+        // perform PLMN reselection
+        // NOTE: up to 3 mins
+        r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0,2"));
+        // Ignore response code here
+        // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
 
     if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
         // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?

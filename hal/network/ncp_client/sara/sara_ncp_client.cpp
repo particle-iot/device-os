@@ -123,6 +123,8 @@ const system_tick_t UBLOX_NCP_R4_WINDOW_SIZE_MS = 50;
 const int UBLOX_DEFAULT_CID = 1;
 const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
 
+const char UBLOX_DATA_TERMINATE[] = "~+++";
+
 
 } // anonymous
 
@@ -202,6 +204,8 @@ int SaraNcpClient::initParser(Stream* stream) {
         // Home network or roaming
         if (val[0] == 1 || val[0] == 5) {
             self->creg_ = RegistrationState::Registered;
+        } else if (val[0] == 0) {
+            self->creg_ = RegistrationState::NotRegistering;
         } else {
             self->creg_ = RegistrationState::NotRegistered;
         }
@@ -236,6 +240,8 @@ int SaraNcpClient::initParser(Stream* stream) {
         // Home network or roaming
         if (val[0] == 1 || val[0] == 5) {
             self->cgreg_ = RegistrationState::Registered;
+        } else if (val[0] == 0) {
+            self->cgreg_ = RegistrationState::NotRegistering;
         } else {
             self->cgreg_ = RegistrationState::NotRegistered;
         }
@@ -277,6 +283,8 @@ int SaraNcpClient::initParser(Stream* stream) {
         // Home network or roaming
         if (val[0] == 1 || val[0] == 5) {
             self->cereg_ = RegistrationState::Registered;
+        } else if (val[0] == 0) {
+            self->cereg_ = RegistrationState::NotRegistering;
         } else {
             self->cereg_ = RegistrationState::NotRegistered;
         }
@@ -1436,16 +1444,18 @@ int SaraNcpClient::registerNet() {
     connectionState(NcpConnectionState::CONNECTING);
     registeredTime_ = 0;
 
-    auto resp = parser_.sendCommand("AT+COPS?");
-    int copsState = -1;
-    r = CHECK_PARSER(resp.scanf("+COPS: %d", &copsState));
-    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-    r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    } else {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
+    }
 
     // NOTE: up to 3 mins (FIXME: there seems to be a bug where this timeout of 3 minutes
     //       is not being respected by u-blox modems.  Setting to 5 for now.)
-    if (copsState != 0) {
+    if (creg_ == RegistrationState::NotRegistering &&
+            cgreg_ == RegistrationState::NotRegistering &&
+            cereg_ == RegistrationState::NotRegistering) {
         // If the set command with <mode>=0 is issued, a further set
         // command with <mode>=0 is managed as a user reselection
         r = CHECK_PARSER(parser_.execCommand(5 * 60 * 1000, "AT+COPS=0,2"));
@@ -1532,6 +1542,9 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
             LOG(ERROR, "Failed to open data channel");
             ready_ = false;
             connState_ = NcpConnectionState::DISCONNECTED;
+        } else {
+            // Just in case terminate data session
+            muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, (const uint8_t*)UBLOX_DATA_TERMINATE, sizeof(UBLOX_DATA_TERMINATE) - 1);
         }
     }
 

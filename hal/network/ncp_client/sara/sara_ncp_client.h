@@ -90,6 +90,7 @@ private:
     enum class RegistrationState {
         NotRegistered = 0,
         Registered    = 1,
+        NotRegistering = 2
     };
 
     enum class ModemState {
