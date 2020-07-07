@@ -6,9 +6,9 @@
 #include "logging.h"
 #include "system_cloud.h"
 #include "system_threading.h"
+#include "spark_wiring_timer.h"
 
 #ifdef UNIT_TEST
-#include "spark_wiring_timer.h"
 #include "../test/unit_tests/mock/mock_types.h"
 #endif // UNIT_TEST
 
