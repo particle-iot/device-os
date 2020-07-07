@@ -193,7 +193,9 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
     auto start = millis();
     bool published = false;
     while (millis() - start <= WAIT_TIMEOUT) {
-        published = Particle.publish("test", "123", WITH_ACK);
+        if (Particle.connected()) {
+            published = Particle.publish("test", "123", WITH_ACK);
+        }
         if (published) {
             break;
         }
