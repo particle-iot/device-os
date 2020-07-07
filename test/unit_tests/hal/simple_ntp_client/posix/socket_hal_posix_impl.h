@@ -19,3 +19,4 @@
 
 #include <sys/socket.h>
 #include <poll.h>
+#include <errno.h>
