@@ -115,8 +115,10 @@ inline void mutexRelease() {
     sMutex = 0;
 }
 
-uint32_t getOverflowCounter() {
+uint32_t getOverflowCounter(bool& dwtInSync) {
     uint32_t overflowCounter;
+
+    dwtInSync = true;
 
     // Get mutual access for writing to sOverflowCounter variable.
     if (mutexGet()) {
@@ -124,13 +126,19 @@ uint32_t getOverflowCounter() {
 
         // Check if interrupt was handled already.
         if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW)) {
+            // Store current DWT->CYCCNT and RTC counter value
+            int pri = __get_PRIMASK();
+            __disable_irq();
+            sTickCountAtLastOverflow = DWT->CYCCNT;
+            sTimerMicrosAtLastOverflow = rtcCounterAndTicksToUs((sOverflowCounter + 2) / 2, getRtcCounter());
             sOverflowCounter++;
+            // Mark that interrupt was handled.
+            nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW);
+            __set_PRIMASK(pri);
+
             increasing = true;
 
             __DMB();
-
-            // Mark that interrupt was handled.
-            nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW);
 
             // Result should be incremented. sOverflowCounter will be incremented after mutex is released.
         } else {
@@ -150,19 +158,15 @@ uint32_t getOverflowCounter() {
 
             // Increment the counter for the second time, to allow instructions from other context get correct value of
             // the counter.
-            uint32_t counter = ++sOverflowCounter;
-
-            // Store current DWT->CYCCNT and RTC counter value
-            int pri = __get_PRIMASK();
-            __disable_irq();
-            sTickCountAtLastOverflow = DWT->CYCCNT;
-            sTimerMicrosAtLastOverflow = rtcCounterAndTicksToUs(counter / 2, getRtcCounter());
-            __set_PRIMASK(pri);
+            sOverflowCounter++;
         }
     } else {
         // Failed to acquire mutex.
-        if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW) || (sOverflowCounter & 0x01)) {
+        if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW)) {
             // Lower priority context is currently incrementing sOverflowCounter variable.
+            overflowCounter = (sOverflowCounter + 2) / 2;
+            dwtInSync = false;
+        } else if (sOverflowCounter & 0x01) {
             overflowCounter = (sOverflowCounter + 2) / 2;
         } else {
             // Lower priority context has already incremented sOverflowCounter variable or incrementing is not needed
@@ -175,7 +179,8 @@ uint32_t getOverflowCounter() {
 }
 
 uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
-    uint32_t offset1 = getOverflowCounter();
+    bool dwtInSync;
+    uint32_t offset1 = getOverflowCounter(dwtInSync);
     __DMB();
 
     uint32_t rtcValue = getRtcCounter();
@@ -183,7 +188,7 @@ uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
     *micros = sTimerMicrosAtLastOverflow;
     __DMB();
 
-    uint32_t offset2 = getOverflowCounter();
+    uint32_t offset2 = getOverflowCounter(dwtInSync);
 
     if (offset1 != offset2) {
         // Overflow occured between the calls
@@ -191,7 +196,14 @@ uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
         *ticks = sTickCountAtLastOverflow;
         *micros = sTimerMicrosAtLastOverflow;
     }
-    return (uint64_t)offset2 * US_PER_OVERFLOW + ticksToTime(rtcValue);
+
+    uint64_t currentTime = (uint64_t)offset2 * US_PER_OVERFLOW + ticksToTime(rtcValue);
+
+    if (!dwtInSync) {
+        *ticks = DWT->CYCCNT;
+        *micros = currentTime;
+    }
+    return currentTime;
 }
 
 } // anonymous
@@ -297,7 +309,8 @@ extern "C" void RTC_IRQ_HANDLER(void) {
         nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_OVERFLOW_MASK);
 
         // Handle OVERFLOW event by reading current value of overflow counter.
-        (void)getOverflowCounter();
+        bool dummy;
+        (void)getOverflowCounter(dummy);
     } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_TICK)) {
         nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_TICK);
     } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_0)) {
@@ -317,13 +330,14 @@ uint64_t hal_timer_micros(void* reserved) {
     uint32_t lastOverflowTicks;
     uint64_t lastOverflowMicros;
     uint64_t curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros);
+    uint32_t curTicks = DWT->CYCCNT;
 
     int usTicks = SYSTEM_US_TICKS;
 
     uint64_t elapsedUs = curUs - lastOverflowMicros;
     uint64_t elapsedTicks = elapsedUs * usTicks;
     uint32_t syncTicks = (uint32_t)((uint64_t)lastOverflowTicks + elapsedTicks);
-    uint32_t tickDiff = DWT->CYCCNT - syncTicks;
+    uint32_t tickDiff = curTicks - syncTicks;
     int64_t tickDiffFinal;
     if (tickDiff > (US_PER_OVERFLOW / 10) * usTicks) {
         tickDiff = 0xffffffff - tickDiff;
