@@ -55,7 +55,7 @@ public:
 using namespace detail;
 using namespace Catch::Matchers;
 
-TEST_CASE("Gen 2 credentials") {
+TEST_CASE("Gen 2 cellular credentials") {
     SECTION("IMSI range should default to Telefonica as Network Provider", "[cellular]") {
         REQUIRE(_cellular_sim_to_network_provider(nullptr, nullptr) == CELLULAR_NETPROV_TELEFONICA);
         REQUIRE(_cellular_sim_to_network_provider("", nullptr)   == CELLULAR_NETPROV_TELEFONICA);
@@ -100,10 +100,45 @@ TEST_CASE("Gen 2 credentials") {
 }
 
 TEST_CASE("Gen 3 cellular credentials") {
-    SECTION("Twilio") {
+    SECTION("Twilio with iccid prefix 1") {
         const char iccid[] = "89883234500011906351";
         auto creds = networkConfigForIccid(iccid, sizeof(iccid) - 1);
         CHECK_THAT(creds.apn(), Equals("super"));
+    }
+    SECTION("Twilio with iccid prefix 2") {
+        const char iccid[] = "89883074500011906351";
+        auto creds = networkConfigForIccid(iccid, sizeof(iccid) - 1);
+        CHECK_THAT(creds.apn(), Equals("super"));
+    }
+    SECTION("Blank IMSI defaults to empty apn") {
+        const char imsi[] = "";
+        auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
+        CHECK_FALSE(creds.hasApn());
+    }
+    SECTION("Bad IMSI defaults to empty apn") {
+        const char imsi[] = "123456789012345";
+        auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
+        CHECK_FALSE(creds.hasApn());
+    }
+    SECTION("Bad 4 byte IMSI defaults to empty apn") {
+        const char imsi[] = "0404";
+        auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
+        CHECK_FALSE(creds.hasApn());
+    }
+    SECTION("Telefonica") {
+        const char imsi[] = "214075555555555";
+        auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
+        CHECK_THAT(creds.apn(), Equals("spark.telefonica.com"));
+    }
+    SECTION("Kore Vodafone") {
+        const char imsi[] = "204049999999999";
+        auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
+        CHECK_THAT(creds.apn(), Equals("vfd1.korem2m.com"));
+    }
+    SECTION("Kore ATT") {
+        const char imsi[] = "310410000000000";
+        auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
+        CHECK_THAT(creds.apn(), Equals("10569.mcs"));
     }
 }
 

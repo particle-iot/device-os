@@ -6,11 +6,13 @@
 #include "logging.h"
 #include "system_cloud.h"
 #include "system_threading.h"
+#include "spark_wiring_timer.h"
+#include "../test/unit_tests/mock/mock_types.h"
 
 namespace
 {
 
-using namespace particle::system;
+//using namespace particle::system;
 
 /**
  * @brief Post description message via the CoAP protocol
@@ -43,6 +45,8 @@ inline int postDescription()
 }
 
 } // namespace
+
+namespace particle { namespace system {
 
 template <class Timer>
 VitalsPublisher<Timer>::VitalsPublisher(Timer* timer_)
@@ -135,7 +139,7 @@ void VitalsPublisher<Timer>::publishFromTimer(void)
 }
 #define LCOV_EXCL_STOP
 
-#include "spark_wiring_timer.h"
+
 
 #if PLATFORM_THREADING
 template class VitalsPublisher<Timer>;
@@ -145,8 +149,11 @@ template class VitalsPublisher<particle::NullTimer>;
 
 #ifdef UNIT_TEST
 
-#include "../test/unit_tests/mock/mock_types.h"
+
 
 template class VitalsPublisher<particle::mock_type::Timer>;
 
 #endif // UNIT_TEST
+
+}
+}// namespace particle { namespace system {

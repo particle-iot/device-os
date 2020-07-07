@@ -18,7 +18,7 @@
 #include "logging.h"
 
 LOG_SOURCE_CATEGORY("serivce.ntp");
-
+#include "errno.h"
 #include "hal_platform.h"
 
 #include "simple_ntp_client.h"

@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include <chrono>
 #include <functional>
 
