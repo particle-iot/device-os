@@ -37,7 +37,7 @@ test(SYSTEM_02_version)
         sprintf(expected, "%d.%d.%d-rc.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0) & 0x3F);
     } else if ((versionNumber & 0xC0) >= 0xC0) {
         Serial.println("expected \"alpha\", \"beta\", \"rc\", or \"default\" version!");
-        fail();
+        assertFalse(true);
     }
 
     assertEqual( expected, System.version().c_str());

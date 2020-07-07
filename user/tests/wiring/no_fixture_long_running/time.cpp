@@ -5,18 +5,12 @@ test(TIME_01_SyncTimeInAutomaticMode) {
     set_system_mode(AUTOMATIC);
     assertEqual(System.mode(),AUTOMATIC);
     Particle.connect();
-    if (!waitFor(Particle.connected, 120000)) {
-        Serial.println("Timed out waiting to connect!");
-        fail();
-        return;
-    }
+    waitFor(Particle.connected, 10 * 60 * 10000);
+    assertTrue(Particle.connected());
 
     Particle.syncTime();
-    if (!waitFor(Particle.syncTimeDone, 120000)) {
-        Serial.println("Timed out waiting for time sync!");
-        fail();
-        return;
-    }
+    waitFor(Particle.syncTimeDone, 120000);
+    assertTrue(Particle.syncTimeDone());
     delay(4000);
 
     for(int x=0; x<2; x++) {
@@ -27,30 +21,21 @@ test(TIME_01_SyncTimeInAutomaticMode) {
         Time.setTime(1514764800);
         assertLessOrEqual(Time.now(), 1514764800 + 60);
         Particle.disconnect();
-        if (!waitFor(Particle.disconnected, 120000)) {
-            Serial.println("Timed out waiting to disconnect!");
-            fail();
-            return;
-        }
+        waitFor(Particle.disconnected, 120000);
+        assertTrue(Particle.disconnected());
         // set_system_mode(AUTOMATIC);
         // assertEqual(System.mode(),AUTOMATIC);
         delay(20000);
 
         Particle.connect();
-        if (!waitFor(Particle.connected, 120000)) {
-            Serial.println("Timed out waiting to connect!");
-            fail();
-            return;
-        }
+        waitFor(Particle.connected, 120000);
+        assertTrue(Particle.connected());
         // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
         if (!Particle.syncTimePending()) {
             Particle.syncTime();
         }
-        if (!waitFor(Particle.syncTimeDone, 120000)) {
-            Serial.println("Timed out waiting for time sync!");
-            fail();
-            return;
-        }
+        waitFor(Particle.syncTimeDone, 120000);
+        assertTrue(Particle.syncTimeDone());
 
         assertTrue(Time.isValid());
         assertMore(Time.year(), 2018);
@@ -71,33 +56,24 @@ test(TIME_02_SyncTimeInManualMode) {
         Time.setTime(1514764800);
         assertLessOrEqual(Time.now(), 1514764800 + 60);
         Particle.disconnect();
-        if (!waitFor(Particle.disconnected, 120000)) {
-            Serial.println("Timed out waiting to disconnect!");
-            fail();
-            return;
-        }
+        waitFor(Particle.disconnected, 120000);
+        assertTrue(Particle.disconnected());
         set_system_mode(MANUAL);
         assertEqual(System.mode(),MANUAL);
         delay(20000);
 
         // Serial.println("CONNECT");
         Particle.connect();
-        if (!waitFor(Particle.connected, 120000)) {
-            Serial.println("Timed out waiting to connect!");
-            fail();
-            return;
-        }
+        waitFor(Particle.connected, 120000);
+        assertTrue(Particle.connected());
 
         // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
         // Serial.println("SYNC TIME");
         if (!Particle.syncTimePending()) {
             Particle.syncTime();
         }
-        if (!waitFor(Particle.syncTimeDone, 120000)) {
-            Serial.println("Timed out waiting for time sync!");
-            fail();
-            return;
-        }
+        waitFor(Particle.syncTimeDone, 120000);
+        assertTrue(Particle.syncTimeDone());
         assertTrue(Time.isValid());
         assertMore(Time.year(), 2018);
         syncedCurrentMillis = Particle.timeSyncedLast(syncedCurrentUnix);
