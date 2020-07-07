@@ -1363,13 +1363,17 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             if (!_atOk()) {
                 goto failure;
             }
+            sendFormated("AT+COPS?\r\n");
+            if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
+                goto failure;
+            }
             bool needRegister = false;
             if (_dev.dev != DEV_SARA_R410) {
-                if (_net.csd == REG_NOTREG && _net.psd == REG_NOTREG) {
+                if (_net.cops != 0 || _net.csd == REG_NOTREG || _net.psd == REG_NOTREG) {
                     needRegister = true;
                 }
             } else {
-                if (_net.eps == REG_NOTREG) {
+                if (_net.cops != 0 || _net.eps == REG_NOTREG) {
                     needRegister = true;
                 }
             }
@@ -1382,7 +1386,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                 }
             }
 
-            // Now check every 15 seconds for 5 minutes to see if we're connected to the tower (GSM, GPRS and LTE)
+            // Now check every 15 seconds for 10 minutes to see if we're connected to the tower (GSM, GPRS and LTE)
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
             while (!(ok = checkNetStatus(status)) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
                 system_tick_t start = HAL_Timer_Get_Milli_Seconds();

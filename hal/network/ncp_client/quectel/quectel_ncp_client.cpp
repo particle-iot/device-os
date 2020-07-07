@@ -1175,13 +1175,23 @@ int QuectelNcpClient::registerNet() {
 
     connectionState(NcpConnectionState::CONNECTING);
 
+    auto resp = parser_.sendCommand("AT+COPS?");
+    int copsState = -1;
+    r = CHECK_PARSER(resp.scanf("+COPS: %d", &copsState));
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
     CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
 
-    if (creg_ == RegistrationState::NotRegistering &&
-            cgreg_ == RegistrationState::NotRegistering &&
-            cereg_ == RegistrationState::NotRegistering) {
+    bool needRegister = copsState != 0 ||
+            creg_ == RegistrationState::NotRegistering ||
+            cgreg_ == RegistrationState::NotRegistering ||
+            cereg_ == RegistrationState::NotRegistering;
+
+    if (needRegister) {
         // Only run AT+COPS=0 if not currently registering, otherwise we will
         // perform PLMN reselection
         // NOTE: up to 3 mins

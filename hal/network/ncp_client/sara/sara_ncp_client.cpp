@@ -1444,17 +1444,24 @@ int SaraNcpClient::registerNet() {
     connectionState(NcpConnectionState::CONNECTING);
     registeredTime_ = 0;
 
+    auto resp = parser_.sendCommand("AT+COPS?");
+    int copsState = -1;
+    r = CHECK_PARSER(resp.scanf("+COPS: %d", &copsState));
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
     bool needRegister = false;
     if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
-        if (creg_ == RegistrationState::NotRegistering &&
+        if (copsState != 0 || creg_ == RegistrationState::NotRegistering ||
                 cgreg_ == RegistrationState::NotRegistering) {
             needRegister = true;
         }
     } else {
         CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-        if (cereg_ == RegistrationState::NotRegistering) {
+        if (copsState != 0 || cereg_ == RegistrationState::NotRegistering) {
             needRegister = true;
         }
     }
