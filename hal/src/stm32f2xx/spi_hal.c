@@ -632,9 +632,8 @@ static void spiOnSelectedHandler(void *data) {
 
 int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
     if (sleep) {
-        CHECK_TRUE(hal_spi_is_enabled(spi), SYSTEM_ERROR_NONE);
-        hal_spi_transfer_dma_cancel(spi);
-        while (!spiState[spi].dma_aborted);
+        CHECK_TRUE(hal_spi_is_enabled(spi), SYSTEM_ERROR_INVALID_STATE);
+        while (spiState[spi].dma_configured);
         if (spiState[spi].mode == SPI_MODE_SLAVE) {
             HAL_Interrupts_Detach(spiState[spi].ss_pin);
         }
@@ -642,7 +641,7 @@ int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
         SPI_DeInit(spiMap[spi].peripheral);
         spiState[spi].state = HAL_SPI_STATE_SUSPENDED;
     } else {
-        CHECK_TRUE(spiState[spi].state == HAL_SPI_STATE_SUSPENDED, SYSTEM_ERROR_NONE);
+        CHECK_TRUE(spiState[spi].state == HAL_SPI_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
         hal_spi_begin_ext(spi, spiState[spi].mode, spiState[spi].ss_pin, NULL);
     }
     return SYSTEM_ERROR_NONE;

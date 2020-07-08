@@ -473,6 +473,9 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buf
 }
 
 void hal_spi_transfer_dma_cancel(hal_spi_interface_t spi) {
+    if (!spiMap[spi].transmitting) {
+        return;
+    }
     if (spiMap[spi].spi_mode == SPI_MODE_MASTER) {
         spiTransferCancel(spi);
         spiMap[spi].transmitting = false;
@@ -522,8 +525,7 @@ int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8
 
 int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
     if (sleep) {
-        CHECK_TRUE(hal_spi_is_enabled(spi), SYSTEM_ERROR_NONE);
-        hal_spi_transfer_dma_cancel(spi);
+        CHECK_TRUE(hal_spi_is_enabled(spi), SYSTEM_ERROR_INVALID_STATE);
         while (spiMap[spi].transmitting);
         spiUninit(spi);
         // spiUninit() clears pin function, retrieve it.
@@ -532,7 +534,7 @@ int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
         HAL_Set_Pin_Function(spiMap[spi].miso_pin, PF_SPI);
         spiMap[spi].state = HAL_SPI_STATE_SUSPENDED;
     } else {
-        CHECK_TRUE(spiMap[spi].state == HAL_SPI_STATE_SUSPENDED, SYSTEM_ERROR_NONE);
+        CHECK_TRUE(spiMap[spi].state == HAL_SPI_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
         hal_spi_begin_ext(spi, spiMap[spi].spi_mode, spiMap[spi].ss_pin, nullptr);
     }
     return SYSTEM_ERROR_NONE;
