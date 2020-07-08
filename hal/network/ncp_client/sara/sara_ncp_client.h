@@ -118,7 +118,7 @@ private:
     int initParser(Stream* stream);
     int waitReady(bool powerOn = false);
     int initReady(ModemState state);
-    int checkRuntimeState(ModemState& state);
+    int checkRuntimeState(ModemState& state, unsigned runtimeBaudrate);
     int initMuxer();
     int waitAtResponse(unsigned int timeout, unsigned int period = 1000);
     int selectSimCard(ModemState& state);

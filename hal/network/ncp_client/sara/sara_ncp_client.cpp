@@ -839,7 +839,17 @@ int SaraNcpClient::waitReady(bool powerOn) {
         ready_ = waitAtResponseFromPowerOn(modemState) == 0;
     } else if (ncpState() == NcpState::OFF) {
         LOG_DEBUG(TRACE, "Waiting for modem to be ready from current unknown state");
-        ready_ = checkRuntimeState(modemState) == 0;
+        if (ncpId() != PLATFORM_NCP_SARA_R410) {
+            ready_ = checkRuntimeState(modemState, UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2) == 0;
+        } else {
+            int res = checkRuntimeState(modemState, UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
+            if (res == SYSTEM_ERROR_UNKNOWN) {
+                // resuming muxer has failed probably because of baud rate. Try with other baud rate
+                LOG_DEBUG(TRACE, "Checking muxer at %d baud", UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
+                res = checkRuntimeState(modemState, UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
+            }
+            ready_ = (res == 0);
+        }
         if (ready_) {
             LOG_DEBUG(TRACE, "Runtime state %d", (int)modemState);
         }
@@ -1231,11 +1241,8 @@ int SaraNcpClient::initReady(ModemState state) {
     return SYSTEM_ERROR_NONE;
 }
 
-int SaraNcpClient::checkRuntimeState(ModemState& state) {
+int SaraNcpClient::checkRuntimeState(ModemState& state, unsigned runtimeBaudrate) {
     // Assume we are running at the runtime baudrate
-    unsigned runtimeBaudrate = ncpId() == PLATFORM_NCP_SARA_R410 ? UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 :
-            UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2;
-
     CHECK(serial_->setBaudRate(runtimeBaudrate));
 
     // Feeling optimistic, try to see if the muxer is already available
