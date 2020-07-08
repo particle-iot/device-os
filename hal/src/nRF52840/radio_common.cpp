@@ -125,12 +125,17 @@ int initRadioAntenna() {
 
 int disableRadioAntenna() {
 #if PLATFORM_ID == PLATFORM_ARGON
-    HAL_Pin_Mode(ANTSW1, INPUT);
-    HAL_Pin_Mode(ANTSW2, INPUT);
+    HAL_Pin_Mode(ANTSW1, PIN_MODE_NONE);
+    HAL_Pin_Mode(ANTSW2, PIN_MODE_NONE);
 #elif PLATFORM_ID == PLATFORM_BORON
-    HAL_Pin_Mode(ANTSW1, INPUT);
+    // There is a logic inverter between the ANTSW1 and the antenna switch.
+    // There is a pull-down resistor on ANTSW1, so we can safely configure the ANTSW1 to PIN_MODE_NONE.
+    HAL_Pin_Mode(ANTSW1, PIN_MODE_NONE);
 #elif PLATFORM_ID == PLATFORM_TRACKER
-    HAL_Pin_Mode(ANTSW1, INPUT);
+    // There is a logic inverter between the ANTSW1 and the antenna switch.
+    // There is neither pull-up nor pull-down resistor on ANTSW1, if we set it to float,
+    // it will consume high current (~6mA)
+    HAL_Pin_Mode(ANTSW1, INPUT_PULLDOWN);
 // SoM platforms have only an external antenna
 #elif PLATFORM_ID != PLATFORM_ASOM && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM
 #error "Unsupported platform"
