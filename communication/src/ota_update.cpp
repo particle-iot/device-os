@@ -17,6 +17,8 @@
 
 #include "ota_update.h"
 
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+
 #include "scope_guard.h"
 
 #include <cstdio>
@@ -86,3 +88,5 @@ void OtaUpdateContext::formatErrorMessage(const char* fmt, ...) {
 }
 
 } // namespace particle::protocol
+
+#endif // HAL_PLATFORM_OTA_PROTOCOL_V3

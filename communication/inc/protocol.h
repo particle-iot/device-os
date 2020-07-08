@@ -14,7 +14,6 @@
 #include "variables.h"
 #include "hal_platform.h"
 #include "timesyncmanager.h"
-#include "hal_platform.h"
 
 namespace particle
 {

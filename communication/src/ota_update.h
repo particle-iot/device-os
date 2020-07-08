@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+
 #include "c_string.h"
 
 #include <cstdint>
@@ -204,3 +208,5 @@ inline int OtaUpdate::command(OtaUpdateCommand cmd) {
 }
 
 } // namespace particle::protocol
+
+#endif // HAL_PLATFORM_OTA_PROTOCOL_V3
