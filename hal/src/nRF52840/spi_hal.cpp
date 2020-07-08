@@ -222,6 +222,10 @@ static void spiUninit(hal_spi_interface_t spi) {
         HAL_Interrupts_Detach(spiMap[spi].ss_pin);
     }
 
+    HAL_Pin_Mode(spiMap[spi].sck_pin, INPUT_PULLUP);
+    HAL_Pin_Mode(spiMap[spi].mosi_pin, PIN_MODE_NONE);
+    HAL_Pin_Mode(spiMap[spi].miso_pin, PIN_MODE_NONE);
+
     HAL_Set_Pin_Function(spiMap[spi].sck_pin, PF_NONE);
     HAL_Set_Pin_Function(spiMap[spi].mosi_pin, PF_NONE);
     HAL_Set_Pin_Function(spiMap[spi].miso_pin, PF_NONE);
