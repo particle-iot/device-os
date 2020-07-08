@@ -200,7 +200,7 @@ static int uninitPwmPin(uint16_t pin) {
 
     // reset pin mode, don't call HAL_Set_Pin_Function or will enter a loop
     nrf_gpio_cfg_default(NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin));
-    HAL_Set_Pin_Function(pin, PF_NONE);
+    PIN_MAP[pin].pin_func = PF_NONE;
 
     if ((pwmMap[pwm_num].pins[0] == NRFX_PWM_PIN_NOT_USED) &&
         (pwmMap[pwm_num].pins[1] == NRFX_PWM_PIN_NOT_USED) &&

@@ -13,11 +13,11 @@ static const uint32_t maxPulseSamples = 100;
 static const uint32_t minimumFrequency = 100;
 
 uint8_t pwm_pins[] = {
-#if (PLATFORM_ID == 6) // Photon
+#if (PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION) // Photon
         D0, D1, D2, D3, A4, A5, WKP, RX, TX
-#elif (PLATFORM_ID == 8) // P1
+#elif (PLATFORM_ID == PLATFORM_P1) // P1
         D0, D1, D2, D3, A4, A5, WKP, RX, TX, P1S0, P1S1, P1S6
-#elif (PLATFORM_ID == 10) // Electron
+#elif (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION) // Electron
         D0, D1, D2, D3, A4, A5, WKP, RX, TX, B0, B1, B2, B3, C4, C5
 #elif (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
         D4, D5, D6, D7, A0, A1, A7 /* , RGBR, RGBG, RGBB */
@@ -44,7 +44,7 @@ template <typename F> void for_all_pwm_pins(F callback)
     }
 }
 
-#if (PLATFORM_ID == 8) // P1
+#if (PLATFORM_ID == PLATFORM_P1) // P1
 test(PWM_00_P1S6SetupForP1) {
     // disable POWERSAVE_CLOCK on P1S6
     System.disableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
@@ -661,7 +661,7 @@ test(PWM_11_CompherensiveResolutionFrequency) {
     });
 }
 
-#if (PLATFORM_ID == 8) // P1
+#if (PLATFORM_ID == PLATFORM_P1) // P1
 test(PWM_99_P1S6CleanupForP1) {
     // enable POWERSAVE_CLOCK on P1S6
     System.enableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
