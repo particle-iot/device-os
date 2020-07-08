@@ -8,20 +8,34 @@
 #include <limits>
 #include <cmath>
 #include "net_hal.h"
+#include "string.h"
 
 namespace detail {
 
-const int MCC_MNC_MIN_SIZE = 5;
+const char TWILIO_ICCID_1[] = "8988323";
+const char TWILIO_ICCID_2[] = "8988307";
+const char TELEFONICA_MCC_MNC[] = "21407";
+const char KORE_ATT_MCC_MNC[] = "310410";
+const char KORE_VODAFONE_MCC_MNC[] = "20404";
 
-CellularNetProv _cellular_imsi_to_network_provider(const char* imsi) {
+const int MCC_MNC_MIN_SIZE = 5;
+const int ICCID_MIN_SIZE = 19;
+
+CellularNetProv _cellular_sim_to_network_provider(const char* imsi, const char* iccid) {
+    if (iccid && strlen(iccid) >= ICCID_MIN_SIZE) {
+        if ((strncmp(iccid, TWILIO_ICCID_1, strlen(TWILIO_ICCID_1)) == 0) || (strncmp(iccid, TWILIO_ICCID_2, strlen(TWILIO_ICCID_2)) == 0)) {
+            return CELLULAR_NETPROV_TWILIO;
+        }
+    }
+
     if (imsi && strlen(imsi) >= MCC_MNC_MIN_SIZE) {
-        if (strncmp(imsi, "21407", 5) == 0) {
+        if (strncmp(imsi, TELEFONICA_MCC_MNC, strlen(TELEFONICA_MCC_MNC)) == 0) {
             // LOG(INFO, "CELLULAR_NETPROV_TELEFONICA");
             return CELLULAR_NETPROV_TELEFONICA;
-        } else if (strncmp(imsi, "310410", 6) == 0) {
+        } else if (strncmp(imsi, KORE_ATT_MCC_MNC, strlen(KORE_ATT_MCC_MNC)) == 0) {
             // LOG(INFO, "CELLULAR_NETPROV_KORE_ATT");
             return CELLULAR_NETPROV_KORE_ATT;
-        } else if (strncmp(imsi, "20404", 5) == 0) {
+        } else if (strncmp(imsi, KORE_VODAFONE_MCC_MNC, strlen(KORE_VODAFONE_MCC_MNC)) == 0) {
             // LOG(INFO, "CELLULAR_NETPROV_KORE_VODAFONE");
             return CELLULAR_NETPROV_KORE_VODAFONE;
         }

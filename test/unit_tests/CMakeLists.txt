@@ -45,10 +45,19 @@ add_definitions(-DRELEASE_BUILD)
 add_definitions(-DUNIT_TEST)
 add_definitions(-DBOOST_NO_AUTO_PTR)
 
+if (CMAKE_COMPILER_IS_GNUCXX)
+  set(GCOV_ENABLE TRUE)
+endif()
+
+if (GCOV_ENABLE)
+  set(COVERAGE_LIBRARIES gcov)
+  set(COVERAGE_CFLAGS -fno-inline -fprofile-arcs -ftest-coverage -O0 -g)
+endif()
+
 # Link against dependencies of all tests
 link_libraries(
   Catch2::Catch2
-  gcov
+  ${COVERAGE_LIBRARIES}
 )
 
 # Build and discover unit-tests

@@ -28,7 +28,7 @@ target_compile_definitions( ${target_name}
 
 # Set compiler flags specific to target
 target_compile_options( ${target_name}
-  PRIVATE -fno-inline -fprofile-arcs -ftest-coverage -O0 -g
+  PRIVATE ${COVERAGE_CFLAGS}
 )
 
 # Set include path specific to target

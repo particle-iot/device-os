@@ -1345,13 +1345,25 @@ int SaraNcpClient::checkSimCard() {
 int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
     netConf_ = conf;
     if (!netConf_.isValid()) {
-        // Look for network settings based on IMSI
+        // First look for network settings based on ICCID
+        auto resp = parser_.sendCommand("AT+CCID");
         char buf[32] = {};
-        auto resp = parser_.sendCommand("AT+CIMI");
-        CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
+        const int ret = CHECK_PARSER(resp.scanf("+CCID: %31s", buf));
         const int r = CHECK_PARSER(resp.readResult());
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-        netConf_ = networkConfigForImsi(buf, strlen(buf));
+        if (ret) {
+            netConf_ = networkConfigForIccid(buf, strlen(buf));
+        }
+
+        // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
+        if (!netConf_.isValid()) {
+            memset(buf, 0, sizeof(buf));
+            auto resp = parser_.sendCommand("AT+CIMI");
+            CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
+            const int r = CHECK_PARSER(resp.readResult());
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+            netConf_ = networkConfigForImsi(buf, strlen(buf));
+        }
     }
 
     auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s%s\"",

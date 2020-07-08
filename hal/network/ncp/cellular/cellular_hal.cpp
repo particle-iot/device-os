@@ -587,7 +587,7 @@ int cellular_resume(void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-int cellular_imsi_to_network_provider(void* reserved) {
+int cellular_sim_to_network_provider(void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 

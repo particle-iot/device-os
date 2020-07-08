@@ -7,6 +7,7 @@ include_directories(
   ${DEVICE_OS_DIR}/hal/src/electron/
   ${DEVICE_OS_DIR}/services/inc/
   ${DEVICE_OS_DIR}/wiring/inc/
+  ${DEVICE_OS_DIR}/hal/network
 )
 
 # Create test executable
@@ -14,6 +15,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/hal/src/electron/cellular_internal.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_cellular_printable.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_print.cpp
+  ${DEVICE_OS_DIR}/hal/network/ncp/cellular/network_config_db.cpp
   cellular.cpp
 )
 
@@ -24,7 +26,7 @@ target_compile_definitions( ${target_name}
 
 # Set compiler flags specific to target
 target_compile_options( ${target_name}
-  PRIVATE -fno-inline -fprofile-arcs -ftest-coverage -O0 -g
+  PRIVATE ${COVERAGE_CFLAGS}
 )
 
 # Link against dependencies specific to target
