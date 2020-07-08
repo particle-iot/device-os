@@ -182,6 +182,23 @@ void QuectelNcpClient::destroy() {
     serial_.reset();
 }
 
+QuectelNcpClient::RegistrationState QuectelNcpClient::parseCregResponse(int v) {
+    switch (v) {
+        case 1:
+        case 5:
+            return RegistrationState::Registered;
+        case 0:
+            return RegistrationState::NotRegistering;
+        case 2:
+            return RegistrationState::Registering;
+        case 3:
+            return RegistrationState::Denied;
+        case 4:
+        default:
+            return RegistrationState::Unknown;
+    }
+}
+
 int QuectelNcpClient::initParser(Stream* stream) {
     // Initialize AT parser
     auto parserConf = AtParserConfig().stream(stream).commandTerminator(AtCommandTerminator::CRLF);
@@ -207,14 +224,7 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        // Home network or roaming
-        if (val[0] == 1 || val[0] == 5) {
-            self->creg_ = RegistrationState::Registered;
-        } else if (val[0] == 0) {
-            self->creg_ = RegistrationState::NotRegistering;
-        } else {
-            self->creg_ = RegistrationState::NotRegistered;
-        }
+        self->creg_ = parseCregResponse(val[0]);
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         // Only update if unset
@@ -243,14 +253,7 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CGREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        // Home network or roaming
-        if (val[0] == 1 || val[0] == 5) {
-            self->cgreg_ = RegistrationState::Registered;
-        } else if (val[0] == 0) {
-            self->cgreg_ = RegistrationState::NotRegistering;
-        } else {
-            self->cgreg_ = RegistrationState::NotRegistered;
-        }
+        self->cgreg_ = parseCregResponse(val[0]);
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -287,14 +290,7 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CEREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        // Home network or roaming
-        if (val[0] == 1 || val[0] == 5) {
-            self->cereg_ = RegistrationState::Registered;
-        } else if (val[0] == 0) {
-            self->cereg_ = RegistrationState::NotRegistering;
-        } else {
-            self->cereg_ = RegistrationState::NotRegistered;
-        }
+        self->cereg_ = parseCregResponse(val[0]);
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -905,12 +901,8 @@ int QuectelNcpClient::waitReady(bool powerOn) {
 }
 
 int QuectelNcpClient::selectSimCard() {
-    // Set modem full functionality
-    int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-
     // Using numeric CME ERROR codes
-    // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=1"));
+    // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=2"));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     int simState = 0;
@@ -932,6 +924,10 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
 }
 
 int QuectelNcpClient::initReady(ModemState state) {
+    // Set modem full functionality
+    int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
     if (state != ModemState::MuxerAtChannel) {
         // Enable flow control and change to runtime baudrate
 #if PLATFORM_ID == PLATFORM_B5SOM
@@ -1190,12 +1186,7 @@ int QuectelNcpClient::registerNet() {
     CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
 
-    bool needRegister = copsState != 0 ||
-            creg_ == RegistrationState::NotRegistering ||
-            cgreg_ == RegistrationState::NotRegistering ||
-            cereg_ == RegistrationState::NotRegistering;
-
-    if (needRegister) {
+    if (copsState != 0) {
         // Only run AT+COPS=0 if not currently registering, otherwise we will
         // perform PLMN reselection
         // NOTE: up to 3 mins
@@ -1346,9 +1337,9 @@ int QuectelNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Chann
 }
 
 void QuectelNcpClient::resetRegistrationState() {
-    creg_ = RegistrationState::NotRegistered;
-    cgreg_ = RegistrationState::NotRegistered;
-    cereg_ = RegistrationState::NotRegistered;
+    creg_ = RegistrationState::Unknown;
+    cgreg_ = RegistrationState::Unknown;
+    cereg_ = RegistrationState::Unknown;
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
 }
@@ -1375,6 +1366,7 @@ int QuectelNcpClient::processEventsImpl() {
     SCOPE_GUARD({ regCheckTime_ = millis(); });
 
     // Check GPRS, LET, NB-IOT network registration status
+    CHECK_PARSER_OK(parser_.execCommand("AT+CEER"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
@@ -1384,7 +1376,24 @@ int QuectelNcpClient::processEventsImpl() {
         muxer_.stop();
         modemHardReset();
         ncpState(NcpState::OFF);
+        return SYSTEM_ERROR_TIMEOUT;
     }
+
+    if (creg_ == RegistrationState::NotRegistering) {
+        CHECK_PARSER(parser_.execCommand("AT+COPS=0,2", 3 * 60 * 1000));
+    } else if (creg_ == RegistrationState::Registered) {
+        if (cgreg_ == RegistrationState::NotRegistering && cereg_ == RegistrationState::NotRegistering) {
+            CHECK_PARSER_OK(parser_.execCommand("AT+CGACT?"));
+            int r = CHECK_PARSER(parser_.execCommand("AT+CGACT=1", 3 * 60 * 1000));
+            if (r != AtResponse::OK) {
+                CHECK_PARSER(parser_.execCommand("AT+COPS=0,2", 5 * 60 * 1000));
+            }
+        }
+    } else if (creg_ == RegistrationState::Denied && cgreg_ == RegistrationState::Denied && cereg_ == RegistrationState::Denied) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=0"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=1"));
+    }
+
     return SYSTEM_ERROR_NONE;
 }
 

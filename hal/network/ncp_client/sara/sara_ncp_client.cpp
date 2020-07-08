@@ -175,6 +175,23 @@ void SaraNcpClient::destroy() {
     serial_.reset();
 }
 
+SaraNcpClient::RegistrationState SaraNcpClient::parseCregResponse(int v) {
+    switch (v) {
+        case 1:
+        case 5:
+            return RegistrationState::Registered;
+        case 0:
+            return RegistrationState::NotRegistering;
+        case 2:
+            return RegistrationState::Registering;
+        case 3:
+            return RegistrationState::Denied;
+        case 4:
+        default:
+            return RegistrationState::Unknown;
+    }
+}
+
 int SaraNcpClient::initParser(Stream* stream) {
     // Initialize AT parser
     auto parserConf = AtParserConfig()
@@ -201,14 +218,7 @@ int SaraNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        // Home network or roaming
-        if (val[0] == 1 || val[0] == 5) {
-            self->creg_ = RegistrationState::Registered;
-        } else if (val[0] == 0) {
-            self->creg_ = RegistrationState::NotRegistering;
-        } else {
-            self->creg_ = RegistrationState::NotRegistered;
-        }
+        self->creg_ = parseCregResponse(val[0]);
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         // Only update if unset
@@ -237,14 +247,7 @@ int SaraNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CGREG: %u,\"%x\",\"%x\",%u,\"%*x\"", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        // Home network or roaming
-        if (val[0] == 1 || val[0] == 5) {
-            self->cgreg_ = RegistrationState::Registered;
-        } else if (val[0] == 0) {
-            self->cgreg_ = RegistrationState::NotRegistering;
-        } else {
-            self->cgreg_ = RegistrationState::NotRegistered;
-        }
+        self->cgreg_ = parseCregResponse(val[0]);
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -280,14 +283,7 @@ int SaraNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CEREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        // Home network or roaming
-        if (val[0] == 1 || val[0] == 5) {
-            self->cereg_ = RegistrationState::Registered;
-        } else if (val[0] == 0) {
-            self->cereg_ = RegistrationState::NotRegistering;
-        } else {
-            self->cereg_ = RegistrationState::NotRegistered;
-        }
+        self->cereg_ = parseCregResponse(val[0]);
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -990,7 +986,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     }
 
     // Using numeric CME ERROR codes
-    // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=1"));
+    // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=2"));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     int simState = 0;
@@ -1451,24 +1447,9 @@ int SaraNcpClient::registerNet() {
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
-    bool needRegister = false;
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
-        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
-        CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
-        if (copsState != 0 || creg_ == RegistrationState::NotRegistering ||
-                cgreg_ == RegistrationState::NotRegistering) {
-            needRegister = true;
-        }
-    } else {
-        CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-        if (copsState != 0 || cereg_ == RegistrationState::NotRegistering) {
-            needRegister = true;
-        }
-    }
-
     // NOTE: up to 3 mins (FIXME: there seems to be a bug where this timeout of 3 minutes
     //       is not being respected by u-blox modems.  Setting to 5 for now.)
-    if (needRegister) {
+    if (copsState != 0) {
         // If the set command with <mode>=0 is issued, a further set
         // command with <mode>=0 is managed as a user reselection
         r = CHECK_PARSER(parser_.execCommand(5 * 60 * 1000, "AT+COPS=0,2"));
@@ -1616,9 +1597,9 @@ int SaraNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelS
 }
 
 void SaraNcpClient::resetRegistrationState() {
-    creg_ = RegistrationState::NotRegistered;
-    cgreg_ = RegistrationState::NotRegistered;
-    cereg_ = RegistrationState::NotRegistered;
+    creg_ = RegistrationState::Unknown;
+    cgreg_ = RegistrationState::Unknown;
+    cereg_ = RegistrationState::Unknown;
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
 }
@@ -1652,12 +1633,16 @@ int SaraNcpClient::processEventsImpl() {
     SCOPE_GUARD({
         regCheckTime_ = millis();
     });
+
+    CHECK_PARSER_OK(parser_.execCommand("AT+CEER"));
+
     if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     } else {
         CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     }
+
     if (connState_ == NcpConnectionState::CONNECTING &&
             millis() - regStartTime_ >= registrationTimeout_) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
@@ -1667,6 +1652,7 @@ int SaraNcpClient::processEventsImpl() {
             modemHardReset(true);
         }
         ncpState(NcpState::OFF);
+        return SYSTEM_ERROR_TIMEOUT;
     }
     return SYSTEM_ERROR_NONE;
 }
