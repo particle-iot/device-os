@@ -71,6 +71,7 @@ constexpr auto US_PER_OVERFLOW = (512UL * RTC_USECS_PER_SEC);  ///< Time that ha
 #define RTC_IRQ_HANDLER RTC2_IRQHandler
 constexpr auto RTC_FREQUENCY = 32768ULL;
 constexpr auto RTC_FREQUENCY_US_PER_S_GCD_BITS = 6;
+constexpr uint32_t DWT_US_THRESHOLD = 1000;
 
 constexpr uint64_t divideAndCeil(uint64_t a, uint64_t b) {
     return ((a + b - 1) / b);
@@ -197,7 +198,7 @@ uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
         *micros = sTimerMicrosAtLastOverflow;
     }
 
-    uint64_t currentTime = (uint64_t)offset2 * US_PER_OVERFLOW + ticksToTime(rtcValue);
+    uint64_t currentTime = rtcCounterAndTicksToUs(offset2, rtcValue);
 
     if (!dwtInSync) {
         *ticks = DWT->CYCCNT;
@@ -330,23 +331,20 @@ uint64_t hal_timer_micros(void* reserved) {
     uint32_t lastOverflowTicks;
     uint64_t lastOverflowMicros;
     uint64_t curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros);
-    uint32_t curTicks = DWT->CYCCNT;
 
-    int usTicks = SYSTEM_US_TICKS;
+    uint32_t usTicks = SYSTEM_US_TICKS;
 
     uint64_t elapsedUs = curUs - lastOverflowMicros;
     uint64_t elapsedTicks = elapsedUs * usTicks;
     uint32_t syncTicks = (uint32_t)((uint64_t)lastOverflowTicks + elapsedTicks);
-    uint32_t tickDiff = curTicks - syncTicks;
-    int64_t tickDiffFinal;
-    if (tickDiff > (US_PER_OVERFLOW / 10) * usTicks) {
-        tickDiff = 0xffffffff - tickDiff;
-        tickDiffFinal = -((int64_t)tickDiff);
-    } else {
-        tickDiffFinal = tickDiff;
+    uint32_t tickDiff = DWT->CYCCNT - syncTicks;
+    // If we are over 10 RTC ticks, we are better off fetching new value
+    if (tickDiff > (DWT_US_THRESHOLD * usTicks)) {
+        curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros);
+        tickDiff = 0;
     }
 
-    return sTimerMicrosBaseOffset + ((int64_t)curUs + ((tickDiffFinal) / usTicks));
+    return sTimerMicrosBaseOffset + curUs + (tickDiff / usTicks);
 }
 
 uint64_t hal_timer_millis(void* reserved) {

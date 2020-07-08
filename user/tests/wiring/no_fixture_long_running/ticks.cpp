@@ -14,6 +14,23 @@ const int MILLIS_MICROS_MAX_DIFF = 1;
 const int MILLIS_MICROS_MAX_DIFF = 2;
 #endif // PARTICLE_TEST_RUNNER
 
+#if HAL_PLATFORM_GEN < 3
+#define TICKS_ATOMIC_BLOCK() ATOMIC_BLOCK()
+#else
+struct TicksAtomic {
+    TicksAtomic() {
+        pri = __get_PRIMASK();
+        __disable_irq();
+    }
+    ~TicksAtomic() {
+        __set_PRIMASK(pri);
+    }
+
+    int pri;
+};
+#define TICKS_ATOMIC_BLOCK() for (bool __todo=true; __todo;) for (TicksAtomic __as; __todo; __todo=false)
+#endif // HAL_PLATFORM_GEN < 3
+
 }
 
 void assert_micros_millis(int duration, bool overflow = false)
@@ -34,7 +51,7 @@ void assert_micros_millis(int duration, bool overflow = false)
         // FIXME: acquiring these three atomically, as there is no guarantee
         // that we are not interrupted/pre-empted between the calls, which breaks
         // the assumptions below.
-        ATOMIC_BLOCK() {
+        TICKS_ATOMIC_BLOCK() {
             now_millis_64 = System.millis();
             now_millis = millis();
             now_micros = micros();
@@ -99,7 +116,7 @@ void assert_micros_millis_interrupts(int duration)
         // FIXME: acquiring these three atomically, as there is no guarantee
         // that we are not interrupted/pre-empted between the calls, which breaks
         // the assumptions below.
-        ATOMIC_BLOCK() {
+        TICKS_ATOMIC_BLOCK() {
             now_millis_64 = System.millis();
             now_millis = millis();
             now_micros = micros();

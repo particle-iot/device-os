@@ -56,7 +56,7 @@ STARTUP({
 
 test(TIME_COMPAT_00_TimeIsValid) {
     Particle.connect();
-    waitFor(Particle.connected, 5 * 60 * 1000);
+    waitFor(Particle.connected, 10 * 60 * 1000);
     assertTrue(Particle.connected());
     if (Particle.syncTimePending()) {
         waitFor(Particle.syncTimeDone, 120000);
@@ -264,6 +264,10 @@ test(TIME_COMPAT_04_RtcHal) {
 }
 
 test(TIME_COMPAT_05_SyncTime) {
+    Particle.connect();
+    waitFor(Particle.connected, 10 * 60 * 1000);
+    assertTrue(Particle.connected());
+
     time_t refTime = 1546300800; // 2019-01-01 00:00:00
 
     struct timeval tv = {
