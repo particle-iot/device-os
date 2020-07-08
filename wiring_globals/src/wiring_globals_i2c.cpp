@@ -11,9 +11,9 @@
 
 namespace {
 
-HAL_I2C_Config defaultWireConfig() {
-	HAL_I2C_Config config = {
-		.size = sizeof(HAL_I2C_Config),
+hal_i2c_config_t defaultWireConfig() {
+	hal_i2c_config_t config = {
+		.size = sizeof(hal_i2c_config_t),
 		.version = HAL_I2C_CONFIG_VERSION_1,
 		.rx_buffer = new (std::nothrow) uint8_t[I2C_BUFFER_LENGTH],
 		.rx_buffer_size = I2C_BUFFER_LENGTH,
@@ -26,20 +26,20 @@ HAL_I2C_Config defaultWireConfig() {
 
 } // anonymous
 
-HAL_I2C_Config __attribute__((weak)) acquireWireBuffer()
+hal_i2c_config_t __attribute__((weak)) acquireWireBuffer()
 {
 	return defaultWireConfig();
 }
 
 #if Wiring_Wire1
-HAL_I2C_Config __attribute__((weak)) acquireWire1Buffer()
+hal_i2c_config_t __attribute__((weak)) acquireWire1Buffer()
 {
 	return defaultWireConfig();
 }
 #endif
 
 #if Wiring_Wire3
-HAL_I2C_Config __attribute__((weak)) acquireWire3Buffer()
+hal_i2c_config_t __attribute__((weak)) acquireWire3Buffer()
 {
 	return defaultWireConfig();
 }

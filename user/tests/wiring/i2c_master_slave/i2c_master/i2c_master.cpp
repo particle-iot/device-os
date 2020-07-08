@@ -34,6 +34,10 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
         USE_WIRE.beginTransmission(I2C_ADDRESS);
         USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
         
+        // Sleep API should keep the buffer state as-is
+        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
+
         // End with STOP
         assertEqual(USE_WIRE.endTransmission(true), 0);
         // delay(I2C_DELAY);
@@ -49,6 +53,10 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
         USE_WIRE.requestFrom(I2C_ADDRESS, requestedLength);
         assertEqual(requestedLength, USE_WIRE.available());
 
+        // Sleep API should keep the buffer state as-is
+        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
+
         uint32_t count = 0;
         while(USE_WIRE.available()) {
             I2C_Test_Rx_Buffer[count++] = USE_WIRE.read();
@@ -58,6 +66,12 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
         assertTrue(strncmp((const char *)I2C_Test_Rx_Buffer, SLAVE_TEST_MESSAGE, requestedLength) == 0);
 
         requestedLength--;
+
+        // Enter sleep
+        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
+        
+        // Exit sleep
+        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
@@ -122,12 +136,18 @@ test(I2C_02_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underfl
         }
 
         requestedLength--;
+
+        // Enter sleep
+        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
+
+        // Exit sleep
+        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
 }
 
-test(I2C_04_Master_Slave_Master_WireTransmission_And_Short_Timeout)
+test(I2C_03_Master_Slave_Master_WireTransmission_And_Short_Timeout)
 {
     uint32_t requestedLength = TEST_I2C_BUFFER_SIZE;
     I2C_Master_Configure();
@@ -168,6 +188,12 @@ test(I2C_04_Master_Slave_Master_WireTransmission_And_Short_Timeout)
         assertNotEqual(requestedLength, USE_WIRE.available());
 
         requestedLength--;
+
+        // Enter sleep
+        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
+
+        // Exit sleep
+        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
@@ -221,7 +247,30 @@ test(I2C_04_Master_Slave_Master_Variable_Length_Transfer_With_WireTransmission_A
         assertTrue(strncmp((const char *)I2C_Test_Rx_Buffer, SLAVE_TEST_MESSAGE, requestedLength) == 0);
 
         requestedLength--;
+
+        // Enter sleep
+        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
+
+        // Exit sleep
+        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
+}
+
+test(I2C_05_Hal_Sleep_API_Test) {
+    hal_i2c_config_t config = acquireWireBuffer();
+    assertEqual(hal_i2c_init(HAL_I2C_INTERFACE1, &config), (int)SYSTEM_ERROR_NONE);
+
+    // Suspend and resotre I2C
+    hal_i2c_begin(HAL_I2C_INTERFACE1, I2C_MODE_MASTER, 0x00, NULL);
+    assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);  // Suspend
+    assertFalse(hal_i2c_is_enabled(HAL_I2C_INTERFACE1, NULL));
+    assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE); // Restore
+    assertTrue(hal_i2c_is_enabled(HAL_I2C_INTERFACE1, NULL));
+
+    // Retore API should not re-initialize the disabled I2C
+    hal_i2c_begin(HAL_I2C_INTERFACE1, I2C_MODE_MASTER, 0x00, NULL);
+    hal_i2c_end(HAL_I2C_INTERFACE1, NULL);
+    assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_INVALID_STATE);
 }

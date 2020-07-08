@@ -76,10 +76,10 @@ int Am18x5::begin() {
     Am18x5Lock lock();
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
     
-    if (!HAL_I2C_Is_Enabled(wire_, nullptr)) {
-        CHECK(HAL_I2C_Init(wire_, nullptr));
-        HAL_I2C_Set_Speed(wire_, CLOCK_SPEED_400KHZ, nullptr);
-        HAL_I2C_Begin(wire_, I2C_MODE_MASTER, 0x00, nullptr);
+    if (!hal_i2c_is_enabled(wire_, nullptr)) {
+        CHECK(hal_i2c_init(wire_, nullptr));
+        hal_i2c_set_speed(wire_, CLOCK_SPEED_400KHZ, nullptr);
+        hal_i2c_begin(wire_, I2C_MODE_MASTER, 0x00, nullptr);
     }
 
     if (os_semaphore_create(&exRtcWorkerSemaphore_, 1, 0)) {
@@ -137,11 +137,11 @@ int Am18x5::end() {
 }
 
 int Am18x5::lock() {
-    return HAL_I2C_Acquire(wire_, nullptr);
+    return hal_i2c_lock(wire_, nullptr);
 }
 
 int Am18x5::unlock() {
-    return HAL_I2C_Release(wire_, nullptr);
+    return hal_i2c_unlock(wire_, nullptr);
 }
 
 int Am18x5::getPartNumber(uint16_t* id) const {
@@ -519,33 +519,33 @@ int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool 
         CHECK(val = decToBcd(val));
     }
     currValue |= (val << shift);
-    HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
-    HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(reg), nullptr);
-    HAL_I2C_Write_Data(wire_, currValue, nullptr);
-    HAL_I2C_End_Transmission(wire_, true, nullptr);
+    hal_i2c_begin_transmission(wire_, address_, nullptr);
+    hal_i2c_write(wire_, static_cast<uint8_t>(reg), nullptr);
+    hal_i2c_write(wire_, currValue, nullptr);
+    hal_i2c_end_transmission(wire_, true, nullptr);
     return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::writeContinuousRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const {
     Am18x5Lock lock();
-    HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
-    HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(start_reg), nullptr);
+    hal_i2c_begin_transmission(wire_, address_, nullptr);
+    hal_i2c_write(wire_, static_cast<uint8_t>(start_reg), nullptr);
     for (size_t i = 0; i < len; i++) {
-        HAL_I2C_Write_Data(wire_, buff[i], nullptr);
+        hal_i2c_write(wire_, buff[i], nullptr);
     }
-    HAL_I2C_End_Transmission(wire_, true, nullptr);
+    hal_i2c_end_transmission(wire_, true, nullptr);
     return len;
 }
 
 int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd, uint8_t mask, uint8_t shift) const {
     Am18x5Lock lock();
-    HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
-    HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(reg), nullptr);
-    HAL_I2C_End_Transmission(wire_, false, nullptr);
-    if (HAL_I2C_Request_Data(wire_, address_, 1, true, nullptr) == 0) {
+    hal_i2c_begin_transmission(wire_, address_, nullptr);
+    hal_i2c_write(wire_, static_cast<uint8_t>(reg), nullptr);
+    hal_i2c_end_transmission(wire_, false, nullptr);
+    if (hal_i2c_request(wire_, address_, 1, true, nullptr) == 0) {
         return SYSTEM_ERROR_INTERNAL;
     }
-    *val = HAL_I2C_Read_Data(wire_, nullptr);
+    *val = hal_i2c_read(wire_, nullptr);
     *val &= mask;
     *val >>= shift;
     if (bcd) {
@@ -556,19 +556,19 @@ int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd,
 
 int Am18x5::readContinuousRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const {
     Am18x5Lock lock();
-    HAL_I2C_Begin_Transmission(wire_, address_, nullptr);
-    HAL_I2C_Write_Data(wire_, static_cast<uint8_t>(start_reg), nullptr);
-    HAL_I2C_End_Transmission(wire_, false, nullptr);
-    if (HAL_I2C_Request_Data(wire_, address_, len, true, nullptr) == 0) {
+    hal_i2c_begin_transmission(wire_, address_, nullptr);
+    hal_i2c_write(wire_, static_cast<uint8_t>(start_reg), nullptr);
+    hal_i2c_end_transmission(wire_, false, nullptr);
+    if (hal_i2c_request(wire_, address_, len, true, nullptr) == 0) {
         return SYSTEM_ERROR_INTERNAL;
     }
-    int32_t size = HAL_I2C_Available_Data(wire_, nullptr);
+    int32_t size = hal_i2c_available(wire_, nullptr);
     if (size <= 0) {
         return size;
     }
     size = std::min((size_t)size, len);
     for (int32_t i = 0; i < size; i++) {
-        buff[i] = HAL_I2C_Read_Data(wire_, nullptr);
+        buff[i] = hal_i2c_read(wire_, nullptr);
     }
     return size;
 }
