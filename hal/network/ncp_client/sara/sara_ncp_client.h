@@ -137,7 +137,7 @@ private:
     int processEventsImpl();
 
     int modemInit() const;
-    bool waitModemPowerState(bool onOff, system_tick_t timeout) const;
+    bool waitModemPowerState(bool onOff, system_tick_t timeout);
     int modemPowerOn();
     int modemPowerOff();
     int modemSoftPowerOff();

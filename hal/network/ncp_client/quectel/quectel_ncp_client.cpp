@@ -1395,7 +1395,7 @@ int QuectelNcpClient::modemInit() const {
     return SYSTEM_ERROR_NONE;
 }
 
-bool QuectelNcpClient::waitModemPowerState(bool onOff, system_tick_t timeout) const {
+bool QuectelNcpClient::waitModemPowerState(bool onOff, system_tick_t timeout) {
     system_tick_t now = HAL_Timer_Get_Milli_Seconds();
     while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
         if (modemPowerState() == onOff) {
