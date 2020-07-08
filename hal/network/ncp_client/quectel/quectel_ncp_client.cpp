@@ -337,13 +337,10 @@ int QuectelNcpClient::off() {
     if (!r) {
         LOG(TRACE, "Soft power off modem successfully");
         // WARN: We assume that the modem can turn off itself reliably.
-        ncpPowerState(NcpPowerState::OFF);
     } else {
         // Power down using hardware
-        if (!modemPowerOff()) {
-            ncpPowerState(NcpPowerState::OFF);
-        }
-        // FIXME: else there is power leakage still.
+        modemPowerOff();
+        // FIXME: There is power leakage still if powering off the modem failed.
     }
 
     // Disable the UART interface.
@@ -1402,6 +1399,11 @@ bool QuectelNcpClient::waitModemPowerState(bool onOff, system_tick_t timeout) co
     system_tick_t now = HAL_Timer_Get_Milli_Seconds();
     while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
         if (modemPowerState() == onOff) {
+            if (onOff) {
+                ncpPowerState(NcpPowerState::ON);
+            } else {
+                ncpPowerState(NcpPowerState::OFF);
+            }
             return true;
         }
         HAL_Delay_Milliseconds(5);
@@ -1428,7 +1430,6 @@ int QuectelNcpClient::modemPowerOn() {
         // EG91: status pin ready requires >= 10s, uart ready requires >= 12s
         if (waitModemPowerState(1, 15000)) {
             LOG(TRACE, "Modem powered on");
-            ncpPowerState(NcpPowerState::ON);
         } else {
             LOG(ERROR, "Failed to power on modem");
         }
@@ -1534,7 +1535,6 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
         // EG91: >=30s
         if (waitModemPowerState(0, 30000)) {
             LOG(TRACE, "Modem powered off");
-            ncpPowerState(NcpPowerState::OFF);
         } else {
             LOG(ERROR, "Failed to power off modem");
         }

@@ -335,13 +335,10 @@ int SaraNcpClient::off() {
     if (!r) {
         LOG(TRACE, "Soft power off modem successfully");
         // WARN: We assume that the modem can turn off itself reliably.
-        ncpPowerState(NcpPowerState::OFF);
     } else {
         // Power down using hardware
-        if (!modemPowerOff()) {
-            ncpPowerState(NcpPowerState::OFF);
-        }
-        // FIXME: else there is power leakage still.
+        modemPowerOff();
+        // FIXME: There is power leakage still if powering off the modem failed.
     }
 
     // Disable the UART interface.
@@ -1659,6 +1656,11 @@ bool SaraNcpClient::waitModemPowerState(bool onOff, system_tick_t timeout) const
     system_tick_t now = HAL_Timer_Get_Milli_Seconds();
     while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
         if (modemPowerState() == onOff) {
+            if (onOff) {
+                ncpPowerState(NcpPowerState::ON);
+            } else {
+                ncpPowerState(NcpPowerState::OFF);
+            }
             return true;
         }
         HAL_Delay_Milliseconds(5);
@@ -1694,7 +1696,6 @@ int SaraNcpClient::modemPowerOn() {
         // Verify that the module was powered up by checking the VINT pin up to 1 sec
         if (waitModemPowerState(1, 1000)) {
             LOG(TRACE, "Modem powered on");
-            ncpPowerState(NcpPowerState::ON);
         } else {
             LOG(ERROR, "Failed to power on modem");
         }
