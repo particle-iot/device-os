@@ -203,7 +203,7 @@ void analogWrite(pin_t pin, uint32_t value)
             return;
         }
 
-        HAL_PWM_Write_Ext(pin, value);
+        hal_pwm_write_ext(pin, value);
     }
 }
 
@@ -229,7 +229,7 @@ void analogWrite(pin_t pin, uint32_t value, uint32_t pwm_frequency)
             return;
         }
 
-        HAL_PWM_Write_With_Frequency_Ext(pin, value, pwm_frequency);
+        hal_pwm_write_with_frequency_ext(pin, value, pwm_frequency);
     }
 }
 
@@ -248,8 +248,8 @@ uint8_t analogWriteResolution(pin_t pin, uint8_t value)
   }
   else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
   {
-    HAL_PWM_Set_Resolution(pin, value);
-    return HAL_PWM_Get_Resolution(pin);
+    hal_pwm_set_resolution(pin, value);
+    return hal_pwm_get_resolution(pin);
   }
   
 
@@ -270,7 +270,7 @@ uint8_t analogWriteResolution(pin_t pin)
   }
   else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
   {
-    return HAL_PWM_Get_Resolution(pin);
+    return hal_pwm_get_resolution(pin);
   }
 
   return 0;
@@ -284,7 +284,7 @@ uint32_t analogWriteMaxFrequency(pin_t pin)
       return 0;
   }
 
-  return HAL_PWM_Get_Max_Frequency(pin);
+  return hal_pwm_get_max_frequency(pin);
 }
 
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder) {

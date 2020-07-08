@@ -31,7 +31,7 @@ void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func) {
     if (pin_func != PIN_MAP[pin].pin_func) {
         switch (PIN_MAP[pin].pin_func) {
             case PF_PWM: {
-                HAL_PWM_Reset_Pin(pin);
+                hal_pwm_reset_pin(pin);
                 break;
             }
             case PF_ADC: {

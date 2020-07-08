@@ -223,9 +223,9 @@ static void assertRgbLedMirrorPinsColor(const pin_t pins[3], uint16_t r, uint16_
     r = (uint16_t)((((uint32_t)(r)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
     g = (uint16_t)((((uint32_t)(g)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
     b = (uint16_t)((((uint32_t)(b)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
-    assertLessOrEqual(std::abs((int32_t)(HAL_PWM_Get_AnalogValue_Ext(pins[0])) - (int32_t)(r * ((1UL << HAL_PWM_Get_Resolution(pins[0])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
-    assertLessOrEqual(std::abs((int32_t)(HAL_PWM_Get_AnalogValue_Ext(pins[1])) - (int32_t)(g * ((1UL << HAL_PWM_Get_Resolution(pins[1])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
-    assertLessOrEqual(std::abs((int32_t)(HAL_PWM_Get_AnalogValue_Ext(pins[2])) - (int32_t)(b * ((1UL << HAL_PWM_Get_Resolution(pins[2])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
+    assertLessOrEqual(std::abs((int32_t)(hal_pwm_get_analog_value_ext(pins[0])) - (int32_t)(r * ((1UL << hal_pwm_get_resolution(pins[0])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
+    assertLessOrEqual(std::abs((int32_t)(hal_pwm_get_analog_value_ext(pins[1])) - (int32_t)(g * ((1UL << hal_pwm_get_resolution(pins[1])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
+    assertLessOrEqual(std::abs((int32_t)(hal_pwm_get_analog_value_ext(pins[2])) - (int32_t)(b * ((1UL << hal_pwm_get_resolution(pins[2])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
 }
 
 test(LED_11_MirroringWorks) {
