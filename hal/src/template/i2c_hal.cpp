@@ -139,7 +139,8 @@ uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved
   return SYSTEM_ERROR_NONE;
 }
 
-int HAL_I2C_Sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved) {
+int hal_i2c_sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved)
+{
     return 0;
 }
 
