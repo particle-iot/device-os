@@ -287,8 +287,10 @@ void set_flag(void* flag)
 }
 
 namespace {
+
 // FIXME: Dirty hack
-bool ledIsOverridden = false;
+bool g_ledIsOverridden = false;
+
 } // namespace
 
 int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
@@ -314,8 +316,8 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
             // FIXME: use the APIs in system_led_signal.h instead.
             // The RGB may behave weirdly if multi-threading is enabled and user application
             // also wants to control the RGB.
-            ledIsOverridden = LED_RGB_IsOverRidden();
-            if (!ledIsOverridden) {
+            g_ledIsOverridden = LED_RGB_IsOverRidden();
+            if (!g_ledIsOverridden) {
                 RGB.control(true);
                 // Get base color used for the update process indication
                 const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
@@ -426,7 +428,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
 
     // FIXME: use APIs in system_led_signal.h instead
     // It might lease the control that user application just takes over.
-    if (!ledIsOverridden) {
+    if (!g_ledIsOverridden) {
         RGB.control(false);
     }
 
@@ -442,7 +444,7 @@ int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chu
     {
         result = HAL_FLASH_Update(chunk, file.chunk_address, file.chunk_size, NULL);
         // FIXME: use APIs in system_led_signal.h instead
-        if (!ledIsOverridden) {
+        if (!g_ledIsOverridden) {
             LED_Toggle(LED_RGB);
         }
     }
