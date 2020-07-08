@@ -37,9 +37,12 @@
 #include "interrupts_hal.h"
 #include "concurrent_hal.h"
 #include "check.h"
+#include "radio_common.h"
 #if HAL_PLATFORM_EXTERNAL_RTC
 #include "exrtc_hal.h"
 #endif
+
+using namespace particle;
 
 static int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_gpio_t* gpio) {
     switch(gpio->mode) {
@@ -157,6 +160,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         // Make sure we acquire BLE lock BEFORE going into a critical section
         hal_ble_lock(nullptr);
         hal_ble_stack_deinit(nullptr);
+        disableRadioAntenna();
     }
 
     // Disable thread scheduling
@@ -547,6 +551,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
             hal_ble_gap_start_advertising(nullptr);
         }
         hal_ble_unlock(nullptr);
+        enableRadioAntenna();
     }
 
     // Enable thread scheduling
@@ -701,6 +706,8 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     nrf_pwm_disable(NRF_PWM1);
     nrf_pwm_disable(NRF_PWM2);
     nrf_pwm_disable(NRF_PWM3);
+
+    disableRadioAntenna();
 
     // RAM retention is configured on early boot in Set_System()
 

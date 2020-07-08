@@ -164,6 +164,7 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     ready_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
+    ncpPowerState(modemPowerState() ? NcpPowerState::ON : NcpPowerState::OFF);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -325,9 +326,27 @@ int QuectelNcpClient::off() {
     if (ncpState_ == NcpState::DISABLED) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    // Try using AT command to turn off the modem first.
+    int r = modemSoftPowerOff();
+
+    // Disable ourselves/channel, so that the muxer can potentially stop faster non-gracefully
+    serial_->enabled(false);
     muxer_.stop();
-    // Power down
-    modemPowerOff();
+    serial_->enabled(true);
+
+    if (!r) {
+        LOG(TRACE, "Soft power off modem successfully");
+        // WARN: We assume that the modem can turn off itself reliably.
+    } else {
+        // Power down using hardware
+        modemPowerOff();
+        // FIXME: There is power leakage still if powering off the modem failed.
+    }
+
+    // Disable the UART interface.
+    LOG(TRACE, "Deinit modem serial.");
+    serial_->on(false);
+
     ready_ = false;
     ncpState(NcpState::OFF);
     return SYSTEM_ERROR_NONE;
@@ -342,7 +361,7 @@ int QuectelNcpClient::enable() {
     muxerAtStream_->enabled(true);
     ncpState_ = prevNcpState_;
     off();
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void QuectelNcpClient::disable() {
@@ -360,6 +379,10 @@ void QuectelNcpClient::disable() {
 
 NcpState QuectelNcpClient::ncpState() {
     return ncpState_;
+}
+
+NcpPowerState QuectelNcpClient::ncpPowerState() {
+    return pwrState_;
 }
 
 int QuectelNcpClient::disconnect() {
@@ -430,7 +453,7 @@ int QuectelNcpClient::dataChannelFlowControl(bool state) {
         inFlowControl_ = false;
         muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL);
     }
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void QuectelNcpClient::processEvents() {
@@ -764,17 +787,16 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
 
 int QuectelNcpClient::setRegistrationTimeout(unsigned timeout) {
     registrationTimeout_ = std::max(timeout, REGISTRATION_TIMEOUT);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::getTxDelayInDataChannel() {
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::checkParser() {
-    if (ncpState_ != NcpState::ON) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
+    CHECK_TRUE(pwrState_ == NcpPowerState::ON, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     if (ready_ && parserError_ != 0) {
         const int r = parser_.execCommand(1000, "AT");
         if (r == AtResponse::OK) {
@@ -1026,7 +1048,7 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
         if (!waitAtResponse(10000)) {
             // We are in muxed mode already with AT channel open
             state = ModemState::MuxerAtChannel;
-            return 0;
+            return SYSTEM_ERROR_NONE;
         }
 
         // Something went wrong, we are supposed to be in multiplexed mode, however we are not receiving
@@ -1044,7 +1066,7 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
     parser_.reset();
     if (!waitAtResponse(1000)) {
         state = ModemState::RuntimeBaudrate;
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     LOG_DEBUG(TRACE, "Modem is not responsive @ %u baudrate", QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE);
@@ -1056,7 +1078,7 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
     parser_.reset();
     if (!waitAtResponse(20000)) {
         state = ModemState::DefaultBaudrate;
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     LOG_DEBUG(TRACE, "Modem is not responsive @ %u baudrate", QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE);
@@ -1080,7 +1102,7 @@ int QuectelNcpClient::initMuxer() {
     // Start muxer (blocking call)
     CHECK_TRUE(muxer_.start(true) == 0, SYSTEM_ERROR_UNKNOWN);
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::checkSimCard() {
@@ -1198,6 +1220,20 @@ void QuectelNcpClient::ncpState(NcpState state) {
     }
 }
 
+void QuectelNcpClient::ncpPowerState(NcpPowerState state) {
+    if (pwrState_ == state) {
+        return;
+    }
+    pwrState_ = state;
+    const auto handler = conf_.eventHandler();
+    if (handler) {
+        NcpPowerStateChangedEvent event = {};
+        event.type = NcpEvent::POWER_STATE_CHANGED;
+        event.state = pwrState_;
+        handler(event, conf_.eventHandlerData());
+    }
+}
+
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;
@@ -1247,7 +1283,7 @@ int QuectelNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Chann
 
     // Ignore state changes unless we are in an ON state
     if (self->ncpState() != NcpState::ON) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     // This callback is executed from the multiplexer thread, not safe to use the lock here
     // because it might get called while blocked inside some muxer function
@@ -1323,46 +1359,76 @@ int QuectelNcpClient::processEventsImpl() {
 }
 
 int QuectelNcpClient::modemInit() const {
-    hal_gpio_config_t conf = {.size = sizeof(conf), .version = 0, .mode = OUTPUT, .set_value = false, .value = 0};
-
-    // Configure PWR_ON and RESET_N pins as Open-Drain and set to high by default
-    CHECK(HAL_Pin_Configure(BGPWR, &conf));
-    CHECK(HAL_Pin_Configure(BGRST, &conf));
-    CHECK(HAL_Pin_Configure(BGDTR, &conf)); // Set DTR=0 to wake up modem
-
-    // BGDTR=1: normal mode, BGDTR=0: sleep mode
-    conf.value = 1;
-    CHECK(HAL_Pin_Configure(BGDTR, &conf));
-
+    hal_gpio_config_t conf = {
+        .size = sizeof(conf),
+        .version = 0,
+        .mode = INPUT_PULLUP,
+        .set_value = false,
+        .value = 0
+    };
     // Configure VINT as Input for modem power state monitoring
+    // NOTE: The BGVINT pin is inverted
     conf.mode = INPUT_PULLUP;
     CHECK(HAL_Pin_Configure(BGVINT, &conf));
+
+    if (modemPowerState() == 1) {
+        LOG(TRACE, "Startup: Modem is on");
+    } else {
+        LOG(TRACE, "Startup: Modem is off");
+    }
+
+    // Configure PWR_ON and RESET_N pins as OUTPUT and set to high by default
+    conf.mode = OUTPUT;
+    conf.set_value = true;
+    // NOTE: The BGPWR/BGRST pins are inverted
+    conf.value = 0;
+    CHECK(HAL_Pin_Configure(BGPWR, &conf));
+    CHECK(HAL_Pin_Configure(BGRST, &conf));
+
+    // DTR=0: normal mode, DTR=1: sleep mode
+    // NOTE: The BGDTR pins is inverted
+    conf.value = 1; 
+    CHECK(HAL_Pin_Configure(BGDTR, &conf));
 
     LOG(TRACE, "Modem low level initialization OK");
 
     return SYSTEM_ERROR_NONE;
 }
 
-int QuectelNcpClient::modemPowerOn() const {
+bool QuectelNcpClient::waitModemPowerState(bool onOff, system_tick_t timeout) {
+    system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
+        if (modemPowerState() == onOff) {
+            if (onOff) {
+                ncpPowerState(NcpPowerState::ON);
+            } else {
+                ncpPowerState(NcpPowerState::OFF);
+            }
+            return true;
+        }
+        HAL_Delay_Milliseconds(5);
+    }
+    return false;
+}
+
+int QuectelNcpClient::modemPowerOn() {
+    if (!serial_->on()) {
+        CHECK(serial_->on(true));
+    }
     if (!modemPowerState()) {
+        ncpPowerState(NcpPowerState::TRANSIENT_ON);
+
         LOG(TRACE, "Powering modem on");
-        // Power on, power on pulse >= 500ms
+        // Power on, power on pulse >= 100ms
+        // NOTE: The BGPWR pin is inverted
         HAL_GPIO_Write(BGPWR, 1);
-        HAL_Delay_Milliseconds(500);
+        HAL_Delay_Milliseconds(200);
         HAL_GPIO_Write(BGPWR, 0);
 
-        bool powerGood;
         // After power on the device, we can't assume the device is ready for operation:
         // BG96: status pin ready requires >= 4.8s, uart ready requires >= 4.9s
         // EG91: status pin ready requires >= 10s, uart ready requires >= 12s
-        for (unsigned i = 0; i < 100; i++) {
-            powerGood = modemPowerState();
-            if (powerGood) {
-                break;
-            }
-            HAL_Delay_Milliseconds(150);
-        }
-        if (powerGood) {
+        if (waitModemPowerState(1, 15000)) {
             LOG(TRACE, "Modem powered on");
         } else {
             LOG(ERROR, "Failed to power on modem");
@@ -1377,26 +1443,21 @@ int QuectelNcpClient::modemPowerOn() const {
     return SYSTEM_ERROR_NONE;
 }
 
-int QuectelNcpClient::modemPowerOff() const {
+int QuectelNcpClient::modemPowerOff() {
     if (modemPowerState()) {
+        ncpPowerState(NcpPowerState::TRANSIENT_OFF);
+
         LOG(TRACE, "Powering modem off");
         // Power off, power off pulse >= 650ms
+        // NOTE: The BGRST pin is inverted
         HAL_GPIO_Write(BGPWR, 1);
         HAL_Delay_Milliseconds(650);
         HAL_GPIO_Write(BGPWR, 0);
 
-        bool powerGood;
         // Verify that the module was powered down by checking the status pin (BGVINT)
         // BG96: >=2s
         // EG91: >=30s
-        for (unsigned i = 0; i < 100; i++) {
-            powerGood = modemPowerState();
-            if (!powerGood) {
-                break;
-            }
-            HAL_Delay_Milliseconds(300);
-        }
-        if (!powerGood) {
+        if (waitModemPowerState(0, 30000)) {
             LOG(TRACE, "Modem powered off");
         } else {
             LOG(ERROR, "Failed to power off modem, try hard reset");
@@ -1410,20 +1471,81 @@ int QuectelNcpClient::modemPowerOff() const {
     return SYSTEM_ERROR_NONE;
 }
 
-int QuectelNcpClient::modemHardReset(bool powerOff) const {
+int QuectelNcpClient::modemSoftPowerOff() {
+    if (modemPowerState()) {
+        LOG(TRACE, "Try powering modem off using AT command");
+        if (!ready_) {
+            LOG(ERROR, "NCP client is not ready");
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        int r = CHECK_PARSER(parser_.execCommand("AT+QPOWD"));
+        if (r != AtResponse::OK) {
+            LOG(ERROR, "AT+CPWROFF command is not responding");
+            return SYSTEM_ERROR_AT_NOT_OK;
+        }
+        ncpPowerState(NcpPowerState::TRANSIENT_OFF);
+        system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+        LOG(TRACE, "Waiting the modem to be turned off...");
+        // Verify that the module was powered down by checking the VINT pin up to 30 sec
+        if (waitModemPowerState(0, 30000)) {
+            LOG(TRACE, "It takes %d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
+        } else {
+            LOG(ERROR, "Failed to power off modem using AT command");
+        }
+    } else {
+        LOG(TRACE, "Modem already off");
+    }
+
+    CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
+    return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::modemHardReset(bool powerOff) {
     LOG(TRACE, "Hard resetting the modem");
 
     // BG96 reset, 150ms <= reset pulse <= 460ms
+    // NOTE: The BGRST pin is inverted
     HAL_GPIO_Write(BGRST, 1);
-    HAL_Delay_Milliseconds(300);
+    HAL_Delay_Milliseconds(400);
     HAL_GPIO_Write(BGRST, 0);
-    HAL_Delay_Milliseconds(160);
+
+    LOG(TRACE, "Waiting the modem to restart.");
+    if (waitModemPowerState(1, 30000)) {
+        LOG(TRACE, "Successfully reset the modem.");
+    } else {
+        LOG(ERROR, "Failed to reset the modem.");
+    }
+
+    // The modem restarts automatically after hard reset.
+    if (powerOff) {
+        // Need to delay at least 5s, otherwise, the modem cannot be powered off.
+        HAL_Delay_Milliseconds(5000);
+
+        ncpPowerState(NcpPowerState::TRANSIENT_OFF);
+
+        LOG(TRACE, "Powering modem off");
+        // Power off, power off pulse >= 650ms
+        // NOTE: The BGPWR pin is inverted
+        HAL_GPIO_Write(BGPWR, 1);
+        HAL_Delay_Milliseconds(650);
+        HAL_GPIO_Write(BGPWR, 0);
+
+        // Verify that the module was powered down by checking the status pin (BGVINT)
+        // BG96: >=2s
+        // EG91: >=30s
+        if (waitModemPowerState(0, 30000)) {
+            LOG(TRACE, "Modem powered off");
+        } else {
+            LOG(ERROR, "Failed to power off modem");
+        }
+    }
 
     return SYSTEM_ERROR_NONE;
 }
 
 bool QuectelNcpClient::modemPowerState() const {
     // LOG(TRACE, "BGVINT: %d", HAL_GPIO_Read(BGVINT));
+    // NOTE: The BGVINT pin is inverted
     return !HAL_GPIO_Read(BGVINT);
 }
 

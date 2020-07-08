@@ -29,7 +29,7 @@
 #include "platforms.h"
 #include "assert.h"
 
-#define HAL_SLEEP_VERSION 2
+#define HAL_SLEEP_VERSION 3
 
 #ifdef __cplusplus
 extern "C" {
@@ -85,6 +85,12 @@ typedef enum hal_sleep_flags_t {
     HAL_SLEEP_FLAG_MAX = 0x7FFFFFFF
 } hal_sleep_flags_t;
 
+typedef enum hal_sleep_network_flags_t {
+    HAL_SLEEP_NETWORK_FLAG_NONE = 0,
+    HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY = 0x01,
+    HAL_SLEEP_NETWORK_FLAG_MAX = 0x7FFF
+} hal_sleep_network_flags_t;
+
 #if PLATFORM_ID > PLATFORM_GCC
 static_assert(sizeof(hal_sleep_mode_t) == 1, "length of hal_sleep_mode_t should be 1-bytes aligned.");
 static_assert(sizeof(hal_wakeup_source_type_t) == 2, "length of hal_wakeup_source_type_t should be 2-bytes aligned.");
@@ -126,6 +132,8 @@ typedef struct hal_wakeup_source_rtc_t {
 typedef struct hal_wakeup_source_network_t {
     hal_wakeup_source_base_t base; // This must come first in order to use casting.
     network_interface_index index;
+    uint16_t flags; // hal_sleep_network_flags_t
+    uint8_t reserved;
 } hal_wakeup_source_network_t;
 
 /**

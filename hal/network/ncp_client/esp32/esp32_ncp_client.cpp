@@ -121,6 +121,7 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     parserError_ = 0;
     ready_ = false;
     muxerNotStarted_ = false;
+    pwrState_ = NcpPowerState::UNKNOWN;
     return 0;
 }
 
@@ -159,7 +160,12 @@ int Esp32NcpClient::on() {
     if (ncpState_ == NcpState::ON) {
         return 0;
     }
+    if (!serial_->on()) {
+        CHECK(serial_->on(true));
+    }
+    ncpPowerState(NcpPowerState::TRANSIENT_ON);
     CHECK(waitReady());
+    ncpPowerState(NcpPowerState::ON);
     return 0;
 }
 
@@ -169,9 +175,14 @@ int Esp32NcpClient::off() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     muxer_.stop();
+    ncpPowerState(NcpPowerState::TRANSIENT_OFF);
     espOff();
     ready_ = false;
     ncpState(NcpState::OFF);
+    // Disable the UART interface.
+    LOG(TRACE, "Deinit modem serial.");
+    serial_->on(false);
+    ncpPowerState(NcpPowerState::OFF);
     return 0;
 }
 
@@ -202,6 +213,10 @@ void Esp32NcpClient::disable() {
 
 NcpState Esp32NcpClient::ncpState() {
     return ncpState_;
+}
+
+NcpPowerState Esp32NcpClient::ncpPowerState() {
+    return pwrState_;
 }
 
 int Esp32NcpClient::disconnect() {
@@ -435,9 +450,8 @@ int Esp32NcpClient::getMacAddress(MacAddress* addr) {
 }
 
 int Esp32NcpClient::checkParser() {
-    if (ncpState_ != NcpState::ON) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
+    CHECK_TRUE(pwrState_ == NcpPowerState::ON, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     if (ready_ && parserError_ != 0) {
         const int r = parser_.execCommand(1000, "AT");
         if (r == AtResponse::OK) {
@@ -598,6 +612,20 @@ void Esp32NcpClient::ncpState(NcpState state) {
         NcpStateChangedEvent event = {};
         event.type = NcpEvent::NCP_STATE_CHANGED;
         event.state = ncpState_;
+        handler(event, conf_.eventHandlerData());
+    }
+}
+
+void Esp32NcpClient::ncpPowerState(NcpPowerState state) {
+    if (pwrState_ == state) {
+        return;
+    }
+    pwrState_ = state;
+    const auto handler = conf_.eventHandler();
+    if (handler) {
+        NcpPowerStateChangedEvent event = {};
+        event.type = NcpEvent::POWER_STATE_CHANGED;
+        event.state = pwrState_;
         handler(event, conf_.eventHandlerData());
     }
 }

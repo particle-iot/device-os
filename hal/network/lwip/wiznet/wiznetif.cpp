@@ -40,7 +40,7 @@ LOG_SOURCE_CATEGORY("net.en")
 #include "interrupts_hal.h"
 #include "deviceid_hal.h"
 #include "bytes2hexbuf.h"
-
+#include "system_error.h"
 #include "concurrent_hal.h"
 
 #include "platform_config.h"
@@ -418,6 +418,11 @@ int WizNetif::powerUp() {
 
 int WizNetif::powerDown() {
     return down();
+}
+
+int WizNetif::getPowerState(if_power_state_t* state) const {
+    // TODO: implement it
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 int WizNetif::openRaw() {

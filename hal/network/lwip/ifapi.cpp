@@ -1171,3 +1171,19 @@ int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved) 
 
     return 0;
 }
+
+void if_notify_event(if_t iface, const struct if_event* evt, void* reserved) {
+    notify_all_handlers_event(iface, evt);
+}
+
+int if_get_power_state(if_t iface, if_power_state_t* state) {
+    LwipTcpIpCoreLock lk;
+
+    if (!netif_validate(iface)) {
+        return -1;
+    }
+
+    auto bnetif = getBaseNetif(iface);
+    CHECK_TRUE(bnetif, -1);
+    return bnetif->getPowerState(state);
+}

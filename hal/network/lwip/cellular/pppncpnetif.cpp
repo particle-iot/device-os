@@ -102,6 +102,7 @@ void PppNcpNetif::loop(void* arg) {
         self->celMan_->ncpClient()->enable(); // Make sure the client is enabled
         if (!r) {
             // Event
+            LOG(TRACE, "PPP netif event from queue: %d", ev);
             switch (ev) {
                 case NetifEvent::Up: {
                     self->upImpl();
@@ -156,6 +157,22 @@ int PppNcpNetif::powerUp() {
 int PppNcpNetif::powerDown() {
     NetifEvent ev = NetifEvent::PowerOff;
     return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+}
+
+int PppNcpNetif::getPowerState(if_power_state_t* state) const {
+    auto s = celMan_->ncpClient()->ncpPowerState();
+    if (s == NcpPowerState::ON) {
+        *state = IF_POWER_STATE_UP;
+    } else if (s == NcpPowerState::OFF) {
+        *state = IF_POWER_STATE_DOWN;
+    } else if (s == NcpPowerState::TRANSIENT_ON) {
+        *state = IF_POWER_STATE_POWERING_UP;
+    } else if (s == NcpPowerState::TRANSIENT_OFF) {
+        *state = IF_POWER_STATE_POWERING_DOWN;
+    } else {
+        *state = IF_POWER_STATE_NONE;
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 int PppNcpNetif::upImpl() {
@@ -254,6 +271,31 @@ void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
         const auto& cev = static_cast<const CellularNcpAuthEvent&>(ev);
         LOG(TRACE, "New auth info");
         self->client_.setAuth(cev.user, cev.password);
+    } else if (ev.type == NcpEvent::POWER_STATE_CHANGED) {
+        const auto& cev = static_cast<const NcpPowerStateChangedEvent&>(ev);
+        if (cev.state != NcpPowerState::UNKNOWN) {
+            if_event evt = {};
+            struct if_event_power_state ev_if_power_state = {};
+            evt.ev_len = sizeof(if_event);
+            evt.ev_type = IF_EVENT_POWER_STATE;
+            evt.ev_power_state = &ev_if_power_state;
+            if (cev.state == NcpPowerState::ON) {
+                evt.ev_power_state->state = IF_POWER_STATE_UP;
+                LOG(TRACE, "NCP power state changed: IF_POWER_STATE_UP");
+            } else if (cev.state == NcpPowerState::OFF) {
+                evt.ev_power_state->state = IF_POWER_STATE_DOWN;
+                LOG(TRACE, "NCP power state changed: IF_POWER_STATE_DOWN");
+            } else if (cev.state == NcpPowerState::TRANSIENT_ON) {
+                evt.ev_power_state->state = IF_POWER_STATE_POWERING_UP;
+                LOG(TRACE, "NCP power state changed: IF_POWER_STATE_POWERING_UP");
+            } else {
+                evt.ev_power_state->state = IF_POWER_STATE_POWERING_DOWN;
+                LOG(TRACE, "NCP power state changed: IF_POWER_STATE_POWERING_DOWN");
+            }
+            if_notify_event(self->interface(), &evt, nullptr);
+        } else {
+            LOG(ERROR, "NCP power state unknown");
+        }
     }
 }
 

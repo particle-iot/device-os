@@ -29,6 +29,20 @@ namespace particle {
 int initRadioAntenna();
 
 /**
+ * Disable the BLE antenna
+ *
+ * @return 0 on success or a negative result code in case of an error.
+ */
+int disableRadioAntenna();
+
+/**
+ * Enable the BLE antenna
+ *
+ * @return 0 on success or a negative result code in case of an error.
+ */
+int enableRadioAntenna();
+
+/**
  * Select the BLE antenna and store the setting in the DCT.
  *
  * @param antenna Antenna type.

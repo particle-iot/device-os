@@ -159,7 +159,9 @@ enum if_link_state_t {
 enum if_power_state_t {
     IF_POWER_STATE_NONE = 0x00,
     IF_POWER_STATE_DOWN = 0x01,
-    IF_POWER_STATE_UP   = 0x02
+    IF_POWER_STATE_UP   = 0x02,
+    IF_POWER_STATE_POWERING_DOWN = 0x03,
+    IF_POWER_STATE_POWERING_UP = 0x04,
 };
 
 struct if_event_state {
@@ -254,6 +256,9 @@ if_event_handler_cookie_t if_event_handler_self(if_t iface, if_event_handler_t h
 int if_event_handler_del(if_event_handler_cookie_t cookie);
 
 int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved);
+void if_notify_event(if_t iface, const struct if_event* evt, void* reserved);
+
+int if_get_power_state(if_t iface, if_power_state_t* state);
 
 #ifdef __cplusplus
 }

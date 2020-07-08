@@ -46,6 +46,7 @@ public:
     int enable() override;
     void disable() override;
     NcpState ncpState() override;
+    NcpPowerState ncpPowerState() override;
     int disconnect() override;
     NcpConnectionState connectionState() override;
     int getFirmwareVersionString(char* buf, size_t size) override;
@@ -54,6 +55,7 @@ public:
     int dataChannelWrite(int id, const uint8_t* data, size_t size) override;
     int dataChannelFlowControl(bool state) override;
     void processEvents() override;
+    int checkParser() override;
     AtParser* atParser() override;
     void lock() override;
     void unlock() override;
@@ -76,6 +78,7 @@ private:
     volatile NcpState ncpState_ = NcpState::OFF;
     volatile NcpState prevNcpState_;
     volatile NcpConnectionState connState_ = NcpConnectionState::DISCONNECTED;
+    volatile NcpPowerState pwrState_ = NcpPowerState::UNKNOWN;
     int parserError_ = 0;
     bool ready_ = false;
     gsm0710::Muxer<particle::SerialStream, StaticRecursiveMutex> muxer_;
@@ -113,7 +116,6 @@ private:
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
-    int checkParser();
     int waitReady(bool powerOn = false);
     int initReady(ModemState state);
     int checkRuntimeState(ModemState& state);
@@ -127,6 +129,7 @@ private:
     static int muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
             decltype(muxer_)::ChannelState newState, void* ctx);
     void ncpState(NcpState state);
+    void ncpPowerState(NcpPowerState state);
     void connectionState(NcpConnectionState state);
     void parserError(int error);
     void resetRegistrationState();
@@ -134,8 +137,10 @@ private:
     int processEventsImpl();
 
     int modemInit() const;
-    int modemPowerOn() const;
+    bool waitModemPowerState(bool onOff, system_tick_t timeout);
+    int modemPowerOn();
     int modemPowerOff();
+    int modemSoftPowerOff();
     int modemHardReset(bool powerOff = false);
     bool modemPowerState() const;
     int modemSetUartState(bool state) const;

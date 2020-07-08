@@ -146,6 +146,11 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).off(flags & 1));
 }
 
+int network_wait_off(network_handle_t network, system_tick_t timeout, void*) {
+    // Temporarily not necessary for Gen2 platforms.
+    return SYSTEM_ERROR_NONE;
+}
+
 /**
  *
  * @param network

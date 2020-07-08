@@ -27,6 +27,10 @@
 #include "spark_wiring_network.h"
 #include "enumflags.h"
 
+#define SYSTEM_SLEEP_NETWORK_FLAG_SUPPORTED_VER     (3)
+
+namespace particle {
+
 enum class SystemSleepMode: uint8_t {
     NONE            = HAL_SLEEP_MODE_NONE,
     STOP            = HAL_SLEEP_MODE_STOP,
@@ -38,6 +42,12 @@ enum class SystemSleepFlag: uint32_t {
     NONE = HAL_SLEEP_FLAG_NONE,
     WAIT_CLOUD = HAL_SLEEP_FLAG_WAIT_CLOUD
 };
+
+enum class SystemSleepNetworkFlag: uint16_t {
+    NONE = HAL_SLEEP_NETWORK_FLAG_NONE,
+    INACTIVE_STANDBY = HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY
+};
+ENABLE_ENUM_CLASS_BITWISE(SystemSleepNetworkFlag);
 
 class SystemSleepConfigurationHelper {
 public:
@@ -71,7 +81,7 @@ public:
         auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK);
         while (wakeup) {
             auto networkWakeup = reinterpret_cast<const hal_wakeup_source_network_t*>(wakeup);
-            if (networkWakeup->index == index) {
+            if (networkWakeup->index == index && !(networkWakeup->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
                 return true;
             }
             wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK, wakeup->next);
@@ -79,8 +89,23 @@ public:
         return false;
     }
 
-    particle::EnumFlags<SystemSleepFlag> sleepFlags() const {
-        return particle::EnumFlags<SystemSleepFlag>::fromUnderlying(config_->flags);
+    EnumFlags<SystemSleepNetworkFlag> networkFlags(network_interface_index index) const {
+        if (config_->version < SYSTEM_SLEEP_NETWORK_FLAG_SUPPORTED_VER) {
+            return EnumFlags<SystemSleepNetworkFlag>(SystemSleepNetworkFlag::NONE);
+        }
+        auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK);
+        while (wakeup) {
+            auto networkWakeup = reinterpret_cast<const hal_wakeup_source_network_t*>(wakeup);
+            if (networkWakeup->index == index) {
+                return EnumFlags<SystemSleepNetworkFlag>::fromUnderlying(networkWakeup->flags);
+            }
+            wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK, wakeup->next);
+        }
+        return EnumFlags<SystemSleepNetworkFlag>(SystemSleepNetworkFlag::NONE);
+    }
+
+    EnumFlags<SystemSleepFlag> sleepFlags() const {
+        return EnumFlags<SystemSleepFlag>::fromUnderlying(config_->flags);
     }
 
     SystemSleepMode sleepMode() const {
@@ -185,7 +210,7 @@ public:
         return *this;
     }
 
-    SystemSleepConfiguration& flag(particle::EnumFlags<SystemSleepFlag> f) {
+    SystemSleepConfiguration& flag(EnumFlags<SystemSleepFlag> f) {
         if (valid_) {
             config_.flags |= f.value();
         }
@@ -249,12 +274,15 @@ public:
         return duration(ms.count());
     }
 
-    SystemSleepConfiguration& network(network_interface_t netif) {
+    SystemSleepConfiguration& network(network_interface_t netif, EnumFlags<SystemSleepNetworkFlag> flags = SystemSleepNetworkFlag::NONE) {
         if (valid_) {
             auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK);
             while (wakeup) {
                 auto networkWakeup = reinterpret_cast<hal_wakeup_source_network_t*>(wakeup);
                 if (networkWakeup->index == netif) {
+                    if (networkWakeup->flags != flags.value()) {
+                        networkWakeup->flags |= flags.value();
+                    }
                     return *this;
                 }
                 wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK, wakeup->next);
@@ -269,6 +297,7 @@ public:
             wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_NETWORK;
             wakeupSource->base.next = config_.wakeup_sources;
             wakeupSource->index = static_cast<network_interface_index>(netif);
+            wakeupSource->flags = flags.value();
             config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
         }
         return *this;
@@ -302,3 +331,5 @@ private:
     hal_sleep_config_t config_;
     bool valid_;
 };
+
+} /* namespace particle */

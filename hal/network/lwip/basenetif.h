@@ -36,6 +36,8 @@ public:
     virtual int powerUp() = 0;
     virtual int powerDown() = 0;
 
+    virtual int getPowerState(if_power_state_t* state) const = 0;
+
 protected:
     void registerHandlers();
 

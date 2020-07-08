@@ -44,6 +44,7 @@ public:
     int enable() override;
     void disable() override;
     NcpState ncpState() override;
+    NcpPowerState ncpPowerState() override;
     int disconnect() override;
     NcpConnectionState connectionState() override;
     int getFirmwareVersionString(char* buf, size_t size) override;
@@ -52,6 +53,7 @@ public:
     int dataChannelWrite(int id, const uint8_t* data, size_t size) override;
     int dataChannelFlowControl(bool state) override;
     void processEvents() override;
+    int checkParser() override;
     AtParser* atParser() override;
     void lock() override;
     void unlock() override;
@@ -71,6 +73,7 @@ private:
     volatile NcpState ncpState_;
     volatile NcpState prevNcpState_;
     volatile NcpConnectionState connState_;
+    volatile NcpPowerState pwrState_;
     int parserError_;
     bool ready_;
     gsm0710::Muxer<particle::SerialStream, StaticRecursiveMutex> muxer_;
@@ -79,13 +82,13 @@ private:
     volatile bool inFlowControl_ = false;
 
     int initParser(Stream* stream);
-    int checkParser();
     int waitReady();
     int initReady();
     int initMuxer();
     static int muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
             decltype(muxer_)::ChannelState newState, void* ctx);
     void ncpState(NcpState state);
+    void ncpPowerState(NcpPowerState state);
     void connectionState(NcpConnectionState state);
     void parserError(int error);
     int getFirmwareModuleVersionImpl(uint16_t* ver);

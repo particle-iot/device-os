@@ -70,6 +70,10 @@ public:
     int countEnabledInterfaces();
     int syncInterfaceStates();
 
+    int powerInterface(if_t iface = nullptr, bool enable = true);
+
+    int waitInterfaceOff(if_t iface, system_tick_t timeout) const;
+
     enum class State {
         NONE,
         /* Networking is disabled */
@@ -105,13 +109,15 @@ private:
     struct InterfaceRuntimeState {
         InterfaceRuntimeState()
                 : ip4State(ProtocolState::UNCONFIGURED),
-                  ip6State(ProtocolState::UNCONFIGURED) {
+                  ip6State(ProtocolState::UNCONFIGURED),
+                  pwrState(IF_POWER_STATE_NONE) {
         }
         InterfaceRuntimeState* next = nullptr;
         bool enabled = false;
         if_t iface = nullptr;
         std::atomic<ProtocolState> ip4State;
         std::atomic<ProtocolState> ip6State;
+        std::atomic<if_power_state_t> pwrState;
     };
 
     void transition(State state);
@@ -124,6 +130,7 @@ private:
     void handleIfLink(if_t iface, const struct if_event* ev);
     void handleIfAddr(if_t iface, const struct if_event* ev);
     void handleIfLinkLayerAddr(if_t iface, const struct if_event* ev);
+    void handleIfPowerState(if_t iface, const struct if_event* ev);
 
     unsigned int countIfacesWithFlags(unsigned int flags) const;
     void refreshIpState();

@@ -445,6 +445,7 @@ int cellular_command(_CALLBACKPTR_MDM cb, void* param, system_tick_t timeout_ms,
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
     auto parser = client->atParser();
     CHECK_TRUE(parser, SYSTEM_ERROR_UNKNOWN);
+    CHECK(client->checkParser());
 
     NcpClientLock lock(client);
 

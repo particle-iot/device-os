@@ -322,7 +322,7 @@ public:
     }
 #endif
 
-    static SystemSleepResult sleep(const SystemSleepConfiguration& config);
+    static SystemSleepResult sleep(const particle::SystemSleepConfiguration& config);
 
     static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
     inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, std::chrono::seconds s, SleepOptionFlags flag=SLEEP_NETWORK_OFF) { return sleep(sleepMode, s.count(), flag); }

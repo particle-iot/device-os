@@ -224,6 +224,22 @@ int Esp32NcpNetif::powerDown() {
     return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
 }
 
+int Esp32NcpNetif::getPowerState(if_power_state_t* state) const {
+    auto s = wifiMan_->ncpClient()->ncpPowerState();
+    if (s == NcpPowerState::ON) {
+        *state = IF_POWER_STATE_UP;
+    } else if (s == NcpPowerState::OFF) {
+        *state = IF_POWER_STATE_DOWN;
+    } else if (s == NcpPowerState::TRANSIENT_ON) {
+        *state = IF_POWER_STATE_POWERING_UP;
+    } else if (s == NcpPowerState::TRANSIENT_OFF) {
+        *state = IF_POWER_STATE_POWERING_DOWN;
+    } else {
+        *state = IF_POWER_STATE_NONE;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 int Esp32NcpNetif::upImpl() {
     up_ = true;
     auto r = queryMacAddress();
@@ -255,6 +271,31 @@ void Esp32NcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
             netif_set_link_down(self->interface());
         } else if (cev.state == NcpConnectionState::CONNECTED) {
             netif_set_link_up(self->interface());
+        }
+    } else if (ev.type == NcpEvent::POWER_STATE_CHANGED) {
+        const auto& cev = static_cast<const NcpPowerStateChangedEvent&>(ev);
+        if (cev.state != NcpPowerState::UNKNOWN) {
+            if_event evt = {};
+            struct if_event_power_state ev_if_power_state = {};
+            evt.ev_len = sizeof(if_event);
+            evt.ev_type = IF_EVENT_POWER_STATE;
+            evt.ev_power_state = &ev_if_power_state;
+            if (cev.state == NcpPowerState::ON) {
+                evt.ev_power_state->state = IF_POWER_STATE_UP;
+                LOG(TRACE, "NCP power state changed: IF_POWER_STATE_UP");
+            } else if (cev.state == NcpPowerState::OFF) {
+                evt.ev_power_state->state = IF_POWER_STATE_DOWN;
+                LOG(TRACE, "NCP power state changed: IF_POWER_STATE_DOWN");
+            } else if (cev.state == NcpPowerState::TRANSIENT_ON) {
+                evt.ev_power_state->state = IF_POWER_STATE_POWERING_UP;
+                LOG(TRACE, "NCP power state changed: IF_POWER_STATE_POWERING_UP");
+            } else {
+                evt.ev_power_state->state = IF_POWER_STATE_POWERING_DOWN;
+                LOG(TRACE, "NCP power state changed: IF_POWER_STATE_POWERING_DOWN");
+            }
+            if_notify_event(self->interface(), &evt, nullptr);
+        } else {
+            LOG(ERROR, "NCP power state unknown");
         }
     }
 }

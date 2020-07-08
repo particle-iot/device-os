@@ -20,6 +20,7 @@
 #include "usart_hal.h"
 #include "usart_hal_private.h"
 #include "stream.h"
+#include "check.h"
 #include <memory>
 
 namespace particle {
@@ -44,6 +45,9 @@ public:
     void enabled(bool enabled);
     bool enabled() const;
 
+    int on(bool on);
+    bool on() const;
+
     EventGroupHandle_t eventGroup();
 
 private:
@@ -51,7 +55,10 @@ private:
     std::unique_ptr<char[]> rxBuffer_;
     std::unique_ptr<char[]> txBuffer_;
     uint32_t config_;
+    uint32_t baudrate_;
     volatile bool enabled_;
+    volatile bool phyOn_;
+
 };
 
 inline void SerialStream::enabled(bool enabled) {
@@ -60,6 +67,10 @@ inline void SerialStream::enabled(bool enabled) {
 
 inline bool SerialStream::enabled() const {
     return enabled_;
+}
+
+inline bool SerialStream::on() const {
+    return phyOn_;
 }
 
 static_assert((int)SerialStream::READABLE == (int)HAL_USART_PVT_EVENT_READABLE, "Serial::READABLE needs to match HAL_USART_PVT_EVENT_READABLE");
