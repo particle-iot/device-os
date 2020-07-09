@@ -19,6 +19,8 @@
 
 #include "messages.h"
 
+#include "coap_option.h"
+
 #include "appender.h"
 
 namespace particle {
@@ -31,6 +33,12 @@ const unsigned GOODBYE_CLOUD_DISCONNECT_REASON_FLAG = 0x01;
 const unsigned GOODBYE_SYSTEM_RESET_REASON_FLAG = 0x02;
 const unsigned GOODBYE_SLEEP_DURATION_FLAG = 0x04;
 const unsigned GOODBYE_NETWORK_DISCONNECT_REASON_FLAG = 0x08;
+
+// Particle-specific CoAP options
+const unsigned COAP_OPTION_CHUNK_INDEX = 2049;
+const unsigned COAP_OPTION_CHUNK_BITMAP = 2053;
+const unsigned COAP_OPTION_WINDOW_SIZE = 2057;
+const unsigned COAP_OPTION_FILE_SIZE = 2061;
 
 } // unnamed
 
@@ -413,6 +421,33 @@ size_t Messages::response_size(size_t payload_size, bool has_token)
 	return 4 + // Message header
 			(payload_size ? payload_size + 1 : 0) + // Payload data with a marker
 			(has_token ? 1 : 0); // One-byte token
+}
+
+size_t Messages::update_begin_response(uint8_t* buf, size_t buf_size, size_t file_offset, size_t window_size,
+        token_t token) {
+	BufferAppender b(buf, buf_size);
+	b.appendUInt8(0x41); // Confirmable, 1-byte token
+	b.appendUInt8(CoAPCode::CHANGED); // 2.04
+	b.appendUInt16BE(0); // Message ID (will be set by the message channel)
+	CoapOptionEncoder opt(&b);
+	opt.encodeString(CoAPOption::URI_PATH, "C"); // Uri-Path (11)
+	opt.encodeUInt(COAP_OPTION_WINDOW_SIZE, window_size); // Window-Size (2057)
+	opt.encodeUInt(COAP_OPTION_FILE_SIZE, file_offset); // File-Size (2061)
+	return b.dataSize();
+}
+
+size_t Messages::update_chunk_ack(uint8_t* buf, size_t buf_size, size_t chunk_ack_index, const uint8_t* chunk_ack_bitmap,
+        size_t chunk_ack_bitmap_size) {
+	BufferAppender b(buf, buf_size);
+	b.appendUInt8(0x50); // Non-confirmable, no token
+	b.appendUInt8(CoAPCode::POST);
+	b.appendUInt16BE(0); // Message ID (will be set by the message channel)
+	CoapOptionEncoder opt(&b);
+	opt.encodeUInt(COAP_OPTION_CHUNK_INDEX, chunk_ack_index); // Chunk-Index (2049)
+	if (chunk_ack_bitmap_size > 0) {
+		opt.encodeOpaque(COAP_OPTION_CHUNK_BITMAP, (const char*)chunk_ack_bitmap, chunk_ack_bitmap_size); // Chunk-Bitmap (2053)
+	}
+	return b.dataSize();
 }
 
 } // particle::protocol

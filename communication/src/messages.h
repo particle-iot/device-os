@@ -23,6 +23,8 @@
 #include "system_defs.h"
 #include "events.h"
 
+#include <cstdint>
+
 namespace particle
 {
 namespace protocol
@@ -164,6 +166,32 @@ public:
      * @return Message size.
      */
     static size_t response_size(size_t payload_size, bool has_token);
+
+    /**
+     * Encode a response message for an OTA Begin request.
+     *
+     * @param buf Output buffer.
+     * @param buf_size Size of the output buffer.
+     * @param file_offset Offset in the file at which the server should start (resume) the transfer.
+     * @param window_size Size of the receiver window in chunks.
+     * @param token Message token.
+     * @return Size of the CoAP message.
+     */
+    static size_t update_begin_response(uint8_t* buf, size_t buf_size, size_t file_offset, size_t window_size,
+            token_t token);
+
+    /**
+     * Encode an acknowledgement for an OTA Chunk message.
+     *
+     * @param buf Output buffer.
+     * @param buf_size Size of the output buffer.
+     * @param chunk_ack_index Index of the last cumulatively acknowledged chunk.
+     * @param chunk_ack_bitmap Bitmap of the selectively acknowledged chunks.
+     * @param chunk_ack_bitmap_size Size of the chunk bitmap.
+     * @return Size of the CoAP message.
+     */
+    static size_t update_chunk_ack(uint8_t* buf, size_t buf_size, size_t chunk_ack_index, const uint8_t* chunk_ack_bitmap,
+            size_t chunk_ack_bitmap_size);
 };
 
 

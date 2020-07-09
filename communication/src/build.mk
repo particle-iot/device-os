@@ -13,6 +13,7 @@ INCLUDE_DIRS += $(TARGET_SRC_PATH)
 
 # C++ source files included in this build.
 CPPSRC += $(TARGET_SRC_PATH)/coap.cpp
+CPPSRC += $(TARGET_SRC_PATH)/coap_option.cpp
 CPPSRC += $(TARGET_SRC_PATH)/handshake.cpp
 CPPSRC += $(TARGET_SRC_PATH)/events.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_protocol_functions.cpp
