@@ -26,24 +26,25 @@
 extern "C" {
 #endif /* __cplusplus */
 
-typedef enum {
+typedef enum hal_exflash_special_sector_t {
     HAL_EXFLASH_SPECIAL_SECTOR_NONE = 0,
     HAL_EXFLASH_SPECIAL_SECTOR_OTP  = 1
 } hal_exflash_special_sector_t;
 
-typedef enum {
+typedef enum hal_exflash_command_t {
     HAL_EXFLASH_COMMAND_NONE            = 0,
     HAL_EXFLASH_COMMAND_LOCK_ENTIRE_OTP = 1,
     HAL_EXFLASH_COMMAND_SLEEP           = 2,
     HAL_EXFLASH_COMMAND_WAKEUP          = 3,
-    HAL_EXFLASH_COMMAND_SUSPEND_PGMERS  = 4
+    HAL_EXFLASH_COMMAND_SUSPEND_PGMERS  = 4,
+    HAL_EXFLASH_COMMAND_RESET           = 5
 } hal_exflash_command_t;
 
-typedef enum exflash_state_t {
+typedef enum hal_exflash_state_t {
     HAL_EXFLASH_STATE_DISABLED,
     HAL_EXFLASH_STATE_ENABLED,
     HAL_EXFLASH_STATE_SUSPENDED
-} exflash_state_t;
+} hal_exflash_state_t;
 
 int hal_exflash_init(void);
 int hal_exflash_uninit(void);

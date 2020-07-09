@@ -50,7 +50,7 @@ enum qspi_cmds_t {
 
 static const size_t MX25_OTP_SECTOR_SIZE = 4096 / 8; /* 4Kb or 512B */
 
-static exflash_state_t qspi_state = HAL_EXFLASH_STATE_DISABLED;
+static hal_exflash_state_t qspi_state = HAL_EXFLASH_STATE_DISABLED;
 
 // Mitigations for nRF52840 anomaly 215
 // [215] QSPI: Reading QSPI registers after XIP might halt CPU
@@ -144,6 +144,7 @@ static nrfx_err_t exflash_qspi_cinstr_quick_send(uint8_t opcode, nrf_qspi_cinstr
 
 static int configure_memory() {
     uint32_t err_code;
+
     nrf_qspi_cinstr_conf_t cinstr_cfg = {
         .opcode    = QSPI_STD_CMD_RSTEN,
         .length    = NRF_QSPI_CINSTR_LEN_1B,
@@ -241,7 +242,7 @@ int hal_exflash_init(void) {
             // Could have timed out because the flash chip might be in an ongoing program/erase operation.
             // Suspend it.
             LOG_DEBUG(TRACE, "QSPI NRFX timeout error. Suspend pgm/ers op.");
-            ret = hal_exflash_special_command(HAL_EXFLASH_COMMAND_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
+            ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
             if (ret) {
                 goto hal_exflash_init_done;
             }
@@ -251,7 +252,7 @@ int hal_exflash_init(void) {
     qspi_state = HAL_EXFLASH_STATE_ENABLED;
 
     // Wake up external flash from deep power down mode
-    ret = hal_exflash_special_command(HAL_EXFLASH_COMMAND_NONE, HAL_EXFLASH_COMMAND_WAKEUP, NULL, NULL, 0);
+    ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_WAKEUP, NULL, NULL, 0);
     if (ret) {
         goto hal_exflash_init_done;
     }
@@ -499,40 +500,34 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
     hal_exflash_lock();
     /* General commands */
     if (sp == HAL_EXFLASH_SPECIAL_SECTOR_NONE) {
+        nrf_qspi_cinstr_conf_t cinstr_cfg = {
+            .length    = NRF_QSPI_CINSTR_LEN_1B,
+            .io2_level = true,
+            .io3_level = true,
+            .wipwait   = true,
+            .wren      = true
+        };
+
         if (cmd == HAL_EXFLASH_COMMAND_SLEEP) {
-            const nrf_qspi_cinstr_conf_t cinstr_cfg = {
-                .opcode    = QSPI_MX25_CMD_SLEEP,
-                .length    = NRF_QSPI_CINSTR_LEN_1B,
-                .io2_level = true,
-                .io3_level = true,
-                .wipwait   = true,
-                .wren      = true
-            };
-
-            /* Send sleep command */
-            ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
+            cinstr_cfg.opcode = QSPI_MX25_CMD_SLEEP;
         } else if (cmd == HAL_EXFLASH_COMMAND_WAKEUP) {
-            const nrf_qspi_cinstr_conf_t cinstr_cfg = {
-                .opcode    = QSPI_MX25_CMD_READ_ID,
-                .length    = NRF_QSPI_CINSTR_LEN_1B,
-                .io2_level = true,
-                .io3_level = true,
-                .wipwait   = true,
-                .wren      = true
-            };
-
             /* Wake up external flash from deep power down modeby sending read id command */
-            ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
+            cinstr_cfg.opcode = QSPI_MX25_CMD_READ_ID;
         } else if (cmd == HAL_EXFLASH_COMMAND_SUSPEND_PGMERS) {
-            const nrf_qspi_cinstr_conf_t cinstr_cfg = {
-                .opcode    = QSPI_STD_CMD_PGMERS_SUSPEND,
-                .length    = NRF_QSPI_CINSTR_LEN_1B,
-                .io2_level = true,
-                .io3_level = true,
-                .wipwait   = true,
-                .wren      = true
-            };
             /* suspend an ongoing program or erase operation */
+            cinstr_cfg.opcode = QSPI_STD_CMD_PGMERS_SUSPEND;
+        } else if (cmd == HAL_EXFLASH_COMMAND_RESET) {
+            cinstr_cfg.opcode = QSPI_STD_CMD_RSTEN;
+        } else {
+            goto exit;
+        }
+
+        // Execute the command.
+        ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
+
+        // For the reset procedure, we need to execute the reset command going forward.
+        if (!ret && cmd == HAL_EXFLASH_COMMAND_RESET) {
+            cinstr_cfg.opcode = QSPI_STD_CMD_RST;
             ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
         }
     } else if (sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP) {
@@ -547,6 +542,7 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
         }
     }
 
+exit:
     hal_exflash_unlock();
     return ret;
 }
@@ -559,16 +555,21 @@ int hal_exflash_sleep(bool sleep, void* reserved) {
             hal_exflash_unlock();
             return SYSTEM_ERROR_INVALID_STATE;
         }
-        // Put external flash into sleep and disable QSPI peripheral
+        // Put external flash into Deep Power-down mode
         if (hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SLEEP, NULL, NULL, 0)) {
-            // It may fail as the flash chip might be in an ongoing program/erase operation.
-            // Suspend it.
-            int ret = hal_exflash_special_command(HAL_EXFLASH_COMMAND_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
+            // It may fail as the flash chip might be in an ongoing program/erase operation. Suspend it.
+            hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
+            // Abort the suspended write/erase operation.
+            hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_RESET, NULL, NULL, 0);
+            // Try enter Deep Power-down mode again
+            int ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SLEEP, NULL, NULL, 0);
             if (ret) {
+                // Give up entering Deep Power-down mode.
                 hal_exflash_unlock();
                 return ret;
             }
         }
+        // Disable QSPI peripheral
         hal_exflash_uninit();
         qspi_state = HAL_EXFLASH_STATE_SUSPENDED;
     } else {
