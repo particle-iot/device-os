@@ -19,6 +19,7 @@
 #define SERVICES_ENUMFLAGS_H
 
 #include <type_traits>
+#include <cstddef>
 
 namespace particle {
 

@@ -21,10 +21,10 @@
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 
-#include "ota_update_context.h"
 #include "enumflags.h"
 
 #include <cstdint>
+#include <cstddef>
 
 namespace particle::protocol {
 
