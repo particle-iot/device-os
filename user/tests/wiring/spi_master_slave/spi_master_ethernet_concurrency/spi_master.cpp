@@ -198,7 +198,7 @@ static void SPI_Master_Transfer_No_DMA(uint8_t* txbuf, uint8_t* rxbuf, int lengt
     }
 }
 
-static void SPI_Master_Transfer_DMA(uint8_t* txbuf, uint8_t* rxbuf, int length, HAL_SPI_DMA_UserCallback cb) {
+static void SPI_Master_Transfer_DMA(uint8_t* txbuf, uint8_t* rxbuf, int length, hal_spi_dma_user_callback cb) {
     if (cb) {
         DMA_Completed_Flag = 0;
         MY_SPI.transfer(txbuf, rxbuf, length, cb);
@@ -397,7 +397,7 @@ test(02_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Default_MODE3_MSB)
 test(03_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_Default_MODE3_MSB)
 {
     using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (HAL_SPI_DMA_UserCallback)NULL);
+    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
     SPI_Master_Slave_Master_Test_Routine(transferFunc);
 }
 
@@ -422,7 +422,7 @@ test(05_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE3_LSB)
 test(06_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE3_LSB)
 {
     using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (HAL_SPI_DMA_UserCallback)NULL);
+    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
     assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE3, LSBFIRST, transferFunc));
     SPI_Master_Slave_Master_Test_Routine(transferFunc);
 }
@@ -448,7 +448,7 @@ test(08_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE0_MSB)
 test(09_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE0_MSB)
 {
     using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (HAL_SPI_DMA_UserCallback)NULL);
+    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
     assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, MSBFIRST, transferFunc));
     SPI_Master_Slave_Master_Test_Routine(transferFunc);
 }
@@ -474,7 +474,7 @@ test(11_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE0_LSB)
 test(12_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE0_LSB)
 {
     using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (HAL_SPI_DMA_UserCallback)NULL);
+    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
     assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, LSBFIRST, transferFunc));
     SPI_Master_Slave_Master_Test_Routine(transferFunc);
 }
@@ -500,7 +500,7 @@ test(14_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE1_MSB)
 test(15_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE1_MSB)
 {
     using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (HAL_SPI_DMA_UserCallback)NULL);
+    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
     assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, MSBFIRST, transferFunc));
     SPI_Master_Slave_Master_Test_Routine(transferFunc);
 }
@@ -526,7 +526,7 @@ test(17_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE1_LSB)
 test(18_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE1_LSB)
 {
     using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (HAL_SPI_DMA_UserCallback)NULL);
+    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
     assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, LSBFIRST, transferFunc));
     SPI_Master_Slave_Master_Test_Routine(transferFunc);
 }
@@ -552,7 +552,7 @@ test(20_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE2_MSB)
 test(21_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE2_MSB)
 {
     using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (HAL_SPI_DMA_UserCallback)NULL);
+    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
     assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, MSBFIRST, transferFunc));
     SPI_Master_Slave_Master_Test_Routine(transferFunc);
 }
@@ -578,7 +578,7 @@ test(23_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE2_LSB)
 test(24_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE2_LSB)
 {
     using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (HAL_SPI_DMA_UserCallback)NULL);
+    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
     assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, LSBFIRST, transferFunc));
     SPI_Master_Slave_Master_Test_Routine(transferFunc, true);
 }

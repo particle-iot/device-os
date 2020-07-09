@@ -16,6 +16,10 @@
 #endif // #ifndef USE_CS
 
 #if HAL_PLATFORM_NRF52840
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI, but SPI slave is not supported on Gen3
+#error "SPI slave is not supported on SPI instance on Gen3 platforms. Please specify USE_SPI=SPI1."
+#endif
+
 #if (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
@@ -189,7 +193,7 @@ static void SPI_DMA_Completed_Callback()
     DMA_Completed_Flag = 1;
 }
 
-static inline void SPI_Transfer_DMA(uint8_t *tx, uint8_t *rx, int length, HAL_SPI_DMA_UserCallback cb)
+static inline void SPI_Transfer_DMA(uint8_t *tx, uint8_t *rx, int length, hal_spi_dma_user_callback cb)
 {
     while (true)
     {
@@ -231,6 +235,8 @@ test(SPI_Master_Slave_Slave_Transfer)
 
     while (true)
     {
+        int ret = hal_spi_sleep(MY_SPI.interface(), false, nullptr);
+        assertEqual(ret, (int)SYSTEM_ERROR_NONE);
         memset(SPI_Slave_Tx_Buffer, 0, sizeof(SPI_Slave_Tx_Buffer));
         memset(SPI_Slave_Rx_Buffer, 0, sizeof(SPI_Slave_Rx_Buffer));
 
@@ -295,6 +301,9 @@ test(SPI_Master_Slave_Slave_Transfer)
         }
 
         count++;
+
+        ret = hal_spi_sleep(MY_SPI.interface(), true, nullptr);
+        assertEqual(ret, (int)SYSTEM_ERROR_NONE);
     }
 }
 

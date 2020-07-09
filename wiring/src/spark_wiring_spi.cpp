@@ -64,11 +64,11 @@ uint8_t divisorShiftScale(uint8_t divider)
  * \warning This method is NOT THREADSAFE and callers will need to utilize
  *          HAL synchronization primatives.
  */
-static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
+static void querySpiInfo(hal_spi_interface_t spi, hal_spi_info_t* info)
 {
     memset(info, 0, sizeof(hal_spi_info_t));
     info->version = HAL_SPI_INFO_VERSION_1;
-    HAL_SPI_Info(spi, info, nullptr);
+    hal_spi_info(spi, info, nullptr);
 }
 
 /**
@@ -84,10 +84,10 @@ static particle::__SPISettings spiSettingsFromSpiInfo(hal_spi_info_t* info)
 }
 } // namespace
 
-SPIClass::SPIClass(HAL_SPI_Interface spi)
+SPIClass::SPIClass(hal_spi_interface_t spi)
 {
     _spi = spi;
-    HAL_SPI_Init(_spi);
+    hal_spi_init(_spi);
     _dividerReference = SPI_CLK_SYSTEM; // 0 indicates the system clock
 }
 
@@ -96,7 +96,7 @@ void SPIClass::begin()
     // TODO: Fetch default pin from HAL
     if (!lock())
     {
-        HAL_SPI_Begin(_spi, SPI_DEFAULT_SS);
+        hal_spi_begin(_spi, SPI_DEFAULT_SS);
         unlock();
     }
 }
@@ -105,16 +105,16 @@ void SPIClass::begin(uint16_t ss_pin)
 {
     if (!lock())
     {
-        HAL_SPI_Begin(_spi, ss_pin);
+        hal_spi_begin(_spi, ss_pin);
         unlock();
     }
 }
 
-void SPIClass::begin(SPI_Mode mode, uint16_t ss_pin)
+void SPIClass::begin(hal_spi_mode_t mode, uint16_t ss_pin)
 {
     if (!lock())
     {
-        HAL_SPI_Begin_Ext(_spi, mode, ss_pin, NULL);
+        hal_spi_begin_ext(_spi, mode, ss_pin, NULL);
         unlock();
     }
 }
@@ -123,7 +123,7 @@ void SPIClass::end()
 {
     if (!lock())
     {
-        HAL_SPI_End(_spi);
+        hal_spi_end(_spi);
         unlock();
     }
 }
@@ -132,7 +132,7 @@ void SPIClass::setBitOrder(uint8_t bitOrder)
 {
     if (!lock())
     {
-        HAL_SPI_Set_Bit_Order(_spi, bitOrder);
+        hal_spi_set_bit_order(_spi, bitOrder);
         unlock();
     }
 }
@@ -141,7 +141,7 @@ void SPIClass::setDataMode(uint8_t mode)
 {
     if (!lock())
     {
-        HAL_SPI_Set_Data_Mode(_spi, mode);
+        hal_spi_set_data_mode(_spi, mode);
         unlock();
     }
 }
@@ -168,7 +168,7 @@ int32_t SPIClass::beginTransaction(const particle::__SPISettings& settings)
     {
         if (settings.default_)
         {
-            HAL_SPI_Set_Settings(_spi, settings.default_, 0, 0, 0, nullptr);
+            hal_spi_set_settings(_spi, settings.default_, 0, 0, 0, nullptr);
         }
         else
         {
@@ -181,7 +181,7 @@ int32_t SPIClass::beginTransaction(const particle::__SPISettings& settings)
             // Ensure inequality aside from computed clock value
             if (!(spi_settings <= settings && clock == spi_settings.clock_))
             {
-                HAL_SPI_Set_Settings(_spi, settings.default_, divisor, settings.bitOrder_,
+                hal_spi_set_settings(_spi, settings.default_, divisor, settings.bitOrder_,
                                      settings.dataMode_, nullptr);
             }
         }
@@ -221,7 +221,7 @@ void SPIClass::setClockDivider(uint8_t rate)
         }
         else
         {
-            HAL_SPI_Set_Clock_Divider(_spi, rate);
+            hal_spi_set_clock_divider(_spi, rate);
         }
         unlock();
     }
@@ -259,7 +259,7 @@ unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
         computeClockDivider(info.system_clock, targetSpeed, divisor, clock);
 
         // Update SPI peripheral
-        HAL_SPI_Set_Clock_Divider(_spi, divisor);
+        hal_spi_set_clock_divider(_spi, divisor);
         unlock();
     }
 
@@ -268,19 +268,19 @@ unsigned SPIClass::setClockSpeed(unsigned value, unsigned value_scale)
 
 byte SPIClass::transfer(byte _data)
 {
-    return static_cast<byte>(HAL_SPI_Send_Receive_Data(_spi, _data));
+    return static_cast<byte>(hal_spi_transfer(_spi, _data));
 }
 
 void SPIClass::transfer(void* tx_buffer, void* rx_buffer, size_t length,
                         wiring_spi_dma_transfercomplete_callback_t user_callback)
 {
-    HAL_SPI_DMA_Transfer(_spi, tx_buffer, rx_buffer, length, user_callback);
+    hal_spi_transfer_dma(_spi, tx_buffer, rx_buffer, length, user_callback);
     if (user_callback == NULL)
     {
-        HAL_SPI_TransferStatus st;
+        hal_spi_transfer_status_t st;
         do
         {
-            HAL_SPI_DMA_Transfer_Status(_spi, &st);
+            hal_spi_transfer_dma_status(_spi, &st);
         } while (st.transfer_ongoing);
     }
 }
@@ -289,7 +289,7 @@ void SPIClass::transferCancel()
 {
     if (!lock())
     {
-        HAL_SPI_DMA_Transfer_Cancel(_spi);
+        hal_spi_transfer_dma_cancel(_spi);
         unlock();
     }
 }
@@ -299,7 +299,7 @@ int32_t SPIClass::available()
     int32_t result = 0;
     if (!lock())
     {
-        result = HAL_SPI_DMA_Transfer_Status(_spi, NULL);
+        result = hal_spi_transfer_dma_status(_spi, NULL);
         unlock();
     }
     return result;
@@ -320,14 +320,14 @@ bool SPIClass::isEnabled()
     // XXX: pinAvailable() will call this method potentially even from
     // interrupt context. `enabled` flag in HAL is usually just a volatile
     // variable, so it's fine not to acquire the lock here.
-    return HAL_SPI_Is_Enabled(_spi);
+    return hal_spi_is_enabled(_spi);
 }
 
 void SPIClass::onSelect(wiring_spi_select_callback_t user_callback)
 {
     if (!lock())
     {
-        HAL_SPI_Set_Callback_On_Select(_spi, user_callback, NULL);
+        hal_spi_set_callback_on_selected(_spi, user_callback, NULL);
         unlock();
     }
 }

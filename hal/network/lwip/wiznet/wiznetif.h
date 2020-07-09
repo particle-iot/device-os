@@ -34,7 +34,7 @@ namespace particle { namespace net {
 class WizNetif : public BaseNetif {
 public:
     WizNetif();
-    WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt, const uint8_t mac[6]);
+    WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interrupt, const uint8_t mac[6]);
     virtual ~WizNetif();
 
     virtual int powerUp() override;
@@ -75,7 +75,7 @@ private:
     err_t linkOutput(pbuf* p);
 
 private:
-    HAL_SPI_Interface spi_;
+    hal_spi_interface_t spi_;
     pin_t cs_;
     pin_t reset_;
     pin_t interrupt_;

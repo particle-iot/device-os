@@ -128,21 +128,21 @@ inline uint8_t calculateClockDivider (uint32_t system_clock, uint32_t clock) {
 
 // FIXME/IMPORTANT: On certain platforms (b5som) leaving this function non-inlineable results in stack corruption/clashing
 // Forcing the function to be always_inline until we can figure out what exactly causes the problem / switch to another compiler version.
-inline hal_spi_info_t __attribute__ ((always_inline)) spiConfigure(HAL_SPI_Interface spi, const hal_spi_info_t* conf) {
+inline hal_spi_info_t __attribute__ ((always_inline)) spiConfigure(hal_spi_interface_t spi, const hal_spi_info_t* conf) {
     hal_spi_info_t info = { .version = HAL_SPI_INFO_VERSION_2 };
-    HAL_SPI_Info(spi, &info, nullptr);
+    hal_spi_info(spi, &info, nullptr);
 
     SPARK_ASSERT(info.mode == SPI_MODE_MASTER);
 
     if (!info.enabled || info.ss_pin != conf->ss_pin) {
-        HAL_SPI_Begin_Ext(spi, SPI_MODE_MASTER, PIN_INVALID, nullptr);
+        hal_spi_begin_ext(spi, SPI_MODE_MASTER, PIN_INVALID, nullptr);
     }
 
     if (conf->default_settings != info.default_settings ||
             conf->bit_order != info.bit_order ||
             conf->data_mode != info.data_mode ||
             conf->clock != info.clock) {
-        HAL_SPI_Set_Settings(spi, conf->default_settings, calculateClockDivider(info.system_clock, conf->clock), conf->bit_order, conf->data_mode, nullptr);
+        hal_spi_set_settings(spi, conf->default_settings, calculateClockDivider(info.system_clock, conf->clock), conf->bit_order, conf->data_mode, nullptr);
     }
 
     return info;
@@ -163,7 +163,7 @@ WizNetif::WizNetif() {
     /* FIXME */
 }
 
-WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt, const uint8_t mac[6])
+WizNetif::WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interrupt, const uint8_t mac[6])
         : BaseNetif(),
           spi_(spi),
           cs_(cs),
@@ -182,24 +182,24 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
 
     SPARK_ASSERT(os_semaphore_create(&spiSem_, 1, 0) == 0);
 
-    if (!HAL_SPI_Is_Enabled(spi_)) {
-        HAL_SPI_Init(spi_);
+    if (!hal_spi_is_enabled(spi_)) {
+        hal_spi_init(spi_);
         // Make sure the SPI peripheral is initialized with default settings
-        HAL_SPI_Acquire(spi_, nullptr);
-        HAL_SPI_Begin_Ext(spi_, SPI_MODE_MASTER, SPI_DEFAULT_SS, nullptr);
-        HAL_SPI_Release(spi_, nullptr);
+        hal_spi_acquire(spi_, nullptr);
+        hal_spi_begin_ext(spi_, SPI_MODE_MASTER, SPI_DEFAULT_SS, nullptr);
+        hal_spi_release(spi_, nullptr);
     }
 
     reg_wizchip_cris_cbfunc(
         [](void) -> void {
             auto self = instance();
-            HAL_SPI_Acquire(self->spi_, nullptr);
+            hal_spi_acquire(self->spi_, nullptr);
             self->spi_info_cache_ = spiConfigure(self->spi_, &WIZNET_DEFAULT_CONFIG);
         },
         [](void) -> void {
             auto self = instance();
             spiConfigure(self->spi_, &self->spi_info_cache_);
-            HAL_SPI_Release(self->spi_, nullptr);
+            hal_spi_release(self->spi_, nullptr);
         }
     );
     reg_wizchip_cs_cbfunc(
@@ -215,11 +215,11 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
     reg_wizchip_spi_cbfunc(
         [](void) -> uint8_t {
             auto self = instance();
-            return HAL_SPI_Send_Receive_Data(self->spi_, 0xff);
+            return hal_spi_transfer(self->spi_, 0xff);
         },
         [](uint8_t wb) -> void {
             auto self = instance();
-            HAL_SPI_Send_Receive_Data(self->spi_, wb);
+            hal_spi_transfer(self->spi_, wb);
         }
     );
     reg_wizchip_spiburst_cbfunc(
@@ -229,7 +229,7 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
             while (r < len) {
                 /* FIXME: maximum DMA transfer size should be correctly handled by HAL */
                 size_t t = std::min((len - r), (size_t)65535);
-                HAL_SPI_DMA_Transfer(self->spi_, nullptr, pBuf + r, t, [](void) -> void {
+                hal_spi_transfer_dma(self->spi_, nullptr, pBuf + r, t, [](void) -> void {
                     auto self = instance();
                     os_semaphore_give(self->spiSem_, true);
                 });
@@ -244,7 +244,7 @@ WizNetif::WizNetif(HAL_SPI_Interface spi, pin_t cs, pin_t reset, pin_t interrupt
             while (r < len) {
                 /* FIXME: maximum DMA transfer size should be correctly handled by HAL */
                 size_t t = std::min((len - r), (size_t)65535);
-                HAL_SPI_DMA_Transfer(self->spi_, pBuf + r, nullptr, t, [](void) -> void {
+                hal_spi_transfer_dma(self->spi_, pBuf + r, nullptr, t, [](void) -> void {
                     auto self = instance();
                     os_semaphore_give(self->spiSem_, true);
                 });
@@ -280,9 +280,9 @@ WizNetif::~WizNetif() {
         os_semaphore_destroy(spiSem_);
     }
 
-    HAL_SPI_Acquire(spi_, nullptr);
-    HAL_SPI_End(spi_);
-    HAL_SPI_Release(spi_, nullptr);
+    hal_spi_acquire(spi_, nullptr);
+    hal_spi_end(spi_);
+    hal_spi_release(spi_, nullptr);
 
     HAL_Pin_Mode(reset_, INPUT);
     HAL_Pin_Mode(cs_, INPUT);

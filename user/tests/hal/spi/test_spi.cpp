@@ -27,17 +27,17 @@ char spi_rx_buf[SPI_DATA_LENGTH];
 
 void test_spi_data(void)
 {
-    HAL_SPI_Init(HAL_SPI_INTERFACE1);
-    HAL_SPI_Set_Data_Mode(HAL_SPI_INTERFACE1, SPI_MODE3);
-    HAL_SPI_Begin(HAL_SPI_INTERFACE1, D2);
-    HAL_SPI_Send_Receive_Data(HAL_SPI_INTERFACE1, 0x55);
-    HAL_SPI_Send_Receive_Data(HAL_SPI_INTERFACE1, 0xF0);
-    HAL_SPI_DMA_Transfer(HAL_SPI_INTERFACE1, spi_tx_buf, spi_rx_buf, SPI_DATA_LENGTH, NULL);
-    HAL_SPI_TransferStatus st;
+    hal_spi_init(HAL_SPI_INTERFACE1);
+    hal_spi_set_data_mode(HAL_SPI_INTERFACE1, SPI_MODE3);
+    hal_spi_begin(HAL_SPI_INTERFACE1, D2);
+    hal_spi_transfer(HAL_SPI_INTERFACE1, 0x55);
+    hal_spi_transfer(HAL_SPI_INTERFACE1, 0xF0);
+    hal_spi_transfer_dma(HAL_SPI_INTERFACE1, spi_tx_buf, spi_rx_buf, SPI_DATA_LENGTH, NULL);
+    hal_spi_transfer_status_t st;
     do {
-        HAL_SPI_DMA_Transfer_Status(HAL_SPI_INTERFACE1, &st);
+        hal_spi_transfer_dma_status(HAL_SPI_INTERFACE1, &st);
     }  while(st.transfer_ongoing);
-    HAL_SPI_End(HAL_SPI_INTERFACE1);
+    hal_spi_end(HAL_SPI_INTERFACE1);
 }
 
 /* executes once at startup */
