@@ -28,8 +28,10 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 #include "timer_hal.h"
 #include "deviceid_hal.h"
 
+#include "sha256.h"
 #include "scope_guard.h"
 #include "endian_util.h"
+#include "check.h"
 #include "debug.h"
 
 #include "mbedtls/ecjpake.h"
@@ -37,23 +39,6 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 #include "mbedtls/md.h"
 
 #include "mbedtls_util.h"
-
-#define CHECK(_expr) \
-        do { \
-            const int _ret = _expr; \
-            if (_ret < 0) { \
-                return _ret; \
-            } \
-        } while (false)
-
-#define CHECK_MBEDTLS(_expr) \
-        do { \
-            const int _ret = _expr; \
-            if (_ret != 0) { \
-                LOG_DEBUG(ERROR, #_expr " failed: %d", _ret); \
-                return mbedtlsError(_ret); \
-            } \
-        } while (false)
 
 #undef DEBUG // Legacy logging macro
 
@@ -179,124 +164,6 @@ const size_t MESSAGE_FOOTER_SIZE = AES_CCM_TAG_SIZE;
 #else
 const size_t MESSAGE_FOOTER_SIZE = 0;
 #endif
-
-int mbedtlsError(int ret) {
-    switch (ret) {
-    case 0:
-        return SYSTEM_ERROR_NONE;
-    // TODO
-    default:
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-}
-
-class Sha256 {
-public:
-    static const size_t SIZE = 32;
-
-    Sha256() :
-            ctx_() {
-    }
-
-    ~Sha256() {
-        destroy();
-    }
-
-    int init() {
-        const auto mdInfo = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-        if (!mdInfo) {
-            LOG_DEBUG(ERROR, "mbedtls_md_info_from_type() failed");
-            return SYSTEM_ERROR_NOT_FOUND;
-        }
-        mbedtls_md_init(&ctx_);
-        CHECK_MBEDTLS(mbedtls_md_setup(&ctx_, mdInfo, 0 /* hmac */));
-        CHECK_MBEDTLS(mbedtls_md_starts(&ctx_));
-        return 0;
-    }
-
-    int init(const Sha256& src) {
-        CHECK(init());
-        CHECK_MBEDTLS(mbedtls_md_clone(&ctx_, &src.ctx_));
-        return 0;
-    }
-
-    void destroy() {
-        mbedtls_md_free(&ctx_);
-    }
-
-    int start() {
-        CHECK_MBEDTLS(mbedtls_md_starts(&ctx_));
-        return 0;
-    }
-
-    int update(const char* data, size_t size) {
-        CHECK_MBEDTLS(mbedtls_md_update(&ctx_, (const uint8_t*)data, size));
-        return 0;
-    }
-
-    int update(const char* str) {
-        return update(str, strlen(str));
-    }
-
-    int finish(char* buf) {
-        CHECK_MBEDTLS(mbedtls_md_finish(&ctx_, (uint8_t*)buf));
-        return 0;
-    }
-
-private:
-    mbedtls_md_context_t ctx_;
-};
-
-class HmacSha256 {
-public:
-    static const size_t SIZE = 32;
-
-    HmacSha256() :
-            ctx_() {
-    }
-
-    ~HmacSha256() {
-        destroy();
-    }
-
-    int init(const char* key, size_t keySize) {
-        const auto mdInfo = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-        if (!mdInfo) {
-            LOG_DEBUG(ERROR, "mbedtls_md_info_from_type() failed");
-            return SYSTEM_ERROR_NOT_FOUND;
-        }
-        mbedtls_md_init(&ctx_);
-        CHECK_MBEDTLS(mbedtls_md_setup(&ctx_, mdInfo, 1 /* hmac */));
-        CHECK_MBEDTLS(mbedtls_md_hmac_starts(&ctx_, (const uint8_t*)key, keySize));
-        return 0;
-    }
-
-    void destroy() {
-        mbedtls_md_free(&ctx_);
-    }
-
-    int start() {
-        CHECK_MBEDTLS(mbedtls_md_hmac_reset(&ctx_));
-        return 0;
-    }
-
-    int update(const char* data, size_t size) {
-        CHECK_MBEDTLS(mbedtls_md_hmac_update(&ctx_, (const uint8_t*)data, size));
-        return 0;
-    }
-
-    int update(const char* str) {
-        return update(str, strlen(str));
-    }
-
-    int finish(char* buf) {
-        CHECK_MBEDTLS(mbedtls_md_hmac_finish(&ctx_, (uint8_t*)buf));
-        return 0;
-    }
-
-private:
-    mbedtls_md_context_t ctx_;
-};
 
 } // particle::system::
 

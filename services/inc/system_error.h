@@ -53,14 +53,15 @@
         (COAP_5XX, "CoAP: 5xx", -1132), \
         (AT_NOT_OK, "AT command failure", -1200), /* -1399 ... -1200: AT command errors */ \
         (AT_RESPONSE_UNEXPECTED, "Failed to parse AT response", -1210), \
-        (OTA_MODULE_NOT_FOUND, "Module not found", -1300), /* -1499 ... -1300: OTA update error */ \
+        (OTA_MODULE_NOT_FOUND, "Module not found", -1300), /* -1499 ... -1300: OTA update errors */ \
         (OTA_UNSUPPORTED_MODULE, "Unsupported module", -1310), \
         (OTA_VALIDATION_FAILED, "Module validation failed", -1320), \
         (OTA_INTEGRITY_CHECK_FAILED, "Module integrity check failed", -1330), \
         (OTA_DEPENDENCY_CHECK_FAILED, "Module dependency check failed", -1340), \
         (OTA_INVALID_ADDRESS, "Invalid module address", -1350), \
         (OTA_INVALID_PLATFORM, "Invalid module platform", -1360), \
-        (OTA_INVALID_FORMAT, "Invalid module format", -1370)
+        (OTA_INVALID_FORMAT, "Invalid module format", -1370), \
+        (CRYPTO, "Crypto error", -1400) /* -1599 ... -1400: Crypto errors */ \
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \
