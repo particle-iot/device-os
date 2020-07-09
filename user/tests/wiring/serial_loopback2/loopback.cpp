@@ -99,6 +99,6 @@ test(SERIAL_02_LoopbackReceivedDataShouldRetainAfterSleepWakeup) {
     Serial1.begin(BAUD_RATE);
 
     for (unsigned i = 0; i < ITERATIONS; ++i) {
-        runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, false);
+        runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, true);
     }
 }

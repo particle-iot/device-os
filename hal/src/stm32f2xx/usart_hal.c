@@ -132,7 +132,7 @@ static uint32_t calculateDataBitsMask(uint32_t config);
 static uint8_t validateConfig(uint32_t config);
 static void configureTransmitReceive(hal_usart_interface_t serial, uint8_t transmit, uint8_t receive);
 static void configurePinsMode(hal_usart_interface_t serial, uint32_t config);
-static void usartEndImpl(hal_usart_interface_t serial);
+static void usartEndImpl(hal_usart_interface_t serial, bool end);
 
 uint8_t calculateWordLength(uint32_t config, uint8_t noparity) {
     // STM32F2 USARTs support only 8-bit or 9-bit communication, however
@@ -253,7 +253,15 @@ void configurePinsMode(hal_usart_interface_t serial, uint32_t config) {
     }
 }
 
-void usartEndImpl(hal_usart_interface_t serial) {
+void usartEndImpl(hal_usart_interface_t serial, bool end) {
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    if ((usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL) == SERIAL_FLOW_CONTROL_RTS) {
+        // nRTS is still under control of USART peripheral, release it.
+        GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->rts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->rts_pin].gpio_pin_source, 0/*default after reset*/);
+        HAL_Pin_Mode(usartMap[serial]->rts_pin, OUTPUT);
+        HAL_GPIO_Write(usartMap[serial]->rts_pin, 1);
+    }
+
     // Wait for transmission of outgoing data
     while (usartMap[serial]->tx_buffer->head != usartMap[serial]->tx_buffer->tail);
 
@@ -280,6 +288,32 @@ void usartEndImpl(hal_usart_interface_t serial) {
 
     // Disable USART Clock
     *usartMap[serial]->apb_reg &= ~usartMap[serial]->clock_enabled;
+
+    GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->rx_pin].gpio_peripheral, usartMap[serial]->rx_pinsource, 0);
+    GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->tx_pin].gpio_peripheral, usartMap[serial]->tx_pinsource, 0);
+    GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->cts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->cts_pin].gpio_pin_source, 0);
+
+    // Switch pins to INPUT
+    HAL_Pin_Mode(usartMap[serial]->rx_pin, INPUT);
+    HAL_Pin_Mode(usartMap[serial]->tx_pin, end ? INPUT : INPUT_PULLUP);
+    switch (usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL) {
+        case SERIAL_FLOW_CONTROL_CTS: {
+            HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
+            break;
+        }
+        case SERIAL_FLOW_CONTROL_RTS: {
+            HAL_Pin_Mode(usartMap[serial]->rts_pin, end ? INPUT : INPUT_PULLUP);
+            break;
+        }
+        case SERIAL_FLOW_CONTROL_RTS_CTS: {
+            HAL_Pin_Mode(usartMap[serial]->rts_pin, end ? INPUT : INPUT_PULLUP);
+            HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
+            break;
+        }
+        default: {
+            break;
+        }
+    }
 }
 
 void hal_usart_init(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer) {
@@ -528,29 +562,7 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
 }
 
 void hal_usart_end(hal_usart_interface_t serial) {
-    usartEndImpl(serial);
-
-    // Switch pins to INPUT
-    HAL_Pin_Mode(usartMap[serial]->rx_pin, INPUT);
-    HAL_Pin_Mode(usartMap[serial]->tx_pin, INPUT);
-    switch (usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL) {
-        case SERIAL_FLOW_CONTROL_CTS: {
-            HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
-            break;
-        }
-        case SERIAL_FLOW_CONTROL_RTS: {
-            HAL_Pin_Mode(usartMap[serial]->rts_pin, INPUT);
-            break;
-        }
-        case SERIAL_FLOW_CONTROL_RTS_CTS: {
-            HAL_Pin_Mode(usartMap[serial]->rts_pin, INPUT);
-            HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
-            break;
-        }
-        default: {
-            break;
-        }
-    }
+    usartEndImpl(serial, true);
 
     // clear any received data
     usartMap[serial]->rx_buffer->head = usartMap[serial]->rx_buffer->tail;
@@ -738,28 +750,7 @@ int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved) {
     if (sleep) {
         CHECK_TRUE(usartMap[serial]->state == HAL_USART_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
         hal_usart_flush(serial);
-        usartEndImpl(serial);
-        // Switch pins to INPUT
-        HAL_Pin_Mode(usartMap[serial]->rx_pin, INPUT);
-        HAL_Pin_Mode(usartMap[serial]->tx_pin, INPUT_PULLUP);
-        switch (usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL) {
-            case SERIAL_FLOW_CONTROL_CTS: {
-                HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
-                break;
-            }
-            case SERIAL_FLOW_CONTROL_RTS: {
-                HAL_Pin_Mode(usartMap[serial]->rts_pin, INPUT_PULLUP);
-                break;
-            }
-            case SERIAL_FLOW_CONTROL_RTS_CTS: {
-                HAL_Pin_Mode(usartMap[serial]->rts_pin, INPUT_PULLUP);
-                HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
-                break;
-            }
-            default: {
-                break;
-            }
-        }
+        usartEndImpl(serial, false);
         memset(usartMap[serial]->tx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
         usartMap[serial]->state = HAL_USART_STATE_SUSPENDED;
         usartMap[serial]->transmitting = false;

@@ -235,20 +235,6 @@ public:
 
         CHECK(disable());
 
-        // Configuring the pin mode to PIN_MODE_NONE will disconnect input buffer to enable power savings
-        HAL_Pin_Mode(txPin_, PIN_MODE_NONE);
-        HAL_Set_Pin_Function(txPin_, PF_NONE);
-        HAL_Pin_Mode(rxPin_, PIN_MODE_NONE);
-        HAL_Set_Pin_Function(rxPin_, PF_NONE);
-        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
-            HAL_Pin_Mode(rtsPin_, PIN_MODE_NONE);
-            HAL_Set_Pin_Function(rtsPin_, PF_NONE);
-        }
-        if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
-            HAL_Pin_Mode(ctsPin_, PIN_MODE_NONE);
-            HAL_Set_Pin_Function(ctsPin_, PF_NONE);
-        }
-
         state_ = HAL_USART_STATE_DISABLED;
         transmitting_ = false;
         receiving_ = 0;
@@ -261,27 +247,14 @@ public:
 
     int suspend() {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
-
+        
         flush();
 
         AtomicSection lk;
 
         // Update current available received data
         data();
-        
-        CHECK(disable());
-
-        // Configuring the input pins' mode to PIN_MODE_NONE will disconnect input buffer to enable power savings
-        // Configuring the output pins' mode to INPUT_PULLUP to not polluting the state on other side.
-        // NOTE: Do not reset pin function!
-        HAL_Pin_Mode(txPin_, INPUT_PULLUP);
-        HAL_Pin_Mode(rxPin_, PIN_MODE_NONE);
-        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
-            HAL_Pin_Mode(rtsPin_, INPUT_PULLUP);
-        }
-        if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
-            HAL_Pin_Mode(ctsPin_, PIN_MODE_NONE);
-        }
+        CHECK(disable(false));
 
         state_ = HAL_USART_STATE_SUSPENDED;
         transmitting_ = false;
@@ -497,8 +470,15 @@ public:
     }
 
 private:
-    int disable() {
+    int disable(bool end = true) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+
+        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+            if (receiving_) {
+                // Issue the STOPRX task to deactive the RTS
+                nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STOPRX);
+            }
+        }
 
         disableInterrupts();
         stopTransmission();
@@ -510,6 +490,27 @@ private:
         nrfx_prs_release(uarte_);
 
         disableTimer();
+
+        // Configuring the input pins' mode to PIN_MODE_NONE will disconnect input buffer to enable power savings
+        // Configuring the output pins' mode to INPUT_PULLUP to not polluting the state on other side.
+        HAL_Pin_Mode(txPin_, end ? PIN_MODE_NONE : INPUT_PULLUP);
+        HAL_Pin_Mode(rxPin_, PIN_MODE_NONE);
+        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+            HAL_Pin_Mode(rtsPin_, end ? PIN_MODE_NONE : INPUT_PULLUP);
+        }
+        if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
+            HAL_Pin_Mode(ctsPin_, PIN_MODE_NONE);
+        }
+        if (end) {
+            HAL_Set_Pin_Function(txPin_, PF_NONE);
+            HAL_Set_Pin_Function(rxPin_, PF_NONE);
+            if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+                HAL_Set_Pin_Function(rtsPin_, PF_NONE);
+            }
+            if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
+                HAL_Set_Pin_Function(ctsPin_, PF_NONE);
+            }
+        }
 
         return SYSTEM_ERROR_NONE;
     }
