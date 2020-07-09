@@ -59,7 +59,7 @@ int OtaUpdate::process() {
 
 void OtaUpdate::reset() {
     if (state_ != State::IDLE) {
-        command(OtaUpdateCommand::CANCEL_UPDATE);
+        finishUpdate(OtaUpdateFlag::CANCEL);
         state_ = State::IDLE;
     }
     ctx_.reset();

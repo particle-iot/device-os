@@ -21,7 +21,8 @@
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 
-#include "c_string.h"
+#include "ota_update_context.h"
+#include "enumflags.h"
 
 #include <cstdint>
 
@@ -33,20 +34,17 @@ const size_t OTA_UPDATE_CHUNK_MAP_SIZE = 10;
 class Message;
 class MessageChannel;
 
-// TODO: Move this struct to some public header
-struct Sha256 {
-    char data[32];
+enum class OtaUpdateFlag {
+    RESTART = 0x01,
+    CANCEL = 0x02,
+    VALIDATE_ONLY = 0x04
 };
 
-enum class OtaUpdateCommand {
-    VALIDATE_UPDATE = 1,
-    APPLY_UPDATE = 2,
-    CANCEL_UPDATE = 3
-};
+typedef EnumFlags<OtaUpdateFlag> OtaUpdateFlags;
 
 class OtaUpdateContext {
 public:
-    explicit OtaUpdateContext(void* userData);
+    explicit OtaUpdateContext(void* userData = nullptr);
 
     void errorMessage(const char* msg);
     void formatErrorMessage(const char* fmt, ...);
@@ -63,28 +61,29 @@ private:
 
 class OtaUpdateCallbacks {
 public:
-    typedef int (*PrepareFn)(size_t fileSize, const Sha256& sha256, size_t* offset, OtaUpdateContext* ctx);
+    typedef int (*StartUpdateFn)(size_t fileSize, const char* sha256, size_t* offset, OtaUpdateFlags flags,
+            OtaUpdateContext* ctx);
+    typedef int (*FinishUpdateFn)(OtaUpdateFlags flags, OtaUpdateContext* ctx);
     typedef int (*SaveChunkFn)(const char* data, size_t size, size_t offset, OtaUpdateContext* ctx);
-    typedef int (*CommandFn)(OtaUpdateCommand cmd, OtaUpdateContext* ctx);
 
     OtaUpdateCallbacks();
 
-    OtaUpdateCallbacks& prepareFn(PrepareFn fn);
-    PrepareFn prepareFn() const;
+    OtaUpdateCallbacks& startUpdateFn(StartUpdateFn fn);
+    StartUpdateFn startUpdateFn() const;
+
+    OtaUpdateCallbacks& finishUpdateFn(FinishUpdateFn fn);
+    FinishUpdateFn finishUpdateFn() const;
 
     OtaUpdateCallbacks& saveChunkFn(SaveChunkFn fn);
     SaveChunkFn saveChunkFn() const;
-
-    OtaUpdateCallbacks& commandFn(CommandFn fn);
-    CommandFn commandFn() const;
 
     OtaUpdateCallbacks& userData(void* data);
     void* userData() const;
 
 private:
-    PrepareFn prepareFn_;
+    StartUpdateFn startUpdateFn_;
+    FinishUpdateFn finishUpdateFn_;
     SaveChunkFn saveChunkFn_;
-    CommandFn commandFn_;
     void* userData_;
 };
 
@@ -108,7 +107,7 @@ public:
 
     int process();
 
-    bool isUpdating() const;
+    bool isActive() const;
 
     void reset();
 
@@ -123,9 +122,10 @@ private:
     MessageChannel* const channel_;
     State state_;
 
-    int prepare(size_t fileSize, const Sha256& sha256, size_t* offset);
+    int startUpdate(size_t fileSize, const char* sha256, size_t* offset, OtaUpdateFlags flags);
+    int finishUpdate(OtaUpdateFlags flags);
     int saveChunk(const char* data, size_t size, size_t offset);
-    int command(OtaUpdateCommand cmd);
+    const char* lastErrorMessage() const;
 };
 
 inline OtaUpdateContext::OtaUpdateContext(void* userData) :
@@ -149,19 +149,28 @@ inline void OtaUpdateContext::reset() {
 }
 
 inline OtaUpdateCallbacks::OtaUpdateCallbacks() :
-        prepareFn_(nullptr),
+        startUpdateFn_(nullptr),
+        finishUpdateFn_(nullptr),
         saveChunkFn_(nullptr),
-        commandFn_(nullptr),
         userData_(nullptr) {
 }
 
-inline OtaUpdateCallbacks& OtaUpdateCallbacks::prepareFn(PrepareFn fn) {
-    prepareFn_ = fn;
+inline OtaUpdateCallbacks& OtaUpdateCallbacks::startUpdateFn(StartUpdateFn fn) {
+    startUpdateFn_ = fn;
     return *this;
 }
 
-inline OtaUpdateCallbacks::PrepareFn OtaUpdateCallbacks::prepareFn() const {
-    return prepareFn_;
+inline OtaUpdateCallbacks::StartUpdateFn OtaUpdateCallbacks::startUpdateFn() const {
+    return startUpdateFn_;
+}
+
+inline OtaUpdateCallbacks& OtaUpdateCallbacks::finishUpdateFn(FinishUpdateFn fn) {
+    finishUpdateFn_ = fn;
+    return *this;
+}
+
+inline OtaUpdateCallbacks::FinishUpdateFn OtaUpdateCallbacks::finishUpdateFn() const {
+    return finishUpdateFn_;
 }
 
 inline OtaUpdateCallbacks& OtaUpdateCallbacks::saveChunkFn(SaveChunkFn fn) {
@@ -173,15 +182,6 @@ inline OtaUpdateCallbacks::SaveChunkFn OtaUpdateCallbacks::saveChunkFn() const {
     return saveChunkFn_;
 }
 
-inline OtaUpdateCallbacks& OtaUpdateCallbacks::commandFn(CommandFn fn) {
-    commandFn_ = fn;
-    return *this;
-}
-
-inline OtaUpdateCallbacks::CommandFn OtaUpdateCallbacks::commandFn() const {
-    return commandFn_;
-}
-
 inline OtaUpdateCallbacks& OtaUpdateCallbacks::userData(void* data) {
     userData_ = data;
     return *this;
@@ -191,20 +191,24 @@ inline void* OtaUpdateCallbacks::userData() const {
     return userData_;
 }
 
-inline bool OtaUpdate::isUpdating() const {
+inline bool OtaUpdate::isActive() const {
     return state_ != State::IDLE;
 }
 
-inline int OtaUpdate::prepare(size_t fileSize, const Sha256& sha256, size_t* offset) {
-    return callbacks_.prepareFn()(fileSize, sha256, offset, &ctx_);
+inline int OtaUpdate::startUpdate(size_t fileSize, const char* sha256, size_t* offset, OtaUpdateFlags flags) {
+    return callbacks_.startUpdateFn()(fileSize, sha256, offset, flags, &ctx_);
+}
+
+inline int OtaUpdate::finishUpdate(OtaUpdateFlags flags) {
+    return callbacks_.finishUpdateFn()(flags, &ctx_);
 }
 
 inline int OtaUpdate::saveChunk(const char* data, size_t size, size_t offset) {
     return callbacks_.saveChunkFn()(data, size, offset, &ctx_);
 }
 
-inline int OtaUpdate::command(OtaUpdateCommand cmd) {
-    return callbacks_.commandFn()(cmd, &ctx_);
+inline const char* OtaUpdate::lastErrorMessage() const {
+    return ctx_.errorMessage();
 }
 
 } // namespace particle::protocol
