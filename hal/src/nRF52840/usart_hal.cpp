@@ -627,6 +627,7 @@ private:
                       NRF_UARTE_INT_TXSTOPPED_MASK |
                       NRF_UARTE_INT_ENDTX_MASK);
         NRFX_IRQ_DISABLE(nrfx_get_irq_number((void*)uarte_));
+        NRFX_IRQ_PENDING_CLEAR(nrfx_get_irq_number((void*)uarte_));
     }
 
     void enableTimer() {
