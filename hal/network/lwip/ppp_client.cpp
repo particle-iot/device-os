@@ -137,10 +137,14 @@ bool Client::prepareConnect() {
   exitDataMode();
 
   // FIXME: this should be handled in the NCP client
-  static const char* NCP_CONNECT_COMMANDS[] = {
+  static const char* UBLOX_NCP_CONNECT_COMMANDS[] = {
     "ATH;D*99***1#\r\n",
   };
-  for (const auto& cmd: NCP_CONNECT_COMMANDS) {
+  static const char* NCP_CONNECT_COMMANDS[] = {
+    "ATD*99***1#\r\n",
+  };
+  bool ublox = PLATFORM_NCP_MANUFACTURER(platform_current_ncp_identifier()) == PLATFORM_NCP_MANUFACTURER_UBLOX;
+  for (const auto& cmd: ublox ? UBLOX_NCP_CONNECT_COMMANDS : NCP_CONNECT_COMMANDS) {
     const auto cmdLen = strlen(cmd);
     auto sz = output((const uint8_t*)cmd, cmdLen);
     if (sz != cmdLen) {
@@ -156,11 +160,8 @@ void Client::exitDataMode() {
   if (PLATFORM_NCP_MANUFACTURER(platform_current_ncp_identifier()) == PLATFORM_NCP_MANUFACTURER_UBLOX) {
     const char cmd[] = "~+++";
     output((const uint8_t*)cmd, sizeof(cmd) - 1);
-  } else {
-    const char cmd[] = "+++";
-    output((const uint8_t*)cmd, sizeof(cmd) - 1);
+    HAL_Delay_Milliseconds(1000);
   }
-  HAL_Delay_Milliseconds(1000);
 }
 
 bool Client::start() {
