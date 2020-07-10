@@ -48,7 +48,7 @@ private:
     void* userData_;
 };
 
-class OtaUpdateCallbacks {
+class FirmwareUpdateCallbacks {
 public:
     typedef int (*StartUpdateFn)(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags,
             FirmwareUpdateContext* ctx);
@@ -57,21 +57,21 @@ public:
     typedef int (*SaveChunkFn)(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize,
             FirmwareUpdateContext* ctx);
 
-    OtaUpdateCallbacks();
+    FirmwareUpdateCallbacks();
 
-    OtaUpdateCallbacks& startUpdateFn(StartUpdateFn fn);
+    FirmwareUpdateCallbacks& startUpdateFn(StartUpdateFn fn);
     StartUpdateFn startUpdateFn() const;
 
-    OtaUpdateCallbacks& validateUpdateFn(ValidateUpdateFn fn);
+    FirmwareUpdateCallbacks& validateUpdateFn(ValidateUpdateFn fn);
     ValidateUpdateFn validateUpdateFn() const;
 
-    OtaUpdateCallbacks& finishUpdateFn(FinishUpdateFn fn);
+    FirmwareUpdateCallbacks& finishUpdateFn(FinishUpdateFn fn);
     FinishUpdateFn finishUpdateFn() const;
 
-    OtaUpdateCallbacks& saveChunkFn(SaveChunkFn fn);
+    FirmwareUpdateCallbacks& saveChunkFn(SaveChunkFn fn);
     SaveChunkFn saveChunkFn() const;
 
-    OtaUpdateCallbacks& userData(void* data);
+    FirmwareUpdateCallbacks& userData(void* data);
     void* userData() const;
 
 private:
@@ -85,15 +85,15 @@ private:
 /**
  * OTA update protocol v3.
  */
-class OtaUpdate {
+class FirmwareUpdate {
 public:
     // Class-specific result codes
     enum Result {
         MESSAGE_NOT_FOUND = 1
     };
 
-    OtaUpdate(MessageChannel* channel, OtaUpdateCallbacks callbacks);
-    ~OtaUpdate();
+    FirmwareUpdate(MessageChannel* channel, FirmwareUpdateCallbacks callbacks);
+    ~FirmwareUpdate();
 
     int receiveBegin(Message* msg);
     int receiveEnd(Message* msg);
@@ -112,7 +112,7 @@ private:
     };
 
     FirmwareUpdateContext ctx_;
-    OtaUpdateCallbacks const callbacks_;
+    FirmwareUpdateCallbacks const callbacks_;
     MessageChannel* const channel_;
     State state_;
 
@@ -142,66 +142,66 @@ inline void FirmwareUpdateContext::reset() {
     errMsg_ = CString();
 }
 
-inline OtaUpdateCallbacks::OtaUpdateCallbacks() :
+inline FirmwareUpdateCallbacks::FirmwareUpdateCallbacks() :
         startUpdateFn_(nullptr),
         finishUpdateFn_(nullptr),
         saveChunkFn_(nullptr),
         userData_(nullptr) {
 }
 
-inline OtaUpdateCallbacks& OtaUpdateCallbacks::startUpdateFn(StartUpdateFn fn) {
+inline FirmwareUpdateCallbacks& FirmwareUpdateCallbacks::startUpdateFn(StartUpdateFn fn) {
     startUpdateFn_ = fn;
     return *this;
 }
 
-inline OtaUpdateCallbacks::StartUpdateFn OtaUpdateCallbacks::startUpdateFn() const {
+inline FirmwareUpdateCallbacks::StartUpdateFn FirmwareUpdateCallbacks::startUpdateFn() const {
     return startUpdateFn_;
 }
 
-inline OtaUpdateCallbacks& OtaUpdateCallbacks::finishUpdateFn(FinishUpdateFn fn) {
+inline FirmwareUpdateCallbacks& FirmwareUpdateCallbacks::finishUpdateFn(FinishUpdateFn fn) {
     finishUpdateFn_ = fn;
     return *this;
 }
 
-inline OtaUpdateCallbacks::FinishUpdateFn OtaUpdateCallbacks::finishUpdateFn() const {
+inline FirmwareUpdateCallbacks::FinishUpdateFn FirmwareUpdateCallbacks::finishUpdateFn() const {
     return finishUpdateFn_;
 }
 
-inline OtaUpdateCallbacks& OtaUpdateCallbacks::saveChunkFn(SaveChunkFn fn) {
+inline FirmwareUpdateCallbacks& FirmwareUpdateCallbacks::saveChunkFn(SaveChunkFn fn) {
     saveChunkFn_ = fn;
     return *this;
 }
 
-inline OtaUpdateCallbacks::SaveChunkFn OtaUpdateCallbacks::saveChunkFn() const {
+inline FirmwareUpdateCallbacks::SaveChunkFn FirmwareUpdateCallbacks::saveChunkFn() const {
     return saveChunkFn_;
 }
 
-inline OtaUpdateCallbacks& OtaUpdateCallbacks::userData(void* data) {
+inline FirmwareUpdateCallbacks& FirmwareUpdateCallbacks::userData(void* data) {
     userData_ = data;
     return *this;
 }
 
-inline void* OtaUpdateCallbacks::userData() const {
+inline void* FirmwareUpdateCallbacks::userData() const {
     return userData_;
 }
 
-inline bool OtaUpdate::isActive() const {
+inline bool FirmwareUpdate::isActive() const {
     return state_ != State::IDLE;
 }
 
-inline int OtaUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags) {
+inline int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags) {
     return callbacks_.startUpdateFn()(fileSize, fileHash, fileOffset, flags, &ctx_);
 }
 
-inline int OtaUpdate::validateUpdate() {
+inline int FirmwareUpdate::validateUpdate() {
     return callbacks_.validateUpdateFn()(&ctx_);
 }
 
-inline int OtaUpdate::finishUpdate(FirmwareUpdateFlags flags) {
+inline int FirmwareUpdate::finishUpdate(FirmwareUpdateFlags flags) {
     return callbacks_.finishUpdateFn()(flags, &ctx_);
 }
 
-inline int OtaUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize) {
+inline int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize) {
     return callbacks_.saveChunkFn()(chunkData, chunkSize, chunkOffset, partialSize, &ctx_);
 }
 

@@ -15,15 +15,13 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ota_update.h"
+#include "firmware_update.h"
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 
-#include "scope_guard.h"
-
 namespace particle::protocol {
 
-OtaUpdate::OtaUpdate(MessageChannel* channel, OtaUpdateCallbacks callbacks) :
+FirmwareUpdate::FirmwareUpdate(MessageChannel* channel, FirmwareUpdateCallbacks callbacks) :
         ctx_(callbacks.userData()),
         callbacks_(std::move(callbacks)),
         channel_(channel),
@@ -31,30 +29,30 @@ OtaUpdate::OtaUpdate(MessageChannel* channel, OtaUpdateCallbacks callbacks) :
     reset();
 }
 
-OtaUpdate::~OtaUpdate() {
+FirmwareUpdate::~FirmwareUpdate() {
 }
 
-int OtaUpdate::receiveBegin(Message* msg) {
+int FirmwareUpdate::receiveBegin(Message* msg) {
     return -1;
 }
 
-int OtaUpdate::receiveEnd(Message* msg) {
+int FirmwareUpdate::receiveEnd(Message* msg) {
     return -1;
 }
 
-int OtaUpdate::receiveChunk(Message* msg) {
+int FirmwareUpdate::receiveChunk(Message* msg) {
     return -1;
 }
 
-int OtaUpdate::receiveAck(Message* msg) {
+int FirmwareUpdate::receiveAck(Message* msg) {
     return -1;
 }
 
-int OtaUpdate::process() {
+int FirmwareUpdate::process() {
     return -1;
 }
 
-void OtaUpdate::reset() {
+void FirmwareUpdate::reset() {
     if (state_ != State::IDLE) {
         finishUpdate(FirmwareUpdateFlag::CANCEL);
         state_ = State::IDLE;
