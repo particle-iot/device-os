@@ -15,8 +15,16 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __SPI_HAL_COMPAT_H
-#define __SPI_HAL_COMPAT_H
+#ifndef SPI_HAL_COMPAT_H
+#define SPI_HAL_COMPAT_H
+
+typedef hal_spi_interface_t HAL_SPI_Interface __attribute__((deprecated("Use hal_spi_interface_t instead")));
+typedef hal_spi_mode_t SPI_Mode __attribute__((deprecated("Use hal_spi_mode_t instead")));
+typedef hal_spi_transfer_status_t HAL_SPI_TransferStatus __attribute__((deprecated("Use hal_spi_transfer_status_t instead")));
+typedef hal_spi_acquire_config_t HAL_SPI_AcquireConfig __attribute__((deprecated("Use hal_spi_acquire_config_t instead")));
+
+typedef hal_spi_dma_user_callback HAL_SPI_DMA_UserCallback;
+typedef hal_spi_select_user_callback HAL_SPI_Select_UserCallback;
 
 // Deprecated *dynalib* APIs for backwards compatibility
 inline void __attribute__((deprecated("Use hal_spi_init() instead"))) HAL_SPI_Init(HAL_SPI_Interface spi) {
@@ -95,4 +103,4 @@ inline int32_t __attribute__((deprecated("Use hal_spi_release() instead"))) HAL_
 
 #endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
 
-#endif  /* __SPI_HAL_COMPAT_H */
+#endif  /* SPI_HAL_COMPAT_H */

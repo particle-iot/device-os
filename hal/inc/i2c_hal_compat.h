@@ -15,8 +15,13 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __I2C_HAL_COMPAT_H
-#define __I2C_HAL_COMPAT_H
+#ifndef I2C_HAL_COMPAT_H
+#define I2C_HAL_COMPAT_H
+
+typedef hal_i2c_mode_t I2C_Mode __attribute__((deprecated("Use hal_i2c_mode_t instead")));
+typedef hal_i2c_interface_t HAL_I2C_Interface __attribute__((deprecated("Use hal_i2c_interface_t instead")));
+typedef hal_i2c_config_t HAL_I2C_Config __attribute__((deprecated("Use hal_i2c_config_t instead")));
+typedef hal_i2c_transmission_config_t HAL_I2C_Transmission_Config __attribute__((deprecated("Use hal_i2c_transmission_config_t instead")));
 
 // Deprecated *dynalib* APIs for backwards compatibility
 inline int __attribute__((deprecated("Use hal_i2c_init() instead"))) HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config) {
@@ -103,4 +108,4 @@ inline int32_t __attribute__((deprecated("Use hal_i2c_unlock() instead"))) HAL_I
     return hal_i2c_unlock(i2c, reserved);
 }
 
-#endif  /* __I2C_HAL_COMPAT_H */
+#endif  /* I2C_HAL_COMPAT_H */

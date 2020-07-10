@@ -23,8 +23,8 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __USART_HAL_H
-#define __USART_HAL_H
+#ifndef USART_HAL_H
+#define USART_HAL_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -121,7 +121,6 @@ typedef struct hal_usart_ring_buffer_t {
     volatile uint16_t head;
     volatile uint16_t tail;
 } hal_usart_ring_buffer_t;
-typedef hal_usart_ring_buffer_t Ring_Buffer; // For backwards compatibility
 
 typedef enum hal_usart_interface_t {
     HAL_USART_SERIAL1 = 0,    //maps to USART_TX_RX
@@ -132,7 +131,6 @@ typedef enum hal_usart_interface_t {
    ,HAL_USART_SERIAL5 = 4     //maps to USART_C1_C0
 #endif
 } hal_usart_interface_t;
-typedef hal_usart_interface_t HAL_USART_Serial; // For backwards compatibility
 
 typedef enum hal_usart_state_t {
     HAL_USART_STATE_UNKNOWN,
@@ -152,7 +150,6 @@ typedef struct hal_usart_buffer_config_t {
     void* tx_buffer;
     uint16_t tx_buffer_size;
 } hal_usart_buffer_config_t;
-typedef hal_usart_buffer_config_t HAL_USART_Buffer_Config; // For backwards compatibility
 
 int hal_usart_init_ex(hal_usart_interface_t serial, const hal_usart_buffer_config_t* config, void*);
 void hal_usart_init(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer);
@@ -183,4 +180,4 @@ ssize_t hal_usart_peak_buffer(hal_usart_interface_t serial, void* buffer, size_t
 }
 #endif
 
-#endif  /* __USART_HAL_H */
+#endif  /* USART_HAL_H */

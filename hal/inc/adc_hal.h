@@ -22,8 +22,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ADC_HAL_H
-#define __ADC_HAL_H
+#ifndef ADC_HAL_H
+#define ADC_HAL_H
 
 #include "pinmap_hal.h"
 
@@ -49,4 +49,4 @@ int hal_adc_sleep(bool sleep, void* reserved);
 }
 #endif
 
-#endif  /* __ADC_HAL_H */
+#endif  /* ADC_HAL_H */

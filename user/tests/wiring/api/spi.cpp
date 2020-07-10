@@ -202,23 +202,28 @@ test(spi_lock)
 
 test(spi_hal_backwards_compatibility)
 {
+    HAL_SPI_Interface spi = HAL_SPI_INTERFACE1;
+    SPI_Mode mode = SPI_MODE_MASTER;
+    HAL_SPI_TransferStatus status;
+    HAL_SPI_AcquireConfig config;
+
     // These APIs are exposed to user application.
-    API_COMPILE(HAL_SPI_Init(HAL_SPI_INTERFACE1));
-    API_COMPILE(HAL_SPI_Begin(HAL_SPI_INTERFACE1, 0));
-    API_COMPILE(HAL_SPI_Begin_Ext(HAL_SPI_INTERFACE1, SPI_MODE_MASTER, 0, NULL));
-    API_COMPILE(HAL_SPI_End(HAL_SPI_INTERFACE1));
-    API_COMPILE(HAL_SPI_Set_Bit_Order(HAL_SPI_INTERFACE1, 0));
-    API_COMPILE(HAL_SPI_Set_Data_Mode(HAL_SPI_INTERFACE1, 0));
-    API_COMPILE(HAL_SPI_Set_Clock_Divider(HAL_SPI_INTERFACE1, 0));
-    API_COMPILE(HAL_SPI_Send_Receive_Data(HAL_SPI_INTERFACE1, 0));
-    API_COMPILE(HAL_SPI_DMA_Transfer(HAL_SPI_INTERFACE1, NULL, NULL, 0, NULL));
+    API_COMPILE(HAL_SPI_Init(spi));
+    API_COMPILE(HAL_SPI_Begin(spi, 0));
+    API_COMPILE(HAL_SPI_Begin_Ext(spi, mode, 0, NULL));
+    API_COMPILE(HAL_SPI_End(spi));
+    API_COMPILE(HAL_SPI_Set_Bit_Order(spi, 0));
+    API_COMPILE(HAL_SPI_Set_Data_Mode(spi, 0));
+    API_COMPILE(HAL_SPI_Set_Clock_Divider(spi, 0));
+    API_COMPILE(HAL_SPI_Send_Receive_Data(spi, 0));
+    API_COMPILE(HAL_SPI_DMA_Transfer(spi, NULL, NULL, 0, NULL));
     API_COMPILE(HAL_SPI_Is_Enabled_Old());
-    API_COMPILE(HAL_SPI_Is_Enabled(HAL_SPI_INTERFACE1));
-    API_COMPILE(HAL_SPI_Info(HAL_SPI_INTERFACE1, NULL, NULL));
-    API_COMPILE(HAL_SPI_Set_Callback_On_Select(HAL_SPI_INTERFACE1, NULL, NULL));
-    API_COMPILE(HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_INTERFACE1));
-    API_COMPILE(HAL_SPI_DMA_Transfer_Status(HAL_SPI_INTERFACE1, NULL));
-    API_COMPILE(HAL_SPI_Set_Settings(HAL_SPI_INTERFACE1, 0, 0, 0, 0, NULL));
-    API_COMPILE(HAL_SPI_Acquire(HAL_SPI_INTERFACE1, NULL));
-    API_COMPILE(HAL_SPI_Release(HAL_SPI_INTERFACE1, NULL));
+    API_COMPILE(HAL_SPI_Is_Enabled(spi));
+    API_COMPILE(HAL_SPI_Info(spi, NULL, NULL));
+    API_COMPILE(HAL_SPI_Set_Callback_On_Select(spi, NULL, NULL));
+    API_COMPILE(HAL_SPI_DMA_Transfer_Cancel(spi));
+    API_COMPILE(HAL_SPI_DMA_Transfer_Status(spi, &status));
+    API_COMPILE(HAL_SPI_Set_Settings(spi, 0, 0, 0, 0, NULL));
+    API_COMPILE(HAL_SPI_Acquire(spi, &config));
+    API_COMPILE(HAL_SPI_Release(spi, NULL));
 }

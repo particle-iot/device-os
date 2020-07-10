@@ -15,8 +15,12 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __USART_HAL_COMPAT_H
-#define __USART_HAL_COMPAT_H
+#ifndef USART_HAL_COMPAT_H
+#define USART_HAL_COMPAT_H
+
+typedef hal_usart_ring_buffer_t Ring_Buffer __attribute__((deprecated("Use hal_usart_ring_buffer_t instead")));
+typedef hal_usart_interface_t HAL_USART_Serial __attribute__((deprecated("Use hal_usart_interface_t instead")));
+typedef hal_usart_buffer_config_t HAL_USART_Buffer_Config __attribute__((deprecated("Use hal_usart_buffer_config_t instead")));
 
 // Deprecated *dynalib* APIs for backwards compatibility
 inline void __attribute__((deprecated("Use hal_usart_init() instead"))) HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer) {
@@ -79,4 +83,4 @@ inline uint8_t __attribute__((deprecated("Use hal_usart_break_detected() instead
     return hal_usart_break_detected(serial);
 }
 
-#endif  /* __USART_HAL_COMPAT_H */
+#endif  /* USART_HAL_COMPAT_H */

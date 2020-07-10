@@ -15,8 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ADC_HAL_COMPAT_H
-#define __ADC_HAL_COMPAT_H
+#ifndef ADC_HAL_COMPAT_H
+#define ADC_HAL_COMPAT_H
 
 // Deprecated *dynalib* APIs for backwards compatibility
 inline void __attribute__((deprecated("Use hal_adc_set_sample_time() instead"))) HAL_ADC_Set_Sample_Time(uint8_t sample_time) {
@@ -27,4 +27,4 @@ inline int32_t __attribute__((deprecated("Use hal_adc_read() instead"))) HAL_ADC
     return hal_adc_read(pin);
 }
 
-#endif  /* __ADC_HAL_COMPAT_H */
+#endif  /* ADC_HAL_COMPAT_H */

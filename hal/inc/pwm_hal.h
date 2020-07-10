@@ -23,8 +23,8 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __PWM_HAL_H
-#define __PWM_HAL_H
+#ifndef PWM_HAL_H
+#define PWM_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
@@ -62,4 +62,4 @@ int hal_pwm_sleep(bool sleep, void* reserved);
 }
 #endif
 
-#endif  /* __PWM_HAL_H */
+#endif  /* PWM_HAL_H */

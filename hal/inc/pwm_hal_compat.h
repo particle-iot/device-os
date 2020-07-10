@@ -15,8 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __PWM_HAL_COMPAT_H
-#define __PWM_HAL_COMPAT_H
+#ifndef PWM_HAL_COMPAT_H
+#define PWM_HAL_COMPAT_H
 
 // Deprecated *dynalib* APIs for backwards compatibility
 inline void __attribute__((deprecated("Use hal_pwm_write() instead"))) HAL_PWM_Write(uint16_t pin, uint8_t value) {
@@ -63,4 +63,4 @@ inline void __attribute__((deprecated("Use hal_pwm_set_resolution() instead"))) 
 	hal_pwm_set_resolution(pin, resolution);
 }
 
-#endif  /* __PWM_HAL_COMPAT_H */
+#endif  /* PWM_HAL_COMPAT_H */

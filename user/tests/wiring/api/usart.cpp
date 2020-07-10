@@ -3,20 +3,24 @@
 
 test(usart_hal_backwards_compatibility)
 {
+    Ring_Buffer rxBuf, txBuf;
+    HAL_USART_Serial serial = HAL_USART_SERIAL1;
+    HAL_USART_Buffer_Config config;
+
     // These APIs are exposed to user application.
-    API_COMPILE(HAL_USART_Init(HAL_USART_SERIAL1, NULL, NULL));
-    API_COMPILE(HAL_USART_Begin(HAL_USART_SERIAL1, 0));
-    API_COMPILE(HAL_USART_End(HAL_USART_SERIAL1));
-    API_COMPILE(HAL_USART_Write_Data(HAL_USART_SERIAL1, 0));
-    API_COMPILE(HAL_USART_Available_Data_For_Write(HAL_USART_SERIAL1));
-    API_COMPILE(HAL_USART_Available_Data(HAL_USART_SERIAL1));
-    API_COMPILE(HAL_USART_Read_Data(HAL_USART_SERIAL1));
-    API_COMPILE(HAL_USART_Peek_Data(HAL_USART_SERIAL1));
-    API_COMPILE(HAL_USART_Flush_Data(HAL_USART_SERIAL1));
-    API_COMPILE(HAL_USART_Is_Enabled(HAL_USART_SERIAL1));
-    API_COMPILE(HAL_USART_Half_Duplex(HAL_USART_SERIAL1, 0));
-    API_COMPILE(HAL_USART_BeginConfig(HAL_USART_SERIAL1, 0, 0, NULL));
-    API_COMPILE(HAL_USART_Write_NineBitData(HAL_USART_SERIAL1, 0));
-    API_COMPILE(HAL_USART_Send_Break(HAL_USART_SERIAL1, NULL));
-    API_COMPILE(HAL_USART_Break_Detected(HAL_USART_SERIAL1));
+    API_COMPILE(HAL_USART_Init(serial, &rxBuf, &txBuf));
+    API_COMPILE(HAL_USART_Begin(serial, 0));
+    API_COMPILE(HAL_USART_End(serial));
+    API_COMPILE(HAL_USART_Write_Data(serial, 0));
+    API_COMPILE(HAL_USART_Available_Data_For_Write(serial));
+    API_COMPILE(HAL_USART_Available_Data(serial));
+    API_COMPILE(HAL_USART_Read_Data(serial));
+    API_COMPILE(HAL_USART_Peek_Data(serial));
+    API_COMPILE(HAL_USART_Flush_Data(serial));
+    API_COMPILE(HAL_USART_Is_Enabled(serial));
+    API_COMPILE(HAL_USART_Half_Duplex(serial, 0));
+    API_COMPILE(HAL_USART_BeginConfig(serial, 0, 0, NULL));
+    API_COMPILE(HAL_USART_Write_NineBitData(serial, 0));
+    API_COMPILE(HAL_USART_Send_Break(serial, NULL));
+    API_COMPILE(HAL_USART_Break_Detected(serial));
 }
