@@ -26,52 +26,57 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usart_hal.h"
 
-void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
+void hal_usart_init(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer)
 {
 }
 
-void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud, uint8_t config, void*)
+void hal_usart_begin(hal_usart_interface_t serial, uint32_t baud, uint8_t config, void*)
 {
 }
 
-void HAL_USART_End(HAL_USART_Serial serial)
+void hal_usart_end(hal_usart_interface_t serial)
 {
 }
 
-uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data)
-{
-  return 0;
-}
-
-int32_t HAL_USART_Available_Data(HAL_USART_Serial serial)
+uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data)
 {
     return 0;
 }
 
-int32_t HAL_USART_Read_Data(HAL_USART_Serial serial)
+int32_t hal_usart_available(hal_usart_interface_t serial)
 {
     return 0;
 }
 
-int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial)
+int32_t hal_usart_read(hal_usart_interface_t serial)
 {
     return 0;
 }
 
-void HAL_USART_Flush_Data(HAL_USART_Serial serial)
+int32_t hal_usart_peek(hal_usart_interface_t serial)
+{
+    return 0;
+}
+
+void hal_usart_flush(hal_usart_interface_t serial)
 {
 }
 
-bool HAL_USART_Is_Enabled(HAL_USART_Serial serial)
+bool hal_usart_is_enabled(hal_usart_interface_t serial)
 {
     return false;
 }
 
-void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable)
+void hal_usart_half_duplex(hal_usart_interface_t serial, bool Enable)
 {
 }
 
-int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial)
+int32_t hal_usart_available_data_for_write(hal_usart_interface_t serial)
+{
+    return 0;
+}
+
+int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved)
 {
     return 0;
 }

@@ -42,7 +42,7 @@ ElectronSerialPipe::~ElectronSerialPipe(void)
 
 void ElectronSerialPipe::begin(unsigned baud, bool hwFlowCtrl)
 {
-    //HAL_USART_Begin(HAL_USART_SERIAL3, baud);
+    //hal_usart_begin(HAL_USART_SERIAL3, baud);
     //USART_DeInit(USART3);
     end();
 
@@ -92,17 +92,17 @@ void ElectronSerialPipe::begin(unsigned baud, bool hwFlowCtrl)
     // - Hardware flow control disabled for Serial1/2/4/5
     // - Hardware flow control enabled (RTS and CTS signals) for Serial3
     // - Receive and transmit enabled
-    USART_InitTypeDef USART_InitStructure = {};
-    USART_InitStructure.USART_BaudRate = baud;
-    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-    USART_InitStructure.USART_StopBits = USART_StopBits_1;
-    USART_InitStructure.USART_Parity = USART_Parity_No;
-    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-    USART_InitStructure.USART_HardwareFlowControl = hwFlowCtrl ? USART_HardwareFlowControl_RTS_CTS :
+    USART_InitTypeDef usartInitStructure = {};
+    usartInitStructure.USART_BaudRate = baud;
+    usartInitStructure.USART_WordLength = USART_WordLength_8b;
+    usartInitStructure.USART_StopBits = USART_StopBits_1;
+    usartInitStructure.USART_Parity = USART_Parity_No;
+    usartInitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    usartInitStructure.USART_HardwareFlowControl = hwFlowCtrl ? USART_HardwareFlowControl_RTS_CTS :
             USART_HardwareFlowControl_None;
 
     // Configure USART
-    USART_Init(USART3, &USART_InitStructure);
+    USART_Init(USART3, &usartInitStructure);
 
     // Enable the USART
     USART_Cmd(USART3, ENABLE);

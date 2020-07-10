@@ -34,10 +34,10 @@
 class USARTSerial : public Stream
 {
 private:
-  HAL_USART_Serial _serial;
+  hal_usart_interface_t _serial;
   bool _blocking;
 public:
-  USARTSerial(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer);
+  USARTSerial(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer);
   virtual ~USARTSerial() {};
   void begin(unsigned long);
   void begin(unsigned long, uint32_t);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -88,7 +88,7 @@ inline uint32_t pinToNrf(pin_t pin) {
 }
 
 class Usart;
-Usart* getInstance(HAL_USART_Serial serial);
+Usart* getInstance(hal_usart_interface_t serial);
 void uarte0InterruptHandler(void);
 void uarte1InterruptHandler(void);
 
@@ -123,7 +123,7 @@ public:
         unsigned int config;
     };
 
-    int init(const HAL_USART_Buffer_Config& conf) {
+    int init(const hal_usart_buffer_config_t& conf) {
         if (isEnabled()) {
             CHECK(end());
         }
@@ -142,13 +142,13 @@ public:
 
         configured_ = true;
 
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     int deInit() {
         configured_ = false;
 
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     int begin(const Config& conf) {
@@ -221,54 +221,54 @@ public:
         nrf_uarte_enable(uarte_);
 
         config_ = conf;
-        enabled_ = true;
+        state_ = HAL_USART_STATE_ENABLED;
 
         enableTimer();
         startReceiver();
 
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     int end() {
-        CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(state_ != HAL_USART_STATE_DISABLED, SYSTEM_ERROR_INVALID_STATE);
         AtomicSection lk;
 
-        disableInterrupts();
+        CHECK(disable());
 
-        stopTransmission();
-        stopReceiver();
-
-        nrf_uarte_disable(uarte_);
-
-        nrf_uarte_txrx_pins_disconnect(uarte_);
-        nrf_uarte_hwfc_pins_disconnect(uarte_);
-
-        HAL_Pin_Mode(txPin_, INPUT);
-        HAL_Set_Pin_Function(txPin_, PF_NONE);
-        HAL_Pin_Mode(rxPin_, INPUT);
-        HAL_Set_Pin_Function(rxPin_, PF_NONE);
-
-        if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
-            HAL_Pin_Mode(ctsPin_, INPUT);
-            HAL_Set_Pin_Function(ctsPin_, PF_NONE);
-        }
-        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
-            HAL_Pin_Mode(rtsPin_, INPUT);
-            HAL_Set_Pin_Function(rtsPin_, PF_NONE);
-        }
-
-        nrfx_prs_release(uarte_);
-
-        disableTimer();
-
-        enabled_ = false;
-        config_ = {};
+        state_ = HAL_USART_STATE_DISABLED;
         transmitting_ = false;
         receiving_ = 0;
+        config_ = {};
         rxBuffer_.reset();
         txBuffer_.reset();
 
-        return 0;
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int suspend() {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        
+        flush();
+
+        AtomicSection lk;
+
+        // Update current available received data
+        data();
+        CHECK(disable(false));
+
+        state_ = HAL_USART_STATE_SUSPENDED;
+        transmitting_ = false;
+        receiving_ = 0;
+        rxBuffer_.prune();
+        txBuffer_.reset();
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int restore() {
+        AtomicSection lk;
+        CHECK_TRUE(state_ == HAL_USART_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
+        return begin(config_);
     }
 
     ssize_t data() {
@@ -339,7 +339,7 @@ public:
             }
             {
                 TxLock lk(uarte_);
-                if (!enabled_ || txBuffer_.empty()) {
+                if (!isEnabled() || txBuffer_.empty()) {
                     break;
                 }
             }
@@ -352,7 +352,7 @@ public:
     }
 
     bool isEnabled() const {
-        return enabled_;
+        return state_ == HAL_USART_STATE_ENABLED;
     }
 
     void pump() {
@@ -470,6 +470,51 @@ public:
     }
 
 private:
+    int disable(bool end = true) {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+
+        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+            if (receiving_) {
+                // Issue the STOPRX task to deactive the RTS
+                nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STOPRX);
+            }
+        }
+
+        disableInterrupts();
+        stopTransmission();
+        stopReceiver();
+
+        nrf_uarte_disable(uarte_);
+        nrf_uarte_txrx_pins_disconnect(uarte_);
+        nrf_uarte_hwfc_pins_disconnect(uarte_);
+        nrfx_prs_release(uarte_);
+
+        disableTimer();
+
+        // Configuring the input pins' mode to PIN_MODE_NONE will disconnect input buffer to enable power savings
+        // Configuring the output pins' mode to INPUT_PULLUP to not polluting the state on other side.
+        HAL_Pin_Mode(txPin_, end ? PIN_MODE_NONE : INPUT_PULLUP);
+        HAL_Pin_Mode(rxPin_, PIN_MODE_NONE);
+        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+            HAL_Pin_Mode(rtsPin_, end ? PIN_MODE_NONE : INPUT_PULLUP);
+        }
+        if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
+            HAL_Pin_Mode(ctsPin_, PIN_MODE_NONE);
+        }
+        if (end) {
+            HAL_Set_Pin_Function(txPin_, PF_NONE);
+            HAL_Set_Pin_Function(rxPin_, PF_NONE);
+            if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+                HAL_Set_Pin_Function(rtsPin_, PF_NONE);
+            }
+            if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
+                HAL_Set_Pin_Function(ctsPin_, PF_NONE);
+            }
+        }
+
+        return SYSTEM_ERROR_NONE;
+    }
+
     void startTransmission() {
         size_t consumable;
         if (!transmitting_ && (consumable = txBuffer_.consumable())) {
@@ -582,6 +627,7 @@ private:
                       NRF_UARTE_INT_TXSTOPPED_MASK |
                       NRF_UARTE_INT_ENDTX_MASK);
         NRFX_IRQ_DISABLE(nrfx_get_irq_number((void*)uarte_));
+        NRFX_IRQ_PENDING_CLEAR(nrfx_get_irq_number((void*)uarte_));
     }
 
     void enableTimer() {
@@ -687,7 +733,7 @@ private:
     pin_t rtsPin_;
 
     bool configured_ = false;
-    volatile bool enabled_ = false;
+    volatile hal_usart_state_t state_ = HAL_USART_STATE_DISABLED;
 
     volatile bool transmitting_;
     volatile uint8_t receiving_;
@@ -707,7 +753,7 @@ const auto UARTE0_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_LOW;
 // TODO: move this to hal_platform_config.h ?
 const auto UARTE1_INTERRUPT_PRIORITY = (app_irq_priority_t)_PRIO_SD_LOWEST;
 
-Usart* getInstance(HAL_USART_Serial serial) {
+Usart* getInstance(hal_usart_interface_t serial) {
     static Usart usartMap[] = {
         {NRF_UARTE0, uarte0InterruptHandler, UARTE0_INTERRUPT_PRIORITY, NRF_TIMER2, NRF_PPI_CHANNEL4, TX, RX, CTS, RTS},
         {NRF_UARTE1, uarte1InterruptHandler, UARTE1_INTERRUPT_PRIORITY, NRF_TIMER3, NRF_PPI_CHANNEL5, TX1, RX1, CTS1, RTS1}
@@ -732,26 +778,26 @@ extern "C" void UARTE1_IRQHandler(void) {
     uarte1InterruptHandler();
 }
 
-int HAL_USART_Init_Ex(HAL_USART_Serial serial, const HAL_USART_Buffer_Config* config, void*) {
+int hal_usart_init_ex(hal_usart_interface_t serial, const hal_usart_buffer_config_t* config, void*) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     return usart->init(*config);
 }
 
-void HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer* rxBuffer, Ring_Buffer* txBuffer) {
-    HAL_USART_Buffer_Config conf = {
-        .size = sizeof(HAL_USART_Buffer_Config),
+void hal_usart_init(hal_usart_interface_t serial, hal_usart_ring_buffer_t* rxBuffer, hal_usart_ring_buffer_t* txBuffer) {
+    hal_usart_buffer_config_t conf = {
+        .size = sizeof(hal_usart_buffer_config_t),
         .rx_buffer = rxBuffer->buffer,
         .rx_buffer_size = sizeof(rxBuffer->buffer),
         .tx_buffer = txBuffer->buffer,
         .tx_buffer_size = sizeof(txBuffer->buffer)
     };
 
-    HAL_USART_Init_Ex(serial, &conf, nullptr);
+    hal_usart_init_ex(serial, &conf, nullptr);
 }
 
-void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void*) {
+void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_t config, void*) {
 #if PLATFORM_ID == PLATFORM_TRACKER
     /*
      * On Tracker both I2C_INTERFACE3 and USART_SERIAL1 use the same pins - D8 and D9,
@@ -779,11 +825,11 @@ void HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t conf
     usart->begin(conf);
 }
 
-void HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud) {
-    HAL_USART_BeginConfig(serial, baud, SERIAL_8N1, nullptr);
+void hal_usart_begin(hal_usart_interface_t serial, uint32_t baud) {
+    hal_usart_begin_config(serial, baud, SERIAL_8N1, nullptr);
 }
 
-void HAL_USART_End(HAL_USART_Serial serial) {
+void hal_usart_end(hal_usart_interface_t serial) {
     auto usart = getInstance(serial);
     // FIXME: CHECK_XXX?
     if (!usart) {
@@ -793,17 +839,17 @@ void HAL_USART_End(HAL_USART_Serial serial) {
     usart->end();
 }
 
-int32_t HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial) {
+int32_t hal_usart_available_data_for_write(hal_usart_interface_t serial) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     return usart->space();
 }
 
-int32_t HAL_USART_Available_Data(HAL_USART_Serial serial) {
+int32_t hal_usart_available(hal_usart_interface_t serial) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     return usart->data();
 }
 
-void HAL_USART_Flush_Data(HAL_USART_Serial serial) {
+void hal_usart_flush(hal_usart_interface_t serial) {
     auto usart = getInstance(serial);
     // FIXME: CHECK_XXX?
     if (!usart) {
@@ -813,50 +859,50 @@ void HAL_USART_Flush_Data(HAL_USART_Serial serial) {
     usart->flush();
 }
 
-bool HAL_USART_Is_Enabled(HAL_USART_Serial serial) {
+bool hal_usart_is_enabled(hal_usart_interface_t serial) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), false);
 
     return usart->isEnabled();
 }
 
-ssize_t HAL_USART_Write(HAL_USART_Serial serial, const void* buffer, size_t size, size_t elementSize) {
+ssize_t hal_usart_write_buffer(hal_usart_interface_t serial, const void* buffer, size_t size, size_t elementSize) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(elementSize == sizeof(uint8_t), SYSTEM_ERROR_INVALID_ARGUMENT);
     usart->pump();
     return usart->write((const uint8_t*)buffer, size);
 }
 
-ssize_t HAL_USART_Read(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize) {
+ssize_t hal_usart_read_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(elementSize == sizeof(uint8_t), SYSTEM_ERROR_INVALID_ARGUMENT);
     return usart->read((uint8_t*)buffer, size);
 }
 
-ssize_t HAL_USART_Peek(HAL_USART_Serial serial, void* buffer, size_t size, size_t elementSize) {
+ssize_t hal_usart_peak_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(elementSize == sizeof(uint8_t), SYSTEM_ERROR_INVALID_ARGUMENT);
     return usart->peek((uint8_t*)buffer, size);
 }
 
-int32_t HAL_USART_Read_Data(HAL_USART_Serial serial) {
+int32_t hal_usart_read(hal_usart_interface_t serial) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     uint8_t c;
     CHECK(usart->read(&c, sizeof(c)));
     return c;
 }
 
-int32_t HAL_USART_Peek_Data(HAL_USART_Serial serial) {
+int32_t hal_usart_peek(hal_usart_interface_t serial) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     uint8_t c;
     CHECK(usart->peek(&c, sizeof(c)));
     return c;
 }
 
-uint32_t HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data) {
-    return HAL_USART_Write_Data(serial, data);
+uint32_t hal_usart_write_nine_bits(hal_usart_interface_t serial, uint16_t data) {
+    return hal_usart_write(serial, data);
 }
 
-uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data) {
+uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     // Blocking!
     while(usart->isEnabled() && usart->space() <= 0) {
@@ -865,20 +911,20 @@ uint32_t HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data) {
     return CHECK_RETURN(usart->write(&data, sizeof(data)), 0);
 }
 
-void HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved) {
+void hal_usart_send_break(hal_usart_interface_t serial, void* reserved) {
     // Unsupported
 }
 
-uint8_t HAL_USART_Break_Detected(HAL_USART_Serial serial) {
+uint8_t hal_usart_break_detected(hal_usart_interface_t serial) {
     // Unsupported
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
-void HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool enable) {
+void hal_usart_half_duplex(hal_usart_interface_t serial, bool enable) {
     // Unsupported
 }
 
-int HAL_USART_Pvt_Get_Event_Group_Handle(HAL_USART_Serial serial, EventGroupHandle_t* handle) {
+int hal_usart_pvt_get_event_group_handle(hal_usart_interface_t serial, EventGroupHandle_t* handle) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     auto grp = usart->eventGroup();
     CHECK_TRUE(grp, SYSTEM_ERROR_INVALID_STATE);
@@ -886,17 +932,26 @@ int HAL_USART_Pvt_Get_Event_Group_Handle(HAL_USART_Serial serial, EventGroupHand
     return SYSTEM_ERROR_NONE;
 }
 
-int HAL_USART_Pvt_Enable_Event(HAL_USART_Serial serial, HAL_USART_Pvt_Events events) {
+int hal_usart_pvt_enable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     return usart->enableEvent(events);
 }
 
-int HAL_USART_Pvt_Disable_Event(HAL_USART_Serial serial, HAL_USART_Pvt_Events events) {
+int hal_usart_pvt_disable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     return usart->disableEvent(events);
 }
 
-int HAL_USART_Pvt_Wait_Event(HAL_USART_Serial serial, uint32_t events, system_tick_t timeout) {
+int hal_usart_pvt_wait_event(hal_usart_interface_t serial, uint32_t events, system_tick_t timeout) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     return usart->waitEvent(events, timeout);
+}
+
+int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    if (sleep) {
+        return usart->suspend();
+    } else {
+        return usart->restore();
+    }
 }

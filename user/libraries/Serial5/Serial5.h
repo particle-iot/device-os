@@ -6,8 +6,8 @@
 #if Wiring_Serial5
 
 // instantiate Serial5
-static Ring_Buffer serial5_rx_buffer;
-static Ring_Buffer serial5_tx_buffer;
+static hal_usart_ring_buffer_t serial5_rx_buffer;
+static hal_usart_ring_buffer_t serial5_tx_buffer;
 
 USARTSerial& __fetch_global_Serial5()
 {

@@ -174,8 +174,8 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
     // FIXME: when a new platform is added not using HAL_USART_SERIAL2 or not using
     // UART for talking to NCP.
     SINGLE_THREADED_BLOCK() {
-        HAL_USART_End(HAL_USART_SERIAL2);
-        HAL_USART_BeginConfig(HAL_USART_SERIAL2, 57600, SERIAL_8N1, nullptr);
+        hal_usart_end(HAL_USART_SERIAL2);
+        hal_usart_begin_config(HAL_USART_SERIAL2, 57600, SERIAL_8N1, nullptr);
     }
 
     delay(NCP_FAILURE_TIMEOUT);

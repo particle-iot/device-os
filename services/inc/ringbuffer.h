@@ -37,6 +37,7 @@ public:
 
     void init(T* buffer, size_t size);
     void reset();
+    void prune();
 
     size_t size() const;
 
@@ -113,6 +114,12 @@ inline void RingBuffer<T>::reset() {
 
     head_ = tail_ = headPending_ = tailPending_ = 0;
     full_ = false;
+}
+
+template <typename T>
+inline void RingBuffer<T>::prune() {
+    curSize_ = size_;
+    headPending_ = tailPending_ = 0;
 }
 
 template <typename T>

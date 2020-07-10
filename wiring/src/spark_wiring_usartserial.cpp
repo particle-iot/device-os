@@ -31,12 +31,12 @@
 
 // Constructors ////////////////////////////////////////////////////////////////
 
-USARTSerial::USARTSerial(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer)
+USARTSerial::USARTSerial(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer)
 {
   _serial = serial;
   // Default is blocking mode
   _blocking = true;
-  HAL_USART_Init(serial, rx_buffer, tx_buffer);
+  hal_usart_init(serial, rx_buffer, tx_buffer);
 }
 // Public Methods //////////////////////////////////////////////////////////////
 
@@ -47,17 +47,17 @@ void USARTSerial::begin(unsigned long baud)
 
 void USARTSerial::begin(unsigned long baud, uint32_t config)
 {
-  HAL_USART_BeginConfig(_serial, baud, config, 0);
+  hal_usart_begin_config(_serial, baud, config, nullptr);
 }
 
 void USARTSerial::end()
 {
-  HAL_USART_End(_serial);
+  hal_usart_end(_serial);
 }
 
 void USARTSerial::halfduplex(bool Enable)
 {
-    HAL_USART_Half_Duplex(_serial, Enable);
+    hal_usart_half_duplex(_serial, Enable);
 }
 
 void USARTSerial::blockOnOverrun(bool block)
@@ -68,42 +68,42 @@ void USARTSerial::blockOnOverrun(bool block)
 
 int USARTSerial::availableForWrite(void)
 {
-  return std::max(0, (int)HAL_USART_Available_Data_For_Write(_serial));
+  return std::max(0, (int)hal_usart_available_data_for_write(_serial));
 }
 
 int USARTSerial::available(void)
 {
-  return std::max(0, (int)HAL_USART_Available_Data(_serial));
+  return std::max(0, (int)hal_usart_available(_serial));
 }
 
 int USARTSerial::peek(void)
 {
-  return std::max(-1, (int)HAL_USART_Peek_Data(_serial));
+  return std::max(-1, (int)hal_usart_peek(_serial));
 }
 
 int USARTSerial::read(void)
 {
-  return std::max(-1, (int)HAL_USART_Read_Data(_serial));
+  return std::max(-1, (int)hal_usart_read(_serial));
 }
 
 void USARTSerial::flush()
 {
-  HAL_USART_Flush_Data(_serial);
+  hal_usart_flush(_serial);
 }
 
 size_t USARTSerial::write(uint8_t c)
 {
   // attempt a write if blocking, or for non-blocking if there is room.
-  if (_blocking || HAL_USART_Available_Data_For_Write(_serial) > 0) {
+  if (_blocking || hal_usart_available_data_for_write(_serial) > 0) {
     // the HAL always blocks.
-	  return HAL_USART_Write_Data(_serial, c);
+	  return hal_usart_write(_serial, c);
   }
   return 0;
 }
 
 size_t USARTSerial::write(uint16_t c)
 {
-  return HAL_USART_Write_NineBitData(_serial, c);
+  return hal_usart_write_nine_bits(_serial, c);
 }
 
 USARTSerial::operator bool() {
@@ -111,25 +111,25 @@ USARTSerial::operator bool() {
 }
 
 bool USARTSerial::isEnabled() {
-  return HAL_USART_Is_Enabled(_serial);
+  return hal_usart_is_enabled(_serial);
 }
 
 void USARTSerial::breakTx() {
-  HAL_USART_Send_Break(_serial, NULL);
+  hal_usart_send_break(_serial, nullptr);
 }
 
 bool USARTSerial::breakRx() {
-  return (bool)HAL_USART_Break_Detected(_serial);
+  return (bool)hal_usart_break_detected(_serial);
 }
 
 #ifndef SPARK_WIRING_NO_USART_SERIAL
 // Preinstantiate Objects //////////////////////////////////////////////////////
 #if ((MODULE_FUNCTION == MOD_FUNC_USER_PART) || (MODULE_FUNCTION == MOD_FUNC_MONO_FIRMWARE))
-static Ring_Buffer serial1_rx_buffer;
-static Ring_Buffer serial1_tx_buffer;
+static hal_usart_ring_buffer_t serial1_rx_buffer;
+static hal_usart_ring_buffer_t serial1_tx_buffer;
 #else
-static Ring_Buffer* serial1_rx_buffer = NULL;
-static Ring_Buffer* serial1_tx_buffer = NULL;
+static hal_usart_ring_buffer_t* serial1_rx_buffer = nullptr;
+static hal_usart_ring_buffer_t* serial1_tx_buffer = nullptr;
 #endif
 
 USARTSerial& __fetch_global_Serial1()
@@ -138,10 +138,10 @@ USARTSerial& __fetch_global_Serial1()
 	static USARTSerial serial1(HAL_USART_SERIAL1, &serial1_rx_buffer, &serial1_tx_buffer);
 #else
   if (!serial1_rx_buffer) {
-    serial1_rx_buffer = new Ring_Buffer();
+    serial1_rx_buffer = new hal_usart_ring_buffer_t();
   }
   if (!serial1_tx_buffer) {
-    serial1_tx_buffer = new Ring_Buffer();
+    serial1_tx_buffer = new hal_usart_ring_buffer_t();
   }
   static USARTSerial serial1(HAL_USART_SERIAL1, serial1_rx_buffer, serial1_tx_buffer);
 #endif
