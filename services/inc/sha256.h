@@ -28,7 +28,8 @@ namespace particle {
 
 class Sha256 {
 public:
-    static const size_t SIZE = 32;
+    static const size_t HASH_SIZE = 32;
+    static const size_t BLOCK_SIZE = 64;
 
     Sha256();
     ~Sha256();
@@ -49,7 +50,8 @@ private:
 
 class HmacSha256 {
 public:
-    static const size_t SIZE = 32;
+    static const size_t HASH_SIZE = 32;
+    static const size_t BLOCK_SIZE = 64;
 
     HmacSha256();
     ~HmacSha256();

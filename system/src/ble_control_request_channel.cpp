@@ -347,7 +347,7 @@ private:
     Sha256 hash_;
     mbedtls_ecjpake_context ctx_;
     char secret_[JPAKE_SHARED_SECRET_SIZE];
-    char confirmKey_[Sha256::SIZE];
+    char confirmKey_[Sha256::HASH_SIZE];
     State state_;
 
     int readRound1() {
@@ -407,7 +407,7 @@ private:
         if (ret != Result::DONE) {
             return ret;
         }
-        if (size != Sha256::SIZE) {
+        if (size != Sha256::HASH_SIZE) {
             LOG_DEBUG(ERROR, "Invalid size of the confirmation message");
             return SYSTEM_ERROR_BAD_DATA;
         }
@@ -429,7 +429,7 @@ private:
         hash.destroy();
         // Validate the confirmation message
         CHECK(hash.init(hash_));
-        char hashVal[Sha256::SIZE] = {};
+        char hashVal[Sha256::HASH_SIZE] = {};
         CHECK(hash.finish(hashVal));
         hash.destroy();
         HmacSha256 hmac;
@@ -439,7 +439,7 @@ private:
         CHECK(hmac.update(JPAKE_SERVER_ID));
         CHECK(hmac.update(hashVal, sizeof(hashVal)));
         CHECK(hmac.finish(hashVal));
-        if (memcmp(data, hashVal, Sha256::SIZE) != 0) {
+        if (memcmp(data, hashVal, Sha256::HASH_SIZE) != 0) {
             LOG_DEBUG(ERROR, "Invalid confirmation message");
             return SYSTEM_ERROR_BAD_DATA;
         }
@@ -451,7 +451,7 @@ private:
 
     int writeConfirm() {
         Buffer* buf = nullptr;
-        CHECK(initPacket(&buf, Sha256::SIZE));
+        CHECK(initPacket(&buf, Sha256::HASH_SIZE));
         CHECK(hash_.finish(buf->data));
         hash_.destroy();
         HmacSha256 hmac;
