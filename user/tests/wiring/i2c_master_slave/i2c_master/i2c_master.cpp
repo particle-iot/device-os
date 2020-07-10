@@ -257,20 +257,3 @@ test(I2C_04_Master_Slave_Master_Variable_Length_Transfer_With_WireTransmission_A
 
     USE_WIRE.end();
 }
-
-test(I2C_05_Hal_Sleep_API_Test) {
-    hal_i2c_config_t config = acquireWireBuffer();
-    assertEqual(hal_i2c_init(HAL_I2C_INTERFACE1, &config), (int)SYSTEM_ERROR_NONE);
-
-    // Suspend and resotre I2C
-    hal_i2c_begin(HAL_I2C_INTERFACE1, I2C_MODE_MASTER, 0x00, NULL);
-    assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);  // Suspend
-    assertFalse(hal_i2c_is_enabled(HAL_I2C_INTERFACE1, NULL));
-    assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE); // Restore
-    assertTrue(hal_i2c_is_enabled(HAL_I2C_INTERFACE1, NULL));
-
-    // Retore API should not re-initialize the disabled I2C
-    hal_i2c_begin(HAL_I2C_INTERFACE1, I2C_MODE_MASTER, 0x00, NULL);
-    hal_i2c_end(HAL_I2C_INTERFACE1, NULL);
-    assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_INVALID_STATE);
-}

@@ -22,7 +22,7 @@ static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
 {
     memset(info, 0, sizeof(hal_spi_info_t));
     info->version = HAL_SPI_INFO_VERSION;
-    HAL_SPI_Info(spi, info, nullptr);
+    hal_spi_info(spi, info, nullptr);
 }
 
 test(SPIX_01_SPI_Begin_Without_Argument)
@@ -640,4 +640,34 @@ test(SPIX_20_SPI_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
 
     // Serial.printlnf("in %lu ms, expected: %lu", transferTime, expectedTime);
     assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
+}
+
+test(SPIX_21_SPI_Sleep) {
+    constexpr unsigned int transferSize = 128;
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    assertTrue(SPI.isEnabled());
+    SPI.beginTransaction();
+    uint8_t temp[transferSize] = {};
+    uint8_t tempRx[transferSize] = {};
+    uint8_t tempRx1[transferSize] = {};
+    SPI.transfer(temp, tempRx, transferSize, nullptr);
+    SPI.endTransaction();
+
+    for (int i = 0; i < transferSize; i++) {
+        tempRx1[i] = tempRx[i];
+        tempRx[i] = ~tempRx[i];
+    }
+
+    assertEqual(0, hal_spi_sleep(SPI.interface(), true, nullptr));
+    assertFalse(SPI.isEnabled());
+    assertEqual(0, hal_spi_sleep(SPI.interface(), false, nullptr));
+    assertTrue(SPI.isEnabled());
+
+    SPI.beginTransaction();
+    SPI.transfer(temp, tempRx, transferSize, nullptr);
+    SPI.endTransaction();
+    SPI.end();
+
+    assertNotEqual(0, memcmp(tempRx, tempRx1, sizeof(tempRx)));
 }

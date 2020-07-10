@@ -182,15 +182,9 @@ test(PWM_05_AnalogWriteOnPinResultsInCorrectAnalogValue) {
     // 8-bit resolution
     analogWriteResolution(pin, 8);
     assertEqual(analogWriteResolution(pin), 8);
-<<<<<<< HEAD
-	analogWrite(pin, 200);
-	// then
-	assertEqual(hal_pwm_get_analog_value_ext(pin), 200);
-=======
     analogWrite(pin, 200);
     // then
-    assertEqual(HAL_PWM_Get_AnalogValue_Ext(pin), 200);
->>>>>>> [test] minor
+    assertEqual(hal_pwm_get_analog_value_ext(pin), 200);
 
     // 4-bit resolution
     analogWriteResolution(pin, 4);
@@ -602,7 +596,45 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     });
 }
 
-test(PWM_11_CompherensiveResolutionFrequency) {
+test(PWM_11_PwmSleep) {
+    for_all_pwm_pins([](pin_t pin, const char* name) {
+    out->printlnf("Pin: %s", name);
+    // when
+    pinMode(pin, OUTPUT);
+
+    // 15-bit resolution
+    analogWriteResolution(pin, 15);
+    assertEqual(analogWriteResolution(pin), 15);
+    // analogWrite(pin, 3277, 10000); // 10% Duty Cycle at 10kHz = 10us HIGH, 90us LOW.
+    // if (pin == D0) delay(5000);
+    uint32_t avgPulseHigh = 0;
+    for(int i=0; i<10; i++) {
+        analogWrite(pin, 3277, 10000); // 10% Duty Cycle at 10kHz = 10us HIGH, 90us LOW.
+        // Disable SysTick to avoid potential interrupt safety issues with RGB LED pins
+        SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
+        assertEqual(0, hal_pwm_sleep(true, nullptr));
+        assertEqual(0, hal_pwm_sleep(false, nullptr));
+        SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
+#if HAL_PLATFORM_NRF52840
+        // Dummy read to wait until the change of PWM takes effect
+        pulseIn(pin, HIGH);
+        pulseIn(pin, LOW);
+        AtomicSection atomic;
+#endif
+        avgPulseHigh += pulseIn(pin, HIGH);
+    }
+    avgPulseHigh /= 10;
+    // then
+    // avgPulseHigh should equal 10 +/- 2
+    assertMoreOrEqual(avgPulseHigh, 8);
+    assertLessOrEqual(avgPulseHigh, 12);
+
+    analogWrite(pin, 0, 500);
+    pinMode(pin, INPUT);
+    });
+}
+
+test(PWM_12_CompherensiveResolutionFrequency) {
     for_all_pwm_pins([&](uint16_t pin, const char* name) {
         out->printlnf("Pin: %s", name);
         // when

@@ -47,6 +47,9 @@ typedef enum hal_spi_state_t {
 typedef void (*hal_spi_dma_user_callback)(void);
 typedef void (*hal_spi_select_user_callback)(uint8_t);
 
+// Compatibility typedef
+typedef hal_spi_dma_user_callback HAL_SPI_DMA_UserCallback;
+
 /* Exported macros -----------------------------------------------------------*/
 #define SPI_MODE0               0x00
 #define SPI_MODE1               0x01
