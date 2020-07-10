@@ -1265,8 +1265,6 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     unsigned runtimeBaudrate = ncpId() == PLATFORM_NCP_SARA_R410 ? UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 :
             UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2;
 
-    CHECK(serial_->setBaudRate(runtimeBaudrate));
-
     // Feeling optimistic, try to see if the muxer is already available
     if (!muxer_.isRunning()) {
         LOG(TRACE, "Muxer is not currently running");
