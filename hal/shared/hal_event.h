@@ -18,11 +18,11 @@
 #ifndef HAL_EVENT_H
 #define HAL_EVENT_H
 
+#include "core_hal.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "core_hal.h"
 
 // Generates HAL event. See HAL_Event enum for the list of defined events
 void hal_notify_event(int event, int flags, void* data);
