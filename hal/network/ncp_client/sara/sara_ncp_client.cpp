@@ -843,8 +843,8 @@ int SaraNcpClient::waitReady(bool powerOn) {
             ready_ = checkRuntimeState(modemState, UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2) == 0;
         } else {
             int res = checkRuntimeState(modemState, UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
-            if (res == SYSTEM_ERROR_UNKNOWN) {
-                // resuming muxer has failed probably because of baud rate. Try with other baud rate
+            if (res != SYSTEM_ERROR_NONE) {
+                // AT has not responded probably because of baud rate. Try with other baud rate
                 LOG_DEBUG(TRACE, "Checking muxer at %d baud", UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
                 res = checkRuntimeState(modemState, UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
             }
@@ -1241,31 +1241,46 @@ int SaraNcpClient::initReady(ModemState state) {
     return SYSTEM_ERROR_NONE;
 }
 
-int SaraNcpClient::checkRuntimeState(ModemState& state, unsigned runtimeBaudrate) {
-    // Assume we are running at the runtime baudrate
-    CHECK(serial_->setBaudRate(runtimeBaudrate));
+bool SaraNcpClient::checkRuntimeStateMuxer(unsigned int baudrate) {
+    // Assume we are running at the given baudrate
+    CHECK(serial_->setBaudRate(baudrate));
 
+    // Attempt to check whether we are already in muxer state
+    // This call will automatically attempt to open/reopen channel 0 (main)
+    // It should timeout within T2 * N2, which is 300ms * 3 ~= 1s
+    bool stop = true;
+    SCOPE_GUARD({
+        if (stop) {
+            muxer_.stop();
+        }
+    });
+    if (!initMuxer()) {
+        muxer_.setAckTimeout(gsm0710::proto::DEFAULT_T1);
+        muxer_.setControlResponseTimeout(gsm0710::proto::DEFAULT_T2);
+        LOG(TRACE, "Initialized muxer @ %u baudrate", baudrate);
+        if (!muxer_.start(true /* initiator */, false /* don't open channel 0 */)) {
+            if (!muxer_.forceOpenChannel(0) && !muxer_.ping()) {
+                LOG(TRACE, "Resumed muxed session");
+                stop = false;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+int SaraNcpClient::checkRuntimeState(ModemState& state, unsigned runtimeBaudrate) {
     // Feeling optimistic, try to see if the muxer is already available
     if (!muxer_.isRunning()) {
         LOG(TRACE, "Muxer is not currently running");
-        // Attempt to check whether we are already in muxer state
-        // This call will automatically attempt to open/reopen channel 0 (main)
-        // It should timeout within T2 * N2, which is 300ms * 3 ~= 1s
-        bool stop = true;
-        SCOPE_GUARD({
-            if (stop) {
-                muxer_.stop();
-            }
-        });
-        if (!initMuxer()) {
-            muxer_.setAckTimeout(gsm0710::proto::DEFAULT_T1);
-            muxer_.setControlResponseTimeout(gsm0710::proto::DEFAULT_T2);
-            LOG(TRACE, "Initialized muxer");
-            if (!muxer_.start(true /* initiator */, false /* don't open channel 0 */)) {
-                if (!muxer_.forceOpenChannel(0) && !muxer_.ping()) {
-                    LOG(TRACE, "Resumed muxed session");
-                    stop = false;
-                }
+        if (ncpId() != PLATFORM_NCP_SARA_R410) {
+            checkRuntimeStateMuxer(runtimeBaudrate);
+        } else {
+            LOG_DEBUG(TRACE, "Attempt to start/resume muxer at %u baud", UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
+            int ret = checkRuntimeStateMuxer(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
+            if (!ret) {
+                LOG_DEBUG(TRACE, "Attempt to start/resume muxer at %u baud", UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
+                checkRuntimeStateMuxer(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
             }
         }
     }
