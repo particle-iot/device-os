@@ -305,11 +305,11 @@ static int enterUltraLowPowerMode(const hal_sleep_config_t* config, hal_wakeup_s
     }
     // Suspend I2Cs
     for (int i2c = 0; i2c < TOTAL_I2C; i2c++) {
-        HAL_I2C_Sleep(static_cast<HAL_I2C_Interface>(i2c), true, nullptr);
+        hal_i2c_sleep(static_cast<hal_i2c_interface_t>(i2c), true, nullptr);
     }
     hal_pwm_sleep(true, nullptr);
     // Suspend ADC module
-    HAL_ADC_Sleep(true, nullptr);
+    hal_adc_sleep(true, nullptr);
 
     int32_t state = HAL_disable_irq();
 
@@ -363,10 +363,10 @@ static int enterUltraLowPowerMode(const hal_sleep_config_t* config, hal_wakeup_s
     HAL_enable_irq(state);
 
     // Restore ADC state
-    HAL_ADC_Sleep(false, nullptr);
+    hal_adc_sleep(false, nullptr);
     // Restore I2Cs
     for (int i2c = 0; i2c < TOTAL_I2C; i2c++) {
-        HAL_I2C_Sleep(static_cast<HAL_I2C_Interface>(i2c), false, nullptr);
+        hal_i2c_sleep(static_cast<hal_i2c_interface_t>(i2c), false, nullptr);
     }
     // Restore SPIs
     for (int spi = 0; spi < TOTAL_SPI; spi++) {

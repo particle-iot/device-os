@@ -700,17 +700,14 @@ static int enterUltraLowPowerMode(const hal_sleep_config_t* config, hal_wakeup_s
     }
     // Suspend I2Cs
     for (int i2c = 0; i2c < TOTAL_I2C; i2c++) {
-        HAL_I2C_Sleep(static_cast<HAL_I2C_Interface>(i2c), true, nullptr);
+        hal_i2c_sleep(static_cast<HAL_I2C_Interface>(i2c), true, nullptr);
     }
     // Suspend PWM modules
     hal_pwm_sleep(true, nullptr);
     // Suspend ADC module
-    HAL_ADC_Sleep(true, nullptr);
+    hal_adc_sleep(true, nullptr);
     // Suspend all GPIOTE interrupts
     HAL_Interrupts_Suspend();
-
-    // HAL_Pin_Mode(24, PIN_MODE_NONE);
-    // HAL_Pin_Mode(27, PIN_MODE_NONE);
 
     // _Attempt_ to disable HFCLK. This may not succeed, resulting in a higher current consumption
     // FIXME
@@ -850,12 +847,12 @@ static int enterUltraLowPowerMode(const hal_sleep_config_t* config, hal_wakeup_s
     // Restore GPIOTE configuration
     HAL_Interrupts_Restore();
     // Restore ADC state
-    HAL_ADC_Sleep(false, nullptr);
+    hal_adc_sleep(false, nullptr);
     // Restore PWM state
     hal_pwm_sleep(false, nullptr);
     // Restore I2Cs
     for (int i2c = 0; i2c < TOTAL_I2C; i2c++) {
-        HAL_I2C_Sleep(static_cast<HAL_I2C_Interface>(i2c), false, nullptr);
+        hal_i2c_sleep(static_cast<HAL_I2C_Interface>(i2c), false, nullptr);
     }
     // Restore SPIs
     for (int spi = 0; spi < TOTAL_SPI; spi++) {
@@ -879,12 +876,13 @@ static int enterUltraLowPowerMode(const hal_sleep_config_t* config, hal_wakeup_s
     os_thread_scheduling(true, nullptr);
 
     if (!bleWakeup) {
+        enableRadioAntenna();
         hal_ble_stack_init(nullptr);
         if (advertising) {
             hal_ble_gap_start_advertising(nullptr);
         }
         hal_ble_unlock(nullptr);
-        enableRadioAntenna();
+        
     }
 
     if (wakeupReason) {
@@ -934,12 +932,12 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     }
     // Suspend I2Cs
     for (int i2c = 0; i2c < TOTAL_I2C; i2c++) {
-        HAL_I2C_Sleep(static_cast<HAL_I2C_Interface>(i2c), true, nullptr);
+        hal_i2c_sleep(static_cast<HAL_I2C_Interface>(i2c), true, nullptr);
     }
     // Suspend PWM modules
     hal_pwm_sleep(true, nullptr);
     // Suspend ADC module
-    HAL_ADC_Sleep(true, nullptr);
+    hal_adc_sleep(true, nullptr);
 
     // This will disable all but SoftDevice interrupts (by modifying NVIC->ICER)
     uint8_t st = 0;
