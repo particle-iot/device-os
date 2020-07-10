@@ -224,6 +224,8 @@ test(spi_hal_backwards_compatibility)
     API_COMPILE(HAL_SPI_DMA_Transfer_Cancel(spi));
     API_COMPILE(HAL_SPI_DMA_Transfer_Status(spi, &status));
     API_COMPILE(HAL_SPI_Set_Settings(spi, 0, 0, 0, 0, NULL));
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     API_COMPILE(HAL_SPI_Acquire(spi, &config));
     API_COMPILE(HAL_SPI_Release(spi, NULL));
+#endif
 }
