@@ -200,6 +200,8 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
     assertTrue(published);
 }
 
+static bool s_networkStatusChanged = false;
+
 test(NETWORK_03_network_connection_recovers_after_ncp_uart_sleep) {
     const system_tick_t WAIT_TIMEOUT = 60 * 1000;
 
@@ -212,6 +214,15 @@ test(NETWORK_03_network_connection_recovers_after_ncp_uart_sleep) {
     Particle.connect();
     waitFor(Particle.connected, WAIT_TIMEOUT);
     assertTrue(Particle.connected());
+
+    auto handler = [](system_event_t ev, int, void*) -> void {
+        s_networkStatusChanged = true;
+    };
+
+    System.on(network_status, handler);
+    SCOPE_GUARD({
+        System.off(network_status, handler);
+    });
 
     SINGLE_THREADED_BLOCK() {
         assertEqual(0, hal_usart_sleep(HAL_USART_SERIAL2, true, nullptr));
@@ -234,6 +245,7 @@ test(NETWORK_03_network_connection_recovers_after_ncp_uart_sleep) {
     }
 
     assertTrue(published);
+    assertFalse(s_networkStatusChanged);
 }
 
 #endif // HAL_PLATFORM_NCP_AT
