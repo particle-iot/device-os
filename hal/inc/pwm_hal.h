@@ -56,18 +56,7 @@ void hal_pwm_reset_pin(uint16_t pin);
 int hal_pwm_sleep(bool sleep, void* reserved);
 
 
-// Deprecated *dynalib* APIs for backwards compatibility
-void inline __attribute__((always_inline, deprecated("Use hal_pwm_write() instead"))) HAL_PWM_Write(uint16_t pin, uint8_t value) { hal_pwm_write(pin, value); }
-void inline __attribute__((always_inline, deprecated("Use hal_pwm_write_ext() instead"))) HAL_PWM_Write_Ext(uint16_t pin, uint32_t value) { hal_pwm_write_ext(pin, value); }
-void inline __attribute__((always_inline, deprecated("Use hal_pwm_write_with_frequency() instead"))) HAL_PWM_Write_With_Frequency(uint16_t pin, uint8_t value, uint16_t frequency) { hal_pwm_write_with_frequency(pin, value, frequency); }
-void inline __attribute__((always_inline, deprecated("Use hal_pwm_write_with_frequency_ext() instead"))) HAL_PWM_Write_With_Frequency_Ext(uint16_t pin, uint32_t value, uint32_t frequency) { hal_pwm_write_with_frequency_ext(pin, value, frequency); }
-uint16_t inline __attribute__((always_inline, deprecated("Use hal_pwm_get_frequency() instead"))) HAL_PWM_Get_Frequency(uint16_t pin) { return hal_pwm_get_frequency(pin); }
-uint32_t inline __attribute__((always_inline, deprecated("Use hal_pwm_get_frequency_ext() instead"))) HAL_PWM_Get_Frequency_Ext(uint16_t pin) { return hal_pwm_get_frequency_ext(pin); }
-uint16_t inline __attribute__((always_inline, deprecated("Use hal_pwm_get_analog_value() instead"))) HAL_PWM_Get_AnalogValue(uint16_t pin) { return hal_pwm_get_analog_value(pin); }
-uint32_t inline __attribute__((always_inline, deprecated("Use hal_pwm_get_analog_value_ext() instead"))) HAL_PWM_Get_AnalogValue_Ext(uint16_t pin) { return hal_pwm_get_analog_value_ext(pin); }
-uint32_t inline __attribute__((always_inline, deprecated("Use hal_pwm_get_max_frequency() instead"))) HAL_PWM_Get_Max_Frequency(uint16_t pin) { return hal_pwm_get_max_frequency(pin); }
-uint8_t inline __attribute__((always_inline, deprecated("Use hal_pwm_get_resolution() instead"))) HAL_PWM_Get_Resolution(uint16_t pin) { return hal_pwm_get_resolution(pin); }
-void inline __attribute__((always_inline, deprecated("Use hal_pwm_set_resolution() instead"))) HAL_PWM_Set_Resolution(uint16_t pin, uint8_t resolution) { hal_pwm_set_resolution(pin, resolution); }
+#include "pwm_hal_compat.h"
 
 #ifdef __cplusplus
 }

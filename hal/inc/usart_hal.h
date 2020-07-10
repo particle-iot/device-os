@@ -177,22 +177,7 @@ ssize_t hal_usart_read_buffer(hal_usart_interface_t serial, void* buffer, size_t
 ssize_t hal_usart_peak_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
 
 
-// Deprecated *dynalib* APIs for backwards compatibility
-void inline __attribute__((always_inline, deprecated("Use hal_usart_init() instead"))) HAL_USART_Init(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer) { hal_usart_init(serial, rx_buffer, tx_buffer); }
-void inline __attribute__((always_inline, deprecated("Use hal_usart_begin() instead"))) HAL_USART_Begin(HAL_USART_Serial serial, uint32_t baud) { hal_usart_begin(serial, baud); }
-void inline __attribute__((always_inline, deprecated("Use hal_usart_end() instead"))) HAL_USART_End(HAL_USART_Serial serial) { hal_usart_end(serial); }
-uint32_t inline __attribute__((always_inline, deprecated("Use hal_usart_write() instead"))) HAL_USART_Write_Data(HAL_USART_Serial serial, uint8_t data) { return hal_usart_write(serial, data); }
-int32_t inline __attribute__((always_inline, deprecated("Use hal_usart_available_data_for_write() instead"))) HAL_USART_Available_Data_For_Write(HAL_USART_Serial serial) { return hal_usart_available_data_for_write(serial); }
-int32_t inline __attribute__((always_inline, deprecated("Use hal_usart_available() instead"))) HAL_USART_Available_Data(HAL_USART_Serial serial) { return hal_usart_available(serial); }
-int32_t inline __attribute__((always_inline, deprecated("Use hal_usart_read() instead"))) HAL_USART_Read_Data(HAL_USART_Serial serial) { return hal_usart_read(serial); }
-int32_t inline __attribute__((always_inline, deprecated("Use hal_usart_peek() instead"))) HAL_USART_Peek_Data(HAL_USART_Serial serial) { return hal_usart_peek(serial); }
-void inline __attribute__((always_inline, deprecated("Use hal_usart_flush() instead"))) HAL_USART_Flush_Data(HAL_USART_Serial serial) { hal_usart_flush(serial); }
-bool inline __attribute__((always_inline, deprecated("Use hal_usart_is_enabled() instead"))) HAL_USART_Is_Enabled(HAL_USART_Serial serial) { return hal_usart_is_enabled(serial); }
-void inline __attribute__((always_inline, deprecated("Use hal_usart_half_duplex() instead"))) HAL_USART_Half_Duplex(HAL_USART_Serial serial, bool Enable) { hal_usart_half_duplex(serial, Enable); }
-void inline __attribute__((always_inline, deprecated("Use hal_usart_begin_config() instead"))) HAL_USART_BeginConfig(HAL_USART_Serial serial, uint32_t baud, uint32_t config, void* reserved) { hal_usart_begin_config(serial, baud, config, reserved); }
-uint32_t inline __attribute__((always_inline, deprecated("Use hal_usart_write_nine_bits() instead"))) HAL_USART_Write_NineBitData(HAL_USART_Serial serial, uint16_t data) { return hal_usart_write_nine_bits(serial, data); }
-void inline __attribute__((always_inline, deprecated("Use hal_usart_send_break() instead"))) HAL_USART_Send_Break(HAL_USART_Serial serial, void* reserved) { hal_usart_send_break(serial, reserved); }
-uint8_t inline __attribute__((always_inline, deprecated("Use hal_usart_break_detected() instead"))) HAL_USART_Break_Detected(HAL_USART_Serial serial) { return hal_usart_break_detected(serial); }
+#include "usart_hal_compat.h"
 
 #ifdef __cplusplus
 }
