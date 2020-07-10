@@ -1,7 +1,7 @@
 
 #include "testapi.h"
 
-test(usart_hal_backwards_compatibility)
+test(pwm_hal_backwards_compatibility)
 {
     // These APIs are exposed to user application.
     API_COMPILE(HAL_PWM_Write(0, 0));
