@@ -109,7 +109,11 @@ const auto UBLOX_NCP_PPP_CHANNEL = 2;
 const auto UBLOX_NCP_SIM_SELECT_PIN = 23;
 
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
+const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 10 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
+
+const system_tick_t UBLOX_COPS_TIMEOUT = 5 * 60 * 1000;
+const system_tick_t UBLOX_CFUN_TIMEOUT = 3 * 60 * 1000;
 
 const auto UBLOX_MUXER_T1 = 2530;
 const auto UBLOX_MUXER_T2 = 2540;
@@ -175,23 +179,6 @@ void SaraNcpClient::destroy() {
     serial_.reset();
 }
 
-SaraNcpClient::RegistrationState SaraNcpClient::parseCregResponse(int v) {
-    switch (v) {
-        case 1:
-        case 5:
-            return RegistrationState::Registered;
-        case 0:
-            return RegistrationState::NotRegistering;
-        case 2:
-            return RegistrationState::Registering;
-        case 3:
-            return RegistrationState::Denied;
-        case 4:
-        default:
-            return RegistrationState::Unknown;
-    }
-}
-
 int SaraNcpClient::initParser(Stream* stream) {
     // Initialize AT parser
     auto parserConf = AtParserConfig()
@@ -218,7 +205,7 @@ int SaraNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        self->creg_ = parseCregResponse(val[0]);
+        self->csd_.status(self->csd_.parseStatus(val[0]));
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         // Only update if unset
@@ -247,7 +234,7 @@ int SaraNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CGREG: %u,\"%x\",\"%x\",%u,\"%*x\"", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        self->cgreg_ = parseCregResponse(val[0]);
+        self->psd_.status(self->psd_.parseStatus(val[0]));
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -283,7 +270,7 @@ int SaraNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CEREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        self->cereg_ = parseCregResponse(val[0]);
+        self->eps_.status(self->eps_.parseStatus(val[0]));
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -1427,6 +1414,9 @@ int SaraNcpClient::setRegistrationTimeout(unsigned timeout) {
 
 int SaraNcpClient::registerNet() {
     int r = 0;
+
+    resetRegistrationState();
+
     if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
@@ -1452,7 +1442,7 @@ int SaraNcpClient::registerNet() {
     if (copsState != 0) {
         // If the set command with <mode>=0 is issued, a further set
         // command with <mode>=0 is managed as a user reselection
-        r = CHECK_PARSER(parser_.execCommand(5 * 60 * 1000, "AT+COPS=0,2"));
+        r = CHECK_PARSER(parser_.execCommand(UBLOX_COPS_TIMEOUT, "AT+COPS=0,2"));
     }
     // Ignore response code here
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
@@ -1597,35 +1587,97 @@ int SaraNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelS
 }
 
 void SaraNcpClient::resetRegistrationState() {
-    creg_ = RegistrationState::Unknown;
-    cgreg_ = RegistrationState::Unknown;
-    cereg_ = RegistrationState::Unknown;
+    csd_.reset();
+    psd_.reset();
+    eps_.reset();
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
+    registrationInterventions_ = 0;
 }
 
 void SaraNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
-        if ((creg_ == RegistrationState::Registered &&
-                    cgreg_ == RegistrationState::Registered) ||
-                    cereg_ == RegistrationState::Registered) {
+        if ((csd_.registered() && psd_.registered()) || eps_.registered()) {
             if (memoryIssuePresent_ && connState_ != NcpConnectionState::CONNECTED) {
                 registeredTime_ = millis(); // start registered timer for memory issue power off delays
             }
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
+            // FIXME: potentially go back into connecting state only when getting into
+            // a 'sticky' non-registered state
+            resetRegistrationState();
             connectionState(NcpConnectionState::CONNECTING);
-            regStartTime_ = millis();
-            regCheckTime_ = regStartTime_;
-            registeredTime_ = 0;
         }
     }
+}
+
+int SaraNcpClient::interveneRegistration() {
+    CHECK_TRUE(connState_ == NcpConnectionState::CONNECTING, SYSTEM_ERROR_NONE);
+
+    auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
+
+    // Intervention to speed up registration or recover in case of failure
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+        // Only attempt intervention when in a sticky state
+        // (over intervention interval and multiple URCs with the same state)
+        if (csd_.sticky() && csd_.duration() >= timeout) {
+            if (csd_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
+                LOG(TRACE, "Sticky not registering CSD state for %lu s, PLMN reselection", csd_.duration() / 1000);
+                csd_.reset();
+                psd_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER(parser_.execCommand(UBLOX_COPS_TIMEOUT, "AT+COPS=0,2"));
+                return 0;
+            } else if (csd_.status() == CellularRegistrationStatus::DENIED && psd_.status() == csd_.status()) {
+                LOG(TRACE, "Sticky CSD and PSD denied state for %lu s, RF reset", csd_.duration() / 1000);
+                csd_.reset();
+                psd_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1"));
+                return 0;
+            }
+        }
+
+        if (csd_.registered() && psd_.sticky() && psd_.duration() >= timeout) {
+            if (psd_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
+                LOG(TRACE, "Sticky not registering PSD state for %lu s, force GPRS attach", psd_.duration() / 1000);
+                psd_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER_OK(parser_.execCommand("AT+CGACT?"));
+                int r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+CGACT=1"));
+                if (r != AtResponse::OK) {
+                    csd_.reset();
+                    psd_.reset();
+                    LOG(TRACE, "GPRS attach failed, try PLMN reselection");
+                    CHECK_PARSER(parser_.execCommand(UBLOX_COPS_TIMEOUT, "AT+COPS=0,2"));
+                }
+            }
+        }
+    } else {
+        if (eps_.sticky() && eps_.duration() >= timeout) {
+            if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
+                LOG(TRACE, "Sticky not registering EPS state for %lu s, PLMN reselection", eps_.duration() / 1000);
+                eps_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER(parser_.execCommand(UBLOX_COPS_TIMEOUT, "AT+COPS=0,2"));
+            } else if (eps_.status() == CellularRegistrationStatus::DENIED) {
+                LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", csd_.duration() / 1000);
+                eps_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1"));
+            }
+        }
+    }
+    return 0;
 }
 
 int SaraNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
+    interveneRegistration();
     if (connState_ != NcpConnectionState::CONNECTING ||
             millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return SYSTEM_ERROR_NONE;
@@ -1634,9 +1686,8 @@ int SaraNcpClient::processEventsImpl() {
         regCheckTime_ = millis();
     });
 
-    CHECK_PARSER_OK(parser_.execCommand("AT+CEER"));
-
     if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+        CHECK_PARSER(parser_.execCommand("AT+CEER"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     } else {

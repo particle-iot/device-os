@@ -105,6 +105,10 @@ const auto QUECTEL_NCP_SIM_SELECT_PIN = 23;
 
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
+const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 10 * 1000;
+
+const system_tick_t QUECTEL_COPS_TIMEOUT = 3 * 60 * 1000;
+const system_tick_t QUECTEL_CFUN_TIMEOUT = 3 * 60 * 1000;
 
 // Undefine hardware version
 const auto HW_VERSION_UNDEFINED = 0xFF;
@@ -182,23 +186,6 @@ void QuectelNcpClient::destroy() {
     serial_.reset();
 }
 
-QuectelNcpClient::RegistrationState QuectelNcpClient::parseCregResponse(int v) {
-    switch (v) {
-        case 1:
-        case 5:
-            return RegistrationState::Registered;
-        case 0:
-            return RegistrationState::NotRegistering;
-        case 2:
-            return RegistrationState::Registering;
-        case 3:
-            return RegistrationState::Denied;
-        case 4:
-        default:
-            return RegistrationState::Unknown;
-    }
-}
-
 int QuectelNcpClient::initParser(Stream* stream) {
     // Initialize AT parser
     auto parserConf = AtParserConfig().stream(stream).commandTerminator(AtCommandTerminator::CRLF);
@@ -224,7 +211,7 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        self->creg_ = parseCregResponse(val[0]);
+        self->csd_.status(self->csd_.parseStatus(val[0]));
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         // Only update if unset
@@ -253,7 +240,7 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CGREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        self->cgreg_ = parseCregResponse(val[0]);
+        self->psd_.status(self->psd_.parseStatus(val[0]));
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -290,7 +277,7 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CEREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        self->cereg_ = parseCregResponse(val[0]);
+        self->eps_.status(self->eps_.parseStatus(val[0]));
         self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -1165,6 +1152,8 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
 int QuectelNcpClient::registerNet() {
     int r = 0;
 
+    resetRegistrationState();
+
     // Register GPRS, LET, NB-IOT network
     r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
@@ -1182,15 +1171,11 @@ int QuectelNcpClient::registerNet() {
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
-    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
-    CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
-    CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-
     if (copsState != 0) {
         // Only run AT+COPS=0 if not currently registering, otherwise we will
         // perform PLMN reselection
         // NOTE: up to 3 mins
-        r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0,2"));
+        r = CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
         // Ignore response code here
         // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     }
@@ -1204,12 +1189,9 @@ int QuectelNcpClient::registerNet() {
         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
     }
 
-    r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    r = CHECK_PARSER(parser_.execCommand("AT+CGREG?"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    r = CHECK_PARSER(parser_.execCommand("AT+CEREG?"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
 
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
@@ -1337,36 +1319,115 @@ int QuectelNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Chann
 }
 
 void QuectelNcpClient::resetRegistrationState() {
-    creg_ = RegistrationState::Unknown;
-    cgreg_ = RegistrationState::Unknown;
-    cereg_ = RegistrationState::Unknown;
+    csd_.reset();
+    psd_.reset();
+    eps_.reset();
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
+    registrationInterventions_ = 0;
 }
 
 void QuectelNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
-        if ((creg_ == RegistrationState::Registered && cgreg_ == RegistrationState::Registered) || cereg_ == RegistrationState::Registered) {
+        if ((csd_.registered() && psd_.registered()) || eps_.registered()) {
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
+            // FIXME: potentially go back into connecting state only when getting into
+            // a 'sticky' non-registered state
+            resetRegistrationState();
             connectionState(NcpConnectionState::CONNECTING);
-            regStartTime_ = millis();
-            regCheckTime_ = regStartTime_;
         }
     }
+}
+
+int QuectelNcpClient::interveneRegistration() {
+    CHECK_TRUE(connState_ == NcpConnectionState::CONNECTING, SYSTEM_ERROR_NONE);
+
+    auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
+
+    // Intervention to speed up registration or recover in case of failure
+    if (ncpId() != PLATFORM_NCP_QUECTEL_BG96) {
+        if (eps_.sticky() && eps_.duration() >= timeout) {
+            if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING && csd_.status() == eps_.status()) {
+                LOG(TRACE, "Sticky not registering state for %lu s, PLMN reselection", eps_.duration() / 1000);
+                csd_.reset();
+                psd_.reset();
+                eps_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
+                return 0;
+            } else if (eps_.status() == CellularRegistrationStatus::DENIED && csd_.status() == eps_.status()) {
+                LOG(TRACE, "Sticky denied state for %lu s, RF reset", eps_.duration() / 1000);
+                csd_.reset();
+                psd_.reset();
+                eps_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
+                return 0;
+            }
+        }
+
+        if (csd_.sticky() && csd_.duration() >= timeout ) {
+            if (csd_.status() == CellularRegistrationStatus::DENIED && psd_.status() == csd_.status()) {
+                LOG(TRACE, "Sticky CSD and PSD denied state for %lu s, RF reset", csd_.duration() / 1000);
+                csd_.reset();
+                psd_.reset();
+                eps_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
+                return 0;
+            }
+        }
+
+        if (csd_.registered() && psd_.sticky() && psd_.duration() >= timeout) {
+            if (psd_.status() == CellularRegistrationStatus::NOT_REGISTERING && eps_.status() == psd_.status()) {
+                LOG(TRACE, "Sticky not registering PSD state for %lu s, force GPRS attach", psd_.duration() / 1000);
+                psd_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER_OK(parser_.execCommand("AT+CGACT?"));
+                int r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+CGACT=1"));
+                if (r != AtResponse::OK) {
+                    csd_.reset();
+                    psd_.reset();
+                    eps_.reset();
+                    LOG(TRACE, "GPRS attach failed, try PLMN reselection");
+                    CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
+                }
+            }
+        }
+    } else {
+        if (eps_.sticky() && eps_.duration() >= timeout) {
+            if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
+                LOG(TRACE, "Sticky not registering EPS state for %lu s, PLMN reselection", eps_.duration() / 1000);
+                eps_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
+            } else if (eps_.status() == CellularRegistrationStatus::DENIED) {
+                LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
+                eps_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
+            }
+        }
+    }
+    return 0;
 }
 
 int QuectelNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
+    interveneRegistration();
     if (connState_ != NcpConnectionState::CONNECTING || millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return SYSTEM_ERROR_NONE;
     }
     SCOPE_GUARD({ regCheckTime_ = millis(); });
 
     // Check GPRS, LET, NB-IOT network registration status
-    CHECK_PARSER_OK(parser_.execCommand("AT+CEER"));
+    CHECK_PARSER(parser_.execCommand("AT+CEER"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
@@ -1377,21 +1438,6 @@ int QuectelNcpClient::processEventsImpl() {
         modemHardReset();
         ncpState(NcpState::OFF);
         return SYSTEM_ERROR_TIMEOUT;
-    }
-
-    if (creg_ == RegistrationState::NotRegistering) {
-        CHECK_PARSER(parser_.execCommand("AT+COPS=0,2", 3 * 60 * 1000));
-    } else if (creg_ == RegistrationState::Registered) {
-        if (cgreg_ == RegistrationState::NotRegistering && cereg_ == RegistrationState::NotRegistering) {
-            CHECK_PARSER_OK(parser_.execCommand("AT+CGACT?"));
-            int r = CHECK_PARSER(parser_.execCommand("AT+CGACT=1", 3 * 60 * 1000));
-            if (r != AtResponse::OK) {
-                CHECK_PARSER(parser_.execCommand("AT+COPS=0,2", 5 * 60 * 1000));
-            }
-        }
-    } else if (creg_ == RegistrationState::Denied && cgreg_ == RegistrationState::Denied && cereg_ == RegistrationState::Denied) {
-        CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=0"));
-        CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=1"));
     }
 
     return SYSTEM_ERROR_NONE;

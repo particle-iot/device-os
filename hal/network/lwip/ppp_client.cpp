@@ -158,6 +158,7 @@ void Client::postDisconnect() {
     const char cmd[] = "+++";
     output((const uint8_t*)cmd, sizeof(cmd) - 1);
   }
+  HAL_Delay_Milliseconds(1000);
 }
 
 bool Client::start() {

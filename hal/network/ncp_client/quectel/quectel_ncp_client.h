@@ -106,12 +106,14 @@ private:
         DefaultBaudrate = 3
     };
 
-    RegistrationState creg_ = RegistrationState::Unknown;
-    RegistrationState cgreg_ = RegistrationState::Unknown;
-    RegistrationState cereg_ = RegistrationState::Unknown;
+    CellularRegistrationStatus csd_;
+    CellularRegistrationStatus psd_;
+    CellularRegistrationStatus eps_;
+
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
     unsigned registrationTimeout_;
+    unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
@@ -134,6 +136,7 @@ private:
     void parserError(int error);
     void resetRegistrationState();
     void checkRegistrationState();
+    int interveneRegistration();
     int processEventsImpl();
 
     int modemInit() const;
@@ -144,7 +147,6 @@ private:
     int modemHardReset(bool powerOff = false);
     bool modemPowerState() const;
     int modemSetUartState(bool state) const;
-    static RegistrationState parseCregResponse(int v);
 };
 
 inline AtParser* QuectelNcpClient::atParser() {

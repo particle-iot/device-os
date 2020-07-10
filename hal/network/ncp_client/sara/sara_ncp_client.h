@@ -87,14 +87,6 @@ private:
     CellularGlobalIdentity cgi_ = {};
     CellularAccessTechnology act_ = CellularAccessTechnology::NONE;
 
-    enum class RegistrationState {
-        NotRegistering = 0,
-        Registered = 1,
-        Registering = 2,
-        Denied = 3,
-        Unknown = 4
-    };
-
     enum class ModemState {
         Unknown = 0,
         MuxerAtChannel = 1,
@@ -102,9 +94,10 @@ private:
         DefaultBaudrate = 3
     };
 
-    RegistrationState creg_ = RegistrationState::Unknown;
-    RegistrationState cgreg_ = RegistrationState::Unknown;
-    RegistrationState cereg_ = RegistrationState::Unknown;
+    CellularRegistrationStatus csd_;
+    CellularRegistrationStatus psd_;
+    CellularRegistrationStatus eps_;
+
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
     system_tick_t registeredTime_;
@@ -112,6 +105,7 @@ private:
     unsigned int fwVersion_ = 0;
     bool memoryIssuePresent_ = false;
     unsigned registrationTimeout_;
+    unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
 
     system_tick_t lastWindow_ = 0;
@@ -138,6 +132,7 @@ private:
     void parserError(int error);
     void resetRegistrationState();
     void checkRegistrationState();
+    int interveneRegistration();
     int processEventsImpl();
 
     int modemInit() const;
@@ -151,7 +146,6 @@ private:
     void waitForPowerOff();
     int getAppFirmwareVersion();
     int waitAtResponseFromPowerOn(ModemState& modemState);
-    static RegistrationState parseCregResponse(int v);
 };
 
 inline AtParser* SaraNcpClient::atParser() {
