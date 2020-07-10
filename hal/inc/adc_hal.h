@@ -42,6 +42,11 @@ int32_t hal_adc_read(pin_t pin);
 void hal_adc_dma_init();
 int hal_adc_sleep(bool sleep, void* reserved);
 
+
+// Deprecated *dynalib* APIs for backwards compatibility
+void inline __attribute__((always_inline, deprecated("Use hal_adc_set_sample_time() instead"))) HAL_ADC_Set_Sample_Time(uint8_t sample_time) { hal_adc_set_sample_time(sample_time); }
+int32_t inline __attribute__((always_inline, deprecated("Use hal_adc_read() instead"))) HAL_ADC_Read(pin_t pin) { return hal_adc_read(pin); }
+
 #ifdef __cplusplus
 }
 #endif

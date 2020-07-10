@@ -37,7 +37,7 @@ ifeq ($(USE_SWD_JTAG),y)
 COMPILE_LTO ?= n
 endif
 
-WARNINGS_AS_ERRORS ?= y
+WARNINGS_AS_ERRORS ?= n
 ifeq ($(WARNINGS_AS_ERRORS),y)
 CFLAGS += -Werror
 endif

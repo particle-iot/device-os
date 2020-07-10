@@ -55,6 +55,8 @@ typedef enum hal_spi_state_t {
 
 typedef void (*hal_spi_dma_user_callback)(void);
 typedef void (*hal_spi_select_user_callback)(uint8_t);
+typedef hal_spi_dma_user_callback HAL_SPI_DMA_UserCallback; // For backwards compatibility only
+typedef hal_spi_select_user_callback HAL_SPI_Select_UserCallback; // For backwards compatibility only
 
 /* Exported macros -----------------------------------------------------------*/
 #define SPI_MODE0               0x00
@@ -139,6 +141,29 @@ int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved);
 int32_t hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t* conf);
 int32_t hal_spi_release(hal_spi_interface_t spi, void* reserved);
 #endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+
+
+// Deprecated *dynalib* APIs for backwards compatibility
+void inline __attribute__((always_inline, deprecated("Use hal_spi_init() instead"))) HAL_SPI_Init(HAL_SPI_Interface spi) { hal_spi_init(spi); }
+void inline __attribute__((always_inline, deprecated("Use hal_spi_begin() instead"))) HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin) { hal_spi_begin(spi, pin); }
+void inline __attribute__((always_inline, deprecated("Use hal_spi_begin_ext() instead"))) HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved) { hal_spi_begin_ext(spi, mode, pin, reserved); }
+void inline __attribute__((always_inline, deprecated("Use hal_spi_end() instead"))) HAL_SPI_End(HAL_SPI_Interface spi) { hal_spi_end(spi); }
+void inline __attribute__((always_inline, deprecated("Use hal_spi_set_bit_order() instead"))) HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order) { hal_spi_set_bit_order(spi, order); }
+void inline __attribute__((always_inline, deprecated("Use hal_spi_set_data_mode() instead"))) HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode) { hal_spi_set_data_mode(spi, mode); }
+void inline __attribute__((always_inline, deprecated("Use hal_spi_set_clock_divider() instead"))) HAL_SPI_Set_Clock_Divider(HAL_SPI_Interface spi, uint8_t rate) { hal_spi_set_clock_divider(spi, rate); }
+uint16_t inline __attribute__((always_inline, deprecated("Use hal_spi_transfer() instead"))) HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data) { return hal_spi_transfer(spi, data); }
+void inline __attribute__((always_inline, deprecated("Use hal_spi_transfer_dma() instead"))) HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback) { hal_spi_transfer_dma(spi, tx_buffer, rx_buffer, length, userCallback); }
+bool inline __attribute__((always_inline, deprecated("Use hal_spi_is_enabled_deprecated() instead"))) HAL_SPI_Is_Enabled_Old() { return hal_spi_is_enabled_deprecated(); }
+bool inline __attribute__((always_inline, deprecated("Use hal_spi_is_enabled() instead"))) HAL_SPI_Is_Enabled(HAL_SPI_Interface spi) { return hal_spi_is_enabled(spi); }
+void inline __attribute__((always_inline, deprecated("Use hal_spi_info() instead"))) HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved) { hal_spi_info(spi, info, reserved); }
+void inline __attribute__((always_inline, deprecated("Use hal_spi_set_callback_on_selected() instead"))) HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb, void* reserved) { hal_spi_set_callback_on_selected(spi, cb, reserved); }
+void inline __attribute__((always_inline, deprecated("Use hal_spi_transfer_dma_cancel() instead"))) HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi) { hal_spi_transfer_dma_cancel(spi); }
+int32_t inline __attribute__((always_inline, deprecated("Use hal_spi_transfer_dma_status() instead"))) HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatus* st) { return hal_spi_transfer_dma_status(spi, st); }
+int32_t inline __attribute__((always_inline, deprecated("Use hal_spi_set_settings() instead"))) HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t clockdiv, uint8_t order, uint8_t mode, void* reserved) { return hal_spi_set_settings(spi, set_default, clockdiv, order, mode, reserved); }
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+int32_t inline __attribute__((always_inline, deprecated("Use hal_spi_acquire() instead"))) HAL_SPI_Acquire(HAL_SPI_Interface spi, const HAL_SPI_AcquireConfig* conf) { return hal_spi_acquire(spi, conf); }
+int32_t inline __attribute__((always_inline, deprecated("Use hal_spi_release() instead"))) HAL_SPI_Release(HAL_SPI_Interface spi, void* reserved) { return hal_spi_release(spi, reserved); }
+#endif
 
 #ifdef __cplusplus
 }

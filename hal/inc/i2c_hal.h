@@ -37,6 +37,7 @@ typedef enum hal_i2c_mode_t {
     I2C_MODE_MASTER = 0,
     I2C_MODE_SLAVE = 1
 } hal_i2c_mode_t;
+typedef hal_i2c_mode_t I2C_Mode; // For backwards compatibility only.
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum hal_i2c_interface_t {
@@ -134,6 +135,30 @@ void hal_i2c_flush_deprecated(void);
 bool hal_i2c_is_enabled_deprecated(void);
 void hal_i2c_set_callback_on_received_deprecated(void (*function)(int));
 void hal_i2c_set_callback_on_requested_deprecated(void (*function)(void));
+
+
+// Deprecated *dynalib* APIs for backwards compatibility
+int inline __attribute__((always_inline, deprecated("Use hal_i2c_init() instead"))) HAL_I2C_Init(HAL_I2C_Interface i2c, const HAL_I2C_Config* config) { return hal_i2c_init(i2c, config); }
+void inline __attribute__((always_inline, deprecated("Use hal_i2c_set_speed() instead"))) HAL_I2C_Set_Speed(HAL_I2C_Interface i2c, uint32_t speed, void* reserved) { hal_i2c_set_speed(i2c, speed, reserved); }
+void inline __attribute__((always_inline, deprecated("Use hal_i2c_enable_dma_mode() instead"))) HAL_I2C_Enable_DMA_Mode(HAL_I2C_Interface i2c, bool enable, void* reserved) { hal_i2c_enable_dma_mode(i2c, enable, reserved); }
+void inline __attribute__((always_inline, deprecated("Use hal_i2c_stretch_clock() instead"))) HAL_I2C_Stretch_Clock(HAL_I2C_Interface i2c, bool stretch, void* reserved) { hal_i2c_stretch_clock(i2c, stretch, reserved); }
+void inline __attribute__((always_inline, deprecated("Use hal_i2c_begin() instead"))) HAL_I2C_Begin(HAL_I2C_Interface i2c, I2C_Mode mode, uint8_t address, void* reserved) { hal_i2c_begin(i2c, mode, address, reserved); }
+void inline __attribute__((always_inline, deprecated("Use hal_i2c_end() instead"))) HAL_I2C_End(HAL_I2C_Interface i2c, void* reserved) { hal_i2c_end(i2c, reserved); }
+uint32_t inline __attribute__((always_inline, deprecated("Use hal_i2c_request() instead"))) HAL_I2C_Request_Data(HAL_I2C_Interface i2c, uint8_t address, uint8_t quantity, uint8_t stop, void* reserved) { return hal_i2c_request(i2c, address, quantity, stop, reserved); }
+int32_t inline __attribute__((always_inline, deprecated("Use hal_i2c_request_ex() instead"))) HAL_I2C_Request_Data_Ex(HAL_I2C_Interface i2c, const HAL_I2C_Transmission_Config* config, void* reserved) { return hal_i2c_request_ex(i2c, config, reserved); }
+void inline __attribute__((always_inline, deprecated("Use hal_i2c_begin_transmission() instead"))) HAL_I2C_Begin_Transmission(HAL_I2C_Interface i2c, uint8_t address, const HAL_I2C_Transmission_Config* config) { hal_i2c_begin_transmission(i2c, address, config); }
+uint8_t inline __attribute__((always_inline, deprecated("Use hal_i2c_end_transmission() instead"))) HAL_I2C_End_Transmission(HAL_I2C_Interface i2c, uint8_t stop, void* reserved) { return hal_i2c_end_transmission(i2c, stop, reserved); }
+uint32_t inline __attribute__((always_inline, deprecated("Use hal_i2c_write() instead"))) HAL_I2C_Write_Data(HAL_I2C_Interface i2c, uint8_t data, void* reserved) { return hal_i2c_write(i2c, data, reserved); }
+int32_t inline __attribute__((always_inline, deprecated("Use hal_i2c_available() instead"))) HAL_I2C_Available_Data(HAL_I2C_Interface i2c, void* reserved) { return hal_i2c_available(i2c, reserved); }
+int32_t inline __attribute__((always_inline, deprecated("Use hal_i2c_read() instead"))) HAL_I2C_Read_Data(HAL_I2C_Interface i2c, void* reserved) { return hal_i2c_read(i2c, reserved); }
+int32_t inline __attribute__((always_inline, deprecated("Use hal_i2c_peek() instead"))) HAL_I2C_Peek_Data(HAL_I2C_Interface i2c, void* reserved) { return hal_i2c_peek(i2c, reserved); }
+void inline __attribute__((always_inline, deprecated("Use hal_i2c_flush() instead"))) HAL_I2C_Flush_Data(HAL_I2C_Interface i2c, void* reserved) { hal_i2c_flush(i2c, reserved); }
+bool inline __attribute__((always_inline, deprecated("Use hal_i2c_is_enabled() instead"))) HAL_I2C_Is_Enabled(HAL_I2C_Interface i2c, void* reserved) { return hal_i2c_is_enabled(i2c, reserved); }
+void inline __attribute__((always_inline, deprecated("Use hal_i2c_set_callback_on_received() instead"))) HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int), void* reserved) { hal_i2c_set_callback_on_received(i2c, function, reserved); }
+void inline __attribute__((always_inline, deprecated("Use hal_i2c_set_callback_on_requested() instead"))) HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void), void* reserved) { hal_i2c_set_callback_on_requested(i2c, function, reserved); }
+uint8_t inline __attribute__((always_inline, deprecated("Use hal_i2c_reset() instead"))) HAL_I2C_Reset(HAL_I2C_Interface i2c, uint32_t reserved, void* reserved1) { return hal_i2c_reset(i2c, reserved, reserved1); }
+int32_t inline __attribute__((always_inline, deprecated("Use hal_i2c_lock() instead"))) HAL_I2C_Acquire(HAL_I2C_Interface i2c, void* reserved) { return hal_i2c_lock(i2c, reserved); }
+int32_t inline __attribute__((always_inline, deprecated("Use hal_i2c_unlock() instead"))) HAL_I2C_Release(HAL_I2C_Interface i2c, void* reserved) { return hal_i2c_unlock(i2c, reserved); }
 
 #ifdef __cplusplus
 }
