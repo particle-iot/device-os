@@ -12,42 +12,49 @@
 static const uint32_t maxPulseSamples = 25;
 static const uint32_t minimumFrequency = 100;
 
-uint8_t pwm_pins[] = {
-#if (PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION) // Photon
-        D0, D1, D2, D3, A4, A5, WKP, RX, TX
+struct PinMapping {
+    const char* name;
+    pin_t pin;
+};
+
+#define PIN(p) {#p, p}
+
+const PinMapping pwm_pins[] = {
+#if (PLATFORM_ID == PLATFORM_PHOTON) // Photon
+        PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(A4), PIN(A5), PIN(WKP), PIN(RX), PIN(TX)
 #elif (PLATFORM_ID == PLATFORM_P1) // P1
-        D0, D1, D2, D3, A4, A5, WKP, RX, TX, P1S0, P1S1, P1S6
-#elif (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION) // Electron
-        D0, D1, D2, D3, A4, A5, WKP, RX, TX, B0, B1, B2, B3, C4, C5
+        PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(A4), PIN(A5), PIN(WKP), PIN(RX), PIN(TX), PIN(P1S0), PIN(P1S1), PIN(P1S6)
+#elif (PLATFORM_ID == PLATFORM_ELECTRON) // Electron
+        PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(A4), PIN(A5), PIN(WKP), PIN(RX), PIN(TX), PIN(B0), PIN(B1), PIN(B2), PIN(B3), PIN(C4), PIN(C5)
 #elif (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
-        D4, D5, D6, D7, A0, A1, A7 /* , RGBR, RGBG, RGBB */
+        PIN(D4), PIN(D5), PIN(D6), PIN(D7), PIN(A0), PIN(A1), PIN(A7) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 # if (PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM) || !HAL_PLATFORM_POWER_MANAGEMENT
         ,
-        A6
+        PIN(A6)
 # endif // PLATFORM_ID != PLATFORM_BSOM || !HAL_PLATFORM_POWER_MANAGEMENT
 #elif (PLATFORM_ID == PLATFORM_TRACKER)
-        D0, D1, D2, D3, D4, D5, D6, D7 /* , RGBR, RGBG, RGBB */
+        PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), PIN(D7) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
-        // NOTE: D7 is disable on Argon and Boron because it shares the PWM peripheral
+        // NOTE: D7 is disabled on Argon and Boron because it shares the PWM peripheral
         // with RGB pins and testing it in a wide range of frequencies/settings will
         // cause problems if the RGB led is enabled.
         // PWM HAL also is not interrupt safe and RGB pins are modified in SysTick
-        D2, D3, D4, D5, D6, /* D7, */ D8, A0, A1, A2, A3, A4, A5 /* , RGBR, RGBG, RGBB */
+        PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), /* PIN(D7), */ PIN(D8), PIN(A0), PIN(A1), PIN(A2), PIN(A3), PIN(A4), PIN(A5) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #else
 #error "Unsupported platform"
 #endif
 };
 
-static pin_t pin = pwm_pins[0];
+static pin_t pin = pwm_pins[0].pin;
 
 template <typename F> void for_all_pwm_pins(F callback)
 {
     // RGB.control(true);
     for (uint8_t i = 0; i<arraySize(pwm_pins); i++)
     {
-        callback(pwm_pins[i]);
+        callback(pwm_pins[i].pin, pwm_pins[i].name);
         // Make sure to disable PWM pins
-        pinMode(pwm_pins[i], INPUT);
+        pinMode(pwm_pins[i].pin, INPUT);
     }
     // RGB.control(false);
 }
@@ -128,8 +135,9 @@ test(PWM_03_NoAnalogWriteWhenPinSelectedIsOutOfRange) {
 }
 
 test(PWM_04_AnalogWriteOnPinResultsInCorrectFrequency) {
-    for_all_pwm_pins([](uint16_t pin) {
-	// when
+    for_all_pwm_pins([](pin_t pin, const char* name) {
+    out->printlnf("Pin: %s", name);
+    // when
     pinMode(pin, OUTPUT);
 
     // 8-bit resolution
@@ -166,16 +174,23 @@ test(PWM_04_AnalogWriteOnPinResultsInCorrectFrequency) {
 }
 
 test(PWM_05_AnalogWriteOnPinResultsInCorrectAnalogValue) {
-	for_all_pwm_pins([](uint16_t pin) {
-	// when
-	pinMode(pin, OUTPUT);
+    for_all_pwm_pins([](pin_t pin, const char* name) {
+    out->printlnf("Pin: %s", name);
+    // when
+    pinMode(pin, OUTPUT);
 
     // 8-bit resolution
     analogWriteResolution(pin, 8);
     assertEqual(analogWriteResolution(pin), 8);
+<<<<<<< HEAD
 	analogWrite(pin, 200);
 	// then
 	assertEqual(hal_pwm_get_analog_value_ext(pin), 200);
+=======
+    analogWrite(pin, 200);
+    // then
+    assertEqual(HAL_PWM_Get_AnalogValue_Ext(pin), 200);
+>>>>>>> [test] minor
 
     // 4-bit resolution
     analogWriteResolution(pin, 4);
@@ -198,13 +213,14 @@ test(PWM_05_AnalogWriteOnPinResultsInCorrectAnalogValue) {
     // then
     assertEqual(hal_pwm_get_analog_value_ext(pin), 15900);
 
-	pinMode(pin, INPUT);
-	});
+    pinMode(pin, INPUT);
+    });
 }
 
 test(PWM_06_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
-	for_all_pwm_pins([](uint16_t pin) {
-	// when
+    for_all_pwm_pins([](pin_t pin, const char* name) {
+    out->printlnf("Pin: %s", name);
+    // when
     pinMode(pin, OUTPUT);
 
     // 8-bit resolution
@@ -239,13 +255,14 @@ test(PWM_06_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
     // 1 digit error is acceptible due to rounding at higher frequencies
     assertLessOrEqual((int32_t)hal_pwm_get_frequency_ext(pin) - analogWriteMaxFrequency(pin) / 2, 1);
 
-	pinMode(pin, INPUT);
-	});
+    pinMode(pin, INPUT);
+    });
 }
 
 test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
-	for_all_pwm_pins([](uint16_t pin) {
-	// when
+    for_all_pwm_pins([](pin_t pin, const char* name) {
+    out->printlnf("Pin: %s", name);
+    // when
     pinMode(pin, OUTPUT);
 
     // 8-bit resolution
@@ -277,11 +294,12 @@ test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
     assertEqual(hal_pwm_get_analog_value_ext(pin), 15900);
 
     pinMode(pin, INPUT);
-	});
+    });
 }
 
 test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
-	for_all_pwm_pins([](uint16_t pin) {
+    for_all_pwm_pins([](pin_t pin, const char* name) {
+    out->printlnf("Pin: %s", name);
 
     // when
     pinMode(pin, OUTPUT);
@@ -383,11 +401,12 @@ test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
     assertLessOrEqual(avgPulseHigh, 250);
 
     pinMode(pin, INPUT);
-	});
+    });
 }
 
 test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
-    for_all_pwm_pins([](uint16_t pin) {
+    for_all_pwm_pins([](pin_t pin, const char* name) {
+    out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
 
@@ -485,8 +504,9 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 }
 
 test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
-	for_all_pwm_pins([](uint16_t pin) {
-	// when
+    for_all_pwm_pins([](pin_t pin, const char* name) {
+    out->printlnf("Pin: %s", name);
+    // when
     pinMode(pin, OUTPUT);
 
     // 8-bit resolution
@@ -579,11 +599,12 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 
     analogWrite(pin, 0, 500);
     pinMode(pin, INPUT);
-	});
+    });
 }
 
 test(PWM_11_CompherensiveResolutionFrequency) {
-    for_all_pwm_pins([&](uint16_t pin) {
+    for_all_pwm_pins([&](uint16_t pin, const char* name) {
+        out->printlnf("Pin: %s", name);
         // when
         pinMode(pin, OUTPUT);
 
