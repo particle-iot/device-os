@@ -21,9 +21,6 @@
 
 #include "scope_guard.h"
 
-#include <cstdio>
-#include <cstdarg>
-
 namespace particle::protocol {
 
 OtaUpdate::OtaUpdate(MessageChannel* channel, OtaUpdateCallbacks callbacks) :
@@ -59,32 +56,10 @@ int OtaUpdate::process() {
 
 void OtaUpdate::reset() {
     if (state_ != State::IDLE) {
-        finishUpdate(OtaUpdateFlag::CANCEL);
+        finishUpdate(FirmwareUpdateFlag::CANCEL);
         state_ = State::IDLE;
     }
     ctx_.reset();
-    memset(chunkMap_, 0, sizeof(chunkMap_));
-}
-
-void OtaUpdateContext::formatErrorMessage(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    va_list args2;
-    va_copy(args2, args);
-    SCOPE_GUARD({
-        va_end(args2);
-        va_end(args);
-    });
-    const auto n = vsnprintf(nullptr, 0, fmt, args);
-    if (n < 0) {
-        return;
-    }
-    const auto buf = (char*)malloc(n + 1);
-    if (!buf) {
-        return;
-    }
-    vsnprintf(buf, n + 1, fmt, args2);
-    errMsg_ = CString::wrap(buf);
 }
 
 } // namespace particle::protocol

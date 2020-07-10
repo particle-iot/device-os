@@ -82,3 +82,26 @@ typedef enum network_disconnect_reason {
     NETWORK_DISCONNECT_REASON_RESET = 6, ///< Disconnected to recover from a cloud connection error.
     NETWORK_DISCONNECT_REASON_UNKNOWN = 7 ///< Unspecified disconnection reason.
 } network_disconnect_reason;
+
+#ifdef __cplusplus
+
+#include "enumflags.h"
+
+namespace particle {
+
+/**
+ * Firmware update flags.
+ */
+enum class FirmwareUpdateFlag {
+    DISCARD_DATA = 0x01, ///< Discard any previously downloaded firmware data.
+    NON_RESUMABLE = 0x02, ///< Indicates that the update will not be resumed later.
+    CANCEL = 0x04 ///< Cancel the update.
+};
+
+typedef EnumFlags<FirmwareUpdateFlag> FirmwareUpdateFlags;
+
+ENABLE_ENUM_CLASS_BITWISE(FirmwareUpdateFlag);
+
+} // namespace particle
+
+#endif // defined(__cplusplus)

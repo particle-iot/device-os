@@ -21,34 +21,23 @@
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 
-#include "enumflags.h"
+#include "system_defs.h"
+#include "c_string.h"
 
 #include <cstdint>
 #include <cstddef>
 
 namespace particle::protocol {
 
-// Size of the chunk map in 32-bit words
-const size_t OTA_UPDATE_CHUNK_MAP_SIZE = 10;
-
 class Message;
 class MessageChannel;
 
-enum class OtaUpdateFlag {
-    RESTART = 0x01,
-    CANCEL = 0x02,
-    VALIDATE_ONLY = 0x04
-};
-
-typedef EnumFlags<OtaUpdateFlag> OtaUpdateFlags;
-
-class OtaUpdateContext {
+class FirmwareUpdateContext {
 public:
-    explicit OtaUpdateContext(void* userData = nullptr);
+    explicit FirmwareUpdateContext(void* userData = nullptr);
 
-    void errorMessage(const char* msg);
-    void formatErrorMessage(const char* fmt, ...);
-    const char* errorMessage() const;
+    void errorMessage(CString msg);
+    const CString& errorMessage() const;
 
     void* userData() const;
 
@@ -56,20 +45,25 @@ public:
 
 private:
     CString errMsg_;
-    void* const userData_;
+    void* userData_;
 };
 
 class OtaUpdateCallbacks {
 public:
-    typedef int (*StartUpdateFn)(size_t fileSize, const char* sha256, size_t* offset, OtaUpdateFlags flags,
-            OtaUpdateContext* ctx);
-    typedef int (*FinishUpdateFn)(OtaUpdateFlags flags, OtaUpdateContext* ctx);
-    typedef int (*SaveChunkFn)(const char* data, size_t size, size_t offset, OtaUpdateContext* ctx);
+    typedef int (*StartUpdateFn)(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags,
+            FirmwareUpdateContext* ctx);
+    typedef int (*ValidateUpdateFn)(FirmwareUpdateContext* ctx);
+    typedef int (*FinishUpdateFn)(FirmwareUpdateFlags flags, FirmwareUpdateContext* ctx);
+    typedef int (*SaveChunkFn)(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize,
+            FirmwareUpdateContext* ctx);
 
     OtaUpdateCallbacks();
 
     OtaUpdateCallbacks& startUpdateFn(StartUpdateFn fn);
     StartUpdateFn startUpdateFn() const;
+
+    OtaUpdateCallbacks& validateUpdateFn(ValidateUpdateFn fn);
+    ValidateUpdateFn validateUpdateFn() const;
 
     OtaUpdateCallbacks& finishUpdateFn(FinishUpdateFn fn);
     FinishUpdateFn finishUpdateFn() const;
@@ -82,6 +76,7 @@ public:
 
 private:
     StartUpdateFn startUpdateFn_;
+    ValidateUpdateFn validateUpdateFn_;
     FinishUpdateFn finishUpdateFn_;
     SaveChunkFn saveChunkFn_;
     void* userData_;
@@ -116,35 +111,34 @@ private:
         IDLE
     };
 
-    uint32_t chunkMap_[OTA_UPDATE_CHUNK_MAP_SIZE];
-    OtaUpdateContext ctx_;
+    FirmwareUpdateContext ctx_;
     OtaUpdateCallbacks const callbacks_;
     MessageChannel* const channel_;
     State state_;
 
-    int startUpdate(size_t fileSize, const char* sha256, size_t* offset, OtaUpdateFlags flags);
-    int finishUpdate(OtaUpdateFlags flags);
-    int saveChunk(const char* data, size_t size, size_t offset);
-    const char* lastErrorMessage() const;
+    int startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags);
+    int validateUpdate();
+    int finishUpdate(FirmwareUpdateFlags flags);
+    int saveChunk(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize);
 };
 
-inline OtaUpdateContext::OtaUpdateContext(void* userData) :
+inline FirmwareUpdateContext::FirmwareUpdateContext(void* userData) :
         userData_(userData) {
 }
 
-inline void OtaUpdateContext::errorMessage(const char* msg) {
-    errMsg_ = msg;
+inline void FirmwareUpdateContext::errorMessage(CString msg) {
+    errMsg_ = std::move(msg);
 }
 
-inline const char* OtaUpdateContext::errorMessage() const {
+inline const CString& FirmwareUpdateContext::errorMessage() const {
     return errMsg_;
 }
 
-inline void* OtaUpdateContext::userData() const {
+inline void* FirmwareUpdateContext::userData() const {
     return userData_;
 }
 
-inline void OtaUpdateContext::reset() {
+inline void FirmwareUpdateContext::reset() {
     errMsg_ = CString();
 }
 
@@ -195,20 +189,20 @@ inline bool OtaUpdate::isActive() const {
     return state_ != State::IDLE;
 }
 
-inline int OtaUpdate::startUpdate(size_t fileSize, const char* sha256, size_t* offset, OtaUpdateFlags flags) {
-    return callbacks_.startUpdateFn()(fileSize, sha256, offset, flags, &ctx_);
+inline int OtaUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags) {
+    return callbacks_.startUpdateFn()(fileSize, fileHash, fileOffset, flags, &ctx_);
 }
 
-inline int OtaUpdate::finishUpdate(OtaUpdateFlags flags) {
+inline int OtaUpdate::validateUpdate() {
+    return callbacks_.validateUpdateFn()(&ctx_);
+}
+
+inline int OtaUpdate::finishUpdate(FirmwareUpdateFlags flags) {
     return callbacks_.finishUpdateFn()(flags, &ctx_);
 }
 
-inline int OtaUpdate::saveChunk(const char* data, size_t size, size_t offset) {
-    return callbacks_.saveChunkFn()(data, size, offset, &ctx_);
-}
-
-inline const char* OtaUpdate::lastErrorMessage() const {
-    return ctx_.errorMessage();
+inline int OtaUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize) {
+    return callbacks_.saveChunkFn()(chunkData, chunkSize, chunkOffset, partialSize, &ctx_);
 }
 
 } // namespace particle::protocol
