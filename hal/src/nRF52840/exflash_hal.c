@@ -142,53 +142,6 @@ static nrfx_err_t exflash_qspi_cinstr_quick_send(uint8_t opcode, nrf_qspi_cinstr
     return exflash_qspi_cinstr_xfer(&config, p_tx_buffer, NULL);
 }
 
-static int configure_memory() {
-    uint32_t err_code;
-
-    nrf_qspi_cinstr_conf_t cinstr_cfg = {
-        .opcode    = QSPI_STD_CMD_RSTEN,
-        .length    = NRF_QSPI_CINSTR_LEN_1B,
-        .io2_level = true,
-        .io3_level = true,
-        .wipwait   = true,
-        .wren      = true
-    };
-
-    // Send reset enable
-    err_code = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
-    if (err_code) {
-        return -1;
-    }
-
-    // Send reset command
-    cinstr_cfg.opcode = QSPI_STD_CMD_RST;
-    err_code = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
-    if (err_code) {
-        return -2;
-    }
-
-    //Switch to qpsi mode
-#if HAL_PLATFORM_FLASH_MX25R6435FZNIL0
-    uint8_t temporary[3] = { 0x40, 0x00, 0x02 };
-    cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_4B;
-    cinstr_cfg.opcode = QSPI_STD_CMD_WRSR;
-    err_code = exflash_qspi_cinstr_xfer(&cinstr_cfg, temporary, NULL);
-#elif HAL_PLATFORM_FLASH_MX25L3233F
-    uint8_t temporary[1] = { 0x40 };
-    cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_2B;
-    cinstr_cfg.opcode = QSPI_STD_CMD_WRSR;
-    err_code = exflash_qspi_cinstr_xfer(&cinstr_cfg, temporary, NULL);
-#else
-#error "Unsupported platform for external flash"
-#endif
-
-    if (err_code) {
-        return -3;
-    }
-
-    return 0;
-}
-
 static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
     return nrfx_qspi_write(data, size, addr);
 }
@@ -257,7 +210,7 @@ int hal_exflash_init(void) {
         goto hal_exflash_init_done;
     }
 
-    ret = configure_memory();
+    ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_RESET, NULL, NULL, 0);
     if (ret) {
         goto hal_exflash_init_done;
     }
@@ -529,6 +482,23 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
         if (!ret && cmd == HAL_EXFLASH_COMMAND_RESET) {
             cinstr_cfg.opcode = QSPI_STD_CMD_RST;
             ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
+            if (ret) {
+                goto exit;
+            }
+            //Switch to qpsi mode
+#if HAL_PLATFORM_FLASH_MX25R6435FZNIL0
+            uint8_t temporary[3] = { 0x40, 0x00, 0x02 };
+            cinstr_cfg.opcode = QSPI_STD_CMD_WRSR;
+            cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_4B;
+            ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, temporary, NULL);
+#elif HAL_PLATFORM_FLASH_MX25L3233F
+            uint8_t temporary[1] = { 0x40 };
+            cinstr_cfg.opcode = QSPI_STD_CMD_WRSR;
+            cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_2B;
+            ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, temporary, NULL);
+#else
+#error "Unsupported platform for external flash"
+#endif
         }
     } else if (sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP) {
         /* OTP-specific commands */
