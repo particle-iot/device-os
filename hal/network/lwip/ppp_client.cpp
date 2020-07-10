@@ -134,6 +134,8 @@ bool Client::prepareConnect() {
   UNLOCK_TCPIP_CORE();
 #endif // PPP_IPV6_SUPPORT
 
+  exitDataMode();
+
   // FIXME: this should be handled in the NCP client
   static const char* NCP_CONNECT_COMMANDS[] = {
     "ATH;D*99***1#\r\n",
@@ -149,7 +151,7 @@ bool Client::prepareConnect() {
   return true;
 }
 
-void Client::postDisconnect() {
+void Client::exitDataMode() {
   // FIXME: this should be handled in the NCP client
   if (PLATFORM_NCP_MANUFACTURER(platform_current_ncp_identifier()) == PLATFORM_NCP_MANUFACTURER_UBLOX) {
     const char cmd[] = "~+++";
@@ -198,7 +200,7 @@ int Client::input(const uint8_t* data, size_t size) {
   if (running_) {
     switch (state_) {
       case STATE_CONNECTING: {
-#ifdef DEBUG_BUILD
+//#ifdef DEBUG_BUILD
         for (auto p = data, begin = (const uint8_t*)nullptr; p != data + size; ++p) {
           if (!std::isprint(*p) || *p == '\r' || *p == '\n') {
             if (begin && p - begin > 2) {
@@ -211,7 +213,7 @@ int Client::input(const uint8_t* data, size_t size) {
             begin = p;
           }
         }
-#endif // DEBUG_BUILD
+//#endif // DEBUG_BUILD
         // Fall through
       }
       case STATE_DISCONNECTING:
@@ -303,12 +305,12 @@ void Client::loop() {
 
     switch (state_) {
       case STATE_CONNECT: {
+        transition(STATE_CONNECTING);
         if (!prepareConnect()) {
           LOG(ERROR, "Failed to dial");
           transition(STATE_CONNECTED);
           break;
         }
-        transition(STATE_CONNECTING);
         err_t err = pppapi_connect(pcb_, 1);
         if (err != ERR_OK) {
           LOG(TRACE, "PPP error connecting: %x", err);
@@ -414,7 +416,6 @@ void Client::loop() {
             transition(STATE_DISCONNECT);
           } else if (state_ == STATE_DISCONNECTING) {
             transition(STATE_DISCONNECTED);
-            postDisconnect();
           }
           break;
         }

@@ -118,7 +118,7 @@ private:
   void deinit();
 
   bool prepareConnect();
-  void postDisconnect();
+  void exitDataMode();
 
   static void loopCb(void* arg);
   void loop();

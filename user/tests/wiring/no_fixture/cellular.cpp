@@ -127,7 +127,7 @@ test(CELLULAR_05_sigstr_is_valid) {
                         x = num_retries;
                         break;
                 }
-                Serial.printlnf("StrV: %.2f, QualV: %.2f, RAT: %d", s.getStrengthValue(), s.getQualityValue(), s.getAccessTechnology());
+                out()->printlnf("StrV: %.2f, QualV: %.2f, RAT: %d", s.getStrengthValue(), s.getQualityValue(), s.getAccessTechnology());
                 break;
             case NET_ACCESS_TECHNOLOGY_EDGE:     // EDGE strength [-111, -48] and quality [-3.70, -0.60]
                 if ((s.getStrengthValue() <= -48.0f && s.getStrengthValue() >= -111.0f)
@@ -136,7 +136,7 @@ test(CELLULAR_05_sigstr_is_valid) {
                         x = num_retries;
                         break;
                 }
-                Serial.printlnf("StrV: %.2f, QualV: %.2f, RAT: %d", s.getStrengthValue(), s.getQualityValue(), s.getAccessTechnology());
+                out()->printlnf("StrV: %.2f, QualV: %.2f, RAT: %d", s.getStrengthValue(), s.getQualityValue(), s.getAccessTechnology());
                 break;
             case NET_ACCESS_TECHNOLOGY_UTRAN:     // UTRAN strength [-121, -25] and quality [-24.5, 0]
                 if ((s.getStrengthValue() <= -25.0f && s.getStrengthValue() >= -121.0f)
@@ -145,7 +145,7 @@ test(CELLULAR_05_sigstr_is_valid) {
                         x = num_retries;
                         break;
                 }
-                Serial.printlnf("StrV: %.2f, QualV: %.2f, RAT: %d", s.getStrengthValue(), s.getQualityValue(), s.getAccessTechnology());
+                out()->printlnf("StrV: %.2f, QualV: %.2f, RAT: %d", s.getStrengthValue(), s.getQualityValue(), s.getAccessTechnology());
                 break;
             case NET_ACCESS_TECHNOLOGY_LTE:
             case NET_ACCESS_TECHNOLOGY_LTE_CAT_M1:  // LTE CAT-M1 strength [-141, -44] and quality [-20, -3]
@@ -156,7 +156,7 @@ test(CELLULAR_05_sigstr_is_valid) {
                         x = num_retries;
                         break;
                 }
-                Serial.printlnf("StrV: %.2f, QualV: %.2f, RAT: %d", s.getStrengthValue(), s.getQualityValue(), s.getAccessTechnology());
+                out()->printlnf("StrV: %.2f, QualV: %.2f, RAT: %d", s.getStrengthValue(), s.getQualityValue(), s.getAccessTechnology());
                 break;
             default:
                 break;

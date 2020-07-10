@@ -1039,7 +1039,7 @@ int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState) {
             modemState = ModemState::DefaultBaudrate;
         }
     } else {
-        r = waitAtResponse(5000);
+        r = waitAtResponse(10000);
         if (r) {
             CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
             CHECK(initParser(serial_.get()));
