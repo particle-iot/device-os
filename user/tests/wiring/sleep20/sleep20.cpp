@@ -306,3 +306,62 @@ test(13_System_Sleep_Mode_Stop_Without_Wakeup) {
     SleepResult result = System.sleep(nullptr, 0, nullptr, 0, 0);
     assertEqual(result.error(), SYSTEM_ERROR_INVALID_ARGUMENT);
 }
+
+test(14_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_D0) {
+    Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after you have a rising edge on D0.");
+    delay(1000);
+
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::ULTRA_LOW_POWER)
+          .gpio(D0, RISING);
+    SystemSleepResult result = System.sleep(config);
+
+    while (!Serial.isConnected());
+
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_GPIO);
+    assertEqual(result.wakeupPin(), D0);
+}
+
+test(15_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Rtc) {
+    Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after 3 seconds.");
+    delay(1000);
+
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::ULTRA_LOW_POWER)
+          .duration(3s);
+    SystemSleepResult result = System.sleep(config);
+
+    while (!Serial.isConnected());
+
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
+}
+
+#if HAL_PLATFORM_BLE
+test(16_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ble) {
+    Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after device being connected by BLE Central.");
+    delay(1000);
+
+    BLE.advertise();
+
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::ULTRA_LOW_POWER)
+          .ble();
+    SystemSleepResult result = System.sleep(config);
+
+    while (!Serial.isConnected());
+
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_BLE);
+
+    BLE.stopAdvertising();
+}
+#endif // HAL_PLATFORM_BLE
+
+test(17_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Without_Wakeup) {
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::ULTRA_LOW_POWER);
+    SystemSleepResult result = System.sleep(config);
+    assertEqual(result.error(), SYSTEM_ERROR_INVALID_ARGUMENT);
+}

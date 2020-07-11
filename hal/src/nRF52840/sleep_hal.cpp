@@ -682,6 +682,9 @@ static int enterUltraLowPowerMode(const hal_sleep_config_t* config, hal_wakeup_s
     // Disable SysTick
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
+    uint8_t st = 0;
+    sd_nvic_critical_region_enter(&st);
+
     // Suspend external peripherals
     hal_exflash_sleep(true, nullptr);
     // Workaround for FPU anomaly
@@ -866,6 +869,8 @@ static int enterUltraLowPowerMode(const hal_sleep_config_t* config, hal_wakeup_s
     HAL_USB_Attach();
     // Restore external peripherals
     hal_exflash_sleep(false, nullptr);
+
+    sd_nvic_critical_region_exit(st);
 
     // Unmasks all non-softdevice interrupts
     HAL_enable_irq(hst);
