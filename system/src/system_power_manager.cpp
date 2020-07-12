@@ -367,6 +367,7 @@ void PowerManager::initDefault(bool dpdm) {
   }
   // Enable charging
   power.enableCharging();
+  power.enableBuck();
 
   faultSuppressed_ = 0;
 }
