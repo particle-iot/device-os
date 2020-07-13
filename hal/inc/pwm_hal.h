@@ -23,8 +23,8 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __PWM_HAL_H
-#define __PWM_HAL_H
+#ifndef PWM_HAL_H
+#define PWM_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
@@ -55,8 +55,11 @@ void hal_pwm_set_resolution(uint16_t pin, uint8_t resolution);
 void hal_pwm_reset_pin(uint16_t pin);
 int hal_pwm_sleep(bool sleep, void* reserved);
 
+
+#include "pwm_hal_compat.h"
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif  /* __PWM_HAL_H */
+#endif  /* PWM_HAL_H */

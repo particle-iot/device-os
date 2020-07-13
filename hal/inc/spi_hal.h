@@ -1,10 +1,3 @@
-/******************************************************************************
- * @file    spi_hal.h
- * @author  Satish Nair, Brett Walach
- * @version V1.0.0
- * @date    12-Sept-2014
- * @brief
- ******************************************************************************/
 /*
  * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
@@ -23,8 +16,8 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __SPI_HAL_H
-#define __SPI_HAL_H
+#ifndef SPI_HAL_H
+#define SPI_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
 #include "pinmap_hal.h"
@@ -38,13 +31,11 @@ typedef enum hal_spi_interface_t {
    ,HAL_SPI_INTERFACE3 = 2     //maps to SPI3 (pins: C3, C2, C1)
 #endif
 } hal_spi_interface_t;
-typedef hal_spi_interface_t HAL_SPI_Interface; // For backwards compatibility
 
 typedef enum hal_spi_mode_t {
     SPI_MODE_MASTER = 0,
     SPI_MODE_SLAVE = 1
 } hal_spi_mode_t;
-typedef hal_spi_mode_t SPI_Mode; // For backwards compatibility
 
 typedef enum hal_spi_state_t {
     HAL_SPI_STATE_UNKNOWN,
@@ -106,14 +97,12 @@ typedef struct hal_spi_transfer_status_t {
     uint8_t transfer_ongoing    : 1;
     uint8_t ss_state            : 1;
 } hal_spi_transfer_status_t;
-typedef hal_spi_transfer_status_t HAL_SPI_TransferStatus; // For backwards compatibility
 
 typedef struct hal_spi_acquire_config_t {
     uint16_t size;
     uint16_t version;
     system_tick_t timeout;
 } hal_spi_acquire_config_t;
-typedef hal_spi_acquire_config_t HAL_SPI_AcquireConfig;
 
 void hal_spi_init(hal_spi_interface_t spi);
 void hal_spi_begin(hal_spi_interface_t spi, uint16_t pin);
@@ -140,8 +129,11 @@ int32_t hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t*
 int32_t hal_spi_release(hal_spi_interface_t spi, void* reserved);
 #endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
 
+
+#include "spi_hal_compat.h"
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif  /* __SPI_HAL_H */
+#endif  /* SPI_HAL_H */

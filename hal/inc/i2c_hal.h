@@ -1,10 +1,3 @@
-/******************************************************************************
- * @file    i2c_hal.h
- * @author  Satish Nair, Brett Walach
- * @version V1.0.0
- * @date    12-Sept-2014
- * @brief
- ******************************************************************************/
 /*
  * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
@@ -23,8 +16,8 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __I2C_HAL_H
-#define __I2C_HAL_H
+#ifndef I2C_HAL_H
+#define I2C_HAL_H
 
 /* Includes ------------------------------------------------------------------*/
 #include <stddef.h>
@@ -44,7 +37,6 @@ typedef enum hal_i2c_interface_t {
     HAL_I2C_INTERFACE2 = 1,
     HAL_I2C_INTERFACE3 = 2
 } hal_i2c_interface_t;
-typedef hal_i2c_interface_t HAL_I2C_Interface; // For backwards compatibility
 
 /*! I2c Config Structure Version */
 typedef enum hal_i2c_config_version_t {
@@ -60,7 +52,6 @@ typedef struct hal_i2c_config_t {
     uint8_t* tx_buffer;
     uint32_t tx_buffer_size;
 } hal_i2c_config_t;
-typedef struct hal_i2c_config_t HAL_I2C_Config; // For backwards compatibility
 
 typedef enum hal_i2c_transmission_flag_t {
     HAL_I2C_TRANSMISSION_FLAG_NONE = 0x00,
@@ -76,7 +67,6 @@ typedef struct hal_i2c_transmission_config_t {
     system_tick_t timeout_ms;
     uint32_t flags;
 } hal_i2c_transmission_config_t;
-typedef struct hal_i2c_transmission_config_t HAL_I2C_Transmission_Config; // // For backwards compatibility
 
 typedef enum hal_i2c_state_t {
     HAL_I2C_STATE_DISABLED,
@@ -135,8 +125,11 @@ bool hal_i2c_is_enabled_deprecated(void);
 void hal_i2c_set_callback_on_received_deprecated(void (*function)(int));
 void hal_i2c_set_callback_on_requested_deprecated(void (*function)(void));
 
+
+#include "i2c_hal_compat.h"
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif  /* __I2C_HAL_H */
+#endif  /* I2C_HAL_H */

@@ -199,3 +199,33 @@ test(spi_lock)
     API_COMPILE(SPI2.unlock());
 #endif // Wiring_SPI2
 }
+
+test(spi_hal_backwards_compatibility)
+{
+    HAL_SPI_Interface spi = HAL_SPI_INTERFACE1;
+    SPI_Mode mode = SPI_MODE_MASTER;
+    HAL_SPI_TransferStatus status;
+    HAL_SPI_AcquireConfig config;
+
+    // These APIs are exposed to user application.
+    API_COMPILE(HAL_SPI_Init(spi));
+    API_COMPILE(HAL_SPI_Begin(spi, 0));
+    API_COMPILE(HAL_SPI_Begin_Ext(spi, mode, 0, NULL));
+    API_COMPILE(HAL_SPI_End(spi));
+    API_COMPILE(HAL_SPI_Set_Bit_Order(spi, 0));
+    API_COMPILE(HAL_SPI_Set_Data_Mode(spi, 0));
+    API_COMPILE(HAL_SPI_Set_Clock_Divider(spi, 0));
+    API_COMPILE(HAL_SPI_Send_Receive_Data(spi, 0));
+    API_COMPILE(HAL_SPI_DMA_Transfer(spi, NULL, NULL, 0, NULL));
+    API_COMPILE(HAL_SPI_Is_Enabled_Old());
+    API_COMPILE(HAL_SPI_Is_Enabled(spi));
+    API_COMPILE(HAL_SPI_Info(spi, NULL, NULL));
+    API_COMPILE(HAL_SPI_Set_Callback_On_Select(spi, NULL, NULL));
+    API_COMPILE(HAL_SPI_DMA_Transfer_Cancel(spi));
+    API_COMPILE(HAL_SPI_DMA_Transfer_Status(spi, &status));
+    API_COMPILE(HAL_SPI_Set_Settings(spi, 0, 0, 0, 0, NULL));
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+    API_COMPILE(HAL_SPI_Acquire(spi, &config));
+    API_COMPILE(HAL_SPI_Release(spi, NULL));
+#endif
+}

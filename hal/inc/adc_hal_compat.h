@@ -8,38 +8,23 @@
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * MERCHAN'TABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADC_HAL_H
-#define ADC_HAL_H
+#ifndef ADC_HAL_COMPAT_H
+#define ADC_HAL_COMPAT_H
 
-#include "pinmap_hal.h"
-
-typedef enum hal_adc_state_t {
-    HAL_ADC_STATE_DISABLED,
-    HAL_ADC_STATE_ENABLED,
-    HAL_ADC_STATE_SUSPENDED
-} hal_adc_state_t;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void hal_adc_set_sample_time(uint8_t sample_time);
-int32_t hal_adc_read(pin_t pin);
-void hal_adc_dma_init();
-int hal_adc_sleep(bool sleep, void* reserved);
-
-
-#include "adc_hal_compat.h"
-
-#ifdef __cplusplus
+// Deprecated *dynalib* APIs for backwards compatibility
+inline void __attribute__((deprecated("Use hal_adc_set_sample_time() instead"))) HAL_ADC_Set_Sample_Time(uint8_t sample_time) {
+    hal_adc_set_sample_time(sample_time);
 }
-#endif
 
-#endif  /* ADC_HAL_H */
+inline int32_t __attribute__((deprecated("Use hal_adc_read() instead"))) HAL_ADC_Read(pin_t pin) {
+    return hal_adc_read(pin);
+}
+
+#endif  /* ADC_HAL_COMPAT_H */
