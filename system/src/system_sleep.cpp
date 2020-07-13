@@ -17,6 +17,11 @@
  ******************************************************************************
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
+#include "logging.h"
+LOG_SOURCE_CATEGORY("system.sleep");
 
 #include "system_sleep.h"
 #include "system_sleep_configuration.h"
@@ -35,11 +40,6 @@
 #include "check.h"
 
 using namespace particle;
-
-LOG_SOURCE_CATEGORY("system.sleep");
-
-#undef LOG_COMPILE_TIME_LEVEL
-#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 
 static bool system_sleep_network_suspend(network_interface_index index) {
     bool resume = false;
