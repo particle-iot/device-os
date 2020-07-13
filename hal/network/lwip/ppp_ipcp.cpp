@@ -399,6 +399,10 @@ void Ipcp::starting() {
 /* Called when we don't want the lower layer */
 void Ipcp::finished() {
   LOG(TRACE, "finished");
+  if (state_) {
+    state_ = false;
+    np_finished(pcb_, PPP_IP);
+  }
 }
 
 /* Called when unknown code received */
