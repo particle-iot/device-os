@@ -1,10 +1,3 @@
-/******************************************************************************
- * @file    spi_hal.h
- * @author  Satish Nair, Brett Walach
- * @version V1.0.0
- * @date    12-Sept-2014
- * @brief
- ******************************************************************************/
 /*
  * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *

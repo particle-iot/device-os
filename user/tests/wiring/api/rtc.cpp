@@ -15,31 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADC_HAL_H
-#define ADC_HAL_H
+#include "testapi.h"
+#include "rtc_hal.h"
 
-#include "pinmap_hal.h"
-
-typedef enum hal_adc_state_t {
-    HAL_ADC_STATE_DISABLED,
-    HAL_ADC_STATE_ENABLED,
-    HAL_ADC_STATE_SUSPENDED
-} hal_adc_state_t;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void hal_adc_set_sample_time(uint8_t sample_time);
-int32_t hal_adc_read(pin_t pin);
-void hal_adc_dma_init();
-int hal_adc_sleep(bool sleep, void* reserved);
-
-
-#include "adc_hal_compat.h"
-
-#ifdef __cplusplus
+test(rtc_hal_backwards_compatibility) {
+    // These APIs are exposed to user application.
+    // Deprecated *dynalib* APIs for backwards compatibility
+    API_COMPILE(HAL_RTC_Configuration());
+    API_COMPILE({ auto v = HAL_RTC_Get_UnixTime(); (void)v; });
+    API_COMPILE(HAL_RTC_Set_UnixTime(12345));
+    API_COMPILE(HAL_RTC_Cancel_UnixAlarm());
+    API_COMPILE({auto v = HAL_RTC_Time_Is_Valid(nullptr); (void)v; });
 }
-#endif
-
-#endif  /* ADC_HAL_H */
