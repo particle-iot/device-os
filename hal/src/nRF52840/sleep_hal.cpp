@@ -682,9 +682,6 @@ static int enterUltraLowPowerMode(const hal_sleep_config_t* config, hal_wakeup_s
     // Disable SysTick
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
-    uint8_t st = 0;
-    sd_nvic_critical_region_enter(&st);
-
     // Suspend external peripherals
     hal_exflash_sleep(true, nullptr);
     // Workaround for FPU anomaly
@@ -711,6 +708,9 @@ static int enterUltraLowPowerMode(const hal_sleep_config_t* config, hal_wakeup_s
     hal_adc_sleep(true, nullptr);
     // Suspend all GPIOTE interrupts
     HAL_Interrupts_Suspend();
+
+    uint8_t st = 0;
+    sd_nvic_critical_region_enter(&st);
 
     // _Attempt_ to disable HFCLK. This may not succeed, resulting in a higher current consumption
     // FIXME
