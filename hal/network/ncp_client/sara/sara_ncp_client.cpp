@@ -1322,6 +1322,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
 
     // We are not in the mulitplexed mode yet
     // Check if the modem is responsive at the runtime baudrate
+    CHECK(serial_->setBaudRate(runtimeBaudrate));
     CHECK(initParser(serial_.get()));
     skipAll(serial_.get());
     parser_.reset();
