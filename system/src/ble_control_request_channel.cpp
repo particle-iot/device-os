@@ -285,6 +285,7 @@ public:
     int init(const char* key, size_t keySize) {
         CHECK(HandshakeHandler::init());
         CHECK(hash_.init());
+        CHECK(hash_.start());
         mbedtls_ecjpake_init(&ctx_);
         CHECK_MBEDTLS(mbedtls_ecjpake_setup(&ctx_, MBEDTLS_ECJPAKE_SERVER, MBEDTLS_MD_SHA256, MBEDTLS_ECP_DP_SECP256R1,
                 (const uint8_t*)key, keySize));
@@ -423,17 +424,20 @@ private:
         // Generate the confirmation key
         Sha256 hash;
         CHECK(hash.init());
+        CHECK(hash.start());
         CHECK(hash.update(secret_, sizeof(secret_)));
         CHECK(hash.update("JPAKE_KC"));
         CHECK(hash.finish(confirmKey_));
         hash.destroy();
         // Validate the confirmation message
-        CHECK(hash.init(hash_));
+        CHECK(hash.init());
+        CHECK(hash.copyFrom(hash_));
         char hashVal[Sha256::HASH_SIZE] = {};
         CHECK(hash.finish(hashVal));
         hash.destroy();
         HmacSha256 hmac;
-        CHECK(hmac.init(confirmKey_, sizeof(confirmKey_)));
+        CHECK(hmac.init());
+        CHECK(hmac.start(confirmKey_, sizeof(confirmKey_)));
         CHECK(hmac.update("KC_1_U"));
         CHECK(hmac.update(JPAKE_CLIENT_ID));
         CHECK(hmac.update(JPAKE_SERVER_ID));
@@ -455,7 +459,8 @@ private:
         CHECK(hash_.finish(buf->data));
         hash_.destroy();
         HmacSha256 hmac;
-        CHECK(hmac.init(confirmKey_, sizeof(confirmKey_)));
+        CHECK(hmac.init());
+        CHECK(hmac.start(confirmKey_, sizeof(confirmKey_)));
         CHECK(hmac.update("KC_1_U"));
         CHECK(hmac.update(JPAKE_SERVER_ID));
         CHECK(hmac.update(JPAKE_CLIENT_ID));
