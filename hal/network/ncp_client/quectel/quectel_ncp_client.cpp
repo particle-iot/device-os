@@ -212,7 +212,7 @@ int QuectelNcpClient::initParser(Stream* stream) {
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         self->csd_.status(self->csd_.parseStatus(val[0]));
-        self->checkRegistrationState();
+        // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         // Only update if unset
         if (r >= 3) {
@@ -241,7 +241,7 @@ int QuectelNcpClient::initParser(Stream* stream) {
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         self->psd_.status(self->psd_.parseStatus(val[0]));
-        self->checkRegistrationState();
+        // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
             auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
@@ -278,7 +278,7 @@ int QuectelNcpClient::initParser(Stream* stream) {
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         self->eps_.status(self->eps_.parseStatus(val[0]));
-        self->checkRegistrationState();
+        // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
             auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
@@ -420,6 +420,8 @@ int QuectelNcpClient::updateFirmware(InputStream* file, size_t size) {
 }
 
 int QuectelNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
+    CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+
     int err = muxer_.writeChannel(QUECTEL_NCP_PPP_CHANNEL, data, size);
     if (err == gsm0710::GSM0710_ERROR_FLOW_CONTROL) {
         LOG_DEBUG(WARN, "Remote side flow control");
@@ -441,10 +443,10 @@ int QuectelNcpClient::dataChannelFlowControl(bool state) {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
     if (state && !inFlowControl_) {
         inFlowControl_ = true;
-        muxer_.suspendChannel(QUECTEL_NCP_PPP_CHANNEL);
+        CHECK_TRUE(muxer_.suspendChannel(QUECTEL_NCP_PPP_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
     } else if (!state && inFlowControl_) {
         inFlowControl_ = false;
-        muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL);
+        CHECK_TRUE(muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -1258,6 +1260,10 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
             }
             return SYSTEM_ERROR_NONE;
         }, this);
+        if (!r) {
+            // Just in case resume channel
+            r = muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL);
+        }
         if (r) {
             LOG(ERROR, "Failed to open data channel");
             ready_ = false;
@@ -1434,9 +1440,14 @@ int QuectelNcpClient::processEventsImpl() {
 
     if (connState_ == NcpConnectionState::CONNECTING && millis() - regStartTime_ >= registrationTimeout_) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
-        muxer_.stop();
-        modemHardReset();
+        // We are going into an OFF state immediately before stopping the muxer
+        // otherwise the muxer channel state callback will disable us unnecessarily.
         ncpState(NcpState::OFF);
+        muxer_.stop();
+        int rv = modemPowerOff();
+        if (rv != 0) {
+            modemHardReset(true);
+        }
         return SYSTEM_ERROR_TIMEOUT;
     }
 

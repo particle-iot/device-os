@@ -134,17 +134,20 @@ bool Client::prepareConnect() {
   UNLOCK_TCPIP_CORE();
 #endif // PPP_IPV6_SUPPORT
 
-  exitDataMode();
-
   // FIXME: this should be handled in the NCP client
   static const char* UBLOX_NCP_CONNECT_COMMANDS[] = {
-    "ATH;D*99***1#\r\n",
+    "~+++",
+    "AT\r\n",
+    "ATH;D*99***1#\r\n"
   };
   static const char* NCP_CONNECT_COMMANDS[] = {
     "ATD*99***1#\r\n",
   };
   bool ublox = PLATFORM_NCP_MANUFACTURER(platform_current_ncp_identifier()) == PLATFORM_NCP_MANUFACTURER_UBLOX;
-  for (const auto& cmd: ublox ? UBLOX_NCP_CONNECT_COMMANDS : NCP_CONNECT_COMMANDS) {
+  const auto cmds = ublox ? UBLOX_NCP_CONNECT_COMMANDS : NCP_CONNECT_COMMANDS;
+  const size_t num = (ublox ? sizeof(UBLOX_NCP_CONNECT_COMMANDS) : sizeof(NCP_CONNECT_COMMANDS)) / sizeof(char*);
+  for (size_t i = 0; i < num; i++) {
+    const auto cmd = cmds[i];
     const auto cmdLen = strlen(cmd);
     auto sz = output((const uint8_t*)cmd, cmdLen);
     if (sz != cmdLen) {
@@ -153,15 +156,6 @@ bool Client::prepareConnect() {
     HAL_Delay_Milliseconds(1000);
   }
   return true;
-}
-
-void Client::exitDataMode() {
-  // FIXME: this should be handled in the NCP client
-  if (PLATFORM_NCP_MANUFACTURER(platform_current_ncp_identifier()) == PLATFORM_NCP_MANUFACTURER_UBLOX) {
-    const char cmd[] = "~+++";
-    output((const uint8_t*)cmd, sizeof(cmd) - 1);
-    HAL_Delay_Milliseconds(1000);
-  }
 }
 
 bool Client::start() {
@@ -206,7 +200,7 @@ int Client::input(const uint8_t* data, size_t size) {
           if (!std::isprint(*p) || *p == '\r' || *p == '\n') {
             if (begin && p - begin > 2) {
               if (std::isalpha(*begin) || *begin == '+') {
-                LOG_DEBUG(TRACE, "< %.*s", p - begin, begin);
+                LOG(TRACE, "< %.*s", p - begin, begin);
               }
             }
             begin = nullptr;
@@ -214,8 +208,8 @@ int Client::input(const uint8_t* data, size_t size) {
             begin = p;
           }
         }
-//#endif // DEBUG_BUILD
         // Fall through
+//#endif // DEBUG_BUILD
       }
       case STATE_DISCONNECTING:
       case STATE_CONNECTED: {
@@ -309,7 +303,7 @@ void Client::loop() {
         transition(STATE_CONNECTING);
         if (!prepareConnect()) {
           LOG(ERROR, "Failed to dial");
-          transition(STATE_CONNECTED);
+          transition(STATE_CONNECT);
           break;
         }
         err_t err = pppapi_connect(pcb_, 1);
@@ -504,7 +498,7 @@ void Client::transition(State newState) {
   state_ = newState;
 
   {
-    if (state_ == STATE_CONNECTED || state_ == STATE_DISCONNECTED) {
+    if (state_ == STATE_CONNECTED || state_ == STATE_DISCONNECTED || state_ == STATE_CONNECTING) {
       std::unique_lock<std::mutex> lk(mutex_);
       auto cb = cb_;
       auto ctx = cbCtx_;
@@ -512,8 +506,10 @@ void Client::transition(State newState) {
       if (cb) {
         if (state_ == STATE_CONNECTED) {
           cb(this, EVENT_UP, ctx);
-        } else {
+        } else if (state_ == STATE_DISCONNECTED) {
           cb(this, EVENT_DOWN, ctx);
+        } else if (state_ == STATE_CONNECTING) {
+          cb(this, EVENT_CONNECTING, ctx);
         }
       }
     }

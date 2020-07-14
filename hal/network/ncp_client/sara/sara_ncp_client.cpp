@@ -127,8 +127,6 @@ const system_tick_t UBLOX_NCP_R4_WINDOW_SIZE_MS = 50;
 const int UBLOX_DEFAULT_CID = 1;
 const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
 
-const char UBLOX_DATA_TERMINATE[] = "~+++";
-
 
 } // anonymous
 
@@ -206,7 +204,7 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         self->csd_.status(self->csd_.parseStatus(val[0]));
-        self->checkRegistrationState();
+        // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         // Only update if unset
         if (r >= 3) {
@@ -235,7 +233,7 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         self->psd_.status(self->psd_.parseStatus(val[0]));
-        self->checkRegistrationState();
+        // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
             auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
@@ -271,7 +269,7 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         self->eps_.status(self->eps_.parseStatus(val[0]));
-        self->checkRegistrationState();
+        // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
             auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
@@ -422,6 +420,8 @@ int SaraNcpClient::updateFirmware(InputStream* file, size_t size) {
 * for a certain amount of time defined by UBLOX_NCP_R4_WINDOW_SIZE_MS
 */
 int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
+    CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+
     if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
         if ((HAL_Timer_Get_Milli_Seconds() - lastWindow_) >= UBLOX_NCP_R4_WINDOW_SIZE_MS) {
             lastWindow_ = HAL_Timer_Get_Milli_Seconds();
@@ -460,12 +460,12 @@ int SaraNcpClient::dataChannelFlowControl(bool state) {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
     if (state && !inFlowControl_) {
         inFlowControl_ = true;
-        muxer_.suspendChannel(UBLOX_NCP_PPP_CHANNEL);
+        CHECK_TRUE(muxer_.suspendChannel(UBLOX_NCP_PPP_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
     } else if (!state && inFlowControl_) {
         inFlowControl_ = false;
         lastWindow_ = 0;
         bytesInWindow_ = 0;
-        muxer_.resumeChannel(UBLOX_NCP_PPP_CHANNEL);
+        CHECK_TRUE(muxer_.resumeChannel(UBLOX_NCP_PPP_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -1512,7 +1512,6 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
     connState_ = state;
 
     if (connState_ == NcpConnectionState::CONNECTED) {
-        inFlowControl_ = false;
         // Open data channel and resume it just in case
         int r = muxer_.openChannel(UBLOX_NCP_PPP_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
             auto self = (SaraNcpClient*)ctx;
@@ -1522,13 +1521,15 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
             }
             return SYSTEM_ERROR_NONE;
         }, this);
+        if (!r) {
+            // Just in case resume
+            inFlowControl_ = true;
+            r = dataChannelFlowControl(false);
+        }
         if (r) {
             LOG(ERROR, "Failed to open data channel");
             ready_ = false;
             connState_ = NcpConnectionState::DISCONNECTED;
-        } else {
-            // Just in case terminate data session
-            muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, (const uint8_t*)UBLOX_DATA_TERMINATE, sizeof(UBLOX_DATA_TERMINATE) - 1);
         }
     }
 
@@ -1697,12 +1698,14 @@ int SaraNcpClient::processEventsImpl() {
     if (connState_ == NcpConnectionState::CONNECTING &&
             millis() - regStartTime_ >= registrationTimeout_) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
+        // We are going into an OFF state immediately before stopping the muxer
+        // otherwise the muxer channel state callback will disable us unnecessarily.
+        ncpState(NcpState::OFF);
         muxer_.stop();
         int rv = modemPowerOff();
         if (rv != 0) {
             modemHardReset(true);
         }
-        ncpState(NcpState::OFF);
         return SYSTEM_ERROR_TIMEOUT;
     }
     return SYSTEM_ERROR_NONE;

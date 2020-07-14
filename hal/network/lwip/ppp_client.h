@@ -61,7 +61,8 @@ public:
     EVENT_ADM_UP      = 0x05,
     EVENT_ADM_DOWN    = 0x06,
     EVENT_ERROR       = 0x07,
-    EVENT_MAX         = 0x08
+    EVENT_CONNECTING  = 0x08,
+    EVENT_MAX         = 0x09
   };
 
   enum State {
@@ -118,7 +119,6 @@ private:
   void deinit();
 
   bool prepareConnect();
-  void exitDataMode();
 
   static void loopCb(void* arg);
   void loop();

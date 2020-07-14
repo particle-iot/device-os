@@ -164,7 +164,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 
 #if HAL_PLATFORM_NCP_AT
 test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
-    const system_tick_t WAIT_TIMEOUT = 5 * 60 * 1000;
+    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
     const system_tick_t NCP_FAILURE_TIMEOUT = 15000;
 
     Network.on();

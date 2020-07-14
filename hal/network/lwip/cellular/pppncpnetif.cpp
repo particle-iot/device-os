@@ -54,6 +54,9 @@ enum class NetifEvent {
     PowerOn = 5
 };
 
+// 5 minutes
+const unsigned PPP_CONNECT_TIMEOUT = 5 * 60 * 1000;
+
 } // anonymous
 
 
@@ -126,6 +129,15 @@ void PppNcpNetif::loop(void* arg) {
             self->upImpl();
         }
         self->celMan_->ncpClient()->processEvents();
+
+        if (self->up_ && self->celMan_->ncpClient()->connectionState() == NcpConnectionState::CONNECTED) {
+            auto start = self->connectStart_;
+            if (start != 0 && HAL_Timer_Get_Milli_Seconds() - start >= PPP_CONNECT_TIMEOUT) {
+                LOG(ERROR, "Failed to bring up PPP session after %lu seconds", PPP_CONNECT_TIMEOUT / 1000);
+                self->client_.disconnect();
+                self->celMan_->ncpClient()->disable();
+            }
+        }
     }
 
     self->downImpl();
@@ -248,6 +260,12 @@ void PppNcpNetif::pppEventHandler(uint64_t ev) {
     if (ev == particle::net::ppp::Client::EVENT_UP) {
         unsigned mtu = client_.getIf()->mtu;
         LOG(TRACE, "Negotiated MTU: %u", mtu);
+        // Reset
+        connectStart_ = 0;
+    } else if (ev == particle::net::ppp::Client::EVENT_CONNECTING) {
+        if (connectStart_ == 0) {
+            connectStart_ = HAL_Timer_Get_Milli_Seconds();
+        }
     }
 }
 
@@ -261,9 +279,11 @@ void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
             case NcpConnectionState::DISCONNECTED:
             case NcpConnectionState::CONNECTING: {
                 self->client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
+                self->connectStart_ = 0;
                 break;
             }
             case NcpConnectionState::CONNECTED: {
+                self->connectStart_ = 0;
                 self->client_.notifyEvent(ppp::Client::EVENT_LOWER_UP);
             }
         }
