@@ -29,7 +29,7 @@ SimpleFileStorage::SimpleFileStorage(const char* file) :
         openFlags_(0) {
 }
 
-int SimpleFileStorage::load(char* data, size_t size) {
+int SimpleFileStorage::load(void* data, size_t size) {
     const auto fs = filesystem_get_instance(nullptr);
     if (!fs) {
         return SYSTEM_ERROR_FILE;
@@ -52,7 +52,7 @@ int SimpleFileStorage::load(char* data, size_t size) {
     return fileSize;
 }
 
-int SimpleFileStorage::save(const char* data, size_t size) {
+int SimpleFileStorage::save(const void* data, size_t size) {
     const auto fs = filesystem_get_instance(nullptr);
     if (!fs) {
         return SYSTEM_ERROR_FILE;

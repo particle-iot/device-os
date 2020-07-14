@@ -22,20 +22,23 @@
 #include "system_defs.h"
 #include "c_string.h"
 
-#if HAL_PLATFORM_RESUMABLE_OTA
-#include "sha256.h"
-#endif
-
 #include <memory>
 
 namespace particle::system {
+
+namespace detail {
+
+#if HAL_PLATFORM_RESUMABLE_OTA
+struct TransferState;
+#endif
+
+} // namespace detail
 
 /**
  * Firmware update handler.
  */
 class FirmwareUpdate {
 public:
-    ~FirmwareUpdate();
     /**
      * Start a firmware update.
      *
@@ -88,10 +91,6 @@ public:
      */
     CString takeErrorMessage();
     /**
-     * Reset the handler state and free all allocated resources.
-     */
-    void reset();
-    /**
      * Get the singleton instance of this class.
      */
     static FirmwareUpdate* instance();
@@ -103,31 +102,14 @@ private:
     bool updating_; // Whether an update is in progress
 
 #if HAL_PLATFORM_RESUMABLE_OTA
-    // Persistently stored state of a partially completed file transfer
-    struct PersistentTransferState {
-        char completeSha256[Sha256::HASH_SIZE]; // SHA-256 of the update binary
-        char partialSha256[Sha256::HASH_SIZE]; // SHA-256 of the partially transferred data
-        uint32_t completeSize; // Size of the update binary
-        uint32_t partialSize; // Size of the partially transferred data
-        uint32_t stateCrc32; // CRC-32 of the above structure fields
-    } __attribute__((packed));
+    std::unique_ptr<detail::TransferState> transferState_; // File transfer state
 
-    // File transfer state
-    struct TransferState {
-        Sha256 hash; // SHA-256 of the partially transferred data
-        Sha256 tempHash; // Intermediate SHA-256 checksum
-        PersistentTransferState persist; // Persistently stored state
-        size_t size; // Size of the update binary
-        size_t offset; // Size of the partially transferred data
-    };
-
-    std::unique_ptr<TransferState> transfer_;
-#endif // HAL_PLATFORM_RESUMABLE_OTA
+    int initTransferState(size_t fileSize, const char* fileHash);
+    int updateTransferState(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize);
+    void clearTransferState();
+#endif
 
     FirmwareUpdate();
-
-    int init();
-    void destroy();
 
     void errorMessage(const char* fmt, ...);
 };

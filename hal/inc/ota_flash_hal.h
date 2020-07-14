@@ -136,6 +136,12 @@ bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved);
  */
 int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved);
 
+/**
+ * Reads part of the OTA image.
+ * @returns Number of bytes read or a negative error code.
+ */
+int HAL_OTA_Flash_Read(uintptr_t address, uint8_t* buffer, size_t size);
+
 typedef enum {
     HAL_UPDATE_APPLIED = 0,
     HAL_UPDATE_APPLIED_PENDING_RESTART = 1

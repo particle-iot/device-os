@@ -30,16 +30,16 @@ public:
     explicit SimpleFileStorage(const char* file);
     ~SimpleFileStorage();
 
-    int load(char* data, size_t size);
-    int save(const char* data, size_t size);
+    int load(void* data, size_t size);
+    int save(const void* data, size_t size);
     int sync();
 
     void close();
 
     void clear();
 
-    static int load(const char* file, char* data, size_t size);
-    static int save(const char* file, const char* data, size_t size);
+    static int load(const char* file, void* data, size_t size);
+    static int save(const char* file, const void* data, size_t size);
     static void clear(const char* file);
 
 private:
@@ -55,11 +55,11 @@ inline SimpleFileStorage::~SimpleFileStorage() {
     close();
 }
 
-inline int SimpleFileStorage::load(const char* file, char* data, size_t size) {
+inline int SimpleFileStorage::load(const char* file, void* data, size_t size) {
     return SimpleFileStorage(file).load(data, size);
 }
 
-inline int SimpleFileStorage::save(const char* file, const char* data, size_t size) {
+inline int SimpleFileStorage::save(const char* file, const void* data, size_t size) {
     return SimpleFileStorage(file).save(data, size);
 }
 
