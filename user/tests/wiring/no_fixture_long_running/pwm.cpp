@@ -373,6 +373,11 @@ test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
     // 15-bit resolution
     analogWriteResolution(pin, 15);
     assertEqual(analogWriteResolution(pin), 15);
+
+    if (analogWriteMaxFrequency(pin) < 10000) {
+        return;
+    }
+
     // analogWrite(pin, 3277); // 10% Duty Cycle at 500Hz = 200us HIGH, 1800us LOW.
     // if (pin == D0) delay(5000);
     avgPulseHigh = 0;
@@ -473,6 +478,10 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     // 15-bit resolution
     analogWriteResolution(pin, 15);
     assertEqual(analogWriteResolution(pin), 15);
+
+    if (analogWriteMaxFrequency(pin) < 10000) {
+        return;
+    }
     // analogWrite(pin, 3277, 10); // 10% Duty Cycle at 10Hz = 10000us HIGH, 90000us LOW.
     // if (pin == D0) delay(5000);
     avgPulseHigh = 0;
@@ -572,6 +581,9 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     // 15-bit resolution
     analogWriteResolution(pin, 15);
     assertEqual(analogWriteResolution(pin), 15);
+    if (analogWriteMaxFrequency(pin) < 10000) {
+        return;
+    }
     // analogWrite(pin, 3277, 10000); // 10% Duty Cycle at 10kHz = 10us HIGH, 90us LOW.
     // if (pin == D0) delay(5000);
     avgPulseHigh = 0;
@@ -602,30 +614,32 @@ test(PWM_11_PwmSleep) {
     // when
     pinMode(pin, OUTPUT);
 
-    // 15-bit resolution
-    analogWriteResolution(pin, 15);
-    assertEqual(analogWriteResolution(pin), 15);
-    // analogWrite(pin, 3277, 10000); // 10% Duty Cycle at 10kHz = 10us HIGH, 90us LOW.
+    // 8-bit resolution
+    analogWriteResolution(pin, 8);
+    assertEqual(analogWriteResolution(pin), 8);
+    // analogWrite(pin, 25, 10000); // 9.8% Duty Cycle at 10kHz = 9.8us HIGH, 90.2us LOW.
     // if (pin == D0) delay(5000);
     uint32_t avgPulseHigh = 0;
     for(int i=0; i<10; i++) {
-        analogWrite(pin, 3277, 10000); // 10% Duty Cycle at 10kHz = 10us HIGH, 90us LOW.
+        analogWrite(pin, 25, 10000); // 9.8% Duty Cycle at 10kHz = 9.8us HIGH, 90.2us LOW.
         // Disable SysTick to avoid potential interrupt safety issues with RGB LED pins
         SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
         assertEqual(0, hal_pwm_sleep(true, nullptr));
         assertEqual(0, hal_pwm_sleep(false, nullptr));
         SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
         // Dummy read to wait until the change of PWM takes effect
+#if HAL_PLATFORM_NRF52840
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
         AtomicSection atomic;
+#endif // HAL_PLATFORM_NRF52840
         avgPulseHigh += pulseIn(pin, HIGH);
     }
     avgPulseHigh /= 10;
     // then
-    // avgPulseHigh should equal 10 +/- 2
-    assertMoreOrEqual(avgPulseHigh, 8);
-    assertLessOrEqual(avgPulseHigh, 12);
+    // avgPulseHigh should equal 10 +/- 5
+    assertMoreOrEqual(avgPulseHigh, 5);
+    assertLessOrEqual(avgPulseHigh, 15);
 
     analogWrite(pin, 0, 500);
     pinMode(pin, INPUT);
