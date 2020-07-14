@@ -211,7 +211,7 @@ test(TIME_13_syncTimePending_syncTimeDone_when_disconnected)
     if (!Particle.connected())
     {
         Particle.connect();
-        waitFor(Particle.connected, 120000);
+        waitFor(Particle.connected, 5 * 60 * 1000);
     }
     assertTrue(Particle.connected());
     Particle.syncTime();

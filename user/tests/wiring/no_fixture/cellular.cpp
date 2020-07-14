@@ -122,7 +122,12 @@ test(CELLULAR_05_sigstr_is_valid) {
         switch (s.getAccessTechnology()) {
             case NET_ACCESS_TECHNOLOGY_GSM:     // GSM strength [-111, -48] and quality [0.14%, 18.10%]
                 if ((s.getStrengthValue() <= -48.0f && s.getStrengthValue() >= -111.0f)
+#if PLATFORM_ID != PLATFORM_ELECTRON
                     && (s.getQualityValue() <= 18.1f && s.getQualityValue() >= 0.14f)) {
+#else
+                    // The <qual> parameter is not updated in GPRS packet transfer mode on some devices
+                    && (s.getQualityValue() <= 18.1f && s.getQualityValue() >= 0.0f)) {
+#endif // PLATFORM_ID != PLATFORM_ELECTRON
                         values_in_range = true;
                         x = num_retries;
                         break;

@@ -68,26 +68,28 @@ test(I2C_04_Serial1_Cannot_Be_Enabled_While_Wire3_Is_Enabled) {
 #endif // PLATFORM_ID == PLATFORM_TRACKER
 
 test(I2C_05_Hal_Sleep_API_Test) {
-    hal_i2c_config_t config = acquireWireBuffer();
-    assertEqual(hal_i2c_init(HAL_I2C_INTERFACE1, &config), (int)SYSTEM_ERROR_NONE);
+    Wire.lock();
+    SCOPE_GUARD({
+        hal_i2c_sleep(HAL_I2C_INTERFACE1, false, nullptr);
+        Wire.begin();
+        Wire.unlock();
+    });
 
     // Suspend and resotre I2C
-    hal_i2c_begin(HAL_I2C_INTERFACE1, I2C_MODE_MASTER, 0x00, nullptr);
+    Wire.begin();
     assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, nullptr), (int)SYSTEM_ERROR_NONE);  // Suspend
-    assertFalse(hal_i2c_is_enabled(HAL_I2C_INTERFACE1, nullptr));
+    assertFalse(Wire.isEnabled());
     assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, nullptr), (int)SYSTEM_ERROR_NONE); // Restore
-    assertTrue(hal_i2c_is_enabled(HAL_I2C_INTERFACE1, nullptr));
-
-    // Retore API should not re-initialize the disabled I2C
-    hal_i2c_begin(HAL_I2C_INTERFACE1, I2C_MODE_MASTER, 0x00, nullptr);
-    hal_i2c_end(HAL_I2C_INTERFACE1, nullptr);
-    assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, nullptr), (int)SYSTEM_ERROR_INVALID_STATE);
+    assertTrue(Wire.isEnabled());
 }
 
 #if HAL_PLATFORM_FUELGAUGE_MAX17043
 test(I2C_06_I2c_Sleep_FuelGauge) {
     FuelGauge fuel(true);
+    fuel.begin();
+    fuel.wakeup();
     auto ver = fuel.getVersion();
+    assertMoreOrEqual(ver, 0);
     assertNotEqual(ver, 0x0000);
     assertNotEqual(ver, 0xffff);
     assertEqual(hal_i2c_sleep(HAL_PLATFORM_FUELGAUGE_MAX17043_I2C, true, nullptr), 0);

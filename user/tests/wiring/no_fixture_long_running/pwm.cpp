@@ -615,12 +615,10 @@ test(PWM_11_PwmSleep) {
         assertEqual(0, hal_pwm_sleep(true, nullptr));
         assertEqual(0, hal_pwm_sleep(false, nullptr));
         SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
-#if HAL_PLATFORM_NRF52840
         // Dummy read to wait until the change of PWM takes effect
         pulseIn(pin, HIGH);
         pulseIn(pin, LOW);
         AtomicSection atomic;
-#endif
         avgPulseHigh += pulseIn(pin, HIGH);
     }
     avgPulseHigh /= 10;

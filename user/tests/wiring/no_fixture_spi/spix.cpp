@@ -669,5 +669,5 @@ test(SPIX_21_SPI_Sleep) {
     SPI.endTransaction();
     SPI.end();
 
-    assertNotEqual(0, memcmp(tempRx, tempRx1, sizeof(tempRx)));
+    assertEqual(0, memcmp(tempRx, tempRx1, sizeof(tempRx)));
 }
