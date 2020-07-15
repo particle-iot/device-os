@@ -1286,15 +1286,38 @@ int QuectelNcpClient::enterDataMode() {
 
     CHECK(waitAtResponse(dataParser_, 5000));
 
-    // Ignore response
-    CHECK(dataParser_.execCommand(20000, "ATH"));
-
-    auto resp = dataParser_.sendCommand(3 * 60 * 1000, "ATD*99***1#");
-    char buf[64] = {};
-    CHECK(resp.readLine(buf, sizeof(buf)));
     const char connectResponse[] = "CONNECT";
-    if (strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
-        return SYSTEM_ERROR_UNKNOWN;
+
+    char buf[64] = {};
+    auto resp = dataParser_.sendCommand(1000, "ATO");
+    if (resp.hasNextLine()) {
+        CHECK(resp.readLine(buf, sizeof(buf)));
+        if (!strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
+            // We've already switched into data mode
+            ok = true;
+        }
+    } else {
+        const int r = CHECK(resp.readResult());
+        if (r != AtResponse::NO_CARRIER) {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+    }
+
+    if (!ok) {
+        auto resp = dataParser_.sendCommand(3 * 60 * 1000, "ATD*99***1#");
+        if (resp.hasNextLine()) {
+            memset(buf, 0, sizeof(buf));
+            CHECK(resp.readLine(buf, sizeof(buf)));
+            if (strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
+                return SYSTEM_ERROR_UNKNOWN;
+            }
+        } else {
+            // We've got a final response code
+            CHECK(resp.readResult());
+            // This is not a critical failure
+            ok = true;
+            return SYSTEM_ERROR_NOT_ALLOWED;
+        }
     }
 
     int r = muxer_.setChannelDataHandler(QUECTEL_NCP_PPP_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {

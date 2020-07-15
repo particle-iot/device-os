@@ -1552,12 +1552,21 @@ int SaraNcpClient::enterDataMode() {
     CHECK(dataParser_.execCommand(20000, "ATH"));
 
     auto resp = dataParser_.sendCommand(3 * 60 * 1000, "ATD*99***1#");
-    char buf[64] = {};
-    CHECK(resp.readLine(buf, sizeof(buf)));
-    const char connectResponse[] = "CONNECT";
-    if (strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
-        return SYSTEM_ERROR_UNKNOWN;
+    if (resp.hasNextLine()) {
+        char buf[64] = {};
+        CHECK(resp.readLine(buf, sizeof(buf)));
+        const char connectResponse[] = "CONNECT";
+        if (strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+    } else {
+        // We've got a final response code
+        CHECK(resp.readResult());
+        // This is not a critical failure
+        ok = true;
+        return SYSTEM_ERROR_NOT_ALLOWED;
     }
+
 
     int r = muxer_.setChannelDataHandler(UBLOX_NCP_PPP_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
         auto self = (SaraNcpClient*)ctx;
