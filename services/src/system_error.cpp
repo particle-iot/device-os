@@ -17,6 +17,8 @@
 
 #include "system_error.h"
 
+#include "hal_platform.h"
+
 #define SYSTEM_ERROR_MESSAGE_SWITCH_CASES() \
         PP_FOR_EACH(_SYSTEM_ERROR_MESSAGE_SWITCH_CASE, /* data */, SYSTEM_ERRORS)
 
@@ -32,10 +34,10 @@
 
 const char* system_error_message(int error, void* reserved) {
     switch (error) {
-#if PLATFORM_ID == 3
-        SYSTEM_ERROR_MESSAGE_SWITCH_CASES()
+#if HAL_PLATFORM_ERROR_MESSAGES
+    SYSTEM_ERROR_MESSAGE_SWITCH_CASES()
 #endif
-        default:
-            return "Unknown error";
+    default:
+        return "Unknown error";
     }
 }
