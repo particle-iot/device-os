@@ -23,18 +23,18 @@ LOG_SOURCE_CATEGORY("system.ota");
 
 #include "system_task.h"
 #include "error_message.h"
-#include "util/simple_file_storage.h"
 
 #include "ota_flash_hal.h"
 #include "timer_hal.h"
 
-#if HAL_PLATFORM_RESUMABLE_OTA
-#include "sha256.h"
-#endif // HAL_PLATFORM_RESUMABLE_OTA
-
+#include "simple_file_storage.h"
 #include "scope_guard.h"
 #include "check.h"
 #include "debug.h"
+
+#if HAL_PLATFORM_RESUMABLE_OTA
+#include "sha256.h"
+#endif // HAL_PLATFORM_RESUMABLE_OTA
 
 #include "spark_wiring_system.h"
 
