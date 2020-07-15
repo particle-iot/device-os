@@ -20,7 +20,6 @@
 #include "hal_platform.h"
 
 #include "system_defs.h"
-#include "c_string.h"
 
 #include <memory>
 
@@ -52,12 +51,6 @@ public:
      */
     int startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags);
     /**
-     * Validate the firmware update.
-     *
-     * @return 0 on success or a negative result code in case of an error.
-     */
-    int validateUpdate();
-    /**
      * Finish the firmware update.
      *
      * @param flags Update flags.
@@ -83,20 +76,11 @@ public:
      */
     bool isInProgress() const;
     /**
-     * Get the last error message.
-     *
-     * This method clears the error message stored in the handler.
-     *
-     * @return Error message.
-     */
-    CString takeErrorMessage();
-    /**
      * Get the singleton instance of this class.
      */
     static FirmwareUpdate* instance();
 
 private:
-    CString errMsg_; // Last error message
     int validResult_; // Result of the update validation
     bool validChecked_; // Whether the update has been validated
     bool updating_; // Whether an update is in progress
@@ -106,16 +90,13 @@ private:
 
     int initTransferState(size_t fileSize, const char* fileHash);
     int updateTransferState(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize);
+    int finalizeTransferState();
     void clearTransferState();
 #endif
 
     FirmwareUpdate();
 
-    void errorMessage(const char* fmt, ...);
+    void endUpdate();
 };
-
-inline CString FirmwareUpdate::takeErrorMessage() {
-    return std::move(errMsg_);
-}
 
 } // namespace particle::system

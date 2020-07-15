@@ -77,7 +77,7 @@ public:
     bool operator<(const EnumFlags<T>& flags) const;
     bool operator<=(const EnumFlags<T>& flags) const;
 
-    explicit operator bool() const;
+    operator bool() const;
     bool operator!() const;
 
     static EnumFlags<T> fromUnderlying(ValueType value);

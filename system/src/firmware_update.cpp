@@ -17,14 +17,15 @@
 
 #include "logging.h"
 
-LOG_SOURCE_CATEGORY("sys.ota");
+LOG_SOURCE_CATEGORY("system.ota");
 
 #include "firmware_update.h"
 
+#include "system_task.h"
+#include "error_message.h"
 #include "util/simple_file_storage.h"
 
 #include "ota_flash_hal.h"
-#include "core_hal.h"
 #include "timer_hal.h"
 
 #if HAL_PLATFORM_RESUMABLE_OTA
@@ -35,6 +36,8 @@ LOG_SOURCE_CATEGORY("sys.ota");
 #include "check.h"
 #include "debug.h"
 
+#include "spark_wiring_system.h"
+
 #include <cstdio>
 #include <cstdarg>
 
@@ -44,20 +47,24 @@ namespace {
 
 #if HAL_PLATFORM_RESUMABLE_OTA
 
+// Name of the file storing the transfer state
 const auto TRANSFER_STATE_FILE = "/sys/fw_transfer";
+
+// Interval at which the transfer state file is synced
 const system_tick_t TRANSFER_STATE_SYNC_INTERVAL = 1000;
+
+// The data stored in the OTA section is read in blocks of this size
+const size_t OTA_FLASH_READ_BLOCK_SIZE = 128;
+
+// The same buffer is used as a temporary storage for a SHA-256 hash
+static_assert(OTA_FLASH_READ_BLOCK_SIZE >= Sha256::HASH_SIZE, "OTA_FLASH_READ_BLOCK_SIZE is too small");
 
 struct PersistentTransferState {
     char fileHash[Sha256::HASH_SIZE]; // SHA-256 of the update binary
     char partialHash[Sha256::HASH_SIZE]; // SHA-256 of the partially transferred data
     uint32_t fileSize; // Size of the update binary
     uint32_t partialSize; // Size of the partially transferred data
-    uint32_t stateCrc32; // CRC-32 of the above structure fields
-} __attribute__((packed));
-
-inline uint32_t peristentStateCrc32(const PersistentTransferState& state) {
-    return HAL_Core_Compute_CRC32((const uint8_t*)&state, offsetof(PersistentTransferState, stateCrc32));
-}
+} /* __attribute__((packed)) */;
 
 #endif // HAL_PLATFORM_RESUMABLE_OTA
 
@@ -71,17 +78,14 @@ struct TransferState {
     SimpleFileStorage file; // File storing the transfer state
     Sha256 partialHash; // SHA-256 of the partially transferred data
     Sha256 tempHash; // Intermediate SHA-256 checksum
-    char fileHash[Sha256::HASH_SIZE]; // SHA-256 of the update binary
+    PersistentTransferState persist; // Persistently stored transfer state
     system_tick_t lastSynced; // Time when the file was last synced
-    size_t fileSize; // Size of the update binary
-    size_t partialSize; // Size of the partially transferred data
-    bool needSync;
+    bool needSync; // Whether the file needs to be synced
 
     TransferState() :
             file(TRANSFER_STATE_FILE),
+            persist(),
             lastSynced(0),
-            fileSize(0),
-            partialSize(0),
             needSync(false) {
     }
 };
@@ -97,29 +101,107 @@ FirmwareUpdate::FirmwareUpdate() :
 }
 
 int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags) {
-    if (!(flags & FirmwareUpdateFlag::NON_RESUMABLE) && (!fileHash || !fileOffset)) {
+    const bool discardData = flags & FirmwareUpdateFlag::DISCARD_DATA;
+    const bool nonResumable = flags & FirmwareUpdateFlag::NON_RESUMABLE;
+    const bool validateOnly = flags & FirmwareUpdateFlag::VALIDATE_ONLY;
+    if (!nonResumable && (!fileHash || !fileOffset)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (updating_) {
+        setErrorMessage("Firmware update is already in progress");
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    return 0;
-}
-
-int FirmwareUpdate::validateUpdate() {
+    if (!System.updatesEnabled() && !System.updatesForced()) {
+        return SYSTEM_ERROR_OTA_UPDATES_DISABLED;
+    }
+    if (fileSize == 0 && fileSize > HAL_OTA_FlashLength()) {
+        return SYSTEM_ERROR_OTA_INVALID_SIZE;
+    }
+    size_t partialSize = 0;
+#if HAL_PLATFORM_RESUMABLE_OTA
+    if ((discardData || nonResumable) && !validateOnly) {
+        clearTransferState();
+    }
+    // Do not load the transfer state if both VALIDATE_ONLY and DISCARD_DATA are set. DISCARD_DATA
+    // would have cleared it anyway if it wasn't a dry-run
+    if (!nonResumable && !(validateOnly && discardData)) {
+        const int r = initTransferState(fileSize, fileHash);
+        if (r == 0) {
+            partialSize = transferState_->persist.partialSize;
+            if (validateOnly) {
+                transferState_.reset();
+            }
+        } else {
+            // Not a critical error
+            LOG(ERROR, "Failed to initialize persistent transfer state: %d", r);
+            if (!validateOnly) {
+                clearTransferState();
+            }
+        }
+    }
+#endif // HAL_PLATFORM_RESUMABLE_OTA
+    if (!validateOnly) {
+        // Erase the OTA section if we're not resuming the previous transfer
+        if (!partialSize && !HAL_FLASH_Begin(HAL_OTA_FlashAddress(), fileSize, nullptr)) {
+            endUpdate();
+            return SYSTEM_ERROR_FLASH;
+        }
+        SPARK_FLASH_UPDATE = 1; // TODO: Get rid of legacy state variables
+        updating_ = true;
+        // TODO: System events
+    }
+    if (fileOffset) {
+        *fileOffset = partialSize;
+    }
     return 0;
 }
 
 int FirmwareUpdate::finishUpdate(FirmwareUpdateFlags flags) {
+    const bool discardData = flags & FirmwareUpdateFlag::DISCARD_DATA;
+    const bool validateOnly = flags & FirmwareUpdateFlag::VALIDATE_ONLY;
+    const bool cancel = flags & FirmwareUpdateFlag::CANCEL;
+    if (!cancel) {
+        if (!updating_) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+#if HAL_PLATFORM_RESUMABLE_OTA
+        clearTransferState();
+#endif
+    } else if (!updating_) {
+#if HAL_PLATFORM_RESUMABLE_OTA
+        if (discardData && !validateOnly) {
+            clearTransferState();
+        }
+#endif
+    }
     return 0;
 }
 
 int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize) {
+    if (!updating_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    int r = HAL_FLASH_Update((const uint8_t*)chunkData, chunkOffset, chunkSize, nullptr);
+    if (r != 0) {
+        formatErrorMessage("Failed to save chunk to OTA section: %d", r);
+        endUpdate();
+        return SYSTEM_ERROR_FLASH;
+    }
+#if HAL_PLATFORM_RESUMABLE_OTA
+    if (transferState_) {
+        r = updateTransferState(chunkData, chunkSize, chunkOffset, partialSize);
+        if (r != 0) {
+            // Not a critical error
+            LOG(ERROR, "Failed to update persistent transfer state: %d", r);
+            clearTransferState();
+        }
+    }
+#endif
     return 0;
 }
 
 bool FirmwareUpdate::isInProgress() const {
-    return false;
+    return updating_;
 }
 
 FirmwareUpdate* FirmwareUpdate::instance() {
@@ -137,17 +219,16 @@ int FirmwareUpdate::initTransferState(size_t fileSize, const char* fileHash) {
     CHECK(state->partialHash.init());
     CHECK(state->tempHash.init());
     bool resumeTransfer = false;
-    PersistentTransferState persist = {};
-    const int r = state->file.load(&persist, sizeof(persist));
-    if (r == sizeof(persist)) {
-        const uint32_t crc = peristentStateCrc32(persist);
-        if (persist.stateCrc32 == crc && persist.fileSize == fileSize &&
-                memcmp(persist.fileHash, fileHash, Sha256::HASH_SIZE) == 0) {
-            // Compute hash of the partially transferred firmware data in the OTA section
+    const auto persist = &state->persist;
+    const int r = state->file.load(persist, sizeof(PersistentTransferState));
+    if (r == sizeof(PersistentTransferState)) {
+        if (persist->fileSize == fileSize && memcmp(persist->fileHash, fileHash, Sha256::HASH_SIZE) == 0 &&
+                persist->partialSize <= HAL_OTA_FlashLength()) {
+            // Compute the hash of the partially transferred data in the OTA section
             CHECK(state->partialHash.start());
-            char buf[128] = {};
+            char buf[OTA_FLASH_READ_BLOCK_SIZE] = {};
             uintptr_t addr = HAL_OTA_FlashAddress();
-            const uintptr_t endAddr = addr + persist.partialSize;
+            const uintptr_t endAddr = addr + persist->partialSize;
             while (addr < endAddr) {
                 const size_t n = std::min(endAddr - addr, sizeof(buf));
                 CHECK(HAL_OTA_Flash_Read(addr, (uint8_t*)buf, n));
@@ -155,9 +236,8 @@ int FirmwareUpdate::initTransferState(size_t fileSize, const char* fileHash) {
                 addr += n;
             }
             CHECK(state->tempHash.copyFrom(state->partialHash));
-            static_assert(sizeof(buf) >= Sha256::HASH_SIZE, "");
             CHECK(state->tempHash.finish(buf));
-            if (memcmp(persist.partialHash, buf, Sha256::HASH_SIZE) == 0) {
+            if (memcmp(persist->partialHash, buf, Sha256::HASH_SIZE) == 0) {
                 resumeTransfer = true;
             }
         }
@@ -166,13 +246,14 @@ int FirmwareUpdate::initTransferState(size_t fileSize, const char* fileHash) {
     }
     if (resumeTransfer) {
         state->file.close(); // Will be reopened for writing
-        state->partialSize = persist.partialSize;
     } else {
         state->file.clear();
+        memcpy(persist->fileHash, fileHash, Sha256::HASH_SIZE);
+        memset(persist->partialHash, 0, Sha256::HASH_SIZE);
+        persist->fileSize = fileSize;
+        persist->partialSize = 0;
         CHECK(state->partialHash.start()); // Reset SHA-256 context
     }
-    memcpy(state->fileHash, fileHash, Sha256::HASH_SIZE);
-    state->fileSize = fileSize;
     transferState_ = std::move(state);
     return 0;
 }
@@ -183,39 +264,58 @@ int FirmwareUpdate::updateTransferState(const char* chunkData, size_t chunkSize,
         return SYSTEM_ERROR_INVALID_STATE;
     }
     bool updateState = false;
-    if (chunkOffset == state->partialSize) {
-        CHECK(state->partialHash.update(chunkData, chunkSize));
-        state->partialSize += chunkSize;
+    const auto persist = &state->persist;
+    // Check if the chunk is adjacent to or overlaps with the contiguous fragment of the data for
+    // which we have already calculated the checksum
+    if (persist->partialSize >= chunkOffset && persist->partialSize < chunkOffset + chunkSize) {
+        const auto n = chunkOffset + chunkSize - persist->partialSize;
+        CHECK(state->partialHash.update(chunkData + persist->partialSize - chunkOffset, n));
+        persist->partialSize += n;
         updateState = true;
     }
-    if (partialSize > state->partialSize) {
-        char buf[128] = {};
-        uintptr_t addr = HAL_OTA_FlashAddress() + state->partialSize;
-        const uintptr_t endAddr = addr + partialSize - state->partialSize;
+    // Chunks are not necessarily transferred sequentially. We may need to read them back from the
+    // OTA section to calculate the checksum of the data transferred so far
+    if (partialSize > persist->partialSize) {
+        char buf[OTA_FLASH_READ_BLOCK_SIZE] = {};
+        uintptr_t addr = HAL_OTA_FlashAddress() + persist->partialSize;
+        const uintptr_t endAddr = addr + partialSize - persist->partialSize;
         while (addr < endAddr) {
             const size_t n = std::min(endAddr - addr, sizeof(buf));
             CHECK(HAL_OTA_Flash_Read(addr, (uint8_t*)buf, n));
             CHECK(state->partialHash.update(buf, n));
             addr += n;
         }
-        state->partialSize = partialSize;
+        persist->partialSize = partialSize;
         updateState = true;
     }
     if (updateState) {
-        PersistentTransferState persist = {};
         CHECK(state->tempHash.copyFrom(state->partialHash));
-        CHECK(state->tempHash.finish(persist.partialHash));
-        memcpy(persist.fileHash, state->fileHash, Sha256::HASH_SIZE);
-        persist.fileSize = state->fileSize;
-        persist.partialSize = state->partialSize;
-        persist.stateCrc32 = peristentStateCrc32(persist);
-        CHECK(state->file.save(&persist, sizeof(persist)));
+        CHECK(state->tempHash.finish(persist->partialHash));
+        CHECK(state->file.save(persist, sizeof(PersistentTransferState)));
         state->needSync = true;
     }
     if (state->needSync && HAL_Timer_Get_Milli_Seconds() - state->lastSynced >= TRANSFER_STATE_SYNC_INTERVAL) {
         CHECK(state->file.sync());
         state->lastSynced = HAL_Timer_Get_Milli_Seconds();
     }
+    return 0;
+}
+
+int FirmwareUpdate::finalizeTransferState() {
+    const auto state = transferState_.get();
+    if (!state) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    const auto persist = &state->persist;
+    if (persist->partialSize != persist->fileSize) {
+        return SYSTEM_ERROR_OTA_INVALID_SIZE;
+    }
+    if (memcmp(persist->partialHash, persist->fileHash, Sha256::HASH_SIZE) != 0) {
+        return SYSTEM_ERROR_OTA_INTEGRITY_CHECK_FAILED;
+    }
+    CHECK(state->file.sync());
+    state->file.close();
+    transferState_.reset();
     return 0;
 }
 
@@ -230,25 +330,12 @@ void FirmwareUpdate::clearTransferState() {
 
 #endif // HAL_PLATFORM_RESUMABLE_OTA
 
-void FirmwareUpdate::errorMessage(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    va_list args2;
-    va_copy(args2, args);
-    SCOPE_GUARD({
-        va_end(args2);
-        va_end(args);
-    });
-    const auto n = vsnprintf(nullptr, 0, fmt, args);
-    if (n < 0) {
-        return;
-    }
-    const auto buf = (char*)malloc(n + 1);
-    if (!buf) {
-        return;
-    }
-    vsnprintf(buf, n + 1, fmt, args2);
-    errMsg_ = CString::wrap(buf);
+void FirmwareUpdate::endUpdate() {
+#if HAL_PLATFORM_RESUMABLE_OTA
+    transferState_.reset();
+#endif
+    SPARK_FLASH_UPDATE = 0;
+    updating_ = false;
 }
 
 } // namespace particle::system

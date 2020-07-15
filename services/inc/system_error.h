@@ -37,6 +37,7 @@
         (LIMIT_EXCEEDED, "Limit exceeded", -200), \
         (END_OF_STREAM, "End of stream", -201), \
         (INVALID_STATE, "Invalid state", -210), \
+        (FLASH, "Flash error", -219), \
         (IO, "IO error", -220), \
         (WOULD_BLOCK, "Would block", -221), \
         (FILE, "File error", -225), \
@@ -59,8 +60,10 @@
         (OTA_INTEGRITY_CHECK_FAILED, "Module integrity check failed", -1330), \
         (OTA_DEPENDENCY_CHECK_FAILED, "Module dependency check failed", -1340), \
         (OTA_INVALID_ADDRESS, "Invalid module address", -1350), \
+        (OTA_INVALID_SIZE, "Invalid module size", -1351), \
         (OTA_INVALID_PLATFORM, "Invalid module platform", -1360), \
         (OTA_INVALID_FORMAT, "Invalid module format", -1370), \
+        (OTA_UPDATES_DISABLED, "Firmware updates are disabled", -1380), \
         (CRYPTO, "Crypto error", -1400) /* -1599 ... -1400: Crypto errors */ \
 
 // Expands to enum values for all errors
