@@ -119,7 +119,7 @@ void Client::deinit() {
   }
 }
 
-bool Client::prepareConnect() {
+int Client::prepareConnect() {
   ipcp_->init();
   ipcp_->disable();
   ipcp_->enable();
@@ -134,28 +134,14 @@ bool Client::prepareConnect() {
   UNLOCK_TCPIP_CORE();
 #endif // PPP_IPV6_SUPPORT
 
-  // FIXME: this should be handled in the NCP client
-  static const char* UBLOX_NCP_CONNECT_COMMANDS[] = {
-    "~+++",
-    "AT\r\n",
-    "ATH;D*99***1#\r\n"
-  };
-  static const char* NCP_CONNECT_COMMANDS[] = {
-    "ATD*99***1#\r\n",
-  };
-  bool ublox = PLATFORM_NCP_MANUFACTURER(platform_current_ncp_identifier()) == PLATFORM_NCP_MANUFACTURER_UBLOX;
-  const auto cmds = ublox ? UBLOX_NCP_CONNECT_COMMANDS : NCP_CONNECT_COMMANDS;
-  const size_t num = (ublox ? sizeof(UBLOX_NCP_CONNECT_COMMANDS) : sizeof(NCP_CONNECT_COMMANDS)) / sizeof(char*);
-  for (size_t i = 0; i < num; i++) {
-    const auto cmd = cmds[i];
-    const auto cmdLen = strlen(cmd);
-    auto sz = output((const uint8_t*)cmd, cmdLen);
-    if (sz != cmdLen) {
-      return false;
-    }
-    HAL_Delay_Milliseconds(1000);
+  std::unique_lock<std::mutex> lk(mutex_);
+  auto cb = enterDataModeCb_;
+  auto ctx = enterDataModeCbCtx_;
+  lk.unlock();
+  if (cb) {
+    return cb(ctx);
   }
-  return true;
+  return SYSTEM_ERROR_INVALID_STATE;
 }
 
 bool Client::start() {
@@ -194,23 +180,7 @@ bool Client::notifyEvent(uint64_t ev) {
 int Client::input(const uint8_t* data, size_t size) {
   if (running_) {
     switch (state_) {
-      case STATE_CONNECTING: {
-//#ifdef DEBUG_BUILD
-        for (auto p = data, begin = (const uint8_t*)nullptr; p != data + size; ++p) {
-          if (!std::isprint(*p) || *p == '\r' || *p == '\n') {
-            if (begin && p - begin > 2) {
-              if (std::isalpha(*begin) || *begin == '+') {
-                LOG(TRACE, "< %.*s", p - begin, begin);
-              }
-            }
-            begin = nullptr;
-          } else if (!begin) {
-            begin = p;
-          }
-        }
-        // Fall through
-//#endif // DEBUG_BUILD
-      }
+      case STATE_CONNECTING:
       case STATE_DISCONNECTING:
       case STATE_CONNECTED: {
         LOG_DEBUG(TRACE, "RX: %lu", size);
@@ -261,6 +231,12 @@ void Client::setOutputCallback(OutputCallback cb, void* ctx) {
   oCbCtx_ = ctx;
 }
 
+void Client::setEnterDataModeCallback(EnterDataModeCallback cb, void* ctx) {
+  std::lock_guard<std::mutex> lk(mutex_);
+  enterDataModeCb_ = cb;
+  enterDataModeCbCtx_ = ctx;
+}
+
 void Client::setAuth(const char* user, const char* password) {
   {
     std::lock_guard<std::mutex> lk(mutex_);
@@ -301,7 +277,7 @@ void Client::loop() {
     switch (state_) {
       case STATE_CONNECT: {
         transition(STATE_CONNECTING);
-        if (!prepareConnect()) {
+        if (prepareConnect()) {
           LOG(ERROR, "Failed to dial");
           transition(STATE_CONNECT);
           break;

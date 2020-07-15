@@ -204,6 +204,10 @@ int PppNcpNetif::upImpl() {
             }
             return r;
         }, celMan_->ncpClient());
+        client_.setEnterDataModeCallback([](void* ctx) -> int {
+            auto c = (CellularNcpClient*)ctx;
+            return c->enterDataMode();
+        }, celMan_->ncpClient());
         // Initialize PPP client
         client_.connect();
 

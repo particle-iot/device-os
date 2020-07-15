@@ -75,7 +75,7 @@ int readWhile(InputStream* strm, unsigned timeout, const ReadFn& readFn) {
 int readLine(InputStream* strm, char* data, size_t size, unsigned timeout) {
     size_t n = 0;
     CHECK(readWhile(strm, timeout, [data, size, &n](char c) {
-        if (n == size || std::isspace((unsigned char)c)) {
+        if (n == size || c == '\r' || c == '\n') {
             return false;
         }
         data[n++] = c;

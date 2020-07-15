@@ -69,6 +69,7 @@ public:
     virtual int getSignalQuality(CellularSignalQuality* qual) override;
     virtual int setRegistrationTimeout(unsigned timeout) override;
     virtual int getTxDelayInDataChannel() override;
+    virtual int enterDataMode() override;
 
     auto getMuxer() {
         return &muxer_;
@@ -76,6 +77,7 @@ public:
 
 private:
     AtParser parser_;
+    AtParser dataParser_;
     std::unique_ptr<SerialStream> serial_;
     RecursiveMutex mutex_;
     CellularNcpClientConfig conf_;
@@ -87,6 +89,7 @@ private:
     bool ready_ = false;
     gsm0710::Muxer<particle::SerialStream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
+    std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerDataStream_;
     CellularNetworkConfig netConf_;
     CellularGlobalIdentity cgi_ = {};
     CellularAccessTechnology act_ = CellularAccessTechnology::NONE;
@@ -123,6 +126,7 @@ private:
     int checkRuntimeState(ModemState& state);
     int initMuxer();
     int waitAtResponse(unsigned int timeout, unsigned int period = 1000);
+    int waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period = 1000);
     int selectSimCard();
     int checkSimCard();
     int configureApn(const CellularNetworkConfig& conf);

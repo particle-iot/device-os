@@ -97,6 +97,7 @@ const auto QUECTEL_NCP_KEEPALIVE_MAX_MISSED = 5;
 
 // FIXME: for now using a very large buffer
 const auto QUECTEL_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
+const auto QUECTEL_NCP_PPP_CHANNEL_RX_BUFFER_SIZE = 256;
 
 const auto QUECTEL_NCP_AT_CHANNEL = 1;
 const auto QUECTEL_NCP_PPP_CHANNEL = 2;
@@ -105,7 +106,7 @@ const auto QUECTEL_NCP_SIM_SELECT_PIN = 23;
 
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
-const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 10 * 1000;
+const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;
 
 const system_tick_t QUECTEL_COPS_TIMEOUT = 3 * 60 * 1000;
 const system_tick_t QUECTEL_CFUN_TIMEOUT = 3 * 60 * 1000;
@@ -161,8 +162,12 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     CHECK_TRUE(muxStrm, SYSTEM_ERROR_NO_MEMORY);
     CHECK(muxStrm->init(QUECTEL_NCP_AT_CHANNEL_RX_BUFFER_SIZE));
     CHECK(initParser(serial.get()));
+    decltype(muxerDataStream_) muxDataStrm(new(std::nothrow) decltype(muxerDataStream_)::element_type(&muxer_, QUECTEL_NCP_PPP_CHANNEL));
+    CHECK_TRUE(muxDataStrm, SYSTEM_ERROR_NO_MEMORY);
+    CHECK(muxDataStrm->init(QUECTEL_NCP_PPP_CHANNEL_RX_BUFFER_SIZE));
     serial_ = std::move(serial);
     muxerAtStream_ = std::move(muxStrm);
+    muxerDataStream_ = std::move(muxDataStrm);
     ncpState_ = NcpState::OFF;
     prevNcpState_ = NcpState::OFF;
     connState_ = NcpConnectionState::DISCONNECTED;
@@ -368,6 +373,7 @@ void QuectelNcpClient::disable() {
     ncpState_ = NcpState::DISABLED;
     serial_->enabled(false);
     muxerAtStream_->enabled(false);
+    muxerDataStream_->enabled(false);
 }
 
 NcpState QuectelNcpClient::ncpState() {
@@ -421,6 +427,8 @@ int QuectelNcpClient::updateFirmware(InputStream* file, size_t size) {
 
 int QuectelNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    // Just in case
+    CHECK_FALSE(muxerDataStream_->enabled(), SYSTEM_ERROR_INVALID_STATE);
 
     int err = muxer_.writeChannel(QUECTEL_NCP_PPP_CHANNEL, data, size);
     if (err == gsm0710::GSM0710_ERROR_FLOW_CONTROL) {
@@ -441,6 +449,9 @@ int QuectelNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size)
 
 int QuectelNcpClient::dataChannelFlowControl(bool state) {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    // Just in case
+    CHECK_FALSE(muxerDataStream_->enabled(), SYSTEM_ERROR_INVALID_STATE);
+
     if (state && !inFlowControl_) {
         inFlowControl_ = true;
         CHECK_TRUE(muxer_.suspendChannel(QUECTEL_NCP_PPP_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
@@ -805,9 +816,13 @@ int QuectelNcpClient::checkParser() {
 }
 
 int QuectelNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) {
+    return waitAtResponse(parser_, timeout, period);
+}
+
+int QuectelNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period) {
     const auto t1 = HAL_Timer_Get_Milli_Seconds();
     for (;;) {
-        const int r = parser_.execCommand(period, "AT");
+        const int r = parser.execCommand(period, "AT");
         if (r < 0 && r != SYSTEM_ERROR_TIMEOUT) {
             return r;
         }
@@ -1239,6 +1254,70 @@ void QuectelNcpClient::ncpPowerState(NcpPowerState state) {
     }
 }
 
+int QuectelNcpClient::enterDataMode() {
+    CHECK_TRUE(connectionState() == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    const NcpClientLock lock(this);
+    bool ok = false;
+    SCOPE_GUARD({
+        muxerDataStream_->enabled(false);
+        if (!ok) {
+            LOG(ERROR, "Failed to enter data mode");
+            muxer_.setChannelDataHandler(QUECTEL_NCP_PPP_CHANNEL, nullptr, nullptr);
+            // Go into an error state
+            disable();
+        }
+    });
+
+    skipAll(muxerDataStream_.get());
+    muxerDataStream_->enabled(true);
+
+    CHECK_TRUE(muxer_.setChannelDataHandler(QUECTEL_NCP_PPP_CHANNEL, muxerDataStream_->channelDataCb, muxerDataStream_.get()) == 0, SYSTEM_ERROR_INTERNAL);
+    // Send data mode break
+    const char breakCmd[] = "+++";
+    muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
+    skipAll(muxerDataStream_.get(), 1000);
+
+    // Initialize AT parser
+    auto parserConf = AtParserConfig()
+            .stream(muxerDataStream_.get())
+            .commandTerminator(AtCommandTerminator::CRLF);
+    dataParser_.destroy();
+    CHECK(dataParser_.init(std::move(parserConf)));
+
+    CHECK(waitAtResponse(dataParser_, 5000));
+
+    // Ignore response
+    CHECK(dataParser_.execCommand(20000, "ATH"));
+
+    auto resp = dataParser_.sendCommand(3 * 60 * 1000, "ATD*99***1#");
+    char buf[64] = {};
+    CHECK(resp.readLine(buf, sizeof(buf)));
+    const char connectResponse[] = "CONNECT";
+    if (strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+
+    int r = muxer_.setChannelDataHandler(QUECTEL_NCP_PPP_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
+        auto self = (QuectelNcpClient*)ctx;
+        const auto handler = self->conf_.dataHandler();
+        if (handler) {
+            handler(0, data, size, self->conf_.dataHandlerData());
+        }
+        return SYSTEM_ERROR_NONE;
+    }, this);
+
+    if (!r) {
+        muxerDataStream_->enabled(false);
+        // Just in case resume
+        inFlowControl_ = true;
+        r = dataChannelFlowControl(false);
+    }
+    if (!r) {
+        ok = true;
+    }
+    return r;
+}
+
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;
@@ -1252,22 +1331,12 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
     if (connState_ == NcpConnectionState::CONNECTED) {
         inFlowControl_ = false;
         // Open data channel and resume it just in case
-        int r = muxer_.openChannel(QUECTEL_NCP_PPP_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
-            auto self = (QuectelNcpClient*)ctx;
-            const auto handler = self->conf_.dataHandler();
-            if (handler) {
-                handler(0, data, size, self->conf_.dataHandlerData());
-            }
-            return SYSTEM_ERROR_NONE;
-        }, this);
-        if (!r) {
-            // Just in case resume channel
-            r = muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL);
-        }
+        int r = muxer_.openChannel(QUECTEL_NCP_PPP_CHANNEL);
         if (r) {
             LOG(ERROR, "Failed to open data channel");
             ready_ = false;
             connState_ = NcpConnectionState::DISCONNECTED;
+            return;
         }
     }
 

@@ -102,6 +102,7 @@ const auto UBLOX_NCP_KEEPALIVE_MAX_MISSED = 5;
 
 // FIXME: for now using a very large buffer
 const auto UBLOX_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
+const auto UBLOX_NCP_PPP_CHANNEL_RX_BUFFER_SIZE = 256;
 
 const auto UBLOX_NCP_AT_CHANNEL = 1;
 const auto UBLOX_NCP_PPP_CHANNEL = 2;
@@ -109,7 +110,7 @@ const auto UBLOX_NCP_PPP_CHANNEL = 2;
 const auto UBLOX_NCP_SIM_SELECT_PIN = 23;
 
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
-const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 10 * 1000;
+const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 
 const system_tick_t UBLOX_COPS_TIMEOUT = 5 * 60 * 1000;
@@ -149,8 +150,12 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     CHECK_TRUE(muxStrm, SYSTEM_ERROR_NO_MEMORY);
     CHECK(muxStrm->init(UBLOX_NCP_AT_CHANNEL_RX_BUFFER_SIZE));
     CHECK(initParser(serial.get()));
+    decltype(muxerDataStream_) muxDataStrm(new(std::nothrow) decltype(muxerDataStream_)::element_type(&muxer_, UBLOX_NCP_PPP_CHANNEL));
+    CHECK_TRUE(muxDataStrm, SYSTEM_ERROR_NO_MEMORY);
+    CHECK(muxDataStrm->init(UBLOX_NCP_PPP_CHANNEL_RX_BUFFER_SIZE));
     serial_ = std::move(serial);
     muxerAtStream_ = std::move(muxStrm);
+    muxerDataStream_ = std::move(muxDataStrm);
     ncpState_ = NcpState::OFF;
     prevNcpState_ = NcpState::OFF;
     connState_ = NcpConnectionState::DISCONNECTED;
@@ -362,6 +367,7 @@ void SaraNcpClient::disable() {
     ncpState_ = NcpState::DISABLED;
     serial_->enabled(false);
     muxerAtStream_->enabled(false);
+    muxerDataStream_->enabled(false);
 }
 
 NcpState SaraNcpClient::ncpState() {
@@ -421,6 +427,8 @@ int SaraNcpClient::updateFirmware(InputStream* file, size_t size) {
 */
 int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    // Just in case
+    CHECK_FALSE(muxerDataStream_->enabled(), SYSTEM_ERROR_INVALID_STATE);
 
     if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
         if ((HAL_Timer_Get_Milli_Seconds() - lastWindow_) >= UBLOX_NCP_R4_WINDOW_SIZE_MS) {
@@ -458,6 +466,9 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
 
 int SaraNcpClient::dataChannelFlowControl(bool state) {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    // Just in case
+    CHECK_FALSE(muxerDataStream_->enabled(), SYSTEM_ERROR_INVALID_STATE);
+
     if (state && !inFlowControl_) {
         inFlowControl_ = true;
         CHECK_TRUE(muxer_.suspendChannel(UBLOX_NCP_PPP_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
@@ -794,9 +805,13 @@ int SaraNcpClient::checkParser() {
 }
 
 int SaraNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) {
+    return waitAtResponse(parser_, timeout, period);
+}
+
+int SaraNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period) {
     const auto t1 = HAL_Timer_Get_Milli_Seconds();
     for (;;) {
-        const int r = parser_.execCommand(period, "AT");
+        const int r = parser.execCommand(period, "AT");
         if (r < 0 && r != SYSTEM_ERROR_TIMEOUT) {
             return r;
         }
@@ -1501,6 +1516,70 @@ void SaraNcpClient::ncpPowerState(NcpPowerState state) {
     }
 }
 
+int SaraNcpClient::enterDataMode() {
+    CHECK_TRUE(connectionState() == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    const NcpClientLock lock(this);
+    bool ok = false;
+    SCOPE_GUARD({
+        muxerDataStream_->enabled(false);
+        if (!ok) {
+            LOG(ERROR, "Failed to enter data mode");
+            muxer_.setChannelDataHandler(UBLOX_NCP_PPP_CHANNEL, nullptr, nullptr);
+            // Go into an error state
+            disable();
+        }
+    });
+
+    skipAll(muxerDataStream_.get());
+    muxerDataStream_->enabled(true);
+
+    CHECK_TRUE(muxer_.setChannelDataHandler(UBLOX_NCP_PPP_CHANNEL, muxerDataStream_->channelDataCb, muxerDataStream_.get()) == 0, SYSTEM_ERROR_INTERNAL);
+    // Send data mode break
+    const char breakCmd[] = "~+++";
+    muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
+    skipAll(muxerDataStream_.get(), 1000);
+
+    // Initialize AT parser
+    auto parserConf = AtParserConfig()
+            .stream(muxerDataStream_.get())
+            .commandTerminator(AtCommandTerminator::CRLF);
+    dataParser_.destroy();
+    CHECK(dataParser_.init(std::move(parserConf)));
+
+    CHECK(waitAtResponse(dataParser_, 5000));
+
+    // Ignore response
+    CHECK(dataParser_.execCommand(20000, "ATH"));
+
+    auto resp = dataParser_.sendCommand(3 * 60 * 1000, "ATD*99***1#");
+    char buf[64] = {};
+    CHECK(resp.readLine(buf, sizeof(buf)));
+    const char connectResponse[] = "CONNECT";
+    if (strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+
+    int r = muxer_.setChannelDataHandler(UBLOX_NCP_PPP_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
+        auto self = (SaraNcpClient*)ctx;
+        const auto handler = self->conf_.dataHandler();
+        if (handler) {
+            handler(0, data, size, self->conf_.dataHandlerData());
+        }
+        return SYSTEM_ERROR_NONE;
+    }, this);
+
+    if (!r) {
+        muxerDataStream_->enabled(false);
+        // Just in case resume
+        inFlowControl_ = true;
+        r = dataChannelFlowControl(false);
+    }
+    if (!r) {
+        ok = true;
+    }
+    return r;
+}
+
 void SaraNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;
@@ -1513,23 +1592,12 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
 
     if (connState_ == NcpConnectionState::CONNECTED) {
         // Open data channel and resume it just in case
-        int r = muxer_.openChannel(UBLOX_NCP_PPP_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
-            auto self = (SaraNcpClient*)ctx;
-            const auto handler = self->conf_.dataHandler();
-            if (handler) {
-                handler(0, data, size, self->conf_.dataHandlerData());
-            }
-            return SYSTEM_ERROR_NONE;
-        }, this);
-        if (!r) {
-            // Just in case resume
-            inFlowControl_ = true;
-            r = dataChannelFlowControl(false);
-        }
+        int r = muxer_.openChannel(UBLOX_NCP_PPP_CHANNEL);
         if (r) {
             LOG(ERROR, "Failed to open data channel");
             ready_ = false;
             connState_ = NcpConnectionState::DISCONNECTED;
+            return;
         }
     }
 
