@@ -416,7 +416,7 @@ constexpr system_tick_t calculateExpectedTime() {
 // Common settings for all performance tests
 constexpr unsigned int SPI_ITERATIONS = 10000;
 
-constexpr unsigned int SPI_ERROR_MARGIN = 1; // 1%
+constexpr unsigned int SPI_ERROR_MARGIN = 5; // 5%
 
 #if HAL_PLATFORM_NRF52840
 constexpr unsigned int SPI_CLOCK_SPEED = 8000000; // 8MHz

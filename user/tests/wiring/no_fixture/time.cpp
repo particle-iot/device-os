@@ -357,7 +357,14 @@ test(TIME_19_LocalTimeIsCloseToNtpTime) {
     assertTrue(Time.isValid());
 
     uint64_t ntpTime = 0;
-    assertEqual(0, client->ntpDate(&ntpTime));
+    int r = SYSTEM_ERROR_UNKNOWN;
+    for (int i = 0; i < 10; i++) {
+        r = client->ntpDate(&ntpTime);
+        if (!r) {
+            break;
+        }
+    }
+    assertEqual(0, r);
 
     struct timeval tv = {};
     assertEqual(0, hal_rtc_get_time(&tv, nullptr));

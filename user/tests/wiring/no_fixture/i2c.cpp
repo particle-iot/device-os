@@ -69,9 +69,14 @@ test(I2C_04_Serial1_Cannot_Be_Enabled_While_Wire3_Is_Enabled) {
 
 test(I2C_05_Hal_Sleep_API_Test) {
     Wire.lock();
+    bool enabled = Wire.isEnabled();
     SCOPE_GUARD({
         hal_i2c_sleep(HAL_I2C_INTERFACE1, false, nullptr);
-        Wire.begin();
+        if (enabled) {
+            Wire.begin();
+        } else {
+            Wire.end();
+        }
         Wire.unlock();
     });
 
