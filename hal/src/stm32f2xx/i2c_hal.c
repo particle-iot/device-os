@@ -53,12 +53,6 @@ LOG_SOURCE_CATEGORY("hal.i2c")
 #define RECEIVER        0x01
 
 /* Private define ------------------------------------------------------------*/
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-#define TOTAL_I2C   3
-#else
-#define TOTAL_I2C   1
-#endif
-
 #define I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED_NO_ADDR ((uint32_t)0x00070080)
 
 #define WAIT_TIMED(timeout_ms, what) ({ \
@@ -396,6 +390,7 @@ void hal_i2c_end(hal_i2c_interface_t i2c, void* reserved) {
     hal_i2c_lock(i2c, NULL);
     if (i2cMap[i2c]->state != HAL_I2C_STATE_DISABLED) {
         I2C_Cmd(i2cMap[i2c]->peripheral, DISABLE);
+        I2C_DeInit(i2cMap[i2c]->peripheral);
         i2cMap[i2c]->state = HAL_I2C_STATE_DISABLED;
     }
     hal_i2c_unlock(i2c, NULL);

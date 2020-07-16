@@ -28,8 +28,6 @@
 #include "delay_hal.h"
 #include "check.h"
 
-#define TOTAL_SPI               2
-
 #define DEFAULT_SPI_MODE        SPI_MODE_MASTER
 #define DEFAULT_DATA_MODE       SPI_MODE3
 #define DEFAULT_BIT_ORDER       MSBFIRST
@@ -223,6 +221,10 @@ static void spiUninit(hal_spi_interface_t spi) {
         nrfx_spis_uninit(spiMap[spi].slave);
         HAL_Interrupts_Detach(spiMap[spi].ss_pin);
     }
+
+    HAL_Pin_Mode(spiMap[spi].sck_pin, INPUT_PULLUP);
+    HAL_Pin_Mode(spiMap[spi].mosi_pin, PIN_MODE_NONE);
+    HAL_Pin_Mode(spiMap[spi].miso_pin, PIN_MODE_NONE);
 
     HAL_Set_Pin_Function(spiMap[spi].sck_pin, PF_NONE);
     HAL_Set_Pin_Function(spiMap[spi].mosi_pin, PF_NONE);

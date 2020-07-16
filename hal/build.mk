@@ -17,6 +17,6 @@ endif
 endif
 endif
 
-ifneq (,$(filter $(PLATFORM_ID),6 8))
+ifneq (,$(filter $(PLATFORM_ID),6 8 10))
 GLOBAL_DEFINES += LOG_COMPILE_TIME_LEVEL=LOG_LEVEL_NONE
 endif

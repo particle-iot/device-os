@@ -31,14 +31,6 @@
 #include "debug.h"
 #include "check.h"
 
-/* Private define ------------------------------------------------------------*/
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-#define TOTAL_SPI   3
-#else
-#define TOTAL_SPI   2
-#endif
-
-
 typedef struct stm32_spi_info_t {
     SPI_TypeDef* peripheral;
 
