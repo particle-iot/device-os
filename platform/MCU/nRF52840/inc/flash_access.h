@@ -11,7 +11,8 @@ extern "C" {
 typedef enum {
   FLASH_ACCESS_RESULT_OK             = 0,
   FLASH_ACCESS_RESULT_BADARG         = 1,
-  FLASH_ACCESS_RESULT_ERROR          = 2
+  FLASH_ACCESS_RESULT_ERROR          = 2,
+  FLASH_ACCESS_RESULT_RESET_PENDING  = 3
 } flash_access_result_t;
 
 /* MAL access layer for Internal/Serial Flash Routines */
@@ -53,7 +54,7 @@ bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t s
 bool FLASH_IsFactoryResetAvailable(void);
 bool FLASH_ClearFactoryResetModuleSlot(void);
 bool FLASH_RestoreFromFactoryResetModuleSlot(void);
-bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
+int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
 const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset);
 uint32_t FLASH_ModuleAddress(flash_device_t flashDeviceID, uint32_t startAddress);

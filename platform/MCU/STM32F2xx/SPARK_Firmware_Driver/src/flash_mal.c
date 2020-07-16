@@ -613,7 +613,7 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
 }
 
 //This function called in bootloader to perform the memory update process
-bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
+int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
     // Copy module info from DCT before updating any modules, since bootloader might load DCT
     // functions dynamically. FAC_RESET_SLOT is reserved for factory reset module
@@ -625,17 +625,17 @@ bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
         const size_t magic_num_offs = module_offs + offsetof(platform_flash_modules_t, magicNumber);
         uint16_t magic_num = 0;
         if (dct_read_app_data_copy(magic_num_offs, &magic_num, sizeof(magic_num)) != 0) {
-            return false;
+            return FLASH_ACCESS_RESULT_ERROR;
         }
         if (magic_num == 0xabcd) {
             // Copy module info
             if (dct_read_app_data_copy(module_offs, &modules[module_count], sizeof(platform_flash_modules_t)) != 0) {
-                return false;
+                return FLASH_ACCESS_RESULT_ERROR;
             }
             // Mark slot as unused
             magic_num = 0xffff;
             if (dct_write_app_data(&magic_num, magic_num_offs, sizeof(magic_num)) != 0) {
-                return false;
+                return FLASH_ACCESS_RESULT_ERROR;
             }
             ++module_count;
         }
@@ -655,7 +655,7 @@ bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
             flashModulesCallback(false);
         }
     }
-    return true;
+    return FLASH_ACCESS_RESULT_OK;
 }
 
 const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset)

@@ -34,6 +34,7 @@
 #include "exflash_hal.h"
 #include "hal_platform.h"
 #include "inflate.h"
+#include "nrf_mbr.h"
 
 // Decompression of firmware modules is only supported in the bootloader
 #if (HAL_PLATFORM_COMPRESSED_OTA) && (MODULE_FUNCTION == MOD_FUNC_BOOTLOADER)
@@ -41,6 +42,12 @@
 #else
 #define HAS_COMPRESSED_OTA 0
 #endif
+
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+#define SOFTDEVICE_MBR_UPDATES 1
+#else
+#define SOFTDEVICE_MBR_UPDATES 0
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
 #define CEIL_DIV(A, B)        (((A) + (B) - 1) / (B))
 
@@ -129,11 +136,17 @@ static bool verify_module(flash_device_t src_dev, uintptr_t src_addr, size_t src
         if((flags & (MODULE_VERIFY_LENGTH | MODULE_VERIFY_CRC)) && src_size < module_info_size + 4) {
             return false;
         }
-        if ((flags & MODULE_VERIFY_DESTINATION_IS_START_ADDRESS) && module_info_start_addr != dest_addr) {
-            return false;
-        }
         if ((flags & MODULE_VERIFY_FUNCTION) && module_info_func != module_func) {
             return false;
+        }
+        if ((flags & MODULE_VERIFY_DESTINATION_IS_START_ADDRESS) && module_info_start_addr != dest_addr) {
+#if SOFTDEVICE_MBR_UPDATES
+            if (!(module_func == MOD_FUNC_BOOTLOADER && dest_addr == USER_FIRMWARE_IMAGE_LOCATION)) {
+                return false;
+            }
+#else
+            return false;
+#endif // SOFTDEVICE_MBR_UPDATES
         }
         if ((flags & MODULE_VERIFY_CRC) && !FLASH_VerifyCRC32(src_dev, src_addr, module_info_size)) {
             return false;
@@ -353,6 +366,24 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
             module_function, flags)) {
         return FLASH_ACCESS_RESULT_BADARG;
     }
+#if SOFTDEVICE_MBR_UPDATES
+    if (module_function == MOD_FUNC_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
+        // Backup user firmware
+        dest_size = CEIL_DIV(length, INTERNAL_FLASH_PAGE_SIZE) * INTERNAL_FLASH_PAGE_SIZE;
+        if (!FLASH_EraseMemory(FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, dest_size)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        if (!flash_copy(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, dest_size)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        // Add backed up partial user firmware to slots, so that it's restored on next boot
+        if (!FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, FLASH_INTERNAL,
+                USER_FIRMWARE_IMAGE_LOCATION, dest_size, MOD_FUNC_NONE, 0)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+    }
+#endif // SOFTDEVICE_MBR_UPDATES
+
     if (!FLASH_EraseMemory(destinationDeviceID, destinationAddress, dest_size)) {
         return FLASH_ACCESS_RESULT_ERROR;
     }
@@ -392,6 +423,24 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
             return FLASH_ACCESS_RESULT_ERROR;
         }
     }
+
+#if SOFTDEVICE_MBR_UPDATES
+    if (module_function == MOD_FUNC_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
+        sd_mbr_command_t command = {
+            .command = SD_MBR_COMMAND_COPY_BL,
+            .params.copy_bl.bl_src = (uint32_t*)destinationAddress,
+            // length is in words!
+            .params.copy_bl.bl_len = CEIL_DIV(length, 4)
+        };
+
+        uint32_t mbr_result = sd_mbr_command(&command);
+        if (!mbr_result) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        // We will not reach this point actually, as MBR will reset automatically
+        return FLASH_ACCESS_RESULT_RESET_PENDING;
+    }
+#endif // SOFTDEVICE_MBR_UPDATES
     return FLASH_ACCESS_RESULT_OK;
 }
 
@@ -581,7 +630,7 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
 }
 
 //This function called in bootloader to perform the memory update process
-bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
+int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
     // Copy module info from DCT before updating any modules, since bootloader might load DCT
     // functions dynamically. FAC_RESET_SLOT is reserved for factory reset module
@@ -593,22 +642,33 @@ bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
         const size_t magic_num_offs = module_offs + offsetof(platform_flash_modules_t, magicNumber);
         uint16_t magic_num = 0;
         if (dct_read_app_data_copy(magic_num_offs, &magic_num, sizeof(magic_num)) != 0) {
-            return false;
+            return FLASH_ACCESS_RESULT_ERROR;
         }
         if (magic_num == 0xabcd) {
             // Copy module info
             if (dct_read_app_data_copy(module_offs, &modules[module_count], sizeof(platform_flash_modules_t)) != 0) {
-                return false;
+                return FLASH_ACCESS_RESULT_ERROR;
             }
             // Mark slot as unused
             magic_num = 0xffff;
             if (dct_write_app_data(&magic_num, magic_num_offs, sizeof(magic_num)) != 0) {
-                return false;
+                return FLASH_ACCESS_RESULT_ERROR;
             }
             ++module_count;
         }
         module_offs += sizeof(platform_flash_modules_t);
     }
+
+    for (size_t i = 0; i < module_count; ++i) {
+        if (modules[i].module_function == MOD_FUNC_BOOTLOADER && i != (module_count - 1)) {
+            // Perform bootloader update last as it will cause an automatic reset
+            const platform_flash_modules_t mod = modules[i];
+            memmove(&modules[i], &modules[i + 1], sizeof(platform_flash_modules_t) * (module_count - 1));
+            memcpy(&modules[module_count - 1], &mod, sizeof(mod));
+        }
+    }
+
+    int result = FLASH_ACCESS_RESULT_OK;
     for (size_t i = 0; i < module_count; ++i) {
         const platform_flash_modules_t* module = &modules[i];
         // Turn On RGB_COLOR_MAGENTA toggling during flash updating
@@ -616,14 +676,18 @@ bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
             flashModulesCallback(true);
         }
         // Copy memory from source to destination based on flash device id
-        FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
+        int r = FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
                 module->destinationAddress, module->length, module->module_function, module->flags);
         // Turn Off RGB_COLOR_MAGENTA toggling
         if (flashModulesCallback) {
             flashModulesCallback(false);
         }
+
+        if (r == FLASH_ACCESS_RESULT_RESET_PENDING) {
+            result = r;
+        }
     }
-    return true;
+    return result;
 }
 
 const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset)

@@ -50,6 +50,9 @@
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
 
+// TODO: move somewhere else?
+#define SOFTDEVICE_MBR_PARAM_ADDR (0x30000 - 4 * 1024) // APP_CODE_BASE - 4K (1 page)
+#define SOFTDEVICE_MBR_PARAM_UNSET (0xffffffff)
 
 static void DWT_Init(void)
 {
@@ -63,6 +66,26 @@ static void DWT_Init(void)
 static void power_failure_handler(void) {
     // Simply reset
     NVIC_SystemReset();
+}
+
+static void configure_uicr() {
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+    if (NRF_UICR->NRFFW[1] == SOFTDEVICE_MBR_PARAM_UNSET) {
+        NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos);
+        while (NRF_NVMC->READY == NVMC_READY_READY_Busy) {
+            ;
+        }
+        NRF_UICR->NRFFW[1] = SOFTDEVICE_MBR_PARAM_ADDR;
+        while (NRF_NVMC->READY == NVMC_READY_READY_Busy) {
+            ;
+        }
+        NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Ren << NVMC_CONFIG_WEN_Pos);
+        while (NRF_NVMC->READY == NVMC_READY_READY_Busy){
+            ;
+        }
+        NVIC_SystemReset();
+    }
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 }
 
 /**
@@ -120,6 +143,8 @@ void Set_System(void)
             NRF_POWER_RAMPOWER_S4RETENTION_MASK);
 
     DWT_Init();
+
+    configure_uicr();
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     // FIXME: Have to initialize USB before softdevice enabled,
