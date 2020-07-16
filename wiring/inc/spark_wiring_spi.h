@@ -61,6 +61,9 @@ public:
   {
   }
 
+  virtual ~SPISettings() {
+  }
+
   bool operator==(const SPISettings& other) const
   {
     if (default_ && other.default_)

@@ -70,12 +70,13 @@ typedef enum LEDSignal {
 typedef enum LEDSource {
     LED_SOURCE_APPLICATION = 1,
     LED_SOURCE_SYSTEM = 2,
-#ifdef PARTICLE_USER_MODULE
-    LED_SOURCE_DEFAULT = LED_SOURCE_APPLICATION
-#else
-    LED_SOURCE_DEFAULT = LED_SOURCE_SYSTEM
-#endif
 } LEDSource;
+
+#ifdef PARTICLE_USER_MODULE
+#define LED_SOURCE_DEFAULT (LED_SOURCE_APPLICATION)
+#else
+#define LED_SOURCE_DEFAULT (LED_SOURCE_SYSTEM)
+#endif
 
 // LED signal priority
 typedef enum LEDPriority {
