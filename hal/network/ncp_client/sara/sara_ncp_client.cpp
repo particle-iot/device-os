@@ -1008,7 +1008,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     if (attempts != 0) {
         // There was an error initializing the SIM
         // This often leads to inability to talk over the data (PPP) muxed channel
-        // for some reason. Attempt to cycle the device through minimal/full functional state.
+        // for some reason. Attempt to cycle the modem through minimal/full functional state.
         CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
         CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1"));
     }
@@ -1271,6 +1271,9 @@ bool SaraNcpClient::checkRuntimeStateMuxer(unsigned int baudrate) {
             }
         }
     }
+
+    // Remove any potentially received garbage data in the serial stream
+    skipAll(serial_.get());
     return false;
 }
 
