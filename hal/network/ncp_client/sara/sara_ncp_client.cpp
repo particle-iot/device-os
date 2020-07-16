@@ -992,7 +992,8 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     int simState = 0;
-    for (unsigned i = 0; i < 10; ++i) {
+    unsigned attempts = 0;
+    for (attempts = 0; attempts < 10; attempts++) {
         simState = checkSimCard();
         if (!simState) {
             break;
@@ -1002,6 +1003,14 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
 
     if (simState != SYSTEM_ERROR_NONE) {
         return simState;
+    }
+
+    if (attempts != 0) {
+        // There was an error initializing the SIM
+        // This often leads to inability to talk over the data (PPP) muxed channel
+        // for some reason. Attempt to cycle the device through minimal/full functional state.
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1"));
     }
 
     if (ncpId() == PLATFORM_NCP_SARA_R410) {

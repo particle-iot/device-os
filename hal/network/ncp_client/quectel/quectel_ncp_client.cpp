@@ -910,12 +910,21 @@ int QuectelNcpClient::selectSimCard() {
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     int simState = 0;
-    for (unsigned i = 0; i < 10; ++i) {
+    unsigned attempts = 0;
+    for (attempts = 0; attempts < 10; attempts++) {
         simState = checkSimCard();
         if (!simState) {
             break;
         }
         HAL_Delay_Milliseconds(1000);
+    }
+
+    if (attempts != 0) {
+        // There was an error initializing the SIM
+        // We've seen issues on uBlox-based devices, as a precation, we'll cycle
+        // the modem here through minimal/full functional state.
+        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0"));
+        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
     }
     return simState;
 }
