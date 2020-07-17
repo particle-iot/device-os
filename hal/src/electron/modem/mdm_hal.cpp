@@ -64,39 +64,39 @@ std::recursive_mutex mdm_mutex;
 // #define SOCKET_HEX_MODE
 
 // Timeouts for various AT commands based on R4 & U2/G3 AT command manual as of Jan 2019
-#define AT_TIMEOUT        (  1 * 1000)
+#define AT_TIMEOUT        ( 10 * 1000)
 #define USOCL_UDP_TIMEOUT ( 10 * 1000) /* 120s for R4 (TCP only, optimizing for UDP with 10s), 1s for U2/G3 */
 #define USOCL_TCP_TIMEOUT (120 * 1000) /* 120s for R4 (TCP only), 1s for U2/G3 */
 #define USOCO_TIMEOUT     (130 * 1000) /* 120s for R4 (TCP only, going with 130 due to testing showing CME ERROR can take a bit longer), 20s for U2/G3 */
-#define USOCR_TIMEOUT     (  1 * 1000)
-#define USOCTL_TIMEOUT    (  1 * 1000)
+#define USOCR_TIMEOUT     ( 10 * 1000)
+#define USOCTL_TIMEOUT    ( 10 * 1000)
 #define USOWR_TIMEOUT     (120 * 1000) /* 120s for R4 (going with 120 to be safe since we don't use this with UDP),
                                           1s for U2/G3 */
 #define USORD_TIMEOUT     ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
-#define USOSO_TIMEOUT     (  1 * 1000)
+#define USOSO_TIMEOUT     ( 10 * 1000)
 #define USOST_TIMEOUT     ( 40 * 1000) /*  10s for R4, 1s for U2/G3, changed to 40s due to R410 firmware
                                           L0.0.00.00.05.08,A.02.04 background DNS lookup and other factors */
 #define USORF_TIMEOUT     ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
-#define CEER_TIMEOUT      (  1 * 1000)
+#define CEER_TIMEOUT      ( 10 * 1000)
 #define CEREG_TIMEOUT     ( 60 * 1000)
-#define CGDCONT_TIMEOUT   (  1 * 1000)
+#define CGDCONT_TIMEOUT   ( 10 * 1000)
 #define CGREG_TIMEOUT     ( 60 * 1000)
 #define CGATT_TIMEOUT     (180 * 1000)
 #define CMGS_TIMEOUT      (150 * 1000) /* 180s for R4 (set to 150s to match previous implementation) */
 #define COPS_TIMEOUT      (180 * 1000)
 #define CPWROFF_TIMEOUT   ( 40 * 1000)
 #define CREG_TIMEOUT      ( 60 * 1000)
-#define CSQ_TIMEOUT       (  1 * 1000)
+#define CSQ_TIMEOUT       ( 10 * 1000)
 #define UBANDSEL_TIMEOUT  ( 40 * 1000)
 #define UDNSRN_TIMEOUT    ( 30 * 1000) /* 70s for R4 (set to 30s to match previous implementation) */
-#define URAT_TIMEOUT      (  1 * 1000)
-#define UPSD_TIMEOUT      (  1 * 1000)
+#define URAT_TIMEOUT      ( 10 * 1000)
+#define UPSD_TIMEOUT      ( 10 * 1000)
 #define UPSDA_TIMEOUT     (180 * 1000)
-#define UPSND_TIMEOUT     (  1 * 1000)
-#define UMNOPROF_TIMEOUT  ( 1 * 1000)
-#define CEDRXS_TIMEOUT    (  1 * 1000)
+#define UPSND_TIMEOUT     ( 10 * 1000)
+#define UMNOPROF_TIMEOUT  ( 10 * 1000)
+#define CEDRXS_TIMEOUT    ( 10 * 1000)
 #define CFUN_TIMEOUT      (180 * 1000)
-#define UCGED_TIMEOUT     (  1 * 1000)
+#define UCGED_TIMEOUT     ( 10 * 1000)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))

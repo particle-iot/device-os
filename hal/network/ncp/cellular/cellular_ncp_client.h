@@ -120,7 +120,7 @@ public:
     bool registered() const;
     system_tick_t duration() const;
     bool sticky() const;
-    static CellularRegistrationStatus::Status parseStatus(int status);
+    static CellularRegistrationStatus::Status decodeAtStatus(int status);
 
 private:
     Status stat_ = NONE;
@@ -324,7 +324,7 @@ inline bool CellularRegistrationStatus::sticky() const {
     return updated_ > 0 && updated_ != started_;
 }
 
-inline CellularRegistrationStatus::Status CellularRegistrationStatus::parseStatus(int status) {
+inline CellularRegistrationStatus::Status CellularRegistrationStatus::decodeAtStatus(int status) {
     switch (status) {
         case CellularRegistrationStatus::NOT_REGISTERING:
         case CellularRegistrationStatus::HOME:

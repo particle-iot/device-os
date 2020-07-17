@@ -208,7 +208,7 @@ int SaraNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        self->csd_.status(self->csd_.parseStatus(val[0]));
+        self->csd_.status(self->csd_.decodeAtStatus(val[0]));
         // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         // Only update if unset
@@ -237,7 +237,7 @@ int SaraNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CGREG: %u,\"%x\",\"%x\",%u,\"%*x\"", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        self->psd_.status(self->psd_.parseStatus(val[0]));
+        self->psd_.status(self->psd_.decodeAtStatus(val[0]));
         // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -273,7 +273,7 @@ int SaraNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CEREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        self->eps_.status(self->eps_.parseStatus(val[0]));
+        self->eps_.status(self->eps_.decodeAtStatus(val[0]));
         // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -426,8 +426,9 @@ int SaraNcpClient::updateFirmware(InputStream* file, size_t size) {
 * for a certain amount of time defined by UBLOX_NCP_R4_WINDOW_SIZE_MS
 */
 int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
+    // Just in case perform some state checks to ensure that LwIP PPP implementation
+    // does not write into the data channel when it's not supposed do
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
-    // Just in case
     CHECK_FALSE(muxerDataStream_->enabled(), SYSTEM_ERROR_INVALID_STATE);
 
     if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
@@ -1617,8 +1618,7 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
         if (r) {
             LOG(ERROR, "Failed to open data channel");
             ready_ = false;
-            connState_ = NcpConnectionState::DISCONNECTED;
-            return;
+            state = connState_ = NcpConnectionState::DISCONNECTED;
         }
     }
 

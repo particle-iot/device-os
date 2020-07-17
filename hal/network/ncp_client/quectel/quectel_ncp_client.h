@@ -94,14 +94,6 @@ private:
     CellularGlobalIdentity cgi_ = {};
     CellularAccessTechnology act_ = CellularAccessTechnology::NONE;
 
-    enum class RegistrationState {
-        NotRegistering = 0,
-        Registered = 1,
-        Registering = 2,
-        Denied = 3,
-        Unknown = 4
-    };
-
     enum class ModemState {
         Unknown = 0,
         MuxerAtChannel = 1,
