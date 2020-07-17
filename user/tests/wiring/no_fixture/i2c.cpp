@@ -1,6 +1,7 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include "scope_guard.h"
 
 #if PLATFORM_ID == PLATFORM_TRACKER
 
@@ -65,3 +66,47 @@ test(I2C_04_Serial1_Cannot_Be_Enabled_While_Wire3_Is_Enabled) {
 }
 
 #endif // PLATFORM_ID == PLATFORM_TRACKER
+
+test(I2C_05_Hal_Sleep_API_Test) {
+    Wire.lock();
+    bool enabled = Wire.isEnabled();
+    SCOPE_GUARD({
+        hal_i2c_sleep(HAL_I2C_INTERFACE1, false, nullptr);
+        if (enabled) {
+            Wire.begin();
+        } else {
+            Wire.end();
+        }
+        Wire.unlock();
+    });
+
+    // Suspend and resotre I2C
+    Wire.begin();
+    assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, nullptr), (int)SYSTEM_ERROR_NONE);  // Suspend
+    assertFalse(Wire.isEnabled());
+    assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, nullptr), (int)SYSTEM_ERROR_NONE); // Restore
+    assertTrue(Wire.isEnabled());
+}
+
+#if HAL_PLATFORM_FUELGAUGE_MAX17043
+test(I2C_06_I2c_Sleep_FuelGauge) {
+    FuelGauge fuel(true);
+    fuel.begin();
+    fuel.wakeup();
+    auto ver = fuel.getVersion();
+    assertMoreOrEqual(ver, 0);
+    assertNotEqual(ver, 0x0000);
+    assertNotEqual(ver, 0xffff);
+    assertEqual(hal_i2c_sleep(HAL_PLATFORM_FUELGAUGE_MAX17043_I2C, true, nullptr), 0);
+    SCOPE_GUARD({
+        if (!hal_i2c_is_enabled(HAL_PLATFORM_FUELGAUGE_MAX17043_I2C, nullptr)) {
+            hal_i2c_sleep(HAL_PLATFORM_FUELGAUGE_MAX17043_I2C, false, nullptr);
+        }
+    });
+    assertFalse(hal_i2c_is_enabled(HAL_PLATFORM_FUELGAUGE_MAX17043_I2C, nullptr));
+    assertEqual(hal_i2c_sleep(HAL_PLATFORM_FUELGAUGE_MAX17043_I2C, false, nullptr), 0);
+    assertTrue(hal_i2c_is_enabled(HAL_PLATFORM_FUELGAUGE_MAX17043_I2C, nullptr));
+    auto ver2 = fuel.getVersion();
+    assertEqual(ver, ver2);
+}
+#endif // HAL_PLATFORM_FUELGAUGE_MAX17043

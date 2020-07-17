@@ -27,8 +27,6 @@
 #include "spark_wiring_arduino_constants.h"
 #include "spark_wiring_arduino_binary.h"
 
-typedef particle::__SPISettings SPISettings;
-
 #undef F
 #define F(X) (reinterpret_cast<const __FlashStringHelper*>(X))
 

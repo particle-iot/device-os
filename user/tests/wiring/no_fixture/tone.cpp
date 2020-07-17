@@ -55,11 +55,13 @@ test(TONE_01_NoGenerateWhenPinSelectedIsNotTimerChannel) {
 test(TONE_02_GeneratedOnPinResultsInCorrectFrequency) {
     uint32_t frequency = 500;
     uint32_t duration = 100;
-    // when
-    tone(pin, frequency, duration);
-    // then
-    assertEqual(HAL_Tone_Get_Frequency(pin), frequency);
-    //To Do : Add test for remaining pins if required
+    ATOMIC_BLOCK() {
+        // when
+        tone(pin, frequency, duration);
+        // then
+        assertEqual(HAL_Tone_Get_Frequency(pin), frequency);
+        //To Do : Add test for remaining pins if required
+    }
 }
 
 test(TONE_03_GeneratedOnPinResultsInCorrectDuration) {

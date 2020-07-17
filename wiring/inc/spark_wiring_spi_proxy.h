@@ -54,7 +54,7 @@ public:
     int32_t beginTransaction() {
         return instance().beginTransaction();
     }
-    int32_t beginTransaction(const particle::__SPISettings& settings) {
+    int32_t beginTransaction(const particle::SPISettings& settings) {
         return instance().beginTransaction(settings);
     }
     void endTransaction() {

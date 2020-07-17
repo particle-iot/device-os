@@ -75,7 +75,8 @@ typedef enum {
     REG_DENIED  = 1,
     REG_NONE    = 2,
     REG_HOME    = 3,
-    REG_ROAMING = 4
+    REG_ROAMING = 4,
+    REG_NOTREG  = 5
 } Reg;
 //! Access Technology
 typedef enum {
@@ -144,6 +145,7 @@ typedef struct {
 
     CellularGlobalIdentity cgi;  //!< Cellular Global Identity (MCC, MNC, LAC, CI)
     char num[32];   //!< Mobile Directory Number
+    int cops;       //!< COPS mode
 } NetStatus;
 
 #ifdef __cplusplus

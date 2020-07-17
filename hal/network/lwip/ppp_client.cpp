@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 #include "ppp_client.h"
 
 #if defined(PPP_SUPPORT) && PPP_SUPPORT
@@ -31,9 +34,10 @@ extern "C" {
 #include "system_error.h"
 #include "lwiplock.h"
 #include <lwip/stats.h>
+#include <algorithm>
+#include "delay_hal.h"
+#include "platform_ncp.h"
 
-#undef LOG_COMPILE_TIME_LEVEL
-#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 LOG_SOURCE_CATEGORY("net.ppp.client");
 
 using namespace particle::net::ppp;
@@ -115,7 +119,7 @@ void Client::deinit() {
   }
 }
 
-bool Client::prepareConnect() {
+int Client::prepareConnect() {
   ipcp_->init();
   ipcp_->disable();
   ipcp_->enable();
@@ -130,10 +134,14 @@ bool Client::prepareConnect() {
   UNLOCK_TCPIP_CORE();
 #endif // PPP_IPV6_SUPPORT
 
-  // FIXME:
-  static const char UBLOX_NCP_CONNECT_COMMAND[] = "ATD*99***1#\r\n";
-  output((const uint8_t*)UBLOX_NCP_CONNECT_COMMAND, sizeof(UBLOX_NCP_CONNECT_COMMAND) - 1);
-  return true;
+  std::unique_lock<std::mutex> lk(mutex_);
+  auto cb = enterDataModeCb_;
+  auto ctx = enterDataModeCbCtx_;
+  lk.unlock();
+  if (cb) {
+    return cb(ctx);
+  }
+  return SYSTEM_ERROR_INVALID_STATE;
 }
 
 bool Client::start() {
@@ -223,6 +231,12 @@ void Client::setOutputCallback(OutputCallback cb, void* ctx) {
   oCbCtx_ = ctx;
 }
 
+void Client::setEnterDataModeCallback(EnterDataModeCallback cb, void* ctx) {
+  std::lock_guard<std::mutex> lk(mutex_);
+  enterDataModeCb_ = cb;
+  enterDataModeCbCtx_ = ctx;
+}
+
 void Client::setAuth(const char* user, const char* password) {
   {
     std::lock_guard<std::mutex> lk(mutex_);
@@ -262,8 +276,12 @@ void Client::loop() {
 
     switch (state_) {
       case STATE_CONNECT: {
-        prepareConnect();
         transition(STATE_CONNECTING);
+        if (prepareConnect()) {
+          LOG(ERROR, "Failed to dial");
+          transition(STATE_CONNECT);
+          break;
+        }
         err_t err = pppapi_connect(pcb_, 1);
         if (err != ERR_OK) {
           LOG(TRACE, "PPP error connecting: %x", err);
@@ -281,6 +299,7 @@ void Client::loop() {
 
       case STATE_DISCONNECT: {
         transition(STATE_DISCONNECTING);
+        // FIXME: graceful disconnect
         pppapi_close(pcb_, 1);
         break;
       }
@@ -323,6 +342,7 @@ void Client::loop() {
           if (lowerState_) {
             lowerState_ = false;
             if (state_ == STATE_CONNECTED || state_ == STATE_CONNECTING || state_ == STATE_CONNECT) {
+              // FIXME: Allow the PPP layer to lose carrier on its own
               transition(STATE_DISCONNECT);
             }
           }
@@ -418,7 +438,7 @@ void Client::notifyStatusCb(ppp_pcb* pcb, int err, void* ctx) {
 }
 
 void Client::notifyStatus(int err) {
-  LOG(TRACE, "PPP status -> %d", err);
+  LOG_DEBUG(TRACE, "PPP status -> %d", err);
   switch (err) {
     case PPPERR_NONE: {
       /* Connected */
@@ -445,7 +465,7 @@ void Client::notifyNetifCb(netif* netif, netif_nsc_reason_t reason, const netif_
 }
 
 void Client::notifyNetif(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
-  LOG(TRACE, "PPP netif -> %x", reason);
+  LOG_DEBUG(TRACE, "PPP netif -> %x", reason);
 }
 #endif /* defined(LWIP_NETIF_EXT_STATUS_CALLBACK) && LWIP_NETIF_EXT_STATUS_CALLBACK == 1 */
 
@@ -454,7 +474,7 @@ void Client::transition(State newState) {
   state_ = newState;
 
   {
-    if (state_ == STATE_CONNECTED || state_ == STATE_DISCONNECTED) {
+    if (state_ == STATE_CONNECTED || state_ == STATE_DISCONNECTED || state_ == STATE_CONNECTING) {
       std::unique_lock<std::mutex> lk(mutex_);
       auto cb = cb_;
       auto ctx = cbCtx_;
@@ -462,8 +482,10 @@ void Client::transition(State newState) {
       if (cb) {
         if (state_ == STATE_CONNECTED) {
           cb(this, EVENT_UP, ctx);
-        } else {
+        } else if (state_ == STATE_DISCONNECTED) {
           cb(this, EVENT_DOWN, ctx);
+        } else if (state_ == STATE_CONNECTING) {
+          cb(this, EVENT_CONNECTING, ctx);
         }
       }
     }

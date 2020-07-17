@@ -25,13 +25,11 @@
 #define	PLATFORMS_H
 
 #define PLATFORM_GCC                        3
-#define PLATFORM_PHOTON_DEV                 4
-#define PLATFORM_TEACUP_PIGTAIL_DEV         5
-#define PLATFORM_PHOTON_PRODUCTION          6
-#define PLATFORM_TEACUP_PIGTAIL_PRODUCTION  7
+#define PLATFORM_PHOTON                     6
+#define PLATFORM_PHOTON_PRODUCTION          (PLATFORM_PHOTON)
 #define PLATFORM_P1                         8
-#define PLATFORM_ETHERNET_PROTO             9
-#define PLATFORM_ELECTRON_PRODUCTION        10
+#define PLATFORM_ELECTRON                   10
+#define PLATFORM_ELECTRON_PRODUCTION        (PLATFORM_ELECTRON)
 #define PLATFORM_ARGON                      12
 #define PLATFORM_BORON                      13
 #define PLATFORM_ASOM                       22

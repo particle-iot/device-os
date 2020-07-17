@@ -27,11 +27,13 @@
 #include "servo_hal.h"
 #include "unit-test/unit-test.h"
 
-#if defined(STM32F2XX)
+#if HAL_PLATFORM_GEN == 2
 static const pin_t pin = D0, pin2 = D1; // Pins sharing the same hardware timer
-#else
+#elif HAL_PLATFORM_GEN == 3
 static const pin_t pin = A0, pin2 = A1;
-#endif
+#else
+#error "Unsupported"
+#endif // HAL_PLATFORM_GEN
 
 test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
 #if HAL_PLATFORM_NRF52840
@@ -45,7 +47,7 @@ test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
 #endif
     Servo testServo;
     // when
-    testServo.attach(pin);
+    assertFalse(testServo.attach(pin));
     // then
     //Servo works on fixed PWM frequency of 50Hz
     assertNotEqual(HAL_Servo_Read_Frequency(pin), SERVO_TIM_PWM_FREQ);
@@ -55,18 +57,13 @@ test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
 test(SERVO_02_CannotAttachWhenPinSelectedIsOutOfRange) {
     pin_t pin = 51;//pin under test (not a valid user pin)
     Servo testServo;
-    // when
-    testServo.attach(pin);
-    // then
-    //Servo works on fixed PWM frequency of 50Hz
-    assertNotEqual(HAL_Servo_Read_Frequency(pin), SERVO_TIM_PWM_FREQ);
-    //To Do : Add test for remaining pins if required
+    assertFalse(testServo.attach(pin));
 }
 
 test(SERVO_03_AttachedOnPinResultsInCorrectFrequency) {
     Servo testServo;
     // when
-    testServo.attach(pin);
+    assertTrue(testServo.attach(pin));
     // then
     //Servo works on fixed PWM frequency of 50Hz
     assertEqual(HAL_Servo_Read_Frequency(pin), SERVO_TIM_PWM_FREQ);
@@ -77,7 +74,7 @@ test(SERVO_04_WritePulseWidthOnPinResultsInCorrectMicroSeconds) {
     uint16_t pulseWidth = 1500;//value corresponding to servo's mid-point
     Servo testServo;
     // when
-    testServo.attach(pin);
+    assertTrue(testServo.attach(pin));
     testServo.writeMicroseconds(pulseWidth);
     uint16_t readPulseWidth = testServo.readMicroseconds();
     // then

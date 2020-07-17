@@ -26,6 +26,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "rtc_hal.h"
+#include "simple_ntp_client.h"
 
 test(TIME_01_NowReturnsCorrectUnixTime) {
     // when
@@ -104,10 +105,10 @@ test(TIME_06_DSTOffsetIsReturned) {
 test(TIME_07_SetTimeResultsInCorrectUnixTimeUpdate) {
     // when
     time_t current_time = Time.now();
-    Time.setTime(978307200);//set to 2001/01/01 00:00:00
+    Time.setTime(1514764800);//set to 2018/01/01 00:00:00
     // then
     time_t temp_time = Time.now();
-    assertEqual(temp_time, 978307200);
+    assertEqual(temp_time, 1514764800);
     // restore original time
     Time.setTime(current_time);
 }
@@ -210,7 +211,7 @@ test(TIME_13_syncTimePending_syncTimeDone_when_disconnected)
     if (!Particle.connected())
     {
         Particle.connect();
-        waitFor(Particle.connected, 120000);
+        waitFor(Particle.connected, 5 * 60 * 1000);
     }
     assertTrue(Particle.connected());
     Particle.syncTime();
@@ -342,4 +343,34 @@ test(TIME_18_RtcAlarmReturnsAnErrorWhenTimeInThePast) {
     hal_rtc_cancel_alarm();
     assertFalse((bool)alarmFired);
     assertEqual(r, (int)SYSTEM_ERROR_TIMEOUT);
+}
+
+test(TIME_19_LocalTimeIsCloseToNtpTime) {
+    auto client = std::make_unique<SimpleNtpClient>();
+
+    assertTrue((bool)client);
+
+    assertTrue(Particle.connected());
+    Particle.syncTime();
+    waitFor(Particle.syncTimeDone, 60000);
+    assertTrue(Particle.syncTimeDone());
+    assertTrue(Time.isValid());
+
+    uint64_t ntpTime = 0;
+    int r = SYSTEM_ERROR_UNKNOWN;
+    for (int i = 0; i < 10; i++) {
+        r = client->ntpDate(&ntpTime);
+        if (!r) {
+            break;
+        }
+    }
+    assertEqual(0, r);
+
+    struct timeval tv = {};
+    assertEqual(0, hal_rtc_get_time(&tv, nullptr));
+    uint64_t now = tv.tv_sec * 1000000ULL + tv.tv_usec;
+
+    // Within 10 seconds
+    const int64_t diff = std::chrono::microseconds(10s).count();
+    assertLessOrEqual(std::abs((int64_t)now - (int64_t)ntpTime), diff);
 }

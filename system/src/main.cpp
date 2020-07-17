@@ -448,7 +448,7 @@ void manage_safe_mode()
 }
 
 bool semi_automatic_connecting(bool threaded) {
-    return system_mode() == SEMI_AUTOMATIC && !threaded && spark_cloud_flag_auto_connect() && !spark_cloud_flag_connected();
+    return system_mode() == SEMI_AUTOMATIC && !threaded && spark_cloud_flag_auto_connect() && !spark_cloud_flag_connected() && !SPARK_WLAN_SLEEP;
 }
 
 namespace {

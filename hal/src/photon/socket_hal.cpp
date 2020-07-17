@@ -1085,6 +1085,11 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
 
 sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize)
 {
+    return socket_receivefrom_ex(sd, buffer, bufLen, flags, addr, addrsize, WICED_NO_WAIT, nullptr);
+}
+
+sock_result_t socket_receivefrom_ex(sock_handle_t sd, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize, system_tick_t timeout, void* reserved)
+{
     socket_t* socket = from_handle(sd);
     volatile wiced_result_t result = WICED_INVALID_SOCKET;
     uint16_t read_len = 0;
@@ -1092,7 +1097,7 @@ sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLe
         std::lock_guard<socket_t> lk(*socket);
         wiced_packet_t* packet = NULL;
         // UDP receive timeout changed to 0 sec so as not to block
-        if ((result=wiced_udp_receive(udp(socket), &packet, WICED_NO_WAIT))==WICED_SUCCESS) {
+        if ((result=wiced_udp_receive(udp(socket), &packet, timeout))==WICED_SUCCESS) {
             wiced_ip_address_t wiced_ip_addr;
             uint16_t port;
             if ((result=wiced_udp_packet_get_info(packet, &wiced_ip_addr, &port))==WICED_SUCCESS) {

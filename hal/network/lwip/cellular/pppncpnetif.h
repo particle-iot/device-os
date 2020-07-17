@@ -77,6 +77,7 @@ private:
     particle::net::ppp::Client client_;
     bool up_ = false;
     CellularNetworkManager* celMan_ = nullptr;
+    volatile system_tick_t connectStart_ = 0;
 };
 
 } } // namespace particle::net

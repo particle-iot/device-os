@@ -177,10 +177,14 @@ test(BLE_03_Set_BLE_Tx_Power) {
 }
 
 test(BLE_04_Select_BLE_Antenna) {
+#if HAL_PLATFORM_RADIO_ANTENNA_EXTERNAL
     int ret = BLE.selectAntenna(BleAntennaType::EXTERNAL);
     assertEqual(ret, 0);
+#endif // HAL_PLATFORM_RADIO_ANTENNA_EXTERNAL
+#if HAL_PLATFORM_RADIO_ANTENNA_INTERNAL
     ret = BLE.selectAntenna(BleAntennaType::INTERNAL);
     assertEqual(ret, 0);
+#endif // HAL_PLATFORM_RADIO_ANTENNA_INTERNAL
 }
 
 test(BLE_05_Set_BLE_Advertising_Parameters) {

@@ -77,6 +77,11 @@ public:
     Servo();
 
     /**
+     * @brief Detaches and destructs the servo instance from pin.
+     */
+    ~Servo();
+
+    /**
      * @brief Associate this instance with a servomotor whose input is
      *        connected to pin.
      *

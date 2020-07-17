@@ -243,6 +243,7 @@ test(WIFI_14_wifi_class_methods_work_correctly_when_wifi_interface_is_off) {
         WiFi.connect();
         Particle.connect();
     });
+    waitForNot(WiFi.ready, 30000);
     assertEqual(WiFi.ready(), false);
 
     uint8_t tmp[6];

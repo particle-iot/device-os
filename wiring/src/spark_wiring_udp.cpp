@@ -192,7 +192,7 @@ int UDP::parsePacket(system_tick_t timeout)
 
     flush_buffer();         // start a new read - discard the old data
     if (_buffer && _buffer_size) {
-        int result = receivePacket(_buffer, _buffer_size);
+        int result = receivePacket(_buffer, _buffer_size, timeout);
         if (result>0) {
             _total = result;
         }
@@ -208,7 +208,7 @@ int UDP::receivePacket(uint8_t* buffer, size_t size, system_tick_t timeout)
         sockaddr_t remoteSockAddr;
         socklen_t remoteSockAddrLen = sizeof(remoteSockAddr);
 
-        ret = socket_receivefrom(_sock, buffer, size, 0, &remoteSockAddr, &remoteSockAddrLen);
+        ret = socket_receivefrom_ex(_sock, buffer, size, 0, &remoteSockAddr, &remoteSockAddrLen, timeout, nullptr);
         if (ret >= 0)
         {
             _remotePort = remoteSockAddr.sa_data[0] << 8 | remoteSockAddr.sa_data[1];

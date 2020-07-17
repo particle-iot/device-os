@@ -74,13 +74,13 @@ static void querySpiInfo(hal_spi_interface_t spi, hal_spi_info_t* info)
 /**
  * \brief Extract SPI Settings from SPI Info Structure
  */
-static particle::__SPISettings spiSettingsFromSpiInfo(hal_spi_info_t* info)
+static particle::SPISettings spiSettingsFromSpiInfo(hal_spi_info_t* info)
 {
     if (!info || !info->enabled || info->default_settings)
     {
-        return particle::__SPISettings();
+        return particle::SPISettings();
     }
-    return particle::__SPISettings(info->clock, info->bit_order, info->data_mode);
+    return particle::SPISettings(info->clock, info->bit_order, info->data_mode);
 }
 } // namespace
 
@@ -151,7 +151,7 @@ int32_t SPIClass::beginTransaction()
     return lock();
 }
 
-int32_t SPIClass::beginTransaction(const particle::__SPISettings& settings)
+int32_t SPIClass::beginTransaction(const particle::SPISettings& settings)
 {
     // Lock peripheral
     CHECK(lock());
@@ -161,7 +161,7 @@ int32_t SPIClass::beginTransaction(const particle::__SPISettings& settings)
     querySpiInfo(_spi, &spi_info);
 
     // Transform SPI info to SPI settings
-    particle::__SPISettings spi_settings = spiSettingsFromSpiInfo(&spi_info);
+    particle::SPISettings spi_settings = spiSettingsFromSpiInfo(&spi_info);
 
     // Reconfigure SPI peripheral (if necessary)
     if (settings != spi_settings)

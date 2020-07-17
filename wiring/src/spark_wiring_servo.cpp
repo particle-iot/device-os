@@ -37,6 +37,11 @@ Servo::Servo()
   this->resetFields();
 }
 
+Servo::~Servo()
+{
+  detach();
+}
+
 bool Servo::attach(uint16_t pin,
     uint16_t minPW,
     uint16_t maxPW,

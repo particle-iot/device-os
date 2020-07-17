@@ -63,6 +63,8 @@ bool udpEchoTest(UDP* udp, const IPAddress& ip, uint16_t port, const uint8_t* se
 } // anonymous
 
 test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
+    const system_tick_t WAIT_TIMEOUT = 5 * 60 * 1000;
+
     Network.on();
     Network.connect();
 
@@ -71,7 +73,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
         Network.off();
     });
 
-    waitFor(Network.ready, 60000);
+    waitFor(Network.ready, WAIT_TIMEOUT);
     assertTrue(Network.ready());
 
     struct State {
@@ -106,7 +108,14 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 
     // Resolve UDP echo server hostname to ip address, so that DNS resolutions
     // no longer affect us after this point
-    const auto udpEchoIp = Network.resolve(UDP_ECHO_SERVER);
+    IPAddress udpEchoIp;
+    for (auto begin = millis(); millis() - begin < 60000;) {
+        udpEchoIp = Network.resolve(UDP_ECHO_SERVER);
+        if (udpEchoIp) {
+            break;
+        }
+        delay(3000);
+    }
     assertTrue(udpEchoIp);
 
     // Create UDP client
@@ -155,13 +164,8 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 
 #if HAL_PLATFORM_NCP_AT
 test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
-    const system_tick_t WAIT_TIMEOUT = 5 * 60 * 1000;
+    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
     const system_tick_t NCP_FAILURE_TIMEOUT = 15000;
-    SCOPE_GUARD({
-        Particle.disconnect();
-        Network.disconnect();
-        Network.off();
-    });
 
     Network.on();
     Network.connect();
@@ -184,7 +188,9 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
     auto start = millis();
     bool published = false;
     while (millis() - start <= WAIT_TIMEOUT) {
-        published = Particle.publish("test", "123", WITH_ACK);
+        if (Particle.connected()) {
+            published = Particle.publish("test", "123", WITH_ACK);
+        }
         if (published) {
             break;
         }
@@ -193,4 +199,53 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
 
     assertTrue(published);
 }
+
+static bool s_networkStatusChanged = false;
+
+test(NETWORK_03_network_connection_recovers_after_ncp_uart_sleep) {
+    const system_tick_t WAIT_TIMEOUT = 60 * 1000;
+
+    SCOPE_GUARD({
+        Particle.disconnect();
+        Network.disconnect();
+        Network.off();
+    });
+
+    Particle.connect();
+    waitFor(Particle.connected, WAIT_TIMEOUT);
+    assertTrue(Particle.connected());
+
+    auto handler = [](system_event_t ev, int, void*) -> void {
+        s_networkStatusChanged = true;
+    };
+
+    System.on(network_status, handler);
+    SCOPE_GUARD({
+        System.off(network_status, handler);
+    });
+
+    SINGLE_THREADED_BLOCK() {
+        assertEqual(0, hal_usart_sleep(HAL_USART_SERIAL2, true, nullptr));
+        assertEqual(0, hal_usart_sleep(HAL_USART_SERIAL2, false, nullptr));
+    }
+
+    delay(1000);
+
+    // Eventually cloud connection is going to be restored and we should receive an ACK to a publish
+    auto start = millis();
+    bool published = false;
+    while (millis() - start <= WAIT_TIMEOUT) {
+        if (Particle.connected()) {
+            published = Particle.publish("test", "123", WITH_ACK);
+        }
+        if (published) {
+            break;
+        }
+        delay(5000);
+    }
+
+    assertTrue(published);
+    assertFalse(s_networkStatusChanged);
+}
+
 #endif // HAL_PLATFORM_NCP_AT

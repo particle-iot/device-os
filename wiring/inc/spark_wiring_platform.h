@@ -24,19 +24,6 @@
 #define Wiring_LogConfig 1 // for testing purposes
 #endif
 
-#if PLATFORM_ID==PLATFORM_PHOTON_DEV      // photon dev
-#define Wiring_WiFi 1
-#define Wiring_IPv6 1
-#define Wiring_SPI1 1
-#endif
-
-#if PLATFORM_ID==PLATFORM_TEACUP_PIGTAIL_DEV
-#define Wiring_WiFi 1
-#define Wiring_IPv6 1
-#define Wiring_SPI1 1
-#define Wiring_Serial2 1
-#endif
-
 #if PLATFORM_ID==PLATFORM_PHOTON_PRODUCTION      // photon
 #define Wiring_WiFi 1
 #define Wiring_IPv6 0
@@ -49,16 +36,6 @@
 #define Wiring_WpaEnterprise 1
 #endif
 
-#if PLATFORM_ID==PLATFORM_TEACUP_PIGTAIL_PRODUCTION
-#define Wiring_WiFi 1
-#define Wiring_IPv6 1
-#define Wiring_SPI1 1
-#define Wiring_Serial2 1
-#define Wiring_USBSerial1 1
-#define Wiring_Mouse 1
-#define Wiring_Keyboard 1
-#endif
-
 #if PLATFORM_ID==PLATFORM_P1      // P1 / bm14
 #define Wiring_WiFi 1
 #define Wiring_IPv6 0
@@ -69,10 +46,6 @@
 #define Wiring_Keyboard 1
 #define Wiring_LogConfig 1
 #define Wiring_WpaEnterprise 1
-#endif
-
-#if PLATFORM_ID==PLATFORM_ETHERNET_PROTO      // ethernet
-#define Wiring_IPv6 1
 #endif
 
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION      // electron

@@ -4,6 +4,34 @@
 #include "unit-test/unit-test.h"
 
 #include <cstdlib>
+#include "random.h"
+
+namespace {
+
+#ifndef PARTICLE_TEST_RUNNER
+const int MILLIS_MICROS_MAX_DIFF = 1;
+#else
+const int MILLIS_MICROS_MAX_DIFF = 2;
+#endif // PARTICLE_TEST_RUNNER
+
+#if HAL_PLATFORM_GEN < 3
+#define TICKS_ATOMIC_BLOCK() ATOMIC_BLOCK()
+#else
+struct TicksAtomic {
+    TicksAtomic() {
+        pri = __get_PRIMASK();
+        __disable_irq();
+    }
+    ~TicksAtomic() {
+        __set_PRIMASK(pri);
+    }
+
+    int pri;
+};
+#define TICKS_ATOMIC_BLOCK() for (bool __todo=true; __todo;) for (TicksAtomic __as; __todo; __todo=false)
+#endif // HAL_PLATFORM_GEN < 3
+
+}
 
 void assert_micros_millis(int duration, bool overflow = false)
 {
@@ -18,9 +46,16 @@ void assert_micros_millis(int duration, bool overflow = false)
 
     do
     {
-        system_tick_t now_millis_64 = System.millis();
-        system_tick_t now_millis = millis();
-        system_tick_t now_micros = micros();
+        uint64_t now_millis_64;
+        system_tick_t now_millis, now_micros;
+        // FIXME: acquiring these three atomically, as there is no guarantee
+        // that we are not interrupted/pre-empted between the calls, which breaks
+        // the assumptions below.
+        TICKS_ATOMIC_BLOCK() {
+            now_millis_64 = System.millis();
+            now_millis = millis();
+            now_micros = micros();
+        }
 
         if (!overflow) {
             assertMoreOrEqual(now_millis_64, last_millis_64);
@@ -31,8 +66,12 @@ void assert_micros_millis(int duration, bool overflow = false)
         // micros always at least (millis()*1000)
         // even with overflow
         assertMoreOrEqual(now_micros, now_millis * 1000);
+        // at most 1.5ms difference between micros() and millis()
+        int diff = (int32_t)now_micros - (int32_t)now_millis * 1000;
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF * 1000);
         // at most 1ms difference between millis() and lower 32 bits of System.millis()
-        assertTrue(std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull)) <= 1);
+        diff = std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull));
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF);
 
         duration -= now_millis - last_millis;
 
@@ -52,14 +91,14 @@ void assert_micros_millis_interrupts(int duration)
     // D0 uses TIM2 and channel 2 equally on Core and Photon/Electron
     // Run at 4khz (T=250us)
     analogWrite(D0, 1, 4000);
-    randomSeed(micros());
+    Random randInstance;
     // Set higher than SysTick_IRQn priority for TIM4_IRQn
     NVIC_SetPriority(TIM4_IRQn, 3);
     TIM_ITConfig(TIM4, TIM_IT_CC2, ENABLE);
     NVIC_EnableIRQ(TIM4_IRQn);
     attachSystemInterrupt(SysInterrupt_TIM4_IRQ, [&] {
         // Do some work up to 200 microseconds
-        delayMicroseconds(random(200));
+        delayMicroseconds(randInstance.gen<system_tick_t>() % 200);
         TIM_ClearITPendingBit(TIM4, TIM_IT_CC2);
     });
 #endif
@@ -68,6 +107,8 @@ void assert_micros_millis_interrupts(int duration)
     system_tick_t last_millis = millis();
     system_tick_t last_micros = micros();
 
+    system_tick_t last_relax = millis();
+
     do
     {
         uint64_t now_millis_64;
@@ -75,7 +116,7 @@ void assert_micros_millis_interrupts(int duration)
         // FIXME: acquiring these three atomically, as there is no guarantee
         // that we are not interrupted/pre-empted between the calls, which breaks
         // the assumptions below.
-        ATOMIC_BLOCK() {
+        TICKS_ATOMIC_BLOCK() {
             now_millis_64 = System.millis();
             now_millis = millis();
             now_micros = micros();
@@ -89,15 +130,33 @@ void assert_micros_millis_interrupts(int duration)
         // even with overflow
         assertMoreOrEqual(now_micros, now_millis * 1000);
         // at most 1.5ms difference between micros() and millis()
-        assertTrue(std::abs((int32_t)now_micros - (int32_t)now_millis * 1000) <= 1500);
+        int diff = (int32_t)now_micros - (int32_t)now_millis * 1000;
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF * 1000);
         // at most 1ms difference between millis() and lower 32 bits of System.millis()
-        assertTrue(std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull)) <= 1);
+        diff = std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull));
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF);
 
         duration -= now_millis - last_millis;
 
         last_millis_64 = now_millis_64;
         last_millis = now_millis;
         last_micros = now_micros;
+
+#ifdef PARTICLE_TEST_RUNNER
+        if (millis() - last_relax >= 10000) {
+#if HAL_PLATFORM_GEN == 2
+            NVIC_DisableIRQ(TIM4_IRQn);
+#endif // HAL_PLATFORM_GEN == 2
+            for (int i = 0; i < 10; i++) {
+                Particle.process();
+                delay(10);
+            }
+#if HAL_PLATFORM_GEN == 2
+            NVIC_EnableIRQ(TIM4_IRQn);
+#endif // HAL_PLATFORM_GEN == 2
+            last_relax = millis();
+        }
+#endif // PARTICLE_TEST_RUNNER
     }
     while (duration > 0);
 
@@ -109,7 +168,15 @@ void assert_micros_millis_interrupts(int duration)
 #endif
 }
 
-test(TICKS_00_millis_micros_baseline_test)
+test(TICKS_00_prepare)
+{
+    // Make sure we are disconnected from the cloud/network
+    Particle.disconnect();
+    Network.disconnect();
+    delay(5000);
+}
+
+test(TICKS_01_millis_micros_baseline_test)
 {
     const unsigned DELAY = 3 * 1000;
     // delay()
@@ -134,7 +201,7 @@ test(TICKS_00_millis_micros_baseline_test)
 #if (!defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE) && !defined(HAL_PLATFORM_NRF52840)
 // the __advance_system1MsTick isn't dynamically linked so we build this as a monolithic app
 #include "hw_ticks.h"
-test(TICKS_01_millis_and_micros_rollover)
+test(TICKS_02_millis_and_micros_rollover)
 {
     // this places the micros counter 3 seconds from rollover and the system ticks 5 seconds
     __advance_system1MsTick((uint64_t)-5000, 3000);
@@ -145,7 +212,7 @@ test(TICKS_01_millis_and_micros_rollover)
 }
 #endif
 
-test(TICKS_02_millis_and_micros_along_with_high_priority_interrupts)
+test(TICKS_03_millis_and_micros_along_with_high_priority_interrupts)
 {
     static const system_tick_t TWO_MINUTES = 2 * 60 * 1000;
     system_tick_t start = millis();
@@ -153,7 +220,7 @@ test(TICKS_02_millis_and_micros_along_with_high_priority_interrupts)
     assertMoreOrEqual(millis()-start,TWO_MINUTES);
 }
 
-test(TICKS_03_millis_and_micros_monotonically_increases)
+test(TICKS_04_millis_and_micros_monotonically_increases)
 {
     static const system_tick_t TWO_MINUTES = 2 * 60 * 1000;
     system_tick_t start = millis();

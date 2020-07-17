@@ -61,7 +61,8 @@ public:
     EVENT_ADM_UP      = 0x05,
     EVENT_ADM_DOWN    = 0x06,
     EVENT_ERROR       = 0x07,
-    EVENT_MAX         = 0x08
+    EVENT_CONNECTING  = 0x08,
+    EVENT_MAX         = 0x09
   };
 
   enum State {
@@ -80,7 +81,9 @@ public:
   int input(const uint8_t* data, size_t size);
 
   typedef int (*OutputCallback)(const uint8_t* data, size_t size, void* ctx);
+  typedef int (*EnterDataModeCallback)(void* ctx);
   void setOutputCallback(OutputCallback cb, void* ctx);
+  void setEnterDataModeCallback(EnterDataModeCallback, void* ctx);
 
   typedef void (*NotifyCallback)(Client* c, uint64_t ev, void* ctx);
 
@@ -117,7 +120,7 @@ private:
   void init();
   void deinit();
 
-  bool prepareConnect();
+  int prepareConnect();
 
   static void loopCb(void* arg);
   void loop();
@@ -163,6 +166,9 @@ private:
 
   OutputCallback oCb_ = nullptr;
   void* oCbCtx_ = nullptr;
+
+  EnterDataModeCallback enterDataModeCb_ = nullptr;
+  void* enterDataModeCbCtx_ = nullptr;
 
   bool inited_ = false;
   std::atomic_bool running_;

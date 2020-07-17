@@ -247,6 +247,7 @@ void handle_cfod()
         SPARK_WLAN_RESET = 1;
         cloud_first_failed_connection = 0;
         cfod_count = 0;
+        cloud_failed_connection_attempts = 0;
     } else {
         auto r = Internet_Test();
         if (r != 0) {

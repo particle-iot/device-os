@@ -61,6 +61,9 @@ public:
   {
   }
 
+  virtual ~SPISettings() {
+  }
+
   bool operator==(const SPISettings& other) const
   {
     if (default_ && other.default_)
@@ -133,7 +136,10 @@ private:
   uint8_t bitOrder_ = 0;
   uint8_t dataMode_ = 0;
 };
+
+// Compatibility typedef
 typedef SPISettings __SPISettings;
+
 }
 
 // NOTE: when modifying this class (method signatures, adding/removing methods)
@@ -182,7 +188,7 @@ public:
   static void usingInterrupt(uint8_t) {};
 
   int32_t beginTransaction();
-  int32_t beginTransaction(const particle::__SPISettings& settings);
+  int32_t beginTransaction(const particle::SPISettings& settings);
   void endTransaction();
 
   /**

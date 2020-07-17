@@ -677,6 +677,8 @@ extern SystemClass System;
 
 #define waitFor(condition, timeout) System.waitCondition([]{ return (condition)(); }, (timeout))
 #define waitUntil(condition) System.waitCondition([]{ return (condition)(); })
+#define waitForNot(condition, timeout) System.waitCondition([]{ return !(condition)(); }, (timeout))
+#define waitUntilNot(condition) System.waitCondition([]{ return !(condition)(); })
 
 #endif /* SPARK_WIRING_SYSTEM_H */
 

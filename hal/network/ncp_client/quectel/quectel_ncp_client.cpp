@@ -97,6 +97,7 @@ const auto QUECTEL_NCP_KEEPALIVE_MAX_MISSED = 5;
 
 // FIXME: for now using a very large buffer
 const auto QUECTEL_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
+const auto QUECTEL_NCP_PPP_CHANNEL_RX_BUFFER_SIZE = 256;
 
 const auto QUECTEL_NCP_AT_CHANNEL = 1;
 const auto QUECTEL_NCP_PPP_CHANNEL = 2;
@@ -105,6 +106,10 @@ const auto QUECTEL_NCP_SIM_SELECT_PIN = 23;
 
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
+const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;
+
+const system_tick_t QUECTEL_COPS_TIMEOUT = 3 * 60 * 1000;
+const system_tick_t QUECTEL_CFUN_TIMEOUT = 3 * 60 * 1000;
 
 // Undefine hardware version
 const auto HW_VERSION_UNDEFINED = 0xFF;
@@ -138,12 +143,16 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     // Initialize serial stream
     auto sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS;
 
+// Our first board reversed RTS and CTS pin, we gave them the hwVersion 0x00,
+// Disabling hwfc should not only depend on hwVersion but also platform
+#if PLATFORM_ID == PLATFORM_B5SOM
     uint32_t hwVersion = HW_VERSION_UNDEFINED;
     auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
     if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
         sconf = SERIAL_8N1;
         LOG(TRACE, "Disable Hardware Flow control!");
     }
+#endif
 
     std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
@@ -153,8 +162,12 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     CHECK_TRUE(muxStrm, SYSTEM_ERROR_NO_MEMORY);
     CHECK(muxStrm->init(QUECTEL_NCP_AT_CHANNEL_RX_BUFFER_SIZE));
     CHECK(initParser(serial.get()));
+    decltype(muxerDataStream_) muxDataStrm(new(std::nothrow) decltype(muxerDataStream_)::element_type(&muxer_, QUECTEL_NCP_PPP_CHANNEL));
+    CHECK_TRUE(muxDataStrm, SYSTEM_ERROR_NO_MEMORY);
+    CHECK(muxDataStrm->init(QUECTEL_NCP_PPP_CHANNEL_RX_BUFFER_SIZE));
     serial_ = std::move(serial);
     muxerAtStream_ = std::move(muxStrm);
+    muxerDataStream_ = std::move(muxDataStrm);
     ncpState_ = NcpState::OFF;
     prevNcpState_ = NcpState::OFF;
     connState_ = NcpConnectionState::DISCONNECTED;
@@ -203,13 +216,8 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        // Home network or roaming
-        if (val[0] == 1 || val[0] == 5) {
-            self->creg_ = RegistrationState::Registered;
-        } else {
-            self->creg_ = RegistrationState::NotRegistered;
-        }
-        self->checkRegistrationState();
+        self->csd_.status(self->csd_.decodeAtStatus(val[0]));
+        // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         // Only update if unset
         if (r >= 3) {
@@ -237,13 +245,8 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CGREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        // Home network or roaming
-        if (val[0] == 1 || val[0] == 5) {
-            self->cgreg_ = RegistrationState::Registered;
-        } else {
-            self->cgreg_ = RegistrationState::NotRegistered;
-        }
-        self->checkRegistrationState();
+        self->psd_.status(self->psd_.decodeAtStatus(val[0]));
+        // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
             auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
@@ -279,13 +282,8 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CEREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-        // Home network or roaming
-        if (val[0] == 1 || val[0] == 5) {
-            self->cereg_ = RegistrationState::Registered;
-        } else {
-            self->cereg_ = RegistrationState::NotRegistered;
-        }
-        self->checkRegistrationState();
+        self->eps_.status(self->eps_.decodeAtStatus(val[0]));
+        // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
             auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
@@ -375,6 +373,7 @@ void QuectelNcpClient::disable() {
     ncpState_ = NcpState::DISABLED;
     serial_->enabled(false);
     muxerAtStream_->enabled(false);
+    muxerDataStream_->enabled(false);
 }
 
 NcpState QuectelNcpClient::ncpState() {
@@ -427,6 +426,11 @@ int QuectelNcpClient::updateFirmware(InputStream* file, size_t size) {
 }
 
 int QuectelNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
+    // Just in case perform some state checks to ensure that LwIP PPP implementation
+    // does not write into the data channel when it's not supposed do
+    CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(muxerDataStream_->enabled(), SYSTEM_ERROR_INVALID_STATE);
+
     int err = muxer_.writeChannel(QUECTEL_NCP_PPP_CHANNEL, data, size);
     if (err == gsm0710::GSM0710_ERROR_FLOW_CONTROL) {
         LOG_DEBUG(WARN, "Remote side flow control");
@@ -446,12 +450,15 @@ int QuectelNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size)
 
 int QuectelNcpClient::dataChannelFlowControl(bool state) {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    // Just in case
+    CHECK_FALSE(muxerDataStream_->enabled(), SYSTEM_ERROR_INVALID_STATE);
+
     if (state && !inFlowControl_) {
         inFlowControl_ = true;
-        muxer_.suspendChannel(QUECTEL_NCP_PPP_CHANNEL);
+        CHECK_TRUE(muxer_.suspendChannel(QUECTEL_NCP_PPP_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
     } else if (!state && inFlowControl_) {
         inFlowControl_ = false;
-        muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL);
+        CHECK_TRUE(muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -810,9 +817,13 @@ int QuectelNcpClient::checkParser() {
 }
 
 int QuectelNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) {
+    return waitAtResponse(parser_, timeout, period);
+}
+
+int QuectelNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period) {
     const auto t1 = HAL_Timer_Get_Milli_Seconds();
     for (;;) {
-        const int r = parser_.execCommand(period, "AT");
+        const int r = parser.execCommand(period, "AT");
         if (r < 0 && r != SYSTEM_ERROR_TIMEOUT) {
             return r;
         }
@@ -895,21 +906,26 @@ int QuectelNcpClient::waitReady(bool powerOn) {
 }
 
 int QuectelNcpClient::selectSimCard() {
-    // Set modem full functionality
-    int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-
     // Using numeric CME ERROR codes
-    // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=1"));
+    // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=2"));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     int simState = 0;
-    for (unsigned i = 0; i < 10; ++i) {
+    unsigned attempts = 0;
+    for (attempts = 0; attempts < 10; attempts++) {
         simState = checkSimCard();
         if (!simState) {
             break;
         }
         HAL_Delay_Milliseconds(1000);
+    }
+
+    if (attempts != 0) {
+        // There was an error initializing the SIM
+        // We've seen issues on uBlox-based devices, as a precation, we'll cycle
+        // the modem here through minimal/full functional state.
+        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0"));
+        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
     }
     return simState;
 }
@@ -922,6 +938,10 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
 }
 
 int QuectelNcpClient::initReady(ModemState state) {
+    // Set modem full functionality
+    int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
     if (state != ModemState::MuxerAtChannel) {
         // Enable flow control and change to runtime baudrate
 #if PLATFORM_ID == PLATFORM_B5SOM
@@ -1159,6 +1179,8 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
 int QuectelNcpClient::registerNet() {
     int r = 0;
 
+    resetRegistrationState();
+
     // Register GPRS, LET, NB-IOT network
     r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
@@ -1169,10 +1191,21 @@ int QuectelNcpClient::registerNet() {
 
     connectionState(NcpConnectionState::CONNECTING);
 
-    // NOTE: up to 3 mins
-    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0,2"));
-    // Ignore response code here
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    auto resp = parser_.sendCommand("AT+COPS?");
+    int copsState = -1;
+    r = CHECK_PARSER(resp.scanf("+COPS: %d", &copsState));
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
+    if (copsState != 0) {
+        // Only run AT+COPS=0 if not currently registering, otherwise we will
+        // perform PLMN reselection
+        // NOTE: up to 3 mins
+        r = CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
+        // Ignore response code here
+        // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
 
     if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
         // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
@@ -1183,12 +1216,9 @@ int QuectelNcpClient::registerNet() {
         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
     }
 
-    r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    r = CHECK_PARSER(parser_.execCommand("AT+CGREG?"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    r = CHECK_PARSER(parser_.execCommand("AT+CEREG?"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
 
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
@@ -1234,6 +1264,93 @@ void QuectelNcpClient::ncpPowerState(NcpPowerState state) {
     }
 }
 
+int QuectelNcpClient::enterDataMode() {
+    CHECK_TRUE(connectionState() == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    const NcpClientLock lock(this);
+    bool ok = false;
+    SCOPE_GUARD({
+        muxerDataStream_->enabled(false);
+        if (!ok) {
+            LOG(ERROR, "Failed to enter data mode");
+            muxer_.setChannelDataHandler(QUECTEL_NCP_PPP_CHANNEL, nullptr, nullptr);
+            // Go into an error state
+            disable();
+        }
+    });
+
+    skipAll(muxerDataStream_.get());
+    muxerDataStream_->enabled(true);
+
+    CHECK_TRUE(muxer_.setChannelDataHandler(QUECTEL_NCP_PPP_CHANNEL, muxerDataStream_->channelDataCb, muxerDataStream_.get()) == 0, SYSTEM_ERROR_INTERNAL);
+    // Send data mode break
+    const char breakCmd[] = "+++";
+    muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
+    skipAll(muxerDataStream_.get(), 1000);
+
+    // Initialize AT parser
+    auto parserConf = AtParserConfig()
+            .stream(muxerDataStream_.get())
+            .commandTerminator(AtCommandTerminator::CRLF);
+    dataParser_.destroy();
+    CHECK(dataParser_.init(std::move(parserConf)));
+
+    CHECK(waitAtResponse(dataParser_, 5000));
+
+    const char connectResponse[] = "CONNECT";
+
+    char buf[64] = {};
+    auto resp = dataParser_.sendCommand(1000, "ATO");
+    if (resp.hasNextLine()) {
+        CHECK(resp.readLine(buf, sizeof(buf)));
+        if (!strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
+            // We've already switched into data mode
+            ok = true;
+        }
+    } else {
+        const int r = CHECK(resp.readResult());
+        if (r != AtResponse::NO_CARRIER) {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+    }
+
+    if (!ok) {
+        auto resp = dataParser_.sendCommand(3 * 60 * 1000, "ATD*99***1#");
+        if (resp.hasNextLine()) {
+            memset(buf, 0, sizeof(buf));
+            CHECK(resp.readLine(buf, sizeof(buf)));
+            if (strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
+                return SYSTEM_ERROR_UNKNOWN;
+            }
+        } else {
+            // We've got a final response code
+            CHECK(resp.readResult());
+            // This is not a critical failure
+            ok = true;
+            return SYSTEM_ERROR_NOT_ALLOWED;
+        }
+    }
+
+    int r = muxer_.setChannelDataHandler(QUECTEL_NCP_PPP_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
+        auto self = (QuectelNcpClient*)ctx;
+        const auto handler = self->conf_.dataHandler();
+        if (handler) {
+            handler(0, data, size, self->conf_.dataHandlerData());
+        }
+        return SYSTEM_ERROR_NONE;
+    }, this);
+
+    if (!r) {
+        muxerDataStream_->enabled(false);
+        // Just in case resume
+        inFlowControl_ = true;
+        r = dataChannelFlowControl(false);
+    }
+    if (!r) {
+        ok = true;
+    }
+    return r;
+}
+
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;
@@ -1247,18 +1364,12 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
     if (connState_ == NcpConnectionState::CONNECTED) {
         inFlowControl_ = false;
         // Open data channel and resume it just in case
-        int r = muxer_.openChannel(QUECTEL_NCP_PPP_CHANNEL, [](const uint8_t* data, size_t size, void* ctx) -> int {
-            auto self = (QuectelNcpClient*)ctx;
-            const auto handler = self->conf_.dataHandler();
-            if (handler) {
-                handler(0, data, size, self->conf_.dataHandlerData());
-            }
-            return SYSTEM_ERROR_NONE;
-        }, this);
+        int r = muxer_.openChannel(QUECTEL_NCP_PPP_CHANNEL);
         if (r) {
             LOG(ERROR, "Failed to open data channel");
             ready_ = false;
-            connState_ = NcpConnectionState::DISCONNECTED;
+            state = connState_ = NcpConnectionState::DISCONNECTED;
+            return;
         }
     }
 
@@ -1316,45 +1427,132 @@ int QuectelNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Chann
 }
 
 void QuectelNcpClient::resetRegistrationState() {
-    creg_ = RegistrationState::NotRegistered;
-    cgreg_ = RegistrationState::NotRegistered;
-    cereg_ = RegistrationState::NotRegistered;
+    csd_.reset();
+    psd_.reset();
+    eps_.reset();
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
+    registrationInterventions_ = 0;
 }
 
 void QuectelNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
-        if ((creg_ == RegistrationState::Registered && cgreg_ == RegistrationState::Registered) || cereg_ == RegistrationState::Registered) {
+        if ((csd_.registered() && psd_.registered()) || eps_.registered()) {
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
+            // FIXME: potentially go back into connecting state only when getting into
+            // a 'sticky' non-registered state
+            resetRegistrationState();
             connectionState(NcpConnectionState::CONNECTING);
-            regStartTime_ = millis();
-            regCheckTime_ = regStartTime_;
         }
     }
+}
+
+int QuectelNcpClient::interveneRegistration() {
+    CHECK_TRUE(connState_ == NcpConnectionState::CONNECTING, SYSTEM_ERROR_NONE);
+
+    auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
+
+    // Intervention to speed up registration or recover in case of failure
+    if (ncpId() != PLATFORM_NCP_QUECTEL_BG96) {
+        if (eps_.sticky() && eps_.duration() >= timeout) {
+            if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING && csd_.status() == eps_.status()) {
+                LOG(TRACE, "Sticky not registering state for %lu s, PLMN reselection", eps_.duration() / 1000);
+                csd_.reset();
+                psd_.reset();
+                eps_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
+                return 0;
+            } else if (eps_.status() == CellularRegistrationStatus::DENIED && csd_.status() == eps_.status()) {
+                LOG(TRACE, "Sticky denied state for %lu s, RF reset", eps_.duration() / 1000);
+                csd_.reset();
+                psd_.reset();
+                eps_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
+                return 0;
+            }
+        }
+
+        if (csd_.sticky() && csd_.duration() >= timeout ) {
+            if (csd_.status() == CellularRegistrationStatus::DENIED && psd_.status() == csd_.status()) {
+                LOG(TRACE, "Sticky CSD and PSD denied state for %lu s, RF reset", csd_.duration() / 1000);
+                csd_.reset();
+                psd_.reset();
+                eps_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
+                return 0;
+            }
+        }
+
+        if (csd_.registered() && psd_.sticky() && psd_.duration() >= timeout) {
+            if (psd_.status() == CellularRegistrationStatus::NOT_REGISTERING && eps_.status() == psd_.status()) {
+                LOG(TRACE, "Sticky not registering PSD state for %lu s, force GPRS attach", psd_.duration() / 1000);
+                psd_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER_OK(parser_.execCommand("AT+CGACT?"));
+                int r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+CGACT=1"));
+                if (r != AtResponse::OK) {
+                    csd_.reset();
+                    psd_.reset();
+                    eps_.reset();
+                    LOG(TRACE, "GPRS attach failed, try PLMN reselection");
+                    CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
+                }
+            }
+        }
+    } else {
+        if (eps_.sticky() && eps_.duration() >= timeout) {
+            if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
+                LOG(TRACE, "Sticky not registering EPS state for %lu s, PLMN reselection", eps_.duration() / 1000);
+                eps_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
+            } else if (eps_.status() == CellularRegistrationStatus::DENIED) {
+                LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
+                eps_.reset();
+                registrationInterventions_++;
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
+            }
+        }
+    }
+    return 0;
 }
 
 int QuectelNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
+    interveneRegistration();
     if (connState_ != NcpConnectionState::CONNECTING || millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return SYSTEM_ERROR_NONE;
     }
     SCOPE_GUARD({ regCheckTime_ = millis(); });
 
     // Check GPRS, LET, NB-IOT network registration status
+    CHECK_PARSER(parser_.execCommand("AT+CEER"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
 
     if (connState_ == NcpConnectionState::CONNECTING && millis() - regStartTime_ >= registrationTimeout_) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
-        muxer_.stop();
-        modemHardReset();
+        // We are going into an OFF state immediately before stopping the muxer
+        // otherwise the muxer channel state callback will disable us unnecessarily.
         ncpState(NcpState::OFF);
+        muxer_.stop();
+        int rv = modemPowerOff();
+        if (rv != 0) {
+            modemHardReset(true);
+        }
+        return SYSTEM_ERROR_TIMEOUT;
     }
+
     return SYSTEM_ERROR_NONE;
 }
 

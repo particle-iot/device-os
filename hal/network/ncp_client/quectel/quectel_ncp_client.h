@@ -69,6 +69,7 @@ public:
     virtual int getSignalQuality(CellularSignalQuality* qual) override;
     virtual int setRegistrationTimeout(unsigned timeout) override;
     virtual int getTxDelayInDataChannel() override;
+    virtual int enterDataMode() override;
 
     auto getMuxer() {
         return &muxer_;
@@ -76,6 +77,7 @@ public:
 
 private:
     AtParser parser_;
+    AtParser dataParser_;
     std::unique_ptr<SerialStream> serial_;
     RecursiveMutex mutex_;
     CellularNcpClientConfig conf_;
@@ -87,14 +89,10 @@ private:
     bool ready_ = false;
     gsm0710::Muxer<particle::SerialStream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
+    std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerDataStream_;
     CellularNetworkConfig netConf_;
     CellularGlobalIdentity cgi_ = {};
     CellularAccessTechnology act_ = CellularAccessTechnology::NONE;
-
-    enum class RegistrationState {
-        NotRegistered = 0,
-        Registered    = 1,
-    };
 
     enum class ModemState {
         Unknown = 0,
@@ -103,12 +101,14 @@ private:
         DefaultBaudrate = 3
     };
 
-    RegistrationState creg_ = RegistrationState::NotRegistered;
-    RegistrationState cgreg_ = RegistrationState::NotRegistered;
-    RegistrationState cereg_ = RegistrationState::NotRegistered;
+    CellularRegistrationStatus csd_;
+    CellularRegistrationStatus psd_;
+    CellularRegistrationStatus eps_;
+
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
     unsigned registrationTimeout_;
+    unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
@@ -118,6 +118,7 @@ private:
     int checkRuntimeState(ModemState& state);
     int initMuxer();
     int waitAtResponse(unsigned int timeout, unsigned int period = 1000);
+    int waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period = 1000);
     int selectSimCard();
     int checkSimCard();
     int configureApn(const CellularNetworkConfig& conf);
@@ -131,6 +132,7 @@ private:
     void parserError(int error);
     void resetRegistrationState();
     void checkRegistrationState();
+    int interveneRegistration();
     int processEventsImpl();
 
     int modemInit() const;
