@@ -134,7 +134,7 @@ typedef struct stm32_i2c_info_t {
 /*
  * I2C mapping
  */
-stm32_i2c_info_t I2C_MAP[TOTAL_I2C] = {
+stm32_i2c_info_t I2C_MAP[HAL_PLATFORM_I2C_NUM] = {
     { I2C1, &RCC->APB1ENR, RCC_APB1Periph_I2C1, I2C1_ER_IRQn, I2C1_EV_IRQn, D0, D1, GPIO_AF_I2C1, .mutex = NULL }
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
    ,{ I2C1, &RCC->APB1ENR, RCC_APB1Periph_I2C1, I2C1_ER_IRQn, I2C1_EV_IRQn, C4, C5, GPIO_AF_I2C1, .mutex = NULL }
@@ -142,7 +142,7 @@ stm32_i2c_info_t I2C_MAP[TOTAL_I2C] = {
 #endif
 };
 
-static stm32_i2c_info_t *i2cMap[TOTAL_I2C] = { // pointer to I2C_MAP[] containing I2C peripheral info
+static stm32_i2c_info_t *i2cMap[HAL_PLATFORM_I2C_NUM] = { // pointer to I2C_MAP[] containing I2C peripheral info
     &I2C_MAP[I2C1_D0_D1]
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
    ,&I2C_MAP[I2C3_C4_C5]

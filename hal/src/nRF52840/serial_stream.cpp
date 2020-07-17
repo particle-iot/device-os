@@ -87,7 +87,7 @@ int SerialStream::peek(char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    auto r = hal_usart_peak_buffer(serial_, data, size, sizeof(char));
+    auto r = hal_usart_peek_buffer(serial_, data, size, sizeof(char));
     if (r == SYSTEM_ERROR_NO_MEMORY) {
         return 0;
     }

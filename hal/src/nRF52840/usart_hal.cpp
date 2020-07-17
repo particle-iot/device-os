@@ -877,7 +877,7 @@ ssize_t hal_usart_read_buffer(hal_usart_interface_t serial, void* buffer, size_t
     return usart->read((uint8_t*)buffer, size);
 }
 
-ssize_t hal_usart_peak_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize) {
+ssize_t hal_usart_peek_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize) {
     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(elementSize == sizeof(uint8_t), SYSTEM_ERROR_INVALID_ARGUMENT);
     return usart->peek((uint8_t*)buffer, size);
