@@ -19,6 +19,47 @@
 
 #include <type_traits>
 
+// This macro defines operators for comparing values of an enum with values of an integral type.
+// This can be useful when handling the result of a function that can either return a negative
+// error code or some non-error value defined by a enum class
+#define PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(_type) \
+        inline bool operator==(_type a, std::underlying_type<_type>::type b) { \
+            return a == (_type)b; \
+        } \
+        inline bool operator==(std::underlying_type<_type>::type a, _type b) { \
+            return (_type)a == b; \
+        } \
+        inline bool operator!=(_type a, std::underlying_type<_type>::type b) { \
+            return a != (_type)b; \
+        } \
+        inline bool operator!=(std::underlying_type<_type>::type a, _type b) { \
+            return (_type)a != b; \
+        } \
+        inline bool operator<(_type a, std::underlying_type<_type>::type b) { \
+            return a < (_type)b; \
+        } \
+        inline bool operator<(std::underlying_type<_type>::type a, _type b) { \
+            return (_type)a < b; \
+        } \
+        inline bool operator<=(_type a, std::underlying_type<_type>::type b) { \
+            return a <= (_type)b; \
+        } \
+        inline bool operator<=(std::underlying_type<_type>::type a, _type b) { \
+            return (_type)a <= b; \
+        } \
+        inline bool operator>(_type a, std::underlying_type<_type>::type b) { \
+            return a > (_type)b; \
+        } \
+        inline bool operator>(std::underlying_type<_type>::type a, _type b) { \
+            return (_type)a > b; \
+        } \
+        inline bool operator>=(_type a, std::underlying_type<_type>::type b) { \
+            return a >= (_type)b; \
+        } \
+        inline bool operator>=(std::underlying_type<_type>::type a, _type b) { \
+            return (_type)a >= b; \
+        }
+
 namespace particle {
 
 // Wrapper for std::underlying_type that falls back to the original type if it is not an enum

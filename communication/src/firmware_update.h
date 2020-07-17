@@ -52,7 +52,6 @@ class FirmwareUpdateCallbacks {
 public:
     typedef int (*StartUpdateFn)(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags,
             FirmwareUpdateContext* ctx);
-    typedef int (*ValidateUpdateFn)(FirmwareUpdateContext* ctx);
     typedef int (*FinishUpdateFn)(FirmwareUpdateFlags flags, FirmwareUpdateContext* ctx);
     typedef int (*SaveChunkFn)(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize,
             FirmwareUpdateContext* ctx);
@@ -61,9 +60,6 @@ public:
 
     FirmwareUpdateCallbacks& startUpdateFn(StartUpdateFn fn);
     StartUpdateFn startUpdateFn() const;
-
-    FirmwareUpdateCallbacks& validateUpdateFn(ValidateUpdateFn fn);
-    ValidateUpdateFn validateUpdateFn() const;
 
     FirmwareUpdateCallbacks& finishUpdateFn(FinishUpdateFn fn);
     FinishUpdateFn finishUpdateFn() const;
@@ -76,7 +72,6 @@ public:
 
 private:
     StartUpdateFn startUpdateFn_;
-    ValidateUpdateFn validateUpdateFn_;
     FinishUpdateFn finishUpdateFn_;
     SaveChunkFn saveChunkFn_;
     void* userData_;
@@ -117,7 +112,6 @@ private:
     State state_;
 
     int startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags);
-    int validateUpdate();
     int finishUpdate(FirmwareUpdateFlags flags);
     int saveChunk(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize);
 };
@@ -191,10 +185,6 @@ inline bool FirmwareUpdate::isActive() const {
 
 inline int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags) {
     return callbacks_.startUpdateFn()(fileSize, fileHash, fileOffset, flags, &ctx_);
-}
-
-inline int FirmwareUpdate::validateUpdate() {
-    return callbacks_.validateUpdateFn()(&ctx_);
 }
 
 inline int FirmwareUpdate::finishUpdate(FirmwareUpdateFlags flags) {
