@@ -183,7 +183,7 @@ static int validateWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_b
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-static void sleep() {
+static void enterStopSleep() {
     /* Request to enter STOP mode with regulator in low power mode */
     PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
 
@@ -214,18 +214,51 @@ static void sleep() {
     while (RCC_GetSYSCLKSource() != 0x08);
 }
 
-static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
+static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
     int ret = SYSTEM_ERROR_NONE;
 
+    // We need to do this before disabling systick/interrupts, otherwise
+    // there is a high chance of a deadlock
+    if (config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
+        // Suspend USARTs
+        for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
+            // FIXME: no locking
+            hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), true, nullptr);
+        }
+        // Suspend SPIs
+        for (int spi = 0; spi < HAL_PLATFORM_SPI_NUM; spi++) {
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+            hal_spi_acquire(static_cast<hal_spi_interface_t>(spi), nullptr);
+#endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+            hal_spi_sleep(static_cast<hal_spi_interface_t>(spi), true, nullptr);
+        }
+        // Suspend I2Cs
+        for (int i2c = 0; i2c < HAL_PLATFORM_I2C_NUM; i2c++) {
+            hal_i2c_lock(static_cast<hal_i2c_interface_t>(i2c), nullptr);
+            hal_i2c_sleep(static_cast<hal_i2c_interface_t>(i2c), true, nullptr);
+        }
+
+        // Suspend ADC module
+        // FIXME: no locking
+        hal_adc_sleep(true, nullptr);
+    }
+
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
+
+    // After disabling systick, as it controls RGB pins
+    if (config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
+        hal_pwm_sleep(true, nullptr);
+    }
 
     // Detach USB
     HAL_USB_Detach();
 
-    // Flush all USARTs
-    for (int usart = 0; usart < TOTAL_USARTS; usart++) {
-        if (hal_usart_is_enabled(static_cast<hal_usart_interface_t>(usart))) {
-            hal_usart_flush(static_cast<hal_usart_interface_t>(usart));
+    if (config->mode != HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
+        // Flush all USARTs
+        for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
+            if (hal_usart_is_enabled(static_cast<hal_usart_interface_t>(usart))) {
+                hal_usart_flush(static_cast<hal_usart_interface_t>(usart));
+            }
         }
     }
 
@@ -239,7 +272,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     configGpioWakeupSource(config->wakeup_sources);
     configRtcWakeupSource(config->wakeup_sources);
 
-    sleep();
+    enterStopSleep();
 
     auto wakeupSource = config->wakeup_sources;
     while (wakeupSource) {
@@ -259,7 +292,7 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         wakeupSource = wakeupSource->next;
     }
 
-    // FIXME: SHould we enter sleep again if there is no pending IRQn in corresponding to the wakeup source?
+    // FIXME: Should we enter sleep again if there is no pending IRQn in corresponding to the wakeup source?
 
     wakeupSource = config->wakeup_sources;
     while (wakeupSource) {
@@ -277,105 +310,31 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     // Restore
     HAL_Interrupts_Restore();
 
-    // Successfully exited STOP mode
-    HAL_enable_irq(state);
-
-    SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
-
-    HAL_USB_Attach();
-
-    return ret;
-}
-
-static int enterUltraLowPowerMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
-    int ret = SYSTEM_ERROR_NONE;
-
-    SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
-
-    // Detach USB
-    HAL_USB_Detach();
-
-    // Suspend USARTs
-    for (int usart = 0; usart < TOTAL_USARTS; usart++) {
-        hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), true, nullptr);
-    }
-    // Suspend SPIs
-    for (int spi = 0; spi < TOTAL_SPI; spi++) {
-        hal_spi_sleep(static_cast<hal_spi_interface_t>(spi), true, nullptr);
-    }
-    // Suspend I2Cs
-    for (int i2c = 0; i2c < TOTAL_I2C; i2c++) {
-        hal_i2c_sleep(static_cast<hal_i2c_interface_t>(i2c), true, nullptr);
-    }
-    hal_pwm_sleep(true, nullptr);
-    // Suspend ADC module
-    hal_adc_sleep(true, nullptr);
-
-    int32_t state = HAL_disable_irq();
-
-    // Suspend all EXTI interrupts
-    HAL_Interrupts_Suspend();
-
-    Hal_Pin_Info* halPinMap = HAL_Pin_Map();
-
-    configGpioWakeupSource(config->wakeup_sources);
-    configRtcWakeupSource(config->wakeup_sources);
-
-    sleep();
-
-    auto wakeupSource = config->wakeup_sources;
-    while (wakeupSource) {
-        if (NVIC_GetPendingIRQ(RTC_Alarm_IRQn) && wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            ret = constructRtcWakeupReason(wakeupReason);
-            break; // Stop traversing the wakeup sources list.
-        } else if ((NVIC_GetPendingIRQ(EXTI0_IRQn) || NVIC_GetPendingIRQ(EXTI1_IRQn) ||
-                    NVIC_GetPendingIRQ(EXTI2_IRQn) || NVIC_GetPendingIRQ(EXTI3_IRQn) ||
-                    NVIC_GetPendingIRQ(EXTI4_IRQn) || NVIC_GetPendingIRQ(EXTI9_5_IRQn) || NVIC_GetPendingIRQ(EXTI15_10_IRQn)) &&
-                    wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
-            if (EXTI_GetITStatus(halPinMap[gpioWakeup->pin].gpio_pin) != RESET) {
-                ret = constructGpioWakeupReason(wakeupReason, gpioWakeup->pin);
-                break; // Stop traversing the wakeup sources list.
-            }
+    if (config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
+        hal_pwm_sleep(false, nullptr);
+        // Restore ADC state
+        hal_adc_sleep(false, nullptr);
+        // Restore I2Cs
+        for (int i2c = 0; i2c < HAL_PLATFORM_I2C_NUM; i2c++) {
+            hal_i2c_sleep(static_cast<hal_i2c_interface_t>(i2c), false, nullptr);
+            hal_i2c_unlock(static_cast<hal_i2c_interface_t>(i2c), nullptr);
         }
-        wakeupSource = wakeupSource->next;
-    }
-
-    // FIXME: SHould we enter sleep again if there is no pending IRQn in corresponding to the wakeup source?
-
-    wakeupSource = config->wakeup_sources;
-    while (wakeupSource) {
-        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            // No need to detach RTC Alarm from EXTI, since it will be detached in HAL_Interrupts_Restore()
-            // RTC Alarm should be canceled to avoid entering HAL_RTCAlarm_Handler or if we were woken up by pin
-            hal_rtc_cancel_alarm();
-        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
-            HAL_Interrupts_Detach_Ext(gpioWakeup->pin, 1, nullptr);
+        // Restore SPIs
+        for (int spi = 0; spi < HAL_PLATFORM_SPI_NUM; spi++) {
+            hal_spi_sleep(static_cast<hal_spi_interface_t>(spi), false, nullptr);
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+            hal_spi_release(static_cast<hal_spi_interface_t>(spi), nullptr);
+#endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
         }
-        wakeupSource = wakeupSource->next;
+        // Restore USARTs
+        for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
+            // FIXME: no lock
+            hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), false, nullptr);
+        }
     }
-
-    // Restore
-    HAL_Interrupts_Restore();
 
     // Successfully exited STOP mode
     HAL_enable_irq(state);
-
-    // Restore ADC state
-    hal_adc_sleep(false, nullptr);
-    // Restore I2Cs
-    for (int i2c = 0; i2c < TOTAL_I2C; i2c++) {
-        hal_i2c_sleep(static_cast<hal_i2c_interface_t>(i2c), false, nullptr);
-    }
-    // Restore SPIs
-    for (int spi = 0; spi < TOTAL_SPI; spi++) {
-        hal_spi_sleep(static_cast<hal_spi_interface_t>(spi), false, nullptr);
-    }
-    // Restore USARTs
-    for (int usart = 0; usart < TOTAL_USARTS; usart++) {
-        hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), false, nullptr);
-    }
 
     SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
 
@@ -449,12 +408,9 @@ int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t**
     int ret = SYSTEM_ERROR_NONE;
 
     switch (config->mode) {
-        case HAL_SLEEP_MODE_STOP: {
-            ret = enterStopMode(config, wakeup_source);
-            break;
-        }
+        case HAL_SLEEP_MODE_STOP:
         case HAL_SLEEP_MODE_ULTRA_LOW_POWER: {
-            ret = enterUltraLowPowerMode(config, wakeup_source);
+            ret = enterStopBasedSleep(config, wakeup_source);
             break;
         }
         case HAL_SLEEP_MODE_HIBERNATE: {

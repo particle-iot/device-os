@@ -379,16 +379,36 @@ static void fpu_sleep_prepare(void) {
     SPARK_ASSERT((fpscr & 0x07) == 0);
 }
 
-static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
+static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
     int ret = SYSTEM_ERROR_NONE;
 
     // Detach USB
     HAL_USB_Detach();
 
-    // Flush all USARTs
-    for (int usart = 0; usart < TOTAL_USARTS; usart++) {
-        if (hal_usart_is_enabled(static_cast<hal_usart_interface_t>(usart))) {
-            hal_usart_flush(static_cast<hal_usart_interface_t>(usart));
+    // We need to do this before disabling systick/interrupts, otherwise
+    // there is a high chance of a deadlock
+    if (config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
+        for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
+            // FIXME: no lock
+            hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), true, nullptr);
+        }
+        // Suspend SPIs
+        for (int spi = 0; spi < HAL_PLATFORM_SPI_NUM; spi++) {
+            hal_spi_acquire(static_cast<hal_spi_interface_t>(spi), nullptr);
+            hal_spi_sleep(static_cast<hal_spi_interface_t>(spi), true, nullptr);
+        }
+        // Suspend I2Cs
+        for (int i2c = 0; i2c < HAL_PLATFORM_I2C_NUM; i2c++) {
+            hal_i2c_lock(static_cast<hal_i2c_interface_t>(i2c), nullptr);
+            hal_i2c_sleep(static_cast<hal_i2c_interface_t>(i2c), true, nullptr);
+        }
+    } else {
+        // Flush all USARTs
+        // FIXME: no lock
+        for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
+            if (hal_usart_is_enabled(static_cast<hal_usart_interface_t>(usart))) {
+                hal_usart_flush(static_cast<hal_usart_interface_t>(usart));
+            }
         }
     }
 
@@ -410,6 +430,11 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     // Disable thread scheduling
     os_thread_scheduling(false, nullptr);
 
+    if (config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
+        // Suspend ADC module
+        hal_adc_sleep(true, nullptr);
+    }
+
     // This will disable all but SoftDevice interrupts (by modifying NVIC->ICER)
     uint8_t st = 0;
     sd_nvic_critical_region_enter(&st);
@@ -418,21 +443,10 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
     // Put external flash into sleep and disable QSPI peripheral
-    hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SLEEP, nullptr, nullptr, 0);
-    hal_exflash_uninit();
+    hal_exflash_sleep(true, nullptr);
 
-    // Reducing power consumption
-    // Suspend all PWM instance remembering their state
-    bool pwmState[4] = {
-        (bool)(NRF_PWM0->ENABLE & PWM_ENABLE_ENABLE_Msk),
-        (bool)(NRF_PWM1->ENABLE & PWM_ENABLE_ENABLE_Msk),
-        (bool)(NRF_PWM2->ENABLE & PWM_ENABLE_ENABLE_Msk),
-        (bool)(NRF_PWM3->ENABLE & PWM_ENABLE_ENABLE_Msk),
-    };
-    nrf_pwm_disable(NRF_PWM0);
-    nrf_pwm_disable(NRF_PWM1);
-    nrf_pwm_disable(NRF_PWM2);
-    nrf_pwm_disable(NRF_PWM3);
+    // Suspend PWM modules after disabling systick, as RGB pins are managed there
+    hal_pwm_sleep(true, nullptr);
 
     // _Attempt_ to disable HFCLK. This may not succeed, resulting in a higher current consumption
     // FIXME
@@ -594,28 +608,18 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
     HAL_Interrupts_Restore();
 
     // Re-initialize external flash
-    hal_exflash_init();
-
-    // Re-enable PWM
-    // FIXME: this is not ideal but will do for now
-    {
-        NRF_PWM_Type* const pwms[] = {NRF_PWM0, NRF_PWM1, NRF_PWM2, NRF_PWM3};
-        for (unsigned i = 0; i < sizeof(pwms) / sizeof(pwms[0]); i++) {
-            NRF_PWM_Type* pwm = pwms[i];
-            if (pwmState[i]) {
-                nrf_pwm_enable(pwm);
-                if (nrf_pwm_event_check(pwm, NRF_PWM_EVENT_SEQEND0) || nrf_pwm_event_check(pwm, NRF_PWM_EVENT_SEQEND1)) {
-                    nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_SEQEND0);
-                    nrf_pwm_event_clear(pwm, NRF_PWM_EVENT_SEQEND1);
-                    if (pwm->SEQ[0].PTR && pwm->SEQ[0].CNT) {
-                        nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART0);
-                    } else if (pwm->SEQ[1].PTR && pwm->SEQ[1].CNT) {
-                        nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_SEQSTART1);
-                    }
-                }
-            }
-        }
+    // If we fail to re-initialize it, there is no point in continuing to wake-up
+    // as the system will anyway not be functional
+    int exflashResume = hal_exflash_sleep(false, nullptr);
+    if (exflashResume == SYSTEM_ERROR_INVALID_STATE) {
+        // We've previously failed to correctly put the QSPI flash into sleep
+        // Attempt to initialize
+        exflashResume = hal_exflash_init();
     }
+    SPARK_ASSERT(exflashResume == 0);
+
+    // Restore PWM state
+    hal_pwm_sleep(false, nullptr);
 
     // Re-enable SysTick
     SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
@@ -645,6 +649,28 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         enableRadioAntenna();
     }
 
+    if (config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
+        // Re-enable ADC module
+        // FIXME: no lock
+        hal_adc_sleep(false, nullptr);
+
+        // Restore I2Cs
+        for (int i2c = 0; i2c < HAL_PLATFORM_I2C_NUM; i2c++) {
+            hal_i2c_sleep(static_cast<hal_i2c_interface_t>(i2c), false, nullptr);
+            hal_i2c_unlock(static_cast<hal_i2c_interface_t>(i2c), nullptr);
+        }
+        // Restore SPIs
+        for (int spi = 0; spi < HAL_PLATFORM_SPI_NUM; spi++) {
+            hal_spi_sleep(static_cast<hal_spi_interface_t>(spi), false, nullptr);
+            hal_spi_release(static_cast<hal_spi_interface_t>(spi), nullptr);
+        }
+        // Restore USARTs
+        for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
+            // FIXME: no lock
+            hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), false, nullptr);
+        }
+    }
+
     // Enable thread scheduling
     os_thread_scheduling(true, nullptr);
 
@@ -660,247 +686,6 @@ static int enterStopMode(const hal_sleep_config_t* config, hal_wakeup_source_bas
         }
     }
 
-    return ret;
-}
-
-static int enterUltraLowPowerMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
-    int ret = SYSTEM_ERROR_NONE;
-
-    // Disable BLE if needed before OS schedular being stoped
-    bool bleWakeup = isWakeupSourceFeatured(config->wakeup_sources, HAL_WAKEUP_SOURCE_TYPE_BLE);
-    bool advertising = hal_ble_gap_is_advertising(nullptr) ||
-                       hal_ble_gap_is_connecting(nullptr, nullptr) ||
-                       hal_ble_gap_is_connected(nullptr, nullptr);
-    if (!bleWakeup) {
-        // Make sure we acquire BLE lock BEFORE going into a critical section
-        hal_ble_lock(nullptr);
-        hal_ble_stack_deinit(nullptr);
-        disableRadioAntenna();
-    }
-    // Disable thread scheduling
-    os_thread_scheduling(false, nullptr);
-    // Disable SysTick
-    SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
-
-    // Suspend external peripherals
-    hal_exflash_sleep(true, nullptr);
-    // Workaround for FPU anomaly
-    fpu_sleep_prepare();
-    // USB: Flush TX data and detach it
-    HAL_USB_USART_Flush_Data(HAL_USB_USART_SERIAL); // The argument is not used on Gen3
-    HAL_USB_Detach();
-    // Suspend USARTs
-    // TODO: if woken up by USART
-    for (int usart = 0; usart < TOTAL_USARTS; usart++) {
-        hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), true, nullptr);
-    }
-    // Suspend SPIs
-    for (int spi = 0; spi < TOTAL_SPI; spi++) {
-        hal_spi_sleep(static_cast<hal_spi_interface_t>(spi), true, nullptr);
-    }
-    // Suspend I2Cs
-    for (int i2c = 0; i2c < TOTAL_I2C; i2c++) {
-        hal_i2c_sleep(static_cast<HAL_I2C_Interface>(i2c), true, nullptr);
-    }
-    // Suspend PWM modules
-    hal_pwm_sleep(true, nullptr);
-    // Suspend ADC module
-    hal_adc_sleep(true, nullptr);
-    // Suspend all GPIOTE interrupts
-    HAL_Interrupts_Suspend();
-
-    uint8_t st = 0;
-    sd_nvic_critical_region_enter(&st);
-
-    // _Attempt_ to disable HFCLK. This may not succeed, resulting in a higher current consumption
-    // FIXME
-    bool hfclkResume = false;
-    if (nrf_drv_clock_hfclk_is_running()) {
-        hfclkResume = true;
-        nrf_drv_clock_hfclk_release();
-        while (nrf_drv_clock_hfclk_is_running());
-    }
-
-    // Remember current microsecond counter
-    uint64_t microsBeforeSleep = hal_timer_micros(nullptr);
-    // Disable hal_timer (RTC2)
-    hal_timer_deinit(nullptr);
-    // Make sure LFCLK is running
-    nrf_drv_clock_lfclk_request(nullptr);
-    while (!nrf_drv_clock_lfclk_is_running());
-    // Configure RTC2 to count at 125ms interval. This should allow us to sleep
-    // (2^24 - 1) * 125ms = 24 days
-    NVIC_SetPriority(RTC2_IRQn, 6);
-    // Make sure that the RTC is stopped and cleared
-    nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_STOP);
-    nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_CLEAR);
-    __DSB();
-    __ISB();
-    // For some reason even though the RTC should be stopped by now,
-    // the prescaler is still read-only. So, we loop here to make sure that the
-    // prescaler settings does take effect.
-    static const uint32_t prescaler = 4095;
-    while (rtc_prescaler_get(NRF_RTC2) != prescaler) {
-        nrf_rtc_prescaler_set(NRF_RTC2, prescaler);
-        __DSB();
-        __ISB();
-    }
-    // Start RTC2
-    nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_START);
-    __DSB();
-    __ISB();
-
-    configGpioWakeupSource(config->wakeup_sources);
-    configRtcWakeupSource(config->wakeup_sources);
-
-    // Masks all interrupts lower than softdevice. This allows us to be woken ONLY by softdevice
-    // or GPIOTE and RTC.
-    // IMPORTANT: No SoftDevice API calls are allowed until HAL_enable_irq()
-    int hst = 0;
-    if (!bleWakeup) {
-        hst = HAL_disable_irq();
-    }
-
-    __DSB();
-    __ISB();
-
-    hal_wakeup_source_type_t wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_UNKNOWN;
-    pin_t wakeupPin = PIN_INVALID;
-
-    bool exitSleepMode = false;
-    while (true) {
-        // Mask interrupts completely
-        __disable_irq();
-
-        // Bump the priority
-        WakeupSourcePriorityCache priorityCache = {};
-        bumpWakeupSourcesPriority(config->wakeup_sources, &priorityCache, 0);
-
-        __DSB();
-        __ISB();
-
-        // Go to sleep
-        __WFI();
-
-        // Figure out the wakeup source
-        auto wakeupSource = config->wakeup_sources;
-        while (wakeupSource) {
-            if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-                auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
-                if (isWokenUpByGpio(gpioWakeup)) {
-                    wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_GPIO;
-                    wakeupPin = gpioWakeup->pin;
-                    exitSleepMode = true;
-                    // Only if we've figured out the wakeup pin, then we stop traversing the wakeup sources list.
-                    break;
-                }
-            } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC && isWokenUpByRtc()) {
-                wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_RTC;
-                exitSleepMode = true;
-                break; // Stop traversing the wakeup sources list.
-            } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_BLE && isWokenUpByBle()) {
-                wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_BLE;
-                exitSleepMode = true;
-                break; // Stop traversing the wakeup sources list.
-            }
-            wakeupSource = wakeupSource->next;
-        }
-
-        // Unbump the priority before __enable_irq().
-        unbumpWakeupSourcesPriority(config->wakeup_sources, &priorityCache);
-
-        // Unmask interrupts so that SoftDevice can still process BLE events.
-        // we are still under the effect of HAL_disable_irq that masked all but SoftDevice interrupts using BASEPRI
-        __enable_irq();
-
-        // Exit the while(true) loop to exit from sleep mode.
-        if (exitSleepMode) {
-            break;
-        }
-    }
-
-    // Restore HFCLK
-    if (hfclkResume) {
-        // Temporarily enable SoftDevice API interrupts
-        uint32_t basePri = __get_BASEPRI();
-        __set_BASEPRI(_PRIO_SD_LOWEST << (8 - __NVIC_PRIO_BITS));
-        {
-            nrf_drv_clock_hfclk_request(nullptr);
-            while (!nrf_drv_clock_hfclk_is_running()) {
-                ;
-            }
-        }
-        // And disable again
-        __set_BASEPRI(basePri);
-    }
-
-    // Count the number of microseconds we've slept and reconfigure hal_timer (RTC2)
-    uint64_t microsAftereSleep = (uint64_t)nrf_rtc_counter_get(NRF_RTC2) * 125000;
-    // Stop RTC2
-    nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_STOP);
-    nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_CLEAR);
-    // Reconfigure it hal_timer_init() and apply the offset
-    hal_timer_init_config_t halTimerConfig = {
-        .size = sizeof(hal_timer_init_config_t),
-        .version = 0,
-        .base_clock_offset = microsBeforeSleep + microsAftereSleep
-    };
-    hal_timer_init(&halTimerConfig);
-
-    // Restore GPIOTE configuration
-    HAL_Interrupts_Restore();
-    // Restore ADC state
-    hal_adc_sleep(false, nullptr);
-    // Restore PWM state
-    hal_pwm_sleep(false, nullptr);
-    // Restore I2Cs
-    for (int i2c = 0; i2c < TOTAL_I2C; i2c++) {
-        hal_i2c_sleep(static_cast<HAL_I2C_Interface>(i2c), false, nullptr);
-    }
-    // Restore SPIs
-    for (int spi = 0; spi < TOTAL_SPI; spi++) {
-        hal_spi_sleep(static_cast<hal_spi_interface_t>(spi), false, nullptr);
-    }
-    // Restore USARTs
-    for (int usart = 0; usart < TOTAL_USARTS; usart++) {
-        hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), false, nullptr);
-    }
-    // Attach USB
-    HAL_USB_Attach();
-    // Restore external peripherals
-    hal_exflash_sleep(false, nullptr);
-
-    sd_nvic_critical_region_exit(st);
-
-    // Unmasks all non-softdevice interrupts
-    HAL_enable_irq(hst);
-
-    // Re-enable SysTick
-    SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
-    // Enable thread scheduling
-    os_thread_scheduling(true, nullptr);
-
-    if (!bleWakeup) {
-        enableRadioAntenna();
-        hal_ble_stack_init(nullptr);
-        if (advertising) {
-            hal_ble_gap_start_advertising(nullptr);
-        }
-        hal_ble_unlock(nullptr);
-        
-    }
-
-    if (wakeupReason) {
-        if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            ret = constructGpioWakeupReason(wakeupReason, wakeupPin);
-        } else if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            ret = constructRtcWakeupReason(wakeupReason);
-        } else if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_BLE) {
-            ret = constructBleWakeupReason(wakeupReason);
-        } else {
-            ret = SYSTEM_ERROR_INTERNAL;
-        }
-    }
     return ret;
 }
 
@@ -928,16 +713,16 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     os_thread_scheduling(false, nullptr);
 
     // Suspend USARTs
-    for (int usart = 0; usart < TOTAL_USARTS; usart++) {
+    for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
         hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), true, nullptr);
     }
     // Suspend SPIs
-    for (int spi = 0; spi < TOTAL_SPI; spi++) {
+    for (int spi = 0; spi < HAL_PLATFORM_SPI_NUM; spi++) {
         hal_spi_sleep(static_cast<hal_spi_interface_t>(spi), true, nullptr);
     }
     // Suspend I2Cs
-    for (int i2c = 0; i2c < TOTAL_I2C; i2c++) {
-        hal_i2c_sleep(static_cast<HAL_I2C_Interface>(i2c), true, nullptr);
+    for (int i2c = 0; i2c < HAL_PLATFORM_I2C_NUM; i2c++) {
+        hal_i2c_sleep(static_cast<hal_i2c_interface_t>(i2c), true, nullptr);
     }
     // Suspend PWM modules
     hal_pwm_sleep(true, nullptr);
@@ -952,8 +737,7 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
     // Put external flash into sleep mode and disable QSPI peripheral
-    hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SLEEP, nullptr, nullptr, 0);
-    hal_exflash_uninit();
+    hal_exflash_sleep(true, nullptr);
 
     // Uninit GPIOTE
     nrfx_gpiote_uninit();
@@ -1065,12 +849,9 @@ int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t**
     int ret = SYSTEM_ERROR_NONE;
 
     switch (config->mode) {
-        case HAL_SLEEP_MODE_STOP: {
-            ret = enterStopMode(config, wakeup_source);
-            break;
-        }
+        case HAL_SLEEP_MODE_STOP:
         case HAL_SLEEP_MODE_ULTRA_LOW_POWER: {
-            ret = enterUltraLowPowerMode(config, wakeup_source);
+            ret = enterStopBasedSleep(config, wakeup_source);
             break;
         }
         case HAL_SLEEP_MODE_HIBERNATE: {
