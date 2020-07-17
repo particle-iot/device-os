@@ -98,10 +98,15 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 
     // TODO: restore network state if network is disconnected but it failed to enter sleep mode.
 
+    // NOTE: wake-up by network interfaces is not implemented. Keeping them in standby mode on Gen 3
+    // is also not implemented. For now we are always powering them off (except for Cellular interface
+    // on Gen 2)
+
     // Network disconnect.
     // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
 #if HAL_PLATFORM_CELLULAR
     bool cellularResume = false;
+#if HAL_PLATFORM_GEN != 3
     if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_CELLULAR)) {
         if (configHelper.networkFlags(NETWORK_INTERFACE_CELLULAR).isSet(SystemSleepNetworkFlag::INACTIVE_STANDBY)) {
             // Pause the modem Serial, while leaving the modem keeps running.
@@ -115,24 +120,29 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
         // Pause the modem Serial, while leaving the modem keeps running.
         cellular_pause(nullptr);
     }
+#else
+    if (system_sleep_network_suspend(NETWORK_INTERFACE_CELLULAR)) {
+        cellularResume = true;
+    }
+#endif // HAL_PLATFORM_GEN != 3
 #endif // HAL_PLATFORM_CELLULAR
 
 #if HAL_PLATFORM_WIFI
     bool wifiResume = false;
-    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA)) {
+    // if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA)) {
         if (system_sleep_network_suspend(NETWORK_INTERFACE_WIFI_STA)) {
             wifiResume = true;
         }
-    }
+    // }
 #endif // HAL_PLATFORM_WIFI
 
 #if HAL_PLATFORM_ETHERNET
     bool ethernetResume = false;
-    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
+    // if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
         if (system_sleep_network_suspend(NETWORK_INTERFACE_ETHERNET)) {
             ethernetResume = true;
         }
-    }
+    // }
 #endif // HAL_PLATFORM_ETHERNET
 
     // Let the sleep HAL layer to turn off the NCP interface if necessary.
