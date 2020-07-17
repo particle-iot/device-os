@@ -408,12 +408,14 @@ void manage_network_connection() {
     /* Need to disconnect and disable networking */
     /* FIXME: refactor */
     if (SPARK_WLAN_RESET || SPARK_WLAN_SLEEP) {
-        auto wasSleeping = SPARK_WLAN_SLEEP;
-        network_disconnect(0, SPARK_WLAN_SLEEP ? NETWORK_DISCONNECT_REASON_UNKNOWN : NETWORK_DISCONNECT_REASON_RESET, nullptr);
-        network_off(0, 0, 0, 0);
-        SPARK_WLAN_RESET = 0;
-        SPARK_WLAN_SLEEP = wasSleeping;
-        cfod_count = 0;
+        if (NetworkManager::instance()->isConnectivityAvailable() || NetworkManager::instance()->isEstablishingConnections()) {
+            auto wasSleeping = SPARK_WLAN_SLEEP;
+            network_disconnect(0, SPARK_WLAN_SLEEP ? NETWORK_DISCONNECT_REASON_UNKNOWN : NETWORK_DISCONNECT_REASON_RESET, nullptr);
+            network_off(0, 0, 0, 0);
+            SPARK_WLAN_RESET = 0;
+            SPARK_WLAN_SLEEP = wasSleeping;
+            cfod_count = 0;
+        }
     } else {
         if (spark_cloud_flag_auto_connect() && (!s_forcedDisconnect || !SPARK_WLAN_SLEEP)) {
             if (!NetworkManager::instance()->isConnectivityAvailable() && !NetworkManager::instance()->isEstablishingConnections()) {
