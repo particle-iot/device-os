@@ -61,6 +61,7 @@ DYNALIB_FN(20, services2, _printf_i, int(struct _reent*, struct _prt_data_t*, FI
 DYNALIB_FN(21, services2, localtime32_r, struct tm*(const time32_t*, struct tm*))
 DYNALIB_FN(22, services2, localtime_r, struct tm*(const time_t*, struct tm*))
 DYNALIB_FN(23, services2, mktime, time_t(struct tm*))
+DYNALIB_FN(24, services2, gmtime_r, struct tm*(const time_t*, struct tm*))
 
 DYNALIB_END(services2)
 
