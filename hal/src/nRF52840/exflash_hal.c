@@ -217,6 +217,10 @@ int hal_exflash_init(void) {
 
 hal_exflash_init_done:
     hal_exflash_unlock();
+    // FIXME:
+    if (ret != 0) {
+        ret = SYSTEM_ERROR_INTERNAL;
+    }
     return ret;
 }
 
