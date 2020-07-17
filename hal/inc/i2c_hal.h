@@ -25,20 +25,6 @@
 #include "platforms.h"
 #include "system_tick_hal.h"
 
-#if HAL_PLATFORM_STM32F2XX
-#   if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-#       define TOTAL_I2C   3
-#   else
-#       define TOTAL_I2C   1
-#   endif
-#elif HAL_PLATFORM_NRF52840
-#   if PLATFORM_ID == PLATFORM_TRACKER
-#       define TOTAL_I2C                   3
-#   else
-#       define TOTAL_I2C                   2
-#   endif
-#endif
-
 /* Exported types ------------------------------------------------------------*/
 typedef enum hal_i2c_mode_t {
     I2C_MODE_MASTER = 0,

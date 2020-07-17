@@ -7,6 +7,9 @@
 #define HAL_PLATFORM_NCP_AT (1)
 #define HAL_PLATFORM_NCP_UPDATABLE (1)
 #define HAL_PLATFORM_WIFI (1)
+#define HAL_PLATFORM_SPI_NUM (2)
+#define HAL_PLATFORM_I2C_NUM (2)
+#define HAL_PLATFORM_USART_NUM (2)
 
 #define PRODUCT_SERIES "argon"
 
