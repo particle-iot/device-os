@@ -39,7 +39,7 @@
 /* Exported functions -------------------------------------------------------*/
 
 #ifdef __cplusplus
-extern "C" {    // to make this C compliant
+extern "C" {
 #endif
 
 typedef enum hal_gpio_drive_t {
@@ -61,7 +61,6 @@ typedef struct {
 
     // Output value to set if set_value = 1
     uint8_t value;
-
 } hal_gpio_config_t;
 
 void HAL_Pin_Mode(pin_t pin, PinMode mode);

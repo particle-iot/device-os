@@ -325,3 +325,7 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
 
     return (SYSTEM_TICK_COUNTER - pulseStart)/SYSTEM_US_TICKS;
 }
+
+int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
+    return 0;
+}

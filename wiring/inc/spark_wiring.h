@@ -81,8 +81,6 @@ void digitalWrite(uint16_t pin, uint8_t value);
 int32_t digitalRead(uint16_t pin);
 #if HAL_PLATFORM_NRF52840
 void pinSetDriveStrength(uint16_t pin, DriveStrength drive);
-#else
-#error "pinSetDriveStrength is not supported on this platform"
 #endif
 
 void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
