@@ -39,8 +39,13 @@
 /* Exported functions -------------------------------------------------------*/
 
 #ifdef __cplusplus
-extern "C" {
+extern "C" {    // to make this C compliant
 #endif
+
+typedef enum hal_gpio_drive_t {
+    HAL_GPIO_DRIVE_HIGH = 0,
+    HAL_GPIO_DRIVE_STANDARD = 1
+} hal_gpio_drive_t;
 
 typedef struct {
     uint16_t size;
@@ -51,8 +56,12 @@ typedef struct {
     // Flags
     uint32_t set_value : 1;
 
+    // Drive strength
+    uint8_t drive_strength;
+
     // Output value to set if set_value = 1
     uint8_t value;
+
 } hal_gpio_config_t;
 
 void HAL_Pin_Mode(pin_t pin, PinMode mode);

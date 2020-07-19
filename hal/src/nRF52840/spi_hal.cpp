@@ -182,6 +182,7 @@ static void spiInit(hal_spi_interface_t spi, hal_spi_mode_t mode) {
                 .version = 0,
                 .mode = OUTPUT,
                 .set_value = true,
+                .drive_strength = HAL_GPIO_DRIVE_HIGH,
                 .value = 1
             };
             HAL_Pin_Configure(spiMap[spi].ss_pin, &conf);

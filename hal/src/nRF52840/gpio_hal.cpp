@@ -90,7 +90,17 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
 
         switch (mode) {
             case OUTPUT: {
-                nrf_gpio_cfg_output(nrfPin);
+                auto drive_str = NRF_GPIO_PIN_S0S1;
+                if (conf->drive_strength == HAL_GPIO_DRIVE_HIGH) {
+                    drive_str = NRF_GPIO_PIN_H0H1;
+                }
+                nrf_gpio_cfg(
+                    nrfPin,
+                    NRF_GPIO_PIN_DIR_OUTPUT,
+                    NRF_GPIO_PIN_INPUT_DISCONNECT,
+                    NRF_GPIO_PIN_NOPULL,
+                    drive_str,
+                    NRF_GPIO_PIN_NOSENSE);
                 break;
             }
             case INPUT: {
@@ -106,12 +116,15 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
                 break;
             }
             case OUTPUT_OPEN_DRAIN: {
+                auto drive_str = NRF_GPIO_PIN_H0D1; // High drive up to 5mA
+                if (conf->drive_strength == HAL_GPIO_DRIVE_HIGH) {
+                    drive_str = NRF_GPIO_PIN_H0H1;
                 nrf_gpio_cfg(nrfPin,
-                        NRF_GPIO_PIN_DIR_OUTPUT,
-                        NRF_GPIO_PIN_INPUT_DISCONNECT,
-                        NRF_GPIO_PIN_NOPULL,
-                        NRF_GPIO_PIN_H0D1, // High drive up to 5mA
-                        NRF_GPIO_PIN_NOSENSE);
+                    NRF_GPIO_PIN_DIR_OUTPUT,
+                    NRF_GPIO_PIN_INPUT_DISCONNECT,
+                    NRF_GPIO_PIN_NOPULL,
+                    drive_str,
+                    NRF_GPIO_PIN_NOSENSE);
                 break;
             }
             case PIN_MODE_NONE: {

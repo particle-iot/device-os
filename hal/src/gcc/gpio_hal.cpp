@@ -217,3 +217,4 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
 	return 0;
 }
 
+// XXX: Do we want to add HAL_Pin_Configure() here as well?

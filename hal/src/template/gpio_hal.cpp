@@ -85,3 +85,5 @@ int32_t HAL_GPIO_Read(uint16_t pin)
 {
     return 0;
 }
+
+// XXX: Do we need to include HAL_Pin_Configure() in the template?

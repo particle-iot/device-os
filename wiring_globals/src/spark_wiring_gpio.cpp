@@ -73,6 +73,37 @@ PinMode getPinMode(uint16_t pin)
   return HAL_Get_Pin_Mode(pin);
 }
 
+
+/*
+ * @brief Set the drive strength of the pin for OUTPUT modes
+ */
+void pinSetDriveStrength(uint16_t pin, DriveStrength drive)
+{
+
+  if(pin >= TOTAL_PINS) {
+    return;
+  }
+
+  // Safety check
+  if( !pinAvailable(pin) ) {
+    return;
+  }
+
+  auto mode = getPinMode(pin);
+
+  if (mode != OUTPUT && mode != OUTPUT_OPEN_DRAIN) {
+    return;
+  }
+
+  const hal_gpio_config_t conf = {
+      .size = sizeof(hal_gpio_config_t),
+      .version = 0,
+      .mode = mode,
+      .drive_strength = static_cast<uint8_t>(drive) //(dynamic_cast???)
+  };
+  HAL_Pin_Configure(pin, &conf);
+}
+
 /*
  * @brief Perform safety check on desired pin to see if it's already
  * being used.  Return 0 if used, otherwise return 1 if available.
