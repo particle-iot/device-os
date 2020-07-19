@@ -68,7 +68,7 @@ int32_t analogRead(uint16_t pin);
 
 enum class DriveStrength: uint8_t {
     HIGH       = HAL_GPIO_DRIVE_HIGH,
-    STANDARD   = HAL_GPIO_DRIVE_LOW
+    STANDARD   = HAL_GPIO_DRIVE_STANDARD
 };
 
 /*
