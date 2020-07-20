@@ -179,12 +179,13 @@ static void spiInit(hal_spi_interface_t spi, hal_spi_mode_t mode) {
         if (HAL_Pin_Is_Valid(spiMap[spi].ss_pin)) {
             hal_gpio_config_t conf = {
                 .size = sizeof(conf),
-                .version = 0,
+                .version = HAL_GPIO_VERSION,
                 .mode = OUTPUT,
                 .set_value = true,
-                .value = 1
+                .value = 1,
+                .drive_strength = HAL_GPIO_DRIVE_HIGH,
             };
-            HAL_Pin_Configure(spiMap[spi].ss_pin, &conf);
+            HAL_Pin_Configure(spiMap[spi].ss_pin, &conf, nullptr);
         }
     } else {
         static const nrf_spis_mode_t nrf_spis_mode[4] = {NRF_SPIS_MODE_0, NRF_SPIS_MODE_1, NRF_SPIS_MODE_2, NRF_SPIS_MODE_3};

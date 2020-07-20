@@ -85,3 +85,8 @@ int32_t HAL_GPIO_Read(uint16_t pin)
 {
     return 0;
 }
+
+int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved)
+{
+    return 0;
+}

@@ -1805,22 +1805,22 @@ int SaraNcpClient::processEventsImpl() {
 int SaraNcpClient::modemInit() const {
     hal_gpio_config_t conf = {
         .size = sizeof(conf),
-        .version = 0,
+        .version = HAL_GPIO_VERSION,
         .mode = OUTPUT,
         .set_value = true,
         .value = 1
     };
 
     // Configure PWR_ON and RESET_N pins as OUTPUT and set to high by default
-    CHECK(HAL_Pin_Configure(UBPWR, &conf));
-    CHECK(HAL_Pin_Configure(UBRST, &conf));
+    CHECK(HAL_Pin_Configure(UBPWR, &conf, nullptr));
+    CHECK(HAL_Pin_Configure(UBRST, &conf, nullptr));
 
     // Configure BUFEN as Push-Pull Output and default to 1 (disabled)
-    CHECK(HAL_Pin_Configure(BUFEN, &conf));
+    CHECK(HAL_Pin_Configure(BUFEN, &conf, nullptr));
 
     // Configure VINT as Input for modem power state monitoring
     conf.mode = INPUT;
-    CHECK(HAL_Pin_Configure(UBVINT, &conf));
+    CHECK(HAL_Pin_Configure(UBVINT, &conf, nullptr));
 
     LOG(TRACE, "Modem low level initialization OK");
 

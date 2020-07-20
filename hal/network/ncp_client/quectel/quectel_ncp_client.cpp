@@ -1559,7 +1559,7 @@ int QuectelNcpClient::processEventsImpl() {
 int QuectelNcpClient::modemInit() const {
     hal_gpio_config_t conf = {
         .size = sizeof(conf),
-        .version = 0,
+        .version = HAL_GPIO_VERSION,
         .mode = INPUT_PULLUP,
         .set_value = false,
         .value = 0
@@ -1567,7 +1567,7 @@ int QuectelNcpClient::modemInit() const {
     // Configure VINT as Input for modem power state monitoring
     // NOTE: The BGVINT pin is inverted
     conf.mode = INPUT_PULLUP;
-    CHECK(HAL_Pin_Configure(BGVINT, &conf));
+    CHECK(HAL_Pin_Configure(BGVINT, &conf, nullptr));
 
     if (modemPowerState() == 1) {
         LOG(TRACE, "Startup: Modem is on");
@@ -1580,13 +1580,13 @@ int QuectelNcpClient::modemInit() const {
     conf.set_value = true;
     // NOTE: The BGPWR/BGRST pins are inverted
     conf.value = 0;
-    CHECK(HAL_Pin_Configure(BGPWR, &conf));
-    CHECK(HAL_Pin_Configure(BGRST, &conf));
+    CHECK(HAL_Pin_Configure(BGPWR, &conf, nullptr));
+    CHECK(HAL_Pin_Configure(BGRST, &conf, nullptr));
 
     // DTR=0: normal mode, DTR=1: sleep mode
     // NOTE: The BGDTR pins is inverted
     conf.value = 1; 
-    CHECK(HAL_Pin_Configure(BGDTR, &conf));
+    CHECK(HAL_Pin_Configure(BGDTR, &conf, nullptr));
 
     LOG(TRACE, "Modem low level initialization OK");
 
