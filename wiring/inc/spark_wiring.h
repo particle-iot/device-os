@@ -67,6 +67,7 @@ void setADCSampleTime(uint8_t ADC_SampleTime);
 int32_t analogRead(uint16_t pin);
 
 enum class DriveStrength: uint8_t {
+    DEFAULT    = HAL_GPIO_DRIVE_DEFAULT,
     HIGH       = HAL_GPIO_DRIVE_HIGH,
     STANDARD   = HAL_GPIO_DRIVE_STANDARD
 };
@@ -79,8 +80,8 @@ PinMode getPinMode(uint16_t pin);
 bool pinAvailable(uint16_t pin);
 void digitalWrite(uint16_t pin, uint8_t value);
 int32_t digitalRead(uint16_t pin);
-#if HAL_PLATFORM_NRF52840
-void pinSetDriveStrength(uint16_t pin, DriveStrength drive);
+#if HAL_PLATFORM_GEN == 3
+void pinSetDriveStrength(pin_t pin, DriveStrength drive);
 #endif
 
 void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);

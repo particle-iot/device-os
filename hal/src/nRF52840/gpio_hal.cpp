@@ -117,7 +117,7 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
             }
             case OUTPUT_OPEN_DRAIN: {
                 auto drive_str = NRF_GPIO_PIN_H0D1; // High drive up to 5mA
-                if (conf->drive_strength == HAL_GPIO_DRIVE_STANDARD) {
+                if (conf->drive_strength == HAL_GPIO_DRIVE_STANDARD || conf->drive_strength == HAL_GPIO_DRIVE_DEFAULT) {
                     drive_str = NRF_GPIO_PIN_S0D1;
                 }
                 nrf_gpio_cfg(nrfPin,

@@ -21,6 +21,18 @@ test(api_wiring_pinMode) {
     (void)mode;
 }
 
+#if HAL_PLATFORM_GEN == 3
+test(api_wiring_pinDriveStrength_OUTPUT) {
+    API_COMPILE(pinMode(D0, OUTPUT));
+    API_COMPILE(pinSetDriveStrength(D0, DriveStrength::HIGH));
+}
+
+test(api_wiring_pinDriveStrength_OUTPUT_OD) {
+    API_COMPILE(pinMode(D0, OUTPUT_OPEN_DRAIN));
+    API_COMPILE(pinSetDriveStrength(D0, DriveStrength::DEFAULT));
+}
+#endif // HAL_PLATFORM_GEN == 3
+
 test(api_wiring_analogWrite) {
   API_COMPILE(analogWrite(D0, 50));
   API_COMPILE(analogWrite(D0, 50, 10000));

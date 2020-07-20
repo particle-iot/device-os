@@ -43,8 +43,9 @@ extern "C" {
 #endif
 
 typedef enum hal_gpio_drive_t {
-    HAL_GPIO_DRIVE_HIGH = 0,
-    HAL_GPIO_DRIVE_STANDARD = 1
+    HAL_GPIO_DRIVE_DEFAULT = 0,
+    HAL_GPIO_DRIVE_HIGH = 1,
+    HAL_GPIO_DRIVE_STANDARD = 2
 } hal_gpio_drive_t;
 
 typedef struct {
