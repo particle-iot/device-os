@@ -183,9 +183,11 @@ int hal_rtc_get_time(struct timeval* tv, void* reserved) {
     RTC_TimeTypeDef RTC_TimeStructure;
     RTC_DateTypeDef RTC_DateStructure;
 
+    int32_t state = HAL_disable_irq();
     /* Get the current Time and Date */
     RTC_GetTime(RTC_Format_BIN, &RTC_TimeStructure);
     RTC_GetDate(RTC_Format_BIN, &RTC_DateStructure);
+    HAL_enable_irq(state);
 
     struct tm calendar_time = {0};
 
