@@ -141,7 +141,7 @@ static bool verify_module(flash_device_t src_dev, uintptr_t src_addr, size_t src
         }
         if ((flags & MODULE_VERIFY_DESTINATION_IS_START_ADDRESS) && module_info_start_addr != dest_addr) {
 #if SOFTDEVICE_MBR_UPDATES
-            if (!(module_func == MOD_FUNC_BOOTLOADER && dest_addr == USER_FIRMWARE_IMAGE_LOCATION)) {
+            if (!(module_func == MODULE_FUNCTION_BOOTLOADER && dest_addr == USER_FIRMWARE_IMAGE_LOCATION)) {
                 return false;
             }
 #else
@@ -367,7 +367,7 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         return FLASH_ACCESS_RESULT_BADARG;
     }
 #if SOFTDEVICE_MBR_UPDATES
-    if (module_function == MOD_FUNC_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
+    if (module_function == MODULE_FUNCTION_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
         // Backup user firmware
         dest_size = CEIL_DIV(length, INTERNAL_FLASH_PAGE_SIZE) * INTERNAL_FLASH_PAGE_SIZE;
         if (!FLASH_EraseMemory(FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, dest_size)) {
@@ -378,7 +378,7 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         }
         // Add backed up partial user firmware to slots, so that it's restored on next boot
         if (!FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, FLASH_INTERNAL,
-                USER_FIRMWARE_IMAGE_LOCATION, dest_size, MOD_FUNC_NONE, 0)) {
+                USER_FIRMWARE_IMAGE_LOCATION, dest_size, MODULE_FUNCTION_NONE, 0)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
     }
@@ -425,7 +425,7 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     }
 
 #if SOFTDEVICE_MBR_UPDATES
-    if (module_function == MOD_FUNC_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
+    if (module_function == MODULE_FUNCTION_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
         sd_mbr_command_t command = {
             .command = SD_MBR_COMMAND_COPY_BL,
             .params.copy_bl.bl_src = (uint32_t*)destinationAddress,
@@ -435,7 +435,10 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
 
         uint32_t mbr_result = sd_mbr_command(&command);
         if (!mbr_result) {
-            return FLASH_ACCESS_RESULT_ERROR;
+            // We are anyway returning reset pending state here
+            // in order for the bootloader to immediately reset and restore the
+            // application module.
+            return FLASH_ACCESS_RESULT_RESET_PENDING;
         }
         // We will not reach this point actually, as MBR will reset automatically
         return FLASH_ACCESS_RESULT_RESET_PENDING;
@@ -659,12 +662,16 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
         module_offs += sizeof(platform_flash_modules_t);
     }
 
-    for (size_t i = 0; i < module_count; ++i) {
-        if (modules[i].module_function == MOD_FUNC_BOOTLOADER && i != (module_count - 1)) {
+    for (size_t i = 0, total_modules = module_count; total_modules > 0 && i < (total_modules - 1);) {
+        if (modules[i].module_function == MODULE_FUNCTION_BOOTLOADER) {
             // Perform bootloader update last as it will cause an automatic reset
             const platform_flash_modules_t mod = modules[i];
-            memmove(&modules[i], &modules[i + 1], sizeof(platform_flash_modules_t) * (module_count - 1));
+            memmove(&modules[i], &modules[i + 1], sizeof(platform_flash_modules_t) * (module_count - i - 1));
             memcpy(&modules[module_count - 1], &mod, sizeof(mod));
+            // Adjust total modules count to not include just copied bootloader module
+            total_modules--;
+        } else {
+            i++;
         }
     }
 
@@ -683,7 +690,8 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
             flashModulesCallback(false);
         }
 
-        if (r == FLASH_ACCESS_RESULT_RESET_PENDING) {
+        if (r != FLASH_ACCESS_RESULT_OK && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
+            // Propagate errors, prioritize FLASH_ACCESS_RESULT_RESET_PENDING over errors
             result = r;
         }
     }
