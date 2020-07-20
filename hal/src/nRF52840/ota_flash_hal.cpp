@@ -506,6 +506,10 @@ const size_t MAX_COMBINED_MODULE_COUNT = 2;
 
 int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
 {
+    // FIXME: this is a workaround for some cache issues when accessing just written OTAd module via XIP
+    __DSB();
+    __NOP();
+    __ISB();
     hal_module_t modules[MAX_COMBINED_MODULE_COUNT] = {};
     size_t moduleCount = CHECK(fetchModules(modules, MAX_COMBINED_MODULE_COUNT, userDepsOptional, flags));
     if (moduleCount == 0) { // Sanity check
