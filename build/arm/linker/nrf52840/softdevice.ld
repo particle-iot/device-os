@@ -27,6 +27,8 @@ SOFTDEVICE_MINIMUM_CODE_BASE = 0x26000;
 APP_RAM_BASE = _softdevice_ram_size;
 /* Reserving 192K in total */
 APP_CODE_BASE = 192K;
+/* NOTE: there is a reserved MBR parameter page at the end of the allocated SoftDevice area (192K - 4K) */
+/* This page address is dependent on APP_CODE_BASE. Do not modify! */
 
 ASSERT ( APP_RAM_BASE >= SOFTDEVICE_MINIMUM_RAM_BASE, "APP_RAM_BASE needs to be adjusted" );
 ASSERT ( APP_CODE_BASE >= SOFTDEVICE_MINIMUM_CODE_BASE, "APP_CODE_BASE needs to be adjusted" );

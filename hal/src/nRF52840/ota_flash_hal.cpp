@@ -53,6 +53,12 @@ LOG_SOURCE_CATEGORY("hal.ota")
 #define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
 #define BOOTLOADER_RANDOM_BACKOFF_MAX  (1000)
 
+namespace {
+
+const uint16_t BOOTLOADER_MBR_UPDATE_MIN_VERSION = 1001; // 2.0.0-rc.1
+
+} // anonymous
+
 static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength);
 
 inline bool matches_mcu(uint8_t bounds_mcu, uint8_t actual_mcu) {
@@ -361,10 +367,14 @@ static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength)
     for (;;) {
         int fres = FLASH_ACCESS_RESULT_ERROR;
         if (attempt++ > 0) {
-            ATOMIC_BLOCK() {
-                // If it's not the first flashing attempt, try with interrupts disabled
-                fres = bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
-            }
+            // NOTE: we have to use app_util_ciritical_region_enter/exit here
+            // because it does not block SoftDevice interrupts (which we are dependent
+            // on for flash operations)
+            uint8_t n;
+            app_util_critical_region_enter(&n);
+            // If it's not the first flashing attempt, try with interrupts disabled
+            fres = bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
+            app_util_critical_region_exit(n);
         } else {
             fres = bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
         }
@@ -525,11 +535,11 @@ int HAL_FLASH_End(void* reserved)
     bool restartPending = false;
     for (size_t i = 0; i < moduleCount; ++i) {
         const auto module = &modules[i];
-        const auto info = module->info;
-        const auto moduleFunc = module_function(info);
-        const auto moduleSize = module_length(info);
-        LOG(INFO, "Applying module; type: %u; index: %u; version: %u", (unsigned)moduleFunc, (unsigned)module_index(info),
-                (unsigned)module_version(info));
+        module_info_t info = *(module->info);
+        const auto moduleFunc = module_function(&info);
+        const auto moduleSize = module_length(&info);
+        LOG(INFO, "Applying module; type: %u; index: %u; version: %u", (unsigned)moduleFunc, (unsigned)module_index(&info),
+                (unsigned)module_version(&info));
         int result = SYSTEM_ERROR_UNKNOWN;
         switch (moduleFunc) {
 #if HAL_PLATFORM_NCP_UPDATABLE
@@ -539,21 +549,31 @@ int HAL_FLASH_End(void* reserved)
         }
 #endif // HAL_PLATFORM_NCP_UPDATABLE
         case MODULE_FUNCTION_BOOTLOADER: {
-            result = flash_bootloader(module, moduleSize);
-            break;
+            if (bootloader_get_version() < BOOTLOADER_MBR_UPDATE_MIN_VERSION) {
+                result = flash_bootloader(module, moduleSize);
+                break;
+            }
+            // Fall-through after we've patched the destination.
+            // We are going to put the bootloader module temporary into internal flash
+            // in place of the application (saving application into a different location on external flash).
+            // MODULE_VERIFY_DESTINATION_IS_START_ADDRESS check will normally fail for bootloaders that
+            // don't support updates via MBR, so we are not going to corrupt anything.
+            const uintptr_t endAddress = (uintptr_t)module_user.start_address + ((uintptr_t)info.module_end_address - (uintptr_t)info.module_start_address);
+            info.module_start_address = (const void*)module_user.start_address;
+            info.module_end_address = (const void*)endAddress;
         }
-        default: { // User part, system part or a radio stack module
+        default: { // User part, system part or a radio stack module or bootloader if MBR updates are supported
             uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
-            if (info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
+            if (info.flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
                 slotFlags |= MODULE_DROP_MODULE_INFO;
             }
-            if (info->flags & MODULE_INFO_FLAG_COMPRESSED) {
+            if (info.flags & MODULE_INFO_FLAG_COMPRESSED) {
                 slotFlags |= MODULE_COMPRESSED;
             }
             // Convert the module's XIP address to an address in the external flash :sweat_smile:
             const uintptr_t otaAddr = EXTERNAL_FLASH_OTA_ADDRESS + module->bounds.start_address - EXTERNAL_FLASH_OTA_XIP_ADDRESS;
             const bool ok = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, otaAddr, FLASH_INTERNAL,
-                    (uint32_t)info->module_start_address, moduleSize + 4 /* CRC-32 */, moduleFunc, slotFlags);
+                    (uint32_t)info.module_start_address, moduleSize + 4 /* CRC-32 */, moduleFunc, slotFlags);
             if (!ok) {
                 LOG(ERROR, "No module slot available");
                 result = SYSTEM_ERROR_NO_MEMORY;

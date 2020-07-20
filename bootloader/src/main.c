@@ -429,7 +429,9 @@ int main(void)
          * BM-09 bootloader with FLASH_UPDATE_MODULES enabled fits in < 16KB
          * Currently FLASH_UPDATE_MODULES support is enabled only on BM-09 bootloader
          */
-        FLASH_UpdateModules(flashModulesCallback);
+        if (FLASH_UpdateModules(flashModulesCallback) == FLASH_ACCESS_RESULT_RESET_PENDING) {
+            HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, NULL);
+        }
 #ifdef LOAD_DCT_FUNCTIONS
         // DCT functions may need to be reloaded after updating a system module
         dct_reload_functions();
