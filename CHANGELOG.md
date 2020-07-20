@@ -1,3 +1,68 @@
+## 2.0.0-alpha.3
+
+### BREAKING CHANGES
+
+- `SPISettings` class is always available even if compiling without Arduino compatibility [#2138](https://github.com/particle-iot/device-os/pull/2138)
+- Add deprecation notices for some of the renamed HAL APIs (with appropriate replacements) [#2148](https://github.com/particle-iot/device-os/pull/2148)
+
+### FEATURES
+
+- [Gen 3] `pinSetDriveStrength()` API [#2157](https://github.com/particle-iot/device-os/pull/2157)
+- Add `os_queue_peek()` and make sure that queues and semaphores can be accessed from ISRs [#2156](https://github.com/particle-iot/device-os/pull/2156) [#2074](https://github.com/particle-iot/device-os/pull/2074)
+- [Gen 3 / Cellular] Proactively attempt to recover from a number of failed cellular registration states [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- [Gen 3 / Cellular] Reset cellular modem if failing to establish PPP session for over 5 minutes [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- [Gen 2] Blocking UDP socket reads with a timeout [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- Power-loss resistant bootloader updates through MBR [#2151](https://github.com/particle-iot/device-os/pull/2151)
+- Ultra low power sleep mode [#2149](https://github.com/particle-iot/device-os/pull/2149) [#2133](https://github.com/particle-iot/device-os/pull/2133) [#2132](https://github.com/particle-iot/device-os/pull/2132) [#2129](https://github.com/particle-iot/device-os/pull/2129) [#2130](https://github.com/particle-iot/device-os/pull/2130) [#2125](https://github.com/particle-iot/device-os/pull/2125) [#2136](https://github.com/particle-iot/device-os/pull/2136)
+- Additional APN settings based on ICCIDs [#2144](https://github.com/particle-iot/device-os/pull/2144)
+- NTP-based internet test [#2118](https://github.com/particle-iot/device-os/pull/2118)
+- [Gen 3] Warm bootup of cellular modems and cellular connectivity resumption [#2102](https://github.com/particle-iot/device-os/pull/2102) [#2146](https://github.com/particle-iot/device-os/pull/2146)
+
+### ENHANCEMENTS
+
+- [wiring] Pin operations are not dependent on wiring C++ peripheral object initialization (e.g. `SPI`, `Wire` etc) [#2157](https://github.com/particle-iot/device-os/pull/2157)
+- [Gen 3] Default SPI pin drive strength changed to high [#2157](https://github.com/particle-iot/device-os/pull/2157)
+- [Gen 3] Restore original `BASEPRI` when exiting FreeRTOS critical section [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- [Gen 3 / Cellular] Do not use packet buffers from pool in TX path [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- [Gen 3 / Cellular] Reliable data mode entry when attempting to establish PPP connection [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- [Gen 3] Changes the implementation of Nordic SDK critical sections to use `BASEPRI` [#2101](https://github.com/particle-iot/device-os/pull/2101)
+- Allow resetting the device and disconnecting from the cloud via low-level USB vendor requests [#2142](https://github.com/particle-iot/device-os/pull/2142)
+- [Cellular] When resuming cellular connection, do not run `COPS=0` again to avoid triggering PLMN reselection [#2139](https://github.com/particle-iot/device-os/pull/2139)
+- Reduce runtime RAM usage by sharing newlib `_impure_ptr` between modules [#2126](https://github.com/particle-iot/device-os/pull/2126)
+- [Electron] Use `snprintf()` instead of `sprintf()` [#2122](https://github.com/particle-iot/device-os/pull/2122)
+
+### BUGFIXES
+
+- [wiring] `Servo` object should deinit its pin when destructed [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- Fix an issue with `loop()` not being executed in `SEMI_AUTOMATIC` modem when network interfaces are down [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- [Gen 3] Fix cycle counter synchronization when processing RTC overflow events [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- [Electron] Increase default AT command timeouts [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- [Gen 3] Move PWM-capable pins from the PWM peripheral shared with RGB pins when possible [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- [Gen 3 / Cellular] Call into LwIP PPP code to indicate `PPP_IP` protocol is finished [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- [Gen 3] Fix BLE event processing while in STOP/ULP sleep mode [#2155](https://github.com/particle-iot/device-os/pull/2155)
+- [Gen 3] `Cellular.command()` should check NCP state before attempting to execute command [#2110](https://github.com/particle-iot/device-os/pull/2110) [#2153](https://github.com/particle-iot/device-os/pull/2153)
+- [Gen 2] Fix RTC thread-safety issues when accessing RTC peripheral [#2154](https://github.com/particle-iot/device-os/pull/2154)
+- Workaround for Gen 3 devices not connecting to the cloud in non-automatic threaded mode [#2152](https://github.com/particle-iot/device-os/pull/2152)
+- Enable PMIC buck converter on boot by default [#2147](https://github.com/particle-iot/device-os/pull/2147)
+- [Gen 3] Reliably turn off the cellular modem when going into sleep mode to reduce current consumption [#2110](https://github.com/particle-iot/device-os/pull/2110)
+- [Gen 3] Fixes the behavior when the USB host puts the device into suspended state [#2101](https://github.com/particle-iot/device-os/pull/2101)
+- [Gen 3] Fixes potential deadlock in SPI HAL [#2101](https://github.com/particle-iot/device-os/pull/2101) [#2091](https://github.com/particle-iot/device-os/pull/2091)
+- [Gen 3] Filter out non-vendor requests in USB control request handler [#2101](https://github.com/particle-iot/device-os/pull/2101)
+- [Gen 3] SOF-based USB Serial port state detection [#2101](https://github.com/particle-iot/device-os/pull/2101)
+- [Gen 3] Fixes an issue with devices not waking up by RTC from STOP sleep mode [#2134](https://github.com/particle-iot/device-os/pull/2134)
+- [Gen 3] Fix `rename()` filesystem call [#2141](https://github.com/particle-iot/device-os/pull/2141)
+- [Gen 3] Treat failure to open data channel as critical error [#2139](https://github.com/particle-iot/device-os/pull/2139)
+- [Photon] Fix WPA Enterprise X509 certificate parsing [#2126](https://github.com/particle-iot/device-os/commit/428940879f5fd1d5a3bdd658260ee45a9f7aca90)
+- Use newlib-nano headers when compiling [#2126](https://github.com/particle-iot/device-os/pull/2126)
+- [Gen 2] Reset the device after applying an update while in listening mode [#2127](https://github.com/particle-iot/device-os/pull/2127)
+- [Electron] Process `CEREG: 0` URCs on R4-based devices to detect loss of cellular connectivity [#2119](https://github.com/particle-iot/device-os/pull/2119)
+
+### INTERNAL
+
+- Run on-device tests under the DeviceOS test runner [#2140](https://github.com/particle-iot/device-os/pull/2140) [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- Remove old deprecated platforms [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- Addresses multiple issues in on-device no-fixture tests [#2150](https://github.com/particle-iot/device-os/pull/2150)
+
 ## 2.0.0-alpha.1, 2.0.0-alpha.2
 
 ### BREAKING CHANGES
@@ -38,6 +103,14 @@
 - [Gen 2] Fixes an issue with I2C bus pins driven low if building with JTAG/SWD enabled [#2080](https://github.com/particle-iot/device-os/pull/2080)
 - [Boron] Fixes an issue with SARA R4 modems on LTE Borons becoming unresponsive when sending substantial amount of network data continuously [#2100](https://github.com/particle-iot/device-os/pull/2100)
 - Fix session resumption in `AUTOMATIC` system mode [#2024](https://github.com/particle-iot/device-os/pull/2024)
+
+## 1.5.4-rc.1
+
+### BUGFIXES
+
+- [Electron] Fixes buffer overrun in modem HAL [#2115](https://github.com/particle-iot/device-os/pull/2115)
+- [Electron] Process 'CEREG: 0' URCs on R410M [#2119](https://github.com/particle-iot/device-os/pull/2119)
+- [Photon] Fix WPA Enterprise X509 certificate parsing [428940879f5fd1d5a3bdd658260ee45a9f7aca90](https://github.com/particle-iot/device-os/commit/428940879f5fd1d5a3bdd658260ee45a9f7aca90)
 
 ## 1.5.3-tracker.1
 
