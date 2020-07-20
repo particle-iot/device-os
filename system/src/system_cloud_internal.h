@@ -165,10 +165,11 @@ public:
 
     CloudDisconnectOptions takePendingDisconnectOptions() {
         CloudDisconnectOptions pending;
-        std::unique_lock<SimpleAtomicFlagMutex> lock(mutex_);
-        using std::swap;
-        swap(pending, pendingDisconnectOptions_);
-        lock.unlock();
+        {
+            std::lock_guard<SimpleAtomicFlagMutex> lock(mutex_);
+            using std::swap;
+            swap(pending, pendingDisconnectOptions_);
+        }
         CloudDisconnectOptions result;
         if (pending.isGracefulSet()) {
             result.graceful(pending.graceful());

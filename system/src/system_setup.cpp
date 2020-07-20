@@ -217,7 +217,11 @@ template<typename Config> void SystemSetupConsole<Config>::loop(void)
     }
 #endif
 
-    TRY_LOCK(serial)
+    // FIXME: our TRY_LOCK() implementation uses std::unique_lock, which brings
+    // a lot of unnecessary checks that cause locales and c++ system_error to be
+    // compiled in. Just call try_lock() for now manually.
+    // TRY_LOCK(serial)
+    if (serial.try_lock())
     {
         if (serial.available())
         {
@@ -234,6 +238,7 @@ template<typename Config> void SystemSetupConsole<Config>::loop(void)
                 }
             }
         }
+        serial.unlock();
     }
 }
 
