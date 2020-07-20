@@ -387,10 +387,6 @@ static void fpu_sleep_prepare(void) {
     SPARK_ASSERT((fpscr & 0x07) == 0);
 }
 
-#ifdef DEBUG_BUILD
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
-#endif
 static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
     int ret = SYSTEM_ERROR_NONE;
 
@@ -603,19 +599,13 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
         __enable_irq();
 
         /*
-         * SD_EVT_IRQn is set pending after __enable_irq() and SoftDevice interrupts being executed.
-         * And device is woken up from __WFI() by SoftDevice interrupts in next sleep circle, so that
-         * it can exit the sleep loop as the SD_EVT_IRQn is pending.
-         * 
-         * If BLE connection is disconnected by peer device when it resides in sleep state, SD_EVT_IRQn
-         * can be set pending, but no more SoftDevice interrupts will be triggered, as a result, device cannot
-         * exit from __WFI() and BLE HAL interrupt handlers won't be executed.
-         * A workaround is implemented here, which is to bump the priority of SD_EVT_IRQn and enable it, so
-         * that SD_EVT_IRQn can make device exit __WFI() followed by exiting the sleep loop.
-         * 
-         * FIXME: It executes the BLE HAL interrupt handlers even if we unbump the priority of SD_EVT_IRQn
-         * before __enable_irq(), which results that the pending bit for SD_EVT_IRQn is cleared and the sleep
-         * loop cnanot exit. So we need to disable the SD_EVT_IRQn in addition before __enable_irq().
+         * Wake-up on BLE events relies mainly on SD_EVT_IRQn interrupt, which will be disabled through NVIC (not masked)
+         * when entering sd_nvic_critical_region_enter(). Normally on BLE activity we would be woken up by other high-priority
+         * SoftDevice interrupts (e.g. timers, radio events etc), however SD_EVT_IRQn would be set as pending only after we
+         * unmask high-priority SoftDevice interrupts (__enable_irq()) and after the appropriate SoftDevice interrupt handlers
+         * finish executing. We would then immediately go back to sleep and wouldn't notice this change in SD_EVT_IRQn state.
+         * As a workaround, for the duration of the sleep, we'll be bumping the priority of SD_EVT_IRQn, so that it can wake
+         * us up from stop mode (WFI) as well.
          */
 
         // Exit the while(true) loop to exit from sleep mode.
@@ -736,9 +726,6 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
 
     return ret;
 }
-#ifdef DEBUG_BUILD
-#pragma GCC pop_options
-#endif
 
 static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
 #if HAL_PLATFORM_EXTERNAL_RTC
