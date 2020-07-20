@@ -428,7 +428,10 @@ int validityResultToSystemError(unsigned result, unsigned checked) {
 // TODO: Current design of the OTA subsystem and the protocol doesn't allow for updating
 // multiple modules at once. As a "temporary" workaround, multiple modules can be combined
 // into a single binary
-int fetchModules(hal_module_t* modules, size_t maxModuleCount, bool userDepsOptional, unsigned flags) {
+// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
+// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
+// the problem
+__attribute__((optimize("O0"))) int fetchModules(hal_module_t* modules, size_t maxModuleCount, bool userDepsOptional, unsigned flags) {
     hal_module_t module = {};
     module_bounds_t bounds = module_ota;
     size_t count = 0;
@@ -458,7 +461,10 @@ int fetchModules(hal_module_t* modules, size_t maxModuleCount, bool userDepsOpti
     return count;
 }
 
-int validateModules(const hal_module_t* modules, size_t moduleCount) {
+// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
+// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
+// the problem
+__attribute__((optimize("O0"))) int validateModules(const hal_module_t* modules, size_t moduleCount) {
     for (size_t i = 0; i < moduleCount; ++i) {
         const auto module = modules + i;
         const auto info = module->info;
@@ -504,12 +510,11 @@ const size_t MAX_COMBINED_MODULE_COUNT = 2;
 
 } // namespace
 
-int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
+// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
+// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
+// the problem
+__attribute__((optimize("O0"))) int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
 {
-    // FIXME: this is a workaround for some cache issues when accessing just written OTAd module via XIP
-    __DSB();
-    __NOP();
-    __ISB();
     hal_module_t modules[MAX_COMBINED_MODULE_COUNT] = {};
     size_t moduleCount = CHECK(fetchModules(modules, MAX_COMBINED_MODULE_COUNT, userDepsOptional, flags));
     if (moduleCount == 0) { // Sanity check
@@ -523,12 +528,11 @@ int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flag
     return 0;
 }
 
-int HAL_FLASH_End(void* reserved)
+// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
+// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
+// the problem
+__attribute__((optimize("O0"))) int HAL_FLASH_End(void* reserved)
 {
-    // FIXME: this is a workaround for some cache issues when accessing just written OTAd module via XIP
-    __DSB();
-    __NOP();
-    __ISB();
     hal_module_t modules[MAX_COMBINED_MODULE_COUNT] = {};
     size_t moduleCount = CHECK(fetchModules(modules, MAX_COMBINED_MODULE_COUNT, true /* userDepsOptional */,
             MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL));
