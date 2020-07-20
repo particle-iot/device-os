@@ -407,6 +407,8 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
                     skipUsart = (int)HAL_USART_SERIAL2;
                     break;
                 }
+            } else {
+                break;
             }
         }
 #endif // HAL_PLATFORM_CELLULAR
@@ -652,6 +654,8 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     if (exflashResume == SYSTEM_ERROR_INVALID_STATE) {
         // We've previously failed to correctly put the QSPI flash into sleep
         // Attempt to initialize
+        // Just in case uninit
+        hal_exflash_uninit();
         exflashResume = hal_exflash_init();
     }
     SPARK_ASSERT(exflashResume == 0);
