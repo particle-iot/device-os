@@ -41,6 +41,9 @@ LOG_SOURCE_CATEGORY("system.sleep");
 
 using namespace particle;
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 static bool system_sleep_network_suspend(network_interface_index index) {
     bool resume = false;
     // Disconnect from network
@@ -55,7 +58,7 @@ static bool system_sleep_network_suspend(network_interface_index index) {
     network_off(index, 0, 0, NULL);
     LOG(TRACE, "Waiting interface to be off...");
     // There might be up to 30s delay to turn off the modem for particular platforms.
-    network_wait_off(index, 60000/*ms*/, nullptr);
+    network_wait_off(index, 120000/*ms*/, nullptr);
     return resume;
 }
 
@@ -95,6 +98,11 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 
     // TODO: restore network state if network is disconnected but it failed to enter sleep mode.
 
+    // NOTE: wake-up by network interfaces is not implemented.
+    // For now we are always powering them off (except for Cellular interface on Gen 2 and Gen 3).
+    // We also cannot reliably put cellular UART into sleep on Gen 3, so there is an additional
+    // hack for that in Gen 3 sleep HAL.
+
     // Network disconnect.
     // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
 #if HAL_PLATFORM_CELLULAR
@@ -116,20 +124,20 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 
 #if HAL_PLATFORM_WIFI
     bool wifiResume = false;
-    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA)) {
+    // if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA)) {
         if (system_sleep_network_suspend(NETWORK_INTERFACE_WIFI_STA)) {
             wifiResume = true;
         }
-    }
+    // }
 #endif // HAL_PLATFORM_WIFI
 
 #if HAL_PLATFORM_ETHERNET
     bool ethernetResume = false;
-    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
+    // if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
         if (system_sleep_network_suspend(NETWORK_INTERFACE_ETHERNET)) {
             ethernetResume = true;
         }
-    }
+    // }
 #endif // HAL_PLATFORM_ETHERNET
 
     // Let the sleep HAL layer to turn off the NCP interface if necessary.

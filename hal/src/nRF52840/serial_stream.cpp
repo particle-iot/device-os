@@ -87,7 +87,7 @@ int SerialStream::peek(char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    auto r = hal_usart_peak_buffer(serial_, data, size, sizeof(char));
+    auto r = hal_usart_peek_buffer(serial_, data, size, sizeof(char));
     if (r == SYSTEM_ERROR_NO_MEMORY) {
         return 0;
     }
@@ -152,7 +152,9 @@ int SerialStream::setBaudRate(unsigned int baudrate) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     hal_usart_end(serial_);
+    phyOn_ = false;
     hal_usart_begin_config(serial_, baudrate, config_, 0);
+    phyOn_ = true;
     return 0;
 }
 

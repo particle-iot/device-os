@@ -1676,9 +1676,11 @@ int QuectelNcpClient::modemSoftPowerOff() {
             LOG(ERROR, "NCP client is not ready");
             return SYSTEM_ERROR_INVALID_STATE;
         }
+        // Delay 1s in case that the modem is just powered up and refuse to execute the power down command.
+        HAL_Delay_Milliseconds(1000);
         int r = CHECK_PARSER(parser_.execCommand("AT+QPOWD"));
         if (r != AtResponse::OK) {
-            LOG(ERROR, "AT+CPWROFF command is not responding");
+            LOG(ERROR, "AT+QPOWD command is not responding");
             return SYSTEM_ERROR_AT_NOT_OK;
         }
         ncpPowerState(NcpPowerState::TRANSIENT_OFF);

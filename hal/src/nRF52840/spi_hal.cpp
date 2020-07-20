@@ -28,8 +28,6 @@
 #include "delay_hal.h"
 #include "check.h"
 
-#define TOTAL_SPI               2
-
 #define DEFAULT_SPI_MODE        SPI_MODE_MASTER
 #define DEFAULT_DATA_MODE       SPI_MODE3
 #define DEFAULT_BIT_ORDER       MSBFIRST
@@ -68,7 +66,7 @@ static const nrfx_spim_t m_spim2 = NRFX_SPIM_INSTANCE(2);
 static const nrfx_spim_t m_spim3 = NRFX_SPIM_INSTANCE(3);
 static const nrfx_spis_t m_spis2 = NRFX_SPIS_INSTANCE(2);
 
-static nrf5x_spi_info_t spiMap[TOTAL_SPI] = {
+static nrf5x_spi_info_t spiMap[HAL_PLATFORM_SPI_NUM] = {
     {&m_spim3, nullptr,  APP_IRQ_PRIORITY_HIGH, PIN_INVALID, SCK, MOSI, MISO}, // TODO: SPI3 doesn't support SPI slave mode
 #if PLATFORM_ID == PLATFORM_TRACKER
     {&m_spim2, &m_spis2, APP_IRQ_PRIORITY_HIGH, PIN_INVALID, SCK1, MOSI1, MISO1},
@@ -224,6 +222,10 @@ static void spiUninit(hal_spi_interface_t spi) {
         HAL_Interrupts_Detach(spiMap[spi].ss_pin);
     }
 
+    HAL_Pin_Mode(spiMap[spi].sck_pin, INPUT_PULLUP);
+    HAL_Pin_Mode(spiMap[spi].mosi_pin, PIN_MODE_NONE);
+    HAL_Pin_Mode(spiMap[spi].miso_pin, PIN_MODE_NONE);
+
     HAL_Set_Pin_Function(spiMap[spi].sck_pin, PF_NONE);
     HAL_Set_Pin_Function(spiMap[spi].mosi_pin, PF_NONE);
     HAL_Set_Pin_Function(spiMap[spi].miso_pin, PF_NONE);
@@ -255,7 +257,7 @@ static void spiTransferCancel(hal_spi_interface_t spi) {
     if (spiMap[spi].spi_mode == SPI_MODE_MASTER) {
         nrfx_spim_abort(spiMap[spi].master);
     } else {
-        // Not supported by SPI Slave
+        while (nrfx_spis_buffers_set(spiMap[spi].slave, nullptr, 0, nullptr, 0) == NRFX_ERROR_INVALID_STATE);
     }
 }
 
@@ -293,7 +295,7 @@ void hal_spi_begin(hal_spi_interface_t spi, uint16_t pin) {
 }
 
 void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, void* reserved) {
-    if (spi >= TOTAL_SPI) {
+    if (spi >= HAL_PLATFORM_SPI_NUM) {
         return;
     }
 
@@ -453,6 +455,8 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buf
     if (spiMap[spi].spi_mode == SPI_MODE_MASTER) {
         SPARK_ASSERT(spiTransfer(spi, (uint8_t *)tx_buffer, (uint8_t *)rx_buffer, length) == length);
     } else {
+        // Use for synchronization
+        spiMap[spi].transmitting = true;
         // reset transfer length
         spiMap[spi].transfer_length = 0;
         spiMap[spi].slave_buf_length = length;
@@ -465,9 +469,9 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buf
                                             spiMap[spi].slave_buf_length);
         if (err_code == NRF_ERROR_INVALID_STATE) {
             // LOG_DEBUG(WARN, "nrfx_spis_buffers_set, invalid state");
+            spiMap[spi].transmitting = false;
         } else {
             SPARK_ASSERT(err_code == NRF_SUCCESS);
-            spiMap[spi].transmitting = true;
         }
     }
 }
@@ -476,13 +480,9 @@ void hal_spi_transfer_dma_cancel(hal_spi_interface_t spi) {
     if (!spiMap[spi].transmitting) {
         return;
     }
-    if (spiMap[spi].spi_mode == SPI_MODE_MASTER) {
-        spiTransferCancel(spi);
-        spiMap[spi].transmitting = false;
-        spiMap[spi].dma_user_callback = nullptr;
-    } else {
-        // Not supported by SPI Slave
-    }
+    spiTransferCancel(spi);
+    spiMap[spi].dma_user_callback = nullptr;
+    spiMap[spi].transmitting = false;
 }
 
 int32_t hal_spi_transfer_dma_status(hal_spi_interface_t spi, hal_spi_transfer_status_t* st) {

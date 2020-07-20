@@ -53,12 +53,6 @@ LOG_SOURCE_CATEGORY("hal.i2c")
 #define RECEIVER        0x01
 
 /* Private define ------------------------------------------------------------*/
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-#define TOTAL_I2C   3
-#else
-#define TOTAL_I2C   1
-#endif
-
 #define I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED_NO_ADDR ((uint32_t)0x00070080)
 
 #define WAIT_TIMED(timeout_ms, what) ({ \
@@ -140,7 +134,7 @@ typedef struct stm32_i2c_info_t {
 /*
  * I2C mapping
  */
-stm32_i2c_info_t I2C_MAP[TOTAL_I2C] = {
+stm32_i2c_info_t I2C_MAP[HAL_PLATFORM_I2C_NUM] = {
     { I2C1, &RCC->APB1ENR, RCC_APB1Periph_I2C1, I2C1_ER_IRQn, I2C1_EV_IRQn, D0, D1, GPIO_AF_I2C1, .mutex = NULL }
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
    ,{ I2C1, &RCC->APB1ENR, RCC_APB1Periph_I2C1, I2C1_ER_IRQn, I2C1_EV_IRQn, C4, C5, GPIO_AF_I2C1, .mutex = NULL }
@@ -148,7 +142,7 @@ stm32_i2c_info_t I2C_MAP[TOTAL_I2C] = {
 #endif
 };
 
-static stm32_i2c_info_t *i2cMap[TOTAL_I2C] = { // pointer to I2C_MAP[] containing I2C peripheral info
+static stm32_i2c_info_t *i2cMap[HAL_PLATFORM_I2C_NUM] = { // pointer to I2C_MAP[] containing I2C peripheral info
     &I2C_MAP[I2C1_D0_D1]
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
    ,&I2C_MAP[I2C3_C4_C5]
@@ -396,6 +390,7 @@ void hal_i2c_end(hal_i2c_interface_t i2c, void* reserved) {
     hal_i2c_lock(i2c, NULL);
     if (i2cMap[i2c]->state != HAL_I2C_STATE_DISABLED) {
         I2C_Cmd(i2cMap[i2c]->peripheral, DISABLE);
+        I2C_DeInit(i2cMap[i2c]->peripheral);
         i2cMap[i2c]->state = HAL_I2C_STATE_DISABLED;
     }
     hal_i2c_unlock(i2c, NULL);

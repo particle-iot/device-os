@@ -31,14 +31,6 @@
 #include "debug.h"
 #include "check.h"
 
-/* Private define ------------------------------------------------------------*/
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-#define TOTAL_SPI   3
-#else
-#define TOTAL_SPI   2
-#endif
-
-
 typedef struct stm32_spi_info_t {
     SPI_TypeDef* peripheral;
 
@@ -94,7 +86,7 @@ static void spiOnSelectedHandler(void *data);
 /*
  * SPI mapping
  */
-const stm32_spi_info_t spiMap[TOTAL_SPI] = {
+const stm32_spi_info_t spiMap[HAL_PLATFORM_SPI_NUM] = {
     { SPI1, &RCC->APB2ENR, RCC_APB2Periph_SPI1, &RCC->AHB1ENR, RCC_AHB1Periph_DMA2, DMA_Channel_3,
       DMA2_Stream5, DMA2_Stream2, DMA2_Stream5_IRQn, DMA2_Stream2_IRQn, DMA_IT_TCIF5, DMA_IT_TCIF2, SCK, MISO, MOSI, SS, GPIO_AF_SPI1 },
     { SPI3, &RCC->APB1ENR, RCC_APB1Periph_SPI3, &RCC->AHB1ENR, RCC_AHB1Periph_DMA1, DMA_Channel_0,
@@ -114,7 +106,7 @@ typedef enum spi_ports_t {
 #endif
 } spi_ports_t;
 
-stm32_spi_state_t spiState[TOTAL_SPI];
+stm32_spi_state_t spiState[HAL_PLATFORM_SPI_NUM];
 
 
 static void spiDmaConfig(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length) {
@@ -534,7 +526,7 @@ bool hal_spi_is_enabled_deprecated() {
  */
 void DMA1_Stream7_irq(void) {
     //HAL_SPI_INTERFACE2 and HAL_SPI_INTERFACE3 shares same DMA peripheral and stream
-#if TOTAL_SPI == 3
+#if HAL_PLATFORM_SPI_NUM == 3
     if (spiState[HAL_SPI_INTERFACE3].dma_configured) {
         spiTxDmaStreamInterruptHandler(HAL_SPI_INTERFACE3);
     } else
@@ -560,7 +552,7 @@ void DMA2_Stream5_irq(void) {
  */
 void DMA1_Stream2_irq(void) {
     //HAL_SPI_INTERFACE2 and HAL_SPI_INTERFACE3 shares same DMA peripheral and stream
-#if TOTAL_SPI == 3
+#if HAL_PLATFORM_SPI_NUM == 3
     if (spiState[HAL_SPI_INTERFACE3].dma_configured) {
         spiRxDmaStreamInterruptHandler(HAL_SPI_INTERFACE3);
     } else

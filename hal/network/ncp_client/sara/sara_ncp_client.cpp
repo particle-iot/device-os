@@ -1006,10 +1006,12 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
         return simState;
     }
 
-    if (attempts != 0) {
+    if (attempts != 0 && ncpId() == PLATFORM_NCP_SARA_R410) {
         // There was an error initializing the SIM
         // This often leads to inability to talk over the data (PPP) muxed channel
         // for some reason. Attempt to cycle the modem through minimal/full functional state.
+        // We only do this for R4-based devices, as U2-based modems seem to fail
+        // to change baudrate later on for some reason
         CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
         CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1"));
     }

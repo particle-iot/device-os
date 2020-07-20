@@ -35,11 +35,6 @@
 // #include "pinmap_hal.h"
 
 /* Exported defines ----------------------------------------------------------*/
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-    #define TOTAL_USARTS        5
-#else
-    #define TOTAL_USARTS        2
-#endif
 
 #define SERIAL_BUFFER_SIZE      64
 
@@ -171,7 +166,7 @@ int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved);
 
 ssize_t hal_usart_write_buffer(hal_usart_interface_t serial, const void* buffer, size_t size, size_t elementSize);
 ssize_t hal_usart_read_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
-ssize_t hal_usart_peak_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
+ssize_t hal_usart_peek_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
 
 
 #include "usart_hal_compat.h"

@@ -86,7 +86,7 @@ typedef struct stm32_usart_info_t {
 /*
  * USART mapping
  */
-stm32_usart_info_t USART_MAP[TOTAL_USARTS] = {
+stm32_usart_info_t USART_MAP[HAL_PLATFORM_USART_NUM] = {
     /*
      * USART_peripheral (USARTx/UARTx; not using others)
      * clock control register (APBxENR)
@@ -114,7 +114,7 @@ stm32_usart_info_t USART_MAP[TOTAL_USARTS] = {
 };
 
 static USART_InitTypeDef usartInitStructure;
-static stm32_usart_info_t *usartMap[TOTAL_USARTS]; // pointer to USART_MAP[] containing USART peripheral register locations (etc)
+static stm32_usart_info_t *usartMap[HAL_PLATFORM_USART_NUM]; // pointer to USART_MAP[] containing USART peripheral register locations (etc)
 
 /* Private function prototypes -----------------------------------------------*/
 inline void storeChar(uint16_t c, hal_usart_ring_buffer_t *buffer) __attribute__((always_inline));
