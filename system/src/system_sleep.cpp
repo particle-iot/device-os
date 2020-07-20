@@ -98,11 +98,6 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 
     // TODO: restore network state if network is disconnected but it failed to enter sleep mode.
 
-    // NOTE: wake-up by network interfaces is not implemented.
-    // For now we are always powering them off (except for Cellular interface on Gen 2 and Gen 3).
-    // We also cannot reliably put cellular UART into sleep on Gen 3, so there is an additional
-    // hack for that in Gen 3 sleep HAL.
-
     // Network disconnect.
     // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
 #if HAL_PLATFORM_CELLULAR
@@ -124,14 +119,16 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 
 #if HAL_PLATFORM_WIFI
     bool wifiResume = false;
-    // if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA)) {
+    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA)) {
         if (system_sleep_network_suspend(NETWORK_INTERFACE_WIFI_STA)) {
             wifiResume = true;
         }
-    // }
+    }
 #endif // HAL_PLATFORM_WIFI
 
 #if HAL_PLATFORM_ETHERNET
+    // NOTE: wake-up by Ethernet interfaces is not implemented.
+    // For now we are always powering it off
     bool ethernetResume = false;
     // if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
         if (system_sleep_network_suspend(NETWORK_INTERFACE_ETHERNET)) {

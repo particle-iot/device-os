@@ -15,8 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "nrf_uarte.h"
 #include "sleep_hal.h"
-
 #include <malloc.h>
 #include <nrfx_types.h>
 #include <nrf_mbr.h>
@@ -55,6 +55,8 @@ typedef struct WakeupSourcePriorityCache {
     uint32_t rtc2Priority;
     uint32_t blePriority;
     uint32_t lpcompPriority;
+    uint32_t usart0Priority;
+    uint32_t usart1Priority;
 } WakeupSourcePriorityCache;
 
 static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSources, WakeupSourcePriorityCache* priority, uint32_t newPriority) {
@@ -74,6 +76,14 @@ static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSour
             priority->lpcompPriority = NVIC_GetPriority(COMP_LPCOMP_IRQn);
             NVIC_SetPriority(COMP_LPCOMP_IRQn, newPriority);
             NVIC_EnableIRQ(COMP_LPCOMP_IRQn);
+        } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
+            priority->usart0Priority = NVIC_GetPriority(UARTE0_UART0_IRQn);
+            NVIC_SetPriority(UARTE0_UART0_IRQn, newPriority);
+            nrf_uarte_int_enable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
+        } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
+            priority->usart1Priority = NVIC_GetPriority(UARTE1_IRQn);
+            NVIC_SetPriority(UARTE1_IRQn, newPriority);
+            nrf_uarte_int_enable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
         }
         source = source->next;
     }
@@ -98,13 +108,19 @@ static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSo
             NVIC_DisableIRQ(COMP_LPCOMP_IRQn);
             NVIC_ClearPendingIRQ(COMP_LPCOMP_IRQn);
             NVIC_SetPriority(COMP_LPCOMP_IRQn, priority->lpcompPriority);
+        } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
+            NVIC_SetPriority(UARTE0_UART0_IRQn, priority->usart0Priority);
+            nrf_uarte_int_disable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
+        } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
+            NVIC_SetPriority(UARTE1_IRQn, priority->usart1Priority);
+            nrf_uarte_int_disable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
         }
         source = source->next;
     }
 }
 
 static int constructGpioWakeupReason(hal_wakeup_source_base_t** wakeupReason, pin_t pin) {
-    hal_wakeup_source_gpio_t* gpio = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
+    auto gpio = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
     if (gpio) {
         gpio->base.size = sizeof(hal_wakeup_source_gpio_t);
         gpio->base.version = HAL_SLEEP_VERSION;
@@ -119,7 +135,7 @@ static int constructGpioWakeupReason(hal_wakeup_source_base_t** wakeupReason, pi
 }
 
 static int constructRtcWakeupReason(hal_wakeup_source_base_t** wakeupReason) {
-    hal_wakeup_source_rtc_t* rtc = (hal_wakeup_source_rtc_t*)malloc(sizeof(hal_wakeup_source_rtc_t));
+    auto rtc = (hal_wakeup_source_rtc_t*)malloc(sizeof(hal_wakeup_source_rtc_t));
     if (rtc) {
         rtc->base.size = sizeof(hal_wakeup_source_rtc_t);
         rtc->base.version = HAL_SLEEP_VERSION;
@@ -133,8 +149,23 @@ static int constructRtcWakeupReason(hal_wakeup_source_base_t** wakeupReason) {
     return SYSTEM_ERROR_NONE;
 }
 
+static int constructUsartWakeupReason(hal_wakeup_source_base_t** wakeupReason) {
+    auto usart = (hal_wakeup_source_usart_t*)malloc(sizeof(hal_wakeup_source_usart_t));
+    if (usart) {
+        usart->base.size = sizeof(hal_wakeup_source_usart_t);
+        usart->base.version = HAL_SLEEP_VERSION;
+        usart->base.type = HAL_WAKEUP_SOURCE_TYPE_USART;
+        usart->base.next = nullptr;
+        usart->serial = HAL_USART_SERIAL1;
+        *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(usart);
+    } else {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 static int constructBleWakeupReason(hal_wakeup_source_base_t** wakeupReason) {
-    hal_wakeup_source_base_t* ble = (hal_wakeup_source_base_t*)malloc(sizeof(hal_wakeup_source_base_t));
+    auto ble = (hal_wakeup_source_base_t*)malloc(sizeof(hal_wakeup_source_base_t));
     if (ble) {
         ble->size = sizeof(hal_wakeup_source_base_t);
         ble->version = HAL_SLEEP_VERSION;
@@ -156,6 +187,21 @@ static int constructLpcompWakeupReason(hal_wakeup_source_base_t** wakeupReason, 
         lpcomp->base.next = nullptr;
         lpcomp->pin = pin;
         *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(lpcomp);
+    } else {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+static int constructNetworkWakeupReason(hal_wakeup_source_base_t** wakeupReason, network_interface_index index) {
+    auto network = (hal_wakeup_source_network_t*)malloc(sizeof(hal_wakeup_source_network_t));
+    if (network) {
+        network->base.size = sizeof(hal_wakeup_source_base_t);
+        network->base.version = HAL_SLEEP_VERSION;
+        network->base.type = HAL_WAKEUP_SOURCE_TYPE_NETWORK;
+        network->base.next = nullptr;
+        network->index = index;
+        *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(network);
     } else {
         return SYSTEM_ERROR_NO_MEMORY;
     }
@@ -372,7 +418,33 @@ static void configLpcompWakeupSource(const hal_wakeup_source_base_t* wakeupSourc
     }
 }
 
-static bool isWokenUpByGpio(hal_wakeup_source_gpio_t* gpioWakeup) {
+static void configUsartWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
+    auto source = wakeupSources;
+    while (source) {
+        if (source->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
+            nrf_uarte_int_disable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
+            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_RXDRDY);
+            nrf_uarte_int_enable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
+            NVIC_EnableIRQ(UARTE0_UART0_IRQn);
+        }
+        source = source->next;
+    }
+}
+
+static void configNetworkWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
+    auto source = wakeupSources;
+    while (source) {
+        if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
+            nrf_uarte_int_disable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
+            nrf_uarte_event_clear(NRF_UARTE1, NRF_UARTE_EVENT_RXDRDY);
+            nrf_uarte_int_enable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
+            NVIC_EnableIRQ(UARTE1_IRQn);
+        }
+        source = source->next;
+    }
+}
+
+static bool isWokenUpByGpio(const hal_wakeup_source_gpio_t* gpioWakeup) {
     if (!NVIC_GetPendingIRQ(GPIOTE_IRQn)) {
         return false;
     }
@@ -405,12 +477,31 @@ static bool isWokenUpByRtc() {
     return NVIC_GetPendingIRQ(RTC2_IRQn);
 }
 
+static bool isWokenUpByUsart() {
+    return NVIC_GetPendingIRQ(UARTE0_UART0_IRQn);
+}
+
 static bool isWokenUpByBle() {
     return NVIC_GetPendingIRQ(SD_EVT_IRQn);
 }
 
 static bool isWokenUpByLpcomp() {
     return NVIC_GetPendingIRQ(COMP_LPCOMP_IRQn);
+}
+
+static bool isWokenUpByNetwork(const hal_wakeup_source_network_t* networkWakeup) {
+// TODO: More than one network interface are supported on platform.
+#if HAL_PLATFORM_CELLULAR
+    if (networkWakeup->index == NETWORK_INTERFACE_CELLULAR && NVIC_GetPendingIRQ(UARTE1_IRQn)) {
+        return true;
+    }
+#endif
+#if HAL_PLATFORM_WIFI
+    if (networkWakeup->index == NETWORK_INTERFACE_WIFI_STA && NVIC_GetPendingIRQ(UARTE1_IRQn)) {
+        return true;
+    }
+#endif
+    return false;
 }
 
 static int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_gpio_t* gpio) {
@@ -446,8 +537,23 @@ static int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sourc
     return SYSTEM_ERROR_NONE;
 }
 
+static int validateUsartWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_usart_t* usart) {
+    if (!hal_usart_is_enabled(usart->serial)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (mode == HAL_SLEEP_MODE_HIBERNATE) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_network_t* network) {
-    // FIXME: this is actually not implemented
+    if (!hal_usart_is_enabled(HAL_USART_SERIAL2)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (mode == HAL_SLEEP_MODE_HIBERNATE) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -473,6 +579,8 @@ static int validateWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_b
         return validateGpioWakeupSource(mode, reinterpret_cast<const hal_wakeup_source_gpio_t*>(base));
     } else if (base->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
         return validateRtcWakeupSource(mode, reinterpret_cast<const hal_wakeup_source_rtc_t*>(base));
+    } else if (base->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
+        return validateUsartWakeupSource(mode, reinterpret_cast<const hal_wakeup_source_usart_t*>(base));
     } else if (base->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
         return validateNetworkWakeupSource(mode, reinterpret_cast<const hal_wakeup_source_network_t*>(base));
     } else if (base->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
@@ -519,8 +627,10 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     // We need to do this before disabling systick/interrupts, otherwise
     // there is a high chance of a deadlock
     if (config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
+        // TODO: We now don't have GEN3 platform that defines both macros.
+        // Both Cellular and Wi-Fi interface use HAL_USART_SERIAL2
         int skipUsart = -1;
-#if HAL_PLATFORM_CELLULAR
+#if HAL_PLATFORM_CELLULAR || HAL_PLATFORM_WIFI
         for (const hal_wakeup_source_base_t* src = config->wakeup_sources; src != nullptr; src = src->next) {
             if (src->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
                 const auto networkSource = reinterpret_cast<const hal_wakeup_source_network_t*>(src);
@@ -660,6 +770,8 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     configGpioWakeupSource(config->wakeup_sources);
     configRtcWakeupSource(config->wakeup_sources);
     configLpcompWakeupSource(config->wakeup_sources);
+    configUsartWakeupSource(config->wakeup_sources);
+    configNetworkWakeupSource(config->wakeup_sources);
 
     // Masks all interrupts lower than softdevice. This allows us to be woken ONLY by softdevice
     // or GPIOTE and RTC.
@@ -674,6 +786,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
 
     hal_wakeup_source_type_t wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_UNKNOWN;
     pin_t wakeupPin = PIN_INVALID;
+    network_interface_index netif = NETWORK_INTERFACE_ALL;
 
     bool exitSleepMode = false;
     while (true) {
@@ -716,6 +829,18 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
                 wakeupPin = lpcompWakeup->pin;
                 exitSleepMode = true;
                 break; // Stop traversing the wakeup sources list.
+            } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_USART && isWokenUpByUsart()) {
+                wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_USART;
+                exitSleepMode = true;
+                break; // Stop traversing the wakeup sources list.
+            } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
+                auto networkWakeup = reinterpret_cast<hal_wakeup_source_network_t*>(wakeupSource);
+                if (isWokenUpByNetwork(networkWakeup)) {
+                    wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_NETWORK;
+                    netif = networkWakeup->index;
+                    exitSleepMode = true;
+                    break; // Stop traversing the wakeup sources list.
+                }
             }
             wakeupSource = wakeupSource->next;
         }
@@ -850,10 +975,14 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
             ret = constructGpioWakeupReason(wakeupReason, wakeupPin);
         } else if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             ret = constructRtcWakeupReason(wakeupReason);
+        } else if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_USART) {
+            ret = constructUsartWakeupReason(wakeupReason);
         } else if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_BLE) {
             ret = constructBleWakeupReason(wakeupReason);
         } else if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
             ret = constructLpcompWakeupReason(wakeupReason, wakeupPin);
+        } else if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
+            ret = constructNetworkWakeupReason(wakeupReason, netif);
         } else {
             ret = SYSTEM_ERROR_INTERNAL;
         }
@@ -927,6 +1056,8 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     // Clear any GPIOTE events
     nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
 
+    disableRadioAntenna();
+
     auto wakeupSource = config->wakeup_sources;
     while (wakeupSource) {
         if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
@@ -979,14 +1110,6 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
  #endif
         wakeupSource = wakeupSource->next;
     }
-
-    // Disable PWM
-    nrf_pwm_disable(NRF_PWM0);
-    nrf_pwm_disable(NRF_PWM1);
-    nrf_pwm_disable(NRF_PWM2);
-    nrf_pwm_disable(NRF_PWM3);
-
-    disableRadioAntenna();
 
     // RAM retention is configured on early boot in Set_System()
 
