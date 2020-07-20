@@ -366,19 +366,26 @@ static_assert(portMAX_DELAY==CONCURRENT_WAIT_FOREVER, "expected portMAX_DELAY==C
 
 int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay, void*)
 {
-    if (HAL_IsISR()) {
+    if (!HAL_IsISR()) {
+        return xQueueSend(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
+    } else {
         BaseType_t woken = pdFALSE;
         int res = xQueueSendFromISR(static_cast<QueueHandle_t>(queue), item, &woken) != pdTRUE;
         portYIELD_FROM_ISR(woken);
         return res;
-    } else {
-        return xQueueSend(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
     }
 }
 
 int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void*)
 {
-    return xQueueReceive(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
+    if (!HAL_IsISR()) {
+        return xQueueReceive(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
+    } else {
+        BaseType_t woken = pdFALSE;
+        int res = xQueueReceiveFromISR(static_cast<QueueHandle_t>(queue), item, &woken) != pdTRUE;
+        portYIELD_FROM_ISR(woken);
+        return res;
+    }
 }
 
 int os_queue_peek(os_queue_t queue, void* item, system_tick_t delay, void*)
@@ -481,7 +488,14 @@ int os_semaphore_destroy(os_semaphore_t semaphore)
 
 int os_semaphore_take(os_semaphore_t semaphore, system_tick_t timeout, bool reserved)
 {
-    return (xSemaphoreTake(static_cast<SemaphoreHandle_t>(semaphore), timeout)!=pdTRUE);
+    if (!HAL_IsISR()) {
+        return (xSemaphoreTake(static_cast<SemaphoreHandle_t>(semaphore), timeout)!=pdTRUE);
+    } else {
+        BaseType_t woken = pdFALSE;
+        int res = xSemaphoreTakeFromISR(static_cast<SemaphoreHandle_t>(semaphore), &woken) != pdTRUE;
+        portYIELD_FROM_ISR(woken);
+        return res;
+    }
 }
 
 int os_semaphore_give(os_semaphore_t semaphore, bool reserved)
