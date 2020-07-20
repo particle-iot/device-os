@@ -344,3 +344,63 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value) {
     }
 #endif
 }
+
+/*
+* @brief   blocking call to measure a high or low pulse
+* @returns uint32_t pulse width in microseconds up to a specified number of microseconds timeout,
+*          returns 0 on specified microsecond timeout error, or invalid pin.
+*/
+uint32_t HAL_Pulse_In(pin_t pin, uint16_t value, unsigned long timeout) {
+    #define FAST_READ(pin)  ((reg->IN >> pin) & 1UL)
+
+    if (!is_valid_pin(pin)) {
+        return 0;
+    }
+
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
+#endif
+        uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
+        NRF_GPIO_Type *reg = nrf_gpio_pin_port_decode(&nrf_pin);
+
+        volatile uint32_t timeout_start = SYSTEM_TICK_COUNTER;
+        volatile unsigned long timeoutTicks = 192UL*timeout; // total systems ticks to wait before timeout
+
+        /* If already on the value we want to measure, wait for the next one.
+        * Time out after specified microseconds so we don't block the background tasks
+        */
+        // while (nrf_gpio_pin_read(gpio_pin_map) == value)
+        while (FAST_READ(nrf_pin) == value) {
+            if (SYSTEM_TICK_COUNTER - timeout_start > timeoutTicks) {
+                return 0;
+            }
+        }
+
+        /* Wait until the start of the pulse.
+        * Time out after specified microseconds so we don't block the background tasks
+        */
+        while (FAST_READ(nrf_pin) != value) {
+            if (SYSTEM_TICK_COUNTER - timeout_start > timeoutTicks) {
+                return 0;
+            }
+        }
+
+        /* Wait until this value changes, this will be our elapsed pulse width.
+        * Time out after specified microseconds so we don't block the background tasks
+        */
+        volatile uint32_t pulse_start = SYSTEM_TICK_COUNTER;
+        while (FAST_READ(nrf_pin) == value) {
+            if (SYSTEM_TICK_COUNTER - timeout_start > timeoutTicks) {
+                return 0;
+            }
+        }
+
+        return (SYSTEM_TICK_COUNTER - pulse_start) / SYSTEM_US_TICKS;
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    } else {
+        return 0;
+    }
+#endif
+}

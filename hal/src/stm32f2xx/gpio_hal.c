@@ -325,3 +325,47 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
 
     return (SYSTEM_TICK_COUNTER - pulseStart)/SYSTEM_US_TICKS;
 }
+
+/*
+ * @brief   blocking call to measure a high or low pulse
+ * @returns uint32_t pulse width in microseconds up to a specified number of microseconds timeout,
+ *          returns 0 on specified microsecond timeout error, or invalid pin.
+ */
+uint32_t HAL_Pulse_In(pin_t pin, uint16_t value, unsigned long timeout)
+{
+    Hal_Pin_Info* SOLO_PIN_MAP = HAL_Pin_Map();
+    #define pinReadFast(_pin) ((SOLO_PIN_MAP[_pin].gpio_peripheral->IDR & SOLO_PIN_MAP[_pin].gpio_pin) == 0 ? 0 : 1)
+
+    volatile uint32_t timeoutStart = SYSTEM_TICK_COUNTER; 
+    volatile unsigned long timeoutTicks = 360UL*timeout; // total systems ticks to wait before timeout
+
+    /* If already on the value we want to measure, wait for the next one.
+     * Time out after specified microseconds so we don't block the background tasks
+     */
+    while (pinReadFast(pin) == value) {
+        if (SYSTEM_TICK_COUNTER - timeoutStart > timeoutTicks) {
+            return 0;
+        }
+    }
+
+    /* Wait until the start of the pulse.
+     * Time out after specified microseconds so we don't block the background tasks
+     */
+    while (pinReadFast(pin) != value) {
+        if (SYSTEM_TICK_COUNTER - timeoutStart > timeoutTicks) {
+            return 0;
+        }
+    }
+
+    /* Wait until this value changes, this will be our elapsed pulse width.
+     * Time out after specified microseconds so we don't block the background tasks
+     */
+    volatile uint32_t pulseStart = SYSTEM_TICK_COUNTER;
+    while (pinReadFast(pin) == value) {
+        if (SYSTEM_TICK_COUNTER - timeoutStart > timeoutTicks) {
+            return 0;
+        }
+    }
+
+    return (SYSTEM_TICK_COUNTER - pulseStart)/SYSTEM_US_TICKS;
+}

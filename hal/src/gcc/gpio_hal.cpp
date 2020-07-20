@@ -217,3 +217,8 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
 	return 0;
 }
 
+
+uint32_t HAL_Pulse_In(pin_t pin, uint16_t value, unsigned long timeout)
+{
+    return 0;
+}
