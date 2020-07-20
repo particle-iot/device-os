@@ -75,6 +75,7 @@ PinMode getPinMode(uint16_t pin)
 }
 
 
+#if HAL_PLATFORM_GEN == 3
 /*
  * @brief Set the drive strength of the pin for OUTPUT modes
  */
@@ -103,6 +104,7 @@ int pinSetDriveStrength(pin_t pin, DriveStrength drive)
   };
   return HAL_Pin_Configure(pin, &conf, nullptr);
 }
+#endif // HAL_PLATFORM_GEN == 3
 
 /*
  * @brief Perform safety check on desired pin to see if it's already
