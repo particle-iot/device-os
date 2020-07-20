@@ -38,6 +38,12 @@ enum class SystemSleepMode: uint8_t {
     HIBERNATE       = HAL_SLEEP_MODE_HIBERNATE,
 };
 
+enum class AnalogInterruptMode: uint8_t {
+    ABOVE = HAL_SLEEP_LPCOMP_ABOVE,
+    BELOW = HAL_SLEEP_LPCOMP_BELOW,
+    CROSS = HAL_SLEEP_LPCOMP_CROSS
+};
+
 enum class SystemSleepFlag: uint32_t {
     NONE = HAL_SLEEP_FLAG_NONE,
     WAIT_CLOUD = HAL_SLEEP_FLAG_WAIT_CLOUD
@@ -265,6 +271,35 @@ public:
             wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_RTC;
             wakeupSource->base.next = config_.wakeup_sources;
             wakeupSource->ms = ms;
+            config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
+        }
+        return *this;
+    }
+
+    SystemSleepConfiguration& analog(pin_t pin, uint16_t voltage, AnalogInterruptMode trig) {
+        if (valid_) {
+            // Check if RTC has been configured as wakeup source.
+            auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_LPCOMP);
+            if (wakeup) {
+                auto lpcomp = reinterpret_cast<hal_wakeup_source_lpcomp_t*>(wakeup);
+                lpcomp->pin = pin;
+                lpcomp->voltage = voltage;
+                lpcomp->trig = static_cast<hal_sleep_lpcomp_trig_t>(trig);
+                return *this;
+            }
+            // Otherwise, configure RTC as wakeup source.
+            auto wakeupSource = new(std::nothrow) hal_wakeup_source_lpcomp_t();
+            if (!wakeupSource) {
+                valid_ = false;
+                return *this;
+            }
+            wakeupSource->base.size = sizeof(hal_wakeup_source_lpcomp_t);
+            wakeupSource->base.version = HAL_SLEEP_VERSION;
+            wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_LPCOMP;
+            wakeupSource->base.next = config_.wakeup_sources;
+            wakeupSource->pin = pin;
+            wakeupSource->voltage = voltage;
+            wakeupSource->trig = static_cast<hal_sleep_lpcomp_trig_t>(trig);
             config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
         }
         return *this;
