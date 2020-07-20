@@ -53,6 +53,7 @@ using namespace particle;
 typedef struct WakeupSourcePriorityCache {
     uint32_t gpiotePriority;
     uint32_t rtc2Priority;
+    uint32_t blePriority;
 } WakeupSourcePriorityCache;
 
 static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSources, WakeupSourcePriorityCache* priority, uint32_t newPriority) {
@@ -64,6 +65,10 @@ static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSour
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             priority->rtc2Priority = NVIC_GetPriority(RTC2_IRQn);
             NVIC_SetPriority(RTC2_IRQn, newPriority);
+        } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
+            priority->blePriority = NVIC_GetPriority(SD_EVT_IRQn);
+            NVIC_SetPriority(SD_EVT_IRQn, newPriority);
+            NVIC_EnableIRQ(SD_EVT_IRQn);
         }
         source = source->next;
     }
@@ -76,6 +81,9 @@ static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSo
             NVIC_SetPriority(GPIOTE_IRQn, priority->gpiotePriority);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             NVIC_SetPriority(RTC2_IRQn, priority->rtc2Priority);
+        } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
+            NVIC_SetPriority(SD_EVT_IRQn, priority->blePriority);
+            NVIC_DisableIRQ(SD_EVT_IRQn);
         }
         source = source->next;
     }
@@ -589,6 +597,16 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
         // Unmask interrupts so that SoftDevice can still process BLE events.
         // we are still under the effect of HAL_disable_irq that masked all but SoftDevice interrupts using BASEPRI
         __enable_irq();
+
+        /*
+         * Wake-up on BLE events relies mainly on SD_EVT_IRQn interrupt, which will be disabled through NVIC (not masked)
+         * when entering sd_nvic_critical_region_enter(). Normally on BLE activity we would be woken up by other high-priority
+         * SoftDevice interrupts (e.g. timers, radio events etc), however SD_EVT_IRQn would be set as pending only after we
+         * unmask high-priority SoftDevice interrupts (__enable_irq()) and after the appropriate SoftDevice interrupt handlers
+         * finish executing. We would then immediately go back to sleep and wouldn't notice this change in SD_EVT_IRQn state.
+         * As a workaround, for the duration of the sleep, we'll be bumping the priority of SD_EVT_IRQn, so that it can wake
+         * us up from stop mode (WFI) as well.
+         */
 
         // Exit the while(true) loop to exit from sleep mode.
         if (exitSleepMode) {
