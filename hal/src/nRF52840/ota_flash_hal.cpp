@@ -521,6 +521,10 @@ int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flag
 
 int HAL_FLASH_End(void* reserved)
 {
+    // FIXME: this is a workaround for some cache issues when accessing just written OTAd module via XIP
+    __DSB();
+    __NOP();
+    __ISB();
     hal_module_t modules[MAX_COMBINED_MODULE_COUNT] = {};
     size_t moduleCount = CHECK(fetchModules(modules, MAX_COMBINED_MODULE_COUNT, true /* userDepsOptional */,
             MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL));
