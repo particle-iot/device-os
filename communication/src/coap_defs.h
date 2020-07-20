@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "coap.h"
+
 #include "underlying_type.h"
 
 #include <cstdint>
@@ -103,6 +105,10 @@ inline unsigned coapCodeDetail(unsigned code) {
 
 inline bool isSuccessCoapCode(unsigned code) {
     return coapCodeClass(code) == 2;
+}
+
+inline bool isSuccessCoapCode(CoapCode code) {
+    return isSuccessCoapCode((unsigned)code);
 }
 
 inline bool isResponseCoapCode(unsigned code) {

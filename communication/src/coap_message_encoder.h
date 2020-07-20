@@ -46,6 +46,8 @@ protected:
     template<typename... ArgsT>
     CoapMessageEncoder& option(CoapOption opt, ArgsT&&... args);
 
+    // TODO: Add convenience methods for encoding URI path and query options
+
     int encode();
 
 private:
