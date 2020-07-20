@@ -53,6 +53,7 @@ using namespace particle;
 typedef struct WakeupSourcePriorityCache {
     uint32_t gpiotePriority;
     uint32_t rtc2Priority;
+    uint32_t blePriority;
 } WakeupSourcePriorityCache;
 
 static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSources, WakeupSourcePriorityCache* priority, uint32_t newPriority) {
@@ -64,6 +65,10 @@ static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSour
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             priority->rtc2Priority = NVIC_GetPriority(RTC2_IRQn);
             NVIC_SetPriority(RTC2_IRQn, newPriority);
+        } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
+            priority->blePriority = NVIC_GetPriority(SD_EVT_IRQn);
+            NVIC_SetPriority(SD_EVT_IRQn, newPriority);
+            NVIC_EnableIRQ(SD_EVT_IRQn);
         }
         source = source->next;
     }
@@ -76,6 +81,9 @@ static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSo
             NVIC_SetPriority(GPIOTE_IRQn, priority->gpiotePriority);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             NVIC_SetPriority(RTC2_IRQn, priority->rtc2Priority);
+        } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
+            NVIC_SetPriority(SD_EVT_IRQn, priority->blePriority);
+            NVIC_DisableIRQ(SD_EVT_IRQn);
         }
         source = source->next;
     }
@@ -379,6 +387,10 @@ static void fpu_sleep_prepare(void) {
     SPARK_ASSERT((fpscr & 0x07) == 0);
 }
 
+#ifdef DEBUG_BUILD
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+#endif
 static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
     int ret = SYSTEM_ERROR_NONE;
 
@@ -590,6 +602,22 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
         // we are still under the effect of HAL_disable_irq that masked all but SoftDevice interrupts using BASEPRI
         __enable_irq();
 
+        /*
+         * SD_EVT_IRQn is set pending after __enable_irq() and SoftDevice interrupts being executed.
+         * And device is woken up from __WFI() by SoftDevice interrupts in next sleep circle, so that
+         * it can exit the sleep loop as the SD_EVT_IRQn is pending.
+         * 
+         * If BLE connection is disconnected by peer device when it resides in sleep state, SD_EVT_IRQn
+         * can be set pending, but no more SoftDevice interrupts will be triggered, as a result, device cannot
+         * exit from __WFI() and BLE HAL interrupt handlers won't be executed.
+         * A workaround is implemented here, which is to bump the priority of SD_EVT_IRQn and enable it, so
+         * that SD_EVT_IRQn can make device exit __WFI() followed by exiting the sleep loop.
+         * 
+         * FIXME: It executes the BLE HAL interrupt handlers even if we unbump the priority of SD_EVT_IRQn
+         * before __enable_irq(), which results that the pending bit for SD_EVT_IRQn is cleared and the sleep
+         * loop cnanot exit. So we need to disable the SD_EVT_IRQn in addition before __enable_irq().
+         */
+
         // Exit the while(true) loop to exit from sleep mode.
         if (exitSleepMode) {
             break;
@@ -708,6 +736,9 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
 
     return ret;
 }
+#ifdef DEBUG_BUILD
+#pragma GCC pop_options
+#endif
 
 static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
 #if HAL_PLATFORM_EXTERNAL_RTC
