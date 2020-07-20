@@ -383,7 +383,12 @@ int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void*)
 
 int os_queue_peek(os_queue_t queue, void* item, system_tick_t delay, void*)
 {
-    return xQueuePeek(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
+    if (!HAL_IsISR()) {
+        return xQueuePeek(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
+    } else {
+        // Delay is ignored
+        return xQueuePeekFromISR(static_cast<QueueHandle_t>(queue), item)!=pdTRUE;
+    }
 }
 
 int os_queue_destroy(os_queue_t queue, void*)
