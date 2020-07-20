@@ -34,6 +34,7 @@
 #include "delay_hal.h"
 #include "pinmap_hal.h"
 #include "system_task.h"
+#include "enumclass.h"
 
 /*
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP,
@@ -77,31 +78,30 @@ PinMode getPinMode(uint16_t pin)
 /*
  * @brief Set the drive strength of the pin for OUTPUT modes
  */
-void pinSetDriveStrength(uint16_t pin, DriveStrength drive)
+int pinSetDriveStrength(pin_t pin, DriveStrength drive)
 {
-
-  if(pin >= TOTAL_PINS) {
-    return;
+  if (pin >= TOTAL_PINS) {
+    return SYSTEM_ERROR_INVALID_ARGUMENT;
   }
 
   // Safety check
-  if( !pinAvailable(pin) ) {
-    return;
+  if (!pinAvailable(pin)) {
+    return SYSTEM_ERROR_INVALID_STATE;
   }
 
   auto mode = getPinMode(pin);
 
   if (mode != OUTPUT && mode != OUTPUT_OPEN_DRAIN) {
-    return;
+    return SYSTEM_ERROR_INVALID_STATE;
   }
 
   const hal_gpio_config_t conf = {
-      .size = sizeof(hal_gpio_config_t),
-      .version = 0,
-      .mode = mode,
-      .drive_strength = static_cast<uint8_t>(drive) //(dynamic_cast???)
+    .size = sizeof(hal_gpio_config_t),
+    .version = HAL_GPIO_VERSION,
+    .mode = mode,
+    .drive_strength = particle::to_underlying(drive)
   };
-  HAL_Pin_Configure(pin, &conf);
+  return HAL_Pin_Configure(pin, &conf, nullptr);
 }
 
 /*
@@ -109,33 +109,33 @@ void pinSetDriveStrength(uint16_t pin, DriveStrength drive)
  * being used.  Return 0 if used, otherwise return 1 if available.
  */
 bool pinAvailable(uint16_t pin) {
+  if (pin >= TOTAL_PINS) {
+    return false;
+  }
 
   // SPI safety check
 #ifndef SPARK_WIRING_NO_SPI
-  if(SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+  if((pin == SCK || pin == MOSI || pin == MISO) && hal_spi_is_enabled(SPI.interface()) == true)
   {
-    return 0; // 'pin' is used
+    return false; // 'pin' is used
   }
 #endif
   // I2C safety check
 #ifndef SPARK_WIRING_NO_I2C
-  if(Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+  if((pin == SCL || pin == SDA) && hal_i2c_is_enabled(Wire.interface(), nullptr) == true)
   {
-    return 0; // 'pin' is used
+    return false; // 'pin' is used
   }
 #endif
 #ifndef SPARK_WIRING_NO_USART_SERIAL
   // Serial1 safety check
-  if(Serial1.isEnabled() == true && (pin == RX || pin == TX))
+  if((pin == RX || pin == TX) && hal_usart_is_enabled(Serial1.interface()) == true)
   {
-    return 0; // 'pin' is used
+    return false; // 'pin' is used
   }
 #endif
 
-  if (pin >= TOTAL_PINS)
-    return 0;
-  else
-    return 1; // 'pin' is available
+  return true; // 'pin' is available
 }
 
 inline bool is_input_mode(PinMode mode) {

@@ -132,6 +132,10 @@ public:
    * Attempts to reset this I2C bus.
    */
   void reset();
+
+  hal_i2c_interface_t interface() const {
+    return _i2c;
+  }
 };
 
 /**

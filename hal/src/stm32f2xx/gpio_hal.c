@@ -30,6 +30,7 @@
 #include <stddef.h>
 #include "hw_ticks.h"
 #include "dac_hal.h"
+#include "system_error.h"
 
 /* Private typedef ----------------------------------------------------------*/
 
@@ -76,94 +77,12 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
  */
 void HAL_Pin_Mode(pin_t pin, PinMode setMode)
 {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-
-    GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
-    pin_t gpio_pin = PIN_MAP[pin].gpio_pin;
-
-    // Initialize GPIO_InitStructure to fix system wake up from pin function.
-    GPIO_InitTypeDef GPIO_InitStructure = {0};
-
-    if (gpio_port == GPIOA)
-    {
-        RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
-    }
-    else if (gpio_port == GPIOB)
-    {
-        RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
-    }
-    else if (gpio_port == GPIOC)
-    {
-        RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
-    }
-    else if (gpio_port == GPIOD)
-    {
-        RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-    }
-
-    GPIO_InitStructure.GPIO_Pin = gpio_pin;
-
-    switch (setMode)
-    {
-        case OUTPUT:
-            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-            GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-            GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
-            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-            PIN_MAP[pin].pin_mode = OUTPUT;
-            break;
-
-        case INPUT:
-            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-            PIN_MAP[pin].pin_mode = INPUT;
-            break;
-
-        case INPUT_PULLUP:
-            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-            PIN_MAP[pin].pin_mode = INPUT_PULLUP;
-            break;
-
-        case INPUT_PULLDOWN:
-            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
-            PIN_MAP[pin].pin_mode = INPUT_PULLDOWN;
-            break;
-
-        case AF_OUTPUT_PUSHPULL:  //Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
-            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-            GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-            GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
-            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-            PIN_MAP[pin].pin_mode = AF_OUTPUT_PUSHPULL;
-            break;
-
-        case AF_OUTPUT_DRAIN:   //Used internally for Alternate Function Output Drain(I2C etc)
-            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-            GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
-            GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-            PIN_MAP[pin].pin_mode = AF_OUTPUT_DRAIN;
-            break;
-
-        case AN_INPUT:        //Used internally for ADC Input
-            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
-            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
-            PIN_MAP[pin].pin_mode = AN_INPUT;
-            break;
-
-        case AN_OUTPUT:       //Used internally for DAC Output
-            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
-            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
-            PIN_MAP[pin].pin_mode = AN_OUTPUT;
-            break;
-
-        default:
-            break;
-    }
-
-    GPIO_Init(gpio_port, &GPIO_InitStructure);
+    const hal_gpio_config_t c = {
+        .size = sizeof(c),
+        .version = HAL_GPIO_VERSION,
+        .mode = setMode
+    };
+    HAL_Pin_Configure(pin, &c, NULL);
 }
 
 /*
@@ -326,6 +245,113 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
     return (SYSTEM_TICK_COUNTER - pulseStart)/SYSTEM_US_TICKS;
 }
 
-int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
-    return 0;
+int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) {
+    if (!is_valid_pin(pin)) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    if (!conf) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+
+    GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
+    pin_t gpio_pin = PIN_MAP[pin].gpio_pin;
+
+    // Initialize GPIO_InitStructure to fix system wake up from pin function.
+    GPIO_InitTypeDef GPIO_InitStructure = {0};
+
+    if (gpio_port == GPIOA)
+    {
+        RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+    }
+    else if (gpio_port == GPIOB)
+    {
+        RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+    }
+    else if (gpio_port == GPIOC)
+    {
+        RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+    }
+    else if (gpio_port == GPIOD)
+    {
+        RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+    }
+
+    GPIO_InitStructure.GPIO_Pin = gpio_pin;
+
+    // Pre-set the output value if requested to avoid a glitch
+    if (conf->set_value && (conf->mode == OUTPUT || conf->mode == OUTPUT_OPEN_DRAIN)) {
+        if (conf->value) {
+            // Modify BSy (bit set)
+            gpio_port->BSRRL = gpio_pin;
+        } else {
+            // Modify BRy (bit reset)
+            gpio_port->BSRRH = gpio_pin;
+        }
+    }
+
+    switch (conf->mode)
+    {
+        case OUTPUT:
+            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+            GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+            GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+            PIN_MAP[pin].pin_mode = OUTPUT;
+            break;
+
+        case INPUT:
+            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+            PIN_MAP[pin].pin_mode = INPUT;
+            break;
+
+        case INPUT_PULLUP:
+            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+            PIN_MAP[pin].pin_mode = INPUT_PULLUP;
+            break;
+
+        case INPUT_PULLDOWN:
+            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+            PIN_MAP[pin].pin_mode = INPUT_PULLDOWN;
+            break;
+
+        case AF_OUTPUT_PUSHPULL:  //Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
+            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+            GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+            GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+            PIN_MAP[pin].pin_mode = AF_OUTPUT_PUSHPULL;
+            break;
+
+        case AF_OUTPUT_DRAIN:   //Used internally for Alternate Function Output Drain(I2C etc)
+            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+            GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+            GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+            PIN_MAP[pin].pin_mode = AF_OUTPUT_DRAIN;
+            break;
+
+        case AN_INPUT:        //Used internally for ADC Input
+            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
+            PIN_MAP[pin].pin_mode = AN_INPUT;
+            break;
+
+        case AN_OUTPUT:       //Used internally for DAC Output
+            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
+            PIN_MAP[pin].pin_mode = AN_OUTPUT;
+            break;
+
+        default:
+            break;
+    }
+
+    GPIO_Init(gpio_port, &GPIO_InitStructure);
+    return SYSTEM_ERROR_NONE;
 }

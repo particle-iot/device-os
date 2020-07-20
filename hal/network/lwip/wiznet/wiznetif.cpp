@@ -174,9 +174,15 @@ WizNetif::WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interru
 
     instance_ = this;
 
-    hal_gpio_config_t conf = {.size = sizeof(conf), .version = 0, .mode = OUTPUT, .set_value = true, .value = 1};
-    HAL_Pin_Configure(reset_, &conf);
-    HAL_Pin_Configure(cs_, &conf);
+    hal_gpio_config_t conf = {
+        .size = sizeof(conf),
+        .version = HAL_GPIO_VERSION,
+        .mode = OUTPUT,
+        .set_value = true,
+        .value = 1
+    };
+    HAL_Pin_Configure(reset_, &conf, nullptr);
+    HAL_Pin_Configure(cs_, &conf, nullptr);
     /* There is an external 10k pull-up */
     HAL_Pin_Mode(interrupt_, INPUT);
 

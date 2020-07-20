@@ -81,7 +81,7 @@ bool pinAvailable(uint16_t pin);
 void digitalWrite(uint16_t pin, uint8_t value);
 int32_t digitalRead(uint16_t pin);
 #if HAL_PLATFORM_GEN == 3
-void pinSetDriveStrength(pin_t pin, DriveStrength drive);
+int pinSetDriveStrength(pin_t pin, DriveStrength drive);
 #endif
 
 void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);

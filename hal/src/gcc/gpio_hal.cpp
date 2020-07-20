@@ -217,7 +217,7 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
 	return 0;
 }
 
-int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf)
+int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved)
 {
     return 0;
 }

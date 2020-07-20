@@ -57,15 +57,18 @@ typedef struct {
     // Flags
     uint32_t set_value : 1;
 
-    // Drive strength
-    uint8_t drive_strength;
-
     // Output value to set if set_value = 1
     uint8_t value;
+
+    // Drive strength
+    uint8_t drive_strength;
 } hal_gpio_config_t;
 
+#define HAL_GPIO_VERSION_1 (1)
+#define HAL_GPIO_VERSION   (HAL_GPIO_VERSION_1)
+
 void HAL_Pin_Mode(pin_t pin, PinMode mode);
-int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf);
+int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved);
 PinMode HAL_Get_Pin_Mode(pin_t pin);
 void HAL_GPIO_Write(pin_t pin, uint8_t value);
 int32_t HAL_GPIO_Read(pin_t pin);

@@ -60,12 +60,13 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction) {
     return PF_DIO;
 }
 
-int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
+int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) {
     CHECK_TRUE(is_valid_pin(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(conf, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
-    PinMode mode = conf ? conf->mode : PIN_MODE_NONE;
+    PinMode mode = conf->mode;
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
@@ -88,18 +89,20 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
             }
         }
 
+        auto driveStrength = NRF_GPIO_PIN_S0S1;
+        if (conf->version >= HAL_GPIO_VERSION_1) {
+            if (conf->drive_strength == HAL_GPIO_DRIVE_HIGH) {
+                driveStrength = NRF_GPIO_PIN_H0H1;
+            }
+        }
+
         switch (mode) {
             case OUTPUT: {
-                auto drive_str = NRF_GPIO_PIN_S0S1;
-                if (conf->drive_strength == HAL_GPIO_DRIVE_HIGH) {
-                    drive_str = NRF_GPIO_PIN_H0H1;
-                }
-                nrf_gpio_cfg(
-                    nrfPin,
+                nrf_gpio_cfg(nrfPin,
                     NRF_GPIO_PIN_DIR_OUTPUT,
                     NRF_GPIO_PIN_INPUT_DISCONNECT,
                     NRF_GPIO_PIN_NOPULL,
-                    drive_str,
+                    driveStrength,
                     NRF_GPIO_PIN_NOSENSE);
                 break;
             }
@@ -116,15 +119,11 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
                 break;
             }
             case OUTPUT_OPEN_DRAIN: {
-                auto drive_str = NRF_GPIO_PIN_H0D1; // High drive up to 5mA
-                if (conf->drive_strength == HAL_GPIO_DRIVE_STANDARD || conf->drive_strength == HAL_GPIO_DRIVE_DEFAULT) {
-                    drive_str = NRF_GPIO_PIN_S0D1;
-                }
                 nrf_gpio_cfg(nrfPin,
                     NRF_GPIO_PIN_DIR_OUTPUT,
                     NRF_GPIO_PIN_INPUT_DISCONNECT,
                     NRF_GPIO_PIN_NOPULL,
-                    drive_str,
+                    driveStrength,
                     NRF_GPIO_PIN_NOSENSE);
                 break;
             }
@@ -184,10 +183,10 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf) {
 void HAL_Pin_Mode(pin_t pin, PinMode setMode) {
     const hal_gpio_config_t c = {
         .size = sizeof(c),
-        .version = 0,
+        .version = HAL_GPIO_VERSION,
         .mode = setMode
     };
-    HAL_Pin_Configure(pin, &c);
+    HAL_Pin_Configure(pin, &c, nullptr);
 }
 
 /*
