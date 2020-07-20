@@ -125,15 +125,15 @@ static int constructBleWakeupReason(hal_wakeup_source_base_t** wakeupReason) {
     return SYSTEM_ERROR_NONE;
 }
 
-static bool isWakeupSourceFeatured(const hal_wakeup_source_base_t* wakeupSources, hal_wakeup_source_type_t type) {
+static const hal_wakeup_source_base_t* findWakeupSource(const hal_wakeup_source_base_t* wakeupSources, hal_wakeup_source_type_t type) {
     auto source = wakeupSources;
     while (source) {
         if (source->type == type) {
-            return true;
+            return source;
         }
         source = source->next;
     }
-    return false;
+    return nullptr;
 }
 
 static void configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
@@ -388,8 +388,28 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     // We need to do this before disabling systick/interrupts, otherwise
     // there is a high chance of a deadlock
     if (config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
+        int skipUsart = -1;
+#if HAL_PLATFORM_CELLULAR
+        for (const hal_wakeup_source_base_t* next = config->wakeup_sources; next != nullptr; next = next->next) {
+            next = findWakeupSource(next, HAL_WAKEUP_SOURCE_TYPE_NETWORK);
+            if (next) {
+                const auto src = reinterpret_cast<const hal_wakeup_source_network_t*>(next);
+                if (src->index == NETWORK_INTERFACE_CELLULAR) {
+                    // FIXME: hardcoded
+                    skipUsart = (int)HAL_USART_SERIAL2;
+                    break;
+                }
+            }
+        }
+#endif // HAL_PLATFORM_CELLULAR
         for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
             // FIXME: no lock
+            // FIXME: we cannot reliably put NCP UART into sleep now without any thread-safety issues
+            // We need to properly signal NCP client before going into sleep that it cannnot use
+            // USART for a while.
+            if (usart == skipUsart) {
+                continue;
+            }
             hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), true, nullptr);
         }
         // Suspend SPIs
@@ -416,11 +436,11 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     hal_exflash_lock();
 
     // BLE events should be dealt before disabling thread scheduling.
-    bool bleEnabled = isWakeupSourceFeatured(config->wakeup_sources, HAL_WAKEUP_SOURCE_TYPE_BLE);
+    auto bleWakeupSource = findWakeupSource(config->wakeup_sources, HAL_WAKEUP_SOURCE_TYPE_BLE);
     bool advertising = hal_ble_gap_is_advertising(nullptr) ||
                        hal_ble_gap_is_connecting(nullptr, nullptr) ||
                        hal_ble_gap_is_connected(nullptr, nullptr);
-    if (!bleEnabled) {
+    if (!bleWakeupSource) {
         // Make sure we acquire BLE lock BEFORE going into a critical section
         hal_ble_lock(nullptr);
         hal_ble_stack_deinit(nullptr);
@@ -514,7 +534,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     // or GPIOTE and RTC.
     // IMPORTANT: No SoftDevice API calls are allowed until HAL_enable_irq()
     int hst = 0;
-    if (!bleEnabled) {
+    if (!bleWakeupSource) {
         hst = HAL_disable_irq();
     }
 
@@ -640,7 +660,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     // Unlock external flash
     hal_exflash_unlock();
 
-    if (!bleEnabled) {
+    if (!bleWakeupSource) {
         hal_ble_stack_init(nullptr);
         if (advertising) {
             hal_ble_gap_start_advertising(nullptr);
