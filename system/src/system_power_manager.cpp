@@ -123,32 +123,28 @@ void PowerManager::update() {
 }
 
 void PowerManager::sleep(bool s) {
+  if (isRunning()) {
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
-  if (detect_) {
+   if (detect_) {
 #else
-  {
+    {
 #endif
-    FuelGauge gauge;
-    // When going into sleep we do not want to exceed the default charging parameters set
-    // by initDefault(), which will be reset in case we are in a DISCONNECTED state with
-    // PMIC watchdog enabled. Reset to the defaults and disable watchdog before going into sleep.
-    if (s) {
-      // Going into sleep
-      if (g_batteryState == BATTERY_STATE_DISCONNECTED) {
+      FuelGauge gauge;
+      // When going into sleep we do not want to exceed the default charging parameters set
+      // by initDefault(), which will be reset in case we are in a DISCONNECTED state with
+      // PMIC watchdog enabled. Reset to the defaults and disable watchdog before going into sleep.
+      if (s) {
+        // Going into sleep
+        if (g_batteryState == BATTERY_STATE_DISCONNECTED) {
+          initDefault();
+        }
+        gauge.sleep();
+      } else {
+        // Wake up
         initDefault();
-      }
-      gauge.sleep();
-    } else {
-      // Wake up
-      initDefault();
-      update();
-      if (isRunning()) {
         Event ev = Event::Wakeup;
         os_queue_put(queue_, (const void*)&ev, CONCURRENT_WAIT_FOREVER, nullptr);
-      } else {
-        gauge.wakeup();
-        // Delay for at least 500ms to make sure the fuelgauge is ready to function after woken up.
-        HAL_Delay_Milliseconds(500);
+        update();
       }
     }
   }
