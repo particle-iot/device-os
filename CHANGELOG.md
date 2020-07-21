@@ -1,4 +1,4 @@
-## 2.0.0-alpha.3
+## 2.0.0-alpha.3, 2.0.0-alpha.4
 
 ### BREAKING CHANGES
 
