@@ -20,6 +20,7 @@
 
 ### ENHANCEMENTS
 
+- System power manager blocks access to FuelGauge for 500ms in its own thread, instead of system when waking up from STOP/ULP sleep mode [#2159](https://github.com/particle-iot/device-os/pull/2159)
 - [wiring] Pin operations are not dependent on wiring C++ peripheral object initialization (e.g. `SPI`, `Wire` etc) [#2157](https://github.com/particle-iot/device-os/pull/2157)
 - [Gen 3] Default SPI pin drive strength changed to high [#2157](https://github.com/particle-iot/device-os/pull/2157)
 - [Gen 3] Restore original `BASEPRI` when exiting FreeRTOS critical section [#2150](https://github.com/particle-iot/device-os/pull/2150)
