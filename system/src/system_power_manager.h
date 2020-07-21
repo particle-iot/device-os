@@ -61,7 +61,8 @@ private:
 private:
   enum class Event {
     Update = 0,
-    ReloadConfig = 1
+    ReloadConfig = 1,
+    Wakeup = 2
   };
 
   static volatile bool update_;
