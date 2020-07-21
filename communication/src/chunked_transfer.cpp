@@ -291,7 +291,7 @@ ProtocolError ChunkedTransfer::handle_update_done(token_t token, Message& messag
     if (!missing)
     {
         auto duration = (callbacks->millis() - update_begin_) / 1000;
-        LOG(INFO, "Update done in %us; avg rate %u B/s", duration, file.file_length / duration);
+        LOG(INFO, "Update done in %us; avg rate %u B/s", duration, duration > 0 ? (file.file_length / duration) : 0);
         reset_updating();
         // TODO: Add a flag to skip module validation
         callbacks->finish_firmware_update(file, UpdateFlag::SUCCESS, NULL);
