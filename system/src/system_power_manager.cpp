@@ -328,8 +328,8 @@ void PowerManager::loop(void* arg) {
         self->initDefault(false);
         self->update_ = true;
       } else if (ev == Event::Wakeup) {
-        initDefault();
         FuelGauge fuel(true);
+        initDefault();
         fuel.wakeup();
         HAL_Delay_Milliseconds(500);
         handleUpdate();
