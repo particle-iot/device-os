@@ -314,8 +314,12 @@ public:
         if (valid_) {
             // Check if USART has been configured as wakeup source.
             auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_USART);
-            if (wakeup) {
-                return *this;
+            while (wakeup) {
+                auto usartkWakeup = reinterpret_cast<hal_wakeup_source_usart_t*>(wakeup);
+                if (usartkWakeup->serial == serial) {
+                    return *this;
+                }
+                wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_USART, wakeup->next);
             }
             // Otherwise, configure USART as wakeup source.
             auto wakeupSource = new(std::nothrow) hal_wakeup_source_usart_t();

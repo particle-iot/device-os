@@ -46,6 +46,7 @@
 #if HAL_PLATFORM_EXTERNAL_RTC
 #include "exrtc_hal.h"
 #endif
+#include "spark_wiring_vector.h"
 
 
 using namespace particle;
@@ -627,30 +628,35 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     // We need to do this before disabling systick/interrupts, otherwise
     // there is a high chance of a deadlock
     if (config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
-        // TODO: We now don't have GEN3 platform that defines both macros.
-        // Both Cellular and Wi-Fi interface use HAL_USART_SERIAL2
-        int skipUsart = -1;
-#if HAL_PLATFORM_CELLULAR || HAL_PLATFORM_WIFI
+        // Do not suspend the usarts those are featured as wakeup source.
+        Vector<hal_usart_interface_t> skipUsarts;
         for (const hal_wakeup_source_base_t* src = config->wakeup_sources; src != nullptr; src = src->next) {
             if (src->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
                 const auto networkSource = reinterpret_cast<const hal_wakeup_source_network_t*>(src);
+#if HAL_PLATFORM_CELLULAR
                 if (networkSource->index == NETWORK_INTERFACE_CELLULAR) {
-                    // FIXME: hardcoded
-                    skipUsart = (int)HAL_USART_SERIAL2;
-                    break;
+                    skipUsarts.append(HAL_PLATFORM_CELLULAR_SERIAL);
                 }
+#endif
+#if HAL_PLATFORM_WIFI
+                if (networkSource->index == NETWORK_INTERFACE_WIFI_STA) {
+                    skipUsarts.append(HAL_PLATFORM_WIFI_SERIAL);
+                }
+#endif
+            } else if (src->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
+                const auto usartSource = reinterpret_cast<const hal_wakeup_source_usart_t*>(src);
+                skipUsarts.append(usartSource->serial);
             }
         }
-#endif // HAL_PLATFORM_CELLULAR
+
         for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
             // FIXME: no lock
             // FIXME: we cannot reliably put NCP UART into sleep now without any thread-safety issues
             // We need to properly signal NCP client before going into sleep that it cannnot use
             // USART for a while.
-            if (usart == skipUsart) {
-                continue;
+            if (!skipUsarts.contains(static_cast<hal_usart_interface_t>(usart))) {
+                hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), true, nullptr);
             }
-            hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), true, nullptr);
         }
         // Suspend SPIs
         for (int spi = 0; spi < HAL_PLATFORM_SPI_NUM; spi++) {
