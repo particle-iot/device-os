@@ -56,10 +56,6 @@ void espReset() {
     HAL_Delay_Milliseconds(100);
 }
 
-void espOff() {
-    HAL_GPIO_Write(ESPEN, 0);
-}
-
 size_t espEscape(const char* src, char* dest, size_t destSize) {
     return escape(src, ",\"\\", '\\', dest, destSize);
 }
@@ -709,6 +705,13 @@ int Esp32NcpClient::dataChannelFlowControl(bool state) {
         inFlowControl_ = false;
         muxer_.resumeChannel(ESP32_NCP_STA_CHANNEL);
     }
+    return 0;
+}
+
+int Esp32NcpClient::espOff() {
+    HAL_GPIO_Write(ESPEN, 0);
+    serial_->on(false);
+    ncpPowerState(NcpPowerState::OFF);
     return 0;
 }
 

@@ -539,6 +539,7 @@ unsigned int NetworkManager::countIfacesWithFlags(unsigned int flags) const {
 }
 
 void NetworkManager::handleIfPowerState(if_t iface, const struct if_event* ev) {
+    // FIXME: this is not really thread-safe, but should probably work
     auto state = getInterfaceRuntimeState(iface);
     if (!state) {
         LOG(ERROR, "Interface is not populated");
@@ -856,13 +857,19 @@ int NetworkManager::powerInterface(if_t iface, bool enable) {
         req.state = IF_POWER_STATE_UP;
         // Update the interface power here to avoid race condition
         // The power state will be updated on NCP power events
-        ifState->pwrState = IF_POWER_STATE_POWERING_UP;
+        // FIXME:
+        if (ifState->pwrState != IF_POWER_STATE_UP && ifState->pwrState != IF_POWER_STATE_POWERING_UP) {
+            ifState->pwrState = IF_POWER_STATE_POWERING_UP;
+        }
         LOG(TRACE, "Request to power on the interface");
     } else {
         req.state = IF_POWER_STATE_DOWN;
         // Update the interface power here to avoid race condition
         // The power state will be updated on NCP power events
-        ifState->pwrState = IF_POWER_STATE_POWERING_DOWN;
+        // FIXME:
+        if (ifState->pwrState != IF_POWER_STATE_DOWN && ifState->pwrState != IF_POWER_STATE_POWERING_DOWN) {
+            ifState->pwrState = IF_POWER_STATE_POWERING_DOWN;
+        }
         LOG(TRACE, "Request to power off the interface");
     }
     return if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
