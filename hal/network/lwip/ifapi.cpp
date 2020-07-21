@@ -1173,6 +1173,7 @@ int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved) 
 }
 
 void if_notify_event(if_t iface, const struct if_event* evt, void* reserved) {
+    LwipTcpIpCoreLock lk;
     notify_all_handlers_event(iface, evt);
 }
 

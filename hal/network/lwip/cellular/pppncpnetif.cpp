@@ -57,6 +57,9 @@ enum class NetifEvent {
 // 5 minutes
 const unsigned PPP_CONNECT_TIMEOUT = 5 * 60 * 1000;
 
+// FIXME: unnecessarily large but helps avoid deadlocks/missing events between LwIP and NCP contexts
+const auto NCP_NETIF_EVENT_QUEUE_SIZE = 32;
+
 } // anonymous
 
 
@@ -66,7 +69,7 @@ PppNcpNetif::PppNcpNetif()
 
     LOG(INFO, "Creating PppNcpNetif LwIP interface");
 
-    SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 4, nullptr) == 0);
+    SPARK_ASSERT(os_queue_create(&queue_, sizeof(NetifEvent), NCP_NETIF_EVENT_QUEUE_SIZE, nullptr) == 0);
 
     client_.setNotifyCallback(pppEventHandlerCb, this);
     client_.start();
@@ -148,7 +151,13 @@ void PppNcpNetif::loop(void* arg) {
 
 int PppNcpNetif::up() {
     NetifEvent ev = NetifEvent::Up;
-    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+    int r = os_queue_put(queue_, &ev, 0, nullptr);
+    if (r) {
+        // FIXME: we'll miss this event, just as an attempt to potentially recover
+        // set internal state.
+        up_ = true;
+    }
+    return r;
 }
 
 int PppNcpNetif::down() {
@@ -158,7 +167,14 @@ int PppNcpNetif::down() {
         client->disable();
     }
     NetifEvent ev = NetifEvent::Down;
-    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+    int r = os_queue_put(queue_, &ev, 0, nullptr);
+    if (r) {
+        // FIXME: we'll miss this event, just as an attempt to potentially recover
+        // set internal state.
+        up_ = false;
+        client->disable();
+    }
+    return r;
 }
 
 int PppNcpNetif::powerUp() {
@@ -243,10 +259,14 @@ int PppNcpNetif::downImpl() {
 
 void PppNcpNetif::ifEventHandler(const if_event* ev) {
     if (ev->ev_type == IF_EVENT_STATE) {
+        int r = 0;
         if (ev->ev_if_state->state) {
-            up();
+            r = up();
         } else {
-            down();
+            r = down();
+        }
+        if (r) {
+            LOG(ERROR, "Failed to post iface event");
         }
     }
 }

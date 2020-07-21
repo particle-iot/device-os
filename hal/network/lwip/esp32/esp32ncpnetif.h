@@ -76,7 +76,7 @@ private:
     os_thread_t thread_ = nullptr;
     os_queue_t queue_ = nullptr;
     std::atomic_bool exit_;
-    bool up_ = false;
+    volatile bool up_ = false;
     particle::WifiNetworkManager* wifiMan_ = nullptr;
     std::unique_ptr<char[]> hostname_;
 };

@@ -75,7 +75,7 @@ private:
     os_queue_t queue_ = nullptr;
     std::atomic_bool exit_;
     particle::net::ppp::Client client_;
-    bool up_ = false;
+    volatile bool up_ = false;
     CellularNetworkManager* celMan_ = nullptr;
     volatile system_tick_t connectStart_ = 0;
 };
