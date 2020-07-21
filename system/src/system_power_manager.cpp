@@ -142,9 +142,14 @@ void PowerManager::sleep(bool s) {
       // Wake up
       initDefault();
       update();
-      gauge.wakeup();
-      // Delay for at least 500ms to make sure the fuelgauge is ready to function after woken up.
-      HAL_Delay_Milliseconds(500);
+      if (isRunning()) {
+        Event ev = Event::Wakeup;
+        os_queue_put(queue_, (const void*)&ev, CONCURRENT_WAIT_FOREVER, nullptr);
+      } else {
+        gauge.wakeup();
+        // Delay for at least 500ms to make sure the fuelgauge is ready to function after woken up.
+        HAL_Delay_Milliseconds(500);
+      }
     }
   }
 }
@@ -330,6 +335,10 @@ void PowerManager::loop(void* arg) {
         // Do not re-run DPDM
         self->initDefault(false);
         self->update_ = true;
+      } else if (ev == Event::Wakeup) {
+        FuelGauge fuel(true);
+        fuel.wakeup();
+        HAL_Delay_Milliseconds(500);
       }
     }
     while (self->update_) {
@@ -582,6 +591,7 @@ void PowerManager::deinit() {
 
   g_batteryState = BATTERY_STATE_UNKNOWN;
   g_powerSource = POWER_SOURCE_UNKNOWN;
+  thread_ = nullptr;
 }
 
 int PowerManager::setConfig(const hal_power_config* conf) {
