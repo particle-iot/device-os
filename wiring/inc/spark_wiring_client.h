@@ -27,7 +27,7 @@
 
 class Client : public Stream {
 protected:
-    network_interface_t nif;
+    network_interface_t nif = 0;
 
 public:
   virtual int connect(IPAddress ip, uint16_t port, network_interface_t=0) =0;

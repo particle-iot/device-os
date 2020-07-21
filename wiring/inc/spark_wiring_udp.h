@@ -81,12 +81,12 @@ private:
     /**
      * The network interface this UDP socket should bind to.
      */
-    network_interface_t _nif;
+    network_interface_t _nif = 0;
 
     /**
      * Set to non-zero if the buffer was dynamically allocated by this class.
      */
-    uint8_t _buffer_allocated;
+    uint8_t _buffer_allocated = false;
 
 
 
