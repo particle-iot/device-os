@@ -222,8 +222,8 @@ int FirmwareUpdate::initTransferState(size_t fileSize, const char* fileHash) {
     const auto persist = &state->persist;
     const int r = state->file.load(persist, sizeof(PersistentTransferState));
     if (r == sizeof(PersistentTransferState)) {
-        if (persist->fileSize == fileSize && memcmp(persist->fileHash, fileHash, Sha256::HASH_SIZE) == 0 &&
-                persist->partialSize <= HAL_OTA_FlashLength()) {
+        if (persist->fileSize == fileSize && persist->partialSize <= fileSize &&
+                memcmp(persist->fileHash, fileHash, Sha256::HASH_SIZE) == 0) {
             // Compute the hash of the partially transferred data in the OTA section
             CHECK(state->partialHash.start());
             char buf[OTA_FLASH_READ_BLOCK_SIZE] = {};

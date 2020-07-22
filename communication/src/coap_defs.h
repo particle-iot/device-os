@@ -47,6 +47,7 @@ enum class CoapCode {
     PUT = coapCode(0, 3),
     DELETE = coapCode(0, 4),
     // Response codes
+    OK = coapCode(2, 0), // Not defined in RFC 7252
     CREATED = coapCode(2, 1),
     DELETED = coapCode(2, 2),
     VALID = coapCode(2, 3),
@@ -95,6 +96,20 @@ PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CoapOption)
 
 typedef uint16_t CoapMessageId;
 
+unsigned coapCodeClass(unsigned code);
+unsigned coapCodeDetail(unsigned code);
+bool isSuccessCoapCode(unsigned code);
+bool isResponseCoapCode(unsigned code);
+bool isResponseCoapType(CoapType type);
+bool isCoapResponse(CoapType type, unsigned code);
+bool isRequestCoapType(CoapType type);
+bool isRequestCoapCode(unsigned code);
+bool isCoapRequest(CoapType type, unsigned code);
+bool isCoapEmptyAck(CoapType type, unsigned code);
+bool isValidCoapType(unsigned type);
+bool isValidCoapCode(unsigned code);
+CoapCode coapCodeForSystemError(int error);
+
 inline unsigned coapCodeClass(unsigned code) {
     return (code >> 5) & 0x07;
 }
@@ -105,10 +120,6 @@ inline unsigned coapCodeDetail(unsigned code) {
 
 inline bool isSuccessCoapCode(unsigned code) {
     return coapCodeClass(code) == 2;
-}
-
-inline bool isSuccessCoapCode(CoapCode code) {
-    return isSuccessCoapCode((unsigned)code);
 }
 
 inline bool isResponseCoapCode(unsigned code) {

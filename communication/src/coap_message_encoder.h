@@ -27,7 +27,7 @@
 namespace particle::protocol {
 
 class CoapMessageEncoder {
-protected:
+public:
     CoapMessageEncoder(char* buf, size_t size);
 
     CoapMessageEncoder& type(CoapType type);
