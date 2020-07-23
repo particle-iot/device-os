@@ -283,6 +283,12 @@ test(06_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
 test(08_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP);
+#if HAL_PLATFORM_CELLULAR
+    config.network(Cellular, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+#endif
+#if HAL_PLATFORM_WIFI
+    config.network(WiFi, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+#endif
     SystemSleepResult result = System.sleep(config);
     assertNotEqual(result.error(), SYSTEM_ERROR_NONE);
 }
@@ -295,6 +301,12 @@ test(09_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
 test(10_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Without_Wakeup) {
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER);
+#if HAL_PLATFORM_CELLULAR
+    config.network(Cellular, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+#endif
+#if HAL_PLATFORM_WIFI
+    config.network(WiFi, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+#endif
     SystemSleepResult result = System.sleep(config);
     assertNotEqual(result.error(), SYSTEM_ERROR_NONE)   ;
 }

@@ -72,10 +72,6 @@ public:
   hal_usart_interface_t interface() const {
     return _serial;
   }
-
-  operator hal_usart_interface_t() const {
-    return _serial;
-  }
 };
 
 #if Wiring_Serial2

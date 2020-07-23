@@ -119,7 +119,8 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 
 #if HAL_PLATFORM_WIFI
     bool wifiResume = false;
-    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA)) {
+    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA) &&
+          !configHelper.networkFlags(NETWORK_INTERFACE_CELLULAR).isSet(SystemSleepNetworkFlag::INACTIVE_STANDBY)) {
         if (system_sleep_network_suspend(NETWORK_INTERFACE_WIFI_STA)) {
             wifiResume = true;
         }

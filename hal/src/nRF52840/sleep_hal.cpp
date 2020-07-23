@@ -114,7 +114,7 @@ static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSo
             nrf_uarte_int_disable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
             NVIC_SetPriority(UARTE1_IRQn, priority->usart1Priority);
-            nrf_uarte_int_disable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
+            nrf_uarte_int_disable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
         }
         source = source->next;
     }
@@ -436,10 +436,14 @@ static void configNetworkWakeupSource(const hal_wakeup_source_base_t* wakeupSour
     auto source = wakeupSources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
-            nrf_uarte_int_disable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
-            nrf_uarte_event_clear(NRF_UARTE1, NRF_UARTE_EVENT_RXDRDY);
-            nrf_uarte_int_enable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
-            NVIC_EnableIRQ(UARTE1_IRQn);
+            auto network = reinterpret_cast<const hal_wakeup_source_network_t*>(source);
+            if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
+                /* It potentially has received data already leaving the thread waiting on the data still in a blocked state. */
+                // nrf_uarte_int_disable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
+                // nrf_uarte_event_clear(NRF_UARTE1, NRF_UARTE_EVENT_RXDRDY);
+                nrf_uarte_int_enable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
+                NVIC_EnableIRQ(UARTE1_IRQn);
+            }
         }
         source = source->next;
     }
@@ -549,7 +553,7 @@ static int validateUsartWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sou
 }
 
 static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_network_t* network) {
-    if (!hal_usart_is_enabled(HAL_USART_SERIAL2)) {
+    if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY) && !hal_usart_is_enabled(HAL_USART_SERIAL2)) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (mode == HAL_SLEEP_MODE_HIBERNATE) {
@@ -1132,13 +1136,22 @@ int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved) 
 
     // Checks the wakeup sources
     auto wakeupSource = config->wakeup_sources;
-    // At least one wakeup source should be configured for stop mode.
-    if ((config->mode == HAL_SLEEP_MODE_STOP || config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) && !wakeupSource) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
+    uint16_t valid = 0;
     while (wakeupSource) {
         CHECK(validateWakeupSource(config->mode, wakeupSource));
+        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
+            auto network = reinterpret_cast<const hal_wakeup_source_network_t*>(wakeupSource);
+            if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
+                valid++;
+            }
+        } else {
+            valid++;
+        }
         wakeupSource = wakeupSource->next;
+    }
+    // At least one wakeup source should be configured for stop and ultra-low power mode.
+    if ((config->mode == HAL_SLEEP_MODE_STOP || config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) && (!config->wakeup_sources || !valid)) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
     return SYSTEM_ERROR_NONE;
