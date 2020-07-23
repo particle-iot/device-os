@@ -313,7 +313,8 @@ static void configLpcompWakeupSource(const hal_wakeup_source_base_t* wakeupSourc
                 NRF_LPCOMP_REF_SUPPLY_13_16, NRF_LPCOMP_REF_SUPPLY_7_8,
                 NRF_LPCOMP_REF_SUPPLY_15_16
             };
-            uint8_t n = lpcompWakeup->voltage / 103 / 2;
+            uint8_t n = lpcompWakeup->voltage / 103; // Half of 206mV
+            n = (n + (n % 2)) >> 1;
             n = (n > 0) ? (n - 1) : n;
             config.reference = refs[n];
 
@@ -450,8 +451,8 @@ static int validateLpcompWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_so
     if (HAL_Validate_Pin_Function(lpcomp->pin, PF_ADC) != PF_ADC) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    if (lpcomp->voltage >= 3094) { // VDD/16 * 15
-        // The maximum reference voltage is equal to VDD: 3.3v
+    if (lpcomp->voltage >= 3094) {
+        // The maximum reference voltage is equal to VDD/16 * 15
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (lpcomp->trig > HAL_SLEEP_LPCOMP_CROSS) {

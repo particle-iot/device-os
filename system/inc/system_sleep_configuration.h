@@ -278,7 +278,8 @@ public:
 
     SystemSleepConfiguration& analog(pin_t pin, uint16_t voltage, AnalogInterruptMode trig) {
         if (valid_) {
-            // Check if RTC has been configured as wakeup source.
+            // Check if an analog pin has been configured as wakeup source.
+            // Only one analog pin can be configured as wakeup source.
             auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_LPCOMP);
             if (wakeup) {
                 auto lpcomp = reinterpret_cast<hal_wakeup_source_lpcomp_t*>(wakeup);

@@ -123,12 +123,10 @@ test(04_System_Sleep_Mode_Deep_Wakeup_By_WKP_Pin) {
     }
 }
 
-// Tracker support waking up device from hibernate mode by external RTC
-#if HAL_PLATFORM_EXTERNAL_RTC
-test(05_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_External_Rtc) {
+test(05_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Analog_Pin) {
     if (phase == 0xbeef0005) {
         Serial.println("    >> Device enters hibernate mode.");
-        Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
+        Serial.println("    >> Please reconnect serial and type 't' after applying voltage crossing 1500mV on A0.");
         Serial.println("    >> Press any key now");
         while (Serial.available() <= 0);
         while (Serial.available() > 0) {
@@ -139,7 +137,7 @@ test(05_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_External
 
         SystemSleepConfiguration config;
         config.mode(SystemSleepMode::HIBERNATE)
-              .duration(3s);
+              .analog(A0, 1500, AnalogInterruptMode::CROSS);
         SystemSleepResult result = System.sleep(config);
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
     } else if (phase == 0xbeef0006) {
@@ -148,7 +146,9 @@ test(05_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_External
     }
 }
 
-test(06_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
+// Tracker support waking up device from hibernate mode by external RTC
+#if HAL_PLATFORM_EXTERNAL_RTC
+test(06_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_External_Rtc) {
     if (phase == 0xbeef0006) {
         Serial.println("    >> Device enters hibernate mode.");
         Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
@@ -160,9 +160,32 @@ test(06_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
 
         phase = 0xbeef0007;
 
-        SleepResult result = System.sleep(SLEEP_MODE_DEEP, 3s);
+        SystemSleepConfiguration config;
+        config.mode(SystemSleepMode::HIBERNATE)
+              .duration(3s);
+        SystemSleepResult result = System.sleep(config);
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
     } else if (phase == 0xbeef0007) {
+        Serial.println("    >> Device is woken up from hibernate mode.");
+        assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
+    }
+}
+
+test(07_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
+    if (phase == 0xbeef0007) {
+        Serial.println("    >> Device enters hibernate mode.");
+        Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
+        Serial.println("    >> Press any key now");
+        while (Serial.available() <= 0);
+        while (Serial.available() > 0) {
+            (void)Serial.read();
+        }
+
+        phase = 0xbeef0008;
+
+        SleepResult result = System.sleep(SLEEP_MODE_DEEP, 3s);
+        assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    } else if (phase == 0xbeef0008) {
         Serial.println("    >> Device is woken up from hibernate mode.");
         assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
     }
@@ -257,26 +280,26 @@ test(06_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
 }
 #endif // HAL_PLATFORM_GEN
 
-test(07_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
+test(08_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP);
     SystemSleepResult result = System.sleep(config);
     assertNotEqual(result.error(), SYSTEM_ERROR_NONE);
 }
 
-test(08_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
+test(09_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
     SleepResult result = System.sleep(nullptr, 0, nullptr, 0, 0);
     assertNotEqual(result.error(), SYSTEM_ERROR_NONE);
 }
 
-test(09_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Without_Wakeup) {
+test(10_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Without_Wakeup) {
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER);
     SystemSleepResult result = System.sleep(config);
     assertNotEqual(result.error(), SYSTEM_ERROR_NONE)   ;
 }
 
-test(10_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_D0) {
+test(11_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_D0) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after you have a rising edge on D0.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -296,7 +319,7 @@ test(10_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_D0) {
     assertEqual(result.wakeupPin(), D0);
 }
 
-test(11_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Rtc) {
+test(12_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Rtc) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after 3 seconds.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -316,7 +339,7 @@ test(11_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Rtc) {
 }
 
 #if HAL_PLATFORM_BLE
-test(12_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
+test(13_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after device being connected by BLE Central.");
     Serial.println("    >> Press any key now");
     BLE.on();
@@ -340,7 +363,7 @@ test(12_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
 }
 #endif // HAL_PLATFORM_BLE
 
-test(13_System_Sleep_Mode_Stop_Wakeup_By_D0) {
+test(14_System_Sleep_Mode_Stop_Wakeup_By_D0) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after you have a rising edge on D0.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -357,7 +380,7 @@ test(13_System_Sleep_Mode_Stop_Wakeup_By_D0) {
     assertEqual(result.pin(), D0);
 }
 
-test(14_System_Sleep_Mode_Stop_Wakeup_By_Rtc) {
+test(15_System_Sleep_Mode_Stop_Wakeup_By_Rtc) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after 3 seconds");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -373,7 +396,7 @@ test(14_System_Sleep_Mode_Stop_Wakeup_By_Rtc) {
     assertEqual((int)result.reason(), (int)WAKEUP_REASON_RTC);
 }
 
-test(15_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_D0) {
+test(16_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_D0) {
     Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after you have a rising edge on D0.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -393,7 +416,7 @@ test(15_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_D0
     assertEqual(result.wakeupPin(), D0);
 }
 
-test(16_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Rtc) {
+test(17_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Rtc) {
     Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after 3 seconds.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -413,7 +436,7 @@ test(16_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Rt
 }
 
 #if HAL_PLATFORM_BLE
-test(17_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ble) {
+test(18_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ble) {
     Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after device being connected by BLE Central.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -436,3 +459,43 @@ test(17_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Bl
     BLE.stopAdvertising();
 }
 #endif // HAL_PLATFORM_BLE
+
+#if HAL_PLATFORM_GEN == 3
+test(19_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Analog_Pin) {
+    Serial.println("    >> Device enters stop mode. Please reconnect serial after applying voltage crossing 1500mV on A0.");
+    Serial.println("    >> Press any key now");
+    while(Serial.available() <= 0);
+    while (Serial.available() > 0) {
+        (void)Serial.read();
+    }
+
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::STOP)
+          .analog(A0, 1500, AnalogInterruptMode::CROSS);
+    SystemSleepResult result = System.sleep(config);
+
+    while (!Serial.isConnected());
+
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_LPCOMP);
+}
+
+test(20_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Analog_Pin) {
+    Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after applying voltage crossing 1500mV on A0.");
+    Serial.println("    >> Press any key now");
+    while(Serial.available() <= 0);
+    while (Serial.available() > 0) {
+        (void)Serial.read();
+    }
+
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::ULTRA_LOW_POWER)
+          .analog(A0, 1500, AnalogInterruptMode::CROSS);
+    SystemSleepResult result = System.sleep(config);
+
+    while (!Serial.isConnected());
+
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_LPCOMP);
+}
+#endif // HAL_PLATFORM_GEN == 3
