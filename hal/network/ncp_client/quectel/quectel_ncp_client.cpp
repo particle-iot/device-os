@@ -1003,10 +1003,29 @@ int QuectelNcpClient::registerNet() {
 
     connectionState(NcpConnectionState::CONNECTING);
 
-    // NOTE: up to 3 mins
-    r = CHECK_PARSER(parser_.execCommand(3 * 60 * 1000, "AT+COPS=0,2"));
-    // Ignore response code here
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    auto resp = parser_.sendCommand("AT+COPS?");
+    int copsState = 2;
+    r = CHECK_PARSER(resp.scanf("+COPS: %d", &copsState));
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
+    if (copsState != 0 && copsState != 1) {
+        // Only run AT+COPS=0 if currently de-registered, to avoid PLMN reselection
+        // NOTE: up to 3 mins
+        r = CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
+        // Ignore response code here
+        // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
+
+    if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+        // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
+        // Scan LTE only, take effect immediately
+        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+        // Configure Network Category to be Searched under LTE RAT
+        // Only use LTE Cat M1, take effect immediately
+        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+    }
 
     // if (conf_.ncpIdentifier() != MESH_NCP_SARA_R410) {
     r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
