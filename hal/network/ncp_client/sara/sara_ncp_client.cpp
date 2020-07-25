@@ -1461,7 +1461,7 @@ int SaraNcpClient::registerNet() {
     registeredTime_ = 0;
 
     auto resp = parser_.sendCommand("AT+COPS?");
-    int copsState = -1;
+    int copsState = 2;
     r = CHECK_PARSER(resp.scanf("+COPS: %d", &copsState));
     CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     r = CHECK_PARSER(resp.readResult());
@@ -1469,13 +1469,12 @@ int SaraNcpClient::registerNet() {
 
     // NOTE: up to 3 mins (FIXME: there seems to be a bug where this timeout of 3 minutes
     //       is not being respected by u-blox modems.  Setting to 5 for now.)
-    if (copsState != 0) {
-        // If the set command with <mode>=0 is issued, a further set
-        // command with <mode>=0 is managed as a user reselection
+    if (copsState != 0 && copsState != 1) {
+        // Only run AT+COPS=0 if currently de-registered, to avoid PLMN reselection
         r = CHECK_PARSER(parser_.execCommand(UBLOX_COPS_TIMEOUT, "AT+COPS=0,2"));
+        // Ignore response code here
+        // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     }
-    // Ignore response code here
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));

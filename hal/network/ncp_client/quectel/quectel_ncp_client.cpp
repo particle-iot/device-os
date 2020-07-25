@@ -1192,15 +1192,14 @@ int QuectelNcpClient::registerNet() {
     connectionState(NcpConnectionState::CONNECTING);
 
     auto resp = parser_.sendCommand("AT+COPS?");
-    int copsState = -1;
+    int copsState = 2;
     r = CHECK_PARSER(resp.scanf("+COPS: %d", &copsState));
     CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
-    if (copsState != 0) {
-        // Only run AT+COPS=0 if not currently registering, otherwise we will
-        // perform PLMN reselection
+    if (copsState != 0 && copsState != 1) {
+        // Only run AT+COPS=0 if currently de-registered, to avoid PLMN reselection
         // NOTE: up to 3 mins
         r = CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
         // Ignore response code here

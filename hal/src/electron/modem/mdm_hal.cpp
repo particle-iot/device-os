@@ -1363,13 +1363,13 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             if (!_atOk()) {
                 goto failure;
             }
+            _net.cops = 2; // Re-init to de-registered state in case of COPS? error, to force auto connection
             sendFormated("AT+COPS?\r\n");
             if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
                 goto failure;
             }
-            // If the set command with <mode>=0 is issued, a further set
-            // command with <mode>=0 is managed as a user reselection
-            if (_net.cops != 0) {
+            // Only run AT+COPS=0 if currently de-registered, to avoid PLMN reselection
+            if (_net.cops != 0 && _net.cops != 1) {
                 sendFormated("AT+COPS=0,2\r\n");
                 if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
                     goto failure;
