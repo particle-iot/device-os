@@ -143,12 +143,12 @@ void Ipcp::resetConfigurationInformation() {
       }
       case ipcp::CONFIGURATION_OPTION_PRIMARY_DNS_SERVER: {
         auto o = static_cast<ipcp::CommonConfigurationOptionIpAddress*>(opt);
-        o->setPeerAddress(conf.primaryDns);
+        o->setLocalAddress(conf.primaryDns);
         break;
       }
       case ipcp::CONFIGURATION_OPTION_SECONDARY_DNS_SERVER: {
         auto o = static_cast<ipcp::CommonConfigurationOptionIpAddress*>(opt);
-        o->setPeerAddress(conf.secondaryDns);
+         o->setLocalAddress(conf.secondaryDns);
         break;
       }
       case ipcp::CONFIGURATION_OPTION_IP_NETMASK: {

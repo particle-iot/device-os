@@ -36,6 +36,10 @@ extern "C" {
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 LOG_SOURCE_CATEGORY("net.ppp.client");
 
+/* Public Google DNS Servers */
+const uint32_t GOOGLE_DNS_PRIMARY = 0x08080808UL;
+const uint32_t GOOGLE_DNS_SECONDARY = 0x08080404UL;
+
 using namespace particle::net::ppp;
 
 std::once_flag Client::once_;
@@ -122,6 +126,12 @@ bool Client::prepareConnect() {
   ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_IP_ADDRESS, CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS);
   ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_PRIMARY_DNS_SERVER, CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS);
   ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_SECONDARY_DNS_SERVER, CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS);
+
+  ip4_addr_t pdns, sdns;
+  ip4_addr_set_u32(&pdns, lwip_htonl(GOOGLE_DNS_PRIMARY));
+  ip4_addr_set_u32(&sdns, lwip_htonl(GOOGLE_DNS_SECONDARY));
+  ipcp_->setPrimaryDns(pdns);
+  ipcp_->setSecondaryDns(sdns);
 
 #if PPP_IPV6_SUPPORT
   LOCK_TCPIP_CORE();
