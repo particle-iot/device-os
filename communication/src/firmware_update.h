@@ -73,6 +73,7 @@ const unsigned OTA_CHUNK_ACK_COUNT = 2;
 class Message;
 class MessageChannel;
 class CoapMessageDecoder;
+class CoapMessageEncoder;
 
 class FirmwareUpdateContext {
 public:
@@ -143,7 +144,7 @@ public:
     void reset();
 
 private:
-    typedef int (FirmwareUpdate::*RequestHandlerFn)(const CoapMessageDecoder& d, Message* msg);
+    typedef int (FirmwareUpdate::*RequestHandlerFn)(const CoapMessageDecoder& d, CoapMessageEncoder* e);
 
     FirmwareUpdateContext ctx_; // Update context
     FirmwareUpdateCallbacks const callbacks_; // Callbacks
@@ -153,15 +154,15 @@ private:
     uint32_t chunks_[OTA_CHUNK_BITMAP_ELEMENTS]; // Bitmap of received chunks within the receiver window
     system_tick_t updateStartTime_; // Time when the update started
     system_tick_t lastChunkTime_; // Time when the last chunk was received
+    system_tick_t lastAckTime_; // Time when the last acknowledgement was sent
     size_t fileSize_; // File size
     size_t fileOffset_; // Current offset in the file
     size_t transferSize_; // Total size of the data to transfer
     size_t chunkSize_; // Chunk size
     size_t chunkCount_; // Total number of chunks to transfer
     size_t windowSize_; // Size of the receiver window in chunks
-    unsigned chunkIndex_; // Index of the chunk at the left edge of the receiver window
+    unsigned chunkIndex_; // Index of the chunk preceeding the chunk at the left edge of the receiver window
     unsigned unackChunks_; // Number or chunks received since the last acknowledgement
-    bool hasChunkGaps_; // Whether there are gaps in the sequence of received chunks
 
 #if OTA_UPDATE_STATS
     system_tick_t processTime_; // System processing time
@@ -175,17 +176,18 @@ private:
     // Note: This method returns ProtocolError
     int handleRequest(Message* msg, RequestHandlerFn handler);
 
-    int handleBeginRequest(const CoapMessageDecoder& d, Message* msg);
-    int handleEndRequest(const CoapMessageDecoder& d, Message* msg);
-    int handleChunkRequest(const CoapMessageDecoder& d, Message* msg);
+    int handleBeginRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
+    int handleEndRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
+    int handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
 
-    int sendErrorResponse(int error, CoapType type, CoapMessageId id, const char* token, size_t tokenSize);
-    int sendEmptyAck(Message* origMsg, CoapMessageId id);
+    int sendErrorResponse(Message* msg, int error, CoapType type, const char* token, size_t tokenSize);
+    int sendEmptyAck(Message* msg, CoapType type, CoapMessageId id);
 
     static int parseBeginRequest(const CoapMessageDecoder& d, const char** fileHash, size_t* fileSize, size_t* chunkSize,
             bool* discardData);
-    static int parseEndRequest(const CoapMessageDecoder& d, bool* discardData, bool* cancelUpdate);
-    static int parseChunkRequest(const CoapMessageDecoder& d, const char** chunkData, size_t* chunkSize, size_t* chunkIndex);
+    static int parseEndRequest(const CoapMessageDecoder& d, bool* cancelUpdate, bool* discardData);
+    static int parseChunkRequest(const CoapMessageDecoder& d, const char** chunkData, size_t* chunkSize,
+            unsigned* chunkIndex);
 
     int startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags);
     int finishUpdate(FirmwareUpdateFlags flags);

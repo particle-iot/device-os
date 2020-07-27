@@ -69,7 +69,7 @@ private:
     unsigned code_;
     int error_;
 
-    void encodeHeader(size_t tokenSize = 0);
+    bool encodeHeader(size_t tokenSize = 0);
 };
 
 inline CoapMessageEncoder& CoapMessageEncoder::code(CoapCode code) {

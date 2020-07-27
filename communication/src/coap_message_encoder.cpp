@@ -83,7 +83,9 @@ CoapMessageEncoder& CoapMessageEncoder::token(const char* token, size_t size) {
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return *this;
     }
-    encodeHeader(size);
+    if (!encodeHeader(size)) {
+        return *this;
+    }
     buf_.append((const uint8_t*)token, size);
     flags_ |= Flag::TOKEN_ENCODED;
     return *this;
@@ -101,8 +103,8 @@ CoapMessageEncoder& CoapMessageEncoder::option(unsigned opt, const char* data, s
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return *this;
     }
-    if (!(flags_ & Flag::HEADER_ENCODED)) {
-        encodeHeader();
+    if (!(flags_ & Flag::HEADER_ENCODED) && !encodeHeader()) {
+        return *this;
     }
     const unsigned optDelta = opt - prevOpt_;
     uint8_t deltaNibble = 0;
@@ -166,8 +168,8 @@ CoapMessageEncoder& CoapMessageEncoder::payload(const char* data, size_t size) {
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return *this;
     }
-    if (!(flags_ & Flag::HEADER_ENCODED)) {
-        encodeHeader();
+    if (!(flags_ & Flag::HEADER_ENCODED) && !encodeHeader()) {
+        return *this;
     }
     if (size > 0) {
         buf_.appendUInt8(0xff); // Payload marker
@@ -178,16 +180,21 @@ CoapMessageEncoder& CoapMessageEncoder::payload(const char* data, size_t size) {
 }
 
 int CoapMessageEncoder::encode() {
-    if (error_) {
+    if (error_ || (!(flags_ & Flag::HEADER_ENCODED) && !encodeHeader())) {
         return error_;
-    }
-    if (!(flags_ & Flag::HEADER_ENCODED)) {
-        encodeHeader();
     }
     return buf_.dataSize();
 }
 
-void CoapMessageEncoder::encodeHeader(size_t tokenSize) {
+bool CoapMessageEncoder::encodeHeader(size_t tokenSize) {
+    if (error_) {
+        return false;
+    }
+    // The code using this class is required to provide at least a message type
+    if (flags_ | Flag::HEADER_ENCODED || !(flags_ | HAS_TYPE)) {
+        error_ = SYSTEM_ERROR_INVALID_STATE;
+        return false;
+    }
     const uint32_t h = (1u << 30) | // Version
             ((unsigned)type_ << 28) | // Type
             (tokenSize << 24) | // Token length
@@ -195,6 +202,7 @@ void CoapMessageEncoder::encodeHeader(size_t tokenSize) {
             id_; // Message ID
     buf_.appendUInt32BE(h);
     flags_ |= Flag::HEADER_ENCODED;
+    return true;
 }
 
 } // namespace particle::protocol
