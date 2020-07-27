@@ -48,6 +48,7 @@ public:
 
     // TODO: Add convenience methods for encoding URI path and query options
 
+    // The returned message size can be larger than the size of the destination buffer
     int encode();
 
 private:

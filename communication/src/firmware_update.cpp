@@ -74,15 +74,8 @@ int FirmwareUpdate::process() {
     if (!updating_) {
         return 0;
     }
-    if (unackChunks_ > 0 && lastAckTime_ + OTA_CHUNK_ACK_DELAY <= millis()) {
-        // Send a ChunkAck message
-        size_t ackPayloadSize = 0;
-        for (int i = OTA_CHUNK_BITMAP_ELEMENTS - 1; i >= 0; --i) {
-            if (chunks_[i]) {
-                ackPayloadSize = (i + 1) * sizeof(uint32_t);
-                break;
-            }
-        }
+    if (unackChunks_ > 0 && lastChunkTime_ + OTA_CHUNK_ACK_DELAY <= millis()) {
+        // Send a ChunkAck
         Message msg;
         int r = channel_->create(msg);
         if (r != ProtocolError::NO_ERROR) {
@@ -90,14 +83,15 @@ int FirmwareUpdate::process() {
             return r;
         }
         CoapMessageEncoder e((char*)msg.buf(), msg.capacity());
-        e.type(CoapType::NON);
-        e.id(0); // Will be assigned by the message channel
-        e.option(MessageOption::CHUNK_INDEX, chunkIndex_);
-        e.payload((const char*)chunks_, ackPayloadSize);
+        initChunkAck(&e);
         r = e.encode();
         if (r < 0) {
             LOG(ERROR, "Failed to encode message: %d", r);
             return ProtocolError::UNKNOWN;
+        }
+        if (r > (int)msg.capacity()) {
+            LOG(ERROR, "Too large message");
+            return ProtocolError::INSUFFICIENT_STORAGE;
         }
         msg.set_length(r);
         r = channel_->send(msg);
@@ -105,8 +99,10 @@ int FirmwareUpdate::process() {
             LOG(ERROR, "Failed to send message: %d", (int)r);
             return ProtocolError::IO_ERROR_GENERIC_SEND;
         }
-        lastAckTime_ = millis();
         unackChunks_ = 0;
+#if OTA_UPDATE_STATS
+        ++sentAcks_;
+#endif
     }
     return 0;
 }
@@ -147,8 +143,12 @@ int FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handler) {
         // Encode and send the response message
         r = e.encode();
         if (r >= 0) {
+            if (r > (int)resp.capacity()) {
+                LOG(ERROR, "Too large message");
+                return ProtocolError::INSUFFICIENT_STORAGE;
+            }
             resp.set_length(r);
-            r = channel_->send(*msg);
+            r = channel_->send(resp);
             if (r != ProtocolError::NO_ERROR) {
                 LOG(ERROR, "Failed to send message: %d", (int)r);
                 return ProtocolError::IO_ERROR_GENERIC_SEND;
@@ -191,7 +191,7 @@ int FirmwareUpdate::handleBeginRequest(const CoapMessageDecoder& d, CoapMessageE
     // Parse message
     const char* fileHash = nullptr;
     bool discardData = false;
-    CHECK(parseBeginRequest(d, &fileHash, &fileSize_, &chunkSize_, &discardData));
+    CHECK(decodeBeginRequest(d, &fileHash, &fileSize_, &chunkSize_, &discardData));
     // Start the update
     FirmwareUpdateFlags flags;
     if (discardData) {
@@ -218,6 +218,7 @@ int FirmwareUpdate::handleBeginRequest(const CoapMessageDecoder& d, CoapMessageE
 #if OTA_UPDATE_STATS
     LOG(INFO, "Window size (chunks): %u", (unsigned)windowSize_);
 #endif
+    lastChunkTime_ = millis(); // ACK for the first chunk will be delayed
     updating_ = true;
     e->type(d.type());
     e->id(0); // Will be assigned by the message channel
@@ -233,7 +234,7 @@ int FirmwareUpdate::handleEndRequest(const CoapMessageDecoder& d, CoapMessageEnc
     }
     bool cancelUpdate = false;
     bool discardData = false;
-    CHECK(parseEndRequest(d, &cancelUpdate, &discardData));
+    CHECK(decodeEndRequest(d, &cancelUpdate, &discardData));
     LOG(INFO, "Finishing firmware update");
     LOG(INFO, "Cancel update: %u", (unsigned)cancelUpdate);
     LOG(INFO, "Discard data: %u", (unsigned)discardData);
@@ -268,7 +269,7 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
     const char* data = nullptr;
     size_t size = 0;
     unsigned index = 0;
-    CHECK(parseChunkRequest(d, &data, &size, &index));
+    CHECK(decodeChunkRequest(d, &data, &size, &index));
     if (index == 0 || index > chunkCount_) { // Chunk indices are 1-based
         LOG(ERROR, "Invalid chunk index: %u", index);
         return SYSTEM_ERROR_PROTOCOL;
@@ -304,15 +305,19 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
                 while ((bits = trailingOneBits(chunks_[0]))) {
                     for (size_t i = 0; i < OTA_CHUNK_BITMAP_ELEMENTS; ++i) {
                         chunks_[i] >>= bits;
-                        if (i != OTA_CHUNK_BITMAP_ELEMENTS - 1) {
+                        if (i < OTA_CHUNK_BITMAP_ELEMENTS - 1) {
                             chunks_[i] |= chunks_[i + 1] << (32 - bits);
                         }
                     }
                     fileOffset_ += bits * chunkSize_;
                     chunkIndex_ += bits;
                 }
+            } else {
+#if OTA_UPDATE_STATS
+                ++outOrderChunks_;
+#endif
             }
-            // Last chunk can be smaller than chunkSize_
+            // Last chunk can be smaller than the maximum chunk size
             if (fileOffset_ > fileSize_) {
                 fileOffset_ = fileSize_;
             }
@@ -320,24 +325,18 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
         }
     }
     bool hasGaps = false;
-    size_t ackPayloadSize = 0;
-    for (int i = OTA_CHUNK_BITMAP_ELEMENTS - 1; i >= 0; --i) {
+    for (size_t i = 0; i < OTA_CHUNK_BITMAP_ELEMENTS; ++i) {
         // If some bits are still set in the bitmap, then there's a gap in the sequence of received chunks
         if (chunks_[i]) {
-            ackPayloadSize = (i + 1) * sizeof(uint32_t);
             hasGaps = true;
             break;
         }
     }
     ++unackChunks_;
     if (hasGaps || dupChunk || outWindowChunk || unackChunks_ == OTA_CHUNK_ACK_COUNT ||
-            lastAckTime_ == 0 || lastAckTime_ + OTA_CHUNK_ACK_DELAY <= millis()) {
-        // Send a ChunkAck message
-        e->type(CoapType::NON);
-        e->id(0); // Will be assigned by the message channel
-        e->option(MessageOption::CHUNK_INDEX, chunkIndex_);
-        e->payload((const char*)chunks_, ackPayloadSize);
-        lastAckTime_ = millis();
+            lastChunkTime_ + OTA_CHUNK_ACK_DELAY <= millis()) {
+        // Send a ChunkAck
+        initChunkAck(e);
         unackChunks_ = 0;
 #if OTA_UPDATE_STATS
         if (dupChunk) {
@@ -346,59 +345,17 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
         if (outWindowChunk) {
             ++outWindowChunks_;
         }
+        ++sentAcks_;
 #endif // OTA_UPDATE_STATS
     }
+    lastChunkTime_ = millis();
+#if OTA_UPDATE_STATS
+    ++recvChunks_;
+#endif
     return 0;
 }
 
-int FirmwareUpdate::sendErrorResponse(Message* msg, int error, CoapType type, const char* token, size_t tokenSize) {
-    CoapMessageEncoder e((char*)msg->buf(), msg->capacity());
-    e.type(type);
-    e.code(coapCodeForSystemError(error));
-    e.id(0); // Will be assigned by the message channel
-    e.token(token, tokenSize);
-    int r = e.encode();
-    if (r < 0) {
-        LOG(ERROR, "Failed to encode message: %d", r);
-        return r;
-    }
-    if (r > (int)msg->capacity()) {
-        LOG(ERROR, "Too large message");
-        return SYSTEM_ERROR_TOO_LARGE;
-    }
-    msg->set_length(r);
-    r = channel_->send(*msg);
-    if (r != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Failed to send message: %d", (int)r);
-        return SYSTEM_ERROR_IO;
-    }
-    return 0;
-}
-
-int FirmwareUpdate::sendEmptyAck(Message* msg, CoapType type, CoapMessageId id) {
-    CoapMessageEncoder e((char*)msg->buf(), msg->capacity());
-    e.type(type);
-    e.code(CoapCode::EMPTY);
-    e.id(id);
-    int r = e.encode();
-    if (r < 0) {
-        LOG(ERROR, "Failed to encode message: %d", r);
-        return r;
-    }
-    if (r > (int)msg->capacity()) {
-        LOG(ERROR, "Too large message");
-        return SYSTEM_ERROR_TOO_LARGE;
-    }
-    msg->set_length(r);
-    r = channel_->send(*msg);
-    if (r != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Failed to send message: %d", (int)r);
-        return SYSTEM_ERROR_IO;
-    }
-    return 0;
-}
-
-int FirmwareUpdate::parseBeginRequest(const CoapMessageDecoder& d, const char** fileHash, size_t* fileSize,
+int FirmwareUpdate::decodeBeginRequest(const CoapMessageDecoder& d, const char** fileHash, size_t* fileSize,
         size_t* chunkSize, bool* discardData) {
     if (d.type() != CoapType::CON) {
         LOG(ERROR, "Invalid message type");
@@ -470,7 +427,7 @@ int FirmwareUpdate::parseBeginRequest(const CoapMessageDecoder& d, const char** 
     return 0;
 }
 
-int FirmwareUpdate::parseEndRequest(const CoapMessageDecoder& d, bool* cancelUpdate, bool* discardData) {
+int FirmwareUpdate::decodeEndRequest(const CoapMessageDecoder& d, bool* cancelUpdate, bool* discardData) {
     if (d.type() != CoapType::CON) {
         LOG(ERROR, "Invalid message type");
         return SYSTEM_ERROR_PROTOCOL;
@@ -515,7 +472,21 @@ int FirmwareUpdate::parseEndRequest(const CoapMessageDecoder& d, bool* cancelUpd
     return 0;
 }
 
-int FirmwareUpdate::parseChunkRequest(const CoapMessageDecoder& d, const char** chunkData, size_t* chunkSize,
+void FirmwareUpdate::initChunkAck(CoapMessageEncoder* e) {
+    size_t payloadSize = 0;
+    for (int i = OTA_CHUNK_BITMAP_ELEMENTS - 1; i >= 0; --i) {
+        if (chunks_[i]) {
+            payloadSize = (i + 1) * sizeof(uint32_t);
+            break;
+        }
+    }
+    e->type(CoapType::NON);
+    e->id(0); // Will be assigned by the message channel
+    e->option(MessageOption::CHUNK_INDEX, chunkIndex_);
+    e->payload((const char*)chunks_, payloadSize);
+}
+
+int FirmwareUpdate::decodeChunkRequest(const CoapMessageDecoder& d, const char** chunkData, size_t* chunkSize,
         unsigned* chunkIndex) {
     if (d.type() != CoapType::NON) {
         LOG(ERROR, "Invalid message type");
@@ -540,6 +511,53 @@ int FirmwareUpdate::parseChunkRequest(const CoapMessageDecoder& d, const char** 
     return 0;
 }
 
+int FirmwareUpdate::sendErrorResponse(Message* msg, int error, CoapType type, const char* token, size_t tokenSize) {
+    CoapMessageEncoder e((char*)msg->buf(), msg->capacity());
+    e.type(type);
+    e.code(coapCodeForSystemError(error));
+    e.id(0); // Will be assigned by the message channel
+    e.token(token, tokenSize);
+    int r = e.encode();
+    if (r < 0) {
+        LOG(ERROR, "Failed to encode message: %d", r);
+        return r;
+    }
+    if (r > (int)msg->capacity()) {
+        LOG(ERROR, "Too large message");
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    msg->set_length(r);
+    r = channel_->send(*msg);
+    if (r != ProtocolError::NO_ERROR) {
+        LOG(ERROR, "Failed to send message: %d", (int)r);
+        return SYSTEM_ERROR_IO;
+    }
+    return 0;
+}
+
+int FirmwareUpdate::sendEmptyAck(Message* msg, CoapType type, CoapMessageId id) {
+    CoapMessageEncoder e((char*)msg->buf(), msg->capacity());
+    e.type(type);
+    e.code(CoapCode::EMPTY);
+    e.id(id);
+    int r = e.encode();
+    if (r < 0) {
+        LOG(ERROR, "Failed to encode message: %d", r);
+        return r;
+    }
+    if (r > (int)msg->capacity()) {
+        LOG(ERROR, "Too large message");
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    msg->set_length(r);
+    r = channel_->send(*msg);
+    if (r != ProtocolError::NO_ERROR) {
+        LOG(ERROR, "Failed to send message: %d", (int)r);
+        return SYSTEM_ERROR_IO;
+    }
+    return 0;
+}
+
 void FirmwareUpdate::reset() {
     if (updating_) {
         const int r = finishUpdate(FirmwareUpdateFlag::CANCEL);
@@ -552,7 +570,6 @@ void FirmwareUpdate::reset() {
     memset(chunks_, 0, sizeof(chunks_));
     updateStartTime_ = 0;
     lastChunkTime_ = 0;
-    lastAckTime_ = 0;
     fileSize_ = 0;
     fileOffset_ = 0;
     transferSize_ = 0;

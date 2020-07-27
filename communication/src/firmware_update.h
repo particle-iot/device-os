@@ -154,7 +154,6 @@ private:
     uint32_t chunks_[OTA_CHUNK_BITMAP_ELEMENTS]; // Bitmap of received chunks within the receiver window
     system_tick_t updateStartTime_; // Time when the update started
     system_tick_t lastChunkTime_; // Time when the last chunk was received
-    system_tick_t lastAckTime_; // Time when the last acknowledgement was sent
     size_t fileSize_; // File size
     size_t fileOffset_; // Current offset in the file
     size_t transferSize_; // Total size of the data to transfer
@@ -180,14 +179,16 @@ private:
     int handleEndRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
     int handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
 
+    static int decodeBeginRequest(const CoapMessageDecoder& d, const char** fileHash, size_t* fileSize, size_t* chunkSize,
+            bool* discardData);
+    static int decodeEndRequest(const CoapMessageDecoder& d, bool* cancelUpdate, bool* discardData);
+    static int decodeChunkRequest(const CoapMessageDecoder& d, const char** chunkData, size_t* chunkSize,
+            unsigned* chunkIndex);
+
+    void initChunkAck(CoapMessageEncoder* e);
+
     int sendErrorResponse(Message* msg, int error, CoapType type, const char* token, size_t tokenSize);
     int sendEmptyAck(Message* msg, CoapType type, CoapMessageId id);
-
-    static int parseBeginRequest(const CoapMessageDecoder& d, const char** fileHash, size_t* fileSize, size_t* chunkSize,
-            bool* discardData);
-    static int parseEndRequest(const CoapMessageDecoder& d, bool* cancelUpdate, bool* discardData);
-    static int parseChunkRequest(const CoapMessageDecoder& d, const char** chunkData, size_t* chunkSize,
-            unsigned* chunkIndex);
 
     int startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags);
     int finishUpdate(FirmwareUpdateFlags flags);
