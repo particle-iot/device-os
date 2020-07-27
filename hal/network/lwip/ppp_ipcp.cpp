@@ -148,7 +148,7 @@ void Ipcp::resetConfigurationInformation() {
       }
       case ipcp::CONFIGURATION_OPTION_SECONDARY_DNS_SERVER: {
         auto o = static_cast<ipcp::CommonConfigurationOptionIpAddress*>(opt);
-         o->setLocalAddress(conf.secondaryDns);
+        o->setLocalAddress(conf.secondaryDns);
         break;
       }
       case ipcp::CONFIGURATION_OPTION_IP_NETMASK: {
