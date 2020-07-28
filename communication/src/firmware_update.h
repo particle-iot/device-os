@@ -31,6 +31,8 @@
 #include <cstdint>
 #include <cstddef>
 
+#define OTA_UPDATE_STATS 1 // FIXME
+
 #ifndef OTA_UPDATE_STATS
 #ifdef DEBUG_BUILD
 #define OTA_UPDATE_STATS 1
@@ -112,11 +114,13 @@ private:
     size_t chunkSize_; // Chunk size
     size_t chunkCount_; // Total number of chunks to transfer
     size_t windowSize_; // Size of the receiver window in chunks
-    unsigned chunkIndex_; // Index of the chunk preceeding the chunk at the left edge of the receiver window
+    unsigned chunkIndex_; // Number of cumulatively acknowledged chunks
     unsigned unackChunks_; // Number or chunks received since the last acknowledgement
 
 #if OTA_UPDATE_STATS
     system_tick_t processTime_; // System processing time
+    system_tick_t lastLogTime_; // Time when the transfer state was last logged
+    unsigned lastLogChunks_; // Number of cumulatively acknowledged chunks at the time when the transfer state was last logged
     unsigned recvChunks_; // Number of received chunks
     unsigned sentAcks_; // Number of sent acknowledgements
     unsigned outOrderChunks_; // Number of chunks received out of order

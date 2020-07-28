@@ -40,6 +40,8 @@ namespace particle::protocol {
 
 namespace {
 
+const system_tick_t STATS_LOG_INTERVAL = 5000;
+
 static_assert(PARTICLE_LITTLE_ENDIAN, "This code is optimized for little-endian architectures");
 
 // Protocol-specific CoAP options
@@ -231,6 +233,7 @@ int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageE
     e->code(CoapCode::CREATED);
     e->id(0); // Will be assigned by the message channel
     e->token(d.token(), d.tokenSize());
+    e->option(MessageOption::WINDOW_SIZE, windowSize_);
     e->option(MessageOption::FILE_SIZE, fileOffset_);
     return 0;
 }
@@ -369,6 +372,11 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
     lastChunkTime_ = millis();
 #if OTA_UPDATE_STATS
     ++recvChunks_;
+    if (lastLogChunks_ != chunkIndex_ && lastLogTime_ + STATS_LOG_INTERVAL <= millis()) {
+        LOG(TRACE, "Received %u of %u chunks", chunkIndex_, chunkCount_);
+        lastLogChunks_ = chunkIndex_;
+        lastLogTime_ = millis();
+    }
 #endif
     return 0;
 }
@@ -574,6 +582,7 @@ int FirmwareUpdate::sendEmptyAck(Message* msg, CoapType type, CoapMessageId id) 
         return SYSTEM_ERROR_TOO_LARGE;
     }
     msg->set_length(r);
+    msg->set_id(id);
     r = channel_->send(*msg);
     if (r != ProtocolError::NO_ERROR) {
         LOG(ERROR, "Failed to send message: %d", (int)r);
@@ -603,6 +612,8 @@ void FirmwareUpdate::reset() {
     unackChunks_ = 0;
 #if OTA_UPDATE_STATS
     processTime_ = 0;
+    lastLogTime_ = 0;
+    lastLogChunks_ = 0;
     recvChunks_ = 0;
     sentAcks_ = 0;
     outOrderChunks_ = 0;
