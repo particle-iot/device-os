@@ -24,6 +24,7 @@ LOG_SOURCE_CATEGORY("hal.ota")
 #include "dct_hal.h"
 #include "dct.h"
 #include "core_hal.h"
+#include "exflash_hal.h"
 #include "flash_mal.h"
 #include "dct_hal.h"
 #include "dsakeygen.h"
@@ -358,6 +359,15 @@ bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved)
 int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved)
 {
     return FLASH_Update(pBuffer, address, length);
+}
+
+int HAL_OTA_Flash_Read(uintptr_t address, uint8_t* buffer, size_t size)
+{
+#ifdef USE_SERIAL_FLASH
+    return hal_exflash_read(address, buffer, size);
+#else
+    return hal_flash_read(address, buffer, size);
+#endif
 }
 
 static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength)

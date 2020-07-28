@@ -67,65 +67,71 @@ struct SparkCallbacks
 
     uint8_t reserved;
 
-	int (*send)(const unsigned char *buf, uint32_t buflen, void* handle);
-	int (*receive)(unsigned char *buf, uint32_t buflen, void* handle);
+    int (*send)(const unsigned char *buf, uint32_t buflen, void* handle);
+    int (*receive)(unsigned char *buf, uint32_t buflen, void* handle);
 
-	/**
-	* @param flags 1 dry run only.
-	* Return 0 on success.
-	*/
-	int (*prepare_for_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+    int (*start_firmware_update)(size_t file_size, const char* file_hash, size_t* file_offset, unsigned flags);
+    int (*finish_firmware_update)(unsigned flags);
+    int (*save_firmware_chunk)(const char* chunk_data, size_t chunk_size, size_t chunk_offset, size_t partial_size);
+#else
+    /**
+     * @param flags 1 dry run only.
+     * Return 0 on success.
+     */
+    int (*prepare_for_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
 
-	/**
-	*
-	* @return 0 on success
-	*/
-	int (*save_firmware_chunk)(FileTransfer::Descriptor& descriptor, const unsigned char* chunk, void*);
+    /**
+     *
+     * @return 0 on success
+     */
+    int (*save_firmware_chunk)(FileTransfer::Descriptor& descriptor, const unsigned char* chunk, void*);
 
-	/**
-	* Finalize the data storage.
-	* #param reset - if the device should be reset to apply the changes.
-	* #return 0 on success. Other values indicate an issue with the file.
-	*/
-	int (*finish_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
+    /**
+     * Finalize the data storage.
+     * #param reset - if the device should be reset to apply the changes.
+     * #return 0 on success. Other values indicate an issue with the file.
+     */
+    int (*finish_firmware_update)(FileTransfer::Descriptor& data, uint32_t flags, void*);
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
 
-	uint32_t (*calculate_crc)(const unsigned char *buf, uint32_t buflen);
+    uint32_t (*calculate_crc)(const unsigned char *buf, uint32_t buflen);
 
-	void (*signal)(bool on, unsigned int param, void* reserved);
-	system_tick_t (*millis)();
+    void (*signal)(bool on, unsigned int param, void* reserved);
+    system_tick_t (*millis)();
 
-	/**
-	* Sets the time. Time is given in milliseconds since the epoch, UCT.
-	*/
-	void (*set_time)(uint32_t t, unsigned int param, void* reserved);
+    /**
+     * Sets the time. Time is given in milliseconds since the epoch, UCT.
+     */
+    void (*set_time)(uint32_t t, unsigned int param, void* reserved);
 
-	// size == 40
+    // size == 40
 
-	/**
-	* A pointer that is passed back to the send/receive functions.
-	*/
-	void* transport_context;
+    /**
+     * A pointer that is passed back to the send/receive functions.
+     */
+    void* transport_context;
 
-	// size == 44
+    // size == 44
 
-  	enum PersistType
-	{
-  		PERSIST_SESSION = 0
-	};
-	int (*save)(const void* data, size_t length, uint8_t type, void* reserved);
-	/**
-	 * Restore to the given buffer. Returns the number of bytes restored.
-	 */
-	int (*restore)(void* data, size_t max_length, uint8_t type, void* reserved);
+    enum PersistType
+    {
+        PERSIST_SESSION = 0
+    };
+    int (*save)(const void* data, size_t length, uint8_t type, void* reserved);
+    /**
+     * Restore to the given buffer. Returns the number of bytes restored.
+     */
+    int (*restore)(void* data, size_t max_length, uint8_t type, void* reserved);
 
-	// size == 52
+    // size == 52
 
-	/**
-	 * Notify the client that all messages sent to the server have been processed.
-	 */
-	void (*notify_client_messages_processed)(void* reserved);
+    /**
+     * Notify the client that all messages sent to the server have been processed.
+     */
+    void (*notify_client_messages_processed)(void* reserved);
 
-	// size == 56
+    // size == 56
 };
 
 PARTICLE_STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*14));

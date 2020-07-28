@@ -21,6 +21,7 @@
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 
+#include "spark_protocol_functions.h"
 #include "protocol_defs.h"
 #include "coap_defs.h"
 
@@ -75,69 +76,21 @@ class MessageChannel;
 class CoapMessageDecoder;
 class CoapMessageEncoder;
 
-class FirmwareUpdateContext {
-public:
-    explicit FirmwareUpdateContext(void* userData = nullptr);
-
-    void errorMessage(CString msg);
-    const CString& errorMessage() const;
-    void clearErrorMessage();
-
-    void* userData() const;
-
-    void reset();
-
-private:
-    CString errMsg_;
-    void* userData_;
-};
-
-class FirmwareUpdateCallbacks {
-public:
-    typedef int (*StartUpdateFn)(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags,
-            FirmwareUpdateContext* ctx);
-    typedef int (*FinishUpdateFn)(FirmwareUpdateFlags flags, FirmwareUpdateContext* ctx);
-    typedef int (*SaveChunkFn)(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize,
-            FirmwareUpdateContext* ctx);
-    typedef system_tick_t (*MillisFn)();
-
-    FirmwareUpdateCallbacks();
-
-    FirmwareUpdateCallbacks& startUpdateFn(StartUpdateFn fn);
-    StartUpdateFn startUpdateFn() const;
-
-    FirmwareUpdateCallbacks& finishUpdateFn(FinishUpdateFn fn);
-    FinishUpdateFn finishUpdateFn() const;
-
-    FirmwareUpdateCallbacks& saveChunkFn(SaveChunkFn fn);
-    SaveChunkFn saveChunkFn() const;
-
-    FirmwareUpdateCallbacks& millisFn(MillisFn fn);
-    MillisFn millisFn() const;
-
-    FirmwareUpdateCallbacks& userData(void* data);
-    void* userData() const;
-
-private:
-    StartUpdateFn startUpdateFn_;
-    FinishUpdateFn finishUpdateFn_;
-    SaveChunkFn saveChunkFn_;
-    MillisFn millisFn_;
-    void* userData_;
-};
-
 /**
- * OTA update protocol v3.
+ * A class implementing the OTA update protocol v3.
  */
 class FirmwareUpdate {
 public:
-    FirmwareUpdate(MessageChannel* channel, FirmwareUpdateCallbacks callbacks);
+    FirmwareUpdate();
     ~FirmwareUpdate();
 
-    int beginRequest(Message* msg);
-    int endRequest(Message* msg);
-    int chunkRequest(Message* msg);
-    int process();
+    int init(MessageChannel* channel, const SparkCallbacks& callbacks);
+    void destroy();
+
+    ProtocolError beginRequest(Message* msg);
+    ProtocolError endRequest(Message* msg);
+    ProtocolError chunkRequest(Message* msg);
+    ProtocolError process();
 
     bool isRunning() const;
 
@@ -146,9 +99,8 @@ public:
 private:
     typedef int (FirmwareUpdate::*RequestHandlerFn)(const CoapMessageDecoder& d, CoapMessageEncoder* e);
 
-    FirmwareUpdateContext ctx_; // Update context
-    FirmwareUpdateCallbacks const callbacks_; // Callbacks
-    MessageChannel* const channel_; // Message channel
+    const SparkCallbacks* callbacks_; // Callbacks
+    MessageChannel* channel_; // Message channel
     bool updating_; // Whether an update is in progress
 
     uint32_t chunks_[OTA_CHUNK_BITMAP_ELEMENTS]; // Bitmap of received chunks within the receiver window
@@ -172,8 +124,7 @@ private:
     unsigned dupChunks_; // Number of received duplicate chunks
 #endif // OTA_UPDATE_STATS
 
-    // Note: This method returns ProtocolError
-    int handleRequest(Message* msg, RequestHandlerFn handler);
+    ProtocolError handleRequest(Message* msg, RequestHandlerFn handler);
 
     int handleBeginRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
     int handleEndRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
@@ -190,98 +141,29 @@ private:
     int sendErrorResponse(Message* msg, int error, CoapType type, const char* token, size_t tokenSize);
     int sendEmptyAck(Message* msg, CoapType type, CoapMessageId id);
 
-    int startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags);
-    int finishUpdate(FirmwareUpdateFlags flags);
-    int saveChunk(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize);
     system_tick_t millis() const;
 };
 
-inline FirmwareUpdateContext::FirmwareUpdateContext(void* userData) :
-        userData_(userData) {
+inline FirmwareUpdate::FirmwareUpdate() :
+        callbacks_(nullptr),
+        channel_(nullptr),
+        updating_(false) {
+    reset();
 }
 
-inline void FirmwareUpdateContext::errorMessage(CString msg) {
-    errMsg_ = std::move(msg);
+inline FirmwareUpdate::~FirmwareUpdate() {
+    destroy();
 }
 
-inline const CString& FirmwareUpdateContext::errorMessage() const {
-    return errMsg_;
-}
-
-inline void FirmwareUpdateContext::clearErrorMessage() {
-    errMsg_ = CString();
-}
-
-inline void* FirmwareUpdateContext::userData() const {
-    return userData_;
-}
-
-inline void FirmwareUpdateContext::reset() {
-    errMsg_ = CString();
-}
-
-inline FirmwareUpdateCallbacks::FirmwareUpdateCallbacks() :
-        startUpdateFn_(nullptr),
-        finishUpdateFn_(nullptr),
-        saveChunkFn_(nullptr),
-        millisFn_(nullptr),
-        userData_(nullptr) {
-}
-
-inline FirmwareUpdateCallbacks& FirmwareUpdateCallbacks::startUpdateFn(StartUpdateFn fn) {
-    startUpdateFn_ = fn;
-    return *this;
-}
-
-inline FirmwareUpdateCallbacks::StartUpdateFn FirmwareUpdateCallbacks::startUpdateFn() const {
-    return startUpdateFn_;
-}
-
-inline FirmwareUpdateCallbacks& FirmwareUpdateCallbacks::finishUpdateFn(FinishUpdateFn fn) {
-    finishUpdateFn_ = fn;
-    return *this;
-}
-
-inline FirmwareUpdateCallbacks::FinishUpdateFn FirmwareUpdateCallbacks::finishUpdateFn() const {
-    return finishUpdateFn_;
-}
-
-inline FirmwareUpdateCallbacks& FirmwareUpdateCallbacks::saveChunkFn(SaveChunkFn fn) {
-    saveChunkFn_ = fn;
-    return *this;
-}
-
-inline FirmwareUpdateCallbacks::SaveChunkFn FirmwareUpdateCallbacks::saveChunkFn() const {
-    return saveChunkFn_;
-}
-
-inline FirmwareUpdateCallbacks& FirmwareUpdateCallbacks::millisFn(MillisFn fn) {
-    millisFn_ = fn;
-    return *this;
-}
-
-inline FirmwareUpdateCallbacks::MillisFn FirmwareUpdateCallbacks::millisFn() const {
-    return millisFn_;
-}
-
-inline FirmwareUpdateCallbacks& FirmwareUpdateCallbacks::userData(void* data) {
-    userData_ = data;
-    return *this;
-}
-
-inline void* FirmwareUpdateCallbacks::userData() const {
-    return userData_;
-}
-
-inline int FirmwareUpdate::beginRequest(Message* msg) {
+inline ProtocolError FirmwareUpdate::beginRequest(Message* msg) {
     return handleRequest(msg, &FirmwareUpdate::handleBeginRequest);
 }
 
-inline int FirmwareUpdate::endRequest(Message* msg) {
+inline ProtocolError FirmwareUpdate::endRequest(Message* msg) {
     return handleRequest(msg, &FirmwareUpdate::handleEndRequest);
 }
 
-inline int FirmwareUpdate::chunkRequest(Message* msg) {
+inline ProtocolError FirmwareUpdate::chunkRequest(Message* msg) {
     return handleRequest(msg, &FirmwareUpdate::handleChunkRequest);
 }
 
@@ -289,41 +171,8 @@ inline bool FirmwareUpdate::isRunning() const {
     return updating_;
 }
 
-inline int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags) {
-#if OTA_UPDATE_STATS
-    const auto t1 = millis();
-#endif
-    const int r = callbacks_.startUpdateFn()(fileSize, fileHash, fileOffset, flags, &ctx_);
-#if OTA_UPDATE_STATS
-    processTime_ += millis() - t1;
-#endif
-    return r;
-}
-
-inline int FirmwareUpdate::finishUpdate(FirmwareUpdateFlags flags) {
-#if OTA_UPDATE_STATS
-    const auto t1 = millis();
-#endif
-    const int r = callbacks_.finishUpdateFn()(flags, &ctx_);
-#if OTA_UPDATE_STATS
-    processTime_ += millis() - t1;
-#endif
-    return r;
-}
-
-inline int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize) {
-#if OTA_UPDATE_STATS
-    const auto t1 = millis();
-#endif
-    const int r = callbacks_.saveChunkFn()(chunkData, chunkSize, chunkOffset, partialSize, &ctx_);
-#if OTA_UPDATE_STATS
-    processTime_ += millis() - t1;
-#endif
-    return r;
-}
-
 inline system_tick_t FirmwareUpdate::millis() const {
-    return callbacks_.millisFn()();
+    return callbacks_->millis();
 }
 
 } // namespace particle::protocol

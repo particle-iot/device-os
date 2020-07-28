@@ -19,6 +19,10 @@
 
 #pragma once
 
+#include "hal_platform.h"
+
+#if !HAL_PLATFORM_OTA_PROTOCOL_V3
+
 #include "protocol_defs.h"
 #include "file_transfer.h"
 #include "message_channel.h"
@@ -176,3 +180,5 @@ public:
 
 }
 }
+
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3

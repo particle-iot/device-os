@@ -5,6 +5,7 @@
 #include "protocol_defs.h"
 #include "ping.h"
 #include "chunked_transfer.h"
+#include "firmware_update.h"
 #include "spark_descriptor.h"
 #include "spark_protocol_functions.h"
 #include "functions.h"
@@ -61,6 +62,9 @@ class Protocol
 	 */
 	CommunicationsHandlers handlers;
 
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	FirmwareUpdate firmwareUpdate;
+#else
 	/**
 	 * Manages chunked file transfer functionality.
 	 */
@@ -83,6 +87,7 @@ class Protocol
 		  virtual system_tick_t millis();
 
 	} chunkedTransferCallbacks;
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
 
 	/**
 	 * Manages device-hosted variables.
@@ -231,17 +236,26 @@ protected:
 	 */
 	ProtocolError event_loop_idle()
 	{
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+		if (firmwareUpdate.isRunning())
+		{
+			return firmwareUpdate.process();
+		}
+#else
 		if (chunkedTransfer.is_updating())
 		{
 			return chunkedTransfer.idle(channel);
 		}
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
 		else
 		{
-			ProtocolError error = pinger.process(
-					callbacks.millis() - last_message_millis, [this]
-					{	return ping();});
+			ProtocolError error = pinger.process(callbacks.millis() - last_message_millis, [this] {
+					return ping();
+				});
 			if (error)
+			{
 				return error;
+			}
 		}
 		return NO_ERROR;
 	}
@@ -334,7 +348,9 @@ public:
 
 	void set_fast_ota(unsigned data)
 	{
+#if !HAL_PLATFORM_OTA_PROTOCOL_V3
 		chunkedTransfer.set_fast_ota(data);
+#endif
 	}
 
 	void enable_device_initiated_describe()
@@ -414,7 +430,12 @@ public:
 	bool send_event(const char *event_name, const char *data, int ttl,
 			EventType::Enum event_type, int flags, CompletionHandler handler)
 	{
-		if (chunkedTransfer.is_updating())
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+		const bool updating = firmwareUpdate.isRunning();
+#else
+		const bool updating = chunkedTransfer.is_updating();
+#endif
+		if (updating)
 		{
 			handler.setError(SYSTEM_ERROR_BUSY);
 			return false;
@@ -488,7 +509,12 @@ public:
 
 	inline bool send_time_request()
 	{
-		if (chunkedTransfer.is_updating())
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+		const bool updating = firmwareUpdate.isRunning();
+#else
+		const bool updating = chunkedTransfer.is_updating();
+#endif
+		if (updating)
 		{
 			return false;
 		}

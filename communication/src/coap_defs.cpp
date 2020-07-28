@@ -23,7 +23,7 @@ namespace particle::protocol {
 
 // Note: System errors cannot be properly mapped to the response codes defined in RFC 7252.
 // Most of the errors will result in 5.00 (Internal Server Error), which is used as a generic
-// code for error responses
+// code and doesn't necessarily indicate an internal Device OS error
 CoapCode coapCodeForSystemError(int error) {
     switch (error) {
     case SYSTEM_ERROR_NONE:

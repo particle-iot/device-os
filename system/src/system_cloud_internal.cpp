@@ -56,10 +56,48 @@
 #include "network/ncp/cellular/cellular_ncp_client.h"
 #endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 #include "system_version.h"
+#include "firmware_update.h"
 
 #include <stdio.h>
 #include <stdint.h>
 
+namespace particle {
+
+namespace system {
+
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+
+int startFirmwareUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, unsigned flags) {
+    return FirmwareUpdate::instance()->startUpdate(fileSize, fileHash, fileOffset,
+            FirmwareUpdateFlags::fromUnderlying(flags));
+}
+
+int finishFirmwareUpdate(unsigned flags) {
+    return FirmwareUpdate::instance()->finishUpdate(FirmwareUpdateFlags::fromUnderlying(flags));
+}
+
+int saveFirmwareChunk(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize) {
+    return FirmwareUpdate::instance()->saveChunk(chunkData, chunkSize, chunkOffset, partialSize);
+}
+
+#endif // HAL_PLATFORM_OTA_PROTOCOL_V3
+
+} // namespace system
+
+int sendApplicationDescription() {
+    LOG(INFO, "Sending application DESCRIBE");
+    int r = spark_protocol_post_description(sp, protocol::DescriptionType::DESCRIBE_APPLICATION, nullptr);
+    if (r != 0) {
+        return spark_protocol_to_system_error(r);
+    }
+    LOG(INFO, "Sending subscriptions");
+    spark_protocol_send_subscriptions(sp);
+    return 0;
+}
+
+} // namespace particle
+
+using namespace particle::system;
 using particle::CloudDiagnostics;
 using particle::CloudConnectionSettings;
 using particle::publishEvent;
@@ -79,7 +117,6 @@ using particle::LEDStatus;
 int userVarType(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
 
-static int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, void* module);
 static void formatResetReasonEventData(int reason, uint32_t data, char *buf, size_t size);
 
 ProtocolFacade* sp;
@@ -767,6 +804,8 @@ int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescript
     return 0;
 }
 
+#if !HAL_PLATFORM_OTA_PROTOCOL_V3
+
 int formatOtaUpdateStatusEventData(uint32_t flags, int result, uint8_t *buf, size_t size)
 {
     memset(buf, 0, size);
@@ -795,6 +834,8 @@ int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, v
 
     return result;
 }
+
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
 
 static const char* resetReasonString(System_Reset_Reason reason)
 {
@@ -959,11 +1000,16 @@ void Spark_Protocol_Init(void)
             callbacks.receive = Spark_Receive;
             callbacks.transport_context = nullptr;
         }
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+        callbacks.start_firmware_update = startFirmwareUpdate;
+        callbacks.finish_firmware_update = finishFirmwareUpdate;
+        callbacks.save_firmware_chunk = saveFirmwareChunk;
+#else
         callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
-        //callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
         callbacks.finish_firmware_update = finish_ota_firmware_update;
-        callbacks.calculate_crc = HAL_Core_Compute_CRC32;
         callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
+        callbacks.calculate_crc = HAL_Core_Compute_CRC32;
         callbacks.signal = Spark_Signal;
         callbacks.millis = HAL_Timer_Get_Milli_Seconds;
         callbacks.set_time = system_set_time;
@@ -1241,18 +1287,3 @@ CloudDiagnostics* CloudDiagnostics::instance() {
 CloudConnectionSettings* CloudConnectionSettings::instance() {
     return &g_cloudConnectionSettings;
 }
-
-namespace particle {
-
-int sendApplicationDescription() {
-    LOG(INFO, "Sending application DESCRIBE");
-    int r = spark_protocol_post_description(sp, protocol::DescriptionType::DESCRIBE_APPLICATION, nullptr);
-    if (r != 0) {
-        return spark_protocol_to_system_error(r);
-    }
-    LOG(INFO, "Sending subscriptions");
-    spark_protocol_send_subscriptions(sp);
-    return 0;
-}
-
-} // namespace particle

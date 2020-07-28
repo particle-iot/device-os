@@ -126,6 +126,17 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		}
 		return variables.handle_request(message, token, msg_id);
 	}
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	case CoAPMessageType::UPDATE_START: {
+		return firmwareUpdate.beginRequest(&message);
+	}
+	case CoAPMessageType::UPDATE_FINISH: {
+		return firmwareUpdate.endRequest(&message);
+	}
+	case CoAPMessageType::UPDATE_CHUNK: {
+		return firmwareUpdate.chunkRequest(&message);
+	}
+#else
 	case CoAPMessageType::SAVE_BEGIN:
 		// fall through
 	case CoAPMessageType::UPDATE_BEGIN:
@@ -135,7 +146,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		return chunkedTransfer.handle_chunk(token, message, channel);
 	case CoAPMessageType::UPDATE_DONE:
 		return chunkedTransfer.handle_update_done(token, message, channel);
-
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
 	case CoAPMessageType::EVENT:
 		return subscriptions.handle_event(message, descriptor.call_event_handler, channel);
 
@@ -269,8 +280,12 @@ void Protocol::init(const SparkCallbacks &callbacks,
 	copy_and_init(&this->descriptor, sizeof(this->descriptor), &descriptor,
 			descriptor.size);
 
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	firmwareUpdate.init(&channel, this->callbacks);
+#else
 	chunkedTransferCallbacks.init(&this->callbacks);
 	chunkedTransfer.init(&chunkedTransferCallbacks);
+#endif
 
 	initialized = true;
 }
@@ -380,7 +395,11 @@ int Protocol::begin()
 }
 
 void Protocol::reset() {
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	firmwareUpdate.reset();
+#else
 	chunkedTransfer.reset();
+#endif
 	pinger.reset();
 	timesync_.reset();
 	ack_handlers.clear();
@@ -487,7 +506,11 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 	if (error)
 	{
 		// bail if and only if there was an error
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+		firmwareUpdate.reset();
+#else
 		chunkedTransfer.cancel();
+#endif
 		LOG(ERROR,"Event loop error %d", error);
 		return error;
 	}
@@ -748,6 +771,8 @@ bool Protocol::handle_app_state_reply(message_id_t msg_id, CoAPCode::Enum code)
 	return false;
 }
 
+#if !HAL_PLATFORM_OTA_PROTOCOL_V3
+
 int Protocol::ChunkedTransferCallbacks::prepare_for_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void* reserved)
 {
 	return callbacks->prepare_for_firmware_update(data, flags, reserved);
@@ -772,6 +797,8 @@ system_tick_t Protocol::ChunkedTransferCallbacks::millis()
 {
 	return callbacks->millis();
 }
+
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
 
 int Protocol::get_describe_data(spark_protocol_describe_data* data, void* reserved)
 {
