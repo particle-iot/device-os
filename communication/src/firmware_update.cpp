@@ -15,6 +15,10 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+
+#include "logging.h"
+
 #include "firmware_update.h"
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
@@ -179,27 +183,17 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
     return ProtocolError::NO_ERROR;
 }
 
-int FirmwareUpdate::handleBeginRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e) {
+int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e) {
     if (!updating_) {
-        LOG(INFO, "Received Begin request");
+        LOG(INFO, "Received UpdateStart request");
     } else {
-        LOG(WARN, "Received Begin request but another update is already in progress");
+        LOG(WARN, "Received UpdateStart request but another update is already in progress");
     }
     reset();
     updateStartTime_ = millis();
-    // Parse message
     const char* fileHash = nullptr;
     bool discardData = false;
-    CHECK(decodeBeginRequest(d, &fileHash, &fileSize_, &chunkSize_, &discardData));
-    // Start the update
-    FirmwareUpdateFlags flags;
-    if (discardData) {
-        flags |= FirmwareUpdateFlag::DISCARD_DATA;
-    }
-    if (!fileHash) {
-        flags |= FirmwareUpdateFlag::NON_RESUMABLE;
-    }
-    LOG(INFO, "Starting firmware update");
+    CHECK(decodeStartRequest(d, &fileHash, &fileSize_, &chunkSize_, &discardData));
     LOG(INFO, "File size: %u", (unsigned)fileSize_);
     LOG(INFO, "Chunk size: %u", (unsigned)chunkSize_);
     LOG(INFO, "Discard data: %u", (unsigned)discardData);
@@ -207,6 +201,14 @@ int FirmwareUpdate::handleBeginRequest(const CoapMessageDecoder& d, CoapMessageE
         LOG(INFO, "File checksum:");
         LOG_DUMP(INFO, fileHash, Sha256::HASH_SIZE);
         LOG_PRINT(INFO, "\r\n");
+    }
+    LOG(INFO, "Starting firmware update");
+    FirmwareUpdateFlags flags;
+    if (discardData) {
+        flags |= FirmwareUpdateFlag::DISCARD_DATA;
+    }
+    if (!fileHash) {
+        flags |= FirmwareUpdateFlag::NON_RESUMABLE;
     }
 #if OTA_UPDATE_STATS
     const auto t1 = millis();
@@ -233,14 +235,15 @@ int FirmwareUpdate::handleBeginRequest(const CoapMessageDecoder& d, CoapMessageE
     return 0;
 }
 
-int FirmwareUpdate::handleEndRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e) {
+int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e) {
     if (!updating_) {
-        LOG(WARN, "Received End request but no update is in progress");
+        LOG(WARN, "Received UpdateFinish request but no update is in progress");
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    LOG(INFO, "Received UpdateFinish request");
     bool cancelUpdate = false;
     bool discardData = false;
-    CHECK(decodeEndRequest(d, &cancelUpdate, &discardData));
+    CHECK(decodeFinishRequest(d, &cancelUpdate, &discardData));
     LOG(INFO, "Finishing firmware update");
     LOG(INFO, "Cancel update: %u", (unsigned)cancelUpdate);
     LOG(INFO, "Discard data: %u", (unsigned)discardData);
@@ -272,7 +275,7 @@ int FirmwareUpdate::handleEndRequest(const CoapMessageDecoder& d, CoapMessageEnc
 
 int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e) {
     if (!updating_) {
-        LOG(WARN, "Received Chunk request but no update is in progress");
+        LOG(WARN, "Received UpdateChunk request but no update is in progress");
         return SYSTEM_ERROR_INVALID_STATE;
     }
     const char* data = nullptr;
@@ -370,7 +373,7 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
     return 0;
 }
 
-int FirmwareUpdate::decodeBeginRequest(const CoapMessageDecoder& d, const char** fileHash, size_t* fileSize,
+int FirmwareUpdate::decodeStartRequest(const CoapMessageDecoder& d, const char** fileHash, size_t* fileSize,
         size_t* chunkSize, bool* discardData) {
     if (d.type() != CoapType::CON) {
         LOG(ERROR, "Invalid message type");
@@ -442,7 +445,7 @@ int FirmwareUpdate::decodeBeginRequest(const CoapMessageDecoder& d, const char**
     return 0;
 }
 
-int FirmwareUpdate::decodeEndRequest(const CoapMessageDecoder& d, bool* cancelUpdate, bool* discardData) {
+int FirmwareUpdate::decodeFinishRequest(const CoapMessageDecoder& d, bool* cancelUpdate, bool* discardData) {
     if (d.type() != CoapType::CON) {
         LOG(ERROR, "Invalid message type");
         return SYSTEM_ERROR_PROTOCOL;

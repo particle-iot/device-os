@@ -87,8 +87,8 @@ public:
     int init(MessageChannel* channel, const SparkCallbacks& callbacks);
     void destroy();
 
-    ProtocolError beginRequest(Message* msg);
-    ProtocolError endRequest(Message* msg);
+    ProtocolError startRequest(Message* msg);
+    ProtocolError finishRequest(Message* msg);
     ProtocolError chunkRequest(Message* msg);
     ProtocolError process();
 
@@ -126,13 +126,13 @@ private:
 
     ProtocolError handleRequest(Message* msg, RequestHandlerFn handler);
 
-    int handleBeginRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
-    int handleEndRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
+    int handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
+    int handleFinishRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
     int handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
 
-    static int decodeBeginRequest(const CoapMessageDecoder& d, const char** fileHash, size_t* fileSize, size_t* chunkSize,
+    static int decodeStartRequest(const CoapMessageDecoder& d, const char** fileHash, size_t* fileSize, size_t* chunkSize,
             bool* discardData);
-    static int decodeEndRequest(const CoapMessageDecoder& d, bool* cancelUpdate, bool* discardData);
+    static int decodeFinishRequest(const CoapMessageDecoder& d, bool* cancelUpdate, bool* discardData);
     static int decodeChunkRequest(const CoapMessageDecoder& d, const char** chunkData, size_t* chunkSize,
             unsigned* chunkIndex);
 
@@ -155,12 +155,12 @@ inline FirmwareUpdate::~FirmwareUpdate() {
     destroy();
 }
 
-inline ProtocolError FirmwareUpdate::beginRequest(Message* msg) {
-    return handleRequest(msg, &FirmwareUpdate::handleBeginRequest);
+inline ProtocolError FirmwareUpdate::startRequest(Message* msg) {
+    return handleRequest(msg, &FirmwareUpdate::handleStartRequest);
 }
 
-inline ProtocolError FirmwareUpdate::endRequest(Message* msg) {
-    return handleRequest(msg, &FirmwareUpdate::handleEndRequest);
+inline ProtocolError FirmwareUpdate::finishRequest(Message* msg) {
+    return handleRequest(msg, &FirmwareUpdate::handleFinishRequest);
 }
 
 inline ProtocolError FirmwareUpdate::chunkRequest(Message* msg) {

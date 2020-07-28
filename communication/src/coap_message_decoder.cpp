@@ -175,7 +175,7 @@ bool CoapOptionIterator::next() {
 unsigned CoapOptionIterator::toUInt() const {
     uint32_t v = 0;
     if (optData_ && optSize_ <= 4) {
-        memcpy(&v, optData_, optSize_);
+        memcpy((char*)&v + 4 - optSize_, optData_, optSize_);
     }
     return bigEndianToNative(v);
 }

@@ -40,7 +40,8 @@ enum HelloFlag {
 	// Flag 0x08 is reserved to indicate support for the HandshakeComplete message
 	HELLO_FLAG_GOODBYE_SUPPORT = 0x10,
 	HELLO_FLAG_DEVICE_INITIATED_DESCRIBE = 0x20,
-	HELLO_FLAG_COMPRESSED_OTA = 0x40
+	HELLO_FLAG_COMPRESSED_OTA = 0x40,
+	HELLO_FLAG_OTA_PROTOCOL_V3 = 0x80
 };
 
 } // namespace
@@ -128,10 +129,10 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	}
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 	case CoAPMessageType::UPDATE_START: {
-		return firmwareUpdate.beginRequest(&message);
+		return firmwareUpdate.startRequest(&message);
 	}
 	case CoAPMessageType::UPDATE_FINISH: {
-		return firmwareUpdate.endRequest(&message);
+		return firmwareUpdate.finishRequest(&message);
 	}
 	case CoAPMessageType::UPDATE_CHUNK: {
 		return firmwareUpdate.chunkRequest(&message);
@@ -429,6 +430,9 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 	if (protocol_flags & ProtocolFlag::COMPRESSED_OTA) {
 		flags |= HELLO_FLAG_COMPRESSED_OTA;
 	}
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	flags |= HELLO_FLAG_OTA_PROTOCOL_V3;
+#endif
 	size_t len = build_hello(message, flags);
 	message.set_length(len);
 	message.set_confirm_received(true); // Send synchronously

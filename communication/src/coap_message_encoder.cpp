@@ -191,7 +191,7 @@ bool CoapMessageEncoder::encodeHeader(size_t tokenSize) {
         return false;
     }
     // The code using this class is required to provide at least a message type
-    if (flags_ | Flag::HEADER_ENCODED || !(flags_ | HAS_TYPE)) {
+    if (flags_ & Flag::HEADER_ENCODED || !(flags_ & HAS_TYPE)) {
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return false;
     }
