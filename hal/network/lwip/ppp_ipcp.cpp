@@ -215,12 +215,14 @@ int Ipcp::ackConfigurationInformation(uint8_t* buf, int len) {
 
 /* NAK our Configuration Information */
 int Ipcp::nakConfigurationInformation(uint8_t* buf, int len, int treatAsReject) {
+  int ret = 1;
   while (len > 0) {
     uint8_t id = *buf;
     auto opt = findOption(id);
     if (opt != nullptr) {
       int l = opt->recvConfigureNak(buf, len);
       if (l == 0) {
+        ret = 0;
         break;
       }
       buf += l;
@@ -231,7 +233,7 @@ int Ipcp::nakConfigurationInformation(uint8_t* buf, int len, int treatAsReject) 
     }
   }
 
-  return len == 0;
+  return ret;
 }
 
 /* Reject our Configuration Information */
