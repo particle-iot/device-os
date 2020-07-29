@@ -33,6 +33,7 @@
 #include <arpa/inet.h>
 #include "spark_wiring_constants.h"
 #include "spark_wiring_posix_common.h"
+#include "system_defs.h"
 
 using namespace spark;
 
@@ -96,7 +97,8 @@ UDP::UDP()
           _total(0),
           _buffer(0),
           _buffer_size(512),
-          _nif(0) {
+          _nif(NETWORK_INTERFACE_ALL),
+          _buffer_allocated(false) {
 }
 
 bool UDP::setBuffer(size_t buf_size, uint8_t* buffer) {

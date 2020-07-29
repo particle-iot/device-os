@@ -86,7 +86,7 @@ private:
     /**
      * Set to non-zero if the buffer was dynamically allocated by this class.
      */
-    uint8_t _buffer_allocated;
+    bool _buffer_allocated;
 
 
 
