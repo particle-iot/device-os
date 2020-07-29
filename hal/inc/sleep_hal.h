@@ -28,6 +28,7 @@
 #include "interrupts_hal.h"
 #include "platforms.h"
 #include "assert.h"
+#include "usart_hal.h"
 
 #define HAL_SLEEP_VERSION 3
 
@@ -66,7 +67,7 @@ typedef enum hal_wakeup_source_type_t {
     HAL_WAKEUP_SOURCE_TYPE_DAC = 3,
     HAL_WAKEUP_SOURCE_TYPE_RTC = 4,
     HAL_WAKEUP_SOURCE_TYPE_LPCOMP = 5,
-    HAL_WAKEUP_SOURCE_TYPE_UART = 6,
+    HAL_WAKEUP_SOURCE_TYPE_USART = 6,
     HAL_WAKEUP_SOURCE_TYPE_I2C = 7,
     HAL_WAKEUP_SOURCE_TYPE_SPI = 8,
     HAL_WAKEUP_SOURCE_TYPE_TIMER = 9,
@@ -130,6 +131,15 @@ typedef struct hal_wakeup_source_rtc_t {
     hal_wakeup_source_base_t base; // This must come first in order to use casting.
     system_tick_t ms;
 } hal_wakeup_source_rtc_t;
+
+/**
++ * HAL sleep wakeup source: USART
++ */
+typedef struct hal_wakeup_source_usart_t {
+    hal_wakeup_source_base_t base; // This must come first in order to use casting.
+    hal_usart_interface_t serial;
+    uint8_t reserved[3];
+} hal_wakeup_source_usart_t;
 
 /**
  * HAL sleep wakeup source: network

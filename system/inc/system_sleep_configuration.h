@@ -25,6 +25,7 @@
 #include "system_network.h"
 #include "system_error.h"
 #include "spark_wiring_network.h"
+#include "spark_wiring_usartserial.h"
 #include "enumflags.h"
 
 #define SYSTEM_SLEEP_NETWORK_FLAG_SUPPORTED_VER     (3)
@@ -308,6 +309,33 @@ public:
 
     SystemSleepConfiguration& duration(std::chrono::milliseconds ms) {
         return duration(ms.count());
+    }
+
+    SystemSleepConfiguration& usart(const USARTSerial& serial) {
+        if (valid_) {
+            // Check if USART has been configured as wakeup source.
+            auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_USART);
+            while (wakeup) {
+                auto usartkWakeup = reinterpret_cast<hal_wakeup_source_usart_t*>(wakeup);
+                if (usartkWakeup->serial == serial.interface()) {
+                    return *this;
+                }
+                wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_USART, wakeup->next);
+            }
+            // Otherwise, configure USART as wakeup source.
+            auto wakeupSource = new(std::nothrow) hal_wakeup_source_usart_t();
+            if (!wakeupSource) {
+                valid_ = false;
+                return *this;
+            }
+            wakeupSource->base.size = sizeof(hal_wakeup_source_usart_t);
+            wakeupSource->base.version = HAL_SLEEP_VERSION;
+            wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_USART;
+            wakeupSource->base.next = config_.wakeup_sources;
+            wakeupSource->serial = serial.interface();
+            config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
+        }
+        return *this;
     }
 
     SystemSleepConfiguration& network(network_interface_t netif, EnumFlags<SystemSleepNetworkFlag> flags = SystemSleepNetworkFlag::NONE) {

@@ -166,6 +166,9 @@ static int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sourc
 }
 
 static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_network_t* network) {
+    if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
     if (mode == HAL_SLEEP_MODE_HIBERNATE) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
@@ -387,13 +390,22 @@ int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved) 
 
     // Checks the wakeup sources
     auto wakeupSource = config->wakeup_sources;
-    // At least one wakeup source should be configured for stop mode.
-    if ((config->mode == HAL_SLEEP_MODE_STOP || config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) && !wakeupSource) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
+    uint16_t valid = 0;
     while (wakeupSource) {
         CHECK(validateWakeupSource(config->mode, wakeupSource));
+        if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
+            auto network = reinterpret_cast<const hal_wakeup_source_network_t*>(wakeupSource);
+            if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
+                valid++;
+            }
+        } else {
+            valid++;
+        }
         wakeupSource = wakeupSource->next;
+    }
+    // At least one wakeup source should be configured for stop mode.
+    if ((config->mode == HAL_SLEEP_MODE_STOP || config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) && (!config->wakeup_sources || !valid)) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
     return SYSTEM_ERROR_NONE;

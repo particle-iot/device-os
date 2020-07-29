@@ -180,6 +180,7 @@ test(system_sleep)
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_WIFI_STA)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().network(NETWORK_INTERFACE_CELLULAR, SystemSleepNetworkFlag::INACTIVE_STANDBY)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().analog(A0, 1800, AnalogInterruptMode::CROSS)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().usart(Serial1)); (void)r; });
 
 #if HAL_PLATFORM_BLE
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().ble()); (void)r; });

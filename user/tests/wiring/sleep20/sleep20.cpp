@@ -283,6 +283,12 @@ test(06_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
 test(08_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP);
+#if HAL_PLATFORM_CELLULAR
+    config.network(Cellular, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+#endif
+#if HAL_PLATFORM_WIFI
+    config.network(WiFi, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+#endif
     SystemSleepResult result = System.sleep(config);
     assertNotEqual(result.error(), SYSTEM_ERROR_NONE);
 }
@@ -295,6 +301,12 @@ test(09_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
 test(10_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Without_Wakeup) {
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER);
+#if HAL_PLATFORM_CELLULAR
+    config.network(Cellular, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+#endif
+#if HAL_PLATFORM_WIFI
+    config.network(WiFi, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+#endif
     SystemSleepResult result = System.sleep(config);
     assertNotEqual(result.error(), SYSTEM_ERROR_NONE)   ;
 }
@@ -498,4 +510,154 @@ test(20_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_An
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_LPCOMP);
 }
+
+test(21_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart) {
+    Serial.println("    >> Device enters stop mode. Please reconnect serial after sending characters over Serial1 @115200bps");
+    Serial.println("    >> Press any key now");
+    while(Serial.available() <= 0);
+    while (Serial.available() > 0) {
+        (void)Serial.read();
+    }
+
+    Serial1.begin(115200);
+
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::STOP)
+          .usart(Serial1);
+    SystemSleepResult result = System.sleep(config);
+
+    Serial1.end();
+
+    while (!Serial.isConnected());
+
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_USART);
+}
+
+test(22_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Usart) {
+    Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after sending characters over Serial1 @115200bps");
+    Serial.println("    >> Press any key now");
+    while(Serial.available() <= 0);
+    while (Serial.available() > 0) {
+        (void)Serial.read();
+    }
+
+    Serial1.begin(115200);
+
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::ULTRA_LOW_POWER)
+          .usart(Serial1);
+    SystemSleepResult result = System.sleep(config);
+
+    Serial1.end();
+
+    while (!Serial.isConnected());
+
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_USART);
+}
+
+#if HAL_PLATFORM_CELLULAR
+test(23_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Cellular) {
+    Serial.println("    >> Device enters stop mode. Please reconnect serial after waking up by network data");
+    Serial.println("    >> Press any key now");
+    while(Serial.available() <= 0);
+    while (Serial.available() > 0) {
+        (void)Serial.read();
+    }
+
+    Serial.println("    >> Connecting to the cloud");
+    Cellular.on();
+    Particle.connect();
+    waitUntil(Particle.connected);
+    Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
+
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::STOP)
+          .network(Cellular);
+    SystemSleepResult result = System.sleep(config);
+
+    while (!Serial.isConnected());
+
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
+}
+
+test(24_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Cellular) {
+    Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after waking up by network data");
+    Serial.println("    >> Press any key now");
+    while(Serial.available() <= 0);
+    while (Serial.available() > 0) {
+        (void)Serial.read();
+    }
+
+    Serial.println("    >> Connecting to the cloud");
+    Cellular.on();
+    Particle.connect();
+    waitUntil(Particle.connected);
+    Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
+
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::ULTRA_LOW_POWER)
+          .network(Cellular);
+    SystemSleepResult result = System.sleep(config);
+
+    while (!Serial.isConnected());
+
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
+}
+#endif // HAL_PLATFORM_CELLULAR
+
+#if HAL_PLATFORM_WIFI
+test(25_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_WiFi) {
+    Serial.println("    >> Device enters stop mode. Please reconnect serial after waking up by network data");
+    Serial.println("    >> Press any key now");
+    while(Serial.available() <= 0);
+    while (Serial.available() > 0) {
+        (void)Serial.read();
+    }
+
+    Serial.println("    >> Connecting to the cloud");
+    WiFi.on();
+    Particle.connect();
+    waitUntil(Particle.connected);
+    Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
+
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::STOP)
+          .network(WiFi);
+    SystemSleepResult result = System.sleep(config);
+
+    while (!Serial.isConnected());
+
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
+}
+
+test(26_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_WiFi) {
+    Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after waking up by network data");
+    Serial.println("    >> Press any key now");
+    while(Serial.available() <= 0);
+    while (Serial.available() > 0) {
+        (void)Serial.read();
+    }
+
+    Serial.println("    >> Connecting to the cloud");
+    WiFi.on();
+    Particle.connect();
+    waitUntil(Particle.connected);
+    Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
+
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::ULTRA_LOW_POWER)
+          .network(WiFi);
+    SystemSleepResult result = System.sleep(config);
+
+    while (!Serial.isConnected());
+
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
+}
+#endif // HAL_PLATFORM_WIFI
 #endif // HAL_PLATFORM_GEN == 3
