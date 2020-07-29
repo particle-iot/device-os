@@ -73,6 +73,7 @@ static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSour
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
             priority->lpcompPriority = NVIC_GetPriority(COMP_LPCOMP_IRQn);
             NVIC_SetPriority(COMP_LPCOMP_IRQn, newPriority);
+            NVIC_EnableIRQ(COMP_LPCOMP_IRQn);
         }
         source = source->next;
     }
@@ -94,6 +95,7 @@ static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSo
             nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_DOWN);
             nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_UP);
             nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_CROSS);
+            NVIC_DisableIRQ(COMP_LPCOMP_IRQn);
             NVIC_ClearPendingIRQ(COMP_LPCOMP_IRQn);
             NVIC_SetPriority(COMP_LPCOMP_IRQn, priority->lpcompPriority);
         }
@@ -287,6 +289,7 @@ static void configRtcWakeupSource(const hal_wakeup_source_base_t* wakeupSources)
             nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_COMPARE_0);
             nrf_rtc_int_enable(NRF_RTC2, NRF_RTC_INT_COMPARE0_MASK);
             nrf_rtc_event_enable(NRF_RTC2, RTC_EVTEN_COMPARE0_Msk);
+            break; // Stop traversing the list.
         }
         source = source->next;
     }
@@ -300,10 +303,12 @@ static void configLpcompWakeupSource(const hal_wakeup_source_base_t* wakeupSourc
             auto lpcompWakeup = reinterpret_cast<const hal_wakeup_source_lpcomp_t*>(source);
             nrf_lpcomp_config_t config = {};
 
+            NVIC_DisableIRQ(COMP_LPCOMP_IRQn);
             NVIC_ClearPendingIRQ(COMP_LPCOMP_IRQn);
 
             // Reference voltage is VDD/16 * N, N ranges from 1 to 15, VDD/16 = 206mV
-            const nrf_lpcomp_ref_t refs[] = {
+            constexpr uint8_t vddDiv16 = 206;
+            constexpr nrf_lpcomp_ref_t refs[] = {
                 NRF_LPCOMP_REF_SUPPLY_1_16, NRF_LPCOMP_REF_SUPPLY_1_8,
                 NRF_LPCOMP_REF_SUPPLY_3_16, NRF_LPCOMP_REF_SUPPLY_2_8,
                 NRF_LPCOMP_REF_SUPPLY_5_16, NRF_LPCOMP_REF_SUPPLY_3_8,
@@ -313,9 +318,14 @@ static void configLpcompWakeupSource(const hal_wakeup_source_base_t* wakeupSourc
                 NRF_LPCOMP_REF_SUPPLY_13_16, NRF_LPCOMP_REF_SUPPLY_7_8,
                 NRF_LPCOMP_REF_SUPPLY_15_16
             };
-            uint8_t n = lpcompWakeup->voltage / 103; // Half of 206mV
-            n = (n + (n % 2)) >> 1;
-            n = (n > 0) ? (n - 1) : n;
+            constexpr uint8_t elements = sizeof(refs) / sizeof(nrf_lpcomp_ref_t);
+            uint8_t n = (lpcompWakeup->voltage + (vddDiv16 / 2)) / vddDiv16;
+            if (n > elements) {
+                n = elements;
+            }
+            if (n > 0) {
+                n--;
+            }
             config.reference = refs[n];
 
             switch (lpcompWakeup->trig) {
@@ -337,7 +347,6 @@ static void configLpcompWakeupSource(const hal_wakeup_source_base_t* wakeupSourc
             nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_UP);
             nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_CROSS);
 
-            NVIC_EnableIRQ(COMP_LPCOMP_IRQn); // TODO: Disable after waking up.
             switch (lpcompWakeup->trig) {
                 case HAL_SLEEP_LPCOMP_ABOVE: {
                     nrf_lpcomp_shorts_enable(NRF_LPCOMP_SHORT_UP_STOP_MASK);
@@ -356,6 +365,8 @@ static void configLpcompWakeupSource(const hal_wakeup_source_base_t* wakeupSourc
                 }
                 default: return; // It should not reach here.
             }
+            NVIC_EnableIRQ(COMP_LPCOMP_IRQn);
+            break; // Only one analog pin can be configured as wakeup source at a time. Stop traversing the list.
         }
         source = source->next;
     }
@@ -449,10 +460,6 @@ static int validateBleWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sourc
 
 static int validateLpcompWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_lpcomp_t* lpcomp) {
     if (HAL_Validate_Pin_Function(lpcomp->pin, PF_ADC) != PF_ADC) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    if (lpcomp->voltage >= 3094) {
-        // The maximum reference voltage is equal to VDD/16 * 15
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (lpcomp->trig > HAL_SLEEP_LPCOMP_CROSS) {
