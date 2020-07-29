@@ -54,6 +54,7 @@ typedef struct WakeupSourcePriorityCache {
     uint32_t gpiotePriority;
     uint32_t rtc2Priority;
     uint32_t blePriority;
+    uint32_t lpcompPriority;
 } WakeupSourcePriorityCache;
 
 static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSources, WakeupSourcePriorityCache* priority, uint32_t newPriority) {
@@ -69,6 +70,10 @@ static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSour
             priority->blePriority = NVIC_GetPriority(SD_EVT_IRQn);
             NVIC_SetPriority(SD_EVT_IRQn, newPriority);
             NVIC_EnableIRQ(SD_EVT_IRQn);
+        } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
+            priority->lpcompPriority = NVIC_GetPriority(COMP_LPCOMP_IRQn);
+            NVIC_SetPriority(COMP_LPCOMP_IRQn, newPriority);
+            NVIC_EnableIRQ(COMP_LPCOMP_IRQn);
         }
         source = source->next;
     }
@@ -84,6 +89,15 @@ static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSo
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
             NVIC_SetPriority(SD_EVT_IRQn, priority->blePriority);
             NVIC_DisableIRQ(SD_EVT_IRQn);
+        } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
+            // FIXME: dirty hack, since we nowhere implemented the IRQ handler.
+            nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_READY);
+            nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_DOWN);
+            nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_UP);
+            nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_CROSS);
+            NVIC_DisableIRQ(COMP_LPCOMP_IRQn);
+            NVIC_ClearPendingIRQ(COMP_LPCOMP_IRQn);
+            NVIC_SetPriority(COMP_LPCOMP_IRQn, priority->lpcompPriority);
         }
         source = source->next;
     }
@@ -127,6 +141,21 @@ static int constructBleWakeupReason(hal_wakeup_source_base_t** wakeupReason) {
         ble->type = HAL_WAKEUP_SOURCE_TYPE_BLE;
         ble->next = nullptr;
         *wakeupReason = ble;
+    } else {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+static int constructLpcompWakeupReason(hal_wakeup_source_base_t** wakeupReason, pin_t pin) {
+    auto lpcomp = (hal_wakeup_source_lpcomp_t*)malloc(sizeof(hal_wakeup_source_lpcomp_t));
+    if (lpcomp) {
+        lpcomp->base.size = sizeof(hal_wakeup_source_lpcomp_t);
+        lpcomp->base.version = HAL_SLEEP_VERSION;
+        lpcomp->base.type = HAL_WAKEUP_SOURCE_TYPE_LPCOMP;
+        lpcomp->base.next = nullptr;
+        lpcomp->pin = pin;
+        *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(lpcomp);
     } else {
         return SYSTEM_ERROR_NO_MEMORY;
     }
@@ -260,6 +289,84 @@ static void configRtcWakeupSource(const hal_wakeup_source_base_t* wakeupSources)
             nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_COMPARE_0);
             nrf_rtc_int_enable(NRF_RTC2, NRF_RTC_INT_COMPARE0_MASK);
             nrf_rtc_event_enable(NRF_RTC2, RTC_EVTEN_COMPARE0_Msk);
+            break; // Stop traversing the list.
+        }
+        source = source->next;
+    }
+}
+
+static void configLpcompWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
+    Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+    auto source = wakeupSources;
+    while (source) {
+        if (source->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
+            auto lpcompWakeup = reinterpret_cast<const hal_wakeup_source_lpcomp_t*>(source);
+            nrf_lpcomp_config_t config = {};
+
+            NVIC_DisableIRQ(COMP_LPCOMP_IRQn);
+            NVIC_ClearPendingIRQ(COMP_LPCOMP_IRQn);
+
+            // Reference voltage is VDD/16 * N, N ranges from 1 to 15, VDD/16 = 206mV
+            constexpr uint8_t vddDiv16 = 206;
+            constexpr nrf_lpcomp_ref_t refs[] = {
+                NRF_LPCOMP_REF_SUPPLY_1_16, NRF_LPCOMP_REF_SUPPLY_1_8,
+                NRF_LPCOMP_REF_SUPPLY_3_16, NRF_LPCOMP_REF_SUPPLY_2_8,
+                NRF_LPCOMP_REF_SUPPLY_5_16, NRF_LPCOMP_REF_SUPPLY_3_8,
+                NRF_LPCOMP_REF_SUPPLY_7_16, NRF_LPCOMP_REF_SUPPLY_4_8,
+                NRF_LPCOMP_REF_SUPPLY_9_16, NRF_LPCOMP_REF_SUPPLY_5_8,
+                NRF_LPCOMP_REF_SUPPLY_11_16, NRF_LPCOMP_REF_SUPPLY_6_8,
+                NRF_LPCOMP_REF_SUPPLY_13_16, NRF_LPCOMP_REF_SUPPLY_7_8,
+                NRF_LPCOMP_REF_SUPPLY_15_16
+            };
+            constexpr uint8_t elements = sizeof(refs) / sizeof(nrf_lpcomp_ref_t);
+            uint8_t n = (lpcompWakeup->voltage + (vddDiv16 / 2)) / vddDiv16;
+            if (n > elements) {
+                n = elements;
+            }
+            if (n > 0) {
+                n--;
+            }
+            config.reference = refs[n];
+
+            switch (lpcompWakeup->trig) {
+                case HAL_SLEEP_LPCOMP_ABOVE: config.detection = NRF_LPCOMP_DETECT_UP; break;
+                case HAL_SLEEP_LPCOMP_BELOW: config.detection = NRF_LPCOMP_DETECT_DOWN; break;
+                case HAL_SLEEP_LPCOMP_CROSS: config.detection = NRF_LPCOMP_DETECT_CROSS; break;
+                default: return;
+            }
+#ifdef LPCOMP_FEATURE_HYST_PRESENT
+            config.hyst = NRF_LPCOMP_HYST_50mV;
+#endif
+            nrf_lpcomp_configure(&config); // It will disable all interrupts.
+            nrf_lpcomp_input_select(static_cast<nrf_lpcomp_input_t>(halPinMap[lpcompWakeup->pin].adc_channel));
+            nrf_lpcomp_enable();
+            nrf_lpcomp_task_trigger(NRF_LPCOMP_TASK_START);
+            while (!nrf_lpcomp_event_check(NRF_LPCOMP_EVENT_READY));
+            nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_READY);
+            nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_DOWN);
+            nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_UP);
+            nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_CROSS);
+
+            switch (lpcompWakeup->trig) {
+                case HAL_SLEEP_LPCOMP_ABOVE: {
+                    nrf_lpcomp_shorts_enable(NRF_LPCOMP_SHORT_UP_STOP_MASK);
+                    nrf_lpcomp_int_enable(LPCOMP_INTENSET_UP_Msk);
+                    break;
+                }
+                case HAL_SLEEP_LPCOMP_BELOW: {
+                    nrf_lpcomp_shorts_enable(NRF_LPCOMP_SHORT_DOWN_STOP_MASK);
+                    nrf_lpcomp_int_enable(LPCOMP_INTENSET_DOWN_Msk);
+                    break;
+                }
+                case HAL_SLEEP_LPCOMP_CROSS: {
+                    nrf_lpcomp_shorts_enable(NRF_LPCOMP_SHORT_CROSS_STOP_MASK);
+                    nrf_lpcomp_int_enable(LPCOMP_INTENSET_CROSS_Msk);
+                    break;
+                }
+                default: return; // It should not reach here.
+            }
+            NVIC_EnableIRQ(COMP_LPCOMP_IRQn);
+            break; // Only one analog pin can be configured as wakeup source at a time. Stop traversing the list.
         }
         source = source->next;
     }
@@ -300,6 +407,10 @@ static bool isWokenUpByRtc() {
 
 static bool isWokenUpByBle() {
     return NVIC_GetPendingIRQ(SD_EVT_IRQn);
+}
+
+static bool isWokenUpByLpcomp() {
+    return NVIC_GetPendingIRQ(COMP_LPCOMP_IRQn);
 }
 
 static int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_gpio_t* gpio) {
@@ -347,6 +458,16 @@ static int validateBleWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sourc
     return SYSTEM_ERROR_NONE;
 }
 
+static int validateLpcompWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_lpcomp_t* lpcomp) {
+    if (HAL_Validate_Pin_Function(lpcomp->pin, PF_ADC) != PF_ADC) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if (lpcomp->trig > HAL_SLEEP_LPCOMP_CROSS) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 static int validateWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_base_t* base) {
     if (base->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
         return validateGpioWakeupSource(mode, reinterpret_cast<const hal_wakeup_source_gpio_t*>(base));
@@ -356,6 +477,8 @@ static int validateWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_b
         return validateNetworkWakeupSource(mode, reinterpret_cast<const hal_wakeup_source_network_t*>(base));
     } else if (base->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
         return validateBleWakeupSource(mode, base);
+    } else if (base->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
+        return validateLpcompWakeupSource(mode, reinterpret_cast<const hal_wakeup_source_lpcomp_t*>(base));
     }
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
@@ -536,6 +659,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
 
     configGpioWakeupSource(config->wakeup_sources);
     configRtcWakeupSource(config->wakeup_sources);
+    configLpcompWakeupSource(config->wakeup_sources);
 
     // Masks all interrupts lower than softdevice. This allows us to be woken ONLY by softdevice
     // or GPIOTE and RTC.
@@ -586,6 +710,12 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
                 wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_BLE;
                 exitSleepMode = true;
                 break; // Stop traversing the wakeup sources list.
+            } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP && isWokenUpByLpcomp()) {
+                auto lpcompWakeup = reinterpret_cast<hal_wakeup_source_lpcomp_t*>(wakeupSource);
+                wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_LPCOMP;
+                wakeupPin = lpcompWakeup->pin;
+                exitSleepMode = true;
+                break; // Stop traversing the wakeup sources list.
             }
             wakeupSource = wakeupSource->next;
         }
@@ -627,6 +757,8 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
         // And disable again
         __set_BASEPRI(basePri);
     }
+
+    nrf_lpcomp_disable();
 
     // Count the number of microseconds we've slept and reconfigure hal_timer (RTC2)
     uint64_t microsAftereSleep = (uint64_t)nrf_rtc_counter_get(NRF_RTC2) * 125000;
@@ -720,6 +852,8 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
             ret = constructRtcWakeupReason(wakeupReason);
         } else if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_BLE) {
             ret = constructBleWakeupReason(wakeupReason);
+        } else if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
+            ret = constructLpcompWakeupReason(wakeupReason, wakeupPin);
         } else {
             ret = SYSTEM_ERROR_INTERNAL;
         }
@@ -833,6 +967,8 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
             } else {
                 nrf_gpio_cfg_sense_input(nrfPin, wakeupPinMode, wakeupPinSense);
             }
+        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
+            configLpcompWakeupSource(wakeupSource);
         }
 #if HAL_PLATFORM_EXTERNAL_RTC
         else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {

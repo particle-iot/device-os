@@ -90,6 +90,12 @@ typedef enum hal_sleep_network_flags_t {
     HAL_SLEEP_NETWORK_FLAG_MAX = 0x7FFF
 } hal_sleep_network_flags_t;
 
+typedef enum hal_sleep_lpcomp_trig_t {
+    HAL_SLEEP_LPCOMP_ABOVE = 0x00,
+    HAL_SLEEP_LPCOMP_BELOW = 0x01,
+    HAL_SLEEP_LPCOMP_CROSS = 0x02
+} hal_sleep_lpcomp_trig_t;
+
 #if PLATFORM_ID > PLATFORM_GCC
 static_assert(sizeof(hal_sleep_mode_t) == 1, "length of hal_sleep_mode_t should be 1-bytes aligned.");
 static_assert(sizeof(hal_wakeup_source_type_t) == 2, "length of hal_wakeup_source_type_t should be 2-bytes aligned.");
@@ -134,6 +140,17 @@ typedef struct hal_wakeup_source_network_t {
     uint16_t flags; // hal_sleep_network_flags_t
     uint8_t reserved;
 } hal_wakeup_source_network_t;
+
+/**
+ * HAL sleep wakeup source: low power comparator
+ */
+typedef struct hal_wakeup_source_lpcomp_t {
+    hal_wakeup_source_base_t base; // This must come first in order to use casting.
+    uint16_t pin;
+    uint16_t voltage; // in mV
+    hal_sleep_lpcomp_trig_t trig;
+    uint8_t reserved[3];
+} hal_wakeup_source_lpcomp_t;
 
 /**
  * HAL sleep configuration: speicify sleep mode and wakeup sources.

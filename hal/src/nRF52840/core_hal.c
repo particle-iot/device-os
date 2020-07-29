@@ -523,7 +523,7 @@ bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {
         }
         case POWER_MANAGEMENT_RESET: {
             // SYSTEM OFF Mode
-            return reset_reason == NRF_POWER_RESETREAS_OFF_MASK;
+            return (reset_reason == NRF_POWER_RESETREAS_OFF_MASK) || (reset_reason == NRF_POWER_RESETREAS_LPCOMP_MASK);
         }
         // If none of the reset sources are flagged, this indicates that
         // the chip was reset from the on-chip reset generator,
