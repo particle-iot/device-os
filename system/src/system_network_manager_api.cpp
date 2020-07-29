@@ -99,7 +99,7 @@ bool testAndClearListeningModeFlag() {
         // Check setup done flag
         val = 0x01;
         dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
-        if (val == 0x00 || val == 0xff) {
+        if (val == 0x00) {
             return true;
         }
     }
