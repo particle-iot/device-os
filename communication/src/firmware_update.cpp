@@ -249,7 +249,9 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
     CHECK(decodeFinishRequest(d, &cancelUpdate, &discardData));
     LOG(INFO, "Finishing firmware update");
     LOG(INFO, "Cancel update: %u", (unsigned)cancelUpdate);
-    LOG(INFO, "Discard data: %u", (unsigned)discardData);
+    if (cancelUpdate) {
+        LOG(INFO, "Discard data: %u", (unsigned)discardData);
+    }
     FirmwareUpdateFlags flags;
     if (cancelUpdate) {
         flags |= FirmwareUpdateFlag::CANCEL;
@@ -372,8 +374,9 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
     lastChunkTime_ = millis();
 #if OTA_UPDATE_STATS
     ++recvChunks_;
-    if (lastLogChunks_ != chunkIndex_ && lastLogTime_ + STATS_LOG_INTERVAL <= millis()) {
-        LOG(TRACE, "Received %u of %u chunks", chunkIndex_, chunkCount_);
+    if (lastLogChunks_ != chunkIndex_ && (lastLogTime_ + STATS_LOG_INTERVAL <= millis() || chunkIndex_ == chunkCount_)) {
+        const size_t bytesLeft = fileSize_ - fileOffset_;
+        LOG(TRACE, "Received %u of %u bytes", (unsigned)(transferSize_ - bytesLeft), (unsigned)transferSize_);
         lastLogChunks_ = chunkIndex_;
         lastLogTime_ = millis();
     }

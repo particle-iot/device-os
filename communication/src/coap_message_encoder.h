@@ -36,6 +36,7 @@ public:
     CoapMessageEncoder& code(unsigned cls, unsigned detail);
     CoapMessageEncoder& id(CoapMessageId id);
     CoapMessageEncoder& token(const char* data, size_t size);
+    // Note: Options must be encoded in the ascending order of their numbers
     CoapMessageEncoder& option(unsigned opt, const char* data, size_t size);
     CoapMessageEncoder& option(unsigned opt, const char* str);
     CoapMessageEncoder& option(unsigned opt, unsigned val);
@@ -48,7 +49,7 @@ public:
 
     // TODO: Add convenience methods for encoding URI path and query options
 
-    // The returned message size can be larger than the size of the destination buffer
+    // Note: The returned message size can be larger than the size of the destination buffer
     int encode();
 
 private:

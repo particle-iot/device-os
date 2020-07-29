@@ -22,6 +22,7 @@ LOG_SOURCE_CATEGORY("system.ota");
 #include "firmware_update.h"
 
 #include "system_task.h"
+#include "system_led_signal.h"
 #include "error_message.h"
 
 #include "ota_flash_hal.h"
@@ -37,6 +38,7 @@ LOG_SOURCE_CATEGORY("system.ota");
 #endif // HAL_PLATFORM_RESUMABLE_OTA
 
 #include "spark_wiring_system.h"
+#include "spark_wiring_rgb.h" // FIXME
 
 #include <cstdio>
 #include <cstdarg>
@@ -146,6 +148,10 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* f
             endUpdate();
             return SYSTEM_ERROR_FLASH;
         }
+        // FIXME: Use the LED service for the update indication
+        RGB.control(true);
+        const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
+        RGB.color(status ? status->color : RGB_COLOR_MAGENTA);
         SPARK_FLASH_UPDATE = 1; // TODO: Get rid of legacy state variables
         updating_ = true;
         // TODO: System events
@@ -164,15 +170,41 @@ int FirmwareUpdate::finishUpdate(FirmwareUpdateFlags flags) {
         if (!updating_) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
+        if (!validateOnly) {
 #if HAL_PLATFORM_RESUMABLE_OTA
-        clearTransferState();
+            if (transferState_) {
+                const int r = finalizeTransferState();
+                if (r < 0) {
+                    clearTransferState();
+                    return r;
+                }
+            }
+            if (discardData) {
+                clearTransferState();
+            }
 #endif
-    } else if (!updating_) {
+            CHECK(HAL_FLASH_End(nullptr /* reserved */));
+            RGB.control(false); // FIXME
+            updating_ = false;
+        } else {
+            CHECK(HAL_FLASH_OTA_Validate(true /* userDepsOptional */,
+                    (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL),
+                    nullptr /* reserved */));
+        }
+    } else if (updating_ && !validateOnly) {
 #if HAL_PLATFORM_RESUMABLE_OTA
-        if (discardData && !validateOnly) {
+        if (transferState_) {
+            const int r = finalizeTransferState();
+            if (r < 0) {
+                clearTransferState();
+            }
+        }
+        if (discardData) {
             clearTransferState();
         }
 #endif
+        RGB.control(false); // FIXME
+        updating_ = false;
     }
     return 0;
 }
@@ -181,7 +213,8 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
     if (!updating_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    int r = HAL_FLASH_Update((const uint8_t*)chunkData, chunkOffset, chunkSize, nullptr);
+    const uintptr_t addr = HAL_OTA_FlashAddress() + chunkOffset;
+    int r = HAL_FLASH_Update((const uint8_t*)chunkData, addr, chunkSize, nullptr);
     if (r != 0) {
         formatErrorMessage("Failed to save chunk to OTA section: %d", r);
         endUpdate();
@@ -197,6 +230,8 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
         }
     }
 #endif
+    TimingFlashUpdateTimeout = 0; // FIXME
+    LED_Toggle(LED_RGB); // FIXME
     return 0;
 }
 
