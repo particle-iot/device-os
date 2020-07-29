@@ -75,6 +75,40 @@ void FirmwareUpdate::destroy() {
     reset();
 }
 
+ProtocolError FirmwareUpdate::responseAck(Message* msg) {
+    if (!updating_) {
+        return ProtocolError::INVALID_STATE;
+    }
+    if (!finishRespId_) {
+        return ProtocolError::NO_ERROR;
+    }
+    CoapMessageDecoder d;
+    int r = d.decode((const char*)msg->buf(), msg->length());
+    if (r < 0) {
+        LOG(ERROR, "Failed to decode message: %d", r);
+        return ProtocolError::MALFORMED_MESSAGE;
+    }
+    if (d.type() != CoapType::ACK) {
+        LOG(ERROR, "Invalid message type");
+        return ProtocolError::UNKNOWN; // Internal error
+    }
+    if (d.id() == finishRespId_) {
+        LOG(INFO, "Applying firmware update");
+#if OTA_UPDATE_STATS
+        const auto t1 = millis();
+#endif
+        r = callbacks_->finish_firmware_update(0);
+#if OTA_UPDATE_STATS
+        processTime_ += millis() - t1;
+#endif
+        if (r < 0) {
+            LOG(ERROR, "Failed to apply firmware update: %d", r);
+        }
+        reset();
+    }
+    return ProtocolError::NO_ERROR;
+}
+
 ProtocolError FirmwareUpdate::process() {
     if (!updating_) {
         return ProtocolError::NO_ERROR;
@@ -143,7 +177,8 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
         return (ProtocolError)r;
     }
     CoapMessageEncoder e((char*)resp.buf(), resp.capacity());
-    const int handlerResult = (this->*handler)(d, &e);
+    CoapMessageId* respId = nullptr;
+    const int handlerResult = (this->*handler)(d, &e, &respId);
     if (handlerResult >= 0) {
         // Encode and send the response message
         r = e.encode();
@@ -157,6 +192,9 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
             if (r != ProtocolError::NO_ERROR) {
                 LOG(ERROR, "Failed to send message: %d", (int)r);
                 return (ProtocolError)r;
+            }
+            if (respId) {
+                *respId = resp.get_id();
             }
         } else if (r != SYSTEM_ERROR_INVALID_STATE) {
             LOG(ERROR, "Failed to encode message: %d", r);
@@ -185,7 +223,7 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
     return ProtocolError::NO_ERROR;
 }
 
-int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e) {
+int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId) {
     if (!updating_) {
         LOG(INFO, "Received UpdateStart request");
     } else {
@@ -238,7 +276,7 @@ int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageE
     return 0;
 }
 
-int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e) {
+int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId) {
     if (!updating_) {
         LOG(WARN, "Received UpdateFinish request but no update is in progress");
         return SYSTEM_ERROR_INVALID_STATE;
@@ -247,7 +285,7 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
     bool cancelUpdate = false;
     bool discardData = false;
     CHECK(decodeFinishRequest(d, &cancelUpdate, &discardData));
-    LOG(INFO, "Finishing firmware update");
+    LOG(INFO, "Validating firmware update");
     LOG(INFO, "Cancel update: %u", (unsigned)cancelUpdate);
     if (cancelUpdate) {
         LOG(INFO, "Discard data: %u", (unsigned)discardData);
@@ -262,7 +300,7 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
     if (discardData) {
         flags |= FirmwareUpdateFlag::DISCARD_DATA;
     }
-    flags |= FirmwareUpdateFlag::VALIDATE_ONLY;
+    flags |= FirmwareUpdateFlag::VALIDATE_ONLY; // FIXME
 #if OTA_UPDATE_STATS
     auto t1 = millis();
 #endif
@@ -270,15 +308,15 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
 #if OTA_UPDATE_STATS
     processTime_ += millis() - t1;
 #endif
-    updating_ = false;
     e->type(d.type());
     e->code(CoapCode::CHANGED);
     e->id(0); // Will be assigned by the message channel
     e->token(d.token(), d.tokenSize());
+    *respId = &finishRespId_;
     return 0;
 }
 
-int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e) {
+int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId) {
     if (!updating_) {
         LOG(WARN, "Received UpdateChunk request but no update is in progress");
         return SYSTEM_ERROR_INVALID_STATE;
@@ -613,6 +651,7 @@ void FirmwareUpdate::reset() {
     windowSize_ = 0;
     chunkIndex_ = 0;
     unackChunks_ = 0;
+    finishRespId_ = 0;
 #if OTA_UPDATE_STATS
     processTime_ = 0;
     lastLogTime_ = 0;

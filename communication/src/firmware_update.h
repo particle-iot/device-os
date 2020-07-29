@@ -92,6 +92,7 @@ public:
     ProtocolError startRequest(Message* msg);
     ProtocolError finishRequest(Message* msg);
     ProtocolError chunkRequest(Message* msg);
+    ProtocolError responseAck(Message* msg);
     ProtocolError process();
 
     bool isRunning() const;
@@ -99,7 +100,7 @@ public:
     void reset();
 
 private:
-    typedef int (FirmwareUpdate::*RequestHandlerFn)(const CoapMessageDecoder& d, CoapMessageEncoder* e);
+    typedef int (FirmwareUpdate::*RequestHandlerFn)(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId);
 
     const SparkCallbacks* callbacks_; // Callbacks
     MessageChannel* channel_; // Message channel
@@ -116,6 +117,7 @@ private:
     size_t windowSize_; // Size of the receiver window in chunks
     unsigned chunkIndex_; // Number of cumulatively acknowledged chunks
     unsigned unackChunks_; // Number or chunks received since the last acknowledgement
+    CoapMessageId finishRespId_; // Message ID of the UpdateFinish response
 
 #if OTA_UPDATE_STATS
     system_tick_t processTime_; // System processing time
@@ -130,9 +132,9 @@ private:
 
     ProtocolError handleRequest(Message* msg, RequestHandlerFn handler);
 
-    int handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
-    int handleFinishRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
-    int handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e);
+    int handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId);
+    int handleFinishRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId);
+    int handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId);
 
     static int decodeStartRequest(const CoapMessageDecoder& d, const char** fileHash, size_t* fileSize, size_t* chunkSize,
             bool* discardData);

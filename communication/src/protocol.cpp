@@ -87,6 +87,9 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		}
 		notify_message_complete(msg_id, code);
 		handle_app_state_reply(msg_id, code);
+		if (firmwareUpdate.isRunning()) {
+			firmwareUpdate.responseAck(&message);
+		}
 	}
 
 	ProtocolError error = NO_ERROR;

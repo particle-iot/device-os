@@ -185,7 +185,9 @@ int FirmwareUpdate::finishUpdate(FirmwareUpdateFlags flags) {
 #endif
             CHECK(HAL_FLASH_End(nullptr /* reserved */));
             RGB.control(false); // FIXME
+            SPARK_FLASH_UPDATE = 0;
             updating_ = false;
+            system_pending_shutdown(RESET_REASON_UPDATE); // Always restart for now
         } else {
             CHECK(HAL_FLASH_OTA_Validate(true /* userDepsOptional */,
                     (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL),
@@ -204,6 +206,7 @@ int FirmwareUpdate::finishUpdate(FirmwareUpdateFlags flags) {
         }
 #endif
         RGB.control(false); // FIXME
+        SPARK_FLASH_UPDATE = 0;
         updating_ = false;
     }
     return 0;
