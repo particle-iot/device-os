@@ -223,22 +223,8 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     // We need to do this before disabling systick/interrupts, otherwise
     // there is a high chance of a deadlock
     if (config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
-        int skipUsart = -1;
-#if HAL_PLATFORM_CELLULAR
-        for (const hal_wakeup_source_base_t* src = config->wakeup_sources; src != nullptr; src = src->next) {
-            if (src->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
-                const auto networkSource = reinterpret_cast<const hal_wakeup_source_network_t*>(src);
-                if (networkSource->index == NETWORK_INTERFACE_CELLULAR) {
-                    skipUsart = HAL_PLATFORM_CELLULAR_SERIAL;
-                }
-            }
-        }
-#endif
         // Suspend USARTs
         for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
-            if (usart == skipUsart) {
-                continue;
-            }
             // FIXME: no locking
             hal_usart_sleep(static_cast<hal_usart_interface_t>(usart), true, nullptr);
         }
