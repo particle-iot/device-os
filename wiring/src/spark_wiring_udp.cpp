@@ -36,6 +36,7 @@
 #include "spark_macros.h"
 #include "spark_wiring_network.h"
 #include "spark_wiring_constants.h"
+#include "system_defs.h"
 
 using namespace spark;
 
@@ -44,7 +45,14 @@ static bool inline isOpen(sock_handle_t sd)
    return sd != socket_handle_invalid();
 }
 
-UDP::UDP() : _sock(socket_handle_invalid()), _offset(0), _total(0), _buffer(0), _buffer_size(512)
+UDP::UDP() :
+        _sock(socket_handle_invalid()),
+        _offset(0),
+        _total(0),
+        _buffer(0),
+        _buffer_size(512),
+        _nif(NETWORK_INTERFACE_ALL),
+        _buffer_allocated(false)
 {
 }
 

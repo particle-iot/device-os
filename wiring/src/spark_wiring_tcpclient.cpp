@@ -102,6 +102,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
             DEBUG("sock %d connected=%d",d_->sock, connected);
             HAL_NET_SetNetWatchDog(ot);
             d_->remoteIP = ip;
+            nif_ = nif;
             if(!connected)
             {
                 stop();
@@ -155,7 +156,7 @@ int TCPClient::available()
         flush_buffer();
     }
 
-    if(Network.from(nif).ready() && isOpen(d_->sock))
+    if(Network.from(nif_).ready() && isOpen(d_->sock))
     {
         // Have room
         if ( d_->total < arraySize(d_->buffer))
@@ -236,7 +237,7 @@ uint8_t TCPClient::connected()
 
 uint8_t TCPClient::status()
 {
-  return (isOpen(d_->sock) && Network.from(nif).ready() && (SOCKET_STATUS_ACTIVE == socket_active_status(d_->sock)));
+  return (isOpen(d_->sock) && Network.from(nif_).ready() && (SOCKET_STATUS_ACTIVE == socket_active_status(d_->sock)));
 }
 
 TCPClient::operator bool()
