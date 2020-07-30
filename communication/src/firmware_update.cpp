@@ -40,7 +40,7 @@ namespace particle::protocol {
 
 namespace {
 
-const system_tick_t STATS_LOG_INTERVAL = 5000;
+const system_tick_t STATS_LOG_INTERVAL = 1000;
 
 static_assert(PARTICLE_LITTLE_ENDIAN, "This code is optimized for little-endian architectures");
 
@@ -191,9 +191,11 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
             r = channel_->send(resp);
             if (r != ProtocolError::NO_ERROR) {
                 LOG(ERROR, "Failed to send message: %d", (int)r);
-                return (ProtocolError)r;
-            }
-            if (respId) {
+                // FIXME: For now, ignore socket errors when sending acknowledgements
+                if (d.type() != CoapType::CON) {
+                    return (ProtocolError)r;
+                }
+            } else if (respId) {
                 *respId = resp.get_id();
             }
         } else if (r != SYSTEM_ERROR_INVALID_STATE) {
