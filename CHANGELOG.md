@@ -1,12 +1,17 @@
-## 2.0.0-alpha.3, 2.0.0-alpha.4
+## 2.0.0-rc.1
 
 ### BREAKING CHANGES
 
+- Mesh support removed. 2.x+ DeviceOS releases no longer have Mesh capabilities [#2068](https://github.com/particle-iot/device-os/pull/2068)
+- Xenon platform support removed. 2.x+ DeviceOS releases no longer support Xenons [#2068](https://github.com/particle-iot/device-os/pull/2068)
+- Minimum ARM GCC version required increased to 9.2.1 [#2123](https://github.com/particle-iot/device-os/pull/2123)
 - `SPISettings` class is always available even if compiling without Arduino compatibility [#2138](https://github.com/particle-iot/device-os/pull/2138)
 - Add deprecation notices for some of the renamed HAL APIs (with appropriate replacements) [#2148](https://github.com/particle-iot/device-os/pull/2148)
 
 ### FEATURES
 
+- [Gen 3] Wake up from STOP/ULP/Hibernate modes by analog pin [#2163](https://github.com/particle-iot/device-os/pull/2163)
+- [Gen 3] Wake up from STOP/ULP modes by WiFi/Cellular and UART [#2162](https://github.com/particle-iot/device-os/pull/2162)
 - [Gen 3] `pinSetDriveStrength()` API [#2157](https://github.com/particle-iot/device-os/pull/2157)
 - Add `os_queue_peek()` and make sure that queues and semaphores can be accessed from ISRs [#2156](https://github.com/particle-iot/device-os/pull/2156) [#2074](https://github.com/particle-iot/device-os/pull/2074)
 - [Gen 3 / Cellular] Proactively attempt to recover from a number of failed cellular registration states [#2150](https://github.com/particle-iot/device-os/pull/2150)
@@ -17,9 +22,14 @@
 - Additional APN settings based on ICCIDs [#2144](https://github.com/particle-iot/device-os/pull/2144)
 - NTP-based internet test [#2118](https://github.com/particle-iot/device-os/pull/2118)
 - [Gen 3] Warm bootup of cellular modems and cellular connectivity resumption [#2102](https://github.com/particle-iot/device-os/pull/2102) [#2146](https://github.com/particle-iot/device-os/pull/2146)
+- Support for compressed / combined binaries in OTA updates [#2097](https://github.com/particle-iot/device-os/pull/2097)
+- ARM GCC 9 support [#2103](https://github.com/particle-iot/device-os/pull/2103)
+- Device-initiated describe messages [#2024](https://github.com/particle-iot/device-os/pull/2024)
+- Notify the cloud about planned disconnections [#1899](https://github.com/particle-iot/device-os/pull/1899)
 
 ### ENHANCEMENTS
 
+- [Gen 3] Workaround when unable to obtain DNS servers from remote PPP peer [#2165](https://github.com/particle-iot/device-os/pull/2165)
 - System power manager blocks access to FuelGauge for 500ms in its own thread, instead of system when waking up from STOP/ULP sleep mode [#2159](https://github.com/particle-iot/device-os/pull/2159)
 - [wiring] Pin operations are not dependent on wiring C++ peripheral object initialization (e.g. `SPI`, `Wire` etc) [#2157](https://github.com/particle-iot/device-os/pull/2157)
 - [Gen 3] Default SPI pin drive strength changed to high [#2157](https://github.com/particle-iot/device-os/pull/2157)
@@ -31,6 +41,18 @@
 - [Cellular] When resuming cellular connection, do not run `COPS=0` again to avoid triggering PLMN reselection [#2139](https://github.com/particle-iot/device-os/pull/2139)
 - Reduce runtime RAM usage by sharing newlib `_impure_ptr` between modules [#2126](https://github.com/particle-iot/device-os/pull/2126)
 - [Electron] Use `snprintf()` instead of `sprintf()` [#2122](https://github.com/particle-iot/device-os/pull/2122)
+- [Gen 3] System thread wakeup on cloud data [#2113](https://github.com/particle-iot/device-os/pull/2113)
+- [Argon] Hide unsupported WiFi wiring APIs [#2120](https://github.com/particle-iot/device-os/pull/2120)
+- [B5 SoM / Tracker] Disable 2G fallback for BG96-based devices [#2112](https://github.com/particle-iot/device-os/pull/2112)
+- [wiring] Changes default I2C timeouts when communicating with FuelGauge and PMIC to more manageable values [#2096](https://github.com/particle-iot/device-os/pull/2096)
+- [wiring] Propagate low-level I2C errors in `FuelGauge` methods [#2094](https://github.com/particle-iot/device-os/pull/2094)
+- [Gen 3] Network stack enhancements [#2079](https://github.com/particle-iot/device-os/pull/2079)
+- Send describe messages as confirmable CoAP messages [#2024](https://github.com/particle-iot/device-os/pull/2024)
+- [Argon] OTA adjustments [#2045](https://github.com/particle-iot/device-os/pull/2045)
+- Remove support for unused control requests [#2064](https://github.com/particle-iot/device-os/pull/2064)
+- RTC HAL refactoring to increase time-keeping precision [#2123](https://github.com/particle-iot/device-os/pull/2123)
+- Y2k38 `time_t` size change adjustments [#2123](https://github.com/particle-iot/device-os/pull/2123)
+- [wiring] Refactor wiring `Time` class to use reentrant versions of libc time functions [#2123](https://github.com/particle-iot/device-os/pull/2123)
 
 ### BUGFIXES
 
@@ -57,46 +79,6 @@
 - Use newlib-nano headers when compiling [#2126](https://github.com/particle-iot/device-os/pull/2126)
 - [Gen 2] Reset the device after applying an update while in listening mode [#2127](https://github.com/particle-iot/device-os/pull/2127)
 - [Electron] Process `CEREG: 0` URCs on R4-based devices to detect loss of cellular connectivity [#2119](https://github.com/particle-iot/device-os/pull/2119)
-
-### INTERNAL
-
-- Run on-device tests under the DeviceOS test runner [#2140](https://github.com/particle-iot/device-os/pull/2140) [#2150](https://github.com/particle-iot/device-os/pull/2150)
-- Remove old deprecated platforms [#2150](https://github.com/particle-iot/device-os/pull/2150)
-- Addresses multiple issues in on-device no-fixture tests [#2150](https://github.com/particle-iot/device-os/pull/2150)
-
-## 2.0.0-alpha.1, 2.0.0-alpha.2
-
-### BREAKING CHANGES
-
-- Mesh support removed. 2.x+ DeviceOS releases no longer have Mesh capabilities [#2068](https://github.com/particle-iot/device-os/pull/2068)
-- Xenon platform support removed. 2.x+ DeviceOS releases no longer support Xenons [#2068](https://github.com/particle-iot/device-os/pull/2068)
-- Minimum ARM GCC version required increased to 9.2.1 [#2123](https://github.com/particle-iot/device-os/pull/2123)
-
-### FEATURES
-
-- [Gen 3] Warm bootup of cellular modems and cellular connectivity resumption [#2102](https://github.com/particle-iot/device-os/pull/2102)
-- Support for compressed / combined binaries in OTA updates [#2097](https://github.com/particle-iot/device-os/pull/2097)
-- ARM GCC 9 support [#2103](https://github.com/particle-iot/device-os/pull/2103)
-- Device-initiated describe messages [#2024](https://github.com/particle-iot/device-os/pull/2024)
-- Notify the cloud about planned disconnections [#1899](https://github.com/particle-iot/device-os/pull/1899)
-
-### ENHANCEMENTS
-
-- [Gen 3] System thread wakeup on cloud data [#2113](https://github.com/particle-iot/device-os/pull/2113)
-- [Argon] Hide unsupported WiFi wiring APIs [#2120](https://github.com/particle-iot/device-os/pull/2120)
-- [B5 SoM / Tracker] Disable 2G fallback for BG96-based devices [#2112](https://github.com/particle-iot/device-os/pull/2112)
-- [wiring] Changes default I2C timeouts when communicating with FuelGauge and PMIC to more manageable values [#2096](https://github.com/particle-iot/device-os/pull/2096)
-- [wiring] Propagate low-level I2C errors in `FuelGauge` methods [#2094](https://github.com/particle-iot/device-os/pull/2094)
-- [Gen 3] Network stack enhancements [#2079](https://github.com/particle-iot/device-os/pull/2079)
-- Send describe messages as confirmable CoAP messages [#2024](https://github.com/particle-iot/device-os/pull/2024)
-- [Argon] OTA adjustments [#2045](https://github.com/particle-iot/device-os/pull/2045)
-- Remove support for unused control requests [#2064](https://github.com/particle-iot/device-os/pull/2064)
-- RTC HAL refactoring to increase time-keeping precision [#2123](https://github.com/particle-iot/device-os/pull/2123)
-- Y2k38 `time_t` size change adjustments [#2123](https://github.com/particle-iot/device-os/pull/2123)
-- [wiring] Refactor wiring `Time` class to use reentrant versions of libc time functions [#2123](https://github.com/particle-iot/device-os/pull/2123)
-
-### BUGFIXES
-
 - [Cellular] Fixes the issue that FuelGauge doesn't work as expected after being woken up [#2116](https://github.com/particle-iot/device-os/pull/2116)
 - [Electron] Fixes buffer overrun in modem hal [#2115](https://github.com/particle-iot/device-os/pull/2115)
 - [WiFi] `WiFiCredentials::setSecurity()` should be taking wiring security type (e.g. `WPA2` instead of `WLAN_SEC_WPA2`) [#2098](https://github.com/particle-iot/device-os/pull/2098)
@@ -104,6 +86,12 @@
 - [Gen 2] Fixes an issue with I2C bus pins driven low if building with JTAG/SWD enabled [#2080](https://github.com/particle-iot/device-os/pull/2080)
 - [Boron] Fixes an issue with SARA R4 modems on LTE Borons becoming unresponsive when sending substantial amount of network data continuously [#2100](https://github.com/particle-iot/device-os/pull/2100)
 - Fix session resumption in `AUTOMATIC` system mode [#2024](https://github.com/particle-iot/device-os/pull/2024)
+
+### INTERNAL
+
+- Run on-device tests under the DeviceOS test runner [#2140](https://github.com/particle-iot/device-os/pull/2140) [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- Remove old deprecated platforms [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- Addresses multiple issues in on-device no-fixture tests [#2150](https://github.com/particle-iot/device-os/pull/2150)
 
 ## 1.5.4-rc.1
 
