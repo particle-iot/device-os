@@ -199,11 +199,9 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
             r = channel_->send(resp);
             if (r != ProtocolError::NO_ERROR) {
                 LOG(ERROR, "Failed to send message: %d", (int)r);
-                // FIXME: For now, ignore socket errors when sending acknowledgements
-                if (d.type() != CoapType::CON) {
-                    return (ProtocolError)r;
-                }
-            } else if (respId) {
+                return (ProtocolError)r;
+            }
+            if (respId) {
                 *respId = resp.get_id();
             }
         } else if (r != SYSTEM_ERROR_INVALID_STATE) {

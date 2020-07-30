@@ -64,7 +64,12 @@ int SimpleFileStorage::save(const void* data, size_t size) {
         LOG(ERROR, "%s: Error while saving file: %d", fileName_, fileSize);
         return SYSTEM_ERROR_FILE;
     }
-    int r = lfs_file_write(&fs->instance, &file_, data, size);
+    int r = lfs_file_seek(&fs->instance, &file_, 0, LFS_SEEK_SET);
+    if (r < 0) {
+        LOG(ERROR, "%s: Error while saving file: %d", fileName_, r);
+        return SYSTEM_ERROR_FILE;
+    }
+    r = lfs_file_write(&fs->instance, &file_, data, size);
     if (r != (int)size) {
         LOG(ERROR, "%s: Error while saving file: %d", fileName_, r);
         return SYSTEM_ERROR_FILE;

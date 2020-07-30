@@ -335,6 +335,7 @@ int FirmwareUpdate::updateTransferState(const char* chunkData, size_t chunkSize,
     if (state->needSync && HAL_Timer_Get_Milli_Seconds() - state->lastSynced >= TRANSFER_STATE_SYNC_INTERVAL) {
         CHECK(state->file.sync());
         state->lastSynced = HAL_Timer_Get_Milli_Seconds();
+        state->needSync = false;
     }
     return 0;
 }
