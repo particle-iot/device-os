@@ -107,7 +107,6 @@ private:
     bool updating_; // Whether an update is in progress
 
     uint32_t chunks_[OTA_CHUNK_BITMAP_ELEMENTS]; // Bitmap of received chunks within the receiver window
-    system_tick_t updateStartTime_; // Time when the update started
     system_tick_t lastChunkTime_; // Time when the last chunk was received
     size_t fileSize_; // File size
     size_t fileOffset_; // Current offset in the file
@@ -120,6 +119,9 @@ private:
     CoapMessageId finishRespId_; // Message ID of the UpdateFinish response
 
 #if OTA_UPDATE_STATS
+    system_tick_t updateStartTime_; // Time when the update started
+    system_tick_t transferStartTime_; // Time when the file transfer started
+    system_tick_t transferFinishTime_; // Time when the file transfer finished
     system_tick_t processTime_; // System processing time
     system_tick_t lastLogTime_; // Time when the transfer state was last logged
     unsigned lastLogChunks_; // Number of cumulatively acknowledged chunks at the time when the transfer state was last logged

@@ -93,14 +93,22 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg) {
         return ProtocolError::UNKNOWN; // Internal error
     }
     if (d.id() == finishRespId_) {
+#if OTA_UPDATE_STATS
+        const auto now = millis();
+        LOG(INFO, "Update time: %u", (unsigned)(now - updateStartTime_));
+        system_tick_t transferTime = 0;
+        if (transferStartTime_ && transferFinishTime_) {
+            transferTime = transferFinishTime_ - transferStartTime_;
+        }
+        LOG(INFO, "Transfer time: %u", (unsigned)transferTime);
+        LOG(INFO, "Processing time: %u", (unsigned)processTime_);
+        LOG(INFO, "Chunks received: %u", recvChunks_);
+        LOG(INFO, "ACKs sent: %u", sentAcks_);
+        LOG(INFO, "Duplicate chunks: %u", dupChunks_);
+        LOG(INFO, "Out-of-order chunks: %u", outOrderChunks_);
+#endif
         LOG(INFO, "Applying firmware update");
-#if OTA_UPDATE_STATS
-        const auto t1 = millis();
-#endif
-        r = callbacks_->finish_firmware_update(0);
-#if OTA_UPDATE_STATS
-        processTime_ += millis() - t1;
-#endif
+        r = callbacks_->finish_firmware_update(0); // Will not return
         if (r < 0) {
             LOG(ERROR, "Failed to apply firmware update: %d", r);
         }
@@ -232,7 +240,9 @@ int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageE
         LOG(WARN, "Received UpdateStart request but another update is already in progress");
     }
     reset();
+#if OTA_UPDATE_STATS
     updateStartTime_ = millis();
+#endif
     const char* fileHash = nullptr;
     bool discardData = false;
     CHECK(decodeStartRequest(d, &fileHash, &fileSize_, &chunkSize_, &discardData));
@@ -414,11 +424,17 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
     lastChunkTime_ = millis();
 #if OTA_UPDATE_STATS
     ++recvChunks_;
+    if (!transferStartTime_) {
+        transferStartTime_ = millis();
+    }
     if (lastLogChunks_ != chunkIndex_ && (lastLogTime_ + STATS_LOG_INTERVAL <= millis() || chunkIndex_ == chunkCount_)) {
         const size_t bytesLeft = fileSize_ - fileOffset_;
         LOG(TRACE, "Received %u of %u bytes", (unsigned)(transferSize_ - bytesLeft), (unsigned)transferSize_);
         lastLogChunks_ = chunkIndex_;
         lastLogTime_ = millis();
+        if (chunkIndex_ == chunkCount_) {
+            transferFinishTime_ = millis();
+        }
     }
 #endif
     return 0;
@@ -643,7 +659,6 @@ void FirmwareUpdate::reset() {
         updating_ = false;
     }
     memset(chunks_, 0, sizeof(chunks_));
-    updateStartTime_ = 0;
     lastChunkTime_ = 0;
     fileSize_ = 0;
     fileOffset_ = 0;
@@ -655,6 +670,9 @@ void FirmwareUpdate::reset() {
     unackChunks_ = 0;
     finishRespId_ = 0;
 #if OTA_UPDATE_STATS
+    updateStartTime_ = 0;
+    transferStartTime_ = 0;
+    transferFinishTime_ = 0;
     processTime_ = 0;
     lastLogTime_ = 0;
     lastLogChunks_ = 0;
