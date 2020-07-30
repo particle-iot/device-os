@@ -45,7 +45,7 @@ int SimpleFileStorage::load(void* data, size_t size) {
         size = fileSize;
     }
     const int r = lfs_file_read(&fs->instance, &file_, data, size);
-    if (r != 0) {
+    if (r != (int)size) {
         LOG(ERROR, "%s: Error while loading file: %d", fileName_, r);
         return SYSTEM_ERROR_FILE;
     }
@@ -65,13 +65,13 @@ int SimpleFileStorage::save(const void* data, size_t size) {
         return SYSTEM_ERROR_FILE;
     }
     int r = lfs_file_write(&fs->instance, &file_, data, size);
-    if (r != 0) {
+    if (r != (int)size) {
         LOG(ERROR, "%s: Error while saving file: %d", fileName_, r);
         return SYSTEM_ERROR_FILE;
     }
     if (size < (size_t)fileSize) {
         r = lfs_file_truncate(&fs->instance, &file_, size);
-        if (r != 0) {
+        if (r < 0) {
             LOG(ERROR, "%s: Error while saving file: %d", fileName_, r);
             return SYSTEM_ERROR_FILE;
         }
@@ -89,7 +89,7 @@ int SimpleFileStorage::sync() {
         return 0;
     }
     const int r = lfs_file_sync(&fs->instance, &file_);
-    if (r != 0) {
+    if (r < 0) {
         LOG(ERROR, "%s: Error while saving file: %d", fileName_, r);
         return SYSTEM_ERROR_FILE;
     }
@@ -113,7 +113,7 @@ void SimpleFileStorage::clear() {
     const fs::FsLock lock(fs);
     close(fs);
     const int r = lfs_remove(&fs->instance, fileName_);
-    if (r != LFS_ERR_OK && r != LFS_ERR_NOENT) {
+    if (r < 0 && r != LFS_ERR_NOENT) {
         LOG(ERROR, "%s: Error while removing file: %d", fileName_, r);
     }
 }
@@ -125,7 +125,7 @@ int SimpleFileStorage::open(filesystem_t* fs, int flags) {
     flags |= openFlags_;
     close(fs);
     const int r = lfs_file_open(&fs->instance, &file_, fileName_, flags);
-    if (r != LFS_ERR_OK) {
+    if (r < 0) {
         if (r == LFS_ERR_NOENT) {
             return SYSTEM_ERROR_NOT_FOUND;
         }
@@ -141,7 +141,7 @@ void SimpleFileStorage::close(filesystem_t* fs) {
         return;
     }
     const int r = lfs_file_close(&fs->instance, &file_);
-    if (r != LFS_ERR_OK) {
+    if (r < 0) {
         LOG(ERROR, "%s: Error while closing file: %d", fileName_, r);
     }
     // All resources associated with the file are freed at this point, so it's safe to consider
