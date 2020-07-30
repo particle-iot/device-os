@@ -29,7 +29,7 @@ extern "C" {
 typedef void* if_t;
 #endif /* IF_T_DEFINED */
 
-enum if_flags_t {
+typedef enum if_flags_t {
     IFF_NONE          = 0x00,
     IFF_UP            = 0x01,
     IFF_BROADCAST     = 0x02,
@@ -49,9 +49,9 @@ enum if_flags_t {
 
     IFF_CANTCHANGE    = (IFF_BROADCAST | IFF_LOOPBACK | IFF_POINTTOPOINT | \
                          IFF_RUNNING   | IFF_MULTICAST)
-};
+} if_flags_t;
 
-enum if_xflags_t {
+typedef enum if_xflags_t {
     IFXF_NONE         = 0x00,
     IFXF_WOL          = 0x10,
     IFXF_AUTOCONF6    = 0x20,
@@ -61,13 +61,13 @@ enum if_xflags_t {
     IFXF_AUTOIP       = 0x40000,
 
     IFXF_CANTCHANGE   = 0
-};
+} if_xflags_t;
 
 #ifndef IF_NAMESIZE
 #define IF_NAMESIZE (6)
 #endif /* IF_NAMESIZE */
 
-enum if_ip6_addr_state_t {
+typedef enum if_ip6_addr_state_t {
     IF_IP6_ADDR_STATE_NONE                 = 0x00,
     IF_IP6_ADDR_STATE_INVALID              = 0x00,
     IF_IP6_ADDR_STATE_TENTATIVE            = 0x01,
@@ -77,7 +77,7 @@ enum if_ip6_addr_state_t {
 
     IF_IP6_ADDR_STATE_PREFERRED            = 0x06,
     IF_IP6_ADDR_STATE_DUPLICATED           = 0x08
-};
+ } if_ip6_addr_state_t;
 
 struct if_ip6_addr_data {
     uint8_t state;
@@ -133,7 +133,7 @@ struct if_nameindex {
 
 typedef void* if_event_handler_cookie_t;
 
-enum if_event_type_t {
+typedef enum if_event_type_t {
     IF_EVENT_NONE                 = 0x00,
     IF_EVENT_IF_ADDED             = 0x01,
     IF_EVENT_IF_REMOVED           = 0x02,
@@ -142,27 +142,27 @@ enum if_event_type_t {
     IF_EVENT_ADDR                 = 0x05,
     IF_EVENT_LLADDR               = 0x06,
     IF_EVENT_POWER_STATE          = 0x07
-};
+} if_event_type_t;
 
-enum if_state_t {
+typedef enum if_state_t {
     IF_STATE_NONE = 0x00,
     IF_STATE_DOWN = 0x01,
     IF_STATE_UP   = 0x02,
-};
+} if_state_t;
 
-enum if_link_state_t {
+typedef enum if_link_state_t {
     IF_LINK_STATE_NONE = 0x00,
     IF_LINK_STATE_DOWN = 0x01,
     IF_LINK_STATE_UP   = 0x02,
-};
+} if_link_state_t;
 
-enum if_power_state_t {
+typedef enum if_power_state_t {
     IF_POWER_STATE_NONE = 0x00,
     IF_POWER_STATE_DOWN = 0x01,
     IF_POWER_STATE_UP   = 0x02,
     IF_POWER_STATE_POWERING_DOWN = 0x03,
     IF_POWER_STATE_POWERING_UP = 0x04,
-};
+} if_power_state_t;
 
 struct if_event_state {
     uint8_t state;
@@ -203,10 +203,10 @@ typedef void (*if_event_handler_t)(void* arg, if_t iface, const struct if_event*
 
 typedef struct if_event_power_state if_req_power;
 
-enum if_req_t {
+typedef enum if_req_t {
     IF_REQ_NONE        = 0,
     IF_REQ_POWER_STATE = 1
-};
+} if_req_t;
 
 int if_init(void);
 int if_init_platform(void*);
