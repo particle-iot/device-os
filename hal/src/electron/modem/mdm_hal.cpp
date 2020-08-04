@@ -262,7 +262,6 @@ MDMParser::MDMParser(void)
         _sockets[socket].handle = MDM_SOCKET_ERROR;
 #ifdef MDM_DEBUG
     _debugLevel = 3;
-    _debugTime = HAL_Timer_Get_Milli_Seconds();
 #endif
 }
 
@@ -293,7 +292,7 @@ int MDMParser::send(const char* buf, int len)
 {
 #ifdef MDM_DEBUG
     if (_debugLevel >= 3) {
-        MDM_PRINTF("%10.3f AT send    ", (HAL_Timer_Get_Milli_Seconds()-_debugTime)*0.001);
+        MDM_PRINTF("%10.3f AT send    ", HAL_Timer_Get_Milli_Seconds() * 0.001);
         dumpAtCmd(buf,len);
 #ifdef MDM_DEBUG_TX_PIPE
         // When using this, look for dangling stuff in the TX pipe just before a send.
@@ -390,7 +389,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                             (type == TYPE_PLUS)   ? CYA " + " DEF :
                             (type == TYPE_PROMPT) ? BLU " > " DEF :
                                                         "..." ;
-            MDM_PRINTF("%10.3f AT read %s", (HAL_Timer_Get_Milli_Seconds()-_debugTime)*0.001, s);
+            MDM_PRINTF("%10.3f AT read %s", HAL_Timer_Get_Milli_Seconds() * 0.001, s);
             dumpAtCmd(buf, len);
             (void)s;
 #ifdef MDM_DEBUG_RX_PIPE
