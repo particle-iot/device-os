@@ -131,6 +131,8 @@ const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
 
 } // anonymous
 
+bool cell_imsi_check = 0;
+
 SaraNcpClient::SaraNcpClient() {
 }
 
@@ -274,6 +276,9 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
         self->eps_.status(self->eps_.decodeAtStatus(val[0]));
+        if (val[0] == 3) {
+            cell_imsi_check = 1;
+        }
         // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -1201,6 +1206,11 @@ int SaraNcpClient::initReady(ModemState state) {
         // TODO: if we enable this feature in the future add logic to CHECK_PARSER macro(s)
         // to wait longer for device to become active (see MDMParser::_atOk)
         CHECK_PARSER_OK(parser_.execCommand("AT+CPSMS=0"));
+
+        CHECK_PARSER_OK(parser_.execCommand("AT+UCUSATA=2"));
+        CHECK_PARSER(parser_.execCommand("AT+USIMSTAT=4"));
+        CHECK_PARSER(parser_.execCommand("AT+USIMSTAT?"));
+        CHECK_PARSER(parser_.execCommand("AT+USIMSTAT=?"));
     } else {
         // Force Power Saving mode to be disabled
         //
@@ -1766,6 +1776,10 @@ int SaraNcpClient::interveneRegistration() {
 
 int SaraNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
+    if (cell_imsi_check) {
+        cell_imsi_check = 0;
+        CHECK_PARSER(parser_.execCommand("AT+CIMI"));
+    }
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
     interveneRegistration();

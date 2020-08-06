@@ -129,6 +129,8 @@ const char QUECTEL_DEFAULT_PDP_TYPE[] = "IP";
 
 } // anonymous
 
+bool cell_imsi_check = 0;
+
 QuectelNcpClient::QuectelNcpClient() {
 }
 
@@ -299,8 +301,17 @@ int QuectelNcpClient::initParser(Stream* stream) {
         }
         return SYSTEM_ERROR_NONE;
     }, this));
+    CHECK(parser_.addUrcHandler("+QUSIM: 1", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
+        const auto self = (QuectelNcpClient*)data;
+        char atResponse[64] = {};
+        // Take a copy of AT response for multi-pass scanning
+        CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
+        cell_imsi_check = 1;
+        return SYSTEM_ERROR_NONE;
+    }, this));
     return SYSTEM_ERROR_NONE;
 }
+
 
 int QuectelNcpClient::on() {
     const NcpClientLock lock(this);
@@ -393,7 +404,8 @@ int QuectelNcpClient::disconnect() {
         return SYSTEM_ERROR_NONE;
     }
     CHECK(checkParser());
-    const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+    //const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+    const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=0"));
     (void)r;
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
@@ -937,7 +949,7 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
     return serial_->setBaudRate(baud);
 }
 
-int QuectelNcpClient::initReady(ModemState state) {
+int QuectelNcpClient::initReady(ModemState state) { // to difference btw cold n warm boot / cops / checkruntimestate
     // Set modem full functionality
     int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
@@ -965,7 +977,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         CHECK(selectSimCard());
 
         // Just in case disconnect
-        int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+        //int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
         // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
         if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
@@ -1178,7 +1190,8 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
 
 int QuectelNcpClient::registerNet() {
     int r = 0;
-
+    CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=1"));
+    //HAL_Delay_Milliseconds(2000);
     resetRegistrationState();
 
     // Register GPRS, LET, NB-IOT network
@@ -1209,10 +1222,10 @@ int QuectelNcpClient::registerNet() {
     if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
         // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
         // Scan LTE only, take effect immediately
-        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+        //CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
         // Configure Network Category to be Searched under LTE RAT
         // Only use LTE Cat M1, take effect immediately
-        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+        //CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
     }
 
     CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
@@ -1519,12 +1532,20 @@ int QuectelNcpClient::interveneRegistration() {
                 CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
             }
         }
+        //if(eps_.duration() >= timeout /* && twilio sim */) {
+        //    CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=4"));
+        //    CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
+        //}
     }
     return 0;
 }
 
 int QuectelNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
+    if (cell_imsi_check) {
+        cell_imsi_check = 0;
+        CHECK_PARSER(parser_.execCommand("AT+CIMI"));
+    }
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
     interveneRegistration();

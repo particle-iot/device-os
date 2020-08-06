@@ -48,7 +48,7 @@
         PARTICLE_DEPRECATED_API("Beginning with 0.8.0 release, Particle.subscribe() will require event scope to be specified explicitly.");
 
 typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
-typedef std::function<void (const char*, const char*)> wiring_event_handler_t;
+typedef std::function<void (const char*, const char*)> wiring_event_handler_t; // std::function is an CPP equiva of function pointer
 
 #ifndef __XSTRING
 #define	__STRING(x)	#x		/* stringify without expanding x */
