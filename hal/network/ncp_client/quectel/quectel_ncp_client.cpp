@@ -1207,6 +1207,8 @@ int QuectelNcpClient::registerNet() {
     }
 
     if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+        // Set network scan sequence to LTE only as well (in a hard coded hacky way).
+        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",020202,1"));
         // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
         // Scan LTE only, take effect immediately
         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
