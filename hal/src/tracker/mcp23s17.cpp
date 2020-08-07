@@ -311,6 +311,35 @@ int Mcp23s17::detachPinInterrupt(uint8_t port, uint8_t pin, bool verify) {
     return SYSTEM_ERROR_NONE;
 }
 
+int Mcp23s17::interruptsSuspend() {
+    Mcp23s17Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    // Simply reset the registers, since we have cached current registers' value
+    CHECK(writeRegister(GPINTEN_ADDR[0], 0x00));
+    CHECK(writeRegister(GPINTEN_ADDR[1], 0x00));
+    CHECK(writeRegister(INTCON_ADDR[0], 0x00));
+    CHECK(writeRegister(INTCON_ADDR[1], 0x00));
+    CHECK(writeRegister(DEFVAL_ADDR[0], 0x00));
+    CHECK(writeRegister(DEFVAL_ADDR[1], 0x00));
+    // Clear the pending interrupts flag
+    uint8_t dummy;
+    CHECK(readRegister(INTCAP_ADDR[0], &dummy));
+    CHECK(readRegister(INTCAP_ADDR[1], &dummy));
+    return SYSTEM_ERROR_NONE;
+}
+
+int Mcp23s17::interruptsRestore() {
+    Mcp23s17Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK(writeRegister(INTCON_ADDR[0], intcon_[0]));
+    CHECK(writeRegister(INTCON_ADDR[1], intcon_[1]));
+    CHECK(writeRegister(DEFVAL_ADDR[0], defval_[0]));
+    CHECK(writeRegister(DEFVAL_ADDR[1], defval_[1]));
+    CHECK(writeRegister(GPINTEN_ADDR[0], gpinten_[0]));
+    CHECK(writeRegister(GPINTEN_ADDR[1], gpinten_[1]));
+    return SYSTEM_ERROR_NONE;
+}
+
 Mcp23s17& Mcp23s17::getInstance() {
     static Mcp23s17 mcp23s17;
     return mcp23s17;

@@ -51,11 +51,31 @@ public:
     int readPinValue(uint8_t port, uint8_t pin, uint8_t* value);
     int attachPinInterrupt(uint8_t port, uint8_t pin, InterruptMode trig, Mcp23s17InterruptCallback callback, void* context, bool verify = true);
     int detachPinInterrupt(uint8_t port, uint8_t pin, bool verify = true);
+    int interruptsSuspend();
+    int interruptsRestore();
+
+    void resetRegValue();
+    int writeRegister(const uint8_t addr, const uint8_t val) const;
+    int readRegister(const uint8_t addr, uint8_t* const val) const;
+    int readContinuousRegisters(const uint8_t start_addr, uint8_t* const val, uint8_t len) const;
 
     int lock();
     int unlock();
 
     static Mcp23s17& getInstance();
+
+    // Resister address
+    static constexpr uint8_t IODIR_ADDR[2]     = {0x00, 0x01};
+    static constexpr uint8_t IPOL_ADDR[2]      = {0x02, 0x03};
+    static constexpr uint8_t GPINTEN_ADDR[2]   = {0x04, 0x05};
+    static constexpr uint8_t DEFVAL_ADDR[2]    = {0x06, 0x07};
+    static constexpr uint8_t INTCON_ADDR[2]    = {0x08, 0x09};
+    static constexpr uint8_t IOCON_ADDR[2]     = {0x0A, 0x0B};
+    static constexpr uint8_t GPPU_ADDR[2]      = {0x0C, 0x0D};
+    static constexpr uint8_t INTF_ADDR[2]      = {0x0E, 0x0F};
+    static constexpr uint8_t INTCAP_ADDR[2]    = {0x10, 0x11};
+    static constexpr uint8_t GPIO_ADDR[2]      = {0x12, 0x13};
+    static constexpr uint8_t OLAT_ADDR[2]      = {0x14, 0x15};
 
 private:
     struct IoPinInterruptConfig {
@@ -160,24 +180,7 @@ private:
     Mcp23s17();
     ~Mcp23s17();
 
-    void resetRegValue();
-    int writeRegister(const uint8_t addr, const uint8_t val) const;
-    int readRegister(const uint8_t addr, uint8_t* const val) const;
-    int readContinuousRegisters(const uint8_t start_addr, uint8_t* const val, uint8_t len) const;
     static os_thread_return_t ioInterruptHandleThread(void* param);
-
-    // Resister address
-    static constexpr uint8_t IODIR_ADDR[2]     = {0x00, 0x01};
-    static constexpr uint8_t IPOL_ADDR[2]      = {0x02, 0x03};
-    static constexpr uint8_t GPINTEN_ADDR[2]   = {0x04, 0x05};
-    static constexpr uint8_t DEFVAL_ADDR[2]    = {0x06, 0x07};
-    static constexpr uint8_t INTCON_ADDR[2]    = {0x08, 0x09};
-    static constexpr uint8_t IOCON_ADDR[2]     = {0x0A, 0x0B};
-    static constexpr uint8_t GPPU_ADDR[2]      = {0x0C, 0x0D};
-    static constexpr uint8_t INTF_ADDR[2]      = {0x0E, 0x0F};
-    static constexpr uint8_t INTCAP_ADDR[2]    = {0x10, 0x11};
-    static constexpr uint8_t GPIO_ADDR[2]      = {0x12, 0x13};
-    static constexpr uint8_t OLAT_ADDR[2]      = {0x14, 0x15};
 
     // Read/write coomand
     static constexpr uint8_t MCP23S17_CMD_READ = 0x41;
