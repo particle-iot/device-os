@@ -268,7 +268,7 @@ TEST_CASE("CoapMessageEncoder") {
         CHECK(e.encode() == SYSTEM_ERROR_INVALID_ARGUMENT);
     }
     SECTION("encodes option numbers correctly") {
-        char buf[2048] = {};
+        char buf[16] = {};
         auto e = makeEncoder(buf, sizeof(buf));
         e.type(CoapType::CON);
         e.code(CoapCode::CONTENT);
@@ -303,25 +303,6 @@ TEST_CASE("CoapMessageEncoder") {
             e.option(65804);
             CHECK(e.encode() == 9);
             CHECK(memcmp(buf, "\x42\x45\x04\xd2\xaa\xbb\xe0\xff\xff", 9) == 0);
-        }
-        SECTION("repeated option") {
-            e.option(1, 10);
-            e.option(1, 100);
-            e.option(1, 1000);
-            e.option(1, 10000);
-            CHECK(e.encode() == 16);
-            CHECK(memcmp(buf, "\x42\x45\x04\xd2\xaa\xbb\x11\x0a\x01\x64\x02\x03\xe8\x02\x27\x10", 16) == 0);
-        }
-        SECTION("multiple options of different formats and lengths") {
-            e.option(1); // empty
-            e.option(1 + 12, 32767); // uint
-            auto s1 = std::string("abcdefghijklmnopqrstuvwxyz");
-            e.option(1 + 12 + 269, s1.data()); // string
-            auto s2 = std::string(1000, 'x');
-            e.option(1 + 12 + 269 + 10000, s2.data(), s2.size()); // opaque
-            CHECK(e.encode() == 1045);
-            CHECK(std::string(buf, 1045) == std::string("\x42\x45\x04\xd2\xaa\xbb\x10\xc2\x7f\xff\xed\x00\x00\x0d", 14) + s1 +
-                    std::string("\xee\x26\x03\x02\xdb", 5) + s2);
         }
     }
     SECTION("fails if option number is too large") {
@@ -363,9 +344,10 @@ TEST_CASE("CoapMessageEncoder") {
                 CHECK(memcmp(buf.get(), "\x42\x45\x04\xd2\xaa\xbb\x12\x01\x02", 9) == 0);
             }
             SECTION("4 bytes") {
-                e.option(1, 0x01020304);
+                // For simplicity, values in the range [2^16, 2^24) are encoded in 4 bytes
+                e.option(1, 0x00010203);
                 CHECK(e.encode() == 11);
-                CHECK(memcmp(buf.get(), "\x42\x45\x04\xd2\xaa\xbb\x14\x01\x02\x03\x04", 11) == 0);
+                CHECK(memcmp(buf.get(), "\x42\x45\x04\xd2\xaa\xbb\x14\x00\x01\x02\x03", 11) == 0);
             }
         }
         SECTION("string") {
@@ -404,7 +386,8 @@ TEST_CASE("CoapMessageEncoder") {
             }
         }
         SECTION("opaque") {
-            // Opaque and string options are encoded identically, so there's no need to test edge cases
+            // Opaque and string options are encoded identically. This test only verifies that the
+            // relevant API methods take a size argument explicitly
             SECTION("empty") {
                 e.option(1, nullptr, 0);
                 CHECK(e.encode() == 7);
@@ -426,6 +409,53 @@ TEST_CASE("CoapMessageEncoder") {
         e.token("\xaa\xbb", 2);
         e.option(1, std::string(65805, 'x').data());
         CHECK(e.encode() == SYSTEM_ERROR_INVALID_ARGUMENT);
+    }
+    SECTION("encodes multiple options correctly") {
+        char buf[2048] = {};
+        auto e = makeEncoder(buf, sizeof(buf));
+        e.type(CoapType::CON);
+        e.code(CoapCode::CONTENT);
+        e.id(1234);
+        e.token("\xaa\xbb", 2);
+        SECTION("repeated options") {
+            e.option(1, 10);
+            e.option(1, 100);
+            e.option(1, 1000);
+            e.option(1, 10000);
+            CHECK(e.encode() == 16);
+            CHECK(memcmp(buf, "\x42\x45\x04\xd2\xaa\xbb\x11\x0a\x01\x64\x02\x03\xe8\x02\x27\x10", 16) == 0);
+        }
+        SECTION("options of different format and length") {
+            e.option(1); // empty
+            e.option(1 + 12, 32767); // uint
+            auto s1 = std::string("abcdefghijklmnopqrstuvwxyz");
+            e.option(1 + 12 + 269, s1.data()); // string
+            auto s2 = std::string(1000, 'x');
+            e.option(1 + 12 + 269 + 10000, s2.data(), s2.size()); // opaque
+            CHECK(e.encode() == 1045);
+            CHECK(std::string(buf, 1045) == std::string("\x42\x45\x04\xd2\xaa\xbb\x10\xc2\x7f\xff\xed\x00\x00\x0d", 14) + s1 +
+                    std::string("\xee\x26\x03\x02\xdb", 5) + s2);
+        }
+        SECTION("basic options") {
+            e.option(CoapOption::IF_MATCH, "a", 1); // opaque
+            e.option(CoapOption::URI_HOST, "b"); // string
+            e.option(CoapOption::ETAG, "c", 1); // opaque
+            e.option(CoapOption::IF_NONE_MATCH); // empty
+            e.option(CoapOption::URI_PORT, 1); // uint
+            e.option(CoapOption::LOCATION_PATH, "d"); // string
+            e.option(CoapOption::URI_PATH, "e"); // string
+            e.option(CoapOption::CONTENT_FORMAT, 2); // uint
+            e.option(CoapOption::MAX_AGE, 3); // uint
+            e.option(CoapOption::URI_QUERY, "f"); // string
+            e.option(CoapOption::ACCEPT, 4); // uint
+            e.option(CoapOption::LOCATION_QUERY, "g"); // string
+            e.option(CoapOption::PROXY_URI, "h"); // string
+            e.option(CoapOption::PROXY_SCHEME, "i"); // string
+            e.option(CoapOption::SIZE1, 5); // uint
+            e.payload("x", 1);
+            CHECK(e.encode() == 39);
+            CHECK(memcmp(buf, "\x42\x45\x04\xd2\xaa\xbb\x11\x61\x21\x62\x11\x63\x10\x21\x01\x11\x64\x31\x65\x11\x02\x21\x03\x11\x66\x21\x04\x31\x67\xd1\x02\x68\x41\x69\xd1\x08\x05\xff\x78", 39) == 0);
+        }
     }
     SECTION("encodes payload data correctly") {
         char buf[2048];

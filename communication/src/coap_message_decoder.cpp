@@ -99,7 +99,7 @@ int CoapMessageDecoder::decode(const char* data, size_t size) {
     CHECK_TRUE(v == 1, SYSTEM_ERROR_BAD_DATA);
     // Type
     v = (h >> 28) & 0x03;
-    CHECK_TRUE(isValidCoapType(v), SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(isValidCoapType(v), SYSTEM_ERROR_BAD_DATA); // Can't be invalid since it's a 2-bit field
     const auto type = (CoapType)v;
     // Token length
     const size_t tokenSize = (h >> 24) & 0x0f;
@@ -133,7 +133,7 @@ int CoapMessageDecoder::decode(const char* data, size_t size) {
     code_ = code;
     type_ = type;
     id_ = id;
-    return 0;
+    return size;
 }
 
 CoapOptionIterator CoapMessageDecoder::findOption(unsigned opt) const {

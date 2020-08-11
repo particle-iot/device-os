@@ -25,6 +25,9 @@ namespace particle::protocol {
 
 class CoapOptionIterator;
 
+/**
+ * A class for decoding CoAP messages.
+ */
 class CoapMessageDecoder {
 public:
     CoapMessageDecoder();
@@ -42,7 +45,9 @@ public:
     bool hasPayload() const;
 
     CoapOptionIterator options() const;
+    CoapOptionIterator findOption(CoapOption opt) const;
     CoapOptionIterator findOption(unsigned opt) const;
+    bool hasOption(CoapOption opt) const;
     bool hasOption(unsigned opt) const;
     bool hasOptions() const;
 
@@ -62,12 +67,16 @@ private:
     size_t payloadSize_;
 };
 
+/**
+ * A class for iterating over a CoAP message's options.
+ */
 class CoapOptionIterator {
 public:
     CoapOptionIterator();
 
     unsigned option() const;
 
+    // Note: The data is never null-terminated
     const char* data() const;
     size_t size() const;
 
@@ -132,12 +141,20 @@ inline CoapOptionIterator CoapMessageDecoder::options() const {
     return CoapOptionIterator(opts_, optsSize_);
 }
 
+inline CoapOptionIterator CoapMessageDecoder::findOption(CoapOption opt) const {
+    return findOption((unsigned)opt);
+}
+
+inline bool CoapMessageDecoder::hasOption(CoapOption opt) const {
+    return hasOption((unsigned)opt);
+}
+
 inline bool CoapMessageDecoder::hasOption(unsigned opt) const {
     return findOption(opt);
 }
 
 inline bool CoapMessageDecoder::hasOptions() const {
-    return options();
+    return opts_;
 }
 
 inline CoapOptionIterator::CoapOptionIterator() :
@@ -157,7 +174,7 @@ inline unsigned CoapOptionIterator::option() const {
 }
 
 inline const char* CoapOptionIterator::data() const {
-    return optData_;
+    return optSize_ ? optData_ : nullptr;
 }
 
 inline size_t CoapOptionIterator::size() const {
