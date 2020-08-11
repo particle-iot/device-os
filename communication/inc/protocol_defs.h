@@ -3,10 +3,13 @@
 #include <functional>
 #include "system_tick_hal.h"
 #include "hal_platform.h"
-#include "mbedtls_config.h"
 
 #include "system_error.h"
 #include "platforms.h"
+
+#ifndef UNIT_TEST
+#include "mbedtls_config.h"
+#endif
 
 typedef uint16_t product_id_t;
 typedef uint16_t product_firmware_version_t;
@@ -128,7 +131,7 @@ const size_t MAX_EVENT_DATA_LENGTH   = 622;
 const unsigned SEND_EVENT_ACK_TIMEOUT = 20000;
 
 #ifndef PROTOCOL_BUFFER_SIZE
-    #define PROTOCOL_BUFFER_SIZE 800
+    #define PROTOCOL_BUFFER_SIZE MBEDTLS_SSL_MAX_CONTENT_LEN
 #endif
 
 

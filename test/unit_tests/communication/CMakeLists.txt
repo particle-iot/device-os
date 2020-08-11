@@ -11,6 +11,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/communication/src/protocol.cpp
   ${DEVICE_OS_DIR}/communication/src/publisher.cpp
   ${DEVICE_OS_DIR}/communication/src/variables.cpp
+  ${DEVICE_OS_DIR}/communication/src/coap_message_encoder.cpp
   coap_reliability.cpp
   coap.cpp
   forward_message_channel.cpp
@@ -19,6 +20,7 @@ add_executable( ${target_name}
   ping.cpp
   protocol.cpp
   publisher.cpp
+  coap_message_encoder.cpp
 )
 
 # Set defines specific to target

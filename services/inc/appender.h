@@ -160,8 +160,8 @@ public:
     }
 
 private:
-    char* const buf_;
-    const size_t bufSize_;
+    char* buf_;
+    size_t bufSize_;
     size_t dataSize_;
 };
 

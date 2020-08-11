@@ -47,7 +47,6 @@ enum class CoapCode {
     PUT = coapCode(0, 3),
     DELETE = coapCode(0, 4),
     // Response codes
-    OK = coapCode(2, 0), // Not defined in RFC 7252
     CREATED = coapCode(2, 1),
     DELETED = coapCode(2, 2),
     VALID = coapCode(2, 3),
@@ -98,16 +97,19 @@ typedef uint16_t CoapMessageId;
 
 unsigned coapCodeClass(unsigned code);
 unsigned coapCodeDetail(unsigned code);
-bool isSuccessCoapCode(unsigned code);
-bool isResponseCoapCode(unsigned code);
-bool isResponseCoapType(CoapType type);
-bool isCoapResponse(CoapType type, unsigned code);
-bool isRequestCoapType(CoapType type);
 bool isRequestCoapCode(unsigned code);
-bool isCoapRequest(CoapType type, unsigned code);
-bool isCoapEmptyAck(CoapType type, unsigned code);
-bool isValidCoapType(unsigned type);
+bool isResponseCoapCode(unsigned code);
+bool isSuccessCoapCode(unsigned code);
 bool isValidCoapCode(unsigned code);
+
+bool isRequestCoapType(CoapType type);
+bool isResponseCoapType(CoapType type);
+bool isValidCoapType(unsigned type);
+
+bool isCoapRequest(CoapType type, unsigned code);
+bool isCoapResponse(CoapType type, unsigned code);
+bool isCoapEmptyAck(CoapType type, unsigned code);
+
 CoapCode coapCodeForSystemError(int error);
 
 inline unsigned coapCodeClass(unsigned code) {
@@ -118,8 +120,8 @@ inline unsigned coapCodeDetail(unsigned code) {
     return code & 0x1f;
 }
 
-inline bool isSuccessCoapCode(unsigned code) {
-    return coapCodeClass(code) == 2;
+inline bool isRequestCoapCode(unsigned code) {
+    return code == CoapCode::GET || code == CoapCode::POST || code == CoapCode::PUT || code == CoapCode::DELETE;
 }
 
 inline bool isResponseCoapCode(unsigned code) {
@@ -127,37 +129,37 @@ inline bool isResponseCoapCode(unsigned code) {
     return cls == 2 || cls == 4 || cls == 5;
 }
 
-inline bool isResponseCoapType(CoapType type) {
-    return type == CoapType::CON || type == CoapType::NON || type == CoapType::ACK;
+inline bool isSuccessCoapCode(unsigned code) {
+    return coapCodeClass(code) == 2;
 }
 
-inline bool isCoapResponse(CoapType type, unsigned code) {
-    return isResponseCoapType(type) && isResponseCoapCode(code);
+inline bool isValidCoapCode(unsigned code) {
+    const auto cls = coapCodeClass(code);
+    return cls == 0 || cls == 2 || cls == 4 || cls == 5;
 }
 
 inline bool isRequestCoapType(CoapType type) {
     return type == CoapType::CON || type == CoapType::NON;
 }
 
-inline bool isRequestCoapCode(unsigned code) {
-    return code == CoapCode::GET || code == CoapCode::POST || code == CoapCode::PUT || code == CoapCode::DELETE;
-}
-
-inline bool isCoapRequest(CoapType type, unsigned code) {
-    return isRequestCoapType(type) && isRequestCoapCode(code);
-}
-
-inline bool isCoapEmptyAck(CoapType type, unsigned code) {
-    return type == CoapType::ACK && code == CoapCode::EMPTY;
+inline bool isResponseCoapType(CoapType type) {
+    return type == CoapType::CON || type == CoapType::NON || type == CoapType::ACK;
 }
 
 inline bool isValidCoapType(unsigned type) {
     return type == CoapType::CON || type == CoapType::NON || type == CoapType::ACK || type == CoapType::RST;
 }
 
-inline bool isValidCoapCode(unsigned code) {
-    const auto cls = coapCodeClass(code);
-    return cls == 0 || cls == 2 || cls == 4 || cls == 5;
+inline bool isCoapRequest(CoapType type, unsigned code) {
+    return isRequestCoapType(type) && isRequestCoapCode(code);
+}
+
+inline bool isCoapResponse(CoapType type, unsigned code) {
+    return isResponseCoapType(type) && isResponseCoapCode(code);
+}
+
+inline bool isCoapEmptyAck(CoapType type, unsigned code) {
+    return type == CoapType::ACK && code == CoapCode::EMPTY;
 }
 
 } // namespace particle::protocol

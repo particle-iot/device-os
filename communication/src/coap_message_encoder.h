@@ -26,6 +26,12 @@
 
 namespace particle::protocol {
 
+/**
+ * A class for encoding CoAP messages.
+ *
+ * @note All message fields must be encoded in the order in which they follow in the CoAP message
+ *       layout (see RFC 7252, 3. Message Format).
+ */
 class CoapMessageEncoder {
 public:
     CoapMessageEncoder(char* buf, size_t size);
@@ -40,6 +46,7 @@ public:
     CoapMessageEncoder& option(unsigned opt, const char* data, size_t size);
     CoapMessageEncoder& option(unsigned opt, const char* str);
     CoapMessageEncoder& option(unsigned opt, unsigned val);
+    CoapMessageEncoder& option(unsigned opt, int val);
     CoapMessageEncoder& option(unsigned opt);
     CoapMessageEncoder& payload(const char* data, size_t size);
     CoapMessageEncoder& payload(const char* str);
@@ -84,6 +91,10 @@ inline CoapMessageEncoder& CoapMessageEncoder::code(unsigned cls, unsigned detai
 
 inline CoapMessageEncoder& CoapMessageEncoder::option(unsigned opt, const char* str) {
     return option(opt, str, strlen(str));
+}
+
+inline CoapMessageEncoder& CoapMessageEncoder::option(unsigned opt, int val) {
+    return option(opt, (unsigned)val);
 }
 
 inline CoapMessageEncoder& CoapMessageEncoder::option(unsigned opt) {

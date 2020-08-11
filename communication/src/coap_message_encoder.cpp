@@ -52,6 +52,10 @@ CoapMessageEncoder& CoapMessageEncoder::code(unsigned code) {
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return *this;
     }
+    if (code > 255) {
+        error_ = SYSTEM_ERROR_INVALID_ARGUMENT;
+        return *this;
+    }
     code_ = code;
     flags_ |= Flag::HAS_CODE;
     return *this;
@@ -103,10 +107,14 @@ CoapMessageEncoder& CoapMessageEncoder::option(unsigned opt, const char* data, s
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return *this;
     }
+    const unsigned optDelta = opt - prevOpt_;
+    if (optDelta > 65535 + 269) {
+        error_ = SYSTEM_ERROR_INVALID_ARGUMENT;
+        return *this;
+    }
     if (!(flags_ & Flag::HEADER_ENCODED) && !encodeHeader()) {
         return *this;
     }
-    const unsigned optDelta = opt - prevOpt_;
     uint8_t deltaNibble = 0;
     if (optDelta <= 12) {
         deltaNibble = optDelta;

@@ -27,7 +27,7 @@ namespace particle::protocol {
 CoapCode coapCodeForSystemError(int error) {
     switch (error) {
     case SYSTEM_ERROR_NONE:
-        return CoapCode::OK;
+        return CoapCode::CREATED; // RFC 7252 doesn't define a generic OK code
     case SYSTEM_ERROR_INVALID_ARGUMENT:
     case SYSTEM_ERROR_BAD_DATA:
     case SYSTEM_ERROR_OUT_OF_RANGE:
