@@ -104,6 +104,20 @@ static int constructAnalogWakeupReason(hal_wakeup_source_base_t** wakeupReason, 
         } else {
             return SYSTEM_ERROR_NO_MEMORY;
         }
+    return SYSTEM_ERROR_NONE;
+}
+
+static int constructUsartWakeupReason(hal_wakeup_source_base_t** wakeupReason, hal_usart_interface_t serial) {
+    auto usart = (hal_wakeup_source_usart_t*)malloc(sizeof(hal_wakeup_source_usart_t));
+    if (usart) {
+        usart->base.size = sizeof(hal_wakeup_source_usart_t);
+        usart->base.version = HAL_SLEEP_VERSION;
+        usart->base.type = HAL_WAKEUP_SOURCE_TYPE_USART;
+        usart->base.next = nullptr;
+        usart->serial = serial;
+        *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(usart);
+    } else {
+        return SYSTEM_ERROR_NO_MEMORY;
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -281,6 +295,18 @@ static int configRtcWakeupSource(const hal_wakeup_source_base_t* wakeupSources) 
     return SYSTEM_ERROR_NONE;
 }
 
+static int configUsartWakeupSource(const hal_wakeup_source_base_t* wakeupSources, uint8_t* configured) {
+    auto source = wakeupSources;
+    while (source) {
+        if (source->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
+            *configured = 1;
+            // We don't need to configure anything, as the RX interrupt is enabled when the USART is enabled.
+        }
+        source = source->next;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 static int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_gpio_t* gpio) {
     switch(gpio->mode) {
         case RISING:
@@ -335,6 +361,16 @@ static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_s
     return SYSTEM_ERROR_NONE;
 }
 
+static int validateUsartWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_usart_t* usart) {
+    if (!hal_usart_is_enabled(usart->serial)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (mode != HAL_SLEEP_MODE_STOP) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 static int validateWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_base_t* base) {
     if (base->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
         return validateGpioWakeupSource(mode, reinterpret_cast<const hal_wakeup_source_gpio_t*>(base));
@@ -344,35 +380,41 @@ static int validateWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_b
         return validateRtcWakeupSource(mode, reinterpret_cast<const hal_wakeup_source_rtc_t*>(base));
     } else if (base->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
         return validateNetworkWakeupSource(mode, reinterpret_cast<const hal_wakeup_source_network_t*>(base));
+    } else if (base->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
+        return validateUsartWakeupSource(mode, reinterpret_cast<const hal_wakeup_source_usart_t*>(base));
     }
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-static void enterPlatformSleepMode() {
+static void enterPlatformSleepMode(uint8_t highAccuracy) {
     int basePri = __get_BASEPRI();
     __set_BASEPRI(2 << (8 - __NVIC_PRIO_BITS));
 
-    /* Select HSE as system clock source */
-    RCC_SYSCLKConfig(RCC_SYSCLKSource_HSE);
-    /* Wait till HSE is used as system clock source */
-    while (RCC_GetSYSCLKSource() != 0x04);
+    if (!highAccuracy) {
+        /* Select HSE as system clock source */
+        RCC_SYSCLKConfig(RCC_SYSCLKSource_HSE);
+        /* Wait till HSE is used as system clock source */
+        while (RCC_GetSYSCLKSource() != 0x04);
 
-    /* Disable PLL */
-    RCC_PLLCmd(DISABLE);
+        /* Disable PLL */
+        RCC_PLLCmd(DISABLE);
+    }
 
     __DSB();
     __WFI();
     __NOP();
     __ISB();
 
-    /* Enable PLL */
-    RCC_PLLCmd(ENABLE);
-    while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
+    if (!highAccuracy) {
+        /* Enable PLL */
+        RCC_PLLCmd(ENABLE);
+        while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
 
-    /* Select PLL as system clock source */
-    RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
-    /* Wait till PLL is used as system clock source */
-    while (RCC_GetSYSCLKSource() != 0x08);
+        /* Select PLL as system clock source */
+        RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+        /* Wait till PLL is used as system clock source */
+        while (RCC_GetSYSCLKSource() != 0x08);
+    }
 
     __set_BASEPRI(basePri);
 }
@@ -469,8 +511,10 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     uint8_t analogWakeup = 0;
     configAnalogWakeupSource(config->wakeup_sources, &analogWakeup);
     configRtcWakeupSource(config->wakeup_sources);
+    uint8_t usartWakeup = 0;
+    configUsartWakeupSource(config->wakeup_sources, &usartWakeup);
 
-    if (config->mode == HAL_SLEEP_MODE_STOP && analogWakeup) {
+    if (config->mode == HAL_SLEEP_MODE_STOP && (analogWakeup || usartWakeup)) {
         enterPlatformSleepMode();
     } else {
         enterPlatformStopMode();
@@ -494,7 +538,21 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
             auto analogWakeup = reinterpret_cast<hal_wakeup_source_lpcomp_t*>(wakeupSource);
             ret = constructAnalogWakeupReason(wakeupReason, analogWakeup->pin);
             break; // Stop traversing the wakeup sources list.
-        }
+        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
+            auto usartWakeup = reinterpret_cast<hal_wakeup_source_usart_t*>(wakeupSource);
+            if (   (NVIC_GetPendingIRQ(USART1_IRQn) && usartWakeup->serial == HAL_USART_SERIAL1)
+                || (NVIC_GetPendingIRQ(USART2_IRQn) && usartWakeup->serial == HAL_USART_SERIAL2)
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
+                || (NVIC_GetPendingIRQ(USART3_IRQn) && usartWakeup->serial == HAL_USART_SERIAL3)
+                || (NVIC_GetPendingIRQ(UART4_IRQn) && usartWakeup->serial == HAL_USART_SERIAL4)
+                || (NVIC_GetPendingIRQ(UART5_IRQn) && usartWakeup->serial == HAL_USART_SERIAL5)
+#endif
+                ) {
+                ret = constructUsartWakeupReason(wakeupReason, usartWakeup->serial);
+            }
+            
+            break; // Stop traversing the wakeup sources list.
+         }
         wakeupSource = wakeupSource->next;
     }
 
