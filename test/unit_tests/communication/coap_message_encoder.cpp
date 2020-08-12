@@ -25,7 +25,7 @@ namespace {
 
 using namespace particle::protocol;
 
-CoapMessageEncoder makeEncoder(char* buf = nullptr, size_t size = 0) {
+inline CoapMessageEncoder makeEncoder(char* buf = nullptr, size_t size = 0) {
     return CoapMessageEncoder(buf, size);
 }
 

@@ -25,7 +25,7 @@ namespace {
 
 using namespace particle::protocol;
 
-CoapMessageDecoder makeDecoder() {
+inline CoapMessageDecoder makeDecoder() {
     return CoapMessageDecoder();
 }
 
@@ -341,7 +341,7 @@ TEST_CASE("CoapMessageDecoder") {
             CHECK(it.size() != 0);
             CHECK(it.data() != nullptr);
             CHECK(it.toUInt() == 32767);
-            // 1st string option
+            // String option
             CHECK(it.next() == true);
             CHECK(it.option() == 1 + 12 + 269);
             CHECK(std::string(it.data(), it.size()) == s1);
@@ -432,6 +432,8 @@ TEST_CASE("CoapMessageDecoder") {
             CHECK(it.next());
             CHECK(it.option() == CoapOption::SIZE1);
             CHECK(it.toUInt() == 5);
+            CHECK(it.next() == false);
+            CHECK(it == CoapOptionIterator());
         }
     }
     SECTION("decodes payload data correctly") {
