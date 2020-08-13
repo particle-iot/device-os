@@ -18,6 +18,7 @@
 #ifndef SERVICES_SYSTEM_ERROR_H
 #define SERVICES_SYSTEM_ERROR_H
 
+#include "logging.h"
 #include "preprocessor.h"
 
 // List of all defined system errors
@@ -80,10 +81,20 @@
 #define _SYSTEM_ERROR_ENUM_VALUE__(prefix, name, msg, code) \
         PP_CAT(prefix, name) = code,
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+/**
+ * Set the system error message.
+ *
+ * This macro also logs the error message under the current logging category.
+ */
+#define ERROR_MESSAGE(_fmt, ...) \
+        do { \
+            LOG(ERROR, _fmt, ##__VA_ARGS__); \
+            set_error_message(_fmt, ##__VA_ARGS__); \
+        } while (false)
 
+/**
+ * Error codes.
+ */
 typedef enum system_error_t {
     // SYSTEM_ERROR_NONE = 0,
     // SYSTEM_ERROR_UNKNOWN = -100,
@@ -91,8 +102,43 @@ typedef enum system_error_t {
     SYSTEM_ERROR_ENUM_VALUES(SYSTEM_ERROR_)
 } system_error_t;
 
-// Returns default error message
-const char* system_error_message(int error, void* reserved);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * Set the system error message.
+ *
+ * This function has no effect if the error message is already set.
+ *
+ * @param fmt Format string.
+ * @param ... Formatting arguments.
+ */
+void set_error_message(const char* fmt, ...);
+
+/**
+ * Get the system error message.
+ *
+ * @param error Error code.
+ * @return Error message.
+ *
+ * If `error` is negative and the system error message is not set, this function will return the
+ * default message for the error code.
+ */
+const char* get_error_message(int error);
+
+/**
+ * Clear the system error message.
+ */
+void clear_error_message();
+
+/**
+ * Get the default error message for the error code.
+ *
+ * @param error Error code.
+ * @return Error message.
+ */
+const char* get_default_error_message(int error, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -23,7 +23,6 @@ LOG_SOURCE_CATEGORY("system.ota");
 
 #include "system_task.h"
 #include "system_led_signal.h"
-#include "error_message.h"
 
 #include "ota_flash_hal.h"
 #include "timer_hal.h"
@@ -110,7 +109,7 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* f
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (updating_) {
-        setErrorMessage("Firmware update is already in progress");
+        ERROR_MESSAGE("Firmware update is already in progress");
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (!System.updatesEnabled() && !System.updatesForced()) {
@@ -219,7 +218,7 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
     const uintptr_t addr = HAL_OTA_FlashAddress() + chunkOffset;
     int r = HAL_FLASH_Update((const uint8_t*)chunkData, addr, chunkSize, nullptr);
     if (r != 0) {
-        formatErrorMessage("Failed to save chunk to OTA section: %d", r);
+        ERROR_MESSAGE("Failed to save firmware data: %d", r);
         endUpdate();
         return SYSTEM_ERROR_FLASH;
     }
@@ -228,7 +227,7 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
         r = updateTransferState(chunkData, chunkSize, chunkOffset, partialSize);
         if (r != 0) {
             // Not a critical error
-            LOG(ERROR, "Failed to update persistent transfer state: %d", r);
+            LOG(ERROR, "Failed to update transfer state: %d", r);
             clearTransferState();
         }
     }
