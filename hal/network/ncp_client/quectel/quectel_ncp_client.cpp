@@ -299,6 +299,12 @@ int QuectelNcpClient::initParser(Stream* stream) {
         }
         return SYSTEM_ERROR_NONE;
     }, this));
+	// "+QUSIM: 1" URC is seen with USIM update / availability
+    CHECK(parser_.addUrcHandler("+QUSIM: 1", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
+        const auto self = (QuectelNcpClient*)data;
+        self->checkImsi_ = true;
+        return SYSTEM_ERROR_NONE;
+    }, this));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1525,11 +1531,22 @@ int QuectelNcpClient::interveneRegistration() {
     return 0;
 }
 
+
+int QuectelNcpClient::checkRunningImsi() {
+    // Check current IMSI
+    if (checkImsi_) {
+        checkImsi_ = false;
+        CHECK_PARSER(parser_.execCommand("AT+CIMI"));
+    }
+    return 0;
+}
+
 int QuectelNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
     interveneRegistration();
+    checkRunningImsi();
     if (connState_ != NcpConnectionState::CONNECTING || millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return SYSTEM_ERROR_NONE;
     }
