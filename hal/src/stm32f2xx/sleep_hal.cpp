@@ -125,6 +125,23 @@ static int constructUsartWakeupReason(hal_wakeup_source_base_t** wakeupReason, h
     return SYSTEM_ERROR_NONE;
 }
 
+#if HAL_PLATFORM_CELLULAR
+static int constructNetworkWakeupReason(hal_wakeup_source_base_t** wakeupReason, network_interface_index index) {
+    auto network = (hal_wakeup_source_network_t*)malloc(sizeof(hal_wakeup_source_network_t));
+    if (network) {
+        network->base.size = sizeof(hal_wakeup_source_base_t);
+        network->base.version = HAL_SLEEP_VERSION;
+        network->base.type = HAL_WAKEUP_SOURCE_TYPE_NETWORK;
+        network->base.next = nullptr;
+        network->index = index;
+        *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(network);
+    } else {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+#endif
+
 static int configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources, uint8_t* extiPriorities) {
     auto source = wakeupSources;
     while (source) {
@@ -357,6 +374,18 @@ static int configUsartWakeupSource(const hal_wakeup_source_base_t* wakeupSources
     return SYSTEM_ERROR_NONE;
 }
 
+static int configNetworkWakeupSource(const hal_wakeup_source_base_t* wakeupSources, uint8_t* configured) {
+    auto source = wakeupSources;
+    while (source) {
+        if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
+            *configured = 1;
+            // We don't need to configure anything, as the RX interrupt is enabled when the USART is enabled.
+        }
+        source = source->next;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 static int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_gpio_t* gpio) {
     switch(gpio->mode) {
         case RISING:
@@ -402,12 +431,29 @@ static int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sourc
 }
 
 static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_network_t* network) {
+#if HAL_PLATFORM_CELLULAR
+    if (network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY) {
+        if (mode == HAL_SLEEP_MODE_HIBERNATE) {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+    } else {
+        if (!hal_usart_is_enabled(HAL_USART_SERIAL3)) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        if (mode != HAL_SLEEP_MODE_STOP) {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+    }
+#endif
+
+#if HAL_PLATFORM_WIFI
     if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     if (mode == HAL_SLEEP_MODE_HIBERNATE) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
+#endif
     return SYSTEM_ERROR_NONE;
 }
 
@@ -563,9 +609,11 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     configRtcWakeupSource(config->wakeup_sources);
     uint8_t usartWakeup = 0;
     configUsartWakeupSource(config->wakeup_sources, &usartWakeup);
+    uint8_t networkWakeup = 0;
+    configNetworkWakeupSource(config->wakeup_sources, &networkWakeup);
 
-    if (config->mode == HAL_SLEEP_MODE_STOP && (analogWakeup || usartWakeup)) {
-        if (usartWakeup) {
+    if (config->mode == HAL_SLEEP_MODE_STOP && (analogWakeup || usartWakeup || networkWakeup)) {
+        if (usartWakeup || networkWakeup) {
             enterPlatformSleepMode(true);
         } else {
             enterPlatformSleepMode(false);
@@ -604,9 +652,17 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
                 ) {
                 ret = constructUsartWakeupReason(wakeupReason, usartWakeup->serial);
             }
-            
             break; // Stop traversing the wakeup sources list.
-         }
+        }
+#if HAL_PLATFORM_CELLULAR
+        else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
+            auto networkWakeup = reinterpret_cast<hal_wakeup_source_network_t*>(wakeupSource);
+            if (NVIC_GetPendingIRQ(USART3_IRQn) && networkWakeup->index == NETWORK_INTERFACE_CELLULAR) {
+                ret = constructNetworkWakeupReason(wakeupReason, networkWakeup->index);
+            }
+            break; // Stop traversing the wakeup sources list.
+        }
+#endif
         wakeupSource = wakeupSource->next;
     }
 
