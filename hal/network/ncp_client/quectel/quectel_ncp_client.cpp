@@ -1190,8 +1190,11 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
 
 int QuectelNcpClient::registerNet() {
     int r = 0;
-    CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=1"));
-    //HAL_Delay_Milliseconds(2000);
+
+    // Set modem full functionality
+    r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1"));
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
     resetRegistrationState();
 
     // Register GPRS, LET, NB-IOT network
@@ -1532,10 +1535,6 @@ int QuectelNcpClient::interveneRegistration() {
                 CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
             }
         }
-        //if(eps_.duration() >= timeout /* && twilio sim */) {
-        //    CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=4"));
-        //    CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
-        //}
     }
     return 0;
 }
