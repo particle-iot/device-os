@@ -41,16 +41,10 @@ namespace CoAPMessageType {
     DESCRIBE,
     FUNCTION_CALL,
     VARIABLE_REQUEST,
-#if HAL_PLATFORM_OTA_PROTOCOL_V3
-    UPDATE_START,
-    UPDATE_FINISH,
-    UPDATE_CHUNK,
-#else
     SAVE_BEGIN,
     UPDATE_BEGIN,
     UPDATE_DONE,
     CHUNK,
-#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
     EVENT,
     KEY_CHANGE,
     SIGNAL_START,
@@ -60,6 +54,10 @@ namespace CoAPMessageType {
     PING,
     ERROR,
     NONE,
+    // OTA protocol v3
+    UPDATE_START,
+    UPDATE_FINISH,
+    UPDATE_CHUNK
   };
 }
 

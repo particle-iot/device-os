@@ -70,21 +70,18 @@ CoAPMessageType::Enum Messages::decodeType(const uint8_t* buf, size_t length)
 			return CoAPMessageType::HELLO;
 		case 'f':
 			return CoAPMessageType::FUNCTION_CALL;
-#if HAL_PLATFORM_OTA_PROTOCOL_V3
-		case 'S':
-			return CoAPMessageType::UPDATE_START;
-		case 'F':
-			return CoAPMessageType::UPDATE_FINISH;
-		case 'C':
-			return CoAPMessageType::UPDATE_CHUNK;
-#else
 		case 's':
 			return CoAPMessageType::SAVE_BEGIN;
 		case 'u':
 			return CoAPMessageType::UPDATE_BEGIN;
 		case 'c':
 			return CoAPMessageType::CHUNK;
-#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
+		case 'S':
+			return CoAPMessageType::UPDATE_START;
+		case 'F':
+			return CoAPMessageType::UPDATE_FINISH;
+		case 'C':
+			return CoAPMessageType::UPDATE_CHUNK;
 		default:
 			break;
 		}
@@ -94,10 +91,8 @@ CoAPMessageType::Enum Messages::decodeType(const uint8_t* buf, size_t length)
 		{
 		case 'k':
 			return CoAPMessageType::KEY_CHANGE;
-#if !HAL_PLATFORM_OTA_PROTOCOL_V3
 		case 'u':
 			return CoAPMessageType::UPDATE_DONE;
-#endif
 		case 's':
 			// todo - use a single message SIGNAL and decode the rest of the message to determine desired state
 			if (buf[8])

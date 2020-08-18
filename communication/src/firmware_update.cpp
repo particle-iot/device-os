@@ -281,8 +281,8 @@ int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageE
     e->code(CoapCode::CREATED);
     e->id(0); // Will be assigned by the message channel
     e->token(d.token(), d.tokenSize());
-    e->option(MessageOption::WINDOW_SIZE, windowSize_);
-    e->option(MessageOption::FILE_SIZE, fileOffset_);
+    e->option(MessageOption::WINDOW_SIZE, (unsigned)windowSize_);
+    e->option(MessageOption::FILE_SIZE, (unsigned)fileOffset_);
     return 0;
 }
 

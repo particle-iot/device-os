@@ -31,15 +31,9 @@
 #include <cstdint>
 #include <cstddef>
 
-#define OTA_UPDATE_STATS 1 // FIXME
-
 #ifndef OTA_UPDATE_STATS
-#ifdef DEBUG_BUILD
 #define OTA_UPDATE_STATS 1
-#else
-#define OTA_UPDATE_STATS 0
 #endif
-#endif // !defined(OTA_UPDATE_STATS)
 
 namespace particle::protocol {
 
