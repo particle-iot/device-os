@@ -110,6 +110,7 @@ private:
     unsigned registrationTimeout_;
     unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
+    bool multi_imsi_sim  = false;
 
     system_tick_t lastWindow_ = 0;
     size_t bytesInWindow_ = 0;

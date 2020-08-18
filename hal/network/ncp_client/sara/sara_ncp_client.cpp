@@ -128,6 +128,9 @@ const system_tick_t UBLOX_NCP_R4_WINDOW_SIZE_MS = 50;
 const int UBLOX_DEFAULT_CID = 1;
 const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
 
+const size_t ICCID_PREFIX_LEN = 7;
+const char TWILIO_ICCID_1[] = "8988323";
+const char TWILIO_ICCID_2[] = "8988307";
 
 } // anonymous
 
@@ -1413,6 +1416,11 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         const int ret = CHECK_PARSER(resp.scanf("+CCID: %31s", buf));
         const int r = CHECK_PARSER(resp.readResult());
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+        if ((strncmp(buf, TWILIO_ICCID_1, ICCID_PREFIX_LEN) == 0)
+            || (strncmp(buf, TWILIO_ICCID_2, ICCID_PREFIX_LEN) == 0))  {
+            LOG(TRACE, "Using Multi IMSI capable SIM");
+            multi_imsi_sim = true;
+        }
         if (ret) {
             netConf_ = networkConfigForIccid(buf, strlen(buf));
         }
@@ -1710,13 +1718,12 @@ int SaraNcpClient::interveneRegistration() {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTING, SYSTEM_ERROR_NONE);
 
     auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
-
     // Intervention to speed up registration or recover in case of failure
     if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
         // Only attempt intervention when in a sticky state
         // (over intervention interval and multiple URCs with the same state)
         if (csd_.sticky() && csd_.duration() >= timeout) {
-            if (csd_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
+            if (!multi_imsi_sim && csd_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
                 LOG(TRACE, "Sticky not registering CSD state for %lu s, PLMN reselection", csd_.duration() / 1000);
                 csd_.reset();
                 psd_.reset();
@@ -1751,7 +1758,7 @@ int SaraNcpClient::interveneRegistration() {
         }
     } else {
         if (eps_.sticky() && eps_.duration() >= timeout) {
-            if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
+            if (!multi_imsi_sim && eps_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
                 LOG(TRACE, "Sticky not registering EPS state for %lu s, PLMN reselection", eps_.duration() / 1000);
                 eps_.reset();
                 registrationInterventions_++;

@@ -120,6 +120,9 @@ const auto HW_VERSION_UNDEFINED = 0xFF;
 const auto HAL_VERSION_B5SOM_V003 = 0x00;
 
 const auto ICCID_MAX_LENGTH = 20;
+const size_t ICCID_PREFIX_LEN = 7;
+const char TWILIO_ICCID_1[] = "8988323";
+const char TWILIO_ICCID_2[] = "8988307";
 
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
 using CidType = decltype(CellularGlobalIdentity::cell_id);
@@ -1151,6 +1154,11 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
         const int ret = CHECK_PARSER(resp.scanf("+CCID: %31s", buf));
         const int r = CHECK_PARSER(resp.readResult());
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+        if ((strncmp(buf, TWILIO_ICCID_1, ICCID_PREFIX_LEN) == 0)
+            || (strncmp(buf, TWILIO_ICCID_2, ICCID_PREFIX_LEN) == 0))  {
+            LOG(TRACE, "Using Multi IMSI capable SIM");
+            multi_imsi_sim = true;
+        }
         if (ret) {
             netConf_ = networkConfigForIccid(buf, strlen(buf));
         }
@@ -1459,7 +1467,7 @@ int QuectelNcpClient::interveneRegistration() {
     // Intervention to speed up registration or recover in case of failure
     if (ncpId() != PLATFORM_NCP_QUECTEL_BG96) {
         if (eps_.sticky() && eps_.duration() >= timeout) {
-            if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING && csd_.status() == eps_.status()) {
+            if (!multi_imsi_sim && eps_.status() == CellularRegistrationStatus::NOT_REGISTERING && csd_.status() == eps_.status()) {
                 LOG(TRACE, "Sticky not registering state for %lu s, PLMN reselection", eps_.duration() / 1000);
                 csd_.reset();
                 psd_.reset();
@@ -1510,7 +1518,7 @@ int QuectelNcpClient::interveneRegistration() {
         }
     } else {
         if (eps_.sticky() && eps_.duration() >= timeout) {
-            if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
+            if (!multi_imsi_sim && eps_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
                 LOG(TRACE, "Sticky not registering EPS state for %lu s, PLMN reselection", eps_.duration() / 1000);
                 eps_.reset();
                 registrationInterventions_++;
