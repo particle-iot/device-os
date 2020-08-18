@@ -1208,10 +1208,10 @@ int QuectelNcpClient::registerNet() {
 
     if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
         // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
-        // Set to scan LTE only if not already set, take effect immediately
+        // Scan LTE only, take effect immediately
         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
         // Configure Network Category to be Searched under LTE RAT
-        // Set to use LTE Cat M1 if not already set, take effect immediately
+        // Only use LTE Cat M1, take effect immediately
         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
     }
 
