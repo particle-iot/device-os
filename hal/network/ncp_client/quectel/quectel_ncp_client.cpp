@@ -965,7 +965,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         CHECK(selectSimCard());
 
         // Just in case disconnect
-        int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+        // int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
         // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
         if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
@@ -1208,10 +1208,10 @@ int QuectelNcpClient::registerNet() {
 
     if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
         // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
-        // Scan LTE only, take effect immediately
+        // Set to scan LTE only if not already set, take effect immediately
         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
         // Configure Network Category to be Searched under LTE RAT
-        // Only use LTE Cat M1, take effect immediately
+        // Set to use LTE Cat M1 if not already set, take effect immediately
         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
     }
 
@@ -1511,6 +1511,8 @@ int QuectelNcpClient::interveneRegistration() {
                 eps_.reset();
                 registrationInterventions_++;
                 CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
             } else if (eps_.status() == CellularRegistrationStatus::DENIED) {
                 LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
