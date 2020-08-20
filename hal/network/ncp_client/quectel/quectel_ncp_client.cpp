@@ -423,7 +423,7 @@ int QuectelNcpClient::disconnect() {
         return SYSTEM_ERROR_NONE;
     }
     CHECK(checkParser());
-    const int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+    const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=0"));
     (void)r;
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
@@ -1208,6 +1208,9 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
 
 int QuectelNcpClient::registerNet() {
     int r = 0;
+    // Set modem full functionality
+    r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     resetRegistrationState();
 
