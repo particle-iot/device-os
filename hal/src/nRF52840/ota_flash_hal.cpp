@@ -775,8 +775,13 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
     switch (config_item)
     {
     case SYSTEM_CONFIG_DEVICE_KEY:
-        offset = DCT_DEVICE_PRIVATE_KEY_OFFSET;
-        length = DCT_DEVICE_PRIVATE_KEY_SIZE;
+        if (udp) {
+            offset = DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET;
+            length = DCT_ALT_DEVICE_PRIVATE_KEY_SIZE;
+        } else {
+            offset = DCT_DEVICE_PRIVATE_KEY_OFFSET;
+            length = DCT_DEVICE_PRIVATE_KEY_SIZE;
+        }
         break;
     case SYSTEM_CONFIG_SERVER_KEY:
         if (udp) {
