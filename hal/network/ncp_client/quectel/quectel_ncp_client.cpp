@@ -423,7 +423,7 @@ int QuectelNcpClient::disconnect() {
         return SYSTEM_ERROR_NONE;
     }
     CHECK(checkParser());
-    const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=0"));
+    const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=0,0"));
     (void)r;
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
@@ -1242,24 +1242,24 @@ int QuectelNcpClient::registerNet() {
     if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
         // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
         // Set to scan LTE only if not already set, take effect immediately
-        auto resp_nwmode = parser_.sendCommand("AT+QCFG=\"nwscanmode\"");
+        auto respNwMode = parser_.sendCommand("AT+QCFG=\"nwscanmode\"");
         int nwScanMode = -1;
-        r = CHECK_PARSER(resp_nwmode.scanf("+QCFG: \"nwscanmode\",%d", &nwScanMode));
-        //CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);    // Ignore resp code
-        r = CHECK_PARSER(resp_nwmode.readResult());
-        //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);    // Ignore resp code
+        r = CHECK_PARSER(respNwMode.scanf("+QCFG: \"nwscanmode\",%d", &nwScanMode));
+        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(respNwMode.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
         if (nwScanMode != 3) {
             CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
         }
 
         // Configure Network Category to be Searched under LTE RAT
         // Set to use LTE Cat M1 if not already set, take effect immediately
-        auto resp_opmode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
+        auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
         int iotOpMode = -1;
-        r = CHECK_PARSER(resp_opmode.scanf("+QCFG: \"iotopmode\",%d", &iotOpMode));
-        //CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);    // Ignore resp code
-        r = CHECK_PARSER(resp_opmode.readResult());
-        //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);    // Ignore resp code
+        r = CHECK_PARSER(respOpMode.scanf("+QCFG: \"iotopmode\",%d", &iotOpMode));
+        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(respOpMode.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         if (iotOpMode != 0) {
             CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
         }

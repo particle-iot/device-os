@@ -414,7 +414,7 @@ int SaraNcpClient::disconnect() {
         return SYSTEM_ERROR_NONE;
     }
     CHECK(checkParser());
-    const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=0"));
+    const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=0,0"));
     (void)r;
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
