@@ -110,7 +110,7 @@ private:
     unsigned registrationTimeout_;
     unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
-    int checkImsi_ = false;
+    bool checkImsi_ = false;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
