@@ -1241,11 +1241,28 @@ int QuectelNcpClient::registerNet() {
 
     if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
         // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
-        // Scan LTE only, take effect immediately
-        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+        // Set to scan LTE only if not already set, take effect immediately
+        auto resp_nwmode = parser_.sendCommand("AT+QCFG=\"nwscanmode\"");
+        int nwScanMode = -1;
+        r = CHECK_PARSER(resp_nwmode.scanf("+QCFG: \"nwscanmode\",%d", &nwScanMode));
+        //CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);    // Ignore resp code
+        r = CHECK_PARSER(resp_nwmode.readResult());
+        //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);    // Ignore resp code
+        if (nwScanMode != 3) {
+            CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+        }
+
         // Configure Network Category to be Searched under LTE RAT
-        // Only use LTE Cat M1, take effect immediately
-        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+        // Set to use LTE Cat M1 if not already set, take effect immediately
+        auto resp_opmode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
+        int iotOpMode = -1;
+        r = CHECK_PARSER(resp_opmode.scanf("+QCFG: \"iotopmode\",%d", &iotOpMode));
+        //CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);    // Ignore resp code
+        r = CHECK_PARSER(resp_opmode.readResult());
+        //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);    // Ignore resp code
+        if (iotOpMode != 0) {
+            CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+        }
     }
 
     CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
