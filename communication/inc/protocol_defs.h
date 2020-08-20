@@ -92,6 +92,7 @@ enum ProtocolError
     /* 27 */ MISSING_REQUEST_TOKEN,
     /* 28 */ NOT_FOUND,
     /* 29 */ NO_MEMORY,
+    /* 30 */ INTERNAL,
 
     /*
      * NOTE: when adding more ProtocolError codes, be sure to update toSystemError() in protocol_defs.cpp

@@ -54,10 +54,9 @@ namespace CoAPMessageType {
     PING,
     ERROR,
     NONE,
-    // OTA protocol v3
-    UPDATE_START,
-    UPDATE_FINISH,
-    UPDATE_CHUNK
+    UPDATE_START_V3,
+    UPDATE_FINISH_V3,
+    UPDATE_CHUNK_V3
   };
 }
 

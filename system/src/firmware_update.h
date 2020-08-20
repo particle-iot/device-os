@@ -44,12 +44,12 @@ public:
      * @param fileSize Size of the update binary.
      * @param fileHash SHA-256 checksum of the update binary. This argument can be set to null if
      *        the update is non-resumable (see `FirmwareUpdateFlag::NON_RESUMABLE`).
-     * @param fileOffset[out] Offset starting from which the transfer of the update binary should
+     * @param partialSize[out] Offset starting from which the transfer of the update binary should
      *        be resumed. This argument can be set to null if the update is non-resumable.
      * @param flags Update flags.
      * @return 0 on success or a negative result code in case of an error.
      */
-    int startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags);
+    int startUpdate(size_t fileSize, const char* fileHash, size_t* partialSize, FirmwareUpdateFlags flags);
     /**
      * Finish the firmware update.
      *

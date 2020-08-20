@@ -27,13 +27,13 @@ namespace particle::protocol::test {
 
 class CoapMessageChannel: public BufferMessageChannel<PROTOCOL_BUFFER_SIZE> {
 public:
-    CoapMessageChannel() = default;
+    CoapMessageChannel();
 
     // Sends a message to the device
     CoapMessageChannel& send(CoapMessage msg);
     // Receives a message from the device
-    CoapMessage receive();
-    // Returns `true` if there's a message received from the device
+    CoapMessage receive(unsigned skipCount = 0);
+    // Returns true if there's a message received from the device
     bool hasMessages() const;
 
     // Reimplemented from AbstractMessageChannel
@@ -50,20 +50,28 @@ public:
 private:
     std::queue<CoapMessage> send_;
     std::queue<CoapMessage> recv_;
+    CoapMessageId lastMsgId_;
 };
+
+inline CoapMessageChannel::CoapMessageChannel() :
+        lastMsgId_(0) {
+}
 
 inline CoapMessageChannel& CoapMessageChannel::send(CoapMessage msg) {
     send_.push(std::move(msg));
     return *this;
 }
 
-inline CoapMessage CoapMessageChannel::receive() {
-    if (recv_.empty()) {
-        throw std::runtime_error("Message queue is empty");
+inline CoapMessage CoapMessageChannel::receive(unsigned skipCount) {
+    CoapMessage msg;
+    for (unsigned i = 0; i < skipCount + 1; ++i) {
+        if (recv_.empty()) {
+            throw std::runtime_error("Message queue is empty");
+        }
+        msg = std::move(recv_.front());
+        recv_.pop();
     }
-    const auto m = std::move(recv_.front());
-    recv_.pop();
-    return m;
+    return msg;
 }
 
 inline bool CoapMessageChannel::hasMessages() const {
@@ -71,11 +79,6 @@ inline bool CoapMessageChannel::hasMessages() const {
 }
 
 inline ProtocolError CoapMessageChannel::establish() {
-    return ProtocolError::NO_ERROR;
-}
-
-inline ProtocolError CoapMessageChannel::send(Message& msg) {
-    recv_.push(CoapMessage::decode((const char*)msg.buf(), msg.length()));
     return ProtocolError::NO_ERROR;
 }
 

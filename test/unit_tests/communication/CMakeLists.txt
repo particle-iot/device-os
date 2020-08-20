@@ -15,6 +15,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/communication/src/coap_message_encoder.cpp
   ${DEVICE_OS_DIR}/communication/src/coap_message_decoder.cpp
   ${DEVICE_OS_DIR}/communication/src/firmware_update.cpp
+  ${DEVICE_OS_DIR}/services/src/system_error.cpp
   util/coap_message.cpp
   util/coap_message_channel.cpp
   util/protocol_callbacks.cpp

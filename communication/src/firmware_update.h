@@ -94,7 +94,8 @@ public:
     void reset();
 
 private:
-    typedef int (FirmwareUpdate::*RequestHandlerFn)(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId);
+    typedef int (FirmwareUpdate::*RequestHandlerFn)(const CoapMessageDecoder& d, CoapMessageEncoder* e,
+            CoapMessageId** respId, bool validateOnly);
 
     const SparkCallbacks* callbacks_; // Callbacks
     MessageChannel* channel_; // Message channel
@@ -128,11 +129,11 @@ private:
 
     ProtocolError handleRequest(Message* msg, RequestHandlerFn handler);
 
-    int handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId);
-    int handleFinishRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId);
-    int handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId);
+    int handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId, bool validateOnly);
+    int handleFinishRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId, bool validateOnly);
+    int handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId, bool validateOnly);
 
-    static int decodeStartRequest(const CoapMessageDecoder& d, const char** fileHash, size_t* fileSize, size_t* chunkSize,
+    static int decodeStartRequest(const CoapMessageDecoder& d, size_t* fileSize, const char** fileHash, size_t* chunkSize,
             bool* discardData);
     static int decodeFinishRequest(const CoapMessageDecoder& d, bool* cancelUpdate, bool* discardData);
     static int decodeChunkRequest(const CoapMessageDecoder& d, const char** chunkData, size_t* chunkSize,
@@ -140,7 +141,7 @@ private:
 
     void initChunkAck(CoapMessageEncoder* e);
 
-    int sendErrorResponse(Message* msg, int error, CoapType type, const char* token, size_t tokenSize);
+    int sendErrorResponse(Message* msg, int error, CoapType type, CoapMessageId id, const char* token, size_t tokenSize);
     int sendEmptyAck(Message* msg, CoapType type, CoapMessageId id);
 
     system_tick_t millis() const;

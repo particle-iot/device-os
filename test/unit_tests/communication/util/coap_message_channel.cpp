@@ -19,6 +19,15 @@
 
 namespace particle::protocol::test {
 
+ProtocolError CoapMessageChannel::send(Message& msg) {
+    auto m = CoapMessage::decode((const char*)msg.buf(), msg.length());
+    if (m.id() == 0) {
+        m.id(++lastMsgId_);
+    }
+    recv_.push(std::move(m));
+    return ProtocolError::NO_ERROR;
+}
+
 ProtocolError CoapMessageChannel::receive(Message& msg) {
     if (!send_.empty()) {
         const auto m = send_.front();

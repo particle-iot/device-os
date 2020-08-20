@@ -133,13 +133,13 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		return variables.handle_request(message, token, msg_id);
 	}
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
-	case CoAPMessageType::UPDATE_START: {
+	case CoAPMessageType::UPDATE_START_V3: {
 		return firmwareUpdate.startRequest(&message);
 	}
-	case CoAPMessageType::UPDATE_FINISH: {
+	case CoAPMessageType::UPDATE_FINISH_V3: {
 		return firmwareUpdate.finishRequest(&message);
 	}
-	case CoAPMessageType::UPDATE_CHUNK: {
+	case CoAPMessageType::UPDATE_CHUNK_V3: {
 		return firmwareUpdate.chunkRequest(&message);
 	}
 #else

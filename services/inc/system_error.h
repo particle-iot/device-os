@@ -82,7 +82,7 @@
         PP_CAT(prefix, name) = code,
 
 /**
- * Set the system error message.
+ * Set the last error message.
  *
  * This macro also logs the error message under the current logging category.
  */
@@ -107,9 +107,7 @@ extern "C" {
 #endif
 
 /**
- * Set the system error message.
- *
- * This function has no effect if the error message is already set.
+ * Set the last error message.
  *
  * @param fmt Format string.
  * @param ... Formatting arguments.
@@ -117,20 +115,20 @@ extern "C" {
 void set_error_message(const char* fmt, ...);
 
 /**
- * Get the system error message.
+ * Clear the last error message.
+ */
+void reset_error_message();
+
+/**
+ * Get the last error message.
  *
  * @param error Error code.
  * @return Error message.
  *
- * If `error` is negative and the system error message is not set, this function will return the
+ * If `error` is negative and the last error message is not set, this function will return the
  * default message for the error code.
  */
 const char* get_error_message(int error);
-
-/**
- * Clear the system error message.
- */
-void clear_error_message();
 
 /**
  * Get the default error message for the error code.

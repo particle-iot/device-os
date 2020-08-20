@@ -56,15 +56,17 @@ public:
     int decode(const char* data, size_t size);
 
 private:
+    // We want all fields that identify the message, such as the ID and token, to remain valid
+    // even if the data in the source buffer is not valid anymore
+    char token_[MAX_COAP_TOKEN_SIZE];
     CoapType type_;
     CoapMessageId id_;
-    unsigned code_;
-    const char* token_;
     const char* opts_;
     const char* payload_;
     size_t tokenSize_;
     size_t optsSize_;
     size_t payloadSize_;
+    unsigned code_;
 };
 
 /**
@@ -114,7 +116,7 @@ inline CoapMessageId CoapMessageDecoder::id() const {
 }
 
 inline const char* CoapMessageDecoder::token() const {
-    return token_;
+    return (tokenSize_ > 0) ? token_ : nullptr;
 }
 
 inline size_t CoapMessageDecoder::tokenSize() const {
@@ -122,7 +124,7 @@ inline size_t CoapMessageDecoder::tokenSize() const {
 }
 
 inline bool CoapMessageDecoder::hasToken() const {
-    return tokenSize() > 0;
+    return tokenSize_ > 0;
 }
 
 inline const char* CoapMessageDecoder::payload() const {
@@ -134,7 +136,7 @@ inline size_t CoapMessageDecoder::payloadSize() const {
 }
 
 inline bool CoapMessageDecoder::hasPayload() const {
-    return payloadSize() > 0;
+    return payloadSize_ > 0;
 }
 
 inline CoapOptionIterator CoapMessageDecoder::options() const {

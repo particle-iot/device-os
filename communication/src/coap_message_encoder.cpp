@@ -78,7 +78,7 @@ CoapMessageEncoder& CoapMessageEncoder::token(const char* token, size_t size) {
     if (error_) {
         return *this;
     }
-    if (size > 8) { // RFC 7252, 3. Message Format
+    if (size > MAX_COAP_TOKEN_SIZE) { // RFC 7252, 3. Message Format
         error_ = SYSTEM_ERROR_INVALID_ARGUMENT;
         return *this;
     }

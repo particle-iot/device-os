@@ -68,31 +68,10 @@ void set_error_message(const char* fmt, ...) {
             g_errorMsg[0] = '\0';
         }
     }
-#endif // HAL_PLATFORM_ERROR_MESSAGES
+#endif
 }
 
-const char* get_error_message(int error) {
-#if HAL_PLATFORM_ERROR_MESSAGES
-    if (SYSTEM_THREAD_CURRENT()) {
-        if (!g_errorMsg[0] && error < 0) {
-            return get_default_error_message(error, nullptr /* reserved */);
-        }
-        return g_errorMsg;
-    } else if (error < 0) {
-        return get_default_error_message(error, nullptr);
-    } else {
-        return "";
-    }
-#else
-    if (error < 0) {
-        return get_default_error_message(error, nullptr);
-    } else {
-        return "";
-    }
-#endif // !HAL_PLATFORM_ERROR_MESSAGES
-}
-
-void clear_error_message() {
+void reset_error_message() {
 #if HAL_PLATFORM_ERROR_MESSAGES
     if (SYSTEM_THREAD_CURRENT()) {
         g_errorMsg[0] = '\0';
@@ -100,18 +79,28 @@ void clear_error_message() {
 #endif
 }
 
-const char* get_default_error_message(int error, void* reserved) {
+const char* get_error_message(int error) {
 #if HAL_PLATFORM_ERROR_MESSAGES
-    switch (error) {
-    SYSTEM_ERROR_MESSAGE_SWITCH_CASES()
-    default:
-        return "Unknown error";
+    if (!SYSTEM_THREAD_CURRENT() || !g_errorMsg[0]) {
+        return get_default_error_message(error, nullptr /* reserved */);
     }
+    return g_errorMsg;
 #else
+    return get_default_error_message(error, nullptr);
+#endif
+}
+
+const char* get_default_error_message(int error, void* reserved) {
     if (error < 0) {
+#if HAL_PLATFORM_ERROR_MESSAGES
+        switch (error) {
+        SYSTEM_ERROR_MESSAGE_SWITCH_CASES()
+        default:
+            return "Unknown error";
+        }
+#else
         return "Unknown error";
-    } else {
-        return "";
+#endif
     }
-#endif // !HAL_PLATFORM_ERROR_MESSAGES
+    return "";
 }

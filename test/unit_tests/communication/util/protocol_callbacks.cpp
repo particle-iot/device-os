@@ -21,7 +21,7 @@ namespace particle::protocol::test {
 
 namespace {
 
-Callbacks* g_callbacks = nullptr;
+ProtocolCallbacks* g_callbacks = nullptr;
 
 int sendCallback(const uint8_t* buf, uint32_t bufSize, void* ctx) {
     if (g_callbacks) {
@@ -133,7 +133,7 @@ void notifyClientMessagesProcessedCallback(void* reserved) {
 
 } // namespace
 
-Callbacks::Callbacks() :
+ProtocolCallbacks::ProtocolCallbacks() :
         cb_(),
         millis_(0) {
     cb_.size = sizeof(cb_);
@@ -159,7 +159,7 @@ Callbacks::Callbacks() :
     g_callbacks = this;
 }
 
-Callbacks::~Callbacks() {
+ProtocolCallbacks::~ProtocolCallbacks() {
     g_callbacks = nullptr;
 }
 

@@ -101,12 +101,12 @@ FirmwareUpdate::FirmwareUpdate() :
         updating_(false) {
 }
 
-int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, FirmwareUpdateFlags flags) {
+int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* partialSize, FirmwareUpdateFlags flags) {
     const bool discardData = flags & FirmwareUpdateFlag::DISCARD_DATA;
-    const bool nonResumable = flags & FirmwareUpdateFlag::NON_RESUMABLE;
     const bool validateOnly = flags & FirmwareUpdateFlag::VALIDATE_ONLY;
-    if (!nonResumable && (!fileHash || !fileOffset)) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    bool nonResumable = flags & FirmwareUpdateFlag::NON_RESUMABLE;
+    if (!fileHash || !partialSize) {
+        nonResumable = true;
     }
     if (updating_) {
         ERROR_MESSAGE("Firmware update is already in progress");
@@ -118,7 +118,7 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* f
     if (fileSize == 0 && fileSize > HAL_OTA_FlashLength()) {
         return SYSTEM_ERROR_OTA_INVALID_SIZE;
     }
-    size_t partialSize = 0;
+    size_t fileOffset = 0;
 #if HAL_PLATFORM_RESUMABLE_OTA
     if ((discardData || nonResumable) && !validateOnly) {
         clearTransferState();
@@ -128,7 +128,7 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* f
     if (!nonResumable && !(validateOnly && discardData)) {
         const int r = initTransferState(fileSize, fileHash);
         if (r == 0) {
-            partialSize = transferState_->persist.partialSize;
+            fileOffset = transferState_->persist.partialSize;
             if (validateOnly) {
                 transferState_.reset();
             }
@@ -143,7 +143,7 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* f
 #endif // HAL_PLATFORM_RESUMABLE_OTA
     if (!validateOnly) {
         // Erase the OTA section if we're not resuming the previous transfer
-        if (!partialSize && !HAL_FLASH_Begin(HAL_OTA_FlashAddress(), fileSize, nullptr)) {
+        if (!fileOffset && !HAL_FLASH_Begin(HAL_OTA_FlashAddress(), fileSize, nullptr)) {
             endUpdate();
             return SYSTEM_ERROR_FLASH;
         }
@@ -155,8 +155,8 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* f
         updating_ = true;
         // TODO: System events
     }
-    if (fileOffset) {
-        *fileOffset = partialSize;
+    if (partialSize) {
+        *partialSize = fileOffset;
     }
     return 0;
 }

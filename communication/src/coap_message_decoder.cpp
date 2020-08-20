@@ -78,15 +78,15 @@ int readOption(unsigned* opt, const char** optData, size_t* optSize, unsigned pr
 } // namespace
 
 CoapMessageDecoder::CoapMessageDecoder() :
+        token_(),
         type_(CoapType::CON),
         id_(0),
-        code_(0),
-        token_(nullptr),
         opts_(nullptr),
         payload_(nullptr),
         tokenSize_(0),
         optsSize_(0),
-        payloadSize_(0) {
+        payloadSize_(0),
+        code_(0) {
 }
 
 int CoapMessageDecoder::decode(const char* data, size_t size) {
@@ -99,19 +99,19 @@ int CoapMessageDecoder::decode(const char* data, size_t size) {
     CHECK_TRUE(v == 1, SYSTEM_ERROR_BAD_DATA);
     // Type
     v = (h >> 28) & 0x03;
-    CHECK_TRUE(isValidCoapType(v), SYSTEM_ERROR_BAD_DATA); // Can't be invalid since it's a 2-bit field
+    CHECK_TRUE(isCoapValidType(v), SYSTEM_ERROR_BAD_DATA); // Can't be invalid since it's a 2-bit field
     const auto type = (CoapType)v;
     // Token length
     const size_t tokenSize = (h >> 24) & 0x0f;
-    CHECK_TRUE(tokenSize <= 8, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(tokenSize <= MAX_COAP_TOKEN_SIZE, SYSTEM_ERROR_BAD_DATA);
     // Code
     const unsigned code = (h >> 16) & 0xff;
-    CHECK_TRUE(isValidCoapCode(code), SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(isCoapValidCode(code), SYSTEM_ERROR_BAD_DATA);
     // Message ID
     const CoapMessageId id = h & 0xffff;
     // Token
     CHECK_TRUE(size - offs >= tokenSize, SYSTEM_ERROR_NOT_ENOUGH_DATA);
-    const char* const token = (tokenSize > 0) ? data + offs : nullptr;
+    const size_t tokenOffs = offs;
     offs += tokenSize;
     // Options
     size_t optsOffs = offs;
@@ -129,7 +129,7 @@ int CoapMessageDecoder::decode(const char* data, size_t size) {
     optsSize_ = optsSize;
     opts_ = (optsSize_ > 0) ? data + optsOffs : nullptr;
     tokenSize_ = tokenSize;
-    token_ = token;
+    memcpy(token_, data + tokenOffs, tokenSize_);
     code_ = code;
     type_ = type;
     id_ = id;
