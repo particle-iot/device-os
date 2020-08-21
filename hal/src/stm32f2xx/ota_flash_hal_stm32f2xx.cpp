@@ -630,11 +630,9 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
         if (udp) {
             offset = DCT_ALT_SERVER_PUBLIC_KEY_OFFSET;
             length = DCT_ALT_SERVER_PUBLIC_KEY_SIZE;
-            // Server address for UDP devices is in a separate, adjacent DCT field unlick TCP devices.
+            // Server address for UDP devices is in a separate, adjacent DCT field unlike TCP devices.
             // To update the server address along with the key, we need to write more data.
-            if (data_length>length) {
-                length = DCT_ALT_SERVER_PUBLIC_KEY_SIZE + DCT_ALT_SERVER_ADDRESS_SIZE;
-            }
+            length = DCT_ALT_SERVER_PUBLIC_KEY_SIZE + DCT_ALT_SERVER_ADDRESS_SIZE;
         } else {
             offset = DCT_SERVER_PUBLIC_KEY_OFFSET;
             length = DCT_SERVER_PUBLIC_KEY_SIZE;
