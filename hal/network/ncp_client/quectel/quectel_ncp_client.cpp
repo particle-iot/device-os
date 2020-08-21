@@ -965,7 +965,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         CHECK(selectSimCard());
 
         // Just in case disconnect
-        int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
+        // int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
         // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
         if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
@@ -1511,6 +1511,8 @@ int QuectelNcpClient::interveneRegistration() {
                 eps_.reset();
                 registrationInterventions_++;
                 CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
             } else if (eps_.status() == CellularRegistrationStatus::DENIED) {
                 LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
