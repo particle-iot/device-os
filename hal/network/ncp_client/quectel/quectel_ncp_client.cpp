@@ -216,7 +216,15 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+        bool prevRegStatus = self->csd_.registered();
         self->csd_.status(self->csd_.decodeAtStatus(val[0]));
+        // Check IMSI only if registered from a non-registered state, to avoid checking IMSI
+        // every time there is a cell tower change in which case also we could see a CEREG: {1 or 5} URC
+        // TODO: Do this only for Twilio
+        if (!prevRegStatus && self->csd_.registered()) {   // just registered. Check which IMSI worked.
+            self->checkImsi_ = true;
+        }
         // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         // Only update if unset
@@ -245,7 +253,15 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CGREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+        bool prevRegStatus = self->psd_.registered();
         self->psd_.status(self->psd_.decodeAtStatus(val[0]));
+        // Check IMSI only if registered from a non-registered state, to avoid checking IMSI
+        // every time there is a cell tower change in which case also we could see a CGREG: {1 or 5} URC
+        // TODO: Do this only for Twilio
+        if (!prevRegStatus && self->psd_.registered()) {   // just registered. Check which IMSI worked.
+            self->checkImsi_ = true;
+        }
         // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -282,7 +298,15 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CEREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+        bool prevRegStatus = self->eps_.registered();
         self->eps_.status(self->eps_.decodeAtStatus(val[0]));
+        // Check IMSI only if registered from a non-registered state, to avoid checking IMSI
+        // every time there is a cell tower change in which case also we could see a CEREG: {1 or 5} URC
+        // TODO: Do this only for Twilio
+        if (!prevRegStatus && self->eps_.registered()) {   // just registered. Check which IMSI worked.
+            self->checkImsi_ = true;
+        }
         // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -297,6 +321,12 @@ int QuectelNcpClient::initParser(Stream* stream) {
                 }
             }
         }
+        return SYSTEM_ERROR_NONE;
+    }, this));
+	// "+QUSIM: 1" URC is seen with USIM update / availability
+    CHECK(parser_.addUrcHandler("+QUSIM: 1", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
+        const auto self = (QuectelNcpClient*)data;
+        self->checkImsi_ = true;
         return SYSTEM_ERROR_NONE;
     }, this));
     return SYSTEM_ERROR_NONE;
@@ -1525,11 +1555,22 @@ int QuectelNcpClient::interveneRegistration() {
     return 0;
 }
 
+
+int QuectelNcpClient::checkRunningImsi() {
+    // Check current IMSI
+    if (checkImsi_) {
+        checkImsi_ = false;
+        CHECK_PARSER(parser_.execCommand("AT+CIMI"));
+    }
+    return 0;
+}
+
 int QuectelNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
     interveneRegistration();
+    checkRunningImsi();
     if (connState_ != NcpConnectionState::CONNECTING || millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return SYSTEM_ERROR_NONE;
     }

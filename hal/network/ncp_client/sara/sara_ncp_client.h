@@ -103,6 +103,7 @@ private:
 
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
+    system_tick_t imsiCheckTime_;
     system_tick_t registeredTime_;
     system_tick_t powerOnTime_;
     unsigned int fwVersion_ = 0;
@@ -137,6 +138,7 @@ private:
     void resetRegistrationState();
     void checkRegistrationState();
     int interveneRegistration();
+    int checkRunningImsi();
     int processEventsImpl();
 
     int modemInit() const;

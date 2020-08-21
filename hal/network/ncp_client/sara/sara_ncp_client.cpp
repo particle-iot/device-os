@@ -113,6 +113,8 @@ const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 
+const unsigned CHECK_IMSI_TIMEOUT = 60 * 1000;
+
 const system_tick_t UBLOX_COPS_TIMEOUT = 5 * 60 * 1000;
 const system_tick_t UBLOX_CFUN_TIMEOUT = 3 * 60 * 1000;
 
@@ -161,6 +163,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     connState_ = NcpConnectionState::DISCONNECTED;
     regStartTime_ = 0;
     regCheckTime_ = 0;
+    imsiCheckTime_ = 0;
     powerOnTime_ = 0;
     registeredTime_ = 0;
     memoryIssuePresent_ = false;
@@ -208,7 +211,15 @@ int SaraNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+        bool prevRegStatus = self->csd_.registered();
         self->csd_.status(self->csd_.decodeAtStatus(val[0]));
+        // Check IMSI only if registered from a non-registered state, to avoid checking IMSI
+        // every time there is a cell tower change in which case also we could see a CREG: {1 or 5} URC
+        // TODO: Do this only for Twilio
+        if (!prevRegStatus && self->csd_.registered()) {   // just registered. Check which IMSI worked.
+            self->imsiCheckTime_ = 0;
+        }
         // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         // Only update if unset
@@ -237,7 +248,15 @@ int SaraNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CGREG: %u,\"%x\",\"%x\",%u,\"%*x\"", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+        bool prevRegStatus = self->psd_.registered();
         self->psd_.status(self->psd_.decodeAtStatus(val[0]));
+        // Check IMSI only if registered from a non-registered state, to avoid checking IMSI
+        // every time there is a cell tower change in which case also we could see a CGREG: {1 or 5} URC
+        // TODO: Do this only for Twilio
+        if (!prevRegStatus && self->psd_.registered()) {   // just registered. Check which IMSI worked.
+            self->imsiCheckTime_ = 0;
+        }
         // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -273,7 +292,15 @@ int SaraNcpClient::initParser(Stream* stream) {
                 ::sscanf(atResponse, "+CEREG: %u,\"%x\",\"%x\",%u", &val[0], &val[1], &val[2], &val[3]));
         }
         CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+        bool prevRegStatus = self->eps_.registered();
         self->eps_.status(self->eps_.decodeAtStatus(val[0]));
+        // Check IMSI only if registered from a non-registered state, to avoid checking IMSI
+        // every time there is a cell tower change in which case also we could see a CEREG: {1 or 5} URC
+        // TODO: Do this only for Twilio
+        if (!prevRegStatus && self->eps_.registered()) {   // just registered. Check which IMSI worked.
+            self->imsiCheckTime_ = 0;
+        }
         // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
@@ -1488,6 +1515,7 @@ int SaraNcpClient::registerNet() {
 
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
+    imsiCheckTime_ = (imsiCheckTime_ == 0) ? 0 : regStartTime_;     // if it is 0, it means the radio registered in the last query
 
     return SYSTEM_ERROR_NONE;
 }
@@ -1683,6 +1711,7 @@ void SaraNcpClient::resetRegistrationState() {
     eps_.reset();
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
+    imsiCheckTime_ = regStartTime_;
     registrationInterventions_ = 0;
 }
 
@@ -1753,7 +1782,7 @@ int SaraNcpClient::interveneRegistration() {
                 registrationInterventions_++;
                 CHECK_PARSER(parser_.execCommand(UBLOX_COPS_TIMEOUT, "AT+COPS=0,2"));
             } else if (eps_.status() == CellularRegistrationStatus::DENIED) {
-                LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", csd_.duration() / 1000);
+                LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
                 registrationInterventions_++;
                 CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
@@ -1764,11 +1793,23 @@ int SaraNcpClient::interveneRegistration() {
     return 0;
 }
 
+int SaraNcpClient::checkRunningImsi() {
+    // Check current IMSI if registered successfully in which case imsiCheckTime_ will be 0,
+    // Else, if not registered, check after CHECK_IMSI_TIMEOUT is expired
+    if ((imsiCheckTime_ == 0) || ((connState_ != NcpConnectionState::CONNECTED) &&
+            (millis() - imsiCheckTime_ >= CHECK_IMSI_TIMEOUT))) {
+        CHECK_PARSER(parser_.execCommand("AT+CIMI"));
+        imsiCheckTime_ = millis();
+    }
+    return 0;
+}
+
 int SaraNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
     interveneRegistration();
+    checkRunningImsi();
     if (connState_ != NcpConnectionState::CONNECTING ||
             millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return SYSTEM_ERROR_NONE;
