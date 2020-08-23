@@ -26,13 +26,12 @@
 #include "message_channel.h"
 #include "coap_message_encoder.h"
 #include "coap_message_decoder.h"
+#include "protocol_util.h"
 
 #include "sha256.h"
 #include "endian_util.h"
 #include "logging.h"
 #include "check.h"
-
-#include <algorithm>
 
 LOG_SOURCE_CATEGORY("comm.ota")
 
@@ -655,7 +654,16 @@ int FirmwareUpdate::sendErrorResponse(Message* msg, int error, CoapType type, Co
         LOG(ERROR, "Too large message");
         return SYSTEM_ERROR_TOO_LARGE;
     }
-    msg->set_length(r);
+    size_t msgSize = r;
+    const size_t maxPayloadSize = msg->capacity() - msgSize;
+    if (maxPayloadSize > 0) {
+        r = formatDiagnosticPayload((char*)msg->buf() + msgSize + 1 /* Payload marker */, maxPayloadSize - 1, error);
+        if (r > 0) {
+            msg->buf()[msgSize] = 0xff;
+            msgSize += r + 1;
+        }
+    }
+    msg->set_length(msgSize);
     r = channel_->send(*msg);
     if (r != ProtocolError::NO_ERROR) {
         LOG(ERROR, "Failed to send message: %d", (int)r);
