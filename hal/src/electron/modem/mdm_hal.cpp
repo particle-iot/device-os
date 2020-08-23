@@ -1377,6 +1377,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
 
             // Now check every 15 seconds for 10 minutes to see if we're connected to the tower (GSM, GPRS and LTE)
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+            system_tick_t start_imsi_check = start;
             while (!(ok = checkNetStatus(status)) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
                 system_tick_t start = HAL_Timer_Get_Milli_Seconds();
                 while ((HAL_Timer_Get_Milli_Seconds() - start < 15000UL) && !_cancel_all_operations) {
@@ -1385,6 +1386,12 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                     if ((REG_OK(_net.csd) && REG_OK(_net.psd)) || REG_OK(_net.eps)) {
                         break; // force another checkNetStatus() call
                     }
+                }
+                // Query IMSI every 60 sec if not regsitered, to detect IMSI switches
+                if (HAL_Timer_Get_Milli_Seconds() - start_imsi_check > 60000UL) {
+                        start_imsi_check = HAL_Timer_Get_Milli_Seconds();
+                        sendFormated("AT+CIMI\r\n");
+                        waitFinalResp();
                 }
             }
             if (_net.csd == REG_DENIED) MDM_ERROR("CSD Registration Denied\r\n");
@@ -1432,6 +1439,13 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         if (!_atOk()) {
             goto failure;
         }
+
+        // Request the IMSI (specially used for multi-imsi SIMs) that is present when actually registered
+        CStringHelper str_imsi(_dev.imsi, sizeof(_dev.imsi));
+        sendFormated("AT+CIMI\r\n");
+        if (RESP_OK != waitFinalResp(_cbString, &str_imsi))
+            goto failure;
+
         // Reformat the operator string to be numeric
         // (allows the capture of `mcc` and `mnc`)
         sendFormated("AT+COPS=3,2\r\n");
