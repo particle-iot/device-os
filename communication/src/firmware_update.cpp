@@ -39,7 +39,7 @@ namespace particle::protocol {
 
 namespace {
 
-const system_tick_t STATS_LOG_INTERVAL = 1000;
+const system_tick_t TRANSFER_STATE_LOG_INTERVAL = 3000;
 
 static_assert(PARTICLE_LITTLE_ENDIAN, "This code is optimized for little-endian architectures");
 
@@ -92,26 +92,25 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg) {
         return ProtocolError::INTERNAL;
     }
     if (d.id() == finishRespId_) {
-#if OTA_UPDATE_STATS
-        const auto now = millis();
-        LOG(INFO, "Update time: %u", (unsigned)(now - updateStartTime_));
+        stats_.updateFinishTime = millis();
+        LOG(INFO, "Update time: %u", (unsigned)(stats_.updateFinishTime - stats_.updateStartTime));
         system_tick_t transferTime = 0;
-        if (transferStartTime_ && transferFinishTime_) {
-            transferTime = transferFinishTime_ - transferStartTime_;
+        if (stats_.transferStartTime && stats_.transferFinishTime) {
+            transferTime = stats_.transferFinishTime - stats_.transferStartTime;
         }
         LOG(INFO, "Transfer time: %u", (unsigned)transferTime);
-        LOG(INFO, "Processing time: %u", (unsigned)processTime_);
-        LOG(INFO, "Chunks received: %u", recvChunks_);
-        LOG(INFO, "ACKs sent: %u", sentAcks_);
-        LOG(INFO, "Duplicate chunks: %u", dupChunks_);
-        LOG(INFO, "Out-of-order chunks: %u", outOrderChunks_);
-#endif
+        LOG(INFO, "Processing time: %u", (unsigned)stats_.processingTime);
+        LOG(INFO, "Chunks received: %u", stats_.receivedChunks);
+        LOG(INFO, "Chunk ACKs sent: %u", stats._sentChunkAcks);
+        LOG(INFO, "Duplicate chunks: %u", stats._duplicateChunks);
+        LOG(INFO, "Out-of-order chunks: %u", stats_.outOfOrderChunks);
         LOG(INFO, "Applying firmware update");
         r = callbacks_->finish_firmware_update(0); // Will not return on success
         if (r < 0) {
             LOG(ERROR, "Failed to apply firmware update: %d", r);
         }
-        reset(); // ¯\(ツ)/¯
+        finishRespId_ = 0;
+        updating_ = false; // ¯\(ツ)/¯
     }
     return ProtocolError::NO_ERROR;
 }
@@ -146,9 +145,12 @@ ProtocolError FirmwareUpdate::process() {
             return (ProtocolError)r;
         }
         unackChunks_ = 0;
-#if OTA_UPDATE_STATS
-        ++sentAcks_;
-#endif
+        ++stats_.sentChunkAcks;
+    }
+    if (chunkIndex_ < chunkCount_ && stateLogTime_ + TRANSFER_STATE_LOG_INTERVAL <= millis()) {
+        const size_t bytesLeft = fileSize_ - fileOffset_;
+        LOG(TRACE, "Received %u of %u bytes", (unsigned)(transferSize_ - bytesLeft), (unsigned)transferSize_);
+        stateLogTime_ = millis();
     }
     return ProtocolError::NO_ERROR;
 }
@@ -255,6 +257,7 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
 
 int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId,
         bool validateOnly) {
+    const auto startTime = millis();
     const char* fileHash = nullptr;
     size_t fileSize = 0;
     size_t chunkSize = 0;
@@ -269,9 +272,7 @@ int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageE
         LOG(WARN, "Received UpdateStart request but another update is already in progress");
     }
     reset();
-#if OTA_UPDATE_STATS
-    updateStartTime_ = millis();
-#endif
+    stats_.updateStartTime = startTime;
     LOG(INFO, "File size: %u", (unsigned)fileSize);
     LOG(INFO, "Chunk size: %u", (unsigned)chunkSize);
     LOG(INFO, "Discard data: %u", (unsigned)discardData);
@@ -290,21 +291,15 @@ int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageE
     if (!fileHash) {
         flags |= FirmwareUpdateFlag::NON_RESUMABLE;
     }
-#if OTA_UPDATE_STATS
     const auto t1 = millis();
-#endif
     CHECK(callbacks_->start_firmware_update(fileSize_, fileHash, &fileOffset_, flags.value()));
-#if OTA_UPDATE_STATS
-    processTime_ += millis() - t1;
-#endif
+    stats_.processingTime += millis() - t1;
     transferSize_ = fileSize_ - fileOffset_;
     chunkCount_ = (transferSize_ + chunkSize_ - 1) / chunkSize_;
+    windowSize_ = OTA_RECEIVE_WINDOW_SIZE / chunkSize_;
     LOG(INFO, "File offset: %u", (unsigned)fileOffset_);
     LOG(INFO, "Chunk count: %u", (unsigned)chunkCount_);
-    windowSize_ = OTA_RECEIVE_WINDOW_SIZE / chunkSize_;
-#if OTA_UPDATE_STATS
     LOG(TRACE, "Window size (chunks): %u", (unsigned)windowSize_);
-#endif
     lastChunkTime_ = millis(); // ACK for the first chunk will be delayed
     updating_ = true;
     e->type(d.type());
@@ -345,13 +340,9 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
         flags |= FirmwareUpdateFlag::DISCARD_DATA;
     }
     flags |= FirmwareUpdateFlag::VALIDATE_ONLY; // FIXME
-#if OTA_UPDATE_STATS
-    auto t1 = millis();
-#endif
+    const auto t1 = millis();
     CHECK(callbacks_->finish_firmware_update(flags.value()));
-#if OTA_UPDATE_STATS
-    processTime_ += millis() - t1;
-#endif
+    stats_.processingTime += millis() - t1;
     e->type(d.type());
     e->code(CoapCode::CHANGED);
     e->id(0); // Will be assigned by the message channel
@@ -362,6 +353,7 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
 
 int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId,
         bool validateOnly) {
+    const auto chunkTime = millis();
     const char* data = nullptr;
     size_t size = 0;
     unsigned index = 0;
@@ -373,6 +365,7 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
         LOG(WARN, "Received UpdateChunk request but no update is in progress");
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    ++stats_.receivedChunks;
     if (index == 0 || index > chunkCount_) { // Chunk indices are 1-based
         ERROR_MESSAGE("Invalid chunk index: %u", index);
         return SYSTEM_ERROR_PROTOCOL;
@@ -382,13 +375,10 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
         ERROR_MESSAGE("Invalid chunk size: %u", size);
         return SYSTEM_ERROR_PROTOCOL;
     }
-    bool dupChunk = false;
-    bool outWindowChunk = false;
     if (index <= chunkIndex_) {
-        dupChunk = true;
-        outWindowChunk = true;
+        ++stats_.duplicateChunks;
     } else if (index > chunkIndex_ + windowSize_) {
-        outWindowChunk = true;
+        LOG(WARN, "Chunk is out of receiver window");
     } else {
         // Index of the chunk relative to the left edge of the receiver window (0-based)
         const unsigned relIndex = index - chunkIndex_ - 1;
@@ -397,7 +387,7 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
         const unsigned bitIndex = relIndex % 32;
         uint32_t w = chunks_[wordIndex];
         if (w & (1 << bitIndex)) {
-            dupChunk = true;
+            ++stats_.duplicateChunks;
         } else {
             w |= (1 << bitIndex);
             chunks_[wordIndex] = w;
@@ -416,21 +406,15 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
                     chunkIndex_ += bits;
                 }
             } else {
-#if OTA_UPDATE_STATS
-                ++outOrderChunks_;
-#endif
+                ++stats_.outOfOrderChunks;
             }
             // Last chunk can be smaller than the maximum chunk size
             if (fileOffset_ > fileSize_) {
                 fileOffset_ = fileSize_;
             }
-#if OTA_UPDATE_STATS
             const auto t1 = millis();
-#endif
             CHECK(callbacks_->save_firmware_chunk(data, size, offs, fileOffset_));
-#if OTA_UPDATE_STATS
-            processTime_ += millis() - t1;
-#endif
+            stats_.processingTime += millis() - t1;
         }
     }
     bool hasGaps = false;
@@ -442,37 +426,28 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
         }
     }
     ++unackChunks_;
-    if (hasGaps || dupChunk || outWindowChunk || unackChunks_ == OTA_CHUNK_ACK_COUNT ||
+    if (hasGaps || hasGaps != hasGaps_ || unackChunks_ >= OTA_CHUNK_ACK_COUNT ||
             lastChunkTime_ + OTA_CHUNK_ACK_DELAY <= millis()) {
         // Send a ChunkAck
         initChunkAck(e);
         unackChunks_ = 0;
-#if OTA_UPDATE_STATS
-        if (dupChunk) {
-            ++dupChunks_;
-        }
-        if (outWindowChunk) {
-            ++outWindowChunks_;
-        }
-        ++sentAcks_;
-#endif // OTA_UPDATE_STATS
+        ++stats_.sentChunkAcks;
     }
-    lastChunkTime_ = millis();
-#if OTA_UPDATE_STATS
-    ++recvChunks_;
-    if (!transferStartTime_) {
-        transferStartTime_ = millis();
+    hasGaps_ = hasGaps;
+    lastChunkTime_ = chunkTime;
+    if (!stats_.transferStartTime) {
+        stats_.transferStartTime = chunkTime;
     }
-    if (lastLogChunks_ != chunkIndex_ && (lastLogTime_ + STATS_LOG_INTERVAL <= millis() || chunkIndex_ == chunkCount_)) {
+    if (chunkIndex_ == chunkCount_ && !stats_.transferFinishTime) {
+        stats_.transferFinishTime = chunkTime;
+    }
+    if (stateLogChunks_ < chunkIndex_ && (stateLogTime_ + TRANSFER_STATE_LOG_INTERVAL <= millis() ||
+            chunkIndex_ == chunkCount_)) {
         const size_t bytesLeft = fileSize_ - fileOffset_;
         LOG(TRACE, "Received %u of %u bytes", (unsigned)(transferSize_ - bytesLeft), (unsigned)transferSize_);
-        lastLogChunks_ = chunkIndex_;
-        lastLogTime_ = millis();
-        if (chunkIndex_ == chunkCount_) {
-            transferFinishTime_ = millis();
-        }
+        stateLogChunks_ = chunkIndex_;
+        stateLogTime_ = millis();
     }
-#endif
     return 0;
 }
 
@@ -705,7 +680,9 @@ void FirmwareUpdate::reset() {
         updating_ = false;
     }
     memset(chunks_, 0, sizeof(chunks_));
+    stats_ = FirmwareUpdateStats();
     lastChunkTime_ = 0;
+    stateLogTime_ = 0;
     fileSize_ = 0;
     fileOffset_ = 0;
     transferSize_ = 0;
@@ -714,20 +691,9 @@ void FirmwareUpdate::reset() {
     windowSize_ = 0;
     chunkIndex_ = 0;
     unackChunks_ = 0;
+    stateLogChunks_ = 0;
     finishRespId_ = 0;
-#if OTA_UPDATE_STATS
-    updateStartTime_ = 0;
-    transferStartTime_ = 0;
-    transferFinishTime_ = 0;
-    processTime_ = 0;
-    lastLogTime_ = 0;
-    lastLogChunks_ = 0;
-    recvChunks_ = 0;
-    sentAcks_ = 0;
-    outOrderChunks_ = 0;
-    outWindowChunks_ = 0;
-    dupChunks_ = 0;
-#endif // OTA_UPDATE_STATS
+    hasGaps_ = false;
 }
 
 } // namespace particle::protocol

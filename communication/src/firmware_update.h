@@ -31,10 +31,6 @@
 #include <cstdint>
 #include <cstddef>
 
-#ifndef OTA_UPDATE_STATS
-#define OTA_UPDATE_STATS 1
-#endif
-
 namespace particle::protocol {
 
 /**
@@ -73,6 +69,21 @@ class CoapMessageDecoder;
 class CoapMessageEncoder;
 
 /**
+ * OTA protocol v3 statistics.
+ */
+struct FirmwareUpdateStats {
+    system_tick_t updateStartTime; // Time when the update started
+    system_tick_t updateFinishTime; // Time when the update finished
+    system_tick_t transferStartTime; // Time when the file transfer started
+    system_tick_t transferFinishTime; // Time when the file transfer finished
+    system_tick_t processingTime; // System processing time
+    unsigned receivedChunks; // Number of received chunks
+    unsigned sentChunkAcks; // Number of sent acknowledgements
+    unsigned outOfOrderChunks; // Number of chunks received out of order
+    unsigned duplicateChunks; // Number of duplicate chunks received
+};
+
+/**
  * A class implementing the OTA update protocol v3.
  */
 class FirmwareUpdate {
@@ -89,6 +100,8 @@ public:
     ProtocolError responseAck(Message* msg);
     ProtocolError process();
 
+    const FirmwareUpdateStats& stats() const;
+
     bool isRunning() const;
 
     void reset();
@@ -97,12 +110,12 @@ private:
     typedef int (FirmwareUpdate::*RequestHandlerFn)(const CoapMessageDecoder& d, CoapMessageEncoder* e,
             CoapMessageId** respId, bool validateOnly);
 
-    const SparkCallbacks* callbacks_; // Callbacks
-    MessageChannel* channel_; // Message channel
-    bool updating_; // Whether an update is in progress
-
     uint32_t chunks_[OTA_CHUNK_BITMAP_ELEMENTS]; // Bitmap of received chunks within the receiver window
+    FirmwareUpdateStats stats_; // Protocol statistics
+    const SparkCallbacks* callbacks_; // System callbacks
+    MessageChannel* channel_; // Message channel
     system_tick_t lastChunkTime_; // Time when the last chunk was received
+    system_tick_t stateLogTime_; // Time when the transfer state was last logged
     size_t fileSize_; // File size
     size_t fileOffset_; // Current offset in the file
     size_t transferSize_; // Total size of the data to transfer
@@ -111,21 +124,10 @@ private:
     size_t windowSize_; // Size of the receiver window in chunks
     unsigned chunkIndex_; // Number of cumulatively acknowledged chunks
     unsigned unackChunks_; // Number or chunks received since the last acknowledgement
+    unsigned stateLogChunks_; // Number of cumulatively acknowledged chunks at the time when the transfer state was last logged
     CoapMessageId finishRespId_; // Message ID of the UpdateFinish response
-
-#if OTA_UPDATE_STATS
-    system_tick_t updateStartTime_; // Time when the update started
-    system_tick_t transferStartTime_; // Time when the file transfer started
-    system_tick_t transferFinishTime_; // Time when the file transfer finished
-    system_tick_t processTime_; // System processing time
-    system_tick_t lastLogTime_; // Time when the transfer state was last logged
-    unsigned lastLogChunks_; // Number of cumulatively acknowledged chunks at the time when the transfer state was last logged
-    unsigned recvChunks_; // Number of received chunks
-    unsigned sentAcks_; // Number of sent acknowledgements
-    unsigned outOrderChunks_; // Number of chunks received out of order
-    unsigned outWindowChunks_; // Number of chunks received out of window
-    unsigned dupChunks_; // Number of received duplicate chunks
-#endif // OTA_UPDATE_STATS
+    bool updating_; // Whether an update is in progress
+    bool hasGaps_; // Whether the sequence of received chunks has gaps
 
     ProtocolError handleRequest(Message* msg, RequestHandlerFn handler);
 
@@ -168,6 +170,10 @@ inline ProtocolError FirmwareUpdate::finishRequest(Message* msg) {
 
 inline ProtocolError FirmwareUpdate::chunkRequest(Message* msg) {
     return handleRequest(msg, &FirmwareUpdate::handleChunkRequest);
+}
+
+inline const FirmwareUpdateStats& FirmwareUpdate::stats() const {
+    return stats_;
 }
 
 inline bool FirmwareUpdate::isRunning() const {
