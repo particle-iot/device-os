@@ -419,25 +419,40 @@ static void configLpcompWakeupSource(const hal_wakeup_source_base_t* wakeupSourc
     }
 }
 
-static bool configUsartWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
-    bool ret = false;
+static uint32_t configUsartWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
+    uint32_t intFlags = NRF_UARTE0->INTENSET;
     auto source = wakeupSources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
+            nrf_uarte_int_disable(NRF_UARTE0, NRF_UARTE_INT_ERROR_MASK |
+                      NRF_UARTE_INT_RXSTARTED_MASK |
+                      NRF_UARTE_INT_RXTO_MASK |
+                      NRF_UARTE_INT_ENDRX_MASK |
+                      NRF_UARTE_INT_TXSTARTED_MASK |
+                      NRF_UARTE_INT_TXDRDY_MASK |
+                      NRF_UARTE_INT_TXSTOPPED_MASK |
+                      NRF_UARTE_INT_ENDTX_MASK);
+            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_ERROR);
+            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_RXSTARTED);
+            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_RXTO);
+            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_ENDRX);
+            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_TXSTARTED);
+            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_TXDRDY);
+            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_TXSTOPPED);
+            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_ENDTX);
+            NVIC_ClearPendingIRQ(UARTE0_UART0_IRQn);
             /* It potentially has received data already leaving the thread waiting on the data still in a blocked state. */
             // nrf_uarte_int_disable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
             // nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_RXDRDY);
             if (!nrf_uarte_int_enable_check(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK)) {
                 nrf_uarte_int_enable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
-            } else {
-                ret = true;
             }
             NVIC_EnableIRQ(UARTE0_UART0_IRQn);
             break; // There is only one USART available for user. Stop traversing the list.
         }
         source = source->next;
     }
-    return ret;
+    return intFlags;
 }
 
 static bool configNetworkWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
@@ -795,7 +810,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     configGpioWakeupSource(config->wakeup_sources);
     configRtcWakeupSource(config->wakeup_sources);
     configLpcompWakeupSource(config->wakeup_sources);
-    bool usartRxdRdy = configUsartWakeupSource(config->wakeup_sources);
+    uint32_t intFlags = configUsartWakeupSource(config->wakeup_sources);
     bool networkRxdRdy = configNetworkWakeupSource(config->wakeup_sources);
 
     // Masks all interrupts lower than softdevice. This allows us to be woken ONLY by softdevice
@@ -908,8 +923,13 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
         __set_BASEPRI(basePri);
     }
 
-    if (usartRxdRdy) {
-        nrf_uarte_int_enable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
+    auto source = config->wakeup_sources;
+    while (source) {
+        if (source->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
+            nrf_uarte_int_enable(NRF_UARTE0, intFlags);
+            break; // There is only one USART available for user. Stop traversing the list.
+        }
+        source = source->next;
     }
     if (networkRxdRdy) {
         nrf_uarte_int_enable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
