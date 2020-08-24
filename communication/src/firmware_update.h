@@ -63,6 +63,11 @@ const system_tick_t OTA_CHUNK_ACK_DELAY = 300;
  */
 const unsigned OTA_CHUNK_ACK_COUNT = 2;
 
+/**
+ * Maximum time to wait for the next chunk before timing out the transfer.
+ */
+const system_tick_t OTA_TRANSFER_TIMEOUT = 90000;
+
 class Message;
 class MessageChannel;
 class CoapMessageDecoder;
@@ -145,6 +150,8 @@ private:
 
     int sendErrorResponse(Message* msg, int error, CoapType type, CoapMessageId id, const char* token, size_t tokenSize);
     int sendEmptyAck(Message* msg, CoapType type, CoapMessageId id);
+
+    void cancelUpdate();
 
     system_tick_t millis() const;
 };

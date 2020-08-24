@@ -30,9 +30,11 @@ public:
     CoapMessageChannel();
 
     // Sends a message to the device
-    CoapMessageChannel& send(CoapMessage msg);
+    CoapMessageChannel& sendMessage(CoapMessage msg);
     // Receives a message from the device
-    CoapMessage receive(unsigned skipCount = 0);
+    CoapMessage receiveMessage();
+    // Skips N messages received from the device
+    CoapMessageChannel& skipMessages(unsigned count);
     // Returns true if there's a message received from the device
     bool hasMessages() const;
 
@@ -57,21 +59,28 @@ inline CoapMessageChannel::CoapMessageChannel() :
         lastMsgId_(0) {
 }
 
-inline CoapMessageChannel& CoapMessageChannel::send(CoapMessage msg) {
+inline CoapMessageChannel& CoapMessageChannel::sendMessage(CoapMessage msg) {
     send_.push(std::move(msg));
     return *this;
 }
 
-inline CoapMessage CoapMessageChannel::receive(unsigned skipCount) {
-    CoapMessage msg;
-    for (unsigned i = 0; i < skipCount + 1; ++i) {
+inline CoapMessage CoapMessageChannel::receiveMessage() {
+    if (recv_.empty()) {
+        throw std::runtime_error("Message queue is empty");
+    }
+    const CoapMessage msg = std::move(recv_.front());
+    recv_.pop();
+    return msg;
+}
+
+inline CoapMessageChannel& CoapMessageChannel::skipMessages(unsigned count) {
+    for (unsigned i = 0; i < count; ++i) {
         if (recv_.empty()) {
             throw std::runtime_error("Message queue is empty");
         }
-        msg = std::move(recv_.front());
         recv_.pop();
     }
-    return msg;
+    return *this;
 }
 
 inline bool CoapMessageChannel::hasMessages() const {

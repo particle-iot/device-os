@@ -25,6 +25,8 @@
 
 namespace particle::protocol {
 
+const size_t MIN_COAP_MESSAGE_SIZE = 4;
+
 const size_t MAX_COAP_TOKEN_SIZE = 8;
 
 constexpr unsigned coapCode(unsigned cls, unsigned detail) {

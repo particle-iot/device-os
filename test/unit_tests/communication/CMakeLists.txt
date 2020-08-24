@@ -15,7 +15,10 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/communication/src/coap_message_encoder.cpp
   ${DEVICE_OS_DIR}/communication/src/coap_message_decoder.cpp
   ${DEVICE_OS_DIR}/communication/src/firmware_update.cpp
+  ${DEVICE_OS_DIR}/communication/src/protocol_util.cpp
   ${DEVICE_OS_DIR}/services/src/system_error.cpp
+  ${DEVICE_OS_DIR}/services/src/jsmn.c
+  ${DEVICE_OS_DIR}/wiring/src/spark_wiring_json.cpp
   util/coap_message.cpp
   util/coap_message_channel.cpp
   util/protocol_callbacks.cpp
@@ -36,6 +39,7 @@ add_executable( ${target_name}
 target_compile_definitions( ${target_name}
   PRIVATE PLATFORM_ID=3
   PRIVATE HAL_PLATFORM_OTA_PROTOCOL_V3=1
+  PRIVATE HAL_PLATFORM_ERROR_MESSAGES=1
   PRIVATE MBEDTLS_SSL_MAX_CONTENT_LEN=4096
 )
 

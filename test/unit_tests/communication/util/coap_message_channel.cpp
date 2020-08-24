@@ -20,10 +20,14 @@
 namespace particle::protocol::test {
 
 ProtocolError CoapMessageChannel::send(Message& msg) {
-    auto m = CoapMessage::decode((const char*)msg.buf(), msg.length());
-    if (m.id() == 0) {
-        m.id(++lastMsgId_);
+    if (!msg.has_id() && msg.length() >= MIN_COAP_MESSAGE_SIZE) {
+        const auto id = ++lastMsgId_;
+        const auto buf = msg.buf();
+        buf[2] = (id >> 8) & 0xff;
+        buf[3] = id & 0xff;
+        msg.decode_id();
     }
+    auto m = CoapMessage::decode((const char*)msg.buf(), msg.length());
     recv_.push(std::move(m));
     return ProtocolError::NO_ERROR;
 }
