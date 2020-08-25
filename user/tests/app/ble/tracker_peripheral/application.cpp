@@ -44,9 +44,9 @@ constexpr uint16_t batLevelCharUuid = 0x2A19;
 // UUID of characteristics under the LNS
 constexpr uint16_t lnFeatureCharUuid = 0x2A6A;
 constexpr uint16_t locAndSpeedCharUuid = 0x2A67;
-constexpr uint16_t posQualityCharUuid = 0x2A69;
-constexpr uint16_t lnCtrlPointCharUuid = 0x2A6B;
-constexpr uint16_t navigationCharUuid = 0x2A68;
+// constexpr uint16_t posQualityCharUuid = 0x2A69;
+// constexpr uint16_t lnCtrlPointCharUuid = 0x2A6B;
+// constexpr uint16_t navigationCharUuid = 0x2A68;
 
 void onLnCtrlPointReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 
@@ -65,9 +65,9 @@ BleCharacteristic batLevelChar(nullptr, BleCharacteristicProperty::READ | BleCha
 
 BleCharacteristic lnFeatureChar(nullptr, BleCharacteristicProperty::READ, lnFeatureCharUuid, lnsUuid);
 BleCharacteristic locAndSpeedChar(nullptr, BleCharacteristicProperty::NOTIFY, locAndSpeedCharUuid, lnsUuid);
-BleCharacteristic posQualityChar(nullptr, BleCharacteristicProperty::READ, posQualityCharUuid, lnsUuid);
-BleCharacteristic lnCtrlPointChar(nullptr, BleCharacteristicProperty::WRITE | BleCharacteristicProperty::INDICATE, lnCtrlPointCharUuid, lnsUuid, onLnCtrlPointReceived, &lnCtrlPointChar);
-BleCharacteristic navigationChar(nullptr, BleCharacteristicProperty::NOTIFY, navigationCharUuid, lnsUuid);
+// BleCharacteristic posQualityChar(nullptr, BleCharacteristicProperty::READ, posQualityCharUuid, lnsUuid);
+// BleCharacteristic lnCtrlPointChar(nullptr, BleCharacteristicProperty::WRITE | BleCharacteristicProperty::INDICATE, lnCtrlPointCharUuid, lnsUuid, onLnCtrlPointReceived, &lnCtrlPointChar);
+// BleCharacteristic navigationChar(nullptr, BleCharacteristicProperty::NOTIFY, navigationCharUuid, lnsUuid);
 
 
 void onLnCtrlPointReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context) {
@@ -99,9 +99,9 @@ void setup() {
 
     BLE.addCharacteristic(lnFeatureChar);
     BLE.addCharacteristic(locAndSpeedChar);
-    BLE.addCharacteristic(posQualityChar);
-    BLE.addCharacteristic(lnCtrlPointChar);
-    BLE.addCharacteristic(navigationChar);
+    // BLE.addCharacteristic(posQualityChar);
+    // BLE.addCharacteristic(lnCtrlPointChar);
+    // BLE.addCharacteristic(navigationChar);
 
     // Initial value of characteristics under the DIS
     {
@@ -138,29 +138,99 @@ void setup() {
         pnpChar.setValue(0x0662); // Particle company ID
     }
 
+    {
+        /* LN Feature bit flags (bit0 - bit20):
+         * LNS_FEATURE_INSTANT_SPEED
+         * LNS_FEATURE_TOTAL_DISTANCE
+         * LNS_FEATURE_LOCATION - 1
+         * LNS_FEATURE_ELEVATION
+         * LNS_FEATURE_HEADING
+         * LNS_FEATURE_ROLLING_TIME
+         * LNS_FEATURE_UTC_TIME - 1
+         * LNS_FEATURE_REMAINING_DISTANCE
+         * LNS_FEATURE_REMAINING_VERT_DISTANCE
+         * LNS_FEATURE_EST_TIME_OF_ARRIVAL
+         * LNS_FEATURE_NUM_SATS_IN_SOLUTION
+         * LNS_FEATURE_NUM_SATS_IN_VIEW
+         * LNS_FEATURE_TIME_TO_FIRST_FIX
+         * LNS_FEATURE_EST_HORZ_POS_ERROR
+         * LNS_FEATURE_EST_VERT_POS_ERROR
+         * LNS_FEATURE_HORZ_DILUTION_OF_PRECISION
+         * LNS_FEATURE_VERT_DILUTION_OF_PRECISION
+         * LNS_FEATURE_LOC_AND_SPEED_CONTENT_MASKING
+         * LNS_FEATURE_FIX_RATE_SETTING
+         * LNS_FEATURE_ELEVATION_SETTING
+         * LNS_FEATURE_POSITION_STATUS
+         */
+        uint32_t lnFeature = 0x00000044;
+        lnFeatureChar.setValue(lnFeature);
+    }
+
     BLE.advertise();
 }
 
 void loop() {
     static system_tick_t now = millis();
+
     static uint8_t batLevel = 100;
     static bool charging = false;
 
+    static uint32_t latitude = 0, longtitude = 0;
+
     // Simulate battery charging and discharging
     // Notify battery level every 5 seconds
-    if (millis() - now > 5000) {
+    if (millis() - now >= 1000) {
         now = millis();
-        if (charging) {
-            batLevel++;
-            if (batLevel == 100) {
-                charging = false;
+
+        {
+            if (charging) {
+                batLevel++;
+                if (batLevel == 100) {
+                    charging = false;
+                }
+            } else {
+                batLevel--;
+                if (batLevel == 0) {
+                    charging = true;
+                }
             }
-        } else {
-            batLevel--;
-            if (batLevel == 0) {
-                charging = true;
-            }
+            batLevelChar.setValue(batLevel);
         }
-        batLevelChar.setValue(batLevel);
+
+        {
+            uint16_t flags = 0x0044; // Bit6 for UTC time and bit2 for location
+            latitude++;
+            longtitude++;
+            struct tm calendar;
+            time_t t = System.uptime();
+            gmtime_r(&t, &calendar);
+
+            uint8_t encodedBuff[20];
+            uint8_t len = 0;
+
+            // Flags field
+            encodedBuff[len++] = (uint8_t) ((flags & 0x00FF) >> 0);
+            encodedBuff[len++] = (uint8_t) ((flags & 0xFF00) >> 8);
+            // Location field
+            encodedBuff[len++] = (uint8_t) ((latitude & 0x000000FF) >> 0);
+            encodedBuff[len++] = (uint8_t) ((latitude & 0x0000FF00) >> 8);
+            encodedBuff[len++] = (uint8_t) ((latitude & 0x00FF0000) >> 16);
+            encodedBuff[len++] = (uint8_t) ((latitude & 0xFF000000) >> 24);
+            encodedBuff[len++] = (uint8_t) ((longtitude & 0x000000FF) >> 0);
+            encodedBuff[len++] = (uint8_t) ((longtitude & 0x0000FF00) >> 8);
+            encodedBuff[len++] = (uint8_t) ((longtitude & 0x00FF0000) >> 16);
+            encodedBuff[len++] = (uint8_t) ((longtitude & 0xFF000000) >> 24);
+            // UTC time field
+            encodedBuff[len++] = (uint8_t) ((calendar.tm_year & 0x00FF) >> 0);
+            encodedBuff[len++] = (uint8_t) ((calendar.tm_year & 0xFF00) >> 8);
+
+            encodedBuff[len++] = calendar.tm_mon;
+            encodedBuff[len++] = calendar.tm_mday;
+            encodedBuff[len++] = calendar.tm_hour;
+            encodedBuff[len++] = calendar.tm_min;
+            encodedBuff[len++] = calendar.tm_sec;
+
+            locAndSpeedChar.setValue(encodedBuff, len);
+        }
     }
 }
