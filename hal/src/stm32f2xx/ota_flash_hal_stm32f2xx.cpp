@@ -613,16 +613,38 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
 {
     unsigned offset = 0;
     unsigned length = -1;
+    bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 
     switch (config_item)
     {
     case SYSTEM_CONFIG_DEVICE_KEY:
-        offset = DCT_DEVICE_PRIVATE_KEY_OFFSET;
-        length = DCT_DEVICE_PRIVATE_KEY_SIZE;
+        if (udp) {
+            offset = DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET;
+            length = DCT_ALT_DEVICE_PRIVATE_KEY_SIZE;
+        } else {
+            offset = DCT_DEVICE_PRIVATE_KEY_OFFSET;
+            length = DCT_DEVICE_PRIVATE_KEY_SIZE;
+        }
         break;
     case SYSTEM_CONFIG_SERVER_KEY:
-        offset = DCT_SERVER_PUBLIC_KEY_OFFSET;
-        length = DCT_SERVER_PUBLIC_KEY_SIZE;
+        if (udp) {
+            offset = DCT_ALT_SERVER_PUBLIC_KEY_OFFSET;
+            // Server address for UDP devices is in a separate, adjacent DCT field unlike TCP devices.
+            // To update the server address along with the key, we need to write more data.
+            length = DCT_ALT_SERVER_PUBLIC_KEY_SIZE + DCT_ALT_SERVER_ADDRESS_SIZE;
+        } else {
+            offset = DCT_SERVER_PUBLIC_KEY_OFFSET;
+            length = DCT_SERVER_PUBLIC_KEY_SIZE;
+        }
+        break;
+    case SYSTEM_CONFIG_SERVER_ADDRESS:
+        if (udp) {
+            offset = DCT_ALT_SERVER_ADDRESS_OFFSET;
+            length = DCT_ALT_SERVER_ADDRESS_SIZE;
+        } else {
+            offset = DCT_SERVER_ADDRESS_OFFSET;
+            length = DCT_SERVER_ADDRESS_SIZE;
+        }
         break;
     case SYSTEM_CONFIG_SOFTAP_PREFIX:
         offset = DCT_SSID_PREFIX_OFFSET;
