@@ -632,68 +632,77 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
     return !FLASH_ApplyFactoryResetImage(FLASH_CopyMemory);
 }
 
-//This function called in bootloader to perform the memory update process
+// This function is called in bootloader to perform the memory update process
 int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
-    // Copy module info from DCT before updating any modules, since bootloader might load DCT
-    // functions dynamically. FAC_RESET_SLOT is reserved for factory reset module
-    const size_t max_module_count = MAX_MODULES_SLOT - GEN_START_SLOT;
-    platform_flash_modules_t modules[max_module_count];
-    size_t module_offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * GEN_START_SLOT;
-    size_t module_count = 0;
-    for (size_t i = 0; i < max_module_count; ++i) {
-        const size_t magic_num_offs = module_offs + offsetof(platform_flash_modules_t, magicNumber);
-        uint16_t magic_num = 0;
-        if (dct_read_app_data_copy(magic_num_offs, &magic_num, sizeof(magic_num)) != 0) {
-            return FLASH_ACCESS_RESULT_ERROR;
-        }
-        if (magic_num == 0xabcd) {
-            // Copy module info
-            if (dct_read_app_data_copy(module_offs, &modules[module_count], sizeof(platform_flash_modules_t)) != 0) {
-                return FLASH_ACCESS_RESULT_ERROR;
-            }
-            // Mark slot as unused
-            magic_num = 0xffff;
-            if (dct_write_app_data(&magic_num, magic_num_offs, sizeof(magic_num)) != 0) {
-                return FLASH_ACCESS_RESULT_ERROR;
-            }
-            ++module_count;
-        }
-        module_offs += sizeof(platform_flash_modules_t);
+    // FAC_RESET_SLOT is reserved for factory reset module
+    const size_t module_count = MAX_MODULES_SLOT - GEN_START_SLOT;
+    const size_t module_offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * GEN_START_SLOT;
+    platform_flash_modules_t modules[module_count];
+    int r = dct_read_app_data_copy(module_offs, modules, sizeof(platform_flash_modules_t) * module_count);
+    if (r != 0) {
+        return FLASH_ACCESS_RESULT_ERROR;
     }
-
-    for (size_t i = 0, total_modules = module_count; total_modules > 0 && i < (total_modules - 1);) {
-        if (modules[i].module_function == MODULE_FUNCTION_BOOTLOADER) {
-            // Perform bootloader update last as it will cause an automatic reset
-            const platform_flash_modules_t mod = modules[i];
-            memmove(&modules[i], &modules[i + 1], sizeof(platform_flash_modules_t) * (module_count - i - 1));
-            memcpy(&modules[module_count - 1], &mod, sizeof(mod));
-            // Adjust total modules count to not include just copied bootloader module
-            total_modules--;
-        } else {
-            i++;
-        }
-    }
-
     int result = FLASH_ACCESS_RESULT_OK;
+    bool has_modules = false;
+    bool has_bootloader = false;
+    size_t offs = module_offs;
     for (size_t i = 0; i < module_count; ++i) {
-        const platform_flash_modules_t* module = &modules[i];
-        // Turn On RGB_COLOR_MAGENTA toggling during flash updating
-        if (flashModulesCallback) {
-            flashModulesCallback(true);
+        platform_flash_modules_t* const module = &modules[i];
+        if (module->magicNumber == 0xabcd) {
+            if (!has_modules) {
+                has_modules = true;
+                // Turn on RGB_COLOR_MAGENTA toggling during flash update
+                if (flashModulesCallback) {
+                    flashModulesCallback(true);
+                }
+            }
+            if (module->module_function != MODULE_FUNCTION_BOOTLOADER) {
+                // Copy memory from source to destination based on flash device ID
+                r = FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
+                        module->destinationAddress, module->length, module->module_function, module->flags);
+                if (r != FLASH_ACCESS_RESULT_OK && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
+                    // Propagate errors, prioritize FLASH_ACCESS_RESULT_RESET_PENDING over errors
+                    result = r;
+                }
+                // Mark the slot as unused
+                module->magicNumber = 0xffff;
+                r = dct_write_app_data(&module->magicNumber, offs + offsetof(platform_flash_modules_t, magicNumber),
+                        sizeof(module->magicNumber));
+                if (r != 0 && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
+                    result = FLASH_ACCESS_RESULT_ERROR;
+                }
+            } else {
+                has_bootloader = true;
+            }
         }
-        // Copy memory from source to destination based on flash device id
-        int r = FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
-                module->destinationAddress, module->length, module->module_function, module->flags);
-        // Turn Off RGB_COLOR_MAGENTA toggling
-        if (flashModulesCallback) {
-            flashModulesCallback(false);
+        offs += sizeof(platform_flash_modules_t);
+    }
+    // Perform bootloader update last as it will cause an automatic reset
+    if (has_bootloader) {
+        offs = module_offs;
+        for (size_t i = 0; i < module_count; ++i) {
+            platform_flash_modules_t* const module = &modules[i];
+            if (module->magicNumber == 0xabcd && module->module_function == MODULE_FUNCTION_BOOTLOADER) {
+                // Mark the slot as unused BEFORE updating the module
+                module->magicNumber = 0xffff;
+                r = dct_write_app_data(&module->magicNumber, offs + offsetof(platform_flash_modules_t, magicNumber),
+                        sizeof(module->magicNumber));
+                if (r != 0 && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
+                    result = FLASH_ACCESS_RESULT_ERROR;
+                }
+                r = FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
+                        module->destinationAddress, module->length, module->module_function, module->flags);
+                if (r != FLASH_ACCESS_RESULT_OK && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
+                    result = r;
+                }
+            }
+            offs += sizeof(platform_flash_modules_t);
         }
-
-        if (r != FLASH_ACCESS_RESULT_OK && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
-            // Propagate errors, prioritize FLASH_ACCESS_RESULT_RESET_PENDING over errors
-            result = r;
-        }
+    }
+    // Turn off RGB_COLOR_MAGENTA toggling
+    if (has_modules && flashModulesCallback) {
+        flashModulesCallback(false);
     }
     return result;
 }

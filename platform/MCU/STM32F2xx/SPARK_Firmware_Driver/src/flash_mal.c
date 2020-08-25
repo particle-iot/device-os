@@ -31,6 +31,13 @@
 #include <string.h>
 #include "system_error.h"
 
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER && (PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1)
+#define LOAD_DCT_FUNCTIONS 1
+void dct_reload_functions();
+#else
+#define LOAD_DCT_FUNCTIONS 0
+#endif
+
 /* Private functions ---------------------------------------------------------*/
 
 static const uint32_t sectorAddresses[] = {
@@ -612,50 +619,57 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
     return !FLASH_ApplyFactoryResetImage(FLASH_CopyMemory);
 }
 
-//This function called in bootloader to perform the memory update process
+// This function is called in bootloader to perform the memory update process
 int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
-    // Copy module info from DCT before updating any modules, since bootloader might load DCT
-    // functions dynamically. FAC_RESET_SLOT is reserved for factory reset module
-    const size_t max_module_count = MAX_MODULES_SLOT - GEN_START_SLOT;
-    platform_flash_modules_t modules[max_module_count];
+    // FAC_RESET_SLOT is reserved for factory reset module
+    const size_t module_count = MAX_MODULES_SLOT - GEN_START_SLOT;
     size_t module_offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * GEN_START_SLOT;
-    size_t module_count = 0;
-    for (size_t i = 0; i < max_module_count; ++i) {
-        const size_t magic_num_offs = module_offs + offsetof(platform_flash_modules_t, magicNumber);
-        uint16_t magic_num = 0;
-        if (dct_read_app_data_copy(magic_num_offs, &magic_num, sizeof(magic_num)) != 0) {
-            return FLASH_ACCESS_RESULT_ERROR;
-        }
-        if (magic_num == 0xabcd) {
-            // Copy module info
-            if (dct_read_app_data_copy(module_offs, &modules[module_count], sizeof(platform_flash_modules_t)) != 0) {
-                return FLASH_ACCESS_RESULT_ERROR;
+    platform_flash_modules_t modules[module_count];
+    int r = dct_read_app_data_copy(module_offs, modules, sizeof(platform_flash_modules_t) * module_count);
+    if (r != 0) {
+        return FLASH_ACCESS_RESULT_ERROR;
+    }
+    int result = FLASH_ACCESS_RESULT_OK;
+    bool has_modules = false;
+    for (size_t i = 0; i < module_count; ++i) {
+        platform_flash_modules_t* const module = &modules[i];
+        if (module->magicNumber == 0xabcd) {
+            if (!has_modules) {
+                has_modules = true;
+                // Turn on RGB_COLOR_MAGENTA toggling during flash update
+                if (flashModulesCallback) {
+                    flashModulesCallback(true);
+                }
             }
-            // Mark slot as unused
-            magic_num = 0xffff;
-            if (dct_write_app_data(&magic_num, magic_num_offs, sizeof(magic_num)) != 0) {
-                return FLASH_ACCESS_RESULT_ERROR;
+            // Copy memory from source to destination based on flash device ID
+            r = FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
+                    module->destinationAddress, module->length, module->module_function, module->flags);
+            if (r != FLASH_ACCESS_RESULT_OK && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
+                // Propagate errors, prioritize FLASH_ACCESS_RESULT_RESET_PENDING over errors
+                result = r;
             }
-            ++module_count;
+#if LOAD_DCT_FUNCTIONS
+            // DCT functions may need to be reloaded after updating a system module
+            if (!(module->flags & MODULE_VERIFY_FUNCTION) || module->module_function == MODULE_FUNCTION_SYSTEM_PART) {
+                dct_reload_functions();
+            }
+#endif
+            // Mark the slot as unused
+            module->magicNumber = 0xffff;
+            r = dct_write_app_data(&module->magicNumber, module_offs + offsetof(platform_flash_modules_t, magicNumber),
+                    sizeof(module->magicNumber));
+            if (r != 0 && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
+                result = FLASH_ACCESS_RESULT_ERROR;
+            }
         }
         module_offs += sizeof(platform_flash_modules_t);
     }
-    for (size_t i = 0; i < module_count; ++i) {
-        const platform_flash_modules_t* module = &modules[i];
-        // Turn On RGB_COLOR_MAGENTA toggling during flash updating
-        if (flashModulesCallback) {
-            flashModulesCallback(true);
-        }
-        // Copy memory from source to destination based on flash device id
-        FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
-                module->destinationAddress, module->length, module->module_function, module->flags);
-        // Turn Off RGB_COLOR_MAGENTA toggling
-        if (flashModulesCallback) {
-            flashModulesCallback(false);
-        }
+    // Turn off RGB_COLOR_MAGENTA toggling
+    if (has_modules && flashModulesCallback) {
+        flashModulesCallback(false);
     }
-    return FLASH_ACCESS_RESULT_OK;
+    return result;
 }
 
 const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset)
