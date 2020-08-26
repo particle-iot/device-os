@@ -313,30 +313,18 @@ static void enterPlatformSleepMode() {
     int basePri = __get_BASEPRI();
     __set_BASEPRI(2 << (8 - __NVIC_PRIO_BITS));
 
-    /* Enable HSI */
-    RCC_HSICmd(ENABLE);
-    while (RCC_GetFlagStatus(RCC_FLAG_HSIRDY) == RESET);
+    /* Select HSE as system clock source */
+    RCC_SYSCLKConfig(RCC_SYSCLKSource_HSE);
+    /* Wait till HSE is used as system clock source */
+    while (RCC_GetSYSCLKSource() != 0x04);
 
-    /* Select HSI as system clock source */
-    RCC_SYSCLKConfig(RCC_SYSCLKSource_HSI);
-    /* Wait till HSI is used as system clock source */
-    while (RCC_GetSYSCLKSource() != 0x00);
-
-    /* Disable PLL and HSE */
+    /* Disable PLL */
     RCC_PLLCmd(DISABLE);
-    RCC_HSEConfig(RCC_HSE_OFF);
 
     __DSB();
     __WFI();
     __NOP();
     __ISB();
-
-    /* Enable HSE */
-    RCC_HSEConfig(RCC_HSE_ON);
-    if (RCC_WaitForHSEStartUp() != SUCCESS) {
-        /* If HSE startup fails try to recover by system reset */
-        NVIC_SystemReset();
-    }
 
     /* Enable PLL */
     RCC_PLLCmd(ENABLE);
