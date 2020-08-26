@@ -121,6 +121,7 @@ static int configAnalogWakeupSource(const hal_wakeup_source_base_t* wakeupSource
     auto source = wakeupSources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
+            uint8_t hysteresis = 24; // 20mV * (4095 / 3300)
             auto analogWakeup = reinterpret_cast<const hal_wakeup_source_lpcomp_t*>(source);
             *configured = true;
             Hal_Pin_Info* pinMap = HAL_Pin_Map();
@@ -171,9 +172,15 @@ static int configAnalogWakeupSource(const hal_wakeup_source_base_t* wakeupSource
                 }
                 case HAL_SLEEP_LPCOMP_CROSS: {
                     if (currVol >= th) {
-                        ADC_AnalogWatchdogThresholdsConfig(ADC1, 4095, th);
+                        if (th < hysteresis) {
+                            hysteresis = th;
+                        }
+                        ADC_AnalogWatchdogThresholdsConfig(ADC1, 4095, th - hysteresis);
                     } else {
-                        ADC_AnalogWatchdogThresholdsConfig(ADC1, th, 0);
+                        if ((th + hysteresis) > 0xFFF) {
+                            hysteresis = 0xFFF - th;
+                        }
+                        ADC_AnalogWatchdogThresholdsConfig(ADC1, th + hysteresis, 0);
                     }
                     break;
                 }
@@ -187,7 +194,7 @@ static int configAnalogWakeupSource(const hal_wakeup_source_base_t* wakeupSource
             //select NVIC channel to configure
             NVIC_InitTypeDef NVIC_InitStructure = {};
             NVIC_InitStructure.NVIC_IRQChannel = ADC_IRQn;
-            NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
+            NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
             NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
             NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
             NVIC_Init(&NVIC_InitStructure);
@@ -302,7 +309,10 @@ static int validateWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_b
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-static void enterSleepSleep() {
+static void enterPlatformSleepMode() {
+    int basePri = __get_BASEPRI();
+    __set_BASEPRI(2 << (8 - __NVIC_PRIO_BITS));
+
     /* Enable HSI */
     RCC_HSICmd(ENABLE);
     while (RCC_GetFlagStatus(RCC_FLAG_HSIRDY) == RESET);
@@ -336,9 +346,11 @@ static void enterSleepSleep() {
     RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
     /* Wait till PLL is used as system clock source */
     while (RCC_GetSYSCLKSource() != 0x08);
+
+    __set_BASEPRI(basePri);
 }
 
-static void enterStopSleep() {
+static void enterPlatformStopMode() {
     /* Request to enter STOP mode with regulator in low power mode */
     PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
 
@@ -430,9 +442,9 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     configRtcWakeupSource(config->wakeup_sources);
 
     if (config->mode == HAL_SLEEP_MODE_STOP && analogWakeup) {
-        enterSleepSleep();
+        enterPlatformSleepMode();
     } else {
-        enterStopSleep();
+        enterPlatformStopMode();
     }
 
     auto wakeupSource = config->wakeup_sources;
