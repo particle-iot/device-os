@@ -432,14 +432,6 @@ static uint32_t configUsartWakeupSource(const hal_wakeup_source_base_t* wakeupSo
                       NRF_UARTE_INT_TXDRDY_MASK |
                       NRF_UARTE_INT_TXSTOPPED_MASK |
                       NRF_UARTE_INT_ENDTX_MASK);
-            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_ERROR);
-            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_RXSTARTED);
-            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_RXTO);
-            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_ENDRX);
-            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_TXSTARTED);
-            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_TXDRDY);
-            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_TXSTOPPED);
-            nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_ENDTX);
             NVIC_ClearPendingIRQ(UARTE0_UART0_IRQn);
             /* It potentially has received data already leaving the thread waiting on the data still in a blocked state. */
             // nrf_uarte_int_disable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
@@ -659,6 +651,14 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     // Detach USB
     HAL_USB_Detach();
 
+    // Flush all USARTs
+    // FIXME: no lock
+    for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
+        if (hal_usart_is_enabled(static_cast<hal_usart_interface_t>(usart))) {
+            hal_usart_flush(static_cast<hal_usart_interface_t>(usart));
+        }
+    }
+
     // We need to do this before disabling systick/interrupts, otherwise
     // there is a high chance of a deadlock
     if (config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
@@ -701,14 +701,6 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
         for (int i2c = 0; i2c < HAL_PLATFORM_I2C_NUM; i2c++) {
             hal_i2c_lock(static_cast<hal_i2c_interface_t>(i2c), nullptr);
             hal_i2c_sleep(static_cast<hal_i2c_interface_t>(i2c), true, nullptr);
-        }
-    } else {
-        // Flush all USARTs
-        // FIXME: no lock
-        for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
-            if (hal_usart_is_enabled(static_cast<hal_usart_interface_t>(usart))) {
-                hal_usart_flush(static_cast<hal_usart_interface_t>(usart));
-            }
         }
     }
 
