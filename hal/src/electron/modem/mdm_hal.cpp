@@ -1389,9 +1389,11 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                 }
                 // Query IMSI every 60 sec if not regsitered, to detect IMSI switches
                 if (HAL_Timer_Get_Milli_Seconds() - start_imsi_check > 60000UL) {
-                        start_imsi_check = HAL_Timer_Get_Milli_Seconds();
-                        sendFormated("AT+CIMI\r\n");
-                        waitFinalResp();
+                    start_imsi_check = HAL_Timer_Get_Milli_Seconds();
+                    sendFormated("AT+CIMI\r\n");
+                    if (RESP_OK != waitFinalResp()) {
+                        goto failure;
+                    }
                 }
             }
             if (_net.csd == REG_DENIED) MDM_ERROR("CSD Registration Denied\r\n");
