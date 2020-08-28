@@ -24,6 +24,9 @@
 
 #if Wiring_Cellular || defined(UNIT_TEST)
 
+// TODO: remove once rssi/qual are removed
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 CellularSignal::CellularSignal(const cellular_signal_t& sig)
     : sig_(sig)
 {
@@ -34,6 +37,7 @@ bool CellularSignal::fromHalCellularSignal(const cellular_signal_t& sig)
     sig_ = sig;
     return true;
 }
+#pragma GCC diagnostic pop
 
 hal_net_access_tech_t CellularSignal::getAccessTechnology() const
 {
@@ -76,6 +80,9 @@ float CellularSignal::getQualityValue() const
     return 0.0f;
 }
 
+// TODO: remove once rssi/qual are removed
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 size_t CellularSignal::printTo(Print& p) const
 {
     size_t n = 0;
@@ -84,6 +91,7 @@ size_t CellularSignal::printTo(Print& p) const
     n += p.print((*this).qual, DEC);
     return n;
 }
+#pragma GCC diagnostic pop
 
 size_t CellularData::printTo(Print& p) const
 {

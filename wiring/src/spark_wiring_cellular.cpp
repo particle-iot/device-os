@@ -26,6 +26,9 @@
 namespace spark {
 
     CellularSignal CellularClass::RSSI() {
+// TODO: remove once rssi/qual are removed
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
         CellularSignal sig;
         if (!network_ready(*this, 0, NULL)) {
             sig.rssi = 0;
@@ -46,6 +49,7 @@ namespace spark {
         }
         sig.fromHalCellularSignal(sigext);
         return sig;
+#pragma GCC diagnostic pop
     }
 
     CellularDataHal data_hal;
