@@ -92,3 +92,13 @@ test(TONE_04_GeneratedOnPinStopsWhenStopped) {
     //To Do : Add test for remaining pins if required
 }
 
+test(TONE_05_ZeroDurationInfiniteToneDuration) {
+    uint32_t frequency = 500;
+    uint32_t duration = 0;
+    tone(pin, frequency, duration);
+    assertEqual(HAL_Tone_Is_Stopped(pin), false);
+    delay(1000);
+    assertEqual(HAL_Tone_Is_Stopped(pin), false);
+    noTone(pin);
+    assertEqual(HAL_Tone_Is_Stopped(pin), true);
+}
