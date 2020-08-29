@@ -117,6 +117,7 @@ typedef struct stm32_i2c_info_t {
     size_t txIndexTail;
 
     uint8_t transmitting;
+    uint8_t receiving;
 
     void (*callback_onRequest)(void);
     void (*callback_onReceive)(int);
@@ -260,6 +261,7 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
     i2cMap[i2c]->txIndexTail = 0;
 
     i2cMap[i2c]->transmitting = 0;
+    i2cMap[i2c]->receiving = 0;
 
     i2cMap[i2c]->ackFailure = false;
     i2cMap[i2c]->prevEnding = I2C_ENDING_UNKNOWN;
@@ -391,6 +393,8 @@ void hal_i2c_end(hal_i2c_interface_t i2c, void* reserved) {
     if (i2cMap[i2c]->state != HAL_I2C_STATE_DISABLED) {
         I2C_Cmd(i2cMap[i2c]->peripheral, DISABLE);
         I2C_DeInit(i2cMap[i2c]->peripheral);
+        i2cMap[i2c]->transmitting = 0;
+        i2cMap[i2c]->receiving = 0;
         i2cMap[i2c]->state = HAL_I2C_STATE_DISABLED;
     }
     hal_i2c_unlock(i2c, NULL);
@@ -962,12 +966,18 @@ static void HAL_I2C_EV_InterruptHandler(hal_i2c_interface_t i2c) {
         I2C_StretchClockCmd(i2cMap[i2c]->peripheral, i2cMap[i2c]->clkStretchingEnabled ? ENABLE : DISABLE);
         //I2C_Cmd(i2cMap[i2c]->peripheral, ENABLE);
 
-        i2cMap[i2c]->rxIndexTail = i2cMap[i2c]->rxIndexHead;
-        i2cMap[i2c]->rxIndexHead = 0;
+        if (i2cMap[i2c]->transmitting == 1) { // Slave transmitter
+            i2cMap[i2c]->transmitting = 0;
+        }
 
-        if (NULL != i2cMap[i2c]->callback_onReceive) {
-            // alert user program
-            i2cMap[i2c]->callback_onReceive(i2cMap[i2c]->rxIndexTail);
+        if (i2cMap[i2c]->receiving) { // Slave receiver
+            i2cMap[i2c]->receiving = 0;
+            i2cMap[i2c]->rxIndexTail = i2cMap[i2c]->rxIndexHead;
+            i2cMap[i2c]->rxIndexHead = 0;
+            if (NULL != i2cMap[i2c]->callback_onReceive) {
+                // alert user program
+                i2cMap[i2c]->callback_onReceive(i2cMap[i2c]->rxIndexTail);
+            }
         }
     }
 
@@ -978,6 +988,16 @@ static void HAL_I2C_EV_InterruptHandler(hal_i2c_interface_t i2c) {
         /********** Slave Transmitter Events ************/
         /* Check on EV1 */
         case I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED: {
+            if (i2cMap[i2c]->receiving) {
+                i2cMap[i2c]->receiving = 0;
+                i2cMap[i2c]->rxIndexTail = i2cMap[i2c]->rxIndexHead;
+                i2cMap[i2c]->rxIndexHead = 0;
+                if (NULL != i2cMap[i2c]->callback_onReceive) {
+                    // alert user program
+                    i2cMap[i2c]->callback_onReceive(i2cMap[i2c]->rxIndexTail);
+                }
+            }
+
             i2cMap[i2c]->transmitting = 1;
             i2cMap[i2c]->txIndexHead = 0;
             i2cMap[i2c]->txIndexTail = 0;
@@ -1008,6 +1028,16 @@ static void HAL_I2C_EV_InterruptHandler(hal_i2c_interface_t i2c) {
         /*********** Slave Receiver Events *************/
         /* check on EV1*/
         case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED: {
+            if (i2cMap[i2c]->receiving) {
+                i2cMap[i2c]->rxIndexTail = i2cMap[i2c]->rxIndexHead;
+                i2cMap[i2c]->rxIndexHead = 0;
+                if (NULL != i2cMap[i2c]->callback_onReceive) {
+                    // WARN: User must read out all the received data immediately.
+                    i2cMap[i2c]->callback_onReceive(i2cMap[i2c]->rxIndexTail);
+                }
+            } else {
+                i2cMap[i2c]->receiving = 1;
+            }
             i2cMap[i2c]->rxIndexHead = 0;
             i2cMap[i2c]->rxIndexTail = 0;
             break;
