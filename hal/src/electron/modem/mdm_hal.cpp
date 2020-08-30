@@ -1195,6 +1195,17 @@ int MDMParser::_cbUMNOPROF(int type, const char *buf, int len, int* i)
     return WAIT;
 }
 
+int MDMParser::_cbCFUN(int type, const char *buf, int len, int* i) {
+    if (type == TYPE_PLUS && i) {
+        int a;
+        *i = -1;
+        if (sscanf(buf, "\r\n+CFUN: %d\r\n", &a) == 1) {
+            *i = a;
+        }
+    }
+    return WAIT;
+}
+
 int MDMParser::_cbCGMM(int type, const char* buf, int len, DevStatus* s)
 {
     if (type == TYPE_UNKNOWN && s) {
@@ -1275,6 +1286,19 @@ int MDMParser::_cbURAT(int type, const char *buf, int len, bool *matched_default
 bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t timeout_ms)
 {
     LOCK();
+
+    // Set to full functionality mode
+    int cfun_val = -1;
+    sendFormated("AT+CFUN?\r\n");
+    if (RESP_OK != waitFinalResp(_cbCFUN, &cfun_val)) {
+        goto failure;
+    }
+    if (cfun_val != 1) {
+        sendFormated("AT+CFUN=1,0\r\n");
+        if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT))
+            goto failure;
+    }
+
     if (_init && _pwr && _dev.dev != DEV_UNKNOWN) {
         MDM_INFO("\r\n[ Modem::register ] = = = = = = = = = = = = = =");
         // Check to see if we are already connected. If so don't issue these
@@ -1332,8 +1356,8 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                     if (!_atOk()) {
                         goto failure;
                     }
-                    sendFormated("AT+COPS=2,2\r\n");
-                    if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) != RESP_OK) {
+                    sendFormated("AT+CFUN=4,0\r\n");
+                    if (waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT) != RESP_OK) {
                         goto failure;
                     }
                     // Force Cat-M1 mode
@@ -1362,6 +1386,18 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             if (!_atOk()) {
                 goto failure;
             }
+
+            int cfun_val = -1;
+            sendFormated("AT+CFUN?\r\n");
+            if (RESP_OK != waitFinalResp(_cbCFUN, &cfun_val)) {
+                goto failure;
+            }
+            if (cfun_val != 1) {
+                sendFormated("AT+CFUN=1,0\r\n");
+                if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT))
+                    goto failure;
+            }
+
             _net.cops = 2; // Re-init to de-registered state in case of COPS? error, to force auto connection
             sendFormated("AT+COPS?\r\n");
             if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
@@ -2353,8 +2389,8 @@ bool MDMParser::detach(void)
         MDM_INFO("\r\n[ Modem::detach ] = = = = = = = = = = = = = = =");
         // Unregister from the network entirely
         if (_atOk()) {
-            sendFormated("AT+COPS=2,2\r\n");
-            if (waitFinalResp(nullptr, nullptr, COPS_TIMEOUT) == RESP_OK) {
+            sendFormated("AT+CFUN=0,0\r\n");
+            if (waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT) == RESP_OK) {
                 _activated = false;
                 ok = true;
             }
