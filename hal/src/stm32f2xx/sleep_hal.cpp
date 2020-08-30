@@ -30,6 +30,28 @@
 #include "interrupts_hal.h"
 #include "check.h"
 
+static constexpr uint8_t GPIO_IRQn[] = {
+    EXTI0_IRQn,     //0
+    EXTI1_IRQn,     //1
+    EXTI2_IRQn,     //2
+    EXTI3_IRQn,     //3
+    EXTI4_IRQn,     //4
+    EXTI9_5_IRQn,   //5
+    EXTI9_5_IRQn,   //6
+    EXTI9_5_IRQn,   //7
+    EXTI9_5_IRQn,   //8
+    EXTI9_5_IRQn,   //9
+    EXTI15_10_IRQn, //10
+    EXTI15_10_IRQn, //11
+    EXTI15_10_IRQn, //12
+    EXTI15_10_IRQn, //13
+    EXTI15_10_IRQn, //14
+    EXTI15_10_IRQn  //15
+};
+
+static uint8_t extiPriority[16];
+
+
 static int constructGpioWakeupReason(hal_wakeup_source_base_t** wakeupReason, pin_t pin) {
     if (wakeupReason) {
         hal_wakeup_source_gpio_t* gpio = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
@@ -111,6 +133,11 @@ static int configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources)
             irqConf.keepHandler = 1;
             irqConf.keepPriority = 1;
             HAL_Interrupts_Attach(gpioWakeup->pin, nullptr, nullptr, gpioWakeup->mode, &irqConf);
+            
+            Hal_Pin_Info* pinMap = HAL_Pin_Map();
+            uint8_t pinSource = pinMap[gpioWakeup->pin].gpio_pin_source;
+            extiPriority[pinSource] = NVIC_GetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]));
+            NVIC_SetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]), 1);
         }
         source = source->next;
     }
@@ -230,6 +257,13 @@ static int configRtcWakeupSource(const hal_wakeup_source_base_t* wakeupSources) 
             extiInitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
             extiInitStructure.EXTI_LineCmd = ENABLE;
             EXTI_Init(&extiInitStructure);
+
+            NVIC_InitTypeDef nvicInitStructure;
+            nvicInitStructure.NVIC_IRQChannel = RTC_Alarm_IRQn;
+            nvicInitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+            nvicInitStructure.NVIC_IRQChannelSubPriority = 0;
+            nvicInitStructure.NVIC_IRQChannelCmd = ENABLE;
+            NVIC_Init(&nvicInitStructure);
 
             struct timeval tv = {
                 .tv_sec = seconds,
@@ -470,12 +504,23 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     wakeupSource = config->wakeup_sources;
     while (wakeupSource) {
         if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+            NVIC_InitTypeDef nvicInitStructure;
+            nvicInitStructure.NVIC_IRQChannel = RTC_Alarm_IRQn;
+            nvicInitStructure.NVIC_IRQChannelPreemptionPriority = RTC_Alarm_IRQ_PRIORITY;
+            nvicInitStructure.NVIC_IRQChannelSubPriority = 0;
+            nvicInitStructure.NVIC_IRQChannelCmd = ENABLE;
+            NVIC_Init(&nvicInitStructure);
             // No need to detach RTC Alarm from EXTI, since it will be detached in HAL_Interrupts_Restore()
             // RTC Alarm should be canceled to avoid entering HAL_RTCAlarm_Handler or if we were woken up by pin
             hal_rtc_cancel_alarm();
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
             auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
             HAL_Interrupts_Detach_Ext(gpioWakeup->pin, 1, nullptr);
+
+            Hal_Pin_Info* pinMap = HAL_Pin_Map();
+            uint8_t pinSource = pinMap[gpioWakeup->pin].gpio_pin_source;
+            extiPriority[pinSource] = NVIC_GetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]));
+            NVIC_SetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]), extiPriority[pinSource]);
         }
         wakeupSource = wakeupSource->next;
     }
