@@ -69,7 +69,12 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration) {
     }
 
     g_tone[timer_index].pin = pin;
-    ret = os_timer_create(&g_tone[timer_index].timer, duration, tone_timer_timeout_handler, nullptr, true, nullptr);
+    bool one_shot = true;
+    if (duration == 0) {
+        duration = 0xffffffff;
+        one_shot = false;
+    }
+    ret = os_timer_create(&g_tone[timer_index].timer, duration, tone_timer_timeout_handler, nullptr, one_shot, nullptr);
     if (ret != 0) {
         return;
     }
