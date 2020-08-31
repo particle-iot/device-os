@@ -47,6 +47,17 @@ private:
     size_t  size_;
 };
 
+class TestConvertiblePrintable: public Printable {
+public:
+    virtual size_t printTo(Print& p) const override {
+        return p.write("TestConvertiblePrintable");
+    }
+
+    operator bool() const {
+        return true;
+    }
+};
+
 } // namespace
 
 TEST_CASE("Print tests for all types") {
@@ -132,6 +143,14 @@ TEST_CASE("Print tests for all types") {
     SECTION("Print others") {
         REQUIRE(printTest.print("") == 0);
         REQUIRE(printTest.isEqual(""));
+    }
+
+    SECTION("Printable objects that are implicitly convertible to integra/unsigned integer types") {
+        TestConvertiblePrintable printable;
+        REQUIRE(printTest.print(printable));
+        REQUIRE(printTest.isEqual("TestConvertiblePrintable"));
+        REQUIRE(printTest.println(printable));
+        REQUIRE(printTest.isEqual("TestConvertiblePrintable\r\n"));
     }
 
 }

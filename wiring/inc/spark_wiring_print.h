@@ -80,8 +80,8 @@ class Print
 
     size_t print(const char[]);
     size_t print(char);
-    template <typename T, std::enable_if_t<std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
-        std::is_convertible<T, long long>::value, int> = 0>
+    template <typename T, std::enable_if_t<!std::is_base_of<Printable, T>::value && (std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
+        std::is_convertible<T, long long>::value), int> = 0>
     size_t print(T, int = DEC);
     size_t print(float, int = 2);
     size_t print(double, int = 2);
@@ -90,8 +90,8 @@ class Print
 
     size_t println(const char[]);
     size_t println(char);
-    template <typename T, std::enable_if_t<std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
-        std::is_convertible<T, long long>::value, int> = 0>
+    template <typename T, std::enable_if_t<!std::is_base_of<Printable, T>::value && (std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
+        std::is_convertible<T, long long>::value), int> = 0>
     size_t println(T b, int base = DEC) {
         size_t n = print(b, base);
         n += println();
@@ -117,8 +117,8 @@ class Print
 
 };
 
-template <typename T, std::enable_if_t<std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
-    std::is_convertible<T, long long>::value, int>>
+template <typename T, std::enable_if_t<!std::is_base_of<Printable, T>::value && (std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
+    std::is_convertible<T, long long>::value), int>>
 size_t Print::print(T n, int base)
 {
     if (base == 0) {
