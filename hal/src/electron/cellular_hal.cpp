@@ -236,7 +236,7 @@ cellular_result_t cellular_signal(CellularSignalHal* signal, cellular_signal_t* 
     NetStatus status;
     bool r = electronMDM.getSignalStrength(status);
 
-    return detail::cellular_signal_impl(signal, signalext, r, status);
+    return particle::detail::cellular_signal_impl(signal, signalext, r, status);
 }
 
 cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,

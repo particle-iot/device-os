@@ -5,6 +5,8 @@
 #ifndef MDM_HAL_UTILITIES_H
 #define MDM_HAL_UTILITIES_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

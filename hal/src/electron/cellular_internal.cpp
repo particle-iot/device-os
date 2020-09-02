@@ -10,7 +10,7 @@
 #include "net_hal.h"
 #include "string.h"
 
-namespace detail {
+namespace particle { namespace detail {
 
 cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signal_t* signalext, bool strengthResult, const NetStatus& status) {
     // % * 100, see 3GPP TS 45.008 8.2.4
@@ -125,6 +125,6 @@ cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signa
     return res;
 }
 
-} // namespace detail
+}} // namespace particle detail
 
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

@@ -38,11 +38,11 @@ cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_Data
 cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
 
 /* detail functions defined for unit tests */
-namespace detail {
+namespace particle { namespace detail {
 
 cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signal_t* signalext, bool strengthResult, const NetStatus& status);
 
-} // namespace detail
+}} // namespace particle detail
 
 /**
  * Set cellular band select

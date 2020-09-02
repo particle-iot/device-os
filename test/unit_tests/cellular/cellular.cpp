@@ -18,6 +18,7 @@
  */
 
 #include "cellular_internal.h"
+#include "cellular_hal_utilities.h"
 #include "system_error.h"
 #include "net_hal.h"
 #include <limits>
@@ -52,7 +53,7 @@ public:
 
 } // namespace
 
-using namespace detail;
+using namespace particle::detail;
 using namespace Catch::Matchers;
 
 TEST_CASE("Gen 2 cellular credentials") {
