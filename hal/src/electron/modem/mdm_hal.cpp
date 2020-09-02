@@ -1332,20 +1332,19 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
 {
     LOCK();
 
-    // Set to full functionality mode
-    int cfun_val = -1;
-    sendFormated("AT+CFUN?\r\n");
-    if (RESP_OK != waitFinalResp(_cbCFUN, &cfun_val)) {
-        goto failure;
-    }
-    if (cfun_val != 1) {
-        sendFormated("AT+CFUN=1,0\r\n");
-        if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT))
-            goto failure;
-    }
-
     if (_init && _pwr && _dev.dev != DEV_UNKNOWN) {
         MDM_INFO("\r\n[ Modem::register ] = = = = = = = = = = = = = =");
+        // Set to full functionality mode
+        int cfun_val = -1;
+        sendFormated("AT+CFUN?\r\n");
+        if (RESP_OK != waitFinalResp(_cbCFUN, &cfun_val)) {
+            goto failure;
+        }
+        if (cfun_val != 1) {
+            sendFormated("AT+CFUN=1,0\r\n");
+            if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT))
+                goto failure;
+        }
         // Check to see if we are already connected. If so don't issue these
         // commands as they will knock us off the cellular network.
         bool ok = false;
