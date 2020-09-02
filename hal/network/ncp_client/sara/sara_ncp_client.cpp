@@ -117,6 +117,7 @@ const unsigned CHECK_IMSI_TIMEOUT = 60 * 1000;
 
 const system_tick_t UBLOX_COPS_TIMEOUT = 5 * 60 * 1000;
 const system_tick_t UBLOX_CFUN_TIMEOUT = 3 * 60 * 1000;
+const system_tick_t UBLOX_CIMI_TIMEOUT = 10 * 1000; // Should be immediate, but have observed 3 seconds occassionally on u-blox and rarely longer times
 
 const auto UBLOX_MUXER_T1 = 2530;
 const auto UBLOX_MUXER_T2 = 2540;
@@ -1447,7 +1448,7 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
             memset(buf, 0, sizeof(buf));
-            auto resp = parser_.sendCommand("AT+CIMI");
+            auto resp = parser_.sendCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI");
             CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
             const int r = CHECK_PARSER(resp.readResult());
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
@@ -1812,7 +1813,7 @@ int SaraNcpClient::checkRunningImsi() {
     // Else, if not registered, check after CHECK_IMSI_TIMEOUT is expired
     if ((imsiCheckTime_ == 0) || ((connState_ != NcpConnectionState::CONNECTED) &&
             (millis() - imsiCheckTime_ >= CHECK_IMSI_TIMEOUT))) {
-        CHECK_PARSER(parser_.execCommand("AT+CIMI"));
+        CHECK_PARSER(parser_.execCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI"));
         imsiCheckTime_ = millis();
     }
     return 0;

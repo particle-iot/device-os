@@ -99,6 +99,7 @@ std::recursive_mutex mdm_mutex;
 #define CEDRXS_TIMEOUT    ( 10 * 1000)
 #define CFUN_TIMEOUT      (180 * 1000)
 #define UCGED_TIMEOUT     ( 10 * 1000)
+#define CIMI_TIMEOUT      ( 10 * 1000) /* Should be immediate, but have observed 3 seconds occassionally on u-blox and rarely longer times */
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -950,7 +951,7 @@ bool MDMParser::init(DevStatus* status)
         goto failure;
     // Request IMSI (International Mobile Subscriber Identification)
     sendFormated("AT+CIMI\r\n");
-    if (RESP_OK != waitFinalResp(_cbString, &str_imsi))
+    if (RESP_OK != waitFinalResp(_cbString, &str_imsi, CIMI_TIMEOUT))
         goto failure;
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
