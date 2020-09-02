@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "mdm_hal.h"
+#include "cellular_hal_utilities.h"
 #include "timer_hal.h"
 #include "delay_hal.h"
 #include "pinmap_hal.h"
@@ -64,7 +65,7 @@ std::recursive_mutex mdm_mutex;
 // #define SOCKET_HEX_MODE
 
 // Timeouts for various AT commands based on R4 & U2/G3 AT command manual as of Jan 2019
-#define AT_TIMEOUT        ( 10 * 1000)
+#define AT_TIMEOUT        (  3 * 1000) /* When modem not responsive on boot, AT/OK tried 10x for 30s before hard reset */
 #define USOCL_UDP_TIMEOUT ( 10 * 1000) /* 120s for R4 (TCP only, optimizing for UDP with 10s), 1s for U2/G3 */
 #define USOCL_TCP_TIMEOUT (120 * 1000) /* 120s for R4 (TCP only), 1s for U2/G3 */
 #define USOCO_TIMEOUT     (130 * 1000) /* 120s for R4 (TCP only, going with 130 due to testing showing CME ERROR can take a bit longer), 20s for U2/G3 */
@@ -88,6 +89,7 @@ std::recursive_mutex mdm_mutex;
 #define CREG_TIMEOUT      ( 60 * 1000)
 #define CSQ_TIMEOUT       ( 10 * 1000)
 #define UBANDSEL_TIMEOUT  ( 40 * 1000)
+#define UBANDMASK_TIMEOUT ( 10 * 1000)
 #define UDNSRN_TIMEOUT    ( 30 * 1000) /* 70s for R4 (set to 30s to match previous implementation) */
 #define URAT_TIMEOUT      ( 10 * 1000)
 #define UPSD_TIMEOUT      ( 10 * 1000)
@@ -119,7 +121,7 @@ static volatile uint32_t gprs_timeout_duration;
 inline void ARM_GPRS_TIMEOUT(uint32_t dur) {
     gprs_timeout_start = HAL_Timer_Get_Milli_Seconds();
     gprs_timeout_duration = dur;
-    DEBUG("GPRS WD Set %d",(dur));
+    DEBUG("GPRS WD Set %d\r\n",(dur));
 }
 inline bool IS_GPRS_TIMEOUT() {
     return gprs_timeout_duration && ((HAL_Timer_Get_Milli_Seconds()-gprs_timeout_start)>gprs_timeout_duration);
@@ -127,7 +129,7 @@ inline bool IS_GPRS_TIMEOUT() {
 
 inline void CLR_GPRS_TIMEOUT() {
     gprs_timeout_duration = 0;
-    DEBUG("GPRS WD Cleared, was %d", gprs_timeout_duration);
+    DEBUG("GPRS WD Cleared, was %d\r\n", gprs_timeout_duration);
 }
 
 namespace {
@@ -881,6 +883,7 @@ failure:
 bool MDMParser::init(DevStatus* status)
 {
     LOCK();
+    static int resetFailureAttempts = 0;
     MDM_INFO("\r\n[ Modem::init ] = = = = = = = = = = = = = = =");
 
     // Define all cstringhelpers up here, because "goto"s do not like bypassing inits
@@ -984,9 +987,36 @@ bool MDMParser::init(DevStatus* status)
             goto reset_failure;
         }
         if (umnoprof == UBLOX_SARA_UMNOPROF_SW_DEFAULT) {
-            sendFormated("AT+UMNOPROF=%d\r\n", UBLOX_SARA_UMNOPROF_SIM_SELECT);
-            waitFinalResp(); // Not checking for error since we will reset either way
-            goto reset_failure;
+            CellularNetProv netProv = particle::detail::_cellular_sim_to_network_provider(_dev.imsi, _dev.ccid);
+
+            int cfun_val = -1;
+            sendFormated("AT+CFUN?\r\n");
+            if (RESP_OK != waitFinalResp(_cbCFUN, &cfun_val)) {
+                goto failure;
+            }
+            if (cfun_val != 0) {
+                sendFormated("AT+CFUN=0,0\r\n");
+                if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
+                    goto failure;
+                }
+            }
+            int p = UBLOX_SARA_UMNOPROF_SIM_SELECT;
+            if (netProv == CELLULAR_NETPROV_TWILIO) {
+                p = UBLOX_SARA_UMNOPROF_STANDARD_EUROPE;
+            }
+            sendFormated("AT+UMNOPROF=%d\r\n", p);
+            waitFinalResp(nullptr, nullptr, UMNOPROF_TIMEOUT);
+            goto reset_failure; // Not checking for errors above since we will reset either way
+        } else if (umnoprof == UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) {
+            sendFormated("AT+UBANDMASK?\r\n");
+            uint32_t ubandCatm1 = 0;
+            waitFinalResp(_cbUBANDMASK, &ubandCatm1, UBANDMASK_TIMEOUT);
+            if (ubandCatm1 != 6170) {
+                // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
+                sendFormated("AT+UBANDMASK=0,6170\r\n");
+                waitFinalResp(nullptr, nullptr, UBANDMASK_TIMEOUT);
+                goto reset_failure;
+            }
         }
 
         // For signal strength RSRP/RSRQ values on R410M
@@ -1022,6 +1052,7 @@ bool MDMParser::init(DevStatus* status)
             goto reset_failure;
         }
     } // if (_dev.dev == DEV_SARA_R410)
+    resetFailureAttempts = 0;
     UNLOCK();
     return true;
 
@@ -1031,8 +1062,8 @@ failure:
 
 reset_failure:
     // Don't get stuck in a reset-retry loop
-    static int resetFailureAttempts = 0;
-    if (resetFailureAttempts++ < 5) {
+    // eDRX disables can take a couple or more resets, UMNOPROF requires 1 or 2 and UBANDMASK requires 1 or 2 worst case
+    if (resetFailureAttempts++ < 8) {
         if (_atOk()) {
             sendFormated("AT+CFUN=15\r\n");
             waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT);
@@ -1042,14 +1073,15 @@ reset_failure:
             // MDMParser::powerOn and MDMParser::init will then be retried by the system.
             _incModemStateChangeCount();
         }
-    } // else {
+    } else {
         // stop resetting, and try to register.
         // Preventing cellular registration gets us back to retrying init() faster,
         // and the timeout of 3 attempts is arbitrary but allows us to register and
         // connect even with an error, since that error is persisting and might just
         // be a fluke or bug in the modem. Allowing to continue on eventually helps
         // the device recover in odd situations we can't predict.
-    // }
+        resetFailureAttempts = 0;
+    }
     UNLOCK();
     return false;
 }
@@ -1201,6 +1233,19 @@ int MDMParser::_cbCFUN(int type, const char *buf, int len, int* i) {
         *i = -1;
         if (sscanf(buf, "\r\n+CFUN: %d\r\n", &a) == 1) {
             *i = a;
+        }
+    }
+    return WAIT;
+}
+
+int MDMParser::_cbUBANDMASK(int type, const char *buf, int len, uint32_t* i)
+{
+    if ((type == TYPE_PLUS) && i){
+        uint64_t a;
+        *i = 0;
+        // \r\n+UBANDMASK: 0,6170,1,524420\r\n
+        if (sscanf(buf, "\r\n+UBANDMASK: 0,%llu", &a) == 1) {
+            *i = (uint32_t)(a & 0xffffffff); // limit to 32-bit (Cat-M R410-02B supports up to band 28)
         }
     }
     return WAIT;

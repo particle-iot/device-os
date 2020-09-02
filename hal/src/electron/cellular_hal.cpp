@@ -3,6 +3,7 @@
 #include "check.h"
 #include "modem/mdm_hal.h"
 #include "cellular_hal.h"
+#include "cellular_hal_utilities.h"
 #include "cellular_internal.h"
 #include "system_error.h"
 
@@ -407,7 +408,7 @@ cellular_result_t cellular_resume(void* reserved)
 cellular_result_t cellular_sim_to_network_provider(void* reserved)
 {
     const DevStatus* status = electronMDM.getDevStatus();
-    cellularNetProv = detail::_cellular_sim_to_network_provider(status->imsi, status->ccid);
+    cellularNetProv = particle::detail::_cellular_sim_to_network_provider(status->imsi, status->ccid);
     return 0;
 }
 

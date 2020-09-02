@@ -3,6 +3,7 @@
 #include "../src/electron/modem/dns_client.cpp"
 #include "../src/electron/parser.cpp"
 #include "../src/electron/cellular_hal.cpp"
+#include "../src/electron/cellular_hal_utilities.cpp"
 #include "../src/electron/cellular_internal.cpp"
 #include "../src/electron/inet_hal_new.cpp"
 #include "../src/electron/socket_hal.cpp"

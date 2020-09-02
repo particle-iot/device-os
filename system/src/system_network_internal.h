@@ -57,7 +57,7 @@ extern uint32_t wlan_watchdog_base;
 inline void ARM_WLAN_WD(uint32_t x) {
     wlan_watchdog_base = HAL_Timer_Get_Milli_Seconds();
     wlan_watchdog_duration = x;
-    WAN_WD_DEBUG("WD Set %d",(x));
+    WAN_WD_DEBUG("WD Set %d\r\n",(x));
 }
 inline bool WLAN_WD_TO() {
     return wlan_watchdog_duration && ((HAL_Timer_Get_Milli_Seconds()-wlan_watchdog_base)>wlan_watchdog_duration);
@@ -65,7 +65,7 @@ inline bool WLAN_WD_TO() {
 
 inline void CLR_WLAN_WD() {
     wlan_watchdog_duration = 0;
-    WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog_duration);
+    WAN_WD_DEBUG("WD Cleared, was %d\r\n",wlan_watchdog_duration);
 }
 
 #ifdef __cplusplus

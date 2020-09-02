@@ -549,6 +549,7 @@ protected:
     // network
     static int _cbUMNOPROF(int type, const char *buf, int len, int* i);
     static int _cbCFUN(int type, const char* buf, int len, int* i);
+    static int _cbUBANDMASK(int type, const char *buf, int len, uint32_t* i);
     #define MDM_R410_EDRX_ACTS_MAX (4) //!< maximum number of AcTs for eDRX mode on SARA-R410M-02B
     // eDRX AcTs
     struct EdrxActs {
