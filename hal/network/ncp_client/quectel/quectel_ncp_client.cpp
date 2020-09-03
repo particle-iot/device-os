@@ -516,10 +516,7 @@ int QuectelNcpClient::connect(const CellularNetworkConfig& conf) {
     return SYSTEM_ERROR_NONE;
 }
 
-int QuectelNcpClient::getIccid(char* buf, size_t size) {
-    const NcpClientLock lock(this);
-    CHECK(checkParser());
-
+int QuectelNcpClient::getIccidImpl(char* buf, size_t size) {
     auto resp = parser_.sendCommand("AT+CCID");
     char iccid[32] = {};
     int r = CHECK_PARSER(resp.scanf("+CCID: %31s", iccid));
@@ -541,6 +538,13 @@ int QuectelNcpClient::getIccid(char* buf, size_t size) {
         buf[n] = '\0';
     }
     return n;
+}
+
+int QuectelNcpClient::getIccid(char* buf, size_t size) {
+    const NcpClientLock lock(this);
+    CHECK(checkParser());
+
+    return getIccidImpl(buf, size);
 }
 
 int QuectelNcpClient::getImei(char* buf, size_t size) {
@@ -1163,8 +1167,7 @@ int QuectelNcpClient::checkSimCard() {
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     if (!strcmp(code, "READY")) {
-        r = parser_.execCommand("AT+CCID");
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_PARSER_OK(parser_.execCommand("AT+CCID"));
         return SYSTEM_ERROR_NONE;
     }
     return SYSTEM_ERROR_UNKNOWN;
@@ -1173,17 +1176,13 @@ int QuectelNcpClient::checkSimCard() {
 int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
     netConf_ = conf;
     if (!netConf_.isValid()) {
-        // First look for network settings based on ICCID
         // FIXME: CCID may fail, need delay here
         HAL_Delay_Milliseconds(1000);
-        auto resp = parser_.sendCommand("AT+CCID");
+        // First look for network settings based on ICCID
         char buf[32] = {};
-        const int ret = CHECK_PARSER(resp.scanf("+CCID: %31s", buf));
-        const int r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-        if (ret) {
-            netConf_ = networkConfigForIccid(buf, strlen(buf));
-        }
+        auto lenCcid = getIccidImpl(buf, sizeof(buf));
+        CHECK_TRUE(lenCCid > 5, SYSTEM_ERROR_AT_NOT_OK);
+        netConf_ = networkConfigForIccid(buf, lenCcid);
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {

@@ -136,6 +136,7 @@ private:
     int interveneRegistration();
     int checkRunningImsi();
     int processEventsImpl();
+    int getIccidImpl(char* buf, size_t size);
 
     int modemInit() const;
     bool waitModemPowerState(bool onOff, system_tick_t timeout);

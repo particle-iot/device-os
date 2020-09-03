@@ -112,12 +112,14 @@ const auto UBLOX_NCP_SIM_SELECT_PIN = 23;
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
+const unsigned REGISTRATION_TWILIO_HOLDOFF_TIMEOUT = 1 * 60 * 1000;
 
 const unsigned CHECK_IMSI_TIMEOUT = 60 * 1000;
 
 const system_tick_t UBLOX_COPS_TIMEOUT = 5 * 60 * 1000;
 const system_tick_t UBLOX_CFUN_TIMEOUT = 3 * 60 * 1000;
 const system_tick_t UBLOX_CIMI_TIMEOUT = 10 * 1000; // Should be immediate, but have observed 3 seconds occassionally on u-blox and rarely longer times
+const system_tick_t UBLOX_UBANDMASK_TIMEOUT = 10 * 1000;
 
 const auto UBLOX_MUXER_T1 = 2530;
 const auto UBLOX_MUXER_T2 = 2540;
@@ -533,9 +535,7 @@ int SaraNcpClient::connect(const CellularNetworkConfig& conf) {
     return SYSTEM_ERROR_NONE;
 }
 
-int SaraNcpClient::getIccid(char* buf, size_t size) {
-    const NcpClientLock lock(this);
-    CHECK(checkParser());
+int SaraNcpClient::getIccidImpl(char* buf, size_t size) {
     auto resp = parser_.sendCommand("AT+CCID");
     char iccid[32] = {};
     int r = CHECK_PARSER(resp.scanf("+CCID: %31s", iccid));
@@ -551,6 +551,12 @@ int SaraNcpClient::getIccid(char* buf, size_t size) {
         buf[n] = '\0';
     }
     return n;
+}
+
+int SaraNcpClient::getIccid(char* buf, size_t size) {
+    const NcpClientLock lock(this);
+    CHECK(checkParser());
+    return getIccidImpl(buf, size);
 }
 
 int SaraNcpClient::getImei(char* buf, size_t size) {
@@ -1045,28 +1051,60 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     }
 
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
-        // Set UMNOPROF = SIM_SELECT
-        auto resp = parser_.sendCommand("AT+UMNOPROF?");
-        reset = false;
-        int umnoprof = static_cast<int>(UbloxSaraUmnoprof::NONE);
-        auto r = CHECK_PARSER(resp.scanf("+UMNOPROF: %d", &umnoprof));
-        CHECK_PARSER_OK(resp.readResult());
-        if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::SW_DEFAULT) {
-            // Disconnect before making changes to the UMNOPROF
-            r = CHECK_PARSER(parser_.execCommand("AT+COPS=2,2"));
-            if (r == AtResponse::OK) {
+        int resetCount = 0;
+        do {
+            // Set UMNOPROF = SIM_SELECT
+            auto resp = parser_.sendCommand("AT+UMNOPROF?");
+            reset = false;
+            int umnoprof = static_cast<int>(UbloxSaraUmnoprof::NONE);
+            auto r = CHECK_PARSER(resp.scanf("+UMNOPROF: %d", &umnoprof));
+            CHECK_PARSER_OK(resp.readResult());
+            if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::SW_DEFAULT) {
+                // Check if we are using a Twilio SIM based on ICCID
+                char buf[32] = {};
+                auto lenCcid = getIccidImpl(buf, sizeof(buf));
+                CellularNetworkConfig netConfig;
+                CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
+                netConfig = networkConfigForIccid(buf, lenCcid);
+
+                // Disconnect before making changes to the UMNOPROF
+                auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
+                int cfunVal = -1;
+                auto retCfun = CHECK_PARSER(respCfun.scanf("+CFUN: %d", &cfunVal));
+                CHECK_PARSER_OK(respCfun.readResult());
+                if (retCfun == 1 && cfunVal != 0) {
+                    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
+                }
+
                 // This is a persistent setting
-                auto respUmno = parser_.sendCommand(1000, "AT+UMNOPROF=%d", static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT));
-                respUmno.readResult();
+                int umnoprof = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
+                if (!strcmp(netConfig.apn(), "super")) { // if Twilio SIM
+                    umnoprof = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
+                }
+                parser_.execCommand(1000, "AT+UMNOPROF=%d", umnoprof);
                 // Not checking for error since we will reset either way
                 reset = true;
+            } else if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::STANDARD_EUROPE) {
+                auto respBand = parser_.sendCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK?");
+                uint64_t ubandCatm1 = 0;
+                auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%llu", &ubandCatm1));
+                CHECK_PARSER_OK(respBand.readResult());
+                if (retBand == 1 && static_cast<uint32_t>(ubandCatm1 & 0xffffffff) != 6170) {
+                    // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
+                    parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,6170");
+                    // Not checking for error since we will reset either way
+                    reset = true;
+                }
             }
-        }
-        if (reset) {
-            const int respCfun = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
-            CHECK_TRUE(respCfun == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-            HAL_Delay_Milliseconds(10000);
-            CHECK(waitAtResponseFromPowerOn(state));
+            if (reset) {
+                CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=15"));
+                HAL_Delay_Milliseconds(10000);
+                CHECK(waitAtResponseFromPowerOn(state));
+            }
+        } while (reset && resetCount++ < 4);
+
+        if (resetCount >= 4) {
+            return SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED; // we shouldn't have been resetting this many times
         }
     }
 
@@ -1425,8 +1463,7 @@ int SaraNcpClient::checkSimCard() {
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     if (!strcmp(code, "READY")) {
-        r = parser_.execCommand("AT+CCID");
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+        CHECK_PARSER_OK(parser_.execCommand("AT+CCID"));
         return SYSTEM_ERROR_NONE;
     }
     return SYSTEM_ERROR_UNKNOWN;
@@ -1436,14 +1473,10 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
     netConf_ = conf;
     if (!netConf_.isValid()) {
         // First look for network settings based on ICCID
-        auto resp = parser_.sendCommand("AT+CCID");
         char buf[32] = {};
-        const int ret = CHECK_PARSER(resp.scanf("+CCID: %31s", buf));
-        const int r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-        if (ret) {
-            netConf_ = networkConfigForIccid(buf, strlen(buf));
-        }
+        auto lenCcid = getIccidImpl(buf, sizeof(buf));
+        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
+        netConf_ = networkConfigForIccid(buf, lenCcid);
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
