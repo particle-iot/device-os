@@ -372,7 +372,7 @@ extern "C" void HAL_SysTick_Handler(void)
         system_cloud_active();
         cloudCheckTicks = CLOUD_CHECK_INTERVAL;
     }
-
+#if !HAL_PLATFORM_OTA_PROTOCOL_V3
     if(SPARK_FLASH_UPDATE)
     {
         if (TimingFlashUpdateTimeout >= TIMING_FLASH_UPDATE_TIMEOUT)
@@ -385,6 +385,7 @@ extern "C" void HAL_SysTick_Handler(void)
             TimingFlashUpdateTimeout++;
         }
     }
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
     else if(network_listening(0, 0, 0) && HAL_Core_Mode_Button_Pressed(10000) && !button_cleared_credentials)
     {
         button_cleared_credentials = true;

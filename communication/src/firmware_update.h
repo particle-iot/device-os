@@ -66,7 +66,7 @@ const unsigned OTA_CHUNK_ACK_COUNT = 2;
 /**
  * Maximum time to wait for the next chunk before timing out the transfer.
  */
-const system_tick_t OTA_TRANSFER_TIMEOUT = 90000;
+const system_tick_t OTA_TRANSFER_TIMEOUT = 300000;
 
 class Message;
 class MessageChannel;

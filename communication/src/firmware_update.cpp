@@ -101,8 +101,8 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg) {
         LOG(INFO, "Transfer time: %u", (unsigned)transferTime);
         LOG(INFO, "Processing time: %u", (unsigned)stats_.processingTime);
         LOG(INFO, "Chunks received: %u", stats_.receivedChunks);
-        LOG(INFO, "Chunk ACKs sent: %u", stats._sentChunkAcks);
-        LOG(INFO, "Duplicate chunks: %u", stats._duplicateChunks);
+        LOG(INFO, "Chunk ACKs sent: %u", stats_.sentChunkAcks);
+        LOG(INFO, "Duplicate chunks: %u", stats_.duplicateChunks);
         LOG(INFO, "Out-of-order chunks: %u", stats_.outOfOrderChunks);
         LOG(INFO, "Applying firmware update");
         r = callbacks_->finish_firmware_update(0);
@@ -159,6 +159,7 @@ ProtocolError FirmwareUpdate::process() {
             (!lastChunkTime_ && now - stats_.updateStartTime >= OTA_TRANSFER_TIMEOUT)) {
         LOG(ERROR, "Transfer timeout");
         cancelUpdate();
+        return ProtocolError::MESSAGE_TIMEOUT;
     }
     return ProtocolError::NO_ERROR;
 }
