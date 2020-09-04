@@ -125,8 +125,8 @@ static int constructUsartWakeupReason(hal_wakeup_source_base_t** wakeupReason, h
     return SYSTEM_ERROR_NONE;
 }
 
-static int constructNetworkWakeupReason(hal_wakeup_source_base_t** wakeupReason, network_interface_index index) {
 #if HAL_PLATFORM_CELLULAR
+static int constructNetworkWakeupReason(hal_wakeup_source_base_t** wakeupReason, network_interface_index index) {
     auto network = (hal_wakeup_source_network_t*)malloc(sizeof(hal_wakeup_source_network_t));
     if (network) {
         network->base.size = sizeof(hal_wakeup_source_base_t);
@@ -139,11 +139,8 @@ static int constructNetworkWakeupReason(hal_wakeup_source_base_t** wakeupReason,
         return SYSTEM_ERROR_NO_MEMORY;
     }
     return SYSTEM_ERROR_NONE;
-#else
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-#endif
 }
-
+#endif
 
 static int configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources, uint8_t* extiPriorities) {
     auto source = wakeupSources;
@@ -387,7 +384,7 @@ static int configNetworkWakeupSource(const hal_wakeup_source_base_t* wakeupSourc
     }
     return SYSTEM_ERROR_NONE;
 #else
-    return SYSTEM_ERROR_NOT_SUPPORTED
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 #endif
 }
 
