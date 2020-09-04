@@ -300,7 +300,54 @@ static int configUsartWakeupSource(const hal_wakeup_source_base_t* wakeupSources
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
             *configured = 1;
-            // We don't need to configure anything, as the RX interrupt is enabled when the USART is enabled.
+            auto usartWakeup = reinterpret_cast<const hal_wakeup_source_usart_t*>(source);
+            
+            // Disabled unwanted interrupts and bump the interrupt priority
+            NVIC_InitTypeDef NVIC_InitStructure;
+            switch (usartWakeup->serial) {
+                case HAL_USART_SERIAL1: {
+                    NVIC_DisableIRQ(USART1_IRQn);
+                    NVIC_ClearPendingIRQ(USART1_IRQn);
+                    NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+                    USART_ITConfig(USART1, USART_IT_TXE, DISABLE); // TXE pending bit is cleared only by a write to the USART_DR register
+                    break;
+                }
+                case HAL_USART_SERIAL2: {
+                    NVIC_DisableIRQ(USART2_IRQn);
+                    NVIC_ClearPendingIRQ(USART2_IRQn);
+                    NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+                    USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+                    break;
+                }
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+                case HAL_USART_SERIAL3: {
+                    NVIC_DisableIRQ(USART3_IRQn);
+                    NVIC_ClearPendingIRQ(USART3_IRQn);
+                    NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
+                    USART_ITConfig(USART3, USART_IT_TXE, DISABLE);
+                    break;
+                }
+                case HAL_USART_SERIAL4: {
+                    NVIC_DisableIRQ(UART4_IRQn);
+                    NVIC_ClearPendingIRQ(UART4_IRQn);
+                    NVIC_InitStructure.NVIC_IRQChannel = UART4_IRQn;
+                    USART_ITConfig(UART4, USART_IT_TXE, DISABLE);
+                    break;
+                }
+                case HAL_USART_SERIAL5: {
+                    NVIC_DisableIRQ(UART5_IRQn);
+                    NVIC_ClearPendingIRQ(UART5_IRQn);
+                    NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;
+                    USART_ITConfig(UART5, USART_IT_TXE, DISABLE);
+                    break;
+                }
+#endif
+                default: return SYSTEM_ERROR_INVALID_ARGUMENT; // It should not reach here.
+            }
+            NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+            NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+            NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+            NVIC_Init(&NVIC_InitStructure);
         }
         source = source->next;
     }
@@ -515,7 +562,11 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     configUsartWakeupSource(config->wakeup_sources, &usartWakeup);
 
     if (config->mode == HAL_SLEEP_MODE_STOP && (analogWakeup || usartWakeup)) {
-        enterPlatformSleepMode();
+        if (usartWakeup) {
+            enterPlatformSleepMode(true);
+        } else {
+            enterPlatformSleepMode(false);
+        }
     } else {
         enterPlatformStopMode();
     }
@@ -586,6 +637,44 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
             uint8_t pinSource = pinMap[gpioWakeup->pin].gpio_pin_source;
             extiPriority[pinSource] = NVIC_GetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]));
             NVIC_SetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]), extiPriority[pinSource]);
+        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
+            auto usartWakeup = reinterpret_cast<hal_wakeup_source_usart_t*>(wakeupSource);
+            // Enabled unwanted interrupts and unbump the interrupt priority
+            NVIC_InitTypeDef NVIC_InitStructure;
+            switch (usartWakeup->serial) {
+                case HAL_USART_SERIAL1: {
+                    NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+                    USART_ITConfig(USART1, USART_IT_TXE, ENABLE); // TXE pending bit is cleared only by a write to the USART_DR register
+                    break;
+                }
+                case HAL_USART_SERIAL2: {
+                    NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+                    USART_ITConfig(USART2, USART_IT_TXE, ENABLE);
+                    break;
+                }
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+                case HAL_USART_SERIAL3: {
+                    NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
+                    USART_ITConfig(USART3, USART_IT_TXE, ENABLE);
+                    break;
+                }
+                case HAL_USART_SERIAL4: {
+                    NVIC_InitStructure.NVIC_IRQChannel = UART4_IRQn;
+                    USART_ITConfig(UART4, USART_IT_TXE, ENABLE);
+                    break;
+                }
+                case HAL_USART_SERIAL5: {
+                    NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;
+                    USART_ITConfig(UART5, USART_IT_TXE, ENABLE);
+                    break;
+                }
+#endif
+                default: return SYSTEM_ERROR_INVALID_ARGUMENT; // It should not reach here.
+            }
+            NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7; // The priority is the same as what we set in usart_hal.c
+            NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+            NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+            NVIC_Init(&NVIC_InitStructure);
         }
         wakeupSource = wakeupSource->next;
     }
