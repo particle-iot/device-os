@@ -106,6 +106,8 @@ private:
     system_tick_t imsiCheckTime_;
     system_tick_t registeredTime_;
     system_tick_t powerOnTime_;
+    int iccidChecked_ = 0;
+    int isTwilioSuperSIM_ = 0;
     unsigned int fwVersion_ = 0;
     bool memoryIssuePresent_ = false;
     unsigned registrationTimeout_;

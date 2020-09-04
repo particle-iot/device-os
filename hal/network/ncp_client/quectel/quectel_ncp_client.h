@@ -107,6 +107,8 @@ private:
 
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
+    int iccidChecked_ = 0;
+    int isTwilioSuperSIM_ = 0;
     unsigned registrationTimeout_;
     unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;

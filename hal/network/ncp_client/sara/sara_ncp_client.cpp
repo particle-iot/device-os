@@ -112,7 +112,7 @@ const auto UBLOX_NCP_SIM_SELECT_PIN = 23;
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
-const unsigned REGISTRATION_TWILIO_HOLDOFF_TIMEOUT = 1 * 60 * 1000;
+const unsigned REGISTRATION_TWILIO_HOLDOFF_TIMEOUT = 5 * 60 * 1000;
 
 const unsigned CHECK_IMSI_TIMEOUT = 60 * 1000;
 
@@ -169,6 +169,8 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     imsiCheckTime_ = 0;
     powerOnTime_ = 0;
     registeredTime_ = 0;
+    iccidChecked_ = 0;
+    isTwilioSuperSIM_ = 0;
     memoryIssuePresent_ = false;
     parserError_ = 0;
     ready_ = false;
@@ -1060,7 +1062,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
             auto r = CHECK_PARSER(resp.scanf("+UMNOPROF: %d", &umnoprof));
             CHECK_PARSER_OK(resp.readResult());
             if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::SW_DEFAULT) {
-                // Check if we are using a Twilio SIM based on ICCID
+                // Check if we are using a Twilio Super SIM based on ICCID
                 char buf[32] = {};
                 auto lenCcid = getIccidImpl(buf, sizeof(buf));
                 CellularNetworkConfig netConfig;
@@ -1078,7 +1080,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
 
                 // This is a persistent setting
                 int umnoprof = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
-                if (!strcmp(netConfig.apn(), "super")) { // if Twilio SIM
+                if (!strcmp(netConfig.apn(), "super")) { // if Twilio Super SIM
                     umnoprof = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
                 }
                 parser_.execCommand(1000, "AT+UMNOPROF=%d", umnoprof);
@@ -1553,6 +1555,8 @@ int SaraNcpClient::registerNet() {
 
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
+    iccidChecked_ = 0;      // re-check every time we start registration
+    isTwilioSuperSIM_ = 0;  //  |
     imsiCheckTime_ = (imsiCheckTime_ == 0) ? 0 : regStartTime_;     // if it is 0, it means the radio registered in the last query
 
     return SYSTEM_ERROR_NONE;
@@ -1761,6 +1765,8 @@ void SaraNcpClient::resetRegistrationState() {
     regCheckTime_ = regStartTime_;
     imsiCheckTime_ = regStartTime_;
     registrationInterventions_ = 0;
+    iccidChecked_ = 0;
+    isTwilioSuperSIM_ = 0;
 }
 
 void SaraNcpClient::checkRegistrationState() {
@@ -1781,6 +1787,23 @@ void SaraNcpClient::checkRegistrationState() {
 
 int SaraNcpClient::interveneRegistration() {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTING, SYSTEM_ERROR_NONE);
+
+    // Check and store if we are using a Twilio SIM based on ICCID
+    if (!iccidChecked_) {
+        char buf[32] = {};
+        auto lenCcid = getIccidImpl(buf, sizeof(buf));
+        CellularNetworkConfig netConfig;
+        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
+        netConfig = networkConfigForIccid(buf, lenCcid);
+        if (!strcmp(netConfig.apn(), "super")) { // if Twilio Super SIM
+            isTwilioSuperSIM_ = 1;
+        }
+        iccidChecked_ = 1; // cache
+    }
+
+    if (isTwilioSuperSIM_ && millis() - regStartTime_ <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
+        return 0;
+    }
 
     auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
 

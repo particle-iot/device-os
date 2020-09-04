@@ -107,6 +107,7 @@ const auto QUECTEL_NCP_SIM_SELECT_PIN = 23;
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;
+const unsigned REGISTRATION_TWILIO_HOLDOFF_TIMEOUT = 5 * 60 * 1000;
 
 const system_tick_t QUECTEL_COPS_TIMEOUT = 3 * 60 * 1000;
 const system_tick_t QUECTEL_CFUN_TIMEOUT = 3 * 60 * 1000;
@@ -173,6 +174,8 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     connState_ = NcpConnectionState::DISCONNECTED;
     regStartTime_ = 0;
     regCheckTime_ = 0;
+    iccidChecked_ = 0;
+    isTwilioSuperSIM_ = 0;
     parserError_ = 0;
     ready_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
@@ -1181,7 +1184,7 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
         // First look for network settings based on ICCID
         char buf[32] = {};
         auto lenCcid = getIccidImpl(buf, sizeof(buf));
-        CHECK_TRUE(lenCCid > 5, SYSTEM_ERROR_AT_NOT_OK);
+        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
         netConf_ = networkConfigForIccid(buf, lenCcid);
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
@@ -1270,6 +1273,8 @@ int QuectelNcpClient::registerNet() {
 
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
+    iccidChecked_ = 0;
+    isTwilioSuperSIM_ = 0;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -1481,6 +1486,8 @@ void QuectelNcpClient::resetRegistrationState() {
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
     registrationInterventions_ = 0;
+    iccidChecked_ = 0;
+    isTwilioSuperSIM_ = 0;
 }
 
 void QuectelNcpClient::checkRegistrationState() {
@@ -1499,6 +1506,22 @@ void QuectelNcpClient::checkRegistrationState() {
 int QuectelNcpClient::interveneRegistration() {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTING, SYSTEM_ERROR_NONE);
 
+    // Check and store if we are using a Twilio SIM based on ICCID
+    if (!iccidChecked_) {
+        char buf[32] = {};
+        auto lenCcid = getIccidImpl(buf, sizeof(buf));
+        CellularNetworkConfig netConfig;
+        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
+        netConfig = networkConfigForIccid(buf, lenCcid);
+        if (!strcmp(netConfig.apn(), "super")) { // if Twilio Super SIM
+            isTwilioSuperSIM_ = 1;
+        }
+        iccidChecked_ = 1; // cache
+    }
+
+    if (isTwilioSuperSIM_ && millis() - regStartTime_ <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
+        return 0;
+    }
     auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
 
     // Intervention to speed up registration or recover in case of failure
