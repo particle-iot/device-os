@@ -125,8 +125,8 @@ static int constructUsartWakeupReason(hal_wakeup_source_base_t** wakeupReason, h
     return SYSTEM_ERROR_NONE;
 }
 
-#if HAL_PLATFORM_CELLULAR
 static int constructNetworkWakeupReason(hal_wakeup_source_base_t** wakeupReason, network_interface_index index) {
+#if HAL_PLATFORM_CELLULAR
     auto network = (hal_wakeup_source_network_t*)malloc(sizeof(hal_wakeup_source_network_t));
     if (network) {
         network->base.size = sizeof(hal_wakeup_source_base_t);
@@ -139,8 +139,11 @@ static int constructNetworkWakeupReason(hal_wakeup_source_base_t** wakeupReason,
         return SYSTEM_ERROR_NO_MEMORY;
     }
     return SYSTEM_ERROR_NONE;
-}
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 #endif
+}
+
 
 static int configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources, uint8_t* extiPriorities) {
     auto source = wakeupSources;
@@ -340,13 +343,6 @@ static int configUsartWakeupSource(const hal_wakeup_source_base_t* wakeupSources
                     break;
                 }
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-                case HAL_USART_SERIAL3: {
-                    NVIC_DisableIRQ(USART3_IRQn);
-                    NVIC_ClearPendingIRQ(USART3_IRQn);
-                    NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-                    USART_ITConfig(USART3, USART_IT_TXE, DISABLE);
-                    break;
-                }
                 case HAL_USART_SERIAL4: {
                     NVIC_DisableIRQ(UART4_IRQn);
                     NVIC_ClearPendingIRQ(UART4_IRQn);
@@ -375,15 +371,24 @@ static int configUsartWakeupSource(const hal_wakeup_source_base_t* wakeupSources
 }
 
 static int configNetworkWakeupSource(const hal_wakeup_source_base_t* wakeupSources, uint8_t* configured) {
+#if HAL_PLATFORM_CELLULAR
     auto source = wakeupSources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
-            *configured = 1;
-            // We don't need to configure anything, as the RX interrupt is enabled when the USART is enabled.
+            auto network = reinterpret_cast<const hal_wakeup_source_network_t*>(source);
+            if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
+                *configured = 1;
+                // We don't need to bump the interrupt priority, since the priority has been set to 0 in electronserialpipe_hal.c
+                // We don't disable any USART interrupt here to make sure the modem driver behaves correctly.
+                break; // There is only one USART available for network modem. Stop traversing the list.
+            }
         }
         source = source->next;
     }
     return SYSTEM_ERROR_NONE;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED
+#endif
 }
 
 static int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_gpio_t* gpio) {
@@ -437,7 +442,7 @@ static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_s
             return SYSTEM_ERROR_NOT_SUPPORTED;
         }
     } else {
-        if (!hal_usart_is_enabled(HAL_USART_SERIAL3)) {
+        if (!(USART3->CR1 & USART_CR1_UE)) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
         if (mode != HAL_SLEEP_MODE_STOP) {
@@ -645,7 +650,6 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
             if (   (NVIC_GetPendingIRQ(USART1_IRQn) && usartWakeup->serial == HAL_USART_SERIAL1)
                 || (NVIC_GetPendingIRQ(USART2_IRQn) && usartWakeup->serial == HAL_USART_SERIAL2)
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
-                || (NVIC_GetPendingIRQ(USART3_IRQn) && usartWakeup->serial == HAL_USART_SERIAL3)
                 || (NVIC_GetPendingIRQ(UART4_IRQn) && usartWakeup->serial == HAL_USART_SERIAL4)
                 || (NVIC_GetPendingIRQ(UART5_IRQn) && usartWakeup->serial == HAL_USART_SERIAL5)
 #endif
@@ -654,15 +658,15 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
             }
             break; // Stop traversing the wakeup sources list.
         }
-#if HAL_PLATFORM_CELLULAR
         else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
+#if HAL_PLATFORM_CELLULAR
             auto networkWakeup = reinterpret_cast<hal_wakeup_source_network_t*>(wakeupSource);
             if (NVIC_GetPendingIRQ(USART3_IRQn) && networkWakeup->index == NETWORK_INTERFACE_CELLULAR) {
                 ret = constructNetworkWakeupReason(wakeupReason, networkWakeup->index);
             }
+#endif
             break; // Stop traversing the wakeup sources list.
         }
-#endif
         wakeupSource = wakeupSource->next;
     }
 
@@ -712,11 +716,6 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
                     break;
                 }
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-                case HAL_USART_SERIAL3: {
-                    NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-                    USART_ITConfig(USART3, USART_IT_TXE, ENABLE);
-                    break;
-                }
                 case HAL_USART_SERIAL4: {
                     NVIC_InitStructure.NVIC_IRQChannel = UART4_IRQn;
                     USART_ITConfig(UART4, USART_IT_TXE, ENABLE);
@@ -734,6 +733,13 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
             NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
             NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
             NVIC_Init(&NVIC_InitStructure);
+        } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
+#if HAL_PLATFORM_CELLULAR
+            auto network = reinterpret_cast<const hal_wakeup_source_network_t*>(wakeupSource);
+            if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
+                // We don't need to unbump the priority
+            }
+#endif
         }
         wakeupSource = wakeupSource->next;
     }

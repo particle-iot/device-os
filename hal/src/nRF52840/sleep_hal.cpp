@@ -82,9 +82,12 @@ static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSour
             NVIC_SetPriority(UARTE0_UART0_IRQn, newPriority);
             nrf_uarte_int_enable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
-            priority->usart1Priority = NVIC_GetPriority(UARTE1_IRQn);
-            NVIC_SetPriority(UARTE1_IRQn, newPriority);
-            nrf_uarte_int_enable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
+            auto network = reinterpret_cast<const hal_wakeup_source_network_t*>(source);
+            if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
+                priority->usart1Priority = NVIC_GetPriority(UARTE1_IRQn);
+                NVIC_SetPriority(UARTE1_IRQn, newPriority);
+                nrf_uarte_int_enable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
+            }
         }
         source = source->next;
     }
@@ -113,8 +116,11 @@ static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSo
             NVIC_SetPriority(UARTE0_UART0_IRQn, priority->usart0Priority);
             nrf_uarte_int_disable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
-            NVIC_SetPriority(UARTE1_IRQn, priority->usart1Priority);
-            nrf_uarte_int_disable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
+            auto network = reinterpret_cast<const hal_wakeup_source_network_t*>(source);
+            if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
+                NVIC_SetPriority(UARTE1_IRQn, priority->usart1Priority);
+                nrf_uarte_int_disable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
+            }
         }
         source = source->next;
     }
