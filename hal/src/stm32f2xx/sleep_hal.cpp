@@ -30,7 +30,13 @@
 #include "interrupts_hal.h"
 #include "check.h"
 
-static constexpr uint8_t GPIO_IRQn[] = {
+
+// anonymous namespace
+namespace {
+
+static constexpr uint8_t extiChannelNum = 16;
+
+static constexpr uint8_t GPIO_IRQn[extiChannelNum] = {
     EXTI0_IRQn,     //0
     EXTI1_IRQn,     //1
     EXTI2_IRQn,     //2
@@ -49,8 +55,7 @@ static constexpr uint8_t GPIO_IRQn[] = {
     EXTI15_10_IRQn  //15
 };
 
-static uint8_t extiPriority[16];
-
+};
 
 static int constructGpioWakeupReason(hal_wakeup_source_base_t** wakeupReason, pin_t pin) {
     if (wakeupReason) {
@@ -103,7 +108,7 @@ static int constructAnalogWakeupReason(hal_wakeup_source_base_t** wakeupReason, 
     return SYSTEM_ERROR_NONE;
 }
 
-static int configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
+static int configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources, uint8_t* extiPriorities) {
     auto source = wakeupSources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
@@ -136,7 +141,7 @@ static int configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources)
             
             Hal_Pin_Info* pinMap = HAL_Pin_Map();
             uint8_t pinSource = pinMap[gpioWakeup->pin].gpio_pin_source;
-            extiPriority[pinSource] = NVIC_GetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]));
+            extiPriorities[pinSource] = NVIC_GetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]));
             NVIC_SetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]), 1);
         }
         source = source->next;
@@ -458,7 +463,9 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
 
     Hal_Pin_Info* halPinMap = HAL_Pin_Map();
 
-    configGpioWakeupSource(config->wakeup_sources);
+    uint8_t extiPriority[extiChannelNum];
+
+    configGpioWakeupSource(config->wakeup_sources, extiPriority);
     uint8_t analogWakeup = 0;
     configAnalogWakeupSource(config->wakeup_sources, &analogWakeup);
     configRtcWakeupSource(config->wakeup_sources);
