@@ -66,9 +66,7 @@ uint64_t GetSystem1MsTick64()
     const int is = __get_PRIMASK();
     __disable_irq();
 
-    system_tick_t elapsedTicks = (DWT->CYCCNT >= system_millis_clock) ? (DWT->CYCCNT - system_millis_clock) : (sizeof(uint32_t) - system_millis_clock + DWT->CYCCNT);
-
-    millis = system_millis + elapsedTicks / SYSTEM_US_TICKS / 1000;
+    millis = system_millis + (DWT->CYCCNT - system_millis_clock) / SYSTEM_US_TICKS / 1000;
 
     if ((is & 1) == 0) {
         __enable_irq();
@@ -91,9 +89,8 @@ system_tick_t GetSystem1UsTick()
 
     base_millis = system_millis;
     base_clock = system_millis_clock;
-    system_tick_t elapsedTicks = (DWT->CYCCNT >= base_clock) ? (DWT->CYCCNT - base_clock) : (sizeof(uint32_t) - base_clock + DWT->CYCCNT);
 
-    system_tick_t elapsed_since_millis = (elapsedTicks / SYSTEM_US_TICKS);
+    system_tick_t elapsed_since_millis = ((DWT->CYCCNT-base_clock) / SYSTEM_US_TICKS);
 
     if ((is & 1) == 0) {
         __enable_irq();
