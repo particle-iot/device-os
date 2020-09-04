@@ -1054,6 +1054,16 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
 
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
         int resetCount = 0;
+        int isTwilio = 0;
+        // Check if we are using a Twilio Super SIM based on ICCID
+        char buf[32] = {};
+        auto lenCcid = getIccidImpl(buf, sizeof(buf));
+        CellularNetworkConfig netConfig;
+        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
+        netConfig = networkConfigForIccid(buf, lenCcid);
+        if (!strcmp(netConfig.apn(), "super")) { // if Twilio Super SIM
+            isTwilio = 1;
+        }
         do {
             // Set UMNOPROF = SIM_SELECT
             auto resp = parser_.sendCommand("AT+UMNOPROF?");
@@ -1062,13 +1072,6 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
             auto r = CHECK_PARSER(resp.scanf("+UMNOPROF: %d", &umnoprof));
             CHECK_PARSER_OK(resp.readResult());
             if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::SW_DEFAULT) {
-                // Check if we are using a Twilio Super SIM based on ICCID
-                char buf[32] = {};
-                auto lenCcid = getIccidImpl(buf, sizeof(buf));
-                CellularNetworkConfig netConfig;
-                CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
-                netConfig = networkConfigForIccid(buf, lenCcid);
-
                 // Disconnect before making changes to the UMNOPROF
                 auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
                 int cfunVal = -1;
@@ -1080,7 +1083,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
 
                 // This is a persistent setting
                 int umnoprof = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
-                if (!strcmp(netConfig.apn(), "super")) { // if Twilio Super SIM
+                if (isTwilio) { // if Twilio Super SIM
                     umnoprof = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
                 }
                 parser_.execCommand(1000, "AT+UMNOPROF=%d", umnoprof);
@@ -1091,7 +1094,8 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 uint64_t ubandCatm1 = 0;
                 auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%llu", &ubandCatm1));
                 CHECK_PARSER_OK(respBand.readResult());
-                if (retBand == 1 && static_cast<uint32_t>(ubandCatm1 & 0xffffffff) != 6170) {
+                // Only update if Twilio Super SIM and not set to correct bands
+                if (isTwilio && retBand == 1 && static_cast<uint32_t>(ubandCatm1 & 0xffffffff) != 6170) {
                     // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
                     parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,6170");
                     // Not checking for error since we will reset either way

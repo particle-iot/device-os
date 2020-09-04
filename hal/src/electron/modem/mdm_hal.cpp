@@ -983,13 +983,13 @@ bool MDMParser::init(DevStatus* status)
         bool resetNeeded = false;
         int umnoprof = UBLOX_SARA_UMNOPROF_NONE;
 
+        CellularNetProv netProv = particle::detail::_cellular_sim_to_network_provider(_dev.imsi, _dev.ccid);
+
         sendFormated("AT+UMNOPROF?\r\n");
         if (RESP_ERROR == waitFinalResp(_cbUMNOPROF, &umnoprof, UMNOPROF_TIMEOUT)) {
             goto reset_failure;
         }
         if (umnoprof == UBLOX_SARA_UMNOPROF_SW_DEFAULT) {
-            CellularNetProv netProv = particle::detail::_cellular_sim_to_network_provider(_dev.imsi, _dev.ccid);
-
             int cfun_val = -1;
             sendFormated("AT+CFUN?\r\n");
             if (RESP_OK != waitFinalResp(_cbCFUN, &cfun_val)) {
@@ -1012,7 +1012,8 @@ bool MDMParser::init(DevStatus* status)
             sendFormated("AT+UBANDMASK?\r\n");
             uint32_t ubandCatm1 = 0;
             waitFinalResp(_cbUBANDMASK, &ubandCatm1, UBANDMASK_TIMEOUT);
-            if (ubandCatm1 != 6170) {
+            // Only update if Twilio Super SIM and not set to correct bands
+            if (netProv == CELLULAR_NETPROV_TWILIO && ubandCatm1 != 6170) {
                 // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
                 sendFormated("AT+UBANDMASK=0,6170\r\n");
                 waitFinalResp(nullptr, nullptr, UBANDMASK_TIMEOUT);
