@@ -104,20 +104,23 @@ static int constructAnalogWakeupReason(hal_wakeup_source_base_t** wakeupReason, 
         } else {
             return SYSTEM_ERROR_NO_MEMORY;
         }
+    }
     return SYSTEM_ERROR_NONE;
 }
 
 static int constructUsartWakeupReason(hal_wakeup_source_base_t** wakeupReason, hal_usart_interface_t serial) {
-    auto usart = (hal_wakeup_source_usart_t*)malloc(sizeof(hal_wakeup_source_usart_t));
-    if (usart) {
-        usart->base.size = sizeof(hal_wakeup_source_usart_t);
-        usart->base.version = HAL_SLEEP_VERSION;
-        usart->base.type = HAL_WAKEUP_SOURCE_TYPE_USART;
-        usart->base.next = nullptr;
-        usart->serial = serial;
-        *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(usart);
-    } else {
-        return SYSTEM_ERROR_NO_MEMORY;
+    if (wakeupReason) {
+        auto usart = (hal_wakeup_source_usart_t*)malloc(sizeof(hal_wakeup_source_usart_t));
+        if (usart) {
+            usart->base.size = sizeof(hal_wakeup_source_usart_t);
+            usart->base.version = HAL_SLEEP_VERSION;
+            usart->base.type = HAL_WAKEUP_SOURCE_TYPE_USART;
+            usart->base.next = nullptr;
+            usart->serial = serial;
+            *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(usart);
+        } else {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
     }
     return SYSTEM_ERROR_NONE;
 }
