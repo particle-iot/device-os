@@ -1581,8 +1581,18 @@ int SaraNcpClient::enterDataMode() {
 
     CHECK_TRUE(muxer_.setChannelDataHandler(UBLOX_NCP_PPP_CHANNEL, muxerDataStream_->channelDataCb, muxerDataStream_.get()) == 0, SYSTEM_ERROR_INTERNAL);
     // Send data mode break
-    const char breakCmd[] = "~+++";
-    muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
+    if (ncpId() != PLATFORM_NCP_SARA_R410) {
+        const char breakCmd[] = "~+++";
+        muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
+    } else {
+        // SARA R4 does not support ~+++ escape sequence and with +++ and ATH
+        // it doesn't actually interrupt an ongoing PPP session an enters some
+        // kind of a weird state where it interleaves both PPP and command mode.
+        //
+        // What we do here instead is send a PPP LCP Termination Request
+        const char breakCmd[] = "~\xff}#\xc0!}%}\"} }0User requestS3~";
+        muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
+    }
     skipAll(muxerDataStream_.get(), 1000);
 
     // Initialize AT parser
