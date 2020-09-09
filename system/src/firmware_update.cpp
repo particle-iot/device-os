@@ -52,7 +52,7 @@ namespace {
 const auto TRANSFER_STATE_FILE = "/sys/fw_transfer";
 
 // Interval at which the transfer state file is synced
-const system_tick_t TRANSFER_STATE_SYNC_INTERVAL = 1000;
+const system_tick_t TRANSFER_STATE_SYNC_INTERVAL = 2000;
 
 // The data stored in the OTA section is read in blocks of this size
 const size_t OTA_FLASH_READ_BLOCK_SIZE = 128;
@@ -80,12 +80,14 @@ struct TransferState {
     Sha256 partialHash; // SHA-256 of the partially transferred data
     Sha256 tempHash; // Intermediate SHA-256 checksum
     PersistentTransferState persist; // Persistently stored transfer state
+    size_t startOffset; // Offset at which the transfer started
     system_tick_t lastSynced; // Time when the file was last synced
     bool needSync; // Whether the file needs to be synced
 
     TransferState() :
             file(TRANSFER_STATE_FILE),
             persist(),
+            startOffset(0),
             lastSynced(0),
             needSync(false) {
     }
@@ -289,6 +291,7 @@ int FirmwareUpdate::initTransferState(size_t fileSize, const char* fileHash) {
         persist->partialSize = 0;
         CHECK(state->partialHash.start()); // Reset SHA-256 context
     }
+    state->startOffset = persist->partialSize;
     transferState_ = std::move(state);
     return 0;
 }
@@ -298,15 +301,14 @@ int FirmwareUpdate::updateTransferState(const char* chunkData, size_t chunkSize,
     if (!state) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    bool updateState = false;
     const auto persist = &state->persist;
+    const size_t partialSizeBefore = persist->partialSize;
     // Check if the chunk is adjacent to or overlaps with the contiguous fragment of the data for
     // which we have already calculated the checksum
     if (persist->partialSize >= chunkOffset && persist->partialSize < chunkOffset + chunkSize) {
         const auto n = chunkOffset + chunkSize - persist->partialSize;
         CHECK(state->partialHash.update(chunkData + persist->partialSize - chunkOffset, n));
         persist->partialSize += n;
-        updateState = true;
     }
     // Chunks are not necessarily transferred sequentially. We may need to read them back from the
     // OTA section to calculate the checksum of the data transferred so far
@@ -321,12 +323,15 @@ int FirmwareUpdate::updateTransferState(const char* chunkData, size_t chunkSize,
             addr += n;
         }
         persist->partialSize = partialSize;
-        updateState = true;
     }
-    if (updateState) {
+    if (persist->partialSize > partialSizeBefore) {
         CHECK(state->tempHash.copyFrom(state->partialHash));
         CHECK(state->tempHash.finish(persist->partialHash));
         CHECK(state->file.save(persist, sizeof(PersistentTransferState)));
+        // Avoid syncing the file on the very first chunk received
+        if (partialSizeBefore == state->startOffset) {
+            state->lastSynced = HAL_Timer_Get_Milli_Seconds();
+        }
         state->needSync = true;
     }
     if (state->needSync && HAL_Timer_Get_Milli_Seconds() - state->lastSynced >= TRANSFER_STATE_SYNC_INTERVAL) {
