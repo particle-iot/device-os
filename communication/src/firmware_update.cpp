@@ -308,7 +308,7 @@ int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageE
     transferSize_ = fileSize_ - fileOffset_;
     chunkCount_ = (transferSize_ + chunkSize_ - 1) / chunkSize_;
     windowSize_ = OTA_RECEIVE_WINDOW_SIZE / chunkSize_;
-    LOG(INFO, "File offset: %u", (unsigned)fileOffset_);
+    LOG(INFO, "Start offset: %u", (unsigned)fileOffset_);
     LOG(INFO, "Chunk count: %u", (unsigned)chunkCount_);
     LOG(TRACE, "Window size (chunks): %u", (unsigned)windowSize_);
     lastChunkTime_ = millis(); // ACK for the first chunk will be delayed
@@ -391,8 +391,9 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
         ERROR_MESSAGE("Invalid chunk size: %u", size);
         return SYSTEM_ERROR_PROTOCOL;
     }
+    bool isDupChunk = false;
     if (index <= chunkIndex_) {
-        ++stats_.duplicateChunks;
+        isDupChunk = true;
     } else if (index > chunkIndex_ + windowSize_) {
         LOG(WARN, "Chunk is out of receiver window");
     } else {
@@ -403,7 +404,7 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
         const unsigned bitIndex = index % 32;
         uint32_t w = chunks_[wordIndex];
         if (w & (1 << bitIndex)) {
-            ++stats_.duplicateChunks;
+            isDupChunk = true;
         } else {
             w |= (1 << bitIndex);
             chunks_[wordIndex] = w;
@@ -433,6 +434,9 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
             stats_.processingTime += millis() - t1;
         }
     }
+    if (isDupChunk) {
+        ++stats_.duplicateChunks;
+    }
     bool hasGaps = false;
     for (size_t i = 0; i < OTA_CHUNK_BITMAP_ELEMENTS; ++i) {
         // If some bits are still set in the bitmap, then there's a gap in the sequence of received chunks
@@ -442,7 +446,7 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
         }
     }
     ++unackChunks_;
-    if (hasGaps || hasGaps != hasGaps_ || chunkIndex_ == chunkCount_ || unackChunks_ >= OTA_CHUNK_ACK_COUNT ||
+    if (isDupChunk || hasGaps || hasGaps != hasGaps_ || chunkIndex_ == chunkCount_ || unackChunks_ >= OTA_CHUNK_ACK_COUNT ||
             lastChunkTime_ + OTA_CHUNK_ACK_DELAY <= millis()) {
         // Send an UpdateAck
         initChunkAck(e);
