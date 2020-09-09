@@ -33,6 +33,11 @@ extern "C" {
  * by @pkourany on PR: https://github.com/spark/firmware/pull/556 */
 #define USE_BIT_BAND 0
 
+inline const Hal_Pin_Info* fastPinGetPinmap() {
+    static Hal_Pin_Info* pinMap = HAL_Pin_Map();
+    return pinMap;
+}
+
 #if USE_BIT_BAND
 /* Use CortexM3 Bit-Band access to perform GPIO atomic read-modify-write */
 
@@ -62,7 +67,6 @@ where:
 #define GPIO_GetBit_BB(Addr, Bit)       \
           (*(__IO uint32_t *) (PERIPH_BB_BASE | ((Addr - PERIPH_BASE) << 5) | ((Bit) << 2)))
 
-static Hal_Pin_Info* pin_map = HAL_Pin_Map();
 
 inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
 inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
@@ -70,17 +74,17 @@ inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
 
 inline void pinSetFast(pin_t _pin)
 {
-    GPIO_SetBit_BB((__IO uint32_t)&pin_map[_pin].gpio_peripheral->ODR, pin_map[_pin].gpio_pin_source);
+    GPIO_SetBit_BB((__IO uint32_t)&fastPinGetPinmap()[_pin].gpio_peripheral->ODR, fastPinGetPinmap()[_pin].gpio_pin_source);
 }
 
 inline void pinResetFast(pin_t _pin)
 {
-    GPIO_ResetBit_BB((__IO uint32_t)&pin_map[_pin].gpio_peripheral->ODR, pin_map[_pin].gpio_pin_source);
+    GPIO_ResetBit_BB((__IO uint32_t)&fastPinGetPinmap()[_pin].gpio_peripheral->ODR, fastPinGetPinmap()[_pin].gpio_pin_source);
 }
 
 inline int32_t pinReadFast(pin_t _pin)
 {
-    return GPIO_GetBit_BB((__IO uint32_t)&pin_map[_pin].gpio_peripheral->IDR, pin_map[_pin].gpio_pin_source);
+    return GPIO_GetBit_BB((__IO uint32_t)&fastPinGetPinmap()[_pin].gpio_peripheral->IDR, fastPinGetPinmap()[_pin].gpio_pin_source);
 }
 
 #else
@@ -92,7 +96,6 @@ inline int32_t pinReadFast(pin_t _pin)
 #endif
 
 #ifdef STM32F10X
-static Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
 inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
@@ -100,20 +103,19 @@ inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
 
 inline void pinSetFast(pin_t _pin)
 {
-    PIN_MAP[_pin].gpio_peripheral->BSRR = PIN_MAP[_pin].gpio_pin;
+    fastPinGetPinmap()[_pin].gpio_peripheral->BSRR = fastPinGetPinmap()[_pin].gpio_pin;
 }
 
 inline void pinResetFast(pin_t _pin)
 {
-    PIN_MAP[_pin].gpio_peripheral->BRR = PIN_MAP[_pin].gpio_pin;
+    fastPinGetPinmap()[_pin].gpio_peripheral->BRR = fastPinGetPinmap()[_pin].gpio_pin;
 }
 
 inline int32_t pinReadFast(pin_t _pin)
 {
-    return ((PIN_MAP[_pin].gpio_peripheral->IDR & PIN_MAP[_pin].gpio_pin) == 0 ? LOW : HIGH);
+    return ((fastPinGetPinmap()[_pin].gpio_peripheral->IDR & fastPinGetPinmap()[_pin].gpio_pin) == 0 ? LOW : HIGH);
 }
 #elif defined(STM32F2XX)
-static Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
 inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
@@ -121,17 +123,17 @@ inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
 
 inline void pinSetFast(pin_t _pin)
 {
-    PIN_MAP[_pin].gpio_peripheral->BSRRL = PIN_MAP[_pin].gpio_pin;
+    fastPinGetPinmap()[_pin].gpio_peripheral->BSRRL = fastPinGetPinmap()[_pin].gpio_pin;
 }
 
 inline void pinResetFast(pin_t _pin)
 {
-    PIN_MAP[_pin].gpio_peripheral->BSRRH = PIN_MAP[_pin].gpio_pin;
+    fastPinGetPinmap()[_pin].gpio_peripheral->BSRRH = fastPinGetPinmap()[_pin].gpio_pin;
 }
 
 inline int32_t pinReadFast(pin_t _pin)
 {
-	return ((PIN_MAP[_pin].gpio_peripheral->IDR & PIN_MAP[_pin].gpio_pin) == 0 ? LOW : HIGH);
+	return ((fastPinGetPinmap()[_pin].gpio_peripheral->IDR & fastPinGetPinmap()[_pin].gpio_pin) == 0 ? LOW : HIGH);
 }
 #elif HAL_PLATFORM_NRF52840
 
@@ -142,23 +144,22 @@ inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
 inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
 inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
 
-static Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 inline void pinSetFast(pin_t _pin)
 {
-    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[_pin].gpio_port, PIN_MAP[_pin].gpio_pin);
+    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(fastPinGetPinmap()[_pin].gpio_port, fastPinGetPinmap()[_pin].gpio_pin);
     nrf_gpio_pin_set(nrf_pin);
 }
 
 inline void pinResetFast(pin_t _pin)
 {
-    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[_pin].gpio_port, PIN_MAP[_pin].gpio_pin);
+    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(fastPinGetPinmap()[_pin].gpio_port, fastPinGetPinmap()[_pin].gpio_pin);
     nrf_gpio_pin_clear(nrf_pin);
 }
 
 inline int32_t pinReadFast(pin_t _pin)
 {
-    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(PIN_MAP[_pin].gpio_port, PIN_MAP[_pin].gpio_pin);
+    uint32_t nrf_pin = NRF_GPIO_PIN_MAP(fastPinGetPinmap()[_pin].gpio_port, fastPinGetPinmap()[_pin].gpio_pin);
     // Dummy read is needed because peripherals run at 16 MHz while the CPU runs at 64 MHz.
     (void)nrf_gpio_pin_read(nrf_pin);
     return nrf_gpio_pin_read(nrf_pin);
