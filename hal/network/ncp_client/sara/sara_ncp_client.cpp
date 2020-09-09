@@ -169,8 +169,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     imsiCheckTime_ = 0;
     powerOnTime_ = 0;
     registeredTime_ = 0;
-    iccidChecked_ = 0;
-    isTwilioSuperSIM_ = 0;
+    netProv_ = CellularNetworkProv::NONE;
     memoryIssuePresent_ = false;
     parserError_ = 0;
     ready_ = false;
@@ -1011,12 +1010,12 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     if (reset) {
         if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
             // U201
-            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16"));
+            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16,0"));
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
             HAL_Delay_Milliseconds(1000);
         } else {
             // R410
-            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
+            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=15,0"));
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
             HAL_Delay_Milliseconds(10000);
         }
@@ -1048,21 +1047,20 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
         // for some reason. Attempt to cycle the modem through minimal/full functional state.
         // We only do this for R4-based devices, as U2-based modems seem to fail
         // to change baudrate later on for some reason
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1"));
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
     }
 
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
         int resetCount = 0;
-        int isTwilio = 0;
         // Check if we are using a Twilio Super SIM based on ICCID
         char buf[32] = {};
         auto lenCcid = getIccidImpl(buf, sizeof(buf));
         CellularNetworkConfig netConfig;
-        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
+        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_BAD_DATA);
         netConfig = networkConfigForIccid(buf, lenCcid);
-        if (!strcmp(netConfig.apn(), "super")) { // if Twilio Super SIM
-            isTwilio = 1;
+        if (netConfig.hasNetProv()) {
+            netProv_ = netConfig.netProv();
         }
         do {
             // Set UMNOPROF = SIM_SELECT
@@ -1078,12 +1076,12 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 auto retCfun = CHECK_PARSER(respCfun.scanf("+CFUN: %d", &cfunVal));
                 CHECK_PARSER_OK(respCfun.readResult());
                 if (retCfun == 1 && cfunVal != 0) {
-                    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
+                    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
                 }
 
                 // This is a persistent setting
                 int umnoprof = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
-                if (isTwilio) { // if Twilio Super SIM
+                if (netProv_ == CellularNetworkProv::TWILIO) { // if Twilio Super SIM
                     umnoprof = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
                 }
                 parser_.execCommand(1000, "AT+UMNOPROF=%d", umnoprof);
@@ -1092,18 +1090,23 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
             } else if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::STANDARD_EUROPE) {
                 auto respBand = parser_.sendCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK?");
                 uint64_t ubandCatm1 = 0;
-                auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%llu", &ubandCatm1));
+                char ubandCatm1_str[24] = {};
+                auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%23[^,\n]", ubandCatm1_str));
                 CHECK_PARSER_OK(respBand.readResult());
-                // Only update if Twilio Super SIM and not set to correct bands
-                if (isTwilio && retBand == 1 && static_cast<uint32_t>(ubandCatm1 & 0xffffffff) != 6170) {
-                    // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
-                    parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,6170");
-                    // Not checking for error since we will reset either way
-                    reset = true;
+                if (netProv_ == CellularNetworkProv::TWILIO && retBand == 1) {
+                    char* pEnd = &ubandCatm1_str[0];
+                    ubandCatm1 = strtoull(ubandCatm1_str, &pEnd, 10);
+                    // Only update if Twilio Super SIM and not set to correct bands
+                    if (pEnd - ubandCatm1_str > 0 && ubandCatm1 != 6170) {
+                        // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
+                        parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,6170");
+                        // Not checking for error since we will reset either way
+                        reset = true;
+                    }
                 }
             }
             if (reset) {
-                CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=15"));
+                CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=15,0"));
                 HAL_Delay_Milliseconds(10000);
                 CHECK(waitAtResponseFromPowerOn(state));
             }
@@ -1481,8 +1484,11 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         // First look for network settings based on ICCID
         char buf[32] = {};
         auto lenCcid = getIccidImpl(buf, sizeof(buf));
-        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
+        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_BAD_DATA);
         netConf_ = networkConfigForIccid(buf, lenCcid);
+        if (netConf_.hasNetProv()) {
+            netProv_ = netConf_.netProv();
+        }
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
@@ -1492,6 +1498,9 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
             const int r = CHECK_PARSER(resp.readResult());
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
             netConf_ = networkConfigForImsi(buf, strlen(buf));
+            if (netConf_.hasNetProv()) {
+                netProv_ = netConf_.netProv();
+            }
         }
     }
 
@@ -1559,8 +1568,6 @@ int SaraNcpClient::registerNet() {
 
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
-    iccidChecked_ = 0;      // re-check every time we start registration
-    isTwilioSuperSIM_ = 0;  //  |
     imsiCheckTime_ = (imsiCheckTime_ == 0) ? 0 : regStartTime_;     // if it is 0, it means the radio registered in the last query
 
     return SYSTEM_ERROR_NONE;
@@ -1769,8 +1776,6 @@ void SaraNcpClient::resetRegistrationState() {
     regCheckTime_ = regStartTime_;
     imsiCheckTime_ = regStartTime_;
     registrationInterventions_ = 0;
-    iccidChecked_ = 0;
-    isTwilioSuperSIM_ = 0;
 }
 
 void SaraNcpClient::checkRegistrationState() {
@@ -1792,20 +1797,7 @@ void SaraNcpClient::checkRegistrationState() {
 int SaraNcpClient::interveneRegistration() {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTING, SYSTEM_ERROR_NONE);
 
-    // Check and store if we are using a Twilio SIM based on ICCID
-    if (!iccidChecked_) {
-        char buf[32] = {};
-        auto lenCcid = getIccidImpl(buf, sizeof(buf));
-        CellularNetworkConfig netConfig;
-        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
-        netConfig = networkConfigForIccid(buf, lenCcid);
-        if (!strcmp(netConfig.apn(), "super")) { // if Twilio Super SIM
-            isTwilioSuperSIM_ = 1;
-        }
-        iccidChecked_ = 1; // cache
-    }
-
-    if (isTwilioSuperSIM_ && millis() - regStartTime_ <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
+    if (netProv_ == CellularNetworkProv::TWILIO && millis() - regStartTime_ <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
         return 0;
     }
 
@@ -1828,8 +1820,8 @@ int SaraNcpClient::interveneRegistration() {
                 csd_.reset();
                 psd_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
                 return 0;
             }
         }
@@ -1860,8 +1852,8 @@ int SaraNcpClient::interveneRegistration() {
                 LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
             }
         }
     }

@@ -18,7 +18,7 @@ const char KORE_VODAFONE_MCC_MNC[] = "20404";
 const int MCC_MNC_MIN_SIZE = 5;
 const int ICCID_MIN_SIZE = 19;
 
-CellularNetProv _cellular_sim_to_network_provider(const char* imsi, const char* iccid) {
+CellularNetProv cellular_sim_to_network_provider_impl(const char* imsi, const char* iccid) {
     if (iccid && strlen(iccid) >= ICCID_MIN_SIZE) {
         if ((strncmp(iccid, TWILIO_ICCID_1, strlen(TWILIO_ICCID_1)) == 0) || (strncmp(iccid, TWILIO_ICCID_2, strlen(TWILIO_ICCID_2)) == 0)) {
             return CELLULAR_NETPROV_TWILIO;

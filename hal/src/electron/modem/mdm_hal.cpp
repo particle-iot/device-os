@@ -122,7 +122,7 @@ static volatile uint32_t gprs_timeout_duration;
 inline void ARM_GPRS_TIMEOUT(uint32_t dur) {
     gprs_timeout_start = HAL_Timer_Get_Milli_Seconds();
     gprs_timeout_duration = dur;
-    DEBUG("GPRS WD Set %d\r\n",(dur));
+    DEBUG("GPRS WD Set %d",(dur));
 }
 inline bool IS_GPRS_TIMEOUT() {
     return gprs_timeout_duration && ((HAL_Timer_Get_Milli_Seconds()-gprs_timeout_start)>gprs_timeout_duration);
@@ -130,7 +130,7 @@ inline bool IS_GPRS_TIMEOUT() {
 
 inline void CLR_GPRS_TIMEOUT() {
     gprs_timeout_duration = 0;
-    DEBUG("GPRS WD Cleared, was %d\r\n", gprs_timeout_duration);
+    DEBUG("GPRS WD Cleared, was %d", gprs_timeout_duration);
 }
 
 namespace {
@@ -983,7 +983,7 @@ bool MDMParser::init(DevStatus* status)
         bool resetNeeded = false;
         int umnoprof = UBLOX_SARA_UMNOPROF_NONE;
 
-        CellularNetProv netProv = particle::detail::_cellular_sim_to_network_provider(_dev.imsi, _dev.ccid);
+        CellularNetProv netProv = particle::detail::cellular_sim_to_network_provider_impl(_dev.imsi, _dev.ccid);
 
         sendFormated("AT+UMNOPROF?\r\n");
         if (RESP_ERROR == waitFinalResp(_cbUMNOPROF, &umnoprof, UMNOPROF_TIMEOUT)) {
@@ -1010,7 +1010,7 @@ bool MDMParser::init(DevStatus* status)
             goto reset_failure; // Not checking for errors above since we will reset either way
         } else if (umnoprof == UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) {
             sendFormated("AT+UBANDMASK?\r\n");
-            uint32_t ubandCatm1 = 0;
+            uint64_t ubandCatm1 = 0;
             waitFinalResp(_cbUBANDMASK, &ubandCatm1, UBANDMASK_TIMEOUT);
             // Only update if Twilio Super SIM and not set to correct bands
             if (netProv == CELLULAR_NETPROV_TWILIO && ubandCatm1 != 6170) {
@@ -1067,7 +1067,7 @@ reset_failure:
     // eDRX disables can take a couple or more resets, UMNOPROF requires 1 or 2 and UBANDMASK requires 1 or 2 worst case
     if (resetFailureAttempts++ < 8) {
         if (_atOk()) {
-            sendFormated("AT+CFUN=15\r\n");
+            sendFormated("AT+CFUN=15,0\r\n");
             waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT);
             _init = false; // invalidate init and prevent cellular registration
             _pwr = false;  //   |
@@ -1219,7 +1219,7 @@ bool MDMParser::powerOff(void)
 
 int MDMParser::_cbUMNOPROF(int type, const char *buf, int len, int* i)
 {
-    if ((type == TYPE_PLUS) && i){
+    if ((type == TYPE_PLUS) && i) {
         int a;
         *i = -1;
         if (sscanf(buf, "\r\n+UMNOPROF: %d", &a) == 1) {
@@ -1240,14 +1240,19 @@ int MDMParser::_cbCFUN(int type, const char *buf, int len, int* i) {
     return WAIT;
 }
 
-int MDMParser::_cbUBANDMASK(int type, const char *buf, int len, uint32_t* i)
+int MDMParser::_cbUBANDMASK(int type, const char *buf, int len, uint64_t* i)
 {
-    if ((type == TYPE_PLUS) && i){
+    if ((type == TYPE_PLUS) && i) {
         uint64_t a;
+        char s[24] = {};
+        char* pEnd = &s[0];
         *i = 0;
         // \r\n+UBANDMASK: 0,6170,1,524420\r\n
-        if (sscanf(buf, "\r\n+UBANDMASK: 0,%llu", &a) == 1) {
-            *i = (uint32_t)(a & 0xffffffff); // limit to 32-bit (Cat-M R410-02B supports up to band 28)
+        if (sscanf(buf, "\r\n+UBANDMASK: 0,%23[^,\n]", s) == 1) {
+            a = strtoull(s, &pEnd, 10);
+            if (pEnd - s > 0) {
+                *i = a; // limit to 32-bit (Cat-M R410-02B supports up to band 28)
+            }
         }
     }
     return WAIT;
@@ -1344,8 +1349,9 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
         }
         if (cfun_val != 1) {
             sendFormated("AT+CFUN=1,0\r\n");
-            if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT))
+            if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                 goto failure;
+            }
         }
         // Check to see if we are already connected. If so don't issue these
         // commands as they will knock us off the cellular network.
@@ -1440,8 +1446,9 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             }
             if (cfun_val != 1) {
                 sendFormated("AT+CFUN=1,0\r\n");
-                if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT))
+                if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     goto failure;
+                }
             }
 
             _net.cops = 2; // Re-init to de-registered state in case of COPS? error, to force auto connection
@@ -1473,7 +1480,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                 if (HAL_Timer_Get_Milli_Seconds() - start_imsi_check > 60000UL) {
                     start_imsi_check = HAL_Timer_Get_Milli_Seconds();
                     sendFormated("AT+CIMI\r\n");
-                    if (RESP_OK != waitFinalResp()) {
+                    if (RESP_OK != waitFinalResp(nullptr, nullptr, CIMI_TIMEOUT)) {
                         goto failure;
                     }
                 }
@@ -1527,7 +1534,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         // Request the IMSI (specially used for multi-imsi SIMs) that is present when actually registered
         CStringHelper str_imsi(_dev.imsi, sizeof(_dev.imsi));
         sendFormated("AT+CIMI\r\n");
-        if (RESP_OK != waitFinalResp(_cbString, &str_imsi))
+        if (RESP_OK != waitFinalResp(_cbString, &str_imsi, CIMI_TIMEOUT))
             goto failure;
 
         // Reformat the operator string to be numeric

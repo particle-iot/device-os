@@ -30,12 +30,12 @@ extern "C" {
 /**
  * Function for processing Set cellular data usage info, broken out for unit tests
  */
-cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
+cellular_result_t cellular_data_usage_set_impl(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
 
 /**
  * Function for processing Get cellular data usage info, broken out for unit tests
  */
-cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
+cellular_result_t cellular_data_usage_get_impl(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
 
 /* detail functions defined for unit tests */
 namespace particle { namespace detail {

@@ -43,7 +43,7 @@ namespace particle { namespace detail {
 /**
  * Function for setting the cellular network provider based on the ICCID and/or IMSI of the SIM card inserted, broken out for unit tests
  */
-CellularNetProv _cellular_sim_to_network_provider(const char* imsi, const char* iccid);
+CellularNetProv cellular_sim_to_network_provider_impl(const char* imsi, const char* iccid);
 
 }} // namespace particle detail
 

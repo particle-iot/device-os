@@ -87,6 +87,7 @@ private:
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerDataStream_;
     CellularNetworkConfig netConf_;
+    CellularNetworkProv netProv_ = CellularNetworkProv::NONE;
     CellularGlobalIdentity cgi_ = {};
     CellularAccessTechnology act_ = CellularAccessTechnology::NONE;
 
@@ -106,8 +107,6 @@ private:
     system_tick_t imsiCheckTime_;
     system_tick_t registeredTime_;
     system_tick_t powerOnTime_;
-    int iccidChecked_ = 0;
-    int isTwilioSuperSIM_ = 0;
     unsigned int fwVersion_ = 0;
     bool memoryIssuePresent_ = false;
     unsigned registrationTimeout_;

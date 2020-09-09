@@ -27,6 +27,7 @@ namespace particle {
 namespace {
 
 struct NetworkConfig {
+    CellularNetworkProv net_prov;
     const char* mcc;
     const char* mnc;
     const char *iccid_prefix;
@@ -36,11 +37,11 @@ struct NetworkConfig {
 };
 
 const NetworkConfig NETWORK_CONFIG[] = {
-    { "214", "07", "", "spark.telefonica.com", "", "" }, // Telefonica
-    { "310", "410", "", "10569.mcs", "", "" }, // Kore/AT&T
-    { "204", "04", "", "vfd1.korem2m.com", "kore", "kore" }, // Kore/Vodafone
-    { "", "", "8988307", "super", "", "" }, // Twilio
-    { "", "", "8988323", "super", "", "" }  // Twilio
+    { CellularNetworkProv::TELEFONICA, "214", "07", "", "spark.telefonica.com", "", "" }, // Telefonica
+    { CellularNetworkProv::KORE_VODAFONE, "204", "04", "", "vfd1.korem2m.com", "kore", "kore" }, // Kore/Vodafone
+    { CellularNetworkProv::KORE_ATT, "310", "410", "", "10569.mcs", "", "" }, // Kore/AT&T
+    { CellularNetworkProv::TWILIO, "", "", "8988323", "super", "", "" }, // Twilio Super SIM
+    { CellularNetworkProv::TWILIO, "", "", "8988307", "super", "", "" }, // Twilio Super SIM
 };
 
 const size_t NETWORK_CONFIG_SIZE = sizeof(NETWORK_CONFIG) / sizeof(NETWORK_CONFIG[0]);
@@ -59,7 +60,7 @@ CellularNetworkConfig networkConfigForIccid(const char* iccid, size_t size) {
     for (size_t i = 0; i < NETWORK_CONFIG_SIZE; ++i) {
         const NetworkConfig& conf = NETWORK_CONFIG[i];
         if (strncmp(iccid, conf.iccid_prefix, ICCID_PREFIX_LEN) == 0) {
-            return CellularNetworkConfig().apn(conf.apn).user(conf.user).password(conf.password);
+            return CellularNetworkConfig().netProv(conf.net_prov).apn(conf.apn).user(conf.user).password(conf.password);
         }
     }
     return CellularNetworkConfig();
@@ -77,7 +78,7 @@ CellularNetworkConfig networkConfigForImsi(const char* imsi, size_t size) {
                 return CellularNetworkConfig();
             }
             if (strncmp(imsi + MCC_SIZE, conf.mnc, mncSize) == 0) {
-                return CellularNetworkConfig().apn(conf.apn).user(conf.user).password(conf.password);
+                return CellularNetworkConfig().netProv(conf.net_prov).apn(conf.apn).user(conf.user).password(conf.password);
             }
         }
     }

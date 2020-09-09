@@ -21,6 +21,15 @@
 
 namespace particle {
 
+enum class CellularNetworkProv {
+    NONE = 0,
+    TELEFONICA = 1,
+    KORE_VODAFONE = 2,
+    KORE_ATT = 3,
+    TWILIO = 4,
+    MAX = 100,
+};
+
 class CellularNetworkConfig;
 
 CellularNetworkConfig networkConfigForImsi(const char* imsi, size_t size);
