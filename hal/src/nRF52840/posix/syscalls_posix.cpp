@@ -666,6 +666,36 @@ int _rename(const char* oldpath, const char* newpath) {
     return 0;
 }
 
+int ftruncate(int fd, off_t length) {
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    auto entry = s_fdMap.get(fd);
+    if (!entry) {
+        errno = EBADF;
+        return -1;
+    }
+
+    return CHECK_LFS_ERRNO(lfs_file_truncate(&lfs->instance, entry->file, length));
+}
+
+int truncate(const char* path, off_t length) {
+    if (!path) {
+        errno = EINVAL;
+        return -1;
+    }
+    auto lfs = filesystem_get_instance(nullptr);
+    FsLock lk(lfs);
+
+    lfs_file_t f = {};
+    CHECK_LFS_ERRNO(lfs_file_open(&lfs->instance, &f, path, LFS_O_WRONLY));
+    SCOPE_GUARD({
+        lfs_file_close(&lfs->instance, &f);
+    });
+    CHECK_LFS_ERRNO(lfs_file_truncate(&lfs->instance, &f, length));
+    return 0;
+}
+
 // Current newlib doesn't implement or handle these, so we manually alias _ to non-_
 DIR* opendir(const char* name) __attribute__((alias("_opendir")));
 struct dirent* readdir(DIR* pdir) __attribute__((alias("_readdir")));
