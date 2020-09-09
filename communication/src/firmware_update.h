@@ -54,7 +54,7 @@ const size_t OTA_CHUNK_BITMAP_ELEMENTS = (OTA_RECEIVE_WINDOW_SIZE / MIN_OTA_CHUN
  * SCTP recommends using a delay of 200ms with 500ms being the absolute maximum. Setting this
  * parameter to 0 disables delayed acknowledgements.
  */
-const system_tick_t OTA_CHUNK_ACK_DELAY = 300;
+const system_tick_t OTA_CHUNK_ACK_DELAY = 200;
 
 /**
  * Minimum number of chunks to receive before generating an acknowledgement.

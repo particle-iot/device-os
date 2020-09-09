@@ -422,12 +422,13 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
                     fileOffset_ += bits * chunkSize_;
                     chunkIndex_ += bits;
                 }
-            } else {
+                // Last chunk can be smaller than the maximum chunk size
+                if (fileOffset_ > fileSize_) {
+                    fileOffset_ = fileSize_;
+                }
+            } else if ((bitIndex > 0 && !(w & (1 << (bitIndex - 1)))) ||
+                    (bitIndex == 0 && wordIndex > 0 && !(chunks_[wordIndex - 1] & (1 << 31)))) {
                 ++stats_.outOfOrderChunks;
-            }
-            // Last chunk can be smaller than the maximum chunk size
-            if (fileOffset_ > fileSize_) {
-                fileOffset_ = fileSize_;
             }
             const auto t1 = millis();
             CHECK(callbacks_->save_firmware_chunk(data, size, offs, fileOffset_));
