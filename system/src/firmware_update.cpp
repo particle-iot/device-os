@@ -278,12 +278,10 @@ int FirmwareUpdate::initTransferState(size_t fileSize, const char* fileHash) {
                 resumeTransfer = true;
             }
         }
-    } else if (r < 0 && r != SYSTEM_ERROR_NOT_FOUND) {
+    } else if (r < 0 && r != SYSTEM_ERROR_NOT_FOUND && r != SYSTEM_ERROR_BAD_DATA) {
         return r;
     }
-    if (resumeTransfer) {
-        state->file.close(); // Will be reopened for writing
-    } else {
+    if (!resumeTransfer) {
         state->file.clear();
         memcpy(persist->fileHash, fileHash, Sha256::HASH_SIZE);
         memset(persist->partialHash, 0, Sha256::HASH_SIZE);

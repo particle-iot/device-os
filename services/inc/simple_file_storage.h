@@ -23,20 +23,23 @@
 
 #include "filesystem.h"
 
-namespace particle::system {
+namespace particle {
 
+// Note: It is not safe to access the same file using multiple instances of this class
 class SimpleFileStorage {
 public:
-    explicit SimpleFileStorage(const char* file);
+    explicit SimpleFileStorage(const char* fileName);
     ~SimpleFileStorage();
 
     int load(void* data, size_t size);
     int save(const void* data, size_t size);
     int sync();
 
+    void clear();
+
     void close();
 
-    void clear();
+    const char* fileName() const;
 
     static int load(const char* file, void* data, size_t size);
     static int save(const char* file, const void* data, size_t size);
@@ -44,15 +47,21 @@ public:
 
 private:
     lfs_file_t file_;
-    const char* const fileName_;
+    const char* fileName_;
+    int dataSize_;
     int openFlags_;
 
-    int open(filesystem_t* fs, int flags);
+    int readDataSize(filesystem_t* fs);
+    int open(filesystem_t* fs, bool readOnly);
     void close(filesystem_t* fs);
 };
 
 inline SimpleFileStorage::~SimpleFileStorage() {
     close();
+}
+
+inline const char* SimpleFileStorage::fileName() const {
+    return fileName_;
 }
 
 inline int SimpleFileStorage::load(const char* file, void* data, size_t size) {
@@ -67,6 +76,6 @@ inline void SimpleFileStorage::clear(const char* file) {
     SimpleFileStorage(file).clear();
 }
 
-} // namespace particle::system
+} // namespace particle
 
 #endif // HAL_PLATFORM_FILESYSTEM
