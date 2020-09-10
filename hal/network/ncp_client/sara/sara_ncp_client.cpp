@@ -169,7 +169,6 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     imsiCheckTime_ = 0;
     powerOnTime_ = 0;
     registeredTime_ = 0;
-    netProv_ = CellularNetworkProv::NONE;
     memoryIssuePresent_ = false;
     parserError_ = 0;
     ready_ = false;
@@ -1058,10 +1057,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
         auto lenCcid = getIccidImpl(buf, sizeof(buf));
         CellularNetworkConfig netConfig;
         CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_BAD_DATA);
-        netConfig = networkConfigForIccid(buf, lenCcid);
-        if (netConfig.hasNetProv()) {
-            netProv_ = netConfig.netProv();
-        }
+        netConf_ = networkConfigForIccid(buf, lenCcid);
         do {
             // Set UMNOPROF = SIM_SELECT
             auto resp = parser_.sendCommand("AT+UMNOPROF?");
@@ -1081,7 +1077,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
 
                 // This is a persistent setting
                 int umnoprof = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
-                if (netProv_ == CellularNetworkProv::TWILIO) { // if Twilio Super SIM
+                if (netConf_.netProv() == CellularNetworkProvider::TWILIO) { // if Twilio Super SIM
                     umnoprof = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
                 }
                 parser_.execCommand(1000, "AT+UMNOPROF=%d", umnoprof);
@@ -1089,15 +1085,15 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 reset = true;
             } else if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::STANDARD_EUROPE) {
                 auto respBand = parser_.sendCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK?");
-                uint64_t ubandCatm1 = 0;
-                char ubandCatm1_str[24] = {};
-                auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%23[^,\n]", ubandCatm1_str));
+                uint64_t ubandUint64 = 0;
+                char ubandStr[24] = {};
+                auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%23[^,]", ubandStr));
                 CHECK_PARSER_OK(respBand.readResult());
-                if (netProv_ == CellularNetworkProv::TWILIO && retBand == 1) {
-                    char* pEnd = &ubandCatm1_str[0];
-                    ubandCatm1 = strtoull(ubandCatm1_str, &pEnd, 10);
+                if (netConf_.netProv() == CellularNetworkProvider::TWILIO && retBand == 1) {
+                    char* pEnd = &ubandStr[0];
+                    ubandUint64 = strtoull(ubandStr, &pEnd, 10);
                     // Only update if Twilio Super SIM and not set to correct bands
-                    if (pEnd - ubandCatm1_str > 0 && ubandCatm1 != 6170) {
+                    if (pEnd - ubandStr > 0 && ubandUint64 != 6170) {
                         // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
                         parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,6170");
                         // Not checking for error since we will reset either way
@@ -1486,9 +1482,6 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         auto lenCcid = getIccidImpl(buf, sizeof(buf));
         CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_BAD_DATA);
         netConf_ = networkConfigForIccid(buf, lenCcid);
-        if (netConf_.hasNetProv()) {
-            netProv_ = netConf_.netProv();
-        }
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
@@ -1498,9 +1491,6 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
             const int r = CHECK_PARSER(resp.readResult());
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
             netConf_ = networkConfigForImsi(buf, strlen(buf));
-            if (netConf_.hasNetProv()) {
-                netProv_ = netConf_.netProv();
-            }
         }
     }
 
@@ -1797,7 +1787,7 @@ void SaraNcpClient::checkRegistrationState() {
 int SaraNcpClient::interveneRegistration() {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTING, SYSTEM_ERROR_NONE);
 
-    if (netProv_ == CellularNetworkProv::TWILIO && millis() - regStartTime_ <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
+    if (netConf_.netProv() == CellularNetworkProvider::TWILIO && millis() - regStartTime_ <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
         return 0;
     }
 

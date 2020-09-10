@@ -1010,10 +1010,10 @@ bool MDMParser::init(DevStatus* status)
             goto reset_failure; // Not checking for errors above since we will reset either way
         } else if (umnoprof == UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) {
             sendFormated("AT+UBANDMASK?\r\n");
-            uint64_t ubandCatm1 = 0;
-            waitFinalResp(_cbUBANDMASK, &ubandCatm1, UBANDMASK_TIMEOUT);
+            uint64_t ubandUint64 = 0;
+            waitFinalResp(_cbUBANDMASK, &ubandUint64, UBANDMASK_TIMEOUT);
             // Only update if Twilio Super SIM and not set to correct bands
-            if (netProv == CELLULAR_NETPROV_TWILIO && ubandCatm1 != 6170) {
+            if (netProv == CELLULAR_NETPROV_TWILIO && ubandUint64 != 6170) {
                 // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
                 sendFormated("AT+UBANDMASK=0,6170\r\n");
                 waitFinalResp(nullptr, nullptr, UBANDMASK_TIMEOUT);
@@ -1251,7 +1251,7 @@ int MDMParser::_cbUBANDMASK(int type, const char *buf, int len, uint64_t* i)
         if (sscanf(buf, "\r\n+UBANDMASK: 0,%23[^,\n]", s) == 1) {
             a = strtoull(s, &pEnd, 10);
             if (pEnd - s > 0) {
-                *i = a; // limit to 32-bit (Cat-M R410-02B supports up to band 28)
+                *i = a; // (Cat-M R410-02B supports up to band 28, but we'll grab the whole 64 bits anyways)
             }
         }
     }

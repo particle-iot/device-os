@@ -91,7 +91,6 @@ private:
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerDataStream_;
     CellularNetworkConfig netConf_;
-    CellularNetworkProv netProv_ = CellularNetworkProv::NONE;
     CellularGlobalIdentity cgi_ = {};
     CellularAccessTechnology act_ = CellularAccessTechnology::NONE;
 

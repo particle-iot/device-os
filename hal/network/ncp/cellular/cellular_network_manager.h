@@ -46,9 +46,8 @@ public:
     const char* password() const;
     bool hasPassword() const;
 
-    CellularNetworkConfig& netProv(CellularNetworkProv net_prov);
-    CellularNetworkProv netProv() const;
-    bool hasNetProv() const;
+    CellularNetworkConfig& netProv(CellularNetworkProvider np);
+    CellularNetworkProvider netProv() const;
 
     bool isValid() const;
 
@@ -56,7 +55,7 @@ private:
     CString apn_;
     CString user_;
     CString pwd_;
-    CellularNetworkProv net_prov_;
+    CellularNetworkProvider np_;
 };
 
 class CellularNetworkManager {
@@ -81,7 +80,7 @@ private:
 };
 
 inline CellularNetworkConfig::CellularNetworkConfig() {
-    net_prov_ = CellularNetworkProv::NONE;
+    np_ = CellularNetworkProvider::NONE;
 }
 
 // APN
@@ -121,15 +120,12 @@ inline bool CellularNetworkConfig::hasPassword() const {
 }
 
 // NETWORK PROVIDER
-inline CellularNetworkConfig& CellularNetworkConfig::netProv(CellularNetworkProv net_prov) {
-    net_prov_ = net_prov;
+inline CellularNetworkConfig& CellularNetworkConfig::netProv(CellularNetworkProvider np) {
+    np_ = np;
     return *this;
 }
-inline CellularNetworkProv CellularNetworkConfig::netProv() const {
-    return net_prov_;
-}
-inline bool CellularNetworkConfig::hasNetProv() const {
-    return net_prov_ > CellularNetworkProv::NONE && net_prov_ < CellularNetworkProv::MAX;
+inline CellularNetworkProvider CellularNetworkConfig::netProv() const {
+    return np_;
 }
 
 // IS_VALID

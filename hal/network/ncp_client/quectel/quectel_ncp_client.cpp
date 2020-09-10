@@ -174,7 +174,6 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     connState_ = NcpConnectionState::DISCONNECTED;
     regStartTime_ = 0;
     regCheckTime_ = 0;
-    netProv_ = CellularNetworkProv::NONE;
     parserError_ = 0;
     ready_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
@@ -1185,9 +1184,6 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
         auto lenCcid = getIccidImpl(buf, sizeof(buf));
         CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
         netConf_ = networkConfigForIccid(buf, lenCcid);
-        if (netConf_.hasNetProv()) {
-            netProv_ = netConf_.netProv();
-        }
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
@@ -1199,9 +1195,6 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
             const int r = CHECK_PARSER(resp.readResult());
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
             netConf_ = networkConfigForImsi(buf, strlen(buf));
-            if (netConf_.hasNetProv()) {
-                netProv_ = netConf_.netProv();
-            }
         }
     }
     // FIXME: for now IPv4 context only
@@ -1507,7 +1500,7 @@ void QuectelNcpClient::checkRegistrationState() {
 int QuectelNcpClient::interveneRegistration() {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTING, SYSTEM_ERROR_NONE);
 
-    if (netProv_ == CellularNetworkProv::TWILIO && millis() - regStartTime_ <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
+    if (netConf_.netProv() == CellularNetworkProvider::TWILIO && millis() - regStartTime_ <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
         return 0;
     }
     auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;

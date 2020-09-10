@@ -119,27 +119,27 @@ TEST_CASE("Gen 3 cellular credentials") {
     SECTION("Twilio with iccid prefix 1") {
         const char iccid[] = "89883234500011906351";
         auto creds = networkConfigForIccid(iccid, sizeof(iccid) - 1);
-        REQUIRE(creds.netProv() == CellularNetworkProv::TWILIO);
+        REQUIRE(creds.netProv() == CellularNetworkProvider::TWILIO);
     }
     SECTION("Twilio with iccid prefix 2") {
         const char iccid[] = "89883074500011906351";
         auto creds = networkConfigForIccid(iccid, sizeof(iccid) - 1);
-        REQUIRE(creds.netProv() == CellularNetworkProv::TWILIO);
+        REQUIRE(creds.netProv() == CellularNetworkProvider::TWILIO);
     }
     SECTION("Telefonica") {
         const char imsi[] = "214075555555555";
         auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
-        REQUIRE(creds.netProv() == CellularNetworkProv::TELEFONICA);
+        REQUIRE(creds.netProv() == CellularNetworkProvider::TELEFONICA);
     }
     SECTION("Kore Vodafone") {
         const char imsi[] = "204049999999999";
         auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
-        REQUIRE(creds.netProv() == CellularNetworkProv::KORE_VODAFONE);
+        REQUIRE(creds.netProv() == CellularNetworkProvider::KORE_VODAFONE);
     }
     SECTION("Kore ATT") {
         const char imsi[] = "310410000000000";
         auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
-        REQUIRE(creds.netProv() == CellularNetworkProv::KORE_ATT);
+        REQUIRE(creds.netProv() == CellularNetworkProvider::KORE_ATT);
     }
 }
 
