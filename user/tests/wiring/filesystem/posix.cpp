@@ -418,6 +418,82 @@ test(FS_POSIX_02_File) {
     }
 }
 
+test(FS_POSIX_03_Truncate) {
+    constexpr int num = 10;
+    constexpr size_t dataSize = 8192;
+
+    auto files = generateRandomFilenames(TEST_DIR, num);
+
+    static char randomData[dataSize] = {};
+    particle::Random rand;
+    rand.genBase32(randomData, sizeof(randomData) - 1);
+
+    spark::Vector<int> fds(num);
+
+    // Create and write only
+    for (int i = 0; i < num; i++) {
+        int fd = open(files[i], O_CREAT | O_WRONLY);
+        assertMoreOrEqual(fd, 0);
+        fds[i] = fd;
+
+        ssize_t r = write(fd, randomData, sizeof(randomData));
+        assertEqual(r, sizeof(randomData));
+    }
+
+    // Sync
+    for (int i = 0; i < num; i++) {
+        assertEqual(fsync(fds[i]), 0);
+    }
+
+    // Validate file size with stat
+    for (int i = 0; i < num; i++) {
+        struct stat st;
+        assertEqual(0, stat(files[i], &st));
+        assertEqual(st.st_size, sizeof(randomData));
+    }
+
+    // ftruncate
+    for (int i = 0; i < num; i++) {
+        assertEqual(ftruncate(fds[i], dataSize / 2), 0);
+    }
+
+    // Close
+    for (int i = 0; i < num; i++) {
+        assertEqual(close(fds[i]), 0);
+    }
+
+    // Validate file size with stat
+    for (int i = 0; i < num; i++) {
+        struct stat st;
+        assertEqual(0, stat(files[i], &st));
+        assertEqual(st.st_size, dataSize / 2);
+    }
+
+    // truncate
+    for (int i = 0; i < num; i++) {
+        truncate(files[i], 0);
+    }
+
+    // Validate file size with stat
+    for (int i = 0; i < num; i++) {
+        struct stat st;
+        assertEqual(0, stat(files[i], &st));
+        assertEqual(st.st_size, 0);
+    }
+
+    // Unlink
+    for (int i = 0; i < num; i++) {
+        assertEqual(0, unlink(files[i]));
+        struct stat st;
+        assertNotEqual(0, stat(files[i], &st));
+    }
+
+    // truncate
+    for (int i = 0; i < num; i++) {
+        assertNotEqual(0, truncate(files[i], 0));
+    }
+}
+
 test(FS_POSIX_99_Cleanup) {
     assertTrue(dirExists(TEST_DIR));
     assertEqual(0, rmDir(TEST_DIR));
