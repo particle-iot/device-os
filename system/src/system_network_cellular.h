@@ -63,9 +63,9 @@ protected:
                 connect_cancelled = false;
             }
             connecting = false;
-            if (require_resume) {
-                cellular_cancel(false, true, nullptr);
-            }
+        }
+        if (require_resume) {
+            cellular_cancel(false, true, nullptr);
         }
         return require_resume;
     }
@@ -83,14 +83,13 @@ protected:
     }
 
     int on_now() override {
+        resume_if_needed();
         cellular_result_t ret = cellular_on(nullptr);
         if (ret != 0) {
-            resume_if_needed();
             return ret;
         }
         ret = cellular_init(nullptr);
         if (ret != 0) {
-            resume_if_needed();
             return ret;
         }
         return 0;
