@@ -44,10 +44,10 @@
 #define COMMAND_REGISTER  0xFE
 
 /* detail functions defined for unit tests */
-namespace detail {
+namespace particle { namespace detail {
     float _getVCell(byte MSB, byte LSB);
     float _getSoC(byte MSB, byte LSB);
-}
+}}
 
 class FuelGauge {
 public:

@@ -27,6 +27,7 @@
 #include "inet_hal.h"
 #include "system_tick_hal.h"
 #include "cellular_hal_constants.h"
+#include "cellular_hal_utilities.h"
 #include "cellular_hal_cellular_global_identity.h"
 
 #ifdef __cplusplus
@@ -140,7 +141,7 @@ bool cellular_sim_ready(void* reserved);
 
 /**
  * Change the timeout a SIM has to register on the cellular network before the modem is reset
- * 
+ *
  * @param timeout: registration timeout in milliseconds. Minimum value is 5 minutes
  */
 cellular_result_t cellular_registration_timeout_set(system_tick_t timeout, void* reserved);

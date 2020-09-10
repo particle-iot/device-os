@@ -107,6 +107,7 @@ const auto QUECTEL_NCP_SIM_SELECT_PIN = 23;
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;
+const unsigned REGISTRATION_TWILIO_HOLDOFF_TIMEOUT = 5 * 60 * 1000;
 
 const system_tick_t QUECTEL_COPS_TIMEOUT = 3 * 60 * 1000;
 const system_tick_t QUECTEL_CFUN_TIMEOUT = 3 * 60 * 1000;
@@ -516,10 +517,7 @@ int QuectelNcpClient::connect(const CellularNetworkConfig& conf) {
     return SYSTEM_ERROR_NONE;
 }
 
-int QuectelNcpClient::getIccid(char* buf, size_t size) {
-    const NcpClientLock lock(this);
-    CHECK(checkParser());
-
+int QuectelNcpClient::getIccidImpl(char* buf, size_t size) {
     auto resp = parser_.sendCommand("AT+CCID");
     char iccid[32] = {};
     int r = CHECK_PARSER(resp.scanf("+CCID: %31s", iccid));
@@ -541,6 +539,13 @@ int QuectelNcpClient::getIccid(char* buf, size_t size) {
         buf[n] = '\0';
     }
     return n;
+}
+
+int QuectelNcpClient::getIccid(char* buf, size_t size) {
+    const NcpClientLock lock(this);
+    CHECK(checkParser());
+
+    return getIccidImpl(buf, size);
 }
 
 int QuectelNcpClient::getImei(char* buf, size_t size) {
@@ -954,8 +959,8 @@ int QuectelNcpClient::selectSimCard() {
         // There was an error initializing the SIM
         // We've seen issues on uBlox-based devices, as a precation, we'll cycle
         // the modem here through minimal/full functional state.
-        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0"));
-        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
+        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1,0"));
     }
     return simState;
 }
@@ -1163,8 +1168,7 @@ int QuectelNcpClient::checkSimCard() {
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     if (!strcmp(code, "READY")) {
-        r = parser_.execCommand("AT+CCID");
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_PARSER_OK(parser_.execCommand("AT+CCID"));
         return SYSTEM_ERROR_NONE;
     }
     return SYSTEM_ERROR_UNKNOWN;
@@ -1173,17 +1177,13 @@ int QuectelNcpClient::checkSimCard() {
 int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
     netConf_ = conf;
     if (!netConf_.isValid()) {
-        // First look for network settings based on ICCID
         // FIXME: CCID may fail, need delay here
         HAL_Delay_Milliseconds(1000);
-        auto resp = parser_.sendCommand("AT+CCID");
+        // First look for network settings based on ICCID
         char buf[32] = {};
-        const int ret = CHECK_PARSER(resp.scanf("+CCID: %31s", buf));
-        const int r = CHECK_PARSER(resp.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-        if (ret) {
-            netConf_ = networkConfigForIccid(buf, strlen(buf));
-        }
+        auto lenCcid = getIccidImpl(buf, sizeof(buf));
+        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
+        netConf_ = networkConfigForIccid(buf, lenCcid);
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
@@ -1500,6 +1500,9 @@ void QuectelNcpClient::checkRegistrationState() {
 int QuectelNcpClient::interveneRegistration() {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTING, SYSTEM_ERROR_NONE);
 
+    if (netConf_.netProv() == CellularNetworkProvider::TWILIO && millis() - regStartTime_ <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
+        return 0;
+    }
     auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
 
     // Intervention to speed up registration or recover in case of failure
@@ -1519,8 +1522,8 @@ int QuectelNcpClient::interveneRegistration() {
                 psd_.reset();
                 eps_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0"));
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1,0"));
                 return 0;
             }
         }
@@ -1532,8 +1535,8 @@ int QuectelNcpClient::interveneRegistration() {
                 psd_.reset();
                 eps_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0"));
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1,0"));
                 return 0;
             }
         }
@@ -1567,8 +1570,8 @@ int QuectelNcpClient::interveneRegistration() {
                 LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0"));
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1,0"));
             }
         }
     }

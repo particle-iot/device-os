@@ -30,6 +30,7 @@ License along with this library; if not, see <http://www.gnu.org/licenses/>.
 #include "system_tick_hal.h"
 #include <string.h>
 #include <limits>
+#include <algorithm>
 
 #if Wiring_WiFi
 

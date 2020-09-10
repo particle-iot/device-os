@@ -23,7 +23,7 @@
 #undef INFO
 #include "catch.hpp"
 
-using namespace detail;
+using namespace particle::detail;
 
 SCENARIO("Fuel Gauge VCELL_REGISTER conversion should return 1.25mV per bit", "[fuel_gauge]") {
 

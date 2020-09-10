@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "mdm_hal.h"
+#include "cellular_hal_utilities.h"
 #include "timer_hal.h"
 #include "delay_hal.h"
 #include "pinmap_hal.h"
@@ -64,7 +65,7 @@ std::recursive_mutex mdm_mutex;
 // #define SOCKET_HEX_MODE
 
 // Timeouts for various AT commands based on R4 & U2/G3 AT command manual as of Jan 2019
-#define AT_TIMEOUT        ( 10 * 1000)
+#define AT_TIMEOUT        (  3 * 1000) /* When modem not responsive on boot, AT/OK tried 10x for 30s before hard reset */
 #define USOCL_UDP_TIMEOUT ( 10 * 1000) /* 120s for R4 (TCP only, optimizing for UDP with 10s), 1s for U2/G3 */
 #define USOCL_TCP_TIMEOUT (120 * 1000) /* 120s for R4 (TCP only), 1s for U2/G3 */
 #define USOCO_TIMEOUT     (130 * 1000) /* 120s for R4 (TCP only, going with 130 due to testing showing CME ERROR can take a bit longer), 20s for U2/G3 */
@@ -88,6 +89,7 @@ std::recursive_mutex mdm_mutex;
 #define CREG_TIMEOUT      ( 60 * 1000)
 #define CSQ_TIMEOUT       ( 10 * 1000)
 #define UBANDSEL_TIMEOUT  ( 40 * 1000)
+#define UBANDMASK_TIMEOUT ( 10 * 1000)
 #define UDNSRN_TIMEOUT    ( 30 * 1000) /* 70s for R4 (set to 30s to match previous implementation) */
 #define URAT_TIMEOUT      ( 10 * 1000)
 #define UPSD_TIMEOUT      ( 10 * 1000)
@@ -97,6 +99,7 @@ std::recursive_mutex mdm_mutex;
 #define CEDRXS_TIMEOUT    ( 10 * 1000)
 #define CFUN_TIMEOUT      (180 * 1000)
 #define UCGED_TIMEOUT     ( 10 * 1000)
+#define CIMI_TIMEOUT      ( 10 * 1000) /* Should be immediate, but have observed 3 seconds occassionally on u-blox and rarely longer times */
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -881,6 +884,7 @@ failure:
 bool MDMParser::init(DevStatus* status)
 {
     LOCK();
+    static int resetFailureAttempts = 0;
     MDM_INFO("\r\n[ Modem::init ] = = = = = = = = = = = = = = =");
 
     // Define all cstringhelpers up here, because "goto"s do not like bypassing inits
@@ -947,7 +951,7 @@ bool MDMParser::init(DevStatus* status)
         goto failure;
     // Request IMSI (International Mobile Subscriber Identification)
     sendFormated("AT+CIMI\r\n");
-    if (RESP_OK != waitFinalResp(_cbString, &str_imsi))
+    if (RESP_OK != waitFinalResp(_cbString, &str_imsi, CIMI_TIMEOUT))
         goto failure;
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
@@ -979,14 +983,42 @@ bool MDMParser::init(DevStatus* status)
         bool resetNeeded = false;
         int umnoprof = UBLOX_SARA_UMNOPROF_NONE;
 
+        CellularNetProv netProv = particle::detail::cellular_sim_to_network_provider_impl(_dev.imsi, _dev.ccid);
+
         sendFormated("AT+UMNOPROF?\r\n");
         if (RESP_ERROR == waitFinalResp(_cbUMNOPROF, &umnoprof, UMNOPROF_TIMEOUT)) {
             goto reset_failure;
         }
         if (umnoprof == UBLOX_SARA_UMNOPROF_SW_DEFAULT) {
-            sendFormated("AT+UMNOPROF=%d\r\n", UBLOX_SARA_UMNOPROF_SIM_SELECT);
-            waitFinalResp(); // Not checking for error since we will reset either way
-            goto reset_failure;
+            int cfun_val = -1;
+            sendFormated("AT+CFUN?\r\n");
+            if (RESP_OK != waitFinalResp(_cbCFUN, &cfun_val)) {
+                goto failure;
+            }
+            if (cfun_val != 0) {
+                sendFormated("AT+CFUN=0,0\r\n");
+                if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
+                    goto failure;
+                }
+            }
+            int p = UBLOX_SARA_UMNOPROF_SIM_SELECT;
+            if (netProv == CELLULAR_NETPROV_TWILIO) {
+                p = UBLOX_SARA_UMNOPROF_STANDARD_EUROPE;
+            }
+            sendFormated("AT+UMNOPROF=%d\r\n", p);
+            waitFinalResp(nullptr, nullptr, UMNOPROF_TIMEOUT);
+            goto reset_failure; // Not checking for errors above since we will reset either way
+        } else if (umnoprof == UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) {
+            sendFormated("AT+UBANDMASK?\r\n");
+            uint64_t ubandUint64 = 0;
+            waitFinalResp(_cbUBANDMASK, &ubandUint64, UBANDMASK_TIMEOUT);
+            // Only update if Twilio Super SIM and not set to correct bands
+            if (netProv == CELLULAR_NETPROV_TWILIO && ubandUint64 != 6170) {
+                // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
+                sendFormated("AT+UBANDMASK=0,6170\r\n");
+                waitFinalResp(nullptr, nullptr, UBANDMASK_TIMEOUT);
+                goto reset_failure;
+            }
         }
 
         // For signal strength RSRP/RSRQ values on R410M
@@ -1022,6 +1054,7 @@ bool MDMParser::init(DevStatus* status)
             goto reset_failure;
         }
     } // if (_dev.dev == DEV_SARA_R410)
+    resetFailureAttempts = 0;
     UNLOCK();
     return true;
 
@@ -1031,10 +1064,10 @@ failure:
 
 reset_failure:
     // Don't get stuck in a reset-retry loop
-    static int resetFailureAttempts = 0;
-    if (resetFailureAttempts++ < 5) {
+    // eDRX disables can take a couple or more resets, UMNOPROF requires 1 or 2 and UBANDMASK requires 1 or 2 worst case
+    if (resetFailureAttempts++ < 8) {
         if (_atOk()) {
-            sendFormated("AT+CFUN=15\r\n");
+            sendFormated("AT+CFUN=15,0\r\n");
             waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT);
             _init = false; // invalidate init and prevent cellular registration
             _pwr = false;  //   |
@@ -1042,14 +1075,15 @@ reset_failure:
             // MDMParser::powerOn and MDMParser::init will then be retried by the system.
             _incModemStateChangeCount();
         }
-    } // else {
+    } else {
         // stop resetting, and try to register.
         // Preventing cellular registration gets us back to retrying init() faster,
         // and the timeout of 3 attempts is arbitrary but allows us to register and
         // connect even with an error, since that error is persisting and might just
         // be a fluke or bug in the modem. Allowing to continue on eventually helps
         // the device recover in odd situations we can't predict.
-    // }
+        resetFailureAttempts = 0;
+    }
     UNLOCK();
     return false;
 }
@@ -1185,7 +1219,7 @@ bool MDMParser::powerOff(void)
 
 int MDMParser::_cbUMNOPROF(int type, const char *buf, int len, int* i)
 {
-    if ((type == TYPE_PLUS) && i){
+    if ((type == TYPE_PLUS) && i) {
         int a;
         *i = -1;
         if (sscanf(buf, "\r\n+UMNOPROF: %d", &a) == 1) {
@@ -1201,6 +1235,24 @@ int MDMParser::_cbCFUN(int type, const char *buf, int len, int* i) {
         *i = -1;
         if (sscanf(buf, "\r\n+CFUN: %d\r\n", &a) == 1) {
             *i = a;
+        }
+    }
+    return WAIT;
+}
+
+int MDMParser::_cbUBANDMASK(int type, const char *buf, int len, uint64_t* i)
+{
+    if ((type == TYPE_PLUS) && i) {
+        uint64_t a;
+        char s[24] = {};
+        char* pEnd = &s[0];
+        *i = 0;
+        // \r\n+UBANDMASK: 0,6170,1,524420\r\n
+        if (sscanf(buf, "\r\n+UBANDMASK: 0,%23[^,\n]", s) == 1) {
+            a = strtoull(s, &pEnd, 10);
+            if (pEnd - s > 0) {
+                *i = a; // (Cat-M R410-02B supports up to band 28, but we'll grab the whole 64 bits anyways)
+            }
         }
     }
     return WAIT;
@@ -1287,20 +1339,20 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
 {
     LOCK();
 
-    // Set to full functionality mode
-    int cfun_val = -1;
-    sendFormated("AT+CFUN?\r\n");
-    if (RESP_OK != waitFinalResp(_cbCFUN, &cfun_val)) {
-        goto failure;
-    }
-    if (cfun_val != 1) {
-        sendFormated("AT+CFUN=1,0\r\n");
-        if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT))
-            goto failure;
-    }
-
     if (_init && _pwr && _dev.dev != DEV_UNKNOWN) {
         MDM_INFO("\r\n[ Modem::register ] = = = = = = = = = = = = = =");
+        // Set to full functionality mode
+        int cfun_val = -1;
+        sendFormated("AT+CFUN?\r\n");
+        if (RESP_OK != waitFinalResp(_cbCFUN, &cfun_val)) {
+            goto failure;
+        }
+        if (cfun_val != 1) {
+            sendFormated("AT+CFUN=1,0\r\n");
+            if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
+                goto failure;
+            }
+        }
         // Check to see if we are already connected. If so don't issue these
         // commands as they will knock us off the cellular network.
         bool ok = false;
@@ -1394,8 +1446,9 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             }
             if (cfun_val != 1) {
                 sendFormated("AT+CFUN=1,0\r\n");
-                if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT))
+                if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     goto failure;
+                }
             }
 
             _net.cops = 2; // Re-init to de-registered state in case of COPS? error, to force auto connection
@@ -1427,7 +1480,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                 if (HAL_Timer_Get_Milli_Seconds() - start_imsi_check > 60000UL) {
                     start_imsi_check = HAL_Timer_Get_Milli_Seconds();
                     sendFormated("AT+CIMI\r\n");
-                    if (RESP_OK != waitFinalResp()) {
+                    if (RESP_OK != waitFinalResp(nullptr, nullptr, CIMI_TIMEOUT)) {
                         goto failure;
                     }
                 }
@@ -1481,7 +1534,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         // Request the IMSI (specially used for multi-imsi SIMs) that is present when actually registered
         CStringHelper str_imsi(_dev.imsi, sizeof(_dev.imsi));
         sendFormated("AT+CIMI\r\n");
-        if (RESP_OK != waitFinalResp(_cbString, &str_imsi))
+        if (RESP_OK != waitFinalResp(_cbString, &str_imsi, CIMI_TIMEOUT))
             goto failure;
 
         // Reformat the operator string to be numeric

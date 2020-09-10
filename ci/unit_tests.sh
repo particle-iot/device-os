@@ -52,7 +52,8 @@ set -x -e
 # Run CMake-based unit tests
 cd $unit_test_dir
 rm -rf .build/*
-mkdir .build -p && cd .build/
+mkdir -p .build/
+cd .build/
 cmake $cmake_args ..
 # FIXME: coveralls disabled for now as the CI builds for some reason are failing
 make all test # coveralls

@@ -37,33 +37,6 @@ typedef int (*_CALLBACKPTR_MDM)(int type, const char* buf, int len, void* param)
 
 typedef void (*_CELLULAR_SMS_CB_MDM)(void* data, int index);
 
-#define DEFINE_NET_PROVIDER_DATA \
-    DEFINE_NET_PROVIDER( CELLULAR_NETPROV_TELEFONICA, "spark.telefonica.com", (23*60), (5684) ),  \
-    DEFINE_NET_PROVIDER( CELLULAR_NETPROV_KORE_VODAFONE, "vfd1.korem2m.com", (23*60), (5684) ),  \
-    DEFINE_NET_PROVIDER( CELLULAR_NETPROV_KORE_ATT, "10569.mcs", (23*60), (5684) ),  \
-    DEFINE_NET_PROVIDER( CELLULAR_NETPROV_TWILIO, "super", (23*60), (5684) ),  \
-    DEFINE_NET_PROVIDER( CELLULAR_NETPROV_MAX, "", (0), (0) )
-
-#define DEFINE_NET_PROVIDER( idx, apn, keepalive, port )  idx
-#ifdef __cplusplus
-enum CellularNetProv { DEFINE_NET_PROVIDER_DATA };
-#else
-typedef enum CellularNetProv CellularNetProv;
-#endif
-
-#undef DEFINE_NET_PROVIDER
-#define DEFINE_NET_PROVIDER( idx, apn, keepalive, port )  { apn, keepalive, port }
-
-#ifdef __cplusplus
-struct CellularNetProvData {
-    const char* apn;
-    int keepalive;
-    uint16_t port;
-};
-#else
-typedef struct CellularNetProvData CellularNetProvData;
-#endif
-
 #ifdef __cplusplus
 // Todo - is storing raw string pointers correct here? These will only be valid
 // If they are stored as constants in the application.

@@ -3,6 +3,7 @@
 #include "check.h"
 #include "modem/mdm_hal.h"
 #include "cellular_hal.h"
+#include "cellular_hal_utilities.h"
 #include "cellular_internal.h"
 #include "system_error.h"
 
@@ -235,7 +236,7 @@ cellular_result_t cellular_signal(CellularSignalHal* signal, cellular_signal_t* 
     NetStatus status;
     bool r = electronMDM.getSignalStrength(status);
 
-    return detail::cellular_signal_impl(signal, signalext, r, status);
+    return particle::detail::cellular_signal_impl(signal, signalext, r, status);
 }
 
 cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
@@ -248,7 +249,7 @@ cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
     return ret;
 }
 
-cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret)
+cellular_result_t cellular_data_usage_set_impl(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret)
 {
     if (!ret) {
         data.cid = -1; // let the caller know this object was not updated
@@ -276,10 +277,10 @@ cellular_result_t cellular_data_usage_set(CellularDataHal* data, void* reserved)
     MDM_DataUsage data_usage;
     bool rv = electronMDM.getDataUsage(data_usage);
     // Now process the Set request
-    return _cellular_data_usage_set(*data, data_usage, rv);
+    return cellular_data_usage_set_impl(*data, data_usage, rv);
 }
 
-cellular_result_t _cellular_data_usage_get(CellularDataHal& data, const MDM_DataUsage &data_usage, bool ret)
+cellular_result_t cellular_data_usage_get_impl(CellularDataHal& data, const MDM_DataUsage &data_usage, bool ret)
 {
     if (!ret) {
         data.cid = -1; // let the caller know this object was not updated
@@ -323,7 +324,7 @@ cellular_result_t cellular_data_usage_get(CellularDataHal* data, void* reserved)
     MDM_DataUsage data_usage;
     bool rv = electronMDM.getDataUsage(data_usage);
     // Now process the Get request
-    return _cellular_data_usage_get(*data, data_usage, rv);
+    return cellular_data_usage_get_impl(*data, data_usage, rv);
 }
 
 cellular_result_t cellular_band_select_set(MDM_BandSelect* bands, void* reserved)
@@ -407,7 +408,7 @@ cellular_result_t cellular_resume(void* reserved)
 cellular_result_t cellular_sim_to_network_provider(void* reserved)
 {
     const DevStatus* status = electronMDM.getDevStatus();
-    cellularNetProv = detail::_cellular_sim_to_network_provider(status->imsi, status->ccid);
+    cellularNetProv = particle::detail::cellular_sim_to_network_provider_impl(status->imsi, status->ccid);
     return 0;
 }
 

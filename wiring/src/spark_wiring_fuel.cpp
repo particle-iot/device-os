@@ -86,7 +86,7 @@ boolean FuelGauge::begin()
     return i2c_.isEnabled();
 }
 
-namespace detail {
+namespace particle { namespace detail {
     // Converts VCELL_REGISTER reading to Battery Voltage
     float _getVCell(byte MSB, byte LSB) {
         // VCELL = 12-bit value, 1.25mV (1V/800) per bit
@@ -101,7 +101,7 @@ namespace detail {
         float decimal = LSB / 256.0;
         return MSB + decimal;
     }
-} // namespace detail
+}} // namespace particle detail
 
 // Read and return the cell voltage
 float FuelGauge::getVCell() {
@@ -112,7 +112,7 @@ float FuelGauge::getVCell() {
     if (readRegister(VCELL_REGISTER, MSB, LSB) != SYSTEM_ERROR_NONE) {
         return -1.0f;
     }
-    return detail::_getVCell(MSB, LSB);
+    return particle::detail::_getVCell(MSB, LSB);
 }
 
 // Read and return the state of charge of the cell
@@ -124,7 +124,7 @@ float FuelGauge::getSoC() {
     if(readRegister(SOC_REGISTER, MSB, LSB) != SYSTEM_ERROR_NONE) {
         return -1.0f;
     }
-    return detail::_getSoC(MSB, LSB);
+    return particle::detail::_getSoC(MSB, LSB);
 }
 
 float FuelGauge::getNormalizedSoC() {

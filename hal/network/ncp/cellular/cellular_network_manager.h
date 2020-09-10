@@ -18,6 +18,7 @@
 #pragma once
 
 #include "c_string.h"
+#include "network_config_db.h"
 
 namespace particle {
 
@@ -45,12 +46,16 @@ public:
     const char* password() const;
     bool hasPassword() const;
 
+    CellularNetworkConfig& netProv(CellularNetworkProvider np);
+    CellularNetworkProvider netProv() const;
+
     bool isValid() const;
 
 private:
     CString apn_;
     CString user_;
     CString pwd_;
+    CellularNetworkProvider np_;
 };
 
 class CellularNetworkManager {
@@ -75,47 +80,55 @@ private:
 };
 
 inline CellularNetworkConfig::CellularNetworkConfig() {
+    np_ = CellularNetworkProvider::NONE;
 }
 
+// APN
 inline CellularNetworkConfig& CellularNetworkConfig::apn(const char* apn) {
     apn_ = apn;
     return *this;
 }
-
 inline const char* CellularNetworkConfig::apn() const {
     return apn_;
 }
-
 inline bool CellularNetworkConfig::hasApn() const {
     return apn_ && *apn_;
 }
 
+// USERNAME
 inline CellularNetworkConfig& CellularNetworkConfig::user(const char* user) {
     user_ = user;
     return *this;
 }
-
 inline const char* CellularNetworkConfig::user() const {
     return user_;
 }
-
 inline bool CellularNetworkConfig::hasUser() const {
     return user_ && *user_;
 }
 
+// PASSWORD
 inline CellularNetworkConfig& CellularNetworkConfig::password(const char* pwd) {
     pwd_ = pwd;
     return *this;
 }
-
 inline const char* CellularNetworkConfig::password() const {
     return pwd_;
 }
-
 inline bool CellularNetworkConfig::hasPassword() const {
     return pwd_ && *pwd_;
 }
 
+// NETWORK PROVIDER
+inline CellularNetworkConfig& CellularNetworkConfig::netProv(CellularNetworkProvider np) {
+    np_ = np;
+    return *this;
+}
+inline CellularNetworkProvider CellularNetworkConfig::netProv() const {
+    return np_;
+}
+
+// IS_VALID
 inline bool CellularNetworkConfig::isValid() const {
     return (apn_ && user_ && pwd_);
 }
