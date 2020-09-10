@@ -53,13 +53,8 @@ protected:
 
     virtual void connect_init() override { /* n/a */ }
 
-    int connect_finalize() override {
-        ATOMIC_BLOCK() { connecting = true; }
-
-        int ret = cellular_connect(nullptr);
-
+    bool resume_if_needed() {
         bool require_resume = false;
-
         ATOMIC_BLOCK() {
             // ensure after connection exits the cancel flag is cleared if it was set during connection
             if (connect_cancelled) {
@@ -70,7 +65,17 @@ protected:
             connecting = false;
         }
         if (require_resume) {
-            cellular_cancel(false, HAL_IsISR(), NULL);
+            cellular_cancel(false, true, nullptr);
+        }
+        return require_resume;
+    }
+
+    int connect_finalize() override {
+        ATOMIC_BLOCK() { connecting = true; }
+
+        int ret = cellular_connect(nullptr);
+
+        if (resume_if_needed()) {
             ret = SYSTEM_ERROR_ABORTED; // FIXME: Return a HAL-specific error code
         }
 
@@ -78,6 +83,7 @@ protected:
     }
 
     int on_now() override {
+        resume_if_needed();
         cellular_result_t ret = cellular_on(nullptr);
         if (ret != 0) {
             return ret;
@@ -147,7 +153,7 @@ public:
         // only cancel if presently connecting
         bool require_cancel = false;
         ATOMIC_BLOCK() {
-            if (connecting)
+            if (connecting || !SPARK_WLAN_STARTED)
             {
                 if (cancel!=connect_cancelled) {
                     require_cancel = true;
