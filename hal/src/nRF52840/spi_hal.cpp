@@ -15,7 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 #include "logging.h"
-
+#include <memory>
 #include "nrf_gpio.h"
 #include "nrfx_spim.h"
 #include "nrfx_spis.h"
@@ -27,6 +27,7 @@
 #include "concurrent_hal.h"
 #include "delay_hal.h"
 #include "check.h"
+#include "scope_guard.h"
 
 #define DEFAULT_SPI_MODE        SPI_MODE_MASTER
 #define DEFAULT_DATA_MODE       SPI_MODE3
@@ -448,20 +449,36 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buf
         return;
     }
 
+    uint8_t* txPtr = nullptr;
+
+    SCOPE_GUARD ({
+        if (!nrfx_is_in_ram(tx_buffer)) {
+            free(txPtr);
+        }
+    });
+
+    if (!nrfx_is_in_ram(tx_buffer)) {
+        txPtr = (uint8_t*)malloc(length);
+        SPARK_ASSERT(txPtr != nullptr);
+        memcpy(txPtr, tx_buffer, length);
+    } else {
+        txPtr = (uint8_t*)tx_buffer;
+    }
+
     while(spiMap[spi].transmitting) {
         ;
     }
 
     spiMap[spi].dma_user_callback = userCallback;
     if (spiMap[spi].spi_mode == SPI_MODE_MASTER) {
-        SPARK_ASSERT(spiTransfer(spi, (uint8_t *)tx_buffer, (uint8_t *)rx_buffer, length) == length);
+        SPARK_ASSERT(spiTransfer(spi, txPtr, (uint8_t *)rx_buffer, length) == length);
     } else {
         // Use for synchronization
         spiMap[spi].transmitting = true;
         // reset transfer length
         spiMap[spi].transfer_length = 0;
         spiMap[spi].slave_buf_length = length;
-        spiMap[spi].slave_tx_buf = tx_buffer;
+        spiMap[spi].slave_tx_buf = txPtr;
         spiMap[spi].slave_rx_buf = rx_buffer;
         uint32_t err_code = nrfx_spis_buffers_set(spiMap[spi].slave,
                                             (uint8_t *)spiMap[spi].slave_tx_buf,
