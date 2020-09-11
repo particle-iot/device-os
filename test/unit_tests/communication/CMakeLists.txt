@@ -50,16 +50,16 @@ target_compile_options( ${target_name}
 
 # Set include path specific to target
 target_include_directories( ${target_name}
-  PRIVATE ${TEST_DIR}/unit_tests/communication/
-  PRIVATE ${TEST_DIR}/unit_tests/communication/stub/
-  PRIVATE ${THIRD_PARTY_DIR}/fakeit/fakeit/single_header/catch/
-  PRIVATE ${DEVICE_OS_DIR}/communication/inc/
-  PRIVATE ${DEVICE_OS_DIR}/communication/src/
-  PRIVATE ${DEVICE_OS_DIR}/hal/inc/
-  PRIVATE ${DEVICE_OS_DIR}/hal/shared/
-  PRIVATE ${DEVICE_OS_DIR}/hal/src/gcc/
-  PRIVATE ${DEVICE_OS_DIR}/services/inc/
-  PRIVATE ${DEVICE_OS_DIR}/wiring/inc/
+  PRIVATE ${TEST_DIR}/communication
+  PRIVATE ${TEST_DIR}/stub
+  PRIVATE ${THIRD_PARTY_DIR}/fakeit/fakeit/single_header/catch
+  PRIVATE ${DEVICE_OS_DIR}/communication/inc
+  PRIVATE ${DEVICE_OS_DIR}/communication/src
+  PRIVATE ${DEVICE_OS_DIR}/hal/inc
+  PRIVATE ${DEVICE_OS_DIR}/hal/shared
+  PRIVATE ${DEVICE_OS_DIR}/hal/src/gcc
+  PRIVATE ${DEVICE_OS_DIR}/services/inc
+  PRIVATE ${DEVICE_OS_DIR}/wiring/inc
 )
 
 # Link against dependencies specific to target

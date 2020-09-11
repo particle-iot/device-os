@@ -27,7 +27,6 @@ target_include_directories( ${target_name}
   PRIVATE ${DEVICE_OS_DIR}/system/src/
   PRIVATE ${DEVICE_OS_DIR}/wiring/inc/
   PRIVATE ${TEST_DIR}/
-  PRIVATE ${TEST_DIR}/unit_tests/
   PRIVATE ${THIRD_PARTY_DIR}/fakeit/fakeit/single_header/catch/
 )
 

@@ -38,6 +38,7 @@ public:
     void clear();
 
     void close();
+    bool isOpen() const;
 
     const char* fileName() const;
 
@@ -74,6 +75,10 @@ inline int SimpleFileStorage::save(const char* file, const void* data, size_t si
 
 inline void SimpleFileStorage::clear(const char* file) {
     SimpleFileStorage(file).clear();
+}
+
+inline bool SimpleFileStorage::isOpen() const {
+    return openFlags_;
 }
 
 } // namespace particle

@@ -17,10 +17,10 @@
 
 #include "firmware_update.h"
 #include "messages.h"
+#include "sha256.h"
 
 #include "util/coap_message_channel.h"
 #include "util/protocol_callbacks.h"
-#include "stub/sha256.h"
 
 #include <catch2/catch.hpp>
 #include <fakeit.hpp>
@@ -699,7 +699,7 @@ TEST_CASE("FirmwareUpdate") {
         w.sendStart(1024 /* fileSize */, std::string() /* fileHash */, 512 /* chunkSize */, false /* discardData */);
         w.skipMessages(2); // Skip the ACK and response
         w.addMillis(OTA_TRANSFER_TIMEOUT);
-        w.processTimeouts();
+        CHECK(w.process() == ProtocolError::MESSAGE_TIMEOUT);
         Verify(Method(cb, finishFirmwareUpdate).Matching([=](unsigned flags) {
             return FirmwareUpdateFlags::fromUnderlying(flags) == FirmwareUpdateFlag::CANCEL;
         })).Once();
@@ -714,7 +714,7 @@ TEST_CASE("FirmwareUpdate") {
         w.sendChunk(1 /* index */, genString(512) /* data */);
         CHECK(!w.hasMessages()); // ACK delayed
         w.addMillis(OTA_TRANSFER_TIMEOUT);
-        w.processTimeouts();
+        CHECK(w.process() == ProtocolError::MESSAGE_TIMEOUT);
         Verify(Method(cb, finishFirmwareUpdate).Matching([=](unsigned flags) {
             return FirmwareUpdateFlags::fromUnderlying(flags) == FirmwareUpdateFlag::CANCEL;
         })).Once();
@@ -875,7 +875,7 @@ TEST_CASE("FirmwareUpdate") {
         w.sendChunk(1 /* index */, genString(512) /* data */);
         w.skipMessages(1); // Skip the UpdateAck
         w.addMillis(OTA_TRANSFER_TIMEOUT);
-        w.processTimeouts();
+        CHECK(w.process() == ProtocolError::MESSAGE_TIMEOUT);
         Verify(Method(cb, finishFirmwareUpdate).Matching([=](unsigned flags) {
             return FirmwareUpdateFlags::fromUnderlying(flags) == FirmwareUpdateFlag::CANCEL;
         })).Once();
