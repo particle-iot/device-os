@@ -113,6 +113,7 @@ extern "C" {
  * @param fmt Format string.
  * @param ... Formatting arguments.
  */
+// TODO: Perhaps it would be better to not allow overriding the error message until it's explicitly cleared
 void set_error_message(const char* fmt, ...);
 
 /**
