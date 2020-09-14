@@ -271,6 +271,16 @@ MDMParser::MDMParser(void)
 #ifdef MDM_DEBUG
     _debugLevel = 3;
 #endif
+
+    Hal_Pin_Info* pinMap = HAL_Pin_Map();
+    pinMap[PWR_UC].gpio_peripheral->BSRRL = pinMap[PWR_UC].gpio_pin;
+    HAL_Pin_Mode(PWR_UC, OUTPUT);
+    pinMap[RESET_UC].gpio_peripheral->BSRRL = pinMap[RESET_UC].gpio_pin;
+    HAL_Pin_Mode(RESET_UC, OUTPUT);
+    HAL_Pin_Mode(LVLOE_UC, OUTPUT);
+    HAL_GPIO_Write(LVLOE_UC, 0);
+    HAL_Pin_Mode(RXD_UC, INPUT_PULLDOWN);
+    HAL_Pin_Mode(RTS_UC, OUTPUT);
 }
 
 void MDMParser::setPowerMode(int mode) {

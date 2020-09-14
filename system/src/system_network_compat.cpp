@@ -18,6 +18,7 @@
  */
 
 #include "hal_platform.h"
+#include "gpio_hal.h"
 
 /* FIXME: there should be a define that tells whether there is NetworkManager available
  * or not */
@@ -147,7 +148,24 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 }
 
 int network_wait_off(network_handle_t network, system_tick_t timeout, void*) {
-    // Temporarily not necessary for Gen2 platforms.
+    /* This is a workaround for the power leakage issue that happens when the
+     * device is powered on and it enters sleep before the modem is initialized.
+     */
+#if PLATFORM_ID == PLATFORM_ELECTRON
+    cellular_pause(nullptr);
+    if (HAL_GPIO_Read(RXD_UC)) {
+        // Delay this long period so that the modem is fully on to accept the power-off sequence.
+        HAL_Delay_Milliseconds(12000);
+
+        HAL_GPIO_Write(PWR_UC, 0);
+        // >1.5 seconds on SARA R410M
+        // >1 second on SARA U2
+        // plus a little extra for good luck
+        HAL_Delay_Milliseconds(2000);
+        HAL_GPIO_Write(PWR_UC, 1);
+    }
+#endif
+
     return SYSTEM_ERROR_NONE;
 }
 
