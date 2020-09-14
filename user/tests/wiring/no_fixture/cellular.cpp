@@ -84,7 +84,7 @@ test(CELLULAR_01_local_ip_cellular_config)
 
 test(CELLULAR_02_resolve) {
     connect_to_cloud(6*60*1000);
-    checkIPAddress("www.google.com", Cellular.resolve("www.google.com"));
+    checkIPAddress("www.particle.io", Cellular.resolve("www.particle.io"));
 }
 
 test(CELLULAR_03_resolve) {

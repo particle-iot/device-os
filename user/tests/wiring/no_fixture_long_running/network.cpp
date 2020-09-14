@@ -162,7 +162,8 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     assertTrue((mtu - IPV4_PLUS_UDP_HEADER_LENGTH) >= MBEDTLS_SSL_MAX_CONTENT_LEN);
 }
 
-#if HAL_PLATFORM_NCP_AT
+#if HAL_PLATFORM_NCP_AT || HAL_PLATFORM_CELLULAR
+
 test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
     const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
     const system_tick_t NCP_FAILURE_TIMEOUT = 15000;
@@ -178,9 +179,17 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
     // FIXME: when a new platform is added not using HAL_USART_SERIAL2 or not using
     // UART for talking to NCP.
     SINGLE_THREADED_BLOCK() {
+#if HAL_PLATFORM_NCP_AT
         hal_usart_end(HAL_USART_SERIAL2);
         hal_usart_begin_config(HAL_USART_SERIAL2, 57600, SERIAL_8N1, nullptr);
+#elif PLATFORM_ID == PLATFORM_ELECTRON
+        NVIC_DisableIRQ(USART3_IRQn);
+#endif
     }
+
+#if PLATFORM_ID == PLATFORM_ELECTRON
+    assertFalse(Particle.publish("test", "123", WITH_ACK));
+#endif // PLATFORM_ID == PLATFORM_ELECTRON
 
     delay(NCP_FAILURE_TIMEOUT);
 
@@ -199,6 +208,10 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
 
     assertTrue(published);
 }
+
+#endif // HAL_PLATFORM_NCP_AT || HAL_PLATFORM_CELLULAR
+
+#if HAL_PLATFORM_NCP_AT
 
 static bool s_networkStatusChanged = false;
 
