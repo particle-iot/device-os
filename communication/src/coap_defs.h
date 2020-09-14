@@ -23,7 +23,9 @@
 
 #include <cstdint>
 
-namespace particle::protocol {
+namespace particle {
+
+namespace protocol {
 
 const size_t MIN_COAP_MESSAGE_SIZE = 4;
 
@@ -166,4 +168,6 @@ inline bool isCoapEmptyAck(CoapType type, unsigned code) {
     return type == CoapType::ACK && code == CoapCode::EMPTY;
 }
 
-} // namespace particle::protocol
+} // namespace protocol
+
+} // namespace particle

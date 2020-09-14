@@ -23,7 +23,9 @@
 #include <algorithm>
 #include <type_traits>
 
-namespace particle::protocol {
+namespace particle {
+
+namespace protocol {
 
 namespace {
 
@@ -188,4 +190,6 @@ void CoapOptionIterator::reset() {
     opt_ = 0;
 }
 
-} // namespace particle::protocol
+} // namespace protocol
+
+} // namespace particle

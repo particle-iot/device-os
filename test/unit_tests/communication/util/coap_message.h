@@ -19,12 +19,15 @@
 
 #include "coap_defs.h"
 
-#include <optional>
 #include <string>
 #include <vector>
 #include <map>
 
-namespace particle::protocol::test {
+namespace particle {
+
+namespace protocol {
+
+namespace test {
 
 class CoapMessageOption {
 public:
@@ -53,7 +56,7 @@ private:
 
 class CoapMessage {
 public:
-    CoapMessage() = default;
+    CoapMessage();
 
     CoapMessage& type(CoapType type);
     CoapType type() const;
@@ -103,11 +106,16 @@ public:
 
 private:
     std::multimap<unsigned, CoapMessageOption> opts_;
-    std::optional<CoapType> type_;
-    std::optional<unsigned> code_;
-    std::optional<CoapMessageId> id_;
-    std::optional<std::string> token_;
-    std::optional<std::string> payload_;
+    CoapType type_;
+    unsigned code_;
+    CoapMessageId id_;
+    std::string token_;
+    std::string payload_;
+    bool hasType_;
+    bool hasCode_;
+    bool hasId_;
+    bool hasToken_;
+    bool hasPayload_;
 };
 
 inline CoapMessageOption::CoapMessageOption(CoapOption number) :
@@ -161,20 +169,32 @@ inline bool CoapMessageOption::isEmpty() const {
     return data_.empty();
 }
 
+inline CoapMessage::CoapMessage() :
+    type_(CoapType::CON),
+    code_(0),
+    id_(0),
+    hasType_(false),
+    hasCode_(false),
+    hasId_(false),
+    hasToken_(false),
+    hasPayload_(false) {
+}
+
 inline CoapMessage& CoapMessage::type(CoapType type) {
     type_ = type;
+    hasType_ = true;
     return *this;
 }
 
 inline CoapType CoapMessage::type() const {
-    if (!type_.has_value()) {
+    if (!hasType_) {
         throw std::runtime_error("CoAP message type is missing");
     }
-    return type_.value();
+    return type_;
 }
 
 inline bool CoapMessage::hasType() const {
-    return type_.has_value();
+    return hasType_;
 }
 
 inline CoapMessage& CoapMessage::code(CoapCode code) {
@@ -183,76 +203,78 @@ inline CoapMessage& CoapMessage::code(CoapCode code) {
 
 inline CoapMessage& CoapMessage::code(unsigned code) {
     code_ = code;
+    hasCode_ = true;
     return *this;
 }
 
 inline unsigned CoapMessage::code() const {
-    if (!code_.has_value()) {
+    if (!hasCode_) {
         throw std::runtime_error("CoAP message code is missing");
     }
-    return code_.value();
+    return code_;
 }
 
 inline bool CoapMessage::hasCode() const {
-    return code_.has_value();
+    return hasCode_;
 }
 
 inline CoapMessage& CoapMessage::id(CoapMessageId id) {
     id_ = id;
+    hasId_ = true;
     return *this;
 }
 
 inline CoapMessageId CoapMessage::id() const {
-    if (!id_.has_value()) {
+    if (!hasId_) {
         throw std::runtime_error("CoAP message ID is missing");
     }
-    return id_.value();
+    return id_;
 }
 
 inline bool CoapMessage::hasId() const {
-    return id_.has_value();
+    return hasId_;
 }
 
 inline CoapMessage& CoapMessage::token(std::string data) {
     token_ = std::move(data);
+    hasToken_ = true;
     return *this;
 }
 
 inline CoapMessage& CoapMessage::token(const char* data, size_t size) {
-    token_ = std::string(data, size);
-    return *this;
+    return token(std::string(data, size));
 }
 
 inline const std::string& CoapMessage::token() const {
-    if (!token_.has_value()) {
+    if (!hasToken_) {
         throw std::runtime_error("CoAP message has no token");
     }
-    return token_.value();
+    return token_;
 }
 
 inline bool CoapMessage::hasToken() const {
-    return token_.has_value();
+    return hasToken_;
 }
 
 inline CoapMessage& CoapMessage::payload(std::string data) {
     payload_ = std::move(data);
+    hasPayload_ = true;
     return *this;
 }
 
 inline CoapMessage& CoapMessage::payload(const char* data, size_t size) {
-    payload_ = std::string(data, size);
-    return *this;
+    return payload(std::string(data, size));
 }
 
 inline const std::string& CoapMessage::payload() const {
-    if (!payload_.has_value()) {
+    if (!hasPayload_) {
         throw std::runtime_error("CoAP message has no payload data");
     }
-    return payload_.value();
+    return payload_;
 }
 
 inline bool CoapMessage::hasPayload() const {
-    return payload_.has_value();
+    return hasPayload_;
 }
 
 inline CoapMessage& CoapMessage::option(CoapMessageOption option) {
@@ -344,4 +366,8 @@ inline CoapMessage CoapMessage::decode(const std::string& data) {
     return decode(data.data(), data.size());
 }
 
-} // namespace particle::protocol::test
+} // namespace test
+
+} // namespace protocol
+
+} // namespace particle

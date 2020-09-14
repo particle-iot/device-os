@@ -25,7 +25,9 @@
 
 #include <cstdio>
 
-namespace particle::protocol {
+namespace particle {
+
+namespace protocol {
 
 int formatDiagnosticPayload(char* buf, size_t size, int error) {
     spark::JSONBufferWriter w(buf, size);
@@ -54,4 +56,6 @@ int formatDiagnosticPayload(char* buf, size_t size, int error) {
     return payloadSize;
 }
 
-} // namespace particle::protocol
+} // namespace protocol
+
+} // namespace particle

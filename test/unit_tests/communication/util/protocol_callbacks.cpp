@@ -17,7 +17,11 @@
 
 #include "protocol_callbacks.h"
 
-namespace particle::protocol::test {
+namespace particle {
+
+namespace protocol {
+
+namespace test {
 
 namespace {
 
@@ -163,4 +167,8 @@ ProtocolCallbacks::~ProtocolCallbacks() {
     g_callbacks = nullptr;
 }
 
-} // namespace particle::protocol::test
+} // namespace test
+
+} // namespace protocol
+
+} // namespace particle

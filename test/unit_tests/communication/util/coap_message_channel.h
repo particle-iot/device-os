@@ -23,7 +23,11 @@
 #include <memory>
 #include <queue>
 
-namespace particle::protocol::test {
+namespace particle {
+
+namespace protocol {
+
+namespace test {
 
 class CoapMessageChannel: public BufferMessageChannel<PROTOCOL_BUFFER_SIZE> {
 public:
@@ -113,4 +117,8 @@ inline AppStateDescriptor CoapMessageChannel::cached_app_state_descriptor() cons
 inline void CoapMessageChannel::reset() {
 }
 
-} // namespace particle::protocol::test
+} // namespace test
+
+} // namespace protocol
+
+} // namespace particle

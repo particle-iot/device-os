@@ -31,7 +31,9 @@
 #include <cstdint>
 #include <cstddef>
 
-namespace particle::protocol {
+namespace particle {
+
+namespace protocol {
 
 /**
  * Size of the receiver window in bytes.
@@ -191,6 +193,8 @@ inline system_tick_t FirmwareUpdate::millis() const {
     return callbacks_->millis();
 }
 
-} // namespace particle::protocol
+} // namespace protocol
+
+} // namespace particle
 
 #endif // HAL_PLATFORM_OTA_PROTOCOL_V3

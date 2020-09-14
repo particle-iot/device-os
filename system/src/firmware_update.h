@@ -24,7 +24,9 @@
 
 #include <memory>
 
-namespace particle::system {
+namespace particle {
+
+namespace system {
 
 namespace detail {
 
@@ -104,4 +106,6 @@ inline bool FirmwareUpdate::isRunning() const {
     return updating_;
 }
 
-} // namespace particle::system
+} // namespace system
+
+} // namespace particle

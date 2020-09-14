@@ -19,11 +19,15 @@
 
 #include <cstddef>
 
-namespace particle::protocol {
+namespace particle {
+
+namespace protocol {
 
 /**
  * Format the payload of an error CoAP response.
  */
 int formatDiagnosticPayload(char* buf, size_t size, int error);
 
-} // namespace particle::protocol
+} // namespace protocol
+
+} // namespace particle

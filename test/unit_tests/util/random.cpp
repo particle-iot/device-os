@@ -17,7 +17,9 @@
 
 #include "random.h"
 
-namespace particle::test {
+namespace particle {
+
+namespace test {
 
 std::string randString(size_t size) {
     static const std::string alpha = "abcdefghijklmnopqrstuvwxyz";
@@ -35,4 +37,6 @@ std::default_random_engine& randGen() {
     return gen;
 }
 
-} // namespace particle::test
+} // namespace test
+
+} // namespace particle

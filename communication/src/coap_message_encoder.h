@@ -24,7 +24,9 @@
 #include <utility>
 #include <cstring>
 
-namespace particle::protocol {
+namespace particle {
+
+namespace protocol {
 
 /**
  * A class for encoding CoAP messages.
@@ -110,4 +112,6 @@ inline CoapMessageEncoder& CoapMessageEncoder::payload(const char* str) {
     return payload(str, strlen(str));
 }
 
-} // namespace particle::protocol
+} // namespace protocol
+
+} // namespace particle

@@ -26,7 +26,9 @@
 #include <unordered_set>
 #include <string>
 
-namespace particle::test {
+namespace particle {
+
+namespace test {
 
 class Filesystem {
 public:
@@ -110,4 +112,6 @@ inline int Filesystem::lastFileDesc() const {
     return lastFd_;
 }
 
-} // namespace particle::test
+} // namespace test
+
+} // namespace particle

@@ -21,7 +21,11 @@
 #include "coap_message_decoder.h"
 #include "endian_util.h"
 
-namespace particle::protocol::test {
+namespace particle {
+
+namespace protocol {
+
+namespace test {
 
 std::string CoapMessageOption::encodeUInt(unsigned value) {
     if (value == 0) {
@@ -103,4 +107,8 @@ CoapMessage CoapMessage::decode(const char* data, size_t size) {
     return msg;
 }
 
-} // namespace particle::protocol::test
+} // namespace test
+
+} // namespace protocol
+
+} // namespace particle

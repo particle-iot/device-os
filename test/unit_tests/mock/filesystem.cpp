@@ -22,7 +22,9 @@
 #include <algorithm>
 #include <vector>
 
-namespace particle::test {
+namespace particle {
+
+namespace test {
 
 namespace {
 
@@ -450,4 +452,6 @@ int Filesystem::remove(lfs_t* lfs, const char* path) {
     }
 }
 
-} // namespace particle::test
+} // namespace test
+
+} // namespace particle

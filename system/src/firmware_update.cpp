@@ -43,7 +43,9 @@ LOG_SOURCE_CATEGORY("system.ota");
 #include <cstdio>
 #include <cstdarg>
 
-namespace particle::system {
+namespace particle {
+
+namespace system {
 
 namespace {
 
@@ -407,4 +409,6 @@ void FirmwareUpdate::endUpdate(bool ok) {
     system_notify_event(firmware_update, ok ? firmware_update_complete : firmware_update_failed, &fileDesc_);
 }
 
-} // namespace particle::system
+} // namespace system
+
+} // namespace particle

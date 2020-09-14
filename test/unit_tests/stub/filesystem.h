@@ -97,7 +97,9 @@ int filesystem_unlock(filesystem_t* fs);
 #ifdef __cplusplus
 } // extern "C"
 
-namespace particle::fs {
+namespace particle {
+
+namespace fs {
 
 class FsLock {
 public:
@@ -122,6 +124,8 @@ private:
     filesystem_t* fs_;
 };
 
-} // namespace particle::fs
+} // namespace fs
+
+} // namespace particle
 
 #endif // defined(__cplusplus)

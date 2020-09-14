@@ -18,9 +18,13 @@
 #include <random>
 #include <string>
 
-namespace particle::test {
+namespace particle {
+
+namespace test {
 
 std::string randString(size_t size);
 std::default_random_engine& randGen();
 
-} // namespace particle::test
+} // namespace test
+
+} // namespace particle

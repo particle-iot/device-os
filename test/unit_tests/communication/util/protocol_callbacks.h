@@ -23,7 +23,11 @@
 
 #include <functional>
 
-namespace particle::protocol::test {
+namespace particle {
+
+namespace protocol {
+
+namespace test {
 
 // Helper class for mocking the protocol callbacks
 class ProtocolCallbacks {
@@ -137,4 +141,8 @@ inline int ProtocolCallbacks::restore(void* data, size_t size, uint8_t type, voi
 inline void ProtocolCallbacks::notifyClientMessagesProcessed(void* reserved) {
 }
 
-} // namespace particle::protocol::test
+} // namespace test
+
+} // namespace protocol
+
+} // namespace particle

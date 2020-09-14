@@ -35,7 +35,9 @@
 
 LOG_SOURCE_CATEGORY("comm.ota")
 
-namespace particle::protocol {
+namespace particle {
+
+namespace protocol {
 
 namespace {
 
@@ -717,6 +719,8 @@ void FirmwareUpdate::reset() {
     hasGaps_ = false;
 }
 
-} // namespace particle::protocol
+} // namespace protocol
+
+} // namespace particle
 
 #endif // HAL_PLATFORM_OTA_PROTOCOL_V3

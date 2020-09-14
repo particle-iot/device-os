@@ -17,7 +17,11 @@
 
 #include "coap_message_channel.h"
 
-namespace particle::protocol::test {
+namespace particle {
+
+namespace protocol {
+
+namespace test {
 
 ProtocolError CoapMessageChannel::send(Message& msg) {
     if (!msg.has_id() && msg.length() >= MIN_COAP_MESSAGE_SIZE) {
@@ -48,4 +52,8 @@ ProtocolError CoapMessageChannel::receive(Message& msg) {
     return ProtocolError::NO_ERROR;
 }
 
-} // namespace particle::protocol::test
+} // namespace test
+
+} // namespace protocol
+
+} // namespace particle

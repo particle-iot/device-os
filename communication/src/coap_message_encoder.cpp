@@ -19,7 +19,9 @@
 
 #include "endian_util.h"
 
-namespace particle::protocol {
+namespace particle {
+
+namespace protocol {
 
 CoapMessageEncoder::CoapMessageEncoder(char* buf, size_t size) :
         buf_(buf, size),
@@ -213,4 +215,6 @@ bool CoapMessageEncoder::encodeHeader(size_t tokenSize) {
     return true;
 }
 
-} // namespace particle::protocol
+} // namespace protocol
+
+} // namespace particle

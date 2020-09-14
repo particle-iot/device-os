@@ -21,7 +21,9 @@
 
 #include <cstddef>
 
-namespace particle::protocol {
+namespace particle {
+
+namespace protocol {
 
 class CoapOptionIterator;
 
@@ -187,4 +189,6 @@ inline CoapOptionIterator::operator bool() const {
     return optData_;
 }
 
-} // namespace particle::protocol
+} // namespace protocol
+
+} // namespace particle

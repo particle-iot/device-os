@@ -19,7 +19,9 @@
 
 #include "system_error.h"
 
-namespace particle::protocol {
+namespace particle {
+
+namespace protocol {
 
 // Note: System errors cannot be properly mapped to the response codes defined in RFC 7252.
 // Most of the errors will result in 5.00 (Internal Server Error), which is used as a generic
@@ -57,4 +59,6 @@ CoapCode coapCodeForSystemError(int error) {
     }
 }
 
-} // namespace particle::protocol
+} // namespace protocol
+
+} // namespace particle
