@@ -504,10 +504,10 @@ TEST_CASE("FirmwareUpdate") {
     SECTION("acknowledges every second chunk normally") {
         w.sendStart(2560 /* fileSize */, std::string() /* fileHash */, 512 /* chunkSize */, false /* discardData */);
         w.skipMessages(2); // Skip the ACK and response
-        // 1st chunk
+        // Chunk 1
         w.sendChunk(1 /* index */, genString(512) /* data */);
         CHECK(!w.hasMessages()); // ACK delayed
-        // 2nd chunk
+        // Chunk 2
         w.sendChunk(2 /* index */, genString(512) /* data */);
         auto m = w.receiveMessage();
         CHECK(m.type() == CoapType::NON);
@@ -516,10 +516,10 @@ TEST_CASE("FirmwareUpdate") {
         CHECK(m.option(CoapOption::URI_PATH).toString() == "A");
         CHECK(m.option(OtaCoapOption::CHUNK_INDEX).toUInt() == 2);
         CHECK(!m.hasPayload()); // No gaps
-        // 3rd chunk
+        // Chunk 3
         w.sendChunk(3 /* index */, genString(512) /* data */);
         CHECK(!w.hasMessages()); // ACK delayed
-        // 4th chunk
+        // Chunk 4
         w.sendChunk(4 /* index */, genString(512) /* data */);
         m = w.receiveMessage();
         CHECK(m.type() == CoapType::NON);
@@ -548,15 +548,15 @@ TEST_CASE("FirmwareUpdate") {
     SECTION("always acknowledges the last chunk of the file data") {
         w.sendStart(1536 /* fileSize */, std::string() /* fileHash */, 512 /* chunkSize */, false /* discardData */);
         w.skipMessages(2); // Skip the ACK and response
-        // 1st chunk
+        // Chunk 1
         w.sendChunk(1 /* index */, genString(512) /* data */);
         CHECK(!w.hasMessages()); // ACK delayed
-        // 2nd chunk
+        // Chunk 2
         w.sendChunk(2 /* index */, genString(512) /* data */);
         auto m = w.receiveMessage();
         CHECK(m.option(OtaCoapOption::CHUNK_INDEX).toUInt() == 2);
         CHECK(!m.hasPayload()); // No gaps
-        // 3rd chunk
+        // Chunk 3
         w.sendChunk(3 /* index */, genString(512) /* data */);
         m = w.receiveMessage();
         CHECK(m.option(OtaCoapOption::CHUNK_INDEX).toUInt() == 3);
@@ -565,12 +565,12 @@ TEST_CASE("FirmwareUpdate") {
     SECTION("acknowledges chunks selectively if there's a gap in the sequence of received chunks") {
         w.sendStart(2048 /* fileSize */, std::string() /* fileHash */, 512 /* chunkSize */, false /* discardData */);
         w.skipMessages(2); // Skip the ACK and response
-        // 2nd chunk
+        // Chunk 2
         w.sendChunk(2 /* index */, genString(512) /* data */);
         auto m = w.receiveMessage();
         CHECK(m.option(OtaCoapOption::CHUNK_INDEX).toUInt() == 0);
         CHECK(parseChunkAckPayload(m) == std::vector<unsigned>{ 2 });
-        // 4th chunk
+        // Chunk 4
         w.sendChunk(4 /* index */, genString(512) /* data */);
         m = w.receiveMessage();
         CHECK(m.option(OtaCoapOption::CHUNK_INDEX).toUInt() == 0);
@@ -579,24 +579,40 @@ TEST_CASE("FirmwareUpdate") {
     SECTION("acknowledges every received chunk until a gap in the sequence of received chunks is fixed") {
         w.sendStart(4096 /* fileSize */, std::string() /* fileHash */, 512 /* chunkSize */, false /* discardData */);
         w.skipMessages(2); // Skip the ACK and response
-        // 2nd chunk
+        // Chunk 2
         w.sendChunk(2 /* index */, genString(512) /* data */);
         auto m = w.receiveMessage();
         CHECK(m.option(OtaCoapOption::CHUNK_INDEX).toUInt() == 0);
         CHECK(parseChunkAckPayload(m) == std::vector<unsigned>{ 2 });
-        // 3rd chunk
+        // Chunk 3
         w.sendChunk(3 /* index */, genString(512) /* data */);
         m = w.receiveMessage();
         CHECK(m.option(OtaCoapOption::CHUNK_INDEX).toUInt() == 0);
         CHECK(parseChunkAckPayload(m) == std::vector<unsigned>{ 2, 3 });
-        // 1st chunk
+        // Chunk 1
         w.sendChunk(1 /* index */, genString(512) /* data */);
         m = w.receiveMessage();
         CHECK(m.option(OtaCoapOption::CHUNK_INDEX).toUInt() == 3);
         CHECK(!m.hasPayload()); // No gaps
-        // 4th chunk
+        // Chunk 4
         w.sendChunk(4 /* index */, genString(512) /* data */);
         CHECK(!w.hasMessages()); // ACK delayed
+    }
+    SECTION("always acknowledges a duplicate chunk") {
+        w.sendStart(4096 /* fileSize */, std::string() /* fileHash */, 512 /* chunkSize */, false /* discardData */);
+        w.skipMessages(2); // Skip the ACK and response
+        // Chunk 1
+        w.sendChunk(1 /* index */, genString(512) /* data */);
+        CHECK(!w.hasMessages()); // ACK delayed
+        // Chunk 2
+        auto d = genString(512);
+        w.sendChunk(2 /* index */, d /* data */);
+        auto m = w.receiveMessage();
+        CHECK(m.option(OtaCoapOption::CHUNK_INDEX).toUInt() == 2);
+        // Chunk 2
+        w.sendChunk(2 /* index */, d /* data */);
+        m = w.receiveMessage();
+        CHECK(m.option(OtaCoapOption::CHUNK_INDEX).toUInt() == 2);
     }
     SECTION("replies to the server with an error response if an UpdateChunk request cannot be processed") {
         SECTION("no update is in progress") {
@@ -710,7 +726,7 @@ TEST_CASE("FirmwareUpdate") {
         Spy(Method(cb, finishFirmwareUpdate));
         w.sendStart(1024 /* fileSize */, std::string() /* fileHash */, 512 /* chunkSize */, false /* discardData */);
         w.skipMessages(2); // Skip the ACK and response
-        // 1st chunk
+        // Chunk 1
         w.sendChunk(1 /* index */, genString(512) /* data */);
         CHECK(!w.hasMessages()); // ACK delayed
         w.addMillis(OTA_TRANSFER_TIMEOUT);
