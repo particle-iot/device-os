@@ -34,6 +34,7 @@
 #include "system_network.h"
 #include "system_ymodem.h"
 #include "system_task.h"
+#include "firmware_update.h"
 #include "module_info.h"
 #include "spark_protocol_functions.h"
 #include "string_convert.h"
@@ -41,12 +42,15 @@
 #include "system_version.h"
 #include "spark_macros.h"
 #include "system_network_internal.h"
+#include "appender.h"
 #include "bytes2hexbuf.h"
 #include "system_threading.h"
 #include <cstdio>
 #if HAL_PLATFORM_DCT
 #include "dct.h"
 #endif // HAL_PLATFORM_DCT
+
+using namespace particle;
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -288,56 +292,23 @@ void set_flag(void* flag)
 
 namespace {
 
-// FIXME: Dirty hack
-bool g_ledIsOverridden = false;
-
-} // namespace
-
-int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
-{
-    if (file.store==FileTransfer::Store::FIRMWARE)
-    {
-        // address is relative to the OTA region. Normally will be 0.
-        file.file_address = HAL_OTA_FlashAddress() + file.chunk_address;
-
-        // chunk_size 0 indicates defaults.
-        if (file.chunk_size==0) {
-            file.chunk_size = HAL_OTA_ChunkSize();
-            file.file_length = HAL_OTA_FlashLength();
-        }
-    }
-    int result = 0;
-    if (System.updatesEnabled() || System.updatesForced()) {		// application event is handled asynchronously
-        if (flags & 1) {
-            // only check address
-		}
-		else {
-            system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 0, nullptr);
-            // FIXME: use the APIs in system_led_signal.h instead.
-            // The RGB may behave weirdly if multi-threading is enabled and user application
-            // also wants to control the RGB.
-            g_ledIsOverridden = LED_RGB_IsOverRidden();
-            if (!g_ledIsOverridden) {
-                RGB.control(true);
-                // Get base color used for the update process indication
-                const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
-                RGB.color(status ? status->color : RGB_COLOR_MAGENTA);
-            }
-            SPARK_FLASH_UPDATE = 1;
-            TimingFlashUpdateTimeout = 0;
-            system_notify_event(firmware_update, firmware_update_begin, &file);
-            HAL_FLASH_Begin(file.file_address, file.file_length, NULL);
-        }
-    }
-    else {
-    	result = 1;
-    }
-    return result;
-}
-
-namespace {
-
 System_Reset_Reason pendingResetReason = RESET_REASON_UNKNOWN;
+
+int formatOtaUpdateStatusEventData(int result, uint8_t *buf, size_t size)
+{
+    memset(buf, 0, size);
+
+    BufferAppender appender(buf, size);
+    appender.append("{\"r\":");
+
+    char str[12] = {};
+    snprintf(str, sizeof(str), "%d", result);
+
+    appender.append(str);
+    appender.append("}");
+
+    return 0;
+}
 
 } // unnamed
 
@@ -395,62 +366,46 @@ void system_shutdown_if_needed()
     }
 }
 
+int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
+{
+    if (file.store != FileTransfer::Store::FIRMWARE) {
+        return SYSTEM_ERROR_OTA_UNSUPPORTED_MODULE;
+    }
+    file.file_address = HAL_OTA_FlashAddress() + file.chunk_address; // Address is relative to the OTA region
+    if (!file.chunk_size) { // 0 indicates defaults
+        file.chunk_size = HAL_OTA_ChunkSize();
+    }
+    if (!file.file_length) {
+        file.file_length = HAL_OTA_FlashLength();
+    }
+    FirmwareUpdateFlags f;
+    if (flags & 1) { // See ChunkedTransfer::handle_update_begin()
+        f |= FirmwareUpdateFlag::VALIDATE_ONLY;
+    }
+    return system::FirmwareUpdate::instance()->startUpdate(file.file_length, nullptr /* fileHash */, nullptr /* partialSize */, f);
+}
+
 int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
 {
-    using namespace particle::protocol;
-    SPARK_FLASH_UPDATE = 0;
-    TimingFlashUpdateTimeout = 0;
-    //DEBUG("update finished flags=%d store=%d", flags, file.store);
-    int result = SYSTEM_ERROR_UNKNOWN;
-
-    if ((flags & (UpdateFlag::VALIDATE_ONLY | UpdateFlag::SUCCESS)) == (UpdateFlag::VALIDATE_ONLY | UpdateFlag::SUCCESS)) {
-        result = HAL_FLASH_OTA_Validate(true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
-        return result;
+    FirmwareUpdateFlags f;
+    if (!(flags & protocol::UpdateFlag::SUCCESS)) {
+        f |= FirmwareUpdateFlag::CANCEL;
+    } else if (flags & protocol::UpdateFlag::VALIDATE_ONLY) {
+        f |= FirmwareUpdateFlag::VALIDATE_ONLY;
     }
-
-    if (flags & UpdateFlag::SUCCESS) {    // update successful
-        if (file.store==FileTransfer::Store::FIRMWARE)
-        {
-            result = HAL_FLASH_End(nullptr);
-            system_notify_event(firmware_update, (result < 0) ? firmware_update_failed : firmware_update_complete, &file);
-
-            // always restart for now
-            if ((true || result == HAL_UPDATE_APPLIED_PENDING_RESTART) && !(flags & UpdateFlag::DONT_RESET))
-            {
-                system_pending_shutdown(RESET_REASON_UPDATE);
-            }
-        }
+    const int r = system::FirmwareUpdate::instance()->finishUpdate(f);
+    if (reserved && (flags & protocol::UpdateFlag::SUCCESS)) {
+        const auto buf = (uint8_t*)reserved;
+        formatOtaUpdateStatusEventData(r, (uint8_t*)buf, 255 /* Hardcoded in chunked_transfer.cpp :( */);
     }
-    else
-    {
-        system_notify_event(firmware_update, firmware_update_failed, &file);
-    }
-
-    // FIXME: use APIs in system_led_signal.h instead
-    // It might lease the control that user application just takes over.
-    if (!g_ledIsOverridden) {
-        RGB.control(false);
-    }
-
-    return result;
+    return r;
 }
 
 int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chunk, void* reserved)
 {
-    TimingFlashUpdateTimeout = 0;
-    int result = -1;
-    system_notify_event(firmware_update, firmware_update_progress, &file);
-    if (file.store==FileTransfer::Store::FIRMWARE)
-    {
-        result = HAL_FLASH_Update(chunk, file.chunk_address, file.chunk_size, NULL);
-        // FIXME: use APIs in system_led_signal.h instead
-        if (!g_ledIsOverridden) {
-            LED_Toggle(LED_RGB);
-        }
-    }
-    return result;
+    return system::FirmwareUpdate::instance()->saveChunk((const char*)chunk, file.chunk_size,
+            file.chunk_address - file.file_address, 0 /* partialSize */);
 }
-
 
 class AppendBase {
 

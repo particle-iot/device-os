@@ -99,7 +99,8 @@ struct TransferState {
 } // namespace detail
 
 FirmwareUpdate::FirmwareUpdate() :
-        updating_(false) {
+        updating_(false),
+        ledOverridden_(false) {
 }
 
 int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* partialSize, FirmwareUpdateFlags flags) {
@@ -150,16 +151,23 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* p
 #endif
             return SYSTEM_ERROR_FLASH;
         }
+        system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 0, nullptr);
         // TODO: Use the LED service for the update indication
-        RGB.control(true);
-        const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
-        RGB.color(status ? status->color : RGB_COLOR_MAGENTA);
+        ledOverridden_ = LED_RGB_IsOverRidden();
+        if (!ledOverridden_) {
+            RGB.control(true);
+            // Get base color used for the update indication
+            const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
+            RGB.color(status ? status->color : RGB_COLOR_MAGENTA);
+        }
         SPARK_FLASH_UPDATE = 1; // TODO: Get rid of legacy state variables
         updating_ = true;
         // Generate a system event
         fileDesc_ = FileTransfer::Descriptor();
         fileDesc_.file_length = fileSize;
         fileDesc_.file_address = HAL_OTA_FlashAddress();
+        fileDesc_.chunk_size = HAL_OTA_ChunkSize();
+        fileDesc_.chunk_address = fileDesc_.file_address;
         fileDesc_.store = FileTransfer::Store::FIRMWARE;
         system_notify_event(firmware_update, firmware_update_begin, &fileDesc_);
     }
@@ -188,6 +196,7 @@ int FirmwareUpdate::finishUpdate(FirmwareUpdateFlags flags) {
             }
 #endif
             if (r >= 0) {
+                // TODO: Cache the validation result so that it's not performed twice
                 r = HAL_FLASH_End(nullptr /* reserved */);
             }
             endUpdate(r >= 0);
@@ -219,6 +228,7 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
     if (!updating_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    TimingFlashUpdateTimeout = 0; // TODO: Get rid of legacy state variables
     const uintptr_t addr = HAL_OTA_FlashAddress() + chunkOffset;
     int r = HAL_FLASH_Update((const uint8_t*)chunkData, addr, chunkSize, nullptr);
     if (r != 0) {
@@ -236,8 +246,9 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
         }
     }
 #endif
-    TimingFlashUpdateTimeout = 0; // TODO: Get rid of legacy state variables
-    LED_Toggle(LED_RGB);
+    if (!ledOverridden_) {
+        LED_Toggle(LED_RGB);
+    }
     // Generate a system event
     fileDesc_.chunk_address = fileDesc_.file_address + chunkOffset;
     fileDesc_.chunk_size = chunkSize;
@@ -354,7 +365,8 @@ int FirmwareUpdate::finalizeTransferState() {
         return SYSTEM_ERROR_OTA_INVALID_SIZE;
     }
     if (memcmp(persist->partialHash, persist->fileHash, Sha256::HASH_SIZE) != 0) {
-        return SYSTEM_ERROR_OTA_INTEGRITY_CHECK_FAILED;
+        ERROR_MESSAGE("Integrity check of a resumed update has failed");
+        return SYSTEM_ERROR_OTA_RESUMED_UPDATE_FAILED;
     }
     CHECK(state->file.sync());
     state->file.close();
@@ -380,7 +392,9 @@ void FirmwareUpdate::endUpdate(bool ok) {
 #if HAL_PLATFORM_RESUMABLE_OTA
     transferState_.reset();
 #endif
-    RGB.control(false);
+    if (!ledOverridden_) {
+        RGB.control(false);
+    }
     SPARK_FLASH_UPDATE = 0;
     updating_ = false;
     // Generate a system event

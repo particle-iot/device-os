@@ -97,7 +97,6 @@ enum class FirmwareUpdateFlag {
     NON_RESUMABLE = 0x02, ///< Indicates that the update cannot be resumed.
     VALIDATE_ONLY = 0x04, ///< Validate the parameters but do not start/finish the update.
     CANCEL = 0x08 ///< Cancel the update.
-    // TODO: DONT_RESET
 };
 
 typedef EnumFlags<FirmwareUpdateFlag> FirmwareUpdateFlags;

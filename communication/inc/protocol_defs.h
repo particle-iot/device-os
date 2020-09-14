@@ -177,8 +177,7 @@ namespace UpdateFlag {
 enum Enum {
     ERROR         = 0x00,
     SUCCESS       = 0x01,
-    VALIDATE_ONLY = 0x02,
-    DONT_RESET    = 0x04
+    VALIDATE_ONLY = 0x02
 };
 }
 

@@ -84,6 +84,7 @@ public:
 private:
     FileTransfer::Descriptor fileDesc_; // File descriptor (used for compatibility with legacy system events)
     bool updating_; // Whether an update is in progress
+    bool ledOverridden_; // FIXME
 
 #if HAL_PLATFORM_RESUMABLE_OTA
     std::unique_ptr<detail::TransferState> transferState_; // Transfer state

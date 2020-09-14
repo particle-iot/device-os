@@ -59,6 +59,7 @@
         (OTA_UNSUPPORTED_MODULE, "Unsupported module", -1310), \
         (OTA_VALIDATION_FAILED, "Module validation failed", -1320), \
         (OTA_INTEGRITY_CHECK_FAILED, "Module integrity check failed", -1330), \
+        (OTA_RESUMED_UPDATE_FAILED, "Resumed update failed", -1331), \
         (OTA_DEPENDENCY_CHECK_FAILED, "Module dependency check failed", -1340), \
         (OTA_INVALID_ADDRESS, "Invalid module address", -1350), \
         (OTA_INVALID_SIZE, "Invalid module size", -1351), \

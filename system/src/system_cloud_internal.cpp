@@ -67,8 +67,8 @@ namespace system {
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 
-int startFirmwareUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, unsigned flags) {
-    return FirmwareUpdate::instance()->startUpdate(fileSize, fileHash, fileOffset,
+int startFirmwareUpdate(size_t fileSize, const char* fileHash, size_t* partialSize, unsigned flags) {
+    return FirmwareUpdate::instance()->startUpdate(fileSize, fileHash, partialSize,
             FirmwareUpdateFlags::fromUnderlying(flags));
 }
 
@@ -102,7 +102,6 @@ using particle::CloudDiagnostics;
 using particle::CloudConnectionSettings;
 using particle::publishEvent;
 using particle::protocol::ProtocolError;
-using particle::BufferAppender;
 
 extern uint8_t feature_cloud_udp;
 extern volatile bool cloud_socket_aborted;
@@ -804,39 +803,6 @@ int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescript
     return 0;
 }
 
-#if !HAL_PLATFORM_OTA_PROTOCOL_V3
-
-int formatOtaUpdateStatusEventData(uint32_t flags, int result, uint8_t *buf, size_t size)
-{
-    memset(buf, 0, size);
-
-    BufferAppender appender(buf, size);
-    appender.append("{\"r\":");
-
-    char str[12] = {};
-    snprintf(str, sizeof(str), "%d", result);
-
-    appender.append(str);
-    appender.append("}");
-
-    return 0;
-}
-
-int finish_ota_firmware_update(FileTransfer::Descriptor& file, uint32_t flags, void* buf)
-{
-    using namespace particle::protocol;
-
-    int result = Spark_Finish_Firmware_Update(file, flags, nullptr);
-
-    if (buf && (flags & UpdateFlag::SUCCESS)) {
-        formatOtaUpdateStatusEventData(flags, result, (uint8_t*)buf, 255 /* :( */);
-    }
-
-    return result;
-}
-
-#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
-
 static const char* resetReasonString(System_Reset_Reason reason)
 {
     switch (reason) {
@@ -1006,7 +972,7 @@ void Spark_Protocol_Init(void)
         callbacks.save_firmware_chunk = saveFirmwareChunk;
 #else
         callbacks.prepare_for_firmware_update = Spark_Prepare_For_Firmware_Update;
-        callbacks.finish_firmware_update = finish_ota_firmware_update;
+        callbacks.finish_firmware_update = Spark_Finish_Firmware_Update;
         callbacks.save_firmware_chunk = Spark_Save_Firmware_Chunk;
 #endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
         callbacks.calculate_crc = HAL_Core_Compute_CRC32;
