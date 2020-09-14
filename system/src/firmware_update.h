@@ -19,6 +19,7 @@
 
 #include "hal_platform.h"
 
+#include "file_transfer.h"
 #include "system_defs.h"
 
 #include <memory>
@@ -74,19 +75,18 @@ public:
      *
      * @return `true` if a firmware update is in progress.
      */
-    bool isInProgress() const;
+    bool isRunning() const;
     /**
      * Get the singleton instance of this class.
      */
     static FirmwareUpdate* instance();
 
 private:
-    int validResult_; // Result of the update validation
-    bool validChecked_; // Whether the update has been validated
+    FileTransfer::Descriptor fileDesc_; // File descriptor (used for compatibility with legacy system events)
     bool updating_; // Whether an update is in progress
 
 #if HAL_PLATFORM_RESUMABLE_OTA
-    std::unique_ptr<detail::TransferState> transferState_; // File transfer state
+    std::unique_ptr<detail::TransferState> transferState_; // Transfer state
 
     int initTransferState(size_t fileSize, const char* fileHash);
     int updateTransferState(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize);
@@ -96,7 +96,11 @@ private:
 
     FirmwareUpdate();
 
-    void endUpdate();
+    void endUpdate(bool ok);
 };
+
+inline bool FirmwareUpdate::isRunning() const {
+    return updating_;
+}
 
 } // namespace particle::system

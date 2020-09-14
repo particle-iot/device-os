@@ -22,6 +22,7 @@ LOG_SOURCE_CATEGORY("system.ota");
 #include "firmware_update.h"
 
 #include "system_task.h"
+#include "system_event.h"
 #include "system_led_signal.h"
 
 #include "ota_flash_hal.h"
@@ -98,8 +99,6 @@ struct TransferState {
 } // namespace detail
 
 FirmwareUpdate::FirmwareUpdate() :
-        validResult_(0),
-        validChecked_(false),
         updating_(false) {
 }
 
@@ -117,7 +116,7 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* p
     if (!System.updatesEnabled() && !System.updatesForced()) {
         return SYSTEM_ERROR_OTA_UPDATES_DISABLED;
     }
-    if (fileSize == 0 && fileSize > HAL_OTA_FlashLength()) {
+    if (!fileSize || fileSize > HAL_OTA_FlashLength()) {
         return SYSTEM_ERROR_OTA_INVALID_SIZE;
     }
     size_t fileOffset = 0;
@@ -129,7 +128,7 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* p
     // would have cleared it anyway if it wasn't a dry-run
     if (!nonResumable && !(validateOnly && discardData)) {
         const int r = initTransferState(fileSize, fileHash);
-        if (r == 0) {
+        if (r >= 0) {
             fileOffset = transferState_->persist.partialSize;
             if (validateOnly) {
                 transferState_.reset();
@@ -146,16 +145,23 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* p
     if (!validateOnly) {
         // Erase the OTA section if we're not resuming the previous transfer
         if (!fileOffset && !HAL_FLASH_Begin(HAL_OTA_FlashAddress(), fileSize, nullptr)) {
-            endUpdate();
+#if HAL_PLATFORM_RESUMABLE_OTA
+            transferState_.reset();
+#endif
             return SYSTEM_ERROR_FLASH;
         }
-        // FIXME: Use the LED service for the update indication
+        // TODO: Use the LED service for the update indication
         RGB.control(true);
         const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
         RGB.color(status ? status->color : RGB_COLOR_MAGENTA);
         SPARK_FLASH_UPDATE = 1; // TODO: Get rid of legacy state variables
         updating_ = true;
-        // TODO: System events
+        // Generate a system event
+        fileDesc_ = FileTransfer::Descriptor();
+        fileDesc_.file_length = fileSize;
+        fileDesc_.file_address = HAL_OTA_FlashAddress();
+        fileDesc_.store = FileTransfer::Store::FIRMWARE;
+        system_notify_event(firmware_update, firmware_update_begin, &fileDesc_);
     }
     if (partialSize) {
         *partialSize = fileOffset;
@@ -173,21 +179,21 @@ int FirmwareUpdate::finishUpdate(FirmwareUpdateFlags flags) {
         }
         if (!validateOnly) {
 #if HAL_PLATFORM_RESUMABLE_OTA
+            int r = 0;
             if (transferState_) {
-                const int r = finalizeTransferState();
-                if (r < 0) {
-                    clearTransferState();
-                    return r;
-                }
+                r = finalizeTransferState();
             }
-            if (discardData) {
+            if (r < 0 || discardData) {
                 clearTransferState();
             }
 #endif
-            CHECK(HAL_FLASH_End(nullptr /* reserved */));
-            RGB.control(false); // FIXME
-            SPARK_FLASH_UPDATE = 0;
-            updating_ = false;
+            if (r >= 0) {
+                r = HAL_FLASH_End(nullptr /* reserved */);
+            }
+            endUpdate(r >= 0);
+            if (r < 0) {
+                return r;
+            }
             system_pending_shutdown(RESET_REASON_UPDATE); // Always restart for now
         } else {
             CHECK(HAL_FLASH_OTA_Validate(true /* userDepsOptional */,
@@ -196,19 +202,15 @@ int FirmwareUpdate::finishUpdate(FirmwareUpdateFlags flags) {
         }
     } else if (updating_ && !validateOnly) {
 #if HAL_PLATFORM_RESUMABLE_OTA
+        int r = 0;
         if (transferState_) {
-            const int r = finalizeTransferState();
-            if (r < 0) {
-                clearTransferState();
-            }
+            r = finalizeTransferState();
         }
-        if (discardData) {
+        if (r < 0 || discardData) {
             clearTransferState();
         }
 #endif
-        RGB.control(false); // FIXME
-        SPARK_FLASH_UPDATE = 0;
-        updating_ = false;
+        endUpdate(false /* ok */);
     }
     return 0;
 }
@@ -221,7 +223,7 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
     int r = HAL_FLASH_Update((const uint8_t*)chunkData, addr, chunkSize, nullptr);
     if (r != 0) {
         ERROR_MESSAGE("Failed to save firmware data: %d", r);
-        endUpdate();
+        endUpdate(false /* ok */);
         return SYSTEM_ERROR_FLASH;
     }
 #if HAL_PLATFORM_RESUMABLE_OTA
@@ -234,13 +236,13 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
         }
     }
 #endif
-    TimingFlashUpdateTimeout = 0; // FIXME
-    LED_Toggle(LED_RGB); // FIXME
+    TimingFlashUpdateTimeout = 0; // TODO: Get rid of legacy state variables
+    LED_Toggle(LED_RGB);
+    // Generate a system event
+    fileDesc_.chunk_address = fileDesc_.file_address + chunkOffset;
+    fileDesc_.chunk_size = chunkSize;
+    system_notify_event(firmware_update, firmware_update_progress, &fileDesc_);
     return 0;
-}
-
-bool FirmwareUpdate::isInProgress() const {
-    return updating_;
 }
 
 FirmwareUpdate* FirmwareUpdate::instance() {
@@ -371,12 +373,20 @@ void FirmwareUpdate::clearTransferState() {
 
 #endif // HAL_PLATFORM_RESUMABLE_OTA
 
-void FirmwareUpdate::endUpdate() {
+void FirmwareUpdate::endUpdate(bool ok) {
+    if (!updating_) {
+        return;
+    }
 #if HAL_PLATFORM_RESUMABLE_OTA
     transferState_.reset();
 #endif
+    RGB.control(false);
     SPARK_FLASH_UPDATE = 0;
     updating_ = false;
+    // Generate a system event
+    fileDesc_.chunk_size = 0;
+    fileDesc_.chunk_address = 0;
+    system_notify_event(firmware_update, ok ? firmware_update_complete : firmware_update_failed, &fileDesc_);
 }
 
 } // namespace particle::system
