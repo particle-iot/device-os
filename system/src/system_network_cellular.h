@@ -83,7 +83,8 @@ protected:
     }
 
     int on_now() override {
-        resume_if_needed();
+        // Resume unconditionally
+        cellular_cancel(false, HAL_IsISR(), nullptr);
         cellular_result_t ret = cellular_on(nullptr);
         if (ret != 0) {
             return ret;
@@ -104,6 +105,10 @@ protected:
         cellular_disconnect(nullptr);
     }
 
+    virtual int process_now() override {
+        return cellular_process(nullptr, nullptr);
+    }
+
 public:
 
     CellularNetworkInterface() {
@@ -112,7 +117,7 @@ public:
         cb.notify_connected = HAL_NET_notify_connected;
         cb.notify_disconnected = HAL_NET_notify_disconnected;
         cb.notify_dhcp = HAL_NET_notify_dhcp;
-        cb.notify_can_shutdown = HAL_NET_notify_can_shutdown;
+        cb.notify_error = HAL_NET_notify_error;
         HAL_NET_SetCallbacks(&cb, nullptr);
     }
 

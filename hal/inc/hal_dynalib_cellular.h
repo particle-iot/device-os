@@ -86,6 +86,13 @@ DYNALIB_FN(36, hal_cellular, cellular_credentials_clear, int(void*))
 DYNALIB_FN(BASE_CELL_IDX + 0, hal_cellular, cellular_global_identity, cellular_result_t(CellularGlobalIdentity*, void*))
 DYNALIB_FN(BASE_CELL_IDX + 1, hal_cellular, cellular_registration_timeout_set, cellular_result_t(system_tick_t, void*))
 
+#if !HAL_PLATFORM_NCP
+DYNALIB_FN(BASE_CELL_IDX + 2, hal_cellular, cellular_process, cellular_result_t(void*, void*))
+#define BASE_CELL_IDX1 (BASE_CELL_IDX + 3)
+#else
+#define BASE_CELL_IDX1 (BASE_CELL_IDX + 2)
+#endif // !HAL_PLATFORM_NCP
+
 DYNALIB_END(hal_cellular)
 
 #endif  // PLATFORM_ID == 10 || HAL_PLATFORM_CELLULAR

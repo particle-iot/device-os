@@ -97,7 +97,6 @@ protected:
 
     virtual void on_start_listening() override
     {
-        notify_cannot_shutdown();
         /* If WiFi module is connected, disconnect it */
         network_disconnect(0, NETWORK_DISCONNECT_REASON_LISTENING, NULL);
 
@@ -134,7 +133,10 @@ protected:
 
     void on_setup_cleanup() override { wlan_smart_config_cleanup(); }
 
-
+    virtual int process_now() override {
+        // Nothing to do here
+        return 0;
+    }
 
 public:
 

@@ -80,9 +80,9 @@ void HAL_NET_notify_disconnected()
     network.notify_disconnected();
 }
 
-void HAL_NET_notify_can_shutdown()
+void HAL_NET_notify_error()
 {
-    network.notify_can_shutdown();
+    network.notify_error();
 }
 
 void HAL_NET_notify_dhcp(bool dhcp)
@@ -260,6 +260,8 @@ void manage_network_connection()
         {
             // INFO("Network Connect: %s", (!SPARK_WLAN_STARTED) ? "!SPARK_WLAN_STARTED" : "SPARK_CLOUD_CONNECT && !network.ready()");
             network_connect(0, 0, 0, 0);
+        } else {
+            nif(0).process();
         }
     }
 }

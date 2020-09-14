@@ -242,7 +242,7 @@ struct NetworkInterface
 
     virtual int set_hostname(const char* hostname)=0;
     virtual int get_hostname(char* buffer, size_t buffer_len, bool noDefault=false)=0;
-
+    virtual int process()=0;
 };
 
 
@@ -257,7 +257,7 @@ private:
     volatile uint8_t WLAN_CONNECTED;
     volatile uint8_t WLAN_CONNECTING;
     volatile uint8_t WLAN_DHCP_PENDING;
-    volatile uint8_t WLAN_CAN_SHUTDOWN;
+    volatile uint8_t WLAN_ERROR;
     volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT;
 #if PLATFORM_ID == 10 // Electron
     volatile uint32_t START_LISTENING_TIMER_MS = 300000UL; // 5 minute default on Electron
@@ -440,6 +440,8 @@ protected:
 
     virtual int on_now()=0;
     virtual void off_now()=0;
+
+    virtual int process_now()=0;
 
     /**
      *
@@ -642,6 +644,7 @@ public:
             WLAN_CONNECTED = 0;
             WLAN_CONNECTING = 0;
             WLAN_SERIAL_CONFIG_DONE = 1;
+            WLAN_ERROR = 0;
             LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
             diag->status(NetworkDiagnostics::TURNED_OFF);
             system_notify_event(network_status, network_status_off);
@@ -741,16 +744,12 @@ public:
         }
     }
 
-    void notify_can_shutdown()
+    void notify_error()
     {
-        WLAN_CAN_SHUTDOWN = 1;
+        if (!WLAN_ERROR) {
+            WLAN_ERROR = 1;
+        }
     }
-
-    void notify_cannot_shutdown()
-    {
-        WLAN_CAN_SHUTDOWN = 0;
-    }
-
 
     void listen_loop() override
     {
@@ -770,6 +769,21 @@ public:
             on_setup_cleanup();
             WLAN_SMART_CONFIG_FINISHED = 0;
         }
+    }
+
+    virtual int process()
+    {
+        bool in_error = WLAN_ERROR;
+        auto r = process_now();
+        if (in_error) {
+            // Ask the system to reset us
+            if (r) {
+                SPARK_WLAN_RESET = 1;
+            } else {
+                WLAN_ERROR = 0;
+            }
+        }
+        return r;
     }
 };
 
@@ -843,7 +857,7 @@ inline void NetworkStateLogger::dump() const {
     NETWORK_STATE_PRINTF("WLAN_CONNECTED: %d\r\n", (int)nif_.WLAN_CONNECTED);
     NETWORK_STATE_PRINTF("WLAN_CONNECTING: %d\r\n", (int)nif_.WLAN_CONNECTING);
     NETWORK_STATE_PRINTF("WLAN_DHCP_PENDING: %d\r\n", (int)nif_.WLAN_DHCP_PENDING);
-    NETWORK_STATE_PRINTF("WLAN_CAN_SHUTDOWN: %d\r\n", (int)nif_.WLAN_CAN_SHUTDOWN);
+    NETWORK_STATE_PRINTF("WLAN_ERROR: %d\r\n", (int)nif_.WLAN_ERROR);
     NETWORK_STATE_PRINTF("WLAN_LISTEN_ON_FAILED_CONNECT: %d\r\n", (int)nif_.WLAN_LISTEN_ON_FAILED_CONNECT);
     // Global flags
     NETWORK_STATE_PRINTF("SPARK_WLAN_RESET: %d\r\n", (int)SPARK_WLAN_RESET);

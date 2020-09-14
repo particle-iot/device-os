@@ -485,6 +485,8 @@ public:
     /** Releases the modem lock. */
     void unlock();
 
+    int process();
+
 protected:
     /** Write bytes to the physical interface. This function should be
         implemented in a inherited class.
@@ -581,6 +583,7 @@ protected:
     static int _cbUPSND(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUDNSRN(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUSOCR(int type, const char* buf, int len, int* handle);
+    static int _cbUSOER(int type, const char* buf, int len, int* err);
     struct Usoctl {
         int handle;
         int param_id;
@@ -638,8 +641,11 @@ protected:
     bool _powerOn(void);
     void _incModemStateChangeCount(void);
     void _setBandSelectString(MDM_BandSelect &data, char* bands, int index=0); // private helper to create bands strings
+    int _checkAtResponse(void);
     bool _atOk(void);
+    bool _checkModem(bool force = true);
     bool _checkEpsReg(void);
+    int _socketError(void);
     static MDMParser* inst;
     bool _init;
     bool _pwr;
@@ -649,6 +655,8 @@ protected:
     bool _attached_urc;
     int _power_mode;
     volatile bool _cancel_all_operations;
+    volatile bool _error;
+    system_tick_t _lastProcess;
 #ifdef MDM_DEBUG
     int _debugLevel;
     void _debugPrint(int level, const char* color, const char* format, ...) __attribute__((format(printf, 4, 5)));
