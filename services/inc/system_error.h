@@ -38,7 +38,7 @@
         (LIMIT_EXCEEDED, "Limit exceeded", -200), \
         (END_OF_STREAM, "End of stream", -201), \
         (INVALID_STATE, "Invalid state", -210), \
-        (FLASH, "Flash error", -219), \
+        (FLASH_IO, "Flash IO error", -219), \
         (IO, "IO error", -220), \
         (WOULD_BLOCK, "Would block", -221), \
         (FILE, "File error", -225), \

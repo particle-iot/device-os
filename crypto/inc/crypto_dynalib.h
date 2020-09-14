@@ -202,9 +202,9 @@ DYNALIB_FN(122, crypto, mbedtls_md5_update_ret, int(mbedtls_md5_context*, const 
 DYNALIB_FN(123, crypto, mbedtls_md5_finish_ret, int(mbedtls_md5_context*, unsigned char[16]))
 DYNALIB_FN(124, crypto, mbedtls_internal_md5_process, int(mbedtls_md5_context*, const unsigned char[64]))
 
-#define BASE_IDX 124 // Base index for all subsequent functions
+#define BASE_IDX 125 // Base index for all subsequent functions
 #else // !(PLATFORM_ID == 6 || PLATFORM_ID == 8)
-#define BASE_IDX 73
+#define BASE_IDX 74
 #endif
 
 DYNALIB_FN(BASE_IDX + 0, crypto, mbedtls_to_system_error, int(int))

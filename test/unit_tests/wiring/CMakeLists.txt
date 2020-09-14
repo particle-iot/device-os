@@ -23,6 +23,7 @@ target_compile_options( ${target_name}
 
 # Set include path specific to target
 target_include_directories( ${target_name}
+  PRIVATE ${TEST_DIR}/stub/
   PRIVATE ${DEVICE_OS_DIR}/communication/inc/
   PRIVATE ${DEVICE_OS_DIR}/hal/inc/
   PRIVATE ${DEVICE_OS_DIR}/hal/shared/

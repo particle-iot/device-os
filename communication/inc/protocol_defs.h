@@ -7,9 +7,7 @@
 #include "system_error.h"
 #include "platforms.h"
 
-#ifndef UNIT_TEST
 #include "mbedtls_config.h"
-#endif
 
 typedef uint16_t product_id_t;
 typedef uint16_t product_firmware_version_t;

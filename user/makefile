@@ -5,10 +5,6 @@ BUILD_PATH_EXT = $(USER_BUILD_PATH_EXT)
 
 DEPENDENCIES = wiring system services communication hal crypto
 
-ifdef TEST
-DEPENDENCIES += crypto
-endif
-
 include ../build/platform-id.mk
 
 ifeq ("","$(SPARK_NO_PLATFORM)")

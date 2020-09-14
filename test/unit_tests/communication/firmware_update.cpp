@@ -625,7 +625,7 @@ TEST_CASE("FirmwareUpdate") {
             auto cb = w.callbacksMock();
             When(Method(cb, saveFirmwareChunk)).Do([&](const char* chunkData, size_t chunkSize, size_t chunkOffset,
                     size_t partialSize) {
-                return SYSTEM_ERROR_FLASH;
+                return SYSTEM_ERROR_FLASH_IO;
             });
             w.sendStart(1024 /* fileSize */, std::string() /* fileHash */, 512 /* chunkSize */, false /* discardData */);
             w.skipMessages(2); // Skip the ACK and response

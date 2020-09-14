@@ -104,12 +104,14 @@ FirmwareUpdate::FirmwareUpdate() :
 }
 
 int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* partialSize, FirmwareUpdateFlags flags) {
-    const bool discardData = flags & FirmwareUpdateFlag::DISCARD_DATA;
     const bool validateOnly = flags & FirmwareUpdateFlag::VALIDATE_ONLY;
+#if HAL_PLATFORM_RESUMABLE_OTA
+    const bool discardData = flags & FirmwareUpdateFlag::DISCARD_DATA;
     bool nonResumable = flags & FirmwareUpdateFlag::NON_RESUMABLE;
     if (!fileHash || !partialSize) {
         nonResumable = true;
     }
+#endif
     if (updating_) {
         ERROR_MESSAGE("Firmware update is already in progress");
         return SYSTEM_ERROR_INVALID_STATE;
@@ -149,7 +151,7 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* p
 #if HAL_PLATFORM_RESUMABLE_OTA
             transferState_.reset();
 #endif
-            return SYSTEM_ERROR_FLASH;
+            return SYSTEM_ERROR_FLASH_IO;
         }
         system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, 0, nullptr);
         // TODO: Use the LED service for the update indication
@@ -178,16 +180,18 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* p
 }
 
 int FirmwareUpdate::finishUpdate(FirmwareUpdateFlags flags) {
-    const bool discardData = flags & FirmwareUpdateFlag::DISCARD_DATA;
     const bool validateOnly = flags & FirmwareUpdateFlag::VALIDATE_ONLY;
     const bool cancel = flags & FirmwareUpdateFlag::CANCEL;
+#if HAL_PLATFORM_RESUMABLE_OTA
+    const bool discardData = flags & FirmwareUpdateFlag::DISCARD_DATA;
+#endif
     if (!cancel) {
         if (!updating_) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
         if (!validateOnly) {
-#if HAL_PLATFORM_RESUMABLE_OTA
             int r = 0;
+#if HAL_PLATFORM_RESUMABLE_OTA
             if (transferState_) {
                 r = finalizeTransferState();
             }
@@ -234,7 +238,7 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
     if (r != 0) {
         ERROR_MESSAGE("Failed to save firmware data: %d", r);
         endUpdate(false /* ok */);
-        return SYSTEM_ERROR_FLASH;
+        return SYSTEM_ERROR_FLASH_IO;
     }
 #if HAL_PLATFORM_RESUMABLE_OTA
     if (transferState_) {

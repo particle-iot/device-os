@@ -219,7 +219,7 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
         return (ProtocolError)r;
     }
     CoapMessageEncoder e((char*)resp.buf(), resp.capacity());
-    CoapMessageId* respId = nullptr;
+    CoapMessageId* respId = nullptr; // TODO: Use a callback to pass the response ID to the request handler
     const int handlerResult = (this->*handler)(d, &e, &respId, false);
     if (handlerResult >= 0) {
         // Encode and send the response message
