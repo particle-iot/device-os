@@ -510,7 +510,7 @@ public:
         LOG_NETWORK_STATE();
         // INFO("ready(): %d; connecting(): %d; listening(): %d; WLAN_SMART_CONFIG_START: %d", (int)ready(), (int)connecting(),
         //        (int)listening(), (int)WLAN_SMART_CONFIG_START);
-        if (!ready() && !connecting() && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
+        if (!ready() && !connecting() && !listening() && !WLAN_SMART_CONFIG_START && !WLAN_ERROR) // Don't try to connect if listening mode is active or pending
         {
             bool was_sleeping = SPARK_WLAN_SLEEP;
 

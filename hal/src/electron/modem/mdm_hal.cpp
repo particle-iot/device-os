@@ -407,6 +407,7 @@ int MDMParser::process() {
             _ip = NOIP;
             _attached = false;
             _activated = false;
+            HAL_NET_notify_disconnected();
             MDM_ERROR("[ No reply from modem, requesting reset ]\r\n");
             return -1;
         }
