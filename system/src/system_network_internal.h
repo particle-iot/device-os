@@ -257,7 +257,6 @@ private:
     volatile uint8_t WLAN_CONNECTED = 0;
     volatile uint8_t WLAN_CONNECTING = 0;
     volatile uint8_t WLAN_DHCP_PENDING = 0;
-    volatile uint8_t WLAN_ERROR = 0;
     volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT = 0;
 #if PLATFORM_ID == 10 // Electron
     volatile uint32_t START_LISTENING_TIMER_MS = 300000UL; // 5 minute default on Electron
@@ -510,7 +509,7 @@ public:
         LOG_NETWORK_STATE();
         // INFO("ready(): %d; connecting(): %d; listening(): %d; WLAN_SMART_CONFIG_START: %d", (int)ready(), (int)connecting(),
         //        (int)listening(), (int)WLAN_SMART_CONFIG_START);
-        if (!ready() && !connecting() && !listening() && !WLAN_SMART_CONFIG_START && !WLAN_ERROR) // Don't try to connect if listening mode is active or pending
+        if (!ready() && !connecting() && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
         {
             bool was_sleeping = SPARK_WLAN_SLEEP;
 
@@ -644,7 +643,6 @@ public:
             WLAN_CONNECTED = 0;
             WLAN_CONNECTING = 0;
             WLAN_SERIAL_CONFIG_DONE = 1;
-            WLAN_ERROR = 0;
             LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
             diag->status(NetworkDiagnostics::TURNED_OFF);
             system_notify_event(network_status, network_status_off);
@@ -746,9 +744,7 @@ public:
 
     void notify_error()
     {
-        if (!WLAN_ERROR) {
-            WLAN_ERROR = 1;
-        }
+        // Do nothing
     }
 
     void listen_loop() override
@@ -774,13 +770,9 @@ public:
     virtual int process()
     {
         auto r = process_now();
-        if (WLAN_ERROR) {
+        if (r) {
             // Ask the system to reset us
-            if (r) {
-                SPARK_WLAN_RESET = 1;
-            } else {
-                WLAN_ERROR = 0;
-            }
+            SPARK_WLAN_RESET = 1;
         }
         return r;
     }
@@ -856,7 +848,6 @@ inline void NetworkStateLogger::dump() const {
     NETWORK_STATE_PRINTF("WLAN_CONNECTED: %d\r\n", (int)nif_.WLAN_CONNECTED);
     NETWORK_STATE_PRINTF("WLAN_CONNECTING: %d\r\n", (int)nif_.WLAN_CONNECTING);
     NETWORK_STATE_PRINTF("WLAN_DHCP_PENDING: %d\r\n", (int)nif_.WLAN_DHCP_PENDING);
-    NETWORK_STATE_PRINTF("WLAN_ERROR: %d\r\n", (int)nif_.WLAN_ERROR);
     NETWORK_STATE_PRINTF("WLAN_LISTEN_ON_FAILED_CONNECT: %d\r\n", (int)nif_.WLAN_LISTEN_ON_FAILED_CONNECT);
     // Global flags
     NETWORK_STATE_PRINTF("SPARK_WLAN_RESET: %d\r\n", (int)SPARK_WLAN_RESET);

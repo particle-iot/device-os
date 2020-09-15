@@ -381,7 +381,7 @@ bool MDMParser::_checkModem(bool force /* = true */) {
 
     if (resp == WAIT) {
         _error = true;
-        HAL_NET_notify_error();
+        // HAL_NET_notify_error();
     } else if (resp == RESP_OK) {
         _error = false;
     }
@@ -1393,7 +1393,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
 {
     LOCK();
 
-    if (_init && _pwr && _dev.dev != DEV_UNKNOWN) {
+    if (_init && _pwr && _dev.dev != DEV_UNKNOWN && _checkModem()) {
         MDM_INFO("\r\n[ Modem::register ] = = = = = = = = = = = = = =");
         // Set to full functionality mode
         int cfun_val = -1;
