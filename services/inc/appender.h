@@ -147,6 +147,10 @@ public:
         return true;
     }
 
+    size_t skip(size_t size) {
+        return dataSize_ += size;
+    }
+
     char* buffer() const {
         return buf_;
     }

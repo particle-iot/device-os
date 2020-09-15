@@ -38,7 +38,7 @@ TEST_CASE("CoapMessageEncoder") {
         CHECK(e.encode() == 4);
     }
     SECTION("can be used with a buffer smaller than the size of the encoded message") {
-        char buf[3];
+        char buf[3] = {};
         auto e = makeEncoder(buf, sizeof(buf));
         e.type(CoapType::CON);
         CHECK(e.encode() == 4);
@@ -458,7 +458,7 @@ TEST_CASE("CoapMessageEncoder") {
         }
     }
     SECTION("encodes payload data correctly") {
-        char buf[2048];
+        char buf[2048] = {};
         auto e = makeEncoder(buf, sizeof(buf));
         e.type(CoapType::CON);
         e.code(CoapCode::CONTENT);
@@ -475,6 +475,48 @@ TEST_CASE("CoapMessageEncoder") {
             e.payload(s.data(), s.size());
             CHECK(e.encode() == 1012);
             CHECK(std::string(buf, 1012) == std::string("\x42\x45\x04\xd2\xaa\xbb\x14\x61\x62\x63\x64\xff", 12) + s);
+        }
+    }
+    SECTION("allows encoding payload data in place") {
+        SECTION("too small buffer") {
+            char buf[5] = {};
+            auto e = makeEncoder(buf, sizeof(buf));
+            e.type(CoapType::CON);
+            e.code(CoapCode::CONTENT);
+            e.id(1234);
+            CHECK(e.maxPayloadSize() == 0);
+            CHECK(e.payloadData() == nullptr);
+            e.payloadSize(1);
+            CHECK(e.encode() == 6);
+            CHECK(std::string(buf, 5) == std::string("\x40\x45\x04\xd2\xff", 5));
+        }
+        SECTION("message without token and options") {
+            char buf[6] = {};
+            auto e = makeEncoder(buf, sizeof(buf));
+            e.type(CoapType::CON);
+            e.code(CoapCode::CONTENT);
+            e.id(1234);
+            CHECK(e.maxPayloadSize() == 1);
+            CHECK(e.payloadData() == buf + 5);
+            *e.payloadData() = 'x';
+            e.payloadSize(1);
+            CHECK(e.encode() == 6);
+            CHECK(std::string(buf, 6) == std::string("\x40\x45\x04\xd2\xff\x78", 6));
+        }
+        SECTION("message with token and options") {
+            char buf[16] = {};
+            auto e = makeEncoder(buf, sizeof(buf));
+            e.type(CoapType::CON);
+            e.code(CoapCode::CONTENT);
+            e.id(1234);
+            e.token("\xaa\xbb", 2);
+            e.option(1, "abcd");
+            CHECK(e.maxPayloadSize() == 4);
+            CHECK(e.payloadData() == buf + 12);
+            memcpy(e.payloadData(), "xxxx", 4);
+            e.payloadSize(4);
+            CHECK(e.encode() == 16);
+            CHECK(std::string(buf, 16) == std::string("\x42\x45\x04\xd2\xaa\xbb\x14\x61\x62\x63\x64\xff\x78\x78\x78\x78", 16));
         }
     }
 }

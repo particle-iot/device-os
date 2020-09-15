@@ -37,7 +37,7 @@ CoapMessageEncoder& CoapMessageEncoder::type(CoapType type) {
     if (error_) {
         return *this;
     }
-    if (flags_ & Flag::HAS_TYPE || flags_ & Flag::HEADER_ENCODED) {
+    if ((flags_ & Flag::HAS_TYPE) || (flags_ & Flag::HEADER_ENCODED)) {
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return *this;
     }
@@ -50,7 +50,7 @@ CoapMessageEncoder& CoapMessageEncoder::code(unsigned code) {
     if (error_) {
         return *this;
     }
-    if (flags_ & Flag::HAS_CODE || flags_ & Flag::HEADER_ENCODED) {
+    if ((flags_ & Flag::HAS_CODE) || (flags_ & Flag::HEADER_ENCODED)) {
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return *this;
     }
@@ -67,7 +67,7 @@ CoapMessageEncoder& CoapMessageEncoder::id(CoapMessageId id) {
     if (error_) {
         return *this;
     }
-    if (flags_ & Flag::HAS_ID || flags_ & Flag::HEADER_ENCODED) {
+    if ((flags_ & Flag::HAS_ID) || (flags_ & Flag::HEADER_ENCODED)) {
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return *this;
     }
@@ -84,8 +84,8 @@ CoapMessageEncoder& CoapMessageEncoder::token(const char* token, size_t size) {
         error_ = SYSTEM_ERROR_INVALID_ARGUMENT;
         return *this;
     }
-    if (flags_ & Flag::HEADER_ENCODED || flags_ & Flag::TOKEN_ENCODED || flags_ & Flag::OPTION_ENCODED ||
-            flags_ & Flag::PAYLOAD_ENCODED) {
+    if ((flags_ & Flag::HEADER_ENCODED) || (flags_ & Flag::TOKEN_ENCODED) || (flags_ & Flag::OPTION_ENCODED) ||
+            (flags_ & Flag::PAYLOAD_ENCODED)) {
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return *this;
     }
@@ -105,7 +105,7 @@ CoapMessageEncoder& CoapMessageEncoder::option(unsigned opt, const char* data, s
         error_ = SYSTEM_ERROR_INVALID_ARGUMENT;
         return *this;
     }
-    if (opt < prevOpt_ || flags_ & Flag::PAYLOAD_ENCODED) {
+    if (opt < prevOpt_ || (flags_ & Flag::PAYLOAD_ENCODED)) {
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return *this;
     }
@@ -189,6 +189,41 @@ CoapMessageEncoder& CoapMessageEncoder::payload(const char* data, size_t size) {
     return *this;
 }
 
+char* CoapMessageEncoder::payloadData() {
+    const size_t n = ((flags_ & Flag::HEADER_ENCODED) ? buf_.dataSize() : 4 /* Header */) + 1 /* Payload marker */;
+    if (error_ || (flags_ & Flag::PAYLOAD_ENCODED) || n >= buf_.bufferSize()) {
+        return nullptr;
+    }
+    return buf_.buffer() + n;
+}
+
+size_t CoapMessageEncoder::maxPayloadSize() const {
+    const size_t n = ((flags_ & Flag::HEADER_ENCODED) ? buf_.dataSize() : 4 /* Header */) + 1 /* Payload marker */;
+    if (error_ || (flags_ & Flag::PAYLOAD_ENCODED) || n >= buf_.bufferSize()) {
+        return 0;
+    }
+    return buf_.bufferSize() - n;
+}
+
+CoapMessageEncoder& CoapMessageEncoder::payloadSize(size_t size) {
+    if (error_) {
+        return *this;
+    }
+    if (flags_ & Flag::PAYLOAD_ENCODED) {
+        error_ = SYSTEM_ERROR_INVALID_STATE;
+        return *this;
+    }
+    if (!(flags_ & Flag::HEADER_ENCODED) && !encodeHeader()) {
+        return *this;
+    }
+    if (size > 0) {
+        buf_.appendUInt8(0xff); // Payload marker
+        buf_.skip(size);
+    }
+    flags_ |= Flag::PAYLOAD_ENCODED;
+    return *this;
+}
+
 int CoapMessageEncoder::encode() {
     if (error_ || (!(flags_ & Flag::HEADER_ENCODED) && !encodeHeader())) {
         return error_;
@@ -201,7 +236,7 @@ bool CoapMessageEncoder::encodeHeader(size_t tokenSize) {
         return false;
     }
     // The code using this class is required to provide at least a message type
-    if (flags_ & Flag::HEADER_ENCODED || !(flags_ & HAS_TYPE)) {
+    if ((flags_ & Flag::HEADER_ENCODED) || !(flags_ & HAS_TYPE)) {
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return false;
     }

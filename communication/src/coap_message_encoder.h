@@ -44,19 +44,26 @@ public:
     CoapMessageEncoder& code(unsigned cls, unsigned detail);
     CoapMessageEncoder& id(CoapMessageId id);
     CoapMessageEncoder& token(const char* data, size_t size);
+
     // Note: Options must be encoded in the ascending order of their numbers
     CoapMessageEncoder& option(unsigned opt, const char* data, size_t size);
     CoapMessageEncoder& option(unsigned opt, const char* str);
     CoapMessageEncoder& option(unsigned opt, unsigned val);
     CoapMessageEncoder& option(unsigned opt, int val);
     CoapMessageEncoder& option(unsigned opt);
-    CoapMessageEncoder& payload(const char* data, size_t size);
-    CoapMessageEncoder& payload(const char* str);
 
     template<typename... ArgsT>
     CoapMessageEncoder& option(CoapOption opt, ArgsT&&... args);
 
     // TODO: Add convenience methods for encoding URI path and query options
+
+    CoapMessageEncoder& payload(const char* data, size_t size);
+    CoapMessageEncoder& payload(const char* str);
+
+    // Methods for encoding payload data in place
+    char* payloadData();
+    size_t maxPayloadSize() const;
+    CoapMessageEncoder& payloadSize(size_t size);
 
     // Note: The returned message size can be larger than the size of the destination buffer
     int encode();

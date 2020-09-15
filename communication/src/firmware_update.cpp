@@ -639,7 +639,11 @@ int FirmwareUpdate::sendErrorResponse(Message* msg, int error, CoapType type, Co
     e.code(coapCodeForSystemError(error));
     e.id(id);
     e.token(token, tokenSize);
-    int r = e.encode();
+    int r = formatDiagnosticPayload(e.payloadData(), e.maxPayloadSize(), error);
+    if (r > 0) {
+        e.payloadSize(r);
+    }
+    r = e.encode();
     if (r < 0) {
         LOG(ERROR, "Failed to encode message: %d", r);
         return r;
@@ -648,16 +652,7 @@ int FirmwareUpdate::sendErrorResponse(Message* msg, int error, CoapType type, Co
         LOG(ERROR, "Too large message");
         return SYSTEM_ERROR_TOO_LARGE;
     }
-    size_t msgSize = r;
-    const size_t maxPayloadSize = msg->capacity() - msgSize;
-    if (maxPayloadSize > 0) {
-        r = formatDiagnosticPayload((char*)msg->buf() + msgSize + 1 /* Payload marker */, maxPayloadSize - 1, error);
-        if (r > 0) {
-            msg->buf()[msgSize] = 0xff;
-            msgSize += r + 1;
-        }
-    }
-    msg->set_length(msgSize);
+    msg->set_length(r);
     r = channel_->send(*msg);
     if (r != ProtocolError::NO_ERROR) {
         LOG(ERROR, "Failed to send message: %d", (int)r);
