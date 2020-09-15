@@ -33,6 +33,9 @@
 #include "logging.h"
 #include "check.h"
 
+// This won't work on platforms where the system part containing the comms library is not linked with Wiring
+#include "spark_wiring_json.h"
+
 LOG_SOURCE_CATEGORY("comm.ota")
 
 namespace particle {
@@ -361,10 +364,22 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
     e->code(CoapCode::CHANGED);
     e->id(0); // Will be assigned by the message channel
     e->token(d.token(), d.tokenSize());
-    if (cancelUpdate) {
-        updating_ = false;
-    } else {
+    if (!cancelUpdate) {
+        // Send stats to the server
+        spark::JSONBufferWriter w(e->payloadData(), e->maxPayloadSize());
+        w.beginObject();
+        w.name("recv_chunks").value(stats_.receivedChunks);
+        w.name("dup_chunks").value(stats_.duplicateChunks);
+        w.name("ooo_chunks").value(stats_.outOfOrderChunks);
+        w.name("sent_acks").value(stats_.sentChunkAcks);
+        w.name("proc_time").value((unsigned)stats_.processingTime);
+        w.endObject();
+        if (w.dataSize() > 0 && w.dataSize() <= e->maxPayloadSize()) {
+            e->payloadSize(w.dataSize());
+        }
         *respId = &finishRespId_;
+    } else {
+        updating_ = false;
     }
     return 0;
 }

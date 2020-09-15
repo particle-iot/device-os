@@ -19,8 +19,7 @@
 
 #include "system_error.h"
 
-// FIXME: This won't work on platforms where the system part containing the comms library
-// is not linked with Wiring
+// This won't work on platforms where the system part containing the comms library is not linked with Wiring
 #include "spark_wiring_json.h"
 
 #include <cstdio>

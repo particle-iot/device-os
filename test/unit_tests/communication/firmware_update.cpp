@@ -236,9 +236,14 @@ std::vector<unsigned> parseChunkAckPayload(const CoapMessage& msg) {
 }
 
 bool hasDiagnosticPayload(const CoapMessage& msg) {
-    static const std::regex rx1("^\\{\"code\":-?\\d+,\"message\":\".+\"\\}$");
-    static const std::regex rx2("^\\{\"message\":\".+\",\"code\":-?\\d+\\}$");
-    return msg.hasPayload() && (std::regex_match(msg.payload(), rx1) || std::regex_match(msg.payload(), rx2));
+    static const std::regex rx("^\\{\"code\":-\\d+,\"message\":\".+\"\\}$");
+    return msg.hasPayload() && std::regex_match(msg.payload(), rx);
+}
+
+bool hasStatsPayload(const CoapMessage& msg) {
+    static const std::regex rx("^\\{\"recv_chunks\":\\d+,\"dup_chunks\":\\d+,\"ooo_chunks\":\\d+,\"sent_acks\":\\d+,"
+            "\"proc_time\":\\d+}$");
+    return msg.hasPayload() && std::regex_match(msg.payload(), rx);
 }
 
 } // namespace
@@ -762,6 +767,7 @@ TEST_CASE("FirmwareUpdate") {
             CHECK(m.type() == CoapType::CON);
             CHECK((isCoapResponseCode(m.code()) && isCoapSuccessCode(m.code())));
             CHECK(m.token() == w.lastMessageToken());
+            CHECK(hasStatsPayload(m));
             // Acknowledge the response
             w.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
             // The handler should apply the update
