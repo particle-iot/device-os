@@ -452,18 +452,10 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buf
     uint8_t* txPtr = nullptr;
 
     SCOPE_GUARD ({
-        if (!nrfx_is_in_ram(tx_buffer)) {
+        if (!nrfx_is_in_ram(tx_buffer) && txPtr) {
             free(txPtr);
         }
     });
-
-    if (!nrfx_is_in_ram(tx_buffer)) {
-        txPtr = (uint8_t*)malloc(length);
-        SPARK_ASSERT(txPtr != nullptr);
-        memcpy(txPtr, tx_buffer, length);
-    } else {
-        txPtr = (uint8_t*)tx_buffer;
-    }
 
     while(spiMap[spi].transmitting) {
         ;
@@ -471,8 +463,33 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buf
 
     spiMap[spi].dma_user_callback = userCallback;
     if (spiMap[spi].spi_mode == SPI_MODE_MASTER) {
-        SPARK_ASSERT(spiTransfer(spi, txPtr, (uint8_t *)rx_buffer, length) == length);
+        if (!nrfx_is_in_ram(tx_buffer)) {
+            // Truncate the data to reuse an allocated pool.
+            constexpr uint32_t maxPoolSize = 256;
+            uint32_t poolSize = std::min(length, maxPoolSize);
+            txPtr = (uint8_t*)malloc(poolSize);
+            SPARK_ASSERT(txPtr != nullptr);
+
+            uint32_t index = 0;
+            while (index < length) {
+                uint16_t chunkSize = std::min(length - index, poolSize);
+                memcpy(txPtr, &((uint8_t *)tx_buffer)[index], chunkSize);
+                SPARK_ASSERT(spiTransfer(spi, txPtr, (uint8_t *)rx_buffer + index, chunkSize) == chunkSize);
+                index += chunkSize;
+            }
+        } else {
+            txPtr = (uint8_t*)tx_buffer;
+            SPARK_ASSERT(spiTransfer(spi, txPtr, (uint8_t *)rx_buffer, length) == length);
+        }
     } else {
+        if (!nrfx_is_in_ram(tx_buffer)) {
+            txPtr = (uint8_t*)malloc(length);
+            SPARK_ASSERT(txPtr != nullptr);
+            memcpy(txPtr, tx_buffer, length);
+        } else {
+            txPtr = (uint8_t*)tx_buffer;
+        }
+
         // Use for synchronization
         spiMap[spi].transmitting = true;
         // reset transfer length
