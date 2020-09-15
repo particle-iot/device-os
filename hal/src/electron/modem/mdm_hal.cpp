@@ -416,7 +416,7 @@ int MDMParser::process() {
             _attached = false;
             _activated = false;
             HAL_NET_notify_disconnected();
-            MDM_ERROR("[ No reply from modem, requesting reset ]\r\n");
+            MDM_ERROR("[ Modem not responsive ]\r\n");
             return -1;
         }
     }
@@ -1190,7 +1190,7 @@ bool MDMParser::powerOff(void)
                     // to avoid hitting the 124 day memory housekeeping issue, AT+CPWROFF will
                     // handle this delay automatically, or timeout after 40s.
                     if (_memoryIssuePresent) {
-                        MDM_INFO("\r\n[ Modem::powerOff ] AT Failure, waiting up to 30s to power off with PWR_UC...");
+                        MDM_INFO("\r\n[ Modem::powerOff ] Modem not responsive, waiting up to 30s to power off with PWR_UC...");
                         system_tick_t now = HAL_Timer_Get_Milli_Seconds();
                         if (_timePowerOn == 0) {
                             // fallback to max timeout of 30s to be safe
@@ -1214,7 +1214,7 @@ bool MDMParser::powerOff(void)
                         _timePowerOn = 0;
                     }
                 }
-                MDM_INFO("\r\n[ Modem::powerOff ] AT Failure, trying PWR_UC...");
+                MDM_INFO("\r\n[ Modem::powerOff ] Modem not responsive, trying PWR_UC...");
                 // Skip power off sequence if power is already off
                 if (_dev.dev == DEV_SARA_R410 && !HAL_GPIO_Read(RI_UC)) {
                     break;
