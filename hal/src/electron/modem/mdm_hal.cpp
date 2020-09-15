@@ -2875,7 +2875,7 @@ int MDMParser::socketSend(int socket, const char * buf, int len)
 }
 
 int MDMParser::_socketError(void) {
-    sendFormated("AT+USOER");
+    sendFormated("AT+USOER\r\n");
     int socket_errno = UBLOX_SARA_USOER_UNKNOWN;
     CHECK_TIMEOUT(waitFinalResp(&_cbUSOER, &socket_errno));
     return socket_errno;
