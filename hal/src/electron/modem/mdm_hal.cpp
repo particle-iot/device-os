@@ -114,7 +114,7 @@ std::recursive_mutex mdm_mutex;
     ({ \
         const auto _r = _expr; \
         if (_r == WAIT) { \
-            this->_error = true; \
+            this->_error++; \
         } \
         _r; \
     })
@@ -266,7 +266,7 @@ MDMParser::MDMParser(void)
     memset(_sockets, 0, sizeof(_sockets));
     for (int socket = 0; socket < NUMSOCKETS; socket ++)
         _sockets[socket].handle = MDM_SOCKET_ERROR;
-    _error = false;
+    _error = 0;
     _lastProcess = 0;
 #ifdef MDM_DEBUG
     _debugLevel = 3;
@@ -373,19 +373,27 @@ bool MDMParser::_checkModem(bool force /* = true */) {
         return false;
     }
 
-    if (!force && !_error) {
+    // No errors, not asked to explicitly perform AT/OK
+    if (_error == 0 && !force) {
         return true;
+    }
+
+    // Either several commands timed-out or we
+    // performed an additional AT/OK check here
+    // and it also failed.
+    if (_error >= 2) {
+        return false;
     }
 
     int resp = _checkAtResponse();
 
     if (resp == WAIT) {
-        _error = true;
+        _error++;
         // HAL_NET_notify_error();
     } else if (resp == RESP_OK) {
-        _error = false;
+        _error = 0;
     }
-    return !_error;
+    return (_error == 0);
 }
 
 int MDMParser::process() {
@@ -875,7 +883,7 @@ bool MDMParser::powerOn(const char* simpin)
     memset(&_dev, 0, sizeof(_dev));
     bool retried_after_reset = false;
 
-    _error = false;
+    _error = 0;
 
     /* Power on the modem and perform basic initialization */
     if (!_powerOn())

@@ -655,7 +655,7 @@ protected:
     bool _attached_urc;
     int _power_mode;
     volatile bool _cancel_all_operations;
-    volatile bool _error;
+    volatile uint32_t _error;
     system_tick_t _lastProcess;
 #ifdef MDM_DEBUG
     int _debugLevel;
