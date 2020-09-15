@@ -249,23 +249,23 @@ struct NetworkInterface
 class ManagedNetworkInterface : public NetworkInterface
 {
 private:
-    volatile uint8_t WLAN_DISCONNECT;
-    volatile uint8_t WLAN_DELETE_PROFILES;
-    volatile uint8_t WLAN_SMART_CONFIG_START; // Set to 'true' when listening mode is pending
-    volatile uint8_t WLAN_SMART_CONFIG_ACTIVE;
-    volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
-    volatile uint8_t WLAN_CONNECTED;
-    volatile uint8_t WLAN_CONNECTING;
-    volatile uint8_t WLAN_DHCP_PENDING;
-    volatile uint8_t WLAN_ERROR;
-    volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT;
+    volatile uint8_t WLAN_DISCONNECT = 0;
+    volatile uint8_t WLAN_DELETE_PROFILES = 0;
+    volatile uint8_t WLAN_SMART_CONFIG_START = 0; // Set to 'true' when listening mode is pending
+    volatile uint8_t WLAN_SMART_CONFIG_ACTIVE = 0;
+    volatile uint8_t WLAN_SMART_CONFIG_FINISHED = 0;
+    volatile uint8_t WLAN_CONNECTED = 0;
+    volatile uint8_t WLAN_CONNECTING = 0;
+    volatile uint8_t WLAN_DHCP_PENDING = 0;
+    volatile uint8_t WLAN_ERROR = 0;
+    volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT = 0;
 #if PLATFORM_ID == 10 // Electron
     volatile uint32_t START_LISTENING_TIMER_MS = 300000UL; // 5 minute default on Electron
 #else
     volatile uint32_t START_LISTENING_TIMER_MS = 0UL; // Disabled by default on Photon/P1/Core
 #endif
-    volatile uint32_t start_listening_timer_base;
-    volatile uint32_t start_listening_timer_duration;
+    volatile uint32_t start_listening_timer_base = 0;
+    volatile uint32_t start_listening_timer_duration = 0;
 
 #ifdef DEBUG_NETWORK_STATE
     friend class NetworkStateLogger;
@@ -773,9 +773,8 @@ public:
 
     virtual int process()
     {
-        bool in_error = WLAN_ERROR;
         auto r = process_now();
-        if (in_error) {
+        if (WLAN_ERROR) {
             // Ask the system to reset us
             if (r) {
                 SPARK_WLAN_RESET = 1;

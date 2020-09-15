@@ -35,12 +35,12 @@
 #include "rgbled.h"
 #include <string.h>
 
-uint32_t wlan_watchdog_base;
-uint32_t wlan_watchdog_duration;
+uint32_t wlan_watchdog_base = 0;
+uint32_t wlan_watchdog_duration = 0;
 
-volatile uint8_t SPARK_WLAN_RESET;
-volatile uint8_t SPARK_WLAN_SLEEP;
-volatile uint8_t SPARK_WLAN_STARTED;
+volatile uint8_t SPARK_WLAN_RESET = 0;
+volatile uint8_t SPARK_WLAN_SLEEP = 0;
+volatile uint8_t SPARK_WLAN_STARTED = 0;
 
 
 #if Wiring_WiFi
