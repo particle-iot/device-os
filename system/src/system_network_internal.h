@@ -43,6 +43,7 @@ enum eWanTimings
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
 extern volatile uint8_t SPARK_WLAN_STARTED;
+extern volatile uint8_t SPARK_WLAN_INITIALIZED;
 
 extern uint32_t wlan_watchdog_duration;
 extern uint32_t wlan_watchdog_base;
@@ -614,6 +615,7 @@ public:
             update_config(true);
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
+            SPARK_WLAN_INITIALIZED = 1;
             LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
             diag->status(NetworkDiagnostics::DISCONNECTED);
             system_notify_event(network_status, network_status_on);
@@ -646,6 +648,8 @@ public:
             LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
             diag->status(NetworkDiagnostics::TURNED_OFF);
             system_notify_event(network_status, network_status_off);
+        } else if (!SPARK_WLAN_INITIALIZED) {
+            off_now();
         }
     }
 

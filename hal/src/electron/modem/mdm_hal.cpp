@@ -279,8 +279,7 @@ MDMParser::MDMParser(void)
     HAL_Pin_Mode(RESET_UC, OUTPUT);
     HAL_Pin_Mode(LVLOE_UC, OUTPUT);
     HAL_GPIO_Write(LVLOE_UC, 0);
-    HAL_Pin_Mode(RXD_UC, INPUT_PULLDOWN);
-    HAL_Pin_Mode(RTS_UC, OUTPUT);
+    HAL_Pin_Mode(RI_UC, INPUT_PULLDOWN);
 }
 
 void MDMParser::setPowerMode(int mode) {
@@ -1273,7 +1272,26 @@ bool MDMParser::powerOff(void)
         if (!_pwr) {
             _incModemStateChangeCount();
         }
-    } // if (_init && _pwr)
+    } else {
+        if (HAL_GPIO_Read(RI_UC)) {
+            MDM_INFO("[ Modem::powerOff ] modem is on unexpectedly. Turning it off...");
+            // Delay this long period so that the modem is fully on to accept the power-off sequence.
+            HAL_Delay_Milliseconds(12000);
+
+            HAL_GPIO_Write(PWR_UC, 0);
+            // >1.5 seconds on SARA R410M
+            // >1 second on SARA U2
+            // plus a little extra for good luck
+            HAL_Delay_Milliseconds(2000);
+            HAL_GPIO_Write(PWR_UC, 1);
+            if (HAL_GPIO_Read(RI_UC)) {
+                MDM_INFO("[ Modem::powerOff ] turn off the modem failed.");
+            } else {
+                MDM_INFO("[ Modem::powerOff ] turn off the modem successfully.");
+            }
+        }
+        return true;
+    }
 
     // Close serial connection
     electronMDM.end();
