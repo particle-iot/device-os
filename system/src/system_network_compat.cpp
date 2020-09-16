@@ -18,7 +18,6 @@
  */
 
 #include "hal_platform.h"
-#include "gpio_hal.h"
 
 /* FIXME: there should be a define that tells whether there is NetworkManager available
  * or not */
@@ -42,7 +41,6 @@ uint32_t wlan_watchdog_duration = 0;
 volatile uint8_t SPARK_WLAN_RESET = 0;
 volatile uint8_t SPARK_WLAN_SLEEP = 0;
 volatile uint8_t SPARK_WLAN_STARTED = 0;
-volatile uint8_t SPARK_WLAN_INITIALIZED = 0; // Used by Electron only
 
 
 #if Wiring_WiFi

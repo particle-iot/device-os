@@ -43,7 +43,6 @@ enum eWanTimings
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
 extern volatile uint8_t SPARK_WLAN_STARTED;
-extern volatile uint8_t SPARK_WLAN_INITIALIZED;
 
 extern uint32_t wlan_watchdog_duration;
 extern uint32_t wlan_watchdog_base;
@@ -259,7 +258,8 @@ private:
     volatile uint8_t WLAN_CONNECTING = 0;
     volatile uint8_t WLAN_DHCP_PENDING = 0;
     volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT = 0;
-#if PLATFORM_ID == 10 // Electron
+    volatile uint8_t WLAN_INITIALIZED = 0;
+#if PLATFORM_ID == PLATFORM_ELECTRON // Electron
     volatile uint32_t START_LISTENING_TIMER_MS = 300000UL; // 5 minute default on Electron
 #else
     volatile uint32_t START_LISTENING_TIMER_MS = 0UL; // Disabled by default on Photon/P1/Core
@@ -615,7 +615,7 @@ public:
             update_config(true);
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
-            SPARK_WLAN_INITIALIZED = 1;
+            WLAN_INITIALIZED = 1;
             LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
             diag->status(NetworkDiagnostics::DISCONNECTED);
             system_notify_event(network_status, network_status_on);
@@ -648,7 +648,7 @@ public:
             LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
             diag->status(NetworkDiagnostics::TURNED_OFF);
             system_notify_event(network_status, network_status_off);
-        } else if (!SPARK_WLAN_INITIALIZED) {
+        } else if (!WLAN_INITIALIZED) {
             off_now();
         }
     }
