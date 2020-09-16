@@ -19,7 +19,8 @@
 
 #include "system_error.h"
 
-// This won't work on platforms where the system part containing the comms library is not linked with Wiring
+// JSON classes are not available on platforms where the system part containing the comms library
+// is not linked with Wiring
 #include "spark_wiring_json.h"
 
 #include <cstdio>

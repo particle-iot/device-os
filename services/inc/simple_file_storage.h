@@ -25,7 +25,7 @@
 
 namespace particle {
 
-// Note: It is not safe to access the same file using multiple instances of this class
+// Note: It is generally not safe to access the same file using multiple instances of this class
 class SimpleFileStorage {
 public:
     explicit SimpleFileStorage(const char* fileName);

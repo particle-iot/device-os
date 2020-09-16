@@ -24,12 +24,12 @@ namespace particle {
 namespace protocol {
 
 // Note: System errors cannot be properly mapped to the response codes defined in RFC 7252.
-// Most of the errors will result in 5.00 (Internal Server Error), which is used as a generic
-// code and doesn't necessarily indicate an internal Device OS error
+// Most of the errors will result in 5.03 (Service Unavailable), which is used as a generic
+// response code
 CoapCode coapCodeForSystemError(int error) {
     switch (error) {
     case SYSTEM_ERROR_NONE:
-        return CoapCode::CREATED; // RFC 7252 doesn't define a generic OK code
+        return CoapCode::CHANGED; // RFC 7252 doesn't define a generic OK code
     case SYSTEM_ERROR_INVALID_ARGUMENT:
     case SYSTEM_ERROR_BAD_DATA:
     case SYSTEM_ERROR_OUT_OF_RANGE:
@@ -41,6 +41,8 @@ CoapCode coapCodeForSystemError(int error) {
     case SYSTEM_ERROR_CANCELLED:
     case SYSTEM_ERROR_ABORTED:
     case SYSTEM_ERROR_INVALID_STATE:
+    case SYSTEM_ERROR_NO_MEMORY:
+    case SYSTEM_ERROR_UNKNOWN:
         return CoapCode::SERVICE_UNAVAILABLE;
     case SYSTEM_ERROR_NOT_FOUND:
         return CoapCode::NOT_FOUND;
@@ -51,11 +53,10 @@ CoapCode coapCodeForSystemError(int error) {
     case SYSTEM_ERROR_NOT_SUPPORTED:
     case SYSTEM_ERROR_DEPRECATED:
         return CoapCode::NOT_IMPLEMENTED;
-    case SYSTEM_ERROR_NO_MEMORY:
     case SYSTEM_ERROR_INTERNAL:
-    case SYSTEM_ERROR_UNKNOWN:
-    default:
         return CoapCode::INTERNAL_SERVER_ERROR;
+    default:
+        return CoapCode::SERVICE_UNAVAILABLE;
     }
 }
 

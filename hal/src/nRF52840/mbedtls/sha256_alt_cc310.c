@@ -117,8 +117,7 @@ int mbedtls_sha256_finish_ret(mbedtls_sha256_context *ctx, unsigned char output[
     {
         return MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED;
     }
-    CRYS_HASH_Result_t result;
-    memset(result, 0, sizeof(result));
+    CRYS_HASH_Result_t result = { 0 };
     CRYSError_t ret = CRYS_OK;
     CC310_OPERATION(CRYS_HASH_Finish(&ctx->user_context, result), ret);
     if (ret != CRYS_OK)

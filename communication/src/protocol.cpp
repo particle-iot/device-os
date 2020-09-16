@@ -88,8 +88,11 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		notify_message_complete(msg_id, code);
 		handle_app_state_reply(msg_id, code);
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
-		if (firmwareUpdate.isRunning()) {
-			firmwareUpdate.responseAck(&message);
+		if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
+			const ProtocolError error = firmwareUpdate.responseAck(&message);
+			if (error != ProtocolError::NO_ERROR) {
+				return error;
+			}
 		}
 #endif
 	}

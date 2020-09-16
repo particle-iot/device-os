@@ -111,7 +111,7 @@ DYNALIB_FN(55, services, pb_encode_varint, bool(pb_ostream_t*, pb_uint64_t))
 #endif
 
 DYNALIB_FN(BASE_IDX + 0, services, set_error_message, void(const char*, ...))
-DYNALIB_FN(BASE_IDX + 1, services, reset_error_message, void())
+DYNALIB_FN(BASE_IDX + 1, services, clear_error_message, void())
 DYNALIB_FN(BASE_IDX + 2, services, get_error_message, const char*(int))
 
 DYNALIB_END(services)

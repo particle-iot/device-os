@@ -101,16 +101,12 @@ CoapMessageEncoder& CoapMessageEncoder::option(unsigned opt, const char* data, s
     if (error_) {
         return *this;
     }
-    if (size > 65535 + 269) { // RFC 7252, 3.1. Option Format
-        error_ = SYSTEM_ERROR_INVALID_ARGUMENT;
-        return *this;
-    }
     if (opt < prevOpt_ || (flags_ & Flag::PAYLOAD_ENCODED)) {
         error_ = SYSTEM_ERROR_INVALID_STATE;
         return *this;
     }
     const unsigned optDelta = opt - prevOpt_;
-    if (optDelta > 65535 + 269) {
+    if (optDelta > 65535 + 269 || size > 65535 + 269) { // RFC 7252, 3.1. Option Format
         error_ = SYSTEM_ERROR_INVALID_ARGUMENT;
         return *this;
     }

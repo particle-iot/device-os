@@ -30,10 +30,10 @@
 
 #include "sha256.h"
 #include "endian_util.h"
-#include "logging.h"
 #include "check.h"
 
-// This won't work on platforms where the system part containing the comms library is not linked with Wiring
+// JSON classes are not available on platforms where the system part containing the comms library
+// is not linked with Wiring
 #include "spark_wiring_json.h"
 
 LOG_SOURCE_CATEGORY("comm.ota")
@@ -127,7 +127,7 @@ ProtocolError FirmwareUpdate::process() {
     if (!updating_) {
         return ProtocolError::NO_ERROR;
     }
-    if (unackChunks_ > 0 && lastChunkTime_ + OTA_CHUNK_ACK_DELAY <= millis()) {
+    if (unackChunks_ > 0 && millis() - lastChunkTime_ >= OTA_CHUNK_ACK_DELAY) {
         // Send an UpdateAck
         Message msg;
         int r = channel_->create(msg);
@@ -155,9 +155,10 @@ ProtocolError FirmwareUpdate::process() {
         unackChunks_ = 0;
         ++stats_.sentChunkAcks;
     }
-    if (chunkIndex_ < chunkCount_ && stateLogTime_ + TRANSFER_STATE_LOG_INTERVAL <= millis()) {
+    if (stateLogChunks_ < chunkIndex_ && millis() - stateLogTime_ >= TRANSFER_STATE_LOG_INTERVAL) {
         const size_t bytesLeft = fileSize_ - fileOffset_;
         LOG(TRACE, "Received %u of %u bytes", (unsigned)(transferSize_ - bytesLeft), (unsigned)transferSize_);
+        stateLogChunks_ = chunkIndex_;
         stateLogTime_ = millis();
     }
     const auto now = millis();
@@ -171,7 +172,7 @@ ProtocolError FirmwareUpdate::process() {
 }
 
 ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handler) {
-    reset_error_message();
+    clear_error_message();
     CoapMessageDecoder d;
     int r = d.decode((const char*)msg->buf(), msg->length());
     if (r < 0) {
@@ -405,8 +406,8 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
         return SYSTEM_ERROR_PROTOCOL;
     }
     if ((index < chunkCount_ && size != chunkSize_) ||
-            (index == chunkCount_ && (index - 1) * chunkSize_ + size > transferSize_)) {
-        ERROR_MESSAGE("Invalid chunk size: %u", size);
+            (index == chunkCount_ && (index - 1) * chunkSize_ + size != transferSize_)) {
+        ERROR_MESSAGE("Invalid chunk size: %u", (unsigned)size);
         return SYSTEM_ERROR_PROTOCOL;
     }
     bool isDupChunk = false;
@@ -466,7 +467,7 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
     }
     ++unackChunks_;
     if (isDupChunk || hasGaps || hasGaps != hasGaps_ || chunkIndex_ == chunkCount_ || unackChunks_ >= OTA_CHUNK_ACK_COUNT ||
-            lastChunkTime_ + OTA_CHUNK_ACK_DELAY <= millis()) {
+            millis() - lastChunkTime_ >= OTA_CHUNK_ACK_DELAY) {
         // Send an UpdateAck
         initChunkAck(e);
         unackChunks_ = 0;
@@ -480,7 +481,7 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
     if (chunkIndex_ == chunkCount_ && !stats_.transferFinishTime) {
         stats_.transferFinishTime = millis();
     }
-    if (stateLogChunks_ < chunkIndex_ && (stateLogTime_ + TRANSFER_STATE_LOG_INTERVAL <= millis() ||
+    if (stateLogChunks_ < chunkIndex_ && (millis() - stateLogTime_ >= TRANSFER_STATE_LOG_INTERVAL ||
             chunkIndex_ == chunkCount_)) {
         const size_t bytesLeft = fileSize_ - fileOffset_;
         LOG(TRACE, "Received %u of %u bytes", (unsigned)(transferSize_ - bytesLeft), (unsigned)transferSize_);

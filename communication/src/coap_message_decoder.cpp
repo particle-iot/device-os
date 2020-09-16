@@ -50,8 +50,8 @@ int readOption(unsigned* opt, const char** optData, size_t* optSize, unsigned pr
         uint16_t d = 0;
         offs += CHECK(readUIntBE(&d, data + offs, size - offs));
         optDelta = 269 + d;
-    } else if (optDelta == 15) {
-        return SYSTEM_ERROR_BAD_DATA; // Reserved
+    } else if (optDelta == 15) { // Reserved
+        return SYSTEM_ERROR_BAD_DATA;
     }
     if (optLen == 13) {
         offs += CHECK(readUIntBE(&b, data + offs, size - offs));
@@ -60,8 +60,8 @@ int readOption(unsigned* opt, const char** optData, size_t* optSize, unsigned pr
         uint16_t d = 0;
         offs += CHECK(readUIntBE(&d, data + offs, size - offs));
         optLen = 269 + d;
-    } else if (optLen == 15) {
-        return SYSTEM_ERROR_BAD_DATA; // Reserved
+    } else if (optLen == 15) { // Reserved
+        return SYSTEM_ERROR_BAD_DATA;
     }
     CHECK_TRUE(size - offs >= optLen, SYSTEM_ERROR_NOT_ENOUGH_DATA);
     if (opt) {

@@ -28,17 +28,17 @@ LOG_SOURCE_CATEGORY("system.ota");
 #include "ota_flash_hal.h"
 #include "timer_hal.h"
 
-#include "simple_file_storage.h"
 #include "scope_guard.h"
 #include "check.h"
 #include "debug.h"
 
 #if HAL_PLATFORM_RESUMABLE_OTA
+#include "simple_file_storage.h"
 #include "sha256.h"
 #endif // HAL_PLATFORM_RESUMABLE_OTA
 
 #include "spark_wiring_system.h"
-#include "spark_wiring_rgb.h" // FIXME
+#include "spark_wiring_rgb.h"
 
 #include <cstdio>
 #include <cstdarg>
@@ -220,11 +220,7 @@ int FirmwareUpdate::finishUpdate(FirmwareUpdateFlags flags) {
         }
     } else if (updating_ && !validateOnly) {
 #if HAL_PLATFORM_RESUMABLE_OTA
-        int r = 0;
-        if (transferState_) {
-            r = finalizeTransferState();
-        }
-        if (r < 0 || discardData) {
+        if (discardData) {
             clearTransferState();
         }
 #endif
@@ -308,7 +304,7 @@ int FirmwareUpdate::initTransferState(size_t fileSize, const char* fileHash) {
     if (r == sizeof(PersistentTransferState)) {
         if (persist->fileSize == fileSize && persist->partialSize <= fileSize &&
                 memcmp(persist->fileHash, fileHash, Sha256::HASH_SIZE) == 0) {
-            // Compute the hash of the partially transferred data in the OTA section
+            // Compute the hash of the partially transferred data stored in the OTA section
             CHECK(state->partialHash.start());
             char buf[OTA_FLASH_READ_BLOCK_SIZE] = {};
             uintptr_t addr = HAL_OTA_FlashAddress();
@@ -401,7 +397,6 @@ int FirmwareUpdate::finalizeTransferState() {
         ERROR_MESSAGE("Integrity check of a resumed update has failed");
         return SYSTEM_ERROR_OTA_RESUMED_UPDATE_FAILED;
     }
-    CHECK(state->file.sync());
     state->file.close();
     transferState_.reset();
     return 0;
@@ -430,9 +425,6 @@ void FirmwareUpdate::endUpdate(bool ok) {
     }
     SPARK_FLASH_UPDATE = 0;
     updating_ = false;
-    // Generate a system event
-    fileDesc_.chunk_size = 0;
-    fileDesc_.chunk_address = 0;
     system_notify_event(firmware_update, ok ? firmware_update_complete : firmware_update_failed, &fileDesc_);
 }
 

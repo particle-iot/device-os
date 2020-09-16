@@ -298,7 +298,6 @@ int system_cloud_disconnect(int flags)
 int system_cloud_send(const uint8_t* buf, size_t buflen, int flags)
 {
     (void)flags;
-    errno = 0;
     int r = sock_send(s_state.socket, buf, buflen, 0);
     if (r < 0) {
         if (errno == ENOMEM) {

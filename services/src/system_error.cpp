@@ -71,7 +71,7 @@ void set_error_message(const char* fmt, ...) {
 #endif
 }
 
-void reset_error_message() {
+void clear_error_message() {
 #if HAL_PLATFORM_ERROR_MESSAGES
     if (SYSTEM_THREAD_CURRENT()) {
         g_errorMsg[0] = '\0';

@@ -250,8 +250,8 @@ protected:
 		else
 		{
 			ProtocolError error = pinger.process(callbacks.millis() - last_message_millis, [this] {
-					return ping();
-				});
+				return ping();
+			});
 			if (error)
 			{
 				return error;

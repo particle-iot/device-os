@@ -26,7 +26,6 @@
 #include "coap_defs.h"
 
 #include "system_defs.h"
-#include "c_string.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -43,7 +42,7 @@ namespace protocol {
  */
 const size_t OTA_RECEIVE_WINDOW_SIZE = 128 * 1024;
 
-static_assert(OTA_RECEIVE_WINDOW_SIZE > MAX_OTA_CHUNK_SIZE, "Invalid RECEIVE_WINDOW_SIZE");
+static_assert(OTA_RECEIVE_WINDOW_SIZE > MAX_OTA_CHUNK_SIZE, "Invalid OTA_RECEIVE_WINDOW_SIZE");
 
 /**
  * Size of the chunk bitmap in 32-bit words.
@@ -84,7 +83,7 @@ struct FirmwareUpdateStats {
     system_tick_t transferStartTime; // Time when the file transfer started
     system_tick_t transferFinishTime; // Time when the file transfer finished
     system_tick_t processingTime; // System processing time
-    unsigned receivedChunks; // Number of received chunks
+    unsigned receivedChunks; // Total number of received chunks
     unsigned sentChunkAcks; // Number of sent acknowledgements
     unsigned outOfOrderChunks; // Number of chunks received out of order
     unsigned duplicateChunks; // Number of duplicate chunks received
@@ -133,8 +132,8 @@ private:
     unsigned unackChunks_; // Number or chunks received since the last acknowledgement
     unsigned stateLogChunks_; // Number of cumulatively acknowledged chunks at the time when the transfer state was last logged
     int finishRespId_; // Message ID of the UpdateFinish response
-    bool updating_; // Whether an update is in progress
     bool hasGaps_; // Whether the sequence of received chunks has gaps
+    bool updating_; // Whether an update is in progress
 
     ProtocolError handleRequest(Message* msg, RequestHandlerFn handler);
 
