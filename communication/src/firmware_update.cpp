@@ -83,7 +83,7 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg) {
     if (!updating_) {
         return ProtocolError::INVALID_STATE;
     }
-    if (!finishRespId_) {
+    if (finishRespId_ < 0) {
         return ProtocolError::NO_ERROR;
     }
     CoapMessageDecoder d;
@@ -97,6 +97,7 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg) {
         return ProtocolError::INTERNAL;
     }
     if (d.id() == finishRespId_) {
+        finishRespId_ = -1;
         stats_.updateFinishTime = millis();
         LOG(INFO, "Update time: %u", (unsigned)(stats_.updateFinishTime - stats_.updateStartTime));
         system_tick_t transferTime = 0;
@@ -186,7 +187,7 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
         }
         if (d.hasToken()) {
             // Validate the request
-            const int handlerResult = (this->*handler)(d, nullptr, nullptr, true);
+            const int handlerResult = (this->*handler)(d, nullptr /* e */, nullptr /* respId */, true /* validateOnly */);
             if (handlerResult >= 0) {
                 // Acknowledge the request
                 r = sendEmptyAck(&ack, CoapType::ACK, d.id());
@@ -204,7 +205,7 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
         } else {
             // All confirmable messages defined by the protocol must have a token
             ERROR_MESSAGE("Message token is missing");
-            r = sendErrorResponse(&ack, SYSTEM_ERROR_PROTOCOL, CoapType::ACK, d.id(), nullptr, 0);
+            r = sendErrorResponse(&ack, SYSTEM_ERROR_PROTOCOL, CoapType::ACK, d.id(), nullptr /* token */, 0 /* tokenSize */);
             if (r < 0) {
                 return ProtocolError::IO_ERROR_GENERIC_SEND;
             }
@@ -224,7 +225,7 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
         return (ProtocolError)r;
     }
     CoapMessageEncoder e((char*)resp.buf(), resp.capacity());
-    CoapMessageId* respId = nullptr; // TODO: Use a callback to pass the response ID to the request handler
+    int* respId = nullptr; // TODO: Use a callback to pass the response ID to the request handler
     const int handlerResult = (this->*handler)(d, &e, &respId, false);
     if (handlerResult >= 0) {
         // Encode and send the response message
@@ -251,7 +252,7 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
     } else {
         if (d.tokenSize() > 0) {
             // Reply with a separate confirmable or non-confirmable response
-            r = sendErrorResponse(&resp, handlerResult, d.type(), 0, d.token(), d.tokenSize());
+            r = sendErrorResponse(&resp, handlerResult, d.type(), -1 /* id */, d.token(), d.tokenSize());
             if (r < 0) {
                 return ProtocolError::IO_ERROR_GENERIC_SEND;
             }
@@ -269,7 +270,7 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
     return ProtocolError::NO_ERROR;
 }
 
-int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId,
+int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, int** respId,
         bool validateOnly) {
     const auto startTime = millis();
     const char* fileHash = nullptr;
@@ -320,14 +321,14 @@ int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageE
     updating_ = true;
     e->type(d.type());
     e->code(CoapCode::CREATED);
-    e->id(0); // Will be assigned by the message channel
+    e->id(0); // Will be set by the message channel
     e->token(d.token(), d.tokenSize());
     e->option(OtaCoapOption::WINDOW_SIZE, (unsigned)windowSize_);
     e->option(OtaCoapOption::FILE_SIZE, (unsigned)fileOffset_);
     return 0;
 }
 
-int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId,
+int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, int** respId,
         bool validateOnly) {
     bool cancelUpdate = false;
     bool discardData = false;
@@ -362,7 +363,7 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
     stats_.processingTime += millis() - t1;
     e->type(d.type());
     e->code(CoapCode::CHANGED);
-    e->id(0); // Will be assigned by the message channel
+    e->id(0); // Will be set by the message channel
     e->token(d.token(), d.tokenSize());
     if (!cancelUpdate) {
         // Send stats to the server
@@ -384,7 +385,7 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
     return 0;
 }
 
-int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId,
+int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, int** respId,
         bool validateOnly) {
     const auto chunkTime = millis();
     const char* data = nullptr;
@@ -641,18 +642,19 @@ void FirmwareUpdate::initChunkAck(CoapMessageEncoder* e) {
     }
     e->type(CoapType::NON);
     e->code(CoapCode::POST);
-    e->id(0); // Will be assigned by the message channel
+    e->id(0); // Will be set by the message channel
     e->option(CoapOption::URI_PATH, "A");
     e->option(OtaCoapOption::CHUNK_INDEX, chunkIndex_);
     e->payload((const char*)chunks_, payloadSize);
 }
 
-int FirmwareUpdate::sendErrorResponse(Message* msg, int error, CoapType type, CoapMessageId id, const char* token,
+int FirmwareUpdate::sendErrorResponse(Message* msg, int error, CoapType type, int id, const char* token,
         size_t tokenSize) {
+    msg->clear();
     CoapMessageEncoder e((char*)msg->buf(), msg->capacity());
     e.type(type);
     e.code(coapCodeForSystemError(error));
-    e.id(id);
+    e.id(0); // Will be set by the message channel
     e.token(token, tokenSize);
     int r = formatDiagnosticPayload(e.payloadData(), e.maxPayloadSize(), error);
     if (r > 0) {
@@ -668,6 +670,9 @@ int FirmwareUpdate::sendErrorResponse(Message* msg, int error, CoapType type, Co
         return SYSTEM_ERROR_TOO_LARGE;
     }
     msg->set_length(r);
+    if (id >= 0) {
+        msg->set_id(id);
+    }
     r = channel_->send(*msg);
     if (r != ProtocolError::NO_ERROR) {
         LOG(ERROR, "Failed to send message: %d", (int)r);
@@ -677,10 +682,11 @@ int FirmwareUpdate::sendErrorResponse(Message* msg, int error, CoapType type, Co
 }
 
 int FirmwareUpdate::sendEmptyAck(Message* msg, CoapType type, CoapMessageId id) {
+    msg->clear();
     CoapMessageEncoder e((char*)msg->buf(), msg->capacity());
     e.type(type);
     e.code(CoapCode::EMPTY);
-    e.id(id);
+    e.id(0); // Will be set by the message channel
     int r = e.encode();
     if (r < 0) {
         LOG(ERROR, "Failed to encode message: %d", r);
@@ -725,7 +731,7 @@ void FirmwareUpdate::reset() {
     chunkIndex_ = 0;
     unackChunks_ = 0;
     stateLogChunks_ = 0;
-    finishRespId_ = 0;
+    finishRespId_ = -1;
     hasGaps_ = false;
 }
 

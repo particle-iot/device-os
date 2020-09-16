@@ -114,8 +114,8 @@ public:
     void reset();
 
 private:
-    typedef int (FirmwareUpdate::*RequestHandlerFn)(const CoapMessageDecoder& d, CoapMessageEncoder* e,
-            CoapMessageId** respId, bool validateOnly);
+    typedef int (FirmwareUpdate::*RequestHandlerFn)(const CoapMessageDecoder& d, CoapMessageEncoder* e, int** respId,
+            bool validateOnly);
 
     uint32_t chunks_[OTA_CHUNK_BITMAP_ELEMENTS]; // Bitmap of received chunks within the receiver window
     FirmwareUpdateStats stats_; // Protocol statistics
@@ -132,15 +132,15 @@ private:
     unsigned chunkIndex_; // Number of cumulatively acknowledged chunks
     unsigned unackChunks_; // Number or chunks received since the last acknowledgement
     unsigned stateLogChunks_; // Number of cumulatively acknowledged chunks at the time when the transfer state was last logged
-    CoapMessageId finishRespId_; // Message ID of the UpdateFinish response
+    int finishRespId_; // Message ID of the UpdateFinish response
     bool updating_; // Whether an update is in progress
     bool hasGaps_; // Whether the sequence of received chunks has gaps
 
     ProtocolError handleRequest(Message* msg, RequestHandlerFn handler);
 
-    int handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId, bool validateOnly);
-    int handleFinishRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId, bool validateOnly);
-    int handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, CoapMessageId** respId, bool validateOnly);
+    int handleStartRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, int** respId, bool validateOnly);
+    int handleFinishRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, int** respId, bool validateOnly);
+    int handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, int** respId, bool validateOnly);
 
     static int decodeStartRequest(const CoapMessageDecoder& d, size_t* fileSize, const char** fileHash, size_t* chunkSize,
             bool* discardData);
@@ -150,7 +150,7 @@ private:
 
     void initChunkAck(CoapMessageEncoder* e);
 
-    int sendErrorResponse(Message* msg, int error, CoapType type, CoapMessageId id, const char* token, size_t tokenSize);
+    int sendErrorResponse(Message* msg, int error, CoapType type, int id, const char* token, size_t tokenSize);
     int sendEmptyAck(Message* msg, CoapType type, CoapMessageId id);
 
     void cancelUpdate();

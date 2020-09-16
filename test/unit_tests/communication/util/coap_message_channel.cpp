@@ -24,8 +24,8 @@ namespace protocol {
 namespace test {
 
 ProtocolError CoapMessageChannel::send(Message& msg) {
-    if (!msg.has_id() && msg.length() >= MIN_COAP_MESSAGE_SIZE) {
-        const auto id = ++lastMsgId_;
+    if (msg.length() >= MIN_COAP_MESSAGE_SIZE) {
+        const CoapMessageId id = msg.has_id() ? msg.get_id() : ++lastMsgId_;
         const auto buf = msg.buf();
         buf[2] = (id >> 8) & 0xff;
         buf[3] = id & 0xff;
