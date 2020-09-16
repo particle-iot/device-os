@@ -73,6 +73,10 @@ public:
      */
     int saveChunk(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize);
     /**
+     * This method needs to be called periodically if an update is in progress.
+     */
+    void process();
+    /**
      * Get the firmware update status.
      *
      * @return `true` if a firmware update is in progress.

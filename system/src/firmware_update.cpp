@@ -57,6 +57,9 @@ const auto TRANSFER_STATE_FILE = "/sys/fw_transfer";
 // Interval at which the transfer state file is synced
 const system_tick_t TRANSFER_STATE_SYNC_INTERVAL = 2000;
 
+// Minimum number of bytes that needs to be received before the transfer state file is synced
+const size_t TRANSFER_STATE_SYNC_BYTES = 8192;
+
 // The data stored in the OTA section is read in blocks of this size
 const size_t OTA_FLASH_READ_BLOCK_SIZE = 128;
 
@@ -83,16 +86,16 @@ struct TransferState {
     Sha256 partialHash; // SHA-256 of the partially transferred data
     Sha256 tempHash; // Intermediate SHA-256 checksum
     PersistentTransferState persist; // Persistently stored transfer state
+    system_tick_t lastSyncTime; // Time when the file was last synced
+    size_t bytesToSync; // Number of bytes received since the file was last synced
     size_t startOffset; // Offset at which the transfer started
-    system_tick_t lastSynced; // Time when the file was last synced
-    bool needSync; // Whether the file needs to be synced
 
     TransferState() :
             file(TRANSFER_STATE_FILE),
             persist(),
-            startOffset(0),
-            lastSynced(0),
-            needSync(false) {
+            lastSyncTime(0),
+            bytesToSync(0),
+            startOffset(0) {
     }
 };
 
@@ -262,6 +265,29 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
     return 0;
 }
 
+void FirmwareUpdate::process() {
+    if (!updating_) {
+        return;
+    }
+#if HAL_PLATFORM_RESUMABLE_OTA
+    if (transferState_) {
+        const auto state = transferState_.get();
+        if (state->bytesToSync >= TRANSFER_STATE_SYNC_BYTES &&
+                HAL_Timer_Get_Milli_Seconds() - state->lastSyncTime >= TRANSFER_STATE_SYNC_INTERVAL) {
+            const int r = state->file.sync();
+            if (r >= 0) {
+                state->lastSyncTime = HAL_Timer_Get_Milli_Seconds();
+                state->bytesToSync = 0;
+            } else {
+                // Not a critical error
+                LOG(ERROR, "Failed to update transfer state: %d", r);
+                clearTransferState();
+            }
+        }
+    }
+#endif
+}
+
 FirmwareUpdate* FirmwareUpdate::instance() {
     static FirmwareUpdate instance;
     return &instance;
@@ -349,14 +375,15 @@ int FirmwareUpdate::updateTransferState(const char* chunkData, size_t chunkSize,
         CHECK(state->file.save(persist, sizeof(PersistentTransferState)));
         // Avoid syncing the file on the very first chunk received
         if (partialSizeBefore == state->startOffset) {
-            state->lastSynced = HAL_Timer_Get_Milli_Seconds();
+            state->lastSyncTime = HAL_Timer_Get_Milli_Seconds();
         }
-        state->needSync = true;
+        state->bytesToSync += persist->partialSize - partialSizeBefore;
     }
-    if (state->needSync && HAL_Timer_Get_Milli_Seconds() - state->lastSynced >= TRANSFER_STATE_SYNC_INTERVAL) {
+    if (state->bytesToSync >= TRANSFER_STATE_SYNC_BYTES &&
+            HAL_Timer_Get_Milli_Seconds() - state->lastSyncTime >= TRANSFER_STATE_SYNC_INTERVAL) {
         CHECK(state->file.sync());
-        state->lastSynced = HAL_Timer_Get_Milli_Seconds();
-        state->needSync = false;
+        state->lastSyncTime = HAL_Timer_Get_Milli_Seconds();
+        state->bytesToSync = 0;
     }
     return 0;
 }
