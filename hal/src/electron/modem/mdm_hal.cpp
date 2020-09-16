@@ -428,7 +428,7 @@ int MDMParser::process() {
         _lastProcess = HAL_Timer_Get_Milli_Seconds();
     }
 
-    if (!_attached) {
+    if (_activated && !_attached) {
         LOCK();
         if (!reconnect()) {
             return -1;
