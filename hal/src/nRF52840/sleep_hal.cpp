@@ -73,7 +73,18 @@ struct WakeupSourcePriorityCache {
 
 constexpr uint32_t INVALID_INT_PRIORITY = 0xFFFFFFFF;
 
-}
+constexpr nrf_gpiote_events_t gpioteEvents[GPIOTE_CH_NUM] = {
+    NRF_GPIOTE_EVENTS_IN_0,
+    NRF_GPIOTE_EVENTS_IN_1,
+    NRF_GPIOTE_EVENTS_IN_2,
+    NRF_GPIOTE_EVENTS_IN_3,
+    NRF_GPIOTE_EVENTS_IN_4,
+    NRF_GPIOTE_EVENTS_IN_5,
+    NRF_GPIOTE_EVENTS_IN_6,
+    NRF_GPIOTE_EVENTS_IN_7
+};
+
+} /* Anonymous namespace  */
 
 static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSources, WakeupSourcePriorityCache* priority, uint32_t newPriority) {
     auto source = wakeupSources;
@@ -358,23 +369,31 @@ static void configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources
         }
         source = source->next;
     }
+    
     if (gpioIntenSet > 0) {
         uint32_t curIntenSet = NRF_GPIOTE->INTENSET;
         nrf_gpiote_int_disable(curIntenSet);
 
         // Clear events and interrupts
-        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_0);
-        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_1);
-        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_2);
-        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_3);
-        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_4);
-        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_5);
-        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_6);
-        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_7);
+        uint32_t ioeNrfPin = 0xFFFFFFFF;
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_MCP23S17
+        /* The GPIOTE event associated with IOE_INT is probably set after we configured
+           the IO expander interrupts. Do not clear it and then use it to wake up device.
+           Otherwise, we will miss the interrupt triggered by IO expander. */
+        ioeNrfPin = NRF_GPIO_PIN_MAP(halPinMap[IOE_INT].gpio_port, halPinMap[IOE_INT].gpio_pin);
+#endif
+#endif
+        for (uint8_t i = 0; i < GPIOTE_CH_NUM; i++) {
+            if (nrf_gpiote_event_pin_get(i) != ioeNrfPin) {
+                nrf_gpiote_event_clear(gpioteEvents[i]);
+            }
+        }
         nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
         NVIC_ClearPendingIRQ(GPIOTE_IRQn);
-
         nrf_gpiote_int_enable(gpioIntenSet);
+
+        NVIC_ClearPendingIRQ(GPIOTE_IRQn);
         NVIC_EnableIRQ(GPIOTE_IRQn);
     }
 }
@@ -394,18 +413,6 @@ static void configGpioWakeupSourceExt(const hal_wakeup_source_base_t* wakeupSour
             auto gpioWakeup = reinterpret_cast<const hal_wakeup_source_gpio_t*>(source);
             if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
                 config = true;
-                // uint8_t nested = 0;
-                // sd_nvic_critical_region_enter(&nested);
-                // sd_nvic_critical_region_exit(0);
-                // bool spiEnabled = hal_spi_is_enabled(HAL_PLATFORM_MCP23S17_SPI);
-                // bool spiSuspended = false;
-                // if (!spiEnabled) {
-                //     if (sleepMode == HAL_SLEEP_MODE_ULTRA_LOW_POWER && hal_spi_sleep(HAL_PLATFORM_MCP23S17_SPI, false, nullptr) == SYSTEM_ERRORNONE) {
-                //         spiSuspended = true;
-                //     } else {
-                //         hal_spi_init(HAL_PLATFORM_MCP23S17_SPI);
-                //     }
-                // }
                 switch(gpioWakeup->mode) {
                     case RISING: {
                         intCon[halPinMap[gpioWakeup->pin].gpio_port] |= (0x01 << halPinMap[gpioWakeup->pin].gpio_pin);
@@ -422,20 +429,16 @@ static void configGpioWakeupSourceExt(const hal_wakeup_source_base_t* wakeupSour
                     }
                 }
                 gpIntEn[halPinMap[gpioWakeup->pin].gpio_port] |= (0x01 << halPinMap[gpioWakeup->pin].gpio_pin);
-                // if (spiSuspended) {
-                //     hal_spi_sleep(HAL_PLATFORM_MCP23S17_SPI, true, nullptr);
-                // } else if (!spiEnabled) {
-                //     hal_spi_end(HAL_PLATFORM_MCP23S17_SPI);
-                // }
-                // if (nested) {
-                //     sd_nvic_critical_region_enter(&nested);
-                // }
             }
         }
         source = source->next;
     }
 
     if (config) {
+        // Disabled GPIOTE NVIC interrupt so that ISR associated with IOE_INT won't
+        // be executed if interrupt occurred previous to calling __disable_irq().
+        NVIC_DisableIRQ(GPIOTE_IRQn);
+
         // TODO: check the returned result
         Mcp23s17::getInstance().writeRegister(Mcp23s17::INTCON_ADDR[0], intCon[0]);
         Mcp23s17::getInstance().writeRegister(Mcp23s17::DEFVAL_ADDR[0], defVal[0]);
@@ -618,9 +621,29 @@ static bool isWokenUpByGpio(const hal_wakeup_source_gpio_t* gpioWakeup) {
         return false;
     }
     Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+    uint32_t nrfPin;
+    pin_t wakeupPin;
+
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_MCU) {
+#endif
+        nrfPin = NRF_GPIO_PIN_MAP(halPinMap[gpioWakeup->pin].gpio_port, halPinMap[gpioWakeup->pin].gpio_pin);
+        wakeupPin = gpioWakeup->pin;
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    }
+#if HAL_PLATFORM_MCP23S17
+    else if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+        nrfPin = NRF_GPIO_PIN_MAP(halPinMap[IOE_INT].gpio_port, halPinMap[IOE_INT].gpio_pin);
+        wakeupPin = IOE_INT;
+    }
+#endif
+    else {
+        return false;
+    }
+#endif
+
     if (nrf_gpiote_event_is_set(NRF_GPIOTE_EVENTS_PORT)) {
         // PORT event
-        uint32_t nrfPin = NRF_GPIO_PIN_MAP(halPinMap[gpioWakeup->pin].gpio_port, halPinMap[gpioWakeup->pin].gpio_pin);
         nrf_gpio_pin_sense_t sense = nrf_gpio_pin_sense_get(nrfPin);
         if (sense != NRF_GPIO_PIN_NOSENSE) {
             uint32_t state = nrf_gpio_pin_read(nrfPin);
@@ -633,12 +656,13 @@ static bool isWokenUpByGpio(const hal_wakeup_source_gpio_t* gpioWakeup) {
         for (unsigned i = 0; i < GPIOTE_CH_NUM; ++i) {
             if (NRF_GPIOTE->EVENTS_IN[i] && nrf_gpiote_int_is_enabled(NRF_GPIOTE_INT_IN0_MASK << i)) {
                 pin_t pin = NRF_PIN_LOOKUP_TABLE[nrf_gpiote_event_pin_get(i)];
-                if (pin == gpioWakeup->pin) {
+                if (pin == wakeupPin) {
                     return true;
                 }
             }
         }
     }
+
     return false;
 }
 
@@ -800,7 +824,8 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
             hal_usart_flush(static_cast<hal_usart_interface_t>(usart));
         }
     }
-    
+
+    /* We neeed to configure the IO expander interrupt before disabling SPI interface. */
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
     Mcp23s17::getInstance().interruptsSuspend();
@@ -944,6 +969,9 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
 
     // Workaround for FPU anomaly
     fpu_sleep_prepare();
+
+    /* Do not allow any ISR to be executed starting from here. */
+    __disable_irq();
 
     // Suspend all GPIOTE interrupts
     HAL_Interrupts_Suspend();
