@@ -217,7 +217,7 @@ int TimeClass::year(time_t t)
 }
 
 /* return the current time as seconds since Jan 1 1970 */
-time_t TimeClass::now()
+time32_t TimeClass::now()
 {
     (void)isValid();
     struct timeval tv = {};
@@ -225,7 +225,7 @@ time_t TimeClass::now()
     return tv.tv_sec;
 }
 
-time_t TimeClass::local()
+time32_t TimeClass::local()
 {
 	return now() + time_zone_cache + dst_current_cache;
 }

@@ -27,6 +27,7 @@
 #define __SPARK_WIRING_TIME_H
 
 #include "spark_wiring_string.h"
+#include "time_compat.h"
 #include <time.h>
 
 extern const char* TIME_FORMAT_DEFAULT;
@@ -56,8 +57,10 @@ public:
 	static int     month(time_t t);   			// the month for the given time
 	static int     year();            			// current four digit year
 	static int     year(time_t t);    			// the year for the given time
-	static time_t  now();              			// return the current time as seconds since Jan 1 1970
-	static time_t  local();						// return the time as seconds since Jan 1 1970 in the local timezone.
+	// FIXME: For now using time32_t, until newlib printf %lld/%llu absence is resolved
+	// or at least %d/%u crashes with 64-bit arguments
+	static time32_t  now();              			// return the current time as seconds since Jan 1 1970
+	static time32_t  local();						// return the time as seconds since Jan 1 1970 in the local timezone.
 	static void    zone(float GMT_Offset);		// set the time zone (+/-) offset from GMT
 	static float	   zone();						// retrieve the current timezone
 	static void    setTime(time_t t);			// set the given time as unix/rtc time
