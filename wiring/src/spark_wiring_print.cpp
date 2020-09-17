@@ -211,14 +211,11 @@ size_t Print::printFloat(double number, uint8_t digits)
   return n;
 }
 
-size_t Print::printf_impl(bool newline, const char* format, ...)
+size_t Print::vprintf(bool newline, const char* format, va_list args)
 {
     const int bufsize = 20;
     char test[bufsize];
-    va_list marker;
-    va_start(marker, format);
-    size_t n = vsnprintf(test, bufsize, format, marker);
-    va_end(marker);
+    size_t n = vsnprintf(test, bufsize, format, args);
 
     if (n<bufsize)
     {
@@ -227,9 +224,7 @@ size_t Print::printf_impl(bool newline, const char* format, ...)
     else
     {
         char bigger[n+1];
-        va_start(marker, format);
-        n = vsnprintf(bigger, n+1, format, marker);
-        va_end(marker);
+        n = vsnprintf(bigger, n+1, format, args);
         n = print(bigger);
     }
     if (newline)

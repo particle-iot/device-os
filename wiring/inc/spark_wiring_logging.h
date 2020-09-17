@@ -211,8 +211,7 @@ protected:
 
         This method is equivalent to `stream()->printf(fmt, ...)`.
     */
-    template<typename... ArgsT>
-    void printf(const char *fmt, ArgsT... args);
+    void printf(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
 private:
     Print *stream_;
@@ -715,9 +714,11 @@ inline void spark::StreamLogHandler::write(char c) {
     write(&c, 1);
 }
 
-template<typename... ArgsT>
-inline void spark::StreamLogHandler::printf(const char *fmt, ArgsT... args) {
-    stream_->printf(fmt, args...);
+inline void spark::StreamLogHandler::printf(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    stream_->vprintf(false, fmt, args);
+    va_end(args);
 }
 
 // spark::JSONStreamLogHandler

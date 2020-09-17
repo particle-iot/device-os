@@ -62,7 +62,6 @@ class Print
     size_t printFloat(double, uint8_t);
   protected:
     void setWriteError(int err = 1) { write_error = err; }
-    size_t printf_impl(bool newline, const char* format, ...);
 
   public:
     Print() : write_error(0) {}
@@ -103,18 +102,25 @@ class Print
     size_t println(void);
     size_t println(const __FlashStringHelper*);
 
-    template <typename... Args>
-    inline size_t printf(const char* format, Args... args)
+    size_t printf(const char* format, ...) __attribute__ ((format(printf, 2, 3)))
     {
-        return this->printf_impl(false, format, args...);
+        va_list args;
+        va_start(args, format);
+        auto r = this->vprintf(false, format, args);
+        va_end(args);
+        return r;
     }
 
-    template <typename... Args>
-    inline size_t printlnf(const char* format, Args... args)
+    size_t printlnf(const char* format, ...) __attribute__ ((format(printf, 2, 3)))
     {
-        return this->printf_impl(true, format, args...);
+        va_list args;
+        va_start(args, format);
+        auto r = this->vprintf(true, format, args);
+        va_end(args);
+        return r;
     }
 
+    size_t vprintf(bool newline, const char* format, va_list args) __attribute__ ((format(printf, 3, 0)));
 };
 
 template <typename T, std::enable_if_t<!std::is_base_of<Printable, T>::value && (std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
