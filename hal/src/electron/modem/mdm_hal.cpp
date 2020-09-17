@@ -1006,9 +1006,9 @@ bool MDMParser::init(DevStatus* status)
     if (RESP_OK != waitFinalResp(_cbString, &str_verExt))
         goto failure;
     // Test for Memory Issue version
-    _memoryIssuePresent = false;
-    if (!strcmp("L0.0.00.00.05.06,A.02.00", _verExtended)) {
-        _memoryIssuePresent = true;
+    _memoryIssuePresent = true;
+    if (strcmp("L0.0.00.00.05.06,A.02.00", _verExtended)) {
+        _memoryIssuePresent = false;
     }
     // MDM_PRINTF("MODEM AND APP VERSION: %s (%s)\r\n", _verExtended, (_memoryIssuePresent) ? "MEMISSUE" : "OTHER");
     // Returns the ICCID (Integrated Circuit Card ID) of the SIM-card.
