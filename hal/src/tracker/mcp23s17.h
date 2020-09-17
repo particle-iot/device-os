@@ -52,7 +52,7 @@ public:
     int attachPinInterrupt(uint8_t port, uint8_t pin, InterruptMode trig, Mcp23s17InterruptCallback callback, void* context, bool verify = true);
     int detachPinInterrupt(uint8_t port, uint8_t pin, bool verify = true);
     int interruptsSuspend();
-    int interruptsRestore();
+    int interruptsRestore(uint8_t intStatus[2]);
 
     void resetRegValue();
     int writeRegister(const uint8_t addr, const uint8_t val) const;

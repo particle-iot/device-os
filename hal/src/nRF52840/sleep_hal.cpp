@@ -284,8 +284,13 @@ static const hal_wakeup_source_base_t* findWakeupSource(const hal_wakeup_source_
 
 static void configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
     uint32_t gpioIntenSet = 0;
-    bool ioExpanderIntConfigured = false;
     Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_MCP23S17
+    bool ioExpanderIntConfigured = false;
+#endif
+#endif
 
     auto source = wakeupSources;
     while (source) {
@@ -379,7 +384,7 @@ static void configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
         /* The GPIOTE event associated with IOE_INT is probably set after we configured
-           the IO expander interrupts. Do not clear it and then use it to wake up device.
+           the IO expander interrupts. Do not clear it and use it to wake up device.
            Otherwise, we will miss the interrupt triggered by IO expander. */
         ioeNrfPin = NRF_GPIO_PIN_MAP(halPinMap[IOE_INT].gpio_port, halPinMap[IOE_INT].gpio_pin);
 #endif
@@ -985,6 +990,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     // Masks all interrupts lower than softdevice. This allows us to be woken ONLY by softdevice
     // or GPIOTE and RTC.
     // IMPORTANT: No SoftDevice API calls are allowed until HAL_enable_irq()
+    // TODO: we have bumped the SD_EVT_IRQn priority, so we can probably always call HAL_disable_irq() here.
     int hst = 0;
     if (!bleWakeupSource) {
         hst = HAL_disable_irq();
@@ -1190,7 +1196,27 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
-    Mcp23s17::getInstance().interruptsRestore();
+    uint8_t intStatus[2];
+    Mcp23s17::getInstance().interruptsRestore(intStatus);
+    Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+    if (halPinMap[wakeupPin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+        // We need to identify the exact wakeup pin attached to the IO expander.
+        source = config->wakeup_sources;
+        while (source) {
+            if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+                auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(source);
+                uint8_t bitMask = 0x01 << halPinMap[gpioWakeup->pin].gpio_pin;
+                uint8_t port = halPinMap[gpioWakeup->pin].gpio_port;
+                if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+                    if (intStatus[port] & bitMask) {
+                        wakeupPin = gpioWakeup->pin;
+                        break;
+                    }
+                }
+            }
+            source = source->next;
+        }
+    }
 #endif
 #endif
 
