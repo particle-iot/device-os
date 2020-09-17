@@ -249,6 +249,11 @@ cellular_result_t cellular_set_active_sim(int sim_type, void* reserved);
  */
 cellular_result_t cellular_get_active_sim(int* sim_type, void* reserved);
 
+/**
+ * Run background tasks
+ */
+cellular_result_t cellular_process(void* reserved, void* reserved1);
+
 #ifdef __cplusplus
 }
 #endif

@@ -70,10 +70,10 @@ void HAL_NET_notify_dhcp(bool dhcp)
     }
 }
 
-void HAL_NET_notify_can_shutdown()
+void HAL_NET_notify_error()
 {
-    if (netCallbacks.notify_can_shutdown) {
-        netCallbacks.notify_can_shutdown();
+    if (netCallbacks.notify_error) {
+        netCallbacks.notify_error();
     }
 }
 
@@ -82,7 +82,7 @@ void HAL_NET_SetCallbacks(const HAL_NET_Callbacks* callbacks, void* reserved)
     netCallbacks.notify_connected = callbacks->notify_connected;
     netCallbacks.notify_disconnected = callbacks->notify_disconnected;
     netCallbacks.notify_dhcp = callbacks->notify_dhcp;
-    netCallbacks.notify_can_shutdown = callbacks->notify_can_shutdown;
+    netCallbacks.notify_error = callbacks->notify_error;
 }
 
 #else
@@ -433,6 +433,11 @@ void cellular_set_power_mode(int mode, void* reserved)
     if (mode >= 0 && mode <= 3) {
         electronMDM.setPowerMode(mode);
     }
+}
+
+cellular_result_t cellular_process(void* reserved, void* reserved1)
+{
+    return electronMDM.process();
 }
 
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

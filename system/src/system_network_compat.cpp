@@ -35,12 +35,12 @@
 #include "rgbled.h"
 #include <string.h>
 
-uint32_t wlan_watchdog_base;
-uint32_t wlan_watchdog_duration;
+uint32_t wlan_watchdog_base = 0;
+uint32_t wlan_watchdog_duration = 0;
 
-volatile uint8_t SPARK_WLAN_RESET;
-volatile uint8_t SPARK_WLAN_SLEEP;
-volatile uint8_t SPARK_WLAN_STARTED;
+volatile uint8_t SPARK_WLAN_RESET = 0;
+volatile uint8_t SPARK_WLAN_SLEEP = 0;
+volatile uint8_t SPARK_WLAN_STARTED = 0;
 
 
 #if Wiring_WiFi
@@ -80,9 +80,9 @@ void HAL_NET_notify_disconnected()
     network.notify_disconnected();
 }
 
-void HAL_NET_notify_can_shutdown()
+void HAL_NET_notify_error()
 {
-    network.notify_can_shutdown();
+    network.notify_error();
 }
 
 void HAL_NET_notify_dhcp(bool dhcp)
@@ -260,6 +260,8 @@ void manage_network_connection()
         {
             // INFO("Network Connect: %s", (!SPARK_WLAN_STARTED) ? "!SPARK_WLAN_STARTED" : "SPARK_CLOUD_CONNECT && !network.ready()");
             network_connect(0, 0, 0, 0);
+        } else {
+            nif(0).process();
         }
     }
 }

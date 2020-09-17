@@ -242,30 +242,29 @@ struct NetworkInterface
 
     virtual int set_hostname(const char* hostname)=0;
     virtual int get_hostname(char* buffer, size_t buffer_len, bool noDefault=false)=0;
-
+    virtual int process()=0;
 };
 
 
 class ManagedNetworkInterface : public NetworkInterface
 {
 private:
-    volatile uint8_t WLAN_DISCONNECT;
-    volatile uint8_t WLAN_DELETE_PROFILES;
-    volatile uint8_t WLAN_SMART_CONFIG_START; // Set to 'true' when listening mode is pending
-    volatile uint8_t WLAN_SMART_CONFIG_ACTIVE;
-    volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
-    volatile uint8_t WLAN_CONNECTED;
-    volatile uint8_t WLAN_CONNECTING;
-    volatile uint8_t WLAN_DHCP_PENDING;
-    volatile uint8_t WLAN_CAN_SHUTDOWN;
-    volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT;
+    volatile uint8_t WLAN_DISCONNECT = 0;
+    volatile uint8_t WLAN_DELETE_PROFILES = 0;
+    volatile uint8_t WLAN_SMART_CONFIG_START = 0; // Set to 'true' when listening mode is pending
+    volatile uint8_t WLAN_SMART_CONFIG_ACTIVE = 0;
+    volatile uint8_t WLAN_SMART_CONFIG_FINISHED = 0;
+    volatile uint8_t WLAN_CONNECTED = 0;
+    volatile uint8_t WLAN_CONNECTING = 0;
+    volatile uint8_t WLAN_DHCP_PENDING = 0;
+    volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT = 0;
 #if PLATFORM_ID == 10 // Electron
     volatile uint32_t START_LISTENING_TIMER_MS = 300000UL; // 5 minute default on Electron
 #else
     volatile uint32_t START_LISTENING_TIMER_MS = 0UL; // Disabled by default on Photon/P1/Core
 #endif
-    volatile uint32_t start_listening_timer_base;
-    volatile uint32_t start_listening_timer_duration;
+    volatile uint32_t start_listening_timer_base = 0;
+    volatile uint32_t start_listening_timer_duration = 0;
 
 #ifdef DEBUG_NETWORK_STATE
     friend class NetworkStateLogger;
@@ -440,6 +439,8 @@ protected:
 
     virtual int on_now()=0;
     virtual void off_now()=0;
+
+    virtual int process_now()=0;
 
     /**
      *
@@ -741,16 +742,10 @@ public:
         }
     }
 
-    void notify_can_shutdown()
+    void notify_error()
     {
-        WLAN_CAN_SHUTDOWN = 1;
+        // Do nothing
     }
-
-    void notify_cannot_shutdown()
-    {
-        WLAN_CAN_SHUTDOWN = 0;
-    }
-
 
     void listen_loop() override
     {
@@ -770,6 +765,16 @@ public:
             on_setup_cleanup();
             WLAN_SMART_CONFIG_FINISHED = 0;
         }
+    }
+
+    virtual int process()
+    {
+        auto r = process_now();
+        if (r) {
+            // Ask the system to reset us
+            SPARK_WLAN_RESET = 1;
+        }
+        return r;
     }
 };
 
@@ -843,7 +848,6 @@ inline void NetworkStateLogger::dump() const {
     NETWORK_STATE_PRINTF("WLAN_CONNECTED: %d\r\n", (int)nif_.WLAN_CONNECTED);
     NETWORK_STATE_PRINTF("WLAN_CONNECTING: %d\r\n", (int)nif_.WLAN_CONNECTING);
     NETWORK_STATE_PRINTF("WLAN_DHCP_PENDING: %d\r\n", (int)nif_.WLAN_DHCP_PENDING);
-    NETWORK_STATE_PRINTF("WLAN_CAN_SHUTDOWN: %d\r\n", (int)nif_.WLAN_CAN_SHUTDOWN);
     NETWORK_STATE_PRINTF("WLAN_LISTEN_ON_FAILED_CONNECT: %d\r\n", (int)nif_.WLAN_LISTEN_ON_FAILED_CONNECT);
     // Global flags
     NETWORK_STATE_PRINTF("SPARK_WLAN_RESET: %d\r\n", (int)SPARK_WLAN_RESET);
