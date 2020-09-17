@@ -22,12 +22,11 @@
 #define	FAST_PIN_H
 
 #include "platforms.h"
+#include "pinmap_hal.h"
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
-
-#include "pinmap_hal.h"
 
 /* Disabling USE_BIT_BAND since bitbanding is much slower! as per comment
  * by @pkourany on PR: https://github.com/spark/firmware/pull/556 */
