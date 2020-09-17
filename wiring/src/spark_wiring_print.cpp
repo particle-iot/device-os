@@ -215,6 +215,8 @@ size_t Print::vprintf(bool newline, const char* format, va_list args)
 {
     const int bufsize = 20;
     char test[bufsize];
+    va_list args2;
+    va_copy(args2, args);
     size_t n = vsnprintf(test, bufsize, format, args);
 
     if (n<bufsize)
@@ -224,11 +226,13 @@ size_t Print::vprintf(bool newline, const char* format, va_list args)
     else
     {
         char bigger[n+1];
-        n = vsnprintf(bigger, n+1, format, args);
+        n = vsnprintf(bigger, n+1, format, args2);
         n = print(bigger);
     }
     if (newline)
         n += println();
+
+    va_end(args2);
     return n;
 }
 
