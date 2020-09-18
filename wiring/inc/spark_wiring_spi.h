@@ -122,7 +122,8 @@ public:
     if (default_ && clock_ == 0)
       return p.print("<SPISettings default>");
     else
-      return p.printf("<SPISettings %s%lu %s MODE%d>", default_ ? "default " : "", clock_, bitOrder_ == MSBFIRST ? "MSB" : "LSB", dataMode_);
+      return p.printf("<SPISettings %s%u %s MODE%u>", default_ ? "default " : "", (unsigned int)clock_,
+          bitOrder_ == MSBFIRST ? "MSB" : "LSB", (unsigned int)dataMode_);
   }
 
   uint32_t getClock() const {
