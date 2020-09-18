@@ -528,6 +528,10 @@ protected:
     */
     void SMSreceived(int index);
 
+    /** Detects the modem power state
+    */
+    bool powerState(void) const;
+
 protected:
     // String helper to prevent buffer overrun
     struct CStringHelper {

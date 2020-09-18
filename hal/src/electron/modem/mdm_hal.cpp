@@ -273,12 +273,14 @@ MDMParser::MDMParser(void)
 #endif
 
     Hal_Pin_Info* pinMap = HAL_Pin_Map();
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
     pinMap[PWR_UC].gpio_peripheral->BSRRL = pinMap[PWR_UC].gpio_pin;
     HAL_Pin_Mode(PWR_UC, OUTPUT);
     pinMap[RESET_UC].gpio_peripheral->BSRRL = pinMap[RESET_UC].gpio_pin;
     HAL_Pin_Mode(RESET_UC, OUTPUT);
+    pinMap[LVLOE_UC].gpio_peripheral->BSRRH = pinMap[LVLOE_UC].gpio_pin;
     HAL_Pin_Mode(LVLOE_UC, OUTPUT);
-    HAL_GPIO_Write(LVLOE_UC, 0);
     HAL_Pin_Mode(RI_UC, INPUT_PULLDOWN);
 }
 
@@ -771,7 +773,6 @@ bool MDMParser::_powerOn(void)
     PIN_MAP_PARSER[RESET_UC].gpio_peripheral->BSRRL = PIN_MAP_PARSER[RESET_UC].gpio_pin;
     HAL_Pin_Mode(RESET_UC, OUTPUT);
 
-    _dev.dev = DEV_UNKNOWN;
     _dev.lpm = LPM_ENABLED;
 
     HAL_Pin_Mode(LVLOE_UC, OUTPUT);
@@ -889,7 +890,10 @@ failure:
 bool MDMParser::powerOn(const char* simpin)
 {
     LOCK();
+    // The modem type won't change that easily
+    auto device_type = _dev.dev;
     memset(&_dev, 0, sizeof(_dev));
+    _dev.dev = device_type;
     bool retried_after_reset = false;
 
     _error = 0;
@@ -1178,23 +1182,40 @@ int MDMParser::getModemStateChangeCount(void) {
     return _mdm_state_change_count;
 }
 
+bool MDMParser::powerState(void) const {
+    auto state = HAL_GPIO_Read(RI_UC);
+    if (state) {
+        // RI is high, which means that V_INT is high as well
+        // We are definitely powered on
+        return true;
+    }
+    // We are still not sure whether we are off or not,
+    // because RI may be held low for over a second under some conditions
+    // Sleeping for 1.1s and checking again
+    HAL_Delay_Milliseconds(1100);
+    state = HAL_GPIO_Read(RI_UC);
+    // If RI is still low - we are off
+    // If RI is high - we are on
+    return state;
+}
+
 bool MDMParser::powerOff(void)
 {
     LOCK();
     bool ok = false;
     bool continue_cancel = false;
-    bool check_ri = true;
+    bool check_ri = false;
     if (_init && _pwr) {
         MDM_INFO("\r\n[ Modem::powerOff ] = = = = = = = = = = = = = =");
         if (_cancel_all_operations) {
             continue_cancel = true;
             resume(); // make sure we can use the AT parser
         }
+        check_ri = true;
         // Try to power off
         for (int i=0; i<3; i++) { // try 3 times
             if (_error || !_atOk()) {
                 if (_dev.dev == DEV_SARA_R410) {
-                    check_ri = true;
                     // If memory issue is present, ensure we don't force a power off too soon
                     // to avoid hitting the 124 day memory housekeeping issue, AT+CPWROFF will
                     // handle this delay automatically, or timeout after 40s.
@@ -1217,7 +1238,7 @@ bool MDMParser::powerOff(void)
                                 break;
                             }
                             HAL_Delay_Milliseconds(100); // just wait
-                        } while ( HAL_GPIO_Read(RI_UC) );
+                        } while ( powerState() );
                         // reset timers
                         _timeRegistered = 0;
                         _timePowerOn = 0;
@@ -1225,7 +1246,7 @@ bool MDMParser::powerOff(void)
                 }
                 MDM_INFO("\r\n[ Modem::powerOff ] Modem not responsive, trying PWR_UC...");
                 // Skip power off sequence if power is already off
-                if (_dev.dev == DEV_SARA_R410 && !HAL_GPIO_Read(RI_UC)) {
+                if (!powerState()) {
                     break;
                 }
                 HAL_GPIO_Write(PWR_UC, 0);
@@ -1250,30 +1271,9 @@ bool MDMParser::powerOff(void)
                 }
             }
         }
-        // Verify power off, or delay
-        if (check_ri) {
-            system_tick_t t0 = HAL_Timer_Get_Milli_Seconds();
-            while (HAL_GPIO_Read(RI_UC) && !TIMEOUT(t0, 10000)) {
-                HAL_Delay_Milliseconds(1); // just wait
-            }
-            // if V_INT is low, indicate power is off
-            if (!HAL_GPIO_Read(RI_UC)) {
-                _pwr = false;
-            }
-            MDM_INFO("\r\n[ Modem::powerOff ] took %lu ms", HAL_Timer_Get_Milli_Seconds() - t0);
-        } else {
-            _pwr = false;
-            // todo - add if these are automatically done on power down
-            //_activated = false;
-            //_attached = false;
-        }
-        HAL_Delay_Milliseconds(1000); // give peace a chance
-        // Increment the state change counter to show that the modem has been powered off -> on
-        if (!_pwr) {
-            _incModemStateChangeCount();
-        }
     } else {
-        if (HAL_GPIO_Read(RI_UC)) {
+        if (powerState()) {
+            check_ri = true;
             MDM_INFO("[ Modem::powerOff ] modem is on unexpectedly. Turning it off...");
             // Delay this long period so that the modem is fully on to accept the power-off sequence.
             HAL_Delay_Milliseconds(12000);
@@ -1283,14 +1283,35 @@ bool MDMParser::powerOff(void)
             // >1 second on SARA U2
             // plus a little extra for good luck
             HAL_Delay_Milliseconds(2000);
-            HAL_GPIO_Write(PWR_UC, 1);
-            if (HAL_GPIO_Read(RI_UC)) {
-                MDM_INFO("[ Modem::powerOff ] turn off the modem failed.");
-            } else {
-                MDM_INFO("[ Modem::powerOff ] turn off the modem successfully.");
-            }
         }
-        return true;
+    }
+
+    // Verify power off, or delay
+    if (check_ri) {
+        system_tick_t t0 = HAL_Timer_Get_Milli_Seconds();
+        bool power_state = true;
+        while ((power_state = powerState()) && !TIMEOUT(t0, 15000)) {
+            HAL_Delay_Milliseconds(1); // just wait
+        }
+        // if V_INT is low, indicate power is off
+        if (!power_state) {
+            _pwr = false;
+        }
+        if (!power_state) {
+            MDM_INFO("\r\n[ Modem::powerOff ] took %lu ms", HAL_Timer_Get_Milli_Seconds() - t0);
+        } else {
+            MDM_INFO("\r\n[ Modem::powerOff ] failed");
+        }
+    } else {
+        _pwr = false;
+        // todo - add if these are automatically done on power down
+        //_activated = false;
+        //_attached = false;
+    }
+    HAL_Delay_Milliseconds(1000); // give peace a chance
+    // Increment the state change counter to show that the modem has been powered off -> on
+    if (!_pwr) {
+        _incModemStateChangeCount();
     }
 
     // Close serial connection
