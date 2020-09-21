@@ -102,14 +102,15 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
 #if HAL_PLATFORM_CELLULAR
     bool cellularResume = false;
-    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_CELLULAR) &&
-          !configHelper.networkFlags(NETWORK_INTERFACE_CELLULAR).isSet(SystemSleepNetworkFlag::INACTIVE_STANDBY)) {
-        if (system_sleep_network_suspend(NETWORK_INTERFACE_CELLULAR)) {
-            cellularResume = true;
+    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_CELLULAR)) {
+        if (configHelper.networkFlags(NETWORK_INTERFACE_CELLULAR).isSet(SystemSleepNetworkFlag::INACTIVE_STANDBY)) {
+            // Pause the modem Serial, while leaving the modem keeps running.
+            cellular_pause(nullptr);
+        } else {
+            if (system_sleep_network_suspend(NETWORK_INTERFACE_CELLULAR)) {
+                cellularResume = true;
+            }
         }
-    } else {
-        // Pause the modem Serial, while leaving the modem keeps running.
-        cellular_pause(nullptr);
     }
 #endif // HAL_PLATFORM_CELLULAR
 
