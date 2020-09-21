@@ -703,12 +703,12 @@ size_t BleAdvertisingData::serviceUUID(BleAdvertisingDataType type, BleUuid* uui
         adsLen = locate(&selfData_[i], selfLen_ - i, type, &offset);
         if (adsLen > 0 && found < count) {
             if (type == BleAdvertisingDataType::SERVICE_UUID_16BIT_MORE_AVAILABLE || type == BleAdvertisingDataType::SERVICE_UUID_16BIT_COMPLETE) {
-                for(size_t array = 0; array < (adsLen-2)/2; array++) {
-                    uuids[found++] = (uint16_t)selfData_[i + offset + array*2 + 2] | ((uint16_t)selfData_[i + offset + array*2 + 3] << 8);
+                for(size_t array = 0; array < (adsLen - 2) / BLE_SIG_UUID_16BIT_LEN; array++) {
+                    uuids[found++] = (uint16_t)selfData_[i + offset + array * BLE_SIG_UUID_16BIT_LEN + 2] | ((uint16_t)selfData_[i + offset + array * BLE_SIG_UUID_16BIT_LEN + 3] << 8);
                 }
             } else if (type == BleAdvertisingDataType::SERVICE_UUID_128BIT_MORE_AVAILABLE || type == BleAdvertisingDataType::SERVICE_UUID_128BIT_COMPLETE) {
-                for(size_t array = 0; array < (adsLen-2)/16; array++) {
-                    uuids[found++] = &selfData_[i + offset + array*2 + 2];
+                for(size_t array = 0; array < (adsLen - 2) / BLE_SIG_UUID_128BIT_LEN; array++) {
+                    uuids[found++] = &selfData_[i + offset + array * BLE_SIG_UUID_128BIT_LEN + 2];
                 }
             }
             continue;
