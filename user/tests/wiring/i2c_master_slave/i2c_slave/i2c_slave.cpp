@@ -4,6 +4,7 @@
 
 static uint8_t done = 0;
 static uint32_t requestedLength = 0;
+static bool requested = false;
 
 static int random_range(int minVal, int maxVal)
 {
@@ -22,9 +23,14 @@ void I2C_Slave_On_Request_Callback(void) {
     // Serial.println((const char *)I2C_Test_Tx_Buffer);
 
     USE_WIRE.write((const uint8_t*)I2C_Test_Tx_Buffer, requestedLength);
+    requested = false;
 }
 
 void I2C_Slave_On_Receive_Callback(int) {
+    if (!requested) {
+        requested = true;
+        requestedLength = 0;
+    }
     assertEqual(USE_WIRE.available(), TRANSFER_LENGTH_1);
     int count = 0;
     while(USE_WIRE.available()) {
@@ -37,7 +43,7 @@ void I2C_Slave_On_Receive_Callback(int) {
 
     assertTrue(strncmp((const char *)I2C_Test_Rx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE)) == 0);
 
-    requestedLength = *((uint32_t *)(I2C_Test_Rx_Buffer + sizeof(MASTER_TEST_MESSAGE)));
+    requestedLength += *((uint32_t *)(I2C_Test_Rx_Buffer + sizeof(MASTER_TEST_MESSAGE)));
     assertTrue((requestedLength >= 0 && requestedLength <= TRANSFER_LENGTH_2));
 
     if (requestedLength == 0)
