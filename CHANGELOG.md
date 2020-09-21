@@ -1,3 +1,42 @@
+## 2.0.0-rc.2
+
+### DEPRECATION
+
+- [Cellular] Mark `CellularSignal::rssi` and `CellularSignal::qual` as deprecated [#2182](https://github.com/particle-iot/device-os/pull/2182)
+
+### FEATURES
+
+- [Cellular] Read IMSI when multi-IMSI SIM performs the switch [#2174](https://github.com/particle-iot/device-os/pull/2174) [#2179](https://github.com/particle-iot/device-os/pull/2179)
+- Allow UDP server public key to be set in DCT programmatically [#2178](https://github.com/particle-iot/device-os/pull/2178)
+- [Gen 2] Wake-up by analog value [#2172](https://github.com/particle-iot/device-os/pull/2172)
+- [Gen 2] Wake-up by USART [#2173](https://github.com/particle-iot/device-os/pull/2173)
+- [Gen 3] Add `ftruncate()` and `truncate()` APIs [#2195](https://github.com/particle-iot/device-os/pull/2195)
+- Expose functions to fetch serial / mobile secret from OTP-area [#2190](https://github.com/particle-iot/device-os/pull/2190)
+- [Electron] Wake-up by cellular [#2186](https://github.com/particle-iot/device-os/pull/2186)
+
+### ENHANCEMENTS
+
+- Clear OTA slots after updating firmware modules to improve reliability of OTA updates [#2176](https://github.com/particle-iot/device-os/pull/2176)
+- [Cellular] Replace `AT+COPS=2` with `AT+CFUN=0` or `AT+CFUN=4` to prevent longer registration times [#2177](https://github.com/particle-iot/device-os/pull/2177)
+- [Cellular] IMSI-based operator lookup, operator-specific enhancements [#2185](https://github.com/particle-iot/device-os/pull/2185)
+- [Electron] Recovery mechanics for cases when the modem becomes unresponsive [#2198](https://github.com/particle-iot/device-os/pull/2198)
+- Add `printf` attributes to appopriate wiring functions to generate `-Wformat` warnings [#2201](https://github.com/particle-iot/device-os/pull/2201)
+- Change `Time::now()` return type to 32-bit `time32_t` to reduce potential issues with `printf` formatting of 64-bit `time_t` [#2201](https://github.com/particle-iot/device-os/pull/2201)
+
+### BUGFIXES
+
+- [Electron] Fix modem log timestamps starting with a high number on boot [#2169](https://github.com/particle-iot/device-os/pull/2169)
+- [Cellular] Make sure 2G fallback stays disabled on Quectel BG96-based platforms [#2175](https://github.com/particle-iot/device-os/pull/2175)
+- [Gen 3] Fix USART wake-up source configuration in Ultra Low Power mode, causing immediate sleep mode exit [#2180](https://github.com/particle-iot/device-os/pull/2180)
+- [Gen 3] Fix tone generation behavior with zero duration (infinite) [#2183](https://github.com/particle-iot/device-os/pull/2183)
+- Exclude printable objects from `Print` overload taking integral and unsigned integer convertible types [#2181](https://github.com/particle-iot/device-os/pull/2181)
+- [Boron / B SoM] Fix warm bootup on uBlox SARA R4-based devices [#2188](https://github.com/particle-iot/device-os/pull/2188)
+- [Gen 2] Support repeated-START between WRITE and READ operations in I2C Slave mode [#2184](https://github.com/particle-iot/device-os/pull/2184) [#2193](https://github.com/particle-iot/device-os/pull/2193)
+- Fastpin functions should not depend on the object initialization order [#2194](https://github.com/particle-iot/device-os/pull/2194)
+- [Electron] Fix modem power leakage when the modem is in an unknown state when going into a sleep mode [#2197](https://github.com/particle-iot/device-os/pull/2197)
+- [BLE] Fix issue with `.serviceUUID()` not returning UUID when there is an array [#2202](https://github.com/particle-iot/device-os/pull/2202)
+- [Gen 3] Default SPI pin drive strength changed to high [7f2e8a711bd14abd1e094679f1cc6d26742cb6c9](https://github.com/particle-iot/device-os/commit/7f2e8a711bd14abd1e094679f1cc6d26742cb6c9)
+
 ## 2.0.0-rc.1
 
 ### BREAKING CHANGES
