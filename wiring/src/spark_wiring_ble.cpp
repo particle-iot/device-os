@@ -702,10 +702,14 @@ size_t BleAdvertisingData::serviceUUID(BleAdvertisingDataType type, BleUuid* uui
     for (size_t i = 0; i < selfLen_; i += (offset + adsLen)) {
         adsLen = locate(&selfData_[i], selfLen_ - i, type, &offset);
         if (adsLen > 0 && found < count) {
-            if (adsLen == 4) { // length field + type field + 16-bits UUID
-                uuids[found++] = (uint16_t)selfData_[i + offset + 2] | ((uint16_t)selfData_[i + offset + 3] << 8);
-            } else if (adsLen == 18) {
-                uuids[found++] = &selfData_[i + offset + 2];
+            if (type == BleAdvertisingDataType::SERVICE_UUID_16BIT_MORE_AVAILABLE || type == BleAdvertisingDataType::SERVICE_UUID_16BIT_COMPLETE) {
+                for(size_t array = 0; array < (adsLen-2)/2; array++) {
+                    uuids[found++] = (uint16_t)selfData_[i + offset + array*2 + 2] | ((uint16_t)selfData_[i + offset + array*2 + 3] << 8);
+                }
+            } else if (type == BleAdvertisingDataType::SERVICE_UUID_128BIT_MORE_AVAILABLE || type == BleAdvertisingDataType::SERVICE_UUID_128BIT_COMPLETE) {
+                for(size_t array = 0; array < (adsLen-2)/16; array++) {
+                    uuids[found++] = &selfData_[i + offset + array*2 + 2];
+                }
             }
             continue;
         }
