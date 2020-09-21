@@ -31,6 +31,7 @@ LOG_SOURCE_CATEGORY("system.sleep");
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
 #include "system_mode.h"
+#include "firmware_update.h"
 #include "spark_wiring_system.h"
 #include "led_service.h"
 #include "system_task.h"
@@ -76,6 +77,9 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     // Validates the sleep configuration previous to disconnecting network,
     // so that the network status remains if the configuration is invalid.
     CHECK(hal_sleep_validate_config(config, nullptr));
+
+    // Cancel the firmware update
+    system::FirmwareUpdate::instance()->finishUpdate(FirmwareUpdateFlag::CANCEL);
 
     SystemSleepConfigurationHelper configHelper(config);
 

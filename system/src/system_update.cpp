@@ -234,19 +234,12 @@ bool system_fileTransfer(system_file_transfer_t* tx, void* reserved)
     bool status = false;
     Stream* serialObj = tx->stream;
 
-    if (NULL != Ymodem_Serial_Flash_Update_Handler)
+    if (Ymodem_Serial_Flash_Update_Handler)
     {
         status = Ymodem_Serial_Flash_Update_Handler(serialObj, tx->descriptor, NULL);
-        SPARK_FLASH_UPDATE = 0;
-        TimingFlashUpdateTimeout = 0;
-
-        if (status == true)
+        if (status)
         {
-            if (tx->descriptor.store==FileTransfer::Store::FIRMWARE) {
-                serialObj->println("Restarting system to apply firmware update...");
-                HAL_Delay_Milliseconds(100);
-                system_pending_shutdown(RESET_REASON_UPDATE);
-            }
+            serialObj->println("Restarting system to apply firmware update...");
         }
     }
     else
