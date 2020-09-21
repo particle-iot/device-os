@@ -55,10 +55,11 @@ namespace {
 const auto TRANSFER_STATE_FILE = "/sys/fw_transfer";
 
 // Interval at which the transfer state file is synced
-const system_tick_t TRANSFER_STATE_SYNC_INTERVAL = 2000;
-
-// Minimum number of bytes that needs to be received before the transfer state file is synced
-const size_t TRANSFER_STATE_SYNC_BYTES = 8192;
+//
+// TODO: Using a long interval for now because syncing the transfer state file takes a long time,
+// during which the device is missing packets. Normally, the file will be synced when the user app
+// calls Particle.sleep() or disconnectects from the cloud gracefully
+const system_tick_t TRANSFER_STATE_SYNC_INTERVAL = 30000;
 
 // The data stored in the OTA section is read in blocks of this size
 const size_t OTA_FLASH_READ_BLOCK_SIZE = 128;
@@ -268,8 +269,7 @@ void FirmwareUpdate::process() {
 #if HAL_PLATFORM_RESUMABLE_OTA
     if (transferState_) {
         const auto state = transferState_.get();
-        if (state->bytesToSync >= TRANSFER_STATE_SYNC_BYTES &&
-                HAL_Timer_Get_Milli_Seconds() - state->lastSyncTime >= TRANSFER_STATE_SYNC_INTERVAL) {
+        if (state->bytesToSync > 0 && HAL_Timer_Get_Milli_Seconds() - state->lastSyncTime >= TRANSFER_STATE_SYNC_INTERVAL) {
             const int r = state->file.sync();
             if (r >= 0) {
                 state->lastSyncTime = HAL_Timer_Get_Milli_Seconds();
@@ -375,8 +375,7 @@ int FirmwareUpdate::updateTransferState(const char* chunkData, size_t chunkSize,
         }
         state->bytesToSync += persist->partialSize - partialSizeBefore;
     }
-    if (state->bytesToSync >= TRANSFER_STATE_SYNC_BYTES &&
-            HAL_Timer_Get_Milli_Seconds() - state->lastSyncTime >= TRANSFER_STATE_SYNC_INTERVAL) {
+    if (state->bytesToSync > 0 && HAL_Timer_Get_Milli_Seconds() - state->lastSyncTime >= TRANSFER_STATE_SYNC_INTERVAL) {
         CHECK(state->file.sync());
         state->lastSyncTime = HAL_Timer_Get_Milli_Seconds();
         state->bytesToSync = 0;
