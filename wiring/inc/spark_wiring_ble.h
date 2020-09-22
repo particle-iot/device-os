@@ -576,6 +576,13 @@ public:
 
     BleUuid UUID() const;
 
+    // Discover all characteristics on this service
+    Vector<BleCharacteristic> discoverAllCharacteristics();
+
+    // Fetch the discovered characteristics on this service
+    Vector<BleCharacteristic> characteristics();
+    bool getCharacteristicByUUID(BleCharacteristic& characteristic, const BleUuid& uuid) const;
+
     BleService& operator=(const BleService& service);
 
     bool operator==(const BleService& service) const;
