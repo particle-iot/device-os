@@ -35,8 +35,8 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
         USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
         
         // Sleep API should keep the buffer state as-is
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
 
         // End with STOP
         assertEqual(USE_WIRE.endTransmission(true), 0);
@@ -54,8 +54,8 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
         assertEqual(requestedLength, USE_WIRE.available());
 
         // Sleep API should keep the buffer state as-is
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
 
         uint32_t count = 0;
         while(USE_WIRE.available()) {
@@ -68,10 +68,10 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
         requestedLength--;
 
         // Enter sleep
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
         
         // Exit sleep
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
@@ -138,10 +138,10 @@ test(I2C_02_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underfl
         requestedLength--;
 
         // Enter sleep
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
 
         // Exit sleep
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
@@ -190,10 +190,10 @@ test(I2C_03_Master_Slave_Master_WireTransmission_And_Short_Timeout)
         requestedLength--;
 
         // Enter sleep
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
 
         // Exit sleep
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
@@ -249,10 +249,10 @@ test(I2C_04_Master_Slave_Master_Variable_Length_Transfer_With_WireTransmission_A
         requestedLength--;
 
         // Enter sleep
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
 
         // Exit sleep
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
@@ -322,10 +322,10 @@ test(I2C_05_Master_Slave_Master_Variable_Length_Restarted_Transfer)
         requestedLength--;
 
         // Enter sleep
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, true, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
         
         // Exit sleep
-        assertEqual(hal_i2c_sleep(HAL_I2C_INTERFACE1, false, NULL), (int)SYSTEM_ERROR_NONE);
+        assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();

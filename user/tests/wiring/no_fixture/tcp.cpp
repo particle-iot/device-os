@@ -6,6 +6,12 @@
 // issue #1865 - TCPClient connect() return values
 // added asserts for TCPClient::connect()
 
+namespace {
+
+const auto TCP_RETRY_ATTEMPTS = 5;
+
+} // anonymous
+
 test(TCP_01_tcp_client_failed_connect_invalid_ip)
 {
     TCPClient client;
@@ -25,10 +31,22 @@ test(TCP_02_tcp_client_failed_connect_invalid_fqdn)
 test(TCP_03_tcp_client_success_connect_valid_ip)
 {
     IPAddress ip;
-    ip = Network.resolve("www.httpbin.org");
+    for (int i = 0; i < TCP_RETRY_ATTEMPTS; i++) {
+        ip = Network.resolve("www.httpbin.org");
+        if (ip > 0) {
+            break;
+        }
+    }
     assertTrue(ip > 0);
     TCPClient client;
-    assertTrue(client.connect(ip, 80));
+    int r = 0;
+    for (int i = 0; i < TCP_RETRY_ATTEMPTS; i++) {
+        r = client.connect(ip, 80);
+        if (r && client.connected()) {
+            break;
+        }
+    }
+    assertTrue(r);
     assertTrue(client.connected());
     system_tick_t start = millis();
     client.stop();
@@ -39,7 +57,14 @@ test(TCP_03_tcp_client_success_connect_valid_ip)
 test(TCP_04_tcp_client_success_connect_valid_fqdn)
 {
     TCPClient client;
-    assertTrue(client.connect("www.httpbin.org", 80));
+    int r = 0;
+    for (int i = 0; i < TCP_RETRY_ATTEMPTS; i++) {
+        r = client.connect("www.httpbin.org", 80);
+        if (r && client.connected()) {
+            break;
+        }
+    }
+    assertTrue(r);
     assertTrue(client.connected());
     system_tick_t start = millis();
     client.stop();

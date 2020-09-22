@@ -65,8 +65,20 @@ test('check_variable_values', async function() {
 	};
 	const vars = {};
 	for (let name in vals) {
-		const resp = await api.getVariable({ deviceId, name, auth });
-		vars[name] = resp.body.result;
+		for (let i = 0; i < 10; i++) {
+			try {
+				const resp = await api.getVariable({ deviceId, name, auth });
+				vars[name] = resp.body.result;
+				break;
+			} catch (e) {
+				if (e.body && e.body.error && e.body.error === 'timed out') {
+					continue;
+				}
+
+				// Otherwise re-throw
+				throw e;
+			}
+		}
 	}
 	expect(vars).to.include(vals);
 });
