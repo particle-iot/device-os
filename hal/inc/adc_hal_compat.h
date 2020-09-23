@@ -19,11 +19,13 @@
 #define ADC_HAL_COMPAT_H
 
 // Deprecated *dynalib* APIs for backwards compatibility
-inline void __attribute__((deprecated("Use hal_adc_set_sample_time() instead"))) HAL_ADC_Set_Sample_Time(uint8_t sample_time) {
+inline void __attribute__((deprecated("Use hal_adc_set_sample_time() instead"), always_inline))
+HAL_ADC_Set_Sample_Time(uint8_t sample_time) {
     hal_adc_set_sample_time(sample_time);
 }
 
-inline int32_t __attribute__((deprecated("Use hal_adc_read() instead"))) HAL_ADC_Read(pin_t pin) {
+inline int32_t __attribute__((deprecated("Use hal_adc_read() instead"), always_inline))
+HAL_ADC_Read(pin_t pin) {
     return hal_adc_read(pin);
 }
 
