@@ -26,6 +26,8 @@ const String str7("d4b4249bbbe3");
 
 bool str1Rec = false, str2Rec = false, str3Rec = false, str4Rec = false, str5Rec = false, str6Rec = false, str7Rec = false;
 
+BleAddress peerAddr;
+
 static void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context) {
     String str((const char*)data, len);
     if (str == str1) {
@@ -69,7 +71,13 @@ test(BLE_01_Central_Scan_And_Connect) {
                 BleUuid foundServiceUUID;
                 size_t svcCount = results[i].advertisingData().serviceUUID(&foundServiceUUID, 1);
                 if (svcCount > 0 && foundServiceUUID == "6E400000-B5A3-F393-E0A9-E50E24DCCA9E") {
-                    peer = BLE.connect(results[i].address());
+                    assertTrue(results[i].scanResponse().length() > 0);
+                    BleUuid uuids[2];
+                    assertEqual(results[i].scanResponse().serviceUUID(uuids, 2), 2);
+                    assertTrue(uuids[0] == 0x1234);
+                    assertTrue(uuids[1] == 0x5678);
+                    peerAddr = results[i].address();
+                    peer = BLE.connect(peerAddr);
                     if (peer.connected()) {
                         assertTrue(peer.getCharacteristicByDescription(peerCharRead, "read"));
                         assertTrue(peer.getCharacteristicByDescription(peerCharWrite, "write"));
@@ -213,6 +221,75 @@ test(BLE_18_Central_Received_Characteristic_With_Notify_Indicate_Property_Nack) 
         wait--;
     }
     assertTrue(wait > 0);
+
+    BLE.disconnect(peer);
+    int ret = BLE.setScanTimeout(500); // Scan timeout: 5s
+    assertEqual(ret, 0);
+}
+
+test(BLE_19_Central_Discover_All_Services) {
+    peer = BLE.connect(peerAddr, false);
+    assertTrue(peer.connected());
+
+    Vector<BleService> services = peer.discoverAllServices();
+    BleService ctrlService;
+    assertTrue(peer.getServiceByUUID(ctrlService, "6FA90001-5C4E-48A8-94F4-8030546F36FC"));
+    BleService customService;
+    assertTrue(peer.getServiceByUUID(customService, "6E400000-B5A3-F393-E0A9-E50E24DCCA9E"));
+
+    BLE.disconnect(peer);
+}
+
+test(BLE_20_Central_Discover_All_Characteristics) {
+    peer = BLE.connect(peerAddr, false);
+    assertTrue(peer.connected());
+
+    Vector<BleCharacteristic> allCharacteristics = peer.discoverAllCharacteristics();
+    BleService ctrlService;
+    assertTrue(peer.getServiceByUUID(ctrlService, "6FA90001-5C4E-48A8-94F4-8030546F36FC"));
+    BleService customService;
+    assertTrue(peer.getServiceByUUID(customService, "6E400000-B5A3-F393-E0A9-E50E24DCCA9E"));
+    
+    Vector<BleCharacteristic> characteristicsOfCtrlService = peer.characteristics(ctrlService);
+    assertTrue(characteristicsOfCtrlService[0].UUID() == "6FA90002-5C4E-48A8-94F4-8030546F36FC");
+    assertTrue(characteristicsOfCtrlService[1].UUID() == "6FA90003-5C4E-48A8-94F4-8030546F36FC");
+    assertTrue(characteristicsOfCtrlService[2].UUID() == "6FA90004-5C4E-48A8-94F4-8030546F36FC");
+
+    Vector<BleCharacteristic> characteristicsOfCustomService = peer.characteristics(customService);
+    assertTrue(characteristicsOfCustomService[0].UUID() == "6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+    assertTrue(characteristicsOfCustomService[1].UUID() == "6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+    assertTrue(characteristicsOfCustomService[2].UUID() == "6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+    assertTrue(characteristicsOfCustomService[3].UUID() == "6E400004-B5A3-F393-E0A9-E50E24DCCA9E");
+    assertTrue(characteristicsOfCustomService[4].UUID() == "6E400005-B5A3-F393-E0A9-E50E24DCCA9E");
+    assertTrue(characteristicsOfCustomService[5].UUID() == "6E400006-B5A3-F393-E0A9-E50E24DCCA9E");
+    assertTrue(characteristicsOfCustomService[6].UUID() == "6E400007-B5A3-F393-E0A9-E50E24DCCA9E");
+
+    BLE.disconnect(peer);
+}
+
+test(BLE_21_Central_Discover_Characteristics_Of_Service) {
+    peer = BLE.connect(peerAddr, false);
+    assertTrue(peer.connected());
+
+    Vector<BleService> services = peer.discoverAllServices();
+    BleService ctrlService;
+    assertTrue(peer.getServiceByUUID(ctrlService, "6FA90001-5C4E-48A8-94F4-8030546F36FC"));
+    BleService customService;
+    assertTrue(peer.getServiceByUUID(customService, "6E400000-B5A3-F393-E0A9-E50E24DCCA9E"));
+
+    Vector<BleCharacteristic> characteristicsOfCtrlService = peer.discoverCharacteristicsOfService(ctrlService);
+    assertTrue(characteristicsOfCtrlService[0].UUID() == "6FA90002-5C4E-48A8-94F4-8030546F36FC");
+    assertTrue(characteristicsOfCtrlService[1].UUID() == "6FA90003-5C4E-48A8-94F4-8030546F36FC");
+    assertTrue(characteristicsOfCtrlService[2].UUID() == "6FA90004-5C4E-48A8-94F4-8030546F36FC");
+
+    Vector<BleCharacteristic> characteristicsOfCustomService = peer.discoverCharacteristicsOfService(customService);
+    assertTrue(characteristicsOfCustomService[0].UUID() == "6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+    assertTrue(characteristicsOfCustomService[1].UUID() == "6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+    assertTrue(characteristicsOfCustomService[2].UUID() == "6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+    assertTrue(characteristicsOfCustomService[3].UUID() == "6E400004-B5A3-F393-E0A9-E50E24DCCA9E");
+    assertTrue(characteristicsOfCustomService[4].UUID() == "6E400005-B5A3-F393-E0A9-E50E24DCCA9E");
+    assertTrue(characteristicsOfCustomService[5].UUID() == "6E400006-B5A3-F393-E0A9-E50E24DCCA9E");
+    assertTrue(characteristicsOfCustomService[6].UUID() == "6E400007-B5A3-F393-E0A9-E50E24DCCA9E");
 }
 
 #endif // #if Wiring_BLE == 1

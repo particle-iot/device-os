@@ -79,9 +79,12 @@ test(BLE_01_Peripheral_Advertising) {
     temp = BLE.addCharacteristic(charNotifyAndIndicate);
     assertTrue(temp.isValid());
 
-    BleAdvertisingData data;
-    data.appendServiceUUID(serviceUuid);
-    ret = BLE.advertise(&data);
+    BleAdvertisingData advData;
+    advData.appendServiceUUID(serviceUuid);
+    BleAdvertisingData srData;
+    uint8_t uuids[] = {0x34, 0x12, 0x78, 0x56}; // little endian, i.e. 0x1234 and 0x5678.
+    srData.append(BleAdvertisingDataType::SERVICE_UUID_16BIT_MORE_AVAILABLE, uuids, sizeof(uuids));
+    ret = BLE.advertise(&advData, &srData);
     assertEqual(ret, 0);
 
     Serial.println("BLE starts advertising...");
