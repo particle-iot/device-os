@@ -830,6 +830,28 @@ NetworkManager::InterfaceRuntimeState* NetworkManager::getInterfaceRuntimeState(
     return nullptr;
 }
 
+bool NetworkManager::isInterfacePowerState(if_t iface, if_power_state_t state) const {
+    bool ret = false;
+    if_power_state_t pwr = IF_POWER_STATE_NONE;
+    if (!iface) {
+        for_each_iface([&](if_t iface, unsigned int curFlags) {
+            if (if_get_power_state(iface, &pwr) != SYSTEM_ERROR_NONE) {
+                return;
+            }
+            if (pwr == state) {
+                ret = true;
+            }
+        });
+        return ret;
+    } else {
+        if (if_get_power_state(iface, &pwr) != SYSTEM_ERROR_NONE) {
+            return false;
+        }
+        ret = (pwr == state) ? true : false;
+    }
+    return ret;
+}
+
 bool NetworkManager::isInterfaceEnabled(if_t iface) const {
     auto state = getInterfaceRuntimeState(iface);
     if (state) {

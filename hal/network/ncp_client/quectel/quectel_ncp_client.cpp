@@ -1736,11 +1736,14 @@ int QuectelNcpClient::modemPowerOff() {
 
 int QuectelNcpClient::modemSoftPowerOff() {
     if (modemPowerState()) {
+        ncpPowerState(NcpPowerState::TRANSIENT_OFF);
+        
         LOG(TRACE, "Try powering modem off using AT command");
         if (!ready_) {
             LOG(ERROR, "NCP client is not ready");
             return SYSTEM_ERROR_INVALID_STATE;
         }
+        
         // Delay 1s in case that the modem is just powered up and refuse to execute the power down command.
         HAL_Delay_Milliseconds(1000);
         int r = CHECK_PARSER(parser_.execCommand("AT+QPOWD"));
@@ -1748,7 +1751,6 @@ int QuectelNcpClient::modemSoftPowerOff() {
             LOG(ERROR, "AT+QPOWD command is not responding");
             return SYSTEM_ERROR_AT_NOT_OK;
         }
-        ncpPowerState(NcpPowerState::TRANSIENT_OFF);
         system_tick_t now = HAL_Timer_Get_Milli_Seconds();
         LOG(TRACE, "Waiting the modem to be turned off...");
         // Verify that the module was powered down by checking the VINT pin up to 30 sec
@@ -1783,11 +1785,10 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
 
     // The modem restarts automatically after hard reset.
     if (powerOff) {
-        // Need to delay at least 5s, otherwise, the modem cannot be powered off.
-        HAL_Delay_Milliseconds(5000);
-
         ncpPowerState(NcpPowerState::TRANSIENT_OFF);
 
+        // Need to delay at least 5s, otherwise, the modem cannot be powered off.
+        HAL_Delay_Milliseconds(5000);
         LOG(TRACE, "Powering modem off");
         // Power off, power off pulse >= 650ms
         // NOTE: The BGPWR pin is inverted

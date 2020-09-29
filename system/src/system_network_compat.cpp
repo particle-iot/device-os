@@ -134,6 +134,14 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL(nif(network).on());
 }
 
+bool network_is_on(network_handle_t network, void* reserved) {
+    return nif(network).isOn();
+}
+
+bool network_is_off(network_handle_t network, void* reserved) {
+    return nif(network).isOff();
+}
+
 bool network_has_credentials(network_handle_t network, uint32_t param, void* reserved)
 {
     SYSTEM_THREAD_CONTEXT_SYNC_CALL_RESULT(nif(network).has_credentials());

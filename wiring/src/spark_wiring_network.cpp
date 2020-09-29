@@ -74,6 +74,14 @@ void NetworkClass::off() {
     network_off(*this, 0, 0, nullptr);
 }
 
+bool NetworkClass::isOn() {
+    return network_is_on(*this, nullptr);
+}
+
+bool NetworkClass::isOff() {
+    return network_is_off(*this, nullptr);
+}
+
 void NetworkClass::listen(bool begin) {
     network_listen(*this, begin ? 0 : 1, nullptr);
 }
