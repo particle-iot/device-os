@@ -53,6 +53,12 @@ test (api_cellular_on_off)
     API_COMPILE(Cellular.off());
 }
 
+test (api_cellular_is_on_off)
+{
+    API_COMPILE(Cellular.isOn());
+    API_COMPILE(Cellular.isOff());
+}
+
 test (api_cellular_listen)
 {
     bool result;
