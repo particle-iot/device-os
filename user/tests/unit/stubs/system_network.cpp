@@ -23,6 +23,14 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param1, void*
 void network_off(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved) {
 }
 
+bool network_is_on(network_handle_t network, void* reserved) {
+    return false;
+}
+
+bool network_is_off(network_handle_t network, void* reserved) {
+    return false;
+}
+
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved) {
 }
 
