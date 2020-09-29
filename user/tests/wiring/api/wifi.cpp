@@ -47,6 +47,18 @@ test(api_wifi_resolve)
     API_COMPILE(WiFi.resolve("abc.def.com"));
 }
 
+test (api_wifi_on_off)
+{
+    API_COMPILE(WiFi.on());
+    API_COMPILE(WiFi.off());
+}
+
+test (api_wifi_is_on_off)
+{
+    API_COMPILE(WiFi.isOn());
+    API_COMPILE(WiFi.isOff());
+}
+
 test (api_wifi_connect) {
     bool result;
     API_COMPILE(WiFi.connect());
