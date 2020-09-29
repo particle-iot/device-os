@@ -55,6 +55,8 @@ public:
 
     virtual void on();
     virtual void off();
+    virtual bool isOn();
+    virtual bool isOff();
     virtual void listen(bool begin = true);
     virtual void setListenTimeout(uint16_t timeout);
     virtual uint16_t getListenTimeout();

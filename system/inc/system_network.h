@@ -58,6 +58,8 @@ void network_disconnect(network_handle_t network, uint32_t reason, void* reserve
 bool network_ready(network_handle_t network, uint32_t type, void* reserved);
 void network_on(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
 void network_off(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
+bool network_is_on(network_handle_t network, void* reserved);
+bool network_is_off(network_handle_t network, void* reserved);
 int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
 
 #define NETWORK_LISTEN_EXIT (1<<0)

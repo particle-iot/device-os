@@ -261,6 +261,32 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
     }());
 }
 
+bool network_is_on(network_handle_t network, void* reserved) {
+    if (network == NETWORK_INTERFACE_ALL) {
+        return NetworkManager::instance()->isInterfacePowerState(nullptr, IF_POWER_STATE_UP);
+    } else {
+        if_t iface;
+        if (!if_get_by_index(network, &iface)) {
+            return NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_UP);
+        }
+    }
+
+    return false;
+}
+
+bool network_is_off(network_handle_t network, void* reserved) {
+    if (network == NETWORK_INTERFACE_ALL) {
+        return NetworkManager::instance()->isInterfacePowerState(nullptr, IF_POWER_STATE_DOWN);
+    } else {
+        if_t iface;
+        if (!if_get_by_index(network, &iface)) {
+            return NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_DOWN);
+        }
+    }
+
+    return false;
+}
+
 bool network_has_credentials(network_handle_t network, uint32_t param, void* reserved) {
     if (network == NETWORK_INTERFACE_ALL) {
         return NetworkManager::instance()->isConfigured();
