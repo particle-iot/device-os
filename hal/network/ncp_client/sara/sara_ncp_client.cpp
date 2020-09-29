@@ -1076,7 +1076,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 }
 
                 // This is a persistent setting
-                int umnoprof = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
+                umnoprof = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
                 if (netConf_.netProv() == CellularNetworkProvider::TWILIO) { // if Twilio Super SIM
                     umnoprof = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
                 }
@@ -1104,6 +1104,18 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
             if (reset) {
                 CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=15,0"));
                 HAL_Delay_Milliseconds(10000);
+				//Check if UMNOPROF was persisted 
+				auto respAfter = parser_.sendCommand("AT+UMNOPROF?");
+				int umnoprofAfter = static_cast<int>(UbloxSaraUmnoprof::NONE);
+            	auto rAfter = CHECK_PARSER(respAfter.scanf("+UMNOPROF: %d", &umnoprofAfter));
+				CHECK_PARSER_OK(respAfter.readResult());
+				// This is an exception case where if UMNOPROF is set to SIM_SELECT (1) but the Carrier default
+				// is SW_DEFAULT (0) we dont want to keep looping trying to set it to in this scenario
+				if(rAfter == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::SIM_SELECT && 
+					static_cast<UbloxSaraUmnoprof>(umnoprofAfter) == UbloxSaraUmnoprof::SW_DEFAULT){
+					LOG(TRACE, "UMNOPROF Was Updated to SIM_SELECT and then back to SW_DEFAULT by the carrier : %d", static_cast<int>(umnoprofAfter));
+					reset = false;
+				}
                 CHECK(waitAtResponseFromPowerOn(state));
             }
         } while (reset && resetCount++ < 4);
