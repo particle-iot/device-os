@@ -155,9 +155,12 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
     // SLEEP_NETWORK_STANDBY can keep the modem on during DEEP sleep
     // System.sleep(10) always powers down the network, even if SLEEP_NETWORK_STANDBY flag is used.
 
-    // Make sure all confirmable UDP messages are sent and acknowledged before sleeping
     if (spark_cloud_flag_connected() && !(param & SYSTEM_SLEEP_FLAG_NO_WAIT)) {
-        Spark_Sleep(seconds);
+        // Whether the system will actually disconnect from the cloud gracefully or not depends
+        // on the disconnection options that can be set via Particle.setDisconnectOptions() or
+        // Particle.disconnect()
+        cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SLEEP, NETWORK_DISCONNECT_REASON_NONE,
+                RESET_REASON_NONE, seconds);
     }
 
     if (network_sleep_flag(param) || SLEEP_MODE_WLAN == sleepMode) {
@@ -206,15 +209,21 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
 {
     SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved));
 
-    // Make sure all confirmable UDP messages are sent and acknowledged before sleeping
-    if (spark_cloud_flag_connected() && !(param & SYSTEM_SLEEP_FLAG_NO_WAIT)) {
-        Spark_Sleep(seconds);
+    bool sendCloudPing = false;
+    if (spark_cloud_flag_connected()) {
+        if (!(param & SYSTEM_SLEEP_FLAG_NO_WAIT)) {
+            cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SLEEP, NETWORK_DISCONNECT_REASON_NONE,
+                    RESET_REASON_NONE, seconds);
+        } else {
+            sendCloudPing = true;
+        }
     }
 
     bool network_sleep = network_sleep_flag(param);
     if (network_sleep)
     {
         network_suspend();
+        sendCloudPing = false;
     }
 
 #if HAL_PLATFORM_CELLULAR
@@ -252,8 +261,8 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
         waitFor(spark_cloud_flag_connected, 60000);
     }
 
-    if (spark_cloud_flag_connected()) {
-        Spark_Wake();
+    if (sendCloudPing) {
+        spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::PING, 0, nullptr);
     }
     return ret;
 }
