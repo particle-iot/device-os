@@ -781,11 +781,15 @@ public:
 
     // Discover all characteristics of a service
     Vector<BleCharacteristic> discoverCharacteristicsOfService(const BleService& service);
+    ssize_t discoverCharacteristicsOfService(const BleService& service, BleCharacteristic* characteristics, size_t count);
 
     // Fetch the discovered services on peer device.
     Vector<BleService> services() const;
     size_t services(BleService* services, size_t count) const;
     bool getServiceByUUID(BleService& service, const BleUuid& uuid) const;
+    // In case that there are several services with the same UUID.
+    Vector<BleService> getServiceByUUID(const BleUuid& uuid) const;
+    size_t getServiceByUUID(BleService* services, size_t count, const BleUuid& uuid) const;
 
     // Fetch the discovered characteristics on peer device.
     Vector<BleCharacteristic> characteristics() const;
