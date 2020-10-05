@@ -29,8 +29,6 @@
 
 void Spark_Signal(bool on, unsigned, void*);
 void Spark_SetTime(unsigned long dateTime);
-void Spark_Sleep(unsigned duration);
-void Spark_Wake();
 int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved);
 int Spark_Restore(void* buffer, size_t max_length, uint8_t type, void* reserved);
 

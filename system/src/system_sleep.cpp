@@ -79,21 +79,37 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 
     SystemSleepConfigurationHelper configHelper(config);
 
-    bool cloudResume = false;
+    bool reconnectCloud = false;
+    bool sendCloudPing = false;
     // Disconnect from cloud is necessary.
-    // Make sure all confirmable UDP messages are sent and acknowledged before sleeping
-    if (configHelper.cloudDisconnectRequested() && spark_cloud_flag_connected()) {
-        if (configHelper.sleepFlags().isSet(SystemSleepFlag::WAIT_CLOUD)) {
-            unsigned duration = 0; // Sleep duration in seconds
-            const auto src = (const hal_wakeup_source_rtc_t*)configHelper.wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_RTC);
-            if (src) {
-                duration = src->ms / 1000;
-            }
-            Spark_Sleep(duration);
+    if (configHelper.cloudDisconnectRequested()) {
+        unsigned duration = 0; // Sleep duration in seconds
+        const auto src = (const hal_wakeup_source_rtc_t*)configHelper.wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_RTC);
+        if (src) {
+            duration = src->ms / 1000;
         }
-        cloudResume = spark_cloud_flag_auto_connect();
+        // This flag seems to be redundant in the presence of Particle.setDisconnectOptions() and
+        // Particle.disconnect()
+        if (configHelper.sleepFlags().isSet(SystemSleepFlag::WAIT_CLOUD)) {
+            auto opts = CloudConnectionSettings::instance()->takePendingDisconnectOptions();
+            opts.graceful(true);
+            CloudConnectionSettings::instance()->setPendingDisconnectOptions(std::move(opts));
+        }
+        // The CLOUD_DISCONNECT_GRACEFULLY flag doesn't really enable graceful disconnection mode,
+        // it merely indicates that it is ok to disconnect gracefully in this specific case.
+        // Whether the system will actually disconnect from the cloud gracefully or not depends
+        // on the disconnection options that can be set via Particle.setDisconnectOptions() or
+        // Particle.disconnect().
+        //
+        // TODO: Rename CLOUD_DISCONNECT_GRACEFULLY to CLOUD_DISCONNECT_IMMEDIATELY and invert its
+        // meaning to avoid confusion
+        cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SLEEP, NETWORK_DISCONNECT_REASON_NONE,
+                RESET_REASON_NONE, duration);
+        reconnectCloud = spark_cloud_flag_auto_connect();
         // Clear the auto connect status
         spark_cloud_flag_disconnect();
+    } else if (spark_cloud_flag_connected()) {
+        sendCloudPing = true;
     }
 
     // TODO: restore network state if network is disconnected but it failed to enter sleep mode.
@@ -174,7 +190,7 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     }
 #endif // HAL_PLATFORM_ETHERNET
 
-    if (cloudResume) {
+    if (reconnectCloud) {
         // Resume cloud connection.
         spark_cloud_flag_connect();
 
@@ -183,9 +199,8 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
         if (system_thread_get_state(nullptr)==spark::feature::DISABLED && (mode==AUTOMATIC || mode==SEMI_AUTOMATIC) && spark_cloud_flag_auto_connect()) {
             waitFor(spark_cloud_flag_connected, 60000);
         }
-        if (spark_cloud_flag_connected()) {
-            Spark_Wake();
-        }
+    } else if (sendCloudPing) {
+        spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::PING, 0, nullptr);
     }
 
     return ret;
