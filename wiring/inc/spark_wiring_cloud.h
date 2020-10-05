@@ -41,9 +41,6 @@
 #include <functional>
 #include <type_traits>
 
-#define PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE \
-        PARTICLE_DEPRECATED_API("Beginning with 0.8.0 release, Particle.publish() will require event scope to be specified explicitly.");
-
 #define PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE \
         PARTICLE_DEPRECATED_API("Beginning with 0.8.0 release, Particle.subscribe() will require event scope to be specified explicitly.");
 
@@ -259,10 +256,9 @@ public:
         return publish_event(eventName, eventData, ttl, flags1 | flags2);
     }
 
-    // Deprecated methods
-    particle::Future<bool> publish(const char* name) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
-    particle::Future<bool> publish(const char* name, const char* data) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
-    particle::Future<bool> publish(const char* name, const char* data, int ttl) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
+    particle::Future<bool> publish(const char* name);
+    particle::Future<bool> publish(const char* name, const char* data);
+    particle::Future<bool> publish(const char* name, const char* data, int ttl);
 
     /**
      * @brief Publish vitals information
