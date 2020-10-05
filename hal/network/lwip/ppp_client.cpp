@@ -88,6 +88,22 @@ void Client::init() {
     netif_set_client_data(&if_, netifClientDataIdx_, this);
     UNLOCK_TCPIP_CORE();
 
+    // XXX:
+    if (platform_current_ncp_identifier() == PLATFORM_NCP_SARA_R410) {
+      // SARA R4 PPP implementation is broken and often times we receive
+      // an empty or non-conflicting Configure-Request in an already opened state
+      // which, if we follow the state machine to the T, should restart the negotiation
+      // bringing the protocol down. This causes unnecessary delays and affects
+      // connection times.
+      // This option will allow PPP state mchina to ignore non-conflicting Configure-Requests
+      // and simply ACK them without restarting the negotiation.
+      // We have necessary safeguards in place, so even if this doesn't go well, we should
+      // be able to recover.
+      // To repeat, we are slighly going off standard, but this should be an acceptable
+      // behavior in this particular case.
+      pcb_->settings.fsm_ignore_conf_req_opened = 1;
+    }
+
     pppapi_set_notify_phase_callback(pcb_, &Client::notifyPhaseCb);
 
     os_queue_create(&queue_, sizeof(uint64_t), 5, nullptr);
