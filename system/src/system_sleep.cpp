@@ -90,7 +90,7 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
         }
         // This flag seems to be redundant in the presence of Particle.setDisconnectOptions() and
         // Particle.disconnect()
-        if (configHelper.sleepFlags().isSet(SystemSleepFlag::WAIT_CLOUD)) {
+        if (configHelper.sleepFlags().isSet(SystemSleepFlag::WAIT_CLOUD) && spark_cloud_flag_connected()) {
             auto opts = CloudConnectionSettings::instance()->takePendingDisconnectOptions();
             opts.graceful(true);
             CloudConnectionSettings::instance()->setPendingDisconnectOptions(std::move(opts));
