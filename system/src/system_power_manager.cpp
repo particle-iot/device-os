@@ -366,14 +366,18 @@ void PowerManager::initDefault(bool dpdm) {
   // Set recharge threshold to default value - 100mV
   power.setRechargeThreshold(100);
   power.setChargeCurrent(config_.charge_current);
+  // Enable charging
+  power.enableCharging();
+  // IMPORTANT: Enable Buck before running DPDM to prevent the setting of Buck
+  // to inadvertently read in the wrong value for ILIM bits 2:0.  The theory is
+  // that DPDM changes ILIM as it's running it's detection scheme. [ch64465]
+  power.enableBuck();
+  dumpRegisters("after buck", power);
   if (dpdm) {
     // Force-start input current limit detection
     power.enableDPDM();
+    dumpRegisters("after DPDM", power);
   }
-  // Enable charging
-  power.enableCharging();
-  power.enableBuck();
-
   faultSuppressed_ = 0;
 }
 
