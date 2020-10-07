@@ -118,6 +118,8 @@ using CidType = decltype(CellularGlobalIdentity::cell_id);
 const int QUECTEL_DEFAULT_CID = 1;
 const char QUECTEL_DEFAULT_PDP_TYPE[] = "IP";
 
+const system_tick_t QUECTEL_COPS_TIMEOUT = 3 * 60 * 1000;
+
 } // anonymous
 
 QuectelNcpClient::QuectelNcpClient() {}
