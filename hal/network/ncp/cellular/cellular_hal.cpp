@@ -294,7 +294,7 @@ bool cellular_sim_ready(void* reserved) {
 void cellular_cancel(bool cancel, bool calledFromISR, void* reserved) {
 }
 
-int cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalExt) {
+int cellular_signal(cellular_signal_t* signalExt) {
     const auto mgr = cellularNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     const auto client = mgr->ncpClient();
@@ -303,56 +303,7 @@ int cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalExt) {
     CHECK(client->getSignalQuality(&s));
     const auto strn = s.strength();
     const auto qual = s.quality();
-    if (signal) {
-        // Compatibility with Gen 2
-        if (strn != 99 && strn != 255) {
-            int compatStrn = strn;
-            switch (s.strengthUnits()) {
-            case CellularStrengthUnits::RXLEV: {
-                // Leave as-is
-                break;
-            }
-            case CellularStrengthUnits::RSCP: {
-                // Simply re-map from [0-96] to [0-63]
-                compatStrn = (compatStrn * 63) / 96;
-                break;
-            }
-            case CellularStrengthUnits::RSRP: {
-                // Simply remap from [0-97] to [0-63]
-                compatStrn = (compatStrn * 63) / 97;
-                break;
-            }
-            }
-            // -113 to -50dBm
-            signal->rssi = -113 + compatStrn;
-        }
-        // see 3GPP TS 45.008 [20] subclause 8.2.4
-        static const char compatQualMap[] = { 49, 43, 37, 25, 19, 13, 7, 0 };
-        if (qual != 99 && qual != 255) {
-            int compatQual = qual;
-            switch (s.qualityUnits()) {
-            case CellularQualityUnits::RXQUAL:
-            case CellularQualityUnits::MEAN_BEP: {
-                // Leave as-is
-                break;
-            }
-            case CellularQualityUnits::ECN0: {
-                // Re-map from [0-49] to [0-7]. Table in UBX-13002752 - R62 (7.2.4)
-                compatQual = 7 - ((std::max(std::min(compatQual, 44), 2) - 2) / 6);
-                break;
-            }
-            case CellularQualityUnits::RSRQ: {
-                // Re-map from [0-34] to [0-7]. Table in UBX-13002752 - R62 (7.2.4)
-                compatQual = (compatQual < 10) ? (compatQual / 5) : ((std::min(compatQual, 30) - 10) / 4) + 2;
-                break;
-            }
-            }
-            // Just in case validate that we are not going to go out of bounds
-            if (compatQual >= 0 && compatQual <= 7) {
-                signal->qual = compatQualMap[compatQual];
-            }
-        }
-    }
+
     if (signalExt) {
         signalExt->rat = fromCellularAccessTechnology(s.accessTechnology());
         // Signal strength

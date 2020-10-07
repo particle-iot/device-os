@@ -227,16 +227,16 @@ void cellular_cancel(bool cancel, bool calledFromISR, void*)
     }
 }
 
-cellular_result_t cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalext)
+cellular_result_t cellular_signal(cellular_signal_t* signalext)
 {
-    if (signal == nullptr && signalext == nullptr) {
+    if (signalext == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
     NetStatus status;
     bool r = electronMDM.getSignalStrength(status);
 
-    return particle::detail::cellular_signal_impl(signal, signalext, r, status);
+    return particle::detail::cellular_signal_impl(signalext, r, status);
 }
 
 cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,

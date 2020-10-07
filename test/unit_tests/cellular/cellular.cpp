@@ -147,7 +147,7 @@ TEST_CASE("cellular_signal()") {
     SECTION("failure to query the modem") {
         cellular_signal_t sig = {};
         sig.size = sizeof(sig);
-        REQUIRE(cellular_signal_impl(nullptr, &sig, false, NetStatus()) < SYSTEM_ERROR_NONE);
+        REQUIRE(cellular_signal_impl(&sig, false, NetStatus()) < SYSTEM_ERROR_NONE);
         REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_NONE);
 
         SECTION("CellularSignal") {
@@ -158,19 +158,6 @@ TEST_CASE("cellular_signal()") {
             REQUIRE(cs.getStrengthValue() == 0.0f);
             REQUIRE(cs.getQuality() < 0.0f);
             REQUIRE(cs.getQualityValue() == 0.0f);
-        }
-    }
-
-    SECTION("CellularSignalHal RSSI and QUAL") {
-        NetStatus status = {};
-        status.rssi = -50; // arbitrary non-zero values
-        status.qual = 37;  //  "
-
-        SECTION("CellularSignalHal::rssi and CellularSignalHal::qual are set to expected values") {
-            CellularSignalHal signal = {};
-            REQUIRE(cellular_signal_impl(&signal, nullptr, true, status) == SYSTEM_ERROR_NONE);
-            REQUIRE(signal.rssi == -50);
-            REQUIRE(signal.qual == 37);
         }
     }
 
@@ -188,12 +175,10 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_UNKNOWN);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_UNKNOWN);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_NONE);
             REQUIRE(sig.strength == 0);
             REQUIRE(sig.quality == 0);
-            REQUIRE(sig.rssi == std::numeric_limits<int32_t>::min());
-            REQUIRE(sig.qual == std::numeric_limits<int32_t>::min());
 
             SECTION("CellularSignal") {
                 CellularSignal cs;
@@ -226,7 +211,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_GSM);
             REQUIRE(sig.strength < 0);
             REQUIRE(sig.quality < 0);
@@ -250,7 +235,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_GSM);
             REQUIRE(sig.strength >= 0);
             REQUIRE(sig.quality < 0);
@@ -274,7 +259,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_GSM);
             REQUIRE(sig.strength == 0);
             // Inverted
@@ -299,7 +284,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_GSM);
             REQUIRE(std::abs(sig.strength - 32767) <= 655);
             REQUIRE(std::abs(sig.quality - 32767) <= 6553);
@@ -323,7 +308,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_GSM);
             REQUIRE(sig.strength == 65535);
             // Inverted
@@ -362,7 +347,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_EDGE);
             REQUIRE(sig.strength < 0);
             REQUIRE(sig.quality < 0);
@@ -386,7 +371,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_EDGE);
             REQUIRE(sig.strength >= 0);
             REQUIRE(sig.quality < 0);
@@ -410,7 +395,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_EDGE);
             REQUIRE(sig.strength == 0);
             // Inverted
@@ -435,7 +420,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_EDGE);
             REQUIRE(std::abs(sig.strength - 32767) <= 655);
             REQUIRE(std::abs(sig.quality - 32767) <= 6553);
@@ -459,7 +444,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_EDGE);
             REQUIRE(sig.strength == 65535);
             // Inverted
@@ -489,7 +474,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UTRAN);
             REQUIRE(sig.strength < 0);
             REQUIRE(sig.quality < 0);
@@ -513,7 +498,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UTRAN);
             REQUIRE(sig.strength == 0);
             REQUIRE(sig.quality == 0);
@@ -537,7 +522,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UTRAN);
             REQUIRE(sig.strength == 32767);
             REQUIRE(std::abs(sig.quality - 32767) <= 655 * 2);
@@ -561,7 +546,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UTRAN);
             REQUIRE(sig.strength == 65535);
             REQUIRE(sig.quality == 65535);
@@ -598,7 +583,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == data.expected_act);
             REQUIRE(sig.strength < 0);
             REQUIRE(sig.quality < 0);
@@ -622,7 +607,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == data.expected_act);
             REQUIRE(sig.strength == 0);
             REQUIRE(sig.quality == 0);
@@ -646,7 +631,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == data.expected_act);
             REQUIRE(sig.strength == 32429);
             REQUIRE(std::abs(sig.quality - 32767) <= 655 * 2);
@@ -670,7 +655,7 @@ TEST_CASE("cellular_signal()") {
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
-            REQUIRE(cellular_signal_impl(nullptr, &sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == data.expected_act);
             REQUIRE(sig.strength == 65535);
             REQUIRE(sig.quality == 65535);
@@ -696,12 +681,12 @@ TEST_CASE("cellular_printable") {
 
     SECTION("CellularSignal::printTo") {
         CellularSignal cs;
-        cs.rssi = -50;
-        cs.qual = 37;
+        cs.getStrengthValue() = -83.70;
+        cs.getQualityValue = -7.00;
 
         ser.print(cs);
         // printf("%s", output);
-        REQUIRE(strncmp(output, "-50,37", sizeof(output)) == 0);
+        REQUIRE(strncmp(output, "-80.00,-7.00", sizeof(output)) == 0);
     }
 
     SECTION("CellularData::printTo") {
