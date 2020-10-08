@@ -132,6 +132,17 @@
 - Remove old deprecated platforms [#2150](https://github.com/particle-iot/device-os/pull/2150)
 - Addresses multiple issues in on-device no-fixture tests [#2150](https://github.com/particle-iot/device-os/pull/2150)
 
+## 1.5.4-rc.2
+
+### BUGFIXES
+
+- Configure PMIC and FuelGauge interrupt pins as `INPUT_PULLUP` [#2207](https://github.com/particle-iot/device-os/pull/2207)
+- [Gen 3 / Cellular] Do not use packet buffers from pool in TX path [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- [Gen 3 / Cellular] Call into LwIP PPP code to indicate `PPP_IP` protocol is finished [#2150](https://github.com/particle-iot/device-os/pull/2150)
+- [Gen 3] Workaround when unable to obtain DNS servers from remote PPP peer [#2165](https://github.com/particle-iot/device-os/pull/2165)
+- [Cellular] When resuming cellular connection, do not run `COPS=0` again to avoid triggering PLMN reselection [#2139](https://github.com/particle-iot/device-os/pull/2139)
+
+
 ## 1.5.4-rc.1
 
 ### BUGFIXES

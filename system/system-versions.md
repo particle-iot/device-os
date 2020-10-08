@@ -120,6 +120,7 @@
 | 502 | 1512 | 1.5.2         |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM |
 | 502 | 1513 | 1.5.3-tracker.1 |     Tracker |
 | 502 | 1514 | 1.5.4-rc.1    |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM, Tracker |
+| 502 | 1515 | 1.5.4-rc.2    |       Photon, P1, Electron, Xenon, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1000 | 2000 | 2.0.0-alpha.1 |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1000 | 2001 | 2.0.0-alpha.2 |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1001 | 2002 | 2.0.0-alpha.3 |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
