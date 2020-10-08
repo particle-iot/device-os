@@ -95,6 +95,7 @@ const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 = 460800;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE = 200;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN = 200;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX = 203;
+const auto UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01 = 204;
 
 const auto UBLOX_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto UBLOX_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -169,7 +170,8 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     imsiCheckTime_ = 0;
     powerOnTime_ = 0;
     registeredTime_ = 0;
-    memoryIssuePresent_ = false;
+    memoryIssuePresent_ = true; // default to safe state until we determine modem firmware version
+    oldFirmwarePresent_ = true; // default to safe state until we determine modem firmware version
     parserError_ = 0;
     ready_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
@@ -1052,20 +1054,70 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
 
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
         int resetCount = 0;
+        // Note: Not failing on AT error on ICCID/IMSI lookup since SIMs have shown strange edge cases
+        // where they error for no reason, and hard resetting the modem or power cycling would not clear it.
+        //
         // Check if we are using a Twilio Super SIM based on ICCID
         char buf[32] = {};
-        auto lenCcid = getIccidImpl(buf, sizeof(buf));
-        CellularNetworkConfig netConfig;
-        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_BAD_DATA);
-        netConf_ = networkConfigForIccid(buf, lenCcid);
+        int ccidCount = 0;
         do {
-            // Set UMNOPROF = SIM_SELECT
+            memset(buf, 0, sizeof(buf));
+            auto lenCcid = getIccidImpl(buf, sizeof(buf));
+            if (lenCcid > 5) {
+                netConf_ = networkConfigForIccid(buf, lenCcid);
+                break;
+            }
+        } while (++ccidCount < 2);
+        // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
+        if (!netConf_.isValid()) {
+            int imsiCount = 0;
+            do {
+                memset(buf, 0, sizeof(buf));
+                auto resp = parser_.sendCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI");
+                CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
+                const int r = CHECK_PARSER(resp.readResult());
+                if (r == AtResponse::OK) {
+                    netConf_ = networkConfigForImsi(buf, strlen(buf));
+                    break;
+                }
+            } while (++imsiCount < 2);
+        }
+        do {
+            // Set UMNOPROF and UBANDMASK as appropriate based on SIM
             auto respUmnoprof = parser_.sendCommand("AT+UMNOPROF?");
             reset = false;
-            int umnoprof = static_cast<int>(UbloxSaraUmnoprof::NONE);
-            auto r = CHECK_PARSER(respUmnoprof.scanf("+UMNOPROF: %d", &umnoprof));
+            int curProf = static_cast<int>(UbloxSaraUmnoprof::NONE);
+            auto r = CHECK_PARSER(respUmnoprof.scanf("+UMNOPROF: %d", &curProf));
             CHECK_PARSER_OK(respUmnoprof.readResult());
-            if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::SW_DEFAULT) {
+            // First time setup, or switching between official SIM on wrong profile?
+            if (r == 1 && (static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::SW_DEFAULT ||
+                    (netConf_.netProv() == CellularNetworkProvider::TWILIO &&
+                    static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE) ||
+                    (netConf_.netProv() == CellularNetworkProvider::KORE_ATT &&
+                    static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT)) ) {
+                int newProf = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
+                // TWILIO Super SIM
+                if (netConf_.netProv() == CellularNetworkProvider::TWILIO) {
+                    // _oldFirmwarePresent: u-blox firmware 05.06* and 05.07* does not have
+                    // UMNOPROF=100 available. Default to UMNOPROF=0 in that case.
+                    if (oldFirmwarePresent_) {
+                        if (static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::SW_DEFAULT) {
+                            break;
+                        } else {
+                            newProf = static_cast<int>(UbloxSaraUmnoprof::SW_DEFAULT);
+                        }
+                    } else {
+                        newProf = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
+                    }
+                }
+                // KORE AT&T or 3rd Party SIM
+                else {
+                    // break out of do-while if we're trying to set SIM_SELECT a third time
+                    if (resetCount >= 2) {
+                        LOG(WARN, "UMNOPROF=1 did not resolve a built-in profile, please check if UMNOPROF=100 is required!");
+                        break;
+                    }
+                }
                 // Disconnect before making changes to the UMNOPROF
                 auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
                 int cfunVal = -1;
@@ -1076,21 +1128,10 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 }
 
                 // This is a persistent setting
-                umnoprof = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
-                if (netConf_.netProv() == CellularNetworkProvider::TWILIO) { // if Twilio Super SIM
-                    umnoprof = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
-                } else {
-                    // break out of do-while if we're trying to set SIM_SELECT a second time
-                    if (resetCount >= 1) {
-                        LOG(WARN, "UMNOPROF=1 did not resolve a built-in profile, please check if UMNOPROF=100 is required!");
-                        resetCount = 0;
-                        break;
-                    }
-                }
-                parser_.execCommand(1000, "AT+UMNOPROF=%d", umnoprof);
+                parser_.execCommand(1000, "AT+UMNOPROF=%d", newProf);
                 // Not checking for error since we will reset either way
                 reset = true;
-            } else if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::STANDARD_EUROPE) {
+            } else if (r == 1 && static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::STANDARD_EUROPE) {
                 auto respBand = parser_.sendCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK?");
                 uint64_t ubandUint64 = 0;
                 char ubandStr[24] = {};
@@ -1113,11 +1154,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 HAL_Delay_Milliseconds(10000);
                 CHECK(waitAtResponseFromPowerOn(state));
             }
-        } while (reset && resetCount++ < 4);
-
-        if (resetCount >= 4) {
-            return SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED; // we shouldn't have been resetting this many times
-        }
+        } while (reset && ++resetCount < 4); // Note: Twilio SIMs could take more than 2 tries in some error cases, others <= 2
     }
 
     return SYSTEM_ERROR_NONE;
@@ -1178,16 +1215,23 @@ int SaraNcpClient::getAppFirmwareVersion() {
     // "L0.0.00.00.05.07,A.02.02" (demonstrator)
     // "L0.0.00.00.05.08,A.02.04" (maintenance)
     auto resp = parser_.sendCommand("ATI9");
+    int ver = 0;
     int major = 0;
     int minor = 0;
-    int r = CHECK_PARSER(resp.scanf("%*[^,],%*[A.]%d.%d", &major, &minor));
-    CHECK_TRUE(r == 2, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-    CHECK_PARSER_OK(resp.readResult());
-    LOG(TRACE, "App firmware: %d", major * 100 + minor);
-    return major * 100 + minor;
+    int n = CHECK_PARSER(resp.scanf("%*[^,],%*[A.]%d.%d", &major, &minor));
+    int r = resp.readResult();
+    if (r == AtResponse::OK && n == 2) {
+        ver = major * 100 + minor;
+    }
+    LOG(TRACE, "App firmware: %d", ver); // will be reported as 0 in case of error
+    return ver;
 }
 
 int SaraNcpClient::initReady(ModemState state) {
+    fwVersion_ = getAppFirmwareVersion();
+    // L0.0.00.00.05.06,A.02.00 has a memory issue
+    memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
+    oldFirmwarePresent_ = (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01);
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard(state));
 
@@ -1208,22 +1252,17 @@ int SaraNcpClient::initReady(ModemState state) {
             // Change the baudrate to 921600
             CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
         } else {
-            fwVersion_ = getAppFirmwareVersion();
-            if (fwVersion_ > 0) {
-                // L0.0.00.00.05.06,A.02.00 has a memory issue
-                memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
-                // There is a set of other revisions which do not have hardware flow control
-                if (!(fwVersion_ >= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN &&
-                        fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX)) {
-                    // Change the baudrate to 460800
-                    // NOTE: ignoring AT errors just in case to accommodate for some revisions
-                    // potentially not supporting anything other than 115200
+            // There is a set of other revisions which do not have hardware flow control
+            if (!(fwVersion_ >= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN &&
+                    fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX)) {
+                // Change the baudrate to 460800
+                // NOTE: ignoring AT errors just in case to accommodate for some revisions
+                // potentially not supporting anything other than 115200
 
-                    // XXX: AT+IPR setting is persistent on SARA R4!
-                    int r = changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
-                    if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_AT_NOT_OK) {
-                        return r;
-                    }
+                // XXX: AT+IPR setting is persistent on SARA R4!
+                int r = changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
+                if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_AT_NOT_OK) {
+                    return r;
                 }
             }
         }

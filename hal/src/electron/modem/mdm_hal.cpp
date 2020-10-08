@@ -261,6 +261,8 @@ MDMParser::MDMParser(void)
     _power_mode = 1; // default power mode is AT+UPSV=1
     _cancel_all_operations = false;
     sms_cb = NULL;
+    _memoryIssuePresent = true; // default to safe state until we determine modem firmware version
+    _oldFirmwarePresent = true; // default to safe state until we determine modem firmware version
     _timePowerOn = 0;
     _timeRegistered = 0;
     memset(_sockets, 0, sizeof(_sockets));
@@ -1023,6 +1025,11 @@ bool MDMParser::init(DevStatus* status)
     if (strcmp("L0.0.00.00.05.06,A.02.00", _verExtended)) {
         _memoryIssuePresent = false;
     }
+    // Test for older firmware versions 05.06,A.02.00 / 05.06,A.02.01 / 05.07,A.02.02
+    _oldFirmwarePresent = true;
+    if (!strstr(_verExtended, "L0.0.00.00.05.06") && !strstr(_verExtended, "L0.0.00.00.05.07")) {
+        _oldFirmwarePresent = false;
+    }
     // MDM_PRINTF("MODEM AND APP VERSION: %s (%s)\r\n", _verExtended, (_memoryIssuePresent) ? "MEMISSUE" : "OTHER");
     // Returns the ICCID (Integrated Circuit Card ID) of the SIM-card.
     // ICCID is a serial number identifying the SIM.
@@ -1062,43 +1069,61 @@ bool MDMParser::init(DevStatus* status)
     }
     if (_dev.dev == DEV_SARA_R410) {
         bool resetNeeded = false;
-        int umnoprof = UBLOX_SARA_UMNOPROF_NONE;
+        int curProf = UBLOX_SARA_UMNOPROF_NONE;
 
         CellularNetProv netProv = particle::detail::cellular_sim_to_network_provider_impl(_dev.imsi, _dev.ccid);
 
         sendFormated("AT+UMNOPROF?\r\n");
-        if (RESP_ERROR == waitFinalResp(_cbUMNOPROF, &umnoprof, UMNOPROF_TIMEOUT)) {
+        if (RESP_ERROR == waitFinalResp(_cbUMNOPROF, &curProf, UMNOPROF_TIMEOUT)) {
             goto reset_failure;
         }
-        if (umnoprof == UBLOX_SARA_UMNOPROF_SW_DEFAULT) {
-            int cfun_val = -1;
-            sendFormated("AT+CFUN?\r\n");
-            if (RESP_OK != waitFinalResp(_cbCFUN, &cfun_val)) {
-                goto failure;
-            }
-            if (cfun_val != 0) {
-                sendFormated("AT+CFUN=0,0\r\n");
-                if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
-                    goto failure;
+        // First time setup, or switching between official SIM on wrong profile?
+        if (curProf == UBLOX_SARA_UMNOPROF_SW_DEFAULT ||
+            (netProv == CELLULAR_NETPROV_TWILIO && curProf != UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) ||
+            (netProv == CELLULAR_NETPROV_KORE_ATT && curProf != UBLOX_SARA_UMNOPROF_ATT))
+        {
+            bool continueInit = false;
+            int newProf = UBLOX_SARA_UMNOPROF_SIM_SELECT;
+            // TWILIO Super SIM
+            if (netProv == CELLULAR_NETPROV_TWILIO) {
+                // _oldFirmwarePresent: u-blox firmware 05.06* and 05.07* does not have
+                // UMNOPROF=100 available. Default to UMNOPROF=0 in that case.
+                if (_oldFirmwarePresent) {
+                    if (curProf == UBLOX_SARA_UMNOPROF_SW_DEFAULT) {
+                        continueInit = true;
+                    } else {
+                        newProf = UBLOX_SARA_UMNOPROF_SW_DEFAULT;
+                    }
+                } else {
+                    newProf = UBLOX_SARA_UMNOPROF_STANDARD_EUROPE;
                 }
             }
-            int p = UBLOX_SARA_UMNOPROF_SIM_SELECT;
-            bool continueInit = false;
-            if (netProv == CELLULAR_NETPROV_TWILIO) {
-                p = UBLOX_SARA_UMNOPROF_STANDARD_EUROPE;
-            } else {
-                // continue on with init if we are trying to set SIM_SELECT a second time
-                if (resetFailureAttempts >= 1) {
+            // KORE AT&T or 3rd Party SIM
+            else {
+                // continue on with init if we are trying to set SIM_SELECT a third time
+                if (resetFailureAttempts >= 2) {
                     LOG(WARN, "UMNOPROF=1 did not resolve a built-in profile, please check if UMNOPROF=100 is required!");
                     continueInit = true;
                 }
             }
             if (!continueInit) {
-                sendFormated("AT+UMNOPROF=%d\r\n", p);
+                int cfun_val = -1;
+                sendFormated("AT+CFUN?\r\n");
+                if (RESP_OK != waitFinalResp(_cbCFUN, &cfun_val)) {
+                    goto failure;
+                }
+                if (cfun_val != 0) {
+                    sendFormated("AT+CFUN=0,0\r\n");
+                    if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
+                        goto failure;
+                    }
+                    waitFinalResp(nullptr, nullptr, 1000); // delay and pump URCs a bit to wait for disconnect
+                }
+                sendFormated("AT+UMNOPROF=%d\r\n", newProf);
                 waitFinalResp(nullptr, nullptr, UMNOPROF_TIMEOUT);
                 goto reset_failure; // Not checking for errors above since we will reset either way
             }
-        } else if (umnoprof == UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) {
+        } else if (curProf == UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) {
             sendFormated("AT+UBANDMASK?\r\n");
             uint64_t ubandUint64 = 0;
             waitFinalResp(_cbUBANDMASK, &ubandUint64, UBANDMASK_TIMEOUT);
@@ -1171,6 +1196,7 @@ reset_failure:
         // be a fluke or bug in the modem. Allowing to continue on eventually helps
         // the device recover in odd situations we can't predict.
         resetFailureAttempts = 0;
+        return true;
     }
     return false;
 }
@@ -2551,6 +2577,7 @@ bool MDMParser::detach(void)
                 _activated = false;
                 ok = true;
             }
+            waitFinalResp(nullptr, nullptr, 1000); // delay and pump URCs a bit to wait for disconnect
         }
     }
     if (continue_cancel) cancel();
