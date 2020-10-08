@@ -1735,7 +1735,7 @@ bool BlePeerDevice::getCharacteristicByUUID(BleCharacteristic& characteristic, c
 bool BlePeerDevice::getCharacteristicByDescription(const BleService& service, BleCharacteristic& characteristic, const char* desc) const {
     CHECK_TRUE(desc, false);
     for (auto& existChar : impl()->characteristics()) {
-        if (service.impl()->hasCharacteristic(characteristic) && !strcmp(existChar.description().c_str(), desc)) {
+        if (service.impl()->hasCharacteristic(existChar) && !strcmp(existChar.description().c_str(), desc)) {
             characteristic = existChar;
             return true;
         }
@@ -1749,7 +1749,7 @@ bool BlePeerDevice::getCharacteristicByDescription(const BleService& service, Bl
 
 bool BlePeerDevice::getCharacteristicByUUID(const BleService& service, BleCharacteristic& characteristic, const BleUuid& uuid) const {
     for (auto& existChar : impl()->characteristics()) {
-        if (service.impl()->hasCharacteristic(characteristic) && existChar.UUID() == uuid) {
+        if (existChar.UUID() == uuid && service.impl()->hasCharacteristic(existChar)) {
             characteristic = existChar;
             return true;
         }
