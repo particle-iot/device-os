@@ -116,6 +116,7 @@ const system_tick_t UBLOX_NCP_R4_WINDOW_SIZE_MS = 50;
 const int UBLOX_DEFAULT_CID = 1;
 const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
 
+const system_tick_t UBLOX_COPS_TIMEOUT = 5 * 60 * 1000;
 
 } // anonymous
 
