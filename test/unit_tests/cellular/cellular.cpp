@@ -179,6 +179,8 @@ TEST_CASE("cellular_signal()") {
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_NONE);
             REQUIRE(sig.strength == 0);
             REQUIRE(sig.quality == 0);
+            REQUIRE(sig.rssi == std::numeric_limits<int32_t>::min());
+            REQUIRE(sig.qual == std::numeric_limits<int32_t>::min());
 
             SECTION("CellularSignal") {
                 CellularSignal cs;
@@ -681,12 +683,16 @@ TEST_CASE("cellular_printable") {
 
     SECTION("CellularSignal::printTo") {
         CellularSignal cs;
-        cs.getStrengthValue() = -83.70;
-        cs.getQualityValue = -7.00;
+        cellular_signal_t sig = {0};
+        sig.size = sizeof(sig);
+        sig.rssi = -9000;
+        sig.qual = -1400;
+        sig.rat = 7;
+        cs.fromHalCellularSignal(sig);
 
         ser.print(cs);
         // printf("%s", output);
-        REQUIRE(strncmp(output, "-80.00,-7.00", sizeof(output)) == 0);
+        REQUIRE(strncmp(output, "-90.00,-14.00", sizeof(output)) == 0);
     }
 
     SECTION("CellularData::printTo") {
