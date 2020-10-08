@@ -52,6 +52,26 @@ constexpr hal_power_config defaultPowerConfig = {
   .termination_voltage = DEFAULT_TERMINATION_VOLTAGE
 };
 
+// void dumpRegisters(const char * msg, PMIC& power) {
+//     uint8_t reg[10] = {};
+//     for (int i = 0; i < 10; i++) {
+//         reg[i] = power.readRegister(i);
+//     }
+//     LOG(TRACE, "%s: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+//         msg,
+//         reg[0],
+//         reg[1],
+//         reg[2],
+//         reg[3],
+//         reg[4],
+//         reg[5],
+//         reg[6],
+//         reg[7],
+//         reg[8],
+//         reg[9]
+//     );
+// }
+
 uint16_t mapInputVoltageLimit(uint16_t value) {
   uint16_t baseValue = 3880;
   // Find closest matching voltage input limit value within [3880, 5080] >= 'value'
@@ -111,7 +131,7 @@ void PowerManager::init() {
 #if defined(DEBUG_BUILD)
     4 * 1024);
 #else
-    1024);
+    4 * 1024);
 #endif // defined(DEBUIG_BUILD)
   SPARK_ASSERT(th != nullptr);
 }
@@ -155,6 +175,8 @@ void PowerManager::handleUpdate() {
 
   PMIC power(true);
   FuelGauge fuel(true);
+  logStat(0, 0);
+  // dumpRegisters("handleUpdate", power);
 
   // In order to read the current fault status, the host has to read REG09 two times
   // consecutively. The 1st reads fault register status from the last read and the 2nd
@@ -230,19 +252,23 @@ void PowerManager::handleUpdate() {
         if (vin) {
 #endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
           src = POWER_SOURCE_VIN;
+          LOG(INFO, "applied VIN 1 config");
           applyVinConfig();
         } else {
           src = POWER_SOURCE_USB_HOST;
+          LOG(INFO, "applied DEFAULT 1 config");
           applyDefaultConfig(src != g_powerSource);
         }
         break;
       }
       case 0x02:
         src = POWER_SOURCE_USB_ADAPTER;
+        LOG(INFO, "applied DEFAULT 2 config");
         applyDefaultConfig();
         break;
       case 0x03:
         src = POWER_SOURCE_USB_OTG;
+        LOG(INFO, "applied DEFAULT 3 config");
         applyDefaultConfig();
         break;
       case 0x00:
@@ -250,6 +276,7 @@ void PowerManager::handleUpdate() {
         if ((misc & 0x80) == 0x00) {
           // Not in DPDM detection anymore
           src = POWER_SOURCE_VIN;
+          LOG(INFO, "applied VIN 2 config");
           applyVinConfig();
         }
         break;
@@ -274,8 +301,6 @@ void PowerManager::handleUpdate() {
       system_notify_event(low_battery);
     }
   }
-
-  logStat(status, curFault);
 }
 
 void PowerManager::loop(void* arg) {
@@ -357,6 +382,9 @@ void PowerManager::isrHandler() {
 void PowerManager::initDefault(bool dpdm) {
   PMIC power(true);
   power.begin();
+  LOG(TRACE, "initDefault %d", dpdm);
+  logStat(0, 0);
+  // dumpRegisters("initDefault", power);
   // Enters host-managed mode
   power.disableWatchdog();
 
@@ -372,13 +400,14 @@ void PowerManager::initDefault(bool dpdm) {
   // to inadvertently read in the wrong value for ILIM bits 2:0.  The theory is
   // that DPDM changes ILIM as it's running it's detection scheme. [ch64465]
   power.enableBuck();
-  dumpRegisters("after buck", power);
+  // dumpRegisters("after buck", power);
   if (dpdm) {
     // Force-start input current limit detection
     power.enableDPDM();
-    dumpRegisters("after DPDM", power);
+    // dumpRegisters("after DPDM", power);
   }
   faultSuppressed_ = 0;
+  LOG(TRACE, "/initDefault %d, dpdm");
 }
 
 void PowerManager::handleStateChange(battery_state_t from, battery_state_t to, bool low) {
@@ -517,21 +546,22 @@ void PowerManager::checkWatchdog() {
 }
 
 void PowerManager::logStat(uint8_t stat, uint8_t fault) {
-#if defined(DEBUG_BUILD) && 0
-  uint8_t vbus_stat = stat >> 6; // 0 – Unknown (no input, or DPDM detection incomplete), 1 – USB host, 2 – Adapter port, 3 – OTG
-  uint8_t chrg_stat = (stat >> 4) & 0x03; // 0 – Not Charging, 1 – Pre-charge (<VBATLOWV), 2 – Fast Charging, 3 – Charge Termination Done
-  bool dpm_stat = stat & 0x08;   // 0 – Not DPM, 1 – VINDPM or IINDPM
-  bool pg_stat = stat & 0x04;    // 0 – Not Power Good, 1 – Power Good
-  bool therm_stat = stat & 0x02; // 0 – Normal, 1 – In Thermal Regulation
-  bool vsys_stat = stat & 0x01;  // 0 – Not in VSYSMIN regulation (BAT > VSYSMIN), 1 – In VSYSMIN regulation (BAT < VSYSMIN)
-  bool wd_fault = fault & 0x80;  // 0 – Normal, 1- Watchdog timer expiration
-  uint8_t chrg_fault = (fault >> 4) & 0x03; // 0 – Normal, 1 – Input fault (VBUS OVP or VBAT < VBUS < 3.8 V),
-                                            // 2 - Thermal shutdown, 3 – Charge Safety Timer Expiration
-  bool bat_fault = fault & 0x08;    // 0 – Normal, 1 – BATOVP
-  uint8_t ntc_fault = fault & 0x07; // 0 – Normal, 5 – Cold, 6 – Hot
-  LOG_DEBUG(TRACE, "[ PMIC STAT ] VBUS:%d CHRG:%d DPM:%d PG:%d THERM:%d VSYS:%d", vbus_stat, chrg_stat, dpm_stat, pg_stat, therm_stat, vsys_stat);
-  LOG_DEBUG(TRACE, "[ PMIC FAULT ] WATCHDOG:%d CHRG:%d BAT:%d NTC:%d", wd_fault, chrg_fault, bat_fault, ntc_fault);
-#endif
+  uint8_t reg[9] = {};
+  PMIC power;
+  for (int i = 0; i < 9; i++) {
+    reg[i] = power.readRegister(i);
+  }
+  LOG(TRACE, "%02x %02x %02x %02x %02x %02x %02x %02x %02x",
+      reg[0],
+      reg[1],
+      reg[2],
+      reg[3],
+      reg[4],
+      reg[5],
+      reg[6],
+      reg[7],
+      reg[8]
+  );
 }
 
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
@@ -668,13 +698,29 @@ void PowerManager::logCurrentConfig() {
 
 void PowerManager::applyDefaultConfig(bool dpdm) {
   PMIC power;
-  if (power.getInputVoltageLimit() != DEFAULT_INPUT_VOLTAGE_LIMIT) {
-    power.setInputVoltageLimit(DEFAULT_INPUT_VOLTAGE_LIMIT);
-  }
-  if (dpdm) {
-    // Force-start input current limit detection
-    LOG_DEBUG(TRACE, "Re-running DPDM");
-    power.enableDPDM();
+  LOG(TRACE, "applyDefaultConfig %d", dpdm);
+
+  // if (power.getInputVoltageLimit() != DEFAULT_INPUT_VOLTAGE_LIMIT) {
+  //   power.setInputVoltageLimit(DEFAULT_INPUT_VOLTAGE_LIMIT);
+  // }
+  // if (dpdm) {
+  //   // Force-start input current limit detection
+  //   LOG_DEBUG(TRACE, "Re-running DPDM");
+  //   power.enableDPDM();
+  // }
+
+  // Make sure we don't modify REG00 or restart DPDM when it's in progress
+  if ((power.readOpControlRegister() & 0x80) == 0x00) {
+    if (power.getInputVoltageLimit() != DEFAULT_INPUT_VOLTAGE_LIMIT) {
+      power.setInputVoltageLimit(DEFAULT_INPUT_VOLTAGE_LIMIT);
+    }
+    if (dpdm) {
+      // Force-start input current limit detection
+      LOG_DEBUG(TRACE, "Re-running DPDM");
+      power.enableDPDM();
+    }
+  } else {
+    LOG(TRACE, "applyDefaultConfig not making changes");
   }
 }
 

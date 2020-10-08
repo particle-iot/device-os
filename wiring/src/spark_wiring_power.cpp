@@ -119,6 +119,26 @@ bool PMIC::begin()
     return pmicWireInstance()->isEnabled();
 }
 
+void PMIC::dumpRegisters(const char * msg) {
+    uint8_t reg[10] = {};
+    for (int i = 0; i < 10; i++) {
+        reg[i] = readRegister(i);
+    }
+    LOG(TRACE, "%s: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+        msg,
+        reg[0],
+        reg[1],
+        reg[2],
+        reg[3],
+        reg[4],
+        reg[5],
+        reg[6],
+        reg[7],
+        reg[8],
+        reg[9]
+    );
+}
+
 /*
 //-----------------------------------------------------------------------------
 // Input source control register
@@ -350,6 +370,7 @@ byte PMIC::readInputSourceRegister(void) {
 bool PMIC::enableBuck(void) {
     std::lock_guard<PMIC> l(*this);
     byte DATA = readRegister(INPUT_SOURCE_REGISTER);
+    LOG(TRACE, "buck: %02x", DATA);
     writeRegister(INPUT_SOURCE_REGISTER, (DATA & 0b01111111));
     return 1;
 }
