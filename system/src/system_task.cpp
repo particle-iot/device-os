@@ -325,6 +325,10 @@ void establish_cloud_connection()
             // the last error diagnostic is used only for communication errors since we cannot mix
             // HAL and communication error codes without specifying the category of an error
             WARN("Cloud socket connection failed: %d", connect_result);
+            if (connect_result == SYSTEM_ERROR_NETWORK) {
+                LED_SIGNAL_STOP(CLOUD_HANDSHAKE);
+                LED_SIGNAL_STOP(CLOUD_CONNECTING);
+            }
             SPARK_CLOUD_SOCKETED = 0;
 
             diag->status(CloudDiagnostics::DISCONNECTED);
