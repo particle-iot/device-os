@@ -1083,12 +1083,21 @@ bool MDMParser::init(DevStatus* status)
                 }
             }
             int p = UBLOX_SARA_UMNOPROF_SIM_SELECT;
+            bool continueInit = false;
             if (netProv == CELLULAR_NETPROV_TWILIO) {
                 p = UBLOX_SARA_UMNOPROF_STANDARD_EUROPE;
+            } else {
+                // continue on with init if we are trying to set SIM_SELECT a second time
+                if (resetFailureAttempts >= 1) {
+                    LOG(WARN, "UMNOPROF=1 did not resolve a built-in profile, please check if UMNOPROF=100 is required!");
+                    continueInit = true;
+                }
             }
-            sendFormated("AT+UMNOPROF=%d\r\n", p);
-            waitFinalResp(nullptr, nullptr, UMNOPROF_TIMEOUT);
-            goto reset_failure; // Not checking for errors above since we will reset either way
+            if (!continueInit) {
+                sendFormated("AT+UMNOPROF=%d\r\n", p);
+                waitFinalResp(nullptr, nullptr, UMNOPROF_TIMEOUT);
+                goto reset_failure; // Not checking for errors above since we will reset either way
+            }
         } else if (umnoprof == UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) {
             sendFormated("AT+UBANDMASK?\r\n");
             uint64_t ubandUint64 = 0;

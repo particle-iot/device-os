@@ -1060,11 +1060,11 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
         netConf_ = networkConfigForIccid(buf, lenCcid);
         do {
             // Set UMNOPROF = SIM_SELECT
-            auto resp = parser_.sendCommand("AT+UMNOPROF?");
+            auto respUmnoprof = parser_.sendCommand("AT+UMNOPROF?");
             reset = false;
             int umnoprof = static_cast<int>(UbloxSaraUmnoprof::NONE);
-            auto r = CHECK_PARSER(resp.scanf("+UMNOPROF: %d", &umnoprof));
-            CHECK_PARSER_OK(resp.readResult());
+            auto r = CHECK_PARSER(respUmnoprof.scanf("+UMNOPROF: %d", &umnoprof));
+            CHECK_PARSER_OK(respUmnoprof.readResult());
             if (r == 1 && static_cast<UbloxSaraUmnoprof>(umnoprof) == UbloxSaraUmnoprof::SW_DEFAULT) {
                 // Disconnect before making changes to the UMNOPROF
                 auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
@@ -1076,9 +1076,16 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 }
 
                 // This is a persistent setting
-                int umnoprof = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
+                umnoprof = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
                 if (netConf_.netProv() == CellularNetworkProvider::TWILIO) { // if Twilio Super SIM
                     umnoprof = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
+                } else {
+                    // break out of do-while if we're trying to set SIM_SELECT a second time
+                    if (resetCount >= 1) {
+                        LOG(WARN, "UMNOPROF=1 did not resolve a built-in profile, please check if UMNOPROF=100 is required!");
+                        resetCount = 0;
+                        break;
+                    }
                 }
                 parser_.execCommand(1000, "AT+UMNOPROF=%d", umnoprof);
                 // Not checking for error since we will reset either way
