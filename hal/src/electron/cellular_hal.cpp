@@ -227,9 +227,9 @@ void cellular_cancel(bool cancel, bool calledFromISR, void*)
     }
 }
 
-cellular_result_t cellular_signal(cellular_signal_t* signalext)
+cellular_result_t cellular_signal(void* deprecated, cellular_signal_t* signalext)
 {
-    if (signalext == nullptr) {
+    if (deprecated != nullptr && signalext == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 

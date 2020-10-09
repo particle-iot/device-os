@@ -294,7 +294,11 @@ bool cellular_sim_ready(void* reserved) {
 void cellular_cancel(bool cancel, bool calledFromISR, void* reserved) {
 }
 
-int cellular_signal(cellular_signal_t* signalExt) {
+int cellular_signal(void* deprecated, cellular_signal_t* signalExt) {
+    if (deprecated != nullptr && signalExt == nullptr) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
     const auto mgr = cellularNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     const auto client = mgr->ncpClient();

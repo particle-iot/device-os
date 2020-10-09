@@ -33,7 +33,7 @@ namespace spark {
 
         cellular_signal_t sigext = {0};
         sigext.size = sizeof(sigext);
-        if (cellular_signal(&sigext) != 0) {
+        if (cellular_signal(nullptr, &sigext) != 0) {
             return sig;
         }
         sig.fromHalCellularSignal(sigext);
