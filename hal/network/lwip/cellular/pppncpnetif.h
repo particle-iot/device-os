@@ -72,11 +72,17 @@ private:
     static void mempEventHandler(memp_t type, unsigned available, unsigned size, void* ctx);
 
 private:
+    enum NetifState {
+        NETIF_STATE_OFF,
+        NETIF_STATE_ON_DOWN,
+        NETIF_STATE_UP
+    };
+
     os_thread_t thread_ = nullptr;
     os_queue_t queue_ = nullptr;
     std::atomic_bool exit_;
     particle::net::ppp::Client client_;
-    volatile bool up_ = false;
+    std::atomic<NetifState> expectedNetifState_;
     CellularNetworkManager* celMan_ = nullptr;
     volatile system_tick_t connectStart_ = 0;
 };
