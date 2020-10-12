@@ -363,7 +363,7 @@ int SaraNcpClient::off() {
         // WARN: We assume that the modem can turn off itself reliably.
     } else {
         // Power down using hardware
-        modemPowerOff();
+        CHECK(modemPowerOff());
         // FIXME: There is power leakage still if powering off the modem failed.
     }
 

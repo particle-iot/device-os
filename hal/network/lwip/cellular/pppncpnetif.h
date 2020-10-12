@@ -72,12 +72,6 @@ private:
     static void mempEventHandler(memp_t type, unsigned available, unsigned size, void* ctx);
 
 private:
-    enum NetifState {
-        NETIF_STATE_OFF,
-        NETIF_STATE_ON_DOWN,
-        NETIF_STATE_UP
-    };
-
     os_thread_t thread_ = nullptr;
     os_queue_t queue_ = nullptr;
     std::atomic_bool exit_;

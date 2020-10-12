@@ -50,6 +50,12 @@ private:
     static void netifEventCb(netif* iface, netif_nsc_reason_t reason, const netif_ext_callback_args_t* args);
 
 protected:
+    enum NetifState {
+        NETIF_STATE_OFF,
+        NETIF_STATE_ON_DOWN,
+        NETIF_STATE_UP
+    };
+
     netif netif_ = {};
 
 private:
