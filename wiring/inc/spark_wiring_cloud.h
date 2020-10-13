@@ -41,12 +41,6 @@
 #include <functional>
 #include <type_traits>
 
-#define PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE \
-        PARTICLE_DEPRECATED_API("Beginning with 0.8.0 release, Particle.publish() will require event scope to be specified explicitly.");
-
-#define PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE \
-        PARTICLE_DEPRECATED_API("Beginning with 0.8.0 release, Particle.subscribe() will require event scope to be specified explicitly.");
-
 typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
 typedef std::function<void (const char*, const char*)> wiring_event_handler_t;
 
@@ -259,10 +253,9 @@ public:
         return publish_event(eventName, eventData, ttl, flags1 | flags2);
     }
 
-    // Deprecated methods
-    particle::Future<bool> publish(const char* name) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
-    particle::Future<bool> publish(const char* name, const char* data) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
-    particle::Future<bool> publish(const char* name, const char* data, int ttl) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
+    particle::Future<bool> publish(const char* name);
+    particle::Future<bool> publish(const char* name, const char* data);
+    particle::Future<bool> publish(const char* name, const char* data, int ttl);
 
     /**
      * @brief Publish vitals information
@@ -323,11 +316,10 @@ public:
         return subscribe(eventName, std::bind(handler, instance, _1, _2), deviceID);
     }
 
-    // Deprecated methods
-    bool subscribe(const char* name, EventHandler handler) PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE;
-    bool subscribe(const char* name, wiring_event_handler_t handler) PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE;
+    bool subscribe(const char* name, EventHandler handler);
+    bool subscribe(const char* name, wiring_event_handler_t handler);
     template<typename T>
-    bool subscribe(const char* name, void (T::*handler)(const char*, const char*), T* instance) PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE;
+    bool subscribe(const char* name, void (T::*handler)(const char*, const char*), T* instance);
 
     void unsubscribe()
     {
@@ -562,7 +554,6 @@ inline bool CloudDisconnectOptions::isTimeoutSet() const {
     return (flags_ & OptionFlag::TIMEOUT);
 }
 
-// Deprecated methods
 inline particle::Future<bool> CloudClass::publish(const char* name) {
     return publish(name, PUBLIC);
 }
