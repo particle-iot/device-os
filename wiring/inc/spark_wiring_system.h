@@ -404,6 +404,12 @@ public:
         return system_subscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), NULL);
     }
 
+    template<typename T>
+    static bool on(system_event_t events, void (T::*handler)(system_event_t, int, void*), T* instance) {
+        using namespace std::placeholders;
+        return system_subscribe_event(events, reinterpret_cast<system_event_handler_t*>(std::bind(handler,instance,_1,_2,_3)), NULL);
+    }
+
     static void off(void(*handler)(system_event_t, int,void*)) {
         system_unsubscribe_event(all_events, handler, nullptr);
     }
