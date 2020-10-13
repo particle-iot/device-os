@@ -367,6 +367,11 @@ bool PMIC::disableBuck(void) {
     return 1;
 }
 
+bool PMIC::isBuckEnabled() {
+    std::lock_guard<PMIC> l(*this);
+    byte DATA = readRegister(INPUT_SOURCE_REGISTER);
+    return !(DATA & 0x80);
+}
 
 /*
 
@@ -898,6 +903,12 @@ bool PMIC::disableBATFET(void) {
     return 1;
 }
 
+bool PMIC::isBATFETEnabled() {
+    std::lock_guard<PMIC> l(*this);
+    byte DATA = readRegister(MISC_CONTROL_REGISTER);
+    return !(DATA & 0b00100000);
+}
+
 /*******************************************************************************
  * Function Name  :
  * Description    :
@@ -908,6 +919,10 @@ byte PMIC::readOpControlRegister(void) {
 
     return readRegister(MISC_CONTROL_REGISTER);
 
+}
+
+bool PMIC::isInDPDM() {
+    return (readOpControlRegister() & 0x80);
 }
 
 uint16_t PMIC::getRechargeThreshold() {
@@ -1030,6 +1045,10 @@ byte PMIC::getFault() {
     DATA = readRegister(FAULT_REGISTER);
     return DATA;
 
+}
+
+bool PMIC::isWatchdogFault() {
+    return getFault() & 0x80;
 }
 
 /*

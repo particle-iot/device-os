@@ -41,6 +41,8 @@ constexpr system_tick_t DEFAULT_FAULT_SUPPRESSION_PERIOD = 60000;
 
 constexpr system_tick_t DEFAULT_QUEUE_WAIT = 1000;
 constexpr system_tick_t DEFAULT_WATCHDOG_TIMEOUT = 60000;
+// FIXME: make sure to change setWatchdog() call to use the same interval
+constexpr system_tick_t PMIC_WATCHDOG_INTERVAL = 40000; // 40s
 
 constexpr hal_power_config defaultPowerConfig = {
   .flags = 0,
@@ -136,6 +138,11 @@ void PowerManager::sleep(bool s) {
       if (g_batteryState == BATTERY_STATE_DISCONNECTED) {
         initDefault();
       }
+#if HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
+      PMIC power;
+      // XXX:
+      power.disableWatchdog();
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
       FuelGauge gauge;
       gauge.sleep();
     } else {
@@ -159,17 +166,17 @@ void PowerManager::handleUpdate() {
   // In order to read the current fault status, the host has to read REG09 two times
   // consecutively. The 1st reads fault register status from the last read and the 2nd
   // reads the current fault register status.
-  const uint8_t lastFault = power.getFault();
+  volatile uint8_t lastFault = power.getFault();
   (void)lastFault;
   const uint8_t curFault = power.getFault();
-  const uint8_t status = power.getSystemStatus();
-  const uint8_t misc = power.readOpControlRegister();
 
-  // Watchdog fault
-  if ((curFault) & 0x80) {
+  // Watchdog fault or buck converter got disabled
+  if ((curFault & 0x80) || !power.isBuckEnabled()) {
     // Restore parameters
     initDefault();
   }
+
+  const uint8_t status = power.getSystemStatus();
 
   battery_state_t state = BATTERY_STATE_UNKNOWN;
 
@@ -220,10 +227,13 @@ void PowerManager::handleUpdate() {
   auto usb_state = HAL_USB_Get_State(nullptr);
 #endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
 
-  if (pwr_good) {
-    uint8_t vbus_stat = status >> 6;
-    switch (vbus_stat) {
-      case 0x01: {
+  // IMPORTANT: we cannot make a decision until DPDM detection finishes
+  // we also cannot modify input current limit while DPDM is running,
+  // as that will cause a race condition and we might be left with 100mA
+  // ILIM after it finishes.
+  if (pwr_good && !power.isInDPDM()) {
+    switch (powerSourceFromStatus(status)) {
+      case POWER_SOURCE_USB_HOST: {
 #if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
         if (vin || usb_state < HAL_USB_STATE_POWERED) {
 #else
@@ -237,21 +247,18 @@ void PowerManager::handleUpdate() {
         }
         break;
       }
-      case 0x02:
+      case POWER_SOURCE_USB_ADAPTER:
         src = POWER_SOURCE_USB_ADAPTER;
         applyDefaultConfig();
         break;
-      case 0x03:
+      case POWER_SOURCE_USB_OTG:
         src = POWER_SOURCE_USB_OTG;
         applyDefaultConfig();
         break;
-      case 0x00:
+      case POWER_SOURCE_VIN:
       default:
-        if ((misc & 0x80) == 0x00) {
-          // Not in DPDM detection anymore
-          src = POWER_SOURCE_VIN;
-          applyVinConfig();
-        }
+        src = POWER_SOURCE_VIN;
+        applyVinConfig();
         break;
     }
   } else {
@@ -307,7 +314,12 @@ void PowerManager::loop(void* arg) {
 #endif
     HAL_Pin_Mode(LOW_BAT_UC, INPUT_PULLUP);
     attachInterrupt(LOW_BAT_UC, &PowerManager::isrHandler, FALLING);
+    PMIC power(true);
+    power.begin();
     self->initDefault();
+    // Clear old fault register state
+    power.getFault();
+    power.getFault();
     FuelGauge fuel(true);
     fuel.wakeup();
     fuel.setAlertThreshold(20); // Low Battery alert at 10% (about 3.6V)
@@ -357,8 +369,16 @@ void PowerManager::isrHandler() {
 void PowerManager::initDefault(bool dpdm) {
   PMIC power(true);
   power.begin();
+
+#if HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
+  // We keep the watchdog running at 40s and make sure to kick it periodically
+  // FIXME: Make sure to adjust PMIC_WATCHDOG_INTERVAL accordingly
+  power.resetWatchdog();
+  power.setWatchdog(0b01);
+#else
   // Enters host-managed mode
   power.disableWatchdog();
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
 
   // Adjust charge voltage
   power.setChargeVoltage(config_.termination_voltage);
@@ -366,13 +386,40 @@ void PowerManager::initDefault(bool dpdm) {
   // Set recharge threshold to default value - 100mV
   power.setRechargeThreshold(100);
   power.setChargeCurrent(config_.charge_current);
-  if (dpdm) {
-    // Force-start input current limit detection
-    power.enableDPDM();
-  }
+
   // Enable charging
   power.enableCharging();
-  power.enableBuck();
+
+  // Just in case make sure to enable BATFET
+  if (!power.isBATFETEnabled()) {
+    power.enableBATFET();
+  }
+
+  // Enable buck converter
+  bool inDpDm = power.isInDPDM();
+  if (!power.isBuckEnabled()) {
+    power.enableBuck();
+    // Make sure we restart DPDM as otherwise we may get stuck
+    // with an invalid ILIM due to reading back and writing
+    // a transient value by modifying the same register with enableBuck()
+    if (inDpDm) {
+      dpdm = true;
+    }
+  }
+
+  auto powerSource = powerSourceFromStatus(power.getSystemStatus());
+  bool vinWithValidLimit = (power.getInputCurrentLimit() > 100) &&
+      ((powerSource == POWER_SOURCE_VIN) ||
+      ((config_.flags & HAL_POWER_USE_VIN_SETTINGS_WITH_USB_HOST) && powerSource == POWER_SOURCE_USB_HOST));
+
+  if (dpdm) {
+    if (inDpDm || !vinWithValidLimit) {
+      // Force-start input current limit detection
+      // only if we modified REG00 while in DPDM or we are not powered by VIN
+      // and we have a non-100mA limit set
+      power.enableDPDM();
+    }
+  }
 
   faultSuppressed_ = 0;
 }
@@ -510,6 +557,14 @@ void PowerManager::checkWatchdog() {
     g_batteryState = BATTERY_STATE_UNKNOWN;
     initDefault(false);
   }
+
+#if HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
+  if (millis() - pmicWatchdogTimer_ >= (PMIC_WATCHDOG_INTERVAL / 2)) {
+    pmicWatchdogTimer_ = millis();
+    PMIC power;
+    power.resetWatchdog();
+  }
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
 }
 
 void PowerManager::logStat(uint8_t stat, uint8_t fault) {
@@ -534,7 +589,7 @@ void PowerManager::logStat(uint8_t stat, uint8_t fault) {
 bool PowerManager::detect() {
   // Check if runtime detection enabled
   if (!(config_.flags & HAL_POWER_PMIC_DETECTION)) {
-    LOG_DEBUG(INFO, "Runtime PMIC/FuelGauge detection is not enabled");
+    LOG(INFO, "Runtime PMIC/FuelGauge detection is not enabled");
     return false;
   }
 
@@ -681,6 +736,26 @@ void PowerManager::usbStateChangeHandler(HAL_USB_State state, void* context) {
 
 bool PowerManager::isRunning() const {
   return thread_ != nullptr;
+}
+
+power_source_t PowerManager::powerSourceFromStatus(uint8_t status) {
+  auto vbusStat = status >> 6;
+  switch (vbusStat) {
+    case 0x01: {
+      return POWER_SOURCE_USB_HOST;
+    }
+    case 0x02: {
+      return POWER_SOURCE_USB_ADAPTER;
+    }
+    case 0x03: {
+      return POWER_SOURCE_USB_OTG;
+    }
+    case 0x00: {
+      return POWER_SOURCE_VIN;
+    }
+  }
+
+  return POWER_SOURCE_UNKNOWN;
 }
 
 #endif /* (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043) */

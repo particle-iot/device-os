@@ -58,6 +58,8 @@ private:
   void logCurrentConfig();
   bool isRunning() const;
 
+  static power_source_t powerSourceFromStatus(uint8_t status);
+
 private:
   enum class Event {
     Update = 0,
@@ -77,6 +79,9 @@ private:
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
   bool detect_ = false;
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+#if HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
+  system_tick_t pmicWatchdogTimer_ = 0;
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
 
   hal_power_config config_ = {};
 };
