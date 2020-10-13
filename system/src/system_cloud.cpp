@@ -174,25 +174,24 @@ inline uint32_t convert(uint32_t flags) {
 	return flags;
 }
 
-bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved)
+bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, spark_send_event_param* param)
 {
     if (flags & PUBLISH_EVENT_FLAG_ASYNC) {
-        SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(spark_send_event(name, data, ttl, flags, reserved), true);
+        // FIXME: This flag is only used with IOTA events
+        SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(spark_send_event(name, data, ttl, flags, param), true);
     }
     else {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, flags, reserved));
+        SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, flags, param));
     }
 
-    spark_protocol_send_event_data d = {};
-    d.size = sizeof(d);
-    if (reserved) {
-        // Forward completion callback to the protocol implementation
-        auto r = static_cast<const spark_send_event_data*>(reserved);
-        d.handler_callback = r->handler_callback;
-        d.handler_data = r->handler_data;
+    spark_protocol_send_event_param p = {}; // Additional protocol parameters
+    p.size = sizeof(p);
+    if (param) {
+        p.complete_fn = param->handler_callback;
+        p.user_data = param->handler_data;
     }
 
-    return spark_protocol_send_event(sp, name, data, ttl, convert(flags), &d);
+    return spark_protocol_send_event(sp, name, data, ttl, convert(flags), &p);
 }
 
 bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra)

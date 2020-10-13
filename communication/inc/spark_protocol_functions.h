@@ -186,9 +186,8 @@ enum spark_protocol_content_type {
  * Flags used by `spark_protocol_event_data_callback` and `spark_protocol_write_event_data()`.
  */
 enum spark_protocol_event_data_flag {
-    PROTOCOL_EVENT_DATA_READABLE = 0x01, ///< Event data is available for reading.
-    PROTOCOL_EVENT_DATA_WRITABLE = 0x02, ///< Event data is available for writing.
-    PROTOCOL_EVENT_DATA_MORE = 0x04 ///< Sender has more data to send.
+    PROTOCOL_EVENT_DATA_READY = 0x01, ///< Event data is available for reading or writing.
+    PROTOCOL_EVENT_DATA_MORE = 0x02 ///< Sender has more data to send.
 };
 
 /**
@@ -199,7 +198,7 @@ enum spark_protocol_event_data_flag {
  * @param user_data User data.
  * @return 0 on success or a negative result code in case of an error.
  */
-typedef int(*spark_protocol_event_data_callback)(int handle, unsigned flags, void* user_data);
+typedef int(*spark_protocol_event_data_callback)(int handle, int error, unsigned flags, void* user_data);
 
 /**
  * Additional parameters for `spark_protocol_send_event()`.

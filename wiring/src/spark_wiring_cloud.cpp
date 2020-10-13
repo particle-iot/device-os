@@ -73,18 +73,18 @@ Future<bool> CloudClass::publish_event(const char *eventName, const char *eventD
     if (!connected()) {
         return Future<bool>(Error::INVALID_STATE);
     }
-    spark_send_event_data d = {};
-    d.size = sizeof(spark_send_event_data);
+    spark_send_event_param param = {};
+    param.size = sizeof(param);
 
     // Completion handler
     Promise<bool> p;
-    d.handler_callback = publishCompletionCallback;
-    d.handler_data = p.dataPtr();
+    param.handler_callback = publishCompletionCallback;
+    param.handler_data = p.dataPtr();
 
-    if (!spark_send_event(eventName, eventData, ttl, flags.value(), &d) && !p.isDone()) {
+    if (!spark_send_event(eventName, eventData, ttl, flags.value(), &param) && !p.isDone()) {
         // Set generic error code in case completion callback wasn't invoked for some reason
         p.setError(Error::UNKNOWN);
-        p.fromDataPtr(d.handler_data); // Free wrapper object
+        p.fromDataPtr(param.handler_data); // Free wrapper object
     }
 
     return p.future();

@@ -252,7 +252,7 @@ typedef struct {
     size_t size;
     completion_callback handler_callback;
     void* handler_data;
-} spark_send_event_data;
+} spark_send_event_param;
 
 /**
  * @brief Publish vitals information
@@ -277,7 +277,7 @@ typedef struct {
  *
  */
 int spark_publish_vitals(system_tick_t period_s, void *reserved);
-bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);
+bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, spark_send_event_param* param);
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);
 void spark_unsubscribe(void *reserved);

@@ -129,12 +129,11 @@ int spark_protocol_post_description(ProtocolFacade* protocol, int desc_flags, vo
 }
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
-                int ttl, uint32_t flags, void* reserved) {
+                int ttl, uint32_t flags, spark_protocol_send_event_param* param) {
     ASSERT_ON_SYSTEM_THREAD();
 	CompletionHandler handler;
-	if (reserved) {
-		auto r = static_cast<const spark_protocol_send_event_data*>(reserved);
-		handler = CompletionHandler(r->handler_callback, r->handler_data);
+	if (param) {
+		handler = CompletionHandler(param->complete_fn, param->user_data);
 	}
 	EventType::Enum event_type = EventType::extract_event_type(flags);
 	return protocol->send_event(event_name, data, ttl, event_type, flags, std::move(handler));
