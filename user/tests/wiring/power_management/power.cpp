@@ -34,14 +34,37 @@ constexpr uint32_t STATE0_MAGICK = 0xc00f;
 constexpr uint32_t STATE1_MAGICK = 0xbeef;
 constexpr uint32_t STATE2_MAGICK = 0xdeed;
 constexpr uint32_t STATE3_MAGICK = 0xc0fe;
+constexpr uint32_t STATE4_MAGICK = 0xd00d;
+constexpr uint32_t STATE5_MAGICK = 0xbead;
+constexpr uint32_t STATE6_MAGICK = 0xb007;
+constexpr uint32_t STATE7_MAGICK = 0x1234;
+constexpr uint32_t STATE8_MAGICK = 0x8008;
+constexpr uint32_t STATE9_MAGICK = 0xb00b;
+constexpr uint32_t STATE10_MAGICK = 0xb077;
+constexpr uint32_t STATE11_MAGICK = 0xfeed;
+constexpr uint32_t STATE12_MAGICK = 0xfaad;
 retained uint32_t g_state;
+
+int s_powerSource = -1;
+int s_batteryState = -1;
+
+const diag_source* s_batterStateDiagSource = nullptr;
 
 bool inState() {
     switch (g_state) {
         case STATE0_MAGICK:
         case STATE1_MAGICK:
         case STATE2_MAGICK:
-        case STATE3_MAGICK: {
+        case STATE3_MAGICK:
+        case STATE4_MAGICK:
+        case STATE5_MAGICK:
+        case STATE6_MAGICK:
+        case STATE7_MAGICK:
+        case STATE8_MAGICK:
+        case STATE9_MAGICK:
+        case STATE10_MAGICK:
+        case STATE11_MAGICK:
+        case STATE12_MAGICK: {
             return true;
         }
     }
@@ -49,48 +72,350 @@ bool inState() {
     return false;
 }
 
-void startup() {
-    if (!inState()) {
-        SystemPowerConfiguration conf;
-        conf.feature(SystemPowerFeature::PMIC_DETECTION);
-#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
-        conf.feature(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST);
-#endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
-        System.setPowerConfiguration(conf);
-        g_state = STATE0_MAGICK;
-        System.reset();
+bool powerManagementEventTrackingIsRequired() {
+    switch (g_state) {
+        case STATE1_MAGICK:
+        case STATE3_MAGICK:
+        case STATE6_MAGICK:
+        case STATE8_MAGICK: {
+            return true;
+        }
     }
+
+    return false;
+}
+
+spark::Vector<uint16_t> s_powerInputCurrentLimitTracking;
+
+void captureInputCurrentLimit() {
+    if (powerManagementEventTrackingIsRequired()) {
+        // XXX: this is a hack to make sure that we get this event on every PMIC event (interrupt)
+        // so that we can track how some parameters change
+        if (!s_batterStateDiagSource) {
+            diag_get_source(DIAG_ID_SYSTEM_BATTERY_STATE, &s_batterStateDiagSource, nullptr);
+        }
+
+        if (s_batterStateDiagSource) {
+            auto diag = static_cast<particle::SimpleEnumDiagnosticData<particle::power::battery_state_t>*>(s_batterStateDiagSource->data);
+            // Acquire power management lock to ensure thread safety
+            if (diag) {
+                PMIC power(true);
+                auto val = power.getInputCurrentLimit();
+                if (s_powerInputCurrentLimitTracking.size() == 0 || s_powerInputCurrentLimitTracking.last() != val) {
+                    if (s_powerInputCurrentLimitTracking.size() < 1024) {
+                        s_powerInputCurrentLimitTracking.append(val);
+                    }
+                }
+                diag->operator=((battery_state_t)-1);
+            }
+        }
+    }
+}
+
+void startup() {
+    {
+        PMIC power;
+        power.begin();
+        captureInputCurrentLimit();
+    }
+
+    System.on(battery_state, [](system_event_t event, int data) -> void {
+        s_batteryState = data;
+        captureInputCurrentLimit();
+    });
+
+    System.on(power_source, [](system_event_t event, int data) -> void {
+        s_powerSource = data;
+    });
+}
+
+bool batteryStateUpdated() {
+    return s_batteryState != -1 && s_batteryState != BATTERY_STATE_UNKNOWN;
+}
+
+bool powerSourceUpdated() {
+    return s_powerSource != -1 && s_powerSource != POWER_SOURCE_UNKNOWN;
+}
+
+bool powerManagementSettled() {
+    return batteryStateUpdated() && powerSourceUpdated();
+}
+
+void notifyAndReset() {
+#ifndef PARTICLE_TEST_RUNNER
+    while (Serial.available() > 0) {
+        Serial.read();
+    }
+    Serial.printlnf("Press any key to reset, restart the tests once the device reboots");
+    while (Serial.available() <= 0);
+#else
+#error "This test needs to be modified to notify test runner that we are going to reboot"
+#endif // PARTICLE_TEST_RUNNER
+    System.reset();
 }
 
 STARTUP(startup());
 
 } // anonymous
 
-test(POWER_00_PoweredByVinAndBatteryPresent) {
+test(POWER_00_Prepare) {
+    if (!inState()) {
+        SystemPowerConfiguration conf;
+        conf.feature(SystemPowerFeature::PMIC_DETECTION);
+        System.setPowerConfiguration(conf);
+        g_state = STATE0_MAGICK;
+        notifyAndReset();
+    } else {
+        skip();
+    }
+}
+
+test(POWER_01_PoweredByUsbHostAndBatteryStateIsValid) {
     if (g_state != STATE0_MAGICK) {
         skip();
         return;
     }
 
-    delay(1000);
-    assertEqual(System.powerSource(), (int)POWER_SOURCE_VIN);
+    // Allow some time for the power management subsystem to settle
+    waitFor(powerManagementSettled, 10000);
+
+    assertEqual(System.powerSource(), (int)POWER_SOURCE_USB_HOST);
     assertTrue(System.batteryState() != BATTERY_STATE_UNKNOWN &&
-            System.batteryState() != BATTERY_STATE_FAULT &&
-            System.batteryState() != BATTERY_STATE_DISCONNECTED);
-    assertTrue(System.batteryCharge() >= 0.0f);
+            System.batteryState() != BATTERY_STATE_FAULT);
+
+    if (System.batteryState() != BATTERY_STATE_DISCONNECTED) {
+        assertTrue(System.batteryCharge() >= 0.0f);
+    } else {
+        assertEqual(System.batteryState(), (int)BATTERY_STATE_DISCONNECTED);
+    }
 }
 
-test(POWER_01_ApplyingDefaultPowerManagementConfigurationInRuntimeWorksAsIntended) {
+test(POWER_02_PoweredByUsbHostPrepareWarmBootup) {
     if (g_state != STATE0_MAGICK) {
+        skip();
+        return;
+    }
+
+    // Allow some time for the power management subsystem to settle (just in case)
+    waitFor(powerManagementSettled, 10000);
+    PMIC power(true);
+    assertMore(power.getInputCurrentLimit(), (uint16_t)100);
+    g_state = STATE1_MAGICK;
+    notifyAndReset();
+}
+
+test(POWER_03_PoweredByUsbHostNoCurrentGlitchWarmBootup) {
+    if (g_state != STATE1_MAGICK) {
+        skip();
+        return;
+    }
+
+    // Allow some time for the power management subsystem to settle
+    // Mandatory delay to allow to catch input current limit data
+    delay(std::max(5000 - (int)millis(), 0));
+    waitFor(powerManagementSettled, 10000);
+
+    // Switch state immediately
+    g_state = STATE2_MAGICK;
+
+    assertNotEqual(s_powerInputCurrentLimitTracking.size(), 0);
+    for (int i = 0; i < s_powerInputCurrentLimitTracking.size(); i++) {
+        auto cur = s_powerInputCurrentLimitTracking[i];
+        Serial.printlnf("%u mA", cur);
+        // Check that there was no input current limit drop to 100mA
+        assertMore(cur, (uint16_t)100);
+    }
+}
+
+test(POWER_03_PoweredByUsbHostPrepareColdBootup) {
+    if (g_state != STATE2_MAGICK) {
+        skip();
+        return;
+    }
+
+    // Allow some time for the power management subsystem to settle (just in case)
+    PMIC power(true);
+    assertMore(power.getInputCurrentLimit(), (uint16_t)100);
+
+    // We are emulating cold boot by blocking system power manager,
+    // enabling PMIC watchdog (which will reset PMIC state),
+    // waiting for watchdog fault and resetting immediately
+    power.resetWatchdog();
+    power.setWatchdog(0b01); // 40s - minimum
+    auto start = millis();
+    Serial.println("Device will restart in about 40s, restart the tests once it boots up");
+    while (millis() - start < 50000) {
+        if (power.isWatchdogFault()) {
+            g_state = STATE3_MAGICK;
+            System.reset();
+        }
+    }
+    // Watchdog fault never occured
+    assertTrue(false);
+}
+
+test(POWER_04_PoweredByUsbHostNoCurrentGlitchColdBootup) {
+    if (g_state != STATE3_MAGICK) {
+        skip();
+        return;
+    }
+
+    // Allow some time for the power management subsystem to settle
+    // Mandatory delay to allow to catch input current limit data
+    delay(std::max(5000 - (int)millis(), 0));
+    waitFor(powerManagementSettled, 10000);
+
+    // Switch state immediately
+    g_state = STATE4_MAGICK;
+
+    uint16_t prev = 0;
+    assertNotEqual(s_powerInputCurrentLimitTracking.size(), 0);
+    for (int i = 0; i < s_powerInputCurrentLimitTracking.size(); i++) {
+        auto cur = s_powerInputCurrentLimitTracking[i];
+        Serial.printlnf("%u mA", cur);
+        // Check that there was no input current limit drop
+        assertMoreOrEqual(cur, prev);
+        prev = cur;
+    }
+
+    // Check that we've settled on > 100mA input current limit
+    assertMore(PMIC().getInputCurrentLimit(), (uint16_t)100);
+}
+
+test(POWER_05_PrepareVin) {
+    if (g_state != STATE4_MAGICK) {
+        skip();
+        return;
+    }
+
+    SystemPowerConfiguration conf;
+    conf.feature(SystemPowerFeature::PMIC_DETECTION);
+    conf.feature(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST);
+    System.setPowerConfiguration(conf);
+    g_state = STATE5_MAGICK;
+    notifyAndReset();
+}
+
+test(POWER_06_PoweredByVinAndBatteryStateIsValid) {
+    if (g_state != STATE5_MAGICK) {
+        skip();
+        return;
+    }
+
+    // Allow some time for the power management subsystem to settle
+    waitFor(powerManagementSettled, 10000);
+    assertEqual(System.powerSource(), (int)POWER_SOURCE_VIN);
+    assertTrue(System.batteryState() != BATTERY_STATE_UNKNOWN &&
+            System.batteryState() != BATTERY_STATE_FAULT);
+
+    if (System.batteryState() != BATTERY_STATE_DISCONNECTED) {
+        assertMoreOrEqual(System.batteryCharge(), 0.0f);
+    } else {
+        assertEqual(System.batteryState(), (int)BATTERY_STATE_DISCONNECTED);
+    }
+}
+
+test(POWER_07_PoweredByVinPrepareWarmBootup) {
+    if (g_state != STATE5_MAGICK) {
+        skip();
+        return;
+    }
+
+    // Allow some time for the power management subsystem to settle (just in case)
+    waitFor(powerManagementSettled, 10000);
+    PMIC power(true);
+    assertMore(power.getInputCurrentLimit(), (uint16_t)100);
+    g_state = STATE6_MAGICK;
+    notifyAndReset();
+}
+
+test(POWER_08_PoweredByVinNoCurrentGlitchWarmBootup) {
+    if (g_state != STATE6_MAGICK) {
+        skip();
+        return;
+    }
+
+    // Allow some time for the power management subsystem to settle
+    // Mandatory delay to allow to catch input current limit data
+    delay(std::max(5000 - (int)millis(), 0));
+    waitFor(powerManagementSettled, 10000);
+
+    // Switch state immediately
+    g_state = STATE7_MAGICK;
+
+    assertNotEqual(s_powerInputCurrentLimitTracking.size(), 0);
+    for (int i = 0; i < s_powerInputCurrentLimitTracking.size(); i++) {
+        auto cur = s_powerInputCurrentLimitTracking[i];
+        Serial.printlnf("%u mA", cur);
+        // Check that there was no input current limit drop to 100mA
+        assertMore(cur, (uint16_t)100);
+    }
+}
+
+test(POWER_09_PoweredByVinPrepareColdBootup) {
+    if (g_state != STATE7_MAGICK) {
+        skip();
+        return;
+    }
+
+    // Allow some time for the power management subsystem to settle (just in case)
+    PMIC power(true);
+    assertMore(power.getInputCurrentLimit(), (uint16_t)100);
+
+    // We are emulating cold boot by blocking system power manager,
+    // enabling PMIC watchdog (which will reset PMIC state),
+    // waiting for watchdog fault and resetting immediately
+    power.resetWatchdog();
+    power.setWatchdog(0b01); // 40s - minimum
+    auto start = millis();
+    Serial.println("Device will restart in about 40s, restart the tests once it boots up");
+    while (millis() - start < 50000) {
+        if (power.isWatchdogFault()) {
+            g_state = STATE8_MAGICK;
+            System.reset();
+        }
+    }
+    // Watchdog fault never occured
+    assertTrue(false);
+}
+
+test(POWER_10_PoweredByVinNoCurrentGlitchColdBootup) {
+    if (g_state != STATE8_MAGICK) {
+        skip();
+        return;
+    }
+
+    // Allow some time for the power management subsystem to settle
+    // Mandatory delay to allow to catch input current limit data
+    delay(std::max(5000 - (int)millis(), 0));
+    waitFor(powerManagementSettled, 10000);
+
+    // Switch state immediately
+    g_state = STATE9_MAGICK;
+
+    uint16_t prev = 0;
+    assertNotEqual(s_powerInputCurrentLimitTracking.size(), 0);
+    for (int i = 0; i < s_powerInputCurrentLimitTracking.size(); i++) {
+        auto cur = s_powerInputCurrentLimitTracking[i];
+        Serial.printlnf("%u mA", cur);
+        // Check that there was no input current limit drop
+        assertMoreOrEqual(cur, prev);
+        prev = cur;
+    }
+
+    // Check that we've settled on > 100mA input current limit
+    assertEqual(PMIC().getInputCurrentLimit(), (uint16_t)particle::power::DEFAULT_INPUT_CURRENT_LIMIT);
+}
+
+test(POWER_11_ApplyingDefaultPowerManagementConfigurationInRuntimeWorksAsIntended) {
+    if (g_state != STATE9_MAGICK) {
         skip();
         return;
     }
 
     // Apply default configuration
     SystemPowerConfiguration conf;
-#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
     conf.feature(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST);
-#endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
     assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
     delay(1000);
 
@@ -101,8 +426,8 @@ test(POWER_01_ApplyingDefaultPowerManagementConfigurationInRuntimeWorksAsIntende
     assertEqual(power.getChargeVoltageValue(), particle::power::DEFAULT_TERMINATION_VOLTAGE);
 }
 
-test(POWER_02_ApplyingCustomPowerManagementConfigurationInRuntimeWorksAsIntended) {
-    if (g_state != STATE0_MAGICK) {
+test(POWER_12_ApplyingCustomPowerManagementConfigurationInRuntimeWorksAsIntended) {
+    if (g_state != STATE9_MAGICK) {
         skip();
         return;
     }
@@ -117,9 +442,7 @@ test(POWER_02_ApplyingCustomPowerManagementConfigurationInRuntimeWorksAsIntended
     conf.batteryChargeCurrent(850);
     conf.batteryChargeVoltage(4210);
     conf.feature(SystemPowerFeature::PMIC_DETECTION);
-#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
     conf.feature(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST);
-#endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
     assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
     delay(1000);
 
@@ -129,13 +452,13 @@ test(POWER_02_ApplyingCustomPowerManagementConfigurationInRuntimeWorksAsIntended
     assertEqual(power.getChargeCurrentValue(), 832);
     assertEqual(power.getChargeVoltageValue(), 4208);
 
-    g_state = STATE1_MAGICK;
+    g_state = STATE10_MAGICK;
     delay(5000);
-    System.reset();
+    notifyAndReset();
 }
 
-test(POWER_03_AppliedConfigurationIsPersisted) {
-    if (g_state != STATE1_MAGICK) {
+test(POWER_13_AppliedConfigurationIsPersisted) {
+    if (g_state != STATE10_MAGICK) {
         skip();
         return;
     }
@@ -147,8 +470,8 @@ test(POWER_03_AppliedConfigurationIsPersisted) {
     assertEqual(power.getChargeVoltageValue(), 4208);
 }
 
-test(POWER_04_PmicDetectionFlagIsCompatibleWithOldDeviceOsVersions) {
-    if (g_state != STATE1_MAGICK) {
+test(POWER_14_PmicDetectionFlagIsCompatibleWithOldDeviceOsVersions) {
+    if (g_state != STATE10_MAGICK) {
         skip();
         return;
     }
@@ -177,8 +500,8 @@ test(POWER_04_PmicDetectionFlagIsCompatibleWithOldDeviceOsVersions) {
     assertTrue((v & 0x01) == 0x01);
 }
 
-test(POWER_05_DisableFeatureFlag) {
-    if (g_state == STATE1_MAGICK) {
+test(POWER_15_DisableFeatureFlag) {
+    if (g_state == STATE10_MAGICK) {
         // Set disabled feature flag
         SystemPowerConfiguration conf;
         conf.feature(SystemPowerFeature::DISABLE);
@@ -187,19 +510,23 @@ test(POWER_05_DisableFeatureFlag) {
 #endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
         // NOTE: this setting will require a reboot to be applied
         assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
-        g_state = STATE2_MAGICK;
+        g_state = STATE11_MAGICK;
         delay(5000);
-        System.reset();
-    } else if (g_state == STATE2_MAGICK) {
-        g_state = STATE3_MAGICK;
+        notifyAndReset();
+    } else if (g_state == STATE11_MAGICK) {
         assertEqual(System.batteryState(), (int)BATTERY_STATE_UNKNOWN);
         assertEqual(System.powerSource(), (int)POWER_SOURCE_UNKNOWN);
+        // Restore default power management configuration
+        // NOTE: this setting will require a reboot to be applied
+        assertEqual(System.setPowerConfiguration(SystemPowerConfiguration()), (int)SYSTEM_ERROR_NONE);
+
+        g_state = STATE12_MAGICK;
     } else {
         skip();
         return;
     }
 }
 
-test(POWER_06_ResetState) {
+test(POWER_99_ResetState) {
     g_state = 0;
 }
