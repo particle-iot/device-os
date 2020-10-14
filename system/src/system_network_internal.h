@@ -515,35 +515,32 @@ public:
         {
             bool was_sleeping = SPARK_WLAN_SLEEP;
 
-            int r = on(); // activate WiFi
+            int onRet = on(); // activate WiFi
 
             WLAN_DISCONNECT = 0;
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
 
-            // on() failed, we'll rely on the system loop to call connect() again
-            if (r) {
-                // FIXME: this is a UI workaround, as otherwise the device
-                // will be in a breathing blue state, which might be confusing
-                LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL);
-                return;
+            // Only if power on succeeded
+            if (!onRet) {
+                CLR_WLAN_WD();
+                connect_init();
             }
 
-            CLR_WLAN_WD();
-
-            connect_init();
-
+            // This has side-effects on cellular platforms, so we need to run even if we've failed to completely power-on
             if (!has_credentials())
             {
                 if (listen_enabled) {
+                    CLR_WLAN_WD();
                     listen();
                 }
                 else if (was_sleeping) {
                     disconnect();
                 }
             }
-            else
+            else if (!onRet)
             {
+                // We are powered on and can initiate a connection
                 config_hostname();
                 LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL);
                 WLAN_CONNECTING = 1;
@@ -557,6 +554,11 @@ public:
                 if (ret != 0) {
                     diag->lastError(ret);
                 }
+            } else if (onRet) {
+                // on() failed, we'll rely on the system loop to call connect() again
+                // FIXME: this is a UI workaround, as otherwise the device
+                // will be in a breathing blue state, which might be confusing
+                LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL);
             }
         }
     }

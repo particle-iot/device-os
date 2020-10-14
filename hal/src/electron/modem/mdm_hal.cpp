@@ -927,8 +927,6 @@ bool MDMParser::powerOn(const char* simpin)
 
     // The modem type won't change that easily
     auto device_type = _dev.dev;
-    memset(&_dev, 0, sizeof(_dev));
-    _dev.dev = device_type;
     bool retried_after_reset = false;
 
     if (_resetFailureAttempts > 0) {
@@ -936,6 +934,9 @@ bool MDMParser::powerOn(const char* simpin)
             goto failure;
         }
     }
+
+    memset(&_dev, 0, sizeof(_dev));
+    _dev.dev = device_type;
 
     _error = 0;
 
@@ -961,6 +962,7 @@ bool MDMParser::powerOn(const char* simpin)
     for (int i = 0; (i < 5) && (_dev.sim != SIM_READY) && !_cancel_all_operations; i++) {
         sendFormated("AT+CPIN?\r\n");
         int ret = waitFinalResp(_cbCPIN, &_dev.sim);
+
         // having an error here is ok (sim may still be initializing)
         if ((RESP_OK != ret) && (RESP_ERROR != ret)) {
             goto failure;

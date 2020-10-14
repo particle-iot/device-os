@@ -144,11 +144,17 @@ public:
     bool has_credentials() override
     {
         bool rv = cellular_sim_ready(NULL);
-        LOG(INFO,"%s", (rv)?"Sim Ready":"SIM/modem not responsive or SIM not inserted/requires a PIN.");
+        // Suppress logs and only report errors
+        if (!rv) {
+            LOG(INFO,"%s", (rv)?"Sim Ready":"SIM/modem not responsive or SIM not inserted/requires a PIN.");
+        }
         if (!rv) {
             cellular_on(NULL);
             rv = cellular_sim_ready(NULL);
-            LOG(INFO,"%s", (rv)?"Sim Ready":"SIM/modem not responsive or SIM not inserted/requires a PIN.");
+            // Suppress logs and only report errors
+            if (!rv) {
+                LOG(INFO,"%s", (rv)?"Sim Ready":"SIM/modem not responsive or SIM not inserted/requires a PIN.");
+            }
         }
         return rv;
     }
