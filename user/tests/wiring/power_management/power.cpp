@@ -278,14 +278,12 @@ test(POWER_04_PoweredByUsbHostNoCurrentGlitchColdBootup) {
     // Switch state immediately
     g_state = STATE4_MAGICK;
 
-    uint16_t prev = 0;
     assertNotEqual(s_powerInputCurrentLimitTracking.size(), 0);
     for (int i = 0; i < s_powerInputCurrentLimitTracking.size(); i++) {
         auto cur = s_powerInputCurrentLimitTracking[i];
         Serial.printlnf("%u mA", cur);
         // Check that there was no input current limit drop
-        assertMoreOrEqual(cur, prev);
-        prev = cur;
+        assertMore(cur, (uint16_t)100);
     }
 
     // Check that we've settled on > 100mA input current limit
@@ -405,14 +403,12 @@ test(POWER_10_PoweredByVinNoCurrentGlitchColdBootup) {
     // Switch state immediately
     g_state = STATE9_MAGICK;
 
-    uint16_t prev = 0;
     assertNotEqual(s_powerInputCurrentLimitTracking.size(), 0);
     for (int i = 0; i < s_powerInputCurrentLimitTracking.size(); i++) {
         auto cur = s_powerInputCurrentLimitTracking[i];
         Serial.printlnf("%u mA", cur);
         // Check that there was no input current limit drop
-        assertMoreOrEqual(cur, prev);
-        prev = cur;
+        assertMore(cur, (uint16_t)100);
     }
 
     // Check that we've settled on > 100mA input current limit

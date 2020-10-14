@@ -243,6 +243,9 @@ void PowerManager::handleUpdate() {
           applyVinConfig();
         } else {
           src = POWER_SOURCE_USB_HOST;
+          // XXX: only performing DPDM detection if we switch from another type of
+          // power supply. POWER_SOURCE_UNKNOWN may only happen on boot,
+          // and that case is already properly handled in initDefault()
           applyDefaultConfig(src != g_powerSource && g_powerSource != POWER_SOURCE_UNKNOWN);
         }
         break;
@@ -417,6 +420,11 @@ void PowerManager::initDefault(bool dpdm) {
       // Force-start input current limit detection
       // only if we modified REG00 while in DPDM or we are not powered by VIN
       // and we have a non-100mA limit set
+      // NOTE: we have to wait for current one to finish
+      auto start = HAL_Timer_Get_Milli_Seconds();
+      while (power.isInDPDM() && (HAL_Timer_Get_Milli_Seconds() - start < 1000)) {
+        HAL_Delay_Milliseconds(50);
+      }
       power.enableDPDM();
     }
   }
