@@ -38,6 +38,7 @@ enum eWanTimings
 {
     CONNECT_TO_ADDRESS_MAX = S2M(30),
     DISCONNECT_TO_RECONNECT = S2M(2),
+    POWER_ON_WD = S2M(300)
 };
 
 extern volatile uint8_t SPARK_WLAN_RESET;
@@ -207,7 +208,7 @@ struct NetworkInterface
     virtual network_interface_t network_interface()=0;
     virtual void setup()=0;
 
-    virtual void on()=0;
+    virtual int on()=0;
     virtual void off(bool disconnect_cloud=false)=0;
     virtual void connect(bool listen_enabled=true)=0;
     virtual bool connecting()=0;
@@ -514,12 +515,23 @@ public:
         {
             bool was_sleeping = SPARK_WLAN_SLEEP;
 
-            on(); // activate WiFi
+            int r = on(); // activate WiFi
 
             WLAN_DISCONNECT = 0;
-            connect_init();
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
+
+            // on() failed, we'll rely on the system loop to call connect() again
+            if (r) {
+                // FIXME: this is a UI workaround, as otherwise the device
+                // will be in a breathing blue state, which might be confusing
+                LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL);
+                return;
+            }
+
+            CLR_WLAN_WD();
+
+            connect_init();
 
             if (!has_credentials())
             {
@@ -599,27 +611,41 @@ public:
         return (SPARK_WLAN_STARTED && WLAN_CONNECTING);
     }
 
-    void on() override
+    int on() override
     {
         LOG_NETWORK_STATE();
-        if (!SPARK_WLAN_STARTED)
+        if (!SPARK_WLAN_STARTED || !WLAN_INITIALIZED)
         {
+            bool startedPowerOn = !SPARK_WLAN_STARTED;
+            WLAN_INITIALIZED = 0;
             const auto diag = NetworkDiagnostics::instance();
             diag->status(NetworkDiagnostics::TURNING_ON);
-            system_notify_event(network_status, network_status_powering_on);
+            if (startedPowerOn) {
+                // Suppress these events
+                system_notify_event(network_status, network_status_powering_on);
+            }
             config_clear();
             const int ret = on_now();
             if (ret != 0) {
                 diag->lastError(ret);
+                if (!wlan_watchdog_duration) {
+                    // Just in case arm WLAN WD
+                    ARM_WLAN_WD(POWER_ON_WD);
+                }
+            } else {
+                WLAN_INITIALIZED = 1;
             }
             update_config(true);
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
-            WLAN_INITIALIZED = 1;
             LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
-            diag->status(NetworkDiagnostics::DISCONNECTED);
-            system_notify_event(network_status, network_status_on);
+            if (!ret) {
+                diag->status(NetworkDiagnostics::DISCONNECTED);
+                system_notify_event(network_status, network_status_on);
+            }
+            return ret;
         }
+        return 0;
     }
 
     void off(bool disconnect_cloud=false) override
@@ -627,6 +653,7 @@ public:
         LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
         {
+            CLR_WLAN_WD();
             // TODO: We should report NETWORK_DISCONNECT_REASON_USER if the network interface is
             // being turned off at the user's request
             disconnect(NETWORK_DISCONNECT_REASON_NETWORK_OFF);

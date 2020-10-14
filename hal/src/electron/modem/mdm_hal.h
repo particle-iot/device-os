@@ -668,6 +668,8 @@ protected:
     int _debugLevel;
     void _debugPrint(int level, const char* color, const char* format, ...) __attribute__((format(printf, 4, 5)));
 #endif
+    uint32_t _resetFailureAttempts;
+    system_tick_t _resetFailureTimestamp;
 };
 
 // -----------------------------------------------------------------------
