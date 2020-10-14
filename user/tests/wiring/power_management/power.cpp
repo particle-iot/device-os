@@ -141,7 +141,7 @@ bool powerManagementSettled() {
     return batteryStateUpdated() && powerSourceUpdated();
 }
 
-void notifyAndReset() {
+void notifyAndReset(bool reset = true) {
 #ifndef PARTICLE_TEST_RUNNER
     while (Serial.available() > 0) {
         Serial.read();
@@ -151,7 +151,9 @@ void notifyAndReset() {
 #else
 #error "This test needs to be modified to notify test runner that we are going to reboot"
 #endif // PARTICLE_TEST_RUNNER
-    System.reset();
+    if (reset) {
+        System.reset();
+    }
 }
 
 STARTUP(startup());
@@ -164,7 +166,13 @@ test(POWER_00_Prepare) {
         conf.feature(SystemPowerFeature::PMIC_DETECTION);
         System.setPowerConfiguration(conf);
         g_state = STATE0_MAGICK;
-        notifyAndReset();
+        notifyAndReset(false);
+        // Reset PMIC to start with a clean slate and disconnect USB so that it doesn't interfere
+        Serial.end();
+        PMIC power(true);
+        power.reset();
+        // Finally reset ourselves
+        System.reset();
     } else {
         skip();
     }
@@ -246,6 +254,8 @@ test(POWER_03_PoweredByUsbHostPrepareColdBootup) {
     Serial.println("Device will restart in about 40s, restart the tests once it boots up");
     while (millis() - start < 50000) {
         if (power.isWatchdogFault()) {
+            // Disable Serial so it doesn't interferer with initial DPDM detection on boot
+            Serial.end();
             g_state = STATE3_MAGICK;
             System.reset();
         }
@@ -371,6 +381,8 @@ test(POWER_09_PoweredByVinPrepareColdBootup) {
     Serial.println("Device will restart in about 40s, restart the tests once it boots up");
     while (millis() - start < 50000) {
         if (power.isWatchdogFault()) {
+            // Disable Serial so it doesn't interferer with initial DPDM detection on boot
+            Serial.end();
             g_state = STATE8_MAGICK;
             System.reset();
         }

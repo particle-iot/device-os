@@ -243,7 +243,7 @@ void PowerManager::handleUpdate() {
           applyVinConfig();
         } else {
           src = POWER_SOURCE_USB_HOST;
-          applyDefaultConfig(src != g_powerSource);
+          applyDefaultConfig(src != g_powerSource && g_powerSource != POWER_SOURCE_UNKNOWN);
         }
         break;
       }

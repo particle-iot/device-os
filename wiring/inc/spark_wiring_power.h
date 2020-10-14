@@ -79,6 +79,7 @@ public:
     bool setMinimumSystemVoltage(uint16_t voltage);
     uint16_t getMinimumSystemVoltage();
     byte readPowerONRegister(void);
+    void reset();
 
     // Charge current control register
     bool setChargeCurrent(bool bit7, bool bit6, bool bit5, bool bit4, bool bit3, bool bit2);

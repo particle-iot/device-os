@@ -407,6 +407,13 @@ byte PMIC::readPowerONRegister(void) {
 
 }
 
+void PMIC::reset() {
+    std::lock_guard<PMIC> l(*this);
+    byte DATA = readRegister(POWERON_CONFIG_REGISTER);
+    DATA |= 0x80;
+    writeRegister(POWERON_CONFIG_REGISTER, DATA);
+}
+
 /*******************************************************************************
  * Function Name  : enableCharging
  * Description    :
