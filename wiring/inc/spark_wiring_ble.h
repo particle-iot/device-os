@@ -190,8 +190,11 @@ public:
     int set(const uint8_t addr[BLE_SIG_ADDR_LEN], BleAddressType type = BleAddressType::PUBLIC);
     int set(const char* address, BleAddressType type = BleAddressType::PUBLIC);
     int set(const String& address, BleAddressType type = BleAddressType::PUBLIC);
-    BleAddress& operator=(const hal_ble_addr_t& addr);
-    BleAddress& operator=(const uint8_t addr[BLE_SIG_ADDR_LEN]);
+
+    template<typename T>
+    BleAddress& operator=(T addr) {
+        return *this = BleAddress(addr);
+    }
 
     // Getters
     BleAddressType type() const;
@@ -202,6 +205,16 @@ public:
     uint8_t operator[](uint8_t i) const;
 
     bool operator==(const BleAddress& addr) const;
+
+    template<typename T>
+    bool operator==(T addr) const {
+        return *this == BleAddress(addr);
+    }
+
+    template<typename T>
+    bool operator!=(T addr) const {
+        return !(*this == BleAddress(addr));
+    }
 
 private:
     void toBigEndian(uint8_t buf[BLE_SIG_ADDR_LEN]) const;
@@ -236,18 +249,22 @@ public:
     String toString(bool stripped = false) const;
     size_t toString(char* buf, size_t len, bool stripped = false) const;
 
-    BleUuid& operator=(const BleUuid& uuid);
-    BleUuid& operator=(const uint8_t* uuid128);
-    BleUuid& operator=(uint16_t uuid16);
-    BleUuid& operator=(const String& uuid);
-    BleUuid& operator=(const char* uuid);
-    BleUuid& operator=(const hal_ble_uuid_t& uuid);
+    template<typename T>
+    BleUuid& operator=(T uuid) {
+        return *this = BleUuid(uuid);
+    }
 
     bool operator==(const BleUuid& uuid) const;
-    bool operator==(const char* uuid) const;
-    bool operator==(const String& uuid) const;
-    bool operator==(uint16_t uuid) const;
-    bool operator==(const uint8_t* uuid128) const;
+
+    template<typename T>
+    bool operator==(T uuid) const {
+        return *this == BleUuid(uuid);
+    }
+
+    template<typename T>
+    bool operator!=(T uuid) const {
+        return !(*this == BleUuid(uuid));
+    }
 
 private:
     void construct(const char* uuid);

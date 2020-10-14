@@ -229,16 +229,6 @@ uint8_t BleAddress::operator[](uint8_t i) const {
     return address_.addr[i];
 }
 
-BleAddress& BleAddress::operator=(const hal_ble_addr_t& addr) {
-    address_ = addr;
-    return *this;
-}
-
-BleAddress& BleAddress::operator=(const uint8_t addr[BLE_SIG_ADDR_LEN]) {
-    memcpy(address_.addr, addr, BLE_SIG_ADDR_LEN);
-    return *this;
-}
-
 bool BleAddress::operator==(const BleAddress& addr) const {
     if (address_.addr_type == addr.address_.addr_type && !memcmp(address_.addr, addr.address_.addr, BLE_SIG_ADDR_LEN)) {
         return true;
@@ -398,56 +388,8 @@ size_t BleUuid::toString(char* buf, size_t len, bool stripped) const {
     return len;
 }
 
-BleUuid& BleUuid::operator=(const BleUuid& uuid) {
-    type_ = uuid.type_;
-    memcpy(uuid128_, uuid.uuid128_, BLE_SIG_UUID_128BIT_LEN);
-    return *this;
-}
-
-BleUuid& BleUuid::operator=(const uint8_t* uuid128) {
-    return *this = BleUuid(uuid128);
-}
-
-BleUuid& BleUuid::operator=(uint16_t uuid16) {
-    return *this = BleUuid(uuid16);
-}
-
-BleUuid& BleUuid::operator=(const String& uuid) {
-    construct(uuid.c_str());
-    return *this;
-}
-
-BleUuid& BleUuid::operator=(const char* uuid) {
-    construct(uuid);
-    return *this;
-}
-
-BleUuid& BleUuid::operator=(const hal_ble_uuid_t& uuid) {
-    return *this = BleUuid(uuid);
-}
-
 bool BleUuid::operator==(const BleUuid& uuid) const {
     return ((type_ == uuid.type_) && !memcmp(uuid128_, uuid.uuid128_, BLE_SIG_UUID_128BIT_LEN));
-}
-
-bool BleUuid::operator==(const char* uuid) const {
-    BleUuid temp(uuid);
-    return *this == temp;
-}
-
-bool BleUuid::operator==(const String& uuid) const {
-    BleUuid temp(uuid);
-    return *this == temp;
-}
-
-bool BleUuid::operator==(uint16_t uuid) const {
-    BleUuid temp(uuid);
-    return *this == temp;
-}
-
-bool BleUuid::operator==(const uint8_t* uuid128) const {
-    BleUuid temp(uuid128);
-    return *this == temp;
 }
 
 void BleUuid::construct(const char* uuid) {
