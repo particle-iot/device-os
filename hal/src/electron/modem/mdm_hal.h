@@ -616,7 +616,8 @@ protected:
     // variables
     DevStatus   _dev; //!< collected device information
     char _verExtended[32]; //!< collected modem and application version string (ATI9)
-    bool _memoryIssuePresent = true; //!< flag to add specific delays when the firmware version with memory issue is present
+    bool _memoryIssuePresent; //!< flag to add specific delays when the firmware version with memory issue is present
+    bool _oldFirmwarePresent; //!< flag to add indicate specific issues present with older firmware versions
     system_tick_t _timePowerOn; //!< timestamp when unit was powered on (to be used in conjunction with _memoryIssuePresent)
     system_tick_t _timeRegistered; //!< timestamp when unit was registered on (to be used in conjunction with _memoryIssuePresent)
     NetStatus   _net; //!< collected network information

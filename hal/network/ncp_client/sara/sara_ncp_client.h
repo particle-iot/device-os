@@ -107,7 +107,8 @@ private:
     system_tick_t registeredTime_;
     system_tick_t powerOnTime_;
     unsigned int fwVersion_ = 0;
-    bool memoryIssuePresent_ = false;
+    bool memoryIssuePresent_;
+    bool oldFirmwarePresent_;
     unsigned registrationTimeout_;
     unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
