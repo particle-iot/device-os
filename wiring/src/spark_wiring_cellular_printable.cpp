@@ -20,6 +20,7 @@
 #include "spark_wiring_cellular_printable.h"
 #include "spark_wiring_print.h"
 #include "string.h"
+#include <stdlib.h>
 #include <limits>
 
 #if Wiring_Cellular || defined(UNIT_TEST)
@@ -79,10 +80,45 @@ float CellularSignal::getQualityValue() const
 size_t CellularSignal::printTo(Print& p) const
 {
     size_t n = 0;
-    n += p.print((*this).getStrengthValue(), (int)2);
+    n += p.print(this->getStrengthValue(), 2);
     n += p.print(',');
-    n += p.print((*this).getQualityValue(), (int)2);
+    n += p.print(this->getQualityValue(), 2);
     return n;
+}
+
+bool CellularSignal::isAccessTechnologyValid() const
+{
+    return (sig_.rat != NET_ACCESS_TECHNOLOGY_NONE);
+}
+
+bool CellularSignal::isSignalStrengthValid() const
+{
+    return (sig_.rssi != std::numeric_limits<int32_t>::min());
+}
+
+bool CellularSignal::isSignalQualityValid() const
+{
+    return (sig_.qual != std::numeric_limits<int32_t>::min());
+}
+
+bool CellularSignal::isSignalQualitySupported() const
+{
+#if (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION)
+    return (sig_.rat == NET_ACCESS_TECHNOLOGY_GSM) ? false : true;
+#else
+    return true;
+#endif
+}
+
+bool CellularSignal::isValid() const
+{
+    return (isAccessTechnologyValid() && isSignalStrengthValid() &&
+                (isSignalQualitySupported() ? isSignalQualityValid() : true));
+}
+
+CellularSignal::operator bool() const
+{
+    return isValid();
 }
 
 size_t CellularData::printTo(Print& p) const
