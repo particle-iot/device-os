@@ -1338,20 +1338,7 @@ int BleObject::Observer::continueScanning() {
 void BleObject::Observer::onScanGuardTimerExpired(os_timer_t timer) {
     Observer* observer;
     os_timer_get_id(timer, (void**)&observer);
-    if (!observer->isScanning_) {
-        return;
-    }
-    // It's possible that a SoftDevice timeout occures here to give the semaphore.
-    bool give = false;
-    ATOMIC_BLOCK() {
-        if (observer->isScanning_) {
-            observer->isScanning_ = false;
-            give = true;
-        }
-    }
-    if (give) {
-        os_semaphore_give(observer->scanSemaphore_, false);
-    }
+    observer->stopScanning();
 }
 
 int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
@@ -1387,8 +1374,11 @@ int BleObject::Observer::stopScanning() {
     if (!isScanning_) {
         return SYSTEM_ERROR_NONE;
     }
-    int ret = sd_ble_gap_scan_stop();
-    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+    // Ignore the returned value, as the SoftDevice might be messed up considering the device is not in scanning state,
+    // but wee neeed to give the semaphore to unblock the thread that initiated the scanning procedure.
+    if (sd_ble_gap_scan_stop() != NRF_SUCCESS) {
+        LOG(ERROR, "Device is not in scanning state.");
+    }
     bool give = false;
     ATOMIC_BLOCK() {
         if (isScanning_) {
@@ -1839,10 +1829,10 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
     });
     if (connection->info.role == BLE_ROLE_PERIPHERAL) {
         // If the automatic peripheral connection parameters update procedure is started.
-        if (!os_timer_is_active(connParamsUpdateTimer_, nullptr)) {
+        if (os_timer_is_active(connParamsUpdateTimer_, nullptr)) {
             periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
             connParamsUpdateAttempts_ = 0;
-            os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
+            os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, HAL_IsISR() ? true : false, 0, 0, nullptr);
         }
     }
     ble_gap_conn_params_t bleGapConnParams = {};
@@ -1970,7 +1960,7 @@ void BleObject::ConnectionsManager::initiateConnParamsUpdateIfNeeded(const BleCo
         return;
     }
     if (connParamsUpdateAttempts_ < BLE_CONN_PARAMS_UPDATE_ATTEMPS) {
-        if (!os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_START, true, 0, 0, nullptr)) {
+        if (!os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_START, false, 0, 0, nullptr)) {
             periphConnParamUpdateHandle_ = connection->info.conn_handle;
             LOG_DEBUG(TRACE, "Attempts to update BLE connection parameters, try: %d after %d ms", connParamsUpdateAttempts_, BLE_CONN_PARAMS_UPDATE_DELAY_MS);
         }
@@ -2094,7 +2084,7 @@ int BleObject::ConnectionsManager::processConnectedEventFromThread(const ble_evt
     }
     if (desiredAttMtu_ > BLE_DEFAULT_ATT_MTU_SIZE) {
         // FIXME: What if there is another new connection established before the timer expired?
-        if (!os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_START, true, 0, 0, nullptr)) {
+        if (!os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_START, false, 0, 0, nullptr)) {
             LOG_DEBUG(TRACE, "Attempts to exchange ATT_MTU if needed.");
             attMtuExchangeConnHandle_ = event->evt.gap_evt.conn_handle;
         }
@@ -2116,10 +2106,10 @@ int BleObject::ConnectionsManager::processDisconnectedEventFromThread(const ble_
     }
     // Cancel the on-going connection parameters update procedure.
     if (periphConnParamUpdateHandle_ == connection->info.conn_handle) {
-        if (!os_timer_is_active(connParamsUpdateTimer_, nullptr)) {
+        if (os_timer_is_active(connParamsUpdateTimer_, nullptr)) {
             connParamsUpdateAttempts_ = 0;
             periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
-            os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
+            os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, false, 0, 0, nullptr);
         } else {
             periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
             os_semaphore_give(connParamsUpdateSemaphore_, false);
@@ -2130,8 +2120,8 @@ int BleObject::ConnectionsManager::processDisconnectedEventFromThread(const ble_
         os_semaphore_give(connParamsUpdateSemaphore_, false);
     }
     // If the ATT MTU exchanging procedure is on-going.
-    if (!os_timer_is_active(attMtuExchangeTimer_, nullptr)) {
-        os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
+    if (os_timer_is_active(attMtuExchangeTimer_, nullptr)) {
+        os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_STOP, false, 0, 0, nullptr);
     }
     // Remove the GATTS subscriber.
     BleObject::getInstance().gatts()->removeSubscriberFromAllCharacteristics(connection->info.conn_handle);
