@@ -114,7 +114,61 @@ test(CELLULAR_02_device_will_connect_to_the_cloud_when_all_udp_sockets_consumed)
     // Then the device overcomes this socket obstacle and connects to the Cloud
     assertEqual(Particle.connected(), true);
 }
-
 #endif // !HAL_USE_SOCKET_HAL_POSIX
+
+test(CELLULAR_03_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected_modem_brown_out_occurs) {
+#if PLATFORM_ID != PLATFORM_ELECTRON
+    skip();
+    return;
+#endif
+    // Serial.println("the device will reconnect to the cloud within 2 min when unexpected modem brown out occurs");
+    // Given the device is currently connected to the Cloud
+    connect_to_cloud(6*60*1000);
+    // When the device modem suffers a simulated brown out (modem reset and powered back on with no initialization)
+    digitalWrite(RESET_UC, 0);
+    delay(10000);
+    digitalWrite(RESET_UC, 1);
+    do {
+        // SARA-U2/LISA-U2 50..80us
+        digitalWrite(PWR_UC, 0);
+        delay(50);
+        digitalWrite(PWR_UC, 1);
+        delay(10);
+
+        // SARA-G35 >5ms, LISA-C2 > 150ms, LEON-G2 >5ms, SARA-R4 >= 150ms
+        digitalWrite(PWR_UC, 0);
+        delay(150);
+        digitalWrite(PWR_UC, 1);
+        delay(100);
+    } while (RESP_OK != Cellular.command(1000, "AT\r\n"));
+    // Then the device overcomes this brown out obstacle and reconnects to the Cloud within 2 minutes
+    system_tick_t start = millis();
+    waitFor(Particle.disconnected, 60*1000);
+    assertEqual(Particle.disconnected, true);
+    waitFor(Particle.connected, 2*60*1000 - (millis() - start));
+    assertEqual(Particle.connected(), true);
+}
+
+test(CELLULAR_04_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected_modem_power_off_occurs) {
+#if PLATFORM_ID != PLATFORM_ELECTRON
+    skip();
+    return;
+#endif
+    // Serial.println("the device will reconnect to the cloud when unexpected modem power off occurs, within 2min");
+    // Given the device is currently connected to the Cloud
+    connect_to_cloud(6*60*1000);
+    // When the device modem powers off unexpectedly
+    digitalWrite(PWR_UC, 0);
+    // >1.5 seconds on SARA R410M
+    // >1 second on SARA U2
+    delay(1600);
+    digitalWrite(PWR_UC, 1);
+    // Then the device overcomes this reset obstacle and reconnects to the Cloud within 2 minutes
+    system_tick_t start = millis();
+    waitFor(Particle.disconnected, 60*1000);
+    assertEqual(Particle.disconnected, true);
+    waitFor(Particle.connected, 2*60*1000 - (millis() - start));
+    assertEqual(Particle.connected(), true);
+}
 
 #endif // Wiring_Cellular
