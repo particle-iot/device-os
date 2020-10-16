@@ -36,8 +36,8 @@
  */
 class CellularSignal : public particle::Signal, public Printable {
 public:
-    int rssi __attribute__((deprecated("Use getSignalStrengthValue() instead"))) = 0;
-    int qual __attribute__((deprecated("Use getSignalQualityValue() instead"))) = 0;
+    int rssi __attribute__((deprecated("Use getStrengthValue() instead"))) = 0;
+    int qual __attribute__((deprecated("Use getQualityValue() instead"))) = 0;
 
 // TODO: remove once rssi/qual are removed
 #pragma GCC diagnostic push
