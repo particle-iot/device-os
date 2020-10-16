@@ -1689,8 +1689,11 @@ int SaraNcpClient::enterDataMode() {
 
     CHECK(waitAtResponse(dataParser_, 5000));
 
-    // Ignore response
-    CHECK(dataParser_.execCommand(20000, "ATH"));
+    if (ncpId() != PLATFORM_NCP_SARA_R410) {
+        // Ignore response
+        // SARA R4 does not support this, see above
+        CHECK(dataParser_.execCommand(20000, "ATH"));
+    }
 
     auto resp = dataParser_.sendCommand(3 * 60 * 1000, "ATD*99***1#");
     if (resp.hasNextLine()) {
