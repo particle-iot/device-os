@@ -146,6 +146,7 @@ typedef hal_ble_attr_handle_t BleAttributeHandle;
 
 typedef void (*BleOnDataReceivedCallback)(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
 typedef void (*BleOnScanResultCallback)(const BleScanResult* device, void* context);
+typedef void (*BleOnScanResultCallbackRef)(const BleScanResult& device, void* context);
 typedef void (*BleOnConnectedCallback)(const BlePeerDevice& peer, void* context);
 typedef void (*BleOnDisconnectedCallback)(const BlePeerDevice& peer, void* context);
 
@@ -577,6 +578,7 @@ public:
 
     // Scanning control
     int scan(BleOnScanResultCallback callback, void* context) const;
+    int scan(BleOnScanResultCallbackRef callback, void* context) const;
     int scan(BleScanResult* results, size_t resultCount) const;
     Vector<BleScanResult> scan() const;
     int stopScanning() const;

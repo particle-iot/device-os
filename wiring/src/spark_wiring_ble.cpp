@@ -1906,6 +1906,15 @@ public:
 
     int start(BleOnScanResultCallback callback, void* context) {
         callback_ = callback;
+        callbackRef_ = nullptr;
+        context_ = context;
+        CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
+        return foundCount_;
+    }
+
+    int start(BleOnScanResultCallbackRef callback, void* context) {
+        callbackRef_ = callback;
+        callback_ = nullptr;
         context_ = context;
         CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
         return foundCount_;
@@ -1932,6 +1941,8 @@ private:
      */
     static void onScanResultCallback(const hal_ble_scan_result_evt_t* event, void* context) {
         BleScanDelegator* delegator = static_cast<BleScanDelegator*>(context);
+        delegator->foundCount_++;
+
         BleScanResult result = {};
         result.address = event->peer_addr;
         result.rssi = event->rssi;
@@ -1939,12 +1950,14 @@ private:
         result.advertisingData.set(event->adv_data, event->adv_data_len);
         if (delegator->callback_) {
             delegator->callback_(&result, delegator->context_);
-            delegator->foundCount_++;
+            return;
+        } else if (delegator->callbackRef_) {
+            delegator->callbackRef_(result, delegator->context_);
             return;
         }
         if (delegator->resultsPtr_) {
-            if (delegator->foundCount_ < delegator->targetCount_) {
-                delegator->resultsPtr_[delegator->foundCount_++] = result;
+            if (delegator->foundCount_ <= delegator->targetCount_) {
+                delegator->resultsPtr_[delegator->foundCount_ - 1] = result;
                 if (delegator->foundCount_ >= delegator->targetCount_) {
                     LOG_DEBUG(TRACE, "Target number of devices found. Stop scanning...");
                     hal_ble_gap_stop_scan(nullptr);
@@ -1952,9 +1965,7 @@ private:
             }
             return;
         }
-        if (delegator->resultsVector_.append(result)) {
-            delegator->foundCount_++;
-        }
+        delegator->resultsVector_.append(result);
     }
 
     Vector<BleScanResult> resultsVector_;
@@ -1962,6 +1973,7 @@ private:
     size_t targetCount_;
     size_t foundCount_;
     BleOnScanResultCallback callback_;
+    BleOnScanResultCallbackRef callbackRef_;
     void* context_;
 };
 
@@ -1985,6 +1997,12 @@ int BleLocalDevice::getScanParameters(BleScanParams* params) const {
 }
 
 int BleLocalDevice::scan(BleOnScanResultCallback callback, void* context) const {
+    WiringBleLock lk;
+    BleScanDelegator scanner;
+    return scanner.start(callback, context);
+}
+
+int BleLocalDevice::scan(BleOnScanResultCallbackRef callback, void* context) const {
     WiringBleLock lk;
     BleScanDelegator scanner;
     return scanner.start(callback, context);
