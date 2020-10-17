@@ -111,6 +111,7 @@ RecursiveMutex WiringBleLock::mutex_;
  */
 BleAddress::BleAddress()
         : address_{} {
+    clear();
     address_.addr_type = BLE_SIG_ADDR_TYPE_PUBLIC;
 }
 
@@ -324,9 +325,9 @@ bool BleAddress::valid() const {
         memcpy(temp, address_.addr, BLE_SIG_ADDR_LEN);
         if (address_.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC || address_.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE) {
             temp[5] &= 0x3F; // Clear the two most significant bits
-            CHECK_TRUE(memcmp(address_.addr, bitsClear, BLE_SIG_ADDR_LEN), false);
+            CHECK_TRUE(memcmp(temp, bitsClear, BLE_SIG_ADDR_LEN), false);
             temp[5] |= 0xC0; // Set the two most significant bits
-            CHECK_TRUE(memcmp(address_.addr, bitsSet, BLE_SIG_ADDR_LEN), false);
+            CHECK_TRUE(memcmp(temp, bitsSet, BLE_SIG_ADDR_LEN), false);
             if (address_.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
                 return (address_.addr[5] & 0xC0) == 0xC0;
             } else {
@@ -334,9 +335,9 @@ bool BleAddress::valid() const {
             }
         } else if (address_.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE) {
             temp[5] &= 0x3F;
-            CHECK_TRUE(memcmp(&address_.addr[3], &bitsClear[3], 3), false);
+            CHECK_TRUE(memcmp(&temp[3], &bitsClear[3], 3), false);
             temp[5] |= 0xC0;
-            CHECK_TRUE(memcmp(&address_.addr[3], &bitsSet[3], 3), false);
+            CHECK_TRUE(memcmp(&temp[3], &bitsSet[3], 3), false);
             return (address_.addr[5] & 0xC0) == 0x40;
         }
     }
@@ -1898,6 +1899,7 @@ public:
               targetCount_(0),
               foundCount_(0),
               callback_(nullptr),
+              callbackRef_(nullptr),
               context_(nullptr) {
         resultsVector_.clear();
     }

@@ -466,6 +466,10 @@ private:
 
 class BleScanResult {
 public:
+    BleScanResult()
+            : rssi_(0xFF) {
+    }
+
     BleScanResult& address(const BleAddress& addr) {
         address_ = addr;
         return *this;

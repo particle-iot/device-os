@@ -38,17 +38,17 @@ void loop() {
         uint8_t buf[BLE_MAX_ADV_DATA_LEN];
         size_t len;
 
-        LOG(TRACE, "%d devices are found:", count);
+        Log.info("%d devices are found:", count);
         for (int i = 0; i < count; i++) {
-            LOG(TRACE, " -------- MAC: %s | RSSI: %dBm --------", results[i].address().toString().c_str(), results[i].rssi());
+            Log.info(" -------- MAC: %s | RSSI: %dBm --------", results[i].address().toString().c_str(), results[i].rssi());
 
             String name = results[i].advertisingData().deviceName();
             if (name.length() > 0) {
-                LOG(TRACE, "Local name: %s", name.c_str());
+                Log.info("Local name: %s", name.c_str());
             }
             name = results[i].scanResponse().deviceName();
             if (name.length() > 0) {
-                LOG(TRACE, "Local name: %s", name.c_str());
+                Log.info("Local name: %s", name.c_str());
             }
 
             len = results[i].advertisingData().get(buf, sizeof(buf));
