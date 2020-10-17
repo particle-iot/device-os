@@ -40,19 +40,18 @@ void loop() {
 
         LOG(TRACE, "%d devices are found:", count);
         for (int i = 0; i < count; i++) {
-            BleAddress address = results[i].address;
-            LOG(TRACE, " -------- MAC: %s | RSSI: %dBm --------", address.toString().c_str(), results[i].rssi);
+            LOG(TRACE, " -------- MAC: %s | RSSI: %dBm --------", results[i].address().toString().c_str(), results[i].rssi());
 
-            String name = results[i].advertisingData.deviceName();
+            String name = results[i].advertisingData().deviceName();
             if (name.length() > 0) {
                 LOG(TRACE, "Local name: %s", name.c_str());
             }
-            name = results[i].scanResponse.deviceName();
+            name = results[i].scanResponse().deviceName();
             if (name.length() > 0) {
                 LOG(TRACE, "Local name: %s", name.c_str());
             }
 
-            len = results[i].advertisingData(buf, sizeof(buf));
+            len = results[i].advertisingData().get(buf, sizeof(buf));
             if (len > 0) {
                 Serial1.print("Advertising data: ");
                 for (size_t j = 0; j < len; j++) {
@@ -61,7 +60,7 @@ void loop() {
                 Serial1.println("\r\n");
             }
 
-            len = results[i].scanResponse(buf, sizeof(buf));
+            len = results[i].scanResponse().get(buf, sizeof(buf));
             if (len > 0) {
                 Serial1.print("Scan response data: ");
                 for (size_t j = 0; j < len; j++) {

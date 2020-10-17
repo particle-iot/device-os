@@ -145,8 +145,8 @@ typedef hal_ble_conn_handle_t BleConnectionHandle;
 typedef hal_ble_attr_handle_t BleAttributeHandle;
 
 typedef void (*BleOnDataReceivedCallback)(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-typedef void (*BleOnScanResultCallback)(const BleScanResult* device, void* context);
-typedef void (*BleOnScanResultCallbackRef)(const BleScanResult& device, void* context);
+typedef void (*BleOnScanResultCallback)(const BleScanResult* result, void* context);
+typedef void (*BleOnScanResultCallbackRef)(const BleScanResult& result, void* context);
 typedef void (*BleOnConnectedCallback)(const BlePeerDevice& peer, void* context);
 typedef void (*BleOnDisconnectedCallback)(const BlePeerDevice& peer, void* context);
 
@@ -466,10 +466,52 @@ private:
 
 class BleScanResult {
 public:
-    BleAddress address;
-    BleAdvertisingData advertisingData;
-    BleAdvertisingData scanResponse;
-    int8_t rssi;
+    BleScanResult& address(const BleAddress& addr) {
+        address_ = addr;
+        return *this;
+    }
+
+    BleScanResult& advertisingData(const BleAdvertisingData& advData) {
+        advertisingData_ = advData;
+        return *this;
+    }
+
+    BleScanResult& advertisingData(const uint8_t* buf, size_t len) {
+        advertisingData_.set(buf, len);
+        return *this;
+    }
+
+    BleScanResult& scanResponse(const uint8_t* buf, size_t len) {
+        scanResponse_.set(buf, len);
+        return *this;
+    }
+
+    BleScanResult& rssi(int8_t value) {
+        rssi_ = value;
+        return *this;
+    }
+
+    const BleAddress& address() const {
+        return address_;
+    }
+
+    const BleAdvertisingData& advertisingData() const {
+        return advertisingData_;
+    }
+
+    const BleAdvertisingData& scanResponse() const {
+        return scanResponse_;
+    }
+
+    int8_t rssi() const {
+        return rssi_;
+    }
+
+private:
+    BleAddress address_;
+    BleAdvertisingData advertisingData_;
+    BleAdvertisingData scanResponse_;
+    int8_t rssi_;
 };
 
 

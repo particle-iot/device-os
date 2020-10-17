@@ -1944,10 +1944,9 @@ private:
         delegator->foundCount_++;
 
         BleScanResult result = {};
-        result.address = event->peer_addr;
-        result.rssi = event->rssi;
-        result.scanResponse.set(event->sr_data, event->sr_data_len);
-        result.advertisingData.set(event->adv_data, event->adv_data_len);
+        result.address(event->peer_addr).rssi(event->rssi)
+              .scanResponse(event->sr_data, event->sr_data_len)
+              .advertisingData(event->adv_data, event->adv_data_len);
         if (delegator->callback_) {
             delegator->callback_(&result, delegator->context_);
             return;
