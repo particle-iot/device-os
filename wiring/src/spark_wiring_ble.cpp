@@ -313,6 +313,42 @@ bool BleAddress::operator!=(const String& address) const {
     return toString() != address;
 }
 
+bool BleAddress::valid() const {
+    // Reference: Bluetooth Core v5.0, Vol 6, Part B, Section 1.3, Device Address.
+    constexpr uint8_t bitsClear[BLE_SIG_ADDR_LEN] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    constexpr uint8_t bitsSet[BLE_SIG_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    if (address_.addr_type == BLE_SIG_ADDR_TYPE_PUBLIC) {
+        return memcmp(address_.addr, bitsClear, BLE_SIG_ADDR_LEN) && memcmp(address_.addr, bitsSet, BLE_SIG_ADDR_LEN);
+    } else {
+        uint8_t temp[BLE_SIG_ADDR_LEN];
+        memcpy(temp, address_.addr, BLE_SIG_ADDR_LEN);
+        if (address_.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC || address_.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE) {
+            temp[5] &= 0x3F; // Clear the two most significant bits
+            CHECK_TRUE(memcmp(address_.addr, bitsClear, BLE_SIG_ADDR_LEN), false);
+            temp[5] |= 0xC0; // Set the two most significant bits
+            CHECK_TRUE(memcmp(address_.addr, bitsSet, BLE_SIG_ADDR_LEN), false);
+            if (address_.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
+                return (address_.addr[5] & 0xC0) == 0xC0;
+            } else {
+                return (address_.addr[5] & 0xC0) == 0x00;
+            }
+        } else if (address_.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE) {
+            temp[5] &= 0x3F;
+            CHECK_TRUE(memcmp(&address_.addr[3], &bitsClear[3], 3), false);
+            temp[5] |= 0xC0;
+            CHECK_TRUE(memcmp(&address_.addr[3], &bitsSet[3], 3), false);
+            return (address_.addr[5] & 0xC0) == 0x40;
+        }
+    }
+    // Other address type
+    return true;
+}
+
+int BleAddress::clear() {
+    memset(address_.addr, 0xFF, BLE_SIG_ADDR_LEN);
+    return SYSTEM_ERROR_NONE;
+}
+
 void BleAddress::toBigEndian(uint8_t buf[BLE_SIG_ADDR_LEN]) const {
     for (uint8_t i = 0, j = BLE_SIG_ADDR_LEN - 1; i < BLE_SIG_ADDR_LEN; i++, j--) {
         buf[i] = address_.addr[j];
@@ -383,6 +419,10 @@ BleUuid::BleUuid(const String& uuid)
 }
 
 bool BleUuid::isValid() const {
+    return valid();
+}
+
+bool BleUuid::valid() const {
     if (type() == BleUuidType::SHORT) {
         return (uuid128_[UUID16_LO] != 0x00 || uuid128_[UUID16_HI] != 0x00);
     } else {
@@ -836,7 +876,7 @@ public:
     }
 
     void assignUuidIfNeeded() {
-        if (!charUuid_.isValid()) {
+        if (!charUuid_.valid()) {
             LOG_DEBUG(TRACE, "Assign default characteristic UUID.");
             defaultUuidCharCount_++;
             BleUuid newUuid(PARTICLE_DEFAULT_BLE_SVC_UUID, defaultUuidCharCount_);
@@ -2044,7 +2084,7 @@ BleCharacteristic BleLocalDevice::addCharacteristic(const BleCharacteristic& cha
     }
     // If the service that the characteristic belongs to is not specified,
     // put the characteristic to the default service.
-    if (!charImpl->svcUUID().isValid()) {
+    if (!charImpl->svcUUID().valid()) {
         LOG_DEBUG(TRACE, "Assign default service UUID.");
         charImpl->svcUUID() = PARTICLE_DEFAULT_BLE_SVC_UUID;
     }

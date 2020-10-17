@@ -219,6 +219,9 @@ public:
     bool operator!=(const char* address) const;
     bool operator!=(const String& address) const;
 
+    bool valid() const;
+    int clear();
+
 private:
     void toBigEndian(uint8_t buf[BLE_SIG_ADDR_LEN]) const;
 
@@ -238,7 +241,8 @@ public:
     BleUuid(const char* uuid);
     ~BleUuid() = default;
 
-    bool isValid() const;
+    bool __attribute__((deprecated("Use BleUuid::valid() instead"))) isValid() const;
+    bool valid() const;
 
     BleUuidType type() const;
 
