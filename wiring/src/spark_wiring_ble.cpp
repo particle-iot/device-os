@@ -229,6 +229,28 @@ uint8_t BleAddress::operator[](uint8_t i) const {
     return address_.addr[i];
 }
 
+BleAddress& BleAddress::operator=(const hal_ble_addr_t& addr) {
+    address_ = addr;
+    return *this;
+}
+
+BleAddress& BleAddress::operator=(const uint8_t addr[BLE_SIG_ADDR_LEN]) {
+    // We just update the address value while keep the address type
+    memcpy(address_.addr, addr, BLE_SIG_ADDR_LEN);
+    return *this;
+}
+
+BleAddress& BleAddress::operator=(const char* address) {
+    // We just update the address value while keep the address type
+    set(address, static_cast<BleAddressType>(address_.addr_type));
+    return *this;
+}
+
+BleAddress& BleAddress::operator=(const String& address) {
+    *this = address.c_str();
+    return *this;
+}
+
 bool BleAddress::operator==(const BleAddress& addr) const {
     if (address_.addr_type == addr.address_.addr_type && !memcmp(address_.addr, addr.address_.addr, BLE_SIG_ADDR_LEN)) {
         return true;

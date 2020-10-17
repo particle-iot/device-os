@@ -191,10 +191,10 @@ public:
     int set(const char* address, BleAddressType type = BleAddressType::PUBLIC);
     int set(const String& address, BleAddressType type = BleAddressType::PUBLIC);
 
-    template<typename T>
-    BleAddress& operator=(T addr) {
-        return *this = BleAddress(addr);
-    }
+    BleAddress& operator=(const hal_ble_addr_t& addr);
+    BleAddress& operator=(const uint8_t addr[BLE_SIG_ADDR_LEN]);
+    BleAddress& operator=(const char* address);
+    BleAddress& operator=(const String& address);
 
     // Getters
     BleAddressType type() const;
