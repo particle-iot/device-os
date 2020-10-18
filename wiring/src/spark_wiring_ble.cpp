@@ -258,6 +258,21 @@ bool BleAddress::operator==(const BleAddress& addr) const {
     return false;
 }
 
+bool BleAddress::operator==(const uint8_t addr[BLE_SIG_ADDR_LEN]) const {
+    // The operator intends to compare the value only.
+    return !memcmp(address_.addr, addr, BLE_SIG_ADDR_LEN);
+}
+
+bool BleAddress::operator==(const char* address) const {
+    // The operator intends to compare the value only.
+    return toString() == String(address);
+}
+
+bool BleAddress::operator==(const String& address) const {
+    // The operator intends to compare the value only.
+    return toString() == address;
+}
+
 void BleAddress::toBigEndian(uint8_t buf[BLE_SIG_ADDR_LEN]) const {
     for (uint8_t i = 0, j = BLE_SIG_ADDR_LEN - 1; i < BLE_SIG_ADDR_LEN; i++, j--) {
         buf[i] = address_.addr[j];

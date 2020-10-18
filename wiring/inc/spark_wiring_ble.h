@@ -205,11 +205,9 @@ public:
     uint8_t operator[](uint8_t i) const;
 
     bool operator==(const BleAddress& addr) const;
-
-    template<typename T>
-    bool operator==(T addr) const {
-        return *this == BleAddress(addr);
-    }
+    bool operator==(const uint8_t addr[BLE_SIG_ADDR_LEN]) const;
+    bool operator==(const char* address) const;
+    bool operator==(const String& address) const;
 
     template<typename T>
     bool operator!=(T addr) const {
