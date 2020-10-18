@@ -11,6 +11,18 @@
         Serial.printf(msg, ##__VA_ARGS__); \
     } while(false)
 
+typedef enum {
+    CMD_UNKNOWN,
+    CMD_RESTART_ADV,
+    CMD_ADV_DEVICE_NAME,
+    CMD_ADV_APPEARANCE,
+    CMD_ADV_CUSTOM_DATA
+} TestCommand;
+
+const char* peerServiceUuid = "6E400000-B5A3-F393-E0A9-E50E24DCCA9E";
+const char* peerCharacteristicUuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
+BleAddress peerAddress;
+
 static void bleOnScanResultCallback(const BleScanResult* result, void* context) {
     INFO("  > On BLE device scanned callback.\r\n");
     INFO("  > Stop scanning...\r\n");
@@ -18,14 +30,11 @@ static void bleOnScanResultCallback(const BleScanResult* result, void* context) 
     assertEqual(ret, 0);
 }
 
-static void bleOnScanResultCallbackRef(const BleScanResult& result, void* context) {
-    INFO("  > On BLE device scanned callback.\r\n");
-    INFO("  > Stop scanning...\r\n");
-    int ret = BLE.stopScanning();
-    assertEqual(ret, 0);
-}
+BleCharacteristic peerCharWriteWoRsp;
 
-test(00_BLE_Scanning_Blocked_Timeout_Simulate) {
+test(BLE_Scanner_00_Blocked_Timeout_Simulate) {
+    Serial.println("This is BLE scanner.");
+    
     int ret;
 
     BleScanParams setScanParams = {};
@@ -51,39 +60,161 @@ test(00_BLE_Scanning_Blocked_Timeout_Simulate) {
     NVIC_EnableIRQ(SD_EVT_IRQn);
 }
 
-test(01_BLE_Scanning_Control) {
-    INFO("  > Please make sure that there is at least one BLE Peripheral being advertising nearby.\r\n");
-
+test(BLE_Scanner_01_Connects_To_Broadcaster) {
     int ret;
-
     BleScanParams setScanParams = {};
     setScanParams.size = sizeof(BleScanParams);
     setScanParams.interval = 50; // In units of 0.625ms
     setScanParams.window = 25; // In units of 0.625ms
-    setScanParams.timeout = 300; // In units of 10ms
+    setScanParams.timeout = 500; // In units of 10ms
     setScanParams.active = true; // Send scan request
     setScanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
     ret = BLE.setScanParameters(&setScanParams);
     assertEqual(ret, 0);
 
-    INFO("  > Testing BLE scanning for 3 seconds...\r\n");
+    Serial.println("BLE starts scanning...");
+    size_t wait = 10; // Try 10 times
+    while (!BLE.connected() && wait > 0) {
+        auto results = BLE.scan();
+        if (results.size() > 0) {
+            for (const auto& result : results) {
+                BleUuid foundServiceUUID;
+                size_t svcCount = result.advertisingData.serviceUUID(&foundServiceUUID, 1);
+                if (svcCount > 0 && foundServiceUUID == peerServiceUuid) {
+                    BlePeerDevice peer = BLE.connect(result.address);
+                    if (peer.connected()) {
+                        assertTrue(peer.getCharacteristicByUUID(peerCharWriteWoRsp, peerCharacteristicUuid));
+                        peerAddress = peer.address();
+                    }
+                    break;
+                }
+            }
+        }
+        wait--;
+    }
+    assertTrue(wait > 0);
+}
+
+test(BLE_Scanner_02_Scan_Callback) {
+    assertTrue(BLE.connected());
+
+    int ret;
+    TestCommand cmd = CMD_RESTART_ADV;
+    ret = peerCharWriteWoRsp.setValue((const uint8_t*)&cmd, 1);
+    assertEqual(ret, 1);
+
+    delay(1s);
+
     ret = BLE.scan(bleOnScanResultCallback, nullptr);
     assertTrue(ret > 0);
+}
 
-    INFO("  > Testing BLE scanning for 3 seconds...\r\n");
-    ret = BLE.scan(bleOnScanResultCallbackRef, nullptr);
-    assertTrue(ret > 0);
+test(BLE_Scanner_03_Scan_Array) {
+    assertTrue(BLE.connected());
 
-    INFO("  > Testing BLE scanning for 3 seconds...\r\n");
     BleScanResult results[10];
-    ret = BLE.scan(results, sizeof(results)/sizeof(BleScanResult));
+    int ret = BLE.scan(results, sizeof(results)/sizeof(BleScanResult));
     assertTrue(ret > 0);
-    INFO("  > Found %d BLE devices\r\n", ret);
+}
 
-    INFO("  > Testing BLE scanning for 3 seconds...\r\n");
-    Vector<BleScanResult> result = BLE.scan();
-    assertTrue(result.size() > 0);
-    INFO("  > Found %d BLE devices\r\n", result.size());
+test(BLE_Scanner_04_Scan_Vector) {
+    assertTrue(BLE.connected());
+
+    Vector<BleScanResult> results = BLE.scan();
+    assertTrue(results.size() > 0);
+}
+
+test(BLE_Scanner_05_Scan_With_Filter_Rssi) {
+    assertTrue(BLE.connected());
+
+    constexpr int8_t MIN_RSSI = -60;
+    constexpr int8_t MAX_RSSI = -40;
+
+    Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter().minRssi(MIN_RSSI).maxRssi(MAX_RSSI));
+    assertTrue(results.size() > 0);
+    for (const auto& result : results) {
+        assertMoreOrEqual(result.rssi, MIN_RSSI);
+        assertLessOrEqual(result.rssi, MAX_RSSI);
+    }
+}
+
+test(BLE_Scanner_06_Scan_With_Filter_Address) {
+    assertTrue(BLE.connected());
+
+    Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter().address(peerAddress));
+    assertEqual(results.size(), 1);
+
+    // We assume that there is no device nearby with this particular address
+    results = BLE.scanWithFilter(BleScanFilter().address("11:11:11:11:11:11"));
+    assertEqual(results.size(), 0);
+}
+
+test(BLE_Scanner_07_Scan_With_Filter_Service_UUID) {
+    assertTrue(BLE.connected());
+
+    // The connected peer device is advertising service UUID by default
+    Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter().serviceUUID(peerServiceUuid));
+    assertEqual(results.size(), 1);
+
+    // We assume that there is no device nearby advertising this service UUID
+    results = BLE.scanWithFilter(BleScanFilter().serviceUUID(0x1111));
+    assertEqual(results.size(), 0);
+}
+
+test(BLE_Scanner_08_Scan_With_Device_Name) {
+    assertTrue(BLE.connected());
+
+    int ret;
+    TestCommand cmd = CMD_ADV_DEVICE_NAME;
+    ret = peerCharWriteWoRsp.setValue((const uint8_t*)&cmd, 1);
+    assertEqual(ret, 1);
+
+    delay(1s);
+
+    Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter().deviceName("PARTICLE_TEST"));
+    assertEqual(results.size(), 1);
+    
+    // We assume that there is no device nearby advertising this device name
+    results = BLE.scanWithFilter(BleScanFilter().deviceName("TESTTESTTEST"));
+    assertEqual(results.size(), 0);
+}
+
+test(BLE_Scanner_09_Scan_With_Appearance) {
+    assertTrue(BLE.connected());
+
+    int ret;
+    TestCommand cmd = CMD_ADV_APPEARANCE;
+    ret = peerCharWriteWoRsp.setValue((const uint8_t*)&cmd, 1);
+    assertEqual(ret, 1);
+
+    delay(1s);
+
+    Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter().appearance(BLE_SIG_APPEARANCE_GENERIC_DISPLAY));
+    assertEqual(results.size(), 1);
+    
+    // We assume that there is no device nearby advertising this appearance
+    results = BLE.scanWithFilter(BleScanFilter().appearance(BLE_SIG_APPEARANCE_GENERIC_EYE_GLASSES));
+    assertEqual(results.size(), 0);
+}
+
+test(BLE_Scanner_09_Scan_With_Custom_Data) {
+    assertTrue(BLE.connected());
+
+    int ret;
+    TestCommand cmd = CMD_ADV_CUSTOM_DATA;
+    ret = peerCharWriteWoRsp.setValue((const uint8_t*)&cmd, 1);
+    assertEqual(ret, 1);
+
+    delay(1s);
+
+    constexpr uint8_t buf[] = {0xde, 0xad, 0xbe, 0xef};
+    Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter().customData(buf, sizeof(buf)));
+    assertEqual(results.size(), 1);
+    
+    // We assume that there is no device nearby advertising this custom data
+    constexpr uint8_t magic[] = {0x12, 0x34, 0x56, 0x78};
+    results = BLE.scanWithFilter(BleScanFilter().customData(magic, sizeof(magic)));
+    assertEqual(results.size(), 0);
 }
 
 #endif // #if Wiring_BLE == 1

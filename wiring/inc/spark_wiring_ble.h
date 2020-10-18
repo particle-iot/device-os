@@ -378,6 +378,7 @@ public:
     // According to the Bluetooth CSS, Local Name shall not appear more than once in a block.
     size_t appendLocalName(const char* name);
     size_t appendLocalName(const String& name);
+    size_t appendAppearance(ble_sig_appearance_t appearance);
 
     template<typename T>
     size_t appendServiceUUID(T uuid, bool force = false) {
@@ -407,8 +408,12 @@ public:
 
     size_t serviceUUID(BleUuid* uuids, size_t count) const;
     Vector<BleUuid> serviceUUID() const;
+<<<<<<< HEAD
 
+=======
+>>>>>>> [wiring] BLE: implement BLE scanning filter.
     size_t customData(uint8_t* buf, size_t len) const;
+    ble_sig_appearance_t appearance() const;
 
     size_t operator()(uint8_t* buf, size_t len) const {
         return get(buf, len);
@@ -584,6 +589,122 @@ private:
 };
 
 
+/* AND-filter */
+class BleScanFilter {
+public:
+    BleScanFilter()
+            : minRssi_(0x7F),
+              maxRssi_(0x7F),
+              customData_(nullptr),
+              customDataLen_(0) {
+    }
+    ~BleScanFilter() = default;
+
+    // Device name
+    template<typename T>
+    BleScanFilter& deviceName(T name) {
+        deviceNames_.append(String(name));
+        return *this;
+    }
+    BleScanFilter& deviceNames(const Vector<String>& names) {
+        deviceNames_.append(names);
+        return *this;
+    }
+    const Vector<String>& deviceNames() const {
+        return deviceNames_;
+    }
+
+    // Service UUID
+    template<typename T>
+    BleScanFilter& serviceUUID(T uuid) {
+        serviceUuids_.append(BleUuid(uuid));
+        return *this;
+    }
+    BleScanFilter& serviceUUIDs(const Vector<BleUuid>& uuids) {
+        serviceUuids_.append(uuids);
+        return *this;
+    }
+    const Vector<BleUuid>& serviceUUIDs() const {
+        return serviceUuids_;
+    }
+
+    // Device address
+    template<typename T>
+    BleScanFilter& address(T addr) {
+        addresses_.append(BleAddress(addr));
+        return *this;
+    }
+    BleScanFilter& addresses(const Vector<BleAddress>& addrs) {
+        addresses_.append(addrs);
+        return *this;
+    }
+    const Vector<BleAddress>& addresses() const {
+        return addresses_;
+    }
+
+    // Appearance
+    BleScanFilter& appearance(const ble_sig_appearance_t& appearance) {
+        appearances_.append(appearance);
+        return *this;
+    }
+    BleScanFilter& appearances(const Vector<ble_sig_appearance_t>&  appearances) {
+        appearances_.append(appearances);
+        return *this;
+    }
+    const Vector<ble_sig_appearance_t>& appearances() const {
+        return appearances_;
+    }
+
+    // RSSI
+    BleScanFilter& minRssi(int8_t minRssi) {
+        minRssi_ = minRssi;
+        return *this;
+    }
+    BleScanFilter& maxRssi(int8_t maxRssi) {
+        maxRssi_ = maxRssi;
+        return *this;
+    }
+    int8_t minRssi() const {
+        return minRssi_;
+    }
+    int maxRssi() const {
+        return maxRssi_;
+    }
+
+    // Custom data
+    BleScanFilter& customData(const uint8_t* const data, size_t len) {
+        customData_ = data;
+        customDataLen_ = len;
+        return *this;
+    }
+    const uint8_t* const customData(size_t* len) const {
+        *len = customDataLen_;
+        return customData_;
+    }
+
+    BleScanFilter& clear() {
+        deviceNames_.clear();
+        serviceUuids_.clear();
+        addresses_.clear();
+        appearances_.clear();
+        minRssi_ = maxRssi_ = 0xFF;
+        customData_ = nullptr;
+        customDataLen_ = 0;
+        return *this;
+    }
+
+private:
+    Vector<String> deviceNames_;
+    Vector<BleUuid> serviceUuids_;
+    Vector<BleAddress> addresses_;
+    Vector<ble_sig_appearance_t> appearances_;
+    int8_t minRssi_;
+    int8_t maxRssi_;
+    const uint8_t* customData_;
+    size_t customDataLen_;
+};
+
+
 class BlePeerDevice {
 public:
     BlePeerDevice();
@@ -712,6 +833,9 @@ public:
     int scan(BleOnScanResultCallbackRef callback, void* context) const;
     int scan(BleScanResult* results, size_t resultCount) const;
     Vector<BleScanResult> scan() const;
+    int scanWithFilter(BleOnScanResultCallback callback, void* context, const BleScanFilter& filter) const;
+    int scanWithFilter(BleScanResult* results, size_t resultCount, const BleScanFilter& filter) const;
+    Vector<BleScanResult> scanWithFilter(const BleScanFilter& filter) const;
     int stopScanning() const;
 
     // Access local characteristics
