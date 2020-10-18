@@ -381,6 +381,7 @@ public:
     // According to the Bluetooth CSS, Local Name shall not appear more than once in a block.
     size_t appendLocalName(const char* name);
     size_t appendLocalName(const String& name);
+    size_t appendAppearance(ble_sig_appearance_t appearance);
 
     size_t appendAppearance(ble_sig_appearance_t appearance);
 
@@ -412,8 +413,12 @@ public:
 
     size_t serviceUUID(BleUuid* uuids, size_t count) const;
     Vector<BleUuid> serviceUUID() const;
+<<<<<<< HEAD
 
+=======
+>>>>>>> [wiring] BLE: implement BLE scanning filter.
     size_t customData(uint8_t* buf, size_t len) const;
+    ble_sig_appearance_t appearance() const;
 
     ble_sig_appearance_t appearance() const;
 
