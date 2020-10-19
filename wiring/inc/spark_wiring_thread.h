@@ -249,6 +249,7 @@ public:
 
     void lock() { os_mutex_lock(handle_); }
     bool trylock() { return os_mutex_trylock(handle_)==0; }
+    bool try_lock() { return trylock(); }
     void unlock() { os_mutex_unlock(handle_); }
 
 };
@@ -282,6 +283,7 @@ public:
 
     void lock() { os_mutex_recursive_lock(handle_); }
     bool trylock() { return os_mutex_recursive_trylock(handle_)==0; }
+    bool try_lock() { return trylock(); }
     void unlock() { os_mutex_recursive_unlock(handle_); }
 
 };

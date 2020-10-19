@@ -101,6 +101,7 @@ endif
 COMPILE_LTO ?= n
 ifeq (y,$(COMPILE_LTO))
 LTO_EXT = -lto
+CFLAGS += -DPARTICLE_COMPILE_LTO
 endif
 
 ifeq ("$(TARGET_TYPE)","a")
