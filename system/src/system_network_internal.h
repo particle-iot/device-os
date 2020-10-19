@@ -511,11 +511,11 @@ public:
         LOG_NETWORK_STATE();
         // INFO("ready(): %d; connecting(): %d; listening(): %d; WLAN_SMART_CONFIG_START: %d", (int)ready(), (int)connecting(),
         //        (int)listening(), (int)WLAN_SMART_CONFIG_START);
-        if (!ready() && !connecting() && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
+        if (!ready() && (!connecting() || !WLAN_INITIALIZED) && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
         {
             bool was_sleeping = SPARK_WLAN_SLEEP;
 
-            int onRet = on(); // activate WiFi
+            int onRet = on(); // make sure that the NCP is powered on
 
             WLAN_DISCONNECT = 0;
             SPARK_WLAN_STARTED = 1;
@@ -527,9 +527,13 @@ public:
                 connect_init();
             }
 
-            // This has side-effects on cellular platforms, so we need to run even if we've failed to completely power-on
+            // This call has side-effects on cellular platforms, so we need to run even if we've failed to completely power-on
+            // 'Side-effects' as in has_credentials() actually modifies the state by calling cellular_on() on its own.
+            // FIXME: This behavior should be revisited later on.
             if (!has_credentials())
             {
+                // On cellular platforms we'll also get here if modem is not responsive or
+                // there is no SIM card or it has a PIN.
                 if (listen_enabled) {
                     CLR_WLAN_WD();
                     listen();
@@ -537,28 +541,34 @@ public:
                 else if (was_sleeping) {
                     disconnect();
                 }
+                return;
             }
-            else if (!onRet)
-            {
+
+            // XXX: We are trying to streamline the behavior on how we approach signaling and events between platforms
+            // Following pre-LTS Gen 2 and Gen 3 behavior: LED and system events follow administrative state,
+            // which means that we'll immediately go into connecting state even if HAL still needs to perform some low level
+            // initialization.
+            // This could be revisited in the future.
+            LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL);
+            const auto diag = NetworkDiagnostics::instance();
+            diag->status(NetworkDiagnostics::CONNECTING);
+            bool startedConnecting = !WLAN_CONNECTING;
+            WLAN_CONNECTING = 1;
+            if (startedConnecting) {
+                // Make sure this event is generated only when we transition into connecting state
+                system_notify_event(network_status, network_status_connecting);
+            }
+
+            if (!onRet) {
                 // We are powered on and can initiate a connection
                 config_hostname();
-                LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL);
-                WLAN_CONNECTING = 1;
                 INFO("ARM_WLAN_WD 1");
                 ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
-                const auto diag = NetworkDiagnostics::instance();
-                diag->status(NetworkDiagnostics::CONNECTING);
-                system_notify_event(network_status, network_status_connecting);
                 diag->connectionAttempt();
                 const int ret = connect_finalize();
                 if (ret != 0) {
                     diag->lastError(ret);
                 }
-            } else if (onRet) {
-                // on() failed, we'll rely on the system loop to call connect() again
-                // FIXME: this is a UI workaround, as otherwise the device
-                // will be in a breathing blue state, which might be confusing
-                LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL);
             }
         }
     }
@@ -623,7 +633,9 @@ public:
             const auto diag = NetworkDiagnostics::instance();
             diag->status(NetworkDiagnostics::TURNING_ON);
             if (startedPowerOn) {
-                // Suppress these events
+                // Make sure to generate only one powering_on event.
+                // Subsequent power-on attempts after a failed one should
+                // not be generating these events.
                 system_notify_event(network_status, network_status_powering_on);
             }
             config_clear();
@@ -640,8 +652,19 @@ public:
             update_config(true);
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
-            LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
-            if (!ret) {
+            if (startedPowerOn) {
+                // Same as with powering_on event above, make sure
+                // that we generate this event only once.
+                // Subsequent power-on attempts after a failed one should
+                // not be generating these events.
+
+
+                // XXX: We are trying to streamline the behavior on how we approach signaling and events between platforms
+                // Following pre-LTS Gen 2 and Gen 3 behavior: LED and system events follow administrative state,
+                // which means that we'll immediately go into ON state even if HAL still needs to perform some low level
+                // initialization.
+                // This could be revisited in the future.
+                LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
                 diag->status(NetworkDiagnostics::DISCONNECTED);
                 system_notify_event(network_status, network_status_on);
             }
@@ -802,6 +825,12 @@ public:
 
     virtual int process()
     {
+        // Requested to power-on, failed initial power-on, requested to connect as well
+        if ((SPARK_WLAN_STARTED && !WLAN_INITIALIZED) && WLAN_CONNECTING) {
+            // XXX: workaround for HAL relying on system layer to retry power-on
+            // and connection attempts on cellular platforms
+            connect();
+        }
         auto r = process_now();
         if (r) {
             // Ask the system to reset us

@@ -280,7 +280,6 @@ MDMParser::MDMParser(void)
     _debugLevel = 3;
 #endif
     _resetFailureAttempts = 0;
-    _resetFailureTimestamp = 0;
 
     Hal_Pin_Info* pinMap = HAL_Pin_Map();
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
@@ -929,12 +928,6 @@ bool MDMParser::powerOn(const char* simpin)
     auto device_type = _dev.dev;
     bool retried_after_reset = false;
 
-    if (_resetFailureAttempts > 0) {
-        if (HAL_Timer_Get_Milli_Seconds() - _resetFailureTimestamp < MDM_RESET_FAILURE_TIMEOUT_MS) {
-            goto failure;
-        }
-    }
-
     memset(&_dev, 0, sizeof(_dev));
     _dev.dev = device_type;
 
@@ -1141,7 +1134,7 @@ bool MDMParser::init(DevStatus* status)
             // KORE AT&T or 3rd Party SIM
             else {
                 // continue on with init if we are trying to set SIM_SELECT a third time
-                if (resetFailureAttempts >= 2) {
+                if (_resetFailureAttempts >= 2) {
                     LOG(WARN, "UMNOPROF=1 did not resolve a built-in profile, please check if UMNOPROF=100 is required!");
                     continueInit = true;
                 }
@@ -1218,19 +1211,18 @@ failure:
 reset_failure:
     // Don't get stuck in a reset-retry loop
     // eDRX disables can take a couple or more resets, UMNOPROF requires 1 or 2 and UBANDMASK requires 1 or 2 worst case
-    if (_resetFailureAttempts++ <= MDM_RESET_FAILURE_MAX_ATTEMPTS) {
+    if (++_resetFailureAttempts < MDM_RESET_FAILURE_MAX_ATTEMPTS) {
         if (_atOk()) {
             sendFormated("AT+CFUN=15,0\r\n");
             waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT);
-            // When this exits false, ARM_WLAN_WD 1 will fire and timeout after 30s.
-            // MDMParser::powerOn and MDMParser::init will then be retried by the system.
+            // MDMParser::powerOn and MDMParser::init will be retried by the system up to
+            // MDM_RESET_FAILURE_MAX_ATTEMPTS.
             _incModemStateChangeCount();
         }
-        _resetFailureTimestamp = HAL_Timer_Get_Milli_Seconds();
     } else {
         // stop resetting, and try to register.
         // Preventing cellular registration gets us back to retrying init() faster,
-        // and the timeout of 3 attempts is arbitrary but allows us to register and
+        // and the timeout of MDM_RESET_FAILURE_MAX_ATTEMPTS attempts is arbitrary but allows us to register and
         // connect even with an error, since that error is persisting and might just
         // be a fluke or bug in the modem. Allowing to continue on eventually helps
         // the device recover in odd situations we can't predict.
@@ -1277,7 +1269,6 @@ bool MDMParser::powerOff(void)
     LOCK();
     const char * POWER_OFF_MSG = "\r\n[ Modem::powerOff ]";
     _resetFailureAttempts = 0;
-    _resetFailureTimestamp = 0;
     bool ok = false;
     bool continue_cancel = false;
     bool check_ri = false;
