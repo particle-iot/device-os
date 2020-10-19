@@ -2043,20 +2043,26 @@ public:
         callbackRef_ = callback;
         callback_ = nullptr;
         context_ = context;
-        CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
+        CHECK(hal_ble_gap_start_scan(onScanResultCallbackV1, this, nullptr));
         return foundCount_;
     }
 
     int start(BleScanResult* results, size_t resultCount) {
         resultsPtr_ = results;
         targetCount_ = resultCount;
-        CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
+        CHECK(hal_ble_gap_start_scan(onScanResultCallbackV2, this, nullptr));
         return foundCount_;
     }
 
     Vector<BleScanResult> start() {
-        hal_ble_gap_start_scan(onScanResultCallback, this, nullptr);
+        hal_ble_gap_start_scan(onScanResultCallbackV3, this, nullptr);
         return resultsVector_;
+    }
+
+    int start(const std::function<void(const BleScanResult&, void*)>& callback, void* context) {
+        wiringCallback_ = std::bind(callback, std::placeholders::_1, context);
+        CHECK(hal_ble_gap_start_scan(onScanResultCallbackV4, this, nullptr));
+        return foundCount_;
     }
 
     BleScanDelegator& setScanFilter(const BleScanFilter& filter) {
@@ -2244,6 +2250,7 @@ private:
     size_t foundCount_;
     BleOnScanResultCallback callback_;
     BleOnScanResultCallbackRef callbackRef_;
+    std::function<void(const BleScanResult&)> wiringCallback_;
     void* context_;
     BleScanFilter filter_;
 };
@@ -2270,6 +2277,12 @@ int BleLocalDevice::getScanParameters(BleScanParams* params) const {
 
 int BleLocalDevice::getScanParameters(BleScanParams& params) const {
     return getScanParameters(&params);
+}
+
+int BleLocalDevice::scan(const std::function<void(const BleScanResult&, void*)>& callback, void* context) {
+    WiringBleLock lk;
+    BleScanDelegator scanner;
+    return scanner.start(callback, context);
 }
 
 int BleLocalDevice::scan(BleOnScanResultCallback callback, void* context) const {

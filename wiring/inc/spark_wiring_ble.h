@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#include <functional>
 #include "spark_wiring_platform.h"
 
 #if Wiring_BLE
@@ -838,6 +839,7 @@ public:
     // Scanning control
     int scan(BleOnScanResultCallback callback, void* context = nullptr) const;
     int scan(BleOnScanResultCallbackRef callback, void* context = nullptr) const;
+    int scan(const std::function<void(const BleScanResult&, void*)>& callback, void* context);
     int scan(BleScanResult* results, size_t resultCount) const;
     Vector<BleScanResult> scan() const;
     int scanWithFilter(const BleScanFilter& filter, BleOnScanResultCallback callback, void* context = nullptr) const;
