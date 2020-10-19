@@ -839,7 +839,7 @@ public:
     // Scanning control
     int scan(BleOnScanResultCallback callback, void* context = nullptr) const;
     int scan(BleOnScanResultCallbackRef callback, void* context = nullptr) const;
-    int scan(const std::function<void(const BleScanResult&, void*)>& callback, void* context);
+    int scan(const std::function<void(const BleScanResult&)>& callback) const;
     int scan(BleScanResult* results, size_t resultCount) const;
     Vector<BleScanResult> scan() const;
     int scanWithFilter(const BleScanFilter& filter, BleOnScanResultCallback callback, void* context = nullptr) const;
@@ -875,13 +875,18 @@ public:
     BlePeerDevice connect(const BleAddress& addr, const BleConnectionParams& params, bool automatic = true) const;
     BlePeerDevice connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic = true) const;
     BlePeerDevice connect(const BleAddress& addr, bool automatic = true) const;
+
     // This only disconnect the peer Central device, i.e. when the local device is acting as BLE Peripheral.
     int disconnect() const;
     int disconnect(const BlePeerDevice& peer) const;
     int disconnectAll() const;
+
     bool connected() const;
+    
     void onConnected(BleOnConnectedCallback callback, void* context = nullptr) const;
+    void onConnected(const std::function<void(const BlePeerDevice& peer)>& callback) const;
     void onDisconnected(BleOnDisconnectedCallback callback, void* context = nullptr) const;
+    void onDisconnected(const std::function<void(const BlePeerDevice& peer)>& callback) const;
 
     BlePeerDevice peerCentral() const;
 

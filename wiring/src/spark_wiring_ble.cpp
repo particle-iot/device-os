@@ -1078,11 +1078,25 @@ public:
     void onConnectedCallback(BleOnConnectedCallback callback, void* context) {
         connectedCb_ = callback;
         connectedContext_ = context;
+        wiringConnectedCb_ = nullptr;
+    }
+
+    void onConnectedCallback(std::function<void(const BlePeerDevice& peer)> callback) {
+        wiringConnectedCb_ = callback;
+        connectedCb_ = nullptr;
+        connectedContext_ = nullptr;
     }
 
     void onDisconnectedCallback(BleOnDisconnectedCallback callback, void* context) {
         disconnectedCb_ = callback;
         disconnectedContext_ = context;
+        wiringDisconnectedCb_ = nullptr;
+    }
+
+    void onDisconnectedCallback(std::function<void(const BlePeerDevice& peer)> callback) {
+        wiringDisconnectedCb_ = callback;
+        disconnectedCb_ = nullptr;
+        disconnectedContext_ = nullptr;
     }
 
     BlePeerDevice* findPeerDevice(BleConnectionHandle connHandle) {
@@ -1120,6 +1134,8 @@ public:
                 LOG(TRACE, "Connected by Central device.");
                 if (impl->connectedCb_) {
                     impl->connectedCb_(peer, impl->connectedContext_);
+                } else if (impl->wiringConnectedCb_) {
+                    impl->wiringConnectedCb_(peer);
                 }
                 break;
             }
@@ -1129,6 +1145,8 @@ public:
                     peer->impl()->onDisconnected();
                     if (impl->disconnectedCb_) {
                         impl->disconnectedCb_(*peer, impl->disconnectedContext_);
+                    } else if (impl->wiringDisconnectedCb_) {
+                        impl->wiringDisconnectedCb_(*peer);
                     }
                     LOG(TRACE, "Disconnected by remote device.");
                     impl->peers_.removeOne(*peer);
@@ -1149,6 +1167,8 @@ private:
     BleOnDisconnectedCallback disconnectedCb_;
     void* connectedContext_;
     void* disconnectedContext_;
+    std::function<void(const BlePeerDevice& peer)> wiringConnectedCb_;
+    std::function<void(const BlePeerDevice& peer)> wiringDisconnectedCb_;
 };
 
 
@@ -1763,8 +1783,16 @@ void BleLocalDevice::onConnected(BleOnConnectedCallback callback, void* context)
     impl()->onConnectedCallback(callback, context);
 }
 
+void BleLocalDevice::onConnected(const std::function<void(const BlePeerDevice& peer)>& callback) const {
+    impl()->onConnectedCallback(callback);
+}
+
 void BleLocalDevice::onDisconnected(BleOnDisconnectedCallback callback, void* context) const {
     impl()->onDisconnectedCallback(callback, context);
+}
+
+void BleLocalDevice::onDisconnected(const std::function<void(const BlePeerDevice& peer)>& callback) const {
+    impl()->onDisconnectedCallback(callback);
 }
 
 int BleLocalDevice::begin() const {
@@ -2059,8 +2087,8 @@ public:
         return resultsVector_;
     }
 
-    int start(const std::function<void(const BleScanResult&, void*)>& callback, void* context) {
-        wiringCallback_ = std::bind(callback, std::placeholders::_1, context);
+    int start(const std::function<void(const BleScanResult&)>& callback) {
+        wiringCallback_ = callback;
         CHECK(hal_ble_gap_start_scan(onScanResultCallbackV4, this, nullptr));
         return foundCount_;
     }
@@ -2279,10 +2307,10 @@ int BleLocalDevice::getScanParameters(BleScanParams& params) const {
     return getScanParameters(&params);
 }
 
-int BleLocalDevice::scan(const std::function<void(const BleScanResult&, void*)>& callback, void* context) {
+int BleLocalDevice::scan(const std::function<void(const BleScanResult&)>& callback) const {
     WiringBleLock lk;
     BleScanDelegator scanner;
-    return scanner.start(callback, context);
+    return scanner.start(callback);
 }
 
 int BleLocalDevice::scan(BleOnScanResultCallback callback, void* context) const {
