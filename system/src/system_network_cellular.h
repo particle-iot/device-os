@@ -145,13 +145,13 @@ public:
     {
         bool rv = cellular_sim_ready(NULL);
         if (!rv) {
-            LOG(INFO, "%s", "SIM/modem not responsive or SIM not inserted/requires a PIN.");
+            LOG(INFO, "SIM/modem not responsive or SIM not inserted/requires a PIN.");
         }
         if (!rv) {
             cellular_on(NULL);
             rv = cellular_sim_ready(NULL);
             if (!rv) {
-                LOG(INFO, "%s", "SIM/modem not responsive or SIM not inserted/requires a PIN.");
+                LOG(INFO, "SIM/modem not responsive or SIM not inserted/requires a PIN.");
             }
         }
         return rv;
