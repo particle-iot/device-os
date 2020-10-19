@@ -65,12 +65,13 @@ DYNALIB_FN(15, rt, __errno, int*())
 DYNALIB_FN(16, rt, __assert_func, void(const char*, int, const char*, const char*))
 DYNALIB_FN(17, rt, newlib_impure_ptr_callback, void(void (*)(struct _reent*, size_t, uint32_t, void*), void*))
 // Electron has some of these exported from a different system part through services2 dynalib
-#if !HAL_PLATFORM_HAS_SERVICES2_DYNALIB
+// Photon/P1 do not have enough space in system-part2
+#if HAL_PLATFORM_EXPORT_STDLIB_RT_DYNALIB
 DYNALIB_FN(18, rt, strftime, size_t(char* __restrict, size_t, const char* __restrict, const struct tm* __restrict))
 DYNALIB_FN(19, rt, localtime_r, struct tm*(const time_t* __restrict, struct tm* __restrict))
 DYNALIB_FN(20, rt, gmtime_r, struct tm*(const time_t* __restrict, struct tm* __restrict))
 DYNALIB_FN(21, rt, mktime, time_t(struct tm*))
-#endif // !HAL_PLATFORM_HAS_SERVICES2_DYNALIB
+#endif // HAL_PLATFORM_EXPORT_STDLIB_RT_DYNALIB
 #endif // defined(DYNALIB_EXPORT) || (defined(DYNALIB_IMPORT) && !defined(RT_DYNALIB_NO_DEPENDENCY_BREAKING_IMPORTS))
 
 DYNALIB_END(rt)
