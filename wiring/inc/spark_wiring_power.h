@@ -64,6 +64,7 @@ public:
     byte readInputSourceRegister(void);
     bool enableBuck(void);
     bool disableBuck(void);
+    bool isBuckEnabled();
     bool setInputCurrentLimit(uint16_t current);
     uint16_t getInputCurrentLimit(void);
     bool setInputVoltageLimit(uint16_t voltage);
@@ -78,6 +79,7 @@ public:
     bool setMinimumSystemVoltage(uint16_t voltage);
     uint16_t getMinimumSystemVoltage();
     byte readPowerONRegister(void);
+    void reset();
 
     // Charge current control register
     bool setChargeCurrent(bool bit7, bool bit6, bool bit5, bool bit4, bool bit3, bool bit2);
@@ -117,7 +119,9 @@ public:
     bool disableDPDM(void);
     bool enableBATFET(void);
     bool disableBATFET(void);
+    bool isBATFETEnabled();
     bool safetyTimer(); //slow/ normal
+    bool isInDPDM();
 
     bool enableChargeFaultINT();
     bool disableChargeFaultINT();
