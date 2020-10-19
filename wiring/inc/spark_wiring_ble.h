@@ -448,6 +448,10 @@ public:
     BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
             : BleCharacteristic(desc.c_str(), properties, callback, context) {
     }
+    BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback);
+    BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback)
+            : BleCharacteristic(desc.c_str(), properties, callback) {
+    }
 
     template<typename T1, typename T2>
     BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
@@ -460,6 +464,19 @@ public:
     BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
             : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context) {
     }
+
+    template<typename T1, typename T2>
+    BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t)> callback) {
+        BleUuid cUuid(charUuid);
+        BleUuid sUuid(svcUuid);
+        construct(desc, properties, cUuid, sUuid, callback);
+    }
+
+    template<typename T1, typename T2>
+    BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t)> callback)
+            : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback) {
+    }
+
     ~BleCharacteristic();
 
     BleCharacteristic& operator=(const BleCharacteristic& characteristic);
@@ -497,6 +514,7 @@ public:
     int subscribe(bool enable) const;
 
     void onDataReceived(BleOnDataReceivedCallback callback, void* context = nullptr);
+    void onDataReceived(std::function<void(const uint8_t*, size_t)> callback);
 
     operator bool() const {
         return isValid();
@@ -510,6 +528,9 @@ private:
     void construct(const char* desc, EnumFlags<BleCharacteristicProperty> properties,
             BleUuid& charUuid, BleUuid& svcUuid,
             BleOnDataReceivedCallback callback, void* context);
+
+    void construct(const char* desc, EnumFlags<BleCharacteristicProperty> properties,
+            BleUuid& charUuid, BleUuid& svcUuid, std::function<void(const uint8_t*, size_t)> callback);
 
     std::shared_ptr<BleCharacteristicImpl> impl_;
 };
@@ -852,6 +873,8 @@ public:
     BleCharacteristic addCharacteristic(const BleCharacteristic& characteristic);
     BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
     BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
+    BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback);
+    BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback);
 
     template<typename T1, typename T2>
     BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
@@ -863,6 +886,20 @@ public:
     template<typename T1, typename T2>
     BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
         BleCharacteristic characteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context);
+        addCharacteristic(characteristic);
+        return characteristic;
+    }
+
+    template<typename T1, typename T2>
+    BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t)> callback) {
+        BleCharacteristic characteristic(desc, properties, charUuid, svcUuid, callback);
+        addCharacteristic(characteristic);
+        return characteristic;
+    }
+
+    template<typename T1, typename T2>
+    BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t)> callback) {
+        BleCharacteristic characteristic(desc.c_str(), properties, charUuid, svcUuid, callback);
         addCharacteristic(characteristic);
         return characteristic;
     }

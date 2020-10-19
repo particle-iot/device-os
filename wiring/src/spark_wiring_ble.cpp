@@ -866,10 +866,26 @@ public:
         description_ = desc;
         callback_ = callback;
         context_ = context;
+        wiringCallback_ = nullptr;
+    }
+
+    BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback)
+            : BleCharacteristicImpl() {
+        properties_ = properties;
+        description_ = desc;
+        wiringCallback_ = callback;
+        callback_ = nullptr;
+        context_ = nullptr;
     }
 
     BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context)
             : BleCharacteristicImpl(desc, properties, callback, context) {
+        charUuid_ = charUuid;
+        svcUuid_ = svcUuid;
+    }
+
+    BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, std::function<void(const uint8_t*, size_t)> callback)
+            : BleCharacteristicImpl(desc, properties, callback) {
         charUuid_ = charUuid;
         svcUuid_ = svcUuid;
     }
@@ -907,12 +923,22 @@ public:
     void setCallback(BleOnDataReceivedCallback callback, void* context) {
         callback_ = callback;
         context_ = context;
+        wiringCallback_ = nullptr;
+    }
+
+    void setCallback(std::function<void(const uint8_t*, size_t)> callback) {
+        wiringCallback_ = callback;
+        callback_ = nullptr;
+        context_ = nullptr;
     }
 
     void inheritCallback(BleCharacteristicImpl& charImpl) {
         if (charImpl.callback_) {
             callback_ = charImpl.callback_;
             context_ = charImpl.context_;
+        }
+        if (charImpl.wiringCallback_) {
+            wiringCallback_ = charImpl.wiringCallback_;
         }
     }
 
@@ -950,6 +976,7 @@ private:
     BleOnDataReceivedCallback callback_;
     void* context_;
     static uint16_t defaultUuidCharCount_;
+    std::function<void(const uint8_t*, size_t)> wiringCallback_;
 };
 
 
@@ -1191,6 +1218,8 @@ void BleCharacteristicImpl::onBleCharEvents(const hal_ble_char_evt_t *event, voi
             }
             if (impl->callback_) {
                 impl->callback_(event->params.data_written.data, event->params.data_written.len, *peer, impl->context_);
+            } else if (impl->wiringCallback_) {
+                impl->wiringCallback_(event->params.data_written.data, event->params.data_written.len);
             }
             break;
         }
@@ -1230,8 +1259,24 @@ BleCharacteristic::BleCharacteristic(const char* desc, EnumFlags<BleCharacterist
     DEBUG("BleCharacteristic(...), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
 }
 
+BleCharacteristic::BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback)
+        : impl_(std::make_shared<BleCharacteristicImpl>(desc, properties, callback)) {
+    if (!impl()) {
+        SPARK_ASSERT(false);
+    }
+    DEBUG("BleCharacteristic(...), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
+}
+
 void BleCharacteristic::construct(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context) {
     impl_ = std::make_shared<BleCharacteristicImpl>(desc, properties, charUuid, svcUuid, callback, context);
+    if (!impl()) {
+        SPARK_ASSERT(false);
+    }
+    DEBUG("BleCharacteristic(), construct(...):0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
+}
+
+void BleCharacteristic::construct(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, std::function<void(const uint8_t*, size_t)> callback) {
+    impl_ = std::make_shared<BleCharacteristicImpl>(desc, properties, charUuid, svcUuid, callback);
     if (!impl()) {
         SPARK_ASSERT(false);
     }
@@ -1374,6 +1419,10 @@ int BleCharacteristic::subscribe(bool enable) const {
 
 void BleCharacteristic::onDataReceived(BleOnDataReceivedCallback callback, void* context) {
     impl()->setCallback(callback, context);
+}
+
+void BleCharacteristic::onDataReceived(std::function<void(const uint8_t*, size_t)> callback) {
+    impl()->setCallback(callback);
 }
 
 
@@ -2512,6 +2561,18 @@ BleCharacteristic BleLocalDevice::addCharacteristic(const char* desc, EnumFlags<
 
 BleCharacteristic BleLocalDevice::addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
     return addCharacteristic(desc.c_str(), properties, callback, context);
+}
+
+BleCharacteristic BleLocalDevice::addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback) {
+    WiringBleLock lk;
+    BleCharacteristic characteristic(desc, properties, callback);
+    addCharacteristic(characteristic);
+    return characteristic;
+}
+
+BleCharacteristic BleLocalDevice::addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback) {
+    WiringBleLock lk;
+    return addCharacteristic(desc.c_str(), properties, callback);
 }
 
 } /* namespace particle */
