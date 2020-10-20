@@ -116,11 +116,9 @@ test(CELLULAR_02_device_will_connect_to_the_cloud_when_all_udp_sockets_consumed)
 }
 #endif // !HAL_USE_SOCKET_HAL_POSIX
 
+#if !HAL_PLATFORM_NCP_AT
+
 test(CELLULAR_03_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected_modem_brown_out_occurs) {
-#if PLATFORM_ID != PLATFORM_ELECTRON
-    skip();
-    return;
-#endif
     // Serial.println("the device will reconnect to the cloud within 2 min when unexpected modem brown out occurs");
     // Given the device is currently connected to the Cloud
     connect_to_cloud(6*60*1000);
@@ -150,10 +148,6 @@ test(CELLULAR_03_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected
 }
 
 test(CELLULAR_04_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected_modem_power_off_occurs) {
-#if PLATFORM_ID != PLATFORM_ELECTRON
-    skip();
-    return;
-#endif
     // Serial.println("the device will reconnect to the cloud when unexpected modem power off occurs, within 2min");
     // Given the device is currently connected to the Cloud
     connect_to_cloud(6*60*1000);
@@ -170,5 +164,7 @@ test(CELLULAR_04_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected
     waitFor(Particle.connected, 2*60*1000 - (millis() - start));
     assertEqual(Particle.connected(), true);
 }
+
+#endif // !HAL_PLATFORM_NCP_AT
 
 #endif // Wiring_Cellular
