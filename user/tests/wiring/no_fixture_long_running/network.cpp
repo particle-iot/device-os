@@ -98,8 +98,8 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     const size_t IPV4_PLUS_UDP_HEADER_LENGTH = IPV4_HEADER_LENGTH + UDP_HEADER_LENGTH;
     const size_t MAX_MTU = 1000;
     const size_t MIN_MTU = IPV4_PLUS_UDP_HEADER_LENGTH;
-    const system_tick_t UDP_ECHO_REPLY_WAIT_TIME = 5000;
-    const unsigned UDP_ECHO_RETRIES = 5;
+    const system_tick_t UDP_ECHO_REPLY_WAIT_TIME = 10000;
+    const unsigned UDP_ECHO_RETRIES = 10;
     const system_tick_t MINIMUM_TEST_TIME = 60000;
 
     // FIXME: Hosted by @avtolstoy, should be changed to something else
