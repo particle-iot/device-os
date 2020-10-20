@@ -56,7 +56,6 @@ std::recursive_mutex mdm_mutex;
 #define MDM_C_REG_POLL_INTERVAL_MS (30000) //!< CREG/CGREG/CEREG poll interval to check for unexpected modem reset
 #define MDM_SOCKET_SEND_RETRIES_R4_BUG (3)
 #define MDM_MAX_ERRORS (2) //!< max number of errors before action is taken to recover the modem
-#define MDM_RESET_FAILURE_TIMEOUT_MS (10000)
 #define MDM_RESET_FAILURE_MAX_ATTEMPTS (8)
 
 // ID of the PDP context used to configure the default EPS bearer when registering in an LTE network

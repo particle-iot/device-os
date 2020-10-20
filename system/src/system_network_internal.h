@@ -38,7 +38,7 @@ enum eWanTimings
 {
     CONNECT_TO_ADDRESS_MAX = S2M(30),
     DISCONNECT_TO_RECONNECT = S2M(2),
-    POWER_ON_WD = S2M(300)
+    POWER_ON_WD = S2M(600) // 10 mins
 };
 
 extern volatile uint8_t SPARK_WLAN_RESET;
