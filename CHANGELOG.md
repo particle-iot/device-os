@@ -1,3 +1,25 @@
+## 2.0.0-rc.3
+
+### BUGFIXES
+
+- [Cellular] Set `INPUT_PULLUP` pin mode for FuelGauge and PMIC interrupt pins [#2207](https://github.com/particle-iot/device-os/pull/2207)
+- Disconnect from the cloud before going into sleep [#2206](https://github.com/particle-iot/device-os/pull/2206)
+- Use `always_inline` attribute for deprecated HAL API [#2204](https://github.com/particle-iot/device-os/pull/2204)
+- [Gen 3] Set SPI `MOSI` drive strength as high by default [#2214](https://github.com/particle-iot/device-os/pull/2214) [nrf5_sdk#12](https://github.com/particle-iot/nrf5_sdk/pull/12)
+- [Gen 3] Fix LED behavior in case of network loss before cloud connection is established [#2210](https://github.com/particle-iot/device-os/pull/2210)
+- [Gen 3 / Cellular] Allow Software Default MNO profile to be used when chosen by SIM ICCID-based selection [#2211](https://github.com/particle-iot/device-os/pull/2211)
+- [Cellular] Allow Software Default MNO profile to be used with certain version of SARA R410 modem firmware, where MNO profile 100 is not supported [#2213](https://github.com/particle-iot/device-os/pull/2213)
+- [Boron / B SoM] Workaround for SARA R410 PPP ConfReq behavior [#2208](https://github.com/particle-iot/device-os/pull/2208) [lwip#8](https://github.com/particle-iot/lwip/pull/8)
+- Fix `CellularSignal` deprecation messages [#2221](https://github.com/particle-iot/device-os/pull/2221)
+- [Cellular] Fix PMIC reducing current on warm boot and causing modem brownouts [#2215](https://github.com/particle-iot/device-os/pull/2215)
+- [Electron] Workaround for modem HAL relying on system networking code to re-attempt initialization [#2218](https://github.com/particle-iot/device-os/pull/2218)
+
+### ENHANCEMENTS
+
+- Remove warning for publish and subscribe scope deprecation [#2209](https://github.com/particle-iot/device-os/pull/2209)
+- Export some common standard C library functions through dynalib [#2225](https://github.com/particle-iot/device-os/pull/2225)
+- [Electron] Monitor cellular modem for brown-outs and resets/crashes and perform reinitialization when required [#2219](https://github.com/particle-iot/device-os/pull/2219)
+
 ## 2.0.0-rc.2
 
 ### DEPRECATION
