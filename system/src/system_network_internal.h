@@ -534,6 +534,11 @@ public:
             {
                 // On cellular platforms we'll also get here if modem is not responsive or
                 // there is no SIM card or it has a PIN.
+
+                // FIXME: going into listening mode will cancel an ongoing connection
+                // attempt and unless there is cloud auto-connect flag is set,
+                // a manual call to connect() will have to be made by the application.
+                // This needs to be revisited along with was_sleeping behavior
                 if (listen_enabled) {
                     CLR_WLAN_WD();
                     listen();
