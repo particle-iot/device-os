@@ -649,6 +649,7 @@ protected:
     int _checkAtResponse(void);
     bool _atOk(void);
     bool _checkModem(bool force = true);
+    void _checkVerboseCxreg(void);
     bool _checkEpsReg(void);
     int _socketError(void);
     static MDMParser* inst;
@@ -662,6 +663,7 @@ protected:
     volatile bool _cancel_all_operations;
     volatile uint32_t _error;
     system_tick_t _lastProcess;
+    system_tick_t _lastVerboseCxregUpdate;
 #ifdef MDM_DEBUG
     int _debugLevel;
     void _debugPrint(int level, const char* color, const char* format, ...) __attribute__((format(printf, 4, 5)));

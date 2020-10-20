@@ -53,7 +53,9 @@ std::recursive_mutex mdm_mutex;
 #define MAX_SIZE        1024  //!< max expected messages (used with RX)
 #define USO_MAX_WRITE   1024  //!< maximum number of bytes to write to socket (used with TX)
 #define MDM_URC_POLL_INTERVAL_MS (1000) //!< URC poll interval
+#define MDM_C_REG_POLL_INTERVAL_MS (30000) //!< CREG/CGREG/CEREG poll interval to check for unexpected modem reset
 #define MDM_SOCKET_SEND_RETRIES_R4_BUG (3)
+#define MDM_MAX_ERRORS (2) //!< max number of errors before action is taken to recover the modem
 
 // ID of the PDP context used to configure the default EPS bearer when registering in an LTE network
 // Note: There are no PDP contexts in LTE, SARA-R4 uses this naming for the sake of simplicity
@@ -74,28 +76,28 @@ std::recursive_mutex mdm_mutex;
 #define USOST_TIMEOUT     ( 10 * 1000) /* 10s for R4, 1s for U2/G3, changed to 40s due to R410 firmware */
 #define USOST_TIMEOUT_R4  ( 40 * 1000) /* L0.0.00.00.05.08,A.02.04 background DNS lookup and other factors */
 #define USORF_TIMEOUT     ( 10 * 1000) /* FIXME: 1s for R4/U2/G3, but longer timeouts required in deployments */
-#define CEER_TIMEOUT      ( 10 * 1000)
-#define CEREG_TIMEOUT     ( 60 * 1000)
-#define CGDCONT_TIMEOUT   ( 10 * 1000)
-#define CGREG_TIMEOUT     ( 60 * 1000)
 #define CGATT_TIMEOUT     (180 * 1000)
+#define CEDRXS_TIMEOUT    ( 10 * 1000)
+#define CEER_TIMEOUT      ( 10 * 1000)
+#define CFUN_TIMEOUT      (180 * 1000)
+#define CGDCONT_TIMEOUT   ( 10 * 1000)
+#define CIMI_TIMEOUT      ( 10 * 1000) /* Should be immediate, but have observed 3 seconds occassionally on u-blox and rarely longer times */
 #define CMGS_TIMEOUT      (150 * 1000) /* 180s for R4 (set to 150s to match previous implementation) */
 #define COPS_TIMEOUT      (180 * 1000)
 #define CPWROFF_TIMEOUT   ( 40 * 1000)
-#define CREG_TIMEOUT      ( 60 * 1000)
 #define CSQ_TIMEOUT       ( 10 * 1000)
+#define CREG_TIMEOUT      ( 60 * 1000)
+#define CGREG_TIMEOUT     ( 60 * 1000)
+#define CEREG_TIMEOUT     ( 60 * 1000)
 #define UBANDSEL_TIMEOUT  ( 40 * 1000)
 #define UBANDMASK_TIMEOUT ( 10 * 1000)
+#define UCGED_TIMEOUT     ( 10 * 1000)
 #define UDNSRN_TIMEOUT    ( 30 * 1000) /* 70s for R4 (set to 30s to match previous implementation) */
-#define URAT_TIMEOUT      ( 10 * 1000)
+#define UMNOPROF_TIMEOUT  ( 10 * 1000)
 #define UPSD_TIMEOUT      ( 10 * 1000)
 #define UPSDA_TIMEOUT     (180 * 1000)
 #define UPSND_TIMEOUT     ( 10 * 1000)
-#define UMNOPROF_TIMEOUT  ( 10 * 1000)
-#define CEDRXS_TIMEOUT    ( 10 * 1000)
-#define CFUN_TIMEOUT      (180 * 1000)
-#define UCGED_TIMEOUT     ( 10 * 1000)
-#define CIMI_TIMEOUT      ( 10 * 1000) /* Should be immediate, but have observed 3 seconds occassionally on u-blox and rarely longer times */
+#define URAT_TIMEOUT      ( 10 * 1000)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -248,6 +250,10 @@ MDMParser::MDMParser(void)
     inst = this;
     memset(&_dev, 0, sizeof(_dev));
     memset(&_net, 0, sizeof(_net));
+    memset(_sockets, 0, sizeof(_sockets));
+    for (int socket = 0; socket < NUMSOCKETS; socket ++) {
+        _sockets[socket].handle = MDM_SOCKET_ERROR;
+    }
     _net.cgi.location_area_code = 0xFFFF;
     _net.cgi.cell_id = 0xFFFFFFFF;
     _ip        = NOIP;
@@ -265,11 +271,9 @@ MDMParser::MDMParser(void)
     _oldFirmwarePresent = true; // default to safe state until we determine modem firmware version
     _timePowerOn = 0;
     _timeRegistered = 0;
-    memset(_sockets, 0, sizeof(_sockets));
-    for (int socket = 0; socket < NUMSOCKETS; socket ++)
-        _sockets[socket].handle = MDM_SOCKET_ERROR;
-    _error = 0;
+    _lastVerboseCxregUpdate = 0;
     _lastProcess = 0;
+    _error = 0;
 #ifdef MDM_DEBUG
     _debugLevel = 3;
 #endif
@@ -394,7 +398,7 @@ bool MDMParser::_checkModem(bool force /* = true */) {
     // Either several commands timed-out or we
     // performed an additional AT/OK check here
     // and it also failed.
-    if (_error >= 2) {
+    if (_error >= MDM_MAX_ERRORS) {
         return false;
     }
 
@@ -410,6 +414,7 @@ bool MDMParser::_checkModem(bool force /* = true */) {
 }
 
 int MDMParser::process() {
+
     if (!(_init && _pwr)) {
         return 0;
     }
@@ -421,32 +426,33 @@ int MDMParser::process() {
     {
         LOCK();
         if (!_checkModem(false /* force */)) {
+            MDM_ERROR("[ Modem not responsive ]\r\n");
             // We've notified system layer that we'll require a modem reset
             // This will get reset once the system (or something else) calls on()
             _cancel_all_operations = true;
-            // Short-circuit disconnect() call
-            _ip = NOIP;
+            _ip = NOIP; // Short-circuit disconnect() call
             _attached = false;
             _activated = false;
             HAL_NET_notify_disconnected();
-            MDM_ERROR("[ Modem not responsive ]\r\n");
             return -1;
         }
     }
 
     if ((HAL_Timer_Get_Milli_Seconds() - _lastProcess) >= MDM_URC_POLL_INTERVAL_MS) {
         LOCK();
-        // Process URCs
-        waitFinalResp(nullptr, nullptr, 0);
+        waitFinalResp(nullptr, nullptr, 0); // Process URCs
         _lastProcess = HAL_Timer_Get_Milli_Seconds();
     }
 
     if (_activated && !_attached) {
         LOCK();
         if (!reconnect()) {
-            return -1;
+            return -2;
         }
     }
+
+    // Periodically check if C*REG URCs are still enabled, will cause modem re-init if not.
+    _checkVerboseCxreg();
 
     return 0;
 }
@@ -503,7 +509,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
             // handle unsolicited commands here
             if (type == TYPE_PLUS) {
                 const char* cmd = buf+3; // assume all TYPE_PLUS commands have \r\n+ and skip
-                int a, b, c, d, r;
+                int mode, a, b, c, d, r;
                 char s[32];
 
                 // SMS Command ---------------------------------
@@ -567,13 +573,14 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                         HAL_NET_notify_dhcp(false);
                     }
                 } else {
-                    // +CREG|CGREG: <n>,<stat>[,<lac>,<ci>[,AcT[,<rac>]]] // reply to AT+CREG|AT+CGREG
-                    // +CREG|CGREG: <stat>[,<lac>,<ci>[,AcT[,<rac>]]]     // URC
-                    b = (int)0xFFFF; c = (int)0xFFFFFFFF; d = -1;
-                    r = sscanf(cmd, "%31s %*d,%d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
+                    // +CREG|CGREG: <n>,<stat>[,<lac>,<ci>[,AcT[,<rac>]]] // reply to AT+CREG|AT+CGREG (2,4,5,6 results)
+                    // +CREG|CGREG: <stat>[,<lac>,<ci>[,AcT[,<rac>]]]     // URC (1,3,4,5 results)
+                    b = (int)0xFFFF; c = (int)0xFFFFFFFF; d = -1; mode = -1; // default mode to -1 for safety
+                    r = sscanf(cmd, "%31s %d,%d,\"%x\",\"%x\",%d",s,&mode,&a,&b,&c,&d);
                     if (r <= 1)
                         r = sscanf(cmd, "%31s %d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
                     if (r >= 2) {
+                        if (r == 2) mode = 2; // Single URC <stat>, so fix mode that got overwritten in the first sscanf
                         Reg *reg = !strcmp(s, "CREG:")  ? &_net.csd :
                                    !strcmp(s, "CGREG:") ? &_net.psd :
                                    !strcmp(s, "CEREG:") ? &_net.eps : NULL;
@@ -586,11 +593,26 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                             else if (a == 4) *reg = REG_UNKNOWN;  // 4: unknown
                             else if (a == 5) *reg = REG_ROAMING;  // 5: registered, roaming
 
-                            // R410 : Look out for a CEREG: de-registration URC while attached
+                            if (mode == 0) {
+                                if (_dev.dev == DEV_SARA_R410) {
+                                    if (!strcmp(s, "CEREG:")) {
+                                        _error = MDM_MAX_ERRORS; // force the next call to MDMParser::process() to re-init the modem
+                                        _lastVerboseCxregUpdate = 0;
+                                    }
+                                } else {
+                                    if (!strcmp(s, "CREG:") || !strcmp(s, "CGREG:")) {
+                                        _error = MDM_MAX_ERRORS; // force the next call to MDMParser::process() to re-init the modem
+                                        _lastVerboseCxregUpdate = 0;
+                                    }
+                                }
+                                if (_error == MDM_MAX_ERRORS) {
+                                    MDM_ERROR("[ Modem unexpectedly reset ]\r\n");
+                                }
+                            }
                             if (_dev.dev == DEV_SARA_R410 && _attached && !REG_OK(*reg) && !strcmp(s, "CEREG:")) {
-                                MDM_PRINTF("Cell de-registered\r\n");
-                                _attached_urc = 0;
-                                _ip = NOIP;
+                                // R410 : Look out for a CEREG: de-registration URC while attached
+                                MDM_ERROR("[ Cell de-registered ]\r\n");
+                                _ip = NOIP; // Short-circuit disconnect() call
                                 _attached = false;
                                 HAL_NET_notify_disconnected();
                             }
@@ -754,6 +776,8 @@ void MDMParser::reset(void)
     _timeRegistered = 0;
     // Increment the state change counter
     _incModemStateChangeCount();
+    // Reset our verbose C*REG timer to disable updates
+    _lastVerboseCxregUpdate = 0;
 }
 
 bool MDMParser::_powerOn(void)
@@ -1237,11 +1261,12 @@ bool MDMParser::powerState(void) const {
 bool MDMParser::powerOff(void)
 {
     LOCK();
+    const char * POWER_OFF_MSG = "\r\n[ Modem::powerOff ]";
     bool ok = false;
     bool continue_cancel = false;
     bool check_ri = false;
     if (_init && _pwr) {
-        MDM_INFO("\r\n[ Modem::powerOff ] = = = = = = = = = = = = = =");
+        MDM_INFO("%s = = = = = = = = = = = = = =", POWER_OFF_MSG);
         if (_cancel_all_operations) {
             continue_cancel = true;
             resume(); // make sure we can use the AT parser
@@ -1255,7 +1280,7 @@ bool MDMParser::powerOff(void)
                     // to avoid hitting the 124 day memory housekeeping issue, AT+CPWROFF will
                     // handle this delay automatically, or timeout after 40s.
                     if (_memoryIssuePresent) {
-                        MDM_INFO("\r\n[ Modem::powerOff ] Modem not responsive, waiting up to 30s to power off with PWR_UC...");
+                        MDM_INFO("%s Modem not responsive, waiting up to 30s to power off with PWR_UC...", POWER_OFF_MSG);
                         system_tick_t now = HAL_Timer_Get_Milli_Seconds();
                         if (_timePowerOn == 0) {
                             // fallback to max timeout of 30s to be safe
@@ -1279,7 +1304,7 @@ bool MDMParser::powerOff(void)
                         _timePowerOn = 0;
                     }
                 }
-                MDM_INFO("\r\n[ Modem::powerOff ] Modem not responsive, trying PWR_UC...");
+                MDM_INFO("%s Modem not responsive, trying PWR_UC...", POWER_OFF_MSG);
                 // Skip power off sequence if power is already off
                 if (!powerState()) {
                     break;
@@ -1300,16 +1325,16 @@ bool MDMParser::powerOff(void)
                     }
                     break;
                 } else if (RESP_ABORTED == ret) {
-                    MDM_INFO("\r\n[ Modem::powerOff ] found ABORTED, retrying...");
+                    MDM_INFO("%s found ABORTED, retrying...", POWER_OFF_MSG);
                 } else {
-                    MDM_INFO("\r\n[ Modem::powerOff ] timeout, retrying...");
+                    MDM_INFO("%s timeout, retrying...", POWER_OFF_MSG);
                 }
             }
         }
     } else {
         if (powerState()) {
             check_ri = true;
-            MDM_INFO("[ Modem::powerOff ] modem is on unexpectedly. Turning it off...");
+            MDM_INFO("%s modem is on unexpectedly. Turning it off...", POWER_OFF_MSG);
             // Delay this long period so that the modem is fully on to accept the power-off sequence.
             HAL_Delay_Milliseconds(12000);
 
@@ -1333,9 +1358,9 @@ bool MDMParser::powerOff(void)
             _pwr = false;
         }
         if (!power_state) {
-            MDM_INFO("\r\n[ Modem::powerOff ] took %lu ms", HAL_Timer_Get_Milli_Seconds() - t0);
+            MDM_INFO("%s took %lu ms", POWER_OFF_MSG, HAL_Timer_Get_Milli_Seconds() - t0);
         } else {
-            MDM_INFO("\r\n[ Modem::powerOff ] failed");
+            MDM_INFO("%s failed", POWER_OFF_MSG);
         }
     } else {
         _pwr = false;
@@ -1344,9 +1369,10 @@ bool MDMParser::powerOff(void)
         //_attached = false;
     }
     HAL_Delay_Milliseconds(1000); // give peace a chance
-    // Increment the state change counter to show that the modem has been powered off -> on
+    // Increment the state change counter to show that the modem has been powered on -> off
     if (!_pwr) {
         _incModemStateChangeCount();
+        _lastVerboseCxregUpdate = 0;
     }
 
     // Close serial connection
@@ -1453,6 +1479,30 @@ int MDMParser::_cbCCID(int type, const char* buf, int len, CStringHelper* str)
     return WAIT;
 }
 
+void MDMParser::_checkVerboseCxreg(void) {
+    if (!_attached || !_lastVerboseCxregUpdate) {
+        return;
+    }
+
+    if (HAL_Timer_Get_Milli_Seconds() - _lastVerboseCxregUpdate >= MDM_C_REG_POLL_INTERVAL_MS) {
+        LOCK();
+        if (!_checkModem()) {
+            return;
+        }
+        _lastVerboseCxregUpdate = HAL_Timer_Get_Milli_Seconds();
+        // Check if C*REG URCs are enabled, handled in waitFinalResp()
+        if (_dev.dev == DEV_SARA_R410) {
+            sendFormated("AT+CEREG?\r\n");
+            waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT);
+        } else {
+            sendFormated("AT+CREG?\r\n");
+            waitFinalResp(nullptr, nullptr, CREG_TIMEOUT);
+            sendFormated("AT+CGREG?\r\n");
+            waitFinalResp(nullptr, nullptr, CGREG_TIMEOUT);
+        }
+    }
+}
+
 bool MDMParser::_checkEpsReg(void) {
     // On the SARA R410M check EPS registration
     if (_dev.dev == DEV_SARA_R410) {
@@ -1513,6 +1563,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             if (RESP_OK != waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT)) {
                 goto failure;
             }
+            _lastVerboseCxregUpdate = HAL_Timer_Get_Milli_Seconds();
         } else {
             // Set up the GPRS network registration URC
             sendFormated("AT+CGREG=2\r\n");
@@ -1524,6 +1575,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             if (RESP_OK != waitFinalResp(nullptr, nullptr, CREG_TIMEOUT)) {
                 goto failure;
             }
+            _lastVerboseCxregUpdate = HAL_Timer_Get_Milli_Seconds();
         }
         if (!(ok = checkNetStatus())) {
             if (_dev.dev == DEV_SARA_R410) {
