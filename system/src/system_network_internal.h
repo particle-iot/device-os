@@ -38,6 +38,7 @@ enum eWanTimings
 {
     CONNECT_TO_ADDRESS_MAX = S2M(30),
     DISCONNECT_TO_RECONNECT = S2M(2),
+    POWER_ON_WD = S2M(600) // 10 mins
 };
 
 extern volatile uint8_t SPARK_WLAN_RESET;
@@ -207,7 +208,7 @@ struct NetworkInterface
     virtual network_interface_t network_interface()=0;
     virtual void setup()=0;
 
-    virtual void on()=0;
+    virtual int on()=0;
     virtual void off(bool disconnect_cloud=false)=0;
     virtual void connect(bool listen_enabled=true)=0;
     virtual bool connecting()=0;
@@ -510,36 +511,64 @@ public:
         LOG_NETWORK_STATE();
         // INFO("ready(): %d; connecting(): %d; listening(): %d; WLAN_SMART_CONFIG_START: %d", (int)ready(), (int)connecting(),
         //        (int)listening(), (int)WLAN_SMART_CONFIG_START);
-        if (!ready() && !connecting() && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
+        if (!ready() && (!connecting() || !WLAN_INITIALIZED) && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
         {
             bool was_sleeping = SPARK_WLAN_SLEEP;
 
-            on(); // activate WiFi
+            int onRet = on(); // make sure that the NCP is powered on
 
             WLAN_DISCONNECT = 0;
-            connect_init();
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
 
+            // Only if power on succeeded
+            if (!onRet) {
+                CLR_WLAN_WD();
+                connect_init();
+            }
+
+            // This call has side-effects on cellular platforms, so we need to run even if we've failed to completely power-on
+            // 'Side-effects' as in has_credentials() actually modifies the state by calling cellular_on() on its own.
+            // FIXME: This behavior should be revisited later on.
             if (!has_credentials())
             {
+                // On cellular platforms we'll also get here if modem is not responsive or
+                // there is no SIM card or it has a PIN.
+
+                // FIXME: going into listening mode will cancel an ongoing connection
+                // attempt and unless there is cloud auto-connect flag is set,
+                // a manual call to connect() will have to be made by the application.
+                // This needs to be revisited along with was_sleeping behavior
                 if (listen_enabled) {
+                    CLR_WLAN_WD();
                     listen();
                 }
                 else if (was_sleeping) {
                     disconnect();
                 }
+                return;
             }
-            else
-            {
+
+            // XXX: We are trying to streamline the behavior on how we approach signaling and events between platforms
+            // Following pre-LTS Gen 2 and Gen 3 behavior: LED and system events follow administrative state,
+            // which means that we'll immediately go into connecting state even if HAL still needs to perform some low level
+            // initialization.
+            // This could be revisited in the future.
+            LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL);
+            const auto diag = NetworkDiagnostics::instance();
+            diag->status(NetworkDiagnostics::CONNECTING);
+            bool startedConnecting = !WLAN_CONNECTING;
+            WLAN_CONNECTING = 1;
+            if (startedConnecting) {
+                // Make sure this event is generated only when we transition into connecting state
+                system_notify_event(network_status, network_status_connecting);
+            }
+
+            if (!onRet) {
+                // We are powered on and can initiate a connection
                 config_hostname();
-                LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL);
-                WLAN_CONNECTING = 1;
                 INFO("ARM_WLAN_WD 1");
                 ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
-                const auto diag = NetworkDiagnostics::instance();
-                diag->status(NetworkDiagnostics::CONNECTING);
-                system_notify_event(network_status, network_status_connecting);
                 diag->connectionAttempt();
                 const int ret = connect_finalize();
                 if (ret != 0) {
@@ -599,27 +628,54 @@ public:
         return (SPARK_WLAN_STARTED && WLAN_CONNECTING);
     }
 
-    void on() override
+    int on() override
     {
         LOG_NETWORK_STATE();
-        if (!SPARK_WLAN_STARTED)
+        if (!SPARK_WLAN_STARTED || !WLAN_INITIALIZED)
         {
+            bool startedPowerOn = !SPARK_WLAN_STARTED;
+            WLAN_INITIALIZED = 0;
             const auto diag = NetworkDiagnostics::instance();
             diag->status(NetworkDiagnostics::TURNING_ON);
-            system_notify_event(network_status, network_status_powering_on);
+            if (startedPowerOn) {
+                // Make sure to generate only one powering_on event.
+                // Subsequent power-on attempts after a failed one should
+                // not be generating these events.
+                system_notify_event(network_status, network_status_powering_on);
+            }
             config_clear();
             const int ret = on_now();
             if (ret != 0) {
                 diag->lastError(ret);
+                if (!wlan_watchdog_duration) {
+                    // Just in case arm WLAN WD
+                    ARM_WLAN_WD(POWER_ON_WD);
+                }
+            } else {
+                WLAN_INITIALIZED = 1;
             }
             update_config(true);
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
-            WLAN_INITIALIZED = 1;
-            LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
-            diag->status(NetworkDiagnostics::DISCONNECTED);
-            system_notify_event(network_status, network_status_on);
+            if (startedPowerOn) {
+                // Same as with powering_on event above, make sure
+                // that we generate this event only once.
+                // Subsequent power-on attempts after a failed one should
+                // not be generating these events.
+
+
+                // XXX: We are trying to streamline the behavior on how we approach signaling and events between platforms
+                // Following pre-LTS Gen 2 and Gen 3 behavior: LED and system events follow administrative state,
+                // which means that we'll immediately go into ON state even if HAL still needs to perform some low level
+                // initialization.
+                // This could be revisited in the future.
+                LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
+                diag->status(NetworkDiagnostics::DISCONNECTED);
+                system_notify_event(network_status, network_status_on);
+            }
+            return ret;
         }
+        return 0;
     }
 
     void off(bool disconnect_cloud=false) override
@@ -627,6 +683,7 @@ public:
         LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
         {
+            CLR_WLAN_WD();
             // TODO: We should report NETWORK_DISCONNECT_REASON_USER if the network interface is
             // being turned off at the user's request
             disconnect(NETWORK_DISCONNECT_REASON_NETWORK_OFF);
@@ -773,6 +830,12 @@ public:
 
     virtual int process()
     {
+        // Requested to power-on, failed initial power-on, requested to connect as well
+        if ((SPARK_WLAN_STARTED && !WLAN_INITIALIZED) && WLAN_CONNECTING) {
+            // XXX: workaround for HAL relying on system layer to retry power-on
+            // and connection attempts on cellular platforms
+            connect();
+        }
         auto r = process_now();
         if (r) {
             // Ask the system to reset us
