@@ -178,17 +178,17 @@ int spark_protocol_presence_announcement(ProtocolFacade* protocol, unsigned char
 /**
  * Content type.
  */
-enum spark_protocol_content_type {
+typedef enum {
     PROTOCOL_CONTENT_TYPE_PLAIN_TEXT = 1 ///< Plain text.
-};
+} spark_protocol_content_type;
 
 /**
  * Flags used by `spark_protocol_event_data_callback` and `spark_protocol_write_event_data()`.
  */
-enum spark_protocol_event_data_flag {
+enum {
     PROTOCOL_EVENT_DATA_READY = 0x01, ///< Event data is available for reading or writing.
     PROTOCOL_EVENT_DATA_MORE = 0x02 ///< Sender has more data to send.
-};
+} spark_protocol_event_data_flag;
 
 /**
  * Callback invoked when an event's data becomes available for reading or writing.

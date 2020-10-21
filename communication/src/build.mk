@@ -15,6 +15,7 @@ INCLUDE_DIRS += $(TARGET_SRC_PATH)
 CPPSRC += $(TARGET_SRC_PATH)/coap.cpp
 CPPSRC += $(TARGET_SRC_PATH)/handshake.cpp
 CPPSRC += $(TARGET_SRC_PATH)/events.cpp
+CPPSRC += $(TARGET_SRC_PATH)/events2.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_protocol_functions.cpp
 CPPSRC += $(TARGET_SRC_PATH)/communication_dynalib.cpp
 CPPSRC += $(TARGET_SRC_PATH)/dsakeygen.cpp
