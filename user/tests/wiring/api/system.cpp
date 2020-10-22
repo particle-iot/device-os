@@ -302,8 +302,19 @@ void handler_event_data_param(system_event_t event, int data, void* param)
     }
 }
 
+class EventsHandler {
+public:
+    void handler3(system_event_t events, int data, void* pointer) {}
+    void handler2(system_event_t events, int data) {}
+    void handler1(system_event_t events) {}
+    void handler0() {}
+};
+
+EventsHandler handlerInstance;
+
 test(system_events)
 {
+    using namespace std::placeholders;
     int clicks = system_button_clicks(123);
     system_event_t my_events = wifi_listen_begin + wifi_listen_end + wifi_listen_update +
                                setup_begin + setup_end + setup_update + network_credentials +
@@ -315,6 +326,18 @@ test(system_events)
     API_COMPILE(System.on(my_events, handler_event));
     API_COMPILE(System.on(my_events, handler_event_data));
     API_COMPILE(System.on(my_events, handler_event_data_param));
+    API_COMPILE(System.on(my_events, &EventsHandler::handler3, &handlerInstance));
+    API_COMPILE(System.on(my_events, &EventsHandler::handler2, &handlerInstance));
+    API_COMPILE(System.on(my_events, &EventsHandler::handler1, &handlerInstance));
+    API_COMPILE(System.on(my_events, &EventsHandler::handler0, &handlerInstance));
+    API_COMPILE(System.on(my_events, std::bind(&EventsHandler::handler3, &handlerInstance, _1, _2, _3)));
+    API_COMPILE(System.on(my_events, std::function<void(system_event_t, int)>(std::bind(&EventsHandler::handler2, &handlerInstance, _1, _2))));
+    API_COMPILE(System.on(my_events, std::function<void(system_event_t)>(std::bind(&EventsHandler::handler1, &handlerInstance, _1))));
+    API_COMPILE(System.on(my_events, std::function<void()>(std::bind(&EventsHandler::handler0, &handlerInstance))));
+    API_COMPILE(System.on(my_events, [](system_event_t events, int data, void* pointer) {}));
+    API_COMPILE(System.on(my_events, [](system_event_t events, int data) {}));
+    API_COMPILE(System.on(my_events, [](system_event_t events) {}));
+    API_COMPILE(System.on(my_events, []() {}));
     (void)clicks; // avoid unused variable warning
 }
 
