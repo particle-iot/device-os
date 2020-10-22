@@ -30,10 +30,20 @@ struct SystemEventSubscription {
 
     system_event_t events;
     system_event_handler_t* handler;
+    SystemEventContext context;
 
     SystemEventSubscription() : SystemEventSubscription(0, nullptr) {}
-    SystemEventSubscription(system_event_t e, system_event_handler_t* h) :
-    events(e), handler(h) {}
+    SystemEventSubscription(system_event_t e, system_event_handler_t* h)
+            : events(e), handler(h) {
+        context = {};
+    }
+    SystemEventSubscription(system_event_t e, system_event_handler_t* h, const SystemEventContext* c)
+            : events(e), handler(h) {
+        if (c) {
+            auto size = std::min(c->size, (uint16_t)sizeof(SystemEventContext));
+            memcpy(&context, c, size);
+        }
+    }
 
     inline bool matchesHandler(system_event_handler_t* matchHandler) const
     {
@@ -52,8 +62,9 @@ struct SystemEventSubscription {
 
     void notify(system_event_t event, uint32_t data, void* pointer) const
     {
-        if (matchesEvent(event))
-            handler(event, data, pointer);
+        if (matchesEvent(event)) {
+            handler(event, data, pointer, &context);
+        }
     }
 };
 
@@ -122,7 +133,7 @@ public:
 int system_subscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved)
 {
     size_t count = subscriptions.size();
-    subscriptions.push_back(SystemEventSubscription(events, handler));
+    subscriptions.push_back(SystemEventSubscription(events, handler, (SystemEventContext*)reserved));
     return subscriptions.size()==count+1 ? 0 : -1;
 }
 

@@ -28,7 +28,7 @@ extern "C" {
 
 
 typedef uint64_t system_event_t;
-typedef void (system_event_handler_t)(system_event_t event, int param, void* pointer);
+typedef void (system_event_handler_t)(system_event_t event, int param, void* pointer, const void* context);
 
 
 enum SystemEvents {
@@ -104,6 +104,12 @@ enum SystemEventsParam {
 enum SystemNotifyEventFlag {
     NOTIFY_SYNCHRONOUSLY = 0x01
 };
+
+typedef struct SystemEventContext {
+    uint16_t version;
+    uint16_t size;
+    void* callable;
+} SystemEventContext;
 
 /**
  * Subscribes to the system events given

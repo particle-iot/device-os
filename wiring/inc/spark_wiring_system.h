@@ -388,34 +388,88 @@ public:
         return system_button_pushed_duration(button, NULL);
     }
 
-    static bool on(system_event_t events, void(*handler)(system_event_t, int,void*)) {
-        return !system_subscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), nullptr);
-    }
-
-    static bool on(system_event_t events, void(*handler)(system_event_t, int)) {
-        return system_subscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), NULL);
-    }
-
-    static bool on(system_event_t events, void(*handler)(system_event_t)) {
-        return system_subscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), NULL);
-    }
-
-    static bool on(system_event_t events, void(*handler)()) {
-        return system_subscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), NULL);
-    }
-
     template<typename T>
     static bool on(system_event_t events, void (T::*handler)(system_event_t, int, void*), T* instance) {
         using namespace std::placeholders;
-        return system_subscribe_event(events, reinterpret_cast<system_event_handler_t*>(std::bind(handler,instance,_1,_2,_3)), NULL);
+        auto callback = std::bind(handler, instance, _1, _2, _3);
+        auto wrapper = [callback](system_event_t event, int data, void* pointer) {
+            callback(event, data, pointer);
+        };
+        return on(events, wrapper);
+    }
+
+    template<typename T>
+    static bool on(system_event_t events, void (T::*handler)(system_event_t, int), T* instance) {
+        using namespace std::placeholders;
+        auto callback = std::bind(handler, instance, _1, _2);
+        auto wrapper = [callback](system_event_t event, int data, void* pointer) {
+            callback(event, data);
+        };
+        return on(events, wrapper);
+    }
+
+    template<typename T>
+    static bool on(system_event_t events, void (T::*handler)(system_event_t), T* instance) {
+        using namespace std::placeholders;
+        auto callback = std::bind(handler, instance, _1);
+        auto wrapper = [callback](system_event_t event, int data, void* pointer) {
+            callback(event);
+        };
+        return on(events, wrapper);
+    }
+
+    template<typename T>
+    static bool on(system_event_t events, void (T::*handler)(), T* instance) {
+        auto callback = std::bind(handler, instance);
+        auto wrapper = [callback](system_event_t event, int data, void* pointer) {
+            callback();
+        };
+        return on(events, wrapper);
+    }
+
+    static bool on(system_event_t events, std::function<void(system_event_t, int, void*)> handler) {
+        // Copy the function object to heap
+        if (!handler) {
+            return -1;
+        }
+        auto wrapper = new std::function<void(system_event_t, int, void*)>(handler); // This may leak memory.
+        if (!wrapper) {
+            return -1;
+        }
+        SystemEventContext context = {
+            .size = sizeof(context),
+            .callable = wrapper
+        };
+        return system_subscribe_event(events, subscribedEventHandler, &context);
+    }
+
+    static bool on(system_event_t events, std::function<void(system_event_t, int)> handler) {
+        auto wrapper = [handler](system_event_t events, int data, void* pointer) {
+            handler(events, data);
+        };
+        return on(events, wrapper);
+    }
+
+    static bool on(system_event_t events, std::function<void(system_event_t)> handler) {
+        auto wrapper = [handler](system_event_t events, int data, void* pointer) {
+            handler(events);
+        };
+        return on(events, wrapper);
+    }
+
+    static bool on(system_event_t events, std::function<void()> handler) {
+        auto wrapper = [handler](system_event_t events, int data, void* pointer) {
+            handler();
+        };
+        return on(events, wrapper);
     }
 
     static void off(void(*handler)(system_event_t, int,void*)) {
-        system_unsubscribe_event(all_events, handler, nullptr);
+        system_unsubscribe_event(all_events, reinterpret_cast<system_event_handler_t*>(handler), nullptr);
     }
 
     static void off(system_event_t events, void(*handler)(system_event_t, int,void*)) {
-        system_unsubscribe_event(events, handler, nullptr);
+        system_unsubscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), nullptr);
     }
 
 
@@ -673,6 +727,21 @@ private:
     }
 
     static SleepResult sleepPinImpl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, SleepOptionFlags flags);
+
+    static void subscribedEventHandler(system_event_t events, int data, void* pointer, const void* context) {
+        if (!context) {
+            return;
+        }
+        auto pContext = static_cast<const SystemEventContext*>(context);
+        if (!pContext->callable) {
+            return;
+        }
+        std::function<void(system_event_t, int, void*)>* handler = reinterpret_cast< std::function<void(system_event_t, int, void*)>* >(pContext->callable);
+        if (!(*handler)) {
+            return;
+        }
+        (*handler)(events, data, pointer);
+    }
 };
 
 extern SystemClass System;
