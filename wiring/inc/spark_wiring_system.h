@@ -1,23 +1,21 @@
-/**
- ******************************************************************************
+/*
  * @file    spark_wiring_system.h
  * @author  Satish Nair, Zachary Crockett, Matthew McGowan
- ******************************************************************************
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
-
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation, either
-  version 3 of the License, or (at your option) any later version.
-
-  This library is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
-
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, see <http://www.gnu.org/licenses/>.
-  ******************************************************************************
+ *
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef SPARK_WIRING_SYSTEM_H
@@ -43,7 +41,7 @@
 #include "spark_wiring_system_power.h"
 #include "system_sleep_configuration.h"
 
-#if defined(SPARK_PLATFORM) && PLATFORM_ID!=3 && PLATFORM_ID != 20
+#if defined(SPARK_PLATFORM) && PLATFORM_ID != PLATFORM_GCC
 #define SYSTEM_HW_TICKS 1
 #else
 #define SYSTEM_HW_TICKS 0
@@ -305,38 +303,58 @@ public:
     static void enterSafeMode(SystemResetFlags flags = SystemResetFlags());
 
 #if SYSTEM_HW_TICKS
-    static inline uint32_t ticksPerMicrosecond()
-    {
+    static inline uint32_t ticksPerMicrosecond() {
         return SYSTEM_US_TICKS;
     }
 
-    static inline uint32_t ticks()
-    {
+    static inline uint32_t ticks() {
         return SYSTEM_TICK_COUNTER;
     }
 
-    static inline void ticksDelay(uint32_t duration)
-    {
+    static inline void ticksDelay(uint32_t duration) {
         uint32_t start = ticks();
-        while ((ticks()-start)<duration) {}
+        while ((ticks() - start) < duration) {}
     }
 #endif
 
     static SystemSleepResult sleep(const particle::SystemSleepConfiguration& config);
+    static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF);
 
-    static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF);
-    inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, std::chrono::seconds s, SleepOptionFlags flag=SLEEP_NETWORK_OFF) { return sleep(sleepMode, s.count(), flag); }
+    inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
+        return sleep(sleepMode, s.count(), flag);
+    }
 
-    inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, SleepOptionFlags flag, long seconds=0) { return sleep(sleepMode, seconds, flag); }
-    inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, SleepOptionFlags flag, std::chrono::seconds s) { return sleep(sleepMode, flag, s.count()); }
+    inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, SleepOptionFlags flag, long seconds = 0) {
+        return sleep(sleepMode, seconds, flag);
+    }
 
-    inline static SleepResult sleep(long seconds) { return sleep(SLEEP_MODE_WLAN, seconds); }
-    inline static SleepResult sleep(std::chrono::seconds s) { return sleep(s.count()); }
+    inline static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, SleepOptionFlags flag, std::chrono::seconds s) {
+        return sleep(sleepMode, flag, s.count());
+    }
 
-    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds=0, SleepOptionFlags flag=SLEEP_NETWORK_OFF) { return sleepPinImpl(&wakeUpPin, 1, &edgeTriggerMode, 1, seconds, flag); }
-    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, std::chrono::seconds s, SleepOptionFlags flag=SLEEP_NETWORK_OFF) { return sleep(wakeUpPin, edgeTriggerMode, s.count(), flag); }
-    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds=0) { return sleep(wakeUpPin, edgeTriggerMode, seconds, flag); }
-    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, SleepOptionFlags flag, std::chrono::seconds s) { return sleep(wakeUpPin, edgeTriggerMode, flag, s.count()); }
+    inline static SleepResult sleep(long seconds) {
+        return sleep(SLEEP_MODE_WLAN, seconds);
+    }
+
+    inline static SleepResult sleep(std::chrono::seconds s) {
+        return sleep(s.count());
+    }
+
+    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
+        return sleepPinImpl(&wakeUpPin, 1, &edgeTriggerMode, 1, seconds, flag);
+    }
+
+    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
+        return sleep(wakeUpPin, edgeTriggerMode, s.count(), flag);
+    }
+
+    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
+        return sleep(wakeUpPin, edgeTriggerMode, seconds, flag);
+    }
+
+    inline static SleepResult sleep(uint16_t wakeUpPin, InterruptMode edgeTriggerMode, SleepOptionFlags flag, std::chrono::seconds s) {
+        return sleep(wakeUpPin, edgeTriggerMode, flag, s.count());
+    }
 
     /*
      * wakeup pins: std::initializer_list<pin_t>
@@ -347,9 +365,19 @@ public:
         // static_assert(pins.size() > 0, "Provided pin list is empty");
         return sleepPinImpl(pins.begin(), pins.size(), &edgeTriggerMode, 1, seconds, flag);
     }
-    inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { return sleep(pins, edgeTriggerMode, s.count(), flag); }
-    inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) { return sleep(pins, edgeTriggerMode, seconds, flag); }
-    inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, SleepOptionFlags flag, std::chrono::seconds s) { return sleep(pins, edgeTriggerMode, flag, s.count()); }
+
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
+        return sleep(pins, edgeTriggerMode, s.count(), flag);
+    }
+
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
+        return sleep(pins, edgeTriggerMode, seconds, flag);
+    }
+
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, InterruptMode edgeTriggerMode, SleepOptionFlags flag, std::chrono::seconds s) {
+        return sleep(pins, edgeTriggerMode, flag, s.count());
+    }
+
     /*
      * wakeup pins: std::initializer_list<pin_t>
      * trigger mode: std::initializer_list<InterruptMode>
@@ -360,32 +388,65 @@ public:
         // static_assert(edgeTriggerMode.size() > 0, "Provided InterruptMode list is empty");
         return sleepPinImpl(pins.begin(), pins.size(), edgeTriggerMode.begin(), edgeTriggerMode.size(), seconds, flag);
     }
-    inline static SleepResult sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { return sleep(pins, edgeTriggerMode, s.count(), flag); }
-    inline static SleepResult sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) { return sleep(pins, edgeTriggerMode, seconds, flag); }
-    inline static SleepResult sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, SleepOptionFlags flag, std::chrono::seconds s) { return sleep(pins, edgeTriggerMode, flag, s.count()); }
+
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { 
+        return sleep(pins, edgeTriggerMode, s.count(), flag);
+    }
+
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
+        return sleep(pins, edgeTriggerMode, seconds, flag);
+    }
+
+    inline static SleepResult sleep(std::initializer_list<pin_t> pins, std::initializer_list<InterruptMode> edgeTriggerMode, SleepOptionFlags flag, std::chrono::seconds s) {
+        return sleep(pins, edgeTriggerMode, flag, s.count());
+    }
 
     /*
      * wakeup pins: pin_t* + size_t
      * trigger mode: single InterruptMode
      */
-    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { return sleepPinImpl(pins, pinsSize, &edgeTriggerMode, 1, seconds, flag); }
-    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { return sleep(pins, pinsSize, edgeTriggerMode, s.count(), flag); }
-    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) { return sleep(pins, pinsSize, edgeTriggerMode, seconds, flag); }
-    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, SleepOptionFlags flag, std::chrono::seconds s) { return sleep(pins, pinsSize, edgeTriggerMode, flag, s.count()); }
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
+        return sleepPinImpl(pins, pinsSize, &edgeTriggerMode, 1, seconds, flag);
+    }
+
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
+        return sleep(pins, pinsSize, edgeTriggerMode, s.count(), flag);
+    }
+
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, SleepOptionFlags flag, long seconds = 0) {
+        return sleep(pins, pinsSize, edgeTriggerMode, seconds, flag);
+    }
+
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, InterruptMode edgeTriggerMode, SleepOptionFlags flag, std::chrono::seconds s) {
+        return sleep(pins, pinsSize, edgeTriggerMode, flag, s.count());
+    }
 
     /*
      * wakeup pins: pin_t* + size_t
      * trigger mode: InterruptMode* + size_t
      */
-    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { return sleepPinImpl(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, seconds, flag); }
-    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) { return sleep(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, s.count(), flag); }
-    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, SleepOptionFlags flag, long seconds = 0) { return sleep(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, seconds, flag); }
-    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, SleepOptionFlags flag, std::chrono::seconds s) { return sleep(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, flag, s.count()); }
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
+        return sleepPinImpl(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, seconds, flag);
+    }
 
-    static String deviceID(void) { return spark_deviceID(); }
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, std::chrono::seconds s, SleepOptionFlags flag = SLEEP_NETWORK_OFF) {
+        return sleep(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, s.count(), flag);
+    }
 
-    static uint16_t buttonPushed(uint8_t button=0) {
-        return system_button_pushed_duration(button, NULL);
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, SleepOptionFlags flag, long seconds = 0) {
+        return sleep(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, seconds, flag);
+    }
+
+    inline static SleepResult sleep(const pin_t* pins, size_t pinsSize, const InterruptMode* edgeTriggerMode, size_t edgeTriggerModeSize, SleepOptionFlags flag, std::chrono::seconds s) {
+        return sleep(pins, pinsSize, edgeTriggerMode, edgeTriggerModeSize, flag, s.count());
+    }
+
+    static String deviceID(void) {
+        return spark_deviceID();
+    }
+
+    static uint16_t buttonPushed(uint8_t button = 0) {
+        return system_button_pushed_duration(button, nullptr);
     }
 
     template<typename T>
@@ -476,47 +537,45 @@ public:
 
     static uint32_t freeMemory();
 
-    template<typename Condition, typename While> static bool waitConditionWhile(Condition _condition, While _while) {
+    template<typename Condition, typename While>
+    static bool waitConditionWhile(Condition _condition, While _while) {
         while (_while() && !_condition()) {
             spark_process();
         }
         return _condition();
     }
 
-    template<typename Condition> static bool waitCondition(Condition _condition) {
+    template<typename Condition>
+    static bool waitCondition(Condition _condition) {
         return waitConditionWhile(_condition, []{ return true; });
     }
 
-    template<typename Condition> static bool waitCondition(Condition _condition, system_tick_t timeout) {
+    template<typename Condition>
+    static bool waitCondition(Condition _condition, system_tick_t timeout) {
         const system_tick_t start = millis();
         return waitConditionWhile(_condition, [=]{ return (millis()-start)<timeout; });
     }
 
-    bool set(hal_system_config_t config_type, const void* data, unsigned length)
-    {
+    bool set(hal_system_config_t config_type, const void* data, unsigned length) {
         return HAL_Set_System_Config(config_type, data, length)>=0;
     }
 
-    bool set(hal_system_config_t config_type, const char* data)
-    {
+    bool set(hal_system_config_t config_type, const char* data) {
         return set(config_type, data, strlen(data));
     }
 
-
-    inline bool featureEnabled(HAL_Feature feature)
-    {
-        if (feature==FEATURE_WARM_START)
+    inline bool featureEnabled(HAL_Feature feature) {
+        if (feature == FEATURE_WARM_START) {
             return __backup_ram_was_valid();
+        }
         return HAL_Feature_Get(feature);
     }
 
-    inline int enableFeature(HAL_Feature feature)
-    {
+    inline int enableFeature(HAL_Feature feature) {
         return HAL_Feature_Set(feature, true);
     }
 
-    inline int disableFeature(HAL_Feature feature)
-    {
+    inline int disableFeature(HAL_Feature feature) {
         return HAL_Feature_Set(feature, false);
     }
 
@@ -526,63 +585,52 @@ public:
 
     static bool enableFeature(const WiFiTesterFeature feature);
 
-    String version()
-    {
+    String version() {
         SystemVersionInfo info;
         system_version_info(&info, nullptr);
         return String(info.versionString);
     }
 
-    uint32_t versionNumber()
-    {
+    uint32_t versionNumber() {
         SystemVersionInfo info;
         system_version_info(&info, nullptr);
         return info.versionNumber;
     }
 
-    inline void enableUpdates()
-    {
+    inline void enableUpdates() {
         set_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED, true);
     }
 
-    inline void disableUpdates()
-    {
+    inline void disableUpdates() {
         set_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED, false);
     }
 
-    inline uint8_t updatesPending()
-    {
-        return get_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING)!=0;
+    inline uint8_t updatesPending() {
+        return get_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING) != 0;
     }
 
-    inline uint8_t updatesEnabled()
-    {
-        return get_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED)!=0;
+    inline uint8_t updatesEnabled() {
+        return get_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED) != 0;
     }
 
-    inline uint8_t updatesForced()
-    {
-    	return get_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED)!=0;
+    inline uint8_t updatesForced() {
+    	return get_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED) != 0;
     }
 
-    inline void enableReset()
-    {
+    inline void enableReset() {
         set_flag(SYSTEM_FLAG_RESET_ENABLED, true);
     }
 
-    inline void disableReset()
-    {
+    inline void disableReset() {
         set_flag(SYSTEM_FLAG_RESET_ENABLED, false);
     }
 
-    inline uint8_t resetEnabled()
-    {
-        return get_flag(SYSTEM_FLAG_RESET_ENABLED)!=0;
+    inline uint8_t resetEnabled() {
+        return get_flag(SYSTEM_FLAG_RESET_ENABLED) != 0;
     }
 
-    inline uint8_t resetPending()
-    {
-        return get_flag(SYSTEM_FLAG_RESET_PENDING)!=0;
+    inline uint8_t resetPending() {
+        return get_flag(SYSTEM_FLAG_RESET_PENDING) != 0;
     }
 
     inline void enable(system_flag_t flag) {
@@ -597,15 +645,13 @@ public:
         return get_flag(flag) != 0;
     }
 
-    inline int resetReason() const
-    {
+    inline int resetReason() const {
         int reason = RESET_REASON_NONE;
         HAL_Core_Get_Last_Reset_Info(&reason, nullptr, nullptr);
         return reason;
     }
 
-    inline uint32_t resetReasonData() const
-    {
+    inline uint32_t resetReasonData() const {
         uint32_t data = 0;
         HAL_Core_Get_Last_Reset_Info(nullptr, &data, nullptr);
         return data;
@@ -652,14 +698,12 @@ public:
         return sleepResult().error();
     }
 
-    void buttonMirror(pin_t pin, InterruptMode mode, bool bootloader=false) const
-    {
-        HAL_Core_Button_Mirror_Pin(pin, mode, (uint8_t)bootloader, 0, NULL);
+    void buttonMirror(pin_t pin, InterruptMode mode, bool bootloader = false) const {
+        HAL_Core_Button_Mirror_Pin(pin, mode, (uint8_t)bootloader, 0, nullptr);
     }
 
-    void disableButtonMirror(bool bootloader=true) const
-    {
-        HAL_Core_Button_Mirror_Pin_Disable((uint8_t)bootloader, 0, NULL);
+    void disableButtonMirror(bool bootloader = true) const {
+        HAL_Core_Button_Mirror_Pin_Disable((uint8_t)bootloader, 0, nullptr);
     }
 
     // This function is similar to the global millis() but returns a 64-bit value
@@ -715,15 +759,13 @@ public:
 private:
     SystemSleepResult systemSleepResult_;
 
-    static inline uint8_t get_flag(system_flag_t flag)
-    {
+    static inline uint8_t get_flag(system_flag_t flag) {
         uint8_t value = 0;
         system_get_flag(flag, &value, nullptr);
         return value;
     }
 
-    static inline void set_flag(system_flag_t flag, uint8_t value)
-    {
+    static inline void set_flag(system_flag_t flag, uint8_t value) {
         system_set_flag(flag, value, nullptr);
     }
 
@@ -749,7 +791,7 @@ extern SystemClass System;
 
 #define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
 
-#define SYSTEM_THREAD(state) STARTUP(system_thread_set_state(spark::feature::state, NULL));
+#define SYSTEM_THREAD(state) STARTUP(system_thread_set_state(spark::feature::state, nullptr));
 
 #define waitFor(condition, timeout) System.waitCondition([]{ return (condition)(); }, (timeout))
 #define waitUntil(condition) System.waitCondition([]{ return (condition)(); })

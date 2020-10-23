@@ -32,7 +32,9 @@ struct SystemEventSubscription {
     system_event_handler_t* handler;
     SystemEventContext context;
 
-    SystemEventSubscription() : SystemEventSubscription(0, nullptr) {}
+    SystemEventSubscription()
+            : SystemEventSubscription(0, nullptr) {
+    }
     SystemEventSubscription(system_event_t e, system_event_handler_t* h)
             : events(e), handler(h) {
         context = {};
@@ -45,23 +47,19 @@ struct SystemEventSubscription {
         }
     }
 
-    inline bool matchesHandler(system_event_handler_t* matchHandler) const
-    {
-        return (matchHandler==nullptr) || (matchHandler==handler);
+    inline bool matchesHandler(system_event_handler_t* matchHandler) const {
+        return (matchHandler == nullptr) || (matchHandler == handler);
     }
 
-    inline bool matchesEvent(system_event_t matchEvents) const
-    {
-        return (events&matchEvents)!=0;
+    inline bool matchesEvent(system_event_t matchEvents) const {
+        return (events&matchEvents) != 0;
     }
 
-    bool matches(const SystemEventSubscription& subscription) const
-    {
+    bool matches(const SystemEventSubscription& subscription) const {
         return matchesHandler(subscription.handler) && matchesEvent(subscription.events);
     }
 
-    void notify(system_event_t event, uint32_t data, void* pointer) const
-    {
+    void notify(system_event_t event, uint32_t data, void* pointer) const {
         if (matchesEvent(event)) {
             handler(event, data, pointer, &context);
         }
@@ -127,11 +125,10 @@ public:
  * Subscribes to the system events given
  * @param events    One or more system events. Multiple system events are specified using the + operator.
  * @param handler   The system handler function to call.
- * @param reserved  Set to NULL.
+ * @param reserved  Set to nullptr.
  * @return {@code 0} if the system event handlers were registered successfully. Non-zero otherwise.
  */
-int system_subscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved)
-{
+int system_subscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved) {
     size_t count = subscriptions.size();
     subscriptions.push_back(SystemEventSubscription(events, handler, (SystemEventContext*)reserved));
     return subscriptions.size()==count+1 ? 0 : -1;
@@ -140,10 +137,9 @@ int system_subscribe_event(system_event_t events, system_event_handler_t* handle
 /**
  * Unsubscribes a handler from the given events.
  * @param handler   The handler that will be unsubscribed.
- * @param reserved  Set to NULL.
+ * @param reserved  Set to nullptr.
  */
-void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved)
-{
+void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved) {
 }
 
 void system_notify_event(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata,
