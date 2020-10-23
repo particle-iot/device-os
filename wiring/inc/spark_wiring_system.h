@@ -437,6 +437,7 @@ public:
             return -1;
         }
         SystemEventContext context = {
+            .version = SYSTEM_EVENT_CONTEXT_VERSION,
             .size = sizeof(context),
             .callable = wrapper
         };

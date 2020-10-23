@@ -105,6 +105,8 @@ enum SystemNotifyEventFlag {
     NOTIFY_SYNCHRONOUSLY = 0x01
 };
 
+#define SYSTEM_EVENT_CONTEXT_VERSION        (1)
+
 typedef struct SystemEventContext {
     uint16_t version;
     uint16_t size;
