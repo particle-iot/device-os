@@ -975,7 +975,7 @@ public:
     int disconnectAll() const;
 
     bool connected() const;
-
+    
     void onConnected(BleOnConnectedCallback callback, void* context = nullptr) const;
     void onConnected(const std::function<void(const BlePeerDevice& peer)>& callback) const;
 

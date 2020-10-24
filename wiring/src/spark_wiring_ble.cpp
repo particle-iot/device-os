@@ -2559,26 +2559,16 @@ BleCharacteristic BleLocalDevice::addCharacteristic(const BleCharacteristic& cha
     return characteristic;
 }
 
-<<<<<<< HEAD
-BleCharacteristic BleLocalDevice::addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
-    BleCharacteristic characteristic(desc, properties, callback, context);
-=======
 BleCharacteristic BleLocalDevice::addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, BleOnDataReceivedCallback callback, void* context) {
     WiringBleLock lk;
     BleCharacteristic characteristic(properties, desc, callback, context);
->>>>>>> [wiring] BLE: callbacks can be class member function.
     addCharacteristic(characteristic);
     return characteristic;
 }
 
-<<<<<<< HEAD
-BleCharacteristic BleLocalDevice::addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
-    return addCharacteristic(desc.c_str(), properties, callback, context);
-=======
 BleCharacteristic BleLocalDevice::addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, BleOnDataReceivedCallback callback, void* context) {
     WiringBleLock lk;
     return addCharacteristic(properties, desc.c_str(), callback, context);
->>>>>>> [wiring] BLE: callbacks can be class member function.
 }
 
 BleCharacteristic BleLocalDevice::addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, std::function<void(const uint8_t*, size_t)> callback) {

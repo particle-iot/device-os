@@ -5,6 +5,23 @@
 
 using namespace std::placeholders;
 
+class Handlers {
+public:
+    void dataHandler(const uint8_t*, size_t) {
+    }
+
+    void scanHandler(const BleScanResult& result) {
+    }
+
+    void connectedHandler(const BlePeerDevice& peer) {
+    }
+
+    void disconnectedHandler(const BlePeerDevice& peer) {
+    }
+};
+
+Handlers handlerInstance;
+
 void dataHandlerFunc(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context) {
 }
 
@@ -326,6 +343,18 @@ test(ble_characteristic_class) {
     EnumFlags<BleCharacteristicProperty> props = BleCharacteristicProperty::BROADCAST;
 
     API_COMPILE(BleCharacteristic c(characteristic));
+    API_COMPILE(BleCharacteristic c(props, "1234"));
+    API_COMPILE(BleCharacteristic c(props, "1234", dataHandlerFunc));
+    API_COMPILE(BleCharacteristic c(props, "1234", dataHandlerFunc, nullptr));
+    API_COMPILE(BleCharacteristic c(props, String("1234")));
+    API_COMPILE(BleCharacteristic c(props, String("1234"), dataHandlerFunc));
+    API_COMPILE(BleCharacteristic c(props, String("1234"), dataHandlerFunc, nullptr));
+    API_COMPILE(BleCharacteristic c(props, "1234", [](const uint8_t*, size_t) {}));
+    API_COMPILE(BleCharacteristic c(props, String("1234"), [](const uint8_t*, size_t) {}));
+    API_COMPILE(BleCharacteristic c(props, "1234", &Handlers::dataHandler, &handlerInstance));
+    API_COMPILE(BleCharacteristic c(props, String("1234"), &Handlers::dataHandler, &handlerInstance));
+    API_COMPILE(BleCharacteristic c(props, "1234", std::bind(&Handlers::dataHandler, &handlerInstance, _1, _2)));
+    API_COMPILE(BleCharacteristic c(props, String("1234"), std::bind(&Handlers::dataHandler, &handlerInstance, _1, _2)));
 
     API_COMPILE(BleCharacteristic c("1234", props, charUuid, svcUuid));
     API_COMPILE(BleCharacteristic c(String("1234"), props, charUuid, svcUuid));
@@ -333,6 +362,12 @@ test(ble_characteristic_class) {
     API_COMPILE(BleCharacteristic c(String("1234"), props, charUuid, svcUuid, dataHandlerFunc));
     API_COMPILE(BleCharacteristic c("1234", props, charUuid, svcUuid, dataHandlerFunc, nullptr));
     API_COMPILE(BleCharacteristic c(String("1234"), props, charUuid, svcUuid, dataHandlerFunc, nullptr));
+    API_COMPILE(BleCharacteristic c("1234", props, charUuid, svcUuid, [](const uint8_t*, size_t) {}));
+    API_COMPILE(BleCharacteristic c(String("1234"), props, charUuid, svcUuid, [](const uint8_t*, size_t) {}));
+    API_COMPILE(BleCharacteristic c("1234", props, charUuid, svcUuid, &Handlers::dataHandler, &handlerInstance));
+    API_COMPILE(BleCharacteristic c(String("1234"), props, charUuid, svcUuid, &Handlers::dataHandler, &handlerInstance));
+    API_COMPILE(BleCharacteristic c("1234", props, charUuid, svcUuid, std::bind(&Handlers::dataHandler, &handlerInstance, _1, _2)));
+    API_COMPILE(BleCharacteristic c(String("1234"), props, charUuid, svcUuid, std::bind(&Handlers::dataHandler, &handlerInstance, _1, _2)));
 
     API_COMPILE({ BleCharacteristic c = characteristic; });
 
@@ -419,6 +454,9 @@ test(ble_characteristic_class) {
 
     API_COMPILE({ characteristic.onDataReceived(dataHandlerFunc); });
     API_COMPILE({ characteristic.onDataReceived(dataHandlerFunc, nullptr); });
+    API_COMPILE({ characteristic.onDataReceived([](const uint8_t*, size_t) {}); });
+    API_COMPILE({ characteristic.onDataReceived(&Handlers::dataHandler, &handlerInstance); });
+    API_COMPILE({ characteristic.onDataReceived(std::bind(&Handlers::dataHandler, &handlerInstance, _1, _2)); });
 
     API_COMPILE({ bool ret = characteristic; (void)ret; });
 }
@@ -626,13 +664,33 @@ test(ble_local_device_class) {
     API_COMPILE({ int ret = BLE.scan(scanHandlerFunc, nullptr); (void)ret; });
     API_COMPILE({ int ret = BLE.scan(scanHandlerFuncRef); (void)ret; });
     API_COMPILE({ int ret = BLE.scan(scanHandlerFuncRef, nullptr); (void)ret; });
+    API_COMPILE({ int ret = BLE.scan([](const BleScanResult& result) {}); (void)ret; });
+    API_COMPILE({ int ret = BLE.scan(&Handlers::scanHandler, &handlerInstance); (void)ret; });
+    API_COMPILE({ int ret = BLE.scan(std::bind(&Handlers::scanHandler, &handlerInstance, _1)); (void)ret; });
     API_COMPILE({ Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter()); });
     API_COMPILE({ BleScanResult results[1]; int ret = BLE.scanWithFilter(BleScanFilter(), results, 0); (void)ret; });
     API_COMPILE({ int ret = BLE.scanWithFilter(BleScanFilter(), scanHandlerFunc); (void)ret; });
     API_COMPILE({ int ret = BLE.scanWithFilter(BleScanFilter(), scanHandlerFunc, nullptr); (void)ret; });
     API_COMPILE({ int ret = BLE.scanWithFilter(BleScanFilter(), scanHandlerFuncRef); (void)ret; });
     API_COMPILE({ int ret = BLE.scanWithFilter(BleScanFilter(), scanHandlerFuncRef, nullptr); (void)ret; });
+    API_COMPILE({ int ret = BLE.scanWithFilter(BleScanFilter(), [](const BleScanResult& result) {}); (void)ret; });
+    API_COMPILE({ int ret = BLE.scanWithFilter(BleScanFilter(), &Handlers::scanHandler, &handlerInstance); (void)ret; });
+    API_COMPILE({ int ret = BLE.scanWithFilter(BleScanFilter(), std::bind(&Handlers::scanHandler, &handlerInstance, _1)); (void)ret; });
     API_COMPILE({ int ret = BLE.stopScanning(); (void)ret; });
+
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(characteristic); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(props, "1234"); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(props, "1234", dataHandlerFunc); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(props, "1234", dataHandlerFunc, nullptr); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(props, String("1234")); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(props, String("1234"), dataHandlerFunc); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(props, String("1234"), dataHandlerFunc, nullptr); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(props, "1234", [](const uint8_t*, size_t) {}); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(props, String("1234"), [](const uint8_t*, size_t) {}); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(props, "1234", &Handlers::dataHandler, &handlerInstance); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(props, String("1234"), &Handlers::dataHandler, &handlerInstance); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(props, "1234", std::bind(&Handlers::dataHandler, &handlerInstance, _1, _2)); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(props, String("1234"), std::bind(&Handlers::dataHandler, &handlerInstance, _1, _2)); });
 
     API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic("1234", props, charUuid, svcUuid); });
     API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(String("1234"), props, charUuid, svcUuid); });
@@ -640,6 +698,12 @@ test(ble_local_device_class) {
     API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(String("1234"), props, charUuid, svcUuid, dataHandlerFunc); });
     API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic("1234", props, charUuid, svcUuid, dataHandlerFunc, nullptr); });
     API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(String("1234"), props, charUuid, svcUuid, dataHandlerFunc, nullptr); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic("1234", props, charUuid, svcUuid, [](const uint8_t*, size_t) {}); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(String("1234"), props, charUuid, svcUuid, [](const uint8_t*, size_t) {}); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic("1234", props, charUuid, svcUuid, &Handlers::dataHandler, &handlerInstance); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(String("1234"), props, charUuid, svcUuid, &Handlers::dataHandler, &handlerInstance); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic("1234", props, charUuid, svcUuid, std::bind(&Handlers::dataHandler, &handlerInstance, _1, _2)); });
+    API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic(String("1234"), props, charUuid, svcUuid, std::bind(&Handlers::dataHandler, &handlerInstance, _1, _2)); });
 
     API_COMPILE({ int ret = BLE.setPPCP(0, 0, 0, 0); (void)ret; });
 
@@ -660,8 +724,14 @@ test(ble_local_device_class) {
 
     API_COMPILE({ BLE.onConnected(connectedHandlerFunc); });
     API_COMPILE({ BLE.onConnected(connectedHandlerFunc, nullptr); });
+    API_COMPILE({ BLE.onConnected([](const BlePeerDevice&) {}); });
+    API_COMPILE({ BLE.onConnected(&Handlers::connectedHandler, &handlerInstance); });
+    API_COMPILE({ BLE.onConnected(std::bind(&Handlers::connectedHandler, &handlerInstance, _1)); });
     API_COMPILE({ BLE.onDisconnected(disconnectedHandlerFunc); });
     API_COMPILE({ BLE.onDisconnected(disconnectedHandlerFunc, nullptr); });
+    API_COMPILE({ BLE.onDisconnected([](const BlePeerDevice&) {}); });
+    API_COMPILE({ BLE.onDisconnected(&Handlers::disconnectedHandler, &handlerInstance); });
+    API_COMPILE({ BLE.onDisconnected(std::bind(&Handlers::disconnectedHandler, &handlerInstance, _1)); });
 }
 
 #endif
