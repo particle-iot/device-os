@@ -860,7 +860,7 @@ public:
               context_(nullptr) {
     }
 
-    BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context)
+    BleCharacteristicImpl(EnumFlags<BleCharacteristicProperty> properties, const char* desc, BleOnDataReceivedCallback callback, void* context)
             : BleCharacteristicImpl() {
         properties_ = properties;
         description_ = desc;
@@ -869,7 +869,7 @@ public:
         wiringCallback_ = nullptr;
     }
 
-    BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback)
+    BleCharacteristicImpl(EnumFlags<BleCharacteristicProperty> properties, const char* desc, std::function<void(const uint8_t*, size_t)> callback)
             : BleCharacteristicImpl() {
         properties_ = properties;
         description_ = desc;
@@ -879,13 +879,13 @@ public:
     }
 
     BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context)
-            : BleCharacteristicImpl(desc, properties, callback, context) {
+            : BleCharacteristicImpl(properties, desc, callback, context) {
         charUuid_ = charUuid;
         svcUuid_ = svcUuid;
     }
 
     BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, std::function<void(const uint8_t*, size_t)> callback)
-            : BleCharacteristicImpl(desc, properties, callback) {
+            : BleCharacteristicImpl(properties, desc, callback) {
         charUuid_ = charUuid;
         svcUuid_ = svcUuid;
     }
@@ -1251,16 +1251,16 @@ BleCharacteristic::BleCharacteristic(const BleCharacteristic& characteristic)
     DEBUG("BleCharacteristic(copy), 0x%08X => 0x%08X -> 0x%08X, count: %d", &characteristic, this, impl(), impl_.use_count());
 }
 
-BleCharacteristic::BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context)
-        : impl_(std::make_shared<BleCharacteristicImpl>(desc, properties, callback, context)) {
+BleCharacteristic::BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, BleOnDataReceivedCallback callback, void* context)
+        : impl_(std::make_shared<BleCharacteristicImpl>(properties, desc, callback, context)) {
     if (!impl()) {
         SPARK_ASSERT(false);
     }
     DEBUG("BleCharacteristic(...), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
 }
 
-BleCharacteristic::BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback)
-        : impl_(std::make_shared<BleCharacteristicImpl>(desc, properties, callback)) {
+BleCharacteristic::BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, std::function<void(const uint8_t*, size_t)> callback)
+        : impl_(std::make_shared<BleCharacteristicImpl>(properties, desc, callback)) {
     if (!impl()) {
         SPARK_ASSERT(false);
     }
@@ -2385,6 +2385,12 @@ Vector<BleScanResult> BleLocalDevice::scan() const {
     return scanner.start();
 }
 
+int BleLocalDevice::scanWithFilter(const BleScanFilter& filter, const std::function<void(const BleScanResult&)>& callback) const {
+    WiringBleLock lk;
+    BleScanDelegator scanner;
+    return scanner.setScanFilter(filter).start(callback);
+}
+
 int BleLocalDevice::scanWithFilter(const BleScanFilter& filter, BleOnScanResultCallback callback, void* context) const {
     BleScanDelegator scanner;
     return scanner.setScanFilter(filter).start(callback, context);
@@ -2553,26 +2559,38 @@ BleCharacteristic BleLocalDevice::addCharacteristic(const BleCharacteristic& cha
     return characteristic;
 }
 
+<<<<<<< HEAD
 BleCharacteristic BleLocalDevice::addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
     BleCharacteristic characteristic(desc, properties, callback, context);
+=======
+BleCharacteristic BleLocalDevice::addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, BleOnDataReceivedCallback callback, void* context) {
+    WiringBleLock lk;
+    BleCharacteristic characteristic(properties, desc, callback, context);
+>>>>>>> [wiring] BLE: callbacks can be class member function.
     addCharacteristic(characteristic);
     return characteristic;
 }
 
+<<<<<<< HEAD
 BleCharacteristic BleLocalDevice::addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
     return addCharacteristic(desc.c_str(), properties, callback, context);
+=======
+BleCharacteristic BleLocalDevice::addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, BleOnDataReceivedCallback callback, void* context) {
+    WiringBleLock lk;
+    return addCharacteristic(properties, desc.c_str(), callback, context);
+>>>>>>> [wiring] BLE: callbacks can be class member function.
 }
 
-BleCharacteristic BleLocalDevice::addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback) {
+BleCharacteristic BleLocalDevice::addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, std::function<void(const uint8_t*, size_t)> callback) {
     WiringBleLock lk;
-    BleCharacteristic characteristic(desc, properties, callback);
+    BleCharacteristic characteristic(properties, desc, callback);
     addCharacteristic(characteristic);
     return characteristic;
 }
 
-BleCharacteristic BleLocalDevice::addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback) {
+BleCharacteristic BleLocalDevice::addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, std::function<void(const uint8_t*, size_t)> callback) {
     WiringBleLock lk;
-    return addCharacteristic(desc.c_str(), properties, callback);
+    return addCharacteristic(properties, desc.c_str(), callback);
 }
 
 } /* namespace particle */

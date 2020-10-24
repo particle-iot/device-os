@@ -34,6 +34,8 @@
 #include <memory>
 #include "enumflags.h"
 
+using namespace std::placeholders;
+
 namespace particle {
 
 constexpr int8_t BLE_RSSI_INVALID = 0x7F;
@@ -444,13 +446,23 @@ class BleCharacteristic {
 public:
     BleCharacteristic();
     BleCharacteristic(const BleCharacteristic& characteristic);
-    BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
-    BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
-            : BleCharacteristic(desc.c_str(), properties, callback, context) {
+    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties,  const char* desc, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
+    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
+            : BleCharacteristic(properties, desc.c_str(), callback, context) {
     }
-    BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback);
-    BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback)
-            : BleCharacteristic(desc.c_str(), properties, callback) {
+    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, std::function<void(const uint8_t*, size_t)> callback);
+    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, std::function<void(const uint8_t*, size_t)> callback)
+            : BleCharacteristic(properties, desc.c_str(), callback) {
+    }
+
+    template<typename T>
+    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, void(T::*callback)(const uint8_t*, size_t), T* instance)
+            : BleCharacteristic(properties, desc, std::bind(callback, instance, _1, _2)) {
+    }
+
+    template<typename T>
+    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, void(T::*callback)(const uint8_t*, size_t), T* instance)
+            : BleCharacteristic(properties, desc, std::bind(callback, instance, _1, _2)) {
     }
 
     template<typename T1, typename T2>
@@ -475,6 +487,16 @@ public:
     template<typename T1, typename T2>
     BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t)> callback)
             : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback) {
+    }
+
+    template<typename T1, typename T2, typename T3>
+    BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, void(T3::*callback)(const uint8_t*, size_t), T3* instance)
+            : BleCharacteristic(desc, properties, charUuid, svcUuid, std::bind(callback, instance, _1, _2)) {
+    }
+
+    template<typename T1, typename T2, typename T3>
+    BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, void(T3::*callback)(const uint8_t*, size_t), T3* instance)
+            : BleCharacteristic(desc, properties, charUuid, svcUuid, std::bind(callback, instance, _1, _2)) {
     }
 
     ~BleCharacteristic();
@@ -513,11 +535,16 @@ public:
     // Valid for peer characteristic only. Manually enable the characteristic notification or indication.
     int subscribe(bool enable) const;
 
+    operator bool() const {
+        return isValid();
+    }
+
     void onDataReceived(BleOnDataReceivedCallback callback, void* context = nullptr);
     void onDataReceived(std::function<void(const uint8_t*, size_t)> callback);
 
-    operator bool() const {
-        return isValid();
+    template<typename T>
+    void onDataReceived(void(T::*callback)(const uint8_t*, size_t), T* instance) {
+        onDataReceived(std::bind(callback, instance, _1, _2));
     }
 
     BleCharacteristicImpl* impl() const {
@@ -863,18 +890,41 @@ public:
     int scan(const std::function<void(const BleScanResult&)>& callback) const;
     int scan(BleScanResult* results, size_t resultCount) const;
     Vector<BleScanResult> scan() const;
+
+    template<typename T>
+    int scan(void(T::*callback)(const BleScanResult&), T* instance) {
+        return scan(std::bind(callback, instance, _1));
+    }
+
     int scanWithFilter(const BleScanFilter& filter, BleOnScanResultCallback callback, void* context = nullptr) const;
     int scanWithFilter(const BleScanFilter& filter, BleOnScanResultCallbackRef callback, void* context = nullptr) const;
+    int scanWithFilter(const BleScanFilter& filter, const std::function<void(const BleScanResult&)>& callback) const;
     int scanWithFilter(const BleScanFilter& filter, BleScanResult* results, size_t resultCount) const;
     Vector<BleScanResult> scanWithFilter(const BleScanFilter& filter) const;
+
+    template<typename T>
+    int scanWithFilter(const BleScanFilter& filter, void(T::*callback)(const BleScanResult&), T* instance) {
+        return scan(filter, std::bind(callback, instance, _1));
+    }
+
     int stopScanning() const;
 
     // Access local characteristics
     BleCharacteristic addCharacteristic(const BleCharacteristic& characteristic);
-    BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
-    BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
-    BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback);
-    BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, std::function<void(const uint8_t*, size_t)> callback);
+    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
+    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
+    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, std::function<void(const uint8_t*, size_t)> callback);
+    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, std::function<void(const uint8_t*, size_t)> callback);
+
+    template<typename T>
+    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, void(T::*callback)(const uint8_t*, size_t), T* instance) {
+        return addCharacteristic(properties, desc, std::bind(callback, instance, _1, _2));
+    }
+
+    template<typename T>
+    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, void(T::*callback)(const uint8_t*, size_t), T* instance) {
+        return addCharacteristic(properties, desc, std::bind(callback, instance, _1, _2));
+    }
 
     template<typename T1, typename T2>
     BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
@@ -885,9 +935,7 @@ public:
 
     template<typename T1, typename T2>
     BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
-        BleCharacteristic characteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context);
-        addCharacteristic(characteristic);
-        return characteristic;
+        return addCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback, context);
     }
 
     template<typename T1, typename T2>
@@ -899,9 +947,17 @@ public:
 
     template<typename T1, typename T2>
     BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t)> callback) {
-        BleCharacteristic characteristic(desc.c_str(), properties, charUuid, svcUuid, callback);
-        addCharacteristic(characteristic);
-        return characteristic;
+        return addCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback);
+    }
+
+    template<typename T1, typename T2, typename T3>
+    BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, void(T3::*callback)(const uint8_t*, size_t), T3* instance) {
+        return addCharacteristic(desc, properties, charUuid, svcUuid, std::bind(callback, instance, _1, _2));
+    }
+
+    template<typename T1, typename T2, typename T3>
+    BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, void(T3::*callback)(const uint8_t*, size_t), T3* instance) {
+        return addCharacteristic(desc, properties, charUuid, svcUuid, std::bind(callback, instance, _1, _2));
     }
 
     // Access connection parameters
@@ -919,11 +975,22 @@ public:
     int disconnectAll() const;
 
     bool connected() const;
-    
+
     void onConnected(BleOnConnectedCallback callback, void* context = nullptr) const;
     void onConnected(const std::function<void(const BlePeerDevice& peer)>& callback) const;
+
+    template<typename T>
+    void onConnected(void(T::*callback)(const BlePeerDevice& peer), T* instance) {
+        return onConnected(std::bind(callback, instance, _1));
+    }
+
     void onDisconnected(BleOnDisconnectedCallback callback, void* context = nullptr) const;
     void onDisconnected(const std::function<void(const BlePeerDevice& peer)>& callback) const;
+
+    template<typename T>
+    void onDisconnected(void(T::*callback)(const BlePeerDevice& peer), T* instance) {
+        return onDisconnected(std::bind(callback, instance, _1));
+    }
 
     BlePeerDevice peerCentral() const;
 
