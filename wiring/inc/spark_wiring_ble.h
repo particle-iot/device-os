@@ -797,6 +797,9 @@ public:
     bool getCharacteristicByDescription(BleCharacteristic& characteristic, const char* desc) const;
     bool getCharacteristicByDescription(BleCharacteristic& characteristic, const String& desc) const;
     bool getCharacteristicByUUID(BleCharacteristic& characteristic, const BleUuid& uuid) const;
+    // In case that there are several characteristics with the same UUID.
+    Vector<BleCharacteristic> getCharacteristicByUUID(const BleUuid& uuid) const;
+    size_t getCharacteristicByUUID(BleCharacteristic* characteristics, size_t count, const BleUuid& uuid) const;
 
     // Fetch the discovered characteristics under a service.
     Vector<BleCharacteristic> characteristics(const BleService& service) const;

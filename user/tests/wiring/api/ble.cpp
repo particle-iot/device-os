@@ -536,20 +536,33 @@ test(ble_peer_device) {
     BleConnectionParams params;
 
     API_COMPILE({ Vector<BleService> services = peer.discoverAllServices(); });
-    API_COMPILE({ BleService services[1]; size_t ret = peer.discoverAllServices(services, 1); (void)ret; });
+    API_COMPILE({ BleService services[1]; ssize_t ret = peer.discoverAllServices(services, 1); (void)ret; });
 
     API_COMPILE({ Vector<BleCharacteristic> characteristics = peer.discoverAllCharacteristics(); });
-    API_COMPILE({ BleCharacteristic characteristics[1]; size_t ret = peer.discoverAllCharacteristics(characteristics, 1); (void)ret; });
+    API_COMPILE({ BleCharacteristic characteristics[1]; ssize_t ret = peer.discoverAllCharacteristics(characteristics, 1); (void)ret; });
+
+    API_COMPILE({ Vector<BleCharacteristic> characteristics = peer.discoverCharacteristicsOfService(BleService()); });
+    API_COMPILE({ BleCharacteristic characteristics[1]; ssize_t ret = peer.discoverCharacteristicsOfService(BleService(), characteristics, 1); (void)ret; });
 
     API_COMPILE({ Vector<BleService> services = peer.services(); });
     API_COMPILE({ BleService services[1]; size_t ret = peer.services(services, 1); (void)ret; });
     API_COMPILE({ BleService service; bool ret = peer.getServiceByUUID(service, uuid); (void)ret; });
+    API_COMPILE({ Vector<BleService> services = peer.getServiceByUUID(uuid); });
+    API_COMPILE({ BleService services[1]; size_t ret = peer.getServiceByUUID(services, 1, uuid); (void)ret; });
 
     API_COMPILE({ Vector<BleCharacteristic> characteristics = peer.characteristics(); });
     API_COMPILE({ BleCharacteristic characteristics[1]; size_t ret = peer.characteristics(characteristics, 1); (void)ret; });
     API_COMPILE({ BleCharacteristic characteristic; bool ret = peer.getCharacteristicByDescription(characteristic, "1234"); (void)ret; });
     API_COMPILE({ BleCharacteristic characteristic; bool ret = peer.getCharacteristicByDescription(characteristic, String("1234")); (void)ret; });
     API_COMPILE({ BleCharacteristic characteristic; bool ret = peer.getCharacteristicByUUID(characteristic, uuid); (void)ret; });
+    API_COMPILE({ Vector<BleCharacteristic> characteristics = peer.getCharacteristicByUUID(uuid); });
+    API_COMPILE({ BleCharacteristic characteristics[1]; size_t ret = peer.getCharacteristicByUUID(characteristics, 1, uuid); (void)ret; });
+
+    API_COMPILE({ Vector<BleCharacteristic> characteristics = peer.characteristics(BleService()); });
+    API_COMPILE({ BleCharacteristic characteristics[1]; size_t ret = peer.characteristics(BleService(), characteristics, 1); (void)ret; });
+    API_COMPILE({ BleCharacteristic characteristic; bool ret = peer.getCharacteristicByDescription(BleService(), characteristic, "1234"); (void)ret; });
+    API_COMPILE({ BleCharacteristic characteristic; bool ret = peer.getCharacteristicByDescription(BleService(), characteristic, String("1234")); (void)ret; });
+    API_COMPILE({ BleCharacteristic characteristic; bool ret = peer.getCharacteristicByUUID(BleService(), characteristic, uuid); (void)ret; });
 
     API_COMPILE({ int ret = peer.connect(addr); (void)ret; });
     API_COMPILE({ int ret = peer.connect(addr, false); (void)ret; });
@@ -557,7 +570,7 @@ test(ble_peer_device) {
     API_COMPILE({ int ret = peer.connect(addr, &params, false); (void)ret; });
     API_COMPILE({ int ret = peer.connect(addr, params); (void)ret; });
     API_COMPILE({ int ret = peer.connect(addr, params, false); (void)ret; });
-    API_COMPILE({ int ret = peer.connect(addr, 0 , 0, 0); (void)ret; });
+    API_COMPILE({ int ret = peer.connect(addr, 0, 0, 0); (void)ret; });
     API_COMPILE({ int ret = peer.connect(addr, 0, 0, 0, false); (void)ret; });
     API_COMPILE({ int ret = peer.connect(); (void)ret; });
     API_COMPILE({ int ret = peer.connect(false); (void)ret; });
@@ -565,7 +578,7 @@ test(ble_peer_device) {
     API_COMPILE({ int ret = peer.connect(&params, false); (void)ret; });
     API_COMPILE({ int ret = peer.connect(params); (void)ret; });
     API_COMPILE({ int ret = peer.connect(params, false); (void)ret; });
-    API_COMPILE({ int ret = peer.connect(0 , 0, 0); (void)ret; });
+    API_COMPILE({ int ret = peer.connect(0, 0, 0); (void)ret; });
     API_COMPILE({ int ret = peer.connect(0, 0, 0, false); (void)ret; });
     API_COMPILE({ int ret = peer.disconnect(); (void)ret; });
     API_COMPILE({ bool ret = peer.connected(); (void)ret; });

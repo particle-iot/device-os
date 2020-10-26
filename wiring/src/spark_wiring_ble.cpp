@@ -1732,6 +1732,26 @@ bool BlePeerDevice::getCharacteristicByUUID(BleCharacteristic& characteristic, c
     return false;
 }
 
+Vector<BleCharacteristic> BlePeerDevice::getCharacteristicByUUID(const BleUuid& uuid) const {
+    Vector<BleCharacteristic> characteristics;
+    for (auto& existChar : impl()->characteristics()) {
+        if (existChar.UUID() == uuid) {
+            characteristics.append(existChar);
+        }
+    }
+    return characteristics;
+}
+
+size_t BlePeerDevice::getCharacteristicByUUID(BleCharacteristic* characteristics, size_t count, const BleUuid& uuid) const {
+    CHECK_TRUE(characteristics && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+    Vector<BleCharacteristic> chars = getCharacteristicByUUID(uuid);
+    count = std::min((int)count, chars.size());
+    for (size_t i = 0; i < count; i++) {
+        characteristics[i] = chars[i];
+    }
+    return count;
+}
+
 bool BlePeerDevice::getCharacteristicByDescription(const BleService& service, BleCharacteristic& characteristic, const char* desc) const {
     CHECK_TRUE(desc, false);
     for (auto& existChar : impl()->characteristics()) {
