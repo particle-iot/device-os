@@ -378,7 +378,7 @@ public:
     // According to the Bluetooth CSS, Local Name shall not appear more than once in a block.
     size_t appendLocalName(const char* name);
     size_t appendLocalName(const String& name);
-    
+
     size_t appendAppearance(ble_sig_appearance_t appearance);
 
     template<typename T>
@@ -487,7 +487,7 @@ public:
     // Valid for peer characteristic only. Manually enable the characteristic notification or indication.
     int subscribe(bool enable) const;
 
-    void onDataReceived(BleOnDataReceivedCallback callback, void* context);
+    void onDataReceived(BleOnDataReceivedCallback callback, void* context = nullptr);
 
     operator bool() const {
         return isValid();
@@ -828,12 +828,13 @@ public:
     int getScanParameters(BleScanParams& params) const;
 
     // Scanning control
-    int scan(BleOnScanResultCallback callback, void* context) const;
-    int scan(BleOnScanResultCallbackRef callback, void* context) const;
+    int scan(BleOnScanResultCallback callback, void* context = nullptr) const;
+    int scan(BleOnScanResultCallbackRef callback, void* context = nullptr) const;
     int scan(BleScanResult* results, size_t resultCount) const;
     Vector<BleScanResult> scan() const;
-    int scanWithFilter(BleOnScanResultCallback callback, void* context, const BleScanFilter& filter) const;
-    int scanWithFilter(BleScanResult* results, size_t resultCount, const BleScanFilter& filter) const;
+    int scanWithFilter(const BleScanFilter& filter, BleOnScanResultCallback callback, void* context = nullptr) const;
+    int scanWithFilter(const BleScanFilter& filter, BleOnScanResultCallbackRef callback, void* context = nullptr) const;
+    int scanWithFilter(const BleScanFilter& filter, BleScanResult* results, size_t resultCount) const;
     Vector<BleScanResult> scanWithFilter(const BleScanFilter& filter) const;
     int stopScanning() const;
 
@@ -869,8 +870,8 @@ public:
     int disconnect(const BlePeerDevice& peer) const;
     int disconnectAll() const;
     bool connected() const;
-    void onConnected(BleOnConnectedCallback callback, void* context) const;
-    void onDisconnected(BleOnDisconnectedCallback callback, void* context) const;
+    void onConnected(BleOnConnectedCallback callback, void* context = nullptr) const;
+    void onDisconnected(BleOnDisconnectedCallback callback, void* context = nullptr) const;
 
     BlePeerDevice peerCentral() const;
 

@@ -2295,13 +2295,19 @@ Vector<BleScanResult> BleLocalDevice::scan() const {
     return scanner.start();
 }
 
-int BleLocalDevice::scanWithFilter(BleOnScanResultCallback callback, void* context, const BleScanFilter& filter) const {
+int BleLocalDevice::scanWithFilter(const BleScanFilter& filter, BleOnScanResultCallback callback, void* context) const {
     WiringBleLock lk;
     BleScanDelegator scanner;
     return scanner.setScanFilter(filter).start(callback, context);
 }
 
-int BleLocalDevice::scanWithFilter(BleScanResult* results, size_t resultCount, const BleScanFilter& filter) const {
+int BleLocalDevice::scanWithFilter(const BleScanFilter& filter, BleOnScanResultCallbackRef callback, void* context) const {
+    WiringBleLock lk;
+    BleScanDelegator scanner;
+    return scanner.setScanFilter(filter).start(callback, context);
+}
+
+int BleLocalDevice::scanWithFilter(const BleScanFilter& filter, BleScanResult* results, size_t resultCount) const {
     WiringBleLock lk;
     if (results == nullptr || resultCount == 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
