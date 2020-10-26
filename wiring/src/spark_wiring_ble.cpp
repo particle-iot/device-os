@@ -2066,12 +2066,12 @@ public:
 
     bool filterByRssi(const BleScanResult& result) {
         int8_t filterRssi = filter_.minRssi();
-        if (filterRssi != 0x7F && result.rssi < filterRssi) {
+        if (filterRssi != 0x7F && result.rssi() < filterRssi) {
             LOG_DEBUG(TRACE, "Exceed min. RSSI");
             return false;
         }
         filterRssi = filter_.maxRssi();
-        if (filterRssi != 0x7F && result.rssi > filterRssi) {
+        if (filterRssi != 0x7F && result.rssi() > filterRssi) {
             LOG_DEBUG(TRACE, "Exceed max. RSSI.");
             return false;
         }
@@ -2082,7 +2082,7 @@ public:
         auto filerAddresses = filter_.addresses();
         if (filerAddresses.size() > 0) {
             for (const auto& address : filerAddresses) {
-                if (address == result.address) {
+                if (address == result.address()) {
                     return true;
                 }
             }
@@ -2095,8 +2095,8 @@ public:
     bool filterByDeviceName(const BleScanResult& result) {
         auto filterDeviceNames = filter_.deviceNames();
         if (filterDeviceNames.size() > 0) {
-            String srName = result.scanResponse.deviceName();
-            String advName = result.advertisingData.deviceName();
+            String srName = result.scanResponse().deviceName();
+            String advName = result.advertisingData().deviceName();
             if (srName.length() == 0 && advName.length() == 0) {
                 LOG_DEBUG(TRACE, "Device name mismatched.");
                 return false;
@@ -2115,8 +2115,8 @@ public:
     bool filterByServiceUUID(const BleScanResult& result) {
         auto filterServiceUuids = filter_.serviceUUIDs();
         if (filterServiceUuids.size() > 0) {
-            const Vector<BleUuid>& srUuids = result.scanResponse.serviceUUID();
-            const Vector<BleUuid>& advUuids = result.advertisingData.serviceUUID();
+            const Vector<BleUuid>& srUuids = result.scanResponse().serviceUUID();
+            const Vector<BleUuid>& advUuids = result.advertisingData().serviceUUID();
             if (srUuids.size() <= 0 && advUuids.size() <= 0) {
                 LOG_DEBUG(TRACE, "Service UUID mismatched.");
                 return false;
@@ -2142,8 +2142,8 @@ public:
     bool filterByAppearance(const BleScanResult& result) {
         auto filterAppearances = filter_.appearances();
         if (filterAppearances.size() > 0) {
-            ble_sig_appearance_t srAppearance = result.scanResponse.appearance();
-            ble_sig_appearance_t advAppearance = result.advertisingData.appearance();
+            ble_sig_appearance_t srAppearance = result.scanResponse().appearance();
+            ble_sig_appearance_t advAppearance = result.advertisingData().appearance();
             for (const auto& appearance : filterAppearances) {
                 if (appearance == srAppearance || appearance == advAppearance) {
                     return true;
@@ -2159,8 +2159,8 @@ public:
         size_t filterCustomDatalen;
         const uint8_t* filterCustomData = filter_.customData(&filterCustomDatalen);
         if (filterCustomData != nullptr && filterCustomDatalen > 0) {
-            size_t srLen = result.scanResponse.get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, sizeof(size_t));
-            size_t advLen = result.advertisingData.get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, sizeof(size_t));
+            size_t srLen = result.scanResponse().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, sizeof(size_t));
+            size_t advLen = result.advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, sizeof(size_t));
             if (srLen != filterCustomDatalen && advLen != filterCustomDatalen) {
                 LOG_DEBUG(TRACE, "Custom data mismatched.");
                 return false;
@@ -2171,7 +2171,7 @@ public:
                     LOG(ERROR, "Failed to allocate memory!");
                     return false;
                 }
-                result.scanResponse.get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, srLen);
+                result.scanResponse().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, srLen);
                 if (!memcmp(buf, filterCustomData, srLen)) {
                     return true;
                 }
@@ -2182,7 +2182,7 @@ public:
                     LOG(ERROR, "Failed to allocate memory!");
                     return false;
                 }
-                result.advertisingData.get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, advLen);
+                result.advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, advLen);
                 if (!memcmp(buf, filterCustomData, advLen)) {
                     return true;
                 }

@@ -79,9 +79,9 @@ test(BLE_Scanner_01_Connects_To_Broadcaster) {
         if (results.size() > 0) {
             for (const auto& result : results) {
                 BleUuid foundServiceUUID;
-                size_t svcCount = result.advertisingData.serviceUUID(&foundServiceUUID, 1);
+                size_t svcCount = result.advertisingData().serviceUUID(&foundServiceUUID, 1);
                 if (svcCount > 0 && foundServiceUUID == peerServiceUuid) {
-                    BlePeerDevice peer = BLE.connect(result.address);
+                    BlePeerDevice peer = BLE.connect(result.address());
                     if (peer.connected()) {
                         assertTrue(peer.getCharacteristicByUUID(peerCharWriteWoRsp, peerCharacteristicUuid));
                         peerAddress = peer.address();
@@ -133,8 +133,8 @@ test(BLE_Scanner_05_Scan_With_Filter_Rssi) {
     Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter().minRssi(MIN_RSSI).maxRssi(MAX_RSSI));
     assertTrue(results.size() > 0);
     for (const auto& result : results) {
-        assertMoreOrEqual(result.rssi, MIN_RSSI);
-        assertLessOrEqual(result.rssi, MAX_RSSI);
+        assertMoreOrEqual(result.rssi(), MIN_RSSI);
+        assertLessOrEqual(result.rssi(), MAX_RSSI);
     }
 }
 
