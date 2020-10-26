@@ -904,7 +904,7 @@ public:
 
     template<typename T>
     int scanWithFilter(const BleScanFilter& filter, void(T::*callback)(const BleScanResult&), T* instance) {
-        return scan(filter, std::bind(callback, instance, _1));
+        return scanWithFilter(filter, std::bind(callback, instance, _1));
     }
 
     int stopScanning() const;

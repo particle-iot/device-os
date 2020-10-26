@@ -2102,7 +2102,8 @@ public:
               foundCount_(0),
               callback_(nullptr),
               callbackRef_(nullptr),
-              context_(nullptr) {
+              context_(nullptr),
+              wiringCallback_(nullptr) {
         resultsVector_.clear();
     }
 
@@ -2110,35 +2111,45 @@ public:
 
     int start(BleOnScanResultCallback callback, void* context) {
         callback_ = callback;
-        callbackRef_ = nullptr;
         context_ = context;
+        callbackRef_ = nullptr;
+        wiringCallback_ = nullptr;
         CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
         return foundCount_;
     }
 
     int start(BleOnScanResultCallbackRef callback, void* context) {
         callbackRef_ = callback;
-        callback_ = nullptr;
         context_ = context;
-        CHECK(hal_ble_gap_start_scan(onScanResultCallbackV1, this, nullptr));
+        callback_ = nullptr;
+        wiringCallback_ = nullptr;
+        CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
         return foundCount_;
     }
 
     int start(BleScanResult* results, size_t resultCount) {
+        callback_ = nullptr;
+        callbackRef_ = nullptr;
+        wiringCallback_ = nullptr;
         resultsPtr_ = results;
         targetCount_ = resultCount;
-        CHECK(hal_ble_gap_start_scan(onScanResultCallbackV2, this, nullptr));
+        CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
         return foundCount_;
     }
 
     Vector<BleScanResult> start() {
-        hal_ble_gap_start_scan(onScanResultCallbackV3, this, nullptr);
+        callback_ = nullptr;
+        callbackRef_ = nullptr;
+        wiringCallback_ = nullptr;
+        hal_ble_gap_start_scan(onScanResultCallback, this, nullptr);
         return resultsVector_;
     }
 
     int start(const std::function<void(const BleScanResult&)>& callback) {
         wiringCallback_ = callback;
-        CHECK(hal_ble_gap_start_scan(onScanResultCallbackV4, this, nullptr));
+        callback_ = nullptr;
+        callbackRef_ = nullptr;
+        CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
         return foundCount_;
     }
 
@@ -2327,8 +2338,8 @@ private:
     size_t foundCount_;
     BleOnScanResultCallback callback_;
     BleOnScanResultCallbackRef callbackRef_;
-    std::function<void(const BleScanResult&)> wiringCallback_;
     void* context_;
+    std::function<void(const BleScanResult&)> wiringCallback_;
     BleScanFilter filter_;
 };
 
