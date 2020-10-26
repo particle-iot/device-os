@@ -11,6 +11,9 @@ void dataHandlerFunc(const uint8_t* data, size_t len, const BlePeerDevice& peer,
 void scanHandlerFunc(const BleScanResult* result, void* context) {
 }
 
+void scanHandlerFuncRef(const BleScanResult& result, void* context) {
+}
+
 void connectedHandlerFunc(const BlePeerDevice& peer, void* context) {
 }
 
@@ -182,6 +185,9 @@ test(ble_address_class) {
     API_COMPILE({ bool ret = addr != "123"; (void)ret; });
     API_COMPILE({ bool ret = addr != String("123"); (void)ret; });
     API_COMPILE({ bool ret = addr != addrArray; (void)ret; });
+
+    API_COMPILE({ bool ret = addr.valid(); (void)ret; });
+    API_COMPILE({ int ret = addr.clear(); (void)ret; });
 }
 
 test(ble_uuid_class) {
@@ -243,10 +249,16 @@ test(ble_ibeacon_class) {
 
     API_COMPILE(iBeacon beacon(0, 0, uuid, 0));
 
-    API_COMPILE({ uint16_t val = beacon.major; (void)val; });
-    API_COMPILE({ uint16_t val = beacon.minor; (void)val; });
-    API_COMPILE({ BleUuid u = beacon.uuid;});
-    API_COMPILE({ int8_t val = beacon.measurePower; (void)val; });
+    API_COMPILE({ iBeacon b = beacon.major(0); });
+    API_COMPILE({ iBeacon b = beacon.minor(0); });
+    API_COMPILE({ iBeacon b = beacon.UUID(uuid); });
+    API_COMPILE({ iBeacon b = beacon.measurePower(-1); });
+
+    API_COMPILE({ uint16_t val = beacon.major(); (void)val; });
+    API_COMPILE({ uint16_t val = beacon.minor(); (void)val; });
+    API_COMPILE({ BleUuid u = beacon.UUID(); (void)u; });
+    API_COMPILE({ const BleUuid& u = beacon.UUID(); (void)u; });
+    API_COMPILE({ int8_t val = beacon.measurePower(); (void)val; });
 
     API_COMPILE({ uint16_t id = iBeacon::APPLE_COMPANY_ID; (void)id; });
     API_COMPILE({ uint16_t type = iBeacon::BEACON_TYPE_IBEACON; (void)type; });
@@ -289,6 +301,8 @@ test(ble_advertising_data_class) {
     API_COMPILE({ char buf[1]; size_t ret = data.deviceName(buf, 0); (void)ret; });
 
     API_COMPILE({ BleUuid u[1]; size_t ret = data.serviceUUID(u, 0); (void)ret; });
+    API_COMPILE({ Vector<BleUuid> u = data.serviceUUID(); });
+    API_COMPILE({ const Vector<BleUuid>& u = data.serviceUUID(); });
 
     API_COMPILE({ uint8_t buf[1]; size_t ret = data.customData(buf, 0); (void)ret; });
 
@@ -408,10 +422,26 @@ test(ble_service_class) {
     API_COMPILE({ BleService s = service; });
 
     API_COMPILE({ bool ret = service == BleService(uuid); (void)ret; });
+    API_COMPILE({ bool ret = service != BleService(uuid); (void)ret; });
 }
 
 test(ble_scan_result) {
+    BleScanResult result;
 
+    API_COMPILE({ BleScanResult r = result.address(BleAddress()); (void)r; });
+    API_COMPILE({ BleScanResult r = result.advertisingData(BleAdvertisingData()); (void)r; });
+    API_COMPILE({ uint8_t buf[1]; BleScanResult r = result.advertisingData(buf, 0); (void)r; });
+    API_COMPILE({ BleScanResult r = result.scanResponse(BleAdvertisingData()); (void)r; });
+    API_COMPILE({ uint8_t buf[1]; BleScanResult r = result.scanResponse(buf, 0); (void)r; });
+    API_COMPILE({ BleScanResult r = result.rssi(-8); (void)r; });
+
+    API_COMPILE({ BleAddress addr = result.address(); (void)addr; });
+    API_COMPILE({ const BleAddress& addr = result.address(); (void)addr; });
+    API_COMPILE({ BleAdvertisingData adv = result.advertisingData(); (void)adv; });
+    API_COMPILE({ const BleAdvertisingData& adv = result.advertisingData(); (void)adv; });
+    API_COMPILE({ BleAdvertisingData sr = result.scanResponse(); (void)sr; });
+    API_COMPILE({ const BleAdvertisingData& sr = result.scanResponse(); (void)sr; });
+    API_COMPILE({ int8_t ret = result.rssi(); (void)ret; });
 }
 
 test(ble_peer_device) {
@@ -440,12 +470,16 @@ test(ble_peer_device) {
     API_COMPILE({ int ret = peer.connect(addr, false); (void)ret; });
     API_COMPILE({ int ret = peer.connect(addr, &params); (void)ret; });
     API_COMPILE({ int ret = peer.connect(addr, &params, false); (void)ret; });
+    API_COMPILE({ int ret = peer.connect(addr, params); (void)ret; });
+    API_COMPILE({ int ret = peer.connect(addr, params, false); (void)ret; });
     API_COMPILE({ int ret = peer.connect(addr, 0 , 0, 0); (void)ret; });
     API_COMPILE({ int ret = peer.connect(addr, 0, 0, 0, false); (void)ret; });
     API_COMPILE({ int ret = peer.connect(); (void)ret; });
     API_COMPILE({ int ret = peer.connect(false); (void)ret; });
     API_COMPILE({ int ret = peer.connect(&params); (void)ret; });
     API_COMPILE({ int ret = peer.connect(&params, false); (void)ret; });
+    API_COMPILE({ int ret = peer.connect(params); (void)ret; });
+    API_COMPILE({ int ret = peer.connect(params, false); (void)ret; });
     API_COMPILE({ int ret = peer.connect(0 , 0, 0); (void)ret; });
     API_COMPILE({ int ret = peer.connect(0, 0, 0, false); (void)ret; });
     API_COMPILE({ int ret = peer.disconnect(); (void)ret; });
@@ -456,6 +490,7 @@ test(ble_peer_device) {
     API_COMPILE({ BleAddress a = peer.address(); });
 
     API_COMPILE({ bool ret = peer == BlePeerDevice(); (void)ret; });
+    API_COMPILE({ bool ret = peer != BlePeerDevice(); (void)ret; });
 
     API_COMPILE({ BlePeerDevice p = peer; });
 }
@@ -484,6 +519,7 @@ test(ble_local_device_class) {
 
     API_COMPILE({ int ret = BLE.setTxPower(-8); (void)ret; });
     API_COMPILE({ int8_t p; int ret = BLE.txPower(&p); (void)ret; });
+    API_COMPILE({ int8_t p = BLE.txPower(); (void)p; });
 
     API_COMPILE({ int ret = BLE.selectAntenna(BleAntennaType::DEFAULT); (void)ret; });
 
@@ -504,28 +540,39 @@ test(ble_local_device_class) {
     API_COMPILE({ int ret = BLE.setAdvertisingTimeout(0); (void)ret; });
     API_COMPILE({ int ret = BLE.setAdvertisingType(BleAdvertisingEventType::CONNECTABLE_SCANNABLE_UNDIRECRED); (void)ret; });
     API_COMPILE({ int ret = BLE.setAdvertisingParameters(&params); (void)ret; });
+    API_COMPILE({ int ret = BLE.setAdvertisingParameters(params); (void)ret; });
     API_COMPILE({ int ret = BLE.setAdvertisingParameters(0, 0, BleAdvertisingEventType::CONNECTABLE_SCANNABLE_UNDIRECRED); (void)ret; });
     API_COMPILE({ int ret = BLE.getAdvertisingParameters(&params); (void)ret; });
+    API_COMPILE({ int ret = BLE.getAdvertisingParameters(params); (void)ret; });
 
     API_COMPILE({ int ret = BLE.setAdvertisingData(&advData); (void)ret; });
+    API_COMPILE({ int ret = BLE.setAdvertisingData(advData); (void)ret; });
     API_COMPILE({ int ret = BLE.setScanResponseData(&srData); (void)ret; });
+    API_COMPILE({ int ret = BLE.setScanResponseData(srData); (void)ret; });
     API_COMPILE({ size_t ret = BLE.getAdvertisingData(&advData); (void)ret; });
+    API_COMPILE({ size_t ret = BLE.getAdvertisingData(advData); (void)ret; });
     API_COMPILE({ size_t ret = BLE.getScanResponseData(&srData); (void)ret; });
+    API_COMPILE({ size_t ret = BLE.getScanResponseData(srData); (void)ret; });
 
     API_COMPILE({ int ret = BLE.advertise(); (void)ret; });
     API_COMPILE({ int ret = BLE.advertise(&advData); (void)ret; });
+    API_COMPILE({ int ret = BLE.advertise(advData); (void)ret; });
     API_COMPILE({ int ret = BLE.advertise(&advData, &srData); (void)ret; });
+    API_COMPILE({ int ret = BLE.advertise(advData, srData); (void)ret; });
     API_COMPILE({ int ret = BLE.advertise(beacon); (void)ret; });
     API_COMPILE({ int ret = BLE.stopAdvertising(); (void)ret; });
     API_COMPILE({ bool ret = BLE.advertising(); (void)ret; });
 
     API_COMPILE({ int ret = BLE.setScanTimeout(0); (void)ret; });
     API_COMPILE({ int ret = BLE.setScanParameters(&scanParams); (void)ret; });
+    API_COMPILE({ int ret = BLE.setScanParameters(scanParams); (void)ret; });
     API_COMPILE({ int ret = BLE.getScanParameters(&scanParams); (void)ret; });
+    API_COMPILE({ int ret = BLE.getScanParameters(scanParams); (void)ret; });
 
     API_COMPILE({ Vector<BleScanResult> results = BLE.scan(); });
     API_COMPILE({ BleScanResult results[1]; int ret = BLE.scan(results, 0); (void)ret; });
     API_COMPILE({ int ret = BLE.scan(scanHandlerFunc, nullptr); (void)ret; });
+    API_COMPILE({ int ret = BLE.scan(scanHandlerFuncRef, nullptr); (void)ret; });
     API_COMPILE({ int ret = BLE.stopScanning(); (void)ret; });
 
     API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic("1234", props, charUuid, svcUuid); });
@@ -541,6 +588,8 @@ test(ble_local_device_class) {
     API_COMPILE({ BlePeerDevice p = BLE.connect(addr, false); });
     API_COMPILE({ BlePeerDevice p = BLE.connect(addr, &connectParams); });
     API_COMPILE({ BlePeerDevice p = BLE.connect(addr, &connectParams, false); });
+    API_COMPILE({ BlePeerDevice p = BLE.connect(addr, connectParams); });
+    API_COMPILE({ BlePeerDevice p = BLE.connect(addr, connectParams, false); });
     API_COMPILE({ BlePeerDevice p = BLE.connect(addr, 0 , 0, 0); });
     API_COMPILE({ BlePeerDevice p = BLE.connect(addr, 0, 0, 0, false); });
     API_COMPILE({ int ret = BLE.disconnect(); (void)ret; });

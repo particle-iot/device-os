@@ -585,7 +585,7 @@ size_t BleAdvertisingData::set(const uint8_t* buf, size_t len) {
 size_t BleAdvertisingData::set(const iBeacon& beacon) {
     clear();
 
-    if (beacon.uuid.type() == BleUuidType::SHORT) {
+    if (beacon.UUID().type() == BleUuidType::SHORT) {
         return selfLen_;
     }
 
@@ -604,17 +604,17 @@ size_t BleAdvertisingData::set(const iBeacon& beacon) {
     selfData_[selfLen_++] = 0x15;
     // 128-bits Beacon UUID, MSB
     for (size_t i = 0, j = BLE_SIG_UUID_128BIT_LEN - 1; i < BLE_SIG_UUID_128BIT_LEN; i++, j--) {
-        selfData_[selfLen_ + i] = beacon.uuid.rawBytes()[j];
+        selfData_[selfLen_ + i] = beacon.UUID().rawBytes()[j];
     }
     selfLen_ += BLE_SIG_UUID_128BIT_LEN;
     // Major, MSB
-    selfData_[selfLen_++] = (uint8_t)((beacon.major >> 8) & 0x00FF);
-    selfData_[selfLen_++] = (uint8_t)(beacon.major & 0x00FF);
+    selfData_[selfLen_++] = (uint8_t)((beacon.major() >> 8) & 0x00FF);
+    selfData_[selfLen_++] = (uint8_t)(beacon.major() & 0x00FF);
     // Minor, MSB
-    selfData_[selfLen_++] = (uint8_t)((beacon.minor >> 8) & 0x00FF);
-    selfData_[selfLen_++] = (uint8_t)(beacon.minor & 0x00FF);
+    selfData_[selfLen_++] = (uint8_t)((beacon.minor() >> 8) & 0x00FF);
+    selfData_[selfLen_++] = (uint8_t)(beacon.minor() & 0x00FF);
     // Measure power
-    selfData_[selfLen_++] = beacon.measurePower;
+    selfData_[selfLen_++] = beacon.measurePower();
 
     return selfLen_;
 }
@@ -741,12 +741,25 @@ String BleAdvertisingData::deviceName() const {
 
 size_t BleAdvertisingData::serviceUUID(BleUuid* uuids, size_t count) const {
     size_t found = 0;
-    found += serviceUUID(BleAdvertisingDataType::SERVICE_UUID_16BIT_MORE_AVAILABLE, &uuids[found], count - found);
-    found += serviceUUID(BleAdvertisingDataType::SERVICE_UUID_16BIT_COMPLETE, &uuids[found], count - found);
-    found += serviceUUID(BleAdvertisingDataType::SERVICE_UUID_128BIT_MORE_AVAILABLE, &uuids[found], count - found);
-    found += serviceUUID(BleAdvertisingDataType::SERVICE_UUID_128BIT_COMPLETE, &uuids[found], count - found);
+    const Vector<BleUuid>& foundUuids = serviceUUID();
+    for (const auto& uuid : foundUuids) {
+        if (found >= count) {
+            break;
+        }
+        uuids[found++] = uuid;
+    }
     return found;
 }
+
+Vector<BleUuid> BleAdvertisingData::serviceUUID() const {
+    Vector<BleUuid> foundUuids;
+    serviceUUID(BleAdvertisingDataType::SERVICE_UUID_16BIT_MORE_AVAILABLE, foundUuids);
+    serviceUUID(BleAdvertisingDataType::SERVICE_UUID_16BIT_MORE_AVAILABLE, foundUuids);
+    serviceUUID(BleAdvertisingDataType::SERVICE_UUID_16BIT_COMPLETE, foundUuids);
+    serviceUUID(BleAdvertisingDataType::SERVICE_UUID_128BIT_MORE_AVAILABLE, foundUuids);
+    serviceUUID(BleAdvertisingDataType::SERVICE_UUID_128BIT_COMPLETE, foundUuids);
+    return foundUuids;
+ }
 
 size_t BleAdvertisingData::customData(uint8_t* buf, size_t len) const {
     return get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, len);
@@ -757,18 +770,22 @@ bool BleAdvertisingData::contains(BleAdvertisingDataType type) const {
     return locate(selfData_, selfLen_, type, &adsOffset) > 0;
 }
 
-size_t BleAdvertisingData::serviceUUID(BleAdvertisingDataType type, BleUuid* uuids, size_t count) const {
+size_t BleAdvertisingData::serviceUUID(BleAdvertisingDataType type, Vector<BleUuid>& uuids) const {
     size_t offset, adsLen = 0, found = 0;
     for (size_t i = 0; i < selfLen_; i += (offset + adsLen)) {
         adsLen = locate(&selfData_[i], selfLen_ - i, type, &offset);
-        if (adsLen > 0 && found < count) {
+        if (adsLen > 0) {
             if (type == BleAdvertisingDataType::SERVICE_UUID_16BIT_MORE_AVAILABLE || type == BleAdvertisingDataType::SERVICE_UUID_16BIT_COMPLETE) {
-                for(size_t array = 0; (array < (adsLen - 2) / BLE_SIG_UUID_16BIT_LEN) && (found < count); array++) {
-                    uuids[found++] = (uint16_t)selfData_[i + offset + array * BLE_SIG_UUID_16BIT_LEN + 2] | ((uint16_t)selfData_[i + offset + array * BLE_SIG_UUID_16BIT_LEN + 3] << 8);
+                for(size_t array = 0; (array < (adsLen - 2) / BLE_SIG_UUID_16BIT_LEN); array++) {
+                    BleUuid uuid = (uint16_t)selfData_[i + offset + array * BLE_SIG_UUID_16BIT_LEN + 2] | ((uint16_t)selfData_[i + offset + array * BLE_SIG_UUID_16BIT_LEN + 3] << 8);
+                    uuids.append(uuid);
+                    found++;
                 }
             } else if (type == BleAdvertisingDataType::SERVICE_UUID_128BIT_MORE_AVAILABLE || type == BleAdvertisingDataType::SERVICE_UUID_128BIT_COMPLETE) {
-                for(size_t array = 0; (array < (adsLen - 2) / BLE_SIG_UUID_128BIT_LEN) && (found < count); array++) {
-                    uuids[found++] = &selfData_[i + offset + array * BLE_SIG_UUID_128BIT_LEN + 2];
+                for(size_t array = 0; (array < (adsLen - 2) / BLE_SIG_UUID_128BIT_LEN); array++) {
+                    BleUuid uuid = &selfData_[i + offset + array * BLE_SIG_UUID_128BIT_LEN + 2];
+                    uuids.append(uuid);
+                    found++;
                 }
             }
             continue;
@@ -1333,6 +1350,10 @@ bool BleService::operator==(const BleService& service) const {
     return (impl()->UUID() == service.impl()->UUID());
 }
 
+bool BleService::operator!=(const BleService& service) const {
+    return (impl()->UUID() != service.impl()->UUID());
+}
+
 
 class BleDiscoveryDelegator {
 public:
@@ -1450,6 +1471,7 @@ BlePeerDevice& BlePeerDevice::operator=(const BlePeerDevice& peer) {
 }
 
 Vector<BleService> BlePeerDevice::discoverAllServices() {
+    WiringBleLock lk;
     if (!impl()->servicesDiscovered()) {
         BleDiscoveryDelegator discovery;
         if (discovery.discoverAllServices(*this) == SYSTEM_ERROR_NONE) {
@@ -1460,6 +1482,7 @@ Vector<BleService> BlePeerDevice::discoverAllServices() {
 }
 
 ssize_t BlePeerDevice::discoverAllServices(BleService* svcs, size_t count) {
+    WiringBleLock lk;
     CHECK_TRUE(svcs && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     if (!impl()->servicesDiscovered()) {
         BleDiscoveryDelegator discovery;
@@ -1470,6 +1493,7 @@ ssize_t BlePeerDevice::discoverAllServices(BleService* svcs, size_t count) {
 }
 
 Vector<BleCharacteristic> BlePeerDevice::discoverAllCharacteristics() {
+    WiringBleLock lk;
     if (!impl()->servicesDiscovered()) {
         discoverAllServices();
     }
@@ -1483,6 +1507,7 @@ Vector<BleCharacteristic> BlePeerDevice::discoverAllCharacteristics() {
 }
 
 ssize_t BlePeerDevice::discoverAllCharacteristics(BleCharacteristic* chars, size_t count) {
+    WiringBleLock lk;
     CHECK_TRUE(chars && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     if (!impl()->servicesDiscovered()) {
         discoverAllServices();
@@ -1496,10 +1521,12 @@ ssize_t BlePeerDevice::discoverAllCharacteristics(BleCharacteristic* chars, size
 }
 
 Vector<BleService> BlePeerDevice::services() {
+    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     return impl()->services();
 }
 
 size_t BlePeerDevice::services(BleService* svcs, size_t count) {
+    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     CHECK_TRUE(svcs && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     count = std::min((int)count, impl()->services().size());
     for (size_t i = 0; i < count; i++) {
@@ -1509,6 +1536,7 @@ size_t BlePeerDevice::services(BleService* svcs, size_t count) {
 }
 
 bool BlePeerDevice::getServiceByUUID(BleService& service, const BleUuid& uuid) const {
+    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     for (auto& existSvc : impl()->services()) {
         if (existSvc.UUID() == uuid) {
             service = existSvc;
@@ -1519,10 +1547,12 @@ bool BlePeerDevice::getServiceByUUID(BleService& service, const BleUuid& uuid) c
 }
 
 Vector<BleCharacteristic> BlePeerDevice::characteristics() {
+    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     return impl()->characteristics();
 }
 
 size_t BlePeerDevice::characteristics(BleCharacteristic* chars, size_t count) {
+    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     CHECK_TRUE(chars && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     count = std::min((int)count, impl()->characteristics().size());
     for (size_t i = 0; i < count; i++) {
@@ -1532,6 +1562,7 @@ size_t BlePeerDevice::characteristics(BleCharacteristic* chars, size_t count) {
 }
 
 bool BlePeerDevice::getCharacteristicByDescription(BleCharacteristic& characteristic, const char* desc) const {
+    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     CHECK_TRUE(desc, false);
     for (auto& existChar : impl()->characteristics()) {
         if (!strcmp(existChar.description().c_str(), desc)) {
@@ -1557,6 +1588,7 @@ bool BlePeerDevice::getCharacteristicByUUID(BleCharacteristic& characteristic, c
 }
 
 int BlePeerDevice::connect(const BleAddress& addr, const BleConnectionParams* params, bool automatic) {
+    WiringBleLock lk;
     hal_ble_conn_cfg_t connCfg = {};
     connCfg.version = BLE_API_VERSION;
     connCfg.size = sizeof(hal_ble_conn_cfg_t);
@@ -1586,6 +1618,10 @@ int BlePeerDevice::connect(const BleAddress& addr, const BleConnectionParams* pa
     return SYSTEM_ERROR_NONE;
 }
 
+int BlePeerDevice::connect(const BleAddress& addr, const BleConnectionParams& params, bool automatic) {
+    return connect(addr, &params, automatic);
+}
+
 int BlePeerDevice::connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic) {
     BleConnectionParams connParams;
     connParams.version = BLE_API_VERSION;
@@ -1603,6 +1639,10 @@ int BlePeerDevice::connect(const BleAddress& addr, bool automatic) {
 
 int BlePeerDevice::connect(const BleConnectionParams* params, bool automatic) {
     return connect(address(), params, automatic);
+}
+
+int BlePeerDevice::connect(const BleConnectionParams& params, bool automatic) {
+    return connect(address(), &params, automatic);
 }
 
 int BlePeerDevice::connect(uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic) {
@@ -1643,6 +1683,10 @@ bool BlePeerDevice::operator==(const BlePeerDevice& device) const {
         return true;
     }
     return false;
+}
+
+bool BlePeerDevice::operator!=(const BlePeerDevice& device) const {
+    return !(*this == device);
 }
 
 
@@ -1709,11 +1753,13 @@ int BleLocalDevice::off() const {
 }
 
 int BleLocalDevice::setAddress(const BleAddress& address) const {
+    WiringBleLock lk;
     hal_ble_addr_t addr = address.halAddress();
     return hal_ble_gap_set_device_address(&addr, nullptr);
 }
 
 int BleLocalDevice::setAddress(const char* address, BleAddressType type) const {
+    WiringBleLock lk;
     if (!address) {
         // Restores the default random static address.
         return hal_ble_gap_set_device_address(nullptr, nullptr);
@@ -1723,17 +1769,20 @@ int BleLocalDevice::setAddress(const char* address, BleAddressType type) const {
 }
 
 int BleLocalDevice::setAddress(const String& address, BleAddressType type) const {
+    WiringBleLock lk;
     BleAddress addr(address, type);
     return setAddress(addr);
 }
 
 BleAddress BleLocalDevice::address() const {
+    WiringBleLock lk;
     hal_ble_addr_t halAddr = {};
     hal_ble_gap_get_device_address(&halAddr, nullptr);
     return BleAddress(halAddr);
 }
 
 int BleLocalDevice::setDeviceName(const char* name, size_t len) const {
+    WiringBleLock lk;
     return hal_ble_gap_set_device_name(name, len, nullptr);
 }
 
@@ -1746,11 +1795,13 @@ int BleLocalDevice::setDeviceName(const String& name) const {
 }
 
 ssize_t BleLocalDevice::getDeviceName(char* name, size_t len) const {
+    WiringBleLock lk;
     CHECK(hal_ble_gap_get_device_name(name, len, nullptr));
     return strnlen(name, BLE_MAX_DEV_NAME_LEN);
 }
 
 String BleLocalDevice::getDeviceName() const {
+    WiringBleLock lk;
     String name;
     char buf[BLE_MAX_DEV_NAME_LEN + 1] = {}; // NULL-terminated string is returned.
     if (getDeviceName(buf, sizeof(buf)) > 0) {
@@ -1769,7 +1820,15 @@ int BleLocalDevice::txPower(int8_t* txPower) const {
     return hal_ble_gap_get_tx_power(txPower, nullptr);
 }
 
+int8_t BleLocalDevice::txPower() const {
+    WiringBleLock lk;
+    int8_t tx = 0x7F;
+    hal_ble_gap_get_tx_power(&tx, nullptr);
+    return tx;
+}
+
 int BleLocalDevice::selectAntenna(BleAntennaType antenna) const {
+    WiringBleLock lk;
     return hal_ble_select_antenna(static_cast<hal_ble_ant_type_t>(antenna), nullptr);
 }
 
@@ -1801,7 +1860,12 @@ int BleLocalDevice::setAdvertisingType(BleAdvertisingEventType type) const {
 }
 
 int BleLocalDevice::setAdvertisingParameters(const BleAdvertisingParams* params) const {
+    WiringBleLock lk;
     return hal_ble_gap_set_advertising_parameters(params, nullptr);
+}
+
+int BleLocalDevice::setAdvertisingParameters(const BleAdvertisingParams& params) const {
+    return setAdvertisingParameters(&params);
 }
 
 int BleLocalDevice::setAdvertisingParameters(uint16_t interval, uint16_t timeout, BleAdvertisingEventType type) const {
@@ -1816,10 +1880,16 @@ int BleLocalDevice::setAdvertisingParameters(uint16_t interval, uint16_t timeout
 }
 
 int BleLocalDevice::getAdvertisingParameters(BleAdvertisingParams* params) const {
+    WiringBleLock lk;
     return hal_ble_gap_get_advertising_parameters(params, nullptr);
 }
 
+int BleLocalDevice::getAdvertisingParameters(BleAdvertisingParams& params) const {
+    return getAdvertisingParameters(&params);
+}
+
 int BleLocalDevice::setAdvertisingData(BleAdvertisingData* advertisingData) const {
+    WiringBleLock lk;
     if (advertisingData == nullptr) {
         return hal_ble_gap_set_advertising_data(nullptr, 0, nullptr);
     } else {
@@ -1827,13 +1897,22 @@ int BleLocalDevice::setAdvertisingData(BleAdvertisingData* advertisingData) cons
     }
 }
 
+int BleLocalDevice::setAdvertisingData(BleAdvertisingData& advertisingData) const {
+    return setAdvertisingData(&advertisingData);
+}
+
 int BleLocalDevice::setScanResponseData(BleAdvertisingData* scanResponse) const {
+    WiringBleLock lk;
     if (scanResponse == nullptr) {
         return hal_ble_gap_set_scan_response_data(nullptr, 0, nullptr);
     } else {
         scanResponse->remove(BleAdvertisingDataType::FLAGS);
         return hal_ble_gap_set_scan_response_data(scanResponse->data(), scanResponse->length(), nullptr);
     }
+}
+
+int BleLocalDevice::setScanResponseData(BleAdvertisingData& scanResponse) const {
+    return setScanResponseData(&scanResponse);
 }
 
 ssize_t BleLocalDevice::getAdvertisingData(BleAdvertisingData* advertisingData) const {
@@ -1847,6 +1926,10 @@ ssize_t BleLocalDevice::getAdvertisingData(BleAdvertisingData* advertisingData) 
     return len;
 }
 
+ssize_t BleLocalDevice::getAdvertisingData(BleAdvertisingData& advertisingData) const {
+    return getAdvertisingData(&advertisingData);
+}
+
 ssize_t BleLocalDevice::getScanResponseData(BleAdvertisingData* scanResponse) const {
     WiringBleLock lk;
     if (scanResponse == nullptr) {
@@ -1856,6 +1939,10 @@ ssize_t BleLocalDevice::getScanResponseData(BleAdvertisingData* scanResponse) co
     size_t len = CHECK(hal_ble_gap_get_scan_response_data(scanResponse->data(), BLE_MAX_ADV_DATA_LEN, nullptr));
     scanResponse->resize(len);
     return len;
+}
+
+ssize_t BleLocalDevice::getScanResponseData(BleAdvertisingData& scanResponse) const {
+    return getScanResponseData(&scanResponse);
 }
 
 int BleLocalDevice::advertise() const {
@@ -1868,6 +1955,14 @@ int BleLocalDevice::advertise(BleAdvertisingData* advertisingData, BleAdvertisin
     CHECK(setAdvertisingData(advertisingData));
     CHECK(setScanResponseData(scanResponse));
     return advertise();
+}
+
+int BleLocalDevice::advertise(BleAdvertisingData& advertisingData) const {
+    return advertise(&advertisingData, nullptr);
+}
+
+int BleLocalDevice::advertise(BleAdvertisingData& advertisingData, BleAdvertisingData& scanResponse) const {
+    return advertise(&advertisingData, &scanResponse);
 }
 
 int BleLocalDevice::advertise(const iBeacon& beacon) const {
@@ -1885,10 +1980,12 @@ int BleLocalDevice::advertise(const iBeacon& beacon) const {
 }
 
 int BleLocalDevice::stopAdvertising() const {
+    WiringBleLock lk;
     return hal_ble_gap_stop_advertising(nullptr);
 }
 
 bool BleLocalDevice::advertising() const {
+    WiringBleLock lk;
     return hal_ble_gap_is_advertising(nullptr);
 }
 
@@ -1992,9 +2089,17 @@ int BleLocalDevice::setScanParameters(const BleScanParams* params) const {
     return hal_ble_gap_set_scan_parameters(params, nullptr);
 }
 
+int BleLocalDevice::setScanParameters(const BleScanParams& params) const {
+    return setScanParameters(&params);
+}
+
 int BleLocalDevice::getScanParameters(BleScanParams* params) const {
     WiringBleLock lk;
     return hal_ble_gap_get_scan_parameters(params, nullptr);
+}
+
+int BleLocalDevice::getScanParameters(BleScanParams& params) const {
+    return getScanParameters(&params);
 }
 
 int BleLocalDevice::scan(BleOnScanResultCallback callback, void* context) const {
@@ -2048,6 +2153,10 @@ BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, const BleConnectio
     BlePeerDevice peer;
     peer.connect(addr, params, automatic);
     return peer;
+}
+
+BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, const BleConnectionParams& params, bool automatic) const {
+    return connect(addr, &params, automatic);
 }
 
 BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic) const {
