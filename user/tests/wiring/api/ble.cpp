@@ -241,6 +241,8 @@ test(ble_uuid_class) {
     API_COMPILE({ bool ret = uuid != String("1234"); (void)ret; });
     API_COMPILE({ bool ret = uuid != 0x1234; (void)ret; });
     API_COMPILE({ bool ret = uuid != uuidArray; (void)ret; });
+
+    API_COMPILE({ uint8_t ret = uuid[0]; (void)ret; });
 }
 
 test(ble_ibeacon_class) {
@@ -309,6 +311,8 @@ test(ble_advertising_data_class) {
     API_COMPILE({ uint8_t buf[1]; size_t ret = data(buf, 0); (void)ret; });
 
     API_COMPILE({ bool ret = data.contains(BleAdvertisingDataType::FLAGS); (void)ret; });
+
+    API_COMPILE({ uint8_t ret = data[0]; (void)ret; });
 }
 
 test(ble_characteristic_class) {

@@ -510,6 +510,13 @@ bool BleUuid::operator==(const BleUuid& uuid) const {
     return ((type_ == uuid.type_) && !memcmp(uuid128_, uuid.uuid128_, BLE_SIG_UUID_128BIT_LEN));
 }
 
+uint8_t BleUuid::operator[](uint8_t i) const {
+    if (i >= BLE_SIG_UUID_128BIT_LEN) {
+        return 0;
+    }
+    return uuid128_[i];
+}
+
 void BleUuid::construct(const char* uuid) {
     type_ = BleUuidType::LONG;
     memcpy(uuid128_, BASE_UUID, BLE_SIG_UUID_128BIT_LEN);
@@ -763,6 +770,13 @@ Vector<BleUuid> BleAdvertisingData::serviceUUID() const {
 
 size_t BleAdvertisingData::customData(uint8_t* buf, size_t len) const {
     return get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, len);
+}
+
+uint8_t BleAdvertisingData::operator[](uint8_t i) const {
+    if (i >= selfLen_) {
+        return 0;
+    }
+    return selfData_[i];
 }
 
 bool BleAdvertisingData::contains(BleAdvertisingDataType type) const {

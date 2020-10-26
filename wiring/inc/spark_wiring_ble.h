@@ -274,6 +274,8 @@ public:
         return !(*this == BleUuid(uuid));
     }
 
+    uint8_t operator[](uint8_t i) const;
+
 private:
     void construct(const char* uuid);
     void toBigEndian(uint8_t buf[BLE_SIG_UUID_128BIT_LEN]) const;
@@ -404,6 +406,8 @@ public:
     size_t operator()(uint8_t* buf, size_t len) const {
         return get(buf, len);
     }
+
+    uint8_t operator[](uint8_t i) const;
 
     bool contains(BleAdvertisingDataType type) const;
 

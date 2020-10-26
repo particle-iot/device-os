@@ -35,9 +35,6 @@ void loop() {
     int count = BLE.scan(results, SCAN_RESULT_COUNT);
 
     if (count > 0) {
-        uint8_t buf[BLE_MAX_ADV_DATA_LEN];
-        size_t len;
-
         Log.info("%d devices are found:", count);
         for (int i = 0; i < count; i++) {
             Log.info(" -------- MAC: %s | RSSI: %dBm --------", results[i].address().toString().c_str(), results[i].rssi());
@@ -51,20 +48,20 @@ void loop() {
                 Log.info("Local name: %s", name.c_str());
             }
 
-            len = results[i].advertisingData().get(buf, sizeof(buf));
-            if (len > 0) {
+            const BleAdvertisingData& advData = results[i].advertisingData();
+            if (advData.length() > 0) {
                 Serial1.print("Advertising data: ");
-                for (size_t j = 0; j < len; j++) {
-                    Serial1.printf("0x%02x,", buf[j]);
+                for (size_t j = 0; j < advData.length(); j++) {
+                    Serial1.printf("0x%02x,", advData[j]);
                 }
                 Serial1.println("\r\n");
             }
 
-            len = results[i].scanResponse().get(buf, sizeof(buf));
-            if (len > 0) {
+            const BleAdvertisingData& srData = results[i].scanResponse();
+            if (srData.length() > 0) {
                 Serial1.print("Scan response data: ");
-                for (size_t j = 0; j < len; j++) {
-                    Serial1.printf("0x%02x,", buf[j]);
+                for (size_t j = 0; j < srData.length(); j++) {
+                    Serial1.printf("0x%02x,", srData[j]);
                 }
                 Serial1.println("\r\n");
             }
