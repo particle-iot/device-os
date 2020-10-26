@@ -179,6 +179,7 @@ static_assert(std::is_pod<BleCharacteristicHandles>::value, "BleCharacteristicHa
 class BleAddress {
 public:
     BleAddress();
+    BleAddress(const BleAddress& addr);
     BleAddress(const hal_ble_addr_t& addr);
     BleAddress(const uint8_t addr[BLE_SIG_ADDR_LEN], BleAddressType type = BleAddressType::PUBLIC);
     BleAddress(const char* address, BleAddressType type = BleAddressType::PUBLIC);
@@ -187,10 +188,12 @@ public:
 
     // Setters
     int type(BleAddressType type);
+    int set(const hal_ble_addr_t& addr);
     int set(const uint8_t addr[BLE_SIG_ADDR_LEN], BleAddressType type = BleAddressType::PUBLIC);
     int set(const char* address, BleAddressType type = BleAddressType::PUBLIC);
     int set(const String& address, BleAddressType type = BleAddressType::PUBLIC);
 
+    BleAddress& operator=(const BleAddress& addr);
     BleAddress& operator=(const hal_ble_addr_t& addr);
     BleAddress& operator=(const uint8_t addr[BLE_SIG_ADDR_LEN]);
     BleAddress& operator=(const char* address);
@@ -205,14 +208,16 @@ public:
     uint8_t operator[](uint8_t i) const;
 
     bool operator==(const BleAddress& addr) const;
+    bool operator==(const hal_ble_addr_t& addr) const;
     bool operator==(const uint8_t addr[BLE_SIG_ADDR_LEN]) const;
     bool operator==(const char* address) const;
     bool operator==(const String& address) const;
 
-    template<typename T>
-    bool operator!=(T addr) const {
-        return !(*this == BleAddress(addr));
-    }
+    bool operator!=(const BleAddress& addr) const;
+    bool operator!=(const hal_ble_addr_t& addr) const;
+    bool operator!=(const uint8_t addr[BLE_SIG_ADDR_LEN]) const;
+    bool operator!=(const char* address) const;
+    bool operator!=(const String& address) const;
 
 private:
     void toBigEndian(uint8_t buf[BLE_SIG_ADDR_LEN]) const;

@@ -114,6 +114,10 @@ BleAddress::BleAddress()
     address_.addr_type = BLE_SIG_ADDR_TYPE_PUBLIC;
 }
 
+BleAddress::BleAddress(const BleAddress& addr) {
+    address_ = addr.address_;
+}
+
 BleAddress::BleAddress(const hal_ble_addr_t& addr) {
     address_ = addr;
 }
@@ -138,6 +142,11 @@ int BleAddress::type(BleAddressType type) {
 
 BleAddressType BleAddress::type() const {
     return static_cast<BleAddressType>(address_.addr_type);
+}
+
+int BleAddress::set(const hal_ble_addr_t& addr) {
+    address_ = addr;
+    return SYSTEM_ERROR_NONE;
 }
 
 int BleAddress::set(const uint8_t addr[BLE_SIG_ADDR_LEN], BleAddressType type) {
@@ -229,9 +238,13 @@ uint8_t BleAddress::operator[](uint8_t i) const {
     return address_.addr[i];
 }
 
-BleAddress& BleAddress::operator=(const hal_ble_addr_t& addr) {
-    address_ = addr;
+BleAddress& BleAddress::operator=(const BleAddress& addr) {
+    address_ = addr.address_;
     return *this;
+}
+
+BleAddress& BleAddress::operator=(const hal_ble_addr_t& addr) {
+    return *this = BleAddress(addr);
 }
 
 BleAddress& BleAddress::operator=(const uint8_t addr[BLE_SIG_ADDR_LEN]) {
@@ -258,6 +271,10 @@ bool BleAddress::operator==(const BleAddress& addr) const {
     return false;
 }
 
+bool BleAddress::operator==(const hal_ble_addr_t& addr) const {
+    return *this == BleAddress(addr);
+}
+
 bool BleAddress::operator==(const uint8_t addr[BLE_SIG_ADDR_LEN]) const {
     // The operator intends to compare the value only.
     return !memcmp(address_.addr, addr, BLE_SIG_ADDR_LEN);
@@ -271,6 +288,29 @@ bool BleAddress::operator==(const char* address) const {
 bool BleAddress::operator==(const String& address) const {
     // The operator intends to compare the value only.
     return toString() == address;
+}
+
+bool BleAddress::operator!=(const BleAddress& addr) const {
+    return !(*this == addr);
+}
+
+bool BleAddress::operator!=(const hal_ble_addr_t& addr) const {
+    return !(*this == BleAddress(addr));
+}
+
+bool BleAddress::operator!=(const uint8_t addr[BLE_SIG_ADDR_LEN]) const {
+    // The operator intends to compare the value only.
+    return memcmp(address_.addr, addr, BLE_SIG_ADDR_LEN);
+}
+
+bool BleAddress::operator!=(const char* address) const {
+    // The operator intends to compare the value only.
+    return toString() != String(address);
+}
+
+bool BleAddress::operator!=(const String& address) const {
+    // The operator intends to compare the value only.
+    return toString() != address;
 }
 
 void BleAddress::toBigEndian(uint8_t buf[BLE_SIG_ADDR_LEN]) const {
