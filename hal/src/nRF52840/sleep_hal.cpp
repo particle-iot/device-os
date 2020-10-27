@@ -49,81 +49,61 @@
 #include "spark_wiring_vector.h"
 
 
-using namespace particle;;
+#define INVALID_INT_PRIORITY        (0xFFFFFFFF)
+
+using namespace particle;
 
 namespace {
 
 typedef struct WakeupSourcePriorityCache {
-    uint16_t priority;
-    uint16_t bumped;
+    uint32_t gpiotePriority;
+    uint32_t rtc2Priority;
+    uint32_t blePriority;
+    uint32_t lpcompPriority;
+    uint32_t usart0Priority;
+    uint32_t usart1Priority;
 } WakeupSourcePriorityCache;
-
-WakeupSourcePriorityCache gpiotePriority;
-WakeupSourcePriorityCache rtc2Priority;
-WakeupSourcePriorityCache blePriority;
-WakeupSourcePriorityCache lpcompPriority;
-WakeupSourcePriorityCache usart0Priority;
-WakeupSourcePriorityCache usart1Priority;
 
 }
 
-static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSources, uint32_t newPriority) {
+static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSources, WakeupSourcePriorityCache* priority, uint32_t newPriority) {
     auto source = wakeupSources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            if (!gpiotePriority.bumped) {
-                gpiotePriority.priority = NVIC_GetPriority(GPIOTE_IRQn);
-                gpiotePriority.bumped = true;
+            if (priority->gpiotePriority == INVALID_INT_PRIORITY) {
+                priority->gpiotePriority = NVIC_GetPriority(GPIOTE_IRQn);
             }
-            // The lower number, the higher priority
-            if (newPriority < NVIC_GetPriority(GPIOTE_IRQn)) {
-                NVIC_SetPriority(GPIOTE_IRQn, newPriority);
-            }
+            NVIC_SetPriority(GPIOTE_IRQn, newPriority);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            if (!rtc2Priority.bumped) {
-                rtc2Priority.priority = NVIC_GetPriority(RTC2_IRQn);
-                rtc2Priority.bumped = true;
+            if (priority->rtc2Priority == INVALID_INT_PRIORITY) {
+                priority->rtc2Priority = NVIC_GetPriority(RTC2_IRQn);
             }
-            if (newPriority < NVIC_GetPriority(RTC2_IRQn)) {
-                NVIC_SetPriority(RTC2_IRQn, newPriority);
-            }
+            NVIC_SetPriority(RTC2_IRQn, newPriority);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
-            if (!blePriority.bumped) {
-                blePriority.priority = NVIC_GetPriority(SD_EVT_IRQn);
-                blePriority.bumped = true;
+            if (priority->blePriority == INVALID_INT_PRIORITY) {
+                priority->blePriority = NVIC_GetPriority(SD_EVT_IRQn);
             }
-            if (newPriority < NVIC_GetPriority(SD_EVT_IRQn)) {
-                NVIC_SetPriority(SD_EVT_IRQn, newPriority);
-            }
+            NVIC_SetPriority(SD_EVT_IRQn, newPriority);
             NVIC_EnableIRQ(SD_EVT_IRQn);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
-            if (!lpcompPriority.bumped) {
-                lpcompPriority.priority = NVIC_GetPriority(COMP_LPCOMP_IRQn);
-                lpcompPriority.bumped = true;
+            if (priority->lpcompPriority == INVALID_INT_PRIORITY) {
+                priority->lpcompPriority = NVIC_GetPriority(COMP_LPCOMP_IRQn);
             }
-            if (newPriority < NVIC_GetPriority(COMP_LPCOMP_IRQn)) {
-                NVIC_SetPriority(COMP_LPCOMP_IRQn, newPriority);
-            }
+            NVIC_SetPriority(COMP_LPCOMP_IRQn, newPriority);
             NVIC_EnableIRQ(COMP_LPCOMP_IRQn);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
-            if (!usart0Priority.bumped) {
-                usart0Priority.priority = NVIC_GetPriority(UARTE0_UART0_IRQn);
-                usart0Priority.bumped = true;
+            if (priority->usart0Priority == INVALID_INT_PRIORITY) {
+                priority->usart0Priority = NVIC_GetPriority(UARTE0_UART0_IRQn);
             }
-            if (newPriority < NVIC_GetPriority(UARTE0_UART0_IRQn)) {
-                NVIC_SetPriority(UARTE0_UART0_IRQn, newPriority);
-            }
+            NVIC_SetPriority(UARTE0_UART0_IRQn, newPriority);
             nrf_uarte_int_enable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
             auto network = reinterpret_cast<const hal_wakeup_source_network_t*>(source);
             if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
-                if (!usart1Priority.bumped) {
-                    usart1Priority.priority = NVIC_GetPriority(UARTE1_IRQn);
-                    usart1Priority.bumped = true;
+                if (priority->usart1Priority == INVALID_INT_PRIORITY) {
+                    priority->usart1Priority = NVIC_GetPriority(UARTE1_IRQn);
                 }
-                if (newPriority < NVIC_GetPriority(UARTE1_IRQn)) {
-                    NVIC_SetPriority(UARTE1_IRQn, newPriority);
-                }
+                NVIC_SetPriority(UARTE1_IRQn, newPriority);
                 nrf_uarte_int_enable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
             }
         }
@@ -131,23 +111,23 @@ static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSour
     }
 }
 
-static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSources) {
+static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSources, WakeupSourcePriorityCache* priority) {
     auto source = wakeupSources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            if (gpiotePriority.bumped) {
-                NVIC_SetPriority(GPIOTE_IRQn, gpiotePriority.priority);
-                gpiotePriority.bumped = false;
+            if (priority->gpiotePriority != INVALID_INT_PRIORITY) {
+                NVIC_SetPriority(GPIOTE_IRQn, priority->gpiotePriority);
+                priority->gpiotePriority = INVALID_INT_PRIORITY;
             }
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            if (rtc2Priority.bumped) {
-                NVIC_SetPriority(RTC2_IRQn, rtc2Priority.priority);
-                rtc2Priority.bumped = false;
+            if (priority->rtc2Priority != INVALID_INT_PRIORITY) {
+                NVIC_SetPriority(RTC2_IRQn, priority->rtc2Priority);
+                priority->rtc2Priority = INVALID_INT_PRIORITY;
             }
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
-            if (blePriority.bumped) {
-                NVIC_SetPriority(SD_EVT_IRQn, blePriority.priority);
-                blePriority.bumped = false;
+            if (priority->blePriority != INVALID_INT_PRIORITY) {
+                NVIC_SetPriority(SD_EVT_IRQn, priority->blePriority);
+                priority->blePriority = INVALID_INT_PRIORITY;
             }
             NVIC_DisableIRQ(SD_EVT_IRQn);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
@@ -158,22 +138,22 @@ static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSo
             nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_CROSS);
             NVIC_DisableIRQ(COMP_LPCOMP_IRQn);
             NVIC_ClearPendingIRQ(COMP_LPCOMP_IRQn);
-            if (lpcompPriority.bumped) {
-                NVIC_SetPriority(COMP_LPCOMP_IRQn, lpcompPriority.priority);
-                lpcompPriority.bumped = false;
+            if (priority->lpcompPriority != INVALID_INT_PRIORITY) {
+                NVIC_SetPriority(COMP_LPCOMP_IRQn, priority->lpcompPriority);
+                priority->lpcompPriority = INVALID_INT_PRIORITY;
             }
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
-            if (usart0Priority.bumped) {
-                NVIC_SetPriority(UARTE0_UART0_IRQn, usart0Priority.priority);
-                usart0Priority.bumped = false;
+            if (priority->usart0Priority != INVALID_INT_PRIORITY) {
+                NVIC_SetPriority(UARTE0_UART0_IRQn, priority->usart0Priority);
+                priority->usart0Priority = INVALID_INT_PRIORITY;
             }
             nrf_uarte_int_disable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
             auto network = reinterpret_cast<const hal_wakeup_source_network_t*>(source);
             if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
-                if (usart1Priority.bumped) {
-                    NVIC_SetPriority(UARTE1_IRQn, usart1Priority.priority);
-                    usart1Priority.bumped = false;
+                if (priority->usart1Priority != INVALID_INT_PRIORITY) {
+                    NVIC_SetPriority(UARTE1_IRQn, priority->usart1Priority);
+                    priority->usart1Priority = INVALID_INT_PRIORITY;
                 }
                 nrf_uarte_int_disable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
             }
@@ -889,7 +869,9 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
         __disable_irq();
 
         // Bump the priority
-        bumpWakeupSourcesPriority(config->wakeup_sources, 0);
+        WakeupSourcePriorityCache priorityCache;
+        memset((uint8_t*)&priorityCache, 0xFF, sizeof(WakeupSourcePriorityCache));
+        bumpWakeupSourcesPriority(config->wakeup_sources, &priorityCache, 0);
 
         __DSB();
         __ISB();
@@ -940,7 +922,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
         }
 
         // Unbump the priority before __enable_irq().
-        unbumpWakeupSourcesPriority(config->wakeup_sources);
+        unbumpWakeupSourcesPriority(config->wakeup_sources, &priorityCache);
 
         // Unmask interrupts so that SoftDevice can still process BLE events.
         // we are still under the effect of HAL_disable_irq that masked all but SoftDevice interrupts using BASEPRI
