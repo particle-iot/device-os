@@ -26,9 +26,12 @@
 #include "system_error.h"
 #include "spark_wiring_network.h"
 #include "spark_wiring_usartserial.h"
+#include "spark_wiring_vector.h"
 #include "enumflags.h"
 
 #define SYSTEM_SLEEP_NETWORK_FLAG_SUPPORTED_VER     (3)
+
+using spark::Vector;
 
 namespace particle {
 
@@ -249,6 +252,27 @@ public:
             wakeupSource->pin = pin;
             wakeupSource->mode = mode;
             config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
+        }
+        return *this;
+    }
+
+    SystemSleepConfiguration& gpios(const Vector<std::pair<pin_t, InterruptMode>>& pins) {
+        for (const auto& pin : pins) {
+            gpio(pin.first, pin.second);
+        }
+        return *this;
+    }
+
+    SystemSleepConfiguration& gpios(const Vector<pin_t>& pins, InterruptMode mode) {
+        for (const auto& pin : pins) {
+            gpio(pin, mode);
+        }
+        return *this;
+    }
+
+    SystemSleepConfiguration& gpios(const uint8_t* pins, size_t count, InterruptMode mode) {
+        for (size_t i = 0; i < count; i++) {
+            gpio(pins[i], mode);
         }
         return *this;
     }
