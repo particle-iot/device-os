@@ -49,20 +49,24 @@
 #include "spark_wiring_vector.h"
 
 
-#define INVALID_INT_PRIORITY        (0xFFFFFFFF)
-
 using namespace particle;
 
 namespace {
 
-typedef struct WakeupSourcePriorityCache {
+struct WakeupSourcePriorityCache {
+    WakeupSourcePriorityCache() {
+        memset((uint8_t*)this, 0xFF, sizeof(WakeupSourcePriorityCache));
+    }
+
     uint32_t gpiotePriority;
     uint32_t rtc2Priority;
     uint32_t blePriority;
     uint32_t lpcompPriority;
     uint32_t usart0Priority;
     uint32_t usart1Priority;
-} WakeupSourcePriorityCache;
+};
+
+constexpr uint32_t INVALID_INT_PRIORITY = 0xFFFFFFFF;
 
 }
 
@@ -869,8 +873,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
         __disable_irq();
 
         // Bump the priority
-        WakeupSourcePriorityCache priorityCache;
-        memset((uint8_t*)&priorityCache, 0xFF, sizeof(WakeupSourcePriorityCache));
+        WakeupSourcePriorityCache priorityCache = {};
         bumpWakeupSourcesPriority(config->wakeup_sources, &priorityCache, 0);
 
         __DSB();

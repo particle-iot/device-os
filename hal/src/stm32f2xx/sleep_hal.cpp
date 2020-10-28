@@ -31,15 +31,15 @@
 #include "check.h"
 
 
-#define EXTI9_5_BITS_MASK       (0x03E0)
-#define EXTI15_10_BITS_MASK     (0xFC00)
-
 // anonymous namespace
 namespace {
 
-static constexpr uint8_t extiChannelNum = 16;
+constexpr uint16_t EXTI9_5_BITS_MASK = 0x03E0;
+constexpr uint16_t EXTI15_10_BITS_MASK = 0xFC00;
 
-static constexpr uint8_t GPIO_IRQn[extiChannelNum] = {
+constexpr uint8_t extiChannelNum = 16;
+
+constexpr uint8_t GPIO_IRQn[extiChannelNum] = {
     EXTI0_IRQn,     //0
     EXTI1_IRQn,     //1
     EXTI2_IRQn,     //2
