@@ -34,9 +34,12 @@
 // anonymous namespace
 namespace {
 
-static constexpr uint8_t extiChannelNum = 16;
+constexpr uint16_t EXTI9_5_BITS_MASK = 0x03E0;
+constexpr uint16_t EXTI15_10_BITS_MASK = 0xFC00;
 
-static constexpr uint8_t GPIO_IRQn[extiChannelNum] = {
+constexpr uint8_t extiChannelNum = 16;
+
+constexpr uint8_t GPIO_IRQn[extiChannelNum] = {
     EXTI0_IRQn,     //0
     EXTI1_IRQn,     //1
     EXTI2_IRQn,     //2
@@ -54,6 +57,9 @@ static constexpr uint8_t GPIO_IRQn[extiChannelNum] = {
     EXTI15_10_IRQn, //14
     EXTI15_10_IRQn  //15
 };
+
+// Bitmask
+uint16_t extiPriorityBumped = 0x0000;
 
 };
 
@@ -175,7 +181,17 @@ static int configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources,
             
             Hal_Pin_Info* pinMap = HAL_Pin_Map();
             uint8_t pinSource = pinMap[gpioWakeup->pin].gpio_pin_source;
-            extiPriorities[pinSource] = NVIC_GetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]));
+            if (!(extiPriorityBumped >> pinSource) & 0x0001) {
+                extiPriorities[pinSource] = NVIC_GetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]));
+                if (pinSource <= 4) {
+                    extiPriorityBumped |= (0x0001 << pinSource);
+                }
+                if (pinSource >= 5 && pinSource <= 9) {
+                    extiPriorityBumped |= EXTI9_5_BITS_MASK;
+                } else if (pinSource >= 10 && pinSource <= 15) {
+                    extiPriorityBumped |= EXTI15_10_BITS_MASK;
+                }
+            }
             NVIC_SetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]), 1);
         }
         source = source->next;
@@ -692,11 +708,18 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
             auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
             HAL_Interrupts_Detach_Ext(gpioWakeup->pin, 1, nullptr);
-
-            Hal_Pin_Info* pinMap = HAL_Pin_Map();
-            uint8_t pinSource = pinMap[gpioWakeup->pin].gpio_pin_source;
-            extiPriority[pinSource] = NVIC_GetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]));
-            NVIC_SetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]), extiPriority[pinSource]);
+            uint8_t pinSource = halPinMap[gpioWakeup->pin].gpio_pin_source;
+            if ((extiPriorityBumped >> pinSource) & 0x0001) {
+                NVIC_SetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]), extiPriority[pinSource]);
+                if (pinSource <= 4) {
+                    extiPriorityBumped &= ~(0x0001 << pinSource);
+                }
+                if (pinSource >= 5 && pinSource <= 9) {
+                    extiPriorityBumped &= ~EXTI9_5_BITS_MASK;
+                } else if (pinSource >= 10 && pinSource <= 15) {
+                    extiPriorityBumped &= ~EXTI15_10_BITS_MASK;
+                }
+            }
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
             auto usartWakeup = reinterpret_cast<hal_wakeup_source_usart_t*>(wakeupSource);
             // Enabled unwanted interrupts and unbump the interrupt priority

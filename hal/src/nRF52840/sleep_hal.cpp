@@ -51,40 +51,62 @@
 
 using namespace particle;
 
-typedef struct WakeupSourcePriorityCache {
+namespace {
+
+struct WakeupSourcePriorityCache {
+    WakeupSourcePriorityCache() {
+        memset((uint8_t*)this, 0xFF, sizeof(WakeupSourcePriorityCache));
+    }
+
     uint32_t gpiotePriority;
     uint32_t rtc2Priority;
     uint32_t blePriority;
     uint32_t lpcompPriority;
     uint32_t usart0Priority;
     uint32_t usart1Priority;
-} WakeupSourcePriorityCache;
+};
+
+constexpr uint32_t INVALID_INT_PRIORITY = 0xFFFFFFFF;
+
+}
 
 static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSources, WakeupSourcePriorityCache* priority, uint32_t newPriority) {
     auto source = wakeupSources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            priority->gpiotePriority = NVIC_GetPriority(GPIOTE_IRQn);
+            if (priority->gpiotePriority == INVALID_INT_PRIORITY) {
+                priority->gpiotePriority = NVIC_GetPriority(GPIOTE_IRQn);
+            }
             NVIC_SetPriority(GPIOTE_IRQn, newPriority);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            priority->rtc2Priority = NVIC_GetPriority(RTC2_IRQn);
+            if (priority->rtc2Priority == INVALID_INT_PRIORITY) {
+                priority->rtc2Priority = NVIC_GetPriority(RTC2_IRQn);
+            }
             NVIC_SetPriority(RTC2_IRQn, newPriority);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
-            priority->blePriority = NVIC_GetPriority(SD_EVT_IRQn);
+            if (priority->blePriority == INVALID_INT_PRIORITY) {
+                priority->blePriority = NVIC_GetPriority(SD_EVT_IRQn);
+            }
             NVIC_SetPriority(SD_EVT_IRQn, newPriority);
             NVIC_EnableIRQ(SD_EVT_IRQn);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
-            priority->lpcompPriority = NVIC_GetPriority(COMP_LPCOMP_IRQn);
+            if (priority->lpcompPriority == INVALID_INT_PRIORITY) {
+                priority->lpcompPriority = NVIC_GetPriority(COMP_LPCOMP_IRQn);
+            }
             NVIC_SetPriority(COMP_LPCOMP_IRQn, newPriority);
             NVIC_EnableIRQ(COMP_LPCOMP_IRQn);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
-            priority->usart0Priority = NVIC_GetPriority(UARTE0_UART0_IRQn);
+            if (priority->usart0Priority == INVALID_INT_PRIORITY) {
+                priority->usart0Priority = NVIC_GetPriority(UARTE0_UART0_IRQn);
+            }
             NVIC_SetPriority(UARTE0_UART0_IRQn, newPriority);
             nrf_uarte_int_enable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
             auto network = reinterpret_cast<const hal_wakeup_source_network_t*>(source);
             if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
-                priority->usart1Priority = NVIC_GetPriority(UARTE1_IRQn);
+                if (priority->usart1Priority == INVALID_INT_PRIORITY) {
+                    priority->usart1Priority = NVIC_GetPriority(UARTE1_IRQn);
+                }
                 NVIC_SetPriority(UARTE1_IRQn, newPriority);
                 nrf_uarte_int_enable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
             }
@@ -93,15 +115,24 @@ static void bumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSour
     }
 }
 
-static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSources, const WakeupSourcePriorityCache* priority) {
+static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSources, WakeupSourcePriorityCache* priority) {
     auto source = wakeupSources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            NVIC_SetPriority(GPIOTE_IRQn, priority->gpiotePriority);
+            if (priority->gpiotePriority != INVALID_INT_PRIORITY) {
+                NVIC_SetPriority(GPIOTE_IRQn, priority->gpiotePriority);
+                priority->gpiotePriority = INVALID_INT_PRIORITY;
+            }
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            NVIC_SetPriority(RTC2_IRQn, priority->rtc2Priority);
+            if (priority->rtc2Priority != INVALID_INT_PRIORITY) {
+                NVIC_SetPriority(RTC2_IRQn, priority->rtc2Priority);
+                priority->rtc2Priority = INVALID_INT_PRIORITY;
+            }
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_BLE) {
-            NVIC_SetPriority(SD_EVT_IRQn, priority->blePriority);
+            if (priority->blePriority != INVALID_INT_PRIORITY) {
+                NVIC_SetPriority(SD_EVT_IRQn, priority->blePriority);
+                priority->blePriority = INVALID_INT_PRIORITY;
+            }
             NVIC_DisableIRQ(SD_EVT_IRQn);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
             // FIXME: dirty hack, since we nowhere implemented the IRQ handler.
@@ -111,14 +142,23 @@ static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSo
             nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_CROSS);
             NVIC_DisableIRQ(COMP_LPCOMP_IRQn);
             NVIC_ClearPendingIRQ(COMP_LPCOMP_IRQn);
-            NVIC_SetPriority(COMP_LPCOMP_IRQn, priority->lpcompPriority);
+            if (priority->lpcompPriority != INVALID_INT_PRIORITY) {
+                NVIC_SetPriority(COMP_LPCOMP_IRQn, priority->lpcompPriority);
+                priority->lpcompPriority = INVALID_INT_PRIORITY;
+            }
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
-            NVIC_SetPriority(UARTE0_UART0_IRQn, priority->usart0Priority);
+            if (priority->usart0Priority != INVALID_INT_PRIORITY) {
+                NVIC_SetPriority(UARTE0_UART0_IRQn, priority->usart0Priority);
+                priority->usart0Priority = INVALID_INT_PRIORITY;
+            }
             nrf_uarte_int_disable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
             auto network = reinterpret_cast<const hal_wakeup_source_network_t*>(source);
             if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
-                NVIC_SetPriority(UARTE1_IRQn, priority->usart1Priority);
+                if (priority->usart1Priority != INVALID_INT_PRIORITY) {
+                    NVIC_SetPriority(UARTE1_IRQn, priority->usart1Priority);
+                    priority->usart1Priority = INVALID_INT_PRIORITY;
+                }
                 nrf_uarte_int_disable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
             }
         }
@@ -227,20 +267,6 @@ static const hal_wakeup_source_base_t* findWakeupSource(const hal_wakeup_source_
 }
 
 static void configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
-    uint32_t curIntenSet = NRF_GPIOTE->INTENSET;
-    nrf_gpiote_int_disable(curIntenSet);
-    // Clear events and interrupts
-    nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_0);
-    nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_1);
-    nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_2);
-    nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_3);
-    nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_4);
-    nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_5);
-    nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_6);
-    nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_7);
-    nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
-    NVIC_ClearPendingIRQ(GPIOTE_IRQn);
-
     uint32_t gpioIntenSet = 0;
     Hal_Pin_Info* halPinMap = HAL_Pin_Map();
 
@@ -307,6 +333,21 @@ static void configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources
         source = source->next;
     }
     if (gpioIntenSet > 0) {
+        uint32_t curIntenSet = NRF_GPIOTE->INTENSET;
+        nrf_gpiote_int_disable(curIntenSet);
+
+        // Clear events and interrupts
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_0);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_1);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_2);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_3);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_4);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_5);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_6);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_IN_7);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
+        NVIC_ClearPendingIRQ(GPIOTE_IRQn);
+
         nrf_gpiote_int_enable(gpioIntenSet);
         NVIC_EnableIRQ(GPIOTE_IRQn);
     }
