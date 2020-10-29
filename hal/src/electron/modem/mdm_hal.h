@@ -154,6 +154,12 @@ public:
     */
     int getModemStateChangeCount(void);
 
+    /** Power on the MT if necessary and then try powering off using AT command. This function has to be called prior to
+        switching off the supply.
+        \return true if successfully, false otherwise
+    */
+    bool powerOnOffGracefully(void);
+
     /** Power off the MT, This function has to be called prior to
         switching off the supply.
         \return true if successfully, false otherwise
