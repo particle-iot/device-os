@@ -25,6 +25,7 @@
 #include "spark_wiring_fixed_point.h"
 #include "spark_wiring_platform.h"
 #include "spark_wiring_ticks.h"
+#include "system_network_diagnostics.h"
 
 #if Wiring_WiFi
 #include "spark_wiring_wifi.h"
@@ -41,6 +42,18 @@
 #ifndef Wiring_Network
 #define Wiring_Network 0
 #else
+
+namespace {
+
+using namespace particle;
+
+NetworkDiagnostics g_networkDiagnostics;
+
+} // namespace
+
+particle::NetworkDiagnostics* particle::NetworkDiagnostics::instance() {
+    return &g_networkDiagnostics;
+}
 
 namespace
 {

@@ -26,6 +26,7 @@
 #include "resolvapi.h"
 #include <atomic>
 #include "intrusive_list.h"
+#include "system_defs.h"
 
 namespace particle { namespace system {
 
@@ -43,7 +44,7 @@ public:
     bool isNetworkingEnabled() const;
 
     int activateConnections();
-    int deactivateConnections();
+    int deactivateConnections(network_disconnect_reason reason = NETWORK_DISCONNECT_REASON_UNKNOWN);
     bool isEstablishingConnections() const;
 
     bool isConnectivityAvailable() const;
@@ -65,7 +66,7 @@ public:
     int clearConfiguration(if_t iface = nullptr);
 
     int enableInterface(if_t iface = nullptr);
-    int disableInterface(if_t iface = nullptr);
+    int disableInterface(if_t iface = nullptr, network_disconnect_reason reason = NETWORK_DISCONNECT_REASON_UNKNOWN);
     bool isInterfaceEnabled(if_t iface) const;
     int countEnabledInterfaces();
     int syncInterfaceStates();
