@@ -782,6 +782,12 @@ int NetworkManager::enableInterface(if_t iface) {
 }
 
 int NetworkManager::disableInterface(if_t iface, network_disconnect_reason reason) {
+    // XXX: This method is only called on platforms with multiple network interfaces as a user
+    // request to disable a particular network interface, if there are multiple _active_ network interfaces
+    // at the moment, so 'reason' will always contain NETWORK_DISCONNECT_REASON_USER.
+    // While disabling a non-primary network interface will not in fact result in a logical disconnect,
+    // it might still be a good idea to log a user request here. We can revise this behavior later.
+    NetworkDiagnostics::instance()->disconnectionReason(reason);
     // Special case - disable all
     if (iface == nullptr) {
         populateInterfaceRuntimeState(false);
