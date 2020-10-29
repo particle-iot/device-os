@@ -828,29 +828,19 @@ bool MDMParser::_powerOn(void)
         _init = true;
     }
 
-    MDM_INFO("\r\n[ Modem::_powerOn ] = = = = = = = = = = = = = =");
+    MDM_INFO("\r\n[ Modem::powerOn ] = = = = = = = = = = = = = =");
     bool continue_cancel = false;
     bool retried_after_reset = false;
 
     int i = 10;
     while (i--) {
-        if (powerState()) {
-            MDM_INFO("\r\n[ Modem::_powerOn ] Modem is already on");
-        } else {
-            // SARA-U2/LISA-U2 50..80us
-            HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
-            HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(10);
-            if (!powerState()) {
-                // SARA-G35 >5ms, LISA-C2 > 150ms, LEON-G2 >5ms, SARA-R4 >= 150ms
-                HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(150);
-                HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(100);
-            }
-            if (powerState()) {
-                MDM_INFO("\r\n[ Modem::_powerOn ] Modem is powered on");
-            } else {
-                MDM_ERROR("\r\n[ Modem::_powerOn ] Failed to power on the modem.");
-            }
-        }
+        // SARA-U2/LISA-U2 50..80us
+        HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
+        HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(10);
+
+        // SARA-G35 >5ms, LISA-C2 > 150ms, LEON-G2 >5ms, SARA-R4 >= 150ms
+        HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(150);
+        HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(100);
 
         // purge any messages
         purge();
@@ -881,6 +871,7 @@ bool MDMParser::_powerOn(void)
             i = 10;
             reset();
         }
+
     }
     if (i < 0) {
         MDM_ERROR("[ No Reply from Modem ]\r\n");
@@ -969,20 +960,13 @@ bool MDMParser::powerOn(const char* simpin)
             goto failure;
         }
         else if (i==4 && (RESP_OK != ret) && !retried_after_reset) {
-            if (_dev.sim == SIM_MISSING) {
-                // No need to try again in a short time.
+            retried_after_reset = true; // only perform reset & retry sequence once
+            i = 0;
+            if(!powerOff())
+                reset();
+            /* Power on the modem and perform basic initialization again */
+            if (!_powerOn())
                 goto failure;
-            } else {
-                retried_after_reset = true; // only perform reset & retry sequence once
-                i = 0;
-                if(!powerOff()) {
-                    reset();
-                }
-                /* Power on the modem and perform basic initialization again */
-                if (!_powerOn()) {
-                    goto failure;
-                }
-            }
         }
         // Enter PIN if needed
         if (_dev.sim == SIM_PIN) {
@@ -1279,12 +1263,12 @@ bool MDMParser::powerState(void) const {
     return state;
 }
 
-bool MDMParser::powerOnOffGracefully(void) {
+bool MDMParser::softPowerOff(void) {
     if (!powerState()) {
         return true;
     }
     if (!(_init && _pwr)) {
-        MDM_INFO("\r\n[ Modem::powerOnOffGracefully ] Perform low level initialization to talk to the modem...");
+        MDM_INFO("\r\n[ Modem::softPowerOff ] Perform low level initialization to talk to the modem...");
         uint8_t i = 0;
         for (i = 0; i < 3; i++) {
             if (_powerOn()) {
@@ -1293,22 +1277,22 @@ bool MDMParser::powerOnOffGracefully(void) {
         }
         if (i >= 3) {
             // Failed to power on the modem.
-            MDM_INFO("\r\n[ Modem::powerOnOffGracefully ] Failed to power on the modem");
+            MDM_INFO("\r\n[ Modem::softPowerOff ] Failed to power on the modem");
             return false;
         }
     }
     for (uint8_t i = 0; i < 3; i++) {
         if (!_error && _atOk()) {
             // We can talk to the modem getting here.
-            MDM_INFO("\r\n[ Modem::powerOnOffGracefully ] Powering down the modem using AT+CPWROFF....");
+            MDM_INFO("\r\n[ Modem::softPowerOff ] Powering down the modem using AT+CPWROFF....");
             sendFormated("AT+CPWROFF\r\n");
             int ret = waitFinalResp(nullptr, nullptr, CPWROFF_TIMEOUT);
             if (RESP_OK == ret) {
                 return true;
             } else if (RESP_ABORTED == ret) {
-                MDM_INFO("\r\n[ Modem::powerOnOffGracefully ] found ABORTED, retrying...");
+                MDM_INFO("\r\n[ Modem::softPowerOff ] found ABORTED, retrying...");
             } else {
-                MDM_INFO("\r\n[ Modem::powerOnOffGracefully ] timeout, retrying...");
+                MDM_INFO("\r\n[ Modem::softPowerOff ] timeout, retrying...");
             }
         }
     }
@@ -1326,18 +1310,13 @@ bool MDMParser::powerOff(void)
 
     MDM_INFO("%s = = = = = = = = = = = = = =", POWER_OFF_MSG);
 
-    if (!powerState() && !_init && !_pwr) {
-        MDM_INFO("%s Modem is off already", POWER_OFF_MSG);
-        return true;
-    }
-
     if (_cancel_all_operations) {
         continue_cancel = true;
         resume(); // make sure we can use the AT parser
     }
 
-    if (!powerOnOffGracefully()) {
-        check_ri = true;
+    check_ri = true;
+    if (!softPowerOff()) {
         if (_dev.dev == DEV_SARA_R410) {
             // If memory issue is present, ensure we don't force a power off too soon
             // to avoid hitting the 124 day memory housekeeping issue, AT+CPWROFF will
@@ -1377,8 +1356,6 @@ bool MDMParser::powerOff(void)
             HAL_Delay_Milliseconds(1600);
             HAL_GPIO_Write(PWR_UC, 1);
         }
-    } else if (_dev.dev == DEV_SARA_R410) {
-        check_ri = true;
     }
 
     // Verify power off, or delay

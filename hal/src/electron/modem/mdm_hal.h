@@ -158,7 +158,7 @@ public:
         switching off the supply.
         \return true if successfully, false otherwise
     */
-    bool powerOnOffGracefully(void);
+    bool softPowerOff(void);
 
     /** Power off the MT, This function has to be called prior to
         switching off the supply.
