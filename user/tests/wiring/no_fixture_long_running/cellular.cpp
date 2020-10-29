@@ -225,6 +225,30 @@ test(CELLULAR_04_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected
     assertEqual(Particle.connected(), true);
 }
 
+test(CELLULAR_05_device_will_poweroff_when_modem_is_not_responsive) {
+    connect_to_cloud(6*60*1000);
+    assertTrue(Particle.connected());
+
+    // Using single threaded section to prevent the system from executing any modem operations
+    SINGLE_THREADED_BLOCK() {
+        // Disable UART interrupts so that we are not receiving any new data from the modem
+        NVIC_DisableIRQ(USART3_IRQn);
+    }
+
+    // Request power-off
+    Particle.disconnect();
+    Cellular.off();
+
+    // Validate that it powers off
+    auto start = millis();
+    while (modemPowerState() && (millis() - start) < 60000);
+    assertFalse(modemPowerState());
+
+    // Make sure the device can reconnect
+    connect_to_cloud(6*60*1000);
+    assertTrue(Particle.connected());
+}
+
 #endif // !HAL_PLATFORM_NCP_AT
 
 #endif // Wiring_Cellular

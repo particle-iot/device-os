@@ -1263,6 +1263,42 @@ bool MDMParser::powerState(void) const {
     return state;
 }
 
+bool MDMParser::softPowerOff(void) {
+    if (!powerState()) {
+        return true;
+    }
+    if (!(_init && _pwr)) {
+        MDM_INFO("\r\n[ Modem::softPowerOff ] Perform low level initialization to talk to the modem...");
+        uint8_t i = 0;
+        for (i = 0; i < 3; i++) {
+            if (_powerOn()) {
+                break;
+            }
+        }
+        if (i >= 3) {
+            // Failed to power on the modem.
+            MDM_INFO("\r\n[ Modem::softPowerOff ] Failed to power on the modem");
+            return false;
+        }
+    }
+    for (uint8_t i = 0; i < 3; i++) {
+        if (_atOk()) {
+            // We can talk to the modem getting here.
+            MDM_INFO("\r\n[ Modem::softPowerOff ] Powering down the modem using AT+CPWROFF....");
+            sendFormated("AT+CPWROFF\r\n");
+            int ret = waitFinalResp(nullptr, nullptr, CPWROFF_TIMEOUT);
+            if (RESP_OK == ret) {
+                return true;
+            } else if (RESP_ABORTED == ret) {
+                MDM_INFO("\r\n[ Modem::softPowerOff ] found ABORTED, retrying...");
+            } else {
+                MDM_INFO("\r\n[ Modem::softPowerOff ] timeout, retrying...");
+            }
+        }
+    }
+    return false;
+}
+
 bool MDMParser::powerOff(void)
 {
     LOCK();
@@ -1271,84 +1307,54 @@ bool MDMParser::powerOff(void)
     bool ok = false;
     bool continue_cancel = false;
     bool check_ri = false;
-    if (_init && _pwr) {
-        MDM_INFO("%s = = = = = = = = = = = = = =", POWER_OFF_MSG);
-        if (_cancel_all_operations) {
-            continue_cancel = true;
-            resume(); // make sure we can use the AT parser
-        }
-        check_ri = true;
-        // Try to power off
-        for (int i=0; i<3; i++) { // try 3 times
-            if (_error || !_atOk()) {
-                if (_dev.dev == DEV_SARA_R410) {
-                    // If memory issue is present, ensure we don't force a power off too soon
-                    // to avoid hitting the 124 day memory housekeeping issue, AT+CPWROFF will
-                    // handle this delay automatically, or timeout after 40s.
-                    if (_memoryIssuePresent) {
-                        MDM_INFO("%s Modem not responsive, waiting up to 30s to power off with PWR_UC...", POWER_OFF_MSG);
-                        system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-                        if (_timePowerOn == 0) {
-                            // fallback to max timeout of 30s to be safe
-                            _timePowerOn = now;
+
+    MDM_INFO("%s = = = = = = = = = = = = = =", POWER_OFF_MSG);
+
+    if (_cancel_all_operations) {
+        continue_cancel = true;
+        resume(); // make sure we can use the AT parser
+    }
+
+    check_ri = true;
+    if (!softPowerOff()) {
+        if (_dev.dev == DEV_SARA_R410) {
+            // If memory issue is present, ensure we don't force a power off too soon
+            // to avoid hitting the 124 day memory housekeeping issue, AT+CPWROFF will
+            // handle this delay automatically, or timeout after 40s.
+            if (_memoryIssuePresent) {
+                MDM_INFO("%s Modem not responsive, waiting up to 30s to power off with PWR_UC...", POWER_OFF_MSG);
+                system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+                if (_timePowerOn == 0) {
+                    // fallback to max timeout of 30s to be safe
+                    _timePowerOn = now;
+                }
+                // check for timeout (VINT == LOW, Powered on 30s ago, Registered 20s ago)
+                do {
+                    now = HAL_Timer_Get_Milli_Seconds();
+                    // prefer to timeout 20s after registration if we are registered
+                    if (_timeRegistered) {
+                        if (now - _timeRegistered >= 20000UL) {
+                            break;
                         }
-                        // check for timeout (VINT == LOW, Powered on 30s ago, Registered 20s ago)
-                        do {
-                            now = HAL_Timer_Get_Milli_Seconds();
-                            // prefer to timeout 20s after registration if we are registered
-                            if (_timeRegistered) {
-                                if (now - _timeRegistered >= 20000UL) {
-                                    break;
-                                }
-                            } else if (_timePowerOn && now - _timePowerOn >= 30000UL) {
-                                break;
-                            }
-                            HAL_Delay_Milliseconds(100); // just wait
-                        } while ( powerState() );
-                        // reset timers
-                        _timeRegistered = 0;
-                        _timePowerOn = 0;
+                    } else if (_timePowerOn && now - _timePowerOn >= 30000UL) {
+                        break;
                     }
-                }
-                MDM_INFO("%s Modem not responsive, trying PWR_UC...", POWER_OFF_MSG);
-                // Skip power off sequence if power is already off
-                if (!powerState()) {
-                    break;
-                }
-                HAL_GPIO_Write(PWR_UC, 0);
-                // >1.5 seconds on SARA R410M
-                // >1 second on SARA U2
-                // plus a little extra for good luck
-                HAL_Delay_Milliseconds(1600);
-                HAL_GPIO_Write(PWR_UC, 1);
-                break;
-            } else {
-                sendFormated("AT+CPWROFF\r\n");
-                int ret = waitFinalResp(nullptr, nullptr, CPWROFF_TIMEOUT);
-                if (RESP_OK == ret) {
-                    if (_dev.dev == DEV_SARA_R410) {
-                        check_ri = true;
-                    }
-                    break;
-                } else if (RESP_ABORTED == ret) {
-                    MDM_INFO("%s found ABORTED, retrying...", POWER_OFF_MSG);
-                } else {
-                    MDM_INFO("%s timeout, retrying...", POWER_OFF_MSG);
-                }
+                    HAL_Delay_Milliseconds(100); // just wait
+                } while ( powerState() );
+                // reset timers
+                _timeRegistered = 0;
+                _timePowerOn = 0;
             }
         }
-    } else {
-        if (powerState()) {
-            check_ri = true;
-            MDM_INFO("%s modem is on unexpectedly. Turning it off...", POWER_OFF_MSG);
-            // Delay this long period so that the modem is fully on to accept the power-off sequence.
-            HAL_Delay_Milliseconds(12000);
-
+        // Skip power off sequence if power is already off
+        if (powerState() && _dev.dev != DEV_SARA_G350) {
+            MDM_INFO("%s Modem not responsive, trying PWR_UC...", POWER_OFF_MSG);
             HAL_GPIO_Write(PWR_UC, 0);
             // >1.5 seconds on SARA R410M
             // >1 second on SARA U2
             // plus a little extra for good luck
-            HAL_Delay_Milliseconds(2000);
+            HAL_Delay_Milliseconds(1600);
+            HAL_GPIO_Write(PWR_UC, 1);
         }
     }
 
@@ -1362,8 +1368,6 @@ bool MDMParser::powerOff(void)
         // if V_INT is low, indicate power is off
         if (!power_state) {
             _pwr = false;
-        }
-        if (!power_state) {
             MDM_INFO("%s took %lu ms", POWER_OFF_MSG, HAL_Timer_Get_Milli_Seconds() - t0);
         } else {
             MDM_INFO("%s failed", POWER_OFF_MSG);
