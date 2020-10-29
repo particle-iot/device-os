@@ -1282,7 +1282,7 @@ bool MDMParser::softPowerOff(void) {
         }
     }
     for (uint8_t i = 0; i < 3; i++) {
-        if (!_error && _atOk()) {
+        if (_atOk()) {
             // We can talk to the modem getting here.
             MDM_INFO("\r\n[ Modem::softPowerOff ] Powering down the modem using AT+CPWROFF....");
             sendFormated("AT+CPWROFF\r\n");
@@ -1347,7 +1347,7 @@ bool MDMParser::powerOff(void)
             }
         }
         // Skip power off sequence if power is already off
-        if (powerState() && _dev.dev != DEV_SARA_G350 && _dev.dev != DEV_UNKNOWN) {
+        if (powerState() && _dev.dev != DEV_SARA_G350) {
             MDM_INFO("%s Modem not responsive, trying PWR_UC...", POWER_OFF_MSG);
             HAL_GPIO_Write(PWR_UC, 0);
             // >1.5 seconds on SARA R410M
