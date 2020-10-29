@@ -1,3 +1,14 @@
+## 2.0.0-rc.4
+
+### ENHANCEMENTS
+
+- [Gen 3] Enable Network Diagnostics/Vitals [#2230](https://github.com/particle-iot/device-os/pull/2230)
+
+### BUGFIXES
+
+- [Gen 3] Fix a potential crash when using sleep with multiple pins specified as wake-up sources together with BLE [#2227](https://github.com/particle-iot/device-os/pull/2227)
+- [Electron] 2G Electrons with uBlox G350 should use `AT+CPWROFF` exclusively for powering off the modem [#2229](https://github.com/particle-iot/device-os/pull/2229)
+
 ## 2.0.0-rc.3
 
 ### BUGFIXES
