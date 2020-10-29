@@ -384,7 +384,6 @@ void NetworkManager::transition(State state) {
         case State::IFACE_DOWN: {
             LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
             NetworkDiagnostics::instance()->status(NetworkDiagnostics::DISCONNECTED);
-            NetworkDiagnostics::instance()->resetConnectionAttempts();
             if (state_ == State::IFACE_REQUEST_DOWN) {
                 system_notify_event(network_status, network_status_disconnected);
             } else if (state_ == State::DISABLED) {
@@ -395,6 +394,9 @@ void NetworkManager::transition(State state) {
             break;
         }
         case State::IFACE_REQUEST_DOWN: {
+            if (state_ == State::IP_CONFIGURED) {
+                NetworkDiagnostics::instance()->resetConnectionAttempts();
+            }
             system_notify_event(network_status, network_status_disconnecting);
             NetworkDiagnostics::instance()->status(NetworkDiagnostics::DISCONNECTING);
             break;
