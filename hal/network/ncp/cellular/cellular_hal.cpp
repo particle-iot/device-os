@@ -310,6 +310,7 @@ int cellular_signal(void* deprecated, cellular_signal_t* signalExt) {
 
     if (signalExt) {
         signalExt->rat = fromCellularAccessTechnology(s.accessTechnology());
+
         // Signal strength
         switch (s.strengthUnits()) {
         case CellularStrengthUnits::RXLEV: {
@@ -317,7 +318,7 @@ int cellular_signal(void* deprecated, cellular_signal_t* signalExt) {
             // Reported multiplied by 100
             signalExt->rssi = (strn != 99) ? (strn - 111) * 100 : std::numeric_limits<int32_t>::min();
             // RSSI in % [0, 100] based on [-111, -48] range mapped to [0, 65535] integer range
-            signalExt->strength = (strn != 99) ? strn * 65535 / 63 : std::numeric_limits<int32_t>::min();
+            signalExt->strength = (strn != 99) ? get_scaled_strn(signalExt->rssi, static_cast<hal_net_access_tech_t>(signalExt->rat)) : std::numeric_limits<int32_t>::min();
             break;
         }
         case CellularStrengthUnits::RSCP: {
@@ -325,7 +326,7 @@ int cellular_signal(void* deprecated, cellular_signal_t* signalExt) {
             // Reported multiplied by 100
             signalExt->rscp = (strn != 255) ? (strn - 121) * 100 : std::numeric_limits<int32_t>::min();
             // RSCP in % [0, 100] based on [-121, -25] range mapped to [0, 65535] integer range
-            signalExt->strength = (strn != 255) ? strn * 65535 / 96 : std::numeric_limits<int32_t>::min();
+            signalExt->strength = (strn != 255) ? get_scaled_strn(signalExt->rscp, static_cast<hal_net_access_tech_t>(signalExt->rat)) : std::numeric_limits<int32_t>::min();
             break;
         }
         case CellularStrengthUnits::RSRP: {
@@ -333,7 +334,7 @@ int cellular_signal(void* deprecated, cellular_signal_t* signalExt) {
             // Reported multiplied by 100
             signalExt->rsrp = (strn != 255) ? (strn - 141) * 100 : std::numeric_limits<int32_t>::min();
             // RSRP in % [0, 100] based on [-141, -44] range mapped to [0, 65535] integer range
-            signalExt->strength = (strn != 255) ? strn * 65535 / 97 : std::numeric_limits<int32_t>::min();
+            signalExt->strength = (strn != 255) ? get_scaled_strn(signalExt->rsrp, static_cast<hal_net_access_tech_t>(signalExt->rat)) : std::numeric_limits<int32_t>::min();
             break;
         }
         default:
@@ -381,7 +382,7 @@ int cellular_signal(void* deprecated, cellular_signal_t* signalExt) {
             // Report multiplied by 100
             signalExt->rsrq = (qual != 255) ? qual * 50 - 2000 : std::numeric_limits<int32_t>::min();
             // Quality based on RSRQ in % [0, 100] mapped to [0,65535] integer range
-            signalExt->quality = (qual != 255) ? qual * 65535 / 34 : std::numeric_limits<int32_t>::min();
+            signalExt->quality = (qual != 255) ? get_scaled_qual(signalExt->rsrq, static_cast<hal_net_access_tech_t>(signalExt->rat)) : std::numeric_limits<int32_t>::min();
             break;
         }
         default:

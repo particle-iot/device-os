@@ -29,6 +29,7 @@
 #include "cellular_hal_constants.h"
 #include "cellular_hal_utilities.h"
 #include "cellular_hal_cellular_global_identity.h"
+#include "cellular_sig_perc_mapping.h"
 
 #ifdef __cplusplus
 extern "C" {

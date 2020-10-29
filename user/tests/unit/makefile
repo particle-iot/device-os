@@ -84,6 +84,7 @@ CPPSRC += $(call target_files,$(HAL)src/gcc,deviceid_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/gcc,interrupts_hal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/electron,cellular_internal.cpp)
 CPPSRC += $(call target_files,$(HAL)src/template,i2c_hal.cpp)
+CPPSRC += $(call target_files,$(HAL)shared,cellular_sig_perc_mapping.cpp)
 
 # Paths to dependent projects, referenced from root of this project
 LIB_SERVICES = services/
