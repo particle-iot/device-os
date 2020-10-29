@@ -43,6 +43,7 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "system_event.h"
 #include "timer_hal.h"
 #include "delay_hal.h"
+#include "system_network_diagnostics.h"
 
 #define CHECKV(_expr) \
         ({ \
@@ -212,7 +213,7 @@ int NetworkManager::activateConnections() {
     return 0;
 }
 
-int NetworkManager::deactivateConnections() {
+int NetworkManager::deactivateConnections(network_disconnect_reason reason) {
     switch (state_) {
         case State::DISABLED:
         case State::IFACE_DOWN: {
@@ -223,6 +224,15 @@ int NetworkManager::deactivateConnections() {
         }
     }
 
+    if (isConnectivityAvailable()) {
+        const auto diag = NetworkDiagnostics::instance();
+        if (reason != NETWORK_DISCONNECT_REASON_NONE) {
+            diag->disconnectionReason(reason);
+            if (reason == NETWORK_DISCONNECT_REASON_ERROR || reason == NETWORK_DISCONNECT_REASON_RESET) {
+                diag->disconnectedUnexpectedly();
+            }
+        }
+    }
     transition(State::IFACE_REQUEST_DOWN);
 
     int waitingFor = 0;
@@ -365,13 +375,15 @@ void NetworkManager::transition(State state) {
     switch (state) {
         case State::DISABLED: {
             LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
-            // FIXME:
+            // FIXME: turning-off events/diagnostics
             system_notify_event(network_status, network_status_powering_off);
             system_notify_event(network_status, network_status_off);
+            NetworkDiagnostics::instance()->status(NetworkDiagnostics::TURNED_OFF);
             break;
         }
         case State::IFACE_DOWN: {
             LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
+            NetworkDiagnostics::instance()->status(NetworkDiagnostics::DISCONNECTED);
             if (state_ == State::IFACE_REQUEST_DOWN) {
                 system_notify_event(network_status, network_status_disconnected);
             } else if (state_ == State::DISABLED) {
@@ -382,16 +394,27 @@ void NetworkManager::transition(State state) {
             break;
         }
         case State::IFACE_REQUEST_DOWN: {
+            if (state_ == State::IP_CONFIGURED) {
+                NetworkDiagnostics::instance()->resetConnectionAttempts();
+            }
             system_notify_event(network_status, network_status_disconnecting);
+            NetworkDiagnostics::instance()->status(NetworkDiagnostics::DISCONNECTING);
             break;
         }
         case State::IFACE_REQUEST_UP: {
             LED_SIGNAL_START(NETWORK_CONNECTING, BACKGROUND);
+            NetworkDiagnostics::instance()->status(NetworkDiagnostics::CONNECTING);
             break;
         }
         case State::IFACE_UP: {
+            if (state_ == State::IP_CONFIGURED) {
+                NetworkDiagnostics::instance()->disconnectionReason(NETWORK_DISCONNECT_REASON_ERROR);
+                NetworkDiagnostics::instance()->disconnectedUnexpectedly();
+            }
             LED_SIGNAL_START(NETWORK_CONNECTING, BACKGROUND);
             system_notify_event(network_status, network_status_connecting);
+            NetworkDiagnostics::instance()->status(NetworkDiagnostics::CONNECTING);
+            NetworkDiagnostics::instance()->connectionAttempt();
             break;
         }
         case State::IFACE_LINK_UP: {
@@ -400,6 +423,7 @@ void NetworkManager::transition(State state) {
         }
         case State::IP_CONFIGURED: {
             LED_SIGNAL_START(NETWORK_CONNECTED, BACKGROUND);
+            NetworkDiagnostics::instance()->status(NetworkDiagnostics::CONNECTED);
             if (state_ != State::IP_CONFIGURED) {
                 system_notify_event(network_status, network_status_connected);
             }
@@ -757,7 +781,13 @@ int NetworkManager::enableInterface(if_t iface) {
     return 0;
 }
 
-int NetworkManager::disableInterface(if_t iface) {
+int NetworkManager::disableInterface(if_t iface, network_disconnect_reason reason) {
+    // XXX: This method is only called on platforms with multiple network interfaces as a user
+    // request to disable a particular network interface, if there are multiple _active_ network interfaces
+    // at the moment, so 'reason' will always contain NETWORK_DISCONNECT_REASON_USER.
+    // While disabling a non-primary network interface will not in fact result in a logical disconnect,
+    // it might still be a good idea to log a user request here. We can revise this behavior later.
+    NetworkDiagnostics::instance()->disconnectionReason(reason);
     // Special case - disable all
     if (iface == nullptr) {
         populateInterfaceRuntimeState(false);

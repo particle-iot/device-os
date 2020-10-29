@@ -67,7 +67,7 @@ void networkDisconnectImpl(network_handle_t network, network_disconnect_reason r
     if (network != NETWORK_INTERFACE_ALL) {
         if_t iface;
         if (!if_get_by_index(network, &iface)) {
-            NetworkManager::instance()->disableInterface(iface);
+            NetworkManager::instance()->disableInterface(iface, reason);
             NetworkManager::instance()->syncInterfaceStates();
         }
     } else {
@@ -77,7 +77,7 @@ void networkDisconnectImpl(network_handle_t network, network_disconnect_reason r
 
     if ((network == NETWORK_INTERFACE_ALL ||
             NetworkManager::instance()->countEnabledInterfaces() == 0) &&
-            !NetworkManager::instance()->deactivateConnections()) {
+            !NetworkManager::instance()->deactivateConnections(reason)) {
         /* FIXME: should not loop in here */
         while (NetworkManager::instance()->getState() != NetworkManager::State::IFACE_DOWN) {
             HAL_Delay_Milliseconds(1);
