@@ -185,7 +185,7 @@ typedef enum {
 /**
  * Flags used by `spark_protocol_event_data_callback` and `spark_protocol_write_event_data()`.
  */
-enum {
+typedef enum {
     PROTOCOL_EVENT_DATA_READY = 0x01, ///< Event data is available for reading or writing.
     PROTOCOL_EVENT_DATA_MORE = 0x02 ///< Sender has more data to send.
 } spark_protocol_event_data_flag;

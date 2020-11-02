@@ -10,6 +10,7 @@
 #include "spark_protocol_functions.h"
 #include "functions.h"
 #include "events.h"
+#include "events2.h" // FIXME
 #include "publisher.h"
 #include "subscriptions.h"
 #include "variables.h"
@@ -113,6 +114,11 @@ class Protocol
 	Publisher publisher;
 
 	/**
+	 * Manages cloud events and subscriptions.
+	 */
+	Events events;
+
+	/**
 	 * Manages time sync requests
 	 */
 	TimeSyncManager timesync_;
@@ -193,14 +199,6 @@ protected:
 	void set_protocol_flags(uint32_t flags)
 	{
 		protocol_flags = flags;
-	}
-
-	/**
-	 * Retrieves the next token.
-	 */
-	token_t get_next_token()
-	{
-		return next_token++;
 	}
 
 	ProtocolError handle_key_change(Message& message);
@@ -348,6 +346,7 @@ public:
 			product_firmware_version(PRODUCT_FIRMWARE_VERSION),
 			variables(this),
 			publisher(this),
+			events(this),
 			last_ack_handlers_update(0),
 			protocol_flags(0),
 			initialized(false),
@@ -634,6 +633,14 @@ public:
 
 	MessageChannel& getChannel() {
 		return channel;
+	}
+
+	/**
+	 * Retrieves the next token.
+	 */
+	token_t get_next_token()
+	{
+		return next_token++;
 	}
 };
 
