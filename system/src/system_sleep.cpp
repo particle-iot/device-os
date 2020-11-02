@@ -157,12 +157,12 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     led_set_update_enabled(0, nullptr); // Disable background LED updates
     LED_Off(LED_RGB);
 
-    system_power_management_sleep();
+    system_power_management_sleep(configHelper.wakeupByFuelGauge() ? false : true);
 
     // Now enter sleep mode
     int ret = hal_sleep_enter(config, reason, nullptr);
 
-    system_power_management_sleep(false);
+    system_power_management_wakeup();
 
     led_set_update_enabled(1, nullptr); // Enable background LED updates
     LED_On(LED_RGB); // Turn RGB on in case that RGB is controlled by user application before entering sleep mode.

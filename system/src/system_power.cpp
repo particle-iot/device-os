@@ -46,6 +46,10 @@ void system_power_management_sleep(bool sleep) {
     PowerManager::instance()->sleep(sleep);
 }
 
+void system_power_management_wakeup() {
+    PowerManager::instance()->wakeup();
+}
+
 int system_power_management_set_config(const hal_power_config* conf, void* reserved) {
     return PowerManager::instance()->setConfig(conf);
 }
@@ -56,6 +60,9 @@ void system_power_management_init() {
 }
 
 void system_power_management_sleep(bool sleep) {
+}
+
+void system_power_management_wakeup() {
 }
 
 int system_power_management_set_config(const hal_power_config* conf, void* reserved) {

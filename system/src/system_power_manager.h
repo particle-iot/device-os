@@ -31,6 +31,7 @@ public:
 
   void init();
   void sleep(bool s = true);
+  void wakeup();
   int setConfig(const hal_power_config* conf);
 
 protected:
@@ -76,6 +77,7 @@ private:
   system_tick_t possibleFaultTimestamp_ = 0;
   bool lowBatEnabled_ = true;
   system_tick_t chargingDisabledTimestamp_ = 0;
+  bool fuelGaugeAwake_ = true;
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
   bool detect_ = false;
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL

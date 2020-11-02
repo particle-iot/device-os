@@ -3,24 +3,18 @@
 #include "sdspi_host.h"
 #include "port.h"
 
-#define GPS_WAKEUP          1
-#define WIFI_WAKEUP         1
-/* To test against the fuel wakeup source using this application,
- * we need to comment "attachInterrupt(LOW_BAT_UC, &PowerManager::isrHandler, FALLING);"
- * and "gauge.sleep()" in system_power_manager.cpp, as we'll attach an interrupt for it herein. */
+#define GPS_WAKEUP          0
+#define WIFI_WAKEUP         0
 #define FUEL_WAKEUP         1
 
 SYSTEM_MODE(MANUAL);
 SYSTEM_THREAD(ENABLED);
 
-STARTUP( []() {
-    System.setPowerConfiguration(SystemPowerConfiguration().feature(SystemPowerFeature::DISABLE));
-} );
-
 Serial1LogHandler log(115200, LOG_LEVEL_ALL);
 
 volatile bool idle = true;
 
+#if PLATFORM_ID == PLATFORM_TRACKER
 #if GPS_WAKEUP
 os_semaphore_t gpsReadySem = nullptr;
 // Dirty hack!
@@ -182,8 +176,9 @@ void wifiScan() {
     memset(espTxBuffer, '\0', sizeof(espTxBuffer));
 }
 #endif // WIFI_WAKEUP
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 
-#if FUEL_WAKEUP
+#if HAL_PLATFORM_FUELGAUGE_MAX17043 && FUEL_WAKEUP
 void lowBatHandler() {
     FuelGauge fuelGauge(true);
     fuelGauge.clearAlert();
@@ -197,9 +192,6 @@ void initFuelGauge() {
     fuelGauge.setAlertThreshold(30);
     fuelGauge.clearAlert();
     Log.info("Current percentage: %.2f%%", fuelGauge.getSoC());
-
-    pinMode(LOW_BAT_UC, INPUT_PULLUP);
-    attachInterrupt(LOW_BAT_UC, lowBatHandler, FALLING);
 }
 #endif
 
@@ -208,6 +200,7 @@ void setup() {
 
     SPI1.begin();
 
+#if PLATFORM_ID == PLATFORM_TRACKER
 #if WIFI_WAKEUP
     initWifi();
 #endif
@@ -215,8 +208,9 @@ void setup() {
 #if GPS_WAKEUP
     initGps();
 #endif
+#endif
 
-#if FUEL_WAKEUP
+#if HAL_PLATFORM_FUELGAUGE_MAX17043 && FUEL_WAKEUP
     initFuelGauge();
 #endif
 }
@@ -225,14 +219,16 @@ void loop() {
     if (idle) {
         Log.info("Enter sleep mode.");
         SystemSleepConfiguration config;
-        config.mode(SystemSleepMode::STOP).duration(60s).network(Cellular, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+        config.mode(SystemSleepMode::STOP).duration(10s);
+#if PLATFORM_ID == PLATFORM_TRACKER
 #if GPS_WAKEUP
         config.gpio(GPS_INT, FALLING);
 #endif
 #if WIFI_WAKEUP
         config.gpio(WIFI_INT, FALLING);
 #endif
-#if FUEL_WAKEUP
+#endif
+#if HAL_PLATFORM_FUELGAUGE_MAX17043 && FUEL_WAKEUP
         config.gpio(LOW_BAT_UC, FALLING);
 #endif
         SystemSleepResult result = System.sleep(config);
@@ -245,15 +241,17 @@ void loop() {
                 Log.info("Device is woken up by pin: %d", result.wakeupPin());
             } else if (result.wakeupReason() == SystemSleepWakeupReason::BY_RTC) {
                 Log.info("Device is woken up by RTC");
-#if WIFI_WAKEUP
+                FuelGauge fuelGauge(true);
+                Log.info("Current percentage: %.2f%%", fuelGauge.getSoC());
+#if PLATFORM_ID == PLATFORM_TRACKER && WIFI_WAKEUP
                 wifiScan();
 #endif
             } else {
-                Log.error("Device is woken up unexpectedly");
+                Log.error("Device is woken up unexpectedly, reason: %d", result.wakeupReason());
             }
         }
     }
-#if WIFI_WAKEUP
+#if PLATFORM_ID == PLATFORM_TRACKER && WIFI_WAKEUP
     static system_tick_t elapsed = millis();
     if (millis() - elapsed > 10000) {
         elapsed = millis();
