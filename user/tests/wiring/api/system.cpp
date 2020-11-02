@@ -50,6 +50,8 @@ test(system_api) {
 
 test(system_sleep)
 {
+    const pin_t pins_array[] = {D0, D1};
+    const InterruptMode mode_array[] = {RISING, FALLING};
 
     // All sleep methods should return System.sleep()
     API_COMPILE({ SleepResult r = System.sleep(60); (void)r; });
@@ -102,9 +104,6 @@ test(system_sleep)
          * trigger mode: std::initializer_list<InterruptMode>
          */
         API_COMPILE({ SleepResult r = System.sleep({D0, D1}, {RISING, FALLING}); (void)r; });
-
-        const pin_t pins_array[] = {D0, D1};
-        const InterruptMode mode_array[] = {RISING, FALLING};
 
         /*
          * wakeup pins: pin_t* + size_t
@@ -169,6 +168,9 @@ test(system_sleep)
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, RISING)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, FALLING)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, CHANGE)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpios(Vector<std::pair<pin_t, InterruptMode>>())); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpios(Vector<pin_t>(), RISING)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpios(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1000)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1000ms)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1s)); (void)r; });

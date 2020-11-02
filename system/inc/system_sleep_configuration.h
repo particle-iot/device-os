@@ -270,7 +270,7 @@ public:
         return *this;
     }
 
-    SystemSleepConfiguration& gpios(const uint8_t* pins, size_t count, InterruptMode mode) {
+    SystemSleepConfiguration& gpios(const pin_t* pins, size_t count, InterruptMode mode) {
         for (size_t i = 0; i < count; i++) {
             gpio(pins[i], mode);
         }
