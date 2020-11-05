@@ -187,8 +187,8 @@ bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flag
     spark_protocol_send_event_param p = {}; // Additional protocol parameters
     p.size = sizeof(p);
     if (param) {
-        p.complete_fn = param->handler_callback;
-        p.user_data = param->handler_data;
+        p.handler_callback = param->handler_callback;
+        p.handler_data = param->handler_data;
     }
 
     return spark_protocol_send_event(sp, name, data, ttl, convert(flags), &p);

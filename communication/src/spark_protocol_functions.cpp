@@ -133,10 +133,28 @@ bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name,
     ASSERT_ON_SYSTEM_THREAD();
 	CompletionHandler handler;
 	if (param) {
-		handler = CompletionHandler(param->complete_fn, param->user_data);
+		handler = CompletionHandler(param->handler_callback, param->handler_data);
 	}
 	EventType::Enum event_type = EventType::extract_event_type(flags);
 	return protocol->send_event(event_name, data, ttl, event_type, flags, std::move(handler));
+}
+
+int spark_protocol_begin_event(ProtocolFacade* protocol, const char* name, spark_protocol_content_type type, int size,
+        unsigned flags, spark_protocol_event_status_fn status_fn, void* user_data, void* reserved) {
+    return protocol->begin_event(name, type, size, flags, status_fn, user_data);
+}
+
+int spark_protocol_end_event(ProtocolFacade* protocol, int handle, int error, void* reserved) {
+    return protocol->end_event(handle, error);
+}
+
+int spark_protocol_write_event_data(ProtocolFacade* protocol, int handle, const char* data, size_t size, bool has_more,
+        void* reserved) {
+    return protocol->write_event_data(handle, data, size, has_more);
+}
+
+int spark_protocol_event_data_bytes_available(ProtocolFacade* protocol, int handle, void* reserved) {
+    return protocol->event_data_bytes_available(handle);
 }
 
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void*) {

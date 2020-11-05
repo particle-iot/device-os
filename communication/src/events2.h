@@ -37,19 +37,9 @@ class Message;
 class CoapMessageDecoder;
 class CoapMessageEncoder;
 
-// FIXME: Move these declarations to spark_cloud_functions.h
-typedef enum spark_protocol_event_status {
-    PROTOCOL_EVENT_STATUS_SENT = 0x01,
-    PROTOCOL_EVENT_STATUS_ERROR = 0x02,
-    PROTOCOL_EVENT_STATUS_READABLE = 0x04,
-    PROTOCOL_EVENT_STATUS_WRITABLE = 0x08
-} spark_protocol_event_status;
-
-typedef void(*spark_protocol_event_status_fn)(int handle, int status, int error, void* user_data);
-
-typedef void(*spark_protocol_subscription_fn)(int handle, const char* name, spark_protocol_content_type type,
-        size_t size, void* user_data);
-
+/**
+ * Handler for cloud events.
+ */
 class Events {
 public:
     explicit Events(Protocol* protocol);
@@ -80,15 +70,18 @@ private:
         std::unique_ptr<char[]> buf; // Buffer for the event data
         spark_protocol_event_status_fn statusFn; // Event status callback
         spark_protocol_content_type contentType; // Content type
+        system_tick_t timeSent; // Time when the last block of the event data was sent
         token_t token; // Message token
         void* userData; // Callback context
         size_t dataOffs; // Current offset in the event data
         size_t bufSize; // Buffer size
         size_t bufOffs; // Current offset in the buffer
-        unsigned blockIndex; // Block index
-        unsigned flags; // Event status flags
+        unsigned blockIndex; // CoAP block index
+        unsigned flags; // Event flags
         int dataSize; // Total size of the event data
         int handle; // Event handle
+        bool canReadWrite; // Whether the event buffer is available for reading or writing
+        bool hasMoreData; // Whether the sender of the event has more data to send
     };
 
     struct Subscription {
@@ -100,11 +93,11 @@ private:
     Vector<Event> inEvents_; // Inbound events
     Vector<Event> outEvents_; // Outbound events
     Vector<Subscription> subscr_; // Event subscriptions
-    Protocol* protocol_;
+    Protocol* protocol_; // Protocol instance
     uint32_t subscrChecksum_; // CRC-32 of the event subscriptions
     int lastEventHandle_; // Last used event handle
 
-    int sendEvent(Event* event, bool hasMore);
+    int sendEvent(Event* event);
 
     static int eventIndexForHandle(const Vector<Event>& events, int handle);
 };

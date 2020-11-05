@@ -528,6 +528,27 @@ public:
 		return true;
 	}
 
+	int begin_event(const char* name, spark_protocol_content_type type, int size, unsigned flags,
+			spark_protocol_event_status_fn status_fn, void* user_data)
+	{
+		return events.beginEvent(name, type, size, flags, status_fn, user_data);
+	}
+
+	int end_event(int handle, int error)
+	{
+		return events.endEvent(handle, error);
+	}
+
+	int write_event_data(int handle, const char* data, size_t size, bool has_more)
+	{
+		return events.writeEventData(handle, data, size, has_more);
+	}
+
+	int event_data_bytes_available(int handle)
+	{
+		return events.eventDataBytesAvailable(handle);
+	}
+
 	void build_describe_message(Appender& appender, int desc_flags);
 
 	inline bool add_event_handler(const char *event_name, EventHandler handler)

@@ -176,66 +176,15 @@ bool spark_protocol_is_initialized(ProtocolFacade* protocol);
 int spark_protocol_presence_announcement(ProtocolFacade* protocol, unsigned char *buf, const unsigned char *id, void* reserved=NULL);
 
 /**
- * Content type.
- */
-typedef enum {
-    PROTOCOL_CONTENT_TYPE_PLAIN_TEXT = 1 ///< Plain text.
-} spark_protocol_content_type;
-
-/**
- * Flags used by `spark_protocol_event_data_callback` and `spark_protocol_write_event_data()`.
- */
-typedef enum {
-    PROTOCOL_EVENT_DATA_READY = 0x01, ///< Event data is available for reading or writing.
-    PROTOCOL_EVENT_DATA_MORE = 0x02 ///< Sender has more data to send.
-} spark_protocol_event_data_flag;
-
-/**
- * Callback invoked when an event's data becomes available for reading or writing.
- *
- * @param handle Event handle.
- * @param flags Flags defined by the `spark_protocol_event_data_flag` enum.
- * @param user_data User data.
- * @return 0 on success or a negative result code in case of an error.
- */
-typedef int(*spark_protocol_event_data_callback)(int handle, int error, unsigned flags, void* user_data);
-
-/**
  * Additional parameters for `spark_protocol_send_event()`.
  */
 typedef struct {
-    /**
-     * Size of this structure.
-     */
     size_t size;
-    /**
-     * Completion callback.
-     */
-    completion_callback complete_fn;
-    /**
-     * User data passed to the `complete_fn` and `data_fn` callbacks.
-     */
-    void* user_data;
-    /**
-     * Content type of the event data (see the `spark_protocol_content_type` enum).
-     */
-    int content_type;
-    /**
-     * Size of the event data.
-     *
-     * This parameter can be set to `SIZE_MAX` if the size of the complete event data is unknown
-     * at the moment when sending of the event is initiated.
-     */
-    size_t data_size;
-    /**
-     * Handle assigned to the event by the protocol layer.
-     */
-    int handle;
-    /**
-     * Callback invoked when the event data becomes available for writing.
-     */
-    spark_protocol_event_data_callback data_fn;
-} spark_protocol_send_event_param;
+    completion_callback handler_callback;
+    void* handler_data;
+} completion_handler_data;
+
+typedef completion_handler_data spark_protocol_send_event_param;
 
 /**
  * Send an event.
@@ -244,7 +193,7 @@ typedef struct {
  * @param event_name Event name.
  * @param data Event data (a string).
  * @param ttl Event's TTL (time to live) in seconds.
- * @param flags Event flags (see the `EventType::Flags` enum).
+ * @param flags Event flags (see `EventType::Flags`).
  * @param param Additional parameters.
  * @return `true` if the event has been sent or `false` otherwise.
  */
@@ -252,50 +201,52 @@ bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name,
         uint32_t flags, spark_protocol_send_event_param* param);
 
 /**
- * Read the data of an incoming event.
- *
- * @param protocol Protocol instance.
- * @param handle Event handle.
- * @param data Destination buffer.
- * @param size Number of bytes to read.
- * @param reserved Reserved for future use.
- * @return Number of bytes read or a negative result code in case of an error.
+ * Content type.
  */
-int spark_protocol_read_event_data(ProtocolFacade* protocol, int handle, char* data, size_t size, void* reserved);
+typedef enum {
+    PROTOCOL_CONTENT_TYPE_PLAIN_TEXT = 1 ///< Plain text.
+} spark_protocol_content_type;
 
 /**
- * Write the data of an outgoing event.
- *
- * @param protocol Protocol instance.
- * @param handle Event handle.
- * @param data Event data.
- * @param size Number of bytes to write.
- * @param flags Flags defined by the `spark_protocol_event_data_flag` enum.
- * @param reserved Reserved for future use.
- * @return Number of bytes written or a negative result code in case of an error.
+ * Event status.
  */
-int spark_protocol_write_event_data(ProtocolFacade* protocol, int handle, const char* data, size_t size, unsigned flags,
+typedef enum {
+    PROTOCOL_EVENT_STATUS_READABLE = 1, ///< New data in the event buffer that is available for reading.
+    PROTOCOL_EVENT_STATUS_WRITABLE = 2, ///< Event buffer is available for writing.
+    PROTOCOL_EVENT_STATUS_SENT = 3 ///< Event was sent to the server.
+} spark_protocol_event_status;
+
+/**
+ * Event status callback.
+ *
+ * Invoked when the status of an event changes.
+ *
+ * @param handle Event handle.
+ * @param status Event status (see `spark_protocol_event_status`) or a negative result code if the
+ *        processing of the event has failed.
+ * @param user_data User data.
+ */
+typedef void(*spark_protocol_event_status_fn)(int handle, int status, void* user_data);
+
+/**
+ * Subscription callback.
+ *
+ * Invoked when an event matching a subscription is received.
+ *
+ * @param handle Event handle.
+ * @param name Event name.
+ * @param type Content type (see `spark_protocol_content_type`).
+ * @param size Size of the event data. The size is unknown if this argument is set to a negative value.
+ * @param user_data User data.
+ */
+typedef void(*spark_protocol_subscription_fn)(int handle, const char* name, int type, int size, void* user_data);
+
+int spark_protocol_begin_event(ProtocolFacade* protocol, const char* name, spark_protocol_content_type type, int size,
+        unsigned flags, spark_protocol_event_status_fn status_fn, void* user_data, void* reserved);
+int spark_protocol_end_event(ProtocolFacade* protocol, int handle, int error, void* reserved);
+int spark_protocol_write_event_data(ProtocolFacade* protocol, int handle, const char* data, size_t size, bool has_more,
         void* reserved);
-
-/**
- * Get the number of bytes of an event's data available for reading or writing.
- *
- * @param protocol Protocol instance.
- * @param handle Event handle.
- * @param reserved Reserved for future use.
- * @return Number of bytes available or a negative result code in case of an error.
- */
-int spark_protocol_event_data_available(ProtocolFacade* protocol, int handle, void* reserved);
-
-/**
- * Cancel sending or receiving of an event.
- *
- * @param protocol Protocol instance.
- * @param handle Event handle.
- * @param reserved Reserved for future use.
- * @return 0 on success or a negative result code in case of an error.
- */
-int spark_protocol_cancel_event(ProtocolFacade* protocol, int handle, void* reserved);
+int spark_protocol_event_data_bytes_available(ProtocolFacade* protocol, int handle, void* reserved);
 
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void* reserved=NULL);
 bool spark_protocol_send_subscription_scope(ProtocolFacade* protocol, const char *event_name, SubscriptionScope::Enum scope, void* reserved=NULL);

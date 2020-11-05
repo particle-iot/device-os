@@ -58,35 +58,40 @@ using std::swap; // For ADL
 int Events::beginEvent(const char* name, spark_protocol_content_type type, int size, unsigned flags,
             spark_protocol_event_status_fn statusFn, void* userData) {
     Event e = {};
+    e.handle = lastEventHandle_ + 1;
     e.name = name;
     if (!e.name) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
+    e.flags = flags;
     e.dataSize = size;
-    if (e.dataSize > 0) {
-        e.bufSize = std::min<size_t>(e.dataSize, MAX_BLOCK_SIZE);
-        e.buf.reset(new(std::nothrow) char[e.bufSize]);
-        if (!e.buf) {
-            return SYSTEM_ERROR_NO_MEMORY;
+    if (e.dataSize) {
+        if (e.dataSize > 0) {
+            // Allocate a buffer for the event data if its size is known in advance
+            e.bufSize = std::min<size_t>(e.dataSize, MAX_BLOCK_SIZE);
+            e.buf.reset(new(std::nothrow) char[e.bufSize]);
+            if (!e.buf) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
         }
+        e.canReadWrite = true;
+        e.hasMoreData = true;
     }
     e.contentType = type;
     e.statusFn = statusFn;
     e.userData = userData;
-    e.handle = ++lastEventHandle_;
     if (!outEvents_.append(std::move(e))) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     if (!size) {
-        const int r = sendEvent(&outEvents_.last(), false /* hasMore */);
+        // An empty event can be sent immediately
+        const int r = sendEvent(&outEvents_.last());
         if (r < 0) {
             outEvents_.takeLast();
             return r;
         }
-    } else {
-        outEvents_.last().flags |= PROTOCOL_EVENT_STATUS_WRITABLE;
     }
-    return lastEventHandle_;
+    return ++lastEventHandle_;
 }
 
 int Events::beginEvent(int handle, spark_protocol_event_status_fn statusFn, void* userData) {
@@ -94,14 +99,11 @@ int Events::beginEvent(int handle, spark_protocol_event_status_fn statusFn, void
 }
 
 int Events::endEvent(int handle, int error) {
-    int index = eventIndexForHandle(outEvents_, handle);
-    if (index >= 0) {
+    int index = 0;
+    if ((index = eventIndexForHandle(outEvents_, handle)) >= 0) {
         outEvents_.removeAt(index);
-    } else {
-        index = eventIndexForHandle(inEvents_, handle);
-        if (index >= 0) {
-            inEvents_.removeAt(index);
-        }
+    } else if ((index = eventIndexForHandle(inEvents_, handle)) >= 0) {
+        inEvents_.removeAt(index);
     }
     return 0;
 }
@@ -116,15 +118,18 @@ int Events::writeEventData(int handle, const char* data, size_t size, bool hasMo
         return SYSTEM_ERROR_NOT_FOUND;
     }
     auto e = &outEvents_.at(index);
-    if (!(e->flags & PROTOCOL_EVENT_STATUS_WRITABLE)) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    if (e->dataSize >= 0 && ((e->dataOffs + size > (size_t)e->dataSize) ||
-            (hasMore && e->dataOffs + size == (size_t)e->dataSize) ||
-            (!hasMore && e->dataOffs + size < (size_t)e->dataSize))) {
-        return SYSTEM_ERROR_OUT_OF_RANGE;
+    if (!e->canReadWrite) {
+        if (!e->dataSize || !e->hasMoreData) {
+            return SYSTEM_ERROR_INVALID_STATE; // The event data has been fully sent
+        }
+        return SYSTEM_ERROR_WOULD_BLOCK;
     }
     if (size > 0) {
+        if (e->dataSize >= 0 && ((e->dataOffs + size > (size_t)e->dataSize) ||
+                (hasMore && e->dataOffs + size == (size_t)e->dataSize) ||
+                (!hasMore && e->dataOffs + size < (size_t)e->dataSize))) {
+            return SYSTEM_ERROR_OUT_OF_RANGE;
+        }
         if (!e->bufSize) {
             e->bufSize = hasMore ? MAX_BLOCK_SIZE : size;
             e->buf.reset(new(std::nothrow) char[e->bufSize]);
@@ -138,30 +143,28 @@ int Events::writeEventData(int handle, const char* data, size_t size, bool hasMo
         e->dataOffs += size;
     }
     if (!hasMore || (size > 0 && e->bufOffs == e->bufSize)) {
-        e->flags &= ~PROTOCOL_EVENT_STATUS_WRITABLE;
-        CHECK(sendEvent(e, hasMore));
-        ++e->blockIndex;
+        e->hasMoreData = hasMore;
+        e->canReadWrite = false;
+        CHECK(sendEvent(e));
     }
     return size;
 }
 
 int Events::eventDataBytesAvailable(int handle) {
     size_t result = 0;
-    int index = eventIndexForHandle(outEvents_, handle);
-    if (index >= 0) {
+    int index = 0;
+    if ((index = eventIndexForHandle(outEvents_, handle)) >= 0) {
         auto e = &outEvents_.at(index);
-        if (e->flags & PROTOCOL_EVENT_STATUS_WRITABLE) {
+        if (e->canReadWrite) {
             result = e->bufSize ? e->bufSize - e->bufOffs : MAX_BLOCK_SIZE;
-            if (e->dataSize && e->dataSize - e->dataOffs < result) {
+            if (e->dataSize >= 0 && e->dataSize - e->dataOffs < result) {
                 result = e->dataSize - e->dataOffs;
             }
         }
-    } else {
-        index = eventIndexForHandle(inEvents_, handle);
-        if (index < 0) {
-            return SYSTEM_ERROR_NOT_FOUND;
-        }
+    } else if ((index = eventIndexForHandle(inEvents_, handle)) >= 0) {
         // TODO
+    } else {
+        return SYSTEM_ERROR_NOT_FOUND;
     }
     return result;
 }
@@ -203,9 +206,15 @@ int Events::processAck(Message* msg) {
     if (!event) {
         return 0;
     }
-    event->bufOffs = 0;
-    event->flags |= PROTOCOL_EVENT_STATUS_WRITABLE; // FIXME
-    event->statusFn(event->handle, event->flags, 0 /* error */, event->userData);
+    if (event->hasMoreData) {
+        event->bufOffs = 0;
+        event->canReadWrite = true;
+        if (event->statusFn) {
+            event->statusFn(event->handle, PROTOCOL_EVENT_STATUS_WRITABLE, event->userData);
+        }
+    } else if (event->statusFn) {
+        event->statusFn(event->handle, PROTOCOL_EVENT_STATUS_SENT, event->userData);
+    }
     return 0;
 }
 
@@ -226,46 +235,53 @@ void Events::reset(bool clearSubscriptions, bool invokeCallbacks) {
     if (invokeCallbacks) {
         for (const auto& e: inEvents) {
             if (e.statusFn) {
-                e.statusFn(e.handle, PROTOCOL_EVENT_STATUS_ERROR, SYSTEM_ERROR_CANCELLED, e.userData);
+                e.statusFn(e.handle, SYSTEM_ERROR_CANCELLED, e.userData);
             }
         }
         for (const auto& e: outEvents) {
             if (e.statusFn) {
-                e.statusFn(e.handle, PROTOCOL_EVENT_STATUS_ERROR, SYSTEM_ERROR_CANCELLED, e.userData);
+                e.statusFn(e.handle, SYSTEM_ERROR_CANCELLED, e.userData);
             }
         }
     }
 }
 
-int Events::sendEvent(Event* event, bool hasMore) {
+int Events::sendEvent(Event* event) {
     const auto channel = &protocol_->getChannel();
     Message msg;
     int r = channel->create(msg);
     if (r != ProtocolError::NO_ERROR) {
-        return SYSTEM_ERROR_PROTOCOL;
+        return SYSTEM_ERROR_NO_MEMORY;
     }
     CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
-    enc.type(channel->is_unreliable() ? CoapType::CON : CoapType::NON);
+    CoapType type = CoapType::CON;
+    if ((event->flags & EventType::NO_ACK) || (!channel->is_unreliable() && !(event->flags & EventType::WITH_ACK))) {
+        type = CoapType::NON;
+    }
+    enc.type(type);
     enc.code(CoapCode::POST);
     enc.id(0); // Will be set by the message channel
     const auto token = protocol_->get_next_token();
     enc.token((const char*)&token, sizeof(token));
     enc.option(CoapOption::URI_PATH, "e");
     enc.option(CoapOption::URI_PATH, event->name);
-    // Encode Block1 option
-    static_assert(MAX_BLOCK_SIZE == 1024 || MAX_BLOCK_SIZE == 512, "Unsupported MAX_BLOCK_SIZE");
-    const unsigned szx = (event->bufSize == 1024) ? 6 /* 1024 bytes */ : 5 /* 512 bytes */;
-    unsigned block1 = (event->blockIndex << 4) | szx;
-    if (hasMore) {
-        block1 |= 0x08;
+    if (event->hasMoreData || event->blockIndex > 0) {
+        // Encode Block1 option (see RFC 7959, 2.2. Structure of a Block Option)
+        static_assert(MAX_BLOCK_SIZE == 1024 || MAX_BLOCK_SIZE == 512, "Unsupported MAX_BLOCK_SIZE");
+        const unsigned szx = (event->bufSize == 1024) ? 6 /* 1024 bytes */ : 5 /* 512 bytes */;
+        unsigned block1 = (event->blockIndex << 4) | szx;
+        if (event->hasMoreData) {
+            block1 |= 0x08;
+        }
+        enc.option(CoapOption::BLOCK1, block1);
     }
-    enc.option(CoapOption::BLOCK1, block1);
-    enc.payload(event->buf.get(), event->bufSize);
+    enc.payload(event->buf.get(), event->bufOffs);
     CHECK(enc.encode());
     r = channel->send(msg);
     if (r != ProtocolError::NO_ERROR) {
         return SYSTEM_ERROR_IO;
     }
+    event->timeSent = protocol_->millis();
     event->token = token;
     return 0;
 }
