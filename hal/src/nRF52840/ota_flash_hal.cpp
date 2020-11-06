@@ -505,7 +505,7 @@ __attribute__((optimize("O0"))) int validateModules(const hal_module_t* modules,
             for (int i = 0; i < ncpCount; i++) {
                 PlatformNCPInfo info = {};
                 const auto r = platform_ncp_get_info(i, &info);
-                if (!r && info.identifier == moduleNcp) {
+                if (!r && info.identifier == moduleNcp && info.updatable) {
                     found = true;
                     break;
                 }
@@ -516,8 +516,8 @@ __attribute__((optimize("O0"))) int validateModules(const hal_module_t* modules,
                 for (int i = 0; i < ncpCount; i++) {
                     PlatformNCPInfo info = {};
                     const auto r = platform_ncp_get_info(i, &info);
-                    if (!r) {
-                        LOG(ERROR, "Supported NCP: 0x%02x", info.identifier);
+                    if (!r && info.updatable) {
+                        LOG(ERROR, "Supported updatable NCP: 0x%02x", info.identifier);
                     }
                 }
                 return SYSTEM_ERROR_OTA_INVALID_PLATFORM;

@@ -39,3 +39,7 @@ PlatformNCPIdentifier platform_ncp_identifier(module_info_t* mi) {
     }
     return ncp;
 }
+
+int platform_ncp_count() {
+    return HAL_PLATFORM_NCP_COUNT;
+}

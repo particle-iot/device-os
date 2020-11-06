@@ -73,7 +73,7 @@ int platform_ncp_count();
 /**
  * Determine NCP type of a particular NCP on this platform.
  */
-int platform_get_ncp_info(int idx, PlatformNCPInfo* info);
+int platform_ncp_get_info(int idx, PlatformNCPInfo* info);
 
 #if HAL_PLATFORM_NCP_UPDATABLE
 /**

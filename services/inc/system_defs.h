@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "hal_platform.h"
+
 /**
  * Network interfaces.
  */

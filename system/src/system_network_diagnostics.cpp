@@ -72,10 +72,10 @@ public:
         system_tick_t m = millis();
         if (ts_ == 0 || (m - ts_) >= NETWORK_INFO_CACHE_INTERVAL)
         {
-#if Wiring_WiFi
-            sig_ = WiFi.RSSI();
-#elif Wiring_Cellular
+#if Wiring_Cellular
             sig_ = Cellular.RSSI();
+#elif Wiring_WiFi
+            sig_ = WiFi.RSSI();
 #endif
             ts_ = millis();
         }

@@ -20,6 +20,8 @@
 #include "stream.h"
 #include "sdspi_hal.h"
 #include <memory>
+#include <FreeRTOS.h>
+#include <event_groups.h>
 
 namespace particle {
 
@@ -40,6 +42,11 @@ public:
     int init();
     void enabled(bool enabled);
     bool enabled() const;
+
+    int on(bool on);
+    bool on() const;
+
+    EventGroupHandle_t eventGroup();
 
 private:
     int pollEsp();

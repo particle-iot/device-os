@@ -224,4 +224,16 @@ int SdioStream::waitEvent(unsigned flags, unsigned timeout) {
     return f;
 }
 
+int SdioStream::on(bool on) {
+    return SYSTEM_ERROR_NONE;
+}
+
+bool SdioStream::on() const {
+    return true;
+}
+
+EventGroupHandle_t SdioStream::eventGroup() {
+    return nullptr;
+}
+
 } // particle

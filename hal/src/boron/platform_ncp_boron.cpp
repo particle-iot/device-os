@@ -51,3 +51,13 @@ PlatformNCPIdentifier platform_primary_ncp_identifier() {
     }
     return (PlatformNCPIdentifier)ncpId;
 }
+
+int platform_ncp_get_info(int idx, PlatformNCPInfo* info) {
+    if (idx == 0 && info) {
+        info->identifier = platform_primary_ncp_identifier();
+        info->updatable = false;
+        return 0;
+    }
+
+    return SYSTEM_ERROR_INVALID_ARGUMENT;
+}

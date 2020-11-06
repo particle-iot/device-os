@@ -25,8 +25,11 @@
 #include "static_recursive_mutex.h"
 #include "gsm0710muxer/muxer.h"
 #include "gsm0710muxer/channel_stream.h"
+#if !HAL_PLATFORM_WIFI_NCP_SDIO
 #include "serial_stream.h"
+#else
 #include "sdio_stream.h"
+#endif // !HAL_PLATFORM_WIFI_NCP_SDIO
 
 namespace particle {
 
@@ -68,8 +71,11 @@ public:
 
 private:
     AtParser parser_;
+#if !HAL_PLATFORM_WIFI_NCP_SDIO
     std::unique_ptr<SerialStream> serial_;
-    std::unique_ptr<SdioStream> sdio_;
+#else
+    std::unique_ptr<SdioStream> serial_;
+#endif // !HAL_PLATFORM_WIFI_NCP_SDIO
     RecursiveMutex mutex_;
     NcpClientConfig conf_;
     volatile NcpState ncpState_;
@@ -78,7 +84,7 @@ private:
     volatile NcpPowerState pwrState_;
     int parserError_;
     bool ready_;
-    gsm0710::Muxer<particle::SerialStream, StaticRecursiveMutex> muxer_;
+    gsm0710::Muxer<decltype(serial_)::element_type, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
     bool muxerNotStarted_;
     volatile bool inFlowControl_ = false;
