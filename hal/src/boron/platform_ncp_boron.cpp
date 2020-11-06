@@ -38,7 +38,7 @@ bool isValidNcpId(uint8_t id) {
 
 } // unnamed
 
-PlatformNCPIdentifier platform_current_ncp_identifier() {
+PlatformNCPIdentifier platform_primary_ncp_identifier() {
     // Check the DCT
     uint8_t ncpId = 0;
     int r = dct_read_app_data_copy(DCT_NCP_ID_OFFSET, &ncpId, 1);

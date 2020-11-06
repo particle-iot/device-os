@@ -49,6 +49,10 @@ enum PlatformNCPIdentifier {
     PLATFORM_NCP_BROADCOM_BCM9WCDUSI14 = PLATFORM_NCP_IDENTIFIER(PLATFORM_NCP_MANUFACTURER_BROADCOM, 2)
 };
 
+struct PlatformNCPInfo {
+    PlatformNCPIdentifier identifier;
+    bool updatable;
+};
 
 /**
  * Determine the NCP identifier from the module info given.
@@ -57,9 +61,19 @@ enum PlatformNCPIdentifier {
 PlatformNCPIdentifier platform_ncp_identifier(module_info_t* moduleInfo);
 
 /**
- * Determine the NCP that is running on this platform.
+ * Determine the primary NCP that is running on this platform.
  */
-PlatformNCPIdentifier platform_current_ncp_identifier();
+PlatformNCPIdentifier platform_primary_ncp_identifier();
+
+/**
+ * Get total number of NCP that are available on this platform.
+ */
+int platform_ncp_count();
+
+/**
+ * Determine NCP type of a particular NCP on this platform.
+ */
+int platform_get_ncp_info(int idx, PlatformNCPInfo* info);
 
 #if HAL_PLATFORM_NCP_UPDATABLE
 /**

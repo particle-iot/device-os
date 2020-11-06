@@ -500,10 +500,26 @@ __attribute__((optimize("O0"))) int validateModules(const hal_module_t* modules,
         if (moduleFunc == MODULE_FUNCTION_NCP_FIRMWARE) {
 #if HAL_PLATFORM_NCP_UPDATABLE
             const auto moduleNcp = module_mcu_target(info);
-            const auto currentNcp = platform_current_ncp_identifier();
-            if (moduleNcp != currentNcp) {
-                SYSTEM_ERROR_MESSAGE("NCP module is not for this platform; module NCP: 0x%02x; current NCP: 0x%02x",
-                        (unsigned)moduleNcp, (unsigned)currentNcp);
+            const int ncpCount = platform_ncp_count();
+            bool found = false;
+            for (int i = 0; i < ncpCount; i++) {
+                PlatformNCPInfo info = {};
+                const auto r = platform_ncp_get_info(i, &info);
+                if (!r && info.identifier == moduleNcp) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                SYSTEM_ERROR_MESSAGE(ERROR, "NCP module is not for this platform; module NCP: 0x%02x",
+                        (unsigned)moduleNcp);
+                for (int i = 0; i < ncpCount; i++) {
+                    PlatformNCPInfo info = {};
+                    const auto r = platform_ncp_get_info(i, &info);
+                    if (!r) {
+                        LOG(ERROR, "Supported NCP: 0x%02x", info.identifier);
+                    }
+                }
                 return SYSTEM_ERROR_OTA_INVALID_PLATFORM;
             }
 #else

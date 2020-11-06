@@ -12,7 +12,7 @@
 
 #include <algorithm>
 
-PlatformNCPIdentifier platform_current_ncp_identifier() {
+PlatformNCPIdentifier platform_primary_ncp_identifier() {
     return PLATFORM_NCP_ESP32;
 }
 

@@ -74,7 +74,7 @@ private:
         CHECK(CellularNetworkManager::getActiveSim(&sim));
         CellularNcpClientConfig conf;
         conf.simType(sim);
-        conf.ncpIdentifier(platform_current_ncp_identifier());
+        conf.ncpIdentifier(platform_primary_ncp_identifier());
         conf.eventHandler(PppNcpNetif::ncpEventHandlerCb, pp3);
         conf.dataHandler(PppNcpNetif::ncpDataHandlerCb, pp3);
         // Initialize NCP client
