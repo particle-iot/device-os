@@ -182,6 +182,13 @@ int if_init_platform(void*) {
         ((PppNcpNetif*)pp3)->init();
     }
 
+    /* wl4 - ESP32 NCP Station */
+    wl4 = new Esp32NcpNetif();
+    if (wl4) {
+        ((Esp32NcpNetif*)wl4)->setWifiManager(wifiNetworkManager());
+        ((Esp32NcpNetif*)wl4)->init();
+    }
+
     auto m = mallinfo();
     const size_t total = m.uordblks + m.fordblks;
     LOG(TRACE, "Heap: %lu/%lu Kbytes used", m.uordblks / 1000, total / 1000);

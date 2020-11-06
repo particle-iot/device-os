@@ -87,9 +87,9 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
 #if HAL_PLATFORM_CELLULAR
     , DYNALIB_TABLE_NAME(hal_cellular)
 #endif // HAL_PLATFORM_CELLULAR
-#if HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_WIFI && HAL_PLATFORM_WIFI_COMPAT
     , DYNALIB_TABLE_NAME(hal_wlan)
-#endif // HAL_PLATFORM_WIFI
+#endif // HAL_PLATFORM_WIFI && HAL_PLATFORM_WIFI_COMPAT
 #if HAL_PLATFORM_BLE
     , DYNALIB_TABLE_NAME(hal_ble)
 #endif // HAL_PLATFORM_BLE
@@ -100,6 +100,9 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
     , DYNALIB_TABLE_NAME(hal_mesh_deprecated)
 #endif // HAL_PLATFORM_MESH_DEPRECATED
     , DYNALIB_TABLE_NAME(hal_posix_syscall)
+#if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_COMPAT
+    , DYNALIB_TABLE_NAME(hal_wlan)
+#endif // HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_COMPAT
 };
 
 #include "system_part1_loader.c"

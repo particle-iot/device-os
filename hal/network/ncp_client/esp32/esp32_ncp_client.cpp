@@ -74,7 +74,12 @@ const auto ESP32_NCP_AT_CHANNEL = 1;
 const auto ESP32_NCP_STA_CHANNEL = 2;
 const auto ESP32_NCP_AP_CHANNEL = 3;
 
+#if !HAL_PLATFORM_WIFI_NCP_SDIO
 const auto ESP32_NCP_MIN_MVER_WITH_CMUX = 4;
+#else
+// FIXME:
+const auto ESP32_NCP_MIN_MVER_WITH_CMUX = 8;
+#endif // !HAL_PLATFORM_WIFI_NCP_SDIO
 
 } // unnamed
 
@@ -525,22 +530,16 @@ int Esp32NcpClient::waitReady() {
 }
 
 int Esp32NcpClient::initReady() {
-    // Send AT+CMUX and initialize multiplexer
-    int r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0"));
+    uint16_t mver = 0;
+    CHECK(getFirmwareModuleVersionImpl(&mver));
 
-    if (r != AtResponse::OK) {
-        // Check current NCP firmware module version
-        uint16_t mver = 0;
-        CHECK(getFirmwareModuleVersionImpl(&mver));
-
-        // If it's < ESP32_NCP_MIN_MVER_WITH_CMUX, AT+CMUX is not supposed to work
-        // We simply won't initialize it
-        CHECK_TRUE(mver < ESP32_NCP_MIN_MVER_WITH_CMUX, SYSTEM_ERROR_UNKNOWN);
-
-        muxerNotStarted_ = true;
-    } else {
+    if (mver >= ESP32_NCP_MIN_MVER_WITH_CMUX) {
+        // Send AT+CMUX and initialize multiplexer
+        CHECK_PARSER_OK(parser_.execCommand("AT+CMUX=0"));
         CHECK(initMuxer());
         muxerNotStarted_ = false;
+    } else {
+        muxerNotStarted_ = true;
     }
 
     // Disable DHCP on both STA and AP interfaces
