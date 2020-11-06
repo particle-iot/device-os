@@ -51,10 +51,6 @@ public:
 
     virtual size_t printTo(Print& p) const;
 
-    virtual bool isAccessTechnologyValid() const;
-    virtual bool isSignalStrengthValid() const;
-    virtual bool isSignalQualityValid() const;
-    virtual bool isSignalQualitySupported() const;
     virtual bool isValid() const;
     virtual operator bool() const;
 

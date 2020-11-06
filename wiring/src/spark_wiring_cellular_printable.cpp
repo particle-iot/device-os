@@ -86,34 +86,15 @@ size_t CellularSignal::printTo(Print& p) const
     return n;
 }
 
-bool CellularSignal::isAccessTechnologyValid() const
-{
-    return (sig_.rat != NET_ACCESS_TECHNOLOGY_NONE);
-}
-
-bool CellularSignal::isSignalStrengthValid() const
-{
-    return (sig_.rssi != std::numeric_limits<int32_t>::min());
-}
-
-bool CellularSignal::isSignalQualityValid() const
-{
-    return (sig_.qual != std::numeric_limits<int32_t>::min());
-}
-
-bool CellularSignal::isSignalQualitySupported() const
-{
-#if (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION)
-    return (sig_.rat == NET_ACCESS_TECHNOLOGY_GSM) ? false : true;
-#else
-    return true;
-#endif
-}
-
 bool CellularSignal::isValid() const
 {
-    return (isAccessTechnologyValid() && isSignalStrengthValid() &&
-                (isSignalQualitySupported() ? isSignalQualityValid() : true));
+    return (sig_.rat != NET_ACCESS_TECHNOLOGY_NONE &&
+            sig_.rssi != std::numeric_limits<int32_t>::min() &&
+#if (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION)
+            (sig_.rat == NET_ACCESS_TECHNOLOGY_GSM) ? true : (sig_.qual != std::numeric_limits<int32_t>::min()));
+#else
+            sig_.qual != std::numeric_limits<int32_t>::min());
+#endif
 }
 
 CellularSignal::operator bool() const
