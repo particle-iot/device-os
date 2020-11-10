@@ -43,6 +43,18 @@
             _r; \
         })
 
+#define CHECK_PARSER_OK(_expr) \
+        do { \
+            const auto _r = _expr; \
+            if (_r < 0) { \
+                this->parserError(_r); \
+                return _r; \
+            } \
+            if (_r != ::particle::AtResponse::OK) { \
+                return SYSTEM_ERROR_AT_NOT_OK; \
+            } \
+        } while (false)
+
 namespace particle {
 
 namespace {
@@ -78,7 +90,7 @@ const auto ESP32_NCP_AP_CHANNEL = 3;
 const auto ESP32_NCP_MIN_MVER_WITH_CMUX = 4;
 #else
 // FIXME:
-const auto ESP32_NCP_MIN_MVER_WITH_CMUX = 8;
+const auto ESP32_NCP_MIN_MVER_WITH_CMUX = 7;
 #endif // !HAL_PLATFORM_WIFI_NCP_SDIO
 
 } // unnamed
@@ -543,8 +555,7 @@ int Esp32NcpClient::initReady() {
     }
 
     // Disable DHCP on both STA and AP interfaces
-    r = CHECK_PARSER(parser_.execCommand("AT+CWDHCP=0,3"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+    CHECK_PARSER_OK(parser_.execCommand("AT+CWDHCP=0,3"));
 
     // Now we are ready
     ncpState(NcpState::ON);
