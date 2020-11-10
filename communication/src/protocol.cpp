@@ -89,14 +89,20 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		}
 		notify_message_complete(msg_id, code);
 		handle_app_state_reply(msg_id, code);
+		if (type == CoAPType::ACK) {
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
-		if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
-			const ProtocolError error = firmwareUpdate.responseAck(&message);
-			if (error != ProtocolError::NO_ERROR) {
-				return error;
+			if (firmwareUpdate.isRunning()) {
+				const ProtocolError r = firmwareUpdate.responseAck(&message);
+				if (r != ProtocolError::NO_ERROR) {
+					return r;
+				}
+			}
+#endif
+			const int r = events.processAck(&message);
+			if (r < 0) {
+				return ProtocolError::INTERNAL; // FIXME
 			}
 		}
-#endif
 	}
 
 	ProtocolError error = NO_ERROR;

@@ -79,6 +79,11 @@ DYNALIB_FN(BASE_IDX2 + 6, communication, spark_protocol_to_system_error, int(int
 DYNALIB_FN(BASE_IDX2 + 7, communication, spark_protocol_get_status, int(ProtocolFacade*, protocol_status*, void*))
 DYNALIB_FN(BASE_IDX2 + 8, communication, spark_protocol_get_connection_property, int(ProtocolFacade*, unsigned, void*, size_t*, void*))
 
+DYNALIB_FN(BASE_IDX2 + 8, communication, spark_protocol_begin_event, int(ProtocolFacade*, const char*, spark_protocol_content_type, int, unsigned, spark_protocol_event_status_fn, void*, void*))
+DYNALIB_FN(BASE_IDX2 + 9, communication, spark_protocol_end_event, int(ProtocolFacade*, int, int, void*))
+DYNALIB_FN(BASE_IDX2 + 10, communication, spark_protocol_write_event_data, int(ProtocolFacade*, int, const char*, size_t, bool, void*))
+DYNALIB_FN(BASE_IDX2 + 11, communication, spark_protocol_event_data_bytes_available, int(ProtocolFacade*, int, void*))
+
 DYNALIB_END(communication)
 
 #undef BASE_IDX

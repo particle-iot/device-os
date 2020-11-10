@@ -15,6 +15,12 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL // FIXME
+
+#include "logging.h"
+
+LOG_SOURCE_CATEGORY("comm.event")
+
 #include "events2.h"
 
 #include "protocol.h"
@@ -263,7 +269,7 @@ int Events::sendEvent(Event* event) {
     enc.id(0); // Will be set by the message channel
     const auto token = protocol_->get_next_token();
     enc.token((const char*)&token, sizeof(token));
-    enc.option(CoapOption::URI_PATH, "e");
+    enc.option(CoapOption::URI_PATH, "E");
     enc.option(CoapOption::URI_PATH, event->name);
     if (event->hasMoreData || event->blockIndex > 0) {
         // Encode Block1 option (see RFC 7959, 2.2. Structure of a Block Option)
@@ -276,13 +282,20 @@ int Events::sendEvent(Event* event) {
         enc.option(CoapOption::BLOCK1, block1);
     }
     enc.payload(event->buf.get(), event->bufOffs);
-    CHECK(enc.encode());
+    r = enc.encode();
+    if (r < 0 || r > (int)msg.capacity()) {
+        return ProtocolError::INTERNAL;
+    }
+    msg.set_length(r);
     r = channel->send(msg);
     if (r != ProtocolError::NO_ERROR) {
         return SYSTEM_ERROR_IO;
     }
     event->timeSent = protocol_->millis();
     event->token = token;
+    if (event->hasMoreData) {
+        ++event->blockIndex;
+    }
     return 0;
 }
 
