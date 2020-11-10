@@ -40,10 +40,6 @@ namespace spark {
         return sig;
     }
 
-    CellularSignal CellularClass::getSignal() {
-        return this->RSSI();
-    }
-
     CellularDataHal data_hal;
 
     bool CellularClass::getDataUsage(CellularData &data_get) {

@@ -102,7 +102,10 @@ public:
     }
 
     CellularSignal RSSI();
-    CellularSignal getSignal();     // Alias for Cellular.RSSI()
+
+    inline const CellularSignal getSignal() {
+        return RSSI();
+    }
 
     bool getDataUsage(CellularData &data_get);
     bool setDataUsage(CellularData &data_set);
