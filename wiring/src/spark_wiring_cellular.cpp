@@ -26,30 +26,18 @@
 namespace spark {
 
     CellularSignal CellularClass::RSSI() {
-// TODO: remove once rssi/qual are removed
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
         CellularSignal sig;
         if (!network_ready(*this, 0, NULL)) {
-            sig.rssi = 0;
             return sig;
         }
 
-        CellularSignalHal sig_hal = {0};
         cellular_signal_t sigext = {0};
         sigext.size = sizeof(sigext);
-        if (cellular_signal(&sig_hal, &sigext) != 0) {
-            sig.rssi = 1;
+        if (cellular_signal(nullptr, &sigext) != 0) {
             return sig;
-        }
-        sig.rssi = sig_hal.rssi;
-        sig.qual = sig_hal.qual;
-        if (sig.rssi == 0) {
-            sig.rssi = 2;
         }
         sig.fromHalCellularSignal(sigext);
         return sig;
-#pragma GCC diagnostic pop
     }
 
     CellularDataHal data_hal;

@@ -76,12 +76,6 @@ typedef struct CellularDevice CellularDevice;
 
 typedef struct
 {
-    int rssi;
-    int qual;
-} CellularSignalHal;
-
-typedef struct
-{
     uint16_t size;
     uint16_t version;
     uint8_t rat;

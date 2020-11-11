@@ -93,21 +93,6 @@ test(CELLULAR_03_resolve) {
     assertEqual(addr, 0);
 }
 
-test(CELLULAR_04_rssi_is_valid) {
-    connect_to_cloud(6*60*1000);
-    CellularSignal s;
-    for (int x = 0; x < 10; x++) {
-        s = Cellular.RSSI();
-        if (s.rssi < 0) {
-            break;
-        }
-        Serial.println(s);
-        delay(5000);
-    }
-    assertLessOrEqual(s.rssi, -20);
-    assertMoreOrEqual(s.rssi, -150);
-}
-
 // Collects cellular signal strength and quality and validates Accesstechnology (RAT)
 test(CELLULAR_05_sigstr_is_valid) {
     connect_to_cloud(6*60*1000);

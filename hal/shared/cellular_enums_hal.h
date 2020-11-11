@@ -190,10 +190,7 @@ typedef struct {
     Reg psd;        //!< PSD Registration status (Packet Switched Data)
     Reg eps;        //!< EPS registration status (Evolved Packet System)
     AcT act;        //!< Access Technology
-    int rssi;       //!< Received Signal Strength Indication (in dBm, range -113..-53)
-    int qual;       //!< In UMTS RAT indicates the Energy per Chip/Noise ratio in dB levels
-                    //!< of the current cell (see <ecn0_ lev> in +CGED command description),
-                    //!< see 3GPP TS 45.008 [20] subclause 8.2.4
+
     union {
         int rxlev;  //!< GSM RAT: RXLEV ([0, 63], 99), see 3GPP TS 45.008 subclause 8.1.4
         int rscp;   //!< UMTS RAT: RSCP ([-5, 91], 255), see 3GPP TS 25.133 subclause 9.1.1.3

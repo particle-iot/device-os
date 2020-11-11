@@ -12,7 +12,7 @@
 
 namespace particle { namespace detail {
 
-cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signal_t* signalext, bool strengthResult, const NetStatus& status) {
+cellular_result_t cellular_signal_impl(cellular_signal_t* signalext, bool strengthResult, const NetStatus& status) {
     // % * 100, see 3GPP TS 45.008 8.2.4
     // 0.14%, 0.28%, 0.57%, 1.13%, 2.26%, 4.53%, 9.05%, 18.10%
     static const uint16_t berMapping[] = {14, 28, 57, 113, 226, 453, 905, 1810};
@@ -21,11 +21,6 @@ cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signa
 
     if (strengthResult != true) {
         return SYSTEM_ERROR_UNKNOWN;
-    }
-
-    if (signal != nullptr) {
-        signal->rssi = status.rssi;
-        signal->qual = status.qual;
     }
 
     if (signalext != nullptr) {

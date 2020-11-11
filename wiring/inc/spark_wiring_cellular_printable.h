@@ -36,17 +36,10 @@
  */
 class CellularSignal : public particle::Signal, public Printable {
 public:
-    int rssi __attribute__((deprecated("Use getStrengthValue() instead"))) = 0;
-    int qual __attribute__((deprecated("Use getQualityValue() instead"))) = 0;
-
-// TODO: remove once rssi/qual are removed
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     CellularSignal() {}
     CellularSignal(const cellular_signal_t& sig);
     virtual ~CellularSignal() {};
     CellularSignal(const CellularSignal&) = default;
-#pragma GCC diagnostic pop
 
     bool fromHalCellularSignal(const cellular_signal_t& sig);
 
@@ -57,6 +50,9 @@ public:
     virtual float getQualityValue() const;
 
     virtual size_t printTo(Print& p) const;
+
+    virtual bool isValid() const;
+    virtual operator bool() const;
 
 private:
     cellular_signal_t sig_ = {0};

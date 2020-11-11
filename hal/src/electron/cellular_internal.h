@@ -40,7 +40,7 @@ cellular_result_t cellular_data_usage_get_impl(CellularDataHal &data, const MDM_
 /* detail functions defined for unit tests */
 namespace particle { namespace detail {
 
-cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signal_t* signalext, bool strengthResult, const NetStatus& status);
+cellular_result_t cellular_signal_impl(cellular_signal_t* signalext, bool strengthResult, const NetStatus& status);
 
 }} // namespace particle detail
 

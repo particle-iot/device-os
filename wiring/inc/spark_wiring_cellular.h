@@ -103,6 +103,10 @@ public:
 
     CellularSignal RSSI();
 
+    inline const CellularSignal getSignal() {
+        return RSSI();
+    }
+
     bool getDataUsage(CellularData &data_get);
     bool setDataUsage(CellularData &data_set);
     bool resetDataUsage(void);
