@@ -1717,9 +1717,13 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         // Do not need to check for an OK, as this is just for debugging purpose,
         // and UCGED may sometimes return CME ERROR with low signal
         sendFormated("AT+UCGED=5\r\n");
-        waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT);
+        if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+            goto failure;
+        }
         sendFormated("AT+UCGED?\r\n");
-        waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT);
+        if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+            goto failure;
+        }
 
         // check EPS registration (LTE)
         sendFormated("AT+CEREG?\r\n");
@@ -1730,7 +1734,9 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         // Check the signal seen by the module while trying to register
         // Do not need to check for an OK, as this is just for debugging purpose
         sendFormated("AT+CSQ\r\n");
-        waitFinalResp(nullptr, nullptr, CSQ_TIMEOUT);
+        if (WAIT == waitFinalResp(nullptr, nullptr, CSQ_TIMEOUT)) {
+            goto failure;
+        }
 
         // check CSD registration (GSM)
         sendFormated("AT+CREG?\r\n");
