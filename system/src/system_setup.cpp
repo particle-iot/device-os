@@ -278,6 +278,9 @@ bool filter_key(const char* src, char* dest, size_t size) {
 	else if (!strcmp(src, "ms")) {
 		strcpy(dest, "Device Secret");
 	}
+	else if (!strcmp(src, "radiofw")) {
+		strcpy(dest, "Radio Version");
+	}
 	return false;
 }
 
