@@ -58,6 +58,7 @@ enum class CoapCode {
     VALID = coapCode(2, 3),
     CHANGED = coapCode(2, 4),
     CONTENT = coapCode(2, 5),
+    CONTINUE = coapCode(2, 31),
     BAD_REQUEST = coapCode(4, 0),
     UNAUTHORIZED = coapCode(4, 1),
     BAD_OPTION = coapCode(4, 2),

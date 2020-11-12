@@ -164,8 +164,14 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	case CoAPMessageType::UPDATE_DONE:
 		return chunkedTransfer.handle_update_done(token, message, channel);
 #endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
-	case CoAPMessageType::EVENT:
-		return subscriptions.handle_event(message, descriptor.call_event_handler, channel);
+	case CoAPMessageType::EVENT: {
+		// return subscriptions.handle_event(message, descriptor.call_event_handler, channel);
+		const int r = events.processEventRequest(&message);
+		if (r < 0) {
+			return ProtocolError::INTERNAL; // FIXME
+		}
+		break;
+	}
 
 	case CoAPMessageType::KEY_CHANGE:
 		return handle_key_change(message);

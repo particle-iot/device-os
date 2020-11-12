@@ -139,13 +139,17 @@ bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name,
 	return protocol->send_event(event_name, data, ttl, event_type, flags, std::move(handler));
 }
 
-int spark_protocol_begin_event(ProtocolFacade* protocol, const char* name, spark_protocol_content_type type, int size,
+int spark_protocol_begin_event(ProtocolFacade* protocol, int handle, const char* name, int type, int size,
         unsigned flags, spark_protocol_event_status_fn status_fn, void* user_data, void* reserved) {
-    return protocol->begin_event(name, type, size, flags, status_fn, user_data);
+    return protocol->begin_event(handle, name, type, size, flags, status_fn, user_data);
 }
 
-int spark_protocol_end_event(ProtocolFacade* protocol, int handle, int error, void* reserved) {
-    return protocol->end_event(handle, error);
+void spark_protocol_end_event(ProtocolFacade* protocol, int handle, void* reserved) {
+    protocol->end_event(handle);
+}
+
+int spark_protocol_read_event_data(ProtocolFacade* protocol, int handle, char* data, size_t size, void* reserved) {
+    return protocol->read_event_data(handle, data, size);
 }
 
 int spark_protocol_write_event_data(ProtocolFacade* protocol, int handle, const char* data, size_t size, bool has_more,
@@ -155,6 +159,11 @@ int spark_protocol_write_event_data(ProtocolFacade* protocol, int handle, const 
 
 int spark_protocol_event_data_bytes_available(ProtocolFacade* protocol, int handle, void* reserved) {
     return protocol->event_data_bytes_available(handle);
+}
+
+int spark_protocol_add_subscription(ProtocolFacade* protocol, const char* prefix, spark_protocol_subscription_fn fn,
+        void* user_data, void* reserved) {
+    return protocol->add_subscription(prefix, fn, user_data);
 }
 
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void*) {

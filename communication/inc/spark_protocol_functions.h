@@ -241,12 +241,15 @@ typedef void(*spark_protocol_event_status_fn)(int handle, int status, void* user
  */
 typedef void(*spark_protocol_subscription_fn)(int handle, const char* name, int type, int size, void* user_data);
 
-int spark_protocol_begin_event(ProtocolFacade* protocol, const char* name, spark_protocol_content_type type, int size,
+int spark_protocol_begin_event(ProtocolFacade* protocol, int handle, const char* name, int type, int size,
         unsigned flags, spark_protocol_event_status_fn status_fn, void* user_data, void* reserved);
-int spark_protocol_end_event(ProtocolFacade* protocol, int handle, int error, void* reserved);
+void spark_protocol_end_event(ProtocolFacade* protocol, int handle, void* reserved);
+int spark_protocol_read_event_data(ProtocolFacade* protocol, int handle, char* data, size_t size, void* reserved);
 int spark_protocol_write_event_data(ProtocolFacade* protocol, int handle, const char* data, size_t size, bool has_more,
         void* reserved);
 int spark_protocol_event_data_bytes_available(ProtocolFacade* protocol, int handle, void* reserved);
+int spark_protocol_add_subscription(ProtocolFacade* protocol, const char* prefix, spark_protocol_subscription_fn fn,
+        void* user_data, void* reserved);
 
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void* reserved=NULL);
 bool spark_protocol_send_subscription_scope(ProtocolFacade* protocol, const char *event_name, SubscriptionScope::Enum scope, void* reserved=NULL);

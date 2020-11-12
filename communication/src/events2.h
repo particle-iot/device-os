@@ -45,10 +45,9 @@ public:
     explicit Events(Protocol* protocol);
     ~Events() = default;
 
-    int beginEvent(const char* name, spark_protocol_content_type type, int size, unsigned flags,
+    int beginEvent(int handle, const char* name, int type, int size, unsigned flags,
             spark_protocol_event_status_fn statusFn, void* userData);
-    int beginEvent(int handle, spark_protocol_event_status_fn statusFn, void* userData);
-    int endEvent(int handle, int error);
+    void endEvent(int handle);
     int readEventData(int handle, char* data, size_t size);
     int writeEventData(int handle, const char* data, size_t size, bool hasMore);
     int eventDataBytesAvailable(int handle);
@@ -70,24 +69,25 @@ private:
         std::unique_ptr<char[]> buf; // Buffer for the event data
         spark_protocol_event_status_fn statusFn; // Event status callback
         spark_protocol_content_type contentType; // Content type
-        system_tick_t timeSent; // Time when the last block of the event data was sent
+        system_tick_t lastBlockTime; // Time when the last block of the event data was sent or received
         token_t token; // Message token
         void* userData; // Callback context
         size_t dataOffs; // Current offset in the event data
         size_t bufSize; // Buffer size
         size_t bufOffs; // Current offset in the buffer
+        size_t bytesAvail; // Number of bytes in the buffer available for reading or writing
         unsigned blockIndex; // CoAP block index
         unsigned flags; // Event flags
         int dataSize; // Total size of the event data
         int handle; // Event handle
-        bool canReadWrite; // Whether the event buffer is available for reading or writing
         bool hasMoreData; // Whether the sender of the event has more data to send
     };
 
     struct Subscription {
         CString prefix; // Event name prefix
-        spark_protocol_subscription_fn subscrFn; // Subscription callback
+        spark_protocol_subscription_fn fn; // Subscription callback
         void* userData; // Callback context
+        size_t prefixLen; // Length of the event name prefix
     };
 
     Vector<Event> inEvents_; // Inbound events
@@ -98,6 +98,8 @@ private:
     int lastEventHandle_; // Last used event handle
 
     int sendEvent(Event* event);
+    int sendResponse(CoapType type, CoapCode code, int id, token_t token);
+    int sendEmptyAck(CoapMessageId id);
 
     static int eventIndexForHandle(const Vector<Event>& events, int handle);
 };
@@ -106,6 +108,10 @@ inline Events::Events(Protocol* protocol) :
         protocol_(protocol),
         lastEventHandle_(0) {
     reset();
+}
+
+inline uint32_t Events::subscriptionsChecksum() {
+    return subscrChecksum_;
 }
 
 } // namespace protocol

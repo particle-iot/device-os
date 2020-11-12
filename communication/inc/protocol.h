@@ -528,15 +528,20 @@ public:
 		return true;
 	}
 
-	int begin_event(const char* name, spark_protocol_content_type type, int size, unsigned flags,
+	int begin_event(int handle, const char* name, int type, int size, unsigned flags,
 			spark_protocol_event_status_fn status_fn, void* user_data)
 	{
-		return events.beginEvent(name, type, size, flags, status_fn, user_data);
+		return events.beginEvent(handle, name, type, size, flags, status_fn, user_data);
 	}
 
-	int end_event(int handle, int error)
+	void end_event(int handle)
 	{
-		return events.endEvent(handle, error);
+		events.endEvent(handle);
+	}
+
+	int read_event_data(int handle, char* data, size_t size)
+	{
+		return events.readEventData(handle, data, size);
 	}
 
 	int write_event_data(int handle, const char* data, size_t size, bool has_more)
@@ -547,6 +552,10 @@ public:
 	int event_data_bytes_available(int handle)
 	{
 		return events.eventDataBytesAvailable(handle);
+	}
+
+	int add_subscription(const char* prefix, spark_protocol_subscription_fn fn, void* user_data) {
+		return events.addSubscription(prefix, fn, user_data);
 	}
 
 	void build_describe_message(Appender& appender, int desc_flags);
