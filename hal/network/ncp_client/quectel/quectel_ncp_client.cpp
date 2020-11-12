@@ -1604,6 +1604,9 @@ int QuectelNcpClient::processEventsImpl() {
     CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
+    // Check the signal seen by the module while trying to register
+    // Do not need to check for an OK, as this is just for debugging purpose
+    CHECK_PARSER(parser_.execCommand("AT+QCSQ"));
 
     if (connState_ == NcpConnectionState::CONNECTING && millis() - regStartTime_ >= registrationTimeout_) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
