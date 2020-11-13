@@ -6,27 +6,21 @@
 #   pip
 KERNEL_NAME=$(uname -s)
 
+# Fail on errors
+set -e
+
 # MacOS Support
 if [ "${KERNEL_NAME}" == "Darwin" ]; then
-  brew install git python || exit 1
+  brew install git python
 
 # Debian Support
 else
   (apt-get -qq update &&
-  apt-get -qq install git python-pip) || exit 1
+  apt-get -qq install git python3-pip)
 fi
 
-# Install custom `gcovr` to support Coveralls output
-pushd ~
-git clone https://github.com/zfields/gcovr.git -b coveralls
-cd gcovr
-if [ "${KERNEL_NAME}" == "Darwin" ]; then
-  pip3 install -e $(pwd)
-  pip3 install requests
-else
-  pip install -e $(pwd)
-  pip install requests
-fi
-popd
+
+pip3 install git+https://github.com/gcovr/gcovr.git
+pip3 install requests
 
 gcovr --version
