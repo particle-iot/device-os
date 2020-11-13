@@ -235,9 +235,9 @@ int Events::processEventRequest(Message* msg) {
     CoapMessageDecoder dec;
     CHECK(dec.decode((const char*)msg->buf(), msg->length()));
     if (dec.tokenSize() != sizeof(token_t)) {
-        return SYSTEM_ERROR_PROTOCOL;
+        return SYSTEM_ERROR_PROTOCOL; // Invalid token size
     }
-    const char* eventName = nullptr;
+    CString eventName;
     size_t eventNameLen = 0;
     size_t dataSize = 0;
     size_t blockSize = 0;
@@ -248,25 +248,17 @@ int Events::processEventRequest(Message* msg) {
     bool hasMoreData = false;
     auto it = dec.options();
     while (it.next()) {
-        switch (it.option()) {
-        case (unsigned)CoapOption::URI_PATH: { // :(
-            if (uriOptCount == 0) {
-                if (it.size() != 1 || *it.data() != 'E') {
-                    return SYSTEM_ERROR_PROTOCOL; // Unexpected Uri-Path
-                }
-            } else if (uriOptCount == 1) {
-                if (!it.size()) {
-                    return SYSTEM_ERROR_PROTOCOL; // Empty event name
-                }
-                eventName = it.data();
-                eventNameLen = it.size();
-            } else {
+        switch ((CoapOption)it.option()) { // :(
+        case CoapOption::URI_PATH: {
+            if (uriOptCount > 0) {
+                eventNameLen += it.size();
+            } else if (it.size() != 1 || (*it.data() != 'E' && *it.data() != 'e')) {
                 return SYSTEM_ERROR_PROTOCOL; // Unexpected Uri-Path
             }
             ++uriOptCount;
             break;
         }
-        case (unsigned)CoapOption::BLOCK1: {
+        case CoapOption::BLOCK1: {
             if (hasBlockOpt) {
                 return SYSTEM_ERROR_PROTOCOL; // Duplicate option
             }
@@ -285,7 +277,7 @@ int Events::processEventRequest(Message* msg) {
             hasBlockOpt = true;
             break;
         }
-        case (unsigned)CoapOption::SIZE1: {
+        case CoapOption::SIZE1: {
             if (hasSizeOpt) {
                 return SYSTEM_ERROR_PROTOCOL; // Duplicate option
             }
@@ -298,17 +290,37 @@ int Events::processEventRequest(Message* msg) {
             break;
         }
     }
-    if (!eventName) {
-        return SYSTEM_ERROR_PROTOCOL;
+    if (!eventNameLen) {
+        return SYSTEM_ERROR_PROTOCOL; // Event name is missing
     }
     if (hasBlockOpt && ((hasMoreData && dec.payloadSize() != blockSize) || (!hasMoreData && dec.payloadSize() > blockSize))) {
-        return SYSTEM_ERROR_PROTOCOL;
+        return SYSTEM_ERROR_PROTOCOL; // Invalid payload size
     }
+    auto eventNameBuf = (char*)malloc(eventNameLen + uriOptCount - 1);
+    if (!eventNameBuf) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    eventName = CString::wrap(eventNameBuf);
+    uriOptCount = 0;
+    it = dec.options();
+    while (it.next()) {
+        if (it.option() == CoapOption::URI_PATH) {
+            if (uriOptCount > 0) {
+                if (uriOptCount > 1) {
+                    *eventNameBuf++ = '/';
+                }
+                memcpy(eventNameBuf, it.data(), it.size());
+                eventNameBuf += it.size();
+            }
+            ++uriOptCount;
+        }
+    }
+    *eventNameBuf = '\0';
     Event* event = nullptr;
     if (!hasBlockOpt || !blockIndex) {
         Event e = {};
         e.handle = lastEventHandle_ + 1;
-        e.name = eventName;
+        e.name = std::move(eventName);
         if (!e.name) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
@@ -338,7 +350,7 @@ int Events::processEventRequest(Message* msg) {
         ++lastEventHandle_;
     } else {
         for (auto& e: outEvents_) {
-            if (strncmp(e.name, eventName, eventNameLen) == 0) {
+            if (strcmp(e.name, eventName) == 0) {
                 event = &e;
                 break;
             }
@@ -366,7 +378,7 @@ int Events::processEventRequest(Message* msg) {
     if (!hasBlockOpt || !blockIndex) {
         const Subscription* subscr = nullptr;
         for (const auto& s: subscr_) {
-            if (eventNameLen <= s.prefixLen && strncmp(s.prefix, eventName, eventNameLen) == 0) {
+            if (eventNameLen <= s.prefixLen && strncmp(s.prefix, event->name, eventNameLen) == 0) {
                 subscr = &s;
                 break;
             }
