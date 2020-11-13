@@ -614,6 +614,8 @@ public:
     void bind(const BleAddress& address) const;
     BleAddress address() const;
 
+    bool valid() const;
+
     bool operator==(const BlePeerDevice& device) const;
     bool operator!=(const BlePeerDevice& device) const;
 
@@ -730,6 +732,8 @@ public:
     bool connected() const;
     void onConnected(BleOnConnectedCallback callback, void* context) const;
     void onDisconnected(BleOnDisconnectedCallback callback, void* context) const;
+
+    BlePeerDevice peerCentral() const;
 
     static BleLocalDevice& getInstance();
 

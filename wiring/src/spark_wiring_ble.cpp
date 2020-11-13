@@ -1398,9 +1398,7 @@ public:
             halService.size = sizeof(hal_ble_svc_t);
             halService.start_handle = service.impl()->startHandle();
             halService.end_handle = service.impl()->endHandle();
-            LOG(TRACE, "Discovering chars of %s", service.UUID().toString().c_str());
             CHECK(hal_ble_gatt_client_discover_characteristics(peer.impl()->connHandle(), &halService, onCharacteristicsDiscovered, &peer, nullptr));
-            LOG(TRACE, "Done");
         }
         for (auto& characteristic : peer.impl()->characteristics()) {
             // Read the user description string if presented.
@@ -1446,7 +1444,6 @@ private:
      * SoftDevice events in queue.
      */
     static void onCharacteristicsDiscovered(const hal_ble_char_discovered_evt_t* event, void* context) {
-        LOG(TRACE, "Characteristic discovered.");
         BlePeerDevice* peer = static_cast<BlePeerDevice*>(context);
         for (size_t i = 0; i < event->count; i++) {
             BleCharacteristic characteristic;
@@ -1707,6 +1704,11 @@ void BlePeerDevice::bind(const BleAddress& address) const {
 BleAddress BlePeerDevice::address() const {
     WiringBleLock lk;
     return impl()->address();
+}
+
+bool BlePeerDevice::valid() const {
+    WiringBleLock lk;
+    return impl()->connHandle() != BLE_INVALID_CONN_HANDLE;
 }
 
 bool BlePeerDevice::operator==(const BlePeerDevice& device) const {
@@ -2176,7 +2178,9 @@ int BleLocalDevice::disconnect() const {
     WiringBleLock lk;
     for (auto& p : impl()->peers()) {
         hal_ble_conn_info_t connInfo = {};
-        CHECK(hal_ble_gap_get_connection_info(p.impl()->connHandle(), &connInfo, nullptr));
+        if (hal_ble_gap_get_connection_info(p.impl()->connHandle(), &connInfo, nullptr) != SYSTEM_ERROR_NONE) {
+            continue;
+        }
         if (connInfo.role == BLE_ROLE_PERIPHERAL) {
             lk.unlock(); // To allow HAL BLE thread to invoke wiring callback
             CHECK(hal_ble_gap_disconnect(p.impl()->connHandle(), nullptr));
@@ -2200,6 +2204,20 @@ int BleLocalDevice::disconnectAll() const {
         lk.lock();
     }
     return SYSTEM_ERROR_NONE;
+}
+
+BlePeerDevice BleLocalDevice::peerCentral() const {
+    WiringBleLock lk;
+    for (auto& p : impl()->peers()) {
+        hal_ble_conn_info_t connInfo = {};
+        if (hal_ble_gap_get_connection_info(p.impl()->connHandle(), &connInfo, nullptr) != SYSTEM_ERROR_NONE) {
+            continue;
+        }
+        if (connInfo.role == BLE_ROLE_PERIPHERAL) {
+            return p;
+        }
+    }
+    return BlePeerDevice();
 }
 
 BleCharacteristic BleLocalDevice::addCharacteristic(const BleCharacteristic& characteristic) {
