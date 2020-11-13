@@ -63,7 +63,7 @@ using std::swap; // For ADL
 
 int Events::beginEvent(int handle, const char* name, int type, int size, unsigned flags,
         spark_protocol_event_status_fn statusFn, void* userData) {
-    if (handle > 0) {
+    if (handle <= 0) {
         Event e = {};
         e.handle = lastEventHandle_ + 1;
         e.name = name;
@@ -321,9 +321,6 @@ int Events::processEventRequest(Message* msg) {
         Event e = {};
         e.handle = lastEventHandle_ + 1;
         e.name = std::move(eventName);
-        if (!e.name) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
         if (hasBlockOpt && hasMoreData) {
             if (hasSizeOpt) {
                 e.dataSize = dataSize;
@@ -349,7 +346,7 @@ int Events::processEventRequest(Message* msg) {
         event = &inEvents_.last();
         ++lastEventHandle_;
     } else {
-        for (auto& e: outEvents_) {
+        for (auto& e: inEvents_) {
             if (strcmp(e.name, eventName) == 0) {
                 event = &e;
                 break;
@@ -374,6 +371,7 @@ int Events::processEventRequest(Message* msg) {
         CHECK(sendResponse(CoapType::ACK, CoapCode::CHANGED, dec.id(), event->token));
     } else {
         CHECK(sendEmptyAck(dec.id()));
+        ++event->blockIndex;
     }
     if (!hasBlockOpt || !blockIndex) {
         const Subscription* subscr = nullptr;
