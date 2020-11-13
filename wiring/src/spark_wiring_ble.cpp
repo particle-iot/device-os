@@ -1085,6 +1085,12 @@ public:
         return nullptr;
     }
 
+    /*
+     * WARN: Calling BLE HAL APIs those acquiring the BLE HAL lock in this function
+     * will suspend the execution of the callback until the current thread release the BLE HAL lock. Or the BLE HAL
+     * APIs those are invoked here must not acquire the BLE HAL lock. Otherwise, the HAL BLE thread cannot process 
+     * SoftDevice events in queue.
+     */
     static void onBleLinkEvents(const hal_ble_link_evt_t* event, void* context) {
         auto impl = static_cast<BleLocalDeviceImpl*>(context);
         WiringBleLock lk;
@@ -1392,7 +1398,9 @@ public:
             halService.size = sizeof(hal_ble_svc_t);
             halService.start_handle = service.impl()->startHandle();
             halService.end_handle = service.impl()->endHandle();
+            LOG(TRACE, "Discovering chars of %s", service.UUID().toString().c_str());
             CHECK(hal_ble_gatt_client_discover_characteristics(peer.impl()->connHandle(), &halService, onCharacteristicsDiscovered, &peer, nullptr));
+            LOG(TRACE, "Done");
         }
         for (auto& characteristic : peer.impl()->characteristics()) {
             // Read the user description string if presented.
@@ -1414,7 +1422,8 @@ private:
      * WARN: This is executed from HAL ble thread. The current thread which starts the service discovery procedure
      * has acquired the BLE HAL lock. Calling BLE HAL APIs those acquiring the BLE HAL lock in this function
      * will suspend the execution of the callback until the current thread release the BLE HAL lock. Or the BLE HAL
-     * APIs those are invoked here must not acquire the BLE HAL lock.
+     * APIs those are invoked here must not acquire the BLE HAL lock. Otherwise, the HAL BLE thread cannot process 
+     * SoftDevice events in queue.
      */
     static void onServicesDiscovered(const hal_ble_svc_discovered_evt_t* event, void* context) {
         BlePeerDevice* peer = static_cast<BlePeerDevice*>(context);
@@ -1433,9 +1442,11 @@ private:
      * WARN: This is executed from HAL ble thread. The current thread which starts the characteristic discovery procedure
      * has acquired the BLE HAL lock. Calling BLE HAL APIs those acquiring the BLE HAL lock in this function
      * will suspend the execution of the callback until the current thread release the BLE HAL lock. Or the BLE HAL
-     * APIs those are invoked here must not acquire the BLE HAL lock.
+     * APIs those are invoked here must not acquire the BLE HAL lock. Otherwise, the HAL BLE thread cannot process 
+     * SoftDevice events in queue.
      */
     static void onCharacteristicsDiscovered(const hal_ble_char_discovered_evt_t* event, void* context) {
+        LOG(TRACE, "Characteristic discovered.");
         BlePeerDevice* peer = static_cast<BlePeerDevice*>(context);
         for (size_t i = 0; i < event->count; i++) {
             BleCharacteristic characteristic;
@@ -1485,7 +1496,6 @@ BlePeerDevice& BlePeerDevice::operator=(const BlePeerDevice& peer) {
 }
 
 Vector<BleService> BlePeerDevice::discoverAllServices() {
-    WiringBleLock lk;
     if (!impl()->servicesDiscovered()) {
         BleDiscoveryDelegator discovery;
         if (discovery.discoverAllServices(*this) == SYSTEM_ERROR_NONE) {
@@ -1496,7 +1506,6 @@ Vector<BleService> BlePeerDevice::discoverAllServices() {
 }
 
 ssize_t BlePeerDevice::discoverAllServices(BleService* svcs, size_t count) {
-    WiringBleLock lk;
     CHECK_TRUE(svcs && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     if (!impl()->servicesDiscovered()) {
         BleDiscoveryDelegator discovery;
@@ -1507,7 +1516,6 @@ ssize_t BlePeerDevice::discoverAllServices(BleService* svcs, size_t count) {
 }
 
 Vector<BleCharacteristic> BlePeerDevice::discoverAllCharacteristics() {
-    WiringBleLock lk;
     if (!impl()->servicesDiscovered()) {
         discoverAllServices();
     }
@@ -1521,7 +1529,6 @@ Vector<BleCharacteristic> BlePeerDevice::discoverAllCharacteristics() {
 }
 
 ssize_t BlePeerDevice::discoverAllCharacteristics(BleCharacteristic* chars, size_t count) {
-    WiringBleLock lk;
     CHECK_TRUE(chars && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     if (!impl()->servicesDiscovered()) {
         discoverAllServices();
@@ -1535,12 +1542,12 @@ ssize_t BlePeerDevice::discoverAllCharacteristics(BleCharacteristic* chars, size
 }
 
 Vector<BleService> BlePeerDevice::services() {
-    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
+    WiringBleLock lk;
     return impl()->services();
 }
 
 size_t BlePeerDevice::services(BleService* svcs, size_t count) {
-    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
+    WiringBleLock lk;
     CHECK_TRUE(svcs && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     count = std::min((int)count, impl()->services().size());
     for (size_t i = 0; i < count; i++) {
@@ -1550,7 +1557,7 @@ size_t BlePeerDevice::services(BleService* svcs, size_t count) {
 }
 
 bool BlePeerDevice::getServiceByUUID(BleService& service, const BleUuid& uuid) const {
-    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
+    WiringBleLock lk;
     for (auto& existSvc : impl()->services()) {
         if (existSvc.UUID() == uuid) {
             service = existSvc;
@@ -1561,12 +1568,12 @@ bool BlePeerDevice::getServiceByUUID(BleService& service, const BleUuid& uuid) c
 }
 
 Vector<BleCharacteristic> BlePeerDevice::characteristics() {
-    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
+    WiringBleLock lk;
     return impl()->characteristics();
 }
 
 size_t BlePeerDevice::characteristics(BleCharacteristic* chars, size_t count) {
-    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
+    WiringBleLock lk;
     CHECK_TRUE(chars && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     count = std::min((int)count, impl()->characteristics().size());
     for (size_t i = 0; i < count; i++) {
@@ -1576,7 +1583,7 @@ size_t BlePeerDevice::characteristics(BleCharacteristic* chars, size_t count) {
 }
 
 bool BlePeerDevice::getCharacteristicByDescription(BleCharacteristic& characteristic, const char* desc) const {
-    // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
+    WiringBleLock lk;
     CHECK_TRUE(desc, false);
     for (auto& existChar : impl()->characteristics()) {
         if (!strcmp(existChar.description().c_str(), desc)) {
@@ -1592,6 +1599,7 @@ bool BlePeerDevice::getCharacteristicByDescription(BleCharacteristic& characteri
 }
 
 bool BlePeerDevice::getCharacteristicByUUID(BleCharacteristic& characteristic, const BleUuid& uuid) const {
+    WiringBleLock lk;
     for (auto& existChar : impl()->characteristics()) {
         if (existChar.UUID() == uuid) {
             characteristic = existChar;
@@ -1602,7 +1610,6 @@ bool BlePeerDevice::getCharacteristicByUUID(BleCharacteristic& characteristic, c
 }
 
 int BlePeerDevice::connect(const BleAddress& addr, const BleConnectionParams* params, bool automatic) {
-    WiringBleLock lk;
     hal_ble_conn_cfg_t connCfg = {};
     connCfg.version = BLE_API_VERSION;
     connCfg.size = sizeof(hal_ble_conn_cfg_t);
@@ -1616,11 +1623,16 @@ int BlePeerDevice::connect(const BleAddress& addr, const BleConnectionParams* pa
         return ret;
     }
     bind(addr);
-    if (!BleLocalDevice::getInstance().impl()->peers().append(*this)) {
-        LOG(ERROR, "Cannot add new peer device.");
-        hal_ble_gap_disconnect(impl()->connHandle(), nullptr);
-        impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
-        return SYSTEM_ERROR_NO_MEMORY;
+    {
+        WiringBleLock lk;
+        if (!BleLocalDevice::getInstance().impl()->peers().append(*this)) {
+            LOG(ERROR, "Cannot add new peer device.");
+            lk.unlock();
+            hal_ble_gap_disconnect(impl()->connHandle(), nullptr);
+            lk.lock();
+            impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
     }
     LOG(TRACE, "New peripheral is connected.");
     if (automatic) {
@@ -1668,31 +1680,37 @@ int BlePeerDevice::connect(bool automatic) {
 }
 
 int BlePeerDevice::disconnect() const {
-    WiringBleLock lk;
     CHECK_TRUE(connected(), SYSTEM_ERROR_INVALID_STATE);
     CHECK(hal_ble_gap_disconnect(impl()->connHandle(), nullptr));
-    BleLocalDevice::getInstance().impl()->peers().removeOne(*this);
-    /*
-     * Only the connection handle is invalid. The service and characteristics being
-     * discovered previously can be re-used next time once connected if needed.
-     */
-    impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
+    {
+        WiringBleLock lk;
+        BleLocalDevice::getInstance().impl()->peers().removeOne(*this);
+        /*
+        * Only the connection handle is invalid. The service and characteristics being
+        * discovered previously can be re-used next time once connected if needed.
+        */
+        impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
+    }
     return SYSTEM_ERROR_NONE;
 }
 
 bool BlePeerDevice::connected() const {
+    WiringBleLock lk;
     return impl()->connHandle() != BLE_INVALID_CONN_HANDLE;
 }
 
 void BlePeerDevice::bind(const BleAddress& address) const {
+    WiringBleLock lk;
     impl()->address() = address;
 }
 
 BleAddress BlePeerDevice::address() const {
+    WiringBleLock lk;
     return impl()->address();
 }
 
 bool BlePeerDevice::operator==(const BlePeerDevice& device) const {
+    WiringBleLock lk;
     if (impl()->connHandle() == device.impl()->connHandle() && address() == device.address()) {
         return true;
     }
@@ -1700,6 +1718,7 @@ bool BlePeerDevice::operator==(const BlePeerDevice& device) const {
 }
 
 bool BlePeerDevice::operator!=(const BlePeerDevice& device) const {
+    WiringBleLock lk;
     return !(*this == device);
 }
 
@@ -1730,7 +1749,6 @@ void BleLocalDevice::onDisconnected(BleOnDisconnectedCallback callback, void* co
 }
 
 int BleLocalDevice::begin() const {
-    WiringBleLock lk;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1745,35 +1763,36 @@ int BleLocalDevice::end() const {
      * then this API is called during device in the Listening mode, device will
      * restart broadcasting automatically when device exits the Listening mode.
      */
-    WiringBleLock lk;
     disconnectAll(); // BLE HAL will guard that the Peripheral connection is remained if device is in the Listening mode.
-    impl()->peers().clear();
+    {
+        WiringBleLock lk;
+        impl()->peers().clear();
+    }
     stopAdvertising(); // BLE HAL will guard that device keeps broadcasting if device is in the Listening mode.
     stopScanning();
     return SYSTEM_ERROR_NONE;
 }
 
 int BleLocalDevice::on() const {
-    WiringBleLock lk;
     CHECK(hal_ble_stack_init(nullptr));
     return SYSTEM_ERROR_NONE;
 }
 
 int BleLocalDevice::off() const {
-    WiringBleLock lk;
     CHECK(hal_ble_stack_deinit(nullptr));
-    impl()->peers().clear();
+    {
+        WiringBleLock lk;
+        impl()->peers().clear();
+    }
     return SYSTEM_ERROR_NONE;
 }
 
 int BleLocalDevice::setAddress(const BleAddress& address) const {
-    WiringBleLock lk;
     hal_ble_addr_t addr = address.halAddress();
     return hal_ble_gap_set_device_address(&addr, nullptr);
 }
 
 int BleLocalDevice::setAddress(const char* address, BleAddressType type) const {
-    WiringBleLock lk;
     if (!address) {
         // Restores the default random static address.
         return hal_ble_gap_set_device_address(nullptr, nullptr);
@@ -1783,20 +1802,17 @@ int BleLocalDevice::setAddress(const char* address, BleAddressType type) const {
 }
 
 int BleLocalDevice::setAddress(const String& address, BleAddressType type) const {
-    WiringBleLock lk;
     BleAddress addr(address, type);
     return setAddress(addr);
 }
 
 BleAddress BleLocalDevice::address() const {
-    WiringBleLock lk;
     hal_ble_addr_t halAddr = {};
     hal_ble_gap_get_device_address(&halAddr, nullptr);
     return BleAddress(halAddr);
 }
 
 int BleLocalDevice::setDeviceName(const char* name, size_t len) const {
-    WiringBleLock lk;
     return hal_ble_gap_set_device_name(name, len, nullptr);
 }
 
@@ -1809,13 +1825,11 @@ int BleLocalDevice::setDeviceName(const String& name) const {
 }
 
 ssize_t BleLocalDevice::getDeviceName(char* name, size_t len) const {
-    WiringBleLock lk;
     CHECK(hal_ble_gap_get_device_name(name, len, nullptr));
     return strnlen(name, BLE_MAX_DEV_NAME_LEN);
 }
 
 String BleLocalDevice::getDeviceName() const {
-    WiringBleLock lk;
     String name;
     char buf[BLE_MAX_DEV_NAME_LEN + 1] = {}; // NULL-terminated string is returned.
     if (getDeviceName(buf, sizeof(buf)) > 0) {
@@ -1825,29 +1839,24 @@ String BleLocalDevice::getDeviceName() const {
 }
 
 int BleLocalDevice::setTxPower(int8_t txPower) const {
-    WiringBleLock lk;
     return hal_ble_gap_set_tx_power(txPower, nullptr);
 }
 
 int BleLocalDevice::txPower(int8_t* txPower) const {
-    WiringBleLock lk;
     return hal_ble_gap_get_tx_power(txPower, nullptr);
 }
 
 int8_t BleLocalDevice::txPower() const {
-    WiringBleLock lk;
     int8_t tx = 0x7F;
     hal_ble_gap_get_tx_power(&tx, nullptr);
     return tx;
 }
 
 int BleLocalDevice::selectAntenna(BleAntennaType antenna) const {
-    WiringBleLock lk;
     return hal_ble_select_antenna(static_cast<hal_ble_ant_type_t>(antenna), nullptr);
 }
 
 int BleLocalDevice::setAdvertisingInterval(uint16_t interval) const {
-    WiringBleLock lk;
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
@@ -1856,7 +1865,6 @@ int BleLocalDevice::setAdvertisingInterval(uint16_t interval) const {
 }
 
 int BleLocalDevice::setAdvertisingTimeout(uint16_t timeout) const {
-    WiringBleLock lk;
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
@@ -1865,7 +1873,6 @@ int BleLocalDevice::setAdvertisingTimeout(uint16_t timeout) const {
 }
 
 int BleLocalDevice::setAdvertisingType(BleAdvertisingEventType type) const {
-    WiringBleLock lk;
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
@@ -1874,7 +1881,6 @@ int BleLocalDevice::setAdvertisingType(BleAdvertisingEventType type) const {
 }
 
 int BleLocalDevice::setAdvertisingParameters(const BleAdvertisingParams* params) const {
-    WiringBleLock lk;
     return hal_ble_gap_set_advertising_parameters(params, nullptr);
 }
 
@@ -1883,7 +1889,6 @@ int BleLocalDevice::setAdvertisingParameters(const BleAdvertisingParams& params)
 }
 
 int BleLocalDevice::setAdvertisingParameters(uint16_t interval, uint16_t timeout, BleAdvertisingEventType type) const {
-    WiringBleLock lk;
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
@@ -1894,7 +1899,6 @@ int BleLocalDevice::setAdvertisingParameters(uint16_t interval, uint16_t timeout
 }
 
 int BleLocalDevice::getAdvertisingParameters(BleAdvertisingParams* params) const {
-    WiringBleLock lk;
     return hal_ble_gap_get_advertising_parameters(params, nullptr);
 }
 
@@ -1903,7 +1907,6 @@ int BleLocalDevice::getAdvertisingParameters(BleAdvertisingParams& params) const
 }
 
 int BleLocalDevice::setAdvertisingData(BleAdvertisingData* advertisingData) const {
-    WiringBleLock lk;
     if (advertisingData == nullptr) {
         return hal_ble_gap_set_advertising_data(nullptr, 0, nullptr);
     } else {
@@ -1916,7 +1919,6 @@ int BleLocalDevice::setAdvertisingData(BleAdvertisingData& advertisingData) cons
 }
 
 int BleLocalDevice::setScanResponseData(BleAdvertisingData* scanResponse) const {
-    WiringBleLock lk;
     if (scanResponse == nullptr) {
         return hal_ble_gap_set_scan_response_data(nullptr, 0, nullptr);
     } else {
@@ -1930,7 +1932,6 @@ int BleLocalDevice::setScanResponseData(BleAdvertisingData& scanResponse) const 
 }
 
 ssize_t BleLocalDevice::getAdvertisingData(BleAdvertisingData* advertisingData) const {
-    WiringBleLock lk;
     if (advertisingData == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -1945,7 +1946,6 @@ ssize_t BleLocalDevice::getAdvertisingData(BleAdvertisingData& advertisingData) 
 }
 
 ssize_t BleLocalDevice::getScanResponseData(BleAdvertisingData* scanResponse) const {
-    WiringBleLock lk;
     if (scanResponse == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -1960,12 +1960,10 @@ ssize_t BleLocalDevice::getScanResponseData(BleAdvertisingData& scanResponse) co
 }
 
 int BleLocalDevice::advertise() const {
-    WiringBleLock lk;
     return hal_ble_gap_start_advertising(nullptr);
 }
 
 int BleLocalDevice::advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse) const {
-    WiringBleLock lk;
     CHECK(setAdvertisingData(advertisingData));
     CHECK(setScanResponseData(scanResponse));
     return advertise();
@@ -1980,7 +1978,6 @@ int BleLocalDevice::advertise(BleAdvertisingData& advertisingData, BleAdvertisin
 }
 
 int BleLocalDevice::advertise(const iBeacon& beacon) const {
-    WiringBleLock lk;
     BleAdvertisingData* advData = new(std::nothrow) BleAdvertisingData(beacon);
     SCOPE_GUARD ({
         if (advData) {
@@ -1994,12 +1991,10 @@ int BleLocalDevice::advertise(const iBeacon& beacon) const {
 }
 
 int BleLocalDevice::stopAdvertising() const {
-    WiringBleLock lk;
     return hal_ble_gap_stop_advertising(nullptr);
 }
 
 bool BleLocalDevice::advertising() const {
-    WiringBleLock lk;
     return hal_ble_gap_is_advertising(nullptr);
 }
 
@@ -2090,7 +2085,6 @@ private:
 };
 
 int BleLocalDevice::setScanTimeout(uint16_t timeout) const {
-    WiringBleLock lk;
     hal_ble_scan_params_t scanParams = {};
     scanParams.size = sizeof(hal_ble_scan_params_t);
     hal_ble_gap_get_scan_parameters(&scanParams, nullptr);
@@ -2099,7 +2093,6 @@ int BleLocalDevice::setScanTimeout(uint16_t timeout) const {
 }
 
 int BleLocalDevice::setScanParameters(const BleScanParams* params) const {
-    WiringBleLock lk;
     return hal_ble_gap_set_scan_parameters(params, nullptr);
 }
 
@@ -2108,7 +2101,6 @@ int BleLocalDevice::setScanParameters(const BleScanParams& params) const {
 }
 
 int BleLocalDevice::getScanParameters(BleScanParams* params) const {
-    WiringBleLock lk;
     return hal_ble_gap_get_scan_parameters(params, nullptr);
 }
 
@@ -2117,19 +2109,16 @@ int BleLocalDevice::getScanParameters(BleScanParams& params) const {
 }
 
 int BleLocalDevice::scan(BleOnScanResultCallback callback, void* context) const {
-    WiringBleLock lk;
     BleScanDelegator scanner;
     return scanner.start(callback, context);
 }
 
 int BleLocalDevice::scan(BleOnScanResultCallbackRef callback, void* context) const {
-    WiringBleLock lk;
     BleScanDelegator scanner;
     return scanner.start(callback, context);
 }
 
 int BleLocalDevice::scan(BleScanResult* results, size_t resultCount) const {
-    WiringBleLock lk;
     if (results == nullptr || resultCount == 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -2138,7 +2127,6 @@ int BleLocalDevice::scan(BleScanResult* results, size_t resultCount) const {
 }
 
 Vector<BleScanResult> BleLocalDevice::scan() const {
-    WiringBleLock lk;
     BleScanDelegator scanner;
     return scanner.start();
 }
@@ -2148,7 +2136,6 @@ int BleLocalDevice::stopScanning() const {
 }
 
 int BleLocalDevice::setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) const {
-    WiringBleLock lk;
     hal_ble_conn_params_t ppcp = {};
     ppcp.size = sizeof(hal_ble_conn_params_t);
     ppcp.min_conn_interval = minInterval;
@@ -2191,7 +2178,9 @@ int BleLocalDevice::disconnect() const {
         hal_ble_conn_info_t connInfo = {};
         CHECK(hal_ble_gap_get_connection_info(p.impl()->connHandle(), &connInfo, nullptr));
         if (connInfo.role == BLE_ROLE_PERIPHERAL) {
+            lk.unlock(); // To allow HAL BLE thread to invoke wiring callback
             CHECK(hal_ble_gap_disconnect(p.impl()->connHandle(), nullptr));
+            lk.lock();
             impl()->peers().removeOne(p);
             return SYSTEM_ERROR_NONE;
         }
@@ -2200,14 +2189,15 @@ int BleLocalDevice::disconnect() const {
 }
 
 int BleLocalDevice::disconnect(const BlePeerDevice& peer) const {
-    WiringBleLock lk;
     return peer.disconnect();
 }
 
 int BleLocalDevice::disconnectAll() const {
     WiringBleLock lk;
     for (auto& p : impl()->peers()) {
+        lk.unlock();
         p.disconnect();
+        lk.lock();
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -2271,14 +2261,12 @@ BleCharacteristic BleLocalDevice::addCharacteristic(const BleCharacteristic& cha
 }
 
 BleCharacteristic BleLocalDevice::addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
-    WiringBleLock lk;
     BleCharacteristic characteristic(desc, properties, callback, context);
     addCharacteristic(characteristic);
     return characteristic;
 }
 
 BleCharacteristic BleLocalDevice::addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
-    WiringBleLock lk;
     return addCharacteristic(desc.c_str(), properties, callback, context);
 }
 
