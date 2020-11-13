@@ -37,7 +37,7 @@ function runBuildJob()
     result_code=$?
   fi
   [[ ${result_code} -eq 0 ]]
-  testcase
+  testcase "$2 ${@:3}"
 }
 
 MAKE=runmake
@@ -49,7 +49,7 @@ PLATFORM=( photon p1 electron argon boron asom bsom b5som )
 # P1 bootloader built with gcc 4.8.4 doesn't fit flash, disabling for now
 PLATFORM_BOOTLOADER=( photon electron argon boron asom bsom b5som tracker )
 APP=( "" tinker product_id_and_version)
-TEST=( wiring/api wiring/no_fixture )
+TEST=( wiring/api wiring/no_fixture wiring/no_fixture_long_running )
 
 MODULAR_PLATFORM=( photon p1 electron argon boron asom bsom b5som tracker )
 
@@ -63,19 +63,42 @@ echo "running matrix PLATFORM=$PLATFORM MODULAR_PLATFORM=$MODULAR_PLATFORM PLATF
 BUILD_JOBS=()
 # Just in case remove build/jobs folder
 rm -rf build/jobs
+# Just in case remove .has_failures from root
+rm -f "${PWD}/.has_failures"
 
-# Build any necessary prerequisites first
-# Only build Boost if gcc is being built separately without unit tests
-if platform gcc; then
+# Build/install any necessary prerequisites first
+# gcovr for coverage reports
+if platform 'unit-test'; then
+  ./ci/install_gcovr.sh
+  testcase "0 PLATFORM=\"unit-test\" ci/install_gcovr.sh"
+fi
+
+# Boost for gcc or unit-test builds
+if platform gcc || platform 'unit-test'; then
   source ci/install_boost.sh
-  if ! platform 'unit-test'; then
-    echo
-    echo '-----------------------------------------------------------------------'
-    ci/build_boost.sh
-    testcase
-  fi
-  cmd="${MAKE} PLATFORM=gcc"
+  testcase "0 PLATFORM=\"gcc\" PLATFORM=\"unit-test\" ci/install_boost.sh"
+  echo
+  echo '-----------------------------------------------------------------------'
+  ci/build_boost.sh
+  testcase "0 PLATFORM=\"gcc\" PLATFORM=\"unit-test\" ci/build_boost.sh"
+fi
+echo $BOOST_ROOT
+
+if [[ -f "${PWD}/.has_failures" ]]; then
+  mkdir build/jobs
+  cp "${PWD}/.has_failures" build/jobs/
+fi
+
+# Add GCC platform build
+if platform gcc; then
+  cmd="${MAKE} PLATFORM=\"gcc\""
   BUILD_JOBS+=("main ${#BUILD_JOBS[@]} ${cmd}")
+fi
+
+# Add unit tests to build jobs
+if platform 'unit-test'; then
+  cmd="PLATFORM=\"unit-test\" ../../ci/unit_tests.sh"
+  BUILD_JOBS+=("ci ${#BUILD_JOBS[@]} ${cmd}")
 fi
 
 # Newhal Build
@@ -153,8 +176,9 @@ echo "Running ${#BUILD_JOBS[@]} build jobs on ${NPROC} cores"
 # Silence an annoying notice
 echo "will cite" | parallel --citation > /dev/null 2>&1
 
+printf '%s\n' "${BUILD_JOBS[@]}"
+
 printf '%s\n' "${BUILD_JOBS[@]}" | parallel --colsep ' ' -j "${NPROC}" runBuildJob
 
 cd "${BUILD_JOBS_DIRECTORY}"
-
 checkFailures || exit 1
