@@ -222,5 +222,232 @@ test(BLE_18_Peripheral_Notify_Characteristic_With_Notify_Indicate_Property_Nack)
     assertTrue(ret == (int)str.length());
 }
 
+test(BLE_19_Peripheral_Pairing_Receiption_Io_Caps_None) {
+    bool pairingRequested = false;
+    BlePeerDevice peer;
+    int status = -1;
+
+    BLE.setPairingIoCaps(BlePairingIoCaps::NONE);
+    BLE.onPairingEvent([&](const BlePairingEvent& event) {
+        if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
+            pairingRequested = true;
+            peer = event.peer;
+        } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
+            status = event.payload.status;
+        }
+    });
+
+    size_t wait = 200; //Wait for 20s
+    while (!pairingRequested && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+    assertTrue(BLE.isPairing(peer));
+
+    wait = 100;
+    while (BLE.isPairing(peer) && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+    assertTrue(BLE.isPaired(peer));
+    assertEqual(status, (int)SYSTEM_ERROR_NONE);
+
+    wait = 50;
+    while (BLE.connected()  && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+}
+
+test(BLE_20_Peripheral_Initiate_Pairing_Io_Caps_None) {
+    size_t wait = 200; // Wait 20s for establishing connection.
+    while(!BLE.connected() && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+
+    int status = -1;
+    BLE.onPairingEvent([&](const BlePairingEvent& event) {
+        if (event.type == BlePairingEventType::STATUS_UPDATED) {
+            status = event.payload.status;
+        }
+    });
+
+    BlePeerDevice peer = BLE.peerCentral();
+    assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
+    assertTrue(BLE.isPairing(peer));
+
+    wait = 200;
+    while (BLE.isPairing(peer) && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+    assertTrue(BLE.isPaired(peer));
+    assertEqual(status, (int)SYSTEM_ERROR_NONE);
+
+    wait = 50;
+    while (BLE.connected()  && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+}
+
+test(BLE_21_Peripheral_Pairing_Receiption_Io_Caps_Keyboard_Only) {
+    bool pairingRequested = false;
+    BlePeerDevice peer;
+    int status = -1;
+
+    BLE.setPairingIoCaps(BlePairingIoCaps::KEYBOARD_ONLY);
+    BLE.onPairingEvent([&](const BlePairingEvent& event) {
+        if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
+            pairingRequested = true;
+            peer = event.peer;
+        } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
+            status = event.payload.status;
+        } else if (event.type == BlePairingEventType::PASSKEY_INPUT) {
+            Serial.print("Please enter 6-digits passkey displayed on the other side: ");
+            uint8_t i = 0;
+            uint8_t passkey[BLE_PAIRING_PASSKEY_LEN];
+            while (i < BLE_PAIRING_PASSKEY_LEN) {
+                if (Serial.available()) {
+                    passkey[i] = Serial.read();
+                    Serial.write(passkey[i++]);
+                }
+            }
+            Serial.println("");
+            BLE.setPairingPasskey(event.peer, passkey);
+        }
+    });
+
+    size_t wait = 200; //Wait for 20s
+    while (!pairingRequested && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+    assertTrue(BLE.isPairing(peer));
+
+    wait = 100;
+    while (BLE.isPairing(peer) && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+    assertTrue(BLE.isPaired(peer));
+    assertEqual(status, (int)SYSTEM_ERROR_NONE);
+
+    wait = 50;
+    while (BLE.connected()  && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+}
+
+test(BLE_22_Peripheral_Pairing_Receiption_Io_Caps_Display_Only) {
+    bool pairingRequested = false;
+    BlePeerDevice peer;
+    int status = -1;
+
+    BLE.setPairingIoCaps(BlePairingIoCaps::DISPLAY_ONLY);
+    BLE.onPairingEvent([&](const BlePairingEvent& event) {
+        if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
+            pairingRequested = true;
+            peer = event.peer;
+        } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
+            status = event.payload.status;
+        } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY) {
+            Serial.print("Please enter the following passkey on the other side: ");
+            for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
+                Serial.printf("%c", event.payload.passkey[i]);
+            }
+            Serial.println("");
+        }
+    });
+
+    size_t wait = 200; //Wait for 20s
+    while (!pairingRequested && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+    assertTrue(BLE.isPairing(peer));
+
+    wait = 100;
+    while (BLE.isPairing(peer) && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+    assertTrue(BLE.isPaired(peer));
+    assertEqual(status, (int)SYSTEM_ERROR_NONE);
+
+    while (BLE.connected());
+}
+
+test(BLE_23_Peripheral_Pairing_Receiption_Io_Caps_Keyboard_Display) {
+    bool pairingRequested = false;
+    BlePeerDevice peer;
+    int status = -1;
+
+    BLE.setPairingIoCaps(BlePairingIoCaps::KEYBOARD_ONLY);
+    BLE.onPairingEvent([&](const BlePairingEvent& event) {
+        if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
+            pairingRequested = true;
+            peer = event.peer;
+        } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
+            status = event.payload.status;
+        } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY) {
+            Serial.print("Please enter the following passkey on the other side: ");
+            for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
+                Serial.printf("%c", event.payload.passkey[i]);
+            }
+            Serial.println("");
+        } else if (event.type == BlePairingEventType::PASSKEY_INPUT) {
+            Serial.print("Please enter 6-digits passkey displayed on the other side: ");
+            uint8_t i = 0;
+            uint8_t passkey[BLE_PAIRING_PASSKEY_LEN];
+            while (i < BLE_PAIRING_PASSKEY_LEN) {
+                if (Serial.available()) {
+                    passkey[i] = Serial.read();
+                    Serial.write(passkey[i++]);
+                }
+            }
+            Serial.println("");
+            BLE.setPairingPasskey(event.peer, passkey);
+        }
+    });
+
+    size_t wait = 200; //Wait for 20s
+    while (!pairingRequested && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+    assertTrue(BLE.isPairing(peer));
+
+    wait = 100;
+    while (BLE.isPairing(peer) && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+    assertTrue(BLE.isPaired(peer));
+    assertEqual(status, (int)SYSTEM_ERROR_NONE);
+
+    wait = 50;
+    while (BLE.connected()  && wait > 0) {
+        delay(100);
+        wait--;
+    }
+    assertTrue(wait > 0);
+}
+
 #endif // #if Wiring_BLE == 1
 

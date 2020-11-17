@@ -147,6 +147,33 @@ enum class BleTxRxType : uint8_t {
     NACK = 2
 };
 
+enum class BlePairingIoCaps : uint8_t {
+    NONE = BLE_IO_CAPS_NONE,
+    DISPLAY_ONLY = BLE_IO_CAPS_DISPLAY_ONLY,
+    DISPLAY_YESNO = BLE_IO_CAPS_DISPLAY_YESNO,
+    KEYBOARD_ONLY = BLE_IO_CAPS_KEYBOARD_ONLY,
+    KEYBOARD_DISPLAY = BLE_IO_CAPS_KEYBOARD_DISPLAY
+};
+
+enum class BlePairingEventType : uint8_t {
+    REQUEST_RECEIVED = BLE_EVT_PAIRING_REQUEST_RECEIVED,
+    PASSKEY_DISPLAY = BLE_EVT_PAIRING_PASSKEY_DISPLAY,
+    PASSKEY_INPUT = BLE_EVT_PAIRING_PASSKEY_INPUT,
+    STATUS_UPDATED = BLE_EVT_PAIRING_STATUS_UPDATED
+};
+
+union BlePairingEventPlayload {
+    const uint8_t* passkey;
+    int status;
+};
+
+struct BlePairingEvent {
+    BlePeerDevice& peer;
+    BlePairingEventType type;
+    size_t payloadLen;
+    BlePairingEventPlayload payload;
+};
+
 typedef hal_ble_conn_handle_t BleConnectionHandle;
 typedef hal_ble_attr_handle_t BleAttributeHandle;
 
@@ -155,6 +182,7 @@ typedef void (*BleOnScanResultCallback)(const BleScanResult* result, void* conte
 typedef void (*BleOnScanResultCallbackRef)(const BleScanResult& result, void* context);
 typedef void (*BleOnConnectedCallback)(const BlePeerDevice& peer, void* context);
 typedef void (*BleOnDisconnectedCallback)(const BlePeerDevice& peer, void* context);
+typedef void (*BleOnPairingEventCallback)(const BlePairingEvent& event, void* context);
 
 class BleAdvertisingParams : public hal_ble_adv_params_t {
 };
@@ -925,7 +953,7 @@ public:
     Vector<BleScanResult> scanWithFilter(const BleScanFilter& filter) const;
 
     template<typename T>
-    int scanWithFilter(const BleScanFilter& filter, void(T::*callback)(const BleScanResult&), T* instance) {
+    int scanWithFilter(const BleScanFilter& filter, void(T::*callback)(const BleScanResult&), T* instance) const {
         return scanWithFilter(filter, std::bind(callback, instance, _1));
     }
 
@@ -1002,6 +1030,23 @@ public:
     BlePeerDevice connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic = true) const;
     BlePeerDevice connect(const BleAddress& addr, bool automatic = true) const;
 
+    BlePeerDevice peerCentral();
+
+    int setPairingIoCaps(BlePairingIoCaps ioCaps) const;
+    int startPairing(const BlePeerDevice& peer) const;
+    int rejectPairing(const BlePeerDevice& peer) const;
+    int setPairingPasskey(const BlePeerDevice& peer, const uint8_t* passkey) const;
+    bool isPairing(const BlePeerDevice& peer) const;
+    bool isPaired(const BlePeerDevice& peer) const;
+
+    void onPairingEvent(BleOnPairingEventCallback callback, void* context = nullptr) const;
+    void onPairingEvent(const std::function<void(const BlePairingEvent& event)>& callback) const;
+
+    template<typename T>
+    void onPairingEvent(void(T::*callback)(const BlePairingEvent& event), T* instance) const {
+        return onPairingEvent(std::bind(callback, instance, _1));
+    }
+
     // This only disconnect the peer Central device, i.e. when the local device is acting as BLE Peripheral.
     int disconnect() const;
     int disconnect(const BlePeerDevice& peer) const;
@@ -1013,7 +1058,7 @@ public:
     void onConnected(const std::function<void(const BlePeerDevice& peer)>& callback) const;
 
     template<typename T>
-    void onConnected(void(T::*callback)(const BlePeerDevice& peer), T* instance) {
+    void onConnected(void(T::*callback)(const BlePeerDevice& peer), T* instance) const {
         return onConnected(std::bind(callback, instance, _1));
     }
 
@@ -1021,7 +1066,7 @@ public:
     void onDisconnected(const std::function<void(const BlePeerDevice& peer)>& callback) const;
 
     template<typename T>
-    void onDisconnected(void(T::*callback)(const BlePeerDevice& peer), T* instance) {
+    void onDisconnected(void(T::*callback)(const BlePeerDevice& peer), T* instance) const {
         return onDisconnected(std::bind(callback, instance, _1));
     }
 

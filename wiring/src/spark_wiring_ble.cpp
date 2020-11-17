@@ -1103,7 +1103,8 @@ class BleLocalDeviceImpl {
 public:
     BleLocalDeviceImpl()
             : connectedCallback_(nullptr),
-              disconnectedCallback_(nullptr) {
+              disconnectedCallback_(nullptr),
+              pairingEventCallback_(nullptr) {
     }
 
     ~BleLocalDeviceImpl() = default;
@@ -1134,6 +1135,14 @@ public:
 
     void onDisconnectedCallback(std::function<void(const BlePeerDevice& peer)> callback) {
         disconnectedCallback_ = callback;
+    }
+
+    void onPairingEvent(BleOnPairingEventCallback callback, void* context) {
+        pairingEventCallback_ = std::bind(callback, _1, context);
+    }
+
+    void onPairingEvent(std::function<void(const BlePairingEvent& event)> callback) {
+        pairingEventCallback_ = callback;
     }
 
     BlePeerDevice* findPeerDevice(BleConnectionHandle connHandle) {
@@ -1186,6 +1195,31 @@ public:
                 }
                 break;
             }
+            case BLE_EVT_PAIRING_REQUEST_RECEIVED:
+            case BLE_EVT_PAIRING_PASSKEY_DISPLAY:
+            case BLE_EVT_PAIRING_PASSKEY_INPUT:
+            case BLE_EVT_PAIRING_STATUS_UPDATED: {
+                BlePeerDevice* peer = impl->findPeerDevice(event->conn_handle);
+                if (peer) {
+                    if (impl->pairingEventCb_ || impl->wiringPairingEventCb_) {
+                        BlePairingEvent pairingEvent = {
+                            .peer = *peer,
+                            .type = static_cast<BlePairingEventType>(event->type)
+                        };
+                        if (event->type == BLE_EVT_PAIRING_PASSKEY_DISPLAY) {
+                            pairingEvent.payload.passkey = event->params.passkey_display;
+                            pairingEvent.payloadLen = BLE_PAIRING_PASSKEY_LEN;
+                        } else if (event->type == BLE_EVT_PAIRING_STATUS_UPDATED) {
+                            pairingEvent.payload.status = event->params.pairing_status;
+                            pairingEvent.payloadLen = sizeof(int);
+                        }
+                        if (impl->pairingEventCallback_) {
+                            impl->pairingEventCallback_(pairingEvent);
+                        }
+                    }
+                }
+                break;
+            }
             default: {
                 break;
             }
@@ -1198,6 +1232,7 @@ private:
     Vector<BlePeerDevice> peers_;
     std::function<void(const BlePeerDevice& peer)> connectedCallback_;
     std::function<void(const BlePeerDevice& peer)> disconnectedCallback_;
+    std::function<void(const BlePairingEvent& event)> pairingEventCallback_;
 };
 
 
@@ -1526,6 +1561,7 @@ private:
      * SoftDevice events in queue.
      */
     static void onCharacteristicsDiscovered(const hal_ble_char_discovered_evt_t* event, void* context) {
+        LOG(TRACE, "Characteristic discovered.");
         BlePeerDeviceImpl* peerImpl = static_cast<BlePeerDeviceImpl*>(context);
         for (size_t i = 0; i < event->count; i++) {
             BleCharacteristic characteristic;
@@ -2556,6 +2592,55 @@ BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, uint16_t interval,
 BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, bool automatic) const {
     // Do not lock here. This thread is guarded by BLE HAL lock. But it allows the BLE thread to access the wiring data.
     return connect(addr, nullptr, automatic);
+}
+
+BlePeerDevice BleLocalDevice::peerCentral() {
+    WiringBleLock lk;
+    for (auto& p : impl()->peers()) {
+        hal_ble_conn_info_t connInfo = {};
+        if (hal_ble_gap_get_connection_info(p.impl()->connHandle(), &connInfo, nullptr) == SYSTEM_ERROR_NONE) {
+            if (connInfo.role == BLE_ROLE_PERIPHERAL) {
+                return p;
+            }
+        }
+    }
+    return BlePeerDevice();
+}
+
+int BleLocalDevice::setPairingIoCaps(BlePairingIoCaps ioCaps) const {
+    hal_ble_pairing_config_t config = {};
+    config.version = BLE_API_VERSION;
+    config.size = sizeof(hal_ble_pairing_config_t);
+    config.io_caps = static_cast<hal_ble_pairing_io_caps_t>(ioCaps);
+    return hal_ble_gap_set_pairing_config(&config, nullptr);
+}
+
+int BleLocalDevice::startPairing(const BlePeerDevice& peer) const {
+    return hal_ble_gap_start_pairing(peer.impl()->connHandle(), nullptr);
+}
+
+int BleLocalDevice::rejectPairing(const BlePeerDevice& peer) const {
+    return hal_ble_gap_reject_pairing(peer.impl()->connHandle(), nullptr);
+}
+
+int BleLocalDevice::setPairingPasskey(const BlePeerDevice& peer, const uint8_t* passkey) const {
+    return hal_ble_gap_set_pairing_passkey(peer.impl()->connHandle(), passkey, nullptr);
+}
+
+bool BleLocalDevice::isPairing(const BlePeerDevice& peer) const {
+    return hal_ble_gap_is_pairing(peer.impl()->connHandle(), nullptr);
+}
+
+bool BleLocalDevice::isPaired(const BlePeerDevice& peer) const {
+    return hal_ble_gap_is_paired(peer.impl()->connHandle(), nullptr);
+}
+
+void BleLocalDevice::onPairingEvent(BleOnPairingEventCallback callback, void* context) const {
+    impl()->onPairingEvent(callback, context);
+}
+
+void BleLocalDevice::onPairingEvent(const std::function<void(const BlePairingEvent& event)>& callback) const {
+    impl()->onPairingEvent(callback);
 }
 
 int BleLocalDevice::disconnect() const {
