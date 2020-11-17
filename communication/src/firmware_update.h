@@ -27,12 +27,43 @@
 
 #include "system_defs.h"
 
+#include "mbedtls_config.h"
+
 #include <cstdint>
 #include <cstddef>
 
 namespace particle {
 
 namespace protocol {
+
+/**
+ * Minimum supported chunk size.
+ *
+ * This parameter affects the size of the chunk bitmap maintained by the protocol implementation.
+ */
+const size_t MIN_OTA_CHUNK_SIZE = 512;
+
+static_assert(MIN_OTA_CHUNK_SIZE % 4 == 0, "Invalid MIN_OTA_CHUNK_SIZE");
+
+/**
+ * CoAP overhead per chunk message:
+ *
+ * Message header (4 bytes)
+ * Uri-Path option (2 bytes)
+ * Chunk-Index option (4-7 bytes)
+ * Payload marker (1 byte)
+ */
+const size_t OTA_CHUNK_COAP_OVERHEAD = 14;
+
+static_assert(MBEDTLS_SSL_MAX_CONTENT_LEN >= MIN_OTA_CHUNK_SIZE + OTA_CHUNK_COAP_OVERHEAD,
+        "MBEDTLS_SSL_MAX_CONTENT_LEN is too small");
+
+/**
+ * Maximum chunk size.
+ */
+const size_t MAX_OTA_CHUNK_SIZE = (MBEDTLS_SSL_MAX_CONTENT_LEN - OTA_CHUNK_COAP_OVERHEAD) / 4 * 4;
+
+static_assert(MAX_OTA_CHUNK_SIZE >= MIN_OTA_CHUNK_SIZE, "Invalid MAX_OTA_CHUNK_SIZE");
 
 /**
  * Size of the receiver window in bytes.

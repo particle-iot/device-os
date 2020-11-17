@@ -57,7 +57,7 @@ char g_errorMsg[ERROR_MESSAGE_BUFFER_SIZE] = {};
 
 } // namespace
 
-void set_error_message(const char* fmt, ...) {
+void set_system_error_message(const char* fmt, ...) {
 #if HAL_PLATFORM_ERROR_MESSAGES
     if (SYSTEM_THREAD_CURRENT()) {
         va_list args;
@@ -71,7 +71,7 @@ void set_error_message(const char* fmt, ...) {
 #endif
 }
 
-void clear_error_message() {
+void clear_system_error_message() {
 #if HAL_PLATFORM_ERROR_MESSAGES
     if (SYSTEM_THREAD_CURRENT()) {
         g_errorMsg[0] = '\0';
@@ -79,18 +79,18 @@ void clear_error_message() {
 #endif
 }
 
-const char* get_error_message(int error) {
+const char* get_system_error_message(int error) {
 #if HAL_PLATFORM_ERROR_MESSAGES
     if (!SYSTEM_THREAD_CURRENT() || !g_errorMsg[0]) {
-        return get_default_error_message(error, nullptr /* reserved */);
+        return get_default_system_error_message(error, nullptr /* reserved */);
     }
     return g_errorMsg;
 #else
-    return get_default_error_message(error, nullptr);
+    return get_default_system_error_message(error, nullptr);
 #endif
 }
 
-const char* get_default_error_message(int error, void* reserved) {
+const char* get_default_system_error_message(int error, void* reserved) {
     if (error < 0) {
 #if HAL_PLATFORM_ERROR_MESSAGES
         switch (error) {

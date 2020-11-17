@@ -87,10 +87,10 @@
  *
  * This macro also logs the error message under the current logging category.
  */
-#define ERROR_MESSAGE(_fmt, ...) \
+#define SYSTEM_ERROR_MESSAGE(_fmt, ...) \
         do { \
             LOG(ERROR, _fmt, ##__VA_ARGS__); \
-            set_error_message(_fmt, ##__VA_ARGS__); \
+            set_system_error_message(_fmt, ##__VA_ARGS__); \
         } while (false)
 
 /**
@@ -115,12 +115,12 @@ extern "C" {
  */
 // TODO: Perhaps it would be better to not allow overriding the currently set error message until
 // it's explicitly cleared
-void set_error_message(const char* fmt, ...);
+void set_system_error_message(const char* fmt, ...);
 
 /**
  * Clear the last error message.
  */
-void clear_error_message();
+void clear_system_error_message();
 
 /**
  * Get the last error message.
@@ -131,7 +131,7 @@ void clear_error_message();
  * If `error` is negative and the last error message is not set, this function will return the
  * default message for the error code.
  */
-const char* get_error_message(int error);
+const char* get_system_error_message(int error);
 
 /**
  * Get the default error message for the error code.
@@ -139,7 +139,7 @@ const char* get_error_message(int error);
  * @param error Error code.
  * @return Error message.
  */
-const char* get_default_error_message(int error, void* reserved);
+const char* get_default_system_error_message(int error, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"

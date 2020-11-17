@@ -322,7 +322,7 @@ TEST_CASE("FirmwareUpdate") {
             auto cb = w.callbacksMock();
             When(Method(cb, startFirmwareUpdate)).Do([](size_t fileSize, const char* fileHash, size_t* partialSize,
                     unsigned flags) {
-                ERROR_MESSAGE("YOU SHALL NOT PASS!");
+                SYSTEM_ERROR_MESSAGE("YOU SHALL NOT PASS!");
                 return SYSTEM_ERROR_NOT_ALLOWED;
             });
             w.sendStart(1000 /* fileSize */, std::string() /* fileHash */, 512 /* chunkSize */, false /* discardData */);
@@ -798,7 +798,7 @@ TEST_CASE("FirmwareUpdate") {
         }
         SECTION("failed validation") {
             When(Method(cb, finishFirmwareUpdate)).AlwaysDo([=](unsigned flags) {
-                ERROR_MESSAGE("YOU SHALL NOT PASS!");
+                SYSTEM_ERROR_MESSAGE("YOU SHALL NOT PASS!");
                 return SYSTEM_ERROR_NOT_ALLOWED;
             });
             w.sendChunk(1 /* index */, genString(512) /* data */);

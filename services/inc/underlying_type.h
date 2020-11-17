@@ -21,7 +21,7 @@
 
 // This macro defines operators for comparing values of an enum with values of an integral type.
 // This can be useful when handling the result of a function that can either return a negative
-// error code or some non-error value defined by a enum class
+// error code or some non-error value defined by an enum class
 #define PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(_type) \
         inline bool operator==(_type a, std::underlying_type<_type>::type b) { \
             return a == (_type)b; \

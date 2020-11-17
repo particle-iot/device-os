@@ -119,7 +119,7 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* p
     }
 #endif
     if (updating_) {
-        ERROR_MESSAGE("Firmware update is already in progress");
+        SYSTEM_ERROR_MESSAGE("Firmware update is already in progress");
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (!System.updatesEnabled() && !System.updatesForced()) {
@@ -238,7 +238,7 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
     const uintptr_t addr = HAL_OTA_FlashAddress() + chunkOffset;
     int r = HAL_FLASH_Update((const uint8_t*)chunkData, addr, chunkSize, nullptr);
     if (r != 0) {
-        ERROR_MESSAGE("Failed to save firmware data: %d", r);
+        SYSTEM_ERROR_MESSAGE("Failed to save firmware data: %d", r);
         endUpdate(false /* ok */);
         return SYSTEM_ERROR_FLASH_IO;
     }
@@ -344,15 +344,20 @@ int FirmwareUpdate::updateTransferState(const char* chunkData, size_t chunkSize,
     }
     const auto persist = &state->persist;
     const size_t partialSizeBefore = persist->partialSize;
-    // Check if the chunk is adjacent to or overlaps with the contiguous fragment of the data for
-    // which we have already calculated the checksum
+    // Check if the newly stored chunk forms a contiguous block with the data for which we have already
+    // calculated the checksum
     if (persist->partialSize >= chunkOffset && persist->partialSize < chunkOffset + chunkSize) {
         const auto n = chunkOffset + chunkSize - persist->partialSize;
         CHECK(state->partialHash.update(chunkData + persist->partialSize - chunkOffset, n));
         persist->partialSize += n;
     }
-    // Chunks are not necessarily transferred sequentially. We may need to read them back from the
-    // OTA section to calculate the checksum of the data transferred so far
+    // It is not required to store chunks sequentially. If the newly stored chunk fills a gap between
+    // the previously stored chunks so that they now form a contiguous block, the checksum has to be
+    // updated accordingly.
+    //
+    // Note that it is the responsibility of the calling code to keep track of the transferred chunks
+    // and their positions against each other if the underlying protocol allows transferring them out
+    // of order
     if (partialSize > persist->partialSize) {
         char buf[OTA_FLASH_READ_BLOCK_SIZE] = {};
         uintptr_t addr = HAL_OTA_FlashAddress() + persist->partialSize;
@@ -393,7 +398,7 @@ int FirmwareUpdate::finalizeTransferState() {
         return SYSTEM_ERROR_OTA_INVALID_SIZE;
     }
     if (memcmp(persist->partialHash, persist->fileHash, Sha256::HASH_SIZE) != 0) {
-        ERROR_MESSAGE("Integrity check of a resumed update has failed");
+        SYSTEM_ERROR_MESSAGE("Integrity check of a resumed update has failed");
         return SYSTEM_ERROR_OTA_RESUMED_UPDATE_FAILED;
     }
     state->file.close();

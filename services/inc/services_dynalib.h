@@ -72,7 +72,7 @@ DYNALIB_FN(26, services, log_enabled, int(int, const char*, void*))
 DYNALIB_FN(27, services, log_level_name, const char*(int, void*))
 DYNALIB_FN(28, services, log_set_callbacks, void(log_message_callback_type, log_write_callback_type, log_enabled_callback_type, void*))
 DYNALIB_FN(29, services, set_thread_current_function_pointers, void(void*, void*, void*, void*, void*))
-DYNALIB_FN(30, services, get_default_error_message, const char*(int, void*))
+DYNALIB_FN(30, services, get_default_system_error_message, const char*(int, void*))
 DYNALIB_FN(31, services, LED_SetCallbacks, void(LedCallbacks, void*))
 DYNALIB_FN(32, services, led_set_status_active, void(LEDStatusData*, int, void*))
 DYNALIB_FN(33, services, led_set_update_enabled, void(int, void*))
@@ -110,9 +110,9 @@ DYNALIB_FN(55, services, pb_encode_varint, bool(pb_ostream_t*, pb_uint64_t))
 # define BASE_IDX 40
 #endif
 
-DYNALIB_FN(BASE_IDX + 0, services, set_error_message, void(const char*, ...))
-DYNALIB_FN(BASE_IDX + 1, services, clear_error_message, void())
-DYNALIB_FN(BASE_IDX + 2, services, get_error_message, const char*(int))
+DYNALIB_FN(BASE_IDX + 0, services, set_system_error_message, void(const char*, ...))
+DYNALIB_FN(BASE_IDX + 1, services, clear_system_error_message, void())
+DYNALIB_FN(BASE_IDX + 2, services, get_system_error_message, const char*(int))
 
 DYNALIB_END(services)
 

@@ -34,7 +34,7 @@ int formatDiagnosticPayload(char* buf, size_t size, int error) {
     w.beginObject();
     w.name("code").value(error);
     const size_t codeEnd = w.dataSize();
-    w.name("message").value(get_error_message(error));
+    w.name("message").value(get_system_error_message(error));
     w.endObject();
     size_t payloadSize = w.dataSize();
     if (size < payloadSize) {

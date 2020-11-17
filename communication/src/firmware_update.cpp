@@ -172,7 +172,7 @@ ProtocolError FirmwareUpdate::process() {
 }
 
 ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handler) {
-    clear_error_message();
+    clear_system_error_message();
     CoapMessageDecoder d;
     int r = d.decode((const char*)msg->buf(), msg->length());
     if (r < 0) {
@@ -205,7 +205,7 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
             }
         } else {
             // All confirmable messages defined by the protocol must have a token
-            ERROR_MESSAGE("Message token is missing");
+            SYSTEM_ERROR_MESSAGE("Message token is missing");
             r = sendErrorResponse(&ack, SYSTEM_ERROR_PROTOCOL, CoapType::ACK, d.id(), nullptr /* token */, 0 /* tokenSize */);
             if (r < 0) {
                 return ProtocolError::IO_ERROR_GENERIC_SEND;
@@ -353,7 +353,7 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
         flags |= FirmwareUpdateFlag::CANCEL;
     } else {
         if (fileOffset_ != fileSize_) {
-            ERROR_MESSAGE("Incomplete file transfer");
+            SYSTEM_ERROR_MESSAGE("Incomplete file transfer");
             return SYSTEM_ERROR_PROTOCOL;
         }
         LOG(INFO, "Validating firmware update");
@@ -402,12 +402,12 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
     }
     ++stats_.receivedChunks;
     if (index == 0 || index > chunkCount_) { // Chunk indices are 1-based
-        ERROR_MESSAGE("Invalid chunk index: %u", index);
+        SYSTEM_ERROR_MESSAGE("Invalid chunk index: %u", index);
         return SYSTEM_ERROR_PROTOCOL;
     }
     if ((index < chunkCount_ && size != chunkSize_) ||
             (index == chunkCount_ && (index - 1) * chunkSize_ + size != transferSize_)) {
-        ERROR_MESSAGE("Invalid chunk size: %u", (unsigned)size);
+        SYSTEM_ERROR_MESSAGE("Invalid chunk size: %u", (unsigned)size);
         return SYSTEM_ERROR_PROTOCOL;
     }
     bool isDupChunk = false;
@@ -494,11 +494,11 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
 int FirmwareUpdate::decodeStartRequest(const CoapMessageDecoder& d, size_t* fileSize, const char** fileHash,
         size_t* chunkSize, bool* discardData) {
     if (d.type() != CoapType::CON) {
-        ERROR_MESSAGE("Invalid message type");
+        SYSTEM_ERROR_MESSAGE("Invalid message type");
         return SYSTEM_ERROR_PROTOCOL;
     }
     if (!d.hasToken()) {
-        ERROR_MESSAGE("Invalid token size");
+        SYSTEM_ERROR_MESSAGE("Invalid token size");
         return SYSTEM_ERROR_PROTOCOL;
     }
     bool hasFileSize = false;
@@ -511,7 +511,7 @@ int FirmwareUpdate::decodeStartRequest(const CoapMessageDecoder& d, size_t* file
         case OtaCoapOption::FILE_SIZE: {
             const size_t size = it.toUInt();
             if (!size) {
-                ERROR_MESSAGE("Invalid file size: %u", (unsigned)size);
+                SYSTEM_ERROR_MESSAGE("Invalid file size: %u", (unsigned)size);
                 return SYSTEM_ERROR_PROTOCOL;
             }
             *fileSize = size;
@@ -520,7 +520,7 @@ int FirmwareUpdate::decodeStartRequest(const CoapMessageDecoder& d, size_t* file
         }
         case OtaCoapOption::FILE_SHA256: {
             if (it.size() != Sha256::HASH_SIZE) {
-                ERROR_MESSAGE("Invalid option size");
+                SYSTEM_ERROR_MESSAGE("Invalid option size");
                 return SYSTEM_ERROR_PROTOCOL;
             }
             *fileHash = it.data();
@@ -530,7 +530,7 @@ int FirmwareUpdate::decodeStartRequest(const CoapMessageDecoder& d, size_t* file
         case OtaCoapOption::CHUNK_SIZE: {
             const size_t size = it.toUInt();
             if (size < MIN_OTA_CHUNK_SIZE || size > MAX_OTA_CHUNK_SIZE || size % 4 != 0) {
-                ERROR_MESSAGE("Invalid chunk size: %u", (unsigned)size);
+                SYSTEM_ERROR_MESSAGE("Invalid chunk size: %u", (unsigned)size);
                 return SYSTEM_ERROR_PROTOCOL;
             }
             *chunkSize = size;
@@ -539,7 +539,7 @@ int FirmwareUpdate::decodeStartRequest(const CoapMessageDecoder& d, size_t* file
         }
         case OtaCoapOption::DISCARD_DATA: {
             if (it.size() != 0) {
-                ERROR_MESSAGE("Invalid option size");
+                SYSTEM_ERROR_MESSAGE("Invalid option size");
                 return SYSTEM_ERROR_PROTOCOL;
             }
             *discardData = true;
@@ -551,7 +551,7 @@ int FirmwareUpdate::decodeStartRequest(const CoapMessageDecoder& d, size_t* file
         }
     }
     if (!hasFileSize || !hasChunkSize) {
-        ERROR_MESSAGE("Invalid message options");
+        SYSTEM_ERROR_MESSAGE("Invalid message options");
         return SYSTEM_ERROR_PROTOCOL;
     }
     if (!hasFileHash) {
@@ -565,11 +565,11 @@ int FirmwareUpdate::decodeStartRequest(const CoapMessageDecoder& d, size_t* file
 
 int FirmwareUpdate::decodeFinishRequest(const CoapMessageDecoder& d, bool* cancelUpdate, bool* discardData) {
     if (d.type() != CoapType::CON) {
-        ERROR_MESSAGE("Invalid message type");
+        SYSTEM_ERROR_MESSAGE("Invalid message type");
         return SYSTEM_ERROR_PROTOCOL;
     }
     if (!d.hasToken()) {
-        ERROR_MESSAGE("Invalid token size");
+        SYSTEM_ERROR_MESSAGE("Invalid token size");
         return SYSTEM_ERROR_PROTOCOL;
     }
     bool hasCancelUpdate = false;
@@ -579,7 +579,7 @@ int FirmwareUpdate::decodeFinishRequest(const CoapMessageDecoder& d, bool* cance
         switch (it.option()) {
         case OtaCoapOption::CANCEL_UPDATE: {
             if (it.size() != 0) {
-                ERROR_MESSAGE("Invalid option size");
+                SYSTEM_ERROR_MESSAGE("Invalid option size");
                 return SYSTEM_ERROR_PROTOCOL;
             }
             *cancelUpdate = true;
@@ -588,7 +588,7 @@ int FirmwareUpdate::decodeFinishRequest(const CoapMessageDecoder& d, bool* cance
         }
         case OtaCoapOption::DISCARD_DATA: {
             if (it.size() != 0) {
-                ERROR_MESSAGE("Invalid option size");
+                SYSTEM_ERROR_MESSAGE("Invalid option size");
                 return SYSTEM_ERROR_PROTOCOL;
             }
             *discardData = true;
@@ -611,20 +611,20 @@ int FirmwareUpdate::decodeFinishRequest(const CoapMessageDecoder& d, bool* cance
 int FirmwareUpdate::decodeChunkRequest(const CoapMessageDecoder& d, const char** chunkData, size_t* chunkSize,
         unsigned* chunkIndex) {
     if (d.type() != CoapType::NON) {
-        ERROR_MESSAGE("Invalid message type");
+        SYSTEM_ERROR_MESSAGE("Invalid message type");
         return SYSTEM_ERROR_PROTOCOL;
     }
     if (d.hasToken()) {
-        ERROR_MESSAGE("Invalid token size");
+        SYSTEM_ERROR_MESSAGE("Invalid token size");
         return SYSTEM_ERROR_PROTOCOL;
     }
     if (d.payloadSize() == 0) {
-        ERROR_MESSAGE("Invalid payload size");
+        SYSTEM_ERROR_MESSAGE("Invalid payload size");
         return SYSTEM_ERROR_PROTOCOL;
     }
     const auto it = d.findOption(OtaCoapOption::CHUNK_INDEX);
     if (!it) {
-        ERROR_MESSAGE("Invalid message options");
+        SYSTEM_ERROR_MESSAGE("Invalid message options");
         return SYSTEM_ERROR_PROTOCOL;
     }
     *chunkIndex = it.toUInt();
