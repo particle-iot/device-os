@@ -28,7 +28,7 @@ extern "C" {
 
 
 typedef uint64_t system_event_t;
-typedef void (system_event_handler_t)(system_event_t event, int param, void* pointer, const void* context);
+typedef void (system_event_handler_t)(system_event_t event, int param, void* pointer, void* context);
 
 
 enum SystemEvents {
@@ -117,10 +117,10 @@ typedef struct SystemEventContext {
  * Subscribes to the system events given
  * @param events    One or more system events. Multiple system events are specified using the + operator.
  * @param handler   The system handler function to call.
- * @param reserved  Set to NULL.
+ * @param context   Context along with the handler function.
  * @return {@code 0} if the system event handlers were registered successfully. Non-zero otherwise.
  */
-int system_subscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved);
+int system_subscribe_event(system_event_t events, system_event_handler_t* handler, SystemEventContext* context);
 
 /**
  * Unsubscribes a handler from the given events.

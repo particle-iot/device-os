@@ -491,11 +491,11 @@ public:
     static bool on(system_event_t events, std::function<void(system_event_t, int, void*)> handler) {
         // Copy the function object to heap
         if (!handler) {
-            return -1;
+            return false;
         }
         auto wrapper = new std::function<void(system_event_t, int, void*)>(handler); // This may leak memory.
         if (!wrapper) {
-            return -1;
+            return false;
         }
         SystemEventContext context = {
             .version = SYSTEM_EVENT_CONTEXT_VERSION,
@@ -526,11 +526,12 @@ public:
         return on(events, wrapper);
     }
 
-    static void off(void(*handler)(system_event_t, int,void*)) {
+    // TODO: system_unsubscribe_event() isn't implemented yet.
+    static void off(void(*handler)(system_event_t, int, void*)) {
         system_unsubscribe_event(all_events, reinterpret_cast<system_event_handler_t*>(handler), nullptr);
     }
 
-    static void off(system_event_t events, void(*handler)(system_event_t, int,void*)) {
+    static void off(system_event_t events, void(*handler)(system_event_t, int, void*)) {
         system_unsubscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), nullptr);
     }
 
@@ -771,7 +772,7 @@ private:
 
     static SleepResult sleepPinImpl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, SleepOptionFlags flags);
 
-    static void subscribedEventHandler(system_event_t events, int data, void* pointer, const void* context) {
+    static void subscribedEventHandler(system_event_t events, int data, void* pointer, void* context) {
         if (!context) {
             return;
         }
