@@ -124,7 +124,7 @@ void PowerManager::update() {
   os_queue_put(queue_, (const void*)&ev, 0, nullptr);
 }
 
-void PowerManager::sleep(bool s) {
+void PowerManager::sleep(bool fuelGaugeSleep) {
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
   if (detect_ && isRunning()) {
 #else
@@ -141,7 +141,7 @@ void PowerManager::sleep(bool s) {
     // XXX:
     power.disableWatchdog();
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
-    if (s && fuelGaugeAwake_) {
+    if (fuelGaugeSleep && fuelGaugeAwake_) {
       FuelGauge gauge;
       gauge.sleep();
       fuelGaugeAwake_ = false;

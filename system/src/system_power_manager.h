@@ -30,7 +30,7 @@ public:
   static PowerManager* instance();
 
   void init();
-  void sleep(bool s = true);
+  void sleep(bool fuelGaugeSleep = true);
   void wakeup();
   int setConfig(const hal_power_config* conf);
 

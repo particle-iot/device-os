@@ -397,8 +397,6 @@ static void configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources
         nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
         NVIC_ClearPendingIRQ(GPIOTE_IRQn);
         nrf_gpiote_int_enable(gpioIntenSet);
-
-        NVIC_ClearPendingIRQ(GPIOTE_IRQn);
         NVIC_EnableIRQ(GPIOTE_IRQn);
     }
 }
@@ -626,19 +624,16 @@ static bool isWokenUpByGpio(const hal_wakeup_source_gpio_t* gpioWakeup) {
         return false;
     }
     Hal_Pin_Info* halPinMap = HAL_Pin_Map();
-    uint32_t nrfPin;
     pin_t wakeupPin;
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_MCU) {
 #endif
-        nrfPin = NRF_GPIO_PIN_MAP(halPinMap[gpioWakeup->pin].gpio_port, halPinMap[gpioWakeup->pin].gpio_pin);
         wakeupPin = gpioWakeup->pin;
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     }
 #if HAL_PLATFORM_MCP23S17
     else if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
-        nrfPin = NRF_GPIO_PIN_MAP(halPinMap[IOE_INT].gpio_port, halPinMap[IOE_INT].gpio_pin);
         wakeupPin = IOE_INT;
     }
 #endif
@@ -649,6 +644,7 @@ static bool isWokenUpByGpio(const hal_wakeup_source_gpio_t* gpioWakeup) {
 
     if (nrf_gpiote_event_is_set(NRF_GPIOTE_EVENTS_PORT)) {
         // PORT event
+        uint32_t nrfPin = NRF_GPIO_PIN_MAP(halPinMap[wakeupPin].gpio_port, halPinMap[wakeupPin].gpio_pin);
         nrf_gpio_pin_sense_t sense = nrf_gpio_pin_sense_get(nrfPin);
         if (sense != NRF_GPIO_PIN_NOSENSE) {
             uint32_t state = nrf_gpio_pin_read(nrfPin);
