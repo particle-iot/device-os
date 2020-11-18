@@ -75,7 +75,7 @@ def main():
         print("USAGE: python %s <coverage.json>" % sys.argv[0])
     else:
         args = Args()
-        with open(sys.argv[1], 'rb') as json_coverage_file:
+        with open(sys.argv[1], 'r') as json_coverage_file:
             # Load coverage details from specified file
             json_coverage_details = json.load(json_coverage_file)
 
@@ -86,16 +86,13 @@ def main():
                     print("Environment variable COVERALLS_REPO_TOKEN is required to upload coverage information")
                     exit(-1)
 
-            # Consume Travis CI specific environment variables _(if available)_
-            if not json_coverage_details.has_key('service_job_id'):
-                json_coverage_details['service_job_id'] = os.environ.get('TRAVIS_JOB_ID')
-                if (json_coverage_details['service_job_id'] is not None):
-                    json_coverage_details['service_name'] = "travis-ci"
-                    json_coverage_details['service_number'] = os.environ.get('TRAVIS_BUILD_NUMBER')
-                    json_coverage_details['service_pull_request'] = os.environ.get('TRAVIS_PULL_REQUEST')
-                else:
-                    json_coverage_details['service_name'] = ""
-                    del json_coverage_details['service_job_id']
+            # Consume Codefresh CI specific environment variables _(if available)_
+            json_coverage_details['service_job_id'] = os.environ.get('CF_BUILD_ID')
+            if (json_coverage_details['service_job_id'] is not None):
+                json_coverage_details['service_name'] = "codefresh"
+            else:
+                json_coverage_details['service_name'] = ""
+                del json_coverage_details['service_job_id']
 
             # Post report to Coveralls.io
             post_report(json_coverage_details, args)
