@@ -87,16 +87,12 @@ def main():
                     exit(-1)
 
             # Consume Codefresh CI specific environment variables _(if available)_
-            if not 'service_job_id' in json_coverage_details:
-                json_coverage_details['service_job_id'] = os.environ.get('CF_BUILD_ID')
-                if (json_coverage_details['service_job_id'] is not None):
-                    json_coverage_details['service_name'] = "Codefresh"
-                    json_coverage_details['service_pull_request'] = os.environ.get('CF_PULL_REQUEST_NUMBER')
-                    if 'git' in json_coverage_details:
-                        json_coverage_details['git']['branch'] = os.environ.get('CF_BRANCH')
-                else:
-                    json_coverage_details['service_name'] = ""
-                    del json_coverage_details['service_job_id']
+            json_coverage_details['service_job_id'] = os.environ.get('CF_BUILD_ID')
+            if (json_coverage_details['service_job_id'] is not None):
+                json_coverage_details['service_name'] = "codefresh"
+            else:
+                json_coverage_details['service_name'] = ""
+                del json_coverage_details['service_job_id']
 
             # Post report to Coveralls.io
             post_report(json_coverage_details, args)
