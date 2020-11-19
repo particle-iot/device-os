@@ -35,6 +35,9 @@
 
 namespace particle {
 
+constexpr int8_t BLE_RSSI_INVALID = 0x7F;
+constexpr int8_t BLE_TX_POWER_INVALID = 0x7F;
+
 class BleScanResult;
 class BlePeerDevice;
 
@@ -531,7 +534,7 @@ private:
 class BleScanResult {
 public:
     BleScanResult()
-            : rssi_(0x7F) {
+            : rssi_(BLE_RSSI_INVALID) {
     }
 
     BleScanResult& address(const BleAddress& addr) {
@@ -592,8 +595,8 @@ private:
 class BleScanFilter {
 public:
     BleScanFilter()
-            : minRssi_(0x7F),
-              maxRssi_(0x7F),
+            : minRssi_(BLE_RSSI_INVALID),
+              maxRssi_(BLE_RSSI_INVALID),
               customData_(nullptr),
               customDataLen_(0) {
     }
@@ -686,7 +689,7 @@ public:
         serviceUuids_.clear();
         addresses_.clear();
         appearances_.clear();
-        minRssi_ = maxRssi_ = 0xFF;
+        minRssi_ = maxRssi_ = BLE_RSSI_INVALID;
         customData_ = nullptr;
         customDataLen_ = 0;
         return *this;

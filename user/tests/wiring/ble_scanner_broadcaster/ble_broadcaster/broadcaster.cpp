@@ -38,23 +38,12 @@ test(BLE_Broadcaster_01_Connect_By_Scanner) {
     assertTrue(BLE.advertising());
 
     Serial.println("BLE starts advertising...");
-    size_t wait = 200; // Wait 20s for establishing connection.
-    while (!BLE.connected() && wait > 0) {
-        delay(100);
-        wait--;
-    }
-    assertTrue(wait > 0);
+    assertTrue(waitFor(BLE.connected, 20000));
 }
 
 test(BLE_Broadcaster_02_Restart_Advertising) {
     assertTrue(BLE.connected());
-
-    size_t wait = 600;
-    while (cmd != CMD_RESTART_ADV && wait > 0) {
-        delay(100);
-        wait--;
-    }
-    assertTrue(wait > 0);
+    assertTrue(waitFor([&]{ return cmd == CMD_RESTART_ADV; }, 60000));
 
     int ret = BLE.advertise();
     assertEqual(ret, 0);
@@ -63,13 +52,7 @@ test(BLE_Broadcaster_02_Restart_Advertising) {
 
 test(BLE_Broadcaster_03_Advertise_Device_Name) {
     assertTrue(BLE.connected());
-
-    size_t wait = 600;
-    while (cmd != CMD_ADV_DEVICE_NAME && wait > 0) {
-        delay(100);
-        wait--;
-    }
-    assertTrue(wait > 0);
+    assertTrue(waitFor([&]{ return cmd == CMD_ADV_DEVICE_NAME; }, 60000));
 
     BleAdvertisingData data;
     data.appendLocalName("PARTICLE_TEST");
@@ -81,13 +64,7 @@ test(BLE_Broadcaster_03_Advertise_Device_Name) {
 
 test(BLE_Broadcaster_04_Advertise_Appearance) {
     assertTrue(BLE.connected());
-
-    size_t wait = 600;
-    while (cmd != CMD_ADV_APPEARANCE && wait > 0) {
-        delay(100);
-        wait--;
-    }
-    assertTrue(wait > 0);
+    assertTrue(waitFor([&]{ return cmd == CMD_ADV_APPEARANCE; }, 60000));
 
     BleAdvertisingData data;
     data.appendAppearance(BLE_SIG_APPEARANCE_GENERIC_DISPLAY);
@@ -99,13 +76,7 @@ test(BLE_Broadcaster_04_Advertise_Appearance) {
 
 test(BLE_Broadcaster_05_Advertise_Custom_Data) {
     assertTrue(BLE.connected());
-
-    size_t wait = 600;
-    while (cmd != CMD_ADV_CUSTOM_DATA && wait > 0) {
-        delay(100);
-        wait--;
-    }
-    assertTrue(wait > 0);
+    assertTrue(waitFor([&]{ return cmd == CMD_ADV_CUSTOM_DATA; }, 60000));
 
     BleAdvertisingData data;
     constexpr uint8_t buf[] = {0xde, 0xad, 0xbe, 0xef};

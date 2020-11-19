@@ -1866,7 +1866,7 @@ int BleLocalDevice::txPower(int8_t* txPower) const {
 }
 
 int8_t BleLocalDevice::txPower() const {
-    int8_t tx = 0x7F;
+    int8_t tx = BLE_TX_POWER_INVALID;
     hal_ble_gap_get_tx_power(&tx, nullptr);
     return tx;
 }
@@ -2064,14 +2064,59 @@ public:
         return *this;
     }
 
+private:
+    /*
+     * WARN: This is executed from HAL ble thread. The current thread which starts the scanning procedure
+     * has acquired the BLE HAL lock. Calling BLE HAL APIs those acquiring the BLE HAL lock in this function
+     * will suspend the execution of the callback until the current thread release the BLE HAL lock. Or the BLE HAL
+     * APIs those are invoked here must not acquire the BLE HAL lock.
+     */
+    static void onScanResultCallback(const hal_ble_scan_result_evt_t* event, void* context) {
+        BleScanDelegator* delegator = static_cast<BleScanDelegator*>(context);
+        delegator->foundCount_++;
+
+        BleScanResult result = {};
+        result.address(event->peer_addr).rssi(event->rssi)
+              .scanResponse(event->sr_data, event->sr_data_len)
+              .advertisingData(event->adv_data, event->adv_data_len);
+
+        if (!delegator->filterByRssi(result) ||
+              !delegator->filterByAddress(result) ||
+              !delegator->filterByDeviceName(result) ||
+              !delegator->filterByServiceUUID(result) ||
+              !delegator->filterByAppearance(result) ||
+              !delegator->filterByCustomData(result)) {
+            return;
+        }
+
+        if (delegator->callback_) {
+            delegator->callback_(&result, delegator->context_);
+            return;
+        } else if (delegator->callbackRef_) {
+            delegator->callbackRef_(result, delegator->context_);
+            return;
+        }
+        if (delegator->resultsPtr_) {
+            if (delegator->foundCount_ <= delegator->targetCount_) {
+                delegator->resultsPtr_[delegator->foundCount_ - 1] = result;
+                if (delegator->foundCount_ >= delegator->targetCount_) {
+                    LOG_DEBUG(TRACE, "Target number of devices found. Stop scanning...");
+                    hal_ble_gap_stop_scan(nullptr);
+                }
+            }
+            return;
+        }
+        delegator->resultsVector_.append(result);
+    }
+
     bool filterByRssi(const BleScanResult& result) {
         int8_t filterRssi = filter_.minRssi();
-        if (filterRssi != 0x7F && result.rssi() < filterRssi) {
+        if (filterRssi != BLE_RSSI_INVALID && result.rssi() < filterRssi) {
             LOG_DEBUG(TRACE, "Exceed min. RSSI");
             return false;
         }
         filterRssi = filter_.maxRssi();
-        if (filterRssi != 0x7F && result.rssi() > filterRssi) {
+        if (filterRssi != BLE_RSSI_INVALID && result.rssi() > filterRssi) {
             LOG_DEBUG(TRACE, "Exceed max. RSSI.");
             return false;
         }
@@ -2191,51 +2236,6 @@ public:
             return false;
         }
         return true;
-    }
-
-private:
-    /*
-     * WARN: This is executed from HAL ble thread. The current thread which starts the scanning procedure
-     * has acquired the BLE HAL lock. Calling BLE HAL APIs those acquiring the BLE HAL lock in this function
-     * will suspend the execution of the callback until the current thread release the BLE HAL lock. Or the BLE HAL
-     * APIs those are invoked here must not acquire the BLE HAL lock.
-     */
-    static void onScanResultCallback(const hal_ble_scan_result_evt_t* event, void* context) {
-        BleScanDelegator* delegator = static_cast<BleScanDelegator*>(context);
-        delegator->foundCount_++;
-
-        BleScanResult result = {};
-        result.address(event->peer_addr).rssi(event->rssi)
-              .scanResponse(event->sr_data, event->sr_data_len)
-              .advertisingData(event->adv_data, event->adv_data_len);
-
-        if (!delegator->filterByRssi(result) ||
-              !delegator->filterByAddress(result) ||
-              !delegator->filterByDeviceName(result) ||
-              !delegator->filterByServiceUUID(result) ||
-              !delegator->filterByAppearance(result) ||
-              !delegator->filterByCustomData(result)) {
-            return;
-        }
-
-        if (delegator->callback_) {
-            delegator->callback_(&result, delegator->context_);
-            return;
-        } else if (delegator->callbackRef_) {
-            delegator->callbackRef_(result, delegator->context_);
-            return;
-        }
-        if (delegator->resultsPtr_) {
-            if (delegator->foundCount_ <= delegator->targetCount_) {
-                delegator->resultsPtr_[delegator->foundCount_ - 1] = result;
-                if (delegator->foundCount_ >= delegator->targetCount_) {
-                    LOG_DEBUG(TRACE, "Target number of devices found. Stop scanning...");
-                    hal_ble_gap_stop_scan(nullptr);
-                }
-            }
-            return;
-        }
-        delegator->resultsVector_.append(result);
     }
 
     Vector<BleScanResult> resultsVector_;
