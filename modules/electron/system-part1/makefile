@@ -24,6 +24,8 @@ TARGET=elf bin lst hex size
 
 include $(PROJECT_ROOT)/build/arm-tlm.mk
 
+LDFLAGS += -flto -Os -fuse-linker-plugin
+
 $(call check_modular)
 
 
