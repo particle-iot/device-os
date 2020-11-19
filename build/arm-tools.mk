@@ -45,8 +45,9 @@ ASFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 LDFLAGS += -nostartfiles -Xlinker --gc-sections
 endif
 
+CFLAGS += -flto -ffat-lto-objects -DPARTICLE_COMPILE_LTO_FAT
+
 ifeq ($(COMPILE_LTO),y)
-CFLAGS += -flto
 LDFLAGS += -flto -Os -fuse-linker-plugin
 endif
 
