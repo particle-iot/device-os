@@ -220,7 +220,11 @@ public:
     bool operator!=(const char* address) const;
     bool operator!=(const String& address) const;
 
-    bool valid() const;
+    operator bool() const {
+        return isValid();
+    }
+
+    bool isValid() const;
     int clear();
 
 private:
@@ -242,8 +246,7 @@ public:
     BleUuid(const char* uuid);
     ~BleUuid() = default;
 
-    bool __attribute__((deprecated("Use BleUuid::valid() instead"))) isValid() const;
-    bool valid() const;
+    bool isValid() const;
 
     BleUuidType type() const;
 
@@ -275,6 +278,10 @@ public:
     }
 
     uint8_t operator[](uint8_t i) const;
+
+    operator bool() const {
+        return isValid();
+    }
 
 private:
     void construct(const char* uuid);
@@ -412,7 +419,7 @@ public:
     bool contains(BleAdvertisingDataType type) const;
 
 private:
-    size_t serviceUUID(BleAdvertisingDataType type, Vector<BleUuid>& uuids) const;
+    Vector<BleUuid> serviceUUID(BleAdvertisingDataType type) const;
     static size_t locate(const uint8_t* buf, size_t len, BleAdvertisingDataType type, size_t* offset);
 
     uint8_t selfData_[BLE_MAX_ADV_DATA_LEN];
@@ -444,7 +451,8 @@ public:
 
     BleCharacteristic& operator=(const BleCharacteristic& characteristic);
 
-    bool valid() const;
+    bool __attribute__((deprecated("Use BleCharacteristic::isValid() instead"))) valid() const;
+    bool isValid() const;
 
     BleUuid UUID() const;
     EnumFlags<BleCharacteristicProperty> properties() const;
@@ -476,6 +484,10 @@ public:
     int subscribe(bool enable) const;
 
     void onDataReceived(BleOnDataReceivedCallback callback, void* context);
+
+    operator bool() const {
+        return isValid();
+    }
 
     BleCharacteristicImpl* impl() const {
         return impl_.get();
@@ -614,10 +626,14 @@ public:
     void bind(const BleAddress& address) const;
     BleAddress address() const;
 
-    bool valid() const;
+    bool isValid() const;
 
     bool operator==(const BlePeerDevice& device) const;
     bool operator!=(const BlePeerDevice& device) const;
+
+    operator bool() const {
+        return isValid();
+    }
 
     BlePeerDevice& operator=(const BlePeerDevice& peer);
 

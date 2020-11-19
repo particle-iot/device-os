@@ -186,7 +186,9 @@ test(ble_address_class) {
     API_COMPILE({ bool ret = addr != String("123"); (void)ret; });
     API_COMPILE({ bool ret = addr != addrArray; (void)ret; });
 
-    API_COMPILE({ bool ret = addr.valid(); (void)ret; });
+    API_COMPILE({ bool ret = addr; (void)ret; });
+
+    API_COMPILE({ bool ret = addr.isValid(); (void)ret; });
     API_COMPILE({ int ret = addr.clear(); (void)ret; });
 }
 
@@ -241,6 +243,8 @@ test(ble_uuid_class) {
     API_COMPILE({ bool ret = uuid != String("1234"); (void)ret; });
     API_COMPILE({ bool ret = uuid != 0x1234; (void)ret; });
     API_COMPILE({ bool ret = uuid != uuidArray; (void)ret; });
+
+    API_COMPILE({ bool ret = uuid; (void)ret; });
 
     API_COMPILE({ uint8_t ret = uuid[0]; (void)ret; });
 }
@@ -333,6 +337,7 @@ test(ble_characteristic_class) {
     API_COMPILE({ BleCharacteristic c = characteristic; });
 
     API_COMPILE({ bool ret = characteristic.valid(); (void)ret; });
+    API_COMPILE({ bool ret = characteristic.isValid(); (void)ret; });
 
     API_COMPILE({ BleUuid uuid = characteristic.UUID(); });
 
@@ -413,6 +418,8 @@ test(ble_characteristic_class) {
     API_COMPILE({ int ret = characteristic.subscribe(true); (void)ret; });
 
     API_COMPILE({ characteristic.onDataReceived(dataHandlerFunc, nullptr); });
+
+    API_COMPILE({ bool ret = characteristic; (void)ret; });
 }
 
 test(ble_service_class) {
@@ -493,8 +500,12 @@ test(ble_peer_device) {
 
     API_COMPILE({ BleAddress a = peer.address(); });
 
+    API_COMPILE({ bool ret = peer.isValid(); (void)ret; });
+
     API_COMPILE({ bool ret = peer == BlePeerDevice(); (void)ret; });
     API_COMPILE({ bool ret = peer != BlePeerDevice(); (void)ret; });
+
+    API_COMPILE({ bool ret = peer; (void)ret; });
 
     API_COMPILE({ BlePeerDevice p = peer; });
 }
@@ -600,6 +611,8 @@ test(ble_local_device_class) {
     API_COMPILE({ int ret = BLE.disconnect(peer); (void)ret; });
     API_COMPILE({ int ret = BLE.disconnectAll(); (void)ret; });
     API_COMPILE({ bool ret = BLE.connected(); (void)ret; });
+
+    API_COMPILE({ BlePeerDevice p = BLE.peerCentral(); });
 
     API_COMPILE({ BLE.onConnected(connectedHandlerFunc, nullptr); });
     API_COMPILE({ BLE.onDisconnected(disconnectedHandlerFunc, nullptr); });

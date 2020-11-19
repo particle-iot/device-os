@@ -3750,6 +3750,7 @@ int hal_ble_gap_connect_cancel(const hal_ble_addr_t* address, void* reserved) {
 }
 
 int hal_ble_gap_disconnect(hal_ble_conn_handle_t conn_handle, void* reserved) {
+    BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_disconnect().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     hal_ble_conn_info_t info = {};

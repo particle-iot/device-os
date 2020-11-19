@@ -314,7 +314,7 @@ bool BleAddress::operator!=(const String& address) const {
     return toString() != address;
 }
 
-bool BleAddress::valid() const {
+bool BleAddress::isValid() const {
     // Reference: Bluetooth Core v5.0, Vol 6, Part B, Section 1.3, Device Address.
     constexpr uint8_t bitsClear[BLE_SIG_ADDR_LEN] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     constexpr uint8_t bitsSet[BLE_SIG_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -420,10 +420,6 @@ BleUuid::BleUuid(const String& uuid)
 }
 
 bool BleUuid::isValid() const {
-    return valid();
-}
-
-bool BleUuid::valid() const {
     if (type() == BleUuidType::SHORT) {
         return (uuid128_[UUID16_LO] != 0x00 || uuid128_[UUID16_HI] != 0x00);
     } else {
@@ -760,11 +756,11 @@ size_t BleAdvertisingData::serviceUUID(BleUuid* uuids, size_t count) const {
 
 Vector<BleUuid> BleAdvertisingData::serviceUUID() const {
     Vector<BleUuid> foundUuids;
-    serviceUUID(BleAdvertisingDataType::SERVICE_UUID_16BIT_MORE_AVAILABLE, foundUuids);
-    serviceUUID(BleAdvertisingDataType::SERVICE_UUID_16BIT_MORE_AVAILABLE, foundUuids);
-    serviceUUID(BleAdvertisingDataType::SERVICE_UUID_16BIT_COMPLETE, foundUuids);
-    serviceUUID(BleAdvertisingDataType::SERVICE_UUID_128BIT_MORE_AVAILABLE, foundUuids);
-    serviceUUID(BleAdvertisingDataType::SERVICE_UUID_128BIT_COMPLETE, foundUuids);
+    foundUuids.append(serviceUUID(BleAdvertisingDataType::SERVICE_UUID_16BIT_MORE_AVAILABLE));
+    foundUuids.append(serviceUUID(BleAdvertisingDataType::SERVICE_UUID_16BIT_MORE_AVAILABLE));
+    foundUuids.append(serviceUUID(BleAdvertisingDataType::SERVICE_UUID_16BIT_COMPLETE));
+    foundUuids.append(serviceUUID(BleAdvertisingDataType::SERVICE_UUID_128BIT_MORE_AVAILABLE));
+    foundUuids.append(serviceUUID(BleAdvertisingDataType::SERVICE_UUID_128BIT_COMPLETE));
     return foundUuids;
  }
 
@@ -784,8 +780,9 @@ bool BleAdvertisingData::contains(BleAdvertisingDataType type) const {
     return locate(selfData_, selfLen_, type, &adsOffset) > 0;
 }
 
-size_t BleAdvertisingData::serviceUUID(BleAdvertisingDataType type, Vector<BleUuid>& uuids) const {
-    size_t offset, adsLen = 0, found = 0;
+Vector<BleUuid> BleAdvertisingData::serviceUUID(BleAdvertisingDataType type) const {
+    Vector<BleUuid> uuids;
+    size_t offset, adsLen = 0;
     for (size_t i = 0; i < selfLen_; i += (offset + adsLen)) {
         adsLen = locate(&selfData_[i], selfLen_ - i, type, &offset);
         if (adsLen > 0) {
@@ -793,20 +790,18 @@ size_t BleAdvertisingData::serviceUUID(BleAdvertisingDataType type, Vector<BleUu
                 for(size_t array = 0; (array < (adsLen - 2) / BLE_SIG_UUID_16BIT_LEN); array++) {
                     BleUuid uuid = (uint16_t)selfData_[i + offset + array * BLE_SIG_UUID_16BIT_LEN + 2] | ((uint16_t)selfData_[i + offset + array * BLE_SIG_UUID_16BIT_LEN + 3] << 8);
                     uuids.append(uuid);
-                    found++;
                 }
             } else if (type == BleAdvertisingDataType::SERVICE_UUID_128BIT_MORE_AVAILABLE || type == BleAdvertisingDataType::SERVICE_UUID_128BIT_COMPLETE) {
                 for(size_t array = 0; (array < (adsLen - 2) / BLE_SIG_UUID_128BIT_LEN); array++) {
                     BleUuid uuid = &selfData_[i + offset + array * BLE_SIG_UUID_128BIT_LEN + 2];
                     uuids.append(uuid);
-                    found++;
                 }
             }
             continue;
         }
         break;
     }
-    return found;
+    return uuids;
 }
 
 size_t BleAdvertisingData::locate(const uint8_t* buf, size_t len, BleAdvertisingDataType type, size_t* offset) {
@@ -908,7 +903,7 @@ public:
     }
 
     void assignUuidIfNeeded() {
-        if (!charUuid_.valid()) {
+        if (!charUuid_.isValid()) {
             LOG_DEBUG(TRACE, "Assign default characteristic UUID.");
             defaultUuidCharCount_++;
             BleUuid newUuid(PARTICLE_DEFAULT_BLE_SVC_UUID, defaultUuidCharCount_);
@@ -1101,6 +1096,10 @@ public:
                 peer.impl()->address() = event->params.connected.info->address;
                 if (!impl->peers_.append(peer)) {
                     LOG(ERROR, "Failed to append peer Central device.");
+                    // FIXME: It will acquire the BLE HAL lock. If there is a thread currently invoking a
+                    // BLOCKING BLE HAL API, which means that that API has acquired the BLE HAL lock and relying
+                    // on the HAL BLE thread to unblock that API, while acquiring the BLE HAL lock here will prevent
+                    // the HAL BLE thread from dealing with incoming event to unblock that API, dead lock happens.
                     hal_ble_gap_disconnect(peer.impl()->connHandle(), nullptr);
                     return;
                 }
@@ -1218,6 +1217,10 @@ BleCharacteristic::~BleCharacteristic() {
 }
 
 bool BleCharacteristic::valid() const {
+    return isValid();
+}
+
+bool BleCharacteristic::isValid() const {
     return (impl()->local() || impl()->connHandle() != BLE_INVALID_CONN_HANDLE);
 }
 
@@ -1371,7 +1374,7 @@ bool BleService::operator==(const BleService& service) const {
 }
 
 bool BleService::operator!=(const BleService& service) const {
-    return (impl()->UUID() != service.impl()->UUID());
+    return !(*this == service);
 }
 
 
@@ -1706,7 +1709,7 @@ BleAddress BlePeerDevice::address() const {
     return impl()->address();
 }
 
-bool BlePeerDevice::valid() const {
+bool BlePeerDevice::isValid() const {
     WiringBleLock lk;
     return impl()->connHandle() != BLE_INVALID_CONN_HANDLE;
 }
@@ -2234,7 +2237,7 @@ BleCharacteristic BleLocalDevice::addCharacteristic(const BleCharacteristic& cha
     }
     // If the service that the characteristic belongs to is not specified,
     // put the characteristic to the default service.
-    if (!charImpl->svcUUID().valid()) {
+    if (!charImpl->svcUUID().isValid()) {
         LOG_DEBUG(TRACE, "Assign default service UUID.");
         charImpl->svcUUID() = PARTICLE_DEFAULT_BLE_SVC_UUID;
     }
