@@ -30,30 +30,35 @@ struct SystemEventSubscription {
 
     system_event_t events;
     system_event_handler_t* handler;
+    SystemEventContext context;
 
-    SystemEventSubscription() : SystemEventSubscription(0, nullptr) {}
-    SystemEventSubscription(system_event_t e, system_event_handler_t* h) :
-    events(e), handler(h) {}
-
-    inline bool matchesHandler(system_event_handler_t* matchHandler) const
-    {
-        return (matchHandler==nullptr) || (matchHandler==handler);
+    SystemEventSubscription()
+            : SystemEventSubscription(0, nullptr) {
+    }
+    SystemEventSubscription(system_event_t e, system_event_handler_t* h, const SystemEventContext* c = nullptr)
+            : events(e), handler(h), context{} {
+        if (c) {
+            auto size = std::min(c->size, (uint16_t)sizeof(SystemEventContext));
+            memcpy(&context, c, size);
+        }
     }
 
-    inline bool matchesEvent(system_event_t matchEvents) const
-    {
-        return (events&matchEvents)!=0;
+    inline bool matchesHandler(system_event_handler_t* matchHandler) const {
+        return (matchHandler == nullptr) || (matchHandler == handler);
     }
 
-    bool matches(const SystemEventSubscription& subscription) const
-    {
+    inline bool matchesEvent(system_event_t matchEvents) const {
+        return (events&matchEvents) != 0;
+    }
+
+    bool matches(const SystemEventSubscription& subscription) const {
         return matchesHandler(subscription.handler) && matchesEvent(subscription.events);
     }
 
-    void notify(system_event_t event, uint32_t data, void* pointer) const
-    {
-        if (matchesEvent(event))
-            handler(event, data, pointer);
+    void notify(system_event_t event, uint32_t data, void* pointer) {
+        if (matchesEvent(event)) {
+            handler(event, data, pointer, &context);
+        }
     }
 };
 
@@ -61,7 +66,7 @@ struct SystemEventSubscription {
 std::vector<SystemEventSubscription> subscriptions;
 
 void system_notify_event_impl(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata) {
-    for (const SystemEventSubscription& subscription : subscriptions) {
+    for (SystemEventSubscription& subscription : subscriptions) {
         subscription.notify(event, data, pointer);
     }
     if (fn) {
@@ -116,23 +121,21 @@ public:
  * Subscribes to the system events given
  * @param events    One or more system events. Multiple system events are specified using the + operator.
  * @param handler   The system handler function to call.
- * @param reserved  Set to NULL.
+ * @param context   Context along with the handler function.
  * @return {@code 0} if the system event handlers were registered successfully. Non-zero otherwise.
  */
-int system_subscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved)
-{
+int system_subscribe_event(system_event_t events, system_event_handler_t* handler, SystemEventContext* context) {
     size_t count = subscriptions.size();
-    subscriptions.push_back(SystemEventSubscription(events, handler));
-    return subscriptions.size()==count+1 ? 0 : -1;
+    subscriptions.push_back(SystemEventSubscription(events, handler, context));
+    return subscriptions.size() == (count + 1) ? 0 : -1;
 }
 
 /**
  * Unsubscribes a handler from the given events.
  * @param handler   The handler that will be unsubscribed.
- * @param reserved  Set to NULL.
+ * @param reserved  Set to nullptr.
  */
-void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved)
-{
+void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved) {
 }
 
 void system_notify_event(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata,
