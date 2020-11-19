@@ -57,7 +57,9 @@ public:
     // Constructors
     IPAddress();
     IPAddress(uint8_t first_octet, uint8_t second_octet, uint8_t third_octet, uint8_t fourth_octet);
+    // A 32-bits defining the 4 IPv4 octets, in host order.
     IPAddress(uint32_t address);
+    // 4 bytes defining the IP address in network order
     IPAddress(const uint8_t* address);
     IPAddress(const HAL_IPAddress& address);
 
@@ -76,9 +78,17 @@ public:
 
     // Overloaded cast operator to allow IPAddress objects to be used where a pointer
     // to a four-byte uint8_t array, uint32_t or another IPAddress object is expected.
-    bool operator==(uint32_t address) const;
-    bool operator==(const uint8_t* address) const;
     bool operator==(const IPAddress& address) const;
+
+    template<typename T>
+    bool operator==(T address) const {
+        return IPAddress(address)==*this;
+    }
+
+    template<typename T>
+    bool operator!=(T address) const {
+        return !(IPAddress(address)==*this);
+    }
 
     // Overloaded index operator to allow getting and setting individual octets of the address
     uint8_t operator[](int index) const { return (((uint8_t*)(&address.ipv4))[3-index]); }
@@ -88,19 +98,10 @@ public:
 
 
     // Overloaded copy operators to allow initialisation of IPAddress objects from other types
-    /**
-     *
-     * @param address 4 bytes defining the IP address in network order
-     * @return *this
-     */
-    IPAddress& operator=(const uint8_t* address);
-
-    /**
-     *
-     * @param address   A 32-byte defining the 4 IPv4 octets, in host order.
-     * @return
-     */
-    IPAddress& operator=(uint32_t address);
+    template<typename T>
+    IPAddress& operator=(T address) {
+        return *this = IPAddress(address);
+    }
 
     operator const HAL_IPAddress& () const {
         return address;

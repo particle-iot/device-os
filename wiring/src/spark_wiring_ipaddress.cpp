@@ -49,14 +49,15 @@ IPAddress::IPAddress(uint8_t first_octet, uint8_t second_octet, uint8_t third_oc
     set_ipv4(first_octet, second_octet, third_octet, fourth_octet);
 }
 
-IPAddress::IPAddress(uint32_t address)
+IPAddress::IPAddress(uint32_t addr)
 {
-    *this = address;
+    address.ipv4 = addr;
+    setVersion(4);
 }
 
-IPAddress::IPAddress(const uint8_t* address)
+IPAddress::IPAddress(const uint8_t* addr)
 {
-    *this = address;
+    set_ipv4(addr[0], addr[1], addr[2], addr[3]);
 }
 
 IPAddress::operator bool() const
@@ -78,29 +79,6 @@ void IPAddress::set_ipv4(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3)
 {
     address.ipv4 = b0<<24 | b1 << 16 | b2 << 8 | b3;
     setVersion(4);
-}
-
-IPAddress& IPAddress::operator=(const uint8_t* address)
-{
-    set_ipv4(address[0], address[1], address[2], address[3]);
-    return *this;
-}
-
-IPAddress& IPAddress::operator=(uint32_t ipv4)
-{
-    address.ipv4 = ipv4;
-    setVersion(4);
-    return *this;
-}
-
-bool IPAddress::operator==(uint32_t ipv4) const
-{
-    return ipv4==address.ipv4;
-}
-
-bool IPAddress::operator==(const uint8_t* address) const
-{
-    return IPAddress(address)==*this;
 }
 
 bool IPAddress::operator==(const IPAddress& that) const

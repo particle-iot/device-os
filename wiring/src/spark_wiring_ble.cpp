@@ -114,6 +114,10 @@ BleAddress::BleAddress()
     address_.addr_type = BLE_SIG_ADDR_TYPE_PUBLIC;
 }
 
+BleAddress::BleAddress(const BleAddress& addr) {
+    address_ = addr.address_;
+}
+
 BleAddress::BleAddress(const hal_ble_addr_t& addr) {
     address_ = addr;
 }
@@ -138,6 +142,11 @@ int BleAddress::type(BleAddressType type) {
 
 BleAddressType BleAddress::type() const {
     return static_cast<BleAddressType>(address_.addr_type);
+}
+
+int BleAddress::set(const hal_ble_addr_t& addr) {
+    address_ = addr;
+    return SYSTEM_ERROR_NONE;
 }
 
 int BleAddress::set(const uint8_t addr[BLE_SIG_ADDR_LEN], BleAddressType type) {
@@ -229,13 +238,29 @@ uint8_t BleAddress::operator[](uint8_t i) const {
     return address_.addr[i];
 }
 
-BleAddress& BleAddress::operator=(const hal_ble_addr_t& addr) {
-    address_ = addr;
+BleAddress& BleAddress::operator=(const BleAddress& addr) {
+    address_ = addr.address_;
     return *this;
 }
 
+BleAddress& BleAddress::operator=(const hal_ble_addr_t& addr) {
+    return *this = BleAddress(addr);
+}
+
 BleAddress& BleAddress::operator=(const uint8_t addr[BLE_SIG_ADDR_LEN]) {
+    // We just update the address value while keep the address type
     memcpy(address_.addr, addr, BLE_SIG_ADDR_LEN);
+    return *this;
+}
+
+BleAddress& BleAddress::operator=(const char* address) {
+    // We just update the address value while keep the address type
+    set(address, static_cast<BleAddressType>(address_.addr_type));
+    return *this;
+}
+
+BleAddress& BleAddress::operator=(const String& address) {
+    *this = address.c_str();
     return *this;
 }
 
@@ -244,6 +269,48 @@ bool BleAddress::operator==(const BleAddress& addr) const {
         return true;
     }
     return false;
+}
+
+bool BleAddress::operator==(const hal_ble_addr_t& addr) const {
+    return *this == BleAddress(addr);
+}
+
+bool BleAddress::operator==(const uint8_t addr[BLE_SIG_ADDR_LEN]) const {
+    // The operator intends to compare the value only.
+    return !memcmp(address_.addr, addr, BLE_SIG_ADDR_LEN);
+}
+
+bool BleAddress::operator==(const char* address) const {
+    // The operator intends to compare the value only.
+    return toString() == String(address);
+}
+
+bool BleAddress::operator==(const String& address) const {
+    // The operator intends to compare the value only.
+    return toString() == address;
+}
+
+bool BleAddress::operator!=(const BleAddress& addr) const {
+    return !(*this == addr);
+}
+
+bool BleAddress::operator!=(const hal_ble_addr_t& addr) const {
+    return !(*this == BleAddress(addr));
+}
+
+bool BleAddress::operator!=(const uint8_t addr[BLE_SIG_ADDR_LEN]) const {
+    // The operator intends to compare the value only.
+    return memcmp(address_.addr, addr, BLE_SIG_ADDR_LEN);
+}
+
+bool BleAddress::operator!=(const char* address) const {
+    // The operator intends to compare the value only.
+    return toString() != String(address);
+}
+
+bool BleAddress::operator!=(const String& address) const {
+    // The operator intends to compare the value only.
+    return toString() != address;
 }
 
 void BleAddress::toBigEndian(uint8_t buf[BLE_SIG_ADDR_LEN]) const {
@@ -398,56 +465,8 @@ size_t BleUuid::toString(char* buf, size_t len, bool stripped) const {
     return len;
 }
 
-BleUuid& BleUuid::operator=(const BleUuid& uuid) {
-    type_ = uuid.type_;
-    memcpy(uuid128_, uuid.uuid128_, BLE_SIG_UUID_128BIT_LEN);
-    return *this;
-}
-
-BleUuid& BleUuid::operator=(const uint8_t* uuid128) {
-    return *this = BleUuid(uuid128);
-}
-
-BleUuid& BleUuid::operator=(uint16_t uuid16) {
-    return *this = BleUuid(uuid16);
-}
-
-BleUuid& BleUuid::operator=(const String& uuid) {
-    construct(uuid.c_str());
-    return *this;
-}
-
-BleUuid& BleUuid::operator=(const char* uuid) {
-    construct(uuid);
-    return *this;
-}
-
-BleUuid& BleUuid::operator=(const hal_ble_uuid_t& uuid) {
-    return *this = BleUuid(uuid);
-}
-
 bool BleUuid::operator==(const BleUuid& uuid) const {
     return ((type_ == uuid.type_) && !memcmp(uuid128_, uuid.uuid128_, BLE_SIG_UUID_128BIT_LEN));
-}
-
-bool BleUuid::operator==(const char* uuid) const {
-    BleUuid temp(uuid);
-    return *this == temp;
-}
-
-bool BleUuid::operator==(const String& uuid) const {
-    BleUuid temp(uuid);
-    return *this == temp;
-}
-
-bool BleUuid::operator==(uint16_t uuid) const {
-    BleUuid temp(uuid);
-    return *this == temp;
-}
-
-bool BleUuid::operator==(const uint8_t* uuid128) const {
-    BleUuid temp(uuid128);
-    return *this == temp;
 }
 
 void BleUuid::construct(const char* uuid) {
