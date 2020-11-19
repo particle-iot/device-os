@@ -26,6 +26,8 @@ TARGET=elf bin lst hex size
 
 include $(PROJECT_ROOT)/build/arm-tlm.mk
 
+# NOTE: When compiling with LTO vTaskSwitchContext is getting linked out, despite the fact that it's
+# marked as used.
 LDFLAGS += -flto -Os -fuse-linker-plugin -Wl,--undefined=vTaskSwitchContext
 
 $(call check_modular)
