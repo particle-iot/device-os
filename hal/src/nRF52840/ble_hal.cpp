@@ -1313,7 +1313,7 @@ int BleObject::Observer::setScanParams(const hal_ble_scan_params_t* params) {
     CHECK_TRUE(params->window <= params->interval, SYSTEM_ERROR_INVALID_ARGUMENT);
     // If timeout is set to 0, it should scan indefinitely
     if (params->timeout != BLE_GAP_SCAN_TIMEOUT_UNLIMITED) {
-        if (os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_PERIOD, HAL_IsISR() ? true : false, params->timeout * 10 + BLE_SCANNING_TIMEOUT_EXT, 0, nullptr)) {
+        if (os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_PERIOD, HAL_IsISR() ? true : false, params->timeout * 10 + BLE_SCANNING_TIMEOUT_EXT_MS, 0, nullptr)) {
             LOG(ERROR, "Failed to change timer period for guard of scanning timeout.");
             return SYSTEM_ERROR_INTERNAL;
         }
@@ -1374,6 +1374,9 @@ int BleObject::Observer::stopScanning() {
     if (!isScanning_) {
         return SYSTEM_ERROR_NONE;
     }
+    if (os_timer_is_active(scanGuardTimer_, nullptr)) {
+        os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_STOP, HAL_IsISR() ? true : false, 0, 0, nullptr);
+    }
     // Ignore the returned value, as the SoftDevice might be messed up considering the device is not in scanning state,
     // but wee neeed to give the semaphore to unblock the thread that initiated the scanning procedure.
     if (sd_ble_gap_scan_stop() != NRF_SUCCESS) {
@@ -1388,9 +1391,6 @@ int BleObject::Observer::stopScanning() {
     }
     if (give) {
         os_semaphore_give(scanSemaphore_, false);
-    }
-    if (os_timer_is_active(scanGuardTimer_, nullptr)) {
-        os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_STOP, HAL_IsISR() ? true : false, 0, 0, nullptr);
     }
     return SYSTEM_ERROR_NONE;
 }

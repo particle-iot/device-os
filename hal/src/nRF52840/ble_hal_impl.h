@@ -73,7 +73,7 @@
 #define BLE_DEFAULT_SCANNING_WINDOW                 BLE_MSEC_TO_UNITS(50, BLE_UNIT_0_625_MS)    /* The scan window: 50ms (in units of 0.625 ms). */
 #define BLE_DEFAULT_SCANNING_TIMEOUT                BLE_MSEC_TO_UNITS(BLE_DEFAULT_SCANNING_TIMEOUT_MS, BLE_UNIT_10_MS)     /* The timeout: 5000ms (in units of 10 ms. 0 for scanning forever). */
 // Extended timeout for the scanning timeout guard timer
-#define BLE_SCANNING_TIMEOUT_EXT                    1000
+#define BLE_SCANNING_TIMEOUT_EXT_MS                 1000
 
 /* Maximum length of advertising and scan response data */
 #define BLE_MAX_ADV_DATA_LEN                        BLE_GAP_ADV_SET_DATA_SIZE_MAX
