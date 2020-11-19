@@ -71,8 +71,8 @@ test(SYSTEM_03_user_backup_ram)
     assertTrue(total_backup==(USER_BACKUP_RAM));
     assertTrue(total_ram==(USER_BACKUP_RAM));
 
-	extern char link_global_data_start;
-	extern char link_bss_end;
+	extern uintptr_t link_global_data_start;
+	extern uintptr_t link_bss_end;
 
 	uintptr_t ramStart = (uintptr_t)&link_global_data_start;
 	uintptr_t ramEnd = (uintptr_t)&link_bss_end;
