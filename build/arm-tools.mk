@@ -50,6 +50,9 @@ CONLYFLAGS += -flto -ffat-lto-objects -DPARTICLE_COMPILE_LTO_FAT
 
 ifeq ($(COMPILE_LTO),y)
 LDFLAGS += -flto -Os -fuse-linker-plugin
+else
+# Be explicit and disable LTO
+LDFLAGS += -fno-lto
 endif
 
 # We are using newlib-nano for all the platforms

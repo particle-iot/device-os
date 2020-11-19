@@ -18,6 +18,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,8 +27,7 @@ extern "C" {
 /**
  * Variable String.
  */
-typedef struct
-{
+typedef struct device_code_t {
     uint8_t length;
     uint8_t value[32];
 } device_code_t;
@@ -44,6 +44,7 @@ bool fetch_or_generate_setup_ssid(device_code_t* value);
  */
 extern bool fetch_or_generate_ssid_prefix(device_code_t* value);
 
+int get_device_name(char* buf, size_t size);
 
 #ifdef __cplusplus
 }
