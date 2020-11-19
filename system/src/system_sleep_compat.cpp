@@ -98,6 +98,9 @@ int system_sleep_enter_standby_compat(long seconds, uint32_t param) {
         config.gpio(WKP, RISING);
     }
 
+    SystemSleepConfigurationHelper configHelper(config.halConfig());
+    system_power_management_sleep(configHelper.wakeupByFuelGauge() ? false : true);
+
     return hal_sleep_enter(config.halConfig(), nullptr, nullptr);
 }
 
@@ -117,8 +120,13 @@ int system_sleep_enter_stop_compat(const uint16_t* pins, size_t pins_count, cons
         config.gpio(pins[i], ((i < modes_count) ? modes[i] : modes[modes_count - 1]));
     }
 
+    SystemSleepConfigurationHelper configHelper(config.halConfig());
+    system_power_management_sleep(configHelper.wakeupByFuelGauge() ? false : true);
+
     hal_wakeup_source_base_t* wakeupSource = nullptr;
     int ret = CHECK(hal_sleep_enter(config.halConfig(), &wakeupSource, nullptr));
+
+    system_power_management_wakeup();
 
     ret = 0; // 0 for RTC wakeup reason.
     if (wakeupSource) {
@@ -190,15 +198,12 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
                 network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
                 network_off(0, 0, 0, NULL);
             }
-
-            system_power_management_sleep();
             return system_sleep_enter_standby_compat(seconds, param);
 
 #if HAL_PLATFORM_SETUP_BUTTON_UX
         case SLEEP_MODE_SOFTPOWEROFF:
             network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
             network_off(0, 0, 0, NULL);
-            system_power_management_sleep();
             return system_sleep_enter_standby_compat(seconds, param);
 #endif
     }
@@ -236,9 +241,7 @@ int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const Interru
     led_set_update_enabled(0, nullptr); // Disable background LED updates
     LED_Off(LED_RGB);
 
-	system_power_management_sleep();
     int ret = system_sleep_enter_stop_compat(pins, pins_count, modes, modes_count, seconds);
-    system_power_management_sleep(false);
 
     led_set_update_enabled(1, nullptr); // Enable background LED updates
     LED_On(LED_RGB); // Turn RGB on in case that RGB is controlled by user application before entering sleep mode.

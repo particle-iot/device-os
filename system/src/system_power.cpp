@@ -42,8 +42,12 @@ void system_power_management_init()
     PowerManager::instance()->init();
 }
 
-void system_power_management_sleep(bool sleep) {
-    PowerManager::instance()->sleep(sleep);
+void system_power_management_sleep(bool fuelGaugeSleep) {
+    PowerManager::instance()->sleep(fuelGaugeSleep);
+}
+
+void system_power_management_wakeup() {
+    PowerManager::instance()->wakeup();
 }
 
 int system_power_management_set_config(const hal_power_config* conf, void* reserved) {
@@ -55,7 +59,10 @@ int system_power_management_set_config(const hal_power_config* conf, void* reser
 void system_power_management_init() {
 }
 
-void system_power_management_sleep(bool sleep) {
+void system_power_management_sleep(bool fuelGaugeSleep) {
+}
+
+void system_power_management_wakeup() {
 }
 
 int system_power_management_set_config(const hal_power_config* conf, void* reserved) {

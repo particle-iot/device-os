@@ -87,6 +87,20 @@ public:
         return true; 
     }
 
+    bool wakeupByFuelGauge() const {
+#if HAL_PLATFORM_FUELGAUGE_MAX17043
+        auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_GPIO);
+        while (wakeup) {
+            auto gpioWakeup = reinterpret_cast<const hal_wakeup_source_gpio_t*>(wakeup);
+            if (gpioWakeup->pin == LOW_BAT_UC) {
+                return true;
+            }
+            wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_GPIO, wakeup->next);
+        }
+#endif
+        return false;
+    }
+
     bool wakeupByNetworkInterface(network_interface_index index) const {
         auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK);
         while (wakeup) {

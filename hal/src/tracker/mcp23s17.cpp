@@ -311,6 +311,37 @@ int Mcp23s17::detachPinInterrupt(uint8_t port, uint8_t pin, bool verify) {
     return SYSTEM_ERROR_NONE;
 }
 
+int Mcp23s17::interruptsSuspend() {
+    Mcp23s17Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    // Simply reset the registers, since we have cached current registers' value
+    CHECK(writeRegister(GPINTEN_ADDR[0], 0x00));
+    CHECK(writeRegister(GPINTEN_ADDR[1], 0x00));
+    CHECK(writeRegister(INTCON_ADDR[0], 0x00));
+    CHECK(writeRegister(INTCON_ADDR[1], 0x00));
+    CHECK(writeRegister(DEFVAL_ADDR[0], 0x00));
+    CHECK(writeRegister(DEFVAL_ADDR[1], 0x00));
+    // Clear the pending interrupts flag
+    uint8_t dummy;
+    CHECK(readRegister(INTCAP_ADDR[0], &dummy));
+    CHECK(readRegister(INTCAP_ADDR[1], &dummy));
+    return SYSTEM_ERROR_NONE;
+}
+
+int Mcp23s17::interruptsRestore(uint8_t intStatus[2]) {
+    Mcp23s17Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK(readRegister(INTF_ADDR[0], &intStatus[0]));
+    CHECK(readRegister(INTF_ADDR[1], &intStatus[1]));
+    CHECK(writeRegister(INTCON_ADDR[0], intcon_[0]));
+    CHECK(writeRegister(INTCON_ADDR[1], intcon_[1]));
+    CHECK(writeRegister(DEFVAL_ADDR[0], defval_[0]));
+    CHECK(writeRegister(DEFVAL_ADDR[1], defval_[1]));
+    CHECK(writeRegister(GPINTEN_ADDR[0], gpinten_[0]));
+    CHECK(writeRegister(GPINTEN_ADDR[1], gpinten_[1]));
+    return SYSTEM_ERROR_NONE;
+}
+
 Mcp23s17& Mcp23s17::getInstance() {
     static Mcp23s17 mcp23s17;
     return mcp23s17;
@@ -351,6 +382,7 @@ int Mcp23s17::writeRegister(const uint8_t addr, const uint8_t val) const {
 
 int Mcp23s17::readRegister(const uint8_t addr, uint8_t* const val) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
+    CHECK_TRUE(val != nullptr, SYSTEM_ERROR_INVALID_ARGUMENT);
     Mcp23s17SpiConfigurationGuarder spiGuarder(spi_);
     HAL_GPIO_Write(IOE_CS, 0);
     hal_spi_transfer(spi_, MCP23S17_CMD_READ);
@@ -362,6 +394,7 @@ int Mcp23s17::readRegister(const uint8_t addr, uint8_t* const val) const {
 
 int Mcp23s17::readContinuousRegisters(const uint8_t start_addr, uint8_t* const val, uint8_t len) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
+    CHECK_TRUE(val != nullptr, SYSTEM_ERROR_INVALID_ARGUMENT);
     Mcp23s17SpiConfigurationGuarder spiGuarder(spi_);
     HAL_GPIO_Write(IOE_CS, 0);
     hal_spi_transfer(spi_, MCP23S17_CMD_READ);
@@ -386,20 +419,26 @@ os_thread_return_t Mcp23s17::ioInterruptHandleThread(void* param) {
         os_semaphore_take(instance->ioExpanderWorkerSemaphore_, CONCURRENT_WAIT_FOREVER, false);
         {
             Mcp23s17Lock lock();
-            uint8_t intStatus;
-            uint8_t portValue;
-            if (instance->readRegister(instance->INTF_ADDR[0], &intStatus) != SYSTEM_ERROR_NONE) {
+            uint8_t intStatus[2];
+            uint8_t portValue[2];
+            if (instance->readRegister(instance->INTF_ADDR[0], &intStatus[0]) != SYSTEM_ERROR_NONE) {
+                continue;
+            }
+            if (instance->readRegister(instance->INTF_ADDR[1], &intStatus[1]) != SYSTEM_ERROR_NONE) {
                 continue;
             }
             // This will clear the interrupt flag.
-            if (instance->readRegister(instance->INTCAP_ADDR[0], &portValue) != SYSTEM_ERROR_NONE) {
+            if (instance->readRegister(instance->INTCAP_ADDR[0], &portValue[0]) != SYSTEM_ERROR_NONE) {
+                continue;
+            }
+            if (instance->readRegister(instance->INTCAP_ADDR[1], &portValue[1]) != SYSTEM_ERROR_NONE) {
                 continue;
             }
             for (const auto& config : instance->intConfigs_) {
                 uint8_t bitMask = 0x01 << config.pin;
-                if ((intStatus & bitMask) && (config.cb != nullptr)) {
-                    if ( ((config.trig == RISING) && (portValue & bitMask)) ||
-                         ((config.trig == FALLING) && !(portValue & bitMask)) ||
+                if ((intStatus[config.port] & bitMask) && (config.cb != nullptr)) {
+                    if ( ((config.trig == RISING) && (portValue[config.port] & bitMask)) ||
+                         ((config.trig == FALLING) && !(portValue[config.port] & bitMask)) ||
                           (config.trig == CHANGE) ) {
                         config.cb(config.context);
                     }

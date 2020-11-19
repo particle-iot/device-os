@@ -46,7 +46,8 @@ typedef enum {
 } power_source_t;
 
 void system_power_management_init();
-void system_power_management_sleep(bool sleep = true);
+void system_power_management_sleep(bool fuelGaugeSleep);
+void system_power_management_wakeup();
 int system_power_management_set_config(const hal_power_config* conf, void* reserved);
 
 #ifdef __cplusplus

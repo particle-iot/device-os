@@ -124,7 +124,7 @@ void PowerManager::update() {
   os_queue_put(queue_, (const void*)&ev, 0, nullptr);
 }
 
-void PowerManager::sleep(bool s) {
+void PowerManager::sleep(bool fuelGaugeSleep) {
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
   if (detect_ && isRunning()) {
 #else
@@ -133,23 +133,32 @@ void PowerManager::sleep(bool s) {
     // When going into sleep we do not want to exceed the default charging parameters set
     // by initDefault(), which will be reset in case we are in a DISCONNECTED state with
     // PMIC watchdog enabled. Reset to the defaults and disable watchdog before going into sleep.
-    if (s) {
-      // Going into sleep
-      if (g_batteryState == BATTERY_STATE_DISCONNECTED) {
-        initDefault();
-      }
+    if (g_batteryState == BATTERY_STATE_DISCONNECTED) {
+      initDefault();
+    }
 #if HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
-      PMIC power;
-      // XXX:
-      power.disableWatchdog();
+    PMIC power;
+    // XXX:
+    power.disableWatchdog();
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
+    if (fuelGaugeSleep && fuelGaugeAwake_) {
       FuelGauge gauge;
       gauge.sleep();
+      fuelGaugeAwake_ = false;
     } else {
-      // Wake up
-      Event ev = Event::Wakeup;
-      os_queue_put(queue_, (const void*)&ev, CONCURRENT_WAIT_FOREVER, nullptr);
+      fuelGaugeAwake_ = true;
     }
+  }
+}
+
+void PowerManager::wakeup() {
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+  if (detect_ && isRunning()) {
+#else
+  if (isRunning()) {
+#endif
+    Event ev = Event::Wakeup;
+    os_queue_put(queue_, (const void*)&ev, CONCURRENT_WAIT_FOREVER, nullptr);
   }
 }
 
@@ -345,10 +354,13 @@ void PowerManager::loop(void* arg) {
         self->initDefault(false);
         self->update_ = true;
       } else if (ev == Event::Wakeup) {
-        FuelGauge fuel(true);
         self->initDefault();
-        fuel.wakeup();
-        HAL_Delay_Milliseconds(500);
+        if (!self->fuelGaugeAwake_) {
+          FuelGauge fuel(true);
+          fuel.wakeup();
+          self->fuelGaugeAwake_ = true;
+          HAL_Delay_Milliseconds(500);
+        }
         self->handleUpdate();
       }
     }

@@ -20,6 +20,8 @@
 
 //Serial1LogHandler logHandler(115200, LOG_LEVEL_INFO);
 
+//TODO: Run user/tests/app/tracker_wakeup to verify the additional wakeup sources for platform tracker.
+
 STARTUP(System.enableFeature(FEATURE_RETAINED_MEMORY));
 static retained uint32_t magick = 0;
 static retained uint32_t phase = 0;
