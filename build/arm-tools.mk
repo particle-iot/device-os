@@ -45,9 +45,19 @@ ASFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 LDFLAGS += -nostartfiles -Xlinker --gc-sections
 endif
 
+# NOTE: this does not enable LTO! This allows to build object files
+# that can be linked with LTO enabled and disabled (https://gcc.gnu.org/onlinedocs/gccint/LTO-Overview.html)
+# If LTO is disabled, LTO information is simply discarded. These parameters
+# are only applied when compiling the sources. A separate setting during linking stage
+# would control whether LTO is enabled or not.
+CPPFLAGS += -flto -ffat-lto-objects -DPARTICLE_COMPILE_LTO_FAT
+CONLYFLAGS += -flto -ffat-lto-objects -DPARTICLE_COMPILE_LTO_FAT
+
 ifeq ($(COMPILE_LTO),y)
-CFLAGS += -flto
 LDFLAGS += -flto -Os -fuse-linker-plugin
+else
+# Be explicit and disable LTO
+LDFLAGS += -fno-lto
 endif
 
 # We are using newlib-nano for all the platforms

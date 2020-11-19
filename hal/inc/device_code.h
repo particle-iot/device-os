@@ -24,15 +24,28 @@
 extern "C" {
 #endif
 
+/**
+ * Variable String.
+ */
 typedef struct device_code_t {
     uint8_t length;
     uint8_t value[32];
 } device_code_t;
 
-bool fetch_or_generate_setup_ssid(device_code_t* code);
+/**
+ * Appends the device code to the end of the existing value. The length field must be set to the length of
+ * the current value.
+ */
+bool fetch_or_generate_device_code(device_code_t* value);
+bool fetch_or_generate_setup_ssid(device_code_t* value);
+
+/**
+ * This function is provided externally by the device HAL since the prefix is specific to the platform.
+ */
+extern bool fetch_or_generate_ssid_prefix(device_code_t* value);
 
 int get_device_name(char* buf, size_t size);
 
 #ifdef __cplusplus
-} // extern "C"
+}
 #endif

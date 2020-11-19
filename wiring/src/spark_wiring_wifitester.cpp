@@ -31,6 +31,7 @@
 #include "string_convert.h"
 #include "bytes2hexbuf.h"
 #include "deviceid_hal.h"
+#include "device_code.h"
 
 #if 0 //MODULAR_FIRMWARE
 // The usual wiring implementations are dependent upon I2C, SPI and other global instances. Rewriting the GPIO functions to talk directly to the HAL
@@ -143,15 +144,6 @@ void WiFiTester::printItem(const char* name, const char* value) {
     serialPrintln(value);
 }
 
-// todo - this is specific to photon HAL
-
-struct varstring_t {
-    uint8_t len;
-    char string[33];
-};
-
-extern "C" bool fetch_or_generate_setup_ssid(varstring_t* result);
-
 bool WiFiTester::isPowerOn() {
     return power_state;
 }
@@ -177,13 +169,12 @@ void WiFiTester::printInfo() {
     }
 #endif
 
-    varstring_t serial;
-    memset(&serial, 0, sizeof (serial));
+    device_code_t serial = {};
     fetch_or_generate_setup_ssid(&serial);
-    serial.string[serial.len] = 0;
+    serial.value[serial.length] = 0;
 
     printItem("DeviceID", deviceID.c_str());
-    printItem("Serial", strstr((const char*) serial.string, "-") + 1);
+    printItem("Serial", strstr((const char*) serial.value, "-") + 1);
 #if Wiring_WiFi
     String rssi(WiFi.RSSI());
     printItem("MAC", macAddress.c_str());
@@ -203,7 +194,7 @@ void WiFiTester::printInfo() {
     }
 #endif
 
-    printItem("SSID", serial.string);
+    printItem("SSID", (const char*)serial.value);
 
 #if Wiring_WiFi
     printItem("RSSI", rssi.c_str());
