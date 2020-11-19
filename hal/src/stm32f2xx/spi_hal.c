@@ -109,7 +109,7 @@ typedef enum spi_ports_t {
 stm32_spi_state_t spiState[HAL_PLATFORM_SPI_NUM];
 
 
-static void spiDmaConfig(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length) {
+static void spiDmaConfig(hal_spi_interface_t spi, const void* tx_buffer, void* rx_buffer, uint32_t length) {
     DMA_InitTypeDef dmaInitStructure;
     NVIC_InitTypeDef nvicInitStructure;
 
@@ -464,7 +464,7 @@ uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data) {
     return SPI_I2S_ReceiveData(spiMap[spi].peripheral);
 }
 
-void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback) {
+void hal_spi_transfer_dma(hal_spi_interface_t spi, const void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback) {
     if (spiState[spi].state != HAL_SPI_STATE_ENABLED) {
         return;
     }

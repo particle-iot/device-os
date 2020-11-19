@@ -75,7 +75,7 @@ public:
     byte transfer(byte data) {
         return instance().transfer(data);
     }
-    void transfer(void* tx_buffer, void* rx_buffer, size_t length, wiring_spi_dma_transfercomplete_callback_t user_callback) {
+    void transfer(const void* tx_buffer, void* rx_buffer, size_t length, wiring_spi_dma_transfercomplete_callback_t user_callback) {
         instance().transfer(tx_buffer, rx_buffer, length, user_callback);
     }
     void attachInterrupt() {

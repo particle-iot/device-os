@@ -118,7 +118,7 @@ void hal_spi_set_clock_divider(hal_spi_interface_t spi, uint8_t rate);
 // to avoid having to reconfigure SPI peripheral 3 times
 int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8_t clockdiv, uint8_t order, uint8_t mode, void* reserved);
 uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data);
-void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback);
+void hal_spi_transfer_dma(hal_spi_interface_t spi, const void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback);
 void hal_spi_transfer_dma_cancel(hal_spi_interface_t spi);
 int32_t hal_spi_transfer_dma_status(hal_spi_interface_t spi, hal_spi_transfer_status_t* st);
 bool hal_spi_is_enabled_deprecated();

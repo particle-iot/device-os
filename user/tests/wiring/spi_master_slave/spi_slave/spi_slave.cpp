@@ -179,8 +179,24 @@
 
 static uint8_t SPI_Slave_Tx_Buffer[TRANSFER_LENGTH_2];
 static uint8_t SPI_Slave_Rx_Buffer[TRANSFER_LENGTH_2];
+static uint8_t SPI_Slave_Rx_Buffer_Supper[1024];
 static volatile uint8_t DMA_Completed_Flag = 0;
 static volatile uint8_t SPI_Selected_State = 0;
+
+static const char* txString = 
+"urjlU1tW177HwJsR6TylreMKge225qyLaIizW5IhXHkWgTGpH2fZtm2Od20Ne3Q81fxfUl7zoFaF\
+Z6smPzkpTGNSxGg7TCEiE2f19951tKxjFCB4Se86R4CaWW2YZF0mogirgsu2qRMGe4mC9QlJkCgXP\
+bgSVV1mc2xsZcu4bj0pbmPIhxkuyAHe4cVK3gLpWEGTadtAn2k66rOFNBdfPaE0cUY3wwXlVQ9yDl\
+OxexepQcC2WTrbUe4z85OSae9s8A6BwUCRBYYfEH01cnGCzYGCEOEm5jl4nJ3HqWckHI5K2NeWS4x\
+EhkgMqG3RwfOTM85SQ7q7NLIhgprCTsBTzv2YpGgbAB7oSX0joGQHxfyndxIyCVIHknvEj1hynXtw\
+uebA6i7JBFiGkk4AnRzk7v3dNjHt6weuYWtf6yj3aVzhbMaWFCR6HOKFc3i8XzBsnLTc4Uzft61a0\
+qV8ZssHdHO7sbiojOmA37RkrNUFxX1aODUXWNEntkTylwvhxKpsAb6Lsopzve4ea2G17WpW62Z12x\
+mNgTZQHOo3fCZDy8L7WfVwCJiJunHPXu9jw6g11NJFcpo2AakkZQDgUGZoeZgDB6GfRheAiurAEB5\
+Ym4EVIQB9AvVBf4zY84R8D4bnfjwwLDwiZSo9y2Z5JsVQ0yRdqPdxv0cV2Kp0AaevITeubJseCXOg\
+LkFiaeDTBoR7kyMyoJvJl4vjLmiV03RNSAl9JpZkBfTHzalZw8oaRHMMiTVVGdieJOIbANoaXyRbe\
+xSYU1t5dOe8wxybwfBBlPIswpVJ45kXd4Bu8NCLXPAbgJCOVSlTQsfvzVKZykp9V1DBQ3PwyeBXJB\
+QsLDslIOHOKbfqB8njXotpE3Dz46Wi6QtpinLsSiviZmz62qLW5Pd9M7SDCarrxFk8SBHyJl2KdjH\
+5Lx1LmkW8gMiYquOctT9xhFNs406BxWrPcTc5kwaSJ6RJQyohQEJk9ojchrbSo4ucfZGQzEMBEIJs";
 
 static void SPI_On_Select(uint8_t state)
 {
@@ -221,7 +237,7 @@ static void SPI_Init(uint8_t mode, uint8_t bitOrder) {
     MY_SPI.begin(SPI_MODE_SLAVE, MY_CS);
 }
 
-test(SPI_Master_Slave_Slave_Transfer)
+test(00_SPI_Master_Slave_Slave_Transfer)
 {
     /* Test will alternate between asynchronous and synchronous SPI.transfer() */
     Serial.println("This is Slave");
@@ -236,7 +252,7 @@ test(SPI_Master_Slave_Slave_Transfer)
     while (true)
     {
         int ret = hal_spi_sleep(MY_SPI.interface(), false, nullptr);
-        assertEqual(ret, (int)SYSTEM_ERROR_NONE);
+        // assertEqual(ret, (int)SYSTEM_ERROR_NONE); // Device may be awake
         memset(SPI_Slave_Tx_Buffer, 0, sizeof(SPI_Slave_Tx_Buffer));
         memset(SPI_Slave_Rx_Buffer, 0, sizeof(SPI_Slave_Rx_Buffer));
 
@@ -305,6 +321,25 @@ test(SPI_Master_Slave_Slave_Transfer)
         ret = hal_spi_sleep(MY_SPI.interface(), true, nullptr);
         assertEqual(ret, (int)SYSTEM_ERROR_NONE);
     }
+}
+
+test(01_SPI_Master_Slave_Slave_Receiption)
+{
+    /* IMPORTANT: NOT waiting for Master to select us, as some of the platforms
+     * require TX and RX buffers to be configured before CS goes low
+     */
+    while(SPI_Selected_State == 0);
+    SPI_Selected_State = 0;
+
+    memset(SPI_Slave_Rx_Buffer_Supper, 0, sizeof(SPI_Slave_Rx_Buffer_Supper));
+
+    SPI_Transfer_DMA(nullptr, SPI_Slave_Rx_Buffer_Supper, sizeof(SPI_Slave_Rx_Buffer_Supper), NULL);
+    /* Check how many bytes we have received */
+    assertEqual(MY_SPI.available(), strlen(txString));
+
+    // Serial.print("< ");
+    // Serial.println((const char *)SPI_Slave_Rx_Buffer_Supper);
+    assertTrue(strncmp((const char *)SPI_Slave_Rx_Buffer_Supper, txString, strlen(txString)) == 0);
 }
 
 #endif // #ifdef MY_SPI
