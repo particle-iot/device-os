@@ -857,7 +857,7 @@ public:
               charUuid_(),
               svcUuid_(),
               description_(),
-              wiringCallback_(nullptr) {
+              dataReceivedCallback_(nullptr) {
     }
 
     BleCharacteristicImpl(EnumFlags<BleCharacteristicProperty> properties, const char* desc, 
@@ -865,7 +865,7 @@ public:
             : BleCharacteristicImpl() {
         properties_ = properties;
         description_ = desc;
-        wiringCallback_ = std::bind(callback, _1, _2, _3, context);
+        dataReceivedCallback_ = std::bind(callback, _1, _2, _3, context);
     }
 
     BleCharacteristicImpl(EnumFlags<BleCharacteristicProperty> properties, const char* desc, 
@@ -873,7 +873,7 @@ public:
             : BleCharacteristicImpl() {
         properties_ = properties;
         description_ = desc;
-        wiringCallback_ = callback;
+        dataReceivedCallback_ = callback;
     }
 
     BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, 
@@ -921,16 +921,16 @@ public:
     }
 
     void setCallback(BleOnDataReceivedCallback callback, void* context) {
-        wiringCallback_ = std::bind(callback, _1, _2, _3, context);
+        dataReceivedCallback_ = std::bind(callback, _1, _2, _3, context);
     }
 
     void setCallback(std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback) {
-        wiringCallback_ = callback;
+        dataReceivedCallback_ = callback;
     }
 
     void inheritCallback(BleCharacteristicImpl& charImpl) {
-        if (charImpl.wiringCallback_) {
-            wiringCallback_ = charImpl.wiringCallback_;
+        if (charImpl.dataReceivedCallback_) {
+            dataReceivedCallback_ = charImpl.dataReceivedCallback_;
         }
     }
 
@@ -966,7 +966,7 @@ private:
     BleUuid svcUuid_;
     String description_;
     static uint16_t defaultUuidCharCount_;
-    std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> wiringCallback_;
+    std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> dataReceivedCallback_;
 };
 
 
@@ -1072,8 +1072,8 @@ private:
 class BleLocalDeviceImpl {
 public:
     BleLocalDeviceImpl()
-            : wiringConnectedCb_(nullptr),
-              wiringDisconnectedCb_(nullptr) {
+            : connectedCallback_(nullptr),
+              disconnectedCallback_(nullptr) {
     }
 
     ~BleLocalDeviceImpl() = default;
@@ -1091,19 +1091,19 @@ public:
     }
 
     void onConnectedCallback(BleOnConnectedCallback callback, void* context) {
-        wiringConnectedCb_ = std::bind(callback, _1, context);
+        connectedCallback_ = std::bind(callback, _1, context);
     }
 
     void onConnectedCallback(std::function<void(const BlePeerDevice& peer)> callback) {
-        wiringConnectedCb_ = callback;
+        connectedCallback_ = callback;
     }
 
     void onDisconnectedCallback(BleOnDisconnectedCallback callback, void* context) {
-        wiringDisconnectedCb_ = std::bind(callback, _1, context);;
+        disconnectedCallback_ = std::bind(callback, _1, context);;
     }
 
     void onDisconnectedCallback(std::function<void(const BlePeerDevice& peer)> callback) {
-        wiringDisconnectedCb_ = callback;
+        disconnectedCallback_ = callback;
     }
 
     BlePeerDevice* findPeerDevice(BleConnectionHandle connHandle) {
@@ -1139,8 +1139,8 @@ public:
                     return;
                 }
                 LOG(TRACE, "Connected by Central device.");
-                if (impl->wiringConnectedCb_) {
-                    impl->wiringConnectedCb_(peer);
+                if (impl->connectedCallback_) {
+                    impl->connectedCallback_(peer);
                 }
                 break;
             }
@@ -1148,8 +1148,8 @@ public:
                 BlePeerDevice* peer = impl->findPeerDevice(event->conn_handle);
                 if (peer) {
                     peer->impl()->onDisconnected();
-                    if (impl->wiringDisconnectedCb_) {
-                        impl->wiringDisconnectedCb_(*peer);
+                    if (impl->disconnectedCallback_) {
+                        impl->disconnectedCallback_(*peer);
                     }
                     LOG(TRACE, "Disconnected by remote device.");
                     impl->peers_.removeOne(*peer);
@@ -1166,8 +1166,8 @@ private:
     Vector<BleService> services_;
     Vector<BleCharacteristic> characteristics_;
     Vector<BlePeerDevice> peers_;
-    std::function<void(const BlePeerDevice& peer)> wiringConnectedCb_;
-    std::function<void(const BlePeerDevice& peer)> wiringDisconnectedCb_;
+    std::function<void(const BlePeerDevice& peer)> connectedCallback_;
+    std::function<void(const BlePeerDevice& peer)> disconnectedCallback_;
 };
 
 
@@ -1188,8 +1188,8 @@ void BleCharacteristicImpl::onBleCharEvents(const hal_ble_char_evt_t *event, voi
                 LOG(ERROR, "Peer device is missing!");
                 break;
             }
-            if (impl->wiringCallback_) {
-                impl->wiringCallback_(event->params.data_written.data, event->params.data_written.len, *peer);
+            if (impl->dataReceivedCallback_) {
+                impl->dataReceivedCallback_(event->params.data_written.data, event->params.data_written.len, *peer);
             }
             break;
         }
@@ -2074,30 +2074,30 @@ public:
             : resultsPtr_(nullptr),
               targetCount_(0),
               foundCount_(0),
-              wiringCallback_(nullptr),
-              wiringCallbackRef_(nullptr) {
+              scanResultCallback_(nullptr),
+              scanResultCallbackRef_(nullptr) {
         resultsVector_.clear();
     }
 
     ~BleScanDelegator() = default;
 
     int start(BleOnScanResultCallback callback, void* context) {
-        wiringCallback_ = std::bind(callback, _1, context);
-        wiringCallbackRef_ = nullptr;
+        scanResultCallback_ = std::bind(callback, _1, context);
+        scanResultCallbackRef_ = nullptr;
         CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
         return foundCount_;
     }
 
     int start(BleOnScanResultCallbackRef callback, void* context) {
-        wiringCallback_ = nullptr;
-        wiringCallbackRef_ = std::bind(callback, _1, context);
+        scanResultCallback_ = nullptr;
+        scanResultCallbackRef_ = std::bind(callback, _1, context);
         CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
         return foundCount_;
     }
 
     int start(BleScanResult* results, size_t resultCount) {
-        wiringCallback_ = nullptr;
-        wiringCallbackRef_ = nullptr;
+        scanResultCallback_ = nullptr;
+        scanResultCallbackRef_ = nullptr;
         resultsPtr_ = results;
         targetCount_ = resultCount;
         CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
@@ -2105,15 +2105,15 @@ public:
     }
 
     Vector<BleScanResult> start() {
-        wiringCallback_ = nullptr;
-        wiringCallbackRef_ = nullptr;
+        scanResultCallback_ = nullptr;
+        scanResultCallbackRef_ = nullptr;
         hal_ble_gap_start_scan(onScanResultCallback, this, nullptr);
         return resultsVector_;
     }
 
     int start(const std::function<void(const BleScanResult&)>& callback) {
-        wiringCallback_ = nullptr;
-        wiringCallbackRef_ = callback;
+        scanResultCallback_ = nullptr;
+        scanResultCallbackRef_ = callback;
         CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
         return foundCount_;
     }
@@ -2146,13 +2146,13 @@ private:
             return;
         }
 
-        if (delegator->wiringCallback_) {
+        if (delegator->scanResultCallback_) {
             delegator->foundCount_++;
-            delegator->wiringCallback_(&result);
+            delegator->scanResultCallback_(&result);
             return;
-        } else if (delegator->wiringCallbackRef_) {
+        } else if (delegator->scanResultCallbackRef_) {
             delegator->foundCount_++;
-            delegator->wiringCallbackRef_(result);
+            delegator->scanResultCallbackRef_(result);
             return;
         }
         if (delegator->resultsPtr_) {
@@ -2302,8 +2302,8 @@ private:
     BleScanResult* resultsPtr_;
     size_t targetCount_;
     size_t foundCount_;
-    std::function<void(const BleScanResult*)> wiringCallback_;
-    std::function<void(const BleScanResult&)> wiringCallbackRef_;
+    std::function<void(const BleScanResult*)> scanResultCallback_;
+    std::function<void(const BleScanResult&)> scanResultCallbackRef_;
     BleScanFilter filter_;
 };
 
