@@ -18,7 +18,33 @@ static void bleOnScanResultCallback(const BleScanResult* result, void* context) 
     assertEqual(ret, 0);
 }
 
-test(BLE_Scanning_Control) {
+test(00_BLE_Scanning_Blocked_Timeout_Simulate) {
+    int ret;
+
+    BleScanParams setScanParams = {};
+    setScanParams.size = sizeof(BleScanParams);
+    setScanParams.interval = 50; // In units of 0.625ms
+    setScanParams.window = 25; // In units of 0.625ms
+    setScanParams.timeout = 300; // In units of 10ms, 3s
+    setScanParams.active = true; // Send scan request
+    setScanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    ret = BLE.setScanParameters(&setScanParams);
+    assertEqual(ret, 0);
+    
+    NVIC_DisableIRQ(SD_EVT_IRQn);
+
+    system_tick_t start = millis();
+    Vector<BleScanResult> result = BLE.scan();
+    assertEqual(result.size(), 0);
+    system_tick_t now = millis();
+
+    assertMoreOrEqual(now - start, 3000);
+    assertLessOrEqual(now - start, 4500);
+
+    NVIC_EnableIRQ(SD_EVT_IRQn);
+}
+
+test(01_BLE_Scanning_Control) {
     INFO("  > Please make sure that there is at least one BLE Peripheral being advertising nearby.\r\n");
 
     int ret;

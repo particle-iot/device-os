@@ -335,7 +335,8 @@ public:
               isScanning_(false),
               scanSemaphore_(nullptr),
               scanResultCallback_(nullptr),
-              context_(nullptr) {
+              context_(nullptr),
+              scanGuardTimer_(nullptr) {
         scanParams_.version = BLE_API_VERSION;
         scanParams_.size = sizeof(hal_ble_scan_params_t);
         scanParams_.active = true;
@@ -371,6 +372,7 @@ private:
     int constructObserverEvent(hal_ble_scan_result_evt_t& result, const ble_gap_evt_adv_report_t& advReport) const;
     void notifyScanResultEvent(const hal_ble_scan_result_evt_t& result);
     static void processObserverEvents(const ble_evt_t* event, void* context);
+    static void onScanGuardTimerExpired(os_timer_t timer);
 
     bool observerInitialized_;
     volatile bool isScanning_;                              /**< If it is scanning or not. */
@@ -380,6 +382,7 @@ private:
     ble_data_t bleScanData_;                                /**< BLE scanned data. */
     hal_ble_on_scan_result_cb_t scanResultCallback_;        /**< Callback function on scan result. */
     void* context_;                                         /**< Context of the scan result callback function. */
+    os_timer_t scanGuardTimer_;                             /**< Timer to guard the scanning procedure is terminated successfully.  */
     Vector<hal_ble_addr_t> cachedDevices_;
     Vector<hal_ble_scan_result_evt_t> pendingResults_;
 };
@@ -1282,6 +1285,15 @@ int BleObject::Observer::init() {
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
+    if (os_timer_create(&scanGuardTimer_, BLE_DEFAULT_SCANNING_TIMEOUT_MS, onScanGuardTimerExpired, this, true, nullptr)) {
+        scanGuardTimer_ = nullptr;
+        LOG(ERROR, "os_timer_create() failed.");
+        if (scanSemaphore_) {
+            os_semaphore_destroy(scanSemaphore_);
+            scanSemaphore_ = nullptr;
+        }
+        return SYSTEM_ERROR_INTERNAL;
+    }
     observerImpl.instance = this;
     NRF_SDH_BLE_OBSERVER(bleObserver, 1, processObserverEvents, &observerImpl);
     observerInitialized_ = true;
@@ -1299,6 +1311,13 @@ int BleObject::Observer::setScanParams(const hal_ble_scan_params_t* params) {
     CHECK_TRUE(params->window >= BLE_GAP_SCAN_WINDOW_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(params->window <= BLE_GAP_SCAN_WINDOW_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(params->window <= params->interval, SYSTEM_ERROR_INVALID_ARGUMENT);
+    // If timeout is set to 0, it should scan indefinitely
+    if (params->timeout != BLE_GAP_SCAN_TIMEOUT_UNLIMITED) {
+        if (os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_PERIOD, HAL_IsISR() ? true : false, params->timeout * 10 + BLE_SCANNING_TIMEOUT_EXT_MS, 0, nullptr)) {
+            LOG(ERROR, "Failed to change timer period for guard of scanning timeout.");
+            return SYSTEM_ERROR_INTERNAL;
+        }
+    }
     memcpy(&scanParams_, params, std::min(scanParams_.size, params->size));
     scanParams_.size = sizeof(hal_ble_scan_params_t);
     scanParams_.version = BLE_API_VERSION;
@@ -1316,6 +1335,12 @@ int BleObject::Observer::continueScanning() {
     return nrf_system_error(ret);
 }
 
+void BleObject::Observer::onScanGuardTimerExpired(os_timer_t timer) {
+    Observer* observer;
+    os_timer_get_id(timer, (void**)&observer);
+    observer->stopScanning();
+}
+
 int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
     SCOPE_GUARD ({
@@ -1331,6 +1356,13 @@ int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, voi
     int ret = sd_ble_gap_scan_start(&bleGapScanParams, &bleScanData_);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isScanning_ = true;
+    // If timeout is set to 0, it should scan indefinitely
+    if (bleGapScanParams.timeout != BLE_GAP_SCAN_TIMEOUT_UNLIMITED) {
+        if (os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_START, HAL_IsISR() ? true : false, 0, 0, nullptr)) {
+            LOG(ERROR, "Failed to start the timer for guard of scanning timeout.");
+            // We don't return here, as scanning may still timeout by Softdevice as expected.
+        }
+    }
     if (os_semaphore_take(scanSemaphore_, CONCURRENT_WAIT_FOREVER, false)) {
         SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
@@ -1342,8 +1374,14 @@ int BleObject::Observer::stopScanning() {
     if (!isScanning_) {
         return SYSTEM_ERROR_NONE;
     }
-    int ret = sd_ble_gap_scan_stop();
-    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+    if (os_timer_is_active(scanGuardTimer_, nullptr)) {
+        os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_STOP, HAL_IsISR() ? true : false, 0, 0, nullptr);
+    }
+    // Ignore the returned value, as the SoftDevice might be messed up considering the device is not in scanning state,
+    // but wee neeed to give the semaphore to unblock the thread that initiated the scanning procedure.
+    if (sd_ble_gap_scan_stop() != NRF_SUCCESS) {
+        LOG(ERROR, "Device is not in scanning state.");
+    }
     bool give = false;
     ATOMIC_BLOCK() {
         if (isScanning_) {
@@ -1562,6 +1600,9 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
                 if (observer->isScanning_) {
                     observer->isScanning_ = false;
                     os_semaphore_give(observer->scanSemaphore_, false);
+                    if (os_timer_is_active(observer->scanGuardTimer_, nullptr)) {
+                        os_timer_change(observer->scanGuardTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
+                    }
                 }
             }
             break;
@@ -1788,10 +1829,10 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
     });
     if (connection->info.role == BLE_ROLE_PERIPHERAL) {
         // If the automatic peripheral connection parameters update procedure is started.
-        if (!os_timer_is_active(connParamsUpdateTimer_, nullptr)) {
+        if (os_timer_is_active(connParamsUpdateTimer_, nullptr)) {
             periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
             connParamsUpdateAttempts_ = 0;
-            os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
+            os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, HAL_IsISR() ? true : false, 0, 0, nullptr);
         }
     }
     ble_gap_conn_params_t bleGapConnParams = {};
@@ -1919,7 +1960,7 @@ void BleObject::ConnectionsManager::initiateConnParamsUpdateIfNeeded(const BleCo
         return;
     }
     if (connParamsUpdateAttempts_ < BLE_CONN_PARAMS_UPDATE_ATTEMPS) {
-        if (!os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_START, true, 0, 0, nullptr)) {
+        if (!os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_START, false, 0, 0, nullptr)) {
             periphConnParamUpdateHandle_ = connection->info.conn_handle;
             LOG_DEBUG(TRACE, "Attempts to update BLE connection parameters, try: %d after %d ms", connParamsUpdateAttempts_, BLE_CONN_PARAMS_UPDATE_DELAY_MS);
         }
@@ -2043,7 +2084,7 @@ int BleObject::ConnectionsManager::processConnectedEventFromThread(const ble_evt
     }
     if (desiredAttMtu_ > BLE_DEFAULT_ATT_MTU_SIZE) {
         // FIXME: What if there is another new connection established before the timer expired?
-        if (!os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_START, true, 0, 0, nullptr)) {
+        if (!os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_START, false, 0, 0, nullptr)) {
             LOG_DEBUG(TRACE, "Attempts to exchange ATT_MTU if needed.");
             attMtuExchangeConnHandle_ = event->evt.gap_evt.conn_handle;
         }
@@ -2065,10 +2106,10 @@ int BleObject::ConnectionsManager::processDisconnectedEventFromThread(const ble_
     }
     // Cancel the on-going connection parameters update procedure.
     if (periphConnParamUpdateHandle_ == connection->info.conn_handle) {
-        if (!os_timer_is_active(connParamsUpdateTimer_, nullptr)) {
+        if (os_timer_is_active(connParamsUpdateTimer_, nullptr)) {
             connParamsUpdateAttempts_ = 0;
             periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
-            os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
+            os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, false, 0, 0, nullptr);
         } else {
             periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
             os_semaphore_give(connParamsUpdateSemaphore_, false);
@@ -2079,8 +2120,8 @@ int BleObject::ConnectionsManager::processDisconnectedEventFromThread(const ble_
         os_semaphore_give(connParamsUpdateSemaphore_, false);
     }
     // If the ATT MTU exchanging procedure is on-going.
-    if (!os_timer_is_active(attMtuExchangeTimer_, nullptr)) {
-        os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_STOP, true, 0, 0, nullptr);
+    if (os_timer_is_active(attMtuExchangeTimer_, nullptr)) {
+        os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_STOP, false, 0, 0, nullptr);
     }
     // Remove the GATTS subscriber.
     BleObject::getInstance().gatts()->removeSubscriberFromAllCharacteristics(connection->info.conn_handle);
