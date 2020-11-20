@@ -35,37 +35,33 @@ void loop() {
     int count = BLE.scan(results, SCAN_RESULT_COUNT);
 
     if (count > 0) {
-        uint8_t buf[BLE_MAX_ADV_DATA_LEN];
-        size_t len;
-
-        LOG(TRACE, "%d devices are found:", count);
+        Log.info("%d devices are found:", count);
         for (int i = 0; i < count; i++) {
-            BleAddress address = results[i].address;
-            LOG(TRACE, " -------- MAC: %s | RSSI: %dBm --------", address.toString().c_str(), results[i].rssi);
+            Log.info(" -------- MAC: %s | RSSI: %dBm --------", results[i].address().toString().c_str(), results[i].rssi());
 
-            String name = results[i].advertisingData.deviceName();
+            String name = results[i].advertisingData().deviceName();
             if (name.length() > 0) {
-                LOG(TRACE, "Local name: %s", name.c_str());
+                Log.info("Local name: %s", name.c_str());
             }
-            name = results[i].scanResponse.deviceName();
+            name = results[i].scanResponse().deviceName();
             if (name.length() > 0) {
-                LOG(TRACE, "Local name: %s", name.c_str());
+                Log.info("Local name: %s", name.c_str());
             }
 
-            len = results[i].advertisingData(buf, sizeof(buf));
-            if (len > 0) {
+            const BleAdvertisingData& advData = results[i].advertisingData();
+            if (advData.length() > 0) {
                 Serial1.print("Advertising data: ");
-                for (size_t j = 0; j < len; j++) {
-                    Serial1.printf("0x%02x,", buf[j]);
+                for (size_t j = 0; j < advData.length(); j++) {
+                    Serial1.printf("0x%02x,", advData[j]);
                 }
                 Serial1.println("\r\n");
             }
 
-            len = results[i].scanResponse(buf, sizeof(buf));
-            if (len > 0) {
+            const BleAdvertisingData& srData = results[i].scanResponse();
+            if (srData.length() > 0) {
                 Serial1.print("Scan response data: ");
-                for (size_t j = 0; j < len; j++) {
-                    Serial1.printf("0x%02x,", buf[j]);
+                for (size_t j = 0; j < srData.length(); j++) {
+                    Serial1.printf("0x%02x,", srData[j]);
                 }
                 Serial1.println("\r\n");
             }

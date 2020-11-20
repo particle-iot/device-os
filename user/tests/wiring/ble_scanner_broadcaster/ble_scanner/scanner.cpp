@@ -18,6 +18,13 @@ static void bleOnScanResultCallback(const BleScanResult* result, void* context) 
     assertEqual(ret, 0);
 }
 
+static void bleOnScanResultCallbackRef(const BleScanResult& result, void* context) {
+    INFO("  > On BLE device scanned callback.\r\n");
+    INFO("  > Stop scanning...\r\n");
+    int ret = BLE.stopScanning();
+    assertEqual(ret, 0);
+}
+
 test(00_BLE_Scanning_Blocked_Timeout_Simulate) {
     int ret;
 
@@ -61,6 +68,10 @@ test(01_BLE_Scanning_Control) {
 
     INFO("  > Testing BLE scanning for 3 seconds...\r\n");
     ret = BLE.scan(bleOnScanResultCallback, nullptr);
+    assertTrue(ret > 0);
+
+    INFO("  > Testing BLE scanning for 3 seconds...\r\n");
+    ret = BLE.scan(bleOnScanResultCallbackRef, nullptr);
     assertTrue(ret > 0);
 
     INFO("  > Testing BLE scanning for 3 seconds...\r\n");

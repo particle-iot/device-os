@@ -145,7 +145,8 @@ typedef hal_ble_conn_handle_t BleConnectionHandle;
 typedef hal_ble_attr_handle_t BleAttributeHandle;
 
 typedef void (*BleOnDataReceivedCallback)(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
-typedef void (*BleOnScanResultCallback)(const BleScanResult* device, void* context);
+typedef void (*BleOnScanResultCallback)(const BleScanResult* result, void* context);
+typedef void (*BleOnScanResultCallbackRef)(const BleScanResult& result, void* context);
 typedef void (*BleOnConnectedCallback)(const BlePeerDevice& peer, void* context);
 typedef void (*BleOnDisconnectedCallback)(const BlePeerDevice& peer, void* context);
 
@@ -219,6 +220,13 @@ public:
     bool operator!=(const char* address) const;
     bool operator!=(const String& address) const;
 
+    operator bool() const {
+        return isValid();
+    }
+
+    bool isValid() const;
+    int clear();
+
 private:
     void toBigEndian(uint8_t buf[BLE_SIG_ADDR_LEN]) const;
 
@@ -269,6 +277,12 @@ public:
         return !(*this == BleUuid(uuid));
     }
 
+    uint8_t operator[](uint8_t i) const;
+
+    operator bool() const {
+        return isValid();
+    }
+
 private:
     void construct(const char* uuid);
     void toBigEndian(uint8_t buf[BLE_SIG_UUID_128BIT_LEN]) const;
@@ -285,28 +299,66 @@ private:
 class iBeacon {
 public:
     iBeacon()
-            : major(0),
-              minor(0),
-              measurePower(0) {
+            : major_(0),
+              minor_(0),
+              measurePower_(0) {
     }
 
     template<typename T>
     iBeacon(uint16_t major, uint16_t minor, T uuid, int8_t measurePower)
-            : major(major),
-              minor(minor),
-              uuid(uuid),
-              measurePower(measurePower) {
+            : major_(major),
+              minor_(minor),
+              uuid_(uuid),
+              measurePower_(measurePower) {
     }
 
     ~iBeacon() = default;
 
-    uint16_t major;
-    uint16_t minor;
-    BleUuid uuid;
-    int8_t measurePower;
+    iBeacon& major(uint16_t major) {
+        major_ = major;
+        return *this;
+    }
+
+    iBeacon& minor(uint16_t minor) {
+        minor_ = minor;
+        return *this;
+    }
+
+    template<typename T>
+    iBeacon& UUID(T uuid) {
+        uuid_ = BleUuid(uuid);
+        return *this;
+    }
+
+    iBeacon& measurePower(int8_t power) {
+        measurePower_ = power;
+        return *this;
+    }
+
+    uint16_t major() const {
+        return major_;
+    }
+
+    uint16_t minor() const {
+        return minor_;
+    }
+
+    const BleUuid& UUID() const {
+        return uuid_;
+    }
+
+    int8_t measurePower() const {
+        return measurePower_;
+    }
 
     static const uint16_t APPLE_COMPANY_ID = 0x004C;
     static const uint8_t BEACON_TYPE_IBEACON = 0x02;
+
+private:
+    uint16_t major_;
+    uint16_t minor_;
+    BleUuid uuid_;
+    int8_t measurePower_;
 };
 
 
@@ -320,7 +372,9 @@ public:
     size_t set(const iBeacon& beacon);
 
     size_t append(BleAdvertisingDataType type, const uint8_t* buf, size_t len, bool force = false);
+
     size_t appendCustomData(const uint8_t* buf, size_t len, bool force = false);
+
     // According to the Bluetooth CSS, Local Name shall not appear more than once in a block.
     size_t appendLocalName(const char* name);
     size_t appendLocalName(const String& name);
@@ -350,17 +404,22 @@ public:
 
     String deviceName() const;
     size_t deviceName(char* buf, size_t len) const;
+
     size_t serviceUUID(BleUuid* uuids, size_t count) const;
+    Vector<BleUuid> serviceUUID() const;
+
     size_t customData(uint8_t* buf, size_t len) const;
 
     size_t operator()(uint8_t* buf, size_t len) const {
         return get(buf, len);
     }
 
+    uint8_t operator[](uint8_t i) const;
+
     bool contains(BleAdvertisingDataType type) const;
 
 private:
-    size_t serviceUUID(BleAdvertisingDataType type, BleUuid* uuids, size_t count) const;
+    Vector<BleUuid> serviceUUID(BleAdvertisingDataType type) const;
     static size_t locate(const uint8_t* buf, size_t len, BleAdvertisingDataType type, size_t* offset);
 
     uint8_t selfData_[BLE_MAX_ADV_DATA_LEN];
@@ -392,7 +451,8 @@ public:
 
     BleCharacteristic& operator=(const BleCharacteristic& characteristic);
 
-    bool valid() const;
+    bool __attribute__((deprecated("Use BleCharacteristic::isValid() instead"))) valid() const;
+    bool isValid() const;
 
     BleUuid UUID() const;
     EnumFlags<BleCharacteristicProperty> properties() const;
@@ -425,6 +485,10 @@ public:
 
     void onDataReceived(BleOnDataReceivedCallback callback, void* context);
 
+    operator bool() const {
+        return isValid();
+    }
+
     BleCharacteristicImpl* impl() const {
         return impl_.get();
     }
@@ -449,6 +513,7 @@ public:
     BleService& operator=(const BleService& service);
 
     bool operator==(const BleService& service) const;
+    bool operator!=(const BleService& service) const;
 
     BleServiceImpl* impl() const {
         return impl_.get();
@@ -461,10 +526,61 @@ private:
 
 class BleScanResult {
 public:
-    BleAddress address;
-    BleAdvertisingData advertisingData;
-    BleAdvertisingData scanResponse;
-    int8_t rssi;
+    BleScanResult()
+            : rssi_(0x7F) {
+    }
+
+    BleScanResult& address(const BleAddress& addr) {
+        address_ = addr;
+        return *this;
+    }
+
+    BleScanResult& advertisingData(const BleAdvertisingData& advData) {
+        advertisingData_ = advData;
+        return *this;
+    }
+
+    BleScanResult& advertisingData(const uint8_t* buf, size_t len) {
+        advertisingData_.set(buf, len);
+        return *this;
+    }
+
+    BleScanResult& scanResponse(const BleAdvertisingData& srData) {
+        scanResponse_ = srData;
+        return *this;
+    }
+
+    BleScanResult& scanResponse(const uint8_t* buf, size_t len) {
+        scanResponse_.set(buf, len);
+        return *this;
+    }
+
+    BleScanResult& rssi(int8_t value) {
+        rssi_ = value;
+        return *this;
+    }
+
+    const BleAddress& address() const {
+        return address_;
+    }
+
+    const BleAdvertisingData& advertisingData() const {
+        return advertisingData_;
+    }
+
+    const BleAdvertisingData& scanResponse() const {
+        return scanResponse_;
+    }
+
+    int8_t rssi() const {
+        return rssi_;
+    }
+
+private:
+    BleAddress address_;
+    BleAdvertisingData advertisingData_;
+    BleAdvertisingData scanResponse_;
+    int8_t rssi_;
 };
 
 
@@ -494,10 +610,12 @@ public:
     bool getCharacteristicByUUID(BleCharacteristic& characteristic, const BleUuid& uuid) const;
 
     int connect(const BleAddress& addr, const BleConnectionParams* params, bool automatic = true);
+    int connect(const BleAddress& addr, const BleConnectionParams& params, bool automatic = true);
     int connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic = true);
     int connect(const BleAddress& addr, bool automatic = true);
     // These methods should be called after the peer device has bound with an address using the bind() method.
     int connect(const BleConnectionParams* params, bool automatic = true);
+    int connect(const BleConnectionParams& params, bool automatic = true);
     int connect(uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic = true);
     int connect(bool automatic = true);
 
@@ -508,7 +626,14 @@ public:
     void bind(const BleAddress& address) const;
     BleAddress address() const;
 
+    bool isValid() const;
+
     bool operator==(const BlePeerDevice& device) const;
+    bool operator!=(const BlePeerDevice& device) const;
+
+    operator bool() const {
+        return isValid();
+    }
 
     BlePeerDevice& operator=(const BlePeerDevice& peer);
 
@@ -543,6 +668,7 @@ public:
     int off() const;
     int setTxPower(int8_t txPower) const;
     int txPower(int8_t* txPower) const;
+    int8_t txPower() const;
     int selectAntenna(BleAntennaType antenna) const;
 
     // Access advertising parameters
@@ -550,18 +676,26 @@ public:
     int setAdvertisingTimeout(uint16_t timeout) const;
     int setAdvertisingType(BleAdvertisingEventType type) const;
     int setAdvertisingParameters(const BleAdvertisingParams* params) const;
+    int setAdvertisingParameters(const BleAdvertisingParams& params) const;
     int setAdvertisingParameters(uint16_t interval, uint16_t timeout, BleAdvertisingEventType type) const;
     int getAdvertisingParameters(BleAdvertisingParams* params) const;
+    int getAdvertisingParameters(BleAdvertisingParams& params) const;
 
     // Access advertising data and scan response data
     int setAdvertisingData(BleAdvertisingData* advertisingData) const;
+    int setAdvertisingData(BleAdvertisingData& advertisingData) const;
     int setScanResponseData(BleAdvertisingData* scanResponse) const;
+    int setScanResponseData(BleAdvertisingData& scanResponse) const;
     ssize_t getAdvertisingData(BleAdvertisingData* advertisingData) const;
+    ssize_t getAdvertisingData(BleAdvertisingData& advertisingData) const;
     ssize_t getScanResponseData(BleAdvertisingData* scanResponse) const;
+    ssize_t getScanResponseData(BleAdvertisingData& scanResponse) const;
 
     // Advertising control
     int advertise() const;
     int advertise(BleAdvertisingData* advertisingData, BleAdvertisingData* scanResponse = nullptr) const;
+    int advertise(BleAdvertisingData& advertisingData) const;
+    int advertise(BleAdvertisingData& advertisingData, BleAdvertisingData& scanResponse) const;
     int advertise(const iBeacon& beacon) const;
     int stopAdvertising() const;
     bool advertising() const;
@@ -569,10 +703,13 @@ public:
     // Access scanning parameters
     int setScanTimeout(uint16_t timeout) const;
     int setScanParameters(const BleScanParams* params) const;
+    int setScanParameters(const BleScanParams& params) const;
     int getScanParameters(BleScanParams* params) const;
+    int getScanParameters(BleScanParams& params) const;
 
     // Scanning control
     int scan(BleOnScanResultCallback callback, void* context) const;
+    int scan(BleOnScanResultCallbackRef callback, void* context) const;
     int scan(BleScanResult* results, size_t resultCount) const;
     Vector<BleScanResult> scan() const;
     int stopScanning() const;
@@ -601,6 +738,7 @@ public:
 
     // Connection control
     BlePeerDevice connect(const BleAddress& addr, const BleConnectionParams* params, bool automatic = true) const;
+    BlePeerDevice connect(const BleAddress& addr, const BleConnectionParams& params, bool automatic = true) const;
     BlePeerDevice connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic = true) const;
     BlePeerDevice connect(const BleAddress& addr, bool automatic = true) const;
     // This only disconnect the peer Central device, i.e. when the local device is acting as BLE Peripheral.
@@ -610,6 +748,8 @@ public:
     bool connected() const;
     void onConnected(BleOnConnectedCallback callback, void* context) const;
     void onDisconnected(BleOnDisconnectedCallback callback, void* context) const;
+
+    BlePeerDevice peerCentral() const;
 
     static BleLocalDevice& getInstance();
 

@@ -61,9 +61,9 @@ void loop() {
         if (count > 0) {
             for (uint8_t i = 0; i < count; i++) {
                 BleUuid foundServiceUUID;
-                size_t svcCount = results[i].advertisingData.serviceUUID(&foundServiceUUID, 1);
+                size_t svcCount = results[i].advertisingData().serviceUUID(&foundServiceUUID, 1);
                 if (svcCount > 0 && foundServiceUUID == "6E400001-B5A3-F393-E0A9-E50E24DCCA9E") {
-                    peer = BLE.connect(results[i].address);
+                    peer = BLE.connect(results[i].address());
                     if (peer.connected()) {
                         peer.getCharacteristicByDescription(peerTxCharacteristic, "tx");
                         peer.getCharacteristicByUUID(peerRxCharacteristic, "6E400002-B5A3-F393-E0A9-E50E24DCCA9E");

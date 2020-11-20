@@ -439,5 +439,69 @@ test(BLE_11_BLE_UUID_Conversion) {
     assertTrue(!memcmp(pUuid, extendedShortUUID, BLE_SIG_UUID_128BIT_LEN));
 }
 
+test(BLE_12_BLE_Address_Validation) {
+    BleAddress address;
+    assertFalse(address.isValid());
+
+    // Public address
+    address = "44:14:0A:9F:F2:96";
+    assertTrue(address.isValid());
+    address = "00:00:00:00:00:00"; // At least 1 bit is set
+    assertFalse(address.isValid());
+    address = "FF:FF:FF:FF:FF:FF"; // At least 1 bit is cleared
+    assertFalse(address.isValid());
+
+    // Static address. Two most significant bits should be 0b11 and
+    // the reset of bits should at least have 1 bit set and cleared.
+    address.type(BleAddressType::RANDOM_STATIC);
+    address = "30:12:34:56:78:9a"; // 0b00
+    assertFalse(address.isValid());
+    address = "40:12:34:56:78:9a"; // 0b01
+    assertFalse(address.isValid());
+    address = "80:12:34:56:78:9a:"; // 0b10
+    assertFalse(address.isValid());
+    address = "C0:00:00:00:00:00"; // At least 1 bit is set
+    assertFalse(address.isValid());
+    address = "FF:FF:FF:FF:FF:FF"; // At least 1 bit is clear
+    assertFalse(address.isValid());
+    address = "C0:12:34:56:78:9a";
+    assertTrue(address.isValid()); 
+
+    // Non-resolvable address.  Two most significant bits should be 0b00 and
+    // the reset of bits should at least have 1 bit set and cleared.
+    address.type(BleAddressType::RANDOM_PRIVATE_NON_RESOLVABLE);
+    address = "40:12:34:56:78:9a"; // 0b01
+    assertFalse(address.isValid());
+    address = "80:12:34:56:78:9a"; // 0b10
+    assertFalse(address.isValid());
+    address = "C0:12:34:56:78:9a"; // 0b11
+    assertFalse(address.isValid());
+    address = "00:00:00:00:00:00"; // At least 1 bit is set
+    assertFalse(address.isValid());
+    address = "3F:FF:FF:FF:FF:FF"; // At least 1 bit is clear
+    assertFalse(address.isValid());
+    address = "3F:12:34:56:78:9a";
+    assertTrue(address.isValid()); 
+
+    // Resolvable address. Two most significant bits should be 0b01 and
+    // bit24 ~ bit45 should at least have 1 bit set and cleared.
+    address.type(BleAddressType::RANDOM_PRIVATE_RESOLVABLE);
+    address = "30:12:34:56:78:9a"; // 0b00
+    assertFalse(address.isValid());
+    address = "80:12:34:56:78:9a"; // 0b10
+    assertFalse(address.isValid());
+    address = "C0:12:34:56:78:9a"; // 0b11
+    assertFalse(address.isValid());
+    address = "40:00:00:12:34:56"; // At least 1 bit is set
+    assertFalse(address.isValid());
+    address = "7F:FF:FF:12:34:56:"; // At least 1 bit is cleared
+    assertFalse(address.isValid());
+    address = "4F:12:34:56:78:9a";
+    assertTrue(address.isValid()); 
+
+    address.clear();
+    assertFalse(address.isValid());
+}
+
 #endif // #if Wiring_BLE == 1
 
