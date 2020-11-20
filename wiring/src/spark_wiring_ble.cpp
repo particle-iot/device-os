@@ -2332,7 +2332,6 @@ int BleLocalDevice::getScanParameters(BleScanParams& params) const {
 }
 
 int BleLocalDevice::scan(const std::function<void(const BleScanResult&)>& callback) const {
-    WiringBleLock lk;
     BleScanDelegator scanner;
     return scanner.start(callback);
 }
@@ -2361,7 +2360,6 @@ Vector<BleScanResult> BleLocalDevice::scan() const {
 }
 
 int BleLocalDevice::scanWithFilter(const BleScanFilter& filter, const std::function<void(const BleScanResult&)>& callback) const {
-    WiringBleLock lk;
     BleScanDelegator scanner;
     return scanner.setScanFilter(filter).start(callback);
 }
