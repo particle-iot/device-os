@@ -385,13 +385,13 @@ test(BLE_09_Set_BLE_Scanning_Parameters) {
 }
 
 test(BLE_10_Add_BLE_Local_Characteristics) {
-    BleCharacteristic characteristic("char1", BleCharacteristicProperty::NOTIFY);
+    BleCharacteristic characteristic(BleCharacteristicProperty::NOTIFY, "char1");
     BleCharacteristic char1 = BLE.addCharacteristic(characteristic);
     assertTrue(char1.UUID() == "F5720001-13A9-49DD-AC15-F87B7427E37B"); // Default particle assigned UUID
     assertTrue(char1.properties() == BleCharacteristicProperty::NOTIFY);
     assertTrue(char1.description() == "char1");
 
-    BleCharacteristic char2 = BLE.addCharacteristic("char2", BleCharacteristicProperty::READ);
+    BleCharacteristic char2 = BLE.addCharacteristic(BleCharacteristicProperty::READ, "char2");
     assertTrue(char2.UUID() == "F5720002-13A9-49DD-AC15-F87B7427E37B");
     assertTrue(char2.properties() == BleCharacteristicProperty::READ);
     assertTrue(char2.description() == "char2");

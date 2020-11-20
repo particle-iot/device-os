@@ -31,6 +31,7 @@
 LOG_SOURCE_CATEGORY("wiring.ble")
 
 using namespace particle::ble;
+using namespace std::placeholders;
 
 namespace particle {
 
@@ -856,20 +857,35 @@ public:
               charUuid_(),
               svcUuid_(),
               description_(),
-              callback_(nullptr),
-              context_(nullptr) {
+              dataReceivedCallback_(nullptr) {
     }
 
-    BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context)
+    BleCharacteristicImpl(EnumFlags<BleCharacteristicProperty> properties, const char* desc, 
+            BleOnDataReceivedCallback callback, void* context)
             : BleCharacteristicImpl() {
         properties_ = properties;
         description_ = desc;
-        callback_ = callback;
-        context_ = context;
+        dataReceivedCallback_ = std::bind(callback, _1, _2, _3, context);
     }
 
-    BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context)
-            : BleCharacteristicImpl(desc, properties, callback, context) {
+    BleCharacteristicImpl(EnumFlags<BleCharacteristicProperty> properties, const char* desc, 
+            std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback)
+            : BleCharacteristicImpl() {
+        properties_ = properties;
+        description_ = desc;
+        dataReceivedCallback_ = callback;
+    }
+
+    BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, 
+            BleOnDataReceivedCallback callback, void* context)
+            : BleCharacteristicImpl(properties, desc, callback, context) {
+        charUuid_ = charUuid;
+        svcUuid_ = svcUuid;
+    }
+
+    BleCharacteristicImpl(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, 
+            std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback)
+            : BleCharacteristicImpl(properties, desc, callback) {
         charUuid_ = charUuid;
         svcUuid_ = svcUuid;
     }
@@ -905,14 +921,16 @@ public:
     }
 
     void setCallback(BleOnDataReceivedCallback callback, void* context) {
-        callback_ = callback;
-        context_ = context;
+        dataReceivedCallback_ = std::bind(callback, _1, _2, _3, context);
+    }
+
+    void setCallback(std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback) {
+        dataReceivedCallback_ = callback;
     }
 
     void inheritCallback(BleCharacteristicImpl& charImpl) {
-        if (charImpl.callback_) {
-            callback_ = charImpl.callback_;
-            context_ = charImpl.context_;
+        if (charImpl.dataReceivedCallback_) {
+            dataReceivedCallback_ = charImpl.dataReceivedCallback_;
         }
     }
 
@@ -947,9 +965,8 @@ private:
     BleUuid charUuid_;
     BleUuid svcUuid_;
     String description_;
-    BleOnDataReceivedCallback callback_;
-    void* context_;
     static uint16_t defaultUuidCharCount_;
+    std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> dataReceivedCallback_;
 };
 
 
@@ -1055,10 +1072,8 @@ private:
 class BleLocalDeviceImpl {
 public:
     BleLocalDeviceImpl()
-            : connectedCb_(nullptr),
-              disconnectedCb_(nullptr),
-              connectedContext_(nullptr),
-              disconnectedContext_(nullptr) {
+            : connectedCallback_(nullptr),
+              disconnectedCallback_(nullptr) {
     }
 
     ~BleLocalDeviceImpl() = default;
@@ -1076,13 +1091,19 @@ public:
     }
 
     void onConnectedCallback(BleOnConnectedCallback callback, void* context) {
-        connectedCb_ = callback;
-        connectedContext_ = context;
+        connectedCallback_ = std::bind(callback, _1, context);
+    }
+
+    void onConnectedCallback(std::function<void(const BlePeerDevice& peer)> callback) {
+        connectedCallback_ = callback;
     }
 
     void onDisconnectedCallback(BleOnDisconnectedCallback callback, void* context) {
-        disconnectedCb_ = callback;
-        disconnectedContext_ = context;
+        disconnectedCallback_ = std::bind(callback, _1, context);;
+    }
+
+    void onDisconnectedCallback(std::function<void(const BlePeerDevice& peer)> callback) {
+        disconnectedCallback_ = callback;
     }
 
     BlePeerDevice* findPeerDevice(BleConnectionHandle connHandle) {
@@ -1118,8 +1139,8 @@ public:
                     return;
                 }
                 LOG(TRACE, "Connected by Central device.");
-                if (impl->connectedCb_) {
-                    impl->connectedCb_(peer, impl->connectedContext_);
+                if (impl->connectedCallback_) {
+                    impl->connectedCallback_(peer);
                 }
                 break;
             }
@@ -1127,8 +1148,8 @@ public:
                 BlePeerDevice* peer = impl->findPeerDevice(event->conn_handle);
                 if (peer) {
                     peer->impl()->onDisconnected();
-                    if (impl->disconnectedCb_) {
-                        impl->disconnectedCb_(*peer, impl->disconnectedContext_);
+                    if (impl->disconnectedCallback_) {
+                        impl->disconnectedCallback_(*peer);
                     }
                     LOG(TRACE, "Disconnected by remote device.");
                     impl->peers_.removeOne(*peer);
@@ -1145,10 +1166,8 @@ private:
     Vector<BleService> services_;
     Vector<BleCharacteristic> characteristics_;
     Vector<BlePeerDevice> peers_;
-    BleOnConnectedCallback connectedCb_;
-    BleOnDisconnectedCallback disconnectedCb_;
-    void* connectedContext_;
-    void* disconnectedContext_;
+    std::function<void(const BlePeerDevice& peer)> connectedCallback_;
+    std::function<void(const BlePeerDevice& peer)> disconnectedCallback_;
 };
 
 
@@ -1169,8 +1188,8 @@ void BleCharacteristicImpl::onBleCharEvents(const hal_ble_char_evt_t *event, voi
                 LOG(ERROR, "Peer device is missing!");
                 break;
             }
-            if (impl->callback_) {
-                impl->callback_(event->params.data_written.data, event->params.data_written.len, *peer, impl->context_);
+            if (impl->dataReceivedCallback_) {
+                impl->dataReceivedCallback_(event->params.data_written.data, event->params.data_written.len, *peer);
             }
             break;
         }
@@ -1202,16 +1221,36 @@ BleCharacteristic::BleCharacteristic(const BleCharacteristic& characteristic)
     DEBUG("BleCharacteristic(copy), 0x%08X => 0x%08X -> 0x%08X, count: %d", &characteristic, this, impl(), impl_.use_count());
 }
 
-BleCharacteristic::BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context)
-        : impl_(std::make_shared<BleCharacteristicImpl>(desc, properties, callback, context)) {
+BleCharacteristic::BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, 
+        BleOnDataReceivedCallback callback, void* context)
+        : impl_(std::make_shared<BleCharacteristicImpl>(properties, desc, callback, context)) {
     if (!impl()) {
         SPARK_ASSERT(false);
     }
     DEBUG("BleCharacteristic(...), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
 }
 
-void BleCharacteristic::construct(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, BleOnDataReceivedCallback callback, void* context) {
+BleCharacteristic::BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, 
+        std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback)
+        : impl_(std::make_shared<BleCharacteristicImpl>(properties, desc, callback)) {
+    if (!impl()) {
+        SPARK_ASSERT(false);
+    }
+    DEBUG("BleCharacteristic(...), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
+}
+
+void BleCharacteristic::construct(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, 
+        BleOnDataReceivedCallback callback, void* context) {
     impl_ = std::make_shared<BleCharacteristicImpl>(desc, properties, charUuid, svcUuid, callback, context);
+    if (!impl()) {
+        SPARK_ASSERT(false);
+    }
+    DEBUG("BleCharacteristic(), construct(...):0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count());
+}
+
+void BleCharacteristic::construct(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleUuid& charUuid, BleUuid& svcUuid, 
+        std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback) {
+    impl_ = std::make_shared<BleCharacteristicImpl>(desc, properties, charUuid, svcUuid, callback);
     if (!impl()) {
         SPARK_ASSERT(false);
     }
@@ -1354,6 +1393,10 @@ int BleCharacteristic::subscribe(bool enable) const {
 
 void BleCharacteristic::onDataReceived(BleOnDataReceivedCallback callback, void* context) {
     impl()->setCallback(callback, context);
+}
+
+void BleCharacteristic::onDataReceived(std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback) {
+    impl()->setCallback(callback);
 }
 
 
@@ -1763,8 +1806,16 @@ void BleLocalDevice::onConnected(BleOnConnectedCallback callback, void* context)
     impl()->onConnectedCallback(callback, context);
 }
 
+void BleLocalDevice::onConnected(const std::function<void(const BlePeerDevice& peer)>& callback) const {
+    impl()->onConnectedCallback(callback);
+}
+
 void BleLocalDevice::onDisconnected(BleOnDisconnectedCallback callback, void* context) const {
     impl()->onDisconnectedCallback(callback, context);
+}
+
+void BleLocalDevice::onDisconnected(const std::function<void(const BlePeerDevice& peer)>& callback) const {
+    impl()->onDisconnectedCallback(callback);
 }
 
 int BleLocalDevice::begin() const {
@@ -2023,31 +2074,30 @@ public:
             : resultsPtr_(nullptr),
               targetCount_(0),
               foundCount_(0),
-              callback_(nullptr),
-              callbackRef_(nullptr),
-              context_(nullptr) {
+              scanResultCallback_(nullptr),
+              scanResultCallbackRef_(nullptr) {
         resultsVector_.clear();
     }
 
     ~BleScanDelegator() = default;
 
     int start(BleOnScanResultCallback callback, void* context) {
-        callback_ = callback;
-        callbackRef_ = nullptr;
-        context_ = context;
+        scanResultCallback_ = std::bind(callback, _1, context);
+        scanResultCallbackRef_ = nullptr;
         CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
         return foundCount_;
     }
 
     int start(BleOnScanResultCallbackRef callback, void* context) {
-        callbackRef_ = callback;
-        callback_ = nullptr;
-        context_ = context;
+        scanResultCallback_ = nullptr;
+        scanResultCallbackRef_ = std::bind(callback, _1, context);
         CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
         return foundCount_;
     }
 
     int start(BleScanResult* results, size_t resultCount) {
+        scanResultCallback_ = nullptr;
+        scanResultCallbackRef_ = nullptr;
         resultsPtr_ = results;
         targetCount_ = resultCount;
         CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
@@ -2055,8 +2105,17 @@ public:
     }
 
     Vector<BleScanResult> start() {
+        scanResultCallback_ = nullptr;
+        scanResultCallbackRef_ = nullptr;
         hal_ble_gap_start_scan(onScanResultCallback, this, nullptr);
         return resultsVector_;
+    }
+
+    int start(const std::function<void(const BleScanResult&)>& callback) {
+        scanResultCallback_ = nullptr;
+        scanResultCallbackRef_ = callback;
+        CHECK(hal_ble_gap_start_scan(onScanResultCallback, this, nullptr));
+        return foundCount_;
     }
 
     BleScanDelegator& setScanFilter(const BleScanFilter& filter) {
@@ -2073,8 +2132,6 @@ private:
      */
     static void onScanResultCallback(const hal_ble_scan_result_evt_t* event, void* context) {
         BleScanDelegator* delegator = static_cast<BleScanDelegator*>(context);
-        delegator->foundCount_++;
-
         BleScanResult result = {};
         result.address(event->peer_addr).rssi(event->rssi)
               .scanResponse(event->sr_data, event->sr_data_len)
@@ -2089,14 +2146,17 @@ private:
             return;
         }
 
-        if (delegator->callback_) {
-            delegator->callback_(&result, delegator->context_);
+        if (delegator->scanResultCallback_) {
+            delegator->foundCount_++;
+            delegator->scanResultCallback_(&result);
             return;
-        } else if (delegator->callbackRef_) {
-            delegator->callbackRef_(result, delegator->context_);
+        } else if (delegator->scanResultCallbackRef_) {
+            delegator->foundCount_++;
+            delegator->scanResultCallbackRef_(result);
             return;
         }
         if (delegator->resultsPtr_) {
+            delegator->foundCount_++;
             if (delegator->foundCount_ <= delegator->targetCount_) {
                 delegator->resultsPtr_[delegator->foundCount_ - 1] = result;
                 if (delegator->foundCount_ >= delegator->targetCount_) {
@@ -2242,9 +2302,8 @@ private:
     BleScanResult* resultsPtr_;
     size_t targetCount_;
     size_t foundCount_;
-    BleOnScanResultCallback callback_;
-    BleOnScanResultCallbackRef callbackRef_;
-    void* context_;
+    std::function<void(const BleScanResult*)> scanResultCallback_;
+    std::function<void(const BleScanResult&)> scanResultCallbackRef_;
     BleScanFilter filter_;
 };
 
@@ -2272,6 +2331,11 @@ int BleLocalDevice::getScanParameters(BleScanParams& params) const {
     return getScanParameters(&params);
 }
 
+int BleLocalDevice::scan(const std::function<void(const BleScanResult&)>& callback) const {
+    BleScanDelegator scanner;
+    return scanner.start(callback);
+}
+
 int BleLocalDevice::scan(BleOnScanResultCallback callback, void* context) const {
     BleScanDelegator scanner;
     return scanner.start(callback, context);
@@ -2293,6 +2357,11 @@ int BleLocalDevice::scan(BleScanResult* results, size_t resultCount) const {
 Vector<BleScanResult> BleLocalDevice::scan() const {
     BleScanDelegator scanner;
     return scanner.start();
+}
+
+int BleLocalDevice::scanWithFilter(const BleScanFilter& filter, const std::function<void(const BleScanResult&)>& callback) const {
+    BleScanDelegator scanner;
+    return scanner.setScanFilter(filter).start(callback);
 }
 
 int BleLocalDevice::scanWithFilter(const BleScanFilter& filter, BleOnScanResultCallback callback, void* context) const {
@@ -2463,14 +2532,28 @@ BleCharacteristic BleLocalDevice::addCharacteristic(const BleCharacteristic& cha
     return characteristic;
 }
 
-BleCharacteristic BleLocalDevice::addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
-    BleCharacteristic characteristic(desc, properties, callback, context);
+BleCharacteristic BleLocalDevice::addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, BleOnDataReceivedCallback callback, void* context) {
+    WiringBleLock lk;
+    BleCharacteristic characteristic(properties, desc, callback, context);
     addCharacteristic(characteristic);
     return characteristic;
 }
 
-BleCharacteristic BleLocalDevice::addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback, void* context) {
-    return addCharacteristic(desc.c_str(), properties, callback, context);
+BleCharacteristic BleLocalDevice::addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, BleOnDataReceivedCallback callback, void* context) {
+    WiringBleLock lk;
+    return addCharacteristic(properties, desc.c_str(), callback, context);
+}
+
+BleCharacteristic BleLocalDevice::addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback) {
+    WiringBleLock lk;
+    BleCharacteristic characteristic(properties, desc, callback);
+    addCharacteristic(characteristic);
+    return characteristic;
+}
+
+BleCharacteristic BleLocalDevice::addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback) {
+    WiringBleLock lk;
+    return addCharacteristic(properties, desc.c_str(), callback);
 }
 
 } /* namespace particle */
