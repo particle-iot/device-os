@@ -2132,8 +2132,6 @@ private:
      */
     static void onScanResultCallback(const hal_ble_scan_result_evt_t* event, void* context) {
         BleScanDelegator* delegator = static_cast<BleScanDelegator*>(context);
-        delegator->foundCount_++;
-
         BleScanResult result = {};
         result.address(event->peer_addr).rssi(event->rssi)
               .scanResponse(event->sr_data, event->sr_data_len)
@@ -2148,11 +2146,13 @@ private:
             return;
         }
 
-        if (delegator->callback_) {
-            delegator->callback_(&result, delegator->context_);
+        if (delegator->wiringCallback_) {
+            delegator->foundCount_++;
+            delegator->wiringCallback_(&result);
             return;
-        } else if (delegator->callbackRef_) {
-            delegator->callbackRef_(result, delegator->context_);
+        } else if (delegator->wiringCallbackRef_) {
+            delegator->foundCount_++;
+            delegator->wiringCallbackRef_(result);
             return;
         }
         if (delegator->resultsPtr_) {
