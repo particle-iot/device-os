@@ -29,7 +29,7 @@ test(BLE_Broadcaster_01_Connect_By_Scanner) {
 
     BleCharacteristic temp;
     temp = BLE.addCharacteristic(charWriteWoRsp);
-    assertTrue(temp.valid());
+    assertTrue(temp.isValid());
 
     BleAdvertisingData data;
     data.appendServiceUUID(peerServiceUuid);
