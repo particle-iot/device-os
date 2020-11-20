@@ -1640,7 +1640,7 @@ Vector<BleService> BlePeerDevice::services() const {
     return impl()->services();
 }
 
-size_t BlePeerDevice::services(BleService* svcs, size_t count) {
+size_t BlePeerDevice::services(BleService* svcs, size_t count) const {
     WiringBleLock lk;
     CHECK_TRUE(svcs && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     count = std::min((int)count, impl()->services().size());
@@ -1662,6 +1662,7 @@ bool BlePeerDevice::getServiceByUUID(BleService& service, const BleUuid& uuid) c
 }
 
 Vector<BleService> BlePeerDevice::getServiceByUUID(const BleUuid& uuid) const {
+    WiringBleLock lk;
     Vector<BleService> services;
     for (auto& existSvc : impl()->services()) {
         if (existSvc.UUID() == uuid) {
@@ -1672,6 +1673,7 @@ Vector<BleService> BlePeerDevice::getServiceByUUID(const BleUuid& uuid) const {
 }
 
 size_t BlePeerDevice::getServiceByUUID(BleService* svcs, size_t count, const BleUuid& uuid) const {
+    WiringBleLock lk;
     CHECK_TRUE(svcs && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     Vector<BleService> services = getServiceByUUID(uuid);
     count = std::min((int)count, services.size());
@@ -1708,6 +1710,7 @@ size_t BlePeerDevice::characteristics(BleCharacteristic* characteristics, size_t
 }
 
 size_t BlePeerDevice::characteristics(const BleService& service, BleCharacteristic* characteristics, size_t count) const {
+    WiringBleLock lk;
     CHECK_TRUE(characteristics && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     Vector<BleCharacteristic> chars = this->characteristics(service);
     count = std::min((int)count, chars.size());
@@ -1745,6 +1748,7 @@ bool BlePeerDevice::getCharacteristicByUUID(BleCharacteristic& characteristic, c
 }
 
 Vector<BleCharacteristic> BlePeerDevice::getCharacteristicByUUID(const BleUuid& uuid) const {
+    WiringBleLock lk;
     Vector<BleCharacteristic> characteristics;
     for (auto& existChar : impl()->characteristics()) {
         if (existChar.UUID() == uuid) {
@@ -1755,6 +1759,7 @@ Vector<BleCharacteristic> BlePeerDevice::getCharacteristicByUUID(const BleUuid& 
 }
 
 size_t BlePeerDevice::getCharacteristicByUUID(BleCharacteristic* characteristics, size_t count, const BleUuid& uuid) const {
+    WiringBleLock lk;
     CHECK_TRUE(characteristics && count > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
     Vector<BleCharacteristic> chars = getCharacteristicByUUID(uuid);
     count = std::min((int)count, chars.size());
@@ -1765,6 +1770,7 @@ size_t BlePeerDevice::getCharacteristicByUUID(BleCharacteristic* characteristics
 }
 
 bool BlePeerDevice::getCharacteristicByDescription(const BleService& service, BleCharacteristic& characteristic, const char* desc) const {
+    WiringBleLock lk;
     CHECK_TRUE(desc, false);
     for (auto& existChar : impl()->characteristics()) {
         if (service.impl()->hasCharacteristic(existChar) && !strcmp(existChar.description().c_str(), desc)) {
@@ -1780,6 +1786,7 @@ bool BlePeerDevice::getCharacteristicByDescription(const BleService& service, Bl
 }
 
 bool BlePeerDevice::getCharacteristicByUUID(const BleService& service, BleCharacteristic& characteristic, const BleUuid& uuid) const {
+    WiringBleLock lk;
     for (auto& existChar : impl()->characteristics()) {
         if (existChar.UUID() == uuid && service.impl()->hasCharacteristic(existChar)) {
             characteristic = existChar;
