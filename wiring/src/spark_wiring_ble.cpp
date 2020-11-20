@@ -892,8 +892,12 @@ public:
 
     ~BleCharacteristicImpl() = default;
 
-    bool& local() {
+    bool isLocal() {
         return isLocal_;
+    }
+
+    void isLocal(bool local) {
+        isLocal_ = local;
     }
 
     BleConnectionHandle& connHandle() {
@@ -1001,8 +1005,12 @@ public:
         return endHandle_;
     }
 
-    bool& characteristicsDiscovered() {
+    bool characteristicsDiscovered() {
         return characteristicsDiscovered_;
+    }
+
+    void characteristicsDiscovered(bool discovered) {
+        characteristicsDiscovered_ = discovered;
     }
 
     bool hasCharacteristic(const BleCharacteristic& characteristic) {
@@ -1043,8 +1051,12 @@ public:
         return address_;
     }
 
-    bool& servicesDiscovered() {
+    bool servicesDiscovered() {
         return servicesDiscovered_;
+    }
+
+    void servicesDiscovered(bool discovered) {
+        servicesDiscovered_ = discovered;
     }
 
     Vector<BleService>& services() {
@@ -1292,7 +1304,7 @@ bool BleCharacteristic::valid() const {
 }
 
 bool BleCharacteristic::isValid() const {
-    return (impl()->local() || impl()->connHandle() != BLE_INVALID_CONN_HANDLE);
+    return (impl()->isLocal() || impl()->connHandle() != BLE_INVALID_CONN_HANDLE);
 }
 
 BleUuid BleCharacteristic::UUID() const {
@@ -1322,7 +1334,7 @@ ssize_t BleCharacteristic::setValue(const uint8_t* buf, size_t len, BleTxRxType 
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     len = std::min(len, (size_t)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
-    if (impl()->local()) {
+    if (impl()->isLocal()) {
         int ret = SYSTEM_ERROR_NOT_SUPPORTED;
         // Updates the local characteristic value for peer to read.
         if (impl()->properties().isSet(BleCharacteristicProperty::READ)) {
@@ -1361,7 +1373,7 @@ ssize_t BleCharacteristic::getValue(uint8_t* buf, size_t len) const {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     len = std::min(len, (size_t)BLE_MAX_ATTR_VALUE_PACKET_SIZE);
-    if (impl()->local()) {
+    if (impl()->isLocal()) {
         return hal_ble_gatt_server_get_characteristic_value(impl()->attrHandles().value_handle, buf, len, nullptr);
     }
     if (impl()->connHandle() != BLE_INVALID_CONN_HANDLE) {
@@ -1386,7 +1398,7 @@ ssize_t BleCharacteristic::getValue(String& str) const {
 }
 
 int BleCharacteristic::subscribe(bool enable) const {
-    CHECK_FALSE(impl()->local(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(impl()->isLocal(), SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(impl()->connHandle() != BLE_INVALID_CONN_HANDLE, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(impl()->attrHandles().cccd_handle != BLE_INVALID_ATTR_HANDLE, SYSTEM_ERROR_NOT_SUPPORTED);
     hal_ble_cccd_config_t config = {};
@@ -1572,7 +1584,7 @@ Vector<BleService> BlePeerDevice::discoverAllServices() {
     if (!impl()->servicesDiscovered()) {
         BleDiscoveryDelegator discovery;
         if (discovery.discoverAllServices(*this) == SYSTEM_ERROR_NONE) {
-            impl()->servicesDiscovered() = true;
+            impl()->servicesDiscovered(true);
         }
     }
     return services();
@@ -1583,7 +1595,7 @@ ssize_t BlePeerDevice::discoverAllServices(BleService* svcs, size_t count) {
     if (!impl()->servicesDiscovered()) {
         BleDiscoveryDelegator discovery;
         CHECK(discovery.discoverAllServices(*this));
-        impl()->servicesDiscovered() = true;
+        impl()->servicesDiscovered(true);
     }
     return services(svcs, count);
 }
@@ -1611,7 +1623,7 @@ Vector<BleCharacteristic> BlePeerDevice::discoverCharacteristicsOfService(const 
     if (!service.impl()->characteristicsDiscovered()) {
         BleDiscoveryDelegator discovery;
         if (discovery.discoverCharacteristics(*this, service) == SYSTEM_ERROR_NONE) {
-            service.impl()->characteristicsDiscovered() = true;
+            service.impl()->characteristicsDiscovered(true);
         }
     }
     return characteristics(service);
@@ -2635,7 +2647,7 @@ BleCharacteristic BleLocalDevice::addCharacteristic(const BleCharacteristic& cha
     if (hal_ble_gatt_server_add_characteristic(&charInit, &charImpl->attrHandles(), nullptr) != SYSTEM_ERROR_NONE) {
         return characteristic;
     }
-    charImpl->local() = true;
+    charImpl->isLocal(true);
     LOG_DEBUG(TRACE, "Add new local characteristic.");
     if(!impl()->characteristics().append(characteristic)) {
         LOG(ERROR, "Failed to append local characteristic.");
