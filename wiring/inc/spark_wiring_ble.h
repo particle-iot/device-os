@@ -446,22 +446,33 @@ class BleCharacteristic {
 public:
     BleCharacteristic();
     BleCharacteristic(const BleCharacteristic& characteristic);
+
+    __attribute__((deprecated("The order of the first argument and second argument need to be swapped")))
+    BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
+            : BleCharacteristic(properties, desc, callback, context) {
+    }
+    
+    __attribute__((deprecated("The order of the first argument and second argument need to be swapped")))
+    BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
+            : BleCharacteristic(properties, desc, callback, context) {
+    }
+
     BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties,  const char* desc, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
     BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr)
             : BleCharacteristic(properties, desc.c_str(), callback, context) {
     }
-    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, std::function<void(const uint8_t*, size_t)> callback);
-    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, std::function<void(const uint8_t*, size_t)> callback)
+    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback);
+    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback)
             : BleCharacteristic(properties, desc.c_str(), callback) {
     }
 
     template<typename T>
-    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, void(T::*callback)(const uint8_t*, size_t), T* instance)
+    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, void(T::*callback)(const uint8_t*, size_t, const BlePeerDevice& peer), T* instance)
             : BleCharacteristic(properties, desc, std::bind(callback, instance, _1, _2)) {
     }
 
     template<typename T>
-    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, void(T::*callback)(const uint8_t*, size_t), T* instance)
+    BleCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, void(T::*callback)(const uint8_t*, size_t, const BlePeerDevice& peer), T* instance)
             : BleCharacteristic(properties, desc, std::bind(callback, instance, _1, _2)) {
     }
 
@@ -478,24 +489,24 @@ public:
     }
 
     template<typename T1, typename T2>
-    BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t)> callback) {
+    BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback) {
         BleUuid cUuid(charUuid);
         BleUuid sUuid(svcUuid);
         construct(desc, properties, cUuid, sUuid, callback);
     }
 
     template<typename T1, typename T2>
-    BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t)> callback)
+    BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback)
             : BleCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback) {
     }
 
     template<typename T1, typename T2, typename T3>
-    BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, void(T3::*callback)(const uint8_t*, size_t), T3* instance)
+    BleCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, void(T3::*callback)(const uint8_t*, size_t, const BlePeerDevice& peer), T3* instance)
             : BleCharacteristic(desc, properties, charUuid, svcUuid, std::bind(callback, instance, _1, _2)) {
     }
 
     template<typename T1, typename T2, typename T3>
-    BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, void(T3::*callback)(const uint8_t*, size_t), T3* instance)
+    BleCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, void(T3::*callback)(const uint8_t*, size_t, const BlePeerDevice& peer), T3* instance)
             : BleCharacteristic(desc, properties, charUuid, svcUuid, std::bind(callback, instance, _1, _2)) {
     }
 
@@ -540,10 +551,10 @@ public:
     }
 
     void onDataReceived(BleOnDataReceivedCallback callback, void* context = nullptr);
-    void onDataReceived(std::function<void(const uint8_t*, size_t)> callback);
+    void onDataReceived(std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback);
 
     template<typename T>
-    void onDataReceived(void(T::*callback)(const uint8_t*, size_t), T* instance) {
+    void onDataReceived(void(T::*callback)(const uint8_t*, size_t, const BlePeerDevice& peer), T* instance) {
         onDataReceived(std::bind(callback, instance, _1, _2));
     }
 
@@ -557,7 +568,7 @@ private:
             BleOnDataReceivedCallback callback, void* context);
 
     void construct(const char* desc, EnumFlags<BleCharacteristicProperty> properties,
-            BleUuid& charUuid, BleUuid& svcUuid, std::function<void(const uint8_t*, size_t)> callback);
+            BleUuid& charUuid, BleUuid& svcUuid, std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback);
 
     std::shared_ptr<BleCharacteristicImpl> impl_;
 };
@@ -911,18 +922,29 @@ public:
 
     // Access local characteristics
     BleCharacteristic addCharacteristic(const BleCharacteristic& characteristic);
+    
+    BleCharacteristic __attribute__((deprecated("The order of the first argument and second argument need to be swapped")))
+    addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
+        return addCharacteristic(properties, desc, callback, context);
+    }
+
+    BleCharacteristic __attribute__((deprecated("The order of the first argument and second argument need to be swapped")))
+    addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
+        return addCharacteristic(properties, desc, callback, context);
+    }
+
     BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
     BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
-    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, std::function<void(const uint8_t*, size_t)> callback);
-    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, std::function<void(const uint8_t*, size_t)> callback);
+    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback);
+    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback);
 
     template<typename T>
-    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, void(T::*callback)(const uint8_t*, size_t), T* instance) {
+    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, void(T::*callback)(const uint8_t*, size_t, const BlePeerDevice& peer), T* instance) {
         return addCharacteristic(properties, desc, std::bind(callback, instance, _1, _2));
     }
 
     template<typename T>
-    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, void(T::*callback)(const uint8_t*, size_t), T* instance) {
+    BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const String& desc, void(T::*callback)(const uint8_t*, size_t, const BlePeerDevice& peer), T* instance) {
         return addCharacteristic(properties, desc, std::bind(callback, instance, _1, _2));
     }
 
@@ -939,24 +961,24 @@ public:
     }
 
     template<typename T1, typename T2>
-    BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t)> callback) {
+    BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback) {
         BleCharacteristic characteristic(desc, properties, charUuid, svcUuid, callback);
         addCharacteristic(characteristic);
         return characteristic;
     }
 
     template<typename T1, typename T2>
-    BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t)> callback) {
+    BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> callback) {
         return addCharacteristic(desc.c_str(), properties, charUuid, svcUuid, callback);
     }
 
     template<typename T1, typename T2, typename T3>
-    BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, void(T3::*callback)(const uint8_t*, size_t), T3* instance) {
+    BleCharacteristic addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, void(T3::*callback)(const uint8_t*, size_t, const BlePeerDevice& peer), T3* instance) {
         return addCharacteristic(desc, properties, charUuid, svcUuid, std::bind(callback, instance, _1, _2));
     }
 
     template<typename T1, typename T2, typename T3>
-    BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, void(T3::*callback)(const uint8_t*, size_t), T3* instance) {
+    BleCharacteristic addCharacteristic(const String& desc, EnumFlags<BleCharacteristicProperty> properties, T1 charUuid, T2 svcUuid, void(T3::*callback)(const uint8_t*, size_t, const BlePeerDevice& peer), T3* instance) {
         return addCharacteristic(desc, properties, charUuid, svcUuid, std::bind(callback, instance, _1, _2));
     }
 
