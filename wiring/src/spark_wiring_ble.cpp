@@ -665,6 +665,10 @@ size_t BleAdvertisingData::appendCustomData(const uint8_t* buf, size_t len, bool
     return append(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, len, force);
 }
 
+size_t BleAdvertisingData::appendAppearance(ble_sig_appearance_t appearance) {
+    return append(BleAdvertisingDataType::APPEARANCE, (const uint8_t*)&appearance, 2, false);
+}
+
 size_t BleAdvertisingData::resize(size_t size) {
     selfLen_ = std::min(size, (size_t)BLE_MAX_ADV_DATA_LEN);
     return selfLen_;
@@ -762,7 +766,7 @@ Vector<BleUuid> BleAdvertisingData::serviceUUID() const {
     foundUuids.append(serviceUUID(BleAdvertisingDataType::SERVICE_UUID_128BIT_MORE_AVAILABLE));
     foundUuids.append(serviceUUID(BleAdvertisingDataType::SERVICE_UUID_128BIT_COMPLETE));
     return foundUuids;
- }
+}
 
 size_t BleAdvertisingData::customData(uint8_t* buf, size_t len) const {
     return get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, len);
@@ -773,6 +777,16 @@ uint8_t BleAdvertisingData::operator[](uint8_t i) const {
         return 0;
     }
     return selfData_[i];
+}
+
+ble_sig_appearance_t BleAdvertisingData::appearance() const {
+    uint8_t buf[2];
+    size_t len = get(BleAdvertisingDataType::APPEARANCE, buf, sizeof(buf));
+    if (len > 0) {
+        uint16_t temp = (uint16_t)buf[1] << 8 | buf[0];
+        return (ble_sig_appearance_t)temp;
+    }
+    return BLE_SIG_APPEARANCE_UNKNOWN;
 }
 
 bool BleAdvertisingData::contains(BleAdvertisingDataType type) const {
@@ -1852,7 +1866,7 @@ int BleLocalDevice::txPower(int8_t* txPower) const {
 }
 
 int8_t BleLocalDevice::txPower() const {
-    int8_t tx = 0x7F;
+    int8_t tx = BLE_TX_POWER_INVALID;
     hal_ble_gap_get_tx_power(&tx, nullptr);
     return tx;
 }
@@ -2045,6 +2059,11 @@ public:
         return resultsVector_;
     }
 
+    BleScanDelegator& setScanFilter(const BleScanFilter& filter) {
+        filter_ = filter;
+        return *this;
+    }
+
 private:
     /*
      * WARN: This is executed from HAL ble thread. The current thread which starts the scanning procedure
@@ -2060,6 +2079,16 @@ private:
         result.address(event->peer_addr).rssi(event->rssi)
               .scanResponse(event->sr_data, event->sr_data_len)
               .advertisingData(event->adv_data, event->adv_data_len);
+
+        if (!delegator->filterByRssi(result) ||
+              !delegator->filterByAddress(result) ||
+              !delegator->filterByDeviceName(result) ||
+              !delegator->filterByServiceUUID(result) ||
+              !delegator->filterByAppearance(result) ||
+              !delegator->filterByCustomData(result)) {
+            return;
+        }
+
         if (delegator->callback_) {
             delegator->callback_(&result, delegator->context_);
             return;
@@ -2080,6 +2109,135 @@ private:
         delegator->resultsVector_.append(result);
     }
 
+    bool filterByRssi(const BleScanResult& result) {
+        int8_t filterRssi = filter_.minRssi();
+        if (filterRssi != BLE_RSSI_INVALID && result.rssi() < filterRssi) {
+            LOG_DEBUG(TRACE, "Exceed min. RSSI");
+            return false;
+        }
+        filterRssi = filter_.maxRssi();
+        if (filterRssi != BLE_RSSI_INVALID && result.rssi() > filterRssi) {
+            LOG_DEBUG(TRACE, "Exceed max. RSSI.");
+            return false;
+        }
+        return true;
+    }
+
+    bool filterByAddress(const BleScanResult& result) {
+        auto filerAddresses = filter_.addresses();
+        if (filerAddresses.size() > 0) {
+            for (const auto& address : filerAddresses) {
+                if (address == result.address()) {
+                    return true;
+                }
+            }
+            LOG_DEBUG(TRACE, "Address mismatched.");
+            return false;
+        }
+        return true;
+    }
+
+    bool filterByDeviceName(const BleScanResult& result) {
+        auto filterDeviceNames = filter_.deviceNames();
+        if (filterDeviceNames.size() > 0) {
+            String srName = result.scanResponse().deviceName();
+            String advName = result.advertisingData().deviceName();
+            if (srName.length() == 0 && advName.length() == 0) {
+                LOG_DEBUG(TRACE, "Device name mismatched.");
+                return false;
+            }
+            for (const auto& name : filterDeviceNames) {
+                if (name == srName || name == advName) {
+                    return true;
+                }
+            }
+            LOG_DEBUG(TRACE, "Device name mismatched.");
+            return false;
+        }
+        return true;
+    }
+
+    bool filterByServiceUUID(const BleScanResult& result) {
+        auto filterServiceUuids = filter_.serviceUUIDs();
+        if (filterServiceUuids.size() > 0) {
+            const Vector<BleUuid>& srUuids = result.scanResponse().serviceUUID();
+            const Vector<BleUuid>& advUuids = result.advertisingData().serviceUUID();
+            if (srUuids.size() <= 0 && advUuids.size() <= 0) {
+                LOG_DEBUG(TRACE, "Service UUID mismatched.");
+                return false;
+            }
+            for (const auto& uuid : filterServiceUuids) {
+                for (const auto& found : srUuids) {
+                    if (uuid == found) {
+                        return true;
+                    }
+                }
+                for (const auto& found : advUuids) {
+                    if (uuid == found) {
+                        return true;
+                    }
+                }
+            }
+            LOG_DEBUG(TRACE, "Service UUID mismatched.");
+            return false;
+        }
+        return true;
+    }
+
+    bool filterByAppearance(const BleScanResult& result) {
+        auto filterAppearances = filter_.appearances();
+        if (filterAppearances.size() > 0) {
+            ble_sig_appearance_t srAppearance = result.scanResponse().appearance();
+            ble_sig_appearance_t advAppearance = result.advertisingData().appearance();
+            for (const auto& appearance : filterAppearances) {
+                if (appearance == srAppearance || appearance == advAppearance) {
+                    return true;
+                }
+            }
+            LOG_DEBUG(TRACE, "Appearance mismatched.");
+            return false;
+        }
+        return true;
+    }
+
+    bool filterByCustomData(const BleScanResult& result) {
+        size_t filterCustomDatalen;
+        const uint8_t* filterCustomData = filter_.customData(&filterCustomDatalen);
+        if (filterCustomData != nullptr && filterCustomDatalen > 0) {
+            size_t srLen = result.scanResponse().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, sizeof(size_t));
+            size_t advLen = result.advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, sizeof(size_t));
+            if (srLen != filterCustomDatalen && advLen != filterCustomDatalen) {
+                LOG_DEBUG(TRACE, "Custom data mismatched.");
+                return false;
+            }
+            if (srLen == filterCustomDatalen) {
+                uint8_t* buf = (uint8_t*)malloc(srLen);
+                if (!buf) {
+                    LOG(ERROR, "Failed to allocate memory!");
+                    return false;
+                }
+                result.scanResponse().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, srLen);
+                if (!memcmp(buf, filterCustomData, srLen)) {
+                    return true;
+                }
+            }
+            if (advLen == filterCustomDatalen) {
+                uint8_t* buf = (uint8_t*)malloc(advLen);
+                if (!buf) {
+                    LOG(ERROR, "Failed to allocate memory!");
+                    return false;
+                }
+                result.advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, advLen);
+                if (!memcmp(buf, filterCustomData, advLen)) {
+                    return true;
+                }
+            }
+            LOG_DEBUG(TRACE, "Custom data mismatched.");
+            return false;
+        }
+        return true;
+    }
+
     Vector<BleScanResult> resultsVector_;
     BleScanResult* resultsPtr_;
     size_t targetCount_;
@@ -2087,6 +2245,7 @@ private:
     BleOnScanResultCallback callback_;
     BleOnScanResultCallbackRef callbackRef_;
     void* context_;
+    BleScanFilter filter_;
 };
 
 int BleLocalDevice::setScanTimeout(uint16_t timeout) const {
@@ -2134,6 +2293,29 @@ int BleLocalDevice::scan(BleScanResult* results, size_t resultCount) const {
 Vector<BleScanResult> BleLocalDevice::scan() const {
     BleScanDelegator scanner;
     return scanner.start();
+}
+
+int BleLocalDevice::scanWithFilter(const BleScanFilter& filter, BleOnScanResultCallback callback, void* context) const {
+    BleScanDelegator scanner;
+    return scanner.setScanFilter(filter).start(callback, context);
+}
+
+int BleLocalDevice::scanWithFilter(const BleScanFilter& filter, BleOnScanResultCallbackRef callback, void* context) const {
+    BleScanDelegator scanner;
+    return scanner.setScanFilter(filter).start(callback, context);
+}
+
+int BleLocalDevice::scanWithFilter(const BleScanFilter& filter, BleScanResult* results, size_t resultCount) const {
+    if (results == nullptr || resultCount == 0) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    BleScanDelegator scanner;
+    return scanner.setScanFilter(filter).start(results, resultCount);
+}
+
+Vector<BleScanResult> BleLocalDevice::scanWithFilter(const BleScanFilter& filter) const {
+    BleScanDelegator scanner;
+    return scanner.setScanFilter(filter).start();
 }
 
 int BleLocalDevice::stopScanning() const {

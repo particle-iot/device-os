@@ -417,6 +417,7 @@ test(ble_characteristic_class) {
 
     API_COMPILE({ int ret = characteristic.subscribe(true); (void)ret; });
 
+    API_COMPILE({ characteristic.onDataReceived(dataHandlerFunc); });
     API_COMPILE({ characteristic.onDataReceived(dataHandlerFunc, nullptr); });
 
     API_COMPILE({ bool ret = characteristic; (void)ret; });
@@ -453,6 +454,41 @@ test(ble_scan_result) {
     API_COMPILE({ BleAdvertisingData sr = result.scanResponse(); (void)sr; });
     API_COMPILE({ const BleAdvertisingData& sr = result.scanResponse(); (void)sr; });
     API_COMPILE({ int8_t ret = result.rssi(); (void)ret; });
+}
+
+test(ble_scan_filter) {
+    BleScanFilter filter;
+
+    API_COMPILE({ BleScanFilter f = filter.clear(); (void)f; });
+
+    API_COMPILE({ BleScanFilter f = filter.deviceName("1234"); (void)f; });
+    API_COMPILE({ BleScanFilter f = filter.deviceName(String("1234")); (void)f; });
+    API_COMPILE({ BleScanFilter f = filter.deviceNames(Vector<String>()); (void)f; });
+    API_COMPILE({ Vector<String> names = filter.deviceNames(); (void)names; });
+    API_COMPILE({ const Vector<String>& names = filter.deviceNames(); (void)names; });
+
+    API_COMPILE({ BleScanFilter f = filter.serviceUUID(BleUuid()); (void)f; });
+    API_COMPILE({ BleScanFilter f = filter.serviceUUIDs(Vector<BleUuid>()); (void)f; });
+    API_COMPILE({ Vector<BleUuid> uuids = filter.serviceUUIDs(); (void)uuids; });
+    API_COMPILE({ const Vector<BleUuid>& uuids = filter.serviceUUIDs(); (void)uuids; });
+
+    API_COMPILE({ BleScanFilter f = filter.address("1234"); (void)f; });
+    API_COMPILE({ BleScanFilter f = filter.addresses(Vector<BleAddress>()); (void)f; });
+    API_COMPILE({ Vector<BleAddress> addrs = filter.addresses(); (void)addrs; });
+    API_COMPILE({ const Vector<BleAddress>& addrs = filter.addresses(); (void)addrs; });
+
+    API_COMPILE({ BleScanFilter f = filter.appearance(BLE_SIG_APPEARANCE_GENERIC_PHONE); (void)f; });
+    API_COMPILE({ BleScanFilter f = filter.appearances(Vector<ble_sig_appearance_t>()); (void)f; });
+    API_COMPILE({ Vector<ble_sig_appearance_t> apprs = filter.appearances(); (void)apprs; });
+    API_COMPILE({ const Vector<ble_sig_appearance_t>& apprs = filter.appearances(); (void)apprs; });
+
+    API_COMPILE({ BleScanFilter f = filter.minRssi(0); (void)f; });
+    API_COMPILE({ BleScanFilter f = filter.maxRssi(0); (void)f; });
+    API_COMPILE({ int8_t ret = filter.minRssi(); (void)ret; });
+    API_COMPILE({ int8_t ret = filter.maxRssi(); (void)ret; });
+
+    API_COMPILE({ uint8_t buf[1]; BleScanFilter f = filter.customData(buf, 0); (void)f; });
+    API_COMPILE({ size_t len; const uint8_t* buf = filter.customData(&len); (void)len; (void)buf; });
 }
 
 test(ble_peer_device) {
@@ -586,8 +622,16 @@ test(ble_local_device_class) {
 
     API_COMPILE({ Vector<BleScanResult> results = BLE.scan(); });
     API_COMPILE({ BleScanResult results[1]; int ret = BLE.scan(results, 0); (void)ret; });
+    API_COMPILE({ int ret = BLE.scan(scanHandlerFunc); (void)ret; });
     API_COMPILE({ int ret = BLE.scan(scanHandlerFunc, nullptr); (void)ret; });
+    API_COMPILE({ int ret = BLE.scan(scanHandlerFuncRef); (void)ret; });
     API_COMPILE({ int ret = BLE.scan(scanHandlerFuncRef, nullptr); (void)ret; });
+    API_COMPILE({ Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter()); });
+    API_COMPILE({ BleScanResult results[1]; int ret = BLE.scanWithFilter(BleScanFilter(), results, 0); (void)ret; });
+    API_COMPILE({ int ret = BLE.scanWithFilter(BleScanFilter(), scanHandlerFunc); (void)ret; });
+    API_COMPILE({ int ret = BLE.scanWithFilter(BleScanFilter(), scanHandlerFunc, nullptr); (void)ret; });
+    API_COMPILE({ int ret = BLE.scanWithFilter(BleScanFilter(), scanHandlerFuncRef); (void)ret; });
+    API_COMPILE({ int ret = BLE.scanWithFilter(BleScanFilter(), scanHandlerFuncRef, nullptr); (void)ret; });
     API_COMPILE({ int ret = BLE.stopScanning(); (void)ret; });
 
     API_COMPILE({ BleCharacteristic c = BLE.addCharacteristic("1234", props, charUuid, svcUuid); });
@@ -614,7 +658,9 @@ test(ble_local_device_class) {
 
     API_COMPILE({ BlePeerDevice p = BLE.peerCentral(); });
 
+    API_COMPILE({ BLE.onConnected(connectedHandlerFunc); });
     API_COMPILE({ BLE.onConnected(connectedHandlerFunc, nullptr); });
+    API_COMPILE({ BLE.onDisconnected(disconnectedHandlerFunc); });
     API_COMPILE({ BLE.onDisconnected(disconnectedHandlerFunc, nullptr); });
 }
 

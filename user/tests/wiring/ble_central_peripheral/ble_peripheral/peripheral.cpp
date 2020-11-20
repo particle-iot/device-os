@@ -63,21 +63,21 @@ test(BLE_01_Peripheral_Advertising) {
     BleCharacteristic temp;
 
     temp = BLE.addCharacteristic(charRead);
-    assertTrue(temp.valid());
+    assertTrue(temp.isValid());
     ret = charRead.setValue("6dd902629e1d");
     assertEqual(ret, 12);
     temp = BLE.addCharacteristic(charWrite);
-    assertTrue(temp.valid());
+    assertTrue(temp.isValid());
     temp = BLE.addCharacteristic(charWriteWoRsp);
-    assertTrue(temp.valid());
+    assertTrue(temp.isValid());
     temp = BLE.addCharacteristic(charWriteAndWriteWoRsp);
-    assertTrue(temp.valid());
+    assertTrue(temp.isValid());
     temp = BLE.addCharacteristic(charNotify);
-    assertTrue(temp.valid());
+    assertTrue(temp.isValid());
     temp = BLE.addCharacteristic(charIndicate);
-    assertTrue(temp.valid());
+    assertTrue(temp.isValid());
     temp = BLE.addCharacteristic(charNotifyAndIndicate);
-    assertTrue(temp.valid());
+    assertTrue(temp.isValid());
 
     BleAdvertisingData data;
     data.appendServiceUUID(serviceUuid);
