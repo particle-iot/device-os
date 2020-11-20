@@ -1713,12 +1713,31 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     _net.cgi.location_area_code = 0xFFFF;
     _net.cgi.cell_id = 0xFFFFFFFF;
     if (_dev.dev == DEV_SARA_R410) {
+        // Check the signal seen by the module while trying to register
+        // Do not need to check for an OK, as this is just for debugging purpose,
+        // and UCGED may sometimes return CME ERROR with low signal
+        sendFormated("AT+UCGED=5\r\n");
+        if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+            goto failure;
+        }
+        sendFormated("AT+UCGED?\r\n");
+        if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+            goto failure;
+        }
+
         // check EPS registration (LTE)
         sendFormated("AT+CEREG?\r\n");
         if (RESP_OK != waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT)) {
             goto failure;
         }
     } else {
+        // Check the signal seen by the module while trying to register
+        // Do not need to check for an OK, as this is just for debugging purpose
+        sendFormated("AT+CSQ\r\n");
+        if (WAIT == waitFinalResp(nullptr, nullptr, CSQ_TIMEOUT)) {
+            goto failure;
+        }
+
         // check CSD registration (GSM)
         sendFormated("AT+CREG?\r\n");
         if (RESP_OK != waitFinalResp(nullptr, nullptr, CREG_TIMEOUT)) {
