@@ -1036,8 +1036,6 @@ public:
     BlePeerDevice connect(const BleAddress& addr, uint16_t interval, uint16_t latency, uint16_t timeout, bool automatic = true) const;
     BlePeerDevice connect(const BleAddress& addr, bool automatic = true) const;
 
-    BlePeerDevice peerCentral();
-
     int setPairingIoCaps(BlePairingIoCaps ioCaps) const;
     int startPairing(const BlePeerDevice& peer) const;
     int rejectPairing(const BlePeerDevice& peer) const;

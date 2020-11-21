@@ -2584,19 +2584,6 @@ BlePeerDevice BleLocalDevice::connect(const BleAddress& addr, bool automatic) co
     return connect(addr, nullptr, automatic);
 }
 
-BlePeerDevice BleLocalDevice::peerCentral() {
-    WiringBleLock lk;
-    for (auto& p : impl()->peers()) {
-        hal_ble_conn_info_t connInfo = {};
-        if (hal_ble_gap_get_connection_info(p.impl()->connHandle(), &connInfo, nullptr) == SYSTEM_ERROR_NONE) {
-            if (connInfo.role == BLE_ROLE_PERIPHERAL) {
-                return p;
-            }
-        }
-    }
-    return BlePeerDevice();
-}
-
 int BleLocalDevice::setPairingIoCaps(BlePairingIoCaps ioCaps) const {
     hal_ble_pairing_config_t config = {};
     config.version = BLE_API_VERSION;
