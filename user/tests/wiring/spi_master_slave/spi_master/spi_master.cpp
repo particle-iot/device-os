@@ -537,8 +537,17 @@ test(23_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE2_L
 }
 
 // The following tests inherit the last mode and bit order being set above
-test(24_SPI_Master_Slave_Master_Const_StringTransfer_DMA)
+test(24_SPI_Master_Slave_Master_Const_String_Transfer_DMA)
 {
+    // Select
+    // Workaround for some platforms requiring the CS to be high when configuring
+    // the DMA buffers
+    digitalWrite(MY_CS, LOW);
+    delay(SPI_DELAY);
+    digitalWrite(MY_CS, HIGH);
+    delay(SPI_DELAY);
+    digitalWrite(MY_CS, LOW);
+
     // Gen3: Send a big chunk of const data to verify truncated transfer
     DMA_Completed_Flag = 0;
 
@@ -546,7 +555,40 @@ test(24_SPI_Master_Slave_Master_Const_StringTransfer_DMA)
     // as the length of the rx buffer given in this file is not equal to the length of tx data
     MY_SPI.transfer(txString, nullptr, strlen(txString), SPI_DMA_Completed_Callback);
     while(DMA_Completed_Flag == 0);
-    assertEqual(strlen(txString), MY_SPI.available());
+
+    digitalWrite(MY_CS, HIGH);
+    assertEqual(MY_SPI.available(), strlen(txString));
+}
+
+test(25_SPI_Master_Slave_Master_Receiption)
+{
+    for (uint8_t i = 0; i < 2; i++) {
+        memset(SPI_Master_Rx_Buffer_Supper, '\0', sizeof(SPI_Master_Rx_Buffer_Supper));
+
+        // Select
+        // Workaround for some platforms requiring the CS to be high when configuring
+        // the DMA buffers
+        digitalWrite(MY_CS, LOW);
+        delay(SPI_DELAY);
+        digitalWrite(MY_CS, HIGH);
+        delay(SPI_DELAY);
+        digitalWrite(MY_CS, LOW);
+
+        DMA_Completed_Flag = 0;
+
+        MY_SPI.transfer(nullptr, SPI_Master_Rx_Buffer_Supper, strlen(txString), SPI_DMA_Completed_Callback);
+        while(DMA_Completed_Flag == 0);
+        digitalWrite(MY_CS, HIGH);
+        
+        // Serial.printf("Length: %d\r\n", strlen((const char *)SPI_Master_Rx_Buffer_Supper));
+        // for (size_t len = 0; len < strlen((const char *)SPI_Master_Rx_Buffer_Supper); len++) {
+        //     Serial.printf("%c", SPI_Master_Rx_Buffer_Supper[len]);
+        // }
+
+        assertEqual(MY_SPI.available(), strlen(txString));
+        assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer_Supper, txString, strlen(txString)) == 0);
+        delay(500);
+    }
 }
 
 #endif // #ifdef _SPI

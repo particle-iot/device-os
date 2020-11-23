@@ -209,7 +209,7 @@ static void SPI_DMA_Completed_Callback()
     DMA_Completed_Flag = 1;
 }
 
-static inline void SPI_Transfer_DMA(uint8_t *tx, uint8_t *rx, int length, hal_spi_dma_user_callback cb)
+static inline void SPI_Transfer_DMA(const uint8_t *tx, uint8_t *rx, int length, hal_spi_dma_user_callback cb)
 {
     while (true)
     {
@@ -340,6 +340,35 @@ test(01_SPI_Master_Slave_Slave_Receiption)
     // Serial.print("< ");
     // Serial.println((const char *)SPI_Slave_Rx_Buffer_Supper);
     assertTrue(strncmp((const char *)SPI_Slave_Rx_Buffer_Supper, txString, strlen(txString)) == 0);
+}
+
+test(02_SPI_Master_Slave_Slave_Const_String_Transfer_DMA)
+{
+    for (uint8_t i = 0; i < 2; i++) {
+        /* IMPORTANT: NOT waiting for Master to select us, as some of the platforms
+        * require TX and RX buffers to be configured before CS goes low
+        */
+        while(SPI_Selected_State == 0);
+        SPI_Selected_State = 0;
+
+        runtime_info_t heapInfo1 = {};
+        if (i == 1) {
+            heapInfo1.size = sizeof(runtime_info_t);
+            HAL_Core_Runtime_Info(&heapInfo1, nullptr);
+        }
+
+        // FIXME: The rx_buffer has to be nullptr, otherwise, the the rx_buffer will overflow
+        // as the length of the rx buffer given in this file is not equal to the length of tx data
+        MY_SPI.transfer(txString, nullptr, strlen(txString), NULL);
+        assertEqual(MY_SPI.available(), 0);
+
+        runtime_info_t heapInfo2 = {};
+        if (i == 1) {
+            heapInfo2.size = sizeof(runtime_info_t);
+            HAL_Core_Runtime_Info(&heapInfo2, nullptr);
+            assertEqual(heapInfo1.freeheap, heapInfo2.freeheap);
+        }
+    }
 }
 
 #endif // #ifdef MY_SPI
