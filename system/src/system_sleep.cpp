@@ -55,6 +55,11 @@ static bool system_sleep_network_suspend(network_interface_index index) {
         network_disconnect(index, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
         resume = true;
     }
+#if PLATFORM_GEN == 2
+    if (!SPARK_WLAN_SLEEP) {
+        resume = true;
+    }
+#endif
     // Turn off the modem
     network_off(index, 0, 0, NULL);
     LOG(TRACE, "Waiting interface to be off...");
@@ -64,8 +69,12 @@ static bool system_sleep_network_suspend(network_interface_index index) {
 }
 
 static int system_sleep_network_resume(network_interface_index index) {
+#if PLATFORM_GEN == 2
+    SPARK_WLAN_SLEEP = 0;
+#else
     network_on(index, 0, 0, nullptr);
     network_connect(index, 0, 0, nullptr);
+#endif
     return SYSTEM_ERROR_NONE;
 }
 
