@@ -58,18 +58,18 @@ void mbedtls_sha256_clone(mbedtls_sha256_context *dst, const mbedtls_sha256_cont
     CRYSError_t ret = CRYS_OK;
     if (dst->mode != src->mode)
     {
-        if (dst->mode == CRYS_HASH_NumOfModes)
+        if (dst->mode != CRYS_HASH_NumOfModes)
+        {
+            CC310_OPERATION_NO_RESULT(CRYS_HASH_Free(&dst->user_context));
+            dst->mode = CRYS_HASH_NumOfModes;
+        }
+        if (src->mode != CRYS_HASH_NumOfModes)
         {
             CC310_OPERATION(CRYS_HASH_Init(&dst->user_context, src->mode), ret);
             if (ret == CRYS_OK)
             {
                 dst->mode = src->mode;
             }
-        }
-        else
-        {
-            CC310_OPERATION_NO_RESULT(CRYS_HASH_Free(&dst->user_context));
-            dst->mode = CRYS_HASH_NumOfModes;
         }
     }
     if (ret == CRYS_OK && src->mode != CRYS_HASH_NumOfModes)
