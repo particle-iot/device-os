@@ -9,7 +9,7 @@
 #include "spark_wiring_timer.h"
 
 #ifdef UNIT_TEST
-#include "../test/unit_tests/mock/mock_types.h"
+#include "../../test/unit_tests/mock/mock_types.h"
 #endif // UNIT_TEST
 
 namespace

@@ -24,6 +24,14 @@
 #include <stdint.h>
 #include "mbedtls/md.h"
 
+#define CHECK_MBEDTLS(_expr) \
+        do { \
+            const int _r = _expr; \
+            if (_r != 0) { \
+                return mbedtls_to_system_error(_r); \
+            } \
+        } while (false)
+
 // Random number generator callback
 int mbedtls_default_rng(void*, unsigned char* data, size_t size);
 
@@ -46,6 +54,8 @@ mbedtls_callbacks_t* mbedtls_get_callbacks(void* reserved);
 int mbedtls_x509_crt_pem_to_der(const char* pem_crt, size_t pem_len, uint8_t** der_crt, size_t* der_len);
 int mbedtls_pk_pem_to_der(const char* pem_key, size_t pem_len, uint8_t** der_key, size_t* der_len);
 int mbedtls_x509_read_length(const uint8_t* der, size_t len, int concatenated);
+
+int mbedtls_to_system_error(int error);
 
 #ifdef  __cplusplus
 }

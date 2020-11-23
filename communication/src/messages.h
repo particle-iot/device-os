@@ -23,6 +23,8 @@
 #include "system_defs.h"
 #include "events.h"
 
+#include <cstdint>
+
 namespace particle
 {
 namespace protocol

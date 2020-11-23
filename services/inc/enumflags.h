@@ -19,6 +19,7 @@
 #define SERVICES_ENUMFLAGS_H
 
 #include <type_traits>
+#include <cstddef>
 
 namespace particle {
 
@@ -40,7 +41,7 @@ template<typename T>
 class EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>> {
 public:
     typedef typename std::underlying_type_t<T> ValueType;
-    
+
     EnumFlags();
     EnumFlags(const T& value);
     EnumFlags(const EnumFlags<T>& flags);
@@ -75,6 +76,9 @@ public:
     bool operator>=(const EnumFlags<T>& flags) const;
     bool operator<(const EnumFlags<T>& flags) const;
     bool operator<=(const EnumFlags<T>& flags) const;
+
+    operator bool() const;
+    bool operator!() const;
 
     static EnumFlags<T> fromUnderlying(ValueType value);
 
@@ -258,6 +262,16 @@ inline bool particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::va
 template<typename T>
 inline bool particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator<=(const EnumFlags<T>& flags) const {
     return (value_ <= flags.value_);
+}
+
+template<typename T>
+inline particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator bool() const {
+    return value_;
+}
+
+template<typename T>
+inline bool particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator!() const {
+    return !value_;
 }
 
 template<typename T>

@@ -18,6 +18,7 @@
 #ifndef SERVICES_SYSTEM_ERROR_H
 #define SERVICES_SYSTEM_ERROR_H
 
+#include "logging.h"
 #include "preprocessor.h"
 
 // List of all defined system errors
@@ -37,6 +38,7 @@
         (LIMIT_EXCEEDED, "Limit exceeded", -200), \
         (END_OF_STREAM, "End of stream", -201), \
         (INVALID_STATE, "Invalid state", -210), \
+        (FLASH_IO, "Flash IO error", -219), \
         (IO, "IO error", -220), \
         (WOULD_BLOCK, "Would block", -221), \
         (FILE, "File error", -225), \
@@ -53,14 +55,18 @@
         (COAP_5XX, "CoAP: 5xx", -1132), \
         (AT_NOT_OK, "AT command failure", -1200), /* -1399 ... -1200: AT command errors */ \
         (AT_RESPONSE_UNEXPECTED, "Failed to parse AT response", -1210), \
-        (OTA_MODULE_NOT_FOUND, "Module not found", -1300), /* -1499 ... -1300: OTA update error */ \
+        (OTA_MODULE_NOT_FOUND, "Module not found", -1300), /* -1499 ... -1300: OTA update errors */ \
         (OTA_UNSUPPORTED_MODULE, "Unsupported module", -1310), \
         (OTA_VALIDATION_FAILED, "Module validation failed", -1320), \
         (OTA_INTEGRITY_CHECK_FAILED, "Module integrity check failed", -1330), \
+        (OTA_RESUMED_UPDATE_FAILED, "Resumed update failed", -1331), \
         (OTA_DEPENDENCY_CHECK_FAILED, "Module dependency check failed", -1340), \
         (OTA_INVALID_ADDRESS, "Invalid module address", -1350), \
+        (OTA_INVALID_SIZE, "Invalid module size", -1351), \
         (OTA_INVALID_PLATFORM, "Invalid module platform", -1360), \
-        (OTA_INVALID_FORMAT, "Invalid module format", -1370)
+        (OTA_INVALID_FORMAT, "Invalid module format", -1370), \
+        (OTA_UPDATES_DISABLED, "Firmware updates are disabled", -1380), \
+        (CRYPTO, "Crypto error", -1400) /* -1599 ... -1400: Crypto errors */ \
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \
@@ -76,10 +82,20 @@
 #define _SYSTEM_ERROR_ENUM_VALUE__(prefix, name, msg, code) \
         PP_CAT(prefix, name) = code,
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+/**
+ * Set the last error message.
+ *
+ * This macro also logs the error message under the current logging category.
+ */
+#define SYSTEM_ERROR_MESSAGE(_fmt, ...) \
+        do { \
+            LOG(ERROR, _fmt, ##__VA_ARGS__); \
+            set_system_error_message(_fmt, ##__VA_ARGS__); \
+        } while (false)
 
+/**
+ * Error codes.
+ */
 typedef enum system_error_t {
     // SYSTEM_ERROR_NONE = 0,
     // SYSTEM_ERROR_UNKNOWN = -100,
@@ -87,8 +103,43 @@ typedef enum system_error_t {
     SYSTEM_ERROR_ENUM_VALUES(SYSTEM_ERROR_)
 } system_error_t;
 
-// Returns default error message
-const char* system_error_message(int error, void* reserved);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * Set the last error message.
+ *
+ * @param fmt Format string.
+ * @param ... Formatting arguments.
+ */
+// TODO: Perhaps it would be better to not allow overriding the currently set error message until
+// it's explicitly cleared
+void set_system_error_message(const char* fmt, ...);
+
+/**
+ * Clear the last error message.
+ */
+void clear_system_error_message();
+
+/**
+ * Get the last error message.
+ *
+ * @param error Error code.
+ * @return Error message.
+ *
+ * If `error` is negative and the last error message is not set, this function will return the
+ * default message for the error code.
+ */
+const char* get_system_error_message(int error);
+
+/**
+ * Get the default error message for the error code.
+ *
+ * @param error Error code.
+ * @return Error message.
+ */
+const char* get_default_system_error_message(int error, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"

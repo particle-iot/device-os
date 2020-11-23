@@ -76,14 +76,20 @@ void cancelFirmwareUpdate() {
     }
     const int ret = Spark_Finish_Firmware_Update(g_update->descr, UpdateFlag::ERROR, nullptr);
     if (ret < 0) {
-        LOG(WARN, "Spark_Finish_Firmware_Update(UpdateFlag::ERROR) failed: %d", ret);
+        LOG(WARN, "Spark_Finish_Firmware_Update() failed: %d", ret);
     }
     g_update.reset();
 }
 
 void firmwareUpdateCompletionHandler(int result, void* data) {
-    HAL_Delay_Milliseconds(1000);
-    system_pending_shutdown(RESET_REASON_UPDATE);
+    if (!g_update) {
+        return;
+    }
+    const int ret = Spark_Finish_Firmware_Update(g_update->descr, UpdateFlag::SUCCESS, nullptr);
+    if (ret < 0) {
+        LOG(ERROR, "Spark_Finish_Firmware_Update() failed: %d", ret);
+    }
+    g_update.reset();
 }
 
 PB(FirmwareModuleType) moduleFunctionToPb(module_function_t func) {
@@ -166,19 +172,13 @@ void finishFirmwareUpdateRequest(ctrl_request* req) {
         goto done;
     }
     LOG_DEBUG(TRACE, "Firmware size: %u", (unsigned)g_update->bytesWritten);
-    if (!pbReq.validate_only) {
-        // Apply the update
-        ret = Spark_Finish_Firmware_Update(g_update->descr, UpdateFlag::SUCCESS | UpdateFlag::DONT_RESET, nullptr);
-        g_update.reset();
-        if (ret < 0) {
-            goto done;
-        }
-        // Reply to the host and reset the device
+    // Validate the update
+    ret = Spark_Finish_Firmware_Update(g_update->descr, UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY, nullptr);
+    if (ret >= 0 && !pbReq.validate_only) {
+        // Reply to the host and apply the update
         system_ctrl_set_result(req, 0 /* result */, firmwareUpdateCompletionHandler, nullptr, nullptr);
         return;
     }
-    // Validate the firmware binary
-    ret = Spark_Finish_Firmware_Update(g_update->descr, UpdateFlag::SUCCESS | UpdateFlag::VALIDATE_ONLY, nullptr);
 done:
     cancelFirmwareUpdate();
     system_ctrl_set_result(req, ret, nullptr, nullptr, nullptr);

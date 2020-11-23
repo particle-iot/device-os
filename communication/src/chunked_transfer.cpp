@@ -24,6 +24,9 @@
 LOG_SOURCE_CATEGORY("comm.ota")
 
 #include "chunked_transfer.h"
+
+#if !HAL_PLATFORM_OTA_PROTOCOL_V3
+
 #include "service_debug.h"
 #include "coap.h"
 #include <algorithm>
@@ -395,3 +398,5 @@ void ChunkedTransfer::set_chunks_received(uint8_t value)
 
 
 }}
+
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3

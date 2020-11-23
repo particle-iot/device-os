@@ -40,7 +40,8 @@ enum HelloFlag {
 	// Flag 0x08 is reserved to indicate support for the HandshakeComplete message
 	HELLO_FLAG_GOODBYE_SUPPORT = 0x10,
 	HELLO_FLAG_DEVICE_INITIATED_DESCRIBE = 0x20,
-	HELLO_FLAG_COMPRESSED_OTA = 0x40
+	HELLO_FLAG_COMPRESSED_OTA = 0x40,
+	HELLO_FLAG_OTA_PROTOCOL_V3 = 0x80
 };
 
 } // namespace
@@ -86,6 +87,14 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		}
 		notify_message_complete(msg_id, code);
 		handle_app_state_reply(msg_id, code);
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+		if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
+			const ProtocolError error = firmwareUpdate.responseAck(&message);
+			if (error != ProtocolError::NO_ERROR) {
+				return error;
+			}
+		}
+#endif
 	}
 
 	ProtocolError error = NO_ERROR;
@@ -126,6 +135,17 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		}
 		return variables.handle_request(message, token, msg_id);
 	}
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	case CoAPMessageType::UPDATE_START_V3: {
+		return firmwareUpdate.startRequest(&message);
+	}
+	case CoAPMessageType::UPDATE_FINISH_V3: {
+		return firmwareUpdate.finishRequest(&message);
+	}
+	case CoAPMessageType::UPDATE_CHUNK_V3: {
+		return firmwareUpdate.chunkRequest(&message);
+	}
+#else
 	case CoAPMessageType::SAVE_BEGIN:
 		// fall through
 	case CoAPMessageType::UPDATE_BEGIN:
@@ -135,7 +155,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		return chunkedTransfer.handle_chunk(token, message, channel);
 	case CoAPMessageType::UPDATE_DONE:
 		return chunkedTransfer.handle_update_done(token, message, channel);
-
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
 	case CoAPMessageType::EVENT:
 		return subscriptions.handle_event(message, descriptor.call_event_handler, channel);
 
@@ -269,8 +289,12 @@ void Protocol::init(const SparkCallbacks &callbacks,
 	copy_and_init(&this->descriptor, sizeof(this->descriptor), &descriptor,
 			descriptor.size);
 
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	firmwareUpdate.init(&channel, this->callbacks);
+#else
 	chunkedTransferCallbacks.init(&this->callbacks);
 	chunkedTransfer.init(&chunkedTransferCallbacks);
+#endif
 
 	initialized = true;
 }
@@ -380,7 +404,11 @@ int Protocol::begin()
 }
 
 void Protocol::reset() {
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	firmwareUpdate.reset();
+#else
 	chunkedTransfer.reset();
+#endif
 	pinger.reset();
 	timesync_.reset();
 	ack_handlers.clear();
@@ -410,6 +438,9 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 	if (protocol_flags & ProtocolFlag::COMPRESSED_OTA) {
 		flags |= HELLO_FLAG_COMPRESSED_OTA;
 	}
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	flags |= HELLO_FLAG_OTA_PROTOCOL_V3;
+#endif
 	size_t len = build_hello(message, flags);
 	message.set_length(len);
 	message.set_confirm_received(true); // Send synchronously
@@ -487,7 +518,11 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 	if (error)
 	{
 		// bail if and only if there was an error
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+		firmwareUpdate.reset();
+#else
 		chunkedTransfer.cancel();
+#endif
 		LOG(ERROR,"Event loop error %d", error);
 		return error;
 	}
@@ -748,6 +783,8 @@ bool Protocol::handle_app_state_reply(message_id_t msg_id, CoAPCode::Enum code)
 	return false;
 }
 
+#if !HAL_PLATFORM_OTA_PROTOCOL_V3
+
 int Protocol::ChunkedTransferCallbacks::prepare_for_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void* reserved)
 {
 	return callbacks->prepare_for_firmware_update(data, flags, reserved);
@@ -772,6 +809,8 @@ system_tick_t Protocol::ChunkedTransferCallbacks::millis()
 {
 	return callbacks->millis();
 }
+
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
 
 int Protocol::get_describe_data(spark_protocol_describe_data* data, void* reserved)
 {

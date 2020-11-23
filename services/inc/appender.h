@@ -147,6 +147,10 @@ public:
         return true;
     }
 
+    size_t skip(size_t size) {
+        return dataSize_ += size;
+    }
+
     char* buffer() const {
         return buf_;
     }
@@ -160,8 +164,8 @@ public:
     }
 
 private:
-    char* const buf_;
-    const size_t bufSize_;
+    char* buf_;
+    size_t bufSize_;
     size_t dataSize_;
 };
 

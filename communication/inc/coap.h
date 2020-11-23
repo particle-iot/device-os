@@ -37,23 +37,26 @@ typedef uint16_t message_id_t;
 
 namespace CoAPMessageType {
   enum Enum {
-    HELLO,                  // 0
+    HELLO,
     DESCRIBE,
     FUNCTION_CALL,
     VARIABLE_REQUEST,
     SAVE_BEGIN,
-    UPDATE_BEGIN,           // 5
+    UPDATE_BEGIN,
     UPDATE_DONE,
     CHUNK,
     EVENT,
     KEY_CHANGE,
-    SIGNAL_START,           // 10
+    SIGNAL_START,
     SIGNAL_STOP,
     TIME,
     EMPTY_ACK,
     PING,
-    ERROR,					// 15
+    ERROR,
     NONE,
+    UPDATE_START_V3,
+    UPDATE_FINISH_V3,
+    UPDATE_CHUNK_V3
   };
 }
 

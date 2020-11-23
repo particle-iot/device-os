@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.2)
 project(unit_tests)
 
 # NOTE: Keep this in sync with lang-std.mk
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
@@ -16,7 +16,7 @@ get_filename_component(
   ${CMAKE_CURRENT_LIST_DIR}/../..
   REALPATH
 )
-set(TEST_DIR ${DEVICE_OS_DIR}/test)
+set(TEST_DIR ${DEVICE_OS_DIR}/test/unit_tests)
 set(THIRD_PARTY_DIR ${DEVICE_OS_DIR}/third_party)
 
 # Add Boost from git submodule

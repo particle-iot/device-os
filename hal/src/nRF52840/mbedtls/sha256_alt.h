@@ -61,33 +61,15 @@
 extern "C" {
 #endif
 
-#if defined(__CC_ARM)
-#pragma anon_unions
-#endif
-
 /**
  * @brief SHA-256 context structure
  */
-typedef union
+typedef struct mbedtls_sha256_context
 {
-    struct
-    {
-        CRYS_HASHUserContext_t    user_context; ///< User context for CC310 SHA256
-        CRYS_HASH_OperationMode_t mode;         ///< CC310 hash operation mode
-    } hardware;
-    struct
-    {
-        uint32_t      total[2];                 ///< number of bytes processed
-        uint32_t      state[8];                 ///< intermediate digest state
-        unsigned char buffer[64];               ///< data block being processed
-        int           is224;                    ///< 0 => SHA-256, else SHA-224
-    } software;
+    CRYS_HASHUserContext_t user_context; ///< User context for CC310 SHA256
+    CRYS_HASH_OperationMode_t mode; ///< CC310 hash operation mode
 }
 mbedtls_sha256_context;
-
-#if defined(__CC_ARM)
-#pragma no_anon_unions
-#endif
 
 /**
  * @brief Initialize SHA-256 context

@@ -24,6 +24,7 @@ LOG_SOURCE_CATEGORY("hal.ota")
 #include "dct_hal.h"
 #include "dct.h"
 #include "core_hal.h"
+#include "exflash_hal.h"
 #include "flash_mal.h"
 #include "dct_hal.h"
 #include "dsakeygen.h"
@@ -360,6 +361,15 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return FLASH_Update(pBuffer, address, length);
 }
 
+int HAL_OTA_Flash_Read(uintptr_t address, uint8_t* buffer, size_t size)
+{
+#ifdef USE_SERIAL_FLASH
+    return hal_exflash_read(address, buffer, size);
+#else
+    return hal_flash_read(address, buffer, size);
+#endif
+}
+
 static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength)
 {
     bool ok = false;
@@ -438,7 +448,7 @@ __attribute__((optimize("O0"))) int fetchModules(hal_module_t* modules, size_t m
     bool hasNext = true;
     do {
         if (!fetch_module(&module, &bounds, userDepsOptional, flags)) {
-            LOG(ERROR, "Unable to fetch module");
+            SYSTEM_ERROR_MESSAGE("Unable to fetch module");
             return SYSTEM_ERROR_OTA_MODULE_NOT_FOUND;
         }
         if (count < maxModuleCount) {
@@ -451,8 +461,8 @@ __attribute__((optimize("O0"))) int fetchModules(hal_module_t* modules, size_t m
             // Forge a module bounds structure for the next module in the OTA region
             const size_t moduleSize = module_length(info) + 4 /* CRC-32 */;
             if (bounds.maximum_size < moduleSize) {
-                LOG(ERROR, "Invalid module size");
-                return SYSTEM_ERROR_OTA_INVALID_ADDRESS;
+                SYSTEM_ERROR_MESSAGE("Invalid module size");
+                return SYSTEM_ERROR_OTA_INVALID_SIZE;
             }
             bounds.start_address += moduleSize;
             bounds.maximum_size -= moduleSize;
@@ -471,7 +481,7 @@ __attribute__((optimize("O0"))) int validateModules(const hal_module_t* modules,
         LOG(INFO, "Validating module; type: %u; index: %u; version: %u", (unsigned)module_function(info),
                 (unsigned)module_index(info), (unsigned)module_version(info));
         if (module->validity_result != module->validity_checked) {
-            LOG(ERROR, "Validation failed; result: 0x%02x; checked: 0x%02x", (unsigned)module->validity_result,
+            SYSTEM_ERROR_MESSAGE("Validation failed; result: 0x%02x; checked: 0x%02x", (unsigned)module->validity_result,
                     (unsigned)module->validity_checked);
             return validityResultToSystemError(module->validity_result, module->validity_checked);
         }
@@ -479,12 +489,12 @@ __attribute__((optimize("O0"))) int validateModules(const hal_module_t* modules,
         const bool compressed = (info->flags & MODULE_INFO_FLAG_COMPRESSED);
         if (module->module_info_offset > 0 && (dropModuleInfo || compressed)) {
             // Module with the DROP_MODULE_INFO or COMPRESSED flag set can't have a vector table
-            LOG(ERROR, "Invalid module format");
+            SYSTEM_ERROR_MESSAGE("Invalid module format");
             return SYSTEM_ERROR_OTA_INVALID_FORMAT;
         }
         const auto moduleFunc = module_function(info);
         if (compressed && moduleFunc != MODULE_FUNCTION_USER_PART && moduleFunc != MODULE_FUNCTION_SYSTEM_PART) {
-            LOG(ERROR, "Unsupported compressed module"); // TODO
+            SYSTEM_ERROR_MESSAGE("Unsupported compressed module"); // TODO
             return SYSTEM_ERROR_OTA_UNSUPPORTED_MODULE;
         }
         if (moduleFunc == MODULE_FUNCTION_NCP_FIRMWARE) {
@@ -492,12 +502,12 @@ __attribute__((optimize("O0"))) int validateModules(const hal_module_t* modules,
             const auto moduleNcp = module_mcu_target(info);
             const auto currentNcp = platform_current_ncp_identifier();
             if (moduleNcp != currentNcp) {
-                LOG(ERROR, "NCP module is not for this platform; module NCP: 0x%02x; current NCP: 0x%02x",
+                SYSTEM_ERROR_MESSAGE("NCP module is not for this platform; module NCP: 0x%02x; current NCP: 0x%02x",
                         (unsigned)moduleNcp, (unsigned)currentNcp);
                 return SYSTEM_ERROR_OTA_INVALID_PLATFORM;
             }
 #else
-            LOG(ERROR, "NCP module is not updatable on this platform");
+            SYSTEM_ERROR_MESSAGE("NCP module is not updatable on this platform");
             return SYSTEM_ERROR_OTA_UNSUPPORTED_MODULE;
 #endif // !HAL_PLATFORM_NCP_UPDATABLE
         }
@@ -587,7 +597,7 @@ __attribute__((optimize("O0"))) int HAL_FLASH_End(void* reserved)
             const bool ok = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, otaAddr, FLASH_INTERNAL,
                     (uint32_t)info.module_start_address, moduleSize + 4 /* CRC-32 */, moduleFunc, slotFlags);
             if (!ok) {
-                LOG(ERROR, "No module slot available");
+                SYSTEM_ERROR_MESSAGE("No module slot available");
                 result = SYSTEM_ERROR_NO_MEMORY;
             } else {
                 result = HAL_UPDATE_APPLIED_PENDING_RESTART;

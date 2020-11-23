@@ -24,7 +24,7 @@
 #include "message_channel.h"
 #include "messages.h"
 #include "spark_descriptor.h"
-
+#include "logging.h"
 
 namespace particle
 {
@@ -42,9 +42,9 @@ public:
 	virtual ProtocolError create(Message& message, size_t minimum_size=0) override
 	{
 		if (minimum_size>sizeof(queue)-prefix-suffix) {
-            WARN("Insufficient storage for message size %d", minimum_size);
+			LOG(WARN, "Insufficient storage for message size %d", minimum_size);
 			return INSUFFICIENT_STORAGE;
-        }
+		}
 		message.clear();
 		message.set_buffer(queue+prefix, sizeof(queue)-suffix-prefix);
 		message.set_length(0);

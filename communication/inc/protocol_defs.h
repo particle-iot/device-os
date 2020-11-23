@@ -1,7 +1,8 @@
-	#pragma once
+#pragma once
 
 #include <functional>
 #include "system_tick_hal.h"
+#include "hal_platform.h"
 
 #include "system_error.h"
 #include "platforms.h"
@@ -54,6 +55,7 @@ enum ProtocolError
     /* 27 */ MISSING_REQUEST_TOKEN,
     /* 28 */ NOT_FOUND,
     /* 29 */ NO_MEMORY,
+    /* 30 */ INTERNAL,
 
     /*
      * NOTE: when adding more ProtocolError codes, be sure to update toSystemError() in protocol_defs.cpp
@@ -93,7 +95,7 @@ const size_t MAX_EVENT_DATA_LENGTH   = 622;
 const unsigned SEND_EVENT_ACK_TIMEOUT = 20000;
 
 #ifndef PROTOCOL_BUFFER_SIZE
-    #define PROTOCOL_BUFFER_SIZE 800
+#define PROTOCOL_BUFFER_SIZE MBEDTLS_SSL_MAX_CONTENT_LEN
 #endif
 
 
@@ -138,8 +140,7 @@ namespace UpdateFlag {
 enum Enum {
     ERROR         = 0x00,
     SUCCESS       = 0x01,
-    VALIDATE_ONLY = 0x02,
-    DONT_RESET    = 0x04
+    VALIDATE_ONLY = 0x02
 };
 }
 

@@ -32,6 +32,7 @@
 #include "system_network.h"
 #include "system_network_internal.h"
 #include "system_update.h"
+#include "firmware_update.h"
 #include "spark_macros.h"
 #include "string.h"
 #include "core_hal.h"
@@ -114,7 +115,7 @@ int cfod_count = 0;
  */
 void manage_serial_flasher()
 {
-    if(SPARK_FLASH_UPDATE == 3)
+    if(SPARK_FLASH_UPDATE == 3) // FIXME: This state variable is no longer set to 3 anywhere in the code
     {
         system_firmwareUpdate(&Serial);
     }
@@ -486,6 +487,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         manage_ip_config();
 
         manage_cloud_connection(force_events);
+
+        system::FirmwareUpdate::instance()->process();
     }
     else
     {
@@ -622,7 +625,8 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, netwo
             spark_cloud_socket_disconnect(graceful);
         }
 
-        SPARK_FLASH_UPDATE = 0;
+        // Note: Invoking the protocol's DISCONNECT or TERMINATE command cancels the ongoing firmware
+        // if the device is being updated OTA, so there's no need to explicitly cancel the update here
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_HANDSHAKE_PENDING = 0;
         SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;

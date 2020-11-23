@@ -28,8 +28,10 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 #include "timer_hal.h"
 #include "deviceid_hal.h"
 
+#include "sha256.h"
 #include "scope_guard.h"
 #include "endian_util.h"
+#include "check.h"
 #include "debug.h"
 
 #include "mbedtls/ecjpake.h"
@@ -37,23 +39,6 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 #include "mbedtls/md.h"
 
 #include "mbedtls_util.h"
-
-#define CHECK(_expr) \
-        do { \
-            const int _ret = _expr; \
-            if (_ret < 0) { \
-                return _ret; \
-            } \
-        } while (false)
-
-#define CHECK_MBEDTLS(_expr) \
-        do { \
-            const int _ret = _expr; \
-            if (_ret != 0) { \
-                LOG_DEBUG(ERROR, #_expr " failed: %d", _ret); \
-                return mbedtlsError(_ret); \
-            } \
-        } while (false)
 
 #undef DEBUG // Legacy logging macro
 
@@ -180,124 +165,6 @@ const size_t MESSAGE_FOOTER_SIZE = AES_CCM_TAG_SIZE;
 const size_t MESSAGE_FOOTER_SIZE = 0;
 #endif
 
-int mbedtlsError(int ret) {
-    switch (ret) {
-    case 0:
-        return SYSTEM_ERROR_NONE;
-    // TODO
-    default:
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-}
-
-class Sha256 {
-public:
-    static const size_t SIZE = 32;
-
-    Sha256() :
-            ctx_() {
-    }
-
-    ~Sha256() {
-        destroy();
-    }
-
-    int init() {
-        const auto mdInfo = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-        if (!mdInfo) {
-            LOG_DEBUG(ERROR, "mbedtls_md_info_from_type() failed");
-            return SYSTEM_ERROR_NOT_FOUND;
-        }
-        mbedtls_md_init(&ctx_);
-        CHECK_MBEDTLS(mbedtls_md_setup(&ctx_, mdInfo, 0 /* hmac */));
-        CHECK_MBEDTLS(mbedtls_md_starts(&ctx_));
-        return 0;
-    }
-
-    int init(const Sha256& src) {
-        CHECK(init());
-        CHECK_MBEDTLS(mbedtls_md_clone(&ctx_, &src.ctx_));
-        return 0;
-    }
-
-    void destroy() {
-        mbedtls_md_free(&ctx_);
-    }
-
-    int start() {
-        CHECK_MBEDTLS(mbedtls_md_starts(&ctx_));
-        return 0;
-    }
-
-    int update(const char* data, size_t size) {
-        CHECK_MBEDTLS(mbedtls_md_update(&ctx_, (const uint8_t*)data, size));
-        return 0;
-    }
-
-    int update(const char* str) {
-        return update(str, strlen(str));
-    }
-
-    int finish(char* buf) {
-        CHECK_MBEDTLS(mbedtls_md_finish(&ctx_, (uint8_t*)buf));
-        return 0;
-    }
-
-private:
-    mbedtls_md_context_t ctx_;
-};
-
-class HmacSha256 {
-public:
-    static const size_t SIZE = 32;
-
-    HmacSha256() :
-            ctx_() {
-    }
-
-    ~HmacSha256() {
-        destroy();
-    }
-
-    int init(const char* key, size_t keySize) {
-        const auto mdInfo = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-        if (!mdInfo) {
-            LOG_DEBUG(ERROR, "mbedtls_md_info_from_type() failed");
-            return SYSTEM_ERROR_NOT_FOUND;
-        }
-        mbedtls_md_init(&ctx_);
-        CHECK_MBEDTLS(mbedtls_md_setup(&ctx_, mdInfo, 1 /* hmac */));
-        CHECK_MBEDTLS(mbedtls_md_hmac_starts(&ctx_, (const uint8_t*)key, keySize));
-        return 0;
-    }
-
-    void destroy() {
-        mbedtls_md_free(&ctx_);
-    }
-
-    int start() {
-        CHECK_MBEDTLS(mbedtls_md_hmac_reset(&ctx_));
-        return 0;
-    }
-
-    int update(const char* data, size_t size) {
-        CHECK_MBEDTLS(mbedtls_md_hmac_update(&ctx_, (const uint8_t*)data, size));
-        return 0;
-    }
-
-    int update(const char* str) {
-        return update(str, strlen(str));
-    }
-
-    int finish(char* buf) {
-        CHECK_MBEDTLS(mbedtls_md_hmac_finish(&ctx_, (uint8_t*)buf));
-        return 0;
-    }
-
-private:
-    mbedtls_md_context_t ctx_;
-};
-
 } // particle::system::
 
 class BleControlRequestChannel::HandshakeHandler {
@@ -418,6 +285,7 @@ public:
     int init(const char* key, size_t keySize) {
         CHECK(HandshakeHandler::init());
         CHECK(hash_.init());
+        CHECK(hash_.start());
         mbedtls_ecjpake_init(&ctx_);
         CHECK_MBEDTLS(mbedtls_ecjpake_setup(&ctx_, MBEDTLS_ECJPAKE_SERVER, MBEDTLS_MD_SHA256, MBEDTLS_ECP_DP_SECP256R1,
                 (const uint8_t*)key, keySize));
@@ -480,7 +348,7 @@ private:
     Sha256 hash_;
     mbedtls_ecjpake_context ctx_;
     char secret_[JPAKE_SHARED_SECRET_SIZE];
-    char confirmKey_[Sha256::SIZE];
+    char confirmKey_[Sha256::HASH_SIZE];
     State state_;
 
     int readRound1() {
@@ -540,7 +408,7 @@ private:
         if (ret != Result::DONE) {
             return ret;
         }
-        if (size != Sha256::SIZE) {
+        if (size != Sha256::HASH_SIZE) {
             LOG_DEBUG(ERROR, "Invalid size of the confirmation message");
             return SYSTEM_ERROR_BAD_DATA;
         }
@@ -556,23 +424,26 @@ private:
         // Generate the confirmation key
         Sha256 hash;
         CHECK(hash.init());
+        CHECK(hash.start());
         CHECK(hash.update(secret_, sizeof(secret_)));
         CHECK(hash.update("JPAKE_KC"));
         CHECK(hash.finish(confirmKey_));
         hash.destroy();
         // Validate the confirmation message
-        CHECK(hash.init(hash_));
-        char hashVal[Sha256::SIZE] = {};
+        CHECK(hash.init());
+        CHECK(hash.copyFrom(hash_));
+        char hashVal[Sha256::HASH_SIZE] = {};
         CHECK(hash.finish(hashVal));
         hash.destroy();
         HmacSha256 hmac;
-        CHECK(hmac.init(confirmKey_, sizeof(confirmKey_)));
+        CHECK(hmac.init());
+        CHECK(hmac.start(confirmKey_, sizeof(confirmKey_)));
         CHECK(hmac.update("KC_1_U"));
         CHECK(hmac.update(JPAKE_CLIENT_ID));
         CHECK(hmac.update(JPAKE_SERVER_ID));
         CHECK(hmac.update(hashVal, sizeof(hashVal)));
         CHECK(hmac.finish(hashVal));
-        if (memcmp(data, hashVal, Sha256::SIZE) != 0) {
+        if (memcmp(data, hashVal, Sha256::HASH_SIZE) != 0) {
             LOG_DEBUG(ERROR, "Invalid confirmation message");
             return SYSTEM_ERROR_BAD_DATA;
         }
@@ -584,11 +455,12 @@ private:
 
     int writeConfirm() {
         Buffer* buf = nullptr;
-        CHECK(initPacket(&buf, Sha256::SIZE));
+        CHECK(initPacket(&buf, Sha256::HASH_SIZE));
         CHECK(hash_.finish(buf->data));
         hash_.destroy();
         HmacSha256 hmac;
-        CHECK(hmac.init(confirmKey_, sizeof(confirmKey_)));
+        CHECK(hmac.init());
+        CHECK(hmac.start(confirmKey_, sizeof(confirmKey_)));
         CHECK(hmac.update("KC_1_U"));
         CHECK(hmac.update(JPAKE_SERVER_ID));
         CHECK(hmac.update(JPAKE_CLIENT_ID));
