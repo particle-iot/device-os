@@ -82,7 +82,6 @@ static nrf5x_spi_info_t spiMap[HAL_PLATFORM_SPI_NUM] = {
 #endif
 };
 
-static uint8_t dummy_buf = 0xFF;
 os_queue_t slaveEventQueue = nullptr;
 os_thread_t slaveWorkerThread = nullptr;
 
@@ -130,15 +129,13 @@ static void spiSlaveEventHandler(nrfx_spis_evt_t const * p_event, void * p_conte
     int spi = (int) p_context;
 
     if (p_event->evt_type == NRFX_SPIS_XFER_DONE) {
-        if (p_event->rx_amount == 0) {
+        if (p_event->rx_amount == 0 && p_event->tx_amount == 0) {
             // FIXME: Dirty hack! It's possible that the master just toggles the CS pin,
             // without any data transfered. We should re-set the slave data buffer for
             // next data transmission
-            uint8_t* txPtr = spiMap[spi].slave_tx_buf ? spiMap[spi].slave_tx_buf : &dummy_buf;
-            uint32_t txLen = spiMap[spi].slave_tx_buf ? spiMap[spi].slave_buf_length : sizeof(dummy_buf);
-            uint8_t* rxPtr = spiMap[spi].slave_rx_buf ? spiMap[spi].slave_rx_buf : &dummy_buf;
-            uint32_t rxLen = spiMap[spi].slave_rx_buf ? spiMap[spi].slave_buf_length : sizeof(dummy_buf);
-            SPARK_ASSERT(nrfx_spis_buffers_set(spiMap[spi].slave, txPtr, txLen, rxPtr, rxLen) == NRF_SUCCESS);
+            uint32_t txLen = spiMap[spi].slave_tx_buf ? spiMap[spi].slave_buf_length : 0;
+            uint32_t rxLen = spiMap[spi].slave_rx_buf ? spiMap[spi].slave_buf_length : 0;
+            SPARK_ASSERT(nrfx_spis_buffers_set(spiMap[spi].slave, spiMap[spi].slave_tx_buf, txLen, spiMap[spi].slave_rx_buf, rxLen) == NRF_SUCCESS);
             return;
         }
         
@@ -590,18 +587,16 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, const void* tx_buffer, void* 
         spiMap[spi].slave_buf_length = length;
         spiMap[spi].slave_rx_buf = (uint8_t *)rx_buffer;
 
-        // The nrfx driver will panic if either of the pointer is NULL.
-        uint8_t* txPtr = spiMap[spi].slave_tx_buf ? spiMap[spi].slave_tx_buf : &dummy_buf;
-        uint32_t txLen = spiMap[spi].slave_tx_buf ? length : sizeof(dummy_buf);
-        uint8_t* rxPtr = spiMap[spi].slave_rx_buf ? spiMap[spi].slave_rx_buf : &dummy_buf;
-        uint32_t rxLen = spiMap[spi].slave_rx_buf ? length : sizeof(dummy_buf);
+        // The nrfx driver will panic if the pointers are nullptr and length is not 0.
+        uint32_t txLen = spiMap[spi].slave_tx_buf ? length : 0;
+        uint32_t rxLen = spiMap[spi].slave_rx_buf ? length : 0;
 
         // Use for synchronization
         spiMap[spi].transmitting = true;
         // reset transfer length
         spiMap[spi].transfer_length = 0;
-        
-        uint32_t err_code = nrfx_spis_buffers_set(spiMap[spi].slave, txPtr, txLen, rxPtr, rxLen);
+
+        uint32_t err_code = nrfx_spis_buffers_set(spiMap[spi].slave, spiMap[spi].slave_tx_buf, txLen, spiMap[spi].slave_rx_buf, rxLen);
         if (err_code == NRF_ERROR_INVALID_STATE) {
             // LOG_DEBUG(WARN, "nrfx_spis_buffers_set, invalid state");
             if (spiMap[spi].slave_tx_buf_heap) {
