@@ -70,6 +70,10 @@ static bool system_sleep_network_suspend(network_interface_index index) {
 
 static int system_sleep_network_resume(network_interface_index index) {
 #if PLATFORM_GEN == 2
+    /* On Gen2, calling network_on() and network_connect() will block until the connection is established
+     * if single threaded, or this function is invoked synchronously by the system thread if system threading
+     * is enabled. In both case, that would block the user application. Setting a flag here to unblock the user
+     * application and restore the connection later. */
     SPARK_WLAN_SLEEP = 0;
 #else
     network_on(index, 0, 0, nullptr);
