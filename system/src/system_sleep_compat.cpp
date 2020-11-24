@@ -163,11 +163,15 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
                 RESET_REASON_NONE, seconds);
     }
 
+#if HAL_PLATFORM_SETUP_BUTTON_UX
     bool networkTurnedOff = false;
+#endif // HAL_PLATFORM_SETUP_BUTTON_UX
 
     if (network_sleep_flag(param) || SLEEP_MODE_WLAN == sleepMode) {
         network_suspend();
+#if HAL_PLATFORM_SETUP_BUTTON_UX
         networkTurnedOff = true;
+#endif // HAL_PLATFORM_SETUP_BUTTON_UX
     }
 
     switch (sleepMode)
