@@ -162,7 +162,7 @@ enum class BlePairingEventType : uint8_t {
     STATUS_UPDATED = BLE_EVT_PAIRING_STATUS_UPDATED
 };
 
-union BlePairingEventPlayload {
+union BlePairingEventPayload {
     const uint8_t* passkey;
     int status;
 };
@@ -171,7 +171,7 @@ struct BlePairingEvent {
     BlePeerDevice& peer;
     BlePairingEventType type;
     size_t payloadLen;
-    BlePairingEventPlayload payload;
+    BlePairingEventPayload payload;
 };
 
 typedef hal_ble_conn_handle_t BleConnectionHandle;
