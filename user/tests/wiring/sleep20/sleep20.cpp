@@ -20,9 +20,17 @@
 
 //Serial1LogHandler logHandler(115200, LOG_LEVEL_INFO);
 
+//TODO: Run user/tests/app/tracker_wakeup to verify the additional wakeup sources for platform tracker.
+
+namespace {
+
 STARTUP(System.enableFeature(FEATURE_RETAINED_MEMORY));
 static retained uint32_t magick = 0;
 static retained uint32_t phase = 0;
+
+constexpr system_tick_t CLOUD_CONNECT_TIMEOUT = 10 * 60 * 1000;
+
+} // anonymous
 
 test(01_System_Sleep_With_Configuration_Object_Hibernate_Mode_Without_Wakeup) {
     if (magick != 0xdeadbeef) {
@@ -324,7 +332,7 @@ test(11_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_D0) {
           .gpio(D0, RISING);
     SystemSleepResult result = System.sleep(config);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_GPIO);
@@ -344,7 +352,7 @@ test(12_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Rtc) {
           .duration(3s);
     SystemSleepResult result = System.sleep(config);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
@@ -366,7 +374,7 @@ test(13_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
           .ble();
     SystemSleepResult result = System.sleep(config);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_BLE);
@@ -385,7 +393,7 @@ test(14_System_Sleep_Mode_Stop_Wakeup_By_D0) {
 
     SleepResult result = System.sleep(D0, RISING);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.reason(), (int)WAKEUP_REASON_PIN);
@@ -402,7 +410,7 @@ test(15_System_Sleep_Mode_Stop_Wakeup_By_Rtc) {
 
     SleepResult result = System.sleep(nullptr, 0, nullptr, 0, 3s);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.reason(), (int)WAKEUP_REASON_RTC);
@@ -421,7 +429,7 @@ test(16_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_D0
           .gpio(D0, RISING);
     SystemSleepResult result = System.sleep(config);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_GPIO);
@@ -441,7 +449,7 @@ test(17_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Rt
           .duration(3s);
     SystemSleepResult result = System.sleep(config);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
@@ -463,7 +471,7 @@ test(18_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Bl
           .ble();
     SystemSleepResult result = System.sleep(config);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_BLE);
@@ -485,7 +493,7 @@ test(19_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Analog_Pin) {
           .analog(A0, 1500, AnalogInterruptMode::CROSS);
     SystemSleepResult result = System.sleep(config);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_LPCOMP);
@@ -505,7 +513,7 @@ test(20_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_An
           .analog(A0, 1500, AnalogInterruptMode::CROSS);
     SystemSleepResult result = System.sleep(config);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_LPCOMP);
@@ -529,7 +537,7 @@ test(21_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart) {
 
     Serial1.end();
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_USART);
@@ -553,7 +561,7 @@ test(22_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Us
 
     Serial1.end();
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_USART);
@@ -572,7 +580,7 @@ test(23_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Cellular) {
     Serial.println("    >> Connecting to the cloud");
     Cellular.on();
     Particle.connect();
-    waitUntil(Particle.connected);
+    assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
     Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
 
     SystemSleepConfiguration config;
@@ -580,7 +588,7 @@ test(23_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Cellular) {
           .network(Cellular);
     SystemSleepResult result = System.sleep(config);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
@@ -598,7 +606,7 @@ test(24_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ce
     Serial.println("    >> Connecting to the cloud");
     Cellular.on();
     Particle.connect();
-    waitUntil(Particle.connected);
+    assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
     Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
 
     SystemSleepConfiguration config;
@@ -606,7 +614,7 @@ test(24_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ce
           .network(Cellular);
     SystemSleepResult result = System.sleep(config);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
@@ -634,7 +642,7 @@ test(25_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_WiFi) {
           .network(WiFi);
     SystemSleepResult result = System.sleep(config);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
@@ -660,7 +668,7 @@ test(26_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Wi
           .network(WiFi);
     SystemSleepResult result = System.sleep(config);
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
@@ -680,7 +688,8 @@ test(27_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
     Serial.println("    >> Connecting to the cloud");
     Network.on();
     Particle.connect();
-    waitUntil(Particle.connected);
+    waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT);
+    assertTrue(Particle.connected());
     Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
 
     SystemSleepConfiguration config;
@@ -691,7 +700,7 @@ test(27_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
     SystemSleepResult result = System.sleep(config);
     time32_t exit = Time.now();
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
     assertMoreOrEqual(exit - enter, SLEEP_DURATION_S);
     // There might be up to 30s delay to turn off the modem for particular platforms.
     assertLessOrEqual(exit - enter, 30 + SLEEP_DURATION_S);
@@ -699,6 +708,9 @@ test(27_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
+
+    // Make sure we reconnect back to the cloud
+    assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
 }
 
 test(28_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execution_Time) {
@@ -713,7 +725,8 @@ test(28_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
     Serial.println("    >> Connecting to the cloud");
     Network.on();
     Particle.connect();
-    waitUntil(Particle.connected);
+    waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT);
+    assertTrue(Particle.connected());
     Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
 
     SystemSleepConfiguration config;
@@ -724,7 +737,7 @@ test(28_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
     SystemSleepResult result = System.sleep(config);
     time32_t exit = Time.now();
 
-    while (!Serial.isConnected());
+    waitUntil(Serial.isConnected);
     assertMoreOrEqual(exit - enter, SLEEP_DURATION_S);
     // There might be up to 30s delay to turn off the modem for particular platforms.
     assertLessOrEqual(exit - enter, 30 + SLEEP_DURATION_S);
@@ -732,4 +745,7 @@ test(28_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
+
+    // Make sure we reconnect back to the cloud
+    assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
 }
