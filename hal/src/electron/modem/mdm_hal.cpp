@@ -1242,7 +1242,7 @@ void MDMParser::_incModemStateChangeCount(void) {
     }
 }
 
-int MDMParser::getModemStateChangeCount(void) {
+int MDMParser::getModemStateChangeCount(void) const {
     return _mdm_state_change_count;
 }
 
@@ -1252,6 +1252,13 @@ bool MDMParser::powerState(void) const {
         // RI is high, which means that V_INT is high as well
         // We are definitely powered on
         return true;
+    }
+    // RI is low (so the modem is probably off)
+    // Check whether modem has seen a state change at least once
+    // and current power state, that only gets reset if we've confirmed that
+    // modem was reset with a condition below.
+    if (getModemStateChangeCount() > 0 && !_pwr) {
+        return false;
     }
     // We are still not sure whether we are off or not,
     // because RI may be held low for over a second under some conditions
@@ -1306,7 +1313,6 @@ bool MDMParser::powerOff(void)
     _resetFailureAttempts = 0;
     bool ok = false;
     bool continue_cancel = false;
-    bool check_ri = false;
 
     MDM_INFO("%s = = = = = = = = = = = = = =", POWER_OFF_MSG);
 
@@ -1315,7 +1321,8 @@ bool MDMParser::powerOff(void)
         resume(); // make sure we can use the AT parser
     }
 
-    check_ri = true;
+    bool power_state = true;
+
     if (!softPowerOff()) {
         if (_dev.dev == DEV_SARA_R410) {
             // If memory issue is present, ensure we don't force a power off too soon
@@ -1347,7 +1354,7 @@ bool MDMParser::powerOff(void)
             }
         }
         // Skip power off sequence if power is already off
-        if (powerState() && _dev.dev != DEV_SARA_G350) {
+        if (_dev.dev != DEV_SARA_G350 && (power_state = powerState())) {
             MDM_INFO("%s Modem not responsive, trying PWR_UC...", POWER_OFF_MSG);
             HAL_GPIO_Write(PWR_UC, 0);
             // >1.5 seconds on SARA R410M
@@ -1358,25 +1365,19 @@ bool MDMParser::powerOff(void)
         }
     }
 
-    // Verify power off, or delay
-    if (check_ri) {
-        system_tick_t t0 = HAL_Timer_Get_Milli_Seconds();
-        bool power_state = true;
-        while ((power_state = powerState()) && !TIMEOUT(t0, 15000)) {
-            HAL_Delay_Milliseconds(1); // just wait
-        }
-        // if V_INT is low, indicate power is off
-        if (!power_state) {
-            _pwr = false;
-            MDM_INFO("%s took %lu ms", POWER_OFF_MSG, HAL_Timer_Get_Milli_Seconds() - t0);
-        } else {
-            MDM_INFO("%s failed", POWER_OFF_MSG);
-        }
-    } else {
+    // Verify power off
+    system_tick_t t0 = HAL_Timer_Get_Milli_Seconds();
+    // NOTE: initial power_state value is checked here first
+    while (power_state && !TIMEOUT(t0, 15000)) {
+        HAL_Delay_Milliseconds(1); // just wait
+        power_state = powerState();
+    }
+    // if V_INT is low, indicate power is off
+    if (!power_state) {
         _pwr = false;
-        // todo - add if these are automatically done on power down
-        //_activated = false;
-        //_attached = false;
+        MDM_INFO("%s took %lu ms", POWER_OFF_MSG, HAL_Timer_Get_Milli_Seconds() - t0);
+    } else {
+        MDM_INFO("%s failed", POWER_OFF_MSG);
     }
     HAL_Delay_Milliseconds(1000); // give peace a chance
     // Increment the state change counter to show that the modem has been powered on -> off
