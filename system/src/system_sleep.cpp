@@ -192,7 +192,6 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 
 #if HAL_PLATFORM_WIFI
     if (wifiResume) {
-        SPARK_WLAN_SLEEP = 0;
         system_sleep_network_resume(NETWORK_INTERFACE_WIFI_STA);
     }
 #endif // HAL_PLATFORM_WIFI
