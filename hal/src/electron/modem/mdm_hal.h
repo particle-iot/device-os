@@ -152,7 +152,7 @@ public:
         which can be used to invalidate previous assumptions about the state of the modem.
         \return _pwr_off_count value
     */
-    int getModemStateChangeCount(void);
+    int getModemStateChangeCount(void) const;
 
     /** Power on the MT if necessary and then try powering off using AT command. This function has to be called prior to
         switching off the supply.
