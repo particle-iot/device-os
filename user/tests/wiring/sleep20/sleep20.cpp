@@ -692,8 +692,9 @@ test(27_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
     time32_t exit = Time.now();
 
     while (!Serial.isConnected());
-    // It might wait for up to 120s to turn off the modem
-    assertLessOrEqual(exit - enter, 120 + SLEEP_DURATION_S);
+    assertMoreOrEqual(exit - enter, SLEEP_DURATION_S);
+    // There might be up to 30s delay to turn off the modem for particular platforms.
+    assertLessOrEqual(exit - enter, 30 + SLEEP_DURATION_S);
     Serial.printf("Sleep execution time: %ld s\r\n", exit - enter);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
@@ -719,13 +720,14 @@ test(28_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
           .duration(SLEEP_DURATION_S * 1000);
 
-    time32_t enter = millis();
+    time32_t enter = Time.now();
     SystemSleepResult result = System.sleep(config);
-    time32_t exit = millis();
+    time32_t exit = Time.now();
 
     while (!Serial.isConnected());
-    // It might wait for up to 120s to turn off the modem
-    assertLessOrEqual(exit - enter, 120 + SLEEP_DURATION_S);
+    assertMoreOrEqual(exit - enter, SLEEP_DURATION_S);
+    // There might be up to 30s delay to turn off the modem for particular platforms.
+    assertLessOrEqual(exit - enter, 30 + SLEEP_DURATION_S);
     Serial.printf("Sleep execution time: %ld s\r\n", exit - enter);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
