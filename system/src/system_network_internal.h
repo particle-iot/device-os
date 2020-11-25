@@ -141,12 +141,8 @@ struct NetworkInterface
     virtual network_interface_t network_interface()=0;
     virtual void setup()=0;
 
-<<<<<<< HEAD
-    virtual int on()=0;
-=======
     virtual int on()=0;
     virtual bool isOn()=0;
->>>>>>> [wiring] Network: introduce isOn() and isOff() APIs to enquiry the modem power state.
     virtual void off(bool disconnect_cloud=false)=0;
     virtual bool isOff()=0;
     virtual void connect(bool listen_enabled=true)=0;
@@ -619,20 +615,12 @@ public:
 
     bool isOn() override
     {
-#if PLATFORM_ID == PLATFORM_ELECTRON // Electron
-        return !WLAN_INITIALIZED || SPARK_WLAN_STARTED;
-#else
-        return SPARK_WLAN_STARTED;
-#endif
+        return WLAN_INITIALIZED && SPARK_WLAN_STARTED;
     }
 
     bool isOff() override
     {
-#if PLATFORM_ID == PLATFORM_ELECTRON // Electron
         return WLAN_INITIALIZED && !SPARK_WLAN_STARTED;
-#else
-        return !SPARK_WLAN_STARTED;
-#endif
     }
 
     void off(bool disconnect_cloud=false) override

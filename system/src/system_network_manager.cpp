@@ -852,6 +852,28 @@ bool NetworkManager::isInterfacePowerState(if_t iface, if_power_state_t state) c
     return ret;
 }
 
+bool NetworkManager::isInterfaceNcpState(if_t iface, if_ncp_state_t state) const {
+    bool ret = false;
+    if_ncp_state_t ncpState = IF_NCP_STATE_OFF;
+    if (!iface) {
+        for_each_iface([&](if_t iface, unsigned int curFlags) {
+            if (if_get_ncp_state(iface, &ncpState) != SYSTEM_ERROR_NONE) {
+                return;
+            }
+            if (ncpState == state) {
+                ret = true;
+            }
+        });
+        return ret;
+    } else {
+        if (if_get_ncp_state(iface, &ncpState) != SYSTEM_ERROR_NONE) {
+            return false;
+        }
+        ret = (ncpState == state) ? true : false;
+    }
+    return ret;
+}
+
 bool NetworkManager::isInterfaceEnabled(if_t iface) const {
     auto state = getInterfaceRuntimeState(iface);
     if (state) {

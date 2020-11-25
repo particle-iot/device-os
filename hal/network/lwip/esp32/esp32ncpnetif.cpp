@@ -256,6 +256,17 @@ int Esp32NcpNetif::getPowerState(if_power_state_t* state) const {
     return SYSTEM_ERROR_NONE;
 }
 
+int Esp32NcpNetif::getNcpState(if_ncp_state_t* state) const {
+    auto s = wifiMan_->ncpClient()->ncpState();
+    if (s == NcpState::ON) {
+        *state = IF_NCP_STATE_ON;
+    } else {
+        // NcpState::OFF or NcpState::DISABLED
+        *state = IF_NCP_STATE_OFF;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 int Esp32NcpNetif::upImpl() {
     up_ = true;
     auto r = queryMacAddress();

@@ -263,11 +263,13 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
 
 bool network_is_on(network_handle_t network, void* reserved) {
     if (network == NETWORK_INTERFACE_ALL) {
-        return NetworkManager::instance()->isInterfacePowerState(nullptr, IF_POWER_STATE_UP);
+        return (NetworkManager::instance()->isInterfacePowerState(nullptr, IF_POWER_STATE_UP) &&
+                NetworkManager::instance()->isInterfaceNcpState(nullptr, IF_NCP_STATE_ON));
     } else {
         if_t iface;
         if (!if_get_by_index(network, &iface)) {
-            return NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_UP);
+            return (NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_UP) &&
+                    NetworkManager::instance()->isInterfaceNcpState(iface, IF_NCP_STATE_ON));
         }
     }
 
@@ -276,11 +278,13 @@ bool network_is_on(network_handle_t network, void* reserved) {
 
 bool network_is_off(network_handle_t network, void* reserved) {
     if (network == NETWORK_INTERFACE_ALL) {
-        return NetworkManager::instance()->isInterfacePowerState(nullptr, IF_POWER_STATE_DOWN);
+        return (NetworkManager::instance()->isInterfacePowerState(nullptr, IF_POWER_STATE_DOWN) &&
+                NetworkManager::instance()->isInterfaceNcpState(nullptr, IF_NCP_STATE_OFF));
     } else {
         if_t iface;
         if (!if_get_by_index(network, &iface)) {
-            return NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_DOWN);
+            return (NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_DOWN) &&
+                    NetworkManager::instance()->isInterfaceNcpState(iface, IF_NCP_STATE_OFF));
         }
     }
 

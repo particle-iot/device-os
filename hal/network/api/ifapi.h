@@ -164,6 +164,11 @@ typedef enum if_power_state_t {
     IF_POWER_STATE_POWERING_UP = 0x04,
 } if_power_state_t;
 
+typedef enum if_ncp_state_t {
+    IF_NCP_STATE_OFF = 0x00,
+    IF_NCP_STATE_ON = 0x01
+} if_ncp_state_t;
+
 struct if_event_state {
     uint8_t state;
 };
@@ -259,6 +264,7 @@ int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved);
 void if_notify_event(if_t iface, const struct if_event* evt, void* reserved);
 
 int if_get_power_state(if_t iface, if_power_state_t* state);
+int if_get_ncp_state(if_t iface, if_ncp_state_t* state);
 
 #ifdef __cplusplus
 }
