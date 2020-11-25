@@ -43,6 +43,7 @@ public:
     virtual int powerDown() override;
 
     virtual int getPowerState(if_power_state_t* state) const override;
+    virtual int getNcpState(if_ncp_state_t* state) const override;
 
     static int ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx);
     static void ncpEventHandlerCb(const NcpEvent& ev, void* ctx);
