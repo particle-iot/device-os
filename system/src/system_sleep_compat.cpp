@@ -171,8 +171,15 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
                 RESET_REASON_NONE, seconds);
     }
 
+#if HAL_PLATFORM_SETUP_BUTTON_UX
+    bool networkTurnedOff = false;
+#endif // HAL_PLATFORM_SETUP_BUTTON_UX
+
     if (network_sleep_flag(param) || SLEEP_MODE_WLAN == sleepMode) {
         network_suspend();
+#if HAL_PLATFORM_SETUP_BUTTON_UX
+        networkTurnedOff = true;
+#endif // HAL_PLATFORM_SETUP_BUTTON_UX
     }
 
     switch (sleepMode)
@@ -193,17 +200,14 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
             break;
 
         case SLEEP_MODE_DEEP:
-            if (network_sleep_flag(param))
-            {
-                network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
-                network_off(0, 0, 0, NULL);
-            }
             return system_sleep_enter_standby_compat(seconds, param);
 
 #if HAL_PLATFORM_SETUP_BUTTON_UX
         case SLEEP_MODE_SOFTPOWEROFF:
-            network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
-            network_off(0, 0, 0, NULL);
+            if (!networkTurnedOff) {
+                network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
+                network_off(0, 0, 0, NULL);
+            }
             return system_sleep_enter_standby_compat(seconds, param);
 #endif
     }
