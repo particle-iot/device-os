@@ -157,6 +157,43 @@ test(CELLULAR_05_sigstr_is_valid) {
     assertTrue(values_in_range);
 }
 
+test(CELLULAR_06_on_off_validity_check) {
+    connect_to_cloud(6*60*1000);
+    assertTrue(Cellular.isOn());
+    assertFalse(Cellular.isOff());
+
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 30000);
+    assertTrue(Cellular.isOn());
+    assertFalse(Cellular.isOff());
+
+    Cellular.disconnect();
+    waitFor([]{ return !Cellular.ready(); }, 30000);
+    assertTrue(Cellular.isOn());
+    assertFalse(Cellular.isOff());
+
+    int ret = Cellular.command("AT\r\n");
+    assertEqual(ret, (int)RESP_OK);
+
+    Cellular.off();
+    waitFor(Cellular.isOff, 30000);
+    assertFalse(Cellular.isOn());
+    assertTrue(Cellular.isOff());
+
+    ret = Cellular.command("AT\r\n");
+    assertNotEqual(ret, (int)RESP_OK);
+
+    Cellular.on();
+    waitFor(Cellular.isOn, 30000);
+    assertTrue(Cellular.isOn());
+    assertFalse(Cellular.isOff());
+
+    ret = Cellular.command("AT\r\n");
+    assertEqual(ret, (int)RESP_OK);
+
+    connect_to_cloud(6*60*1000);
+}
+
 test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
 
 #if HAL_PLATFORM_NCP
