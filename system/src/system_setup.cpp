@@ -447,7 +447,19 @@ WiFiSetupConsole::~WiFiSetupConsole()
 
 void WiFiSetupConsole::handle(char c)
 {
-    if ('w' == c)
+	if ('W' == c)
+	{
+		if(!wlan_clear_credentials() || wlan_has_credentials())
+		{
+			print("Derp. Sorry, we couldn't erase the credentials.\r\n\r\n");
+		}
+		else
+		{
+			print("Awesome. Credentials erased correcly!\r\n\r\n");
+		}
+		cleanup();
+	}
+    else if ('w' == c)
     {
         memset(ssid, 0, sizeof(ssid));
         memset(password, 0, sizeof(password));
