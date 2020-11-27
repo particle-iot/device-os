@@ -98,6 +98,7 @@ int system_sleep_enter_standby_compat(long seconds, uint32_t param) {
         config.gpio(WKP, RISING);
     }
 
+    system_power_management_sleep();
     return hal_sleep_enter(config.halConfig(), nullptr, nullptr);
 }
 
