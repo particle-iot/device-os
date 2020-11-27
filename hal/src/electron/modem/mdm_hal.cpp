@@ -583,10 +583,16 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                     // +CREG|CGREG: <stat>[,<lac>,<ci>[,AcT[,<rac>]]]     // URC (1,3,4,5 results)
                     b = (int)0xFFFF; c = (int)0xFFFFFFFF; d = -1; mode = -1; // default mode to -1 for safety
                     r = sscanf(cmd, "%31s %d,%d,\"%x\",\"%x\",%d",s,&mode,&a,&b,&c,&d);
-                    if (r <= 1)
+                    if (r <= 2) {
+                        // Not a direct command response, re-parse as URC
                         r = sscanf(cmd, "%31s %d,\"%x\",\"%x\",%d",s,&a,&b,&c,&d);
+                        // Fix mode that potentially has invalid value due to first parse attempt as a command response
+                        mode = -1;
+                    } else {
+                        // The code below doesn't consider mode to be one of the parsed values
+                        r--;
+                    }
                     if (r >= 2) {
-                        if (r == 2) mode = 2; // Single URC <stat>, so fix mode that got overwritten in the first sscanf
                         Reg *reg = !strcmp(s, "CREG:")  ? &_net.csd :
                                    !strcmp(s, "CGREG:") ? &_net.psd :
                                    !strcmp(s, "CEREG:") ? &_net.eps : NULL;
