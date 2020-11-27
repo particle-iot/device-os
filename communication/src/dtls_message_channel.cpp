@@ -58,6 +58,17 @@ void SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum,
 		memcpy(out_ctr, context->cur_out_ctr, 8);
 		memcpy(randbytes, random, sizeof(randbytes));
 		this->next_coap_id = next_id;
+
+		uint8_t cid[MBEDTLS_SSL_CID_OUT_LEN_MAX] = {};
+		size_t cidSize = 0;
+		int cidEnabled = MBEDTLS_SSL_CID_DISABLED;
+		int r = mbedtls_ssl_get_peer_cid(context, &cidEnabled, cid, &cidSize);
+		if (r == 0 && cidEnabled == MBEDTLS_SSL_CID_ENABLED) {
+			memcpy(this->cid, cid, sizeof(this->cid));
+		} else {
+			memset(this->cid, 0, sizeof(this->cid));
+		}
+
 		save_session(context->session);
 		size = sizeof(*this);
 	}
@@ -145,6 +156,11 @@ SessionPersist::RestoreStatus SessionPersist::restore(mbedtls_ssl_context* conte
 		context->transform_in = context->transform_negotiate;
 		context->transform_out = context->transform_negotiate;
 
+#ifdef MBEDTLS_SSL_DTLS_CONNECTION_ID
+		context->negotiate_cid = MBEDTLS_SSL_CID_ENABLED;
+		context->own_cid_len = sizeof(cid);
+		memcpy(context->own_cid, cid, sizeof(cid));
+#endif
 		mbedtls_ssl_handshake_wrapup(context);
 		size = sizeof(*this);
 		return COMPLETE;
@@ -231,6 +247,11 @@ ProtocolError DTLSMessageChannel::init(
 	this->server_public = new uint8_t[server_public_len];
 	memcpy(this->server_public, server_public, server_public_len);
 	this->server_public_len = server_public_len;
+
+#ifdef MBEDTLS_SSL_DTLS_CONNECTION_ID
+	mbedtls_ssl_conf_cid(&conf, MBEDTLS_SSL_CID_IN_LEN_MAX, MBEDTLS_SSL_UNEXPECTED_CID_FAIL);
+#endif
+
 	return NO_ERROR;
 }
 
@@ -240,6 +261,7 @@ ProtocolError DTLSMessageChannel::init(
  */
 inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 {
+#ifndef MBEDTLS_SSL_DTLS_CONNECTION_ID
 	if (move_session && len && data[0]==23)
 	{
 		// buffer for a new packet that contains the device ID length and a byte for the length appended to the existing data.
@@ -255,6 +277,7 @@ inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 		return result;
 	}
 	else
+#endif
 		return callbacks.send(data, len, callbacks.tx_context);
 }
 
@@ -345,6 +368,14 @@ ProtocolError DTLSMessageChannel::setup_context()
 		LOG(WARN,"unable to parse negotiated pub key: -%x", -ret);
 		return IO_ERROR_PARSING_SERVER_PUBLIC_KEY;
 	}
+
+#ifdef MBEDTLS_SSL_DTLS_CONNECTION_ID
+	ret = mbedtls_ssl_set_cid(&ssl_context, MBEDTLS_SSL_CID_ENABLED, nullptr /* own_cid */, 0 /* own_cid_len */);
+	if (ret != 0) {
+		LOG(ERROR, "mbedtls_ssl_set_cid() failed: -0x%x", -ret);
+		return ProtocolError::INTERNAL;
+	}
+#endif
 
 	return NO_ERROR;
 }

@@ -21,7 +21,7 @@
 #include "stddef.h"
 
 // The size of the persisted data
-#define SessionPersistBaseSize 226
+#define SessionPersistBaseSize 234
 
 // variable size due to int/size_t members
 #define SessionPersistVariableSize (sizeof(int)+sizeof(int)+sizeof(size_t))
@@ -120,6 +120,10 @@ struct __attribute__((packed)) SessionPersistData
 	 * Size of an OTA update chunk.
 	 */
 	uint16_t ota_chunk_size;
+	/**
+	 * Connection ID.
+	 */
+	uint8_t cid[8];
 };
 
 class __attribute__((packed)) SessionPersistOpaque : public SessionPersistData
