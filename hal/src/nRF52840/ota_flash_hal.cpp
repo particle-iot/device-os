@@ -511,7 +511,7 @@ __attribute__((optimize("O0"))) int validateModules(const hal_module_t* modules,
                 }
             }
             if (!found) {
-                SYSTEM_ERROR_MESSAGE(ERROR, "NCP module is not for this platform; module NCP: 0x%02x",
+                SYSTEM_ERROR_MESSAGE("NCP module is not for this platform; module NCP: 0x%02x",
                         (unsigned)moduleNcp);
                 for (int i = 0; i < ncpCount; i++) {
                     PlatformNCPInfo info = {};

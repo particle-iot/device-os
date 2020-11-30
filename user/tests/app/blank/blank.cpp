@@ -24,5 +24,5 @@ void setup() {
 
 /* executes continuously after setup() runs */
 void loop() {
-    auto r = WiFi.scan();
+
 }
