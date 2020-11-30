@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "logging.h"
+#include <assert.h>
 
 //typedef SemaphoreHandle_t AT_MUTEX_T;
 typedef void* AT_MUTEX_T;

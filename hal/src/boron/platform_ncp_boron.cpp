@@ -16,10 +16,9 @@
  */
 
 #include "platform_ncp.h"
-
 #include "exflash_hal.h"
-
 #include "dct.h"
+#include "system_error.h"
 
 namespace {
 

@@ -46,6 +46,7 @@ test(WIFI_03_resolve) {
     assertEqual(addr, 0);
 }
 
+namespace {
 void checkIPAddress(const char* name, const IPAddress& address)
 {
     if (address.version()==0 || !address)
@@ -56,6 +57,7 @@ void checkIPAddress(const char* name, const IPAddress& address)
         assertNotEqual(address, 0);
     }
 }
+} // anonymous
 
 void checkEtherAddress(const uint8_t* address)
 {

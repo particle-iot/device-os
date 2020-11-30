@@ -65,6 +65,7 @@ void connect_to_cloud(system_tick_t timeout)
     waitFor(Particle.connected, timeout);
 }
 
+namespace {
 void checkIPAddress(const char* name, const IPAddress& address)
 {
     if (address.version()==0 || address[0]==0)
@@ -75,6 +76,7 @@ void checkIPAddress(const char* name, const IPAddress& address)
         assertNotEqual(address[0], 0);
     }
 }
+} // anonymous
 
 test(CELLULAR_01_local_ip_cellular_config)
 {
