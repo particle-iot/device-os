@@ -16,6 +16,7 @@
  */
 
 #include "platform_ncp.h"
+#include "system_error.h"
 
 PlatformNCPIdentifier platform_primary_ncp_identifier() {
     return PLATFORM_NCP_ESP32;

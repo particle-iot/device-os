@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
  *
@@ -28,7 +29,7 @@
 #if !HAL_PLATFORM_WIFI_NCP_SDIO
 #include "serial_stream.h"
 #else
-#include "sdio_stream.h"
+#include "esp32_sdio_stream.h"
 #endif // !HAL_PLATFORM_WIFI_NCP_SDIO
 
 namespace particle {
@@ -74,7 +75,7 @@ private:
 #if !HAL_PLATFORM_WIFI_NCP_SDIO
     std::unique_ptr<SerialStream> serial_;
 #else
-    std::unique_ptr<SdioStream> serial_;
+    std::unique_ptr<Esp32SdioStream> serial_;
 #endif // !HAL_PLATFORM_WIFI_NCP_SDIO
     RecursiveMutex mutex_;
     NcpClientConfig conf_;

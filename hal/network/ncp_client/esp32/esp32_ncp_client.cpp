@@ -123,7 +123,7 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     std::unique_ptr<SerialStream> serial(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, ESP32_NCP_DEFAULT_SERIAL_BAUDRATE,
             SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
 #else
-    std::unique_ptr<SdioStream> serial(new(std::nothrow) SdioStream(HAL_SPI_INTERFACE2, ESP32_NCP_DEFAULT_SDIO_SPEED, WIFI_CS, WIFI_INT));
+    std::unique_ptr<Esp32SdioStream> serial(new(std::nothrow) Esp32SdioStream(HAL_SPI_INTERFACE2, ESP32_NCP_DEFAULT_SDIO_SPEED, WIFI_CS, WIFI_INT));
 #endif // !HAL_PLATFORM_WIFI_NCP_SDIO
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
     // Initialize muxed channel stream
@@ -546,6 +546,9 @@ int Esp32NcpClient::initReady() {
     CHECK(getFirmwareModuleVersionImpl(&mver));
 
     if (mver >= ESP32_NCP_MIN_MVER_WITH_CMUX) {
+#if HAL_PLATFORM_WIFI_NCP_SDIO
+        serial_->txInterruptSupported(true);
+#endif
         // Send AT+CMUX and initialize multiplexer
         CHECK_PARSER_OK(parser_.execCommand("AT+CMUX=0"));
         CHECK(initMuxer());

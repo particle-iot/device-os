@@ -132,6 +132,7 @@ int32_t hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t*
 int32_t hal_spi_release(hal_spi_interface_t spi, void* reserved);
 #endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
 
+int hal_spi_get_clock_divider(hal_spi_interface_t spi, uint32_t clock, void* reserved);
 
 #include "spi_hal_compat.h"
 

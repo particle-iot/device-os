@@ -18,17 +18,20 @@
 #pragma once
 
 #include "stream.h"
-#include "sdspi_hal.h"
 #include <memory>
+#include "spi_hal.h"
 #include <FreeRTOS.h>
 #include <event_groups.h>
+#include "ringbuffer.h"
 
 namespace particle {
 
-class SdioStream: public Stream {
+class Esp32Sdio;
+
+class Esp32SdioStream: public Stream {
 public:
-    SdioStream(HAL_SPI_Interface spi, uint32_t clockDivider, pin_t csPin, pin_t intPin);
-    ~SdioStream();
+    Esp32SdioStream(hal_spi_interface_t spi, uint32_t clock, pin_t csPin, pin_t intPin);
+    ~Esp32SdioStream();
 
     int read(char* data, size_t size) override;
     int peek(char* data, size_t size) override;
@@ -48,27 +51,24 @@ public:
 
     EventGroupHandle_t eventGroup();
 
-private:
-    int pollEsp();
+    void txInterruptSupported(bool state);
 
 private:
-    HAL_SPI_Interface spi_;
-    pin_t csPin_;
-    pin_t intPin_;
-    uint32_t clock_;
+    int receiveIntoInternal();
+
+private:
     volatile bool enabled_;
-    spi_context_t context_;
-    std::unique_ptr<char[]> rxBuffer_;
-    std::unique_ptr<char[]> txBuffer_;
-    size_t rxCount_;
-    size_t txCount_;
+    particle::services::RingBuffer<char> rxBuffer_;
+    std::unique_ptr<char[]> rxBuf_;
+    std::unique_ptr<char[]> txBuf_;
+    std::unique_ptr<Esp32Sdio> sdio_;
 };
 
-inline void SdioStream::enabled(bool enabled) {
+inline void Esp32SdioStream::enabled(bool enabled) {
     enabled_ = enabled;
 }
 
-inline bool SdioStream::enabled() const {
+inline bool Esp32SdioStream::enabled() const {
     return enabled_;
 }
 

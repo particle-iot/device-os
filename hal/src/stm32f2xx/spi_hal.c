@@ -638,3 +638,33 @@ int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
     }
     return SYSTEM_ERROR_NONE;
 }
+
+int hal_spi_get_clock_divider(hal_spi_interface_t spi, uint32_t clock, void* reserved) {
+    CHECK_TRUE(clock > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    uint32_t system_clock = spi == HAL_SPI_INTERFACE1 ? 60000000 : 30000000;
+
+    // Integer division results in clean values
+    switch (system_clock / clock) {
+    case 2:
+        return SPI_CLOCK_DIV2;
+    case 4:
+        return SPI_CLOCK_DIV4;
+    case 8:
+        return SPI_CLOCK_DIV8;
+    case 16:
+        return SPI_CLOCK_DIV16;
+    case 32:
+        return SPI_CLOCK_DIV32;
+    case 64:
+        return SPI_CLOCK_DIV64;
+    case 128:
+        return SPI_CLOCK_DIV128;
+    case 256:
+    default:
+        return SPI_CLOCK_DIV256;
+    }
+
+    return SYSTEM_ERROR_UNKNOWN;
+}
+

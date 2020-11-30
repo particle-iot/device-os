@@ -32,6 +32,7 @@
 #define DEFAULT_DATA_MODE       SPI_MODE3
 #define DEFAULT_BIT_ORDER       MSBFIRST
 #define DEFAULT_SPI_CLOCK       SPI_CLOCK_DIV256
+#define SPI_SYSTEM_CLOCK        (64000000UL)
 
 #define SPI_BUFFER_LENGTH       32
 
@@ -474,7 +475,7 @@ bool hal_spi_is_enabled_deprecated(void) {
 }
 
 void hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved) {
-    info->system_clock = 64000000;
+    info->system_clock = SPI_SYSTEM_CLOCK;
     if (info->version >= HAL_SPI_INFO_VERSION_1) {
         int32_t state = HAL_disable_irq();
         if (spiMap[spi].state == HAL_SPI_STATE_ENABLED) {
@@ -672,4 +673,31 @@ int32_t hal_spi_release(hal_spi_interface_t spi, void* reserved) {
         }
     }
     return -1;
+}
+
+int hal_spi_get_clock_divider(hal_spi_interface_t spi, uint32_t clock, void* reserved) {
+    CHECK_TRUE(clock > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    // Integer division results in clean values
+    switch (SPI_SYSTEM_CLOCK / clock) {
+    case 2:
+        return SPI_CLOCK_DIV2;
+    case 4:
+        return SPI_CLOCK_DIV4;
+    case 8:
+        return SPI_CLOCK_DIV8;
+    case 16:
+        return SPI_CLOCK_DIV16;
+    case 32:
+        return SPI_CLOCK_DIV32;
+    case 64:
+        return SPI_CLOCK_DIV64;
+    case 128:
+        return SPI_CLOCK_DIV128;
+    case 256:
+    default:
+        return SPI_CLOCK_DIV256;
+    }
+
+    return SYSTEM_ERROR_UNKNOWN;
 }
