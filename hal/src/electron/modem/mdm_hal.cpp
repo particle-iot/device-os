@@ -1757,6 +1757,21 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
             goto failure;
         }
     }
+	// FIXME: In case we are disconnecting and connecting cellular through API
+    if (REG_OK(_net.csd) && !REG_OK(_net.psd)) {
+        sendFormated("AT+CGATT=1\r\n");
+        int resp_code = 0;
+        resp_code = waitFinalResp(NULL,NULL,CGATT_TIMEOUT);
+        if ((RESP_OK != resp_code) && (RESP_ERROR != resp_code)) {
+            goto failure;
+        }
+
+        // check PSD registration to update if any (GPRS)
+        sendFormated("AT+CGREG?\r\n");
+        if (RESP_OK != waitFinalResp(nullptr, nullptr, CGREG_TIMEOUT)) {
+            goto failure;
+        }
+    }
     if (REG_OK(_net.csd) || REG_OK(_net.psd) || REG_OK(_net.eps)) {
         // get the current operator and radio access technology we are connected to
         if (!_atOk()) {
@@ -2637,10 +2652,18 @@ bool MDMParser::detach(void)
         MDM_INFO("\r\n[ Modem::detach ] = = = = = = = = = = = = = = =");
         // Unregister from the network entirely
         if (_checkModem()) {
-            sendFormated("AT+CFUN=0,0\r\n");
-            if (waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT) == RESP_OK) {
-                _activated = false;
-                ok = true;
+            if (_dev.dev == DEV_SARA_R410) {
+                sendFormated("AT+CFUN=0,0\r\n");
+                if (waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT) == RESP_OK) {
+                    _activated = false;
+                    ok = true;
+                }
+            } else {
+                sendFormated("AT+CGATT=0\r\n");
+                if (RESP_OK == waitFinalResp(NULL,NULL,CGATT_TIMEOUT)) {
+                    _activated = false;
+                    ok = true;
+                }
             }
             waitFinalResp(nullptr, nullptr, 1000); // delay and pump URCs a bit to wait for disconnect
         }
