@@ -84,7 +84,7 @@ private:
 
 class TwoWire : public Stream
 {
-private:
+protected:
   hal_i2c_interface_t _i2c;
 
 public:
@@ -96,29 +96,29 @@ public:
   void setSpeed(uint32_t);
   void enableDMAMode(bool);
   void stretchClock(bool);
-  void begin();
-  void begin(uint8_t);
-  void begin(int);
-  void beginTransmission(uint8_t);
-  void beginTransmission(int);
-  void beginTransmission(const WireTransmission& transfer);
-  void end();
-  uint8_t endTransmission(void);
-  uint8_t endTransmission(uint8_t);
-  size_t requestFrom(uint8_t, size_t);
-  size_t requestFrom(uint8_t, size_t, uint8_t);
-  size_t requestFrom(const WireTransmission& transfer);
+  virtual void begin();
+  virtual void begin(uint8_t);
+  virtual void begin(int);
+  virtual void beginTransmission(uint8_t);
+  virtual void beginTransmission(int);
+  virtual void beginTransmission(const WireTransmission& transfer);
+  virtual void end();
+  virtual uint8_t endTransmission(void);
+  virtual uint8_t endTransmission(uint8_t);
+  virtual size_t requestFrom(uint8_t, size_t);
+  virtual size_t requestFrom(uint8_t, size_t, uint8_t);
+  virtual size_t requestFrom(const WireTransmission& transfer);
   virtual size_t write(uint8_t);
   virtual size_t write(const uint8_t *, size_t);
   virtual int available(void);
   virtual int read(void);
   virtual int peek(void);
   virtual void flush(void);
-  void onReceive(void (*)(int));
-  void onRequest(void (*)(void));
+  virtual void onReceive(void (*)(int));
+  virtual void onRequest(void (*)(void));
 
-  bool lock();
-  bool unlock();
+  virtual bool lock();
+  virtual bool unlock();
 
   inline size_t write(unsigned long n) { return write((uint8_t)n); }
   inline size_t write(long n) { return write((uint8_t)n); }
