@@ -16,7 +16,7 @@
  */
 
 #ifndef CELLULAR_SIG_MAPPING_HAL_H
-#define	CELLULAR_SIG_MAPPING_HAL_H
+#define CELLULAR_SIG_MAPPING_HAL_H
 
 #include "logging.h"
 #include "net_hal.h"
