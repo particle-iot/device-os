@@ -58,11 +58,22 @@ protected:
     virtual void netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) override;
 
 private:
+    enum class NetifEvent {
+        None = 0,
+        Up = 1,
+        Down = 2,
+        Exit = 3,
+        PowerOff = 4,
+        PowerOn = 5
+    };
+
     int up();
     int down();
 
     int upImpl();
     int downImpl();
+
+    void setExpectedInternalState(NetifEvent ev);
 
     static void loop(void* arg);
 
@@ -73,10 +84,12 @@ private:
 
 private:
     os_thread_t thread_ = nullptr;
-    os_queue_t queue_ = nullptr;
+    os_semaphore_t netifSemaphore_ = nullptr;
     std::atomic_bool exit_;
     particle::net::ppp::Client client_;
-    std::atomic<NetifState> expectedNetifState_;
+    std::atomic<NetifEvent> lastNetifEvent_;
+    std::atomic<NcpState> expectedNcpState_;
+    std::atomic<NcpConnectionState> expectedConnectionState_;
     CellularNetworkManager* celMan_ = nullptr;
     volatile system_tick_t connectStart_ = 0;
 };

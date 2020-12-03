@@ -368,7 +368,9 @@ int QuectelNcpClient::off() {
         // WARN: We assume that the modem can turn off itself reliably.
     } else {
         // Power down using hardware
-        CHECK(modemPowerOff());
+        if (modemPowerOff() != SYSTEM_ERROR_NONE) {
+            LOG(ERROR, "Failed to turn off the modem.");
+        }
         // FIXME: There is power leakage still if powering off the modem failed.
     }
 
@@ -1746,10 +1748,15 @@ int QuectelNcpClient::modemSoftPowerOff() {
             LOG(ERROR, "NCP client is not ready");
             return SYSTEM_ERROR_INVALID_STATE;
         }
-        
-        // Delay 1s in case that the modem is just powered up and refuse to execute the power down command.
-        HAL_Delay_Milliseconds(1000);
-        int r = CHECK_PARSER(parser_.execCommand("AT+QPOWD"));
+        // Re-try in case that the modem is just powered up and refuse to execute the power down command.
+        int r = AtResponse::ERROR;
+        for (uint8_t i = 0; i < 6; i++) {
+            r = CHECK_PARSER(parser_.execCommand("AT+QPOWD"));
+            if (r == AtResponse::OK) {
+                break;
+            }
+            HAL_Delay_Milliseconds(500);
+        }
         if (r != AtResponse::OK) {
             LOG(ERROR, "AT+QPOWD command is not responding");
             return SYSTEM_ERROR_AT_NOT_OK;
