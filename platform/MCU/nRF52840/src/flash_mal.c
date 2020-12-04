@@ -411,6 +411,25 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         return FLASH_ACCESS_RESULT_BADARG;
 #endif // !HAS_COMPRESSED_OTA
     } else {
+        // XXX: Device OS versions < 2.0.0 may not be setting this flag in the module slots!
+        // Bootloader should rely on the actual flags within the module header!
+        if (!(flags & MODULE_DROP_MODULE_INFO) && (flags & MODULE_VERIFY_MASK)) {
+            // We may only check the module header if we've been asked to verify it
+            uint32_t infoOffset = 0;
+            const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress, &infoOffset);
+            if (info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
+                // NB: We have corner cases where the module info is not located in the
+                // front of the module but for example after the vector table and we
+                // only want to enable this feature in the case it is in the front,
+                // hence the module_info_t located at the the source address check.
+                if (infoOffset == 0) {
+                    // Skip module header
+                    flags |= MODULE_DROP_MODULE_INFO;
+                } else {
+                    return FLASH_ACCESS_RESULT_ERROR;
+                }
+            }
+        }
         if (flags & MODULE_DROP_MODULE_INFO) {
             // Skip the module info header
             if (length < sizeof(module_info_t)) { // Sanity check
