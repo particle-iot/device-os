@@ -644,6 +644,16 @@ int if_get_xflags(if_t iface, unsigned int* xflags) {
 
     /* TODO: WOL */
 
+    ifxf &= ~IFXF_READY;
+    auto bnetif = getBaseNetif(iface);
+    if (bnetif) {
+        unsigned int state;
+        bnetif->getNcpState(&state);
+        if (state) {
+            ifxf |= IFXF_READY;
+        }
+    }
+
     *xflags = ifxf;
 
     return 0;
@@ -1187,16 +1197,4 @@ int if_get_power_state(if_t iface, if_power_state_t* state) {
     auto bnetif = getBaseNetif(iface);
     CHECK_TRUE(bnetif, -1);
     return bnetif->getPowerState(state);
-}
-
-int if_get_ncp_state(if_t iface, if_ncp_state_t* state) {
-    LwipTcpIpCoreLock lk;
-
-    if (!netif_validate(iface)) {
-        return -1;
-    }
-
-    auto bnetif = getBaseNetif(iface);
-    CHECK_TRUE(bnetif, -1);
-    return bnetif->getNcpState(state);
 }

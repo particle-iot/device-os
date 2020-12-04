@@ -256,13 +256,13 @@ int Esp32NcpNetif::getPowerState(if_power_state_t* state) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int Esp32NcpNetif::getNcpState(if_ncp_state_t* state) const {
+int Esp32NcpNetif::getNcpState(unsigned int* state) const {
     auto s = wifiMan_->ncpClient()->ncpState();
     if (s == NcpState::ON) {
-        *state = IF_NCP_STATE_ON;
+        *state = 1;
     } else {
         // NcpState::OFF or NcpState::DISABLED
-        *state = IF_NCP_STATE_OFF;
+        *state = 0;
     }
     return SYSTEM_ERROR_NONE;
 }
