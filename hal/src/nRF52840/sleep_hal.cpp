@@ -622,11 +622,13 @@ static int validateUsartWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sou
 }
 
 static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_network_t* network) {
-    if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY) && !hal_usart_is_enabled(HAL_USART_SERIAL2)) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    if (mode == HAL_SLEEP_MODE_HIBERNATE) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
+    if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
+        if (!hal_usart_is_enabled(HAL_USART_SERIAL2)) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        if (mode == HAL_SLEEP_MODE_HIBERNATE) {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
     }
     return SYSTEM_ERROR_NONE;
 }

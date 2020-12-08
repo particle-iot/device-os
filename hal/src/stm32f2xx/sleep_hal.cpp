@@ -450,11 +450,7 @@ static int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sourc
 
 static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_network_t* network) {
 #if HAL_PLATFORM_CELLULAR
-    if (network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY) {
-        if (mode == HAL_SLEEP_MODE_HIBERNATE) {
-            return SYSTEM_ERROR_NOT_SUPPORTED;
-        }
-    } else {
+    if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
         if (!(USART3->CR1 & USART_CR1_UE)) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
@@ -466,9 +462,6 @@ static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_s
 
 #if HAL_PLATFORM_WIFI
     if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-    }
-    if (mode == HAL_SLEEP_MODE_HIBERNATE) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 #endif
