@@ -943,7 +943,7 @@
  * Uncomment to enable the Connection ID extension.
  */
 #define MBEDTLS_SSL_DTLS_CONNECTION_ID
-#define MBEDTLS_SSL_CID_IN_LEN_MAX 8
+#define MBEDTLS_SSL_CID_IN_LEN_MAX 0
 #define MBEDTLS_SSL_CID_OUT_LEN_MAX 8
 
 /**
