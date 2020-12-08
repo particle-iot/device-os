@@ -545,9 +545,9 @@ void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b)
 #endif
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-    Led_Set_Value(LED_RED + LED_MIRROR_OFFSET, r);
-    Led_Set_Value(LED_GREEN + LED_MIRROR_OFFSET, g);
-    Led_Set_Value(LED_BLUE + LED_MIRROR_OFFSET, b);
+    Led_Set_Value(PARTICLE_LED_RED + LED_MIRROR_OFFSET, r);
+    Led_Set_Value(PARTICLE_LED_GREEN + LED_MIRROR_OFFSET, g);
+    Led_Set_Value(PARTICLE_LED_BLUE + LED_MIRROR_OFFSET, b);
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 }
 
@@ -568,14 +568,14 @@ void Get_RGB_LED_Values(uint16_t* values)
 void Set_User_LED(uint8_t state)
 {
     if (state)
-        HAL_Leds_Default[LED_USER].port->BSRRL = HAL_Leds_Default[LED_USER].pin;
+        HAL_Leds_Default[PARTICLE_LED_USER].port->BSRRL = HAL_Leds_Default[PARTICLE_LED_USER].pin;
     else
-        HAL_Leds_Default[LED_USER].port->BSRRH = HAL_Leds_Default[LED_USER].pin;
+        HAL_Leds_Default[PARTICLE_LED_USER].port->BSRRH = HAL_Leds_Default[PARTICLE_LED_USER].pin;
 }
 
 void Toggle_User_LED()
 {
-    HAL_Leds_Default[LED_USER].port->ODR ^= HAL_Leds_Default[LED_USER].pin;
+    HAL_Leds_Default[PARTICLE_LED_USER].port->ODR ^= HAL_Leds_Default[PARTICLE_LED_USER].pin;
 }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 

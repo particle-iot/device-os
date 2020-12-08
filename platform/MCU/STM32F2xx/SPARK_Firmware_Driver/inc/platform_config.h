@@ -57,21 +57,21 @@
 #define LED1_GPIO_PORT                      GPIOA                   //User Led
 #define LED1_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //User Led
 #define LED1_GPIO_MODE                      GPIO_Mode_OUT           //User Led
-#define LED_BLUE                            LED2
+#define PARTICLE_LED_BLUE                   PARTICLE_LED2
 #define LED2_GPIO_AF_TIM                    GPIO_AF_TIM2            //BLUE Led
 #define LED2_GPIO_PIN                       GPIO_Pin_3              //BLUE Led
 #define LED2_GPIO_PIN_SOURCE                GPIO_PinSource3         //BLUE Led
 #define LED2_GPIO_PORT                      GPIOA                   //BLUE Led
 #define LED2_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //BLUE Led
 #define LED2_GPIO_MODE                      GPIO_Mode_AF            //BLUE Led
-#define LED_RED                             LED3
+#define PARTICLE_LED_RED                   PARTICLE_LED3
 #define LED3_GPIO_AF_TIM                    GPIO_AF_TIM2            //RED Led
 #define LED3_GPIO_PIN                       GPIO_Pin_1              //RED Led
 #define LED3_GPIO_PIN_SOURCE                GPIO_PinSource1         //RED Led
 #define LED3_GPIO_PORT                      GPIOA                   //RED Led
 #define LED3_GPIO_CLK                       RCC_AHB1Periph_GPIOA    //RED Led
 #define LED3_GPIO_MODE                      GPIO_Mode_AF            //RED Led
-#define LED_GREEN                           LED4
+#define PARTICLE_LED_GREEN                   PARTICLE_LED4
 #define LED4_GPIO_AF_TIM                    GPIO_AF_TIM2            //GREEN Led
 #define LED4_GPIO_PIN                       GPIO_Pin_2              //GREEN Led
 #define LED4_GPIO_PIN_SOURCE                GPIO_PinSource2         //GREEN Led

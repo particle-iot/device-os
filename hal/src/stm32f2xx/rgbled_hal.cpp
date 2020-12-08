@@ -75,9 +75,9 @@ void HAL_Led_Rgb_Set_Values(uint16_t r, uint16_t g, uint16_t b, void* reserved)
 {
     Set_RGB_LED_Values(r, g, b);
 
-    Set_LED_Value((Led_TypeDef)(LED_RED   + LED_MIRROR_OFFSET), r);
-    Set_LED_Value((Led_TypeDef)(LED_GREEN + LED_MIRROR_OFFSET), g);
-    Set_LED_Value((Led_TypeDef)(LED_BLUE  + LED_MIRROR_OFFSET), b);
+    Set_LED_Value((Led_TypeDef)(PARTICLE_LED_RED   + LED_MIRROR_OFFSET), r);
+    Set_LED_Value((Led_TypeDef)(PARTICLE_LED_GREEN + LED_MIRROR_OFFSET), g);
+    Set_LED_Value((Led_TypeDef)(PARTICLE_LED_BLUE  + LED_MIRROR_OFFSET), b);
 }
 
 void HAL_Led_Rgb_Get_Values(uint16_t* rgb, void* reserved)
@@ -92,12 +92,12 @@ uint32_t HAL_Led_Rgb_Get_Max_Value(void* reserved)
 
 void HAL_Led_User_Set(uint8_t state, void* reserved)
 {
-    Set_LED_State(LED_USER, state);
+    Set_LED_State(PARTICLE_LED_USER, state);
 }
 
 void HAL_Led_User_Toggle(void* reserved)
 {
-    Toggle_LED_State(LED_USER);
+    Toggle_LED_State(PARTICLE_LED_USER);
 }
 
 led_config_t* HAL_Led_Set_Configuration(uint8_t led, led_config_t* conf, void* reserved)

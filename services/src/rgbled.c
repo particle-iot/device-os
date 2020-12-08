@@ -67,7 +67,7 @@ void LED_Signaling_Start(void)
     if (LED_RGB_OVERRIDE == 0) {
         LED_RGB_OVERRIDE = 1;
         led_set_update_enabled(0, NULL); // Disable background LED updates
-        LED_Off(LED_RGB);
+        LED_Off(PARTICLE_LED_RGB);
     }
 }
 
@@ -139,18 +139,18 @@ void Set_RGB_LED_Scale(uint8_t step, uint32_t color) {
   * @brief  Turns selected LED On.
   * @param  Led: Specifies the Led to be set on.
   *   This parameter can be one of following parameters:
-  *     @arg LED1, LED2, LED_USER, LED_RGB
+  *     @arg PARTICLE_LED_USER, PARTICLE_LED_RGB
   * @retval None
   */
 void LED_On(Led_TypeDef Led)
 {
     switch(Led)
     {
-    case LED_USER:
+    case PARTICLE_LED_USER:
         Set_User_LED(1);
         break;
 
-    case LED_RGB:	//LED_SetRGBColor() should be called first for this Case
+    case PARTICLE_LED_RGB:	//LED_SetRGBColor() should be called first for this Case
         Set_RGB_LED_Color(LED_RGB_OVERRIDE ? lastSignalColor : lastRGBColor);
         led_fade_step = NUM_LED_FADE_STEPS - 1;
         led_fade_direction = -1; /* next fade is falling */
@@ -164,18 +164,18 @@ void LED_On(Led_TypeDef Led)
   * @brief  Turns selected LED Off.
   * @param  Led: Specifies the Led to be set off.
   *   This parameter can be one of following parameters:
-  *     @arg LED1, LED2, LED_USER, LED_RGB
+  *     @arg PARTICLE_LED_USER, PARTICLE_LED_RGB
   * @retval None
   */
 void LED_Off(Led_TypeDef Led)
 {
     switch(Led)
     {
-    case LED_USER:
+    case PARTICLE_LED_USER:
         Set_User_LED(0);
         break;
 
-    case LED_RGB:
+    case PARTICLE_LED_RGB:
         Set_RGB_LED_Color(0);
         led_fade_step = 0;
         led_fade_direction = 1; /* next fade is rising. */
@@ -191,7 +191,7 @@ void LED_Off(Led_TypeDef Led)
   * @brief  Toggles the selected LED.
   * @param  Led: Specifies the Led to be toggled.
   *   This parameter can be one of following parameters:
-  *     @arg LED1, LED2, LED_USER, LED_RGB
+  *     @arg PARTICLE_LED_USER, PARTICLE_LED_RGB
   * @retval None
   */
 void LED_Toggle(Led_TypeDef Led)
@@ -200,14 +200,13 @@ void LED_Toggle(Led_TypeDef Led)
     uint16_t rgb[3];
     switch(Led)
     {
-    case LED_USER:
+    case PARTICLE_LED_USER:
         LED_Callbacks.Led_User_Toggle(NULL);
         break;
     default:
         break;
 
-    case LED_RGB://LED_SetRGBColor() and LED_On() should be called first for this Case
-
+    case PARTICLE_LED_RGB://LED_SetRGBColor() and LED_On() should be called first for this Case
         color = LED_RGB_OVERRIDE ? lastSignalColor : lastRGBColor;
         LED_Callbacks.Led_Rgb_Get_Values(rgb, NULL);
         if (rgb[0] | rgb[1] | rgb[2])
@@ -236,7 +235,7 @@ void LED_Fade(Led_TypeDef Led)
 
     led_fade_step += led_fade_direction;
 
-    if(Led == LED_RGB)
+    if(Led == PARTICLE_LED_RGB)
     {
         Set_RGB_LED_Scale(led_fade_step, LED_RGB_OVERRIDE ? lastSignalColor : lastRGBColor);
     }

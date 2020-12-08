@@ -92,7 +92,7 @@ void flashModulesCallback(bool isUpdating)
     {
         OTA_FLASH_AVAILABLE = 0;
         if (!LedOverridden) {
-            LED_Off(LED_RGB);
+            LED_Off(PARTICLE_LED_RGB);
         }
     }
 }
@@ -525,12 +525,12 @@ void Timing_Decrement(void)
         }
         else if(FACTORY_RESET_MODE || REFLASH_FROM_BACKUP || OTA_FLASH_AVAILABLE || RESET_SETTINGS)
         {
-            LED_Toggle(LED_RGB);
+            LED_Toggle(PARTICLE_LED_RGB);
             TimingLED = 50;
         }
         else if(SAFE_MODE || USB_DFU_MODE)
         {
-            LED_Toggle(LED_RGB);
+            LED_Toggle(PARTICLE_LED_RGB);
             TimingLED = 100;
         }
     }

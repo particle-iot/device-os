@@ -55,32 +55,32 @@ void panic_(ePanicCode code, void* extraInfo, void (*HAL_Delay_Microseconds)(uin
         uint16_t c;
         int loops = 2;
         LOG_PRINT(TRACE, "!");
-        LED_Off(LED_RGB);
+        LED_Off(PARTICLE_LED_RGB);
         while(loops) {
                 // preamble
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
-                LED_On(LED_RGB);
+                LED_On(PARTICLE_LED_RGB);
                 HAL_Delay_Microseconds(MS2u(150));
-                LED_Off(LED_RGB);
+                LED_Off(PARTICLE_LED_RGB);
                 HAL_Delay_Microseconds(MS2u(100));
             }
 
             HAL_Delay_Microseconds(MS2u(100));
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
-                LED_On(LED_RGB);
+                LED_On(PARTICLE_LED_RGB);
                 HAL_Delay_Microseconds(MS2u(300));
-                LED_Off(LED_RGB);
+                LED_Off(PARTICLE_LED_RGB);
                 HAL_Delay_Microseconds(MS2u(100));
             }
             HAL_Delay_Microseconds(MS2u(100));
 
             for (c = 3; c; c--) {
                 LED_SetRGBColor(pcd.led);
-                LED_On(LED_RGB);
+                LED_On(PARTICLE_LED_RGB);
                 HAL_Delay_Microseconds(MS2u(150));
-                LED_Off(LED_RGB);
+                LED_Off(PARTICLE_LED_RGB);
                 HAL_Delay_Microseconds(MS2u(100));
             }
 
@@ -89,9 +89,9 @@ void panic_(ePanicCode code, void* extraInfo, void (*HAL_Delay_Microseconds)(uin
             // play code
             for (c = code; c; c--) {
                 LED_SetRGBColor(pcd.led);
-                LED_On(LED_RGB);
+                LED_On(PARTICLE_LED_RGB);
                 HAL_Delay_Microseconds(MS2u(300));
-                LED_Off(LED_RGB);
+                LED_Off(PARTICLE_LED_RGB);
                 HAL_Delay_Microseconds(MS2u(300));
             }
             // pause

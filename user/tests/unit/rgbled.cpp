@@ -79,7 +79,7 @@ SCENARIO( "User can set the LED Color", "[led]" ) {
     }
     WHEN("The LED color is set to RGB_COLOR_RED") {
         LED_SetSignalingColor(RGB_COLOR_RED);
-        LED_On(LED_RGB);
+        LED_On(PARTICLE_LED_RGB);
         THEN("The rgb values of the LED should be (255,0,0,)") {
             assertLEDRGB(255,0,0);
         }
@@ -91,7 +91,7 @@ SCENARIO( "User can turn the LED off", "[led]" ) {
     GIVEN("The RGB led is in override mode") {
         LED_Signaling_Start();
         WHEN("The LED is turned off") {
-            LED_Off(LED_RGB);
+            LED_Off(PARTICLE_LED_RGB);
             THEN("The rgb values of the LED should be (0,0,0)") {
                 assertLEDRGB(0,0,0);
             }
@@ -107,13 +107,13 @@ SCENARIO("Led can be toggled off then on again") {
         LED_SetSignalingColor(0xFEDCBA);
 
         WHEN ("The LED turned on and is toggled") {
-            LED_On(LED_RGB);
-            LED_Toggle(LED_RGB);
+            LED_On(PARTICLE_LED_RGB);
+            LED_Toggle(PARTICLE_LED_RGB);
             THEN("The rgb values of the LED should be (0,0,0)") {
                 assertLEDRGB(0,0,0);
             }
             AND_WHEN ("The LED is toggled again") {
-                LED_Toggle(LED_RGB);
+                LED_Toggle(PARTICLE_LED_RGB);
                 THEN("The rgb values match the original") {
                     assertLEDRGB(0xFE,0xDC,0xBA);
                 }
@@ -129,13 +129,13 @@ SCENARIO("Led can be toggled on") {
         LED_Signaling_Start();
         LED_SetSignalingColor(0xFEDCBA);
         WHEN ("The LED is switched on and toggled") {
-            LED_Off(LED_RGB);
-            LED_Toggle(LED_RGB);
+            LED_Off(PARTICLE_LED_RGB);
+            LED_Toggle(PARTICLE_LED_RGB);
             THEN("The rgb values match the original") {
                 assertLEDRGB(0xFE,0xDC,0xBA);
             }
             AND_WHEN ("The LED is toggled again") {
-                LED_Toggle(LED_RGB);
+                LED_Toggle(PARTICLE_LED_RGB);
                 THEN("The rgb values of the LED should be (0,0,0)") {
                     assertLEDRGB(0,0,0);
                 }
@@ -152,7 +152,7 @@ SCENARIO("LED Brightness can be set") {
 
         WHEN("The brightness is set to 48 (50%)") {
             LED_SetBrightness(48);
-            LED_On(LED_RGB);
+            LED_On(PARTICLE_LED_RGB);
             THEN("The RGB values are half of the original") {
                 assertLEDRGB(0xFE,0xDC,0xBA, 48);
             }
@@ -168,10 +168,10 @@ SCENARIO("LED can fade to half brightness in 50 steps", "[led]") {
         LED_SetSignalingColor(0xFEDCBA);
     }
     WHEN ("The led is turned on and faded 50 times") {
-        LED_On(LED_RGB);
+        LED_On(PARTICLE_LED_RGB);
         // fade starts at 99, so 49 takes us to 50.
         for (int i=0; i<50; i++) {
-            LED_Fade(LED_RGB);
+            LED_Fade(PARTICLE_LED_RGB);
         }
         THEN("The LED values are 1/2 of the original") {
             assertLEDRGB(0xFE,0xDC,0xBA,96, 49);
@@ -187,7 +187,7 @@ SCENARIO("LED_RGB_Get can retrieve correct 8-bit values from 16-bit CCR counters
         LED_SetSignalingColor(0xFEDCBA);
     }
     WHEN ("The LED is turned on and values fetched") {
-        LED_On(LED_RGB);
+        LED_On(PARTICLE_LED_RGB);
         uint8_t rgb[3];
         LED_RGB_Get(rgb);
         THEN("The corresponding values match the original") {

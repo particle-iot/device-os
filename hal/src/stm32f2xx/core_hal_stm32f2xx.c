@@ -375,10 +375,10 @@ void HAL_Core_Config(void)
     // TODO: Use current LED theme
     if (HAL_Feature_Get(FEATURE_LED_OVERRIDDEN)) {
         // Just in case
-        LED_Off(LED_RGB);
+        LED_Off(PARTICLE_LED_RGB);
     } else {
         LED_SetRGBColor(RGB_COLOR_WHITE);
-        LED_On(LED_RGB);
+        LED_On(PARTICLE_LED_RGB);
     }
 
     // override the WICED interrupts, specifically SysTick - there is a bug

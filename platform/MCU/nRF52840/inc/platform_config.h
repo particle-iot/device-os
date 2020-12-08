@@ -101,9 +101,9 @@
 //RGB LEDs
 #define LED_MIRROR_SUPPORTED                        1
 #define LEDn                                        (4 * (LED_MIRROR_SUPPORTED + 1))
-#define LED_RED                                     LED2  // RED Led
-#define LED_GREEN                                   LED3  // GREEN Led
-#define LED_BLUE                                    LED4  // BLUE Led
+#define PARTICLE_LED_RED                            PARTICLE_LED2  // RED Led
+#define PARTICLE_LED_GREEN                          PARTICLE_LED3  // GREEN Led
+#define PARTICLE_LED_BLUE                           PARTICLE_LED4  // BLUE Led
 #define LED_PIN_USER                                D7
 #define LED_PIN_RED                                 RGBR
 #define LED_PIN_GREEN                               RGBG
