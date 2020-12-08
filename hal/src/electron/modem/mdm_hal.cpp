@@ -1385,7 +1385,6 @@ bool MDMParser::powerOff(void)
     } else {
         MDM_INFO("%s failed", POWER_OFF_MSG);
     }
-    HAL_Delay_Milliseconds(1000); // give peace a chance
     // Increment the state change counter to show that the modem has been powered on -> off
     if (!_pwr) {
         _incModemStateChangeCount();

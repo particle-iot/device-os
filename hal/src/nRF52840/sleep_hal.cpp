@@ -685,6 +685,9 @@ static bool isWokenUpByLpcomp() {
 
 static bool isWokenUpByNetwork(const hal_wakeup_source_network_t* networkWakeup) {
 // TODO: More than one network interface are supported on platform.
+    if (networkWakeup->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY) {
+        return false;
+    }
 #if HAL_PLATFORM_CELLULAR
     if (networkWakeup->index == NETWORK_INTERFACE_CELLULAR && NVIC_GetPendingIRQ(UARTE1_IRQn)) {
         return true;

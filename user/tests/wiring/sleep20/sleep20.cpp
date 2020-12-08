@@ -755,3 +755,34 @@ test(29_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
     // Make sure we reconnect back to the cloud
     assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
 }
+
+test(30_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Bypass_Network_Off_Execution_Time) {
+    constexpr uint32_t SLEEP_DURATION_S = 3;
+    Serial.printf("    >> Device enters ultra-low power mode. Please reconnect serial after %ld s\r\n", SLEEP_DURATION_S);
+    Serial.println("    >> Press any key now");
+    while (Serial.available() <= 0);
+    while (Serial.available() > 0) {
+        (void)Serial.read();
+    }
+
+    Particle.disconnect();
+    waitUntil(Particle.disconnected);
+
+    time32_t enter = Time.now();
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::ULTRA_LOW_POWER)
+          .duration(SLEEP_DURATION_S * 1000);
+#if HAL_PLATFORM_CELLULAR
+    config.network(Cellular, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+#elif HAL_PLATFORM_WIFI
+    config.network(WiFi, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+#endif
+    SystemSleepResult result = System.sleep(config);
+    time32_t exit = Time.now();
+
+    waitUntil(Serial.isConnected);
+
+    assertLessOrEqual(exit - enter, SLEEP_DURATION_S);
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
+}

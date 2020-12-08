@@ -661,17 +661,17 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
 #endif
                 ) {
                 ret = constructUsartWakeupReason(wakeupReason, usartWakeup->serial);
+                break; // Stop traversing the wakeup sources list.
             }
-            break; // Stop traversing the wakeup sources list.
         }
         else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
 #if HAL_PLATFORM_CELLULAR
             auto networkWakeup = reinterpret_cast<hal_wakeup_source_network_t*>(wakeupSource);
-            if (NVIC_GetPendingIRQ(USART3_IRQn) && networkWakeup->index == NETWORK_INTERFACE_CELLULAR) {
+            if (NVIC_GetPendingIRQ(USART3_IRQn) && networkWakeup->index == NETWORK_INTERFACE_CELLULAR && !(networkWakeup->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
                 ret = constructNetworkWakeupReason(wakeupReason, networkWakeup->index);
+                break; // Stop traversing the wakeup sources list.
             }
 #endif
-            break; // Stop traversing the wakeup sources list.
         }
         wakeupSource = wakeupSource->next;
     }
