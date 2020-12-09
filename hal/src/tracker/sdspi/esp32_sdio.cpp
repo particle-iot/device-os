@@ -110,10 +110,25 @@ int Esp32Sdio::init() {
 
     CHECK_ESP(at_sdspi_init(5000));
 
+    HAL_Interrupts_Attach(intrPin_, [](void* context) -> void {
+        // NOTE: relying on the fact that ESP32 interrupts come through io expander
+        // which is processed in a separate thread
+        SPARK_ASSERT(!HAL_IsISR());
+        auto self = static_cast<Esp32Sdio*>(context);
+        xEventGroupSetBits(self->evGroup_, HAL_USART_PVT_EVENT_RESERVED1);
+    }, this, FALLING, nullptr);
+
+    //CHECK_ESP(at_sdspi_set_intr_ena(HOST_SLC0_TOHOST_BIT0_INT_ST | HOST_SLC0_RX_NEW_PACKET_INT_ST));
+
+    // Clear current interrupts just in case
+    CHECK(processInterrupts());
+
     return 0;
 }
 
 void Esp32Sdio::destroy() {
+    on(false);
+
     if (sem_) {
         os_semaphore_destroy(sem_);
         sem_ = nullptr;
@@ -171,6 +186,8 @@ int Esp32Sdio::read(uint8_t* buf, size_t len) {
     size_t willRead = std::min<size_t>(len, canRead);
     size_t didRead = 0;
     CHECK_ESP(at_sdspi_get_packet(&context_, buf, willRead, &didRead));
+    // NOTE: HOST_SLC0_RX_NEW_PACKET_INT_ST is not cleared unless all data is read out
+    CHECK(processInterrupts());
     return didRead;
 }
 
@@ -187,81 +204,46 @@ int Esp32Sdio::write(const uint8_t* buf, size_t len) {
 }
 
 int Esp32Sdio::waitEvent(uint32_t events, system_tick_t timeout) {
-    uint32_t eventWait = events;
-    bool intrEnabled = false;
-    SCOPE_GUARD({
-        if (intrEnabled) {
-            HAL_Interrupts_Detach(intrPin_);
+    if (events & HAL_USART_PVT_EVENT_READABLE) {
+        if (rxData() > 0) {
+            xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
         }
-    });
-    uint32_t espIntr = 0;
+    }
 
-    if (events & (HAL_USART_PVT_EVENT_READABLE | HAL_USART_PVT_EVENT_WRITABLE)) {
-        if (events & HAL_USART_PVT_EVENT_READABLE) {
-            if (rxData() > 0) {
-                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
-            } else {
-                intrEnabled = true;
-            }
-        }
-
-        if (events & HAL_USART_PVT_EVENT_WRITABLE) {
-            if (txSpace() > 0) {
-                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
-            } else {
-                intrEnabled = true;
-                // Adjust TX poll interval
-                if (!txInterruptSupported_) {
-                    timeout = std::min(ESP32_SDIO_TX_POLL_INTERVAL_MS, timeout);
-                }
-            }
-        }
-
-        if (intrEnabled) {
-            eventWait |= HAL_USART_PVT_EVENT_RESERVED1;
-
-            HAL_Interrupts_Attach(intrPin_, [](void* context) -> void {
-                auto self = static_cast<Esp32Sdio*>(context);
-                xEventGroupSetBits(self->evGroup_, HAL_USART_PVT_EVENT_RESERVED1);
-            }, this, FALLING, nullptr);
-
-            CHECK(getAndClearInterrupts(espIntr));
-            if (espIntr) {
-                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_RESERVED1);
+    if (events & HAL_USART_PVT_EVENT_WRITABLE) {
+        if (txSpace() > 0) {
+            xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
+        } else {
+            // Adjust TX poll interval
+            if (!txInterruptSupported_) {
+                timeout = std::min(ESP32_SDIO_TX_POLL_INTERVAL_MS, timeout);
             }
         }
     }
 
-    auto mask = xEventGroupWaitBits(evGroup_, eventWait, pdTRUE, pdFALSE, timeout / portTICK_RATE_MS);
+    events |= HAL_USART_PVT_EVENT_RESERVED1;
+    //timeout = std::min<system_tick_t>(timeout, 100);
+    auto mask = xEventGroupWaitBits(evGroup_, events, pdTRUE, pdFALSE, timeout / portTICK_RATE_MS);
 
     if (mask & HAL_USART_PVT_EVENT_RESERVED1) {
-        uint32_t intr = 0;
-        CHECK(getAndClearInterrupts(intr));
-
-        espIntr |= intr;
-
-        if (events & HAL_USART_PVT_EVENT_READABLE) {
-            if (espIntr & HOST_SLC0_RX_NEW_PACKET_INT_ST) {
-                mask |= HAL_USART_PVT_EVENT_READABLE;
-            }
-        }
-
-        if (events & HAL_USART_PVT_EVENT_WRITABLE) {
-            if (espIntr & HOST_SLC0_TOHOST_BIT0_INT_ST) {
-                mask |= HAL_USART_PVT_EVENT_WRITABLE;
-            }
-        }
+        CHECK(processInterrupts());
+        mask |= xEventGroupWaitBits(evGroup_, events, pdTRUE, pdFALSE, 0);
     }
-
-    mask &= ~(HAL_USART_PVT_EVENT_RESERVED1);
 
     return mask;
 }
 
-int Esp32Sdio::getAndClearInterrupts(uint32_t& mask) {
-    CHECK_ESP(at_sdspi_get_intr(&mask));
-    CHECK_ESP(at_sdspi_clear_intr(mask));
-    mask &= (HOST_SLC0_TOHOST_BIT0_INT_ST | HOST_SLC0_RX_NEW_PACKET_INT_ST);
+int Esp32Sdio::processInterrupts() {
+    std::lock_guard<SpiConfigurationLock> spiGuarder(lock_);
+    uint32_t intr = 0;
+    CHECK_ESP(at_sdspi_get_intr(&intr));
+    CHECK_ESP(at_sdspi_clear_intr(intr));
+    if (intr & HOST_SLC0_RX_NEW_PACKET_INT_ST) {
+        xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
+    }
+    if (intr & HOST_SLC0_TOHOST_BIT0_INT_ST) {
+        xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
+    }
     return 0;
 }
 
@@ -279,6 +261,14 @@ int Esp32Sdio::txSpace() {
 
 void Esp32Sdio::txInterruptSupported(bool state) {
     txInterruptSupported_ = state;
+}
+
+int Esp32Sdio::on(bool on) {
+    if (!on) {
+        HAL_Interrupts_Detach(intrPin_);
+        txInterruptSupported(false);
+    }
+    return 0;
 }
 
 } // particle

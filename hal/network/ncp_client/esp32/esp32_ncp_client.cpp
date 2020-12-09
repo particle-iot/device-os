@@ -314,6 +314,9 @@ int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
             }
             break;
         }
+        // FIXME: we don't give enough processing time for whatever reason to other
+        // threads and mainly the muxer
+        HAL_Delay_Milliseconds(1);
     }
     if (!ok) {
         CHECK(skipAll(strm, 3000));

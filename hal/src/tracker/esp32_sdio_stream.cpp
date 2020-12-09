@@ -191,10 +191,7 @@ int Esp32SdioStream::receiveIntoInternal() {
 }
 
 int Esp32SdioStream::on(bool on) {
-    if (!on) {
-        txInterruptSupported(false);
-    }
-    return SYSTEM_ERROR_NONE;
+    return sdio_->on(on);
 }
 
 bool Esp32SdioStream::on() const {

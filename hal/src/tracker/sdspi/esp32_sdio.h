@@ -55,10 +55,12 @@ public:
 
     size_t txBufferSize() const;
 
+    int on(bool on);
+
 private:
     int rxData();
     int txSpace();
-    int getAndClearInterrupts(uint32_t& mask);
+    int processInterrupts();
 
 private:
     SpiConfigurationLock lock_;
