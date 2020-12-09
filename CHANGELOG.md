@@ -1,3 +1,11 @@
+## 2.0.1-alpha.1
+
+### BUGFIXES
+
+- [Gen 3] Fix processing of modules with `MODULE_DROP_MODULE_INFO` flag in the bootloader, when scheduled to be flashed by Device OS versions before 2.0.0-rc.1 [#2246](https://github.com/particle-iot/device-os/pull/2246)
+- Allow `SystemSleepNetworkFlag::INACTIVE_STANDBY` to be specified when entering `HIBERNATE` sleep mode to keep the network coprocessor in its current state [#2248](https://github.com/particle-iot/device-os/pull/2248)
+- Add inline optimization to speed up fast pin API calls [#2251](https://github.com/particle-iot/device-os/pull/2251)
+
 ## 2.0.0
 
 ### BREAKING CHANGES
