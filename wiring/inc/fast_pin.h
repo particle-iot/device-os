@@ -32,8 +32,8 @@ extern "C" {
  * by @pkourany on PR: https://github.com/spark/firmware/pull/556 */
 #define USE_BIT_BAND 0
 
-inline const Hal_Pin_Info* fastPinGetPinmap() {
-    static Hal_Pin_Info* pinMap = HAL_Pin_Map();
+__attribute__((always_inline)) inline const Hal_Pin_Info* fastPinGetPinmap() {
+    static const Hal_Pin_Info* pinMap = HAL_Pin_Map();
     return pinMap;
 }
 
