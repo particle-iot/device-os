@@ -161,8 +161,13 @@ void Esp32NcpNetif::setExpectedInternalState(NetifEvent ev) {
 void Esp32NcpNetif::loop(void* arg) {
     Esp32NcpNetif* self = static_cast<Esp32NcpNetif*>(arg);
     unsigned int timeout = 100;
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
+    // FIXME: we shouldn't need to do this on every boot, for now
+    // bypass mac address query for platforms that don't require
+    // connectivity.
     self->queryMacAddress();
     self->wifiMan_->ncpClient()->off();
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
     while(!self->exit_) {
         self->wifiMan_->ncpClient()->enable(); // Make sure the client is enabled
         os_semaphore_take(self->netifSemaphore_, timeout, false);
