@@ -314,8 +314,12 @@ int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
             }
             break;
         }
-        // FIXME: we don't give enough processing time for whatever reason to other
-        // threads and mainly the muxer
+        // FIXME: XModem sender runs in a busy loop and for some reason
+        // under some conditions doesn't allow any other even higher priority
+        // threads to be scheduled. Most likely this is some kind of an issue
+        // with priority inheritance. As a temporary workaround, we'll just
+        // add a 1 tick delay here which should guarantee that other threads
+        // get CPU time.
         HAL_Delay_Milliseconds(1);
     }
     if (!ok) {
