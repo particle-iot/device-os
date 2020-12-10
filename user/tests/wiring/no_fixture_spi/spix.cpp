@@ -673,23 +673,13 @@ test(SPIX_21_SPI_Sleep) {
 }
 
 test(SPIX_22_SPI_Transfer_Buffer_In_Flash) {
-    runtime_info_t heapInfo, heapInfo1;
-    heapInfo.size = sizeof(heapInfo);
-    heapInfo1.size = sizeof(heapInfo1);
-
     SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
     assertTrue(SPI.isEnabled());
 
-    HAL_Core_Runtime_Info(&heapInfo, nullptr);
-
     SPI.beginTransaction();
-    SPI.transfer((uint8_t*) "Hello", nullptr, sizeof("Hello"), nullptr);
+    SPI.transfer("Hello", nullptr, sizeof("Hello"), nullptr);
     SPI.endTransaction();
-
-    HAL_Core_Runtime_Info(&heapInfo1, nullptr);
-
-    assertEqual(heapInfo.freeheap, heapInfo1.freeheap);
 
     SPI.end();
 }

@@ -33,6 +33,8 @@
 #define DEFAULT_BIT_ORDER       MSBFIRST
 #define DEFAULT_SPI_CLOCK       SPI_CLOCK_DIV256
 
+#define SPI_BUFFER_LENGTH       32
+
 typedef struct nrf5x_spi_info_t {
     const nrfx_spim_t*                  master;
     const nrfx_spis_t*                  slave;
@@ -56,7 +58,6 @@ typedef struct nrf5x_spi_info_t {
     uint32_t                            master_tx_data_length;
     uint32_t                            master_tx_data_index;
     uint8_t*                            master_tx_buf;
-    uint32_t                            master_tx_buf_length;
     uint8_t*                            master_rx_buf;
 
     hal_spi_dma_user_callback           dma_user_callback;
@@ -82,9 +83,6 @@ static nrf5x_spi_info_t spiMap[HAL_PLATFORM_SPI_NUM] = {
 #endif
 };
 
-os_queue_t slaveEventQueue = nullptr;
-os_thread_t slaveWorkerThread = nullptr;
-
 static uint32_t spiTransfer(hal_spi_interface_t spi, uint8_t *tx_buf, uint8_t *rx_buf, uint32_t size);
 
 static bool spiMasterTransferChunk(hal_spi_interface_t spi) {
@@ -95,7 +93,7 @@ static bool spiMasterTransferChunk(hal_spi_interface_t spi) {
         return false;
     }
     spiMap[spi].transmitting = true; // Just in case
-    uint32_t chunkSize = std::min(spiMap[spi].master_tx_data_length - spiMap[spi].master_tx_data_index, spiMap[spi].master_tx_buf_length);
+    uint32_t chunkSize = std::min(spiMap[spi].master_tx_data_length - spiMap[spi].master_tx_data_index, (uint32_t)SPI_BUFFER_LENGTH);
     uint32_t index = spiMap[spi].master_tx_data_index;
     memcpy(spiMap[spi].master_tx_buf, &spiMap[spi].master_tx_data[index], chunkSize);
     uint8_t* rxPtr = spiMap[spi].master_rx_buf ? &spiMap[spi].master_rx_buf[index] : nullptr;
@@ -117,7 +115,6 @@ static void spiMasterEventHandler(nrfx_spim_evt_t const * p_event, void * p_cont
         spiMap[spi].master_rx_buf = nullptr;
         spiMap[spi].master_tx_data_length = 0;
         spiMap[spi].master_tx_data_index = 0;
-        spiMap[spi].master_tx_buf_length = 0;
         spiMap[spi].transmitting = false;
         if (spiMap[spi].dma_user_callback) {
             (*spiMap[spi].dma_user_callback)();
@@ -139,20 +136,7 @@ static void spiSlaveEventHandler(nrfx_spis_evt_t const * p_event, void * p_conte
             return;
         }
         
-        if (spiMap[spi].slave_rx_buf) {
-            spiMap[spi].transfer_length = p_event->rx_amount;
-        } else {
-            // No rx_buffer provided, but we set the pointer to dummy_buf
-            // it will receive 1 byte anyway, but available() should return 0.
-            spiMap[spi].transfer_length = 0;
-        }
-
-        if (spiMap[spi].slave_tx_buf_heap) {
-            if (slaveEventQueue) {
-                os_queue_put(slaveEventQueue, (hal_spi_interface_t*)&spi, 0, nullptr);
-            }
-        }
-
+        spiMap[spi].transfer_length = p_event->rx_amount;
         spiMap[spi].transmitting = false;
         
         // We should notify application, despite of how many data we received.
@@ -172,19 +156,6 @@ static void spiSlaveEventHandler(nrfx_spis_evt_t const * p_event, void * p_conte
     } else if (p_event->evt_type == NRFX_SPIS_BUFFERS_SET_DONE) {
         // LOG_DEBUG(TRACE, ">> NRFX_SPIS_BUFFERS_SET_DONE");
     }
-}
-
-static os_thread_return_t spiSlaveWorkerThread(void* param) {
-    while (1) {
-        hal_spi_interface_t spi;
-        if (!os_queue_take(slaveEventQueue, &spi, CONCURRENT_WAIT_FOREVER, nullptr)) {
-            if (spiMap[spi].slave_tx_buf_heap) {
-                free(spiMap[spi].slave_tx_buf);
-                spiMap[spi].slave_tx_buf_heap = false;
-            }
-        }
-    }
-    os_thread_exit(slaveWorkerThread);
 }
 
 static void spiOnSelectedHandler(void *data) {
@@ -365,7 +336,6 @@ void hal_spi_init(hal_spi_interface_t spi) {
     spiMap[spi].master_rx_buf = nullptr;
     spiMap[spi].master_tx_data_length = 0;
     spiMap[spi].master_tx_data_index = 0;
-    spiMap[spi].master_tx_buf_length = 0;
     spiMap[spi].slave_tx_buf_heap = false;
 
     hal_spi_release(spi, nullptr);
@@ -416,6 +386,14 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
 
 void hal_spi_end(hal_spi_interface_t spi) {
     if (spiMap[spi].state != HAL_SPI_STATE_DISABLED) {
+        if (spiMap[spi].master_tx_buf) {
+            free(spiMap[spi].master_tx_buf);
+            spiMap[spi].master_tx_buf = nullptr;
+        }
+        if (spiMap[spi].slave_tx_buf_heap && spiMap[spi].slave_tx_buf) {
+            free(spiMap[spi].slave_tx_buf);
+            spiMap[spi].slave_tx_buf = nullptr;
+        }
         spiUninit(spi);
         spiMap[spi].state = HAL_SPI_STATE_DISABLED;
     }
@@ -460,6 +438,11 @@ uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data) {
     // Wait for SPI transfer finished
     while(spiMap[spi].transmitting) {
         ;
+    }
+
+    if (spiMap[spi].master_tx_buf) {
+        free(spiMap[spi].master_tx_buf);
+        spiMap[spi].master_tx_buf = nullptr;
     }
 
     tx_buffer = data;
@@ -532,22 +515,27 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, const void* tx_buffer, void* 
     while(spiMap[spi].transmitting) {
         ;
     }
-    // Wait until the spiMap[spi].slave_tx_buf is freed before assigning a new pointer.
-    while (spiMap[spi].slave_tx_buf_heap);
+
+    // Free the allocated memory for slave anyway, as the allocated buffer may be very large.
+    if (spiMap[spi].slave_tx_buf_heap && spiMap[spi].slave_tx_buf) {
+        free(spiMap[spi].slave_tx_buf);
+        spiMap[spi].slave_tx_buf = nullptr;
+    }
 
     spiMap[spi].dma_user_callback = userCallback;
     if (spiMap[spi].spi_mode == SPI_MODE_MASTER) {
         if (tx_buffer && !nrfx_is_in_ram(tx_buffer)) {
-            // Truncate the data to reuse an allocated pool.
-            // Warning: This will leak memory, length of which is SPI_BUFFER_LENGTH.
+            /* Truncate the data to reuse an allocated pool.
+             * 1. The allocated memory will be freed on hal_spi_end() or hal_spi_transfer() is called,
+             *    or followed by hal_spi_transfer_dma() being called with tx buffer pointing to RAM.
+             * 2. Do not free it if the hal_spi_transfer_dma() is called to transmit const data again,
+             *    so that the allocated memory can be reused. */
             if (!spiMap[spi].master_tx_buf) {
                 spiMap[spi].master_tx_buf = (uint8_t*)malloc(SPI_BUFFER_LENGTH);
                 if (spiMap[spi].master_tx_buf == nullptr) {
-                    spiMap[spi].master_tx_buf_length = 0;
                     return;
                 }
             }
-            spiMap[spi].master_tx_buf_length = SPI_BUFFER_LENGTH;
             spiMap[spi].master_tx_data = (const uint8_t *)tx_buffer;
             spiMap[spi].master_tx_data_length = length;
             spiMap[spi].master_tx_data_index = 0;
@@ -555,25 +543,17 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, const void* tx_buffer, void* 
             spiMap[spi].transfer_length = 0;
             spiMasterTransferChunk(spi);
         } else {
+            if (spiMap[spi].master_tx_buf) {
+                free(spiMap[spi].master_tx_buf);
+                spiMap[spi].master_tx_buf = nullptr;
+            }
             // tx_buffer is nullptr, or tx_buffer is pointing to RAM.
             SPARK_ASSERT(spiTransfer(spi, (uint8_t*)tx_buffer, (uint8_t *)rx_buffer, length) == length);
             spiMap[spi].transfer_length = length;
         }
     } else {
         if (tx_buffer && !nrfx_is_in_ram(tx_buffer)) {
-            if (!slaveWorkerThread) {
-                if (os_queue_create(&slaveEventQueue, sizeof(hal_spi_interface_t), SPI_EVT_QUEUE_COUNT, nullptr)) {
-                    slaveEventQueue = nullptr;
-                    return;
-                }
-                if (os_thread_create(&slaveWorkerThread, "SPI SLave Worker Thread", OS_THREAD_PRIORITY_NETWORK, spiSlaveWorkerThread, nullptr, SPI_THREAD_STACK_SIZE)) {
-                    slaveWorkerThread = nullptr;
-                    os_queue_destroy(slaveEventQueue, nullptr);
-                    slaveEventQueue = nullptr;
-                    return;
-                }
-            }
-            
+            // The allocated memory will be freed on hal_spi_end() or hal_spi_transfer_dma() is called
             spiMap[spi].slave_tx_buf = (uint8_t*)malloc(length);
             if (spiMap[spi].slave_tx_buf == nullptr) {
                 return;

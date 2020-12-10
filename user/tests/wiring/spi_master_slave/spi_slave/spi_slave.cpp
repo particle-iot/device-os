@@ -344,31 +344,16 @@ test(01_SPI_Master_Slave_Slave_Receiption)
 
 test(02_SPI_Master_Slave_Slave_Const_String_Transfer_DMA)
 {
-    for (uint8_t i = 0; i < 2; i++) {
-        /* IMPORTANT: NOT waiting for Master to select us, as some of the platforms
-        * require TX and RX buffers to be configured before CS goes low
-        */
-        while(SPI_Selected_State == 0);
-        SPI_Selected_State = 0;
+    /* IMPORTANT: NOT waiting for Master to select us, as some of the platforms
+    * require TX and RX buffers to be configured before CS goes low
+    */
+    while(SPI_Selected_State == 0);
+    SPI_Selected_State = 0;
 
-        runtime_info_t heapInfo1 = {};
-        if (i == 1) {
-            heapInfo1.size = sizeof(runtime_info_t);
-            HAL_Core_Runtime_Info(&heapInfo1, nullptr);
-        }
-
-        // FIXME: The rx_buffer has to be nullptr, otherwise, the the rx_buffer will overflow
-        // as the length of the rx buffer given in this file is not equal to the length of tx data
-        MY_SPI.transfer(txString, nullptr, strlen(txString), NULL);
-        assertEqual(MY_SPI.available(), 0);
-
-        runtime_info_t heapInfo2 = {};
-        if (i == 1) {
-            heapInfo2.size = sizeof(runtime_info_t);
-            HAL_Core_Runtime_Info(&heapInfo2, nullptr);
-            assertEqual(heapInfo1.freeheap, heapInfo2.freeheap);
-        }
-    }
+    // FIXME: The rx_buffer has to be nullptr, otherwise, the the rx_buffer will overflow
+    // as the length of the rx buffer given in this file is not equal to the length of tx data
+    MY_SPI.transfer(txString, nullptr, strlen(txString), NULL);
+    assertEqual(MY_SPI.available(), 0);
 }
 
 #endif // #ifdef MY_SPI

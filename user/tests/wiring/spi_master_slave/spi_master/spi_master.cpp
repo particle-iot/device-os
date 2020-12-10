@@ -562,33 +562,30 @@ test(24_SPI_Master_Slave_Master_Const_String_Transfer_DMA)
 
 test(25_SPI_Master_Slave_Master_Receiption)
 {
-    for (uint8_t i = 0; i < 2; i++) {
-        memset(SPI_Master_Rx_Buffer_Supper, '\0', sizeof(SPI_Master_Rx_Buffer_Supper));
+    memset(SPI_Master_Rx_Buffer_Supper, '\0', sizeof(SPI_Master_Rx_Buffer_Supper));
 
-        // Select
-        // Workaround for some platforms requiring the CS to be high when configuring
-        // the DMA buffers
-        digitalWrite(MY_CS, LOW);
-        delay(SPI_DELAY);
-        digitalWrite(MY_CS, HIGH);
-        delay(SPI_DELAY);
-        digitalWrite(MY_CS, LOW);
+    // Select
+    // Workaround for some platforms requiring the CS to be high when configuring
+    // the DMA buffers
+    digitalWrite(MY_CS, LOW);
+    delay(SPI_DELAY);
+    digitalWrite(MY_CS, HIGH);
+    delay(SPI_DELAY);
+    digitalWrite(MY_CS, LOW);
 
-        DMA_Completed_Flag = 0;
+    DMA_Completed_Flag = 0;
 
-        MY_SPI.transfer(nullptr, SPI_Master_Rx_Buffer_Supper, strlen(txString), SPI_DMA_Completed_Callback);
-        while(DMA_Completed_Flag == 0);
-        digitalWrite(MY_CS, HIGH);
-        
-        // Serial.printf("Length: %d\r\n", strlen((const char *)SPI_Master_Rx_Buffer_Supper));
-        // for (size_t len = 0; len < strlen((const char *)SPI_Master_Rx_Buffer_Supper); len++) {
-        //     Serial.printf("%c", SPI_Master_Rx_Buffer_Supper[len]);
-        // }
+    MY_SPI.transfer(nullptr, SPI_Master_Rx_Buffer_Supper, strlen(txString), SPI_DMA_Completed_Callback);
+    while(DMA_Completed_Flag == 0);
+    digitalWrite(MY_CS, HIGH);
+    
+    // Serial.printf("Length: %d\r\n", strlen((const char *)SPI_Master_Rx_Buffer_Supper));
+    // for (size_t len = 0; len < strlen((const char *)SPI_Master_Rx_Buffer_Supper); len++) {
+    //     Serial.printf("%c", SPI_Master_Rx_Buffer_Supper[len]);
+    // }
 
-        assertEqual(MY_SPI.available(), strlen(txString));
-        assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer_Supper, txString, strlen(txString)) == 0);
-        delay(500);
-    }
+    assertEqual(MY_SPI.available(), strlen(txString));
+    assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer_Supper, txString, strlen(txString)) == 0);
 }
 
 #endif // #ifdef _SPI

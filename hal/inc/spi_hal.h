@@ -70,10 +70,6 @@ typedef hal_spi_dma_user_callback HAL_SPI_DMA_UserCallback;
 #define LSBFIRST                0
 #define MSBFIRST                1
 
-#define SPI_BUFFER_LENGTH       (uint8_t)32
-#define SPI_EVT_QUEUE_COUNT     (HAL_PLATFORM_SPI_NUM)
-#define SPI_THREAD_STACK_SIZE   256
-
 #ifdef __cplusplus
 extern "C" {
 #endif
