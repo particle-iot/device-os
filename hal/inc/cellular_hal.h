@@ -56,6 +56,11 @@ cellular_result_t  cellular_init(void* reserved);
 cellular_result_t  cellular_off(void* reserved);
 
 /**
+ * Check if the cellular module is powered.
+ */
+bool cellular_powered(void* reserved);
+
+/**
  * Wait for the cellular module to register on the GSM network.
  */
 cellular_result_t  cellular_register(void* reserved);

@@ -111,6 +111,11 @@ cellular_result_t  cellular_off(void* reserved)
     return 0;
 }
 
+bool cellular_powered(void* reserved)
+{
+    return electronMDM.powerState();
+}
+
 cellular_result_t  cellular_register(void* reserved)
 {
     CHECK_SUCCESS(electronMDM.registerNet());

@@ -376,6 +376,7 @@ protected:
 
     virtual int on_now()=0;
     virtual void off_now()=0;
+    virtual bool is_powered()=0;
 
     virtual int process_now()=0;
 
@@ -620,7 +621,7 @@ public:
 
     bool isOff() override
     {
-        return WLAN_INITIALIZED && !SPARK_WLAN_STARTED;
+        return !SPARK_WLAN_STARTED && !is_powered();
     }
 
     void off(bool disconnect_cloud=false) override
