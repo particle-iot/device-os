@@ -85,6 +85,21 @@ static nrf5x_spi_info_t spiMap[HAL_PLATFORM_SPI_NUM] = {
 
 static uint32_t spiTransfer(hal_spi_interface_t spi, uint8_t *tx_buf, uint8_t *rx_buf, uint32_t size);
 
+/*
+ * We could potentially use ISRTaskQueue::Task and system_pool_alloc() in ISR to free these memory
+ * asychronously in the system thread.
+ */
+static void freeMemoryIfNecessary(hal_spi_interface_t spi) {
+    if (spiMap[spi].master_tx_buf) {
+        free(spiMap[spi].master_tx_buf);
+        spiMap[spi].master_tx_buf = nullptr;
+    }
+    if (spiMap[spi].slave_tx_buf_heap && spiMap[spi].slave_tx_buf) {
+        free(spiMap[spi].slave_tx_buf);
+        spiMap[spi].slave_tx_buf = nullptr;
+    }
+}
+
 static bool spiMasterTransferChunk(hal_spi_interface_t spi) {
     if (!spiMap[spi].master_tx_data || !spiMap[spi].master_tx_buf) {
         return false;
@@ -379,6 +394,8 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
         return;
     }
 
+    freeMemoryIfNecessary(spi);
+
     spiMap[spi].spi_mode = mode;
     spiInit(spi, mode);
     spiMap[spi].state = HAL_SPI_STATE_ENABLED;
@@ -386,14 +403,7 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
 
 void hal_spi_end(hal_spi_interface_t spi) {
     if (spiMap[spi].state != HAL_SPI_STATE_DISABLED) {
-        if (spiMap[spi].master_tx_buf) {
-            free(spiMap[spi].master_tx_buf);
-            spiMap[spi].master_tx_buf = nullptr;
-        }
-        if (spiMap[spi].slave_tx_buf_heap && spiMap[spi].slave_tx_buf) {
-            free(spiMap[spi].slave_tx_buf);
-            spiMap[spi].slave_tx_buf = nullptr;
-        }
+        freeMemoryIfNecessary(spi);
         spiUninit(spi);
         spiMap[spi].state = HAL_SPI_STATE_DISABLED;
     }
@@ -440,10 +450,7 @@ uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data) {
         ;
     }
 
-    if (spiMap[spi].master_tx_buf) {
-        free(spiMap[spi].master_tx_buf);
-        spiMap[spi].master_tx_buf = nullptr;
-    }
+    freeMemoryIfNecessary(spi);
 
     tx_buffer = data;
 
@@ -516,25 +523,15 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, const void* tx_buffer, void* 
         ;
     }
 
-    // Free the allocated memory for slave anyway, as the allocated buffer may be very large.
-    if (spiMap[spi].slave_tx_buf_heap && spiMap[spi].slave_tx_buf) {
-        free(spiMap[spi].slave_tx_buf);
-        spiMap[spi].slave_tx_buf = nullptr;
-    }
+    freeMemoryIfNecessary(spi);
 
     spiMap[spi].dma_user_callback = userCallback;
     if (spiMap[spi].spi_mode == SPI_MODE_MASTER) {
         if (tx_buffer && !nrfx_is_in_ram(tx_buffer)) {
-            /* Truncate the data to reuse an allocated pool.
-             * 1. The allocated memory will be freed on hal_spi_end() or hal_spi_transfer() is called,
-             *    or followed by hal_spi_transfer_dma() being called with tx buffer pointing to RAM.
-             * 2. Do not free it if the hal_spi_transfer_dma() is called to transmit const data again,
-             *    so that the allocated memory can be reused. */
-            if (!spiMap[spi].master_tx_buf) {
-                spiMap[spi].master_tx_buf = (uint8_t*)malloc(SPI_BUFFER_LENGTH);
-                if (spiMap[spi].master_tx_buf == nullptr) {
-                    return;
-                }
+            // Truncate the data to reuse an allocated pool.
+            spiMap[spi].master_tx_buf = (uint8_t*)malloc(SPI_BUFFER_LENGTH);
+            if (spiMap[spi].master_tx_buf == nullptr) {
+                return;
             }
             spiMap[spi].master_tx_data = (const uint8_t *)tx_buffer;
             spiMap[spi].master_tx_data_length = length;
@@ -543,10 +540,6 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, const void* tx_buffer, void* 
             spiMap[spi].transfer_length = 0;
             spiMasterTransferChunk(spi);
         } else {
-            if (spiMap[spi].master_tx_buf) {
-                free(spiMap[spi].master_tx_buf);
-                spiMap[spi].master_tx_buf = nullptr;
-            }
             // tx_buffer is nullptr, or tx_buffer is pointing to RAM.
             SPARK_ASSERT(spiTransfer(spi, (uint8_t*)tx_buffer, (uint8_t *)rx_buffer, length) == length);
             spiMap[spi].transfer_length = length;
@@ -597,6 +590,7 @@ void hal_spi_transfer_dma_cancel(hal_spi_interface_t spi) {
     spiTransferCancel(spi);
     spiMap[spi].dma_user_callback = nullptr;
     spiMap[spi].transmitting = false;
+    freeMemoryIfNecessary(spi);
 }
 
 int32_t hal_spi_transfer_dma_status(hal_spi_interface_t spi, hal_spi_transfer_status_t* st) {
@@ -606,6 +600,7 @@ int32_t hal_spi_transfer_dma_status(hal_spi_interface_t spi, hal_spi_transfer_st
         transfer_length = 0;
     } else {
         transfer_length = spiMap[spi].transfer_length;
+        freeMemoryIfNecessary(spi);
     }
 
     if (st != nullptr) {
