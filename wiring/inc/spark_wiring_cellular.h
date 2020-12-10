@@ -50,12 +50,6 @@ public:
     void off() {
         network_off(*this, 0, 0, NULL);
     }
-    bool isOn() {
-        return network_is_on(*this, NULL);
-    }
-    bool isOff() {
-        return network_is_off(*this, NULL);
-    }
     void connect(unsigned flags=0) {
         network_connect(*this, flags, 0, NULL);
     }

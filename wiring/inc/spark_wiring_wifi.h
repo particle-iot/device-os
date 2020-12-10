@@ -156,15 +156,7 @@ public:
     void off(void) {
         network_off(*this, 0, 0, NULL);
     }
-
-    bool isOn() {
-        return network_is_on(*this, NULL);
-    }
-
-    bool isOff() {
-        return network_is_off(*this, NULL);
-    }
-
+    
     void listen(bool begin=true) {
         network_listen(*this, begin ? 0 : 1, NULL);
     }
