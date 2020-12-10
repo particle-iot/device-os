@@ -63,7 +63,9 @@ public:
     ProtocolState getInterfaceIp6State(if_t iface) const;
 
     bool isInterfacePowerState(if_t iface = nullptr, if_power_state_t state = IF_POWER_STATE_NONE) const;
-    bool isInterfaceReady(if_t iface = nullptr) const;
+    bool isInterfacePhyReady(if_t iface = nullptr) const;
+    bool isInterfaceOn(if_t iface = nullptr) const;
+    bool isInterfaceOff(if_t iface = nullptr) const;
 
     bool isConfigured(if_t iface = nullptr) const;
     int clearConfiguration(if_t iface = nullptr);

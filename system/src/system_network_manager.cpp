@@ -586,6 +586,7 @@ void NetworkManager::handleIfPowerState(if_t iface, const struct if_event* ev) {
     }
 }
 
+// FIXME: this currently works somewhat properly only if there is just 1 network interface.
 void NetworkManager::handleIfPhyState(if_t iface, const struct if_event* ev) {
     if (networkStatus_ == NetworkStatus::NETWORK_STATUS_POWERING_ON && ev->ev_phy_state->state == IF_PHY_STATE_ON) {
         system_notify_event(network_status, network_status_on);
@@ -851,6 +852,8 @@ bool NetworkManager::isInterfacePowerState(if_t iface, if_power_state_t state) c
     bool ret = false;
     if_power_state_t pwr = IF_POWER_STATE_NONE;
     if (!iface) {
+        /* This function checks each network interface for the intended power state,
+         * and returns true as long as one that matches the desired state is found */
         for_each_iface([&](if_t iface, unsigned int curFlags) {
             if (if_get_power_state(iface, &pwr) != SYSTEM_ERROR_NONE) {
                 return;
@@ -869,10 +872,13 @@ bool NetworkManager::isInterfacePowerState(if_t iface, if_power_state_t state) c
     return ret;
 }
 
-bool NetworkManager::isInterfaceReady(if_t iface) const {
+// Note: This is not the same as what wiring ready() does.
+bool NetworkManager::isInterfacePhyReady(if_t iface) const {
     bool ret = false;
     unsigned int xflags = 0;
     if (!iface) {
+        /* This function checks each network interface if physical state is ready,
+         * and returns true as long as one that matches the desired state is found */
         for_each_iface([&](if_t iface, unsigned int curFlags) {
             xflags = 0;
             if (if_get_xflags(iface, &xflags) != SYSTEM_ERROR_NONE) {
@@ -890,6 +896,14 @@ bool NetworkManager::isInterfaceReady(if_t iface) const {
         ret = (xflags & IFXF_READY) ? true : false;
     }
     return ret;
+}
+
+bool NetworkManager::isInterfaceOn(if_t iface) const {
+    return isInterfacePowerState(iface, IF_POWER_STATE_UP) && isInterfacePhyReady(iface);
+}
+
+bool NetworkManager::isInterfaceOff(if_t iface) const {
+    return isInterfacePowerState(iface, IF_POWER_STATE_DOWN) && !isInterfacePhyReady(iface);
 }
 
 bool NetworkManager::isInterfaceEnabled(if_t iface) const {
