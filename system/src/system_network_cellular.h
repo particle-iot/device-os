@@ -101,6 +101,10 @@ protected:
         cellular_off(nullptr);
     }
 
+    bool is_powered() override {
+        return cellular_powered(nullptr);
+    }
+
     void disconnect_now() override {
         cellular_disconnect(nullptr);
     }
