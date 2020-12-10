@@ -110,9 +110,17 @@ DYNALIB_FN(BASE_IDX + 17, system, system_power_management_set_config, int(const 
 DYNALIB_FN(BASE_IDX1 + 0, system, system_sleep_ext, int(const hal_sleep_config_t*, hal_wakeup_source_base_t**, void*))
 DYNALIB_FN(BASE_IDX1 + 1, system, system_reset, int(unsigned, unsigned, unsigned, unsigned, void*))
 
+#if HAL_PLATFORM_POWER_MANAGEMENT
+DYNALIB_FN(BASE_IDX1 + 2, system, system_power_management_get_config, int(hal_power_config*, void*))
+#define BASE_IDX2 (BASE_IDX1 + 3)
+#else
+#define BASE_IDX2 (BASE_IDX1 + 2)
+#endif  // HAL_PLATFORM_POWER_MANAGEMENT
+
 DYNALIB_END(system)
 
 #undef BASE_IDX
 #undef BASE_IDX1
+#undef BASE_IDX2
 
 #endif	/* SYSTEM_DYNALIB_H */

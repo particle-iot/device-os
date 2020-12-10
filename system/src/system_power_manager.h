@@ -33,6 +33,7 @@ public:
   void sleep(bool fuelGaugeSleep = true);
   void wakeup();
   int setConfig(const hal_power_config* conf);
+  int getConfig(hal_power_config* conf);
 
 protected:
   PowerManager();
@@ -42,6 +43,7 @@ private:
   static void isrHandler();
   static void usbStateChangeHandler(HAL_USB_State state, void* context);
   void update();
+  void handleCharging();
   void handleUpdate();
   void initDefault(bool dpdm = true);
   void handleStateChange(battery_state_t from, battery_state_t to, bool low);

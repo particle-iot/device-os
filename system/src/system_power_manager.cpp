@@ -44,6 +44,9 @@ constexpr system_tick_t DEFAULT_WATCHDOG_TIMEOUT = 60000;
 // FIXME: make sure to change setWatchdog() call to use the same interval
 constexpr system_tick_t PMIC_WATCHDOG_INTERVAL = 40000; // 40s
 
+constexpr uint16_t PMIC_NORMAL_RECHARGE_THRESHOLD = 100; // millivolts
+constexpr uint16_t PMIC_FAULT_RECHARGE_THRESHOLD = 300; // millivolts
+
 constexpr hal_power_config defaultPowerConfig = {
   .flags = 0,
   .version = 0,
@@ -162,6 +165,20 @@ void PowerManager::wakeup() {
   }
 }
 
+void PowerManager::handleCharging() {
+  // The PMIC lock should already be acquired
+  PMIC power(false);
+
+  if ((config_.flags & HAL_POWER_CHARGE_STATE_DISABLE) == 0) {
+    power.enableCharging();
+    power.enableSafetyTimer();
+    return;
+  }
+
+  power.disableCharging();
+  power.disableSafetyTimer();
+}
+
 void PowerManager::handleUpdate() {
   if (!update_) {
     return;
@@ -176,13 +193,14 @@ void PowerManager::handleUpdate() {
   // consecutively. The 1st reads fault register status from the last read and the 2nd
   // reads the current fault register status.
   volatile uint8_t lastFault = power.getFault();
-  (void)lastFault;
-  const uint8_t curFault = power.getFault();
+  const uint8_t curFault = power.getFault() | lastFault;
 
   // Watchdog fault or buck converter got disabled
-  if ((curFault & 0x80) || !power.isBuckEnabled()) {
+  if ((curFault & 0x80 /*watchdog fault*/) || !power.isBuckEnabled()) {
     // Restore parameters
     initDefault();
+  } else {
+    handleCharging();
   }
 
   const uint8_t status = power.getSystemStatus();
@@ -334,7 +352,9 @@ void PowerManager::loop(void* arg) {
     power.getFault();
     FuelGauge fuel(true);
     fuel.wakeup();
-    fuel.setAlertThreshold(20); // Low Battery alert at 10% (about 3.6V)
+    if ((self->config_.flags & HAL_POWER_CHARGE_STATE_DISABLE) == 0) {
+      fuel.setAlertThreshold(20); // Low Battery alert at 10% (about 3.6V)
+    }
     fuel.clearAlert(); // Ensure this is cleared, or interrupts will never occur
     LOG_DEBUG(INFO, "State of Charge: %-6.2f%%", fuel.getSoC());
     LOG_DEBUG(INFO, "Battery Voltage: %-4.2fV", fuel.getVCell());
@@ -399,11 +419,11 @@ void PowerManager::initDefault(bool dpdm) {
   power.setChargeVoltage(config_.termination_voltage);
 
   // Set recharge threshold to default value - 100mV
-  power.setRechargeThreshold(100);
+  power.setRechargeThreshold(PMIC_NORMAL_RECHARGE_THRESHOLD);
   power.setChargeCurrent(config_.charge_current);
 
-  // Enable charging
-  power.enableCharging();
+  // Enable or disable charging
+  handleCharging();
 
   // Just in case make sure to enable BATFET
   if (!power.isBATFETEnabled()) {
@@ -548,7 +568,7 @@ battery_state_t PowerManager::handlePossibleFault(battery_state_t from, battery_
           return BATTERY_STATE_DISCONNECTED;
         } else {
           PMIC power;
-          power.setRechargeThreshold(300);
+          power.setRechargeThreshold(PMIC_FAULT_RECHARGE_THRESHOLD);
           possibleFaultCounter_ = 0;
           faultSecondaryCounter_ = 1;
           possibleFaultTimestamp_ = millis();
@@ -562,7 +582,7 @@ battery_state_t PowerManager::handlePossibleFault(battery_state_t from, battery_
 void PowerManager::handlePossibleFaultLoop() {
   if (faultSecondaryCounter_ == 1 && (millis() - possibleFaultTimestamp_ > DEFAULT_FAULT_WINDOW)) {
       PMIC power;
-      power.setRechargeThreshold(100);
+      power.setRechargeThreshold(PMIC_NORMAL_RECHARGE_THRESHOLD);
       faultSecondaryCounter_ = 0;
       faultSuppressed_ = millis();
   }
@@ -675,21 +695,25 @@ int PowerManager::setConfig(const hal_power_config* conf) {
   return ret;
 }
 
-void PowerManager::loadConfig() {
+int PowerManager::getConfig(hal_power_config* conf) {
+  auto destSize = conf->size;
+
   // Ignore errors since we are anyway sanitizing the config and setting some sane defaults
-  config_.size = sizeof(config_);
-  int err = hal_power_load_config(&config_, nullptr);
+  int err = hal_power_load_config(conf, nullptr);
 
   // Sanitize configuration
-  if (err || config_.version == 0xff || !isValid(config_.size)) {
+  if (err || conf->version == 0xff || !isValid(conf->size)) {
     // Flags require special processing even if the config is not valid
     // in order to keep DCT compatibility for the HAL_POWER_PMIC_DETECTION feature flag
-    uint32_t flags = config_.flags;
-    config_ = defaultPowerConfig;
+    uint32_t flags = conf->flags;
+
+    // Copy the minimum overlapping structure data
+    memcpy(conf, &defaultPowerConfig, std::min(destSize, defaultPowerConfig.size));
+
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
     if (!err) {
       if (flags & HAL_POWER_PMIC_DETECTION) {
-        config_.flags |= HAL_POWER_PMIC_DETECTION;
+        conf->flags |= HAL_POWER_PMIC_DETECTION;
       }
     }
 #else
@@ -697,21 +721,32 @@ void PowerManager::loadConfig() {
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
   }
 
-  if (!isValid(config_.vin_min_voltage)) {
-    config_.vin_min_voltage = defaultPowerConfig.vin_min_voltage;
+  if (!isValid(conf->vin_min_voltage)) {
+    conf->vin_min_voltage = defaultPowerConfig.vin_min_voltage;
   }
 
-  if (!isValid(config_.vin_max_current)) {
-    config_.vin_max_current = defaultPowerConfig.vin_max_current;
+  if (!isValid(conf->vin_max_current)) {
+    conf->vin_max_current = defaultPowerConfig.vin_max_current;
   }
 
-  if (!isValid(config_.charge_current)) {
-    config_.charge_current = defaultPowerConfig.charge_current;
+  if (!isValid(conf->charge_current)) {
+    conf->charge_current = defaultPowerConfig.charge_current;
   }
 
-  if (!isValid(config_.termination_voltage)) {
-    config_.termination_voltage = defaultPowerConfig.termination_voltage;
+  if (!isValid(conf->termination_voltage)) {
+    conf->termination_voltage = defaultPowerConfig.termination_voltage;
   }
+
+  // IMPORTANT!: check size of destination config structure before writing any mode defaults
+
+  return err;
+}
+
+void PowerManager::loadConfig() {
+  // Ignore errors since we are anyway sanitizing the config and setting some sane defaults
+  config_.size = sizeof(config_);
+  int err = getConfig(&config_);
+  (void)err;
 
   logCurrentConfig();
 }

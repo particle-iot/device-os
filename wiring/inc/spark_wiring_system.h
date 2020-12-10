@@ -721,6 +721,13 @@ public:
         return system_power_management_set_config(conf.config(), nullptr);
     }
 
+    particle::SystemPowerConfiguration getPowerConfiguration() const {
+        hal_power_config config = {};
+        config.size = sizeof(config);
+        system_power_management_get_config(&config, nullptr);
+        return particle::SystemPowerConfiguration(config);
+    }
+
     int powerSource() const {
         particle::AbstractIntegerDiagnosticData::IntType val;
         const auto r = particle::AbstractIntegerDiagnosticData::get(DIAG_ID_SYSTEM_POWER_SOURCE, val);

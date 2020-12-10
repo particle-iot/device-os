@@ -49,6 +49,7 @@ void system_power_management_init();
 void system_power_management_sleep(bool fuelGaugeSleep);
 void system_power_management_wakeup();
 int system_power_management_set_config(const hal_power_config* conf, void* reserved);
+int system_power_management_get_config(hal_power_config* conf, void* reserved);
 
 #ifdef __cplusplus
 }
