@@ -100,6 +100,8 @@ std::recursive_mutex mdm_mutex;
 #define UPSND_TIMEOUT     ( 10 * 1000)
 #define URAT_TIMEOUT      ( 10 * 1000)
 
+// Intervention period
+#define REGISTRATION_INTERVENTION_TIMEOUT   ( 15 * 1000 );
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
 //! test if it is a socket is ok to use
@@ -138,6 +140,8 @@ inline void CLR_GPRS_TIMEOUT() {
     gprs_timeout_duration = 0;
     DEBUG("GPRS WD Cleared, was %d", gprs_timeout_duration);
 }
+
+unsigned registrationInterventions_;
 
 namespace {
 
@@ -1548,6 +1552,73 @@ int MDMParser::_cbURAT(int type, const char *buf, int len, bool *matched_default
     return WAIT;
 }
 
+int MDMParser::interveneRegistration(system_tick_t start) {
+    auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
+    // TODO: Check that it's not registered in this gap?
+    if (HAL_Timer_Get_Milli_Seconds() - start >= timeout) {
+        if (_dev.dev != DEV_SARA_R410) {
+            if (!REG_OK(_net.csd)) {
+                if (_net.csd == REG_NOTREG) {
+                    registrationInterventions_++;
+                    sendFormated("AT+COPS=0,2\r\n");
+                    if (WAIT == waitFinalResp(nullptr, nullptr, COPS_TIMEOUT)) {
+                        return -1;
+                    }
+                } else if (_net.csd == REG_DENIED && _net.csd == _net.psd) {
+                    registrationInterventions_++;
+                    sendFormated("AT+CFUN=0\r\n");
+                    if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
+                        return -1;
+                    }
+                    sendFormated("AT+CFUN=1\r\n");
+                    if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
+                        return -1;
+                    }
+                }
+            }
+            if (REG_OK(_net.csd) && !REG_OK(_net.psd)) {
+                if (_net.psd == REG_NOTREG) {
+                    registrationInterventions_++;
+                    sendFormated("AT+CGACT?\r\n");
+                    if (WAIT == waitFinalResp()) {
+                        return -1;
+                    }
+                    sendFormated("AT+CGACT=1\r\n");
+                    auto resp_cgact = waitFinalResp(nullptr, nullptr, 3*60*1000);
+                    if (WAIT == resp_cgact) {
+                        return -1;
+                    } else if (RESP_OK != resp_cgact) {
+                        sendFormated("AT+COPS=0,2\r\n");
+                        if (WAIT == waitFinalResp(nullptr, nullptr, COPS_TIMEOUT)) {
+                            return -1;
+                        }
+                    }
+                }
+            }
+        } else {
+            if (_net.eps == REG_NOTREG) {
+                LOG(ERROR, "TP4");
+                registrationInterventions_++;
+                sendFormated("AT+COPS=0,2\r\n");
+                if (WAIT == waitFinalResp(nullptr, nullptr, COPS_TIMEOUT)) {
+                    return -1;
+                }
+            } else if (_net.eps == REG_DENIED) {
+                registrationInterventions_++;
+                sendFormated("AT+CFUN=0\r\n");
+                if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
+                    return -1;
+                }
+                sendFormated("AT+CFUN=1\r\n");
+                if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
+                    return -1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t timeout_ms)
 {
     LOCK();
@@ -1682,6 +1753,8 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             // Now check every 15 seconds for 10 minutes to see if we're connected to the tower (GSM, GPRS and LTE)
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
             system_tick_t start_imsi_check = start;
+            system_tick_t reg_intervention_start = start;
+            registrationInterventions_ = 0;
             while (!(ok = checkNetStatus(status)) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
                 system_tick_t start = HAL_Timer_Get_Milli_Seconds();
                 while ((HAL_Timer_Get_Milli_Seconds() - start < 15000UL) && !_cancel_all_operations) {
@@ -1691,6 +1764,15 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                         break; // force another checkNetStatus() call
                     }
                 }
+                // Intervene registration
+                auto registrationInterventionsPrev_ = registrationInterventions_;
+                if (interveneRegistration(reg_intervention_start) < 0) {
+                    goto failure;
+                }
+                if (registrationInterventionsPrev_ != registrationInterventions_) {
+                    reg_intervention_start = HAL_Timer_Get_Milli_Seconds();
+                }
+
                 // Query IMSI every 60 sec if not regsitered, to detect IMSI switches
                 if (HAL_Timer_Get_Milli_Seconds() - start_imsi_check > 60000UL) {
                     start_imsi_check = HAL_Timer_Get_Milli_Seconds();

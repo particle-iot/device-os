@@ -102,6 +102,10 @@ public:
     */
     bool checkNetStatus(NetStatus* status = NULL);
 
+    /** check intervene registration
+    */
+    int interveneRegistration(system_tick_t start);
+
     /** checks the signal strength
         \param status an optional structure that will have current network information
                and updated RSSI and QUAL values.
