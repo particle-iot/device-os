@@ -536,7 +536,7 @@ protected:
 
     /** Detects the modem power state
     */
-    bool powerState(void) const;
+    bool powerState(void);
 
 protected:
     // String helper to prevent buffer overrun
