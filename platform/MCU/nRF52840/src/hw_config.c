@@ -184,14 +184,52 @@ void Reset_System(void) {
 
     RGB_LED_Uninit();
 
-    // XXX: POWER_CLOCK_IRQn needs to be masked!
+    // XXX: POWER_CLOCK_IRQn needs to be masked completely or we at least
+    // need to make sure that it doesn't fire!
     // We've seen cases where the POWER_CLOCK interrupt comes in-between the jump
     // from the bootloader into the system firmware and when the clock driver is initialized
     // again in system firmware. This causes a jump into 0x0000000 address because the clock
     // event handler hasn't been registered.
     // Surprisingly the event that triggers the interrupt is EVENTS_LFCLKSTARTED,
     // despite the fact that we are specifically waiting for LFCLK to start in Set_System()
+
+#if !(PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || \
+        PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM) || MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     NVIC_DisableIRQ(POWER_CLOCK_IRQn);
+#else
+    // In order to remove the intermediate dependency in the bootloader on 1.1.0 where
+    // the POWER_CLOCK_IRQn priority in the system part was set to a correct value that doesn't
+    // conflict with SoftDevice, instead of disabling the POWER_CLOCK_IRQn here, we'll set the correct
+    // priority, mask all the events that will trigger it and clear its pending status. That way
+    // system parts of Device OS < 1.1.0 will not attempt to reconfigure and change the priority
+    // of it to an incorrect value.
+
+    uint32_t power_mask = 0;
+#if NRF_POWER_HAS_POFCON
+    power_mask |= NRF_POWER_INT_POFWARN_MASK;
+#endif // NRF_POWER_HAS_POFCON
+#if NRF_POWER_HAS_SLEEPEVT
+    power_mask |= NRF_POWER_INT_SLEEPENTER_MASK | NRF_POWER_INT_SLEEPEXIT_MASK;
+#endif // NRF_POWER_HAS_SLEEPEVT
+#if NRF_POWER_HAS_USBREG
+    power_mask |= NRF_POWER_INT_USBDETECTED_MASK | NRF_POWER_INT_USBREMOVED_MASK | NRF_POWER_INT_USBPWRRDY_MASK;
+#endif // NRF_POWER_HAS_USBREG
+
+    nrf_power_int_disable(power_mask);
+
+    uint32_t clock_mask = NRF_CLOCK_INT_HF_STARTED_MASK | NRF_CLOCK_INT_LF_STARTED_MASK;
+#if NRF_CLOCK_HAS_CALIBRATION
+    clock_mask |= NRF_CLOCK_INT_DONE_MASK | NRF_CLOCK_INT_CTTO_MASK;
+#endif // NRF_CLOCK_HAS_CALIBRATION
+    nrf_clock_int_disable(clock_mask);
+
+    __DSB();
+
+    NVIC_ClearPendingIRQ(POWER_CLOCK_IRQn);
+    NVIC_SetPriority(POWER_CLOCK_IRQn, NRFX_POWER_CLOCK_CONFIG_IRQ_PRIORITY_SD);
+
+#endif // !(PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON ||
+       //   PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM)
 
     __DSB();
 }
