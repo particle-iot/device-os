@@ -14,7 +14,7 @@ function update_bl()
    pushd ../../../bootloader
    make -s PLATFORM_ID=$1 clean all || die   
    popd
-   cp $bl_dir/platform-$1-lto/bootloader.bin bootloader_platform_$1.bin || die
+   cp $bl_dir/platform-$1-m-lto/bootloader.bin bootloader_platform_$1.bin || die
    xxd -i bootloader_platform_$1.bin > bootloader_platform_$1.c || die
    rm bootloader_platform_$1.bin || die
    if [[ "$platform" == "Darwin" ]]; then
@@ -23,6 +23,5 @@ function update_bl()
      sed -i 's/unsigned/const unsigned/' bootloader_platform_$1.c || die
    fi
 }
-update_bl 6
-update_bl 8
 update_bl 10
+
