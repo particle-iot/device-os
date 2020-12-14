@@ -1,3 +1,9 @@
+## 2.0.1-alpha.2
+
+### ENHANCEMENTS
+
+- [Gen 3] Remove incompatibility that required intermediate update through Device OS 1.1.0 [#2254](https://github.com/particle-iot/device-os/pull/2254)
+
 ## 2.0.1-alpha.1
 
 ### BUGFIXES
