@@ -149,7 +149,7 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
 #if PLATFORM_ID == PLATFORM_B5SOM
     uint32_t hwVersion = HW_VERSION_UNDEFINED;
     auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
-    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
+    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003 && ncpId() == PLATFORM_NCP_QUECTEL_EG91_E) {
         sconf = SERIAL_8N1;
         LOG(TRACE, "Disable Hardware Flow control!");
     }
@@ -982,7 +982,7 @@ int QuectelNcpClient::initReady(ModemState state) {
 #if PLATFORM_ID == PLATFORM_B5SOM
         uint32_t hwVersion = HW_VERSION_UNDEFINED;
         auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
-        if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
+        if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003 && ncpId() == PLATFORM_NCP_QUECTEL_EG91_E) {
             CHECK_PARSER_OK(parser_.execCommand("AT+IFC=0,0"));
         } else
 #endif // PLATFORM_ID == PLATFORM_B5SOM
