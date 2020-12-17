@@ -1252,7 +1252,7 @@ int MDMParser::getModemStateChangeCount(void) const {
     return _mdm_state_change_count;
 }
 
-bool MDMParser::powerState(void) const {
+bool MDMParser::powerState(void) {
     auto state = HAL_GPIO_Read(RI_UC);
     if (state) {
         // RI is high, which means that V_INT is high as well
@@ -1273,6 +1273,10 @@ bool MDMParser::powerState(void) const {
     state = HAL_GPIO_Read(RI_UC);
     // If RI is still low - we are off
     // If RI is high - we are on
+    if (getModemStateChangeCount() == 0) {
+        _incModemStateChangeCount();
+        _pwr = state;
+    }
     return state;
 }
 
@@ -1385,7 +1389,6 @@ bool MDMParser::powerOff(void)
     } else {
         MDM_INFO("%s failed", POWER_OFF_MSG);
     }
-    HAL_Delay_Milliseconds(1000); // give peace a chance
     // Increment the state change counter to show that the modem has been powered on -> off
     if (!_pwr) {
         _incModemStateChangeCount();
