@@ -472,6 +472,12 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
     process_isr_task_queue();
 
+    static system_tick_t lastlog = 0;
+    if (HAL_Timer_Get_Milli_Seconds() - lastlog >= 20*1000) {
+        lastlog = HAL_Timer_Get_Milli_Seconds();
+        LOG(INFO, "\t2.0.1 based network debug firmware");
+    }
+
     if (!SYSTEM_POWEROFF) {
 
 #if HAL_PLATFORM_SETUP_BUTTON_UX
