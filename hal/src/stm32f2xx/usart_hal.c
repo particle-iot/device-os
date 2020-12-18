@@ -104,12 +104,12 @@ stm32_usart_info_t USART_MAP[HAL_PLATFORM_USART_NUM] = {
      * <usart enabled> used internally and does not appear below
      * <usart transmitting> used internally and does not appear below
      */
-    { USART1, &RCC->APB2ENR, RCC_APB2Periph_USART1, USART1_IRQn, TX,     RX,     GPIO_PinSource9,  GPIO_PinSource10, GPIO_AF_USART1 }, // USART 1
+    { USART1, &RCC->APB2ENR, RCC_APB2Periph_USART1, USART1_IRQn, TX,     RX,     GPIO_PinSource9,  GPIO_PinSource10, GPIO_AF_USART1, PIN_INVALID, PIN_INVALID }, // USART 1
     { USART2, &RCC->APB1ENR, RCC_APB1Periph_USART2, USART2_IRQn, RGBG,   RGBB,   GPIO_PinSource2,  GPIO_PinSource3,  GPIO_AF_USART2, A7,     RGBR } // USART 2
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
    ,{ USART3, &RCC->APB1ENR, RCC_APB1Periph_USART3, USART3_IRQn, TXD_UC, RXD_UC, GPIO_PinSource10, GPIO_PinSource11, GPIO_AF_USART3, CTS_UC, RTS_UC } // USART 3
-   ,{ UART4,  &RCC->APB1ENR, RCC_APB1Periph_UART4,  UART4_IRQn,  C3,     C2,     GPIO_PinSource10, GPIO_PinSource11, GPIO_AF_UART4 } // UART 4
-   ,{ UART5,  &RCC->APB1ENR, RCC_APB1Periph_UART5,  UART5_IRQn,  C1,     C0,     GPIO_PinSource12, GPIO_PinSource2,  GPIO_AF_UART5 } // UART 5
+   ,{ UART4,  &RCC->APB1ENR, RCC_APB1Periph_UART4,  UART4_IRQn,  C3,     C2,     GPIO_PinSource10, GPIO_PinSource11, GPIO_AF_UART4, PIN_INVALID, PIN_INVALID } // UART 4
+   ,{ UART5,  &RCC->APB1ENR, RCC_APB1Periph_UART5,  UART5_IRQn,  C1,     C0,     GPIO_PinSource12, GPIO_PinSource2,  GPIO_AF_UART5, PIN_INVALID, PIN_INVALID } // UART 5
 #endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 };
 
@@ -129,10 +129,11 @@ inline void storeChar(uint16_t c, hal_usart_ring_buffer_t *buffer) {
 
 static uint8_t calculateWordLength(uint32_t config, uint8_t noparity);
 static uint32_t calculateDataBitsMask(uint32_t config);
-static uint8_t validateConfig(uint32_t config);
+static bool validateConfig(hal_usart_interface_t serial, uint32_t config);
 static void configureTransmitReceive(hal_usart_interface_t serial, uint8_t transmit, uint8_t receive);
 static void configurePinsMode(hal_usart_interface_t serial, uint32_t config);
 static void usartEndImpl(hal_usart_interface_t serial, bool end);
+static bool hardwareFlowControlSupported(hal_usart_interface_t serial);
 
 uint8_t calculateWordLength(uint32_t config, uint8_t noparity) {
     // STM32F2 USARTs support only 8-bit or 9-bit communication, however
@@ -169,24 +170,24 @@ uint32_t calculateDataBitsMask(uint32_t config) {
     return (1 << calculateWordLength(config, 1)) - 1;
 }
 
-uint8_t validateConfig(uint32_t config) {
+bool validateConfig(hal_usart_interface_t serial, uint32_t config) {
     // Total word length should be either 8 or 9 bits
     if (calculateWordLength(config, 0) == 0) {
-        return 0;
+        return false;
     }
     // Either No, Even or Odd parity
     if ((config & SERIAL_PARITY) == (SERIAL_PARITY_EVEN | SERIAL_PARITY_ODD)) {
-        return 0;
+        return false;
     }
     if ((config & SERIAL_HALF_DUPLEX) && (config & LIN_MODE)) {
-        return 0;
+        return false;
     }
 
     if (config & LIN_MODE) {
         // Either Master or Slave mode
         // Break detection can still be enabled in both Master and Slave modes
         if ((config & LIN_MODE_MASTER) && (config & LIN_MODE_SLAVE)) {
-            return 0;
+            return false;
         }
         switch (config & LIN_BREAK_BITS) {
             case LIN_BREAK_13B:
@@ -195,12 +196,16 @@ uint8_t validateConfig(uint32_t config) {
                 break;
             }
             default: {
-                return 0;
+                return false;
             }
         }
     }
 
-    return 1;
+    if ((config & SERIAL_FLOW_CONTROL) && !hardwareFlowControlSupported(serial)) {
+        return false;
+    }
+
+    return true;
 }
 
 void configureTransmitReceive(hal_usart_interface_t serial, uint8_t transmit, uint8_t receive) {
@@ -253,9 +258,13 @@ void configurePinsMode(hal_usart_interface_t serial, uint32_t config) {
     }
 }
 
+bool hardwareFlowControlSupported(hal_usart_interface_t serial) {
+    return (usartMap[serial]->rts_pin != PIN_INVALID) && (usartMap[serial]->cts_pin != PIN_INVALID);
+}
+
 void usartEndImpl(hal_usart_interface_t serial, bool end) {
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    if ((usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL) == SERIAL_FLOW_CONTROL_RTS) {
+    if (usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL_RTS) {
         // nRTS is still under control of USART peripheral, release it.
         GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->rts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->rts_pin].gpio_pin_source, 0/*default after reset*/);
         HAL_Pin_Mode(usartMap[serial]->rts_pin, OUTPUT);
@@ -291,28 +300,19 @@ void usartEndImpl(hal_usart_interface_t serial, bool end) {
 
     GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->rx_pin].gpio_peripheral, usartMap[serial]->rx_pinsource, 0);
     GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->tx_pin].gpio_peripheral, usartMap[serial]->tx_pinsource, 0);
-    GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->cts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->cts_pin].gpio_pin_source, 0);
 
     // Switch pins to INPUT
     HAL_Pin_Mode(usartMap[serial]->rx_pin, INPUT);
     HAL_Pin_Mode(usartMap[serial]->tx_pin, end ? INPUT : INPUT_PULLUP);
-    switch (usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL) {
-        case SERIAL_FLOW_CONTROL_CTS: {
-            HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
-            break;
-        }
-        case SERIAL_FLOW_CONTROL_RTS: {
-            HAL_Pin_Mode(usartMap[serial]->rts_pin, end ? INPUT : INPUT_PULLUP);
-            break;
-        }
-        case SERIAL_FLOW_CONTROL_RTS_CTS: {
-            HAL_Pin_Mode(usartMap[serial]->rts_pin, end ? INPUT : INPUT_PULLUP);
-            HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
-            break;
-        }
-        default: {
-            break;
-        }
+
+    if (usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL_RTS) {
+        // NOTE: AF setting has already been reset above
+        HAL_Pin_Mode(usartMap[serial]->rts_pin, end ? INPUT : INPUT_PULLUP);
+    }
+
+    if (usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL_CTS) {
+        GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->cts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->cts_pin].gpio_pin_source, 0);
+        HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
     }
 }
 
@@ -355,7 +355,7 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
         return;
     }
     // Verify UART configuration, exit if it's invalid.
-    if (!validateConfig(config)) {
+    if (!validateConfig(serial, config)) {
         return;
     }
 
