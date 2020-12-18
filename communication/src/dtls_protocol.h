@@ -67,10 +67,11 @@ public:
 		product_details_t deets;
 		deets.size = sizeof(deets);
 		get_product_details(deets);
-		size_t len = Messages::hello(message.buf(), 0,
-				flags, PLATFORM_ID, deets.product_id,
-				deets.product_version, true,
-				device_id, sizeof(device_id));
+		// We could have used the Maximum Fragment Length extension (RFC 6066) to notify the server of the
+		// maximum supported fragment size, however, that extension can't be used with fragment sizes that
+		// are not a power of two, and RFC 8449 that is free of that limitation is not supported by mbedTLS
+		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, PLATFORM_ID, deets.product_id,
+				deets.product_version, true /* confirmable */, device_id, sizeof(device_id), MBEDTLS_SSL_MAX_CONTENT_LEN);
 		return len;
 	}
 

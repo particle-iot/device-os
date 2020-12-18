@@ -73,9 +73,9 @@ public:
 		deets.size = sizeof(deets);
 		get_product_details(deets);
 
-		size_t len = Messages::hello(message.buf(), 0,
-				flags, PLATFORM_ID, deets.product_id,
-				deets.product_version, false, nullptr, 0);
+		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, PLATFORM_ID, deets.product_id,
+				deets.product_version, false /* confirmable */, nullptr /* device_id */, 0 /* device_id_len */,
+				0 /* max_content_len */);
 		return len;
 	}
 
