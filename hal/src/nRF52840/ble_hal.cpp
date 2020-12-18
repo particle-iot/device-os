@@ -1893,7 +1893,6 @@ int BleObject::ConnectionsManager::startPairing(hal_ble_conn_handle_t connHandle
                connection->pairState == BLE_PAIRING_STATE_REJECTED ||
                connection->pairState == BLE_PAIRING_STATE_SEC_REQ_RECEIVED, SYSTEM_ERROR_INVALID_STATE);
     ble_gap_sec_params_t secParams = {};
-    LOG_DEBUG(TRACE, "Own security params: %d, %d, %d, %d, %d, %d", secParams.bond, secParams.mitm, secParams.lesc, secParams.io_caps, secParams.keypress, secParams.oob);
     if (ioCaps_ != BLE_IO_CAPS_NONE) {
         secParams.mitm = 1;
     }
@@ -1907,9 +1906,15 @@ int BleObject::ConnectionsManager::startPairing(hal_ble_conn_handle_t connHandle
         secParams.kdist_peer.enc = 1;
         secParams.kdist_peer.id  = 1;
     }
+    LOG_DEBUG(TRACE, "Own security params: %d, %d, %d, %d, %d, %d", secParams.bond, secParams.mitm, secParams.lesc, secParams.io_caps, secParams.keypress, secParams.oob);
     int ret = sd_ble_gap_authenticate(connection->info.conn_handle, &secParams);
     if (ret != NRF_SUCCESS) {
         connection->pairState = BLE_PAIRING_STATE_NOT_INITIATED;
+        hal_ble_link_evt_t linkEvent = {};
+        linkEvent.type = BLE_EVT_PAIRING_STATUS_UPDATED;
+        linkEvent.conn_handle = connection->info.conn_handle;
+        linkEvent.params.pairing_status = nrf_system_error(ret);
+        notifyLinkEvent(linkEvent);
         return nrf_system_error(ret);
     }
     if (connection->info.role == BLE_ROLE_CENTRAL) {
@@ -2336,6 +2341,11 @@ int BleObject::ConnectionsManager::processSecurityEventFromThread(const ble_evt_
         }
         if (ret != NRF_SUCCESS) {
             connection->pairState = BLE_PAIRING_STATE_NOT_INITIATED;
+            hal_ble_link_evt_t linkEvent = {};
+            linkEvent.type = BLE_EVT_PAIRING_STATUS_UPDATED;
+            linkEvent.conn_handle = connection->info.conn_handle;
+            linkEvent.params.pairing_status = nrf_system_error(ret);
+            notifyLinkEvent(linkEvent);
             LOG(ERROR, "sd_ble_gap_sec_params_reply() failed: %u", (unsigned)ret);
         }
     } else if (event->header.evt_id == BLE_GAP_EVT_PASSKEY_DISPLAY) {
