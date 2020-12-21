@@ -84,3 +84,23 @@ test(UART_01_D0ConfigurationIsIntactWhenSerial1IsDeinitialized) {
 }
 
 #endif // HAL_PLATFORM_GEN == 2
+
+test(UART_02_PinConfigurationNotAffectedWhenEndCalledMultipleTimes) {
+    Serial1.begin(115200, SERIAL_8N1);
+    assertTrue(Serial1.isEnabled());
+    Serial1.end();
+    assertFalse(Serial1.isEnabled());
+
+    pinMode(TX, INPUT_PULLDOWN);
+    pinMode(RX, INPUT_PULLDOWN);
+
+    assertEqual(getPinMode(TX), INPUT_PULLDOWN);
+    assertEqual(getPinMode(RX), INPUT_PULLDOWN);
+
+    Serial1.end();
+    assertEqual(getPinMode(TX), INPUT_PULLDOWN);
+    assertEqual(getPinMode(RX), INPUT_PULLDOWN);
+
+    pinMode(TX, INPUT);
+    pinMode(RX, INPUT);
+}
