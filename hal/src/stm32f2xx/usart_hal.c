@@ -562,6 +562,10 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
 }
 
 void hal_usart_end(hal_usart_interface_t serial) {
+    if (usartMap[serial]->state == HAL_USART_STATE_DISABLED) {
+        // Invalid state
+        return;
+    }
     usartEndImpl(serial, true);
 
     // clear any received data
@@ -573,6 +577,8 @@ void hal_usart_end(hal_usart_interface_t serial) {
 
     usartMap[serial]->state = HAL_USART_STATE_DISABLED;
     usartMap[serial]->transmitting = false;
+    usartMap[serial]->conf.baud_rate = 0;
+    usartMap[serial]->conf.config = 0;
 }
 
 uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data) {
