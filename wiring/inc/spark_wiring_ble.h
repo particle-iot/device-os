@@ -162,9 +162,15 @@ enum class BlePairingEventType : uint8_t {
     STATUS_UPDATED = BLE_EVT_PAIRING_STATUS_UPDATED
 };
 
+struct BlePairingStatus {
+    int status;
+    bool bonded;
+    bool lesc;
+};
+
 union BlePairingEventPayload {
     const uint8_t* passkey;
-    int status;
+    BlePairingStatus status;
 };
 
 struct BlePairingEvent {

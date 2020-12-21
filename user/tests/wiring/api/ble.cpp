@@ -44,8 +44,12 @@ void pairingEventHandlerFunc(const BlePairingEvent& event, void* context) {
     if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
         BlePeerDevice peer = event.peer;
     } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
-        int status = event.payload.status;
+        int status = event.payload.status.status;
+        bool bonded = event.payload.status.bonded;
+        bool lesc = event.payload.status.lesc;
         (void)status;
+        (void)bonded;
+        (void)lesc;
     } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY) {
         uint8_t key = event.payload.passkey[0];
         (void)key;

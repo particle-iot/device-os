@@ -285,6 +285,26 @@ typedef struct hal_ble_att_mtu_updated_evt_t {
     size_t att_mtu_size;
 } hal_ble_att_mtu_updated_evt_t;
 
+typedef struct hal_ble_pairing_request_evt_t {
+    // We may expose the LESC, OOB, bond flags set by peer when necessary.
+    uint8_t reserved[4];
+} hal_ble_pairing_request_evt_t;
+
+typedef struct hal_ble_pairing_passkey_display_evt_t {
+    const uint8_t* passkey;
+} hal_ble_pairing_passkey_display_evt_t;
+
+typedef struct hal_ble_pairing_passkey_input_evt_t {
+    uint8_t reserved[4];
+} hal_ble_pairing_passkey_input_evt_t;
+
+typedef struct hal_ble_pairing_status_updated_evt_t {
+    int status;
+    uint8_t bonded : 1;
+    uint8_t lesc : 1;
+    uint8_t reserved[3];
+} hal_ble_pairing_status_updated_evt_t;
+
 typedef struct hal_ble_link_evt_t {
     hal_ble_evts_type_t type;
     union {
@@ -292,8 +312,10 @@ typedef struct hal_ble_link_evt_t {
         hal_ble_disconnected_evt_t disconnected;
         hal_ble_conn_params_updated_evt_t conn_params_updated;
         hal_ble_att_mtu_updated_evt_t att_mtu_updated;
-        const uint8_t* passkey_display;
-        int pairing_status;
+        hal_ble_pairing_request_evt_t pairing_request;
+        hal_ble_pairing_passkey_display_evt_t passkey_display;
+        hal_ble_pairing_passkey_input_evt_t passkey_input;
+        hal_ble_pairing_status_updated_evt_t pairing_status;
     } params;
     hal_ble_conn_handle_t conn_handle;
 } hal_ble_link_evt_t;

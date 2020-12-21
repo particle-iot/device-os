@@ -206,7 +206,7 @@ static void pairingTestRoutine(bool request) {
             peer = event.peer;
             // Serial.println("Request received");
         } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
-            pairingStatus = event.payload.status;
+            pairingStatus = event.payload.status.status;
             // Serial.println("status updateed");
         } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY) {
             Serial.print("Passkey display: ");
@@ -378,7 +378,7 @@ test(BLE_45_Peripheral_Pairing_Receiption_Reject) {
             Serial.println("Reject pairing request.");
             BLE.rejectPairing(event.peer);
         } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
-            pairingStatus = event.payload.status;
+            pairingStatus = event.payload.status.status;
         }
     });
 

@@ -1203,11 +1203,13 @@ public:
                             .type = static_cast<BlePairingEventType>(event->type)
                         };
                         if (event->type == BLE_EVT_PAIRING_PASSKEY_DISPLAY) {
-                            pairingEvent.payload.passkey = event->params.passkey_display;
+                            pairingEvent.payload.passkey = event->params.passkey_display.passkey;
                             pairingEvent.payloadLen = BLE_PAIRING_PASSKEY_LEN;
                         } else if (event->type == BLE_EVT_PAIRING_STATUS_UPDATED) {
-                            pairingEvent.payload.status = event->params.pairing_status;
-                            pairingEvent.payloadLen = sizeof(int);
+                            pairingEvent.payload.status.status = event->params.pairing_status.status;
+                            pairingEvent.payload.status.bonded = event->params.pairing_status.bonded;
+                            pairingEvent.payload.status.lesc = event->params.pairing_status.lesc;
+                            pairingEvent.payloadLen = sizeof(BlePairingStatus);
                         }
                         impl->pairingEventCallback_(pairingEvent);
                     }

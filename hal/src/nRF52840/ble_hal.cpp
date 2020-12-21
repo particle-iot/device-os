@@ -1913,7 +1913,7 @@ int BleObject::ConnectionsManager::startPairing(hal_ble_conn_handle_t connHandle
         hal_ble_link_evt_t linkEvent = {};
         linkEvent.type = BLE_EVT_PAIRING_STATUS_UPDATED;
         linkEvent.conn_handle = connection->info.conn_handle;
-        linkEvent.params.pairing_status = nrf_system_error(ret);
+        linkEvent.params.pairing_status.status = nrf_system_error(ret);
         notifyLinkEvent(linkEvent);
         return nrf_system_error(ret);
     }
@@ -2344,7 +2344,7 @@ int BleObject::ConnectionsManager::processSecurityEventFromThread(const ble_evt_
             hal_ble_link_evt_t linkEvent = {};
             linkEvent.type = BLE_EVT_PAIRING_STATUS_UPDATED;
             linkEvent.conn_handle = connection->info.conn_handle;
-            linkEvent.params.pairing_status = nrf_system_error(ret);
+            linkEvent.params.pairing_status.status = nrf_system_error(ret);
             notifyLinkEvent(linkEvent);
             LOG(ERROR, "sd_ble_gap_sec_params_reply() failed: %u", (unsigned)ret);
         }
@@ -2355,7 +2355,7 @@ int BleObject::ConnectionsManager::processSecurityEventFromThread(const ble_evt_
         hal_ble_link_evt_t linkEvent = {};
         linkEvent.type = BLE_EVT_PAIRING_PASSKEY_DISPLAY;
         linkEvent.conn_handle = connection->info.conn_handle;
-        linkEvent.params.passkey_display = passkeyDisplay.passkey;
+        linkEvent.params.passkey_display.passkey = passkeyDisplay.passkey;
         notifyLinkEvent(linkEvent);
     } else if (event->header.evt_id == BLE_GAP_EVT_AUTH_KEY_REQUEST) {
         LOG_DEBUG(TRACE, "BLE event: BLE_GAP_EVT_AUTH_KEY_REQUEST");
@@ -2385,7 +2385,9 @@ int BleObject::ConnectionsManager::processSecurityEventFromThread(const ble_evt_
         hal_ble_link_evt_t linkEvent = {};
         linkEvent.type = BLE_EVT_PAIRING_STATUS_UPDATED;
         linkEvent.conn_handle = connection->info.conn_handle;
-        linkEvent.params.pairing_status = authStatus.auth_status;
+        linkEvent.params.pairing_status.status = authStatus.auth_status;
+        linkEvent.params.pairing_status.bonded = authStatus.bonded;
+        linkEvent.params.pairing_status.lesc = authStatus.lesc;
         notifyLinkEvent(linkEvent);
     }
     return SYSTEM_ERROR_NONE;
