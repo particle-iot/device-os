@@ -15,6 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include "dynalib.h"
 #include "hal_platform.h"
 
@@ -38,7 +40,6 @@
 DYNALIB_BEGIN(hal_wlan)
 DYNALIB_FN(0, hal_wlan, wlan_select_antenna, int(WLanSelectAntenna_TypeDef))
 DYNALIB_FN(1, hal_wlan, wlan_scan, int(wlan_scan_result_t, void*))
-DYNALIB_FN(2, hal_wlan, wlan_get_credentials, int(wlan_scan_result_t, void*))
 DYNALIB_END(hal_wlan)
 
 #endif // HAL_PLATFORM_WIFI_COMPAT

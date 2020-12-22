@@ -37,6 +37,9 @@ bool isValidNcpId(uint8_t id) {
     }
 }
 
+const auto NCP_IDX_PRIMARY_QUECTEL = 0;
+const auto NCP_IDX_SECONDARY_ESP32 = 1;
+
 } // unnamed
 
 PlatformNCPIdentifier platform_primary_ncp_identifier() {
@@ -56,10 +59,10 @@ PlatformNCPIdentifier platform_primary_ncp_identifier() {
 int platform_ncp_get_info(int idx, PlatformNCPInfo* info) {
     CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(idx > 0 && idx < platform_ncp_count(), SYSTEM_ERROR_INVALID_ARGUMENT);
-    if (idx == 0) {
+    if (idx == NCP_IDX_PRIMARY_QUECTEL) {
         info->identifier = platform_primary_ncp_identifier();
         info->updatable = false;
-    } else if (idx == 1) {
+    } else if (idx == NCP_IDX_SECONDARY_ESP32) {
         info->identifier = PLATFORM_NCP_ESP32;
         info->updatable = true;
     }

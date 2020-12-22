@@ -101,6 +101,9 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
 #endif // HAL_PLATFORM_MESH_DEPRECATED
     , DYNALIB_TABLE_NAME(hal_posix_syscall)
 #if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_COMPAT
+    // This is a minimal wlan_hal that is as of right now only used on Tracker
+    // It exposes only necessary functionality for scanning and has to come at this position
+    // in order not to introduce dynalib incompatibility.
     , DYNALIB_TABLE_NAME(hal_wlan)
 #endif // HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_COMPAT
 };

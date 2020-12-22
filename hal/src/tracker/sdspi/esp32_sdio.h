@@ -73,7 +73,7 @@ private:
 
     EventGroupHandle_t evGroup_;
 
-    bool txInterruptSupported_;
+    volatile bool txInterruptSupported_;
     spi_context_t context_;
 };
 

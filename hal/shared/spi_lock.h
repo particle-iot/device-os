@@ -18,6 +18,7 @@
 #pragma once
 
 #include "spi_hal.h"
+#include "service_debug.h"
 
 namespace particle {
 
@@ -42,9 +43,8 @@ public:
     ~SpiConfigurationLock() = default;
 
     void lock() {
-        if (!conf_.version) {
-            return;
-        }
+        // Make sure that the configuration has been set
+        SPARK_ASSERT(conf_.version);
 
         if (!hal_spi_is_enabled(spi_)) {
             hal_spi_init(spi_);
