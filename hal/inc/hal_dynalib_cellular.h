@@ -88,12 +88,11 @@ DYNALIB_FN(BASE_CELL_IDX + 1, hal_cellular, cellular_registration_timeout_set, c
 
 #if !HAL_PLATFORM_NCP
 DYNALIB_FN(BASE_CELL_IDX + 2, hal_cellular, cellular_process, cellular_result_t(void*, void*))
-#define BASE_CELL_IDX1 (BASE_CELL_IDX + 3)
+DYNALIB_FN(BASE_CELL_IDX + 3, hal_cellular, cellular_powered, bool(void*))
+#define BASE_CELL_IDX1 (BASE_CELL_IDX + 4)
 #else
 #define BASE_CELL_IDX1 (BASE_CELL_IDX + 2)
 #endif // !HAL_PLATFORM_NCP
-
-DYNALIB_FN(BASE_CELL_IDX1 + 0, hal_cellular, cellular_powered, bool(void*))
 
 DYNALIB_END(hal_cellular)
 
