@@ -168,7 +168,8 @@ WizNetif::WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interru
           spi_(spi),
           cs_(cs),
           reset_(reset),
-          interrupt_(interrupt) {
+          interrupt_(interrupt),
+          pwrState_(IF_POWER_STATE_NONE) {
 
     LOG(INFO, "Creating Wiznet LwIP interface");
 
@@ -326,8 +327,10 @@ err_t WizNetif::initInterface() {
 
     hwReset();
     if (!isPresent()) {
+        pwrState_ = IF_POWER_STATE_DOWN;
         return ERR_IF;
     }
+    pwrState_ = IF_POWER_STATE_UP;
 
     return ERR_OK;
 }
@@ -406,6 +409,12 @@ int WizNetif::up() {
         down_ = false;
     }
 
+    // Just in case. We might call up() directly after powerDown().
+    if (pwrState_ != IF_POWER_STATE_UP) {
+        pwrState_ = IF_POWER_STATE_UP;
+        notifyPowerState();
+    }
+
     return r;
 }
 
@@ -419,16 +428,40 @@ int WizNetif::down() {
 }
 
 int WizNetif::powerUp() {
-    return 0;
+    // FIXME: As long as the interface is initialized,
+    // it must have been powered up as of right now.
+    if (pwrState_ != IF_POWER_STATE_UP) {
+        pwrState_ = IF_POWER_STATE_UP;
+        notifyPowerState();
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 int WizNetif::powerDown() {
-    return down();
+    int ret = down();
+    // FIXME: This don't really power off the module.
+    // Notify the system network manager that the module is powered down
+    // to bypass waitInterfaceOff() as required by system sleep.
+    if (pwrState_ != IF_POWER_STATE_DOWN) {
+        pwrState_ = IF_POWER_STATE_DOWN;
+        notifyPowerState();
+    }
+    return ret;
+}
+
+void WizNetif::notifyPowerState() {
+    if_event evt = {};
+    struct if_event_power_state ev_if_power_state = {};
+    evt.ev_len = sizeof(if_event);
+    evt.ev_type = IF_EVENT_POWER_STATE;
+    evt.ev_power_state = &ev_if_power_state;
+    evt.ev_power_state->state = pwrState_;
+    if_notify_event(interface(), &evt, nullptr);
 }
 
 int WizNetif::getPowerState(if_power_state_t* state) const {
-    // TODO: implement it
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    *state = pwrState_;
+    return SYSTEM_ERROR_NONE;
 }
 
 int WizNetif::getNcpState(unsigned int* state) const {

@@ -61,7 +61,7 @@ static bool system_sleep_network_suspend(network_interface_index index) {
 #endif
     // Turn off the modem
     network_off(index, 0, 0, NULL);
-    LOG(TRACE, "Waiting interface to be off...");
+    LOG(TRACE, "Waiting interface %d to be off...", (int)index);
     // There might be up to 30s delay to turn off the modem for particular platforms.
     network_wait_off(index, 120000/*ms*/, nullptr);
     return resume;
