@@ -119,6 +119,8 @@ void PppNcpNetif::loop(void* arg) {
         self->celMan_->ncpClient()->enable(); // Make sure the client is enabled
         os_semaphore_take(self->netifSemaphore_, timeout, false);
 
+        self->setExpectedInternalState(self->lastNetifEvent_);
+
         if (self->expectedNcpState_ == NcpState::ON && self->celMan_->ncpClient()->ncpState() != NcpState::ON) {
             auto r = self->celMan_->ncpClient()->on();
             if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
@@ -169,7 +171,6 @@ int PppNcpNetif::up() {
         return SYSTEM_ERROR_NONE;
     }
     lastNetifEvent_ = NetifEvent::Up;
-    setExpectedInternalState(lastNetifEvent_);
     // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
     os_semaphore_give(netifSemaphore_, false);
     return SYSTEM_ERROR_NONE;
@@ -190,7 +191,6 @@ int PppNcpNetif::down() {
         // Disable the client to interrupt its current operation
         client->disable();
     }
-    setExpectedInternalState(lastNetifEvent_);
     // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
     os_semaphore_give(netifSemaphore_, false);
     return SYSTEM_ERROR_NONE;
@@ -201,7 +201,6 @@ int PppNcpNetif::powerUp() {
         return SYSTEM_ERROR_NONE;
     }
     lastNetifEvent_ = NetifEvent::PowerOn;
-    setExpectedInternalState(lastNetifEvent_);
     // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
     os_semaphore_give(netifSemaphore_, false);
     return SYSTEM_ERROR_NONE;
@@ -216,7 +215,7 @@ int PppNcpNetif::powerDown() {
      * or hardware pins will fail in some case, which will result a hardreset of the modem. That takes
      * longer to turn off the modem. Simply let the NCP initialization complete and then execute the power
      * off sequence. */
-    setExpectedInternalState(lastNetifEvent_);
+
     // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
     os_semaphore_give(netifSemaphore_, false);
     return SYSTEM_ERROR_NONE;

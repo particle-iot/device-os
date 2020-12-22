@@ -46,12 +46,6 @@ LOG_SOURCE_CATEGORY("net.esp32ncp")
 #include <lwip/stats.h>
 #include "memp_hook.h"
 
-namespace {
-
-constexpr system_tick_t NETIF_EVENT_WAIT_TIMEOUT_MS = 30000;
-
-} // anonymous
-
 using namespace particle::net;
 
 Esp32NcpNetif::Esp32NcpNetif()
@@ -173,6 +167,8 @@ void Esp32NcpNetif::loop(void* arg) {
         self->wifiMan_->ncpClient()->enable(); // Make sure the client is enabled
         os_semaphore_take(self->netifSemaphore_, timeout, false);
 
+        self->setExpectedInternalState(self->lastNetifEvent_);
+
         if (self->expectedNcpState_ == NcpState::ON && self->wifiMan_->ncpClient()->ncpState() != NcpState::ON) {
             auto r = self->wifiMan_->ncpClient()->on();
             if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
@@ -214,7 +210,6 @@ int Esp32NcpNetif::up() {
         return SYSTEM_ERROR_NONE;
     }
     lastNetifEvent_ = NetifEvent::Up;
-    setExpectedInternalState(lastNetifEvent_);
     // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
     os_semaphore_give(netifSemaphore_, false);
     return SYSTEM_ERROR_NONE;
@@ -230,7 +225,6 @@ int Esp32NcpNetif::down() {
         // Disable the client to interrupt its current operation
         client->disable();
     }
-    setExpectedInternalState(lastNetifEvent_);
     // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
     os_semaphore_give(netifSemaphore_, false);
     return SYSTEM_ERROR_NONE;
@@ -241,7 +235,6 @@ int Esp32NcpNetif::powerUp() {
         return SYSTEM_ERROR_NONE;
     }
     lastNetifEvent_ = NetifEvent::PowerOn;
-    setExpectedInternalState(lastNetifEvent_);
     // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
     os_semaphore_give(netifSemaphore_, false);
     return SYSTEM_ERROR_NONE;
@@ -252,7 +245,6 @@ int Esp32NcpNetif::powerDown() {
         return SYSTEM_ERROR_NONE;
     }
     lastNetifEvent_ = NetifEvent::PowerOff;
-    setExpectedInternalState(lastNetifEvent_);
     // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
     os_semaphore_give(netifSemaphore_, false);
     return SYSTEM_ERROR_NONE;
