@@ -53,11 +53,22 @@ protected:
     virtual void netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) override;
 
 private:
+    enum class NetifEvent {
+        None = 0,
+        Up = 1,
+        Down = 2,
+        Exit = 3,
+        PowerOff = 4,
+        PowerOn = 5
+    };
+
     int up();
     int down();
 
     int upImpl();
     int downImpl();
+
+    void setExpectedInternalState(NetifEvent ev);
 
     /* LwIP netif init callback */
     static err_t initCb(netif *netif);
@@ -75,9 +86,11 @@ private:
 
 private:
     os_thread_t thread_ = nullptr;
-    os_queue_t queue_ = nullptr;
+    os_semaphore_t netifSemaphore_ = nullptr;
     std::atomic_bool exit_;
-    volatile bool up_ = false;
+    std::atomic<NetifEvent> lastNetifEvent_;
+    std::atomic<NcpState> expectedNcpState_;
+    std::atomic<NcpConnectionState> expectedConnectionState_;
     particle::WifiNetworkManager* wifiMan_ = nullptr;
     std::unique_ptr<char[]> hostname_;
 };

@@ -46,42 +46,29 @@ LOG_SOURCE_CATEGORY("net.esp32ncp")
 #include <lwip/stats.h>
 #include "memp_hook.h"
 
-namespace {
-
-enum class NetifEvent {
-    None = 0,
-    Up = 1,
-    Down = 2,
-    Exit = 3,
-    PowerOff = 4,
-    PowerOn = 5
-};
-
-// FIXME: unnecessarily large but helps avoid deadlocks/missing events between LwIP and NCP contexts
-const auto NCP_NETIF_EVENT_QUEUE_SIZE = 32;
-
-} // anonymous
-
 using namespace particle::net;
 
 Esp32NcpNetif::Esp32NcpNetif()
         : BaseNetif(),
-          exit_(false) {
+          exit_(false),
+          lastNetifEvent_(NetifEvent::None),
+          expectedNcpState_(NcpState::OFF),
+          expectedConnectionState_(NcpConnectionState::DISCONNECTED) {
 
     LOG(INFO, "Creating Esp32NcpNetif LwIP interface");
 
     if (!netifapi_netif_add(interface(), nullptr, nullptr, nullptr, this, initCb, ethernet_input)) {
-        SPARK_ASSERT(os_queue_create(&queue_, sizeof(NetifEvent), NCP_NETIF_EVENT_QUEUE_SIZE, nullptr) == 0);
+        // A boolean semaphore is sufficient to synchronize the internal thread.
+        SPARK_ASSERT(os_semaphore_create(&netifSemaphore_, 1, 0) == 0);
     }
 }
 
 Esp32NcpNetif::~Esp32NcpNetif() {
     exit_ = true;
-    if (thread_ && queue_) {
-        auto ex = NetifEvent::Exit;
-        os_queue_put(queue_, &ex, 1000, nullptr);
+    if (thread_ && netifSemaphore_) {
+        os_semaphore_give(netifSemaphore_, false);
         os_thread_join(thread_);
-        os_queue_destroy(queue_, nullptr);
+        os_semaphore_destroy(netifSemaphore_);
     }
 }
 
@@ -148,6 +135,29 @@ int Esp32NcpNetif::queryMacAddress() {
     return r;
 }
 
+void Esp32NcpNetif::setExpectedInternalState(NetifEvent ev) {
+    switch (ev) {
+        case NetifEvent::Up: {
+            expectedNcpState_ = NcpState::ON;
+            expectedConnectionState_ = NcpConnectionState::CONNECTED;
+            break;
+        }
+        case NetifEvent::Down: {
+            expectedConnectionState_ = NcpConnectionState::DISCONNECTED;
+            break;
+        }
+        case NetifEvent::PowerOff: {
+            expectedNcpState_ = NcpState::OFF;
+            expectedConnectionState_ = NcpConnectionState::DISCONNECTED;
+            break;
+        }
+        case NetifEvent::PowerOn: {
+            expectedNcpState_ = NcpState::ON;
+            break;
+        }
+    }
+}
+
 void Esp32NcpNetif::loop(void* arg) {
     Esp32NcpNetif* self = static_cast<Esp32NcpNetif*>(arg);
     unsigned int timeout = 100;
@@ -155,44 +165,35 @@ void Esp32NcpNetif::loop(void* arg) {
     self->wifiMan_->ncpClient()->off();
     while(!self->exit_) {
         self->wifiMan_->ncpClient()->enable(); // Make sure the client is enabled
-        NetifEvent ev;
-        const int r = os_queue_take(self->queue_, &ev, timeout, nullptr);
-        if (!r) {
-            // Event
-            switch (ev) {
-                case NetifEvent::Up: {
-                    if (self->upImpl()) {
-                        self->wifiMan_->ncpClient()->off();
-                    }
-                    break;
-                }
-                case NetifEvent::Down: {
-                    self->downImpl();
-                    // self->wifiMan_->ncpClient()->off();
-                    break;
-                }
-                case NetifEvent::PowerOff: {
-                    self->downImpl();
-                    self->wifiMan_->ncpClient()->off();
-                    break;
-                }
-                case NetifEvent::PowerOn: {
-                    self->wifiMan_->ncpClient()->on();
-                    break;
-                }
+        os_semaphore_take(self->netifSemaphore_, timeout, false);
+
+        if (self->expectedNcpState_ == NcpState::ON && self->wifiMan_->ncpClient()->ncpState() != NcpState::ON) {
+            auto r = self->wifiMan_->ncpClient()->on();
+            if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
+                LOG(ERROR, "Failed to initialize cellular NCP client: %d", r);
             }
-        } else {
-            if (self->up_) {
-                LwipTcpIpCoreLock lk;
-                if (!netif_is_link_up(self->interface())) {
-                    // If we don't unlock the mutex here, we can easily cause a deadlock
-                    lk.unlock();
-                    if (self->upImpl()) {
-                        self->wifiMan_->ncpClient()->off();
-                    }
+        }
+        if (self->expectedConnectionState_ == NcpConnectionState::CONNECTED && 
+              self->wifiMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED &&
+              self->wifiMan_->ncpClient()->ncpState() == NcpState::ON) {
+            self->upImpl();
+        }
+
+        if (self->expectedConnectionState_ == NcpConnectionState::DISCONNECTED && 
+              self->wifiMan_->ncpClient()->connectionState() != NcpConnectionState::DISCONNECTED) {
+            self->downImpl();
+        }
+        if (self->expectedNcpState_ == NcpState::OFF && self->wifiMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED) {
+            if_power_state_t pwrState = IF_POWER_STATE_NONE;
+            self->getPowerState(&pwrState);
+            if (pwrState == IF_POWER_STATE_UP) {
+                auto r = self->wifiMan_->ncpClient()->off();
+                if (r != SYSTEM_ERROR_NONE) {
+                    LOG(ERROR, "Failed to turn off NCP client: %d", r);
                 }
             }
         }
+
         self->wifiMan_->ncpClient()->processEvents();
     }
 
@@ -203,41 +204,51 @@ void Esp32NcpNetif::loop(void* arg) {
 }
 
 int Esp32NcpNetif::up() {
-    NetifEvent ev = NetifEvent::Up;
-    int r = os_queue_put(queue_, &ev, 0, nullptr);
-    if (r) {
-        // FIXME: we'll miss this event, just as an attempt to potentially recover
-        // set internal state.
-        up_ = true;
+    // FIXME:
+    // The following separate sequential atomic operations do not make the whole change atomic.
+    // We may end up in an inconsistent state. Same to wherever the changes being made.
+    if (lastNetifEvent_.exchange(NetifEvent::Up, std::memory_order_acq_rel) == NetifEvent::Up) {
+        return SYSTEM_ERROR_NONE;
     }
-    return r;
+    setExpectedInternalState(lastNetifEvent_);
+    // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
+    os_semaphore_give(netifSemaphore_, false);
+    return SYSTEM_ERROR_NONE;
 }
 
 int Esp32NcpNetif::down() {
+    if (lastNetifEvent_.exchange(NetifEvent::Down, std::memory_order_acq_rel) == NetifEvent::Down) {
+        return SYSTEM_ERROR_NONE;
+    }
     const auto client = wifiMan_->ncpClient();
     if (client->connectionState() != NcpConnectionState::CONNECTED) {
         // Disable the client to interrupt its current operation
         client->disable();
     }
-    NetifEvent ev = NetifEvent::Down;
-    int r = os_queue_put(queue_, &ev, 0, nullptr);
-    if (r) {
-        // FIXME: we'll miss this event, just as an attempt to potentially recover
-        // set internal state.
-        up_ = false;
-        client->disable();
-    }
-    return r;
+    setExpectedInternalState(lastNetifEvent_);
+    // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
+    os_semaphore_give(netifSemaphore_, false);
+    return SYSTEM_ERROR_NONE;
 }
 
 int Esp32NcpNetif::powerUp() {
-    NetifEvent ev = NetifEvent::PowerOn;
-    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+    if (lastNetifEvent_.exchange(NetifEvent::PowerOn, std::memory_order_acq_rel) == NetifEvent::PowerOn) {
+        return SYSTEM_ERROR_NONE;
+    }
+    setExpectedInternalState(lastNetifEvent_);
+    // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
+    os_semaphore_give(netifSemaphore_, false);
+    return SYSTEM_ERROR_NONE;
 }
 
 int Esp32NcpNetif::powerDown() {
-    NetifEvent ev = NetifEvent::PowerOff;
-    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+    if (lastNetifEvent_.exchange(NetifEvent::PowerOff, std::memory_order_acq_rel) == NetifEvent::PowerOff) {
+        return SYSTEM_ERROR_NONE;
+    }
+    setExpectedInternalState(lastNetifEvent_);
+    // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
+    os_semaphore_give(netifSemaphore_, false);
+    return SYSTEM_ERROR_NONE;
 }
 
 int Esp32NcpNetif::getPowerState(if_power_state_t* state) const {
@@ -268,14 +279,11 @@ int Esp32NcpNetif::getNcpState(unsigned int* state) const {
 }
 
 int Esp32NcpNetif::upImpl() {
-    up_ = true;
     auto r = queryMacAddress();
     if (r) // Failed to query MAC address
         return r;
     // Ensure that we are disconnected
     downImpl();
-    // Restore up flag
-    up_ = true;
     r = wifiMan_->connect();
     if (r) {
         LOG(TRACE, "Failed to connect to WiFi: %d", r);
@@ -371,7 +379,6 @@ int Esp32NcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, vo
 }
 
 int Esp32NcpNetif::downImpl() {
-    up_ = false;
     wifiMan_->ncpClient()->disconnect();
     LwipTcpIpCoreLock lk;
     netif_set_link_down(interface());

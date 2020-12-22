@@ -45,31 +45,22 @@ using namespace particle::net;
 
 namespace {
 
-enum class NetifEvent {
-    None = 0,
-    Up = 1,
-    Down = 2,
-    Exit = 3,
-    PowerOff = 4,
-    PowerOn = 5
-};
-
 // 5 minutes
 const unsigned PPP_CONNECT_TIMEOUT = 5 * 60 * 1000;
-
-// FIXME: unnecessarily large but helps avoid deadlocks/missing events between LwIP and NCP contexts
-const auto NCP_NETIF_EVENT_QUEUE_SIZE = 32;
 
 } // anonymous
 
 
 PppNcpNetif::PppNcpNetif()
         : BaseNetif(),
-          exit_(false) {
+          exit_(false),
+          lastNetifEvent_(NetifEvent::None),
+          expectedNcpState_(NcpState::OFF),
+          expectedConnectionState_(NcpConnectionState::DISCONNECTED) {
 
     LOG(INFO, "Creating PppNcpNetif LwIP interface");
-
-    SPARK_ASSERT(os_queue_create(&queue_, sizeof(NetifEvent), NCP_NETIF_EVENT_QUEUE_SIZE, nullptr) == 0);
+    // A boolean semaphore is sufficient to synchronize the internal thread.
+    SPARK_ASSERT(os_semaphore_create(&netifSemaphore_, 1, 0) == 0);
 
     client_.setNotifyCallback(pppEventHandlerCb, this);
     client_.start();
@@ -77,11 +68,10 @@ PppNcpNetif::PppNcpNetif()
 
 PppNcpNetif::~PppNcpNetif() {
     exit_ = true;
-    if (thread_ && queue_) {
-        auto ex = NetifEvent::Exit;
-        os_queue_put(queue_, &ex, 1000, nullptr);
+    if (thread_ && netifSemaphore_) {
+        os_semaphore_give(netifSemaphore_, false);
         os_thread_join(thread_);
-        os_queue_destroy(queue_, nullptr);
+        os_semaphore_destroy(netifSemaphore_);
     }
 }
 
@@ -99,41 +89,66 @@ if_t PppNcpNetif::interface() {
     return (if_t)client_.getIf();
 }
 
+void PppNcpNetif::setExpectedInternalState(NetifEvent ev) {
+    switch (ev) {
+        case NetifEvent::Up: {
+            expectedNcpState_ = NcpState::ON;
+            expectedConnectionState_ = NcpConnectionState::CONNECTED;
+            break;
+        }
+        case NetifEvent::Down: {
+            expectedConnectionState_ = NcpConnectionState::DISCONNECTED;
+            break;
+        }
+        case NetifEvent::PowerOff: {
+            expectedNcpState_ = NcpState::OFF;
+            expectedConnectionState_ = NcpConnectionState::DISCONNECTED;
+            break;
+        }
+        case NetifEvent::PowerOn: {
+            expectedNcpState_ = NcpState::ON;
+            break;
+        }
+    }
+}
+
 void PppNcpNetif::loop(void* arg) {
     PppNcpNetif* self = static_cast<PppNcpNetif*>(arg);
     unsigned int timeout = 100;
     while(!self->exit_) {
-        NetifEvent ev;
-        const int r = os_queue_take(self->queue_, &ev, timeout, nullptr);
         self->celMan_->ncpClient()->enable(); // Make sure the client is enabled
-        if (!r) {
-            // Event
-            LOG(TRACE, "PPP netif event from queue: %d", ev);
-            switch (ev) {
-                case NetifEvent::Up: {
-                    self->upImpl();
-                    break;
-                }
-                case NetifEvent::Down: {
-                    self->downImpl();
-                    break;
-                }
-                case NetifEvent::PowerOff: {
-                    self->downImpl();
-                    self->celMan_->ncpClient()->off();
-                    break;
-                }
-                case NetifEvent::PowerOn: {
-                    self->celMan_->ncpClient()->on();
-                    break;
-                }
+        os_semaphore_take(self->netifSemaphore_, timeout, false);
+
+        if (self->expectedNcpState_ == NcpState::ON && self->celMan_->ncpClient()->ncpState() != NcpState::ON) {
+            auto r = self->celMan_->ncpClient()->on();
+            if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
+                LOG(ERROR, "Failed to initialize cellular NCP client: %d", r);
             }
-        } else if (self->up_ && self->celMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED) {
+        }
+        if (self->expectedConnectionState_ == NcpConnectionState::CONNECTED && 
+              self->celMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED &&
+              self->celMan_->ncpClient()->ncpState() == NcpState::ON) {
             self->upImpl();
         }
+
+        if (self->expectedConnectionState_ == NcpConnectionState::DISCONNECTED && 
+              self->celMan_->ncpClient()->connectionState() != NcpConnectionState::DISCONNECTED) {
+            self->downImpl();
+        }
+        if (self->expectedNcpState_ == NcpState::OFF && self->celMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED) {
+            if_power_state_t pwrState = IF_POWER_STATE_NONE;
+            self->getPowerState(&pwrState);
+            if (pwrState == IF_POWER_STATE_UP) {
+                auto r = self->celMan_->ncpClient()->off();
+                if (r != SYSTEM_ERROR_NONE) {
+                    LOG(ERROR, "Failed to turn off NCP client: %d", r);
+                }
+            }
+        }
+
         self->celMan_->ncpClient()->processEvents();
 
-        if (self->up_ && self->celMan_->ncpClient()->connectionState() == NcpConnectionState::CONNECTED) {
+        if (self->expectedConnectionState_ == NcpConnectionState::CONNECTED && self->celMan_->ncpClient()->connectionState() == NcpConnectionState::CONNECTED) {
             auto start = self->connectStart_;
             if (start != 0 && HAL_Timer_Get_Milli_Seconds() - start >= PPP_CONNECT_TIMEOUT) {
                 LOG(ERROR, "Failed to bring up PPP session after %lu seconds", PPP_CONNECT_TIMEOUT / 1000);
@@ -150,41 +165,60 @@ void PppNcpNetif::loop(void* arg) {
 }
 
 int PppNcpNetif::up() {
-    NetifEvent ev = NetifEvent::Up;
-    int r = os_queue_put(queue_, &ev, 0, nullptr);
-    if (r) {
-        // FIXME: we'll miss this event, just as an attempt to potentially recover
-        // set internal state.
-        up_ = true;
+    // FIXME:
+    // The following separate sequential atomic operations do not make the whole change atomic.
+    // We may end up in an inconsistent state. Same to wherever the changes being made.
+    if (lastNetifEvent_.exchange(NetifEvent::Up, std::memory_order_acq_rel) == NetifEvent::Up) {
+        return SYSTEM_ERROR_NONE;
     }
-    return r;
+    setExpectedInternalState(lastNetifEvent_);
+    // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
+    os_semaphore_give(netifSemaphore_, false);
+    return SYSTEM_ERROR_NONE;
 }
 
 int PppNcpNetif::down() {
+    if (lastNetifEvent_.exchange(NetifEvent::Down, std::memory_order_acq_rel) == NetifEvent::Down) {
+        return SYSTEM_ERROR_NONE;
+    }
     const auto client = celMan_->ncpClient();
-    if (client->connectionState() != NcpConnectionState::CONNECTED) {
+    /* Note: It's possible that we have powered on the modem but the NCP client initialization is still in progress.
+     * For example, invokes Cellular.connect() followed by Cellular.disconnect().
+     * If we interrupted the operation, we will probably fail to turn off the modem in enable() that is invoked in the PPP thread.
+     * It would result in a hard reset of the modem, which will take longer to turn off the modem. Simply let the NCP client
+     * finalize the initialization procedure and make it reside in ON state. */
+    if (client->connectionState() != NcpConnectionState::CONNECTED && client->ncpState() == NcpState::ON) {
         // Disable the client to interrupt its current operation
         client->disable();
     }
-    NetifEvent ev = NetifEvent::Down;
-    int r = os_queue_put(queue_, &ev, 0, nullptr);
-    if (r) {
-        // FIXME: we'll miss this event, just as an attempt to potentially recover
-        // set internal state.
-        up_ = false;
-        client->disable();
-    }
-    return r;
+    setExpectedInternalState(lastNetifEvent_);
+    // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
+    os_semaphore_give(netifSemaphore_, false);
+    return SYSTEM_ERROR_NONE;
 }
 
 int PppNcpNetif::powerUp() {
-    NetifEvent ev = NetifEvent::PowerOn;
-    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+    if (lastNetifEvent_.exchange(NetifEvent::PowerOn, std::memory_order_acq_rel) == NetifEvent::PowerOn) {
+        return SYSTEM_ERROR_NONE;
+    }
+    setExpectedInternalState(lastNetifEvent_);
+    // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
+    os_semaphore_give(netifSemaphore_, false);
+    return SYSTEM_ERROR_NONE;
 }
 
 int PppNcpNetif::powerDown() {
-    NetifEvent ev = NetifEvent::PowerOff;
-    return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr);
+    if (lastNetifEvent_.exchange(NetifEvent::PowerOff, std::memory_order_acq_rel) == NetifEvent::PowerOff) {
+        return SYSTEM_ERROR_NONE;
+    }
+    /* Do not abort the on-going NCP initialization, otherwise, turning off the modem using AT command
+     * or hardware pins will fail in some case, which will result a hardreset of the modem. That takes
+     * longer to turn off the modem. Simply let the NCP initialization complete and then execute the power
+     * off sequence. */
+    setExpectedInternalState(lastNetifEvent_);
+    // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
+    os_semaphore_give(netifSemaphore_, false);
+    return SYSTEM_ERROR_NONE;
 }
 
 int PppNcpNetif::getPowerState(if_power_state_t* state) const {
@@ -215,54 +249,42 @@ int PppNcpNetif::getNcpState(unsigned int* state) const {
 }
 
 int PppNcpNetif::upImpl() {
-    up_ = true;
-    auto r = celMan_->ncpClient()->on();
-    if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
-        LOG(ERROR, "Failed to initialize cellular NCP client: %d", r);
-        return r;
-    }
-
-    if (celMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED) {
-        client_.setOutputCallback([](const uint8_t* data, size_t size, void* ctx) -> int {
-            auto c = (CellularNcpClient*)ctx;
-            int r = c->dataChannelWrite(0, data, size);
-            if (!r) {
-                return size;
-            }
-            return r;
-        }, celMan_->ncpClient());
-        client_.setEnterDataModeCallback([](void* ctx) -> int {
-            auto c = (CellularNcpClient*)ctx;
-            return c->enterDataMode();
-        }, celMan_->ncpClient());
-        // Initialize PPP client
-        client_.connect();
-
-        r = celMan_->connect();
-        if (r) {
-            LOG(TRACE, "Failed to connect to cellular network: %d", r);
-            // Make sure to re-enable NCP client
-            celMan_->ncpClient()->enable();
-            // And turn it off just in case
-            celMan_->ncpClient()->off();
+    client_.setOutputCallback([](const uint8_t* data, size_t size, void* ctx) -> int {
+        auto c = (CellularNcpClient*)ctx;
+        int r = c->dataChannelWrite(0, data, size);
+        if (!r) {
+            return size;
         }
+        return r;
+    }, celMan_->ncpClient());
+    client_.setEnterDataModeCallback([](void* ctx) -> int {
+        auto c = (CellularNcpClient*)ctx;
+        return c->enterDataMode();
+    }, celMan_->ncpClient());
+    // Initialize PPP client
+    client_.connect();
+
+    auto r = celMan_->connect();
+    if (r) {
+        LOG(TRACE, "Failed to connect to cellular network: %d", r);
+        // Make sure to re-enable NCP client
+        celMan_->ncpClient()->enable();
+        // And turn it off just in case
+        celMan_->ncpClient()->off();
     }
     return r;
 }
 
 int PppNcpNetif::downImpl() {
     int r = SYSTEM_ERROR_NONE;
-    if (up_) {
-        up_ = false;
-        client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
-        client_.disconnect();
+    client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
+    client_.disconnect();
 
-        if (celMan_->ncpClient()->connectionState() != NcpConnectionState::DISCONNECTED) {
-            r = celMan_->ncpClient()->disconnect();
-            if (r != SYSTEM_ERROR_NONE) {
-                // Make sure to re-enable NCP client
-                celMan_->ncpClient()->enable();
-            }
+    if (celMan_->ncpClient()->connectionState() != NcpConnectionState::DISCONNECTED) {
+        r = celMan_->ncpClient()->disconnect();
+        if (r != SYSTEM_ERROR_NONE) {
+            // Make sure to re-enable NCP client
+            celMan_->ncpClient()->enable();
         }
     }
     return r;
