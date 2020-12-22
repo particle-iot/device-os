@@ -310,6 +310,12 @@ test(I2C_06_I2c_Sleep_FuelGauge) {
     fuel.begin();
     fuel.wakeup();
     auto ver = fuel.getVersion();
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+    if (ver < 0) {
+        skip();
+        return;
+    }
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
     assertMoreOrEqual(ver, 0);
     assertNotEqual(ver, 0x0000);
     assertNotEqual(ver, 0xffff);
