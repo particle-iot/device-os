@@ -76,7 +76,7 @@ StaticRecursiveMutex s_bleMutex;
 
 bool bleInLockedMode = false;
 
-const auto BLE_CONN_CFG_TAG = 1;
+constexpr auto BLE_CONN_CFG_TAG = 1;
 
 // BLE service base start handle.
 const hal_ble_attr_handle_t SERVICES_BASE_START_HANDLE = 0x0001;
@@ -84,12 +84,15 @@ const hal_ble_attr_handle_t SERVICES_BASE_START_HANDLE = 0x0001;
 const hal_ble_attr_handle_t SERVICES_TOP_END_HANDLE = 0xFFFF;
 
 // Pool for BLE event data.
-const size_t BLE_EVT_DATA_POOL_SIZE = 2048;
+constexpr size_t BLE_EVT_DATA_POOL_SIZE = 2048;
 
 // Timeout for a BLE procedure.
-const uint32_t BLE_OPERATION_TIMEOUT_MS = 30000;
+constexpr uint32_t BLE_OPERATION_TIMEOUT_MS = 30000;
 // Delay for GATT Client to send the ATT MTU exchanging request.
-const uint32_t BLE_ATT_MTU_EXCHANGE_DELAY_MS = 800;
+constexpr uint32_t BLE_ATT_MTU_EXCHANGE_DELAY_MS = 800;
+
+constexpr uint8_t BLE_ENC_MIN_KEY_SIZE = 7;
+constexpr uint8_t BLE_ENC_MAX_KEY_SIZE = 16;
 
 static const uint8_t BleAdvEvtTypeMap[] = {
     BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED,
@@ -1894,17 +1897,17 @@ int BleObject::ConnectionsManager::startPairing(hal_ble_conn_handle_t connHandle
                connection->pairState == BLE_PAIRING_STATE_SEC_REQ_RECEIVED, SYSTEM_ERROR_INVALID_STATE);
     ble_gap_sec_params_t secParams = {};
     if (ioCaps_ != BLE_IO_CAPS_NONE) {
-        secParams.mitm = 1;
+        secParams.mitm = true;
     }
     if (connection->info.role == BLE_ROLE_CENTRAL) {
         secParams.io_caps        = toPlatformIoCaps(ioCaps_);
-        secParams.oob            = 0;
-        secParams.min_key_size   = 7;
-        secParams.max_key_size   = 16;
-        secParams.kdist_own.enc  = 1;
-        secParams.kdist_own.id   = 1;
-        secParams.kdist_peer.enc = 1;
-        secParams.kdist_peer.id  = 1;
+        secParams.oob            = false;
+        secParams.min_key_size   = BLE_ENC_MIN_KEY_SIZE;
+        secParams.max_key_size   = BLE_ENC_MAX_KEY_SIZE;
+        secParams.kdist_own.enc  = true;
+        secParams.kdist_own.id   = true;
+        secParams.kdist_peer.enc = true;
+        secParams.kdist_peer.id  = true;
     }
     LOG_DEBUG(TRACE, "Own security params: %d, %d, %d, %d, %d, %d", secParams.bond, secParams.mitm, secParams.lesc, secParams.io_caps, secParams.keypress, secParams.oob);
     int ret = sd_ble_gap_authenticate(connection->info.conn_handle, &secParams);
@@ -2326,16 +2329,16 @@ int BleObject::ConnectionsManager::processSecurityEventFromThread(const ble_evt_
             if (connection->pairState != BLE_PAIRING_STATE_REJECTED) {
                 ble_gap_sec_params_t secParams = {};
                 if (ioCaps_ != BLE_IO_CAPS_NONE) {
-                    secParams.mitm = 1;
+                    secParams.mitm = true;
                 }
                 secParams.io_caps        = toPlatformIoCaps(ioCaps_);
-                secParams.oob            = 0;
-                secParams.min_key_size   = 7;
-                secParams.max_key_size   = 16;
-                secParams.kdist_own.enc  = 1;
-                secParams.kdist_own.id   = 1;
-                secParams.kdist_peer.enc = 1;
-                secParams.kdist_peer.id  = 1;
+                secParams.oob            = false;
+                secParams.min_key_size   = BLE_ENC_MIN_KEY_SIZE;
+                secParams.max_key_size   = BLE_ENC_MAX_KEY_SIZE;
+                secParams.kdist_own.enc  = true;
+                secParams.kdist_own.id   = true;
+                secParams.kdist_peer.enc = true;
+                secParams.kdist_peer.id  = true;
                 ret = sd_ble_gap_sec_params_reply(event->evt.gap_evt.conn_handle, BLE_GAP_SEC_STATUS_SUCCESS, &secParams, nullptr);
             }
         }

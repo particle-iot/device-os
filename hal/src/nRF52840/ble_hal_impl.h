@@ -121,8 +121,6 @@
 #define BLE_MAX_PERIPHERAL_COUNT                    NRF_SDH_BLE_PERIPHERAL_LINK_COUNT
 #define BLE_MAX_CENTRAL_COUNT                       NRF_SDH_BLE_CENTRAL_LINK_COUNT
 
-#define BLE_PAIRING_PASSKEY_LEN                     6
-
 
 typedef uint16_t hal_ble_attr_handle_t;
 typedef uint16_t hal_ble_conn_handle_t;
