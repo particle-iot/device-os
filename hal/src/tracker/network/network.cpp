@@ -26,6 +26,10 @@
 #include "network/ncp/cellular/ncp.h"
 #include "pppncpnetif.h"
 #include "network/ncp_client/quectel/quectel_ncp_client.h"
+#include "network/ncp_client/esp32/esp32_ncp_client.h"
+#include "network/ncp/wifi/wifi_network_manager.h"
+#include "network/ncp/wifi/ncp.h"
+#include "esp32/esp32ncpnetif.h"
 #include "platform_ncp.h"
 #include "lwip_util.h"
 #include "core_hal.h"
@@ -39,6 +43,8 @@ namespace {
 BaseNetif* en2 = nullptr;
 /* pp3 - Cellular */
 BaseNetif* pp3 = nullptr;
+/* wl4 - ESP32 NCP Station */
+BaseNetif* wl4 = nullptr;
 
 bool netifCanForwardIpv4(netif* iface) {
     if (iface && netif_is_up(iface) && netif_is_link_up(iface)) {
@@ -74,7 +80,7 @@ private:
         CHECK(CellularNetworkManager::getActiveSim(&sim));
         CellularNcpClientConfig conf;
         conf.simType(sim);
-        conf.ncpIdentifier(platform_current_ncp_identifier());
+        conf.ncpIdentifier(platform_primary_ncp_identifier());
         conf.eventHandler(PppNcpNetif::ncpEventHandlerCb, pp3);
         conf.dataHandler(PppNcpNetif::ncpDataHandlerCb, pp3);
         // Initialize NCP client
@@ -90,12 +96,48 @@ private:
     }
 };
 
+class WifiNetworkManagerInit {
+public:
+    WifiNetworkManagerInit() {
+        const int ret = init();
+        SPARK_ASSERT(ret == 0);
+    }
+
+    WifiNetworkManager* instance() const {
+        return mgr_.get();
+    }
+
+private:
+    std::unique_ptr<WifiNcpClient> ncpClient_;
+    std::unique_ptr<WifiNetworkManager> mgr_;
+
+    int init() {
+        // Initialize NCP client
+        std::unique_ptr<WifiNcpClient> ncpClient(new(std::nothrow) Esp32NcpClient);
+        CHECK_TRUE(ncpClient, SYSTEM_ERROR_NO_MEMORY);
+        auto conf = NcpClientConfig()
+                .eventHandler(Esp32NcpNetif::ncpEventHandlerCb, wl4)
+                .dataHandler(Esp32NcpNetif::ncpDataHandlerCb, wl4);
+        CHECK(ncpClient->init(std::move(conf)));
+        // Initialize network manager
+        mgr_.reset(new(std::nothrow) WifiNetworkManager(ncpClient.get()));
+        CHECK_TRUE(mgr_, SYSTEM_ERROR_NO_MEMORY);
+        ncpClient_ = std::move(ncpClient);
+        return 0;
+    }
+};
+
 } /* anonymous */
 
 namespace particle {
 
 CellularNetworkManager* cellularNetworkManager() {
     static CellularNetworkManagerInit mgr;
+    return mgr.instance();
+}
+
+WifiNetworkManager* wifiNetworkManager() {
+    static WifiNetworkManagerInit mgr;
     return mgr.instance();
 }
 
@@ -138,6 +180,13 @@ int if_init_platform(void*) {
     if (pp3) {
         ((PppNcpNetif*)pp3)->setCellularManager(cellularNetworkManager());
         ((PppNcpNetif*)pp3)->init();
+    }
+
+    /* wl4 - ESP32 NCP Station */
+    wl4 = new Esp32NcpNetif();
+    if (wl4) {
+        ((Esp32NcpNetif*)wl4)->setWifiManager(wifiNetworkManager());
+        ((Esp32NcpNetif*)wl4)->init();
     }
 
     auto m = mallinfo();

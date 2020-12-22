@@ -139,6 +139,10 @@
 #define WIFI_BOOT               40
 #define WIFI_CS                 52
 
+// For compatibility
+#define ESPEN                   WIFI_EN
+#define ESPBOOT                 WIFI_BOOT
+
 // GPS
 #define GPS_PWR                 41
 #define GPS_INT                 42

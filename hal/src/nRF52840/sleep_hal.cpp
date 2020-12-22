@@ -852,7 +852,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
                     skipUsarts.append(HAL_PLATFORM_CELLULAR_SERIAL);
                 }
 #endif
-#if HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_NCP_SDIO
                 if (networkSource->index == NETWORK_INTERFACE_WIFI_STA) {
                     skipUsarts.append(HAL_PLATFORM_WIFI_SERIAL);
                 }

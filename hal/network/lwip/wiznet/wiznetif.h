@@ -26,6 +26,7 @@
 #include <lwip/netif.h>
 #include <lwip/pbuf.h>
 #include <memory>
+#include "spi_lock.h"
 
 #ifdef __cplusplus
 
@@ -33,7 +34,7 @@ namespace particle { namespace net {
 
 class WizNetif : public BaseNetif {
 public:
-    WizNetif();
+    WizNetif() = delete;
     WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interrupt, const uint8_t mac[6]);
     virtual ~WizNetif();
 
@@ -95,7 +96,7 @@ private:
     static WizNetif* instance_;
 
     std::unique_ptr<char[]> hostname_;
-    hal_spi_info_t spi_info_cache_;
+    SpiConfigurationLock spiLock_;
 };
 
 } } // namespace particle::net

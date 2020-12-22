@@ -44,6 +44,7 @@ LOG_SOURCE_CATEGORY("net.en")
 #include "concurrent_hal.h"
 
 #include "platform_config.h"
+#include "spi_lock.h"
 
 #ifndef WIZNET_SPI_MODE
 #define WIZNET_SPI_MODE SPI_MODE3
@@ -72,7 +73,7 @@ LOG_SOURCE_CATEGORY("net.en")
             break;                                                              \
         }                                                                       \
         /* I'd really love to get rid of this */                                \
-        os_thread_yield();                                                      \
+        HAL_Delay_Milliseconds(1);                                              \
     }                                                                           \
     res;                                                                        \
 })
@@ -80,7 +81,7 @@ LOG_SOURCE_CATEGORY("net.en")
 namespace {
 
 const hal_spi_info_t WIZNET_DEFAULT_CONFIG = {
-    .version = HAL_SPI_INFO_VERSION_2,
+    .version = HAL_SPI_INFO_VERSION,
     .system_clock = 0,
     .default_settings = 0,
     .enabled = true,
@@ -90,63 +91,6 @@ const hal_spi_info_t WIZNET_DEFAULT_CONFIG = {
     .data_mode = WIZNET_SPI_MODE,
     .ss_pin = PIN_INVALID
 };
-
-inline uint8_t calculateClockDivider (uint32_t system_clock, uint32_t clock) {
-    uint8_t result;
-
-    // Integer division results in clean values
-    switch ((clock > 0) ? (system_clock / clock) : 0) {
-    case 2:
-        result = SPI_CLOCK_DIV2;
-        break;
-    case 4:
-        result = SPI_CLOCK_DIV4;
-        break;
-    case 8:
-        result = SPI_CLOCK_DIV8;
-        break;
-    case 16:
-        result = SPI_CLOCK_DIV16;
-        break;
-    case 32:
-        result = SPI_CLOCK_DIV32;
-        break;
-    case 64:
-        result = SPI_CLOCK_DIV64;
-        break;
-    case 128:
-        result = SPI_CLOCK_DIV128;
-        break;
-    case 256:
-    default:
-        result = SPI_CLOCK_DIV256;
-        break;
-    }
-
-    return result;
-}
-
-// FIXME/IMPORTANT: On certain platforms (b5som) leaving this function non-inlineable results in stack corruption/clashing
-// Forcing the function to be always_inline until we can figure out what exactly causes the problem / switch to another compiler version.
-inline hal_spi_info_t __attribute__ ((always_inline)) spiConfigure(hal_spi_interface_t spi, const hal_spi_info_t* conf) {
-    hal_spi_info_t info = { .version = HAL_SPI_INFO_VERSION_2 };
-    hal_spi_info(spi, &info, nullptr);
-
-    SPARK_ASSERT(info.mode == SPI_MODE_MASTER);
-
-    if (!info.enabled || info.ss_pin != conf->ss_pin) {
-        hal_spi_begin_ext(spi, SPI_MODE_MASTER, PIN_INVALID, nullptr);
-    }
-
-    if (conf->default_settings != info.default_settings ||
-            conf->bit_order != info.bit_order ||
-            conf->data_mode != info.data_mode ||
-            conf->clock != info.clock) {
-        hal_spi_set_settings(spi, conf->default_settings, calculateClockDivider(info.system_clock, conf->clock), conf->bit_order, conf->data_mode, nullptr);
-    }
-
-    return info;
-}
 
 const int WIZNET_DEFAULT_TIMEOUT = 100;
 /* FIXME */
@@ -159,16 +103,13 @@ using namespace particle::net;
 
 WizNetif* WizNetif::instance_ = nullptr;
 
-WizNetif::WizNetif() {
-    /* FIXME */
-}
-
 WizNetif::WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interrupt, const uint8_t mac[6])
         : BaseNetif(),
           spi_(spi),
           cs_(cs),
           reset_(reset),
-          interrupt_(interrupt) {
+          interrupt_(interrupt),
+          spiLock_(spi, WIZNET_DEFAULT_CONFIG) {
 
     LOG(INFO, "Creating Wiznet LwIP interface");
 
@@ -186,8 +127,6 @@ WizNetif::WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interru
     /* There is an external 10k pull-up */
     HAL_Pin_Mode(interrupt_, INPUT);
 
-    SPARK_ASSERT(os_semaphore_create(&spiSem_, 1, 0) == 0);
-
     if (!hal_spi_is_enabled(spi_)) {
         hal_spi_init(spi_);
         // Make sure the SPI peripheral is initialized with default settings
@@ -196,16 +135,16 @@ WizNetif::WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interru
         hal_spi_release(spi_, nullptr);
     }
 
+    SPARK_ASSERT(os_semaphore_create(&spiSem_, 1, 0) == 0);
+
     reg_wizchip_cris_cbfunc(
         [](void) -> void {
             auto self = instance();
-            hal_spi_acquire(self->spi_, nullptr);
-            self->spi_info_cache_ = spiConfigure(self->spi_, &WIZNET_DEFAULT_CONFIG);
+            self->spiLock_.lock();
         },
         [](void) -> void {
             auto self = instance();
-            spiConfigure(self->spi_, &self->spi_info_cache_);
-            hal_spi_release(self->spi_, nullptr);
+            self->spiLock_.unlock();
         }
     );
     reg_wizchip_cs_cbfunc(

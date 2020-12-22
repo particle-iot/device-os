@@ -49,7 +49,7 @@ int32_t digitalRead(pin_t pin) {
 }
 #endif
 
-#if PLATFORM_ID==4 || PLATFORM_ID==5 || PLATFORM_ID==6 || PLATFORM_ID==7 || PLATFORM_ID==8
+#if Wiring_WiFi
 #define WIFI_SCAN 1
 #else
 #define WIFI_SCAN 0
@@ -176,13 +176,14 @@ void WiFiTester::printInfo() {
     printItem("DeviceID", deviceID.c_str());
     printItem("Serial", strstr((const char*) serial.value, "-") + 1);
 #if Wiring_WiFi
-    String rssi(WiFi.RSSI());
     printItem("MAC", macAddress.c_str());
 #endif
 
 
 #if Wiring_Cellular
+#if !Wiring_WiFi
     printItem("MAC", "00:00:00:00:00:00");   // needed by the sticker rig
+#endif // !Wiring_WiFi
 
     // GET ICCID and IMEI (Modem with power on required)
     if (isPowerOn()) {
@@ -196,7 +197,8 @@ void WiFiTester::printInfo() {
 
     printItem("SSID", (const char*)serial.value);
 
-#if Wiring_WiFi
+#if Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
+    String rssi(WiFi.RSSI());
     printItem("RSSI", rssi.c_str());
 #else
     // the sticker rig waits for the RSSI value
@@ -353,7 +355,7 @@ void WiFiTester::checkWifiSerial(char c) {
             printInfo();
         }
         else if ((start = strstr(command, cmd_CLEAR))) {
-#if Wiring_WiFi
+#if Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
                 if (WiFi.hasCredentials())
                 WiFi.clearCredentials();
 #endif

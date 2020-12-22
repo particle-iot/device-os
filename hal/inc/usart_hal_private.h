@@ -31,7 +31,9 @@ extern "C" {
 typedef enum HAL_USART_Pvt_Events {
     HAL_USART_PVT_EVENT_READABLE = 0x01,
     HAL_USART_PVT_EVENT_WRITABLE = 0x02,
-    HAL_USART_PVT_EVENT_MAX = HAL_USART_PVT_EVENT_WRITABLE
+    HAL_USART_PVT_EVENT_RESERVED1 = 0x04,
+    HAL_USART_PVT_EVENT_RESERVED2 = 0x08,
+    HAL_USART_PVT_EVENT_MAX = HAL_USART_PVT_EVENT_RESERVED2
 } HAL_USART_Pvt_Events;
 
 int hal_usart_pvt_get_event_group_handle(hal_usart_interface_t serial, EventGroupHandle_t* handle);

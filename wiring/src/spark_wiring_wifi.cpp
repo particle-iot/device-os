@@ -137,6 +137,7 @@ namespace spark {
         return apScan.start();
     }
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
     int WiFiClass::getCredentials(WiFiAccessPoint* results, size_t result_count) {
         APList apList(results, result_count);
         return apList.start();
@@ -159,7 +160,7 @@ namespace spark {
         sig.rssi = 2;
         return sig;
     }
-
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 /********************************* Bug Notice *********************************
 On occasion, "wlan_ioctl_get_scan_results" only returns a single bad entry

@@ -81,6 +81,33 @@ public:
             NetworkClass(NETWORK_INTERFACE_WIFI_STA) {
     }
 
+    void on(void) {
+        network_on(*this, 0, 0, NULL);
+    }
+
+    void off(void) {
+        network_off(*this, 0, 0, NULL);
+    }
+
+    int scan(wlan_scan_result_t callback, void* cookie=NULL) {
+        return wlan_scan(callback, cookie);
+    }
+
+    int scan(WiFiAccessPoint* results, size_t result_count);
+
+    template <typename T>
+    int scan(void (*handler)(WiFiAccessPoint* ap, T* instance), T* instance) {
+        return scan((wlan_scan_result_t)handler, (void*)instance);
+    }
+
+    int selectAntenna(WLanSelectAntenna_TypeDef antenna) {
+        return wlan_select_antenna(antenna);
+    }
+
+    WLanSelectAntenna_TypeDef getAntenna() {
+        return wlan_get_antenna(nullptr);
+    }
+
     WLanConfig* wifi_config() {
         return (WLanConfig*)network_config(*this, 0, NULL);
     }
@@ -94,6 +121,8 @@ public:
         memcpy(mac, wifi_config()->nw.uaMacAddr, 6);
         return mac;
     }
+
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 
     IPAddress localIP() {
         return IPAddress(wifi_config()->nw.aucIP);
@@ -149,14 +178,6 @@ public:
         return network_ready(*this, 0, NULL);
     }
 
-    void on(void) {
-        network_on(*this, 0, 0, NULL);
-    }
-
-    void off(void) {
-        network_off(*this, 0, 0, NULL);
-    }
-    
     void listen(bool begin=true) {
         network_listen(*this, begin ? 0 : 1, NULL);
     }
@@ -221,14 +242,6 @@ public:
         return network_clear_credentials(*this, 0, NULL, NULL);
     }
 
-    int selectAntenna(WLanSelectAntenna_TypeDef antenna) {
-        return wlan_select_antenna(antenna);
-    }
-
-    WLanSelectAntenna_TypeDef getAntenna() {
-        return wlan_get_antenna(nullptr);
-    }
-
 #if !HAL_USE_INET_HAL_POSIX
     IPAddress resolve(const char* name)
     {
@@ -256,17 +269,6 @@ public:
         setIPAddressSource(DYNAMIC_IP);
     }
 
-    int scan(wlan_scan_result_t callback, void* cookie=NULL) {
-        return wlan_scan(callback, cookie);
-    }
-
-    int scan(WiFiAccessPoint* results, size_t result_count);
-
-    template <typename T>
-    int scan(void (*handler)(WiFiAccessPoint* ap, T* instance), T* instance) {
-        return scan((wlan_scan_result_t)handler, (void*)instance);
-    }
-
     int getCredentials(WiFiAccessPoint* results, size_t result_count);
 
 #if !HAL_PLATFORM_NCP
@@ -287,8 +289,8 @@ public:
     {
         return network_set_hostname(*this, 0, hostname, nullptr);
     }
-#endif //!HAL_PLATFORM_NCP
-
+#endif // !HAL_PLATFORM_NCP
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 };
 
 extern WiFiClass WiFi;
