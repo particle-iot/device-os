@@ -34,6 +34,9 @@
  * @{ */
 #define BLE_SIG_ADDR_LEN                                        (6)
 
+// BLE authentication passkey length
+#define BLE_PAIRING_PASSKEY_LEN                                 (6)
+
 // BLE device address type
 typedef enum ble_sig_addr_type_t {
     BLE_SIG_ADDR_TYPE_PUBLIC                                = 0x00, /**< Public (identity) address.*/

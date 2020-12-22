@@ -112,6 +112,14 @@ typedef enum hal_ble_uuid_type_t {
     BLE_UUID_TYPE_128BIT_SHORTED = 2
 } hal_ble_uuid_type_t;
 
+typedef enum hal_ble_pairing_io_caps_t {
+    BLE_IO_CAPS_NONE = 0,
+    BLE_IO_CAPS_DISPLAY_ONLY = 1,
+    BLE_IO_CAPS_DISPLAY_YESNO = 2,
+    BLE_IO_CAPS_KEYBOARD_ONLY = 3,
+    BLE_IO_CAPS_KEYBOARD_DISPLAY = 4
+} hal_ble_pairing_io_caps_t;
+
 typedef enum hal_ble_evts_type_t {
     BLE_EVT_UNKNOWN = 0x00,
     BLE_EVT_ADV_STOPPED = 0x01,
@@ -125,6 +133,10 @@ typedef enum hal_ble_evts_type_t {
     BLE_EVT_DATA_WRITTEN = 0x09,
     BLE_EVT_DATA_NOTIFIED = 0x0A,
     BLE_EVT_CHAR_CCCD_UPDATED = 0x0B,
+    BLE_EVT_PAIRING_REQUEST_RECEIVED = 0x0C,
+    BLE_EVT_PAIRING_PASSKEY_DISPLAY = 0x0D,
+    BLE_EVT_PAIRING_PASSKEY_INPUT = 0x0E,
+    BLE_EVT_PAIRING_STATUS_UPDATED = 0x0F,
     BLE_EVT_MAX = 0x7FFFFFFF
 } hal_ble_evts_type_t;
 
@@ -273,6 +285,26 @@ typedef struct hal_ble_att_mtu_updated_evt_t {
     size_t att_mtu_size;
 } hal_ble_att_mtu_updated_evt_t;
 
+typedef struct hal_ble_pairing_request_evt_t {
+    // We may expose the LESC, OOB, bond flags set by peer when necessary.
+    uint8_t reserved[4];
+} hal_ble_pairing_request_evt_t;
+
+typedef struct hal_ble_pairing_passkey_display_evt_t {
+    const uint8_t* passkey;
+} hal_ble_pairing_passkey_display_evt_t;
+
+typedef struct hal_ble_pairing_passkey_input_evt_t {
+    uint8_t reserved[4];
+} hal_ble_pairing_passkey_input_evt_t;
+
+typedef struct hal_ble_pairing_status_updated_evt_t {
+    int status;
+    uint8_t bonded : 1;
+    uint8_t lesc : 1;
+    uint8_t reserved[3];
+} hal_ble_pairing_status_updated_evt_t;
+
 typedef struct hal_ble_link_evt_t {
     hal_ble_evts_type_t type;
     union {
@@ -280,6 +312,10 @@ typedef struct hal_ble_link_evt_t {
         hal_ble_disconnected_evt_t disconnected;
         hal_ble_conn_params_updated_evt_t conn_params_updated;
         hal_ble_att_mtu_updated_evt_t att_mtu_updated;
+        hal_ble_pairing_request_evt_t pairing_request;
+        hal_ble_pairing_passkey_display_evt_t passkey_display;
+        hal_ble_pairing_passkey_input_evt_t passkey_input;
+        hal_ble_pairing_status_updated_evt_t pairing_status;
     } params;
     hal_ble_conn_handle_t conn_handle;
 } hal_ble_link_evt_t;
@@ -356,6 +392,13 @@ typedef struct hal_ble_cccd_config_t {
     hal_ble_attr_handle_t value_handle;
     ble_sig_cccd_value_t cccd_value;
 } hal_ble_cccd_config_t;
+
+typedef struct hal_ble_pairing_config_t {
+    uint16_t version;
+    uint16_t size;
+    hal_ble_pairing_io_caps_t io_caps;
+    uint8_t reserved[3];
+} hal_ble_pairing_config_t;
 
 /**
  * Acquires the lock for exclusive access to the BLE API.
@@ -780,6 +823,60 @@ int hal_ble_gap_get_connection_info(hal_ble_conn_handle_t conn_handle, hal_ble_c
  * @returns     the RSSI value.
  */
 int hal_ble_gap_get_rssi(hal_ble_conn_handle_t conn_handle, void* reserved);
+
+/**
+ * Set pairing configurations
+ *
+ * @param[in]   config      BLE pairing configurations, @ref hal_ble_pairing_config_t.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_gap_set_pairing_config(const hal_ble_pairing_config_t* config, void* reserved);
+
+/**
+ * Start pairing with the peer device.
+ *
+ * @param[in]   conn_handle BLE connection handle.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_gap_start_pairing(hal_ble_conn_handle_t conn_handle, void* reserved);
+
+/**
+ * Reject pairing request.
+ *
+ * @param[in]   conn_handle BLE connection handle.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_gap_reject_pairing(hal_ble_conn_handle_t conn_handle, void* reserved);
+
+/**
+ * Provide the 6-digits passkey that is observed from the peer's display.
+ *
+ * @param[in]   conn_handle BLE connection handle.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_gap_set_pairing_passkey(hal_ble_conn_handle_t conn_handle, const uint8_t* passkey, void* reserved);
+
+/**
+ * Check if pairing with peer device is in progress
+ *
+ * @param[in]   conn_handle BLE connection handle.
+ *
+ * @returns     true if pairing, otherwise false.
+ */
+bool hal_ble_gap_is_pairing(hal_ble_conn_handle_t conn_handle, void* reserved);
+
+/**
+ * Check if it is paired with peer device
+ *
+ * @param[in]   conn_handle BLE connection handle.
+ *
+ * @returns     true if paired, otherwise false.
+ */
+bool hal_ble_gap_is_paired(hal_ble_conn_handle_t conn_handle, void* reserved);
 
 /**
  * Add a BLE service.
