@@ -30,7 +30,8 @@ enum class SystemPowerFeature {
     NONE = 0,
     PMIC_DETECTION = HAL_POWER_PMIC_DETECTION,
     USE_VIN_SETTINGS_WITH_USB_HOST = HAL_POWER_USE_VIN_SETTINGS_WITH_USB_HOST,
-    DISABLE = HAL_POWER_MANAGEMENT_DISABLE
+    DISABLE = HAL_POWER_MANAGEMENT_DISABLE,
+    DISABLE_CHARGING = HAL_POWER_CHARGE_STATE_DISABLE
 };
 
 class SystemPowerConfiguration {
@@ -42,6 +43,7 @@ public:
     }
 
     SystemPowerConfiguration(SystemPowerConfiguration&&) = default;
+    SystemPowerConfiguration(const hal_power_config& conf) : conf_(conf) {}
     SystemPowerConfiguration& operator=(SystemPowerConfiguration&&) = default;
 
     SystemPowerConfiguration& powerSourceMinVoltage(uint16_t voltage) {
@@ -49,9 +51,17 @@ public:
         return *this;
     }
 
+    uint16_t powerSourceMinVoltage() const {
+        return conf_.vin_min_voltage;
+    }
+
     SystemPowerConfiguration& powerSourceMaxCurrent(uint16_t current) {
         conf_.vin_max_current = current;
         return *this;
+    }
+
+    uint16_t powerSourceMaxCurrent() const {
+        return conf_.vin_max_current;
     }
 
     SystemPowerConfiguration& batteryChargeVoltage(uint16_t voltage) {
@@ -59,14 +69,26 @@ public:
         return *this;
     }
 
+    uint16_t batteryChargeVoltage() const {
+        return conf_.termination_voltage;
+    }
+
     SystemPowerConfiguration& batteryChargeCurrent(uint16_t current) {
         conf_.charge_current = current;
         return *this;
     }
 
+    uint16_t batteryChargeCurrent() const {
+        return conf_.charge_current;
+    }
+
     SystemPowerConfiguration& feature(EnumFlags<SystemPowerFeature> f) {
         conf_.flags |= f.value();
         return *this;
+    }
+
+    bool isFeatureSet(EnumFlags<SystemPowerFeature> f) const {
+        return (conf_.flags & f.value()) ? true : false;
     }
 
     const hal_power_config* config() const {

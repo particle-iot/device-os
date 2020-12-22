@@ -45,6 +45,9 @@ typedef enum hal_power_config_flags {
     HAL_POWER_MANAGEMENT_DISABLE = 0x100,
     HAL_POWER_USE_VIN_SETTINGS_WITH_USB_HOST = 0x200,
 
+    // Disables power management control over enabling charging on PMIC
+    HAL_POWER_CHARGE_STATE_DISABLE = 0x400,
+
     HAL_POWER_FLAG_MAX = 0x7fffffff
 } hal_power_config_flags;
 

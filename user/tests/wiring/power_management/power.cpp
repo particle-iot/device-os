@@ -184,6 +184,16 @@ test(POWER_01_PoweredByUsbHostAndBatteryStateIsValid) {
         return;
     }
 
+    auto cfg = System.getPowerConfiguration();
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::PMIC_DETECTION), true);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST), false);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE), false);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING), false);
+    assertEqual(cfg.powerSourceMaxCurrent(), particle::power::DEFAULT_INPUT_CURRENT_LIMIT);
+    assertEqual(cfg.powerSourceMinVoltage(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
+    assertEqual(cfg.batteryChargeCurrent(), particle::power::DEFAULT_CHARGE_CURRENT);
+    assertEqual(cfg.batteryChargeVoltage(), particle::power::DEFAULT_TERMINATION_VOLTAGE);
+
     // Allow some time for the power management subsystem to settle
     waitFor(powerManagementSettled, 10000);
 
@@ -314,6 +324,16 @@ test(POWER_06_PoweredByVinAndBatteryStateIsValid) {
         return;
     }
 
+    auto cfg = System.getPowerConfiguration();
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::PMIC_DETECTION), true);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST), true);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE), false);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING), false);
+    assertEqual(cfg.powerSourceMaxCurrent(), particle::power::DEFAULT_INPUT_CURRENT_LIMIT);
+    assertEqual(cfg.powerSourceMinVoltage(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
+    assertEqual(cfg.batteryChargeCurrent(), particle::power::DEFAULT_CHARGE_CURRENT);
+    assertEqual(cfg.batteryChargeVoltage(), particle::power::DEFAULT_TERMINATION_VOLTAGE);
+
     // Allow some time for the power management subsystem to settle
     waitFor(powerManagementSettled, 10000);
     assertEqual(System.powerSource(), (int)POWER_SOURCE_VIN);
@@ -435,6 +455,16 @@ test(POWER_11_ApplyingDefaultPowerManagementConfigurationInRuntimeWorksAsIntende
     assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
     delay(1000);
 
+    auto cfg = System.getPowerConfiguration();
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::PMIC_DETECTION), false);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST), true);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE), false);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING), false);
+    assertEqual(cfg.powerSourceMaxCurrent(), particle::power::DEFAULT_INPUT_CURRENT_LIMIT);
+    assertEqual(cfg.powerSourceMinVoltage(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
+    assertEqual(cfg.batteryChargeCurrent(), particle::power::DEFAULT_CHARGE_CURRENT);
+    assertEqual(cfg.batteryChargeVoltage(), particle::power::DEFAULT_TERMINATION_VOLTAGE);
+
     PMIC power(true);
     assertEqual(power.getInputCurrentLimit(), particle::power::DEFAULT_INPUT_CURRENT_LIMIT);
     assertEqual(power.getInputVoltageLimit(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
@@ -462,6 +492,16 @@ test(POWER_12_ApplyingCustomPowerManagementConfigurationInRuntimeWorksAsIntended
     assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
     delay(1000);
 
+    auto cfg = System.getPowerConfiguration();
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::PMIC_DETECTION), true);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST), true);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE), false);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING), false);
+    assertEqual(cfg.powerSourceMaxCurrent(), 550);
+    assertEqual(cfg.powerSourceMinVoltage(), 4300);
+    assertEqual(cfg.batteryChargeCurrent(), 850);
+    assertEqual(cfg.batteryChargeVoltage(), 4210);
+
     PMIC power(true);
     assertEqual(power.getInputCurrentLimit(), 500);
     assertEqual(power.getInputVoltageLimit(), 4280);
@@ -478,6 +518,16 @@ test(POWER_13_AppliedConfigurationIsPersisted) {
         skip();
         return;
     }
+
+    auto cfg = System.getPowerConfiguration();
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::PMIC_DETECTION), true);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST), true);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE), false);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING), false);
+    assertEqual(cfg.powerSourceMaxCurrent(), 550);
+    assertEqual(cfg.powerSourceMinVoltage(), 4300);
+    assertEqual(cfg.batteryChargeCurrent(), 850);
+    assertEqual(cfg.batteryChargeVoltage(), 4210);
 
     PMIC power(true);
     assertEqual(power.getInputCurrentLimit(), 500);
@@ -500,6 +550,20 @@ test(POWER_14_PmicDetectionFlagIsCompatibleWithOldDeviceOsVersions) {
 #endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
     assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
     delay(1000);
+
+    auto cfg = System.getPowerConfiguration();
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::PMIC_DETECTION), true);
+#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST), true);
+#else
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST), false);
+#endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE), false);
+    assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING), false);
+    assertEqual(cfg.powerSourceMaxCurrent(), particle::power::DEFAULT_INPUT_CURRENT_LIMIT);
+    assertEqual(cfg.powerSourceMinVoltage(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
+    assertEqual(cfg.batteryChargeCurrent(), particle::power::DEFAULT_CHARGE_CURRENT);
+    assertEqual(cfg.batteryChargeVoltage(), particle::power::DEFAULT_TERMINATION_VOLTAGE);
 
     // Feature enabled
     uint8_t v;
@@ -530,6 +594,20 @@ test(POWER_15_DisableFeatureFlag) {
         delay(5000);
         notifyAndReset();
     } else if (g_state == STATE11_MAGICK) {
+        auto cfg = System.getPowerConfiguration();
+        assertEqual(cfg.isFeatureSet(SystemPowerFeature::PMIC_DETECTION), false);
+#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+        assertEqual(cfg.isFeatureSet(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST), true);
+#else
+        assertEqual(cfg.isFeatureSet(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST), false);
+#endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+        assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE), true);
+        assertEqual(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING), false);
+        assertEqual(cfg.powerSourceMaxCurrent(), particle::power::DEFAULT_INPUT_CURRENT_LIMIT);
+        assertEqual(cfg.powerSourceMinVoltage(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
+        assertEqual(cfg.batteryChargeCurrent(), particle::power::DEFAULT_CHARGE_CURRENT);
+        assertEqual(cfg.batteryChargeVoltage(), particle::power::DEFAULT_TERMINATION_VOLTAGE);
+
         assertEqual(System.batteryState(), (int)BATTERY_STATE_UNKNOWN);
         assertEqual(System.powerSource(), (int)POWER_SOURCE_UNKNOWN);
         // Restore default power management configuration

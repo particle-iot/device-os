@@ -423,9 +423,14 @@ void PMIC::reset() {
 bool PMIC::enableCharging() {
     std::lock_guard<PMIC> l(*this);
     byte DATA = readRegister(POWERON_CONFIG_REGISTER);
-    DATA = DATA & 0b11001111;
-    DATA = DATA | 0b00010000;
-    writeRegister(POWERON_CONFIG_REGISTER, DATA);
+    // Check charging bits 4 and 5 to see if charging is already enabled.  Skip if so.
+    if ((DATA & 0b00110000) != 0b00010000) {
+        // Mask charging bits
+        DATA = DATA & 0b11001111;
+        // Set charging to enabled
+        DATA = DATA | 0b00010000;
+        writeRegister(POWERON_CONFIG_REGISTER, DATA);
+    }
     return 1;
 }
 
@@ -438,7 +443,11 @@ bool PMIC::enableCharging() {
 bool PMIC::disableCharging() {
     std::lock_guard<PMIC> l(*this);
     byte DATA = readRegister(POWERON_CONFIG_REGISTER);
-    writeRegister(POWERON_CONFIG_REGISTER, (DATA & 0b11001111));
+    // Check charging bits 4 and 5 to see if charging is already disabled.  Skip if so.
+    if ((DATA & 0b00110000) != 0) {
+        // Clear bits 4 and 5
+        writeRegister(POWERON_CONFIG_REGISTER, (DATA & 0b11001111));
+    }
     return 1;
 }
 
@@ -822,6 +831,26 @@ bool PMIC::setWatchdog(byte time) {
     byte DATA = readRegister(CHARGE_TIMER_CONTROL_REGISTER);
     time &= 0b11;
     writeRegister(CHARGE_TIMER_CONTROL_REGISTER, (DATA & 0b11001110) | (time << 4));
+    return 1;
+}
+
+bool PMIC::disableSafetyTimer(void) {
+    std::lock_guard<PMIC> l(*this);
+    byte DATA = readRegister(CHARGE_TIMER_CONTROL_REGISTER);
+    if (DATA & 0b00001000) {
+        DATA = DATA & 0b11110111; // clear bit 3
+        writeRegister(CHARGE_TIMER_CONTROL_REGISTER, DATA);
+    }
+    return 1;
+}
+
+bool PMIC::enableSafetyTimer(void) {
+    std::lock_guard<PMIC> l(*this);
+    byte DATA = readRegister(CHARGE_TIMER_CONTROL_REGISTER);
+    if ((DATA & 0b00001000) == 0) {
+        DATA = DATA | 0b00001000; // set bit 3
+        writeRegister(CHARGE_TIMER_CONTROL_REGISTER, DATA);
+    }
     return 1;
 }
 
