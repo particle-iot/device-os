@@ -165,13 +165,12 @@ void PppNcpNetif::loop(void* arg) {
 }
 
 int PppNcpNetif::up() {
-    if (lastNetifEvent_ == NetifEvent::Up) {
-        return SYSTEM_ERROR_NONE;
-    }
     // FIXME:
     // The following separate sequential atomic operations do not make the whole change atomic.
     // We may end up in an inconsistent state. Same to wherever the changes being made.
-    lastNetifEvent_ = NetifEvent::Up;
+    if (lastNetifEvent_.exchange(NetifEvent::Up, std::memory_order_acq_rel) == NetifEvent::Up) {
+        return SYSTEM_ERROR_NONE;
+    }
     setExpectedInternalState(lastNetifEvent_);
     // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
     os_semaphore_give(netifSemaphore_, false);
@@ -179,10 +178,9 @@ int PppNcpNetif::up() {
 }
 
 int PppNcpNetif::down() {
-    if (lastNetifEvent_ == NetifEvent::Down) {
+    if (lastNetifEvent_.exchange(NetifEvent::Down, std::memory_order_acq_rel) == NetifEvent::Down) {
         return SYSTEM_ERROR_NONE;
     }
-    lastNetifEvent_ = NetifEvent::Down;
     const auto client = celMan_->ncpClient();
     /* Note: It's possible that we have powered on the modem but the NCP client initialization is still in progress.
      * For example, invokes Cellular.connect() followed by Cellular.disconnect().
@@ -200,10 +198,9 @@ int PppNcpNetif::down() {
 }
 
 int PppNcpNetif::powerUp() {
-    if (lastNetifEvent_ == NetifEvent::PowerOn) {
+    if (lastNetifEvent_.exchange(NetifEvent::PowerOn, std::memory_order_acq_rel) == NetifEvent::PowerOn) {
         return SYSTEM_ERROR_NONE;
     }
-    lastNetifEvent_ = NetifEvent::PowerOn;
     setExpectedInternalState(lastNetifEvent_);
     // It's fine even if we failed to give the semaphore, as we specify a timeout taking the semaphore.
     os_semaphore_give(netifSemaphore_, false);
@@ -211,10 +208,9 @@ int PppNcpNetif::powerUp() {
 }
 
 int PppNcpNetif::powerDown() {
-    if (lastNetifEvent_ == NetifEvent::PowerOff) {
+    if (lastNetifEvent_.exchange(NetifEvent::PowerOff, std::memory_order_acq_rel) == NetifEvent::PowerOff) {
         return SYSTEM_ERROR_NONE;
     }
-    lastNetifEvent_ = NetifEvent::PowerOff;
     /* Do not abort the on-going NCP initialization, otherwise, turning off the modem using AT command
      * or hardware pins will fail in some case, which will result a hardreset of the modem. That takes
      * longer to turn off the modem. Simply let the NCP initialization complete and then execute the power
