@@ -1047,6 +1047,11 @@ void Spark_Protocol_Init(void)
         }
 #endif // HAL_PLATFORM_COMPRESSED_OTA
 
+        spark_protocol_set_connection_property(sp, particle::protocol::Connection::OTA_CHUNK_SIZE, HAL_OTA_ChunkSize(),
+                nullptr, nullptr);
+        spark_protocol_set_connection_property(sp, particle::protocol::Connection::MAX_FIRMWARE_BINARY_SIZE,
+                HAL_OTA_FlashLength(), nullptr, nullptr);
+
         Particle.subscribe("spark", SystemEvents, MY_DEVICES);
         Particle.subscribe("particle", SystemEvents, MY_DEVICES);
 
@@ -1120,20 +1125,6 @@ int Spark_Handshake(bool presence_announce)
         if (!HAL_Get_Device_Identifier(NULL, buf, sizeof(buf), 0, NULL) && *buf) {
             LOG(INFO,"Send spark/device/ident/0 event");
             publishEvent("spark/device/ident/0", buf);
-        }
-
-        bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-#if PLATFORM_ID!=PLATFORM_ELECTRON_PRODUCTION || !defined(MODULAR_FIRMWARE)
-        ultoa(HAL_OTA_FlashLength(), buf, 10);
-        LOG(INFO,"Send spark/hardware/max_binary event");
-        publishEvent("spark/hardware/max_binary", buf);
-#endif
-
-        uint32_t chunkSize = HAL_OTA_ChunkSize();
-        if (chunkSize!=512 || !udp) {
-            ultoa(chunkSize, buf, 10);
-            LOG(INFO,"spark/hardware/ota_chunk_size event");
-            publishEvent("spark/hardware/ota_chunk_size", buf);
         }
 
         publishSafeModeEventIfNeeded();

@@ -192,17 +192,17 @@ void spark_protocol_get_product_details(ProtocolFacade* protocol, product_detail
     protocol->get_product_details(*details);
 }
 
-int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id,
-        unsigned data, const particle::protocol::connection_properties_t* conn_prop, void* reserved)
-{
+int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property, int value, const void* data,
+        void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
-    switch (property_id) {
+    switch (property) {
     case particle::protocol::Connection::PING: {
-        protocol->set_keepalive(data, conn_prop->keepalive_source);
+        const auto d = (const particle::protocol::connection_properties_t*)data;
+        protocol->set_keepalive(value, d->keepalive_source);
         return 0;
     }
     case particle::protocol::Connection::FAST_OTA: {
-        protocol->set_fast_ota(data);
+        protocol->set_fast_ota(value);
         return 0;
     }
     case particle::protocol::Connection::DEVICE_INITIATED_DESCRIBE: {
@@ -213,10 +213,19 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
         protocol->enable_compressed_ota();
         return 0;
     }
+    case particle::protocol::Connection::OTA_CHUNK_SIZE: {
+        protocol->set_ota_chunk_size(value);
+        return 0;
+    }
+    case particle::protocol::Connection::MAX_FIRMWARE_BINARY_SIZE: {
+        protocol->set_max_firmware_binary_size(value);
+        return 0;
+    }
     default:
         return particle::protocol::ProtocolError::NOT_IMPLEMENTED;
     }
 }
+
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value, const void* data)
 {
     ASSERT_ON_SYSTEM_THREAD();

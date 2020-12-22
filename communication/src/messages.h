@@ -54,8 +54,8 @@ public:
 	static CoAPMessageType::Enum decodeType(const uint8_t* buf, size_t length);
 	static size_t describe_post_header(uint8_t buf[], size_t buffer_size, uint16_t message_id, uint8_t desc_flags);
 	static size_t hello(uint8_t* buf, message_id_t message_id, uint8_t flags, uint16_t platform_id, uint16_t product_id,
-			uint16_t product_firmware_version, bool confirmable, const uint8_t* device_id, uint16_t device_id_len,
-			uint16_t max_content_len);
+			uint16_t product_firmware_version, bool confirmable, const uint8_t* device_id, size_t device_id_len,
+			size_t max_content_len, size_t max_ota_chunk_size, size_t max_binary_size);
 
 	static size_t update_done(uint8_t* buf, message_id_t message_id, bool confirmable);
 	static size_t update_done(uint8_t* buf, message_id_t message_id, const uint8_t* result, size_t result_len, bool confirmable);

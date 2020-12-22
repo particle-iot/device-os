@@ -18,8 +18,11 @@
 
 namespace particle
 {
+
 namespace protocol
 {
+
+const size_t DEFAULT_OTA_CHUNK_SIZE = 512;
 
 /**
  * Tie ALL the bits together.
@@ -166,6 +169,16 @@ protected:
 	 * If we have a bone-fide CoAP layer this will eventually disappear into that layer, just like message-id has.
 	 */
 	token_t next_token;
+
+	/**
+	 * Maximum size of an OTA update chunk.
+	 */
+	size_t ota_chunk_size;
+
+	/**
+	 * Maximum size of a firmware binary that can be sent to the device OTA.
+	 */
+	size_t max_firmware_binary_size;
 
 	void set_protocol_flags(uint32_t flags)
 	{
@@ -327,7 +340,9 @@ public:
 			publisher(this),
 			last_ack_handlers_update(0),
 			protocol_flags(0),
-			initialized(false)
+			initialized(false),
+			ota_chunk_size(DEFAULT_OTA_CHUNK_SIZE),
+			max_firmware_binary_size(0) // Unlimited
 	{
 	}
 
@@ -361,6 +376,16 @@ public:
 	void enable_compressed_ota()
 	{
 		protocol_flags |= ProtocolFlag::COMPRESSED_OTA;
+	}
+
+	void set_ota_chunk_size(size_t size)
+	{
+		ota_chunk_size = size;
+	}
+
+	void set_max_firmware_binary_size(size_t size)
+	{
+		max_firmware_binary_size = size;
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)

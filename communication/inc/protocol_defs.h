@@ -107,9 +107,9 @@ namespace ChunkReceivedCode {
 enum DescriptionType {
     DESCRIBE_SYSTEM = 1<<0,            	// modules
     DESCRIBE_APPLICATION = 1<<1,       	// functions and variables
-	DESCRIBE_METRICS = 1<<2,				// metrics/diagnostics
+    DESCRIBE_METRICS = 1<<2,				// metrics/diagnostics
     DESCRIBE_DEFAULT = DESCRIBE_SYSTEM | DESCRIBE_APPLICATION,
-	DESCRIBE_MAX = (1<<3)-1
+    DESCRIBE_MAX = (1<<3)-1
 };
 
 namespace Connection
@@ -123,7 +123,9 @@ enum Enum
     PING = 0, ///< Set keepalive interval.
     FAST_OTA = 1, ///< Enable/disable fast OTA.
     DEVICE_INITIATED_DESCRIBE = 2, ///< Enable device-initiated describe messages.
-    COMPRESSED_OTA = 3 ///< Enable support for compressed/combined OTA updates.
+    COMPRESSED_OTA = 3, ///< Enable support for compressed/combined OTA updates.
+    OTA_CHUNK_SIZE = 4, ///< Set the maximum size of an OTA update chunk.
+    MAX_FIRMWARE_BINARY_SIZE = 5 ///< Set the maximum size of a firmware binary that can be sent to the device OTA.
 };
 
 }
