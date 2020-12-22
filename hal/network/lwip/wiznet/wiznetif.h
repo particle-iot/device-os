@@ -41,6 +41,7 @@ public:
     virtual int powerDown() override;
 
     virtual int getPowerState(if_power_state_t* state) const override;
+    virtual int getNcpState(unsigned int* state) const override;
 
     static WizNetif* instance() {
         return instance_;

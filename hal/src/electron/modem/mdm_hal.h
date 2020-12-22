@@ -493,6 +493,10 @@ public:
 
     int process();
 
+    /** Detects the modem power state
+    */
+    bool powerState(void);
+
 protected:
     /** Write bytes to the physical interface. This function should be
         implemented in a inherited class.
@@ -533,10 +537,6 @@ protected:
         \param index the index of the received SMS
     */
     void SMSreceived(int index);
-
-    /** Detects the modem power state
-    */
-    bool powerState(void);
 
 protected:
     // String helper to prevent buffer overrun

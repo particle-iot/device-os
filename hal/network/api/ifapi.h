@@ -60,7 +60,9 @@ typedef enum if_xflags_t {
     IFXF_DHCP6        = 0x20000,
     IFXF_AUTOIP       = 0x40000,
 
-    IFXF_CANTCHANGE   = 0
+    IFXF_READY        = 0x100000,
+
+    IFXF_CANTCHANGE   = (IFXF_READY)
 } if_xflags_t;
 
 #ifndef IF_NAMESIZE
@@ -141,7 +143,8 @@ typedef enum if_event_type_t {
     IF_EVENT_LINK                 = 0x04,
     IF_EVENT_ADDR                 = 0x05,
     IF_EVENT_LLADDR               = 0x06,
-    IF_EVENT_POWER_STATE          = 0x07
+    IF_EVENT_POWER_STATE          = 0x07,
+    IF_EVENT_PHY_STATE            = 0x08,
 } if_event_type_t;
 
 typedef enum if_state_t {
@@ -164,6 +167,12 @@ typedef enum if_power_state_t {
     IF_POWER_STATE_POWERING_UP = 0x04,
 } if_power_state_t;
 
+typedef enum if_phy_state_t {
+    IF_PHY_STATE_UNKNOWN = 0x00,
+    IF_PHY_STATE_OFF = 0x01,
+    IF_PHY_STATE_ON = 0x02
+} if_phy_state_t;
+
 struct if_event_state {
     uint8_t state;
 };
@@ -173,6 +182,10 @@ struct if_event_link_state {
 };
 
 struct if_event_power_state {
+    uint8_t state;
+};
+
+struct if_event_phy_state {
     uint8_t state;
 };
 
@@ -196,6 +209,7 @@ struct if_event {
         struct if_event_addr* ev_if_addr;
         struct if_event_lladdr* ev_if_lladdr;
         struct if_event_power_state* ev_power_state;
+        struct if_event_phy_state* ev_phy_state;
     };
 };
 

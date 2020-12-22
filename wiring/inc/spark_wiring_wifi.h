@@ -156,7 +156,7 @@ public:
     void off(void) {
         network_off(*this, 0, 0, NULL);
     }
-
+    
     void listen(bool begin=true) {
         network_listen(*this, begin ? 0 : 1, NULL);
     }

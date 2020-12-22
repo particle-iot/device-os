@@ -2100,6 +2100,7 @@ int SaraNcpClient::modemPowerOff() {
 
 int SaraNcpClient::modemSoftPowerOff() {
     if (modemPowerState()) {
+        ncpPowerState(NcpPowerState::TRANSIENT_OFF);
         LOG(TRACE, "Try powering modem off using AT command");
         if (!ready_) {
             LOG(ERROR, "NCP client is not ready");
@@ -2110,7 +2111,6 @@ int SaraNcpClient::modemSoftPowerOff() {
             LOG(ERROR, "AT+CPWROFF command is not responding");
             return SYSTEM_ERROR_AT_NOT_OK;
         }
-        ncpPowerState(NcpPowerState::TRANSIENT_OFF);
         system_tick_t now = HAL_Timer_Get_Milli_Seconds();
         LOG(TRACE, "Waiting the modem to be turned off...");
         // Verify that the module was powered down by checking the VINT pin up to 10 sec

@@ -644,6 +644,16 @@ int if_get_xflags(if_t iface, unsigned int* xflags) {
 
     /* TODO: WOL */
 
+    ifxf &= ~IFXF_READY;
+    auto bnetif = getBaseNetif(iface);
+    if (bnetif) {
+        unsigned int state;
+        bnetif->getNcpState(&state);
+        if (state) {
+            ifxf |= IFXF_READY;
+        }
+    }
+
     *xflags = ifxf;
 
     return 0;

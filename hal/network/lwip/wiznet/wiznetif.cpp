@@ -431,6 +431,11 @@ int WizNetif::getPowerState(if_power_state_t* state) const {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
+int WizNetif::getNcpState(unsigned int* state) const {
+    // TODO: implement it
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
 int WizNetif::openRaw() {
     LwipTcpIpCoreLock lk;
 

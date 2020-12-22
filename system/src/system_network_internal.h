@@ -142,7 +142,9 @@ struct NetworkInterface
     virtual void setup()=0;
 
     virtual int on()=0;
+    virtual bool isOn()=0;
     virtual void off(bool disconnect_cloud=false)=0;
+    virtual bool isOff()=0;
     virtual void connect(bool listen_enabled=true)=0;
     virtual bool connecting()=0;
     virtual void connect_cancel(bool cancel)=0;
@@ -374,6 +376,7 @@ protected:
 
     virtual int on_now()=0;
     virtual void off_now()=0;
+    virtual bool is_powered()=0;
 
     virtual int process_now()=0;
 
@@ -609,6 +612,16 @@ public:
             return ret;
         }
         return 0;
+    }
+
+    bool isOn() override
+    {
+        return WLAN_INITIALIZED && SPARK_WLAN_STARTED;
+    }
+
+    bool isOff() override
+    {
+        return !SPARK_WLAN_STARTED && !is_powered();
     }
 
     void off(bool disconnect_cloud=false) override
