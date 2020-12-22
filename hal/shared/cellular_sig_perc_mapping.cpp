@@ -16,103 +16,122 @@
  */
 
 #include "cellular_sig_perc_mapping.h"
+#include "logging.h"
+#include "string.h"
+#include <stdlib.h>
+#include <limits>
+
+namespace {
 
 // Cellular signal values and mapping
-
 // XXX: Must change the mapping tables associated with region categorization
-typedef enum {
-    CELLULAR_HAL_SIG_REGION_POOR = 0,
-    CELLULAR_HAL_SIG_REGION_BAD = 1,
-    CELLULAR_HAL_SIG_REGION_FAIR = 2,
-    CELLULAR_HAL_SIG_REGION_GOOD = 3,
-    CELLULAR_HAL_SIG_REGION_GREAT = 4,
-    MAX_NUM_OF_REGION_THRESHOLDS
-} SignalMappingRegions;
 
-const int sig_strn_perc_thres = 100 / (MAX_NUM_OF_REGION_THRESHOLDS - 1);
+enum SignalMappingRegions {
+    SIG_REGION_POOR =  0,   /* <= 0%   */
+    SIG_REGION_BAD =   1,   /* <= 25%  */
+    SIG_REGION_FAIR =  2,   /* <= 50%  */
+    SIG_REGION_GOOD =  3,   /* <= 75%  */
+    SIG_REGION_GREAT = 4,   /* <= 100% */
+    MAX_REGION_THRESHOLDS
+};
 
-const int catm1_strn_map[] = {
-    -141,   /* CELLULAR_HAL_SIG_REGION_POOR */
-    -122,   /* CELLULAR_HAL_SIG_REGION_BAD */
-    -116,   /* CELLULAR_HAL_SIG_REGION_FAIR */
-    -107,   /* CELLULAR_HAL_SIG_REGION_GOOD */
-    -95,    /* CELLULAR_HAL_SIG_REGION_GREAT */
+/* RF Characterization internal testing. Please see https://docs.google.com/spreadsheets/d/11qpipAc7JWzr8rAk-SOClfhflT-gXabDPGOMQU4be8I/edit?usp=sharing */
+const int CATM1_STRN_MAP[] = {
+    -141,   /* SIG_REGION_POOR */
+    -122,   /* SIG_REGION_BAD */
+    -116,   /* SIG_REGION_FAIR */
+    -107,   /* SIG_REGION_GOOD */
+    -95,    /* SIG_REGION_GREAT */
     //-44     /* MAX */
 };
 
-const int catm1_qual_map[] = {
-    -20,   /* CELLULAR_HAL_SIG_REGION_POOR */
-    -19,   /* CELLULAR_HAL_SIG_REGION_BAD */
-    -17,   /* CELLULAR_HAL_SIG_REGION_FAIR */
-    -14,   /* CELLULAR_HAL_SIG_REGION_GOOD */
-    -12,   /* CELLULAR_HAL_SIG_REGION_GREAT */
+const int CATM1_QUAL_MAP[] = {
+    -20,   /* SIG_REGION_POOR */
+    -19,   /* SIG_REGION_BAD */
+    -17,   /* SIG_REGION_FAIR */
+    -14,   /* SIG_REGION_GOOD */
+    -12,   /* SIG_REGION_GREAT */
     //-3     /* MAX */
 };
 
-const int cat1_strn_map[] = {
-    -141,   /* CELLULAR_HAL_SIG_REGION_POOR */
-    -115,   /* CELLULAR_HAL_SIG_REGION_BAD */
-    -105,   /* CELLULAR_HAL_SIG_REGION_FAIR */
-    -95,    /* CELLULAR_HAL_SIG_REGION_GOOD */
-    -85,    /* CELLULAR_HAL_SIG_REGION_GREAT */
+/* Source: https://github.com/aosp-mirror/platform_frameworks_base/blob/master/telephony/java/android/telephony/CellSignalStrengthLte.java */
+const int CAT1_STRN_MAP[] = {
+    -141,   /* SIG_REGION_POOR */
+    -115,   /* SIG_REGION_BAD */
+    -105,   /* SIG_REGION_FAIR */
+    -95,    /* SIG_REGION_GOOD */
+    -85,    /* SIG_REGION_GREAT */
     //-44     /* MAX */
 };
 
-const int cat1_qual_map[] = {
-    -20,   /* CELLULAR_HAL_SIG_REGION_POOR */
-    -19,   /* CELLULAR_HAL_SIG_REGION_BAD */
-    -17,   /* CELLULAR_HAL_SIG_REGION_FAIR */
-    -14,   /* CELLULAR_HAL_SIG_REGION_GOOD */
-    -12,   /* CELLULAR_HAL_SIG_REGION_GREAT */
+const int CAT1_QUAL_MAP[] = {
+    -20,   /* SIG_REGION_POOR */
+    -19,   /* SIG_REGION_BAD */
+    -17,   /* SIG_REGION_FAIR */
+    -14,   /* SIG_REGION_GOOD */
+    -12,   /* SIG_REGION_GREAT */
     //-3     /* MAX */
 };
 
-const int utran_strn_map[] = {
-    -121,   /* CELLULAR_HAL_SIG_REGION_POOR */
-    -115,   /* CELLULAR_HAL_SIG_REGION_BAD */
-    -105,   /* CELLULAR_HAL_SIG_REGION_FAIR */
-    -95,    /* CELLULAR_HAL_SIG_REGION_GOOD */
-    -85,    /* CELLULAR_HAL_SIG_REGION_GREAT */
+/* Source: https://github.com/aosp-mirror/platform_frameworks_base/blob/master/telephony/java/android/telephony/CellSignalStrengthWcdma.java */
+const int UTRAN_STRN_MAP[] = {
+    -121,   /* SIG_REGION_POOR */
+    -115,   /* SIG_REGION_BAD */
+    -105,   /* SIG_REGION_FAIR */
+    -95,    /* SIG_REGION_GOOD */
+    -85,    /* SIG_REGION_GREAT */
     //-24     /* MAX */
 };
 
-const int gsm_strn_map[] = {
-    -111,   /* CELLULAR_HAL_SIG_REGION_POOR */
-    -107,   /* CELLULAR_HAL_SIG_REGION_BAD */
-    -103,   /* CELLULAR_HAL_SIG_REGION_FAIR */
-    -97,    /* CELLULAR_HAL_SIG_REGION_GOOD */
-    -89,    /* CELLULAR_HAL_SIG_REGION_GREAT */
+/* Source: https://comtech.vsb.cz/qualmob/ecno.html */
+const int UTRAN_QUAL_MAP[] = {
+    -24,   /* SIG_REGION_POOR */
+    -17,   /* SIG_REGION_BAD */
+    -10,   /* SIG_REGION_FAIR */
+    -5,    /* SIG_REGION_GOOD */
+    -2,    /* SIG_REGION_GREAT */
+    //0     /* MAX */
+};
+
+/* Source: https://github.com/aosp-mirror/platform_frameworks_base/blob/master/telephony/java/android/telephony/CellSignalStrengthGsm.java */
+const int GSM_STRN_MAP[] = {
+    -111,   /* SIG_REGION_POOR */
+    -107,   /* SIG_REGION_BAD */
+    -103,   /* SIG_REGION_FAIR */
+    -97,    /* SIG_REGION_GOOD */
+    -89,    /* SIG_REGION_GREAT */
     //-48     /* MAX */
 };
 
-int get_scaled_strn(int strn_value, hal_net_access_tech_t access_tech) {
+} /* anonymous */
+
+int cellular_get_scaled_strn(int strn_value, hal_net_access_tech_t access_tech) {
     int res = 0;
     int region = -1;
 
     // The strength value obtained is a number multiplied by 100. Get the original value.
     strn_value = strn_value / 100;
 
-
-    int gen_strn_map[MAX_NUM_OF_REGION_THRESHOLDS] = {0};
+    int gen_strn_map[MAX_REGION_THRESHOLDS] = {0};
 
     // Get the mapping data according to the RAT
     switch (access_tech) {
         case NET_ACCESS_TECHNOLOGY_GSM:
         case NET_ACCESS_TECHNOLOGY_EDGE: {
-            memcpy(gen_strn_map,gsm_strn_map, sizeof(gen_strn_map));
+            memcpy(gen_strn_map, GSM_STRN_MAP, sizeof(gen_strn_map));
             break;
         }
         case NET_ACCESS_TECHNOLOGY_UTRAN: {
-            memcpy(gen_strn_map,utran_strn_map, sizeof(gen_strn_map));
+            memcpy(gen_strn_map, UTRAN_STRN_MAP, sizeof(gen_strn_map));
             break;
         }
         case NET_ACCESS_TECHNOLOGY_LTE: {
-            memcpy(gen_strn_map,cat1_strn_map, sizeof(gen_strn_map));
+            memcpy(gen_strn_map, CAT1_STRN_MAP, sizeof(gen_strn_map));
             break;
         }
         case NET_ACCESS_TECHNOLOGY_LTE_CAT_M1:
         case NET_ACCESS_TECHNOLOGY_LTE_CAT_NB1: {
-            memcpy(gen_strn_map,catm1_strn_map, sizeof(gen_strn_map));
+            memcpy(gen_strn_map, CATM1_STRN_MAP, sizeof(gen_strn_map));
             break;
         }
         default: {
@@ -126,47 +145,52 @@ int get_scaled_strn(int strn_value, hal_net_access_tech_t access_tech) {
         return res;
     }
 
+    const uint32_t hundredPercent = 65535;
     // Check which region the value falls into. Convert into percetages, but scale it to [0,65535]
-    if (strn_value < gen_strn_map[CELLULAR_HAL_SIG_REGION_POOR]) {
+    if (strn_value < gen_strn_map[SIG_REGION_POOR]) {
         return 0*65535;
-    } else if (strn_value >= gen_strn_map[MAX_NUM_OF_REGION_THRESHOLDS-1]) {
-        return 65535;
+    } else if (strn_value >= gen_strn_map[MAX_REGION_THRESHOLDS-1]) {
+        return hundredPercent;
     } else {
-        for (int i=MAX_NUM_OF_REGION_THRESHOLDS-2; i>=CELLULAR_HAL_SIG_REGION_POOR; i--) {
+        for (int i = MAX_REGION_THRESHOLDS-2; i >= SIG_REGION_POOR; i--) {
             if (strn_value >= gen_strn_map[i]) {
                 region = i;
                 break;
             }
         }
         // Covert dBm to percetange based on that region and the value from mapping table
-        int new_range = sig_strn_perc_thres;
+        const uint32_t regionPercentage = (hundredPercent * region * 100) / (MAX_REGION_THRESHOLDS - 1);
+        int new_range = 100 / (MAX_REGION_THRESHOLDS - 1);
         int old_range = gen_strn_map[region+1] - gen_strn_map[region];
-        res = ((((strn_value - gen_strn_map[region])*new_range*65535)/old_range) +
-                                        (sig_strn_perc_thres*region*65535))/100;
+        const uint32_t percentageWithinRegion = (((strn_value - gen_strn_map[region])*new_range*65535)/old_range);
+        res = (regionPercentage + percentageWithinRegion)/100;
     }
     return res;
 }
 
-int get_scaled_qual(int qual_value, hal_net_access_tech_t access_tech) {
+int cellular_get_scaled_qual(int qual_value, hal_net_access_tech_t access_tech) {
     int res = 0;
     int region = -1;
 
     // The quality value obtained is a number multiplied by 100. Get the original value.
     qual_value = qual_value / 100;
 
-    int gen_qual_map[MAX_NUM_OF_REGION_THRESHOLDS] = {0};
+    int gen_qual_map[MAX_REGION_THRESHOLDS] = {0};
 
     // Quality conversion considered only for LTE RAT in this impl
     switch (access_tech) {
         case NET_ACCESS_TECHNOLOGY_LTE: {
-            memcpy(gen_qual_map,cat1_qual_map, sizeof(gen_qual_map));
+            memcpy(gen_qual_map, CAT1_QUAL_MAP, sizeof(gen_qual_map));
             break;
         }
         case NET_ACCESS_TECHNOLOGY_LTE_CAT_M1:
         case NET_ACCESS_TECHNOLOGY_LTE_CAT_NB1: {
-            memcpy(gen_qual_map,catm1_qual_map, sizeof(gen_qual_map));
+            memcpy(gen_qual_map, CATM1_QUAL_MAP, sizeof(gen_qual_map));
             break;
         }
+        case NET_ACCESS_TECHNOLOGY_UTRAN:
+            memcpy(gen_qual_map, UTRAN_QUAL_MAP, sizeof(gen_qual_map));
+            break;
         default: {
             res = std::numeric_limits<int32_t>::min();
             break;
@@ -178,22 +202,24 @@ int get_scaled_qual(int qual_value, hal_net_access_tech_t access_tech) {
     }
 
     // Check which region the value falls into. Convert into percetages, but scale it to [0,65535]
-    if (qual_value < gen_qual_map[CELLULAR_HAL_SIG_REGION_POOR]) {
+    const uint32_t hundredPercent = 65535;
+    if (qual_value < gen_qual_map[SIG_REGION_POOR]) {
         return 0;
-    } else if (qual_value >= gen_qual_map[MAX_NUM_OF_REGION_THRESHOLDS-1]) {
-        return 65535;
+    } else if (qual_value >= gen_qual_map[MAX_REGION_THRESHOLDS-1]) {
+        return hundredPercent;
     } else {
-        for (int i=MAX_NUM_OF_REGION_THRESHOLDS-2; i>=CELLULAR_HAL_SIG_REGION_POOR; i--) {
+        for (int i = MAX_REGION_THRESHOLDS-2; i >= SIG_REGION_POOR; i--) {
             if (qual_value >= gen_qual_map[i]) {
                 region = i;
                 break;
             }
         }
         // Covert dBm to percetange based on that region and the value from mapping table
-        int new_range = sig_strn_perc_thres;
+        const uint32_t regionPercentage = (hundredPercent * region * 100) / (MAX_REGION_THRESHOLDS - 1);
+        int new_range = 100 / (MAX_REGION_THRESHOLDS - 1);
         int old_range = gen_qual_map[region+1] - gen_qual_map[region];
-        res = ((((qual_value - gen_qual_map[region])*new_range*65535)/old_range) +
-                                        (sig_strn_perc_thres*region*65535))/100;
+        const uint32_t percentageWithinRegion = (((qual_value - gen_qual_map[region])*new_range*65535)/old_range);
+        res = (regionPercentage + percentageWithinRegion)/100;
     }
     return res;
 }

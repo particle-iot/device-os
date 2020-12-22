@@ -18,11 +18,8 @@
 #ifndef CELLULAR_SIG_MAPPING_HAL_H
 #define CELLULAR_SIG_MAPPING_HAL_H
 
-#include "logging.h"
+
 #include "net_hal.h"
-#include "string.h"
-#include <stdlib.h>
-#include <limits>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,12 +28,12 @@ extern "C" {
 /*
 *   Convert strength in dBm into percetage
 */
-int get_scaled_strn(int strn_value, hal_net_access_tech_t access_tech);
+int cellular_get_scaled_strn(int strn_value, hal_net_access_tech_t access_tech);
 
 /*
 *   Conver quality in dBm into percetage
 */
-int get_scaled_qual(int qual_value, hal_net_access_tech_t access_tech);
+int cellular_get_scaled_qual(int qual_value, hal_net_access_tech_t access_tech);
 
 #ifdef __cplusplus
 }
