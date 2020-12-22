@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o errexit -o pipefail -o noclobber -o nounset
 
-VERSION="2.0.1"
+VERSION="3.0.0-alpha.1"
 
 function display_help ()
 {
@@ -196,11 +196,11 @@ function release_binary ()
 
     # Move files into release folder
     release_file "$from_name" "$to_name" "bin" "$suffix" "$debug_build" "$use_swd_jtag"
+    release_file "$from_name" "$to_name" "elf" "$suffix" "$debug_build" "$use_swd_jtag"
+    release_file "$from_name" "$to_name" "map" "$suffix" "$debug_build" "$use_swd_jtag"
     if [ $DEBUG = true ]; then
-        release_file "$from_name" "$to_name" "elf" "$suffix" "$debug_build" "$use_swd_jtag"
         release_file "$from_name" "$to_name" "hex" "$suffix" "$debug_build" "$use_swd_jtag"
         release_file "$from_name" "$to_name" "lst" "$suffix" "$debug_build" "$use_swd_jtag"
-        release_file "$from_name" "$to_name" "map" "$suffix" "$debug_build" "$use_swd_jtag"
     fi
 }
 
