@@ -271,7 +271,7 @@ byte SPIClass::transfer(byte _data)
     return static_cast<byte>(hal_spi_transfer(_spi, _data));
 }
 
-void SPIClass::transfer(void* tx_buffer, void* rx_buffer, size_t length,
+void SPIClass::transfer(const void* tx_buffer, void* rx_buffer, size_t length,
                         wiring_spi_dma_transfercomplete_callback_t user_callback)
 {
     hal_spi_transfer_dma(_spi, tx_buffer, rx_buffer, length, user_callback);

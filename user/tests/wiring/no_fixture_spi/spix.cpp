@@ -671,3 +671,15 @@ test(SPIX_21_SPI_Sleep) {
 
     assertEqual(0, memcmp(tempRx, tempRx1, sizeof(tempRx)));
 }
+
+test(SPIX_22_SPI_Transfer_Buffer_In_Flash) {
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    assertTrue(SPI.isEnabled());
+
+    SPI.beginTransaction();
+    SPI.transfer("Hello", nullptr, sizeof("Hello"), nullptr);
+    SPI.endTransaction();
+
+    SPI.end();
+}
