@@ -415,11 +415,23 @@ test(system_power_management) {
     API_COMPILE(conf.feature(SystemPowerFeature::PMIC_DETECTION));
     API_COMPILE(conf.feature(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST));
     API_COMPILE(conf.feature(SystemPowerFeature::DISABLE));
+    API_COMPILE(conf.feature(SystemPowerFeature::DISABLE_CHARGING));
 
     API_COMPILE(System.setPowerConfiguration(conf));
 
     API_COMPILE({ auto source = System.powerSource() == POWER_SOURCE_VIN; (void)source; });
     API_COMPILE({ auto state = System.batteryState() == BATTERY_STATE_CHARGING; (void)state; });
     API_COMPILE({ auto charge = System.batteryCharge(); (void)charge; });
+
+    SystemPowerConfiguration getConf = {};
+    API_COMPILE({ getConf = System.getPowerConfiguration(); });
+    API_COMPILE({ auto featurePmic = getConf.isFeatureSet(SystemPowerFeature::PMIC_DETECTION); (void)featurePmic; });
+    API_COMPILE({ auto featureVin = getConf.isFeatureSet(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST); (void)featureVin; });
+    API_COMPILE({ auto featureDisable = getConf.isFeatureSet(SystemPowerFeature::DISABLE); (void)featureDisable; });
+    API_COMPILE({ auto featureCharging = getConf.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING); (void)featureCharging; });
+    API_COMPILE({ auto getSourceA = getConf.powerSourceMaxCurrent(); (void)getSourceA; });
+    API_COMPILE({ auto getSourceV = getConf.powerSourceMinVoltage(); (void)getSourceV; });
+    API_COMPILE({ auto getBatteryA = getConf.batteryChargeCurrent(); (void)getBatteryA; });
+    API_COMPILE({ auto getBatteryV = getConf.batteryChargeVoltage(); (void)getBatteryV; });
 }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
