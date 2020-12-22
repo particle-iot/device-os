@@ -76,11 +76,15 @@ private:
     static err_t linkOutputCb(netif* netif, pbuf* p);
     err_t linkOutput(pbuf* p);
 
+    void notifyPowerState();
+
 private:
     hal_spi_interface_t spi_;
     pin_t cs_;
     pin_t reset_;
     pin_t interrupt_;
+
+    std::atomic<if_power_state_t> pwrState_;
 
     os_thread_t thread_ = nullptr;
     os_queue_t queue_ = nullptr;
