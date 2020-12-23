@@ -43,6 +43,9 @@ constexpr uint32_t STATE9_MAGICK = 0xb00b;
 constexpr uint32_t STATE10_MAGICK = 0xb077;
 constexpr uint32_t STATE11_MAGICK = 0xfeed;
 constexpr uint32_t STATE12_MAGICK = 0xfaad;
+constexpr uint32_t STATE13_MAGICK = 0xface;
+constexpr uint32_t STATE14_MAGICK = 0xfade;
+constexpr uint32_t STATE15_MAGICK = 0xecc0;
 retained uint32_t g_state;
 
 int s_powerSource = -1;
@@ -64,7 +67,10 @@ bool inState() {
         case STATE9_MAGICK:
         case STATE10_MAGICK:
         case STATE11_MAGICK:
-        case STATE12_MAGICK: {
+        case STATE12_MAGICK:
+        case STATE13_MAGICK:
+        case STATE14_MAGICK:
+        case STATE15_MAGICK: {
             return true;
         }
     }
@@ -139,6 +145,11 @@ bool powerSourceUpdated() {
 
 bool powerManagementSettled() {
     return batteryStateUpdated() && powerSourceUpdated();
+}
+
+bool isChargingDisabled() {
+    PMIC power(true);
+    return ((power.readPowerONRegister() & 0b00110000) == 0b00000000);
 }
 
 void notifyAndReset(bool reset = true) {
@@ -619,6 +630,182 @@ test(POWER_15_DisableFeatureFlag) {
         skip();
         return;
     }
+}
+
+test(POWER_16_PrepareDisableChargingFeatureFlag) {
+    if (g_state != STATE12_MAGICK) {
+        skip();
+        return;
+    }
+
+    // Place device into known state and reset before advancing to the next test phase
+    // The charge disable feature will not be set
+    SystemPowerConfiguration conf;
+    conf.feature(SystemPowerFeature::PMIC_DETECTION);
+    System.setPowerConfiguration(conf);
+    g_state = STATE13_MAGICK;
+    notifyAndReset(false);
+    // Reset PMIC to start with a clean slate and disconnect USB so that it doesn't interfere
+    Serial.end();
+    PMIC power(true);
+    power.reset();
+    // Finally reset ourselves
+    System.reset();
+}
+
+test(POWER_17_DisableChargingFeatureFlag) {
+    if (g_state == STATE13_MAGICK) {
+        // Check that charging is not disabled after the last reset
+        auto cfg = System.getPowerConfiguration();
+        assertFalse(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING));
+        // PMIC charging may be enabled or disabled based on power manager state
+        assertNotEqual((battery_state_t)System.batteryState(), BATTERY_STATE_FAULT);
+
+        // Set charge disable feature flag
+        {
+            SystemPowerConfiguration conf;
+            conf.feature(SystemPowerFeature::PMIC_DETECTION)
+                .feature(SystemPowerFeature::DISABLE_CHARGING);
+            assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
+            delay(5000);
+            // Check that charging is disabled after setting feature en vivo
+            cfg = System.getPowerConfiguration();
+            assertTrue(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING));
+            // The charger configuration settings in PMIC better be disabled for charging
+            assertTrue(isChargingDisabled());
+            assertNotEqual((battery_state_t)System.batteryState(), BATTERY_STATE_FAULT);
+        }
+
+        // Clear charge disable feature flag
+        {
+            SystemPowerConfiguration conf;
+            conf.feature(SystemPowerFeature::PMIC_DETECTION);
+            assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
+            delay(5000);
+            // Check that charging is enabled after setting feature en vivo
+            cfg = System.getPowerConfiguration();
+            assertFalse(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING));
+            // PMIC charging may be enabled or disabled based on power manager state
+            assertNotEqual((battery_state_t)System.batteryState(), BATTERY_STATE_FAULT);
+        }
+
+        // Set charge disable feature flag
+        {
+            SystemPowerConfiguration conf;
+            conf.feature(SystemPowerFeature::PMIC_DETECTION)
+                .feature(SystemPowerFeature::DISABLE_CHARGING);
+            assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
+            delay(5000);
+            // Check that charging is disabled after setting feature en vivo
+            cfg = System.getPowerConfiguration();
+            assertTrue(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING));
+            // The charger configuration settings in PMIC better be disabled for charging
+            assertTrue(isChargingDisabled());
+            assertNotEqual((battery_state_t)System.batteryState(), BATTERY_STATE_FAULT);
+        }
+
+        g_state = STATE14_MAGICK;
+        notifyAndReset(false);
+        // Reset PMIC to start with a clean slate and disconnect USB so that it doesn't interfere
+        Serial.end();
+        PMIC power(true);
+        power.reset();
+        // Finally reset ourselves
+        System.reset();
+    } else if (g_state == STATE14_MAGICK) {
+        // Check that charging is disabled after the last reset
+        auto cfg = System.getPowerConfiguration();
+        assertTrue(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING));
+        // The charger configuration settings in PMIC better be disabled for charging
+        assertTrue(isChargingDisabled());
+        assertNotEqual((battery_state_t)System.batteryState(), BATTERY_STATE_FAULT);
+    } else {
+        skip();
+        return;
+    }
+}
+
+test(POWER_18_DisableChargingFeatureFlagWithWatchdog) {
+    if (g_state != STATE14_MAGICK) {
+        skip();
+        return;
+    }
+
+    // Charging should be disabled when entering this test and is ensured in the previous test step
+    // Reset the PMIC watchdog and make sure that the power manager recovers
+    {
+        PMIC power(true);
+        power.resetWatchdog();
+        power.setWatchdog(0b01); // 40s - minimum
+    }
+    auto start = millis();
+    bool wdtResetted = false;
+    Serial.println("Device will pause about 40s to check PMIC watchdog reset");
+    while (millis() - start < 50000) {
+        delay(500);
+        PMIC power(true);
+        // Determine reset status by monitoring that the timer is disabled
+        if ((power.readChargeTermRegister() & 0b00110000) == 0) {
+            wdtResetted = true;
+            break;
+        }
+    }
+
+    // Watchdog better have happened
+    assertTrue(wdtResetted);
+    // Check that charging is disabled after the watchdog reset
+    auto cfg = System.getPowerConfiguration();
+    assertTrue(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING));
+    // The charger configuration settings in PMIC better be disabled for charging
+    assertTrue(isChargingDisabled());
+    assertNotEqual((battery_state_t)System.batteryState(), BATTERY_STATE_FAULT);
+}
+
+test(POWER_19_NotDisableChargingFeatureFlagWithWatchdog) {
+    if (g_state != STATE14_MAGICK) {
+        skip();
+        return;
+    }
+
+    // Charging disable should be now be cleared
+    SystemPowerConfiguration conf;
+    conf.feature(SystemPowerFeature::PMIC_DETECTION);
+    assertEqual(System.setPowerConfiguration(conf), (int)SYSTEM_ERROR_NONE);
+    delay(5000);
+    // Check that charging is enabled after setting feature en vivo
+    auto cfg = System.getPowerConfiguration();
+    assertFalse(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING));
+    // PMIC charging may be enabled or disabled based on power manager state
+    assertNotEqual((battery_state_t)System.batteryState(), BATTERY_STATE_FAULT);
+
+    // Reset the PMIC watchdog and make sure that the power manager recovers
+    {
+        PMIC power(true);
+        power.resetWatchdog();
+        power.setWatchdog(0b01); // 40s - minimum
+    }
+    auto start = millis();
+    bool wdtResetted = false;
+    Serial.println("Device will pause about 40s to check PMIC watchdog reset");
+    while (millis() - start < 50000) {
+        delay(500);
+        PMIC power(true);
+        // Determine reset status by monitoring that the timer is disabled
+        if ((power.readChargeTermRegister() & 0b00110000) == 0) {
+            wdtResetted = true;
+            break;
+        }
+    }
+
+    // Watchdog better have happened
+    assertTrue(wdtResetted);
+    // Check that charging is enabled after the watchdog reset
+    cfg = System.getPowerConfiguration();
+    assertFalse(cfg.isFeatureSet(SystemPowerFeature::DISABLE_CHARGING));
+    // PMIC charging may be enabled or disabled based on power manager state
+    assertNotEqual((battery_state_t)System.batteryState(), BATTERY_STATE_FAULT);
+
+    g_state = STATE15_MAGICK;
 }
 
 test(POWER_99_ResetState) {
