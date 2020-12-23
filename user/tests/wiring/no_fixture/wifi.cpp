@@ -103,6 +103,10 @@ test(WIFI_04_config)
 
 test(WIFI_05_scan)
 {
+    if (!WiFi.isOn()) {
+        WiFi.on();
+        assertTrue(waitFor(WiFi.isOn, 30000));
+    }
     spark::Vector<WiFiAccessPoint> aps(20);
     int apsFound = WiFi.scan(aps.data(), 20);
     assertMoreOrEqual(apsFound, 1);
