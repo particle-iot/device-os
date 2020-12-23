@@ -196,7 +196,7 @@ void Set_System(void)
     for(LEDx = 1; LEDx < LEDn * 2; ++LEDx)
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     {
-        //LED_USER initialization is skipped during system setup
+        //PARTICLE_LED_USER initialization is skipped during system setup
         //since PA13 pin is also JTMS-SWDIO. Initializing LED_USER
         //here will boycott JTAG programmer hence avoided.
         LED_Init(LEDx);
@@ -477,7 +477,7 @@ static void Led_Set_Value(Led_TypeDef led, uint16_t val)
  * @brief  Configures LED GPIO.
  * @param  Led: Specifies the Led to be configured.
  *   This parameter can be one of following parameters:
- *     @arg LED1, LED2, LED3, LED4
+ *     @arg PARTICLE_LED1, PARTICLE_LED2, PARTICLE_LED3, PARTICLE_LED4
  * @retval None
  */
 void LED_Init(Led_TypeDef Led)

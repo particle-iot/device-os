@@ -222,7 +222,7 @@ void LED_Toggle(Led_TypeDef Led)
   * @brief  Fades selected LED.
   * @param  Led: Specifies the Led to be set on.
   *   This parameter can be one of following parameters:
-  *     @arg LED1, LED2, LED_RGB
+  *     @arg PARTICLE_LED1, PARTICLE_LED2, PARTICLE_LED_RGB
   * @retval None
   */
 void LED_Fade(Led_TypeDef Led)

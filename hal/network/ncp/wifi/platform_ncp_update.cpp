@@ -54,7 +54,7 @@ public:
         size = std::min(size, remaining);
         buffer += size;
         remaining -= size;
-        LED_Toggle(LED_RGB);
+        LED_Toggle(PARTICLE_LED_RGB);
         return size;
     }
 
@@ -100,7 +100,7 @@ __attribute__((optimize("O0"))) int platform_ncp_update_module(const hal_module_
         LOG(INFO, "Updating ESP32 firmware from version %d to version %d", version, module->info->module_version);
     }
     r = ncpClient->updateFirmware(&moduleStream, length);
-    LED_On(LED_RGB);
+    LED_On(PARTICLE_LED_RGB);
     CHECK(r);
     r = ncpClient->getFirmwareModuleVersion(&version);
     if (r == 0) {

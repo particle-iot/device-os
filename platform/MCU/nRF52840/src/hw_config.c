@@ -162,7 +162,7 @@ void Set_System(void)
     int LEDx;
     for(LEDx = 1; LEDx < LEDn; ++LEDx)
     {
-        // LED_USER initialization is skipped during system setup
+        // PARTICLE_LED_USER initialization is skipped during system setup
         LED_Init(LEDx);
     }
 
