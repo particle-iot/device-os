@@ -75,7 +75,7 @@ private:
     static err_t linkOutputCb(netif* netif, pbuf* p);
     err_t linkOutput(pbuf* p);
 
-    void notifyPowerState();
+    void notifyPowerState(if_power_state_t state);
 
 private:
     hal_spi_interface_t spi_;

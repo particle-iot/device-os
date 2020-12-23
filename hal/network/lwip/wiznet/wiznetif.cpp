@@ -411,8 +411,7 @@ int WizNetif::up() {
 
     // Just in case. We might call up() directly after powerDown().
     if (pwrState_ != IF_POWER_STATE_UP) {
-        pwrState_ = IF_POWER_STATE_UP;
-        notifyPowerState();
+        notifyPowerState(IF_POWER_STATE_UP);
     }
 
     return r;
@@ -431,8 +430,7 @@ int WizNetif::powerUp() {
     // FIXME: As long as the interface is initialized,
     // it must have been powered up as of right now.
     if (pwrState_ != IF_POWER_STATE_UP) {
-        pwrState_ = IF_POWER_STATE_UP;
-        notifyPowerState();
+        notifyPowerState(IF_POWER_STATE_UP);
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -443,13 +441,13 @@ int WizNetif::powerDown() {
     // Notify the system network manager that the module is powered down
     // to bypass waitInterfaceOff() as required by system sleep.
     if (pwrState_ != IF_POWER_STATE_DOWN) {
-        pwrState_ = IF_POWER_STATE_DOWN;
-        notifyPowerState();
+        notifyPowerState(IF_POWER_STATE_DOWN);
     }
     return ret;
 }
 
-void WizNetif::notifyPowerState() {
+void WizNetif::notifyPowerState(if_power_state_t state) {
+    pwrState_ = state;
     if_event evt = {};
     struct if_event_power_state ev_if_power_state = {};
     evt.ev_len = sizeof(if_event);
