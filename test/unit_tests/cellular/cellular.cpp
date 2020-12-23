@@ -542,16 +542,16 @@ TEST_CASE("cellular_signal()") {
 
         SECTION("middle RSCP and ECNO") {
             status.rscp = 16;
-            status.ecno = 24;
+            status.ecno = 28;
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UTRAN);
             REQUIRE(std::abs(sig.strength - 32767) == 0);
-            REQUIRE(std::abs(sig.quality - 32767) <= 655 * 2);
+            REQUIRE(std::abs(sig.quality - 32767) == 0);
             REQUIRE(sig.rscp == -10500);
-            REQUIRE(sig.ecno == -1250);
+            REQUIRE(sig.ecno == -1050);
 
             SECTION("CellularSignal") {
                 CellularSignal cs;
@@ -559,8 +559,8 @@ TEST_CASE("cellular_signal()") {
                 REQUIRE(cs.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_UTRAN);
                 REQUIRE(std::abs(cs.getStrength()) <= 50.0f);
                 REQUIRE(cs.getStrengthValue() == -105.0f);
-                REQUIRE(std::abs(cs.getQuality() - 50.0f) <= 2.0f);
-                REQUIRE(cs.getQualityValue() == -12.5f);
+                REQUIRE(std::abs(cs.getQuality()) <= 50.0f);
+                REQUIRE(cs.getQualityValue() == -10.5f);
             }
         }
 
