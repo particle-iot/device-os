@@ -171,14 +171,14 @@ protected:
 	token_t next_token;
 
 	/**
-	 * Maximum size of an OTA update chunk.
+	 * Size of an OTA update chunk.
 	 */
 	size_t ota_chunk_size;
 
 	/**
-	 * Maximum size of a firmware binary that can be sent to the device OTA.
+	 * Maximum size of a firmware binary.
 	 */
-	size_t max_firmware_binary_size;
+	size_t max_binary_size;
 
 	void set_protocol_flags(uint32_t flags)
 	{
@@ -342,7 +342,7 @@ public:
 			protocol_flags(0),
 			initialized(false),
 			ota_chunk_size(DEFAULT_OTA_CHUNK_SIZE),
-			max_firmware_binary_size(0) // Unlimited
+			max_binary_size(0) // Unlimited
 	{
 	}
 
@@ -383,9 +383,9 @@ public:
 		ota_chunk_size = size;
 	}
 
-	void set_max_firmware_binary_size(size_t size)
+	void set_max_binary_size(size_t size)
 	{
-		max_firmware_binary_size = size;
+		max_binary_size = size;
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)

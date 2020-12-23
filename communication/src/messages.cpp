@@ -124,7 +124,7 @@ CoAPMessageType::Enum Messages::decodeType(const uint8_t* buf, size_t length)
 size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 		uint16_t platform_id, uint16_t product_id,
 		uint16_t product_firmware_version, bool confirmable, const uint8_t* device_id, size_t device_id_len,
-		size_t max_content_len, size_t max_ota_chunk_size, size_t max_binary_size)
+		uint16_t max_message_size, uint32_t max_binary_size, uint16_t ota_chunk_size)
 {
 	// TODO: why no token? because the response is not sent separately. But really we should use a token for all messages that expect a response.
 	buf[0] = COAP_MSG_HEADER(confirmable ? CoAPType::CON : CoAPType::NON, 0);
@@ -147,12 +147,14 @@ size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 	size_t len = 17;
 	memcpy(buf + len, device_id, device_id_len);
 	len += device_id_len;
-	buf[len++] = (max_content_len >> 8) & 0xff;
-	buf[len++] = max_content_len & 0xff;
-	buf[len++] = (max_ota_chunk_size >> 8) & 0xff;
-	buf[len++] = max_ota_chunk_size & 0xff;
+	buf[len++] = (max_binary_size >> 24) & 0xff;
+	buf[len++] = (max_binary_size >> 16) & 0xff;
 	buf[len++] = (max_binary_size >> 8) & 0xff;
 	buf[len++] = max_binary_size & 0xff;
+	buf[len++] = (max_message_size >> 8) & 0xff;
+	buf[len++] = max_message_size & 0xff;
+	buf[len++] = (ota_chunk_size >> 8) & 0xff;
+	buf[len++] = ota_chunk_size & 0xff;
 	return len;
 }
 

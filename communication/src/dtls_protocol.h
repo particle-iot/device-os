@@ -72,7 +72,7 @@ public:
 		// are not a power of two, and RFC 8449 that is free of that limitation is not supported by mbedTLS
 		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, PLATFORM_ID, deets.product_id,
 				deets.product_version, true /* confirmable */, device_id, sizeof(device_id), PROTOCOL_BUFFER_SIZE,
-				ota_chunk_size, max_firmware_binary_size);
+				max_binary_size, ota_chunk_size);
 		return len;
 	}
 

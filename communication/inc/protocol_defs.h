@@ -124,8 +124,8 @@ enum Enum
     FAST_OTA = 1, ///< Enable/disable fast OTA.
     DEVICE_INITIATED_DESCRIBE = 2, ///< Enable device-initiated describe messages.
     COMPRESSED_OTA = 3, ///< Enable support for compressed/combined OTA updates.
-    OTA_CHUNK_SIZE = 4, ///< Set the maximum size of an OTA update chunk.
-    MAX_FIRMWARE_BINARY_SIZE = 5 ///< Set the maximum size of a firmware binary that can be sent to the device OTA.
+    OTA_CHUNK_SIZE = 4, ///< Maximum size of an OTA update chunk.
+    MAX_BINARY_SIZE = 5 ///< Maximum size of a firmware binary.
 };
 
 }
@@ -174,7 +174,11 @@ public:
         APP_DESCRIBE_CRC = 0x02, ///< Checksum of the application description.
         SUBSCRIPTIONS_CRC = 0x04, ///< Checksum of the event subscriptions.
         PROTOCOL_FLAGS = 0x08, ///< Protocol flags.
-        ALL = SYSTEM_DESCRIBE_CRC | APP_DESCRIBE_CRC | SUBSCRIPTIONS_CRC | PROTOCOL_FLAGS ///< All the defined fields.
+        MAX_MESSAGE_SIZE = 0x10, ///< Maximum size of a CoAP message.
+        MAX_BINARY_SIZE = 0x20, ///< Maximum size of a firmware binary.
+        OTA_CHUNK_SIZE = 0x40, ///< Size of an OTA update chunk.
+        ALL = SYSTEM_DESCRIBE_CRC | APP_DESCRIBE_CRC | SUBSCRIPTIONS_CRC | PROTOCOL_FLAGS | MAX_MESSAGE_SIZE |
+                MAX_BINARY_SIZE | OTA_CHUNK_SIZE ///< All the defined fields.
     };
 
     /**
@@ -187,12 +191,16 @@ public:
      * @param protocolFlags Protocol flags.
      */
     explicit AppStateDescriptor(uint32_t stateFlags = 0, uint32_t systemDescrCrc = 0, uint32_t appDescrCrc = 0,
-                uint32_t subscrCrc = 0, uint32_t protocolFlags = 0) :
+                uint32_t subscrCrc = 0, uint32_t protocolFlags = 0, uint16_t maxMessageSize = 0, uint32_t maxBinarySize = 0,
+                uint16_t otaChunkSize = 0) :
             stateFlags_(stateFlags),
             systemDescrCrc_(systemDescrCrc),
             appDescrCrc_(appDescrCrc),
             subscrCrc_(subscrCrc),
-            protocolFlags_(protocolFlags) {
+            protocolFlags_(protocolFlags),
+            maxBinarySize_(maxBinarySize),
+            maxMessageSize_(maxMessageSize),
+            otaChunkSize_(otaChunkSize) {
     }
 
     /**
@@ -232,6 +240,33 @@ public:
     }
 
     /**
+     * Set the maximum size of a CoAP message.
+     */
+    AppStateDescriptor& maxMessageSize(uint16_t size) {
+        maxMessageSize_ = size;
+        stateFlags_ |= StateFlag::MAX_MESSAGE_SIZE;
+        return *this;
+    }
+
+    /**
+     * Set the maximum size of a firmware binary.
+     */
+    AppStateDescriptor& maxBinarySize(uint32_t size) {
+        maxBinarySize_ = size;
+        stateFlags_ |= StateFlag::MAX_BINARY_SIZE;
+        return *this;
+    }
+
+    /**
+     * Set the size of an OTA update chunk.
+     */
+    AppStateDescriptor& otaChunkSize(uint16_t size) {
+        otaChunkSize_ = size;
+        stateFlags_ |= StateFlag::OTA_CHUNK_SIZE;
+        return *this;
+    }
+
+    /**
      * Returns `true` if `other` is equal to this descriptor, otherwise returns `false`.
      *
      * The `flags` argument determines which fields of the application state are compared (see the `StateFlag` enum).
@@ -254,6 +289,18 @@ public:
         }
         if ((flags & StateFlag::PROTOCOL_FLAGS) && (stateFlags_ & StateFlag::PROTOCOL_FLAGS) &&
                 (protocolFlags_ != other.protocolFlags_)) {
+            return false;
+        }
+        if ((flags & StateFlag::MAX_MESSAGE_SIZE) && (stateFlags_ & StateFlag::MAX_MESSAGE_SIZE) &&
+                (maxMessageSize_ != other.maxMessageSize_)) {
+            return false;
+        }
+        if ((flags & StateFlag::MAX_BINARY_SIZE) && (stateFlags_ & StateFlag::MAX_BINARY_SIZE) &&
+                (maxBinarySize_ != other.maxBinarySize_)) {
+            return false;
+        }
+        if ((flags & StateFlag::OTA_CHUNK_SIZE) && (stateFlags_ & StateFlag::OTA_CHUNK_SIZE) &&
+                (otaChunkSize_ != other.otaChunkSize_)) {
             return false;
         }
         return true;
@@ -281,6 +328,9 @@ private:
     uint32_t appDescrCrc_;
     uint32_t subscrCrc_;
     uint32_t protocolFlags_;
+    uint32_t maxBinarySize_;
+    uint16_t maxMessageSize_;
+    uint16_t otaChunkSize_;
 };
 
 }} // namespace particle::protocol

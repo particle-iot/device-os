@@ -75,7 +75,7 @@ public:
 
 		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, PLATFORM_ID, deets.product_id,
 				deets.product_version, false /* confirmable */, nullptr /* device_id */, 0 /* device_id_len */,
-				PROTOCOL_BUFFER_SIZE, ota_chunk_size, max_firmware_binary_size);
+				PROTOCOL_BUFFER_SIZE, max_binary_size, ota_chunk_size);
 		return len;
 	}
 

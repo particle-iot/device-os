@@ -217,8 +217,8 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
         protocol->set_ota_chunk_size(value);
         return 0;
     }
-    case particle::protocol::Connection::MAX_FIRMWARE_BINARY_SIZE: {
-        protocol->set_max_firmware_binary_size(value);
+    case particle::protocol::Connection::MAX_BINARY_SIZE: {
+        protocol->set_max_binary_size(value);
         return 0;
     }
     default:

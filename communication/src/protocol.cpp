@@ -317,6 +317,15 @@ AppStateDescriptor Protocol::app_state_descriptor(uint32_t stateFlags)
 	if (stateFlags & AppStateDescriptor::PROTOCOL_FLAGS) {
 		d.protocolFlags(protocol_flags);
 	}
+	if (stateFlags & AppStateDescriptor::MAX_MESSAGE_SIZE) {
+		d.maxMessageSize(PROTOCOL_BUFFER_SIZE);
+	}
+	if (stateFlags & AppStateDescriptor::MAX_BINARY_SIZE) {
+		d.maxBinarySize(max_binary_size);
+	}
+	if (stateFlags & AppStateDescriptor::OTA_CHUNK_SIZE) {
+		d.maxBinarySize(ota_chunk_size);
+	}
 	return d;
 }
 
