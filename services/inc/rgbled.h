@@ -41,16 +41,6 @@ typedef uint8_t Led_TypeDef;
 #define PARTICLE_LED_RGB            (PARTICLE_LED3_LED4_LED2)
 #define PARTICLE_LED_USER           (PARTICLE_LED1)
 
-#ifndef PARTICLE_LED_RED
-#error "PARTICLE_LED_RED is not defined."
-#endif
-#ifndef PARTICLE_LED_GREEN
-#error "PARTICLE_LED_GREEN is not defined."
-#endif
-#ifndef PARTICLE_LED_BLUE
-#error "PARTICLE_LED_BLUE is not defined."
-#endif
-
 //RGB Basic Colors
 #define RGB_COLOR_RED     0xFF0000
 #define RGB_COLOR_GREEN   0x00FF00
