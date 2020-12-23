@@ -1,10 +1,4 @@
-## 3.0.0-alpha.2
-
-### ENHANCEMENTS
-
-- [Tracker] ESP32 NCP firmware updated to version 0.0.7
-
-## 3.0.0-alpha.1
+## 3.0.0-beta.1
 
 ### BREAKING CHANGES
 
@@ -32,6 +26,10 @@
 - [Electron] Build system parts with LTO enabled [#2235](https://github.com/particle-iot/device-os/pull/2235)
 - Add more operators for `BleAddress`, `BleUuid` and `IPAddress`[#2216](https://github.com/particle-iot/device-os/pull/2216)
 - Upate MbedTLS to 2.22.0 [#2117](https://github.com/particle-iot/device-os/pull/2117)
+- [Tracker] ESP32 NCP firmware updated to version 0.0.7
+- Use `PARTICLE_` prefix for LED defines in order not to pollute global namespace [#2247](https://github.com/particle-iot/device-os/pull/2247)
+- [Gen 3] Ethernet FeatherWing power state management [#2258](https://github.com/particle-iot/device-os/pull/2258)
+- [Cellular] Changes how signal strength and quality percentages are calculated to provide a more accurate representation of signal conditions [#2236](https://github.com/particle-iot/device-os/pull/2236)
 
 ### BUGFIXES
 
