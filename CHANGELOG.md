@@ -1,3 +1,9 @@
+## 3.0.0-alpha.2
+
+### ENHANCEMENTS
+
+- [Tracker] ESP32 NCP firmware updated to version 0.0.7
+
 ## 3.0.0-alpha.1
 
 ### BREAKING CHANGES
