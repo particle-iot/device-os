@@ -253,7 +253,7 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
     }
 #endif
     if (!ledOverridden_) {
-        LED_Toggle(LED_RGB);
+        LED_Toggle(PARTICLE_LED_RGB);
     }
     // Generate a system event
     fileDesc_.chunk_address = fileDesc_.file_address + chunkOffset;

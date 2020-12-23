@@ -172,7 +172,7 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 
     // Stop RGB signaling
     led_set_update_enabled(0, nullptr); // Disable background LED updates
-    LED_Off(LED_RGB);
+    LED_Off(PARTICLE_LED_RGB);
 
     system_power_management_sleep(configHelper.wakeupByFuelGauge() ? false : true);
 
@@ -182,7 +182,7 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
     system_power_management_wakeup();
 
     led_set_update_enabled(1, nullptr); // Enable background LED updates
-    LED_On(LED_RGB); // Turn RGB on in case that RGB is controlled by user application before entering sleep mode.
+    LED_On(PARTICLE_LED_RGB); // Turn RGB on in case that RGB is controlled by user application before entering sleep mode.
 
     // Network resume
     // FIXME: if_get_list() can be potentially used, instead of using pre-processor.

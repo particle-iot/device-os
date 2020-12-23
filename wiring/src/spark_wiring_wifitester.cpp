@@ -539,7 +539,7 @@ void WiFiTester::tester_connect(char *ssid, char *pass) {
     //
     //  RGBColor = 0xFF00FF;        //purple
     //USERLED_SetRGBColor(0xFF00FF);        //purple
-    //USERLED_On(LED_RGB);
+    //USERLED_On(PARTICLE_LED_RGB);
     serialPrintln("  WIFI Connected?    ");
 #endif
 }

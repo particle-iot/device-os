@@ -51,13 +51,13 @@ static void set_led_value(Led_TypeDef led, uint16_t value) {
  * @brief  Set RGB LED value
  */
 void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b) {
-    set_led_value(LED_RED, r);
-    set_led_value(LED_GREEN, g);
-    set_led_value(LED_BLUE, b);
+    set_led_value(PARTICLE_LED_RED, r);
+    set_led_value(PARTICLE_LED_GREEN, g);
+    set_led_value(PARTICLE_LED_BLUE, b);
 
-    set_led_value(LED_RED + LED_MIRROR_OFFSET, r);
-    set_led_value(LED_GREEN + LED_MIRROR_OFFSET, g);
-    set_led_value(LED_BLUE + LED_MIRROR_OFFSET, b);
+    set_led_value((Led_TypeDef)(PARTICLE_LED_RED   + LED_MIRROR_OFFSET), r);
+    set_led_value((Led_TypeDef)(PARTICLE_LED_GREEN + LED_MIRROR_OFFSET), g);
+    set_led_value((Led_TypeDef)(PARTICLE_LED_BLUE  + LED_MIRROR_OFFSET), b);
 }
 
 /**
@@ -66,32 +66,32 @@ void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b) {
 void Get_RGB_LED_Values(uint16_t* values) {
     uint32_t pwm_max = Get_RGB_LED_Max_Value();
 
-    values[0] = HAL_Leds[LED_RED].is_inverted ?
-                (pwm_max - hal_pwm_get_analog_value(HAL_Leds[LED_RED].pin)) :
-                hal_pwm_get_analog_value(HAL_Leds[LED_RED].pin);
-    values[1] = HAL_Leds[LED_GREEN].is_inverted ?
-                (pwm_max - hal_pwm_get_analog_value(HAL_Leds[LED_GREEN].pin)) :
-                hal_pwm_get_analog_value(HAL_Leds[LED_GREEN].pin);
-    values[2] = HAL_Leds[LED_BLUE].is_inverted ?
-                (pwm_max - hal_pwm_get_analog_value(HAL_Leds[LED_BLUE].pin)) :
-                hal_pwm_get_analog_value(HAL_Leds[LED_BLUE].pin);
+    values[0] = HAL_Leds[PARTICLE_LED_RED].is_inverted ?
+                (pwm_max - hal_pwm_get_analog_value(HAL_Leds[PARTICLE_LED_RED].pin)) :
+                hal_pwm_get_analog_value(HAL_Leds[PARTICLE_LED_RED].pin);
+    values[1] = HAL_Leds[PARTICLE_LED_GREEN].is_inverted ?
+                (pwm_max - hal_pwm_get_analog_value(HAL_Leds[PARTICLE_LED_GREEN].pin)) :
+                hal_pwm_get_analog_value(HAL_Leds[PARTICLE_LED_GREEN].pin);
+    values[2] = HAL_Leds[PARTICLE_LED_BLUE].is_inverted ?
+                (pwm_max - hal_pwm_get_analog_value(HAL_Leds[PARTICLE_LED_BLUE].pin)) :
+                hal_pwm_get_analog_value(HAL_Leds[PARTICLE_LED_BLUE].pin);
 }
 
 /**
  * @brief  Get RGB LED max value
  */
 uint16_t Get_RGB_LED_Max_Value(void) {
-    return (1 << hal_pwm_get_resolution(HAL_Leds[LED_RED].pin)) - 1;
+    return (1 << hal_pwm_get_resolution(HAL_Leds[PARTICLE_LED_RED].pin)) - 1;
 }
 
 /**
  * @brief  Configure user LED
  */
 void Set_User_LED(uint8_t state) {
-    if ((!state && HAL_Leds[LED_USER].is_inverted) || (state && !HAL_Leds[LED_USER].is_inverted)) {
-        HAL_GPIO_Write(HAL_Leds[LED_USER].pin, 1);
+    if ((!state && HAL_Leds[PARTICLE_LED_USER].is_inverted) || (state && !HAL_Leds[PARTICLE_LED_USER].is_inverted)) {
+        HAL_GPIO_Write(HAL_Leds[PARTICLE_LED_USER].pin, 1);
     } else {
-        HAL_GPIO_Write(HAL_Leds[LED_USER].pin, 0);
+        HAL_GPIO_Write(HAL_Leds[PARTICLE_LED_USER].pin, 0);
     }
 }
 
@@ -99,7 +99,7 @@ void Set_User_LED(uint8_t state) {
  * @brief  Toggle user LED
  */
 void Toggle_User_LED(void) {
-    HAL_GPIO_Write(HAL_Leds[LED_USER].pin, !HAL_GPIO_Read(HAL_Leds[LED_USER].pin));
+    HAL_GPIO_Write(HAL_Leds[PARTICLE_LED_USER].pin, !HAL_GPIO_Read(HAL_Leds[PARTICLE_LED_USER].pin));
 }
 
 /**

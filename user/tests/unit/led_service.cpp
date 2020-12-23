@@ -288,7 +288,7 @@ TEST_CASE("LEDStatus") {
 
     SECTION("LED is not affected when no active status is available") {
         LED_SetRGBColor(0x00123456); // Set LED color directly
-        LED_On(LED_RGB);
+        LED_On(PARTICLE_LED_RGB);
         update(); // No active status
         CHECK(led.color() == Color(0x00123456));
         LEDStatus s(Color::WHITE);
