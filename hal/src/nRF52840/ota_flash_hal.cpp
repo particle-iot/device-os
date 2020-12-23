@@ -209,6 +209,10 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     }
 }
 
+// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
+// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
+// the problem
+__attribute__((optimize("O0")))
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
 {
     if (module_function(module) != MODULE_FUNCTION_SYSTEM_PART)
@@ -269,6 +273,10 @@ bool validate_module_dependencies_full(const module_info_t* module, const module
     return valid;
 }
 
+// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
+// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
+// the problem
+__attribute__((optimize("O0")))
 bool validate_module_dependencies(const module_bounds_t* bounds, bool userOptional, bool fullDeps)
 {
     bool valid = false;
