@@ -353,7 +353,7 @@ int Protocol::begin()
 		uint32_t stateFlags = AppStateDescriptor::ALL;
 		if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
 			// The system controls when to send application Describe and subscriptions
-			stateFlags = AppStateDescriptor::SYSTEM_DESCRIBE_CRC | AppStateDescriptor::PROTOCOL_FLAGS;
+			stateFlags &= ~(AppStateDescriptor::APP_DESCRIBE_CRC | AppStateDescriptor::SUBSCRIPTIONS_CRC);
 		}
 		const auto currentState = app_state_descriptor(stateFlags);
 		const auto cachedState = channel.cached_app_state_descriptor();
@@ -392,11 +392,14 @@ int Protocol::begin()
 	channel.notify_established();
 
 	// An ACK or a response for the Hello message has already been received at this point, so we can
-	// update cached protocol flags
+	// update the relevant settings in the session data
 	if (descriptor.app_state_selector_info) {
 		LOG(TRACE, "Updating protocol flags");
 		channel.command(Channel::SAVE_SESSION);
 		descriptor.app_state_selector_info(SparkAppStateSelector::PROTOCOL_FLAGS, SparkAppStateUpdate::PERSIST, protocol_flags, nullptr);
+		descriptor.app_state_selector_info(SparkAppStateSelector::MAX_MESSAGE_SIZE, SparkAppStateUpdate::PERSIST, PROTOCOL_BUFFER_SIZE, nullptr);
+		descriptor.app_state_selector_info(SparkAppStateSelector::MAX_BINARY_SIZE, SparkAppStateUpdate::PERSIST, max_binary_size, nullptr);
+		descriptor.app_state_selector_info(SparkAppStateSelector::OTA_CHUNK_SIZE, SparkAppStateUpdate::PERSIST, ota_chunk_size, nullptr);
 		channel.command(Channel::LOAD_SESSION);
 	}
 

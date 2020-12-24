@@ -563,6 +563,27 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 			});
 			break;
 		}
+		case SparkAppStateSelector::MAX_MESSAGE_SIZE: {
+			update_persisted_state([value](SessionPersistData& data){
+				data.max_message_size = value;
+				data.app_state_flags |= AppStateDescriptor::MAX_MESSAGE_SIZE;
+			});
+			break;
+		}
+		case SparkAppStateSelector::MAX_BINARY_SIZE: {
+			update_persisted_state([value](SessionPersistData& data){
+				data.max_binary_size = value;
+				data.app_state_flags |= AppStateDescriptor::MAX_BINARY_SIZE;
+			});
+			break;
+		}
+		case SparkAppStateSelector::OTA_CHUNK_SIZE: {
+			update_persisted_state([value](SessionPersistData& data){
+				data.ota_chunk_size = value;
+				data.app_state_flags |= AppStateDescriptor::OTA_CHUNK_SIZE;
+			});
+			break;
+		}
 		default:
 			break;
 		}
@@ -581,10 +602,6 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 	else if (operation == SparkAppStateUpdate::RESET && stateSelector == SparkAppStateSelector::ALL)
 	{
 		update_persisted_state([](SessionPersistData& data) {
-			data.describe_system_crc = 0;
-			data.describe_app_crc = 0;
-			data.subscriptions_crc = 0;
-			data.protocol_flags = 0;
 			data.app_state_flags = 0;
 		});
 	}
