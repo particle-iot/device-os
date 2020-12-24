@@ -173,6 +173,9 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
             // so only user->system_part_2 is checked
             if (module->dependency.module_function != MODULE_FUNCTION_NONE) {
                 const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency.module_function, module->dependency.module_index);
+                if (!dependency_bounds) {
+                    return false;
+                }
                 const module_info_t* dependency = locate_module(dependency_bounds);
                 valid = dependency && (dependency->module_version>=module->dependency.module_version);
             } else {
@@ -184,6 +187,9 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
                 valid = valid && true;
             } else {
                 const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency2.module_function, module->dependency2.module_index);
+                if (!dependency_bounds) {
+                    return false;
+                }
                 const module_info_t* dependency = locate_module(dependency_bounds);
                 valid = valid && dependency && (dependency->module_version>=module->dependency2.module_version);
             }
