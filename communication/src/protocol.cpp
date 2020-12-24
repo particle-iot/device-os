@@ -33,6 +33,10 @@ namespace particle { namespace protocol {
 
 namespace {
 
+// TODO: Move these assertions to a more appropriate place
+static_assert(MAX_EVENT_MESSAGE_SIZE <= PROTOCOL_BUFFER_SIZE, "MAX_EVENT_MESSAGE_SIZE is too large");
+static_assert(MAX_FUNCTION_CALL_MESSAGE_SIZE <= PROTOCOL_BUFFER_SIZE, "MAX_FUNCTION_CALL_MESSAGE_SIZE is too large");
+
 enum HelloFlag {
 	HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL = 0x01,
 	HELLO_FLAG_DIAGNOSTICS_SUPPORT = 0x02,
