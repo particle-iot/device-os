@@ -155,11 +155,18 @@ enum class BlePairingIoCaps : uint8_t {
     KEYBOARD_DISPLAY = BLE_IO_CAPS_KEYBOARD_DISPLAY
 };
 
+enum class BlePairingAlgorithm : uint8_t {
+    LEGACY_ONLY = BLE_PAIRING_ALGORITHM_LEGACY_ONLY,
+    LESC_ONLY = BLE_PAIRING_ALGORITHM_LESC_ONLY,
+    AUTO = BLE_PAIRING_ALGORITHM_AUTO
+};
+
 enum class BlePairingEventType : uint8_t {
     REQUEST_RECEIVED = BLE_EVT_PAIRING_REQUEST_RECEIVED,
     PASSKEY_DISPLAY = BLE_EVT_PAIRING_PASSKEY_DISPLAY,
     PASSKEY_INPUT = BLE_EVT_PAIRING_PASSKEY_INPUT,
-    STATUS_UPDATED = BLE_EVT_PAIRING_STATUS_UPDATED
+    STATUS_UPDATED = BLE_EVT_PAIRING_STATUS_UPDATED,
+    NUMERIC_COMPARISON = BLE_EVT_PAIRING_NUMERIC_COMPARISON
 };
 
 struct BlePairingStatus {
@@ -1043,8 +1050,10 @@ public:
     BlePeerDevice connect(const BleAddress& addr, bool automatic = true) const;
 
     int setPairingIoCaps(BlePairingIoCaps ioCaps) const;
+    int setPairingAlgorithm(BlePairingAlgorithm algorithm) const;
     int startPairing(const BlePeerDevice& peer) const;
     int rejectPairing(const BlePeerDevice& peer) const;
+    int setPairingNumericComparison(const BlePeerDevice& peer, bool equal) const;
     int setPairingPasskey(const BlePeerDevice& peer, const uint8_t* passkey) const;
     bool isPairing(const BlePeerDevice& peer) const;
     bool isPaired(const BlePeerDevice& peer) const;
