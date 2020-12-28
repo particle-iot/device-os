@@ -50,7 +50,7 @@ void pairingEventHandlerFunc(const BlePairingEvent& event, void* context) {
         (void)status;
         (void)bonded;
         (void)lesc;
-    } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY) {
+    } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY || event.type == BlePairingEventType::NUMERIC_COMPARISON) {
         uint8_t key = event.payload.passkey[0];
         (void)key;
     } else if (event.type == BlePairingEventType::PASSKEY_INPUT) {
@@ -170,6 +170,14 @@ test(ble_uuid_order) {
     (void)order;
 }
 
+test(ble_pairing_algorithm) {
+    BlePairingAlgorithm algorithm;
+    API_COMPILE({ algorithm = BlePairingAlgorithm::LEGACY_ONLY; });
+    API_COMPILE({ algorithm = BlePairingAlgorithm::LESC_ONLY; });
+    API_COMPILE({ algorithm = BlePairingAlgorithm::AUTO; });
+    (void)algorithm;
+}
+
 test(ble_pairing_io_caps) {
     BlePairingIoCaps ioCaps;
     API_COMPILE({ ioCaps = BlePairingIoCaps::NONE; });
@@ -186,6 +194,7 @@ test(ble_pairing_event_type) {
     API_COMPILE({ type = BlePairingEventType::PASSKEY_DISPLAY; });
     API_COMPILE({ type = BlePairingEventType::PASSKEY_INPUT; });
     API_COMPILE({ type = BlePairingEventType::STATUS_UPDATED; });
+    API_COMPILE({ type = BlePairingEventType::NUMERIC_COMPARISON; });
     (void)type;
 }
 
@@ -787,9 +796,11 @@ test(ble_local_device_class) {
     API_COMPILE({ BLE.onDisconnected(std::bind(&Handlers::disconnectedHandler, &bleHandlerInstance, _1)); });
 
     API_COMPILE({ int ret = BLE.setPairingIoCaps(BlePairingIoCaps::NONE); (void)ret; });
+    API_COMPILE({ int ret = BLE.setPairingAlgorithm(BlePairingAlgorithm::AUTO); (void)ret; });
     API_COMPILE({ int ret = BLE.startPairing(BlePeerDevice()); (void)ret; });
     API_COMPILE({ int ret = BLE.rejectPairing(BlePeerDevice()); (void)ret; });
     API_COMPILE({ uint8_t passkey[6]; int ret = BLE.setPairingPasskey(BlePeerDevice(), passkey); (void)ret; });
+    API_COMPILE({ int ret = BLE.setPairingNumericComparison(BlePeerDevice(), true); (void)ret; });
     API_COMPILE({ bool ret = BLE.isPairing(BlePeerDevice()); (void)ret; });
     API_COMPILE({ bool ret = BLE.isPaired(BlePeerDevice()); (void)ret; });
     API_COMPILE({ BLE.onPairingEvent(pairingEventHandlerFunc); });
