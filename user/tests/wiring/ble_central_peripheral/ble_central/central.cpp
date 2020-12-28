@@ -294,71 +294,74 @@ const char* ioCapsStr[5] = {
 static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm) {
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
+    {
+        SCOPE_GUARD ({
+            delay(500);
+            assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+            assertFalse(BLE.connected());
+            delay(500);
+        });
 
-    pairingStatus = -1;
-    pairingRequested = false;
-    BLE.onPairingEvent([&](const BlePairingEvent& event) {
-        if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
-            // Serial.println("Request received");
-            pairingRequested = true;
-        } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
-            pairingStatus = event.payload.status.status;
-            lesc = event.payload.status.lesc;
-            // Serial.println("status updateed");
-        } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY || event.type == BlePairingEventType::NUMERIC_COMPARISON) {
-            Serial.print("Passkey display: ");
-            for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
-                Serial.printf("%c", event.payload.passkey[i]);
-            }
-            Serial.println("");
-            if (event.type == BlePairingEventType::NUMERIC_COMPARISON) {
+        pairingStatus = -1;
+        pairingRequested = false;
+        BLE.onPairingEvent([&](const BlePairingEvent& event) {
+            if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
+                // Serial.println("Request received");
+                pairingRequested = true;
+            } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
+                pairingStatus = event.payload.status.status;
+                lesc = event.payload.status.lesc;
+                // Serial.println("status updateed");
+            } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY || event.type == BlePairingEventType::NUMERIC_COMPARISON) {
+                Serial.print("Passkey display: ");
+                for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
+                    Serial.printf("%c", event.payload.passkey[i]);
+                }
+                Serial.println("");
+                if (event.type == BlePairingEventType::NUMERIC_COMPARISON) {
+                    while (Serial.available()) {
+                        Serial.read();
+                    }
+                    Serial.print("Please confirm if the passkey is identical (y/n): ");
+                    while (!Serial.available());
+                    char c = Serial.read();
+                    Serial.write(c);
+                    Serial.println("");
+                    BLE.setPairingNumericComparison(event.peer, (c == 'y') ? true : false);
+                }
+            } else if (event.type == BlePairingEventType::PASSKEY_INPUT) {
                 while (Serial.available()) {
                     Serial.read();
                 }
-                Serial.print("Please confirm if the passkey is identical (y/n): ");
-                while (!Serial.available());
-                char c = Serial.read();
-                Serial.write(c);
-                Serial.println("");
-                BLE.setPairingNumericComparison(event.peer, (c == 'y') ? true : false);
-            }
-        } else if (event.type == BlePairingEventType::PASSKEY_INPUT) {
-            while (Serial.available()) {
-                Serial.read();
-            }
-            Serial.print("Passkey input (must be identical to the peer's): ");
-            uint8_t i = 0;
-            uint8_t passkey[BLE_PAIRING_PASSKEY_LEN];
-            while (i < BLE_PAIRING_PASSKEY_LEN) {
-                if (Serial.available()) {
-                    passkey[i] = Serial.read();
-                    Serial.write(passkey[i++]);
+                Serial.print("Passkey input (must be identical to the peer's): ");
+                uint8_t i = 0;
+                uint8_t passkey[BLE_PAIRING_PASSKEY_LEN];
+                while (i < BLE_PAIRING_PASSKEY_LEN) {
+                    if (Serial.available()) {
+                        passkey[i] = Serial.read();
+                        Serial.write(passkey[i++]);
+                    }
                 }
+                Serial.println("");
+                BLE.setPairingPasskey(event.peer, passkey);
             }
-            Serial.println("");
-            BLE.setPairingPasskey(event.peer, passkey);
+        });
+
+        if (request) {
+            assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
+        } else {
+            assertTrue(waitFor([&]{ return pairingRequested; }, 5000));
         }
-    });
-
-    if (request) {
-        assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
-    } else {
-        assertTrue(waitFor([&]{ return pairingRequested; }, 5000));
+        assertTrue(BLE.isPairing(peer));
+        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
+        assertTrue(BLE.isPaired(peer));
+        assertEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
+        if (algorithm != BlePairingAlgorithm::LEGACY_ONLY) {
+            assertTrue(lesc);
+        } else {
+            assertFalse(lesc);
+        }
     }
-    assertTrue(BLE.isPairing(peer));
-    assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
-    assertTrue(BLE.isPaired(peer));
-    assertEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
-    if (algorithm != BlePairingAlgorithm::LEGACY_ONLY) {
-        assertTrue(lesc);
-    } else {
-        assertFalse(lesc);
-    }
-
-    delay(500);
-    assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
-    assertFalse(BLE.connected());
-    delay(500);
 }
 
 test(BLE_24_Central_Pairing_Algorithm_Auto_Io_Caps) {
@@ -380,43 +383,49 @@ test(BLE_25_Central_Pairing_Algorithm_Legacy_Only) {
 test(BLE_26_Central_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
+    {
+        SCOPE_GUARD ({
+            delay(500);
+            assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+            assertFalse(BLE.connected());
+            delay(500);
+        });
 
-    pairingStatus = -1;
-    BLE.onPairingEvent([&](const BlePairingEvent& event) {
-        if (event.type == BlePairingEventType::STATUS_UPDATED) {
-            pairingStatus = event.payload.status.status;
-            // Serial.println("status updateed");
-        }
-    });
+        pairingStatus = -1;
+        BLE.onPairingEvent([&](const BlePairingEvent& event) {
+            if (event.type == BlePairingEventType::STATUS_UPDATED) {
+                pairingStatus = event.payload.status.status;
+                // Serial.println("status updateed");
+            }
+        });
 
-    assertEqual(BLE.setPairingIoCaps(BlePairingIoCaps::NONE), (int)SYSTEM_ERROR_NONE);
-    assertEqual(BLE.setPairingAlgorithm(BlePairingAlgorithm::LESC_ONLY), (int)SYSTEM_ERROR_NONE);
+        assertEqual(BLE.setPairingIoCaps(BlePairingIoCaps::NONE), (int)SYSTEM_ERROR_NONE);
+        assertEqual(BLE.setPairingAlgorithm(BlePairingAlgorithm::LESC_ONLY), (int)SYSTEM_ERROR_NONE);
 
-    assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
-    assertTrue(BLE.isPairing(peer));
-    assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
-    assertFalse(BLE.isPaired(peer));
-    assertNotEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
-
-    delay(500);
-    assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
-    assertFalse(BLE.connected());
-    delay(500);
+        assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
+        assertTrue(BLE.isPairing(peer));
+        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
+        assertFalse(BLE.isPaired(peer));
+        assertNotEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
+    }
 }
 
 test(BLE_27_Central_Initiate_Pairing_Peripheral_Being_Rejected) {
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
+    {
+        SCOPE_GUARD ({
+            delay(500);
+            assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+            assertFalse(BLE.connected());
+            delay(500);
+        });
 
-    assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
-    assertTrue(BLE.isPairing(peer));
-    assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
-    assertFalse(BLE.isPaired(peer));
-
-    delay(500);
-    assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
-    assertFalse(BLE.connected());
-    delay(500);
+        assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
+        assertTrue(BLE.isPairing(peer));
+        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
+        assertFalse(BLE.isPaired(peer));
+    }
 }
 
 test(BLE_28_Central_Pairing_Receiption_Reject) {
@@ -432,13 +441,16 @@ test(BLE_28_Central_Pairing_Receiption_Reject) {
 
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
+    {
+        SCOPE_GUARD ({
+            delay(500);
+            assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+            assertFalse(BLE.connected());
+            delay(500);
+        });
 
-    assertTrue(waitFor([]{ return pairingStatus != 0; }, 5000));
-
-    delay(500);
-    assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
-    assertFalse(BLE.connected());
-    delay(500);
+        assertTrue(waitFor([]{ return pairingStatus != 0; }, 5000));
+    }
 }
 
 #endif // #if Wiring_BLE == 1

@@ -91,6 +91,13 @@ test(BLE_01_Peripheral_Advertising) {
     ret = BLE.advertise(&advData, &srData);
     assertEqual(ret, 0);
 
+    BLE.onConnected([](const BlePeerDevice& peer) {
+        Serial.println("Connected.");
+    });
+    BLE.onDisconnected([](const BlePeerDevice& peer) {
+        Serial.println("Disconnected.");
+    });
+
     Serial.println("BLE starts advertising...");
 
     assertTrue(BLE.advertising());
@@ -98,7 +105,6 @@ test(BLE_01_Peripheral_Advertising) {
 
 test(BLE_02_Peripheral_Connected) {
     assertTrue(waitFor(BLE.connected, 20000));
-    Serial.println("BLE connected.");
 }
 
 // For the first data transmission, we need to wait longer to make sure
@@ -260,25 +266,30 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm) {
     });
 
     assertTrue(waitFor(BLE.connected, 20000));
+    {
+        SCOPE_GUARD ({
+            assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
+            assertFalse(BLE.connected());
+        });
 
-    if (request) {
-        peer = BLE.peerCentral();
-        assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
-    } else {
-        assertTrue(waitFor([&]{ return pairingRequested; }, 20000));
+        if (request) {
+            peer = BLE.peerCentral();
+            Serial.println("Start pairing...");
+            assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
+        } else {
+            assertTrue(waitFor([&]{ return pairingRequested; }, 20000));
+        }
+        assertTrue(BLE.isPairing(peer));
+        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
+        assertTrue(BLE.isPaired(peer));
+        assertEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
+        if (algorithm != BlePairingAlgorithm::LEGACY_ONLY) {
+            assertTrue(lesc);
+        } else {
+            assertFalse(lesc);
+        }
+
     }
-    assertTrue(BLE.isPairing(peer));
-    assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
-    assertTrue(BLE.isPaired(peer));
-    assertEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
-    if (algorithm != BlePairingAlgorithm::LEGACY_ONLY) {
-        assertTrue(lesc);
-    } else {
-        assertFalse(lesc);
-    }
-    
-    assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
-    assertFalse(BLE.connected());
 }
 
 test(BLE_20_Peripheral_Pairing_Algorithm_Auto_Io_Caps) {
@@ -310,14 +321,17 @@ test(BLE_22_Peripheral_Pairing_Algorithm_Legacy_Only_Being_Rejected) {
     assertEqual(BLE.setPairingAlgorithm(BlePairingAlgorithm::LEGACY_ONLY), (int)SYSTEM_ERROR_NONE);
 
     assertTrue(waitFor(BLE.connected, 20000));
+    {
+        SCOPE_GUARD ({
+            assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
+            assertFalse(BLE.connected());
+        });
 
-    assertTrue(waitFor([&]{ return pairingRequested; }, 20000));
-    assertTrue(BLE.isPairing(peer));
-    assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
-    assertFalse(BLE.isPaired(peer));
-
-    assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
-    assertFalse(BLE.connected());
+        assertTrue(waitFor([&]{ return pairingRequested; }, 20000));
+        assertTrue(BLE.isPairing(peer));
+        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
+        assertFalse(BLE.isPaired(peer));
+    }
 }
 
 test(BLE_23_Peripheral_Pairing_Receiption_Reject) {
@@ -332,25 +346,31 @@ test(BLE_23_Peripheral_Pairing_Receiption_Reject) {
     });
 
     assertTrue(waitFor(BLE.connected, 20000));
+    {
+        SCOPE_GUARD ({
+            assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
+            assertFalse(BLE.connected());
+        });
 
-    assertTrue(waitFor([]{ return pairingStatus != 0; }, 5000));
-
-    assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
-    assertFalse(BLE.connected());
+        assertTrue(waitFor([]{ return pairingStatus != 0; }, 5000));
+    }
 }
 
 test(BLE_24_Peripheral_Initiate_Pairing_Being_Rejected) {
     assertTrue(waitFor(BLE.connected, 20000));
+    {
+        SCOPE_GUARD ({
+            assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
+            assertFalse(BLE.connected());
+        });
 
-    peer = BLE.peerCentral();
-    assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
+        peer = BLE.peerCentral();
+        assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
 
-    assertTrue(BLE.isPairing(peer));
-    assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
-    assertFalse(BLE.isPaired(peer));
-
-    assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
-    assertFalse(BLE.connected());
+        assertTrue(BLE.isPairing(peer));
+        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
+        assertFalse(BLE.isPaired(peer));
+    }
 }
 
 #endif // #if Wiring_BLE == 1

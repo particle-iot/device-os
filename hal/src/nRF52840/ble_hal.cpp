@@ -236,6 +236,7 @@ public:
         return evtDispatcherinitialized_;
     }
     void enqueue(ble_evt_t** event);
+    void enqueue(const ble_evt_t* event);
 
     void* allocEventData(size_t size) {
         return pool_.alloc(size);
@@ -705,6 +706,16 @@ void BleObject::BleEventDispatcher::enqueue(ble_evt_t** event) {
         LOG(ERROR, "os_queue_put() failed.");
         SPARK_ASSERT(false);
     }
+}
+
+void BleObject::BleEventDispatcher::enqueue(const ble_evt_t* event) {
+    ble_evt_t* pBleEvent = (ble_evt_t*)allocEventData(sizeof(ble_evt_t));
+    if (!pBleEvent) {
+        LOG(ERROR, "Allocate memory for BLE event failed.");
+        SPARK_ASSERT(false);
+    }
+    memcpy(pBleEvent, event, sizeof(ble_evt_t));
+    enqueue(&pBleEvent);
 }
 
 os_thread_return_t BleObject::BleEventDispatcher::processBleEventFromThread(void* param) {
@@ -2632,15 +2643,7 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
         }
         case BLE_GAP_EVT_DISCONNECTED: {
             LOG_DEBUG(TRACE, "BLE GAP event: disconnected.");
-            ble_evt_t* disconnectedEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
-            if (!disconnectedEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
-                // Assert it since the connection is cached but invalid for further reference.
-                SPARK_ASSERT(false);
-                break;
-            }
-            memcpy(disconnectedEvent, event, sizeof(ble_evt_t));
-            BleObject::getInstance().dispatcher()->enqueue(&disconnectedEvent);
+            BleObject::getInstance().dispatcher()->enqueue(event);
             break;
         }
         case BLE_GAP_EVT_CONN_PARAM_UPDATE_REQUEST: {
@@ -2653,14 +2656,7 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
         }
         case BLE_GAP_EVT_CONN_PARAM_UPDATE: {
             LOG_DEBUG(TRACE, "BLE GAP event: connection parameters updated.");
-            ble_evt_t* connParamsUpdateEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
-            if (!connParamsUpdateEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
-                SPARK_ASSERT(false);
-                break;
-            }
-            memcpy(connParamsUpdateEvent, event, sizeof(ble_evt_t));
-            BleObject::getInstance().dispatcher()->enqueue(&connParamsUpdateEvent);
+            BleObject::getInstance().dispatcher()->enqueue(event);
             break;
         }
         case BLE_GAP_EVT_SEC_INFO_REQUEST:
@@ -2671,14 +2667,7 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
         case BLE_GAP_EVT_CONN_SEC_UPDATE:
         case BLE_GAP_EVT_AUTH_STATUS: {
-            ble_evt_t* secEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
-            if (!secEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
-                SPARK_ASSERT(false);
-                break;
-            }
-            memcpy(secEvent, event, sizeof(ble_evt_t));
-            BleObject::getInstance().dispatcher()->enqueue(&secEvent);
+            BleObject::getInstance().dispatcher()->enqueue(event);
             break;
         }
         case BLE_GAP_EVT_TIMEOUT: {
@@ -2699,14 +2688,7 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
                 LOG_DEBUG(TRACE, "sd_ble_gatts_exchange_mtu_reply() failed: %d", ret);
                 break;
             }
-            ble_evt_t* attMtuExchangeEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
-            if (!attMtuExchangeEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
-                SPARK_ASSERT(false);
-                break;
-            }
-            memcpy(attMtuExchangeEvent, event, sizeof(ble_evt_t));
-            BleObject::getInstance().dispatcher()->enqueue(&attMtuExchangeEvent);
+            BleObject::getInstance().dispatcher()->enqueue(event);
             break;
         }
         case BLE_GATTC_EVT_EXCHANGE_MTU_RSP: {
