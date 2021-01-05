@@ -1056,12 +1056,14 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
 
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
         int resetCount = 0;
+        const int imsiMaxRetryCount = 5;
+        const int CcidRetryCount = 2;
         // Note: Not failing on AT error on ICCID/IMSI lookup since SIMs have shown strange edge cases
         // where they error for no reason, and hard resetting the modem or power cycling would not clear it.
         //
         // Check if we are using a Twilio Super SIM based on ICCID
         char buf[32] = {};
-        int ccidCount = 0;
+        int ccidCount = 1;
         do {
             memset(buf, 0, sizeof(buf));
             auto lenCcid = getIccidImpl(buf, sizeof(buf));
@@ -1069,20 +1071,25 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 netConf_ = networkConfigForIccid(buf, lenCcid);
                 break;
             }
-        } while (++ccidCount < 2);
+        } while (++ccidCount <= CcidRetryCount);
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
-            int imsiCount = 0;
+            int imsiCount = 1;
             do {
+                HAL_Delay_Milliseconds(100*imsiCount);
                 memset(buf, 0, sizeof(buf));
                 auto resp = parser_.sendCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI");
-                CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
-                const int r = CHECK_PARSER(resp.readResult());
-                if (r == AtResponse::OK) {
-                    netConf_ = networkConfigForImsi(buf, strlen(buf));
-                    break;
+                const int res = resp.readLine(buf, sizeof(buf));
+                // Prevent exiting if there is AT response collected in readLine is an error
+                // After max attempts, error out anyway
+                if (res >= 0 || imsiCount == imsiMaxRetryCount) {
+                    const int r = CHECK_PARSER(resp.readResult());
+                    if (r == AtResponse::OK) {
+                        netConf_ = networkConfigForImsi(buf, strlen(buf));
+                        break;
+                    }
                 }
-            } while (++imsiCount < 2);
+            } while (++imsiCount <= imsiMaxRetryCount);
         }
         do {
             // Set UMNOPROF and UBANDMASK as appropriate based on SIM
@@ -1523,6 +1530,7 @@ int SaraNcpClient::checkSimCard() {
 }
 
 int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
+    int imsiMaxRetryCount = 5;
     netConf_ = conf;
     if (!netConf_.isValid()) {
         // First look for network settings based on ICCID
@@ -1533,12 +1541,22 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
-            memset(buf, 0, sizeof(buf));
-            auto resp = parser_.sendCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI");
-            CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
-            const int r = CHECK_PARSER(resp.readResult());
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-            netConf_ = networkConfigForImsi(buf, strlen(buf));
+            int imsiCount = 1;
+            do {
+                HAL_Delay_Milliseconds(100*imsiCount);
+                memset(buf, 0, sizeof(buf));
+                auto resp = parser_.sendCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI");
+                const int res = resp.readLine(buf, sizeof(buf));
+                // Prevent exiting if there is AT response collected in readLine is an error
+                // After max attempts, error out anyway
+                if (res >= 0 || imsiCount == imsiMaxRetryCount) {
+                    const int r = CHECK_PARSER(resp.readResult());
+                    if (r == AtResponse::OK) {
+                        netConf_ = networkConfigForImsi(buf, strlen(buf));
+                        break;
+                    }
+                }
+            } while (++imsiCount <= imsiMaxRetryCount);
         }
     }
 
