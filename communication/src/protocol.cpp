@@ -24,6 +24,8 @@
 
 LOG_SOURCE_CATEGORY("comm.protocol")
 
+#include "mbedtls_config.h"
+#include "protocol_defs.h"
 #include "protocol.h"
 #include "chunked_transfer.h"
 #include "subscriptions.h"
@@ -32,10 +34,6 @@ LOG_SOURCE_CATEGORY("comm.protocol")
 namespace particle { namespace protocol {
 
 namespace {
-
-// TODO: Move these assertions to a more appropriate place
-static_assert(MAX_EVENT_MESSAGE_SIZE <= PROTOCOL_BUFFER_SIZE, "MAX_EVENT_MESSAGE_SIZE is too large");
-static_assert(MAX_FUNCTION_CALL_MESSAGE_SIZE <= PROTOCOL_BUFFER_SIZE, "MAX_FUNCTION_CALL_MESSAGE_SIZE is too large");
 
 enum HelloFlag {
 	HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL = 0x01,
@@ -396,9 +394,9 @@ int Protocol::begin()
 	channel.notify_established();
 
 	// An ACK or a response for the Hello message has already been received at this point, so we can
-	// update the relevant settings in the session data
+	// update the cached session parameters
 	if (descriptor.app_state_selector_info) {
-		LOG(TRACE, "Updating protocol flags");
+		LOG(TRACE, "Updating cached session parameters");
 		channel.command(Channel::SAVE_SESSION);
 		descriptor.app_state_selector_info(SparkAppStateSelector::PROTOCOL_FLAGS, SparkAppStateUpdate::PERSIST, protocol_flags, nullptr);
 		descriptor.app_state_selector_info(SparkAppStateSelector::MAX_MESSAGE_SIZE, SparkAppStateUpdate::PERSIST, PROTOCOL_BUFFER_SIZE, nullptr);
@@ -443,7 +441,7 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 	Message message;
 	channel.create(message);
 
-	uint8_t flags = HELLO_FLAG_DIAGNOSTICS_SUPPORT | HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT |
+	uint16_t flags = HELLO_FLAG_DIAGNOSTICS_SUPPORT | HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT |
 			HELLO_FLAG_GOODBYE_SUPPORT;
 	if (was_ota_upgrade_successful) {
 		flags |= HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL;

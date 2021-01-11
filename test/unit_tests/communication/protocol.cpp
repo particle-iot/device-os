@@ -31,7 +31,7 @@ class AbstractProtocol : public Protocol
 public:
 	AbstractProtocol(MessageChannel& channel) : Protocol(channel) {}
 
-	virtual size_t build_hello(Message& message, uint8_t flags)
+	virtual size_t build_hello(Message& message, uint16_t flags)
 	{
 		return 0;
 	}

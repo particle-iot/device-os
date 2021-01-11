@@ -213,12 +213,16 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
         protocol->enable_compressed_ota();
         return 0;
     }
-    case particle::protocol::Connection::OTA_CHUNK_SIZE: {
-        protocol->set_ota_chunk_size(value);
+    case particle::protocol::Connection::SYSTEM_MODULE_VERSION: {
+        protocol->set_system_version(value);
         return 0;
     }
     case particle::protocol::Connection::MAX_BINARY_SIZE: {
         protocol->set_max_binary_size(value);
+        return 0;
+    }
+    case particle::protocol::Connection::OTA_CHUNK_SIZE: {
+        protocol->set_ota_chunk_size(value);
         return 0;
     }
     default:

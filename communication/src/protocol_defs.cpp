@@ -15,9 +15,18 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "mbedtls_config.h"
+
 #include "protocol_defs.h"
 
-system_error_t particle::protocol::toSystemError(ProtocolError error) {
+namespace particle {
+
+namespace protocol {
+
+static_assert(MAX_EVENT_MESSAGE_SIZE <= PROTOCOL_BUFFER_SIZE, "MAX_EVENT_MESSAGE_SIZE is too large");
+static_assert(MAX_FUNCTION_CALL_MESSAGE_SIZE <= PROTOCOL_BUFFER_SIZE, "MAX_FUNCTION_CALL_MESSAGE_SIZE is too large");
+
+system_error_t toSystemError(ProtocolError error) {
     switch (error) {
     case NO_ERROR:
         return SYSTEM_ERROR_NONE;
@@ -61,3 +70,7 @@ system_error_t particle::protocol::toSystemError(ProtocolError error) {
         return SYSTEM_ERROR_PROTOCOL; // Generic protocol error
     }
 }
+
+} // namespace protocol
+
+} // namespace particle

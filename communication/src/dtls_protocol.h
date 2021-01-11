@@ -62,17 +62,14 @@ public:
 	          const SparkCallbacks &callbacks,
 	          const SparkDescriptor &descriptor) override;
 
-	size_t build_hello(Message& message, uint8_t flags) override
+	size_t build_hello(Message& message, uint16_t flags) override
 	{
 		product_details_t deets;
 		deets.size = sizeof(deets);
 		get_product_details(deets);
-		// We could have used the Maximum Fragment Length extension (RFC 6066) to notify the server of the
-		// maximum supported fragment size, however, that extension can't be used with fragment sizes that
-		// are not a power of two, and RFC 8449 that is free of that limitation is not supported by mbedTLS
-		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, PLATFORM_ID, deets.product_id,
-				deets.product_version, true /* confirmable */, device_id, sizeof(device_id), PROTOCOL_BUFFER_SIZE,
-				max_binary_size, ota_chunk_size);
+		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, PLATFORM_ID, system_version,
+				deets.product_id, deets.product_version, device_id, sizeof(device_id), PROTOCOL_BUFFER_SIZE,
+				max_binary_size, ota_chunk_size, true /* confirmable */);
 		return len;
 	}
 

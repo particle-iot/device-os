@@ -171,14 +171,19 @@ protected:
 	token_t next_token;
 
 	/**
+	 * Maximum size of a firmware binary.
+	 */
+	size_t max_binary_size;
+
+	/**
 	 * Size of an OTA update chunk.
 	 */
 	size_t ota_chunk_size;
 
 	/**
-	 * Maximum size of a firmware binary.
+	 * Module version of the system firmware.
 	 */
-	size_t max_binary_size;
+	uint16_t system_version;
 
 	void set_protocol_flags(uint32_t flags)
 	{
@@ -206,7 +211,7 @@ protected:
 	 */
 	ProtocolError hello_response();
 
-	virtual size_t build_hello(Message& message, uint8_t flags)=0;
+	virtual size_t build_hello(Message& message, uint16_t flags) = 0;
 
 	/**
 	 * Send a Ping message over the channel.
@@ -341,8 +346,9 @@ public:
 			last_ack_handlers_update(0),
 			protocol_flags(0),
 			initialized(false),
+			max_binary_size(0), // Unlimited
 			ota_chunk_size(DEFAULT_OTA_CHUNK_SIZE),
-			max_binary_size(0) // Unlimited
+			system_version(0) // Unknown
 	{
 	}
 
@@ -378,14 +384,19 @@ public:
 		protocol_flags |= ProtocolFlag::COMPRESSED_OTA;
 	}
 
-	void set_ota_chunk_size(size_t size)
+	void set_system_version(uint16_t version)
 	{
-		ota_chunk_size = size;
+		system_version = version;
 	}
 
 	void set_max_binary_size(size_t size)
 	{
 		max_binary_size = size;
+	}
+
+	void set_ota_chunk_size(size_t size)
+	{
+		ota_chunk_size = size;
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)

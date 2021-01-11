@@ -67,15 +67,15 @@ public:
         initialize_ping(15000,10000);
 	}
 
-	size_t build_hello(Message& message, uint8_t flags) override
+	size_t build_hello(Message& message, uint16_t flags) override
 	{
 		product_details_t deets;
 		deets.size = sizeof(deets);
 		get_product_details(deets);
 
-		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, PLATFORM_ID, deets.product_id,
-				deets.product_version, false /* confirmable */, nullptr /* device_id */, 0 /* device_id_len */,
-				PROTOCOL_BUFFER_SIZE, max_binary_size, ota_chunk_size);
+		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, PLATFORM_ID, system_version,
+				deets.product_id, deets.product_version, nullptr /* device_id */, 0 /* device_id_len */,
+				PROTOCOL_BUFFER_SIZE, max_binary_size, ota_chunk_size, false /* confirmable */);
 		return len;
 	}
 

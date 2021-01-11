@@ -1064,9 +1064,11 @@ void Spark_Protocol_Init(void)
         }
 #endif // HAL_PLATFORM_COMPRESSED_OTA
 
-        spark_protocol_set_connection_property(sp, particle::protocol::Connection::OTA_CHUNK_SIZE, HAL_OTA_ChunkSize(),
+        spark_protocol_set_connection_property(sp, particle::protocol::Connection::SYSTEM_MODULE_VERSION, MODULE_VERSION,
                 nullptr, nullptr);
         spark_protocol_set_connection_property(sp, particle::protocol::Connection::MAX_BINARY_SIZE, HAL_OTA_FlashLength(),
+                nullptr, nullptr);
+        spark_protocol_set_connection_property(sp, particle::protocol::Connection::OTA_CHUNK_SIZE, HAL_OTA_ChunkSize(),
                 nullptr, nullptr);
 
         Particle.subscribe("spark", SystemEvents, MY_DEVICES);

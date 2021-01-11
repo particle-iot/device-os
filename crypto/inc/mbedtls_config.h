@@ -24,6 +24,8 @@
 #ifndef MBEDTLS_CONFIG_H
 #define MBEDTLS_CONFIG_H
 
+#include "mbedtls_config_common.h"
+
 /* For new platforms the configuration file resides in hal */
 #if PLATFORM_ID < 12 || PLATFORM_ID == 60000
 #include "mbedtls_config_default.h"

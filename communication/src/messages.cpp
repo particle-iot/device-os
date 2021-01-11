@@ -121,10 +121,9 @@ CoAPMessageType::Enum Messages::decodeType(const uint8_t* buf, size_t length)
 	return CoAPMessageType::ERROR;
 }
 
-size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
-		uint16_t platform_id, uint16_t product_id,
-		uint16_t product_firmware_version, bool confirmable, const uint8_t* device_id, size_t device_id_len,
-		uint16_t max_message_size, uint32_t max_binary_size, uint16_t ota_chunk_size)
+size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint16_t flags, uint16_t platform_id, uint16_t system_version,
+		uint16_t product_id, uint16_t product_version, const uint8_t* device_id, size_t device_id_len,
+		uint16_t max_message_size, uint32_t max_binary_size, uint16_t ota_chunk_size, bool confirmable)
 {
 	// TODO: why no token? because the response is not sent separately. But really we should use a token for all messages that expect a response.
 	buf[0] = COAP_MSG_HEADER(confirmable ? CoAPType::CON : CoAPType::NON, 0);
@@ -136,10 +135,10 @@ size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 	buf[6] = 0xff; // payload marker
 	buf[7] = product_id >> 8;
 	buf[8] = product_id & 0xff;
-	buf[9] = product_firmware_version >> 8;
-	buf[10] = product_firmware_version & 0xff;
-	buf[11] = 0; // reserved flags
-	buf[12] = flags;
+	buf[9] = product_version >> 8;
+	buf[10] = product_version & 0xff;
+	buf[11] = (flags >> 8) & 0xff;
+	buf[12] = flags & 0xff;
 	buf[13] = platform_id >> 8;
 	buf[14] = platform_id & 0xFF;
 	buf[15] = 0; // reserved
@@ -147,12 +146,17 @@ size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint8_t flags,
 	size_t len = 17;
 	memcpy(buf + len, device_id, device_id_len);
 	len += device_id_len;
+	buf[len++] = (system_version >> 8) & 0xff;
+	buf[len++] = system_version & 0xff;
+	// We could have used the Maximum Fragment Length extension (RFC 6066) to notify the server of the
+	// maximum supported fragment size, however, that extension can't be used with fragment sizes that
+	// are not a power of two, and RFC 8449 that is free of that limitation is not supported by mbedTLS
+	buf[len++] = (max_message_size >> 8) & 0xff;
+	buf[len++] = max_message_size & 0xff;
 	buf[len++] = (max_binary_size >> 24) & 0xff;
 	buf[len++] = (max_binary_size >> 16) & 0xff;
 	buf[len++] = (max_binary_size >> 8) & 0xff;
 	buf[len++] = max_binary_size & 0xff;
-	buf[len++] = (max_message_size >> 8) & 0xff;
-	buf[len++] = max_message_size & 0xff;
 	buf[len++] = (ota_chunk_size >> 8) & 0xff;
 	buf[len++] = ota_chunk_size & 0xff;
 	return len;

@@ -117,9 +117,9 @@ namespace ChunkReceivedCode {
 }
 
 enum DescriptionType {
-    DESCRIBE_SYSTEM = 1<<0,            	// modules
-    DESCRIBE_APPLICATION = 1<<1,       	// functions and variables
-    DESCRIBE_METRICS = 1<<2,				// metrics/diagnostics
+    DESCRIBE_SYSTEM = 1<<0, // modules
+    DESCRIBE_APPLICATION = 1<<1, // functions and variables
+    DESCRIBE_METRICS = 1<<2, // metrics/diagnostics
     DESCRIBE_DEFAULT = DESCRIBE_SYSTEM | DESCRIBE_APPLICATION,
     DESCRIBE_MAX = (1<<3)-1
 };
@@ -136,8 +136,9 @@ enum Enum
     FAST_OTA = 1, ///< Enable/disable fast OTA.
     DEVICE_INITIATED_DESCRIBE = 2, ///< Enable device-initiated describe messages.
     COMPRESSED_OTA = 3, ///< Enable support for compressed/combined OTA updates.
-    OTA_CHUNK_SIZE = 4, ///< Maximum size of an OTA update chunk.
-    MAX_BINARY_SIZE = 5 ///< Maximum size of a firmware binary.
+    SYSTEM_MODULE_VERSION = 4, ///< Module version of the system firmware.
+    MAX_BINARY_SIZE = 5, ///< Maximum size of a firmware binary.
+    OTA_CHUNK_SIZE = 6 ///< Size of an OTA update chunk.
 };
 
 }
