@@ -276,7 +276,15 @@ public:
         RxLock lk(uarte_);
         ssize_t d = rxBuffer_.data();
         if (receiving_) {
-            const ssize_t toConsume = timerValue() - rxConsumed_;
+            // IMPORTANT: It seems that the timer value (which is a counter for every time UARTE generates RXDRDY event)
+            // may potentially get larger than the configured RX DMA transfer:
+            // <quote>
+            // For each byte received over the RXD line, an RXDRDY event will be generated.
+            // This event is likely to occur before the corresponding data has been transferred to Data RAM.
+            // </quote>
+            // We'll be extra careful here and make sure not to consume more than we can, otherwise
+            // we may put the ring buffer into an invalid state as there are not safety checks.
+            const ssize_t toConsume = std::min(rxBuffer_.acquirePending(), timerValue() - rxConsumed_);
             if (toConsume > 0) {
                 rxBuffer_.acquireCommit(toConsume);
                 rxConsumed_ += toConsume;
@@ -297,11 +305,8 @@ public:
         const ssize_t maxRead = CHECK(data());
         const size_t readSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(readSize > 0, SYSTEM_ERROR_NO_MEMORY);
-        ssize_t r;
-        {
-            RxLock lk(uarte_);
-            r = CHECK(rxBuffer_.get(buffer, readSize));
-        }
+        RxLock lk(uarte_);
+        ssize_t r = CHECK(rxBuffer_.get(buffer, readSize));
         if (!receiving_) {
             startReceiver();
         }
@@ -387,26 +392,33 @@ public:
             }
         }
 
-        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDRX)) {
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
+        // IMPORTANT: we cannot process ENDRX event if we are under the RX lock (ENDRX interrupt is disabled)
+        if (nrf_uarte_int_enable_check(uarte_, NRF_UARTE_INT_ENDRX_MASK)) {
+            if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDRX)) {
+                nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
+                nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
 
-            nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
-            rxConsumed_ = 0;
+                nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
+                rxConsumed_ = 0;
 
-            if (rxBuffer_.acquirePending() > 0) {
-                rxBuffer_.acquireCommit(rxBuffer_.acquirePending());
+                if (rxBuffer_.acquirePending() > 0) {
+                    rxBuffer_.acquireCommit(rxBuffer_.acquirePending());
+                }
+
+                --receiving_;
+                startReceiver();
             }
-
-            --receiving_;
-            startReceiver();
         }
-        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDTX)) {
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDRDY);
-            txBuffer_.consumeCommit(nrf_uarte_tx_amount_get(uarte_));
-            transmitting_ = false;
-            startTransmission();
+
+        // IMPORTANT: we cannot process ENDTX event if we are under the TX lock (ENDTX interrupt is disabled)
+        if (nrf_uarte_int_enable_check(uarte_, NRF_UARTE_INT_ENDTX_MASK)) {
+            if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDTX)) {
+                nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
+                nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDRDY);
+                txBuffer_.consumeCommit(nrf_uarte_tx_amount_get(uarte_));
+                transmitting_ = false;
+                startTransmission();
+            }
         }
         if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ERROR)) {
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ERROR);
