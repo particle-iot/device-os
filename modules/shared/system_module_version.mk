@@ -1,6 +1,6 @@
 # Skip to next 100 every v0.x.0 release (e.g. 108 for v0.6.2 to 200 for v0.7.0-rc.1)
 # Bump by 1 for every prerelease or release with the same v0.x.* base.
-COMMON_MODULE_VERSION ?= 2011
+COMMON_MODULE_VERSION ?= 3002
 SYSTEM_PART1_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 SYSTEM_PART2_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 SYSTEM_PART3_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
@@ -50,4 +50,14 @@ endif
 ifeq ($(PLATFORM_GEN),3)
 # SoftDevice S140 7.0.1
 SOFTDEVICE_DEPENDENCY = 202
+
+SYSTEM_PART1_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_BOOTLOADER},0,${BOOTLOADER_DEPENDENCY}
+ifeq (,$(filter $(PLATFORM_ID),26))
+SYSTEM_PART1_MODULE_DEPENDENCY2 ?= ${MODULE_FUNCTION_RADIO_STACK},0,${SOFTDEVICE_DEPENDENCY}
+else
+# There is no need to carry SoftDevice dependency on Tracker, since they are manufactured
+# with the latest one. Update NCP firmware instead.
+ESP32_NCP_DEPENDENCY = 7
+SYSTEM_PART1_MODULE_DEPENDENCY2 ?= ${MODULE_FUNCTION_NCP_FIRMWARE},0,${ESP32_NCP_DEPENDENCY}
+endif
 endif

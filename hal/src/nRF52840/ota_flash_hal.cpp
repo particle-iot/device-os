@@ -209,6 +209,10 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     }
 }
 
+// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
+// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
+// the problem
+__attribute__((optimize("O0")))
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
 {
     if (module_function(module) != MODULE_FUNCTION_SYSTEM_PART)
@@ -269,6 +273,10 @@ bool validate_module_dependencies_full(const module_info_t* module, const module
     return valid;
 }
 
+// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
+// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
+// the problem
+__attribute__((optimize("O0")))
 bool validate_module_dependencies(const module_bounds_t* bounds, bool userOptional, bool fullDeps)
 {
     bool valid = false;
@@ -282,7 +290,11 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
             // deliberately not transitive, so we only check the first dependency
             // so only user->system_part_2 is checked
             if (module->dependency.module_function != MODULE_FUNCTION_NONE) {
-                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency.module_function, module->dependency.module_index, module_mcu_target(module));
+                // NOTE: we ignore MCU type
+                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency.module_function, module->dependency.module_index, HAL_PLATFORM_MCU_ANY);
+                if (!dependency_bounds) {
+                    return false;
+                }
                 const module_info_t* dependency = locate_module(dependency_bounds);
                 valid = dependency && (dependency->module_version>=module->dependency.module_version);
             } else {
@@ -293,7 +305,11 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
                 (module->dependency2.module_function == MODULE_FUNCTION_BOOTLOADER && userOptional)) {
                 valid = valid && true;
             } else {
-                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency2.module_function, module->dependency2.module_index, module_mcu_target(module));
+                // NOTE: we ignore MCU type
+                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency2.module_function, module->dependency2.module_index, HAL_PLATFORM_MCU_ANY);
+                if (!dependency_bounds) {
+                    return false;
+                }
                 const module_info_t* dependency = locate_module(dependency_bounds);
                 valid = valid && dependency && (dependency->module_version>=module->dependency2.module_version);
             }

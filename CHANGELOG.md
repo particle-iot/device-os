@@ -1,3 +1,41 @@
+## 3.0.0-beta.1
+
+### BREAKING CHANGES
+
+- [Cellular] Remove `rssi` and `qual` from `Cellular.RSSI()` [#2212](https://github.com/particle-iot/device-os/pull/2212)
+
+### FEATURES
+
+- [Gen 3] OTAv3 protocol [#2199](https://github.com/particle-iot/device-os/pull/2199)
+- [Tracker] ESP32 WiFi scanning support [#2250](https://github.com/particle-iot/device-os/pull/2250)
+- [Cellular] `SystemPowerFeature::DISABLE_CHARGING` configuration option to enable or disable charging [#2257](https://github.com/particle-iot/device-os/pull/2257)
+- `Network.isOn()` and `Network.isOff()` APIs to query the network interface power state [#2205](https://github.com/particle-iot/device-os/pull/2205)
+- [Gen 3] BLE legacy pairing [#2237](https://github.com/particle-iot/device-os/pull/2237)
+- [Cellular] Query cellular signal while trying to register on a network [#2232](https://github.com/particle-iot/device-os/pull/2232)
+- [Tracker] WiFi/GNSS/FuelGauge sleep wake-up sources [#2200](https://github.com/particle-iot/device-os/pull/2200)
+- Configure multiple pins as wakeup source at a time [#2228](https://github.com/particle-iot/device-os/pull/2228) [#2231](https://github.com/particle-iot/device-os/pull/2231)
+
+### ENHANCEMENTS
+
+- [Gen 3] Network interface management improvements [#2217](https://github.com/particle-iot/device-os/pull/2217)
+- [Gen 3] `SPI.transfer()` support for constant buffers residing in flash [#2196](https://github.com/particle-iot/device-os/pull/2196)
+- [Gen 3] Add characteristic discovery to `BleService` [#2203](https://github.com/particle-iot/device-os/pull/2203)
+- [Gen 3] BLE Scanned/Connected/Disconnected/Data Received callbacks in C++ style [#2224](https://github.com/particle-iot/device-os/pull/2224)
+- [Gen 3] BLE scanning filter [#2223](https://github.com/particle-iot/device-os/pull/2223)
+- [Gen 3] BLE API consistency enhancements [#2222](https://github.com/particle-iot/device-os/pull/2222)
+- [Electron] Build system parts with LTO enabled [#2235](https://github.com/particle-iot/device-os/pull/2235)
+- Add more operators for `BleAddress`, `BleUuid` and `IPAddress`[#2216](https://github.com/particle-iot/device-os/pull/2216)
+- Upate MbedTLS to 2.22.0 [#2117](https://github.com/particle-iot/device-os/pull/2117)
+- [Tracker] ESP32 NCP firmware updated to version 0.0.7
+- Use `PARTICLE_` prefix for LED defines in order not to pollute global namespace [#2247](https://github.com/particle-iot/device-os/pull/2247)
+- [Gen 3] Ethernet FeatherWing power state management [#2258](https://github.com/particle-iot/device-os/pull/2258)
+- [Cellular] Changes how signal strength and quality percentages are calculated to provide a more accurate representation of signal conditions [#2236](https://github.com/particle-iot/device-os/pull/2236)
+
+### BUGFIXES
+
+- [Gen 2] Fix D0 alternate-function being unconditionally reset when calling `Serial1.end()` [#2256](https://github.com/particle-iot/device-os/pull/2256)
+- [Gen 3] Fix an issue with `BLE.scan()` deadlocking [#2220](https://github.com/particle-iot/device-os/pull/2220)
+
 ## 2.0.1
 
 ### ENHANCEMENTS
