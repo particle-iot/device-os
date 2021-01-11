@@ -134,6 +134,8 @@ const system_tick_t UBLOX_NCP_R4_WINDOW_SIZE_MS = 50;
 const int UBLOX_DEFAULT_CID = 1;
 const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
 
+const int IMSI_MAX_RETRY_CNT = 5;
+const int CCID_MAX_RETRY_CNT = 2;
 
 } // anonymous
 
@@ -938,6 +940,30 @@ int SaraNcpClient::waitReady(bool powerOn) {
     return SYSTEM_ERROR_NONE;
 }
 
+int SaraNcpClient::checkNetConfForImsi() {
+    int imsiCount = 0;
+    char buf[32] = {};
+    do {
+        auto resp = parser_.sendCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI");
+        memset(buf, 0, sizeof(buf));
+        int imsiLength = 0;
+        if (resp.hasNextLine()) {
+            imsiLength = CHECK(resp.readLine(buf, sizeof(buf)));
+        }
+        const int r = CHECK_PARSER(resp.readResult());
+        if (r == AtResponse::OK && imsiLength > 0) {
+            netConf_ = networkConfigForImsi(buf, imsiLength);
+            break;
+        } else if (imsiCount >= IMSI_MAX_RETRY_CNT) {
+            // if max retries are exhausted
+            return SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED;
+        }
+        ++imsiCount;
+        HAL_Delay_Milliseconds(100*imsiCount);
+    } while (imsiCount < IMSI_MAX_RETRY_CNT);
+    return SYSTEM_ERROR_NONE;
+}
+
 int SaraNcpClient::selectSimCard(ModemState& state) {
     // Read current GPIO configuration
     int mode = -1;
@@ -1056,14 +1082,12 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
 
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
         int resetCount = 0;
-        const int imsiMaxRetryCount = 3;
-        const int CcidMaxRetryCount = 2;
         // Note: Not failing on AT error on ICCID/IMSI lookup since SIMs have shown strange edge cases
         // where they error for no reason, and hard resetting the modem or power cycling would not clear it.
         //
         // Check if we are using a Twilio Super SIM based on ICCID
         char buf[32] = {};
-        int ccidCount = 1;
+        int ccidCount = 0;
         do {
             memset(buf, 0, sizeof(buf));
             auto lenCcid = getIccidImpl(buf, sizeof(buf));
@@ -1071,26 +1095,12 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 netConf_ = networkConfigForIccid(buf, lenCcid);
                 break;
             }
-        } while (++ccidCount <= CcidMaxRetryCount);
+        } while (++ccidCount < CCID_MAX_RETRY_CNT);
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
-            int imsiCount = 1;
-            do {
-                memset(buf, 0, sizeof(buf));
-                auto resp = parser_.sendCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI");
-                const int res = resp.readLine(buf, sizeof(buf));
-                // Prevent exiting if there is AT response collected in readLine is an error
-                // After max attempts, error out anyway
-                if (res >= 0 || imsiCount >= imsiMaxRetryCount) {
-                    const int r = CHECK_PARSER(resp.readResult());
-                    if (r == AtResponse::OK) {
-                        netConf_ = networkConfigForImsi(buf, strlen(buf));
-                        break;
-                    }
-                }
-                HAL_Delay_Milliseconds(250*imsiCount);
-            } while (++imsiCount <= imsiMaxRetryCount);
+            CHECK(checkNetConfForImsi());
         }
+
         do {
             // Set UMNOPROF and UBANDMASK as appropriate based on SIM
             auto respUmnoprof = parser_.sendCommand("AT+UMNOPROF?");
@@ -1530,7 +1540,6 @@ int SaraNcpClient::checkSimCard() {
 }
 
 int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
-    const int imsiMaxRetryCount = 3;
     netConf_ = conf;
     if (!netConf_.isValid()) {
         // First look for network settings based on ICCID
@@ -1541,22 +1550,7 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
-            int imsiCount = 1;
-            do {
-                memset(buf, 0, sizeof(buf));
-                auto resp = parser_.sendCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI");
-                const int res = resp.readLine(buf, sizeof(buf));
-                // Prevent exiting if there is AT response collected in readLine is an error
-                // After max attempts, error out anyway
-                if (res >= 0 || imsiCount >= imsiMaxRetryCount) {
-                    const int r = CHECK_PARSER(resp.readResult());
-                    if (r == AtResponse::OK) {
-                        netConf_ = networkConfigForImsi(buf, strlen(buf));
-                        break;
-                    }
-                }
-                HAL_Delay_Milliseconds(250*imsiCount);
-            } while (++imsiCount <= imsiMaxRetryCount);
+            CHECK(checkNetConfForImsi());
         }
     }
 
