@@ -436,7 +436,7 @@ NcpConnectionState SaraNcpClient::connectionState() {
 int SaraNcpClient::getFirmwareVersionString(char* buf, size_t size) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
-    auto resp = parser_.sendCommand("AT+CGMR");
+    auto resp = parser_.sendCommand("ATI9");
     CHECK_PARSER(resp.readLine(buf, size));
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
