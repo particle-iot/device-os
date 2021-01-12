@@ -89,6 +89,8 @@ public:
 
     const DevStatus* getDevStatus() { return &_dev; }
 
+    void getExtRadioVer(char* verStr, int len) { strncpy(verStr, _verExtended, len); };
+
     /** register to the network
         \param status an optional structure to with network information
         \param timeout_ms -1 blocking, else non blocking timeout in ms

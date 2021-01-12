@@ -220,6 +220,9 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
             break;
         }
     }
+    if (info->size >= offsetof(CellularDevice, radiofw) + sizeof(CellularDevice::radiofw)) {
+        CHECK(client->getFirmwareVersionString(info->radiofw, sizeof(info->radiofw)));
+    }
     return 0;
 }
 

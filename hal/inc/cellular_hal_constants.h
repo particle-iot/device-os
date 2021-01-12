@@ -63,6 +63,7 @@ struct CellularDevice
     char iccid[21];
     char imei[16];
     int dev;
+    char radiofw[25];
 
     CellularDevice()
     {
