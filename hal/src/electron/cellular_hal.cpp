@@ -184,9 +184,7 @@ cellular_result_t cellular_device_info(CellularDevice* device, void* reserved)
         device->dev = status->dev;
     }
     if (device->size >= offsetof(CellularDevice, radiofw) + sizeof(CellularDevice::radiofw)) {
-        char buf[25];
-        electronMDM.getExtRadioVer(buf, sizeof(buf));
-        strncpy(device->radiofw, buf, sizeof(device->radiofw));
+        electronMDM.getExtRadioVer(device->radiofw, sizeof(device->radiofw));
     }
     return 0;
 }
