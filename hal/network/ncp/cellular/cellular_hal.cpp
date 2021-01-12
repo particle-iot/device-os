@@ -192,7 +192,6 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     CHECK(client->on());
     CHECK(client->getIccid(info->iccid, sizeof(info->iccid)));
     CHECK(client->getImei(info->imei, sizeof(info->imei)));
-    CHECK(client->getFirmwareVersionString(info->radiofw, sizeof(info->radiofw)));
     if (info->size >= offsetof(CellularDevice, dev) + sizeof(CellularDevice::dev)) {
         switch (client->ncpId()) {
         case PLATFORM_NCP_SARA_U201:
@@ -220,6 +219,9 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
             info->dev = DEV_UNKNOWN;
             break;
         }
+    }
+    if (info->size >= offsetof(CellularDevice, radiofw) + sizeof(CellularDevice::radiofw)) {
+        CHECK(client->getFirmwareVersionString(info->radiofw, sizeof(info->radiofw)));
     }
     return 0;
 }
