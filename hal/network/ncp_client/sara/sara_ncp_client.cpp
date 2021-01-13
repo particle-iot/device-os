@@ -134,6 +134,8 @@ const system_tick_t UBLOX_NCP_R4_WINDOW_SIZE_MS = 50;
 const int UBLOX_DEFAULT_CID = 1;
 const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
 
+const int IMSI_MAX_RETRY_CNT = 5;
+const int CCID_MAX_RETRY_CNT = 2;
 
 } // anonymous
 
@@ -938,6 +940,30 @@ int SaraNcpClient::waitReady(bool powerOn) {
     return SYSTEM_ERROR_NONE;
 }
 
+int SaraNcpClient::checkNetConfForImsi() {
+    int imsiCount = 0;
+    char buf[32] = {};
+    do {
+        auto resp = parser_.sendCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI");
+        memset(buf, 0, sizeof(buf));
+        int imsiLength = 0;
+        if (resp.hasNextLine()) {
+            imsiLength = CHECK(resp.readLine(buf, sizeof(buf)));
+        }
+        const int r = CHECK_PARSER(resp.readResult());
+        if (r == AtResponse::OK && imsiLength > 0) {
+            netConf_ = networkConfigForImsi(buf, imsiLength);
+            break;
+        } else if (imsiCount >= IMSI_MAX_RETRY_CNT) {
+            // if max retries are exhausted
+            return SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED;
+        }
+        ++imsiCount;
+        HAL_Delay_Milliseconds(100*imsiCount);
+    } while (imsiCount < IMSI_MAX_RETRY_CNT);
+    return SYSTEM_ERROR_NONE;
+}
+
 int SaraNcpClient::selectSimCard(ModemState& state) {
     // Read current GPIO configuration
     int mode = -1;
@@ -1069,21 +1095,12 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 netConf_ = networkConfigForIccid(buf, lenCcid);
                 break;
             }
-        } while (++ccidCount < 2);
+        } while (++ccidCount < CCID_MAX_RETRY_CNT);
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
-            int imsiCount = 0;
-            do {
-                memset(buf, 0, sizeof(buf));
-                auto resp = parser_.sendCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI");
-                CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
-                const int r = CHECK_PARSER(resp.readResult());
-                if (r == AtResponse::OK) {
-                    netConf_ = networkConfigForImsi(buf, strlen(buf));
-                    break;
-                }
-            } while (++imsiCount < 2);
+            CHECK(checkNetConfForImsi());
         }
+
         do {
             // Set UMNOPROF and UBANDMASK as appropriate based on SIM
             auto respUmnoprof = parser_.sendCommand("AT+UMNOPROF?");
@@ -1533,12 +1550,7 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
-            memset(buf, 0, sizeof(buf));
-            auto resp = parser_.sendCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI");
-            CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
-            const int r = CHECK_PARSER(resp.readResult());
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-            netConf_ = networkConfigForImsi(buf, strlen(buf));
+            CHECK(checkNetConfForImsi());
         }
     }
 
