@@ -160,7 +160,10 @@ ASSERT (
     (platform_monolithic_firmware_module_info_flash_end - platform_monolithic_firmware_module_info_flash_start == platform_monolithic_firmware_module_info_flash_size && platform_monolithic_firmware_module_info_flash_size > 0),
     "Invalid monolithic firmware flash memory map!"
 );
+/* NOTE: there is a reserved MBR parameter page at the end of the allocated SoftDevice area (192K - 4K) */
+/* This page address is dependent on platform_softdevice_reserved_flash_end. Do not modify! */
 ASSERT (
+    (platform_softdevice_reserved_flash_end == 0x30000) &&
     (platform_softdevice_reserved_flash_end - platform_softdevice_reserved_flash_start == platform_softdevice_reserved_flash_size && platform_softdevice_reserved_flash_size > 0) &&
     (platform_softdevice_flash_end - platform_softdevice_flash_start == platform_softdevice_flash_size && platform_softdevice_flash_size > 0),
     "Invalid softdevice flash memory map!"
