@@ -187,11 +187,12 @@ public:
         APP_DESCRIBE_CRC = 0x02, ///< Checksum of the application description.
         SUBSCRIPTIONS_CRC = 0x04, ///< Checksum of the event subscriptions.
         PROTOCOL_FLAGS = 0x08, ///< Protocol flags.
-        MAX_MESSAGE_SIZE = 0x10, ///< Maximum size of a CoAP message.
-        MAX_BINARY_SIZE = 0x20, ///< Maximum size of a firmware binary.
-        OTA_CHUNK_SIZE = 0x40, ///< Size of an OTA update chunk.
-        ALL = SYSTEM_DESCRIBE_CRC | APP_DESCRIBE_CRC | SUBSCRIPTIONS_CRC | PROTOCOL_FLAGS | MAX_MESSAGE_SIZE |
-                MAX_BINARY_SIZE | OTA_CHUNK_SIZE ///< All the defined fields.
+        SYSTEM_MODULE_VERSION = 0x10, ///< Module version of the system firmware.
+        MAX_MESSAGE_SIZE = 0x20, ///< Maximum size of a CoAP message.
+        MAX_BINARY_SIZE = 0x40, ///< Maximum size of a firmware binary.
+        OTA_CHUNK_SIZE = 0x80, ///< Size of an OTA update chunk.
+        ALL = SYSTEM_DESCRIBE_CRC | APP_DESCRIBE_CRC | SUBSCRIPTIONS_CRC | PROTOCOL_FLAGS | SYSTEM_MODULE_VERSION |
+                MAX_MESSAGE_SIZE | MAX_BINARY_SIZE | OTA_CHUNK_SIZE ///< All the defined fields.
     };
 
     /**
@@ -203,17 +204,27 @@ public:
      * @param subscrCrc Checksum of the event subscriptions.
      * @param protocolFlags Protocol flags.
      */
-    explicit AppStateDescriptor(uint32_t stateFlags = 0, uint32_t systemDescrCrc = 0, uint32_t appDescrCrc = 0,
-                uint32_t subscrCrc = 0, uint32_t protocolFlags = 0, uint16_t maxMessageSize = 0, uint32_t maxBinarySize = 0,
-                uint16_t otaChunkSize = 0) :
+    explicit AppStateDescriptor(uint32_t stateFlags = 0, uint16_t systemVersion = 0, uint32_t systemDescrCrc = 0,
+                uint32_t appDescrCrc = 0, uint32_t subscrCrc = 0, uint32_t protocolFlags = 0, uint16_t maxMessageSize = 0,
+                uint32_t maxBinarySize = 0, uint16_t otaChunkSize = 0) :
             stateFlags_(stateFlags),
             systemDescrCrc_(systemDescrCrc),
             appDescrCrc_(appDescrCrc),
             subscrCrc_(subscrCrc),
             protocolFlags_(protocolFlags),
             maxBinarySize_(maxBinarySize),
+            systemVersion_(systemVersion),
             maxMessageSize_(maxMessageSize),
             otaChunkSize_(otaChunkSize) {
+    }
+
+    /**
+     * Set the module version of the system firmware.
+     */
+    AppStateDescriptor& systemVersion(uint16_t version) {
+        systemVersion_ = version;
+        stateFlags_ |= StateFlag::SYSTEM_MODULE_VERSION;
+        return *this;
     }
 
     /**
@@ -288,6 +299,10 @@ public:
         if ((stateFlags_ & flags) != (other.stateFlags_ & flags)) {
             return false;
         }
+        if ((flags & StateFlag::SYSTEM_MODULE_VERSION) && (stateFlags_ & StateFlag::SYSTEM_MODULE_VERSION) &&
+                (systemVersion_ != other.systemVersion_)) {
+            return false;
+        }
         if ((flags & StateFlag::SUBSCRIPTIONS_CRC) && (stateFlags_ & StateFlag::SUBSCRIPTIONS_CRC) &&
                 (subscrCrc_ != other.subscrCrc_)) {
             return false;
@@ -342,6 +357,7 @@ private:
     uint32_t subscrCrc_;
     uint32_t protocolFlags_;
     uint32_t maxBinarySize_;
+    uint16_t systemVersion_;
     uint16_t maxMessageSize_;
     uint16_t otaChunkSize_;
 };

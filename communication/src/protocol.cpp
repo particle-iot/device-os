@@ -307,6 +307,9 @@ AppStateDescriptor Protocol::app_state_descriptor(uint32_t stateFlags)
 		return AppStateDescriptor();
 	}
 	AppStateDescriptor d;
+	if (stateFlags & AppStateDescriptor::SYSTEM_MODULE_VERSION) {
+		d.systemVersion(system_version);
+	}
 	if (stateFlags & AppStateDescriptor::SYSTEM_DESCRIBE_CRC) {
 		d.systemDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr));
 	}
@@ -352,7 +355,7 @@ int Protocol::begin()
 	if (session_resumed) {
 		// for now, unconditionally move the session on resumption
 		channel.command(MessageChannel::MOVE_SESSION, nullptr);
-		uint32_t stateFlags = AppStateDescriptor::ALL;
+		uint32_t stateFlags = 0xffffffffu; // Check all flags, not just recognized ones
 		if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
 			// The system controls when to send application Describe and subscriptions
 			stateFlags &= ~(AppStateDescriptor::APP_DESCRIBE_CRC | AppStateDescriptor::SUBSCRIPTIONS_CRC);
@@ -398,7 +401,9 @@ int Protocol::begin()
 	if (descriptor.app_state_selector_info) {
 		LOG(TRACE, "Updating cached session parameters");
 		channel.command(Channel::SAVE_SESSION);
+		// TODO: Update the underlying SessionPersist structure directly
 		descriptor.app_state_selector_info(SparkAppStateSelector::PROTOCOL_FLAGS, SparkAppStateUpdate::PERSIST, protocol_flags, nullptr);
+		descriptor.app_state_selector_info(SparkAppStateSelector::SYSTEM_MODULE_VERSION, SparkAppStateUpdate::PERSIST, system_version, nullptr);
 		descriptor.app_state_selector_info(SparkAppStateSelector::MAX_MESSAGE_SIZE, SparkAppStateUpdate::PERSIST, PROTOCOL_BUFFER_SIZE, nullptr);
 		descriptor.app_state_selector_info(SparkAppStateSelector::MAX_BINARY_SIZE, SparkAppStateUpdate::PERSIST, max_binary_size, nullptr);
 		descriptor.app_state_selector_info(SparkAppStateSelector::OTA_CHUNK_SIZE, SparkAppStateUpdate::PERSIST, ota_chunk_size, nullptr);

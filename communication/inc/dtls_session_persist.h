@@ -21,7 +21,7 @@
 #include "stddef.h"
 
 // The size of the persisted data
-#define SessionPersistBaseSize 224
+#define SessionPersistBaseSize 226
 
 // variable size due to int/size_t members
 #define SessionPersistVariableSize (sizeof(int)+sizeof(int)+sizeof(size_t))
@@ -108,6 +108,10 @@ struct __attribute__((packed)) SessionPersistData
 	 * Maximum size of a firmware binary.
 	 */
 	uint32_t max_binary_size;
+	/**
+	 * Module version of the system firmware.
+	 */
+	uint16_t system_version;
 	/**
 	 * Maximum size of a CoAP message.
 	 */

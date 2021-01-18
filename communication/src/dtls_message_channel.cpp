@@ -161,8 +161,8 @@ AppStateDescriptor SessionPersist::app_state_descriptor()
 	if (!is_valid()) {
 		return AppStateDescriptor();
 	}
-	return AppStateDescriptor(app_state_flags, describe_system_crc, describe_app_crc, subscriptions_crc, protocol_flags,
-			max_message_size, max_binary_size, ota_chunk_size);
+	return AppStateDescriptor(app_state_flags, system_version, describe_system_crc, describe_app_crc, subscriptions_crc,
+			protocol_flags, max_message_size, max_binary_size, ota_chunk_size);
 }
 
 SessionPersist sessionPersist;
