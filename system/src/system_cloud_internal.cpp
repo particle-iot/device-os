@@ -563,13 +563,13 @@ uint32_t compute_cloud_state_checksum(SparkAppStateSelector::Enum stateSelector,
 			});
 			break;
 		}
-        case SparkAppStateSelector::SYSTEM_MODULE_VERSION: {
-            update_persisted_state([value](SessionPersistData& data){
-                data.system_version = value;
-                data.app_state_flags |= AppStateDescriptor::SYSTEM_MODULE_VERSION;
-            });
-            break;
-        }
+		case SparkAppStateSelector::SYSTEM_MODULE_VERSION: {
+			update_persisted_state([value](SessionPersistData& data){
+				data.system_version = value;
+				data.app_state_flags |= AppStateDescriptor::SYSTEM_MODULE_VERSION;
+			});
+			break;
+		}
 		case SparkAppStateSelector::MAX_MESSAGE_SIZE: {
 			update_persisted_state([value](SessionPersistData& data){
 				data.max_message_size = value;
