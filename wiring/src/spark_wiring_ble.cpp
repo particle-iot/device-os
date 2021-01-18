@@ -1757,7 +1757,7 @@ bool BlePeerDevice::getCharacteristicByDescription(BleCharacteristic& characteri
             return true;
         }
     }
-    return true;
+    return false;
 }
 
 bool BlePeerDevice::getCharacteristicByDescription(BleCharacteristic& characteristic, const String& desc) const {
@@ -1806,7 +1806,7 @@ bool BlePeerDevice::getCharacteristicByDescription(const BleService& service, Bl
             return true;
         }
     }
-    return true;
+    return false;
 }
 
 bool BlePeerDevice::getCharacteristicByDescription(const BleService& service, BleCharacteristic& characteristic, const String& desc) const {
