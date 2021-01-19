@@ -17,18 +17,16 @@
 
 #pragma once
 
-#include "stream.h"
+#include "event_group_stream.h"
 #include <memory>
 #include "spi_hal.h"
-#include <FreeRTOS.h>
-#include <event_groups.h>
 #include "ringbuffer.h"
 
 namespace particle {
 
 class Esp32Sdio;
 
-class Esp32SdioStream: public Stream {
+class Esp32SdioStream: public EventGroupBasedStream {
 public:
     Esp32SdioStream(hal_spi_interface_t spi, uint32_t clock, pin_t csPin, pin_t intPin);
     ~Esp32SdioStream();
@@ -49,7 +47,7 @@ public:
     int on(bool on);
     bool on() const;
 
-    EventGroupHandle_t eventGroup();
+    EventGroupHandle_t eventGroup() override;
 
     void txInterruptSupported(bool state);
 

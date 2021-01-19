@@ -16,6 +16,9 @@
  */
 
 #define NO_STATIC_ASSERT
+#include "logging.h"
+LOG_SOURCE_CATEGORY("ncp.esp32.client");
+
 #include "esp32_ncp_client.h"
 
 #include "at_command.h"
@@ -148,7 +151,8 @@ int Esp32NcpClient::initParser(Stream* stream) {
     // Initialize AT parser
     auto parserConf = AtParserConfig()
             .stream(stream)
-            .commandTerminator(AtCommandTerminator::CRLF);
+            .commandTerminator(AtCommandTerminator::CRLF)
+            .logCategory("ncp.esp32.at");
     parser_.destroy();
     CHECK(parser_.init(std::move(parserConf)));
     // Register URC handlers
@@ -581,6 +585,7 @@ int Esp32NcpClient::initMuxer() {
     muxer_.setMaxRetransmissions(3);
     muxer_.setAckTimeout(2530);
     muxer_.setControlResponseTimeout(2540);
+    muxer_.setLogCategory("ncp.esp32.mux");
 
     // Set channel state handler
     muxer_.setChannelStateHandler(muxChannelStateCb, this);

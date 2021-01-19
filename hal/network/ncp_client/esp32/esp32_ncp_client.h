@@ -85,7 +85,7 @@ private:
     volatile NcpPowerState pwrState_;
     int parserError_;
     bool ready_;
-    gsm0710::Muxer<decltype(serial_)::element_type, StaticRecursiveMutex> muxer_;
+    gsm0710::Muxer<EventGroupBasedStream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
     bool muxerNotStarted_;
     volatile bool inFlowControl_ = false;
