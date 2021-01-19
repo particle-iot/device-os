@@ -654,8 +654,8 @@ protected:
     bool _powerOn(void);
     void _incModemStateChangeCount(void);
     void _setBandSelectString(MDM_BandSelect &data, char* bands, int index=0); // private helper to create bands strings
-    int _checkAtResponse(void);
-    bool _atOk(void);
+    int _checkAtResponse(bool fastTimeout = false);
+    bool _atOk(bool fastTimeout = false);
     bool _checkModem(bool force = true);
     void _checkVerboseCxreg(void);
     bool _checkEpsReg(void);
