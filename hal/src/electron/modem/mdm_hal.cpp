@@ -57,6 +57,8 @@ std::recursive_mutex mdm_mutex;
 #define MDM_SOCKET_SEND_RETRIES_R4_BUG (3)
 #define MDM_MAX_ERRORS (2) //!< max number of errors before action is taken to recover the modem
 #define MDM_RESET_FAILURE_MAX_ATTEMPTS (8)
+#define MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET (25) //! When modem not responsive on boot, AT/OK tried 25x (for ~30s) before hard reset
+#define MDM_POWER_ON_MAX_ATTEMPTS_AFTER_RESET (10) //! After reset, we don't need to wait 30s.
 
 // ID of the PDP context used to configure the default EPS bearer when registering in an LTE network
 // Note: There are no PDP contexts in LTE, SARA-R4 uses this naming for the sake of simplicity
@@ -839,7 +841,7 @@ bool MDMParser::_powerOn(void)
     bool continue_cancel = false;
     bool retried_after_reset = false;
 
-    int i = 25; // When modem not responsive on boot, AT/OK tried 25x (for ~30s) before hard reset
+    int i = MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET; // When modem not responsive on boot, AT/OK tries 25x (for ~30s) before hard reset
     while (i--) {
         // SARA-U2/LISA-U2 50..80us
         HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
@@ -875,7 +877,7 @@ bool MDMParser::_powerOn(void)
         }
         else if (i==0 && !retried_after_reset) {
             retried_after_reset = true; // only perform reset & retry sequence once
-            i = 10; // After hard reset, we don't need to try 25 times again.
+            i = MDM_POWER_ON_MAX_ATTEMPTS_AFTER_RESET;
             reset();
         }
 
