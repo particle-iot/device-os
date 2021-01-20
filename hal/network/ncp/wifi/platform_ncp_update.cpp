@@ -15,10 +15,13 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+
 #include "platform_ncp.h"
 #include "network/ncp/wifi/ncp.h"
 #include "network/ncp/wifi/wifi_network_manager.h"
 #include "network/ncp/wifi/wifi_ncp_client.h"
+#include "network/ncp/ncp_client.h"
 #include "led_service.h"
 #include "check.h"
 #include "scope_guard.h"
@@ -26,8 +29,11 @@
 #include "stream.h"
 #include "debug.h"
 #include "ota_flash_hal_impl.h"
+#include "system_cache.h"
 
 #include <algorithm>
+
+namespace {
 
 class OtaUpdateSourceStream : public particle::InputStream {
 public:
@@ -80,12 +86,54 @@ private:
     size_t remaining;
 };
 
+int invalidateWifiNcpVersionCache() {
+#if HAL_PLATFORM_NCP_COUNT > 1
+    using namespace particle::services;
+    // Cache will be updated by the NCP client itself
+    LOG(TRACE, "Invalidating cached ESP32 NCP firmware version");
+    return SystemCache::instance().del(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION);
+#else
+    return 0;
+#endif // HAL_PLATFORM_NCP_COUNT > 1
+}
+
+int getWifiNcpFirmwareVersion(uint16_t* ncpVersion) {
+#if HAL_PLATFORM_NCP_COUNT > 1
+    using namespace particle::services;
+    uint16_t version = 0;
+    int res = SystemCache::instance().get(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION, &version, sizeof(version));
+    if (res == sizeof(version)) {
+        LOG(TRACE, "Cached ESP32 NCP firmware version: %d", (int)version);
+        *ncpVersion = version;
+        return 0;
+    }
+
+    if (res >= 0) {
+        invalidateWifiNcpVersionCache();
+    }
+#endif // HAL_PLATFORM_NCP_COUNT > 1
+
+    // Not present in cache or caching not supported, call into NCP client
+    const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
+    SPARK_ASSERT(ncpClient);
+    const particle::NcpClientLock lock(ncpClient);
+    CHECK(ncpClient->on());
+    CHECK(ncpClient->getFirmwareModuleVersion(&version));
+    *ncpVersion = version;
+
+    return 0;
+}
+
+} // anonymous
+
 // FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
 // some not entirely clear circumstances. Disabling compiler optimizations helps to work around
 // the problem
 __attribute__((optimize("O0"))) int platform_ncp_update_module(const hal_module_t* module) {
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
+    // Holding a lock for the whole duration of the operation, otherwise the netif may potentially poweroff the NCP
+    const particle::NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
     // we pass only the actual binary after the module info and up to the suffix
     const uint8_t* start = (const uint8_t*)module->info;
@@ -99,6 +147,7 @@ __attribute__((optimize("O0"))) int platform_ncp_update_module(const hal_module_
     if (r == 0) {
         LOG(INFO, "Updating ESP32 firmware from version %d to version %d", version, module->info->module_version);
     }
+    invalidateWifiNcpVersionCache();
     r = ncpClient->updateFirmware(&moduleStream, length);
     LED_On(PARTICLE_LED_RGB);
     CHECK(r);
@@ -114,14 +163,10 @@ int platform_ncp_fetch_module_info(hal_system_info_t* sys_info, bool create) {
         hal_module_t* module = sys_info->modules + i;
         if (!memcmp(&module->bounds, &module_ncp_mono, sizeof(module_ncp_mono))) {
             if (create) {
-                const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
-                SPARK_ASSERT(ncpClient);
-                CHECK(ncpClient->on());
-                uint16_t version;
-                int error = ncpClient->getFirmwareModuleVersion(&version);
-                if (error) {
-                    version = 0;
-                }
+                uint16_t version = 0;
+                // Defaults to zero in case of failure
+                getWifiNcpFirmwareVersion(&version);
+
                 // todo - we could augment the getFirmwareModuleVersion command to retrieve more details
                 auto info = new module_info_t();
                 CHECK_TRUE(info, SYSTEM_ERROR_NO_MEMORY);
