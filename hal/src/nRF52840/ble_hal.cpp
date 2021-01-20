@@ -521,7 +521,7 @@ private:
     Vector<BleLinkEventHandler> peripheralLinkEventHandlers_;   /**< It is used for peripheral link only. */
     hal_ble_pairing_config_t pairingConfig_;
     mbedtls_ecdh_context ecdhContext_;
-    bool ecdhContextInit_;
+    volatile bool ecdhContextInit_;
     std::unique_ptr<ble_gap_lesc_p256_pk_t> localPublicKey_;
 };
 
@@ -1711,11 +1711,6 @@ int BleObject::ConnectionsManager::init() {
         LOG(ERROR, "os_timer_create() failed.");
         goto error;
     }
-    if (generateEcdhKeyPair() != SYSTEM_ERROR_NONE) {
-        LOG(ERROR, "generateEcdhKeyPair() failed.");
-    } else {
-        ecdhContextInit_ = true;
-    }
     connMgrImpl.instance = this;
     NRF_SDH_BLE_OBSERVER(bleConnectionManager, 1, processConnectionEvents, &connMgrImpl);
     connMgrInitialized_ = true;
@@ -1951,24 +1946,28 @@ int BleObject::ConnectionsManager::initSecParams(const hal_ble_pairing_config_t&
 }
 
 int BleObject::ConnectionsManager::generateEcdhKeyPair(void) {
+    ecdhContextInit_ = false;
     mbedtls_ecdh_init(&ecdhContext_);
     CHECK_MBEDTLS(mbedtls_ecdh_setup(&ecdhContext_, MBEDTLS_ECP_DP_SECP256R1));
     CHECK_MBEDTLS(mbedtls_ecdh_gen_public(&ecdhContext_.ctx.mbed_ecdh.grp, &ecdhContext_.ctx.mbed_ecdh.d,
             &ecdhContext_.ctx.mbed_ecdh.Q, mbedtls_default_rng, nullptr));
+    ecdhContextInit_ = true;
     return SYSTEM_ERROR_NONE;
 }
 
 int BleObject::ConnectionsManager::publicKeysPrepare(BleConnection* connection) {
+    if (!ecdhContextInit_) {
+        generateEcdhKeyPair();
+    }
     CHECK_TRUE(ecdhContextInit_, SYSTEM_ERROR_INVALID_STATE);
     // Local public key: won't be freed.
     if (!localPublicKey_) {
-        auto local = std::make_unique<ble_gap_lesc_p256_pk_t>();
-        CHECK_TRUE(local, SYSTEM_ERROR_NO_MEMORY);
-        const uint8_t pointLen = BLE_GAP_LESC_P256_PK_LEN / 2;
-        CHECK_MBEDTLS(mbedtls_mpi_write_binary_le(&ecdhContext_.ctx.mbed_ecdh.Q.X, &(local.get()->pk[0]), pointLen));
-        CHECK_MBEDTLS(mbedtls_mpi_write_binary_le(&ecdhContext_.ctx.mbed_ecdh.Q.Y, &(local.get()->pk[pointLen]), pointLen));
-        localPublicKey_ = std::move(local);
+        localPublicKey_ = std::make_unique<ble_gap_lesc_p256_pk_t>();
+        CHECK_TRUE(localPublicKey_, SYSTEM_ERROR_NO_MEMORY);
     }
+    const uint8_t pointLen = BLE_GAP_LESC_P256_PK_LEN / 2;
+    CHECK_MBEDTLS(mbedtls_mpi_write_binary_le(&ecdhContext_.ctx.mbed_ecdh.Q.X, &(localPublicKey_.get()->pk[0]), pointLen));
+    CHECK_MBEDTLS(mbedtls_mpi_write_binary_le(&ecdhContext_.ctx.mbed_ecdh.Q.Y, &(localPublicKey_.get()->pk[pointLen]), pointLen));
     // Peer public key: will be freed on authentication status updated or disconnected.
     connection->peerPublicKey = std::make_unique<ble_gap_lesc_p256_pk_t>();
     CHECK_TRUE(connection->peerPublicKey, SYSTEM_ERROR_NO_MEMORY);
@@ -2537,6 +2536,15 @@ int BleObject::ConnectionsManager::processSecurityEventFromThread(const ble_evt_
         linkEvent.params.pairing_status.bonded = authStatus.bonded;
         linkEvent.params.pairing_status.lesc = authStatus.lesc;
         notifyLinkEvent(linkEvent);
+        if (authStatus.lesc) {
+            /* To protect a device's private key, a device should implement a method to
+            * prevent an attacker from retrieving useful information about the device's private
+            *  key. For this purpose, a device should change its private key after every pairing
+            * (successful or failed). Otherwise, it should change its private key whenever S +
+            * 3F > 8, where S is the number of successful pairings and F the number of
+            * failed attempts since the key was last changed. */
+            generateEcdhKeyPair();
+        }
     } else if (event->header.evt_id == BLE_GAP_EVT_LESC_DHKEY_REQUEST) {
         LOG_DEBUG(TRACE, "BLE event: BLE_GAP_EVT_LESC_DHKEY_REQUEST");
         const ble_gap_evt_lesc_dhkey_request_t& dhkeyReq = event->evt.gap_evt.params.lesc_dhkey_request;
