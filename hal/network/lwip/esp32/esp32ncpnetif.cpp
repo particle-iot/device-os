@@ -172,29 +172,32 @@ void Esp32NcpNetif::loop(void* arg) {
         self->wifiMan_->ncpClient()->enable(); // Make sure the client is enabled
         os_semaphore_take(self->netifSemaphore_, timeout, false);
 
-        if (self->expectedNcpState_ == NcpState::ON && self->wifiMan_->ncpClient()->ncpState() != NcpState::ON) {
-            auto r = self->wifiMan_->ncpClient()->on();
-            if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
-                LOG(ERROR, "Failed to initialize cellular NCP client: %d", r);
+        // We shouldn't be enforcing state on boot!
+        if (self->lastNetifEvent_ != NetifEvent::None) {
+            if (self->expectedNcpState_ == NcpState::ON && self->wifiMan_->ncpClient()->ncpState() != NcpState::ON) {
+                auto r = self->wifiMan_->ncpClient()->on();
+                if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
+                    LOG(ERROR, "Failed to initialize cellular NCP client: %d", r);
+                }
             }
-        }
-        if (self->expectedConnectionState_ == NcpConnectionState::CONNECTED && 
-              self->wifiMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED &&
-              self->wifiMan_->ncpClient()->ncpState() == NcpState::ON) {
-            self->upImpl();
-        }
+            if (self->expectedConnectionState_ == NcpConnectionState::CONNECTED &&
+                self->wifiMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED &&
+                self->wifiMan_->ncpClient()->ncpState() == NcpState::ON) {
+                self->upImpl();
+            }
 
-        if (self->expectedConnectionState_ == NcpConnectionState::DISCONNECTED && 
-              self->wifiMan_->ncpClient()->connectionState() != NcpConnectionState::DISCONNECTED) {
-            self->downImpl();
-        }
-        if (self->expectedNcpState_ == NcpState::OFF && self->wifiMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED) {
-            if_power_state_t pwrState = IF_POWER_STATE_NONE;
-            self->getPowerState(&pwrState);
-            if (pwrState == IF_POWER_STATE_UP) {
-                auto r = self->wifiMan_->ncpClient()->off();
-                if (r != SYSTEM_ERROR_NONE) {
-                    LOG(ERROR, "Failed to turn off NCP client: %d", r);
+            if (self->expectedConnectionState_ == NcpConnectionState::DISCONNECTED &&
+                self->wifiMan_->ncpClient()->connectionState() != NcpConnectionState::DISCONNECTED) {
+                self->downImpl();
+            }
+            if (self->expectedNcpState_ == NcpState::OFF && self->wifiMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED) {
+                if_power_state_t pwrState = IF_POWER_STATE_NONE;
+                self->getPowerState(&pwrState);
+                if (pwrState == IF_POWER_STATE_UP) {
+                    auto r = self->wifiMan_->ncpClient()->off();
+                    if (r != SYSTEM_ERROR_NONE) {
+                        LOG(ERROR, "Failed to turn off NCP client: %d", r);
+                    }
                 }
             }
         }
