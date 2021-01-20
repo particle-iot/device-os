@@ -478,18 +478,18 @@ private:
         BleLinkEventHandler handler; // It is used for central link only.
         bool isMtuExchanged;
         BlePairingState pairState;
-        std::shared_ptr<ble_gap_lesc_p256_pk_t> peerPublicKey;
+        std::unique_ptr<ble_gap_lesc_p256_pk_t> peerPublicKey;
     };
 
     int initSecParams(const hal_ble_pairing_config_t& config, ble_gap_sec_params_t& params);
-    int generateEcdhKeyPair(void);
+    int generateEcdhKeyPair();
     int publicKeysPrepare(BleConnection* connection);
     int computeDhkey(const uint8_t peerPublicKey[BLE_GAP_LESC_P256_PK_LEN], uint8_t dhKey[BLE_GAP_LESC_DHKEY_LEN]);
     int configureAttMtu(hal_ble_conn_handle_t connHandle, size_t effective);
     bool attMtuExchanged(hal_ble_conn_handle_t connHandle);
     BleConnection* fetchConnection(hal_ble_conn_handle_t connHandle);
     BleConnection* fetchConnection(const hal_ble_addr_t* address);
-    int addConnection(const BleConnection& connection);
+    int addConnection(BleConnection& connection);
     void removeConnection(hal_ble_conn_handle_t connHandle);
     void initiateConnParamsUpdateIfNeeded(const BleConnection* connection);
     bool isConnParamsFeeded(const hal_ble_conn_params_t* params) const;
@@ -522,7 +522,7 @@ private:
     hal_ble_pairing_config_t pairingConfig_;
     mbedtls_ecdh_context ecdhContext_;
     bool ecdhContextInit_;
-    std::shared_ptr<ble_gap_lesc_p256_pk_t> localPublicKey_;
+    std::unique_ptr<ble_gap_lesc_p256_pk_t> localPublicKey_;
 };
 
 size_t BleObject::ConnectionsManager::desiredAttMtu_ = BLE_MAX_ATT_MTU_SIZE;
@@ -774,6 +774,7 @@ os_thread_return_t BleObject::BleEventDispatcher::processBleEventFromThread(void
                 }
                 case BLE_GATTC_EVT_HVX: {
                     BleObject::getInstance().gattc()->processDataNotifiedEventFromThread(event);
+                    break;
                 }
                 case BLE_GAP_EVT_SEC_INFO_REQUEST:
                 case BLE_GAP_EVT_LESC_DHKEY_REQUEST:
@@ -784,6 +785,7 @@ os_thread_return_t BleObject::BleEventDispatcher::processBleEventFromThread(void
                 case BLE_GAP_EVT_AUTH_STATUS:
                 case BLE_GAP_EVT_CONN_SEC_UPDATE: {
                     BleObject::getInstance().connMgr()->processSecurityEventFromThread(event);
+                    break;
                 }
                 default: {
                     break;
@@ -1958,26 +1960,20 @@ int BleObject::ConnectionsManager::generateEcdhKeyPair(void) {
 
 int BleObject::ConnectionsManager::publicKeysPrepare(BleConnection* connection) {
     CHECK_TRUE(ecdhContextInit_, SYSTEM_ERROR_INVALID_STATE);
-    int ret = SYSTEM_ERROR_CRYPTO;
-    SCOPE_GUARD ({
-        if (localPublicKey_ && ret != SYSTEM_ERROR_NONE) {
-            localPublicKey_.reset();
-        }
-    });
     // Local public key: won't be freed.
     if (!localPublicKey_) {
-        localPublicKey_.reset((ble_gap_lesc_p256_pk_t*)malloc(sizeof(ble_gap_lesc_p256_pk_t)));
-        CHECK_TRUE(localPublicKey_, SYSTEM_ERROR_NO_MEMORY);
+        auto local = std::make_unique<ble_gap_lesc_p256_pk_t>();
+        CHECK_TRUE(local, SYSTEM_ERROR_NO_MEMORY);
         const uint8_t pointLen = BLE_GAP_LESC_P256_PK_LEN / 2;
-        CHECK_MBEDTLS(mbedtls_mpi_write_binary_le(&ecdhContext_.ctx.mbed_ecdh.Q.X, &(localPublicKey_.get()->pk[0]), pointLen));
-        CHECK_MBEDTLS(mbedtls_mpi_write_binary_le(&ecdhContext_.ctx.mbed_ecdh.Q.Y, &(localPublicKey_.get()->pk[pointLen]), pointLen));
+        CHECK_MBEDTLS(mbedtls_mpi_write_binary_le(&ecdhContext_.ctx.mbed_ecdh.Q.X, &(local.get()->pk[0]), pointLen));
+        CHECK_MBEDTLS(mbedtls_mpi_write_binary_le(&ecdhContext_.ctx.mbed_ecdh.Q.Y, &(local.get()->pk[pointLen]), pointLen));
+        localPublicKey_ = std::move(local);
     }
-    ret = SYSTEM_ERROR_NONE;
     // Peer public key: will be freed on authentication status updated or disconnected.
-    connection->peerPublicKey.reset((ble_gap_lesc_p256_pk_t*)malloc(sizeof(ble_gap_lesc_p256_pk_t)));
+    connection->peerPublicKey = std::make_unique<ble_gap_lesc_p256_pk_t>();
     CHECK_TRUE(connection->peerPublicKey, SYSTEM_ERROR_NO_MEMORY);
     memset(connection->peerPublicKey.get(), 0x00, BLE_GAP_LESC_P256_PK_LEN);
-    return ret;
+    return SYSTEM_ERROR_NONE;
 }
 
 int BleObject::ConnectionsManager::computeDhkey(const uint8_t peerPublicKey[BLE_GAP_LESC_P256_PK_LEN], uint8_t dhKey[BLE_GAP_LESC_DHKEY_LEN]) {
@@ -1994,13 +1990,9 @@ int BleObject::ConnectionsManager::computeDhkey(const uint8_t peerPublicKey[BLE_
 
 int BleObject::ConnectionsManager::setPairingConfig(const hal_ble_pairing_config_t* config) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
-    memcpy(&pairingConfig_, config, std::min(pairingConfig_.size, config->size));
-    if (config->version < BLE_API_VERSION_2) {
-        // Without rebuilding the user application against the newer Device OS, device can support LESC as well.  
-        pairingConfig_.algorithm = BLE_PAIRING_ALGORITHM_AUTO;
-    }
-    pairingConfig_.version = BLE_API_VERSION;
+    pairingConfig_ = {};
     pairingConfig_.size = sizeof(hal_ble_pairing_config_t);
+    memcpy(&pairingConfig_, config, std::min(pairingConfig_.size, config->size));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2079,11 +2071,11 @@ int BleObject::ConnectionsManager::lescNumericComparison(hal_ble_conn_handle_t c
     } else {
         ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_NONE/*reject*/, nullptr);
     }
-    connection->pairState = BLE_PAIRING_STATE_LESC_KEY_CONFIRMED;
     if (ret != NRF_SUCCESS) {
         connection->pairState = BLE_PAIRING_STATE_NOT_INITIATED;
         return nrf_system_error(ret);
     }
+    connection->pairState = BLE_PAIRING_STATE_LESC_KEY_CONFIRMED;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2206,9 +2198,9 @@ BleObject::ConnectionsManager::BleConnection* BleObject::ConnectionsManager::fet
     return nullptr;
 }
 
-int BleObject::ConnectionsManager::addConnection(const BleConnection& connection) {
+int BleObject::ConnectionsManager::addConnection(BleConnection& connection) {
     CHECK_TRUE(fetchConnection(connection.info.conn_handle) == nullptr, SYSTEM_ERROR_INTERNAL);
-    CHECK_TRUE(connections_.append(connection), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(connections_.append(std::move(connection)), SYSTEM_ERROR_NO_MEMORY);
     return SYSTEM_ERROR_NONE;
 }
 

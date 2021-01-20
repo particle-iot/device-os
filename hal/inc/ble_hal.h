@@ -121,9 +121,9 @@ typedef enum hal_ble_pairing_io_caps_t {
 } hal_ble_pairing_io_caps_t;
 
 typedef enum hal_ble_pairing_algorithm_t {
-    BLE_PAIRING_ALGORITHM_LEGACY_ONLY = 0,
-    BLE_PAIRING_ALGORITHM_LESC_ONLY = 1,
-    BLE_PAIRING_ALGORITHM_AUTO = 2
+    BLE_PAIRING_ALGORITHM_AUTO = 0,
+    BLE_PAIRING_ALGORITHM_LEGACY_ONLY = 1,
+    BLE_PAIRING_ALGORITHM_LESC_ONLY = 2
 } hal_ble_pairing_algorithm_t;
 
 typedef enum hal_ble_evts_type_t {

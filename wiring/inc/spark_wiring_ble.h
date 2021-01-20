@@ -156,9 +156,9 @@ enum class BlePairingIoCaps : uint8_t {
 };
 
 enum class BlePairingAlgorithm : uint8_t {
+    AUTO = BLE_PAIRING_ALGORITHM_AUTO,
     LEGACY_ONLY = BLE_PAIRING_ALGORITHM_LEGACY_ONLY,
-    LESC_ONLY = BLE_PAIRING_ALGORITHM_LESC_ONLY,
-    AUTO = BLE_PAIRING_ALGORITHM_AUTO
+    LESC_ONLY = BLE_PAIRING_ALGORITHM_LESC_ONLY
 };
 
 enum class BlePairingEventType : uint8_t {
