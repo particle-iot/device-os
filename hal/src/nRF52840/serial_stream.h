@@ -19,13 +19,13 @@
 
 #include "usart_hal.h"
 #include "usart_hal_private.h"
-#include "stream.h"
+#include "event_group_stream.h"
 #include "check.h"
 #include <memory>
 
 namespace particle {
 
-class SerialStream: public Stream {
+class SerialStream: public EventGroupBasedStream {
 public:
     SerialStream(hal_usart_interface_t serial, uint32_t baudrate, uint32_t config,
             size_t rxBufferSize = 0, size_t txBufferSize = 0);
@@ -48,7 +48,7 @@ public:
     int on(bool on);
     bool on() const;
 
-    EventGroupHandle_t eventGroup();
+    EventGroupHandle_t eventGroup() override;
 
 private:
     hal_usart_interface_t serial_;

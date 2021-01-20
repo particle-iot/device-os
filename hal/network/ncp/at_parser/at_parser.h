@@ -18,6 +18,7 @@
 #pragma once
 
 #include <memory>
+#include "c_string.h"
 
 namespace particle {
 
@@ -77,6 +78,12 @@ public:
      * @see `logEnabled()`
      */
     static const auto DEFAULT_LOG_ENABLED = true;
+    /**
+     * Default logging category
+     *
+     * @see `logCategory()`
+     */
+    static constexpr auto DEFAULT_LOG_CATEGORY = "ncp.at";
 
     /**
      * Constructs a settings object with all parameters set to their default values.
@@ -176,6 +183,22 @@ public:
      * @see `DEFAULT_LOG_ENABLED`
      */
     bool logEnabled() const;
+    /**
+     * Sets the logging category.
+     *
+     * @return This settings object.
+     *
+     * @see `DEFAULT_LOG_CATEGORY`
+     */
+    AtParserConfig& logCategory(const char* category);
+    /**
+     * Returns the logging category.
+     *
+     * @return Logging category.
+     *
+     * @see `DEFAULT_LOG_CATEGORY`
+     */
+    const char* logCategory() const;
 
 private:
     Stream* strm_;
@@ -184,6 +207,7 @@ private:
     unsigned strmTimeout_;
     bool echoEnabled_;
     bool logEnabled_;
+    CString logCategory_;
 };
 
 /**
@@ -444,6 +468,15 @@ inline AtParserConfig& AtParserConfig::logEnabled(bool enabled) {
 
 inline bool AtParserConfig::logEnabled() const {
     return logEnabled_;
+}
+
+inline AtParserConfig& AtParserConfig::logCategory(const char* category) {
+    logCategory_ = category;
+    return *this;
+}
+
+inline const char* AtParserConfig::logCategory() const {
+    return logCategory_ ? static_cast<const char*>(logCategory_) : DEFAULT_LOG_CATEGORY;
 }
 
 } // particle

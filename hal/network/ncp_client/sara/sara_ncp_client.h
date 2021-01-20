@@ -83,7 +83,7 @@ private:
     volatile NcpPowerState pwrState_ = NcpPowerState::UNKNOWN;
     int parserError_ = 0;
     bool ready_ = false;
-    gsm0710::Muxer<particle::SerialStream, StaticRecursiveMutex> muxer_;
+    gsm0710::Muxer<EventGroupBasedStream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerDataStream_;
     CellularNetworkConfig netConf_;

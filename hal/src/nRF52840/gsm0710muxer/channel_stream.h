@@ -217,10 +217,11 @@ inline int MuxerChannelStream<MuxerT>::waitEvent(unsigned flags, unsigned timeou
         if (f &= flags) {
             break;
         }
-        if (timeout > 0 && HAL_Timer_Get_Milli_Seconds() - t >= timeout) {
+        const auto elapsed = HAL_Timer_Get_Milli_Seconds() - t;
+        if (timeout == 0 || elapsed >= timeout) {
             return SYSTEM_ERROR_TIMEOUT;
         }
-        os_semaphore_take(sem_, HAL_Timer_Get_Milli_Seconds() - t, false);
+        os_semaphore_take(sem_, timeout - elapsed, false);
         if (!enabled_) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
