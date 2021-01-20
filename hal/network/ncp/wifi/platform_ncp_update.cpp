@@ -98,9 +98,9 @@ int invalidateWifiNcpVersionCache() {
 }
 
 int getWifiNcpFirmwareVersion(uint16_t* ncpVersion) {
+    uint16_t version = 0;
 #if HAL_PLATFORM_NCP_COUNT > 1
     using namespace particle::services;
-    uint16_t version = 0;
     int res = SystemCache::instance().get(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION, &version, sizeof(version));
     if (res == sizeof(version)) {
         LOG(TRACE, "Cached ESP32 NCP firmware version: %d", (int)version);

@@ -15,6 +15,10 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_FILESYSTEM
+
 #include "system_cache.h"
 #include "enumclass.h"
 #include "check.h"
@@ -45,3 +49,5 @@ int SystemCache::del(SystemCacheKey key) {
 }
 
 } } // particle::services
+
+#endif // HAL_PLATFORM_FILESYSTEM
