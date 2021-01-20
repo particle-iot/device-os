@@ -83,7 +83,7 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg) {
     if (!updating_) {
         return ProtocolError::INVALID_STATE;
     }
-    if (finishRespId_ < 0) {
+    if (finishRespId_ < 0 && errorRespId_ < 0) {
         return ProtocolError::NO_ERROR;
     }
     CoapMessageDecoder d;
@@ -115,10 +115,14 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg) {
         if (r < 0) {
             LOG(ERROR, "Failed to apply firmware update: %d", r);
             cancelUpdate();
+            return ProtocolError::OTA_UPDATE_ERROR;
         } else {
             // finish_firmware_update() doesn't normally return on success, but it does so in unit tests
             updating_ = false;
         }
+    } else if (d.id() == errorRespId_) {
+        cancelUpdate();
+        return ProtocolError::OTA_UPDATE_ERROR;
     }
     return ProtocolError::NO_ERROR;
 }
@@ -264,9 +268,14 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
                 return ProtocolError::IO_ERROR_GENERIC_SEND;
             }
         }
-        // Errors during OTA are not fatal to the connection unless we weren't able to send
-        // an error response
-        cancelUpdate();
+        // TODO: Errors during OTA shouldn't be fatal to the connection unless we weren't able to
+        // send an error response to the server
+        if (d.type() != CoapType::CON) {
+            cancelUpdate();
+            return ProtocolError::OTA_UPDATE_ERROR;
+        } else if (errorRespId_ < 0) {
+            errorRespId_ = resp.get_id();
+        }
     }
     return ProtocolError::NO_ERROR;
 }
@@ -733,6 +742,7 @@ void FirmwareUpdate::reset() {
     unackChunks_ = 0;
     stateLogChunks_ = 0;
     finishRespId_ = -1;
+    errorRespId_ = -1;
     hasGaps_ = false;
 }
 

@@ -387,9 +387,16 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
         f |= FirmwareUpdateFlag::VALIDATE_ONLY;
     }
     const int r = system::FirmwareUpdate::instance()->finishUpdate(f);
-    if (reserved && (flags & protocol::UpdateFlag::SUCCESS)) {
-        const auto buf = (uint8_t*)reserved;
-        formatOtaUpdateStatusEventData(r, (uint8_t*)buf, 255 /* Hardcoded in chunked_transfer.cpp :( */);
+    if (!(f & FirmwareUpdateFlag::CANCEL)) {
+        if (reserved) {
+            const auto buf = (uint8_t*)reserved;
+            formatOtaUpdateStatusEventData(r, (uint8_t*)buf, 255 /* Hardcoded in chunked_transfer.cpp :( */);
+        }
+        if (!(f & FirmwareUpdateFlag::VALIDATE_ONLY)) {
+            // Let's keep the original Gen 2 behavior in this compatibility API and reset the device
+            // regardless of whether the update has been applied successfully or not
+            system_pending_shutdown(RESET_REASON_UPDATE);
+        }
     }
     return r;
 }
