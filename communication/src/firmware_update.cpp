@@ -407,7 +407,14 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
     }
     if (!updating_) {
         LOG(WARN, "Received UpdateChunk request but no update is in progress");
-        return SYSTEM_ERROR_INVALID_STATE;
+        // Send an RST to the server but do cause a connection error
+        Message msg;
+        const int r = channel_->create(msg);
+        if (r != ProtocolError::NO_ERROR) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        CHECK(sendEmptyAck(&msg, CoapType::RST, d.id()));
+        return 0;
     }
     ++stats_.receivedChunks;
     if (index == 0 || index > chunkCount_) { // Chunk indices are 1-based
