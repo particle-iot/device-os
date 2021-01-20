@@ -57,13 +57,16 @@ std::recursive_mutex mdm_mutex;
 #define MDM_SOCKET_SEND_RETRIES_R4_BUG (3)
 #define MDM_MAX_ERRORS (2) //!< max number of errors before action is taken to recover the modem
 #define MDM_RESET_FAILURE_MAX_ATTEMPTS (8)
+#define MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET (25) //! When modem not responsive on boot, AT/OK tried 25x (for ~30s) before hard reset
+#define MDM_POWER_ON_MAX_ATTEMPTS_AFTER_RESET (10) //! After reset, we don't need to wait 30s.
 
 // ID of the PDP context used to configure the default EPS bearer when registering in an LTE network
 // Note: There are no PDP contexts in LTE, SARA-R4 uses this naming for the sake of simplicity
 #define PDP_CONTEXT 1
 
 // Timeouts for various AT commands based on R4 & U2/G3 AT command manual as of Jan 2019
-#define AT_TIMEOUT        (  3 * 1000) /* When modem not responsive on boot, AT/OK tried 10x for 30s before hard reset */
+#define AT_TIMEOUT        (  3 * 1000) /* Timeout set a bit lower than 10s for quicker detection of AT/OK failure */
+#define AT_TIMEOUT_POWERON (  1 * 1000) /* When modem not responsive on boot, AT/OK tried 25x (for ~30s) before hard reset */
 #define USOCL_UDP_TIMEOUT ( 10 * 1000) /* 120s for R4 (TCP only, optimizing for UDP with 10s), 1s for U2/G3 */
 #define USOCL_TCP_TIMEOUT ( 10 * 1000) /* 120s for R4 (TCP only), 1s for U2/G3 */
 #define USOCL_TCP_TIMEOUT_R4 (120 * 1000)
@@ -367,10 +370,10 @@ int MDMParser::sendFormattedWithArgs(const char* format, va_list args) {
     return n;
 }
 
-int MDMParser::_checkAtResponse(void)
+int MDMParser::_checkAtResponse(bool fastTimeout /* = false */)
 {
     sendFormated("AT\r\n");
-    int resp = waitFinalResp(nullptr, nullptr, AT_TIMEOUT);
+    int resp = waitFinalResp(nullptr, nullptr, fastTimeout ? AT_TIMEOUT_POWERON : AT_TIMEOUT);
 
     // R410 Power Savings Mode currently disabled, therefore this only affects all other modems
     if (resp == WAIT && _dev.dev != DEV_SARA_R410 && _dev.lpm == LPM_ACTIVE) {
@@ -387,8 +390,8 @@ int MDMParser::_checkAtResponse(void)
     return resp;
 }
 
-bool MDMParser::_atOk(void) {
-    return (_checkAtResponse() == RESP_OK);
+bool MDMParser::_atOk(bool fastTimeout /* = false */) {
+    return (_checkAtResponse(fastTimeout) == RESP_OK);
 }
 
 bool MDMParser::_checkModem(bool force /* = true */) {
@@ -838,7 +841,7 @@ bool MDMParser::_powerOn(void)
     bool continue_cancel = false;
     bool retried_after_reset = false;
 
-    int i = 10;
+    int i = MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET; // When modem not responsive on boot, AT/OK tries 25x (for ~30s) before hard reset
     while (i--) {
         // SARA-U2/LISA-U2 50..80us
         HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
@@ -860,8 +863,8 @@ bool MDMParser::_powerOn(void)
             resume(); // make sure we can talk to the modem
         }
 
-        // check interface
-        if(_atOk()) {
+        // check interface, and use quicker 1s timeout during initial _powerOn()
+        if (_atOk(true)) {
             // Increment the state change counter to show that the modem has been powered off -> on
             if (!_pwr) {
                 _incModemStateChangeCount();
@@ -874,7 +877,7 @@ bool MDMParser::_powerOn(void)
         }
         else if (i==0 && !retried_after_reset) {
             retried_after_reset = true; // only perform reset & retry sequence once
-            i = 10;
+            i = MDM_POWER_ON_MAX_ATTEMPTS_AFTER_RESET;
             reset();
         }
 
