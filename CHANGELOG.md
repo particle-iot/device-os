@@ -1,3 +1,25 @@
+## 3.0.0-rc.1
+
+### FEATURES
+
+- [Cellular] Send modem firmware version to the cloud as part of the system describe message [#2265](https://github.com/particle-iot/device-os/pull/2265)
+
+### ENHANCEMENTS
+
+- [Gen 3] Custom logging categories for AT parser and GSM 07.10 multiplexer to differentiate between cellular modem and ESP32 on Tracker platforms [#2267](https://github.com/particle-iot/device-os/pull/2267)
+- [Tracker] Reduce code size of GSM 07.10 multiplexer implementation making sure that ESP32 and cellular NCP client use the same template variant of it [#2267](https://github.com/particle-iot/device-os/pull/2267)
+- [Electron] Speed up modem power-on [#2268](https://github.com/particle-iot/device-os/pull/2268)
+- [Tracker] Cache ESP32 NCP firmware version in non-volatile memory [#2269](https://github.com/particle-iot/device-os/pull/2269)
+
+### BUGFIXES
+
+- [Boron / B SoM] Fix external SIM getting stuck in initialization [#2263](https://github.com/particle-iot/device-os/pull/2263)
+- [BLE] Return `false` in `BlePeerDevice::getCharacteristicByDescription()` if expected characteristic was not found [#2266](https://github.com/particle-iot/device-os/pull/2266)
+- [Gen 3] Fix UART DMA RX transfer size issues causing DMA writes outside of the RX buffer [#2264](https://github.com/particle-iot/device-os/pull/2264)
+- [Gen 3] Fix `ChannelStream::waitEvent()` timeout calculation [#2267](https://github.com/particle-iot/device-os/pull/2267)
+- [Gen 3] Fix warm boot feature regression introduced in 3.0.0-beta.1 [#2269](https://github.com/particle-iot/device-os/pull/2269)
+- [Gen 3] Disconnect from the server on OTAv3 update errors [#2270](https://github.com/particle-iot/device-os/pull/2270)
+
 ## 3.0.0-beta.1
 
 ### BREAKING CHANGES
