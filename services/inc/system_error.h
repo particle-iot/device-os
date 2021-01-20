@@ -66,6 +66,7 @@
         (OTA_INVALID_PLATFORM, "Invalid module platform", -1360), \
         (OTA_INVALID_FORMAT, "Invalid module format", -1370), \
         (OTA_UPDATES_DISABLED, "Firmware updates are disabled", -1380), \
+        (OTA, "Firmware update error", -1390), \
         (CRYPTO, "Crypto error", -1400) /* -1599 ... -1400: Crypto errors */ \
 
 // Expands to enum values for all errors

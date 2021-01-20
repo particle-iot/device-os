@@ -55,6 +55,8 @@ system_error_t particle::protocol::toSystemError(ProtocolError error) {
         return SYSTEM_ERROR_NO_MEMORY;
     case INTERNAL:
         return SYSTEM_ERROR_INTERNAL;
+    case OTA_UPDATE_ERROR:
+        return SYSTEM_ERROR_OTA;
     default:
         return SYSTEM_ERROR_PROTOCOL; // Generic protocol error
     }
