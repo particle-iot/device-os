@@ -615,7 +615,8 @@ TEST_CASE("FirmwareUpdate") {
     }
     SECTION("replies to the server with an error response if an UpdateChunk request cannot be processed") {
         SECTION("no update is in progress") {
-            w.sendChunk(1 /* index */, genString(512) /* data */);
+            int r = w.sendChunk(1 /* index */, genString(512) /* data */);
+            CHECK(r == ProtocolError::NO_ERROR);
             auto resp = w.receiveMessage();
             CHECK(resp.type() == CoapType::RST);
             CHECK(resp.id() == w.lastMessageId());
@@ -786,7 +787,8 @@ TEST_CASE("FirmwareUpdate") {
             CHECK(m.token() == w.lastMessageToken());
             CHECK(hasDiagnosticPayload(m));
             // Acknowledge the response
-            w.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
+            int r = w.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
+            CHECK(r != ProtocolError::NO_ERROR);
             Verify(Method(cb, finishFirmwareUpdate).Matching([=](unsigned flags) {
                 return FirmwareUpdateFlags::fromUnderlying(flags) == FirmwareUpdateFlag::CANCEL;
             })).Once();
@@ -810,7 +812,8 @@ TEST_CASE("FirmwareUpdate") {
             CHECK(m.payload().find("YOU SHALL NOT PASS!") != std::string::npos);
             CHECK(m.payload().find(std::to_string(SYSTEM_ERROR_NOT_ALLOWED)) != std::string::npos);
             // Acknowledge the response
-            w.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
+            int r = w.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
+            CHECK(r != ProtocolError::NO_ERROR);
             CHECK(!w.isRunning());
         }
         SECTION("cancelling an update") {

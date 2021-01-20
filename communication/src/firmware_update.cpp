@@ -121,6 +121,7 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg) {
             updating_ = false;
         }
     } else if (d.id() == errorRespId_) {
+        LOG(ERROR, "Firmware update failed");
         cancelUpdate();
         return ProtocolError::OTA_UPDATE_ERROR;
     }
@@ -271,6 +272,7 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
         // TODO: Errors during OTA shouldn't be fatal to the connection unless we weren't able to
         // send an error response to the server
         if (d.type() != CoapType::CON) {
+            LOG(ERROR, "Firmware update failed");
             cancelUpdate();
             return ProtocolError::OTA_UPDATE_ERROR;
         } else if (errorRespId_ < 0) {
@@ -411,6 +413,7 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
         Message msg;
         const int r = channel_->create(msg);
         if (r != ProtocolError::NO_ERROR) {
+            LOG(ERROR, "Failed to create message: %d", (int)r);
             return SYSTEM_ERROR_NO_MEMORY;
         }
         CHECK(sendEmptyAck(&msg, CoapType::RST, d.id()));
