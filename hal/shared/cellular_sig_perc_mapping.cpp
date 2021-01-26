@@ -35,41 +35,43 @@ enum SignalMappingRegions {
     MAX_REGION_THRESHOLDS
 };
 
-/* RF Characterization internal testing. Please see https://docs.google.com/spreadsheets/d/11qpipAc7JWzr8rAk-SOClfhflT-gXabDPGOMQU4be8I/edit?usp=sharing */
+/* RF Characterization internal testing plus data from live network.
+Please see https://docs.google.com/spreadsheets/d/11qpipAc7JWzr8rAk-SOClfhflT-gXabDPGOMQU4be8I/edit?usp=sharing */
 const int CATM1_STRN_MAP[] = {
     -141,   /* SIG_REGION_POOR */
-    -122,   /* SIG_REGION_BAD */
-    -116,   /* SIG_REGION_FAIR */
-    -107,   /* SIG_REGION_GOOD */
-    -95,    /* SIG_REGION_GREAT */
+    -105,   /* SIG_REGION_BAD */
+    -95,   /* SIG_REGION_FAIR */
+    -85,   /* SIG_REGION_GOOD */
+    -70,    /* SIG_REGION_GREAT */
     //-44     /* MAX */
 };
 
 const int CATM1_QUAL_MAP[] = {
     -20,   /* SIG_REGION_POOR */
-    -19,   /* SIG_REGION_BAD */
-    -17,   /* SIG_REGION_FAIR */
-    -14,   /* SIG_REGION_GOOD */
-    -12,   /* SIG_REGION_GREAT */
+    -15,   /* SIG_REGION_BAD */
+    -10,   /* SIG_REGION_FAIR */
+    -8,   /* SIG_REGION_GOOD */
+    -6,   /* SIG_REGION_GREAT */
     //-3     /* MAX */
 };
 
-/* Source: https://github.com/aosp-mirror/platform_frameworks_base/blob/master/telephony/java/android/telephony/CellSignalStrengthLte.java */
+/* Source: https://github.com/aosp-mirror/platform_frameworks_base/blob/master/telephony/java/android/telephony/CellSignalStrengthLte.java
+plus data from live networks */
 const int CAT1_STRN_MAP[] = {
     -141,   /* SIG_REGION_POOR */
-    -115,   /* SIG_REGION_BAD */
-    -105,   /* SIG_REGION_FAIR */
-    -95,    /* SIG_REGION_GOOD */
-    -85,    /* SIG_REGION_GREAT */
+    -105,   /* SIG_REGION_BAD */
+    -95,   /* SIG_REGION_FAIR */
+    -85,    /* SIG_REGION_GOOD */
+    -70,    /* SIG_REGION_GREAT */
     //-44     /* MAX */
 };
 
 const int CAT1_QUAL_MAP[] = {
     -20,   /* SIG_REGION_POOR */
-    -19,   /* SIG_REGION_BAD */
-    -17,   /* SIG_REGION_FAIR */
-    -14,   /* SIG_REGION_GOOD */
-    -12,   /* SIG_REGION_GREAT */
+    -16,   /* SIG_REGION_BAD */
+    -10,   /* SIG_REGION_FAIR */
+    -8,   /* SIG_REGION_GOOD */
+    -6,   /* SIG_REGION_GREAT */
     //-3     /* MAX */
 };
 
