@@ -23,6 +23,16 @@
 
 LOG_SOURCE_CATEGORY("comm.dtls")
 
+struct mbedtls_ssl_context;
+struct mbedtls_ssl_transform;
+
+extern "C" {
+
+void mbedtls_ssl_update_in_pointers(mbedtls_ssl_context *ssl);
+void mbedtls_ssl_update_out_pointers(mbedtls_ssl_context *ssl, mbedtls_ssl_transform *transform);
+
+} // extern "C"
+
 #include "dtls_message_channel.h"
 
 #if HAL_PLATFORM_CLOUD_UDP
@@ -40,48 +50,6 @@ LOG_SOURCE_CATEGORY("comm.dtls")
 
 namespace particle { namespace protocol {
 
-namespace {
-
-// FIXME
-void updateOutPointers( mbedtls_ssl_context *ssl,
-                                      mbedtls_ssl_transform *transform )
-{
-#if defined(MBEDTLS_SSL_PROTO_DTLS)
-    if( ssl->conf->transport == MBEDTLS_SSL_TRANSPORT_DATAGRAM )
-    {
-        ssl->out_ctr = ssl->out_hdr +  3;
-#if defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
-        ssl->out_cid = ssl->out_ctr +  8;
-        ssl->out_len = ssl->out_cid;
-        if( transform != NULL )
-            ssl->out_len += transform->out_cid_len;
-#else /* MBEDTLS_SSL_DTLS_CONNECTION_ID */
-        ssl->out_len = ssl->out_ctr + 8;
-#endif /* MBEDTLS_SSL_DTLS_CONNECTION_ID */
-        ssl->out_iv  = ssl->out_len + 2;
-    }
-    else
-#endif
-    {
-        ssl->out_ctr = ssl->out_hdr - 8;
-        ssl->out_len = ssl->out_hdr + 3;
-#if defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
-        ssl->out_cid = ssl->out_len;
-#endif
-        ssl->out_iv  = ssl->out_hdr + 5;
-    }
-
-    /* Adjust out_msg to make space for explicit IV, if used. */
-    if( transform != NULL &&
-        ssl->minor_ver >= MBEDTLS_SSL_MINOR_VERSION_2 )
-    {
-        ssl->out_msg = ssl->out_iv + transform->ivlen - transform->fixed_ivlen;
-    }
-    else
-        ssl->out_msg = ssl->out_iv;
-}
-
-} // namespace
 
 uint32_t compute_checksum(uint32_t(*calculate_crc)(const uint8_t* data, uint32_t len), const uint8_t* server, size_t server_len, const uint8_t* device, size_t device_len)
 {
@@ -96,10 +64,10 @@ uint32_t compute_checksum(uint32_t(*calculate_crc)(const uint8_t* data, uint32_t
 bool SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum, mbedtls_ssl_context* context, message_id_t next_id)
 {
 	if (context->state != MBEDTLS_SSL_HANDSHAKE_OVER) {
+		LOG(ERROR, "Invalid handshake state");
 		return false;
 	}
 
-#ifdef MBEDTLS_SSL_DTLS_CONNECTION_ID
 	uint8_t cid[MBEDTLS_SSL_CID_OUT_LEN_MAX] = {};
 	size_t cidSize = 0;
 	int cidEnabled = MBEDTLS_SSL_CID_DISABLED;
@@ -109,7 +77,6 @@ bool SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum,
 		return false;
 	}
 	memcpy(this->cid, cid, DTLS_CID_SIZE);
-#endif
 
 	this->keys_checksum = keys_checksum;
 	in_epoch = context->in_epoch;
@@ -192,16 +159,10 @@ SessionPersist::RestoreStatus SessionPersist::restore(mbedtls_ssl_context* conte
 			return ERROR;
 		}
 
-#ifdef MBEDTLS_SSL_DTLS_CONNECTION_ID
 		context->transform_negotiate->out_cid_len = DTLS_CID_SIZE;
 		memcpy(context->transform_negotiate->out_cid, cid, DTLS_CID_SIZE);
-		updateOutPointers(context, context->transform_negotiate);
-#endif
-
-		context->in_msg = context->in_iv + context->transform_negotiate->ivlen -
-											context->transform_negotiate->fixed_ivlen;
-		context->out_msg = context->out_iv + context->transform_negotiate->ivlen -
-											 context->transform_negotiate->fixed_ivlen;
+		mbedtls_ssl_update_out_pointers(context, context->transform_negotiate);
+		mbedtls_ssl_update_in_pointers(context);
 
 		context->session_in = context->session_negotiate;
 		context->session_out = context->session_negotiate;
@@ -294,38 +255,15 @@ ProtocolError DTLSMessageChannel::init(
 	memcpy(this->server_public, server_public, server_public_len);
 	this->server_public_len = server_public_len;
 
-#ifdef MBEDTLS_SSL_DTLS_CONNECTION_ID
 	// Records received from the server are not expected to contain a CID
 	mbedtls_ssl_conf_cid(&conf, 0 /* len */, MBEDTLS_SSL_UNEXPECTED_CID_IGNORE);
-#endif
 
 	return NO_ERROR;
 }
 
-/*
- * Inspects the move session flag to amend the application data record to a move session record.
- * See: https://github.com/particle-iot/knowledge/blob/8df146d88c4237e90553f3fd6d8465ab58ec79e0/services/dtls-ip-change.md
- */
 inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 {
-#ifndef MBEDTLS_SSL_DTLS_CONNECTION_ID
-	if (move_session && len && data[0]==23)
-	{
-		// buffer for a new packet that contains the device ID length and a byte for the length appended to the existing data.
-		uint8_t d[len+DEVICE_ID_LEN+1];
-		memcpy(d, data, len);						// original application data
-		d[0] = 254;									// move session record type
-		memcpy(d+len, device_id, DEVICE_ID_LEN);	// set the device ID
-		d[len+DEVICE_ID_LEN] = DEVICE_ID_LEN;			// set the device ID length as the last byte in the packet
-		int result = callbacks.send(d, len+DEVICE_ID_LEN+1, callbacks.tx_context);
-		// hide the increased length from DTLS
-		if (result==int(len+DEVICE_ID_LEN+1))
-			result = len;
-		return result;
-	}
-	else
-#endif
-		return callbacks.send(data, len, callbacks.tx_context);
+	return callbacks.send(data, len, callbacks.tx_context);
 }
 
 void DTLSMessageChannel::reset_session()
@@ -416,13 +354,11 @@ ProtocolError DTLSMessageChannel::setup_context()
 		return IO_ERROR_PARSING_SERVER_PUBLIC_KEY;
 	}
 
-#ifdef MBEDTLS_SSL_DTLS_CONNECTION_ID
 	ret = mbedtls_ssl_set_cid(&ssl_context, MBEDTLS_SSL_CID_ENABLED, nullptr /* own_cid */, 0 /* own_cid_len */);
 	if (ret != 0) {
 		LOG(ERROR, "mbedtls_ssl_set_cid() failed: -0x%x", -ret);
 		return ProtocolError::INTERNAL;
 	}
-#endif
 
 	return NO_ERROR;
 }
@@ -483,16 +419,15 @@ ProtocolError DTLSMessageChannel::establish()
 	while(ret == MBEDTLS_ERR_SSL_WANT_READ ||
 	      ret == MBEDTLS_ERR_SSL_WANT_WRITE);
 
-	if (ret)
-	{
-		LOG(ERROR,"handshake failed -%x", -ret);
+	bool ok = false;
+	if (ret) {
+		LOG(ERROR, "handshake failed -%x", -ret);
+	} if (sessionPersist.prepare_save(random, keys_checksum, &ssl_context, 0)) {
+		ok = true;
+	}
+	if (!ok) {
 		reset_session();
 		return IO_ERROR_GENERIC_ESTABLISH;
-	}
-
-	if (!sessionPersist.prepare_save(random, keys_checksum, &ssl_context, 0))
-	{
-		sessionPersist.clear(callbacks.save);
 	}
 
 	return NO_ERROR;
@@ -516,7 +451,7 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 
 	conf.read_timeout = 0;
 	int ret = mbedtls_ssl_read(&ssl_context, buf, len);
-	if (ret<0) {
+	if (ret < 0) {
 		switch (ret) {
 		case MBEDTLS_ERR_SSL_WANT_READ:
 			break;
@@ -532,19 +467,13 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 		}
 	}
 	message.set_length(ret);
-	if (ret>0) {
+	if (ret > 0) {
 		cancel_move_session();
 #if defined(DEBUG_BUILD) && 0
 		if (LOG_ENABLED(TRACE)) {
-		  LOG(TRACE, "msg len %d", message.length());
-		  for (size_t i=0; i<message.length(); i++)
-		  {
-				  char buf[3];
-				  char c = message.buf()[i];
-				  sprintf(buf, "%02x", c);
-				  LOG_PRINT(TRACE, buf);
-		  }
-		  LOG_PRINT(TRACE, "\r\n");
+			LOG(TRACE, "msg len %u", (unsigned)message.length());
+			LOG_DUMP(TRACE, message.buf(), message.length());
+			LOG_PRINT(TRACE, "\r\n");
 		}
 #endif
 	}
@@ -578,25 +507,18 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 	}
 
 #if defined(DEBUG_BUILD) && 0
-	LOG(TRACE, "msg len %d", message.length());
-	for (size_t i=0; i<message.length(); i++) {
-		char buf[3];
-		char c = message.buf()[i];
-		sprintf(buf, "%02x", c);
-		LOG_PRINT(TRACE, buf);
-	}
+	LOG(TRACE, "msg len %u", (unsigned)message.length());
+	LOG_DUMP(TRACE, message.buf(), message.length());
 	LOG_PRINT(TRACE, "\r\n");
 #endif
 
 	int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
 	if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-		LOG(WARN, "mbedtls_ssl_write returned %x", ret);
+		LOG(WARN, "mbedtls_ssl_write returned -0x%x", -ret);
 		reset_session();
 		return IO_ERROR_GENERIC_MBEDTLS_SSL_WRITE;
 	}
-	if (sessionPersist.is_valid()) {
-		sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
-	}
+	sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
 	return NO_ERROR;
 }
 
