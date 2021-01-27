@@ -21,7 +21,7 @@
 #include "stddef.h"
 
 // The size of the persisted data
-#define SessionPersistBaseSize 234
+#define SessionPersistBaseSize 250
 
 // variable size due to int/size_t members
 #define SessionPersistVariableSize (sizeof(int)+sizeof(int)+sizeof(size_t))
@@ -125,6 +125,14 @@ struct __attribute__((packed)) SessionPersistData
 	 * Size of an OTA update chunk.
 	 */
 	uint16_t ota_chunk_size;
+	/**
+	 * Last validated sequence number of an incoming record.
+	 */
+	uint64_t in_window_top;
+	/**
+	 * Bitmap of last N incoming records.
+	 */
+	uint64_t in_window;
 	/**
 	 * Connection ID.
 	 */
@@ -289,7 +297,7 @@ public:
 static_assert(sizeof(SessionPersist)==SessionPersistBaseSize+sizeof(mbedtls_ssl_session::ciphersuite)+sizeof(mbedtls_ssl_session::id_len)+sizeof(mbedtls_ssl_session::compression), "SessionPersist size");
 static_assert(sizeof(SessionPersist)==sizeof(SessionPersistDataOpaque), "SessionPersistDataOpaque size == sizeof(SessionPersist)");
 
-static_assert(DTLS_CID_SIZE == MBEDTLS_SSL_CID_OUT_LEN_MAX, "Invalid DTLS_CID_SIZE");
+static_assert(DTLS_CID_SIZE <= MBEDTLS_SSL_CID_OUT_LEN_MAX, "DTLS_CID_SIZE is too large");
 
 #endif // defined(MBEDTLS_SSL_H)
 

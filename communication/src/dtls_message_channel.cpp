@@ -83,8 +83,8 @@ bool SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum,
 	memcpy(out_ctr, context->cur_out_ctr, 8);
 	memcpy(randbytes, random, sizeof(randbytes));
 	this->next_coap_id = next_id;
-
 	save_session(context->session);
+
 	size = sizeof(*this);
 
 	return true;
@@ -95,6 +95,9 @@ void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver, messa
 	if (context->state == MBEDTLS_SSL_HANDSHAKE_OVER)
 	{
 		memcpy(out_ctr, context->cur_out_ctr, 8);
+		in_epoch = context->in_epoch;
+		in_window_top = context->in_window_top;
+		in_window = context->in_window;
 		this->next_coap_id = next_id;
 		save_this_with(saver);
 	}
@@ -143,6 +146,8 @@ SessionPersist::RestoreStatus SessionPersist::restore(mbedtls_ssl_context* conte
 	if (!renegotiate) {
 		context->state = MBEDTLS_SSL_HANDSHAKE_WRAPUP;
 		context->in_epoch = in_epoch;
+		context->in_window_top = in_window_top;
+		context->in_window = in_window;
 		memcpy(context->cur_out_ctr, &out_ctr, sizeof(out_ctr));
 		memcpy(context->handshake->randbytes, randbytes, sizeof(randbytes));
 		const auto ciphersuiteInfo = mbedtls_ssl_ciphersuite_from_id(ciphersuite);
@@ -354,6 +359,7 @@ ProtocolError DTLSMessageChannel::setup_context()
 		return IO_ERROR_PARSING_SERVER_PUBLIC_KEY;
 	}
 
+	// Enable the extension but do not set a CID
 	ret = mbedtls_ssl_set_cid(&ssl_context, MBEDTLS_SSL_CID_ENABLED, nullptr /* own_cid */, 0 /* own_cid_len */);
 	if (ret != 0) {
 		LOG(ERROR, "mbedtls_ssl_set_cid() failed: -0x%x", -ret);
@@ -454,7 +460,6 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	if (ret < 0) {
 		switch (ret) {
 		case MBEDTLS_ERR_SSL_WANT_READ:
-			break;
 		case MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE:
 			ret = 0;
 			break;
@@ -477,6 +482,7 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 		}
 #endif
 	}
+	sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
 	return NO_ERROR;
 }
 
