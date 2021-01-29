@@ -46,9 +46,7 @@ private:
   void handleCharging();
   void handleUpdate();
   void initDefault(bool dpdm = true);
-  void handleStateChange(battery_state_t from, battery_state_t to, bool low);
-  battery_state_t handlePossibleFault(battery_state_t from, battery_state_t to);
-  void handlePossibleFaultLoop();
+  void handleStateChange(battery_state_t from, battery_state_t to);
   void logStat(uint8_t stat, uint8_t fault);
   void checkWatchdog();
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
@@ -60,6 +58,8 @@ private:
   void applyDefaultConfig(bool dpdm = false);
   void logCurrentConfig();
   bool isRunning() const;
+
+  void deduceBatteryStateLoop();
 
   static power_source_t powerSourceFromStatus(uint8_t status);
 
@@ -73,10 +73,6 @@ private:
   static volatile bool update_;
   os_thread_t thread_ = nullptr;
   os_queue_t queue_ = nullptr;
-  system_tick_t faultSuppressed_ = 0;
-  uint32_t faultSecondaryCounter_ = 0;
-  uint32_t possibleFaultCounter_ = 0;
-  system_tick_t possibleFaultTimestamp_ = 0;
   bool lowBatEnabled_ = true;
   system_tick_t chargingDisabledTimestamp_ = 0;
   bool fuelGaugeAwake_ = true;
@@ -86,6 +82,12 @@ private:
 #if HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
   system_tick_t pmicWatchdogTimer_ = 0;
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
+
+  system_tick_t batMonitorTimeStamp_ = 0;
+  system_tick_t chargedTimeStamp_ = 0;
+  system_tick_t disconnectedTimeStamp_ = 0;
+  uint8_t chargingDebounceCount_ = 0;
+  uint8_t vcellDebounceCount_ = 0;
 
   hal_power_config config_ = {};
 };
