@@ -225,7 +225,9 @@ void PowerManager::handleUpdate() {
         // The PMIC didn't update the register, we update the battery state manually
         state = BATTERY_STATE_NOT_CHARGING;
       }
-    } else {
+    } else if (chargingDebounceCount_ == 0 /* Not in debouncing state */) {
+      // FIXME: We are still getting a charging event when device is powered up without battery attached.
+      // But the battery state will be regulated to disconnected state later.
       state = BATTERY_STATE_CHARGING;
     }
   } else {
@@ -480,6 +482,20 @@ void PowerManager::handleStateChange(battery_state_t from, battery_state_t to) {
     return;
   }
 
+  // As long as battery state changed, clear debouncing state
+  chargingDebounceCount_ = 0;
+  vcellDebounceCount_ = 0;
+
+  if (to == BATTERY_STATE_DISCONNECTED) {
+    disconnectedTimeStamp_ = millis();
+  } else {
+    disconnectedTimeStamp_ = 0;
+  }
+
+  if (to != BATTERY_STATE_CHARGED) {
+    chargedTimeStamp_ = 0;
+  }
+
   if (from == BATTERY_STATE_DISCONNECTED && to != BATTERY_STATE_DISCONNECTED) {
     // When going from DISCONNECTED state to any other state quick start fuel gauge
     FuelGauge fuel;
@@ -511,8 +527,15 @@ void PowerManager::handleStateChange(battery_state_t from, battery_state_t to) {
 }
 
 void PowerManager::deduceBatteryStateLoop() {
+  // We don't need to deduce the battery state when the battery is used as the main power supplier
+  if (g_batteryState == BATTERY_STATE_DISCHARGING) {
+    return;
+  }
   if ((config_.flags & HAL_POWER_CHARGE_STATE_DISABLE)) {
     // Charging is disabled
+    // XXX: This is a dirty hack. Using the VCELL to deduce the battery state
+    // is based on the experience that when charging is disabled, the VCELL can
+    // be measured to be below 1v.
     if (millis() - batMonitorTimeStamp_ > BATTERY_STATE_CHECK_PERIOD) {
       batMonitorTimeStamp_ = millis();
       PMIC power(true);
@@ -531,7 +554,6 @@ void PowerManager::deduceBatteryStateLoop() {
         if (vCell > BATTERY_CONNECTED_VCELL_THRESHOLD) {
           vcellDebounceCount_++;
           if (vcellDebounceCount_ >= BATTERY_VCELL_DEBOUNCE_COUNT) {
-            vcellDebounceCount_ = 0;
             battery_state_t batteryState = BATTERY_STATE_NOT_CHARGING;
             handleStateChange(g_batteryState, batteryState);
           }
@@ -549,11 +571,12 @@ void PowerManager::deduceBatteryStateLoop() {
     if (chargedTimeStamp_ != 0 && millis() - chargedTimeStamp_ >= BATTERY_CHARED_POSTPONE_PERIOD) {
       chargedTimeStamp_ = 0;
       status = power.getSystemStatus();
-      // Battery is charged, then the battery voltage should above VSYS_MIN (3.5v)
+      // When we get here, a charged event is raised previously followed by disabling charging,
+      // so the VBAT is not floating and the VSYS_STAT can be used to deduce the battery state.
+      // If battery is actually charged, then the battery voltage should above VSYS_MIN (3.5v)
       // The VSYS_STAT bit should be cleared, otherwise, the battery is disconnected
       if (status & 0x01) {
         batteryState = BATTERY_STATE_DISCONNECTED;
-        disconnectedTimeStamp_ = millis();
       } else {
         // The battery may be attached during the debounce period.
         // We need to re-check the status if device is under charging actually.
@@ -565,10 +588,8 @@ void PowerManager::deduceBatteryStateLoop() {
         } else {
           batteryState = BATTERY_STATE_CHARGED;
         }
-        disconnectedTimeStamp_ = 0;
       }
       handleStateChange(g_batteryState, batteryState);
-      chargingDebounceCount_ = 0;
     } else if (g_batteryState == BATTERY_STATE_DISCONNECTED && millis() - disconnectedTimeStamp_ >= BATTERY_STATE_CHECK_PERIOD) {
       disconnectedTimeStamp_ = millis();
       if (chargingDebounceCount_ == 0) {
@@ -580,12 +601,14 @@ void PowerManager::deduceBatteryStateLoop() {
       if (chrg_stat == 0b01 || chrg_stat == 0b10) {
         chargingDebounceCount_++;
         if (chargingDebounceCount_ >= BATTERY_CHARGING_DEBOUNCE_COUNT) {
-          chargingDebounceCount_ = 0;
           batteryState = BATTERY_STATE_CHARGING;
           handleStateChange(g_batteryState, batteryState);
         }
+      } else if (chrg_stat == 0b00) {
+        chargingDebounceCount_ = 0;
+      } else {
+        // if battery is not attached, the charged event will probably trigger INT and followed by disabling charging
       }
-      // if battery is not attached, it will probably trigger INT and followed by disabling charging
     }
   }
 }
