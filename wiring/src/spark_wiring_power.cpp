@@ -451,6 +451,12 @@ bool PMIC::disableCharging() {
     return 1;
 }
 
+bool PMIC::isChargingEnabled(void) {
+    std::lock_guard<PMIC> l(*this);
+    byte DATA = readRegister(POWERON_CONFIG_REGISTER);
+    return (DATA & 0b00110000) == 0b00010000;
+}
+
 /*******************************************************************************
  * Function Name  : disableOTG
  * Description    :

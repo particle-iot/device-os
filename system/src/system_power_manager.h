@@ -43,10 +43,10 @@ private:
   static void isrHandler();
   static void usbStateChangeHandler(HAL_USB_State state, void* context);
   void update();
-  void handleCharging();
+  void handleCharging(bool forceDisable = false);
   void handleUpdate();
   void initDefault(bool dpdm = true);
-  void handleStateChange(battery_state_t from, battery_state_t to);
+  void confirmBatteryState(battery_state_t from, battery_state_t to);
   void logStat(uint8_t stat, uint8_t fault);
   void checkWatchdog();
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
@@ -60,6 +60,10 @@ private:
   bool isRunning() const;
 
   void deduceBatteryStateLoop();
+  void deduceBatteryStateChargeDisabled();
+  void deduceBatteryStateChargeEnabled();
+  void batteryStateForwardingTo(battery_state_t targetState, bool count = true);
+  void clearIntermadiateBatteryState();
 
   static power_source_t powerSourceFromStatus(uint8_t status);
 
@@ -84,10 +88,14 @@ private:
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
 
   system_tick_t batMonitorTimeStamp_ = 0;
-  system_tick_t chargedTimeStamp_ = 0;
-  system_tick_t disconnectedTimeStamp_ = 0;
+  system_tick_t battMonitorPeriod_ = 0;
+  system_tick_t lastChargedTimeStamp_ = 0;
+  system_tick_t disableChargingTimeStamp_ = 0;
+  uint8_t notChargingDebounceCount_ = 0;
   uint8_t chargingDebounceCount_ = 0;
   uint8_t vcellDebounceCount_ = 0;
+  uint8_t chargedFaultCount_ = 0;
+  bool chargingEnabled_ = false;
 
   hal_power_config config_ = {};
 };

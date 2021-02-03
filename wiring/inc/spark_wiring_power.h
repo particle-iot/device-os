@@ -73,6 +73,7 @@ public:
     // Power ON configuration register
     bool enableCharging(void);
     bool disableCharging(void);
+    bool isChargingEnabled(void);
     bool enableOTG(void);
     bool disableOTG(void);
     bool resetWatchdog(void);
@@ -149,7 +150,7 @@ public:
 
 
 
-private:
+// private:
     static constexpr system_tick_t PMIC_DEFAULT_TIMEOUT = 10; // In millisecond
 
     byte readRegister(byte startAddress);
