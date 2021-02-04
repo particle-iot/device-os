@@ -150,7 +150,7 @@ public:
 
 
 
-// private:
+private:
     static constexpr system_tick_t PMIC_DEFAULT_TIMEOUT = 10; // In millisecond
 
     byte readRegister(byte startAddress);
