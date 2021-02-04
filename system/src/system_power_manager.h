@@ -43,7 +43,7 @@ private:
   static void isrHandler();
   static void usbStateChangeHandler(HAL_USB_State state, void* context);
   void update();
-  void handleCharging(bool forceDisable = false);
+  void handleCharging(bool batteryDisconnected = false);
   void handleUpdate();
   void initDefault(bool dpdm = true);
   void confirmBatteryState(battery_state_t from, battery_state_t to);
@@ -62,7 +62,7 @@ private:
   void deduceBatteryStateLoop();
   void deduceBatteryStateChargeDisabled();
   void deduceBatteryStateChargeEnabled();
-  void batteryStateForwardingTo(battery_state_t targetState, bool count = true);
+  void batteryStateTransitioningTo(battery_state_t targetState, bool count = true);
   void clearIntermadiateBatteryState();
 
   static power_source_t powerSourceFromStatus(uint8_t status);
@@ -95,7 +95,7 @@ private:
   uint8_t chargingDebounceCount_ = 0;
   uint8_t vcellDebounceCount_ = 0;
   uint8_t chargedFaultCount_ = 0;
-  bool chargingEnabled_ = false;
+  bool poosibleChargedFault_ = false;
 
   hal_power_config config_ = {};
 };

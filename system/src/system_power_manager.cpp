@@ -29,10 +29,12 @@ LOG_SOURCE_CATEGORY("sys.power");
 
 #if (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
 
-#if 0
+#define DEBUG_POWER 1
+
+#if DEBUG_POWER
 #define DBG_PWR(_fmt, ...) \
         do { \
-            LOG_PRINTF(ERROR, _fmt "\r\n", ##__VA_ARGS__); \
+            LOG(ERROR, _fmt, ##__VA_ARGS__); \
         } while (false)
 #else
 #define DBG_PWR(...)
@@ -48,8 +50,8 @@ constexpr uint8_t BQ24195_VERSION = 0x23;
 constexpr system_tick_t BATTERY_STATE_NORMAL_CHECK_PERIOD = 10000;
 constexpr system_tick_t BATTERY_STATE_CHANGE_CHECK_PERIOD = 1000;
 constexpr system_tick_t BATTERY_CHARGED_MUTE_WINDOW = 1000;
-constexpr system_tick_t BATTERY_DISABLE_CHARGING_SUPRESS_PERIOD = 5000; // How long after disable charging the VCELL can reliably reflect the VBAT
-constexpr float BATTERY_CONNECTED_VCELL_THRESHOLD = 2.0; // v
+constexpr system_tick_t BATTERY_DISABLE_CHARGING_SUPRESS_PERIOD = 8000; // How long after disable charging the VCELL can reliably reflect the VBAT
+constexpr float BATTERY_CONNECTED_VCELL_THRESHOLD = 1.0f; // v
 constexpr uint8_t BATTERY_VCELL_DEBOUNCE_COUNT = 2;
 constexpr uint8_t BATTERY_CHARGING_DEBOUNCE_COUNT = 2;
 constexpr uint8_t BATTERY_NOT_CHARGING_DEBOUNCE_COUNT = 2;
@@ -129,10 +131,10 @@ PowerManager* PowerManager::instance() {
 void PowerManager::init() {
   os_thread_t th = nullptr;
   os_thread_create(&th, "pwr", OS_THREAD_PRIORITY_CRITICAL, &PowerManager::loop, nullptr,
-#if defined(DEBUG_BUILD)
+#if defined(DEBUG_BUILD) || DEBUG_POWER
     4 * 1024);
 #else
-    4096);
+    1024);
 #endif // defined(DEBUIG_BUILD)
   SPARK_ASSERT(th != nullptr);
 }
@@ -181,17 +183,16 @@ void PowerManager::wakeup() {
   }
 }
 
-void PowerManager::handleCharging(bool forceDisable) {
+void PowerManager::handleCharging(bool batteryDisconnected) {
   // The PMIC lock should already be acquired
   PMIC power(false);
 
-  if ((config_.flags & HAL_POWER_CHARGE_STATE_DISABLE) || forceDisable) {
-    if (chargingEnabled_) {
+  if ((config_.flags & HAL_POWER_CHARGE_STATE_DISABLE) || batteryDisconnected) {
+    if (power.isChargingEnabled()) {
       clearIntermadiateBatteryState();
       DBG_PWR("Disabled charging.");
       power.disableCharging();
       power.disableSafetyTimer();
-      chargingEnabled_ = false;
       disableChargingTimeStamp_ = millis();
       // Request to shorten the monitor period
       battMonitorPeriod_ = BATTERY_STATE_CHANGE_CHECK_PERIOD;
@@ -199,12 +200,11 @@ void PowerManager::handleCharging(bool forceDisable) {
     return;
   }
 
-  if (!chargingEnabled_) {
+  if (!power.isChargingEnabled()) {
     clearIntermadiateBatteryState();
     DBG_PWR("Enable charging.");
     power.enableCharging();
     power.enableSafetyTimer();
-    chargingEnabled_ = true;
     // Request to shorten the monitor period
     battMonitorPeriod_ = BATTERY_STATE_CHANGE_CHECK_PERIOD;
   }
@@ -230,6 +230,8 @@ void PowerManager::handleUpdate() {
   if ((curFault & 0x80 /*watchdog fault*/) || !power.isBuckEnabled()) {
     // Restore parameters
     initDefault();
+  } else {
+    handleCharging();
   }
 
   const uint8_t status = power.getSystemStatus();
@@ -238,14 +240,14 @@ void PowerManager::handleUpdate() {
   // Deduce current battery state
   const uint8_t chrg_stat = (status >> 4) & 0b11;
   if (chrg_stat) {
-    if (chargingEnabled_) {
+    if (power.isChargingEnabled()) {
       // Charging or charged
       if (chrg_stat == 0b11) {
         lastChargedTimeStamp_ = millis();
-        batteryStateForwardingTo(BATTERY_STATE_CHARGED);
+        batteryStateTransitioningTo(BATTERY_STATE_CHARGED);
       } else {
         // We might receive continuous interrupt. Counting the charging state may lead to fake charging state.
-        batteryStateForwardingTo(BATTERY_STATE_CHARGING, false);
+        batteryStateTransitioningTo(BATTERY_STATE_CHARGING, false);
       }
     }
     // Else charging is disabled, the register is just not updated, do nothing
@@ -260,7 +262,7 @@ void PowerManager::handleUpdate() {
       confirmBatteryState(g_batteryState, BATTERY_STATE_DISCHARGING);
     } else {
       // We might receive continuous interrupt. Counting the not charging state may lead to fake not charging state.
-      batteryStateForwardingTo(BATTERY_STATE_NOT_CHARGING, false);
+      batteryStateTransitioningTo(BATTERY_STATE_NOT_CHARGING, false);
     }
   }
 
@@ -388,7 +390,6 @@ void PowerManager::loop(void* arg) {
 #endif
 
     self->battMonitorPeriod_ = BATTERY_STATE_NORMAL_CHECK_PERIOD;
-    self->chargingEnabled_ = power.isChargingEnabled();
   }
 
   Event ev;
@@ -498,9 +499,7 @@ void PowerManager::confirmBatteryState(battery_state_t from, battery_state_t to)
   
   // Charging may be temporarily enabled when battery is disconnected.
   // If we are still in the disconnected state, we need to disable charging again.
-  if (to == BATTERY_STATE_DISCONNECTED && chargingEnabled_) {
-    handleCharging(true);
-  }
+  handleCharging((to == BATTERY_STATE_DISCONNECTED) ? true : false);
 
   if (from == to) {
     // No state change occured
@@ -557,7 +556,7 @@ void PowerManager::confirmBatteryState(battery_state_t from, battery_state_t to)
 #endif // defined(DEBUG_BUILD)
 }
 
-void PowerManager::batteryStateForwardingTo(battery_state_t targetState, bool count) {
+void PowerManager::batteryStateTransitioningTo(battery_state_t targetState, bool count) {
   if (targetState == BATTERY_STATE_NOT_CHARGING && g_batteryState != BATTERY_STATE_NOT_CHARGING) {
     if (count) {
       notChargingDebounceCount_++;
@@ -596,15 +595,20 @@ void PowerManager::batteryStateForwardingTo(battery_state_t targetState, bool co
     chargingDebounceCount_ = 0;
     battMonitorPeriod_ = BATTERY_STATE_CHANGE_CHECK_PERIOD;
     DBG_PWR("chargedFaultCount_: %d", chargedFaultCount_);
-    if (chargedFaultCount_ == 1) {
-      DBG_PWR("Set fault recharge threshold: 300mV");
-      PMIC power(true);
-      power.setRechargeThreshold(PMIC_FAULT_RECHARGE_THRESHOLD); // 300mV
-    } else if (chargedFaultCount_ >= BATTERY_CHARGED_FAULT_COUNT) {
-      DBG_PWR("Charged fault, disconnected");
-      // If we keep getting the charged event in a debouncing window, instead we assume that the battery is disconnected.
-      // No need to restore the normal threshold
-      confirmBatteryState(g_batteryState, BATTERY_STATE_DISCONNECTED);
+    if (chargedFaultCount_ >= BATTERY_CHARGED_FAULT_COUNT) {
+      if (poosibleChargedFault_) {
+        DBG_PWR("Charged fault, disconnected");
+        // If we keep getting the charged event in a debouncing window, instead we assume that the battery is disconnected.
+        // No need to restore the normal threshold
+        confirmBatteryState(g_batteryState, BATTERY_STATE_DISCONNECTED);
+      } else {
+        poosibleChargedFault_ = true;
+        chargedFaultCount_ = 0;
+        lastChargedTimeStamp_ = millis();
+        DBG_PWR("Set fault recharge threshold: 300mV");
+        PMIC power(true);
+        power.setRechargeThreshold(PMIC_FAULT_RECHARGE_THRESHOLD); // 300mV
+      }
     }
   }
 }
@@ -613,6 +617,7 @@ void PowerManager::clearIntermadiateBatteryState() {
   chargingDebounceCount_ = 0;
   vcellDebounceCount_ = 0;
   chargedFaultCount_ = 0;
+  poosibleChargedFault_ = false;
   notChargingDebounceCount_ = 0;
   lastChargedTimeStamp_ = 0;
   battMonitorPeriod_ = BATTERY_STATE_NORMAL_CHECK_PERIOD;
@@ -625,14 +630,22 @@ void PowerManager::deduceBatteryStateLoop() {
   }
 
   // This should be executed only when charging is enabled and we got a charged event
-  if (!(config_.flags & HAL_POWER_CHARGE_STATE_DISABLE) && lastChargedTimeStamp_ != 0 && millis() - lastChargedTimeStamp_ >= BATTERY_CHARGED_MUTE_WINDOW) {
-    // We've passed the jitter window and the battery is charged indeed
-    DBG_PWR("Charged!");
-    confirmBatteryState(g_batteryState, BATTERY_STATE_CHARGED);
-    // Restore normal recharge threshold
-    DBG_PWR("Rstore normal threshold: 100mV");
+  if (lastChargedTimeStamp_ != 0 && (millis() - lastChargedTimeStamp_) >= BATTERY_CHARGED_MUTE_WINDOW) {
     PMIC power(true);
-    power.setRechargeThreshold(PMIC_NORMAL_RECHARGE_THRESHOLD); // 100mV
+    if ((config_.flags & HAL_POWER_CHARGE_STATE_DISABLE) || !power.isChargingEnabled()) {
+      DBG_PWR("Fault state, re-enable/disable charging!");
+      // If charging is disabled as per the configuration, we shouldn't get here
+      clearIntermadiateBatteryState();
+      handleCharging();
+    } else {
+      // We've passed the jitter window and the battery is charged indeed
+      DBG_PWR("Charged!");
+      confirmBatteryState(g_batteryState, BATTERY_STATE_CHARGED);
+      // Restore normal recharge threshold
+      DBG_PWR("Restore normal threshold: 100mV");
+      PMIC power(true);
+      power.setRechargeThreshold(PMIC_NORMAL_RECHARGE_THRESHOLD); // 100mV
+    }
     return;
   }
 
@@ -654,7 +667,7 @@ void PowerManager::deduceBatteryStateChargeDisabled() {
   // When charging is disabled, the VCELL can reliably reflect the voltage on VBAT
   FuelGauge fuel(true);
   float vCell = fuel.getVCell();
-  LOG_DEBUG(TRACE, "VCell: %dmV", (uint16_t)(vCell * 1000));
+  DBG_PWR("VCell: %dmV", (uint16_t)(vCell * 1000));
 
   // Make an assumption
   if (g_batteryState == BATTERY_STATE_UNKNOWN) {
@@ -685,8 +698,9 @@ void PowerManager::deduceBatteryStateChargeDisabled() {
 connected:
   PMIC power(true);
   const uint8_t status = power.getSystemStatus();
-  if (status & 0x08) {
-    DBG_PWR("In DPM mode");
+  const uint8_t pwrGood = (status >> 2) & 0b01;
+  if ((status & 0x08) || !pwrGood) {
+    DBG_PWR("In DPM mode or power is not good");
     // It's in DPM mode, the battery is discharging
     confirmBatteryState(g_batteryState, BATTERY_STATE_DISCHARGING);
   } else if (vCell < BATTERY_CONNECTED_VCELL_THRESHOLD) {
@@ -703,7 +717,7 @@ void PowerManager::deduceBatteryStateChargeEnabled() {
   DBG_PWR("deduceBatteryStateChargeEnabled()");
   PMIC power(true);
 
-  if (g_batteryState == BATTERY_STATE_DISCONNECTED && !chargingEnabled_) {
+  if (g_batteryState == BATTERY_STATE_DISCONNECTED && !power.isChargingEnabled() /* MUST not enabled */) {
     if (millis() - disableChargingTimeStamp_ < BATTERY_DISABLE_CHARGING_SUPRESS_PERIOD) {
       return;
     }
@@ -724,16 +738,17 @@ void PowerManager::deduceBatteryStateChargeEnabled() {
   const uint8_t status = power.getSystemStatus();
   const uint8_t chargeState = (status >> 4) & 0b11;
   if (chargeState == 0b11 && g_batteryState != BATTERY_STATE_CHARGED) {
-    batteryStateForwardingTo(BATTERY_STATE_CHARGED);
+    batteryStateTransitioningTo(BATTERY_STATE_CHARGED);
   } else if ((chargeState == 0b01 || chargeState == 0b10)) {
-    batteryStateForwardingTo(BATTERY_STATE_CHARGING);
+    batteryStateTransitioningTo(BATTERY_STATE_CHARGING);
   } else if (chargeState == 0b00) {
-    if (status & 0x08) {
-      DBG_PWR("In DPM mode");
+    const uint8_t pwrGood = (status >> 2) & 0b01;
+    if ((status & 0x08) || !pwrGood) {
+      DBG_PWR("In DPM mode or power is not good");
       // It's in DPM mode, the battery is discharging
       confirmBatteryState(g_batteryState, BATTERY_STATE_DISCHARGING);
     } else {
-      batteryStateForwardingTo(BATTERY_STATE_NOT_CHARGING);
+      batteryStateTransitioningTo(BATTERY_STATE_NOT_CHARGING);
     }
   }
 }
