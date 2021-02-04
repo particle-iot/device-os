@@ -29,7 +29,7 @@ LOG_SOURCE_CATEGORY("sys.power");
 
 #if (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
 
-#define DEBUG_POWER 1
+#define DEBUG_POWER 0
 
 #if DEBUG_POWER
 #define DBG_PWR(_fmt, ...) \
@@ -184,8 +184,7 @@ void PowerManager::wakeup() {
 }
 
 void PowerManager::handleCharging(bool batteryDisconnected) {
-  // The PMIC lock should already be acquired
-  PMIC power(false);
+  PMIC power(true);
 
   if ((config_.flags & HAL_POWER_CHARGE_STATE_DISABLE) || batteryDisconnected) {
     if (power.isChargingEnabled()) {
@@ -643,7 +642,6 @@ void PowerManager::deduceBatteryStateLoop() {
       confirmBatteryState(g_batteryState, BATTERY_STATE_CHARGED);
       // Restore normal recharge threshold
       DBG_PWR("Restore normal threshold: 100mV");
-      PMIC power(true);
       power.setRechargeThreshold(PMIC_NORMAL_RECHARGE_THRESHOLD); // 100mV
     }
     return;
@@ -661,6 +659,7 @@ void PowerManager::deduceBatteryStateLoop() {
 
 void PowerManager::deduceBatteryStateChargeDisabled() {
   DBG_PWR("deduceBatteryStateChargeDisabled()");
+  handleCharging();
   // XXX: This is a dirty hack. Using the VCELL to deduce the battery state
   // is based on the experience that when charging is disabled, the VCELL can
   // correctly be measured.
@@ -730,10 +729,11 @@ void PowerManager::deduceBatteryStateChargeEnabled() {
       confirmBatteryState(g_batteryState, BATTERY_STATE_DISCONNECTED);
       return;
     }
-    DBG_PWR("The battery might be attached, enable charging");
-    // It will shorten the monitor period
-    handleCharging();
+    DBG_PWR("The battery might be attached");
+    // Fall through
   }
+
+  handleCharging();
 
   const uint8_t status = power.getSystemStatus();
   const uint8_t chargeState = (status >> 4) & 0b11;
