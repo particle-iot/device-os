@@ -5,9 +5,6 @@
 // Since this test framework does not have a setup() + loop() function, it is somewhat different.
 test(slo_startup_stats)
 {
-    // defined by linker for start of heap (end of bss)
-    extern char link_heap_location;
-
     // capture the time at which app initialization takes place
     static unsigned long base_time = millis();
     
