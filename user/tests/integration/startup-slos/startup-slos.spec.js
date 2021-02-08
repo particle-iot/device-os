@@ -5,6 +5,7 @@ suite('Device startup service level objectives (SLOs)');
 test('slo startup stats', async function () {
     const unparsedJson = await this.particle.receiveEvent('startup_stats');
     const startupStats = JSON.parse(unparsedJson);
+    console.log("startupStats JSON", startupStats);
 
     ///
     // Assertions against the minimum RAM SLO
@@ -23,4 +24,14 @@ test('slo startup stats', async function () {
     
     // make free ram assertion
     expect(startupStats.free_mem).to.be.at.least(target);
+
+    ///
+    // Assertions against the minimum flash space SLO
+    ///
+    // TODO
+
+    ///
+    // Assertions against the "connects" quickly SLO
+    ///
+    // TODO
 });
