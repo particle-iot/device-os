@@ -40,6 +40,7 @@ const NetworkConfig NETWORK_CONFIG[] = {
     { CellularNetworkProvider::TELEFONICA, "214", "07", "", "spark.telefonica.com", "", "" }, // Telefonica
     { CellularNetworkProvider::KORE_VODAFONE, "204", "04", "", "vfd1.korem2m.com", "kore", "kore" }, // Kore/Vodafone
     { CellularNetworkProvider::KORE_ATT, "310", "410", "", "10569.mcs", "", "" }, // Kore/AT&T
+    { CellularNetworkProvider::KORE_ATT, "310", "030", "", "10569.mcs", "", "" }, // Kore/AT&T SIMs with a prefix of 89010 with MCC + MNC: 310 030
     { CellularNetworkProvider::TWILIO, "", "", "8988323", "super", "", "" }, // Twilio Super SIM
     { CellularNetworkProvider::TWILIO, "", "", "8988307", "super", "", "" }, // Twilio Super SIM
 };
