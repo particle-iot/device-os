@@ -403,11 +403,7 @@ public:
 	/**
 	 * no-arg version of event loop for those callers that don't care about the message.
 	 */
-	bool event_loop()
-	{
-		CoAPMessageType::Enum message;
-		return !event_loop(message);
-	}
+	ProtocolError event_loop();
 
 	/**
 	 * @brief Produces and transmits a describe message (POST request)

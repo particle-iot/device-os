@@ -529,6 +529,28 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 	return error;
 }
 
+ProtocolError Protocol::event_loop()
+{
+	for (;;) {
+		auto msgType = CoAPMessageType::NONE;
+		const auto r = event_loop(msgType);
+		if (r != ProtocolError::NO_ERROR) {
+			return r;
+		}
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+		if (msgType == CoAPMessageType::UPDATE_CHUNK_V3 && firmwareUpdate.isRunning() &&
+				!firmwareUpdate.isChunkAckSent()) {
+			continue;
+		}
+#else
+		if (msgType == CoAPMessageType::CHUNK && chunkedTransfer.is_updating()) {
+			continue;
+		}
+#endif
+		return ProtocolError::NO_ERROR;
+	}
+}
+
 void Protocol::build_describe_message(Appender& appender, int desc_flags)
 {
 	// diagnostics must be requested in isolation to be a binary packet

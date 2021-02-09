@@ -109,7 +109,8 @@ int spark_protocol_handshake(ProtocolFacade* protocol, void*) {
 
 bool spark_protocol_event_loop(ProtocolFacade* protocol, void*) {
     ASSERT_ON_SYSTEM_THREAD();
-    return protocol->event_loop();
+    const auto r = protocol->event_loop();
+    return (r == ProtocolError::NO_ERROR);
 }
 
 bool spark_protocol_is_initialized(ProtocolFacade* protocol) {

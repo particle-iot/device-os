@@ -86,7 +86,7 @@ const size_t OTA_CHUNK_BITMAP_ELEMENTS = (OTA_RECEIVE_WINDOW_SIZE / MIN_OTA_CHUN
  * SCTP recommends using a delay of 200ms with 500ms being the absolute maximum. Setting this
  * parameter to 0 disables delayed acknowledgements.
  */
-const system_tick_t OTA_CHUNK_ACK_DELAY = 200;
+const system_tick_t OTA_CHUNK_ACK_DELAY = 300;
 
 /**
  * Minimum number of chunks to receive before generating an acknowledgement.
@@ -128,7 +128,7 @@ public:
     FirmwareUpdate();
     ~FirmwareUpdate();
 
-    int init(MessageChannel* channel, const SparkCallbacks& callbacks);
+    ProtocolError init(MessageChannel* channel, const SparkCallbacks& callbacks);
     void destroy();
 
     ProtocolError startRequest(Message* msg);
@@ -139,6 +139,7 @@ public:
 
     const FirmwareUpdateStats& stats() const;
 
+    bool isChunkAckSent() const;
     bool isRunning() const;
 
     void reset();
@@ -164,6 +165,7 @@ private:
     unsigned stateLogChunks_; // Number of cumulatively acknowledged chunks at the time when the transfer state was last logged
     int finishRespId_; // Message ID of the UpdateFinish response
     int errorRespId_; // Message ID of the last confirmable error response sent to the server
+    bool chunkAckSent_; // Whether the last operation caused a chunk acknowledgement to be sent to the server
     bool hasGaps_; // Whether the sequence of received chunks has gaps
     bool updating_; // Whether an update is in progress
 
@@ -214,6 +216,10 @@ inline ProtocolError FirmwareUpdate::chunkRequest(Message* msg) {
 
 inline const FirmwareUpdateStats& FirmwareUpdate::stats() const {
     return stats_;
+}
+
+inline bool FirmwareUpdate::isChunkAckSent() const {
+    return chunkAckSent_;
 }
 
 inline bool FirmwareUpdate::isRunning() const {

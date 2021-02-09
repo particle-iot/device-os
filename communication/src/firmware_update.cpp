@@ -69,10 +69,10 @@ inline unsigned trailingOneBits(uint32_t v) {
 
 } // namespace
 
-int FirmwareUpdate::init(MessageChannel* channel, const SparkCallbacks& callbacks) {
+ProtocolError FirmwareUpdate::init(MessageChannel* channel, const SparkCallbacks& callbacks) {
     channel_ = channel;
     callbacks_ = &callbacks;
-    return 0;
+    return ProtocolError::NO_ERROR;
 }
 
 void FirmwareUpdate::destroy() {
@@ -157,8 +157,11 @@ ProtocolError FirmwareUpdate::process() {
             LOG(ERROR, "Failed to send message: %d", (int)r);
             return (ProtocolError)r;
         }
+        chunkAckSent_ = true;
         unackChunks_ = 0;
         ++stats_.sentChunkAcks;
+    } else {
+        chunkAckSent_ = false;
     }
     if (stateLogChunks_ < chunkIndex_ && millis() - stateLogTime_ >= TRANSFER_STATE_LOG_INTERVAL) {
         const size_t bytesLeft = fileSize_ - fileOffset_;
@@ -232,6 +235,7 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
     }
     CoapMessageEncoder e((char*)resp.buf(), resp.capacity());
     int* respId = nullptr; // TODO: Use a callback to pass the response ID to the request handler
+    chunkAckSent_ = false;
     const int handlerResult = (this->*handler)(d, &e, &respId, false);
     if (handlerResult >= 0) {
         // Encode and send the response message
@@ -753,6 +757,7 @@ void FirmwareUpdate::reset() {
     stateLogChunks_ = 0;
     finishRespId_ = -1;
     errorRespId_ = -1;
+    chunkAckSent_ = false;
     hasGaps_ = false;
 }
 
