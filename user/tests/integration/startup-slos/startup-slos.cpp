@@ -5,6 +5,12 @@
 // Since this test framework does not have a setup() + loop() function, it is somewhat different.
 test(slo_startup_stats)
 {
+        //required for linking FLASH_ModuleLength on Gen3 to work: 
+    extern "C" int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    
+    
     // capture the time at which app initialization takes place
     static unsigned long base_time = millis();
     
