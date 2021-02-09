@@ -81,6 +81,12 @@ TEST_CASE("Gen 2 cellular credentials") {
         REQUIRE(cellular_sim_to_network_provider_impl("310410999999999", nullptr) == CELLULAR_NETPROV_KORE_ATT);
     }
 
+    SECTION("IMSI range2 should set Kore AT&T as Network Provider", "[cellular]") {
+        REQUIRE(cellular_sim_to_network_provider_impl("310030000000000", nullptr) == CELLULAR_NETPROV_KORE_ATT);
+        REQUIRE(cellular_sim_to_network_provider_impl("310030555555555", nullptr) == CELLULAR_NETPROV_KORE_ATT);
+        REQUIRE(cellular_sim_to_network_provider_impl("310030999999999", nullptr) == CELLULAR_NETPROV_KORE_ATT);
+    }
+
     SECTION("IMSI range should set Telefonica as Network Provider", "[cellular]") {
         REQUIRE(cellular_sim_to_network_provider_impl("214070000000000", nullptr) == CELLULAR_NETPROV_TELEFONICA);
         REQUIRE(cellular_sim_to_network_provider_impl("214075555555555", nullptr) == CELLULAR_NETPROV_TELEFONICA);
@@ -97,6 +103,7 @@ TEST_CASE("Gen 2 cellular credentials") {
         REQUIRE(cellular_sim_to_network_provider_impl("732123200003364", "89883234500011906351") == CELLULAR_NETPROV_TWILIO);   // Twilio IMSI and Twilio ICCID
         REQUIRE(cellular_sim_to_network_provider_impl("214070000000000", "89883235555555555555") == CELLULAR_NETPROV_TWILIO);   // Kore IMSI and Twilio ICCID just in case
         REQUIRE(cellular_sim_to_network_provider_impl("310410999999999", "89883071234567891011") == CELLULAR_NETPROV_TWILIO);   // Kore IMSI and Twilio ICCID just in case
+        REQUIRE(cellular_sim_to_network_provider_impl("310030999999999", "89883071234567891011") == CELLULAR_NETPROV_TWILIO);   // Kore IMSI and Twilio ICCID just in case
     }
 }
 
@@ -141,6 +148,12 @@ TEST_CASE("Gen 3 cellular credentials") {
         auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
         REQUIRE(creds.netProv() == CellularNetworkProvider::KORE_ATT);
     }
+    SECTION("Kore ATT2") {
+        const char imsi[] = "310030900000000";
+        auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
+        REQUIRE(creds.netProv() == CellularNetworkProvider::KORE_ATT);
+    }
+
 }
 
 TEST_CASE("cellular_signal()") {
