@@ -31,10 +31,16 @@ test('slo startup stats', async function () {
     ///
     // Assertions against the minimum flash space SLO
     ///
-    // TODO
+
+    // See rational on this magic number: https://app.clubhouse.io/particle/story/72460/build-device-os-test-runner-integration-test-that-validates-the-minimum-flash-space-and-connects-quickly-slo#activity-72937
+    const flashSLOTarget = 18105;
+    console.log(`actual_app_flash_size=${startupStats.app_flash_size} target_app_flash_size=${flashSLOTarget} platform=${dut.platform.name}`);
+    expect(startupStats.app_flash_size).to.be.below(flashSLOTarget);
 
     ///
     // Assertions against the "connects" quickly SLO
     ///
-    // TODO
+    const connectsQuicklyTarget = 60000;
+    console.log(`actual_millis_to_connected=${startupStats.millis_to_connected} target_millis_to_connected=${connectsQuicklyTarget} platform=${dut.platform.name}`);
+    expect(startupStats.millis_to_connected).to.be.below(connectsQuicklyTarget);
 });
