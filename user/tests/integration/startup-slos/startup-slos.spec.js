@@ -41,6 +41,6 @@ test('slo startup stats', async function () {
     // Assertions against the "connects" quickly SLO
     ///
     const connectsQuicklyTarget = 60000;
-    console.log(`actual_millis_to_connected=${startupStats.millis_to_connected} target_millis_to_connected=${connectsQuicklyTarget} platform=${dut.platform.name}`);
-    expect(startupStats.millis_to_connected).to.be.below(connectsQuicklyTarget);
+    console.log(`actual_millis_to_connected=${startupStats.millis_to_connect} target_millis_to_connected=${connectsQuicklyTarget} platform=${dut.platform.name}`);
+    expect(startupStats.millis_to_connect).to.be.below(connectsQuicklyTarget);
 });

@@ -13,11 +13,11 @@ extern "C" int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_s
 test(slo_startup_stats)
 {    
     // get millis_to_connected
-    auto base_time = millis();
+    static unsigned long base_time = millis();
     Particle.connect();
     waitUntil(Particle.connected);
-    auto connected_checkpoint = millis();
-    auto millis_to_connected = connected_checkpoint - base_time;
+    static unsigned long connected_checkpoint = millis();
+    static unsigned long millis_to_connected = connected_checkpoint - base_time;
     
     // get free_mem
     uint32_t free_mem = System.freeMemory();
