@@ -22,7 +22,7 @@ extern "C" int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_s
 test(slo_startup_stats)
 {    
     // capture the time at which app initialization takes place
-    static unsigned long base_time = millis();
+    static auto base_time = millis();
     
     // the time at which we enter setup()
     // static unsigned long setup_checkpoint = 0;
@@ -40,8 +40,8 @@ test(slo_startup_stats)
     
     // code below was ported from loop()
     // capture the moment when we connected
-    unsigned long connected_checkpoint = millis();
-    unsigned long millis_to_connected = connected_checkpoint - base_time;
+    auto connected_checkpoint = millis();
+    auto millis_to_connected = connected_checkpoint - base_time;
 
     uint32_t free_mem = System.freeMemory();
     // get the total in-flash size of the sample application (from which "free flash" is
