@@ -6,6 +6,10 @@ test('slo startup stats', async function () {
     const unparsedJson = await this.particle.receiveEvent('startup_stats');
     const startupStats = JSON.parse(unparsedJson);
     console.log("startupStats JSON", startupStats);
+    
+    // set the device under test to set conditional targets based on platform, etc
+    // see device-os-test-runner docs: https://github.com/particle-iot/device-os-test-runner
+    const dut = this.particle.devices[0]; 
 
     ///
     // Assertions against the minimum RAM SLO
@@ -15,7 +19,6 @@ test('slo startup stats', async function () {
     let target = minimumRAMTargetDefault; 
 
     // make exceptions on target for photon/p1
-    const dut = this.particle.devices[0]; // see device-os-test-runner for documentation
     if (dut.platform.name == 'photon' || dut.platform.name == 'p1') {
         target = minimumRAMTargetForPhotonAndP1;
     }
