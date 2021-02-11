@@ -128,14 +128,6 @@ WizNetif::WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interru
     /* There is an external 10k pull-up */
     HAL_Pin_Mode(interrupt_, INPUT);
 
-    if (!hal_spi_is_enabled(spi_)) {
-        hal_spi_init(spi_);
-        // Make sure the SPI peripheral is initialized with default settings
-        hal_spi_acquire(spi_, nullptr);
-        hal_spi_begin_ext(spi_, SPI_MODE_MASTER, SPI_DEFAULT_SS, nullptr);
-        hal_spi_release(spi_, nullptr);
-    }
-
     SPARK_ASSERT(os_semaphore_create(&spiSem_, 1, 0) == 0);
 
     reg_wizchip_cris_cbfunc(

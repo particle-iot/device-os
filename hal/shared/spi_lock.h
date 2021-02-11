@@ -50,7 +50,7 @@ public:
             hal_spi_init(spi_);
             // Make sure the SPI peripheral is initialized with default settings
             hal_spi_acquire(spi_, nullptr);
-            hal_spi_begin_ext(spi_, SPI_MODE_MASTER, SPI_DEFAULT_SS, nullptr);
+            hal_spi_begin_ext(spi_, SPI_MODE_MASTER, PIN_INVALID, nullptr);
         } else {
             hal_spi_acquire(spi_, nullptr);
         }
