@@ -62,6 +62,7 @@
 
 using namespace particle;
 using namespace particle::system;
+using particle::protocol::ProtocolError;
 
 namespace particle {
 
@@ -174,12 +175,6 @@ void registerSystemSubscriptions() {
 
 } // namespace particle
 
-using particle::CloudDiagnostics;
-using particle::CloudConnectionSettings;
-using particle::publishEvent;
-using particle::protocol::ProtocolError;
-using particle::BufferAppender;
-
 extern uint8_t feature_cloud_udp;
 extern volatile bool cloud_socket_aborted;
 
@@ -187,8 +182,6 @@ static volatile uint32_t lastCloudEvent = 0;
 uint32_t particle_key_errors = NO_ERROR;
 
 const int CLAIM_CODE_SIZE = 63;
-
-using particle::LEDStatus;
 
 int userVarType(const char *varKey);
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved);
@@ -234,7 +227,7 @@ template<typename T> T* add_if_sufficient_describe(append_list<T>& list, const c
 	if (result) {
 		spark_protocol_describe_data data;
 		data.size = sizeof(data);
-		data.flags = particle::protocol::DESCRIBE_APPLICATION;
+		data.flags = protocol::DESCRIBE_APPLICATION;
 		if (!spark_protocol_get_describe_data(spark_protocol_instance(), &data, nullptr)) {
 			if (data.maximum_size<data.current_size) {
 				list.removeAt(list.size()-1);
@@ -1056,12 +1049,12 @@ void Spark_Protocol_Init(void)
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
         // Enable device-initiated describe messages
-        spark_protocol_set_connection_property(sp, particle::protocol::Connection::DEVICE_INITIATED_DESCRIBE, 0, nullptr, nullptr);
+        spark_protocol_set_connection_property(sp, protocol::Connection::DEVICE_INITIATED_DESCRIBE, 0, nullptr, nullptr);
 
 #if HAL_PLATFORM_COMPRESSED_OTA
         // Enable compressed/combined OTA updates
         if (bootloader_get_version() >= COMPRESSED_OTA_MIN_BOOTLOADER_VERSION) {
-            spark_protocol_set_connection_property(sp, particle::protocol::Connection::COMPRESSED_OTA, 0, nullptr, nullptr);
+            spark_protocol_set_connection_property(sp, protocol::Connection::COMPRESSED_OTA, 0, nullptr, nullptr);
         }
 #endif // HAL_PLATFORM_COMPRESSED_OTA
 
@@ -1115,13 +1108,13 @@ int Spark_Handshake(bool presence_announce)
     // We have a workaround for this issue in the NCP client, so the modem should no longer crash
     // in any case, but we want to avoid dropping a set of publishes which are generated below,
     // hence a delay here as a workaround.
-    auto timeout = particle::cellularNetworkManager()->ncpClient()->getTxDelayInDataChannel();
+    auto timeout = cellularNetworkManager()->ncpClient()->getTxDelayInDataChannel();
     if (timeout > 0) {
         HAL_Delay_Milliseconds(timeout);
     }
 #endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 
-    if (err == particle::protocol::SESSION_RESUMED) {
+    if (err == protocol::SESSION_RESUMED) {
         session_resumed = true;
     } else if (err != 0) {
         return spark_protocol_to_system_error(err);
@@ -1187,7 +1180,7 @@ int Spark_Handshake(bool presence_announce)
         }
     }
     if (system_mode() != AUTOMATIC || APPLICATION_SETUP_DONE) {
-        err = particle::sendApplicationDescription();
+        err = sendApplicationDescription();
         if (err != 0) {
             return err;
         }

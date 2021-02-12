@@ -18,9 +18,11 @@
  */
 
 #include "active_object.h"
-
+#include "system_threading.h"
 #include "spark_wiring_interrupts.h"
 #include "debug.h"
+
+using namespace particle;
 
 #if PLATFORM_THREADING
 
@@ -28,9 +30,6 @@
 #include "concurrent_hal.h"
 #include "timer_hal.h"
 #include "rng_hal.h"
-
-// FIXME:
-extern ActiveObjectThreadQueue SystemThread;
 
 void ActiveObjectBase::start_thread()
 {
