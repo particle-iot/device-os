@@ -160,6 +160,8 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     ready_ = false;
     muxerNotStarted_ = false;
     pwrState_ = NcpPowerState::UNKNOWN;
+    // We know for a fact that ESP32 is off on boot because we've initialized ESPEN pin to output 0
+    ncpPowerState(NcpPowerState::OFF);
     return 0;
 }
 
