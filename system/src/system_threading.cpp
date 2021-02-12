@@ -11,16 +11,34 @@
 #define THREAD_STACK_SIZE (8 * 1024 * 1024)
 #endif
 
+namespace particle {
+
+namespace {
+
+os_mutex_recursive_t usb_serial_mutex;
+
 void system_thread_idle()
 {
     Spark_Idle_Events(true);
 }
+
+} // namespace
 
 ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idle,
 			100, /* take timeout */
 			0x7FFFFFFF, /* put timeout - wait forever */
 			50, /* queue size */
 			THREAD_STACK_SIZE /* stack size */));
+
+os_mutex_recursive_t mutex_usb_serial()
+{
+    if (nullptr==usb_serial_mutex) {
+        os_mutex_recursive_create(&usb_serial_mutex);
+    }
+    return usb_serial_mutex;
+}
+
+} // namespace particle
 
 /**
  * Implementation to support gthread's concurrency primitives.
@@ -120,26 +138,4 @@ namespace std {
 }
 #endif /* PLATFORM_ID != 20 */
 
-static os_mutex_recursive_t usb_serial_mutex;
-
-os_mutex_recursive_t mutex_usb_serial()
-{
-	if (nullptr==usb_serial_mutex) {
-		os_mutex_recursive_create(&usb_serial_mutex);
-	}
-	return usb_serial_mutex;
-}
-
 #endif // PLATFORM_THREADING
-
-void* system_internal(int item, void* reserved)
-{
-    switch (item) {
-#if PLATFORM_THREADING
-    case 0: return &ApplicationThread;
-    case 1: return &SystemThread;
-    case 2: return mutex_usb_serial();
-#endif
-    }
-    return nullptr;
-}

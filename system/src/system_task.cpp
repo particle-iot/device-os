@@ -57,14 +57,10 @@
 #if HAL_PLATFORM_BLE
 #include "ble_hal.h"
 #include "system_control_internal.h"
-
-using namespace particle;
-
 #endif /* HAL_PLATFORM_BLE */
 
+using namespace particle;
 using spark::Network;
-using particle::LEDStatus;
-using particle::CloudDiagnostics;
 
 volatile system_tick_t spark_loop_total_millis = 0;
 
@@ -88,7 +84,11 @@ static struct SetThreadCurrentFunctionPointers {
     }
 } s_SetThreadCurrentFunctionPointersInitializer;
 
+namespace particle {
+
 ISRTaskQueue SystemISRTaskQueue;
+
+} // particle
 
 void Network_Setup(bool threaded)
 {
@@ -301,10 +301,10 @@ void establish_cloud_connection()
 
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
         const CellularNetProvData provider_data = cellular_network_provider_data_get(NULL);
-        particle::protocol::connection_properties_t conn_prop = {0};
+        protocol::connection_properties_t conn_prop = {0};
         conn_prop.size = sizeof(conn_prop);
-        conn_prop.keepalive_source = particle::protocol::KeepAliveSource::SYSTEM;
-        spark_set_connection_property(particle::protocol::Connection::PING, (provider_data.keepalive * 1000), &conn_prop, nullptr);
+        conn_prop.keepalive_source = protocol::KeepAliveSource::SYSTEM;
+        spark_set_connection_property(protocol::Connection::PING, (provider_data.keepalive * 1000), &conn_prop, nullptr);
         spark_cloud_udp_port_set(provider_data.port);
 #endif // PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
 
@@ -376,7 +376,7 @@ void handle_cloud_connection(bool force_events)
                 // one more iteration of the communication loop to make sure all handshake messages
                 // have been acknowledged successfully
                 if (!Spark_Communication_Loop()) {
-                    err = particle::protocol::MESSAGE_TIMEOUT;
+                    err = protocol::MESSAGE_TIMEOUT;
                 } else {
                     INFO("Cloud connected");
                     SPARK_CLOUD_CONNECTED = 1;
@@ -413,9 +413,9 @@ void handle_cloud_connection(bool force_events)
                 {
                     cloud_connection_failed();
                     uint32_t color = RGB_COLOR_RED;
-                    if (particle::protocol::DECRYPTION_ERROR==err)
+                    if (protocol::DECRYPTION_ERROR==err)
                         color = RGB_COLOR_ORANGE;
-                    else if (particle::protocol::AUTHENTICATION_ERROR==err)
+                    else if (protocol::AUTHENTICATION_ERROR==err)
                         color = RGB_COLOR_MAGENTA;
                     WARN("Cloud handshake failed, code=%d", err);
                     LEDStatus led(color, LED_PRIORITY_IMPORTANT);
@@ -710,4 +710,23 @@ int system_invoke_event_handler(uint16_t handlerInfoSize, FilteringEventHandler*
 #else
     return SYSTEM_ERROR_NOT_SUPPORTED;
 #endif // HAL_PLATFORM_NRF52840
+}
+
+void* system_internal(int item, void* reserved)
+{
+    switch (item) {
+#if PLATFORM_THREADING
+    case 0: {
+        return &ApplicationThread;
+    }
+    case 1: {
+        return &SystemThread;
+    }
+    case 2: {
+        return mutex_usb_serial();
+    }
+#endif
+    default:
+        return nullptr;
+    }
 }

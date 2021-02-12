@@ -537,6 +537,8 @@ void app_thread_idle()
     app_loop(true);
 }
 
+namespace particle {
+
 // don't wait to get items from the queue, so the application loop is processed as often as possible
 // timeout after attempting to put calls into the application queue, so the system thread does not deadlock  (since the application may also
 // be trying to put events in the system queue.)
@@ -544,6 +546,8 @@ ActiveObjectCurrentThreadQueue ApplicationThread(ActiveObjectConfiguration(app_t
 		0, /* take time */
 		5000, /* put time */
 		20 /* queue size */));
+
+} // namespace particle
 
 #endif
 
