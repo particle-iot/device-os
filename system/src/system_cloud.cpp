@@ -227,14 +227,21 @@ bool spark_cloud_flag_connected(void)
 
 int spark_cloud_disconnect(const spark_cloud_disconnect_options* options, void* reserved)
 {
-    if (spark_cloud_flag_connected()) {
-        CloudDisconnectOptions opts;
-        if (options) {
-            opts = CloudDisconnectOptions::fromSystemOptions(options);
-        }
-        CloudConnectionSettings::instance()->setPendingDisconnectOptions(std::move(opts));
+    CloudDisconnectOptions opts;
+    if (options) {
+        opts = CloudDisconnectOptions::fromSystemOptions(options);
     }
-    spark_cloud_flag_disconnect();
+    if (spark_cloud_flag_connected()) {
+        CloudConnectionSettings::instance()->setPendingDisconnectOptions(std::move(opts));
+        spark_cloud_flag_disconnect();
+    } else if (opts.isClearSessionSet() && opts.clearSession()) {
+        spark_cloud_flag_disconnect();
+        SYSTEM_THREAD_CONTEXT_SYNC_CALL([]() {
+            clearSessionData();
+            return 0;
+        }());
+        // Note: The above SYSTEM_THREAD_CONTEXT_SYNC_CALL() causes this function to return
+    }
     return 0;
 }
 
