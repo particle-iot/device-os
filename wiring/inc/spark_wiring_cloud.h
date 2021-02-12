@@ -77,20 +77,20 @@ public:
     system_tick_t timeout() const;
     bool isTimeoutSet() const;
 
+    CloudDisconnectOptions& clearSession(bool enabled);
+    bool clearSession() const;
+    bool isClearSessionSet() const;
+
     spark_cloud_disconnect_options toSystemOptions() const;
     static CloudDisconnectOptions fromSystemOptions(const spark_cloud_disconnect_options* options);
 
 private:
-    enum OptionFlag {
-        GRACEFUL = SPARK_CLOUD_DISCONNECT_OPTION_GRACEFUL,
-        TIMEOUT = SPARK_CLOUD_DISCONNECT_OPTION_TIMEOUT
-    };
-
     unsigned flags_; // TODO: Use std::optional (C++17)
     system_tick_t timeout_;
     bool graceful_;
+    bool clearSession_;
 
-    CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful);
+    CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful, bool clearSession);
 };
 
 class CloudClass {
@@ -513,18 +513,20 @@ extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));
 extern CloudClass Particle;
 
 inline CloudDisconnectOptions::CloudDisconnectOptions() :
-        CloudDisconnectOptions(0, 0, false) {
+        CloudDisconnectOptions(0, 0, false, false) {
 }
 
-inline CloudDisconnectOptions::CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful) :
+inline CloudDisconnectOptions::CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful,
+        bool clearSession) :
         flags_(flags),
         timeout_(timeout),
-        graceful_(graceful) {
+        graceful_(graceful),
+        clearSession_(clearSession) {
 }
 
 inline CloudDisconnectOptions& CloudDisconnectOptions::graceful(bool enabled) {
     graceful_ = enabled;
-    flags_ |= OptionFlag::GRACEFUL;
+    flags_ |= SPARK_CLOUD_DISCONNECT_OPTION_GRACEFUL;
     return *this;
 }
 
@@ -533,12 +535,12 @@ inline bool CloudDisconnectOptions::graceful() const {
 }
 
 inline bool CloudDisconnectOptions::isGracefulSet() const {
-    return (flags_ & OptionFlag::GRACEFUL);
+    return (flags_ & SPARK_CLOUD_DISCONNECT_OPTION_GRACEFUL);
 }
 
 inline CloudDisconnectOptions& CloudDisconnectOptions::timeout(system_tick_t timeout) {
     timeout_ = timeout;
-    flags_ |= OptionFlag::TIMEOUT;
+    flags_ |= SPARK_CLOUD_DISCONNECT_OPTION_TIMEOUT;
     return *this;
 }
 
@@ -551,7 +553,21 @@ inline system_tick_t CloudDisconnectOptions::timeout() const {
 }
 
 inline bool CloudDisconnectOptions::isTimeoutSet() const {
-    return (flags_ & OptionFlag::TIMEOUT);
+    return (flags_ & SPARK_CLOUD_DISCONNECT_OPTION_TIMEOUT);
+}
+
+inline CloudDisconnectOptions& CloudDisconnectOptions::clearSession(bool enabled) {
+    clearSession_ = enabled;
+    flags_ |= SPARK_CLOUD_DISCONNECT_OPTION_CLEAR_SESSION;
+    return *this;
+}
+
+inline bool CloudDisconnectOptions::clearSession() const {
+    return clearSession_;
+}
+
+inline bool CloudDisconnectOptions::isClearSessionSet() const {
+    return (flags_ & SPARK_CLOUD_DISCONNECT_OPTION_CLEAR_SESSION);
 }
 
 inline particle::Future<bool> CloudClass::publish(const char* name) {

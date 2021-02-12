@@ -621,6 +621,9 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, netwo
                 spark_protocol_command(spark_protocol_instance(), ProtocolCommands::TERMINATE, 0, nullptr);
             }
         }
+        if (opts.clearSession()) {
+            clearSessionData();
+        }
         if (!(flags & CLOUD_DISCONNECT_DONT_CLOSE)) {
             spark_cloud_socket_disconnect(graceful);
         }

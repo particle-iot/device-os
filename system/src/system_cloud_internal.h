@@ -137,10 +137,12 @@ public:
     // Default disconnection settings
     static const bool DEFAULT_DISCONNECT_GRACEFULLY = false;
     static const unsigned DEFAULT_DISCONNECT_TIMEOUT = 30000;
+    static const bool DEFAULT_DISCONNECT_CLEAR_SESSION = false;
 
     CloudConnectionSettings() :
             defaultDisconnectTimeout_(DEFAULT_DISCONNECT_TIMEOUT),
-            defaultDisconnectGracefully_(DEFAULT_DISCONNECT_GRACEFULLY) {
+            defaultDisconnectGracefully_(DEFAULT_DISCONNECT_GRACEFULLY),
+            defaultDisconnectClearSession_(DEFAULT_DISCONNECT_CLEAR_SESSION) {
     }
 
     void setDefaultDisconnectOptions(const CloudDisconnectOptions& options) {
@@ -149,6 +151,9 @@ public:
         }
         if (options.isTimeoutSet()) {
             defaultDisconnectTimeout_ = options.timeout();
+        }
+        if (options.isClearSessionSet()) {
+            defaultDisconnectClearSession_ = options.clearSession();
         }
     }
 
@@ -179,6 +184,11 @@ public:
         } else {
             result.timeout(defaultDisconnectTimeout_);
         }
+        if (pending.isClearSessionSet()) {
+            result.clearSession(pending.clearSession());
+        } else {
+            result.clearSession(defaultDisconnectClearSession_);
+        }
         return result;
     }
 
@@ -190,6 +200,7 @@ private:
     // defaultDisconnectGracefully_ may also be accessed from an ISR
     unsigned defaultDisconnectTimeout_;
     volatile bool defaultDisconnectGracefully_;
+    bool defaultDisconnectClearSession_;
     // Pending disconnection options are set atomically and guarded by a spinlock
     CloudDisconnectOptions pendingDisconnectOptions_;
 };
@@ -204,6 +215,9 @@ int sendApplicationDescription();
 
 // Subscribes to system cloud events
 void registerSystemSubscriptions();
+
+// Invalidates the cached session data
+void clearSessionData();
 
 } // namespace particle
 
