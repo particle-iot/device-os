@@ -1,15 +1,38 @@
+#include "test.h"
 #include "test_suite.h"
 
-#include "spark_wiring_system.h"
 #include "spark_wiring_startup.h"
 
 #include "unit-test/unit-test.h"
 
-using namespace particle;
-
+#ifndef NO_TEST_APP_INIT
 STARTUP({
-    System.enableFeature(FEATURE_RETAINED_MEMORY);
-    TestSuite::instance()->init();
+    particle::testAppInit();
 });
+#endif
 
-UNIT_TEST_APP();
+#ifndef NO_TEST_APP_SETUP_AND_LOOP
+void setup() {
+    particle::testAppSetup();
+}
+
+void loop() {
+    particle::testAppLoop();
+}
+#endif
+
+namespace particle {
+
+void testAppInit() {
+    SPARK_ASSERT(TestSuite::instance()->init() == 0);
+}
+
+void testAppSetup() {
+    TestRunner::instance()->setup();
+}
+
+void testAppLoop() {
+    TestRunner::instance()->loop();
+}
+
+} // namespace particle

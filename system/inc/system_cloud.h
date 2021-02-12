@@ -310,7 +310,7 @@ bool spark_cloud_flag_auto_connect(void);
 typedef enum spark_cloud_disconnect_option_flag {
     SPARK_CLOUD_DISCONNECT_OPTION_GRACEFUL = 0x01, ///< The `graceful` option is set.
     SPARK_CLOUD_DISCONNECT_OPTION_TIMEOUT = 0x02, ///< The `timeout` option is set.
-    SPARK_CLOUD_DISCONNECT_OPTION_CLEAR_SESSION = 0x04, ///< The `clear_session` option is set.
+    SPARK_CLOUD_DISCONNECT_OPTION_CLEAR_SESSION = 0x04 ///< The `clear_session` option is set.
 } spark_cloud_disconnect_option_flag;
 
 /**
