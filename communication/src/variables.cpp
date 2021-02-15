@@ -130,16 +130,10 @@ ProtocolError Variables::decode_request(Message& message, char* key) {
 
 ProtocolError Variables::encode_response(Message& message, token_t token, const void* value, size_t value_size,
         SparkReturnType::Enum value_type) {
-    size_t msg_size = Messages::response_size(value_size, true /* has_token */);
-    if (msg_size > message.capacity()) {
-        // Truncate the value data accordingly
-        const size_t d = msg_size - message.capacity();
-        if (value_size > d) {
-            value_size -= d;
-        } else {
-            value_size = 0;
-        }
+    if (value_size > MAX_VARIABLE_VALUE_MESSAGE_SIZE) {
+        value_size = MAX_VARIABLE_VALUE_MESSAGE_SIZE; // Truncate the value data
     }
+    size_t msg_size = 0;
     switch (value_type) {
     case SparkReturnType::BOOLEAN: {
         if (value_size < sizeof(bool)) {

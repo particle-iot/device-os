@@ -80,14 +80,22 @@ const size_t MISSED_CHUNKS_TO_SEND = 20;
 const size_t MISSED_CHUNKS_TO_SEND = 40;
 #endif
 
-const size_t MINIMUM_CHUNK_INCREASE   = 2u;
-const size_t MAX_EVENT_TTL_SECONDS    = 16777215;
-const size_t MAX_OPTION_DELTA_LENGTH  = 12;
-const size_t MAX_FUNCTION_ARG_LENGTH = 1024;
+const size_t MINIMUM_CHUNK_INCREASE = 2u;
+const size_t MAX_EVENT_TTL_SECONDS = 16777215;
+const size_t MAX_OPTION_DELTA_LENGTH = 12;
 const size_t MAX_FUNCTION_KEY_LENGTH = 64;
 const size_t MAX_VARIABLE_KEY_LENGTH = 64;
-const size_t MAX_EVENT_NAME_LENGTH   = 64;
-const size_t MAX_EVENT_DATA_LENGTH   = 1024;
+const size_t MAX_EVENT_NAME_LENGTH = 64;
+
+#if HAL_PLATFORM_GEN >= 3
+const size_t MAX_EVENT_DATA_LENGTH = 1024;
+const size_t MAX_FUNCTION_ARG_LENGTH = 1024;
+const size_t MAX_VARIABLE_VALUE_LENGTH = 1024;
+#else
+const size_t MAX_EVENT_DATA_LENGTH = 864;
+const size_t MAX_FUNCTION_ARG_LENGTH = 864;
+const size_t MAX_VARIABLE_VALUE_LENGTH = 864;
+#endif
 
 // Timeout in milliseconds given to receive an acknowledgement for a published event
 const unsigned SEND_EVENT_ACK_TIMEOUT = 20000;
@@ -97,12 +105,15 @@ const unsigned SEND_EVENT_ACK_TIMEOUT = 20000;
  */
 const size_t MAX_EVENT_MESSAGE_SIZE = 4 /* Header */ + 1 /* Token */ + (MAX_EVENT_NAME_LENGTH + 5) /* Uri-Path options */
         + 5 /* Max-Age option */ + 1 /* Payload marker */ + MAX_EVENT_DATA_LENGTH /* Payload data */;
-
 /**
  * Maximum possible size of a CoAP message carrying a function call.
  */
 const size_t MAX_FUNCTION_CALL_MESSAGE_SIZE = 4 /* Header */ + 1 /* Token */ + (MAX_FUNCTION_KEY_LENGTH + 5) /* Uri-Path options */
         + (MAX_FUNCTION_ARG_LENGTH + 3) /* Uri-Query option */;
+/**
+ * Maximum possible size of a CoAP message carrying a variable value.
+ */
+const size_t MAX_VARIABLE_VALUE_MESSAGE_SIZE = 4 /* Header */ + 1 /* Token */ + 1 /* Payload marker */;
 
 #ifndef PROTOCOL_BUFFER_SIZE
 #define PROTOCOL_BUFFER_SIZE MBEDTLS_SSL_MAX_CONTENT_LEN
