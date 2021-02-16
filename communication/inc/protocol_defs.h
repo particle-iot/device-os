@@ -113,7 +113,8 @@ const size_t MAX_FUNCTION_CALL_MESSAGE_SIZE = 4 /* Header */ + 1 /* Token */ + (
 /**
  * Maximum possible size of a CoAP message carrying a variable value.
  */
-const size_t MAX_VARIABLE_VALUE_MESSAGE_SIZE = 4 /* Header */ + 1 /* Token */ + 1 /* Payload marker */;
+const size_t MAX_VARIABLE_VALUE_MESSAGE_SIZE = 4 /* Header */ + 1 /* Token */ + 1 /* Payload marker */ +
+        MAX_VARIABLE_VALUE_LENGTH /* Payload data */;
 
 #ifndef PROTOCOL_BUFFER_SIZE
 #define PROTOCOL_BUFFER_SIZE MBEDTLS_SSL_MAX_CONTENT_LEN
