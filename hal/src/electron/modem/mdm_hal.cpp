@@ -84,7 +84,7 @@ std::recursive_mutex mdm_mutex;
 #define CGDCONT_TIMEOUT   ( 10 * 1000)
 #define CIMI_TIMEOUT      ( 10 * 1000) /* Should be immediate, but have observed 3 seconds occassionally on u-blox and rarely longer times */
 #define CMGS_TIMEOUT      (150 * 1000) /* 180s for R4 (set to 150s to match previous implementation) */
-#define COPS_TIMEOUT      (180 * 1000)
+#define COPS_TIMEOUT      (300 * 1000) /* Should be 180s, but there seems to be a bug where this timeout of 3 minutes is not being respected by u-blox modems. Setting to 5 for now. */
 #define CPWROFF_TIMEOUT   ( 40 * 1000)
 #define CSQ_TIMEOUT       ( 10 * 1000)
 #define CREG_TIMEOUT      ( 60 * 1000)
