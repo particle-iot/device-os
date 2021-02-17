@@ -33,7 +33,11 @@ int spark_cloud_flag_connected_result;
 bool spark_protocol_post_description_called;
 int spark_protocol_post_description_result;
 
+namespace particle {
+
 ISRTaskQueue SystemISRTaskQueue;
+
+} // namespace particle
 
 void ISRTaskQueue::enqueue(ISRTaskQueue::Task*)
 {
