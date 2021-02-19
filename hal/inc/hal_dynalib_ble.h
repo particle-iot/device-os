@@ -106,6 +106,8 @@ DYNALIB_FN(71, hal_ble, hal_ble_gap_is_paired, bool(hal_ble_conn_handle_t, void*
 DYNALIB_FN(72, hal_ble, hal_ble_gap_set_pairing_auth_data, int(hal_ble_conn_handle_t, const hal_ble_pairing_auth_data_t*, void*))
 DYNALIB_FN(73, hal_ble, hal_ble_gap_get_pairing_config, int(hal_ble_pairing_config_t*, void*))
 
+DYNALIB_FN(72, hal_ble, hal_ble_gap_set_scan_coded, int(bool scan_coded, void* reserved))
+
 DYNALIB_END(hal_ble)
 
 #endif /* HAL_PLATFORM_BLE */

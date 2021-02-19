@@ -952,6 +952,8 @@ public:
     int setScanParameters(const BleScanParams& params) const;
     int getScanParameters(BleScanParams* params) const;
     int getScanParameters(BleScanParams& params) const;
+    int setScanCoded(bool use_coded) const;
+    
 
     // Scanning control
     int scan(BleOnScanResultCallback callback, void* context = nullptr) const;

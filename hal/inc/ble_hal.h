@@ -695,6 +695,15 @@ int hal_ble_gap_set_scan_response_data(const uint8_t* buf, size_t len, void* res
 ssize_t hal_ble_gap_get_scan_response_data(uint8_t* buf, size_t len, void* reserved);
 
 /**
+ * Set BLE scanning to coded phy.
+ *
+ * @param[in]   scan_coded   Boolean true causes scanning for Coded Phy (125 MBps / long range)
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_gap_set_scan_coded(bool scan_coded, void* reserved);
+
+/**
  * Start BLE advertising.
  *
  * @returns     0 on success, system_error_t on error.

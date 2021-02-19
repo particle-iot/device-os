@@ -2490,6 +2490,11 @@ int BleLocalDevice::getScanParameters(BleScanParams& params) const {
     return getScanParameters(&params);
 }
 
+int BleLocalDevice::setScanCoded(bool use_coded) const {
+    WiringBleLock lk;
+    return hal_ble_gap_set_scan_coded(use_coded, nullptr);
+}
+
 int BleLocalDevice::scan(const BleOnScanResultStdFunction& callback) const {
     BleScanDelegator scanner;
     return scanner.start(callback);
