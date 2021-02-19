@@ -39,6 +39,7 @@ protected:
     virtual void on_finalize_listening(bool complete) override { /* n/a */ }
 
     virtual void on_start_listening() override {
+        connect_cancelled = false;
         cellular_cancel(false, true, NULL);  // resume
     }
 
@@ -84,6 +85,7 @@ protected:
 
     int on_now() override {
         // Resume unconditionally
+        connect_cancelled = false;
         cellular_cancel(false, HAL_IsISR(), nullptr);
         cellular_result_t ret = cellular_on(nullptr);
         if (ret != 0) {
@@ -166,7 +168,7 @@ public:
         ATOMIC_BLOCK() {
             if (connecting || !SPARK_WLAN_STARTED)
             {
-                if (cancel!=connect_cancelled) {
+                if (cancel != connect_cancelled) {
                     require_cancel = true;
                     connect_cancelled = cancel;
                 }
