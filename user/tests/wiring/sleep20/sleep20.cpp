@@ -310,9 +310,10 @@ test(07_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off
 
         phase = 0xbeef0008;
 
-        Serial.print("Turning on the mdoem...");
+        Serial.print("Turning on the modem...");
         Network.on();
         Serial.println("Done.");
+        assertTrue(waitFor(Network.isOn, CLOUD_CONNECT_TIMEOUT));
 
         SystemSleepConfiguration config;
         config.mode(SystemSleepMode::HIBERNATE)
@@ -625,8 +626,10 @@ test(23_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Cellular) {
         (void)Serial.read();
     }
 
-    Serial.println("    >> Connecting to the cloud");
+    Serial.println("    >> Turning on the modem");
     Cellular.on();
+    waitFor(Cellular.isOn, 60000);
+    Serial.println("    >> Connecting to the cloud");
     Particle.connect();
     assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
     Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
@@ -723,9 +726,16 @@ test(26_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Wi
 #endif // HAL_PLATFORM_WIFI && HAL_PLATFORM_GEN == 3
 
 test(27_System_Sleep_With_Configuration_Object_Execution_Time_Prepare) {
+    /* This test should only be run with threading disabled */
+    if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
+        skip();
+        return;
+    }
+
     System.on(network_status, [](system_event_t ev, int data) -> void {
-        if (ev == network_status && data == network_status_off) {
+        if (ev == network_status && data == network_status_off && sNetworkOffTimestamp == 0) {
             sNetworkOffTimestamp = Time.now();
+            Serial.printlnf("sNetworkOffTimestamp: %ld", sNetworkOffTimestamp);
         }
     });
 }
@@ -749,14 +759,22 @@ test(28_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
     config.mode(SystemSleepMode::STOP)
           .duration(SLEEP_DURATION_S * 1000);
 
-    sNetworkOffTimestamp = 0;
+    if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
+        sNetworkOffTimestamp = Time.now();
+    } else {
+        sNetworkOffTimestamp = 0;
+    }
     SystemSleepResult result = System.sleep(config);
     time32_t exit = Time.now();
 
     waitUntil(Serial.isConnected);
     assertNotEqual(sNetworkOffTimestamp, 0);
     assertMoreOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S);
-    assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S * 3 / 2 );
+    if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
+        assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S + 10 );
+    } else {
+        assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S * 3 / 2 );
+    }
     Serial.printf("Sleep execution time: %ld s\r\n", exit - sNetworkOffTimestamp);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
@@ -785,14 +803,22 @@ test(29_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
           .duration(SLEEP_DURATION_S * 1000);
 
-    sNetworkOffTimestamp = 0;
+    if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
+        sNetworkOffTimestamp = Time.now();
+    } else {
+        sNetworkOffTimestamp = 0;
+    }
     SystemSleepResult result = System.sleep(config);
     time32_t exit = Time.now();
 
     waitUntil(Serial.isConnected);
     assertNotEqual(sNetworkOffTimestamp, 0);
     assertMoreOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S);
-    assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S * 3 / 2 );
+    if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
+        assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S + 10 );
+    } else {
+        assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S * 3 / 2 );
+    }
     Serial.printf("Sleep execution time: %ld s\r\n", exit - sNetworkOffTimestamp);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
