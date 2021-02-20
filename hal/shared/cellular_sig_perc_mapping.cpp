@@ -48,7 +48,7 @@ const int CATM1_STRN_MAP[] = {
 
 const int CATM1_QUAL_MAP[] = {
     -20,   /* SIG_REGION_POOR */
-    -15,   /* SIG_REGION_BAD */
+    -16,   /* SIG_REGION_BAD */
     -10,   /* SIG_REGION_FAIR */
     -8,   /* SIG_REGION_GOOD */
     -6,   /* SIG_REGION_GREAT */
