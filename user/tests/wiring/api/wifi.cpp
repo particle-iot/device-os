@@ -31,20 +31,35 @@ test(api_wifi_config)
 	uint8_t mac[6];
 	uint8_t* ether;
 	String ssid;
+    API_COMPILE(ether=WiFi.macAddress(mac));
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 	API_COMPILE(ssid=WiFi.SSID());
 	API_COMPILE(address=WiFi.localIP());
 	API_COMPILE(address=WiFi.dnsServerIP());
 	API_COMPILE(address=WiFi.dhcpServerIP());
 	API_COMPILE(address=WiFi.gatewayIP());
-	API_COMPILE(ether=WiFi.macAddress(mac));
 	API_COMPILE(ether=WiFi.BSSID(mac));
 	(void)ether;
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 test(api_wifi_resolve)
 {
     API_COMPILE(WiFi.resolve(String("abc.def.com")));
     API_COMPILE(WiFi.resolve("abc.def.com"));
+}
+
+test (api_wifi_on_off)
+{
+    API_COMPILE(WiFi.on());
+    API_COMPILE(WiFi.off());
+}
+
+test (api_wifi_is_on_off)
+{
+    API_COMPILE(WiFi.isOn());
+    API_COMPILE(WiFi.isOff());
 }
 
 test (api_wifi_connect) {
@@ -69,6 +84,8 @@ test (wifi_api_listen)
     (void)val;    //   |
 }
 
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
+
 #if PLATFORM_ID>=4
 test(api_wifi_selectantenna)
 {
@@ -78,7 +95,7 @@ test(api_wifi_selectantenna)
 }
 #endif
 
-
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 test(api_wifi_set_credentials)
 {
     bool ok = false;
@@ -107,7 +124,8 @@ test(api_wifi_setStaticIP)
     WiFi.useStaticIP();
     WiFi.useDynamicIP();
 }
-#endif //!HAL_PLATFORM_NCP
+#endif // !HAL_PLATFORM_NCP
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 test(api_wifi_scan_buffer)
 {
@@ -181,6 +199,7 @@ test(api_find_strongest)
     (void)ssid;
 }
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 test(api_wifi_ipconfig)
 {
     IPAddress address;
@@ -213,6 +232,7 @@ test(api_wifi_hostname)
     API_COMPILE(WiFi.setHostname(hostname));
     API_COMPILE(WiFi.setHostname(shostname));
 }
-#endif //!HAL_PLATFORM_NCP
+#endif // !HAL_PLATFORM_NCP
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 #endif

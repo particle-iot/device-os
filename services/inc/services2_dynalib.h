@@ -68,7 +68,12 @@ DYNALIB_FN(22, services2, localtime_r, struct tm*(const time_t*, struct tm*))
 DYNALIB_FN(23, services2, mktime, time_t(struct tm*))
 DYNALIB_FN(24, services2, gmtime_r, struct tm*(const time_t*, struct tm*))
 DYNALIB_FN(25, services2, strftime, size_t(char* __restrict, size_t, const char* __restrict, const struct tm* __restrict))
+// FIXME: this is a strong symbol in newer versions of dynalib avoid importing
+#ifndef DYNALIB_IMPORT
 DYNALIB_FN(26, services2, _svfprintf_r, int(struct _reent*, FILE*, const char*, va_list))
+#else
+DYNALIB_FN_PLACEHOLDER(26, services2)
+#endif // DYNALIB_IMPORT
 
 DYNALIB_END(services2)
 

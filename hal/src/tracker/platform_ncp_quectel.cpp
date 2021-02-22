@@ -16,10 +16,10 @@
  */
 
 #include "platform_ncp.h"
-
 #include "exflash_hal.h"
-
 #include "dct.h"
+#include "check.h"
+#include "system_error.h"
 
 namespace {
 
@@ -37,9 +37,12 @@ bool isValidNcpId(uint8_t id) {
     }
 }
 
+const auto NCP_IDX_PRIMARY_QUECTEL = 0;
+const auto NCP_IDX_SECONDARY_ESP32 = 1;
+
 } // unnamed
 
-PlatformNCPIdentifier platform_current_ncp_identifier() {
+PlatformNCPIdentifier platform_primary_ncp_identifier() {
     // Check the DCT
     uint8_t ncpId = 0;
     int r = dct_read_app_data_copy(DCT_NCP_ID_OFFSET, &ncpId, 1);
@@ -51,4 +54,17 @@ PlatformNCPIdentifier platform_current_ncp_identifier() {
         }
     }
     return (PlatformNCPIdentifier)ncpId;
+}
+
+int platform_ncp_get_info(int idx, PlatformNCPInfo* info) {
+    CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(idx > 0 && idx < platform_ncp_count(), SYSTEM_ERROR_INVALID_ARGUMENT);
+    if (idx == NCP_IDX_PRIMARY_QUECTEL) {
+        info->identifier = platform_primary_ncp_identifier();
+        info->updatable = false;
+    } else if (idx == NCP_IDX_SECONDARY_ESP32) {
+        info->identifier = PLATFORM_NCP_ESP32;
+        info->updatable = true;
+    }
+    return 0;
 }

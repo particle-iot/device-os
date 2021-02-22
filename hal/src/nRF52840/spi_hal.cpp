@@ -15,7 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 #include "logging.h"
-
+#include <memory>
 #include "nrf_gpio.h"
 #include "nrfx_spim.h"
 #include "nrfx_spis.h"
@@ -32,10 +32,13 @@
 #define DEFAULT_DATA_MODE       SPI_MODE3
 #define DEFAULT_BIT_ORDER       MSBFIRST
 #define DEFAULT_SPI_CLOCK       SPI_CLOCK_DIV256
+#define SPI_SYSTEM_CLOCK        (64000000UL)
+
+#define SPI_BUFFER_LENGTH       32
 
 typedef struct nrf5x_spi_info_t {
-    const nrfx_spim_t                   *master;
-    const nrfx_spis_t                   *slave;
+    const nrfx_spim_t*                  master;
+    const nrfx_spis_t*                  slave;
     app_irq_priority_t                  priority;
     uint8_t                             ss_pin;
     uint8_t                             sck_pin;
@@ -48,9 +51,15 @@ typedef struct nrf5x_spi_info_t {
     uint32_t                            clock;
 
     volatile uint8_t                    spi_ss_state;
-    void                                *slave_tx_buf;
-    void                                *slave_rx_buf;
+    uint8_t*                            slave_tx_buf;
+    uint8_t*                            slave_rx_buf;
     uint32_t                            slave_buf_length;
+    bool                                slave_tx_buf_heap;
+    const uint8_t*                      master_tx_data;
+    uint32_t                            master_tx_data_length;
+    uint32_t                            master_tx_data_index;
+    uint8_t*                            master_tx_buf;
+    uint8_t*                            master_rx_buf;
 
     hal_spi_dma_user_callback           dma_user_callback;
     hal_spi_select_user_callback        select_user_callback;
@@ -75,12 +84,54 @@ static nrf5x_spi_info_t spiMap[HAL_PLATFORM_SPI_NUM] = {
 #endif
 };
 
+static uint32_t spiTransfer(hal_spi_interface_t spi, uint8_t *tx_buf, uint8_t *rx_buf, uint32_t size);
+
+/*
+ * We could potentially use ISRTaskQueue::Task and system_pool_alloc() in ISR to free these memory
+ * asychronously in the system thread.
+ */
+static void freeMemoryIfNecessary(hal_spi_interface_t spi) {
+    if (spiMap[spi].master_tx_buf) {
+        free(spiMap[spi].master_tx_buf);
+        spiMap[spi].master_tx_buf = nullptr;
+    }
+    if (spiMap[spi].slave_tx_buf_heap && spiMap[spi].slave_tx_buf) {
+        free(spiMap[spi].slave_tx_buf);
+        spiMap[spi].slave_tx_buf = nullptr;
+    }
+}
+
+static bool spiMasterTransferChunk(hal_spi_interface_t spi) {
+    if (!spiMap[spi].master_tx_data || !spiMap[spi].master_tx_buf) {
+        return false;
+    }
+    if (spiMap[spi].master_tx_data_index >= spiMap[spi].master_tx_data_length) {
+        return false;
+    }
+    spiMap[spi].transmitting = true; // Just in case
+    uint32_t chunkSize = std::min(spiMap[spi].master_tx_data_length - spiMap[spi].master_tx_data_index, (uint32_t)SPI_BUFFER_LENGTH);
+    uint32_t index = spiMap[spi].master_tx_data_index;
+    memcpy(spiMap[spi].master_tx_buf, &spiMap[spi].master_tx_data[index], chunkSize);
+    uint8_t* rxPtr = spiMap[spi].master_rx_buf ? &spiMap[spi].master_rx_buf[index] : nullptr;
+    SPARK_ASSERT(spiTransfer(spi, spiMap[spi].master_tx_buf, rxPtr, chunkSize) == chunkSize);
+    spiMap[spi].master_tx_data_index += chunkSize;
+    spiMap[spi].transfer_length += chunkSize;
+    return true;
+}
+
 static void spiMasterEventHandler(nrfx_spim_evt_t const * p_event, void * p_context) {
     if (p_event->type == NRFX_SPIM_EVENT_DONE) {
         // LOG_DEBUG(TRACE, ">> spi: rx: %d, tx: %d", p_event->xfer_desc.tx_length, p_event->xfer_desc.rx_length);
         int spi = (int)p_context;
-        spiMap[spi].transmitting = false;
 
+        if (spiMasterTransferChunk((hal_spi_interface_t)spi)) {
+            return;
+        }
+        spiMap[spi].master_tx_data = nullptr;
+        spiMap[spi].master_rx_buf = nullptr;
+        spiMap[spi].master_tx_data_length = 0;
+        spiMap[spi].master_tx_data_index = 0;
+        spiMap[spi].transmitting = false;
         if (spiMap[spi].dma_user_callback) {
             (*spiMap[spi].dma_user_callback)();
         }
@@ -91,22 +142,33 @@ static void spiSlaveEventHandler(nrfx_spis_evt_t const * p_event, void * p_conte
     int spi = (int) p_context;
 
     if (p_event->evt_type == NRFX_SPIS_XFER_DONE) {
+        if (p_event->rx_amount == 0 && p_event->tx_amount == 0) {
+            // FIXME: Dirty hack! It's possible that the master just toggles the CS pin,
+            // without any data transfered. We should re-set the slave data buffer for
+            // next data transmission
+            uint32_t txLen = spiMap[spi].slave_tx_buf ? spiMap[spi].slave_buf_length : 0;
+            uint32_t rxLen = spiMap[spi].slave_rx_buf ? spiMap[spi].slave_buf_length : 0;
+            SPARK_ASSERT(nrfx_spis_buffers_set(spiMap[spi].slave, spiMap[spi].slave_tx_buf, txLen, spiMap[spi].slave_rx_buf, rxLen) == NRF_SUCCESS);
+            return;
+        }
+        
         spiMap[spi].transfer_length = p_event->rx_amount;
         spiMap[spi].transmitting = false;
-
-        if (p_event->rx_amount) {
+        
+        // We should notify application, despite of how many data we received.
+        // if (p_event->rx_amount) {
             if (spiMap[spi].dma_user_callback) {
                 (*spiMap[spi].dma_user_callback)();
             }
-        }
+        // }
         // LOG_DEBUG(TRACE, ">> spi: rx: %d, tx: %d", p_event->rx_amount, p_event->tx_amount);
 
-        // Reset spi slave data buffer
-        SPARK_ASSERT(nrfx_spis_buffers_set(spiMap[spi].slave,
-                                        (uint8_t *)spiMap[spi].slave_tx_buf,
-                                        spiMap[spi].slave_buf_length,
-                                        (uint8_t *)spiMap[spi].slave_rx_buf,
-                                        spiMap[spi].slave_buf_length) == NRF_SUCCESS);
+        // We don't need to re-set the slave buffer, unless user sets the buffer again.
+        // SPARK_ASSERT(nrfx_spis_buffers_set(spiMap[spi].slave,
+        //                                 (uint8_t *)spiMap[spi].slave_tx_buf,
+        //                                 spiMap[spi].slave_buf_length,
+        //                                 (uint8_t *)spiMap[spi].slave_rx_buf,
+        //                                 spiMap[spi].slave_buf_length) == NRF_SUCCESS);
     } else if (p_event->evt_type == NRFX_SPIS_BUFFERS_SET_DONE) {
         // LOG_DEBUG(TRACE, ">> NRFX_SPIS_BUFFERS_SET_DONE");
     }
@@ -237,7 +299,6 @@ static uint32_t spiTransfer(hal_spi_interface_t spi, uint8_t *tx_buf, uint8_t *r
 
     uint32_t err_code;
     spiMap[spi].transmitting = true;
-    spiMap[spi].transfer_length = size;
 
     nrfx_spim_xfer_desc_t const spim_xfer_desc = {
         .p_tx_buffer = tx_buf,
@@ -286,6 +347,12 @@ void hal_spi_init(hal_spi_interface_t spi) {
     spiMap[spi].dma_user_callback = nullptr;
     spiMap[spi].select_user_callback = nullptr;
     spiMap[spi].transfer_length = 0;
+    spiMap[spi].master_tx_data = nullptr;
+    spiMap[spi].master_tx_buf = nullptr;
+    spiMap[spi].master_rx_buf = nullptr;
+    spiMap[spi].master_tx_data_length = 0;
+    spiMap[spi].master_tx_data_index = 0;
+    spiMap[spi].slave_tx_buf_heap = false;
 
     hal_spi_release(spi, nullptr);
 }
@@ -328,6 +395,8 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
         return;
     }
 
+    freeMemoryIfNecessary(spi);
+
     spiMap[spi].spi_mode = mode;
     spiInit(spi, mode);
     spiMap[spi].state = HAL_SPI_STATE_ENABLED;
@@ -335,6 +404,7 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
 
 void hal_spi_end(hal_spi_interface_t spi) {
     if (spiMap[spi].state != HAL_SPI_STATE_DISABLED) {
+        freeMemoryIfNecessary(spi);
         spiUninit(spi);
         spiMap[spi].state = HAL_SPI_STATE_DISABLED;
     }
@@ -381,10 +451,12 @@ uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data) {
         ;
     }
 
+    freeMemoryIfNecessary(spi);
+
     tx_buffer = data;
 
     spiMap[spi].dma_user_callback = nullptr;
-    spiTransfer(spi, &tx_buffer, &rx_buffer, 1);
+    spiMap[spi].transfer_length = spiTransfer(spi, &tx_buffer, &rx_buffer, 1);
 
     // Wait for SPI transfer finished
     while(spiMap[spi].transmitting) {
@@ -403,7 +475,7 @@ bool hal_spi_is_enabled_deprecated(void) {
 }
 
 void hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved) {
-    info->system_clock = 64000000;
+    info->system_clock = SPI_SYSTEM_CLOCK;
     if (info->version >= HAL_SPI_INFO_VERSION_1) {
         int32_t state = HAL_disable_irq();
         if (spiMap[spi].state == HAL_SPI_STATE_ENABLED) {
@@ -440,7 +512,7 @@ void hal_spi_set_callback_on_selected(hal_spi_interface_t spi, hal_spi_select_us
     spiMap[spi].select_user_callback = cb;
 }
 
-void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback) {
+void hal_spi_transfer_dma(hal_spi_interface_t spi, const void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback) {
     if (length == 0) {
         return;
     }
@@ -452,24 +524,59 @@ void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buf
         ;
     }
 
+    freeMemoryIfNecessary(spi);
+
     spiMap[spi].dma_user_callback = userCallback;
     if (spiMap[spi].spi_mode == SPI_MODE_MASTER) {
-        SPARK_ASSERT(spiTransfer(spi, (uint8_t *)tx_buffer, (uint8_t *)rx_buffer, length) == length);
+        if (tx_buffer && !nrfx_is_in_ram(tx_buffer)) {
+            // Truncate the data to reuse an allocated pool.
+            spiMap[spi].master_tx_buf = (uint8_t*)malloc(SPI_BUFFER_LENGTH);
+            if (spiMap[spi].master_tx_buf == nullptr) {
+                return;
+            }
+            spiMap[spi].master_tx_data = (const uint8_t *)tx_buffer;
+            spiMap[spi].master_tx_data_length = length;
+            spiMap[spi].master_tx_data_index = 0;
+            spiMap[spi].master_rx_buf = (uint8_t *)rx_buffer;
+            spiMap[spi].transfer_length = 0;
+            spiMasterTransferChunk(spi);
+        } else {
+            // tx_buffer is nullptr, or tx_buffer is pointing to RAM.
+            SPARK_ASSERT(spiTransfer(spi, (uint8_t*)tx_buffer, (uint8_t *)rx_buffer, length) == length);
+            spiMap[spi].transfer_length = length;
+        }
     } else {
+        if (tx_buffer && !nrfx_is_in_ram(tx_buffer)) {
+            // The allocated memory will be freed on hal_spi_end() or hal_spi_transfer_dma() is called
+            spiMap[spi].slave_tx_buf = (uint8_t*)malloc(length);
+            if (spiMap[spi].slave_tx_buf == nullptr) {
+                return;
+            }
+            memcpy(spiMap[spi].slave_tx_buf, tx_buffer, length);
+            spiMap[spi].slave_tx_buf_heap = true;
+        } else {
+            spiMap[spi].slave_tx_buf = (uint8_t*)tx_buffer;
+            spiMap[spi].slave_tx_buf_heap = false;
+        }
+        spiMap[spi].slave_buf_length = length;
+        spiMap[spi].slave_rx_buf = (uint8_t *)rx_buffer;
+
+        // The nrfx driver will panic if the pointers are nullptr and length is not 0.
+        uint32_t txLen = spiMap[spi].slave_tx_buf ? length : 0;
+        uint32_t rxLen = spiMap[spi].slave_rx_buf ? length : 0;
+
         // Use for synchronization
         spiMap[spi].transmitting = true;
         // reset transfer length
         spiMap[spi].transfer_length = 0;
-        spiMap[spi].slave_buf_length = length;
-        spiMap[spi].slave_tx_buf = tx_buffer;
-        spiMap[spi].slave_rx_buf = rx_buffer;
-        uint32_t err_code = nrfx_spis_buffers_set(spiMap[spi].slave,
-                                            (uint8_t *)spiMap[spi].slave_tx_buf,
-                                            spiMap[spi].slave_buf_length,
-                                            (uint8_t *)spiMap[spi].slave_rx_buf,
-                                            spiMap[spi].slave_buf_length);
+
+        uint32_t err_code = nrfx_spis_buffers_set(spiMap[spi].slave, spiMap[spi].slave_tx_buf, txLen, spiMap[spi].slave_rx_buf, rxLen);
         if (err_code == NRF_ERROR_INVALID_STATE) {
             // LOG_DEBUG(WARN, "nrfx_spis_buffers_set, invalid state");
+            if (spiMap[spi].slave_tx_buf_heap) {
+                free(spiMap[spi].slave_tx_buf);
+                spiMap[spi].slave_tx_buf_heap = false;
+            }
             spiMap[spi].transmitting = false;
         } else {
             SPARK_ASSERT(err_code == NRF_SUCCESS);
@@ -484,6 +591,7 @@ void hal_spi_transfer_dma_cancel(hal_spi_interface_t spi) {
     spiTransferCancel(spi);
     spiMap[spi].dma_user_callback = nullptr;
     spiMap[spi].transmitting = false;
+    freeMemoryIfNecessary(spi);
 }
 
 int32_t hal_spi_transfer_dma_status(hal_spi_interface_t spi, hal_spi_transfer_status_t* st) {
@@ -493,6 +601,7 @@ int32_t hal_spi_transfer_dma_status(hal_spi_interface_t spi, hal_spi_transfer_st
         transfer_length = 0;
     } else {
         transfer_length = spiMap[spi].transfer_length;
+        freeMemoryIfNecessary(spi);
     }
 
     if (st != nullptr) {
@@ -564,4 +673,31 @@ int32_t hal_spi_release(hal_spi_interface_t spi, void* reserved) {
         }
     }
     return -1;
+}
+
+int hal_spi_get_clock_divider(hal_spi_interface_t spi, uint32_t clock, void* reserved) {
+    CHECK_TRUE(clock > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    // Integer division results in clean values
+    switch (SPI_SYSTEM_CLOCK / clock) {
+    case 2:
+        return SPI_CLOCK_DIV2;
+    case 4:
+        return SPI_CLOCK_DIV4;
+    case 8:
+        return SPI_CLOCK_DIV8;
+    case 16:
+        return SPI_CLOCK_DIV16;
+    case 32:
+        return SPI_CLOCK_DIV32;
+    case 64:
+        return SPI_CLOCK_DIV64;
+    case 128:
+        return SPI_CLOCK_DIV128;
+    case 256:
+    default:
+        return SPI_CLOCK_DIV256;
+    }
+
+    return SYSTEM_ERROR_UNKNOWN;
 }

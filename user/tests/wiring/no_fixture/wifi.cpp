@@ -23,6 +23,7 @@
 
 #if Wiring_WiFi == 1
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 test(WIFI_01_resolve_3_levels)
 {
     IPAddress address = WiFi.resolve("pool.ntp.org");
@@ -46,6 +47,7 @@ test(WIFI_03_resolve) {
     assertEqual(addr, 0);
 }
 
+namespace {
 void checkIPAddress(const char* name, const IPAddress& address)
 {
     if (address.version()==0 || !address)
@@ -56,6 +58,7 @@ void checkIPAddress(const char* name, const IPAddress& address)
         assertNotEqual(address, 0);
     }
 }
+} // anonymous
 
 void checkEtherAddress(const uint8_t* address)
 {
@@ -96,8 +99,14 @@ test(WIFI_04_config)
 #endif // !HAL_PLATFORM_NCP
 }
 
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
+
 test(WIFI_05_scan)
 {
+    if (!WiFi.isOn()) {
+        WiFi.on();
+        assertTrue(waitFor(WiFi.isOn, 30000));
+    }
     spark::Vector<WiFiAccessPoint> aps(20);
     int apsFound = WiFi.scan(aps.data(), 20);
     assertMoreOrEqual(apsFound, 1);
@@ -170,6 +179,8 @@ test(WIFI_06_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
 
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
+
 test(WIFI_07_restore_connection)
 {
     set_system_mode(AUTOMATIC);
@@ -209,6 +220,8 @@ test(WIFI_11_restore_default_hostname)
 
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
+
 test(WIFI_12_scan_returns_zero_result_or_error_when_wifi_is_off)
 {
     WiFiAccessPoint results[5];
@@ -223,6 +236,8 @@ test(WIFI_12_scan_returns_zero_result_or_error_when_wifi_is_off)
     delay(5000);
     assertLessOrEqual(WiFi.scan(results, 5), 0);
 }
+
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 test(WIFI_13_restore_connection)
 {
@@ -284,5 +299,7 @@ test(WIFI_14_wifi_class_methods_work_correctly_when_wifi_interface_is_off) {
     const uint8_t bssidRefFf[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     assertTrue(!memcmp(bssidRef, bssid, sizeof(bssidRef)) || !memcmp(bssidRefFf, bssid, sizeof(bssidRefFf)));
 }
+
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 #endif

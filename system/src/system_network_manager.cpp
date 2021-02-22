@@ -109,6 +109,7 @@ NetworkManager::NetworkManager() {
     ip6State_ = ProtocolState::UNCONFIGURED;
     dns4State_ = DnsState::UNCONFIGURED;
     dns6State_ = DnsState::UNCONFIGURED;
+    networkStatus_ = NetworkStatus::NETWORK_STATUS_OFF;
 }
 
 NetworkManager::~NetworkManager() {
@@ -374,10 +375,10 @@ void NetworkManager::transition(State state) {
     /* To */
     switch (state) {
         case State::DISABLED: {
+            networkStatus_ = NetworkStatus::NETWORK_STATUS_POWERING_OFF;
             LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
             // FIXME: turning-off events/diagnostics
             system_notify_event(network_status, network_status_powering_off);
-            system_notify_event(network_status, network_status_off);
             NetworkDiagnostics::instance()->status(NetworkDiagnostics::TURNED_OFF);
             break;
         }
@@ -385,15 +386,17 @@ void NetworkManager::transition(State state) {
             LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
             NetworkDiagnostics::instance()->status(NetworkDiagnostics::DISCONNECTED);
             if (state_ == State::IFACE_REQUEST_DOWN) {
+                networkStatus_ = NetworkStatus::NETWORK_STATUS_DISCONNECTED;
                 system_notify_event(network_status, network_status_disconnected);
             } else if (state_ == State::DISABLED) {
+                networkStatus_ = NetworkStatus::NETWORK_STATUS_POWERING_ON;
                 // FIXME:
                 system_notify_event(network_status, network_status_powering_on);
-                system_notify_event(network_status, network_status_on);
             }
             break;
         }
         case State::IFACE_REQUEST_DOWN: {
+            networkStatus_ = NetworkStatus::NETWORK_STATUS_DISCONNECTING;
             if (state_ == State::IP_CONFIGURED) {
                 NetworkDiagnostics::instance()->resetConnectionAttempts();
             }
@@ -407,6 +410,7 @@ void NetworkManager::transition(State state) {
             break;
         }
         case State::IFACE_UP: {
+            networkStatus_ = NetworkStatus::NETWORK_STATUS_CONNECTING;
             if (state_ == State::IP_CONFIGURED) {
                 NetworkDiagnostics::instance()->disconnectionReason(NETWORK_DISCONNECT_REASON_ERROR);
                 NetworkDiagnostics::instance()->disconnectedUnexpectedly();
@@ -422,6 +426,7 @@ void NetworkManager::transition(State state) {
             break;
         }
         case State::IP_CONFIGURED: {
+            networkStatus_ = NetworkStatus::NETWORK_STATUS_CONNECTED;
             LED_SIGNAL_START(NETWORK_CONNECTED, BACKGROUND);
             NetworkDiagnostics::instance()->status(NetworkDiagnostics::CONNECTED);
             if (state_ != State::IP_CONFIGURED) {
@@ -469,6 +474,10 @@ void NetworkManager::ifEventHandler(if_t iface, const struct if_event* ev) {
         }
         case IF_EVENT_POWER_STATE: {
             handleIfPowerState(iface, ev);
+            break;
+        }
+        case IF_EVENT_PHY_STATE: {
+            handleIfPhyState(iface, ev);
             break;
         }
     }
@@ -574,6 +583,15 @@ void NetworkManager::handleIfPowerState(if_t iface, const struct if_event* ev) {
         uint8_t index;
         if_get_index(iface, &index);
         LOG(TRACE, "Interface %d power state changed: %d", index, state->pwrState.load());
+    }
+}
+
+// FIXME: this currently works somewhat properly only if there is just 1 network interface.
+void NetworkManager::handleIfPhyState(if_t iface, const struct if_event* ev) {
+    if (networkStatus_ == NetworkStatus::NETWORK_STATUS_POWERING_ON && ev->ev_phy_state->state == IF_PHY_STATE_ON) {
+        system_notify_event(network_status, network_status_on);
+    } else if (networkStatus_ == NetworkStatus::NETWORK_STATUS_POWERING_OFF && ev->ev_phy_state->state == IF_PHY_STATE_OFF) {
+        system_notify_event(network_status, network_status_off);
     }
 }
 
@@ -828,6 +846,64 @@ NetworkManager::InterfaceRuntimeState* NetworkManager::getInterfaceRuntimeState(
         }
     }
     return nullptr;
+}
+
+bool NetworkManager::isInterfacePowerState(if_t iface, if_power_state_t state) const {
+    bool ret = false;
+    if_power_state_t pwr = IF_POWER_STATE_NONE;
+    if (!iface) {
+        /* This function checks each network interface for the intended power state,
+         * and returns true as long as one that matches the desired state is found */
+        for_each_iface([&](if_t iface, unsigned int curFlags) {
+            if (if_get_power_state(iface, &pwr) != SYSTEM_ERROR_NONE) {
+                return;
+            }
+            if (pwr == state) {
+                ret = true;
+            }
+        });
+        return ret;
+    } else {
+        if (if_get_power_state(iface, &pwr) != SYSTEM_ERROR_NONE) {
+            return false;
+        }
+        ret = (pwr == state) ? true : false;
+    }
+    return ret;
+}
+
+// Note: This is not the same as what wiring ready() does.
+bool NetworkManager::isInterfacePhyReady(if_t iface) const {
+    bool ret = false;
+    unsigned int xflags = 0;
+    if (!iface) {
+        /* This function checks each network interface if physical state is ready,
+         * and returns true as long as one that matches the desired state is found */
+        for_each_iface([&](if_t iface, unsigned int curFlags) {
+            xflags = 0;
+            if (if_get_xflags(iface, &xflags) != SYSTEM_ERROR_NONE) {
+                return;
+            }
+            if (xflags & IFXF_READY) {
+                ret = true;
+            }
+        });
+        return ret;
+    } else {
+        if (if_get_xflags(iface, &xflags) != SYSTEM_ERROR_NONE) {
+            return false;
+        }
+        ret = (xflags & IFXF_READY) ? true : false;
+    }
+    return ret;
+}
+
+bool NetworkManager::isInterfaceOn(if_t iface) const {
+    return isInterfacePowerState(iface, IF_POWER_STATE_UP) && isInterfacePhyReady(iface);
+}
+
+bool NetworkManager::isInterfaceOff(if_t iface) const {
+    return isInterfacePowerState(iface, IF_POWER_STATE_DOWN) && !isInterfacePhyReady(iface);
 }
 
 bool NetworkManager::isInterfaceEnabled(if_t iface) const {

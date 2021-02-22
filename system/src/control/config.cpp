@@ -108,6 +108,7 @@ int getNcpFirmwareVersion(ctrl_request* req) {
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     const auto ncpClient = wifiMgr->ncpClient();
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
+    const NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
     char verStr[32] = {};
     CHECK(ncpClient->getFirmwareVersionString(verStr, sizeof(verStr)));

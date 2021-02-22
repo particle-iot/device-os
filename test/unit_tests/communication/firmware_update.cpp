@@ -60,7 +60,7 @@ public:
     }
 
     // Sends an UpdateStart message to the device
-    FirmwareUpdateWrapper& sendStart(size_t fileSize, const std::string& fileHash, size_t chunkSize, bool discardData) {
+    int sendStart(size_t fileSize, const std::string& fileHash, size_t chunkSize, bool discardData) {
         CoapMessage m;
         m.type(CoapType::CON);
         m.code(CoapCode::POST);
@@ -77,7 +77,7 @@ public:
     }
 
     // Sends an UpdateFinish message to the device
-    FirmwareUpdateWrapper& sendFinish(bool cancelUpdate, bool discardData) {
+    int sendFinish(bool cancelUpdate, bool discardData) {
         CoapMessage m;
         m.type(CoapType::CON);
         m.code(CoapCode::POST);
@@ -92,7 +92,7 @@ public:
     }
 
     // Sends an UpdateChunk message to the device
-    FirmwareUpdateWrapper& sendChunk(unsigned index, const std::string& data) {
+    int sendChunk(unsigned index, const std::string& data) {
         CoapMessage m;
         m.type(CoapType::NON);
         m.code(CoapCode::POST);
@@ -104,7 +104,7 @@ public:
     }
 
     // Sends a CoAP message to the device
-    FirmwareUpdateWrapper& sendMessage(CoapMessage msg) {
+    int sendMessage(CoapMessage msg) {
         if (!msg.hasId()) {
             msg.id(++lastMsgId_);
         }
@@ -138,10 +138,7 @@ public:
                 break;
             }
         }
-        if (r != ProtocolError::NO_ERROR) {
-            throw std::runtime_error("Error while receiving message");
-        }
-        return *this;
+        return r;
     }
 
     // Receives a CoAP message from the device
@@ -150,9 +147,8 @@ public:
     }
 
     // Skips N messages received from the device
-    FirmwareUpdateWrapper& skipMessages(unsigned count) {
+    void skipMessages(unsigned count) {
         channel_.skipMessages(count);
-        return *this;
     }
 
     // Returns true if there's a message received from the device
@@ -170,14 +166,12 @@ public:
         return std::string(1, lastMsgToken_);
     }
 
-    FirmwareUpdateWrapper& addMillis(system_tick_t ms) {
+    void addMillis(system_tick_t ms) {
         callbacks_.addMillis(ms);
-        return *this;
     }
 
-    FirmwareUpdateWrapper& processTimeouts() {
+    void processTimeouts() {
         CHECK(FirmwareUpdate::process() == ProtocolError::NO_ERROR);
-        return *this;
     }
 
     Mock<CoapMessageChannel> channelMock() {
@@ -621,7 +615,8 @@ TEST_CASE("FirmwareUpdate") {
     }
     SECTION("replies to the server with an error response if an UpdateChunk request cannot be processed") {
         SECTION("no update is in progress") {
-            w.sendChunk(1 /* index */, genString(512) /* data */);
+            int r = w.sendChunk(1 /* index */, genString(512) /* data */);
+            CHECK(r == ProtocolError::NO_ERROR);
             auto resp = w.receiveMessage();
             CHECK(resp.type() == CoapType::RST);
             CHECK(resp.id() == w.lastMessageId());
@@ -779,11 +774,7 @@ TEST_CASE("FirmwareUpdate") {
         }
         SECTION("finishing an incomplete update") {
             w.sendFinish(false /* cancelUpdate */, false /* discardData */);
-            Verify(Method(cb, finishFirmwareUpdate).Matching([=](unsigned flags) {
-                return FirmwareUpdateFlags::fromUnderlying(flags) == FirmwareUpdateFlag::CANCEL;
-            })).Once();
-            VerifyNoOtherInvocations(Method(cb, finishFirmwareUpdate));
-            CHECK(!w.isRunning());
+            Verify(Method(cb, finishFirmwareUpdate)).Never();
             // Empty ACK
             auto m = w.receiveMessage();
             CHECK(m.type() == CoapType::ACK);
@@ -795,6 +786,14 @@ TEST_CASE("FirmwareUpdate") {
             CHECK((isCoapResponseCode(m.code()) && !isCoapSuccessCode(m.code())));
             CHECK(m.token() == w.lastMessageToken());
             CHECK(hasDiagnosticPayload(m));
+            // Acknowledge the response
+            int r = w.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
+            CHECK(r != ProtocolError::NO_ERROR);
+            Verify(Method(cb, finishFirmwareUpdate).Matching([=](unsigned flags) {
+                return FirmwareUpdateFlags::fromUnderlying(flags) == FirmwareUpdateFlag::CANCEL;
+            })).Once();
+            VerifyNoOtherInvocations(Method(cb, finishFirmwareUpdate));
+            CHECK(!w.isRunning());
         }
         SECTION("failed validation") {
             When(Method(cb, finishFirmwareUpdate)).AlwaysDo([=](unsigned flags) {
@@ -812,6 +811,9 @@ TEST_CASE("FirmwareUpdate") {
             CHECK(hasDiagnosticPayload(m));
             CHECK(m.payload().find("YOU SHALL NOT PASS!") != std::string::npos);
             CHECK(m.payload().find(std::to_string(SYSTEM_ERROR_NOT_ALLOWED)) != std::string::npos);
+            // Acknowledge the response
+            int r = w.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
+            CHECK(r != ProtocolError::NO_ERROR);
             CHECK(!w.isRunning());
         }
         SECTION("cancelling an update") {

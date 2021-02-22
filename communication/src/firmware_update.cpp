@@ -83,7 +83,7 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg) {
     if (!updating_) {
         return ProtocolError::INVALID_STATE;
     }
-    if (finishRespId_ < 0) {
+    if (finishRespId_ < 0 && errorRespId_ < 0) {
         return ProtocolError::NO_ERROR;
     }
     CoapMessageDecoder d;
@@ -115,10 +115,15 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg) {
         if (r < 0) {
             LOG(ERROR, "Failed to apply firmware update: %d", r);
             cancelUpdate();
+            return ProtocolError::OTA_UPDATE_ERROR;
         } else {
             // finish_firmware_update() doesn't normally return on success, but it does so in unit tests
             updating_ = false;
         }
+    } else if (d.id() == errorRespId_) {
+        LOG(ERROR, "Firmware update failed");
+        cancelUpdate();
+        return ProtocolError::OTA_UPDATE_ERROR;
     }
     return ProtocolError::NO_ERROR;
 }
@@ -264,9 +269,15 @@ ProtocolError FirmwareUpdate::handleRequest(Message* msg, RequestHandlerFn handl
                 return ProtocolError::IO_ERROR_GENERIC_SEND;
             }
         }
-        // Errors during OTA are not fatal to the connection unless we weren't able to send
-        // an error response
-        cancelUpdate();
+        // TODO: Errors during OTA shouldn't be fatal to the connection unless we weren't able to
+        // send an error response to the server
+        if (d.type() != CoapType::CON) {
+            LOG(ERROR, "Firmware update failed");
+            cancelUpdate();
+            return ProtocolError::OTA_UPDATE_ERROR;
+        } else if (errorRespId_ < 0) {
+            errorRespId_ = resp.get_id();
+        }
     }
     return ProtocolError::NO_ERROR;
 }
@@ -398,7 +409,15 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
     }
     if (!updating_) {
         LOG(WARN, "Received UpdateChunk request but no update is in progress");
-        return SYSTEM_ERROR_INVALID_STATE;
+        // Send an RST to the server but do cause a connection error
+        Message msg;
+        const int r = channel_->create(msg);
+        if (r != ProtocolError::NO_ERROR) {
+            LOG(ERROR, "Failed to create message: %d", (int)r);
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        CHECK(sendEmptyAck(&msg, CoapType::RST, d.id()));
+        return 0;
     }
     ++stats_.receivedChunks;
     if (index == 0 || index > chunkCount_) { // Chunk indices are 1-based
@@ -733,6 +752,7 @@ void FirmwareUpdate::reset() {
     unackChunks_ = 0;
     stateLogChunks_ = 0;
     finishRespId_ = -1;
+    errorRespId_ = -1;
     hasGaps_ = false;
 }
 

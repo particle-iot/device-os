@@ -290,7 +290,7 @@ int filesystem_mount(filesystem_t* fs) {
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
         /* Give some indication that the bootloader is alive */
         LED_SetRGBColor(RGB_COLOR_WHITE);
-        LED_On(LED_RGB);
+        LED_On(PARTICLE_LED_RGB);
 #endif /* MODULE_FUNCTION == MOD_FUNC_BOOTLOADER */
         /* This operation takes about 5-10 seconds. It isn't strictly necessary
          * and was added simlpy as a precaution. We should still be able to recover

@@ -81,6 +81,12 @@ TEST_CASE("Gen 2 cellular credentials") {
         REQUIRE(cellular_sim_to_network_provider_impl("310410999999999", nullptr) == CELLULAR_NETPROV_KORE_ATT);
     }
 
+    SECTION("IMSI range2 should set Kore AT&T as Network Provider", "[cellular]") {
+        REQUIRE(cellular_sim_to_network_provider_impl("310030000000000", nullptr) == CELLULAR_NETPROV_KORE_ATT);
+        REQUIRE(cellular_sim_to_network_provider_impl("310030555555555", nullptr) == CELLULAR_NETPROV_KORE_ATT);
+        REQUIRE(cellular_sim_to_network_provider_impl("310030999999999", nullptr) == CELLULAR_NETPROV_KORE_ATT);
+    }
+
     SECTION("IMSI range should set Telefonica as Network Provider", "[cellular]") {
         REQUIRE(cellular_sim_to_network_provider_impl("214070000000000", nullptr) == CELLULAR_NETPROV_TELEFONICA);
         REQUIRE(cellular_sim_to_network_provider_impl("214075555555555", nullptr) == CELLULAR_NETPROV_TELEFONICA);
@@ -97,6 +103,7 @@ TEST_CASE("Gen 2 cellular credentials") {
         REQUIRE(cellular_sim_to_network_provider_impl("732123200003364", "89883234500011906351") == CELLULAR_NETPROV_TWILIO);   // Twilio IMSI and Twilio ICCID
         REQUIRE(cellular_sim_to_network_provider_impl("214070000000000", "89883235555555555555") == CELLULAR_NETPROV_TWILIO);   // Kore IMSI and Twilio ICCID just in case
         REQUIRE(cellular_sim_to_network_provider_impl("310410999999999", "89883071234567891011") == CELLULAR_NETPROV_TWILIO);   // Kore IMSI and Twilio ICCID just in case
+        REQUIRE(cellular_sim_to_network_provider_impl("310030999999999", "89883071234567891011") == CELLULAR_NETPROV_TWILIO);   // Kore IMSI and Twilio ICCID just in case
     }
 }
 
@@ -141,6 +148,12 @@ TEST_CASE("Gen 3 cellular credentials") {
         auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
         REQUIRE(creds.netProv() == CellularNetworkProvider::KORE_ATT);
     }
+    SECTION("Kore ATT2") {
+        const char imsi[] = "310030900000000";
+        auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);
+        REQUIRE(creds.netProv() == CellularNetworkProvider::KORE_ATT);
+    }
+
 }
 
 TEST_CASE("cellular_signal()") {
@@ -281,24 +294,24 @@ TEST_CASE("cellular_signal()") {
         }
 
         SECTION("middle RXLEV and RXQUAL") {
-            status.rxlev = 31;
+            status.rxlev = 8;
             status.rxqual = 4;
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_GSM);
-            REQUIRE(std::abs(sig.strength - 32767) <= 655);
+            REQUIRE(std::abs(sig.strength - 32767) == 0);
             REQUIRE(std::abs(sig.quality - 32767) <= 6553);
-            REQUIRE(sig.rssi == -8000);
+            REQUIRE(sig.rssi == -10300);
             REQUIRE(sig.ber == 226);
 
             SECTION("CellularSignal") {
                 CellularSignal cs;
                 REQUIRE(cs.fromHalCellularSignal(sig) == true);
                 REQUIRE(cs.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_GSM);
-                REQUIRE(std::abs(cs.getStrength() - 50.0f) <= 1.0f);
-                REQUIRE(cs.getStrengthValue() == -80.0f);
+                REQUIRE(std::abs(cs.getStrength()) <= 50.0f);
+                REQUIRE(cs.getStrengthValue() == -103.0f);
                 REQUIRE(std::abs(cs.getQuality() - 50.0f) <= 10.0f);
                 REQUIRE(cs.getQualityValue() == 2.26f);
             }
@@ -417,24 +430,24 @@ TEST_CASE("cellular_signal()") {
         }
 
         SECTION("middle RXLEV and RXQUAL") {
-            status.rxlev = 31;
+            status.rxlev = 8;
             status.rxqual = 4;
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_EDGE);
-            REQUIRE(std::abs(sig.strength - 32767) <= 655);
+            REQUIRE(std::abs(sig.strength - 32767) == 0);
             REQUIRE(std::abs(sig.quality - 32767) <= 6553);
-            REQUIRE(sig.rssi == -8000);
+            REQUIRE(sig.rssi == -10300);
             REQUIRE(sig.ber == -190);
 
             SECTION("CellularSignal") {
                 CellularSignal cs;
                 REQUIRE(cs.fromHalCellularSignal(sig) == true);
                 REQUIRE(cs.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_EDGE);
-                REQUIRE(std::abs(cs.getStrength() - 50.0f) <= 1.0f);
-                REQUIRE(cs.getStrengthValue() == -80.0f);
+                REQUIRE(std::abs(cs.getStrength()) <= 50.0f);
+                REQUIRE(cs.getStrengthValue() == -103.0f);
                 REQUIRE(std::abs(cs.getQuality() - 50.0f) <= 10.0f);
                 REQUIRE(cs.getQualityValue() == -1.9f);
             }
@@ -518,27 +531,49 @@ TEST_CASE("cellular_signal()") {
             }
         }
 
-        SECTION("middle RSCP and ECNO") {
-            status.rscp = 48;
-            status.ecno = 24;
+        SECTION("poor RSCP and ECNO") {
+            status.rscp = 3;
+            status.ecno = 3;
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UTRAN);
-            REQUIRE(sig.strength == 32767);
-            REQUIRE(std::abs(sig.quality - 32767) <= 655 * 2);
-            REQUIRE(sig.rscp == -7300);
-            REQUIRE(sig.ecno == -1250);
+            REQUIRE(sig.rscp == -11800);
+            REQUIRE(sig.ecno == -2300);
 
             SECTION("CellularSignal") {
                 CellularSignal cs;
                 REQUIRE(cs.fromHalCellularSignal(sig) == true);
                 REQUIRE(cs.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_UTRAN);
-                REQUIRE(std::abs(cs.getStrength() - 50.0f) <= 1.0f);
-                REQUIRE(cs.getStrengthValue() == -73.0f);
-                REQUIRE(std::abs(cs.getQuality() - 50.0f) <= 2.0f);
-                REQUIRE(cs.getQualityValue() == -12.5f);
+                REQUIRE(std::abs(cs.getStrength()) <= 25.0f);
+                REQUIRE(cs.getStrengthValue() == -118.0f);
+                REQUIRE(std::abs(cs.getQuality()) <= 25.0f);
+                REQUIRE(cs.getQualityValue() == -23.0f);
+            }
+        }
+
+        SECTION("middle RSCP and ECNO") {
+            status.rscp = 16;
+            status.ecno = 28;
+
+            cellular_signal_t sig = {};
+            sig.size = sizeof(sig);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(sig.rat == NET_ACCESS_TECHNOLOGY_UTRAN);
+            REQUIRE(std::abs(sig.strength - 32767) == 0);
+            REQUIRE(std::abs(sig.quality - 32767) == 0);
+            REQUIRE(sig.rscp == -10500);
+            REQUIRE(sig.ecno == -1050);
+
+            SECTION("CellularSignal") {
+                CellularSignal cs;
+                REQUIRE(cs.fromHalCellularSignal(sig) == true);
+                REQUIRE(cs.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_UTRAN);
+                REQUIRE(std::abs(cs.getStrength()) <= 50.0f);
+                REQUIRE(cs.getStrengthValue() == -105.0f);
+                REQUIRE(std::abs(cs.getQuality()) <= 50.0f);
+                REQUIRE(cs.getQualityValue() == -10.5f);
             }
         }
 
@@ -567,13 +602,119 @@ TEST_CASE("cellular_signal()") {
         }
     }
 
-    SECTION("LTE/LTE_CAT_M1/LTE_CAT_NB1") {
+    SECTION("LTE") {
         NetStatus status = {};
 
         // Expected { input, output } data table
         struct DataTable { AcT input_act; hal_net_access_tech_t expected_act; };
         auto data = GENERATE( values<DataTable>({
             { AcT::ACT_LTE, hal_net_access_tech_t::NET_ACCESS_TECHNOLOGY_LTE },
+        }));
+        status.act = data.input_act;
+
+        SECTION("error values reported by the modem") {
+            status.rsrp = 255;
+            status.rsrq = 255;
+
+            cellular_signal_t sig = {};
+            sig.size = sizeof(sig);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(sig.rat == data.expected_act);
+            REQUIRE(sig.strength < 0);
+            REQUIRE(sig.quality < 0);
+            REQUIRE(sig.rsrp == std::numeric_limits<int32_t>::min());
+            REQUIRE(sig.rsrq == std::numeric_limits<int32_t>::min());
+
+            SECTION("CellularSignal") {
+                CellularSignal cs;
+                REQUIRE(cs.fromHalCellularSignal(sig) == true);
+                REQUIRE(cs.getAccessTechnology() == data.expected_act);
+                REQUIRE(cs.getStrength() < 0.0f);
+                REQUIRE(cs.getStrengthValue() == 0.0f);
+                REQUIRE(cs.getQuality() < 0.0f);
+                REQUIRE(cs.getQualityValue() == 0.0f);
+            }
+        }
+
+        SECTION("minimum RSRP and RSRQ") {
+            status.rsrp = 0;
+            status.rsrq = 0;
+
+            cellular_signal_t sig = {};
+            sig.size = sizeof(sig);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(sig.rat == data.expected_act);
+            REQUIRE(sig.strength == 0);
+            REQUIRE(sig.quality == 0);
+            REQUIRE(sig.rsrp == -14100);
+            REQUIRE(sig.rsrq == -2000);
+
+            SECTION("CellularSignal") {
+                CellularSignal cs;
+                REQUIRE(cs.fromHalCellularSignal(sig) == true);
+                REQUIRE(cs.getAccessTechnology() == data.expected_act);
+                REQUIRE(cs.getStrength() == 0.0f);
+                REQUIRE(cs.getStrengthValue() == -141.0f);
+                REQUIRE(cs.getQuality() == 0.0f);
+                REQUIRE(cs.getQualityValue() == -20.0f);
+            }
+        }
+
+        SECTION("middle RSRP and RSRQ") {
+            status.rsrp = 36;
+            status.rsrq = 6;
+
+            cellular_signal_t sig = {};
+            sig.size = sizeof(sig);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(sig.rat == data.expected_act);
+            REQUIRE(std::abs(sig.strength - 32767) == 0);
+            REQUIRE(std::abs(sig.quality - 32767) == 0);
+            REQUIRE(sig.rsrp == -10500);
+            REQUIRE(sig.rsrq == -1700);
+
+            SECTION("CellularSignal") {
+                CellularSignal cs;
+                REQUIRE(cs.fromHalCellularSignal(sig) == true);
+                REQUIRE(cs.getAccessTechnology() == data.expected_act);
+                REQUIRE(std::abs(cs.getStrength()) <= 50.0f);
+                REQUIRE(cs.getStrengthValue() == -105.0f);
+                REQUIRE(std::abs(cs.getQuality()) <= 50.0f);
+                REQUIRE(cs.getQualityValue() == -17.0f);
+            }
+        }
+
+        SECTION("max RSRP and RSRQ") {
+            status.rsrp = 97;
+            status.rsrq = 34;
+
+            cellular_signal_t sig = {};
+            sig.size = sizeof(sig);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(sig.rat == data.expected_act);
+            REQUIRE(sig.strength == 65535);
+            REQUIRE(sig.quality == 65535);
+            REQUIRE(sig.rsrp == -4400);
+            REQUIRE(sig.rsrq == -300);
+
+            SECTION("CellularSignal") {
+                CellularSignal cs;
+                REQUIRE(cs.fromHalCellularSignal(sig) == true);
+                REQUIRE(cs.getAccessTechnology() == data.expected_act);
+                REQUIRE(cs.getStrength() == 100.0f);
+                REQUIRE(cs.getStrengthValue() == -44.0f);
+                REQUIRE(cs.getQuality() == 100.0f);
+                REQUIRE(cs.getQualityValue() == -3.0f);
+            }
+        }
+    }
+
+    SECTION("LTE_CAT_M1/LTE_CAT_NB1") {
+        NetStatus status = {};
+
+        // Expected { input, output } data table
+        struct DataTable { AcT input_act; hal_net_access_tech_t expected_act; };
+        auto data = GENERATE( values<DataTable>({
             { AcT::ACT_LTE_CAT_M1, hal_net_access_tech_t::NET_ACCESS_TECHNOLOGY_LTE_CAT_M1 },
             { AcT::ACT_LTE_CAT_NB1, hal_net_access_tech_t::NET_ACCESS_TECHNOLOGY_LTE_CAT_NB1 }
         }));
@@ -627,27 +768,49 @@ TEST_CASE("cellular_signal()") {
             }
         }
 
-        SECTION("middle RSRP and RSRQ") {
-            status.rsrp = 48;
-            status.rsrq = 17;
+        SECTION("poor RSRP and RSRQ") {
+            status.rsrp = 11;
+            status.rsrq = 2;
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
             REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
             REQUIRE(sig.rat == data.expected_act);
-            REQUIRE(sig.strength == 32429);
-            REQUIRE(std::abs(sig.quality - 32767) <= 655 * 2);
-            REQUIRE(sig.rsrp == -9300);
-            REQUIRE(sig.rsrq == -1150);
+            REQUIRE(sig.rsrp == -13000);
+            REQUIRE(sig.rsrq == -1900);
 
             SECTION("CellularSignal") {
                 CellularSignal cs;
                 REQUIRE(cs.fromHalCellularSignal(sig) == true);
                 REQUIRE(cs.getAccessTechnology() == data.expected_act);
-                REQUIRE(std::abs(cs.getStrength() - 50.0f) <= 1.0f);
-                REQUIRE(cs.getStrengthValue() == -93.0f);
-                REQUIRE(std::abs(cs.getQuality() - 50.0f) <= 2.0f);
-                REQUIRE(cs.getQualityValue() == -11.5f);
+                REQUIRE(std::abs(cs.getStrength()) <= 25.0f);
+                REQUIRE(cs.getStrengthValue() == -130.0f);
+                REQUIRE(std::abs(cs.getQuality()) <= 25.0f);
+                REQUIRE(cs.getQualityValue() == -19.0f);
+            }
+        }
+
+        SECTION("middle RSRP and RSRQ") {
+            status.rsrp = 25;
+            status.rsrq = 6;
+
+            cellular_signal_t sig = {};
+            sig.size = sizeof(sig);
+            REQUIRE(cellular_signal_impl(&sig, true, status) == SYSTEM_ERROR_NONE);
+            REQUIRE(sig.rat == data.expected_act);
+            REQUIRE(std::abs(sig.strength - 32767) == 0);
+            REQUIRE(std::abs(sig.quality - 32767) == 0);
+            REQUIRE(sig.rsrp == -11600);
+            REQUIRE(sig.rsrq == -1700);
+
+            SECTION("CellularSignal") {
+                CellularSignal cs;
+                REQUIRE(cs.fromHalCellularSignal(sig) == true);
+                REQUIRE(cs.getAccessTechnology() == data.expected_act);
+                REQUIRE(std::abs(cs.getStrength()) <= 50.0f);
+                REQUIRE(cs.getStrengthValue() == -116.0f);
+                REQUIRE(std::abs(cs.getQuality()) <= 50.0f);
+                REQUIRE(cs.getQualityValue() == -17.0f);
             }
         }
 

@@ -26,6 +26,7 @@
 #include "system_error.h"
 #include "concurrent_hal.h"
 #include <memory>
+#include "spark_wiring_thread.h"
 
 namespace particle {
 
@@ -71,6 +72,7 @@ private:
     os_semaphore_t sem_ = nullptr;
     volatile bool flow_ = false;
     volatile bool enabled_ = true;
+    RecursiveMutex mutex_;
 };
 
 template <typename MuxerT>
@@ -112,16 +114,16 @@ inline int MuxerChannelStream<MuxerT>::init(size_t rxBufSize) {
 template <typename MuxerT>
 inline int MuxerChannelStream<MuxerT>::channelDataCb(const uint8_t* data, size_t size, void* ctx) {
     auto self = (MuxerChannelStream<MuxerT>*)ctx;
-    auto wasEmpty = self->rxBuf_->empty();
-    auto r = self->rxBuf_->put((const char*)data, size);
-    if (r == SYSTEM_ERROR_TOO_LARGE) {
-        LOG_DEBUG(WARN, "No space in muxer channel stream rx buffer while trying to put %d bytes (%d available)",
-                (int)size, self->rxBuf_->space());
+    {
+        std::lock_guard<RecursiveMutex> lock(self->mutex_);
+        auto r = self->rxBuf_->put((const char*)data, size);
+        if (r == SYSTEM_ERROR_TOO_LARGE) {
+            LOG_DEBUG(WARN, "No space in muxer channel stream rx buffer while trying to put %d bytes (%d available)",
+                    (int)size, self->rxBuf_->space());
+        }
     }
     self->suspend();
-    if (wasEmpty) {
-        os_semaphore_give(self->sem_, false);
-    }
+    os_semaphore_give(self->sem_, false);
     return 0;
 }
 
@@ -130,9 +132,13 @@ inline int MuxerChannelStream<MuxerT>::read(char* data, size_t size) {
     if (!enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    size_t canRead = CHECK(rxBuf_->data());
-    size_t willRead = std::min(canRead, size);
-    auto r = rxBuf_->get(data, willRead);
+    ssize_t r;
+    {
+        std::lock_guard<RecursiveMutex> lock(mutex_);
+        size_t canRead = CHECK(rxBuf_->data());
+        size_t willRead = std::min(canRead, size);
+        r = rxBuf_->get(data, willRead);
+    }
     resume();
     return r;
 }
@@ -142,6 +148,7 @@ inline int MuxerChannelStream<MuxerT>::peek(char* data, size_t size) {
     if (!enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    std::lock_guard<RecursiveMutex> lock(mutex_);
     size_t canPeek = CHECK(rxBuf_->data());
     size_t willPeek = std::min(canPeek, size);
     return rxBuf_->peek(data, willPeek);
@@ -157,6 +164,7 @@ inline int MuxerChannelStream<MuxerT>::availForRead() {
     if (!enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    std::lock_guard<RecursiveMutex> lock(mutex_);
     return rxBuf_->data();
 }
 
@@ -207,20 +215,26 @@ inline int MuxerChannelStream<MuxerT>::waitEvent(unsigned flags, unsigned timeou
     unsigned f = 0;
     const auto t = HAL_Timer_Get_Milli_Seconds();
     for (;;) {
-        if (availForRead() > 0) {
-            f |= Stream::READABLE;
-        }
-        // FIXME: check modem status flags
-        if (availForWrite() > 0) {
-            f |= Stream::WRITABLE;
+        // Make sure to clear any notification before we check current state
+        os_semaphore_take(sem_, 0, false);
+        {
+            std::lock_guard<RecursiveMutex> lock(mutex_);
+            if (availForRead() > 0) {
+                f |= Stream::READABLE;
+            }
+            // FIXME: check modem status flags
+            if (availForWrite() > 0) {
+                f |= Stream::WRITABLE;
+            }
         }
         if (f &= flags) {
             break;
         }
-        if (timeout > 0 && HAL_Timer_Get_Milli_Seconds() - t >= timeout) {
+        const auto elapsed = HAL_Timer_Get_Milli_Seconds() - t;
+        if (timeout == 0 || elapsed >= timeout) {
             return SYSTEM_ERROR_TIMEOUT;
         }
-        os_semaphore_take(sem_, HAL_Timer_Get_Milli_Seconds() - t, false);
+        os_semaphore_take(sem_, timeout - elapsed, false);
         if (!enabled_) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
@@ -230,7 +244,11 @@ inline int MuxerChannelStream<MuxerT>::waitEvent(unsigned flags, unsigned timeou
 
 template <typename MuxerT>
 inline void MuxerChannelStream<MuxerT>::suspend() {
-    ssize_t space = rxBuf_->space();
+    ssize_t space;
+    {
+        std::lock_guard<RecursiveMutex> lock(mutex_);
+        space = rxBuf_->space();
+    }
     if (space < 0) {
         return;
     }
@@ -242,7 +260,11 @@ inline void MuxerChannelStream<MuxerT>::suspend() {
 
 template <typename MuxerT>
 inline void MuxerChannelStream<MuxerT>::resume() {
-    ssize_t space = rxBuf_->space();
+    ssize_t space;
+    {
+        std::lock_guard<RecursiveMutex> lock(mutex_);
+        space = rxBuf_->space();
+    }
     if (space < 0) {
         return;
     }

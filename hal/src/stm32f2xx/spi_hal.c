@@ -109,7 +109,7 @@ typedef enum spi_ports_t {
 stm32_spi_state_t spiState[HAL_PLATFORM_SPI_NUM];
 
 
-static void spiDmaConfig(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length) {
+static void spiDmaConfig(hal_spi_interface_t spi, const void* tx_buffer, void* rx_buffer, uint32_t length) {
     DMA_InitTypeDef dmaInitStructure;
     NVIC_InitTypeDef nvicInitStructure;
 
@@ -464,7 +464,7 @@ uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data) {
     return SPI_I2S_ReceiveData(spiMap[spi].peripheral);
 }
 
-void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback) {
+void hal_spi_transfer_dma(hal_spi_interface_t spi, const void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback) {
     if (spiState[spi].state != HAL_SPI_STATE_ENABLED) {
         return;
     }
@@ -638,3 +638,33 @@ int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
     }
     return SYSTEM_ERROR_NONE;
 }
+
+int hal_spi_get_clock_divider(hal_spi_interface_t spi, uint32_t clock, void* reserved) {
+    CHECK_TRUE(clock > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    uint32_t system_clock = spi == HAL_SPI_INTERFACE1 ? 60000000 : 30000000;
+
+    // Integer division results in clean values
+    switch (system_clock / clock) {
+    case 2:
+        return SPI_CLOCK_DIV2;
+    case 4:
+        return SPI_CLOCK_DIV4;
+    case 8:
+        return SPI_CLOCK_DIV8;
+    case 16:
+        return SPI_CLOCK_DIV16;
+    case 32:
+        return SPI_CLOCK_DIV32;
+    case 64:
+        return SPI_CLOCK_DIV64;
+    case 128:
+        return SPI_CLOCK_DIV128;
+    case 256:
+    default:
+        return SPI_CLOCK_DIV256;
+    }
+
+    return SYSTEM_ERROR_UNKNOWN;
+}
+

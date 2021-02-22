@@ -232,7 +232,7 @@ private:
 /* displays RSSI value on system LED */
 void system_display_rssi() {
     int bars = 0;
-#if Wiring_WiFi == 1
+#if Wiring_WiFi == 1 && !HAL_PLATFORM_WIFI_SCAN_ONLY
     auto sig = WiFi.RSSI();
 #elif Wiring_Cellular == 1
     auto sig = Cellular.RSSI();

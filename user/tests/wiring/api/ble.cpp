@@ -18,6 +18,9 @@ public:
 
     void disconnectedHandler(const BlePeerDevice& peer) {
     }
+
+    void pairingEventHandler(const BlePairingEvent& event) {
+    }
 };
 
 Handlers bleHandlerInstance;
@@ -35,6 +38,24 @@ void connectedHandlerFunc(const BlePeerDevice& peer, void* context) {
 }
 
 void disconnectedHandlerFunc(const BlePeerDevice& peer, void* context) {
+}
+
+void pairingEventHandlerFunc(const BlePairingEvent& event, void* context) {
+    if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
+        BlePeerDevice peer = event.peer;
+    } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
+        int status = event.payload.status.status;
+        bool bonded = event.payload.status.bonded;
+        bool lesc = event.payload.status.lesc;
+        (void)status;
+        (void)bonded;
+        (void)lesc;
+    } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY) {
+        uint8_t key = event.payload.passkey[0];
+        (void)key;
+    } else if (event.type == BlePairingEventType::PASSKEY_INPUT) {
+
+    }
 }
 
 test(ble_characteristic_property) {
@@ -147,6 +168,25 @@ test(ble_uuid_order) {
     API_COMPILE({ order = BleUuidOrder::LSB; });
     API_COMPILE({ order = BleUuidOrder::MSB; });
     (void)order;
+}
+
+test(ble_pairing_io_caps) {
+    BlePairingIoCaps ioCaps;
+    API_COMPILE({ ioCaps = BlePairingIoCaps::NONE; });
+    API_COMPILE({ ioCaps = BlePairingIoCaps::DISPLAY_ONLY; });
+    API_COMPILE({ ioCaps = BlePairingIoCaps::DISPLAY_YESNO; });
+    API_COMPILE({ ioCaps = BlePairingIoCaps::KEYBOARD_ONLY; });
+    API_COMPILE({ ioCaps = BlePairingIoCaps::KEYBOARD_DISPLAY; });
+    (void)ioCaps;
+}
+
+test(ble_pairing_event_type) {
+    BlePairingEventType type;
+    API_COMPILE({ type = BlePairingEventType::REQUEST_RECEIVED; });
+    API_COMPILE({ type = BlePairingEventType::PASSKEY_DISPLAY; });
+    API_COMPILE({ type = BlePairingEventType::PASSKEY_INPUT; });
+    API_COMPILE({ type = BlePairingEventType::STATUS_UPDATED; });
+    (void)type;
 }
 
 test(ble_address_class) {
@@ -745,6 +785,18 @@ test(ble_local_device_class) {
     API_COMPILE({ BLE.onDisconnected([](const BlePeerDevice&) {}); });
     API_COMPILE({ BLE.onDisconnected(&Handlers::disconnectedHandler, &bleHandlerInstance); });
     API_COMPILE({ BLE.onDisconnected(std::bind(&Handlers::disconnectedHandler, &bleHandlerInstance, _1)); });
+
+    API_COMPILE({ int ret = BLE.setPairingIoCaps(BlePairingIoCaps::NONE); (void)ret; });
+    API_COMPILE({ int ret = BLE.startPairing(BlePeerDevice()); (void)ret; });
+    API_COMPILE({ int ret = BLE.rejectPairing(BlePeerDevice()); (void)ret; });
+    API_COMPILE({ uint8_t passkey[6]; int ret = BLE.setPairingPasskey(BlePeerDevice(), passkey); (void)ret; });
+    API_COMPILE({ bool ret = BLE.isPairing(BlePeerDevice()); (void)ret; });
+    API_COMPILE({ bool ret = BLE.isPaired(BlePeerDevice()); (void)ret; });
+    API_COMPILE({ BLE.onPairingEvent(pairingEventHandlerFunc); });
+    API_COMPILE({ BLE.onPairingEvent(pairingEventHandlerFunc, nullptr); });
+    API_COMPILE({ BLE.onPairingEvent([](const BlePairingEvent&) {}); });
+    API_COMPILE({ BLE.onPairingEvent(&Handlers::pairingEventHandler, &bleHandlerInstance); });
+    API_COMPILE({ BLE.onPairingEvent(std::bind(&Handlers::pairingEventHandler, &bleHandlerInstance, _1)); });
 }
 
 #endif

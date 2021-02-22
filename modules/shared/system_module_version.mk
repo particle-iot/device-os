@@ -1,6 +1,6 @@
 # Skip to next 100 every v0.x.0 release (e.g. 108 for v0.6.2 to 200 for v0.7.0-rc.1)
 # Bump by 1 for every prerelease or release with the same v0.x.* base.
-COMMON_MODULE_VERSION ?= 2007
+COMMON_MODULE_VERSION ?= 3003
 SYSTEM_PART1_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 SYSTEM_PART2_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 SYSTEM_PART3_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
@@ -33,7 +33,7 @@ endif
 # Skip to next 100 every v0.x.0 release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
 # but only if the bootloader has changed since the last v0.x.0 release.
 # Bump by 1 for every updated bootloader image for a release with the same v0.x.* base.
-BOOTLOADER_VERSION ?= 1003
+BOOTLOADER_VERSION ?= 1005
 
 # The version of the bootloader that the system firmware requires
 # NOTE: this will force the device into safe mode until this dependency is met, which is why
@@ -41,7 +41,7 @@ BOOTLOADER_VERSION ?= 1003
 ifeq ($(PLATFORM_GEN),2)
 BOOTLOADER_DEPENDENCY = 1003
 else ifeq ($(PLATFORM_GEN),3)
-BOOTLOADER_DEPENDENCY = 1003
+BOOTLOADER_DEPENDENCY = 1005
 else
 # Some sensible default
 BOOTLOADER_DEPENDENCY = 0
@@ -50,10 +50,14 @@ endif
 ifeq ($(PLATFORM_GEN),3)
 # SoftDevice S140 7.0.1
 SOFTDEVICE_DEPENDENCY = 202
-endif
 
-# Gen 3 platforms require an intermediate update through 1.1.0 to avoid IRQ priority configuration
-# issue in DeviceOS < 1.1.0 which presents itself with >= 501 bootloaders
-ifneq (,$(filter $(PLATFORM_ID),12 13 22 23))
-BOOTLOADER_MODULE_DEPENDENCY=${MODULE_FUNCTION_SYSTEM_PART},1,${RELEASE_110_MODULE_VERSION}
+SYSTEM_PART1_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_BOOTLOADER},0,${BOOTLOADER_DEPENDENCY}
+ifeq (,$(filter $(PLATFORM_ID),26))
+SYSTEM_PART1_MODULE_DEPENDENCY2 ?= ${MODULE_FUNCTION_RADIO_STACK},0,${SOFTDEVICE_DEPENDENCY}
+else
+# There is no need to carry SoftDevice dependency on Tracker, since they are manufactured
+# with the latest one. Update NCP firmware instead.
+ESP32_NCP_DEPENDENCY = 7
+SYSTEM_PART1_MODULE_DEPENDENCY2 ?= ${MODULE_FUNCTION_NCP_FIRMWARE},0,${ESP32_NCP_DEPENDENCY}
+endif
 endif

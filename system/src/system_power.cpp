@@ -54,6 +54,10 @@ int system_power_management_set_config(const hal_power_config* conf, void* reser
     return PowerManager::instance()->setConfig(conf);
 }
 
+int system_power_management_get_config(hal_power_config* conf, void* reserved) {
+    return PowerManager::instance()->getConfig(conf);
+}
+
 #else /* !HAL_PLATFORM_POWER_MANAGEMENT */
 
 void system_power_management_init() {
@@ -66,6 +70,10 @@ void system_power_management_wakeup() {
 }
 
 int system_power_management_set_config(const hal_power_config* conf, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int system_power_management_get_config(hal_power_config* conf, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 

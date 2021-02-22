@@ -81,7 +81,7 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     bleHandler_.enter();
 #endif /* HAL_PLATFORM_BLE */
 
-#if !HAL_PLATFORM_WIFI
+#if (!HAL_PLATFORM_WIFI || (HAL_PLATFORM_WIFI && HAL_PLATFORM_WIFI_SCAN_ONLY))
     SystemSetupConsoleConfig config;
     console_.reset(new SystemSetupConsole<SystemSetupConsoleConfig>(config));
 #else

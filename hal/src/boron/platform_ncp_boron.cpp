@@ -16,10 +16,9 @@
  */
 
 #include "platform_ncp.h"
-
 #include "exflash_hal.h"
-
 #include "dct.h"
+#include "system_error.h"
 
 namespace {
 
@@ -38,7 +37,7 @@ bool isValidNcpId(uint8_t id) {
 
 } // unnamed
 
-PlatformNCPIdentifier platform_current_ncp_identifier() {
+PlatformNCPIdentifier platform_primary_ncp_identifier() {
     // Check the DCT
     uint8_t ncpId = 0;
     int r = dct_read_app_data_copy(DCT_NCP_ID_OFFSET, &ncpId, 1);
@@ -50,4 +49,14 @@ PlatformNCPIdentifier platform_current_ncp_identifier() {
         }
     }
     return (PlatformNCPIdentifier)ncpId;
+}
+
+int platform_ncp_get_info(int idx, PlatformNCPInfo* info) {
+    if (idx == 0 && info) {
+        info->identifier = platform_primary_ncp_identifier();
+        info->updatable = false;
+        return 0;
+    }
+
+    return SYSTEM_ERROR_INVALID_ARGUMENT;
 }

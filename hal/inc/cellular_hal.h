@@ -29,6 +29,7 @@
 #include "cellular_hal_constants.h"
 #include "cellular_hal_utilities.h"
 #include "cellular_hal_cellular_global_identity.h"
+#include "cellular_sig_perc_mapping.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,6 +55,11 @@ cellular_result_t  cellular_init(void* reserved);
  * Power off the cellular module.
  */
 cellular_result_t  cellular_off(void* reserved);
+
+/**
+ * Check if the cellular module is powered.
+ */
+bool cellular_powered(void* reserved);
 
 /**
  * Wait for the cellular module to register on the GSM network.

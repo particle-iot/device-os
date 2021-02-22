@@ -685,6 +685,9 @@ static bool isWokenUpByLpcomp() {
 
 static bool isWokenUpByNetwork(const hal_wakeup_source_network_t* networkWakeup) {
 // TODO: More than one network interface are supported on platform.
+    if (networkWakeup->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY) {
+        return false;
+    }
 #if HAL_PLATFORM_CELLULAR
     if (networkWakeup->index == NETWORK_INTERFACE_CELLULAR && NVIC_GetPendingIRQ(UARTE1_IRQn)) {
         return true;
@@ -742,11 +745,13 @@ static int validateUsartWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sou
 }
 
 static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_network_t* network) {
-    if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY) && !hal_usart_is_enabled(HAL_USART_SERIAL2)) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    if (mode == HAL_SLEEP_MODE_HIBERNATE) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
+    if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
+        if (!hal_usart_is_enabled(HAL_USART_SERIAL2)) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        if (mode == HAL_SLEEP_MODE_HIBERNATE) {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -847,7 +852,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
                     skipUsarts.append(HAL_PLATFORM_CELLULAR_SERIAL);
                 }
 #endif
-#if HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_NCP_SDIO
                 if (networkSource->index == NETWORK_INTERFACE_WIFI_STA) {
                     skipUsarts.append(HAL_PLATFORM_WIFI_SERIAL);
                 }

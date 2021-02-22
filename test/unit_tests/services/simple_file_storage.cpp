@@ -95,7 +95,7 @@ TEST_CASE("SimpleFileStorage") {
             CHECK(buf[2] == 0);
         }
         SECTION("can read a record larger than the filesystem block") {
-            size_t n = FILESYSTEM_BLOCK_SIZE * 2;
+            const size_t n = FILESYSTEM_BLOCK_SIZE * 2;
             auto d = test::randString(n);
             std::string h(4, '\0');
             h[0] = n & 0xff;

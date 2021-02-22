@@ -420,7 +420,7 @@ constexpr unsigned int SPI_ERROR_MARGIN = 5; // 5%
 
 #if HAL_PLATFORM_NRF52840
 constexpr unsigned int SPI_CLOCK_SPEED = 8000000; // 8MHz
-constexpr unsigned int SPI_NODMA_OVERHEAD = 13500; // 13.5us ~= 860 clock cycles @ 64MHz
+constexpr unsigned int SPI_NODMA_OVERHEAD = 15500; // 15.5us ~= 992 clock cycles @ 64MHz
 constexpr unsigned int SPI_DMA_OVERHEAD = SPI_NODMA_OVERHEAD; // Gen 3 always uses DMA underneath
 #elif HAL_PLATFORM_STM32F2XX
 constexpr unsigned int SPI_CLOCK_SPEED = 7500000; // 7.5MHz
@@ -670,4 +670,16 @@ test(SPIX_21_SPI_Sleep) {
     SPI.end();
 
     assertEqual(0, memcmp(tempRx, tempRx1, sizeof(tempRx)));
+}
+
+test(SPIX_22_SPI_Transfer_Buffer_In_Flash) {
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
+    SPI.begin();
+    assertTrue(SPI.isEnabled());
+
+    SPI.beginTransaction();
+    SPI.transfer("Hello", nullptr, sizeof("Hello"), nullptr);
+    SPI.endTransaction();
+
+    SPI.end();
 }

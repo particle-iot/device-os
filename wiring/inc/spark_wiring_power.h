@@ -102,7 +102,8 @@ public:
     byte readChargeTermRegister();
     bool disableWatchdog(void);
     bool setWatchdog(byte time);
-
+    bool enableSafetyTimer();
+    bool disableSafetyTimer();
 
 
     //Thermal Regulation Control Register

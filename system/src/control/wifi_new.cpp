@@ -102,6 +102,7 @@ int joinNewNetwork(ctrl_request* req) {
     // Connect to the network
     const auto ncpClient = wifiMgr->ncpClient();
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
+    const NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
     CHECK(ncpClient->disconnect());
     CHECK(wifiMgr->connect(dSsid.data));
@@ -117,6 +118,7 @@ int joinKnownNetwork(ctrl_request* req) {
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     const auto ncpClient = wifiMgr->ncpClient();
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
+    const NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
     CHECK(ncpClient->disconnect());
     CHECK(wifiMgr->connect(dSsid.data));
@@ -195,6 +197,7 @@ int scanNetworks(ctrl_request* req) {
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     const auto ncpClient = wifiMgr->ncpClient();
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
+    const NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
     // Scan for networks
     Vector<WifiScanResult> networks;

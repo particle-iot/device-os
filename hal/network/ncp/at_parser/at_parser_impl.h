@@ -152,6 +152,9 @@ private:
     unsigned checkStatus(unsigned flags) const;
 
     int error(int ret);
+
+    void logCmdLine(const char* data, size_t size) const;
+    void logRespLine(const char* data, size_t size) const;
 };
 
 inline void AtParserImpl::commandTimeout(unsigned timeout) {

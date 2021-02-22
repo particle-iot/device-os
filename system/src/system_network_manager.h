@@ -62,6 +62,11 @@ public:
     ProtocolState getInterfaceIp4State(if_t iface) const;
     ProtocolState getInterfaceIp6State(if_t iface) const;
 
+    bool isInterfacePowerState(if_t iface = nullptr, if_power_state_t state = IF_POWER_STATE_NONE) const;
+    bool isInterfacePhyReady(if_t iface = nullptr) const;
+    bool isInterfaceOn(if_t iface = nullptr) const;
+    bool isInterfaceOff(if_t iface = nullptr) const;
+
     bool isConfigured(if_t iface = nullptr) const;
     int clearConfiguration(if_t iface = nullptr);
 
@@ -107,6 +112,17 @@ private:
         CONFIGURED
     };
 
+    enum class NetworkStatus {
+        NETWORK_STATUS_POWERING_OFF,
+        NETWORK_STATUS_OFF,
+        NETWORK_STATUS_POWERING_ON,
+        NETWORK_STATUS_ON,
+        NETWORK_STATUS_CONNECTING,
+        NETWORK_STATUS_CONNECTED,
+        NETWORK_STATUS_DISCONNECTING,
+        NETWORK_STATUS_DISCONNECTED
+    };
+
     struct InterfaceRuntimeState {
         InterfaceRuntimeState()
                 : ip4State(ProtocolState::UNCONFIGURED),
@@ -132,6 +148,7 @@ private:
     void handleIfAddr(if_t iface, const struct if_event* ev);
     void handleIfLinkLayerAddr(if_t iface, const struct if_event* ev);
     void handleIfPowerState(if_t iface, const struct if_event* ev);
+    void handleIfPhyState(if_t iface, const struct if_event* ev);
 
     unsigned int countIfacesWithFlags(unsigned int flags) const;
     void refreshIpState();
@@ -156,6 +173,7 @@ private:
     std::atomic<ProtocolState> ip6State_;
     std::atomic<DnsState> dns4State_;
     std::atomic<DnsState> dns6State_;
+    std::atomic<NetworkStatus> networkStatus_;
 
     IntrusiveList<InterfaceRuntimeState> runState_;
 };

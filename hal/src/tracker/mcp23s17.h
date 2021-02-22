@@ -29,6 +29,7 @@
 #include "interrupts_hal.h"
 #include "concurrent_hal.h"
 #include "spark_wiring_vector.h"
+#include "spi_lock.h"
 
 #define MCP23S17_PORT_COUNT             (2)
 #define MCP23S17_PIN_COUNT_PER_PORT     (8)
@@ -98,85 +99,6 @@ private:
         void* context;
     };
 
-    // TODO: This class can be shared potentially with other system drivers.
-    class Mcp23s17SpiConfigurationGuarder {
-    public:
-        Mcp23s17SpiConfigurationGuarder() = delete;
-        Mcp23s17SpiConfigurationGuarder(hal_spi_interface_t spi)
-                : spi_(spi),
-                  spiInfoCache_{} {
-            hal_spi_acquire(spi_, nullptr);
-            spiInfoCache_.version = HAL_SPI_INFO_VERSION_2;
-            hal_spi_info(spi_, &spiInfoCache_, nullptr);
-            if (spiInfoCache_.bit_order != MSBFIRST) {
-                hal_spi_set_bit_order(spi_, MSBFIRST);
-            }
-            if (spiInfoCache_.data_mode != SPI_MODE0) {
-                hal_spi_set_data_mode(spi_, SPI_MODE0);
-            }
-            if (spiInfoCache_.clock != HAL_PLATFORM_MCP23S17_SPI_CLOCK) {
-                hal_spi_set_clock_divider(spi_, calculateClockDivider(spiInfoCache_.system_clock, HAL_PLATFORM_MCP23S17_SPI_CLOCK));
-            }
-            if (!spiInfoCache_.enabled || spiInfoCache_.ss_pin != PIN_INVALID || spiInfoCache_.mode != SPI_MODE_MASTER) {
-                hal_spi_begin(spi_, PIN_INVALID);
-            }
-        }
-        ~Mcp23s17SpiConfigurationGuarder() {
-            if (spiInfoCache_.bit_order != MSBFIRST) {
-                hal_spi_set_bit_order(spi_, spiInfoCache_.bit_order);
-            }
-            if (spiInfoCache_.data_mode != SPI_MODE0) {
-                hal_spi_set_data_mode(spi_, spiInfoCache_.data_mode);
-            }
-            if (spiInfoCache_.clock != HAL_PLATFORM_MCP23S17_SPI_CLOCK) {
-                hal_spi_set_clock_divider(spi_, calculateClockDivider(spiInfoCache_.system_clock, spiInfoCache_.clock));
-            }
-            if (spiInfoCache_.ss_pin != PIN_INVALID || spiInfoCache_.mode != SPI_MODE_MASTER) {
-                hal_spi_begin_ext(spi_, spiInfoCache_.mode, spiInfoCache_.ss_pin, nullptr);
-            }
-            hal_spi_release(spi_, nullptr);
-        }
-
-        private:
-        // FIXME: This should be resided in SPI HAL.
-        uint8_t calculateClockDivider(uint32_t system_clock, uint32_t clock) {
-            uint8_t result;
-            // Integer division results in clean values
-            switch (clock > 0 ? (system_clock / clock) : 0) {
-            case 2:
-                result = SPI_CLOCK_DIV2;
-                break;
-            case 4:
-                result = SPI_CLOCK_DIV4;
-                break;
-            case 8:
-                result = SPI_CLOCK_DIV8;
-                break;
-            case 16:
-                result = SPI_CLOCK_DIV16;
-                break;
-            case 32:
-                result = SPI_CLOCK_DIV32;
-                break;
-            case 64:
-                result = SPI_CLOCK_DIV64;
-                break;
-            case 128:
-                result = SPI_CLOCK_DIV128;
-                break;
-            case 256:
-                result = SPI_CLOCK_DIV256;
-                break;
-            default:
-                result = 0;
-            }
-            return result;
-        }
-
-        hal_spi_interface_t spi_;
-        hal_spi_info_t spiInfoCache_;
-    };
-
     Mcp23s17();
     ~Mcp23s17();
 
@@ -208,6 +130,7 @@ private:
     bool ioExpanderWorkerThreadExit_;
     os_semaphore_t ioExpanderWorkerSemaphore_;
     Vector<IoPinInterruptConfig> intConfigs_;
+    mutable SpiConfigurationLock spiLock_;
 }; // class Mcp23s17
 
 class Mcp23s17Lock {

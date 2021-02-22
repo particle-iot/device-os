@@ -64,6 +64,10 @@ const module_info_t* locate_module(const module_bounds_t* bounds) {
  * @param userDepsOptional
  * @return {@code true} if the module info can be read via the info, crc, suffix pointers.
  */
+// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
+// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
+// the problem
+__attribute__((optimize("O0")))
 bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags)
 {
     memset(target, 0, sizeof(*target));

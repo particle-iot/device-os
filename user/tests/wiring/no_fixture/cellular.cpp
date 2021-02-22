@@ -65,6 +65,7 @@ void connect_to_cloud(system_tick_t timeout)
     waitFor(Particle.connected, timeout);
 }
 
+namespace {
 void checkIPAddress(const char* name, const IPAddress& address)
 {
     if (address.version()==0 || address[0]==0)
@@ -75,6 +76,7 @@ void checkIPAddress(const char* name, const IPAddress& address)
         assertNotEqual(address[0], 0);
     }
 }
+} // anonymous
 
 test(CELLULAR_01_local_ip_cellular_config)
 {
@@ -155,6 +157,43 @@ test(CELLULAR_05_sigstr_is_valid) {
     }
     assertFalse((s.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_UNKNOWN) || (s.getAccessTechnology() == NET_ACCESS_TECHNOLOGY_NONE));
     assertTrue(values_in_range);
+}
+
+test(CELLULAR_06_on_off_validity_check) {
+    connect_to_cloud(6*60*1000);
+    assertTrue(Cellular.isOn());
+    assertFalse(Cellular.isOff());
+
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 30000);
+    assertTrue(Cellular.isOn());
+    assertFalse(Cellular.isOff());
+
+    Cellular.disconnect();
+    waitFor([]{ return !Cellular.ready(); }, 30000);
+    assertTrue(Cellular.isOn());
+    assertFalse(Cellular.isOff());
+
+    int ret = Cellular.command("AT\r\n");
+    assertEqual(ret, (int)RESP_OK);
+
+    Cellular.off();
+    waitFor(Cellular.isOff, 30000);
+    assertFalse(Cellular.isOn());
+    assertTrue(Cellular.isOff());
+
+    ret = Cellular.command("AT\r\n");
+    assertNotEqual(ret, (int)RESP_OK);
+
+    Cellular.on();
+    waitFor(Cellular.isOn, 30000);
+    assertTrue(Cellular.isOn());
+    assertFalse(Cellular.isOff());
+
+    ret = Cellular.command("AT\r\n");
+    assertEqual(ret, (int)RESP_OK);
+
+    connect_to_cloud(6*60*1000);
 }
 
 test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {

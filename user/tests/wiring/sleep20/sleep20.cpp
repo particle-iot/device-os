@@ -28,11 +28,20 @@ STARTUP(System.enableFeature(FEATURE_RETAINED_MEMORY));
 static retained uint32_t magick = 0;
 static retained uint32_t phase = 0;
 
+static retained time32_t enterTime = 0;
+static          time32_t exitTime = 0;
+
 constexpr system_tick_t CLOUD_CONNECT_TIMEOUT = 10 * 60 * 1000;
 
 time32_t sNetworkOffTimestamp = 0;
 
 } // anonymous
+
+void updateTime() {
+    exitTime = Time.now();
+}
+
+STARTUP(updateTime());
 
 test(01_System_Sleep_With_Configuration_Object_Hibernate_Mode_Without_Wakeup) {
     if (magick != 0xdeadbeef) {
@@ -286,6 +295,43 @@ test(06_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
     } else if (phase == 0xbeef0007) {
         Serial.println("    >> Device is woken up from hibernate mode.");
         assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
+    }
+}
+
+test(07_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off_Execution_Time) {
+    constexpr uint32_t SLEEP_DURATION_S = 3;
+    if (phase == 0xbeef0007) {
+        Serial.printf("    >> Device enters hibernate mode. Please reconnect serial after %ld s\r\n", SLEEP_DURATION_S);
+        Serial.println("    >> Press any key now");
+        while (Serial.available() <= 0);
+        while (Serial.available() > 0) {
+            (void)Serial.read();
+        }
+
+        phase = 0xbeef0008;
+
+        Serial.print("Turning on the mdoem...");
+        Network.on();
+        Serial.println("Done.");
+
+        SystemSleepConfiguration config;
+        config.mode(SystemSleepMode::HIBERNATE)
+              .duration(SLEEP_DURATION_S * 1000);
+#if HAL_PLATFORM_CELLULAR
+        config.network(Cellular, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+#elif HAL_PLATFORM_WIFI
+        config.network(WiFi, SystemSleepNetworkFlag::INACTIVE_STANDBY);
+#endif
+
+        enterTime = Time.now();
+        Serial.printlnf("Before: %ld", enterTime);
+        SystemSleepResult result = System.sleep(config);
+        assertEqual(result.error(), SYSTEM_ERROR_NONE);
+    } else if (phase == 0xbeef0008) {
+        Serial.println("    >> Device is reset from hibernate mode.");
+        Serial.printlnf("After: %ld", exitTime);
+        assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
+        assertLessOrEqual(exitTime - enterTime, SLEEP_DURATION_S + 1);
     }
 }
 #endif // HAL_PLATFORM_GEN

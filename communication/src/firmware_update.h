@@ -163,6 +163,7 @@ private:
     unsigned unackChunks_; // Number or chunks received since the last acknowledgement
     unsigned stateLogChunks_; // Number of cumulatively acknowledged chunks at the time when the transfer state was last logged
     int finishRespId_; // Message ID of the UpdateFinish response
+    int errorRespId_; // Message ID of the last confirmable error response sent to the server
     bool hasGaps_; // Whether the sequence of received chunks has gaps
     bool updating_; // Whether an update is in progress
 

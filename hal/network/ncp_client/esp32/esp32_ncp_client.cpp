@@ -16,6 +16,9 @@
  */
 
 #define NO_STATIC_ASSERT
+#include "logging.h"
+LOG_SOURCE_CATEGORY("ncp.esp32.client");
+
 #include "esp32_ncp_client.h"
 
 #include "at_command.h"
@@ -32,6 +35,7 @@
 #include "check.h"
 
 #include <cstdlib>
+#include "system_cache.h"
 
 #define CHECK_PARSER(_expr) \
         ({ \
@@ -42,6 +46,18 @@
             } \
             _r; \
         })
+
+#define CHECK_PARSER_OK(_expr) \
+        do { \
+            const auto _r = _expr; \
+            if (_r < 0) { \
+                this->parserError(_r); \
+                return _r; \
+            } \
+            if (_r != ::particle::AtResponse::OK) { \
+                return SYSTEM_ERROR_AT_NOT_OK; \
+            } \
+        } while (false)
 
 namespace particle {
 
@@ -60,6 +76,21 @@ size_t espEscape(const char* src, char* dest, size_t destSize) {
     return escape(src, ",\"\\", '\\', dest, destSize);
 }
 
+int updateCachedNcpFirmwareVersion(uint16_t version) {
+#if HAL_PLATFORM_NCP_COUNT > 1
+    using namespace particle::services;
+
+    uint16_t cached = 0;
+    int r = SystemCache::instance().get(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION, &cached, sizeof(cached));
+    if (r == sizeof(cached) && cached == version) {
+        return 0;
+    }
+    return SystemCache::instance().set(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION, &version, sizeof(version));
+#else
+    return 0;
+#endif // HAL_PLATFORM_NCP_COUNT > 0
+}
+
 const auto ESP32_NCP_MAX_MUXER_FRAME_SIZE = 1536;
 const auto ESP32_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
 const auto ESP32_NCP_KEEPALIVE_MAX_MISSED = 5;
@@ -68,12 +99,18 @@ const auto ESP32_NCP_KEEPALIVE_MAX_MISSED = 5;
 const auto ESP32_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
 
 const auto ESP32_NCP_DEFAULT_SERIAL_BAUDRATE = 921600;
+const auto ESP32_NCP_DEFAULT_SDIO_SPEED = 8000000;  // 8MHz
 
 const auto ESP32_NCP_AT_CHANNEL = 1;
 const auto ESP32_NCP_STA_CHANNEL = 2;
 const auto ESP32_NCP_AP_CHANNEL = 3;
 
+#if !HAL_PLATFORM_WIFI_NCP_SDIO
 const auto ESP32_NCP_MIN_MVER_WITH_CMUX = 4;
+#else
+// FIXME:
+const auto ESP32_NCP_MIN_MVER_WITH_CMUX = 7;
+#endif // !HAL_PLATFORM_WIFI_NCP_SDIO
 
 } // unnamed
 
@@ -95,13 +132,18 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     HAL_Pin_Mode(ESPBOOT, OUTPUT);
 #if PLATFORM_ID == PLATFORM_ARGON
     HAL_Pin_Mode(ESPEN, OUTPUT_OPEN_DRAIN);
-#elif PLATFORM_ID == PLATFORM_ASOM
+#elif PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_TRACKER
     HAL_Pin_Mode(ESPEN, OUTPUT);
 #endif
     espOff();
+
+#if !HAL_PLATFORM_WIFI_NCP_SDIO
     // Initialize serial stream
     std::unique_ptr<SerialStream> serial(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, ESP32_NCP_DEFAULT_SERIAL_BAUDRATE,
             SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
+#else
+    std::unique_ptr<Esp32SdioStream> serial(new(std::nothrow) Esp32SdioStream(HAL_SPI_INTERFACE2, ESP32_NCP_DEFAULT_SDIO_SPEED, WIFI_CS, WIFI_INT));
+#endif // !HAL_PLATFORM_WIFI_NCP_SDIO
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
     // Initialize muxed channel stream
     decltype(muxerAtStream_) muxStrm(new(std::nothrow) decltype(muxerAtStream_)::element_type(&muxer_, ESP32_NCP_AT_CHANNEL));
@@ -118,6 +160,8 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     ready_ = false;
     muxerNotStarted_ = false;
     pwrState_ = NcpPowerState::UNKNOWN;
+    // We know for a fact that ESP32 is off on boot because we've initialized ESPEN pin to output 0
+    ncpPowerState(NcpPowerState::OFF);
     return 0;
 }
 
@@ -125,7 +169,8 @@ int Esp32NcpClient::initParser(Stream* stream) {
     // Initialize AT parser
     auto parserConf = AtParserConfig()
             .stream(stream)
-            .commandTerminator(AtCommandTerminator::CRLF);
+            .commandTerminator(AtCommandTerminator::CRLF)
+            .logCategory("ncp.esp32.at");
     parser_.destroy();
     CHECK(parser_.init(std::move(parserConf)));
     // Register URC handlers
@@ -247,7 +292,11 @@ int Esp32NcpClient::getFirmwareVersionString(char* buf, size_t size) {
 int Esp32NcpClient::getFirmwareModuleVersion(uint16_t* ver) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
-    return getFirmwareModuleVersionImpl(ver);
+    const int r = getFirmwareModuleVersionImpl(ver);
+    if (!r) {
+        updateCachedNcpFirmwareVersion(*ver);
+    }
+    return r;
 }
 
 int Esp32NcpClient::getFirmwareModuleVersionImpl(uint16_t* ver) {
@@ -291,6 +340,13 @@ int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
             }
             break;
         }
+        // FIXME: XModem sender runs in a busy loop and for some reason
+        // under some conditions doesn't allow any other even higher priority
+        // threads to be scheduled. Most likely this is some kind of an issue
+        // with priority inheritance. As a temporary workaround, we'll just
+        // add a 1 tick delay here which should guarantee that other threads
+        // get CPU time.
+        HAL_Delay_Milliseconds(1);
     }
     if (!ok) {
         CHECK(skipAll(strm, 3000));
@@ -465,10 +521,17 @@ int Esp32NcpClient::waitReady() {
         return 0;
     }
     muxer_.stop();
-    CHECK(serial_->setBaudRate(ESP32_NCP_DEFAULT_SERIAL_BAUDRATE));
-    CHECK(initParser(serial_.get()));
     espReset();
+#if !HAL_PLATFORM_WIFI_NCP_SDIO
+    CHECK(serial_->setBaudRate(ESP32_NCP_DEFAULT_SERIAL_BAUDRATE));
+#else
+    // SDIO bus initialization only performs right after power on
+    CHECK(serial_->init());
+#endif // !HAL_PLATFORM_WIFI_NCP_SDIO
+
+    CHECK(initParser(serial_.get()));
     skipAll(serial_.get(), 1000);
+
     parser_.reset();
     const unsigned timeout = 10000;
     const auto t1 = HAL_Timer_Get_Milli_Seconds();
@@ -512,27 +575,23 @@ int Esp32NcpClient::waitReady() {
 }
 
 int Esp32NcpClient::initReady() {
-    // Send AT+CMUX and initialize multiplexer
-    int r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0"));
+    uint16_t mver = 0;
+    CHECK(getFirmwareModuleVersionImpl(&mver));
 
-    if (r != AtResponse::OK) {
-        // Check current NCP firmware module version
-        uint16_t mver = 0;
-        CHECK(getFirmwareModuleVersionImpl(&mver));
-
-        // If it's < ESP32_NCP_MIN_MVER_WITH_CMUX, AT+CMUX is not supposed to work
-        // We simply won't initialize it
-        CHECK_TRUE(mver < ESP32_NCP_MIN_MVER_WITH_CMUX, SYSTEM_ERROR_UNKNOWN);
-
-        muxerNotStarted_ = true;
-    } else {
+    if (mver >= ESP32_NCP_MIN_MVER_WITH_CMUX) {
+#if HAL_PLATFORM_WIFI_NCP_SDIO
+        serial_->txInterruptSupported(true);
+#endif
+        // Send AT+CMUX and initialize multiplexer
+        CHECK_PARSER_OK(parser_.execCommand("AT+CMUX=0"));
         CHECK(initMuxer());
         muxerNotStarted_ = false;
+    } else {
+        muxerNotStarted_ = true;
     }
 
     // Disable DHCP on both STA and AP interfaces
-    r = CHECK_PARSER(parser_.execCommand("AT+CWDHCP=0,3"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+    CHECK_PARSER_OK(parser_.execCommand("AT+CWDHCP=0,3"));
 
     // Now we are ready
     ncpState(NcpState::ON);
@@ -548,6 +607,7 @@ int Esp32NcpClient::initMuxer() {
     muxer_.setMaxRetransmissions(3);
     muxer_.setAckTimeout(2530);
     muxer_.setControlResponseTimeout(2540);
+    muxer_.setLogCategory("ncp.esp32.mux");
 
     // Set channel state handler
     muxer_.setChannelStateHandler(muxChannelStateCb, this);

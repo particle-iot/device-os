@@ -32,7 +32,6 @@
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
-LOG_SOURCE_CATEGORY("ncp.at");
 
 namespace particle {
 
@@ -64,18 +63,6 @@ size_t appendToBuf(char* dest, size_t destSize, const char* src, size_t srcSize)
     const size_t n = std::min(srcSize, destSize);
     memcpy(dest, src, n);
     return n;
-}
-
-void logCmdLine(const char* data, size_t size) {
-    if (size > 0) {
-        LOG(TRACE, "> %.*s", size, data);
-    }
-}
-
-void logRespLine(const char* data, size_t size) {
-    if (size > 0) {
-        LOG(TRACE, "< %.*s", size, data);
-    }
 }
 
 const char* cmdTermStr(AtCommandTerminator term) {
@@ -404,7 +391,7 @@ int AtParserImpl::parseLine(unsigned flags, unsigned* timeout) {
                 const int r = h->callback(&reader, h->prefix, h->data);
                 clearStatus(StatusFlag::URC_HANDLER);
                 if (r < 0) {
-                    LOG(ERROR, "URC handler error: %d", r);
+                    LOG_C(ERROR, conf_.logCategory(), "URC handler error: %d", r);
                 }
             }
         }
@@ -686,6 +673,18 @@ int AtParserImpl::error(int ret) {
         resetCommand();
     }
     return ret;
+}
+
+void AtParserImpl::logCmdLine(const char* data, size_t size) const {
+    if (size > 0) {
+        LOG_C(TRACE, conf_.logCategory(), "> %.*s", size, data);
+    }
+}
+
+void AtParserImpl::logRespLine(const char* data, size_t size) const {
+    if (size > 0) {
+        LOG_C(TRACE, conf_.logCategory(), "< %.*s", size, data);
+    }
 }
 
 } // particle::detail

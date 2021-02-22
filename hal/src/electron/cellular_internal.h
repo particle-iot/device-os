@@ -22,6 +22,7 @@
 
 #include "cellular_enums_hal.h"
 #include "cellular_hal_constants.h"
+#include "cellular_sig_perc_mapping.h"
 
 #ifdef __cplusplus
 extern "C" {

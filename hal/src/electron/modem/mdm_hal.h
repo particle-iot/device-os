@@ -89,6 +89,8 @@ public:
 
     const DevStatus* getDevStatus() { return &_dev; }
 
+    void getExtRadioVer(char* verStr, int len) { strncpy(verStr, _verExtended, len); };
+
     /** register to the network
         \param status an optional structure to with network information
         \param timeout_ms -1 blocking, else non blocking timeout in ms
@@ -493,6 +495,10 @@ public:
 
     int process();
 
+    /** Detects the modem power state
+    */
+    bool powerState(void);
+
 protected:
     /** Write bytes to the physical interface. This function should be
         implemented in a inherited class.
@@ -533,10 +539,6 @@ protected:
         \param index the index of the received SMS
     */
     void SMSreceived(int index);
-
-    /** Detects the modem power state
-    */
-    bool powerState(void) const;
 
 protected:
     // String helper to prevent buffer overrun
@@ -652,8 +654,8 @@ protected:
     bool _powerOn(void);
     void _incModemStateChangeCount(void);
     void _setBandSelectString(MDM_BandSelect &data, char* bands, int index=0); // private helper to create bands strings
-    int _checkAtResponse(void);
-    bool _atOk(void);
+    int _checkAtResponse(bool fastTimeout = false);
+    bool _atOk(bool fastTimeout = false);
     bool _checkModem(bool force = true);
     void _checkVerboseCxreg(void);
     bool _checkEpsReg(void);

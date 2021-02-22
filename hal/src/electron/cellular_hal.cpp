@@ -111,6 +111,11 @@ cellular_result_t  cellular_off(void* reserved)
     return 0;
 }
 
+bool cellular_powered(void* reserved)
+{
+    return electronMDM.powerState();
+}
+
 cellular_result_t  cellular_register(void* reserved)
 {
     CHECK_SUCCESS(electronMDM.registerNet());
@@ -177,6 +182,9 @@ cellular_result_t cellular_device_info(CellularDevice* device, void* reserved)
     strncpy(device->iccid, status->ccid, sizeof(device->iccid));
     if (device->size >= offsetof(CellularDevice, dev) + sizeof(CellularDevice::dev)) {
         device->dev = status->dev;
+    }
+    if (device->size >= offsetof(CellularDevice, radiofw) + sizeof(CellularDevice::radiofw)) {
+        electronMDM.getExtRadioVer(device->radiofw, sizeof(device->radiofw));
     }
     return 0;
 }

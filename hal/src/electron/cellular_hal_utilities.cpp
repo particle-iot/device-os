@@ -13,6 +13,7 @@ const char TWILIO_ICCID_1[] = "8988323";
 const char TWILIO_ICCID_2[] = "8988307";
 const char TELEFONICA_MCC_MNC[] = "21407";
 const char KORE_ATT_MCC_MNC[] = "310410";
+const char KORE_ATT2_MCC_MNC[] = "310030";
 const char KORE_VODAFONE_MCC_MNC[] = "20404";
 
 const int MCC_MNC_MIN_SIZE = 5;
@@ -30,6 +31,9 @@ CellularNetProv cellular_sim_to_network_provider_impl(const char* imsi, const ch
             // LOG(INFO, "CELLULAR_NETPROV_TELEFONICA");
             return CELLULAR_NETPROV_TELEFONICA;
         } else if (strncmp(imsi, KORE_ATT_MCC_MNC, strlen(KORE_ATT_MCC_MNC)) == 0) {
+            // LOG(INFO, "CELLULAR_NETPROV_KORE_ATT");
+            return CELLULAR_NETPROV_KORE_ATT;
+        } else if (strncmp(imsi, KORE_ATT2_MCC_MNC, strlen(KORE_ATT2_MCC_MNC)) == 0) {
             // LOG(INFO, "CELLULAR_NETPROV_KORE_ATT");
             return CELLULAR_NETPROV_KORE_ATT;
         } else if (strncmp(imsi, KORE_VODAFONE_MCC_MNC, strlen(KORE_VODAFONE_MCC_MNC)) == 0) {

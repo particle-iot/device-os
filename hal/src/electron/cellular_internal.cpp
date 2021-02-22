@@ -75,7 +75,8 @@ cellular_result_t cellular_signal_impl(cellular_signal_t* signalext, bool streng
             }
 
             // RSSI in % [0, 100] based on [-111, -48] range mapped to [0, 65535] integer range
-            signalext->strength = (status.rxlev != 99) ? status.rxlev * 65535 / 63 : std::numeric_limits<int32_t>::min();
+            // signalext->strength = (status.rxlev != 99) ? status.rxlev * 65535 / 63 : std::numeric_limits<int32_t>::min();
+            signalext->strength = (status.rxlev != 99) ? cellular_get_scaled_strn(signalext->rssi, static_cast<hal_net_access_tech_t>(signalext->rat)) : std::numeric_limits<int32_t>::min();
             // Quality based on RXQUAL in % [0, 100] mapped to [0, 65535] integer range
             signalext->quality = (status.rxqual != 99) ? (7 - status.rxqual) * 65535 / 7 : std::numeric_limits<int32_t>::min();
             break;
@@ -88,9 +89,11 @@ cellular_result_t cellular_signal_impl(cellular_signal_t* signalext, bool streng
             signalext->ecno = (status.ecno != 255) ? status.ecno * 50 - 2450 : std::numeric_limits<int32_t>::min();
 
             // RSCP in % [0, 100] based on [-121, -25] range mapped to [0, 65535] integer range
-            signalext->strength = (status.rscp != 255) ? status.rscp * 65535 / 96 : std::numeric_limits<int32_t>::min();
+            // signalext->strength = (status.rscp != 255) ? status.rscp * 65535 / 96 : std::numeric_limits<int32_t>::min();
+            signalext->strength = (status.rscp != 255) ? cellular_get_scaled_strn(signalext->rscp, static_cast<hal_net_access_tech_t>(signalext->rat)) : std::numeric_limits<int32_t>::min();
             // Quality based on Ec/Io in % [0, 100] mapped to [0,65535] integer range
-            signalext->quality = (status.ecno != 255) ? status.ecno * 65535 / 49 : std::numeric_limits<int32_t>::min();
+            // signalext->quality = (status.ecno != 255) ? status.ecno * 65535 / 49 : std::numeric_limits<int32_t>::min();
+            signalext->quality = (status.rsrq != 255) ? cellular_get_scaled_qual(signalext->ecno, static_cast<hal_net_access_tech_t>(signalext->rat)) : std::numeric_limits<int32_t>::min();
             break;
         case ACT_LTE:
         case ACT_LTE_CAT_M1:
@@ -103,9 +106,11 @@ cellular_result_t cellular_signal_impl(cellular_signal_t* signalext, bool streng
             signalext->rsrq = (status.rsrq != 255) ? status.rsrq * 50 - 2000 : std::numeric_limits<int32_t>::min();
 
             // RSRP in % [0, 100] based on [-141, -44] range mapped to [0, 65535] integer range
-            signalext->strength = (status.rsrp != 255) ? status.rsrp * 65535 / 97 : std::numeric_limits<int32_t>::min();
+            // signalext->strength = (status.rsrp != 255) ? status.rsrp * 65535 / 97 : std::numeric_limits<int32_t>::min();
+            signalext->strength = (status.rsrp != 255) ? cellular_get_scaled_strn(signalext->rsrp, static_cast<hal_net_access_tech_t>(signalext->rat)) : std::numeric_limits<int32_t>::min();
             // Quality based on Ec/Io in % [0, 100] mapped to [0,65535] integer range
-            signalext->quality = (status.rsrq != 255) ? status.rsrq * 65535 / 34 : std::numeric_limits<int32_t>::min();
+            // signalext->quality = (status.rsrq != 255) ? status.rsrq * 65535 / 34 : std::numeric_limits<int32_t>::min();
+            signalext->quality = (status.rsrq != 255) ? cellular_get_scaled_qual(signalext->rsrq, static_cast<hal_net_access_tech_t>(signalext->rat)) : std::numeric_limits<int32_t>::min();
             break;
         default:
             res = SYSTEM_ERROR_UNKNOWN;

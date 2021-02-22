@@ -25,6 +25,8 @@
 #include "system_error.h"
 #include "gpio_hal.h"
 #include "delay_hal.h"
+#include "spi_lock.h"
+#include <mutex>
 
 using namespace particle;
 
@@ -33,6 +35,19 @@ void ioExpanderInterruptHandler(void* data) {
     auto instance = static_cast<Mcp23s17*>(data);
     instance->sync();
 }
+
+const hal_spi_info_t sDefaultSettings = {
+    .version = HAL_SPI_INFO_VERSION,
+    .system_clock = 0,
+    .default_settings = 0,
+    .enabled = true,
+    .mode = SPI_MODE_MASTER,
+    .clock = HAL_PLATFORM_MCP23S17_SPI_CLOCK,
+    .bit_order = MSBFIRST,
+    .data_mode = SPI_MODE0,
+    .ss_pin = PIN_INVALID
+};
+
 } // anonymous namespace
 
 
@@ -41,7 +56,8 @@ Mcp23s17::Mcp23s17()
           spi_(HAL_PLATFORM_MCP23S17_SPI),
           ioExpanderWorkerThread_(nullptr),
           ioExpanderWorkerThreadExit_(false),
-          ioExpanderWorkerSemaphore_(nullptr) {
+          ioExpanderWorkerSemaphore_(nullptr),
+          spiLock_(HAL_PLATFORM_MCP23S17_SPI, sDefaultSettings) {
     begin();
 }
 
@@ -371,7 +387,7 @@ void Mcp23s17::resetRegValue() {
 
 int Mcp23s17::writeRegister(const uint8_t addr, const uint8_t val) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
-    Mcp23s17SpiConfigurationGuarder spiGuarder(spi_);
+    std::lock_guard<SpiConfigurationLock> spiGuarder(spiLock_);
     HAL_GPIO_Write(IOE_CS, 0);
     hal_spi_transfer(spi_, MCP23S17_CMD_WRITE);
     hal_spi_transfer(spi_, addr);
@@ -383,7 +399,7 @@ int Mcp23s17::writeRegister(const uint8_t addr, const uint8_t val) const {
 int Mcp23s17::readRegister(const uint8_t addr, uint8_t* const val) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
     CHECK_TRUE(val != nullptr, SYSTEM_ERROR_INVALID_ARGUMENT);
-    Mcp23s17SpiConfigurationGuarder spiGuarder(spi_);
+    std::lock_guard<SpiConfigurationLock> spiGuarder(spiLock_);
     HAL_GPIO_Write(IOE_CS, 0);
     hal_spi_transfer(spi_, MCP23S17_CMD_READ);
     hal_spi_transfer(spi_, addr);
@@ -395,7 +411,7 @@ int Mcp23s17::readRegister(const uint8_t addr, uint8_t* const val) const {
 int Mcp23s17::readContinuousRegisters(const uint8_t start_addr, uint8_t* const val, uint8_t len) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
     CHECK_TRUE(val != nullptr, SYSTEM_ERROR_INVALID_ARGUMENT);
-    Mcp23s17SpiConfigurationGuarder spiGuarder(spi_);
+    std::lock_guard<SpiConfigurationLock> spiGuarder(spiLock_);
     HAL_GPIO_Write(IOE_CS, 0);
     hal_spi_transfer(spi_, MCP23S17_CMD_READ);
     hal_spi_transfer(spi_, start_addr);

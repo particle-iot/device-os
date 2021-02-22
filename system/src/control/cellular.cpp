@@ -116,6 +116,7 @@ int getIccid(ctrl_request* req) {
     CHECK_TRUE(cellMgr, SYSTEM_ERROR_UNKNOWN);
     const auto ncpClient = cellMgr->ncpClient();
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
+    const NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
     char buf[32] = {};
     CHECK(ncpClient->getIccid(buf, sizeof(buf)));
