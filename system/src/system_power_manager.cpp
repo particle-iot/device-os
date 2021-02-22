@@ -46,7 +46,7 @@ namespace {
 
 constexpr uint8_t BQ24195_VERSION = 0x23;
 
-// For deducing battery satte
+// For deducing battery state
 constexpr system_tick_t BATTERY_STATE_NORMAL_CHECK_PERIOD = 10000;
 constexpr system_tick_t BATTERY_STATE_CHANGE_CHECK_PERIOD = 1000;
 constexpr system_tick_t BATTERY_CHARGED_MUTE_WINDOW = 1000;
@@ -698,9 +698,8 @@ connected:
   PMIC power(true);
   const uint8_t status = power.getSystemStatus();
   const uint8_t pwrGood = (status >> 2) & 0b01;
-  if ((status & 0x08) || !pwrGood) {
-    DBG_PWR("In DPM mode or power is not good");
-    // It's in DPM mode, the battery is discharging
+  if (!pwrGood) {
+    DBG_PWR("Power is not good");
     confirmBatteryState(g_batteryState, BATTERY_STATE_DISCHARGING);
   } else if (vCell < BATTERY_CONNECTED_VCELL_THRESHOLD) {
     DBG_PWR("vCell < BATTERY_CONNECTED_VCELL_THRESHOLD");
@@ -743,9 +742,8 @@ void PowerManager::deduceBatteryStateChargeEnabled() {
     batteryStateTransitioningTo(BATTERY_STATE_CHARGING);
   } else if (chargeState == 0b00) {
     const uint8_t pwrGood = (status >> 2) & 0b01;
-    if ((status & 0x08) || !pwrGood) {
-      DBG_PWR("In DPM mode or power is not good");
-      // It's in DPM mode, the battery is discharging
+    if (!pwrGood) {
+      DBG_PWR("Power is not good");
       confirmBatteryState(g_batteryState, BATTERY_STATE_DISCHARGING);
     } else {
       batteryStateTransitioningTo(BATTERY_STATE_NOT_CHARGING);
