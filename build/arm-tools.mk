@@ -64,27 +64,21 @@ endif
 CFLAGS += --specs=nano.specs
 
 # Check if the compiler version is the minimum required
-quote="
-lt=\<
-dollar=$$
-arm_gcc_version_str:=$(strip $(shell $(CC) -dumpversion))
-expected_version:=9.2.1
-#$(info result $(shell test $(quote)$(arm_gcc_version_str)$(quote) $(lt) $(quote)$(expected_version)$(quote);echo $$?))
-ifeq ($(shell test $(quote)$(arm_gcc_version_str)$(quote) $(lt) $(quote)$(expected_version)$(quote); echo $$?),0)
-     $(error "ARM gcc version $(expected_version) or later required, but found $(arm_gcc_version_str)")
+version_to_number=$(shell v=$1; v=($${v//./ }); echo $$((v[0] * 10000 + v[1] * 100 + v[2])))
+get_major_version=$(shell v=$1; v=($${v//./ }); echo $${v[0]})
+arm_gcc_version_str:=$(shell $(CC) -dumpversion)
+arm_gcc_version:=$(call version_to_number,$(arm_gcc_version_str))
+expected_version_str:=9.2.1
+ifeq ($(shell test $(arm_gcc_version) -lt $(call version_to_number,$(expected_version_str)); echo $$?),0)
+     $(error "ARM gcc version $(expected_version_str) or later required, but found $(arm_gcc_version_str)")
 endif
 
-arm_gcc_version_major:=$(word 1,$(subst ., ,$(arm_gcc_version_str)))
-arm_gcc_version_minor:=$(word 2,$(subst ., ,$(arm_gcc_version_str)))
-arm_gcc_version_patch:=$(word 3,$(subst ., ,$(arm_gcc_version_str)))
-arm_gcc_version:=$(shell echo $(($(arm_gcc_version_major) * 10000 + $(arm_gcc_version_minor) * 100 + $(arm_gcc_version_patch))))
-
-ifeq ($(shell test $(quote)$(arm_gcc_version_str)$(quote) $(lt) $(quote)4.9.0$(quote); echo $$?),0)
+ifeq ($(shell test $(arm_gcc_version) -lt $(call version_to_number,4.9.0); echo $$?),0)
      NANO_SUFFIX=_s
 endif
 
 # GCC 8 linker is broken and doesn't support LENGTH(region) when defining another memory region within
 # MEMORY block
-ifeq ($(arm_gcc_version_major),8)
+ifeq ($(call get_major_version,$(arm_gcc_version_str)),8)
 	LDFLAGS += -Wl,--defsym=GCC_LD_BROKEN=1
 endif

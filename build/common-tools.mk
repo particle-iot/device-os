@@ -1,3 +1,4 @@
+SHELL = /bin/bash
 
 RM = rm -f
 RMDIR = rm -f -r
