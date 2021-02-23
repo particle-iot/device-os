@@ -365,7 +365,6 @@ public:
     bool scanning();
     int setScanParams(const hal_ble_scan_params_t* params);
     int getScanParams(hal_ble_scan_params_t* params) const;
-    int setScanCoded(bool is_coded);
     int startScanning(hal_ble_on_scan_result_cb_t callback, void* context);
     int stopScanning();
     ble_gap_scan_params_t toPlatformScanParams() const;
@@ -388,9 +387,8 @@ private:
     bool observerInitialized_;
     volatile bool isScanning_;                              /**< If it is scanning or not. */
     hal_ble_scan_params_t scanParams_;                      /**< BLE scanning parameters. */
-    bool scanUseCoded_ = false;                             /** If true, use coded phy scanning. Default false. */
     os_semaphore_t scanSemaphore_;                          /**< Semaphore to wait until the scan procedure completed. */
-    uint8_t scanReportBuff_[BLE_GAP_SCAN_BUFFER_EXTENDED_MAX_SUPPORTED];   /**< Buffer to hold the scanned report data. MUST BE EXTENDED_MAX TO USE CODED PHY */
+    uint8_t scanReportBuff_[BLE_MAX_SCAN_REPORT_BUF_LEN];   /**< Buffer to hold the scanned report data. */
     ble_data_t bleScanData_;                                /**< BLE scanned data. */
     hal_ble_on_scan_result_cb_t scanResultCallback_;        /**< Callback function on scan result. */
     void* context_;                                         /**< Context of the scan result callback function. */
@@ -1385,11 +1383,6 @@ int BleObject::Observer::getScanParams(hal_ble_scan_params_t* params) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleObject::Observer::setScanCoded(bool is_coded) {
-    scanUseCoded_ = is_coded;
-    return SYSTEM_ERROR_NONE;
-}
-
 int BleObject::Observer::continueScanning() {
     int ret = sd_ble_gap_scan_start(nullptr, &bleScanData_);
     return nrf_system_error(ret);
@@ -1458,12 +1451,12 @@ int BleObject::Observer::stopScanning() {
 
 ble_gap_scan_params_t BleObject::Observer::toPlatformScanParams() const {
     ble_gap_scan_params_t params = {};
-    params.extended = scanUseCoded_ ? 1 : 0;
+    params.extended = (scanParams_.scan_phys == BLE_SCAN_PHYS_1MBPS) ? 0x00 : 0x01; /**< Extended required if other than PHYS_1MBPS */
     params.active = scanParams_.active;
     params.interval = scanParams_.interval;
     params.window = scanParams_.window;
     params.timeout = scanParams_.timeout;
-    params.scan_phys = scanUseCoded_ ? BLE_GAP_PHY_CODED : BLE_GAP_PHY_1MBPS;
+    params.scan_phys = scanParams_.scan_phys;
     params.filter_policy = scanParams_.filter_policy;
     return params;
 }
@@ -4111,13 +4104,6 @@ int hal_ble_gap_get_scan_parameters(hal_ble_scan_params_t* scan_params, void* re
     LOG_DEBUG(TRACE, "hal_ble_gap_get_scan_parameters().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().observer()->getScanParams(scan_params);
-}
-
-int hal_ble_gap_set_scan_coded(bool scan_coded, void* reserved) {
-    BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gap_set_scan_coded().");
-    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    return BleObject::getInstance().observer()->setScanCoded(scan_coded);
 }
 
 int hal_ble_gap_start_scan(hal_ble_on_scan_result_cb_t callback, void* context, void* reserved) {
