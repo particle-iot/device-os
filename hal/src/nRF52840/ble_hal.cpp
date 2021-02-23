@@ -489,7 +489,7 @@ private:
     bool attMtuExchanged(hal_ble_conn_handle_t connHandle);
     BleConnection* fetchConnection(hal_ble_conn_handle_t connHandle);
     BleConnection* fetchConnection(const hal_ble_addr_t* address);
-    int addConnection(BleConnection& connection);
+    int addConnection(BleConnection&& connection);
     void removeConnection(hal_ble_conn_handle_t connHandle);
     void initiateConnParamsUpdateIfNeeded(const BleConnection* connection);
     bool isConnParamsFeeded(const hal_ble_conn_params_t* params) const;
@@ -2197,7 +2197,7 @@ BleObject::ConnectionsManager::BleConnection* BleObject::ConnectionsManager::fet
     return nullptr;
 }
 
-int BleObject::ConnectionsManager::addConnection(BleConnection& connection) {
+int BleObject::ConnectionsManager::addConnection(BleConnection&& connection) {
     CHECK_TRUE(fetchConnection(connection.info.conn_handle) == nullptr, SYSTEM_ERROR_INTERNAL);
     CHECK_TRUE(connections_.append(std::move(connection)), SYSTEM_ERROR_NO_MEMORY);
     return SYSTEM_ERROR_NONE;
@@ -2326,7 +2326,7 @@ int BleObject::ConnectionsManager::processConnectedEventFromThread(const ble_evt
     connection.info.att_mtu = BLE_DEFAULT_ATT_MTU_SIZE; // Use the default ATT_MTU on connected.
     connection.isMtuExchanged = false;
     connection.pairState = BLE_PAIRING_STATE_NOT_INITIATED;
-    int ret = addConnection(connection);
+    int ret = addConnection(std::move(connection));
     if (ret != SYSTEM_ERROR_NONE) {
         LOG(ERROR, "Add new connection failed. Disconnects from peer.");
         if (sd_ble_gap_disconnect(connection.info.conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION) != NRF_SUCCESS) {

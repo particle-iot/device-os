@@ -410,7 +410,7 @@ test(BLE_26_Central_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
     }
 }
 
-test(BLE_27_Central_Initiate_Pairing_Peripheral_Being_Rejected) {
+test(BLE_27_Central_Initiate_Pairing_Being_Rejected) {
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
     {
