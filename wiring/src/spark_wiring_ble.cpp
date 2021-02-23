@@ -2614,11 +2614,17 @@ int BleLocalDevice::rejectPairing(const BlePeerDevice& peer) const {
 }
 
 int BleLocalDevice::setPairingNumericComparison(const BlePeerDevice& peer, bool equal) const {
-    return hal_ble_gap_set_lesc_numeric_comparison(peer.impl()->connHandle(), equal, nullptr);
+    hal_ble_pairing_auth_data_t auth = {};
+    auth.type = BLE_PAIRING_AUTH_DATA_NUMERIC_COMPARISON;
+    auth.params.equal = equal;
+    return hal_ble_gap_set_pairing_auth_data(peer.impl()->connHandle(), &auth, nullptr);
 }
 
 int BleLocalDevice::setPairingPasskey(const BlePeerDevice& peer, const uint8_t* passkey) const {
-    return hal_ble_gap_set_pairing_passkey(peer.impl()->connHandle(), passkey, nullptr);
+    hal_ble_pairing_auth_data_t auth = {};
+    auth.type = BLE_PAIRING_AUTH_DATA_PASSKEY;
+    auth.params.data = passkey;
+    return hal_ble_gap_set_pairing_auth_data(peer.impl()->connHandle(), &auth, nullptr);
 }
 
 bool BleLocalDevice::isPairing(const BlePeerDevice& peer) const {

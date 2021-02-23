@@ -100,10 +100,10 @@ DYNALIB_FN(65, hal_ble, hal_ble_gatt_server_indicate_characteristic_value, ssize
 DYNALIB_FN(66, hal_ble, hal_ble_gap_set_pairing_config, int(const hal_ble_pairing_config_t*, void*))
 DYNALIB_FN(67, hal_ble, hal_ble_gap_start_pairing, int(hal_ble_conn_handle_t, void*))
 DYNALIB_FN(68, hal_ble, hal_ble_gap_reject_pairing, int(hal_ble_conn_handle_t, void*))
-DYNALIB_FN(69, hal_ble, hal_ble_gap_set_pairing_passkey, int(hal_ble_conn_handle_t, const uint8_t*, void*))
+DYNALIB_FN(69, hal_ble, hal_ble_gap_set_pairing_passkey_deprecated, int(hal_ble_conn_handle_t, const uint8_t*, void*))
 DYNALIB_FN(70, hal_ble, hal_ble_gap_is_pairing, bool(hal_ble_conn_handle_t, void*))
 DYNALIB_FN(71, hal_ble, hal_ble_gap_is_paired, bool(hal_ble_conn_handle_t, void*))
-DYNALIB_FN(72, hal_ble, hal_ble_gap_set_lesc_numeric_comparison, int(hal_ble_conn_handle_t, bool, void*))
+DYNALIB_FN(72, hal_ble, hal_ble_gap_set_pairing_auth_data, int(hal_ble_conn_handle_t, const hal_ble_pairing_auth_data_t*, void*))
 DYNALIB_FN(73, hal_ble, hal_ble_gap_get_pairing_config, int(hal_ble_pairing_config_t*, void*))
 
 DYNALIB_END(hal_ble)

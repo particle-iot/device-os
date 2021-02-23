@@ -441,8 +441,7 @@ public:
     int getPairingConfig(hal_ble_pairing_config_t* config) const;
     int startPairing(hal_ble_conn_handle_t connHandle);
     int rejectPairing(hal_ble_conn_handle_t connHandle);
-    int lescNumericComparison(hal_ble_conn_handle_t connHandle, bool equal);
-    int setPairingPasskey(hal_ble_conn_handle_t connHandle, const uint8_t* passkey);
+    int setPairingAuthData(hal_ble_conn_handle_t connHandle, const hal_ble_pairing_auth_data_t* auth);
     bool isPairing(hal_ble_conn_handle_t connHandle);
     bool isPaired(hal_ble_conn_handle_t connHandle);
     bool valid(hal_ble_conn_handle_t connHandle);
@@ -469,8 +468,7 @@ private:
         BLE_PAIRING_STATE_PASSKEY_DISPLAY,
         BLE_PAIRING_STATE_PASSKEY_INPUT,
         BLE_PAIRING_STATE_REJECTED,
-        BLE_PAIRING_STATE_PAIRED,
-        BLE_PAIRING_STATE_LESC_KEY_CONFIRMED,
+        BLE_PAIRING_STATE_PAIRED
     };
 
     struct BleConnection {
@@ -2035,22 +2033,22 @@ int BleObject::ConnectionsManager::rejectPairing(hal_ble_conn_handle_t connHandl
     CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
     switch (connection->pairState) {
         case BLE_PAIRING_STATE_SEC_REQ_RECEIVED: {
-            connection->pairState = BLE_PAIRING_STATE_REJECTED;
             int ret = sd_ble_gap_authenticate(connection->info.conn_handle, nullptr);
             CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+            connection->pairState = BLE_PAIRING_STATE_REJECTED;
             break;
         }
         case BLE_PAIRING_STATE_PAIRING_REQ_RECEIVED: {
-            connection->pairState = BLE_PAIRING_STATE_REJECTED;
             int ret = sd_ble_gap_sec_params_reply(connHandle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, nullptr, nullptr);
             CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+            connection->pairState = BLE_PAIRING_STATE_REJECTED;
             break;
         }
         case BLE_GAP_EVT_PASSKEY_DISPLAY:
         case BLE_PAIRING_STATE_PASSKEY_INPUT: {
-            connection->pairState = BLE_PAIRING_STATE_REJECTED;
             int ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_NONE, nullptr);
             CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+            connection->pairState = BLE_PAIRING_STATE_REJECTED;
             break;
         }
         default: {
@@ -2060,42 +2058,31 @@ int BleObject::ConnectionsManager::rejectPairing(hal_ble_conn_handle_t connHandl
     return SYSTEM_ERROR_NONE;
 }
 
-int BleObject::ConnectionsManager::lescNumericComparison(hal_ble_conn_handle_t connHandle, bool equal) {
+int BleObject::ConnectionsManager::setPairingAuthData(hal_ble_conn_handle_t connHandle, const hal_ble_pairing_auth_data_t* auth) {
+    CHECK_TRUE(auth, SYSTEM_ERROR_INVALID_ARGUMENT);
     BleConnection* connection = fetchConnection(connHandle);
     CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
-    CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_PASSKEY_DISPLAY, SYSTEM_ERROR_INVALID_STATE);
     int ret;
-    if (equal) {
-        ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, nullptr);
-    } else {
-        ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_NONE/*reject*/, nullptr);
-    }
-    if (ret != NRF_SUCCESS) {
-        connection->pairState = BLE_PAIRING_STATE_NOT_INITIATED;
-        return nrf_system_error(ret);
-    }
-    connection->pairState = BLE_PAIRING_STATE_LESC_KEY_CONFIRMED;
-    return SYSTEM_ERROR_NONE;
-}
-
-int BleObject::ConnectionsManager::setPairingPasskey(hal_ble_conn_handle_t connHandle, const uint8_t* passkey) {
-    BleConnection* connection = fetchConnection(connHandle);
-    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
-    CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_PASSKEY_INPUT, SYSTEM_ERROR_INVALID_STATE);
-    for (uint8_t i = 0; i < 6; i++) {
-        if (!std::isdigit(passkey[i])) {
-            sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_NONE/*reject*/, nullptr);
-            LOG(ERROR, "Invalid digits.");
-            connection->pairState = BLE_PAIRING_STATE_REJECTED;
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
+    if (auth->type == BLE_PAIRING_AUTH_DATA_NUMERIC_COMPARISON) {
+        CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_PASSKEY_DISPLAY, SYSTEM_ERROR_INVALID_STATE);
+        if (auth->params.equal) {
+            ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, nullptr);
+        } else {
+            return rejectPairing(connHandle);
         }
+    } else if (auth->type == BLE_PAIRING_AUTH_DATA_PASSKEY) {
+        CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_PASSKEY_INPUT, SYSTEM_ERROR_INVALID_STATE);
+        for (uint8_t i = 0; i < 6; i++) {
+            if (!std::isdigit(auth->params.data[i])) {
+                LOG(ERROR, "Invalid digits.");
+                return rejectPairing(connHandle);
+            }
+        }
+        ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, auth->params.data);
+    } else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
-    int ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, passkey);
-    if (ret != NRF_SUCCESS) {
-        connection->pairState = BLE_PAIRING_STATE_NOT_INITIATED;
-        return nrf_system_error(ret);
-    }
-    return SYSTEM_ERROR_NONE;
+    return nrf_system_error(ret);
 }
 
 bool BleObject::ConnectionsManager::isPairing(hal_ble_conn_handle_t connHandle) {
@@ -4223,18 +4210,21 @@ int hal_ble_gap_reject_pairing(hal_ble_conn_handle_t conn_handle, void* reserved
     return BleObject::getInstance().connMgr()->rejectPairing(conn_handle);
 }
 
-int hal_ble_gap_set_pairing_passkey(hal_ble_conn_handle_t conn_handle, const uint8_t* passkey, void* reserved) {
+int hal_ble_gap_set_pairing_auth_data(hal_ble_conn_handle_t conn_handle, const hal_ble_pairing_auth_data_t* auth, void* reserved) {
     BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gap_set_pairing_passkey().");
+    LOG_DEBUG(TRACE, "hal_ble_gap_set_pairing_auth_data().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    return BleObject::getInstance().connMgr()->setPairingPasskey(conn_handle, passkey);
+    return BleObject::getInstance().connMgr()->setPairingAuthData(conn_handle, auth);
 }
 
-int hal_ble_gap_set_lesc_numeric_comparison(hal_ble_conn_handle_t conn_handle, bool equal, void* reserved) {
+int hal_ble_gap_set_pairing_passkey_deprecated(hal_ble_conn_handle_t conn_handle, const uint8_t* passkey, void* reserved) {
     BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gap_set_lesc_numeric_comparison().");
+    LOG_DEBUG(TRACE, "hal_ble_gap_set_pairing_passkey_deprecated().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    return BleObject::getInstance().connMgr()->lescNumericComparison(conn_handle, equal);
+    hal_ble_pairing_auth_data_t auth = {};
+    auth.type = BLE_PAIRING_AUTH_DATA_PASSKEY;
+    auth.params.data = passkey;
+    return BleObject::getInstance().connMgr()->setPairingAuthData(conn_handle, &auth);
 }
 
 bool hal_ble_gap_is_pairing(hal_ble_conn_handle_t conn_handle, void* reserved) {
