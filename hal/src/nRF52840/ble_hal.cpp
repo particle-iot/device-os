@@ -1451,12 +1451,21 @@ int BleObject::Observer::stopScanning() {
 
 ble_gap_scan_params_t BleObject::Observer::toPlatformScanParams() const {
     ble_gap_scan_params_t params = {};
-    params.extended = (scanParams_.scan_phys == BLE_SCAN_PHYS_1MBPS) ? 0x00 : 0x01; /**< Extended required if other than PHYS_1MBPS */
+    params.extended = (scanParams_.scan_phys == BLE_PHYS_1MBPS) ? 0x00 : 0x01; /**< Extended required if other than PHYS_1MBPS */
     params.active = scanParams_.active;
     params.interval = scanParams_.interval;
     params.window = scanParams_.window;
     params.timeout = scanParams_.timeout;
-    params.scan_phys = scanParams_.scan_phys;
+    params.scan_phys = 0x01;               /**< Default to standard 1MBPS scanning on nRF52840 */
+    if (scanParams_.scan_phys == BLE_PHYS_CODED) {
+        params.scan_phys = 0x04;           /**< Selects CODED_PHY scanning on nRF52840 */
+    }
+    if (scanParams_.scan_phys == BLE_PHYS_BOTH) {
+        params.scan_phys = 0x05;           /**< Selects simultaneous 1MBPS and CODED_PHY scanning on nRF52840 */
+        if (params.window > (params.interval / 2)) {
+            params.window = params.interval / 2; /**< Must limit window to interval/2 when simultaneous scanning */
+        }
+    }   
     params.filter_policy = scanParams_.filter_policy;
     return params;
 }
