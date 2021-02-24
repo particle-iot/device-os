@@ -1952,35 +1952,37 @@ int SaraNcpClient::networkDebug() {
         LOG_PRINT(TRACE, buf.get());
         LOG_PRINTF(TRACE, "\r\n");
     }
-    LOG(TRACE, "Higher Priority PLMN search period");
-    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28465,0,0,0"));
-    LOG(TRACE, "Co-operative Network List");
-    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28466,0,0,0"));
-    LOG(TRACE, "Operator controlled PLMN selector with Access Technology");
-    memset(buf.get(), 0, 4096);
-    resp = parser_.sendCommand("AT+CRSM=176,28513,0,0,0");
-    while (true) {
-        auto len = resp.readLine(buf.get(), 4096);
-        if (len <= 0) {
-            break;
+    if (ncpId() != PLATFORM_NCP_SARA_R410) {
+        LOG(TRACE, "Higher Priority PLMN search period");
+        CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28465,0,0,0"));
+        LOG(TRACE, "Co-operative Network List");
+        CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28466,0,0,0"));
+        LOG(TRACE, "Operator controlled PLMN selector with Access Technology");
+        memset(buf.get(), 0, 4096);
+        resp = parser_.sendCommand("AT+CRSM=176,28513,0,0,0");
+        while (true) {
+            auto len = resp.readLine(buf.get(), 4096);
+            if (len <= 0) {
+                break;
+            }
+            LOG(TRACE, "%d", len);
+            CHECK_PARSER(resp.readResult());
+            LOG_PRINT(TRACE, buf.get());
+            LOG_PRINTF(TRACE, "\r\n");
         }
-        LOG(TRACE, "%d", len);
-        CHECK_PARSER(resp.readResult());
-        LOG_PRINT(TRACE, buf.get());
-        LOG_PRINTF(TRACE, "\r\n");
+        LOG(TRACE, "HPLMN selector with Access Technology");
+        CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28514,0,0,0"));
+        LOG(TRACE, "Operator PLMN List");
+        CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28614,0,0,0"));
+        LOG(TRACE, "Equivalent HPLMN");
+        CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28633,0,0,0"));
+        LOG(TRACE, "Equivalent HPLMN Presentation Indication");
+        CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28635,0,0,0"));
+        LOG(TRACE, "Last RPLMN Selection Indication");
+        CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28636,0,0,0"));
+        LOG(TRACE, "SoLSA LSA List");
+        CHECK_PARSER(parser_.execCommand("AT+CRSM=176,20273,0,0,0"));
     }
-    LOG(TRACE, "HPLMN selector with Access Technology");
-    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28514,0,0,0"));
-    LOG(TRACE, "Operator PLMN List");
-    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28614,0,0,0"));
-    LOG(TRACE, "Equivalent HPLMN");
-    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28633,0,0,0"));
-    LOG(TRACE, "Equivalent HPLMN Presentation Indication");
-    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28635,0,0,0"));
-    LOG(TRACE, "Last RPLMN Selection Indication");
-    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28636,0,0,0"));
-    LOG(TRACE, "SoLSA LSA List");
-    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,20273,0,0,0"));
     return 0;
 }
 
