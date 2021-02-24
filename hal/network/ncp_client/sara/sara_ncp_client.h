@@ -112,6 +112,8 @@ private:
     unsigned registrationTimeout_;
     unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
+    bool checkNetworkDbg = false;
+    unsigned int copsScan = 3;
 
     system_tick_t lastWindow_ = 0;
     size_t bytesInWindow_ = 0;
@@ -140,6 +142,7 @@ private:
     void checkRegistrationState();
     int interveneRegistration();
     int checkRunningImsi();
+    int networkDebug();
     int processEventsImpl();
     int getIccidImpl(char* buf, size_t size);
 

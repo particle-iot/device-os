@@ -116,6 +116,7 @@ const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 const unsigned REGISTRATION_TWILIO_HOLDOFF_TIMEOUT = 5 * 60 * 1000;
 
 const unsigned CHECK_IMSI_TIMEOUT = 60 * 1000;
+const unsigned NETWORK_DBG_TIMEOUT = 15*1000;
 
 const system_tick_t UBLOX_COPS_TIMEOUT = 5 * 60 * 1000;
 const system_tick_t UBLOX_CFUN_TIMEOUT = 3 * 60 * 1000;
@@ -261,6 +262,7 @@ int SaraNcpClient::initParser(Stream* stream) {
         // TODO: Do this only for Twilio
         if (!prevRegStatus && self->psd_.registered()) {   // just registered. Check which IMSI worked.
             self->imsiCheckTime_ = 0;
+            self->checkNetworkDbg = true;
         }
         // self->checkRegistrationState();
         // Cellular Global Identity (partial)
@@ -1910,11 +1912,87 @@ int SaraNcpClient::checkRunningImsi() {
     return 0;
 }
 
+int SaraNcpClient::networkDebug() {
+    auto buf = std::make_unique<char[]>(4096);
+    memset(buf.get(), 0, 4096);
+    auto resp = parser_.sendCommand("AT+CGED=0");
+    while (true) {
+        auto len = resp.readLine(buf.get(), 4096);
+        if (len <= 0) {
+            break;
+        }
+        LOG(TRACE, "%d", len);
+        CHECK_PARSER(resp.readResult());
+        LOG_PRINT(TRACE, buf.get());
+        LOG_PRINTF(TRACE, "\r\n");
+    }
+    resp = parser_.sendCommand("AT+UCELLINFO?");
+    while (true) {
+        auto len = resp.readLine(buf.get(), 4096);
+        if (len <= 0) {
+            break;
+        }
+        LOG(TRACE, "%d", len);
+        CHECK_PARSER(resp.readResult());
+        LOG_PRINT(TRACE, buf.get());
+        LOG_PRINTF(TRACE, "\r\n");
+    }
+    LOG(TRACE, "Forbidden PLMNs");
+    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28539,0,0,0"));
+    LOG(TRACE, "User controlled PLMN selector with Access Technology");
+    memset(buf.get(), 0, 4096);
+    resp = parser_.sendCommand("AT+CRSM=176,28512,0,0,0");
+    while (true) {
+        auto len = resp.readLine(buf.get(), 4096);
+        if (len <= 0) {
+            break;
+        }
+        LOG(TRACE, "%d", len);
+        CHECK_PARSER(resp.readResult());
+        LOG_PRINT(TRACE, buf.get());
+        LOG_PRINTF(TRACE, "\r\n");
+    }
+    LOG(TRACE, "Higher Priority PLMN search period");
+    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28465,0,0,0"));
+    LOG(TRACE, "Co-operative Network List");
+    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28466,0,0,0"));
+    LOG(TRACE, "Operator controlled PLMN selector with Access Technology");
+    memset(buf.get(), 0, 4096);
+    resp = parser_.sendCommand("AT+CRSM=176,28513,0,0,0");
+    while (true) {
+        auto len = resp.readLine(buf.get(), 4096);
+        if (len <= 0) {
+            break;
+        }
+        LOG(TRACE, "%d", len);
+        CHECK_PARSER(resp.readResult());
+        LOG_PRINT(TRACE, buf.get());
+        LOG_PRINTF(TRACE, "\r\n");
+    }
+    LOG(TRACE, "HPLMN selector with Access Technology");
+    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28514,0,0,0"));
+    LOG(TRACE, "Operator PLMN List");
+    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28614,0,0,0"));
+    LOG(TRACE, "Equivalent HPLMN");
+    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28633,0,0,0"));
+    LOG(TRACE, "Equivalent HPLMN Presentation Indication");
+    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28635,0,0,0"));
+    LOG(TRACE, "Last RPLMN Selection Indication");
+    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28636,0,0,0"));
+    LOG(TRACE, "SoLSA LSA List");
+    CHECK_PARSER(parser_.execCommand("AT+CRSM=176,20273,0,0,0"));
+    return 0;
+}
+
 int SaraNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
     checkRegistrationState();
     interveneRegistration();
+    if (checkNetworkDbg) {
+        checkNetworkDbg = false;
+        networkDebug();
+    }
     checkRunningImsi();
     if (connState_ != NcpConnectionState::CONNECTING ||
             millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
@@ -1928,6 +2006,7 @@ int SaraNcpClient::processEventsImpl() {
         CHECK_PARSER(parser_.execCommand("AT+CEER"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+        networkDebug();
     } else {
         CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     }

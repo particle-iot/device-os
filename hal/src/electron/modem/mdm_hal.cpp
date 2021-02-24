@@ -1630,47 +1630,48 @@ int MDMParser::network_debug() {
         return -1;
     }
 
-    MDM_INFO("Operator controlled PLMN selector with Access Technology");
-    sendFormated("AT+CRSM=176,28513,0,0,0\r\n");
-    if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
-        return -1;
-    }
+    if (_dev.dev != DEV_SARA_R410) {
+        MDM_INFO("Operator controlled PLMN selector with Access Technology");
+        sendFormated("AT+CRSM=176,28513,0,0,0\r\n");
+        if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
+            return -1;
+        }
 
-    MDM_INFO("HPLMN selector with Access Technology");
-    sendFormated("AT+CRSM=176,28514,0,0,0\r\n");
-    if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
-        return -1;
-    }
+        MDM_INFO("HPLMN selector with Access Technology");
+        sendFormated("AT+CRSM=176,28514,0,0,0\r\n");
+        if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
+            return -1;
+        }
 
-    MDM_INFO("Operator PLMN List");
-    sendFormated("AT+CRSM=176,28614,0,0,0\r\n");
-    if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
-        return -1;
-    }
+        MDM_INFO("Operator PLMN List");
+        sendFormated("AT+CRSM=176,28614,0,0,0\r\n");
+        if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
+            return -1;
+        }
 
-    MDM_INFO("Equivalent HPLMN");
-    sendFormated("AT+CRSM=176,28633,0,0,0\r\n");
-    if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
-        return -1;
-    }
+        MDM_INFO("Equivalent HPLMN");
+        sendFormated("AT+CRSM=176,28633,0,0,0\r\n");
+        if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
+            return -1;
+        }
 
-    MDM_INFO("Equivalent HPLMN Presentation Indication");
-    sendFormated("AT+CRSM=176,28635,0,0,0\r\n");
-    if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
-        return -1;
-    }
+        MDM_INFO("Equivalent HPLMN Presentation Indication");
+        sendFormated("AT+CRSM=176,28635,0,0,0\r\n");
+        if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
+            return -1;
+        }
 
-    MDM_INFO("Last RPLMN Selection Indication");
-    sendFormated("AT+CRSM=176,28636,0,0,0\r\n");
-    if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
-        return -1;
+        MDM_INFO("Last RPLMN Selection Indication");
+        sendFormated("AT+CRSM=176,28636,0,0,0\r\n");
+        if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
+            return -1;
+        }
     }
-
-    MDM_INFO("SoLSA LSA List");
-    sendFormated("AT+CRSM=176,20273,0,0,0\r\n");
-    if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
-        return -1;
-    }
+        MDM_INFO("SoLSA LSA List");
+        sendFormated("AT+CRSM=176,20273,0,0,0\r\n");
+        if (WAIT == waitFinalResp(nullptr, nullptr, NW_DBG_TIMEOUT)) {
+            return -1;
+        }
     // Any general erros
     sendFormated("AT+CEER\r\n");
     if (WAIT == waitFinalResp(nullptr, nullptr, CEER_TIMEOUT)) {
