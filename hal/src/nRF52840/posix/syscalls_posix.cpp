@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <stdio.h>
 #include <fcntl.h>
 // IMPORANT: this is our own implementation header
 #include <sys/dirent.h>

@@ -15,7 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 #include "logging.h"
-#include <memory>
 #include "nrf_gpio.h"
 #include "nrfx_spim.h"
 #include "nrfx_spis.h"
@@ -27,6 +26,9 @@
 #include "concurrent_hal.h"
 #include "delay_hal.h"
 #include "check.h"
+
+#include <memory>
+#include <cstdlib>
 
 #define DEFAULT_SPI_MODE        SPI_MODE_MASTER
 #define DEFAULT_DATA_MODE       SPI_MODE3
