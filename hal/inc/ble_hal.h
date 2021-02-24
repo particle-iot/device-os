@@ -320,8 +320,9 @@ typedef struct hal_ble_pairing_status_updated_evt_t {
 } hal_ble_pairing_status_updated_evt_t;
 
 typedef struct hal_ble_pairing_auth_data_t {
+    uint16_t version;
+    uint16_t size;
     hal_ble_pairing_auth_data_type_t type;
-    uint16_t size; // payload length of params
     union {
         bool equal; //For numeric comparison result
         const uint8_t* passkey; // For passkey

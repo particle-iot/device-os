@@ -2065,14 +2065,14 @@ int BleObject::ConnectionsManager::setPairingAuthData(hal_ble_conn_handle_t conn
     BleConnection* connection = fetchConnection(connHandle);
     CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
     int ret;
-    if (auth->type == BLE_PAIRING_AUTH_DATA_NUMERIC_COMPARISON && auth->size == sizeof(bool)) {
+    if (auth->type == BLE_PAIRING_AUTH_DATA_NUMERIC_COMPARISON) {
         CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_PASSKEY_DISPLAY, SYSTEM_ERROR_INVALID_STATE);
         if (auth->params.equal) {
             ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, nullptr);
         } else {
             return rejectPairing(connHandle);
         }
-    } else if (auth->type == BLE_PAIRING_AUTH_DATA_PASSKEY && auth->size == BLE_PAIRING_PASSKEY_LEN) {
+    } else if (auth->type == BLE_PAIRING_AUTH_DATA_PASSKEY) {
         CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_PASSKEY_INPUT, SYSTEM_ERROR_INVALID_STATE);
         for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
             if (!std::isdigit(auth->params.passkey[i])) {
@@ -4224,8 +4224,9 @@ int hal_ble_gap_set_pairing_passkey_deprecated(hal_ble_conn_handle_t conn_handle
     LOG_DEBUG(TRACE, "hal_ble_gap_set_pairing_passkey_deprecated().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     hal_ble_pairing_auth_data_t auth = {};
+    auth.version = BLE_API_VERSION;
+    auth.size = sizeof(hal_ble_pairing_auth_data_t);
     auth.type = BLE_PAIRING_AUTH_DATA_PASSKEY;
-    auth.size = BLE_PAIRING_PASSKEY_LEN;
     auth.params.passkey = passkey;
     return BleObject::getInstance().connMgr()->setPairingAuthData(conn_handle, &auth);
 }
