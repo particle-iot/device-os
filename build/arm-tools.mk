@@ -68,7 +68,7 @@ version_to_number=$(shell v=$1; v=($${v//./ }); echo $$((v[0] * 10000 + v[1] * 1
 get_major_version=$(shell v=$1; v=($${v//./ }); echo $${v[0]})
 arm_gcc_version_str:=$(shell $(CC) -dumpversion)
 arm_gcc_version:=$(call version_to_number,$(arm_gcc_version_str))
-expected_version_str:=9.2.1
+expected_version_str:=10.2.1
 ifeq ($(shell test $(arm_gcc_version) -lt $(call version_to_number,$(expected_version_str)); echo $$?),0)
      $(error "ARM gcc version $(expected_version_str) or later required, but found $(arm_gcc_version_str)")
 endif
