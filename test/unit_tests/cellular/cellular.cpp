@@ -661,8 +661,8 @@ TEST_CASE("cellular_signal()") {
         }
 
         SECTION("middle RSRP and RSRQ") {
-            status.rsrp = 36;
-            status.rsrq = 6;
+            status.rsrp = 46;
+            status.rsrq = 20;
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
@@ -670,17 +670,17 @@ TEST_CASE("cellular_signal()") {
             REQUIRE(sig.rat == data.expected_act);
             REQUIRE(std::abs(sig.strength - 32767) == 0);
             REQUIRE(std::abs(sig.quality - 32767) == 0);
-            REQUIRE(sig.rsrp == -10500);
-            REQUIRE(sig.rsrq == -1700);
+            REQUIRE(sig.rsrp == -9500);
+            REQUIRE(sig.rsrq == -1000);
 
             SECTION("CellularSignal") {
                 CellularSignal cs;
                 REQUIRE(cs.fromHalCellularSignal(sig) == true);
                 REQUIRE(cs.getAccessTechnology() == data.expected_act);
                 REQUIRE(std::abs(cs.getStrength()) <= 50.0f);
-                REQUIRE(cs.getStrengthValue() == -105.0f);
+                REQUIRE(cs.getStrengthValue() == -95.0f);
                 REQUIRE(std::abs(cs.getQuality()) <= 50.0f);
-                REQUIRE(cs.getQualityValue() == -17.0f);
+                REQUIRE(cs.getQualityValue() == -10.0f);
             }
         }
 
@@ -791,8 +791,8 @@ TEST_CASE("cellular_signal()") {
         }
 
         SECTION("middle RSRP and RSRQ") {
-            status.rsrp = 25;
-            status.rsrq = 6;
+            status.rsrp = 46;
+            status.rsrq = 20;
 
             cellular_signal_t sig = {};
             sig.size = sizeof(sig);
@@ -800,17 +800,17 @@ TEST_CASE("cellular_signal()") {
             REQUIRE(sig.rat == data.expected_act);
             REQUIRE(std::abs(sig.strength - 32767) == 0);
             REQUIRE(std::abs(sig.quality - 32767) == 0);
-            REQUIRE(sig.rsrp == -11600);
-            REQUIRE(sig.rsrq == -1700);
+            REQUIRE(sig.rsrp == -9500);
+            REQUIRE(sig.rsrq == -1000);
 
             SECTION("CellularSignal") {
                 CellularSignal cs;
                 REQUIRE(cs.fromHalCellularSignal(sig) == true);
                 REQUIRE(cs.getAccessTechnology() == data.expected_act);
                 REQUIRE(std::abs(cs.getStrength()) <= 50.0f);
-                REQUIRE(cs.getStrengthValue() == -116.0f);
+                REQUIRE(cs.getStrengthValue() == -95.0f);
                 REQUIRE(std::abs(cs.getQuality()) <= 50.0f);
-                REQUIRE(cs.getQualityValue() == -17.0f);
+                REQUIRE(cs.getQualityValue() == -10.0f);
             }
         }
 
