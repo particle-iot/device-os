@@ -321,9 +321,12 @@ typedef struct hal_ble_pairing_status_updated_evt_t {
 
 typedef struct hal_ble_pairing_auth_data_t {
     hal_ble_pairing_auth_data_type_t type;
+    uint16_t size; // payload length of params
     union {
         bool equal; //For numeric comparison result
-        const uint8_t* data; // For passkey and OOB data
+        const uint8_t* passkey; // For passkey
+        const uint8_t* legacy_oob; // For legacy OOB data
+        const uint8_t* lesc_oob; // For LESC OOB data
     } params;
 } hal_ble_pairing_auth_data_t;
 

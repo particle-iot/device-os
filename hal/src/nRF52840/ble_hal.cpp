@@ -2035,6 +2035,8 @@ int BleObject::ConnectionsManager::rejectPairing(hal_ble_conn_handle_t connHandl
         case BLE_PAIRING_STATE_SEC_REQ_RECEIVED: {
             int ret = sd_ble_gap_authenticate(connection->info.conn_handle, nullptr);
             CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+            // We should not tamper the pairing state to be out of sync with the SoftDevice.
+            // Only if the SD call returns success we then mark the pairing state as rejected.
             connection->pairState = BLE_PAIRING_STATE_REJECTED;
             break;
         }
@@ -2063,22 +2065,22 @@ int BleObject::ConnectionsManager::setPairingAuthData(hal_ble_conn_handle_t conn
     BleConnection* connection = fetchConnection(connHandle);
     CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
     int ret;
-    if (auth->type == BLE_PAIRING_AUTH_DATA_NUMERIC_COMPARISON) {
+    if (auth->type == BLE_PAIRING_AUTH_DATA_NUMERIC_COMPARISON && auth->size == sizeof(bool)) {
         CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_PASSKEY_DISPLAY, SYSTEM_ERROR_INVALID_STATE);
         if (auth->params.equal) {
             ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, nullptr);
         } else {
             return rejectPairing(connHandle);
         }
-    } else if (auth->type == BLE_PAIRING_AUTH_DATA_PASSKEY) {
+    } else if (auth->type == BLE_PAIRING_AUTH_DATA_PASSKEY && auth->size == BLE_PAIRING_PASSKEY_LEN) {
         CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_PASSKEY_INPUT, SYSTEM_ERROR_INVALID_STATE);
-        for (uint8_t i = 0; i < 6; i++) {
-            if (!std::isdigit(auth->params.data[i])) {
+        for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
+            if (!std::isdigit(auth->params.passkey[i])) {
                 LOG(ERROR, "Invalid digits.");
                 return rejectPairing(connHandle);
             }
         }
-        ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, auth->params.data);
+        ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, auth->params.passkey);
     } else {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
@@ -4223,7 +4225,8 @@ int hal_ble_gap_set_pairing_passkey_deprecated(hal_ble_conn_handle_t conn_handle
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     hal_ble_pairing_auth_data_t auth = {};
     auth.type = BLE_PAIRING_AUTH_DATA_PASSKEY;
-    auth.params.data = passkey;
+    auth.size = BLE_PAIRING_PASSKEY_LEN;
+    auth.params.passkey = passkey;
     return BleObject::getInstance().connMgr()->setPairingAuthData(conn_handle, &auth);
 }
 

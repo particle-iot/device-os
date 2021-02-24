@@ -2616,6 +2616,7 @@ int BleLocalDevice::rejectPairing(const BlePeerDevice& peer) const {
 int BleLocalDevice::setPairingNumericComparison(const BlePeerDevice& peer, bool equal) const {
     hal_ble_pairing_auth_data_t auth = {};
     auth.type = BLE_PAIRING_AUTH_DATA_NUMERIC_COMPARISON;
+    auth.size = sizeof(bool);
     auth.params.equal = equal;
     return hal_ble_gap_set_pairing_auth_data(peer.impl()->connHandle(), &auth, nullptr);
 }
@@ -2623,7 +2624,8 @@ int BleLocalDevice::setPairingNumericComparison(const BlePeerDevice& peer, bool 
 int BleLocalDevice::setPairingPasskey(const BlePeerDevice& peer, const uint8_t* passkey) const {
     hal_ble_pairing_auth_data_t auth = {};
     auth.type = BLE_PAIRING_AUTH_DATA_PASSKEY;
-    auth.params.data = passkey;
+    auth.size = BLE_PAIRING_PASSKEY_LEN;
+    auth.params.passkey = passkey;
     return hal_ble_gap_set_pairing_auth_data(peer.impl()->connHandle(), &auth, nullptr);
 }
 
