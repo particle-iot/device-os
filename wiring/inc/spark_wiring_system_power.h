@@ -87,6 +87,11 @@ public:
         return *this;
     }
 
+    SystemPowerConfiguration& clearFeature(EnumFlags<SystemPowerFeature> f) {
+        conf_.flags &= ~(f.value());
+        return *this;
+    }
+
     bool isFeatureSet(EnumFlags<SystemPowerFeature> f) const {
         return (conf_.flags & f.value()) ? true : false;
     }

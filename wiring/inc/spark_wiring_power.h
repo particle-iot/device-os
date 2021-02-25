@@ -73,6 +73,7 @@ public:
     // Power ON configuration register
     bool enableCharging(void);
     bool disableCharging(void);
+    bool isChargingEnabled(void);
     bool enableOTG(void);
     bool disableOTG(void);
     bool resetWatchdog(void);
