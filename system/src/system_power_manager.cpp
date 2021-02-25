@@ -155,7 +155,7 @@ void PowerManager::sleep(bool fuelGaugeSleep) {
     // by initDefault(), which will be reset in case we are in a DISCONNECTED state with
     // PMIC watchdog enabled. Reset to the defaults and disable watchdog before going into sleep.
     if (g_batteryState == BATTERY_STATE_DISCONNECTED) {
-      initDefault();
+      initDefault(false);
     }
 #if HAL_PLATFORM_POWER_MANAGEMENT_PMIC_WATCHDOG
     PMIC power;
@@ -230,7 +230,8 @@ void PowerManager::handleUpdate() {
     // Restore parameters
     initDefault();
   } else {
-    handleCharging();
+    // It is called in loop
+    // handleCharging();
   }
 
   const uint8_t status = power.getSystemStatus();
@@ -452,7 +453,11 @@ void PowerManager::initDefault(bool dpdm) {
   power.setChargeCurrent(config_.charge_current);
 
   // Enable or disable charging
-  handleCharging();
+  if (g_batteryState != BATTERY_STATE_UNKNOWN) {
+    handleCharging((g_batteryState == BATTERY_STATE_DISCONNECTED) ? true : false);
+  } else {
+    handleCharging(false); // We assume that the battery is connected
+  }
 
   // Just in case make sure to enable BATFET
   if (!power.isBATFETEnabled()) {
@@ -635,7 +640,7 @@ void PowerManager::deduceBatteryStateLoop() {
       DBG_PWR("Fault state, re-enable/disable charging!");
       // If charging is disabled as per the configuration, we shouldn't get here
       clearIntermadiateBatteryState();
-      handleCharging();
+      handleCharging(false); // we assume that the battery is connected
     } else {
       // We've passed the jitter window and the battery is charged indeed
       DBG_PWR("Charged!");
@@ -659,7 +664,8 @@ void PowerManager::deduceBatteryStateLoop() {
 
 void PowerManager::deduceBatteryStateChargeDisabled() {
   DBG_PWR("deduceBatteryStateChargeDisabled()");
-  handleCharging();
+  handleCharging(); // No matter if the battery is connected or not, we're gong to disable charging
+
   // XXX: This is a dirty hack. Using the VCELL to deduce the battery state
   // is based on the experience that when charging is disabled, the VCELL can
   // correctly be measured.
@@ -732,7 +738,7 @@ void PowerManager::deduceBatteryStateChargeEnabled() {
     // Fall through
   }
 
-  handleCharging();
+  handleCharging(false); // If we reach here, we assume that the battery is connected and charging should be enabled
 
   const uint8_t status = power.getSystemStatus();
   const uint8_t chargeState = (status >> 4) & 0b11;
