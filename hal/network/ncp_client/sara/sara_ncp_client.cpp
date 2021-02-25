@@ -1242,6 +1242,13 @@ int SaraNcpClient::initReady(ModemState state) {
     CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
     CHECK(waitAtResponse(10000));
 
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+TRACE=1,921600"));
+    } else {
+        CHECK_PARSER_OK(parser_.execCommand("AT+ULOG=2"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+ULOG=1"));
+    }
+
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
@@ -1952,7 +1959,7 @@ int SaraNcpClient::networkDebug() {
         LOG_PRINT(TRACE, buf.get());
         LOG_PRINTF(TRACE, "\r\n");
     }
-    if (ncpId() != PLATFORM_NCP_SARA_R410) {
+    if (0) {
         LOG(TRACE, "Higher Priority PLMN search period");
         CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28465,0,0,0"));
         LOG(TRACE, "Co-operative Network List");
@@ -1980,8 +1987,6 @@ int SaraNcpClient::networkDebug() {
         CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28635,0,0,0"));
         LOG(TRACE, "Last RPLMN Selection Indication");
         CHECK_PARSER(parser_.execCommand("AT+CRSM=176,28636,0,0,0"));
-        LOG(TRACE, "SoLSA LSA List");
-        CHECK_PARSER(parser_.execCommand("AT+CRSM=176,20273,0,0,0"));
     }
     return 0;
 }

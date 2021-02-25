@@ -1035,6 +1035,19 @@ bool MDMParser::init(DevStatus* status)
         // status via +USIMSTAT in addition to +CPIN?
         HAL_Delay_Milliseconds(250);
     }
+    // Enable trace logs
+    if (_dev.dev != DEV_SARA_R410) {
+        sendFormated("AT+TRACE=1,921600\r\n");
+        if (RESP_OK != waitFinalResp())
+            goto failure;
+    } else {
+        sendFormated("AT+ULOG=2\r\n");
+        if (RESP_OK != waitFinalResp())
+            goto failure;
+        sendFormated("AT+ULOG=1\r\n");
+        if (RESP_OK != waitFinalResp())
+            goto failure;
+    }
     // Returns the product serial number, IMEI (International Mobile Equipment Identity)
     sendFormated("AT+CGSN\r\n");
     if (RESP_OK != waitFinalResp(_cbString, &str_imei))
