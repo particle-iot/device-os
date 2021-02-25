@@ -10,14 +10,13 @@ extern "C" int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_s
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-test(slo_startup_stats)
-{    
+test(slo_startup_stats) {
     // get millis_to_connected
-    static unsigned long base_time = millis();
+    system_tick_t base_time = millis();
     Particle.connect();
-    waitUntil(Particle.connected);
-    static unsigned long connected_checkpoint = millis();
-    static unsigned long millis_to_connected = connected_checkpoint - base_time;
+    waitFor(Particle.connected, 10 * 60 * 1000);
+    system_tick_t connected_checkpoint = millis();
+    system_tick_t millis_to_connected = connected_checkpoint - base_time;
     
     // get free_mem
     uint32_t free_mem = System.freeMemory();
@@ -32,5 +31,4 @@ test(slo_startup_stats)
         String::format("{\"millis_to_connect\": %u, \"free_mem\": %u, \"app_flash_size\": %u }",
                         millis_to_connected, free_mem, app_flash_size);
     Particle.publish("startup_stats", stats);
-
 }

@@ -1,6 +1,8 @@
 suite('Device startup service level objectives (SLOs)');
 
-// intentionally omit `platform('...');` this test is relevant to ALL Particle platforms
+platform('gen2', 'gen3');
+// Enabling system thread, in order to account for its overhead in the measurements
+systemThread('enabled');
 
 test('slo startup stats', async function () {
     const unparsedJson = await this.particle.receiveEvent('startup_stats');
@@ -15,7 +17,7 @@ test('slo startup stats', async function () {
     // Assertions against the minimum RAM SLO
     ///
     const minimumRAMTargetDefault = 60000;
-    const minimumRAMTargetForPhotonAndP1 = 45000;
+    const minimumRAMTargetForPhotonAndP1 = 40000;
     let target = minimumRAMTargetDefault; 
 
     // make exceptions on target for photon/p1
