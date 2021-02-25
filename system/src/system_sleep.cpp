@@ -81,15 +81,6 @@ static int system_sleep_network_resume(network_interface_index index) {
     return SYSTEM_ERROR_NONE;
 }
 
-int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
-    LOG(TRACE, "Entering system_sleep_ext()");
-    // Cancel current connection attempt to unblock the system thread
-    if (network_connecting(NETWORK_INTERFACE_ALL, 0, NULL)) {
-        network_connect_cancel(NETWORK_INTERFACE_ALL, 1, 0, 0);
-    }
-    return system_sleep_ext_impl(config, reason, reserved);
-}
-
 int system_sleep_ext_impl(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
     SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext(config, reason, reserved));
 
@@ -223,4 +214,16 @@ int system_sleep_ext_impl(const hal_sleep_config_t* config, hal_wakeup_source_ba
     }
 
     return ret;
+}
+
+int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
+    LOG(TRACE, "Entering system_sleep_ext()");
+#if HAL_PLATFORM_GEN == 2
+    // Cancel current connection attempt to unblock the system thread
+    // on Gen 2 platforms
+    if (network_connecting(NETWORK_INTERFACE_ALL, 0, NULL)) {
+        network_connect_cancel(NETWORK_INTERFACE_ALL, 1, 0, 0);
+    }
+#endif // HAL_PLATFORM_GEN == 2
+    return system_sleep_ext_impl(config, reason, reserved);
 }
