@@ -1456,14 +1456,10 @@ ble_gap_scan_params_t BleObject::Observer::toPlatformScanParams() const {
     params.interval = scanParams_.interval;
     params.window = scanParams_.window;
     params.timeout = scanParams_.timeout;
-    params.scan_phys = 0x01;               /**< Default to standard 1MBPS scanning on nRF52840 */
-    if (scanParams_.scan_phys == BLE_PHYS_CODED) {
-        params.scan_phys = 0x04;           /**< Selects CODED_PHY scanning on nRF52840 */
-    }
-    if (scanParams_.scan_phys == BLE_PHYS_BOTH) {
-        params.scan_phys = 0x05;           /**< Selects simultaneous 1MBPS and CODED_PHY scanning on nRF52840 */
+    params.scan_phys = scanParams_.scan_phys;
+    if (scanParams_.scan_phys == (BLE_PHYS_1MBPS | BLE_PHYS_CODED)) { /**< Special case: Dual PHY scanning */
         if (params.window > (params.interval / 2)) {
-            params.window = params.interval / 2; /**< Must limit window to interval/2 when simultaneous scanning */
+            params.window = params.interval / 2;                      /**< Limit window to interval/2 */
         }
     }   
     params.filter_policy = scanParams_.filter_policy;

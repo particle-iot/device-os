@@ -101,9 +101,10 @@ typedef enum hal_ble_scan_fp_t {
 } hal_ble_scan_fp_t;
 
 typedef enum hal_ble_phys_t {
-    BLE_PHYS_1MBPS             = 0,  /**< Standard 1MBPS format compatible with all BLE 4/5 devices */
-    BLE_PHYS_CODED             = 1,  /**< Coded Phy, 125 kbps, gives longer-range; BLE 5 only */
-    BLE_PHYS_BOTH              = 2   /**< Scanning only: simultaneous scan for both 1MBPS and CODED formats */
+    BLE_PHYS_AUTO              = 0x00,  /**< Allows devices to negotiate PHYS after connection */
+    BLE_PHYS_1MBPS             = 0x01,  /**< Standard 1 MBPS supported by BLE 4 and 5 devices */
+    BLE_PHYS_2MBPS             = 0x02,  /**< Higher speed 2 MBPS, BLE 5 only */
+    BLE_PHYS_CODED             = 0x04   /**< Longer range 125 KBPS, BLE 5 only */
 } hal_ble_phys_t;
 
 typedef enum hal_ble_service_type_t {
