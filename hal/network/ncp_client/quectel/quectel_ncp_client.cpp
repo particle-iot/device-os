@@ -1074,6 +1074,16 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
     // Assume we are running at the runtime baudrate
     CHECK(serial_->setBaudRate(QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
 
+    // Essentially we are generating empty 07.10 frames here
+    // This is done so that we can complete an ongoing frame transfer that was aborted e.g.
+    // due to a reset.
+    const char basicFlag = static_cast<char>(gsm0710::proto::BASIC_FLAG);
+    for (int i = 0; i < QUECTEL_NCP_MAX_MUXER_FRAME_SIZE; i++) {
+        CHECK(serial_->waitEvent(Stream::WRITABLE, 1000));
+        CHECK(serial_->write(&basicFlag, sizeof(basicFlag)));
+        skipAll(serial_.get());
+    }
+
     // Feeling optimistic, try to see if the muxer is already available
     if (!muxer_.isRunning()) {
         LOG_DEBUG(TRACE, "Muxer is not currently running");
