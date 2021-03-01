@@ -1343,6 +1343,7 @@ int QuectelNcpClient::enterDataMode() {
     // NOTE: we are ignoring step 1 and are acting more optimistic on the first attempt
     // Subsequent attempts to exit data mode follow this step.
     const int attempts = 5;
+    bool responsive = false;
     for (int i = 0; i < attempts; i++) {
         // Send data mode break
         const char breakCmd[] = "+++";
@@ -1356,8 +1357,12 @@ int QuectelNcpClient::enterDataMode() {
         dataParser_.destroy();
         CHECK(dataParser_.init(std::move(parserConf)));
 
-        CHECK(waitAtResponse(dataParser_, 1000));
+        responsive = waitAtResponse(dataParser_, 1000) == 0;
+        if (responsive) {
+            break;
+        }
     }
+    CHECK_TRUE(responsive, SYSTEM_ERROR_TIMEOUT);
 
     const char connectResponse[] = "CONNECT";
 
