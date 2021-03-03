@@ -100,6 +100,8 @@ int32_t hal_i2c_available(hal_i2c_interface_t i2c, void* reserved);
 int32_t hal_i2c_read(hal_i2c_interface_t i2c, void* reserved);
 int32_t hal_i2c_peek(hal_i2c_interface_t i2c, void* reserved);
 void hal_i2c_flush(hal_i2c_interface_t i2c, void* reserved);
+uint32_t hal_i2c_rx_buffer_size(hal_i2c_interface_t i2c, void* reserved);
+uint32_t hal_i2c_tx_buffer_size(hal_i2c_interface_t i2c, void* reserved);
 bool hal_i2c_is_enabled(hal_i2c_interface_t i2c, void* reserved);
 void hal_i2c_set_callback_on_received(hal_i2c_interface_t i2c, void (*function)(int), void* reserved);
 void hal_i2c_set_callback_on_requested(hal_i2c_interface_t i2c, void (*function)(void), void* reserved);

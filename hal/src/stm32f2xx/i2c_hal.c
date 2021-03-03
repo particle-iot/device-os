@@ -826,6 +826,19 @@ void hal_i2c_flush(hal_i2c_interface_t i2c, void* reserved) {
     // XXX: to be implemented.
 }
 
+uint32_t hal_i2c_rx_buffer_size(hal_i2c_interface_t i2c, void* reserved) {
+    hal_i2c_lock(i2c, NULL);
+    uint32_t value = i2cMap[i2c]->rxBufferSize;
+    hal_i2c_unlock(i2c, NULL);
+    return value;
+}
+uint32_t hal_i2c_tx_buffer_size(hal_i2c_interface_t i2c, void* reserved) {
+    hal_i2c_lock(i2c, NULL);
+    uint32_t value = i2cMap[i2c]->txBufferSize;
+    hal_i2c_unlock(i2c, NULL);
+    return value;
+}
+
 bool hal_i2c_is_enabled(hal_i2c_interface_t i2c, void* reserved) {
     return i2cMap[i2c]->state == HAL_I2C_STATE_ENABLED;
 }

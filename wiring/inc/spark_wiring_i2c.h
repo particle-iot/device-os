@@ -114,6 +114,8 @@ public:
   virtual int read(void);
   virtual int peek(void);
   virtual void flush(void);
+  size_t rxBufferSize(void);
+  size_t txBufferSize(void);
   void onReceive(void (*)(int));
   void onRequest(void (*)(void));
 

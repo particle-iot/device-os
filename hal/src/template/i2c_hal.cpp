@@ -93,6 +93,16 @@ void hal_i2c_flush(hal_i2c_interface_t i2c,void* reserved)
   // XXX: to be implemented.
 }
 
+uint32_t hal_i2c_rx_buffer_size(hal_i2c_interface_t i2c, void* reserved)
+{
+  return SYSTEM_ERROR_NONE;
+}
+
+uint32_t hal_i2c_tx_buffer_size(hal_i2c_interface_t i2c, void* reserved)
+{
+  return SYSTEM_ERROR_NONE;
+}
+
 bool hal_i2c_is_enabled(hal_i2c_interface_t i2c,void* reserved)
 {
     return false;
