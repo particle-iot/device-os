@@ -202,6 +202,9 @@ inline bool publishEvent(const char* event, const char* data = nullptr, unsigned
 // Sends application DESCRIBE and subscriptions
 int sendApplicationDescription();
 
+// Subscribes to system cloud events
+void registerSystemSubscriptions();
+
 } // namespace particle
 
 #ifdef __cplusplus
