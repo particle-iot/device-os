@@ -202,7 +202,7 @@ typedef struct hal_ble_scan_params_t {
     uint16_t timeout;                   /**< Scan timeout in 10 ms units. */
     uint8_t active;
     hal_ble_scan_fp_t filter_policy;
-    uint8_t scan_phys;                  /**< Supports BLE_PHYS_1MBPS, BLE_PHYS_CODED, or BLE_PHYS_BOTH */
+    uint8_t scan_phys;                  /**< Supports BLE_PHYS_1MBPS, BLE_PHYS_CODED, or (BLE_PHYS_1MBPS | BLE_PHYS_CODED) */
 } hal_ble_scan_params_t;
 
 /* BLE connection parameters */
