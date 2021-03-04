@@ -184,12 +184,20 @@ void TwoWire::flush(void)
 
 size_t TwoWire::rxBufferSize(void) 
 {
-  return hal_i2c_rx_buffer_size(_i2c, NULL);
+  hal_i2c_config_t config;
+  if (hal_i2c_get_config(_i2c, &config, NULL)) {
+    return config.rx_buffer_size;
+  }
+  return 0;
 }
 
 size_t TwoWire::txBufferSize(void)
 {
-  return hal_i2c_tx_buffer_size(_i2c, NULL);
+  hal_i2c_config_t config;
+  if (hal_i2c_get_config(_i2c, &config, NULL)) {
+    return config.tx_buffer_size;
+  }
+  return 0;
 }
 
 // sets function called on slave write
