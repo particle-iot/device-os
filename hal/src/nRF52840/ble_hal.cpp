@@ -1213,13 +1213,20 @@ int BleObject::Broadcaster::resume() {
 
 ble_gap_adv_params_t BleObject::Broadcaster::toPlatformAdvParams(const hal_ble_adv_params_t* halParams) {
     ble_gap_adv_params_t params = {};
-    params.properties.type = BleAdvEvtTypeMap[halParams->type];
+    if (halParams->primary_phy == BLE_PHYS_CODED) {
+        // For Coded Phy advertising, type must be extended, nonscannable
+        params.properties.type = BLE_GAP_ADV_TYPE_EXTENDED_CONNECTABLE_NONSCANNABLE_UNDIRECTED;
+        params.primary_phy = BLE_GAP_PHY_CODED;
+    } else {
+        // For 1 MBPS advertising, use whatever type is specified
+        params.properties.type = BleAdvEvtTypeMap[halParams->type];
+        params.primary_phy = BLE_GAP_PHY_1MBPS;
+    }
     params.properties.include_tx_power = false; // FIXME: for extended advertising packet
     params.p_peer_addr = nullptr;
     params.interval = halParams->interval;
     params.duration = halParams->timeout;
     params.filter_policy = halParams->filter_policy;
-    params.primary_phy = BLE_GAP_PHY_1MBPS;
     return params;
 }
 
