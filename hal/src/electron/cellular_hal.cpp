@@ -116,6 +116,12 @@ bool cellular_powered(void* reserved)
     return electronMDM.powerState();
 }
 
+cellular_result_t cellular_urcs(bool enable, void* reserved)
+{
+    CHECK_SUCCESS(electronMDM.urcs(enable));
+    return 0;
+}
+
 cellular_result_t  cellular_register(void* reserved)
 {
     CHECK_SUCCESS(electronMDM.registerNet());

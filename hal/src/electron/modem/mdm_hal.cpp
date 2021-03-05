@@ -1295,6 +1295,29 @@ bool MDMParser::powerState(void) {
     return state;
 }
 
+bool MDMParser::urcs(bool enable) {
+    if (enable) {
+        sendFormated("AT+UCIND=4095\r\n");
+        if (RESP_OK != waitFinalResp()) {
+            return false;
+        }
+        sendFormated("AT+CMER=1,0,0,2,1\r\n");
+        if (RESP_OK != waitFinalResp()) {
+            return false;
+        }
+    } else {
+        sendFormated("AT+UCIND=0\r\n");
+        if (RESP_OK != waitFinalResp()) {
+            return false;
+        }
+        sendFormated("AT+CMER=0,0,0,0,0\r\n");
+        if (RESP_OK != waitFinalResp()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool MDMParser::softPowerOff(void) {
     if (!powerState()) {
         return true;

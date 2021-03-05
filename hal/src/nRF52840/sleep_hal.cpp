@@ -48,13 +48,6 @@
 #endif
 #include "spark_wiring_vector.h"
 
-#if HAL_PLATFORM_GEN == 3 && HAL_PLATFORM_CELLULAR
-#include "ifapi.h"
-#include "network/lwip/cellular/pppncpnetif.h"
-#include "network/ncp/cellular/cellular_ncp_client.h"
-using namespace particle::net;
-#endif
-
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
 #include "mcp23s17.h"
@@ -602,36 +595,6 @@ static uint32_t configUsartWakeupSource(const hal_wakeup_source_base_t* wakeupSo
     return intFlags;
 }
 
-#if HAL_PLATFORM_GEN == 3 && HAL_PLATFORM_CELLULAR
-static int inhibitCellularModemUrcs(const hal_sleep_config_t* config, bool inhibit) {
-    auto source = config->wakeup_sources;
-    while (source) {
-        if (source->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
-            auto network = reinterpret_cast<const hal_wakeup_source_network_t*>(source);
-            if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
-                // XXX: Suspend the muxer's AT channel for now to prevent URCs from waking up the device
-                if_t iface;
-                if (if_get_by_index(NETWORK_INTERFACE_CELLULAR, &iface)) {
-                    return SYSTEM_ERROR_INVALID_STATE;
-                }
-                auto idx = BaseNetif::getClientDataId();
-                CHECK_TRUE(idx >= 0, SYSTEM_ERROR_INVALID_STATE);
-                auto cellMgr = ((PppNcpNetif*)netif_get_client_data(iface, idx))->getCellularManager();
-                CHECK_TRUE(cellMgr, SYSTEM_ERROR_INVALID_STATE);
-                if (inhibit) {
-                    cellMgr->ncpClient()->enterSleepyState();
-                } else {
-                    cellMgr->ncpClient()->exitSleepyState();
-                }
-                break;
-            }
-        }
-        source = source->next;
-    }
-    return SYSTEM_ERROR_NONE;
-}
-#endif
-
 static bool configNetworkWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
     bool ret = false;
     auto source = wakeupSources;
@@ -856,11 +819,6 @@ static void fpu_sleep_prepare(void) {
 
 static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
     int ret = SYSTEM_ERROR_NONE;
-
-#if HAL_PLATFORM_GEN == 3 && HAL_PLATFORM_CELLULAR
-    inhibitCellularModemUrcs(config, true);
-#endif
-    
 
     // Detach USB
     HAL_USB_Detach();
@@ -1265,10 +1223,6 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
 
     // Enable thread scheduling
     os_thread_scheduling(true, nullptr);
-
-#if HAL_PLATFORM_GEN == 3 && HAL_PLATFORM_CELLULAR
-    // inhibitCellularModemUrcs(config, false);
-#endif
 
     if (wakeupReason) {
         if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_GPIO) {

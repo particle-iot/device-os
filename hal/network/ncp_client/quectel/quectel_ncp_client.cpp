@@ -1505,12 +1505,12 @@ int QuectelNcpClient::getMtu() {
     return 0;
 }
 
-int QuectelNcpClient::enterSleepyState() {
-    return muxer_.suspendChannel(QUECTEL_NCP_AT_CHANNEL);
-}
-
-int QuectelNcpClient::exitSleepyState() {
-    return muxer_.resumeChannel(QUECTEL_NCP_AT_CHANNEL);
+int QuectelNcpClient::urcs(bool enable) {
+    if (enable) {
+        return muxer_.resumeChannel(QUECTEL_NCP_AT_CHANNEL);
+    } else {
+        return muxer_.suspendChannel(QUECTEL_NCP_AT_CHANNEL);
+    }
 }
 
 void QuectelNcpClient::connectionState(NcpConnectionState state) {

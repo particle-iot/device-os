@@ -43,9 +43,6 @@ public:
     virtual if_t interface() override;
 
     void setCellularManager(CellularNetworkManager* celMan);
-    CellularNetworkManager* getCellularManager() {
-        return celMan_;
-    }
 
     virtual int powerUp() override;
     virtual int powerDown() override;

@@ -178,6 +178,8 @@ int system_sleep_ext_impl(const hal_sleep_config_t* config, hal_wakeup_source_ba
         } else {
             cellularStatus = system_sleep_network_suspend(NETWORK_INTERFACE_CELLULAR);
         }
+    } else {
+        cellular_urcs(false, nullptr);
     }
 #endif // HAL_PLATFORM_CELLULAR
 
@@ -221,6 +223,7 @@ int system_sleep_ext_impl(const hal_sleep_config_t* config, hal_wakeup_source_ba
         system_sleep_network_resume(NETWORK_INTERFACE_CELLULAR, cellularStatus);
     } else {
         cellular_resume(nullptr);
+        cellular_urcs(true, nullptr);
     }
 #endif // HAL_PLATFORM_CELLULAR
 

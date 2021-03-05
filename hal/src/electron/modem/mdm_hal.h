@@ -508,6 +508,8 @@ public:
     */
     bool powerState(void);
 
+    bool urcs(bool enable);
+
 protected:
     /** Write bytes to the physical interface. This function should be
         implemented in a inherited class.

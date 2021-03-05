@@ -1760,12 +1760,12 @@ int SaraNcpClient::getMtu() {
     return 0;
 }
 
-int SaraNcpClient::enterSleepyState() {
-    return muxer_.suspendChannel(UBLOX_NCP_AT_CHANNEL);
-}
-
-int SaraNcpClient::exitSleepyState() {
-    return muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL);
+int SaraNcpClient::urcs(bool enable) {
+    if (enable) {
+        return muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL);
+    } else {
+        return muxer_.suspendChannel(UBLOX_NCP_AT_CHANNEL);
+    }
 }
 
 void SaraNcpClient::connectionState(NcpConnectionState state) {

@@ -553,6 +553,15 @@ int cellular_resume(void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
+int cellular_urcs(bool enable, void* reserved) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    CHECK(client->urcs(enable));
+    return SYSTEM_ERROR_NONE;
+}
+
 int cellular_sim_to_network_provider(void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }

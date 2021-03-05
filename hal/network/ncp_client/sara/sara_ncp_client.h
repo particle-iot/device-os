@@ -72,8 +72,7 @@ public:
     virtual int getTxDelayInDataChannel() override;
     virtual int enterDataMode() override;
     virtual int getMtu() override;
-    virtual int enterSleepyState() override;
-    virtual int exitSleepyState() override;
+    virtual int urcs(bool enable) override;
 
 private:
     AtParser parser_;
