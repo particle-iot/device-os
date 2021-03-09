@@ -141,21 +141,9 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     modemInit();
     conf_ = static_cast<const CellularNcpClientConfig&>(conf);
 
+
     // Initialize serial stream
-    auto sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS;
-
-// Our first board reversed RTS and CTS pin, we gave them the hwVersion 0x00,
-// Disabling hwfc should not only depend on hwVersion but also platform
-#if PLATFORM_ID == PLATFORM_B5SOM
-    uint32_t hwVersion = HW_VERSION_UNDEFINED;
-    auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
-    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
-        sconf = SERIAL_8N1;
-        LOG(TRACE, "Disable Hardware Flow control!");
-    }
-#endif
-
-    std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
+    std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, getDefaultSerialConfig()));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
 
     // Initialize muxed channel stream
@@ -1074,7 +1062,10 @@ int QuectelNcpClient::initReady(ModemState state) {
 
 int QuectelNcpClient::checkRuntimeState(ModemState& state) {
     // Assume we are running at the runtime baudrate
-    CHECK(serial_->setBaudRate(QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
+    // NOTE: disabling hardware flow control here as BG96-based Trackers are known
+    // to latch CTS sometimes on warm boot
+    // Sending some data without flow control allows us to get out of that state
+    CHECK(serial_->setConfig(getDefaultSerialConfig() & ~(SERIAL_FLOW_CONTROL_RTS_CTS), QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
 
     // Essentially we are generating empty 07.10 frames here
     // This is done so that we can complete an ongoing frame transfer that was aborted e.g.
@@ -1085,6 +1076,9 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
         CHECK(serial_->write(&basicFlag, sizeof(basicFlag)));
         skipAll(serial_.get());
     }
+
+    // Reinitialize with flow control enabled (if needed for a particular hw revision)
+    CHECK(serial_->setConfig(getDefaultSerialConfig()));
 
     // Feeling optimistic, try to see if the muxer is already available
     if (!muxer_.isRunning()) {
@@ -1850,6 +1844,23 @@ bool QuectelNcpClient::modemPowerState() const {
     // LOG(TRACE, "BGVINT: %d", HAL_GPIO_Read(BGVINT));
     // NOTE: The BGVINT pin is inverted
     return !HAL_GPIO_Read(BGVINT);
+}
+
+uint32_t QuectelNcpClient::getDefaultSerialConfig() const {
+    uint32_t sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS;
+
+    // Our first board reversed RTS and CTS pin, we gave them the hwVersion 0x00,
+    // Disabling hwfc should not only depend on hwVersion but also platform
+#if PLATFORM_ID == PLATFORM_B5SOM
+    uint32_t hwVersion = HW_VERSION_UNDEFINED;
+    auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
+    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
+        sconf = SERIAL_8N1;
+        LOG(TRACE, "Disable Hardware Flow control!");
+    }
+#endif
+
+    return sconf;
 }
 
 // // Use BG96 status pin to enable/disable voltage convert IC Automatically

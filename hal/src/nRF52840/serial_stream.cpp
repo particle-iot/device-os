@@ -154,6 +154,22 @@ int SerialStream::setBaudRate(unsigned int baudrate) {
     hal_usart_end(serial_);
     phyOn_ = false;
     hal_usart_begin_config(serial_, baudrate, config_, 0);
+    baudrate_ = baudrate;
+    phyOn_ = true;
+    return 0;
+}
+
+int SerialStream::setConfig(uint32_t config, unsigned int baudrate /* optional */) {
+    if (!phyOn_ || !enabled_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    hal_usart_end(serial_);
+    phyOn_ = false;
+    if (baudrate != 0) {
+        baudrate_ = baudrate;
+    }
+    config_ = config;
+    hal_usart_begin_config(serial_, baudrate_, config_, 0);
     phyOn_ = true;
     return 0;
 }
