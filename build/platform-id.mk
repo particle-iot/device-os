@@ -342,7 +342,7 @@ PLATFORM=newhal
 STM32_DEVICE=newhalcpu
 # used to define the sources in hal/src/new-hal
 PLATFORM_NAME=newhal
-PLATFORM_GEN=60000
+PLATFORM_GEN=0
 # define MCU-specific platform defines under platform/MCU/new-hal
 PLATFORM_MCU=newhal-mcu
 PLATFORM_NET=not-defined
