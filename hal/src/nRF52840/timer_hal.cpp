@@ -116,10 +116,8 @@ inline void mutexRelease() {
     sMutex = 0;
 }
 
-uint32_t getOverflowCounter(bool& dwtInSync) {
+uint32_t getOverflowCounter() {
     uint32_t overflowCounter;
-
-    dwtInSync = true;
 
     // Get mutual access for writing to sOverflowCounter variable.
     if (mutexGet()) {
@@ -166,7 +164,6 @@ uint32_t getOverflowCounter(bool& dwtInSync) {
         if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_OVERFLOW)) {
             // Lower priority context is currently incrementing sOverflowCounter variable.
             overflowCounter = (sOverflowCounter + 2) / 2;
-            dwtInSync = false;
         } else if (sOverflowCounter & 0x01) {
             overflowCounter = (sOverflowCounter + 2) / 2;
         } else {
@@ -179,9 +176,8 @@ uint32_t getOverflowCounter(bool& dwtInSync) {
     return overflowCounter;
 }
 
-uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
-    bool dwtInSync;
-    uint32_t offset1 = getOverflowCounter(dwtInSync);
+uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros, bool* inSync) {
+    uint32_t offset1 = getOverflowCounter();
     __DMB();
 
     uint32_t rtcValue = getRtcCounter();
@@ -189,7 +185,7 @@ uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
     *micros = sTimerMicrosAtLastOverflow;
     __DMB();
 
-    uint32_t offset2 = getOverflowCounter(dwtInSync);
+    uint32_t offset2 = getOverflowCounter();
 
     if (offset1 != offset2) {
         // Overflow occured between the calls
@@ -200,10 +196,14 @@ uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
 
     uint64_t currentTime = rtcCounterAndTicksToUs(offset2, rtcValue);
 
-    if (!dwtInSync) {
-        *ticks = DWT->CYCCNT;
-        *micros = currentTime;
+    if (offset2 != (sOverflowCounter / 2)) {
+        // We cannot DWT->CYCCNT synchronization as the RTC overflow event
+        // is currently being handled
+        *inSync = false;
+    } else {
+        *inSync = true;
     }
+
     return currentTime;
 }
 
@@ -310,8 +310,7 @@ extern "C" void RTC_IRQ_HANDLER(void) {
         nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_OVERFLOW_MASK);
 
         // Handle OVERFLOW event by reading current value of overflow counter.
-        bool dummy;
-        (void)getOverflowCounter(dummy);
+        (void)getOverflowCounter();
     } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_TICK)) {
         nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_TICK);
     } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_0)) {
@@ -330,18 +329,22 @@ uint64_t hal_timer_micros(void* reserved) {
     // Make sure that sTickCountAtLastOverflow and current timer values are fetched atomically
     uint32_t lastOverflowTicks;
     uint64_t lastOverflowMicros;
-    uint64_t curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros);
-
+    bool inSync = false;
+    uint64_t curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros, &inSync);
     uint32_t usTicks = SYSTEM_US_TICKS;
+    uint32_t tickDiff = 0;
 
-    uint64_t elapsedUs = curUs - lastOverflowMicros;
-    uint64_t elapsedTicks = elapsedUs * usTicks;
-    uint32_t syncTicks = (uint32_t)((uint64_t)lastOverflowTicks + elapsedTicks);
-    uint32_t tickDiff = DWT->CYCCNT - syncTicks;
-    // If we are over 10 RTC ticks, we are better off fetching new value
-    if (tickDiff > (DWT_US_THRESHOLD * usTicks)) {
-        curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros);
-        tickDiff = 0;
+    // NOTE: Ignore DWT->CYCCNT at RTC overflow until such overflow event is properly handled
+    if (inSync) {
+        uint64_t elapsedUs = curUs - lastOverflowMicros;
+        uint64_t elapsedTicks = elapsedUs * usTicks;
+        uint32_t syncTicks = (uint32_t)((uint64_t)lastOverflowTicks + elapsedTicks);
+        tickDiff = DWT->CYCCNT - syncTicks;
+        // If we are over 10 RTC ticks, we are better off fetching new value
+        if (tickDiff > (DWT_US_THRESHOLD * usTicks)) {
+            curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros, &inSync);
+            tickDiff = 0;
+        }
     }
 
     return sTimerMicrosBaseOffset + curUs + (tickDiff / usTicks);

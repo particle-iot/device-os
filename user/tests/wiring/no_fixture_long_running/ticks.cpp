@@ -9,9 +9,9 @@
 namespace {
 
 #ifndef PARTICLE_TEST_RUNNER
-const int MILLIS_MICROS_MAX_DIFF = 1;
+const int MILLIS_MICROS_MAX_DIFF_US = 1500;
 #else
-const int MILLIS_MICROS_MAX_DIFF = 2;
+const int MILLIS_MICROS_MAX_DIFF_US = 2000;
 #endif // PARTICLE_TEST_RUNNER
 
 #if HAL_PLATFORM_GEN < 3
@@ -68,10 +68,10 @@ void assert_micros_millis(int duration, bool overflow = false)
         assertMoreOrEqual(now_micros, now_millis * 1000);
         // at most 1.5ms difference between micros() and millis()
         int diff = (int32_t)now_micros - (int32_t)now_millis * 1000;
-        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF * 1000);
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF_US);
         // at most 1ms difference between millis() and lower 32 bits of System.millis()
         diff = std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull));
-        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF);
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF_US / 1000);
 
         duration -= now_millis - last_millis;
 
@@ -131,10 +131,10 @@ void assert_micros_millis_interrupts(int duration)
         assertMoreOrEqual(now_micros, now_millis * 1000);
         // at most 1.5ms difference between micros() and millis()
         int diff = (int32_t)now_micros - (int32_t)now_millis * 1000;
-        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF * 1000);
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF_US);
         // at most 1ms difference between millis() and lower 32 bits of System.millis()
         diff = std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull));
-        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF);
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF_US);
 
         duration -= now_millis - last_millis;
 
@@ -214,16 +214,16 @@ test(TICKS_02_millis_and_micros_rollover)
 
 test(TICKS_03_millis_and_micros_along_with_high_priority_interrupts)
 {
-    static const system_tick_t TWO_MINUTES = 2 * 60 * 1000;
+    const system_tick_t TWO_MINUTES = 2 * 60 * 1000;
     system_tick_t start = millis();
     assert_micros_millis_interrupts(TWO_MINUTES);
-    assertMoreOrEqual(millis()-start,TWO_MINUTES);
+    assertMoreOrEqual(millis()-start, TWO_MINUTES);
 }
 
 test(TICKS_04_millis_and_micros_monotonically_increases)
 {
-    static const system_tick_t TWO_MINUTES = 2 * 60 * 1000;
+    const system_tick_t TWO_MINUTES = 2 * 60 * 1000;
     system_tick_t start = millis();
     assert_micros_millis(TWO_MINUTES);
-    assertMoreOrEqual(millis()-start,TWO_MINUTES);
+    assertMoreOrEqual(millis()-start, TWO_MINUTES);
 }
