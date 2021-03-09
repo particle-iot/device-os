@@ -30,6 +30,105 @@
 #include "system_tick_hal.h"
 #include "cellular_enums_hal.h"
 #include "mdm_debug.h"
+#include "timer_hal.h"
+
+class CellularRegistrationStatusMdm {
+public:
+    enum Status {
+        NONE = -1,
+        NOT_REGISTERING = 0,
+        HOME = 1,
+        SEARCHING = 2, // FIXME: NONE in mdm_hal.cpp. Looks not used though.
+        DENIED = 3,
+        UNKNOWN = 4,
+        ROAMING = 5
+    };
+    int temp = 0;
+    CellularRegistrationStatusMdm() = default;
+    CellularRegistrationStatusMdm(Status stat, system_tick_t started, system_tick_t updated);
+
+    void status(Status stat, system_tick_t ts);
+    void status(Status stat);
+    void reset();
+
+    Status status() const;
+    system_tick_t updated() const;
+    system_tick_t started() const;
+    bool registered() const;
+    system_tick_t duration() const;
+    bool sticky() const;
+    static CellularRegistrationStatusMdm::Status decodeAtStatus(int status);
+
+private:
+    Status stat_ = NONE;
+    system_tick_t updated_ = 0;
+    system_tick_t started_ = 0;
+};
+
+// CellularRegistrationStatusEkectron
+
+inline CellularRegistrationStatusMdm::CellularRegistrationStatusMdm(Status stat, system_tick_t started, system_tick_t updated)
+        : stat_{stat},
+          updated_{updated},
+          started_{started} {
+}
+
+inline void CellularRegistrationStatusMdm::status(Status stat, system_tick_t ts) {
+    if (stat_ != stat) {
+        stat_ = stat;
+        started_ = ts;
+    }
+    updated_ = ts;
+}
+
+inline void CellularRegistrationStatusMdm::status(Status stat) {
+    status(stat, HAL_Timer_Get_Milli_Seconds());
+}
+
+inline void CellularRegistrationStatusMdm::reset() {
+    stat_ = NONE;
+    updated_ = 0;
+    started_ = 0;
+}
+
+inline CellularRegistrationStatusMdm::Status CellularRegistrationStatusMdm::status() const {
+    return stat_;
+}
+
+inline system_tick_t CellularRegistrationStatusMdm::updated() const {
+    return updated_;
+}
+
+inline system_tick_t CellularRegistrationStatusMdm::started() const {
+    return started_;
+}
+
+inline system_tick_t CellularRegistrationStatusMdm::duration() const {
+    return HAL_Timer_Get_Milli_Seconds() - started_;
+}
+
+inline bool CellularRegistrationStatusMdm::registered() const {
+    return stat_ == HOME || stat_ == ROAMING;
+}
+
+inline bool CellularRegistrationStatusMdm::sticky() const {
+    return updated_ > 0 && updated_ != started_;
+}
+
+inline CellularRegistrationStatusMdm::Status CellularRegistrationStatusMdm::decodeAtStatus(int status) {
+    switch (status) {
+        case CellularRegistrationStatusMdm::NOT_REGISTERING:
+        case CellularRegistrationStatusMdm::HOME:
+        case CellularRegistrationStatusMdm::SEARCHING:
+        case CellularRegistrationStatusMdm::DENIED:
+        case CellularRegistrationStatusMdm::UNKNOWN:
+        case CellularRegistrationStatusMdm::ROAMING: {
+            return static_cast<CellularRegistrationStatusMdm::Status>(status);
+        }
+    }
+
+    return CellularRegistrationStatusMdm::NONE;
+}
 
 /** basic modem parser class
 */
@@ -171,6 +270,14 @@ public:
     /** Setup the PDP context
     */
     bool pdp(const char* apn = NULL);
+
+    /** Runs intervention commands to improve cellular registration process
+    */
+   bool interveneRegistration(void);
+
+   /** Reset the variables related to registration state
+   */
+   void resetRegState(void);
 
     // ----------------------------------------------------------------
     // Data Connection (GPRS)
@@ -672,6 +779,10 @@ protected:
     volatile uint32_t _error;
     system_tick_t _lastProcess;
     system_tick_t _lastVerboseCxregUpdate;
+    CellularRegistrationStatusMdm csd_;
+    CellularRegistrationStatusMdm psd_;
+    CellularRegistrationStatusMdm eps_;
+
 #ifdef MDM_DEBUG
     int _debugLevel;
     void _debugPrint(int level, const char* color, const char* format, ...) __attribute__((format(printf, 4, 5)));
