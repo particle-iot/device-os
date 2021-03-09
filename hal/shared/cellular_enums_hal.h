@@ -70,14 +70,7 @@ typedef struct {
     char ver[16+1];       //!< Software Version
 } DevStatus;
 //! Registration Status
-typedef enum {
-    REG_UNKNOWN = 0,
-    REG_DENIED  = 1,
-    REG_NONE    = 2,
-    REG_HOME    = 3,
-    REG_ROAMING = 4,
-    REG_NOTREG  = 5
-} Reg;
+// Is not handled with CellularRegistrationStatusElectron()
 //! Access Technology
 typedef enum {
     ACT_UNKNOWN     = 0,
@@ -186,9 +179,6 @@ typedef enum UbloxSaraUsoer {
 
 //! Network Status
 typedef struct {
-    Reg csd;        //!< CSD Registration Status (Circuit Switched Data)
-    Reg psd;        //!< PSD Registration status (Packet Switched Data)
-    Reg eps;        //!< EPS registration status (Evolved Packet System)
     AcT act;        //!< Access Technology
 
     union {

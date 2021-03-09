@@ -102,6 +102,9 @@ std::recursive_mutex mdm_mutex;
 #define UPSDA_TIMEOUT     (180 * 1000)
 #define UPSND_TIMEOUT     ( 10 * 1000)
 #define URAT_TIMEOUT      ( 10 * 1000)
+#define CGACT_TIMEOUT     (180 * 1000)
+#define REGISTRATION_INTERVENTION_TIMEOUT (15 * 1000)
+#define REGISTRATION_TWILIO_HOLDOFF_TIMEOUT (300 * 1000)
 
 // num sockets
 #define NUMSOCKETS      ((int)(sizeof(_sockets)/sizeof(*_sockets)))
@@ -110,9 +113,9 @@ std::recursive_mutex mdm_mutex;
 //! check for timeout
 #define TIMEOUT(t, ms)  ((ms != TIMEOUT_BLOCKING) && ((HAL_Timer_Get_Milli_Seconds() - t) > ms))
 //! registration ok check helper
-#define REG_OK(r)       ((r == REG_HOME) || (r == REG_ROAMING))
+#define REG_OK(r)       ((r == CellularRegistrationStatusMdm::HOME) || (r == CellularRegistrationStatusMdm::ROAMING))
 //! registration done check helper (no need to poll further)
-#define REG_DONE(r)     ((r == REG_HOME) || (r == REG_ROAMING) || (r == REG_DENIED))
+#define REG_DONE(r)     ((r == CellularRegistrationStatusMdm::HOME) || (r == CellularRegistrationStatusMdm::ROAMING) || (r == CellularRegistrationStatusMdm::DENIED))
 //! helper to make sure that lock unlock pair is always balanced
 #define LOCK()      std::lock_guard<std::recursive_mutex> __mdm_guard(mdm_mutex);
 //! helper to catch AT command timeouts
@@ -141,6 +144,9 @@ inline void CLR_GPRS_TIMEOUT() {
     gprs_timeout_duration = 0;
     DEBUG("GPRS WD Cleared, was %d", gprs_timeout_duration);
 }
+
+unsigned int _registrationInterventions = 0;
+system_tick_t _regStartTime = 0;
 
 namespace {
 
@@ -278,6 +284,7 @@ MDMParser::MDMParser(void)
     _lastVerboseCxregUpdate = 0;
     _lastProcess = 0;
     _error = 0;
+    _regStartTime = 0;
 #ifdef MDM_DEBUG
     _debugLevel = 3;
 #endif
@@ -443,6 +450,7 @@ int MDMParser::process() {
             _attached = false;
             _activated = false;
             HAL_NET_notify_disconnected();
+            resetRegState();
             return -1;
         }
     }
@@ -480,6 +488,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
         CLR_GPRS_TIMEOUT();
         // HAL_NET_notify_dhcp(false);
         HAL_NET_notify_disconnected();
+        resetRegState();
     }
 
     char buf[MAX_SIZE + 64 /* add some more space for framing */];
@@ -595,19 +604,18 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                         // The code below doesn't consider mode to be one of the parsed values
                         r--;
                     }
+                    bool valid_reg_cmd = true;
                     if (r >= 2) {
-                        Reg *reg = !strcmp(s, "CREG:")  ? &_net.csd :
-                                   !strcmp(s, "CGREG:") ? &_net.psd :
-                                   !strcmp(s, "CEREG:") ? &_net.eps : NULL;
-                        if (reg) {
-                            // network status
-                            if      (a == 0) *reg = REG_NOTREG;   // 0: not registered, the MT is not currently searching a new operator to register to
-                            else if (a == 1) *reg = REG_HOME;     // 1: registered, home network
-                            else if (a == 2) *reg = REG_NONE;     // 2: not registered, but MT is currently searching a new operator to register to
-                            else if (a == 3) *reg = REG_DENIED;   // 3: registration denied
-                            else if (a == 4) *reg = REG_UNKNOWN;  // 4: unknown
-                            else if (a == 5) *reg = REG_ROAMING;  // 5: registered, roaming
-
+                        if (!strcmp(s, "CREG:")) {
+                            csd_.status(csd_.decodeAtStatus(a));
+                        } else if (!strcmp(s, "CGREG:")) {
+                            psd_.status(psd_.decodeAtStatus(a));
+                        } else if (!strcmp(s, "CEREG:")) {
+                            eps_.status(eps_.decodeAtStatus(a));
+                        } else {
+                            valid_reg_cmd = false;
+                        }
+                        if (valid_reg_cmd) {
                             if (mode == 0) {
                                 if (_dev.dev == DEV_SARA_R410) {
                                     if (!strcmp(s, "CEREG:")) {
@@ -624,12 +632,18 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                                     MDM_ERROR("[ Modem unexpectedly reset ]\r\n");
                                 }
                             }
-                            if (_dev.dev == DEV_SARA_R410 && _attached && !REG_OK(*reg) && !strcmp(s, "CEREG:")) {
+
+                            //MDM_INFO("Recorded stat for csd: %d", (int)csd_.status());
+                            //MDM_INFO("Recorded stat for psd: %d", (int)psd_.status());
+                            //MDM_INFO("Recorded stat for eps: %d", (int)eps_.status());
+
+                            if (_dev.dev == DEV_SARA_R410 && _attached && !REG_OK(eps_.status()) && !strcmp(s, "CEREG:")) {
                                 // R410 : Look out for a CEREG: de-registration URC while attached
                                 MDM_ERROR("[ Cell de-registered ]\r\n");
                                 _ip = NOIP; // Short-circuit disconnect() call
                                 _attached = false;
                                 HAL_NET_notify_disconnected();
+                                resetRegState();
                             }
 
                             if ((r >= 3) && (b != (int)0xFFFF))      _net.cgi.location_area_code = b;
@@ -773,6 +787,7 @@ bool MDMParser::disconnect() {
         return false;
     }
     HAL_NET_notify_disconnected();
+    resetRegState();
     return true;
 }
 
@@ -1533,7 +1548,7 @@ bool MDMParser::_checkEpsReg(void) {
         int r;
         sendFormated("AT+CEREG?\r\n");
         r = waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT);
-        if (r != RESP_OK || !REG_OK(_net.eps)) {
+        if (r != RESP_OK || !REG_OK(eps_.status())) {
             return false;
         }
     }
@@ -1552,6 +1567,105 @@ int MDMParser::_cbURAT(int type, const char *buf, int len, bool *matched_default
         }
     }
     return WAIT;
+}
+
+bool MDMParser::interveneRegistration(void) {
+
+    CellularNetProv netProv = particle::detail::cellular_sim_to_network_provider_impl(_dev.imsi, _dev.ccid);
+    if (netProv == CELLULAR_NETPROV_TWILIO && HAL_Timer_Get_Milli_Seconds() - _regStartTimse <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
+        return true;
+    }
+
+    auto timeout = (_registrationInterventions + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
+    // Intervention to speed up registration or recover in case of failure
+    if (_dev.dev != DEV_SARA_R410) {
+        // Only attempt intervention when in a sticky state
+        // (over intervention interval and multiple URCs with the same state)
+        if (csd_.sticky() && csd_.duration() >= timeout) {
+            if (csd_.status() == CellularRegistrationStatusMdm::NOT_REGISTERING) {
+                MDM_INFO("Sticky not registering CSD state for %lu s, PLMN reselection", csd_.duration() / 1000);
+                csd_.reset();
+                psd_.reset();
+                _registrationInterventions++;
+                sendFormated("AT+COPS=0,2\r\n");
+                if (WAIT == waitFinalResp(nullptr, nullptr, COPS_TIMEOUT)) {
+                    return false;
+                }
+                return true;
+            } else if (csd_.status() == CellularRegistrationStatusMdm::DENIED && psd_.status() == csd_.status()) {
+                MDM_INFO("Sticky CSD and PSD denied state for %lu s, RF reset", csd_.duration() / 1000);
+                csd_.reset();
+                psd_.reset();
+                _registrationInterventions++;
+                // Note: Use CFUN=1 instead of CFUN=1,1 as the latter will briefly reset the radio
+                sendFormated("AT+CFUN=0\r\n");
+                if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
+                    return false;
+                }
+                sendFormated("AT+CFUN=1\r\n");
+                if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        if (csd_.registered() && psd_.sticky() && psd_.duration() >= timeout) {
+            if (psd_.status() == CellularRegistrationStatusMdm::NOT_REGISTERING) {
+                MDM_INFO("Sticky not registering PSD state for %lu s, force GPRS attach", psd_.duration() / 1000);
+                psd_.reset();
+                _registrationInterventions++;
+                sendFormated("AT+CGACT?\r\n");
+                if (WAIT == waitFinalResp(nullptr, nullptr, CGACT_TIMEOUT)) {
+                    return false;
+                }
+                sendFormated("AT+CGACT=1\r\n");
+                if (RESP_OK != waitFinalResp(nullptr, nullptr, CGACT_TIMEOUT)) {
+                    csd_.reset();
+                    psd_.reset();
+                    MDM_INFO("GPRS attach failed, try PLMN reselection");
+                    sendFormated("AT+COPS=0,2\r\n");
+                    if (WAIT == waitFinalResp(nullptr, nullptr, COPS_TIMEOUT)) {
+                        return false;
+                    }
+                }
+            }
+        }
+    } else {
+        if (eps_.sticky() && eps_.duration() >= timeout) {
+            if (eps_.status() == CellularRegistrationStatusMdm::NOT_REGISTERING) {
+                MDM_INFO("Sticky not registering EPS state for %lu s, PLMN reselection", eps_.duration() / 1000);
+                eps_.reset();
+                _registrationInterventions++;
+                sendFormated("AT+COPS=0,2\r\n");
+                if (WAIT == waitFinalResp(nullptr, nullptr, COPS_TIMEOUT)) {
+                    return false;
+                }
+            } else if (eps_.status() == CellularRegistrationStatusMdm::DENIED) {
+                MDM_INFO("Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
+                eps_.reset();
+                _registrationInterventions++;
+                // Note: Use CFUN=1 instead of CFUN=1,1 as the latter will briefly reset the radio
+                sendFormated("AT+CFUN=0\r\n");
+                if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
+                    return false;
+                }
+                sendFormated("AT+CFUN=1\r\n");
+                if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+void MDMParser::resetRegState(void) {
+    csd_.reset();
+    psd_.reset();
+    eps_.reset();
+    _regStartTime = HAL_Timer_Get_Milli_Seconds();
+    _registrationInterventions = 0;
 }
 
 bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t timeout_ms)
@@ -1688,13 +1802,19 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             // Now check every 15 seconds for 10 minutes to see if we're connected to the tower (GSM, GPRS and LTE)
             system_tick_t start = HAL_Timer_Get_Milli_Seconds();
             system_tick_t start_imsi_check = start;
+            resetRegState();
             while (!(ok = checkNetStatus(status)) && !TIMEOUT(start, timeout_ms) && !_cancel_all_operations) {
                 system_tick_t start = HAL_Timer_Get_Milli_Seconds();
                 while ((HAL_Timer_Get_Milli_Seconds() - start < 15000UL) && !_cancel_all_operations) {
                     // Pump the URCs looking for +CREG/+CGREG/+CEREG connection events.
                     waitFinalResp(nullptr, nullptr, 10);
-                    if ((REG_OK(_net.csd) && REG_OK(_net.psd)) || REG_OK(_net.eps)) {
+                    if ((REG_OK(csd_.status()) && REG_OK(psd_.status())) || REG_OK(eps_.status())) {
                         break; // force another checkNetStatus() call
+                    }
+                    // Run intervention commands
+                    // XXX: Can we run intervention commands in CheckNetStatus() call?
+                    if (!interveneRegistration()) {
+                        goto failure;
                     }
                 }
                 // Query IMSI every 60 sec if not regsitered, to detect IMSI switches
@@ -1706,9 +1826,9 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                     }
                 }
             }
-            if (_net.csd == REG_DENIED) MDM_ERROR("CSD Registration Denied\r\n");
-            if (_net.psd == REG_DENIED) MDM_ERROR("PSD Registration Denied\r\n");
-            if (_net.eps == REG_DENIED) MDM_ERROR("EPS Registration Denied\r\n");
+            if (csd_.status() == CellularRegistrationStatusMdm::DENIED) MDM_ERROR("CSD Registration Denied\r\n");
+            if (psd_.status() == CellularRegistrationStatusMdm::DENIED) MDM_ERROR("PSD Registration Denied\r\n");
+            if (eps_.status() == CellularRegistrationStatusMdm::DENIED) MDM_ERROR("EPS Registration Denied\r\n");
         }
         return ok;
     }
@@ -1763,7 +1883,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
             goto failure;
         }
     }
-    if (REG_OK(_net.csd) || REG_OK(_net.psd) || REG_OK(_net.eps)) {
+    if (REG_OK(csd_.status()) || REG_OK(psd_.status()) || REG_OK(eps_.status())) {
         // get the current operator and radio access technology we are connected to
         if (!_atOk()) {
             goto failure;
@@ -1820,13 +1940,13 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     }
     // don't return true until fully registered
     if (_dev.dev == DEV_SARA_R410) {
-        ok = REG_OK(_net.eps);
+        ok = REG_OK(eps_.status());
         if (_memoryIssuePresent && ok) {
             // start registered timer for memory issue power off delays.
             _timeRegistered = HAL_Timer_Get_Milli_Seconds();
         }
     } else {
-        ok = REG_OK(_net.csd) && REG_OK(_net.psd);
+        ok = REG_OK(csd_.status()) && REG_OK(psd_.status());
     }
     return ok;
 failure:
@@ -3572,11 +3692,12 @@ void MDMParser::dumpDevStatus(DevStatus* status)
 void MDMParser::dumpNetStatus(NetStatus *status)
 {
     MDM_INFO("\r\n[ Modem::netStatus ] = = = = = = = = = = = = = =");
-    const char* txtReg[] = { "Unknown", "Denied", "None", "Home", "Roaming" };
-    if (status->csd < sizeof(txtReg)/sizeof(*txtReg) && (status->csd != REG_UNKNOWN))
-        MDM_PRINTF("  CSD Registration:    %s\r\n", txtReg[status->csd]);
-    if (status->psd < sizeof(txtReg)/sizeof(*txtReg) && (status->psd != REG_UNKNOWN))
-        MDM_PRINTF("  PSD Registration:    %s\r\n", txtReg[status->psd]);
+
+    const char* txtReg[] = { "None", "Not_Registering", "Home", "Searching", "Denied", "Unknown", "Roaming" };
+    if ((unsigned)csd_.status()+1 < sizeof(txtReg)/sizeof(*txtReg) && (csd_.status() != CellularRegistrationStatusMdm::NONE))
+        MDM_PRINTF("  CSD Registration:    %s\r\n", txtReg[csd_.status()+1]);
+    if ((unsigned)psd_.status()+1 < sizeof(txtReg)/sizeof(*txtReg) && (psd_.status() != CellularRegistrationStatusMdm::NONE))
+        MDM_PRINTF("  PSD Registration:    %s\r\n", txtReg[psd_.status()+1]);
     const char* txtAct[] = { "Unknown", "GSM", "Edge", "3G", "CDMA" };
     if (status->act < sizeof(txtAct)/sizeof(*txtAct) && (status->act != ACT_UNKNOWN))
         MDM_PRINTF("  Access Technology:   %s\r\n", txtAct[status->act]);
