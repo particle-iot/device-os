@@ -329,7 +329,7 @@ AppStateDescriptor Protocol::app_state_descriptor(uint32_t stateFlags)
 		d.maxBinarySize(max_binary_size);
 	}
 	if (stateFlags & AppStateDescriptor::OTA_CHUNK_SIZE) {
-		d.maxBinarySize(ota_chunk_size);
+		d.otaChunkSize(ota_chunk_size);
 	}
 	return d;
 }
