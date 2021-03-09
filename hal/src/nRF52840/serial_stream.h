@@ -41,6 +41,7 @@ public:
     int waitEvent(unsigned flags, unsigned timeout) override;
 
     int setBaudRate(unsigned int baudrate);
+    int setConfig(uint32_t config, unsigned int baudrate = 0);
 
     void enabled(bool enabled);
     bool enabled() const;

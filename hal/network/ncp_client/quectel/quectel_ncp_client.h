@@ -146,6 +146,7 @@ private:
     int modemHardReset(bool powerOff = false);
     bool modemPowerState() const;
     int modemSetUartState(bool state) const;
+    uint32_t getDefaultSerialConfig() const;
 };
 
 inline AtParser* QuectelNcpClient::atParser() {

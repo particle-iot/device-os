@@ -141,21 +141,9 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     modemInit();
     conf_ = static_cast<const CellularNcpClientConfig&>(conf);
 
+
     // Initialize serial stream
-    auto sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS;
-
-// Our first board reversed RTS and CTS pin, we gave them the hwVersion 0x00,
-// Disabling hwfc should not only depend on hwVersion but also platform
-#if PLATFORM_ID == PLATFORM_B5SOM
-    uint32_t hwVersion = HW_VERSION_UNDEFINED;
-    auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
-    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
-        sconf = SERIAL_8N1;
-        LOG(TRACE, "Disable Hardware Flow control!");
-    }
-#endif
-
-    std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, sconf));
+    std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, getDefaultSerialConfig()));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
 
     // Initialize muxed channel stream
@@ -1066,14 +1054,31 @@ int QuectelNcpClient::initReady(ModemState state) {
     CHECK_PARSER(parser_.execCommand("AT+QCFG=\"cmux/urcport\",1"));
 
     // Enable packet domain error reporting
-    CHECK_PARSER_OK(parser_.execCommand("AT+CGEREP=1,0"));
+    // Ignore error responses, this command is known to fail sometimes
+    CHECK_PARSER(parser_.execCommand("AT+CGEREP=1,0"));
 
     return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::checkRuntimeState(ModemState& state) {
     // Assume we are running at the runtime baudrate
-    CHECK(serial_->setBaudRate(QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
+    // NOTE: disabling hardware flow control here as BG96-based Trackers are known
+    // to latch CTS sometimes on warm boot
+    // Sending some data without flow control allows us to get out of that state
+    CHECK(serial_->setConfig(getDefaultSerialConfig() & ~(SERIAL_FLOW_CONTROL_RTS_CTS), QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
+
+    // Essentially we are generating empty 07.10 frames here
+    // This is done so that we can complete an ongoing frame transfer that was aborted e.g.
+    // due to a reset.
+    const char basicFlag = static_cast<char>(gsm0710::proto::BASIC_FLAG);
+    for (int i = 0; i < QUECTEL_NCP_MAX_MUXER_FRAME_SIZE; i++) {
+        CHECK(serial_->waitEvent(Stream::WRITABLE, 1000));
+        CHECK(serial_->write(&basicFlag, sizeof(basicFlag)));
+        skipAll(serial_.get());
+    }
+
+    // Reinitialize with flow control enabled (if needed for a particular hw revision)
+    CHECK(serial_->setConfig(getDefaultSerialConfig()));
 
     // Feeling optimistic, try to see if the muxer is already available
     if (!muxer_.isRunning()) {
@@ -1333,19 +1338,35 @@ int QuectelNcpClient::enterDataMode() {
     muxerDataStream_->enabled(true);
 
     CHECK_TRUE(muxer_.setChannelDataHandler(QUECTEL_NCP_PPP_CHANNEL, muxerDataStream_->channelDataCb, muxerDataStream_.get()) == 0, SYSTEM_ERROR_INTERNAL);
-    // Send data mode break
-    const char breakCmd[] = "+++";
-    muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
-    skipAll(muxerDataStream_.get(), 1000);
+    // From Quectel AT commands manual:
+    // To prevent the +++ escape sequence from being misinterpreted as data, the following sequence should be followed:
+    // 1) Do not input any character within 1s before inputting +++.
+    // 2) Input +++ within 1s, and no other characters can be inputted during the time.
+    // 3) Do not input any character within 1s after +++ has been inputted.
+    // 4) Switch to command mode; otherwise return to step 1)
+    // NOTE: we are ignoring step 1 and are acting more optimistic on the first attempt
+    // Subsequent attempts to exit data mode follow this step.
+    const int attempts = 5;
+    bool responsive = false;
+    for (int i = 0; i < attempts; i++) {
+        // Send data mode break
+        const char breakCmd[] = "+++";
+        muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
+        skipAll(muxerDataStream_.get(), 1000);
 
-    // Initialize AT parser
-    auto parserConf = AtParserConfig()
-            .stream(muxerDataStream_.get())
-            .commandTerminator(AtCommandTerminator::CRLF);
-    dataParser_.destroy();
-    CHECK(dataParser_.init(std::move(parserConf)));
+        // Initialize AT parser
+        auto parserConf = AtParserConfig()
+                .stream(muxerDataStream_.get())
+                .commandTerminator(AtCommandTerminator::CRLF);
+        dataParser_.destroy();
+        CHECK(dataParser_.init(std::move(parserConf)));
 
-    CHECK(waitAtResponse(dataParser_, 5000));
+        responsive = waitAtResponse(dataParser_, 1000) == 0;
+        if (responsive) {
+            break;
+        }
+    }
+    CHECK_TRUE(responsive, SYSTEM_ERROR_TIMEOUT);
 
     const char connectResponse[] = "CONNECT";
 
@@ -1823,6 +1844,23 @@ bool QuectelNcpClient::modemPowerState() const {
     // LOG(TRACE, "BGVINT: %d", HAL_GPIO_Read(BGVINT));
     // NOTE: The BGVINT pin is inverted
     return !HAL_GPIO_Read(BGVINT);
+}
+
+uint32_t QuectelNcpClient::getDefaultSerialConfig() const {
+    uint32_t sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS;
+
+    // Our first board reversed RTS and CTS pin, we gave them the hwVersion 0x00,
+    // Disabling hwfc should not only depend on hwVersion but also platform
+#if PLATFORM_ID == PLATFORM_B5SOM
+    uint32_t hwVersion = HW_VERSION_UNDEFINED;
+    auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
+    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_B5SOM_V003) {
+        sconf = SERIAL_8N1;
+        LOG(TRACE, "Disable Hardware Flow control!");
+    }
+#endif
+
+    return sconf;
 }
 
 // // Use BG96 status pin to enable/disable voltage convert IC Automatically
