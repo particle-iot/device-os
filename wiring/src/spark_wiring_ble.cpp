@@ -2487,7 +2487,7 @@ int BleLocalDevice::setScanPhy(EnumFlags<BlePhy> phy) const {
     hal_ble_scan_params_t scanParams = {};
     scanParams.size = sizeof(hal_ble_scan_params_t);
     hal_ble_gap_get_scan_parameters(&scanParams, nullptr);
-    scanParams.scan_phys = static_cast<uint8_t>(phy);
+    scanParams.scan_phys = static_cast<uint8_t>(phy.value());
     return hal_ble_gap_set_scan_parameters(&scanParams, nullptr);
 }
 
