@@ -1,3 +1,31 @@
+## 3.0.0-rc.2
+
+### FEATURES
+
+- [Cellular] Battery presence detection when charging is disabled [#2272](https://github.com/particle-iot/device-os/pull/2272)
+- Increase the maximum DTLS packet size and payload of the cloud primitives [#2260](https://github.com/particle-iot/device-os/pull/2260)
+
+### ENHANCEMENTS
+
+- [Cellular] Update ICCID/IMSI to APN map with a new Kore ICCID prefix [#2276](https://github.com/particle-iot/device-os/pull/2276)
+- Disable some of the elliptic-curves not in use to save flash space [#2273](https://github.com/particle-iot/device-os/pull/2273)
+- [Cellular] Update LTE signal strength/quality parameters (RSRP/RSRQ) mapping to percentages [#2285](https://github.com/particle-iot/device-os/pull/2285)
+- [Cellular] System power management improvements [#2272](https://github.com/particle-iot/device-os/pull/2272)
+- [B5 SoM / Quectel] Improve warm and cold boot behavior [#2300](https://github.com/particle-iot/device-os/pull/2300)
+
+### BUGFIXES
+
+- [Gen 3] Use `PIN_INVALID` when initializing SPI peripheral to avoid overriding the pin mode of the default CS pin on reinitialization [#2275](https://github.com/particle-iot/device-os/pull/2275)
+- [Argon / Tracker] Make sure that ESP32 NCP power state is correctly initialized on boot [#2279](https://github.com/particle-iot/device-os/pull/2279)
+- [Electron] Increase `AT+COPS` timeout to 5 minutes [#2281](https://github.com/particle-iot/device-os/pull/2281)
+- [Electron] Fix Sleep 2.0 APIs taking up to 10 minutes to power-off the cellular modem while it's attempting network registration [#2284](https://github.com/particle-iot/device-os/pull/2284)
+- [B5 SoM / Tracker] Fix warm boot sometimes requiring modem reset [#2289](https://github.com/particle-iot/device-os/pull/2289)
+- [Gen 3] Fix micros/millis/unixtime becoming non-monotonic when RTC overflow event occurs [2a4fcb82b](https://github.com/particle-iot/device-os/commit/2a4fcb82b0968300b8a0227f665ffe94203f9f38)
+
+### INTERNAL
+
+- Startup SLO automated tests [#2277](https://github.com/particle-iot/device-os/pull/2277) [#2274](https://github.com/particle-iot/device-os/pull/2274)
+
 ## 3.0.0-rc.1
 
 ### FEATURES
