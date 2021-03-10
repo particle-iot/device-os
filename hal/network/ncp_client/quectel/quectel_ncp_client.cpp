@@ -128,6 +128,9 @@ using CidType = decltype(CellularGlobalIdentity::cell_id);
 const int QUECTEL_DEFAULT_CID = 1;
 const char QUECTEL_DEFAULT_PDP_TYPE[] = "IP";
 
+const int IMSI_MAX_RETRY_CNT = 5;
+const int CCID_MAX_RETRY_CNT = 2;
+
 } // anonymous
 
 QuectelNcpClient::QuectelNcpClient() {
@@ -928,6 +931,30 @@ int QuectelNcpClient::waitReady(bool powerOn) {
     return SYSTEM_ERROR_NONE;
 }
 
+int QuectelNcpClient::checkNetConfForImsi() {
+    int imsiCount = 0;
+    char buf[32] = {};
+    do {
+        auto resp = parser_.sendCommand("AT+CIMI");
+        memset(buf, 0, sizeof(buf));
+        int imsiLength = 0;
+        if (resp.hasNextLine()) {
+            imsiLength = CHECK(resp.readLine(buf, sizeof(buf)));
+        }
+        const int r = CHECK_PARSER(resp.readResult());
+        if (r == AtResponse::OK && imsiLength > 0) {
+            netConf_ = networkConfigForImsi(buf, imsiLength);
+            break;
+        } else if (imsiCount >= IMSI_MAX_RETRY_CNT) {
+            // if max retries are exhausted
+            return SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED;
+        }
+        ++imsiCount;
+        HAL_Delay_Milliseconds(100*imsiCount);
+    } while (imsiCount < IMSI_MAX_RETRY_CNT);
+    return SYSTEM_ERROR_NONE;
+}
+
 int QuectelNcpClient::selectSimCard() {
     // Using numeric CME ERROR codes
     // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=2"));
@@ -1182,24 +1209,21 @@ int QuectelNcpClient::checkSimCard() {
 int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
     netConf_ = conf;
     if (!netConf_.isValid()) {
-        // FIXME: CCID may fail, need delay here
-        HAL_Delay_Milliseconds(1000);
         // First look for network settings based on ICCID
         char buf[32] = {};
-        auto lenCcid = getIccidImpl(buf, sizeof(buf));
-        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
-        netConf_ = networkConfigForIccid(buf, lenCcid);
+        int ccidCount = 0;
+        do {
+            memset(buf, 0, sizeof(buf));
+            auto lenCcid = getIccidImpl(buf, sizeof(buf));
+            if (lenCcid > 5) {
+                netConf_ = networkConfigForIccid(buf, lenCcid);
+                break;
+            }
+        } while (++ccidCount < CCID_MAX_RETRY_CNT);
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
-            // FIXME: CIMI may fail, need delay here
-            HAL_Delay_Milliseconds(1000);
-            memset(buf, 0, sizeof(buf));
-            auto resp = parser_.sendCommand("AT+CIMI");
-            CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
-            const int r = CHECK_PARSER(resp.readResult());
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-            netConf_ = networkConfigForImsi(buf, strlen(buf));
+            CHECK(checkNetConfForImsi());
         }
     }
     // FIXME: for now IPv4 context only
@@ -1358,7 +1382,6 @@ int QuectelNcpClient::enterDataMode() {
                 .commandTerminator(AtCommandTerminator::CRLF);
         dataParser_.destroy();
         CHECK(dataParser_.init(std::move(parserConf)));
-
         responsive = waitAtResponse(dataParser_, 1000) == 0;
         if (responsive) {
             break;
