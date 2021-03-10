@@ -49,7 +49,11 @@ namespace SparkAppStateSelector {
 		DESCRIBE_SYSTEM = 1,
 		SUBSCRIPTIONS = 2,
 		PROTOCOL_FLAGS = 3,
-		ALL = 4
+		ALL = 4,
+		SYSTEM_MODULE_VERSION = 5,
+		MAX_MESSAGE_SIZE = 6,
+		MAX_BINARY_SIZE = 7,
+		OTA_CHUNK_SIZE = 8
 	};
 }
 

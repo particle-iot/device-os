@@ -33,6 +33,7 @@ namespace protocol
 
 class Functions
 {
+    // TODO: This is quite a large buffer and there's no need for it to be allocated statically
     char function_arg[MAX_FUNCTION_ARG_LENGTH+1]; // add one for null terminator
 
     ProtocolError function_result(MessageChannel& channel, const void* result, SparkReturnType::Enum, token_t token)

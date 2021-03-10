@@ -62,15 +62,14 @@ public:
 	          const SparkCallbacks &callbacks,
 	          const SparkDescriptor &descriptor) override;
 
-	size_t build_hello(Message& message, uint8_t flags) override
+	size_t build_hello(Message& message, uint16_t flags) override
 	{
 		product_details_t deets;
 		deets.size = sizeof(deets);
 		get_product_details(deets);
-		size_t len = Messages::hello(message.buf(), 0,
-				flags, PLATFORM_ID, deets.product_id,
-				deets.product_version, true,
-				device_id, sizeof(device_id));
+		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, PLATFORM_ID, system_version,
+				deets.product_id, deets.product_version, device_id, sizeof(device_id), PROTOCOL_BUFFER_SIZE,
+				max_binary_size, ota_chunk_size, true /* confirmable */);
 		return len;
 	}
 
