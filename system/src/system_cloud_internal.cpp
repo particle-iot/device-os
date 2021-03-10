@@ -787,12 +787,14 @@ void getUserVarImpl(User_Var_Lookup_Table_t* item, SparkDescriptor::GetVariableC
             data = item->userVar;
         }
         size = variableDataSize(data, item->userVarType);
-        copy = malloc(size);
-        if (!copy) {
-            getUserVarResult(ProtocolError::NO_MEMORY, 0, nullptr, 0, callback, context);
-            return;
+        if (size > 0) {
+            copy = malloc(size);
+            if (!copy) {
+                getUserVarResult(ProtocolError::NO_MEMORY, 0, nullptr, 0, callback, context);
+                return;
+            }
+            memcpy(copy, data, size);
         }
-        memcpy(copy, data, size);
     }
     const auto type = protocolVariableType(item->userVarType); // Spark_Data_TypeDef -> SparkReturnType::Enum
     getUserVarResult(ProtocolError::NO_ERROR, type, copy, size, callback, context);
