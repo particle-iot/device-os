@@ -1034,6 +1034,10 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
         tempParams.inc_tx_power = false;
     } else {
         memcpy(&tempParams, params, std::min(tempParams.size, params->size));
+        if (tempParams.primary_phy != BLE_PHYS_1MBPS && tempParams.primary_phy != BLE_PHYS_CODED) {
+            LOG(ERROR, "primary_phy value not supported");
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
     }
     CHECK(suspend());
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
@@ -1458,7 +1462,7 @@ int BleObject::Observer::stopScanning() {
 
 ble_gap_scan_params_t BleObject::Observer::toPlatformScanParams() const {
     ble_gap_scan_params_t params = {};
-    params.extended = (scanParams_.scan_phys == BLE_PHYS_1MBPS) ? 0x00 : 0x01; /**< Extended required if other than PHYS_1MBPS */
+    params.extended = ( (scanParams_.scan_phys & BLE_PHYS_CODED) != 0) ? 0x01 : 0x00; /**< Extended must be 1 if using Coded PHY */
     params.active = scanParams_.active;
     params.interval = scanParams_.interval;
     params.window = scanParams_.window;

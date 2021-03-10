@@ -2109,6 +2109,15 @@ int BleLocalDevice::setAdvertisingType(BleAdvertisingEventType type) const {
     return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
 }
 
+int BleLocalDevice::setAdvertisingPhy(EnumFlags<BlePhy> phy) const {
+    if(phy != BlePhy::CODED && phy != BlePhy::MBPS1) return SYSTEM_ERROR_NOT_SUPPORTED;
+    hal_ble_adv_params_t advParams = {};
+    advParams.size = sizeof(hal_ble_adv_params_t);
+    CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
+    advParams.primary_phy = static_cast<uint8_t>(phy.value());
+    return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
+}
+
 int BleLocalDevice::setAdvertisingParameters(const BleAdvertisingParams* params) const {
     return hal_ble_gap_set_advertising_parameters(params, nullptr);
 }
@@ -2471,6 +2480,14 @@ int BleLocalDevice::setScanTimeout(uint16_t timeout) const {
     scanParams.size = sizeof(hal_ble_scan_params_t);
     hal_ble_gap_get_scan_parameters(&scanParams, nullptr);
     scanParams.timeout = timeout;
+    return hal_ble_gap_set_scan_parameters(&scanParams, nullptr);
+}
+
+int BleLocalDevice::setScanPhy(EnumFlags<BlePhy> phy) const {
+    hal_ble_scan_params_t scanParams = {};
+    scanParams.size = sizeof(hal_ble_scan_params_t);
+    hal_ble_gap_get_scan_parameters(&scanParams, nullptr);
+    scanParams.scan_phys = static_cast<uint8_t>(phy);
     return hal_ble_gap_set_scan_parameters(&scanParams, nullptr);
 }
 
