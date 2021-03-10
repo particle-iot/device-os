@@ -100,6 +100,13 @@ typedef enum hal_ble_scan_fp_t {
                                                                    address is a resolvable private address that cannot be resolved. */
 } hal_ble_scan_fp_t;
 
+typedef enum hal_ble_phys_t {
+    BLE_PHYS_AUTO              = 0x00,  /**< Allows devices to negotiate PHYS after connection */
+    BLE_PHYS_1MBPS             = 0x01,  /**< Standard 1 MBPS supported by BLE 4 and 5 devices */
+    BLE_PHYS_2MBPS             = 0x02,  /**< Higher speed 2 MBPS, BLE 5 only */
+    BLE_PHYS_CODED             = 0x04   /**< Longer range 125 KBPS, BLE 5 only */
+} hal_ble_phys_t;
+
 typedef enum hal_ble_service_type_t {
     BLE_SERVICE_TYPE_INVALID   = 0,
     BLE_SERVICE_TYPE_PRIMARY   = 1,
@@ -182,6 +189,7 @@ typedef struct hal_ble_adv_params_t {
     hal_ble_adv_evt_type_t type;        /**< Advertising event type.*/
     hal_ble_adv_fp_t filter_policy;
     uint8_t inc_tx_power;
+    uint8_t primary_phy;                /**< Supports BLE_PHYS_1MBPS (standard) or BLE_PHYS_CODED (long range) */
     uint8_t reserved;
 } hal_ble_adv_params_t;
 
@@ -194,6 +202,7 @@ typedef struct hal_ble_scan_params_t {
     uint16_t timeout;                   /**< Scan timeout in 10 ms units. */
     uint8_t active;
     hal_ble_scan_fp_t filter_policy;
+    uint8_t scan_phys;                  /**< Supports BLE_PHYS_1MBPS, BLE_PHYS_CODED, or (BLE_PHYS_1MBPS | BLE_PHYS_CODED) */
 } hal_ble_scan_params_t;
 
 /* BLE connection parameters */

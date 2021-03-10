@@ -1213,13 +1213,20 @@ int BleObject::Broadcaster::resume() {
 
 ble_gap_adv_params_t BleObject::Broadcaster::toPlatformAdvParams(const hal_ble_adv_params_t* halParams) {
     ble_gap_adv_params_t params = {};
-    params.properties.type = BleAdvEvtTypeMap[halParams->type];
+    if (halParams->primary_phy == BLE_PHYS_CODED) {
+        // For Coded Phy advertising, type must be extended, nonscannable
+        params.properties.type = BLE_GAP_ADV_TYPE_EXTENDED_CONNECTABLE_NONSCANNABLE_UNDIRECTED;
+        params.primary_phy = BLE_GAP_PHY_CODED;
+    } else {
+        // For 1 MBPS advertising, use whatever type is specified
+        params.properties.type = BleAdvEvtTypeMap[halParams->type];
+        params.primary_phy = BLE_GAP_PHY_1MBPS;
+    }
     params.properties.include_tx_power = false; // FIXME: for extended advertising packet
     params.p_peer_addr = nullptr;
     params.interval = halParams->interval;
     params.duration = halParams->timeout;
     params.filter_policy = halParams->filter_policy;
-    params.primary_phy = BLE_GAP_PHY_1MBPS;
     return params;
 }
 
@@ -1407,6 +1414,7 @@ int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, voi
     scanResultCallback_ = callback;
     context_ = context;
     int ret = sd_ble_gap_scan_start(&bleGapScanParams, &bleScanData_);
+    // LOG_DEBUG(TRACE,"Ret code sd_ble_scan_start: %d", ret);  // Uncomment to get error code from starting scan
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isScanning_ = true;
     // If timeout is set to 0, it should scan indefinitely
@@ -1450,12 +1458,17 @@ int BleObject::Observer::stopScanning() {
 
 ble_gap_scan_params_t BleObject::Observer::toPlatformScanParams() const {
     ble_gap_scan_params_t params = {};
-    params.extended = 0;
+    params.extended = (scanParams_.scan_phys == BLE_PHYS_1MBPS) ? 0x00 : 0x01; /**< Extended required if other than PHYS_1MBPS */
     params.active = scanParams_.active;
     params.interval = scanParams_.interval;
     params.window = scanParams_.window;
     params.timeout = scanParams_.timeout;
-    params.scan_phys = BLE_GAP_PHY_1MBPS;
+    params.scan_phys = scanParams_.scan_phys;
+    if (scanParams_.scan_phys == (BLE_PHYS_1MBPS | BLE_PHYS_CODED)) { /**< Special case: Dual PHY scanning */
+        if (params.window > (params.interval / 2)) {
+            params.window = params.interval / 2;                      /**< Limit window to interval/2 */
+        }
+    }   
     params.filter_policy = scanParams_.filter_policy;
     return params;
 }
