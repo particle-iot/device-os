@@ -93,6 +93,10 @@ test(register_variables) {
     delay(3000);
 }
 
+test(empty_string_variable) {
+    strObjVar = "";
+}
+
 test(check_current_thread) {
     // Verify that all variable requests have been processed in the application thread
     assertTrue(appThread);

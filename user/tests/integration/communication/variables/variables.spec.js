@@ -83,5 +83,10 @@ test('check_variable_values', async function() {
 	expect(vars).to.include(vals);
 });
 
-test('check_current_thread', async function() {
+test('empty_string_variable', async function() {
+	const resp = await api.getVariable({ deviceId, name: 'var_s', auth });
+	expect(resp.body.result).to.equal('');
+});
+
+test('check_current_thread', async function() { // See variables.cpp
 });
