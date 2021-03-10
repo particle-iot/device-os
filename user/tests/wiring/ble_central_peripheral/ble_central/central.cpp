@@ -275,197 +275,160 @@ test(BLE_22_Central_Pairing_Sync) {
 
 static bool pairingRequested = false;
 static int pairingStatus = -1;
+static bool lesc;
+const BlePairingIoCaps pairingIoCaps[5] = {
+    BlePairingIoCaps::NONE,
+    BlePairingIoCaps::DISPLAY_ONLY,
+    BlePairingIoCaps::DISPLAY_YESNO,
+    BlePairingIoCaps::KEYBOARD_ONLY,
+    BlePairingIoCaps::KEYBOARD_DISPLAY
+};
+const char* ioCapsStr[5] = {
+    "BlePairingIoCaps::NONE",
+    "BlePairingIoCaps::DISPLAY_ONLY",
+    "BlePairingIoCaps::DISPLAY_YESNO",
+    "BlePairingIoCaps::KEYBOARD_ONLY",
+    "BlePairingIoCaps::KEYBOARD_DISPLAY"
+};
 
-static void pairingTestRoutine(bool request) {
+static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm) {
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
+    {
+        SCOPE_GUARD ({
+            delay(500);
+            assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+            assertFalse(BLE.connected());
+            delay(500);
+        });
 
-    pairingStatus = -1;
-    pairingRequested = false;
-    BLE.onPairingEvent([&](const BlePairingEvent& event) {
-        if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
-            // Serial.println("Request received");
-            pairingRequested = true;
-        } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
-            pairingStatus = event.payload.status.status;
-            // Serial.println("status updateed");
-        } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY) {
-            Serial.print("Please enter the following passkey on the other side: ");
-            for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
-                Serial.printf("%c", event.payload.passkey[i]);
-            }
-            Serial.println("");
-        } else if (event.type == BlePairingEventType::PASSKEY_INPUT) {
-            Serial.print("Please enter 6-digits passkey displayed on the other side: ");
-            uint8_t i = 0;
-            uint8_t passkey[BLE_PAIRING_PASSKEY_LEN];
-            while (i < BLE_PAIRING_PASSKEY_LEN) {
-                if (Serial.available()) {
-                    passkey[i] = Serial.read();
-                    Serial.write(passkey[i++]);
+        pairingStatus = -1;
+        pairingRequested = false;
+        BLE.onPairingEvent([&](const BlePairingEvent& event) {
+            if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
+                // Serial.println("Request received");
+                pairingRequested = true;
+            } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
+                pairingStatus = event.payload.status.status;
+                lesc = event.payload.status.lesc;
+                // Serial.println("status updateed");
+            } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY || event.type == BlePairingEventType::NUMERIC_COMPARISON) {
+                Serial.print("Passkey display: ");
+                for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
+                    Serial.printf("%c", event.payload.passkey[i]);
                 }
+                Serial.println("");
+                if (event.type == BlePairingEventType::NUMERIC_COMPARISON) {
+                    while (Serial.available()) {
+                        Serial.read();
+                    }
+                    Serial.print("Please confirm if the passkey is identical (y/n): ");
+                    while (!Serial.available());
+                    char c = Serial.read();
+                    Serial.write(c);
+                    Serial.println("");
+                    BLE.setPairingNumericComparison(event.peer, (c == 'y') ? true : false);
+                }
+            } else if (event.type == BlePairingEventType::PASSKEY_INPUT) {
+                while (Serial.available()) {
+                    Serial.read();
+                }
+                Serial.print("Passkey input (must be identical to the peer's): ");
+                uint8_t i = 0;
+                uint8_t passkey[BLE_PAIRING_PASSKEY_LEN];
+                while (i < BLE_PAIRING_PASSKEY_LEN) {
+                    if (Serial.available()) {
+                        passkey[i] = Serial.read();
+                        Serial.write(passkey[i++]);
+                    }
+                }
+                Serial.println("");
+                BLE.setPairingPasskey(event.peer, passkey);
             }
-            Serial.println("");
-            BLE.setPairingPasskey(event.peer, passkey);
+        });
+
+        if (request) {
+            assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
+        } else {
+            assertTrue(waitFor([&]{ return pairingRequested; }, 5000));
         }
-    });
-
-    if (request) {
-        assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
-    } else {
-        assertTrue(waitFor([&]{ return pairingRequested; }, 5000));
+        assertTrue(BLE.isPairing(peer));
+        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
+        assertTrue(BLE.isPaired(peer));
+        assertEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
+        if (algorithm != BlePairingAlgorithm::LEGACY_ONLY) {
+            assertTrue(lesc);
+        } else {
+            assertFalse(lesc);
+        }
     }
-    assertTrue(BLE.isPairing(peer));
-    assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
-    assertTrue(BLE.isPaired(peer));
-    assertEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
-
-    delay(500);
-    BLE.disconnect(peer);
-    delay(500);
 }
 
-test(BLE_23_Central_Initiate_Pairing_Central_Io_Caps_None_Peripheral_Io_Caps_None) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::NONE);
-    pairingTestRoutine(true);
+test(BLE_24_Central_Pairing_Algorithm_Auto_Io_Caps) {
+    for (uint8_t l = 0; l < 5; l++) { // Local I/O capabilities
+        assertEqual(BLE.setPairingIoCaps(pairingIoCaps[l]), (int)SYSTEM_ERROR_NONE);
+        for (uint8_t p = 0; p < 5; p++) { // Peer I/O capabilities
+            Serial.printlnf("Local I/O Caps: %s", ioCapsStr[l]);
+            pairingTestRoutine(l % 2, BlePairingAlgorithm::AUTO);
+        }
+    }
 }
 
-test(BLE_24_Central_Pairing_Receiption_Central_Io_Caps_None_Peripheral_Io_Caps_Dispaly_Only) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::NONE);
-    pairingTestRoutine(false);
+test(BLE_25_Central_Pairing_Algorithm_Legacy_Only) {
+    assertEqual(BLE.setPairingIoCaps(BlePairingIoCaps::NONE), (int)SYSTEM_ERROR_NONE);
+    assertEqual(BLE.setPairingAlgorithm(BlePairingAlgorithm::LEGACY_ONLY), (int)SYSTEM_ERROR_NONE);
+    pairingTestRoutine(true, BlePairingAlgorithm::LEGACY_ONLY);
 }
 
-test(BLE_25_Central_Initiate_Pairing_Central_Io_Caps_None_Peripheral_Io_Caps_Dispaly_Yesno) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::NONE);
-    pairingTestRoutine(true);
-}
-
-test(BLE_26_Central_Pairing_Receiption_Central_Io_Caps_None_Peripheral_Io_Caps_Keyboard_Only) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::NONE);
-    pairingTestRoutine(false);
-}
-
-test(BLE_27_Central_Initiate_Pairing_Central_Io_Caps_None_Peripheral_Io_Caps_Keyboard_Dispaly) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::NONE);
-    pairingTestRoutine(true);
-}
-
-test(BLE_28_Central_Pairing_Receiption_Central_Io_Caps_Dispaly_Only_Peripheral_Io_Caps_None) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::DISPLAY_ONLY);
-    pairingTestRoutine(false);
-}
-
-test(BLE_29_Central_Initiate_Pairing_Central_Io_Caps_Dispaly_Only_Peripheral_Io_Caps_Display_Only) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::DISPLAY_ONLY);
-    pairingTestRoutine(true);
-}
-
-test(BLE_30_Central_Pairing_Receiption_Central_Io_Caps_Dispaly_Only_Peripheral_Io_Caps_Display_Yesno) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::DISPLAY_ONLY);
-    pairingTestRoutine(false);
-}
-
-test(BLE_31_Central_Initiate_Pairing_Central_Io_Caps_Dispaly_Only_Peripheral_Io_Caps_Keyboard_Only) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::DISPLAY_ONLY);
-    pairingTestRoutine(true);
-}
-
-test(BLE_32_Central_Pairing_Receiption_Central_Io_Caps_Dispaly_Only_Peripheral_Io_Caps_Keyboard_Display) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::DISPLAY_ONLY);
-    pairingTestRoutine(false);
-}
-
-test(BLE_33_Central_Initiate_Pairing_Central_Io_Caps_Dispaly_Yesno_Peripheral_Io_Caps_None) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::DISPLAY_YESNO);
-    pairingTestRoutine(true);
-}
-
-test(BLE_34_Central_Pairing_Receiption_Central_Io_Caps_Dispaly_Yesno_Peripheral_Io_Caps_Display_Only) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::DISPLAY_YESNO);
-    pairingTestRoutine(false);
-}
-
-test(BLE_35_Central_Initiate_Pairing_Central_Io_Caps_Dispaly_Yesno_Peripheral_Io_Caps_Display_Yesno) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::DISPLAY_YESNO);
-    pairingTestRoutine(true);
-}
-
-test(BLE_36_Central_Pairing_Receiption_Central_Io_Caps_Dispaly_Yesno_Peripheral_Io_Caps_Keyboard_Only) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::DISPLAY_YESNO);
-    pairingTestRoutine(false);
-}
-
-test(BLE_37_Central_Initiate_Pairing_Central_Io_Caps_Dispaly_Yesno_Peripheral_Io_Caps_Keyboard_Display) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::DISPLAY_YESNO);
-    pairingTestRoutine(true);
-}
-
-test(BLE_38_Central_Pairing_Receiption_Central_Io_Caps_Keyboard_Only_Peripheral_Io_Caps_None) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::KEYBOARD_ONLY);
-    pairingTestRoutine(false);
-}
-
-test(BLE_39_Central_Initiate_Pairing_Central_Io_Caps_Keyboard_Only_Peripheral_Io_Caps_Display_Only) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::KEYBOARD_ONLY);
-    pairingTestRoutine(true);
-}
-
-test(BLE_40_Central_Pairing_Receiption_Central_Io_Caps_Keyboard_Only_Peripheral_Io_Caps_Display_Yesno) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::KEYBOARD_ONLY);
-    pairingTestRoutine(false);
-}
-
-test(BLE_41_Central_Initiate_Pairing_Central_Io_Caps_Keyboard_Only_Peripheral_Io_Caps_Keyboard_Only) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::KEYBOARD_ONLY);
-    Serial.println("Please enter the same 6-digits key on each side");
-    pairingTestRoutine(true);
-}
-
-test(BLE_42_Central_Pairing_Receiption_Central_Io_Caps_Keyboard_Only_Peripheral_Io_Caps_Keyboard_Display) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::KEYBOARD_ONLY);
-    pairingTestRoutine(false);
-}
-
-test(BLE_43_Central_Initiate_Pairing_Central_Io_Caps_Keyboard_Display_Peripheral_Io_Caps_None) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::KEYBOARD_DISPLAY);
-    pairingTestRoutine(true);
-}
-
-test(BLE_44_Central_Pairing_Receiption_Central_Io_Caps_Keyboard_Display_Peripheral_Io_Caps_Display_Only) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::KEYBOARD_DISPLAY);
-    pairingTestRoutine(false);
-}
-
-test(BLE_45_Central_Initiate_Pairing_Central_Io_Caps_Keyboard_Display_Peripheral_Io_Caps_Display_Yesno) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::KEYBOARD_DISPLAY);
-    pairingTestRoutine(true);
-}
-
-test(BLE_46_Central_Pairing_Receiption_Central_Io_Caps_Keyboard_Display_Peripheral_Io_Caps_Keyboard_Only) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::KEYBOARD_DISPLAY);
-    pairingTestRoutine(false);
-}
-
-test(BLE_47_Central_Initiate_Pairing_Central_Io_Caps_Keyboard_Display_Peripheral_Io_Caps_Keyboard_Display) {
-    BLE.setPairingIoCaps(BlePairingIoCaps::KEYBOARD_DISPLAY);
-    pairingTestRoutine(true);
-}
-
-test(BLE_48_Central_Initiate_Pairing_Peripheral_Being_Reject) {
+test(BLE_26_Central_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
+    {
+        SCOPE_GUARD ({
+            delay(500);
+            assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+            assertFalse(BLE.connected());
+            delay(500);
+        });
 
-    assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
-    assertTrue(BLE.isPairing(peer));
-    assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
-    assertFalse(BLE.isPaired(peer));
+        pairingStatus = -1;
+        BLE.onPairingEvent([&](const BlePairingEvent& event) {
+            if (event.type == BlePairingEventType::STATUS_UPDATED) {
+                pairingStatus = event.payload.status.status;
+                // Serial.println("status updateed");
+            }
+        });
 
-    delay(500);
-    BLE.disconnect(peer);
-    delay(500);
+        assertEqual(BLE.setPairingIoCaps(BlePairingIoCaps::NONE), (int)SYSTEM_ERROR_NONE);
+        assertEqual(BLE.setPairingAlgorithm(BlePairingAlgorithm::LESC_ONLY), (int)SYSTEM_ERROR_NONE);
+
+        assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
+        assertTrue(BLE.isPairing(peer));
+        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
+        assertFalse(BLE.isPaired(peer));
+        assertNotEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
+    }
 }
 
-test(BLE_49_Central_Pairing_Receiption_Reject) {
+test(BLE_27_Central_Initiate_Pairing_Being_Rejected) {
+    peer = BLE.connect(peerAddr, false);
+    assertTrue(peer.connected());
+    {
+        SCOPE_GUARD ({
+            delay(500);
+            assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+            assertFalse(BLE.connected());
+            delay(500);
+        });
+
+        assertEqual(BLE.startPairing(peer), (int)SYSTEM_ERROR_NONE);
+        assertTrue(BLE.isPairing(peer));
+        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
+        assertFalse(BLE.isPaired(peer));
+    }
+}
+
+test(BLE_28_Central_Pairing_Receiption_Reject) {
     pairingStatus = 0;
     BLE.onPairingEvent([&](const BlePairingEvent& event) {
         if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
@@ -478,12 +441,16 @@ test(BLE_49_Central_Pairing_Receiption_Reject) {
 
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
+    {
+        SCOPE_GUARD ({
+            delay(500);
+            assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+            assertFalse(BLE.connected());
+            delay(500);
+        });
 
-    assertTrue(waitFor([]{ return pairingStatus != 0; }, 5000));
-
-    delay(500);
-    BLE.disconnect(peer);
-    delay(500);
+        assertTrue(waitFor([]{ return pairingStatus != 0; }, 5000));
+    }
 }
 
 #endif // #if Wiring_BLE == 1

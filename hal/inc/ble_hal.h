@@ -42,7 +42,7 @@ extern "C" {
  * @{
  */
 
-#define BLE_API_VERSION 1
+#define BLE_API_VERSION 2
 
 // Particle's company ID
 #define PARTICLE_COMPANY_ID     0x0662
@@ -120,6 +120,19 @@ typedef enum hal_ble_pairing_io_caps_t {
     BLE_IO_CAPS_KEYBOARD_DISPLAY = 4
 } hal_ble_pairing_io_caps_t;
 
+typedef enum hal_ble_pairing_algorithm_t {
+    BLE_PAIRING_ALGORITHM_AUTO = 0,
+    BLE_PAIRING_ALGORITHM_LEGACY_ONLY = 1,
+    BLE_PAIRING_ALGORITHM_LESC_ONLY = 2
+} hal_ble_pairing_algorithm_t;
+
+typedef enum hal_ble_pairing_auth_data_type_t {
+    BLE_PAIRING_AUTH_DATA_NUMERIC_COMPARISON = 0,
+    BLE_PAIRING_AUTH_DATA_PASSKEY = 1,
+    BLE_PAIRING_AUTH_DATA_LEGACY_OOB = 2,
+    BLE_PAIRING_AITH_DATA_LESC_OOB = 3
+} hal_ble_pairing_auth_data_type_t;
+
 typedef enum hal_ble_evts_type_t {
     BLE_EVT_UNKNOWN = 0x00,
     BLE_EVT_ADV_STOPPED = 0x01,
@@ -137,6 +150,7 @@ typedef enum hal_ble_evts_type_t {
     BLE_EVT_PAIRING_PASSKEY_DISPLAY = 0x0D,
     BLE_EVT_PAIRING_PASSKEY_INPUT = 0x0E,
     BLE_EVT_PAIRING_STATUS_UPDATED = 0x0F,
+    BLE_EVT_PAIRING_NUMERIC_COMPARISON = 0x10,
     BLE_EVT_MAX = 0x7FFFFFFF
 } hal_ble_evts_type_t;
 
@@ -305,6 +319,18 @@ typedef struct hal_ble_pairing_status_updated_evt_t {
     uint8_t reserved[3];
 } hal_ble_pairing_status_updated_evt_t;
 
+typedef struct hal_ble_pairing_auth_data_t {
+    uint16_t version;
+    uint16_t size;
+    hal_ble_pairing_auth_data_type_t type;
+    union {
+        bool equal; //For numeric comparison result
+        const uint8_t* passkey; // For passkey
+        const uint8_t* legacy_oob; // For legacy OOB data
+        const uint8_t* lesc_oob; // For LESC OOB data
+    } params;
+} hal_ble_pairing_auth_data_t;
+
 typedef struct hal_ble_link_evt_t {
     hal_ble_evts_type_t type;
     union {
@@ -397,7 +423,8 @@ typedef struct hal_ble_pairing_config_t {
     uint16_t version;
     uint16_t size;
     hal_ble_pairing_io_caps_t io_caps;
-    uint8_t reserved[3];
+    hal_ble_pairing_algorithm_t algorithm;
+    uint8_t reserved[2];
 } hal_ble_pairing_config_t;
 
 /**
@@ -834,6 +861,15 @@ int hal_ble_gap_get_rssi(hal_ble_conn_handle_t conn_handle, void* reserved);
 int hal_ble_gap_set_pairing_config(const hal_ble_pairing_config_t* config, void* reserved);
 
 /**
+ * Get pairing configurations
+ *
+ * @param[in]   config      Pointer to where it stores the configuration.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_gap_get_pairing_config(hal_ble_pairing_config_t* config, void* reserved);
+
+/**
  * Start pairing with the peer device.
  *
  * @param[in]   conn_handle BLE connection handle.
@@ -852,13 +888,23 @@ int hal_ble_gap_start_pairing(hal_ble_conn_handle_t conn_handle, void* reserved)
 int hal_ble_gap_reject_pairing(hal_ble_conn_handle_t conn_handle, void* reserved);
 
 /**
+ * Set pairing authentication data.
+ *
+ * @param[in]   conn_handle BLE connection handle.
+ * @param[in]   auth        Authentication data.
+ *
+ * @returns     0 on success, system_error_t on error.
+ */
+int hal_ble_gap_set_pairing_auth_data(hal_ble_conn_handle_t conn_handle, const hal_ble_pairing_auth_data_t* auth, void* reserved);
+
+/**
  * Provide the 6-digits passkey that is observed from the peer's display.
  *
  * @param[in]   conn_handle BLE connection handle.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gap_set_pairing_passkey(hal_ble_conn_handle_t conn_handle, const uint8_t* passkey, void* reserved);
+int hal_ble_gap_set_pairing_passkey_deprecated(hal_ble_conn_handle_t conn_handle, const uint8_t* passkey, void* reserved);
 
 /**
  * Check if pairing with peer device is in progress

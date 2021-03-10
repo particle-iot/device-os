@@ -55,6 +55,9 @@ LOG_SOURCE_CATEGORY("hal.ble");
 #include "check.h"
 #include "scope_guard.h"
 
+#include "mbedtls/ecdh.h"
+#include "mbedtls_util.h"
+
 using namespace particle;
 #include "intrusive_list.h"
 
@@ -68,6 +71,9 @@ using namespace particle::ble;
 #undef SUB1
 #endif
 #define SUB1(X) (((X)>0) ? ((X)-1) : (X))
+
+#define BLE_API_VERSION_1   1
+#define BLE_API_VERSION_2   2
 
 //anonymous namespace
 namespace {
@@ -230,6 +236,7 @@ public:
         return evtDispatcherinitialized_;
     }
     void enqueue(ble_evt_t** event);
+    void enqueue(const ble_evt_t* event);
 
     void* allocEventData(size_t size) {
         return pool_.alloc(size);
@@ -405,8 +412,14 @@ public:
               disconnectSemaphore_(nullptr),
               attMtuExchangeConnHandle_(BLE_INVALID_CONN_HANDLE),
               attMtuExchangeTimer_(nullptr),
-              ioCaps_(BLE_IO_CAPS_NONE) {
+              ecdhContextInit_(false) {
         connectingAddr_ = {};
+        pairingConfig_ = {
+            .version = BLE_API_VERSION,
+            .size = sizeof(hal_ble_pairing_config_t),
+            .io_caps = BLE_IO_CAPS_NONE,
+            .algorithm = BLE_PAIRING_ALGORITHM_AUTO
+        };
     }
     ~ConnectionsManager() = default;
     int init();
@@ -425,9 +438,10 @@ public:
     int updateConnectionParams(hal_ble_conn_handle_t connHandle, const hal_ble_conn_params_t* params);
     int getConnectionInfo(hal_ble_conn_handle_t connHandle, hal_ble_conn_info_t* info);
     int setPairingConfig(const hal_ble_pairing_config_t* config);
+    int getPairingConfig(hal_ble_pairing_config_t* config) const;
     int startPairing(hal_ble_conn_handle_t connHandle);
     int rejectPairing(hal_ble_conn_handle_t connHandle);
-    int setPairingPasskey(hal_ble_conn_handle_t connHandle, const uint8_t* passkey);
+    int setPairingAuthData(hal_ble_conn_handle_t connHandle, const hal_ble_pairing_auth_data_t* auth);
     bool isPairing(hal_ble_conn_handle_t connHandle);
     bool isPaired(hal_ble_conn_handle_t connHandle);
     bool valid(hal_ble_conn_handle_t connHandle);
@@ -462,13 +476,18 @@ private:
         BleLinkEventHandler handler; // It is used for central link only.
         bool isMtuExchanged;
         BlePairingState pairState;
+        std::unique_ptr<ble_gap_lesc_p256_pk_t> peerPublicKey;
     };
 
+    int initSecParams(const hal_ble_pairing_config_t& config, ble_gap_sec_params_t& params);
+    int generateEcdhKeyPair();
+    int publicKeysPrepare(BleConnection* connection);
+    int computeDhkey(const uint8_t peerPublicKey[BLE_GAP_LESC_P256_PK_LEN], uint8_t dhKey[BLE_GAP_LESC_DHKEY_LEN]);
     int configureAttMtu(hal_ble_conn_handle_t connHandle, size_t effective);
     bool attMtuExchanged(hal_ble_conn_handle_t connHandle);
     BleConnection* fetchConnection(hal_ble_conn_handle_t connHandle);
     BleConnection* fetchConnection(const hal_ble_addr_t* address);
-    int addConnection(const BleConnection& connection);
+    int addConnection(BleConnection&& connection);
     void removeConnection(hal_ble_conn_handle_t connHandle);
     void initiateConnParamsUpdateIfNeeded(const BleConnection* connection);
     bool isConnParamsFeeded(const hal_ble_conn_params_t* params) const;
@@ -494,11 +513,14 @@ private:
     os_semaphore_t disconnectSemaphore_;                        /**< Semaphore to wait until connection disconnected. */
     volatile hal_ble_conn_handle_t attMtuExchangeConnHandle_;   /**< Current handle of the connection to execute ATT_MTU exchange procedure. */
     os_timer_t attMtuExchangeTimer_;                            /**< Timer used for sending the exchanging ATT_MTU request after connection established. */
-    hal_ble_pairing_io_caps_t ioCaps_;
     // GATT Server and GATT client share the same ATT_MTU.
     static size_t desiredAttMtu_;
     Vector<BleConnection> connections_;
     Vector<BleLinkEventHandler> peripheralLinkEventHandlers_;   /**< It is used for peripheral link only. */
+    hal_ble_pairing_config_t pairingConfig_;
+    mbedtls_ecdh_context ecdhContext_;
+    volatile bool ecdhContextInit_;
+    std::unique_ptr<ble_gap_lesc_p256_pk_t> localPublicKey_;
 };
 
 size_t BleObject::ConnectionsManager::desiredAttMtu_ = BLE_MAX_ATT_MTU_SIZE;
@@ -684,6 +706,16 @@ void BleObject::BleEventDispatcher::enqueue(ble_evt_t** event) {
     }
 }
 
+void BleObject::BleEventDispatcher::enqueue(const ble_evt_t* event) {
+    ble_evt_t* pBleEvent = (ble_evt_t*)allocEventData(sizeof(ble_evt_t));
+    if (!pBleEvent) {
+        LOG(ERROR, "Allocate memory for BLE event failed.");
+        SPARK_ASSERT(false);
+    }
+    memcpy(pBleEvent, event, sizeof(ble_evt_t));
+    enqueue(&pBleEvent);
+}
+
 os_thread_return_t BleObject::BleEventDispatcher::processBleEventFromThread(void* param) {
     BleEventDispatcher* dispatcher = static_cast<BleEventDispatcher*>(param);
     while (1) {
@@ -740,7 +772,10 @@ os_thread_return_t BleObject::BleEventDispatcher::processBleEventFromThread(void
                 }
                 case BLE_GATTC_EVT_HVX: {
                     BleObject::getInstance().gattc()->processDataNotifiedEventFromThread(event);
+                    break;
                 }
+                case BLE_GAP_EVT_SEC_INFO_REQUEST:
+                case BLE_GAP_EVT_LESC_DHKEY_REQUEST:
                 case BLE_GAP_EVT_PASSKEY_DISPLAY:
                 case BLE_GAP_EVT_AUTH_KEY_REQUEST:
                 case BLE_GAP_EVT_SEC_REQUEST:
@@ -748,6 +783,7 @@ os_thread_return_t BleObject::BleEventDispatcher::processBleEventFromThread(void
                 case BLE_GAP_EVT_AUTH_STATUS:
                 case BLE_GAP_EVT_CONN_SEC_UPDATE: {
                     BleObject::getInstance().connMgr()->processSecurityEventFromThread(event);
+                    break;
                 }
                 default: {
                     break;
@@ -1883,9 +1919,83 @@ int BleObject::ConnectionsManager::getConnectionInfo(hal_ble_conn_handle_t connH
     return SYSTEM_ERROR_NONE;
 }
 
+int BleObject::ConnectionsManager::initSecParams(const hal_ble_pairing_config_t& config, ble_gap_sec_params_t& secParams) {
+    if (config.io_caps == BLE_IO_CAPS_NONE) {
+        secParams.mitm = false;
+    } else {
+        secParams.mitm = true;
+    }
+    if (config.algorithm == BLE_PAIRING_ALGORITHM_LEGACY_ONLY) {
+        secParams.lesc = false;
+    } else {
+        secParams.lesc = true;
+    }
+    secParams.io_caps        = toPlatformIoCaps(config.io_caps);
+    secParams.keypress       = false;
+    secParams.bond           = false;
+    secParams.oob            = false;
+    secParams.min_key_size   = BLE_ENC_MIN_KEY_SIZE;
+    secParams.max_key_size   = BLE_ENC_MAX_KEY_SIZE;
+    secParams.kdist_own.enc  = true;
+    secParams.kdist_own.id   = true;
+    secParams.kdist_peer.enc = true;
+    secParams.kdist_peer.id  = true;
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleObject::ConnectionsManager::generateEcdhKeyPair(void) {
+    ecdhContextInit_ = false;
+    mbedtls_ecdh_init(&ecdhContext_);
+    CHECK_MBEDTLS(mbedtls_ecdh_setup(&ecdhContext_, MBEDTLS_ECP_DP_SECP256R1));
+    CHECK_MBEDTLS(mbedtls_ecdh_gen_public(&ecdhContext_.ctx.mbed_ecdh.grp, &ecdhContext_.ctx.mbed_ecdh.d,
+            &ecdhContext_.ctx.mbed_ecdh.Q, mbedtls_default_rng, nullptr));
+    ecdhContextInit_ = true;
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleObject::ConnectionsManager::publicKeysPrepare(BleConnection* connection) {
+    if (!ecdhContextInit_) {
+        generateEcdhKeyPair();
+    }
+    CHECK_TRUE(ecdhContextInit_, SYSTEM_ERROR_INVALID_STATE);
+    // Local public key: won't be freed.
+    if (!localPublicKey_) {
+        localPublicKey_ = std::make_unique<ble_gap_lesc_p256_pk_t>();
+        CHECK_TRUE(localPublicKey_, SYSTEM_ERROR_NO_MEMORY);
+    }
+    const uint8_t pointLen = BLE_GAP_LESC_P256_PK_LEN / 2;
+    CHECK_MBEDTLS(mbedtls_mpi_write_binary_le(&ecdhContext_.ctx.mbed_ecdh.Q.X, &(localPublicKey_.get()->pk[0]), pointLen));
+    CHECK_MBEDTLS(mbedtls_mpi_write_binary_le(&ecdhContext_.ctx.mbed_ecdh.Q.Y, &(localPublicKey_.get()->pk[pointLen]), pointLen));
+    // Peer public key: will be freed on authentication status updated or disconnected.
+    connection->peerPublicKey = std::make_unique<ble_gap_lesc_p256_pk_t>();
+    CHECK_TRUE(connection->peerPublicKey, SYSTEM_ERROR_NO_MEMORY);
+    memset(connection->peerPublicKey.get(), 0x00, BLE_GAP_LESC_P256_PK_LEN);
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleObject::ConnectionsManager::computeDhkey(const uint8_t peerPublicKey[BLE_GAP_LESC_P256_PK_LEN], uint8_t dhKey[BLE_GAP_LESC_DHKEY_LEN]) {
+    CHECK_TRUE(ecdhContextInit_, SYSTEM_ERROR_INVALID_STATE);
+    const uint8_t pointLen = BLE_GAP_LESC_P256_PK_LEN / 2;
+    CHECK_MBEDTLS(mbedtls_mpi_read_binary_le(&ecdhContext_.ctx.mbed_ecdh.Qp.X, &peerPublicKey[0], pointLen));
+    CHECK_MBEDTLS(mbedtls_mpi_read_binary_le(&ecdhContext_.ctx.mbed_ecdh.Qp.Y, &peerPublicKey[pointLen], pointLen));
+    CHECK_MBEDTLS(mbedtls_mpi_lset(&ecdhContext_.ctx.mbed_ecdh.Qp.Z, 1));
+    CHECK_MBEDTLS(mbedtls_ecdh_compute_shared(&ecdhContext_.ctx.mbed_ecdh.grp, &ecdhContext_.ctx.mbed_ecdh.z, 
+            &ecdhContext_.ctx.mbed_ecdh.Qp, &ecdhContext_.ctx.mbed_ecdh.d, mbedtls_default_rng, nullptr));
+    CHECK_MBEDTLS(mbedtls_mpi_write_binary_le(&ecdhContext_.ctx.mbed_ecdh.z, dhKey, BLE_GAP_LESC_DHKEY_LEN));
+    return SYSTEM_ERROR_NONE;
+}
+
 int BleObject::ConnectionsManager::setPairingConfig(const hal_ble_pairing_config_t* config) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
-    ioCaps_ = config->io_caps;
+    pairingConfig_ = {};
+    pairingConfig_.size = sizeof(hal_ble_pairing_config_t);
+    memcpy(&pairingConfig_, config, std::min(pairingConfig_.size, config->size));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleObject::ConnectionsManager::getPairingConfig(hal_ble_pairing_config_t* config) const {
+    CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
+    memcpy(config, &pairingConfig_, std::min(pairingConfig_.size, config->size));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1896,19 +2006,7 @@ int BleObject::ConnectionsManager::startPairing(hal_ble_conn_handle_t connHandle
                connection->pairState == BLE_PAIRING_STATE_REJECTED ||
                connection->pairState == BLE_PAIRING_STATE_SEC_REQ_RECEIVED, SYSTEM_ERROR_INVALID_STATE);
     ble_gap_sec_params_t secParams = {};
-    if (ioCaps_ != BLE_IO_CAPS_NONE) {
-        secParams.mitm = true;
-    }
-    if (connection->info.role == BLE_ROLE_CENTRAL) {
-        secParams.io_caps        = toPlatformIoCaps(ioCaps_);
-        secParams.oob            = false;
-        secParams.min_key_size   = BLE_ENC_MIN_KEY_SIZE;
-        secParams.max_key_size   = BLE_ENC_MAX_KEY_SIZE;
-        secParams.kdist_own.enc  = true;
-        secParams.kdist_own.id   = true;
-        secParams.kdist_peer.enc = true;
-        secParams.kdist_peer.id  = true;
-    }
+    initSecParams(pairingConfig_, secParams);
     LOG_DEBUG(TRACE, "Own security params: %d, %d, %d, %d, %d, %d", secParams.bond, secParams.mitm, secParams.lesc, secParams.io_caps, secParams.keypress, secParams.oob);
     int ret = sd_ble_gap_authenticate(connection->info.conn_handle, &secParams);
     if (ret != NRF_SUCCESS) {
@@ -1935,22 +2033,24 @@ int BleObject::ConnectionsManager::rejectPairing(hal_ble_conn_handle_t connHandl
     CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
     switch (connection->pairState) {
         case BLE_PAIRING_STATE_SEC_REQ_RECEIVED: {
-            connection->pairState = BLE_PAIRING_STATE_REJECTED;
             int ret = sd_ble_gap_authenticate(connection->info.conn_handle, nullptr);
             CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+            // We should not tamper the pairing state to be out of sync with the SoftDevice.
+            // Only if the SD call returns success we then mark the pairing state as rejected.
+            connection->pairState = BLE_PAIRING_STATE_REJECTED;
             break;
         }
         case BLE_PAIRING_STATE_PAIRING_REQ_RECEIVED: {
-            connection->pairState = BLE_PAIRING_STATE_REJECTED;
             int ret = sd_ble_gap_sec_params_reply(connHandle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, nullptr, nullptr);
             CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+            connection->pairState = BLE_PAIRING_STATE_REJECTED;
             break;
         }
         case BLE_GAP_EVT_PASSKEY_DISPLAY:
         case BLE_PAIRING_STATE_PASSKEY_INPUT: {
-            connection->pairState = BLE_PAIRING_STATE_REJECTED;
             int ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_NONE, nullptr);
             CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+            connection->pairState = BLE_PAIRING_STATE_REJECTED;
             break;
         }
         default: {
@@ -1960,24 +2060,31 @@ int BleObject::ConnectionsManager::rejectPairing(hal_ble_conn_handle_t connHandl
     return SYSTEM_ERROR_NONE;
 }
 
-int BleObject::ConnectionsManager::setPairingPasskey(hal_ble_conn_handle_t connHandle, const uint8_t* passkey) {
+int BleObject::ConnectionsManager::setPairingAuthData(hal_ble_conn_handle_t connHandle, const hal_ble_pairing_auth_data_t* auth) {
+    CHECK_TRUE(auth, SYSTEM_ERROR_INVALID_ARGUMENT);
     BleConnection* connection = fetchConnection(connHandle);
     CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
-    CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_PASSKEY_INPUT, SYSTEM_ERROR_INVALID_STATE);
-    for (uint8_t i = 0; i < 6; i++) {
-        if (!std::isdigit(passkey[i])) {
-            sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_NONE/*reject*/, nullptr);
-            LOG(ERROR, "Invalid digits.");
-            connection->pairState = BLE_PAIRING_STATE_REJECTED;
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
+    int ret;
+    if (auth->type == BLE_PAIRING_AUTH_DATA_NUMERIC_COMPARISON) {
+        CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_PASSKEY_DISPLAY, SYSTEM_ERROR_INVALID_STATE);
+        if (auth->params.equal) {
+            ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, nullptr);
+        } else {
+            return rejectPairing(connHandle);
         }
+    } else if (auth->type == BLE_PAIRING_AUTH_DATA_PASSKEY) {
+        CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_PASSKEY_INPUT, SYSTEM_ERROR_INVALID_STATE);
+        for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
+            if (!std::isdigit(auth->params.passkey[i])) {
+                LOG(ERROR, "Invalid digits.");
+                return rejectPairing(connHandle);
+            }
+        }
+        ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, auth->params.passkey);
+    } else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
-    int ret = sd_ble_gap_auth_key_reply(connHandle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, passkey);
-    if (ret != NRF_SUCCESS) {
-        connection->pairState = BLE_PAIRING_STATE_NOT_INITIATED;
-        return nrf_system_error(ret);
-    }
-    return SYSTEM_ERROR_NONE;
+    return nrf_system_error(ret);
 }
 
 bool BleObject::ConnectionsManager::isPairing(hal_ble_conn_handle_t connHandle) {
@@ -2079,9 +2186,9 @@ BleObject::ConnectionsManager::BleConnection* BleObject::ConnectionsManager::fet
     return nullptr;
 }
 
-int BleObject::ConnectionsManager::addConnection(const BleConnection& connection) {
+int BleObject::ConnectionsManager::addConnection(BleConnection&& connection) {
     CHECK_TRUE(fetchConnection(connection.info.conn_handle) == nullptr, SYSTEM_ERROR_INTERNAL);
-    CHECK_TRUE(connections_.append(connection), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(connections_.append(std::move(connection)), SYSTEM_ERROR_NO_MEMORY);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2208,7 +2315,7 @@ int BleObject::ConnectionsManager::processConnectedEventFromThread(const ble_evt
     connection.info.att_mtu = BLE_DEFAULT_ATT_MTU_SIZE; // Use the default ATT_MTU on connected.
     connection.isMtuExchanged = false;
     connection.pairState = BLE_PAIRING_STATE_NOT_INITIATED;
-    int ret = addConnection(connection);
+    int ret = addConnection(std::move(connection));
     if (ret != SYSTEM_ERROR_NONE) {
         LOG(ERROR, "Add new connection failed. Disconnects from peer.");
         if (sd_ble_gap_disconnect(connection.info.conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION) != NRF_SUCCESS) {
@@ -2305,18 +2412,22 @@ int BleObject::ConnectionsManager::processSecurityEventFromThread(const ble_evt_
             notifyLinkEvent(linkEvent);
             // User application may call rejectPairing() to update the pairing state in event handler
             if (connection->pairState != BLE_PAIRING_STATE_REJECTED) {
+                const ble_gap_evt_sec_request_t& secRequest = event->evt.gap_evt.params.sec_request;
+                if (pairingConfig_.algorithm == BLE_PAIRING_ALGORITHM_LESC_ONLY) {
+                    if (secRequest.lesc == false) {
+                        rejectPairing(event->evt.gap_evt.conn_handle);
+                    }
+                }
                 return startPairing(event->evt.gap_evt.conn_handle);
             }
         }
     } else if (event->header.evt_id == BLE_GAP_EVT_SEC_PARAMS_REQUEST) {
         LOG_DEBUG(TRACE, "BLE event: BLE_GAP_EVT_SEC_PARAMS_REQUEST");
-        // const ble_gap_sec_params_t& peerSecParams = event->evt.gap_evt.params.sec_params_request.peer_params;
-        // LOG_DEBUG(TRACE, "Peer security params: %d, %d, %d, %d, %d, %d", peerSecParams.bond, peerSecParams.mitm, peerSecParams.lesc, peerSecParams.io_caps, peerSecParams.keypress, peerSecParams.oob);
-        
+        const ble_gap_sec_params_t& peerSecParams = event->evt.gap_evt.params.sec_params_request.peer_params;
+        LOG_DEBUG(TRACE, "Peer bond:%d, mitm:%d, lesc:%d, iocaps:%d, keypress:%d, oob:%d",
+            peerSecParams.bond, peerSecParams.mitm, peerSecParams.lesc, toHalIoCaps(peerSecParams.io_caps), peerSecParams.keypress, peerSecParams.oob);
         int ret = NRF_SUCCESS;
-        if (connection->info.role == BLE_ROLE_CENTRAL) {
-            ret = sd_ble_gap_sec_params_reply(event->evt.gap_evt.conn_handle, BLE_GAP_SEC_STATUS_SUCCESS, nullptr, nullptr);
-        } else {
+        if (connection->info.role == BLE_ROLE_PERIPHERAL) {
             // If peripheral requests to pair, don't notify the event.
             if (connection->pairState != BLE_PAIRING_STATE_SEC_REQ_SENT) {
                 connection->pairState = BLE_PAIRING_STATE_PAIRING_REQ_RECEIVED;
@@ -2325,24 +2436,40 @@ int BleObject::ConnectionsManager::processSecurityEventFromThread(const ble_evt_
                 linkEvent.conn_handle = connection->info.conn_handle;
                 notifyLinkEvent(linkEvent);
             }
-            // User application may call rejectPairing() to update the pairing state in event handler
-            if (connection->pairState != BLE_PAIRING_STATE_REJECTED) {
-                ble_gap_sec_params_t secParams = {};
-                if (ioCaps_ != BLE_IO_CAPS_NONE) {
-                    secParams.mitm = true;
-                }
-                secParams.io_caps        = toPlatformIoCaps(ioCaps_);
-                secParams.oob            = false;
-                secParams.min_key_size   = BLE_ENC_MIN_KEY_SIZE;
-                secParams.max_key_size   = BLE_ENC_MAX_KEY_SIZE;
-                secParams.kdist_own.enc  = true;
-                secParams.kdist_own.id   = true;
-                secParams.kdist_peer.enc = true;
-                secParams.kdist_peer.id  = true;
-                ret = sd_ble_gap_sec_params_reply(event->evt.gap_evt.conn_handle, BLE_GAP_SEC_STATUS_SUCCESS, &secParams, nullptr);
+        }
+        // User application may call rejectPairing() to update the pairing state in event handler
+        if (connection->pairState == BLE_PAIRING_STATE_REJECTED) {
+            return ret;
+        }
+        ble_gap_sec_params_t secParams = {};
+        ble_gap_sec_params_t* pSecParams = nullptr; // For central role, default it to nullptr, since we have set the secure parameters in startPairing().
+        ble_gap_sec_keyset_t keyset = {};
+        ble_gap_sec_keyset_t* pKeyset = nullptr; // nullptr for BLE legacy pairing
+        bool reject = false;
+        if (pairingConfig_.algorithm == BLE_PAIRING_ALGORITHM_LESC_ONLY) {
+            if (peerSecParams.lesc == false) {
+                reject = true;
             }
         }
+        if (!reject && pairingConfig_.algorithm != BLE_PAIRING_ALGORITHM_LEGACY_ONLY ) {
+            if (publicKeysPrepare(connection) != SYSTEM_ERROR_NONE) {
+                LOG(ERROR, "Failed to allocate memory for public keys.");
+                reject = true;
+            } else {
+                keyset.keys_own.p_pk = localPublicKey_.get();
+                keyset.keys_peer.p_pk = connection->peerPublicKey.get();
+                pKeyset = &keyset;
+            }
+        }
+        if (!reject && connection->info.role == BLE_ROLE_PERIPHERAL) {
+            initSecParams(pairingConfig_, secParams);
+            pSecParams = &secParams;
+        }
+        ret = sd_ble_gap_sec_params_reply(event->evt.gap_evt.conn_handle, reject ? BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP : BLE_GAP_SEC_STATUS_SUCCESS, pSecParams, pKeyset);
         if (ret != NRF_SUCCESS) {
+            connection->peerPublicKey.reset();
+            // At this point, the BLE_GAP_EVT_AUTH_STATUS won't get triggered,
+            // But we need to notify user that the pairing has failed.
             connection->pairState = BLE_PAIRING_STATE_NOT_INITIATED;
             hal_ble_link_evt_t linkEvent = {};
             linkEvent.type = BLE_EVT_PAIRING_STATUS_UPDATED;
@@ -2356,7 +2483,11 @@ int BleObject::ConnectionsManager::processSecurityEventFromThread(const ble_evt_
         connection->pairState = BLE_PAIRING_STATE_PASSKEY_DISPLAY;
         const ble_gap_evt_passkey_display_t& passkeyDisplay = event->evt.gap_evt.params.passkey_display;
         hal_ble_link_evt_t linkEvent = {};
-        linkEvent.type = BLE_EVT_PAIRING_PASSKEY_DISPLAY;
+        if (passkeyDisplay.match_request) {
+            linkEvent.type = BLE_EVT_PAIRING_NUMERIC_COMPARISON;
+        } else {
+            linkEvent.type = BLE_EVT_PAIRING_PASSKEY_DISPLAY;
+        }
         linkEvent.conn_handle = connection->info.conn_handle;
         linkEvent.params.passkey_display.passkey = passkeyDisplay.passkey;
         notifyLinkEvent(linkEvent);
@@ -2378,6 +2509,8 @@ int BleObject::ConnectionsManager::processSecurityEventFromThread(const ble_evt_
         // LOG_DEBUG(TRACE, "Secure mode: %d, level: %d", secUpdate.conn_sec.sec_mode.sm, secUpdate.conn_sec.sec_mode.lv);
     } else if (event->header.evt_id == BLE_GAP_EVT_AUTH_STATUS) {
         LOG_DEBUG(TRACE, "BLE event: BLE_GAP_EVT_AUTH_STATUS");
+        // Now we can safely free the memory for peer public key
+        connection->peerPublicKey.reset();
         const ble_gap_evt_auth_status_t& authStatus = event->evt.gap_evt.params.auth_status;
         LOG_DEBUG(TRACE, "Authen status: 0x%02X, reason: %d, bond: %d, lesc: %d", authStatus.auth_status, authStatus.error_src, authStatus.bonded, authStatus.lesc);
         if (authStatus.auth_status == BLE_GAP_SEC_STATUS_SUCCESS) {
@@ -2392,6 +2525,31 @@ int BleObject::ConnectionsManager::processSecurityEventFromThread(const ble_evt_
         linkEvent.params.pairing_status.bonded = authStatus.bonded;
         linkEvent.params.pairing_status.lesc = authStatus.lesc;
         notifyLinkEvent(linkEvent);
+        if (authStatus.lesc) {
+            /* To protect a device's private key, a device should implement a method to
+            * prevent an attacker from retrieving useful information about the device's private
+            *  key. For this purpose, a device should change its private key after every pairing
+            * (successful or failed). Otherwise, it should change its private key whenever S +
+            * 3F > 8, where S is the number of successful pairings and F the number of
+            * failed attempts since the key was last changed. */
+            generateEcdhKeyPair();
+        }
+    } else if (event->header.evt_id == BLE_GAP_EVT_LESC_DHKEY_REQUEST) {
+        LOG_DEBUG(TRACE, "BLE event: BLE_GAP_EVT_LESC_DHKEY_REQUEST");
+        const ble_gap_evt_lesc_dhkey_request_t& dhkeyReq = event->evt.gap_evt.params.lesc_dhkey_request;
+        ble_gap_lesc_dhkey_t dhkey = {};
+        if (computeDhkey(dhkeyReq.p_pk_peer->pk, dhkey.key) != SYSTEM_ERROR_NONE) {
+            LOG(ERROR, "Failed to compute DHKey.");
+            // Set an invalid DHKey to terminate the pairing progress.
+            mbedtls_default_rng(nullptr, dhkey.key, BLE_GAP_LESC_DHKEY_LEN);
+        }
+        int ret = sd_ble_gap_lesc_dhkey_reply(connection->info.conn_handle, &dhkey);
+        if (ret != NRF_SUCCESS) {
+            LOG(ERROR, "sd_ble_gap_lesc_dhkey_reply() failed: %d.", ret);
+            return nrf_system_error(ret);
+        }
+    } else {
+        LOG_DEBUG(TRACE, "Unhandled BLE security event: %d", event->header.evt_id);
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -2474,15 +2632,7 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
         }
         case BLE_GAP_EVT_DISCONNECTED: {
             LOG_DEBUG(TRACE, "BLE GAP event: disconnected.");
-            ble_evt_t* disconnectedEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
-            if (!disconnectedEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
-                // Assert it since the connection is cached but invalid for further reference.
-                SPARK_ASSERT(false);
-                break;
-            }
-            memcpy(disconnectedEvent, event, sizeof(ble_evt_t));
-            BleObject::getInstance().dispatcher()->enqueue(&disconnectedEvent);
+            BleObject::getInstance().dispatcher()->enqueue(event);
             break;
         }
         case BLE_GAP_EVT_CONN_PARAM_UPDATE_REQUEST: {
@@ -2495,30 +2645,18 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
         }
         case BLE_GAP_EVT_CONN_PARAM_UPDATE: {
             LOG_DEBUG(TRACE, "BLE GAP event: connection parameters updated.");
-            ble_evt_t* connParamsUpdateEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
-            if (!connParamsUpdateEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
-                SPARK_ASSERT(false);
-                break;
-            }
-            memcpy(connParamsUpdateEvent, event, sizeof(ble_evt_t));
-            BleObject::getInstance().dispatcher()->enqueue(&connParamsUpdateEvent);
+            BleObject::getInstance().dispatcher()->enqueue(event);
             break;
         }
+        case BLE_GAP_EVT_SEC_INFO_REQUEST:
+        case BLE_GAP_EVT_LESC_DHKEY_REQUEST:
         case BLE_GAP_EVT_PASSKEY_DISPLAY:
         case BLE_GAP_EVT_AUTH_KEY_REQUEST:
         case BLE_GAP_EVT_SEC_REQUEST:
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
         case BLE_GAP_EVT_CONN_SEC_UPDATE:
         case BLE_GAP_EVT_AUTH_STATUS: {
-            ble_evt_t* secEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
-            if (!secEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
-                SPARK_ASSERT(false);
-                break;
-            }
-            memcpy(secEvent, event, sizeof(ble_evt_t));
-            BleObject::getInstance().dispatcher()->enqueue(&secEvent);
+            BleObject::getInstance().dispatcher()->enqueue(event);
             break;
         }
         case BLE_GAP_EVT_TIMEOUT: {
@@ -2539,14 +2677,7 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
                 LOG_DEBUG(TRACE, "sd_ble_gatts_exchange_mtu_reply() failed: %d", ret);
                 break;
             }
-            ble_evt_t* attMtuExchangeEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
-            if (!attMtuExchangeEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
-                SPARK_ASSERT(false);
-                break;
-            }
-            memcpy(attMtuExchangeEvent, event, sizeof(ble_evt_t));
-            BleObject::getInstance().dispatcher()->enqueue(&attMtuExchangeEvent);
+            BleObject::getInstance().dispatcher()->enqueue(event);
             break;
         }
         case BLE_GATTC_EVT_EXCHANGE_MTU_RSP: {
@@ -4060,6 +4191,13 @@ int hal_ble_gap_set_pairing_config(const hal_ble_pairing_config_t* config, void*
     return BleObject::getInstance().connMgr()->setPairingConfig(config);
 }
 
+int hal_ble_gap_get_pairing_config(hal_ble_pairing_config_t* config, void* reserved) {
+    BleLock lk;
+    LOG_DEBUG(TRACE, "hal_ble_gap_get_pairing_config().");
+    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleObject::getInstance().connMgr()->getPairingConfig(config);
+}
+
 int hal_ble_gap_start_pairing(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_start_pairing().");
@@ -4074,11 +4212,23 @@ int hal_ble_gap_reject_pairing(hal_ble_conn_handle_t conn_handle, void* reserved
     return BleObject::getInstance().connMgr()->rejectPairing(conn_handle);
 }
 
-int hal_ble_gap_set_pairing_passkey(hal_ble_conn_handle_t conn_handle, const uint8_t* passkey, void* reserved) {
+int hal_ble_gap_set_pairing_auth_data(hal_ble_conn_handle_t conn_handle, const hal_ble_pairing_auth_data_t* auth, void* reserved) {
     BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gap_set_pairing_passkey().");
+    LOG_DEBUG(TRACE, "hal_ble_gap_set_pairing_auth_data().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    return BleObject::getInstance().connMgr()->setPairingPasskey(conn_handle, passkey);
+    return BleObject::getInstance().connMgr()->setPairingAuthData(conn_handle, auth);
+}
+
+int hal_ble_gap_set_pairing_passkey_deprecated(hal_ble_conn_handle_t conn_handle, const uint8_t* passkey, void* reserved) {
+    BleLock lk;
+    LOG_DEBUG(TRACE, "hal_ble_gap_set_pairing_passkey_deprecated().");
+    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    hal_ble_pairing_auth_data_t auth = {};
+    auth.version = BLE_API_VERSION;
+    auth.size = sizeof(hal_ble_pairing_auth_data_t);
+    auth.type = BLE_PAIRING_AUTH_DATA_PASSKEY;
+    auth.params.passkey = passkey;
+    return BleObject::getInstance().connMgr()->setPairingAuthData(conn_handle, &auth);
 }
 
 bool hal_ble_gap_is_pairing(hal_ble_conn_handle_t conn_handle, void* reserved) {

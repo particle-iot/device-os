@@ -1194,7 +1194,8 @@ public:
             case BLE_EVT_PAIRING_REQUEST_RECEIVED:
             case BLE_EVT_PAIRING_PASSKEY_DISPLAY:
             case BLE_EVT_PAIRING_PASSKEY_INPUT:
-            case BLE_EVT_PAIRING_STATUS_UPDATED: {
+            case BLE_EVT_PAIRING_STATUS_UPDATED: 
+            case BLE_EVT_PAIRING_NUMERIC_COMPARISON: {
                 BlePeerDevice* peer = impl->findPeerDevice(event->conn_handle);
                 if (peer) {
                     if (impl->pairingEventCallback_) {
@@ -1202,7 +1203,7 @@ public:
                             .peer = *peer,
                             .type = static_cast<BlePairingEventType>(event->type)
                         };
-                        if (event->type == BLE_EVT_PAIRING_PASSKEY_DISPLAY) {
+                        if (event->type == BLE_EVT_PAIRING_PASSKEY_DISPLAY || event->type == BLE_EVT_PAIRING_NUMERIC_COMPARISON) {
                             pairingEvent.payload.passkey = event->params.passkey_display.passkey;
                             pairingEvent.payloadLen = BLE_PAIRING_PASSKEY_LEN;
                         } else if (event->type == BLE_EVT_PAIRING_STATUS_UPDATED) {
@@ -2590,7 +2591,17 @@ int BleLocalDevice::setPairingIoCaps(BlePairingIoCaps ioCaps) const {
     hal_ble_pairing_config_t config = {};
     config.version = BLE_API_VERSION;
     config.size = sizeof(hal_ble_pairing_config_t);
+    CHECK(hal_ble_gap_get_pairing_config(&config, nullptr));
     config.io_caps = static_cast<hal_ble_pairing_io_caps_t>(ioCaps);
+    return hal_ble_gap_set_pairing_config(&config, nullptr);
+}
+
+int BleLocalDevice::setPairingAlgorithm(BlePairingAlgorithm algorithm) const {
+    hal_ble_pairing_config_t config = {};
+    config.version = BLE_API_VERSION;
+    config.size = sizeof(hal_ble_pairing_config_t);
+    CHECK(hal_ble_gap_get_pairing_config(&config, nullptr));
+    config.algorithm = static_cast<hal_ble_pairing_algorithm_t>(algorithm);
     return hal_ble_gap_set_pairing_config(&config, nullptr);
 }
 
@@ -2602,8 +2613,22 @@ int BleLocalDevice::rejectPairing(const BlePeerDevice& peer) const {
     return hal_ble_gap_reject_pairing(peer.impl()->connHandle(), nullptr);
 }
 
+int BleLocalDevice::setPairingNumericComparison(const BlePeerDevice& peer, bool equal) const {
+    hal_ble_pairing_auth_data_t auth = {};
+    auth.version = BLE_API_VERSION;
+    auth.size = sizeof(hal_ble_pairing_auth_data_t);
+    auth.type = BLE_PAIRING_AUTH_DATA_NUMERIC_COMPARISON;
+    auth.params.equal = equal;
+    return hal_ble_gap_set_pairing_auth_data(peer.impl()->connHandle(), &auth, nullptr);
+}
+
 int BleLocalDevice::setPairingPasskey(const BlePeerDevice& peer, const uint8_t* passkey) const {
-    return hal_ble_gap_set_pairing_passkey(peer.impl()->connHandle(), passkey, nullptr);
+    hal_ble_pairing_auth_data_t auth = {};
+    auth.version = BLE_API_VERSION;
+    auth.size = sizeof(hal_ble_pairing_auth_data_t);
+    auth.type = BLE_PAIRING_AUTH_DATA_PASSKEY;
+    auth.params.passkey = passkey;
+    return hal_ble_gap_set_pairing_auth_data(peer.impl()->connHandle(), &auth, nullptr);
 }
 
 bool BleLocalDevice::isPairing(const BlePeerDevice& peer) const {
