@@ -100,5 +100,11 @@ test('max_variable_value_size', async function() {
 	expect(resp.body.result).to.equal(str.slice(0, maxLen));
 });
 
+
+test('empty_string_variable', async function() {
+	const resp = await api.getVariable({ deviceId, name: 'var_s', auth });
+	expect(resp.body.result).to.equal('');
+});
+
 test('check_current_thread', async function() { // See variables.cpp
 });
