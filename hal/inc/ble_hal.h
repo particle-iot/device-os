@@ -42,7 +42,7 @@ extern "C" {
  * @{
  */
 
-#define BLE_API_VERSION 2
+#define BLE_API_VERSION 3
 
 // Particle's company ID
 #define PARTICLE_COMPANY_ID     0x0662

@@ -74,6 +74,7 @@ using namespace particle::ble;
 
 #define BLE_API_VERSION_1   1
 #define BLE_API_VERSION_2   2
+#define BLE_API_VERSION_3   3
 
 //anonymous namespace
 namespace {
