@@ -2110,7 +2110,6 @@ int BleLocalDevice::setAdvertisingType(BleAdvertisingEventType type) const {
 }
 
 int BleLocalDevice::setAdvertisingPhy(EnumFlags<BlePhy> phy) const {
-    if(phy != BlePhy::CODED && phy != BlePhy::MBPS1) return SYSTEM_ERROR_NOT_SUPPORTED;
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
