@@ -131,6 +131,9 @@ const char QUECTEL_DEFAULT_PDP_TYPE[] = "IP";
 const int IMSI_MAX_RETRY_CNT = 5;
 const int CCID_MAX_RETRY_CNT = 2;
 
+const int DATA_MODE_BREAK_ATTEMPTS = 5;
+const int PPP_ECHO_REQUEST_ATTEMPTS = 3;
+
 } // anonymous
 
 QuectelNcpClient::QuectelNcpClient() {
@@ -1370,21 +1373,29 @@ int QuectelNcpClient::enterDataMode() {
     // 4) Switch to command mode; otherwise return to step 1)
     // NOTE: we are ignoring step 1 and are acting more optimistic on the first attempt
     // Subsequent attempts to exit data mode follow this step.
-    const int attempts = 5;
     bool responsive = false;
-    for (int i = 0; i < attempts; i++) {
+
+    // Initialize AT parser
+    auto parserConf = AtParserConfig()
+            .stream(muxerDataStream_.get())
+            .commandTerminator(AtCommandTerminator::CRLF);
+    dataParser_.destroy();
+    CHECK(dataParser_.init(std::move(parserConf)));
+
+    for (int i = 0; i < DATA_MODE_BREAK_ATTEMPTS; i++) {
+        if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E ||
+                ncpId() == PLATFORM_NCP_QUECTEL_EG91_NA ||
+                ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
+            // Also try toggling DTR on EG91-based platforms, as +++
+            // may sometimes fail.
+            exitDataModeWithDtr();
+        }
         // Send data mode break
         const char breakCmd[] = "+++";
         muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
         skipAll(muxerDataStream_.get(), 1000);
 
-        // Initialize AT parser
-        auto parserConf = AtParserConfig()
-                .stream(muxerDataStream_.get())
-                .commandTerminator(AtCommandTerminator::CRLF);
-        dataParser_.destroy();
-        CHECK(dataParser_.init(std::move(parserConf)));
-        responsive = waitAtResponse(dataParser_, 1000) == 0;
+        responsive = waitAtResponse(dataParser_, 1000, 500) == 0;
         if (responsive) {
             break;
         }
@@ -1394,12 +1405,57 @@ int QuectelNcpClient::enterDataMode() {
     const char connectResponse[] = "CONNECT";
 
     char buf[64] = {};
-    auto resp = dataParser_.sendCommand(1000, "ATO");
+    auto resp = dataParser_.sendCommand(2000, "ATO");
     if (resp.hasNextLine()) {
         CHECK(resp.readLine(buf, sizeof(buf)));
         if (!strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
-            // We've already switched into data mode
-            ok = true;
+            // IMPORTANT: ATO does not work all the time on EG91 and we resume into
+            // some broken state where the modem does not reply to our PPP ConfReqs.
+            // What's worse is that ATH doesn't seem to work either, so we cannot
+            // disconnect an ongoing PPP session. Toggling DTR doesn't work either.
+            // As a workaround send a PPP LCP Echo Request, wait until we get a reply
+            // or at least something similar to it.
+            // If we don't get a reply, consider we are in a broken state. To get
+            // out of it we are going to close and re-open the data muxer channel.
+            if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E ||
+                    ncpId() == PLATFORM_NCP_QUECTEL_EG91_NA ||
+                    ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
+                dataParser_.reset();
+                skipAll(muxerDataStream_.get());
+                int flagsSeen = 0;
+                for (int i = 0; i < PPP_ECHO_REQUEST_ATTEMPTS; i++) {
+                    // I wish this was done in PPP layer
+                    const char lcpEchoRequest[] = "~\xff\x03\xc0!\t\x00\x00\x08\x00\x00\x00\x00\xbbn~";
+                    muxerDataStream_->write(lcpEchoRequest, sizeof(lcpEchoRequest) - 1);
+                    const int r = muxerDataStream_->waitEvent(Stream::READABLE, 1000);
+                    if (r == Stream::READABLE) {
+                        // Do a quick check that we've seen something similar to a PPP frame: ~<...>~
+                        const auto size = CHECK(muxerDataStream_->read(buf, sizeof(buf)));
+                        for (int i = 0; i < size; i++) {
+                            if (buf[i] == lcpEchoRequest[0]) {
+                                flagsSeen++;
+                            }
+                        }
+                        if (flagsSeen >= 2) {
+                            ok = true;
+                            break;
+                        }
+                    } else if (r != SYSTEM_ERROR_TIMEOUT) {
+                        return r;
+                    }
+                }
+                if (!ok) {
+                    LOG(WARN, "Resumed into a broken PPP session");
+                    // Broken state, close PPP channel. This allows us to get out of this state
+                    muxer_.closeChannel(QUECTEL_NCP_PPP_CHANNEL);
+                    // This is not a critical failure, set ok to true to avoid resetting the modem
+                    ok = true;
+                    return SYSTEM_ERROR_INVALID_STATE;
+                }
+            } else {
+                // We've already switched into data mode
+                ok = true;
+            }
         }
     } else {
         const int r = CHECK(resp.readResult());
@@ -1886,9 +1942,11 @@ uint32_t QuectelNcpClient::getDefaultSerialConfig() const {
     return sconf;
 }
 
-// // Use BG96 status pin to enable/disable voltage convert IC Automatically
-// int QuectelNcpClient::modemSetUartState(bool state) const {
-//     return SYSTEM_ERROR_NONE;
-// }
+void QuectelNcpClient::exitDataModeWithDtr() const {
+    HAL_GPIO_Write(BGDTR, 0);
+    HAL_Delay_Milliseconds(1);
+    HAL_GPIO_Write(BGDTR, 1);
+    HAL_Delay_Milliseconds(1);
+}
 
 } // namespace particle
