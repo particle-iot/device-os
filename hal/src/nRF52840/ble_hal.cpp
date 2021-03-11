@@ -1034,7 +1034,7 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
         tempParams.inc_tx_power = false;
     } else {
         memcpy(&tempParams, params, std::min(tempParams.size, params->size));
-        if (tempParams.primary_phy != BLE_PHYS_1MBPS && tempParams.primary_phy != BLE_PHYS_CODED) {
+        if (tempParams.primary_phy != BLE_PHYS_AUTO && tempParams.primary_phy != BLE_PHYS_1MBPS && tempParams.primary_phy != BLE_PHYS_CODED) {
             LOG(ERROR, "primary_phy value not supported");
             return SYSTEM_ERROR_NOT_SUPPORTED;
         }

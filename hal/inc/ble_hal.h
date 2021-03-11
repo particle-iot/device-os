@@ -190,7 +190,6 @@ typedef struct hal_ble_adv_params_t {
     hal_ble_adv_fp_t filter_policy;
     uint8_t inc_tx_power;
     uint8_t primary_phy;                /**< Supports BLE_PHYS_1MBPS (standard) or BLE_PHYS_CODED (long range) */
-    uint8_t reserved;
 } hal_ble_adv_params_t;
 
 /* BLE scanning parameters */
@@ -203,6 +202,7 @@ typedef struct hal_ble_scan_params_t {
     uint8_t active;
     hal_ble_scan_fp_t filter_policy;
     uint8_t scan_phys;                  /**< Supports BLE_PHYS_1MBPS, BLE_PHYS_CODED, or (BLE_PHYS_1MBPS | BLE_PHYS_CODED) */
+    uint8_t reserved[3];
 } hal_ble_scan_params_t;
 
 /* BLE connection parameters */

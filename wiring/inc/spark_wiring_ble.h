@@ -129,9 +129,9 @@ enum class BleAdvertisingEventType : uint8_t {
 };
 
 enum class BlePhy : uint8_t {
-    AUTO        = 0x00,
-    MBPS1       = 0x01,
-    CODED       = 0x04
+    BLE_PHYS_AUTO        = 0x00,
+    BLE_PHYS_1MBPS       = 0x01,
+    BLE_PHYS_CODED       = 0x04
 };
 
 ENABLE_ENUM_CLASS_BITWISE(BlePhy);
