@@ -2089,6 +2089,7 @@ int BleLocalDevice::setAdvertisingInterval(uint16_t interval) const {
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
+    advParams.version = BLE_API_VERSION;
     advParams.interval = interval;
     return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
 }
@@ -2097,6 +2098,7 @@ int BleLocalDevice::setAdvertisingTimeout(uint16_t timeout) const {
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
+    advParams.version = BLE_API_VERSION;
     advParams.timeout = timeout;
     return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
 }
@@ -2105,6 +2107,7 @@ int BleLocalDevice::setAdvertisingType(BleAdvertisingEventType type) const {
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
+    advParams.version = BLE_API_VERSION;
     advParams.type = static_cast<hal_ble_adv_evt_type_t>(type);
     return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
 }
@@ -2113,6 +2116,7 @@ int BleLocalDevice::setAdvertisingPhy(EnumFlags<BlePhy> phy) const {
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
+    advParams.version = BLE_API_VERSION;
     advParams.primary_phy = static_cast<uint8_t>(phy.value());
     return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
 }
@@ -2129,6 +2133,7 @@ int BleLocalDevice::setAdvertisingParameters(uint16_t interval, uint16_t timeout
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
+    advParams.version = BLE_API_VERSION;
     advParams.interval = interval;
     advParams.timeout = timeout;
     advParams.type = static_cast<hal_ble_adv_evt_type_t>(type);
