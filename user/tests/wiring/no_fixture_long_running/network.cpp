@@ -96,10 +96,10 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     const size_t IPV4_HEADER_LENGTH = 20;
     const size_t UDP_HEADER_LENGTH = 8;
     const size_t IPV4_PLUS_UDP_HEADER_LENGTH = IPV4_HEADER_LENGTH + UDP_HEADER_LENGTH;
-    const size_t MAX_MTU = 1000;
+    const size_t MAX_MTU = 1500;
     const size_t MIN_MTU = IPV4_PLUS_UDP_HEADER_LENGTH;
     const system_tick_t UDP_ECHO_REPLY_WAIT_TIME = 10000;
-    const unsigned UDP_ECHO_RETRIES = 10;
+    const unsigned UDP_ECHO_RETRIES = 5;
     const system_tick_t MINIMUM_TEST_TIME = 60000;
 
     // FIXME: Hosted by @avtolstoy, should be changed to something else
@@ -159,7 +159,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     }
     assertFalse((bool)state.disconnected);
 
-    assertTrue((mtu - IPV4_PLUS_UDP_HEADER_LENGTH) >= MBEDTLS_SSL_MAX_CONTENT_LEN);
+    assertMoreOrEqual((mtu - IPV4_PLUS_UDP_HEADER_LENGTH), MBEDTLS_SSL_MAX_CONTENT_LEN);
 }
 
 #if HAL_PLATFORM_NCP_AT || HAL_PLATFORM_CELLULAR
@@ -262,3 +262,4 @@ test(NETWORK_03_network_connection_recovers_after_ncp_uart_sleep) {
 }
 
 #endif // HAL_PLATFORM_NCP_AT
+SerialLogHandler dbg(LOG_LEVEL_ALL);
