@@ -133,6 +133,7 @@ const int CCID_MAX_RETRY_CNT = 2;
 
 const int DATA_MODE_BREAK_ATTEMPTS = 5;
 const int PPP_ECHO_REQUEST_ATTEMPTS = 3;
+const int CGDCONT_ATTEMPTS = 5;
 
 } // anonymous
 
@@ -1235,13 +1236,19 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
             CHECK(checkNetConfForImsi());
         }
     }
-    // FIXME: for now IPv4 context only
-    auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s\"",
-            QUECTEL_DEFAULT_CID, QUECTEL_DEFAULT_PDP_TYPE,
-            netConf_.hasApn() ? netConf_.apn() : "");
-    const int r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    return SYSTEM_ERROR_NONE;
+    // XXX: we've seen CGDCONT fail on cold boot, retrying here a few times
+    for (int i = 0; i < CGDCONT_ATTEMPTS; i++) {
+        // FIXME: for now IPv4 context only
+        auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s\"",
+                QUECTEL_DEFAULT_CID, QUECTEL_DEFAULT_PDP_TYPE,
+                netConf_.hasApn() ? netConf_.apn() : "");
+        const int r = CHECK_PARSER(resp.readResult());
+        if (r == AtResponse::OK) {
+            return SYSTEM_ERROR_NONE;
+        }
+        HAL_Delay_Milliseconds(200);
+    }
+    return SYSTEM_ERROR_AT_NOT_OK;
 }
 
 int QuectelNcpClient::registerNet() {
