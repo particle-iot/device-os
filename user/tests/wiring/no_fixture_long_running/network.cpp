@@ -97,11 +97,12 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     const size_t UDP_HEADER_LENGTH = 8;
     const size_t IPV4_PLUS_UDP_HEADER_LENGTH = IPV4_HEADER_LENGTH + UDP_HEADER_LENGTH;
 #if PLATFORM_ID != PLATFORM_ELECTRON
-    const size_t MAX_MTU = 1500;
+    // Start a bit lower than standard 1500
+    const size_t MAX_MTU = 1400;
 #else
     // Socket interface on Electrons is limited by 1024 byte payload maximum
-    // Adjust maximum MTU accordingly.
-    const size_t MAX_MTU = 1024 + IPV4_PLUS_UDP_HEADER_LENGTH;
+    // Adjust maximum MTU accordingly and even go a bit lower.
+    const size_t MAX_MTU = MBEDTLS_SSL_MAX_CONTENT_LEN + IPV4_PLUS_UDP_HEADER_LENGTH;
 #endif // PLATFORM_ID != PLATFORM_ELECTRON
     const size_t MIN_MTU = IPV4_PLUS_UDP_HEADER_LENGTH;
     const system_tick_t UDP_ECHO_REPLY_WAIT_TIME = 10000;
