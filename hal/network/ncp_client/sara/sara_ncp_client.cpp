@@ -1542,6 +1542,10 @@ int SaraNcpClient::checkSimCard() {
 }
 
 int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
+    // IMPORTANT: Set modem full functionality!
+    // Otherwise we won't be able to query ICCID/IMSI
+    CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=1,0"));
+
     netConf_ = conf;
     if (!netConf_.isValid()) {
         // First look for network settings based on ICCID
