@@ -136,7 +136,7 @@ void event_ack(bool confirmable, bool unreliable)
 	Message event;
 	uint8_t event_buf[50];
 	event.set_buffer(event_buf, sizeof(event_buf));
-	size_t msglen = Messages::event(event_buf, 0x1234, "e", "", 60, EventType::PUBLIC, confirmable);
+	size_t msglen = Messages::event(event_buf, 0x1234, "e", "", 60, EventType::PUBLIC, confirmable, 0);
 	event.set_length(msglen);
 	event.decode_id();	// need this in the test since it's not done by our mock MessageChannel
 
