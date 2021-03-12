@@ -128,7 +128,7 @@ using CidType = decltype(CellularGlobalIdentity::cell_id);
 const int QUECTEL_DEFAULT_CID = 1;
 const char QUECTEL_DEFAULT_PDP_TYPE[] = "IP";
 
-const int IMSI_MAX_RETRY_CNT = 5;
+const int IMSI_MAX_RETRY_CNT = 10;
 const int CCID_MAX_RETRY_CNT = 2;
 
 const int DATA_MODE_BREAK_ATTEMPTS = 5;
@@ -949,7 +949,7 @@ int QuectelNcpClient::checkNetConfForImsi() {
         const int r = CHECK_PARSER(resp.readResult());
         if (r == AtResponse::OK && imsiLength > 0) {
             netConf_ = networkConfigForImsi(buf, imsiLength);
-            break;
+            return SYSTEM_ERROR_NONE;
         } else if (imsiCount >= IMSI_MAX_RETRY_CNT) {
             // if max retries are exhausted
             return SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED;
@@ -957,7 +957,7 @@ int QuectelNcpClient::checkNetConfForImsi() {
         ++imsiCount;
         HAL_Delay_Milliseconds(100*imsiCount);
     } while (imsiCount < IMSI_MAX_RETRY_CNT);
-    return SYSTEM_ERROR_NONE;
+    return SYSTEM_ERROR_TIMEOUT;
 }
 
 int QuectelNcpClient::selectSimCard() {
