@@ -180,7 +180,7 @@
                 {
                     "name": "openocd",
                     "version": "0.11.2-adhoc6ea4372.0",
-                    "main": ".",
+                    "main": "./bin",
                     "url": "https://binaries.particle.io/openocd/windows/x64/openocd-v0.11.2-adhoc6ea4372.0.tar.gz",
                     "sha256": "790954533100e5bd6c2e22085c6c7b099176c51d798fde9895779e12562ee134"
                 }
@@ -192,7 +192,7 @@
                 {
                     "name": "openocd",
                     "version": "0.11.2-adhoc6ea4372.0",
-                    "main": ".",
+                    "main": "./bin",
                     "url": "https://binaries.particle.io/openocd/darwin/x64/openocd-v0.11.2-adhoc6ea4372.0.tar.gz",
                     "sha256": "c2b30c3e933d69c7b9608c7814dbc998e775a6c104c144c567f2835e3f0d862c"
                 }
@@ -204,7 +204,7 @@
                 {
                     "name": "openocd",
                     "version": "0.11.2-adhoc6ea4372.0",
-                    "main": ".",
+                    "main": "./bin",
                     "url": "https://binaries.particle.io/openocd/linux/x64/openocd-v0.11.2-adhoc6ea4372.0.tar.gz",
                     "sha256": "42272bd1f012af43bb2fd80656e9f08a04e97bc8ffdc2d1e3e5062ea46ce657e"
                 }
