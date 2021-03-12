@@ -225,6 +225,10 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
         protocol->set_ota_chunk_size(value);
         return 0;
     }
+    case particle::protocol::Connection::MAX_TRANSMIT_MESSAGE_SIZE: {
+        protocol->set_max_transmit_message_size(value);
+        return 0;
+    }
     default:
         return particle::protocol::ProtocolError::NOT_IMPLEMENTED;
     }

@@ -185,6 +185,11 @@ protected:
 	 */
 	uint16_t system_version;
 
+	/**
+	 * Maximum size of an outgoing CoAP message.
+	 */
+	size_t max_transmit_message_size;
+
 	void set_protocol_flags(uint32_t flags)
 	{
 		protocol_flags = flags;
@@ -348,7 +353,8 @@ public:
 			initialized(false),
 			max_binary_size(0), // Unlimited
 			ota_chunk_size(DEFAULT_OTA_CHUNK_SIZE),
-			system_version(0) // Unknown
+			system_version(0), // Unknown
+			max_transmit_message_size(0) // Limited by compile-time maximum
 	{
 	}
 
@@ -397,6 +403,16 @@ public:
 	void set_ota_chunk_size(size_t size)
 	{
 		ota_chunk_size = size;
+	}
+
+	void set_max_transmit_message_size(size_t size)
+	{
+		max_transmit_message_size = size;
+	}
+
+	size_t get_max_transmit_message_size() const
+	{
+		return max_transmit_message_size;
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)
@@ -477,7 +493,7 @@ public:
 			return false;
 		}
 		const ProtocolError error = publisher.send_event(channel, event_name, data, ttl, event_type, flags,
-				callbacks.millis(), std::move(handler));
+				callbacks.millis(), std::move(handler), max_transmit_message_size);
 		if (error != NO_ERROR)
 		{
 			handler.setError(toSystemError(error));

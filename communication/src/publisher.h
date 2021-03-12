@@ -89,7 +89,7 @@ public:
 
 	ProtocolError send_event(MessageChannel& channel, const char* event_name,
 			const char* data, int ttl, EventType::Enum event_type, int flags,
-			system_tick_t time, CompletionHandler handler)
+			system_tick_t time, CompletionHandler handler, size_t max_transmit_message_size)
 	{
 		bool is_system_event = is_system(event_name);
 		bool rate_limited = is_rate_limited(is_system_event, time);
@@ -107,7 +107,7 @@ public:
 			confirmable = true;
 		}
 		size_t msglen = Messages::event(message.buf(), 0, event_name, data, ttl,
-				event_type, confirmable);
+				event_type, confirmable, max_transmit_message_size);
 		message.set_length(msglen);
 		const ProtocolError result = channel.send(message);
 		if (result == NO_ERROR) {

@@ -150,7 +150,8 @@ enum Enum
     COMPRESSED_OTA = 3, ///< Enable support for compressed/combined OTA updates.
     SYSTEM_MODULE_VERSION = 4, ///< Module version of the system firmware.
     MAX_BINARY_SIZE = 5, ///< Maximum size of a firmware binary.
-    OTA_CHUNK_SIZE = 6 ///< Size of an OTA update chunk.
+    OTA_CHUNK_SIZE = 6, ///< Size of an OTA update chunk.
+    MAX_TRANSMIT_MESSAGE_SIZE = 7 ///< Maximum size of of outgoing CoAP message.
 };
 
 }

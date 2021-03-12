@@ -80,7 +80,8 @@ public:
 			unsigned payload_len, bool confirmable);
 
 	static size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
-	             const char *data, int ttl, EventType::Enum event_type, bool confirmable);
+	             const char *data, int ttl, EventType::Enum event_type, bool confirmable,
+	             size_t max_transmit_message_size);
 
 
     static inline size_t empty_ack(unsigned char *buf,

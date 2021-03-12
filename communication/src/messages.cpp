@@ -316,7 +316,8 @@ size_t Messages::separate_response_with_payload(unsigned char *buf, uint16_t mes
 }
 
 size_t Messages::event(uint8_t buf[], uint16_t message_id, const char *event_name,
-             const char *data, int ttl, EventType::Enum event_type, bool confirmable)
+             const char *data, int ttl, EventType::Enum event_type, bool confirmable,
+			 size_t max_transmit_message_size)
 {
   uint8_t *p = buf;
   *p++ = confirmable ? 0x40 : 0x50; // non-confirmable /confirmable, no token
@@ -340,8 +341,17 @@ size_t Messages::event(uint8_t buf[], uint16_t message_id, const char *event_nam
   if (NULL != data)
   {
     name_data_len = strnlen(data, MAX_EVENT_DATA_LENGTH);
-
     *p++ = 0xff;
+
+	// Adjust the maximum event payload size if MAX_TRANSMIT_MESSAGE_SIZE property
+	// indicates that we cannot transmit over a certain limit.
+	if (max_transmit_message_size && max_transmit_message_size < MAX_EVENT_MESSAGE_SIZE) {
+		const auto max_size = max_transmit_message_size - (p - buf);
+		if (name_data_len > max_size) {
+			name_data_len = max_size;
+		}
+	}
+
     memcpy(p, data, name_data_len);
     p += name_data_len;
   }
