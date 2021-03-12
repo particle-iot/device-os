@@ -278,7 +278,15 @@ void Client::setAuth(const char* user, const char* password) {
 
   {
     LwipTcpIpCoreLock lk;
-    ppp_set_auth(pcb_, PPPAUTHTYPE_ANY, user_.get(), pass_.get());
+    auto authtype = PPPAUTHTYPE_CHAP | PPPAUTHTYPE_PAP;
+    // FIXME: CHAP authentication is broken on Quectel modems when
+    // resuming into an ongoing PPP session. We are not getting a CHAP
+    // challenge request and just sit in AUTH stage indefinitely.
+    // As a workaround enable only PAP
+    if (PLATFORM_NCP_MANUFACTURER(platform_primary_ncp_identifier()) == PLATFORM_NCP_MANUFACTURER_QUECTEL) {
+      authtype = PPPAUTHTYPE_PAP;
+    }
+    ppp_set_auth(pcb_, authtype, user_.get(), pass_.get());
   }
 }
 
