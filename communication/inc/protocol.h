@@ -493,7 +493,7 @@ public:
 			return false;
 		}
 		const ProtocolError error = publisher.send_event(channel, event_name, data, ttl, event_type, flags,
-				callbacks.millis(), std::move(handler), max_transmit_message_size);
+				callbacks.millis(), std::move(handler));
 		if (error != NO_ERROR)
 		{
 			handler.setError(toSystemError(error));

@@ -136,7 +136,7 @@ void event_ack(bool confirmable, bool unreliable)
 	Message event;
 	uint8_t event_buf[50];
 	event.set_buffer(event_buf, sizeof(event_buf));
-	size_t msglen = Messages::event(event_buf, 0x1234, "e", "", 60, EventType::PUBLIC, confirmable, 0);
+	size_t msglen = Messages::event(event_buf, 0x1234, "e", "", 0, 60, EventType::PUBLIC, confirmable);
 	event.set_length(msglen);
 	event.decode_id();	// need this in the test since it's not done by our mock MessageChannel
 
@@ -222,9 +222,10 @@ void verify_event_type_with_flags(int flags, CoAPType::Enum coapType)
 	};
 	When(Method(channel,send)).Do(validate_event);
 
-	Publisher publisher(nullptr);
+	AbstractProtocol p(channel.get());
+	Publisher publisher(&p);
 	CompletionHandler completionHandler;
-	publisher.send_event(channel.get(),"abc","def", 60, EventType::PUBLIC, flags, 0, std::move(completionHandler), 0);
+	publisher.send_event(channel.get(),"abc","def", 60, EventType::PUBLIC, flags, 0, std::move(completionHandler));
 
 	Verify(Method(channel,send));
 }

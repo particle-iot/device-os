@@ -19,7 +19,7 @@ test('max_event_data_size', async function() {
 			// firmware version that crashes with IP packets over a certain size.
 			// This value is re-calculated based on MTU.
 			// NOTE: this adjusted size also depends on the size of the event name
-			maxLen = 846;
+			maxLen = 838;
 		}
 	}
 	expect(data).to.equal(str.slice(0, maxLen));

@@ -1390,6 +1390,7 @@ int QuectelNcpClient::enterDataMode() {
         muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
         skipAll(muxerDataStream_.get(), 1000);
 
+        dataParser_.reset();
         responsive = waitAtResponse(dataParser_, 1000, 500) == 0;
         if (responsive) {
             break;
