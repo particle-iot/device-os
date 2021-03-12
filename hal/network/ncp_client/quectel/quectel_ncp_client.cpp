@@ -1383,13 +1383,8 @@ int QuectelNcpClient::enterDataMode() {
     CHECK(dataParser_.init(std::move(parserConf)));
 
     for (int i = 0; i < DATA_MODE_BREAK_ATTEMPTS; i++) {
-        if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E ||
-                ncpId() == PLATFORM_NCP_QUECTEL_EG91_NA ||
-                ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
-            // Also try toggling DTR on EG91-based platforms, as +++
-            // may sometimes fail.
-            exitDataModeWithDtr();
-        }
+        // Also try toggling DTR as +++ may sometimes fail.
+        exitDataModeWithDtr();
         // Send data mode break
         const char breakCmd[] = "+++";
         muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
@@ -1409,7 +1404,7 @@ int QuectelNcpClient::enterDataMode() {
     if (resp.hasNextLine()) {
         CHECK(resp.readLine(buf, sizeof(buf)));
         if (!strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
-            // IMPORTANT: ATO does not work all the time on EG91 and we resume into
+            // IMPORTANT: ATO does not work all the time and we resume into
             // some broken state where the modem does not reply to our PPP ConfReqs.
             // What's worse is that ATH doesn't seem to work either, so we cannot
             // disconnect an ongoing PPP session. Toggling DTR doesn't work either.
@@ -1417,44 +1412,37 @@ int QuectelNcpClient::enterDataMode() {
             // or at least something similar to it.
             // If we don't get a reply, consider we are in a broken state. To get
             // out of it we are going to close and re-open the data muxer channel.
-            if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E ||
-                    ncpId() == PLATFORM_NCP_QUECTEL_EG91_NA ||
-                    ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
-                dataParser_.reset();
-                skipAll(muxerDataStream_.get());
-                int flagsSeen = 0;
-                for (int i = 0; i < PPP_ECHO_REQUEST_ATTEMPTS; i++) {
-                    // I wish this was done in PPP layer
-                    const char lcpEchoRequest[] = "~\xff\x03\xc0!\t\x00\x00\x08\x00\x00\x00\x00\xbbn~";
-                    muxerDataStream_->write(lcpEchoRequest, sizeof(lcpEchoRequest) - 1);
-                    const int r = muxerDataStream_->waitEvent(Stream::READABLE, 1000);
-                    if (r == Stream::READABLE) {
-                        // Do a quick check that we've seen something similar to a PPP frame: ~<...>~
-                        const auto size = CHECK(muxerDataStream_->read(buf, sizeof(buf)));
-                        for (int i = 0; i < size; i++) {
-                            if (buf[i] == lcpEchoRequest[0]) {
-                                flagsSeen++;
-                            }
+            dataParser_.reset();
+            skipAll(muxerDataStream_.get());
+            int flagsSeen = 0;
+            for (int i = 0; i < PPP_ECHO_REQUEST_ATTEMPTS; i++) {
+                // I wish this was done in PPP layer
+                const char lcpEchoRequest[] = "~\xff\x03\xc0!\t\x00\x00\x08\x00\x00\x00\x00\xbbn~";
+                muxerDataStream_->write(lcpEchoRequest, sizeof(lcpEchoRequest) - 1);
+                const int r = muxerDataStream_->waitEvent(Stream::READABLE, 1000);
+                if (r == Stream::READABLE) {
+                    // Do a quick check that we've seen something similar to a PPP frame: ~<...>~
+                    const auto size = CHECK(muxerDataStream_->read(buf, sizeof(buf)));
+                    for (int i = 0; i < size; i++) {
+                        if (buf[i] == lcpEchoRequest[0]) {
+                            flagsSeen++;
                         }
-                        if (flagsSeen >= 2) {
-                            ok = true;
-                            break;
-                        }
-                    } else if (r != SYSTEM_ERROR_TIMEOUT) {
-                        return r;
                     }
+                    if (flagsSeen >= 2) {
+                        ok = true;
+                        break;
+                    }
+                } else if (r != SYSTEM_ERROR_TIMEOUT) {
+                    return r;
                 }
-                if (!ok) {
-                    LOG(WARN, "Resumed into a broken PPP session");
-                    // Broken state, close PPP channel. This allows us to get out of this state
-                    muxer_.closeChannel(QUECTEL_NCP_PPP_CHANNEL);
-                    // This is not a critical failure, set ok to true to avoid resetting the modem
-                    ok = true;
-                    return SYSTEM_ERROR_INVALID_STATE;
-                }
-            } else {
-                // We've already switched into data mode
+            }
+            if (!ok) {
+                LOG(WARN, "Resumed into a broken PPP session");
+                // Broken state, close PPP channel. This allows us to get out of this state
+                muxer_.closeChannel(QUECTEL_NCP_PPP_CHANNEL);
+                // This is not a critical failure, set ok to true to avoid resetting the modem
                 ok = true;
+                return SYSTEM_ERROR_INVALID_STATE;
             }
         }
     } else {
@@ -1500,6 +1488,10 @@ int QuectelNcpClient::enterDataMode() {
         ok = true;
     }
     return r;
+}
+
+int QuectelNcpClient::getMtu() {
+    return 0;
 }
 
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
