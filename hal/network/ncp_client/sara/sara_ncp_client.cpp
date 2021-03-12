@@ -953,7 +953,7 @@ int SaraNcpClient::checkNetConfForImsi() {
         const int r = CHECK_PARSER(resp.readResult());
         if (r == AtResponse::OK && imsiLength > 0) {
             netConf_ = networkConfigForImsi(buf, imsiLength);
-            break;
+            return SYSTEM_ERROR_NONE;
         } else if (imsiCount >= IMSI_MAX_RETRY_CNT) {
             // if max retries are exhausted
             return SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED;
@@ -961,7 +961,7 @@ int SaraNcpClient::checkNetConfForImsi() {
         ++imsiCount;
         HAL_Delay_Milliseconds(100*imsiCount);
     } while (imsiCount < IMSI_MAX_RETRY_CNT);
-    return SYSTEM_ERROR_NONE;
+    return SYSTEM_ERROR_TIMEOUT;
 }
 
 int SaraNcpClient::selectSimCard(ModemState& state) {
