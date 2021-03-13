@@ -1450,10 +1450,9 @@ int QuectelNcpClient::enterDataMode() {
             }
             if (!ok) {
                 LOG(WARN, "Resumed into a broken PPP session");
-                // Broken state, close PPP channel. This allows us to get out of this state
-                muxer_.closeChannel(QUECTEL_NCP_PPP_CHANNEL);
-                // This is not a critical failure, set ok to true to avoid resetting the modem
-                ok = true;
+                // FIXME: Previously we tried closing and re-opening the data channel,
+                // which does help in some cases, but fails in some others.
+                // To safe, trigger a modem reset
                 return SYSTEM_ERROR_INVALID_STATE;
             }
         }
