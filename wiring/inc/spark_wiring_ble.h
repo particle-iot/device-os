@@ -929,7 +929,7 @@ public:
     int setAdvertisingInterval(uint16_t interval) const;
     int setAdvertisingTimeout(uint16_t timeout) const;
     int setAdvertisingType(BleAdvertisingEventType type) const;
-    int setAdvertisingPhy(EnumFlags<BlePhy> phy) const;
+    int setAdvertisingPhy(BlePhy phy) const; // Only one of the enum values can be specified as the argument.
     int setAdvertisingParameters(const BleAdvertisingParams* params) const;
     int setAdvertisingParameters(const BleAdvertisingParams& params) const;
     int setAdvertisingParameters(uint16_t interval, uint16_t timeout, BleAdvertisingEventType type) const;

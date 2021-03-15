@@ -1033,6 +1033,7 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
         tempParams.interval = BLE_DEFAULT_ADVERTISING_INTERVAL;
         tempParams.timeout = BLE_DEFAULT_ADVERTISING_TIMEOUT;
         tempParams.inc_tx_power = false;
+        tempParams.primary_phy = BLE_PHYS_AUTO;
     } else {
         memcpy(&tempParams, params, std::min(tempParams.size, params->size));
         if (tempParams.primary_phy != BLE_PHYS_AUTO && tempParams.primary_phy != BLE_PHYS_1MBPS && tempParams.primary_phy != BLE_PHYS_CODED) {
@@ -1219,8 +1220,12 @@ int BleObject::Broadcaster::resume() {
 ble_gap_adv_params_t BleObject::Broadcaster::toPlatformAdvParams(const hal_ble_adv_params_t* halParams) {
     ble_gap_adv_params_t params = {};
     if (halParams->primary_phy == BLE_PHYS_CODED) {
-        // For Coded Phy advertising, type must be extended, nonscannable
-        params.properties.type = BLE_GAP_ADV_TYPE_EXTENDED_CONNECTABLE_NONSCANNABLE_UNDIRECTED;
+        if (halParams->type == BLE_ADV_SCANABLE_UNDIRECTED_EVT) {
+            params.properties.type = BLE_GAP_ADV_TYPE_EXTENDED_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED;
+        } else {
+            // For Coded Phy advertising, type must be extended, nonscannable
+            params.properties.type = BLE_GAP_ADV_TYPE_EXTENDED_CONNECTABLE_NONSCANNABLE_UNDIRECTED;
+        }
         params.primary_phy = BLE_GAP_PHY_CODED;
     } else {
         // For 1 MBPS advertising, use whatever type is specified

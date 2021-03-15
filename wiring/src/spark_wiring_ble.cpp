@@ -2112,12 +2112,12 @@ int BleLocalDevice::setAdvertisingType(BleAdvertisingEventType type) const {
     return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
 }
 
-int BleLocalDevice::setAdvertisingPhy(EnumFlags<BlePhy> phy) const {
+int BleLocalDevice::setAdvertisingPhy(BlePhy phy) const {
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
     advParams.version = BLE_API_VERSION;
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
-    advParams.primary_phy = static_cast<uint8_t>(phy.value());
+    advParams.primary_phy = static_cast<uint8_t>(phy);
     return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
 }
 
