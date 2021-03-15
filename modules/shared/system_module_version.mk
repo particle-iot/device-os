@@ -51,9 +51,26 @@ ifeq ($(PLATFORM_GEN),3)
 # SoftDevice S140 7.0.1
 SOFTDEVICE_DEPENDENCY = 202
 
+# FIXME: There is a compiler optimization or XIP access error in some earlier Device OS releases preventing
+# OTA updates on Argon specifically to some 3.x versions due to a failed dependency check even though the
+# dependencies are satisfied. Swapping two current dependencies seems to help.
+ifneq ($(PLATFORM_ID),12)
 SYSTEM_PART1_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_BOOTLOADER},0,${BOOTLOADER_DEPENDENCY}
+else
+SYSTEM_PART1_MODULE_DEPENDENCY2 ?= ${MODULE_FUNCTION_BOOTLOADER},0,${BOOTLOADER_DEPENDENCY}
+endif
+# /FIXME
+
 ifeq (,$(filter $(PLATFORM_ID),26))
+# FIXME: There is a compiler optimization or XIP access error in some earlier Device OS releases preventing
+# OTA updates on Argon specifically to some 3.x versions due to a failed dependency check even though the
+# dependencies are satisfied. Swapping two current dependencies seems to help.
+ifneq ($(PLATFORM_ID),12)
 SYSTEM_PART1_MODULE_DEPENDENCY2 ?= ${MODULE_FUNCTION_RADIO_STACK},0,${SOFTDEVICE_DEPENDENCY}
+else
+SYSTEM_PART1_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_RADIO_STACK},0,${SOFTDEVICE_DEPENDENCY}
+endif
+# /FIXME
 else
 # There is no need to carry SoftDevice dependency on Tracker, since they are manufactured
 # with the latest one. Update NCP firmware instead.
