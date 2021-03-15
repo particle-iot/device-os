@@ -198,6 +198,14 @@ test(ble_pairing_event_type) {
     (void)type;
 }
 
+test(ble_phys_type) {
+    BlePhy phy;
+    API_COMPILE({ phy = BlePhy::BLE_PHYS_AUTO; });
+    API_COMPILE({ phy = BlePhy::BLE_PHYS_1MBPS; });
+    API_COMPILE({ phy = BlePhy::BLE_PHYS_CODED; });
+    (void)phy;
+}
+
 test(ble_address_class) {
     hal_ble_addr_t halAddr;
     uint8_t addrArray[BLE_SIG_ADDR_LEN];
@@ -690,6 +698,7 @@ test(ble_local_device_class) {
     API_COMPILE({ int ret = BLE.setAdvertisingInterval(0); (void)ret; });
     API_COMPILE({ int ret = BLE.setAdvertisingTimeout(0); (void)ret; });
     API_COMPILE({ int ret = BLE.setAdvertisingType(BleAdvertisingEventType::CONNECTABLE_SCANNABLE_UNDIRECRED); (void)ret; });
+    API_COMPILE({ int ret = BLE.setAdvertisingPhy(BlePhy::BLE_PHYS_AUTO); (void)ret; });
     API_COMPILE({ int ret = BLE.setAdvertisingParameters(&params); (void)ret; });
     API_COMPILE({ int ret = BLE.setAdvertisingParameters(params); (void)ret; });
     API_COMPILE({ int ret = BLE.setAdvertisingParameters(0, 0, BleAdvertisingEventType::CONNECTABLE_SCANNABLE_UNDIRECRED); (void)ret; });
@@ -715,6 +724,7 @@ test(ble_local_device_class) {
     API_COMPILE({ bool ret = BLE.advertising(); (void)ret; });
 
     API_COMPILE({ int ret = BLE.setScanTimeout(0); (void)ret; });
+    API_COMPILE({ int ret = BLE.setScanPhy(BlePhy::BLE_PHYS_AUTO | BlePhy::BLE_PHYS_CODED); (void)ret; });
     API_COMPILE({ int ret = BLE.setScanParameters(&scanParams); (void)ret; });
     API_COMPILE({ int ret = BLE.setScanParameters(scanParams); (void)ret; });
     API_COMPILE({ int ret = BLE.getScanParameters(&scanParams); (void)ret; });
