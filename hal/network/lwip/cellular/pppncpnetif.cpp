@@ -322,6 +322,11 @@ void PppNcpNetif::pppEventHandler(uint64_t ev) {
         LOG(TRACE, "Negotiated MTU: %u", mtu);
         // Reset
         connectStart_ = 0;
+        const auto ncpMtu = celMan_->ncpClient()->getMtu();
+        if (ncpMtu > 0 && (unsigned)ncpMtu < mtu) {
+            LOG(TRACE, "Updating MTU to: %u", ncpMtu);
+            client_.getIf()->mtu = ncpMtu;
+        }
     } else if (ev == particle::net::ppp::Client::EVENT_CONNECTING) {
         if (connectStart_ == 0) {
             connectStart_ = HAL_Timer_Get_Milli_Seconds();

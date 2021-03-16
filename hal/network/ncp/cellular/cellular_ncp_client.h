@@ -163,6 +163,7 @@ public:
     virtual int setRegistrationTimeout(unsigned timeout) = 0;
     virtual int getTxDelayInDataChannel() = 0;
     virtual int enterDataMode() = 0;
+    virtual int getMtu() = 0;
 };
 
 inline CellularNcpClientConfig::CellularNcpClientConfig() :

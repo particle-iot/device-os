@@ -89,37 +89,7 @@ public:
 
 	ProtocolError send_event(MessageChannel& channel, const char* event_name,
 			const char* data, int ttl, EventType::Enum event_type, int flags,
-			system_tick_t time, CompletionHandler handler)
-	{
-		bool is_system_event = is_system(event_name);
-		bool rate_limited = is_rate_limited(is_system_event, time);
-		if (rate_limited) {
-			g_rateLimitedEventsCounter++;
-			return BANDWIDTH_EXCEEDED;
-		}
-
-		Message message;
-		channel.create(message);
-		bool confirmable = channel.is_unreliable();
-		if (flags & EventType::NO_ACK) {
-			confirmable = false;
-		} else if (flags & EventType::WITH_ACK) {
-			confirmable = true;
-		}
-		size_t msglen = Messages::event(message.buf(), 0, event_name, data, ttl,
-				event_type, confirmable);
-		message.set_length(msglen);
-		const ProtocolError result = channel.send(message);
-		if (result == NO_ERROR) {
-			// Register completion handler only if acknowledgement was requested explicitly
-			if ((flags & EventType::WITH_ACK) && message.has_id()) {
-			    add_ack_handler(message.get_id(), std::move(handler));
-			} else {
-			    handler.setResult();
-			}
-		}
-		return result;
-	}
+			system_tick_t time, CompletionHandler handler);
 
 private:
 	Protocol* protocol;

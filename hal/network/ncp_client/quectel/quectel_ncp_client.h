@@ -70,6 +70,7 @@ public:
     virtual int setRegistrationTimeout(unsigned timeout) override;
     virtual int getTxDelayInDataChannel() override;
     virtual int enterDataMode() override;
+    virtual int getMtu() override;
 
     auto getMuxer() {
         return &muxer_;
@@ -120,6 +121,7 @@ private:
     int initMuxer();
     int waitAtResponse(unsigned int timeout, unsigned int period = 1000);
     int waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period = 1000);
+    int checkNetConfForImsi();
     int selectSimCard();
     int checkSimCard();
     int configureApn(const CellularNetworkConfig& conf);
@@ -147,6 +149,7 @@ private:
     bool modemPowerState() const;
     int modemSetUartState(bool state) const;
     uint32_t getDefaultSerialConfig() const;
+    void exitDataModeWithDtr() const;
 };
 
 inline AtParser* QuectelNcpClient::atParser() {

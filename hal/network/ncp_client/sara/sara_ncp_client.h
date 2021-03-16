@@ -70,6 +70,7 @@ public:
     virtual int setRegistrationTimeout(unsigned timeout) override;
     virtual int getTxDelayInDataChannel() override;
     virtual int enterDataMode() override;
+    virtual int getMtu() override;
 
 private:
     AtParser parser_;

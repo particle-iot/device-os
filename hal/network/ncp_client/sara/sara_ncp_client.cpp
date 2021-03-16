@@ -128,8 +128,9 @@ const auto UBLOX_MUXER_T2 = 2540;
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
 using CidType = decltype(CellularGlobalIdentity::cell_id);
 
-const size_t UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD = 512;
+const size_t UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD = 500;
 const system_tick_t UBLOX_NCP_R4_WINDOW_SIZE_MS = 50;
+const int UBLOX_NCP_R4_NO_HW_FLOW_CONTROL_MTU = 990;
 
 const int UBLOX_DEFAULT_CID = 1;
 const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
@@ -469,11 +470,15 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
 
     if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
         if ((HAL_Timer_Get_Milli_Seconds() - lastWindow_) >= UBLOX_NCP_R4_WINDOW_SIZE_MS) {
-            lastWindow_ = HAL_Timer_Get_Milli_Seconds();
-            bytesInWindow_ = 0;
+            const int windowCount = ((HAL_Timer_Get_Milli_Seconds() - lastWindow_) / UBLOX_NCP_R4_WINDOW_SIZE_MS);
+            lastWindow_ += UBLOX_NCP_R4_WINDOW_SIZE_MS * windowCount;
+            bytesInWindow_ = std::max(0, (int)bytesInWindow_ - (int)UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD * windowCount);
+            if (bytesInWindow_ == 0) {
+                lastWindow_ = HAL_Timer_Get_Milli_Seconds();
+            }
         }
 
-        if (bytesInWindow_ >= UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD) {
+        if (bytesInWindow_ > 0 && (bytesInWindow_ + size) >= UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD) {
             LOG_DEBUG(WARN, "Dropping");
             // Not an error
             return SYSTEM_ERROR_NONE;
@@ -488,9 +493,6 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     }
     if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
         bytesInWindow_ += size;
-        if (bytesInWindow_ >= UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD) {
-            lastWindow_ = HAL_Timer_Get_Milli_Seconds();
-        }
     }
     if (err) {
         // Make sure we are going into an error state if muxer for some reason fails
@@ -953,7 +955,7 @@ int SaraNcpClient::checkNetConfForImsi() {
         const int r = CHECK_PARSER(resp.readResult());
         if (r == AtResponse::OK && imsiLength > 0) {
             netConf_ = networkConfigForImsi(buf, imsiLength);
-            break;
+            return SYSTEM_ERROR_NONE;
         } else if (imsiCount >= IMSI_MAX_RETRY_CNT) {
             // if max retries are exhausted
             return SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED;
@@ -961,7 +963,7 @@ int SaraNcpClient::checkNetConfForImsi() {
         ++imsiCount;
         HAL_Delay_Milliseconds(100*imsiCount);
     } while (imsiCount < IMSI_MAX_RETRY_CNT);
-    return SYSTEM_ERROR_NONE;
+    return SYSTEM_ERROR_TIMEOUT;
 }
 
 int SaraNcpClient::selectSimCard(ModemState& state) {
@@ -1540,6 +1542,10 @@ int SaraNcpClient::checkSimCard() {
 }
 
 int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
+    // IMPORTANT: Set modem full functionality!
+    // Otherwise we won't be able to query ICCID/IMSI
+    CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=1,0"));
+
     netConf_ = conf;
     if (!netConf_.isValid()) {
         // First look for network settings based on ICCID
@@ -1745,6 +1751,13 @@ int SaraNcpClient::enterDataMode() {
         ok = true;
     }
     return r;
+}
+
+int SaraNcpClient::getMtu() {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
+        return UBLOX_NCP_R4_NO_HW_FLOW_CONTROL_MTU;
+    }
+    return 0;
 }
 
 void SaraNcpClient::connectionState(NcpConnectionState state) {

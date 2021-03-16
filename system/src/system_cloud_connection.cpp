@@ -23,6 +23,11 @@
 #include "system_task.h"
 #include "spark_wiring_ticks.h"
 #include "dtls_session_persist.h"
+#if HAL_PLATFORM_IFAPI && HAL_PLATFORM_BROKEN_MTU
+#include "ifapi.h"
+// FIXME: this should get included from protocol.h
+#include "mbedtls_config.h"
+#endif // HAL_PLATFORM_IFAPI && HAL_PLATFORM_BROKEN_MTU
 
 #define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
 
@@ -177,7 +182,37 @@ int spark_cloud_socket_connect()
     if (!r) {
         /* This does not actually save anyhing to persistent storage, just computes the checksum */
         g_system_cloud_session_data.save(server_addr);
+
+#if HAL_PLATFORM_IFAPI && HAL_PLATFORM_BROKEN_MTU
+        // FIXME: this should come from somewhere else
+        const auto minMtu = 1280;
+
+        if_list* ifs = nullptr;
+        if_get_list(&ifs);
+
+        unsigned int minInterfaceMtu = minMtu;
+        for (if_list* iface = ifs; iface != nullptr; iface = iface->next) {
+            if (iface->iface) {
+                unsigned int ifaceMtu = 0;
+                if (!if_get_mtu(iface->iface, &ifaceMtu) && ifaceMtu > 0) {
+                    minInterfaceMtu = std::min(ifaceMtu, minInterfaceMtu);
+                }
+            }
+        }
+
+        if_free_list(ifs);
+        if (minInterfaceMtu < minMtu) {
+            const size_t maxTransmitMessageSize = PROTOCOL_BUFFER_SIZE - (minMtu - minInterfaceMtu);
+            LOG(INFO, "Updating protocol max tx msg size to %u", maxTransmitMessageSize);
+            spark_protocol_set_connection_property(sp, particle::protocol::Connection::MAX_TRANSMIT_MESSAGE_SIZE, maxTransmitMessageSize,
+                    nullptr, nullptr);
+        } else {
+            spark_protocol_set_connection_property(sp, particle::protocol::Connection::MAX_TRANSMIT_MESSAGE_SIZE, 0,
+                    nullptr, nullptr);
+        }
+#endif // HAL_PLATFORM_IFAPI && HAL_PLATFORM_BROKEN_MTU
     }
+
 #endif /* HAL_PLATFORM_CLOUD_UDP */
 
     return r;

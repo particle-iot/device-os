@@ -128,6 +128,13 @@ using CidType = decltype(CellularGlobalIdentity::cell_id);
 const int QUECTEL_DEFAULT_CID = 1;
 const char QUECTEL_DEFAULT_PDP_TYPE[] = "IP";
 
+const int IMSI_MAX_RETRY_CNT = 10;
+const int CCID_MAX_RETRY_CNT = 2;
+
+const int DATA_MODE_BREAK_ATTEMPTS = 5;
+const int PPP_ECHO_REQUEST_ATTEMPTS = 3;
+const int CGDCONT_ATTEMPTS = 5;
+
 } // anonymous
 
 QuectelNcpClient::QuectelNcpClient() {
@@ -930,6 +937,30 @@ int QuectelNcpClient::waitReady(bool powerOn) {
     return SYSTEM_ERROR_NONE;
 }
 
+int QuectelNcpClient::checkNetConfForImsi() {
+    int imsiCount = 0;
+    char buf[32] = {};
+    do {
+        auto resp = parser_.sendCommand("AT+CIMI");
+        memset(buf, 0, sizeof(buf));
+        int imsiLength = 0;
+        if (resp.hasNextLine()) {
+            imsiLength = CHECK(resp.readLine(buf, sizeof(buf)));
+        }
+        const int r = CHECK_PARSER(resp.readResult());
+        if (r == AtResponse::OK && imsiLength > 0) {
+            netConf_ = networkConfigForImsi(buf, imsiLength);
+            return SYSTEM_ERROR_NONE;
+        } else if (imsiCount >= IMSI_MAX_RETRY_CNT) {
+            // if max retries are exhausted
+            return SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED;
+        }
+        ++imsiCount;
+        HAL_Delay_Milliseconds(100*imsiCount);
+    } while (imsiCount < IMSI_MAX_RETRY_CNT);
+    return SYSTEM_ERROR_TIMEOUT;
+}
+
 int QuectelNcpClient::selectSimCard() {
     // Using numeric CME ERROR codes
     // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=2"));
@@ -1182,35 +1213,42 @@ int QuectelNcpClient::checkSimCard() {
 }
 
 int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
+    // IMPORTANT: Set modem full functionality!
+    // Otherwise we won't be able to query ICCID/IMSI
+    CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=1,0"));
+
     netConf_ = conf;
     if (!netConf_.isValid()) {
-        // FIXME: CCID may fail, need delay here
-        HAL_Delay_Milliseconds(1000);
         // First look for network settings based on ICCID
         char buf[32] = {};
-        auto lenCcid = getIccidImpl(buf, sizeof(buf));
-        CHECK_TRUE(lenCcid > 5, SYSTEM_ERROR_AT_NOT_OK);
-        netConf_ = networkConfigForIccid(buf, lenCcid);
+        int ccidCount = 0;
+        do {
+            memset(buf, 0, sizeof(buf));
+            auto lenCcid = getIccidImpl(buf, sizeof(buf));
+            if (lenCcid > 5) {
+                netConf_ = networkConfigForIccid(buf, lenCcid);
+                break;
+            }
+        } while (++ccidCount < CCID_MAX_RETRY_CNT);
 
         // If failed above i.e., netConf_ is still not valid, look for network settings based on IMSI
         if (!netConf_.isValid()) {
-            // FIXME: CIMI may fail, need delay here
-            HAL_Delay_Milliseconds(1000);
-            memset(buf, 0, sizeof(buf));
-            auto resp = parser_.sendCommand("AT+CIMI");
-            CHECK_PARSER(resp.readLine(buf, sizeof(buf)));
-            const int r = CHECK_PARSER(resp.readResult());
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-            netConf_ = networkConfigForImsi(buf, strlen(buf));
+            CHECK(checkNetConfForImsi());
         }
     }
-    // FIXME: for now IPv4 context only
-    auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s\"",
-            QUECTEL_DEFAULT_CID, QUECTEL_DEFAULT_PDP_TYPE,
-            netConf_.hasApn() ? netConf_.apn() : "");
-    const int r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    return SYSTEM_ERROR_NONE;
+    // XXX: we've seen CGDCONT fail on cold boot, retrying here a few times
+    for (int i = 0; i < CGDCONT_ATTEMPTS; i++) {
+        // FIXME: for now IPv4 context only
+        auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s\"",
+                QUECTEL_DEFAULT_CID, QUECTEL_DEFAULT_PDP_TYPE,
+                netConf_.hasApn() ? netConf_.apn() : "");
+        const int r = CHECK_PARSER(resp.readResult());
+        if (r == AtResponse::OK) {
+            return SYSTEM_ERROR_NONE;
+        }
+        HAL_Delay_Milliseconds(200);
+    }
+    return SYSTEM_ERROR_AT_NOT_OK;
 }
 
 int QuectelNcpClient::registerNet() {
@@ -1346,22 +1384,25 @@ int QuectelNcpClient::enterDataMode() {
     // 4) Switch to command mode; otherwise return to step 1)
     // NOTE: we are ignoring step 1 and are acting more optimistic on the first attempt
     // Subsequent attempts to exit data mode follow this step.
-    const int attempts = 5;
     bool responsive = false;
-    for (int i = 0; i < attempts; i++) {
+
+    // Initialize AT parser
+    auto parserConf = AtParserConfig()
+            .stream(muxerDataStream_.get())
+            .commandTerminator(AtCommandTerminator::CRLF);
+    dataParser_.destroy();
+    CHECK(dataParser_.init(std::move(parserConf)));
+
+    for (int i = 0; i < DATA_MODE_BREAK_ATTEMPTS; i++) {
+        // Also try toggling DTR as +++ may sometimes fail.
+        exitDataModeWithDtr();
         // Send data mode break
         const char breakCmd[] = "+++";
         muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
         skipAll(muxerDataStream_.get(), 1000);
 
-        // Initialize AT parser
-        auto parserConf = AtParserConfig()
-                .stream(muxerDataStream_.get())
-                .commandTerminator(AtCommandTerminator::CRLF);
-        dataParser_.destroy();
-        CHECK(dataParser_.init(std::move(parserConf)));
-
-        responsive = waitAtResponse(dataParser_, 1000) == 0;
+        dataParser_.reset();
+        responsive = waitAtResponse(dataParser_, 1000, 500) == 0;
         if (responsive) {
             break;
         }
@@ -1371,12 +1412,49 @@ int QuectelNcpClient::enterDataMode() {
     const char connectResponse[] = "CONNECT";
 
     char buf[64] = {};
-    auto resp = dataParser_.sendCommand(1000, "ATO");
+    auto resp = dataParser_.sendCommand(2000, "ATO");
     if (resp.hasNextLine()) {
         CHECK(resp.readLine(buf, sizeof(buf)));
         if (!strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
-            // We've already switched into data mode
-            ok = true;
+            // IMPORTANT: ATO does not work all the time and we resume into
+            // some broken state where the modem does not reply to our PPP ConfReqs.
+            // What's worse is that ATH doesn't seem to work either, so we cannot
+            // disconnect an ongoing PPP session. Toggling DTR doesn't work either.
+            // As a workaround send a PPP LCP Echo Request, wait until we get a reply
+            // or at least something similar to it.
+            // If we don't get a reply, consider we are in a broken state. To get
+            // out of it we are going to close and re-open the data muxer channel.
+            dataParser_.reset();
+            skipAll(muxerDataStream_.get());
+            int flagsSeen = 0;
+            for (int i = 0; i < PPP_ECHO_REQUEST_ATTEMPTS; i++) {
+                // I wish this was done in PPP layer
+                const char lcpEchoRequest[] = "~\xff\x03\xc0!\t\x00\x00\x08\x00\x00\x00\x00\xbbn~";
+                muxerDataStream_->write(lcpEchoRequest, sizeof(lcpEchoRequest) - 1);
+                const int r = muxerDataStream_->waitEvent(Stream::READABLE, 1000);
+                if (r == Stream::READABLE) {
+                    // Do a quick check that we've seen something similar to a PPP frame: ~<...>~
+                    const auto size = CHECK(muxerDataStream_->read(buf, sizeof(buf)));
+                    for (int i = 0; i < size; i++) {
+                        if (buf[i] == lcpEchoRequest[0]) {
+                            flagsSeen++;
+                        }
+                    }
+                    if (flagsSeen >= 2) {
+                        ok = true;
+                        break;
+                    }
+                } else if (r != SYSTEM_ERROR_TIMEOUT) {
+                    return r;
+                }
+            }
+            if (!ok) {
+                LOG(WARN, "Resumed into a broken PPP session");
+                // FIXME: Previously we tried closing and re-opening the data channel,
+                // which does help in some cases, but fails in some others.
+                // To safe, trigger a modem reset
+                return SYSTEM_ERROR_INVALID_STATE;
+            }
         }
     } else {
         const int r = CHECK(resp.readResult());
@@ -1421,6 +1499,10 @@ int QuectelNcpClient::enterDataMode() {
         ok = true;
     }
     return r;
+}
+
+int QuectelNcpClient::getMtu() {
+    return 0;
 }
 
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
@@ -1863,9 +1945,11 @@ uint32_t QuectelNcpClient::getDefaultSerialConfig() const {
     return sconf;
 }
 
-// // Use BG96 status pin to enable/disable voltage convert IC Automatically
-// int QuectelNcpClient::modemSetUartState(bool state) const {
-//     return SYSTEM_ERROR_NONE;
-// }
+void QuectelNcpClient::exitDataModeWithDtr() const {
+    HAL_GPIO_Write(BGDTR, 0);
+    HAL_Delay_Milliseconds(1);
+    HAL_GPIO_Write(BGDTR, 1);
+    HAL_Delay_Milliseconds(1);
+}
 
 } // namespace particle
