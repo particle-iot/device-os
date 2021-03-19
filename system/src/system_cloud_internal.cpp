@@ -183,8 +183,9 @@ int sendApplicationDescription() {
 }
 
 void registerSystemSubscriptions() {
-    if (!Particle.subscribe("particle", systemEventHandler, MY_DEVICES) ||
-            !Particle.subscribe("spark", systemEventHandler, MY_DEVICES)) {
+    bool ok = Particle.subscribe("particle", systemEventHandler, MY_DEVICES);
+    ok = Particle.subscribe("spark", systemEventHandler, MY_DEVICES) && ok;
+    if (!ok) {
         LOG(ERROR, "Particle.subscribe() failed");
     }
 }
