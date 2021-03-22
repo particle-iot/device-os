@@ -70,7 +70,7 @@ typedef struct {
     char ver[16+1];       //!< Software Version
 } DevStatus;
 //! Registration Status
-// Registration Status is now handled with CellularRegistrationStatusMdm()
+// Registration Status is now handled with CellularRegistrationStatus()
 //! Access Technology
 typedef enum {
     ACT_UNKNOWN     = 0,
