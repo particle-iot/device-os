@@ -43,7 +43,7 @@ public:
         UNKNOWN = 4,
         ROAMING = 5
     };
-    int temp = 0;
+
     CellularRegistrationStatusMdm() = default;
     CellularRegistrationStatusMdm(Status stat, system_tick_t started, system_tick_t updated);
 

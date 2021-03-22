@@ -1569,7 +1569,7 @@ int MDMParser::_cbURAT(int type, const char *buf, int len, bool *matched_default
 bool MDMParser::interveneRegistration(void) {
 
     CellularNetProv netProv = particle::detail::cellular_sim_to_network_provider_impl(_dev.imsi, _dev.ccid);
-    if (netProv == CELLULAR_NETPROV_TWILIO && HAL_Timer_Get_Milli_Seconds() - _regStartTimse <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
+    if (netProv == CELLULAR_NETPROV_TWILIO && HAL_Timer_Get_Milli_Seconds() - _regStartTime <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
         return true;
     }
 
@@ -1808,8 +1808,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                     if ((REG_OK(csd_.status()) && REG_OK(psd_.status())) || REG_OK(eps_.status())) {
                         break; // force another checkNetStatus() call
                     }
-                    // Run intervention commands
-                    // XXX: Can we run intervention commands in CheckNetStatus() call?
+                    // Run intervention commands to speed-up cellular registration
                     if (!interveneRegistration()) {
                         goto failure;
                     }
