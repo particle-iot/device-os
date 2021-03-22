@@ -102,7 +102,6 @@ std::recursive_mutex mdm_mutex;
 #define UPSDA_TIMEOUT     (180 * 1000)
 #define UPSND_TIMEOUT     ( 10 * 1000)
 #define URAT_TIMEOUT      ( 10 * 1000)
-#define CGACT_TIMEOUT     (180 * 1000)
 #define REGISTRATION_INTERVENTION_TIMEOUT (15 * 1000)
 #define REGISTRATION_TWILIO_HOLDOFF_TIMEOUT (300 * 1000)
 
@@ -113,9 +112,9 @@ std::recursive_mutex mdm_mutex;
 //! check for timeout
 #define TIMEOUT(t, ms)  ((ms != TIMEOUT_BLOCKING) && ((HAL_Timer_Get_Milli_Seconds() - t) > ms))
 //! registration ok check helper
-#define REG_OK(r)       ((r == CellularRegistrationStatusMdm::HOME) || (r == CellularRegistrationStatusMdm::ROAMING))
+#define REG_OK(r)       ((r == CellularRegistrationStatus::HOME) || (r == CellularRegistrationStatus::ROAMING))
 //! registration done check helper (no need to poll further)
-#define REG_DONE(r)     ((r == CellularRegistrationStatusMdm::HOME) || (r == CellularRegistrationStatusMdm::ROAMING) || (r == CellularRegistrationStatusMdm::DENIED))
+#define REG_DONE(r)     ((r == CellularRegistrationStatus::HOME) || (r == CellularRegistrationStatus::ROAMING) || (r == CellularRegistrationStatus::DENIED))
 //! helper to make sure that lock unlock pair is always balanced
 #define LOCK()      std::lock_guard<std::recursive_mutex> __mdm_guard(mdm_mutex);
 //! helper to catch AT command timeouts
@@ -144,9 +143,6 @@ inline void CLR_GPRS_TIMEOUT() {
     gprs_timeout_duration = 0;
     DEBUG("GPRS WD Cleared, was %d", gprs_timeout_duration);
 }
-
-unsigned int _registrationInterventions = 0;
-system_tick_t _regStartTime = 0;
 
 namespace {
 
@@ -284,6 +280,7 @@ MDMParser::MDMParser(void)
     _lastVerboseCxregUpdate = 0;
     _lastProcess = 0;
     _error = 0;
+    _registrationInterventions = 0;
     _regStartTime = 0;
 #ifdef MDM_DEBUG
     _debugLevel = 3;
@@ -1582,7 +1579,7 @@ bool MDMParser::interveneRegistration(void) {
         // Only attempt intervention when in a sticky state
         // (over intervention interval and multiple URCs with the same state)
         if (csd_.sticky() && csd_.duration() >= timeout) {
-            if (csd_.status() == CellularRegistrationStatusMdm::NOT_REGISTERING) {
+            if (csd_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
                 MDM_INFO("Sticky not registering CSD state for %lu s, PLMN reselection", csd_.duration() / 1000);
                 csd_.reset();
                 psd_.reset();
@@ -1592,17 +1589,16 @@ bool MDMParser::interveneRegistration(void) {
                     return false;
                 }
                 return true;
-            } else if (csd_.status() == CellularRegistrationStatusMdm::DENIED && psd_.status() == csd_.status()) {
+            } else if (csd_.status() == CellularRegistrationStatus::DENIED && psd_.status() == csd_.status()) {
                 MDM_INFO("Sticky CSD and PSD denied state for %lu s, RF reset", csd_.duration() / 1000);
                 csd_.reset();
                 psd_.reset();
                 _registrationInterventions++;
-                // Note: Use CFUN=1 instead of CFUN=1,1 as the latter will briefly reset the radio
-                sendFormated("AT+CFUN=0\r\n");
+                sendFormated("AT+CFUN=0,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
-                sendFormated("AT+CFUN=1\r\n");
+                sendFormated("AT+CFUN=1,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
@@ -1611,16 +1607,15 @@ bool MDMParser::interveneRegistration(void) {
         }
 
         if (csd_.registered() && psd_.sticky() && psd_.duration() >= timeout) {
-            if (psd_.status() == CellularRegistrationStatusMdm::NOT_REGISTERING) {
+            if (psd_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
                 MDM_INFO("Sticky not registering PSD state for %lu s, force GPRS attach", psd_.duration() / 1000);
                 psd_.reset();
                 _registrationInterventions++;
-                sendFormated("AT+CGACT?\r\n");
-                if (WAIT == waitFinalResp(nullptr, nullptr, CGACT_TIMEOUT)) {
+                sendFormated("AT+CGATT=1\r\n");
+                auto resp = waitFinalResp(nullptr, nullptr, CGATT_TIMEOUT);
+                if (resp == WAIT) {
                     return false;
-                }
-                sendFormated("AT+CGACT=1\r\n");
-                if (RESP_OK != waitFinalResp(nullptr, nullptr, CGACT_TIMEOUT)) {
+                } else if (resp != RESP_OK) {
                     csd_.reset();
                     psd_.reset();
                     MDM_INFO("GPRS attach failed, try PLMN reselection");
@@ -1633,7 +1628,7 @@ bool MDMParser::interveneRegistration(void) {
         }
     } else {
         if (eps_.sticky() && eps_.duration() >= timeout) {
-            if (eps_.status() == CellularRegistrationStatusMdm::NOT_REGISTERING) {
+            if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
                 MDM_INFO("Sticky not registering EPS state for %lu s, PLMN reselection", eps_.duration() / 1000);
                 eps_.reset();
                 _registrationInterventions++;
@@ -1641,16 +1636,15 @@ bool MDMParser::interveneRegistration(void) {
                 if (WAIT == waitFinalResp(nullptr, nullptr, COPS_TIMEOUT)) {
                     return false;
                 }
-            } else if (eps_.status() == CellularRegistrationStatusMdm::DENIED) {
+            } else if (eps_.status() == CellularRegistrationStatus::DENIED) {
                 MDM_INFO("Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
                 _registrationInterventions++;
-                // Note: Use CFUN=1 instead of CFUN=1,1 as the latter will briefly reset the radio
-                sendFormated("AT+CFUN=0\r\n");
+                sendFormated("AT+CFUN=0,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
-                sendFormated("AT+CFUN=1\r\n");
+                sendFormated("AT+CFUN=1,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
@@ -1825,9 +1819,9 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                     }
                 }
             }
-            if (csd_.status() == CellularRegistrationStatusMdm::DENIED) MDM_ERROR("CSD Registration Denied\r\n");
-            if (psd_.status() == CellularRegistrationStatusMdm::DENIED) MDM_ERROR("PSD Registration Denied\r\n");
-            if (eps_.status() == CellularRegistrationStatusMdm::DENIED) MDM_ERROR("EPS Registration Denied\r\n");
+            if (csd_.status() == CellularRegistrationStatus::DENIED) MDM_ERROR("CSD Registration Denied\r\n");
+            if (psd_.status() == CellularRegistrationStatus::DENIED) MDM_ERROR("PSD Registration Denied\r\n");
+            if (eps_.status() == CellularRegistrationStatus::DENIED) MDM_ERROR("EPS Registration Denied\r\n");
         }
         return ok;
     }
@@ -3693,9 +3687,9 @@ void MDMParser::dumpNetStatus(NetStatus *status)
     MDM_INFO("\r\n[ Modem::netStatus ] = = = = = = = = = = = = = =");
 
     const char* txtReg[] = { "None", "Not_Registering", "Home", "Searching", "Denied", "Unknown", "Roaming" };
-    if ((unsigned)csd_.status()+1 < sizeof(txtReg)/sizeof(*txtReg) && (csd_.status() != CellularRegistrationStatusMdm::NONE))
+    if ((unsigned)csd_.status()+1 < sizeof(txtReg)/sizeof(*txtReg) && (csd_.status() != CellularRegistrationStatus::NONE))
         MDM_PRINTF("  CSD Registration:    %s\r\n", txtReg[csd_.status()+1]);
-    if ((unsigned)psd_.status()+1 < sizeof(txtReg)/sizeof(*txtReg) && (psd_.status() != CellularRegistrationStatusMdm::NONE))
+    if ((unsigned)psd_.status()+1 < sizeof(txtReg)/sizeof(*txtReg) && (psd_.status() != CellularRegistrationStatus::NONE))
         MDM_PRINTF("  PSD Registration:    %s\r\n", txtReg[psd_.status()+1]);
     const char* txtAct[] = { "Unknown", "GSM", "Edge", "3G", "CDMA" };
     if (status->act < sizeof(txtAct)/sizeof(*txtAct) && (status->act != ACT_UNKNOWN))
