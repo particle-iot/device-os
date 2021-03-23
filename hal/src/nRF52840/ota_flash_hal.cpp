@@ -163,9 +163,9 @@ int fetch_device_public_key_ex(void)
 
 void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
+    uint8_t count = module_bounds_length;
     if (construct) {
         info->platform_id = PLATFORM_ID;
-        uint8_t count = module_bounds_length;
         info->modules = new hal_module_t[count];
         if (info->modules) {
             info->module_count = count;
@@ -181,7 +181,14 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
                         bounds->module_function == MODULE_FUNCTION_RADIO_STACK) {
                     continue; // These modules will be fetched in HAL_OTA_Add_System_Info()
                 }
-                fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY);
+                if (bounds->location == MODULE_BOUNDS_LOC_SERIAL_FLASH) {
+                    auto pInfo = new module_info_t();
+                    if (!fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY, pInfo)) {
+                        delete pInfo;
+                    }
+                } else {
+                    fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY, nullptr);
+                }
 #if defined(HYBRID_BUILD)
 #ifndef MODULAR_FIRMWARE
 #error HYBRID_BUILD must be modular
@@ -189,6 +196,10 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
                 static module_info_t hybrid_info;
                 // change monolithic firmware to modular in the hybrid build.
                 if (!hybrid_module_found && info->modules[i].info->module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
+                    // If this module locates in serial flash, the memory allocated above for module info will leak, 
+                    // and it's fault to free the memory with the pointer pointing to static RAM (hybrid_info) when destruct the system info.
+                    SPARK_ASSERT(info->modules[i].bounds.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH);
+
                     memcpy(&hybrid_info, info->modules[i].info, sizeof(hybrid_info));
                     info->modules[i].info = &hybrid_info;
                     hybrid_info.module_function = MODULE_FUNCTION_SYSTEM_PART;
@@ -203,15 +214,18 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     else
     {
         HAL_OTA_Add_System_Info(info, construct, reserved);
+        for (uint8_t i = 0; i < count; i++) {
+            if (info->modules[i].bounds.location == MODULE_BOUNDS_LOC_SERIAL_FLASH && info->modules[i].info) {
+                delete info->modules[i].info;
+            }
+        }
         delete info->modules;
         info->modules = NULL;
     }
 }
 
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0")))
+// If this function accesses the module info via XIP it may fail to parse it correctly under
+// some not entirely clear circumstances.
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
 {
     if (module_function(module) != MODULE_FUNCTION_SYSTEM_PART)
@@ -272,14 +286,13 @@ bool validate_module_dependencies_full(const module_info_t* module, const module
     return valid;
 }
 
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0")))
+// If this function accesses the module info via XIP it may fail to parse it correctly under
+// some not entirely clear circumstances.
 bool validate_module_dependencies(const module_bounds_t* bounds, bool userOptional, bool fullDeps)
 {
     bool valid = false;
-    const module_info_t* module = locate_module(bounds);
+    module_info_t infoTemp;
+    const module_info_t* module = locate_module(bounds, &infoTemp);
     if (module)
     {
         if (module->dependency.module_function == MODULE_FUNCTION_NONE || (userOptional && module_function(module)==MODULE_FUNCTION_USER_PART)) {
@@ -294,7 +307,8 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
                 if (!dependency_bounds) {
                     return false;
                 }
-                const module_info_t* dependency = locate_module(dependency_bounds);
+                module_info_t infoDep;
+                const module_info_t* dependency = locate_module(dependency_bounds, &infoDep);
                 valid = dependency && (dependency->module_version>=module->dependency.module_version);
             } else {
                 valid = true;
@@ -309,7 +323,8 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
                 if (!dependency_bounds) {
                     return false;
                 }
-                const module_info_t* dependency = locate_module(dependency_bounds);
+                module_info_t infoDep;
+                const module_info_t* dependency = locate_module(dependency_bounds, &infoDep);
                 valid = valid && dependency && (dependency->module_version>=module->dependency2.module_version);
             }
         }
@@ -397,7 +412,7 @@ static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength)
         if (fres == FLASH_ACCESS_RESULT_OK) {
             // Validate bootloader
             hal_module_t module;
-            bool module_fetched = fetch_module(&module, &module_bootloader, true, MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL);
+            bool module_fetched = fetch_module(&module, &module_bootloader, true, MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL, nullptr);
             if (module_fetched && (module.validity_checked == module.validity_result)) {
                 ok = true;
                 break;
@@ -444,10 +459,9 @@ int validityResultToSystemError(unsigned result, unsigned checked) {
 // TODO: Current design of the OTA subsystem and the protocol doesn't allow for updating
 // multiple modules at once. As a "temporary" workaround, multiple modules can be combined
 // into a single binary
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0"))) int fetchModules(hal_module_t* modules, size_t maxModuleCount, bool userDepsOptional, unsigned flags) {
+// If this function accesses the module info via XIP it may fail to parse it correctly under
+// some not entirely clear circumstances.
+int fetchModules(hal_module_t* modules, size_t maxModuleCount, bool userDepsOptional, unsigned flags, module_info_t* const infos) {
     hal_module_t module = {};
     module_bounds_t bounds = module_ota;
     size_t count = 0;
@@ -477,10 +491,9 @@ __attribute__((optimize("O0"))) int fetchModules(hal_module_t* modules, size_t m
     return count;
 }
 
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0"))) int validateModules(const hal_module_t* modules, size_t moduleCount) {
+// If this function accesses the module info via XIP it may fail to parse it correctly under
+// some not entirely clear circumstances.
+int validateModules(const hal_module_t* modules, size_t moduleCount) {
     for (size_t i = 0; i < moduleCount; ++i) {
         const auto module = modules + i;
         const auto info = module->info;
@@ -526,13 +539,13 @@ const size_t MAX_COMBINED_MODULE_COUNT = 2;
 
 } // namespace
 
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0"))) int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
+// If this function accesses the module info via XIP it may fail to parse it correctly under
+// some not entirely clear circumstances.
+int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
 {
     hal_module_t modules[MAX_COMBINED_MODULE_COUNT] = {};
-    size_t moduleCount = CHECK(fetchModules(modules, MAX_COMBINED_MODULE_COUNT, userDepsOptional, flags));
+    module_info_t infos[MAX_COMBINED_MODULE_COUNT] = {};
+    size_t moduleCount = CHECK(fetchModules(modules, MAX_COMBINED_MODULE_COUNT, userDepsOptional, flags, infos));
     if (moduleCount == 0) { // Sanity check
         return SYSTEM_ERROR_OTA_MODULE_NOT_FOUND;
     }
@@ -544,14 +557,14 @@ __attribute__((optimize("O0"))) int HAL_FLASH_OTA_Validate(bool userDepsOptional
     return 0;
 }
 
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0"))) int HAL_FLASH_End(void* reserved)
+// If this function accesses the module info via XIP it may fail to parse it correctly under
+// some not entirely clear circumstances.
+int HAL_FLASH_End(void* reserved)
 {
     hal_module_t modules[MAX_COMBINED_MODULE_COUNT] = {};
+    module_info_t infos[MAX_COMBINED_MODULE_COUNT] = {};
     size_t moduleCount = CHECK(fetchModules(modules, MAX_COMBINED_MODULE_COUNT, true /* userDepsOptional */,
-            MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL));
+            MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL, infos));
     if (moduleCount == 0) {
         return SYSTEM_ERROR_OTA_MODULE_NOT_FOUND;
     }
@@ -598,9 +611,7 @@ __attribute__((optimize("O0"))) int HAL_FLASH_End(void* reserved)
             if (info.flags & MODULE_INFO_FLAG_COMPRESSED) {
                 slotFlags |= MODULE_COMPRESSED;
             }
-            // Convert the module's XIP address to an address in the external flash :sweat_smile:
-            const uintptr_t otaAddr = EXTERNAL_FLASH_OTA_ADDRESS + module->bounds.start_address - EXTERNAL_FLASH_OTA_XIP_ADDRESS;
-            const bool ok = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, otaAddr, FLASH_INTERNAL,
+            const bool ok = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_OTA_ADDRESS, FLASH_INTERNAL,
                     (uint32_t)info.module_start_address, moduleSize + 4 /* CRC-32 */, moduleFunc, slotFlags);
             if (!ok) {
                 LOG(ERROR, "No module slot available");
