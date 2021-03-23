@@ -28,6 +28,7 @@
 #include "gsm0710muxer/channel_stream.h"
 #include "static_recursive_mutex.h"
 #include "serial_stream.h"
+#include "cellular_reg_status.h"
 
 namespace particle {
 
