@@ -16,23 +16,24 @@ const module_bounds_t module_bootloader = {
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
+        ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH
     };
 
 // OTA region
 const module_bounds_t module_ota = {
         .maximum_size = EXTERNAL_FLASH_OTA_LENGTH,
-        .start_address = EXTERNAL_FLASH_OTA_XIP_ADDRESS,
-        .end_address = EXTERNAL_FLASH_OTA_XIP_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH,
+        .start_address = EXTERNAL_FLASH_OTA_ADDRESS,
+        .end_address = EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH,
         .module_function = MODULE_FUNCTION_NONE,
         .module_index = 0,
         .store = MODULE_STORE_SCRATCHPAD
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_ANY
 #endif
-
+        ,.location = MODULE_BOUNDS_LOC_SERIAL_FLASH
     };
 
-STATIC_ASSERT(Expected_OTA_region_at_end_of_external_flash, (EXTERNAL_FLASH_OTA_XIP_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH) == EXTERNAL_FLASH_XIP_ADDRESS_END);
+STATIC_ASSERT(Expected_OTA_region_at_end_of_external_flash, (EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH) == EXTERNAL_FLASH_SIZE);
 
 
 // Modular firmware
@@ -46,6 +47,7 @@ const module_bounds_t module_system_part1 = {
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
+        ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH
     };
 
 const module_bounds_t module_user = {
@@ -58,19 +60,21 @@ const module_bounds_t module_user = {
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
+        ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH
     };
 
 // Factory firmware
 const module_bounds_t module_factory = {
         .maximum_size = EXTERNAL_FLASH_FAC_LENGTH, // module_user_app.maximum_size
-        .start_address = EXTERNAL_FLASH_FAC_XIP_ADDRESS,
-        .end_address = EXTERNAL_FLASH_FAC_XIP_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH,
+        .start_address = EXTERNAL_FLASH_FAC_ADDRESS,
+        .end_address = EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH,
         .module_function = MODULE_FUNCTION_USER_PART,
         .module_index = 1,
         .store = MODULE_STORE_FACTORY
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
+        ,.location = MODULE_BOUNDS_LOC_SERIAL_FLASH
     };
 
 
@@ -85,18 +89,20 @@ const module_bounds_t module_user_mono = {
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
+        ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH
     };
 
 const module_bounds_t module_factory_mono = {
         .maximum_size = EXTERNAL_FLASH_FAC_LENGTH, // module_user_app.maximum_size
-        .start_address = EXTERNAL_FLASH_FAC_XIP_ADDRESS,
-        .end_address = EXTERNAL_FLASH_FAC_XIP_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH,
+        .start_address = EXTERNAL_FLASH_FAC_ADDRESS,
+        .end_address = EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH,
         .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
         .module_index = 0,
         .store = MODULE_STORE_FACTORY
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
+        ,.location = MODULE_BOUNDS_LOC_SERIAL_FLASH
     };
 
 // placeholder for unused space
@@ -110,7 +116,7 @@ const module_bounds_t module_xip_code = {
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
-
+        ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH
     };
 
 #if HAL_PLATFORM_NCP_UPDATABLE
@@ -124,6 +130,7 @@ const module_bounds_t module_ncp_mono = {
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_ANY
 #endif
+        ,.location = MODULE_BOUNDS_LOC_NCP_FLASH
 };
 #endif
 
@@ -138,6 +145,7 @@ const module_bounds_t module_radio_stack = {
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
+        ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH
 };
 PARTICLE_STATIC_ASSERT(radio_stack_start_address, MODULE_RADIO_STACK_START_ADDRESS == MBR_SIZE);
 

@@ -23,16 +23,29 @@
 
 namespace {
 
-const module_info_t* get_module_info(const module_bounds_t* bounds, uint32_t* offset = nullptr) {
-    // Note: This function uses XIP to access the module info in the OTA flash section
-    return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address, offset);
+const module_info_t* get_module_info(const module_bounds_t* bounds, uint32_t* offset = nullptr, module_info_t* infoOut = nullptr) {
+    if (bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
+        return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address, offset, infoOut);
+    } else if (bounds->location == MODULE_BOUNDS_LOC_SERIAL_FLASH) {
+        return FLASH_ModuleInfo(FLASH_SERIAL, bounds->start_address, offset, infoOut);
+    }
+    return nullptr;
+}
+
+bool verify_crc32(const module_bounds_t* bounds, const module_info_t* info) {
+    if (bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
+        return FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(info));
+    } else if (bounds->location == MODULE_BOUNDS_LOC_SERIAL_FLASH) {
+        return FLASH_VerifyCRC32(FLASH_SERIAL, bounds->start_address, module_length(info));
+    }
+    return false;
 }
 
 } // namespace
 
 // NB: Modules in external flash are made to appears as if they are located in Internal flash by means of
 // XiP - the external flash is mapped to a region of addressable memory, and can be access transparently via
-// a pointer to the memory region. That is why the OTA module can be accessed via FLASH_INTERNAL.
+// a pointer to the memory region.
 
 /**
  * Determines if a given address is in range.
@@ -53,8 +66,8 @@ inline bool in_range(uint32_t test, uint32_t start, uint32_t end)
  * @param bounds
  * @return
  */
-const module_info_t* locate_module(const module_bounds_t* bounds) {
-    return get_module_info(bounds);
+const module_info_t* locate_module(const module_bounds_t* bounds, module_info_t* infoOut) {
+    return get_module_info(bounds, nullptr, infoOut);
 }
 
 /**
@@ -64,16 +77,14 @@ const module_info_t* locate_module(const module_bounds_t* bounds) {
  * @param userDepsOptional
  * @return {@code true} if the module info can be read via the info, crc, suffix pointers.
  */
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0")))
-bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags)
+// If this function accesses the module info via XIP it may fail to parse it correctly under
+// some not entirely clear circumstances.
+bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags, module_info_t* infoOut)
 {
     memset(target, 0, sizeof(*target));
 
     target->bounds = *bounds;
-    target->info = get_module_info(bounds, &target->module_info_offset);
+    target->info = get_module_info(bounds, &target->module_info_offset, infoOut);
     if (target->info)
     {
         target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
@@ -87,14 +98,18 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
             // the suffix ends at module_end, and the crc starts after module end
             target->crc = (module_info_crc_t*)module_end;
             target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
-            if (validate_module_dependencies(bounds, userDepsOptional, target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL))
+            if (validate_module_dependencies(bounds, userDepsOptional, target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL)) {
                 target->validity_result |= MODULE_VALIDATION_DEPENDENCIES | (target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL);
-            if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
+            }
+            if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && verify_crc32(bounds, target->info)) {
                 target->validity_result |= MODULE_VALIDATION_INTEGRITY;
+            }
         }
         else
+        {
             target->info = NULL;
+        }
     }
-    return target->info!=NULL;
+    return target->info != NULL;
 }
 
