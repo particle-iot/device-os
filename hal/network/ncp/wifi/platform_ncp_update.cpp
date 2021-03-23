@@ -141,9 +141,9 @@ __attribute__((optimize("O0"))) int platform_ncp_update_module(const hal_module_
     SPARK_ASSERT(ncpClient);
     OtaUpdateSourceStream::ReadStreamFunc_t readCallback;
     if (module->bounds.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
-        readCallback = hal_exflash_read;
-    } else if (module->bounds.location == MODULE_BOUNDS_LOC_SERIAL_FLASH) {
         readCallback = hal_flash_read;
+    } else if (module->bounds.location == MODULE_BOUNDS_LOC_SERIAL_FLASH) {
+        readCallback = hal_exflash_read;
     } else {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
