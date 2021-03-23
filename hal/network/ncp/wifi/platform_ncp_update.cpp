@@ -133,10 +133,9 @@ int getWifiNcpFirmwareVersion(uint16_t* ncpVersion) {
 
 } // anonymous
 
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0"))) int platform_ncp_update_module(const hal_module_t* module) {
+// If this function accesses the module info via XIP it may fail to parse it correctly under
+// some not entirely clear circumstances.
+int platform_ncp_update_module(const hal_module_t* module) {
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
     OtaUpdateSourceStream::ReadStreamFunc_t readCallback;
