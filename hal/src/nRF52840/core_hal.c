@@ -324,7 +324,7 @@ void HAL_Core_Config(void) {
     }
 
     FLASH_AddToFactoryResetModuleSlot(
-      FLASH_INTERNAL, EXTERNAL_FLASH_FAC_XIP_ADDRESS,
+      FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS,
       FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
       FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
 }
@@ -362,7 +362,7 @@ bool HAL_Core_Validate_User_Module(void)
                                   FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION))
                 && HAL_Verify_User_Dependencies();
     }
-    else if(FLASH_isUserModuleInfoValid(FLASH_INTERNAL, EXTERNAL_FLASH_FAC_XIP_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
+    else if(FLASH_isUserModuleInfoValid(FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
     {
         // If user application is invalid, we should at least enable
         // the heap allocation for littlelf to set system flags.
@@ -388,7 +388,7 @@ bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
 
     // First verify bootloader module
     bounds = find_module_bounds(MODULE_FUNCTION_BOOTLOADER, 0, HAL_PLATFORM_MCU_DEFAULT);
-    module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+    module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY, NULL);
 
     valid = module_fetched && (mod.validity_checked == mod.validity_result);
 
@@ -405,7 +405,7 @@ bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
     do {
         bounds = find_module_bounds(MODULE_FUNCTION_SYSTEM_PART, i++, HAL_PLATFORM_MCU_DEFAULT);
         if (bounds) {
-            module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+            module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY, NULL);
             valid = module_fetched && (mod.validity_checked == mod.validity_result);
         }
         if (flags & 1) {

@@ -30,14 +30,18 @@
 #include "debug.h"
 #include "ota_flash_hal_impl.h"
 #include "system_cache.h"
-
+#include "exflash_hal.h"
+#include "flash_hal.h"
+#include <functional>
 #include <algorithm>
 
 namespace {
 
 class OtaUpdateSourceStream : public particle::InputStream {
 public:
-    OtaUpdateSourceStream(const uint8_t* buffer, size_t length) : buffer(buffer), remaining(length) {}
+    typedef std::function<int(uintptr_t addr, uint8_t* data_buf, size_t data_size)> ReadStreamFunc_t;
+
+    OtaUpdateSourceStream(const uint8_t* buffer, size_t length, ReadStreamFunc_t func) : buffer(buffer), remaining(length), readFunc(func) {}
 
     int read(char* data, size_t size) override {
         CHECK(peek(data, size));
@@ -49,7 +53,9 @@ public:
             return SYSTEM_ERROR_END_OF_STREAM;
         }
         size = std::min(size, remaining);
-        memcpy(data, buffer, size);
+        if (readFunc((uintptr_t)buffer, (uint8_t*)data, size) != SYSTEM_ERROR_NONE) {
+            return -1;
+        }
         return size;
     }
 
@@ -84,6 +90,7 @@ public:
 private:
     const uint8_t* buffer;
     size_t remaining;
+    ReadStreamFunc_t readFunc;
 };
 
 int invalidateWifiNcpVersionCache() {
@@ -132,16 +139,24 @@ int getWifiNcpFirmwareVersion(uint16_t* ncpVersion) {
 __attribute__((optimize("O0"))) int platform_ncp_update_module(const hal_module_t* module) {
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
+    OtaUpdateSourceStream::ReadStreamFunc_t readCallback;
+    if (module->bounds.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
+        readCallback = hal_exflash_read;
+    } else if (module->bounds.location == MODULE_BOUNDS_LOC_SERIAL_FLASH) {
+        readCallback = hal_flash_read;
+    } else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
     // Holding a lock for the whole duration of the operation, otherwise the netif may potentially poweroff the NCP
     const particle::NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
     // we pass only the actual binary after the module info and up to the suffix
-    const uint8_t* start = (const uint8_t*)module->info;
+    const uint8_t* start = (const uint8_t*)(module->bounds.start_address + module->module_info_offset);
     static_assert(sizeof(module_info_t)==24, "expected module info size to be 24");
     start += sizeof(module_info_t); // skip the module info
     const uint8_t* end = start + (uint32_t(module->info->module_end_address) - uint32_t(module->info->module_start_address));
-    const unsigned length = end-start;
-    OtaUpdateSourceStream moduleStream(start, length);
+    const unsigned length = end - start;
+    OtaUpdateSourceStream moduleStream(start, length, readCallback);
     uint16_t version = 0;
     int r = ncpClient->getFirmwareModuleVersion(&version);
     if (r == 0) {
