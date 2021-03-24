@@ -16,7 +16,8 @@ typedef enum {
     CMD_RESTART_ADV,
     CMD_ADV_DEVICE_NAME,
     CMD_ADV_APPEARANCE,
-    CMD_ADV_CUSTOM_DATA
+    CMD_ADV_CUSTOM_DATA,
+    CMD_ADV_CODED_PHY
 } TestCommand;
 TestCommand cmd = CMD_UNKNOWN;
 
@@ -84,6 +85,20 @@ test(BLE_Broadcaster_05_Advertise_Custom_Data) {
     data.appendCustomData(buf, sizeof(buf));
     data.customData(read, sizeof(read));
     assertEqual(memcmp(buf, read, sizeof(buf)), 0);
+    int ret = BLE.advertise(&data);
+    assertEqual(ret, 0);
+    assertTrue(BLE.advertising());
+}
+
+test(BLE_Broadcaster_06_Advertise_On_Coded_Phy) {
+    assertTrue(BLE.connected());
+    assertTrue(waitFor([&]{ return cmd == CMD_ADV_CODED_PHY; }, 60000));
+
+    assertEqual(BLE.setAdvertisingPhy(BlePhy::BLE_PHYS_CODED), 0);
+
+    BleAdvertisingData data;
+    data.appendLocalName("CODED_PHY");
+    assertEqual(data.deviceName(), String("CODED_PHY"));
     int ret = BLE.advertise(&data);
     assertEqual(ret, 0);
     assertTrue(BLE.advertising());

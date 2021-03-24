@@ -2088,6 +2088,7 @@ int BleLocalDevice::selectAntenna(BleAntennaType antenna) const {
 int BleLocalDevice::setAdvertisingInterval(uint16_t interval) const {
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
+    advParams.version = BLE_API_VERSION;
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
     advParams.interval = interval;
     return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
@@ -2096,6 +2097,7 @@ int BleLocalDevice::setAdvertisingInterval(uint16_t interval) const {
 int BleLocalDevice::setAdvertisingTimeout(uint16_t timeout) const {
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
+    advParams.version = BLE_API_VERSION;
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
     advParams.timeout = timeout;
     return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
@@ -2104,8 +2106,18 @@ int BleLocalDevice::setAdvertisingTimeout(uint16_t timeout) const {
 int BleLocalDevice::setAdvertisingType(BleAdvertisingEventType type) const {
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
+    advParams.version = BLE_API_VERSION;
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
     advParams.type = static_cast<hal_ble_adv_evt_type_t>(type);
+    return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
+}
+
+int BleLocalDevice::setAdvertisingPhy(BlePhy phy) const {
+    hal_ble_adv_params_t advParams = {};
+    advParams.size = sizeof(hal_ble_adv_params_t);
+    advParams.version = BLE_API_VERSION;
+    CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
+    advParams.primary_phy = static_cast<uint8_t>(phy);
     return hal_ble_gap_set_advertising_parameters(&advParams, nullptr);
 }
 
@@ -2120,6 +2132,7 @@ int BleLocalDevice::setAdvertisingParameters(const BleAdvertisingParams& params)
 int BleLocalDevice::setAdvertisingParameters(uint16_t interval, uint16_t timeout, BleAdvertisingEventType type) const {
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
+    advParams.version = BLE_API_VERSION;
     CHECK(hal_ble_gap_get_advertising_parameters(&advParams, nullptr));
     advParams.interval = interval;
     advParams.timeout = timeout;
@@ -2469,8 +2482,18 @@ private:
 int BleLocalDevice::setScanTimeout(uint16_t timeout) const {
     hal_ble_scan_params_t scanParams = {};
     scanParams.size = sizeof(hal_ble_scan_params_t);
+    scanParams.version = BLE_API_VERSION;
     hal_ble_gap_get_scan_parameters(&scanParams, nullptr);
     scanParams.timeout = timeout;
+    return hal_ble_gap_set_scan_parameters(&scanParams, nullptr);
+}
+
+int BleLocalDevice::setScanPhy(EnumFlags<BlePhy> phy) const {
+    hal_ble_scan_params_t scanParams = {};
+    scanParams.size = sizeof(hal_ble_scan_params_t);
+    scanParams.version = BLE_API_VERSION;
+    hal_ble_gap_get_scan_parameters(&scanParams, nullptr);
+    scanParams.scan_phys = static_cast<uint8_t>(phy.value());
     return hal_ble_gap_set_scan_parameters(&scanParams, nullptr);
 }
 

@@ -16,7 +16,8 @@ typedef enum {
     CMD_RESTART_ADV,
     CMD_ADV_DEVICE_NAME,
     CMD_ADV_APPEARANCE,
-    CMD_ADV_CUSTOM_DATA
+    CMD_ADV_CUSTOM_DATA,
+    CMD_ADV_CODED_PHY
 } TestCommand;
 
 const char* peerServiceUuid = "6E400000-B5A3-F393-E0A9-E50E24DCCA9E";
@@ -214,6 +215,26 @@ test(BLE_Scanner_09_Scan_With_Custom_Data) {
     // We assume that there is no device nearby advertising this custom data
     constexpr uint8_t magic[] = {0x12, 0x34, 0x56, 0x78};
     results = BLE.scanWithFilter(BleScanFilter().customData(magic, sizeof(magic)));
+    assertEqual(results.size(), 0);
+}
+
+test(BLE_Scanner_10_Scan_On_Coded_Phy) {
+    assertTrue(BLE.connected());
+
+    int ret;
+    TestCommand cmd = CMD_ADV_CODED_PHY;
+    ret = peerCharWriteWoRsp.setValue((const uint8_t*)&cmd, 1);
+    assertEqual(ret, 1);
+
+    delay(1s);
+
+    assertEqual(BLE.setScanPhy(BlePhy::BLE_PHYS_CODED), 0);
+    Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter().deviceName("CODED_PHY"));
+    assertEqual(results.size(), 1);
+    
+    // Scan on 1MBPS PHY
+    assertEqual(BLE.setScanPhy(BlePhy::BLE_PHYS_1MBPS), 0);
+    results = BLE.scanWithFilter(BleScanFilter().deviceName("CODED_PHY"));
     assertEqual(results.size(), 0);
 }
 

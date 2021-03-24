@@ -128,6 +128,14 @@ enum class BleAdvertisingEventType : uint8_t {
     SCANABLE_DIRECTED                       = BLE_ADV_SCANABLE_DIRECTED_EVT
 };
 
+enum class BlePhy : uint8_t {
+    BLE_PHYS_AUTO        = hal_ble_phys_t::BLE_PHYS_AUTO,
+    BLE_PHYS_1MBPS       = hal_ble_phys_t::BLE_PHYS_1MBPS,
+    BLE_PHYS_CODED       = hal_ble_phys_t::BLE_PHYS_CODED
+};
+
+ENABLE_ENUM_CLASS_BITWISE(BlePhy);
+
 enum class BleAntennaType : uint8_t {
     DEFAULT = BLE_ANT_DEFAULT,
     INTERNAL = BLE_ANT_INTERNAL,
@@ -921,6 +929,7 @@ public:
     int setAdvertisingInterval(uint16_t interval) const;
     int setAdvertisingTimeout(uint16_t timeout) const;
     int setAdvertisingType(BleAdvertisingEventType type) const;
+    int setAdvertisingPhy(BlePhy phy) const; // Only one of the enum values can be specified as the argument.
     int setAdvertisingParameters(const BleAdvertisingParams* params) const;
     int setAdvertisingParameters(const BleAdvertisingParams& params) const;
     int setAdvertisingParameters(uint16_t interval, uint16_t timeout, BleAdvertisingEventType type) const;
@@ -948,6 +957,7 @@ public:
 
     // Access scanning parameters
     int setScanTimeout(uint16_t timeout) const;
+    int setScanPhy(EnumFlags<BlePhy> phy) const;
     int setScanParameters(const BleScanParams* params) const;
     int setScanParameters(const BleScanParams& params) const;
     int getScanParameters(BleScanParams* params) const;
