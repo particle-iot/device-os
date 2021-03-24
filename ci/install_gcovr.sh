@@ -16,7 +16,7 @@ if [ "${KERNEL_NAME}" == "Darwin" ]; then
 # Debian Support
 else
   (apt-get -qq update &&
-  apt-get -qq install git python3-pip)
+  apt-get -qq install git python3-pip libxml2-dev libxslt-dev)
 fi
 
 
