@@ -30,7 +30,6 @@
 #include "system_tick_hal.h"
 #include "cellular_enums_hal.h"
 #include "mdm_debug.h"
-#include "timer_hal.h"
 #include "cellular_reg_status.h"
 
 /** basic modem parser class
