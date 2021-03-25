@@ -10,9 +10,9 @@ static hal_user_module_descriptor user_descriptor = {};
  * Determines if the user module is present and valid.
  * @return
  */
-bool is_user_module_valid()
+bool run_user_module()
 {
-    return user_descriptor.info;
+    return user_descriptor.info && system_mode() != SAFE_MODE;
 }
 
 /**
@@ -46,19 +46,19 @@ void system_part1_post_init() {
         set_system_mode(SAFE_MODE);
     }
     
-    if (system_mode() != SAFE_MODE && is_user_module_valid()) {
+    if (run_user_module()) {
         user_descriptor.init();
     }
 }
 
 void setup() {
-    if (is_user_module_valid()) {
+    if (run_user_module()) {
         user_descriptor.setup();
     }
 }
 
 void loop() {
-    if (is_user_module_valid()) {
+    if (run_user_module()) {
         user_descriptor.loop();
     }
 }
