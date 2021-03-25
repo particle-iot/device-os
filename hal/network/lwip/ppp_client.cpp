@@ -88,6 +88,7 @@ void Client::init() {
     netif_set_client_data(&if_, netifClientDataIdx_, this);
     UNLOCK_TCPIP_CORE();
 
+    // FIXME: do we need this workaround for R510?
     // XXX:
     if (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R410) {
       // SARA R4 PPP implementation is broken and often times we receive
