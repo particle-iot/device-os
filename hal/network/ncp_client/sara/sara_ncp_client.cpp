@@ -709,7 +709,9 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         qual->quality(255);
 
         // Set UCGED to mode 5 for RSRP/RSRQ values on R410M
-        CHECK_PARSER_OK(parser_.execCommand("AT+UCGED=5"));
+        if (ncpId() == PLATFORM_NCP_SARA_R410) {
+            CHECK_PARSER_OK(parser_.execCommand("AT+UCGED=5"));
+        }
         auto resp = parser_.sendCommand("AT+UCGED?");
 
         int val;
@@ -1088,7 +1090,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     }
 
     // FIXME: Do we need this workaround for R510?
-    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
         int resetCount = 0;
         // Note: Not failing on AT error on ICCID/IMSI lookup since SIMs have shown strange edge cases
         // where they error for no reason, and hard resetting the modem or power cycling would not clear it.
@@ -1177,7 +1179,11 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 }
             }
             if (reset) {
-                CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=15"));
+                if (ncpId() == PLATFORM_NCP_SARA_R410) {
+                    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=15"));
+                } else {
+                    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=16"));
+                }
                 HAL_Delay_Milliseconds(10000);
                 CHECK(waitAtResponseFromPowerOn(state));
             }
@@ -1427,7 +1433,7 @@ bool SaraNcpClient::checkRuntimeStateMuxer(unsigned int baudrate) {
 int SaraNcpClient::checkRuntimeState(ModemState& state) {
 
     // Assume we are running at the runtime baudrate
-    unsigned runtimeBaudrate = (ncpId() == PLATFORM_NCP_SARA_R410 && ncpId() == PLATFORM_NCP_SARA_R510) ?
+    unsigned runtimeBaudrate = (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) ?
             UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 :
             UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2;
 
@@ -1970,7 +1976,9 @@ int SaraNcpClient::processEventsImpl() {
         // Check the signal seen by the module while trying to register
         // Do not need to check for an OK, as this is just for debugging purpose,
         // and UCGED may sometimes return CME ERROR with low signal
-        CHECK_PARSER(parser_.execCommand("AT+UCGED=5"));
+        if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
+            CHECK_PARSER(parser_.execCommand("AT+UCGED=5"));
+        }
         CHECK_PARSER(parser_.execCommand("AT+UCGED?"));
     }
 

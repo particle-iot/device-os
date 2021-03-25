@@ -90,7 +90,9 @@ void Client::init() {
 
     // FIXME: do we need this workaround for R510?
     // XXX:
-    if (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R410) {
+    if (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R410 ||
+        platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R510)
+        {
       // SARA R4 PPP implementation is broken and often times we receive
       // an empty or non-conflicting Configure-Request in an already opened state
       // which, if we follow the state machine to the T, should restart the negotiation
