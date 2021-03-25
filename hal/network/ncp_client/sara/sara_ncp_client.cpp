@@ -1762,10 +1762,11 @@ int SaraNcpClient::getMtu() {
 
 int SaraNcpClient::urcs(bool enable) {
     if (enable) {
-        return muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL);
+        CHECK_TRUE(muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
     } else {
-        return muxer_.suspendChannel(UBLOX_NCP_AT_CHANNEL);
+        CHECK_TRUE(muxer_.suspendChannel(UBLOX_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
     }
+    return SYSTEM_ERROR_NONE;
 }
 
 void SaraNcpClient::connectionState(NcpConnectionState state) {

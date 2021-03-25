@@ -234,9 +234,12 @@ bool network_connecting(network_handle_t network, uint32_t param, void* reserved
     } else {
         if_t iface;
         if (!if_get_by_index(network, &iface)) {
-            if (NetworkManager::instance()->isConnectivityAvailable() ||
-                    NetworkManager::instance()->isEstablishingConnections()) {
-                return !network_ready(network, param, reserved);
+            unsigned int flags = 0;
+            if (if_get_flags(iface, &flags) < 0) {
+                return false;
+            }
+            if ((flags & IFF_UP) && !(flags & IFF_LOWER_UP)) {
+                return true;
             }
         }
     }
