@@ -95,39 +95,6 @@ enum class CellularQualityUnits {
     MEAN_BEP = 4
 };
 
-class CellularRegistrationStatus {
-public:
-    enum Status {
-        NONE = -1,
-        NOT_REGISTERING = 0,
-        HOME = 1,
-        SEARCHING = 2,
-        DENIED = 3,
-        UNKNOWN = 4,
-        ROAMING = 5
-    };
-
-    CellularRegistrationStatus() = default;
-    CellularRegistrationStatus(Status stat, system_tick_t started, system_tick_t updated);
-
-    void status(Status stat, system_tick_t ts);
-    void status(Status stat);
-    void reset();
-
-    Status status() const;
-    system_tick_t updated() const;
-    system_tick_t started() const;
-    bool registered() const;
-    system_tick_t duration() const;
-    bool sticky() const;
-    static CellularRegistrationStatus::Status decodeAtStatus(int status);
-
-private:
-    Status stat_ = NONE;
-    system_tick_t updated_ = 0;
-    system_tick_t started_ = 0;
-};
-
 class CellularSignalQuality {
 public:
     CellularSignalQuality() = default;
@@ -273,71 +240,6 @@ inline CellularQualityUnits CellularSignalQuality::qualityUnits() const {
             return CellularQualityUnits::NONE;
         }
     }
-}
-
-// CellularRegistrationStatus
-
-inline CellularRegistrationStatus::CellularRegistrationStatus(Status stat, system_tick_t started, system_tick_t updated)
-        : stat_{stat},
-          updated_{updated},
-          started_{started} {
-}
-
-inline void CellularRegistrationStatus::status(Status stat, system_tick_t ts) {
-    if (stat_ != stat) {
-        stat_ = stat;
-        started_ = ts;
-    }
-    updated_ = ts;
-}
-
-inline void CellularRegistrationStatus::status(Status stat) {
-    status(stat, HAL_Timer_Get_Milli_Seconds());
-}
-
-inline void CellularRegistrationStatus::reset() {
-    stat_ = NONE;
-    updated_ = 0;
-    started_ = 0;
-}
-
-inline CellularRegistrationStatus::Status CellularRegistrationStatus::status() const {
-    return stat_;
-}
-
-inline system_tick_t CellularRegistrationStatus::updated() const {
-    return updated_;
-}
-
-inline system_tick_t CellularRegistrationStatus::started() const {
-    return started_;
-}
-
-inline system_tick_t CellularRegistrationStatus::duration() const {
-    return HAL_Timer_Get_Milli_Seconds() - started_;
-}
-
-inline bool CellularRegistrationStatus::registered() const {
-    return stat_ == HOME || stat_ == ROAMING;
-}
-
-inline bool CellularRegistrationStatus::sticky() const {
-    return updated_ > 0 && updated_ != started_;
-}
-
-inline CellularRegistrationStatus::Status CellularRegistrationStatus::decodeAtStatus(int status) {
-    switch (status) {
-        case CellularRegistrationStatus::NOT_REGISTERING:
-        case CellularRegistrationStatus::HOME:
-        case CellularRegistrationStatus::SEARCHING:
-        case CellularRegistrationStatus::DENIED:
-        case CellularRegistrationStatus::UNKNOWN:
-        case CellularRegistrationStatus::ROAMING: {
-            return static_cast<CellularRegistrationStatus::Status>(status);
-        }
-    }
-
-    return CellularRegistrationStatus::NONE;
 }
 
 } // particle

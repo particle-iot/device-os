@@ -30,6 +30,7 @@
 #include "system_tick_hal.h"
 #include "cellular_enums_hal.h"
 #include "mdm_debug.h"
+#include "cellular_reg_status.h"
 
 /** basic modem parser class
 */
@@ -171,6 +172,14 @@ public:
     /** Setup the PDP context
     */
     bool pdp(const char* apn = NULL);
+
+    /** Runs intervention commands to improve cellular registration process
+    */
+   bool interveneRegistration(void);
+
+   /** Reset the variables related to registration state
+   */
+   void resetRegState(void);
 
     // ----------------------------------------------------------------
     // Data Connection (GPRS)
@@ -672,6 +681,12 @@ protected:
     volatile uint32_t _error;
     system_tick_t _lastProcess;
     system_tick_t _lastVerboseCxregUpdate;
+    CellularRegistrationStatus csd_;
+    CellularRegistrationStatus psd_;
+    CellularRegistrationStatus eps_;
+    unsigned int _registrationInterventions;
+    system_tick_t _regStartTime;
+
 #ifdef MDM_DEBUG
     int _debugLevel;
     void _debugPrint(int level, const char* color, const char* format, ...) __attribute__((format(printf, 4, 5)));
