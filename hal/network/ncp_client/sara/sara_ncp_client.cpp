@@ -666,8 +666,10 @@ int SaraNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     } else {
         CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     }
+    // FIXME: CREG is not set to verbose mode for Cat-M1/Cat-1 devices, can we really
+    // "fallback to CSD" here for gathering LAC and CID?
+    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
 
     switch (cgi->version)
     {
