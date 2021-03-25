@@ -424,7 +424,7 @@ int SaraNcpClient::disconnect() {
         return SYSTEM_ERROR_NONE;
     }
     CHECK(checkParser());
-    const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=0,0"));
+    const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
     (void)r;
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
@@ -1043,17 +1043,17 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     if (reset) {
         if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
             // R410
-            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=15"));
+            const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=15"));
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
             HAL_Delay_Milliseconds(10000);
         } else if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
             // R510
-            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16"));
+            const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=16"));
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
             HAL_Delay_Milliseconds(10000);
         } else {
             // U201
-            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16,0"));
+            const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=16,0"));
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
             HAL_Delay_Milliseconds(1000);
         }
@@ -1085,7 +1085,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
         // for some reason. Attempt to cycle the modem through minimal/full functional state.
         // We only do this for R4-based devices, as U2-based modems seem to fail
         // to change baudrate later on for some reason
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
         CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
     }
 
@@ -1557,7 +1557,7 @@ int SaraNcpClient::checkSimCard() {
 int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
     // IMPORTANT: Set modem full functionality!
     // Otherwise we won't be able to query ICCID/IMSI
-    CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=1,0"));
+    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
 
     netConf_ = conf;
     if (!netConf_.isValid()) {
@@ -1573,6 +1573,8 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         }
     }
 
+    // FIXME: Why does CGDCONT= seem to error on R410 and R510 if we don't do CFUN=0,0 first?
+    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
     auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s%s\"",
             UBLOX_DEFAULT_CID, UBLOX_DEFAULT_PDP_TYPE,
             (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
@@ -1591,7 +1593,7 @@ int SaraNcpClient::registerNet() {
     int r = 0;
 
     // Set modem full functionality
-    r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
+    r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     resetRegistrationState();
@@ -1899,7 +1901,7 @@ int SaraNcpClient::interveneRegistration() {
                 csd_.reset();
                 psd_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
                 CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
                 return 0;
             }
@@ -1931,7 +1933,7 @@ int SaraNcpClient::interveneRegistration() {
                 LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
                 CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
             }
         }
