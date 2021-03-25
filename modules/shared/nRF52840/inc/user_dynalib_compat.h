@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,19 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef USER_H
-#define USER_H
+#pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "dynalib.h"
 
-#include <stdint.h>
+DYNALIB_BEGIN(user_compat)
 
-int user_update_if_needed(void);
+DYNALIB_FN(0, user_compat, module_user_pre_init_compat, void*(void))
+DYNALIB_FN(1, user_compat, module_user_init_compat, void(void))
+DYNALIB_FN(2, user_compat, module_user_setup_compat, void(void))
+DYNALIB_FN(3, user_compat, module_user_loop_compat, void(void))
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif	/* USER_H */
+DYNALIB_END(user_compat)

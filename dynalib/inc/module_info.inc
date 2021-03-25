@@ -58,7 +58,7 @@ uint16_t module_platform_id(const module_info_t* mi) {
 }
 
 uint32_t module_length(const module_info_t* mi) {
-    return mi->module_end_address-mi->module_start_address;
+    return (uint32_t)mi->module_end_address - (uint32_t)mi->module_start_address;
 }
 
 module_scheme_t module_scheme(const module_info_t* mi) {
@@ -79,7 +79,9 @@ uint8_t module_info_matches_platform(const module_info_t* mi) {
     return module_platform_id(mi) == PLATFORM_ID;
 }
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 /**
  * Defines the module info block that appears at the start of the module, or after the VTOR table
@@ -114,7 +116,7 @@ extern char link_module_end;
 #endif
 
 #if PLATFORM_ID!=3
-__attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info"))))
+__attribute__((section(".modinfo.module_info"), used))
 
 const module_info_t module_info = {
     &link_module_start,         /* start address */
@@ -128,7 +130,6 @@ const module_info_t module_info = {
     { MODULE_DEPENDENCY2 }
 };
 
-
 /**
  * 4 additional bytes for the product_id and product_version values.
  */
@@ -137,12 +138,16 @@ const module_info_t module_info = {
 // These are placed in a non-default (.rodata) section because they come after all the .rodata is included in the linker scripts.
 // Doing it like this is simpler than setting up exclusion rules.
 
-__attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info_suffix")))) const module_info_suffix_t module_info_suffix = {
-    0, { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 }, sizeof(module_info_suffix_t)+MODULE_INFO_SUFFIX_EXTRA
+__attribute__((section(".modinfo.module_info_suffix"), used)) const module_info_suffix_t module_info_suffix = {
+    0, { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 }, (uint16_t)(sizeof(module_info_suffix_t)+MODULE_INFO_SUFFIX_EXTRA)
 };
 
-__attribute__((externally_visible _ARM_SECTION(section(".modinfo.module_info_crc")))) const module_info_crc_t module_info_crc = {
+__attribute__((section(".modinfo.module_info_crc"), used)) const module_info_crc_t module_info_crc = {
     0x12345678
 };
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif

@@ -30,6 +30,7 @@ extern const module_bounds_t module_ota;
 // Modular firmware
 extern const module_bounds_t module_system_part1;
 extern const module_bounds_t module_user;
+extern const module_bounds_t module_user_compat;
 extern const module_bounds_t module_factory;
 
 // Monolithic firmware
