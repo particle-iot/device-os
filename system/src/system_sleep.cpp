@@ -44,30 +44,46 @@ using namespace particle;
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 
-static bool system_sleep_network_suspend(network_interface_index index) {
-    bool resume = false;
+namespace {
+
+typedef struct {
+    bool suspended;
+    bool on;
+    bool connected;
+} network_status_t;
+
+network_status_t system_sleep_network_suspend(network_interface_index index) {
+    network_status_t status = {};
+    status.suspended = true;
+
     // Disconnect from network
     if (network_connecting(index, 0, NULL) || network_ready(index, 0, NULL)) {
         if (network_connecting(index, 0, NULL)) {
             network_connect_cancel(index, 1, 0, 0);
         }
         network_disconnect(index, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
-        resume = true;
+        status.connected = true;
     }
 #if PLATFORM_GEN == 2
     if (!SPARK_WLAN_SLEEP) {
-        resume = true;
+        status.connected = true;
     }
 #endif
     // Turn off the modem
-    network_off(index, 0, 0, NULL);
-    LOG(TRACE, "Waiting interface %d to be off...", (int)index);
-    // There might be up to 30s delay to turn off the modem for particular platforms.
-    network_wait_off(index, 120000/*ms*/, nullptr);
-    return resume;
+    if (!network_is_off(index, nullptr)) {
+        status.on = true;
+        network_off(index, 0, 0, NULL);
+        LOG(TRACE, "Waiting interface %d to be off...", (int)index);
+        // There might be up to 30s delay to turn off the modem for particular platforms.
+        network_wait_off(index, 120000/*ms*/, nullptr);
+    } else {
+        LOG(TRACE, "Interface %d is off already", (int)index);
+    }
+    
+    return status;
 }
 
-static int system_sleep_network_resume(network_interface_index index) {
+int system_sleep_network_resume(network_interface_index index, network_status_t& status) {
 #if PLATFORM_GEN == 2
     /* On Gen2, calling network_on() and network_connect() will block until the connection is established
      * if single threaded, or this function is invoked synchronously by the system thread if system threading
@@ -75,11 +91,17 @@ static int system_sleep_network_resume(network_interface_index index) {
      * application and restore the connection later. */
     SPARK_WLAN_SLEEP = 0;
 #else
-    network_on(index, 0, 0, nullptr);
-    network_connect(index, 0, 0, nullptr);
+    if (status.on) {
+        network_on(index, 0, 0, nullptr);
+    }
+    if (status.connected) {
+        network_connect(index, 0, 0, nullptr);
+    }
 #endif
     return SYSTEM_ERROR_NONE;
 }
+
+} // anonymous namespacee
 
 int system_sleep_ext_impl(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
     SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext(config, reason, reserved));
@@ -128,37 +150,31 @@ int system_sleep_ext_impl(const hal_sleep_config_t* config, hal_wakeup_source_ba
     // Network disconnect.
     // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
 #if HAL_PLATFORM_CELLULAR
-    bool cellularResume = false;
+    network_status_t cellularStatus = {};
     if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_CELLULAR)) {
         if (configHelper.networkFlags(NETWORK_INTERFACE_CELLULAR).isSet(SystemSleepNetworkFlag::INACTIVE_STANDBY)) {
             // Pause the modem Serial, while leaving the modem keeps running.
             cellular_pause(nullptr);
         } else {
-            if (system_sleep_network_suspend(NETWORK_INTERFACE_CELLULAR)) {
-                cellularResume = true;
-            }
+            cellularStatus = system_sleep_network_suspend(NETWORK_INTERFACE_CELLULAR);
         }
     }
 #endif // HAL_PLATFORM_CELLULAR
 
 #if HAL_PLATFORM_WIFI
-    bool wifiResume = false;
+    network_status_t wifiStatus = {};
     if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA) &&
           !configHelper.networkFlags(NETWORK_INTERFACE_CELLULAR).isSet(SystemSleepNetworkFlag::INACTIVE_STANDBY)) {
-        if (system_sleep_network_suspend(NETWORK_INTERFACE_WIFI_STA)) {
-            wifiResume = true;
-        }
+        wifiStatus = system_sleep_network_suspend(NETWORK_INTERFACE_WIFI_STA);
     }
 #endif // HAL_PLATFORM_WIFI
 
 #if HAL_PLATFORM_ETHERNET
     // NOTE: wake-up by Ethernet interfaces is not implemented.
     // For now we are always powering it off
-    bool ethernetResume = false;
+    network_status_t ethernetStatus = {};
     // if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
-        if (system_sleep_network_suspend(NETWORK_INTERFACE_ETHERNET)) {
-            ethernetResume = true;
-        }
+        ethernetStatus = system_sleep_network_suspend(NETWORK_INTERFACE_ETHERNET);
     // }
 #endif // HAL_PLATFORM_ETHERNET
 
@@ -181,22 +197,22 @@ int system_sleep_ext_impl(const hal_sleep_config_t* config, hal_wakeup_source_ba
     // Network resume
     // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
 #if HAL_PLATFORM_CELLULAR
-    if (cellularResume) {
-        system_sleep_network_resume(NETWORK_INTERFACE_CELLULAR);
+    if (cellularStatus.suspended) {
+        system_sleep_network_resume(NETWORK_INTERFACE_CELLULAR, cellularStatus);
     } else {
         cellular_resume(nullptr);
     }
 #endif // HAL_PLATFORM_CELLULAR
 
 #if HAL_PLATFORM_WIFI
-    if (wifiResume) {
-        system_sleep_network_resume(NETWORK_INTERFACE_WIFI_STA);
+    if (wifiStatus.suspended) {
+        system_sleep_network_resume(NETWORK_INTERFACE_WIFI_STA, wifiStatus);
     }
 #endif // HAL_PLATFORM_WIFI
 
 #if HAL_PLATFORM_ETHERNET
-    if (ethernetResume) {
-        system_sleep_network_resume(NETWORK_INTERFACE_ETHERNET);
+    if (ethernetStatus.suspended) {
+        system_sleep_network_resume(NETWORK_INTERFACE_ETHERNET, ethernetStatus);
     }
 #endif // HAL_PLATFORM_ETHERNET
 
