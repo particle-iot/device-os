@@ -281,6 +281,9 @@ bool network_is_off(network_handle_t network, void* reserved) {
         if_t iface;
         if (!if_get_by_index(network, &iface)) {
             return NetworkManager::instance()->isInterfaceOff(iface);
+        } else {
+            // The interface is not present, so it should be off.
+            return true;
         }
     }
 
