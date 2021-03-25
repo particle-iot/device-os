@@ -1,9 +1,10 @@
 #include "platforms.h"
 #include <string.h>
+#include "user_hal.h"
 
 extern void** dynalib_location_user;
 
-static bool module_user_part_validated = false;
+static hal_user_module_descriptor user_descriptor = {};
 
 /**
  * Determines if the user module is present and valid.
@@ -11,7 +12,7 @@ static bool module_user_part_validated = false;
  */
 bool is_user_module_valid()
 {
-    return module_user_part_validated;
+    return user_descriptor.info;
 }
 
 /**
@@ -20,7 +21,6 @@ bool is_user_module_valid()
  */
 void system_part1_pre_init() {
     // HAL_Core_Config() has been invoked in startup_nrf52840.S
-
     if (HAL_Core_Enter_Safe_Mode_Requested()) {
         set_system_mode(SAFE_MODE);
     }
@@ -39,7 +39,7 @@ void system_part1_post_init() {
     // initialization work should have been done before getting here.
     const bool bootloader_validated = HAL_Core_Validate_Modules(1, NULL);
     if (bootloader_validated) {
-        module_user_part_validated = HAL_Core_Validate_User_Module();
+        hal_user_module_get_descriptor(&user_descriptor);
     }
     if (!bootloader_validated || !is_user_module_valid()) {
         // indicate to the system that it shouldn't run user code
@@ -47,19 +47,19 @@ void system_part1_post_init() {
     }
     
     if (system_mode() != SAFE_MODE && is_user_module_valid()) {
-        module_user_init();
+        user_descriptor.init();
     }
 }
 
 void setup() {
     if (is_user_module_valid()) {
-        module_user_setup();
+        user_descriptor.setup();
     }
 }
 
 void loop() {
     if (is_user_module_valid()) {
-        module_user_loop();
+        user_descriptor.loop();
     }
 }
 

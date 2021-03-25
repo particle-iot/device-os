@@ -22,6 +22,7 @@
 #include "flash_hal.h"
 #include "exflash_hal.h"
 #include "dct.h"
+#include "flash_mal.h"
 
 using namespace particle::usbd::dfu::mal;
 
@@ -71,6 +72,16 @@ int InternalFlashMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
 
     if (hal_flash_write(addr, buf, len) != 0) {
         return 1;
+    }
+
+    if (addr == USER_FIRMWARE_IMAGE_LOCATION && len >= sizeof(module_info_t)) {
+        // Perform some basic validation
+        if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION)) {
+            // Invalidate compat 128KB application
+            if (hal_flash_erase_sector(USER_FIRMWARE_IMAGE_LOCATION_COMPAT, 1) != 0) {
+                return 1;
+            }
+        }
     }
 
     return 0;

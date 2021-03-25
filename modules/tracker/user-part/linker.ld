@@ -8,7 +8,7 @@ INCLUDE ../../shared/nRF52840/common.ld
 MEMORY
 {
     INCLUDE backup_ram_memory.ld
-    APP_FLASH (rx) : ORIGIN = 0x000d4000, LENGTH = 128K
+    APP_FLASH (rx) : ORIGIN = 0x000b4000, LENGTH = 256K
     SRAM (rwx) : ORIGIN = _user_part_static_ram_start, LENGTH = _user_part_static_ram_size
 }
 

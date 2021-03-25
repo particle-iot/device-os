@@ -33,6 +33,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include "static_assert.h"
+#include "hal_platform_config.h"
 
 #ifndef HAL_IPv6
 #if PLATFORM_ID>=4 && PLATFORM_ID<=8

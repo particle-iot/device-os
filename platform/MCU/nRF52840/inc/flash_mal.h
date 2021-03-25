@@ -87,11 +87,11 @@ extern "C" {
 #    endif // PLATFORM_ID == PLATFORM_TRACKER
 
 #    define EXTERNAL_FLASH_FAC_XIP_ADDRESS              (EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_XIP_BASE)
-#    define EXTERNAL_FLASH_FAC_LENGTH                   (128*1024)
+#    define EXTERNAL_FLASH_FAC_LENGTH                   (256*1024)
 
 #    define EXTERNAL_FLASH_RESERVED_ADDRESS             (EXTERNAL_FLASH_FAC_ADDRESS + EXTERNAL_FLASH_FAC_LENGTH)
 #    define EXTERNAL_FLASH_RESERVED_XIP_ADDRESS         (EXTERNAL_FLASH_RESERVED_ADDRESS + EXTERNAL_FLASH_XIP_BASE)
-#    define EXTERNAL_FLASH_RESERVED_LENGTH              (420*1024)
+#    define EXTERNAL_FLASH_RESERVED_LENGTH              (292*1024)
 
 #    define EXTERNAL_FLASH_OTA_LENGTH                   (1500*1024)
      /* External Flash memory address where Factory programmed core firmware is located */
@@ -117,6 +117,7 @@ extern "C" {
 #    ifndef USER_FIRMWARE_IMAGE_LOCATION
 #        error USER_FIRMWARE_IMAGE_LOCATION not defined
 #    endif
+#    define USER_FIRMWARE_IMAGE_LOCATION_COMPAT (INTERNAL_FLASH_START + 0xd4000)
 #else /* MODULAR_FIRMWARE */
 
 #    define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_MONO_FIRMWARE
