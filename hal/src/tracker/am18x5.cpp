@@ -78,7 +78,6 @@ int Am18x5::begin() {
     
     if (!hal_i2c_is_enabled(wire_, nullptr)) {
         CHECK(hal_i2c_init(wire_, nullptr));
-        hal_i2c_set_speed(wire_, CLOCK_SPEED_400KHZ, nullptr);
         hal_i2c_begin(wire_, I2C_MODE_MASTER, 0x00, nullptr);
     }
 
