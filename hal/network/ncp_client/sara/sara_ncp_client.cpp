@@ -1244,11 +1244,12 @@ int SaraNcpClient::changeBaudRate(unsigned int baud) {
 int SaraNcpClient::getAppFirmwareVersion() {
     // ATI9 (get version and app version)
     // example output
-    // "08.90,A01.13" G350 (newer)
-    // "08.70,A00.02" G350 (older)
-    // "L0.0.00.00.05.06,A.02.00" (memory issue)
-    // "L0.0.00.00.05.07,A.02.02" (demonstrator)
-    // "L0.0.00.00.05.08,A.02.04" (maintenance)
+    // v113: "08.90,A01.13" G350 (newer)
+    //   v2: "08.70,A00.02" G350 (older)
+    // v200: "L0.0.00.00.05.06,A.02.00" (R410 memory issue)
+    // v202: "L0.0.00.00.05.07,A.02.02" (R410 demonstrator)
+    // v204: "L0.0.00.00.05.08,A.02.04" (R410 maintenance)
+    //   v1: "02.06,A00.01" (R510)
     auto resp = parser_.sendCommand("ATI9");
     int ver = 0;
     int major = 0;
@@ -1266,7 +1267,8 @@ int SaraNcpClient::initReady(ModemState state) {
     fwVersion_ = getAppFirmwareVersion();
     // L0.0.00.00.05.06,A.02.00 has a memory issue
     memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
-    oldFirmwarePresent_ = (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01);
+    oldFirmwarePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ?
+            (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01) : false;
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard(state));
 
