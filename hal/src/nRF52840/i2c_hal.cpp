@@ -53,6 +53,9 @@
     res;                                                                        \
 })
 
+// [219] TWIM: I2C timing spec is violated at 400 kHz
+const nrf_twim_frequency_t NRF_TWIM_FREQ_390K = (nrf_twim_frequency_t)(0x06200000UL);
+
 class I2cLock {
 public:
     I2cLock() = delete;
@@ -237,7 +240,13 @@ static int twiUninit(hal_i2c_interface_t i2c) {
 
 static int twiInit(hal_i2c_interface_t i2c) {
     ret_code_t ret;
-    nrf_twim_frequency_t nrfFrequency = (i2cMap[i2c].speed == CLOCK_SPEED_400KHZ) ? NRF_TWIM_FREQ_400K : NRF_TWIM_FREQ_100K;
+    // NOTE:
+    // [219] TWIM: I2C timing spec is violated at 400 kHz
+    // If communication does not work at 400 kHz with an I2C compatible device
+    // that requires the SCL clock to have a minimum low period of 1.3 µs,
+    // use 390 kHz instead of 400kHz by writing 0x06200000 to the FREQUENCY register.
+    // With this setting, the SCL low period is greater than 1.3 µs.
+    nrf_twim_frequency_t nrfFrequency = (i2cMap[i2c].speed == CLOCK_SPEED_400KHZ) ? NRF_TWIM_FREQ_390K : NRF_TWIM_FREQ_100K;
 
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
