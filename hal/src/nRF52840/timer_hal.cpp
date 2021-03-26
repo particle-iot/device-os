@@ -45,7 +45,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
+#include <cstdint>
 #include "timer_hal.h"
 #include <nrf_rtc.h>
 #include <nrf_drv_clock.h>
@@ -197,7 +197,7 @@ uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros, bool* inSync
     uint64_t currentTime = rtcCounterAndTicksToUs(offset2, rtcValue);
 
     if (offset2 != (sOverflowCounter / 2)) {
-        // We cannot DWT->CYCCNT synchronization as the RTC overflow event
+        // We cannot use DWT->CYCCNT synchronization as the RTC overflow event
         // is currently being handled
         *inSync = false;
     } else {
@@ -262,11 +262,17 @@ int hal_timer_init(const hal_timer_init_config_t* conf) {
     nrf_rtc_event_disable(RTC_INSTANCE, RTC_EVTEN_COMPARE3_Msk);
     nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_COMPARE3_MASK);
 
+    nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_TICK);
+    nrf_rtc_event_enable(RTC_INSTANCE, NRF_RTC_EVENT_TICK);
+    nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_TICK_MASK);
+
     int pri = __get_PRIMASK();
     __disable_irq();
     nrf_rtc_task_trigger(RTC_INSTANCE, NRF_RTC_TASK_START);
-    DWT->CYCCNT = 0;
     __set_PRIMASK(pri);
+    while (nrf_rtc_int_is_enabled(RTC_INSTANCE, NRF_RTC_INT_TICK_MASK)) {
+        // Busy wait
+    }
 
     return 0;
 }
@@ -312,6 +318,10 @@ extern "C" void RTC_IRQ_HANDLER(void) {
         // Handle OVERFLOW event by reading current value of overflow counter.
         (void)getOverflowCounter();
     } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_TICK)) {
+        // This event should only arrive on first tick to synchronize RTC to CYCCNT
+        DWT->CYCCNT = getRtcCounter() * SystemCoreClock / RTC_FREQUENCY;
+        nrf_rtc_int_disable(RTC_INSTANCE, NRF_RTC_INT_TICK_MASK);
+        nrf_rtc_event_disable(RTC_INSTANCE, NRF_RTC_EVENT_TICK);
         nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_TICK);
     } else if (nrf_rtc_event_pending(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_0)) {
         nrf_rtc_event_clear(RTC_INSTANCE, NRF_RTC_EVENT_COMPARE_0);
@@ -332,22 +342,25 @@ uint64_t hal_timer_micros(void* reserved) {
     bool inSync = false;
     uint64_t curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros, &inSync);
     uint32_t usTicks = SYSTEM_US_TICKS;
-    uint32_t tickDiff = 0;
+    int64_t tickDiffResult = 0;
 
     // NOTE: Ignore DWT->CYCCNT at RTC overflow until such overflow event is properly handled
     if (inSync) {
         uint64_t elapsedUs = curUs - lastOverflowMicros;
         uint64_t elapsedTicks = elapsedUs * usTicks;
         uint32_t syncTicks = (uint32_t)((uint64_t)lastOverflowTicks + elapsedTicks);
-        tickDiff = DWT->CYCCNT - syncTicks;
-        // If we are over 10 RTC ticks, we are better off fetching new value
-        if (tickDiff > (DWT_US_THRESHOLD * usTicks)) {
-            curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros, &inSync);
-            tickDiff = 0;
+        uint32_t tickDiff = DWT->CYCCNT - syncTicks;
+        // IMPORTANT: we need to properly tackle the negative drift
+        // between RTC and CYCCNT
+        if (tickDiff > ((US_PER_OVERFLOW / 10) * usTicks)) {
+            tickDiff = 0xffffffff - tickDiff;
+            tickDiffResult = -((int64_t)tickDiff);
+        } else {
+            tickDiffResult = tickDiff;
         }
     }
 
-    return sTimerMicrosBaseOffset + curUs + (tickDiff / usTicks);
+    return sTimerMicrosBaseOffset + curUs + (tickDiffResult / usTicks);
 }
 
 uint64_t hal_timer_millis(void* reserved) {
