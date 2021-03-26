@@ -56,6 +56,7 @@
 #if defined(DEBUG) && DEBUG
 #include <assert.h>
 #else
+#undef assert
 #define assert(x) ((void)0)
 #endif
 
