@@ -197,12 +197,13 @@ uint32_t getOverflowCounter() {
     return overflowCounter;
 }
 
-uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
+uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros, int64_t* baseOffset) {
     uint32_t offset1 = getOverflowCounter();
     __DMB();
 
     uint32_t rtcValue = getRtcCounter();
     *ticks = sTickCountAtLastOverflow;
+    *baseOffset = sTimerMicrosBaseOffset;
     *micros = sTimerMicrosAtLastOverflow;
     __DMB();
 
@@ -212,8 +213,10 @@ uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
         // Overflow occured between the calls
         int pri = __get_PRIMASK();
         __disable_irq();
+        // IMPORTANT: fetch all three atomically
         rtcValue = getRtcCounter();
         *ticks = sTickCountAtLastOverflow;
+        *baseOffset = sTimerMicrosBaseOffset;
         *micros = sTimerMicrosAtLastOverflow;
         __set_PRIMASK(pri);
     }
@@ -343,9 +346,10 @@ uint64_t hal_timer_micros(void* reserved) {
     // Make sure that sTickCountAtLastOverflow and current timer values are fetched atomically
     uint32_t lastOverflowTicks;
     uint64_t lastOverflowMicros;
-    uint64_t curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros);
+    int64_t baseOffset;
+    uint64_t curUs = getCurrentTimeWithTicks(&lastOverflowTicks, &lastOverflowMicros, &baseOffset);
     int64_t diff = calcCyccntRtcDiff(curUs, DWT->CYCCNT, lastOverflowTicks, lastOverflowMicros);
-    return sTimerMicrosBaseOffset + curUs + diff;
+    return baseOffset + curUs + diff;
 }
 
 uint64_t hal_timer_millis(void* reserved) {
