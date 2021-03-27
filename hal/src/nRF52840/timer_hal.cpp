@@ -210,9 +210,12 @@ uint64_t getCurrentTimeWithTicks(uint32_t* ticks, uint64_t* micros) {
 
     if (offset1 != offset2) {
         // Overflow occured between the calls
+        int pri = __get_PRIMASK();
+        __disable_irq();
         rtcValue = getRtcCounter();
         *ticks = sTickCountAtLastOverflow;
         *micros = sTimerMicrosAtLastOverflow;
+        __set_PRIMASK(pri);
     }
 
     return rtcCounterAndTicksToUs(offset2, rtcValue);
