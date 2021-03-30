@@ -73,13 +73,19 @@ Am18x5& Am18x5::getInstance() {
 }
 
 int Am18x5::begin() {
-    Am18x5Lock lock();
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
     
     if (!hal_i2c_is_enabled(wire_, nullptr)) {
         CHECK(hal_i2c_init(wire_, nullptr));
         hal_i2c_begin(wire_, I2C_MODE_MASTER, 0x00, nullptr);
+        // Make sure to reset the I2C bus to avoid potentially corrupting the AM18x5 configuration if
+        // we start communication with it during an ongoing write transaction (which may happen e.g. after a hard reset)
+        hal_i2c_reset(wire_, 0, nullptr);
     }
+
+    // NOTE: acquire lock only after initializing the I2C peripheral, as this will actually call into
+    // hal_i2c_lock/hal_i2c_unlock, which do not function unless hal_i2c_init is called.
+    Am18x5Lock lock();
 
     if (os_semaphore_create(&exRtcWorkerSemaphore_, 1, 0)) {
         exRtcWorkerSemaphore_ = nullptr;
