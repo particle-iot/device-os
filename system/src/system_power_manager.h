@@ -58,6 +58,7 @@ private:
   void applyDefaultConfig(bool dpdm = false);
   void logCurrentConfig();
   bool isRunning() const;
+  void resetBus();
 
   void deduceBatteryStateLoop();
   void deduceBatteryStateChargeDisabled();
