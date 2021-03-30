@@ -218,7 +218,7 @@ static void twimHandler(nrfx_twim_evt_t const * p_event, void * p_context) {
     }
 }
 
-static int twiUninit(hal_i2c_interface_t i2c) {
+static int twiUninit(hal_i2c_interface_t i2c, bool reset_pin_configuration = true) {
     if (i2cMap[i2c].state != HAL_I2C_STATE_ENABLED) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -229,11 +229,13 @@ static int twiUninit(hal_i2c_interface_t i2c) {
         nrfx_twis_uninit(i2cMap[i2c].slave);
     }
 
-    // Reset pin function
-    HAL_Pin_Mode(i2cMap[i2c].scl_pin, PIN_MODE_NONE);
-    HAL_Pin_Mode(i2cMap[i2c].sda_pin, PIN_MODE_NONE);
-    HAL_Set_Pin_Function(i2cMap[i2c].scl_pin, PF_NONE);
-    HAL_Set_Pin_Function(i2cMap[i2c].sda_pin, PF_NONE);
+    if (reset_pin_configuration) {
+        // Reset pin function
+        HAL_Pin_Mode(i2cMap[i2c].scl_pin, PIN_MODE_NONE);
+        HAL_Pin_Mode(i2cMap[i2c].sda_pin, PIN_MODE_NONE);
+        HAL_Set_Pin_Function(i2cMap[i2c].scl_pin, PF_NONE);
+        HAL_Set_Pin_Function(i2cMap[i2c].sda_pin, PF_NONE);
+    }
 
     return SYSTEM_ERROR_NONE;
 }
@@ -252,11 +254,12 @@ static int twiInit(hal_i2c_interface_t i2c) {
 
     if (i2cMap[i2c].mode == I2C_MODE_MASTER) {
         const nrfx_twim_config_t twi_config = {
-        .scl                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[i2cMap[i2c].scl_pin].gpio_port, PIN_MAP[i2cMap[i2c].scl_pin].gpio_pin),
-        .sda                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[i2cMap[i2c].sda_pin].gpio_port, PIN_MAP[i2cMap[i2c].sda_pin].gpio_pin),
-        .frequency          = nrfFrequency,
-        .interrupt_priority = I2C_IRQ_PRIORITY,
-        .hold_bus_uninit    = false
+            .scl                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[i2cMap[i2c].scl_pin].gpio_port, PIN_MAP[i2cMap[i2c].scl_pin].gpio_pin),
+            .sda                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[i2cMap[i2c].sda_pin].gpio_port, PIN_MAP[i2cMap[i2c].sda_pin].gpio_pin),
+            .frequency          = nrfFrequency,
+            .interrupt_priority = I2C_IRQ_PRIORITY,
+            // Important! We need to keep the pins from floating when calling nrfx_twim_uninit under some error conditions
+            .hold_bus_uninit    = true
         };
 
         void *p_context = (void *)i2c;
@@ -266,12 +269,12 @@ static int twiInit(hal_i2c_interface_t i2c) {
         nrfx_twim_enable(i2cMap[i2c].master);
     } else {
         const nrfx_twis_config_t twi_config = {
-        .addr               = {i2cMap[i2c].address, 0},
-        .scl                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[i2cMap[i2c].scl_pin].gpio_port, PIN_MAP[i2cMap[i2c].scl_pin].gpio_pin),
-        .sda                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[i2cMap[i2c].sda_pin].gpio_port, PIN_MAP[i2cMap[i2c].sda_pin].gpio_pin),
-        .scl_pull           = NRF_GPIO_PIN_NOPULL,
-        .sda_pull           = NRF_GPIO_PIN_NOPULL,
-        .interrupt_priority = I2C_IRQ_PRIORITY
+            .addr               = {i2cMap[i2c].address, 0},
+            .scl                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[i2cMap[i2c].scl_pin].gpio_port, PIN_MAP[i2cMap[i2c].scl_pin].gpio_pin),
+            .sda                = (uint32_t)NRF_GPIO_PIN_MAP(PIN_MAP[i2cMap[i2c].sda_pin].gpio_port, PIN_MAP[i2cMap[i2c].sda_pin].gpio_pin),
+            .scl_pull           = NRF_GPIO_PIN_NOPULL,
+            .sda_pull           = NRF_GPIO_PIN_NOPULL,
+            .interrupt_priority = I2C_IRQ_PRIORITY
         };
 
         ret = nrfx_twis_init(i2cMap[i2c].slave, &twi_config, i2cMap[i2c].callback_twis);
@@ -412,7 +415,7 @@ void hal_i2c_begin(hal_i2c_interface_t i2c, hal_i2c_mode_t mode, uint8_t address
     }
 }
 
-void hal_i2c_end(hal_i2c_interface_t i2c,void* reserved) {
+void hal_i2c_end(hal_i2c_interface_t i2c, void* reserved) {
     if (i2c >= HAL_PLATFORM_I2C_NUM) {
         return;
     }
@@ -645,29 +648,49 @@ uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved
     }
 
     I2cLock lk(i2c);
-    if (hal_i2c_is_enabled(i2c, nullptr)) {
-        hal_i2c_end(i2c, nullptr);
-
-        HAL_Pin_Mode(i2cMap[i2c].sda_pin, INPUT_PULLUP); //Turn SCA into high impedance input
-        HAL_Pin_Mode(i2cMap[i2c].scl_pin, OUTPUT);       //Turn SCL into a normal GPO
-        HAL_GPIO_Write(i2cMap[i2c].scl_pin, 1);     // Start idle HIGH
-
-        //Generate 9 pulses on SCL to tell slave to release the bus
-        for (int i = 0; i < 9; i++) {
-            HAL_GPIO_Write(i2cMap[i2c].scl_pin, 0);
-            HAL_Delay_Microseconds(100);
-            HAL_GPIO_Write(i2cMap[i2c].scl_pin, 1);
-            HAL_Delay_Microseconds(100);
-        }
-
-        //Change SCL to be an input
-        HAL_Pin_Mode(i2cMap[i2c].scl_pin, INPUT_PULLUP);
-
-        hal_i2c_begin(i2c, i2cMap[i2c].mode, i2cMap[i2c].address, nullptr);
-        HAL_Delay_Milliseconds(50);
-        return 0;
+    if (!hal_i2c_is_enabled(i2c, nullptr) || (i2cMap[i2c].mode != I2C_MODE_MASTER)) {
+        return 1;
     }
-    return 1;
+
+    // Important: we keep GPIO configuration intact
+    if (twiUninit(i2c, false) == SYSTEM_ERROR_NONE) {
+        i2cMap[i2c].state = HAL_I2C_STATE_DISABLED;
+    }
+
+    // Just in case make sure that the pins are correctly configured (they should anyway be at this point)
+    hal_gpio_config_t conf = {
+        .size = sizeof(conf),
+        .version = HAL_GPIO_VERSION,
+        .mode = OUTPUT_OPEN_DRAIN_PULLUP,
+        .set_value = true,
+        .value = 1
+    };
+    HAL_Pin_Configure(i2cMap[i2c].sda_pin, &conf, nullptr);
+    HAL_Pin_Configure(i2cMap[i2c].scl_pin, &conf, nullptr);
+
+    // Generate 9 pulses on SCL to tell slave to release the bus
+    for (int i = 0; i < 9; i++) {
+        HAL_GPIO_Write(i2cMap[i2c].sda_pin, 1);
+        HAL_Delay_Microseconds(50);
+        HAL_GPIO_Write(i2cMap[i2c].scl_pin, 0);
+        HAL_Delay_Microseconds(50);
+        HAL_GPIO_Write(i2cMap[i2c].scl_pin, 1);
+        HAL_Delay_Microseconds(50);
+
+        if (HAL_GPIO_Read(i2cMap[i2c].sda_pin)) {
+            // Generate STOP condition: pull SDA low, switch to high
+            HAL_GPIO_Write(i2cMap[i2c].sda_pin, 0);
+            HAL_Delay_Microseconds(50);
+            HAL_GPIO_Write(i2cMap[i2c].sda_pin, 1);
+            HAL_Delay_Microseconds(50);
+        }
+    }
+
+    HAL_Set_Pin_Function(i2cMap[i2c].sda_pin, PF_I2C);
+    HAL_Set_Pin_Function(i2cMap[i2c].scl_pin, PF_I2C);
+
+    hal_i2c_begin(i2c, i2cMap[i2c].mode, i2cMap[i2c].address, nullptr);
+    return !hal_i2c_is_enabled(i2c, nullptr);
 }
 
 int32_t hal_i2c_lock(hal_i2c_interface_t i2c, void* reserved) {

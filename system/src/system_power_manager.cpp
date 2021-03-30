@@ -298,17 +298,19 @@ void PowerManager::loop(void* arg) {
     // Load configuration
     self->loadConfig();
 
+    if (self->config_.flags & HAL_POWER_MANAGEMENT_DISABLE) {
+      LOG(WARN, "Disabled by configuration");
+      goto exit;
+    }
+
     LOG_DEBUG(INFO, "Power Management Initializing.");
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
     if (!self->detect()) {
       goto exit;
     }
+#else
+    self->resetBus();
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
-
-    if (self->config_.flags & HAL_POWER_MANAGEMENT_DISABLE) {
-      LOG(WARN, "Disabled by configuration");
-      goto exit;
-    }
 
     // IMPORTANT: attach the interrupt handler first
 #if HAL_PLATFORM_PMIC_INT_PIN_PRESENT
@@ -601,6 +603,8 @@ bool PowerManager::detect() {
     return false;
   }
 
+  resetBus();
+
   // Check that PMIC is present by reading its version
   PMIC power(true);
   power.begin();
@@ -630,6 +634,16 @@ bool PowerManager::detect() {
   return true;
 }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+
+void PowerManager::resetBus() {
+  if (!hal_i2c_is_enabled(HAL_PLATFORM_PMIC_BQ24195_I2C, nullptr)) {
+    hal_i2c_init(HAL_PLATFORM_PMIC_BQ24195_I2C, nullptr);
+    hal_i2c_begin(HAL_PLATFORM_PMIC_BQ24195_I2C, I2C_MODE_MASTER, 0x00, nullptr);
+    // Make sure to reset the I2C bus to avoid potentially corrupting the BQ24195 configuration if
+    // we start communication with it during an ongoing write transaction (which may happen e.g. after a hard reset)
+    hal_i2c_reset(HAL_PLATFORM_PMIC_BQ24195_I2C, 0, nullptr);
+  }
+}
 
 void PowerManager::deinit() {
   LOG(WARN, "Disabling system power manager");

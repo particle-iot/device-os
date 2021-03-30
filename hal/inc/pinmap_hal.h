@@ -31,15 +31,16 @@ typedef struct Hal_Pin_Info Hal_Pin_Info;
 typedef uint16_t pin_t;
 
 typedef enum PinMode {
-    INPUT,
-    OUTPUT,
-    INPUT_PULLUP,
-    INPUT_PULLDOWN,
-    AF_OUTPUT_PUSHPULL, // Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
-    AF_OUTPUT_DRAIN,    // Used internally for Alternate Function Output Drain(I2C etc). External pullup resistors required.
-    AN_INPUT,           // Used internally for ADC Input
-    AN_OUTPUT,          // Used internally for DAC Output,
+    INPUT = 0,
+    OUTPUT = 1,
+    INPUT_PULLUP = 2,
+    INPUT_PULLDOWN = 3,
+    AF_OUTPUT_PUSHPULL = 4, // Used internally for Alternate Function Output PushPull(TIM, UART, SPI etc)
+    AF_OUTPUT_DRAIN = 5,    // Used internally for Alternate Function Output Drain(I2C etc). External pullup resistors required.
+    AN_INPUT = 6,           // Used internally for ADC Input
+    AN_OUTPUT = 7,          // Used internally for DAC Output,
     OUTPUT_OPEN_DRAIN = AF_OUTPUT_DRAIN,
+    OUTPUT_OPEN_DRAIN_PULLUP = 8,
     PIN_MODE_NONE = 0xFF
 } PinMode;
 
