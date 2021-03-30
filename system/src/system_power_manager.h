@@ -57,6 +57,7 @@ private:
   void applyDefaultConfig(bool dpdm = false);
   void logCurrentConfig();
   bool isRunning() const;
+  void resetBus();
 
   static power_source_t powerSourceFromStatus(uint8_t status);
 
