@@ -1334,8 +1334,12 @@ int SaraNcpClient::initReady(ModemState state) {
         resp = parser_.sendCommand("AT+CEDRXS?");
         while (resp.hasNextLine()) {
             unsigned act = 0;
-            r = resp.scanf("+CEDRXS: %u", &act);
-            if (r == 1) { // Ignore scanf() errors
+            unsigned eDRXCycle = 0;
+            unsigned pagingTimeWindow = 0;
+            // R410 disabled: +CEDRXS:
+            // R510 disabled: +CEDRXS: 4,"0000"
+            r = resp.scanf("+CEDRXS: %u,\"%d\",\"%d\"", &act, &eDRXCycle, &pagingTimeWindow);
+            if (r >= 1 && (eDRXCycle != 0 || pagingTimeWindow != 0)) { // Ignore scanf() errors
                 CHECK_TRUE(acts.append(act), SYSTEM_ERROR_NO_MEMORY);
             }
         }
