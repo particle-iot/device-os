@@ -1561,7 +1561,13 @@ int SaraNcpClient::checkSimCard() {
 int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
     // IMPORTANT: Set modem full functionality!
     // Otherwise we won't be able to query ICCID/IMSI
-    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+    auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
+    int cfunVal = -1;
+    auto rcfun = respCfun.scanf("+CFUN: %d", &cfunVal);
+    CHECK_PARSER_OK(respCfun.readResult());
+    if (rcfun && cfunVal != 1) {
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+    }
 
     netConf_ = conf;
     if (!netConf_.isValid()) {
@@ -1578,7 +1584,7 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
     }
 
     // FIXME: Why does CGDCONT= seem to error on R410 and R510 if we don't do CFUN=0,0 first?
-    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
+    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
     auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s%s\"",
             UBLOX_DEFAULT_CID, UBLOX_DEFAULT_PDP_TYPE,
             (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
@@ -1597,8 +1603,13 @@ int SaraNcpClient::registerNet() {
     int r = 0;
 
     // Set modem full functionality
-    r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
+    int cfunVal = -1;
+    auto rCfun = respCfun.scanf("+CFUN: %d", &cfunVal);
+    CHECK_PARSER_OK(respCfun.readResult());
+    if (rCfun && cfunVal != 1) {
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+    }
 
     resetRegistrationState();
 
