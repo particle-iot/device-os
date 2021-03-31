@@ -69,17 +69,14 @@ void testDischarge() {
     if (!dischargeTested) {
         constexpr float DISCHARGE_TERMINATION_VCELL = 3.90f;
 
-        SERIAL.println("> Please \"unplug\" the USB. Press any key to continue when the hardware is set up.");
-        while (SERIAL.available() <= 0);
-        while (SERIAL.available() > 0) {
-            (void)SERIAL.read();
-        }
+        SERIAL.println("> Please \"unplug\" the USB");
+        while (Serial.isConnected());
 
         SERIAL.println("> Wait the power management settled...");
         assertTrue(waitFor([]{
             return System.batteryState() == BATTERY_STATE_DISCHARGING;
         }, 10000));
-        assertTrue(System.powerSource() == POWER_SOURCE_BATTERY);
+        assertEqual(System.powerSource(), (int)POWER_SOURCE_BATTERY);
 
         SERIAL.print("> Device is connecting to the cloud... ");
         Particle.connect();
@@ -98,13 +95,15 @@ void testDischarge() {
             if (Time.now() - now > 1) {
                 now = Time.now();
                 Particle.publish("Hello world!");
-                assertTrue(System.batteryState() == BATTERY_STATE_DISCHARGING);
-                assertTrue(System.powerSource() == POWER_SOURCE_BATTERY);
+                assertEqual(System.batteryState(), (int)BATTERY_STATE_DISCHARGING);
+                assertEqual(System.powerSource(), (int)POWER_SOURCE_BATTERY);
 
                 vcell = fuel.getVCell();
                 if (vcell <= DISCHARGE_TERMINATION_VCELL) {
                     count++;
                 }
+                // Threading is not enabled in this test application, need a delay to give the system thread a chance to run.
+                delay(1s);
             }
         }
     }
@@ -133,6 +132,7 @@ test(power_00_setup) {
     }
 
     SERIAL.println("> Please \"plug\" both of the battery and USB. Press any key to continue when the hardware is set up.");
+    while (!Serial.isConnected());
     while (SERIAL.available() <= 0);
     while (SERIAL.available() > 0) {
         (void)SERIAL.read();
@@ -188,15 +188,15 @@ test(power_02_battery_charging_when_charging_disabled) {
     assertTrue(waitFor([]{
         return System.batteryState() == BATTERY_STATE_NOT_CHARGING;
     }, 10000));
-    assertTrue(System.powerSource() == POWER_SOURCE_USB_HOST);
+    assertEqual(System.powerSource(), (int)POWER_SOURCE_USB_HOST);
     PMIC power;
     assertFalse(power.isChargingEnabled());
 
     SERIAL.println("> Test is running...");
     time32_t start = Time.now();
     while ((Time.now() - start) < TEST_DURATION) {
-        assertTrue(System.batteryState() == BATTERY_STATE_NOT_CHARGING);
-        assertTrue(System.powerSource() == POWER_SOURCE_USB_HOST);
+        assertEqual(System.batteryState(), (int)BATTERY_STATE_NOT_CHARGING);
+        assertEqual(System.powerSource(), (int)POWER_SOURCE_USB_HOST);
         delay(1s);
     }
 
@@ -210,6 +210,9 @@ test(power_03_battery_charging_when_charging_enabled) {
         return;
     }
 
+    constexpr float CHARGED_SOC_THRESHOLD = 95.0f;
+    const time32_t chargeStart = Time.now();
+
     SERIAL.println("> Enable charging.");
     int ret = System.setPowerConfiguration(System.getPowerConfiguration().clearFeature(SystemPowerFeature::DISABLE_CHARGING));
     assertEqual(ret, (int)SYSTEM_ERROR_NONE);
@@ -220,17 +223,25 @@ test(power_03_battery_charging_when_charging_enabled) {
     assertTrue(waitFor([]{
         return System.batteryState() == BATTERY_STATE_CHARGING;
     }, 10000));
-    assertTrue(System.powerSource() == POWER_SOURCE_USB_HOST);
+    assertEqual(System.powerSource(), (int)POWER_SOURCE_USB_HOST);
     PMIC power;
     assertTrue(power.isChargingEnabled());
 
     SERIAL.println("> Test is running...");
     while (System.batteryState() == BATTERY_STATE_CHARGING) {
-        assertTrue(System.powerSource() == POWER_SOURCE_USB_HOST);
+        assertEqual(System.powerSource(), (int)POWER_SOURCE_USB_HOST);
         delay(5s);
+        FuelGauge fuel;
+        float batterySoc = System.batteryCharge();
+        SERIAL.printlnf("SoC: %0.2f, Vol: %0.2f", batterySoc, fuel.getVCell());
     }
+    SERIAL.printlnf("> Battery is charged using %lds.", (Time.now() - chargeStart));
+    assertEqual(System.batteryState(), (int)BATTERY_STATE_CHARGED);
+    
+    float soc = System.batteryCharge();
+    assertMoreOrEqual(soc, CHARGED_SOC_THRESHOLD);
+
     SERIAL.println("> Battery is charged.");
-    assertTrue(System.batteryState() == BATTERY_STATE_CHARGED);
 
     g_state = CHARGED_STATE;
 }
@@ -244,8 +255,8 @@ test(power_04_battery_charged) {
 
     constexpr time32_t TEST_DURATION = 10 * 60; // 10 minutes
 
-    assertTrue(System.batteryState() == BATTERY_STATE_CHARGED);
-    assertTrue(System.powerSource() == POWER_SOURCE_USB_HOST);
+    assertEqual(System.batteryState(), (int)BATTERY_STATE_CHARGED);
+    assertEqual(System.powerSource(), (int)POWER_SOURCE_USB_HOST);
     PMIC power;
     assertTrue(power.isChargingEnabled());
 
@@ -260,9 +271,9 @@ test(power_04_battery_charged) {
         if (System.batteryState() == BATTERY_STATE_CHARGING) {
             SERIAL.println("> WARN: (problematic) battery is charging!");
         } else {
-            assertTrue(System.batteryState() == BATTERY_STATE_CHARGED);
+            assertEqual(System.batteryState(), (int)BATTERY_STATE_CHARGED);
         }
-        assertTrue(System.powerSource() == POWER_SOURCE_USB_HOST);
+        assertEqual(System.powerSource(), (int)POWER_SOURCE_USB_HOST);
     }
 
     g_state = DISCHARGE_STATE2;
@@ -298,13 +309,13 @@ test(power_06_battery_disconnected) {
     assertTrue(waitFor([]{
         return System.batteryState() == BATTERY_STATE_DISCONNECTED;
     }, 10000));
-    assertTrue(System.powerSource() == POWER_SOURCE_USB_HOST);
+    assertEqual(System.powerSource(), (int)POWER_SOURCE_USB_HOST);
 
     SERIAL.println("> Test is running...");
     time32_t start = Time.now();
     while ((Time.now() - start) < TEST_DURATION) {
-        assertTrue(System.batteryState() == BATTERY_STATE_DISCONNECTED);
-        assertTrue(System.powerSource() == POWER_SOURCE_USB_HOST);
+        assertEqual(System.batteryState(), (int)BATTERY_STATE_DISCONNECTED);
+        assertEqual(System.powerSource(), (int)POWER_SOURCE_USB_HOST);
         delay(1s);
     }
 
@@ -323,7 +334,7 @@ test(power_07_battery_disconnected_and_sleep) {
     SERIAL.printlnf("> Device will sleep for %ld seconds", SLEEP_DURATION);
     SystemSleepResult r = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(SLEEP_DURATION));
     assertEqual(r.error(), SYSTEM_ERROR_NONE);
-    assertTrue(r.wakeupReason() == SystemSleepWakeupReason::BY_RTC);
+    assertEqual((int)r.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
 
     SERIAL.println("> Device wakes up. Please reconnect the Serial to continue the test.");
     while (!Serial.isConnected());
@@ -333,7 +344,7 @@ test(power_07_battery_disconnected_and_sleep) {
     assertTrue(waitFor([]{
         return System.batteryState() == BATTERY_STATE_DISCONNECTED;
     }, 10000));
-    assertTrue(System.powerSource() == POWER_SOURCE_USB_HOST);
+    assertEqual(System.powerSource(), (int)POWER_SOURCE_USB_HOST);
 
     g_state = CONNECTED_STATE_SLEEP;
 }
@@ -357,7 +368,7 @@ test(power_08_battery_connected_and_sleep) {
     assertTrue(waitFor([]{
         return System.batteryState() != BATTERY_STATE_UNKNOWN;
     }, 10000));
-    assertTrue(System.powerSource() == POWER_SOURCE_USB_HOST);
+    assertEqual(System.powerSource(), (int)POWER_SOURCE_USB_HOST);
 
     delay(10s); // When battery is pluged, the PMIC may take some time to finally settle the battery state.
     static int currState = System.batteryState();
@@ -365,7 +376,7 @@ test(power_08_battery_connected_and_sleep) {
     SERIAL.printlnf("> Device will sleep for %ld seconds", SLEEP_DURATION);
     SystemSleepResult r = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(SLEEP_DURATION));
     assertEqual(r.error(), SYSTEM_ERROR_NONE);
-    assertTrue(r.wakeupReason() == SystemSleepWakeupReason::BY_RTC);
+    assertEqual((int)r.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
 
     SERIAL.println("> Device wakes up. Please reconnect the Serial to continue the test.");
     while (!Serial.isConnected());
@@ -373,7 +384,14 @@ test(power_08_battery_connected_and_sleep) {
 
     SERIAL.println("> Wait the power management settled...");
     assertTrue(waitFor([&]{
-        return System.batteryState() == currState;
+        if (currState == BATTERY_STATE_CHARGING || currState == BATTERY_STATE_CHARGED) {
+            // FIXME: when the battery is charged, the PMIC may be still jumping between fast charging and charged state
+            // due to 100mV recharge threshold.
+            int state = System.batteryState();
+            return (state == BATTERY_STATE_CHARGING || state == BATTERY_STATE_CHARGED);
+        } else {
+            return System.batteryState() == currState;
+        }
     }, 10000));
-    assertTrue(System.powerSource() == POWER_SOURCE_USB_HOST);
+    assertEqual(System.powerSource(), (int)POWER_SOURCE_USB_HOST);
 }
