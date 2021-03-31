@@ -243,7 +243,6 @@ void PowerManager::handleUpdate() {
     if (power.isChargingEnabled()) {
       // Charging or charged
       if (chrg_stat == 0b11) {
-        lastChargedTimeStamp_ = millis();
         batteryStateTransitioningTo(BATTERY_STATE_CHARGED);
       } else {
         // We might receive continuous interrupt. Counting the charging state may lead to fake charging state.
@@ -563,43 +562,52 @@ void PowerManager::confirmBatteryState(battery_state_t from, battery_state_t to)
 }
 
 void PowerManager::batteryStateTransitioningTo(battery_state_t targetState, bool count) {
-  if (targetState == BATTERY_STATE_NOT_CHARGING && g_batteryState != BATTERY_STATE_NOT_CHARGING) {
-    if (count) {
-      notChargingDebounceCount_++;
-    } else {
-      notChargingDebounceCount_ = 0;
-    }
+  if (targetState == BATTERY_STATE_NOT_CHARGING) {
+    // We may hit the event sequence, for example, charged/charging -> not charging when the current
+    // charging state is BATTERY_STATE_NOT_CHARGING. We should clear the intermediate state.
     chargedFaultCount_ = 0;
     chargingDebounceCount_ = 0;
     lastChargedTimeStamp_ = 0;
-    battMonitorPeriod_ = BATTERY_STATE_CHANGE_CHECK_PERIOD;
-    DBG_PWR("notChargingDebounceCount_: %d", notChargingDebounceCount_);
-    if (notChargingDebounceCount_ >= BATTERY_NOT_CHARGING_DEBOUNCE_COUNT) {
-      confirmBatteryState(g_batteryState, BATTERY_STATE_NOT_CHARGING);
+    if (g_batteryState != BATTERY_STATE_NOT_CHARGING) {
+      if (count) {
+        notChargingDebounceCount_++;
+      } else {
+        notChargingDebounceCount_ = 0;
+      }
+      battMonitorPeriod_ = BATTERY_STATE_CHANGE_CHECK_PERIOD;
+      DBG_PWR("notChargingDebounceCount_: %d", notChargingDebounceCount_);
+      if (notChargingDebounceCount_ >= BATTERY_NOT_CHARGING_DEBOUNCE_COUNT) {
+        confirmBatteryState(g_batteryState, BATTERY_STATE_NOT_CHARGING);
+      }
     }
-  } else if (targetState == BATTERY_STATE_CHARGING && g_batteryState != BATTERY_STATE_CHARGING) {
-    if (count) {
-      chargingDebounceCount_++;
-    } else {
-      chargingDebounceCount_ = 0;
-    }
+  } else if (targetState == BATTERY_STATE_CHARGING) {
+    // We may hit the event sequence, for example, charged/not charging -> charging when the current
+    // charging state is BATTERY_STATE_CHARGING. We should clear the intermediate state.
     chargedFaultCount_ = 0;
     notChargingDebounceCount_ = 0;
     lastChargedTimeStamp_ = 0;
-    battMonitorPeriod_ = BATTERY_STATE_CHANGE_CHECK_PERIOD;
-    DBG_PWR("chargingDebounceCount_: %d", chargingDebounceCount_);
-    if (chargingDebounceCount_ >= BATTERY_CHARGING_DEBOUNCE_COUNT) {
-      confirmBatteryState(g_batteryState, BATTERY_STATE_CHARGING);
+    if (g_batteryState != BATTERY_STATE_CHARGING) {
+      if (count) {
+        chargingDebounceCount_++;
+      } else {
+        chargingDebounceCount_ = 0;
+      }
+      battMonitorPeriod_ = BATTERY_STATE_CHANGE_CHECK_PERIOD;
+      DBG_PWR("chargingDebounceCount_: %d", chargingDebounceCount_);
+      if (chargingDebounceCount_ >= BATTERY_CHARGING_DEBOUNCE_COUNT) {
+        confirmBatteryState(g_batteryState, BATTERY_STATE_CHARGING);
+      }
     }
   } else if (targetState == BATTERY_STATE_CHARGED) {
+    notChargingDebounceCount_ = 0;
+    chargingDebounceCount_ = 0;
+    battMonitorPeriod_ = BATTERY_STATE_CHANGE_CHECK_PERIOD;
+    lastChargedTimeStamp_ = millis();
     if (count) {
       chargedFaultCount_++;
     } else {
       chargedFaultCount_ = 0;
     }
-    notChargingDebounceCount_ = 0;
-    chargingDebounceCount_ = 0;
-    battMonitorPeriod_ = BATTERY_STATE_CHANGE_CHECK_PERIOD;
     DBG_PWR("chargedFaultCount_: %d", chargedFaultCount_);
     if (chargedFaultCount_ >= BATTERY_CHARGED_FAULT_COUNT) {
       if (poosibleChargedFault_) {
@@ -610,7 +618,7 @@ void PowerManager::batteryStateTransitioningTo(battery_state_t targetState, bool
       } else {
         poosibleChargedFault_ = true;
         chargedFaultCount_ = 0;
-        lastChargedTimeStamp_ = millis();
+        
         DBG_PWR("Set fault recharge threshold: 300mV");
         PMIC power(true);
         power.setRechargeThreshold(PMIC_FAULT_RECHARGE_THRESHOLD); // 300mV
