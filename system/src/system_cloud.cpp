@@ -54,6 +54,7 @@ extern void (*random_seed_from_cloud_handler)(unsigned int);
 namespace
 {
 
+using namespace particle;
 using namespace particle::system;
 
 #if PLATFORM_THREADING
@@ -124,7 +125,8 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
 void spark_unsubscribe(void *reserved)
 {
     SYSTEM_THREAD_CONTEXT_ASYNC(spark_unsubscribe(reserved));
-    spark_protocol_remove_event_handlers(sp, NULL);
+    spark_protocol_remove_event_handlers(sp, NULL); // Clear all subscriptions
+    registerSystemSubscriptions(); // Re-add system subscriptions
     // TODO: Notify the cloud that subscriptions have been cleared
 }
 
