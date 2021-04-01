@@ -89,7 +89,7 @@ inline uint8_t dataToFlag(const char* data) {
  */
 void systemEventHandler(const char* name, const char* data)
 {
-    if (particle::startsWith(name, DEVICE_UPDATES_EVENT)) {
+    if (startsWith(name, DEVICE_UPDATES_EVENT)) {
         const uint8_t flagValue = dataToFlag(data);
         if (isSuffix(name, DEVICE_UPDATES_EVENT, FORCED_EVENT)) {
             system_set_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED, flagValue, nullptr);
@@ -117,7 +117,7 @@ void systemEventHandler(const char* name, const char* data)
                 if (task) {
                     task->func = [](ISRTaskQueue::Task* task) {
                         delete task;
-                        particle::resetNetworkInterfaces();
+                        resetNetworkInterfaces();
                     };
                     SystemISRTaskQueue.enqueue(task);
                 }
