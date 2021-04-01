@@ -20,6 +20,8 @@
 #include "platform_headers.h"
 #include "check.h"
 
+#include "spark_wiring_system.h"
+
 #include "unit-test/unit-test.h"
 
 namespace particle {
@@ -48,6 +50,8 @@ TestSuite::~TestSuite() {
 }
 
 int TestSuite::init() {
+    // Enable backup memory
+    System.enableFeature(FEATURE_RETAINED_MEMORY);
     // Set system mode
     if (g_config.size != sizeof(CurrentConfig) || g_config.magicNumber != MAGIC_NUMBER) {
         g_config.size = sizeof(CurrentConfig);

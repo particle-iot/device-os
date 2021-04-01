@@ -12,7 +12,11 @@
 #include <set>
 #include <list>
 
+namespace particle {
+
 ISRTaskQueue SystemISRTaskQueue;
+
+} // namespace particle
 
 namespace {
 

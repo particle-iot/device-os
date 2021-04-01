@@ -18,3 +18,11 @@
 #pragma once
 
 #include "unit-test/unit-test.h"
+
+namespace particle {
+
+void testAppInit();
+void testAppSetup();
+void testAppLoop();
+
+} // namespace particle

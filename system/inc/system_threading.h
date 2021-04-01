@@ -20,7 +20,6 @@
 #define	SYSTEM_THREADING_H
 
 #include "active_object.h"
-extern ISRTaskQueue SystemISRTaskQueue;
 
 #if PLATFORM_THREADING
 
@@ -34,6 +33,7 @@ extern ISRTaskQueue SystemISRTaskQueue;
 #error "GTHREAD header not included. This is required for correct mutex implementation on embedded platforms."
 #endif
 
+namespace particle {
 
 /**
  * System thread runs on a separate thread
@@ -44,15 +44,6 @@ extern ActiveObjectThreadQueue SystemThread;
  * Application queue runs on the calling thread (main)
  */
 extern ActiveObjectCurrentThreadQueue ApplicationThread;
-
-#endif
-
-
-// execute synchronously on the system thread. Since the parameter lifetime is
-// assumed to be bound by the caller, the parameters don't need marshalling
-// fn: the function call to perform. This is textually substitued into a lambda, with the
-// parameters passed by copy.
-#if PLATFORM_THREADING
 
 template<typename T>
 struct memfun_type
@@ -73,40 +64,55 @@ FFL(F const &func)
     return func;
 }
 
+os_mutex_recursive_t mutex_usb_serial();
+
+} // namespace particle
+
 #define _THREAD_CONTEXT_ASYNC_RESULT(thread, fn, result) \
     if (thread.isStarted() && !thread.isCurrentThread()) { \
         auto lambda = [=]() { (fn); }; \
-        thread.invoke_async(FFL(lambda)); \
+        thread.invoke_async(particle::FFL(lambda)); \
         return result; \
     }
 
 #define _THREAD_CONTEXT_ASYNC(thread, fn) \
     if (thread.isStarted() && !thread.isCurrentThread()) { \
         auto lambda = [=]() { (fn); }; \
-        thread.invoke_async(FFL(lambda)); \
+        thread.invoke_async(particle::FFL(lambda)); \
         return; \
     }
 
+// execute synchronously on the system thread. Since the parameter lifetime is
+// assumed to be bound by the caller, the parameters don't need marshalling
+// fn: the function call to perform. This is textually substitued into a lambda, with the
+// parameters passed by copy.
 #define SYSTEM_THREAD_CONTEXT_SYNC(fn) \
-    if (SystemThread.isStarted() && !SystemThread.isCurrentThread()) { \
-        auto callable = FFL([=]() { return (fn); }); \
-        auto future = SystemThread.invoke_future(callable); \
+    if (particle::SystemThread.isStarted() && !particle::SystemThread.isCurrentThread()) { \
+        auto callable = particle::FFL([=]() { return (fn); }); \
+        auto future = particle::SystemThread.invoke_future(callable); \
         auto result = future ? future->get() : 0;  \
         delete future; \
         return result; \
     }
 
-#else
+#define SYSTEM_THREAD_CURRENT() (particle::SystemThread.isCurrentThread())
+#define APPLICATION_THREAD_CURRENT() (particle::ApplicationThread.isCurrentThread())
+
+#else // !PLATFORM_THREADING
 
 #define _THREAD_CONTEXT_ASYNC(thread, fn)
 #define _THREAD_CONTEXT_ASYNC_RESULT(thread, fn, result)
-#define SYSTEM_THREAD_CONTEXT_SYNC(fn) 
-#endif
+#define SYSTEM_THREAD_CONTEXT_SYNC(fn)
 
-#define SYSTEM_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(SystemThread, fn)
-#define SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(fn, result) _THREAD_CONTEXT_ASYNC_RESULT(SystemThread, fn, result)
-#define APPLICATION_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(ApplicationThread, fn)
-#define APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(fn, result) _THREAD_CONTEXT_ASYNC_RESULT(ApplicationThread, fn, result)
+#define SYSTEM_THREAD_CURRENT() (1)
+#define APPLICATION_THREAD_CURRENT() (1)
+
+#endif // !PLATFORM_THREADING
+
+#define SYSTEM_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(particle::SystemThread, fn)
+#define SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(fn, result) _THREAD_CONTEXT_ASYNC_RESULT(particle::SystemThread, fn, result)
+#define APPLICATION_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(particle::ApplicationThread, fn)
+#define APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(fn, result) _THREAD_CONTEXT_ASYNC_RESULT(particle::ApplicationThread, fn, result)
 
 // Perform an asynchronous function call if not on the system thread,
 // or execute directly if on the system thread
@@ -122,16 +128,10 @@ FFL(F const &func)
     SYSTEM_THREAD_CONTEXT_SYNC(fn); \
     return fn;
 
+namespace particle {
 
+extern ISRTaskQueue SystemISRTaskQueue;
 
-#if PLATFORM_THREADING
-#define SYSTEM_THREAD_CURRENT() (SystemThread.isCurrentThread())
-#define APPLICATION_THREAD_CURRENT() (ApplicationThread.isCurrentThread())
-#else
-#define SYSTEM_THREAD_CURRENT() (1)
-#define APPLICATION_THREAD_CURRENT() (1)
-#endif
-
+} // namespace particle
 
 #endif	/* SYSTEM_THREADING_H */
-

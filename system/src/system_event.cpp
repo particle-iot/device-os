@@ -26,6 +26,8 @@
 
 namespace {
 
+using namespace particle;
+
 struct SystemEventSubscription {
 
     system_event_t events;
