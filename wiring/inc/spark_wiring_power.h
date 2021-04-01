@@ -91,7 +91,7 @@ public:
     //PreCharge/ Termination Current Control Register
     bool setPreChargeCurrent();
     byte getPreChargeCurrent();
-    bool setTermChargeCurrent();
+    bool setTermChargeCurrent(uint16_t current);
     byte getTermChargeCurrent();
 
     //Charge Voltage Control Register

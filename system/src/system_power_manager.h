@@ -64,7 +64,7 @@ private:
   void deduceBatteryStateChargeDisabled();
   void deduceBatteryStateChargeEnabled();
   void batteryStateTransitioningTo(battery_state_t targetState, bool count = true);
-  void clearIntermadiateBatteryState();
+  void clearIntermadiateBatteryState(uint8_t state);
 
   static power_source_t powerSourceFromStatus(uint8_t status);
 
@@ -74,6 +74,14 @@ private:
     ReloadConfig = 1,
     Wakeup = 2
   };
+
+  enum {
+    STATE_CHARGING = 0x01,
+    STATE_CHARGED = 0x02,
+    STATE_NOT_CHARGING = 0x04,
+    STATE_REPEATED_CHARGED = 0x08,
+    STATE_ALL = 0xFF
+  } batteryIntermadiateState;
 
   static volatile bool update_;
   os_thread_t thread_ = nullptr;
@@ -91,12 +99,14 @@ private:
   system_tick_t batMonitorTimeStamp_ = 0;
   system_tick_t battMonitorPeriod_ = 0;
   system_tick_t lastChargedTimeStamp_ = 0;
+  system_tick_t repeatedChargedTimeStamp_ = 0;
   system_tick_t disableChargingTimeStamp_ = 0;
   uint8_t notChargingDebounceCount_ = 0;
   uint8_t chargingDebounceCount_ = 0;
   uint8_t vcellDebounceCount_ = 0;
   uint8_t chargedFaultCount_ = 0;
-  bool poosibleChargedFault_ = false;
+  uint8_t repeatedChargedCount_ = 0;
+  bool possibleChargedFault_ = false;
 
   hal_power_config config_ = {};
 };
