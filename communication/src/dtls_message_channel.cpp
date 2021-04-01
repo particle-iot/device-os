@@ -17,9 +17,21 @@
  ******************************************************************************
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+
 #include "logging.h"
 
 LOG_SOURCE_CATEGORY("comm.dtls")
+
+struct mbedtls_ssl_context;
+struct mbedtls_ssl_transform;
+
+extern "C" {
+
+void mbedtls_ssl_update_in_pointers(mbedtls_ssl_context *ssl);
+void mbedtls_ssl_update_out_pointers(mbedtls_ssl_context *ssl, mbedtls_ssl_transform *transform);
+
+} // extern "C"
 
 #include "dtls_message_channel.h"
 
@@ -49,22 +61,33 @@ uint32_t compute_checksum(uint32_t(*calculate_crc)(const uint8_t* data, uint32_t
 }
 
 
-void SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum, mbedtls_ssl_context* context, message_id_t next_id)
+bool SessionPersist::prepare_save(const uint8_t* random, uint32_t keys_checksum, mbedtls_ssl_context* context, message_id_t next_id)
 {
-	if (context->state == MBEDTLS_SSL_HANDSHAKE_OVER)
-	{
-		this->keys_checksum = keys_checksum;
-		in_epoch = context->in_epoch;
-		memcpy(out_ctr, context->cur_out_ctr, 8);
-		memcpy(randbytes, random, sizeof(randbytes));
-		this->next_coap_id = next_id;
-		save_session(context->session);
-		size = sizeof(*this);
+	if (context->state != MBEDTLS_SSL_HANDSHAKE_OVER) {
+		LOG(ERROR, "Invalid handshake state");
+		return false;
 	}
-	else
-	{
-		size = 0;
+
+	uint8_t cid[MBEDTLS_SSL_CID_OUT_LEN_MAX] = {};
+	size_t cidSize = 0;
+	int cidEnabled = MBEDTLS_SSL_CID_DISABLED;
+	int r = mbedtls_ssl_get_peer_cid(context, &cidEnabled, cid, &cidSize);
+	if (r != 0 || cidEnabled != MBEDTLS_SSL_CID_ENABLED || cidSize != DTLS_CID_SIZE) {
+		LOG(ERROR, "Unable to get connection ID");
+		return false;
 	}
+	memcpy(this->cid, cid, DTLS_CID_SIZE);
+
+	this->keys_checksum = keys_checksum;
+	in_epoch = context->in_epoch;
+	memcpy(out_ctr, context->cur_out_ctr, 8);
+	memcpy(randbytes, random, sizeof(randbytes));
+	this->next_coap_id = next_id;
+	save_session(context->session);
+
+	size = sizeof(*this);
+
+	return true;
 }
 
 void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver, message_id_t next_id)
@@ -72,6 +95,9 @@ void SessionPersist::update(mbedtls_ssl_context* context, save_fn_t saver, messa
 	if (context->state == MBEDTLS_SSL_HANDSHAKE_OVER)
 	{
 		memcpy(out_ctr, context->cur_out_ctr, 8);
+		in_epoch = context->in_epoch;
+		in_window_top = context->in_window_top;
+		in_window = context->in_window;
 		this->next_coap_id = next_id;
 		save_this_with(saver);
 	}
@@ -85,20 +111,21 @@ SessionPersist::RestoreStatus SessionPersist::restore(mbedtls_ssl_context* conte
 	}
 
 	if (!is_valid() || keys_checksum!=this->keys_checksum) {
-		LOG(WARN,"discarding session: valid %d, keys_sum: %d/%d", is_valid(), keys_checksum, this->keys_checksum);
+		LOG(WARN, "discarding session: valid %d, keys_sum: %d/%d", is_valid(), keys_checksum, this->keys_checksum);
 		return NO_SESSION;
 	}
 
-    LOG(WARN, "session has %d uses", use_count());
 	if (has_expired()) {
-	    invalidate();
-	    save(saver);
-	    LOG(WARN, "session has expired after %d uses", use_count());
-	    return NO_SESSION;
+		LOG(WARN, "session has expired after %d uses", use_count());
+		invalidate();
+		save(saver);
+		return NO_SESSION;
+	} else {
+		LOG(INFO, "session has %d uses", use_count());
 	}
 
-    increment_use_count();
-    save(saver);
+	increment_use_count();
+	save(saver);
 
 	// assume invalid initially. With the ssl context being reset,
 	// we cannot return NO_SESSION from this point onwards.
@@ -109,8 +136,9 @@ SessionPersist::RestoreStatus SessionPersist::restore(mbedtls_ssl_context* conte
 	context->handshake->resume = 1;
 	restore_session(context->session_negotiate);
 
-	if (next_id)
+	if (next_id) {
 		*next_id = this->next_coap_id;
+	}
 
 	context->major_ver = MBEDTLS_SSL_MAJOR_VERSION_3;
 	context->minor_ver = MBEDTLS_SSL_MINOR_VERSION_3;
@@ -118,6 +146,8 @@ SessionPersist::RestoreStatus SessionPersist::restore(mbedtls_ssl_context* conte
 	if (!renegotiate) {
 		context->state = MBEDTLS_SSL_HANDSHAKE_WRAPUP;
 		context->in_epoch = in_epoch;
+		context->in_window_top = in_window_top;
+		context->in_window = in_window;
 		memcpy(context->cur_out_ctr, &out_ctr, sizeof(out_ctr));
 		memcpy(context->handshake->randbytes, randbytes, sizeof(randbytes));
 		const auto ciphersuiteInfo = mbedtls_ssl_ciphersuite_from_id(ciphersuite);
@@ -134,10 +164,10 @@ SessionPersist::RestoreStatus SessionPersist::restore(mbedtls_ssl_context* conte
 			return ERROR;
 		}
 
-		context->in_msg = context->in_iv + context->transform_negotiate->ivlen -
-											context->transform_negotiate->fixed_ivlen;
-		context->out_msg = context->out_iv + context->transform_negotiate->ivlen -
-											 context->transform_negotiate->fixed_ivlen;
+		context->transform_negotiate->out_cid_len = DTLS_CID_SIZE;
+		memcpy(context->transform_negotiate->out_cid, cid, DTLS_CID_SIZE);
+		mbedtls_ssl_update_out_pointers(context, context->transform_negotiate);
+		mbedtls_ssl_update_in_pointers(context);
 
 		context->session_in = context->session_negotiate;
 		context->session_out = context->session_negotiate;
@@ -148,9 +178,7 @@ SessionPersist::RestoreStatus SessionPersist::restore(mbedtls_ssl_context* conte
 		mbedtls_ssl_handshake_wrapup(context);
 		size = sizeof(*this);
 		return COMPLETE;
-	}
-	else
-	{
+	} else {
 		size = sizeof(*this);
 		return RENEGOTIATE;
 	}
@@ -231,31 +259,16 @@ ProtocolError DTLSMessageChannel::init(
 	this->server_public = new uint8_t[server_public_len];
 	memcpy(this->server_public, server_public, server_public_len);
 	this->server_public_len = server_public_len;
+
+	// Records received from the server are not expected to contain a CID
+	mbedtls_ssl_conf_cid(&conf, 0 /* len */, MBEDTLS_SSL_UNEXPECTED_CID_IGNORE);
+
 	return NO_ERROR;
 }
 
-/*
- * Inspects the move session flag to amend the application data record to a move session record.
- * See: https://github.com/particle-iot/knowledge/blob/8df146d88c4237e90553f3fd6d8465ab58ec79e0/services/dtls-ip-change.md
- */
 inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 {
-	if (move_session && len && data[0]==23)
-	{
-		// buffer for a new packet that contains the device ID length and a byte for the length appended to the existing data.
-		uint8_t d[len+DEVICE_ID_LEN+1];
-		memcpy(d, data, len);						// original application data
-		d[0] = 254;									// move session record type
-		memcpy(d+len, device_id, DEVICE_ID_LEN);	// set the device ID
-		d[len+DEVICE_ID_LEN] = DEVICE_ID_LEN;			// set the device ID length as the last byte in the packet
-		int result = callbacks.send(d, len+DEVICE_ID_LEN+1, callbacks.tx_context);
-		// hide the increased length from DTLS
-		if (result==int(len+DEVICE_ID_LEN+1))
-			result = len;
-		return result;
-	}
-	else
-		return callbacks.send(data, len, callbacks.tx_context);
+	return callbacks.send(data, len, callbacks.tx_context);
 }
 
 void DTLSMessageChannel::reset_session()
@@ -346,6 +359,13 @@ ProtocolError DTLSMessageChannel::setup_context()
 		return IO_ERROR_PARSING_SERVER_PUBLIC_KEY;
 	}
 
+	// Enable the extension but do not set a CID
+	ret = mbedtls_ssl_set_cid(&ssl_context, MBEDTLS_SSL_CID_ENABLED, nullptr /* own_cid */, 0 /* own_cid_len */);
+	if (ret != 0) {
+		LOG(ERROR, "mbedtls_ssl_set_cid() failed: -0x%x", -ret);
+		return ProtocolError::INTERNAL;
+	}
+
 	return NO_ERROR;
 }
 
@@ -355,7 +375,7 @@ ProtocolError DTLSMessageChannel::establish()
 	// LOG(INFO,"setup context");
 	ProtocolError error = setup_context();
 	if (error) {
-		LOG(ERROR,"setup_contex error %x", error);
+		LOG(ERROR,"setup_context error %d", (int)error);
 		return error;
 	}
 	bool renegotiate = false;
@@ -405,16 +425,18 @@ ProtocolError DTLSMessageChannel::establish()
 	while(ret == MBEDTLS_ERR_SSL_WANT_READ ||
 	      ret == MBEDTLS_ERR_SSL_WANT_WRITE);
 
-	if (ret)
-	{
-		LOG(ERROR,"handshake failed -%x", -ret);
+	bool ok = false;
+	if (ret) {
+		LOG(ERROR, "handshake failed -%x", -ret);
+	} if (sessionPersist.prepare_save(random, keys_checksum, &ssl_context, 0)) {
+		ok = true;
+	}
+	if (!ok) {
 		reset_session();
+		return IO_ERROR_GENERIC_ESTABLISH;
 	}
-	else
-	{
-		sessionPersist.prepare_save(random, keys_checksum, &ssl_context, 0);
-	}
-	return ret==0 ? NO_ERROR : IO_ERROR_GENERIC_ESTABLISH;
+
+	return NO_ERROR;
 }
 
 ProtocolError DTLSMessageChannel::notify_established()
@@ -435,10 +457,9 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 
 	conf.read_timeout = 0;
 	int ret = mbedtls_ssl_read(&ssl_context, buf, len);
-	if (ret<0) {
+	if (ret < 0) {
 		switch (ret) {
 		case MBEDTLS_ERR_SSL_WANT_READ:
-			break;
 		case MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE:
 			ret = 0;
 			break;
@@ -451,22 +472,17 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 		}
 	}
 	message.set_length(ret);
-	if (ret>0) {
+	if (ret > 0) {
 		cancel_move_session();
 #if defined(DEBUG_BUILD) && 0
 		if (LOG_ENABLED(TRACE)) {
-		  LOG(TRACE, "msg len %d", message.length());
-		  for (size_t i=0; i<message.length(); i++)
-		  {
-				  char buf[3];
-				  char c = message.buf()[i];
-				  sprintf(buf, "%02x", c);
-				  LOG_PRINT(TRACE, buf);
-		  }
-		  LOG_PRINT(TRACE, "\r\n");
+			LOG(TRACE, "msg len %u", (unsigned)message.length());
+			LOG_DUMP(TRACE, message.buf(), message.length());
+			LOG_PRINT(TRACE, "\r\n");
 		}
 #endif
 	}
+	sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
 	return NO_ERROR;
 }
 
@@ -486,37 +502,30 @@ void DTLSMessageChannel::cancel_move_session()
 
 ProtocolError DTLSMessageChannel::send(Message& message)
 {
-  if (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER)
-    return INVALID_STATE;
+	if (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER) {
+		return INVALID_STATE;
+	}
 
-  if (message.send_direct())
-  {
-	  // send unencrypted
-	  int bytes = this->send(message.buf(), message.length());
-	  return bytes < 0 ? IO_ERROR_GENERIC_SEND : NO_ERROR;
-  }
+	if (message.send_direct()) {
+		// send unencrypted
+		int bytes = this->send(message.buf(), message.length());
+		return bytes < 0 ? IO_ERROR_GENERIC_SEND : NO_ERROR;
+	}
 
 #if defined(DEBUG_BUILD) && 0
-      LOG(TRACE, "msg len %d", message.length());
-      for (size_t i=0; i<message.length(); i++)
-      {
-	  	  char buf[3];
-	  	  char c = message.buf()[i];
-	  	  sprintf(buf, "%02x", c);
-	  	  LOG_PRINT(TRACE, buf);
-      }
-      LOG_PRINT(TRACE, "\r\n");
+	LOG(TRACE, "msg len %u", (unsigned)message.length());
+	LOG_DUMP(TRACE, message.buf(), message.length());
+	LOG_PRINT(TRACE, "\r\n");
 #endif
 
-  int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
-  if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
-  {
-	  LOG(WARN, "mbedtls_ssl_write returned %x", ret);
-	  reset_session();
-	  return IO_ERROR_GENERIC_MBEDTLS_SSL_WRITE;
-  }
-  sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
-  return NO_ERROR;
+	int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
+	if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+		LOG(WARN, "mbedtls_ssl_write returned -0x%x", -ret);
+		reset_session();
+		return IO_ERROR_GENERIC_MBEDTLS_SSL_WRITE;
+	}
+	sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
+	return NO_ERROR;
 }
 
 bool DTLSMessageChannel::is_unreliable()
