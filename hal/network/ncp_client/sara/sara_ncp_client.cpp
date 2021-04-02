@@ -1007,7 +1007,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     switch (conf_.simType()) {
         case SimType::EXTERNAL: {
             LOG(INFO, "Using external Nano SIM card");
-            const int externalSimMode = 0;
+            const int externalSimMode = 0; // Output mode
             const int externalSimValue = 0;
             if (mode != externalSimMode || externalSimValue != value) {
                 const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
@@ -1020,8 +1020,20 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
         case SimType::INTERNAL:
         default: {
             LOG(INFO, "Using internal SIM card");
-            if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
-                const int internalSimMode = 255;
+            if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
+                const int internalSimMode = 0; // Output mode
+                const int internalSimValue = 1;
+                if (mode != internalSimMode || value != internalSimValue) {
+                    const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
+                            UBLOX_NCP_SIM_SELECT_PIN, internalSimMode, internalSimValue));
+                    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+                    reset = true;
+                }
+            } else if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+                // NOTE: [ch76449] R510S will not retain GPIO's HIGH after a cold boot
+                // Workaround: Set pin that needs to be HIGH to mode "Module status indication",
+                //             which will be set HIGH when the module is ON, and LOW when it's OFF.
+                const int internalSimMode = 10; // Module status indication mode
                 if (mode != internalSimMode) {
                     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
                             UBLOX_NCP_SIM_SELECT_PIN, internalSimMode));
@@ -1029,11 +1041,10 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                     reset = true;
                 }
             } else {
-                const int internalSimMode = 0;
-                const int internalSimValue = 1;
-                if (mode != internalSimMode || value != internalSimValue) {
-                    const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
-                            UBLOX_NCP_SIM_SELECT_PIN, internalSimMode, internalSimValue));
+                const int internalSimMode = 255; // disabled
+                if (mode != internalSimMode) {
+                    const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
+                            UBLOX_NCP_SIM_SELECT_PIN, internalSimMode));
                     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
                     reset = true;
                 }
