@@ -1682,11 +1682,13 @@ bool MDMParser::interveneRegistration(void) {
                 csd_.reset();
                 psd_.reset();
                 _registrationInterventions++;
-                sendFormated("AT+CFUN=0,0\r\n");
+                //TODO R510
+                sendFormated("AT+CFUN=0\r\n"); //,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
-                sendFormated("AT+CFUN=1,0\r\n");
+                //TODO R510
+                sendFormated("AT+CFUN=1\r\n");//,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
@@ -1728,11 +1730,13 @@ bool MDMParser::interveneRegistration(void) {
                 MDM_INFO("Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
                 _registrationInterventions++;
-                sendFormated("AT+CFUN=0,0\r\n");
+                //TODO R510 
+                sendFormated("AT+CFUN=0\r\n"); //,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
-                sendFormated("AT+CFUN=1,0\r\n");
+                //TODO R510 
+                sendFormated("AT+CFUN=1\r\n");//,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
