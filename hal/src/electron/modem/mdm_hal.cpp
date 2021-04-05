@@ -598,6 +598,8 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                 } else {
                     // +CREG|CGREG: <n>,<stat>[,<lac>,<ci>[,AcT[,<rac>]]] // reply to AT+CREG|AT+CGREG (2,4,5,6 results)
                     // +CREG|CGREG: <stat>[,<lac>,<ci>[,AcT[,<rac>]]]     // URC (1,3,4,5 results)
+
+                    //TODO R510: 'CEREG: 2,0\r\n,255,ffff,0000000,65535,00000000,ffff,ff,255,255,?7]@?V' 
                     b = (int)0xFFFF; c = (int)0xFFFFFFFF; d = -1; mode = -1; // default mode to -1 for safety
                     r = sscanf(cmd, "%31s %d,%d,\"%x\",\"%x\",%d",s,&mode,&a,&b,&c,&d);
                     if (r <= 2) {
@@ -609,6 +611,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                         // The code below doesn't consider mode to be one of the parsed values
                         r--;
                     }
+
                     bool valid_reg_cmd = true;
                     if (r >= 2) {
                         if (!strcmp(s, "CREG:")) {
@@ -880,6 +883,9 @@ bool MDMParser::_powerOn(void)
     _dev.dev = DEV_SARA_R510; 
     MDM_ERROR("Forcing to R510\r\n"); 
 
+
+    bool cur_pwr_state = false;
+
     while (i--) {
         MDM_INFO("Setup %d \r\n", i); 
 
@@ -895,7 +901,6 @@ bool MDMParser::_powerOn(void)
         HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(1500);
         HAL_GPIO_Write(PWR_UC, 1); 
 
-        bool cur_pwr_state = false;
         for (int j = 0; j < 5 && !cur_pwr_state; j++) {
             HAL_Delay_Milliseconds(1000);
             cur_pwr_state = powerState();
@@ -913,17 +918,14 @@ bool MDMParser::_powerOn(void)
         // resume AT parser to ensure it's ready to receive
         // power down commands.
         if (_cancel_all_operations) {
-            MDM_INFO("R510 cancelall \r\n");
             continue_cancel = true;
             resume(); // make sure we can talk to the modem
         }
 
-        HAL_Delay_Milliseconds(1000);
+        // HAL_Delay_Milliseconds(1000);
 
         // check interface, and use quicker 1s timeout during initial _powerOn()
-        if (_atOk(false)) {
-            MDM_INFO("ATOK\r\n");
-
+        if (_atOk(false)) { //TODO R510 seems to want to take longer for initial AT commands to start
             // Increment the state change counter to show that the modem has been powered off -> on
             if (!_pwr) {
                 _incModemStateChangeCount();
@@ -1202,7 +1204,7 @@ bool MDMParser::init(DevStatus* status)
             goto reset_failure;
         }
 
-        MDM_INFO("UMNOPROF was: %d \r\n",  curProf);
+        // MDM_INFO("UMNOPROF was: %d \r\n",  curProf);
 
         // First time setup, or switching between official SIM on wrong profile?
         if (curProf == UBLOX_SARA_UMNOPROF_SW_DEFAULT ||
@@ -1844,6 +1846,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                     }
                     // Update the context settings
                     if (set_cgdcont) {
+                        sendFormated("AT+CFUN=0\r\n"); //TODO R510
                         sendFormated("AT+CGDCONT=%d,\"IP\",\"%s\"\r\n", PDP_CONTEXT, apn ? apn : "");
                         if (waitFinalResp() != RESP_OK) {
                             goto failure;
@@ -1945,12 +1948,14 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         }
         sendFormated("AT+UCGED?\r\n");
         if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+            MDM_ERROR("UCGED? waitResp fail\r\n");
             goto failure;
         }
 
         // check EPS registration (LTE)
         sendFormated("AT+CEREG?\r\n");
         if (RESP_OK != waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT)) {
+            MDM_ERROR("CEREG? waitResp fail\r\n");
             goto failure;
         }
     } else {
@@ -2009,6 +2014,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
             _net.rsrq = 255;
             sendFormated("AT+UCGED?\r\n");
             if (RESP_OK != waitFinalResp(_cbUCGED, &_net, UCGED_TIMEOUT)) {
+                MDM_ERROR("UCGED? waitResp fail\r\n");
                 goto failure;
             }
         }
@@ -2031,7 +2037,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         memcpy(status, &_net, sizeof(NetStatus));
     }
     // don't return true until fully registered
-    if (modemIsSaraFamily()) {
+    if (modemIsSaraFamily()) { //TODO check for R510 as well?
         ok = REG_OK(eps_.status());
         if (_memoryIssuePresent && ok) {
             // start registered timer for memory issue power off delays.
@@ -2040,8 +2046,12 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     } else {
         ok = REG_OK(csd_.status()) && REG_OK(psd_.status());
     }
+
+    MDM_PRINTF("%10.3f checkNetStatus %d", HAL_Timer_Get_Milli_Seconds() * 0.001, ok);
+
     return ok;
 failure:
+    MDM_ERROR("checkNetStatus failure \r\n");
     return false;
 }
 
@@ -2591,11 +2601,34 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
             // Get local IP address associated with the default profile
             sendFormated("AT+CGPADDR=%d\r\n", PDP_CONTEXT);
             if (waitFinalResp(_cbCGPADDR, &_ip) != RESP_OK) {
+                MDM_ERROR("CGPADDR error");
                 goto failure;
             }
+
+            if (_dev.dev == DEV_SARA_R510) {
+                sendFormated("AT+UPSD=0,100,1\r\n");
+                if (RESP_OK != waitFinalResp(nullptr, nullptr, 2000)) {
+                    MDM_ERROR("UPSD1 error");
+                    goto failure;
+                }
+
+                sendFormated("AT+UPSD=0,0,0\r\n");
+                if (RESP_OK != waitFinalResp(nullptr, nullptr, 2000)) {
+                    MDM_ERROR("UPSD2 error");
+                    goto failure;
+                }
+
+                sendFormated("AT+UPSDA=0,3\r\n");
+                if (RESP_OK != waitFinalResp(nullptr, nullptr, 2000)) {
+                    MDM_ERROR("UPSDA error");
+                    goto failure;
+                }
+            }
+
             // FIXME: The existing code seems to use `_activated` and `_attached` flags kind of interchangeably
             _activated = true;
-        } else {
+        } 
+        else {
             int a = 0;
             bool force = false; // If we are already connected, don't force a reconnect.
 
@@ -2718,8 +2751,19 @@ int MDMParser::_cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip) {
         int cid, a, b, c, d;
         // +CGPADDR: <cid>,<PDP_addr>
         // TODO: IPv6
-        if (sscanf(buf, "\r\n+CGPADDR: %d,%d.%d.%d.%d", &cid, &a, &b, &c, &d) == 5) {
+
+        //TODO R510
+        //    143.905 AT read  +   32 "\r\n+CGPADDR: 1,\"100.78.144.188\"\r\n"
+        int count = sscanf(buf, "\r\n+CGPADDR: %d,%d.%d.%d.%d", &cid, &a, &b, &c, &d);
+        if (count < 5) {
+            count = sscanf(buf, "\r\n+CGPADDR: %d,\"%d.%d.%d.%d\"", &cid, &a, &b, &c, &d);
+        }
+
+        if (count == 5) {
             *ip = IPADR(a, b, c, d);
+        }
+        else {
+            INFO("Bad _cbCGPADDR count: %d", count);
         }
     }
     return WAIT;
@@ -4044,7 +4088,15 @@ int MDMElectronSerial::_send(const void* buf, int len)
 
 int MDMElectronSerial::getLine(char* buffer, int length)
 {
+    
     int ret = _getLine(&_pipeRx, buffer, length);
+    if ((ret > 0) && (NOT_FOUND != ret) && (WAIT != ret)) {
+        int trunc_len =  (length - 1);
+        if (ret <= length) {
+            trunc_len = ret;
+        }
+        buffer[trunc_len] = '\0';  //TODO R510 verify
+    }
     rxResume();
     return ret;
 }
