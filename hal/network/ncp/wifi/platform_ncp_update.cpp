@@ -39,9 +39,9 @@ namespace {
 
 class OtaUpdateSourceStream : public particle::InputStream {
 public:
-    typedef std::function<int(uintptr_t addr, uint8_t* data_buf, size_t data_size)> ReadStreamFunc_t;
+    typedef std::function<int(uintptr_t addr, uint8_t* dataBuf, size_t dataSize)> ReadStreamFunc;
 
-    OtaUpdateSourceStream(const uint8_t* buffer, size_t length, ReadStreamFunc_t func) : buffer(buffer), remaining(length), readFunc(func) {}
+    OtaUpdateSourceStream(const uint8_t* buffer, size_t length, ReadStreamFunc func) : buffer(buffer), remaining(length), readFunc(func) {}
 
     int read(char* data, size_t size) override {
         CHECK(peek(data, size));
@@ -53,9 +53,7 @@ public:
             return SYSTEM_ERROR_END_OF_STREAM;
         }
         size = std::min(size, remaining);
-        if (readFunc((uintptr_t)buffer, (uint8_t*)data, size) != SYSTEM_ERROR_NONE) {
-            return -1;
-        }
+        CHECK(readFunc((uintptr_t)buffer, (uint8_t*)data, size));
         return size;
     }
 
@@ -90,7 +88,7 @@ public:
 private:
     const uint8_t* buffer;
     size_t remaining;
-    ReadStreamFunc_t readFunc;
+    ReadStreamFunc readFunc;
 };
 
 int invalidateWifiNcpVersionCache() {
@@ -133,15 +131,13 @@ int getWifiNcpFirmwareVersion(uint16_t* ncpVersion) {
 
 } // anonymous
 
-// If this function accesses the module info via XIP it may fail to parse it correctly under
-// some not entirely clear circumstances.
 int platform_ncp_update_module(const hal_module_t* module) {
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
-    OtaUpdateSourceStream::ReadStreamFunc_t readCallback;
+    OtaUpdateSourceStream::ReadStreamFunc readCallback;
     if (module->bounds.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
         readCallback = hal_flash_read;
-    } else if (module->bounds.location == MODULE_BOUNDS_LOC_SERIAL_FLASH) {
+    } else if (module->bounds.location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH) {
         readCallback = hal_exflash_read;
     } else {
         return SYSTEM_ERROR_NOT_SUPPORTED;

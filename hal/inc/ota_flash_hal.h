@@ -40,7 +40,7 @@ extern "C" {
 
 typedef enum {
     MODULE_BOUNDS_LOC_INTERNAL_FLASH = 0,
-    MODULE_BOUNDS_LOC_SERIAL_FLASH = 1,
+    MODULE_BOUNDS_LOC_EXTERNAL_FLASH = 1,
     MODULE_BOUNDS_LOC_NCP_FLASH = 2,
 } module_bounds_location_t;
 
