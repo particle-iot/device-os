@@ -70,6 +70,7 @@ public:
     int quickStart();
     int sleep();
     int wakeup();
+    int readConfigRegister(byte &MSB, byte &LSB);
 
     bool lock();
     bool unlock();
@@ -77,7 +78,6 @@ public:
 private:
     static constexpr system_tick_t FUELGAUGE_DEFAULT_TIMEOUT = 10; // In millisecond
 
-    int readConfigRegister(byte &MSB, byte &LSB);
     int readRegister(byte startAddress, byte &MSB, byte &LSB);
     int writeRegister(byte address, byte MSB, byte LSB);
 
