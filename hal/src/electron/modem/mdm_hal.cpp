@@ -2589,23 +2589,32 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
             }
 
             if (_dev.dev == DEV_SARA_R510) {
-                sendFormated("AT+UPSD=0,100,1\r\n");
-                if (RESP_OK != waitFinalResp(nullptr, nullptr, 2000)) {
-                    MDM_ERROR("UPSD1 error");
+                int a = 0;
+                sendFormated("AT+UPSND=0,8\r\n");
+                if (RESP_OK != waitFinalResp(_cbUPSND, &a, UPSND_TIMEOUT))
                     goto failure;
+                MDM_PRINTF("UPSND %d \r\n", a);
+     
+                if (a == 0) { // PDP !activated
+                    sendFormated("AT+UPSD=0,100,1\r\n");
+                    if (RESP_OK != waitFinalResp(nullptr, nullptr, 2000)) {
+                        MDM_ERROR("UPSD1 error");
+                        goto failure;
+                    }
+
+                    sendFormated("AT+UPSD=0,0,0\r\n");
+                    if (RESP_OK != waitFinalResp(nullptr, nullptr, 2000)) {
+                        MDM_ERROR("UPSD2 error");
+                        goto failure;
+                    }
+
+                    sendFormated("AT+UPSDA=0,3\r\n");
+                    if (RESP_OK != waitFinalResp(nullptr, nullptr, 2000)) {
+                        MDM_ERROR("UPSDA error");
+                        goto failure;
+                    }
                 }
 
-                sendFormated("AT+UPSD=0,0,0\r\n");
-                if (RESP_OK != waitFinalResp(nullptr, nullptr, 2000)) {
-                    MDM_ERROR("UPSD2 error");
-                    goto failure;
-                }
-
-                sendFormated("AT+UPSDA=0,3\r\n");
-                if (RESP_OK != waitFinalResp(nullptr, nullptr, 2000)) {
-                    MDM_ERROR("UPSDA error");
-                    goto failure;
-                }
             }
 
             // FIXME: The existing code seems to use `_activated` and `_attached` flags kind of interchangeably

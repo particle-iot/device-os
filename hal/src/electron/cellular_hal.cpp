@@ -22,7 +22,7 @@ namespace
 /**
  *  \returns true if the modem is SARA R410 or SARA R510 family
  */
-bool modemIsSaraFamily(const DevStatus* const status)
+bool modemIsSaraRxFamily(const DevStatus* const status)
 {
     return ((status->dev == DEV_SARA_R410) || (status->dev == DEV_SARA_R510));
 }
@@ -43,7 +43,7 @@ const char* defaultOrUserApn(const CellularCredentials& cred)
         if (cellularNetProv == CELLULAR_NETPROV_TELEFONICA) {
             // Determine APN based on Modem Type
             const DevStatus* const status = electronMDM.getDevStatus();
-            if (modemIsSaraFamily(status)) {
+            if (modemIsSaraRxFamily(status)) {
                 cellularNetProv = CELLULAR_NETPROV_KORE_ATT;
             }
         }
@@ -285,7 +285,7 @@ cellular_result_t cellular_data_usage_set_impl(CellularDataHal &data, const MDM_
 cellular_result_t cellular_data_usage_set(CellularDataHal* data, void* reserved)
 {
     const DevStatus* const status = electronMDM.getDevStatus();
-    if (modemIsSaraFamily(status)) {
+    if (modemIsSaraRxFamily(status)) {
         return -1;
     }
 
@@ -332,7 +332,7 @@ cellular_result_t cellular_data_usage_get_impl(CellularDataHal& data, const MDM_
 cellular_result_t cellular_data_usage_get(CellularDataHal* data, void* reserved)
 {
     const DevStatus* const status = electronMDM.getDevStatus();
-    if (modemIsSaraFamily(status)) {
+    if (modemIsSaraRxFamily(status)) {
         return -1;
     }
 
@@ -346,7 +346,7 @@ cellular_result_t cellular_data_usage_get(CellularDataHal* data, void* reserved)
 cellular_result_t cellular_band_select_set(MDM_BandSelect* bands, void* reserved)
 {
     const DevStatus* const status = electronMDM.getDevStatus();
-    if (modemIsSaraFamily(status)) {
+    if (modemIsSaraRxFamily(status)) {
         return -1;
     }
 
@@ -357,7 +357,7 @@ cellular_result_t cellular_band_select_set(MDM_BandSelect* bands, void* reserved
 cellular_result_t cellular_band_select_get(MDM_BandSelect* bands, void* reserved)
 {
     const DevStatus* const status = electronMDM.getDevStatus();
-    if (modemIsSaraFamily(status)) {
+    if (modemIsSaraRxFamily(status)) {
         return -1;
     }
 
@@ -368,7 +368,7 @@ cellular_result_t cellular_band_select_get(MDM_BandSelect* bands, void* reserved
 cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reserved)
 {
     const DevStatus* const status = electronMDM.getDevStatus();
-    if (modemIsSaraFamily(status)) {
+    if (modemIsSaraRxFamily(status)) {
         return -1;
     }
 
