@@ -568,9 +568,7 @@ void PowerManager::confirmBatteryState(battery_state_t from, battery_state_t to)
     case BATTERY_STATE_CHARGED: {
       repeatedChargedTimeStamp_ = millis();
       repeatedChargedCount_ = 0;
-      FuelGauge fuel;
-      float vCell = fuel.getVCell();
-      DBG_PWR("VCell: %dmV, Term charge current: %dmA", (uint16_t)(vCell * 1000), PMIC_NORMAL_TERM_CHARGE_CURRENT);
+      DBG_PWR("Term charge current: %dmA", PMIC_NORMAL_TERM_CHARGE_CURRENT);
       // Reset the termination charge current.
       PMIC power;
       power.setTermChargeCurrent(PMIC_NORMAL_TERM_CHARGE_CURRENT);
