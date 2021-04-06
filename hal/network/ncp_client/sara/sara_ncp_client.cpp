@@ -336,12 +336,17 @@ int SaraNcpClient::on() {
     if (ncpState_ == NcpState::ON) {
         return SYSTEM_ERROR_NONE;
     }
+    // XXX: Collect the existing power state as modemPowerOn() updates the NcpState to ON.
+    // This is helpful in case of R5 modems during hard resets.
+    auto powerState = ncpPowerState();
     // Power on the modem
     auto r = modemPowerOn();
     if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
         return r;
     }
-    CHECK(waitReady(r == SYSTEM_ERROR_NONE /* powerOn */));
+
+    bool powerOn = (r == SYSTEM_ERROR_NONE) || (powerState == NcpPowerState::TRANSIENT_ON);
+    CHECK(waitReady(powerOn));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1515,7 +1520,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     // Check if the modem is responsive at the runtime baudrate
     CHECK(serial_->setBaudRate(runtimeBaudrate));
     CHECK(initParser(serial_.get()));
-    skipAll(serial_.get());
+    skipAll(serial_.get(), 1000);
     parser_.reset();
     if (!waitAtResponse(2000)) {
         state = ModemState::RuntimeBaudrate;
@@ -1527,7 +1532,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     // The modem is not responsive at the runtime baudrate, check default
     CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
     CHECK(initParser(serial_.get()));
-    skipAll(serial_.get());
+    skipAll(serial_.get(), 1000);
     parser_.reset();
     if (!waitAtResponse(5000)) {
         state = ModemState::DefaultBaudrate;
@@ -2111,6 +2116,7 @@ int SaraNcpClient::modemPowerOn() {
         }
     } else {
         LOG(TRACE, "Modem already on");
+        ncpPowerState(NcpPowerState::ON);
         // FIXME:
         return SYSTEM_ERROR_ALREADY_EXISTS;
     }
@@ -2217,30 +2223,35 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
     }
 
     LOG(TRACE, "Hard resetting the modem");
-    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
-        // U201
+    if (ncpId() == PLATFORM_NCP_SARA_U201) {
         // Low pulse for 50ms
         HAL_GPIO_Write(UBRST, 0);
         HAL_Delay_Milliseconds(50);
         HAL_GPIO_Write(UBRST, 1);
-        HAL_Delay_Milliseconds(1000);
-
+        HAL_Delay_Milliseconds(1000);   // just in case
+		ncpPowerState(NcpPowerState::TRANSIENT_ON); // TODO: Test this
         // NOTE: powerOff argument is ignored, modem will restart automatically
         // in all cases
+    } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
+        HAL_GPIO_Write(UBRST, 0);
+        HAL_Delay_Milliseconds(200);
+        HAL_GPIO_Write(UBRST, 1);
+        ncpPowerState(NcpPowerState::TRANSIENT_ON);
+        // Note: No need to apply just-in-case delays, plus the radio seems to
+        // reset a few times rapidly and is unresponsive to AT for a few runs.
+		// Still recoverable by using the TRANSIENT_ON state as above, which
+        // recognizes to wait longer during this transition.
     } else {
         // If memory issue is present, ensure we don't force a power off too soon
         // to avoid hitting the 124 day memory housekeeping issue
         if (memoryIssuePresent_) {
             waitForPowerOff();
         }
-        // R410
-        // Low pulse for 10s
+        // R410 - Low pulse for 10s
         HAL_GPIO_Write(UBRST, 0);
         HAL_Delay_Milliseconds(10000);
         HAL_GPIO_Write(UBRST, 1);
-        // Just in case waiting here for one more second,
-        // won't hurt, we've already waited for 10
-        HAL_Delay_Milliseconds(1000);
+        HAL_Delay_Milliseconds(1000);   // just in case
         // IMPORTANT: R4 is powered-off after applying RESET!
         if (!powerOff) {
             LOG(TRACE, "Powering on the modem after the hard reset");
