@@ -64,7 +64,7 @@ private:
   void deduceBatteryStateChargeDisabled();
   void deduceBatteryStateChargeEnabled();
   void batteryStateTransitioningTo(battery_state_t targetState, bool count = true);
-  void clearIntermadiateBatteryState(uint8_t state);
+  void clearIntermediateBatteryState(uint8_t state);
 
   static power_source_t powerSourceFromStatus(uint8_t status);
 
@@ -81,7 +81,7 @@ private:
     STATE_NOT_CHARGING = 0x04,
     STATE_REPEATED_CHARGED = 0x08,
     STATE_ALL = 0xFF
-  } batteryIntermadiateState;
+  };
 
   static volatile bool update_;
   os_thread_t thread_ = nullptr;

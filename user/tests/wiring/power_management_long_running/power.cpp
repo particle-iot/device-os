@@ -31,6 +31,21 @@ SYSTEM_THREAD(ENABLED);
 
 namespace {
 
+static const char* txString = 
+"urjlU1tW177HwJsR6TylreMKge225qyLaIizW5IhXHkWgTGpH2fZtm2Od20Ne3Q81fxfUl7zoFaF\
+Z6smPzkpTGNSxGg7TCEiE2f19951tKxjFCB4Se86R4CaWW2YZF0mogirgsu2qRMGe4mC9QlJkCgXP\
+bgSVV1mc2xsZcu4bj0pbmPIhxkuyAHe4cVK3gLpWEGTadtAn2k66rOFNBdfPaE0cUY3wwXlVQ9yDl\
+OxexepQcC2WTrbUe4z85OSae9s8A6BwUCRBYYfEH01cnGCzYGCEOEm5jl4nJ3HqWckHI5K2NeWS4x\
+EhkgMqG3RwfOTM85SQ7q7NLIhgprCTsBTzv2YpGgbAB7oSX0joGQHxfyndxIyCVIHknvEj1hynXtw\
+uebA6i7JBFiGkk4AnRzk7v3dNjHt6weuYWtf6yj3aVzhbMaWFCR6HOKFc3i8XzBsnLTc4Uzft61a0\
+qV8ZssHdHO7sbiojOmA37RkrNUFxX1aODUXWNEntkTylwvhxKpsAb6Lsopzve4ea2G17WpW62Z12x\
+mNgTZQHOo3fCZDy8L7WfVwCJiJunHPXu9jw6g11NJFcpo2AakkZQDgUGZoeZgDB6GfRheAiurAEB5\
+Ym4EVIQB9AvVBf4zY84R8D4bnfjwwLDwiZSo9y2Z5JsVQ0yRdqPdxv0cV2Kp0AaevITeubJseCXOg\
+LkFiaeDTBoR7kyMyoJvJl4vjLmiV03RNSAl9JpZkBfTHzalZw8oaRHMMiTVVGdieJOIbANoaXyRbe\
+xSYU1t5dOe8wxybwfBBlPIswpVJ45kXd4Bu8NCLXPAbgJCOVSlTQsfvzVKZykp9V1DBQ3PwyeBXJB\
+QsLDslIOHOKbfqB8njXotpE3Dz46Wi6QtpinLsSiviZmz62qLW5Pd9M7SDCarrxFk8SBHyJl2KdjH\
+5Lx1LmkW8gMiYquOctT9xhFNs406BxWrPcTc5kwaSJ6RJQyohQEJk9ojchrbSo4ucfZGQzEMBEIJs";
+
 constexpr uint32_t DISCHARGE_STATE1 = 0xc00f;
 constexpr uint32_t DISCHARGE_STATE2 = 0xd00f;
 constexpr uint32_t CHARGING_STATE_DISABLED_CHARGING = 0xbeef;
@@ -53,11 +68,9 @@ STARTUP(startup());
 void testDischarge() {
     SCOPE_GUARD ({
         dischargeTested = true;
-        if (Particle.connected()) {
-            SERIAL.println("> Disconnect from the cloud...");
-            Particle.disconnect();
-            SERIAL.println("> Turn off the Cellular modem.");
-            Cellular.off();
+        if (Network.ready()) {
+            SERIAL.println("> Turn off the modem.");
+            Network.off();
         }
         if (!Serial.isConnected()) {
             SERIAL.println("\r\n> Please \"plug\" the USB and reconnect the Serial to continue the test.");
@@ -69,7 +82,7 @@ void testDischarge() {
         }
     });
     if (!dischargeTested) {
-        constexpr float DISCHARGE_TERMINATION_VCELL = 3.90f;
+        constexpr float DISCHARGE_TERMINATION_VCELL = 3.85f;
 
         SERIAL.println("> Please \"unplug\" the USB");
         while (Serial.isConnected());
@@ -80,32 +93,40 @@ void testDischarge() {
         }, 10000));
         assertEqual(System.powerSource(), (int)POWER_SOURCE_BATTERY);
 
-        SERIAL.print("> Device is connecting to the cloud... ");
-        Particle.connect();
-        assertTrue(waitFor(Particle.connected, 120000)); // 2 minutes
+        SERIAL.print("> Device is connecting to network... ");
+        Network.connect();
+        assertTrue(waitFor(Network.ready, 120000)); // 2 minutes
         SERIAL.println("connected.");
 
-        SERIAL.println("> Device is publishing message in every second to discharge the battery...");
-        FuelGauge fuel;
-        float vcell = fuel.getVCell();
-        SERIAL.printlnf("> VBAT: %0.2fv", vcell);
+        SERIAL.println("> Device is sending UDP packets to discharge the battery...");
+
+        UDP udp;
+        IPAddress remoteIP(192, 168, 1, 100);
+        int port = 1337;
+        udp.begin(8080);
 
         SERIAL.println("> Test is running...");
         uint8_t count = 0;
-        time32_t now = Time.now();
-        while (vcell > DISCHARGE_TERMINATION_VCELL || count < 10) {
-            if (Time.now() - now > 1) {
-                now = Time.now();
-                Particle.publish("Hello world!");
-                assertEqual(System.batteryState(), (int)BATTERY_STATE_DISCHARGING);
-                assertEqual(System.powerSource(), (int)POWER_SOURCE_BATTERY);
+        FuelGauge fuel;
+        float vcell = fuel.getVCell();
+        while (count < 100) {
+            assertEqual(System.batteryState(), (int)BATTERY_STATE_DISCHARGING);
+            assertEqual(System.powerSource(), (int)POWER_SOURCE_BATTERY);
 
-                vcell = fuel.getVCell();
-                if (vcell <= DISCHARGE_TERMINATION_VCELL) {
-                    count++;
-                }
+            const auto v = fuel.getVCell();
+            if ((v + 0.01f) < vcell) {
+                vcell = v;
+                SERIAL.printlnf("> VBAT: %0.2fv", vcell);
             }
+            if (vcell <= DISCHARGE_TERMINATION_VCELL) {
+                count++;
+            }
+
+            udp.sendPacket(txString, strlen(txString), remoteIP, port);
+            delay(10);
         }
+
+        udp.stop();
     }
 }
 
@@ -115,7 +136,18 @@ test(power_00_setup) {
     SERIAL.begin(115200);
     SERIAL.println("\r\npower_00_setup");
 
-    constexpr float DISCHARGE_VCELL = 4.1f;
+    constexpr float DISCHARGE_VCELL = 4.0f;
+
+    assertEqual(
+        System.setPowerConfiguration(
+            SystemPowerConfiguration().feature(SystemPowerFeature::PMIC_DETECTION)
+                                      .powerSourceMaxCurrent(particle::power::DEFAULT_INPUT_CURRENT_LIMIT)
+                                      .batteryChargeVoltage(particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT)
+                                      .batteryChargeCurrent(particle::power::DEFAULT_CHARGE_CURRENT)
+                                      .batteryChargeVoltage(particle::power::DEFAULT_TERMINATION_VOLTAGE)),
+        (int)SYSTEM_ERROR_NONE
+    );
+    delay(1s);
 
     auto cfg = System.getPowerConfiguration();
     assertEqual(cfg.isFeatureSet(SystemPowerFeature::PMIC_DETECTION), true);
@@ -140,7 +172,7 @@ test(power_00_setup) {
 
     SERIAL.println("> Wait the power management settled...");
     assertTrue(waitFor([]{
-        return (System.batteryState()!= BATTERY_STATE_UNKNOWN) && (System.powerSource() == POWER_SOURCE_USB_HOST);
+        return (System.batteryState() != BATTERY_STATE_UNKNOWN) && (System.batteryState() != BATTERY_STATE_DISCONNECTED) && (System.powerSource() == POWER_SOURCE_USB_HOST);
     }, 10000));
     PMIC power;
     assertTrue(power.isChargingEnabled());
