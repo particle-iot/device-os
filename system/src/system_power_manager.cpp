@@ -810,6 +810,9 @@ void PowerManager::deduceBatteryStateChargeEnabled() {
     } else {
       batteryStateTransitioningTo(BATTERY_STATE_NOT_CHARGING);
     }
+  } else {
+    // In case that the battery is charged and somewhere just shortens the period, e.g. after waking up.
+    battMonitorPeriod_ = BATTERY_STATE_NORMAL_CHECK_PERIOD;
   }
 }
 
