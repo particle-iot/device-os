@@ -2030,7 +2030,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         ok = REG_OK(csd_.status()) && REG_OK(psd_.status());
     }
 
-    MDM_PRINTF("%10.3f checkNetStatus %d", HAL_Timer_Get_Milli_Seconds() * 0.001, ok);
+    //MDM_PRINTF("%10.3f checkNetStatus %d \r\n", HAL_Timer_Get_Milli_Seconds() * 0.001, ok);
 
     return ok;
 failure:
@@ -2886,7 +2886,8 @@ bool MDMParser::detach(void)
         MDM_INFO("\r\n[ Modem::detach ] = = = = = = = = = = = = = = =");
         // Unregister from the network entirely
         if (_checkModem()) {
-            sendFormated("AT+CFUN=0,0\r\n");
+            //TODO R510
+            sendFormated("AT+CFUN=0\r\n");
             if (waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT) == RESP_OK) {
                 _activated = false;
                 ok = true;
