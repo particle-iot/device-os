@@ -22,6 +22,8 @@
 #error "Unsupported platform"
 #endif // !HAL_PLATFORM_POWER_MANAGEMENT
 
+#include "scope_guard.h"
+
 SYSTEM_MODE(SEMI_AUTOMATIC);
 UNIT_TEST_APP();
 
