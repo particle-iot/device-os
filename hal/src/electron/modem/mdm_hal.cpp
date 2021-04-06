@@ -872,7 +872,7 @@ bool MDMParser::_powerOn(void)
     bool continue_cancel = false;
     bool retried_after_reset = false;
     int i = MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET; // When modem not responsive on boot, AT/OK tries 25x (for ~30s) before hard reset
-
+    const int FIRST_ITERATION = (MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET-1);
     // FIXME: REMOVE THIS BEFORE MERGING!!!!!!
     _dev.dev = DEV_SARA_R510; 
     MDM_ERROR("Forcing to R510\r\n"); 
@@ -919,7 +919,7 @@ bool MDMParser::_powerOn(void)
         // HAL_Delay_Milliseconds(1000);
 
         // check interface, and use quicker 1s timeout during initial _powerOn()
-        if (_atOk(true)) { //TODO R510 seems to want to take longer for initial AT commands to start
+        if (_atOk(FIRST_ITERATION != i)) { //TODO R510 seems to want to take longer for first AT response
             // Increment the state change counter to show that the modem has been powered off -> on
             if (!_pwr) {
                 _incModemStateChangeCount();
