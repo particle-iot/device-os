@@ -30,7 +30,7 @@ const module_bounds_t module_ota = {
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_ANY
 #endif
-        ,.location = MODULE_BOUNDS_LOC_SERIAL_FLASH
+        ,.location = MODULE_BOUNDS_LOC_EXTERNAL_FLASH
     };
 
 STATIC_ASSERT(Expected_OTA_region_at_end_of_external_flash, (EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH) == EXTERNAL_FLASH_SIZE);
@@ -74,7 +74,7 @@ const module_bounds_t module_factory = {
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
-        ,.location = MODULE_BOUNDS_LOC_SERIAL_FLASH
+        ,.location = MODULE_BOUNDS_LOC_EXTERNAL_FLASH
     };
 
 
@@ -102,7 +102,7 @@ const module_bounds_t module_factory_mono = {
 #if HAL_PLATFORM_NCP
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
-        ,.location = MODULE_BOUNDS_LOC_SERIAL_FLASH
+        ,.location = MODULE_BOUNDS_LOC_EXTERNAL_FLASH
     };
 
 // placeholder for unused space
