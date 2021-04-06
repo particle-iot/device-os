@@ -42,7 +42,7 @@
 
 #define HAL_PLATFORM_NRF52840 (1)
 
-/* 30 seconds */
+/* 25 seconds */
 #define HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL (25000)
 
 /* XXX: hardcoded 23 minutes for now */
