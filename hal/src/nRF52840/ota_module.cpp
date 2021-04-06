@@ -26,7 +26,7 @@ namespace {
 const module_info_t* get_module_info(const module_bounds_t* bounds, uint32_t* offset = nullptr, module_info_t* infoOut = nullptr) {
     if (bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
         return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address, offset, infoOut);
-    } else if (bounds->location == MODULE_BOUNDS_LOC_SERIAL_FLASH) {
+    } else if (bounds->location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH) {
         return FLASH_ModuleInfo(FLASH_SERIAL, bounds->start_address, offset, infoOut);
     }
     return nullptr;
@@ -35,17 +35,13 @@ const module_info_t* get_module_info(const module_bounds_t* bounds, uint32_t* of
 bool verify_crc32(const module_bounds_t* bounds, const module_info_t* info) {
     if (bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
         return FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(info));
-    } else if (bounds->location == MODULE_BOUNDS_LOC_SERIAL_FLASH) {
+    } else if (bounds->location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH) {
         return FLASH_VerifyCRC32(FLASH_SERIAL, bounds->start_address, module_length(info));
     }
     return false;
 }
 
 } // namespace
-
-// NB: Modules in external flash are made to appears as if they are located in Internal flash by means of
-// XiP - the external flash is mapped to a region of addressable memory, and can be access transparently via
-// a pointer to the memory region.
 
 /**
  * Determines if a given address is in range.
@@ -77,8 +73,6 @@ const module_info_t* locate_module(const module_bounds_t* bounds, module_info_t*
  * @param userDepsOptional
  * @return {@code true} if the module info can be read via the info, crc, suffix pointers.
  */
-// If this function accesses the module info via XIP it may fail to parse it correctly under
-// some not entirely clear circumstances.
 bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags, module_info_t* infoOut)
 {
     memset(target, 0, sizeof(*target));

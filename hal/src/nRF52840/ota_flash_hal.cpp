@@ -181,7 +181,7 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
                         bounds->module_function == MODULE_FUNCTION_RADIO_STACK) {
                     continue; // These modules will be fetched in HAL_OTA_Add_System_Info()
                 }
-                if (bounds->location == MODULE_BOUNDS_LOC_SERIAL_FLASH) {
+                if (bounds->location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH) {
                     auto pInfo = new module_info_t();
                     if (!fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY, pInfo)) {
                         delete pInfo;
@@ -215,7 +215,7 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     {
         HAL_OTA_Add_System_Info(info, construct, reserved);
         for (uint8_t i = 0; i < count; i++) {
-            if (info->modules[i].bounds.location == MODULE_BOUNDS_LOC_SERIAL_FLASH && info->modules[i].info) {
+            if (info->modules[i].bounds.location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH && info->modules[i].info) {
                 delete info->modules[i].info;
             }
         }
@@ -224,8 +224,6 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     }
 }
 
-// If this function accesses the module info via XIP it may fail to parse it correctly under
-// some not entirely clear circumstances.
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
 {
     if (module_function(module) != MODULE_FUNCTION_SYSTEM_PART)
@@ -286,8 +284,6 @@ bool validate_module_dependencies_full(const module_info_t* module, const module
     return valid;
 }
 
-// If this function accesses the module info via XIP it may fail to parse it correctly under
-// some not entirely clear circumstances.
 bool validate_module_dependencies(const module_bounds_t* bounds, bool userOptional, bool fullDeps)
 {
     bool valid = false;
@@ -459,8 +455,6 @@ int validityResultToSystemError(unsigned result, unsigned checked) {
 // TODO: Current design of the OTA subsystem and the protocol doesn't allow for updating
 // multiple modules at once. As a "temporary" workaround, multiple modules can be combined
 // into a single binary
-// If this function accesses the module info via XIP it may fail to parse it correctly under
-// some not entirely clear circumstances.
 int fetchModules(hal_module_t* modules, size_t maxModuleCount, bool userDepsOptional, unsigned flags, module_info_t* const infos) {
     hal_module_t module = {};
     module_bounds_t bounds = module_ota;
@@ -491,8 +485,6 @@ int fetchModules(hal_module_t* modules, size_t maxModuleCount, bool userDepsOpti
     return count;
 }
 
-// If this function accesses the module info via XIP it may fail to parse it correctly under
-// some not entirely clear circumstances.
 int validateModules(const hal_module_t* modules, size_t moduleCount) {
     for (size_t i = 0; i < moduleCount; ++i) {
         const auto module = modules + i;
@@ -539,8 +531,6 @@ const size_t MAX_COMBINED_MODULE_COUNT = 2;
 
 } // namespace
 
-// If this function accesses the module info via XIP it may fail to parse it correctly under
-// some not entirely clear circumstances.
 int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
 {
     hal_module_t modules[MAX_COMBINED_MODULE_COUNT] = {};
@@ -557,8 +547,6 @@ int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flag
     return 0;
 }
 
-// If this function accesses the module info via XIP it may fail to parse it correctly under
-// some not entirely clear circumstances.
 int HAL_FLASH_End(void* reserved)
 {
     hal_module_t modules[MAX_COMBINED_MODULE_COUNT] = {};
