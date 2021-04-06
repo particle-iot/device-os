@@ -511,7 +511,7 @@ public:
     /** 
      *  \returns true if the modem is SARA R410 or SARA R510 family
      */
-    bool modemIsSaraFamily();
+    bool modemIsSaraRxFamily();
 
 protected:
     /** Write bytes to the physical interface. This function should be
