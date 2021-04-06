@@ -844,31 +844,58 @@ void hal_i2c_set_callback_on_requested(hal_i2c_interface_t i2c, void (*function)
 
 uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1) {
     hal_i2c_lock(i2c, NULL);
-    if (hal_i2c_is_enabled(i2c, NULL)) {
-        hal_i2c_end(i2c, NULL);
 
-        HAL_Pin_Mode(i2cMap[i2c]->sdaPin, INPUT_PULLUP); //Turn SCA into high impedance input
-        HAL_Pin_Mode(i2cMap[i2c]->sclPin, OUTPUT); //Turn SCL into a normal GPO
-        HAL_GPIO_Write(i2cMap[i2c]->sclPin, 1); // Start idle HIGH
-
-        //Generate 9 pulses on SCL to tell slave to release the bus
-        for (int i = 0; i < 9; i++) {
-            HAL_GPIO_Write(i2cMap[i2c]->sclPin, 0);
-            HAL_Delay_Microseconds(100);
-            HAL_GPIO_Write(i2cMap[i2c]->sclPin, 1);
-            HAL_Delay_Microseconds(100);
-        }
-
-        //Change SCL to be an input
-        HAL_Pin_Mode(i2cMap[i2c]->sclPin, INPUT_PULLUP);
-
-        hal_i2c_begin(i2c, i2cMap[i2c]->mode, i2cMap[i2c]->initStructure.I2C_OwnAddress1 >> 1, NULL);
-        HAL_Delay_Milliseconds(50);
+    if (!hal_i2c_is_enabled(i2c, NULL) || i2cMap[i2c]->mode != I2C_MODE_MASTER) {
         hal_i2c_unlock(i2c, NULL);
-        return 0;
+        return 1;
     }
+
+    // NOTE: make sure to reconfigure the pins to OUTPUT_OPEN_DRAIN_PULLUP
+    // before deinitializing the I2C peripheral to avoid glitches on the bus
+    hal_gpio_config_t conf = {
+        .size = sizeof(conf),
+        .version = HAL_GPIO_VERSION,
+        .mode = OUTPUT_OPEN_DRAIN_PULLUP,
+        .set_value = true,
+        .value = 1
+    };
+    HAL_Pin_Configure(i2cMap[i2c]->sdaPin, &conf, NULL);
+    conf.value = HAL_GPIO_Read(i2cMap[i2c]->sclPin);
+    HAL_Pin_Configure(i2cMap[i2c]->sclPin, &conf, NULL);
+
+    hal_i2c_end(i2c, NULL);
+
+    // Generate up to 9 pulses on SCL to tell slave to release the bus
+    for (int i = 0; i < 9; i++) {
+        HAL_GPIO_Write(i2cMap[i2c]->sdaPin, 1);
+        HAL_Delay_Microseconds(50);
+
+        if (HAL_GPIO_Read(i2cMap[i2c]->sdaPin) == 0) {
+            HAL_GPIO_Write(i2cMap[i2c]->sclPin, 0);
+            HAL_Delay_Microseconds(50);
+            HAL_GPIO_Write(i2cMap[i2c]->sclPin, 1);
+            HAL_Delay_Microseconds(50);
+            HAL_GPIO_Write(i2cMap[i2c]->sclPin, 0);
+            HAL_Delay_Microseconds(50);
+        } else {
+            break;
+        }
+    }
+
+    // Generate STOP condition: pull SDA low, switch to high
+    HAL_GPIO_Write(i2cMap[i2c]->sdaPin, 0);
+    HAL_Delay_Microseconds(50);
+    HAL_GPIO_Write(i2cMap[i2c]->sclPin, 1);
+    HAL_Delay_Microseconds(50);
+    HAL_GPIO_Write(i2cMap[i2c]->sdaPin, 1);
+    HAL_Delay_Microseconds(50);
+
+
+    hal_i2c_begin(i2c, i2cMap[i2c]->mode, i2cMap[i2c]->initStructure.I2C_OwnAddress1 >> 1, NULL);
+    HAL_Delay_Milliseconds(50);
+
     hal_i2c_unlock(i2c, NULL);
-    return 1;
+    return 0;
 }
 
 static void HAL_I2C_ER_InterruptHandler(hal_i2c_interface_t i2c) {

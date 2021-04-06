@@ -666,25 +666,33 @@ uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved
         .value = 1
     };
     HAL_Pin_Configure(i2cMap[i2c].sda_pin, &conf, nullptr);
+    conf.value = HAL_GPIO_Read(i2cMap[i2c].scl_pin);
     HAL_Pin_Configure(i2cMap[i2c].scl_pin, &conf, nullptr);
 
-    // Generate 9 pulses on SCL to tell slave to release the bus
+    // Generate up to 9 pulses on SCL to tell slave to release the bus
     for (int i = 0; i < 9; i++) {
         HAL_GPIO_Write(i2cMap[i2c].sda_pin, 1);
         HAL_Delay_Microseconds(50);
-        HAL_GPIO_Write(i2cMap[i2c].scl_pin, 0);
-        HAL_Delay_Microseconds(50);
-        HAL_GPIO_Write(i2cMap[i2c].scl_pin, 1);
-        HAL_Delay_Microseconds(50);
 
-        if (HAL_GPIO_Read(i2cMap[i2c].sda_pin)) {
-            // Generate STOP condition: pull SDA low, switch to high
-            HAL_GPIO_Write(i2cMap[i2c].sda_pin, 0);
+        if (HAL_GPIO_Read(i2cMap[i2c].sda_pin) == 0) {
+            HAL_GPIO_Write(i2cMap[i2c].scl_pin, 0);
             HAL_Delay_Microseconds(50);
-            HAL_GPIO_Write(i2cMap[i2c].sda_pin, 1);
+            HAL_GPIO_Write(i2cMap[i2c].scl_pin, 1);
             HAL_Delay_Microseconds(50);
+            HAL_GPIO_Write(i2cMap[i2c].scl_pin, 0);
+            HAL_Delay_Microseconds(50);
+        } else {
+            break;
         }
     }
+
+    // Generate STOP condition: pull SDA low, switch to high
+    HAL_GPIO_Write(i2cMap[i2c].sda_pin, 0);
+    HAL_Delay_Microseconds(50);
+    HAL_GPIO_Write(i2cMap[i2c].scl_pin, 1);
+    HAL_Delay_Microseconds(50);
+    HAL_GPIO_Write(i2cMap[i2c].sda_pin, 1);
+    HAL_Delay_Microseconds(50);
 
     HAL_Set_Pin_Function(i2cMap[i2c].sda_pin, PF_I2C);
     HAL_Set_Pin_Function(i2cMap[i2c].scl_pin, PF_I2C);

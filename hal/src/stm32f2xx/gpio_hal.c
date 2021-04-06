@@ -282,7 +282,7 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) 
     GPIO_InitStructure.GPIO_Pin = gpio_pin;
 
     // Pre-set the output value if requested to avoid a glitch
-    if (conf->set_value && (conf->mode == OUTPUT || conf->mode == OUTPUT_OPEN_DRAIN)) {
+    if (conf->set_value && (conf->mode == OUTPUT || conf->mode == OUTPUT_OPEN_DRAIN || conf->mode == OUTPUT_OPEN_DRAIN_PULLUP)) {
         if (conf->value) {
             // Modify BSy (bit set)
             gpio_port->BSRRL = gpio_pin;
@@ -347,6 +347,15 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) 
             GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
             PIN_MAP[pin].pin_mode = AN_OUTPUT;
             break;
+
+        case OUTPUT_OPEN_DRAIN_PULLUP:
+            GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+            GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+            GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+            GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+            PIN_MAP[pin].pin_mode = OUTPUT_OPEN_DRAIN_PULLUP;
+            break;
+
 
         default:
             break;
