@@ -125,7 +125,7 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) 
                     }
                 }
                 nrf_gpio_cfg(nrfPin,
-                    NRF_GPIO_PIN_DIR_INPUT,
+                    NRF_GPIO_PIN_DIR_OUTPUT,
                     NRF_GPIO_PIN_INPUT_CONNECT,
                     NRF_GPIO_PIN_NOPULL,
                     driveStrength,
@@ -140,7 +140,7 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) 
                     }
                 }
                 nrf_gpio_cfg(nrfPin,
-                    NRF_GPIO_PIN_DIR_INPUT,
+                    NRF_GPIO_PIN_DIR_OUTPUT,
                     NRF_GPIO_PIN_INPUT_CONNECT,
                     NRF_GPIO_PIN_PULLUP,
                     driveStrength,
