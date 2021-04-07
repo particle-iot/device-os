@@ -262,13 +262,10 @@ int getModuleInfo(ctrl_request* req) {
         const auto info = (const hal_system_info_t*)*arg;
         for (size_t i = 0; i < info->module_count; ++i) {
             const hal_module_t& module = info->modules[i];
-            if (!module.info) {
-                continue;
-            }
             if (module.bounds.store != MODULE_STORE_MAIN) {
                 continue;
             }
-            const auto type = moduleFunctionToPb((module_function_t)module.info->module_function);
+            const auto type = moduleFunctionToPb((module_function_t)module.info.module_function);
             if (type == PB(FirmwareModuleType_INVALID_FIRMWARE_MODULE)) {
                 continue;
             }
@@ -280,9 +277,9 @@ int getModuleInfo(ctrl_request* req) {
 #endif // HYBRID_BUILD
             PB(GetModuleInfoReply_Module) pbModule = {};
             pbModule.type = type;
-            pbModule.index = module.info->module_index;
-            pbModule.version = module.info->module_version;
-            pbModule.size = (uintptr_t)module.info->module_end_address - (uintptr_t)module.info->module_start_address;
+            pbModule.index = module.info.module_index;
+            pbModule.version = module.info.module_version;
+            pbModule.size = (uintptr_t)module.info.module_end_address - (uintptr_t)module.info.module_start_address;
             unsigned valid = 0;
             if (!(module.validity_result & MODULE_VALIDATION_INTEGRITY)) {
                 valid |= PB(FirmwareModuleValidityFlag_INTEGRITY_CHECK_FAILED);
@@ -291,7 +288,7 @@ int getModuleInfo(ctrl_request* req) {
                 valid |= PB(FirmwareModuleValidityFlag_DEPENDENCY_CHECK_FAILED);
             }
             pbModule.validity = valid;
-            pbModule.dependencies.arg = const_cast<module_info_t*>(module.info);
+            pbModule.dependencies.arg = const_cast<module_info_t*>(&module.info);
             pbModule.dependencies.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
                 const auto info = (const module_info_t*)*arg;
                 for (unsigned i = 0; i < 2; ++i) {

@@ -430,7 +430,7 @@ bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
 
     // First verify bootloader module
     bounds = find_module_bounds(MODULE_FUNCTION_BOOTLOADER, 0, HAL_PLATFORM_MCU_DEFAULT);
-    module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY, NULL);
+    module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
 
     valid = module_fetched && (mod.validity_checked == mod.validity_result);
 
@@ -447,7 +447,7 @@ bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
     do {
         bounds = find_module_bounds(MODULE_FUNCTION_SYSTEM_PART, i++, HAL_PLATFORM_MCU_DEFAULT);
         if (bounds) {
-            module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY, NULL);
+            module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
             valid = module_fetched && (mod.validity_checked == mod.validity_result);
         }
         if (flags & 1) {

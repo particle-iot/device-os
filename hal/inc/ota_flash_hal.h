@@ -68,9 +68,9 @@ typedef enum {
 
 typedef struct {
     module_bounds_t bounds;
-    const module_info_t* info;      // pointer to the module info in the module, may be NULL
-    const module_info_crc_t* crc;
-    const module_info_suffix_t* suffix;
+    module_info_t info;      // pointer to the module info in the module, may be NULL
+    module_info_crc_t crc;
+    module_info_suffix_t suffix;
     uint16_t validity_checked;    // the flags that were checked
     uint16_t validity_result;     // the result of the checks
     uint32_t module_info_offset;  // offset of the module info

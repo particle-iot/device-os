@@ -27,7 +27,7 @@ extern "C" {
 /**
  * Augments the module info with radio stack module info.
  */
-int platform_radio_stack_fetch_module_info(hal_system_info_t* sys_info, bool create);
+int platform_radio_stack_fetch_module_info(hal_system_info_t* sys_info);
 
 #ifdef __cplusplus
 }
