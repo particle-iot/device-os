@@ -819,6 +819,20 @@ byte PMIC::readChargeTermRegister(void) {
 
 }
 
+bool PMIC::setTermChargeCurrent(uint16_t current) {
+    std::lock_guard<PMIC> l(*this);
+
+    const uint16_t baseValue = 128;
+
+    // Find closest matching value not larger than 'current'
+    uint8_t ccr = (uint8_t)(findClosestMatchingSum(current, baseValue, 4, 7) << 0);
+
+    uint8_t currentCcr = readRegister(PRECHARGE_CURRENT_CONTROL_REGISTER);
+    ccr |= (currentCcr & 0xF0);
+    writeRegister(PRECHARGE_CURRENT_CONTROL_REGISTER, ccr);
+    return true;
+}
+
 /*******************************************************************************
  * Function Name  :
  * Description    :
