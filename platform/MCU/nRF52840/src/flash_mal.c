@@ -35,6 +35,7 @@
 #include "hal_platform.h"
 #include "inflate.h"
 #include "nrf_mbr.h"
+#include "check.h"
 
 // Decompression of firmware modules is only supported in the bootloader
 #if (HAL_PLATFORM_COMPRESSED_OTA) && (MODULE_FUNCTION == MOD_FUNC_BOOTLOADER)
@@ -123,13 +124,12 @@ static bool verify_module(flash_device_t src_dev, uintptr_t src_addr, size_t src
         size_t module_info_size = 0;
         int module_info_platform_id = -1;
         int module_info_func = -1;
-        module_info_t infoTemp;
-        const module_info_t* const info = FLASH_ModuleInfo(src_dev, src_addr, NULL, &infoTemp);
-        if (info) {
-            module_info_start_addr = (uintptr_t)info->module_start_address;
-            module_info_size = info->module_end_address - info->module_start_address;
-            module_info_platform_id = info->platform_id;
-            module_info_func = info->module_function;
+        module_info_t info = {};
+        if (FLASH_ModuleInfo(src_dev, src_addr, NULL, &info) == SYSTEM_ERROR_NONE) {
+            module_info_start_addr = (uintptr_t)info.module_start_address;
+            module_info_size = info.module_end_address - info.module_start_address;
+            module_info_platform_id = info.platform_id;
+            module_info_func = info.module_function;
         }
         if (module_info_func != MODULE_FUNCTION_RESOURCE && module_info_platform_id != PLATFORM_ID) {
             return false;
@@ -417,9 +417,9 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         if (!(flags & MODULE_DROP_MODULE_INFO) && (flags & MODULE_VERIFY_MASK)) {
             // We may only check the module header if we've been asked to verify it
             uint32_t infoOffset = 0;
-            module_info_t infoTemp;
-            const module_info_t* const info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress, &infoOffset, &infoTemp);
-            if (info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
+            module_info_t info = {};
+            FLASH_ModuleInfo(sourceDeviceID, sourceAddress, &infoOffset, &info);
+            if (info.flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
                 // NB: We have corner cases where the module info is not located in the
                 // front of the module but for example after the vector table and we
                 // only want to enable this feature in the case it is in the front,
@@ -728,11 +728,12 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
     return result;
 }
 
-const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset, module_info_t* const infoOut)
+int FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset, module_info_t* const infoOut)
 {
-    const module_info_t* info = NULL;
-    uint32_t offset = 0;
+    CHECK_TRUE(infoOut, SYSTEM_ERROR_INVALID_ARGUMENT);
 
+    uint32_t offset = 0;
+    
     if(flashDeviceID == FLASH_INTERNAL)
     {
         if (((*(__IO uint32_t*)startAddress) & APP_START_MASK) == 0x20000000)
@@ -740,11 +741,10 @@ const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddre
             offset = 0x200;
             startAddress += offset;
         }
-
-        info = (const module_info_t*)startAddress;
+        hal_flash_read(startAddress, (uint8_t*)infoOut, sizeof(module_info_t));
     }
 #ifdef USE_SERIAL_FLASH
-    else if(flashDeviceID == FLASH_SERIAL && infoOut)
+    else if(flashDeviceID == FLASH_SERIAL)
     {
         uint8_t serialFlashData[4];
         uint32_t first_word = 0;
@@ -756,30 +756,24 @@ const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddre
             offset = 0x200;
             startAddress += offset;
         }
-
-        memset((uint8_t *)infoOut, 0x00, sizeof(module_info_t));
         hal_exflash_read(startAddress, (uint8_t *)infoOut, sizeof(module_info_t));
-
-        info = infoOut;
 #endif
     }
 
-    if (infoOffset && info)
+    if (infoOffset)
     {
         *infoOffset = offset;
     }
 
-    return info;
+    return SYSTEM_ERROR_NONE;
 }
 
 uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress)
 {
-    module_info_t infoTemp;
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL, &infoTemp);
-
-    if (module_info != NULL)
+    module_info_t info = {};
+    if (FLASH_ModuleInfo(flashDeviceID, startAddress, NULL, &info) == SYSTEM_ERROR_NONE)
     {
-        return (uint32_t)module_info->module_start_address;
+        return (uint32_t)info.module_start_address;
     }
 
     return 0;
@@ -787,12 +781,10 @@ uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress)
 
 uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
 {
-    module_info_t infoTemp;
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL, &infoTemp);
-
-    if (module_info != NULL)
+    module_info_t info = {};
+    if (FLASH_ModuleInfo(flashDeviceID, startAddress, NULL, &info) == SYSTEM_ERROR_NONE)
     {
-        return ((uint32_t)module_info->module_end_address - (uint32_t)module_info->module_start_address);
+        return ((uint32_t)info.module_end_address - (uint32_t)info.module_start_address);
     }
 
     return 0;
@@ -800,12 +792,10 @@ uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
 
 uint16_t FLASH_ModuleVersion(uint8_t flashDeviceID, uint32_t startAddress)
 {
-    module_info_t infoTemp;
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL, &infoTemp);
-
-    if (module_info != NULL)
+    module_info_t info = {};
+    if (FLASH_ModuleInfo(flashDeviceID, startAddress, NULL, &info) == SYSTEM_ERROR_NONE)
     {
-        return module_info->module_version;
+        return info.module_version;
     }
 
     return 0;
@@ -813,13 +803,12 @@ uint16_t FLASH_ModuleVersion(uint8_t flashDeviceID, uint32_t startAddress)
 
 bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress)
 {
-    module_info_t infoTemp;
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL, &infoTemp);
-
-    return (module_info != NULL
-            && ((uint32_t)(module_info->module_start_address) == expectedAddress)
-            && ((uint32_t)(module_info->module_end_address)<=0x100000)
-            && (module_info->platform_id==PLATFORM_ID));
+    module_info_t info = {};
+    int ret = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL, &info);
+    return (ret == SYSTEM_ERROR_NONE
+            && ((uint32_t)(info.module_start_address) == expectedAddress)
+            && ((uint32_t)(info.module_end_address) <= 0x100000)
+            && (info.platform_id == PLATFORM_ID));
 }
 
 bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length)
