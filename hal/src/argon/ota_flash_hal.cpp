@@ -30,6 +30,6 @@
 void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
     add_system_properties(info, create, 0);
-    platform_ncp_fetch_module_info(info, create);
-    platform_radio_stack_fetch_module_info(info, create);
+    platform_ncp_fetch_module_info(info);
+    platform_radio_stack_fetch_module_info(info);
 }

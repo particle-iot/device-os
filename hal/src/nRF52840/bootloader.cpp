@@ -248,6 +248,9 @@ bool bootloader_update_if_needed()
 
 uint16_t bootloader_get_version(void)
 {
-    const auto info = FLASH_ModuleInfo(FLASH_INTERNAL, BOOTLOADER_ADDR, nullptr, nullptr);
-    return info ? info->module_version : 0;
+	module_info_t info = {};
+    if (FLASH_ModuleInfo(FLASH_INTERNAL, BOOTLOADER_ADDR, nullptr, &info) != SYSTEM_ERROR_NONE) {
+		return 0;
+	}
+    return info.module_version;
 }

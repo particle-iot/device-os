@@ -20,16 +20,12 @@
 #include <string.h>
 #include "flash_mal.h"
 #include "ota_module.h"
+#include "check.h"
 
 namespace {
 
-const module_info_t* get_module_info(const module_bounds_t* bounds, uint32_t* offset = nullptr, module_info_t* infoOut = nullptr) {
-    if (bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
-        return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address, offset, infoOut);
-    } else if (bounds->location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH) {
-        return FLASH_ModuleInfo(FLASH_SERIAL, bounds->start_address, offset, infoOut);
-    }
-    return nullptr;
+int get_module_info(const module_bounds_t* bounds, module_info_t* infoOut, uint32_t* offset = nullptr) {
+    return FLASH_ModuleInfo(bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ? FLASH_INTERNAL : FLASH_SERIAL, bounds->start_address, offset, infoOut);
 }
 
 bool verify_crc32(const module_bounds_t* bounds, const module_info_t* info) {
@@ -62,8 +58,8 @@ inline bool in_range(uint32_t test, uint32_t start, uint32_t end)
  * @param bounds
  * @return
  */
-const module_info_t* locate_module(const module_bounds_t* bounds, module_info_t* infoOut) {
-    return get_module_info(bounds, nullptr, infoOut);
+int locate_module(const module_bounds_t* bounds, module_info_t* infoOut) {
+    return get_module_info(bounds, infoOut);
 }
 
 /**
@@ -73,37 +69,34 @@ const module_info_t* locate_module(const module_bounds_t* bounds, module_info_t*
  * @param userDepsOptional
  * @return {@code true} if the module info can be read via the info, crc, suffix pointers.
  */
-bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags, module_info_t* infoOut)
+bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags)
 {
     memset(target, 0, sizeof(*target));
 
     target->bounds = *bounds;
-    target->info = get_module_info(bounds, &target->module_info_offset, infoOut);
-    if (target->info)
+    module_info_t* info = &target->info;
+    if (get_module_info(bounds, info, &target->module_info_offset) == SYSTEM_ERROR_NONE)
     {
         target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
         target->validity_result = 0;
-        const uint8_t* module_end = (const uint8_t*)target->info->module_end_address;
+        const uint8_t* module_end = (const uint8_t*)target->info.module_end_address;
         // find the location of where the module should be flashed to based on its module co-ordinates (function/index/mcu)
-        const module_bounds_t* expected_bounds = find_module_bounds(module_function(target->info), module_index(target->info), module_mcu_target(target->info));
+        const module_bounds_t* expected_bounds = find_module_bounds(module_function(info), module_index(info), module_mcu_target(info));
         if (expected_bounds && in_range(uint32_t(module_end), expected_bounds->start_address, expected_bounds->end_address)) {
             target->validity_result |= MODULE_VALIDATION_RANGE;
-            target->validity_result |= (PLATFORM_ID==module_platform_id(target->info)) ? MODULE_VALIDATION_PLATFORM : 0;
+            target->validity_result |= (PLATFORM_ID==module_platform_id(info)) ? MODULE_VALIDATION_PLATFORM : 0;
             // the suffix ends at module_end, and the crc starts after module end
-            target->crc = (module_info_crc_t*)module_end;
-            target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
+            target->crc = *(module_info_crc_t*)module_end;
+            target->suffix = *(module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
             if (validate_module_dependencies(bounds, userDepsOptional, target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL)) {
                 target->validity_result |= MODULE_VALIDATION_DEPENDENCIES | (target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL);
             }
-            if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && verify_crc32(bounds, target->info)) {
+            if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && verify_crc32(bounds, info)) {
                 target->validity_result |= MODULE_VALIDATION_INTEGRITY;
             }
-        }
-        else
-        {
-            target->info = NULL;
+            return true;
         }
     }
-    return target->info != NULL;
+    return false;
 }
 
