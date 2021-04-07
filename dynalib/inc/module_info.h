@@ -44,7 +44,8 @@ typedef enum module_info_flags_t {
                                                 // and potentially module_info_suffix_t + CRC in the end of the binary (depending on platform/module)
                                                 // need to be skipped when copying/writing this module into its target location.
     MODULE_INFO_FLAG_COMPRESSED         = 0x02, // Indicates that the module data is compressed.
-    MODULE_INFO_FLAG_COMBINED           = 0x04  // Indicates that this module is combined with another module.
+    MODULE_INFO_FLAG_COMBINED           = 0x04, // Indicates that this module is combined with another module.
+    MODULE_INFO_FLAG_DELTA_UPDATE       = 0x08  // Indicates that the module contains a delta update
 } module_info_flags_t;
 
 /**
@@ -199,6 +200,36 @@ typedef struct compressed_module_header {
      */
     uint32_t original_size;
 } __attribute__((__packed__)) compressed_module_header;
+
+/**
+ * Header of a module containing a delta update.
+ */
+typedef struct delta_update_module_header {
+    /**
+     * Header size.
+     */
+    uint16_t size;
+    /**
+     * Format of the patch data.
+     *
+     * As of now, the only supported format is ENDSLEY/BSDIFF43 compressed with raw Deflate (0).
+     */
+    uint8_t format;
+    /**
+     * Reserved field.
+     *
+     * This field should be set to 0.
+     */
+    uint8_t reserved;
+    /**
+     * Size of the module data before applying the patch.
+     */
+    uint32_t src_size;
+    /**
+     * Size of the module data after applying the patch.
+     */
+    uint32_t dest_size;
+} __attribute__((__packed__)) delta_update_module_header;
 
 /*
  * The structure is a suffix to the module, placed before the end symbol

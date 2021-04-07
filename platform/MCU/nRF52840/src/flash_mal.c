@@ -34,6 +34,7 @@
 #include "exflash_hal.h"
 #include "hal_platform.h"
 #include "inflate.h"
+#include "bspatch.h"
 #include "nrf_mbr.h"
 
 // Decompression of firmware modules is only supported in the bootloader
@@ -41,6 +42,12 @@
 #define HAS_COMPRESSED_OTA 1
 #else
 #define HAS_COMPRESSED_OTA 0
+#endif
+
+#if (HAL_PLATFORM_DELTA_UPDATES) && (MODULE_FUNCTION == MOD_FUNC_BOOTLOADER)
+#define HAS_DELTA_UPDATES 1
+#else
+#define HAS_DELTA_UPDATES 0
 #endif
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
@@ -113,6 +120,9 @@ static bool verify_module(flash_device_t src_dev, uintptr_t src_addr, size_t src
         return false;
     }
     if (!FLASH_CheckValidAddressRange(dest_dev, dest_addr, dest_size)) {
+        return false;
+    }
+    if ((flags & MODULE_DELTA_UPDATE) && !HAS_DELTA_UPDATES) {
         return false;
     }
     if ((flags & MODULE_COMPRESSED) && !HAS_COMPRESSED_OTA) {
@@ -262,6 +272,178 @@ static bool parse_compressed_module_header(flash_device_t dev, uintptr_t addr, s
 
 #endif // HAS_COMPRESSED_OTA
 
+#if HAS_DELTA_UPDATES
+
+// Context structure for the callbacks used by inflate_create() and bspatch()
+typedef struct {
+    uint8_t decomp_buf[COPY_BLOCK_SIZE]; // Buffer for decompressed patch data
+    inflate_ctx* inflate;
+    flash_device_t src_dev;
+    flash_device_t dest_dev;
+    flash_device_t patch_dev;
+    uintptr_t src_addr;
+    uintptr_t src_start_addr;
+    uintptr_t src_end_addr;
+    uintptr_t dest_addr;
+    uintptr_t dest_end_addr;
+    uintptr_t patch_addr;
+    uintptr_t patch_end_addr;
+    size_t decomp_read_offs;
+    size_t decomp_write_offs;
+} flash_patch_ctx;
+
+static int flash_patch_src_seek(ssize_t offs, void* user_data) {
+    flash_patch_ctx* const ctx = (flash_patch_ctx*)user_data;
+    const intptr_t src_addr = (intptr_t)ctx->src_addr + offs;
+    if (src_addr < (intptr_t)ctx->src_start_addr || src_addr > (intptr_t)ctx->src_end_addr) {
+        return -1;
+    }
+    ctx->src_addr = src_addr;
+    return 0;
+}
+
+static int flash_patch_src_read(char* data, size_t size, void* user_data) {
+    flash_patch_ctx* const ctx = (flash_patch_ctx*)user_data;
+    if (ctx->src_addr + size > ctx->src_end_addr) {
+        return -1;
+    }
+    const bool ok = flash_read(ctx->src_dev, ctx->src_addr, data, size);
+    if (!ok) {
+        return -1;
+    }
+    ctx->src_addr += size;
+    return size;
+}
+
+static int flash_patch_dest_write(const char* data, size_t size, void* user_data) {
+    flash_patch_ctx* const ctx = (flash_patch_ctx*)user_data;
+    if (ctx->dest_addr + size > ctx->dest_end_addr) {
+        return -1;
+    }
+    const bool ok = flash_write(ctx->dest_dev, ctx->dest_addr, data, size);
+    if (!ok) {
+        return -1;
+    }
+    ctx->dest_addr += size;
+    return size;
+}
+
+static int flash_patch_read(char* data, size_t size, void* user_data) {
+    flash_patch_ctx* const ctx = (flash_patch_ctx*)user_data;
+    char comp_buf[COPY_BLOCK_SIZE]; // Buffer for compressed patch data
+    size_t comp_read_offs = 0;
+    size_t comp_write_offs = 0;
+    size_t bytes_to_read = size;
+    while (bytes_to_read > 0) {
+        if (ctx->decomp_read_offs < ctx->decomp_write_offs) {
+            // Read decompressed patch data
+            size_t n = ctx->decomp_write_offs - ctx->decomp_read_offs;
+            if (n > bytes_to_read) {
+                n = bytes_to_read;
+            }
+            memcpy(data, ctx->decomp_buf + ctx->decomp_read_offs, n);
+            bytes_to_read -= n;
+            ctx->decomp_read_offs += n;
+            if (ctx->decomp_read_offs == ctx->decomp_write_offs) {
+                ctx->decomp_read_offs = 0;
+                ctx->decomp_write_offs = 0;
+            }
+        } else if (ctx->patch_addr < ctx->patch_end_addr && comp_write_offs < sizeof(comp_buf)) {
+            // Read compressed patch data
+            size_t n = ctx->patch_end_addr - ctx->patch_addr;
+            if (n > sizeof(comp_buf) - comp_write_offs) {
+                n = sizeof(comp_buf) - comp_write_offs;
+            }
+            const bool ok = flash_read(ctx->patch_dev, ctx->patch_addr, comp_buf + comp_write_offs, n);
+            if (!ok) {
+                return -1;
+            }
+            comp_write_offs += n;
+            ctx->patch_addr += n;
+        } else if (comp_read_offs < comp_write_offs) {
+            // Decompress patch data
+            size_t n = comp_write_offs - comp_read_offs;
+            unsigned flags = 0;
+            if (ctx->patch_addr < ctx->patch_end_addr) {
+                flags |= INFLATE_HAS_MORE_INPUT;
+            }
+            const int r = inflate_input(ctx->inflate, comp_buf + comp_read_offs, &n, flags);
+            if (r < 0) {
+                return -1;
+            }
+            comp_read_offs += n;
+            if (comp_read_offs > comp_write_offs) { // Sanity check
+                return -1;
+            }
+            if (comp_read_offs == comp_write_offs) {
+                comp_read_offs = 0;
+                comp_write_offs = 0;
+            }
+        }
+    }
+    return size;
+}
+
+static int flash_patch_inflate_output(const char* data, size_t size, void* user_data) {
+    flash_patch_ctx* const ctx = (flash_patch_ctx*)user_data;
+    size_t n = sizeof(ctx->decomp_buf) - ctx->decomp_write_offs;
+    if (n > size) {
+        n = size;
+    }
+    memcpy(ctx->decomp_buf + ctx->decomp_write_offs, data, n);
+    ctx->decomp_write_offs += n;
+    return n;
+}
+
+static bool flash_patch(flash_device_t src_dev, uintptr_t src_addr, size_t src_size, flash_device_t dest_dev,
+        uintptr_t dest_addr, size_t dest_size, flash_device_t patch_dev, uintptr_t patch_addr, size_t patch_size) {
+    flash_patch_ctx ctx = {};
+    ctx.src_dev = src_dev;
+    ctx.src_addr = src_addr;
+    ctx.src_start_addr = src_addr;
+    ctx.src_end_addr = src_addr + src_size;
+    ctx.dest_dev = dest_dev;
+    ctx.dest_addr = dest_addr;
+    ctx.dest_end_addr = dest_addr + dest_size;
+    ctx.patch_dev = patch_dev;
+    ctx.patch_addr = patch_addr;
+    ctx.patch_end_addr = patch_addr + patch_size;
+    ctx.decomp_read_offs = 0;
+    ctx.decomp_write_offs = 0;
+    int r = inflate_create(&ctx.inflate, NULL /* opts */, flash_patch_inflate_output, &ctx);
+    if (r < 0) {
+        goto error;
+    }
+    r = bspatch(flash_patch_read, flash_patch_src_read, flash_patch_src_seek, flash_patch_dest_write, dest_size, &ctx);
+    if (r < 0) {
+        goto error;
+    }
+    inflate_destroy(ctx.inflate);
+    return true;
+error:
+    inflate_destroy(ctx.inflate);
+    return false;
+}
+
+static bool parse_delta_update_module_header(flash_device_t dev, uintptr_t addr, size_t size,
+        delta_update_module_header* header) {
+    if (size < sizeof(module_info_t) + sizeof(delta_update_module_header)) {
+        return false;
+    }
+    if (!flash_read(dev, addr + sizeof(module_info_t), (uint8_t*)header, sizeof(delta_update_module_header))) {
+        return false;
+    }
+    if (header->size > sizeof(delta_update_module_header) && size < sizeof(module_info_t) + header->size) {
+        return false;
+    }
+    if (header->format != 0) { // ENDSLEY/BSDIFF43 compressed with raw Deflate
+        return false;
+    }
+    return true;
+}
+
+#endif // HAS_DELTA_UPDATES
+
 bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length)
 {
     // FIXME: remove magic numbers
@@ -330,7 +512,17 @@ int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                       uint32_t length, uint8_t module_function, uint8_t flags)
 {
     size_t dest_size = length;
-    if (flags & MODULE_COMPRESSED) {
+    if (flags & MODULE_DELTA_UPDATE) {
+#if HAS_DELTA_UPDATES
+        delta_update_module_header header = { 0 };
+        if (!parse_delta_update_module_header(sourceDeviceID, sourceAddress, length, &header)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        dest_size = header.dest_size;
+#else
+        return FLASH_ACCESS_RESULT_BADARG;
+#endif // !HAS_DELTA_UPDATES
+    } else if (flags & MODULE_COMPRESSED) {
 #if HAS_COMPRESSED_OTA
         compressed_module_header header = { 0 };
         if (!parse_compressed_module_header(sourceDeviceID, sourceAddress, length, &header)) {
@@ -353,9 +545,20 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                      uint32_t length, uint8_t module_function, uint8_t flags)
 {
     size_t dest_size = length;
+    // TODO: It's time to split this function into a few functions that would separately handle a
+    // regular update, compressed update, delta update or bootloader update
+#if HAS_DELTA_UPDATES
+    delta_update_module_header delta_header = { 0 };
+    if (flags & MODULE_DELTA_UPDATE) {
+        if (!parse_delta_update_module_header(sourceDeviceID, sourceAddress, length, &delta_header)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        dest_size = delta_header.dest_size;
+    }
+#endif // HAS_DELTA_UPDATES
 #if HAS_COMPRESSED_OTA
     compressed_module_header comp_header = { 0 };
-    if (flags & MODULE_COMPRESSED) {
+    if ((flags & MODULE_COMPRESSED) && !(flags & MODULE_DELTA_UPDATE)) {
         if (!parse_compressed_module_header(sourceDeviceID, sourceAddress, length, &comp_header)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
@@ -383,27 +586,72 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         }
     }
 #endif // SOFTDEVICE_MBR_UPDATES
-
-    if (!FLASH_EraseMemory(destinationDeviceID, destinationAddress, dest_size)) {
+    // Do not erase the destination storage now if we're applying a delta update
+    if (!(flags & MODULE_DELTA_UPDATE) && !FLASH_EraseMemory(destinationDeviceID, destinationAddress, dest_size)) {
         return FLASH_ACCESS_RESULT_ERROR;
     }
-    if (flags & MODULE_COMPRESSED) {
+    if (flags & MODULE_DELTA_UPDATE) {
+#if HAS_DELTA_UPDATES
+        // In the context of delta updates, the source data is the module data that is already
+        // flashed on the device
+        const flash_device_t src_dev = destinationDeviceID;
+        const uintptr_t src_addr = destinationAddress;
+        const size_t src_size = delta_header.src_size;
+        // Patch data is what is contained in the downloaded module that we need to apply
+        const flash_device_t patch_dev = sourceDeviceID;
+        const uintptr_t patch_addr = sourceAddress + sizeof(module_info_t) + delta_header.size;
+        size_t patch_size = length;
+        // Skip the module info and delta update headers
+        if (patch_size < sizeof(module_info_t) + delta_header.size + 2 /* Suffix size */ + 4 /* CRC-32 */) { // Sanity check
+            return FLASH_ACCESS_RESULT_BADARG;
+        }
+        patch_size -= sizeof(module_info_t) + delta_header.size + 4;
+        // Determine where the patch data ends
+        uint16_t suffix_size = 0;
+        if (!flash_read(patch_dev, patch_addr + patch_size - 2, (uint8_t*)&suffix_size, 2)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        if (patch_size < suffix_size) {
+            return FLASH_ACCESS_RESULT_BADARG;
+        }
+        patch_size -= suffix_size;
+        // Use the reserved area in the external flash as an intermediate storage for the patched binary
+        const flash_device_t dest_dev = FLASH_SERIAL;
+        const uintptr_t dest_addr = EXTERNAL_FLASH_RESERVED_ADDRESS;
+        if (!FLASH_EraseMemory(dest_dev, dest_addr, dest_size)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        // Apply the patch
+        if (!flash_patch(src_dev, src_addr, src_size, dest_dev, dest_addr, dest_size, patch_dev, patch_addr, patch_size)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        // Overwrite the "source" module with the patched module
+        if (!FLASH_EraseMemory(src_dev, src_addr, dest_size)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        if (!flash_copy(dest_dev, dest_addr, src_dev, src_addr, dest_size)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+#else
+        return FLASH_ACCESS_RESULT_BADARG;
+#endif // !HAS_DELTA_UPDATES
+    } else if (flags & MODULE_COMPRESSED) {
 #if HAS_COMPRESSED_OTA
         // Skip the module info and compressed data headers
-        if (length < sizeof(module_info_t) + comp_header.size + 2 /* Prefix size */ + 4 /* CRC-32 */) { // Sanity check
+        if (length < sizeof(module_info_t) + comp_header.size + 2 /* Suffix size */ + 4 /* CRC-32 */) { // Sanity check
             return FLASH_ACCESS_RESULT_BADARG;
         }
         sourceAddress += sizeof(module_info_t) + comp_header.size;
         length -= sizeof(module_info_t) + comp_header.size + 4;
         // Determine where the compressed data ends
-        uint16_t prefix_size = 0;
-        if (!flash_read(sourceDeviceID, sourceAddress + length - 2, (uint8_t*)&prefix_size, 2)) {
+        uint16_t suffix_size = 0;
+        if (!flash_read(sourceDeviceID, sourceAddress + length - 2, (uint8_t*)&suffix_size, 2)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
-        if (length < prefix_size) {
+        if (length < suffix_size) {
             return FLASH_ACCESS_RESULT_BADARG;
         }
-        length -= prefix_size;
+        length -= suffix_size;
         if (!flash_decompress(sourceDeviceID, sourceAddress, length, destinationDeviceID, destinationAddress, dest_size)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
