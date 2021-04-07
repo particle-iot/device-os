@@ -434,10 +434,12 @@ bool MDMParser::_checkModem(bool force /* = true */) {
 int MDMParser::process() {
 
     if (!(_init && _pwr)) {
+        MDM_INFO(">>> not _init + _pwr");
         return 0;
     }
 
     if (_cancel_all_operations) {
+        MDM_INFO(">>> _cancel_all_operations");
         return 0;
     }
 
@@ -583,7 +585,10 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
 
                 // GSM/UMTS Specific -------------------------------------------
                 // +UUPSDD: <profile_id>
-                if (sscanf(cmd, "UUPSDD: %31s", s) == 1) {
+
+                // TODO ignore UUPSDD for R510?
+                //"\r\n+UUPSDD: 0\r\n";
+                if ((_dev.dev != DEV_SARA_R510) && (sscanf(cmd, "UUPSDD: %31s", s) == 1) ) {
                     MDM_PRINTF("UUPSDD: %s matched\r\n", PROFILE);
                     if ( !strcmp(s, PROFILE) ) {
                         _ip = NOIP;
@@ -610,6 +615,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
 
                     bool valid_reg_cmd = true;
                     if (r >= 2) {
+                        MDM_INFO(">> reg_cmd: %s \r\n",s);
                         if (!strcmp(s, "CREG:")) {
                             csd_.status(csd_.decodeAtStatus(a));
                         } else if (!strcmp(s, "CGREG:")) {
@@ -1005,7 +1011,6 @@ bool MDMParser::powerOn(const char* simpin)
 {
     LOCK();
 
-    MDM_INFO("MDMParser powerOn\r\n");
     // The modem type won't change that easily
     auto device_type = _dev.dev;
     bool retried_after_reset = false;
@@ -1610,6 +1615,10 @@ void MDMParser::_checkVerboseCxreg(void) {
         if (modemIsSaraRxFamily()) {
             sendFormated("AT+CEREG?\r\n");
             waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT);
+            if (_dev.dev == DEV_SARA_R510) {
+                sendFormated("AT+CREG?\r\n");
+                waitFinalResp(nullptr, nullptr, CREG_TIMEOUT);
+            }
         } else {
             sendFormated("AT+CREG?\r\n");
             waitFinalResp(nullptr, nullptr, CREG_TIMEOUT);
@@ -1948,6 +1957,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
             }
         }
         else {
+            //TODO parse new UCGED format for R510
             sendFormated("AT+CSQ\r\n");
             if (WAIT == waitFinalResp(nullptr, nullptr, CSQ_TIMEOUT)) {
                 goto failure;
