@@ -380,11 +380,12 @@ int MDMParser::sendFormattedWithArgs(const char* format, va_list args) {
 
 int MDMParser::_checkAtResponse(bool fastTimeout /* = false */)
 {
+    MDM_INFO("_checkAtResponse\r\n");
     sendFormated("AT\r\n");
     int resp = waitFinalResp(nullptr, nullptr, fastTimeout ? AT_TIMEOUT_POWERON : AT_TIMEOUT);
 
     // R410 Power Savings Mode currently disabled, therefore this only affects all other modems
-    if (resp == WAIT && !modemIsSaraRxFamily() && _dev.lpm == LPM_ACTIVE) {
+    if (resp == WAIT && !(_dev.dev == DEV_SARA_R410) && _dev.lpm == LPM_ACTIVE) { //TODO verify R510
         // if low power mode active, may have to wait up to 5s for OK response
         int cts = HAL_GPIO_Read(CTS_UC); // 1: not ready, 0: ready
         system_tick_t t0 = HAL_Timer_Get_Milli_Seconds();
@@ -996,8 +997,7 @@ bool MDMParser::_powerOn(void)
 
     return true;
 failure:
-
-    MDM_ERROR("Failure Case?\r\n");
+    MDM_ERROR("MDM _powerOn failed! \r\n");
     return false;
 }
 
@@ -1370,6 +1370,7 @@ bool MDMParser::powerState(void) {
         _incModemStateChangeCount();
         _pwr = state;
     }
+    MDM_INFO(">> powerState: %ld\r\n", state);
     return state;
 }
 
@@ -1638,10 +1639,15 @@ bool MDMParser::_checkEpsReg(void) {
 int MDMParser::_cbURAT(int type, const char *buf, int len, bool *matched_default)
 {
     if ((type == TYPE_PLUS) && matched_default) {
+        unsigned selectAct = 0, preferAct1 = 0, preferAct2 = 0;
         *matched_default = false;
-        if (!strncmp(CB_URAT_DEFAULT_CONFIG, buf, strlen(CB_URAT_DEFAULT_CONFIG))) {
+        auto r = sscanf(buf, "+URAT: %u,%u,%u", &selectAct, &preferAct1, &preferAct2);
+        if (r > 0 && selectAct == 7) {            
             *matched_default = true;
         }
+        // if (!strncmp(CB_URAT_DEFAULT_CONFIG, buf, strlen(CB_URAT_DEFAULT_CONFIG))) {
+        //     *matched_default = true;
+        // }
     }
     return WAIT;
 }
@@ -2043,7 +2049,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         ok = REG_OK(csd_.status()) && REG_OK(psd_.status());
     }
 
-    //MDM_PRINTF("%10.3f checkNetStatus %d \r\n", HAL_Timer_Get_Milli_Seconds() * 0.001, ok);
+    MDM_PRINTF("%10.3f checkNetStatus %d \r\n", HAL_Timer_Get_Milli_Seconds() * 0.001, ok);
 
     return ok;
 failure:
