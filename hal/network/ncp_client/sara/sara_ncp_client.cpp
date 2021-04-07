@@ -2229,7 +2229,7 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
         HAL_Delay_Milliseconds(50);
         HAL_GPIO_Write(UBRST, 1);
         HAL_Delay_Milliseconds(1000);   // just in case
-		ncpPowerState(NcpPowerState::TRANSIENT_ON); // TODO: Test this
+        ncpPowerState(NcpPowerState::TRANSIENT_ON); // TODO: Test this
         // NOTE: powerOff argument is ignored, modem will restart automatically
         // in all cases
     } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
@@ -2239,7 +2239,7 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
         // Note: No need to apply just-in-case delays, plus the radio seems to
         // reset a few times rapidly and is unresponsive to AT for a few runs.
-		// Still recoverable by using the TRANSIENT_ON state as above, which
+        // Still recoverable by using the TRANSIENT_ON state as above, which
         // recognizes to wait longer during this transition.
     } else {
         // If memory issue is present, ensure we don't force a power off too soon
