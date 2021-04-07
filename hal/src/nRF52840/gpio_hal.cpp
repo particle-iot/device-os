@@ -81,7 +81,7 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) 
         }
 
         // Pre-set the output value if requested to avoid a glitch
-        if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN)) {
+        if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP)) {
             if (conf->value) {
                 nrf_gpio_pin_set(nrfPin);
             } else {
@@ -89,15 +89,14 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) 
             }
         }
 
-        auto driveStrength = NRF_GPIO_PIN_S0S1;
-        if (conf->version >= HAL_GPIO_VERSION_1) {
-            if (conf->drive_strength == HAL_GPIO_DRIVE_HIGH) {
-                driveStrength = NRF_GPIO_PIN_H0H1;
-            }
-        }
-
         switch (mode) {
             case OUTPUT: {
+                auto driveStrength = NRF_GPIO_PIN_S0S1;
+                if (conf->version >= HAL_GPIO_VERSION_1) {
+                    if (conf->drive_strength == HAL_GPIO_DRIVE_HIGH) {
+                        driveStrength = NRF_GPIO_PIN_H0H1;
+                    }
+                }
                 nrf_gpio_cfg(nrfPin,
                     NRF_GPIO_PIN_DIR_OUTPUT,
                     NRF_GPIO_PIN_INPUT_DISCONNECT,
@@ -119,10 +118,31 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) 
                 break;
             }
             case OUTPUT_OPEN_DRAIN: {
+                auto driveStrength = NRF_GPIO_PIN_S0D1;
+                if (conf->version >= HAL_GPIO_VERSION_1) {
+                    if (conf->drive_strength == HAL_GPIO_DRIVE_HIGH) {
+                        driveStrength = NRF_GPIO_PIN_H0D1;
+                    }
+                }
                 nrf_gpio_cfg(nrfPin,
                     NRF_GPIO_PIN_DIR_OUTPUT,
-                    NRF_GPIO_PIN_INPUT_DISCONNECT,
+                    NRF_GPIO_PIN_INPUT_CONNECT,
                     NRF_GPIO_PIN_NOPULL,
+                    driveStrength,
+                    NRF_GPIO_PIN_NOSENSE);
+                break;
+            }
+            case OUTPUT_OPEN_DRAIN_PULLUP: {
+                auto driveStrength = NRF_GPIO_PIN_S0D1;
+                if (conf->version >= HAL_GPIO_VERSION_1) {
+                    if (conf->drive_strength == HAL_GPIO_DRIVE_HIGH) {
+                        driveStrength = NRF_GPIO_PIN_H0D1;
+                    }
+                }
+                nrf_gpio_cfg(nrfPin,
+                    NRF_GPIO_PIN_DIR_OUTPUT,
+                    NRF_GPIO_PIN_INPUT_CONNECT,
+                    NRF_GPIO_PIN_PULLUP,
                     driveStrength,
                     NRF_GPIO_PIN_NOSENSE);
                 break;
@@ -261,10 +281,12 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
 
         if ((PIN_MAP[pin].pin_mode == INPUT) ||
             (PIN_MAP[pin].pin_mode == INPUT_PULLUP) ||
-            (PIN_MAP[pin].pin_mode == INPUT_PULLDOWN))
+            (PIN_MAP[pin].pin_mode == INPUT_PULLDOWN) ||
+            (PIN_MAP[pin].pin_mode == OUTPUT_OPEN_DRAIN) ||
+            (PIN_MAP[pin].pin_mode == OUTPUT_OPEN_DRAIN_PULLUP))
         {
             return nrf_gpio_pin_read(nrf_pin);
-        } else if (PIN_MAP[pin].pin_mode == OUTPUT || PIN_MAP[pin].pin_mode == OUTPUT_OPEN_DRAIN) {
+        } else if (PIN_MAP[pin].pin_mode == OUTPUT) {
             return nrf_gpio_pin_out_read(nrf_pin);
         } else {
             return 0;
