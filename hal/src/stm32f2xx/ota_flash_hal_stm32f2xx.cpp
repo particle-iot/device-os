@@ -115,7 +115,7 @@ bool validate_module_dependencies_full(const module_info_t* module, const module
     HAL_System_Info(&sysinfo, true, nullptr);
     for (unsigned i=0; i<sysinfo.module_count; i++) {
         const hal_module_t& smod = sysinfo.modules[i];
-        const module_info_t* info = smod.info;
+        const module_info_t* info = &smod.info;
         if (!info)
             continue;
 
@@ -326,7 +326,7 @@ int fetchAndValidateModule(hal_module_t* module, bool userDepsOptional, unsigned
         LOG(ERROR, "Unable to fetch module");
         return SYSTEM_ERROR_OTA_MODULE_NOT_FOUND;
     }
-    const auto info = module->info;
+    const auto info = &module->info;
     LOG(INFO, "Validating module; type: %u; index: %u; version: %u", (unsigned)module_function(info),
             (unsigned)module_index(info), (unsigned)module_version(info));
     if (module->validity_result != module->validity_checked) {
@@ -351,15 +351,15 @@ int HAL_FLASH_End(void* reserved)
     CHECK(fetchAndValidateModule(&module, true /* userDepsOptional */, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY |
             MODULE_VALIDATION_DEPENDENCIES_FULL)));
     int result = SYSTEM_ERROR_UNKNOWN;
-    uint32_t moduleLength = module_length(module.info);
-    module_function_t function = module_function(module.info);
+    uint32_t moduleLength = module_length(&module.info);
+    module_function_t function = module_function(&module.info);
     // bootloader is copied directly
     if (function == MODULE_FUNCTION_BOOTLOADER) {
         result = flash_bootloader(&module, moduleLength);
     } else {
         const uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
         if (FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, module_ota.start_address, FLASH_INTERNAL,
-                (uint32_t)module.info->module_start_address, moduleLength + 4 /* CRC-32 */, function, slotFlags)) {
+                (uint32_t)module.info.module_start_address, moduleLength + 4 /* CRC-32 */, function, slotFlags)) {
             result = HAL_UPDATE_APPLIED_PENDING_RESTART;
         }
         FLASH_End();
