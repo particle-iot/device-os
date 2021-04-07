@@ -945,7 +945,7 @@ bool MDMParser::_powerOn(void)
 
         sendFormated("AT+CGMM\r\n");
         waitFinalResp(_cbCGMM, &_dev, 15000);
-        if (_dev.dev == DEV_SARA_R410) { //TODO check HW FC on R510. We don't use MUX mode on Gen2
+        if (_dev.dev == DEV_SARA_R410) { 
             // SARA-R410 doesn't support hardware flow control, reinitialize the UART
             electronMDM.begin(115200, false /* hwFlowControl */);
             // Power saving modes defined by the +UPSV command are not supported
@@ -963,7 +963,7 @@ bool MDMParser::_powerOn(void)
 
     // echo off
     sendFormated("ATE0\r\n");
-    if(RESP_OK != waitFinalResp(NULL,NULL,200)) {
+    if(RESP_OK != waitFinalResp()) { 
         goto failure;
     }
 
@@ -1090,7 +1090,7 @@ bool MDMParser::init(DevStatus* status)
     CStringHelper str_verExt(_verExtended, sizeof(_verExtended));
     CStringHelper str_ccid(_dev.ccid, sizeof(_dev.ccid));
 
-    if (_dev.dev == DEV_SARA_R410) { 
+    if (_dev.dev == DEV_SARA_R410) {
         // TODO: Without this delay, some commands, such as +CIMI, may return a SIM failure error.
         // This probably has something to do with the SIM initialization. Should we check the SIM
         // status via +USIMSTAT in addition to +CPIN?
@@ -1186,9 +1186,6 @@ bool MDMParser::init(DevStatus* status)
         if (RESP_ERROR == waitFinalResp(_cbUMNOPROF, &curProf, UMNOPROF_TIMEOUT)) {
             goto reset_failure;
         }
-
-        // MDM_INFO("UMNOPROF was: %d \r\n",  curProf);
-
         // First time setup, or switching between official SIM on wrong profile?
         if (curProf == UBLOX_SARA_UMNOPROF_SW_DEFAULT ||
             (netProv == CELLULAR_NETPROV_TWILIO && curProf != UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) ||
@@ -1202,16 +1199,16 @@ bool MDMParser::init(DevStatus* status)
                 // UMNOPROF=100 available. Default to UMNOPROF=0 in that case.
 
                 //TODO R510
-                newProf = UBLOX_SARA_UMNOPROF_SW_DEFAULT; 
-                // if (_oldFirmwarePresent) {
-                //     if (curProf == UBLOX_SARA_UMNOPROF_SW_DEFAULT) {
-                //         continueInit = true;
-                //     } else {
-                //         newProf = UBLOX_SARA_UMNOPROF_SW_DEFAULT;
-                //     }
-                // } else {
-                //     newProf = UBLOX_SARA_UMNOPROF_STANDARD_EUROPE;
-                // }
+                // newProf = UBLOX_SARA_UMNOPROF_SW_DEFAULT; 
+                if (_oldFirmwarePresent) {
+                    if (curProf == UBLOX_SARA_UMNOPROF_SW_DEFAULT) {
+                        continueInit = true;
+                    } else {
+                        newProf = UBLOX_SARA_UMNOPROF_SW_DEFAULT;
+                    }
+                } else {
+                    newProf = UBLOX_SARA_UMNOPROF_STANDARD_EUROPE;
+                }
             }
             // KORE AT&T or 3rd Party SIM
             else {
@@ -1928,11 +1925,17 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
             if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
                 goto failure;
             }
+            sendFormated("AT+UCGED?\r\n");
+            if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+                MDM_ERROR("UCGED? waitResp fail\r\n");
+                goto failure;
+            }
         }
-        sendFormated("AT+UCGED?\r\n");
-        if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
-            MDM_ERROR("UCGED? waitResp fail\r\n");
-            goto failure;
+        else {
+            sendFormated("AT+CSQ\r\n");
+            if (WAIT == waitFinalResp(nullptr, nullptr, CSQ_TIMEOUT)) {
+                goto failure;
+            }
         }
 
         // check EPS registration (LTE)
@@ -1984,7 +1987,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
             goto failure;
         }
         // AT command used to collect signal stregnth is different for R410M radio
-        if (modemIsSaraRxFamily()) {
+        if (_dev.dev == DEV_SARA_R410) {
             if (_dev.dev == DEV_SARA_R410) {
                 sendFormated("AT+UCGED=5\r\n");
                 if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
@@ -2003,7 +2006,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         }
         else
         {
-            sendFormated("AT+CSQ\r\n");
+             sendFormated("AT+CSQ\r\n");
             if (RESP_OK != waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
                 goto failure;
             }
@@ -2077,7 +2080,7 @@ bool MDMParser::getSignalStrength(NetStatus &status)
         }
 
         // AT command used to collect signal stregnth is different for R410M radio
-        if (modemIsSaraRxFamily()) {
+        if (_dev.dev == DEV_SARA_R410) {
             if (_dev.dev == DEV_SARA_R410) {
                 sendFormated("AT+UCGED=5\r\n");
                 if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
@@ -2388,6 +2391,7 @@ int MDMParser::_cbUCGED(int type, const char* buf, int len, NetStatus* status)
         // RSRP maps from dBm [-141,-44] to [0,97]
         // We are defining hard boundaries for RSRP to be between [-200,0],
         // and consider other values as error and call it 255
+        INFO(">>> UCGED: '%s' \r\n",buf);
         if (sscanf(buf, "\r\n+RSRP: %*d,%*d,\"%d.%*u\"", &rsrp) == 1) {
             if (rsrp < -141 && rsrp >= -200) {
                 status->rsrp = 0;
@@ -2426,6 +2430,7 @@ int MDMParser::_cbCSQ(int type, const char* buf, int len, NetStatus* status)
         int a,b;
         // +CSQ: <rssi>,<qual>
         if (sscanf(buf, "\r\n+CSQ: %d,%d",&a,&b) == 2) {
+            INFO(">>> CSQ: (%d, %d) \r\n", a, b);
             switch (status->act) {
             case ACT_GSM:
             case ACT_EDGE:
@@ -2469,6 +2474,7 @@ int MDMParser::_cbCSQ(int type, const char* buf, int len, NetStatus* status)
                 break;
             default:
                 // Unknown access tecnhology
+                WARN("Unknown RAT: %d  (%d, %d) \r\n",status->act, a, b);
                 status->asu = std::numeric_limits<int32_t>::min();
                 status->aqual = std::numeric_limits<int32_t>::min();
                 break;
