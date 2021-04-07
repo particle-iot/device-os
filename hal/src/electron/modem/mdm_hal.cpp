@@ -585,12 +585,9 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
 
                 // GSM/UMTS Specific -------------------------------------------
                 // +UUPSDD: <profile_id>
-
-                // TODO ignore UUPSDD for R510?
-                //"\r\n+UUPSDD: 0\r\n";
-                if ((_dev.dev != DEV_SARA_R510) && (sscanf(cmd, "UUPSDD: %31s", s) == 1) ) {
-                    MDM_PRINTF("UUPSDD: %s matched\r\n", PROFILE);
-                    if ( !strcmp(s, PROFILE) ) {
+                if ( sscanf(cmd, "UUPSDD: %31s", s) == 1 ) {
+                    if (_attached &&  !strcmp(s, PROFILE) ) {
+                        //TODO R510 verify: Only process UUPSDD if we're not already detaching?
                         _ip = NOIP;
                         _attached = false;
                         DEBUG("PDP context deactivated remotely!\r\n");
