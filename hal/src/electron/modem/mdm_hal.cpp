@@ -810,13 +810,17 @@ bool MDMParser::disconnect() {
 void MDMParser::reset(void)
 {
     MDM_INFO("[ Modem reset ]");
-    unsigned delay = 100;
+    unsigned reset_duration_ms = 100;
     if (_dev.dev == DEV_UNKNOWN || _dev.dev == DEV_SARA_R410) {
-        delay = 10000; // SARA-R4: 10s
+        reset_duration_ms = 10000; // SARA-R4: 10s
+    }
+    else if (_dev.dev == DEV_SARA_R510) {
+        reset_duration_ms = 200; // SARA-R5: 100 ms minimum
     }
     HAL_GPIO_Write(RESET_UC, 0);
-    HAL_Delay_Milliseconds(delay);
+    HAL_Delay_Milliseconds(reset_duration_ms);
     HAL_GPIO_Write(RESET_UC, 1);
+
     // reset power on and registered timers for memory issue power off delays
     _timePowerOn = 0;
     _timeRegistered = 0;
@@ -829,6 +833,8 @@ void MDMParser::reset(void)
 bool MDMParser::_powerOn(void)
 {
     LOCK();
+
+    MDM_INFO(">>> _powerOn\r\n");
 
     /* Initialize I/O */
     Hal_Pin_Info* PIN_MAP_PARSER = HAL_Pin_Map();
@@ -866,6 +872,9 @@ bool MDMParser::_powerOn(void)
         // flow control
         electronMDM.begin(115200, true /* hwFlowControl */);
         _init = true;
+    }
+    else {
+        MDM_INFO(">> already inited \r\n");
     }
 
     MDM_INFO("\r\n[ Modem::powerOn ] = = = = = = = = = = = = = =");
@@ -996,6 +1005,7 @@ bool MDMParser::powerOn(const char* simpin)
 {
     LOCK();
 
+    MDM_INFO("MDMParser powerOn\r\n");
     // The modem type won't change that easily
     auto device_type = _dev.dev;
     bool retried_after_reset = false;
@@ -1091,7 +1101,7 @@ bool MDMParser::init(DevStatus* status)
     CStringHelper str_ccid(_dev.ccid, sizeof(_dev.ccid));
 
     if (_dev.dev == DEV_SARA_R410) {
-        // TODO: Without this delay, some commands, such as +CIMI, may return a SIM failure error.
+        // TODO: Without this reset_duration_ms, some commands, such as +CIMI, may return a SIM failure error.
         // This probably has something to do with the SIM initialization. Should we check the SIM
         // status via +USIMSTAT in addition to +CPIN?
         HAL_Delay_Milliseconds(250);
@@ -1417,7 +1427,7 @@ bool MDMParser::powerOff(void)
     bool power_state = true;
 
     if (!softPowerOff()) {
-        if (modemIsSaraRxFamily()) {
+        if (_dev.dev == DEV_SARA_R410) {
             // If memory issue is present, ensure we don't force a power off too soon
             // to avoid hitting the 124 day memory housekeeping issue, AT+CPWROFF will
             // handle this delay automatically, or timeout after 40s.
