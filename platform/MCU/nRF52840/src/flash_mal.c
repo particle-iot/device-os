@@ -276,7 +276,8 @@ static bool parse_compressed_module_header(flash_device_t dev, uintptr_t addr, s
 
 // Context structure for the callbacks used by inflate_create() and bspatch()
 typedef struct {
-    uint8_t decomp_buf[COPY_BLOCK_SIZE]; // Buffer for decompressed patch data
+    uint8_t comp_buf[COPY_BLOCK_SIZE];
+    uint8_t decomp_buf[COPY_BLOCK_SIZE];
     inflate_ctx* inflate;
     flash_device_t src_dev;
     flash_device_t dest_dev;
@@ -288,8 +289,11 @@ typedef struct {
     uintptr_t dest_end_addr;
     uintptr_t patch_addr;
     uintptr_t patch_end_addr;
+    size_t comp_read_offs;
+    size_t comp_write_offs;
     size_t decomp_read_offs;
     size_t decomp_write_offs;
+    bool has_more_output;
 } flash_patch_ctx;
 
 static int flash_patch_src_seek(ssize_t offs, void* user_data) {
@@ -330,9 +334,6 @@ static int flash_patch_dest_write(const char* data, size_t size, void* user_data
 
 static int flash_patch_read(char* data, size_t size, void* user_data) {
     flash_patch_ctx* const ctx = (flash_patch_ctx*)user_data;
-    char comp_buf[COPY_BLOCK_SIZE]; // Buffer for compressed patch data
-    size_t comp_read_offs = 0;
-    size_t comp_write_offs = 0;
     size_t bytes_to_read = size;
     while (bytes_to_read > 0) {
         if (ctx->decomp_read_offs < ctx->decomp_write_offs) {
@@ -342,43 +343,45 @@ static int flash_patch_read(char* data, size_t size, void* user_data) {
                 n = bytes_to_read;
             }
             memcpy(data, ctx->decomp_buf + ctx->decomp_read_offs, n);
+            data += n;
             ctx->decomp_read_offs += n;
             if (ctx->decomp_read_offs == ctx->decomp_write_offs) {
                 ctx->decomp_read_offs = 0;
                 ctx->decomp_write_offs = 0;
             }
             bytes_to_read -= n;
-        } else if (ctx->patch_addr < ctx->patch_end_addr && comp_write_offs < sizeof(comp_buf)) {
-            // Read compressed patch data
-            size_t n = ctx->patch_end_addr - ctx->patch_addr;
-            if (n > sizeof(comp_buf) - comp_write_offs) {
-                n = sizeof(comp_buf) - comp_write_offs;
-            }
-            const bool ok = flash_read(ctx->patch_dev, ctx->patch_addr, comp_buf + comp_write_offs, n);
-            if (!ok) {
-                return -1;
-            }
-            comp_write_offs += n;
-            ctx->patch_addr += n;
-        } else if (comp_read_offs < comp_write_offs) {
+        } else if (ctx->has_more_output || ctx->comp_read_offs < ctx->comp_write_offs) {
             // Decompress patch data
-            size_t n = comp_write_offs - comp_read_offs;
+            size_t n = ctx->comp_write_offs - ctx->comp_read_offs;
             unsigned flags = 0;
             if (ctx->patch_addr < ctx->patch_end_addr) {
                 flags |= INFLATE_HAS_MORE_INPUT;
             }
-            const int r = inflate_input(ctx->inflate, comp_buf + comp_read_offs, &n, flags);
+            const int r = inflate_input(ctx->inflate, ctx->comp_buf + ctx->comp_read_offs, &n, flags);
             if (r < 0) {
                 return -1;
             }
-            comp_read_offs += n;
-            if (comp_read_offs > comp_write_offs) { // Sanity check
+            ctx->has_more_output = (r == INFLATE_HAS_MORE_OUTPUT);
+            ctx->comp_read_offs += n;
+            if (ctx->comp_read_offs > ctx->comp_write_offs) { // Sanity check
                 return -1;
             }
-            if (comp_read_offs == comp_write_offs) {
-                comp_read_offs = 0;
-                comp_write_offs = 0;
+            if (ctx->comp_read_offs == ctx->comp_write_offs) {
+                ctx->comp_read_offs = 0;
+                ctx->comp_write_offs = 0;
             }
+        } else if (ctx->patch_addr < ctx->patch_end_addr && ctx->comp_write_offs < sizeof(ctx->comp_buf)) {
+            // Read compressed patch data
+            size_t n = ctx->patch_end_addr - ctx->patch_addr;
+            if (n > sizeof(ctx->comp_buf) - ctx->comp_write_offs) {
+                n = sizeof(ctx->comp_buf) - ctx->comp_write_offs;
+            }
+            const bool ok = flash_read(ctx->patch_dev, ctx->patch_addr, ctx->comp_buf + ctx->comp_write_offs, n);
+            if (!ok) {
+                return -1;
+            }
+            ctx->comp_write_offs += n;
+            ctx->patch_addr += n;
         } else {
             return -1; // No bytes left but bspatch() still wants us to read some
         }
@@ -410,8 +413,11 @@ static bool flash_patch(flash_device_t src_dev, uintptr_t src_addr, size_t src_s
     ctx.patch_dev = patch_dev;
     ctx.patch_addr = patch_addr;
     ctx.patch_end_addr = patch_addr + patch_size;
+    ctx.comp_read_offs = 0;
+    ctx.comp_write_offs = 0;
     ctx.decomp_read_offs = 0;
     ctx.decomp_write_offs = 0;
+    ctx.has_more_output = false;
     int r = inflate_create(&ctx.inflate, NULL /* opts */, flash_patch_inflate_output, &ctx);
     if (r < 0) {
         goto error;
@@ -601,13 +607,14 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         const size_t src_size = delta_header.src_size;
         // Patch data is what is contained in the downloaded module that we need to apply
         const flash_device_t patch_dev = sourceDeviceID;
-        const uintptr_t patch_addr = sourceAddress + sizeof(module_info_t) + delta_header.size;
+        uintptr_t patch_addr = sourceAddress;
         size_t patch_size = length;
         // Skip the module info and delta update headers
         if (patch_size < sizeof(module_info_t) + delta_header.size + 2 /* Suffix size */ + 4 /* CRC-32 */) { // Sanity check
             return FLASH_ACCESS_RESULT_BADARG;
         }
-        patch_size -= sizeof(module_info_t) + delta_header.size + 4;
+        patch_addr += sizeof(module_info_t) + delta_header.size;
+        patch_size -= sizeof(module_info_t) + delta_header.size + 4 /* CRC-32 */;
         // Determine where the patch data ends
         uint16_t suffix_size = 0;
         if (!flash_read(patch_dev, patch_addr + patch_size - 2, (uint8_t*)&suffix_size, 2)) {
@@ -620,7 +627,7 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         // FIXME: Temporarily store the patched binary at the very end of the OTA section
         const flash_device_t dest_dev = FLASH_SERIAL;
         uintptr_t dest_addr = EXTERNAL_FLASH_OTA_ADDRESS + (EXTERNAL_FLASH_OTA_LENGTH / sFLASH_PAGESIZE * sFLASH_PAGESIZE) -
-                (dest_size + sFLASH_PAGESIZE - 1) / sFLASH_PAGESIZE;
+                ((dest_size + sFLASH_PAGESIZE - 1) / sFLASH_PAGESIZE * sFLASH_PAGESIZE);
         if (!FLASH_EraseMemory(dest_dev, dest_addr, dest_size)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
