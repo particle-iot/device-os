@@ -200,7 +200,7 @@ static int inflate_output_callback(const char* data, size_t size, void* user_dat
 static bool flash_decompress(flash_device_t src_dev, uintptr_t src_addr, size_t src_size, flash_device_t dest_dev,
         uintptr_t dest_addr, size_t dest_size) {
     uint8_t in_buf[COPY_BLOCK_SIZE];
-    inflate_output_ctx out = {};
+    inflate_output_ctx out = { 0 };
     out.buf_offs = 0;
     out.flash_dev = dest_dev;
     out.flash_addr = dest_addr;
@@ -342,12 +342,12 @@ static int flash_patch_read(char* data, size_t size, void* user_data) {
                 n = bytes_to_read;
             }
             memcpy(data, ctx->decomp_buf + ctx->decomp_read_offs, n);
-            bytes_to_read -= n;
             ctx->decomp_read_offs += n;
             if (ctx->decomp_read_offs == ctx->decomp_write_offs) {
                 ctx->decomp_read_offs = 0;
                 ctx->decomp_write_offs = 0;
             }
+            bytes_to_read -= n;
         } else if (ctx->patch_addr < ctx->patch_end_addr && comp_write_offs < sizeof(comp_buf)) {
             // Read compressed patch data
             size_t n = ctx->patch_end_addr - ctx->patch_addr;
@@ -379,6 +379,8 @@ static int flash_patch_read(char* data, size_t size, void* user_data) {
                 comp_read_offs = 0;
                 comp_write_offs = 0;
             }
+        } else {
+            return -1; // No bytes left but bspatch() still wants us to read some
         }
     }
     return size;
@@ -397,7 +399,7 @@ static int flash_patch_inflate_output(const char* data, size_t size, void* user_
 
 static bool flash_patch(flash_device_t src_dev, uintptr_t src_addr, size_t src_size, flash_device_t dest_dev,
         uintptr_t dest_addr, size_t dest_size, flash_device_t patch_dev, uintptr_t patch_addr, size_t patch_size) {
-    flash_patch_ctx ctx = {};
+    flash_patch_ctx ctx = { 0 };
     ctx.src_dev = src_dev;
     ctx.src_addr = src_addr;
     ctx.src_start_addr = src_addr;
@@ -615,9 +617,10 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
             return FLASH_ACCESS_RESULT_BADARG;
         }
         patch_size -= suffix_size;
-        // Use the reserved area in the external flash as an intermediate storage for the patched binary
+        // FIXME: Temporarily store the patched binary at the very end of the OTA section
         const flash_device_t dest_dev = FLASH_SERIAL;
-        const uintptr_t dest_addr = EXTERNAL_FLASH_RESERVED_ADDRESS;
+        uintptr_t dest_addr = EXTERNAL_FLASH_OTA_ADDRESS + (EXTERNAL_FLASH_OTA_LENGTH / sFLASH_PAGESIZE * sFLASH_PAGESIZE) -
+                (dest_size + sFLASH_PAGESIZE - 1) / sFLASH_PAGESIZE;
         if (!FLASH_EraseMemory(dest_dev, dest_addr, dest_size)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }

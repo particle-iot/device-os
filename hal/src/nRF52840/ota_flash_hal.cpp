@@ -624,6 +624,9 @@ __attribute__((optimize("O0"))) int HAL_FLASH_End(void* reserved)
             if (info.flags & MODULE_INFO_FLAG_COMPRESSED) {
                 slotFlags |= MODULE_COMPRESSED;
             }
+            if (info.flags & MODULE_INFO_FLAG_DELTA_UPDATE) {
+                slotFlags |= MODULE_DELTA_UPDATE;
+            }
             // Convert the module's XIP address to an address in the external flash :sweat_smile:
             const uintptr_t otaAddr = EXTERNAL_FLASH_OTA_ADDRESS + module->bounds.start_address - EXTERNAL_FLASH_OTA_XIP_ADDRESS;
             const bool ok = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, otaAddr, FLASH_INTERNAL,
