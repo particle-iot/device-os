@@ -22,6 +22,8 @@ TARGET=elf bin lst hex size
 include $(PROJECT_ROOT)/build/arm-tlm.mk
 
 LDFLAGS += -flto -Os -fuse-linker-plugin
+# FIXME: temporary workaround for system-part2 overflow on P1
+LDFLAGS += -Wl,--defsym,platform_uart_tx_dma_irq=wiced_stub_usart_irq -Wl,--defsym,platform_uart_rx_dma_irq=wiced_stub_usart_irq
 
 $(call check_modular)
 
