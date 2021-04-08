@@ -175,6 +175,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     registeredTime_ = 0;
     memoryIssuePresent_ = true; // default to safe state until we determine modem firmware version
     oldFirmwarePresent_ = true; // default to safe state until we determine modem firmware version
+    savedNVMR510_ = false; // R510: Save connection state to NVM for fast cold boot registration times
     parserError_ = 0;
     ready_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
@@ -1892,13 +1893,23 @@ void SaraNcpClient::resetRegistrationState() {
     regCheckTime_ = regStartTime_;
     imsiCheckTime_ = regStartTime_;
     registrationInterventions_ = 0;
+    savedNVMR510_ = false;
 }
 
-void SaraNcpClient::checkRegistrationState() {
+int SaraNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
         if ((csd_.registered() && psd_.registered()) || eps_.registered()) {
             if (memoryIssuePresent_ && connState_ != NcpConnectionState::CONNECTED) {
                 registeredTime_ = millis(); // start registered timer for memory issue power off delays
+            }
+            // FIXME: Workaround for R510S NVM issue, avoid this step with updated firmware.
+            // Switch to airplane mode / full functionality to save connection details for fast cold connection times.
+            // This will skip setting the CONNECTED state and stay CONNECTING, since that's what will happen on the modem.
+            if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510 && !savedNVMR510_) {
+                CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
+                CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1"));
+                savedNVMR510_ = true;
+                return SYSTEM_ERROR_NONE;
             }
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
@@ -1908,6 +1919,7 @@ void SaraNcpClient::checkRegistrationState() {
             connectionState(NcpConnectionState::CONNECTING);
         }
     }
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::interveneRegistration() {

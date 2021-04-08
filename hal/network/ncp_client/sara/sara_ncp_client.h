@@ -111,6 +111,7 @@ private:
     unsigned int fwVersion_ = 0;
     bool memoryIssuePresent_;
     bool oldFirmwarePresent_;
+    bool savedNVMR510_ = false;
     unsigned registrationTimeout_;
     unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
@@ -139,7 +140,7 @@ private:
     void connectionState(NcpConnectionState state);
     void parserError(int error);
     void resetRegistrationState();
-    void checkRegistrationState();
+    int checkRegistrationState();
     int interveneRegistration();
     int checkRunningImsi();
     int processEventsImpl();
