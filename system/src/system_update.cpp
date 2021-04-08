@@ -632,7 +632,7 @@ bool module_info_to_json(appender_fn append, void* append_data, const hal_module
     const module_info_t* info = &module->info;
 
     buf[64] = 0;
-    bool output_uuid = module_function(info)==MODULE_FUNCTION_USER_PART;
+    bool output_uuid = (module_function(info) == MODULE_FUNCTION_USER_PART);
     result &= json.write('{') && json.write_value("s", module->bounds.maximum_size) && json.write_string("l", module_store_string(module->bounds.store))
             && json.write_value("vc",module->validity_checked) && json.write_value("vv", module->validity_result)
       && (!output_uuid || json.write_string("u", bytes2hexbuf(module->suffix.sha, 32, buf)))

@@ -49,6 +49,7 @@ public:
     }
 
     int peek(char* data, size_t size) override {
+        CHECK_TRUE(readFunc, SYSTEM_ERROR_INVALID_ARGUMENT);
         if (!remaining) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
@@ -169,7 +170,7 @@ int platform_ncp_update_module(const hal_module_t* module) {
 }
 
 int platform_ncp_fetch_module_info(hal_system_info_t* sys_info) {
-    for (int i=0; i<sys_info->module_count; i++) {
+    for (int i = 0; i < sys_info->module_count; i++) {
         hal_module_t* module = sys_info->modules + i;
         if (!memcmp(&module->bounds, &module_ncp_mono, sizeof(module_ncp_mono))) {
             uint16_t version = 0;
@@ -190,7 +191,7 @@ int platform_ncp_fetch_module_info(hal_system_info_t* sys_info) {
             // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change
             // in the SYSTEM DESCRIBE state and send a HELLO after the NCP update to
             // cause the DS to request new DESCRIBE info
-            module_info_suffix_t* suffix = &(module->suffix);
+            module_info_suffix_t* suffix = &module->suffix;
             memset(suffix, 0, sizeof(module_info_suffix_t));
 
             // FIXME: NCP firmware should return some kind of a unique string/hash

@@ -248,9 +248,9 @@ bool bootloader_update_if_needed()
 
 uint16_t bootloader_get_version(void)
 {
-	module_info_t info = {};
-    if (FLASH_ModuleInfo(FLASH_INTERNAL, BOOTLOADER_ADDR, nullptr, &info) != SYSTEM_ERROR_NONE) {
-		return 0;
-	}
+    module_info_t info = {};
+    if (FLASH_ModuleInfo(&info, FLASH_INTERNAL, BOOTLOADER_ADDR, nullptr) != SYSTEM_ERROR_NONE) {
+        return 0;
+    }
     return info.module_version;
 }

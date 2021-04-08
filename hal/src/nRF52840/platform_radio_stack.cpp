@@ -42,7 +42,7 @@ int platform_radio_stack_fetch_module_info(hal_system_info_t* sys_info) {
         // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change
         // in the SYSTEM DESCRIBE state and send a HELLO after the SoftDevice update to
         // cause the DS to request new DESCRIBE info
-        module_info_suffix_t* suffix = &(module->suffix);
+        module_info_suffix_t* suffix = &module->suffix;
         memset(suffix, 0, sizeof(module_info_suffix_t));
 
         // Use a unique SoftDevice string in place of an SHA

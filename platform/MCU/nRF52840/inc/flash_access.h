@@ -56,7 +56,7 @@ bool FLASH_ClearFactoryResetModuleSlot(void);
 bool FLASH_RestoreFromFactoryResetModuleSlot(void);
 int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
-int FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset, module_info_t* const infoOut);
+int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset);
 uint32_t FLASH_ModuleAddress(flash_device_t flashDeviceID, uint32_t startAddress);
 uint32_t FLASH_ModuleLength(flash_device_t flashDeviceID, uint32_t startAddress);
 uint16_t FLASH_ModuleVersion(flash_device_t flashDeviceID, uint32_t startAddress);

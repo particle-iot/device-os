@@ -163,9 +163,9 @@ int fetch_device_public_key_ex(void)
 
 void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
-    uint8_t count = module_bounds_length;
     if (construct) {
         info->platform_id = PLATFORM_ID;
+        uint8_t count = module_bounds_length;
         info->modules = new hal_module_t[count];
         if (info->modules) {
             info->module_count = count;
@@ -285,7 +285,7 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
                 }
                 module_info_t infoDep = {};
                 int ret = locate_module(dependency_bounds, &infoDep);
-                valid = ret == SYSTEM_ERROR_NONE && (infoDep.module_version >= moduleInfo.dependency.module_version);
+                valid = (ret == SYSTEM_ERROR_NONE) && (infoDep.module_version >= moduleInfo.dependency.module_version);
             } else {
                 valid = true;
             }
@@ -301,7 +301,7 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
                 }
                 module_info_t infoDep;
                 int ret = locate_module(dependency_bounds, &infoDep);
-                valid = valid && ret == SYSTEM_ERROR_NONE && (infoDep.module_version >= moduleInfo.dependency2.module_version);
+                valid = valid && (ret == SYSTEM_ERROR_NONE) && (infoDep.module_version >= moduleInfo.dependency2.module_version);
             }
         }
 
