@@ -59,7 +59,7 @@ static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength);
  * by it's funciton and index.
  * @param module_function   The function of the module to find.
  * @param module_index      The function index of the module to find.
- * @return the module_bounds corresponding to the module, NULL when not found.
+ * @return the module_bounds corresponding to the module, nullptr when not found.
  */
 const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index)
 {
@@ -67,7 +67,7 @@ const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t modul
         if (module_bounds[i]->module_function==module_function && module_bounds[i]->module_index==module_index)
             return module_bounds[i];
     }
-    return NULL;
+    return nullptr;
 }
 
 
@@ -94,7 +94,7 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     else
     {
         delete info->modules;
-        info->modules = NULL;
+        info->modules = nullptr;
     }
     HAL_OTA_Add_System_Info(info, construct, reserved);
 }
@@ -116,8 +116,6 @@ bool validate_module_dependencies_full(const module_info_t* module, const module
     for (unsigned i=0; i<sysinfo.module_count; i++) {
         const hal_module_t& smod = sysinfo.modules[i];
         const module_info_t* info = &smod.info;
-        if (!info)
-            continue;
 
         // Just in case
         if (!memcmp((const void*)&smod.bounds, (const void*)bounds, sizeof(module_bounds_t))) {
@@ -488,11 +486,11 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
         int error  = 1;
 #if HAL_PLATFORM_CLOUD_UDP
         if (udp)
-        		error = gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, NULL);
+        		error = gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, nullptr);
 #endif
 #if HAL_PLATFORM_CLOUD_TCP
 		if (!udp)
-			error = gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, NULL);
+			error = gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, nullptr);
 #endif
         if (!error) {
         		if (udp)
@@ -560,7 +558,7 @@ const uint8_t* fetch_server_public_key(uint8_t lock)
         return (const uint8_t*)dct_read_app_data_lock(HAL_Feature_Get(FEATURE_CLOUD_UDP) ? DCT_ALT_SERVER_PUBLIC_KEY_OFFSET : DCT_SERVER_PUBLIC_KEY_OFFSET);
     } else {
         dct_read_app_data_unlock(0);
-        return NULL;
+        return nullptr;
     }
 }
 
@@ -570,7 +568,7 @@ const uint8_t* fetch_device_private_key(uint8_t lock)
         return (const uint8_t*)dct_read_app_data_lock(HAL_Feature_Get(FEATURE_CLOUD_UDP) ? DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET : DCT_DEVICE_PRIVATE_KEY_OFFSET);
     } else {
         dct_read_app_data_unlock(0);
-        return NULL;
+        return nullptr;
     }
 }
 
@@ -578,7 +576,7 @@ const uint8_t* fetch_device_public_key(uint8_t lock)
 {
     if (!lock) {
         dct_read_app_data_unlock(0);
-        return NULL;
+        return nullptr;
     }
 
     bool udp = false;
