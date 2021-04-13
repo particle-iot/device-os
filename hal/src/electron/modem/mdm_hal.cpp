@@ -709,26 +709,25 @@ int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
     if (((type == TYPE_PLUS) || (type == TYPE_UNKNOWN)) && edrxActs) {
         // if response is "\r\n+CEDRXS:\r\n", all AcT's disabled, do nothing
         if (strncmp(buf, "\r\n+CEDRXS:\r\n", len) != 0) {
-            int act;
-
-            // TODO forces DEV_SARA_R510 since this is a static method
-            // if (_dev.dev == DEV_SARA_R510) {
-                unsigned eDRXCycle = 0;
-                unsigned pagingTimeWindow = 0;
-                // R510 disabled: +CEDRXS: 4,"0000"
-                sscanf(buf, "+CEDRXS: %u,\"%d\",\"%d\"", &act, &eDRXCycle, &pagingTimeWindow);
-                if (eDRXCycle != 0 || pagingTimeWindow != 0) {
-                    edrxActs->act[edrxActs->count++] = act;
+            int a;
+            if (sscanf(buf, "\r\n+CEDRXS: %1d[2-5]", &a) == 1 ||
+                sscanf(buf, "+CEDRXS: %1d[2-5]", &a) == 1 ) {
+                if (edrxActs->count < MDM_R410_EDRX_ACTS_MAX) {
+                    edrxActs->act[edrxActs->count++] = a;
                 }
-            // }
-            // else {
-            //     if (sscanf(buf, "\r\n+CEDRXS: %1d[2-5]", &act) == 1 ||
-            //         sscanf(buf, "+CEDRXS: %1d[2-5]", &act) == 1) {
-            //         if (edrxActs->count < MDM_R410_EDRX_ACTS_MAX) {
-            //             edrxActs->act[edrxActs->count++] = act;
-            //         }
+            }
+
+            // TODO R510 verify the above works with: +CEDRXS: 4,"0000"
+            // if (_dev.dev == DEV_SARA_R510) {
+            //     unsigned eDRXCycle = 0;
+            //     unsigned pagingTimeWindow = 0;
+            //     // R510 disabled: +CEDRXS: 4,"0000"
+            //     sscanf(buf, "+CEDRXS: %u,\"%d\",\"%d\"", &act, &eDRXCycle, &pagingTimeWindow);
+            //     if (eDRXCycle != 0 || pagingTimeWindow != 0) {
+            //         edrxActs->act[edrxActs->count++] = act;
             //     }
             // }
+
         }
     }
     return WAIT;
@@ -838,8 +837,6 @@ bool MDMParser::_powerOn(void)
 {
     LOCK();
 
-    MDM_INFO(">>> _powerOn\r\n");
-
     /* Initialize I/O */
     Hal_Pin_Info* PIN_MAP_PARSER = HAL_Pin_Map();
     // This pin tends to stay low when floating on the output of the buffer (PWR_UB)
@@ -877,9 +874,6 @@ bool MDMParser::_powerOn(void)
         electronMDM.begin(115200, true /* hwFlowControl */);
         _init = true;
     }
-    else {
-        MDM_INFO(">> already inited \r\n");
-    }
 
     MDM_INFO("\r\n[ Modem::powerOn ] = = = = = = = = = = = = = =");
     bool continue_cancel = false;
@@ -913,7 +907,7 @@ bool MDMParser::_powerOn(void)
             cur_pwr_state = powerState();
         }
         if (!cur_pwr_state) {
-            MDM_INFO("R510 cur_pwr_state: %d \r\n",cur_pwr_state);
+            MDM_ERROR("cur_pwr_state: %d \r\n",cur_pwr_state);
             continue;
         }
 
@@ -957,7 +951,7 @@ bool MDMParser::_powerOn(void)
         // Determine type of the modem
 
         sendFormated("AT+CGMM\r\n");
-        waitFinalResp(_cbCGMM, &_dev, 15000);
+        waitFinalResp(_cbCGMM, &_dev, 15000); //TODO R510 this lengthy timeout really needed?
         if (_dev.dev == DEV_SARA_R410) { 
             // SARA-R410 doesn't support hardware flow control, reinitialize the UART
             electronMDM.begin(115200, false /* hwFlowControl */);
@@ -1103,7 +1097,7 @@ bool MDMParser::init(DevStatus* status)
     CStringHelper str_ccid(_dev.ccid, sizeof(_dev.ccid));
 
     if (_dev.dev == DEV_SARA_R410) {
-        // TODO: Without this reset_duration_ms, some commands, such as +CIMI, may return a SIM failure error.
+        // TODO: Without this delay, some commands, such as +CIMI, may return a SIM failure error.
         // This probably has something to do with the SIM initialization. Should we check the SIM
         // status via +USIMSTAT in addition to +CPIN?
         HAL_Delay_Milliseconds(250);
@@ -1204,7 +1198,7 @@ bool MDMParser::init(DevStatus* status)
             (netProv == CELLULAR_NETPROV_KORE_ATT && curProf != UBLOX_SARA_UMNOPROF_ATT))
         {
             bool continueInit = false;
-            int newProf = UBLOX_SARA_UMNOPROF_SW_DEFAULT; //TODO UBLOX_SARA_UMNOPROF_SIM_SELECT;
+            int newProf = UBLOX_SARA_UMNOPROF_GLOBAL;
             // TWILIO Super SIM
             if (netProv == CELLULAR_NETPROV_TWILIO) {
                 // _oldFirmwarePresent: u-blox firmware 05.06* and 05.07* does not have
@@ -1219,7 +1213,7 @@ bool MDMParser::init(DevStatus* status)
                         newProf = UBLOX_SARA_UMNOPROF_SW_DEFAULT;
                     }
                 } else {
-                    newProf = UBLOX_SARA_UMNOPROF_STANDARD_EUROPE;
+                    newProf = UBLOX_SARA_UMNOPROF_GLOBAL;
                 }
             }
             // KORE AT&T or 3rd Party SIM
@@ -1313,6 +1307,7 @@ reset_failure:
     if (++_resetFailureAttempts < MDM_RESET_FAILURE_MAX_ATTEMPTS) {
         if (_atOk()) {
             //TODO R510 switch
+            //sendFormated("AT+CFUN=15,0\r\n");
             sendFormated("AT+CFUN=16\r\n");
             waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT);
             // MDMParser::powerOn and MDMParser::init will be retried by the system up to
@@ -1372,7 +1367,6 @@ bool MDMParser::powerState(void) {
         _incModemStateChangeCount();
         _pwr = state;
     }
-    MDM_INFO(">> powerState: %ld\r\n", state);
     return state;
 }
 
@@ -1647,6 +1641,7 @@ int MDMParser::_cbURAT(int type, const char *buf, int len, bool *matched_default
     if ((type == TYPE_PLUS) && matched_default) {
         unsigned selectAct = 0, preferAct1 = 0, preferAct2 = 0;
         *matched_default = false;
+        //TODO R510 appeared to not handle the URAT string provided
         auto r = sscanf(buf, "+URAT: %u,%u,%u", &selectAct, &preferAct1, &preferAct2);
         if (r > 0 && selectAct == 7) {            
             *matched_default = true;
@@ -1686,12 +1681,12 @@ bool MDMParser::interveneRegistration(void) {
                 csd_.reset();
                 psd_.reset();
                 _registrationInterventions++;
-                //TODO R510
+                //TODO R510 switch
                 sendFormated("AT+CFUN=0\r\n"); //,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
-                //TODO R510
+                //TODO R510 switch
                 sendFormated("AT+CFUN=1\r\n");//,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
@@ -1734,12 +1729,12 @@ bool MDMParser::interveneRegistration(void) {
                 MDM_INFO("Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
                 _registrationInterventions++;
-                //TODO R510 
+                //TODO R510 switch
                 sendFormated("AT+CFUN=0\r\n"); //,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
-                //TODO R510 
+                //TODO R510 switch
                 sendFormated("AT+CFUN=1\r\n");//,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
@@ -1848,7 +1843,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                     }
                     // Update the context settings
                     if (set_cgdcont) {
-                        sendFormated("AT+CFUN=0\r\n"); //TODO R510
+                        sendFormated("AT+CFUN=0\r\n"); //TODO R510 switch
                         sendFormated("AT+CGDCONT=%d,\"IP\",\"%s\"\r\n", PDP_CONTEXT, apn ? apn : "");
                         if (waitFinalResp() != RESP_OK) {
                             goto failure;
@@ -2011,11 +2006,9 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         }
         // AT command used to collect signal stregnth is different for R410M radio
         if (_dev.dev == DEV_SARA_R410) {
-            if (_dev.dev == DEV_SARA_R410) {
-                sendFormated("AT+UCGED=5\r\n");
-                if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
-                    goto failure;
-                }
+            sendFormated("AT+UCGED=5\r\n");
+            if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+                goto failure;
             }
 
             // Default to 255 because UCGED response is multi-line
@@ -2029,7 +2022,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         }
         else
         {
-             sendFormated("AT+CSQ\r\n");
+            sendFormated("AT+CSQ\r\n");
             if (RESP_OK != waitFinalResp(_cbCSQ, &_net, CSQ_TIMEOUT)) {
                 goto failure;
             }
@@ -2056,7 +2049,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         ok = REG_OK(csd_.status()) && REG_OK(psd_.status());
     }
 
-    MDM_PRINTF("%10.3f checkNetStatus %d \r\n", HAL_Timer_Get_Milli_Seconds() * 0.001, ok);
+    // MDM_PRINTF("%10.3f checkNetStatus %d \r\n", HAL_Timer_Get_Milli_Seconds() * 0.001, ok);
 
     return ok;
 failure:
@@ -2414,7 +2407,6 @@ int MDMParser::_cbUCGED(int type, const char* buf, int len, NetStatus* status)
         // RSRP maps from dBm [-141,-44] to [0,97]
         // We are defining hard boundaries for RSRP to be between [-200,0],
         // and consider other values as error and call it 255
-        INFO(">>> UCGED: '%s' \r\n",buf);
         if (sscanf(buf, "\r\n+RSRP: %*d,%*d,\"%d.%*u\"", &rsrp) == 1) {
             if (rsrp < -141 && rsrp >= -200) {
                 status->rsrp = 0;
@@ -2453,7 +2445,6 @@ int MDMParser::_cbCSQ(int type, const char* buf, int len, NetStatus* status)
         int a,b;
         // +CSQ: <rssi>,<qual>
         if (sscanf(buf, "\r\n+CSQ: %d,%d",&a,&b) == 2) {
-            INFO(">>> CSQ: (%d, %d) \r\n", a, b);
             switch (status->act) {
             case ACT_GSM:
             case ACT_EDGE:
@@ -2497,7 +2488,6 @@ int MDMParser::_cbCSQ(int type, const char* buf, int len, NetStatus* status)
                 break;
             default:
                 // Unknown access tecnhology
-                WARN("Unknown RAT: %d  (%d, %d) \r\n",status->act, a, b);
                 status->asu = std::numeric_limits<int32_t>::min();
                 status->aqual = std::numeric_limits<int32_t>::min();
                 break;
@@ -2773,7 +2763,7 @@ int MDMParser::_cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip) {
         // +CGPADDR: <cid>,<PDP_addr>
         // TODO: IPv6
 
-        //TODO R510
+        //TODO R510 verify
         //    143.905 AT read  +   32 "\r\n+CGPADDR: 1,\"100.78.144.188\"\r\n"
         int count = sscanf(buf, "\r\n+CGPADDR: %d,%d.%d.%d.%d", &cid, &a, &b, &c, &d);
         if (count < 5) {
@@ -2783,9 +2773,7 @@ int MDMParser::_cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip) {
         if (count == 5) {
             *ip = IPADR(a, b, c, d);
         }
-        else {
-            INFO("Bad _cbCGPADDR count: %d", count);
-        }
+
     }
     return WAIT;
 }
@@ -2924,7 +2912,7 @@ bool MDMParser::detach(void)
         MDM_INFO("\r\n[ Modem::detach ] = = = = = = = = = = = = = = =");
         // Unregister from the network entirely
         if (_checkModem()) {
-            //TODO R510
+            //TODO R510 switch
             sendFormated("AT+CFUN=0\r\n");
             if (waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT) == RESP_OK) {
                 _activated = false;
