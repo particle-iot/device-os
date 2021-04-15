@@ -234,13 +234,15 @@ int spark_cloud_disconnect(const spark_cloud_disconnect_options* options, void* 
     if (spark_cloud_flag_connected()) {
         CloudConnectionSettings::instance()->setPendingDisconnectOptions(std::move(opts));
         spark_cloud_flag_disconnect();
-    } else if (opts.isClearSessionSet() && opts.clearSession()) {
+    } else {
         spark_cloud_flag_disconnect();
-        SYSTEM_THREAD_CONTEXT_SYNC_CALL([]() {
-            clearSessionData();
-            return 0;
-        }());
-        // Note: The above SYSTEM_THREAD_CONTEXT_SYNC_CALL() causes this function to return
+        if (opts.isClearSessionSet() && opts.clearSession()) {
+            SYSTEM_THREAD_CONTEXT_SYNC_CALL([]() {
+                clearSessionData();
+                return 0;
+            }());
+            // Note: The above SYSTEM_THREAD_CONTEXT_SYNC_CALL() causes this function to return
+        }
     }
     return 0;
 }
