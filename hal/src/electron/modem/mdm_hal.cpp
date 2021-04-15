@@ -709,11 +709,11 @@ int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
     if (((type == TYPE_PLUS) || (type == TYPE_UNKNOWN)) && edrxActs) {
         // if response is "\r\n+CEDRXS:\r\n", all AcT's disabled, do nothing
         if (strncmp(buf, "\r\n+CEDRXS:\r\n", len) != 0) {
-            int a;
-            if (sscanf(buf, "\r\n+CEDRXS: %1d[2-5]", &a) == 1 ||
-            sscanf(buf, "+CEDRXS: %1d[2-5]", &a) == 1 ) {
+            int act;
+            if (sscanf(buf, "\r\n+CEDRXS: %1d[2-5]", &act) == 1 ||
+                sscanf(buf, "+CEDRXS: %1d[2-5]", &act) == 1 ) {
                 if (edrxActs->count < MDM_R410_EDRX_ACTS_MAX) {
-                    edrxActs->act[edrxActs->count++] = a;
+                    edrxActs->act[edrxActs->count++] = act;
                 }
             }
             else {
@@ -721,10 +721,11 @@ int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
                 //  +CEDRXS: 4,\"0000\"
                 //  "\r\n+CEDRXS: 4,\"0000\"\r\n"
                 unsigned eDRXCycle = 0;
-                if (sscanf(buf, "\r\n+CEDRXS: %u,\"%d\"", &a, &eDRXCycle) == 2 ||
-                    sscanf(buf, "+CEDRXS: %u,\"%d\"", &a, &eDRXCycle) == 2 ) {
-                    if (eDRXCycle != 0 ) {
-                        edrxActs->act[edrxActs->count++] = a;
+                unsigned pagingTimeWindow = 0;
+                if (sscanf(buf,"\r\n+CEDRXS: %u,\"%d\",\"%d\"", &act, &eDRXCycle, &pagingTimeWindow) >= 1 ||
+                    sscanf(buf,"+CEDRXS: %u,\"%d\",\"%d\"", &act, &eDRXCycle, &pagingTimeWindow) >= 1) {
+                    if (eDRXCycle != 0 || pagingTimeWindow != 0) { // Ignore scanf() errors
+                        edrxActs->act[edrxActs->count++] = act;
                     }
                 }
             }
@@ -1281,7 +1282,7 @@ bool MDMParser::init(DevStatus* status)
         // Reset the detected count each time we check for eDRX AcTs enabled
         EdrxActs _edrxActs;
         if (RESP_ERROR == waitFinalResp(_cbCEDRXS, &_edrxActs, CEDRXS_TIMEOUT)) {
-            MDM_ERROR("_cbCEDRXS waitResp failed\r\n");
+            MDM_ERROR("_cbCEDRXS waitResp failed");
             goto reset_failure;
         }
         for (int i = 0; i < _edrxActs.count; i++) {
@@ -1290,7 +1291,7 @@ bool MDMParser::init(DevStatus* status)
             resetNeeded = true;
         }
         if (resetNeeded) {
-            MDM_ERROR("resetNeeded after CEDRXS\r\n");
+            MDM_ERROR("resetNeeded after CEDRXS");
             goto reset_failure;
         }
     } // if (_dev.dev == DEV_SARA_R410)
