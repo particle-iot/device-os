@@ -711,23 +711,20 @@ int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
         if (strncmp(buf, "\r\n+CEDRXS:\r\n", len) != 0) {
             int a;
             if (sscanf(buf, "\r\n+CEDRXS: %1d[2-5]", &a) == 1 ||
-                sscanf(buf, "+CEDRXS: %1d[2-5]", &a) == 1 ) {
+            sscanf(buf, "+CEDRXS: %1d[2-5]", &a) == 1 ) {
                 if (edrxActs->count < MDM_R410_EDRX_ACTS_MAX) {
                     edrxActs->act[edrxActs->count++] = a;
                 }
             }
-
-            // TODO R510 verify the above works with: +CEDRXS: 4,"0000"
-            // if (_dev.dev == DEV_SARA_R510) {
-            //     unsigned eDRXCycle = 0;
-            //     unsigned pagingTimeWindow = 0;
-            //     // R510 disabled: +CEDRXS: 4,"0000"
-            //     sscanf(buf, "+CEDRXS: %u,\"%d\",\"%d\"", &act, &eDRXCycle, &pagingTimeWindow);
-            //     if (eDRXCycle != 0 || pagingTimeWindow != 0) {
-            //         edrxActs->act[edrxActs->count++] = act;
-            //     }
-            // }
-
+            else {
+                // TODO R510 verify below works with: +CEDRXS: 4,"0000"
+                unsigned eDRXCycle = 0;
+                unsigned pagingTimeWindow = 0;
+                sscanf(buf, "+CEDRXS: %u,\"%d\",\"%d\"", &a, &eDRXCycle, &pagingTimeWindow);
+                if (eDRXCycle != 0 || pagingTimeWindow != 0) {
+                    edrxActs->act[edrxActs->count++] = a;
+                }
+            }
         }
     }
     return WAIT;
