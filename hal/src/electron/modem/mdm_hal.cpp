@@ -380,7 +380,7 @@ int MDMParser::sendFormattedWithArgs(const char* format, va_list args) {
 
 int MDMParser::_checkAtResponse(bool fastTimeout /* = false */)
 {
-    MDM_INFO("_checkAtResponse\r\n");
+    //MDM_INFO("_checkAtResponse\r\n");
     sendFormated("AT\r\n");
     int resp = waitFinalResp(nullptr, nullptr, fastTimeout ? AT_TIMEOUT_POWERON : AT_TIMEOUT);
 
@@ -612,7 +612,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
 
                     bool valid_reg_cmd = true;
                     if (r >= 2) {
-                        MDM_INFO(">> reg_cmd: %s \r\n",s);
+                        //MDM_INFO(">> reg_cmd: %s \r\n",s);
                         if (!strcmp(s, "CREG:")) {
                             csd_.status(csd_.decodeAtStatus(a));
                         } else if (!strcmp(s, "CGREG:")) {
@@ -717,12 +717,15 @@ int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
                 }
             }
             else {
-                // TODO R510 verify below works with: +CEDRXS: 4,"0000"
+                // TODO R510 verify below works with: 
+                //  +CEDRXS: 4,\"0000\"
+                //  "\r\n+CEDRXS: 4,\"0000\"\r\n"
                 unsigned eDRXCycle = 0;
-                unsigned pagingTimeWindow = 0;
-                sscanf(buf, "+CEDRXS: %u,\"%d\",\"%d\"", &a, &eDRXCycle, &pagingTimeWindow);
-                if (eDRXCycle != 0 || pagingTimeWindow != 0) {
-                    edrxActs->act[edrxActs->count++] = a;
+                if (sscanf(buf, "\r\n+CEDRXS: %u,\"%d\"", &a, &eDRXCycle) == 2 ||
+                    sscanf(buf, "+CEDRXS: %u,\"%d\"", &a, &eDRXCycle) == 2 ) {
+                    if (eDRXCycle != 0 ) {
+                        edrxActs->act[edrxActs->count++] = a;
+                    }
                 }
             }
         }
