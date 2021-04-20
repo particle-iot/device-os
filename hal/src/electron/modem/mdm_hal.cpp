@@ -704,8 +704,11 @@ void MDMParser::unlock()
     mdm_mutex.unlock();
 }
 
+/*
 int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
 {
+    // R410 disabled: +CEDRXS:
+    // R510 disabled: +CEDRXS: 4,"0000"
     if (((type == TYPE_PLUS) || (type == TYPE_UNKNOWN)) && edrxActs) {
         // if response is "\r\n+CEDRXS:\r\n", all AcT's disabled, do nothing
         if (strncmp(buf, "\r\n+CEDRXS:\r\n", len) != 0) {
@@ -727,6 +730,78 @@ int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
                     if (eDRXCycle != 0 || pagingTimeWindow != 0) { // Ignore scanf() errors
                         edrxActs->act[edrxActs->count++] = act;
                     }
+                }
+            }
+        }
+    }
+    return WAIT;
+}
+
+char mobileCountryCode[4] = {0};
+        char mobileNetworkCode[4] = {0};
+        int mode = -1;
+
+        int r = ::sscanf(buf, "\r\n+COPS: %d,%*d,\"%3[0-9]%3[0-9]\",%d", &mode, mobileCountryCode,
+                mobileNetworkCode, &act);
+
+        // +COPS: <mode>[,<format>,<oper>[,<AcT>]]
+        if (r >= 1)
+        {
+            status->cops = mode;
+        }
+
+        if (r >= 2)
+        {
+            // Preserve digit format data
+            const int mnc_digits = ::strnlen(mobileNetworkCode, sizeof(mobileNetworkCode));
+            if (2 == mnc_digits)
+            {
+                status->cgi.cgi_flags |= CGI_FLAG_TWO_DIGIT_MNC;
+            }
+            else
+            {
+                status->cgi.cgi_flags &= ~CGI_FLAG_TWO_DIGIT_MNC;
+            }
+
+            // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
+            status->cgi.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
+            status->cgi.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
+
+
+*/
+
+int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
+{
+    if (((type == TYPE_PLUS) || (type == TYPE_UNKNOWN)) && edrxActs) {
+        // if response is "\r\n+CEDRXS:\r\n", all AcT's disabled, do nothing
+        // When multiple ACTs are enabled they will return on following lines without prefix of "\r\n"
+        // R410 disabled: +CEDRXS:
+        // R510 disabled: +CEDRXS: 4,"0000"
+        unsigned matched = 0;
+        unsigned act = 0;
+        unsigned eDRXCycle = 0;
+        unsigned pagingTimeWindow = 0;
+        // char eDRXCycle[5] = {0};
+        // char pagingTimeWindow[5] = {0};
+        // strcpy(eDRXCycle, "1111");
+        // strcpy(pagingTimeWindow, "1111");
+
+        // char buffer[64] = {0};
+        // strcpy(buffer, "\r\n+CEDRXS: 4,\"1010\",\"0101\"\r\n");
+
+        // matched = sscanf(buf, "\r\n+CEDRXS: %u,\"%4[^,]\",\"%4[^,]\"", &act, eDRXCycle, pagingTimeWindow);
+        // MDM_PRINTF("[CEDRXS] matched:%d, act:%u, cycle:%s, paging:%s\r\n", matched, act, eDRXCycle, pagingTimeWindow);
+        // matched = sscanf(buffer, "\r\n+CEDRXS: %u,\"%u[^,]\",\"%u[^,]\"", &act, &eDRXCycle, &pagingTimeWindow);
+        // MDM_PRINTF("[CEDRXS] matched:%d, act:%u, cycle:%u, paging:%u\r\n", matched, act, eDRXCycle, pagingTimeWindow);
+        // matched = sscanf(buffer, "\r\n+CEDRXS: %u,\"%u\",\"%u\"", &act, &eDRXCycle, &pagingTimeWindow);
+        // MDM_PRINTF("[CEDRXS] matched:%d, act:%u, cycle:%u, paging:%u\r\n", matched, act, eDRXCycle, pagingTimeWindow);
+
+        if ((matched = sscanf(buf, "\r\n+CEDRXS: %u,\"%u\",\"%u\"", &act, &eDRXCycle, &pagingTimeWindow)) >= 1 ||
+            (matched = sscanf(buf, "+CEDRXS: %u,\"%u\",\"%u\"", &act, &eDRXCycle, &pagingTimeWindow)) >= 1 ) {
+            MDM_PRINTF("[CEDRXS] matched:%u, act:%u, cycle:%u, paging:%u\r\n", matched, act, eDRXCycle, pagingTimeWindow);
+            if (matched >= 1 && (eDRXCycle != 0 || pagingTimeWindow != 0) ) {
+                if (edrxActs->count < MDM_R410_EDRX_ACTS_MAX) {
+                    edrxActs->act[edrxActs->count++] = act;
                 }
             }
         }
@@ -880,16 +955,17 @@ bool MDMParser::_powerOn(void)
     bool continue_cancel = false;
     bool retried_after_reset = false;
     int i = MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET; // When modem not responsive on boot, AT/OK tries 25x (for ~30s) before hard reset
-    const int FIRST_ITERATION = (MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET-1);
+    // const int FIRST_ITERATION = (MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET-1);
+// construeN = 
     // FIXME: REMOVE THIS BEFORE MERGING!!!!!!
-    _dev.dev = DEV_SARA_R510; 
-    MDM_ERROR("Forcing to R510\r\n"); 
+    // _dev.dev = DEV_SARA_R510;
+    // MDM_ERROR("Forcing to R510\r\n"); 
 
 
-    bool cur_pwr_state = false;
+    // bool cur_pwr_state = false;
 
     while (i--) {
-        MDM_INFO("Setup %d \r\n", i); 
+        MDM_INFO("Setup %d \r\n", i);
 
         // // SARA-U2/LISA-U2 50..80us
         // HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
@@ -898,19 +974,21 @@ bool MDMParser::_powerOn(void)
         // // SARA-G35 >5ms, LISA-C2 > 150ms, LEON-G2 >5ms, SARA-R4 >= 150ms
         // HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(150);
         // HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(100);
-    
-        // TODO R510
-        HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(1500);
-        HAL_GPIO_Write(PWR_UC, 1); 
 
-        for (int j = 0; j < 5 && !cur_pwr_state; j++) {
-            HAL_Delay_Milliseconds(1000);
-            cur_pwr_state = powerState();
+        // TODO R510
+        if (!powerState()) {
+            HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(1500);
+            HAL_GPIO_Write(PWR_UC, 1);
         }
-        if (!cur_pwr_state) {
-            MDM_ERROR("cur_pwr_state: %d \r\n",cur_pwr_state);
-            continue;
-        }
+
+        // for (int j = 0; j < 5 && !cur_pwr_state; j++) {
+        //     HAL_Delay_Milliseconds(1000);
+        //     cur_pwr_state = powerState();
+        // }
+        // if (!cur_pwr_state) {
+        //     MDM_ERROR("cur_pwr_state: %d \r\n",cur_pwr_state);
+        //     continue;
+        // }
 
         // purge any messages
         purge();
@@ -924,10 +1002,11 @@ bool MDMParser::_powerOn(void)
             resume(); // make sure we can talk to the modem
         }
 
-        // HAL_Delay_Milliseconds(1000);
+        HAL_Delay_Milliseconds(1000);
 
         // check interface, and use quicker 1s timeout during initial _powerOn()
-        if (_atOk(FIRST_ITERATION != i)) { //TODO R510 seems to want to take longer for first AT response
+        // if (_atOk(FIRST_ITERATION != i)) { //TODO R510 seems to want to take longer for first AT response
+        if (_atOk(true)) {
             // Increment the state change counter to show that the modem has been powered off -> on
             if (!_pwr) {
                 _incModemStateChangeCount();
@@ -949,11 +1028,13 @@ bool MDMParser::_powerOn(void)
     if (i < 0) {
         MDM_ERROR("[ No Reply from Modem ]\r\n");
     } else {
-        // Determine type of the modem
+        waitFinalResp(NULL, NULL, 50);  // slow it down a bit before we turn off ECHO
 
+        // Determine type of the modem
         sendFormated("AT+CGMM\r\n");
+        // waitFinalResp(_cbCGMM, &_dev);
         waitFinalResp(_cbCGMM, &_dev, 15000); //TODO R510 this lengthy timeout really needed?
-        if (_dev.dev == DEV_SARA_R410) { 
+        if (_dev.dev == DEV_SARA_R410) {
             // SARA-R410 doesn't support hardware flow control, reinitialize the UART
             electronMDM.begin(115200, false /* hwFlowControl */);
             // Power saving modes defined by the +UPSV command are not supported
@@ -967,22 +1048,22 @@ bool MDMParser::_powerOn(void)
     }
 
     // Flush any on-boot URCs that can cause syncing issues later
-    waitFinalResp(NULL,NULL,200);
+    waitFinalResp(NULL, NULL, 200);
 
     // echo off
     sendFormated("ATE0\r\n");
-    if(RESP_OK != waitFinalResp()) { 
+    if (RESP_OK != waitFinalResp()) {
         goto failure;
     }
 
     // enable verbose error messages
     sendFormated("AT+CMEE=2\r\n");
-    if(RESP_OK !=  waitFinalResp()) {
+    if (RESP_OK != waitFinalResp()) {
         goto failure;
     }
     // Configures sending of URCs from MT to DTE for indications
     sendFormated("AT+CMER=1,0,0,2,1\r\n");
-    if(RESP_OK != waitFinalResp()) {
+    if (RESP_OK != waitFinalResp()) {
         goto failure;
     }
     // set baud rate
@@ -1279,6 +1360,10 @@ bool MDMParser::init(DevStatus* status)
         // Force eDRX mode to be disabled
         // 18/23 hardware doesn't seem to be disabled by default
         sendFormated("AT+CEDRXS?\r\n");
+        // waitFinalResp();
+        // sendFormated("AT+CEDRXS=1,4,\"0101\",\"0101\"\r\n");
+        // waitFinalResp();
+        // sendFormated("AT+CEDRXS?\r\n");
         // Reset the detected count each time we check for eDRX AcTs enabled
         EdrxActs _edrxActs;
         if (RESP_ERROR == waitFinalResp(_cbCEDRXS, &_edrxActs, CEDRXS_TIMEOUT)) {
