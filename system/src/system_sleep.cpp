@@ -104,7 +104,7 @@ int system_sleep_network_resume(network_interface_index index, network_status_t&
 } // anonymous namespacee
 
 int system_sleep_ext_impl(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext(config, reason, reserved));
+    SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext_impl(config, reason, reserved));
 
     // Validates the sleep configuration previous to disconnecting network,
     // so that the network status remains if the configuration is invalid.
