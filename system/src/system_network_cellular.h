@@ -165,6 +165,7 @@ public:
     void connect_cancel(bool cancel) override {
         // only cancel if presently connecting
         bool require_cancel = false;
+        CLR_WLAN_WD();
         ATOMIC_BLOCK() {
             if (connecting || !SPARK_WLAN_STARTED)
             {
