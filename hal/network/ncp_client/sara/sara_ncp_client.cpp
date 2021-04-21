@@ -1142,8 +1142,8 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                     (netConf_.netProv() == CellularNetworkProvider::TWILIO &&
                     static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE) ||
                     (netConf_.netProv() == CellularNetworkProvider::KORE_ATT &&
-                    static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT)) ) {
-                int newProf = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
+                    static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE)) ) {
+                int newProf = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
                 // TWILIO Super SIM
                 if (netConf_.netProv() == CellularNetworkProvider::TWILIO) {
                     // _oldFirmwarePresent: u-blox firmware 05.06* and 05.07* does not have
@@ -1185,7 +1185,8 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 char ubandStr[24] = {};
                 auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%23[^,]", ubandStr));
                 CHECK_PARSER_OK(respBand.readResult());
-                if (netConf_.netProv() == CellularNetworkProvider::TWILIO && retBand == 1) {
+                if ((netConf_.netProv() == CellularNetworkProvider::TWILIO ||
+                    netConf_.netProv() == CellularNetworkProvider::KORE_ATT) && retBand == 1) {
                     char* pEnd = &ubandStr[0];
                     ubandUint64 = strtoull(ubandStr, &pEnd, 10);
                     // Only update if Twilio Super SIM and not set to correct bands
