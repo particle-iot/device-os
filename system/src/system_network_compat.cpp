@@ -40,6 +40,7 @@ uint32_t wlan_watchdog_duration = 0;
 
 volatile uint8_t SPARK_WLAN_RESET = 0;
 volatile uint8_t SPARK_WLAN_SLEEP = 0;
+volatile uint8_t SPARK_WLAN_CONNECT_RESTORE = 0;
 volatile uint8_t SPARK_WLAN_STARTED = 0;
 
 
@@ -248,6 +249,7 @@ void manage_network_connection()
         {
             WARN("Resetting WLAN due to %s", (WLAN_WD_TO()) ? "WLAN_WD_TO()":((SPARK_WLAN_RESET) ? "SPARK_WLAN_RESET" : "SPARK_WLAN_SLEEP"));
             auto was_sleeping = SPARK_WLAN_SLEEP;
+            SPARK_WLAN_CONNECT_RESTORE = network_ready(0, 0, 0) || network_connecting(0, 0, 0);
             //auto was_disconnected = network.manual_disconnect();
             // Note: The cloud connectivity layer may "detect" an unanticipated network disconnection
             // before the networking layer, and due to current recovery logic, which resets the network,
@@ -264,9 +266,18 @@ void manage_network_connection()
     }
     else
     {
-        if (!SPARK_WLAN_STARTED || (spark_cloud_flag_auto_connect() && !network_ready(0, 0, 0)))
-        {
-            // INFO("Network Connect: %s", (!SPARK_WLAN_STARTED) ? "!SPARK_WLAN_STARTED" : "SPARK_CLOUD_CONNECT && !network.ready()");
+        if (!SPARK_WLAN_STARTED) {
+            // INFO("Network On: !SPARK_WLAN_STARTED");
+            network_on(0, 0, 0, 0);
+        }
+
+        if ((SPARK_WLAN_CONNECT_RESTORE || spark_cloud_flag_auto_connect()) && !network_ready(0, 0, 0)) {
+            // INFO("Network Connect:%s%s", (SPARK_WLAN_CONNECT_RESTORE ? " SPARK_WLAN_CONNECT_RESTORE" : " "),
+            //                              (spark_cloud_flag_auto_connect() ? " spark_cloud_flag_auto_connect()" : " "));
+
+            // XXX: If the auto-connect flag is not set, we used to only call network_connect() once here,
+            // even if it failed to connect to network for whatever reason. So we should clear the flag here.
+            SPARK_WLAN_CONNECT_RESTORE = 0;
             network_connect(0, 0, 0, 0);
         } else {
             nif(0).process();
