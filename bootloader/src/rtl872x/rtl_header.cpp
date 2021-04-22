@@ -1,0 +1,80 @@
+/*
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <cstdint>
+
+typedef struct rtl_binary_header {
+    uint32_t signature_high;
+    uint32_t signature_low;
+    uint32_t size;
+    uint32_t load_address;
+    uint32_t sboot_address;
+    uint32_t reserved0;
+    uint64_t reserved1;
+} rtl_binary_header;
+
+extern uintptr_t link_rtl_header_size;
+extern uintptr_t link_rtl_startup;
+extern uintptr_t link_rtl_header_ram_size;
+
+// __attribute__((used, section(".rtl_header"))) const rtl_binary_header rtl_header = {
+//     .signature_high = 0x96969999,
+//     .signature_low = 0xfc66cc3f,
+//     .size = (uint32_t)&link_rtl_header_size,
+//     .load_address = (uint32_t)&link_rtl_startup,
+//     .sboot_address = 0xffffffff,
+//     .reserved0 = 0xffffffff,
+//     .reserved1 = 0xffffffffffffffff
+// };
+
+extern "C" void Reset_Handler(void);
+
+__attribute__((used, section(".rtl_header"))) const rtl_binary_header rtl_header = {
+    .signature_high = 0x35393138,
+    .signature_low = 0x31313738,
+    // .signature_high = 0x96969999,
+    // .signature_low = 0xfc66cc3f,
+    .size = (uint32_t)&link_rtl_header_size,
+    .load_address = (uint32_t)&link_rtl_startup,
+    .sboot_address = 0xffffffff,
+    .reserved0 = 0xffffffff,
+    .reserved1 = 0xffffffffffffffff
+};
+
+
+__attribute__((used, section(".rtl_header_ram"))) const rtl_binary_header rtl_header_ram = {
+    .signature_high = 0x35393138,
+    .signature_low = 0x31313738,
+    // .signature_high = 0x96969999,
+    // .signature_low = 0xfc66cc3f,
+    .size = (uint32_t)&link_rtl_header_ram_size,
+    .load_address = 0x10005000,
+    .sboot_address = 0xffffffff,
+    .reserved0 = 0xffffffff,
+    .reserved1 = 0xffffffffffffffff
+};
+
+__attribute__((used, section(".rtl_header_ram_data"))) const uint32_t jump_table[] = {
+    (uint32_t)&Reset_Handler,
+    0,
+    0x10001000,
+    0x574b5452,
+    0xff006e69,
+    0x00010100,
+    0x01018195,
+    0x00000000
+};
