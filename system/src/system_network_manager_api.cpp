@@ -48,6 +48,7 @@ uint32_t wlan_watchdog_duration;
 /* FIXME */
 volatile uint8_t SPARK_WLAN_RESET;
 volatile uint8_t SPARK_WLAN_SLEEP;
+volatile uint8_t SPARK_WLAN_CONNECT_RESTORE;
 volatile uint8_t SPARK_WLAN_STARTED;
 extern int cfod_count;
 
