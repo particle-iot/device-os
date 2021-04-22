@@ -51,3 +51,6 @@
 	url = https://github.com/particle-iot/Fakeit.git
 	branch = particle
 
+[submodule "third_party/ambd_sdk/ambd_sdk"]
+	path = third_party/ambd_sdk/ambd_sdk
+	url = git@github.com:particle-iot/realtek_ambd_sdk.git
