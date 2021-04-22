@@ -60,11 +60,11 @@ network_status_t system_sleep_network_suspend(network_interface_index index) {
     status.suspended = true;
 
     // Disconnect from network
-    if (network_connecting(index, 0, NULL) || network_ready(index, 0, NULL)) {
-        if (network_connecting(index, 0, NULL)) {
+    if (network_connecting(index, 0, nullptr) || network_ready(index, 0, nullptr)) {
+        if (network_connecting(index, 0, nullptr)) {
             network_connect_cancel(index, 1, 0, 0);
         }
-        network_disconnect(index, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
+        network_disconnect(index, NETWORK_DISCONNECT_REASON_SLEEP, nullptr);
         status.connected = true;
     }
 
@@ -101,8 +101,11 @@ int system_sleep_network_resume(network_interface_index index, network_status_t 
      * if single threaded, or this function is invoked synchronously by the system thread if system threading
      * is enabled. In both case, that would block the user application. Setting a flag here to unblock the user
      * application and restore the connection later. */
-    if (status.on || status.connected) {
+    if (status.on) {
         SPARK_WLAN_SLEEP = 0;
+    }
+    if (status.connected) {
+        SPARK_WLAN_CONNECT_RESTORE = 1;
     }
 #else
     if (status.on) {
@@ -254,7 +257,7 @@ int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t*
 #if HAL_PLATFORM_GEN == 2
     // Cancel current connection attempt to unblock the system thread
     // on Gen 2 platforms
-    if (network_connecting(NETWORK_INTERFACE_ALL, 0, NULL)) {
+    if (network_connecting(NETWORK_INTERFACE_ALL, 0, nullptr)) {
         network_connect_cancel(NETWORK_INTERFACE_ALL, 1, 0, 0);
     }
 #endif // HAL_PLATFORM_GEN == 2
