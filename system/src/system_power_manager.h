@@ -66,6 +66,8 @@ private:
   void batteryStateTransitioningTo(battery_state_t targetState, bool count = true);
   void clearIntermediateBatteryState(uint8_t state);
 
+  void runDpdm();
+
   static power_source_t powerSourceFromStatus(uint8_t status);
 
 private:
@@ -107,6 +109,8 @@ private:
   uint8_t chargedFaultCount_ = 0;
   uint8_t repeatedChargedCount_ = 0;
   bool possibleChargedFault_ = false;
+
+  uint8_t dpdmRetry_ = 0;
 
   hal_power_config config_ = {};
 };
