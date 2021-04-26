@@ -511,12 +511,15 @@ void PowerManager::initDefault(bool dpdm) {
 }
 
 void PowerManager::runDpdm() {
+// FIXME: maybe introduce a new flag?
+#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
   static system_tick_t lastRun = 0;
+  static uint8_t dpdmRetry = 0;
 
   if (millis() - lastRun >= DPDM_PERIOD) {
     lastRun = millis();
     if (g_powerSource == POWER_SOURCE_VIN && HAL_USB_Get_State(nullptr) >= HAL_USB_STATE_POWERED) {
-      if (dpdmRetry_ >= DPDM_RETRY_COUNT) {
+      if (dpdmRetry >= DPDM_RETRY_COUNT) {
         return;
       }
       PMIC power(true);
@@ -524,11 +527,12 @@ void PowerManager::runDpdm() {
         return;
       }
       power.enableDPDM();
-      dpdmRetry_++;
+      dpdmRetry++;
     } else {
-      dpdmRetry_ = 0;
+      dpdmRetry = 0;
     }
   }
+#endif
 }
 
 void PowerManager::confirmBatteryState(battery_state_t from, battery_state_t to) {

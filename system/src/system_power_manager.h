@@ -110,8 +110,6 @@ private:
   uint8_t repeatedChargedCount_ = 0;
   bool possibleChargedFault_ = false;
 
-  uint8_t dpdmRetry_ = 0;
-
   hal_power_config config_ = {};
 };
 
