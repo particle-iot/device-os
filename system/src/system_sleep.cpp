@@ -39,8 +39,10 @@ LOG_SOURCE_CATEGORY("system.sleep");
 #include "cellular_hal.h"
 #endif // HAL_PLATFORM_CELLULAR
 #include "check.h"
+#include "system_network_manager.h"
 
 using namespace particle;
+using namespace particle::system;
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -65,14 +67,23 @@ network_status_t system_sleep_network_suspend(network_interface_index index) {
         network_disconnect(index, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
         status.connected = true;
     }
-#if PLATFORM_GEN == 2
-    if (!SPARK_WLAN_SLEEP) {
-        status.connected = true;
-    }
-#endif
+
     // Turn off the modem
     if (!network_is_off(index, nullptr)) {
-        status.on = true;
+#if PLATFORM_GEN == 2
+        if (!SPARK_WLAN_SLEEP) {
+            status.on = true;
+        }
+#endif
+#if PLATFORM_GEN == 3
+        if_t iface;
+        if (!if_get_by_index(index, &iface)) {
+            if (NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_UP) ||
+                    NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_POWERING_UP)) {
+                status.on = true;
+            }
+        }
+#endif
         network_off(index, 0, 0, NULL);
         LOG(TRACE, "Waiting interface %d to be off...", (int)index);
         // There might be up to 30s delay to turn off the modem for particular platforms.
@@ -80,17 +91,19 @@ network_status_t system_sleep_network_suspend(network_interface_index index) {
     } else {
         LOG(TRACE, "Interface %d is off already", (int)index);
     }
-    
+
     return status;
 }
 
-int system_sleep_network_resume(network_interface_index index, network_status_t& status) {
+int system_sleep_network_resume(network_interface_index index, network_status_t status) {
 #if PLATFORM_GEN == 2
     /* On Gen2, calling network_on() and network_connect() will block until the connection is established
      * if single threaded, or this function is invoked synchronously by the system thread if system threading
      * is enabled. In both case, that would block the user application. Setting a flag here to unblock the user
      * application and restore the connection later. */
-    SPARK_WLAN_SLEEP = 0;
+    if (status.on || status.connected) {
+        SPARK_WLAN_SLEEP = 0;
+    }
 #else
     if (status.on) {
         network_on(index, 0, 0, nullptr);
