@@ -36,6 +36,8 @@ function runBuildJob()
     [[ ! -z "${HAS_NO_SECTIONS}" ]] || [[ ${result_code} -eq 0 ]]
     result_code=$?
   fi
+  # FIXME: delete build directory to save some space in CI context
+  rm -rf ${build_directory}
   [[ ${result_code} -eq 0 ]]
   testcase "$2 ${@:3}"
 }
