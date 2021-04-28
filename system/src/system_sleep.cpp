@@ -41,7 +41,6 @@ LOG_SOURCE_CATEGORY("system.sleep");
 #include "system_network_manager.h"
 
 using namespace particle;
-using namespace particle::system;
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -75,6 +74,7 @@ network_status_t system_sleep_network_suspend(network_interface_index index) {
         }
 #endif
 #if PLATFORM_GEN == 3
+        using namespace particle::system;
         if_t iface;
         if (!if_get_by_index(index, &iface)) {
             if (NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_UP) ||
