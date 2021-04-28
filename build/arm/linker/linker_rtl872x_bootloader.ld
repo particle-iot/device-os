@@ -12,7 +12,7 @@ INCLUDE platform_ram.ld
 bootloader_ram_origin = 0x10005000;
 
 bootloader_flash_length = 64K;
-bootloader_flash_origin = 0x0e000000;
+bootloader_flash_origin = 0x08004000;
 
 
 MEMORY

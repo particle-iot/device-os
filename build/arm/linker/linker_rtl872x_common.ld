@@ -28,13 +28,29 @@ SECTIONS
         KEEP(*(.rtl_header))
         . = ALIGN(4);
         link_rtl_header_location_end = .;
+        link_rtl_startup = .;
     } >APP_FLASH
+
+    .rtl_header_ram :
+    {
+        . = ALIGN(16);
+        link_rtl_header_ram_location = .;
+        KEEP(*(.rtl_header_ram))
+        . = ALIGN(4);
+        KEEP(*(.rtl_header_ram_start_table))
+        KEEP(*(.rtl_header_ram_valid_pattern))
+        KEEP(*(.rtl_header_ram_boot_export_table))
+        link_rtl_header_ram_location_end = .;
+    } >APP_FLASH
+
+    PROVIDE(link_rtl_header_size = link_rtl_header_ram_location - link_rtl_header_location_end);
+
+    PROVIDE(link_rtl_header_ram_size = link_rtl_header_ram_location_end - link_rtl_header_ram_location);
 
     /* for Cortex devices, the beginning of the startup code is stored in the .isr_vector section, which goes to FLASH */
     .isr_vector :
     {
         . = ALIGN(4);
-        link_rtl_startup = .;
         KEEP(*(.isr_vector))            /* Startup code */
         . = ALIGN(4);
     } >APP_FLASH
@@ -187,21 +203,7 @@ SECTIONS
     .debug_typenames 0 : { *(.debug_typenames) }
     .debug_varnames  0 : { *(.debug_varnames) }
 
-    .rtl_header_ram :
-    {
-        . = ALIGN(4);
-        link_rtl_header_ram_location = .;
-        KEEP(*(.rtl_header_ram))
-        . = ALIGN(4);
-        link_rtl_header_ram_location_end = .;
-        KEEP(*(.rtl_header_ram_data))
-    } >APP_FLASH
-
-    PROVIDE(link_rtl_header_size = link_rtl_header_ram_location - link_rtl_header_location_end);
-
     INCLUDE module_end.ld
-
-    PROVIDE(link_rtl_header_ram_size = link_module_info_crc_end - link_rtl_header_ram_location_end);
 }
 
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );

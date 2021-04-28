@@ -16,6 +16,7 @@
  */
 
 #include <cstdint>
+#include "basic_types.h"
 
 typedef struct rtl_binary_header {
     uint32_t signature_high;
@@ -43,11 +44,17 @@ extern uintptr_t link_rtl_header_ram_size;
 
 extern "C" void Reset_Handler(void);
 
-__attribute__((used, section(".rtl_header"))) const rtl_binary_header rtl_header = {
-    .signature_high = 0x35393138,
-    .signature_low = 0x31313738,
-    // .signature_high = 0x96969999,
-    // .signature_low = 0xfc66cc3f,
+void dummyFunc(void) {
+    while(true) {
+        ;
+    }
+}
+
+__attribute__((used, section(".rtl_header"))) const rtl_binary_header rtlHeader = {
+    // .signature_high = 0x35393138,
+    // .signature_low = 0x31313738,
+    .signature_high = 0x96969999,
+    .signature_low = 0xfc66cc3f,
     .size = (uint32_t)&link_rtl_header_size,
     .load_address = (uint32_t)&link_rtl_startup,
     .sboot_address = 0xffffffff,
@@ -56,25 +63,35 @@ __attribute__((used, section(".rtl_header"))) const rtl_binary_header rtl_header
 };
 
 
-__attribute__((used, section(".rtl_header_ram"))) const rtl_binary_header rtl_header_ram = {
-    .signature_high = 0x35393138,
-    .signature_low = 0x31313738,
-    // .signature_high = 0x96969999,
-    // .signature_low = 0xfc66cc3f,
+__attribute__((used, section(".rtl_header_ram"))) const rtl_binary_header rtlHeaderRam = {
+    // .signature_high = 0x35393138,
+    // .signature_low = 0x31313738,
+    .signature_high = 0x96969999,
+    .signature_low = 0xfc66cc3f,
     .size = (uint32_t)&link_rtl_header_ram_size,
-    .load_address = 0x10005000,
+    .load_address = 0x1007d000,
     .sboot_address = 0xffffffff,
     .reserved0 = 0xffffffff,
     .reserved1 = 0xffffffffffffffff
 };
 
-__attribute__((used, section(".rtl_header_ram_data"))) const uint32_t jump_table[] = {
-    (uint32_t)&Reset_Handler,
-    0,
-    0x10001000,
-    0x574b5452,
-    0xff006e69,
-    0x00010100,
-    0x01018195,
-    0x00000000
+__attribute__((used, section(".rtl_header_ram_boot_export_table"))) BOOT_EXPORT_SYMB_TABLE rtlBootExportTable = {
+    .rdp_decrypt_func = nullptr,
+    .psram_s_start_addr = 0x0
+};
+
+
+__attribute__((used, section(".rtl_header_ram_valid_pattern"))) const uint8_t rtlRamValidPattern[] = {
+	0x23, 0x79, 0x16, 0x88, 0xff, 0xff, 0xff, 0xff
+};
+
+__attribute__((used, section(".rtl_header_ram_start_table"))) RAM_FUNCTION_START_TABLE rtlRamStartTable = {
+    .RamStartFun = &dummyFunc,
+    .RamWakeupFun = 0x0,
+    .RamPatchFun0 = &dummyFunc,
+    .RamPatchFun1 = &dummyFunc,
+    .RamPatchFun2 = &dummyFunc,
+    .FlashStartFun = &dummyFunc,
+    .Img1ValidCode = (uint32_t)rtlRamValidPattern,
+    .ExportTable = &rtlBootExportTable
 };
