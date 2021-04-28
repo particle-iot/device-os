@@ -64,7 +64,9 @@ static void network_resume() {
     if (wakeupState.wifi) {
         SPARK_WLAN_SLEEP = 0;
     }
-    // Set the system flags that triggers the wifi/cloud reconnection in the background loop
+    // Gen2-only: Set the system flags that triggers the wifi/cloud reconnection in the background loop
+    // FIXME: Gen3 won't automatically restore the modem state and network connection if cloud auto-connect flag is not set.
+    // See manage_network_connection() in system_network_manager_api.cpp.
     if (wakeupState.wifiConnected) {
         SPARK_WLAN_CONNECT_RESTORE = 1;
     }
