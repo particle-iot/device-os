@@ -34,6 +34,7 @@
 #include "concurrent_hal.h"
 #include "gpio_hal.h"
 #include "system_error.h"
+#include "nrf_system_error.h"
 
 enum qspi_cmds_t {
     QSPI_STD_CMD_WRSR     = 0x01,
@@ -79,7 +80,7 @@ static void exflash_qspi_activate() {
     while (!nrf_qspi_event_check(NRF_QSPI, NRF_QSPI_EVENT_READY));
 }
 
-static nrfx_err_t exflash_qspi_wait_completion() {
+static int exflash_qspi_wait_completion() {
     nrfx_err_t err = NRFX_ERROR_INTERNAL;
 
     // Certain operations like block erasure, may leave the flash
@@ -108,10 +109,10 @@ static nrfx_err_t exflash_qspi_wait_completion() {
 
     } while (err == NRFX_ERROR_BUSY);
 
-    return err;
+    return nrf_system_error(err);
 }
 
-static nrfx_err_t exflash_qspi_cinstr_xfer(nrf_qspi_cinstr_conf_t const* p_config, void const* p_tx_buffer, void* p_rx_buffer) {
+static int exflash_qspi_cinstr_xfer(nrf_qspi_cinstr_conf_t const* p_config, void const* p_tx_buffer, void* p_rx_buffer) {
     // Certain operations like block erasure, may leave the flash
     // in a weird state where we can't talk to it for substantial periods of time
     // (up to ~30ms, seen in practice). According to the datasheet, the erasure for example may take up to 200ms!
@@ -134,16 +135,16 @@ static nrfx_err_t exflash_qspi_cinstr_xfer(nrf_qspi_cinstr_conf_t const* p_confi
     // Exit critical section
     os_thread_scheduling(true, NULL);
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    return err;
+    return nrf_system_error(err);
 }
 
-static nrfx_err_t exflash_qspi_cinstr_quick_send(uint8_t opcode, nrf_qspi_cinstr_len_t length, void const* p_tx_buffer) {
+static int exflash_qspi_cinstr_quick_send(uint8_t opcode, nrf_qspi_cinstr_len_t length, void const* p_tx_buffer) {
     nrf_qspi_cinstr_conf_t config = NRFX_QSPI_DEFAULT_CINSTR(opcode, length);
     return exflash_qspi_cinstr_xfer(&config, p_tx_buffer, NULL);
 }
 
 static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
-    return nrfx_qspi_write(data, size, addr);
+    return nrf_system_error(nrfx_qspi_write(data, size, addr));
 }
 
 static int enter_secure_otp() {
@@ -197,6 +198,7 @@ int hal_exflash_init(void) {
             LOG_DEBUG(TRACE, "QSPI NRFX timeout error. Suspend pgm/ers op.");
             ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
             if (ret) {
+                ret = nrf_system_error(ret);
                 goto hal_exflash_init_done;
             }
         }
@@ -217,10 +219,6 @@ int hal_exflash_init(void) {
 
 hal_exflash_init_done:
     hal_exflash_unlock();
-    // FIXME:
-    if (ret != 0) {
-        ret = SYSTEM_ERROR_INTERNAL;
-    }
     return ret;
 }
 
@@ -239,7 +237,7 @@ int hal_exflash_uninit(void) {
 
     hal_exflash_unlock();
 
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
@@ -313,7 +311,7 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
 
 hal_exflash_read_done:
     hal_exflash_unlock();
-    return ret;
+    return nrf_system_error(ret);
 }
 
 static int erase_common(uintptr_t start_addr, size_t num_blocks, nrf_qspi_erase_len_t len) {
@@ -341,7 +339,7 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, nrf_qspi_erase_
 
 erase_common_done:
     hal_exflash_unlock();
-    return err_code;
+    return nrf_system_error(err_code);
 }
 
 int hal_exflash_erase_sector(uintptr_t start_addr, size_t num_sectors) {

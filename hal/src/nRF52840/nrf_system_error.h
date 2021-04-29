@@ -22,7 +22,15 @@
 #include "nrf_error.h"
 #include "system_error.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 system_error_t nrf_system_error(uint32_t error);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
