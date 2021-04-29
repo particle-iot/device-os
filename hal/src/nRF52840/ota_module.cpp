@@ -28,6 +28,10 @@ int get_module_info(const module_bounds_t* bounds, module_info_t* infoOut, uint3
     return FLASH_ModuleInfo(infoOut, bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ? FLASH_INTERNAL : FLASH_SERIAL, bounds->start_address, offset);
 }
 
+int get_module_crc_suffix(const module_bounds_t* bounds, const module_info_t* info, module_info_crc_t* crc, module_info_suffix_t* suffix) {
+    return FLASH_ModuleCrcSuffix(crc, suffix, bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ? FLASH_INTERNAL : FLASH_SERIAL, (uint32_t)info->module_end_address);
+}
+
 bool verify_crc32(const module_bounds_t* bounds, const module_info_t* info) {
     if (bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
         return FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(info));
@@ -86,8 +90,9 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
             target->validity_result |= MODULE_VALIDATION_RANGE;
             target->validity_result |= (PLATFORM_ID==module_platform_id(info)) ? MODULE_VALIDATION_PLATFORM : 0;
             // the suffix ends at module_end, and the crc starts after module end
-            target->crc = *(module_info_crc_t*)module_end;
-            target->suffix = *(module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
+            if (get_module_crc_suffix(bounds, info, &target->crc, &target->suffix) != SYSTEM_ERROR_NONE) {
+                return false;
+            }
             if (validate_module_dependencies(bounds, userDepsOptional, target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL)) {
                 target->validity_result |= MODULE_VALIDATION_DEPENDENCIES | (target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL);
             }

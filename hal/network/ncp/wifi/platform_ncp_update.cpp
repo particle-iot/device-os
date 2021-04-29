@@ -41,7 +41,9 @@ class OtaUpdateSourceStream : public particle::InputStream {
 public:
     typedef std::function<int(uintptr_t addr, uint8_t* dataBuf, size_t dataSize)> ReadStreamFunc;
 
-    OtaUpdateSourceStream(const uint8_t* buffer, size_t length, ReadStreamFunc func) : buffer(buffer), remaining(length), readFunc(func) {}
+    OtaUpdateSourceStream(uintptr_t address, size_t offset, size_t length, ReadStreamFunc func)
+            : address_(address), offset_(offset), remaining_(length), readFunc_(func) {
+    }
 
     int read(char* data, size_t size) override {
         CHECK(peek(data, size));
@@ -49,28 +51,28 @@ public:
     }
 
     int peek(char* data, size_t size) override {
-        CHECK_TRUE(readFunc, SYSTEM_ERROR_INVALID_ARGUMENT);
-        if (!remaining) {
+        CHECK_TRUE(readFunc_, SYSTEM_ERROR_INVALID_ARGUMENT);
+        if (!remaining_) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
-        size = std::min(size, remaining);
-        CHECK(readFunc((uintptr_t)buffer, (uint8_t*)data, size));
+        size = std::min(size, remaining_);
+        CHECK(readFunc_(address_ + offset_, (uint8_t*)data, size));
         return size;
     }
 
     int skip(size_t size) override {
-        if (!remaining) {
+        if (!remaining_) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
-        size = std::min(size, remaining);
-        buffer += size;
-        remaining -= size;
+        size = std::min(size, remaining_);
+        offset_ += size;
+        remaining_ -= size;
         LED_Toggle(PARTICLE_LED_RGB);
         return size;
     }
 
     int availForRead() override {
-        return remaining;
+        return remaining_;
     }
 
     int waitEvent(unsigned flags, unsigned timeout) override {
@@ -80,16 +82,17 @@ public:
         if (!(flags & InputStream::READABLE)) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
-        if (!remaining) {
+        if (!remaining_) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
         return InputStream::READABLE;
     }
 
 private:
-    const uint8_t* buffer;
-    size_t remaining;
-    ReadStreamFunc readFunc;
+    uintptr_t address_;
+    size_t offset_;
+    size_t remaining_;
+    ReadStreamFunc readFunc_;
 };
 
 int invalidateWifiNcpVersionCache() {
@@ -147,12 +150,10 @@ int platform_ncp_update_module(const hal_module_t* module) {
     const particle::NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
     // we pass only the actual binary after the module info and up to the suffix
-    const uint8_t* start = (const uint8_t*)(module->bounds.start_address + module->module_info_offset);
+    uint32_t startAddress = module->bounds.start_address + module->module_info_offset;
     static_assert(sizeof(module_info_t)==24, "expected module info size to be 24");
-    start += sizeof(module_info_t); // skip the module info
-    const uint8_t* end = start + (uint32_t(module->info.module_end_address) - uint32_t(module->info.module_start_address));
-    const unsigned length = end - start;
-    OtaUpdateSourceStream moduleStream(start, length, readCallback);
+    const unsigned length = uint32_t(module->info.module_end_address) - uint32_t(module->info.module_start_address);
+    OtaUpdateSourceStream moduleStream(startAddress, sizeof(module_info_t), length, readCallback);
     uint16_t version = 0;
     int r = ncpClient->getFirmwareModuleVersion(&version);
     if (r == 0) {
