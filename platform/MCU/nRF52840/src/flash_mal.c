@@ -418,7 +418,9 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
             // We may only check the module header if we've been asked to verify it
             uint32_t infoOffset = 0;
             module_info_t info = {};
-            FLASH_ModuleInfo(&info, sourceDeviceID, sourceAddress, &infoOffset);
+            if (FLASH_ModuleInfo(&info, sourceDeviceID, sourceAddress, &infoOffset) != SYSTEM_ERROR_NONE) {
+                return FLASH_ACCESS_RESULT_ERROR;
+            }
             if (info.flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
                 // NB: We have corner cases where the module info is not located in the
                 // front of the module but for example after the vector table and we
@@ -734,37 +736,79 @@ int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t flashDeviceID, uint32
 
     uint32_t offset = 0;
     
-    if(flashDeviceID == FLASH_INTERNAL)
+    if (flashDeviceID == FLASH_INTERNAL)
     {
         if (((*(__IO uint32_t*)startAddress) & APP_START_MASK) == 0x20000000)
         {
             offset = 0x200;
             startAddress += offset;
         }
-        hal_flash_read(startAddress, (uint8_t*)infoOut, sizeof(module_info_t));
+        int ret = hal_flash_read(startAddress, (uint8_t*)infoOut, sizeof(module_info_t));
+        if (ret != SYSTEM_ERROR_NONE) {
+            return ret;
+        }
     }
 #ifdef USE_SERIAL_FLASH
-    else if(flashDeviceID == FLASH_SERIAL)
+    else if (flashDeviceID == FLASH_SERIAL)
     {
         uint8_t serialFlashData[4];
         uint32_t first_word = 0;
 
-        hal_exflash_read(startAddress, serialFlashData, 4);
+        int ret = hal_exflash_read(startAddress, serialFlashData, 4);
+        if (ret != SYSTEM_ERROR_NONE) {
+            return ret;
+        }
         first_word = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
         if ((first_word & APP_START_MASK) == 0x20000000)
         {
             offset = 0x200;
             startAddress += offset;
         }
-        hal_exflash_read(startAddress, (uint8_t *)infoOut, sizeof(module_info_t));
-#endif
+        ret = hal_exflash_read(startAddress, (uint8_t *)infoOut, sizeof(module_info_t));
+        if (ret != SYSTEM_ERROR_NONE) {
+            return ret;
+        }
     }
+#endif
 
     if (infoOffset)
     {
         *infoOffset = offset;
     }
 
+    return SYSTEM_ERROR_NONE;
+}
+
+int FLASH_ModuleCrcSuffix(module_info_crc_t* crc, module_info_suffix_t* suffix, uint8_t flashDeviceID, uint32_t endAddress) {
+    typedef int (*readFn_t)(uintptr_t addr, uint8_t* data_buf, size_t size);
+    readFn_t read = NULL;
+
+    if (flashDeviceID == FLASH_INTERNAL) {
+        read = hal_flash_read;
+    }
+#ifdef USE_SERIAL_FLASH
+    else if (flashDeviceID == FLASH_SERIAL) {
+        read = hal_exflash_read;
+    }
+#endif
+
+    if (read) {
+        if (crc) {
+            int ret = read(endAddress, (uint8_t*)crc, sizeof(module_info_crc_t));
+            if (ret != SYSTEM_ERROR_NONE) {
+                return ret;
+            }
+        }
+        if (suffix) {
+            // suffix [endAddress] crc32
+            endAddress = endAddress - sizeof(module_info_suffix_t);
+            int ret = read(endAddress, (uint8_t*)suffix, sizeof(module_info_suffix_t));
+            if (ret != SYSTEM_ERROR_NONE) {
+                return ret;
+            }
+        }
+    }
+    
     return SYSTEM_ERROR_NONE;
 }
 
@@ -850,8 +894,8 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
         {
             return true;
         }
-#endif
     }
+#endif
 
     return false;
 }
