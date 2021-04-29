@@ -47,10 +47,12 @@ system_error_t nrf_system_error(uint32_t error) {
             return SYSTEM_ERROR_NOT_ALLOWED;
         case NRF_ERROR_BUSY:
             return SYSTEM_ERROR_BUSY;
+#ifdef SOFTDEVICE_PRESENT
         case NRF_ERROR_CONN_COUNT:
             return SYSTEM_ERROR_LIMIT_EXCEEDED;
         case NRF_ERROR_RESOURCES:
             return SYSTEM_ERROR_ABORTED;
+#endif
         default:
             return SYSTEM_ERROR_UNKNOWN;
     }
