@@ -34,6 +34,13 @@ void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserve
         set_key_value(info->key_values+count+1, "iccid", device.iccid);
         set_key_value(info->key_values+count+2, "cellfw", device.radiofw);
     }
-    platform_radio_stack_fetch_module_info(info);
+    for (int i = 0; i < info->module_count; i++) {
+        hal_module_t* module = info->modules + i;
+        if (memcmp(&module->bounds, &module_radio_stack, sizeof(module_radio_stack))) {
+            continue;
+        }
+        platform_radio_stack_fetch_module_info(module);
+        break;
+    }
 }
 
