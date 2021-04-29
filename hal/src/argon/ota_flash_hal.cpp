@@ -23,6 +23,7 @@
  ******************************************************************************
  */
 
+#include <cstring>
 #include "ota_flash_hal_impl.h"
 #include "platform_ncp.h"
 #include "platform_radio_stack.h"
@@ -30,6 +31,20 @@
 void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
     add_system_properties(info, create, 0);
-    platform_ncp_fetch_module_info(info);
-    platform_radio_stack_fetch_module_info(info);
+    for (int i = 0; i < info->module_count; i++) {
+        hal_module_t* module = info->modules + i;
+        if (memcmp(&module->bounds, &module_ncp_mono, sizeof(module_ncp_mono))) {
+            continue;
+        }
+        platform_ncp_fetch_module_info(module);
+        break;
+    }
+    for (int i = 0; i < info->module_count; i++) {
+        hal_module_t* module = info->modules + i;
+        if (memcmp(&module->bounds, &module_radio_stack, sizeof(module_radio_stack))) {
+            continue;
+        }
+        platform_radio_stack_fetch_module_info(module);
+        break;
+    }
 }

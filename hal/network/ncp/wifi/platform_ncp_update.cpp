@@ -170,41 +170,37 @@ int platform_ncp_update_module(const hal_module_t* module) {
     return HAL_UPDATE_APPLIED;
 }
 
-int platform_ncp_fetch_module_info(hal_system_info_t* sys_info) {
-    for (int i = 0; i < sys_info->module_count; i++) {
-        hal_module_t* module = sys_info->modules + i;
-        if (!memcmp(&module->bounds, &module_ncp_mono, sizeof(module_ncp_mono))) {
-            uint16_t version = 0;
-            // Defaults to zero in case of failure
-            getWifiNcpFirmwareVersion(&version);
+int platform_ncp_fetch_module_info(hal_module_t* module) {
+    uint16_t version = 0;
+    // Defaults to zero in case of failure
+    getWifiNcpFirmwareVersion(&version);
 
-            // todo - we could augment the getFirmwareModuleVersion command to retrieve more details
-            module_info_t* info = &module->info;
-            info->module_version = version;
-            info->platform_id = PLATFORM_ID;
-            info->module_function = MODULE_FUNCTION_NCP_FIRMWARE;
+    // todo - we could augment the getFirmwareModuleVersion command to retrieve more details
+    module_info_t* info = &module->info;
+    info->module_version = version;
+    info->platform_id = PLATFORM_ID;
+    info->module_function = MODULE_FUNCTION_NCP_FIRMWARE;
 
-            // assume all checks pass since it was validated when being flashed to the NCP
-            module->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES |
-                    MODULE_VALIDATION_PLATFORM | MODULE_VALIDATION_INTEGRITY;
-            module->validity_result = module->validity_checked;
+    // assume all checks pass since it was validated when being flashed to the NCP
+    module->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES |
+            MODULE_VALIDATION_PLATFORM | MODULE_VALIDATION_INTEGRITY;
+    module->validity_result = module->validity_checked;
 
-            // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change
-            // in the SYSTEM DESCRIBE state and send a HELLO after the NCP update to
-            // cause the DS to request new DESCRIBE info
-            module_info_suffix_t* suffix = &module->suffix;
-            memset(suffix, 0, sizeof(module_info_suffix_t));
+    // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change
+    // in the SYSTEM DESCRIBE state and send a HELLO after the NCP update to
+    // cause the DS to request new DESCRIBE info
+    module_info_suffix_t* suffix = &module->suffix;
+    memset(suffix, 0, sizeof(module_info_suffix_t));
 
-            // FIXME: NCP firmware should return some kind of a unique string/hash
-            // For now we simply fill the SHA field with version
-            for (uint16_t* sha = (uint16_t*)suffix->sha;
-                    sha < (uint16_t*)(suffix->sha + sizeof(suffix->sha));
-                    ++sha) {
-                *sha = version;
-            }
-
-            module->module_info_offset = 0;
-        }
+    // FIXME: NCP firmware should return some kind of a unique string/hash
+    // For now we simply fill the SHA field with version
+    for (uint16_t* sha = (uint16_t*)suffix->sha;
+            sha < (uint16_t*)(suffix->sha + sizeof(suffix->sha));
+            ++sha) {
+        *sha = version;
     }
+
+    module->module_info_offset = 0;
+    
     return 0;
 }

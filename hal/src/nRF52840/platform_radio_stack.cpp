@@ -22,36 +22,28 @@
 #include "nrf_sdm.h"
 #include "nrf_mbr.h"
 
-int platform_radio_stack_fetch_module_info(hal_system_info_t* sys_info) {
-    for (int i = 0; i < sys_info->module_count; i++) {
-        hal_module_t* module = sys_info->modules + i;
-        if (memcmp(&module->bounds, &module_radio_stack, sizeof(module_radio_stack))) {
-            continue;
-        }
+int platform_radio_stack_fetch_module_info(hal_module_t* module) {
+    module_info_t* info = &module->info;
+    info->module_version = SD_FWID_GET(MBR_SIZE);
+    info->platform_id = PLATFORM_ID;
+    info->module_function = MODULE_FUNCTION_RADIO_STACK;
 
-        module_info_t* info = &module->info;
-        info->module_version = SD_FWID_GET(MBR_SIZE);
-        info->platform_id = PLATFORM_ID;
-        info->module_function = MODULE_FUNCTION_RADIO_STACK;
+    // FIXME: assuming that all checks passed for now
+    module->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES |
+            MODULE_VALIDATION_PLATFORM | MODULE_VALIDATION_INTEGRITY;
+    module->validity_result = module->validity_checked;
 
-        // FIXME: assuming that all checks passed for now
-        module->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES |
-                MODULE_VALIDATION_PLATFORM | MODULE_VALIDATION_INTEGRITY;
-        module->validity_result = module->validity_checked;
+    // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change
+    // in the SYSTEM DESCRIBE state and send a HELLO after the SoftDevice update to
+    // cause the DS to request new DESCRIBE info
+    module_info_suffix_t* suffix = &module->suffix;
+    memset(suffix, 0, sizeof(module_info_suffix_t));
 
-        // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change
-        // in the SYSTEM DESCRIBE state and send a HELLO after the SoftDevice update to
-        // cause the DS to request new DESCRIBE info
-        module_info_suffix_t* suffix = &module->suffix;
-        memset(suffix, 0, sizeof(module_info_suffix_t));
+    // Use a unique SoftDevice string in place of an SHA
+    auto addr = SD_UNIQUE_STR_ADDR_GET(MBR_SIZE);
+    memcpy(suffix->sha, addr, SD_UNIQUE_STR_SIZE);
 
-        // Use a unique SoftDevice string in place of an SHA
-        auto addr = SD_UNIQUE_STR_ADDR_GET(MBR_SIZE);
-        memcpy(suffix->sha, addr, SD_UNIQUE_STR_SIZE);
+    module->module_info_offset = 0;
 
-        module->module_info_offset = 0;
-
-        break;
-    }
     return 0;
 }
