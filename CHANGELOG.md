@@ -157,6 +157,93 @@
 - [Gen 2] Fix D0 alternate-function being unconditionally reset when calling `Serial1.end()` [#2256](https://github.com/particle-iot/device-os/pull/2256)
 - [Gen 3] Fix an issue with `BLE.scan()` deadlocking [#2220](https://github.com/particle-iot/device-os/pull/2220)
 
+## 2.1.0
+
+### FEATURES
+
+- [Cellular] Send modem firmware version to the cloud as part of the system describe message [#2265](https://github.com/particle-iot/device-os/pull/2265)
+- `Network.isOn()` and `Network.isOff()` APIs to query the network interface power state [#2205](https://github.com/particle-iot/device-os/pull/2205)
+- [Electron] Proactively attempt to recover from a number of failed cellular registration states [#2301](https://github.com/particle-iot/device-os/pull/2301)
+
+### ENHANCEMENTS
+
+- [Cellular] Update ICCID/IMSI to APN map with a new Kore ICCID prefix [#2276](https://github.com/particle-iot/device-os/pull/2276)
+- [B5 SoM / Quectel] Improve warm and cold boot behavior [#2300](https://github.com/particle-iot/device-os/pull/2300)
+- Update Workbench dependencies [#2299](https://github.com/particle-iot/device-os/pull/2299)
+- Improve I2C reset procedure to be less destructive and issue STOP condition as soon as possible [#2303](https://github.com/particle-iot/device-os/pull/2303)
+- [Cellular] Perform PMIC/FuelGauge/RTC I2C bus reset on boot to avoid accidental writes after a non-graceful reset [#2303](https://github.com/particle-iot/device-os/pull/2303)
+- [Argon] Reduce cloud keep-alive timeout to 25 seconds from 30 seconds [#2304](https://github.com/particle-iot/device-os/pull/2304)
+- [Electron] Build system parts with LTO enabled [#2235](https://github.com/particle-iot/device-os/pull/2235)
+- Upate MbedTLS to 2.22.0 [#2117](https://github.com/particle-iot/device-os/pull/2117)
+- [Gen 3] Ethernet FeatherWing power state management [#2258](https://github.com/particle-iot/device-os/pull/2258)
+
+### BUGFIXES
+
+- [Electron] Fix unintended modem reset after an ongoing network registartion attempt is actively cancelled by the application [#2307](https://github.com/particle-iot/device-os/pull/2307)
+- Correctly restore network interface power state after waking up from `STOP` or `ULTRA_LOW_POWER` sleep modes [#2308](https://github.com/particle-iot/device-os/pull/2308)
+- [Gen 2] Fix D0 alternate-function being unconditionally reset when calling `Serial1.end()` [#2256](https://github.com/particle-iot/device-os/pull/2256)
+- [Boron / B SoM] Fix external SIM getting stuck in initialization [#2263](https://github.com/particle-iot/device-os/pull/2263)
+- [BLE] Return `false` in `BlePeerDevice::getCharacteristicByDescription()` if expected characteristic was not found [#2266](https://github.com/particle-iot/device-os/pull/2266)
+- [Gen 3] Fix UART DMA RX transfer size issues causing DMA writes outside of the RX buffer [#2264](https://github.com/particle-iot/device-os/pull/2264)
+- [Gen 3] Fix `ChannelStream::waitEvent()` timeout calculation [#2267](https://github.com/particle-iot/device-os/pull/2267)
+- [Gen 3] Use `PIN_INVALID` when initializing SPI peripheral to avoid overriding the pin mode of the default CS pin on reinitialization [#2275](https://github.com/particle-iot/device-os/pull/2275)
+- [Electron] Increase `AT+COPS` timeout to 5 minutes [#2281](https://github.com/particle-iot/device-os/pull/2281)
+- [Electron] Fix Sleep 2.0 APIs taking up to 10 minutes to power-off the cellular modem while it's attempting network registration [#2284](https://github.com/particle-iot/device-os/pull/2284)
+- [B5 SoM / Tracker] Fix warm boot sometimes requiring modem reset [#2289](https://github.com/particle-iot/device-os/pull/2289)
+- Fix `Particle.unsubscribe()` not preserving system subscriptions [#2293](https://github.com/particle-iot/device-os/pull/2293)
+- Querying the value of an empty string variable causes an error [#2297](https://github.com/particle-iot/device-os/pull/2297)
+- [Gen 3] Add workaround for Nordic nRF52840 anomaly 219 (TWIM: I2C timing spec is violated at 400 kHz) [#2303](https://github.com/particle-iot/device-os/pull/2303)
+- [Gen 3] Fix micros/millis/unixtime becoming non-monotonic [2a4fcb82b](https://github.com/particle-iot/device-os/commit/2a4fcb82b0968300b8a0227f665ffe94203f9f38) [#2303](https://github.com/particle-iot/device-os/pull/2303)
+- Fix the issue that the Particle.disconnect() doesn't clear the auto-connect flag [#2306](https://github.com/particle-iot/device-os/pull/2306)
+
+### INTERNAL
+
+- [ci] Remove build directory after finishing the build job [#2311](https://github.com/particle-iot/device-os/pull/2311)
+- Startup SLO automated tests [#2277](https://github.com/particle-iot/device-os/pull/2277) [#2274](https://github.com/particle-iot/device-os/pull/2274)
+- Allow clearing session data and running custom setup code in integration tests [#2280](https://github.com/particle-iot/device-os/pull/2280)
+
+## 2.1.0-rc.1
+
+### FEATURES
+
+- [Cellular] Send modem firmware version to the cloud as part of the system describe message [#2265](https://github.com/particle-iot/device-os/pull/2265)
+- `Network.isOn()` and `Network.isOff()` APIs to query the network interface power state [#2205](https://github.com/particle-iot/device-os/pull/2205)
+- [Electron] Proactively attempt to recover from a number of failed cellular registration states [#2301](https://github.com/particle-iot/device-os/pull/2301)
+
+### ENHANCEMENTS
+
+- [Cellular] Update ICCID/IMSI to APN map with a new Kore ICCID prefix [#2276](https://github.com/particle-iot/device-os/pull/2276)
+- [B5 SoM / Quectel] Improve warm and cold boot behavior [#2300](https://github.com/particle-iot/device-os/pull/2300)
+- Update Workbench dependencies [#2299](https://github.com/particle-iot/device-os/pull/2299)
+- Improve I2C reset procedure to be less destructive and issue STOP condition as soon as possible [#2303](https://github.com/particle-iot/device-os/pull/2303)
+- [Cellular] Perform PMIC/FuelGauge/RTC I2C bus reset on boot to avoid accidental writes after a non-graceful reset [#2303](https://github.com/particle-iot/device-os/pull/2303)
+- [Argon] Reduce cloud keep-alive timeout to 25 seconds from 30 seconds [#2304](https://github.com/particle-iot/device-os/pull/2304)
+- [Electron] Build system parts with LTO enabled [#2235](https://github.com/particle-iot/device-os/pull/2235)
+- Upate MbedTLS to 2.22.0 [#2117](https://github.com/particle-iot/device-os/pull/2117)
+- [Gen 3] Ethernet FeatherWing power state management [#2258](https://github.com/particle-iot/device-os/pull/2258)
+
+### BUGFIXES
+
+- [Gen 2] Fix D0 alternate-function being unconditionally reset when calling `Serial1.end()` [#2256](https://github.com/particle-iot/device-os/pull/2256)
+- [Boron / B SoM] Fix external SIM getting stuck in initialization [#2263](https://github.com/particle-iot/device-os/pull/2263)
+- [BLE] Return `false` in `BlePeerDevice::getCharacteristicByDescription()` if expected characteristic was not found [#2266](https://github.com/particle-iot/device-os/pull/2266)
+- [Gen 3] Fix UART DMA RX transfer size issues causing DMA writes outside of the RX buffer [#2264](https://github.com/particle-iot/device-os/pull/2264)
+- [Gen 3] Fix `ChannelStream::waitEvent()` timeout calculation [#2267](https://github.com/particle-iot/device-os/pull/2267)
+- [Gen 3] Use `PIN_INVALID` when initializing SPI peripheral to avoid overriding the pin mode of the default CS pin on reinitialization [#2275](https://github.com/particle-iot/device-os/pull/2275)
+- [Electron] Increase `AT+COPS` timeout to 5 minutes [#2281](https://github.com/particle-iot/device-os/pull/2281)
+- [Electron] Fix Sleep 2.0 APIs taking up to 10 minutes to power-off the cellular modem while it's attempting network registration [#2284](https://github.com/particle-iot/device-os/pull/2284)
+- [B5 SoM / Tracker] Fix warm boot sometimes requiring modem reset [#2289](https://github.com/particle-iot/device-os/pull/2289)
+- Fix `Particle.unsubscribe()` not preserving system subscriptions [#2293](https://github.com/particle-iot/device-os/pull/2293)
+- Querying the value of an empty string variable causes an error [#2297](https://github.com/particle-iot/device-os/pull/2297)
+- [Gen 3] Add workaround for Nordic nRF52840 anomaly 219 (TWIM: I2C timing spec is violated at 400 kHz) [#2303](https://github.com/particle-iot/device-os/pull/2303)
+- [Gen 3] Fix micros/millis/unixtime becoming non-monotonic [2a4fcb82b](https://github.com/particle-iot/device-os/commit/2a4fcb82b0968300b8a0227f665ffe94203f9f38) [#2303](https://github.com/particle-iot/device-os/pull/2303)
+- Fix the issue that the Particle.disconnect() doesn't clear the auto-connect flag [#2306](https://github.com/particle-iot/device-os/pull/2306)
+
+### INTERNAL
+
+- Startup SLO automated tests [#2277](https://github.com/particle-iot/device-os/pull/2277) [#2274](https://github.com/particle-iot/device-os/pull/2274)
+- Allow clearing session data and running custom setup code in integration tests [#2280](https://github.com/particle-iot/device-os/pull/2280)
+
 ## 2.0.1
 
 ### ENHANCEMENTS
