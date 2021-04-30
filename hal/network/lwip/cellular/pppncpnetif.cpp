@@ -310,6 +310,10 @@ void PppNcpNetif::pppEventHandler(uint64_t ev) {
 }
 
 void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
+    // This is a static method and the ctx may be nullptr if PppNcpNetif is not created but
+    // we have accessed the NCP client for certain operations, such as geeting the NCP firmware version.
+    // Simply assert to catch the error if we're doing something wrong
+    SPARK_ASSERT(ctx);
     LOG(TRACE, "NCP event %d", (int)ev.type);
     auto self = (PppNcpNetif*)ctx;
     if (ev.type == NcpEvent::CONNECTION_STATE_CHANGED) {
@@ -375,6 +379,10 @@ void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
 }
 
 int PppNcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx) {
+    // This is a static method and the ctx may be nullptr if PppNcpNetif is not created but
+    // we have accessed the NCP client for certain operations, such as geeting the NCP firmware version.
+    // Simply assert to catch the error if we're doing something wrong
+    SPARK_ASSERT(ctx);
     PppNcpNetif* self = static_cast<PppNcpNetif*>(ctx);
     int r = self->client_.input(data, size);
     if (r == SYSTEM_ERROR_NO_MEMORY) {
