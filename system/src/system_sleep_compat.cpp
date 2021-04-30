@@ -52,20 +52,27 @@ static void network_suspend() {
 
     wakeupState.cloud = spark_cloud_flag_auto_connect();
     wakeupState.wifi = !SPARK_WLAN_SLEEP;
-    wakeupState.wifiConnected = wakeupState.cloud || network_ready(0, 0, NULL) || network_connecting(0, 0, NULL);
+    wakeupState.wifiConnected = wakeupState.cloud || network_ready(0, 0, nullptr) || network_connecting(0, 0, nullptr);
     // Disconnect the cloud and the network
-    network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
+    network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, nullptr);
     // Clear the auto connect status
     spark_cloud_flag_disconnect();
-    network_off(0, 0, 0, NULL);
+    network_off(0, 0, 0, nullptr);
 }
 
 static void network_resume() {
-    // Set the system flags that triggers the wifi/cloud reconnection in the background loop
-    if (wakeupState.wifiConnected || wakeupState.wifi)  // at present, no way to get the background loop to only turn on wifi.
+    if (wakeupState.wifi) {
         SPARK_WLAN_SLEEP = 0;
-    if (wakeupState.cloud)
+    }
+    // Gen2-only: Set the system flags that triggers the wifi/cloud reconnection in the background loop
+    // FIXME: Gen3 won't automatically restore the modem state and network connection if cloud auto-connect flag is not set.
+    // See manage_network_connection() in system_network_manager_api.cpp.
+    if (wakeupState.wifiConnected) {
+        SPARK_WLAN_CONNECT_RESTORE = 1;
+    }
+    if (wakeupState.cloud) {
         spark_cloud_flag_connect();
+    }
 }
 
 /*******************************************************************************
@@ -205,8 +212,8 @@ int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t para
 #if HAL_PLATFORM_SETUP_BUTTON_UX
         case SLEEP_MODE_SOFTPOWEROFF:
             if (!networkTurnedOff) {
-                network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
-                network_off(0, 0, 0, NULL);
+                network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, nullptr);
+                network_off(0, 0, 0, nullptr);
             }
             return system_sleep_enter_standby_compat(seconds, param);
 #endif

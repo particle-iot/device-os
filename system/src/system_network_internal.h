@@ -43,6 +43,7 @@ enum eWanTimings
 
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
+extern volatile uint8_t SPARK_WLAN_CONNECT_RESTORE;
 extern volatile uint8_t SPARK_WLAN_STARTED;
 
 extern uint32_t wlan_watchdog_duration;
