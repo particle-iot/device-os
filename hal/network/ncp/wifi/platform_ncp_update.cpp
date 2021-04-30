@@ -126,9 +126,13 @@ int getWifiNcpFirmwareVersion(uint16_t* ncpVersion) {
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
     const particle::NcpClientLock lock(ncpClient);
+    const particle::NcpPowerState ncpPwrState = ncpClient->ncpPowerState();
     CHECK(ncpClient->on());
     CHECK(ncpClient->getFirmwareModuleVersion(&version));
     *ncpVersion = version;
+    if (ncpPwrState == particle::NcpPowerState::OFF) {
+        CHECK(ncpClient->off());
+    }
 
     return 0;
 }
@@ -201,6 +205,6 @@ int platform_ncp_fetch_module_info(hal_module_t* module) {
     }
 
     module->module_info_offset = 0;
-    
+
     return 0;
 }
