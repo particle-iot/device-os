@@ -43,7 +43,6 @@ retained CurrentConfig g_config;
 
 } // namespace
 
-
 TestSuite::TestSuite() :
         inited_(false) {
 }
