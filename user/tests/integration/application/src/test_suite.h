@@ -46,9 +46,13 @@ public:
     TestSuiteConfig& systemThreadEnabled(bool enabled);
     bool systemThreadEnabled() const;
 
+    TestSuiteConfig& clearBackupMemory(bool enabled);
+    bool clearBackupMemory() const;
+
 private:
     System_Mode_TypeDef systemMode_;
     bool systemThreadEnabled_;
+    bool clearBackupMemory_;
 };
 
 class TestSuite {
@@ -73,7 +77,8 @@ private:
 
 inline TestSuiteConfig::TestSuiteConfig() :
         systemMode_(DEFAULT_SYSTEM_MODE),
-        systemThreadEnabled_(DEFAULT_SYSTEM_THREAD_ENABLED) {
+        systemThreadEnabled_(DEFAULT_SYSTEM_THREAD_ENABLED),
+        clearBackupMemory_(false) {
 }
 
 inline TestSuiteConfig& TestSuiteConfig::systemMode(System_Mode_TypeDef mode) {
@@ -92,6 +97,15 @@ inline TestSuiteConfig& TestSuiteConfig::systemThreadEnabled(bool enabled) {
 
 inline bool TestSuiteConfig::systemThreadEnabled() const {
     return systemThreadEnabled_;
+}
+
+inline TestSuiteConfig& TestSuiteConfig::clearBackupMemory(bool enabled) {
+    clearBackupMemory_ = enabled;
+    return *this;
+}
+
+inline bool TestSuiteConfig::clearBackupMemory() const {
+    return clearBackupMemory_;
 }
 
 inline RequestHandler* TestSuite::requestHandler() {
