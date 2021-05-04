@@ -199,8 +199,12 @@ int RequestHandler::initSuite(Request* req) {
         }
     }
     if (req->has("t")) { // System thread
-        const auto val = req->get("t").toInt();
-        conf.systemThreadEnabled((bool)val);
+        const bool val = req->get("t").toInt();
+        conf.systemThreadEnabled(val);
+    }
+    if (req->has("b")) { // Clear backup memory
+        const bool val = req->get("b").toInt();
+        conf.clearBackupMemory(val);
     }
     return TestSuite::instance()->config(conf);
 }
