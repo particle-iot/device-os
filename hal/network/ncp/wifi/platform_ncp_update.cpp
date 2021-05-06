@@ -177,7 +177,7 @@ int platform_ncp_update_module(const hal_module_t* module) {
 int platform_ncp_fetch_module_info(hal_module_t* module) {
     uint16_t version = 0;
     // Defaults to zero in case of failure
-    getWifiNcpFirmwareVersion(&version);
+    CHECK(getWifiNcpFirmwareVersion(&version));
 
     // todo - we could augment the getFirmwareModuleVersion command to retrieve more details
     module_info_t* info = &module->info;
