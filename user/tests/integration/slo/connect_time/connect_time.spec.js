@@ -1,3 +1,8 @@
+// The assertions here and other .cpp file help to validate the following:
+// Devices connect to cloud quickly
+//   Given good connectivity or better
+//   And LTS based firmware
+//   99% of devices will be breathing cyan within 60 seconds of a cold boot (exception of 90s cat-1 modems, i.e. b5som + tracker)
 suite('Network/cloud connection time SLOs');
 
 platform('gen2', 'gen3');
