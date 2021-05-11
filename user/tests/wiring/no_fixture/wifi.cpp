@@ -285,4 +285,49 @@ test(WIFI_14_wifi_class_methods_work_correctly_when_wifi_interface_is_off) {
     assertTrue(!memcmp(bssidRef, bssid, sizeof(bssidRef)) || !memcmp(bssidRefFf, bssid, sizeof(bssidRefFf)));
 }
 
+#if HAL_PLATFORM_GEN == 2 // Photon and P1
+
+test(WIFI_15_entering_listening_mode_and_enabling_softap_closes_active_sockets_cleanly) {
+    const char testHost[] = "google.com";
+    const uint16_t testPort = 80;
+    const int resolveAttempts = 5;
+    const auto listenTime = 2s;
+
+    Serial.printlnf("on/connect");
+    WiFi.on();
+    WiFi.connect();
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, 30000));
+
+    IPAddress address;
+    for (int i = 0; i < resolveAttempts; i++) {
+        address = WiFi.resolve(testHost);
+        if (address) {
+            break;
+        }
+    }
+    assertNotEqual(address, 0);
+
+    TCPClient client;
+    assertEqual(1, client.connect(address, testPort));
+    assertTrue(client.connected());
+
+    WiFi.setListenTimeout(listenTime);
+    WiFi.listen(true);
+    if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
+        delay(listenTime);
+    }
+    WiFi.listen(false);
+
+    waitFor(Particle.connected, 30000);
+    assertFalse(client.connected());
+    client.stop();
+}
+
+#endif // HAL_PLATFORM_GEN == 2
+
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
+
+
+
 #endif
