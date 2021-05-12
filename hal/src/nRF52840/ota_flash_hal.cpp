@@ -269,45 +269,42 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
 {
     bool valid = false;
     module_info_t moduleInfo = {};
-    if (locate_module(bounds, &moduleInfo) == SYSTEM_ERROR_NONE)
-    {
-        if (moduleInfo.dependency.module_function == MODULE_FUNCTION_NONE || (userOptional && module_function(&moduleInfo) == MODULE_FUNCTION_USER_PART)) {
+    CHECK_TRUE(locate_module(bounds, &moduleInfo) == SYSTEM_ERROR_NONE, false);
+    if (moduleInfo.dependency.module_function == MODULE_FUNCTION_NONE || (userOptional && module_function(&moduleInfo) == MODULE_FUNCTION_USER_PART)) {
+        valid = true;
+    } else {
+        // deliberately not transitive, so we only check the first dependency
+        // so only user->system_part_2 is checked
+        if (moduleInfo.dependency.module_function != MODULE_FUNCTION_NONE) {
+            // NOTE: we ignore MCU type
+            const module_bounds_t* dependency_bounds = find_module_bounds(moduleInfo.dependency.module_function, moduleInfo.dependency.module_index, HAL_PLATFORM_MCU_ANY);
+            if (!dependency_bounds) {
+                return false;
+            }
+            module_info_t infoDep = {};
+            int ret = locate_module(dependency_bounds, &infoDep);
+            valid = (ret == SYSTEM_ERROR_NONE) && (infoDep.module_version >= moduleInfo.dependency.module_version);
+        } else {
             valid = true;
         }
-        else {
-            // deliberately not transitive, so we only check the first dependency
-            // so only user->system_part_2 is checked
-            if (moduleInfo.dependency.module_function != MODULE_FUNCTION_NONE) {
-                // NOTE: we ignore MCU type
-                const module_bounds_t* dependency_bounds = find_module_bounds(moduleInfo.dependency.module_function, moduleInfo.dependency.module_index, HAL_PLATFORM_MCU_ANY);
-                if (!dependency_bounds) {
-                    return false;
-                }
-                module_info_t infoDep = {};
-                int ret = locate_module(dependency_bounds, &infoDep);
-                valid = (ret == SYSTEM_ERROR_NONE) && (infoDep.module_version >= moduleInfo.dependency.module_version);
-            } else {
-                valid = true;
+        // Validate dependency2
+        if (moduleInfo.dependency2.module_function == MODULE_FUNCTION_NONE ||
+            (moduleInfo.dependency2.module_function == MODULE_FUNCTION_BOOTLOADER && userOptional)) {
+            valid = valid && true;
+        } else {
+            // NOTE: we ignore MCU type
+            const module_bounds_t* dependency_bounds = find_module_bounds(moduleInfo.dependency2.module_function, moduleInfo.dependency2.module_index, HAL_PLATFORM_MCU_ANY);
+            if (!dependency_bounds) {
+                return false;
             }
-            // Validate dependency2
-            if (moduleInfo.dependency2.module_function == MODULE_FUNCTION_NONE ||
-                (moduleInfo.dependency2.module_function == MODULE_FUNCTION_BOOTLOADER && userOptional)) {
-                valid = valid && true;
-            } else {
-                // NOTE: we ignore MCU type
-                const module_bounds_t* dependency_bounds = find_module_bounds(moduleInfo.dependency2.module_function, moduleInfo.dependency2.module_index, HAL_PLATFORM_MCU_ANY);
-                if (!dependency_bounds) {
-                    return false;
-                }
-                module_info_t infoDep;
-                int ret = locate_module(dependency_bounds, &infoDep);
-                valid = valid && (ret == SYSTEM_ERROR_NONE) && (infoDep.module_version >= moduleInfo.dependency2.module_version);
-            }
+            module_info_t infoDep;
+            int ret = locate_module(dependency_bounds, &infoDep);
+            valid = valid && (ret == SYSTEM_ERROR_NONE) && (infoDep.module_version >= moduleInfo.dependency2.module_version);
         }
+    }
 
-        if (fullDeps && valid) {
-            valid = valid && validate_module_dependencies_full(&moduleInfo, bounds);
-        }
+    if (fullDeps && valid) {
+        valid = valid && validate_module_dependencies_full(&moduleInfo, bounds);
     }
     return valid;
 }
