@@ -36,19 +36,11 @@ void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserve
     }
     for (int i = 0; i < info->module_count; i++) {
         hal_module_t* module = info->modules + i;
-        if (memcmp(&module->bounds, &module_ncp_mono, sizeof(module_ncp_mono))) {
-            continue;
+        if (!memcmp(&module->bounds, &module_ncp_mono, sizeof(module_ncp_mono))) {
+            platform_ncp_fetch_module_info(module);
+        } else if (!memcmp(&module->bounds, &module_radio_stack, sizeof(module_radio_stack))) {
+            platform_radio_stack_fetch_module_info(module);
         }
-        platform_ncp_fetch_module_info(module);
-        break;
-    }
-    for (int i = 0; i < info->module_count; i++) {
-        hal_module_t* module = info->modules + i;
-        if (memcmp(&module->bounds, &module_radio_stack, sizeof(module_radio_stack))) {
-            continue;
-        }
-        platform_radio_stack_fetch_module_info(module);
-        break;
     }
 }
 

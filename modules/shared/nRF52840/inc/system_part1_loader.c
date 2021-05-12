@@ -30,17 +30,6 @@ void system_part1_pre_init() {
  * Invoked after all module-scope instances have been constructed.
  */
 void system_part1_init() {
-    // WARN: we now validate the user module regardless of the dependency check
-    // for bootloader and system part. If serial log is enabled in user application,
-    // device will print log even if we are going to enter the safe mode.
-    module_user_part_validated = HAL_Core_Validate_User_Module();
-    if (is_user_module_valid()) {
-        // Call constructors in user application to configure system environment,
-        // For example, SeialLogHandler(), STARTUP(), etc.
-        module_user_init();
-    } else {
-        set_system_mode(SAFE_MODE);
-    }
 }
 
 void system_part2_post_init() __attribute__((alias("system_part1_post_init")));
@@ -48,9 +37,17 @@ void system_part2_post_init() __attribute__((alias("system_part1_post_init")));
 void system_part1_post_init() {
     // NOTE: it may fetch the NCP and radio stack version, so some ealy
     // initialization work should have been done before getting here.
-    if (!HAL_Core_Validate_Modules(1, NULL)) {
+    const bool bootloader_validated = HAL_Core_Validate_Modules(1, NULL);
+    if (bootloader_validated) {
+        module_user_part_validated = HAL_Core_Validate_User_Module();
+    }
+    if (!bootloader_validated || !is_user_module_valid()) {
         // indicate to the system that it shouldn't run user code
         set_system_mode(SAFE_MODE);
+    }
+    
+    if (system_mode() != SAFE_MODE && is_user_module_valid()) {
+        module_user_init();
     }
 }
 
