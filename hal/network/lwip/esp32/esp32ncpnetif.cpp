@@ -301,7 +301,7 @@ int Esp32NcpNetif::upImpl() {
 
 void Esp32NcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
     // This is a static method and the ctx may be nullptr if Esp32NcpNetif is not created but
-    // we have accessed the NCP client for certain operations, such as geeting the NCP firmware version.
+    // we have accessed the NCP client for certain operations, such as getting the NCP firmware version.
     // Simply assert to catch the error if we're doing something wrong
     SPARK_ASSERT(ctx);
     LOG(TRACE, "NCP event %d", (int)ev.type);
@@ -349,7 +349,7 @@ void Esp32NcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
 
 int Esp32NcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx) {
     // This is a static method and the ctx may be nullptr if Esp32NcpNetif is not created but
-    // we have accessed the NCP client for certain operations, such as geeting the NCP firmware version.
+    // we have accessed the NCP client for certain operations, such as getting the NCP firmware version.
     // Simply assert to catch the error if we're doing something wrong
     SPARK_ASSERT(ctx);
     Esp32NcpNetif* self = static_cast<Esp32NcpNetif*>(ctx);

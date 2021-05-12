@@ -51,7 +51,7 @@ public:
     }
 
     int peek(char* data, size_t size) override {
-        CHECK_TRUE(readFunc_, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(readFunc_, SYSTEM_ERROR_INVALID_STATE);
         if (!remaining_) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
@@ -177,7 +177,7 @@ int platform_ncp_update_module(const hal_module_t* module) {
 int platform_ncp_fetch_module_info(hal_module_t* module) {
     uint16_t version = 0;
     // Defaults to zero in case of failure
-    CHECK(getWifiNcpFirmwareVersion(&version));
+    int ret = getWifiNcpFirmwareVersion(&version);
 
     // todo - we could augment the getFirmwareModuleVersion command to retrieve more details
     module_info_t* info = &module->info;
@@ -206,5 +206,5 @@ int platform_ncp_fetch_module_info(hal_module_t* module) {
 
     module->module_info_offset = 0;
 
-    return 0;
+    return ret;
 }
