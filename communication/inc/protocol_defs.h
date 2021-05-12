@@ -144,14 +144,17 @@ namespace Connection
  */
 enum Enum
 {
-    PING = 0, ///< Set keepalive interval.
-    FAST_OTA = 1, ///< Enable/disable fast OTA.
-    DEVICE_INITIATED_DESCRIBE = 2, ///< Enable device-initiated describe messages.
-    COMPRESSED_OTA = 3, ///< Enable support for compressed/combined OTA updates.
-    SYSTEM_MODULE_VERSION = 4, ///< Module version of the system firmware.
-    MAX_BINARY_SIZE = 5, ///< Maximum size of a firmware binary.
-    OTA_CHUNK_SIZE = 6, ///< Size of an OTA update chunk.
-    MAX_TRANSMIT_MESSAGE_SIZE = 7 ///< Maximum size of of outgoing CoAP message.
+    PING = 0, ///< Keepalive interval (set).
+    FAST_OTA = 1, ///< Enable/disable fast OTA (set).
+    DEVICE_INITIATED_DESCRIBE = 2, ///< Enable device-initiated describe messages (set).
+    COMPRESSED_OTA = 3, ///< Enable support for compressed/combined OTA updates (set).
+    SYSTEM_MODULE_VERSION = 4, ///< Module version of the system firmware (set).
+    MAX_BINARY_SIZE = 5, ///< Maximum size of a firmware binary (set).
+    OTA_CHUNK_SIZE = 6, ///< Size of an OTA update chunk (set).
+    MAX_TRANSMIT_MESSAGE_SIZE = 7, ///< Maximum size of of outgoing CoAP message (set).
+    MAX_EVENT_DATA_SIZE = 8, ///< Maximum size of event data (get).
+    MAX_VARIABLE_VALUE_SIZE = 9, ///< Maximum size of a variable value (get).
+    MAX_FUNCTION_ARGUMENT_SIZE = 10 ///< Maximum size of a function call argument (get).
 };
 
 }

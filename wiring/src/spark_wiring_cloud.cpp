@@ -101,3 +101,36 @@ void CloudClass::setDisconnectOptions(const CloudDisconnectOptions& options) {
     const auto opts = options.toSystemOptions();
     spark_set_connection_property(SPARK_CLOUD_DISCONNECT_OPTIONS, 0 /* value */, &opts, nullptr /* reserved */);
 }
+
+size_t CloudClass::maxEventDataSize() {
+    size_t size = 0;
+    size_t n = sizeof(size);
+    const int r = spark_protocol_get_connection_property(spark_protocol_instance(),
+            protocol::Connection::MAX_EVENT_DATA_SIZE, &size, &n, nullptr /* reserved */);
+    if (r != 0) {
+        return 0;
+    }
+    return size;
+}
+
+size_t CloudClass::maxVariableValueSize() {
+    size_t size = 0;
+    size_t n = sizeof(size);
+    const int r = spark_protocol_get_connection_property(spark_protocol_instance(),
+            protocol::Connection::MAX_VARIABLE_VALUE_SIZE, &size, &n, nullptr /* reserved */);
+    if (r != 0) {
+        return 0;
+    }
+    return size;
+}
+
+size_t CloudClass::maxFunctionArgumentSize() {
+    size_t size = 0;
+    size_t n = sizeof(size);
+    const int r = spark_protocol_get_connection_property(spark_protocol_instance(),
+            protocol::Connection::MAX_FUNCTION_ARGUMENT_SIZE, &size, &n, nullptr /* reserved */);
+    if (r != 0) {
+        return 0;
+    }
+    return size;
+}

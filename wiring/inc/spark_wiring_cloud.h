@@ -395,6 +395,42 @@ public:
      * @see `disconnect()`
      */
     static void setDisconnectOptions(const CloudDisconnectOptions& options);
+    /**
+     * Get the maximum supported size of an event's payload data.
+     *
+     * @note This parameter depends on multiple factors, some of which, such as the version of the
+     * modem firmware on cellular platforms, can only be determined at runtime. In order to get the
+     * accurate value that would take all those factors into account, this method needs to be called
+     * after a connection with the Cloud has been established.
+     *
+     * @see `maxVariableValueSize()`
+     * @see `maxFunctionArgumentSize()`
+     */
+    static size_t maxEventDataSize();
+    /**
+     * Get the maximum supported size of a variable value.
+     *
+     * @note This parameter depends on multiple factors, some of which, such as the version of the
+     * modem firmware on cellular platforms, can only be determined at runtime. In order to get the
+     * accurate value that would take all those factors into account, this method needs to be called
+     * after a connection with the Cloud has been established.
+     *
+     * @see `maxEventDataSize()`
+     * @see `maxFunctionArgumentSize()`
+     */
+    static size_t maxVariableValueSize();
+    /**
+     * Get the maximum supported size of a function call argument.
+     *
+     * @note This parameter depends on multiple factors, some of which, such as the version of the
+     * modem firmware on cellular platforms, can only be determined at runtime. In order to get the
+     * accurate value that would take all those factors into account, this method needs to be called
+     * after a connection with the Cloud has been established.
+     *
+     * @see `maxEventDataSize()`
+     * @see `maxVariableValueSize()`
+     */
+    static size_t maxFunctionArgumentSize();
 
 private:
 
@@ -405,11 +441,6 @@ private:
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
 
     static particle::Future<bool> publish_event(const char *eventName, const char *eventData, int ttl, PublishFlags flags);
-
-    static ProtocolFacade* sp()
-    {
-        return spark_protocol_instance();
-    }
 
     bool subscribe_wiring(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope, const char *deviceID = NULL)
     {

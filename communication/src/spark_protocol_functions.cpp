@@ -234,6 +234,37 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
     }
 }
 
+int spark_protocol_get_connection_property(ProtocolFacade* protocol, unsigned property, void* data, size_t* size, void* reserved)
+{
+    ASSERT_ON_SYSTEM_THREAD();
+    switch (property) {
+    case Connection::MAX_EVENT_DATA_SIZE:
+    case Connection::MAX_VARIABLE_VALUE_SIZE:
+    case Connection::MAX_FUNCTION_ARGUMENT_SIZE: {
+        if (*size < sizeof(size_t)) {
+            *size = sizeof(size_t);
+            return ProtocolError::INSUFFICIENT_STORAGE;
+        }
+        const auto d = (size_t*)data;
+        switch (property) {
+        case Connection::MAX_EVENT_DATA_SIZE:
+            *d = protocol->get_max_event_data_size();
+            break;
+        case Connection::MAX_VARIABLE_VALUE_SIZE:
+            *d = protocol->get_max_variable_value_size();
+            break;
+        case Connection::MAX_FUNCTION_ARGUMENT_SIZE:
+            *d = protocol->get_max_function_arg_size();
+            break;
+        }
+        *size = sizeof(size_t);
+        return 0;
+    }
+    default:
+        return ProtocolError::NOT_IMPLEMENTED;
+    }
+}
+
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value, const void* data)
 {
     ASSERT_ON_SYSTEM_THREAD();
