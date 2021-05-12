@@ -248,3 +248,11 @@ test(api_spark_syncTime) {
     API_COMPILE(Particle.syncTimePending());
     API_COMPILE(Particle.timeSyncedLast());
 }
+
+test(api_spark_misc) {
+    size_t size = 0;
+    (void)size;
+    API_COMPILE(size = Particle.maxEventDataSize());
+    API_COMPILE(size = Particle.maxVariableValueSize());
+    API_COMPILE(size = Particle.maxFunctionArgumentSize());
+}
