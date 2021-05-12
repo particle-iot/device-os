@@ -109,30 +109,40 @@ int locate_module(const module_bounds_t* bounds, module_info_t* infoOut) {
 bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags)
 {
     memset(target, 0, sizeof(*target));
-
     target->bounds = *bounds;
-    module_info_t* info = &target->info;
-    CHECK_TRUE(get_module_info(bounds, info, &target->module_info_offset) == SYSTEM_ERROR_NONE, false);
-    target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
-    target->validity_result = 0;
-    const uint8_t* module_end = (const uint8_t*)target->info.module_end_address;
-    // find the location of where the module should be flashed to based on its module co-ordinates (function/index/mcu)
-    const module_bounds_t* expected_bounds = find_module_bounds(module_function(info), module_index(info), module_mcu_target(info));
-    if (!expected_bounds || !in_range(uint32_t(module_end), expected_bounds->start_address, expected_bounds->end_address)) {
-        return false;
+    if (!memcmp(bounds, &module_radio_stack, sizeof(module_radio_stack))) {
+        CHECK(platform_radio_stack_fetch_module_info(target));
     }
-    target->validity_result |= MODULE_VALIDATION_RANGE;
-    target->validity_result |= (PLATFORM_ID==module_platform_id(info)) ? MODULE_VALIDATION_PLATFORM : 0;
-    // the suffix ends at module_end, and the crc starts after module end
-    if (get_module_crc_suffix(bounds, info, &target->crc, &target->suffix) != SYSTEM_ERROR_NONE) {
-        return false;
+#if HAL_PLATFORM_NCP_UPDATABLE
+    else if (!memcmp(bounds, &module_ncp_mono, sizeof(module_ncp_mono))) {
+        CHECK(platform_ncp_fetch_module_info(target));
     }
-    if (validate_module_dependencies(bounds, userDepsOptional, target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL)) {
-        target->validity_result |= MODULE_VALIDATION_DEPENDENCIES | (target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL);
+#endif
+    else {
+        module_info_t* info = &target->info;
+        CHECK_TRUE(get_module_info(bounds, info, &target->module_info_offset) == SYSTEM_ERROR_NONE, false);
+        target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
+        target->validity_result = 0;
+        const uint8_t* module_end = (const uint8_t*)target->info.module_end_address;
+        // find the location of where the module should be flashed to based on its module co-ordinates (function/index/mcu)
+        const module_bounds_t* expected_bounds = find_module_bounds(module_function(info), module_index(info), module_mcu_target(info));
+        if (!expected_bounds || !in_range(uint32_t(module_end), expected_bounds->start_address, expected_bounds->end_address)) {
+            return false;
+        }
+        target->validity_result |= MODULE_VALIDATION_RANGE;
+        target->validity_result |= (PLATFORM_ID==module_platform_id(info)) ? MODULE_VALIDATION_PLATFORM : 0;
+        // the suffix ends at module_end, and the crc starts after module end
+        if (get_module_crc_suffix(bounds, info, &target->crc, &target->suffix) != SYSTEM_ERROR_NONE) {
+            return false;
+        }
+        if (validate_module_dependencies(bounds, userDepsOptional, target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL)) {
+            target->validity_result |= MODULE_VALIDATION_DEPENDENCIES | (target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL);
+        }
+        if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && verify_crc32(bounds, info)) {
+            target->validity_result |= MODULE_VALIDATION_INTEGRITY;
+        }
     }
-    if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && verify_crc32(bounds, info)) {
-        target->validity_result |= MODULE_VALIDATION_INTEGRITY;
-    }
+    
     return true;
 }
 

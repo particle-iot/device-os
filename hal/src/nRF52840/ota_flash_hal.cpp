@@ -175,12 +175,6 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
             for (unsigned i = 0; i < count; i++) {
                 const auto bounds = module_bounds[i];
                 const auto module = info->modules + i;
-                memset(module, 0, sizeof(hal_module_t));
-                module->bounds = *bounds;
-                if (bounds->module_function == MODULE_FUNCTION_NCP_FIRMWARE ||
-                        bounds->module_function == MODULE_FUNCTION_RADIO_STACK) {
-                    continue; // These modules will be fetched in HAL_OTA_Add_System_Info()
-                }
                 fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY);
 #if defined(HYBRID_BUILD)
 #ifndef MODULAR_FIRMWARE
