@@ -1738,6 +1738,12 @@ int SaraNcpClient::enterDataMode() {
     skipAll(muxerDataStream_.get());
     muxerDataStream_->enabled(true);
 
+    // There is some kind of a bug in 02.19 R410 modem firmware in where it does not accept
+    // any AT commands over the second muxed channel, unless we send something over channel 1 first.
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+        CHECK(waitAtResponse(parser_, 5000));
+    }
+
     CHECK_TRUE(muxer_.setChannelDataHandler(UBLOX_NCP_PPP_CHANNEL, muxerDataStream_->channelDataCb, muxerDataStream_.get()) == 0, SYSTEM_ERROR_INTERNAL);
     // Send data mode break
     if (ncpId() != PLATFORM_NCP_SARA_R410) {
