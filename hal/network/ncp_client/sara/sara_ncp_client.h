@@ -156,7 +156,8 @@ private:
     int modemSetUartState(bool state) const;
     void waitForPowerOff();
     int getAppFirmwareVersion();
-    int waitAtResponseFromPowerOn(ModemState& modemState);
+    int waitAtResponseFromPowerOn(ModemState& modemState, unsigned int timeout = 10000);
+    int disablePsmEdrx();
 };
 
 inline AtParser* SaraNcpClient::atParser() {
