@@ -1305,6 +1305,21 @@ bool MDMParser::urcs(bool enable) {
         if (RESP_OK != waitFinalResp()) {
             return false;
         }
+        sendFormated("AT+CREG=2\r\n");
+        if (RESP_OK != waitFinalResp()) {
+            return false;
+        }
+        if (_dev.dev == DEV_SARA_R410) {
+            sendFormated("AT+CEREG=2\r\n");
+            if (RESP_OK != waitFinalResp()) {
+                return false;
+            }
+        } else {
+            sendFormated("AT+CGREG=2\r\n");
+            if (RESP_OK != waitFinalResp()) {
+                return false;
+            }
+        }
     } else {
         sendFormated("AT+UCIND=0\r\n");
         if (RESP_OK != waitFinalResp()) {
@@ -1313,6 +1328,21 @@ bool MDMParser::urcs(bool enable) {
         sendFormated("AT+CMER=0,0,0,0,0\r\n");
         if (RESP_OK != waitFinalResp()) {
             return false;
+        }
+        sendFormated("AT+CREG=0\r\n");
+        if (RESP_OK != waitFinalResp()) {
+            return false;
+        }
+        if (_dev.dev == DEV_SARA_R410) {
+            sendFormated("AT+CEREG=0\r\n");
+            if (RESP_OK != waitFinalResp()) {
+                return false;
+            }
+        } else {
+            sendFormated("AT+CGREG=0\r\n");
+            if (RESP_OK != waitFinalResp()) {
+                return false;
+            }
         }
     }
     return true;
