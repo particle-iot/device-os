@@ -1084,6 +1084,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
 
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
         int resetCount = 0;
+        bool disableLowPowerModes = false;
         // Note: Not failing on AT error on ICCID/IMSI lookup since SIMs have shown strange edge cases
         // where they error for no reason, and hard resetting the modem or power cycling would not clear it.
         //
@@ -1152,6 +1153,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 parser_.execCommand(1000, "AT+UMNOPROF=%d", newProf);
                 // Not checking for error since we will reset either way
                 reset = true;
+                disableLowPowerModes = true;
             } else if (r == 1 && static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::STANDARD_EUROPE) {
                 auto respBand = parser_.sendCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK?");
                 uint64_t ubandUint64 = 0;
@@ -1172,16 +1174,63 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
             }
             if (reset) {
                 CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=15,0"));
-                HAL_Delay_Milliseconds(10000);
-                CHECK(waitAtResponseFromPowerOn(state));
+                HAL_Delay_Milliseconds(2000);
+				// Radio sometimes takes a while to resetfrom CFUN=15
+                CHECK(waitAtResponseFromPowerOn(state, 20000));
+				// Prevent modem from immediately dropping into PSM/eDRX modes
+				// which (on 05.12) are enabled as soon as the UMNOPROF has taken effect
+                if (disableLowPowerModes) {
+                    disablePsmEdrx();
+                }
             }
         } while (reset && ++resetCount < 4); // Note: Twilio SIMs could take more than 2 tries in some error cases, others <= 2
+
     }
 
     return SYSTEM_ERROR_NONE;
 }
 
-int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState) {
+int SaraNcpClient::disablePsmEdrx() {
+    // Force Power Saving mode to be disabled
+    //
+    // TODO: if we enable this feature in the future add logic to CHECK_PARSER macro(s)
+    // to wait longer for device to become active (see MDMParser::_atOk)
+    auto resp = parser_.sendCommand("AT+CPSMS?");
+    unsigned psmState = 1;
+    auto r = resp.scanf("+CPSMS:%d", &psmState);
+    resp.readResult();
+    // Disable PSM even if the above command errors out
+    if (psmState == 1) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CPSMS=0"));
+    }
+
+    // Force eDRX mode to be disabled. AT+CEDRXS=0 doesn't seem disable eDRX completely, so
+    // so we're disabling it for each reported RAT individually
+    Vector<unsigned> acts;
+    resp = parser_.sendCommand("AT+CEDRXS?");
+    while (resp.hasNextLine()) {
+        unsigned act = 0;
+        r = resp.scanf("+CEDRXS: %u", &act);
+        if (r == 1) { // Ignore scanf() errors
+            CHECK_TRUE(acts.append(act), SYSTEM_ERROR_NO_MEMORY);
+        }
+    }
+    CHECK_PARSER_OK(resp.readResult());
+    int lastError = AtResponse::OK;
+    for (unsigned act: acts) {
+        // This command may fail for unknown reason. eDRX mode is a persistent setting and, eventually,
+        // it will get applied for each RAT during subsequent re-initialization attempts
+        r = CHECK_PARSER(parser_.execCommand("AT+CEDRXS=3,%u", act)); // 3: Disable the use of eDRX
+        if (r != AtResponse::OK) {
+            lastError = r;
+        }
+    }
+    CHECK_PARSER_OK(lastError);
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState, unsigned int timeout) {
     // Make sure we reset back to using hardware serial port @ default baudrate
     muxer_.stop();
 
@@ -1202,13 +1251,13 @@ int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState) {
             modemState = ModemState::DefaultBaudrate;
         }
     } else {
-        r = waitAtResponse(10000);
+        r = waitAtResponse(timeout);
         if (r) {
             CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
             CHECK(initParser(serial_.get()));
             skipAll(serial_.get());
             parser_.reset();
-            r = waitAtResponse(5000);
+            r = waitAtResponse(timeout/2);
             if (!r) {
                 modemState = ModemState::DefaultBaudrate;
             }
@@ -1312,33 +1361,9 @@ int SaraNcpClient::initReady(ModemState state) {
             }
         }
 
-        // Force eDRX mode to be disabled. AT+CEDRXS=0 doesn't seem disable eDRX completely, so
-        // so we're disabling it for each reported RAT individually
-        Vector<unsigned> acts;
-        resp = parser_.sendCommand("AT+CEDRXS?");
-        while (resp.hasNextLine()) {
-            unsigned act = 0;
-            r = resp.scanf("+CEDRXS: %u", &act);
-            if (r == 1) { // Ignore scanf() errors
-                CHECK_TRUE(acts.append(act), SYSTEM_ERROR_NO_MEMORY);
-            }
-        }
-        CHECK_PARSER_OK(resp.readResult());
-        int lastError = AtResponse::OK;
-        for (unsigned act: acts) {
-            // This command may fail for unknown reason. eDRX mode is a persistent setting and, eventually,
-            // it will get applied for each RAT during subsequent re-initialization attempts
-            r = CHECK_PARSER(parser_.execCommand("AT+CEDRXS=3,%u", act)); // 3: Disable the use of eDRX
-            if (r != AtResponse::OK) {
-                lastError = r;
-            }
-        }
-        CHECK_PARSER_OK(lastError);
-        // Force Power Saving mode to be disabled
-        //
-        // TODO: if we enable this feature in the future add logic to CHECK_PARSER macro(s)
-        // to wait longer for device to become active (see MDMParser::_atOk)
-        CHECK_PARSER_OK(parser_.execCommand("AT+CPSMS=0"));
+        // Disable Cat-M1 low power modes
+        disablePsmEdrx();
+
     } else {
         // Force Power Saving mode to be disabled
         //
