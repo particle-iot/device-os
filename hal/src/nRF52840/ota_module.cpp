@@ -53,13 +53,8 @@ int get_module_crc_suffix(const module_bounds_t* bounds, const module_info_t* in
         || !memcmp(bounds, &module_ncp_mono, sizeof(module_ncp_mono))
 #endif
             ) {
-        // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change
-        // in the SYSTEM DESCRIBE state and send a HELLO after the NCP update to
-        // cause the DS to request new DESCRIBE info
-
-        // FIXME: currently we are calculating the suffix in HAL_OTA_Add_System_Info() for the communication layer.
-        // When the suffix is required for module validation, we need to also retrieve the suffix here.
-        return SYSTEM_ERROR_NONE;
+        // This should be done in fetch_module().
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     } else {
         return FLASH_ModuleCrcSuffix(crc, suffix, bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ? FLASH_INTERNAL : FLASH_SERIAL, (uint32_t)info->module_end_address);
     }
