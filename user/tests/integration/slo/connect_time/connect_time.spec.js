@@ -2,48 +2,74 @@
 // Devices connect to cloud quickly
 //   Given good connectivity or better
 //   And LTS based firmware
-//   99% of devices will be breathing cyan within 60 seconds of a cold boot (exception of 90s cat-1 modems, i.e. b5som + tracker)
+//   99% of devices will be breathing cyan
+//     within 60 seconds of a cold boot
+//     within 30 seconds of a warm boot
 suite('Network/cloud connection time SLOs');
 
 platform('gen2', 'gen3');
+systemThread('enabled');
 
-const MAX_VALUES = {
+// Parameters validated by this test
+const THRESHOLDS = {
 	// boron: {
-	// 	network_cold_connect_time_from_startup: 90000,
-	// 	network_warm_connect_time_from_startup: 30000,
-	// 	cloud_full_handshake_duration: 15000,
-	// 	cloud_session_resume_duration: 5000
+	// 	maxCloudConnectTimeFromColdBoot: 60000,
+	// 	maxCloudConnectTimeFromWarmBoot: 30000
 	// },
 	default: {
-		network_cold_connect_time_from_startup: 90000,
-		network_warm_connect_time_from_startup: 30000,
-		cloud_full_handshake_duration: 15000,
-		cloud_session_resume_duration: 5000
+		maxCloudConnectTimeFromColdBoot: 60000,
+		maxCloudConnectTimeFromWarmBoot: 30000
 	}
 };
 
-test('network_connect_cold', async function() {
-	// Reset the device before running the test for the warm boot scenario
-	const dev = this.particle.devices[0];
-	await dev.reset();
+// Number of connection time measurements to make. When changing this parameter, make sure to
+// update the test application accordingly
+const SAMPLE_COUNT = 10;
+
+// The test uses the Nth percentile of all connection time measurements
+const PERCENTILE = 75;
+
+let device = null;
+
+function percentile(values, p) {
+	if (!values.length) {
+		return NaN;
+	}
+	values = values.slice().sort();
+	const i = Math.floor((values.length - 1) * p / 100);
+	return values[i];
+}
+
+before(function() {
+	device = this.particle.devices[0];
 });
 
-test('network_connect_warm', async function() {
-});
+// TODO: The test runner doesn't support resetting the device in a loop from within a test
+for (let i = 1; i <= SAMPLE_COUNT; ++i) {
+	test(`cloud_connect_time_from_cold_boot_${i.toString().padStart(2, '0')}`, async () => {
+		await device.reset(); // Reset the device before running the next test
+	});
+}
 
-test('cloud_connect_full_handshake', async function() {
-});
-
-test('cloud_connect_session_resume', async function() {
-});
+for (let i = 1; i <= SAMPLE_COUNT; ++i) {
+	test(`cloud_connect_time_from_warm_boot_${i.toString().padStart(2, '0')}`, async () => {
+		await device.reset();
+	});
+}
 
 test('publish_and_validate_stats', async function() {
 	let stats = await this.particle.receiveEvent('stats');
+	this.particle.log.verbose(stats);
 	stats = JSON.parse(stats);
-	const platform = this.particle.devices[0].platform.name;
-	const maxValues = (platform in MAX_VALUES) ? MAX_VALUES[platform] : MAX_VALUES['default'];
-	expect(stats.network_cold_connect_time_from_startup).to.be.lessThanOrEqual(maxValues.network_cold_connect_time_from_startup);
-	expect(stats.network_warm_connect_time_from_startup).to.be.lessThanOrEqual(maxValues.network_warm_connect_time_from_startup);
-	expect(stats.cloud_full_handshake_duration).to.be.lessThanOrEqual(maxValues.cloud_full_handshake_duration);
-	expect(stats.cloud_session_resume_duration).to.be.lessThanOrEqual(maxValues.cloud_session_resume_duration);
+	expect(stats.cloud_connect_time_from_cold_boot).to.have.lengthOf(SAMPLE_COUNT);
+	expect(stats.cloud_connect_time_from_warm_boot).to.have.lengthOf(SAMPLE_COUNT);
+	const thresh = THRESHOLDS[device.platform.name] || THRESHOLDS['default'];
+	// Cold boot
+	let t = percentile(stats.cloud_connect_time_from_cold_boot, PERCENTILE);
+	this.particle.log.verbose('cloud_connect_time_from_cold_boot:', t);
+	expect(t).to.be.lessThanOrEqual(thresh.maxCloudConnectTimeFromColdBoot);
+	// Warm boot
+	t = percentile(stats.cloud_connect_time_from_warm_boot, PERCENTILE);
+	this.particle.log.verbose('cloud_connect_time_from_warm_boot:', t);
+	expect(t).to.be.lessThanOrEqual(thresh.maxCloudConnectTimeFromWarmBoot);
 });

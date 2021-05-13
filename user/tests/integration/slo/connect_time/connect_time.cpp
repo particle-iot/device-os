@@ -1,26 +1,27 @@
 #include "application.h"
 #include "test.h"
 
-#if Wiring_Cellular
-#define Network Cellular
-#elif Wiring_Wifi
-#define Network WiFi
-#else
-#error "Unsupported platform"
-#endif
-
 namespace {
 
-const auto TIMEOUT = 10 * 60 * 1000; // Default timeout for waitFor()
+// Number of connection time measurements to make. When changing this parameter, make sure to change
+// the number of cloud_connect_time_from_cold_boot_XX and cloud_connect_time_from_warm_boot_XX tests
+// and update the spec file accordingly
+const unsigned SAMPLE_COUNT = 10;
 
-struct State {
-    system_tick_t networkColdConnectTimeFromStartup;
-    system_tick_t networkWarmConnectTimeFromStartup;
-    system_tick_t cloudFullHandshakeDuration;
-    system_tick_t cloudSessionResumeDuration;
+// Delay before resetting the device after a test
+const system_tick_t DELAY_AFTER_TEST = 2000;
+
+// Default timeout for waitFor()
+const system_tick_t WAIT_FOR_TIMEOUT = 10 * 60 * 1000;
+
+struct Stats {
+    system_tick_t cloudConnectTimeFromColdBoot[SAMPLE_COUNT];
+    system_tick_t cloudConnectTimeFromWarmBoot[SAMPLE_COUNT];
+    unsigned cloudConnectTimeFromColdBootCount;
+    unsigned cloudConnectTimeFromWarmBootCount;
 };
 
-retained State s = {};
+retained Stats stats = {};
 
 system_tick_t globalInitTimeFromStartup = 0;
 system_tick_t setupTimeFromStartup = 0;
@@ -30,13 +31,66 @@ bool loopCalled = false;
 system_tick_t testAppInitDuration = 0;
 system_tick_t testAppSetupDuration = 0;
 
-size_t serializeStateAsJson(char* buf, size_t size) {
+inline NetworkClass& network() {
+#if Wiring_Cellular
+    return Cellular;
+#elif Wiring_Wifi
+    return WiFi;
+#else
+#error "Unsupported platform"
+#endif
+}
+
+bool testCloudConnectTimeFromColdBoot() {
+    network().off(); // Make sure the network interface is tuned off
+    waitFor(network().isOff, WAIT_FOR_TIMEOUT);
+    if (!network().isOff()) {
+        return false;
+    }
+    Particle.disconnect(CloudDisconnectOptions().clearSession(true)); // Clear the session data
+    const auto t1 = millis();
+    Particle.connect();
+    waitFor(Particle.connected, WAIT_FOR_TIMEOUT);
+    if (!Particle.connected()) {
+        return false;
+    }
+    const auto n = stats.cloudConnectTimeFromColdBootCount++;
+    stats.cloudConnectTimeFromColdBoot[n] = millis() - t1 + setupTimeFromStartup; // As if Particle.connect() was called in setup()
+    delay(DELAY_AFTER_TEST);
+    return true;
+}
+
+bool testCloudConnectTimeFromWarmBoot() {
+    if (network().ready()) {
+        return false;
+    }
+    const auto t1 = millis();
+    Particle.connect();
+    waitFor(Particle.connected, WAIT_FOR_TIMEOUT);
+    if (!Particle.connected()) {
+        return false;
+    }
+    const auto n = stats.cloudConnectTimeFromWarmBootCount++;
+    stats.cloudConnectTimeFromWarmBoot[n] = millis() - t1 + setupTimeFromStartup;
+    delay(DELAY_AFTER_TEST);
+    return true;
+}
+
+size_t serializeStatsAsJson(char* buf, size_t size) {
     JSONBufferWriter w(buf, size);
     w.beginObject();
-    w.name("network_cold_connect_time_from_startup").value((unsigned)s.networkColdConnectTimeFromStartup);
-    w.name("network_warm_connect_time_from_startup").value((unsigned)s.networkWarmConnectTimeFromStartup);
-    w.name("cloud_full_handshake_duration").value((unsigned)s.cloudFullHandshakeDuration);
-    w.name("cloud_session_resume_duration").value((unsigned)s.cloudSessionResumeDuration);
+    w.name("cloud_connect_time_from_cold_boot");
+    w.beginArray();
+    for (unsigned i = 0; i < SAMPLE_COUNT; ++i) {
+        w.value((unsigned)stats.cloudConnectTimeFromColdBoot[i]);
+    }
+    w.endArray();
+    w.name("cloud_connect_time_from_warm_boot");
+    w.beginArray();
+    for (unsigned i = 0; i < SAMPLE_COUNT; ++i) {
+        w.value((unsigned)stats.cloudConnectTimeFromWarmBoot[i]);
+    }
+    w.endArray();
     w.endObject();
     return w.dataSize();
 }
@@ -64,54 +118,47 @@ void loop() {
     testAppLoop();
 }
 
-test(network_connect_cold) {
-    Network.off(); // Make sure the network interface is tuned off
-    waitFor(Network.isOff, TIMEOUT);
-    assertTrue(Network.isOff());
-    const auto t1 = millis();
-    Network.connect();
-    waitFor(Network.ready, TIMEOUT);
-    assertTrue(Network.ready());
-    s.networkColdConnectTimeFromStartup = millis() - t1 + setupTimeFromStartup; // Assuming that Network.connect() is called in setup()
-    // The JS part of this test will now reset the device
-}
+// TODO: The test runner doesn't support resetting the device in a loop from within a test
+#define DEFINE_COLD_BOOT_TEST(_suffix) \
+    test(cloud_connect_time_from_cold_boot_##_suffix) { \
+        assertTrue(testCloudConnectTimeFromColdBoot()); \
+    }
 
-test(network_connect_warm) {
-    assertFalse(Network.ready());
-    const auto t1 = millis();
-    Network.connect();
-    waitFor(Network.ready, TIMEOUT);
-    assertTrue(Network.ready());
-    s.networkWarmConnectTimeFromStartup = millis() - t1 + setupTimeFromStartup;
-}
+#define DEFINE_WARM_BOOT_TEST(_suffix) \
+    test(cloud_connect_time_from_warm_boot_##_suffix) { \
+        assertTrue(testCloudConnectTimeFromWarmBoot()); \
+    }
 
-test(cloud_connect_full_handshake) {
-    Particle.disconnect(CloudDisconnectOptions().clearSession(true)); // Make sure the session data is cleared
-    waitFor(Particle.disconnected, TIMEOUT);
-    assertTrue(Particle.disconnected());
-    const auto t1 = millis();
-    Particle.connect();
-    waitFor(Particle.connected, TIMEOUT);
-    assertTrue(Particle.connected());
-    s.cloudFullHandshakeDuration = millis() - t1;
-}
+DEFINE_COLD_BOOT_TEST(01)
+DEFINE_COLD_BOOT_TEST(02)
+DEFINE_COLD_BOOT_TEST(03)
+DEFINE_COLD_BOOT_TEST(04)
+DEFINE_COLD_BOOT_TEST(05)
+DEFINE_COLD_BOOT_TEST(06)
+DEFINE_COLD_BOOT_TEST(07)
+DEFINE_COLD_BOOT_TEST(08)
+DEFINE_COLD_BOOT_TEST(09)
+DEFINE_COLD_BOOT_TEST(10)
 
-test(cloud_connect_session_resume) {
-    Particle.disconnect(CloudDisconnectOptions().graceful(true));
-    waitFor(Particle.disconnected, TIMEOUT);
-    assertTrue(Particle.disconnected());
-    const auto t1 = millis();
-    Particle.connect();
-    waitFor(Particle.connected, TIMEOUT);
-    assertTrue(Particle.connected());
-    s.cloudSessionResumeDuration = millis() - t1;
-}
+DEFINE_WARM_BOOT_TEST(01)
+DEFINE_WARM_BOOT_TEST(02)
+DEFINE_WARM_BOOT_TEST(03)
+DEFINE_WARM_BOOT_TEST(04)
+DEFINE_WARM_BOOT_TEST(05)
+DEFINE_WARM_BOOT_TEST(06)
+DEFINE_WARM_BOOT_TEST(07)
+DEFINE_WARM_BOOT_TEST(08)
+DEFINE_WARM_BOOT_TEST(09)
+DEFINE_WARM_BOOT_TEST(10)
 
 test(publish_and_validate_stats) {
-    const size_t n = serializeStateAsJson(nullptr /* buf */, 0 /* size */);
+    Particle.connect();
+    waitFor(Particle.connected, WAIT_FOR_TIMEOUT);
+    assertTrue(Particle.connected());
+    const size_t n = serializeStatsAsJson(nullptr /* buf */, 0 /* size */);
     std::unique_ptr<char[]> buf(new(std::nothrow) char[n + 1]); // Including term. null
     assertTrue((bool)buf);
-    serializeStateAsJson(buf.get(), n);
+    serializeStatsAsJson(buf.get(), n);
     buf[n] = '\0';
     Particle.publish("stats", buf.get());
 }
