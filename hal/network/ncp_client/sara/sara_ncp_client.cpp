@@ -1185,6 +1185,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
 				// Prevent modem from immediately dropping into PSM/eDRX modes
 				// which (on 05.12) may be enabled as soon as the UMNOPROF has taken effect
                 if (disableLowPowerModes) {
+                    // Not checking the error
                     disablePsmEdrx();
                 }
             }
@@ -1272,7 +1273,7 @@ int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState, unsigned in
     } else {
         r = waitAtResponse(timeout);
         if (r) {
-            LOG(INFO, "Trying UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE");
+            LOG_DEBUG(INFO, "Trying UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE");
             CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
             CHECK(initParser(serial_.get()));
             skipAll(serial_.get());
@@ -1281,7 +1282,7 @@ int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState, unsigned in
             if (!r) {
                 if (!(fwVersion_ >= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN &&
                 fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX)) {
-                    LOG(INFO, "Restoring UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4");
+                    LOG_DEBUG(INFO, "Restoring UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4");
                     r = changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
                     if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_AT_NOT_OK) {
                         return r;
@@ -1397,7 +1398,7 @@ int SaraNcpClient::initReady(ModemState state) {
         }
 
         // Disable Cat-M1 low power modes
-        disablePsmEdrx();
+        CHECK(disablePsmEdrx());
 
     } else {
         // Force Power Saving mode to be disabled
