@@ -261,6 +261,8 @@ test(CELLULAR_07_urcs) {
 
     assertEqual(cellular_urcs(true, nullptr), (int)SYSTEM_ERROR_NONE);
     assertEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
+#else
+#error "Unsupported platform"
 #endif
 }
 
