@@ -96,6 +96,7 @@ const auto UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE = 200;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN = 200;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX = 203;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01 = 204;
+const auto UBLOX_NCP_R4_APP_FW_VERSION_0512 = 219;
 
 const auto UBLOX_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto UBLOX_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -1118,6 +1119,12 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                     (netConf_.netProv() == CellularNetworkProvider::KORE_ATT &&
                     static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT)) ) {
                 int newProf = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
+                // Hard code ATT for 05.12 firmware versions
+                if (netConf_.netProv() == CellularNetworkProvider::KORE_ATT) {
+                    if (getAppFirmwareVersion() == UBLOX_NCP_R4_APP_FW_VERSION_0512) {
+                        newProf = static_cast<int>(UbloxSaraUmnoprof::ATT);
+                    }
+                }
                 // TWILIO Super SIM
                 if (netConf_.netProv() == CellularNetworkProvider::TWILIO) {
                     // _oldFirmwarePresent: u-blox firmware 05.06* and 05.07* does not have
@@ -1176,9 +1183,9 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=15,0"));
                 HAL_Delay_Milliseconds(2000);
 				// Radio sometimes takes a while to resetfrom CFUN=15
-                CHECK(waitAtResponseFromPowerOn(state, 20000));
+                CHECK(waitAtResponseFromPowerOn(state, 6000));
 				// Prevent modem from immediately dropping into PSM/eDRX modes
-				// which (on 05.12) are enabled as soon as the UMNOPROF has taken effect
+				// which (on 05.12) may be enabled as soon as the UMNOPROF has taken effect
                 if (disableLowPowerModes) {
                     disablePsmEdrx();
                 }
@@ -1191,6 +1198,20 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
 }
 
 int SaraNcpClient::disablePsmEdrx() {
+
+    // Check SIM state as PSM command's readiness could depend on it
+    int simState = 0;
+    for (unsigned attempts = 0; attempts < 10; attempts++) {
+        simState = checkSimCard();
+        if (!simState) {
+            break;
+        }
+        HAL_Delay_Milliseconds(1000);
+    }
+    if (simState != SYSTEM_ERROR_NONE) {
+        return simState;
+    }
+
     // Force Power Saving mode to be disabled
     //
     // TODO: if we enable this feature in the future add logic to CHECK_PARSER macro(s)
@@ -1234,11 +1255,11 @@ int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState, unsigned in
     // Make sure we reset back to using hardware serial port @ default baudrate
     muxer_.stop();
 
-    unsigned int defaultBaudrate = ncpId() != PLATFORM_NCP_SARA_R410 ?
+    unsigned int attemptedBaudRate = ncpId() != PLATFORM_NCP_SARA_R410 ?
             UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE :
             UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4;
 
-    CHECK(serial_->setBaudRate(defaultBaudrate));
+    CHECK(serial_->setBaudRate(attemptedBaudRate));
     CHECK(initParser(serial_.get()));
     skipAll(serial_.get(), 1000);
     parser_.reset();
@@ -1246,20 +1267,36 @@ int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState, unsigned in
     int r = SYSTEM_ERROR_TIMEOUT;
 
     if (ncpId() != PLATFORM_NCP_SARA_R410) {
-        r = waitAtResponse(20000);
+        r = waitAtResponse(10000);
         if (!r) {
             modemState = ModemState::DefaultBaudrate;
         }
     } else {
         r = waitAtResponse(timeout);
         if (r) {
+            LOG(INFO, "Trying UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE");
             CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
             CHECK(initParser(serial_.get()));
             skipAll(serial_.get());
             parser_.reset();
-            r = waitAtResponse(timeout/2);
+            r = waitAtResponse(timeout);
             if (!r) {
-                modemState = ModemState::DefaultBaudrate;
+                if (!(fwVersion_ >= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN &&
+                fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX)) {
+                    LOG(INFO, "Restoring UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4");
+                    r = changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
+                    if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_AT_NOT_OK) {
+                        return r;
+                    }
+                    // Check that the modem is responsive at the new baudrate
+                    skipAll(serial_.get());
+                    r = waitAtResponse(timeout);
+                    if (!r) {
+                        modemState = ModemState::RuntimeBaudrate;
+                    }
+                }
+            } else {
+                 modemState = ModemState::DefaultBaudrate;
             }
         } else {
             modemState = ModemState::RuntimeBaudrate;
