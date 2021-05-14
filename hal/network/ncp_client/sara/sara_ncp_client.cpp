@@ -1266,7 +1266,7 @@ int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState, unsigned in
     int r = SYSTEM_ERROR_TIMEOUT;
 
     if (ncpId() != PLATFORM_NCP_SARA_R410) {
-        r = waitAtResponse(10000);
+        r = waitAtResponse(20000);
         if (!r) {
             modemState = ModemState::DefaultBaudrate;
         }
