@@ -34,7 +34,7 @@ system_tick_t testAppSetupDuration = 0;
 inline NetworkClass& network() {
 #if Wiring_Cellular
     return Cellular;
-#elif Wiring_Wifi
+#elif Wiring_WiFi
     return WiFi;
 #else
 #error "Unsupported platform"
