@@ -133,4 +133,13 @@ int hal_exrtc_calibrate_xt(int adjValue, void* reserved) {
     return Am18x5::getInstance().xtOscillatorDigitalCalibration(adjValue);
 }
 
+void hal_exrtc_get_watchdog_limits(system_tick_t* low, system_tick_t* high, void* reserved) {
+    if (low) {
+        *low = 63; // round(Am18x5WatchdogFrequency::HZ_16 * 1)
+    }
+    if (high) {
+        *high = 124000; // // round(Am18x5WatchdogFrequency::HZ_1_4 * 31)
+    }
+}
+
 #endif // HAL_PLATFORM_EXTERNAL_RTC

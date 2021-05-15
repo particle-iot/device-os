@@ -24,6 +24,8 @@
 
 #include "dynalib.h"
 
+#include "hal_platform.h"
+
 #include "time_compat.h"
 
 #ifdef DYNALIB_EXPORT
@@ -33,6 +35,11 @@
 #include "timer_hal.h"
 #include "rtc_hal.h"
 #include "interrupts_hal.h"
+
+#if PLATFORM_ID == PLATFORM_TRACKER
+#include "exrtc_hal.h"
+#endif // PLATFORM_ID
+
 #endif
 
 /**
@@ -92,7 +99,17 @@ DYNALIB_FN(BASE_IDX + 22, hal, hal_timer_micros, uint64_t(void*))
 DYNALIB_FN(BASE_IDX + 23, hal, hal_rtc_get_time, int(struct timeval*, void*))
 DYNALIB_FN(BASE_IDX + 24, hal, hal_rtc_set_time, int(const struct timeval*, void*))
 
+#if PLATFORM_ID == PLATFORM_TRACKER
+DYNALIB_FN(BASE_IDX + 25, hal, hal_exrtc_enable_watchdog, int(system_tick_t, void*))
+DYNALIB_FN(BASE_IDX + 26, hal, hal_exrtc_feed_watchdog, int(void*))
+DYNALIB_FN(BASE_IDX + 27, hal, hal_exrtc_disable_watchdog, int(void*))
+DYNALIB_FN(BASE_IDX + 28, hal, hal_exrtc_get_watchdog_limits, void(system_tick_t*, system_tick_t*, void*))
+#define BASE_IDX2 (BASE_IDX + 29)
+#else
+#define BASE_IDX2 (BASE_IDX + 25)
+#endif
 
 DYNALIB_END(hal)
 
 #undef BASE_IDX
+#undef BASE_IDX2
