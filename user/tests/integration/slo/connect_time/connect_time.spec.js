@@ -24,7 +24,7 @@ const THRESHOLDS = {
 
 // Number of connection time measurements to make. When changing this parameter, make sure to
 // update the test application accordingly
-const SAMPLE_COUNT = 10;
+const CONNECT_COUNT = 10;
 
 // The test uses the Nth percentile of all connection time measurements
 const PERCENTILE = 75;
@@ -45,13 +45,13 @@ before(function() {
 });
 
 // TODO: The test runner doesn't support resetting the device in a loop from within a test
-for (let i = 1; i <= SAMPLE_COUNT; ++i) {
+for (let i = 1; i <= CONNECT_COUNT; ++i) {
 	test(`cloud_connect_time_from_cold_boot_${i.toString().padStart(2, '0')}`, async () => {
 		await device.reset(); // Reset the device before running the next test
 	});
 }
 
-for (let i = 1; i <= SAMPLE_COUNT; ++i) {
+for (let i = 1; i <= CONNECT_COUNT; ++i) {
 	test(`cloud_connect_time_from_warm_boot_${i.toString().padStart(2, '0')}`, async () => {
 		await device.reset();
 	});
@@ -59,11 +59,11 @@ for (let i = 1; i <= SAMPLE_COUNT; ++i) {
 
 test('publish_and_validate_stats', async function() {
 	let stats = await this.particle.receiveEvent('stats');
-	this.particle.log.verbose(stats);
+	this.particle.log.verbose('stats:', stats);
 	stats = JSON.parse(stats);
-	expect(stats.cloud_connect_time_from_cold_boot).to.have.lengthOf(SAMPLE_COUNT);
-	expect(stats.cloud_connect_time_from_warm_boot).to.have.lengthOf(SAMPLE_COUNT);
-	const thresh = THRESHOLDS[device.platform.name] || THRESHOLDS['default'];
+	expect(stats.cloud_connect_time_from_cold_boot).to.have.lengthOf(CONNECT_COUNT);
+	expect(stats.cloud_connect_time_from_warm_boot).to.have.lengthOf(CONNECT_COUNT);
+	const thresh = Object.assign({}, THRESHOLDS['default'], THRESHOLDS[device.platform.name]);
 	// Cold boot
 	let t = percentile(stats.cloud_connect_time_from_cold_boot, PERCENTILE);
 	this.particle.log.verbose('cloud_connect_time_from_cold_boot:', t);
