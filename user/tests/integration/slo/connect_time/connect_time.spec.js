@@ -1,10 +1,10 @@
 // The assertions here and other .cpp file help to validate the following:
 // Devices connect to cloud quickly
 //   Given good connectivity or better
-//   And LTS based firmware
-//   99% of devices will be breathing cyan
-//     within 60 seconds of a cold boot
-//     within 30 seconds of a warm boot
+//   and LTS based firmware
+//   75th percentile latency to breathing cyan
+//   is less than 60 seconds when starting from a cold boot
+//   and less than 30 seconds when starting from a warm boot
 suite('Network/cloud connection time SLOs');
 
 platform('gen2', 'gen3');
@@ -67,9 +67,9 @@ test('publish_and_validate_stats', async function() {
 	// Cold boot
 	let t = percentile(stats.cloud_connect_time_from_cold_boot, PERCENTILE);
 	this.particle.log.verbose('cloud_connect_time_from_cold_boot:', t);
-	expect(t).to.be.lessThanOrEqual(thresh.maxCloudConnectTimeFromColdBoot);
+	expect(t).to.be.lessThan(thresh.maxCloudConnectTimeFromColdBoot);
 	// Warm boot
 	t = percentile(stats.cloud_connect_time_from_warm_boot, PERCENTILE);
 	this.particle.log.verbose('cloud_connect_time_from_warm_boot:', t);
-	expect(t).to.be.lessThanOrEqual(thresh.maxCloudConnectTimeFromWarmBoot);
+	expect(t).to.be.lessThan(thresh.maxCloudConnectTimeFromWarmBoot);
 });
