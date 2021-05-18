@@ -1134,6 +1134,17 @@ bool MDMParser::init(DevStatus* status)
         {
             bool continueInit = false;
             int newProf = UBLOX_SARA_UMNOPROF_SIM_SELECT;
+            // Hard code ATT for 05.12 firmware versions
+            if (strstr(_verExtended, "L0.0.00.00.05.12")) {
+                if (netProv == CELLULAR_NETPROV_KORE_ATT) {
+                    newProf = UBLOX_SARA_UMNOPROF_ATT;
+                    // continue on with init if we are trying to set SIM_SELECT a third time
+                    if (_resetFailureAttempts >= 2) {
+                        LOG(WARN, "Hard coding to UMNOPROF=2 did not work, please check if UMNOPROF=100 is required!");
+                        continueInit = true;
+                    }
+                }
+            }
             // TWILIO Super SIM
             if (netProv == CELLULAR_NETPROV_TWILIO) {
                 // _oldFirmwarePresent: u-blox firmware 05.06* and 05.07* does not have
