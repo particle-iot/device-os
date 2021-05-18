@@ -72,6 +72,7 @@ public:
     virtual int getTxDelayInDataChannel() override;
     virtual int enterDataMode() override;
     virtual int getMtu() override;
+    virtual int urcs(bool enable) override;
 
     auto getMuxer() {
         return &muxer_;

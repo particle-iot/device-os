@@ -1760,6 +1760,15 @@ int SaraNcpClient::getMtu() {
     return 0;
 }
 
+int SaraNcpClient::urcs(bool enable) {
+    if (enable) {
+        CHECK_TRUE(muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
+    } else {
+        CHECK_TRUE(muxer_.suspendChannel(UBLOX_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 void SaraNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;

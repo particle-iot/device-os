@@ -196,6 +196,76 @@ test(CELLULAR_06_on_off_validity_check) {
     connect_to_cloud(6*60*1000);
 }
 
+#if HAL_PLATFORM_GEN == 2
+static int callbackGeneric(int type, const char* buf, int len, char* string) {
+  if ((type == TYPE_PLUS) && string) {
+    sscanf(buf, "\r\n%*s%15s", string);
+  }
+  return WAIT;
+}
+
+static int callbackModemType(int type, const char* buf, int len, char* string) {
+  if ((type == TYPE_UNKNOWN) && string) {
+    sscanf(buf, "\r\n%s", string);
+  }
+  return WAIT;
+}
+#endif
+
+test(CELLULAR_07_urcs) {
+    connect_to_cloud(6*60*1000);
+
+#if HAL_PLATFORM_GEN == 2
+    char string[16];
+    bool saraR410 = true;
+    memset(string, '\0', sizeof(string));
+
+    Cellular.command(callbackModemType, string, 10000, "AT+CGMM\r\n");
+    if (strstr(string, "SARA-R410") == 0) {
+        saraR410 = false;
+    }
+    assertEqual(cellular_urcs(false, nullptr), (int)SYSTEM_ERROR_NONE);
+    assertEqual(Cellular.command(callbackGeneric, string, 10000, "AT+UCIND?\r\n"), (int)RESP_OK);
+    assertEqual(strncmp((const char*)string, "0", 1), 0);
+    assertEqual(Cellular.command(callbackGeneric, string, 10000, "AT+CMER?\r\n"), (int)RESP_OK);
+    assertEqual(strncmp((const char*)string, "0,0,0,0,0", 9), 0);
+    assertEqual(Cellular.command(callbackGeneric, string, 10000, "AT+CREG?\r\n"), (int)RESP_OK);
+    assertEqual(strncmp((const char*)string, "0", 1), 0);
+    if (saraR410) {
+        assertEqual(Cellular.command(callbackGeneric, string, 10000, "AT+CEREG?\r\n"), (int)RESP_OK);
+        assertEqual(strncmp((const char*)string, "0", 1), 0);
+    } else {
+        assertEqual(Cellular.command(callbackGeneric, string, 10000, "AT+CGREG?\r\n"), (int)RESP_OK);
+        assertEqual(strncmp((const char*)string, "0", 1), 0);
+    }
+
+    assertEqual(cellular_urcs(true, nullptr), (int)SYSTEM_ERROR_NONE);
+    assertEqual(Cellular.command(callbackGeneric, string, 10000, "AT+UCIND?\r\n"), (int)RESP_OK);
+    assertEqual(strncmp((const char*)string, "4095", 4), 0);
+    assertEqual(Cellular.command(callbackGeneric, string, 10000, "AT+CMER?\r\n"), (int)RESP_OK);
+    assertEqual(strncmp((const char*)string, "1,0,0,2,1", 9), 0);
+    assertEqual(Cellular.command(callbackGeneric, string, 10000, "AT+CREG?\r\n"), (int)RESP_OK);
+    assertEqual(strncmp((const char*)string, "2", 1), 0);
+    if (saraR410) {
+        assertEqual(Cellular.command(callbackGeneric, string, 10000, "AT+CEREG?\r\n"), (int)RESP_OK);
+        assertEqual(strncmp((const char*)string, "2", 1), 0);
+    } else {
+        assertEqual(Cellular.command(callbackGeneric, string, 10000, "AT+CGREG?\r\n"), (int)RESP_OK);
+        assertEqual(strncmp((const char*)string, "2", 1), 0);
+    }
+#elif HAL_PLATFORM_GEN == 3
+    assertEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
+
+    assertEqual(cellular_urcs(false, nullptr), (int)SYSTEM_ERROR_NONE);
+    assertNotEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
+
+    assertEqual(cellular_urcs(true, nullptr), (int)SYSTEM_ERROR_NONE);
+    assertEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
+#else
+#error "Unsupported platform"
+#endif
+}
+
 test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
 
 #if HAL_PLATFORM_NCP

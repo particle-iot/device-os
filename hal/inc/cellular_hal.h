@@ -61,6 +61,8 @@ cellular_result_t  cellular_off(void* reserved);
  */
 bool cellular_powered(void* reserved);
 
+cellular_result_t cellular_urcs(bool enable, void* reserved);
+
 /**
  * Wait for the cellular module to register on the GSM network.
  */

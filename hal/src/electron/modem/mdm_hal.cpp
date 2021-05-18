@@ -1295,6 +1295,39 @@ bool MDMParser::powerState(void) {
     return state;
 }
 
+bool MDMParser::urcs(bool enable) {
+    if (enable) {
+        sendFormated("AT+UCIND=4095\r\n");
+        CHECK_TIMEOUT(waitFinalResp());
+        sendFormated("AT+CMER=1,0,0,2,1\r\n");
+        CHECK_TIMEOUT(waitFinalResp());
+        sendFormated("AT+CREG=2\r\n");
+        CHECK_TIMEOUT(waitFinalResp());
+        if (_dev.dev == DEV_SARA_R410) {
+            sendFormated("AT+CEREG=2\r\n");
+            CHECK_TIMEOUT(waitFinalResp());
+        } else {
+            sendFormated("AT+CGREG=2\r\n");
+            CHECK_TIMEOUT(waitFinalResp());
+        }
+    } else {
+        sendFormated("AT+UCIND=0\r\n");
+        CHECK_TIMEOUT(waitFinalResp());
+        sendFormated("AT+CMER=0,0,0,0,0\r\n");
+        CHECK_TIMEOUT(waitFinalResp());
+        sendFormated("AT+CREG=0\r\n");
+        CHECK_TIMEOUT(waitFinalResp());
+        if (_dev.dev == DEV_SARA_R410) {
+            sendFormated("AT+CEREG=0\r\n");
+            CHECK_TIMEOUT(waitFinalResp());
+        } else {
+            sendFormated("AT+CGREG=0\r\n");
+            CHECK_TIMEOUT(waitFinalResp());
+        }
+    }
+    return true;
+}
+
 bool MDMParser::softPowerOff(void) {
     if (!powerState()) {
         return true;

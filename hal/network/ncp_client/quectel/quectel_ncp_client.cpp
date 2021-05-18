@@ -1505,6 +1505,15 @@ int QuectelNcpClient::getMtu() {
     return 0;
 }
 
+int QuectelNcpClient::urcs(bool enable) {
+    if (enable) {
+        CHECK_TRUE(muxer_.resumeChannel(QUECTEL_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
+    } else {
+        CHECK_TRUE(muxer_.suspendChannel(QUECTEL_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;
