@@ -968,7 +968,6 @@ int SaraNcpClient::checkNetConfForImsi() {
 }
 
 int SaraNcpClient::selectNetworkProf(ModemState& state) {
-    bool reset = false;
     int resetCount = 0;
     bool disableLowPowerModes = false;
     // Note: Not failing on AT error on ICCID/IMSI lookup since SIMs have shown strange edge cases
@@ -990,6 +989,7 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         CHECK(checkNetConfForImsi());
     }
 
+    bool reset = false;
     do {
         // Set UMNOPROF and UBANDMASK as appropriate based on SIM
         auto respUmnoprof = parser_.sendCommand("AT+UMNOPROF?");
@@ -1006,11 +1006,17 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             int newProf = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
 
             // Hard code ATT for 05.12 firmware versions
-            if (netConf_.netProv() == CellularNetworkProvider::KORE_ATT) {
-                if (getAppFirmwareVersion() == UBLOX_NCP_R4_APP_FW_VERSION_0512) {
+            if (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_0512) {
+                if (netConf_.netProv() == CellularNetworkProvider::KORE_ATT) {
                     newProf = static_cast<int>(UbloxSaraUmnoprof::ATT);
+                    // break out of do-while if we're trying to set ATT a third time
+                    if (resetCount >= 2) {
+                        LOG(WARN, "Hard coding to UMNOPROF=2 did not work, please check if UMNOPROF=100 is required!");
+                        break;
+                    }
                 }
             }
+
             // TWILIO Super SIM
             if (netConf_.netProv() == CellularNetworkProvider::TWILIO) {
                 // _oldFirmwarePresent: u-blox firmware 05.06* and 05.07* does not have
@@ -1079,7 +1085,7 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             // which (on 05.12) may be enabled as soon as the UMNOPROF has taken effect
             if (disableLowPowerModes) {
                 // Not checking the error
-                disablePsmEdrx();
+                CHECK(disablePsmEdrx());
             }
         }
     } while (reset && ++resetCount < 4); // Note: Twilio SIMs could take more than 2 tries in some error cases, others <= 2
@@ -1193,10 +1199,11 @@ int SaraNcpClient::disablePsmEdrx() {
     //
     // TODO: if we enable this feature in the future add logic to CHECK_PARSER macro(s)
     // to wait longer for device to become active (see MDMParser::_atOk)
+    // Format is +CPSMS:0,,,"00010011","00000011"
     auto resp = parser_.sendCommand("AT+CPSMS?");
     unsigned psmState = 1;
-    auto r = resp.scanf("+CPSMS:%d", &psmState);
-    resp.readResult();
+    resp.scanf("+CPSMS:%u", &psmState);
+    CHECK_PARSER(resp.readResult());
     // Disable PSM even if the above command errors out
     if (psmState == 1) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CPSMS=0"));
@@ -1208,7 +1215,7 @@ int SaraNcpClient::disablePsmEdrx() {
     resp = parser_.sendCommand("AT+CEDRXS?");
     while (resp.hasNextLine()) {
         unsigned act = 0;
-        r = resp.scanf("+CEDRXS: %u", &act);
+        auto r = resp.scanf("+CEDRXS: %u", &act);
         if (r == 1) { // Ignore scanf() errors
             CHECK_TRUE(acts.append(act), SYSTEM_ERROR_NO_MEMORY);
         }
@@ -1218,7 +1225,7 @@ int SaraNcpClient::disablePsmEdrx() {
     for (unsigned act: acts) {
         // This command may fail for unknown reason. eDRX mode is a persistent setting and, eventually,
         // it will get applied for each RAT during subsequent re-initialization attempts
-        r = CHECK_PARSER(parser_.execCommand("AT+CEDRXS=3,%u", act)); // 3: Disable the use of eDRX
+        auto r = CHECK_PARSER(parser_.execCommand("AT+CEDRXS=3,%u", act)); // 3: Disable the use of eDRX
         if (r != AtResponse::OK) {
             lastError = r;
         }
