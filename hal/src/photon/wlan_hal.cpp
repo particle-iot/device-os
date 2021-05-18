@@ -556,6 +556,9 @@ int wlan_supplicant_stop()
 }
 
 int wlan_restart(void* reserved) {
+    // XXX: make sure to close all sockets, as wiced_wlan_connectivity_deinit() will deinitialize LwIP
+    // which in turn invalidates LwIP netconns in use by WICED sockets and our socket layer.
+    socket_close_all();
     wiced_wlan_connectivity_deinit();
     wiced_wlan_connectivity_init();
 
