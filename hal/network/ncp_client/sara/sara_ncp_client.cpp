@@ -1075,8 +1075,8 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             // Checking for SIM readiness ensures that other related commands
             // like IFC or PSM/eDRX won't error out
             CHECK(checkSimReadiness());
-			// Prevent modem from immediately dropping into PSM/eDRX modes
-			// which (on 05.12) may be enabled as soon as the UMNOPROF has taken effect
+            // Prevent modem from immediately dropping into PSM/eDRX modes
+            // which (on 05.12) may be enabled as soon as the UMNOPROF has taken effect
             if (disableLowPowerModes) {
                 // Not checking the error
                 disablePsmEdrx();
