@@ -61,15 +61,19 @@ test('publish_and_validate_stats', async function() {
 	let stats = await this.particle.receiveEvent('stats');
 	this.particle.log.verbose('stats:', stats);
 	stats = JSON.parse(stats);
-	expect(stats.cloud_connect_time_from_cold_boot).to.have.lengthOf(CONNECT_COUNT);
-	expect(stats.cloud_connect_time_from_warm_boot).to.have.lengthOf(CONNECT_COUNT);
-	const thresh = Object.assign({}, THRESHOLDS['default'], THRESHOLDS[device.platform.name]);
 	// Cold boot
-	let t = percentile(stats.cloud_connect_time_from_cold_boot, PERCENTILE);
-	this.particle.log.verbose('cloud_connect_time_from_cold_boot:', t);
-	expect(t).to.be.lessThan(thresh.maxCloudConnectTimeFromColdBoot);
+	expect(stats.cloud_connect_time_from_cold_boot).to.have.lengthOf(CONNECT_COUNT);
+	const timeFromColdBoot = percentile(stats.cloud_connect_time_from_cold_boot, PERCENTILE);
+	this.particle.log.verbose('cloud_connect_time_from_cold_boot:', timeFromColdBoot);
 	// Warm boot
-	t = percentile(stats.cloud_connect_time_from_warm_boot, PERCENTILE);
-	this.particle.log.verbose('cloud_connect_time_from_warm_boot:', t);
-	expect(t).to.be.lessThan(thresh.maxCloudConnectTimeFromWarmBoot);
+	expect(stats.cloud_connect_time_from_warm_boot).to.have.lengthOf(CONNECT_COUNT);
+	const timeFromWarmBoot = percentile(stats.cloud_connect_time_from_warm_boot, PERCENTILE);
+	this.particle.log.verbose('cloud_connect_time_from_warm_boot:', timeFromWarmBoot);
+	if (stats.exclude_from_slo_validation) {
+		this.particle.log.verbose('Skipping SLO validation');
+		return;
+	}
+	const thresh = Object.assign({}, THRESHOLDS['default'], THRESHOLDS[device.platform.name]);
+	expect(timeFromColdBoot).to.be.lessThan(thresh.maxCloudConnectTimeFromColdBoot);
+	expect(timeFromWarmBoot).to.be.lessThan(thresh.maxCloudConnectTimeFromWarmBoot);
 });
