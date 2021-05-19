@@ -1075,7 +1075,6 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             // Prevent modem from immediately dropping into PSM/eDRX modes
             // which (on 05.12) may be enabled as soon as the UMNOPROF has taken effect
             if (disableLowPowerModes) {
-                // Not checking the error
                 CHECK(disablePsmEdrx());
             }
         }
