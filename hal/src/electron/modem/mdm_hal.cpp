@@ -1154,8 +1154,10 @@ bool MDMParser::init(DevStatus* status)
             // KORE AT&T or 3rd Party SIM
             else {
                 // Hard code ATT for 05.12 firmware versions
-                if (strstr(_verExtended, "L0.0.00.00.05.12")) {
-                    newProf = UBLOX_SARA_UMNOPROF_ATT;
+                if (netProv == CELLULAR_NETPROV_KORE_ATT) {
+                    if (strstr(_verExtended, "L0.0.00.00.05.12")) {
+                        newProf = UBLOX_SARA_UMNOPROF_ATT;
+                    }
                 }
                 // continue on with init if we are trying to set SIM_SELECT or hard-coding ATT a third time
                 if (_resetFailureAttempts >= 2) {
