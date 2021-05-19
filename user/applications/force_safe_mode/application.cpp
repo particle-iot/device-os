@@ -15,28 +15,12 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef USER_HAL_H_
-#define USER_HAL_H_
+#include "application.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <stdint.h>
-#include "module_info.h"
-
-typedef struct hal_user_module_descriptor {
-    module_info_t info;
-    void* (*pre_init)(void);
-    void (*init)(void);
-    void (*loop)(void);
-    void (*setup)(void);
-} hal_user_module_descriptor;
-
-int hal_user_module_get_descriptor(hal_user_module_descriptor* desc);
-
-#ifdef __cplusplus
+void forceSafeMode() {
+    if (HAL_Bootloader_Get_Flag(BOOTLOADER_FLAG_STARTUP_MODE) != 0x0001) {
+         System.enterSafeMode();
+    }
 }
-#endif
 
-#endif  /* USER_HAL_H_ */
+STARTUP(forceSafeMode());

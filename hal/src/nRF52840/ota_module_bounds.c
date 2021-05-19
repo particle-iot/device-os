@@ -74,7 +74,6 @@ const module_bounds_t module_user_compat = {
         ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
         ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH
-    };
 };
 
 // Factory firmware

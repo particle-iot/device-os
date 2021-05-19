@@ -26,25 +26,25 @@ namespace {
 const uint8_t USER_PART_COMPAT_INDEX = 1;
 const uint8_t USER_PART_CURRENT_INDEX = 2;
 
-const module_info_t* validUserModuleInfoAtIndex(uint8_t index) {
+bool validUserModuleInfoAtIndex(uint8_t index, module_info_t* info) {
     const auto bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, index, HAL_PLATFORM_MCU_DEFAULT);
     if (!bounds) {
-        return nullptr;
+        return false;
     }
 
     if (!FLASH_isUserModuleInfoValid(FLASH_INTERNAL, bounds->start_address, bounds->start_address)) {
-        return nullptr;
+        return false;
     }
 
     if (!FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, FLASH_ModuleLength(FLASH_INTERNAL, bounds->start_address))) {
-        return nullptr;
+        return false;
     }
 
     if (!validate_module_dependencies(bounds, false, false)) {
-        return nullptr;
+        return false;
     }
 
-    return locate_module(bounds);
+    return locate_module(bounds, info) == SYSTEM_ERROR_NONE;
 }
 
 } // anonymous
@@ -63,11 +63,11 @@ void module_user_setup_compat();
 } // extern "C"
 
 int hal_user_module_get_descriptor(hal_user_module_descriptor* desc) {
+    module_info_t info = {};
     // Check compat 128KB user application first as it takes precedence
-    const auto compat = validUserModuleInfoAtIndex(USER_PART_COMPAT_INDEX);
-    if (compat) {
+    if (validUserModuleInfoAtIndex(USER_PART_COMPAT_INDEX, &info)) {
         if (desc) {
-            desc->info = compat;
+            desc->info = info;
             desc->pre_init = &module_user_pre_init_compat;
             desc->init = &module_user_init_compat;
             desc->loop = &module_user_loop_compat;
@@ -76,8 +76,7 @@ int hal_user_module_get_descriptor(hal_user_module_descriptor* desc) {
         return 0;
     }
 
-    const auto info = validUserModuleInfoAtIndex(USER_PART_CURRENT_INDEX);
-    if (!info) {
+    if (!validUserModuleInfoAtIndex(USER_PART_CURRENT_INDEX, &info)) {
         return SYSTEM_ERROR_NOT_FOUND;
     }
 
