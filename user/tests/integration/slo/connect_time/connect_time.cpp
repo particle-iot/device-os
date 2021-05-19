@@ -23,6 +23,7 @@ struct Stats {
     system_tick_t cloudSessionResumeDuration[CONNECT_COUNT];
     unsigned coldBootCount;
     unsigned warmBootCount;
+    bool excludeFromSloValidation;
 };
 
 retained Stats stats = {};
@@ -128,6 +129,9 @@ size_t serializeStatsAsJson(char* buf, size_t size) {
     serializeArrayAsJson(&w, stats.cloudFullHandshakeDuration, CONNECT_COUNT);
     w.name("cloud_session_resume_duration");
     serializeArrayAsJson(&w, stats.cloudSessionResumeDuration, CONNECT_COUNT);
+    if (stats.excludeFromSloValidation) {
+        w.name("exclude_from_slo_validation").value(true);
+    }
     w.endObject();
     return w.dataSize();
 }
@@ -192,6 +196,15 @@ test(publish_and_validate_stats) {
     Particle.connect();
     waitFor(Particle.connected, WAIT_FOR_TIMEOUT);
     assertTrue(Particle.connected());
+#if Wiring_Cellular
+    // Exclude 2G and non-production devices from the SLO validation
+    CellularDevice devInfo = {};
+    devInfo.size = sizeof(devInfo);
+    assertEqual(cellular_device_info(&devInfo, nullptr), 0);
+    if (devInfo.dev == DEV_SARA_G350 || devInfo.dev == DEV_QUECTEL_EG91_NA) {
+        stats.excludeFromSloValidation = true;
+    }
+#endif // Wiring_Cellular
     const size_t n = serializeStatsAsJson(nullptr /* buf */, 0 /* size */);
     std::unique_ptr<char[]> buf(new(std::nothrow) char[n + 1]); // Including term. null
     assertTrue((bool)buf);
