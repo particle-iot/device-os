@@ -1004,19 +1004,6 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
                 (netConf_.netProv() == CellularNetworkProvider::KORE_ATT &&
                 static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT)) ) {
             int newProf = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
-
-            // Hard code ATT for 05.12 firmware versions
-            if (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_0512) {
-                if (netConf_.netProv() == CellularNetworkProvider::KORE_ATT) {
-                    newProf = static_cast<int>(UbloxSaraUmnoprof::ATT);
-                    // break out of do-while if we're trying to set ATT a third time
-                    if (resetCount >= 2) {
-                        LOG(WARN, "Hard coding to UMNOPROF=2 did not work, please check if UMNOPROF=100 is required!");
-                        break;
-                    }
-                }
-            }
-
             // TWILIO Super SIM
             if (netConf_.netProv() == CellularNetworkProvider::TWILIO) {
                 // _oldFirmwarePresent: u-blox firmware 05.06* and 05.07* does not have
@@ -1033,6 +1020,12 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             }
             // KORE AT&T or 3rd Party SIM
             else {
+                // Hard code ATT for 05.12 firmware versions
+                if (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_0512) {
+                    if (netConf_.netProv() == CellularNetworkProvider::KORE_ATT) {
+                        newProf = static_cast<int>(UbloxSaraUmnoprof::ATT);
+                    }
+                }
                 // break out of do-while if we're trying to set SIM_SELECT a third time
                 if (resetCount >= 2) {
                     LOG(WARN, "UMNOPROF=1 did not resolve a built-in profile, please check if UMNOPROF=100 is required!");
@@ -1084,7 +1077,6 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             // Prevent modem from immediately dropping into PSM/eDRX modes
             // which (on 05.12) may be enabled as soon as the UMNOPROF has taken effect
             if (disableLowPowerModes) {
-                // Not checking the error
                 CHECK(disablePsmEdrx());
             }
         }
