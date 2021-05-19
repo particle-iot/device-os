@@ -20,19 +20,56 @@
 #include <string.h>
 #include "flash_mal.h"
 #include "ota_module.h"
+#include "ota_flash_hal_impl.h"
+#include "platform_radio_stack.h"
+#include "platform_ncp.h"
+#include "check.h"
 
 namespace {
 
-const module_info_t* get_module_info(const module_bounds_t* bounds, uint32_t* offset = nullptr) {
-    // Note: This function uses XIP to access the module info in the OTA flash section
-    return FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address, offset);
+int get_module_info(const module_bounds_t* bounds, module_info_t* infoOut, uint32_t* offset = nullptr) {
+    if (!memcmp(bounds, &module_radio_stack, sizeof(module_radio_stack))) {
+        hal_module_t module;
+        CHECK(platform_radio_stack_fetch_module_info(&module));
+        memcpy(infoOut, &module.info, sizeof(module_info_t));
+    }
+#if HAL_PLATFORM_NCP_UPDATABLE
+    else if (!memcmp(bounds, &module_ncp_mono, sizeof(module_ncp_mono))) {
+        hal_module_t module;
+        CHECK(platform_ncp_fetch_module_info(&module));
+        memcpy(infoOut, &module.info, sizeof(module_info_t));
+    }
+#endif
+    else {
+        // The bounds that contains a module with module info
+        return FLASH_ModuleInfo(infoOut, bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ? FLASH_INTERNAL : FLASH_SERIAL, bounds->start_address, offset);
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int get_module_crc_suffix(const module_bounds_t* bounds, const module_info_t* info, module_info_crc_t* crc, module_info_suffix_t* suffix) {
+    if (!memcmp(bounds, &module_radio_stack, sizeof(module_radio_stack))
+#if HAL_PLATFORM_NCP_UPDATABLE
+        || !memcmp(bounds, &module_ncp_mono, sizeof(module_ncp_mono))
+#endif
+            ) {
+        // This should be done in fetch_module().
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    } else {
+        return FLASH_ModuleCrcSuffix(crc, suffix, bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ? FLASH_INTERNAL : FLASH_SERIAL, (uint32_t)info->module_end_address);
+    }
+}
+
+bool verify_crc32(const module_bounds_t* bounds, const module_info_t* info) {
+    if (bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
+        return FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(info));
+    } else if (bounds->location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH) {
+        return FLASH_VerifyCRC32(FLASH_SERIAL, bounds->start_address, module_length(info));
+    }
+    return false;
 }
 
 } // namespace
-
-// NB: Modules in external flash are made to appears as if they are located in Internal flash by means of
-// XiP - the external flash is mapped to a region of addressable memory, and can be access transparently via
-// a pointer to the memory region. That is why the OTA module can be accessed via FLASH_INTERNAL.
 
 /**
  * Determines if a given address is in range.
@@ -53,8 +90,8 @@ inline bool in_range(uint32_t test, uint32_t start, uint32_t end)
  * @param bounds
  * @return
  */
-const module_info_t* locate_module(const module_bounds_t* bounds) {
-    return get_module_info(bounds);
+int locate_module(const module_bounds_t* bounds, module_info_t* infoOut) {
+    return get_module_info(bounds, infoOut);
 }
 
 /**
@@ -64,37 +101,43 @@ const module_info_t* locate_module(const module_bounds_t* bounds) {
  * @param userDepsOptional
  * @return {@code true} if the module info can be read via the info, crc, suffix pointers.
  */
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0")))
 bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool userDepsOptional, uint16_t check_flags)
 {
     memset(target, 0, sizeof(*target));
-
     target->bounds = *bounds;
-    target->info = get_module_info(bounds, &target->module_info_offset);
-    if (target->info)
-    {
+    if (!memcmp(bounds, &module_radio_stack, sizeof(module_radio_stack))) {
+        CHECK(platform_radio_stack_fetch_module_info(target));
+    }
+#if HAL_PLATFORM_NCP_UPDATABLE
+    else if (!memcmp(bounds, &module_ncp_mono, sizeof(module_ncp_mono))) {
+        CHECK(platform_ncp_fetch_module_info(target));
+    }
+#endif
+    else {
+        module_info_t* info = &target->info;
+        CHECK_TRUE(get_module_info(bounds, info, &target->module_info_offset) == SYSTEM_ERROR_NONE, false);
         target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
         target->validity_result = 0;
-        const uint8_t* module_end = (const uint8_t*)target->info->module_end_address;
+        const uint8_t* module_end = (const uint8_t*)target->info.module_end_address;
         // find the location of where the module should be flashed to based on its module co-ordinates (function/index/mcu)
-        const module_bounds_t* expected_bounds = find_module_bounds(module_function(target->info), module_index(target->info), module_mcu_target(target->info));
-        if (expected_bounds && in_range(uint32_t(module_end), expected_bounds->start_address, expected_bounds->end_address)) {
-            target->validity_result |= MODULE_VALIDATION_RANGE;
-            target->validity_result |= (PLATFORM_ID==module_platform_id(target->info)) ? MODULE_VALIDATION_PLATFORM : 0;
-            // the suffix ends at module_end, and the crc starts after module end
-            target->crc = (module_info_crc_t*)module_end;
-            target->suffix = (module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
-            if (validate_module_dependencies(bounds, userDepsOptional, target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL))
-                target->validity_result |= MODULE_VALIDATION_DEPENDENCIES | (target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL);
-            if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && FLASH_VerifyCRC32(FLASH_INTERNAL, bounds->start_address, module_length(target->info)))
-                target->validity_result |= MODULE_VALIDATION_INTEGRITY;
+        const module_bounds_t* expected_bounds = find_module_bounds(module_function(info), module_index(info), module_mcu_target(info));
+        if (!expected_bounds || !in_range(uint32_t(module_end), expected_bounds->start_address, expected_bounds->end_address)) {
+            return false;
         }
-        else
-            target->info = NULL;
+        target->validity_result |= MODULE_VALIDATION_RANGE;
+        target->validity_result |= (PLATFORM_ID==module_platform_id(info)) ? MODULE_VALIDATION_PLATFORM : 0;
+        // the suffix ends at module_end, and the crc starts after module end
+        if (get_module_crc_suffix(bounds, info, &target->crc, &target->suffix) != SYSTEM_ERROR_NONE) {
+            return false;
+        }
+        if (validate_module_dependencies(bounds, userDepsOptional, target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL)) {
+            target->validity_result |= MODULE_VALIDATION_DEPENDENCIES | (target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL);
+        }
+        if ((target->validity_checked & MODULE_VALIDATION_INTEGRITY) && verify_crc32(bounds, info)) {
+            target->validity_result |= MODULE_VALIDATION_INTEGRITY;
+        }
     }
-    return target->info!=NULL;
+    
+    return true;
 }
 

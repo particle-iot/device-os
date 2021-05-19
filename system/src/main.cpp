@@ -718,7 +718,16 @@ RunTimeInfoDiagnosticData g_usedRamDiagData(DIAG_ID_SYSTEM_USED_RAM, DIAG_NAME_S
  *******************************************************************************/
 void app_setup_and_loop(void)
 {
+#if HAL_PLATFORM_LWIP
+    // This needs to be called prior to system_part2_post_init()
+    // to make sure the network interface is initialized first.
+    // The system_part2_post_init() may try reading the NCP firmware version
+    // to validate dependencies.
+    if_init();
+#endif /* HAL_PLATFORM_LWIP */
+
     system_part2_post_init();
+
     HAL_Core_Init();
     main_thread_current(NULL);
     // We have running firmware, otherwise we wouldn't have gotten here
@@ -758,10 +767,6 @@ void app_setup_and_loop(void)
     // FIXME: Move BLE and Thread initialization to an appropriate place
     SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
 #endif // HAL_PLATFORM_BLE
-
-#if HAL_PLATFORM_LWIP
-    if_init();
-#endif /* HAL_PLATFORM_LWIP */
 
 #if SYSTEM_CONTROL_ENABLED
     system::SystemControl::instance()->init();

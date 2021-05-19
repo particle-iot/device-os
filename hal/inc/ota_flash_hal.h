@@ -38,6 +38,12 @@
 extern "C" {
 #endif
 
+typedef enum {
+    MODULE_BOUNDS_LOC_INTERNAL_FLASH = 0,
+    MODULE_BOUNDS_LOC_EXTERNAL_FLASH = 1,
+    MODULE_BOUNDS_LOC_NCP_FLASH = 2,
+} module_bounds_location_t;
+
 typedef struct {
     uint32_t maximum_size;      // the maximum allowable size for the entire module image
     uint32_t start_address;     // the designated start address for the module
@@ -46,6 +52,7 @@ typedef struct {
     uint8_t module_index;
     module_store_t store;
     uint8_t mcu_identifier;		// which MCU is targeted by this module. 0 means main/primary MCU. HAL_PLATFORM_MCU_ANY
+    module_bounds_location_t location;
 } module_bounds_t;
 
 typedef enum {
@@ -61,9 +68,9 @@ typedef enum {
 
 typedef struct {
     module_bounds_t bounds;
-    const module_info_t* info;      // pointer to the module info in the module, may be NULL
-    const module_info_crc_t* crc;
-    const module_info_suffix_t* suffix;
+    module_info_t info;
+    module_info_crc_t crc;
+    module_info_suffix_t suffix;
     uint16_t validity_checked;    // the flags that were checked
     uint16_t validity_result;     // the result of the checks
     uint32_t module_info_offset;  // offset of the module info

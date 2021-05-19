@@ -21,17 +21,7 @@ bool is_user_module_valid()
 void system_part1_pre_init() {
     // HAL_Core_Config() has been invoked in startup_nrf52840.S
 
-    const bool bootloader_validated = HAL_Core_Validate_Modules(1, NULL);
-
-    // Validate user module
-    if (bootloader_validated) {
-        module_user_part_validated = HAL_Core_Validate_User_Module();
-    }
-
-    bool safe_mode = HAL_Core_Enter_Safe_Mode_Requested();
-
-    if (!bootloader_validated || !is_user_module_valid() || safe_mode) {
-        // indicate to the system that it shouldn't run user code
+    if (HAL_Core_Enter_Safe_Mode_Requested()) {
         set_system_mode(SAFE_MODE);
     }
 }
@@ -45,7 +35,18 @@ void system_part1_init() {
 void system_part2_post_init() __attribute__((alias("system_part1_post_init")));
 
 void system_part1_post_init() {
-    if (is_user_module_valid()) {
+    // NOTE: it may fetch the NCP and radio stack version, so some ealy
+    // initialization work should have been done before getting here.
+    const bool bootloader_validated = HAL_Core_Validate_Modules(1, NULL);
+    if (bootloader_validated) {
+        module_user_part_validated = HAL_Core_Validate_User_Module();
+    }
+    if (!bootloader_validated || !is_user_module_valid()) {
+        // indicate to the system that it shouldn't run user code
+        set_system_mode(SAFE_MODE);
+    }
+    
+    if (system_mode() != SAFE_MODE && is_user_module_valid()) {
         module_user_init();
     }
 }

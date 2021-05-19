@@ -30,14 +30,20 @@
 #include "debug.h"
 #include "ota_flash_hal_impl.h"
 #include "system_cache.h"
-
+#include "exflash_hal.h"
+#include "flash_hal.h"
+#include <functional>
 #include <algorithm>
 
 namespace {
 
 class OtaUpdateSourceStream : public particle::InputStream {
 public:
-    OtaUpdateSourceStream(const uint8_t* buffer, size_t length) : buffer(buffer), remaining(length) {}
+    typedef std::function<int(uintptr_t addr, uint8_t* dataBuf, size_t dataSize)> ReadStreamFunc;
+
+    OtaUpdateSourceStream(uintptr_t address, size_t offset, size_t length, ReadStreamFunc func)
+            : address_(address), offset_(offset), remaining_(length), readFunc_(func) {
+    }
 
     int read(char* data, size_t size) override {
         CHECK(peek(data, size));
@@ -45,27 +51,28 @@ public:
     }
 
     int peek(char* data, size_t size) override {
-        if (!remaining) {
+        CHECK_TRUE(readFunc_, SYSTEM_ERROR_INVALID_STATE);
+        if (!remaining_) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
-        size = std::min(size, remaining);
-        memcpy(data, buffer, size);
+        size = std::min(size, remaining_);
+        CHECK(readFunc_(address_ + offset_, (uint8_t*)data, size));
         return size;
     }
 
     int skip(size_t size) override {
-        if (!remaining) {
+        if (!remaining_) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
-        size = std::min(size, remaining);
-        buffer += size;
-        remaining -= size;
+        size = std::min(size, remaining_);
+        offset_ += size;
+        remaining_ -= size;
         LED_Toggle(PARTICLE_LED_RGB);
         return size;
     }
 
     int availForRead() override {
-        return remaining;
+        return remaining_;
     }
 
     int waitEvent(unsigned flags, unsigned timeout) override {
@@ -75,15 +82,17 @@ public:
         if (!(flags & InputStream::READABLE)) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
-        if (!remaining) {
+        if (!remaining_) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
         return InputStream::READABLE;
     }
 
 private:
-    const uint8_t* buffer;
-    size_t remaining;
+    uintptr_t address_;
+    size_t offset_;
+    size_t remaining_;
+    ReadStreamFunc readFunc_;
 };
 
 int invalidateWifiNcpVersionCache() {
@@ -117,35 +126,42 @@ int getWifiNcpFirmwareVersion(uint16_t* ncpVersion) {
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
     const particle::NcpClientLock lock(ncpClient);
+    const particle::NcpPowerState ncpPwrState = ncpClient->ncpPowerState();
     CHECK(ncpClient->on());
     CHECK(ncpClient->getFirmwareModuleVersion(&version));
     *ncpVersion = version;
+    if (ncpPwrState == particle::NcpPowerState::OFF) {
+        CHECK(ncpClient->off());
+    }
 
     return 0;
 }
 
 } // anonymous
 
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0"))) int platform_ncp_update_module(const hal_module_t* module) {
+int platform_ncp_update_module(const hal_module_t* module) {
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
+    OtaUpdateSourceStream::ReadStreamFunc readCallback;
+    if (module->bounds.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
+        readCallback = hal_flash_read;
+    } else if (module->bounds.location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH) {
+        readCallback = hal_exflash_read;
+    } else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
     // Holding a lock for the whole duration of the operation, otherwise the netif may potentially poweroff the NCP
     const particle::NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
     // we pass only the actual binary after the module info and up to the suffix
-    const uint8_t* start = (const uint8_t*)module->info;
+    uint32_t startAddress = module->bounds.start_address + module->module_info_offset;
     static_assert(sizeof(module_info_t)==24, "expected module info size to be 24");
-    start += sizeof(module_info_t); // skip the module info
-    const uint8_t* end = start + (uint32_t(module->info->module_end_address) - uint32_t(module->info->module_start_address));
-    const unsigned length = end-start;
-    OtaUpdateSourceStream moduleStream(start, length);
+    const unsigned length = uint32_t(module->info.module_end_address) - uint32_t(module->info.module_start_address);
+    OtaUpdateSourceStream moduleStream(startAddress, sizeof(module_info_t), length, readCallback);
     uint16_t version = 0;
     int r = ncpClient->getFirmwareModuleVersion(&version);
     if (r == 0) {
-        LOG(INFO, "Updating ESP32 firmware from version %d to version %d", version, module->info->module_version);
+        LOG(INFO, "Updating ESP32 firmware from version %d to version %d", version, module->info.module_version);
     }
     invalidateWifiNcpVersionCache();
     r = ncpClient->updateFirmware(&moduleStream, length);
@@ -158,55 +174,37 @@ __attribute__((optimize("O0"))) int platform_ncp_update_module(const hal_module_
     return HAL_UPDATE_APPLIED;
 }
 
-int platform_ncp_fetch_module_info(hal_system_info_t* sys_info, bool create) {
-    for (int i=0; i<sys_info->module_count; i++) {
-        hal_module_t* module = sys_info->modules + i;
-        if (!memcmp(&module->bounds, &module_ncp_mono, sizeof(module_ncp_mono))) {
-            if (create) {
-                uint16_t version = 0;
-                // Defaults to zero in case of failure
-                getWifiNcpFirmwareVersion(&version);
+int platform_ncp_fetch_module_info(hal_module_t* module) {
+    uint16_t version = 0;
+    // Defaults to zero in case of failure
+    int ret = getWifiNcpFirmwareVersion(&version);
 
-                // todo - we could augment the getFirmwareModuleVersion command to retrieve more details
-                auto info = new module_info_t();
-                CHECK_TRUE(info, SYSTEM_ERROR_NO_MEMORY);
+    // todo - we could augment the getFirmwareModuleVersion command to retrieve more details
+    module_info_t* info = &module->info;
+    info->module_version = version;
+    info->platform_id = PLATFORM_ID;
+    info->module_function = MODULE_FUNCTION_NCP_FIRMWARE;
 
-                info->module_version = version;
-                info->platform_id = PLATFORM_ID;
-                info->module_function = MODULE_FUNCTION_NCP_FIRMWARE;
+    // assume all checks pass since it was validated when being flashed to the NCP
+    module->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES |
+            MODULE_VALIDATION_PLATFORM | MODULE_VALIDATION_INTEGRITY;
+    module->validity_result = module->validity_checked;
 
-                // assume all checks pass since it was validated when being flashed to the NCP
-                module->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES |
-                        MODULE_VALIDATION_PLATFORM | MODULE_VALIDATION_INTEGRITY;
-                module->validity_result = module->validity_checked;
+    // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change
+    // in the SYSTEM DESCRIBE state and send a HELLO after the NCP update to
+    // cause the DS to request new DESCRIBE info
+    module_info_suffix_t* suffix = &module->suffix;
+    memset(suffix, 0, sizeof(module_info_suffix_t));
 
-                // IMPORTANT: a valid suffix with SHA is required for the communication layer to detect a change
-                // in the SYSTEM DESCRIBE state and send a HELLO after the NCP update to
-                // cause the DS to request new DESCRIBE info
-                auto suffix = new module_info_suffix_t();
-                if (!suffix) {
-                    delete info;
-                    return SYSTEM_ERROR_NO_MEMORY;
-                }
-                memset(suffix, 0, sizeof(module_info_suffix_t));
-
-                // FIXME: NCP firmware should return some kind of a unique string/hash
-                // For now we simply fill the SHA field with version
-                for (uint16_t* sha = (uint16_t*)suffix->sha;
-                        sha < (uint16_t*)(suffix->sha + sizeof(suffix->sha));
-                        ++sha) {
-                    *sha = version;
-                }
-
-                module->info = info;
-                module->suffix = suffix;
-                module->module_info_offset = 0;
-            }
-            else {
-                delete module->info;
-                delete ((module_info_suffix_t*)module->suffix);
-            }
-        }
+    // FIXME: NCP firmware should return some kind of a unique string/hash
+    // For now we simply fill the SHA field with version
+    for (uint16_t* sha = (uint16_t*)suffix->sha;
+            sha < (uint16_t*)(suffix->sha + sizeof(suffix->sha));
+            ++sha) {
+        *sha = version;
     }
-    return 0;
+
+    module->module_info_offset = 0;
+
+    return ret;
 }

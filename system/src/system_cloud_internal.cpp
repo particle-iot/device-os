@@ -397,7 +397,7 @@ uint32_t compute_describe_system_checksum()
 	uint32_t checksum = info.platform_id;
 	for (int i=0; i<info.module_count; i++)
 	{
-		checksum += crc(info.modules[i].suffix->sha);
+		checksum += crc(info.modules[i].suffix.sha);
 	}
 	HAL_System_Info(&info, false, NULL);
     return checksum;

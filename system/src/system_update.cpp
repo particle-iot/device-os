@@ -584,13 +584,13 @@ bool module_info_to_json(appender_fn append, void* append_data, const hal_module
     AppendJson json(append, append_data);
     char buf[65];
     bool result = true;
-    const module_info_t* info = module->info;
+    const module_info_t* info = &module->info;
 
     buf[64] = 0;
-    bool output_uuid = module->suffix && module_function(info)==MODULE_FUNCTION_USER_PART;
+    bool output_uuid = (module_function(info) == MODULE_FUNCTION_USER_PART);
     result &= json.write('{') && json.write_value("s", module->bounds.maximum_size) && json.write_string("l", module_store_string(module->bounds.store))
             && json.write_value("vc",module->validity_checked) && json.write_value("vv", module->validity_result)
-      && (!output_uuid || json.write_string("u", bytes2hexbuf(module->suffix->sha, 32, buf)))
+      && (!output_uuid || json.write_string("u", bytes2hexbuf(module->suffix.sha, 32, buf)))
       && (!info || (json.write_string("f", module_function_string(module_function(info)))
                     && json.write_string("n", module_name(module_index(info), buf))
                     && json.write_value("v", info->module_version)
@@ -645,11 +645,11 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
         const hal_module_t& module = system.modules[i];
 #ifdef HYBRID_BUILD
         // FIXME: skip, otherwise we overflow MBEDTLS_SSL_MAX_CONTENT_LEN
-        if (module.info->module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
+        if (module.info.module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
             continue;
         }
 #endif // HYBRID_BUILD
-        if (!module.info || !is_module_function_valid((module_function_t)module.info->module_function)) {
+        if (!is_module_function_valid((module_function_t)module.info.module_function)) {
             // Skip modules that do not contain binary at all, otherwise we easily overflow
             // system describe message
             continue;

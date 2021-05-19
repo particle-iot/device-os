@@ -176,24 +176,15 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
             for (unsigned i = 0; i < count; i++) {
                 const auto bounds = module_bounds[i];
                 const auto module = info->modules + i;
-                memset(module, 0, sizeof(hal_module_t));
-                module->bounds = *bounds;
-                if (bounds->module_function == MODULE_FUNCTION_NCP_FIRMWARE ||
-                        bounds->module_function == MODULE_FUNCTION_RADIO_STACK) {
-                    continue; // These modules will be fetched in HAL_OTA_Add_System_Info()
-                }
                 fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY);
 #if defined(HYBRID_BUILD)
 #ifndef MODULAR_FIRMWARE
 #error HYBRID_BUILD must be modular
 #endif
-                static module_info_t hybrid_info;
                 // change monolithic firmware to modular in the hybrid build.
-                if (!hybrid_module_found && info->modules[i].info->module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
-                    memcpy(&hybrid_info, info->modules[i].info, sizeof(hybrid_info));
-                    info->modules[i].info = &hybrid_info;
-                    hybrid_info.module_function = MODULE_FUNCTION_SYSTEM_PART;
-                    hybrid_info.module_index = 1; 
+                if (!hybrid_module_found && info->modules[i].info.module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
+                    info->modules[i].info.module_function = MODULE_FUNCTION_SYSTEM_PART;
+                    info->modules[i].info.module_index = 1; 
                     hybrid_module_found = true;
                 }
 #endif // HYBRID_BUILD
@@ -209,10 +200,6 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     }
 }
 
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0")))
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
 {
     if (module_function(module) != MODULE_FUNCTION_SYSTEM_PART)
@@ -229,7 +216,7 @@ bool validate_module_dependencies_full(const module_info_t* module, const module
     HAL_System_Info(&sysinfo, true, nullptr);
     for (unsigned i=0; i<sysinfo.module_count; i++) {
         const hal_module_t& smod = sysinfo.modules[i];
-        const module_info_t* info = smod.info;
+        const module_info_t* info = &smod.info;
         if (!info)
             continue;
 
@@ -273,51 +260,46 @@ bool validate_module_dependencies_full(const module_info_t* module, const module
     return valid;
 }
 
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0")))
 bool validate_module_dependencies(const module_bounds_t* bounds, bool userOptional, bool fullDeps)
 {
     bool valid = false;
-    const module_info_t* module = locate_module(bounds);
-    if (module)
-    {
-        if (module->dependency.module_function == MODULE_FUNCTION_NONE || (userOptional && module_function(module)==MODULE_FUNCTION_USER_PART)) {
+    module_info_t moduleInfo = {};
+    CHECK_TRUE(locate_module(bounds, &moduleInfo) == SYSTEM_ERROR_NONE, false);
+    if (moduleInfo.dependency.module_function == MODULE_FUNCTION_NONE || (userOptional && module_function(&moduleInfo) == MODULE_FUNCTION_USER_PART)) {
+        valid = true;
+    } else {
+        // deliberately not transitive, so we only check the first dependency
+        // so only user->system_part_2 is checked
+        if (moduleInfo.dependency.module_function != MODULE_FUNCTION_NONE) {
+            // NOTE: we ignore MCU type
+            const module_bounds_t* dependency_bounds = find_module_bounds(moduleInfo.dependency.module_function, moduleInfo.dependency.module_index, HAL_PLATFORM_MCU_ANY);
+            if (!dependency_bounds) {
+                return false;
+            }
+            module_info_t infoDep = {};
+            int ret = locate_module(dependency_bounds, &infoDep);
+            valid = (ret == SYSTEM_ERROR_NONE) && (infoDep.module_version >= moduleInfo.dependency.module_version);
+        } else {
             valid = true;
         }
-        else {
-            // deliberately not transitive, so we only check the first dependency
-            // so only user->system_part_2 is checked
-            if (module->dependency.module_function != MODULE_FUNCTION_NONE) {
-                // NOTE: we ignore MCU type
-                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency.module_function, module->dependency.module_index, HAL_PLATFORM_MCU_ANY);
-                if (!dependency_bounds) {
-                    return false;
-                }
-                const module_info_t* dependency = locate_module(dependency_bounds);
-                valid = dependency && (dependency->module_version>=module->dependency.module_version);
-            } else {
-                valid = true;
+        // Validate dependency2
+        if (moduleInfo.dependency2.module_function == MODULE_FUNCTION_NONE ||
+            (moduleInfo.dependency2.module_function == MODULE_FUNCTION_BOOTLOADER && userOptional)) {
+            valid = valid && true;
+        } else {
+            // NOTE: we ignore MCU type
+            const module_bounds_t* dependency_bounds = find_module_bounds(moduleInfo.dependency2.module_function, moduleInfo.dependency2.module_index, HAL_PLATFORM_MCU_ANY);
+            if (!dependency_bounds) {
+                return false;
             }
-            // Validate dependency2
-            if (module->dependency2.module_function == MODULE_FUNCTION_NONE ||
-                (module->dependency2.module_function == MODULE_FUNCTION_BOOTLOADER && userOptional)) {
-                valid = valid && true;
-            } else {
-                // NOTE: we ignore MCU type
-                const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency2.module_function, module->dependency2.module_index, HAL_PLATFORM_MCU_ANY);
-                if (!dependency_bounds) {
-                    return false;
-                }
-                const module_info_t* dependency = locate_module(dependency_bounds);
-                valid = valid && dependency && (dependency->module_version>=module->dependency2.module_version);
-            }
+            module_info_t infoDep;
+            int ret = locate_module(dependency_bounds, &infoDep);
+            valid = valid && (ret == SYSTEM_ERROR_NONE) && (infoDep.module_version >= moduleInfo.dependency2.module_version);
         }
+    }
 
-        if (fullDeps && valid) {
-            valid = valid && validate_module_dependencies_full(module, bounds);
-        }
+    if (fullDeps && valid) {
+        valid = valid && validate_module_dependencies_full(&moduleInfo, bounds);
     }
     return valid;
 }
@@ -454,10 +436,7 @@ int validityResultToSystemError(unsigned result, unsigned checked) {
 // TODO: Current design of the OTA subsystem and the protocol doesn't allow for updating
 // multiple modules at once. As a "temporary" workaround, multiple modules can be combined
 // into a single binary
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0"))) int fetchModules(hal_module_t* modules, size_t maxModuleCount, bool userDepsOptional, unsigned flags) {
+int fetchModules(hal_module_t* modules, size_t maxModuleCount, bool userDepsOptional, unsigned flags) {
     hal_module_t module = {};
     module_bounds_t bounds = module_ota;
     size_t count = 0;
@@ -471,11 +450,11 @@ __attribute__((optimize("O0"))) int fetchModules(hal_module_t* modules, size_t m
             memcpy(modules + count, &module, sizeof(hal_module_t));
         }
         ++count;
-        const auto info = module.info;
-        hasNext = (info->flags & MODULE_INFO_FLAG_COMBINED);
+        const module_info_t& info = module.info;
+        hasNext = (info.flags & MODULE_INFO_FLAG_COMBINED);
         if (hasNext) {
             // Forge a module bounds structure for the next module in the OTA region
-            const size_t moduleSize = module_length(info) + 4 /* CRC-32 */;
+            const size_t moduleSize = module_length(&info) + 4 /* CRC-32 */;
             if (bounds.maximum_size < moduleSize) {
                 SYSTEM_ERROR_MESSAGE("Invalid module size");
                 return SYSTEM_ERROR_OTA_INVALID_SIZE;
@@ -487,13 +466,10 @@ __attribute__((optimize("O0"))) int fetchModules(hal_module_t* modules, size_t m
     return count;
 }
 
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0"))) int validateModules(const hal_module_t* modules, size_t moduleCount) {
+int validateModules(const hal_module_t* modules, size_t moduleCount) {
     for (size_t i = 0; i < moduleCount; ++i) {
         const auto module = modules + i;
-        const auto info = module->info;
+        const auto info = &module->info;
         LOG(INFO, "Validating module; type: %u; index: %u; version: %u", (unsigned)module_function(info),
                 (unsigned)module_index(info), (unsigned)module_version(info));
         if (module->validity_result != module->validity_checked) {
@@ -552,10 +528,7 @@ const size_t MAX_COMBINED_MODULE_COUNT = 2;
 
 } // namespace
 
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0"))) int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
+int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
 {
     hal_module_t modules[MAX_COMBINED_MODULE_COUNT] = {};
     size_t moduleCount = CHECK(fetchModules(modules, MAX_COMBINED_MODULE_COUNT, userDepsOptional, flags));
@@ -570,10 +543,7 @@ __attribute__((optimize("O0"))) int HAL_FLASH_OTA_Validate(bool userDepsOptional
     return 0;
 }
 
-// FIXME: This function accesses the module info via XIP and may fail to parse it correctly under
-// some not entirely clear circumstances. Disabling compiler optimizations helps to work around
-// the problem
-__attribute__((optimize("O0"))) int HAL_FLASH_End(void* reserved)
+int HAL_FLASH_End(void* reserved)
 {
     hal_module_t modules[MAX_COMBINED_MODULE_COUNT] = {};
     size_t moduleCount = CHECK(fetchModules(modules, MAX_COMBINED_MODULE_COUNT, true /* userDepsOptional */,
@@ -589,7 +559,7 @@ __attribute__((optimize("O0"))) int HAL_FLASH_End(void* reserved)
     bool restartPending = false;
     for (size_t i = 0; i < moduleCount; ++i) {
         const auto module = &modules[i];
-        module_info_t info = *(module->info);
+        module_info_t& info = module->info;
         const auto moduleFunc = module_function(&info);
         const auto moduleSize = module_length(&info);
         LOG(INFO, "Applying module; type: %u; index: %u; version: %u", (unsigned)moduleFunc, (unsigned)module_index(&info),
@@ -624,9 +594,7 @@ __attribute__((optimize("O0"))) int HAL_FLASH_End(void* reserved)
             if (info.flags & MODULE_INFO_FLAG_COMPRESSED) {
                 slotFlags |= MODULE_COMPRESSED;
             }
-            // Convert the module's XIP address to an address in the external flash :sweat_smile:
-            const uintptr_t otaAddr = EXTERNAL_FLASH_OTA_ADDRESS + module->bounds.start_address - EXTERNAL_FLASH_OTA_XIP_ADDRESS;
-            const bool ok = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, otaAddr, FLASH_INTERNAL,
+            const bool ok = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, module->bounds.start_address, FLASH_INTERNAL,
                     (uint32_t)info.module_start_address, moduleSize + 4 /* CRC-32 */, moduleFunc, slotFlags);
             if (!ok) {
                 SYSTEM_ERROR_MESSAGE("No module slot available");
