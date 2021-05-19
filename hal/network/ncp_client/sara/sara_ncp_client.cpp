@@ -1020,7 +1020,9 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             else {
                 // Hard code ATT for 05.12 firmware versions
                 if (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_0512) {
-                    newProf = static_cast<int>(UbloxSaraUmnoprof::ATT);
+                    if (netConf_.netProv() == CellularNetworkProvider::KORE_ATT) {
+                        newProf = static_cast<int>(UbloxSaraUmnoprof::ATT);
+                    }
                 }
                 // break out of do-while if we're trying to set SIM_SELECT a third time
                 if (resetCount >= 2) {
