@@ -178,14 +178,14 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
             for (unsigned i = 0; i < count; i++) {
                 const auto bounds = module_bounds[i];
                 const auto module = info->modules + i;
-                if (bounds.module_function == MODULE_FUNCTION_USER_PART && user_module_found) {
+                if (bounds->module_function == MODULE_FUNCTION_USER_PART && user_module_found) {
                     // Make sure that we report only single user part (either 128KB or 256KB) in the
                     // list of modules.
                     continue;
                 }
                 bool valid = fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY);
                 valid = valid && (module->validity_checked == module->validity_result);
-                if (valid && bounds.module_function == MODULE_FUNCTION_USER_PART) {
+                if (valid && bounds->module_function == MODULE_FUNCTION_USER_PART) {
                     user_module_found = true;
                 }
 #if defined(HYBRID_BUILD)

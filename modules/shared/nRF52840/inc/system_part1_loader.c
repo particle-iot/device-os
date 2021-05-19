@@ -12,7 +12,7 @@ static hal_user_module_descriptor user_descriptor = {};
  */
 bool run_user_module()
 {
-    return user_descriptor.info && system_mode() != SAFE_MODE;
+    return system_mode() != SAFE_MODE;
 }
 
 /**
@@ -38,10 +38,7 @@ void system_part1_post_init() {
     // NOTE: it may fetch the NCP and radio stack version, so some ealy
     // initialization work should have been done before getting here.
     const bool bootloader_validated = HAL_Core_Validate_Modules(1, NULL);
-    if (bootloader_validated) {
-        hal_user_module_get_descriptor(&user_descriptor);
-    }
-    if (!bootloader_validated || !is_user_module_valid()) {
+    if (!bootloader_validated || hal_user_module_get_descriptor(&user_descriptor)) {
         // indicate to the system that it shouldn't run user code
         set_system_mode(SAFE_MODE);
     }
