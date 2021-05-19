@@ -173,7 +173,10 @@ extern "C" {
 #define SYSTEM_VERSION_v300RC1        SYSTEM_VERSION_RC(3, 0, 0, 1)
 #define SYSTEM_VERSION_v300RC2        SYSTEM_VERSION_RC(3, 0, 0, 2)
 #define SYSTEM_VERSION_v300         SYSTEM_VERSION_DEFAULT(3, 0, 0)
-#define SYSTEM_VERSION SYSTEM_VERSION_v300
+#define SYSTEM_VERSION_v310ALPHA1        SYSTEM_VERSION_ALPHA(3, 1, 0, 1)
+#define SYSTEM_VERSION_v310ALPHA2        SYSTEM_VERSION_ALPHA(3, 1, 0, 2)
+#define SYSTEM_VERSION_v310RC1        SYSTEM_VERSION_RC(3, 1, 0, 1)
+#define SYSTEM_VERSION SYSTEM_VERSION_v310RC1
 
 /**
  * Previously we would set the least significant byte to 0 for the final release, but to make
@@ -311,6 +314,9 @@ extern "C" {
 #define SYSTEM_VERSION_300RC1
 #define SYSTEM_VERSION_300RC2
 #define SYSTEM_VERSION_300
+#define SYSTEM_VERSION_310ALPHA1
+#define SYSTEM_VERSION_310ALPHA2
+#define SYSTEM_VERSION_310RC1
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {
