@@ -10,6 +10,12 @@ extern "C" int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_s
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
+extern "C" int hal_flash_read(uintptr_t addr, uint8_t* buf, size_t size) {
+    const void* ptr = (const void*)addr;
+    memcpy(buf, ptr, size);
+    return SYSTEM_ERROR_NONE;
+}
+
 test(slo_startup_stats) {
     // get millis_to_connected
     system_tick_t base_time = millis();
