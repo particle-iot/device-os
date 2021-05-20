@@ -59,18 +59,18 @@ for (let i = 1; i <= CONNECT_COUNT; ++i) {
 
 test('publish_and_validate_stats', async function() {
 	let stats = await this.particle.receiveEvent('stats');
-	this.particle.log.verbose('stats:', stats);
+	console.log('stats:', stats);
 	stats = JSON.parse(stats);
 	// Cold boot
 	expect(stats.cloud_connect_time_from_cold_boot).to.have.lengthOf(CONNECT_COUNT);
 	const timeFromColdBoot = percentile(stats.cloud_connect_time_from_cold_boot, PERCENTILE);
-	this.particle.log.verbose('cloud_connect_time_from_cold_boot:', timeFromColdBoot);
+	console.log('cloud_connect_time_from_cold_boot:', timeFromColdBoot);
 	// Warm boot
 	expect(stats.cloud_connect_time_from_warm_boot).to.have.lengthOf(CONNECT_COUNT);
 	const timeFromWarmBoot = percentile(stats.cloud_connect_time_from_warm_boot, PERCENTILE);
-	this.particle.log.verbose('cloud_connect_time_from_warm_boot:', timeFromWarmBoot);
+	console.log('cloud_connect_time_from_warm_boot:', timeFromWarmBoot);
 	if (stats.exclude_from_slo_validation) {
-		this.particle.log.verbose('Skipping SLO validation');
+		console.log('Skipping SLO validation');
 		return;
 	}
 	const thresh = Object.assign({}, THRESHOLDS['default'], THRESHOLDS[device.platform.name]);
