@@ -385,6 +385,14 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     }
 #endif // SOFTDEVICE_MBR_UPDATES
 
+    // Make sure to invalidate the compat application, otherwise we'll keep booting into the compat application
+    // as it takes precedence
+    if (module_function == MODULE_FUNCTION_USER_PART && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
+        if (!FLASH_EraseMemory(destinationDeviceID, USER_FIRMWARE_IMAGE_LOCATION_COMPAT, INTERNAL_FLASH_PAGE_SIZE)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+    }
+
     if (!FLASH_EraseMemory(destinationDeviceID, destinationAddress, dest_size)) {
         return FLASH_ACCESS_RESULT_ERROR;
     }
