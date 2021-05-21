@@ -58,7 +58,7 @@ uint16_t module_platform_id(const module_info_t* mi) {
 }
 
 uint32_t module_length(const module_info_t* mi) {
-    return (uint32_t)mi->module_end_address - (uint32_t)mi->module_start_address;
+    return (uintptr_t)mi->module_end_address - (uintptr_t)mi->module_start_address;
 }
 
 module_scheme_t module_scheme(const module_info_t* mi) {
