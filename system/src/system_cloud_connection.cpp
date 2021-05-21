@@ -22,7 +22,9 @@
 #include "service_debug.h"
 #include "system_task.h"
 #include "spark_wiring_ticks.h"
+#if HAL_PLATFORM_CLOUD_UDP
 #include "dtls_session_persist.h"
+#endif // HAL_PLATFORM_CLOUD_UDP
 #if HAL_PLATFORM_IFAPI && HAL_PLATFORM_BROKEN_MTU
 #include "ifapi.h"
 // FIXME: this should get included from protocol.h
