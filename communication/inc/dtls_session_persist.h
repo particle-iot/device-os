@@ -42,7 +42,9 @@ typedef struct __attribute__((packed)) SessionPersistDataOpaque
 #include "coap.h"
 #include "spark_protocol_functions.h"	// for SparkCallbacks
 
+#ifndef NO_MBEDTLS_HEADERS
 #include "dtls_message_channel.h"
+#endif // NO_MBEDTLS_HEADERS
 
 
 namespace particle { namespace protocol {
@@ -52,6 +54,7 @@ namespace particle { namespace protocol {
  */
 const size_t DTLS_CID_SIZE = 8;
 
+#ifdef MBEDTLS_SSL_H
 /**
  * A simple POD for the persisted session data.
  */
@@ -155,9 +158,6 @@ public:
 
 	static const int MAXIMUM_SESSION_USES = 3;
 };
-
-
-#ifdef MBEDTLS_SSL_H
 
 class __attribute__((packed)) SessionPersist : public SessionPersistOpaque
 {
@@ -292,12 +292,12 @@ static_assert(sizeof(SessionPersist)==sizeof(SessionPersistDataOpaque), "Session
 
 static_assert(DTLS_CID_SIZE <= MBEDTLS_SSL_CID_OUT_LEN_MAX, "DTLS_CID_SIZE is too large");
 
-#endif // defined(MBEDTLS_SSL_H)
-
 // the connection buffer is used by external code to store connection data in the session
 // it must be binary compatible with previous releases
 static_assert(offsetof(SessionPersistData, connection)==4, "internal layout of public member has changed.");
 static_assert((sizeof(SessionPersistData)==sizeof(SessionPersistDataOpaque)), "session persist data and the subclass should be the same size.");
+
+#endif // defined(MBEDTLS_SSL_H)
 
 }}
 
