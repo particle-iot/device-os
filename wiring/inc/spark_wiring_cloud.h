@@ -398,39 +398,33 @@ public:
     /**
      * Get the maximum supported size of an event's payload data.
      *
-     * @note This parameter depends on multiple factors, some of which, such as the version of the
-     * modem firmware on cellular platforms, can only be determined at runtime. In order to get the
-     * accurate value that would take all those factors into account, this method needs to be called
-     * after a connection with the Cloud has been established.
+     * @note This method will return an error (a negative value) if the device is not connected to
+     * the Cloud.
      *
      * @see `maxVariableValueSize()`
      * @see `maxFunctionArgumentSize()`
      */
-    static size_t maxEventDataSize();
+    static int maxEventDataSize();
     /**
      * Get the maximum supported size of a variable value.
      *
-     * @note This parameter depends on multiple factors, some of which, such as the version of the
-     * modem firmware on cellular platforms, can only be determined at runtime. In order to get the
-     * accurate value that would take all those factors into account, this method needs to be called
-     * after a connection with the Cloud has been established.
+     * @note This method will return an error (a negative value) if the device is not connected to
+     * the Cloud.
      *
      * @see `maxEventDataSize()`
      * @see `maxFunctionArgumentSize()`
      */
-    static size_t maxVariableValueSize();
+    static int maxVariableValueSize();
     /**
      * Get the maximum supported size of a function call argument.
      *
-     * @note This parameter depends on multiple factors, some of which, such as the version of the
-     * modem firmware on cellular platforms, can only be determined at runtime. In order to get the
-     * accurate value that would take all those factors into account, this method needs to be called
-     * after a connection with the Cloud has been established.
+     * @note This method will return an error (a negative value) if the device is not connected to
+     * the Cloud.
      *
      * @see `maxEventDataSize()`
      * @see `maxVariableValueSize()`
      */
-    static size_t maxFunctionArgumentSize();
+    static int maxFunctionArgumentSize();
 
 private:
 

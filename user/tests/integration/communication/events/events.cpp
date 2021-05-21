@@ -9,7 +9,7 @@ test(particle_publish_publishes_an_event) {
 
 test(get_max_event_data_size) {
     char str[16] = {};
-    snprintf(str, sizeof(str), "%u", (unsigned)Particle.maxEventDataSize());
+    snprintf(str, sizeof(str), "%d", Particle.maxEventDataSize());
     Particle.publish("max_event_data_size", str);
 }
 

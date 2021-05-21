@@ -36,7 +36,7 @@ test(register_functions) {
 
 test(get_max_function_argument_size) {
     char str[16] = {};
-    snprintf(str, sizeof(str), "%u", (unsigned)Particle.maxFunctionArgumentSize());
+    snprintf(str, sizeof(str), "%d", Particle.maxFunctionArgumentSize());
     Particle.publish("max_function_argument_size", str);
 }
 

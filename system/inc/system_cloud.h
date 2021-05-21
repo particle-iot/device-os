@@ -339,14 +339,19 @@ ProtocolFacade* system_cloud_protocol_instance(void);
  * Cloud connection properties.
  *
  * @see `spark_set_connection_property()`
+ * @see `spark_get_connection_property()`
  */
 typedef enum spark_connection_property {
-    SPARK_CLOUD_PING_INTERVAL = 0, ///< Ping interval in milliseconds.
-    SPARK_CLOUD_FAST_OTA_ENABLED = 1, ///< Fast OTA override.
-    SPARK_CLOUD_DISCONNECT_OPTIONS = 2 ///< Default disconnection options.
+    SPARK_CLOUD_PING_INTERVAL = 0, ///< Ping interval in milliseconds (set).
+    SPARK_CLOUD_FAST_OTA_ENABLED = 1, ///< Fast OTA override (set).
+    SPARK_CLOUD_DISCONNECT_OPTIONS = 2, ///< Default disconnection options (set).
+    SPARK_CLOUD_MAX_EVENT_DATA_SIZE = 3, ///< Maximum size of event data (get).
+    SPARK_CLOUD_MAX_VARIABLE_VALUE_SIZE = 4, ///< Maximum size of a variable value (get).
+    SPARK_CLOUD_MAX_FUNCTION_ARGUMENT_SIZE = 5 ///< Maximum size of a function call argument (get).
 } spark_connection_property;
 
 int spark_set_connection_property(unsigned property, unsigned value, const void* data, void* reserved);
+int spark_get_connection_property(unsigned property, void* data, size_t* size, void* reserved);
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved);
 
