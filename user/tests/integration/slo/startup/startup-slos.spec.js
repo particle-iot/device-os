@@ -1,3 +1,12 @@
+// The assertions here help to validate the following:
+//
+// Device OS releases should guarantee a minimum RAM for user applications
+//   Given canonical example firmware
+//   100% of Device OS releases will provide at least 60 kB of available RAM for user applications (exception 40k for Photon + P1)
+//
+// Device OS releases should guarantee sufficient flash space for user applications
+//   The size of a relevant canonical app, which includes library overhead required by Device OS, does not increase more than 15% each release.
+
 suite('Device startup service level objectives (SLOs)');
 
 platform('gen2', 'gen3');

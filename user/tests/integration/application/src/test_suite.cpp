@@ -24,6 +24,8 @@
 
 #include "unit-test/unit-test.h"
 
+void system_initialize_user_backup_ram(); // Defined in user.cpp
+
 namespace particle {
 
 namespace {
@@ -82,12 +84,19 @@ void TestSuite::destroy() {
 
 int TestSuite::config(const TestSuiteConfig& config) {
     CHECK_TRUE(inited_, SYSTEM_ERROR_INVALID_STATE);
+    int result = 0;
     if (g_config.systemMode != config.systemMode() || g_config.systemThreadEnabled != config.systemThreadEnabled()) {
         g_config.systemMode = config.systemMode();
         g_config.systemThreadEnabled = config.systemThreadEnabled();
-        return Result::RESET_PENDING;
+        result = Result::RESET_PENDING;
     }
-    return 0;
+    if (config.clearBackupMemory()) {
+        const auto config = g_config;
+        system_initialize_user_backup_ram();
+        g_config = config;
+        result = Result::RESET_PENDING;
+    }
+    return result;
 }
 
 TestSuite* TestSuite::instance() {
