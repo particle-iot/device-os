@@ -19,7 +19,7 @@
 #include "unit-test/unit-test.h"
 #include "scope_guard.h"
 
-#if HAL_PLATFORM_FILESYSTEM && HAL_PLATFORM_NRF52840
+#if HAL_PLATFORM_FILESYSTEM && HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_PROHIBIT_XIP
 
 test(EXFLASH_00_ConcurrentXipAndQspiUsageStress) {
     std::atomic_bool exit;
