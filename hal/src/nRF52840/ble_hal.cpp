@@ -969,6 +969,7 @@ BleObject::Broadcaster::Broadcaster()
           isAdvertising_(false),
           autoAdvCfg_(BLE_AUTO_ADV_ALWAYS),
           advHandle_(BLE_GAP_ADV_SET_HANDLE_NOT_SET),
+          advParams_{},
           txPower_(0),
           advPending_(false),
           connectedAdvParams_(false),
@@ -981,6 +982,7 @@ BleObject::Broadcaster::Broadcaster()
     advParams_.interval = BLE_DEFAULT_ADVERTISING_INTERVAL;
     advParams_.timeout = BLE_DEFAULT_ADVERTISING_TIMEOUT;
     advParams_.inc_tx_power = false;
+    advParams_.primary_phy = BLE_PHYS_AUTO;
     memset(advData_, 0x00, sizeof(advData_));
     memset(scanRespData_, 0x00, sizeof(scanRespData_));
     advDataLen_ = scanRespDataLen_ = 0;
