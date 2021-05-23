@@ -130,18 +130,9 @@ ProtocolError Variables::decode_request(Message& message, char* key) {
 
 ProtocolError Variables::encode_response(Message& message, token_t token, const void* value, size_t value_size,
         SparkReturnType::Enum value_type) {
-    if (value_size > MAX_VARIABLE_VALUE_LENGTH) {
-        value_size = MAX_VARIABLE_VALUE_LENGTH; // Truncate the value data
-    }
-    // Adjust the maximum variable payload size if MAX_TRANSMIT_MESSAGE_SIZE property
-	// indicates that we cannot transmit over a certain limit.
-    const size_t max_transmit_message_size = protocol_->get_max_transmit_message_size();
-    if (max_transmit_message_size > 0 && max_transmit_message_size < MAX_VARIABLE_VALUE_MESSAGE_SIZE) {
-        auto max_variable_value_length = max_transmit_message_size -
-                (MAX_VARIABLE_VALUE_MESSAGE_SIZE - MAX_VARIABLE_VALUE_LENGTH);
-        if (value_size > max_variable_value_length) {
-            value_size = max_variable_value_length;
-        }
+    const auto max_value_size = protocol_->get_max_variable_value_size();
+    if (value_size > max_value_size) {
+        value_size = max_value_size; // Truncate the value data
     }
     size_t msg_size = 0;
     switch (value_type) {

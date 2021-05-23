@@ -69,6 +69,15 @@ static_assert(SPARK_CLOUD_PING_INTERVAL == (int)protocol::Connection::PING,
 static_assert(SPARK_CLOUD_FAST_OTA_ENABLED == (int)protocol::Connection::FAST_OTA,
         "The value of SPARK_CLOUD_FAST_OTA_ENABLED has changed");
 
+
+int getConnectionProperty(protocol::Connection::Enum property, void* data, size_t* size) {
+    const int r = spark_protocol_get_connection_property(sp, property, data, size, nullptr /* reserved */);
+    if (r != 0) {
+        return SYSTEM_ERROR_PROTOCOL;
+    }
+    return 0;
+}
+
 } // namespace
 
 SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_type)
@@ -289,6 +298,30 @@ int spark_set_connection_property(unsigned property, unsigned value, const void*
         const auto r = spark_protocol_set_connection_property(sp, property, value, d, reserved);
         return spark_protocol_to_system_error(r);
     }
+    default:
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+}
+
+int spark_get_connection_property(unsigned property, void* data, size_t* size, void* reserved)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_get_connection_property(property, data, size, reserved));
+    switch (property) {
+    case SPARK_CLOUD_MAX_EVENT_DATA_SIZE:
+        if (!SPARK_CLOUD_CONNECTED) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        return getConnectionProperty(protocol::Connection::MAX_EVENT_DATA_SIZE, data, size);
+    case SPARK_CLOUD_MAX_VARIABLE_VALUE_SIZE:
+        if (!SPARK_CLOUD_CONNECTED) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        return getConnectionProperty(protocol::Connection::MAX_VARIABLE_VALUE_SIZE, data, size);
+    case SPARK_CLOUD_MAX_FUNCTION_ARGUMENT_SIZE:
+        if (!SPARK_CLOUD_CONNECTED) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        return getConnectionProperty(protocol::Connection::MAX_FUNCTION_ARGUMENT_SIZE, data, size);
     default:
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }

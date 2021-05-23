@@ -24,8 +24,8 @@
 #include "debug.h"
 #include <stdlib.h>
 
-using particle::CompletionHandler;
-using particle::protocol::ProtocolError;
+using namespace particle;
+using namespace particle::protocol;
 
 #ifdef USE_MBEDTLS
 #include "mbedtls/rsa.h"
@@ -52,7 +52,7 @@ void default_random_seed_from_cloud(unsigned int seed)
 }
 
 int spark_protocol_to_system_error (int error_) {
-    return toSystemError(static_cast<particle::protocol::ProtocolError>(error_));
+    return toSystemError(static_cast<ProtocolError>(error_));
 }
 
 #if HAL_PLATFORM_CLOUD_TCP
@@ -196,41 +196,72 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
         void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
     switch (property) {
-    case particle::protocol::Connection::PING: {
-        const auto d = (const particle::protocol::connection_properties_t*)data;
+    case Connection::PING: {
+        const auto d = (const connection_properties_t*)data;
         protocol->set_keepalive(value, d->keepalive_source);
         return 0;
     }
-    case particle::protocol::Connection::FAST_OTA: {
+    case Connection::FAST_OTA: {
         protocol->set_fast_ota(value);
         return 0;
     }
-    case particle::protocol::Connection::DEVICE_INITIATED_DESCRIBE: {
+    case Connection::DEVICE_INITIATED_DESCRIBE: {
         protocol->enable_device_initiated_describe();
         return 0;
     }
-    case particle::protocol::Connection::COMPRESSED_OTA: {
+    case Connection::COMPRESSED_OTA: {
         protocol->enable_compressed_ota();
         return 0;
     }
-    case particle::protocol::Connection::SYSTEM_MODULE_VERSION: {
+    case Connection::SYSTEM_MODULE_VERSION: {
         protocol->set_system_version(value);
         return 0;
     }
-    case particle::protocol::Connection::MAX_BINARY_SIZE: {
+    case Connection::MAX_BINARY_SIZE: {
         protocol->set_max_binary_size(value);
         return 0;
     }
-    case particle::protocol::Connection::OTA_CHUNK_SIZE: {
+    case Connection::OTA_CHUNK_SIZE: {
         protocol->set_ota_chunk_size(value);
         return 0;
     }
-    case particle::protocol::Connection::MAX_TRANSMIT_MESSAGE_SIZE: {
+    case Connection::MAX_TRANSMIT_MESSAGE_SIZE: {
         protocol->set_max_transmit_message_size(value);
         return 0;
     }
     default:
-        return particle::protocol::ProtocolError::NOT_IMPLEMENTED;
+        return ProtocolError::NOT_IMPLEMENTED;
+    }
+}
+
+int spark_protocol_get_connection_property(ProtocolFacade* protocol, unsigned property, void* data, size_t* size, void* reserved)
+{
+    ASSERT_ON_SYSTEM_THREAD();
+    switch (property) {
+    case Connection::MAX_EVENT_DATA_SIZE:
+    case Connection::MAX_VARIABLE_VALUE_SIZE:
+    case Connection::MAX_FUNCTION_ARGUMENT_SIZE: {
+        if (*size < sizeof(size_t)) {
+            *size = sizeof(size_t);
+            return ProtocolError::INSUFFICIENT_STORAGE;
+        }
+        const auto d = (size_t*)data;
+        switch (property) {
+        case Connection::MAX_EVENT_DATA_SIZE:
+            *d = protocol->get_max_event_data_size();
+            break;
+        case Connection::MAX_VARIABLE_VALUE_SIZE:
+            *d = protocol->get_max_variable_value_size();
+            break;
+        case Connection::MAX_FUNCTION_ARGUMENT_SIZE:
+            *d = protocol->get_max_function_arg_size();
+            break;
+        }
+        *size = sizeof(size_t);
+        return 0;
+    }
+    default:
+        return ProtocolError::NOT_IMPLEMENTED;
     }
 }
 

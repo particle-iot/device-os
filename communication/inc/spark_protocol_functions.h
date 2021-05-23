@@ -197,6 +197,7 @@ void spark_protocol_set_product_firmware_version(ProtocolFacade* protocol, produ
 void spark_protocol_get_product_details(ProtocolFacade* protocol, product_details_t* product_details, void* reserved=NULL);
 
 int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property, int value, const void* data, void* reserved);
+int spark_protocol_get_connection_property(ProtocolFacade* protocol, unsigned property, void* data, size_t* size, void* reserved);
 bool spark_protocol_time_request_pending(ProtocolFacade* protocol, void* reserved=NULL);
 system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time32_t* tm32, time_t* tm);
 

@@ -415,6 +415,29 @@ public:
 		return max_transmit_message_size;
 	}
 
+	size_t get_max_event_data_size() const {
+		// Check if there's a runtime limit
+		if (max_transmit_message_size && max_transmit_message_size < MAX_EVENT_MESSAGE_SIZE) {
+			// While the MAX_TRANSMIT_MESSAGE_SIZE setting only limits the maximum size of device-
+			// to-cloud events, for simplicity, we're reporting the same limit for events sent in
+			// both directions as a single parameter
+			return max_transmit_message_size - (MAX_EVENT_MESSAGE_SIZE - MAX_EVENT_DATA_LENGTH);
+		}
+		return MAX_EVENT_DATA_LENGTH; // Compile-time limit
+	}
+
+	size_t get_max_variable_value_size() const {
+		if (max_transmit_message_size && max_transmit_message_size < MAX_VARIABLE_VALUE_MESSAGE_SIZE) {
+			return max_transmit_message_size - (MAX_VARIABLE_VALUE_MESSAGE_SIZE - MAX_VARIABLE_VALUE_LENGTH);
+		}
+		return MAX_VARIABLE_VALUE_LENGTH;
+	}
+
+	size_t get_max_function_arg_size() const {
+		// Function calls are not affected by the MAX_TRANSMIT_MESSAGE_SIZE setting
+		return MAX_FUNCTION_ARG_LENGTH;
+	}
+
 	void set_handlers(CommunicationsHandlers& handlers)
 	{
 		copy_and_init(&this->handlers, sizeof(this->handlers), &handlers, handlers.size);

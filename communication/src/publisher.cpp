@@ -46,18 +46,10 @@ ProtocolError Publisher::send_event(MessageChannel& channel, const char* event_n
         confirmable = true;
     }
 
-    // Adjust the maximum event payload size if MAX_TRANSMIT_MESSAGE_SIZE property
-	// indicates that we cannot transmit over a certain limit.
-    const auto max_transmit_message_size = protocol->get_max_transmit_message_size();
     size_t data_size = 0;
     if (data) {
-        size_t max_size = MAX_EVENT_DATA_LENGTH;
-        if (max_transmit_message_size && max_transmit_message_size < MAX_EVENT_MESSAGE_SIZE) {
-            const auto overhead = MAX_EVENT_MESSAGE_SIZE - MAX_EVENT_NAME_LENGTH - MAX_EVENT_DATA_LENGTH;
-            const size_t event_name_length = strnlen(event_name, MAX_EVENT_NAME_LENGTH);
-            max_size = std::min(max_size, max_transmit_message_size - overhead - event_name_length);
-        }
-        data_size = strnlen(data, max_size);
+        const auto max_data_size = protocol->get_max_event_data_size();
+        data_size = strnlen(data, max_data_size);
     }
     size_t msglen = Messages::event(message.buf(), 0, event_name, data, data_size, ttl,
             event_type, confirmable);

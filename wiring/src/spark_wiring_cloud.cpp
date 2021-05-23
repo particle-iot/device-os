@@ -2,6 +2,7 @@
 
 #include <functional>
 #include "system_cloud.h"
+#include "check.h"
 
 namespace {
 
@@ -100,4 +101,25 @@ void CloudClass::disconnect(const CloudDisconnectOptions& options) {
 void CloudClass::setDisconnectOptions(const CloudDisconnectOptions& options) {
     const auto opts = options.toSystemOptions();
     spark_set_connection_property(SPARK_CLOUD_DISCONNECT_OPTIONS, 0 /* value */, &opts, nullptr /* reserved */);
+}
+
+int CloudClass::maxEventDataSize() {
+    size_t size = 0;
+    size_t n = sizeof(size);
+    CHECK(spark_get_connection_property(SPARK_CLOUD_MAX_EVENT_DATA_SIZE, &size, &n, nullptr /* reserved */));
+    return size;
+}
+
+int CloudClass::maxVariableValueSize() {
+    size_t size = 0;
+    size_t n = sizeof(size);
+    CHECK(spark_get_connection_property(SPARK_CLOUD_MAX_VARIABLE_VALUE_SIZE, &size, &n, nullptr /* reserved */));
+    return size;
+}
+
+int CloudClass::maxFunctionArgumentSize() {
+    size_t size = 0;
+    size_t n = sizeof(size);
+    CHECK(spark_get_connection_property(SPARK_CLOUD_MAX_FUNCTION_ARGUMENT_SIZE, &size, &n, nullptr /* reserved */));
+    return size;
 }

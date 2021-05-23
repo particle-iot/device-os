@@ -395,6 +395,36 @@ public:
      * @see `disconnect()`
      */
     static void setDisconnectOptions(const CloudDisconnectOptions& options);
+    /**
+     * Get the maximum supported size of an event's payload data.
+     *
+     * @note This method will return an error (a negative value) if the device is not connected to
+     * the Cloud.
+     *
+     * @see `maxVariableValueSize()`
+     * @see `maxFunctionArgumentSize()`
+     */
+    static int maxEventDataSize();
+    /**
+     * Get the maximum supported size of a variable value.
+     *
+     * @note This method will return an error (a negative value) if the device is not connected to
+     * the Cloud.
+     *
+     * @see `maxEventDataSize()`
+     * @see `maxFunctionArgumentSize()`
+     */
+    static int maxVariableValueSize();
+    /**
+     * Get the maximum supported size of a function call argument.
+     *
+     * @note This method will return an error (a negative value) if the device is not connected to
+     * the Cloud.
+     *
+     * @see `maxEventDataSize()`
+     * @see `maxVariableValueSize()`
+     */
+    static int maxFunctionArgumentSize();
 
 private:
 
@@ -405,11 +435,6 @@ private:
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
 
     static particle::Future<bool> publish_event(const char *eventName, const char *eventData, int ttl, PublishFlags flags);
-
-    static ProtocolFacade* sp()
-    {
-        return spark_protocol_instance();
-    }
 
     bool subscribe_wiring(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope, const char *deviceID = NULL)
     {
