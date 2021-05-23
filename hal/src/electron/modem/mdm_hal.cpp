@@ -1106,6 +1106,10 @@ bool MDMParser::init(DevStatus* status)
     sendFormated("AT+COPS=3,2\r\n");
     if (RESP_OK != waitFinalResp(nullptr, nullptr, COPS_TIMEOUT))
         goto failure;
+    // Make sure to enable URCs
+    if (!urcs(true)) {
+        goto failure;
+    }
     // enable power saving
     if (_dev.lpm != LPM_DISABLED) {
         // enable power saving (requires flow control, cts at least)
