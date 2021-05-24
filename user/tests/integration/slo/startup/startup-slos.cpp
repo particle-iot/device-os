@@ -17,12 +17,8 @@ extern "C" int hal_flash_read(uintptr_t addr, uint8_t* buf, size_t size) {
 }
 
 test(slo_startup_stats) {
-    // get millis_to_connected
-    system_tick_t base_time = millis();
     Particle.connect();
     waitFor(Particle.connected, 10 * 60 * 1000);
-    system_tick_t connected_checkpoint = millis();
-    system_tick_t millis_to_connected = connected_checkpoint - base_time;
     
     // get free_mem
     uint32_t free_mem = System.freeMemory();
@@ -33,8 +29,7 @@ test(slo_startup_stats) {
         FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION) +
         sizeof(uint32_t);
 
-    String stats =
-        String::format("{\"millis_to_connect\": %u, \"free_mem\": %u, \"app_flash_size\": %u }",
-                        millis_to_connected, free_mem, app_flash_size);
+    String stats = String::format("{\"free_mem\": %u, \"app_flash_size\": %u}",
+            free_mem, app_flash_size);
     Particle.publish("startup_stats", stats);
 }
