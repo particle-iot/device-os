@@ -89,7 +89,7 @@ test('get_max_variable_value_size', async function() {
 	const data = await this.particle.receiveEvent('max_variable_value_size');
 	maxVariableValueSize = Number.parseInt(data);
 	expect(maxVariableValueSize).to.be.above(794); // Maximum supported size of a variable value in pre-3.0.0 Device OS
-	this.particle.log.verbose('Particle.maxVariableValueSize() returned', maxVariableValueSize);
+	console.log('Particle.maxVariableValueSize() returned', maxVariableValueSize);
 });
 
 test('verify_max_variable_value_size', async function() {

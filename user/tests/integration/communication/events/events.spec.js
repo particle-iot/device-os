@@ -13,7 +13,7 @@ test('get_max_event_data_size', async function() {
 	const data = await this.particle.receiveEvent('max_event_data_size');
 	maxEventDataSize = Number.parseInt(data);
 	expect(maxEventDataSize).to.be.above(622); // Maximum supported size of event data in pre-3.0.0 Device OS
-	this.particle.log.verbose('Particle.maxEventDataSize() returned', maxEventDataSize);
+	console.log('Particle.maxEventDataSize() returned', maxEventDataSize);
 });
 
 test('verify_max_event_data_size', async function() {

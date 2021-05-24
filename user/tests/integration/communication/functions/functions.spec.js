@@ -25,7 +25,7 @@ test('get_max_function_argument_size', async function() {
 	const data = await this.particle.receiveEvent('max_function_argument_size');
 	maxFunctionArgumentSize = Number.parseInt(data);
 	expect(maxFunctionArgumentSize).to.be.above(622); // Maximum supported size of a function argument in pre-3.0.0 Device OS
-	this.particle.log.verbose('Particle.maxFunctionArgumentSize() returned', maxFunctionArgumentSize);
+	console.log('Particle.maxFunctionArgumentSize() returned', maxFunctionArgumentSize);
 });
 
 test('call_function_and_check_return_value', async function() {
