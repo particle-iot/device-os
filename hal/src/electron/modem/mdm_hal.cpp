@@ -704,97 +704,15 @@ void MDMParser::unlock()
     mdm_mutex.unlock();
 }
 
-/*
-int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
-{
-    // R410 disabled: +CEDRXS:
-    // R510 disabled: +CEDRXS: 4,"0000"
-    if (((type == TYPE_PLUS) || (type == TYPE_UNKNOWN)) && edrxActs) {
-        // if response is "\r\n+CEDRXS:\r\n", all AcT's disabled, do nothing
-        if (strncmp(buf, "\r\n+CEDRXS:\r\n", len) != 0) {
-            int act;
-            if (sscanf(buf, "\r\n+CEDRXS: %1d[2-5]", &act) == 1 ||
-                sscanf(buf, "+CEDRXS: %1d[2-5]", &act) == 1 ) {
-                if (edrxActs->count < MDM_R410_EDRX_ACTS_MAX) {
-                    edrxActs->act[edrxActs->count++] = act;
-                }
-            }
-            else {
-                // TODO R510 verify below works with: 
-                //  +CEDRXS: 4,\"0000\"
-                //  "\r\n+CEDRXS: 4,\"0000\"\r\n"
-                unsigned eDRXCycle = 0;
-                unsigned pagingTimeWindow = 0;
-                if (sscanf(buf,"\r\n+CEDRXS: %u,\"%d\",\"%d\"", &act, &eDRXCycle, &pagingTimeWindow) >= 1 ||
-                    sscanf(buf,"+CEDRXS: %u,\"%d\",\"%d\"", &act, &eDRXCycle, &pagingTimeWindow) >= 1) {
-                    if (eDRXCycle != 0 || pagingTimeWindow != 0) { // Ignore scanf() errors
-                        edrxActs->act[edrxActs->count++] = act;
-                    }
-                }
-            }
-        }
-    }
-    return WAIT;
-}
-
-char mobileCountryCode[4] = {0};
-        char mobileNetworkCode[4] = {0};
-        int mode = -1;
-
-        int r = ::sscanf(buf, "\r\n+COPS: %d,%*d,\"%3[0-9]%3[0-9]\",%d", &mode, mobileCountryCode,
-                mobileNetworkCode, &act);
-
-        // +COPS: <mode>[,<format>,<oper>[,<AcT>]]
-        if (r >= 1)
-        {
-            status->cops = mode;
-        }
-
-        if (r >= 2)
-        {
-            // Preserve digit format data
-            const int mnc_digits = ::strnlen(mobileNetworkCode, sizeof(mobileNetworkCode));
-            if (2 == mnc_digits)
-            {
-                status->cgi.cgi_flags |= CGI_FLAG_TWO_DIGIT_MNC;
-            }
-            else
-            {
-                status->cgi.cgi_flags &= ~CGI_FLAG_TWO_DIGIT_MNC;
-            }
-
-            // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
-            status->cgi.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
-            status->cgi.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
-
-
-*/
-
 int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
 {
     if (((type == TYPE_PLUS) || (type == TYPE_UNKNOWN)) && edrxActs) {
-        // if response is "\r\n+CEDRXS:\r\n", all AcT's disabled, do nothing
-        // When multiple ACTs are enabled they will return on following lines without prefix of "\r\n"
         // R410 disabled: +CEDRXS:
         // R510 disabled: +CEDRXS: 4,"0000"
         unsigned matched = 0;
         unsigned act = 0;
         unsigned eDRXCycle = 0;
         unsigned pagingTimeWindow = 0;
-        // char eDRXCycle[5] = {0};
-        // char pagingTimeWindow[5] = {0};
-        // strcpy(eDRXCycle, "1111");
-        // strcpy(pagingTimeWindow, "1111");
-
-        // char buffer[64] = {0};
-        // strcpy(buffer, "\r\n+CEDRXS: 4,\"1010\",\"0101\"\r\n");
-
-        // matched = sscanf(buf, "\r\n+CEDRXS: %u,\"%4[^,]\",\"%4[^,]\"", &act, eDRXCycle, pagingTimeWindow);
-        // MDM_PRINTF("[CEDRXS] matched:%d, act:%u, cycle:%s, paging:%s\r\n", matched, act, eDRXCycle, pagingTimeWindow);
-        // matched = sscanf(buffer, "\r\n+CEDRXS: %u,\"%u[^,]\",\"%u[^,]\"", &act, &eDRXCycle, &pagingTimeWindow);
-        // MDM_PRINTF("[CEDRXS] matched:%d, act:%u, cycle:%u, paging:%u\r\n", matched, act, eDRXCycle, pagingTimeWindow);
-        // matched = sscanf(buffer, "\r\n+CEDRXS: %u,\"%u\",\"%u\"", &act, &eDRXCycle, &pagingTimeWindow);
-        // MDM_PRINTF("[CEDRXS] matched:%d, act:%u, cycle:%u, paging:%u\r\n", matched, act, eDRXCycle, pagingTimeWindow);
 
         if ((matched = sscanf(buf, "\r\n+CEDRXS: %u,\"%u\",\"%u\"", &act, &eDRXCycle, &pagingTimeWindow)) >= 1 ||
             (matched = sscanf(buf, "+CEDRXS: %u,\"%u\",\"%u\"", &act, &eDRXCycle, &pagingTimeWindow)) >= 1 ) {
@@ -955,40 +873,26 @@ bool MDMParser::_powerOn(void)
     bool continue_cancel = false;
     bool retried_after_reset = false;
     int i = MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET; // When modem not responsive on boot, AT/OK tries 25x (for ~30s) before hard reset
-    // const int FIRST_ITERATION = (MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET-1);
-// construeN = 
+
     // FIXME: REMOVE THIS BEFORE MERGING!!!!!!
-    // _dev.dev = DEV_SARA_R510;
-    // MDM_ERROR("Forcing to R510\r\n"); 
-
-
-    // bool cur_pwr_state = false;
+    _dev.dev = DEV_SARA_R510;
+    MDM_ERROR("Forcing to R510\r\n");
 
     while (i--) {
-        MDM_INFO("Setup %d \r\n", i);
 
-        // // SARA-U2/LISA-U2 50..80us
-        // HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
-        // HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(10);
-
-        // // SARA-G35 >5ms, LISA-C2 > 150ms, LEON-G2 >5ms, SARA-R4 >= 150ms
-        // HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(150);
-        // HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(100);
-
-        // TODO R510
-        if (!powerState()) {
+        // FIXME: Qualify for R510 only, but we need to pull it from OTP flash
+        if (_dev.dev == DEV_SARA_R510 && !powerState()) {
             HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(1500);
             HAL_GPIO_Write(PWR_UC, 1);
-        }
+        } else {
+            // // SARA-U2/LISA-U2 50..80us
+            HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
+            HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(10);
 
-        // for (int j = 0; j < 5 && !cur_pwr_state; j++) {
-        //     HAL_Delay_Milliseconds(1000);
-        //     cur_pwr_state = powerState();
-        // }
-        // if (!cur_pwr_state) {
-        //     MDM_ERROR("cur_pwr_state: %d \r\n",cur_pwr_state);
-        //     continue;
-        // }
+            // // SARA-G35 >5ms, LISA-C2 > 150ms, LEON-G2 >5ms, SARA-R4 >= 150ms
+            HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(150);
+            HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(100);
+        }
 
         // purge any messages
         purge();
@@ -1005,7 +909,6 @@ bool MDMParser::_powerOn(void)
         HAL_Delay_Milliseconds(1000);
 
         // check interface, and use quicker 1s timeout during initial _powerOn()
-        // if (_atOk(FIRST_ITERATION != i)) { //TODO R510 seems to want to take longer for first AT response
         if (_atOk(true)) {
             // Increment the state change counter to show that the modem has been powered off -> on
             if (!_pwr) {
@@ -1033,7 +936,7 @@ bool MDMParser::_powerOn(void)
         // Determine type of the modem
         sendFormated("AT+CGMM\r\n");
         // waitFinalResp(_cbCGMM, &_dev);
-        waitFinalResp(_cbCGMM, &_dev, 15000); //TODO R510 this lengthy timeout really needed?
+        waitFinalResp(_cbCGMM, &_dev, 15000); // TODO: R510 this lengthy timeout really needed?
         if (_dev.dev == DEV_SARA_R410) {
             // SARA-R410 doesn't support hardware flow control, reinitialize the UART
             electronMDM.begin(115200, false /* hwFlowControl */);
@@ -1277,17 +1180,15 @@ bool MDMParser::init(DevStatus* status)
         // First time setup, or switching between official SIM on wrong profile?
         if (curProf == UBLOX_SARA_UMNOPROF_SW_DEFAULT ||
             (netProv == CELLULAR_NETPROV_TWILIO && curProf != UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) ||
-            (netProv == CELLULAR_NETPROV_KORE_ATT && curProf != UBLOX_SARA_UMNOPROF_ATT))
+            (_dev.dev == DEV_SARA_R410 && netProv == CELLULAR_NETPROV_KORE_ATT && curProf != UBLOX_SARA_UMNOPROF_ATT) ||
+            (_dev.dev == DEV_SARA_R510 && netProv == CELLULAR_NETPROV_KORE_ATT && curProf != UBLOX_SARA_UMNOPROF_STANDARD_EUROPE))
         {
             bool continueInit = false;
-            int newProf = UBLOX_SARA_UMNOPROF_GLOBAL;
+            int newProf = UBLOX_SARA_UMNOPROF_SIM_SELECT;
             // TWILIO Super SIM
             if (netProv == CELLULAR_NETPROV_TWILIO) {
                 // _oldFirmwarePresent: u-blox firmware 05.06* and 05.07* does not have
                 // UMNOPROF=100 available. Default to UMNOPROF=0 in that case.
-
-                //TODO R510
-                // newProf = UBLOX_SARA_UMNOPROF_SW_DEFAULT; 
                 if (_oldFirmwarePresent) {
                     if (curProf == UBLOX_SARA_UMNOPROF_SW_DEFAULT) {
                         continueInit = true;
@@ -1295,11 +1196,15 @@ bool MDMParser::init(DevStatus* status)
                         newProf = UBLOX_SARA_UMNOPROF_SW_DEFAULT;
                     }
                 } else {
-                    newProf = UBLOX_SARA_UMNOPROF_GLOBAL;
+                    newProf = UBLOX_SARA_UMNOPROF_STANDARD_EUROPE;
                 }
             }
             // KORE AT&T or 3rd Party SIM
             else {
+                // Hard code UMNOPROF=100 for R510
+                if (_dev.dev == DEV_SARA_R510 && netProv == CELLULAR_NETPROV_KORE_ATT) {
+                    newProf = UBLOX_SARA_UMNOPROF_STANDARD_EUROPE;
+                }
                 // continue on with init if we are trying to set SIM_SELECT a third time
                 if (_resetFailureAttempts >= 2) {
                     LOG(WARN, "UMNOPROF=1 did not resolve a built-in profile, please check if UMNOPROF=100 is required!");
@@ -1324,13 +1229,14 @@ bool MDMParser::init(DevStatus* status)
                 waitFinalResp(nullptr, nullptr, UMNOPROF_TIMEOUT);
                 goto reset_failure; // Not checking for errors above since we will reset either way
             }
-        } 
+        }
         else if (curProf == UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) {
             sendFormated("AT+UBANDMASK?\r\n");
             uint64_t ubandUint64 = 0;
             waitFinalResp(_cbUBANDMASK, &ubandUint64, UBANDMASK_TIMEOUT);
             // Only update if Twilio Super SIM and not set to correct bands
-            if (netProv == CELLULAR_NETPROV_TWILIO && ubandUint64 != 6170) {
+            if ((netProv == CELLULAR_NETPROV_TWILIO || (_dev.dev == DEV_SARA_R510 && netProv == CELLULAR_NETPROV_KORE_ATT)) &&
+                    ubandUint64 != 6170) {
                 // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
                 sendFormated("AT+UBANDMASK=0,6170\r\n");
                 waitFinalResp(nullptr, nullptr, UBANDMASK_TIMEOUT);
@@ -1339,13 +1245,13 @@ bool MDMParser::init(DevStatus* status)
         }
 
 
-        // For signal strength RSRP/RSRQ values on R410M
-        //TODO R510 siwtch
-        // sendFormated("AT+UCGED=5\r\n");
-        // if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
-        //     goto failure;
-        // }
-
+        // For signal strength RSRP/RSRQ values on R410M, not needed and ERRORs on R510
+        if (_dev.dev == DEV_SARA_R410) {
+            sendFormated("AT+UCGED=5\r\n");
+            if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+                goto failure;
+            }
+        }
         // Force Power Saving mode to be disabled
         //
         // TODO: if we enable this feature in the future update the logic in MDMParser::_atOk
@@ -1360,11 +1266,6 @@ bool MDMParser::init(DevStatus* status)
         // Force eDRX mode to be disabled
         // 18/23 hardware doesn't seem to be disabled by default
         sendFormated("AT+CEDRXS?\r\n");
-        // waitFinalResp();
-        // sendFormated("AT+CEDRXS=1,4,\"0101\",\"0101\"\r\n");
-        // waitFinalResp();
-        // sendFormated("AT+CEDRXS?\r\n");
-        // Reset the detected count each time we check for eDRX AcTs enabled
         EdrxActs _edrxActs;
         if (RESP_ERROR == waitFinalResp(_cbCEDRXS, &_edrxActs, CEDRXS_TIMEOUT)) {
             MDM_ERROR("_cbCEDRXS waitResp failed");
@@ -1379,7 +1280,7 @@ bool MDMParser::init(DevStatus* status)
             MDM_ERROR("resetNeeded after CEDRXS");
             goto reset_failure;
         }
-    } // if (_dev.dev == DEV_SARA_R410)
+    } // if (modemIsSaraRxFamily()) {
     _resetFailureAttempts = 0;
     return true;
 
@@ -1692,10 +1593,11 @@ void MDMParser::_checkVerboseCxreg(void) {
         if (modemIsSaraRxFamily()) {
             sendFormated("AT+CEREG?\r\n");
             waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT);
-            if (_dev.dev == DEV_SARA_R510) {
-                sendFormated("AT+CREG?\r\n");
-                waitFinalResp(nullptr, nullptr, CREG_TIMEOUT);
-            }
+            // TODO: Why was this added? URCs are not enabled for CREG on R510
+            // if (_dev.dev == DEV_SARA_R510) {
+            //     sendFormated("AT+CREG?\r\n");
+            //     waitFinalResp(nullptr, nullptr, CREG_TIMEOUT);
+            // }
         } else {
             sendFormated("AT+CREG?\r\n");
             waitFinalResp(nullptr, nullptr, CREG_TIMEOUT);
@@ -1746,7 +1648,8 @@ bool MDMParser::interveneRegistration(void) {
         return true;
     }
 
-    auto timeout = (_registrationInterventions + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
+    // FIXME: The timeout was offset by +15s for R510 & KORE, but should we do this for R410 as well?  This also adds 15 more seconds for TWILIO SIMs.
+    auto timeout = ((_registrationInterventions + 1) * REGISTRATION_INTERVENTION_TIMEOUT) + REGISTRATION_INTERVENTION_TIMEOUT;
     // Intervention to speed up registration or recover in case of failure
     if (!modemIsSaraRxFamily()) {
         // Only attempt intervention when in a sticky state
@@ -1929,7 +1832,6 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                     }
                     // Update the context settings
                     if (set_cgdcont) {
-                        sendFormated("AT+CFUN=0\r\n"); //TODO R510 switch
                         sendFormated("AT+CGDCONT=%d,\"IP\",\"%s\"\r\n", PDP_CONTEXT, apn ? apn : "");
                         if (waitFinalResp() != RESP_OK) {
                             goto failure;
@@ -2028,20 +1930,13 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
             if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
                 goto failure;
             }
-            sendFormated("AT+UCGED?\r\n");
-            if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
-                MDM_ERROR("UCGED? waitResp fail\r\n");
-                goto failure;
-            }
         }
-        else {
-            //TODO parse new UCGED format for R510
-            sendFormated("AT+CSQ\r\n");
-            if (WAIT == waitFinalResp(nullptr, nullptr, CSQ_TIMEOUT)) {
-                goto failure;
-            }
+        //TODO parse new UCGED format for R510
+        sendFormated("AT+UCGED?\r\n");
+        if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+            MDM_ERROR("UCGED? waitResp fail\r\n");
+            goto failure;
         }
-
         // check EPS registration (LTE)
         sendFormated("AT+CEREG?\r\n");
         if (RESP_OK != waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT)) {
@@ -2182,7 +2077,7 @@ bool MDMParser::getSignalStrength(NetStatus &status)
         }
 
         // AT command used to collect signal stregnth is different for R410M radio
-        if (_dev.dev == DEV_SARA_R410) {
+        if (modemIsSaraRxFamily()) {
             if (_dev.dev == DEV_SARA_R410) {
                 sendFormated("AT+UCGED=5\r\n");
                 if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
@@ -2193,6 +2088,7 @@ bool MDMParser::getSignalStrength(NetStatus &status)
             // Default to 255 because UCGED response is multi-line
             _net.rsrp = 255;
             _net.rsrq = 255;
+            // TODO: Fix UCGED? parsing for R510
             sendFormated("AT+UCGED?\r\n");
             if (RESP_OK == waitFinalResp(_cbUCGED, &_net, UCGED_TIMEOUT)) {
                 ok = true;

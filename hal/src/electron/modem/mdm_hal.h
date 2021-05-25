@@ -508,7 +508,7 @@ public:
     */
     bool powerState(void);
 
-    /** 
+    /**
      *  \returns true if the modem is SARA R410 or SARA R510 family
      */
     bool modemIsSaraRxFamily();
