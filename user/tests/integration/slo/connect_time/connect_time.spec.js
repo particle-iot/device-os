@@ -40,6 +40,12 @@ function percentile(values, p) {
 	return values[i];
 }
 
+// FIXME: this is a hack, there should be a native way to send some data back from the device
+async function fetchLog() {
+	const rep = await device._request({ c: 'L' }); // Get log
+	return rep.data.trim();
+}
+
 before(function() {
 	device = this.particle.devices[0];
 });
@@ -58,16 +64,17 @@ for (let i = 1; i <= CONNECT_COUNT; ++i) {
 }
 
 test('publish_and_validate_stats', async function() {
-	let stats = await this.particle.receiveEvent('stats');
-	console.log('stats:', stats);
+	let stats = await fetchLog();
 	stats = JSON.parse(stats);
+	console.log('stats:');
+	console.dir(stats, { depth: null, colors: true, compact: true, maxArrayLength: 100 });
 	// Cold boot
-	expect(stats.cloud_connect_time_from_cold_boot).to.have.lengthOf(CONNECT_COUNT);
-	const timeFromColdBoot = percentile(stats.cloud_connect_time_from_cold_boot, PERCENTILE);
+	expect(stats.cold.cloud_connect).to.have.lengthOf(CONNECT_COUNT);
+	const timeFromColdBoot = percentile(stats.cold.cloud_connect, PERCENTILE);
 	console.log('cloud_connect_time_from_cold_boot:', timeFromColdBoot);
 	// Warm boot
-	expect(stats.cloud_connect_time_from_warm_boot).to.have.lengthOf(CONNECT_COUNT);
-	const timeFromWarmBoot = percentile(stats.cloud_connect_time_from_warm_boot, PERCENTILE);
+	expect(stats.warm.cloud_connect).to.have.lengthOf(CONNECT_COUNT);
+	const timeFromWarmBoot = percentile(stats.warm.cloud_connect, PERCENTILE);
 	console.log('cloud_connect_time_from_warm_boot:', timeFromWarmBoot);
 	if (stats.exclude_from_slo_validation) {
 		console.log('Skipping SLO validation');
