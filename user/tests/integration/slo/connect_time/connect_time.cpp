@@ -45,7 +45,7 @@ bool loopCalled = false;
 system_tick_t testAppInitDuration = 0;
 system_tick_t testAppSetupDuration = 0;
 
-inline auto network() {
+inline auto& network() {
 #if Wiring_Cellular
     return Cellular;
 #elif Wiring_WiFi
