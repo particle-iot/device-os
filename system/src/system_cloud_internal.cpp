@@ -44,7 +44,9 @@
 #include "hal_platform.h"
 #include "bootloader.h"
 #include "system_string_interpolate.h"
+#if HAL_PLATFORM_CLOUD_UDP
 #include "dtls_session_persist.h"
+#endif // HAL_PLATFORM_CLOUD_UDP
 #include "bytes2hexbuf.h"
 #include "system_event.h"
 #include "system_cloud_connection.h"

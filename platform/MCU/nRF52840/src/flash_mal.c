@@ -142,7 +142,7 @@ static bool verify_module(flash_device_t src_dev, uintptr_t src_addr, size_t src
         }
         if ((flags & MODULE_VERIFY_DESTINATION_IS_START_ADDRESS) && module_info_start_addr != dest_addr) {
 #if SOFTDEVICE_MBR_UPDATES
-            if (!(module_func == MODULE_FUNCTION_BOOTLOADER && dest_addr == USER_FIRMWARE_IMAGE_LOCATION)) {
+            if (!(module_func == MODULE_FUNCTION_BOOTLOADER && dest_addr == USER_FIRMWARE_IMAGE_LOCATION_COMPAT)) {
                 return false;
             }
 #else
@@ -368,22 +368,30 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         return FLASH_ACCESS_RESULT_BADARG;
     }
 #if SOFTDEVICE_MBR_UPDATES
-    if (module_function == MODULE_FUNCTION_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
+    if (module_function == MODULE_FUNCTION_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION_COMPAT) {
         // Backup user firmware
         dest_size = CEIL_DIV(length, INTERNAL_FLASH_PAGE_SIZE) * INTERNAL_FLASH_PAGE_SIZE;
         if (!FLASH_EraseMemory(FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, dest_size)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
-        if (!flash_copy(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, dest_size)) {
+        if (!flash_copy(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION_COMPAT, FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, dest_size)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
         // Add backed up partial user firmware to slots, so that it's restored on next boot
         if (!FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, FLASH_INTERNAL,
-                USER_FIRMWARE_IMAGE_LOCATION, dest_size, MODULE_FUNCTION_NONE, 0)) {
+                USER_FIRMWARE_IMAGE_LOCATION_COMPAT, dest_size, MODULE_FUNCTION_NONE, 0)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
     }
 #endif // SOFTDEVICE_MBR_UPDATES
+
+    // Make sure to invalidate the compat application, otherwise we'll keep booting into the compat application
+    // as it takes precedence
+    if (module_function == MODULE_FUNCTION_USER_PART && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
+        if (!FLASH_EraseMemory(destinationDeviceID, USER_FIRMWARE_IMAGE_LOCATION_COMPAT, INTERNAL_FLASH_PAGE_SIZE)) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+    }
 
     if (!FLASH_EraseMemory(destinationDeviceID, destinationAddress, dest_size)) {
         return FLASH_ACCESS_RESULT_ERROR;
@@ -448,7 +456,7 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     }
 
 #if SOFTDEVICE_MBR_UPDATES
-    if (module_function == MODULE_FUNCTION_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
+    if (module_function == MODULE_FUNCTION_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION_COMPAT) {
         sd_mbr_command_t command = {
             .command = SD_MBR_COMMAND_COPY_BL,
             .params.copy_bl.bl_src = (uint32_t*)destinationAddress,

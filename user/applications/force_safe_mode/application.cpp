@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,19 +15,12 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef USER_H
-#define USER_H
+#include "application.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <stdint.h>
-
-int user_update_if_needed(void);
-
-#ifdef __cplusplus
+void forceSafeMode() {
+    if (HAL_Bootloader_Get_Flag(BOOTLOADER_FLAG_STARTUP_MODE) != 0x0001) {
+         System.enterSafeMode();
+    }
 }
-#endif
 
-#endif	/* USER_H */
+STARTUP(forceSafeMode());

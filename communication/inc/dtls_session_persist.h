@@ -42,9 +42,9 @@ typedef struct __attribute__((packed)) SessionPersistDataOpaque
 #include "coap.h"
 #include "spark_protocol_functions.h"	// for SparkCallbacks
 
-#ifdef MBEDTLS_SSL_H
+#ifndef NO_MBEDTLS_HEADERS
 #include "dtls_message_channel.h"
-#endif
+#endif // NO_MBEDTLS_HEADERS
 
 
 namespace particle { namespace protocol {
@@ -54,6 +54,7 @@ namespace particle { namespace protocol {
  */
 const size_t DTLS_CID_SIZE = 8;
 
+#ifdef MBEDTLS_SSL_H
 /**
  * A simple POD for the persisted session data.
  */
@@ -73,7 +74,6 @@ struct __attribute__((packed)) SessionPersistData
 	// constant. Add more members at the end of the struct.
 	uint8_t connection[32];
 	uint32_t keys_checksum;
-#ifdef MBEDTLS_SSL_H
 	uint8_t randbytes[sizeof(mbedtls_ssl_handshake_params::randbytes)];
 	decltype(mbedtls_ssl_session::ciphersuite) ciphersuite;
 	decltype(mbedtls_ssl_session::compression) compression;
@@ -84,10 +84,6 @@ struct __attribute__((packed)) SessionPersistData
 	unsigned char out_ctr[8];
 	// application data
 	message_id_t next_coap_id;
-#else
-	// when the mbedtls headers aren't available, just pad with the requisite size
-	uint8_t opaque_ssl[64+SessionPersistVariableSize+32+48+2+8+2];
-#endif
 
 	/**
 	 * Checksum of the state of the subscriptions that have been sent to the cloud.
@@ -162,9 +158,6 @@ public:
 
 	static const int MAXIMUM_SESSION_USES = 3;
 };
-
-
-#ifdef MBEDTLS_SSL_H
 
 class __attribute__((packed)) SessionPersist : public SessionPersistOpaque
 {
@@ -299,12 +292,12 @@ static_assert(sizeof(SessionPersist)==sizeof(SessionPersistDataOpaque), "Session
 
 static_assert(DTLS_CID_SIZE <= MBEDTLS_SSL_CID_OUT_LEN_MAX, "DTLS_CID_SIZE is too large");
 
-#endif // defined(MBEDTLS_SSL_H)
-
 // the connection buffer is used by external code to store connection data in the session
 // it must be binary compatible with previous releases
 static_assert(offsetof(SessionPersistData, connection)==4, "internal layout of public member has changed.");
 static_assert((sizeof(SessionPersistData)==sizeof(SessionPersistDataOpaque)), "session persist data and the subclass should be the same size.");
+
+#endif // defined(MBEDTLS_SSL_H)
 
 }}
 

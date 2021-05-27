@@ -41,5 +41,12 @@ DYNALIB_EXTERN_C void module_user_loop();
 
 DYNALIB_EXTERN_C void module_user_setup();
 
+// Compat 128KB module initialization functions
+DYNALIB_EXTERN_C void* module_user_pre_init_compat();
+DYNALIB_EXTERN_C void module_user_init_compat();
+DYNALIB_EXTERN_C void module_user_loop_compat();
+DYNALIB_EXTERN_C void module_user_setup_compat();
+
+
 #endif	/* USER_MODULE_H */
 

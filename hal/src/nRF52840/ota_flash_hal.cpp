@@ -173,10 +173,25 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 #if defined(HYBRID_BUILD)
             bool hybrid_module_found = false;
 #endif
+            bool user_module_found = false;
+            memset(info->modules, 0, sizeof(hal_module_t) * count);
             for (unsigned i = 0; i < count; i++) {
                 const auto bounds = module_bounds[i];
                 const auto module = info->modules + i;
-                fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY);
+                // IMPORTANT: if both types of modules are present (legacy 128KB and newer 256KB),
+                // 128KB application will take precedence and the newer 256KB application will not
+                // be reported in the modules info. It will be missing from the System Describe,
+                // 'serial inspect` and any other facility that uses HAL_System_Info().
+                if (bounds->module_function == MODULE_FUNCTION_USER_PART && user_module_found) {
+                    // Make sure that we report only single user part (either 128KB or 256KB) in the
+                    // list of modules.
+                    continue;
+                }
+                bool valid = fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY);
+                valid = valid && (module->validity_checked == module->validity_result);
+                if (valid && bounds->module_function == MODULE_FUNCTION_USER_PART) {
+                    user_module_found = true;
+                }
 #if defined(HYBRID_BUILD)
 #ifndef MODULAR_FIRMWARE
 #error HYBRID_BUILD must be modular
@@ -582,8 +597,8 @@ int HAL_FLASH_End(void* reserved)
             // in place of the application (saving application into a different location on external flash).
             // MODULE_VERIFY_DESTINATION_IS_START_ADDRESS check will normally fail for bootloaders that
             // don't support updates via MBR, so we are not going to corrupt anything.
-            const uintptr_t endAddress = (uintptr_t)module_user.start_address + ((uintptr_t)info.module_end_address - (uintptr_t)info.module_start_address);
-            info.module_start_address = (const void*)module_user.start_address;
+            const uintptr_t endAddress = (uintptr_t)module_user_compat.start_address + ((uintptr_t)info.module_end_address - (uintptr_t)info.module_start_address);
+            info.module_start_address = (const void*)module_user_compat.start_address;
             info.module_end_address = (const void*)endAddress;
         }
         default: { // User part, system part or a radio stack module or bootloader if MBR updates are supported

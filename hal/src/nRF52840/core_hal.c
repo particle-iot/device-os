@@ -31,7 +31,6 @@
 #include <nrf_rtc.h>
 #include "button_hal.h"
 #include "hal_platform.h"
-#include "user.h"
 #include "dct.h"
 #include "rng_hal.h"
 #include "interrupts_hal.h"
@@ -57,6 +56,7 @@
 #include "flash_common.h"
 #include <nrf_pwm.h>
 #include "concurrent_hal.h"
+#include "user_hal.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -338,14 +338,12 @@ void HAL_Core_Config(void) {
     HAL_RNG_Configuration();
 
 #if defined(MODULAR_FIRMWARE)
-    if (HAL_Core_Validate_User_Module()) {
-        new_heap_end = module_user_pre_init();
+    hal_user_module_descriptor user_desc = {};
+    if (!hal_user_module_get_descriptor(&user_desc)) {
+        new_heap_end = user_desc.pre_init();
         if (new_heap_end < malloc_heap_end()) {
             malloc_set_heap_end(new_heap_end);
         }
-    } else {
-        // Update the user module if needed
-        user_update_if_needed();
     }
 
     // Enable malloc before littlefs initialization.

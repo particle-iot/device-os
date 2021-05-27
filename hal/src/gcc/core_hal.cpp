@@ -401,6 +401,7 @@ bool HAL_Feature_Get(HAL_Feature feature)
 
 #if HAL_PLATFORM_CLOUD_UDP
 
+#define NO_MBEDTLS_HEADERS
 #include "dtls_session_persist.h"
 SessionPersistDataOpaque session;
 

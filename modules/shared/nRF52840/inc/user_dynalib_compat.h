@@ -15,28 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef USER_HAL_H_
-#define USER_HAL_H_
+#pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "dynalib.h"
 
-#include <stdint.h>
-#include "module_info.h"
+DYNALIB_BEGIN(user_compat)
 
-typedef struct hal_user_module_descriptor {
-    module_info_t info;
-    void* (*pre_init)(void);
-    void (*init)(void);
-    void (*loop)(void);
-    void (*setup)(void);
-} hal_user_module_descriptor;
+DYNALIB_FN(0, user_compat, module_user_pre_init_compat, void*(void))
+DYNALIB_FN(1, user_compat, module_user_init_compat, void(void))
+DYNALIB_FN(2, user_compat, module_user_setup_compat, void(void))
+DYNALIB_FN(3, user_compat, module_user_loop_compat, void(void))
 
-int hal_user_module_get_descriptor(hal_user_module_descriptor* desc);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif  /* USER_HAL_H_ */
+DYNALIB_END(user_compat)
