@@ -142,7 +142,7 @@ static bool verify_module(flash_device_t src_dev, uintptr_t src_addr, size_t src
         }
         if ((flags & MODULE_VERIFY_DESTINATION_IS_START_ADDRESS) && module_info_start_addr != dest_addr) {
 #if SOFTDEVICE_MBR_UPDATES
-            if (!(module_func == MODULE_FUNCTION_BOOTLOADER && dest_addr == USER_FIRMWARE_IMAGE_LOCATION)) {
+            if (!(module_func == MODULE_FUNCTION_BOOTLOADER && dest_addr == USER_FIRMWARE_IMAGE_LOCATION_COMPAT)) {
                 return false;
             }
 #else
