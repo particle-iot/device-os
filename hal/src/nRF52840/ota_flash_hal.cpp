@@ -178,6 +178,10 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
             for (unsigned i = 0; i < count; i++) {
                 const auto bounds = module_bounds[i];
                 const auto module = info->modules + i;
+                // IMPORTANT: if both types of modules are present (legacy 128KB and newer 256KB),
+                // 128KB application will take precedence and the newer 256KB application will not
+                // be reported in the modules info. It will be missing from the System Describe,
+                // 'serial inspect` and any other facility that uses HAL_System_Info().
                 if (bounds->module_function == MODULE_FUNCTION_USER_PART && user_module_found) {
                     // Make sure that we report only single user part (either 128KB or 256KB) in the
                     // list of modules.
