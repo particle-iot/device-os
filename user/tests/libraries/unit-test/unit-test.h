@@ -103,6 +103,11 @@ public:
      */
     size_t logSize() const;
 
+    /**
+     * Resize log buffer
+     */
+    TestRunner& logSize(size_t size);
+
     TestRunner& ledEnabled(bool enabled) {
         ledEnabled_ = enabled;
         return *this;

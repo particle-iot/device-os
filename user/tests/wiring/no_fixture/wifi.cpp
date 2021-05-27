@@ -308,7 +308,6 @@ test(WIFI_15_entering_listening_mode_and_enabling_softap_closes_active_sockets_c
     const int resolveAttempts = 5;
     const auto listenTime = 2s;
 
-    Serial.printlnf("on/connect");
     WiFi.on();
     WiFi.connect();
     Particle.connect();
@@ -331,6 +330,11 @@ test(WIFI_15_entering_listening_mode_and_enabling_softap_closes_active_sockets_c
     WiFi.listen(true);
     if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
         delay(listenTime);
+    } else {
+        // We need to make sure that background loop runs
+        for (int i = 0; i < 5; i++) {
+            Particle.process();
+        }
     }
     WiFi.listen(false);
 

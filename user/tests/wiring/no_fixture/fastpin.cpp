@@ -13,7 +13,7 @@ test(FASTPIN_01_MaxDuration_PinSet) {
     const uint32_t MAX_DURATION_PINSET_TICKS = 63;
 #elif HAL_PLATFORM_GEN == 2
     // expected max ticks of pinSetFast / pinResetFast on Gen2
-    const uint32_t MAX_DURATION_PINSET_TICKS = 24;
+    const uint32_t MAX_DURATION_PINSET_TICKS = 25;
 #else
 #error "No gpio fastpin timing benchmark yet measured for this platform"
 #endif

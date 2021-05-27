@@ -60,9 +60,12 @@ int memcmp(const void* s1, const void* s2, size_t n)
 }
 
 __attribute__((used)) void* memset(void* s, int c, size_t n) {
-    uint8_t* p = s;
-    uint8_t v = c & 0xff;
-    while (n--) {
+    // XXX: do not change!
+    // GCC 10 optimizations with LTO enabled break this function otherwise
+    volatile uint8_t* p = (volatile uint8_t*)s;
+    const uint8_t v = c & 0xff;
+    volatile size_t tmp = n;
+    while (tmp--) {
         *p++ = v;
     }
     return s;

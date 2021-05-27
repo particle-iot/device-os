@@ -1822,8 +1822,14 @@ int SaraNcpClient::getMtu() {
 }
 
 int SaraNcpClient::urcs(bool enable) {
+    const NcpClientLock lock(this);
     if (enable) {
         CHECK_TRUE(muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
+        if (ncpId() == PLATFORM_NCP_SARA_U201) {
+            // Make sure the modem is responsive again. U201 modems do take a while to
+            // go back into functioning state
+            CHECK(waitAtResponse(5000, gsm0710::proto::DEFAULT_T2));
+        }
     } else {
         CHECK_TRUE(muxer_.suspendChannel(UBLOX_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
     }

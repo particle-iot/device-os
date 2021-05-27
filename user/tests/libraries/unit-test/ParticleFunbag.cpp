@@ -330,6 +330,13 @@ size_t TestRunner::logSize() const {
     return 0;
 }
 
+TestRunner& TestRunner::logSize(size_t size) {
+    if (logBuf_) {
+        logBuf_->stream.resetBuffer(size);
+    }
+    return *this;
+}
+
 void TestRunner::runSerialConsole() {
     static bool firstFilter = true;
     if (Serial.available()) {
