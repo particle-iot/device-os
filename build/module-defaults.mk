@@ -50,6 +50,7 @@ CFLAGS += -MD -MP -MF $@.d
 CFLAGS += -ffunction-sections -fdata-sections -Wall -Wno-switch -Wno-error=deprecated-declarations -fmessage-length=0
 CFLAGS += -fno-strict-aliasing
 CFLAGS += -DSPARK=1 -DPARTICLE=1
+CFLAGS += -Werror=return-type
 
 CFLAGS += -Wundef
 
