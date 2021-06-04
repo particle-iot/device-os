@@ -138,6 +138,9 @@ const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
 const int IMSI_MAX_RETRY_CNT = 5;
 const int CCID_MAX_RETRY_CNT = 2;
 
+const int UCGED_FIRST_STR_BYTES = 11;
+const int UCGED_SECOND_STR_BYTES = 128;
+
 } // anonymous
 
 SaraNcpClient::SaraNcpClient() {
@@ -701,12 +704,12 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
     CHECK(checkParser());
     CHECK(queryAndParseAtCops(qual));
 
-    // Min and max RSRQ index values multiplied by 100
-    // Min: -19.5 and max: -3
-    const int min_rsrq_mul_by_100 = -1950;
-    const int max_rsrq_mul_by_100 = -300;
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+        // Min and max RSRQ index values multiplied by 100
+        // Min: -19.5 and max: -3
+        const int min_rsrq_mul_by_100 = -1950;
+        const int max_rsrq_mul_by_100 = -300;
 
-    if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
         int rsrp;
         int rsrq_n;
         unsigned long rsrq_f;
@@ -716,9 +719,7 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         qual->quality(255);
 
         // Set UCGED to mode 5 for RSRP/RSRQ values on R410M
-        if (ncpId() == PLATFORM_NCP_SARA_R410) {
-            CHECK_PARSER_OK(parser_.execCommand("AT+UCGED=5"));
-        }
+        CHECK_PARSER_OK(parser_.execCommand("AT+UCGED=5"));
         auto resp = parser_.sendCommand("AT+UCGED?");
 
         int val;
@@ -760,6 +761,34 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         const int r = CHECK_PARSER(resp.readResult());
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
+    } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
+        unsigned rsrp = 0;
+        int rsrq = 0;
+        // Default to 255 in case RSRP/Q are not found
+        qual->strength(255);
+        qual->quality(255);
+        char* ucgedStr = new char[UCGED_SECOND_STR_BYTES];
+        // > AT+UCGED?
+        // < +UCGED: 2
+        // < 6,2,fff <mcc>,fff <mnc>
+        // < 65535,255,255,255,ffff,0000000,65535,00000000,ffff,ff,255 <rsrp>,255 <rsrq>,255,1,255,255,255,255,255,0,255,255,0
+        // < OK
+        auto resp = parser_.sendCommand("AT+UCGED?");
+        while (resp.hasNextLine()) {
+            const int len = CHECK(resp.readLine(ucgedStr, UCGED_SECOND_STR_BYTES));
+            if (len > UCGED_FIRST_STR_BYTES) {
+                const int r = CHECK_PARSER(sscanf(ucgedStr, "%*d,%*d,%*d,%*d,%*x,%*x,%*d,%*x,%*x,%*x,%u,%d,%*[^\n]", &rsrp, &rsrq));
+                if (r >= 1) {
+                    if (rsrp <= 255) {
+                        qual->strength(rsrp);
+                    }
+                    if (rsrq <= 255 && rsrq >= -30) {
+                        qual->quality(rsrq);
+                    }
+                }
+            }
+        }
+        delete[] ucgedStr;
     } else {
         int rxlev, rxqual;
         auto resp = parser_.sendCommand("AT+CSQ");

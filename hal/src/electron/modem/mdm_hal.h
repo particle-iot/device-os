@@ -600,6 +600,7 @@ protected:
     static int _cbUDOPN(int type, const char* buf, int len, CStringHelper* str);
     static int _cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUCGED(int type, const char* buf, int len, NetStatus* status);
+    static int _cbUCGEDR510(int type, const char* buf, int len, NetStatus* status);
     struct CGDCONTparam { char type[8]; char apn[32]; };
     static int _cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param);
     static int _cbURAT(int type, const char *buf, int len, bool *matched_default);
