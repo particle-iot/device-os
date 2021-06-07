@@ -200,6 +200,34 @@
 - [Gen 2] Fix D0 alternate-function being unconditionally reset when calling `Serial1.end()` [#2256](https://github.com/particle-iot/device-os/pull/2256)
 - [Gen 3] Fix an issue with `BLE.scan()` deadlocking [#2220](https://github.com/particle-iot/device-os/pull/2220)
 
+## 2.2.0-rc.1
+
+### FEATURES
+
+- [Boron / B SoM / Electron] Support for SARA R410 05.12 modem firmware [#2317](https://github.com/particle-iot/device-os/pull/2317) [#2319](https://github.com/particle-iot/device-os/pull/2319) [#2318](https://github.com/particle-iot/device-os/pull/2318)
+
+### ENHANCEMENTS
+
+- [Gen 3] Remove XIP support for accessing the external flash [#2302](https://github.com/particle-iot/device-os/pull/2302) [#2321](https://github.com/particle-iot/device-os/pull/2321)
+- Trigger a compiler error when a function returning a value does not do so [#2323](https://github.com/particle-iot/device-os/pull/2323)
+- [Argon] Cache ESP32 MAC address in persistent storage to improve boot-up times [#2327](https://github.com/particle-iot/device-os/pull/2327)
+- [Cellular] Add `CellularSignal::isValid()` and `CellularSignal::operator bool()` APIs [#2212](https://github.com/particle-iot/device-os/pull/2212)
+
+### BUGFIXES
+
+- [Gen 2] Fix unexpected network connection establishment after exiting sleep mode when only `Network.on()` was called [#2309](https://github.com/particle-iot/device-os/pull/2309)
+- [Gen 2] Fix unexpected network connection establishment when the modem or WiFi initialization failes, but only `Network.on()` was called [#2309](https://github.com/particle-iot/device-os/pull/2309)
+- [Photon / P1] Make sure to close all sockets when deinitializing WICED WLAN connectivity subsystem [#2313](https://github.com/particle-iot/device-os/pull/2313) [#2321](https://github.com/particle-iot/device-os/pull/2321)
+- [B5 SoM / Tracker] Fixes external flash DFU definition on in bootloader to use 4KB sectors [399b8a0](https://github.com/particle-iot/device-os/pull/2321/commits/399b8a085898101adcf396ef03ef7bb9bbbf479c) [#2321](https://github.com/particle-iot/device-os/pull/2321)
+- Fix non-MBR-based bootloader updates [#2327]((https://github.com/particle-iot/device-os/pull/2327))
+
+### INTERNAL
+
+- Add an integration test to validate network/cloud connection time SLOs [#2312](https://github.com/particle-iot/device-os/pull/2312) [#2320](https://github.com/particle-iot/device-os/pull/2320) [#2321](https://github.com/particle-iot/device-os/pull/2321)
+- [ci] Fix MarkupSafe weirdness [#2317](https://github.com/particle-iot/device-os/pull/2317)
+- Add `.bundleignore` for Workbench Device OS source code bundles [#2326](https://github.com/particle-iot/device-os/pull/2326)
+- Manage GCC dependencies with `.workbench/manifest.json` [d94f08030](https://github.com/particle-iot/device-os/commit/d94f0803068026d0b2aa0af426ba80c8b62299c7)
+
 ## 2.1.0
 
 ### FEATURES
