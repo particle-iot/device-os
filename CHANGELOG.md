@@ -1,3 +1,29 @@
+## 2.2.0-rc.1
+
+### FEATURES
+
+- [Cellular] Support for 05.12 firmware version of SARA R410 [#2317](https://github.com/particle-iot/device-os/pull/2317) [#2318](https://github.com/particle-iot/device-os/pull/2318) [#2319](https://github.com/particle-iot/device-os/pull/2319)
+
+### BUGFIXES
+
+- [Gen 3] Remove XIP usage when accessing the OTA region in the external flash [#2302](https://github.com/particle-iot/device-os/pull/2302)
+- [Gen 2] Network connection is established unexpectedly after waking up from certain sleep modes [#2309](https://github.com/particle-iot/device-os/pull/2309)
+- [Photon/P1] Race condition with TCP Client Stop call and Internal Disconnect Code while in listening mode [#2313](https://github.com/particle-iot/device-os/pull/2313)
+
+### INTERNAL
+
+- Add an integration test to validate network/cloud connection time SLOs [#2312](https://github.com/particle-iot/device-os/pull/2312)
+- [ci] fix MarkupSafe weirdness [#2317](https://github.com/particle-iot/device-os/pull/2317)
+- Print debug info in integration tests [#2320](https://github.com/particle-iot/device-os/pull/2320)
+- [build] force -Wreturn-type to always trigger an error] [#2323](https://github.com/particle-iot/device-os/pull/2323)
+- [test] wiring/no_fixture_stress: disable EXFLASH_00_ConcurrentXipAndQspiUsageStress when XIP is prohibited] [c492505](https://github.com/particle-iot/device-os/pull/2321/commits/c492505f8dbd4dceb1b7341d5114c294303fa1cc) [#2321](https://github.com/particle-iot/device-os/pull/2321)
+- [test] wiring/no_fixture: make sure that background loop is processed in WIFI_15_entering_listening_mode_and_enabling_softap_closes_active_sockets_c [ab39852](https://github.com/particle-iot/device-os/pull/2321/commits/ab398522419d5e1a361b5f4ccf09067289c61476) [#2321](https://github.com/particle-iot/device-os/pull/2321)
+- [test] integration/slo/startup: remove connect time (we have a separate test for that) and account for P1/Photon app size variations [a409ee1](https://github.com/particle-iot/device-os/pull/2321/commits/a409ee107be89229c7b7547c72c1c8683e733350) [#2321](https://github.com/particle-iot/device-os/pull/2321)
+- [test] integration/slo/connect_time: add signal strength/quality metrics to stats output, output using log buffer over USB instead of publishes [61c5ec1](https://github.com/particle-iot/device-os/pull/2321/commits/61c5ec1894e3ee3a151631eb9d7e97661ca56519) [#2321](https://github.com/particle-iot/device-os/pull/2321)
+- [test] integration/slo/connect_time: auto != auto& ! [7842ae1](https://github.com/particle-iot/device-os/pull/2321/commits/7842ae16a0d7edb2b69ae3cb3bf1e5ca0fcff754)  [#2321](https://github.com/particle-iot/device-os/pull/2321)
+- [bootloader] dfu: fixes external flash DFU definition on B5 SoMs and Trackers to use 4KB sectors [399b8a0](https://github.com/particle-iot/device-os/pull/2321/commits/399b8a085898101adcf396ef03ef7bb9bbbf479c) [#2321](https://github.com/particle-iot/device-os/pull/2321)
+- Print debug info in integration tests [#2320](https://github.com/particle-iot/device-os/pull/2320)
+
 ## 2.1.0
 
 ### FEATURES
