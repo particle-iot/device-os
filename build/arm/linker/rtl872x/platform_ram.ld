@@ -55,7 +55,7 @@ _system_backup_ram_start = _system_backup_ram_end - _system_backup_ram_size;
 
 /* Main stack */
 _stack_size = __STACKSIZE__; /* Defined in modules/shared/nRF52840/part1_build.mk */
-_stack_end = _system_backup_ram_start;
+_stack_end = _ram_start;
 _stack_start = _stack_end - _stack_size; /* The lowest address of the stack */
 
 /* User part */

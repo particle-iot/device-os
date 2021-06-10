@@ -17,13 +17,4 @@
 
 #pragma once
 
-#include <basic_types.h>
-#include <string.h>
-
-inline void *_memcpy(void *s1, const void *s2, SIZE_T n) {
-    return memcpy(s1, s2, n);
-}
-
-inline void *_memset(void *s, int c, SIZE_T n) {
-    return memset(s, c, n);
-}
+#include "swlib/string/memproc.h"

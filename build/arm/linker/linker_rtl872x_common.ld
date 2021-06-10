@@ -47,6 +47,8 @@ SECTIONS
 
     PROVIDE(link_rtl_header_ram_size = link_rtl_header_ram_location_end - link_rtl_header_ram_location);
 
+    INCLUDE module_info.ld
+
     /* for Cortex devices, the beginning of the startup code is stored in the .isr_vector section, which goes to FLASH */
     .isr_vector :
     {
@@ -54,8 +56,6 @@ SECTIONS
         KEEP(*(.isr_vector))            /* Startup code */
         . = ALIGN(4);
     } >APP_FLASH
-
-    INCLUDE module_info.ld
 
     .flashtext :
     {
@@ -76,6 +76,10 @@ SECTIONS
         *(.rodata*)
         *(.glue_7)
         *(.glue_7t)
+        *(.boot.ram.text)
+        *(.boot.ram.text.*)
+        *(.boot.rodata)
+        *(.boot.rodata*)
 
         . = ALIGN(0x4);
 
@@ -122,6 +126,10 @@ SECTIONS
 
         *(.data)
         *(.data.*)
+        *(.boot.ram.data)
+        *(.boot.ram.data.*)
+        *(.image2.ram.text)
+        *(.image2.ram.text.*)
 
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
@@ -141,6 +149,8 @@ SECTIONS
 
         *(.bss)
         *(.bss*)
+        *(.boot.ram.bss)
+        *(.boot.ram.bss*)
         *(COMMON)
 
         . = ALIGN(4);
@@ -212,27 +222,3 @@ ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module in
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 
 ASSERT ( ORIGIN(RAM) >= _ram_start && ORIGIN(RAM) + LENGTH(RAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );
-ASSERT ( link_rtl_header_location_end - link_rtl_header_location == 0x20, "rtl872x header is invalid" );
-
-SECTIONS {
-    IS_FPGA_VERIF = 0x1000039c;
-    CPU_ClkGet = 0x1010e515;
-    irq_table_init = 0x10110795;
-    irq_enable = 0x101109d1;
-    irq_disable = 0x101109ed;
-    irq_set_priority = 0x10110a11;
-    irq_get_priority = 0x10110a3d;
-    irq_set_pending = 0x10110a65;
-    irq_get_pending = 0x10110a81;
-    irq_clear_pending = 0x10110aa5;
-    irq_register = 0x10110ac1;
-    irq_unregister = 0x10110b0d;
-    mpu_enable = 0x1010cbd5;
-    mpu_disable = 0x1010cbed;
-    mpu_init = 0x1010cc01;
-    mpu_set_mem_attr = 0x1010cc3d;
-    mpu_region_cfg = 0x1010ccb1;
-    mpu_entry_free = 0x1010cdb5;
-    mpu_entry_alloc = 0x1010cdc1;
-    DiagPrintf = 0x1010a3f5;
-}

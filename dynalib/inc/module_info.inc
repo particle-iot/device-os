@@ -102,8 +102,6 @@ extern char link_module_end;
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER || MODULE_FUNCTION == MOD_FUNC_MONO_FIRMWARE
     #if !defined(MODULE_INDEX)
         #define MODULE_INDEX 0
-    #elif MODULE_INDEX != 0
-        #error MODULE_INDEX must be 0 for bootloader and monolithic firmware.
     #endif
 #endif
 

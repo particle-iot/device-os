@@ -4,6 +4,10 @@
  ******************************************************************************
 */
 
+#ifdef ARM_CPU_CORTEX_M23
+#include "platform_opts_m23.h"
+#else
+
 #ifndef __PLATFORM_OPTS_H__
 #define __PLATFORM_OPTS_H__
 
@@ -556,4 +560,6 @@ in lwip_opt.h for support uart adapter*/
 #define CONFIG_FAST_DHCP 0
 #endif
 
-#endif
+#endif // __PLATFORM_OPTS_H__
+
+#endif // !ARM_CPU_CORTEX_M23
