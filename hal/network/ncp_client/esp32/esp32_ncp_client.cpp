@@ -564,7 +564,7 @@ int Esp32NcpClient::initReady() {
     MacAddress mac = {};
     CHECK(getFirmwareModuleVersionImpl(&mver));
     CHECK(getMacAddressImpl(&mac));
-    CHECK(wifiNcpUpdateCachedInfo(mver, mac));
+    CHECK(wifiNcpUpdateInfoCache(mver, mac));
 
     if (mver >= ESP32_NCP_MIN_MVER_WITH_CMUX) {
 #if HAL_PLATFORM_WIFI_NCP_SDIO
