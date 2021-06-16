@@ -30,12 +30,16 @@ namespace particle {
 
 using namespace particle::services;
 
-int wifiNcpUpdateCachedInfo(uint16_t version, MacAddress mac) {
+int wifiNcpUpdateInfoCache(uint16_t version, MacAddress mac) {
+    int result = 0;
     uint16_t cached = 0;
     int versionRes = SystemCache::instance().get(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION, &cached, sizeof(cached));
     if (versionRes != sizeof(cached) || cached != version) {
         LOG(INFO, "Updating ESP32 cached module version to %u", version);
         versionRes = SystemCache::instance().set(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION, &version, sizeof(version));
+    }
+    if (versionRes < 0) {
+        result = versionRes;
     }
     MacAddress cachedMac = {};
     int macRes = SystemCache::instance().get(SystemCacheKey::WIFI_NCP_MAC_ADDRESS, cachedMac.data, sizeof(cachedMac.data));
@@ -45,14 +49,17 @@ int wifiNcpUpdateCachedInfo(uint16_t version, MacAddress mac) {
         LOG(INFO, "Updating ESP32 cached MAC to %s", macStr);
         macRes = SystemCache::instance().set(SystemCacheKey::WIFI_NCP_MAC_ADDRESS, mac.data, sizeof(mac.data));
     }
-    return std::min(macRes, versionRes);
+    if (macRes < 0) {
+        result = macRes;
+    }
+    return result;
 }
 
 int wifiNcpGetCachedMacAddress(MacAddress* ncpMac) {
     MacAddress mac = INVALID_MAC_ADDRESS;
     int res = SystemCache::instance().get(SystemCacheKey::WIFI_NCP_MAC_ADDRESS, mac.data, sizeof(mac.data));
     if (res != sizeof(mac.data)) {
-        return SYSTEM_ERROR_BAD_DATA;
+        return SYSTEM_ERROR_NOT_FOUND;
     }
     if (ncpMac) {
         *ncpMac = mac;
@@ -64,7 +71,7 @@ int wifiNcpGetCachedModuleVersion(uint16_t* ncpVersion) {
     uint16_t version = 0;
     int res = SystemCache::instance().get(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION, &version, sizeof(version));
     if (res != sizeof(version)) {
-        return SYSTEM_ERROR_BAD_DATA;
+        return SYSTEM_ERROR_NOT_FOUND;
     }
     LOG(TRACE, "Cached ESP32 NCP firmware version: %d", (int)version);
     if (ncpVersion) {
@@ -74,10 +81,17 @@ int wifiNcpGetCachedModuleVersion(uint16_t* ncpVersion) {
 }
 
 int wifiNcpInvalidateInfoCache() {
+    int result = 0;
     LOG(TRACE, "Invalidating cached ESP32 NCP info");
     int versionError = SystemCache::instance().del(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION);
+    if (versionError < 0) {
+        result = versionError;
+    }
     int macError = SystemCache::instance().del(SystemCacheKey::WIFI_NCP_MAC_ADDRESS);
-    return std::min(macError, versionError);
+    if (macError < 0) {
+        result = macError;
+    }
+    return result;
 }
 
 } // particle

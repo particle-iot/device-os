@@ -27,6 +27,6 @@ WifiNetworkManager* wifiNetworkManager();
 int wifiNcpGetCachedMacAddress(MacAddress* mac);
 int wifiNcpGetCachedModuleVersion(uint16_t* version);
 int wifiNcpInvalidateInfoCache();
-int wifiNcpUpdateCachedInfo(uint16_t version, MacAddress mac);
+int wifiNcpUpdateInfoCache(uint16_t version, MacAddress mac);
 
 } // particle

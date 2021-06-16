@@ -527,7 +527,7 @@ int Esp32NcpClient::initReady() {
     MacAddress mac = {};
     CHECK(getFirmwareModuleVersionImpl(&mver));
     CHECK(getMacAddressImpl(&mac));
-    CHECK(wifiNcpUpdateCachedInfo(mver, mac));
+    CHECK(wifiNcpUpdateInfoCache(mver, mac));
 
         // If it's < ESP32_NCP_MIN_MVER_WITH_CMUX, AT+CMUX is not supposed to work
         // We simply won't initialize it
