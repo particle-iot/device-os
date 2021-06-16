@@ -30,6 +30,7 @@
 #include "stream_util.h"
 #include "str_util.h"
 #include "check.h"
+#include "network/ncp/wifi/ncp.h"
 
 #include <cstdlib>
 
@@ -435,6 +436,10 @@ int Esp32NcpClient::scan(WifiScanCallback callback, void* data) {
 int Esp32NcpClient::getMacAddress(MacAddress* addr) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
+    return getMacAddressImpl(addr);
+}
+
+int Esp32NcpClient::getMacAddressImpl(MacAddress* addr) {
     auto resp = parser_.sendCommand("AT+GETMAC=0"); // WiFi station
     char addrStr[MAC_ADDRESS_STRING_SIZE + 1] = {};
     int r = CHECK_PARSER(resp.scanf("+GETMAC: \"%32[^\"]\"", addrStr));
@@ -519,6 +524,10 @@ int Esp32NcpClient::initReady() {
         // Check current NCP firmware module version
         uint16_t mver = 0;
         CHECK(getFirmwareModuleVersionImpl(&mver));
+    MacAddress mac = {};
+    CHECK(getFirmwareModuleVersionImpl(&mver));
+    CHECK(getMacAddressImpl(&mac));
+    CHECK(wifiNcpUpdateCachedInfo(mver, mac));
 
         // If it's < ESP32_NCP_MIN_MVER_WITH_CMUX, AT+CMUX is not supposed to work
         // We simply won't initialize it
