@@ -159,7 +159,7 @@ int DecompressStream::write(const char* buffer, const size_t length)  {
 int bootloader_update(const void* bootloader_image, unsigned length)
 {
     HAL_Bootloader_Lock(false);
-    int result = (FLASH_CopyMemory(FLASH_INTERNAL, (uint32_t)bootloader_image,
+    int result = (FLASH_CopyMemory(FLASH_SERIAL, (uint32_t)bootloader_image,
         FLASH_INTERNAL, BOOTLOADER_ADDR, length, MODULE_FUNCTION_BOOTLOADER,
         MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION));
     HAL_Bootloader_Lock(true);
@@ -167,6 +167,8 @@ int bootloader_update(const void* bootloader_image, unsigned length)
 }
 
 #ifdef HAL_REPLACE_BOOTLOADER
+
+#error "This is currently broken due to removal of XIP support"
 
 /**
  * Manages upgrading the bootloader.
