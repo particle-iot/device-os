@@ -22,7 +22,8 @@
 namespace particle { namespace services {
 
 enum class SystemCacheKey : uint16_t {
-    WIFI_NCP_FIRMWARE_VERSION = 0x0000
+    WIFI_NCP_FIRMWARE_VERSION = 0x0000,
+    WIFI_NCP_MAC_ADDRESS = 0x0001
 };
 
 class SystemCache {

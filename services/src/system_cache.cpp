@@ -16,6 +16,7 @@
  */
 
 #include "hal_platform.h"
+#include <limits>
 
 #if HAL_PLATFORM_FILESYSTEM
 
@@ -40,8 +41,8 @@ int SystemCache::get(SystemCacheKey key, void* value, size_t length) {
 }
 
 int SystemCache::set(SystemCacheKey key, const void* value, size_t length) {
-    CHECK_TRUE(length <= sizeof(uint16_t), SYSTEM_ERROR_TOO_LARGE);
-    return tlv_.set(to_underlying(key), (const uint8_t*)value, length);
+    CHECK_TRUE(length <= std::numeric_limits<uint16_t>::max(), SYSTEM_ERROR_TOO_LARGE);
+    return tlv_.set(to_underlying(key), (const uint8_t*)value, length, 0);
 }
 
 int SystemCache::del(SystemCacheKey key) {
