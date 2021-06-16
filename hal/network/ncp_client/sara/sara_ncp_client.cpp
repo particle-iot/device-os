@@ -565,7 +565,25 @@ int SaraNcpClient::getIccidImpl(char* buf, size_t size) {
 int SaraNcpClient::getIccid(char* buf, size_t size) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
-    return getIccidImpl(buf, size);
+
+    // ICCID command errors if CFUN is 0. Run CFUN=4 before reading ICCID.
+    auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
+    int cfunVal = -1;
+    auto retCfun = CHECK_PARSER(respCfun.scanf("+CFUN: %d", &cfunVal));
+    CHECK_PARSER_OK(respCfun.readResult());
+    if (retCfun == 1 && cfunVal == 0) {
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4,0"));
+    }
+
+    auto res = getIccidImpl(buf, size);
+
+    // Modify CFUN back to 0 if it was changed previously,
+    // as CFUN:0 is needed to prevent long reg problems on certain SIMs
+    if (cfunVal == 0) {
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+    }
+
+    return res;
 }
 
 int SaraNcpClient::getImei(char* buf, size_t size) {
