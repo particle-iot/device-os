@@ -74,7 +74,8 @@ private:
     static err_t initCb(netif *netif);
     err_t initInterface();
 
-    int queryMacAddress();
+    int queryMacAddress(MacAddress& mac);
+    int configureMacAddress();
     
     static void loop(void* arg);
 

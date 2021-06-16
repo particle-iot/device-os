@@ -45,6 +45,7 @@ LOG_SOURCE_CATEGORY("net.esp32ncp")
 #include "check.h"
 #include <lwip/stats.h>
 #include "memp_hook.h"
+#include "ncp.h"
 
 using namespace particle::net;
 
@@ -115,24 +116,36 @@ err_t Esp32NcpNetif::initInterface() {
     return ERR_OK;
 }
 
-int Esp32NcpNetif::queryMacAddress() {
-    auto r = wifiMan_->ncpClient()->on();
+int Esp32NcpNetif::queryMacAddress(MacAddress& mac) {
+    auto r = wifiNcpGetCachedMacAddress(&mac);
+    if (!r && mac != INVALID_MAC_ADDRESS && mac != INVALID_ZERO_MAC_ADDRESS) {
+        return 0;
+    }
+
+    const auto ncpClient = wifiMan_->ncpClient();
+    const NcpClientLock lock(ncpClient);
+    r = ncpClient->on();
     if (r) {
         LOG(TRACE, "Failed to initialize ESP32 NCP client: %d", r);
         return r;
     }
+    r = ncpClient->getMacAddress(&mac);
+    if (r) {
+        LOG(ERROR, "Failed to query MAC address: %d", r);
+    }
+    return r;
+}
+
+int Esp32NcpNetif::configureMacAddress() {
     MacAddress mac = {};
-    if (!memcmp(interface()->hwaddr, mac.data, interface()->hwaddr_len)) {
-        // Query MAC address
-        r = wifiMan_->ncpClient()->getMacAddress(&mac);
-        if (r) {
-            LOG(TRACE, "Failed to query ESP32 MAC address: %d", r);
-            return r;
-        }
+    CHECK(queryMacAddress(mac));
+    if (memcmp(interface()->hwaddr, mac.data, interface()->hwaddr_len)) {
+        char macStr[MAC_ADDRESS_STRING_SIZE + 1] = {};
+        macAddressToString(mac, macStr, sizeof(macStr));
+        LOG(INFO, "Setting WiFi interface MAC to %s", macStr);
         memcpy(interface()->hwaddr, mac.data, interface()->hwaddr_len);
     }
-
-    return r;
+    return 0;
 }
 
 void Esp32NcpNetif::setExpectedInternalState(NetifEvent ev) {
@@ -162,11 +175,8 @@ void Esp32NcpNetif::loop(void* arg) {
     Esp32NcpNetif* self = static_cast<Esp32NcpNetif*>(arg);
     unsigned int timeout = 100;
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
-    // FIXME: we shouldn't need to do this on every boot, for now
-    // bypass mac address query for platforms that don't require
-    // connectivity.
-    self->queryMacAddress();
-    self->wifiMan_->ncpClient()->off();
+    // Fetches from cache, fall back to querying ESP32 directly
+    self->configureMacAddress();
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
     while(!self->exit_) {
         self->wifiMan_->ncpClient()->enable(); // Make sure the client is enabled
@@ -287,9 +297,10 @@ int Esp32NcpNetif::getNcpState(unsigned int* state) const {
 }
 
 int Esp32NcpNetif::upImpl() {
-    auto r = queryMacAddress();
-    if (r) // Failed to query MAC address
+    auto r = configureMacAddress();
+    if (r) { // Failed to query MAC address
         return r;
+    }
     // Ensure that we are disconnected
     downImpl();
     r = wifiMan_->connect();

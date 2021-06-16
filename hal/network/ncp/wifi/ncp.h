@@ -18,9 +18,15 @@
 #pragma once
 
 #include "wifi_network_manager.h"
+#include "addr_util.h"
 
 namespace particle {
 
 WifiNetworkManager* wifiNetworkManager();
+
+int wifiNcpGetCachedMacAddress(MacAddress* mac);
+int wifiNcpGetCachedModuleVersion(uint16_t* version);
+int wifiNcpInvalidateInfoCache();
+int wifiNcpUpdateInfoCache(uint16_t version, MacAddress mac);
 
 } // particle

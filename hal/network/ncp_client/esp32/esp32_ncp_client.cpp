@@ -33,9 +33,9 @@ LOG_SOURCE_CATEGORY("ncp.esp32.client");
 #include "stream_util.h"
 #include "str_util.h"
 #include "check.h"
+#include "ncp.h"
 
 #include <cstdlib>
-#include "system_cache.h"
 
 #define CHECK_PARSER(_expr) \
         ({ \
@@ -74,21 +74,6 @@ void espReset() {
 
 size_t espEscape(const char* src, char* dest, size_t destSize) {
     return escape(src, ",\"\\", '\\', dest, destSize);
-}
-
-int updateCachedNcpFirmwareVersion(uint16_t version) {
-#if HAL_PLATFORM_NCP_COUNT > 1
-    using namespace particle::services;
-
-    uint16_t cached = 0;
-    int r = SystemCache::instance().get(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION, &cached, sizeof(cached));
-    if (r == sizeof(cached) && cached == version) {
-        return 0;
-    }
-    return SystemCache::instance().set(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION, &version, sizeof(version));
-#else
-    return 0;
-#endif // HAL_PLATFORM_NCP_COUNT > 0
 }
 
 const auto ESP32_NCP_MAX_MUXER_FRAME_SIZE = 1536;
@@ -292,11 +277,7 @@ int Esp32NcpClient::getFirmwareVersionString(char* buf, size_t size) {
 int Esp32NcpClient::getFirmwareModuleVersion(uint16_t* ver) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
-    const int r = getFirmwareModuleVersionImpl(ver);
-    if (!r) {
-        updateCachedNcpFirmwareVersion(*ver);
-    }
-    return r;
+    return getFirmwareModuleVersionImpl(ver);
 }
 
 int Esp32NcpClient::getFirmwareModuleVersionImpl(uint16_t* ver) {
@@ -491,6 +472,10 @@ int Esp32NcpClient::scan(WifiScanCallback callback, void* data) {
 int Esp32NcpClient::getMacAddress(MacAddress* addr) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
+    return getMacAddressImpl(addr);
+}
+
+int Esp32NcpClient::getMacAddressImpl(MacAddress* addr) {
     auto resp = parser_.sendCommand("AT+GETMAC=0"); // WiFi station
     char addrStr[MAC_ADDRESS_STRING_SIZE + 1] = {};
     int r = CHECK_PARSER(resp.scanf("+GETMAC: \"%32[^\"]\"", addrStr));
@@ -576,7 +561,10 @@ int Esp32NcpClient::waitReady() {
 
 int Esp32NcpClient::initReady() {
     uint16_t mver = 0;
+    MacAddress mac = {};
     CHECK(getFirmwareModuleVersionImpl(&mver));
+    CHECK(getMacAddressImpl(&mac));
+    CHECK(wifiNcpUpdateInfoCache(mver, mac));
 
     if (mver >= ESP32_NCP_MIN_MVER_WITH_CMUX) {
 #if HAL_PLATFORM_WIFI_NCP_SDIO
