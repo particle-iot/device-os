@@ -210,10 +210,15 @@ int TlvFile::del(uint16_t key, int index) {
 
     int ret = 0;
 
+    bool deleted = false;
+
     for (;;) {
         uint16_t dataSize = 0;
         ssize_t pos = find(key, index, &dataSize);
         if (pos < 0) {
+            if (index < 0 && deleted) {
+                return ret;
+            }
             return pos;
         }
 
@@ -279,6 +284,9 @@ int TlvFile::del(uint16_t key, int index) {
             break;
         }
 
+        if (!ret) {
+            deleted = true;
+        }
 
         if (ret || index >= 0) {
             break;
