@@ -28,6 +28,7 @@ public:
     virtual int getNetworkInfo(WifiNetworkInfo* info) = 0;
     virtual int scan(WifiScanCallback callback, void* data) = 0;
     virtual int getMacAddress(MacAddress* addr) = 0;
+    virtual int getFirmwareModuleVersion(uint16_t* version) = 0;
 };
 
 } // particle

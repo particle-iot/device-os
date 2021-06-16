@@ -101,6 +101,7 @@ private:
     void connectionState(NcpConnectionState state);
     void parserError(int error);
     int getFirmwareModuleVersionImpl(uint16_t* ver);
+    int getMacAddressImpl(MacAddress* addr);
     int espOff();
 };
 

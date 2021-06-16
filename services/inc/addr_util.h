@@ -29,6 +29,7 @@ struct MacAddress {
 };
 
 const MacAddress INVALID_MAC_ADDRESS = { { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
+const MacAddress INVALID_ZERO_MAC_ADDRESS = { { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
 
 const size_t MAC_ADDRESS_STRING_SIZE = 17;
 

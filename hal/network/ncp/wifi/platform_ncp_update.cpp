@@ -95,44 +95,28 @@ private:
     ReadStreamFunc readFunc_;
 };
 
-int invalidateWifiNcpVersionCache() {
-#if HAL_PLATFORM_NCP_COUNT > 1
-    using namespace particle::services;
-    // Cache will be updated by the NCP client itself
-    LOG(TRACE, "Invalidating cached ESP32 NCP firmware version");
-    return SystemCache::instance().del(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION);
-#else
-    return 0;
-#endif // HAL_PLATFORM_NCP_COUNT > 1
-}
-
 int getWifiNcpFirmwareVersion(uint16_t* ncpVersion) {
     uint16_t version = 0;
-#if HAL_PLATFORM_NCP_COUNT > 1
-    using namespace particle::services;
-    int res = SystemCache::instance().get(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION, &version, sizeof(version));
-    if (res == sizeof(version)) {
-        LOG(TRACE, "Cached ESP32 NCP firmware version: %d", (int)version);
+    int r = particle::wifiNcpGetCachedModuleVersion(&version);
+    if (!r && version > 0) {
         *ncpVersion = version;
         return 0;
     }
-
-    if (res >= 0) {
-        invalidateWifiNcpVersionCache();
-    }
-#endif // HAL_PLATFORM_NCP_COUNT > 1
 
     // Not present in cache or caching not supported, call into NCP client
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
     const particle::NcpClientLock lock(ncpClient);
-    const particle::NcpPowerState ncpPwrState = ncpClient->ncpPowerState();
+    // const particle::NcpPowerState ncpPwrState = ncpClient->ncpPowerState();
     CHECK(ncpClient->on());
     CHECK(ncpClient->getFirmwareModuleVersion(&version));
     *ncpVersion = version;
-    if (ncpPwrState == particle::NcpPowerState::OFF) {
-        CHECK(ncpClient->off());
-    }
+    // This is now taken care of by Esp32NcpNetif, leaving here
+    // just for reference when backporting to 2.x LTS with slightly
+    // less smart behavior.
+    // if (ncpPwrState == particle::NcpPowerState::OFF) {
+    //     CHECK(ncpClient->off());
+    // }
 
     return 0;
 }
@@ -163,7 +147,7 @@ int platform_ncp_update_module(const hal_module_t* module) {
     if (r == 0) {
         LOG(INFO, "Updating ESP32 firmware from version %d to version %d", version, module->info.module_version);
     }
-    invalidateWifiNcpVersionCache();
+    particle::wifiNcpInvalidateInfoCache();
     r = ncpClient->updateFirmware(&moduleStream, length);
     LED_On(PARTICLE_LED_RGB);
     CHECK(r);
