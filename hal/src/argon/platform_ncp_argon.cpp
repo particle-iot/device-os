@@ -1,7 +1,27 @@
+/*
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHAN'TABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#undef LOG_COMPILE_TIME_LEVEL
+
 #include "platform_ncp.h"
 #include "network/ncp/wifi/ncp.h"
 #include "network/ncp/wifi/wifi_network_manager.h"
 #include "network/ncp/wifi/wifi_ncp_client.h"
+#include "network/ncp/ncp_client.h"
 #include "led_service.h"
 #include "check.h"
 #include "scope_guard.h"
@@ -13,8 +33,6 @@
 #include "exflash_hal.h"
 #include "flash_hal.h"
 #include <functional>
-#include <algorithm>
-
 #include <algorithm>
 
 PlatformNCPIdentifier platform_current_ncp_identifier() {
@@ -81,39 +99,28 @@ private:
     ReadStreamFunc readFunc_;
 };
 
-int invalidateWifiNcpVersionCache() {
-    using namespace particle::services;
-    // Cache will be updated by the NCP client itself
-    LOG(TRACE, "Invalidating cached ESP32 NCP firmware version");
-    return SystemCache::instance().del(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION);
-}
-
 int getWifiNcpFirmwareVersion(uint16_t* ncpVersion) {
     uint16_t version = 0;
-
-    using namespace particle::services;
-    int res = SystemCache::instance().get(SystemCacheKey::WIFI_NCP_FIRMWARE_VERSION, &version, sizeof(version));
-    if (res == sizeof(version)) {
-        LOG(TRACE, "Cached ESP32 NCP firmware version: %d", (int)version);
+    int r = particle::wifiNcpGetCachedModuleVersion(&version);
+    if (!r && version > 0) {
         *ncpVersion = version;
         return 0;
-    }
-
-    if (res >= 0) {
-        invalidateWifiNcpVersionCache();
     }
 
     // Not present in cache or caching not supported, call into NCP client
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
     const particle::NcpClientLock lock(ncpClient);
-    const particle::NcpPowerState ncpPwrState = ncpClient->ncpPowerState();
+    // const particle::NcpPowerState ncpPwrState = ncpClient->ncpPowerState();
     CHECK(ncpClient->on());
     CHECK(ncpClient->getFirmwareModuleVersion(&version));
     *ncpVersion = version;
-    if (ncpPwrState == particle::NcpPowerState::OFF) {
-        CHECK(ncpClient->off());
-    }
+    // This is now taken care of by Esp32NcpNetif, leaving here
+    // just for reference when backporting to 2.x LTS with slightly
+    // less smart behavior.
+    // if (ncpPwrState == particle::NcpPowerState::OFF) {
+    //     CHECK(ncpClient->off());
+    // }
 
     return 0;
 }
@@ -144,7 +151,7 @@ int platform_ncp_update_module(const hal_module_t* module) {
     if (r == 0) {
         LOG(INFO, "Updating ESP32 firmware from version %d to version %d", version, module->info.module_version);
     }
-    invalidateWifiNcpVersionCache();
+    particle::wifiNcpInvalidateInfoCache();
     r = ncpClient->updateFirmware(&moduleStream, length);
     LED_On(LED_RGB);
     CHECK(r);
