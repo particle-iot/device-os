@@ -203,6 +203,9 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
         case PLATFORM_NCP_SARA_R410:
             info->dev = DEV_SARA_R410;
             break;
+        case PLATFORM_NCP_SARA_R510:
+            info->dev = DEV_SARA_R510;
+            break;
         case PLATFORM_NCP_QUECTEL_BG96:
             info->dev = DEV_QUECTEL_BG96;
             break;

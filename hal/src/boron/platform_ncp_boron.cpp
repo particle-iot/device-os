@@ -29,6 +29,7 @@ bool isValidNcpId(uint8_t id) {
     case PlatformNCPIdentifier::PLATFORM_NCP_SARA_U201:
     case PlatformNCPIdentifier::PLATFORM_NCP_SARA_G350:
     case PlatformNCPIdentifier::PLATFORM_NCP_SARA_R410:
+    case PlatformNCPIdentifier::PLATFORM_NCP_SARA_R510:
         return true;
     default:
         return false;
@@ -39,17 +40,24 @@ bool isValidNcpId(uint8_t id) {
 
 PlatformNCPIdentifier platform_primary_ncp_identifier() {
     // Check the DCT
-    uint8_t ncpId = 0;
-    int r = dct_read_app_data_copy(DCT_NCP_ID_OFFSET, &ncpId, 1);
-    if (r < 0 || !isValidNcpId(ncpId)) {
-        // Check the OTP flash
-        r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, NCP_ID_OTP_ADDRESS, &ncpId, 1);
-        if (r < 0 || !isValidNcpId(ncpId)) {
-            ncpId = PlatformNCPIdentifier::PLATFORM_NCP_UNKNOWN;
-        }
-    }
-    return (PlatformNCPIdentifier)ncpId;
+    // uint8_t ncpId = 0;
+    // int r = dct_read_app_data_copy(DCT_NCP_ID_OFFSET, &ncpId, 1);
+    // if (r < 0 || !isValidNcpId(ncpId)) {
+    //     // Check the OTP flash
+    //     r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, NCP_ID_OTP_ADDRESS, &ncpId, 1);
+    //     if (r < 0 || !isValidNcpId(ncpId)) {
+    //         ncpId = PlatformNCPIdentifier::PLATFORM_NCP_UNKNOWN;
+    //     }
+    // }
+    // return (PlatformNCPIdentifier)ncpId;
+
+    // FIXME: REMOVE THIS BEFORE MERGING!!!!!!
+    // FIXME: REMOVE THIS BEFORE MERGING!!!!!!
+    // FIXME: REMOVE THIS BEFORE MERGING!!!!!!
+    (void)isValidNcpId(PLATFORM_NCP_SARA_R510);
+    return PLATFORM_NCP_SARA_R510;
 }
+
 
 int platform_ncp_get_info(int idx, PlatformNCPInfo* info) {
     if (idx == 0 && info) {
