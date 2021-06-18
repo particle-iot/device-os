@@ -303,6 +303,10 @@ void MDMParser::setPowerMode(int mode) {
     _power_mode = mode;
 }
 
+bool MDMParser::modemIsSaraRxFamily() {
+    return ((_dev.dev == DEV_SARA_R410) || (_dev.dev == DEV_SARA_R510));
+}
+
 void MDMParser::cancel(void) {
     if (!_cancel_all_operations) {
         MDM_INFO("\r\n[ Modem::cancel ] = = = = = = = = = = = = = = =");
@@ -376,11 +380,12 @@ int MDMParser::sendFormattedWithArgs(const char* format, va_list args) {
 
 int MDMParser::_checkAtResponse(bool fastTimeout /* = false */)
 {
+    //MDM_INFO("_checkAtResponse\r\n");
     sendFormated("AT\r\n");
     int resp = waitFinalResp(nullptr, nullptr, fastTimeout ? AT_TIMEOUT_POWERON : AT_TIMEOUT);
 
     // R410 Power Savings Mode currently disabled, therefore this only affects all other modems
-    if (resp == WAIT && _dev.dev != DEV_SARA_R410 && _dev.lpm == LPM_ACTIVE) {
+    if (resp == WAIT && !(_dev.dev == DEV_SARA_R410) && _dev.lpm == LPM_ACTIVE) { //TODO verify R510
         // if low power mode active, may have to wait up to 5s for OK response
         int cts = HAL_GPIO_Read(CTS_UC); // 1: not ready, 0: ready
         system_tick_t t0 = HAL_Timer_Get_Milli_Seconds();
@@ -429,10 +434,12 @@ bool MDMParser::_checkModem(bool force /* = true */) {
 int MDMParser::process() {
 
     if (!(_init && _pwr)) {
+        MDM_INFO(">>> not _init + _pwr");
         return 0;
     }
 
     if (_cancel_all_operations) {
+        MDM_INFO(">>> _cancel_all_operations");
         return 0;
     }
 
@@ -476,6 +483,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                              system_tick_t timeout_ms /*= 10000*/)
 {
     if (_cancel_all_operations) return WAIT;
+    
 
     // If we went from a GPRS attached state to detached via URC,
     // a WDT was set and now expired. Notify system of disconnect.
@@ -577,9 +585,9 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
 
                 // GSM/UMTS Specific -------------------------------------------
                 // +UUPSDD: <profile_id>
-                if (sscanf(cmd, "UUPSDD: %31s", s) == 1) {
-                    MDM_PRINTF("UUPSDD: %s matched\r\n", PROFILE);
-                    if ( !strcmp(s, PROFILE) ) {
+                if ( sscanf(cmd, "UUPSDD: %31s", s) == 1 ) {
+                    if (_attached &&  !strcmp(s, PROFILE) ) {
+                        //TODO R510 verify: Only process UUPSDD if we're not already detaching?
                         _ip = NOIP;
                         _attached = false;
                         DEBUG("PDP context deactivated remotely!\r\n");
@@ -601,8 +609,10 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                         // The code below doesn't consider mode to be one of the parsed values
                         r--;
                     }
+
                     bool valid_reg_cmd = true;
                     if (r >= 2) {
+                        //MDM_INFO(">> reg_cmd: %s \r\n",s);
                         if (!strcmp(s, "CREG:")) {
                             csd_.status(csd_.decodeAtStatus(a));
                         } else if (!strcmp(s, "CGREG:")) {
@@ -614,7 +624,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                         }
                         if (valid_reg_cmd) {
                             if (mode == 0) {
-                                if (_dev.dev == DEV_SARA_R410) {
+                                if (modemIsSaraRxFamily()) {
                                     if (!strcmp(s, "CEREG:")) {
                                         _error = MDM_MAX_ERRORS; // force the next call to MDMParser::process() to re-init the modem
                                         _lastVerboseCxregUpdate = 0;
@@ -634,7 +644,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                             //MDM_INFO("Recorded stat for psd: %d", (int)psd_.status());
                             //MDM_INFO("Recorded stat for eps: %d", (int)eps_.status());
 
-                            if (_dev.dev == DEV_SARA_R410 && _attached && !REG_OK(eps_.status()) && !strcmp(s, "CEREG:")) {
+                            if (modemIsSaraRxFamily() && _attached && !REG_OK(eps_.status()) && !strcmp(s, "CEREG:")) {
                                 // R410 : Look out for a CEREG: de-registration URC while attached
                                 MDM_ERROR("[ Cell de-registered ]\r\n");
                                 _ip = NOIP; // Short-circuit disconnect() call
@@ -697,13 +707,19 @@ void MDMParser::unlock()
 int MDMParser::_cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs)
 {
     if (((type == TYPE_PLUS) || (type == TYPE_UNKNOWN)) && edrxActs) {
-        // if response is "\r\n+CEDRXS:\r\n", all AcT's disabled, do nothing
-        if (strncmp(buf, "\r\n+CEDRXS:\r\n", len) != 0) {
-            int a;
-            if (sscanf(buf, "\r\n+CEDRXS: %1d[2-5]", &a) == 1 ||
-                sscanf(buf, "+CEDRXS: %1d[2-5]", &a) == 1) {
+        // R410 disabled: +CEDRXS:
+        // R510 disabled: +CEDRXS: 4,"0000"
+        unsigned matched = 0;
+        unsigned act = 0;
+        unsigned eDRXCycle = 0;
+        unsigned pagingTimeWindow = 0;
+
+        if ((matched = sscanf(buf, "\r\n+CEDRXS: %u,\"%u\",\"%u\"", &act, &eDRXCycle, &pagingTimeWindow)) >= 1 ||
+            (matched = sscanf(buf, "+CEDRXS: %u,\"%u\",\"%u\"", &act, &eDRXCycle, &pagingTimeWindow)) >= 1 ) {
+            MDM_PRINTF("[CEDRXS] matched:%u, act:%u, cycle:%u, paging:%u\r\n", matched, act, eDRXCycle, pagingTimeWindow);
+            if (matched >= 1 && (eDRXCycle != 0 || pagingTimeWindow != 0) ) {
                 if (edrxActs->count < MDM_R410_EDRX_ACTS_MAX) {
-                    edrxActs->act[edrxActs->count++] = a;
+                    edrxActs->act[edrxActs->count++] = act;
                 }
             }
         }
@@ -793,13 +809,17 @@ bool MDMParser::disconnect() {
 void MDMParser::reset(void)
 {
     MDM_INFO("[ Modem reset ]");
-    unsigned delay = 100;
+    unsigned reset_duration_ms = 100;
     if (_dev.dev == DEV_UNKNOWN || _dev.dev == DEV_SARA_R410) {
-        delay = 10000; // SARA-R4: 10s
+        reset_duration_ms = 10000; // SARA-R4: 10s
+    }
+    else if (_dev.dev == DEV_SARA_R510) {
+        reset_duration_ms = 200; // SARA-R5: 100 ms minimum
     }
     HAL_GPIO_Write(RESET_UC, 0);
-    HAL_Delay_Milliseconds(delay);
+    HAL_Delay_Milliseconds(reset_duration_ms);
     HAL_GPIO_Write(RESET_UC, 1);
+
     // reset power on and registered timers for memory issue power off delays
     _timePowerOn = 0;
     _timeRegistered = 0;
@@ -854,16 +874,27 @@ bool MDMParser::_powerOn(void)
     MDM_INFO("\r\n[ Modem::powerOn ] = = = = = = = = = = = = = =");
     bool continue_cancel = false;
     bool retried_after_reset = false;
-
     int i = MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET; // When modem not responsive on boot, AT/OK tries 25x (for ~30s) before hard reset
-    while (i--) {
-        // SARA-U2/LISA-U2 50..80us
-        HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
-        HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(10);
 
-        // SARA-G35 >5ms, LISA-C2 > 150ms, LEON-G2 >5ms, SARA-R4 >= 150ms
-        HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(150);
-        HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(100);
+    // FIXME: REMOVE THIS BEFORE MERGING!!!!!!
+    _dev.dev = DEV_SARA_R510;
+    MDM_ERROR("Forcing to R510\r\n");
+
+    while (i--) {
+
+        // FIXME: Qualify for R510 only, but we need to pull it from OTP flash
+        if (_dev.dev == DEV_SARA_R510 && !powerState()) {
+            HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(1500);
+            HAL_GPIO_Write(PWR_UC, 1);
+        } else {
+            // // SARA-U2/LISA-U2 50..80us
+            HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
+            HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(10);
+
+            // // SARA-G35 >5ms, LISA-C2 > 150ms, LEON-G2 >5ms, SARA-R4 >= 150ms
+            HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(150);
+            HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(100);
+        }
 
         // purge any messages
         purge();
@@ -876,6 +907,8 @@ bool MDMParser::_powerOn(void)
             continue_cancel = true;
             resume(); // make sure we can talk to the modem
         }
+
+        HAL_Delay_Milliseconds(1000);
 
         // check interface, and use quicker 1s timeout during initial _powerOn()
         if (_atOk(true)) {
@@ -890,6 +923,7 @@ bool MDMParser::_powerOn(void)
             break;
         }
         else if (i==0 && !retried_after_reset) {
+            MDM_INFO("Retry Reset\r\n");
             retried_after_reset = true; // only perform reset & retry sequence once
             i = MDM_POWER_ON_MAX_ATTEMPTS_AFTER_RESET;
             reset();
@@ -899,9 +933,12 @@ bool MDMParser::_powerOn(void)
     if (i < 0) {
         MDM_ERROR("[ No Reply from Modem ]\r\n");
     } else {
+        waitFinalResp(NULL, NULL, 50);  // slow it down a bit before we turn off ECHO
+
         // Determine type of the modem
         sendFormated("AT+CGMM\r\n");
-        waitFinalResp(_cbCGMM, &_dev);
+        // waitFinalResp(_cbCGMM, &_dev);
+        waitFinalResp(_cbCGMM, &_dev, 15000); // TODO: R510 this lengthy timeout really needed?
         if (_dev.dev == DEV_SARA_R410) {
             // SARA-R410 doesn't support hardware flow control, reinitialize the UART
             electronMDM.begin(115200, false /* hwFlowControl */);
@@ -916,29 +953,35 @@ bool MDMParser::_powerOn(void)
     }
 
     // Flush any on-boot URCs that can cause syncing issues later
-    waitFinalResp(NULL,NULL,200);
+    waitFinalResp(NULL, NULL, 200);
 
     // echo off
     sendFormated("ATE0\r\n");
-    if(RESP_OK != waitFinalResp())
+    if (RESP_OK != waitFinalResp()) {
         goto failure;
+    }
+
     // enable verbose error messages
     sendFormated("AT+CMEE=2\r\n");
-    if(RESP_OK != waitFinalResp())
+    if (RESP_OK != waitFinalResp()) {
         goto failure;
+    }
     // Configures sending of URCs from MT to DTE for indications
     sendFormated("AT+CMER=1,0,0,2,1\r\n");
-    if(RESP_OK != waitFinalResp())
+    if (RESP_OK != waitFinalResp()) {
         goto failure;
+    }
     // set baud rate
     sendFormated("AT+IPR=115200\r\n");
-    if (RESP_OK != waitFinalResp())
+    if (RESP_OK != waitFinalResp()) {
         goto failure;
+    }
     // wait some time until baudrate is applied
     HAL_Delay_Milliseconds(100); // SARA-G > 40ms
 
     return true;
 failure:
+    MDM_ERROR("MDM _powerOn failed! \r\n");
     return false;
 }
 
@@ -1048,12 +1091,16 @@ bool MDMParser::init(DevStatus* status)
     }
     // Returns the product serial number, IMEI (International Mobile Equipment Identity)
     sendFormated("AT+CGSN\r\n");
-    if (RESP_OK != waitFinalResp(_cbString, &str_imei))
+    if (RESP_OK != waitFinalResp(_cbString, &str_imei)) {
         goto failure;
+    }
 
     if (_dev.sim != SIM_READY) {
         if (_dev.sim == SIM_MISSING)
             MDM_ERROR("SIM not inserted\r\n");
+        else
+            MDM_ERROR("SIM not ready??\r\n");
+
         goto failure;
     }
     // get the manufacturer
@@ -1126,7 +1173,7 @@ bool MDMParser::init(DevStatus* status)
     if (status) {
         memcpy(status, &_dev, sizeof(DevStatus));
     }
-    if (_dev.dev == DEV_SARA_R410) {
+    if (modemIsSaraRxFamily()) {
         bool resetNeeded = false;
         int curProf = UBLOX_SARA_UMNOPROF_NONE;
 
@@ -1139,7 +1186,8 @@ bool MDMParser::init(DevStatus* status)
         // First time setup, or switching between official SIM on wrong profile?
         if (curProf == UBLOX_SARA_UMNOPROF_SW_DEFAULT ||
             (netProv == CELLULAR_NETPROV_TWILIO && curProf != UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) ||
-            (netProv == CELLULAR_NETPROV_KORE_ATT && curProf != UBLOX_SARA_UMNOPROF_ATT))
+            (_dev.dev == DEV_SARA_R410 && netProv == CELLULAR_NETPROV_KORE_ATT && curProf != UBLOX_SARA_UMNOPROF_ATT) ||
+            (_dev.dev == DEV_SARA_R510 && netProv == CELLULAR_NETPROV_KORE_ATT && curProf != UBLOX_SARA_UMNOPROF_STANDARD_EUROPE))
         {
             bool continueInit = false;
             int newProf = UBLOX_SARA_UMNOPROF_SIM_SELECT;
@@ -1159,11 +1207,18 @@ bool MDMParser::init(DevStatus* status)
             }
             // KORE AT&T or 3rd Party SIM
             else {
-                // Hard code ATT for 05.12 firmware versions
-                if (netProv == CELLULAR_NETPROV_KORE_ATT) {
-                    if (strstr(_verExtended, "L0.0.00.00.05.12")) {
+				if (netProv == CELLULAR_NETPROV_KORE_ATT) {
+                    if (_dev.dev == DEV_SARA_R510) {
+						newProf = UBLOX_SARA_UMNOPROF_STANDARD_EUROPE;
+					}
+					// Hard code ATT for R410 05.12 firmware versions
+					else if (_dev.dev == DEV_SARA_R410 && strstr(_verExtended, "L0.0.00.00.05.12")) {
                         newProf = UBLOX_SARA_UMNOPROF_ATT;
                     }
+				}
+                // Hard code UMNOPROF=100 for R510
+                if (_dev.dev == DEV_SARA_R510 && netProv == CELLULAR_NETPROV_KORE_ATT) {
+                    newProf = UBLOX_SARA_UMNOPROF_STANDARD_EUROPE;
                 }
                 // continue on with init if we are trying to set SIM_SELECT or hard-coding ATT a third time
                 if (_resetFailureAttempts >= 2) {
@@ -1178,7 +1233,8 @@ bool MDMParser::init(DevStatus* status)
                     goto failure;
                 }
                 if (cfun_val != 0) {
-                    sendFormated("AT+CFUN=0,0\r\n");
+                    //TODO R510
+                    sendFormated("AT+CFUN=0\r\n"); //,0\r\n");
                     if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                         goto failure;
                     }
@@ -1188,12 +1244,14 @@ bool MDMParser::init(DevStatus* status)
                 waitFinalResp(nullptr, nullptr, UMNOPROF_TIMEOUT);
                 goto reset_failure; // Not checking for errors above since we will reset either way
             }
-        } else if (curProf == UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) {
+        }
+        else if (curProf == UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) {
             sendFormated("AT+UBANDMASK?\r\n");
             uint64_t ubandUint64 = 0;
             waitFinalResp(_cbUBANDMASK, &ubandUint64, UBANDMASK_TIMEOUT);
             // Only update if Twilio Super SIM and not set to correct bands
-            if (netProv == CELLULAR_NETPROV_TWILIO && ubandUint64 != 6170) {
+            if ((netProv == CELLULAR_NETPROV_TWILIO || (_dev.dev == DEV_SARA_R510 && netProv == CELLULAR_NETPROV_KORE_ATT)) &&
+                    ubandUint64 != 6170) {
                 // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
                 sendFormated("AT+UBANDMASK=0,6170\r\n");
                 waitFinalResp(nullptr, nullptr, UBANDMASK_TIMEOUT);
@@ -1201,10 +1259,13 @@ bool MDMParser::init(DevStatus* status)
             }
         }
 
-        // For signal strength RSRP/RSRQ values on R410M
-        sendFormated("AT+UCGED=5\r\n");
-        if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
-            goto failure;
+
+        // For signal strength RSRP/RSRQ values on R410M, not needed and ERRORs on R510
+        if (_dev.dev == DEV_SARA_R410) {
+            sendFormated("AT+UCGED=5\r\n");
+            if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+                goto failure;
+            }
         }
         // Force Power Saving mode to be disabled
         //
@@ -1220,9 +1281,9 @@ bool MDMParser::init(DevStatus* status)
         // Force eDRX mode to be disabled
         // 18/23 hardware doesn't seem to be disabled by default
         sendFormated("AT+CEDRXS?\r\n");
-        // Reset the detected count each time we check for eDRX AcTs enabled
         EdrxActs _edrxActs;
         if (RESP_ERROR == waitFinalResp(_cbCEDRXS, &_edrxActs, CEDRXS_TIMEOUT)) {
+            MDM_ERROR("_cbCEDRXS waitResp failed");
             goto reset_failure;
         }
         for (int i = 0; i < _edrxActs.count; i++) {
@@ -1231,9 +1292,10 @@ bool MDMParser::init(DevStatus* status)
             resetNeeded = true;
         }
         if (resetNeeded) {
+            MDM_ERROR("resetNeeded after CEDRXS");
             goto reset_failure;
         }
-    } // if (_dev.dev == DEV_SARA_R410)
+    } // if (modemIsSaraRxFamily()) {
     _resetFailureAttempts = 0;
     return true;
 
@@ -1241,11 +1303,14 @@ failure:
     return false;
 
 reset_failure:
+    MDM_ERROR("reset_failure");
     // Don't get stuck in a reset-retry loop
     // eDRX disables can take a couple or more resets, UMNOPROF requires 1 or 2 and UBANDMASK requires 1 or 2 worst case
     if (++_resetFailureAttempts < MDM_RESET_FAILURE_MAX_ATTEMPTS) {
         if (_atOk()) {
-            sendFormated("AT+CFUN=15,0\r\n");
+            //TODO R510 switch
+            //sendFormated("AT+CFUN=15,0\r\n");
+            sendFormated("AT+CFUN=16\r\n");
             waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT);
             // MDMParser::powerOn and MDMParser::init will be retried by the system up to
             // MDM_RESET_FAILURE_MAX_ATTEMPTS.
@@ -1526,6 +1591,8 @@ int MDMParser::_cbCGMM(int type, const char* buf, int len, DevStatus* s)
                 s->dev = DEV_SARA_U201;
             } else if (strstr(s->model, "SARA-R410")) {
                 s->dev = DEV_SARA_R410;
+            } else if (strstr(s->model, "SARA-R510")) {
+                s->dev = DEV_SARA_R510;
             }
         }
     }
@@ -1571,9 +1638,14 @@ void MDMParser::_checkVerboseCxreg(void) {
         }
         _lastVerboseCxregUpdate = HAL_Timer_Get_Milli_Seconds();
         // Check if C*REG URCs are enabled, handled in waitFinalResp()
-        if (_dev.dev == DEV_SARA_R410) {
+        if (modemIsSaraRxFamily()) {
             sendFormated("AT+CEREG?\r\n");
             waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT);
+            // TODO: Why was this added? URCs are not enabled for CREG on R510
+            // if (_dev.dev == DEV_SARA_R510) {
+            //     sendFormated("AT+CREG?\r\n");
+            //     waitFinalResp(nullptr, nullptr, CREG_TIMEOUT);
+            // }
         } else {
             sendFormated("AT+CREG?\r\n");
             waitFinalResp(nullptr, nullptr, CREG_TIMEOUT);
@@ -1585,7 +1657,7 @@ void MDMParser::_checkVerboseCxreg(void) {
 
 bool MDMParser::_checkEpsReg(void) {
     // On the SARA R410M check EPS registration
-    if (_dev.dev == DEV_SARA_R410) {
+    if (modemIsSaraRxFamily()) {
         LOCK();
         int r;
         sendFormated("AT+CEREG?\r\n");
@@ -1603,10 +1675,16 @@ bool MDMParser::_checkEpsReg(void) {
 int MDMParser::_cbURAT(int type, const char *buf, int len, bool *matched_default)
 {
     if ((type == TYPE_PLUS) && matched_default) {
+        unsigned selectAct = 0, preferAct1 = 0, preferAct2 = 0;
         *matched_default = false;
-        if (!strncmp(CB_URAT_DEFAULT_CONFIG, buf, strlen(CB_URAT_DEFAULT_CONFIG))) {
+        //TODO R510 appeared to not handle the URAT string provided
+        auto r = sscanf(buf, "+URAT: %u,%u,%u", &selectAct, &preferAct1, &preferAct2);
+        if (r > 0 && selectAct == 7) {            
             *matched_default = true;
         }
+        // if (!strncmp(CB_URAT_DEFAULT_CONFIG, buf, strlen(CB_URAT_DEFAULT_CONFIG))) {
+        //     *matched_default = true;
+        // }
     }
     return WAIT;
 }
@@ -1618,9 +1696,10 @@ bool MDMParser::interveneRegistration(void) {
         return true;
     }
 
-    auto timeout = (_registrationInterventions + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
+    // FIXME: The timeout was offset by +15s for R510 & KORE, but should we do this for R410 as well?  This also adds 15 more seconds for TWILIO SIMs.
+    auto timeout = ((_registrationInterventions + 1) * REGISTRATION_INTERVENTION_TIMEOUT) + REGISTRATION_INTERVENTION_TIMEOUT;
     // Intervention to speed up registration or recover in case of failure
-    if (_dev.dev != DEV_SARA_R410) {
+    if (!modemIsSaraRxFamily()) {
         // Only attempt intervention when in a sticky state
         // (over intervention interval and multiple URCs with the same state)
         if (csd_.sticky() && csd_.duration() >= timeout) {
@@ -1639,11 +1718,13 @@ bool MDMParser::interveneRegistration(void) {
                 csd_.reset();
                 psd_.reset();
                 _registrationInterventions++;
-                sendFormated("AT+CFUN=0,0\r\n");
+                //TODO R510 switch
+                sendFormated("AT+CFUN=0\r\n"); //,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
-                sendFormated("AT+CFUN=1,0\r\n");
+                //TODO R510 switch
+                sendFormated("AT+CFUN=1\r\n");//,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
@@ -1685,11 +1766,13 @@ bool MDMParser::interveneRegistration(void) {
                 MDM_INFO("Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
                 _registrationInterventions++;
-                sendFormated("AT+CFUN=0,0\r\n");
+                //TODO R510 switch
+                sendFormated("AT+CFUN=0\r\n"); //,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
-                sendFormated("AT+CFUN=1,0\r\n");
+                //TODO R510 switch
+                sendFormated("AT+CFUN=1\r\n");//,0\r\n");
                 if (WAIT == waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     return false;
                 }
@@ -1720,7 +1803,8 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             goto failure;
         }
         if (cfun_val != 1) {
-            sendFormated("AT+CFUN=1,0\r\n");
+            //TODO R510
+            sendFormated("AT+CFUN=1\r\n");// ,0\r\n");
             if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                 goto failure;
             }
@@ -1731,7 +1815,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
         // We may already be connected quickly on boot, or connect within the first
         // call to checkNetStatus(), so these registration URCs need to be set up at
         // least once to ensure they continue to work later on when using _checkEpsReg()
-        if (_dev.dev == DEV_SARA_R410) {
+        if (modemIsSaraRxFamily()) {
             // reset registered timer for memory issue power off delays
             _timeRegistered = 0;
             // Set up the EPS network registration URC
@@ -1754,7 +1838,7 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             _lastVerboseCxregUpdate = HAL_Timer_Get_Milli_Seconds();
         }
         if (!(ok = checkNetStatus())) {
-            if (_dev.dev == DEV_SARA_R410) {
+            if (modemIsSaraRxFamily()) {
                 bool set_cgdcont = false;
                 bool set_rat = false;
                 // On SARA R410M [Cat-M1(7) & Cat-NB1(8)] is an invalid default configuration.
@@ -1819,7 +1903,8 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
                 goto failure;
             }
             if (cfun_val != 1) {
-                sendFormated("AT+CFUN=1,0\r\n");
+                //TODO R510
+                sendFormated("AT+CFUN=1\r\n");//,0\r\n");
                 if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                     goto failure;
                 }
@@ -1883,22 +1968,27 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     memset(&_net, 0, sizeof(_net));
     _net.cgi.location_area_code = 0xFFFF;
     _net.cgi.cell_id = 0xFFFFFFFF;
-    if (_dev.dev == DEV_SARA_R410) {
+    if (modemIsSaraRxFamily()) {
         // Check the signal seen by the module while trying to register
         // Do not need to check for an OK, as this is just for debugging purpose,
         // and UCGED may sometimes return CME ERROR with low signal
-        sendFormated("AT+UCGED=5\r\n");
-        if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
-            goto failure;
+
+        if (_dev.dev == DEV_SARA_R410) {
+            sendFormated("AT+UCGED=5\r\n");
+            if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+                goto failure;
+            }
         }
+        //TODO parse new UCGED format for R510
         sendFormated("AT+UCGED?\r\n");
         if (WAIT == waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+            MDM_ERROR("UCGED? waitResp fail\r\n");
             goto failure;
         }
-
         // check EPS registration (LTE)
         sendFormated("AT+CEREG?\r\n");
         if (RESP_OK != waitFinalResp(nullptr, nullptr, CEREG_TIMEOUT)) {
+            MDM_ERROR("CEREG? waitResp fail\r\n");
             goto failure;
         }
     } else {
@@ -1978,7 +2068,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         memcpy(status, &_net, sizeof(NetStatus));
     }
     // don't return true until fully registered
-    if (_dev.dev == DEV_SARA_R410) {
+    if (modemIsSaraRxFamily()) { //TODO check for R510 as well?
         ok = REG_OK(eps_.status());
         if (_memoryIssuePresent && ok) {
             // start registered timer for memory issue power off delays.
@@ -1987,8 +2077,12 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
     } else {
         ok = REG_OK(csd_.status()) && REG_OK(psd_.status());
     }
+
+    // MDM_PRINTF("%10.3f checkNetStatus %d \r\n", HAL_Timer_Get_Milli_Seconds() * 0.001, ok);
+
     return ok;
 failure:
+    MDM_ERROR("checkNetStatus failure \r\n");
     return false;
 }
 
@@ -2026,20 +2120,23 @@ bool MDMParser::getSignalStrength(NetStatus &status)
 
         // R410M modems report AcT as LTE and LTE-M1 when connecting
         // on LTE-M1. If AcT is reported as LTE, change it to report LTE-M1
-        if (_dev.dev == DEV_SARA_R410 && _net.act == ACT_LTE) {
+        if (modemIsSaraRxFamily() && _net.act == ACT_LTE) {
             _net.act = ACT_LTE_CAT_M1;
         }
 
         // AT command used to collect signal stregnth is different for R410M radio
-        if (_dev.dev == DEV_SARA_R410) {
-            sendFormated("AT+UCGED=5\r\n");
-            if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
-                goto cleanup;
+        if (modemIsSaraRxFamily()) {
+            if (_dev.dev == DEV_SARA_R410) {
+                sendFormated("AT+UCGED=5\r\n");
+                if (RESP_OK != waitFinalResp(nullptr, nullptr, UCGED_TIMEOUT)) {
+                    goto cleanup;
+                }
             }
 
             // Default to 255 because UCGED response is multi-line
             _net.rsrp = 255;
             _net.rsrq = 255;
+            // TODO: Fix UCGED? parsing for R510
             sendFormated("AT+UCGED?\r\n");
             if (RESP_OK == waitFinalResp((_dev.dev == DEV_SARA_R510) ? _cbUCGEDR510 : _cbUCGED, &_net, UCGED_TIMEOUT)) {
                 ok = true;
@@ -2564,21 +2661,55 @@ MDM_IP MDMParser::join(const char* apn /*= NULL*/, const char* username /*= NULL
     if (_init && _pwr && _dev.dev != DEV_UNKNOWN) {
         MDM_INFO("\r\n[ Modem::join ] = = = = = = = = = = = = = = = =");
         _ip = NOIP;
-        if (_dev.dev == DEV_SARA_R410) {
+        if (modemIsSaraRxFamily()) {
             // Get local IP address associated with the default profile
             sendFormated("AT+CGPADDR=%d\r\n", PDP_CONTEXT);
             if (waitFinalResp(_cbCGPADDR, &_ip) != RESP_OK) {
+                MDM_ERROR("CGPADDR error");
                 goto failure;
             }
+
+            if (_dev.dev == DEV_SARA_R510) {
+                int a = 0;
+                sendFormated("AT+UPSND=0,8\r\n");
+                if (RESP_OK != waitFinalResp(_cbUPSND, &a, UPSND_TIMEOUT))
+                    goto failure;
+                MDM_PRINTF("UPSND %d \r\n", a);
+     
+                if (a == 0) { // PDP !activated
+                    sendFormated("AT+UPSD=0,100,1\r\n");
+                    if (RESP_OK != waitFinalResp(nullptr, nullptr, 2000)) {
+                        MDM_ERROR("UPSD1 error");
+                        goto failure;
+                    }
+
+                    sendFormated("AT+UPSD=0,0,0\r\n");
+                    if (RESP_OK != waitFinalResp(nullptr, nullptr, 2000)) {
+                        MDM_ERROR("UPSD2 error");
+                        goto failure;
+                    }
+
+                    sendFormated("AT+UPSDA=0,3\r\n");
+                    if (RESP_OK != waitFinalResp(nullptr, nullptr, 2000)) {
+                        MDM_ERROR("UPSDA error");
+                        goto failure;
+                    }
+                }
+
+            }
+
             // FIXME: The existing code seems to use `_activated` and `_attached` flags kind of interchangeably
             _activated = true;
-        } else {
+        } 
+        else {
             int a = 0;
             bool force = false; // If we are already connected, don't force a reconnect.
 
             // Ensure modem is responsive
-            if (!_atOk())
+            if (!_atOk()) {
+                MDM_ERROR("_atOk fail \r\n");
                 goto failure;
+            }
 
             // perform GPRS attach
             sendFormated("AT+CGATT=1\r\n");
@@ -2694,9 +2825,18 @@ int MDMParser::_cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip) {
         int cid, a, b, c, d;
         // +CGPADDR: <cid>,<PDP_addr>
         // TODO: IPv6
-        if (sscanf(buf, "\r\n+CGPADDR: %d,%d.%d.%d.%d", &cid, &a, &b, &c, &d) == 5) {
+
+        //TODO R510 verify
+        //    143.905 AT read  +   32 "\r\n+CGPADDR: 1,\"100.78.144.188\"\r\n"
+        int count = sscanf(buf, "\r\n+CGPADDR: %d,%d.%d.%d.%d", &cid, &a, &b, &c, &d);
+        if (count < 5) {
+            count = sscanf(buf, "\r\n+CGPADDR: %d,\"%d.%d.%d.%d\"", &cid, &a, &b, &c, &d);
+        }
+
+        if (count == 5) {
             *ip = IPADR(a, b, c, d);
         }
+
     }
     return WAIT;
 }
@@ -2801,7 +2941,7 @@ bool MDMParser::deactivate(void)
         }
         MDM_INFO("\r\n[ Modem::deactivate ] = = = = = = = = = = = = =");
         if (_ip != NOIP) {
-            if (_dev.dev == DEV_SARA_R410) {
+            if (modemIsSaraRxFamily()) {
                 // The default context cannot be deactivated
                 _ip = NOIP;
                 _attached = false;
@@ -2836,7 +2976,8 @@ bool MDMParser::detach(void)
         MDM_INFO("\r\n[ Modem::detach ] = = = = = = = = = = = = = = =");
         // Unregister from the network entirely
         if (_checkModem()) {
-            sendFormated("AT+CFUN=0,0\r\n");
+            //TODO R510 switch
+            sendFormated("AT+CFUN=0\r\n");
             if (waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT) == RESP_OK) {
                 _activated = false;
                 ok = true;
@@ -4022,7 +4163,15 @@ int MDMElectronSerial::_send(const void* buf, int len)
 
 int MDMElectronSerial::getLine(char* buffer, int length)
 {
+    
     int ret = _getLine(&_pipeRx, buffer, length);
+    if ((ret > 0) && (NOT_FOUND != ret) && (WAIT != ret)) {
+        int trunc_len =  (length - 1);
+        if (ret <= length) {
+            trunc_len = ret;
+        }
+        buffer[trunc_len] = '\0';  //TODO R510 verify
+    }
     rxResume();
     return ret;
 }
