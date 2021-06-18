@@ -57,7 +57,7 @@ inline void NVIC_SystemReset() {}
 inline void Finish_Update() {}
 inline void Bootloader_Update_Version(int version) {}
 
-inline int BUTTON_GetState(int button) { return 0; }
+inline int hal_button_get_state(int button) { return 0; }
 
 
 #define __IO volatile

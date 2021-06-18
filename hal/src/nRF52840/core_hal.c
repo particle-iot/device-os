@@ -462,10 +462,10 @@ bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration) {
     bool pressedState = false;
 
-    if(BUTTON_GetDebouncedTime(BUTTON1) >= pressedMillisDuration) {
+    if(hal_button_get_debounce_time(HAL_BUTTON1) >= pressedMillisDuration) {
         pressedState = true;
     }
-    if(BUTTON_GetDebouncedTime(BUTTON1_MIRROR) >= pressedMillisDuration) {
+    if(hal_button_get_debounce_time(HAL_BUTTON1_MIRROR) >= pressedMillisDuration) {
         pressedState = true;
     }
 

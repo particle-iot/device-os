@@ -164,7 +164,7 @@ void TIM2_IRQHandler(void)
     {
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
 
-        BUTTON_Debounce();
+        hal_button_debounce();
     }
 }
 
@@ -249,7 +249,7 @@ void OTG_HS_IRQHandler(void)
  *******************************************************************************/
 void EXTI0_IRQHandler(void)
 {
-    BUTTON_Irq_Handler(EXTI_Line0);
+    hal_button_irq_handler(EXTI_Line0);
 }
 
 /*******************************************************************************
@@ -261,7 +261,7 @@ void EXTI0_IRQHandler(void)
  *******************************************************************************/
 void EXTI1_IRQHandler(void)
 {
-    BUTTON_Irq_Handler(EXTI_Line1);
+    hal_button_irq_handler(EXTI_Line1);
 }
 
 /*******************************************************************************
@@ -273,7 +273,7 @@ void EXTI1_IRQHandler(void)
  *******************************************************************************/
 void EXTI2_IRQHandler(void)
 {
-    BUTTON_Irq_Handler(EXTI_Line2);
+    hal_button_irq_handler(EXTI_Line2);
 }
 
 /*******************************************************************************
@@ -285,7 +285,7 @@ void EXTI2_IRQHandler(void)
  *******************************************************************************/
 void EXTI3_IRQHandler(void)
 {
-    BUTTON_Irq_Handler(EXTI_Line3);
+    hal_button_irq_handler(EXTI_Line3);
 }
 
 /*******************************************************************************
@@ -297,7 +297,7 @@ void EXTI3_IRQHandler(void)
  *******************************************************************************/
 void EXTI4_IRQHandler(void)
 {
-    BUTTON_Irq_Handler(EXTI_Line4);
+    hal_button_irq_handler(EXTI_Line4);
 }
 
 /*******************************************************************************
@@ -309,11 +309,11 @@ void EXTI4_IRQHandler(void)
  *******************************************************************************/
 void EXTI9_5_IRQHandler(void)
 {
-    BUTTON_Irq_Handler(EXTI_Line5);
-    BUTTON_Irq_Handler(EXTI_Line6);
-    BUTTON_Irq_Handler(EXTI_Line7);
-    BUTTON_Irq_Handler(EXTI_Line8);
-    BUTTON_Irq_Handler(EXTI_Line9);
+    hal_button_irq_handler(EXTI_Line5);
+    hal_button_irq_handler(EXTI_Line6);
+    hal_button_irq_handler(EXTI_Line7);
+    hal_button_irq_handler(EXTI_Line8);
+    hal_button_irq_handler(EXTI_Line9);
 }
 
 /*******************************************************************************
@@ -325,10 +325,10 @@ void EXTI9_5_IRQHandler(void)
  *******************************************************************************/
 void EXTI15_10_IRQHandler(void)
 {
-    BUTTON_Irq_Handler(EXTI_Line10);
-    BUTTON_Irq_Handler(EXTI_Line11);
-    BUTTON_Irq_Handler(EXTI_Line12);
-    BUTTON_Irq_Handler(EXTI_Line13);
-    BUTTON_Irq_Handler(EXTI_Line14);
-    BUTTON_Irq_Handler(EXTI_Line15);
+    hal_button_irq_handler(EXTI_Line10);
+    hal_button_irq_handler(EXTI_Line11);
+    hal_button_irq_handler(EXTI_Line12);
+    hal_button_irq_handler(EXTI_Line13);
+    hal_button_irq_handler(EXTI_Line14);
+    hal_button_irq_handler(EXTI_Line15);
 }

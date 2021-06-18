@@ -135,7 +135,7 @@ int main(void)
     //    Configure the MODE button
     //--------------------------------------------------------------------------
     Set_System();
-    BUTTON_Init_Ext();
+    hal_button_init_ext();
 
     // Load led overridden flag before SysTick Timer being initialized
     LedOverridden = feature_is_enabled(FEATURE_FLAG_LED_OVERRIDDEN);
@@ -309,9 +309,9 @@ int main(void)
     }
 
     //--------------------------------------------------------------------------
-    //    Check if BUTTON1 is pressed and determine the status
+    //    Check if HAL_BUTTON1 is pressed and determine the status
     //--------------------------------------------------------------------------
-    if (BUTTON_Is_Pressed(BUTTON1) && (features & BL_BUTTON_FEATURES))
+    if (hal_button_is_pressed(HAL_BUTTON1) && (features & BL_BUTTON_FEATURES))
     {
 #define TIMING_SAFE_MODE 1000
 #define TIMING_DFU_MODE 3000
@@ -323,16 +323,16 @@ int main(void)
 
         TimingBUTTON = TIMING_ALL;
         // uint8_t factory_reset = 0;
-        while (BUTTON_Is_Pressed(BUTTON1) && TimingBUTTON)
+        while (hal_button_is_pressed(HAL_BUTTON1) && TimingBUTTON)
         {
-            if(!RESET_SETTINGS && BUTTON_Pressed_Time(BUTTON1) > TIMING_RESET_MODE)
+            if(!RESET_SETTINGS && hal_button_get_pressed_time(HAL_BUTTON1) > TIMING_RESET_MODE)
             {
                 // if pressed for 10 sec, enter Factory Reset Mode
                 // This tells the WLAN setup to clear the WiFi user profiles on bootup
                 LED_SetRGBColor(RGB_COLOR_WHITE);
                 RESET_SETTINGS = 1;
             }
-            else if(!FACTORY_RESET_MODE && BUTTON_Pressed_Time(BUTTON1) > TIMING_RESTORE_MODE)
+            else if(!FACTORY_RESET_MODE && hal_button_get_pressed_time(HAL_BUTTON1) > TIMING_RESTORE_MODE)
             {
                 if (factory_reset_available) {
                     LED_SetRGBColor(RGB_COLOR_GREEN);
@@ -340,7 +340,7 @@ int main(void)
                     FACTORY_RESET_MODE = 1;
                 }
             }
-            else if(!USB_DFU_MODE && BUTTON_Pressed_Time(BUTTON1) >= TIMING_DFU_MODE)
+            else if(!USB_DFU_MODE && hal_button_get_pressed_time(HAL_BUTTON1) >= TIMING_DFU_MODE)
             {
                 // if pressed for > 3 sec, enter USB DFU Mode
                 if (features&BL_FEATURE_DFU_MODE) {
@@ -348,7 +348,7 @@ int main(void)
                     USB_DFU_MODE = 1;           // stay in DFU mode until the button is released so we have slow-led blinking
                 }
             }
-            else if(!SAFE_MODE && BUTTON_Pressed_Time(BUTTON1) >= TIMING_SAFE_MODE)
+            else if(!SAFE_MODE && hal_button_get_pressed_time(HAL_BUTTON1) >= TIMING_SAFE_MODE)
             {
                 OTA_FLASH_AVAILABLE = 0;
                 REFLASH_FROM_BACKUP = 0;

@@ -170,7 +170,7 @@ void Set_System(void)
     HAL_Interrupts_Init();
 
     /* Configure the Button */
-    BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
+    hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_EXTI);
 }
 
 void Reset_System(void) {
@@ -178,7 +178,7 @@ void Reset_System(void) {
 
     SysTick_Disable();
 
-    BUTTON_Uninit();
+    hal_button_uninit();
 
     hal_exflash_uninit();
 

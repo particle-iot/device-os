@@ -47,7 +47,7 @@
 /* Private variables ---------------------------------------------------------*/
 uint8_t USE_SYSTEM_FLAGS = 0;	//0, 1
 
-button_config_t HAL_Buttons[] = {
+hal_button_config_t HAL_Buttons[] = {
     {
         .active = 0,
         .port = BUTTON1_GPIO_PORT,
@@ -202,7 +202,7 @@ void Set_System(void)
     }
 
     /* Configure the Button */
-    BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
+    hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_EXTI);
 
     /* Internal Flash Erase/Program fails if this is not called */
     FLASH_ClearFlags();
@@ -587,15 +587,15 @@ uint16_t Get_RGB_LED_Max_Value()
  * @brief  Configures Button GPIO, EXTI Line and DEBOUNCE Timer.
  * @param  Button: Specifies the Button to be configured.
  *   This parameter can be one of following parameters:
- *     @arg BUTTON1: Button1
+ *     @arg HAL_BUTTON1: Button1
  * @param  Button_Mode: Specifies Button mode.
  *   This parameter can be one of following parameters:
- *     @arg BUTTON_MODE_GPIO: Button will be used as simple IO
- *     @arg BUTTON_MODE_EXTI: Button will be connected to EXTI line with interrupt
+ *     @arg HAL_BUTTON_MODE_GPIO: Button will be used as simple IO
+ *     @arg HAL_BUTTON_MODE_EXTI: Button will be connected to EXTI line with interrupt
  *                     generation capability
  * @retval None
  */
-void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
+void hal_button_init(hal_button_t Button, hal_button_mode_t Button_Mode)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
     NVIC_InitTypeDef NVIC_InitStructure;
@@ -609,7 +609,7 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
     GPIO_InitStructure.GPIO_PuPd = HAL_Buttons[Button].pupd;
     GPIO_Init(HAL_Buttons[Button].port, &GPIO_InitStructure);
 
-    if (Button_Mode == BUTTON_MODE_EXTI)
+    if (Button_Mode == HAL_BUTTON_MODE_EXTI)
     {
         /* Disable TIM2 CC1 Interrupt */
         TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
@@ -620,7 +620,7 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
         NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
-        BUTTON_EXTI_Config(Button, ENABLE);
+        hal_button_exti_config(Button, ENABLE);
 
         NVIC_Init(&NVIC_InitStructure);
 
@@ -634,7 +634,7 @@ void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode)
     }
 }
 
-void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState)
+void hal_button_exti_config(hal_button_t Button, FunctionalState NewState)
 {
     EXTI_InitTypeDef EXTI_InitStructure;
 
@@ -659,10 +659,10 @@ void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState)
  * @brief  Returns the selected Button non-filtered state.
  * @param  Button: Specifies the Button to be checked.
  *   This parameter can be one of following parameters:
- *     @arg BUTTON1: Button1
+ *     @arg HAL_BUTTON1: Button1
  * @retval Actual Button Pressed state.
  */
-uint8_t BUTTON_GetState(Button_TypeDef Button)
+uint8_t hal_button_get_state(hal_button_t Button)
 {
     return GPIO_ReadInputDataBit(HAL_Buttons[Button].port, HAL_Buttons[Button].pin);
 }
@@ -671,15 +671,15 @@ uint8_t BUTTON_GetState(Button_TypeDef Button)
  * @brief  Returns the selected Button Debounced Time.
  * @param  Button: Specifies the Button to be checked.
  *   This parameter can be one of following parameters:
- *     @arg BUTTON1: Button1
+ *     @arg HAL_BUTTON1: Button1
  * @retval Button Debounced time in millisec.
  */
-uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button)
+uint16_t hal_button_get_debounce_time(hal_button_t Button)
 {
     return HAL_Buttons[Button].debounce_time;
 }
 
-void BUTTON_ResetDebouncedState(Button_TypeDef Button)
+void hal_button_reset_debounced_state(hal_button_t Button)
 {
     HAL_Buttons[Button].debounce_time = 0;
 }

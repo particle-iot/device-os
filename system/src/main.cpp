@@ -313,7 +313,7 @@ void handle_button_click(uint16_t depressed_duration)
 void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
 {
 #ifdef BUTTON1_MIRROR_SUPPORTED
-    if (button==0 || button == BUTTON1_MIRROR)
+    if (button==0 || button == HAL_BUTTON1_MIRROR)
 #else
     if (button==0)
 #endif
@@ -419,7 +419,7 @@ extern "C" void HAL_SysTick_Handler(void)
 #endif
 
 #if HAL_PLATFORM_BUTTON_DEBOUNCE_IN_SYSTICK
-    BUTTON_Timer_Handler();
+    hal_button_timer_handler();
 #endif
 
     if (IS_BUTTON_TIMEOUT())

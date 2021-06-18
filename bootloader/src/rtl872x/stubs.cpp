@@ -21,10 +21,10 @@
 #include "dfu_hal.h"
 #include "dct_hal.h"
 
-void BUTTON_Init_Ext() {
+void hal_button_init_ext() {
 }
 
-uint8_t BUTTON_Is_Pressed(Button_TypeDef button) {
+uint8_t hal_button_is_pressed(hal_button_t button) {
     return 0;
 }
 
@@ -32,7 +32,7 @@ bool FLASH_IsFactoryResetAvailable(void) {
     return false;
 }
 
-uint16_t BUTTON_Pressed_Time(Button_TypeDef button) {
+uint16_t hal_button_get_pressed_time(hal_button_t button) {
     return 0;
 }
 
