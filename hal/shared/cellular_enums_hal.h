@@ -42,6 +42,7 @@ typedef enum {
     DEV_QUECTEL_EG91_E = 10,
     DEV_QUECTEL_EG91_NA = 11,
     DEV_QUECTEL_EG91_EX = 12,
+    DEV_SARA_R510 = 13,
 } Dev;
 //! SIM Status
 typedef enum {
@@ -110,6 +111,7 @@ typedef enum {
     UBLOX_SARA_UMNOPROF_VODAFONE         = 19,
     UBLOX_SARA_UMNOPROF_TELUS            = 21,
     UBLOX_SARA_UMNOPROF_DEUTSCHE_TELEKOM = 31,
+    UBLOX_SARA_UMNOPROF_GLOBAL           = 90,
     UBLOX_SARA_UMNOPROF_STANDARD_EUROPE  = 100,
 } UbloxSaraUmnoprof;
 

@@ -25,6 +25,7 @@ PlatformNCPIdentifier platform_ncp_identifier(module_info_t* mi) {
         case PLATFORM_NCP_SARA_U201:
         case PLATFORM_NCP_SARA_G350:
         case PLATFORM_NCP_SARA_R410:
+        case PLATFORM_NCP_SARA_R510:
         case PLATFORM_NCP_QUECTEL_BG96:
         case PLATFORM_NCP_QUECTEL_EG91_E:
         case PLATFORM_NCP_QUECTEL_EG91_NA:

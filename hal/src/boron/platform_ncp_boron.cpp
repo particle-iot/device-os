@@ -30,6 +30,7 @@ bool isValidNcpId(uint8_t id) {
     case PlatformNCPIdentifier::PLATFORM_NCP_SARA_U201:
     case PlatformNCPIdentifier::PLATFORM_NCP_SARA_G350:
     case PlatformNCPIdentifier::PLATFORM_NCP_SARA_R410:
+    case PlatformNCPIdentifier::PLATFORM_NCP_SARA_R510:
         return true;
     default:
         return false;

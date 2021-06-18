@@ -131,6 +131,7 @@ public:
     virtual int getTxDelayInDataChannel() = 0;
     virtual int enterDataMode() = 0;
     virtual int getMtu() = 0;
+    virtual int startNcpFwUpdate(bool update) = 0;
 };
 
 inline CellularNcpClientConfig::CellularNcpClientConfig() :

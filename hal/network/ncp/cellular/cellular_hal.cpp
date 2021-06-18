@@ -203,6 +203,9 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
         case PLATFORM_NCP_SARA_R410:
             info->dev = DEV_SARA_R410;
             break;
+        case PLATFORM_NCP_SARA_R510:
+            info->dev = DEV_SARA_R510;
+            break;
         case PLATFORM_NCP_QUECTEL_BG96:
             info->dev = DEV_QUECTEL_BG96;
             break;
@@ -652,4 +655,13 @@ int cellular_get_active_sim(int* simType, void* reserved) {
         *simType = INTERNAL_SIM;
     }
     return 0;
+}
+
+int cellular_start_ncp_firmware_update(bool update, void* reserved) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    CHECK(client->startNcpFwUpdate(update));
+    return SYSTEM_ERROR_NONE;
 }
