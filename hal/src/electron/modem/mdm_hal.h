@@ -508,7 +508,13 @@ public:
     */
     bool powerState(void);
 
+    /** TODO: Add clever description */
     bool urcs(bool enable);
+
+    /**
+     *  \returns true if the modem is SARA R410 or SARA R510 family
+     */
+    bool modemIsSaraRxFamily();
 
 protected:
     /** Write bytes to the physical interface. This function should be
