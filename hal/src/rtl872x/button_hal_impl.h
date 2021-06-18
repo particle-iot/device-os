@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -30,7 +30,7 @@ typedef struct {
     volatile uint8_t      active;
     volatile uint16_t     debounce_time;
     uint8_t               padding[26];
-} button_config_t;
+} hal_button_config_t;
 
 #ifdef __cplusplus
 }
