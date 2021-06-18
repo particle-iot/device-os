@@ -1952,7 +1952,8 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
             _net.rsrp = 255;
             _net.rsrq = 255;
             sendFormated("AT+UCGED?\r\n");
-            if (RESP_OK != waitFinalResp(_cbUCGED, &_net, UCGED_TIMEOUT)) {
+            if (RESP_OK != waitFinalResp((_dev.dev == DEV_SARA_R510) ? _cbUCGEDR510: _cbUCGED, &_net, UCGED_TIMEOUT)) {
+                MDM_ERROR("UCGED? waitResp fail\r\n");
                 goto failure;
             }
         }
@@ -2038,7 +2039,7 @@ bool MDMParser::getSignalStrength(NetStatus &status)
             _net.rsrp = 255;
             _net.rsrq = 255;
             sendFormated("AT+UCGED?\r\n");
-            if (RESP_OK == waitFinalResp(_cbUCGED, &_net, UCGED_TIMEOUT)) {
+            if (RESP_OK == waitFinalResp((_dev.dev == DEV_SARA_R510) ? _cbUCGEDR510 : _cbUCGED, &_net, UCGED_TIMEOUT)) {
                 ok = true;
                 status = _net;
             }
@@ -2364,6 +2365,38 @@ int MDMParser::_cbUCGED(int type, const char* buf, int len, NetStatus* status)
                 status->rsrq = 255;
             }
 
+        }
+    }
+    return WAIT;
+}
+
+int MDMParser::_cbUCGEDR510(int type, const char* buf, int len, NetStatus* status)
+{
+    // XXX: To boost confidence that we are parsing UCGED command
+    static bool continue_search = false;
+
+    if ((type == TYPE_PLUS || type == TYPE_UNKNOWN) && status) {
+        unsigned rsrp;
+        int rsrq;
+        // AT+UCGED?\r\n
+        // \r\n+UCGED: 2\r\n
+        // 6,2,fff,fff
+        // \r\n65535,255,255,255,ffff,0000000,65535,00000000,ffff,ff,255,255,255,1,255,255,255,255,255,0,255,255,0\r\n
+        // \r\nOK\r\n
+        if (strstr(buf, "\r\n+UCGED: 2")) {
+            continue_search = true;
+        }
+
+        if (continue_search) {
+            if (sscanf(buf, "\r\n%*d,%*d,%*d,%*d,%*x,%*x,%*d,%*x,%*x,%*x,%u,%d,%*[^\n]", &rsrp, &rsrq) >= 1) {
+                if (rsrp <= 255) {
+                    status->rsrp = rsrp;
+                }
+                if (rsrq <= 255 && rsrq >= -30) {
+                    status->rsrq = rsrq;
+                }
+                continue_search = false;
+            }
         }
     }
     return WAIT;

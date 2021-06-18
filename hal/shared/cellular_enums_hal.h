@@ -42,6 +42,7 @@ typedef enum {
     DEV_QUECTEL_EG91_E = 10,
     DEV_QUECTEL_EG91_NA = 11,
     DEV_QUECTEL_EG91_EX = 12,
+    DEV_SARA_R510 = 13,
 } Dev;
 //! SIM Status
 typedef enum {
