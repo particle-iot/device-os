@@ -139,6 +139,9 @@ const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
 const int IMSI_MAX_RETRY_CNT = 5;
 const int CCID_MAX_RETRY_CNT = 2;
 
+const int UCGED_FIRST_STR_BYTES = 11;
+const int UCGED_SECOND_STR_BYTES = 128;
+
 } // anonymous
 
 SaraNcpClient::SaraNcpClient() {
@@ -176,6 +179,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     registeredTime_ = 0;
     memoryIssuePresent_ = true; // default to safe state until we determine modem firmware version
     oldFirmwarePresent_ = true; // default to safe state until we determine modem firmware version
+    savedNVMR510_ = false; // R510: Save connection state to NVM for fast cold boot registration times
     parserError_ = 0;
     ready_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
@@ -337,12 +341,17 @@ int SaraNcpClient::on() {
     if (ncpState_ == NcpState::ON) {
         return SYSTEM_ERROR_NONE;
     }
+    // XXX: Collect the existing power state as modemPowerOn() updates the NcpState to ON.
+    // This is helpful in case of R5 modems during hard resets.
+    auto powerState = ncpPowerState();
     // Power on the modem
     auto r = modemPowerOn();
     if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
         return r;
     }
-    CHECK(waitReady(r == SYSTEM_ERROR_NONE /* powerOn */));
+
+    bool powerOn = (r == SYSTEM_ERROR_NONE) || (powerState == NcpPowerState::TRANSIENT_ON);
+    CHECK(waitReady(powerOn));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -425,7 +434,7 @@ int SaraNcpClient::disconnect() {
         return SYSTEM_ERROR_NONE;
     }
     CHECK(checkParser());
-    const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=0,0"));
+    const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
     (void)r;
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
@@ -632,7 +641,7 @@ int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
     cgi_.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
     cgi_.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
 
-    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
         if (act == particle::to_underlying(CellularAccessTechnology::LTE)) {
             act = particle::to_underlying(CellularAccessTechnology::LTE_CAT_M1);
         }
@@ -680,13 +689,15 @@ int SaraNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     cgi_.cell_id = std::numeric_limits<CidType>::max();
     // Fill in LAC and Cell ID based on current RAT, prefer PSD and EPS
     // fallback to CSD
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     } else {
         CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     }
+    // FIXME: CREG is not set to verbose mode for Cat-M1/Cat-1 devices, can we really
+    // "fallback to CSD" here for gathering LAC and CID?
+    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
 
     switch (cgi->version)
     {
@@ -713,12 +724,12 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
     CHECK(checkParser());
     CHECK(queryAndParseAtCops(qual));
 
-    // Min and max RSRQ index values multiplied by 100
-    // Min: -19.5 and max: -3
-    const int min_rsrq_mul_by_100 = -1950;
-    const int max_rsrq_mul_by_100 = -300;
-
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
+        // Min and max RSRQ index values multiplied by 100
+        // Min: -19.5 and max: -3
+        const int min_rsrq_mul_by_100 = -1950;
+        const int max_rsrq_mul_by_100 = -300;
+
         int rsrp;
         int rsrq_n;
         unsigned long rsrq_f;
@@ -770,6 +781,34 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         const int r = CHECK_PARSER(resp.readResult());
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
+    } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
+        unsigned rsrp = 0;
+        int rsrq = 0;
+        // Default to 255 in case RSRP/Q are not found
+        qual->strength(255);
+        qual->quality(255);
+        char* ucgedStr = new char[UCGED_SECOND_STR_BYTES];
+        // > AT+UCGED?
+        // < +UCGED: 2
+        // < 6,2,fff <mcc>,fff <mnc>
+        // < 65535,255,255,255,ffff,0000000,65535,00000000,ffff,ff,255 <rsrp>,255 <rsrq>,255,1,255,255,255,255,255,0,255,255,0
+        // < OK
+        auto resp = parser_.sendCommand("AT+UCGED?");
+        while (resp.hasNextLine()) {
+            const int len = CHECK(resp.readLine(ucgedStr, UCGED_SECOND_STR_BYTES));
+            if (len > UCGED_FIRST_STR_BYTES) {
+                const int r = CHECK_PARSER(sscanf(ucgedStr, "%*d,%*d,%*d,%*d,%*x,%*x,%*d,%*x,%*x,%*x,%u,%d,%*[^\n]", &rsrp, &rsrq));
+                if (r >= 1) {
+                    if (rsrp <= 255) {
+                        qual->strength(rsrp);
+                    }
+                    if (rsrq <= 255 && rsrq >= -30) {
+                        qual->quality(rsrq);
+                    }
+                }
+            }
+        }
+        delete[] ucgedStr;
     } else {
         int rxlev, rxqual;
         auto resp = parser_.sendCommand("AT+CSQ");
@@ -1140,7 +1179,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     switch (conf_.simType()) {
         case SimType::EXTERNAL: {
             LOG(INFO, "Using external Nano SIM card");
-            const int externalSimMode = 0;
+            const int externalSimMode = 0; // Output mode
             const int externalSimValue = 0;
             if (mode != externalSimMode || externalSimValue != value) {
                 const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
@@ -1153,8 +1192,20 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
         case SimType::INTERNAL:
         default: {
             LOG(INFO, "Using internal SIM card");
-            if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
-                const int internalSimMode = 255;
+            if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
+                const int internalSimMode = 0; // Output mode
+                const int internalSimValue = 1;
+                if (mode != internalSimMode || value != internalSimValue) {
+                    const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
+                            UBLOX_NCP_SIM_SELECT_PIN, internalSimMode, internalSimValue));
+                    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+                    reset = true;
+                }
+            } else if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+                // NOTE: [ch76449] R510S will not retain GPIO's HIGH after a cold boot
+                // Workaround: Set pin that needs to be HIGH to mode "Module status indication",
+                //             which will be set HIGH when the module is ON, and LOW when it's OFF.
+                const int internalSimMode = 10; // Module status indication mode
                 if (mode != internalSimMode) {
                     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
                             UBLOX_NCP_SIM_SELECT_PIN, internalSimMode));
@@ -1162,11 +1213,10 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                     reset = true;
                 }
             } else {
-                const int internalSimMode = 0;
-                const int internalSimValue = 1;
-                if (mode != internalSimMode || value != internalSimValue) {
-                    const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
-                            UBLOX_NCP_SIM_SELECT_PIN, internalSimMode, internalSimValue));
+                const int internalSimMode = 255; // disabled
+                if (mode != internalSimMode) {
+                    const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
+                            UBLOX_NCP_SIM_SELECT_PIN, internalSimMode));
                     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
                     reset = true;
                 }
@@ -1176,16 +1226,21 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     }
 
     if (reset) {
-        if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
-            // U201
-            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=16,0"));
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-            HAL_Delay_Milliseconds(1000);
-        } else {
+        if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
             // R410
-            const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=15,0"));
+            const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=15"));
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
             HAL_Delay_Milliseconds(10000);
+        } else if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+            // R510
+            const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=16"));
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+            HAL_Delay_Milliseconds(10000);
+        } else {
+            // U201
+            const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=16,0"));
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+            HAL_Delay_Milliseconds(1000);
         }
 
         CHECK(waitAtResponseFromPowerOn(state));
@@ -1228,6 +1283,7 @@ int SaraNcpClient::disablePsmEdrx() {
         auto r = resp.scanf("+CEDRXS: %u", &act);
         if (r == 1) { // Ignore scanf() errors
             CHECK_TRUE(acts.append(act), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
         }
     }
     CHECK_PARSER_OK(resp.readResult());
@@ -1249,7 +1305,7 @@ int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState) {
     // Make sure we reset back to using hardware serial port @ default baudrate
     muxer_.stop();
 
-    unsigned int attemptedBaudRate = ncpId() != PLATFORM_NCP_SARA_R410 ?
+    unsigned int attemptedBaudRate = (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) ?
             UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE :
             UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4;
 
@@ -1260,7 +1316,7 @@ int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState) {
 
     int r = SYSTEM_ERROR_TIMEOUT;
 
-    if (ncpId() != PLATFORM_NCP_SARA_R410) {
+    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
         r = waitAtResponse(20000);
         if (!r) {
             modemState = ModemState::DefaultBaudrate;
@@ -1296,11 +1352,12 @@ int SaraNcpClient::changeBaudRate(unsigned int baud) {
 int SaraNcpClient::getAppFirmwareVersion() {
     // ATI9 (get version and app version)
     // example output
-    // "08.90,A01.13" G350 (newer)
-    // "08.70,A00.02" G350 (older)
-    // "L0.0.00.00.05.06,A.02.00" (memory issue)
-    // "L0.0.00.00.05.07,A.02.02" (demonstrator)
-    // "L0.0.00.00.05.08,A.02.04" (maintenance)
+    // v113: "08.90,A01.13" G350 (newer)
+    //   v2: "08.70,A00.02" G350 (older)
+    // v200: "L0.0.00.00.05.06,A.02.00" (R410 memory issue)
+    // v202: "L0.0.00.00.05.07,A.02.02" (R410 demonstrator)
+    // v204: "L0.0.00.00.05.08,A.02.04" (R410 maintenance)
+    //   v1: "02.06,A00.01" (R510)
     auto resp = parser_.sendCommand("ATI9");
     int ver = 0;
     int major = 0;
@@ -1318,7 +1375,8 @@ int SaraNcpClient::initReady(ModemState state) {
     fwVersion_ = getAppFirmwareVersion();
     // L0.0.00.00.05.06,A.02.00 has a memory issue
     memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
-    oldFirmwarePresent_ = (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01);
+    oldFirmwarePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ?
+            (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01) : false;
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard(state));
     // Make sure flow control is enabled as well
@@ -1327,7 +1385,7 @@ int SaraNcpClient::initReady(ModemState state) {
     CHECK(waitAtResponse(10000));
 
     if (state != ModemState::MuxerAtChannel) {
-        if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+        if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
             // Change the baudrate to 921600
             CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
         } else {
@@ -1419,7 +1477,7 @@ int SaraNcpClient::initReady(ModemState state) {
     // Reinitialize parser with a muxer-based stream
     CHECK(initParser(muxerAtStream_.get()));
 
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
         CHECK(waitAtResponse(10000));
     } else {
         CHECK(waitAtResponse(20000, 5000));
@@ -1466,13 +1524,14 @@ bool SaraNcpClient::checkRuntimeStateMuxer(unsigned int baudrate) {
 int SaraNcpClient::checkRuntimeState(ModemState& state) {
 
     // Assume we are running at the runtime baudrate
-    unsigned runtimeBaudrate = ncpId() == PLATFORM_NCP_SARA_R410 ? UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 :
+    unsigned runtimeBaudrate = (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) ?
+            UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 :
             UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2;
 
     // Feeling optimistic, try to see if the muxer is already available
     if (!muxer_.isRunning()) {
         LOG(TRACE, "Muxer is not currently running");
-        if (ncpId() != PLATFORM_NCP_SARA_R410) {
+        if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
             checkRuntimeStateMuxer(runtimeBaudrate);
         } else {
             LOG_DEBUG(TRACE, "Attempt to start/resume muxer at %u baud", runtimeBaudrate);
@@ -1528,7 +1587,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     // Check if the modem is responsive at the runtime baudrate
     CHECK(serial_->setBaudRate(runtimeBaudrate));
     CHECK(initParser(serial_.get()));
-    skipAll(serial_.get());
+    skipAll(serial_.get(), 1000);
     parser_.reset();
     if (!waitAtResponse(2000)) {
         state = ModemState::RuntimeBaudrate;
@@ -1540,7 +1599,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     // The modem is not responsive at the runtime baudrate, check default
     CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
     CHECK(initParser(serial_.get()));
-    skipAll(serial_.get());
+    skipAll(serial_.get(), 1000);
     parser_.reset();
     if (!waitAtResponse(5000)) {
         state = ModemState::DefaultBaudrate;
@@ -1562,7 +1621,7 @@ int SaraNcpClient::initMuxer() {
     muxer_.setMaxRetransmissions(3);
     muxer_.setAckTimeout(UBLOX_MUXER_T1);
     muxer_.setControlResponseTimeout(UBLOX_MUXER_T2);
-    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
         muxer_.useMscAsKeepAlive(true);
     }
 
@@ -1617,7 +1676,13 @@ int SaraNcpClient::checkSimReadiness(bool checkForRfReset) {
 int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
     // IMPORTANT: Set modem full functionality!
     // Otherwise we won't be able to query ICCID/IMSI
-    CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=1,0"));
+    auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
+    int cfunVal = -1;
+    auto rcfun = respCfun.scanf("+CFUN: %d", &cfunVal);
+    CHECK_PARSER_OK(respCfun.readResult());
+    if (rcfun && cfunVal != 1) {
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+    }
 
     netConf_ = conf;
     if (!netConf_.isValid()) {
@@ -1633,6 +1698,8 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         }
     }
 
+    // FIXME: Why does CGDCONT= seem to error on R410 and R510 if we don't do CFUN=0,0 first?
+    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
     auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s%s\"",
             UBLOX_DEFAULT_CID, UBLOX_DEFAULT_PDP_TYPE,
             (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
@@ -1651,12 +1718,17 @@ int SaraNcpClient::registerNet() {
     int r = 0;
 
     // Set modem full functionality
-    r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
+    int cfunVal = -1;
+    auto rCfun = respCfun.scanf("+CFUN: %d", &cfunVal);
+    CHECK_PARSER_OK(respCfun.readResult());
+    if (rCfun && cfunVal != 1) {
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+    }
 
     resetRegistrationState();
 
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
         r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
@@ -1685,7 +1757,7 @@ int SaraNcpClient::registerNet() {
         // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     }
 
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
         r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         r = CHECK_PARSER(parser_.execCommand("AT+CGREG?"));
@@ -1765,7 +1837,7 @@ int SaraNcpClient::enterDataMode() {
 
     CHECK_TRUE(muxer_.setChannelDataHandler(UBLOX_NCP_PPP_CHANNEL, muxerDataStream_->channelDataCb, muxerDataStream_.get()) == 0, SYSTEM_ERROR_INTERNAL);
     // Send data mode break
-    if (ncpId() != PLATFORM_NCP_SARA_R410) {
+    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
         const char breakCmd[] = "~+++";
         muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
     } else {
@@ -1788,7 +1860,7 @@ int SaraNcpClient::enterDataMode() {
 
     CHECK(waitAtResponse(dataParser_, 5000));
 
-    if (ncpId() != PLATFORM_NCP_SARA_R410) {
+    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
         // Ignore response
         // SARA R4 does not support this, see above
         CHECK(dataParser_.execCommand(20000, "ATH"));
@@ -1936,13 +2008,23 @@ void SaraNcpClient::resetRegistrationState() {
     regCheckTime_ = regStartTime_;
     imsiCheckTime_ = regStartTime_;
     registrationInterventions_ = 0;
+    savedNVMR510_ = false;
 }
 
-void SaraNcpClient::checkRegistrationState() {
+int SaraNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
         if ((csd_.registered() && psd_.registered()) || eps_.registered()) {
             if (memoryIssuePresent_ && connState_ != NcpConnectionState::CONNECTED) {
                 registeredTime_ = millis(); // start registered timer for memory issue power off delays
+            }
+            // FIXME: Workaround for R510S NVM issue, avoid this step with updated firmware.
+            // Switch to airplane mode / full functionality to save connection details for fast cold connection times.
+            // This will skip setting the CONNECTED state and stay CONNECTING, since that's what will happen on the modem.
+            if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510 && !savedNVMR510_) {
+                CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
+                CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1"));
+                savedNVMR510_ = true;
+                return SYSTEM_ERROR_NONE;
             }
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
@@ -1952,6 +2034,7 @@ void SaraNcpClient::checkRegistrationState() {
             connectionState(NcpConnectionState::CONNECTING);
         }
     }
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::interveneRegistration() {
@@ -1964,7 +2047,7 @@ int SaraNcpClient::interveneRegistration() {
     auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
 
     // Intervention to speed up registration or recover in case of failure
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
         // Only attempt intervention when in a sticky state
         // (over intervention interval and multiple URCs with the same state)
         if (csd_.sticky() && csd_.duration() >= timeout) {
@@ -1980,7 +2063,7 @@ int SaraNcpClient::interveneRegistration() {
                 csd_.reset();
                 psd_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
                 CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
                 return 0;
             }
@@ -2012,7 +2095,7 @@ int SaraNcpClient::interveneRegistration() {
                 LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
                 CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
             }
         }
@@ -2045,7 +2128,7 @@ int SaraNcpClient::processEventsImpl() {
         regCheckTime_ = millis();
     });
 
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
         CHECK_PARSER(parser_.execCommand("AT+CEER"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
@@ -2057,7 +2140,9 @@ int SaraNcpClient::processEventsImpl() {
         // Check the signal seen by the module while trying to register
         // Do not need to check for an OK, as this is just for debugging purpose,
         // and UCGED may sometimes return CME ERROR with low signal
-        CHECK_PARSER(parser_.execCommand("AT+UCGED=5"));
+        if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
+            CHECK_PARSER(parser_.execCommand("AT+UCGED=5"));
+        }
         CHECK_PARSER(parser_.execCommand("AT+UCGED?"));
     }
 
@@ -2126,8 +2211,21 @@ int SaraNcpClient::modemPowerOn() {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
         LOG(TRACE, "Powering modem on");
+
         // Perform power-on sequence depending on the NCP type
-        if (ncpId() != PLATFORM_NCP_SARA_R410) {
+        if (ncpId() == PLATFORM_NCP_SARA_R410) {
+            // R410
+            // Low pulse 150-3200ms
+            HAL_GPIO_Write(UBPWR, 0);
+            HAL_Delay_Milliseconds(150);
+            HAL_GPIO_Write(UBPWR, 1);
+        } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
+            // R510
+            // Low pulse 1000-2000ms
+            HAL_GPIO_Write(UBPWR, 0);
+            HAL_Delay_Milliseconds(1500);
+            HAL_GPIO_Write(UBPWR, 1);
+        } else {
             // U201
             // Low pulse 50-80us
             ATOMIC_BLOCK() {
@@ -2135,12 +2233,6 @@ int SaraNcpClient::modemPowerOn() {
                 HAL_Delay_Microseconds(50);
                 HAL_GPIO_Write(UBPWR, 1);
             }
-        } else {
-            // R410
-            // Low pulse 150-3200ms
-            HAL_GPIO_Write(UBPWR, 0);
-            HAL_Delay_Milliseconds(150);
-            HAL_GPIO_Write(UBPWR, 1);
         }
 
         // Verify that the module was powered up by checking the VINT pin up to 1 sec
@@ -2151,6 +2243,7 @@ int SaraNcpClient::modemPowerOn() {
         }
     } else {
         LOG(TRACE, "Modem already on");
+        ncpPowerState(NcpPowerState::ON);
         // FIXME:
         return SYSTEM_ERROR_ALREADY_EXISTS;
     }
@@ -2162,7 +2255,7 @@ int SaraNcpClient::modemPowerOn() {
 int SaraNcpClient::modemPowerOff() {
     static std::once_flag f;
     std::call_once(f, [this]() {
-        if (ncpId() != PLATFORM_NCP_SARA_R410 && modemPowerState()) {
+        if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510 && modemPowerState()) {
             // U201 will auto power-on when it detects a rising VIN
             // If we perform a power-off sequence immediately after it just started
             // to power-on, it will not be detected. Add an artificial delay here.
@@ -2185,7 +2278,7 @@ int SaraNcpClient::modemPowerOff() {
         // otherwise V_INT will never go low
         modemSetUartState(false);
         // Perform power-off sequence depending on the NCP type
-        if (ncpId() != PLATFORM_NCP_SARA_R410) {
+        if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
             // U201
             // Low pulse 1s+
             HAL_GPIO_Write(UBPWR, 0);
@@ -2257,30 +2350,35 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
     }
 
     LOG(TRACE, "Hard resetting the modem");
-    if (ncpId() != PLATFORM_NCP_SARA_R410) {
-        // U201
+    if (ncpId() == PLATFORM_NCP_SARA_U201) {
         // Low pulse for 50ms
         HAL_GPIO_Write(UBRST, 0);
         HAL_Delay_Milliseconds(50);
         HAL_GPIO_Write(UBRST, 1);
-        HAL_Delay_Milliseconds(1000);
-
+        HAL_Delay_Milliseconds(1000);   // just in case
+        ncpPowerState(NcpPowerState::TRANSIENT_ON); // TODO: Test this
         // NOTE: powerOff argument is ignored, modem will restart automatically
         // in all cases
+    } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
+        HAL_GPIO_Write(UBRST, 0);
+        HAL_Delay_Milliseconds(200);
+        HAL_GPIO_Write(UBRST, 1);
+        ncpPowerState(NcpPowerState::TRANSIENT_ON);
+        // Note: No need to apply just-in-case delays, plus the radio seems to
+        // reset a few times rapidly and is unresponsive to AT for a few runs.
+        // Still recoverable by using the TRANSIENT_ON state as above, which
+        // recognizes to wait longer during this transition.
     } else {
         // If memory issue is present, ensure we don't force a power off too soon
         // to avoid hitting the 124 day memory housekeeping issue
         if (memoryIssuePresent_) {
             waitForPowerOff();
         }
-        // R410
-        // Low pulse for 10s
+        // R410 - Low pulse for 10s
         HAL_GPIO_Write(UBRST, 0);
         HAL_Delay_Milliseconds(10000);
         HAL_GPIO_Write(UBRST, 1);
-        // Just in case waiting here for one more second,
-        // won't hurt, we've already waited for 10
-        HAL_Delay_Milliseconds(1000);
+        HAL_Delay_Milliseconds(1000);   // just in case
         // IMPORTANT: R4 is powered-off after applying RESET!
         if (!powerOff) {
             LOG(TRACE, "Powering on the modem after the hard reset");
