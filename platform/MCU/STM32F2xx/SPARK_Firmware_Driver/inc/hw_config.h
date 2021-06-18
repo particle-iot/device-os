@@ -50,9 +50,9 @@ extern "C" {
 #endif
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-extern const led_config_t HAL_Leds_Default[];
+extern const hal_led_config_t HAL_Leds_Default[];
 #else
-extern led_config_t HAL_Leds_Default[];
+extern hal_led_config_t HAL_Leds_Default[];
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 /* Exported constants --------------------------------------------------------*/

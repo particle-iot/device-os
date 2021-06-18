@@ -1438,20 +1438,20 @@ void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootlo
     BUTTON_Mirror_Persist(&bootloader_conf);
 }
 
-static void LED_Mirror_Persist(uint8_t led, led_config_t* conf) {
-    const size_t offset = DCT_LED_MIRROR_OFFSET + ((led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
-    led_config_t saved_config;
+static void LED_Mirror_Persist(uint8_t led, hal_led_config_t* conf) {
+    const size_t offset = DCT_LED_MIRROR_OFFSET + ((led - LED_MIRROR_OFFSET) * sizeof(hal_led_config_t));
+    hal_led_config_t saved_config;
     dct_read_app_data_copy(offset, &saved_config, sizeof(saved_config));
 
     if (conf) {
-        if (saved_config.version == 0xFF || memcmp((void*)conf, (void*)&saved_config, sizeof(led_config_t)))
+        if (saved_config.version == 0xFF || memcmp((void*)conf, (void*)&saved_config, sizeof(hal_led_config_t)))
         {
-            dct_write_app_data((void*)conf, offset, sizeof(led_config_t));
+            dct_write_app_data((void*)conf, offset, sizeof(hal_led_config_t));
         }
     } else {
         if (saved_config.version != 0xFF) {
-            memset((void*)&saved_config, 0xff, sizeof(led_config_t));
-            dct_write_app_data((void*)&saved_config, offset, sizeof(led_config_t));
+            memset((void*)&saved_config, 0xff, sizeof(hal_led_config_t));
+            dct_write_app_data((void*)&saved_config, offset, sizeof(hal_led_config_t));
         }
     }
 }
@@ -1459,7 +1459,7 @@ static void LED_Mirror_Persist(uint8_t led, led_config_t* conf) {
 void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* reserved)
 {
     int32_t state = HAL_disable_irq();
-    led_config_t* ledc = HAL_Led_Get_Configuration(led, NULL);
+    hal_led_config_t* ledc = hal_led_get_configuration(led, NULL);
     if (ledc->is_active) {
         ledc->is_active = 0;
         hal_gpio_mode(ledc->hal_pin, INPUT);
@@ -1484,7 +1484,7 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, hal_pin_t pin, uint32_t flags, uint8_t
     // NOTE: `flags` currently only control whether the LED state should be inverted
     // NOTE: All mirrored LEDs are currently PWM
 
-    led_config_t conf = {
+    hal_led_config_t conf = {
         .version = 0x01,
         .port = pinmap[pin].gpio_peripheral,
         .pin = pinmap[pin].gpio_pin,
@@ -1501,7 +1501,7 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, hal_pin_t pin, uint32_t flags, uint8_t
     };
 
     int32_t state = HAL_disable_irq();
-    HAL_Led_Init(led, &conf, NULL);
+    hal_led_init(led, &conf, NULL);
     HAL_enable_irq(state);
 
     if (!bootloader) {
@@ -1509,7 +1509,7 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, hal_pin_t pin, uint32_t flags, uint8_t
         return;
     }
 
-    led_config_t bootloader_conf = {
+    hal_led_config_t bootloader_conf = {
         .version = 0x01,
         .port = pinmap[pin].gpio_peripheral,
         .pin = pinmap[pin].gpio_pin,

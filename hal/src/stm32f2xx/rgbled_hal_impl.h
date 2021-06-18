@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-typedef struct led_config_t {
+typedef struct hal_led_config_t {
   uint8_t version;             // Struct version
   GPIO_TypeDef* port;          // GPIO port
   uint16_t pin;                // GPIO pin
@@ -52,7 +52,7 @@ typedef struct led_config_t {
     };
     uint8_t flags;
   };
-} led_config_t;
+} hal_led_config_t;
 
 #ifdef  __cplusplus
 }

@@ -73,10 +73,10 @@ button_config_t HAL_Buttons[] = {
 };
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-const led_config_t HAL_Leds_Default[] = {
+const hal_led_config_t HAL_Leds_Default[] = {
 #else
-led_config_t HAL_Leds_Default[LEDn * 2] = {{0}};
-const led_config_t HAL_Leds_Default_Data[] = {
+hal_led_config_t HAL_Leds_Default[LEDn * 2] = {{0}};
+const hal_led_config_t HAL_Leds_Default_Data[] = {
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     {
         .version = 0x01,
@@ -485,12 +485,12 @@ void LED_Init(Led_TypeDef Led)
     if (Led >= LED_MIRROR_OFFSET)
     {
         // Load configuration from DCT
-        led_config_t conf;
-        const size_t offset = DCT_LED_MIRROR_OFFSET + ((Led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
+        hal_led_config_t conf;
+        const size_t offset = DCT_LED_MIRROR_OFFSET + ((Led - LED_MIRROR_OFFSET) * sizeof(hal_led_config_t));
         if (dct_read_app_data_copy(offset, &conf, sizeof(conf)) == 0 && conf.version != 0xff &&
                 conf.is_active && conf.is_pwm) {
             //int32_t state = HAL_disable_irq();
-            memcpy((void*)&HAL_Leds_Default[Led], (void*)&conf, sizeof(led_config_t));
+            memcpy((void*)&HAL_Leds_Default[Led], (void*)&conf, sizeof(hal_led_config_t));
             //HAL_enable_irq(state);
         }
         else
