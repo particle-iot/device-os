@@ -19,13 +19,13 @@
 #include "pwm_hal.h"
 #include "module_info.h"
 
-void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func) {
+void hal_pin_set_function(hal_pin_t pin, PinFunction pin_func) {
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (pin >= TOTAL_PINS) {
         return;
     }
 
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     // Release peripheral resource
     if (pin_func != PIN_MAP[pin].pin_func) {

@@ -62,7 +62,7 @@ static void gpiote_interrupt_handler(nrfx_gpiote_pin_t nrf_pin, nrf_gpiote_polar
         return;
     }
 
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     HAL_InterruptHandler user_isr_handle = m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler;
     void *data = m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.data;
@@ -110,7 +110,7 @@ static nrfx_gpiote_in_config_t get_gpiote_config(uint16_t pin, InterruptMode mod
 }
 
 int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config) {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
@@ -176,7 +176,7 @@ int HAL_Interrupts_Detach(uint16_t pin) {
 }
 
 int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved) {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
@@ -197,7 +197,7 @@ int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
         m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler = NULL;
         m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.data = NULL;
         PIN_MAP[pin].exti_channel = EXTI_CHANNEL_NONE;
-        HAL_Set_Pin_Function(pin, PF_NONE);
+        hal_pin_set_function(pin, PF_NONE);
         return SYSTEM_ERROR_NONE;
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     }

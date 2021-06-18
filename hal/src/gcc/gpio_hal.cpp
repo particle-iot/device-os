@@ -153,22 +153,22 @@ class GpioPinMap
 {
     StdPin* pins[24];
 
-    void assignPin(pin_t id, StdPin* pin) {
+    void assignPin(hal_pin_t id, StdPin* pin) {
         pins[id] = pin;
     }
 
 public:
     GpioPinMap()
     {
-        for (pin_t i=0; i<8; i++) {
+        for (hal_pin_t i=0; i<8; i++) {
             assignPin(D0+i, new DigitalPin(make_name("D",i)));
         }
-        for (pin_t i=0; i<8; i++) {
+        for (hal_pin_t i=0; i<8; i++) {
             assignPin(A0+i, new AnalogPin(make_name("A",i)));
         }
     }
 
-    StdPin& operator[](pin_t index)
+    StdPin& operator[](hal_pin_t index)
     {
         return *pins[index];
     }
@@ -187,37 +187,37 @@ GpioPinMap& _fetch_PIN_MAP()
 #define PIN_MAP _fetch_PIN_MAP()
 
 
-PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
+PinFunction hal_pin_validate_function(hal_pin_t pin, PinFunction pinFunction)
 {
     return PF_DIO;
 }
 
-void HAL_Pin_Mode(pin_t pin, PinMode mode)
+void hal_gpio_mode(hal_pin_t pin, PinMode mode)
 {
     PIN_MAP[pin].setMode(mode);
 }
 
-PinMode HAL_Get_Pin_Mode(pin_t pin)
+PinMode hal_gpio_get_mode(hal_pin_t pin)
 {
     return PIN_MAP[pin].getMode();
 }
 
-void HAL_GPIO_Write(pin_t pin, uint8_t value)
+void hal_gpio_write(hal_pin_t pin, uint8_t value)
 {
     return PIN_MAP[pin].setValue(value);
 }
 
-int32_t HAL_GPIO_Read(pin_t pin)
+int32_t hal_gpio_read(hal_pin_t pin)
 {
     return PIN_MAP[pin].getValue();
 }
 
-uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
+uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value)
 {
 	return 0;
 }
 
-int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved)
+int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reserved)
 {
     return 0;
 }

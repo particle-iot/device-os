@@ -33,7 +33,7 @@ typedef enum Hal_Pin_Type {
 } Hal_Pin_Type;
 #endif
 
-typedef struct Hal_Pin_Info {
+typedef struct hal_pin_info_t {
     uint8_t      gpio_port; // port0: 0; port: 1;
     uint8_t      gpio_pin;  // range: 0~31;
     PinMode      pin_mode;  // GPIO pin mode
@@ -47,10 +47,10 @@ typedef struct Hal_Pin_Info {
     Hal_Pin_Type type;
 #endif // HAL_PLATFORM_IO_EXTENSION
     uint32_t     user_data;
-} Hal_Pin_Info;
+} hal_pin_info_t;
 
 // For compatibility
-typedef Hal_Pin_Info NRF5x_Pin_Info;
+typedef hal_pin_info_t NRF5x_Pin_Info;
 
 extern const uint8_t NRF_PIN_LOOKUP_TABLE[48];
 

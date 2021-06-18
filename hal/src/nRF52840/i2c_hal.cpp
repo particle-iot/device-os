@@ -231,10 +231,10 @@ static int twiUninit(hal_i2c_interface_t i2c, bool reset_pin_configuration = tru
 
     if (reset_pin_configuration) {
         // Reset pin function
-        HAL_Pin_Mode(i2cMap[i2c].scl_pin, PIN_MODE_NONE);
-        HAL_Pin_Mode(i2cMap[i2c].sda_pin, PIN_MODE_NONE);
-        HAL_Set_Pin_Function(i2cMap[i2c].scl_pin, PF_NONE);
-        HAL_Set_Pin_Function(i2cMap[i2c].sda_pin, PF_NONE);
+        hal_gpio_mode(i2cMap[i2c].scl_pin, PIN_MODE_NONE);
+        hal_gpio_mode(i2cMap[i2c].sda_pin, PIN_MODE_NONE);
+        hal_pin_set_function(i2cMap[i2c].scl_pin, PF_NONE);
+        hal_pin_set_function(i2cMap[i2c].sda_pin, PF_NONE);
     }
 
     return SYSTEM_ERROR_NONE;
@@ -250,7 +250,7 @@ static int twiInit(hal_i2c_interface_t i2c) {
     // With this setting, the SCL low period is greater than 1.3 µs.
     nrf_twim_frequency_t nrfFrequency = (i2cMap[i2c].speed == CLOCK_SPEED_400KHZ) ? NRF_TWIM_FREQ_390K : NRF_TWIM_FREQ_100K;
 
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     if (i2cMap[i2c].mode == I2C_MODE_MASTER) {
         const nrfx_twim_config_t twi_config = {
@@ -284,8 +284,8 @@ static int twiInit(hal_i2c_interface_t i2c) {
     }
 
     // Set pin function
-    HAL_Set_Pin_Function(i2cMap[i2c].scl_pin, PF_I2C);
-    HAL_Set_Pin_Function(i2cMap[i2c].sda_pin, PF_I2C);
+    hal_pin_set_function(i2cMap[i2c].scl_pin, PF_I2C);
+    hal_pin_set_function(i2cMap[i2c].sda_pin, PF_I2C);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -665,21 +665,21 @@ uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved
         .set_value = true,
         .value = 1
     };
-    HAL_Pin_Configure(i2cMap[i2c].sda_pin, &conf, nullptr);
-    conf.value = HAL_GPIO_Read(i2cMap[i2c].scl_pin);
-    HAL_Pin_Configure(i2cMap[i2c].scl_pin, &conf, nullptr);
+    hal_gpio_configure(i2cMap[i2c].sda_pin, &conf, nullptr);
+    conf.value = hal_gpio_read(i2cMap[i2c].scl_pin);
+    hal_gpio_configure(i2cMap[i2c].scl_pin, &conf, nullptr);
 
     // Generate up to 9 pulses on SCL to tell slave to release the bus
     for (int i = 0; i < 9; i++) {
-        HAL_GPIO_Write(i2cMap[i2c].sda_pin, 1);
+        hal_gpio_write(i2cMap[i2c].sda_pin, 1);
         HAL_Delay_Microseconds(50);
 
-        if (HAL_GPIO_Read(i2cMap[i2c].sda_pin) == 0) {
-            HAL_GPIO_Write(i2cMap[i2c].scl_pin, 0);
+        if (hal_gpio_read(i2cMap[i2c].sda_pin) == 0) {
+            hal_gpio_write(i2cMap[i2c].scl_pin, 0);
             HAL_Delay_Microseconds(50);
-            HAL_GPIO_Write(i2cMap[i2c].scl_pin, 1);
+            hal_gpio_write(i2cMap[i2c].scl_pin, 1);
             HAL_Delay_Microseconds(50);
-            HAL_GPIO_Write(i2cMap[i2c].scl_pin, 0);
+            hal_gpio_write(i2cMap[i2c].scl_pin, 0);
             HAL_Delay_Microseconds(50);
         } else {
             break;
@@ -687,15 +687,15 @@ uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved
     }
 
     // Generate STOP condition: pull SDA low, switch to high
-    HAL_GPIO_Write(i2cMap[i2c].sda_pin, 0);
+    hal_gpio_write(i2cMap[i2c].sda_pin, 0);
     HAL_Delay_Microseconds(50);
-    HAL_GPIO_Write(i2cMap[i2c].scl_pin, 1);
+    hal_gpio_write(i2cMap[i2c].scl_pin, 1);
     HAL_Delay_Microseconds(50);
-    HAL_GPIO_Write(i2cMap[i2c].sda_pin, 1);
+    hal_gpio_write(i2cMap[i2c].sda_pin, 1);
     HAL_Delay_Microseconds(50);
 
-    HAL_Set_Pin_Function(i2cMap[i2c].sda_pin, PF_I2C);
-    HAL_Set_Pin_Function(i2cMap[i2c].scl_pin, PF_I2C);
+    hal_pin_set_function(i2cMap[i2c].sda_pin, PF_I2C);
+    hal_pin_set_function(i2cMap[i2c].scl_pin, PF_I2C);
 
     hal_i2c_begin(i2c, i2cMap[i2c].mode, i2cMap[i2c].address, nullptr);
     return !hal_i2c_is_enabled(i2c, nullptr);

@@ -19,7 +19,7 @@
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
 
-extern const pin_t g_pins[];
+extern const hal_pin_t g_pins[];
 extern const char* g_pin_names[];
 extern const size_t g_pin_count;
 
@@ -104,7 +104,7 @@ extern const size_t g_pin_count;
 /* LOW_BAT_UC    - 46  { GPIOC, GPIO_Pin_13, GPIO_PinSource13, NONE, NONE, NULL, NONE, PIN_MODE_NONE, 0, 0 }, */
 #endif
 
-const pin_t g_pins[] = {
+const hal_pin_t g_pins[] = {
     A7,
 #if PLATFORM_ID == 10
     B3,

@@ -57,7 +57,7 @@ static void Toggle_LED_State(Led_TypeDef led)
 static void LED_Init_Hal(Led_TypeDef led)
 {
     led_config_t* ledc = HAL_Led_Get_Configuration(led, NULL);
-    HAL_Pin_Mode(ledc->hal_pin, (PinMode)ledc->hal_mode);
+    hal_gpio_mode(ledc->hal_pin, (PinMode)ledc->hal_mode);
     if (ledc->hal_mode == AF_OUTPUT_PUSHPULL) {
         // Enable PWM
         // 15-bit resolution is supported by all PWM pins on STM32F2

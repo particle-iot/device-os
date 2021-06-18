@@ -28,7 +28,7 @@ class Esp32Sdio;
 
 class Esp32SdioStream: public EventGroupBasedStream {
 public:
-    Esp32SdioStream(hal_spi_interface_t spi, uint32_t clock, pin_t csPin, pin_t intPin);
+    Esp32SdioStream(hal_spi_interface_t spi, uint32_t clock, hal_pin_t csPin, hal_pin_t intPin);
     ~Esp32SdioStream();
 
     int read(char* data, size_t size) override;

@@ -98,11 +98,11 @@ inline void yield() {
 #if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 
 # ifndef digitalPinToPort
-# define digitalPinToPort(P)        ( HAL_Pin_Map()[P].gpio_peripheral )
+# define digitalPinToPort(P)        ( hal_pin_map()[P].gpio_peripheral )
 # endif
 
 # ifndef digitalPinToBitMask
-# define digitalPinToBitMask(P)     ( HAL_Pin_Map()[P].gpio_pin )
+# define digitalPinToBitMask(P)     ( hal_pin_map()[P].gpio_pin )
 # endif
 //#define analogInPinToBit(P)        ( )
 # ifndef portOutputRegister
@@ -115,17 +115,17 @@ inline void yield() {
 
 //#define portModeRegister(port)     ( &(port->CRL) )
 # ifndef digitalPinHasPWM
-# define digitalPinHasPWM(P)        ( HAL_Validate_Pin_Function(P, PF_TIMER) == PF_TIMER )
+# define digitalPinHasPWM(P)        ( hal_pin_validate_function(P, PF_TIMER) == PF_TIMER )
 # endif
 
 #elif HAL_PLATFORM_NRF52840
 
 # ifndef digitalPinToPort
-# define digitalPinToPort(P)        ( HAL_Pin_Map()[P].gpio_port ? NRF_P1 : NRF_P0 )
+# define digitalPinToPort(P)        ( hal_pin_map()[P].gpio_port ? NRF_P1 : NRF_P0 )
 # endif
 
 # ifndef digitalPinToBitMask
-# define digitalPinToBitMask(P)     ( HAL_Pin_Map()[P].gpio_pin )
+# define digitalPinToBitMask(P)     ( hal_pin_map()[P].gpio_pin )
 # endif
 
 # ifndef portOutputRegister
@@ -141,7 +141,7 @@ inline void yield() {
 # endif
 
 # ifndef digitalPinHasPWM
-# define digitalPinHasPWM(P)        ( HAL_Validate_Pin_Function(P, PF_TIMER) == PF_TIMER )
+# define digitalPinHasPWM(P)        ( hal_pin_validate_function(P, PF_TIMER) == PF_TIMER )
 # endif
 
 #endif // PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION

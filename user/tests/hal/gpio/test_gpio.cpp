@@ -24,16 +24,16 @@ Serial1LogHandler logHandler(115200);
 
 void test_gpio_blink(void)
 {
-    HAL_Pin_Mode(D7, OUTPUT);
+    hal_gpio_mode(D7, OUTPUT);
     delay(500);
-    HAL_GPIO_Write(D7, 1);
+    hal_gpio_write(D7, 1);
     delay(500);
-    HAL_GPIO_Write(D7, 0);
+    hal_gpio_write(D7, 0);
 }
 
 void test_pulse_width(void)
 {
-    uint32_t pulse_width = HAL_Pulse_In(D2, 0);
+    uint32_t pulse_width = hal_gpio_pulse_in(D2, 0);
     if (pulse_width)
     {
         Log.info("Pulse Width: %dms", pulse_width);
@@ -42,18 +42,18 @@ void test_pulse_width(void)
 
 void test_gpio_input(void)
 {
-    HAL_Pin_Mode(D2, INPUT_PULLUP);
-    HAL_Pin_Mode(D7, OUTPUT);
+    hal_gpio_mode(D2, INPUT_PULLUP);
+    hal_gpio_mode(D7, OUTPUT);
 
     while (true)
     {
-        if (HAL_GPIO_Read(D2))
+        if (hal_gpio_read(D2))
         {
-            HAL_GPIO_Write(D7, 1);
+            hal_gpio_write(D7, 1);
         }
         else
         {
-            HAL_GPIO_Write(D7, 0);
+            hal_gpio_write(D7, 0);
         }
     }
 }

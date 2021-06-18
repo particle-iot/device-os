@@ -119,9 +119,9 @@ test(INTERRUPTS_03_isisr_willpreempt_servicedirqn)
 
 #if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 test(INTERRUPTS_04_attachInterruptDirect) {
-	const pin_t pin = D1;
+	const hal_pin_t pin = D1;
 	const IRQn_Type irqn = EXTI9_5_IRQn;
-	auto pinmap = HAL_Pin_Map();
+	auto pinmap = hal_pin_map();
 	static const uint16_t exti_line = pinmap[pin].gpio_pin;
 	static volatile bool attachInterruptHandler = false;
 	static volatile bool attachInterruptDirectHandler = false;
@@ -206,7 +206,7 @@ test(INTERRUPTS_04_attachInterruptDirect) {
 }
 
 test(INTERRUPTS_04_attachInterruptDirect_1) {
-	const pin_t pin = D1;
+	const hal_pin_t pin = D1;
 
 	detachInterrupt(pin);
 }
@@ -214,7 +214,7 @@ test(INTERRUPTS_04_attachInterruptDirect_1) {
 
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 test(INTERRUPTS_05_attachInterruptD7) {
-	const pin_t pin = D7;
+	const hal_pin_t pin = D7;
 	bool res = attachInterrupt(pin, nullptr, FALLING);
 	bool tem = detachInterrupt(pin);
 	assertFalse(res);

@@ -45,20 +45,20 @@
 /* Private function prototypes ----------------------------------------------*/
 
 
-inline bool is_valid_pin(pin_t pin) __attribute__((always_inline));
-inline bool is_valid_pin(pin_t pin)
+inline bool is_valid_pin(hal_pin_t pin) __attribute__((always_inline));
+inline bool is_valid_pin(hal_pin_t pin)
 {
     return pin<TOTAL_PINS;
 }
 
-PinMode HAL_Get_Pin_Mode(pin_t pin)
+PinMode hal_gpio_get_mode(hal_pin_t pin)
 {
-    return (!is_valid_pin(pin)) ? PIN_MODE_NONE : HAL_Pin_Map()[pin].pin_mode;
+    return (!is_valid_pin(pin)) ? PIN_MODE_NONE : hal_pin_map()[pin].pin_mode;
 }
 
-PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
+PinFunction hal_pin_validate_function(hal_pin_t pin, PinFunction pinFunction)
 {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     if (!is_valid_pin(pin))
         return PF_NONE;
@@ -75,14 +75,14 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP,
  * or INPUT_PULLDOWN
  */
-void HAL_Pin_Mode(pin_t pin, PinMode setMode)
+void hal_gpio_mode(hal_pin_t pin, PinMode setMode)
 {
     const hal_gpio_config_t c = {
         .size = sizeof(c),
         .version = HAL_GPIO_VERSION,
         .mode = setMode
     };
-    HAL_Pin_Configure(pin, &c, NULL);
+    hal_gpio_configure(pin, &c, NULL);
 }
 
 /*
@@ -90,8 +90,8 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode)
  */
 void HAL_GPIO_Save_Pin_Mode(uint16_t pin)
 {
-    // Save pin mode in Hal_Pin_Info.user_property
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    // Save pin mode in hal_pin_info_t.user_property
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
     uint32_t uprop = (uint32_t)PIN_MAP[pin].user_property;
     uprop = (uprop & 0xFFFF) | (((uint32_t)PIN_MAP[pin].pin_mode & 0xFF) << 16) | (0xAA << 24);
     PIN_MAP[pin].user_property = (int32_t)uprop;
@@ -102,8 +102,8 @@ void HAL_GPIO_Save_Pin_Mode(uint16_t pin)
  */
 PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin)
 {
-    // Recall pin mode in Hal_Pin_Info.user_property
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    // Recall pin mode in hal_pin_info_t.user_property
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
     uint32_t uprop = (uint32_t)PIN_MAP[pin].user_property;
     if ((uprop & 0xFF000000) != 0xAA000000)
         return PIN_MODE_NONE;
@@ -133,19 +133,19 @@ PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin)
 /*
  * @brief Sets a GPIO pin to HIGH or LOW.
  */
-void HAL_GPIO_Write(uint16_t pin, uint8_t value)
+void hal_gpio_write(uint16_t pin, uint8_t value)
 {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
     //If the pin is used by analogWrite, we need to change the mode
     if(PIN_MAP[pin].pin_mode == AF_OUTPUT_PUSHPULL)
     {
-        HAL_Pin_Mode(pin, OUTPUT);
+        hal_gpio_mode(pin, OUTPUT);
     }
     else if (PIN_MAP[pin].pin_mode == AN_OUTPUT)
     {
         if (HAL_DAC_Is_Enabled(pin))
             HAL_DAC_Enable(pin, 0);
-        HAL_Pin_Mode(pin, OUTPUT);
+        hal_gpio_mode(pin, OUTPUT);
     }
 
     if(value == 0)
@@ -161,9 +161,9 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value)
 /*
  * @brief Reads the value of a GPIO pin. Should return either 1 (HIGH) or 0 (LOW).
  */
-int32_t HAL_GPIO_Read(uint16_t pin)
+int32_t hal_gpio_read(uint16_t pin)
 {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
     if(PIN_MAP[pin].pin_mode == AN_INPUT)
     {
         PinMode pm = HAL_GPIO_Recall_Pin_Mode(pin);
@@ -174,7 +174,7 @@ int32_t HAL_GPIO_Read(uint16_t pin)
         else
         {
             // Restore the PinMode after calling analogRead() on same pin earlier
-            HAL_Pin_Mode(pin, pm);
+            hal_gpio_mode(pin, pm);
         }
     }
     else if (PIN_MAP[pin].pin_mode == AN_OUTPUT)
@@ -190,7 +190,7 @@ int32_t HAL_GPIO_Read(uint16_t pin)
             if (HAL_DAC_Is_Enabled(pin))
                 HAL_DAC_Enable(pin, 0);
             // Restore pin mode
-            HAL_Pin_Mode(pin, pm);
+            hal_gpio_mode(pin, pm);
         }
     }
 
@@ -207,9 +207,9 @@ int32_t HAL_GPIO_Read(uint16_t pin)
  * @returns uint32_t pulse width in microseconds up to 3 seconds,
  *          returns 0 on 3 second timeout error, or invalid pin.
  */
-uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
+uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value)
 {
-    Hal_Pin_Info* SOLO_PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* SOLO_PIN_MAP = hal_pin_map();
     #define pinReadFast(_pin) ((SOLO_PIN_MAP[_pin].gpio_peripheral->IDR & SOLO_PIN_MAP[_pin].gpio_pin) == 0 ? 0 : 1)
 
     volatile uint32_t timeoutStart = SYSTEM_TICK_COUNTER; // total 3 seconds for entire function!
@@ -245,7 +245,7 @@ uint32_t HAL_Pulse_In(pin_t pin, uint16_t value)
     return (SYSTEM_TICK_COUNTER - pulseStart)/SYSTEM_US_TICKS;
 }
 
-int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) {
+int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reserved) {
     if (!is_valid_pin(pin)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -254,10 +254,10 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) 
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
-    pin_t gpio_pin = PIN_MAP[pin].gpio_pin;
+    hal_pin_t gpio_pin = PIN_MAP[pin].gpio_pin;
 
     // Initialize GPIO_InitStructure to fix system wake up from pin function.
     GPIO_InitTypeDef GPIO_InitStructure = {0};

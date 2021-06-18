@@ -63,7 +63,7 @@ uint16_t extiPriorityBumped = 0x0000;
 
 };
 
-static int constructGpioWakeupReason(hal_wakeup_source_base_t** wakeupReason, pin_t pin) {
+static int constructGpioWakeupReason(hal_wakeup_source_base_t** wakeupReason, hal_pin_t pin) {
     if (wakeupReason) {
         hal_wakeup_source_gpio_t* gpio = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
         if (gpio) {
@@ -97,7 +97,7 @@ static int constructRtcWakeupReason(hal_wakeup_source_base_t** wakeupReason) {
     return SYSTEM_ERROR_NONE;
 }
 
-static int constructAnalogWakeupReason(hal_wakeup_source_base_t** wakeupReason, pin_t pin) {
+static int constructAnalogWakeupReason(hal_wakeup_source_base_t** wakeupReason, hal_pin_t pin) {
     if (wakeupReason) {
         auto lpcomp = (hal_wakeup_source_lpcomp_t*)malloc(sizeof(hal_wakeup_source_lpcomp_t));
         if (lpcomp) {
@@ -170,7 +170,7 @@ static int configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources,
                     break;
                 }
             }
-            HAL_Pin_Mode(gpioWakeup->pin, wakeUpPinMode);
+            hal_gpio_mode(gpioWakeup->pin, wakeUpPinMode);
             HAL_InterruptExtraConfiguration irqConf = {0};
             irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
             irqConf.IRQChannelPreemptionPriority = 0;
@@ -179,7 +179,7 @@ static int configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources,
             irqConf.keepPriority = 1;
             HAL_Interrupts_Attach(gpioWakeup->pin, nullptr, nullptr, gpioWakeup->mode, &irqConf);
             
-            Hal_Pin_Info* pinMap = HAL_Pin_Map();
+            hal_pin_info_t* pinMap = hal_pin_map();
             uint8_t pinSource = pinMap[gpioWakeup->pin].gpio_pin_source;
             if (!(extiPriorityBumped >> pinSource) & 0x0001) {
                 extiPriorities[pinSource] = NVIC_GetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]));
@@ -206,11 +206,11 @@ static int configAnalogWakeupSource(const hal_wakeup_source_base_t* wakeupSource
             uint8_t hysteresis = 24; // 20mV * (4095 / 3300)
             auto analogWakeup = reinterpret_cast<const hal_wakeup_source_lpcomp_t*>(source);
             *configured = true;
-            Hal_Pin_Info* pinMap = HAL_Pin_Map();
+            hal_pin_info_t* pinMap = hal_pin_map();
             uint16_t currVol = hal_adc_read(analogWakeup->pin);
             hal_adc_sleep(true, nullptr); // Suspend ADC
             if (pinMap[analogWakeup->pin].pin_mode != AN_INPUT) {
-                HAL_Pin_Mode(analogWakeup->pin, AN_INPUT);
+                hal_gpio_mode(analogWakeup->pin, AN_INPUT);
             }
             NVIC_DisableIRQ(ADC_IRQn);
             NVIC_ClearPendingIRQ(ADC_IRQn);
@@ -429,7 +429,7 @@ static int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sour
 }
 
 static int validateAnalogWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_lpcomp_t* analog) {
-    if (HAL_Validate_Pin_Function(analog->pin, PF_ADC) != PF_ADC) {
+    if (hal_pin_validate_function(analog->pin, PF_ADC) != PF_ADC) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (analog->trig > HAL_SLEEP_LPCOMP_CROSS) {
@@ -610,7 +610,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     // Suspend all EXTI interrupts
     HAL_Interrupts_Suspend();
 
-    Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+    hal_pin_info_t* halPinMap = hal_pin_map();
 
     uint8_t extiPriority[extiChannelNum];
 

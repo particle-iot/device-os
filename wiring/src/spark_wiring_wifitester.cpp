@@ -36,16 +36,16 @@
 #if 0 //MODULAR_FIRMWARE
 // The usual wiring implementations are dependent upon I2C, SPI and other global instances. Rewriting the GPIO functions to talk directly to the HAL
 
-void pinMode(pin_t pin, PinMode setMode) {
-    HAL_Pin_Mode(pin, setMode);
+void pinMode(hal_pin_t pin, PinMode setMode) {
+    hal_gpio_mode(pin, setMode);
 }
 
-void digitalWrite(pin_t pin, uint8_t value) {
-    HAL_GPIO_Write(pin, value);
+void digitalWrite(hal_pin_t pin, uint8_t value) {
+    hal_gpio_write(pin, value);
 }
 
-int32_t digitalRead(pin_t pin) {
-    return HAL_GPIO_Read(pin);
+int32_t digitalRead(hal_pin_t pin) {
+    return hal_gpio_read(pin);
 }
 #endif
 
@@ -110,8 +110,8 @@ void WiFiTester::setup(bool useSerial1) {
     RGB.control(true);
     RGB.color(64, 0, 0);
 
-    HAL_Pin_Mode(D2, OUTPUT);
-    HAL_GPIO_Write(D2, LOW);
+    hal_gpio_mode(D2, OUTPUT);
+    hal_gpio_write(D2, LOW);
 
     serialPrintln("GOOD DAY, WIFI TESTER AT YOUR SERVICE!!!");
     //DONE: startup without wifi, via SEMI_AUTOMATIC mode
@@ -125,7 +125,7 @@ void WiFiTester::loop(int c) {
     if (NETWORK.ready() && (dhcp_notices < 5)) {
         serialPrintln(" DHCP DHCP DHCP ! DHCP DHCP DHCP ! DHCP DHCP DHCP !");
         RGB.color(255, 0, 255);
-        HAL_GPIO_Write(D2, HIGH);
+        hal_gpio_write(D2, HIGH);
         dhcp_notices++;
     } else if (wifi_testing) {
         state = !state;
@@ -230,8 +230,8 @@ void WiFiTester::wifiScan() {
 
 void setPinOutput(uint16_t pin, uint16_t value)
 {
-    HAL_Pin_Mode(pin, OUTPUT);
-    HAL_GPIO_Write(pin, value);
+    hal_gpio_mode(pin, OUTPUT);
+    hal_gpio_write(pin, value);
 }
 
 void setPinOutputRange(uint16_t start, uint16_t end, uint16_t value)

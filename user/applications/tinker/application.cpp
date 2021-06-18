@@ -21,7 +21,7 @@
 
 struct PinMapping {
     const char* name;
-    pin_t pin;
+    hal_pin_t pin;
 };
 
 #define PIN(p) {#p, p}
@@ -107,7 +107,7 @@ STARTUP(System.enable(SYSTEM_FLAG_PM_DETECTION));
 
 SYSTEM_MODE(AUTOMATIC);
 
-pin_t lookupPinByName(const String& name) {
+hal_pin_t lookupPinByName(const String& name) {
     for (unsigned i = 0; i < g_pin_count; i++) {
         const auto& entry = g_pinmap[i];
         if (!strcmp(entry.name, name.c_str())) {
@@ -147,7 +147,7 @@ void loop()
  *******************************************************************************/
 int tinkerDigitalRead(String pinStr)
 {
-    pin_t pin = lookupPinByName(pinStr);
+    hal_pin_t pin = lookupPinByName(pinStr);
     if (pin != PIN_INVALID) {
         pinMode(pin, INPUT_PULLDOWN);
         return digitalRead(pin);
@@ -187,7 +187,7 @@ int tinkerDigitalWrite(String command)
         return -2;
     }
 
-    pin_t pin = lookupPinByName(pinStr);
+    hal_pin_t pin = lookupPinByName(pinStr);
 
     if (pin != PIN_INVALID) {
         pinMode(pin, OUTPUT);
@@ -208,8 +208,8 @@ int tinkerDigitalWrite(String command)
  *******************************************************************************/
 int tinkerAnalogRead(String pinStr)
 {
-    pin_t pin = lookupPinByName(pinStr);
-    if (pin != PIN_INVALID && HAL_Validate_Pin_Function(pin, PF_ADC) == PF_ADC) {
+    hal_pin_t pin = lookupPinByName(pinStr);
+    if (pin != PIN_INVALID && hal_pin_validate_function(pin, PF_ADC) == PF_ADC) {
         return analogRead(pin);
     }
     return -1;
@@ -243,9 +243,9 @@ int tinkerAnalogWrite(String command)
         return -2;
     }
 
-    pin_t pin = lookupPinByName(pinStr);
-    if (pin != PIN_INVALID && (HAL_Validate_Pin_Function(pin, PF_DAC) == PF_DAC ||
-        HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)) {
+    hal_pin_t pin = lookupPinByName(pinStr);
+    if (pin != PIN_INVALID && (hal_pin_validate_function(pin, PF_DAC) == PF_DAC ||
+        hal_pin_validate_function(pin, PF_TIMER) == PF_TIMER)) {
         pinMode(pin, OUTPUT);
         analogWrite(pin, value);
         return 1;

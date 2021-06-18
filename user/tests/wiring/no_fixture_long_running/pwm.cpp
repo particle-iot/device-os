@@ -14,7 +14,7 @@ static const uint32_t minimumFrequency = 100;
 
 struct PinMapping {
     const char* name;
-    pin_t pin;
+    hal_pin_t pin;
 };
 
 #define PIN(p) {#p, p}
@@ -45,7 +45,7 @@ const PinMapping pwm_pins[] = {
 #endif
 };
 
-static pin_t pin = pwm_pins[0].pin;
+static hal_pin_t pin = pwm_pins[0].pin;
 
 template <typename F> void for_all_pwm_pins(F callback)
 {
@@ -106,14 +106,14 @@ test(PWM_01_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
 test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
 #if HAL_PLATFORM_NRF52840
 #if PLATFORM_ID != PLATFORM_TRACKER
-    pin_t pin = D0;  //pin under test, D0 is not a Timer channel
+    hal_pin_t pin = D0;  //pin under test, D0 is not a Timer channel
 #else
     // There are no non-PWM pins that we can safely use
-    pin_t pin = PIN_INVALID;
+    hal_pin_t pin = PIN_INVALID;
     skip();
 #endif
 #else
-    pin_t pin = D5;  //pin under test, D5 is not a Timer channel
+    hal_pin_t pin = D5;  //pin under test, D5 is not a Timer channel
 #endif
     // when
     pinMode(pin, OUTPUT);
@@ -125,7 +125,7 @@ test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
 }
 
 test(PWM_03_NoAnalogWriteWhenPinSelectedIsOutOfRange) {
-    pin_t pin = TOTAL_PINS; // pin under test (not a valid user pin)
+    hal_pin_t pin = TOTAL_PINS; // pin under test (not a valid user pin)
     // when
     pinMode(pin, OUTPUT); // will simply return
     analogWrite(pin, 100); // will simply return
@@ -135,7 +135,7 @@ test(PWM_03_NoAnalogWriteWhenPinSelectedIsOutOfRange) {
 }
 
 test(PWM_04_AnalogWriteOnPinResultsInCorrectFrequency) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -174,7 +174,7 @@ test(PWM_04_AnalogWriteOnPinResultsInCorrectFrequency) {
 }
 
 test(PWM_05_AnalogWriteOnPinResultsInCorrectAnalogValue) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -212,7 +212,7 @@ test(PWM_05_AnalogWriteOnPinResultsInCorrectAnalogValue) {
 }
 
 test(PWM_06_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -254,7 +254,7 @@ test(PWM_06_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
 }
 
 test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -292,7 +292,7 @@ test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
 }
 
 test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
 
     // when
@@ -404,7 +404,7 @@ test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
 }
 
 test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -507,7 +507,7 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 }
 
 test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -609,7 +609,7 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 }
 
 test(PWM_11_PwmSleep) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);

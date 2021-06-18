@@ -99,10 +99,10 @@ int Am18x5::begin() {
         return SYSTEM_ERROR_INTERNAL;
     }
 
-    HAL_Pin_Mode(RTC_WDI, OUTPUT);
-    HAL_GPIO_Write(RTC_WDI, 1);
+    hal_gpio_mode(RTC_WDI, OUTPUT);
+    hal_gpio_write(RTC_WDI, 1);
 
-    HAL_Pin_Mode(RTC_INT, INPUT_PULLUP);
+    hal_gpio_mode(RTC_INT, INPUT_PULLUP);
     HAL_InterruptExtraConfiguration extra = {0};
     extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
     CHECK(HAL_Interrupts_Attach(RTC_INT, exRtcInterruptHandler, this, FALLING, &extra));
@@ -278,10 +278,10 @@ int Am18x5::disableWatchdog() const {
 int Am18x5::feedWatchdog() const {
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    if (HAL_GPIO_Read(RTC_WDI) == 1) {
-        HAL_GPIO_Write(RTC_WDI, 0);
+    if (hal_gpio_read(RTC_WDI) == 1) {
+        hal_gpio_write(RTC_WDI, 0);
     } else {
-        HAL_GPIO_Write(RTC_WDI, 1);
+        hal_gpio_write(RTC_WDI, 1);
     }
     return SYSTEM_ERROR_NONE;
 }

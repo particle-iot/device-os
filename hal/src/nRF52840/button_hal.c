@@ -153,7 +153,7 @@ void BUTTON_Init(Button_TypeDef button, ButtonMode_TypeDef Button_Mode) {
     }
 
     // Configure button pin
-    HAL_Pin_Mode(HAL_Buttons[button].pin, HAL_Buttons[button].interrupt_mode == RISING ? INPUT_PULLDOWN : INPUT_PULLUP);
+    hal_gpio_mode(HAL_Buttons[button].pin, HAL_Buttons[button].interrupt_mode == RISING ? INPUT_PULLDOWN : INPUT_PULLUP);
     if (Button_Mode == BUTTON_MODE_EXTI)  {
         /* Attach GPIOTE Interrupt */
         BUTTON_EXTI_Config(button, ENABLE);
@@ -193,7 +193,7 @@ void BUTTON_EXTI_Config(Button_TypeDef button, FunctionalState NewState) {
  * @retval Actual Button Pressed state.
  */
 uint8_t BUTTON_GetState(Button_TypeDef Button) {
-    return HAL_GPIO_Read(HAL_Buttons[Button].pin);
+    return hal_gpio_read(HAL_Buttons[Button].pin);
 }
 
 /**

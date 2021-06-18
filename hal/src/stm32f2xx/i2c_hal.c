@@ -310,7 +310,7 @@ void hal_i2c_stretch_clock(hal_i2c_interface_t i2c, bool stretch, void* reserved
 
 void hal_i2c_begin(hal_i2c_interface_t i2c, hal_i2c_mode_t mode, uint8_t address, void* reserved) {
     hal_i2c_lock(i2c, NULL);
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
     /*
@@ -350,8 +350,8 @@ void hal_i2c_begin(hal_i2c_interface_t i2c, hal_i2c_mode_t mode, uint8_t address
     GPIO_PinAFConfig(PIN_MAP[i2cMap[i2c]->sclPin].gpio_peripheral, PIN_MAP[i2cMap[i2c]->sclPin].gpio_pin_source, i2cMap[i2c]->afMapping);
     GPIO_PinAFConfig(PIN_MAP[i2cMap[i2c]->sdaPin].gpio_peripheral, PIN_MAP[i2cMap[i2c]->sdaPin].gpio_pin_source, i2cMap[i2c]->afMapping);
 
-    HAL_Pin_Mode(i2cMap[i2c]->sclPin, AF_OUTPUT_DRAIN);
-    HAL_Pin_Mode(i2cMap[i2c]->sdaPin, AF_OUTPUT_DRAIN);
+    hal_gpio_mode(i2cMap[i2c]->sclPin, AF_OUTPUT_DRAIN);
+    hal_gpio_mode(i2cMap[i2c]->sdaPin, AF_OUTPUT_DRAIN);
 
     NVIC_InitTypeDef  nvicInitStructure;
 
@@ -859,23 +859,23 @@ uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved
         .set_value = true,
         .value = 1
     };
-    HAL_Pin_Configure(i2cMap[i2c]->sdaPin, &conf, NULL);
-    conf.value = HAL_GPIO_Read(i2cMap[i2c]->sclPin);
-    HAL_Pin_Configure(i2cMap[i2c]->sclPin, &conf, NULL);
+    hal_gpio_configure(i2cMap[i2c]->sdaPin, &conf, NULL);
+    conf.value = hal_gpio_read(i2cMap[i2c]->sclPin);
+    hal_gpio_configure(i2cMap[i2c]->sclPin, &conf, NULL);
 
     hal_i2c_end(i2c, NULL);
 
     // Generate up to 9 pulses on SCL to tell slave to release the bus
     for (int i = 0; i < 9; i++) {
-        HAL_GPIO_Write(i2cMap[i2c]->sdaPin, 1);
+        hal_gpio_write(i2cMap[i2c]->sdaPin, 1);
         HAL_Delay_Microseconds(50);
 
-        if (HAL_GPIO_Read(i2cMap[i2c]->sdaPin) == 0) {
-            HAL_GPIO_Write(i2cMap[i2c]->sclPin, 0);
+        if (hal_gpio_read(i2cMap[i2c]->sdaPin) == 0) {
+            hal_gpio_write(i2cMap[i2c]->sclPin, 0);
             HAL_Delay_Microseconds(50);
-            HAL_GPIO_Write(i2cMap[i2c]->sclPin, 1);
+            hal_gpio_write(i2cMap[i2c]->sclPin, 1);
             HAL_Delay_Microseconds(50);
-            HAL_GPIO_Write(i2cMap[i2c]->sclPin, 0);
+            hal_gpio_write(i2cMap[i2c]->sclPin, 0);
             HAL_Delay_Microseconds(50);
         } else {
             break;
@@ -883,11 +883,11 @@ uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved
     }
 
     // Generate STOP condition: pull SDA low, switch to high
-    HAL_GPIO_Write(i2cMap[i2c]->sdaPin, 0);
+    hal_gpio_write(i2cMap[i2c]->sdaPin, 0);
     HAL_Delay_Microseconds(50);
-    HAL_GPIO_Write(i2cMap[i2c]->sclPin, 1);
+    hal_gpio_write(i2cMap[i2c]->sclPin, 1);
     HAL_Delay_Microseconds(50);
-    HAL_GPIO_Write(i2cMap[i2c]->sdaPin, 1);
+    hal_gpio_write(i2cMap[i2c]->sdaPin, 1);
     HAL_Delay_Microseconds(50);
 
 

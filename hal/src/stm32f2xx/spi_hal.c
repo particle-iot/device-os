@@ -260,12 +260,12 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
         pin = spiMap[spi].ss_pin;
     }
 
-    if (mode == SPI_MODE_SLAVE && !HAL_Pin_Is_Valid(pin)) {
+    if (mode == SPI_MODE_SLAVE && !hal_pin_is_valid(pin)) {
         return;
     }
 
     spiState[spi].ss_pin = pin;
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     spiState[spi].mode = mode;
 
@@ -278,16 +278,16 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
     GPIO_PinAFConfig(PIN_MAP[spiMap[spi].miso_pin].gpio_peripheral, PIN_MAP[spiMap[spi].miso_pin].gpio_pin_source, spiMap[spi].af_mapping);
     GPIO_PinAFConfig(PIN_MAP[spiMap[spi].mosi_pin].gpio_peripheral, PIN_MAP[spiMap[spi].mosi_pin].gpio_pin_source, spiMap[spi].af_mapping);
 
-    HAL_Pin_Mode(spiMap[spi].sck_pin, AF_OUTPUT_PUSHPULL);
-    HAL_Pin_Mode(spiMap[spi].miso_pin, AF_OUTPUT_PUSHPULL);
-    HAL_Pin_Mode(spiMap[spi].mosi_pin, AF_OUTPUT_PUSHPULL);
+    hal_gpio_mode(spiMap[spi].sck_pin, AF_OUTPUT_PUSHPULL);
+    hal_gpio_mode(spiMap[spi].miso_pin, AF_OUTPUT_PUSHPULL);
+    hal_gpio_mode(spiMap[spi].mosi_pin, AF_OUTPUT_PUSHPULL);
 
-    if (mode == SPI_MODE_MASTER && HAL_Pin_Is_Valid(pin)) {
+    if (mode == SPI_MODE_MASTER && hal_pin_is_valid(pin)) {
         // Ensure that there is no glitch on SS pin
         PIN_MAP[pin].gpio_peripheral->BSRRL = PIN_MAP[pin].gpio_pin;
-        HAL_Pin_Mode(pin, OUTPUT);
+        hal_gpio_mode(pin, OUTPUT);
     } else if (mode == SPI_MODE_SLAVE) {
-        HAL_Pin_Mode(pin, INPUT);
+        hal_gpio_mode(pin, INPUT);
     }
 
     /* SPI configuration */
@@ -595,7 +595,7 @@ void hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved)
 
 static void spiOnSelectedHandler(void *data) {
     hal_spi_interface_t spi = (hal_spi_interface_t)data;
-    uint8_t state = !HAL_GPIO_Read(spiState[spi].ss_pin);
+    uint8_t state = !hal_gpio_read(spiState[spi].ss_pin);
     spiState[spi].ss_state = state;
     if (state) {
         /* Selected */

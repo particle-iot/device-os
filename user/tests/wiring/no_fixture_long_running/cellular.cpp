@@ -119,7 +119,7 @@ test(CELLULAR_02_device_will_connect_to_the_cloud_when_all_udp_sockets_consumed)
 #if !HAL_PLATFORM_NCP_AT
 
 bool modemPowerState() {
-    auto state = HAL_GPIO_Read(RI_UC);
+    auto state = hal_gpio_read(RI_UC);
     if (state) {
         // RI is high, which means that V_INT is high as well
         // We are definitely powered on
@@ -129,7 +129,7 @@ bool modemPowerState() {
     // because RI may be held low for over a second under some conditions
     // Sleeping for 1.1s and checking again
     HAL_Delay_Milliseconds(1100);
-    state = HAL_GPIO_Read(RI_UC);
+    state = hal_gpio_read(RI_UC);
     // If RI is still low - we are off
     // If RI is high - we are on
     return state;

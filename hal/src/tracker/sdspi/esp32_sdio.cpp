@@ -74,7 +74,7 @@ namespace particle {
 
 Esp32Sdio* Esp32Sdio::instance_ = nullptr;
 
-Esp32Sdio::Esp32Sdio(hal_spi_interface_t spi, const hal_spi_info_t* conf, pin_t cs, pin_t intr)
+Esp32Sdio::Esp32Sdio(hal_spi_interface_t spi, const hal_spi_info_t* conf, hal_pin_t cs, hal_pin_t intr)
         : lock_(spi, *conf),
           csPin_(cs),
           intrPin_(intr),
@@ -101,8 +101,8 @@ int Esp32Sdio::init() {
         .set_value = 1,
         .value = 1
     };
-    CHECK(HAL_Pin_Configure(csPin_, &conf, nullptr));
-    HAL_Pin_Mode(intrPin_, INPUT_PULLUP);
+    CHECK(hal_gpio_configure(csPin_, &conf, nullptr));
+    hal_gpio_mode(intrPin_, INPUT_PULLUP);
 
     std::lock_guard<SpiConfigurationLock> spiGuarder(lock_);
 
@@ -138,12 +138,12 @@ void Esp32Sdio::destroy() {
         vEventGroupDelete(evGroup_);
     }
 
-    HAL_Pin_Mode(csPin_, INPUT);
-    HAL_Pin_Mode(intrPin_, INPUT);
+    hal_gpio_mode(csPin_, INPUT);
+    hal_gpio_mode(intrPin_, INPUT);
 }
 
 void Esp32Sdio::chipSelect(bool state) {
-    HAL_GPIO_Write(csPin_, !state);
+    hal_gpio_write(csPin_, !state);
 }
 
 int Esp32Sdio::spiTransmit(const void* tx, void* rx, size_t len) {

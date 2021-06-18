@@ -51,7 +51,7 @@ void HAL_Tone_Start(uint8_t pin, uint32_t frequency, uint32_t duration) {
         return;
     }
 
-    Hal_Pin_Info* pinmap = HAL_Pin_Map();
+    hal_pin_info_t* pinmap = hal_pin_map();
     if (pin >= TOTAL_PINS || pinmap[pin].pwm_instance == PWM_INSTANCE_NONE) {
         return;
     }

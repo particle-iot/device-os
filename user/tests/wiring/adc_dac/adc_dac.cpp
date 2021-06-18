@@ -45,7 +45,7 @@
  */
 
 test(ADC_NoAnalogReadWhenPinSelectedIsOutOfRange) {
-    pin_t pin = 23;//pin under test (not a valid user pin)
+    hal_pin_t pin = 23;//pin under test (not a valid user pin)
     // when
     int32_t ADCValue = analogRead(pin);
     // then
@@ -54,7 +54,7 @@ test(ADC_NoAnalogReadWhenPinSelectedIsOutOfRange) {
 }
 
 test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue) {
-    pin_t pin = A5;//pin under test
+    hal_pin_t pin = A5;//pin under test
     // when
     analogWriteResolution(DAC1, 12);
     assertEqual(analogWriteResolution(DAC1), 12);
@@ -66,8 +66,8 @@ test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue) {
 }
 
 test(ADC_AnalogReadOnPinWithDACShmoo) {
-    pin_t pin1 = A5;
-    pin_t pin2 = A1;
+    hal_pin_t pin1 = A5;
+    hal_pin_t pin2 = A1;
     pinMode(pin1, INPUT);
     pinMode(pin2, INPUT);
 
@@ -106,8 +106,8 @@ test(ADC_AnalogReadOnPinWithDACShmoo) {
 }
 
 test(ADC_AnalogReadOnPinWithDACMixedWithDigitalWrite) {
-    pin_t pin1 = A5;
-    pin_t pin2 = A1;
+    hal_pin_t pin1 = A5;
+    hal_pin_t pin2 = A1;
     pinMode(pin1, INPUT);
     pinMode(pin2, INPUT);
 
@@ -165,8 +165,8 @@ test(ADC_AnalogReadOnPinWithDACMixedWithDigitalWrite) {
 }
 
 test(ADC_AnalogReadOnPinWithDACShmoo8bit) {
-    pin_t pin1 = A5;
-    pin_t pin2 = A1;
+    hal_pin_t pin1 = A5;
+    hal_pin_t pin2 = A1;
     pinMode(pin1, INPUT);
     pinMode(pin2, INPUT);
 
@@ -205,8 +205,8 @@ test(ADC_AnalogReadOnPinWithDACShmoo8bit) {
 }
 
 test(ADC_AnalogReadOnPinWithDACMixedWithDigitalWrite8bit) {
-    pin_t pin1 = A5;
-    pin_t pin2 = A1;
+    hal_pin_t pin1 = A5;
+    hal_pin_t pin2 = A1;
     pinMode(pin1, INPUT);
     pinMode(pin2, INPUT);
 
@@ -264,26 +264,26 @@ test(ADC_AnalogReadOnPinWithDACMixedWithDigitalWrite8bit) {
 }
 
 test(DAC_AnalogWriteWorksMixedWithDigitalRead) {
-    pin_t pin = DAC;
+    hal_pin_t pin = DAC;
 
     // when
     pinMode(pin, INPUT_PULLUP);
     // then
-    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
+    assertEqual(hal_gpio_get_mode(pin), INPUT_PULLUP);
 
     // 2 analogReads
     analogWrite(pin, 1000);
-    assertEqual(HAL_Get_Pin_Mode(pin), AN_OUTPUT);
+    assertEqual(hal_gpio_get_mode(pin), AN_OUTPUT);
     analogWrite(pin, 2000);
-    assertEqual(HAL_Get_Pin_Mode(pin), AN_OUTPUT);
+    assertEqual(hal_gpio_get_mode(pin), AN_OUTPUT);
     // 2 digitalReads
     digitalRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
+    assertEqual(hal_gpio_get_mode(pin), INPUT_PULLUP);
     digitalRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
+    assertEqual(hal_gpio_get_mode(pin), INPUT_PULLUP);
     // 2 analogReads again
     analogWrite(pin, 1000);
-    assertEqual(HAL_Get_Pin_Mode(pin), AN_OUTPUT);
+    assertEqual(hal_gpio_get_mode(pin), AN_OUTPUT);
     analogWrite(pin, 500);
-    assertEqual(HAL_Get_Pin_Mode(pin), AN_OUTPUT);
+    assertEqual(hal_gpio_get_mode(pin), AN_OUTPUT);
 }

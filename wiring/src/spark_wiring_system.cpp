@@ -105,7 +105,7 @@ bool SystemClass::enableFeature(const WiFiTesterFeature feature) {
     return true;
 }
 
-SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
+SleepResult::SleepResult(int ret, const hal_pin_t* pins, size_t pinsSize) {
     if (ret > 0) {
         // pin
         --ret;
@@ -134,7 +134,7 @@ bool SleepResult::wokenUpByPin() const {
     return reason_ == WAKEUP_REASON_PIN || reason_ == WAKEUP_REASON_PIN_OR_RTC;
 }
 
-pin_t SleepResult::pin() const {
+hal_pin_t SleepResult::pin() const {
     return pin_;
 }
 

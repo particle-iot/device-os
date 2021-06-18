@@ -31,8 +31,8 @@ static void common_interrupt_handler(void *data)
 static void attach_interrupt_handler(void *data)
 {
     static bool on = true;
-    HAL_Pin_Mode(D7, OUTPUT);
-    HAL_GPIO_Write(D7, on);
+    hal_gpio_mode(D7, OUTPUT);
+    hal_gpio_write(D7, on);
     on = !on;
 }
 
@@ -47,14 +47,14 @@ void setup() {
     
     for (int i = 0; i < 19; i++)
     {
-        HAL_Pin_Mode(i, INPUT_PULLUP);
+        hal_gpio_mode(i, INPUT_PULLUP);
         HAL_Interrupts_Attach(i, common_interrupt_handler, (void *)data, CHANGE, &config);    
     }
 
     HAL_Interrupts_Detach(2);    
     HAL_Interrupts_Detach(7);    
 
-    HAL_Pin_Mode(D2, INPUT_PULLUP);
+    hal_gpio_mode(D2, INPUT_PULLUP);
     HAL_Interrupts_Attach(D2, attach_interrupt_handler, (void *)data, CHANGE, &config);    
 }
 

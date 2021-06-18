@@ -196,7 +196,7 @@ static volatile uint32_t feature_flags = 0;
 static volatile bool feature_flags_loaded = false;
 
 /* Private function prototypes -----------------------------------------------*/
-extern uint32_t HAL_Interrupts_Pin_IRQn(pin_t pin);
+extern uint32_t HAL_Interrupts_Pin_IRQn(hal_pin_t pin);
 
 void (*HAL_TIM1_Handler)(void);
 void (*HAL_TIM3_Handler)(void);
@@ -341,24 +341,24 @@ void HAL_Core_Config(void)
     PWR_WakeUpPinCmd(DISABLE);
 
     //Wiring pins default to inputs
-    for (pin_t pin = 0; pin < TOTAL_ESSENTIAL_PINS; pin++) {
+    for (hal_pin_t pin = 0; pin < TOTAL_ESSENTIAL_PINS; pin++) {
 #if defined(USE_SWD_JTAG) || defined(USE_SWD)
         if (pin >= D3 && pin <= D7) { // JTAG pins
             continue;
         }
 #endif
-        HAL_Pin_Mode(pin, INPUT);
+        hal_gpio_mode(pin, INPUT);
     }
 
 #if HAS_EXTRA_PINS
-    for (pin_t pin = FIRST_EXTRA_PIN; pin <= LAST_EXTRA_PIN; pin++) {
-        HAL_Pin_Mode(pin, INPUT);
+    for (hal_pin_t pin = FIRST_EXTRA_PIN; pin <= LAST_EXTRA_PIN; pin++) {
+        hal_gpio_mode(pin, INPUT);
     }
 #endif
 
 #if PLATFORM_ID == PLATFORM_P1
     if (isWiFiPowersaveClockDisabled()) {
-        HAL_Pin_Mode(30, INPUT); // Wi-Fi Powersave clock is disabled, default to INPUT
+        hal_gpio_mode(30, INPUT); // Wi-Fi Powersave clock is disabled, default to INPUT
     }
 #endif
 
@@ -1282,7 +1282,7 @@ static void BUTTON_Mirror_Init() {
         }
 
         int32_t state = HAL_disable_irq();
-        HAL_Pin_Mode(HAL_Buttons[BUTTON1_MIRROR].hal_pin, pinMode);
+        hal_gpio_mode(HAL_Buttons[BUTTON1_MIRROR].hal_pin, pinMode);
         HAL_Interrupts_Attach(HAL_Buttons[BUTTON1_MIRROR].hal_pin, HAL_Core_Mode_Button_Mirror_Pressed, NULL, HAL_Buttons[BUTTON1_MIRROR].interrupt_mode, NULL);
         if (HAL_Buttons[BUTTON1_MIRROR].exti_line == HAL_Buttons[BUTTON1].exti_line) {
             HAL_Buttons[BUTTON1].exti_port_source = HAL_Buttons[BUTTON1_MIRROR].exti_port_source;
@@ -1379,7 +1379,7 @@ static inline uint32_t Tim_Peripheral_To_Af(TIM_TypeDef* tim) {
 
 void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootloader, uint8_t button, void *reserved) {
     (void)button; // unused
-    Hal_Pin_Info* pinmap = HAL_Pin_Map();
+    hal_pin_info_t* pinmap = hal_pin_map();
     if (pin > TOTAL_PINS)
         return;
 
@@ -1462,7 +1462,7 @@ void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* rese
     led_config_t* ledc = HAL_Led_Get_Configuration(led, NULL);
     if (ledc->is_active) {
         ledc->is_active = 0;
-        HAL_Pin_Mode(ledc->hal_pin, INPUT);
+        hal_gpio_mode(ledc->hal_pin, INPUT);
     }
     HAL_enable_irq(state);
 
@@ -1471,12 +1471,12 @@ void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* rese
     }
 }
 
-void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t bootloader, void* reserved)
+void HAL_Core_Led_Mirror_Pin(uint8_t led, hal_pin_t pin, uint32_t flags, uint8_t bootloader, void* reserved)
 {
     if (pin > TOTAL_PINS)
         return;
 
-    Hal_Pin_Info* pinmap = HAL_Pin_Map();
+    hal_pin_info_t* pinmap = hal_pin_map();
 
     if (!pinmap[pin].timer_peripheral)
         return;

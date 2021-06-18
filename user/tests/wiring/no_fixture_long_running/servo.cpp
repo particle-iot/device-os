@@ -28,9 +28,9 @@
 #include "unit-test/unit-test.h"
 
 #if HAL_PLATFORM_GEN == 2
-static const pin_t pin = D0, pin2 = D1; // Pins sharing the same hardware timer
+static const hal_pin_t pin = D0, pin2 = D1; // Pins sharing the same hardware timer
 #elif HAL_PLATFORM_GEN == 3
-static const pin_t pin = A0, pin2 = A1;
+static const hal_pin_t pin = A0, pin2 = A1;
 #else
 #error "Unsupported"
 #endif // HAL_PLATFORM_GEN
@@ -38,12 +38,12 @@ static const pin_t pin = A0, pin2 = A1;
 test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
 #if HAL_PLATFORM_NRF52840
 # if PLATFORM_ID == PLATFORM_TRACKER
-    pin_t pin = BTN;
+    hal_pin_t pin = BTN;
 # else
-    pin_t pin = D0;
+    hal_pin_t pin = D0;
 # endif
 #else
-    pin_t pin = D5;
+    hal_pin_t pin = D5;
 #endif
     Servo testServo;
     // when
@@ -55,7 +55,7 @@ test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
 }
 
 test(SERVO_02_CannotAttachWhenPinSelectedIsOutOfRange) {
-    pin_t pin = 51;//pin under test (not a valid user pin)
+    hal_pin_t pin = 51;//pin under test (not a valid user pin)
     Servo testServo;
     assertFalse(testServo.attach(pin));
 }

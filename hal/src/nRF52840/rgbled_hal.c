@@ -89,9 +89,9 @@ uint16_t Get_RGB_LED_Max_Value(void) {
  */
 void Set_User_LED(uint8_t state) {
     if ((!state && HAL_Leds[PARTICLE_LED_USER].is_inverted) || (state && !HAL_Leds[PARTICLE_LED_USER].is_inverted)) {
-        HAL_GPIO_Write(HAL_Leds[PARTICLE_LED_USER].pin, 1);
+        hal_gpio_write(HAL_Leds[PARTICLE_LED_USER].pin, 1);
     } else {
-        HAL_GPIO_Write(HAL_Leds[PARTICLE_LED_USER].pin, 0);
+        hal_gpio_write(HAL_Leds[PARTICLE_LED_USER].pin, 0);
     }
 }
 
@@ -99,7 +99,7 @@ void Set_User_LED(uint8_t state) {
  * @brief  Toggle user LED
  */
 void Toggle_User_LED(void) {
-    HAL_GPIO_Write(HAL_Leds[PARTICLE_LED_USER].pin, !HAL_GPIO_Read(HAL_Leds[PARTICLE_LED_USER].pin));
+    hal_gpio_write(HAL_Leds[PARTICLE_LED_USER].pin, !hal_gpio_read(HAL_Leds[PARTICLE_LED_USER].pin));
 }
 
 /**
@@ -126,11 +126,11 @@ void LED_Init(Led_TypeDef Led) {
         return;
     }
 
-    HAL_Pin_Mode(HAL_Leds[Led].pin, OUTPUT);
+    hal_gpio_mode(HAL_Leds[Led].pin, OUTPUT);
     if (HAL_Leds[Led].is_inverted) {
-        HAL_GPIO_Write(HAL_Leds[Led].pin, 1);
+        hal_gpio_write(HAL_Leds[Led].pin, 1);
     } else {
-        HAL_GPIO_Write(HAL_Leds[Led].pin, 0);
+        hal_gpio_write(HAL_Leds[Led].pin, 0);
     }
 }
 
@@ -229,7 +229,7 @@ void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* rese
     if (ledc->is_active) {
         ledc->is_active = 0;
         hal_pwm_reset_pin(ledc->pin);
-        HAL_Pin_Mode(ledc->pin, PIN_MODE_NONE);
+        hal_gpio_mode(ledc->pin, PIN_MODE_NONE);
     }
     HAL_enable_irq(state);
 
@@ -241,13 +241,13 @@ void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* rese
 /**
  * @brief  Set mirror LED, save it to DCT if in bootloader
  */
-void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t bootloader, void* reserved)
+void HAL_Core_Led_Mirror_Pin(uint8_t led, hal_pin_t pin, uint32_t flags, uint8_t bootloader, void* reserved)
 {
     if (pin > TOTAL_PINS) {
         return;
     }
 
-    Hal_Pin_Info* pinmap = HAL_Pin_Map();
+    hal_pin_info_t* pinmap = hal_pin_map();
 
     if (pinmap[pin].pwm_instance == PWM_INSTANCE_NONE) {
         return;

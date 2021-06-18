@@ -1864,7 +1864,7 @@
 
 ### FEATURES
 
-- [Mesh] `HAL_Pin_Configure()` implemented allowing to configure the pin and set it to a certain state without a glitch
+- [Mesh] `hal_gpio_configure()` implemented allowing to configure the pin and set it to a certain state without a glitch
 
 ## 0.8.0-rc.21
 

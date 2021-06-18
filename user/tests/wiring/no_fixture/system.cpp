@@ -93,7 +93,7 @@ static void onButtonClick(system_event_t ev, int data) {
 test(SYSTEM_04_button_mirror)
 {
     System.buttonMirror(D1, FALLING, false);
-    auto pinmap = HAL_Pin_Map();
+    auto pinmap = hal_pin_map();
     System.on(button_click, onButtonClick);
 
     // "Click" setup button 3 times

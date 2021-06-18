@@ -469,8 +469,8 @@ void CANDriver::begin(uint32_t baud,
     txQueue.clear();
 
     // Configure CAN Rx and Tx as alternate function push-pull, and enable GPIOA clock
-    HAL_Pin_Mode(hw.can_rx_pin, AF_OUTPUT_PUSHPULL);
-    HAL_Pin_Mode(hw.can_tx_pin, AF_OUTPUT_PUSHPULL);
+    hal_gpio_mode(hw.can_rx_pin, AF_OUTPUT_PUSHPULL);
+    hal_gpio_mode(hw.can_tx_pin, AF_OUTPUT_PUSHPULL);
 
     RCC->AHB1ENR |= RCC_AHB1Periph_GPIOB;
 
@@ -478,9 +478,9 @@ void CANDriver::begin(uint32_t baud,
     RCC->APB1ENR |= hw.can_clock_en | RCC_APB1Periph_CAN1;
 
     // Connect CAN pins to alternate function
-    Hal_Pin_Info *PIN_MAP = HAL_Pin_Map();
-    Hal_Pin_Info *rx_pin = &PIN_MAP[hw.can_rx_pin];
-    Hal_Pin_Info *tx_pin = &PIN_MAP[hw.can_tx_pin];
+    hal_pin_info_t *PIN_MAP = hal_pin_map();
+    hal_pin_info_t *rx_pin = &PIN_MAP[hw.can_rx_pin];
+    hal_pin_info_t *tx_pin = &PIN_MAP[hw.can_tx_pin];
 
     GPIO_PinAFConfig(rx_pin->gpio_peripheral, rx_pin->gpio_pin_source, hw.can_af_map);
     GPIO_PinAFConfig(tx_pin->gpio_peripheral, tx_pin->gpio_pin_source, hw.can_af_map);

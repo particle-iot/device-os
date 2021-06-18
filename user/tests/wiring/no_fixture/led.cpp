@@ -219,7 +219,7 @@ test(LED_10_ChangeHandlerCalled) {
     RGB.onChange(NULL);
 }
 
-static void assertRgbLedMirrorPinsColor(const pin_t pins[3], uint16_t r, uint16_t g, uint16_t b)
+static void assertRgbLedMirrorPinsColor(const hal_pin_t pins[3], uint16_t r, uint16_t g, uint16_t b)
 {
     // Convert to CCR
     r = (uint16_t)((((uint32_t)(r)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
@@ -235,13 +235,13 @@ test(LED_11_MirroringWorks) {
     RGB.brightness(255);
 
 #if !HAL_PLATFORM_NRF52840
-    const pin_t pins[3] = {A4, A5, A7};
+    const hal_pin_t pins[3] = {A4, A5, A7};
 #else
 # if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    const pin_t pins[3] = {A4, A5, A3};
+    const hal_pin_t pins[3] = {A4, A5, A3};
 # else
     // SoM
-    const pin_t pins[3] = {A1, A0, A7};
+    const hal_pin_t pins[3] = {A1, A0, A7};
 # endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
 #endif
     // Mirror to r=A4, g=A5, b=A7. Non-inverted (common cathode).
