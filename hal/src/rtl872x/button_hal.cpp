@@ -202,7 +202,7 @@ void hal_button_exti_config(hal_button_t button, FunctionalState state) {
     // hal_interrupt_extra_configuration_t config = {0};
     // config.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION;
     // config.keepHandler = false;
-    // config.flags = HAL_DIRECT_INTERRUPT_FLAG_NONE;
+    // config.flags = HAL_INTERRUPT_DIRECT_FLAG_NONE;
 
     // if (NewState == ENABLE) {
     //     hal_interrupt_attach(HAL_Buttons[button].pin, 

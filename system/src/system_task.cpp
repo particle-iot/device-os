@@ -569,7 +569,7 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
 	// if not threading, or we are the application thread, then implement delay
 	// as a background message pump
 
-    if ((!PLATFORM_THREADING || APPLICATION_THREAD_CURRENT()) && !HAL_IsISR())
+    if ((!PLATFORM_THREADING || APPLICATION_THREAD_CURRENT()) && !hal_interrupt_is_isr())
     {
     		system_delay_pump(ms, force_no_background_loop);
     }

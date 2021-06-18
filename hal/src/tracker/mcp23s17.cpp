@@ -91,9 +91,9 @@ int Mcp23s17::begin() {
         return SYSTEM_ERROR_INTERNAL;
     }
 
-    HAL_InterruptExtraConfiguration extra = {0};
+    hal_interrupt_extra_configuration_t extra = {0};
     extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
-    CHECK(HAL_Interrupts_Attach(IOE_INT, ioExpanderInterruptHandler, this, FALLING, &extra));
+    CHECK(hal_interrupt_attach(IOE_INT, ioExpanderInterruptHandler, this, FALLING, &extra));
 
     initialized_ = true;
     CHECK(reset());

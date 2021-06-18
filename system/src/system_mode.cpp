@@ -166,7 +166,7 @@ int system_reset(unsigned mode, unsigned reason, unsigned value, unsigned flags,
     // - This function in called from an ISR;
     // - Connection with the cloud is closed;
     // - Graceful cloud disconnection is disabled globally.
-    if (HAL_IsISR() || !spark_cloud_flag_connected() ||
+    if (hal_interrupt_is_isr() || !spark_cloud_flag_connected() ||
             !CloudConnectionSettings::instance()->defaultDisconnectGracefully()) {
         flags |= SYSTEM_RESET_FLAG_NO_WAIT;
     }

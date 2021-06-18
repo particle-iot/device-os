@@ -103,9 +103,9 @@ int Am18x5::begin() {
     hal_gpio_write(RTC_WDI, 1);
 
     hal_gpio_mode(RTC_INT, INPUT_PULLUP);
-    HAL_InterruptExtraConfiguration extra = {0};
+    hal_interrupt_extra_configuration_t extra = {0};
     extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
-    CHECK(HAL_Interrupts_Attach(RTC_INT, exRtcInterruptHandler, this, FALLING, &extra));
+    CHECK(hal_interrupt_attach(RTC_INT, exRtcInterruptHandler, this, FALLING, &extra));
 
     initialized_ = true;
 

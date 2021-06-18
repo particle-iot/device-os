@@ -169,19 +169,19 @@ void hal_button_init(hal_button_t button, hal_button_mode_t Button_Mode) {
 }
 
 void hal_button_exti_config(hal_button_t button, FunctionalState NewState) {
-    HAL_InterruptExtraConfiguration config = {0};
+    hal_interrupt_extra_configuration_t config = {0};
     config.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION;
     config.keepHandler = false;
-    config.flags = HAL_DIRECT_INTERRUPT_FLAG_NONE;
+    config.flags = HAL_INTERRUPT_DIRECT_FLAG_NONE;
 
     if (NewState == ENABLE) {
-        HAL_Interrupts_Attach(HAL_Buttons[button].pin, 
+        hal_interrupt_attach(HAL_Buttons[button].pin, 
                               BUTTON_Interrupt_Handler, 
                               (void *)((int)button), 
                               HAL_Buttons[button].interrupt_mode, 
                               &config); 
     } else {
-        HAL_Interrupts_Detach(HAL_Buttons[button].pin);
+        hal_interrupt_detach(HAL_Buttons[button].pin);
     }
 }
 
@@ -231,7 +231,7 @@ void HAL_Core_Button_Mirror_Pin_Disable(uint8_t bootloader, uint8_t button, void
     (void)button; // unused
     int32_t state = HAL_disable_irq();
     if (HAL_Buttons[HAL_BUTTON1_MIRROR].pin != PIN_INVALID) {
-        HAL_Interrupts_Detach_Ext(HAL_Buttons[HAL_BUTTON1_MIRROR].pin, 1, NULL);
+        hal_interrupt_detach_ext(HAL_Buttons[HAL_BUTTON1_MIRROR].pin, 1, NULL);
         HAL_Buttons[HAL_BUTTON1_MIRROR].active = 0;
         HAL_Buttons[HAL_BUTTON1_MIRROR].pin = PIN_INVALID;
     }
@@ -298,7 +298,7 @@ void hal_button_init_ext() {
 
 void hal_button_uninit() {
     button_timer_uninit();
-    HAL_Interrupts_Uninit();
+    hal_interrupt_uninit();
 }
 
 // Just for compatibility in bootloader

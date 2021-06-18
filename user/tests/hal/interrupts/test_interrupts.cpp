@@ -40,7 +40,7 @@ static void attach_interrupt_handler(void *data)
 void setup() {
     Log.info("Test Start...");
 
-    HAL_InterruptExtraConfiguration config = {0};
+    hal_interrupt_extra_configuration_t config = {0};
     config.keepHandler = false;
 
     int data = 123;
@@ -48,14 +48,14 @@ void setup() {
     for (int i = 0; i < 19; i++)
     {
         hal_gpio_mode(i, INPUT_PULLUP);
-        HAL_Interrupts_Attach(i, common_interrupt_handler, (void *)data, CHANGE, &config);    
+        hal_interrupt_attach(i, common_interrupt_handler, (void *)data, CHANGE, &config);    
     }
 
-    HAL_Interrupts_Detach(2);    
-    HAL_Interrupts_Detach(7);    
+    hal_interrupt_detach(2);    
+    hal_interrupt_detach(7);    
 
     hal_gpio_mode(D2, INPUT_PULLUP);
-    HAL_Interrupts_Attach(D2, attach_interrupt_handler, (void *)data, CHANGE, &config);    
+    hal_interrupt_attach(D2, attach_interrupt_handler, (void *)data, CHANGE, &config);    
 }
 
 /* executes continuously after setup() runs */

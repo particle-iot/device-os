@@ -739,7 +739,7 @@ int main(void) {
 }
 
 static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value) {
-    if (HAL_IsISR()) {
+    if (hal_interrupt_is_isr()) {
         return -1; // DCT cannot be accessed from an ISR
     }
     uint32_t flags = 0;
@@ -767,7 +767,7 @@ static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value) {
 }
 
 static int Read_Feature_Flag(uint32_t flag, bool* value) {
-    if (HAL_IsISR()) {
+    if (hal_interrupt_is_isr()) {
         return -1; // DCT cannot be accessed from an ISR
     }
     uint32_t flags = 0;

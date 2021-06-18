@@ -336,7 +336,7 @@ int WizNetif::up() {
     int r = openRaw();
     if (!r) {
         /* Attach interrupt handler */
-        HAL_Interrupts_Attach(interrupt_, &WizNetif::interruptCb, this, FALLING, nullptr);
+        hal_interrupt_attach(interrupt_, &WizNetif::interruptCb, this, FALLING, nullptr);
         down_ = false;
     }
 
@@ -352,7 +352,7 @@ int WizNetif::down() {
     LwipTcpIpCoreLock lk;
     down_ = true;
     /* Detach interrupt handler */
-    HAL_Interrupts_Detach(interrupt_);
+    hal_interrupt_detach(interrupt_);
 
     return closeRaw();
 }

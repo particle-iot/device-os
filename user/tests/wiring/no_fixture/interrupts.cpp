@@ -103,15 +103,15 @@ test(INTERRUPTS_03_isisr_willpreempt_servicedirqn)
 #if /* defined(STM32F10X_MD) || defined(STM32F10X_HD) || */ defined(STM32F2XX)
 	volatile bool cont = false;
 	attachSystemInterrupt(SysInterrupt_SysTick, [&] {
-		assertTrue(HAL_IsISR());
-		assertEqual((IRQn)HAL_ServicedIRQn(), SysTick_IRQn);
+		assertTrue(hal_interrupt_is_isr());
+		assertEqual((IRQn)hal_interrupt_serviced_irqn(), SysTick_IRQn);
 		cont = true;
 	});
 	while (!cont);
 	detachSystemInterrupt(SysInterrupt_SysTick);
-	assertFalse(HAL_WillPreempt(SysTick_IRQn, SysTick_IRQn));
-	assertTrue(HAL_WillPreempt(NonMaskableInt_IRQn, SysTick_IRQn));
-	assertFalse(HAL_WillPreempt(SysTick_IRQn, NonMaskableInt_IRQn));
+	assertFalse(hal_interrupt_will_preempt(SysTick_IRQn, SysTick_IRQn));
+	assertTrue(hal_interrupt_will_preempt(NonMaskableInt_IRQn, SysTick_IRQn));
+	assertFalse(hal_interrupt_will_preempt(SysTick_IRQn, NonMaskableInt_IRQn));
 #endif
 }
 

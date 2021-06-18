@@ -68,7 +68,7 @@ void Set_System(void)
     }
 
     // GPIOTE initialization
-    HAL_Interrupts_Init();
+    hal_interrupt_init();
 
     /* Configure the Button */
     hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_EXTI);

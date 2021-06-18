@@ -37,7 +37,7 @@ public:
     }
 
     bool lock(unsigned timeout = 0) {
-        SPARK_ASSERT(!HAL_IsISR());
+        SPARK_ASSERT(!hal_interrupt_is_isr());
         if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED) {
             return true;
         }
@@ -46,7 +46,7 @@ public:
     }
 
     bool unlock() {
-        SPARK_ASSERT(!HAL_IsISR());
+        SPARK_ASSERT(!hal_interrupt_is_isr());
         if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED) {
             return true;
         }

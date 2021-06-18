@@ -980,7 +980,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     __disable_irq();
 
     // Suspend all GPIOTE interrupts
-    HAL_Interrupts_Suspend();
+    hal_interrupt_suspend();
 
     configGpioWakeupSource(config->wakeup_sources);
     configRtcWakeupSource(config->wakeup_sources);
@@ -1127,7 +1127,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     hal_timer_init(&halTimerConfig);
 
     // Restore GPIOTE cionfiguration
-    HAL_Interrupts_Restore();
+    hal_interrupt_restore();
 
     // Re-initialize external flash
     // If we fail to re-initialize it, there is no point in continuing to wake-up
@@ -1302,7 +1302,7 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     nrf_lpcomp_disable();
 
     // Deconfigure any possible SENSE configuration
-    HAL_Interrupts_Suspend();
+    hal_interrupt_suspend();
 
     // Disable GPIOTE PORT interrupts
     nrf_gpiote_int_disable(GPIOTE_INTENSET_PORT_Msk);

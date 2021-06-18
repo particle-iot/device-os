@@ -204,7 +204,7 @@ os_thread_notify_t os_thread_wait(system_tick_t ms, void* reserved)
 
 int os_thread_notify(os_thread_t thread, void* reserved)
 {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         auto r = xTaskNotifyGive(static_cast<TaskHandle_t>(thread));
         return (r != pdTRUE);
     } else {
@@ -235,7 +235,7 @@ static_assert(portMAX_DELAY==CONCURRENT_WAIT_FOREVER, "expected portMAX_DELAY==C
 
 int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay, void*)
 {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         return xQueueSend(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
     } else {
         BaseType_t woken = pdFALSE;
@@ -247,7 +247,7 @@ int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay, void*)
 
 int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void*)
 {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         return xQueueReceive(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
     } else {
         BaseType_t woken = pdFALSE;
@@ -259,7 +259,7 @@ int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void*)
 
 int os_queue_peek(os_queue_t queue, void* item, system_tick_t delay, void*)
 {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         return xQueuePeek(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
     } else {
         // Delay is ignored
@@ -357,7 +357,7 @@ int os_semaphore_destroy(os_semaphore_t semaphore)
 
 int os_semaphore_take(os_semaphore_t semaphore, system_tick_t timeout, bool reserved)
 {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         return (xSemaphoreTake(static_cast<SemaphoreHandle_t>(semaphore), timeout)!=pdTRUE);
     } else {
         BaseType_t woken = pdFALSE;
@@ -369,7 +369,7 @@ int os_semaphore_take(os_semaphore_t semaphore, system_tick_t timeout, bool rese
 
 int os_semaphore_give(os_semaphore_t semaphore, bool reserved)
 {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         return xSemaphoreGive(static_cast<SemaphoreHandle_t>(semaphore))!=pdTRUE;
     } else {
         BaseType_t woken = pdFALSE;
@@ -448,7 +448,7 @@ void __flash_acquire() {
     if (!rtos_started) {
         return;
     }
-    if (HAL_IsISR()) {
+    if (hal_interrupt_is_isr()) {
         PANIC(UsageFault, "Flash operation from IRQ");
     }
     flash_lock.lock();

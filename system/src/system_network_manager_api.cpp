@@ -352,7 +352,7 @@ int network_wait_off(network_handle_t network, system_tick_t timeout, void*) {
 
 void network_listen(network_handle_t network, uint32_t flags, void*) {
     /* May be called from an ISR */
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         SYSTEM_THREAD_CONTEXT_ASYNC_CALL([&]() {
             if (!(flags & NETWORK_LISTEN_EXIT)) {
                 ListeningModeHandler::instance()->enter();
@@ -384,7 +384,7 @@ bool network_listening(network_handle_t network, uint32_t, void*) {
 }
 
 int network_listen_command(network_handle_t network, network_listen_command_t command, void* arg) {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         return ListeningModeHandler::instance()->command(command, arg);
     }
 

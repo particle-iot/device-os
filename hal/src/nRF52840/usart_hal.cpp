@@ -670,12 +670,12 @@ private:
         // 1. Globally
         // 2. Application interrupts through SoftDevice
         // 3. Via BASEPRI
-        if (HAL_IsIrqMasked(nrfx_get_irq_number((void*)uarte_)) || nrf_nvic_state.__cr_flag) {
+        if (hal_interrupt_is_irq_masked(nrfx_get_irq_number((void*)uarte_)) || nrf_nvic_state.__cr_flag) {
             return false;
         }
 
-        if (HAL_IsISR()) {
-            if (!HAL_WillPreempt(nrfx_get_irq_number((void*)uarte_), HAL_ServicedIRQn())) {
+        if (hal_interrupt_is_isr()) {
+            if (!hal_interrupt_will_preempt(nrfx_get_irq_number((void*)uarte_), hal_interrupt_serviced_irqn())) {
                 return false;
             }
         }

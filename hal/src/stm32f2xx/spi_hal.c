@@ -319,12 +319,12 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
 
     if (mode == SPI_MODE_SLAVE) {
         /* Attach interrupt to slave select pin */
-        HAL_InterruptExtraConfiguration irqConf = {0};
+        hal_interrupt_extra_configuration_t irqConf = {0};
         irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
         irqConf.IRQChannelPreemptionPriority = 1;
         irqConf.IRQChannelSubPriority = 0;
 
-        HAL_Interrupts_Attach(pin, &spiOnSelectedHandler, (void*)(spi), CHANGE, &irqConf);
+        hal_interrupt_attach(pin, &spiOnSelectedHandler, (void*)(spi), CHANGE, &irqConf);
 
         /* Switch to slave mode */
         spiState[spi].init_structure.SPI_Mode = SPI_Mode_Slave;
@@ -342,7 +342,7 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
 void hal_spi_end(hal_spi_interface_t spi) {
     if(spiState[spi].state != HAL_SPI_STATE_DISABLED) {
         if (spiState[spi].mode == SPI_MODE_SLAVE) {
-            HAL_Interrupts_Detach(spiState[spi].ss_pin);
+            hal_interrupt_detach(spiState[spi].ss_pin);
         }
         SPI_Cmd(spiMap[spi].peripheral, DISABLE);
         hal_spi_transfer_dma_cancel(spi);
@@ -627,7 +627,7 @@ int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
         CHECK_TRUE(hal_spi_is_enabled(spi), SYSTEM_ERROR_INVALID_STATE);
         while (spiState[spi].dma_configured);
         if (spiState[spi].mode == SPI_MODE_SLAVE) {
-            HAL_Interrupts_Detach(spiState[spi].ss_pin);
+            hal_interrupt_detach(spiState[spi].ss_pin);
         }
         SPI_Cmd(spiMap[spi].peripheral, DISABLE);
         SPI_DeInit(spiMap[spi].peripheral);

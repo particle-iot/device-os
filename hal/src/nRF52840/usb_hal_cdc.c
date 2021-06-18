@@ -421,12 +421,12 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
 static bool usb_will_preempt(void)
 {
     // Ain't no one is preempting us if interrupts are currently disabled or basepri masked
-    if (HAL_IsIrqMasked(USBD_IRQn) || nrf_nvic_state.__cr_flag) {
+    if (hal_interrupt_is_irq_masked(USBD_IRQn) || nrf_nvic_state.__cr_flag) {
         return false;
     }
 
-    if (HAL_IsISR()) {
-        if (!HAL_WillPreempt(USBD_IRQn, HAL_ServicedIRQn())) {
+    if (hal_interrupt_is_isr()) {
+        if (!hal_interrupt_will_preempt(USBD_IRQn, hal_interrupt_serviced_irqn())) {
             return false;
         }
     }

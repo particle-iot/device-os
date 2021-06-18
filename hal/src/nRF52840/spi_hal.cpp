@@ -270,7 +270,7 @@ static void spiInit(hal_spi_interface_t spi, hal_spi_mode_t mode) {
         SPARK_ASSERT(err_code == NRF_SUCCESS);
 
         hal_gpio_mode(spiMap[spi].ss_pin, INPUT_PULLUP);
-        HAL_Interrupts_Attach(spiMap[spi].ss_pin, &spiOnSelectedHandler, (void*)(spi), CHANGE, nullptr);
+        hal_interrupt_attach(spiMap[spi].ss_pin, &spiOnSelectedHandler, (void*)(spi), CHANGE, nullptr);
     }
 
     // Set pin function
@@ -284,7 +284,7 @@ static void spiUninit(hal_spi_interface_t spi) {
         nrfx_spim_uninit(spiMap[spi].master);
     } else {
         nrfx_spis_uninit(spiMap[spi].slave);
-        HAL_Interrupts_Detach(spiMap[spi].ss_pin);
+        hal_interrupt_detach(spiMap[spi].ss_pin);
     }
 
     hal_gpio_mode(spiMap[spi].sck_pin, INPUT_PULLUP);
@@ -653,7 +653,7 @@ int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
 }
 
 int32_t hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t* conf) {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         os_mutex_recursive_t mutex = spiMap[spi].mutex;
         if (mutex) {
             // FIXME: os_mutex_recursive_lock doesn't take any arguments, using trylock for now
@@ -668,7 +668,7 @@ int32_t hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t*
 }
 
 int32_t hal_spi_release(hal_spi_interface_t spi, void* reserved) {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         os_mutex_recursive_t mutex = spiMap[spi].mutex;
         if (mutex) {
             return os_mutex_recursive_unlock(mutex);

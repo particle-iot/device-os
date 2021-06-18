@@ -171,13 +171,13 @@ static int configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources,
                 }
             }
             hal_gpio_mode(gpioWakeup->pin, wakeUpPinMode);
-            HAL_InterruptExtraConfiguration irqConf = {0};
+            hal_interrupt_extra_configuration_t irqConf = {0};
             irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
             irqConf.IRQChannelPreemptionPriority = 0;
             irqConf.IRQChannelSubPriority = 0;
             irqConf.keepHandler = 1;
             irqConf.keepPriority = 1;
-            HAL_Interrupts_Attach(gpioWakeup->pin, nullptr, nullptr, gpioWakeup->mode, &irqConf);
+            hal_interrupt_attach(gpioWakeup->pin, nullptr, nullptr, gpioWakeup->mode, &irqConf);
             
             hal_pin_info_t* pinMap = hal_pin_map();
             uint8_t pinSource = pinMap[gpioWakeup->pin].gpio_pin_source;
@@ -608,7 +608,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     int32_t state = HAL_disable_irq();
 
     // Suspend all EXTI interrupts
-    HAL_Interrupts_Suspend();
+    hal_interrupt_suspend();
 
     hal_pin_info_t* halPinMap = hal_pin_map();
 
@@ -695,12 +695,12 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
             nvicInitStructure.NVIC_IRQChannelSubPriority = 0;
             nvicInitStructure.NVIC_IRQChannelCmd = ENABLE;
             NVIC_Init(&nvicInitStructure);
-            // No need to detach RTC Alarm from EXTI, since it will be detached in HAL_Interrupts_Restore()
+            // No need to detach RTC Alarm from EXTI, since it will be detached in hal_interrupt_restore()
             // RTC Alarm should be canceled to avoid entering HAL_RTCAlarm_Handler or if we were woken up by pin
             hal_rtc_cancel_alarm();
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
             auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
-            HAL_Interrupts_Detach_Ext(gpioWakeup->pin, 1, nullptr);
+            hal_interrupt_detach_ext(gpioWakeup->pin, 1, nullptr);
             uint8_t pinSource = halPinMap[gpioWakeup->pin].gpio_pin_source;
             if ((extiPriorityBumped >> pinSource) & 0x0001) {
                 NVIC_SetPriority(static_cast<IRQn_Type>(GPIO_IRQn[pinSource]), extiPriority[pinSource]);
@@ -758,7 +758,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     }
 
     // Restore
-    HAL_Interrupts_Restore();
+    hal_interrupt_restore();
 
     if (config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) {
         hal_pwm_sleep(false, nullptr);

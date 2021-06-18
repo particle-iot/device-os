@@ -284,7 +284,7 @@ void reset_button_click()
         button_final_clicks = clicks;
 #if HAL_PLATFORM_SETUP_BUTTON_UX
         // Certain numbers of clicks can be processed directly in ISR
-        system_handle_button_clicks(HAL_IsISR());
+        system_handle_button_clicks(hal_interrupt_is_isr());
 #endif
     }
 }

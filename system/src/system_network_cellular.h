@@ -86,7 +86,7 @@ protected:
     int on_now() override {
         // Resume unconditionally
         connect_cancelled = false;
-        cellular_cancel(false, HAL_IsISR(), nullptr);
+        cellular_cancel(false, hal_interrupt_is_isr(), nullptr);
         cellular_result_t ret = cellular_on(nullptr);
         if (ret != 0) {
             return ret;
@@ -176,7 +176,7 @@ public:
             }
         }
         if (require_cancel) {
-            cellular_cancel(cancel, HAL_IsISR(), NULL);
+            cellular_cancel(cancel, hal_interrupt_is_isr(), NULL);
         }
     }
 

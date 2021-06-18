@@ -42,7 +42,7 @@ extern "C" {
 int __cxa_guard_acquire(__guard* g) {
     guard_t* guard = reinterpret_cast<guard_t*>(g);
 
-    SPARK_ASSERT(!HAL_IsISR());
+    SPARK_ASSERT(!hal_interrupt_is_isr());
 
     /* Acquire mutex */
     SPARK_ASSERT(s_mutex.lock());
@@ -62,7 +62,7 @@ int __cxa_guard_acquire(__guard* g) {
 
 void __cxa_guard_release(__guard* g) {
     guard_t* guard = reinterpret_cast<guard_t*>(g);
-    SPARK_ASSERT(!HAL_IsISR());
+    SPARK_ASSERT(!hal_interrupt_is_isr());
     SPARK_ASSERT(!guard->done);
     /* We were doing the initialization, so unlock the mutex */
     guard->done = 1;
