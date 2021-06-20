@@ -15,33 +15,14 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef INTERRUPTS_IRQ_H
-#define INTERRUPTS_IRQ_H
-
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
-#include "stdint.h"
-
-#ifdef USE_STDPERIPH_DRIVER
-// FIXME
-//#include "rtl8721d_vector.h"
-#define __FPU_PRESENT 1
-typedef int32_t IRQn_Type;
-#define __NVIC_PRIO_BITS 3
-#include "core_armv8mml.h"
-#endif /* USE_STDPERIPH_DRIVER */
-
-typedef enum hal_irq_t {
-    __Last_irq = 0
-} hal_irq_t;
-
-#define IRQN_TO_IDX(irqn) ((int)irqn + 16)
-
-void HAL_Core_Restore_Interrupt(IRQn_Type irqn);
-#ifdef  __cplusplus
+int HAL_disable_irq() {
+    int is = __get_PRIMASK();
+    __disable_irq();
+    return is;
 }
-#endif
 
-#endif  /* INTERRUPTS_IRQ_H */
+void HAL_enable_irq(int is) {
+    if ((is & 1) == 0) {
+        __enable_irq();
+    }
+}

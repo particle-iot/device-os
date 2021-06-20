@@ -45,7 +45,9 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
     if (pinInfo->type == HAL_PIN_TYPE_MCU) {
 #endif
         // Just in case
+#if defined (ARM_CORE_CM0)
         RCC_PeriphClockCmd(APBPeriph_GPIO, APBPeriph_GPIO_CLOCK, ENABLE);
+#endif
 
         uint32_t rtlPin = hal_pin_to_rtl_pin(pinInfo->gpio_port, pinInfo->gpio_pin);
 
