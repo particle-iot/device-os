@@ -31,4 +31,27 @@ SECTIONS {
     Pinmux_ConfigGet = 0x1010cfd9;
     Pinmux_UartLogCtrl = 0x1010cfe9;
     Pinmux_SpicCtrl = 0x1010d03d;
+    GPIO_INTMode = 0x1010c5a9;
+    GPIO_INTConfig = 0x1010c641;
+    GPIO_INTHandler = 0x1010c679;
+    GPIO_Direction = 0x1010c721;
+    GPIO_Init = 0x1010c755;
+    GPIO_DeInit = 0x1010c7e1;
+    GPIO_ReadDataBit = 0x1010c84d;
+    GPIO_WriteBit = 0x1010c871;
+    GPIO_PortDirection = 0x1010c8a1;
+    GPIO_PortRead = 0x1010c8c5;
+    GPIO_PortWrite = 0x1010c8d5;
+    GPIO_UserRegIrq = 0x1010c8ed;
+    RTIM_TimeBaseStructInit = 0x1010d255;
+    RTIM_Cmd = 0x1010d26d;
+    RTIM_GetCount = 0x1010d2f5;
+    RTIM_INTConfig = 0x1010d361;
+    RTIM_INTClear = 0x1010d3f1;
+    RTIM_TimeBaseInit = 0x1010d45d;
+    RTIM_DeInit = 0x1010d595;
+    RTIM_INTClearPendingBit = 0x1010d611;
+    RTIM_GetFlagStatus = 0x1010d685;
+    RTIM_GetINTStatus = 0x1010d75d;
+    io_assert_failed = 0x1010a871;
 }

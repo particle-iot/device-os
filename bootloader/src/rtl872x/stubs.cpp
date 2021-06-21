@@ -21,19 +21,8 @@
 #include "dfu_hal.h"
 #include "dct_hal.h"
 
-void hal_button_init_ext() {
-}
-
-uint8_t hal_button_is_pressed(hal_button_t button) {
-    return 0;
-}
-
 bool FLASH_IsFactoryResetAvailable(void) {
     return false;
-}
-
-uint16_t hal_button_get_pressed_time(hal_button_t button) {
-    return 0;
 }
 
 int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
@@ -59,15 +48,6 @@ int dct_read_app_data_copy(uint32_t offset, void* ptr, size_t size) {
     return -1;
 }
 
-void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b) {
-}
+void DFU_Check_Reset(void) {
 
-void Get_RGB_LED_Values(uint16_t* values) {
-}
-
-void Set_User_LED(uint8_t state) {
-}
-
-uint16_t Get_RGB_LED_Max_Value(void) {
-    return 0;
 }

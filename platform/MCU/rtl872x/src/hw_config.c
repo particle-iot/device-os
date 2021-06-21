@@ -54,6 +54,14 @@ void Set_System(void)
 
     DWT_Init();
 
+    /* Configure the LEDs and set the default states */
+    int LEDx;
+    for(LEDx = 1; LEDx < LEDn; ++LEDx)
+    {
+        // PARTICLE_LED_USER initialization is skipped during system setup
+        LED_Init(LEDx);
+    }
+
 #if 0
 
     /* Configure internal flash and external flash */
@@ -119,6 +127,8 @@ void SysTick_Configuration(void) {
     }
 
     NVIC_SetPriority(SysTick_IRQn, SYSTICK_IRQ_PRIORITY);
+
+    __NVIC_SetVector(SysTick_IRQn, (u32)(VOID*)SysTick_Handler);
 }
 
 void SysTick_Disable() {

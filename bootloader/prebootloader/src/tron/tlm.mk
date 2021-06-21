@@ -1,2 +1,2 @@
 export PLATFORM_MCU_CORE=m23
-undefine included_productid_mk
+included_productid_mk :=
