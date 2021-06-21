@@ -19,6 +19,8 @@
 #include "hw_config.h"
 #include "rtl8721d.h"
 #include "rtl8721d_system.h"
+#include "button_hal.h"
+#include "interrupts_hal.h"
 
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
@@ -56,21 +58,7 @@ void Set_System(void)
 
     /* Configure the LEDs and set the default states */
     int LEDx;
-    for(LEDx = 1; LEDx < LEDn; ++LEDx)
-    {
-        // PARTICLE_LED_USER initialization is skipped during system setup
-        LED_Init(LEDx);
-    }
-
-#if 0
-
-    /* Configure internal flash and external flash */
-    SPARK_ASSERT(!hal_exflash_init());
-
-    /* Configure the LEDs and set the default states */
-    int LEDx;
-    for(LEDx = 1; LEDx < LEDn; ++LEDx)
-    {
+    for (LEDx = 1; LEDx < LEDn; ++LEDx) {
         // PARTICLE_LED_USER initialization is skipped during system setup
         LED_Init(LEDx);
     }
@@ -80,6 +68,12 @@ void Set_System(void)
 
     /* Configure the Button */
     hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_EXTI);
+
+#if 0
+
+    /* Configure internal flash and external flash */
+    SPARK_ASSERT(!hal_exflash_init());
+
 #endif // 0
 }
 

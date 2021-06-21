@@ -117,16 +117,15 @@ void buttonTimerEventHandler(void) {
     }
 }
 
-// static void BUTTON_Interrupt_Handler(void *data) {
-//     hal_button_t button = (hal_button_t)data;
+void buttonInterruptHandler(void *data) {
+    hal_button_t button = (hal_button_t)((uint32_t)data);
 
-//     HAL_Buttons[button].debounce_time = 0x00;
-//     HAL_Buttons[button].active = true;
+    HAL_Buttons[button].debounce_time = 0x00;
+    HAL_Buttons[button].active = true;
 
-//     hal_button_exti_config(button, DISABLE);
-
-//     buttonTimerStart();
-// }
+    hal_button_exti_config(button, DISABLE);
+    buttonTimerStart();
+}
 
 // static void BUTTON_Mirror_Persist(hal_button_config_t* conf) {
     // hal_button_config_t saved_config;
@@ -165,24 +164,23 @@ void hal_button_init(hal_button_t button, hal_button_mode_t mode) {
 }
 
 void hal_button_init_ext() {
-    hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_GPIO);
-
     // hal_button_config_t button_config = {0};
     // dct_read_app_data_copy(DCT_MODE_BUTTON_MIRROR_OFFSET, &button_config, sizeof(hal_button_config_t));
 
     // if (button_config.active == 0xAA && button_config.debounce_time == 0xBBCC) {
-    //     //int32_t state = HAL_disable_irq();
-    //     memcpy((void*)&HAL_Buttons[HAL_BUTTON1_MIRROR], (void*)&button_config, sizeof(hal_button_config_t));
-    //     HAL_Buttons[HAL_BUTTON1_MIRROR].active = 0;
-    //     HAL_Buttons[HAL_BUTTON1_MIRROR].debounce_time = 0;
-    //     hal_button_init(HAL_BUTTON1_MIRROR, HAL_BUTTON_MODE_EXTI);
-    //     //HAL_enable_irq(state);
+        // int32_t state = HAL_disable_irq();
+        // memcpy((void*)&HAL_Buttons[HAL_BUTTON1_MIRROR], (void*)&button_config, sizeof(hal_button_config_t));
+        // HAL_Buttons[HAL_BUTTON1_MIRROR].active = 0;
+        // HAL_Buttons[HAL_BUTTON1_MIRROR].debounce_time = 0;
+        // hal_button_init(HAL_BUTTON1_MIRROR, HAL_BUTTON_MODE_EXTI);
+        // HAL_enable_irq(state);
     // }
 }
 
 void hal_button_uninit() {
     buttonTimerUninit();
-    // hal_interrupt_uninit();
+    // FIXME: This will disable interrupt for other pins
+    hal_interrupt_uninit();
 }
 
 void hal_button_timer_handler(void) {
@@ -199,20 +197,16 @@ void hal_button_timer_handler(void) {
 }
 
 void hal_button_exti_config(hal_button_t button, FunctionalState state) {
-    // hal_interrupt_extra_configuration_t config = {0};
-    // config.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION;
-    // config.keepHandler = false;
-    // config.flags = HAL_INTERRUPT_DIRECT_FLAG_NONE;
+    hal_interrupt_extra_configuration_t config = {0};
+    config.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION;
+    config.keepHandler = false;
+    config.flags = HAL_INTERRUPT_DIRECT_FLAG_NONE;
 
-    // if (NewState == ENABLE) {
-    //     hal_interrupt_attach(HAL_Buttons[button].pin, 
-    //                           BUTTON_Interrupt_Handler, 
-    //                           (void *)((int)button), 
-    //                           HAL_Buttons[button].interrupt_mode, 
-    //                           &config); 
-    // } else {
-    //     hal_interrupt_detach(HAL_Buttons[button].pin);
-    // }
+    if (state == ENABLE) {
+        hal_interrupt_attach(HAL_Buttons[button].pin, buttonInterruptHandler, (void *)((int)button), (InterruptMode)HAL_Buttons[button].interrupt_mode, &config); 
+    } else {
+        hal_interrupt_detach(HAL_Buttons[button].pin);
+    }
 }
 
 uint8_t hal_button_get_state(hal_button_t button) {
