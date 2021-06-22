@@ -58,6 +58,9 @@ public:
 
     virtual size_t printTo(Print& p) const;
 
+    virtual bool isValid() const;
+    virtual operator bool() const;
+
 private:
     cellular_signal_t sig_ = {0};
 };
