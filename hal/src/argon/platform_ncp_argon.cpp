@@ -111,16 +111,13 @@ int getWifiNcpFirmwareVersion(uint16_t* ncpVersion) {
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
     const particle::NcpClientLock lock(ncpClient);
-    // const particle::NcpPowerState ncpPwrState = ncpClient->ncpPowerState();
+    const particle::NcpPowerState ncpPwrState = ncpClient->ncpPowerState();
     CHECK(ncpClient->on());
     CHECK(ncpClient->getFirmwareModuleVersion(&version));
     *ncpVersion = version;
-    // This is now taken care of by Esp32NcpNetif, leaving here
-    // just for reference when backporting to 2.x LTS with slightly
-    // less smart behavior.
-    // if (ncpPwrState == particle::NcpPowerState::OFF) {
-    //     CHECK(ncpClient->off());
-    // }
+    if (ncpPwrState == particle::NcpPowerState::OFF) {
+        CHECK(ncpClient->off());
+    }
 
     return 0;
 }
