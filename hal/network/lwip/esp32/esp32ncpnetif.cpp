@@ -281,15 +281,16 @@ int Esp32NcpNetif::getNcpState(unsigned int* state) const {
 }
 
 int Esp32NcpNetif::upImpl() {
-    auto r = configureMacAddress();
-    if (r) { // Failed to query MAC address
-        return r;
-    }
+    // IMPORTANT: this needs to be set!
+    up_ = true;
+    CHECK(configureMacAddress());
     // Ensure that we are disconnected
     downImpl();
     // Restore up flag
     up_ = true;
-    r = wifiMan_->connect();
+    // Make sure we power on ESP32
+    CHECK(wifiMan_->ncpClient()->on());
+    auto r = wifiMan_->connect();
     if (r) {
         LOG(TRACE, "Failed to connect to WiFi: %d", r);
     }
