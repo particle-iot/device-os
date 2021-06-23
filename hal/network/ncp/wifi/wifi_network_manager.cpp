@@ -250,7 +250,20 @@ int WifiNetworkManager::connect(const char* ssid) {
             }
         }
         if (!connected) {
-            return SYSTEM_ERROR_NOT_FOUND;
+            // XXX: Go over credentials list and attempt to connect in case SSID is hidden
+            index = 0;
+            for (; index < networks.size(); ++index) {
+                network = &networks.at(index);
+                r = client_->connect(network->ssid(), INVALID_MAC_ADDRESS, network->security(), network->credentials());
+                if (r == 0) {
+                    // FIXME: update BSSID
+                    connected = true;
+                    break;
+                }
+            }
+            if (!connected) {
+                return SYSTEM_ERROR_NOT_FOUND;
+            }
         }
     } else if (network->bssid() == INVALID_MAC_ADDRESS) {
         // Update BSSID
