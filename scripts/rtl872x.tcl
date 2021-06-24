@@ -82,13 +82,6 @@ set MSG_FLASH_DATA_BUF_SIZE             [expr {$MSG_BUF_SIZE / 1024 * 1024}]
 
 set rtl872x_ready                       0
 
-proc test {file} {
-    set f [open $file r]
-    fconfigure $f -translation binary
-    set data [read $f]
-    close $f
-    echo [format "%X" [crc32 $data]]
-}
 
 proc openocd_read_register {reg} {
     set value ""
@@ -161,8 +154,8 @@ proc rtl872x_init {} {
 
         # Stop KM4 when downloading flash
         set reg_val [openocd_read_register $RTL872x_REG_UNKNOWN_STOP_KM4]
-        set $reg_val [expr $reg_val & ~(1 << 3)]
-        set $reg_val [expr $reg_val & ~(1 << 24)]
+        set reg_val [expr $reg_val & ~(1 << 3)]
+        set reg_val [expr $reg_val & ~(1 << 24)]
         mww $RTL872x_REG_UNKNOWN_STOP_KM4 $reg_val
 
         # Reset communication register
@@ -281,23 +274,45 @@ proc rtl872x_flash_write_bin_ext {file address auto_erase auto_verify} {
     }
 
     # Write binary file
+    # The load_image command has a limitation for the load file.
+    # On Realtek MCU, the RAM address stats at 0x80000, which allows us to load a up-to-512KB file.
+    # If the file is larger than 512KB, we'll split it into sevral 512KB pieces.
+    set tmp_file_path "/tmp"
+    set file_counts 0
+    set f [open $file r]
+    fconfigure $f -translation binary
+    for {set i 0} {$i < $size} {set i [expr $i + [expr 512 * 1024]]} {
+        set bin_data [read $f [expr 512 * 1024]]
+        set f_tmp [open "$tmp_file_path/op_file_$file_counts.bin" w]
+        puts $f_tmp $bin_data
+        close $f_tmp
+        incr file_counts
+    }
+    close $f
+
     set startTime [clock milliseconds]
-    echo "Program flash:"
-    for {set i 0} {$i < $size} {set i [expr $i + $MSG_FLASH_DATA_BUF_SIZE]} {
-        set write_size [expr [expr $size - $i > $MSG_FLASH_DATA_BUF_SIZE] ? $MSG_FLASH_DATA_BUF_SIZE : [expr $size - $i]]
-        mww [expr {$pc_msg_data_mem_addr + 0x00}] $CMD_FLASH_WRITE
-        mww [expr {$pc_msg_data_mem_addr + 0x04}] [expr $address + $i]
-        mww [expr {$pc_msg_data_mem_addr + 0x08}] $write_size
-        load_image $file [expr $pc_msg_data_mem_addr + 0x10 - $i] bin [expr $pc_msg_data_mem_addr + 0x10] $write_size 
-        # echo "write size: $write_size, offset: $i, address: [expr $address + $i]"
-        progress_bar $i $size
-        mww $pc_msg_avail_mem_addr 1
-        wait_response 0
+    echo "Program flash: $file_counts files in total"
+    for {set file_num 0} {$file_num < $file_counts} {incr file_num} {
+        set op_file "$tmp_file_path/op_file_$file_num.bin"
+        set op_file_size [expr [file size $op_file] - 1] ;# file read command will read an extra newline char
+        set op_file_address [expr $address + [expr 512 * 1024 * $file_num]]
+        # echo "file: $tmp_file_path/op_file_$file_num.bin, size: $op_file_size, address: [format "%X" $op_file_address]"
+        for {set i 0} {$i < $op_file_size} {set i [expr $i + $MSG_FLASH_DATA_BUF_SIZE]} {
+            set write_size [expr [expr $op_file_size - $i > $MSG_FLASH_DATA_BUF_SIZE] ? $MSG_FLASH_DATA_BUF_SIZE : [expr $op_file_size - $i]]
+            mww [expr {$pc_msg_data_mem_addr + 0x00}] $CMD_FLASH_WRITE
+            mww [expr {$pc_msg_data_mem_addr + 0x04}] [expr $op_file_address + $i]
+            mww [expr {$pc_msg_data_mem_addr + 0x08}] $write_size
+            load_image $op_file [expr $pc_msg_data_mem_addr + 0x10 - $i] bin [expr $pc_msg_data_mem_addr + 0x10] $write_size 
+            # echo "write size: $write_size, offset: $i, address: [expr $op_file_address + $i]"
+            progress_bar $i $op_file_size
+            mww $pc_msg_avail_mem_addr 1
+            wait_response 0
+        }
     }
     progress_bar 100 100
     set timelapse [expr [expr [clock milliseconds] - $startTime] / 1000.0]
     echo "\nO.K. Program time: [format "%.3f" $timelapse]s, speed: [format "%.3f" [expr [expr $size / 1024.0] / $timelapse]]KB/s"
-
+ 
     # Verify binary file
     set startTime [clock milliseconds]
     echo "Verify flash: "
