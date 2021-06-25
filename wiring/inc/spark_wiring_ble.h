@@ -493,8 +493,6 @@ private:
     static size_t locate(const uint8_t* buf, size_t len, BleAdvertisingDataType type, size_t* offset);
 
     Vector<uint8_t> selfData_;
-    //uint8_t selfData_[BLE_MAX_ADV_DATA_LEN];
-    //size_t selfLen_;
 };
 
 

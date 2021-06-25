@@ -327,7 +327,7 @@ private:
     volatile hal_ble_auto_adv_cfg_t autoAdvCfg_;    /**< Automatic advertising configuration. */
     uint8_t advHandle_;                             /**< Advertising handle. */
     hal_ble_adv_params_t advParams_;                /**< Current advertising parameters. */
-    uint8_t advData_[BLE_MAX_ADV_DATA_LEN];         /**< Current advertising data. */
+    uint8_t advData_[BLE_MAX_SCAN_REPORT_BUF_LEN];  /**< Current advertising data. */
     size_t advDataLen_;                             /**< Current advertising data length. */
     uint8_t scanRespData_[BLE_MAX_ADV_DATA_LEN];    /**< Current scan response data. */
     size_t scanRespDataLen_;                        /**< Current scan response data length. */
@@ -1090,7 +1090,7 @@ int BleObject::Broadcaster::setAdvertisingData(const uint8_t* buf, size_t len) {
     // It is invalid to provide the same data buffers while advertising.
     CHECK(suspend());
     if (buf != nullptr) {
-        len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN);
+        len = std::min(len, (size_t)BLE_MAX_SCAN_REPORT_BUF_LEN);
         memcpy(advData_, buf, len);
     } else {
         len = 0;
