@@ -2444,29 +2444,35 @@ private:
             }
             if (srLen == filterCustomDatalen) {
                 uint8_t* buf = (uint8_t*)malloc(srLen);
+                SCOPE_GUARD({
+                    if (buf) {
+                        free(buf);
+                    }
+                });
                 if (!buf) {
                     LOG(ERROR, "Failed to allocate memory!");
                     return false;
                 }
                 result.scanResponse().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, srLen);
                 if (!memcmp(buf, filterCustomData, srLen)) {
-                    free(buf);
                     return true;
                 }
-                free(buf);
             }
             if (advLen == filterCustomDatalen) {
                 uint8_t* buf = (uint8_t*)malloc(advLen);
+                SCOPE_GUARD({
+                    if (buf) {
+                        free(buf);
+                    }
+                });
                 if (!buf) {
                     LOG(ERROR, "Failed to allocate memory!");
                     return false;
                 }
                 result.advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, advLen);
                 if (!memcmp(buf, filterCustomData, advLen)) {
-                    free(buf);
                     return true;
                 }
-                free(buf);
             }
             LOG_DEBUG(TRACE, "Custom data mismatched.");
             return false;
