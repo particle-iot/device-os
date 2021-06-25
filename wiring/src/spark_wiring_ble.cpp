@@ -2425,8 +2425,8 @@ private:
         size_t filterCustomDatalen;
         const uint8_t* filterCustomData = filter_.customData(&filterCustomDatalen);
         if (filterCustomData != nullptr && filterCustomDatalen > 0) {
-            size_t srLen = result.scanResponse().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, sizeof(size_t));
-            size_t advLen = result.advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, sizeof(size_t));
+            size_t srLen = result.scanResponse().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, filterCustomDatalen);
+            size_t advLen = result.advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, filterCustomDatalen);
             if (srLen != filterCustomDatalen && advLen != filterCustomDatalen) {
                 LOG_DEBUG(TRACE, "Custom data mismatched.");
                 return false;
