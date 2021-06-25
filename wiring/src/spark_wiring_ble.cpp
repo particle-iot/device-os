@@ -665,9 +665,7 @@ size_t BleAdvertisingData::appendAppearance(ble_sig_appearance_t appearance) {
 }
 
 size_t BleAdvertisingData::resize(size_t size) {
-    if (size < (size_t)selfData_.size()) {
-        selfData_.removeAt(size, selfData_.size()-size);
-    }
+    selfData_.resize(std::min(size, (size_t)BLE_MAX_SCAN_REPORT_BUF_LEN));
     return selfData_.size();
 }
 
@@ -2164,8 +2162,11 @@ ssize_t BleLocalDevice::getAdvertisingData(BleAdvertisingData* advertisingData) 
     if (advertisingData == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    hal_ble_adv_params_t advParams = {};
+    hal_ble_gap_get_advertising_parameters(&advParams, nullptr);
     advertisingData->clear();
-    size_t len = CHECK(hal_ble_gap_get_advertising_data(advertisingData->data(), BLE_MAX_ADV_DATA_LEN, nullptr));
+    advertisingData->resize((advParams.primary_phy == BLE_PHYS_CODED) ? BLE_MAX_SCAN_REPORT_BUF_LEN : BLE_MAX_ADV_DATA_LEN);
+    size_t len = CHECK(hal_ble_gap_get_advertising_data(advertisingData->data(), (advParams.primary_phy == BLE_PHYS_CODED) ? BLE_MAX_SCAN_REPORT_BUF_LEN : BLE_MAX_ADV_DATA_LEN, nullptr));
     advertisingData->resize(len);
     return len;
 }
@@ -2179,6 +2180,7 @@ ssize_t BleLocalDevice::getScanResponseData(BleAdvertisingData* scanResponse) co
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     scanResponse->clear();
+    scanResponse->resize(BLE_MAX_ADV_DATA_LEN);
     size_t len = CHECK(hal_ble_gap_get_scan_response_data(scanResponse->data(), BLE_MAX_ADV_DATA_LEN, nullptr));
     scanResponse->resize(len);
     return len;
