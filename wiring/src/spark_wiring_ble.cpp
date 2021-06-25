@@ -592,6 +592,7 @@ size_t BleAdvertisingData::set(const iBeacon& beacon) {
         return selfData_.size();
     }
 
+    CHECK_TRUE(selfData_.reserve(BLE_MAX_ADV_DATA_LEN), 0);
     selfData_.append(0x02);
     selfData_.append(BLE_SIG_AD_TYPE_FLAGS);
     selfData_.append(BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
@@ -635,8 +636,8 @@ size_t BleAdvertisingData::append(BleAdvertisingDataType type, const uint8_t* bu
             // The Length field is the total length of Type field and Data field.
             selfData_.insert(offset, len + 1);
             // An AD structure is composed of one byte length field, one byte Type field and Data field.
-            selfData_.insert(offset+1, static_cast<uint8_t>(type));
-            selfData_.insert(offset+2, buf, len);
+            selfData_.insert(offset + 1, static_cast<uint8_t>(type));
+            selfData_.insert(offset + 2, buf, len);
         }
     }
     else if ((selfData_.size() + len + 2) <= BLE_MAX_SCAN_REPORT_BUF_LEN) {
@@ -2163,10 +2164,11 @@ ssize_t BleLocalDevice::getAdvertisingData(BleAdvertisingData* advertisingData) 
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     hal_ble_adv_params_t advParams = {};
+    advParams.size = sizeof(hal_ble_adv_params_t);
     hal_ble_gap_get_advertising_parameters(&advParams, nullptr);
     advertisingData->clear();
-    advertisingData->resize((advParams.primary_phy == BLE_PHYS_CODED) ? BLE_MAX_SCAN_REPORT_BUF_LEN : BLE_MAX_ADV_DATA_LEN);
-    size_t len = CHECK(hal_ble_gap_get_advertising_data(advertisingData->data(), (advParams.primary_phy == BLE_PHYS_CODED) ? BLE_MAX_SCAN_REPORT_BUF_LEN : BLE_MAX_ADV_DATA_LEN, nullptr));
+    CHECK_TRUE(advertisingData->resize((advParams.primary_phy == BLE_PHYS_CODED) ? BLE_MAX_SCAN_REPORT_BUF_LEN : BLE_MAX_ADV_DATA_LEN), SYSTEM_ERROR_NO_MEMORY);
+    size_t len = CHECK(hal_ble_gap_get_advertising_data(advertisingData->data(), advertisingData->length(), nullptr));
     advertisingData->resize(len);
     return len;
 }
@@ -2180,8 +2182,8 @@ ssize_t BleLocalDevice::getScanResponseData(BleAdvertisingData* scanResponse) co
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     scanResponse->clear();
-    scanResponse->resize(BLE_MAX_ADV_DATA_LEN);
-    size_t len = CHECK(hal_ble_gap_get_scan_response_data(scanResponse->data(), BLE_MAX_ADV_DATA_LEN, nullptr));
+    CHECK_TRUE(scanResponse->resize(BLE_MAX_ADV_DATA_LEN), SYSTEM_ERROR_NO_MEMORY);
+    size_t len = CHECK(hal_ble_gap_get_scan_response_data(scanResponse->data(), scanResponse->length(), nullptr));
     scanResponse->resize(len);
     return len;
 }
@@ -2216,6 +2218,7 @@ int BleLocalDevice::advertise(const iBeacon& beacon) const {
         }
     });
     CHECK_TRUE(advData, SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(advData->length() > 0, SYSTEM_ERROR_NO_MEMORY);
     CHECK(hal_ble_gap_set_advertising_data(advData->data(), advData->length(), nullptr));
     CHECK(setAdvertisingType(BleAdvertisingEventType::SCANABLE_UNDIRECTED));
     return advertise();
