@@ -2450,8 +2450,10 @@ private:
                 }
                 result.scanResponse().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, srLen);
                 if (!memcmp(buf, filterCustomData, srLen)) {
+                    free(buf);
                     return true;
                 }
+                free(buf);
             }
             if (advLen == filterCustomDatalen) {
                 uint8_t* buf = (uint8_t*)malloc(advLen);
@@ -2461,8 +2463,10 @@ private:
                 }
                 result.advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, advLen);
                 if (!memcmp(buf, filterCustomData, advLen)) {
+                    free(buf);
                     return true;
                 }
+                free(buf);
             }
             LOG_DEBUG(TRACE, "Custom data mismatched.");
             return false;
