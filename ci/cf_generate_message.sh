@@ -18,12 +18,14 @@ if [ "${CF_PULL_REQUEST_NUMBER}" != "" ]; then
     RESULT_ADDITIONAL=" (<https://github.com/${CF_REPO_OWNER}/${CF_REPO_NAME}/pull/${CF_PULL_REQUEST_NUMBER}|PR ${CF_PULL_REQUEST_NUMBER}>)"
 fi
 
+CF_BUILD_URL_PUBLIC=$(echo "${CF_BUILD_URL}" | sed -e 's|/build/|/public/accounts/particle/builds/|')
+
 BASE_BLOCK=$(cat <<EOF
 {
     "type": "section",
     "text": {
         "type": "mrkdwn",
-        "text": "Build <${CF_BUILD_URL}|${CF_BUILD_ID}> of <${CF_COMMIT_URL}|${CF_BRANCH}>${RESULT_ADDITIONAL} by ${CF_BUILD_INITIATOR} ${RESULT_STATUS} in ${RESULT_TIME_ELAPSED}"
+        "text": "Build <${CF_BUILD_URL_PUBLIC}|${CF_BUILD_ID}> of <${CF_COMMIT_URL}|${CF_BRANCH}>${RESULT_ADDITIONAL} by ${CF_BUILD_INITIATOR} ${RESULT_STATUS} in ${RESULT_TIME_ELAPSED}"
     }
 }
 EOF
