@@ -250,9 +250,9 @@ test(BLE_Scanner_11_Scan_Extended) {
     delay(1s);
 
     assertEqual(BLE.setScanPhy(BlePhy::BLE_PHYS_CODED), 0);
-    uint8_t buf[BLE_MAX_ADV_DATA_SIZE_EXTENDED_CONNECTABLE - 5];
-    memset(buf, 0x35, BLE_MAX_ADV_DATA_SIZE_EXTENDED_CONNECTABLE - 5);
-    Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter().customData(buf, BLE_MAX_ADV_DATA_SIZE_EXTENDED_CONNECTABLE - 5));
+    uint8_t buf[BLE_MAX_ADV_DATA_LEN_EXT_CONNECTABLE - 5];
+    memset(buf, 0x35, BLE_MAX_ADV_DATA_LEN_EXT_CONNECTABLE - 5);
+    Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter().customData(buf, BLE_MAX_ADV_DATA_LEN_EXT_CONNECTABLE - 5));
     assertEqual(results.size(), 1);
 }
 

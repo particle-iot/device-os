@@ -580,7 +580,7 @@ size_t BleAdvertisingData::set(const uint8_t* buf, size_t len) {
         return selfData_.size();
     }
     selfData_.clear();
-    len = std::min(len, (size_t)BLE_MAX_SCAN_REPORT_BUF_LEN);
+    len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN_EXT);
     selfData_.append(buf, len);
     return selfData_.size();
 }
@@ -617,6 +617,7 @@ size_t BleAdvertisingData::set(const iBeacon& beacon) {
     selfData_.append((uint8_t)(beacon.minor() & 0x00FF));
     // Measure power
     selfData_.append(beacon.measurePower());
+    selfData_.trimToSize();
 
     return selfData_.size();
 }
@@ -629,10 +630,12 @@ size_t BleAdvertisingData::append(BleAdvertisingDataType type, const uint8_t* bu
     size_t adsLen = locate(selfData_.data(), selfData_.size(), type, &offset);
     if (!force && adsLen > 0) {
         // Update the existing AD structure.
-        if ((selfData_.size() - adsLen + len + 2) <= BLE_MAX_SCAN_REPORT_BUF_LEN) {
+        if ((selfData_.size() - adsLen + len + 2) <= BLE_MAX_ADV_DATA_LEN_EXT) {
             // Firstly, remove the existing AD structure.
             selfData_.removeAt(offset, adsLen);
             // Secondly, Update the AD structure.
+            // Reserve the RAM in the vector, and return if it fails
+            CHECK_TRUE(selfData_.reserve(selfData_.size() + len + 2), selfData_.size());
             // The Length field is the total length of Type field and Data field.
             selfData_.insert(offset, len + 1);
             // An AD structure is composed of one byte length field, one byte Type field and Data field.
@@ -640,8 +643,9 @@ size_t BleAdvertisingData::append(BleAdvertisingDataType type, const uint8_t* bu
             selfData_.insert(offset + 2, buf, len);
         }
     }
-    else if ((selfData_.size() + len + 2) <= BLE_MAX_SCAN_REPORT_BUF_LEN) {
+    else if ((selfData_.size() + len + 2) <= BLE_MAX_ADV_DATA_LEN_EXT) {
         // Append the AD structure at the and of advertising data.
+        CHECK_TRUE(selfData_.reserve(selfData_.size() + len + 2), selfData_.size());
         selfData_.append(len + 1);
         selfData_.append(static_cast<uint8_t>(type));
         selfData_.append(buf, len);
@@ -666,7 +670,7 @@ size_t BleAdvertisingData::appendAppearance(ble_sig_appearance_t appearance) {
 }
 
 size_t BleAdvertisingData::resize(size_t size) {
-    selfData_.resize(std::min(size, (size_t)BLE_MAX_SCAN_REPORT_BUF_LEN));
+    selfData_.resize(std::min(size, (size_t)BLE_MAX_ADV_DATA_LEN_EXT));
     return selfData_.size();
 }
 
@@ -2167,7 +2171,7 @@ ssize_t BleLocalDevice::getAdvertisingData(BleAdvertisingData* advertisingData) 
     advParams.size = sizeof(hal_ble_adv_params_t);
     hal_ble_gap_get_advertising_parameters(&advParams, nullptr);
     advertisingData->clear();
-    CHECK_TRUE(advertisingData->resize((advParams.primary_phy == BLE_PHYS_CODED) ? BLE_MAX_SCAN_REPORT_BUF_LEN : BLE_MAX_ADV_DATA_LEN), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(advertisingData->resize((advParams.primary_phy == BLE_PHYS_CODED) ? BLE_MAX_ADV_DATA_LEN_EXT : BLE_MAX_ADV_DATA_LEN), SYSTEM_ERROR_NO_MEMORY);
     size_t len = CHECK(hal_ble_gap_get_advertising_data(advertisingData->data(), advertisingData->length(), nullptr));
     advertisingData->resize(len);
     return len;
@@ -2428,8 +2432,8 @@ private:
         size_t filterCustomDatalen;
         const uint8_t* filterCustomData = filter_.customData(&filterCustomDatalen);
         if (filterCustomData != nullptr && filterCustomDatalen > 0) {
-            size_t srLen = result.scanResponse().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, filterCustomDatalen);
-            size_t advLen = result.advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, filterCustomDatalen);
+            size_t srLen = result.scanResponse().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, BLE_MAX_ADV_DATA_LEN);
+            size_t advLen = result.advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, BLE_MAX_ADV_DATA_LEN_EXT);
             if (srLen != filterCustomDatalen && advLen != filterCustomDatalen) {
                 LOG_DEBUG(TRACE, "Custom data mismatched.");
                 return false;

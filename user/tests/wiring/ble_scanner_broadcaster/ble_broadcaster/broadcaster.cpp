@@ -111,10 +111,10 @@ test(BLE_Broadcaster_07_Advertise_Extended) {
 
     assertEqual(BLE.setAdvertisingPhy(BlePhy::BLE_PHYS_CODED), 0);
     // Make the advert 5 less than maximum to account for flags, type, and size
-    uint8_t buf[BLE_MAX_ADV_DATA_SIZE_EXTENDED_CONNECTABLE - 5];
-    memset(buf, 0x35, BLE_MAX_ADV_DATA_SIZE_EXTENDED_CONNECTABLE - 5);
+    uint8_t buf[BLE_MAX_ADV_DATA_LEN_EXT_CONNECTABLE - 5];
+    memset(buf, 0x35, BLE_MAX_ADV_DATA_LEN_EXT_CONNECTABLE - 5);
     BleAdvertisingData data;
-    data.appendCustomData(buf, BLE_MAX_ADV_DATA_SIZE_EXTENDED_CONNECTABLE - 5);
+    data.appendCustomData(buf, BLE_MAX_ADV_DATA_LEN_EXT_CONNECTABLE - 5);
     int ret = BLE.advertise(&data);
     assertEqual(ret, 0);
     assertTrue(BLE.advertising());
