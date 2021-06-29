@@ -33,6 +33,11 @@ typedef struct __attribute__((__packed__))  _CellularConfig_t {
 
 typedef int cellular_result_t;
 
+/**
+ * AT command response callback handler function pointer
+ */
+typedef void (*_CELLULAR_LOGGER_CB_MDM)(void* data, const char* buf);
+
 typedef int (*_CALLBACKPTR_MDM)(int type, const char* buf, int len, void* param);
 
 typedef void (*_CELLULAR_SMS_CB_MDM)(void* data, int index);

@@ -462,4 +462,17 @@ cellular_result_t cellular_process(void* reserved, void* reserved1)
     return electronMDM.process();
 }
 
+cellular_result_t cellular_at_response_handler_set(_CELLULAR_LOGGER_CB_MDM cb, void* data, void* reserved)
+{
+    // Allow cb == NULL && data == NULL to cancel callback
+    electronMDM.setATresponseHandler((MDMParser::_CELLULAR_LOGGER_CB)cb, (void*)data);
+    return 0;
+}
+
+cellular_result_t cellular_urcs_get(void* reserved)
+{
+    electronMDM.urcsGet();
+    return 0;
+}
+
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

@@ -275,6 +275,8 @@ MDMParser::MDMParser(void)
     _power_mode = 1; // default power mode is AT+UPSV=1
     _cancel_all_operations = false;
     sms_cb = NULL;
+    logger_cb = NULL;
+    logger_data = NULL;
     _memoryIssuePresent = true; // default to safe state until we determine modem firmware version
     _oldFirmwarePresent = true; // default to safe state until we determine modem firmware version
     _timePowerOn = 0;
@@ -336,6 +338,18 @@ void MDMParser::setSMSreceivedHandler(_CELLULAR_SMS_CB cb, void* data) {
 
 void MDMParser::SMSreceived(int index) {
     sms_cb(sms_data, index); // call the SMS callback with the index of the new SMS
+}
+
+void MDMParser::setATresponseHandler(_CELLULAR_LOGGER_CB cb, void* data) {
+    logger_cb = cb;
+    logger_data = data;
+}
+
+void MDMParser::logATcommandResponse(const char* buf, int len) {
+    char response[MAX_SIZE + 64];
+    strncpy(response, buf, len);
+    response[len] = '\0';
+    logger_cb(logger_data, response);
 }
 
 int MDMParser::send(const char* buf, int len)
@@ -523,6 +537,9 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                                                         "..." ;
             MDM_PRINTF("%10.3f AT read %s", HAL_Timer_Get_Milli_Seconds() * 0.001, s);
             dumpAtCmd(buf, len);
+            if (logger_cb) {
+                logATcommandResponse(buf, len);
+            }
             (void)s;
 #ifdef MDM_DEBUG_RX_PIPE
             // When using this, look for dangling stuff in the RX pipe after a read.
@@ -1413,6 +1430,12 @@ bool MDMParser::urcs(bool enable) {
         }
     }
     return true;
+}
+
+int MDMParser::urcsGet() {
+    LOCK();
+    const int ret = waitFinalResp(nullptr, nullptr, 0);
+    return ret;
 }
 
 bool MDMParser::softPowerOff(void) {
