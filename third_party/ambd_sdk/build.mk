@@ -31,7 +31,7 @@ CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_sdio_host.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_system.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_startup.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_usi_ssi.c
-#CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_psram.c
+CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_psram.c
 #CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_sd.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_clk.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_sdio.c
@@ -46,6 +46,7 @@ CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_i2s.c
 ifneq ("$(BOOTLOADER_MODULE)","")
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_flash_hp.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_ram_hp.c
+CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_trustzone_hp.c
 endif
 else
 # KM0 (Cortex-M23)
@@ -70,7 +71,7 @@ endif
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dlp_flashcfg.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dlp_pinmapcfg.c
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dlp_pinmapcfg_qfn88_evb_v1.c
-# CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dhp_boot_trustzonecfg.c
+CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dhp_boot_trustzonecfg.c
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721d_ipccfg.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dlp_sleepcfg.c
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721d_bootcfg.c

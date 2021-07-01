@@ -72,7 +72,7 @@ _system_part1_static_ram_end = _system_part1_static_ram_start + _system_part1_st
 _heap_min_size = 32K;
 
 /* Basic sanity checks */
-ASSERT(
+/*ASSERT(
     _system_part1_static_ram_end - _system_part1_static_ram_start == _system_part1_static_ram_size && _system_part1_static_ram_size > 0 &&
     _user_part_static_ram_end - _user_part_static_ram_start == _user_part_static_ram_size && _user_part_static_ram_size > 0 &&
     _stack_end - _stack_start == _stack_size && _stack_size > 0 &&
@@ -82,3 +82,4 @@ ASSERT(
     _user_backup_ram_end - _user_backup_ram_start == _user_backup_ram_size && _user_backup_ram_size > 0 &&
     _ram_end - _ram_start == _ram_size && _ram_size > 0,
     "Invalid memory map");
+*/

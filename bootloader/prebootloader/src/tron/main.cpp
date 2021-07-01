@@ -17,6 +17,9 @@
 
 #include <cstdlib>
 #include "rtl_support.h"
+extern "C" {
+#include "rtl8721d.h"
+}
 
 extern "C" int main() {
     rtlLowLevelInit();
@@ -24,7 +27,9 @@ extern "C" int main() {
 
     rtlPowerOnBigCore();
 
-    while (true);
+    while (true) {
+        __WFE();
+    }
 
     return 0;
 }

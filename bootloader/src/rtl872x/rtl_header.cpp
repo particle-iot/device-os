@@ -18,6 +18,12 @@
 #include <cstdint>
 #include "rtl_header.h"
 
+extern "C" {
+#include "rtl8721d.h"
+#include "rtl8721d_system.h"
+#include "rtl8721d_trustzone.h"
+}
+
 extern uintptr_t link_rtl_header_size;
 extern uintptr_t link_rtl_startup;
 extern uintptr_t link_rtl_header_ram_size;
@@ -53,11 +59,12 @@ __attribute__((used, section(".rtl_header_ram_valid_pattern"))) const uint8_t rt
 
 __attribute__((used, section(".rtl_header_ram_start_table"))) RAM_FUNCTION_START_TABLE rtlRamStartTable = {
     .RamStartFun = &Reset_Handler,
-    .RamWakeupFun = 0x0,
+    .RamWakeupFun = nullptr,
     .RamPatchFun0 = &Reset_Handler,
     .RamPatchFun1 = &Reset_Handler,
     .RamPatchFun2 = &Reset_Handler,
     .FlashStartFun = &Reset_Handler,
     .Img1ValidCode = (uint32_t)rtlRamValidPattern,
+    // NOTE: this will be an XIP address
     .ExportTable = &rtlBootExportTable
 };

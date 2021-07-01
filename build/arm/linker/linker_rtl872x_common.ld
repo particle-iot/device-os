@@ -76,8 +76,6 @@ SECTIONS
         *(.rodata*)
         *(.glue_7)
         *(.glue_7t)
-        *(.boot.ram.text)
-        *(.boot.ram.text.*)
         *(.boot.rodata)
         *(.boot.rodata*)
 
@@ -130,6 +128,8 @@ SECTIONS
         *(.boot.ram.data.*)
         *(.image2.ram.text)
         *(.image2.ram.text.*)
+        *(.boot.ram.text)
+        *(.boot.ram.text.*)
 
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
