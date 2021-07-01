@@ -44,10 +44,6 @@ bool FLASH_VerifyCRC32(flash_device_t flashDeviceID, uint32_t startAddress, uint
     return false;
 }
 
-int dct_read_app_data_copy(uint32_t offset, void* ptr, size_t size) {
-    return -1;
-}
-
 void DFU_Check_Reset(void) {
 
 }

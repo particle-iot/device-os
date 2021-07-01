@@ -21,6 +21,8 @@
 #include "rtl8721d_system.h"
 #include "button_hal.h"
 #include "interrupts_hal.h"
+#include "service_debug.h"
+#include "exflash_hal.h"
 
 // FIXME:
 // static const uintptr_t RTL_DEFAULT_MSP_S = 0x1007FFFC;
@@ -28,7 +30,7 @@
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
 
-void initPsram(void)
+static void hw_rtl_init_psram(void)
 {
     u32 temp;
     PCTL_InitTypeDef  PCTL_InitStruct;
@@ -111,6 +113,9 @@ __attribute__((section(".boot.ram.text"), noinline)) void Set_System(void)
 
     DWT_Init();
 
+    /* Configure flash */
+    SPARK_ASSERT(!hal_exflash_init());
+
     /* Configure the LEDs and set the default states */
     for (int LEDx = 1; LEDx < LEDn; ++LEDx) {
         // PARTICLE_LED_USER initialization is skipped during system setup
@@ -123,14 +128,9 @@ __attribute__((section(".boot.ram.text"), noinline)) void Set_System(void)
     /* Configure the Button */
     hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_EXTI);
 
-#if 0
-    /* Configure internal flash and external flash */
-    SPARK_ASSERT(!hal_exflash_init());
-#endif // 0
-
     SYSTIMER_Init();
 
-    initPsram();
+    hw_rtl_init_psram();
 }
 
 void Reset_System(void) {

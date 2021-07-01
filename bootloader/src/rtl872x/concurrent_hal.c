@@ -15,6 +15,16 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdatomic.h>
+#include "hal_irq_flag.h"
+
+static struct hal_exflash_lock_state {
+    atomic_int locked;
+    int32_t irq_state;
+} s_hal_exflash_lock_state;
+
 int os_thread_yield(void) {
     return 0;
 }
@@ -29,4 +39,18 @@ void periph_lock(void) {
 }
 
 void periph_unlock(void) {
+}
+
+int hal_exflash_lock(void) {
+    if (atomic_fetch_add(&s_hal_exflash_lock_state.locked, 1) == 0) {
+        s_hal_exflash_lock_state.irq_state = HAL_disable_irq();
+    }
+    return 0;
+}
+
+int hal_exflash_unlock(void) {
+    if (atomic_fetch_sub(&s_hal_exflash_lock_state.locked, 1) == 1) {
+        HAL_enable_irq(s_hal_exflash_lock_state.irq_state);
+    }
+    return 0;
 }

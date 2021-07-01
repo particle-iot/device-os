@@ -130,6 +130,8 @@ SECTIONS
         *(.image2.ram.text.*)
         *(.boot.ram.text)
         *(.boot.ram.text.*)
+        *(.ram.text)
+        *(.ram.text.*)
 
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
