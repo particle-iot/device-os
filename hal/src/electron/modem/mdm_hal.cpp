@@ -307,6 +307,12 @@ bool MDMParser::modemIsSaraRxFamily() {
     return ((_dev.dev == DEV_SARA_R410) || (_dev.dev == DEV_SARA_R510));
 }
 
+void MDMParser::_fixSaraR510AccessTechnology(void) {
+    if (_dev.dev == DEV_SARA_R510 && _net.act == ACT_UNKNOWN) {
+        _net.act = ACT_LTE_CAT_M1;
+    }
+}
+
 void MDMParser::cancel(void) {
     if (!_cancel_all_operations) {
         MDM_INFO("\r\n[ Modem::cancel ] = = = = = = = = = = = = = = =");
@@ -598,6 +604,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                 } else {
                     // +CREG|CGREG: <n>,<stat>[,<lac>,<ci>[,AcT[,<rac>]]] // reply to AT+CREG|AT+CGREG (2,4,5,6 results)
                     // +CREG|CGREG: <stat>[,<lac>,<ci>[,AcT[,<rac>]]]     // URC (1,3,4,5 results)
+                    // +CEREG: <n>,<stat>[,[<tac>],[<ci>],[<AcT>]]
                     b = (int)0xFFFF; c = (int)0xFFFFFFFF; d = -1; mode = -1; // default mode to -1 for safety
                     r = sscanf(cmd, "%31s %d,%d,\"%x\",\"%x\",%d",s,&mode,&a,&b,&c,&d);
                     if (r <= 2) {
@@ -658,6 +665,7 @@ int MDMParser::waitFinalResp(_CALLBACKPTR cb /* = NULL*/,
                             // access technology
                             if (r >= 5) {
                                 _net.act = toCellularAccessTechnology(d);
+                                _fixSaraR510AccessTechnology();
                             }
                         }
                     }
@@ -1915,6 +1923,8 @@ bool MDMParser::registerNet(const char* apn, NetStatus* status, system_tick_t ti
             if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
                 goto failure;
             }
+            _fixSaraR510AccessTechnology();
+
             // Only run AT+COPS=0 if currently de-registered, to avoid PLMN reselection
             if (_net.cops != 0 && _net.cops != 1) {
                 sendFormated("AT+COPS=0,2\r\n");
@@ -2033,6 +2043,7 @@ bool MDMParser::checkNetStatus(NetStatus* status /*= NULL*/)
         if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
             goto failure;
         }
+        _fixSaraR510AccessTechnology();
         // AT command used to collect signal stregnth is different for R410M radio
         if (_dev.dev == DEV_SARA_R410) {
             sendFormated("AT+UCGED=5\r\n");
@@ -2110,6 +2121,7 @@ bool MDMParser::getSignalStrength(NetStatus &status)
         if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT)) {
             goto cleanup;
         }
+        _fixSaraR510AccessTechnology();
 
         // +CREG, +CGREG, +COPS do not contain <AcT> for G350 devices.
         // Force _net.act to ACT_GSM to ensure Device Diagnostics and
@@ -2194,6 +2206,7 @@ bool MDMParser::getCellularGlobalIdentity(CellularGlobalIdentity& cgi_) {
     sendFormated("AT+COPS?\r\n");
     if (RESP_OK != waitFinalResp(_cbCOPS, &_net, COPS_TIMEOUT))
         goto failure;
+    _fixSaraR510AccessTechnology();
 
     switch (cgi_.version)
     {

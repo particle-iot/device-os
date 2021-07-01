@@ -678,6 +678,7 @@ protected:
     void _checkVerboseCxreg(void);
     bool _checkEpsReg(void);
     int _socketError(void);
+    void _fixSaraR510AccessTechnology(void);
     static MDMParser* inst;
     bool _init;
     bool _pwr;

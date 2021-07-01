@@ -317,6 +317,10 @@ int SaraNcpClient::initParser(Stream* stream) {
         // self->checkRegistrationState();
         // Cellular Global Identity (partial)
         if (r >= 3) {
+            // Check for erroneous R510 AcT value of -1, change to R510 specific Cat-M1 value of 7
+            if (r >= 4 && val[3] == 0xFFFFFFFF) {
+                val[3] = 7; 
+            }
             auto rat = r >= 4 ? static_cast<CellularAccessTechnology>(val[3]) : self->act_;
             switch (rat) {
                 case CellularAccessTechnology::LTE:
@@ -642,7 +646,8 @@ int SaraNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
     cgi_.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
 
     if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
-        if (act == particle::to_underlying(CellularAccessTechnology::LTE)) {
+        if (act == particle::to_underlying(CellularAccessTechnology::LTE) || 
+            (act == -1 && ncpId() == PLATFORM_NCP_SARA_R510)) {
             act = particle::to_underlying(CellularAccessTechnology::LTE_CAT_M1);
         }
     }
