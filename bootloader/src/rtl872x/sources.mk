@@ -3,7 +3,7 @@ BOOTLOADER_SRC_PATH = $(BOOTLOADER_MODULE_PATH)/src/rtl872x
 CSRC += $(call target_files,$(BOOTLOADER_SRC_PATH)/,*.c)
 CPPSRC += $(call target_files,$(BOOTLOADER_SRC_PATH)/,*.cpp)
 
-# CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,flash_hal.c)
+CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,flash_hal.c)
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,flash_common.cpp)
 CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,exflash_hal.c)
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,rgbled_hal.cpp)

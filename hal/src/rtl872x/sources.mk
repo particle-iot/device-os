@@ -1,13 +1,13 @@
 
 HAL_SRC_TEMPLATE_PATH = $(TARGET_HAL_PATH)/src/template
-HAL_SRC_NRF52840_PATH = $(TARGET_HAL_PATH)/src/nRF52840
+HAL_SRC_RTL872X_PATH = $(TARGET_HAL_PATH)/src/rtl872x
 HAL_SRC_ARMV7_PATH = $(TARGET_HAL_PATH)/src/armv7
 
-INCLUDE_DIRS += $(HAL_SRC_NRF52840_PATH)
+INCLUDE_DIRS += $(HAL_SRC_RTL872X_PATH)
 INCLUDE_DIRS += $(HAL_SRC_ARMV7_PATH)
 
-CSRC += $(call target_files,$(HAL_SRC_NRF52840_PATH)/,*.c)
-CPPSRC += $(call target_files,$(HAL_SRC_NRF52840_PATH)/,*.cpp)
+CSRC += $(call target_files,$(HAL_SRC_RTL872X_PATH)/,*.c)
+CPPSRC += $(call target_files,$(HAL_SRC_RTL872X_PATH)/,*.cpp)
 
 CSRC += $(call target_files,$(HAL_SRC_ARMV7_PATH)/,*.c)
 CPPSRC += $(call target_files,$(HAL_SRC_ARMV7_PATH)/,*.cpp)

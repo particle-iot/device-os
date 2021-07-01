@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdint.h>
+#include "cmsis_gcc.h"
+
 int HAL_disable_irq() {
     int is = __get_PRIMASK();
     __disable_irq();

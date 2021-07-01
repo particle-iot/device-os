@@ -15,29 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include <bits/gthr.h>
+#include <mutex>
 
-#include "check.h"
-#include "nrfx.h"
-#include <nrf_error.h>
-#include <nrfx_errors.h>
-
-#define CHECK_NRF_RETURN(_expr, _val) \
-        ({ \
-            const auto _ret = _expr; \
-            if (_ret != NRF_SUCCESS && _ret != NRFX_SUCCESS) { \
-                _LOG_CHECKED_ERROR(_expr, _ret); \
-                return _val; \
-            } \
-            _ret; \
-        })
-
-#define CHECK_NRF(_expr) \
-        ({ \
-            const auto _ret = _expr; \
-            if (_ret != NRF_SUCCESS && _ret != NRFX_SUCCESS) { \
-                _LOG_CHECKED_ERROR(_expr, _ret); \
-                return _ret; \
-            } \
-            _ret; \
-        })
+extern "C" void __once_proxy(void) {
+  std::__once_functor();
+}

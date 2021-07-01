@@ -21,28 +21,28 @@
 #include "dfu_hal.h"
 #include "dct_hal.h"
 
-bool FLASH_IsFactoryResetAvailable(void) {
-    return false;
-}
+// bool FLASH_IsFactoryResetAvailable(void) {
+//     return false;
+// }
 
-int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
-    return FLASH_ACCESS_RESULT_OK;
-}
+// int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
+//     return FLASH_ACCESS_RESULT_OK;
+// }
 
 void HAL_DFU_USB_Init(void) {
 }
 
-bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress) {
-    return false;
-}
+// bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress) {
+//     return false;
+// }
 
-uint32_t FLASH_ModuleLength(flash_device_t flashDeviceID, uint32_t startAddress) {
-    return 0;
-}
+// uint32_t FLASH_ModuleLength(flash_device_t flashDeviceID, uint32_t startAddress) {
+//     return 0;
+// }
 
-bool FLASH_VerifyCRC32(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length) {
-    return false;
-}
+// bool FLASH_VerifyCRC32(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length) {
+//     return false;
+// }
 
 void DFU_Check_Reset(void) {
 

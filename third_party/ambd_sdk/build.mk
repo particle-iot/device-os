@@ -84,6 +84,8 @@ CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721d_wificfg.c
 # We do not really want to run FreeRTOS in our bootloader if we can, so avoid building
 # it for now, until there is a strong need for it (e.g. USB)
 ifeq ("$(BOOTLOADER_MODULE)","")
+CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/freertos/freertos_v10.2.0/Source/portable/GCC/RTL8721D_HP/non_secure/port.c
+CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/freertos/freertos_v10.2.0/Source/portable/GCC/RTL8721D_HP/non_secure/portasm.c
 CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/os_dep/osdep_service.c
 endif
 

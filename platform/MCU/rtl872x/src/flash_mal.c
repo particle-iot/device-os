@@ -22,7 +22,7 @@
   License along with this program; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
-#if 0
+
 /* Includes ------------------------------------------------------------------*/
 //#include <string.h>
 #include "hw_config.h"
@@ -34,7 +34,8 @@
 #include "exflash_hal.h"
 #include "hal_platform.h"
 #include "inflate.h"
-#include "nrf_mbr.h"
+#include "check.h"
+#include "rtl8721d.h"
 
 // Decompression of firmware modules is only supported in the bootloader
 #if (HAL_PLATFORM_COMPRESSED_OTA) && (MODULE_FUNCTION == MOD_FUNC_BOOTLOADER)
@@ -43,11 +44,11 @@
 #define HAS_COMPRESSED_OTA 0
 #endif
 
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-#define SOFTDEVICE_MBR_UPDATES 1
-#else
+// #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+// #define SOFTDEVICE_MBR_UPDATES 1
+// #else
 #define SOFTDEVICE_MBR_UPDATES 0
-#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+// #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
 #define CEIL_DIV(A, B)        (((A) + (B) - 1) / (B))
 
@@ -123,12 +124,12 @@ static bool verify_module(flash_device_t src_dev, uintptr_t src_addr, size_t src
         size_t module_info_size = 0;
         int module_info_platform_id = -1;
         int module_info_func = -1;
-        const module_info_t* const info = FLASH_ModuleInfo(src_dev, src_addr, NULL);
-        if (info) {
-            module_info_start_addr = (uintptr_t)info->module_start_address;
-            module_info_size = info->module_end_address - info->module_start_address;
-            module_info_platform_id = info->platform_id;
-            module_info_func = info->module_function;
+        module_info_t info = {};
+        if (FLASH_ModuleInfo(&info, src_dev, src_addr, NULL) == SYSTEM_ERROR_NONE) {
+            module_info_start_addr = (uintptr_t)info.module_start_address;
+            module_info_size = info.module_end_address - info.module_start_address;
+            module_info_platform_id = info.platform_id;
+            module_info_func = info.module_function;
         }
         if (module_info_func != MODULE_FUNCTION_RESOURCE && module_info_platform_id != PLATFORM_ID) {
             return false;
@@ -141,7 +142,7 @@ static bool verify_module(flash_device_t src_dev, uintptr_t src_addr, size_t src
         }
         if ((flags & MODULE_VERIFY_DESTINATION_IS_START_ADDRESS) && module_info_start_addr != dest_addr) {
 #if SOFTDEVICE_MBR_UPDATES
-            if (!(module_func == MODULE_FUNCTION_BOOTLOADER && dest_addr == USER_FIRMWARE_IMAGE_LOCATION)) {
+            if (!(module_func == MODULE_FUNCTION_BOOTLOADER && dest_addr == USER_FIRMWARE_IMAGE_LOCATION_COMPAT)) {
                 return false;
             }
 #else
@@ -367,22 +368,30 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         return FLASH_ACCESS_RESULT_BADARG;
     }
 #if SOFTDEVICE_MBR_UPDATES
-    if (module_function == MODULE_FUNCTION_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
+    if (module_function == MODULE_FUNCTION_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION_COMPAT) {
         // Backup user firmware
         dest_size = CEIL_DIV(length, INTERNAL_FLASH_PAGE_SIZE) * INTERNAL_FLASH_PAGE_SIZE;
         if (!FLASH_EraseMemory(FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, dest_size)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
-        if (!flash_copy(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, dest_size)) {
+        if (!flash_copy(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION_COMPAT, FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, dest_size)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
         // Add backed up partial user firmware to slots, so that it's restored on next boot
         if (!FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, EXTERNAL_FLASH_RESERVED_ADDRESS, FLASH_INTERNAL,
-                USER_FIRMWARE_IMAGE_LOCATION, dest_size, MODULE_FUNCTION_NONE, 0)) {
+                USER_FIRMWARE_IMAGE_LOCATION_COMPAT, dest_size, MODULE_FUNCTION_NONE, 0)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
     }
 #endif // SOFTDEVICE_MBR_UPDATES
+
+    // Make sure to invalidate the compat application, otherwise we'll keep booting into the compat application
+    // as it takes precedence
+    // if (module_function == MODULE_FUNCTION_USER_PART && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
+    //     if (!FLASH_EraseMemory(destinationDeviceID, USER_FIRMWARE_IMAGE_LOCATION_COMPAT, INTERNAL_FLASH_PAGE_SIZE)) {
+    //         return FLASH_ACCESS_RESULT_ERROR;
+    //     }
+    // }
 
     if (!FLASH_EraseMemory(destinationDeviceID, destinationAddress, dest_size)) {
         return FLASH_ACCESS_RESULT_ERROR;
@@ -416,8 +425,11 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
         if (!(flags & MODULE_DROP_MODULE_INFO) && (flags & MODULE_VERIFY_MASK)) {
             // We may only check the module header if we've been asked to verify it
             uint32_t infoOffset = 0;
-            const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress, &infoOffset);
-            if (info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
+            module_info_t info = {};
+            if (FLASH_ModuleInfo(&info, sourceDeviceID, sourceAddress, &infoOffset) != SYSTEM_ERROR_NONE) {
+                return FLASH_ACCESS_RESULT_ERROR;
+            }
+            if (info.flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
                 // NB: We have corner cases where the module info is not located in the
                 // front of the module but for example after the vector table and we
                 // only want to enable this feature in the case it is in the front,
@@ -444,7 +456,7 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     }
 
 #if SOFTDEVICE_MBR_UPDATES
-    if (module_function == MODULE_FUNCTION_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION) {
+    if (module_function == MODULE_FUNCTION_BOOTLOADER && destinationAddress == USER_FIRMWARE_IMAGE_LOCATION_COMPAT) {
         sd_mbr_command_t command = {
             .command = SD_MBR_COMMAND_COPY_BL,
             .params.copy_bl.bl_src = (uint32_t*)destinationAddress,
@@ -726,61 +738,94 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
     return result;
 }
 
-const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset)
+int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset)
 {
-#ifdef USE_SERIAL_FLASH
-    static module_info_t ex_module_info; // FIXME: This is not thread-safe
-#endif
+    CHECK_TRUE(infoOut, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    const module_info_t* info = NULL;
     uint32_t offset = 0;
-
-    if(flashDeviceID == FLASH_INTERNAL)
+    
+    if (flashDeviceID == FLASH_INTERNAL)
     {
-        if (((*(__IO uint32_t*)startAddress) & APP_START_MASK) == 0x20000000)
-        {
-            offset = 0x200;
-            startAddress += offset;
-        }
-
-        info = (const module_info_t*)startAddress;
+        // if (((*(__IO uint32_t*)startAddress) & APP_START_MASK) == 0x20000000)
+        // {
+        //     offset = 0x200;
+        //     startAddress += offset;
+        // }
+        // int ret = hal_flash_read(startAddress, (uint8_t*)infoOut, sizeof(module_info_t));
+        // if (ret != SYSTEM_ERROR_NONE) {
+        //     return ret;
+        // }
     }
 #ifdef USE_SERIAL_FLASH
-    else if(flashDeviceID == FLASH_SERIAL)
+    else if (flashDeviceID == FLASH_SERIAL)
     {
         uint8_t serialFlashData[4];
         uint32_t first_word = 0;
 
-        hal_exflash_read(startAddress, serialFlashData, 4);
+        int ret = hal_exflash_read(startAddress, serialFlashData, 4);
+        if (ret != SYSTEM_ERROR_NONE) {
+            return ret;
+        }
         first_word = (uint32_t)(serialFlashData[0] | (serialFlashData[1] << 8) | (serialFlashData[2] << 16) | (serialFlashData[3] << 24));
         if ((first_word & APP_START_MASK) == 0x20000000)
         {
             offset = 0x200;
             startAddress += offset;
         }
-
-        memset((uint8_t *)&ex_module_info, 0x00, sizeof(module_info_t));
-        hal_exflash_read(startAddress, (uint8_t *)&ex_module_info, sizeof(module_info_t));
-
-        info = &ex_module_info;
-#endif
+        ret = hal_exflash_read(startAddress, (uint8_t *)infoOut, sizeof(module_info_t));
+        if (ret != SYSTEM_ERROR_NONE) {
+            return ret;
+        }
     }
+#endif
 
-    if (infoOffset && info)
+    if (infoOffset)
     {
         *infoOffset = offset;
     }
 
-    return info;
+    return SYSTEM_ERROR_NONE;
+}
+
+int FLASH_ModuleCrcSuffix(module_info_crc_t* crc, module_info_suffix_t* suffix, uint8_t flashDeviceID, uint32_t endAddress) {
+    typedef int (*readFn_t)(uintptr_t addr, uint8_t* data_buf, size_t size);
+    readFn_t read = NULL;
+
+    if (flashDeviceID == FLASH_INTERNAL) {
+        read = hal_flash_read;
+    }
+#ifdef USE_SERIAL_FLASH
+    else if (flashDeviceID == FLASH_SERIAL) {
+        read = hal_exflash_read;
+    }
+#endif
+
+    if (read) {
+        if (crc) {
+            int ret = read(endAddress, (uint8_t*)crc, sizeof(module_info_crc_t));
+            if (ret != SYSTEM_ERROR_NONE) {
+                return ret;
+            }
+        }
+        if (suffix) {
+            // suffix [endAddress] crc32
+            endAddress = endAddress - sizeof(module_info_suffix_t);
+            int ret = read(endAddress, (uint8_t*)suffix, sizeof(module_info_suffix_t));
+            if (ret != SYSTEM_ERROR_NONE) {
+                return ret;
+            }
+        }
+    }
+    
+    return SYSTEM_ERROR_NONE;
 }
 
 uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress)
 {
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL);
-
-    if (module_info != NULL)
+    module_info_t info = {};
+    if (FLASH_ModuleInfo(&info, flashDeviceID, startAddress, NULL) == SYSTEM_ERROR_NONE)
     {
-        return (uint32_t)module_info->module_start_address;
+        return (uint32_t)info.module_start_address;
     }
 
     return 0;
@@ -788,11 +833,10 @@ uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress)
 
 uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
 {
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL);
-
-    if (module_info != NULL)
+    module_info_t info = {};
+    if (FLASH_ModuleInfo(&info, flashDeviceID, startAddress, NULL) == SYSTEM_ERROR_NONE)
     {
-        return ((uint32_t)module_info->module_end_address - (uint32_t)module_info->module_start_address);
+        return ((uint32_t)info.module_end_address - (uint32_t)info.module_start_address);
     }
 
     return 0;
@@ -800,11 +844,10 @@ uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
 
 uint16_t FLASH_ModuleVersion(uint8_t flashDeviceID, uint32_t startAddress)
 {
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL);
-
-    if (module_info != NULL)
+    module_info_t info = {};
+    if (FLASH_ModuleInfo(&info, flashDeviceID, startAddress, NULL) == SYSTEM_ERROR_NONE)
     {
-        return module_info->module_version;
+        return info.module_version;
     }
 
     return 0;
@@ -812,12 +855,12 @@ uint16_t FLASH_ModuleVersion(uint8_t flashDeviceID, uint32_t startAddress)
 
 bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress)
 {
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL);
-
-    return (module_info != NULL
-            && ((uint32_t)(module_info->module_start_address) == expectedAddress)
-            && ((uint32_t)(module_info->module_end_address)<=0x100000)
-            && (module_info->platform_id==PLATFORM_ID));
+    module_info_t info = {};
+    int ret = FLASH_ModuleInfo(&info, flashDeviceID, startAddress, NULL);
+    return (ret == SYSTEM_ERROR_NONE
+            && ((uint32_t)(info.module_start_address) == expectedAddress)
+            && ((uint32_t)(info.module_end_address) <= 0x100000)
+            && (info.platform_id == PLATFORM_ID));
 }
 
 bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length)
@@ -859,8 +902,8 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
         {
             return true;
         }
-#endif
     }
+#endif
 
     return false;
 }
@@ -882,12 +925,12 @@ void FLASH_WriteProtection_Disable(uint32_t FLASH_Sectors)
     return;
 }
 
-void FLASH_Erase(void)
-{
+// void FLASH_Erase(void)
+// {
     // This is too dangerous.
     //FLASH_EraseMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, FIRMWARE_IMAGE_SIZE);
-    return;
-}
+//     return;
+// }
 
 void FLASH_Backup(uint32_t FLASH_Address)
 {
@@ -929,4 +972,3 @@ int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
 #endif
     return ret;
 }
-#endif 

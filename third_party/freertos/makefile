@@ -14,5 +14,7 @@ ifeq ($(SOFTDEVICE_PRESENT),y)
 DEPENDENCIES += dynalib services third_party/nrf5_sdk
 endif
 
+DEPENDENCIES += dynalib services third_party/ambd_sdk
+
 PROJECT_ROOT ?= ../..
 include ../../build/arm-tlm.mk

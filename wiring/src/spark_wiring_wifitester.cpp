@@ -386,6 +386,9 @@ void WiFiTester::checkWifiSerial(char c) {
 #if HAL_PLATFORM_NRF52840
                     setPinOutputRange(A0, A5, pinValue);
                     setPinOutputRange(D0, D8, pinValue);
+#elif HAL_PLATFORM_RTL872X
+                    setPinOutputRange(A0, A0, pinValue);
+                    setPinOutputRange(D0, D8, pinValue);
 #else
                     setPinOutputRange(A0, A7, pinValue);
                     setPinOutputRange(D0, D7, pinValue);

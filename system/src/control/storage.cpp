@@ -23,7 +23,7 @@
 #include "system_network.h"
 #include "common.h"
 
-#if HAL_PLATFORM_NRF52840
+#if HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X
 #include "ota_flash_hal_impl.h"
 #else
 #include "ota_flash_hal_stm32f2xx.h"

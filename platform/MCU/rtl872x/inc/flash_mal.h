@@ -56,16 +56,22 @@ extern "C" {
 //Bootloader firmware at the start of internal flash
 #define USB_DFU_ADDRESS             INTERNAL_FLASH_START
 //Main firmware begin address after 24 + 64KB from start of flash
-#define CORE_FW_ADDRESS             ((uint32_t)0x08006000 + 64 * 1024 + sizeof(module_info_t))
+// #define CORE_FW_ADDRESS             ((uint32_t)0x08006000 + 64 * 1024 + sizeof(module_info_t))
+#define CORE_FW_ADDRESS             ((uint32_t)0x08020000)
 #define APP_START_MASK              ((uint32_t)0x1FFC0000)
 
 /* Internal Flash page size */
 #define INTERNAL_FLASH_PAGE_SIZE    ((uint32_t)0x1000) //4K (256 sectors of 4K each used by main firmware)
 
+#define EXTERNAL_FLASH_SIZE             (sFLASH_PAGESIZE * sFLASH_PAGECOUNT)
+
 #define EXTERNAL_FLASH_OTA_LENGTH       (0x80000) // 512KB for OTA
 #define EXTERNAL_FLASH_OTA_ADDRESS      (INTERNAL_FLASH_START + INTERNAL_FLASH_SIZE / 2)
+#define EXTERNAL_FLASH_FAC_LENGTH       (256*1024)
+#define EXTERNAL_FLASH_FAC_ADDRESS      (0x100000) // FIXME
 #define INTERNAL_FLASH_SYSTEM_STORE     (0x80000) // 512KB for filesystem
 #define INTERNAL_FLASH_SYSTEM_STORE_ADDRESS (EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH)
+#define INTERNAL_FLASH_OTA_ADDRESS      ((uint32_t)(USER_FIRMWARE_IMAGE_LOCATION + FIRMWARE_IMAGE_SIZE))
 
 #ifdef MODULAR_FIRMWARE
 #    define FACTORY_RESET_MODULE_FUNCTION MODULE_FUNCTION_USER_PART

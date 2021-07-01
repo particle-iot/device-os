@@ -95,7 +95,6 @@ static int write_unaligned_word(uintptr_t addr, const uint8_t* data, size_t size
 int hal_flash_common_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size,
                            hal_flash_common_write_cb write_func, hal_flash_common_read_cb read_func)
 {
-
     /* Fist we need to align the destination address */
     if (!IS_WORD_ALIGNED(addr)) {
         const int bytes_copied = write_unaligned_word(addr, data_buf, data_size, write_func, read_func);

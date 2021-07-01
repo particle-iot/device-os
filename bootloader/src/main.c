@@ -447,7 +447,7 @@ int main(void)
 
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress
-        if (is_application_valid(ApplicationAddress))
+        if (is_application_valid(ApplicationAddress) && ApplicationAddress == 0x08020000)
         {
             uint8_t disable_iwdg = 0;
 #ifdef CHECK_FIRMWARE
@@ -470,7 +470,7 @@ int main(void)
             uint32_t stack = *(volatile uint32_t*)ApplicationAddress;
             jump_to_system(addr, stack);
         }
-#if !HAL_PLATFORM_NRF52840
+#if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
         else
         {
             LED_SetRGBColor(RGB_COLOR_RED);

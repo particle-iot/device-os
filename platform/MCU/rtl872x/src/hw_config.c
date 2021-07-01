@@ -22,6 +22,7 @@
 #include "button_hal.h"
 #include "interrupts_hal.h"
 #include "service_debug.h"
+#include "rgbled_hal.h"
 #include "exflash_hal.h"
 
 // FIXME:
@@ -107,6 +108,15 @@ __attribute__((section(".boot.ram.text"), noinline)) void Set_System(void)
     Cache_Enable(ENABLE);
     SystemCoreClockUpdate();
 
+    // force SP align to 8 byte not 4 byte (initial SP is 4 byte align)
+    asm volatile( 
+		"mov r0, sp\n"
+		"bic r0, r0, #7\n" 
+		"mov sp, r0\n"
+	);
+
+    // mpu_init();
+
     uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_HP, REG_HS_RFAFE_IND_VIO1833);
     temp |= BIT_RFAFE_IND_VIO1833;
     HAL_WRITE32(SYSTEM_CTRL_BASE_HP, REG_HS_RFAFE_IND_VIO1833, temp);
@@ -138,7 +148,6 @@ void Reset_System(void) {
 
     SysTick_Disable();
 
-#if 0
     hal_button_uninit();
 
     hal_exflash_uninit();
@@ -146,7 +155,6 @@ void Reset_System(void) {
     RGB_LED_Uninit();
 
     __DSB();
-#endif // 0
 }
 
 #if __Vendor_SysTickConfig

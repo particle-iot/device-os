@@ -43,7 +43,7 @@
 
 #define SYSTICK_IRQ_PRIORITY                7      //CORTEX_M33 Systick Interrupt
 
-#if PLATFORM_ID == PLATFORM_T1
+#if PLATFORM_ID == PLATFORM_TRON
     #define INTERNAL_FLASH_SIZE             (0x200000)
 #else
     #pragma message "PLATFORM_ID is " PREPSTRING(PLATFORM_ID)

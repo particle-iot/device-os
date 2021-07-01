@@ -34,7 +34,7 @@
 
 #include "dct.h"
 
-#if HAL_PLATFORM_NRF52840
+#if HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X
 #include "ota_flash_hal_impl.h"
 #else
 #include "ota_flash_hal_stm32f2xx.h"
@@ -259,7 +259,7 @@ int echo(ctrl_request* req) {
     return 0;
 }
 
-#if !HAL_PLATFORM_NRF52840
+#if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
 
 int handleSetSecurityKeyRequest(ctrl_request* req) {
     particle_ctrl_SetSecurityKeyRequest pbReq = {};

@@ -1,106 +1,37 @@
 /*
-    Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
+ * FreeRTOS Kernel V10.2.0
+ * Copyright (C) 2019 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * http://www.FreeRTOS.org
+ * http://aws.amazon.com/freertos
+ *
+ * 1 tab == 4 spaces!
+ */
 
-    This library is free software; you can redistribute it and/or
-    modify it under the terms of the GNU Lesser General Public
-    License as published by the Free Software Foundation, either
-    version 3 of the License, or (at your option) any later version.
-
-    This library is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    Lesser General Public License for more details.
-
-    You should have received a copy of the GNU Lesser General Public
-    License along with this library; if not, see <http://www.gnu.org/licenses/>.
-
-    ***************************************************************************
-    FreeRTOS license information follows...
-    ***************************************************************************
-
-    FreeRTOS V8.2.2 - Copyright (C) 2015 Real Time Engineers Ltd.
-    All rights reserved
-
-    VISIT http://www.FreeRTOS.org TO ENSURE YOU ARE USING THE LATEST VERSION.
-
-    This file is part of the FreeRTOS distribution.
-
-    FreeRTOS is free software; you can redistribute it and/or modify it under
-    the terms of the GNU General Public License (version 2) as published by the
-    Free Software Foundation >>!AND MODIFIED BY!<< the FreeRTOS exception.
-
-    ***************************************************************************
-    >>!   NOTE: The modification to the GPL is included to allow you to     !<<
-    >>!   distribute a combined work that includes FreeRTOS without being   !<<
-    >>!   obliged to provide the source code for proprietary components     !<<
-    >>!   outside of the FreeRTOS kernel.                                   !<<
-    ***************************************************************************
-
-    FreeRTOS is distributed in the hope that it will be useful, but WITHOUT ANY
-    WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-    FOR A PARTICULAR PURPOSE.  Full license text is available on the following
-    link: http://www.freertos.org/a00114.html
-
-    ***************************************************************************
-     *                                                                       *
-     *    FreeRTOS provides completely free yet professionally developed,    *
-     *    robust, strictly quality controlled, supported, and cross          *
-     *    platform software that is more than just the market leader, it     *
-     *    is the industry's de facto standard.                               *
-     *                                                                       *
-     *    Help yourself get started quickly while simultaneously helping     *
-     *    to support the FreeRTOS project by purchasing a FreeRTOS           *
-     *    tutorial book, reference manual, or both:                          *
-     *    http://www.FreeRTOS.org/Documentation                              *
-     *                                                                       *
-    ***************************************************************************
-
-    http://www.FreeRTOS.org/FAQHelp.html - Having a problem?  Start by reading
-    the FAQ page "My application does not run, what could be wrong?".  Have you
-    defined configASSERT()?
-
-    http://www.FreeRTOS.org/support - In return for receiving this top quality
-    embedded software for free we request you assist our global community by
-    participating in the support forum.
-
-    http://www.FreeRTOS.org/training - Investing in training allows your team to
-    be as productive as possible as early as possible.  Now you can receive
-    FreeRTOS training directly from Richard Barry, CEO of Real Time Engineers
-    Ltd, and the world's leading authority on the world's leading RTOS.
-
-    http://www.FreeRTOS.org/plus - A selection of FreeRTOS ecosystem products,
-    including FreeRTOS+Trace - an indispensable productivity tool, a DOS
-    compatible FAT file system, and our tiny thread aware UDP/IP stack.
-
-    http://www.FreeRTOS.org/labs - Where new FreeRTOS products go to incubate.
-    Come and try FreeRTOS+TCP, our new open source TCP/IP stack for FreeRTOS.
-
-    http://www.OpenRTOS.com - Real Time Engineers ltd. license FreeRTOS to High
-    Integrity Systems ltd. to sell under the OpenRTOS brand.  Low cost OpenRTOS
-    licenses offer ticketed support, indemnification and commercial middleware.
-
-    http://www.SafeRTOS.com - High Integrity Systems also provide a safety
-    engineered and independently SIL3 certified version for use in safety and
-    mission critical applications that require provable dependability.
-
-    1 tab == 4 spaces!
-*/
+/******************************************************************************
+	See http://www.freertos.org/a00110.html for an explanation of the
+	definitions contained in this file.
+******************************************************************************/
 
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
-
-#ifdef SOFTDEVICE_PRESENT
-#include "nrf_soc.h"
-#endif
-#include "app_util_platform.h"
-
-/*-----------------------------------------------------------
- * Possible configurations for system timer
- */
-#define FREERTOS_USE_RTC      0 /**< Use real time clock for the system */
-#define FREERTOS_USE_SYSTICK  1 /**< Use SysTick timer for system */
-
-/* Library includes. */
 
 /*-----------------------------------------------------------
  * Application specific definitions.
@@ -110,140 +41,217 @@
  *
  * THESE PARAMETERS ARE DESCRIBED WITHIN THE 'CONFIGURATION' SECTION OF THE
  * FreeRTOS API DOCUMENTATION AVAILABLE ON THE FreeRTOS.org WEB SITE.
- *
- * See http://www.freertos.org/a00110.html.
+ * http://www.freertos.org/a00110.html
  *----------------------------------------------------------*/
+
+#include <stdint.h> 
+extern uint32_t SystemCoreClock; 
+
+
+#define __IASMARM__ 0 /* IAR */
+
+#include "platform_autoconf.h"
+
+
+
+#define configAPPLICATION_ALLOCATED_HEAP ( 1 )
+#define configDYNAMIC_HEAP_SIZE     ( 1 )
+#define configSUPPORT_STATIC_ALLOCATION ( 1 )
 
 extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPendYield);
 #define portPRE_TASK_DELETE_HOOK(pvTaskToDelete, pxYieldPending) vApplicationTaskDeleteHook((pvTaskToDelete), (pxYieldPending))
 
-#define configUSE_PREEMPTION        1
-#define configUSE_IDLE_HOOK         1
-#define configUSE_TICK_HOOK         0
-#define configCPU_CLOCK_HZ          ( SystemCoreClock )
-#define configTICK_RATE_HZ          ( ( TickType_t ) 1000 )
-#define configMAX_PRIORITIES        ( 10 )
-#define configMINIMAL_STACK_SIZE    ( ( unsigned short ) 128 )
-#define configTOTAL_HEAP_SIZE       ( ( size_t ) ( 75 * 1024 ) )
-#define configMAX_TASK_NAME_LEN     ( 16 )
-#define configUSE_TRACE_FACILITY    0
-#define configUSE_16_BIT_TICKS      0
-#define configIDLE_SHOULD_YIELD     1
-#define configUSE_MUTEXES           1
-#define configUSE_RECURSIVE_MUTEXES  1
-#define configENABLE_BACKWARD_COMPATIBILITY 1
-#define configUSE_COUNTING_SEMAPHORES 1
-#define configTICK_SOURCE FREERTOS_USE_SYSTICK
-//#define configTICK_SOURCE FREERTOS_USE_RTC
 
-#define configAPPLICATION_ALLOCATED_HEAP ( 1 )
-#define configDYNAMIC_HEAP_SIZE     ( 1 )
-#define configUSE_MALLOC_FAILED_HOOK ( 1 )
-#define configSUPPORT_STATIC_ALLOCATION ( 1 )
 
-/* Co-routine definitions. */
-#define configUSE_CO_ROUTINES       0
-#define configMAX_CO_ROUTINE_PRIORITIES ( 2 )
-#define configUSE_TIMERS                (1)
-#define configTIMER_TASK_PRIORITY                   ( configMAX_PRIORITIES - 1 )
-#define configTIMER_QUEUE_LENGTH                    ( 5 )
-#define configTIMER_TASK_STACK_DEPTH                ( ( unsigned short ) (1024 / sizeof( portSTACK_TYPE )) )
 
-// Allocate newlib's reent structure for each task
-#define configUSE_NEWLIB_REENTRANT 1
+/* Cortex M33 port configuration. */
+#define configENABLE_MPU								0
 
-// This macro allows us to understand when we are included from FreeRTOS sources
-extern void newlib_impure_ptr_change(struct _reent* r);
-#define traceTASK_SWITCHED_IN() newlib_impure_ptr_change(&(pxCurrentTCB->xNewLib_reent))
+#define configENABLE_FPU								1
+
+/* Configure secure image(RDP) exists or not. Set configENABLE_TRUSTZONE to 1 if enable RDP. */
+#if defined(CONFIG_TRUSTZONE_EN) && (CONFIG_TRUSTZONE_EN == 1)
+#define configENABLE_TRUSTZONE							1
+#else
+#define configENABLE_TRUSTZONE							0
+#endif
+#define configRUN_FREERTOS_SECURE_ONLY					1
+
+
+/* Constants related to the behaviour or the scheduler. */
+#define configUSE_PORT_OPTIMISED_TASK_SELECTION			0
+#define configUSE_PREEMPTION							1
+#define configUSE_TIME_SLICING							1
+#define configMAX_PRIORITIES							( 11 )
+// #define configIDLE_SHOULD_YIELD							0
+#define configIDLE_SHOULD_YIELD                         1
+#define configUSE_16_BIT_TICKS							0 /* Only for 8 and 16-bit hardware. */
+
+/* Constants that describe the hardware and memory usage. */
+#define configCPU_CLOCK_HZ								SystemCoreClock
+// #define configMINIMAL_STACK_SIZE						( ( unsigned short ) 512 )
+#define configMINIMAL_STACK_SIZE                        ( ( unsigned short ) 128 )
+#define configMINIMAL_SECURE_STACK_SIZE					( 1024 )
+#define configMAX_TASK_NAME_LEN							( 10 )
+#ifdef CONFIG_WIFI_EN
+#define configTOTAL_HEAP_SIZE						( ( size_t ) ( 250 * 1024 ) ) //default
+#if (defined CONFIG_HIGH_TP_TEST)
+	#define configTOTAL_HEAP_SIZE					( ( size_t ) ( 100 * 1024 ) )		
+#endif
+#else
+#define configTOTAL_HEAP_SIZE						( ( size_t ) ( 40 * 1024 ) )
+#endif
+#define  CONFIG_DYNAMIC_HEAP_SIZE                       0
+
+#define secureconfigTOTAL_SRAM_HEAP_SIZE			( ( ( size_t ) ( 6 * 1024 ) ) )
+#define secureconfigTOTAL_PSRAM_HEAP_SIZE			( ( ( size_t ) ( 128 * 1024 ) ) )
+
+/* Constants that build features in or out. */
+#define configUSE_MUTEXES								1
+#define configUSE_APPLICATION_TASK_TAG					0
+#define configUSE_NEWLIB_REENTRANT						0
+// #define configUSE_CO_ROUTINES							1 ///
+#define configUSE_CO_ROUTINES							0 ///
+#define configMAX_CO_ROUTINE_PRIORITIES 				( 2 )
+#define configUSE_COUNTING_SEMAPHORES					1
+#define configUSE_RECURSIVE_MUTEXES						1
+#define configUSE_QUEUE_SETS							1
+#define configUSE_TASK_NOTIFICATIONS					1
+#define configUSE_TRACE_FACILITY						1
+
+/* Constants that define which hook (callback) functions should be used. */
+#define configUSE_IDLE_HOOK								1
+#define configUSE_TICK_HOOK								0
+#define configUSE_MALLOC_FAILED_HOOK					1
+
+/* Constants provided for debugging and optimisation assistance. */
+#define configCHECK_FOR_STACK_OVERFLOW					2
+#define configQUEUE_REGISTRY_SIZE						0
+#define configRECORD_STACK_HIGH_ADDRESS					1
+
+/* Software timer definitions. */
+#define configUSE_TIMERS								1
+// #define configTIMER_TASK_PRIORITY                       1
+// #define configTIMER_QUEUE_LENGTH						( 10 + 32 )
+// #define configTIMER_TASK_STACK_DEPTH					( 512  )
+#define configTIMER_TASK_PRIORITY						( configMAX_PRIORITIES - 1 )
+#define configTIMER_QUEUE_LENGTH						( 5 )
+#define configTIMER_TASK_STACK_DEPTH					( ( unsigned short ) (1024 / sizeof( portSTACK_TYPE )) )
 
 /* Set the following definitions to 1 to include the API function, or zero
-to exclude the API function. */
+ * to exclude the API function.  NOTE:  Setting an INCLUDE_ parameter to 0 is
+ * only necessary if the linker does not automatically remove functions that are
+ * not referenced anyway. */
+#define INCLUDE_vTaskPrioritySet						1
+#define INCLUDE_uxTaskPriorityGet						1
+#define INCLUDE_vTaskDelete								1
+#define INCLUDE_vTaskCleanUpResources					0
+#define INCLUDE_vTaskSuspend							1
+#define INCLUDE_vTaskDelayUntil							1
+#define INCLUDE_vTaskDelay								1
+#define INCLUDE_pcTaskGetTaskName       				1
+#define INCLUDE_uxTaskGetStackHighWaterMark				0
+// #define INCLUDE_xTaskGetIdleTaskHandle					0
+#define INCLUDE_xTaskGetIdleTaskHandle					1
+#define INCLUDE_eTaskGetState							1
+#define INCLUDE_xTaskResumeFromISR						0
+#define INCLUDE_xTaskGetCurrentTaskHandle				1
+#define INCLUDE_xTaskGetSchedulerState					0
+#define INCLUDE_xSemaphoreGetMutexHolder				0
+#define INCLUDE_xTimerPendFunctionCall					1
 
-#define INCLUDE_vTaskPrioritySet        1
-#define INCLUDE_uxTaskPriorityGet       1
-#define INCLUDE_vTaskDelete             1
-#define INCLUDE_vTaskCleanUpResources   0
-#define INCLUDE_vTaskSuspend            1
-#define INCLUDE_vTaskDelayUntil         1
-#define INCLUDE_vTaskDelay              1
-#define INCLUDE_eTaskGetState           1
-#define INCLUDE_xTaskGetIdleTaskHandle  1
-#define INCLUDE_xTimerPendFunctionCall  1
+/* This demo makes use of one or more example stats formatting functions.  These
+ * format the raw data provided by the uxTaskGetSystemState() function in to
+ * human readable ASCII form.  See the notes in the implementation of vTaskList()
+ * within FreeRTOS/Source/tasks.c for limitations. */
+#define configUSE_STATS_FORMATTING_FUNCTIONS			1
+
+/* Dimensions a buffer that can be used by the FreeRTOS+CLI command interpreter.
+ * See the FreeRTOS+CLI documentation for more information:
+ * http://www.FreeRTOS.org/FreeRTOS-Plus/FreeRTOS_Plus_CLI/ */
+#define configCOMMAND_INT_MAX_OUTPUT_SIZE				2048
+
+/* Interrupt priority configuration follows...................... */
+
+/* Use the system definition, if there is one. */
+
+#ifdef __NVIC_PRIO_BITS
+	#define configPRIO_BITS								__NVIC_PRIO_BITS
+#else
+	#define configPRIO_BITS								3	 /* 8 priority levels. */
+#endif
 
 /* The lowest interrupt priority that can be used in a call to a "set priority"
-function. */
-#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY         0xf
+ * function. */
+// #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY			7
+#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY			0xf
 
 /* The highest interrupt priority that can be used by any interrupt service
-routine that makes calls to interrupt safe FreeRTOS API functions.  DO NOT CALL
-INTERRUPT SAFE FREERTOS API FUNCTIONS FROM ANY INTERRUPT THAT HAS A HIGHER
-PRIORITY THAN THIS! (higher priorities are lower numeric values. */
-#define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY _PRIO_APP_HIGH
-
+ * routine that makes calls to interrupt safe FreeRTOS API functions.  DO NOT
+ * CALL INTERRUPT SAFE FREERTOS API FUNCTIONS FROM ANY INTERRUPT THAT HAS A
+ * HIGHER PRIORITY THAN THIS! (higher priorities are lower numeric values). */
+#define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY	5
 
 /* Interrupt priorities used by the kernel port layer itself.  These are generic
-to all Cortex-M ports, and do not rely on any particular library functions. */
-#define configKERNEL_INTERRUPT_PRIORITY                 configLIBRARY_LOWEST_INTERRUPT_PRIORITY
+ * to all Cortex-M ports, and do not rely on any particular library functions. */
+// #define configKERNEL_INTERRUPT_PRIORITY					( configLIBRARY_LOWEST_INTERRUPT_PRIORITY << ( 8 - configPRIO_BITS ) )
+#define configKERNEL_INTERRUPT_PRIORITY					configLIBRARY_LOWEST_INTERRUPT_PRIORITY
+
 /* !!!! configMAX_SYSCALL_INTERRUPT_PRIORITY must not be set to zero !!!!
-See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
+ * See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
+// #define configMAX_SYSCALL_INTERRUPT_PRIORITY			( configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY << ( 8 - configPRIO_BITS ) )
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY            configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY
 
-/* Enable stack overflow detection for debug builds (see rtos_hook.cpp) */
-#ifdef DEBUG_BUILD
-# define configCHECK_FOR_STACK_OVERFLOW 2
-#endif
 
-#define xPortPendSVHandler PendSV_Handler
+/* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS
+standard names - or at least those used in the unmodified vector table. */
 #define vPortSVCHandler SVC_Handler
-// #define xPortSysTickHandler SysTick_Handler
+#define xPortPendSVHandler PendSV_Handler
+#define xPortSysTickHandler SysTick_Handler
 
-/*-----------------------------------------------------------
- * Settings that are generated automatically
- * basing on the settings above
- */
-#if (configTICK_SOURCE == FREERTOS_USE_SYSTICK)
-    // do not define configSYSTICK_CLOCK_HZ for SysTick to be configured automatically
-    // to CPU clock source
-    #define xPortSysTickHandler     SysTick_Handler
-#elif (configTICK_SOURCE == FREERTOS_USE_RTC)
-    #define configSYSTICK_CLOCK_HZ  ( 32768UL )
-    #define xPortSysTickHandler     RTC1_IRQHandler
+/* The #ifdef guards against the file being included from IAR assembly files. */
+#if (__IASMARM__ != 1)
+
+/* Constants related to the generation of run time stats. */
+#define configGENERATE_RUN_TIME_STATS					0
+#if configGENERATE_RUN_TIME_STATS
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() 		//( ulHighFrequencyTimerTicks = 0UL )
+#define portGET_RUN_TIME_COUNTER_VALUE() 				RTIM_GetCount(0x48002000/*TIMM00*/) //ulHighFrequencyTimerTicks
+#undef	configUSE_TRACE_FACILITY
+#define configUSE_TRACE_FACILITY						1
+#define portCONFIGURE_STATS_PEROID_VALUE				1000 //unit Ticks
 #else
-    #error  Unsupported configTICK_SOURCE value
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()
+#define portGET_RUN_TIME_COUNTER_VALUE()				xTickCount
 #endif
 
-/* Code below should be only used by the compiler, and not the assembler. */
-#if !(defined(__ASSEMBLY__) || defined(__ASSEMBLER__))
-    #include "nrf.h"
-    #include "nrf_assert.h"
+#define configTICK_RATE_HZ								( ( TickType_t ) 1000 )
 
-    /* This part of definitions may be problematic in assembly - it uses definitions from files that are not assembly compatible. */
-    /* Cortex-M specific definitions. */
-    #ifdef __NVIC_PRIO_BITS
-        /* __BVIC_PRIO_BITS will be specified when CMSIS is being used. */
-        #define configPRIO_BITS             __NVIC_PRIO_BITS
-    #else
-        #error "This port requires __NVIC_PRIO_BITS to be defined"
-    #endif
+/* defined by Realtek, for offseting wlan task priority */
+#define PRIORITIE_OFFSET								( 4 )
 
-    /* Access to current system core clock is required only if we are ticking the system by systimer */
-    #if (configTICK_SOURCE == FREERTOS_USE_SYSTICK)
-        #include <stdint.h>
-        extern uint32_t SystemCoreClock;
-    #endif
-#endif /* !assembler */
+/* Enable tickless power saving. */
+#define configUSE_TICKLESS_IDLE                 		0
 
-/** Implementation note:  Use this with caution and set this to 1 ONLY for debugging
- * ----------------------------------------------------------
-     * Set the value of configUSE_DISABLE_TICK_AUTO_CORRECTION_DEBUG to below for enabling or disabling RTOS tick auto correction:
-     * 0. This is default. If the RTC tick interrupt is masked for more than 1 tick by higher priority interrupts, then most likely
-     *    one or more RTC ticks are lost. The tick interrupt inside RTOS will detect this and make a correction needed. This is needed
-     *    for the RTOS internal timers to be more accurate.
-     * 1. The auto correction for RTOS tick is disabled even though few RTC tick interrupts were lost. This feature is desirable when debugging
-     *    the RTOS application and stepping though the code. After stepping when the application is continued in debug mode, the auto-corrections of
-     *    RTOS tick might cause asserts. Setting configUSE_DISABLE_TICK_AUTO_CORRECTION_DEBUG to 1 will make RTC and RTOS go out of sync but could be
-     *    convenient for debugging.
-     */
-#define configUSE_DISABLE_TICK_AUTO_CORRECTION_DEBUG     0
+/* In wlan usage, this value is suggested to use value less than 80 milliseconds */
+// #define configEXPECTED_IDLE_TIME_BEFORE_SLEEP   		2
+
+/* It's magic trick that let us can use our own sleep function */
+// #define configPRE_SLEEP_PROCESSING( x )         		( freertos_pre_sleep_processing((unsigned int *)&x) )
+// #define configPOST_SLEEP_PROCESSING( x )        		( freertos_post_sleep_processing((unsigned int *)&x) )
+// #define portSUPPRESS_TICKS_AND_SLEEP( xExpectedIdleTime ) vPortSuppressTicksAndSleep( xExpectedIdleTime )
+
+// extern void freertos_pre_sleep_processing(unsigned int *expected_idle_time);
+// extern void freertos_post_sleep_processing(unsigned int *expected_idle_time);
+// extern int  freertos_ready_to_sleep(void);
+
+/* It's magic trick that let us can enable/disable tickless dynamically */
+#define traceLOW_POWER_IDLE_BEGIN()
+#define traceLOW_POWER_IDLE_END()
+
+/* It's FreeRTOS related feature but it's not included in FreeRTOS design. */
+#define configUSE_WAKELOCK_PMU                  		1
+
+#endif /* __IASMARM__ */
 
 #endif /* FREERTOS_CONFIG_H */
