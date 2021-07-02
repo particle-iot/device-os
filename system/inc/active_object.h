@@ -490,6 +490,13 @@ public:
     struct Task {
         TaskFunc func;
         Task* next; // Next element in the queue
+
+        explicit Task(TaskFunc func = nullptr) :
+                func(func),
+                next(nullptr) {
+        }
+
+        virtual ~Task() = default;
     };
 
     ISRTaskQueue() :
