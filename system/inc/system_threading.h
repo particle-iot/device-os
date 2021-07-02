@@ -22,6 +22,9 @@
 #include "active_object.h"
 #include "system_error.h"
 
+#include <utility>
+#include <new>
+
 #if PLATFORM_THREADING
 
 #include "concurrent_hal.h"
