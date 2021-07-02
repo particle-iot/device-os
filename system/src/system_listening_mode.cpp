@@ -171,7 +171,6 @@ int ListeningModeHandler::enqueueCommand(network_listen_command_t com, void* arg
         return SYSTEM_ERROR_NO_MEMORY;
     }
 
-    memset(task, 0, sizeof(Task));
     task->command = com;
     task->arg = arg;
     task->func = reinterpret_cast<ISRTaskQueue::TaskFunc>(&executeEnqueuedCommand);
