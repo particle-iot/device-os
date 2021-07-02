@@ -33,6 +33,7 @@
 #include "system_network_internal.h"
 #include "system_update.h"
 #include "firmware_update.h"
+#include "ncp_fw_update.h"
 #include "spark_macros.h"
 #include "string.h"
 #include "core_hal.h"
@@ -489,6 +490,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         manage_cloud_connection(force_events);
 
         system::FirmwareUpdate::instance()->process();
+
+        system::NcpFwUpdate::instance()->process();
     }
     else
     {
