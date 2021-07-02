@@ -166,8 +166,8 @@ int invokeAsync(F&& fn) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     task->func = [](ISRTaskQueue::Task* task) {
-      static_cast<detail::CallableTaskBase*>(task)->call();
-      delete task;
+        static_cast<detail::CallableTaskBase*>(task)->call();
+        delete task;
     };
     SystemISRTaskQueue.enqueue(task);
     return 0;
