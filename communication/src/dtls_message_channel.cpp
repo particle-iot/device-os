@@ -438,22 +438,25 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 
 	conf.read_timeout = 0;
 	int ret = mbedtls_ssl_read(&ssl_context, buf, len);
-	if (ret<0) {
-		switch (ret) {
-		case MBEDTLS_ERR_SSL_WANT_READ:
-			break;
-		case MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE:
+	if (ret < 0) {
+		if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE) {
 			ret = 0;
-			break;
-		case MBEDTLS_ERR_NET_RECV_FAILED:
-			// Do not invalidate the session on network errors
-			return IO_ERROR_SOCKET_RECV_FAILED;
-		case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
-			command(CLOSE);
-			return IO_ERROR_REMOTE_END_CLOSED;
-		default:
-			reset_session();
-			return IO_ERROR_GENERIC_RECEIVE;
+		} else {
+			LOG(ERROR, "mbedtls_ssl_read() failed: -0x%x", -ret);
+			switch (ret) {
+			// mbedtls_ssl_read() may need to flush the output before attempting to read from the socket
+			// so we need to handle both MBEDTLS_ERR_NET_SEND_FAILED and MBEDTLS_ERR_NET_RECV_FAILED here
+			case MBEDTLS_ERR_NET_SEND_FAILED:
+			case MBEDTLS_ERR_NET_RECV_FAILED:
+				// Do not invalidate the session on network errors
+				return IO_ERROR_SOCKET_RECV_FAILED;
+			case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
+				command(CLOSE);
+				return IO_ERROR_REMOTE_END_CLOSED;
+			default:
+				reset_session();
+				return IO_ERROR_GENERIC_RECEIVE;
+			}
 		}
 	}
 	message.set_length(ret);
@@ -517,7 +520,7 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 
 	int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
 	if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-		LOG(WARN, "mbedtls_ssl_write returned -0x%x", -ret);
+		LOG(ERROR, "mbedtls_ssl_write() failed: -0x%x", -ret);
 		if (ret == MBEDTLS_ERR_NET_SEND_FAILED) {
 			// Do not invalidate the session on network errors
 			return IO_ERROR_SOCKET_SEND_FAILED;
