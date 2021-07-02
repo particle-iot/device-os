@@ -54,6 +54,9 @@ enum ProtocolError
     /* 27 */ MISSING_REQUEST_TOKEN,
     /* 28 */ NOT_FOUND,
     /* 29 */ NO_MEMORY,
+    /* 30 */ IO_ERROR_SOCKET_SEND_FAILED,
+    /* 31 */ IO_ERROR_SOCKET_RECV_FAILED,
+    /* 32 */ IO_ERROR_REMOTE_END_CLOSED,
 
     /*
      * NOTE: when adding more ProtocolError codes, be sure to update toSystemError() in protocol_defs.cpp
