@@ -23,41 +23,43 @@ namespace particle { namespace protocol {
 
 enum ProtocolError
 {
-    /* 00 */ NO_ERROR,
-    /* 01 */ PING_TIMEOUT,
-    /* 02 */ IO_ERROR,  // too generic, discontinue using this.  Perfer/add a specific one below
-    /* 03 */ INVALID_STATE,
-    /* 04 */ INSUFFICIENT_STORAGE,
-    /* 05 */ MALFORMED_MESSAGE,
-    /* 06 */ DECRYPTION_ERROR,
-    /* 07 */ ENCRYPTION_ERROR,
-    /* 08 */ AUTHENTICATION_ERROR,
-    /* 09 */ BANDWIDTH_EXCEEDED,
-    /* 10 */ MESSAGE_TIMEOUT,
-    /* 11 */ MISSING_MESSAGE_ID,
-    /* 12 */ MESSAGE_RESET,
-    /* 13 */ SESSION_RESUMED,
-    /* 14 */ IO_ERROR_FORWARD_MESSAGE_CHANNEL,
-    /* 15 */ IO_ERROR_SET_DATA_MAX_EXCEEDED,
-    /* 16 */ IO_ERROR_PARSING_SERVER_PUBLIC_KEY,
-    /* 17 */ IO_ERROR_GENERIC_ESTABLISH,
-    /* 18 */ IO_ERROR_GENERIC_RECEIVE,
-    /* 19 */ IO_ERROR_GENERIC_SEND,
-    /* 20 */ IO_ERROR_GENERIC_MBEDTLS_SSL_WRITE,
-    /* 21 */ IO_ERROR_DISCARD_SESSION,
-    /* 21 */ IO_ERROR_LIGHTSSL_BLOCKING_SEND,
-    /* 22 */ IO_ERROR_LIGHTSSL_BLOCKING_RECEIVE,
-    /* 23 */ IO_ERROR_LIGHTSSL_RECEIVE,
-    /* 24 */ IO_ERROR_LIGHTSSL_HANDSHAKE_NONCE,
-    /* 25 */ IO_ERROR_LIGHTSSL_HANDSHAKE_RECV_KEY,
-    /* 26 */ NOT_IMPLEMENTED,
-    /* 27 */ MISSING_REQUEST_TOKEN,
-    /* 28 */ NOT_FOUND,
-    /* 29 */ NO_MEMORY,
-
-    /*
-     * NOTE: when adding more ProtocolError codes, be sure to update toSystemError() in protocol_defs.cpp
-     */
+    NO_ERROR = 0,
+    PING_TIMEOUT = 1,
+    IO_ERROR = 2, // too generic, discontinue using this. Perfer/add a specific one below
+    INVALID_STATE = 3,
+    INSUFFICIENT_STORAGE = 4,
+    MALFORMED_MESSAGE = 5,
+    DECRYPTION_ERROR = 6,
+    ENCRYPTION_ERROR = 7,
+    AUTHENTICATION_ERROR = 8,
+    BANDWIDTH_EXCEEDED = 9,
+    MESSAGE_TIMEOUT = 10,
+    MISSING_MESSAGE_ID = 11,
+    MESSAGE_RESET = 12,
+    SESSION_RESUMED = 13,
+    IO_ERROR_FORWARD_MESSAGE_CHANNEL = 14,
+    IO_ERROR_SET_DATA_MAX_EXCEEDED = 15,
+    IO_ERROR_PARSING_SERVER_PUBLIC_KEY = 16,
+    IO_ERROR_GENERIC_ESTABLISH = 17,
+    IO_ERROR_GENERIC_RECEIVE = 18,
+    IO_ERROR_GENERIC_SEND = 19,
+    IO_ERROR_GENERIC_MBEDTLS_SSL_WRITE = 20,
+    IO_ERROR_DISCARD_SESSION = 21,
+    IO_ERROR_LIGHTSSL_BLOCKING_SEND = 22,
+    IO_ERROR_LIGHTSSL_BLOCKING_RECEIVE = 23,
+    IO_ERROR_LIGHTSSL_RECEIVE = 24,
+    IO_ERROR_LIGHTSSL_HANDSHAKE_NONCE = 25,
+    IO_ERROR_LIGHTSSL_HANDSHAKE_RECV_KEY = 26,
+    NOT_IMPLEMENTED = 27,
+    MISSING_REQUEST_TOKEN = 28,
+    NOT_FOUND = 29,
+    NO_MEMORY = 30,
+    INTERNAL = 31,
+    OTA_UPDATE_ERROR = 32, // Generic OTA update error
+    IO_ERROR_SOCKET_SEND_FAILED = 33,
+    IO_ERROR_SOCKET_RECV_FAILED = 34,
+    IO_ERROR_REMOTE_END_CLOSED = 35,
+    // NOTE: when adding more ProtocolError codes, be sure to update toSystemError() in protocol_defs.cpp
     UNKNOWN = 0x7FFFF
 };
 

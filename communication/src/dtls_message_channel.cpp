@@ -27,6 +27,7 @@ LOG_SOURCE_CATEGORY("comm.dtls")
 
 #include "protocol.h"
 #include "rng_hal.h"
+#include "mbedtls/net_sockets.h"
 #include "mbedtls/error.h"
 #include "mbedtls/ssl_internal.h"
 #include "mbedtls_util.h"
@@ -268,31 +269,34 @@ inline int DTLSMessageChannel::recv(uint8_t* data, size_t len)
 {
 	int size = callbacks.receive(data, len, callbacks.tx_context);
 	// ignore 0 and 1 byte UDP packets which are used to keep alive the connection.
-	if (size>=0 && size <=1)
+	if (size == 1) {
 		size = 0;
+	}
 	return size;
 }
 
-int DTLSMessageChannel::send_(void *ctx, const unsigned char *buf, size_t len ) {
+int DTLSMessageChannel::sendCallback(void *ctx, const unsigned char *buf, size_t len ) {
 	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
 	int count = channel->send(buf, len);
-	if (count == 0)
-		return MBEDTLS_ERR_SSL_WANT_WRITE;
-
-	return count;
-}
-
-int DTLSMessageChannel::recv_( void *ctx, unsigned char *buf, size_t len ) {
-	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
-
-	int count = channel->recv(buf, len);
 	if (count == 0) {
-		// 0 means no more data available yet
-		return MBEDTLS_ERR_SSL_WANT_READ;
+		return MBEDTLS_ERR_SSL_WANT_WRITE;
+	} else if (count < 0) {
+		return MBEDTLS_ERR_NET_SEND_FAILED;
 	}
 	return count;
 }
 
+int DTLSMessageChannel::recvCallback( void *ctx, unsigned char *buf, size_t len ) {
+	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
+	int count = channel->recv(buf, len);
+	if (count == 0) {
+		// 0 means no more data available yet
+		return MBEDTLS_ERR_SSL_WANT_READ;
+	} else if (count < 0) {
+		return MBEDTLS_ERR_NET_RECV_FAILED;
+	}
+	return count;
+}
 
 void DTLSMessageChannel::init()
 {
@@ -330,7 +334,7 @@ ProtocolError DTLSMessageChannel::setup_context()
 	EXIT_ERROR(ret, "unable to setup SSL context");
 
 	mbedtls_ssl_set_timer_cb(&ssl_context, &timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
-	mbedtls_ssl_set_bio(&ssl_context, this, &DTLSMessageChannel::send_, &DTLSMessageChannel::recv_, NULL);
+	mbedtls_ssl_set_bio(&ssl_context, this, &DTLSMessageChannel::sendCallback, &DTLSMessageChannel::recvCallback, NULL);
 
 	if ((ssl_context.session_negotiate->peer_cert = (mbedtls_x509_crt*)calloc(1, sizeof(mbedtls_x509_crt))) == NULL)
 	{
@@ -441,9 +445,12 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 		case MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE:
 			ret = 0;
 			break;
+		case MBEDTLS_ERR_NET_RECV_FAILED:
+			// Do not invalidate the session on network errors
+			return IO_ERROR_SOCKET_RECV_FAILED;
 		case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
 			command(CLOSE);
-			break;
+			return IO_ERROR_REMOTE_END_CLOSED;
 		default:
 			reset_session();
 			return IO_ERROR_GENERIC_RECEIVE;
@@ -452,6 +459,7 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	message.set_length(ret);
 	if (ret>0) {
 		cancel_move_session();
+		sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
 #if defined(DEBUG_BUILD) && 0
 		if (LOG_ENABLED(TRACE)) {
 		  LOG(TRACE, "msg len %d", message.length());
@@ -507,15 +515,18 @@ ProtocolError DTLSMessageChannel::send(Message& message)
       LOG_PRINT(TRACE, "\r\n");
 #endif
 
-  int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
-  if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
-  {
-	  LOG(WARN, "mbedtls_ssl_write returned %x", ret);
-	  reset_session();
-	  return IO_ERROR_GENERIC_MBEDTLS_SSL_WRITE;
-  }
-  sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
-  return NO_ERROR;
+	int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
+	if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+		LOG(WARN, "mbedtls_ssl_write returned -0x%x", -ret);
+		if (ret == MBEDTLS_ERR_NET_SEND_FAILED) {
+			// Do not invalidate the session on network errors
+			return IO_ERROR_SOCKET_SEND_FAILED;
+		}
+		reset_session();
+		return IO_ERROR_GENERIC_MBEDTLS_SSL_WRITE;
+	}
+	sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
+	return NO_ERROR;
 }
 
 bool DTLSMessageChannel::is_unreliable()
