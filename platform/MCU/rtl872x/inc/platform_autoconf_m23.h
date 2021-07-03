@@ -41,8 +41,8 @@
 /*
  * < CONFIG OS 
  */
-#define CONFIG_KERNEL
-#define PLATFORM_FREERTOS 
+#undef CONFIG_KERNEL
+#undef PLATFORM_FREERTOS 
 #define TASK_SCHEDULER_DISABLED (0)
 
 /*

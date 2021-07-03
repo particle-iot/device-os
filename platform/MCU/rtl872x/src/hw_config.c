@@ -109,11 +109,11 @@ __attribute__((section(".boot.ram.text"), noinline)) void Set_System(void)
     SystemCoreClockUpdate();
 
     // force SP align to 8 byte not 4 byte (initial SP is 4 byte align)
-    asm volatile( 
-		"mov r0, sp\n"
-		"bic r0, r0, #7\n" 
-		"mov sp, r0\n"
-	);
+    // asm volatile( 
+	// 	"mov r0, sp\n"
+	// 	"bic r0, r0, #7\n" 
+	// 	"mov sp, r0\n"
+	// );
 
     // mpu_init();
 

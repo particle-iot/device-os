@@ -26,6 +26,8 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define DISABLE_CC310
+
 #ifndef DISABLE_CC310
 
 #include "cc310_mbedtls.h"
