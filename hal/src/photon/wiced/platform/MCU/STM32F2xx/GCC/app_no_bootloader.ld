@@ -39,6 +39,8 @@ ENTRY( _start );
 
 /* Include memory map */
 INCLUDE platform_ram.ld
+INCLUDE platform_flash.ld
+
 INCLUDE memory_no_bootloader.ld
 
 SECTIONS
@@ -238,14 +240,12 @@ PROVIDE( VTOR_Length = interrupt_vectors_length );
 ASSERT( link_ram_interrupt_vectors_location == ORIGIN( SRAM ), "RAM Interrupt table should be at start of RAM" );
 ASSERT( ( link_ram_interrupt_vectors_location_end - link_ram_interrupt_vectors_location ) == VTOR_Length, "Expected RAM VTOR table to be same length as VTOR Flash" );
 
-INCLUDE module_export.ld
-
 ASSERT ( link_module_info_start < link_module_info_end, "module info not linked" );
 ASSERT ( link_module_info_suffix_start < link_module_info_suffix_end, "module info suffix not linked" );
 ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc not linked" );
 
-ASSERT ( mono_module_info == link_module_info_start, "module info start not where expected" );
-ASSERT ( mono_module_info_end == link_module_info_end, "module info end not where expected" );
+ASSERT ( link_module_info_start == _monolithic_firmware_module_info_flash_start, "module info start not where expected" );
+ASSERT ( link_module_info_end == _monolithic_firmware_module_info_flash_end, "module info end not where expected" );
 
 ASSERT ( link_early_startup_begin != link_early_startup_end, "no early startup functions linked" );
 

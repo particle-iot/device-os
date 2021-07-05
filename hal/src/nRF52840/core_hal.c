@@ -81,10 +81,12 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info);
 void app_error_handler_bare(uint32_t err);
 
 extern char link_heap_location, link_heap_location_end;
+
 extern uintptr_t link_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location_end;
-extern char _Stack_Init;
+extern char link_stack_location;
+
 
 static void* new_heap_end = &link_heap_location_end;
 
@@ -341,7 +343,7 @@ void HAL_Core_Config(void) {
     hal_user_module_descriptor user_desc = {};
     if (!hal_user_module_get_descriptor(&user_desc)) {
         new_heap_end = user_desc.pre_init();
-        if (new_heap_end < malloc_heap_end()) {
+        if (new_heap_end > malloc_heap_end()) {
             malloc_set_heap_end(new_heap_end);
         }
     }
@@ -868,7 +870,7 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     }
 
     if (offsetof(runtime_info_t, user_static_ram) + sizeof(info->user_static_ram) <= info->size) {
-        info->user_static_ram = (uintptr_t)&_Stack_Init - (uintptr_t)new_heap_end;
+        info->user_static_ram = (uintptr_t)&link_stack_location - (uintptr_t)new_heap_end;
     }
 
     if (offsetof(runtime_info_t, largest_free_block_heap) + sizeof(info->largest_free_block_heap) <= info->size) {

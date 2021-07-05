@@ -52,8 +52,8 @@ uint16_t tempFlag;
 
 // TODO: move somewhere else?
 // Defined in softdevice.ld
-extern uintptr_t APP_CODE_BASE;
-#define SOFTDEVICE_MBR_PARAM_ADDR (((uintptr_t)&APP_CODE_BASE) - INTERNAL_FLASH_PAGE_SIZE) // APP_CODE_BASE - 4K (1 page)
+extern uintptr_t platform_softdevice_reserved_flash_end;
+#define SOFTDEVICE_MBR_PARAM_ADDR (((uintptr_t)&platform_softdevice_reserved_flash_end) - INTERNAL_FLASH_PAGE_SIZE) // platform_softdevice_reserved_flash_end - 4K (1 page)
 #define SOFTDEVICE_MBR_PARAM_UNSET (0xffffffff)
 
 static void DWT_Init(void)

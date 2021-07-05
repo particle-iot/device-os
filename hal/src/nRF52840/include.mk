@@ -42,7 +42,7 @@ endif
 # if hal is used as a make dependency (linked) then add linker commands
 ifneq (,$(HAL_LINK))
 
-LINKER_FILE=$(HAL_SRC_INCL_PATH)/app_no_bootloader.ld
+LINKER_FILE=$(HAL_SRC_INCL_PATH)/linker.ld
 LINKER_DEPS=$(LINKER_FILE)
 
 LDFLAGS += -L$(COMMON_BUILD)/arm/linker/$(STM32_DEVICE_LC)
@@ -50,6 +50,7 @@ LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
 LDFLAGS += --specs=$(NEWLIB_TWEAK_SPECS)
 LDFLAGS += -T$(LINKER_FILE)
 # Minimum main stack size with S140 softdevice is 1536 bytes
+# __STACKSIZE__ is referenced by build/arm/linker/nrf52840/platform_ram.ld
 MAIN_STACK_SIZE = 2048
 LDFLAGS += -Wl,--defsym,__STACKSIZE__=$(MAIN_STACK_SIZE)
 LDFLAGS += -Wl,--defsym,__STACK_SIZE=$(MAIN_STACK_SIZE)
