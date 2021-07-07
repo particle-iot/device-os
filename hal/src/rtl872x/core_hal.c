@@ -74,7 +74,6 @@ extern char link_heap_location, link_heap_location_end;
 extern uintptr_t link_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location_end;
-extern char _Stack_Init;
 
 static void* new_heap_end = &link_heap_location_end;
 
@@ -231,15 +230,15 @@ void HAL_Core_Setup_override_interrupts(void) {
 }
 
 void HAL_Core_Restore_Interrupt(IRQn_Type irqn) {
-    uint32_t handler = ((const uint32_t*)&link_interrupt_vectors_location)[IRQN_TO_IDX(irqn)];
+    // uint32_t handler = ((const uint32_t*)&link_interrupt_vectors_location)[IRQN_TO_IDX(irqn)];
 
-    // Special chain handler
-    if (irqn == SysTick_IRQn) {
-        handler = (uint32_t)SysTickChain;
-    }
+    // // Special chain handler
+    // if (irqn == SysTick_IRQn) {
+    //     handler = (uint32_t)SysTickChain;
+    // }
 
-    volatile uint32_t* isrs = (volatile uint32_t*)&link_ram_interrupt_vectors_location;
-    isrs[IRQN_TO_IDX(irqn)] = handler;
+    // volatile uint32_t* isrs = (volatile uint32_t*)&link_ram_interrupt_vectors_location;
+    // isrs[IRQN_TO_IDX(irqn)] = handler;
 }
 
 #if HAL_PLATFORM_PROHIBIT_XIP
@@ -693,6 +692,7 @@ void application_task_start(void* arg) {
 }
 
 extern void Reset_Handler();
+extern uintptr_t link_stack_end;
 
 typedef struct entry {
     uint32_t stack;
@@ -701,7 +701,7 @@ typedef struct entry {
 
 __attribute__((section(".system.entry"), used))
 entry systemPartEntry = {
-    0x10005000,
+    (uint32_t)&link_stack_end,
     Reset_Handler
 };
 
@@ -856,7 +856,7 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     }
 
     if (offsetof(runtime_info_t, user_static_ram) + sizeof(info->user_static_ram) <= info->size) {
-        info->user_static_ram = (uintptr_t)&_Stack_Init - (uintptr_t)new_heap_end;
+        // info->user_static_ram = (uintptr_t)&_Stack_Init - (uintptr_t)new_heap_end;
     }
 
     if (offsetof(runtime_info_t, largest_free_block_heap) + sizeof(info->largest_free_block_heap) <= info->size) {

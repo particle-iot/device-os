@@ -1,14 +1,14 @@
-/* Include memory map */
+/* Memory Spaces Definitions */
 INCLUDE platform_ram.ld
 INCLUDE platform_flash.ld
 
 MEMORY
 {
     INCLUDE memory_backup_ram.ld
-
-    APP_FLASH (rx)  : ORIGIN = platform_monolithic_firmware_flash_start,      LENGTH = platform_monolithic_firmware_flash_size
-    SRAM      (rwx) : ORIGIN = platform_monolithic_firmware_static_ram_start, LENGTH = platform_monolithic_firmware_static_ram_size
-    PSRAM     (rwx) : ORIGIN = platform_psram_start,                          LENGTH = platform_psram_size
+  
+    SRAM        (xrw) : ORIGIN = platform_bootloader_static_ram_start, LENGTH = platform_bootloader_static_ram_size
+    SECURE_SRAM (xrw) : ORIGIN = platform_secure_ram_start,            LENGTH = platform_secure_ram_size - platform_bootloader_stack_size
+    APP_FLASH   (rx)  : ORIGIN = platform_bootloader_flash_start,      LENGTH = platform_bootloader_flash_size
 }
 
 SECTIONS
@@ -17,19 +17,18 @@ SECTIONS
     INCLUDE linker_module_start.ld
 
     /*----------------------------- START OF XIP PARTITION ------------------------------
-     * Don't need to be copied to SRAM nor PSRAM:
-     * - entry point
+     * Don't need to be copied to SRAM nor SECURE_SRAM:
+     * - XIP partition header
      * - XIP code
+     * - RAM partition header
      */
-    .entry :
+    .rtl_xip_image_header :
     {
         . = ALIGN(4);
-        link_rtl_header_location = .;
-        KEEP (*(.system.entry))
+        KEEP (*(.rtl_header_xip))
         . = ALIGN(4);
-        link_rtl_header_location_end = .;
-        link_rtl_startup = .;
-    } >APP_FLASH
+        link_rtl_xip_start = .;
+    } > APP_FLASH
 
     /* Module info */
     INCLUDE linker_module_info.ld
@@ -43,16 +42,6 @@ SECTIONS
         *(.flashtext) /* Realtek specific */
         *(.text)
         *(.text.*)
-
-
-        *(.image2.ram.text)
-        *(.image2.ram.text.*)
-        *(.boot.ram.text)
-        *(.boot.ram.text.*)
-        *(.ram.text)
-        *(.ram.text.*)
-
-
         *(.gnu.linkonce.t.*)
         *(.glue_7)
         *(.glue_7t)
@@ -95,41 +84,49 @@ SECTIONS
 
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
+
+    .rtl_ram_image_header :
+    {
+        . = ALIGN(16); /* The image header must be 16-bytes aligned. */
+        link_rtl_xip_end = .;
+        KEEP (*(.rtl_header_ram))
+        . = ALIGN(4);
+    } > APP_FLASH
+
+    PROVIDE (link_rtl_xip_size = link_rtl_xip_end - link_rtl_xip_start);
     /*----------------------------- END OF XIP PARTITION ------------------------------*/
 
-    /*----------------------------- START OF PSRAM PARTITION ----------------------------
-     * Needs to be copied to PSRAM. This is done by a piece of XIP code after jumping to the monolithic firmware.
-     * - PSRAM code
-     * - PSRAM data
-     * - PSRAM bss initialization
+    /*----------------------------- START OF RAM CODE PARTITION -------------------------
+     * Needs to be copied to SECURE_SRAM. This is done by KM4 boot ROM according to the RAM partition header
+     * - start table
+     * - RAM code
      */
-    .ram_text :
+    .rtl_start_table : /* Realtek specific */
+    {  
+        link_rtl_ram_start = .;
+        KEEP (*(.rtl_header_ram_start_table))
+        KEEP (*(.rtl_header_ram_valid_pattern))
+        KEEP (*(.rtl_header_ram_boot_export_table))
+    } > SECURE_SRAM AT> APP_FLASH
+
+    .ram_text : /* Realtek specific */
     {
         . = ALIGN(4);
-        /* FIXME: The .text section should go here and the XIP code should go to .text instead */
+        link_ram_code_start = .;
+        *(.image2.ram.text)
+        *(.image2.ram.text.*)
+        *(.boot.ram.text)
+        *(.boot.ram.text.*)
+        *(.ram.text)
+        *(.ram.text.*)
+        link_ram_code_end = .;
+        link_rtl_ram_end = .;
         . = ALIGN(4);
-    } > PSRAM AT> APP_FLASH
+    } > SECURE_SRAM AT> APP_FLASH
 
-    .data_alt :
-    {
-        link_global_data_initial_values_alt = LOADADDR( .data ); 
-        . = ALIGN(4);
-        link_global_data_start_alt = .;
-        *(.psram.data*)
-        . = ALIGN(4);
-        link_global_data_end_alt = .;
-    } > PSRAM AT> APP_FLASH
-
-    .bss_alt :
-    {
-        . = ALIGN(4);
-        link_bss_location_alt = .;
-        *(.psram.bss*)
-        . = ALIGN(4);
-        link_bss_end_alt = .;
-    } > PSRAM
-    /*----------------------------- END OF PSRAM PARTITION ------------------------------
-
+    PROVIDE (link_rtl_ram_size = link_rtl_ram_end - link_rtl_ram_start);
+    /*----------------------------- END OF RAM CODE PARTITION -------------------------*/
+    
     /*----------------------------- START OF DATA PARTITION -----------------------------
      * Needs to be copied to SRAM. This is done by the startup file
      * - RAM data
@@ -137,13 +134,6 @@ SECTIONS
      */
     /* Static RAM start */
     INCLUDE linker_static_ram_start.ld
-
-    .ram_vectors :
-    {
-        link_ram_interrupt_vectors_location = .;
-        . = . + platform_vector_table_flash_size;
-        link_ram_interrupt_vectors_location_end = .;
-    } > SRAM
 
     /* Non-zero initialised global and static variables */
     .data :
@@ -160,7 +150,7 @@ SECTIONS
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
     } > SRAM AT> APP_FLASH
-
+    
     /* Zero initialised memory used for zero initialised variables */
     .bss :
     {
@@ -175,7 +165,7 @@ SECTIONS
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_end = .;
     } > SRAM AT> SRAM
-
+    
     /* Static RAM end */
     INCLUDE linker_static_ram_end.ld
     /*----------------------------- END OF DATA PARTITION -----------------------------*/
@@ -216,12 +206,9 @@ SECTIONS
 link_heap_location     = link_bss_end;
 link_heap_location_end = link_heap_location + platform_heap_min_size;
 
-link_heap_location_alt     = link_bss_end_alt;
-link_heap_location_end_alt = platform_psram_end;
-
 /* Stack , used by startup*/
-link_stack_size     = platform_monolithic_firmware_stack_size;
-link_stack_location = platform_monolithic_firmware_stack_start;
-link_stack_end      = platform_monolithic_firmware_stack_end;
+link_stack_size     = platform_bootloader_stack_size;
+link_stack_location = platform_bootloader_stack_start;
+link_stack_end      = platform_bootloader_stack_end;
 
 INCLUDE linker_rtl872x_rom.ld

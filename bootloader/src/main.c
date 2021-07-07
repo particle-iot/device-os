@@ -447,7 +447,7 @@ int main(void)
 
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress
-        if (is_application_valid(ApplicationAddress) && ApplicationAddress == 0x08020000)
+        if (is_application_valid(ApplicationAddress))
         {
             uint8_t disable_iwdg = 0;
 #ifdef CHECK_FIRMWARE

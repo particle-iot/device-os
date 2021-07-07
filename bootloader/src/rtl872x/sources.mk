@@ -19,5 +19,5 @@ CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,infl
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/littlefs/,*.cpp)
 CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/littlefs/,*.c)
 
-LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_rtl872x_bootloader.ld
-LINKER_DEPS += $(COMMON_BUILD)/arm/linker/linker_rtl872x_bootloader.ld
+LDFLAGS += -T$(BOOTLOADER_SRC_PATH)/linker.ld
+LINKER_DEPS += $(BOOTLOADER_SRC_PATH)/linker.ld

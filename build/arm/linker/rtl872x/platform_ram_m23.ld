@@ -1,84 +1,96 @@
 /*
-Modular firmware:
+Platform RAM memory map for Tron.
 
-+--------------------------+ 0x20040000
-| User backup RAM          |
-+--------------------------+ 0x2003f400
-| System flags             |
-+--------------------------+ 0x2003f3c0
-| Backup registers         |
-+--------------------------+ 0x2003f380
-| System backup RAM        |
-+--------------------------+ 0x2003f000
-| Main stack               |
-+--------------------------+ 0x2003e800
-| User part static RAM     |
-+~~~~~~~~~~~~~~~~~~~~~~~~~~+
-|                          |
-| Heap                     |
-|                          |
-+~~~~~~~~~~~~~~~~~~~~~~~~~~+
-| System part 1 static RAM |
-+--------------------------+ 0x20004000
-| SoftDevice RAM           |
-+--------------------------+ 0x20000000
+Bootloader:                                Monolithic firmware:
 
-TODO: Bootloader, monolithic firmware
++-----------------------------+ 0x1007C000 +-----------------------+
+| User backup RAM             |            | User backup RAM       |
++-----------------------------+ 0x1007B400 +-----------------------+
+| System flags                |            | System flags          |
++-----------------------------+ 0x1007B3C0 +-----------------------+
+| Backup registers            |            | Backup registers      |
++-----------------------------+ 0x1007B380 +-----------------------+
+| System backup RAM           |            | System backup RAM     |
++-----------------------------+ 0x1007B000 +-----------------------+
+x                                                                  x
+x                                                                  x
++-----------------------------+ 0x00090000 +-----------------------+
+| Main stack                  |            | Main stack            |
++-----------------------------+ 0x0008F000 +-----------------------+
+| Heap                        |            | Heap                  |
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~+
+| KM0 bootloader static RAM   |            | KM0 app static RAM    |
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~+
+| KM0 bootloader RAM code     |            | KM0 app RAM code      |
++-----------------------------+ 0x00082000 +-----------------------+
 
 Note: Keep the diagrams up to date with the actual memory maps defined in this file.
 */
 
 /* Total amount of RAM available on the MCU */
-_ram_size = 56K;
-_ram_start = 0x00082000;
-_ram_end = _ram_start + _ram_size;
+platform_ram_size  = 56K;
+platform_ram_start = 0x00082000;
+platform_ram_end   = platform_ram_start + platform_ram_size;
+
+
+/* All backup RAM size */
+platform_backup_ram_all_size = 4K;
 
 /* User backup memory */
-_user_backup_ram_size = 3K;
-_user_backup_ram_end = _ram_end;
-_user_backup_ram_start = _user_backup_ram_end - _user_backup_ram_size;
+platform_user_backup_ram_size  = 3K;
+platform_user_backup_ram_end   = 0x1007C000;
+platform_user_backup_ram_start = platform_user_backup_ram_end - platform_user_backup_ram_size;
 
 /* System flags */
-_system_flags_ram_size = 64;
-_system_flags_ram_end = _user_backup_ram_start;
-_system_flags_ram_start = _system_flags_ram_end - _system_flags_ram_size;
+platform_system_flags_ram_size  = 64;
+platform_system_flags_ram_end   = platform_user_backup_ram_start;
+platform_system_flags_ram_start = platform_system_flags_ram_end - platform_system_flags_ram_size;
 
 /* Backup registers */
-_backup_registers_ram_size = 64;
-_backup_registers_ram_end = _system_flags_ram_start;
-_backup_registers_ram_start = _backup_registers_ram_end - _backup_registers_ram_size;
+platform_backup_registers_ram_size  = 64;
+platform_backup_registers_ram_end   = platform_system_flags_ram_start;
+platform_backup_registers_ram_start = platform_backup_registers_ram_end - platform_backup_registers_ram_size;
 
 /* System backup memory */
-_system_backup_ram_size = 4K - _user_backup_ram_size - _system_flags_ram_size - _backup_registers_ram_size;
-_system_backup_ram_end = _backup_registers_ram_start;
-_system_backup_ram_start = _system_backup_ram_end - _system_backup_ram_size;
+platform_system_backup_ram_size  = platform_backup_ram_all_size - platform_user_backup_ram_size - platform_system_flags_ram_size - platform_backup_registers_ram_size;
+platform_system_backup_ram_end   = platform_backup_registers_ram_start;
+platform_system_backup_ram_start = platform_system_backup_ram_end - platform_system_backup_ram_size;
 
-/* Main stack */
-_stack_size = __STACKSIZE__; /* Defined in modules/shared/nRF52840/part1_build.mk */
-_stack_end = _ram_end;
-_stack_start = _stack_end - _stack_size; /* The lowest address of the stack */
 
-/* User part */
-_user_part_static_ram_size = DEFINED(_user_part_static_ram_size) ? _user_part_static_ram_size : 89K; /* Defined in platform_user_ram.ld */
-_user_part_static_ram_end = _stack_start;
-_user_part_static_ram_start = _user_part_static_ram_end - _user_part_static_ram_size;
+/* Monolithic firmware main stack
+ * platform_monolithic_firmware_stack_start is the lowest address of the stack. */
+platform_monolithic_firmware_stack_size  = 4K;
+platform_monolithic_firmware_stack_end   = platform_ram_end;
+platform_monolithic_firmware_stack_start = platform_monolithic_firmware_stack_end - platform_monolithic_firmware_stack_size;
 
-/* System part 1 */
-_system_part1_static_ram_size = 100K;
-_system_part1_static_ram_start = _ram_start;
-_system_part1_static_ram_end = _system_part1_static_ram_start + _system_part1_static_ram_size;
+/* Bootloader main stack
+ * platform_bootloader_stack_start is the lowest address of the stack. */
+platform_bootloader_stack_size  = 4K;
+platform_bootloader_stack_end   = platform_ram_end;
+platform_bootloader_stack_start = platform_bootloader_stack_end - platform_bootloader_stack_size;
 
-/* Heap */
-_heap_min_size = 32K;
 
-/* Basic sanity checks */
-ASSERT(
-    _system_part1_static_ram_end - _system_part1_static_ram_start == _system_part1_static_ram_size && _system_part1_static_ram_size > 0 &&
-    _user_part_static_ram_end - _user_part_static_ram_start == _user_part_static_ram_size && _user_part_static_ram_size > 0 &&
-    _stack_end - _stack_start == _stack_size && _stack_size > 0 &&
-    _system_backup_ram_end - _system_backup_ram_start == _system_backup_ram_size && _system_backup_ram_size > 0 &&
-    _backup_registers_ram_end - _backup_registers_ram_start == _backup_registers_ram_size && _backup_registers_ram_size > 0 &&
-    _system_flags_ram_end - _system_flags_ram_start == _system_flags_ram_size && _system_flags_ram_size > 0 &&
-    _user_backup_ram_end - _user_backup_ram_start == _user_backup_ram_size && _user_backup_ram_size > 0 &&
-    _ram_end - _ram_start == _ram_size && _ram_size > 0,
-    "Invalid memory map");
+/* Bootloader static RAM */
+platform_bootloader_static_ram_size  = platform_ram_size - platform_bootloader_stack_size;
+platform_bootloader_static_ram_start = platform_ram_start;
+platform_bootloader_static_ram_end   = platform_bootloader_static_ram_start + platform_bootloader_static_ram_size;
+
+/* Bootloader RAM code, overlapped with bootloader static RAM */
+platform_bootloader_ram_code_size  = platform_bootloader_static_ram_size;
+platform_bootloader_ram_code_start = platform_ram_start;
+platform_bootloader_ram_code_end   = platform_bootloader_ram_code_start + platform_bootloader_ram_code_size;
+
+
+/* Monolithic firmware static RAM */
+platform_monolithic_firmware_static_ram_size  = platform_ram_size - platform_monolithic_firmware_stack_size;
+platform_monolithic_firmware_static_ram_start = platform_ram_start;
+platform_monolithic_firmware_static_ram_end   = platform_monolithic_firmware_static_ram_start + platform_monolithic_firmware_static_ram_size;
+
+/* Monolithic firmware RAM code, overlapped with monolithic firmware static RAM */
+platform_monolithic_firmware_ram_code_size  = platform_monolithic_firmware_static_ram_size;
+platform_monolithic_firmware_ram_code_start = platform_ram_start;
+platform_monolithic_firmware_ram_code_end   = platform_monolithic_firmware_ram_code_start + platform_monolithic_firmware_ram_code_size;
+
+
+/* The heap size after linkage should meet the minimum heap requirement. */
+platform_heap_min_size = 32K;

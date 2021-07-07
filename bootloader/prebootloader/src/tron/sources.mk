@@ -3,5 +3,5 @@ PREBOOTLOADER_SRC_PATH = $(PREBOOTLOADER_MODULE_PATH)/src/tron
 CSRC += $(call target_files,$(PREBOOTLOADER_SRC_PATH)/,*.c)
 CPPSRC += $(call target_files,$(PREBOOTLOADER_SRC_PATH)/,*.cpp)
 
-LDFLAGS += -T$(COMMON_BUILD)/arm/linker/linker_rtl872x_prebootloader.ld
-LINKER_DEPS += $(COMMON_BUILD)/arm/linker/linker_rtl872x_prebootloader.ld
+LDFLAGS += -T$(PREBOOTLOADER_SRC_PATH)/linker.ld
+LINKER_DEPS += $(PREBOOTLOADER_SRC_PATH)/linker.ld

@@ -18,17 +18,18 @@
 #include <cstdint>
 #include "rtl_header.h"
 
-extern uintptr_t link_rtl_header_size;
-extern uintptr_t link_rtl_startup;
-extern uintptr_t link_rtl_header_ram_size;
+extern uintptr_t link_rtl_xip_start;
+extern uintptr_t link_rtl_xip_size;
+extern uintptr_t link_rtl_ram_start;
+extern uintptr_t link_rtl_ram_size;
 
 extern "C" void Reset_Handler(void);
 
-__attribute__((used, section(".rtl_header"))) const rtl_binary_header rtlHeader = {
+__attribute__((used, section(".rtl_header_xip"))) const rtl_binary_header rtlHeader = {
     .signature_high = RTL_HEADER_SIGNATURE_HIGH,
     .signature_low = RTL_HEADER_SIGNATURE_LOW,
-    .size = (uint32_t)&link_rtl_header_size,
-    .load_address = (uint32_t)&Reset_Handler,
+    .size = (uint32_t)&link_rtl_xip_size,
+    .load_address = (uint32_t)&link_rtl_xip_start,
     .sboot_address = 0xffffffff,
     .reserved0 = 0xffffffff,
     .reserved1 = 0xffffffffffffffff
@@ -37,8 +38,8 @@ __attribute__((used, section(".rtl_header"))) const rtl_binary_header rtlHeader 
 __attribute__((used, section(".rtl_header_ram"))) const rtl_binary_header rtlHeaderRam = {
     .signature_high = RTL_HEADER_SIGNATURE_HIGH,
     .signature_low = RTL_HEADER_SIGNATURE_LOW,
-    .size = (uint32_t)&link_rtl_header_ram_size,
-    .load_address = 0x00082000,
+    .size = (uint32_t)&link_rtl_ram_size,
+    .load_address = (uint32_t)&link_rtl_ram_start,
     .sboot_address = 0xffffffff,
     .reserved0 = 0xffffffff,
     .reserved1 = 0xffffffffffffffff
