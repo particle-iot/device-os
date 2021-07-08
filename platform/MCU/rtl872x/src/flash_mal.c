@@ -751,10 +751,11 @@ int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t flashDeviceID, uint32
         //     offset = 0x200;
         //     startAddress += offset;
         // }
-        // int ret = hal_flash_read(startAddress, (uint8_t*)infoOut, sizeof(module_info_t));
-        // if (ret != SYSTEM_ERROR_NONE) {
-        //     return ret;
-        // }
+        // FIXME: RTL872x doesn't have vector table for now
+        int ret = hal_flash_read(startAddress, (uint8_t*)infoOut, sizeof(module_info_t));
+        if (ret != SYSTEM_ERROR_NONE) {
+            return ret;
+        }
     }
 #ifdef USE_SERIAL_FLASH
     else if (flashDeviceID == FLASH_SERIAL)
@@ -859,7 +860,7 @@ bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, u
     int ret = FLASH_ModuleInfo(&info, flashDeviceID, startAddress, NULL);
     return (ret == SYSTEM_ERROR_NONE
             && ((uint32_t)(info.module_start_address) == expectedAddress)
-            && ((uint32_t)(info.module_end_address) <= 0x100000)
+            && ((uint32_t)(info.module_end_address) <= 0x08600000)
             && (info.platform_id == PLATFORM_ID));
 }
 

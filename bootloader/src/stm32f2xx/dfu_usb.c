@@ -42,13 +42,22 @@ USB_OTG_CORE_HANDLE USB_OTG_dev;
 static uint8_t HAL_DFU_USB_Handle_Vendor_Request(USB_SETUP_REQ* req, uint8_t dataStage);
 /* Private functions ---------------------------------------------------------*/
 
-uint8_t is_application_valid(uint32_t address)
+uint8_t is_application_valid(uint32_t address, uint32_t* entry)
 {
+    bool ret = false;
 #ifdef FLASH_UPDATE_MODULES
-    return FLASH_isUserModuleInfoValid(FLASH_INTERNAL, address, address);
+    if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, address, address)) {
+        ret = true;
+    }
 #else
-    return (((*(__IO uint32_t*)address) & APP_START_MASK) == 0x20000000);
+    if ((((*(__IO uint32_t*)address) & APP_START_MASK) == 0x20000000)) {
+        ret = true;
+    }
 #endif
+    if (ret && entry != NULL) {
+        *entry = address;
+    }
+    return ret;
 }
 
 static void dummy(void* reserved) {}

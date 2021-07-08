@@ -6,29 +6,29 @@ MEMORY
 {
     INCLUDE memory_backup_ram.ld
   
-    SRAM        (xrw) : ORIGIN = platform_bootloader_static_ram_start, LENGTH = platform_bootloader_static_ram_size
-    SECURE_SRAM (xrw) : ORIGIN = platform_secure_ram_start,            LENGTH = platform_secure_ram_size - platform_bootloader_stack_size
-    APP_FLASH   (rx)  : ORIGIN = platform_bootloader_flash_start,      LENGTH = platform_bootloader_flash_size
+    SRAM      (xrw) : ORIGIN = platform_bootloader_static_ram_start, LENGTH = platform_bootloader_static_ram_size
+    BOOT_SRAM (xrw) : ORIGIN = platform_secure_ram_start,            LENGTH = platform_secure_ram_size - platform_bootloader_stack_size
+    APP_FLASH (rx)  : ORIGIN = platform_bootloader_flash_start,      LENGTH = platform_bootloader_flash_size
 }
 
 SECTIONS
 {
-    /* Module start */
-    INCLUDE linker_module_start.ld
-
-    /*----------------------------- START OF XIP PARTITION ------------------------------
-     * Don't need to be copied to SRAM nor SECURE_SRAM:
-     * - XIP partition header
-     * - XIP code
-     * - RAM partition header
-     */
     .rtl_xip_image_header :
     {
         . = ALIGN(4);
         KEEP (*(.rtl_header_xip))
         . = ALIGN(4);
+    } > APP_FLASH
+
+    /****************************** START OF XIP PARTITION ***********************************
+     */
+    .xip_start :
+    {
         link_rtl_xip_start = .;
     } > APP_FLASH
+
+    /* Module start */
+    INCLUDE linker_module_start.ld
 
     /* Module info */
     INCLUDE linker_module_info.ld
@@ -85,53 +85,54 @@ SECTIONS
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
-    .rtl_ram_image_header :
+    .xip_end :
     {
-        . = ALIGN(16); /* The image header must be 16-bytes aligned. */
+        . = ALIGN(16); /* The image end must be 16-bytes aligned. */
         link_rtl_xip_end = .;
-        KEEP (*(.rtl_header_ram))
         . = ALIGN(4);
     } > APP_FLASH
 
     PROVIDE (link_rtl_xip_size = link_rtl_xip_end - link_rtl_xip_start);
-    /*----------------------------- END OF XIP PARTITION ------------------------------*/
+    /*
+     ****************************** END OF XIP PARTITION *************************************/
 
-    /*----------------------------- START OF RAM CODE PARTITION -------------------------
-     * Needs to be copied to SECURE_SRAM. This is done by KM4 boot ROM according to the RAM partition header
-     * - start table
-     * - RAM code
+    .rtl_ram_image_header :
+    {
+        . = ALIGN(16); /* The image header must be 16-bytes aligned. */
+        KEEP (*(.rtl_header_ram))
+        . = ALIGN(4);
+    } > APP_FLASH
+
+    /******************************* START OF RAM COPY PARTITION ******************************
      */
+    .ram_copy_start :
+    {
+        link_rtl_ram_copy_start = .;
+    } > BOOT_SRAM
+
     .rtl_start_table : /* Realtek specific */
-    {  
-        link_rtl_ram_start = .;
+    {
         KEEP (*(.rtl_header_ram_start_table))
         KEEP (*(.rtl_header_ram_valid_pattern))
         KEEP (*(.rtl_header_ram_boot_export_table))
-    } > SECURE_SRAM AT> APP_FLASH
+    } > BOOT_SRAM AT> APP_FLASH
 
-    .ram_text : /* Realtek specific */
+    .secure_ram_text : /* Realtek specific */
     {
         . = ALIGN(4);
-        link_ram_code_start = .;
-        *(.image2.ram.text)
-        *(.image2.ram.text.*)
-        *(.boot.ram.text)
-        *(.boot.ram.text.*)
-        *(.ram.text)
-        *(.ram.text.*)
-        link_ram_code_end = .;
-        link_rtl_ram_end = .;
+        /* Reserved */
         . = ALIGN(4);
-    } > SECURE_SRAM AT> APP_FLASH
+    } > BOOT_SRAM AT> APP_FLASH
 
-    PROVIDE (link_rtl_ram_size = link_rtl_ram_end - link_rtl_ram_start);
-    /*----------------------------- END OF RAM CODE PARTITION -------------------------*/
-    
-    /*----------------------------- START OF DATA PARTITION -----------------------------
-     * Needs to be copied to SRAM. This is done by the startup file
-     * - RAM data
-     * - RAM bss initialization
-     */
+    .ram_copy_end :
+    {
+        link_rtl_ram_copy_end = .;
+    } > BOOT_SRAM
+
+    PROVIDE (link_rtl_ram_copy_size = link_rtl_ram_copy_end - link_rtl_ram_copy_start);
+    /*
+     ****************************** END OF RAM COPY PARTITION ********************************/
+
     /* Static RAM start */
     INCLUDE linker_static_ram_start.ld
 
@@ -143,6 +144,15 @@ SECTIONS
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_start = .;
+
+        /* Realtek specific RAM code */
+        *(.image2.ram.text)
+        *(.image2.ram.text.*)
+        *(.boot.ram.text)
+        *(.boot.ram.text.*)
+        *(.ram.text)
+        *(.ram.text.*)
+
         *(.data*)
         *(.boot.ram.data) /* Realtek specific */
         *(.boot.ram.data.*) /* Realtek specific */
@@ -168,7 +178,6 @@ SECTIONS
     
     /* Static RAM end */
     INCLUDE linker_static_ram_end.ld
-    /*----------------------------- END OF DATA PARTITION -----------------------------*/
 
     /* User backup ram data */
     INCLUDE linker_backup_ram_user.ld
@@ -204,7 +213,7 @@ SECTIONS
 
 /* Heap location */
 link_heap_location     = link_bss_end;
-link_heap_location_end = link_heap_location + platform_heap_min_size;
+link_heap_location_end = platform_ram_size - platform_backup_ram_all_size;
 
 /* Stack , used by startup*/
 link_stack_size     = platform_bootloader_stack_size;

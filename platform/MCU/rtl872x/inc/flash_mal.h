@@ -57,7 +57,7 @@ extern "C" {
 #define USB_DFU_ADDRESS             INTERNAL_FLASH_START
 //Main firmware begin address after 24 + 64KB from start of flash
 // #define CORE_FW_ADDRESS             ((uint32_t)0x08006000 + 64 * 1024 + sizeof(module_info_t))
-#define CORE_FW_ADDRESS             ((uint32_t)0x0801C000)
+#define CORE_FW_ADDRESS             ((uint32_t)0x08060000)
 #define APP_START_MASK              ((uint32_t)0x1FFC0000)
 
 /* Internal Flash page size */

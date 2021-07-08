@@ -3,22 +3,25 @@
 #include "flash_mal.h"
 #include "platform_config.h"
 
-#if 0
 #ifndef APP_START_MASK
 #define APP_START_MASK              ((uint32_t)0x2FFC0000)
 #endif /* APP_START_MASK */
 
-uint8_t is_application_valid(uint32_t address)
+uint8_t is_application_valid(uint32_t address, uint32_t* entry)
 {
+    bool ret = false;
 #ifdef FLASH_UPDATE_MODULES
-    return FLASH_isUserModuleInfoValid(FLASH_INTERNAL, address, address) &&
-           FLASH_VerifyCRC32(FLASH_INTERNAL, address, FLASH_ModuleLength(FLASH_INTERNAL, address));
+    if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, address, address) &&
+           FLASH_VerifyCRC32(FLASH_INTERNAL, address, FLASH_ModuleLength(FLASH_INTERNAL, address))) {
+        ret = true;
+    }
 #else
-    return (((*(volatile uint32_t*)address) & APP_START_MASK) == 0x20000000);
+    if ((((*(volatile uint32_t*)address) & APP_START_MASK) == 0x20000000)) {
+        ret = true;
+    }
 #endif
-}
-#endif
-
-uint8_t is_application_valid(uint32_t address) {
-    return 1;
+    if (ret && entry != NULL) {
+        *entry = address + sizeof(module_info_t);
+    }
+    return ret;
 }

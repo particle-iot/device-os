@@ -6,9 +6,10 @@ MEMORY
 {
     INCLUDE memory_backup_ram.ld
 
-    APP_FLASH (rx)  : ORIGIN = platform_monolithic_firmware_flash_start,      LENGTH = platform_monolithic_firmware_flash_size
-    SRAM      (rwx) : ORIGIN = platform_monolithic_firmware_static_ram_start, LENGTH = platform_monolithic_firmware_static_ram_size
-    PSRAM     (rwx) : ORIGIN = platform_psram_start,                          LENGTH = platform_psram_size
+    APP_FLASH   (rx)  : ORIGIN = platform_monolithic_firmware_flash_start,           LENGTH = platform_monolithic_firmware_flash_size
+    SRAM        (rwx) : ORIGIN = platform_monolithic_firmware_static_ram_start,      LENGTH = platform_monolithic_firmware_static_ram_size
+    SECURE_SRAM (rwx) : ORIGIN = platform_monolithic_firmware_secure_ram_code_start, LENGTH = platform_monolithic_firmware_secure_ram_code_size
+    PSRAM       (rwx) : ORIGIN = platform_psram_start,                               LENGTH = platform_psram_size
 }
 
 SECTIONS
@@ -16,25 +17,27 @@ SECTIONS
     /* Module start */
     INCLUDE linker_module_start.ld
 
-    /*----------------------------- START OF XIP PARTITION ------------------------------
-     * Don't need to be copied to SRAM nor PSRAM:
-     * - entry point
-     * - XIP code
-     */
-    .entry :
-    {
-        . = ALIGN(4);
-        link_rtl_header_location = .;
-        KEEP (*(.system.entry))
-        . = ALIGN(4);
-        link_rtl_header_location_end = .;
-        link_rtl_startup = .;
-    } >APP_FLASH
-
     /* Module info */
     INCLUDE linker_module_info.ld
 
+    .entry :
+    {
+        . = ALIGN(4);
+        KEEP (*(.system.entry))
+        . = ALIGN(4);
+    } >APP_FLASH
+
     .text :
+    {
+        . = ALIGN(4);
+        *(.xip.text)
+        . = ALIGN(4);
+    } > APP_FLASH
+
+    /* C++ exception handlers */
+    INCLUDE linker_arm_exception.ld
+
+    .ram_text :
     {
         . = ALIGN(4);
         
@@ -91,28 +94,12 @@ SECTIONS
         link_destructors_end = .;
         
         . = ALIGN(4);
+    /* } > PSRAM AT> APP_FLASH */ /* FIXME: uncomment this to put them into PSRAM*/
     } > APP_FLASH
-
-    /* C++ exception handlers */
-    INCLUDE linker_arm_exception.ld
-    /*----------------------------- END OF XIP PARTITION ------------------------------*/
-
-    /*----------------------------- START OF PSRAM PARTITION ----------------------------
-     * Needs to be copied to PSRAM. This is done by a piece of XIP code after jumping to the monolithic firmware.
-     * - PSRAM code
-     * - PSRAM data
-     * - PSRAM bss initialization
-     */
-    .ram_text :
-    {
-        . = ALIGN(4);
-        /* FIXME: The .text section should go here and the XIP code should go to .text instead */
-        . = ALIGN(4);
-    } > PSRAM AT> APP_FLASH
 
     .data_alt :
     {
-        link_global_data_initial_values_alt = LOADADDR( .data ); 
+        link_global_data_initial_values_alt = LOADADDR( .data_alt ); 
         . = ALIGN(4);
         link_global_data_start_alt = .;
         *(.psram.data*)
@@ -128,13 +115,7 @@ SECTIONS
         . = ALIGN(4);
         link_bss_end_alt = .;
     } > PSRAM
-    /*----------------------------- END OF PSRAM PARTITION ------------------------------
 
-    /*----------------------------- START OF DATA PARTITION -----------------------------
-     * Needs to be copied to SRAM. This is done by the startup file
-     * - RAM data
-     * - RAM bss initialization
-     */
     /* Static RAM start */
     INCLUDE linker_static_ram_start.ld
 
@@ -178,7 +159,16 @@ SECTIONS
 
     /* Static RAM end */
     INCLUDE linker_static_ram_end.ld
-    /*----------------------------- END OF DATA PARTITION -----------------------------*/
+
+    .secure_ram_text :
+    {
+        link_secure_ram_code_flash_start = LOADADDR( .secure_ram_text ); 
+        . = ALIGN(4);
+        link_secure_ram_code_start = .;
+        /* Reserved */
+        link_secure_ram_code_end = .;
+        . = ALIGN(4);
+    } > SECURE_SRAM AT> APP_FLASH
 
     /* User backup ram data */
     INCLUDE linker_backup_ram_user.ld
@@ -223,5 +213,9 @@ link_heap_location_end_alt = platform_psram_end;
 link_stack_size     = platform_monolithic_firmware_stack_size;
 link_stack_location = platform_monolithic_firmware_stack_start;
 link_stack_end      = platform_monolithic_firmware_stack_end;
+
+link_secure_stack_size     = platform_monolithic_firmware_secure_stack_size;
+link_secure_stack_location = platform_monolithic_firmware_secure_stack_start;
+link_secure_stack_end      = platform_monolithic_firmware_secure_stack_end;
 
 INCLUDE linker_rtl872x_rom.ld

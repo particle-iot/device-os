@@ -3,47 +3,49 @@ Platform RAM memory map for Tron.
 
 Bootloader:                                Modular firmware:                           Monolithic firmware:
 
-+-----------------------------+ 0x10080000 +-----------------------------+ 0x10080000 +------------------------------------+
-| Secure main stack           |            |                             |            |                                    |
-+-----------------------------+ 0x1007F000 |                             |            |                                    |
-|                             |            |                             |            |                                    |
-|                             |            | Secure main stack           |            | Secure main stack                  |
-| Bootloader RAM code         |            |                             |            |                                    |
-|                             |            |                             |            |                                    |
-|                             |            |                             |            |                                    |
-+-----------------------------+ 0x1007D000 +-----------------------------+ 0x1007D000 +------------------------------------+
-x                                                                                                                          x
-x                                                                                                                          x
-+-----------------------------+ 0x1007C000 +-----------------------------+ 0x1007C000 +------------------------------------+
-| User backup RAM             |            | User backup RAM             |            | User backup RAM                    |
-+-----------------------------+ 0x1007B400 +-----------------------------+ 0x1007B400 +------------------------------------+
-| System flags                |            | System flags                |            | System flags                       |
-+-----------------------------+ 0x1007B3C0 +-----------------------------+ 0x1007B3C0 +------------------------------------+
-| Backup registers            |            | Backup registers            |            | Backup registers                   |
-+-----------------------------+ 0x1007B380 +-----------------------------+ 0x1007B380 +------------------------------------+
-| System backup RAM           |            | System backup RAM           |            | System backup RAM                  |
-+-----------------------------+ 0x1007B000 +-----------------------------+ 0x1007B000 +------------------------------------+
-|                             |            | Main stack                  |            | Main stack                         |
-|                             | 0x1007A000 +-----------------------------+ 0x1007A000 +------------------------------------+
-| Heap                        |            | User part static RAM        |            |                                    |
-|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            | Heap                               |
-|                             |            | Heap                        |            |                                    |
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-| Bootloader static RAM       |            | System part 1 static RAM    |            | Monolithic firmware static RAM     |
-+-----------------------------+ 0x10004000 +-----------------------------+ 0x10004000 +------------------------------------+
-x                                                                                                                          x
-x                                                                                                                          x
-+-----------------------------+ 0x02400000 +-----------------------------+ 0x02400000 +------------------------------------+
-|                             |            | User part PSRAM code        |            |                                    |
-|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                    |
-|                             |            | User part static RAM alt    |            |  Heap alt                          |
-|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                    |
-|        NOT USED             |            | Heap alt                    |            |                                    |
-|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-|                             |            | System part 1 static RAM alt|            | Monolithic firmware static RAM alt |
-|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-|                             |            | System part 1 PSRAM code    |            | Monolithic firmware PSRAM code     |
-|-----------------------------| 0x02000000 +-----------------------------+ 0x02000000 +------------------------------------+
++-----------------------------+ 0x10080000 +-------------------------------+ 0x10080000 +------------------------------------+
+| Secure main stack           |            | Secure main stack             |            | Secure main stack                  |
++-----------------------------+ 0x1007F000 +-------------------------------+            +------------------------------------+
+|                             |            |                               |            |                                    |
+| Bootloader secure RAM code  |            | User part secure RAM code     |            | Monolithic firmware                |
+|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            | secure RAM code                    |
++-----------------------------+            |                               |            |                                    |
+| Bootloader start table      |            | System part 1 secure RAM code |            |                                    |
++-----------------------------+ 0x1007D000 +-------------------------------+ 0x1007D000 +------------------------------------+
+x                                                                                                                            x
+x                                                                                                                            x
++-----------------------------+ 0x1007C000 +-------------------------------+ 0x1007C000 +------------------------------------+
+| User backup RAM             |            | User backup RAM               |            | User backup RAM                    |
++-----------------------------+ 0x1007B400 +-------------------------------+ 0x1007B400 +------------------------------------+
+| System flags                |            | System flags                  |            | System flags                       |
++-----------------------------+ 0x1007B3C0 +-------------------------------+ 0x1007B3C0 +------------------------------------+
+| Backup registers            |            | Backup registers              |            | Backup registers                   |
++-----------------------------+ 0x1007B380 +-------------------------------+ 0x1007B380 +------------------------------------+
+| System backup RAM           |            | System backup RAM             |            | System backup RAM                  |
++-----------------------------+ 0x1007B000 +-------------------------------+ 0x1007B000 +------------------------------------+
+|                             |            | Non-secure main stack         |            | Non-secure main stack              |
+|                             | 0x1007A000 +-------------------------------+ 0x1007A000 +------------------------------------+
+| Heap                        |            | User part static RAM          |            |                                    |
+|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                    |
+|                             |            |                               |            | Heap                               |
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            | Heap                          |            |                                    |
+| Bootloader static RAM       |            |                               |            |                                    |
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+| Bootloader RAM code         |            | System part 1 static RAM      |            | Monolithic firmware static RAM     |
++-----------------------------+ 0x10004000 +-------------------------------+ 0x10004000 +------------------------------------+
+x                                                                                                                            x
+x                                                                                                                            x
++-----------------------------+ 0x02400000 +-------------------------------+ 0x02400000 +------------------------------------+
+|                             |            | User part PSRAM code          |            |                                    |
+|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                    |
+|                             |            | User part static RAM alt      |            | Heap alt                           |
+|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                    |
+|        NOT USED             |            | Heap alt                      |            |                                    |
+|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+|                             |            | System part 1 static RAM alt  |            | Monolithic firmware static RAM alt |
+|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+|                             |            | System part 1 PSRAM code      |            | Monolithic firmware PSRAM code     |
+|-----------------------------| 0x02000000 +-------------------------------+ 0x02000000 +------------------------------------+
 
 Note: Keep the diagrams up to date with the actual memory maps defined in this file.
 */
@@ -93,12 +95,20 @@ platform_modular_firmware_stack_size  = __STACKSIZE__;
 platform_modular_firmware_stack_end   = platform_system_backup_ram_start;
 platform_modular_firmware_stack_start = platform_modular_firmware_stack_end - platform_modular_firmware_stack_size;
 
+platform_modular_firmware_secure_stack_size  = __STACKSIZE__;
+platform_modular_firmware_secure_stack_end   = platform_secure_ram_end;
+platform_modular_firmware_secure_stack_start = platform_modular_firmware_secure_stack_end - platform_modular_firmware_secure_stack_size;
+
 /* Monolithic firmware main stack
  * platform_monolithic_firmware_stack_size is equal to 4K, which is defined in include.mk under hal/src/rtl872x.
  * platform_monolithic_firmware_stack_start is the lowest address of the stack. */
 platform_monolithic_firmware_stack_size  = __STACKSIZE__;
 platform_monolithic_firmware_stack_end   = platform_system_backup_ram_start;
 platform_monolithic_firmware_stack_start = platform_monolithic_firmware_stack_end - platform_monolithic_firmware_stack_size;
+
+platform_monolithic_firmware_secure_stack_size  = __STACKSIZE__;
+platform_monolithic_firmware_secure_stack_end   = platform_secure_ram_end;
+platform_monolithic_firmware_secure_stack_start = platform_monolithic_firmware_secure_stack_end - platform_monolithic_firmware_secure_stack_size;
 
 /* Bootloader main stack
  * platform_bootloader_stack_size is equal to 4K, which is defined in bootloader/src/rtl872x/include.mk. */
@@ -117,15 +127,15 @@ platform_user_part_static_ram_size  = DEFINED(platform_user_part_static_ram_size
 platform_user_part_static_ram_end   = platform_modular_firmware_stack_start;
 platform_user_part_static_ram_start = platform_user_part_static_ram_end - platform_user_part_static_ram_size;
 
-/* User part alternative static RAM */
-platform_user_part_alt_static_ram_size = 128K; /* assumption */
-/* platform_user_part_alt_static_ram_start =  */
-/* platform_user_part_alt_static_ram_end   =  */
-
 /* User part PSRAM code */
-platform_user_part_psram_code_size  = DEFINED(platform_user_part_psram_code_size) ? platform_user_part_psram_code_size : 256K;
+platform_user_part_psram_code_size  = DEFINED(platform_user_part_psram_code_size) ? platform_user_part_psram_code_size : 1M;
 platform_user_part_psram_code_end   = platform_psram_end;
 platform_user_part_psram_code_start = platform_user_part_psram_code_end - platform_user_part_psram_code_size;
+
+/* Useer part secure RAM code */
+platform_user_part_secure_ram_code_size  = 4K;
+platform_user_part_secure_ram_code_end   = platform_modular_firmware_secure_stack_start;
+platform_user_part_secure_ram_code_start = platform_user_part_secure_ram_code_end - platform_user_part_secure_ram_code_size;
 
 
 /* System part 1 static RAM
@@ -135,15 +145,15 @@ platform_system_part1_static_ram_size  = platform_ram_size - platform_backup_ram
 platform_system_part1_static_ram_start = platform_ram_start;
 platform_system_part1_static_ram_end   = platform_system_part1_static_ram_start + platform_system_part1_static_ram_size;
 
-/* System part 1 alternative static RAM */
-platform_system_part1_alt_static_ram_size  = 128K; /* assumption */
-/* platform_system_part1_alt_static_ram_start =  */
-/* platform_system_part1_alt_static_ram_end   =  */
-
 /* System part 1 PSRAM code */
 platform_system_part1_psram_code_size  = platform_psram_size - platform_user_part_psram_code_size;
 platform_system_part1_psram_code_start = platform_psram_start;
 platform_system_part1_psram_code_end   = platform_system_part1_psram_code_start + platform_system_part1_psram_code_size;
+
+/* System part 1 secure RAM code */
+platform_system_part1_secure_ram_code_size  = platform_secure_ram_size - platform_modular_firmware_secure_stack_size - platform_user_part_secure_ram_code_size;
+platform_system_part1_secure_ram_code_start = platform_secure_ram_start;
+platform_system_part1_secure_ram_code_end   = platform_system_part1_secure_ram_code_start + platform_system_part1_secure_ram_code_size;
 
 
 /* Monolithic firmware static RAM
@@ -154,15 +164,15 @@ platform_monolithic_firmware_static_ram_size  = platform_ram_size - platform_bac
 platform_monolithic_firmware_static_ram_start = platform_ram_start;
 platform_monolithic_firmware_static_ram_end   = platform_monolithic_firmware_static_ram_start + platform_monolithic_firmware_static_ram_size;
 
-/* Monolithic firmware alternative static RAM */
-platform_monolithic_firmware_alt_static_ram_size  = 128K; /* assumption */
-/* platform_monolithic_firmware_alt_static_ram_start =  */
-/* platform_monolithic_firmware_alt_static_ram_end   =  */
-
 /* Monolithic firmware PSRAM code */
 platform_monolithic_firmware_psram_code_size  = platform_psram_size;
 platform_monolithic_firmware_psram_code_start = platform_psram_start;
 platform_monolithic_firmware_psram_code_end   = platform_monolithic_firmware_psram_code_start + platform_monolithic_firmware_psram_code_size;
+
+/* Monolithic firmware secure RAM code */
+platform_monolithic_firmware_secure_ram_code_size  = platform_secure_ram_size - platform_monolithic_firmware_secure_stack_size;
+platform_monolithic_firmware_secure_ram_code_start = platform_secure_ram_start;
+platform_monolithic_firmware_secure_ram_code_end   = platform_monolithic_firmware_secure_ram_code_start + platform_monolithic_firmware_secure_ram_code_size;
 
 
 /* Bootloader static RAM
@@ -174,9 +184,14 @@ platform_bootloader_static_ram_start = platform_ram_start;
 platform_bootloader_static_ram_end   = platform_bootloader_static_ram_start + platform_bootloader_static_ram_size;
 
 /* Bootloader RAM code, overlapped with bootloader static RAM */
-platform_bootloader_ram_code_size  = platform_secure_ram_size - platform_bootloader_stack_size;
-platform_bootloader_ram_code_start = platform_secure_ram_start;
+platform_bootloader_ram_code_size  = platform_bootloader_static_ram_size;
+platform_bootloader_ram_code_start = platform_bootloader_static_ram_start;
 platform_bootloader_ram_code_end   = platform_bootloader_ram_code_start + platform_bootloader_ram_code_size;
+
+/* Bootloader secure RAM code */
+platform_bootloader_secure_ram_code_size  = platform_secure_ram_size - platform_bootloader_stack_size;
+platform_bootloader_secure_ram_code_start = platform_secure_ram_start;
+platform_bootloader_secure_ram_code_end   = platform_bootloader_ram_code_start + platform_bootloader_ram_code_size;
 
 
 /* The heap size after linkage should meet the minimum heap requirement. */

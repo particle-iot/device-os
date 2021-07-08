@@ -401,7 +401,7 @@ int main(void)
             // Restore the Factory Firmware
             // On success the device will reset)
             if (!FACTORY_Flash_Reset()) {
-                if (is_application_valid(ApplicationAddress)) {
+                if (is_application_valid(ApplicationAddress, NULL)) {
                     // we have a valid image to fall back to, so just reset
                     NVIC_SystemReset();
                 }
@@ -447,7 +447,8 @@ int main(void)
 
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress
-        if (is_application_valid(ApplicationAddress))
+        uint32_t entry;
+        if (is_application_valid(ApplicationAddress, &entry))
         {
             uint8_t disable_iwdg = 0;
 #ifdef CHECK_FIRMWARE
@@ -466,8 +467,8 @@ int main(void)
             Reset_System();
 
             // Jump to system firmware
-            uint32_t addr = *(volatile uint32_t*)(ApplicationAddress + 4);
-            uint32_t stack = *(volatile uint32_t*)ApplicationAddress;
+            uint32_t addr = *(volatile uint32_t*)(entry + 4);
+            uint32_t stack = *(volatile uint32_t*)entry;
             jump_to_system(addr, stack);
         }
 #if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
