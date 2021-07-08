@@ -323,4 +323,10 @@ void HAL_NET_notify_socket_closed(sock_handle_t socket)
     }
 }
 
+sock_handle_t system_cloud_get_socket_handle()
+{
+    return s_state.socket;
+}
+
+
 #endif /* !HAL_USE_SOCKET_HAL_POSIX && HAL_USE_SOCKET_HAL_COMPAT */

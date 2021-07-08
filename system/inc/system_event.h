@@ -91,6 +91,8 @@ enum SystemEventsParam {
     // Cloud connection status
     cloud_status_disconnected       = 0,
     cloud_status_connecting         = 1,
+    cloud_status_handshake          = 2,
+    cloud_status_session_resume     = 3,
     cloud_status_connected          = 8,
     cloud_status_disconnecting      = 9,
 
