@@ -24,6 +24,11 @@
 
 namespace {
 
+struct NetworkState {
+    volatile bool disconnected = false;
+};
+NetworkState networkState;
+
 template <typename T, typename DT>
 T divRoundClosest(T n, DT d) {
     return ((n + (d / 2)) / d);
@@ -76,15 +81,9 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     waitFor(Network.ready, WAIT_TIMEOUT);
     assertTrue(Network.ready());
 
-    struct State {
-        volatile bool disconnected;
-    };
-    State state = {};
-
     auto evHandler = [](system_event_t event, int param, void* ctx) {
-        State* state = static_cast<State*>(ctx);
         if (event == network_status && param == network_status_disconnected) {
-            state->disconnected = true;
+            networkState.disconnected = true;
         }
     };
 
@@ -157,9 +156,17 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     if (millis() - start < MINIMUM_TEST_TIME) {
         delay(millis() - start);
     }
-    assertFalse((bool)state.disconnected);
-
-    assertTrue((mtu - IPV4_PLUS_UDP_HEADER_LENGTH) >= MBEDTLS_SSL_MAX_CONTENT_LEN);
+    assertFalse((bool)networkState.disconnected);
+#if PLATFORM_ID != PLATFORM_BORON && PLATFORM_ID != PLATFORM_BSOM
+    assertMoreOrEqual((mtu - IPV4_PLUS_UDP_HEADER_LENGTH), MBEDTLS_SSL_MAX_CONTENT_LEN);
+#else
+    // We've reduced MTU on LTE Boron and B SoMs with R410 running modem firwmare <= 02.03
+    if ((mtu - IPV4_PLUS_UDP_HEADER_LENGTH) < MBEDTLS_SSL_MAX_CONTENT_LEN) {
+        assertMoreOrEqual(mtu, 990);
+    } else {
+        assertMoreOrEqual((mtu - IPV4_PLUS_UDP_HEADER_LENGTH), MBEDTLS_SSL_MAX_CONTENT_LEN);
+    }
+#endif // PLATFORM_ID != PLATFORM_BORON && PLATFORM_ID != PLATFORM_BSOM
 }
 
 #if HAL_PLATFORM_NCP_AT || HAL_PLATFORM_CELLULAR
