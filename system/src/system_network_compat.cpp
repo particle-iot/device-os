@@ -68,27 +68,37 @@ inline NetworkInterface& nif(network_interface_t _nif) { return cellular; }
 
 void HAL_WLAN_notify_simple_config_done()
 {
-    network.notify_listening_complete();
+    invokeAsync([]() {
+        network.notify_listening_complete();
+    });
 }
 
 void HAL_NET_notify_connected()
 {
-    network.notify_connected();
+    invokeAsync([]() {
+        network.notify_connected();
+    });
 }
 
 void HAL_NET_notify_disconnected()
 {
-    network.notify_disconnected();
+    invokeAsync([]() {
+        network.notify_disconnected();
+    });
 }
 
 void HAL_NET_notify_error()
 {
-    network.notify_error();
+    invokeAsync([]() {
+        network.notify_error();
+    });
 }
 
 void HAL_NET_notify_dhcp(bool dhcp)
 {
-    network.notify_dhcp(dhcp);
+    invokeAsync([dhcp]() {
+        network.notify_dhcp(dhcp);
+    });
 }
 
 const void* network_config(network_handle_t network, uint32_t param, void* reserved)
