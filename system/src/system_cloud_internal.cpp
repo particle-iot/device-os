@@ -1126,11 +1126,19 @@ int Spark_Handshake(bool presence_announce)
 #endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 
     if (err == protocol::SESSION_RESUMED) {
+        // XXX: ideally this event should be generated before we perform the handshake
+        // but the current semantic of indicating after the handshake/session-resumption are done
+        // also deserves a chance.
+        system_notify_event(cloud_status, cloud_status_session_resume);
         session_resumed = true;
     } else if (err != 0) {
         return spark_protocol_to_system_error(err);
     }
     if (!session_resumed) {
+        // XXX: ideally this event should be generated before we perform the handshake
+        // but the current semantic of indicating after the handshake/session-resumption are done
+        // also deserves a chance.
+        system_notify_event(cloud_status, cloud_status_handshake);
         char buf[CLAIM_CODE_SIZE + 1];
         if (!HAL_Get_Claim_Code(buf, sizeof(buf)) && buf[0] != 0 && (uint8_t)buf[0] != 0xff) {
             LOG(INFO,"Send spark/device/claim/code event for code %s", buf);
