@@ -726,7 +726,7 @@ void* system_internal(int item, void* reserved)
     }
 #endif
     case 3: {
-        return (void*)system_cloud_get_socket_handle();
+        return reinterpret_cast<void*>(system_cloud_get_socket_handle());
     }
     default:
         return nullptr;
