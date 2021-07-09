@@ -48,19 +48,24 @@ GLOBAL_DEFINES += MODULE_DEPENDENCY2=0,0,0
 
 LINKER_FILE=$(USER_PART_MODULE_PATH)/linker.ld
 LINKER_DEPS += $(LINKER_FILE)
+
+LINKER_DEPS += $(SHARED_MODULAR)/linker_user_part_common.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
+LINKER_DEPS += $(USER_PART_MODULE_PATH)/module_user_export.ld
+
 NANO_SUFFIX ?= _nano
 
 LDFLAGS += -lnosys
 LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
 LDFLAGS += -L$(USER_PART_MODULE_PATH)
 LDFLAGS += -L$(TARGET_BASE_DIR)
+LDFLAGS += -L$(SHARED_MODULAR)
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,--defsym,USER_FIRMWARE_IMAGE_SIZE=$(USER_FIRMWARE_IMAGE_SIZE)
 LDFLAGS += -Wl,--defsym,USER_FIRMWARE_IMAGE_LOCATION=$(USER_FIRMWARE_IMAGE_LOCATION)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
-LDFLAGS += -Wl,--defsym,__STACKSIZE__=2048
-LDFLAGS += -Wl,--defsym,__STACK_SIZE=2048
+LDFLAGS += -Wl,--defsym,__STACKSIZE__=4096
+LDFLAGS += -Wl,--defsym,__STACK_SIZE=4096
 
 # used the -v flag to get gcc to output the commands it passes to the linker when --specs=nano.specs is provided
 # LDFLAGS += -lstdc++$(NANO_SUFFIX) -lm -Wl,--start-group -lgcc -Wl,--end-group -Wl,--start-group -lgcc  $(LIBG_TWEAK) -Wl,--end-group

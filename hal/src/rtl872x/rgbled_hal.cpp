@@ -21,6 +21,7 @@
 #include "gpio_hal.h"
 #include "pwm_hal.h"
 #include "pinmap_impl.h"
+#include "core_hal.h"
 
 namespace {
 

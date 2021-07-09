@@ -54,19 +54,6 @@ const module_bounds_t module_user = {
         .start_address = 0x000B4000,
         .end_address = 0x000f4000,
         .module_function = MODULE_FUNCTION_USER_PART,
-        .module_index = 2,
-        .store = MODULE_STORE_MAIN
-#if HAL_PLATFORM_NCP
-        ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
-#endif
-        ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH
-};
-
-const module_bounds_t module_user_compat = {
-        .maximum_size = 0x00020000, // 128K
-        .start_address = 0x000D4000,
-        .end_address = 0x000f4000,
-        .module_function = MODULE_FUNCTION_USER_PART,
         .module_index = 1,
         .store = MODULE_STORE_MAIN
 #if HAL_PLATFORM_NCP
@@ -162,8 +149,7 @@ const module_bounds_t module_radio_stack = {
 // PARTICLE_STATIC_ASSERT(radio_stack_start_address, MODULE_RADIO_STACK_START_ADDRESS == MBR_SIZE);
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
-// Make module_user_compat should appear in the list before module_user
-const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user_compat, &module_user, &module_factory
+const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user, &module_factory
 #if defined(HYBRID_BUILD) // include the mono module so that the hybrid module validates. The reason to not do this all the time is because the
         // list of modules becomes somewhat confusing (with the same address range covered by 2 distinct definitions.)
 ,&module_user_mono

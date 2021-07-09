@@ -23,8 +23,7 @@
 
 namespace {
 
-const uint8_t USER_PART_COMPAT_INDEX = 1;
-const uint8_t USER_PART_CURRENT_INDEX = 2;
+const uint8_t USER_PART_CURRENT_INDEX = 1;
 
 bool validUserModuleInfoAtIndex(uint8_t index, module_info_t* info) {
     const auto bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, index, HAL_PLATFORM_MCU_DEFAULT);
@@ -54,27 +53,10 @@ void* module_user_pre_init();
 void module_user_init();
 void module_user_loop();
 void module_user_setup();
-
-// Compat 128KB module initialization functions
-void* module_user_pre_init_compat();
-void module_user_init_compat();
-void module_user_loop_compat();
-void module_user_setup_compat();
 } // extern "C"
 
 int hal_user_module_get_descriptor(hal_user_module_descriptor* desc) {
     module_info_t info = {};
-    // Check compat 128KB user application first as it takes precedence
-    if (validUserModuleInfoAtIndex(USER_PART_COMPAT_INDEX, &info)) {
-        if (desc) {
-            desc->info = info;
-            desc->pre_init = &module_user_pre_init_compat;
-            desc->init = &module_user_init_compat;
-            desc->loop = &module_user_loop_compat;
-            desc->setup = &module_user_setup_compat;
-        }
-        return 0;
-    }
 
     if (!validUserModuleInfoAtIndex(USER_PART_CURRENT_INDEX, &info)) {
         return SYSTEM_ERROR_NOT_FOUND;

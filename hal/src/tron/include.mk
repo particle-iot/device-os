@@ -4,5 +4,7 @@
 #       based on the root of the project
 
 INCLUDE_DIRS += $(TARGET_HAL_PATH)/src/$(PLATFORM_NAME)
+# FIXME: There is no NCP on Tron
+INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/ncp/wifi
 
 include $(TARGET_HAL_PATH)/src/rtl872x/include.mk

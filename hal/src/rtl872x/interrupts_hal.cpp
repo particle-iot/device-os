@@ -35,6 +35,8 @@ extern "C" {
 using namespace particle;
 #endif
 
+extern uintptr_t link_ram_interrupt_vectors_location[];
+
 namespace {
 
 typedef enum interrupt_state_t {
@@ -48,8 +50,6 @@ struct {
     hal_interrupt_callback_t    callback;
     InterruptMode               mode;
 } interruptsConfig[TOTAL_PINS];
-
-extern uintptr_t link_ram_interrupt_vectors_location[];
 
 int parseMode(InterruptMode mode, uint32_t* trigger, uint32_t* polarity) {
     switch(mode) {

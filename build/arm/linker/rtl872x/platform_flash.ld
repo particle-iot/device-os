@@ -31,6 +31,8 @@ Modular firmware:                          Monolithic firmware:
 | System part 1 XIP code         |            |                                  |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
 | System part 1 dynalib table    |            | Monolithic firmware XIP code     |
++--------------------------------+ 0x08060026 +----------------------------------+
+| System part 1 entry            |            | Monolithic firmware entry        |
 +--------------------------------+ 0x08060018 +----------------------------------+
 | System part 1 module info      |            | Monolithic firmware module info  |
 +--------------------------------+ 0x08060000 +----------------------------------+
@@ -84,6 +86,9 @@ Note: Keep the diagrams up to date with the actual memory maps defined in this f
 
 /* Platform interrupt vector table size. Please reference to the interrupt vector table in platform startup file. */
 platform_vector_table_flash_size = 268;
+
+/* Platform entry */
+platform_entry_size = 8;
 
 /* Module info size */
 platform_module_info_flash_size = 24;
@@ -161,8 +166,13 @@ platform_system_part1_module_info_flash_size  = platform_module_info_flash_size;
 platform_system_part1_module_info_flash_start = platform_system_part1_flash_start;
 platform_system_part1_module_info_flash_end   = platform_system_part1_module_info_flash_start + platform_system_part1_module_info_flash_size;
 
+/* System part 1 entry */
+platform_system_part1_entry_flash_size  = platform_entry_size;
+platform_system_part1_entry_flash_start = platform_system_part1_module_info_flash_end;
+platform_system_part1_entry_flash_end   = platform_system_part1_entry_flash_start + platform_system_part1_entry_flash_size;
+
 /* System part 1 dynalib table */
-platform_system_part1_dynalib_table_flash_start = platform_system_part1_module_info_flash_end;
+platform_system_part1_dynalib_table_flash_start = platform_system_part1_entry_flash_end;
 
 
 /* Monolithic firmware*/
@@ -175,3 +185,7 @@ platform_monolithic_firmware_module_info_flash_size  = platform_module_info_flas
 platform_monolithic_firmware_module_info_flash_start = platform_monolithic_firmware_flash_start;
 platform_monolithic_firmware_module_info_flash_end   = platform_monolithic_firmware_module_info_flash_start + platform_monolithic_firmware_module_info_flash_size;
 
+/* Monolithic firmware entry */
+platform_monolithic_firmware_entry_flash_size  = platform_entry_size;
+platform_monolithic_firmware_entry_flash_start = platform_monolithic_firmware_module_info_flash_end;
+platform_monolithic_firmware_entry_flash_end   = platform_monolithic_firmware_entry_flash_start + platform_monolithic_firmware_entry_flash_size;

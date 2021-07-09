@@ -1,31 +1,21 @@
-/* Include memory map */
-INCLUDE platform_ram.ld
-INCLUDE platform_flash.ld
-
-MEMORY
-{
-    INCLUDE memory_backup_ram.ld
-
-    APP_FLASH   (rx)  : ORIGIN = platform_monolithic_firmware_flash_start,           LENGTH = platform_monolithic_firmware_flash_size
-    SRAM        (rwx) : ORIGIN = platform_monolithic_firmware_static_ram_start,      LENGTH = platform_monolithic_firmware_static_ram_size
-    SECURE_SRAM (rwx) : ORIGIN = platform_monolithic_firmware_secure_ram_code_start, LENGTH = platform_monolithic_firmware_secure_ram_code_size
-    PSRAM       (rwx) : ORIGIN = platform_psram_start,                               LENGTH = platform_psram_size
-}
-
 SECTIONS
 {
     /* Module start */
     INCLUDE linker_module_start.ld
-
+    
+    /* Interrupt vector table */
+    /* No interrupt vector table for user part. */
+    
     /* Module info */
     INCLUDE linker_module_info.ld
-
-    .entry :
+    
+    /* Dynalib table */
+    .dynalib :
     {
-        . = ALIGN(4);
-        KEEP (*(.system.entry))
-        . = ALIGN(4);
-    } >APP_FLASH
+        link_dynalib_start = .;
+        KEEP (*(*.user_part_module))
+        link_dynalib_end = . ;
+    } > APP_FLASH AT> APP_FLASH
 
     .text :
     {
@@ -41,7 +31,7 @@ SECTIONS
     {
         link_psram_code_flash_start = LOADADDR( .ram_text ); 
         . = ALIGN(4);
-        
+
         link_psram_code_start = .;
         /* Code */
         *(.flashtext) /* Realtek specific */
@@ -61,19 +51,19 @@ SECTIONS
         *(.glue_7t)
 
         . = ALIGN(4);
-        
+
         /* Read-only data (constants) */
         link_const_data_start = .;
         *(.rodata)
         *(.rodata*)
-        *(.gnu.linkonce.r.*)
         *(.boot.rodata) /* Realtek specific */
         *(.boot.rodata*) /* Realtek specific */
+        *(.gnu.linkonce.r.*)
         link_const_data_end = .;
-        
+
         . = ALIGN(4);
 
-        /* This is used by the startup in order to invoke C++ constructors */
+        /* This is used by module_user_init() function in order to invoke C++ constructors */
         link_constructors_location = .;
         KEEP (*(.preinit_array))
         KEEP (*(.init_array))
@@ -81,9 +71,11 @@ SECTIONS
         KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
-        /* This is used by the startup in order to invoke C++ constructors */
+        /* This is used by module_user_init() function in order to invoke C++ constructors */
         link_constructors_end = .;
-        
+
+        . = ALIGN(4);
+
         /* C++ destructors */
         link_destructors_location = .;
         KEEP (*crtbegin.o(.dtors))
@@ -92,7 +84,7 @@ SECTIONS
         KEEP (*crtend.o(.dtors))
         link_destructors_end = .;
         link_psram_code_end = .;
-        
+
         . = ALIGN(4);
     /* } > PSRAM AT> APP_FLASH */ /* FIXME: uncomment this to put them into PSRAM*/
     } > APP_FLASH
@@ -115,30 +107,23 @@ SECTIONS
         . = ALIGN(4);
         link_bss_end_alt = .;
     } > PSRAM
-
+    
     /* Static RAM start */
     INCLUDE linker_static_ram_start.ld
-
-    .ram_vectors :
-    {
-        link_ram_interrupt_vectors_location = .;
-        . = . + platform_vector_table_flash_size;
-        link_ram_interrupt_vectors_location_end = .;
-    } > SRAM
 
     /* Non-zero initialised global and static variables */
     .data :
     {
         /* This is the location in flash of the initial values of global variables */
-        link_global_data_initial_values = LOADADDR( .data ); 
+        link_global_data_initial_values = LOADADDR( .data );
         . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .data secion */
+        /* This is used by the user part preinit function in order to initialize the .data secion */
         link_global_data_start = .;
         *(.data*)
         *(.boot.ram.data) /* Realtek specific */
         *(.boot.ram.data.*) /* Realtek specific */
         . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .data secion */
+        /* This is used by the user part preinit function in order to initialize the .data secion */
         link_global_data_end = .;
     } > SRAM AT> APP_FLASH
 
@@ -146,17 +131,17 @@ SECTIONS
     .bss :
     {
         . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .bss secion */
+        /* This is used by the user part preinit function in order to initialize the .bss secion */
         link_bss_location = .;
         *(.bss*)
         *(.boot.ram.bss) /* Realtek specific */
         *(.boot.ram.bss*) /* Realtek specific */
         *(COMMON)
         . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .bss secion */
+        /* This is used by the user part preinit function in order to initialize the .bss secion */
         link_bss_end = .;
     } > SRAM AT> SRAM
-
+    
     /* Static RAM end */
     INCLUDE linker_static_ram_end.ld
 
@@ -169,17 +154,13 @@ SECTIONS
         link_secure_ram_code_end = .;
         . = ALIGN(4);
     } > SECURE_SRAM AT> APP_FLASH
-
+    
     /* User backup ram data */
     INCLUDE linker_backup_ram_user.ld
-    
-    /* System backup ram data */
-    INCLUDE linker_backup_ram_system.ld
-    
+
     /* Module end */
     INCLUDE linker_module_end.ld
 
-    /* Discarded sections */
     /DISCARD/ :
     {
         *(.ARM.attributes*)
@@ -201,21 +182,3 @@ SECTIONS
         *(.glue*)
     }
 }
-
-/* Heap location */
-link_heap_location     = link_bss_end;
-link_heap_location_end = platform_monolithic_firmware_stack_start;
-
-link_heap_location_alt     = link_bss_end_alt;
-link_heap_location_end_alt = platform_psram_end;
-
-/* Stack , used by startup*/
-link_stack_size     = platform_monolithic_firmware_stack_size;
-link_stack_location = platform_monolithic_firmware_stack_start;
-link_stack_end      = platform_monolithic_firmware_stack_end;
-
-link_secure_stack_size     = platform_monolithic_firmware_secure_stack_size;
-link_secure_stack_location = platform_monolithic_firmware_secure_stack_start;
-link_secure_stack_end      = platform_monolithic_firmware_secure_stack_end;
-
-INCLUDE linker_rtl872x_rom.ld

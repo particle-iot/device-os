@@ -1,17 +1,18 @@
 #include "platforms.h"
 #include <string.h>
+#include "user_hal.h"
 
 extern void** dynalib_location_user;
 
-static bool module_user_part_validated = false;
+static hal_user_module_descriptor user_descriptor = {};
 
 /**
  * Determines if the user module is present and valid.
  * @return
  */
-bool is_user_module_valid()
+bool run_user_module()
 {
-    return module_user_part_validated;
+    return system_mode() != SAFE_MODE;
 }
 
 /**
@@ -23,14 +24,9 @@ void system_part1_pre_init() {
 
     const bool bootloader_validated = HAL_Core_Validate_Modules(1, NULL);
 
-    // Validate user module
-    if (bootloader_validated) {
-        module_user_part_validated = HAL_Core_Validate_User_Module();
-    }
-
     bool safe_mode = HAL_Core_Enter_Safe_Mode_Requested();
 
-    if (!bootloader_validated || !is_user_module_valid() || safe_mode) {
+    if (!bootloader_validated || safe_mode || hal_user_module_get_descriptor(&user_descriptor)) {
         // indicate to the system that it shouldn't run user code
         set_system_mode(SAFE_MODE);
     }
@@ -45,20 +41,20 @@ void system_part1_init() {
 void system_part2_post_init() __attribute__((alias("system_part1_post_init")));
 
 void system_part1_post_init() {
-    if (is_user_module_valid()) {
-        module_user_init();
+    if (run_user_module()) {
+        user_descriptor.init();
     }
 }
 
 void setup() {
-    if (is_user_module_valid()) {
-        module_user_setup();
+    if (run_user_module()) {
+        user_descriptor.setup();
     }
 }
 
 void loop() {
-    if (is_user_module_valid()) {
-        module_user_loop();
+    if (run_user_module()) {
+        user_descriptor.loop();
     }
 }
 

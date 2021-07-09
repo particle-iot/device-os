@@ -1,20 +1,21 @@
+/* Memory spaces definitions */
 INCLUDE platform_ram.ld
-INCLUDE ../../shared/rtl872x/common.ld
+INCLUDE platform_flash.ld
 
 MEMORY
 {
-    INCLUDE backup_ram_memory.ld
+    INCLUDE memory_backup_ram.ld
 
-    /* FIXME: bootloader size should come from a common .ld */
-    APP_FLASH (rx)  : ORIGIN = 0x08006000, LENGTH = 1M
-
-    SRAM      (rwx) : ORIGIN = _system_part1_static_ram_start, LENGTH = _system_part1_static_ram_size
+    APP_FLASH   (rx)  : ORIGIN = platform_system_part1_flash_start,           LENGTH = platform_system_part1_flash_size
+    SRAM        (rwx) : ORIGIN = platform_system_part1_static_ram_start,      LENGTH = platform_system_part1_static_ram_size
+    SECURE_SRAM (rwx) : ORIGIN = platform_system_part1_secure_ram_code_start, LENGTH = platform_system_part1_secure_ram_code_size
+    PSRAM       (rwx) : ORIGIN = platform_system_part1_psram_code_start,      LENGTH = platform_system_part1_psram_code_size
 }
-
 
 /* Define the static locations of the part1 module so the dynamic invoke functions have the base address of each library table. */
 INCLUDE module_system_part1_export.ld
+
 /* Definitions for the static parts of the user module */
 INCLUDE module_user_export.ld
 
-INCLUDE ../../shared/rtl872x/part1.ld
+INCLUDE linker_system_part1_common.ld
