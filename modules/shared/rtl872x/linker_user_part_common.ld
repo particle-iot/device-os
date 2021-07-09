@@ -27,9 +27,9 @@ SECTIONS
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
-    .ram_text :
+    .psram_text :
     {
-        link_psram_code_flash_start = LOADADDR( .ram_text ); 
+        link_psram_code_flash_start = LOADADDR( .psram_text ); 
         . = ALIGN(4);
 
         link_psram_code_start = .;
@@ -182,3 +182,6 @@ SECTIONS
         *(.glue*)
     }
 }
+
+/* This can be used to calculate the OTA top boundary */
+link_user_part_flash_start = platform_user_part_flash_start;

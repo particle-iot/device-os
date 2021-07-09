@@ -72,26 +72,16 @@ platform_km0_bootloader_stack_end   = platform_km0_ram_end;
 platform_km0_bootloader_stack_start = platform_km0_bootloader_stack_end - platform_km0_bootloader_stack_size;
 
 
-/* Bootloader static RAM */
-platform_km0_bootloader_static_ram_size  = platform_km0_ram_size - platform_km0_bootloader_stack_size;
-platform_km0_bootloader_static_ram_start = platform_km0_ram_start;
-platform_km0_bootloader_static_ram_end   = platform_km0_bootloader_static_ram_start + platform_km0_bootloader_static_ram_size;
-
-/* Bootloader RAM code, overlapped with bootloader static RAM */
-platform_km0_bootloader_ram_code_size  = platform_km0_bootloader_static_ram_size;
-platform_km0_bootloader_ram_code_start = platform_km0_ram_start;
-platform_km0_bootloader_ram_code_end   = platform_km0_bootloader_ram_code_start + platform_km0_bootloader_ram_code_size;
+/* Bootloader RAM, contains static data and code */
+platform_km0_bootloader_ram_size  = platform_km0_ram_size - platform_km0_bootloader_stack_size;
+platform_km0_bootloader_ram_start = platform_km0_ram_start;
+platform_km0_bootloader_ram_end   = platform_km0_bootloader_ram_start + platform_km0_bootloader_ram_size;
 
 
-/* Monolithic firmware static RAM */
-platform_km0_monolithic_firmware_static_ram_size  = platform_km0_ram_size - platform_km0_monolithic_firmware_stack_size;
-platform_km0_monolithic_firmware_static_ram_start = platform_km0_ram_start;
-platform_km0_monolithic_firmware_static_ram_end   = platform_km0_monolithic_firmware_static_ram_start + platform_km0_monolithic_firmware_static_ram_size;
-
-/* Monolithic firmware RAM code, overlapped with monolithic firmware static RAM */
-platform_km0_monolithic_firmware_ram_code_size  = platform_km0_monolithic_firmware_static_ram_size;
-platform_km0_monolithic_firmware_ram_code_start = platform_km0_ram_start;
-platform_km0_monolithic_firmware_ram_code_end   = platform_km0_monolithic_firmware_ram_code_start + platform_km0_monolithic_firmware_ram_code_size;
+/* Monolithic firmware RAM, contains static data and code */
+platform_km0_monolithic_firmware_ram_size  = platform_km0_ram_size - platform_km0_monolithic_firmware_stack_size;
+platform_km0_monolithic_firmware_ram_start = platform_km0_ram_start;
+platform_km0_monolithic_firmware_ram_end   = platform_km0_monolithic_firmware_ram_start + platform_km0_monolithic_firmware_ram_size;
 
 
 /* The heap size after linkage should meet the minimum heap requirement. */

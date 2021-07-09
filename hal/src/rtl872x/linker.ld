@@ -8,8 +8,8 @@ MEMORY
 
     APP_FLASH   (rx)  : ORIGIN = platform_monolithic_firmware_flash_start,           LENGTH = platform_monolithic_firmware_flash_size
     SRAM        (rwx) : ORIGIN = platform_monolithic_firmware_static_ram_start,      LENGTH = platform_monolithic_firmware_static_ram_size
-    SECURE_SRAM (rwx) : ORIGIN = platform_monolithic_firmware_secure_ram_code_start, LENGTH = platform_monolithic_firmware_secure_ram_code_size
-    PSRAM       (rwx) : ORIGIN = platform_psram_start,                               LENGTH = platform_psram_size
+    SECURE_SRAM (rwx) : ORIGIN = platform_monolithic_firmware_secure_ram_start,      LENGTH = platform_monolithic_firmware_secure_ram_size
+    PSRAM       (rwx) : ORIGIN = platform_monolithic_firmware_psram_start,           LENGTH = platform_monolithic_firmware_psram_size
 }
 
 SECTIONS
@@ -37,9 +37,9 @@ SECTIONS
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
-    .ram_text :
+    .psram_text :
     {
-        link_psram_code_flash_start = LOADADDR( .ram_text ); 
+        link_psram_code_flash_start = LOADADDR( .psram_text ); 
         . = ALIGN(4);
         
         link_psram_code_start = .;

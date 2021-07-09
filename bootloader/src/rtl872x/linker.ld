@@ -6,9 +6,9 @@ MEMORY
 {
     INCLUDE memory_backup_ram.ld
   
-    SRAM      (xrw) : ORIGIN = platform_bootloader_static_ram_start, LENGTH = platform_bootloader_static_ram_size
-    BOOT_SRAM (xrw) : ORIGIN = platform_secure_ram_start,            LENGTH = platform_secure_ram_size - platform_bootloader_stack_size
-    APP_FLASH (rx)  : ORIGIN = platform_bootloader_flash_start,      LENGTH = platform_bootloader_flash_size
+    SRAM       (xrw) : ORIGIN = platform_bootloader_ram_start,        LENGTH = platform_bootloader_ram_size
+    SECURE_RAM (xrw) : ORIGIN = platform_secure_ram_start,            LENGTH = platform_secure_ram_size - platform_bootloader_stack_size
+    APP_FLASH  (rx)  : ORIGIN = platform_bootloader_flash_start,      LENGTH = platform_bootloader_flash_size
 }
 
 SECTIONS
@@ -108,26 +108,26 @@ SECTIONS
     .ram_copy_start :
     {
         link_rtl_ram_copy_start = .;
-    } > BOOT_SRAM
+    } > SECURE_RAM
 
     .rtl_start_table : /* Realtek specific */
     {
         KEEP (*(.rtl_header_ram_start_table))
         KEEP (*(.rtl_header_ram_valid_pattern))
         KEEP (*(.rtl_header_ram_boot_export_table))
-    } > BOOT_SRAM AT> APP_FLASH
+    } > SECURE_RAM AT> APP_FLASH
 
     .secure_ram_text : /* Realtek specific */
     {
         . = ALIGN(4);
         /* Reserved */
         . = ALIGN(4);
-    } > BOOT_SRAM AT> APP_FLASH
+    } > SECURE_RAM AT> APP_FLASH
 
     .ram_copy_end :
     {
         link_rtl_ram_copy_end = .;
-    } > BOOT_SRAM
+    } > SECURE_RAM
 
     PROVIDE (link_rtl_ram_copy_size = link_rtl_ram_copy_end - link_rtl_ram_copy_start);
     /*

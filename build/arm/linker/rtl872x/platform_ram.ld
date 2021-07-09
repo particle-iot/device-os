@@ -8,7 +8,7 @@ Bootloader:                                Modular firmware:                    
 +-----------------------------+ 0x1007F000 +-------------------------------+            +------------------------------------+
 |                             |            |                               |            |                                    |
 | Bootloader secure RAM code  |            | User part secure RAM code     |            | Monolithic firmware                |
-|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            | secure RAM code                    |
+|                             | 0x1007E000 +-------------------------------+ 0x1007E000 | secure RAM code                    |
 +-----------------------------+            |                               |            |                                    |
 | Bootloader start table      |            | System part 1 secure RAM code |            |                                    |
 +-----------------------------+ 0x1007D000 +-------------------------------+ 0x1007D000 +------------------------------------+
@@ -123,19 +123,19 @@ platform_bootloader_stack_start = platform_bootloader_stack_end - platform_bootl
  * platform_user_part_static_ram_size is preallocated to be large enough during the user part first link stage. 
  * platform_user_part_static_ram_size is decreased to that just fits the user part's .data and .bss sections during the user part final link stage.
  * platform_user_part_static_ram_start is passed to system part 1 at startup for calculating the actual END of the heap for modular firmware. */
-platform_user_part_static_ram_size  = DEFINED(platform_user_part_static_ram_size) ? platform_user_part_static_ram_size : 96K;
+platform_user_part_static_ram_size  = DEFINED(platform_user_part_static_ram_size) ? platform_user_part_static_ram_size : 128K;
 platform_user_part_static_ram_end   = platform_modular_firmware_stack_start;
 platform_user_part_static_ram_start = platform_user_part_static_ram_end - platform_user_part_static_ram_size;
 
-/* User part PSRAM code */
-platform_user_part_psram_code_size  = DEFINED(platform_user_part_psram_code_size) ? platform_user_part_psram_code_size : 1M;
-platform_user_part_psram_code_end   = platform_psram_end;
-platform_user_part_psram_code_start = platform_user_part_psram_code_end - platform_user_part_psram_code_size;
+/* User part PSRAM */
+platform_user_part_psram_size  = DEFINED(platform_user_part_psram_size) ? platform_user_part_psram_size : 2M;
+platform_user_part_psram_end   = platform_psram_end;
+platform_user_part_psram_start = platform_user_part_psram_end - platform_user_part_psram_size;
 
-/* Useer part secure RAM code */
-platform_user_part_secure_ram_code_size  = 4K;
-platform_user_part_secure_ram_code_end   = platform_modular_firmware_secure_stack_start;
-platform_user_part_secure_ram_code_start = platform_user_part_secure_ram_code_end - platform_user_part_secure_ram_code_size;
+/* User part secure RAM code */
+platform_user_part_secure_ram_size  = 4K;
+platform_user_part_secure_ram_end   = platform_modular_firmware_secure_stack_start;
+platform_user_part_secure_ram_start = platform_user_part_secure_ram_end - platform_user_part_secure_ram_size;
 
 
 /* System part 1 static RAM
@@ -146,14 +146,14 @@ platform_system_part1_static_ram_start = platform_ram_start;
 platform_system_part1_static_ram_end   = platform_system_part1_static_ram_start + platform_system_part1_static_ram_size;
 
 /* System part 1 PSRAM code */
-platform_system_part1_psram_code_size  = platform_psram_size - platform_user_part_psram_code_size;
-platform_system_part1_psram_code_start = platform_psram_start;
-platform_system_part1_psram_code_end   = platform_system_part1_psram_code_start + platform_system_part1_psram_code_size;
+platform_system_part1_psram_size  = platform_psram_size - platform_user_part_psram_size;
+platform_system_part1_psram_start = platform_psram_start;
+platform_system_part1_psram_end   = platform_system_part1_psram_start + platform_system_part1_psram_size;
 
 /* System part 1 secure RAM code */
-platform_system_part1_secure_ram_code_size  = platform_secure_ram_size - platform_modular_firmware_secure_stack_size - platform_user_part_secure_ram_code_size;
-platform_system_part1_secure_ram_code_start = platform_secure_ram_start;
-platform_system_part1_secure_ram_code_end   = platform_system_part1_secure_ram_code_start + platform_system_part1_secure_ram_code_size;
+platform_system_part1_secure_ram_size  = platform_secure_ram_size - platform_modular_firmware_secure_stack_size - platform_user_part_secure_ram_size;
+platform_system_part1_secure_ram_start = platform_secure_ram_start;
+platform_system_part1_secure_ram_end   = platform_system_part1_secure_ram_start + platform_system_part1_secure_ram_size;
 
 
 /* Monolithic firmware static RAM
@@ -165,33 +165,28 @@ platform_monolithic_firmware_static_ram_start = platform_ram_start;
 platform_monolithic_firmware_static_ram_end   = platform_monolithic_firmware_static_ram_start + platform_monolithic_firmware_static_ram_size;
 
 /* Monolithic firmware PSRAM code */
-platform_monolithic_firmware_psram_code_size  = platform_psram_size;
-platform_monolithic_firmware_psram_code_start = platform_psram_start;
-platform_monolithic_firmware_psram_code_end   = platform_monolithic_firmware_psram_code_start + platform_monolithic_firmware_psram_code_size;
+platform_monolithic_firmware_psram_size  = platform_psram_size;
+platform_monolithic_firmware_psram_start = platform_psram_start;
+platform_monolithic_firmware_psram_end   = platform_monolithic_firmware_psram_start + platform_monolithic_firmware_psram_size;
 
 /* Monolithic firmware secure RAM code */
-platform_monolithic_firmware_secure_ram_code_size  = platform_secure_ram_size - platform_monolithic_firmware_secure_stack_size;
-platform_monolithic_firmware_secure_ram_code_start = platform_secure_ram_start;
-platform_monolithic_firmware_secure_ram_code_end   = platform_monolithic_firmware_secure_ram_code_start + platform_monolithic_firmware_secure_ram_code_size;
+platform_monolithic_firmware_secure_ram_size  = platform_secure_ram_size - platform_monolithic_firmware_secure_stack_size;
+platform_monolithic_firmware_secure_ram_start = platform_secure_ram_start;
+platform_monolithic_firmware_secure_ram_end   = platform_monolithic_firmware_secure_ram_start + platform_monolithic_firmware_secure_ram_size;
 
 
-/* Bootloader static RAM
- * platform_bootloader_static_ram_size is preallocated large enough to fit the bootloader's .data and .bss sections.
- * platform_bootloader_static_ram_end is the END of heap for bootloader.
+/* Bootloader RAM, contains static data and code
+ * platform_bootloader_ram_size is preallocated large enough to fit the bootloader's .data and .bss sections.
+ * platform_bootloader_ram_end is the END of heap for bootloader.
  * The actual end of the bootloader static ram is calculated after linkage, and it is the actual START of the heap for bootloader. */
-platform_bootloader_static_ram_size  = platform_ram_size - platform_backup_ram_all_size;
-platform_bootloader_static_ram_start = platform_ram_start;
-platform_bootloader_static_ram_end   = platform_bootloader_static_ram_start + platform_bootloader_static_ram_size;
-
-/* Bootloader RAM code, overlapped with bootloader static RAM */
-platform_bootloader_ram_code_size  = platform_bootloader_static_ram_size;
-platform_bootloader_ram_code_start = platform_bootloader_static_ram_start;
-platform_bootloader_ram_code_end   = platform_bootloader_ram_code_start + platform_bootloader_ram_code_size;
+platform_bootloader_ram_size  = platform_ram_size - platform_backup_ram_all_size;
+platform_bootloader_ram_start = platform_ram_start;
+platform_bootloader_ram_end   = platform_bootloader_ram_start + platform_bootloader_ram_size;
 
 /* Bootloader secure RAM code */
-platform_bootloader_secure_ram_code_size  = platform_secure_ram_size - platform_bootloader_stack_size;
-platform_bootloader_secure_ram_code_start = platform_secure_ram_start;
-platform_bootloader_secure_ram_code_end   = platform_bootloader_ram_code_start + platform_bootloader_ram_code_size;
+platform_bootloader_secure_ram_size  = platform_secure_ram_size - platform_bootloader_stack_size;
+platform_bootloader_secure_ram_start = platform_secure_ram_start;
+platform_bootloader_secure_ram_end   = platform_bootloader_secure_ram_start + platform_bootloader_secure_ram_size;
 
 
 /* The heap size after linkage should meet the minimum heap requirement. */

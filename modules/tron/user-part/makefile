@@ -26,7 +26,7 @@ include $(PROJECT_ROOT)/build/arm-tlm.mk
 
 $(call check_modular)
 
-MODULE_USER_MEMORY_FILE_GEN = $(TARGET_BASE_DIR)platform_user_ram.ld
+MODULE_USER_MEMORY_FILE_GEN = $(TARGET_BASE_DIR)memory_platform_user.ld
 export MODULE_USER_MEMORY_FILE_GEN
 
 elf_fi: $(TARGET_BASE)_fi.elf
@@ -40,7 +40,7 @@ prebuild: $(SHARED_MODULAR)/build_linker_script.mk
 
 
 postbuild:
-	$(VERBOSE)$(RM) $(MODULE_USER_MEMORY_FILE_GEN)
+#	$(VERBOSE)$(RM) $(MODULE_USER_MEMORY_FILE_GEN)
 
 
 $(TARGET_BASE)_fi.elf: $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS) $(TARGET_BASE).elf $(SHARED_MODULAR)/build_linker_script.mk

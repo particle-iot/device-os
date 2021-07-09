@@ -33,9 +33,9 @@ SECTIONS
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
-    .ram_text :
+    .psram_text :
     {
-        link_psram_code_flash_start = LOADADDR( .ram_text ); 
+        link_psram_code_flash_start = LOADADDR( .psram_text ); 
         . = ALIGN(4);
 
         link_psram_code_start = .;

@@ -6,7 +6,7 @@ MEMORY
 {
     INCLUDE memory_backup_ram.ld
   
-    SRAM      (xrw) : ORIGIN = platform_km0_bootloader_static_ram_start, LENGTH = platform_km0_bootloader_static_ram_size
+    SRAM      (xrw) : ORIGIN = platform_km0_bootloader_ram_start, LENGTH = platform_km0_bootloader_ram_size
     APP_FLASH (rx)  : ORIGIN = platform_km0_bootloader_flash_start,      LENGTH = platform_km0_bootloader_flash_size
 }
 
