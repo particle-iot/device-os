@@ -79,7 +79,9 @@
 #define BLE_MAX_ADV_DATA_LEN                        BLE_GAP_ADV_SET_DATA_SIZE_MAX
 
 /* Maximum length of the buffer to store scan report data */
-#define BLE_MAX_SCAN_REPORT_BUF_LEN                 BLE_GAP_SCAN_BUFFER_EXTENDED_MAX_SUPPORTED  /* Must support extended length for CODED_PHY scanning */
+#define BLE_MAX_ADV_DATA_LEN_EXT                    BLE_GAP_SCAN_BUFFER_EXTENDED_MAX_SUPPORTED  /* Must support extended length for CODED_PHY scanning */
+
+#define BLE_MAX_ADV_DATA_LEN_EXT_CONNECTABLE        BLE_GAP_ADV_SET_DATA_SIZE_EXTENDED_CONNECTABLE_MAX_SUPPORTED
 
 /* Connection Parameters limits */
 #define BLE_CONN_PARAMS_SLAVE_LATENCY_ERR           5

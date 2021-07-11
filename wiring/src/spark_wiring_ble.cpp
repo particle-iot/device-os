@@ -564,8 +564,7 @@ constexpr uint8_t BleUuid::UUID16_HI;
  * BleAdvertisingData class
  */
 BleAdvertisingData::BleAdvertisingData()
-        : selfData_(),
-          selfLen_(0) {
+        : selfData_() {
     uint8_t flag = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
     append(BleAdvertisingDataType::FLAGS, &flag, sizeof(uint8_t));
 }
@@ -577,81 +576,81 @@ BleAdvertisingData::BleAdvertisingData(const iBeacon& beacon)
 
 size_t BleAdvertisingData::set(const uint8_t* buf, size_t len) {
     if (buf == nullptr || len == 0) {
-        selfLen_ = 0;
-        return selfLen_;
+        selfData_.clear();
+        return selfData_.size();
     }
-    len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN);
-    memcpy(selfData_, buf, len);
-    selfLen_ = len;
-    return selfLen_;
+    selfData_.clear();
+    len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN_EXT);
+    selfData_.append(buf, len);
+    return selfData_.size();
 }
 
 size_t BleAdvertisingData::set(const iBeacon& beacon) {
     clear();
 
     if (beacon.UUID().type() == BleUuidType::SHORT) {
-        return selfLen_;
+        return selfData_.size();
     }
 
-    selfData_[selfLen_++] = 0x02;
-    selfData_[selfLen_++] = BLE_SIG_AD_TYPE_FLAGS;
-    selfData_[selfLen_++] = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-    selfData_[selfLen_++] = 0x1a; // length
-    selfData_[selfLen_++] = BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA;
+    CHECK_TRUE(selfData_.reserve(BLE_MAX_ADV_DATA_LEN), 0);
+    selfData_.append(0x02);
+    selfData_.append(BLE_SIG_AD_TYPE_FLAGS);
+    selfData_.append(BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
+    selfData_.append(0x1a); // length
+    selfData_.append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA);
     // Company ID
     uint16_t companyId = iBeacon::APPLE_COMPANY_ID;
-    memcpy(&selfData_[selfLen_], (uint8_t*)&companyId, sizeof(uint16_t));
-    selfLen_ += sizeof(uint16_t);
+    selfData_.append((const uint8_t *)&companyId, 2);
     // Beacon type: iBeacon
-    selfData_[selfLen_++] = iBeacon::BEACON_TYPE_IBEACON;
+    selfData_.append(iBeacon::BEACON_TYPE_IBEACON);
     // Length of the following payload
-    selfData_[selfLen_++] = 0x15;
+    selfData_.append(0x15);
     // 128-bits Beacon UUID, MSB
     for (size_t i = 0, j = BLE_SIG_UUID_128BIT_LEN - 1; i < BLE_SIG_UUID_128BIT_LEN; i++, j--) {
-        selfData_[selfLen_ + i] = beacon.UUID().rawBytes()[j];
+        selfData_.append(beacon.UUID().rawBytes()[j]);
     }
-    selfLen_ += BLE_SIG_UUID_128BIT_LEN;
     // Major, MSB
-    selfData_[selfLen_++] = (uint8_t)((beacon.major() >> 8) & 0x00FF);
-    selfData_[selfLen_++] = (uint8_t)(beacon.major() & 0x00FF);
+    selfData_.append((uint8_t)((beacon.major() >> 8) & 0x00FF));
+    selfData_.append((uint8_t)(beacon.major() & 0x00FF));
     // Minor, MSB
-    selfData_[selfLen_++] = (uint8_t)((beacon.minor() >> 8) & 0x00FF);
-    selfData_[selfLen_++] = (uint8_t)(beacon.minor() & 0x00FF);
+    selfData_.append((uint8_t)((beacon.minor() >> 8) & 0x00FF));
+    selfData_.append((uint8_t)(beacon.minor() & 0x00FF));
     // Measure power
-    selfData_[selfLen_++] = beacon.measurePower();
+    selfData_.append(beacon.measurePower());
+    selfData_.trimToSize();
 
-    return selfLen_;
+    return selfData_.size();
 }
 
 size_t BleAdvertisingData::append(BleAdvertisingDataType type, const uint8_t* buf, size_t len, bool force) {
     if (buf == nullptr) {
-        return selfLen_;
+        return selfData_.size();
     }
     size_t offset;
-    size_t adsLen = locate(selfData_, selfLen_, type, &offset);
+    size_t adsLen = locate(selfData_.data(), selfData_.size(), type, &offset);
     if (!force && adsLen > 0) {
         // Update the existing AD structure.
-        size_t staLen = selfLen_ - adsLen;
-        if ((staLen + len + 2) <= BLE_MAX_ADV_DATA_LEN) {
-            // Firstly, move the last consistent block.
-            uint16_t moveLen = selfLen_ - offset - adsLen;
-            memmove(&selfData_[offset + len + 2], &selfData_[offset + adsLen], moveLen);
+        if ((selfData_.size() - adsLen + len + 2) <= BLE_MAX_ADV_DATA_LEN_EXT) {
+            // Firstly, remove the existing AD structure.
+            selfData_.removeAt(offset, adsLen);
             // Secondly, Update the AD structure.
+            // Reserve the RAM in the vector, and return if it fails
+            CHECK_TRUE(selfData_.reserve(selfData_.size() + len + 2), selfData_.size());
             // The Length field is the total length of Type field and Data field.
-            selfData_[offset] = len + 1;
-            memcpy(&selfData_[offset + 2], buf, len);
+            selfData_.insert(offset, len + 1);
             // An AD structure is composed of one byte length field, one byte Type field and Data field.
-            selfLen_ = staLen + len + 2;
+            selfData_.insert(offset + 1, static_cast<uint8_t>(type));
+            selfData_.insert(offset + 2, buf, len);
         }
     }
-    else if ((selfLen_ + len + 2) <= BLE_MAX_ADV_DATA_LEN) {
+    else if ((selfData_.size() + len + 2) <= BLE_MAX_ADV_DATA_LEN_EXT) {
         // Append the AD structure at the and of advertising data.
-        selfData_[selfLen_++] = len + 1;
-        selfData_[selfLen_++] = static_cast<uint8_t>(type);
-        memcpy(&selfData_[selfLen_], buf, len);
-        selfLen_ += len;
+        CHECK_TRUE(selfData_.reserve(selfData_.size() + len + 2), selfData_.size());
+        selfData_.append(len + 1);
+        selfData_.append(static_cast<uint8_t>(type));
+        selfData_.append(buf, len);
     }
-    return selfLen_;
+    return selfData_.size();
 }
 
 size_t BleAdvertisingData::appendLocalName(const char* name) {
@@ -671,22 +670,19 @@ size_t BleAdvertisingData::appendAppearance(ble_sig_appearance_t appearance) {
 }
 
 size_t BleAdvertisingData::resize(size_t size) {
-    selfLen_ = std::min(size, (size_t)BLE_MAX_ADV_DATA_LEN);
-    return selfLen_;
+    selfData_.resize(std::min(size, (size_t)BLE_MAX_ADV_DATA_LEN_EXT));
+    return selfData_.size();
 }
 
 void BleAdvertisingData::clear() {
-    selfLen_ = 0;
-    memset(selfData_, 0x00, sizeof(selfData_));
+    selfData_.clear();
 }
 
 void BleAdvertisingData::remove(BleAdvertisingDataType type) {
     size_t offset, len;
-    len = locate(selfData_, selfLen_, type, &offset);
+    len = locate(selfData_.data(), selfData_.size(), type, &offset);
     if (len > 0) {
-        size_t moveLen = selfLen_ - offset - len;
-        memcpy(&selfData_[offset], &selfData_[offset + len], moveLen);
-        selfLen_ -= len;
+        selfData_.removeAt(offset, len);
         // Recursively remove duplicated type.
         remove(type);
     }
@@ -694,16 +690,16 @@ void BleAdvertisingData::remove(BleAdvertisingDataType type) {
 
 size_t BleAdvertisingData::get(uint8_t* buf, size_t len) const {
     if (buf != nullptr) {
-        len = std::min(len, selfLen_);
-        memcpy(buf, selfData_, len);
+        len = std::min(len, (size_t)selfData_.size());
+        memcpy(buf, selfData_.data(), len);
         return len;
     }
-    return selfLen_;
+    return selfData_.size();
 }
 
 size_t BleAdvertisingData::get(BleAdvertisingDataType type, uint8_t* buf, size_t len) const {
     size_t offset;
-    size_t adsLen = locate(selfData_, selfLen_, type, &offset);
+    size_t adsLen = locate(selfData_.data(), selfData_.size(), type, &offset);
     if (adsLen > 0) {
         if ((adsLen - 2) > 0) {
             adsLen -= 2;
@@ -718,11 +714,11 @@ size_t BleAdvertisingData::get(BleAdvertisingDataType type, uint8_t* buf, size_t
 }
 
 uint8_t* BleAdvertisingData::data() {
-    return selfData_;
+    return selfData_.data();
 }
 
 size_t BleAdvertisingData::length() const {
-    return selfLen_;
+    return selfData_.size();
 }
 
 size_t BleAdvertisingData::deviceName(char* buf, size_t len) const {
@@ -774,7 +770,7 @@ size_t BleAdvertisingData::customData(uint8_t* buf, size_t len) const {
 }
 
 uint8_t BleAdvertisingData::operator[](uint8_t i) const {
-    if (i >= selfLen_) {
+    if (i >= selfData_.size()) {
         return 0;
     }
     return selfData_[i];
@@ -792,14 +788,14 @@ ble_sig_appearance_t BleAdvertisingData::appearance() const {
 
 bool BleAdvertisingData::contains(BleAdvertisingDataType type) const {
     size_t adsOffset;
-    return locate(selfData_, selfLen_, type, &adsOffset) > 0;
+    return locate(selfData_.data(), selfData_.size(), type, &adsOffset) > 0;
 }
 
 Vector<BleUuid> BleAdvertisingData::serviceUUID(BleAdvertisingDataType type) const {
     Vector<BleUuid> uuids;
     size_t offset, adsLen = 0;
-    for (size_t i = 0; i < selfLen_; i += (offset + adsLen)) {
-        adsLen = locate(&selfData_[i], selfLen_ - i, type, &offset);
+    for (int i = 0; i < selfData_.size(); i += (offset + adsLen)) {
+        adsLen = locate(&selfData_[i], selfData_.size() - i, type, &offset);
         if (adsLen > 0) {
             if (type == BleAdvertisingDataType::SERVICE_UUID_16BIT_MORE_AVAILABLE || type == BleAdvertisingDataType::SERVICE_UUID_16BIT_COMPLETE) {
                 for(size_t array = 0; (array < (adsLen - 2) / BLE_SIG_UUID_16BIT_LEN); array++) {
@@ -2177,8 +2173,12 @@ ssize_t BleLocalDevice::getAdvertisingData(BleAdvertisingData* advertisingData) 
     if (advertisingData == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    hal_ble_adv_params_t advParams = {};
+    advParams.size = sizeof(hal_ble_adv_params_t);
+    hal_ble_gap_get_advertising_parameters(&advParams, nullptr);
     advertisingData->clear();
-    size_t len = CHECK(hal_ble_gap_get_advertising_data(advertisingData->data(), BLE_MAX_ADV_DATA_LEN, nullptr));
+    CHECK_TRUE(advertisingData->resize((advParams.primary_phy == BLE_PHYS_CODED) ? BLE_MAX_ADV_DATA_LEN_EXT : BLE_MAX_ADV_DATA_LEN), SYSTEM_ERROR_NO_MEMORY);
+    size_t len = CHECK(hal_ble_gap_get_advertising_data(advertisingData->data(), advertisingData->length(), nullptr));
     advertisingData->resize(len);
     return len;
 }
@@ -2192,7 +2192,8 @@ ssize_t BleLocalDevice::getScanResponseData(BleAdvertisingData* scanResponse) co
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     scanResponse->clear();
-    size_t len = CHECK(hal_ble_gap_get_scan_response_data(scanResponse->data(), BLE_MAX_ADV_DATA_LEN, nullptr));
+    CHECK_TRUE(scanResponse->resize(BLE_MAX_ADV_DATA_LEN), SYSTEM_ERROR_NO_MEMORY);
+    size_t len = CHECK(hal_ble_gap_get_scan_response_data(scanResponse->data(), scanResponse->length(), nullptr));
     scanResponse->resize(len);
     return len;
 }
@@ -2227,6 +2228,7 @@ int BleLocalDevice::advertise(const iBeacon& beacon) const {
         }
     });
     CHECK_TRUE(advData, SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(advData->length() > 0, SYSTEM_ERROR_NO_MEMORY);
     CHECK(hal_ble_gap_set_advertising_data(advData->data(), advData->length(), nullptr));
     CHECK(setAdvertisingType(BleAdvertisingEventType::SCANABLE_UNDIRECTED));
     return advertise();
@@ -2436,8 +2438,8 @@ private:
         size_t filterCustomDatalen;
         const uint8_t* filterCustomData = filter_.customData(&filterCustomDatalen);
         if (filterCustomData != nullptr && filterCustomDatalen > 0) {
-            size_t srLen = result.scanResponse().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, sizeof(size_t));
-            size_t advLen = result.advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, sizeof(size_t));
+            size_t srLen = result.scanResponse().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, BLE_MAX_ADV_DATA_LEN);
+            size_t advLen = result.advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, nullptr, BLE_MAX_ADV_DATA_LEN_EXT);
             if (srLen != filterCustomDatalen && advLen != filterCustomDatalen) {
                 LOG_DEBUG(TRACE, "Custom data mismatched.");
                 return false;
