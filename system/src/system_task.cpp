@@ -729,6 +729,9 @@ void* system_internal(int item, void* reserved)
         return mutex_usb_serial();
     }
 #endif
+    case 3: {
+        return reinterpret_cast<void*>(system_cloud_get_socket_handle());
+    }
     default:
         return nullptr;
     }

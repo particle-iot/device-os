@@ -348,4 +348,9 @@ int system_cloud_is_connected(void* reserved)
     return s_state.socket >= 0 ? 0 : -1;
 }
 
+sock_handle_t system_cloud_get_socket_handle()
+{
+    return s_state.socket;
+}
+
 #endif /* HAL_USE_SOCKET_HAL_POSIX */
