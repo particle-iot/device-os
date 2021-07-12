@@ -101,12 +101,23 @@ test(CLOUD_05_loss_of_cellular_network_connectivity_does_not_cause_full_handshak
     (void)Particle.publish("test", "test");
     assertEqual((int)RESP_OK, Cellular.command("AT+CFUN=1,0\r\n"));
 #else
+    CellularDevice devInfo = {};
+    devInfo.size = sizeof(devInfo);
+    assertEqual(0, cellular_device_info(&devInfo, nullptr));
     // Electrons don't take too well to being switched to minimum functionality mode
-    // and perform a reset. Deactivating internal context seems to work better.
-    assertEqual((int)RESP_OK, Cellular.command("AT+UPSDA=0,4\r\n"));
-    // Force a publish just in case
-    (void)Particle.publish("test", "test");
-    assertEqual((int)RESP_OK, Cellular.command("AT+UPSDA=0,3\r\n"));
+    // and perform a reset. Deactivating internal context or disconnecting (COPS=2) seems
+    // to work better.
+    if (devInfo.dev == DEV_SARA_R410) {
+        assertEqual((int)RESP_OK, Cellular.command("AT+COPS=2,0\r\n"));
+        // Force a publish just in case
+        (void)Particle.publish("test", "test");
+        assertEqual((int)RESP_OK, Cellular.command("AT+COPS=0,0\r\n"));
+    } else {
+        assertEqual((int)RESP_OK, Cellular.command("AT+UPSDA=0,4\r\n"));
+        // Force a publish just in case
+        (void)Particle.publish("test", "test");
+        assertEqual((int)RESP_OK, Cellular.command("AT+UPSDA=0,3\r\n"));
+    }
 #endif // HAL_PLATFORM_NCP_AT
     assertTrue(waitFor(handshakeState, 120000));
     assertEqual((int)handshakeState.handshakeType, (int)cloud_status_session_resume);
