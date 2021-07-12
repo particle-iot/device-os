@@ -6,9 +6,9 @@
 
 // Bootloader
 const module_bounds_t module_bootloader = {
-        .maximum_size = 0x0000c000, // bootloader_flash_length
-        .start_address = 0x000f4000, // bootloader_flash_origin
-        .end_address = 0x00100000,
+        .maximum_size = 0x00010000, // bootloader_flash_length
+        .start_address = 0x08004000, // bootloader_flash_origin
+        .end_address = 0x08001400,
         .module_function = MODULE_FUNCTION_BOOTLOADER,
         .module_index = 0,
         .store = MODULE_STORE_MAIN
@@ -37,9 +37,9 @@ const module_bounds_t module_ota = {
 
 // Modular firmware
 const module_bounds_t module_system_part1 = {
-        .maximum_size = 0x000A4000, // 1M - APP_CODE_BASE - bootloader_flash_length - user_flash_length
-        .start_address = 0x00030000, // APP_CODE_BASE
-        .end_address = 0x000B4000,
+        .maximum_size = 0x200000, // 2M
+        .start_address = 0x08060000,
+        .end_address = 0x08260000,
         .module_function = MODULE_FUNCTION_SYSTEM_PART,
         .module_index = 1,
         .store = MODULE_STORE_MAIN
