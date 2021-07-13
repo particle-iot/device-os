@@ -39,6 +39,7 @@ SECTIONS
         
         /* Code */
         link_code_start = .;
+        *(.xip.text) /* Reset_Handler */
         *(.flashtext) /* Realtek specific */
         *(.text)
         *(.text.*)
@@ -210,6 +211,11 @@ SECTIONS
         *(.glue*)
     }
 }
+
+/* To make the startup file happy */
+PROVIDE (link_psram_code_flash_start = 0);
+PROVIDE (link_psram_code_start = link_psram_code_flash_start);
+PROVIDE (link_psram_code_end = link_psram_code_start);
 
 /* Heap location */
 link_heap_location     = link_bss_end;

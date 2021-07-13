@@ -73,7 +73,7 @@ __HeapLimit:
     .thumb
     .thumb_func
     .align 1
-    .section .text,"a",%progbits
+    .section .xip.text,"a",%progbits
     .globl Reset_Handler
     .type Reset_Handler, %function
 Reset_Handler:
@@ -133,6 +133,34 @@ Reset_Handler:
 
 .L_loop3_done:
 #endif /* __STARTUP_CLEAR_BSS */
+
+/* Load PSRAM code */
+    ldr r1, =link_psram_code_flash_start
+    ldr r2, =link_psram_code_start
+    ldr r3, =link_psram_code_end
+
+    subs r3, r2
+    ble .L_loop4_done
+
+.L_loop4:
+    subs r3, #4
+    ldr r0, [r1,r3]
+    str r0, [r2,r3]
+    bgt .L_loop4
+
+.L_loop4_done:
+    ldr r0, =Jump_To_Psram
+    blx r0
+
+/* Jump to psram */
+    .text
+    .thumb
+    .thumb_func
+    .align 1
+    .section .text,"a",%progbits
+    .globl Jump_To_Psram
+    .type Jump_To_Psram, %function
+Jump_To_Psram:
 
 /* Execute SystemInit function. */
     bl SystemInit

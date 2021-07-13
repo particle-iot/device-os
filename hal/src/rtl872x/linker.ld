@@ -91,11 +91,10 @@ SECTIONS
         KEEP (*(SORT(.dtors.*)))
         KEEP (*crtend.o(.dtors))
         link_destructors_end = .;
-        link_psram_code_end = .;
-        
+
         . = ALIGN(4);
-    /* } > PSRAM AT> APP_FLASH */ /* FIXME: uncomment this to put them into PSRAM*/
-    } > APP_FLASH
+        link_psram_code_end = .;
+    } > PSRAM AT> APP_FLASH
 
     .data_alt :
     {

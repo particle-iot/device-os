@@ -31,6 +31,7 @@
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
 
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 static void hw_rtl_init_psram(void)
 {
     u32 temp;
@@ -60,7 +61,7 @@ static void hw_rtl_init_psram(void)
         PSRAM_PHY_REG_Write(REG_PSRAM_CAL_CTRL, temp);
     // }
 }
-
+#endif
 
 static void DWT_Init(void)
 {
@@ -140,7 +141,9 @@ __attribute__((section(".boot.ram.text"), noinline)) void Set_System(void)
 
     SYSTIMER_Init();
 
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     hw_rtl_init_psram();
+#endif
 }
 
 void Reset_System(void) {
