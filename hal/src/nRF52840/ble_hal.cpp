@@ -344,6 +344,7 @@ public:
     Observer()
             : observerInitialized_(false),
               isScanning_(false),
+              scanParams_{},
               scanSemaphore_(nullptr),
               scanResultCallback_(nullptr),
               context_(nullptr),
@@ -355,6 +356,7 @@ public:
         scanParams_.interval = BLE_DEFAULT_SCANNING_INTERVAL;
         scanParams_.window = BLE_DEFAULT_SCANNING_WINDOW;
         scanParams_.timeout = BLE_DEFAULT_SCANNING_TIMEOUT;
+        scanParams_.scan_phys = BLE_PHYS_AUTO;
         bleScanData_.p_data = scanReportBuff_;
         bleScanData_.len = sizeof(scanReportBuff_);
     }
