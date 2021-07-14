@@ -592,7 +592,6 @@ int HAL_FLASH_End(void* reserved)
                 result = flash_bootloader(module, moduleSize);
                 break;
             }
-            // Fall-through after we've patched the destination.
             // We are going to put the bootloader module temporary into internal flash
             // in place of the application (saving application into a different location on external flash).
             // MODULE_VERIFY_DESTINATION_IS_START_ADDRESS check will normally fail for bootloaders that
@@ -601,6 +600,7 @@ int HAL_FLASH_End(void* reserved)
             info.module_start_address = (const void*)module_user_compat.start_address;
             info.module_end_address = (const void*)endAddress;
         }
+        // Fall through after we've patched the destination.
         default: { // User part, system part or a radio stack module or bootloader if MBR updates are supported
             uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
             if (info.flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
@@ -794,7 +794,7 @@ void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
 int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned data_length)
 {
     unsigned offset = 0;
-    unsigned length = -1;
+    int length = -1;
     bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 
     switch (config_item)
@@ -831,7 +831,7 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
     case SYSTEM_CONFIG_SOFTAP_PREFIX:
         offset = DCT_SSID_PREFIX_OFFSET;
         length = DCT_SSID_PREFIX_SIZE-1;
-        if (data_length>length)
+        if (data_length>(unsigned)length)
             data_length = length;
         dct_write_app_data(&data_length, offset++, 1);
         break;
@@ -846,7 +846,7 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
     }
 
     if (length>=0)
-        dct_write_app_data(data, offset, length>data_length ? data_length : length);
+        dct_write_app_data(data, offset, std::min<size_t>(data_length, length));
 
     return length;
 }

@@ -72,7 +72,7 @@ void HAL_Core_Setup_override_interrupts(void) {
 
     memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, (uintptr_t)&link_ram_interrupt_vectors_location_end-(uintptr_t)&link_ram_interrupt_vectors_location);
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
-    for(int i = 0; i < sizeof(hal_interrupt_overrides)/sizeof(HAL_InterruptOverrideEntry); i++) {
+    for(size_t i = 0; i < sizeof(hal_interrupt_overrides)/sizeof(HAL_InterruptOverrideEntry); i++) {
         isrs[IRQN_TO_IDX(hal_interrupt_overrides[i].irq)] = (uint32_t)hal_interrupt_overrides[i].handler;
     }
     SCB->VTOR = (unsigned long)isrs;
@@ -85,7 +85,7 @@ void HAL_Core_Restore_Interrupt(IRQn_Type irqn) {
     if (irqn == SysTick_IRQn) {
         handler = (uint32_t)SysTickChain;
     } else {
-        for(int i = 0; i < sizeof(hal_interrupt_overrides)/sizeof(HAL_InterruptOverrideEntry); i++) {
+        for(size_t i = 0; i < sizeof(hal_interrupt_overrides)/sizeof(HAL_InterruptOverrideEntry); i++) {
             if (hal_interrupt_overrides[i].irq == irqn) {
                 handler = (uint32_t)hal_interrupt_overrides[i].handler;
                 break;

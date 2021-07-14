@@ -120,6 +120,8 @@ typedef struct nrf5x_i2c_info_t {
 static void twis0Handler(nrfx_twis_evt_t const * p_event);
 static void twis1Handler(nrfx_twis_evt_t const * p_event);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 nrf5x_i2c_info_t i2cMap[HAL_PLATFORM_I2C_NUM] = {
     {&m_twim0, &m_twis0, twis0Handler, SCL, SDA}
 #if PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_TRACKER
@@ -131,6 +133,7 @@ nrf5x_i2c_info_t i2cMap[HAL_PLATFORM_I2C_NUM] = {
    ,{&m_twim0, &m_twis0, twis0Handler, D8, D9}, // Shared with UART TX/RX
 #endif
 };
+#pragma GCC diagnostic pop
 
 static void setConfigOrDefault(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* config) {
     memset(&i2cMap[i2c].transfer_config, 0, sizeof(i2cMap[i2c].transfer_config));
@@ -663,7 +666,8 @@ uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved
         .version = HAL_GPIO_VERSION,
         .mode = OUTPUT_OPEN_DRAIN_PULLUP,
         .set_value = true,
-        .value = 1
+        .value = 1,
+        .drive_strength = HAL_GPIO_DRIVE_DEFAULT
     };
     HAL_Pin_Configure(i2cMap[i2c].sda_pin, &conf, nullptr);
     conf.value = HAL_GPIO_Read(i2cMap[i2c].scl_pin);

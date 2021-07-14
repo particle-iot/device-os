@@ -204,7 +204,10 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode) {
     const hal_gpio_config_t c = {
         .size = sizeof(c),
         .version = HAL_GPIO_VERSION,
-        .mode = setMode
+        .mode = setMode,
+        .set_value = 0,
+        .value = 0,
+        .drive_strength = HAL_GPIO_DRIVE_DEFAULT
     };
     HAL_Pin_Configure(pin, &c, nullptr);
 }

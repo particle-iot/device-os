@@ -152,7 +152,7 @@ static void set_usb_state(HAL_USB_State state) {
 static bool usb_cdc_copy_from_rx_buffer() {
     if (m_usb_instance.rx_done && (FIFO_LENGTH(&m_usb_instance.rx_fifo) + m_usb_instance.rx_data_size) <= m_usb_instance.rx_fifo.buf_size_mask) {
         // Receive data into buffer
-        for (int i = 0; i < m_usb_instance.rx_data_size; i++) {
+        for (uint32_t i = 0; i < m_usb_instance.rx_data_size; i++) {
             SPARK_ASSERT(app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[i]) == NRF_SUCCESS);
         }
         return true;

@@ -640,7 +640,7 @@ public:
     }
 
     virtual int get(IntType& val) override {
-        runtime_info_t info = {0};
+        runtime_info_t info = {};
         info.size = sizeof(info);
         if (HAL_Core_Runtime_Info(&info, nullptr) == 0) {
             val = f_(info);

@@ -1761,7 +1761,8 @@ int QuectelNcpClient::modemInit() const {
         .version = HAL_GPIO_VERSION,
         .mode = INPUT_PULLUP,
         .set_value = false,
-        .value = 0
+        .value = 0,
+        .drive_strength = HAL_GPIO_DRIVE_DEFAULT
     };
     // Configure VINT as Input for modem power state monitoring
     // NOTE: The BGVINT pin is inverted

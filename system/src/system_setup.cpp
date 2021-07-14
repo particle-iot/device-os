@@ -45,7 +45,7 @@
 void loop_wifitester(int c);
 #include "spark_wiring_usartserial.h"
 
-static system_tester_handlers_t s_tester_handlers = {0};
+static system_tester_handlers_t s_tester_handlers = {};
 
 int system_set_tester_handlers(system_tester_handlers_t* handlers, void* reserved) {
     memset(&s_tester_handlers, 0, sizeof(s_tester_handlers));

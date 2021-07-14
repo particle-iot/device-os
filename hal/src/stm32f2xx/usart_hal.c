@@ -83,6 +83,8 @@ typedef struct stm32_usart_info_t {
     stm32_usart_config_t conf;
 } stm32_usart_info_t;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 /*
  * USART mapping
  */
@@ -112,6 +114,7 @@ stm32_usart_info_t USART_MAP[HAL_PLATFORM_USART_NUM] = {
    ,{ UART5,  &RCC->APB1ENR, RCC_APB1Periph_UART5,  UART5_IRQn,  C1,     C0,     GPIO_PinSource12, GPIO_PinSource2,  GPIO_AF_UART5, PIN_INVALID, PIN_INVALID } // UART 5
 #endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 };
+#pragma GCC diagnostic pop
 
 static USART_InitTypeDef usartInitStructure;
 static stm32_usart_info_t *usartMap[HAL_PLATFORM_USART_NUM]; // pointer to USART_MAP[] containing USART peripheral register locations (etc)

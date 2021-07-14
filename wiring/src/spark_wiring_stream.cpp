@@ -26,6 +26,7 @@
 
 #include "spark_wiring_stream.h"
 #include "spark_wiring.h"       // for millis())
+#include <cctype>
 
 #define PARSE_TIMEOUT 1000  // default number of milli-seconds to wait
 #define NO_SKIP_CHAR  1  // a magic char not found in a valid ASCII numeric field
@@ -192,7 +193,7 @@ float Stream::parseFloat(char skipChar){
 
   c = peekNextDigit();
     // ignore non numeric leading characters
-  if(c < 0)
+  if(!std::isprint(c))
     return 0; // zero returned if timeout
 
   do{

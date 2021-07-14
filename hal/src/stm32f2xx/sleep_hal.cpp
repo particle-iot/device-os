@@ -171,7 +171,7 @@ static int configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources,
                 }
             }
             HAL_Pin_Mode(gpioWakeup->pin, wakeUpPinMode);
-            HAL_InterruptExtraConfiguration irqConf = {0};
+            HAL_InterruptExtraConfiguration irqConf = {};
             irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
             irqConf.IRQChannelPreemptionPriority = 0;
             irqConf.IRQChannelSubPriority = 0;
@@ -306,7 +306,7 @@ static int configRtcWakeupSource(const hal_wakeup_source_base_t* wakeupSources) 
             hal_rtc_cancel_alarm();
 
             // Connect RTC to EXTI line
-            EXTI_InitTypeDef extiInitStructure = {0};
+            EXTI_InitTypeDef extiInitStructure = {};
             extiInitStructure.EXTI_Line = EXTI_Line17;
             extiInitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
             extiInitStructure.EXTI_Trigger = EXTI_Trigger_Rising;

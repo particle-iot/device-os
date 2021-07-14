@@ -77,6 +77,9 @@ static const nrfx_spim_t m_spim2 = NRFX_SPIM_INSTANCE(2);
 static const nrfx_spim_t m_spim3 = NRFX_SPIM_INSTANCE(3);
 static const nrfx_spis_t m_spis2 = NRFX_SPIS_INSTANCE(2);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+
 static nrf5x_spi_info_t spiMap[HAL_PLATFORM_SPI_NUM] = {
     {&m_spim3, nullptr,  APP_IRQ_PRIORITY_HIGH, PIN_INVALID, SCK, MOSI, MISO}, // TODO: SPI3 doesn't support SPI slave mode
 #if PLATFORM_ID == PLATFORM_TRACKER
@@ -85,6 +88,8 @@ static nrf5x_spi_info_t spiMap[HAL_PLATFORM_SPI_NUM] = {
     {&m_spim2, &m_spis2, APP_IRQ_PRIORITY_HIGH, PIN_INVALID, D2, D3, D4},  // TODO: Change pin number
 #endif
 };
+
+#pragma GCC diagnostic pop
 
 static uint32_t spiTransfer(hal_spi_interface_t spi, uint8_t *tx_buf, uint8_t *rx_buf, uint32_t size);
 
@@ -191,10 +196,12 @@ static inline nrf_spim_frequency_t getNrfSpiFrequency(hal_spi_interface_t spi, u
             if (spi == HAL_SPI_INTERFACE1) {
                 return NRF_SPIM_FREQ_32M;
             }
+            // Falls through
         case SPI_CLOCK_DIV4:
             if (spi == HAL_SPI_INTERFACE1) {
                 return NRF_SPIM_FREQ_16M;
             }
+            // Falls through
         case SPI_CLOCK_DIV8:
             return NRF_SPIM_FREQ_8M;
         case SPI_CLOCK_DIV16:

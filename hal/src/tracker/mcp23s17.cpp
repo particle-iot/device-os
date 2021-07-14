@@ -91,7 +91,7 @@ int Mcp23s17::begin() {
         return SYSTEM_ERROR_INTERNAL;
     }
 
-    HAL_InterruptExtraConfiguration extra = {0};
+    HAL_InterruptExtraConfiguration extra = {};
     extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
     CHECK(HAL_Interrupts_Attach(IOE_INT, ioExpanderInterruptHandler, this, FALLING, &extra));
 

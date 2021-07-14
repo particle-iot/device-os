@@ -2083,7 +2083,8 @@ int SaraNcpClient::modemInit() const {
         .version = HAL_GPIO_VERSION,
         .mode = OUTPUT,
         .set_value = true,
-        .value = 1
+        .value = 1,
+        .drive_strength = HAL_GPIO_DRIVE_DEFAULT
     };
 
     // Configure PWR_ON and RESET_N pins as OUTPUT and set to high by default

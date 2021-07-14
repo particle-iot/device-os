@@ -41,7 +41,7 @@ using namespace particle;
 static struct {
     uint8_t                 pin;
     HAL_InterruptCallback   interrupt_callback;
-} m_exti_channels[EXTI_CHANNEL_NUM] = {{0}};
+} m_exti_channels[EXTI_CHANNEL_NUM] = {{0, {nullptr, nullptr}}};
 
 struct hal_interrupts_suspend_data_t {
     uint32_t config[GPIOTE_CH_NUM];

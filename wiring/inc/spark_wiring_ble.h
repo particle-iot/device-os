@@ -340,6 +340,11 @@ public:
 
     uint8_t operator[](uint8_t i) const;
 
+    BleUuid& operator=(BleUuid uuid) {
+        std::swap(*this, uuid);
+        return *this;
+    }
+
     operator bool() const {
         return isValid();
     }
@@ -627,14 +632,15 @@ class BleService {
 public:
     BleService();
     BleService(const BleUuid& uuid);
+    BleService(const BleService&) = default;
     ~BleService() = default;
 
     BleUuid UUID() const;
 
-    BleService& operator=(const BleService& service);
-
     bool operator==(const BleService& service) const;
     bool operator!=(const BleService& service) const;
+
+    BleService& operator=(const BleService&) = default;
 
     BleServiceImpl* impl() const {
         return impl_.get();
@@ -793,7 +799,7 @@ public:
         customDataLen_ = len;
         return *this;
     }
-    const uint8_t* const customData(size_t* len) const {
+    const uint8_t* customData(size_t* len) const {
         *len = customDataLen_;
         return customData_;
     }
@@ -824,6 +830,7 @@ private:
 class BlePeerDevice {
 public:
     BlePeerDevice();
+    BlePeerDevice(const BlePeerDevice&) = default;
     ~BlePeerDevice();
 
     // Discover all services on peer device.
@@ -889,7 +896,7 @@ public:
         return isValid();
     }
 
-    BlePeerDevice& operator=(const BlePeerDevice& peer);
+    BlePeerDevice& operator=(const BlePeerDevice& peer) = default;
 
     BlePeerDeviceImpl* impl() const {
         return impl_.get();

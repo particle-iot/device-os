@@ -421,7 +421,8 @@ public:
             .version = BLE_API_VERSION,
             .size = sizeof(hal_ble_pairing_config_t),
             .io_caps = BLE_IO_CAPS_NONE,
-            .algorithm = BLE_PAIRING_ALGORITHM_AUTO
+            .algorithm = BLE_PAIRING_ALGORITHM_AUTO,
+            .reserved = {}
         };
     }
     ~ConnectionsManager() = default;

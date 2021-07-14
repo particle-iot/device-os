@@ -92,7 +92,7 @@ static const APN_t apnlut[] = {
 
 // 440 Japan - JP
     { /* Softbank */ "440-04,06,20,40,41,42,43,44,45,46,47,48,90,91,92,93,94,95"
-                         ",96,97,98"
+                         ",96,97,98",
                                 _APN("open.softbank.ne.jp","opensoftbank","ebMNuX1FIHg9d3DA")
                                 _APN("smile.world","dna1trop","so2t3k3m2a") },
     { /* NTTDoCoMo */"440-09,10,11,12,13,14,15,16,17,18,19,21,22,23,24,25,26,27,"

@@ -243,7 +243,8 @@ void HAL_Core_Setup_override_interrupts(void) {
     SCB->VTOR = 0x0;
 
     /* Init softdevice */
-    sd_mbr_command_t com = {SD_MBR_COMMAND_INIT_SD, };
+    sd_mbr_command_t com = {};
+    com.command = SD_MBR_COMMAND_INIT_SD;
     uint32_t ret = sd_mbr_command(&com);
     SPARK_ASSERT(ret == NRF_SUCCESS);
     /* Forward unhandled interrupts to the application */

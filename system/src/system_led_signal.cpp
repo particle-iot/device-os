@@ -127,7 +127,8 @@ public:
         // Initialize status data
         initStatusData();
         // Set current theme
-        LEDSignalThemeData t = { LED_SIGNAL_THEME_VERSION };
+        LEDSignalThemeData t = {};
+        t.version = LED_SIGNAL_THEME_VERSION;
 #if HAL_PLATFORM_DCT
         char theme[DCT_LED_THEME_SIZE];
 #else
@@ -164,7 +165,8 @@ public:
     bool setTheme(const LEDSignalThemeData* theme, int flags) {
         if (flags & LED_SIGNAL_FLAG_DEFAULT_THEME) {
             // Ignore `theme` argument and set factory default theme
-            LEDSignalThemeData t = { LED_SIGNAL_THEME_VERSION };
+            LEDSignalThemeData t = {};
+            t.version = LED_SIGNAL_THEME_VERSION;
             deserializeTheme(t, (const char*)DEFAULT_THEME_DATA, THEME_DATA_SIZE);
             setTheme(t);
 #if HAL_PLATFORM_DCT

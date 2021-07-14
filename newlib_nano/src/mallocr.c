@@ -306,7 +306,7 @@ void * nano_malloc(RARG malloc_size_t s)
         int rem = r->size - alloc_size;
         if (rem >= 0)
         {
-            if (rem >= MALLOC_MINCHUNK)
+            if ((size_t)rem >= MALLOC_MINCHUNK)
             {
                 /* Find a chunk that much larger than required size, break
                 * it into two chunks and return the second one */

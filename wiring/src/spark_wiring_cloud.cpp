@@ -73,7 +73,8 @@ Future<bool> CloudClass::publish_event(const char *eventName, const char *eventD
     if (!connected()) {
         return Future<bool>(Error::INVALID_STATE);
     }
-    spark_send_event_data d = { sizeof(spark_send_event_data) };
+    spark_send_event_data d = {};
+    d.size = sizeof(spark_send_event_data);
 
     // Completion handler
     Promise<bool> p;

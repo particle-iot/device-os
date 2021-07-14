@@ -355,10 +355,11 @@ sock_result_t socket_receivefrom_ex(sock_handle_t sock, void* buffer, socklen_t 
         return 0;
     if (result==boost::asio::error::try_again)
 	   return 0;
-	if (!result)
+	if (!result) {
 		DEBUG("count: %d", count);
-	else
+    } else {
 		DEBUG("result: %d %s", ec.value(), ec.message().c_str());
+    }
 
 	return result ? result : count;
 }

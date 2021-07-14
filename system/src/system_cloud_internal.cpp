@@ -312,7 +312,7 @@ User_Func_Lookup_Table_t* find_func_by_key(const char* funcKey)
 
 User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey, const cloud_function_descriptor* desc)
 {
-	User_Func_Lookup_Table_t item = {0};
+	User_Func_Lookup_Table_t item = {};
 	item.pUserFunc = desc->fn;
 	item.pUserFuncData = desc->data;
     memcpy(item.userFuncKey, desc->funcKey, USER_FUNC_KEY_LENGTH);
