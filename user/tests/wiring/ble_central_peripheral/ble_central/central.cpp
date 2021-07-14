@@ -65,9 +65,9 @@ test(BLE_01_Central_Scan_And_Connect) {
 
     size_t wait = 20; // Scanning for 20s.
     while (!BLE.connected() && wait > 0) {
-        size_t count = BLE.scan(results, SCAN_RESULT_COUNT);
+        int count = BLE.scan(results, SCAN_RESULT_COUNT);
         if (count > 0) {
-            for (uint8_t i = 0; i < count; i++) {
+            for (int i = 0; i < count; i++) {
                 BleUuid foundServiceUUID;
                 size_t svcCount = results[i].advertisingData().serviceUUID(&foundServiceUUID, 1);
                 if (svcCount > 0 && foundServiceUUID == "6E400000-B5A3-F393-E0A9-E50E24DCCA9E") {
