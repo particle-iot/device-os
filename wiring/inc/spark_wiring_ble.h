@@ -341,7 +341,8 @@ public:
     uint8_t operator[](uint8_t i) const;
 
     BleUuid& operator=(BleUuid uuid) {
-        std::swap(*this, uuid);
+        using std::swap;
+        swap(*this, uuid);
         return *this;
     }
 
