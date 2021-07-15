@@ -19,7 +19,7 @@ const module_bounds_t module_ota_mono = { 0x60000, 0x8080000, 0x80E0000, MODULE_
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 const module_bounds_t* module_bounds[] = { &module_bootloader, &module_system_part1, &module_system_part2, &module_system_part3, &module_user, &module_factory, 0, MODULE_BOUNDS_LOC_INTERNAL_FLASH };
 #else
-const module_bounds_t* module_bounds[] = { &module_bootloader, &module_user_mono, &module_factory_mono, 0, MODULE_BOUNDS_LOC_INTERNAL_FLASH };
+const module_bounds_t* module_bounds[] = { &module_bootloader, &module_user_mono, &module_factory_mono };
 #endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
 
 const unsigned module_bounds_length = arraySize(module_bounds);
