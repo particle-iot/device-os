@@ -616,7 +616,7 @@ const uint8_t* fetch_device_public_key(uint8_t lock)
 int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned data_length)
 {
     unsigned offset = 0;
-    int length = -1;
+    unsigned length = 0;
     bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 
     switch (config_item)
@@ -667,7 +667,7 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
         break;
     }
 
-    if (length>=0)
+    if (length>0)
         dct_write_app_data(data, offset, std::min<size_t>(data_length, length));
 
     return length;

@@ -269,7 +269,8 @@ inline bool particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::va
 
 template<typename T>
 inline particle::EnumFlags<T>& particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator=(EnumFlags<T> flags) {
-    std::swap(*this, flags);
+    using std::swap;
+    swap(*this, flags);
     return *this;
 }
 

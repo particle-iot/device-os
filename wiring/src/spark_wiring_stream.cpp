@@ -188,12 +188,11 @@ float Stream::parseFloat(char skipChar){
   bool isNegative = false;
   bool isFraction = false;
   long value = 0;
-  char c;
   float fraction = 1.0;
 
-  c = peekNextDigit();
-    // ignore non numeric leading characters
-  if(!std::isprint(c))
+  int c = peekNextDigit();
+  // ignore non numeric leading characters
+  if(c < 0)
     return 0; // zero returned if timeout
 
   do{
