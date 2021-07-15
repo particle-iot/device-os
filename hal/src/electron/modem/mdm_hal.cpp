@@ -41,6 +41,8 @@
 #include <mutex>
 #include "net_hal.h"
 #include <limits>
+#include "platform_ncp.h"
+#include "cellular_ncp_dev_mapping.h"
 
 std::recursive_mutex mdm_mutex;
 
@@ -882,9 +884,9 @@ bool MDMParser::_powerOn(void)
     bool retried_after_reset = false;
     int i = MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET; // When modem not responsive on boot, AT/OK tries 25x (for ~30s) before hard reset
 
-    // FIXME: REMOVE THIS BEFORE MERGING!!!!!!
-    _dev.dev = DEV_SARA_R510;
-    MDM_ERROR("Forcing to R510\r\n");
+    auto otp_ncp_id = platform_primary_ncp_identifier();
+    _dev.dev = cellular_dev_from_ncp(otp_ncp_id);
+    LOG(INFO, "NCP ID OTP value: 0x%X _dev.dev set to 0x%X", otp_ncp_id, _dev.dev);
 
     while (i--) {
 

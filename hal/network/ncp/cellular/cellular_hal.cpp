@@ -33,6 +33,7 @@
 #include "at_command.h"
 #include "at_response.h"
 #include "cellular_enums_hal.h"
+#include "cellular_ncp_dev_mapping.h"
 
 #include <limits>
 
@@ -193,35 +194,7 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     CHECK(client->getIccid(info->iccid, sizeof(info->iccid)));
     CHECK(client->getImei(info->imei, sizeof(info->imei)));
     if (info->size >= offsetof(CellularDevice, dev) + sizeof(CellularDevice::dev)) {
-        switch (client->ncpId()) {
-        case PLATFORM_NCP_SARA_U201:
-            info->dev = DEV_SARA_U201;
-            break;
-        case PLATFORM_NCP_SARA_G350:
-            info->dev = DEV_SARA_G350;
-            break;
-        case PLATFORM_NCP_SARA_R410:
-            info->dev = DEV_SARA_R410;
-            break;
-        case PLATFORM_NCP_SARA_R510:
-            info->dev = DEV_SARA_R510;
-            break;
-        case PLATFORM_NCP_QUECTEL_BG96:
-            info->dev = DEV_QUECTEL_BG96;
-            break;
-        case PLATFORM_NCP_QUECTEL_EG91_E:
-            info->dev = DEV_QUECTEL_EG91_E;
-            break;
-        case PLATFORM_NCP_QUECTEL_EG91_NA:
-            info->dev = DEV_QUECTEL_EG91_NA;
-            break;
-        case PLATFORM_NCP_QUECTEL_EG91_EX:
-            info->dev = DEV_QUECTEL_EG91_EX;
-            break;
-        default:
-            info->dev = DEV_UNKNOWN;
-            break;
-        }
+        info->dev = cellular_dev_from_ncp((PlatformNCPIdentifier)client->ncpId());
     }
     if (info->size >= offsetof(CellularDevice, radiofw) + sizeof(CellularDevice::radiofw)) {
         CHECK(client->getFirmwareVersionString(info->radiofw, sizeof(info->radiofw)));
