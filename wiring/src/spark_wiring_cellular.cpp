@@ -31,7 +31,7 @@ namespace spark {
             return sig;
         }
 
-        cellular_signal_t sigext = {0};
+        cellular_signal_t sigext = {};
         sigext.size = sizeof(sigext);
         if (cellular_signal(nullptr, &sigext) != 0) {
             return sig;

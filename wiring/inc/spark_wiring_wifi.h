@@ -63,7 +63,7 @@ public:
     // virtual size_t printTo(Print& p) const;
 
 private:
-    wlan_connected_info_t inf_ = {0};
+    wlan_connected_info_t inf_ = {};
 };
 
 class IPAddress;

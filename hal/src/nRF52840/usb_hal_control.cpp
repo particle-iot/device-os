@@ -89,10 +89,15 @@ APP_USBD_CLASS_NO_EP_TYPEDEF(
 );
 
 const app_usbd_class_methods_t usbd_control_class_methods = {
-    .event_handler    = usbd_control_event_handler,
-    .feed_descriptors = usbd_control_feed_descriptors,
+    .event_handler       = usbd_control_event_handler,
+    .feed_descriptors    = usbd_control_feed_descriptors,
+    .iface_select        = nullptr,
+    .iface_deselect      = nullptr,
+    .iface_selection_get = nullptr
 };
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 APP_USBD_CLASS_INST_NO_EP_GLOBAL_DEF(
     usbd_control_instance,
     usbd_control,
@@ -100,6 +105,7 @@ APP_USBD_CLASS_INST_NO_EP_GLOBAL_DEF(
     USBD_CONTROL_CONFIG((2)),
     ()
 );
+#pragma GCC diagnostic pop
 
 inline app_usbd_class_inst_t const* usbd_control_class_inst_get(usbd_control_t const* control) {
     return &control->base;

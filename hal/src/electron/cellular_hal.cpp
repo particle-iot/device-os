@@ -47,7 +47,7 @@ const char* defaultOrUserApn(const CellularCredentials& cred)
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 
-static HAL_NET_Callbacks netCallbacks = { 0 };
+static HAL_NET_Callbacks netCallbacks = {};
 
 void HAL_NET_notify_connected()
 {
@@ -247,7 +247,7 @@ cellular_result_t cellular_signal(void* deprecated, cellular_signal_t* signalext
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    NetStatus status;
+    NetStatus status = {};
     bool r = electronMDM.getSignalStrength(status);
 
     return particle::detail::cellular_signal_impl(signalext, r, status);

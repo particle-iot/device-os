@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstdarg>
+#include <cctype>
 
 namespace {
 
@@ -542,7 +543,7 @@ void spark::JSONWriter::writeEscaped(const char *str, size_t size) {
     const char *s = str;
     while (s != end) {
         const char c = *s;
-        if (c == '"' || c == '\\' || (c >= 0 && c <= 0x1f)) {
+        if (c == '"' || c == '\\' || !std::isprint((unsigned char)c)) {
             write(str, s - str); // Write preceeding characters
             write('\\');
             switch (c) {

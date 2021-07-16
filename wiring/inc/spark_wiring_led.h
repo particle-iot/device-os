@@ -227,7 +227,8 @@ inline void particle::LEDStatus::update(system_tick_t ticks) {
 
 // particle::LEDSystemTheme
 inline particle::LEDSystemTheme::LEDSystemTheme() :
-        d_{ LED_SIGNAL_THEME_VERSION } {
+        d_{} {
+    d_.version = LED_SIGNAL_THEME_VERSION;
     led_get_signal_theme(&d_, 0, nullptr); // Get current theme
 }
 

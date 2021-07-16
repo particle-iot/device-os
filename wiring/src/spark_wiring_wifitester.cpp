@@ -546,7 +546,7 @@ void WiFiTester::tester_connect(char *ssid, char *pass) {
 
 void WiFiTester::init() {
 #if defined(SETUP_OVER_SERIAL1) && SETUP_OVER_SERIAL1 == 1
-    system_tester_handlers_t handlers = {0};
+    system_tester_handlers_t handlers = {};
     handlers.version = 1;
     handlers.size = sizeof(handlers);
     handlers.create = [](void* reserved) -> void* {

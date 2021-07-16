@@ -107,7 +107,7 @@ private:
 class LEDService {
 public:
     LEDService() :
-            color_{ 0 },
+            color_{},
             pattern_(LED_PATTERN_INVALID),
             period_(0),
             ticks_(0),
@@ -190,7 +190,7 @@ public:
             }
         }
         if (enabled) {
-            Color c = { 0 }; // Black
+            Color c = {}; // Black
             if (!(flags & LED_STATUS_FLAG_OFF)) {
                 scaleColor(color, led_rgb_brightness, &c); // Use global LED brightness
                 if (period_ > 0) {

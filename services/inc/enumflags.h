@@ -20,6 +20,7 @@
 
 #include <type_traits>
 #include <cstddef>
+#include <algorithm>
 
 namespace particle {
 
@@ -76,6 +77,8 @@ public:
     bool operator>=(const EnumFlags<T>& flags) const;
     bool operator<(const EnumFlags<T>& flags) const;
     bool operator<=(const EnumFlags<T>& flags) const;
+
+    EnumFlags<T>& operator=(EnumFlags<T> flags);
 
     operator bool() const;
     bool operator!() const;
@@ -262,6 +265,13 @@ inline bool particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::va
 template<typename T>
 inline bool particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator<=(const EnumFlags<T>& flags) const {
     return (value_ <= flags.value_);
+}
+
+template<typename T>
+inline particle::EnumFlags<T>& particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator=(EnumFlags<T> flags) {
+    using std::swap;
+    swap(*this, flags);
+    return *this;
 }
 
 template<typename T>

@@ -26,7 +26,8 @@ static volatile hal_adc_state_t adcState = HAL_ADC_STATE_DISABLED;
 static const nrfx_saadc_config_t saadcConfig = {
     .resolution         = NRF_SAADC_RESOLUTION_12BIT,
     .oversample         = NRF_SAADC_OVERSAMPLE_DISABLED,
-    .interrupt_priority = NRFX_SAADC_CONFIG_IRQ_PRIORITY
+    .interrupt_priority = NRFX_SAADC_CONFIG_IRQ_PRIORITY,
+    .low_power_mode     = false
 };
 
 static void analog_in_event_handler(nrfx_saadc_evt_t const *p_event) {

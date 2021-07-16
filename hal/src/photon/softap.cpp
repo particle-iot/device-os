@@ -581,7 +581,7 @@ protected:
         const uint8_t* key = (const uint8_t*)ekey_.get();
         uint8_t* iv = (uint8_t*)ekey_.get() + block_size;
 
-        mbedtls_aes_context ctx = {0};
+        mbedtls_aes_context ctx = {};
         mbedtls_aes_setkey_dec(&ctx, key, 128);
 
         uint8_t* bptr = (uint8_t*)pkey;

@@ -99,7 +99,8 @@ int Esp32Sdio::init() {
         .version = HAL_GPIO_VERSION,
         .mode = OUTPUT,
         .set_value = 1,
-        .value = 1
+        .value = 1,
+        .drive_strength = HAL_GPIO_DRIVE_DEFAULT
     };
     CHECK(HAL_Pin_Configure(csPin_, &conf, nullptr));
     HAL_Pin_Mode(intrPin_, INPUT_PULLUP);

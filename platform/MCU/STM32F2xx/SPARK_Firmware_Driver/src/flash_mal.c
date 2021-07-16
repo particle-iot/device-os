@@ -67,7 +67,7 @@ uint16_t addressToSectorIndex(uint32_t address)
 uint32_t sectorIndexToStartAddress(uint16_t sector)
 {
 	return sector<5 ? sectorAddresses[sector] :
-			((sector-5)<<17)+0x8020000;
+			(((uint32_t)sector-5)<<17)+0x8020000;
 }
 
 static inline uint16_t InternalSectorToWriteProtect(uint32_t startAddress)
@@ -963,7 +963,7 @@ int FLASH_WriteOTP(uint32_t offset, const uint8_t* pBuffer, uint32_t bufferSize)
     }
 
     uint8_t tmp = 0;
-    for (int i = 0; i < bufferSize; i++) {
+    for (uint32_t i = 0; i < bufferSize; i++) {
         FLASH_ReadOTP(offset + i, &tmp, 1);
         if (tmp != 0xFF) {
             // OPT is initialized already

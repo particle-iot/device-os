@@ -79,7 +79,7 @@ void* _realloc_r(struct _reent* r, void *ptr, size_t newsize) {
     return p;
 }
 
-static struct mallinfo current_mallinfo = {0};
+static struct mallinfo current_mallinfo = {};
 
 struct mallinfo _mallinfo_r(struct _reent* r) {
     panic_if_in_isr();

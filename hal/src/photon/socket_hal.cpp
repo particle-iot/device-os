@@ -837,8 +837,9 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
             bytes_read = read_packet_and_dispose(server_client->packet, buffer, len, server_client->get_socket(), _timeout);
         }
     }
-    if (bytes_read<0)
-    		DEBUG("socket_receive on %d returned %d", sd, bytes_read);
+    if (bytes_read<0) {
+        DEBUG("socket_receive on %d returned %d", sd, bytes_read);
+    }
     return bytes_read;
 }
 
@@ -1052,8 +1053,9 @@ sock_result_t socket_send_ex(sock_handle_t sd, const void* buffer, socklen_t len
             wiced_result = server_client->write(buffer, len, &written, flags, timeout);
             bytes_sent = (uint16_t)written;
         }
-        if (!wiced_result)
+        if (!wiced_result) {
             DEBUG("Write %d bytes to socket %d result=%d", (int)len, (int)sd, wiced_result);
+        }
         result = wiced_result ? as_sock_result(wiced_result) : bytes_sent;
     }
     return result;

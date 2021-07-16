@@ -1199,19 +1199,23 @@ public:
                 BlePeerDevice* peer = impl->findPeerDevice(event->conn_handle);
                 if (peer) {
                     if (impl->pairingEventCallback_) {
+                        BlePairingEventPayload payload = {};
+                        size_t payloadLen = 0;
+                        if (event->type == BLE_EVT_PAIRING_PASSKEY_DISPLAY || event->type == BLE_EVT_PAIRING_NUMERIC_COMPARISON) {
+                            payload.passkey = event->params.passkey_display.passkey;
+                            payloadLen = BLE_PAIRING_PASSKEY_LEN;
+                        } else if (event->type == BLE_EVT_PAIRING_STATUS_UPDATED) {
+                            payload.status.status = event->params.pairing_status.status;
+                            payload.status.bonded = event->params.pairing_status.bonded;
+                            payload.status.lesc = event->params.pairing_status.lesc;
+                            payloadLen = sizeof(BlePairingStatus);
+                        }
                         BlePairingEvent pairingEvent = {
                             .peer = *peer,
-                            .type = static_cast<BlePairingEventType>(event->type)
+                            .type = static_cast<BlePairingEventType>(event->type),
+                            .payloadLen = payloadLen,
+                            .payload = payload
                         };
-                        if (event->type == BLE_EVT_PAIRING_PASSKEY_DISPLAY || event->type == BLE_EVT_PAIRING_NUMERIC_COMPARISON) {
-                            pairingEvent.payload.passkey = event->params.passkey_display.passkey;
-                            pairingEvent.payloadLen = BLE_PAIRING_PASSKEY_LEN;
-                        } else if (event->type == BLE_EVT_PAIRING_STATUS_UPDATED) {
-                            pairingEvent.payload.status.status = event->params.pairing_status.status;
-                            pairingEvent.payload.status.bonded = event->params.pairing_status.bonded;
-                            pairingEvent.payload.status.lesc = event->params.pairing_status.lesc;
-                            pairingEvent.payloadLen = sizeof(BlePairingStatus);
-                        }
                         impl->pairingEventCallback_(pairingEvent);
                     }
                 }
@@ -1479,11 +1483,6 @@ BleUuid BleService::UUID() const {
     return impl()->UUID();
 }
 
-BleService& BleService::operator=(const BleService& service) {
-    impl_ = service.impl_;
-    return *this;
-}
-
 bool BleService::operator==(const BleService& service) const {
     return (impl()->UUID() == service.impl()->UUID());
 }
@@ -1602,11 +1601,6 @@ BlePeerDevice::BlePeerDevice()
 
 BlePeerDevice::~BlePeerDevice() {
     DEBUG("~BlePeerDevice(), 0x%08X -> 0x%08X, count: %d", this, impl(), impl_.use_count() - 1);
-}
-
-BlePeerDevice& BlePeerDevice::operator=(const BlePeerDevice& peer) {
-    impl_ = peer.impl_;
-    return *this;
 }
 
 Vector<BleService> BlePeerDevice::discoverAllServices() {

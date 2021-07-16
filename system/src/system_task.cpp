@@ -301,7 +301,7 @@ void establish_cloud_connection()
 
 #if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
         const CellularNetProvData provider_data = cellular_network_provider_data_get(NULL);
-        protocol::connection_properties_t conn_prop = {0};
+        protocol::connection_properties_t conn_prop = {};
         conn_prop.size = sizeof(conn_prop);
         conn_prop.keepalive_source = protocol::KeepAliveSource::SYSTEM;
         spark_set_connection_property(protocol::Connection::PING, (provider_data.keepalive * 1000), &conn_prop, nullptr);

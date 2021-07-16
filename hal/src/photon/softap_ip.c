@@ -15,20 +15,22 @@ const wiced_ip_setting_t device_init_ip_settings =
 
 #if SOFTAP_HTTP
 
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-braces"
 const char SOFT_AP_MSG[] = "Soft AP Setup";
 START_OF_HTTP_PAGE_DATABASE(soft_ap_http_pages)
 	ROOT_HTTP_PAGE_REDIRECT("/index"),
     { "/hello", "text/plain", WICED_STATIC_URL_CONTENT, .url_content.static_data = {SOFT_AP_MSG, sizeof(SOFT_AP_MSG) }},
-    { "/version", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
-    { "/device-id", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
-    { "/scan-ap", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
-    { "/configure-ap", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
-    { "/connect-ap", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
-    { "/public-key", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
-    { "/set", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT },
-	{ "/*", "application/octet-stream", .url_content_type = WICED_RAW_DYNAMIC_URL_CONTENT },
+    { "/version", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT, NULL },
+    { "/device-id", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT, NULL },
+    { "/scan-ap", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT, NULL },
+    { "/configure-ap", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT, NULL },
+    { "/connect-ap", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT, NULL },
+    { "/public-key", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT, NULL },
+    { "/set", "application/octet-stream", WICED_RAW_DYNAMIC_URL_CONTENT, NULL },
+	{ "/*", "application/octet-stream", .url_content_type = WICED_RAW_DYNAMIC_URL_CONTENT, NULL },
 END_OF_HTTP_PAGE_DATABASE();
+#pragma GCC diagnostic pop
 
 extern void default_page_handler(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Writer* result, void* reserved);
 

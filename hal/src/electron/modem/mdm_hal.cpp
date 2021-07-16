@@ -716,8 +716,9 @@ int MDMParser::_cbString(int type, const char* buf, int len, CStringHelper* str)
     if (str && str->str && (str->size > 1) && (type == TYPE_UNKNOWN)) {
         char format[32] = {};
         snprintf(format, sizeof(format), "\r\n%%%us\r\n", str->size - 1);
-        if (sscanf(buf, format, str->str) == 1)
+        if (sscanf(buf, format, str->str) == 1) {
             /*nothing*/;
+        }
     }
     return WAIT;
 }
@@ -725,8 +726,9 @@ int MDMParser::_cbString(int type, const char* buf, int len, CStringHelper* str)
 int MDMParser::_cbInt(int type, const char* buf, int len, int* val)
 {
     if (val && (type == TYPE_UNKNOWN)) {
-        if (sscanf(buf, "\r\n%d\r\n", val) == 1)
+        if (sscanf(buf, "\r\n%d\r\n", val) == 1) {
             /*nothing*/;
+        }
     }
     return WAIT;
 }
@@ -2647,8 +2649,9 @@ int MDMParser::_cbUDOPN(int type, const char* buf, int len, CStringHelper* str)
     if (str && str->str && (str->size > 1) && (type == TYPE_PLUS)) {
         char format[32] = {};
         snprintf(format, sizeof(format), "\r\n+UDOPN: 0,\"%%%u[^\"]\"", str->size - 1);
-        if (sscanf(buf, format, str->str) == 1)
+        if (sscanf(buf, format, str->str) == 1) {
             /*nothing*/;
+        }
     }
     return WAIT;
 }
@@ -2695,8 +2698,9 @@ int MDMParser::_cbCMIP(int type, const char* buf, int len, MDM_IP* ip)
 int MDMParser::_cbUPSND(int type, const char* buf, int len, int* act)
 {
     if ((type == TYPE_PLUS) && act) {
-        if (sscanf(buf, "\r\n+UPSND: %*d,%*d,%d", act) == 1)
+        if (sscanf(buf, "\r\n+UPSND: %*d,%*d,%d", act) == 1) {
             /*nothing*/;
+        }
     }
     return WAIT;
 }
@@ -2850,8 +2854,9 @@ int MDMParser::_cbUSOCR(int type, const char* buf, int len, int* handle)
 {
     if ((type == TYPE_PLUS) && handle) {
         // +USOCR: socket
-        if (sscanf(buf, "\r\n+USOCR: %d", handle) == 1)
+        if (sscanf(buf, "\r\n+USOCR: %d", handle) == 1) {
             /*nothing*/;
+        }
     }
     return WAIT;
 }

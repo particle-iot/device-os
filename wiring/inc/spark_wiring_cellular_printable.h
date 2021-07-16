@@ -55,7 +55,7 @@ public:
     virtual operator bool() const;
 
 private:
-    cellular_signal_t sig_ = {0};
+    cellular_signal_t sig_ = {};
 };
 
 /*
