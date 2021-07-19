@@ -337,6 +337,7 @@ int QuectelNcpClient::on() {
         return SYSTEM_ERROR_NONE;
     }
     // Power on the modem
+    LOG(TRACE, "Powering modem on, ncpId: 0x%02x", ncpId());
     auto r = modemPowerOn();
     if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
         return r;
@@ -1816,7 +1817,6 @@ int QuectelNcpClient::modemPowerOn() {
     if (!modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
-        LOG(TRACE, "Powering modem on");
         // Power on, power on pulse >= 100ms
         // NOTE: The BGPWR pin is inverted
         HAL_GPIO_Write(BGPWR, 1);

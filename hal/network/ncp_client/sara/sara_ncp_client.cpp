@@ -349,6 +349,7 @@ int SaraNcpClient::on() {
     // This is helpful in case of R5 modems during hard resets.
     auto powerState = ncpPowerState();
     // Power on the modem
+    LOG(TRACE, "Powering modem on, ncpId: 0x%02x", ncpId());
     auto r = modemPowerOn();
     if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
         return r;
@@ -2227,8 +2228,6 @@ int SaraNcpClient::modemPowerOn() {
     if (!modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
-        LOG(TRACE, "Powering modem on");
-
         // Perform power-on sequence depending on the NCP type
         if (ncpId() == PLATFORM_NCP_SARA_R410) {
             // R410
@@ -2398,7 +2397,7 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
         HAL_Delay_Milliseconds(1000);   // just in case
         // IMPORTANT: R4 is powered-off after applying RESET!
         if (!powerOff) {
-            LOG(TRACE, "Powering on the modem after the hard reset");
+            LOG(TRACE, "Powering modem on after hard reset, ncpId: 0x%02x", ncpId());
             return modemPowerOn();
         } else {
             ncpPowerState(NcpPowerState::OFF);
