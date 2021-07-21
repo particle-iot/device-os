@@ -581,7 +581,7 @@ size_t BleAdvertisingData::set(const uint8_t* buf, size_t len) {
     }
     selfData_.clear();
     len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN_EXT);
-    selfData_.append(buf, len);
+    CHECK_TRUE(selfData_.append(buf, len), 0);
     return selfData_.size();
 }
 

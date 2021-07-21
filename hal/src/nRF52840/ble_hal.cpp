@@ -391,7 +391,7 @@ private:
     volatile bool isScanning_;                              /**< If it is scanning or not. */
     hal_ble_scan_params_t scanParams_;                      /**< BLE scanning parameters. */
     os_semaphore_t scanSemaphore_;                          /**< Semaphore to wait until the scan procedure completed. */
-    uint8_t scanReportBuff_[BLE_MAX_ADV_DATA_LEN_EXT];   /**< Buffer to hold the scanned report data. */
+    uint8_t scanReportBuff_[BLE_MAX_SCAN_REPORT_BUF_LEN];   /**< Buffer to hold the scanned report data. */
     ble_data_t bleScanData_;                                /**< BLE scanned data. */
     hal_ble_on_scan_result_cb_t scanResultCallback_;        /**< Callback function on scan result. */
     void* context_;                                         /**< Context of the scan result callback function. */
