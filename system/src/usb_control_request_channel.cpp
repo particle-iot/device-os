@@ -167,11 +167,17 @@ inline bool isServiceRequestType(uint8_t bRequest) {
 }
 
 // Note: This function is called from an ISR
-void cancelNetworkConnection(bool disconnect) {
-    if (disconnect) {
+void cancelNetworkConnection(bool preventFromReconnecting) {
+    if (preventFromReconnecting) {
         // Do not reconnect to the cloud/network
         spark_cloud_flag_disconnect();
-        SPARK_WLAN_SLEEP = 1;
+#if HAL_PLATFORM_GEN == 2
+        // NOTE: There is no need to perform this on >= Gen 3 platforms
+        // as the connection is established outside of the system loop
+        if (network_connecting(NETWORK_INTERFACE_ALL, 0, nullptr)) {
+            SPARK_WLAN_SLEEP = 1;
+        }
+#endif // HAL_PLATFORM_GEN == 2
     }
     // Cancel the network connection attempt
     network_connect_cancel(NETWORK_INTERFACE_ALL, 1, 0, nullptr);
