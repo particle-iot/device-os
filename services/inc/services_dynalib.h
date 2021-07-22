@@ -56,7 +56,7 @@ DYNALIB_FN(12, services, set_logger_output, void(debug_output_fn, LoggerOutputLe
 DYNALIB_FN(13, services, panic_, void(ePanicCode, void*, void(*)(uint32_t)))
 
 DYNALIB_FN(14, services, jsmn_init, void(jsmn_parser*, void*))
-DYNALIB_FN(15, services, jsmn_parse, jsmnerr_t(jsmn_parser*, const char*, size_t, jsmntok_t*, unsigned int, void*))
+DYNALIB_FN(15, services, jsmn_parse, int(jsmn_parser*, const char*, size_t, jsmntok_t*, unsigned int, void*))
 DYNALIB_FN(16, services, log_print_, void(int, int, const char*, const char*, const char*, ...)) // Deprecated
 DYNALIB_FN(17, services, LED_RGB_SetChangeHandler, void(led_update_handler_fn, void*))
 DYNALIB_FN(18, services, log_print_direct_, void(int, void*, const char*, ...)) // Deprecated
