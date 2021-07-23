@@ -121,7 +121,7 @@ int hal_interrupt_set_direct_handler(IRQn_Type irqn, hal_interrupt_direct_handle
         #include <nrf52840.h>
     #endif /* nRF52840 */
 
-#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX) || defined(nRF52840) || defined(CONFIG_PLATFORM_8721D)
+#if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX) || defined(nRF52840)
 
 static inline bool hal_interrupt_is_isr() {
 	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
@@ -156,6 +156,14 @@ static inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
     }
     return false;
 }
+
+#elif defined(CONFIG_PLATFORM_8721D)
+
+bool hal_interrupt_is_isr();
+int32_t hal_interrupt_serviced_irqn();
+uint32_t hal_interrupt_get_basepri();
+bool hal_interrupt_is_irq_masked(int32_t irqn);
+bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2);
 
 #elif PLATFORM_ID == PLATFORM_NEWHAL
 

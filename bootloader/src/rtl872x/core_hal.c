@@ -18,6 +18,7 @@
 #include "core_hal.h"
 #include "hw_ticks.h"
 #include <limits.h>
+#include "rtl8721d.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));

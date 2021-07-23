@@ -32,6 +32,7 @@
 #include "button_hal.h"
 #include "dct.h"
 #include "feature_flags.h"
+#include "rtl8721d.h"
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
 #define USE_LED_THEME

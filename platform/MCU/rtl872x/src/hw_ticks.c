@@ -17,6 +17,7 @@
 
 #include "hw_ticks.h"
 #include "timer_hal.h"
+#include "rtl8721d.h"
 
 void System1MsTick(void)
 {
@@ -48,4 +49,8 @@ system_tick_t GetSystem1UsTick()
 void __advance_system1MsTick(uint64_t millis, system_tick_t micros_from_rollover)
 {
     // Unsupported
+}
+
+uint32_t GetDwtCounter() {
+    return DWT->CYCCNT;
 }

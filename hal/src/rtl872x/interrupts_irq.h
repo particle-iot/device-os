@@ -30,7 +30,6 @@ extern "C" {
 #define __FPU_PRESENT 1
 typedef int32_t IRQn_Type;
 #define __NVIC_PRIO_BITS 3
-#include "core_armv8mml.h"
 #endif /* USE_STDPERIPH_DRIVER */
 
 typedef enum hal_irq_t {

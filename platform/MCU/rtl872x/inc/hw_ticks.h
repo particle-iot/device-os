@@ -24,7 +24,7 @@
 #include "system_tick_hal.h"
 
 #define SYSTEM_US_TICKS         (SystemCoreClock / 1000000) //cycles per microsecond
-#define SYSTEM_TICK_COUNTER     (DWT->CYCCNT)
+#define SYSTEM_TICK_COUNTER     GetDwtCounter()
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,6 +62,7 @@ uint64_t GetSystem1MsTick64();
  */
 system_tick_t GetSystem1UsTick();
 
+uint32_t GetDwtCounter();
 
 #ifdef __cplusplus
 }
