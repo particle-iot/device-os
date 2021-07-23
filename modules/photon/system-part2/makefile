@@ -21,8 +21,10 @@ TARGET=elf bin lst hex size
 
 include $(PROJECT_ROOT)/build/arm-tlm.mk
 
-# FIXME: temporary workaround for system-part2 overflow on P1
+# FIXME: temporary workaround for system-part2 overflow on Photon and P1
 LDFLAGS += -Wl,--defsym,platform_uart_tx_dma_irq=wiced_stub_usart_irq -Wl,--defsym,platform_uart_rx_dma_irq=wiced_stub_usart_irq
+# It doesn't look that __aeabi_ddiv is used anywhere in system-part2 and just the compiler without LTO is failing to optimize it out
+LDFLAGS += -Wl,--defsym,__aeabi_ddiv=aeabi_ddiv_stub
 
 $(call check_modular)
 

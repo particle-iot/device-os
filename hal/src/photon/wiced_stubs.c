@@ -18,3 +18,7 @@
 void wiced_stub_usart_irq() {
 
 }
+
+double aeabi_ddiv_stub(double a, double b) {
+    return 0.0;
+}
