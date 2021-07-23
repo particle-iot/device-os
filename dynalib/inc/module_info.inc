@@ -90,6 +90,10 @@ extern "C" {
 
 extern char link_module_start;
 extern char link_module_end;
+extern char link_dynalib_start;
+extern char link_psram_code_flash_start;
+extern char link_psram_code_start;
+extern char link_psram_code_end;
 
 #ifndef MODULE_VERSION
     #error MODULE_VERSION not defined
@@ -137,12 +141,21 @@ const module_info_t module_info = {
 // Doing it like this is simpler than setting up exclusion rules.
 
 __attribute__((section(".modinfo.module_info_suffix"), used)) const module_info_suffix_t module_info_suffix = {
-    0, { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 }, (uint16_t)(sizeof(module_info_suffix_t)+MODULE_INFO_SUFFIX_EXTRA)
+#if HAL_PLATFORM_RTL872X
+    &link_psram_code_flash_start,
+    &link_psram_code_start,
+    &link_psram_code_end,
+#endif
+    0,
+    { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 },
+    (uint16_t)(sizeof(module_info_suffix_t) + MODULE_INFO_SUFFIX_EXTRA)
 };
 
 __attribute__((section(".modinfo.module_info_crc"), used)) const module_info_crc_t module_info_crc = {
     0x12345678
 };
+
+__attribute__((section(".modinfo.dynalib_location"), used)) const void* dynalib_location = &link_dynalib_start;
 
 #ifdef __cplusplus
 }

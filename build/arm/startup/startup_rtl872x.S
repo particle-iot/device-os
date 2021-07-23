@@ -134,13 +134,13 @@ Reset_Handler:
 .L_loop3_done:
 #endif /* __STARTUP_CLEAR_BSS */
 
-/* Load PSRAM code */
+/* Load system part1 PSRAM code */
     ldr r1, =link_psram_code_flash_start
     ldr r2, =link_psram_code_start
     ldr r3, =link_psram_code_end
 
     subs r3, r2
-    ble .L_loop4_done
+    ble .L_loop5_done /* skipp copying the user part PSRAM as well s*/
 
 .L_loop4:
     subs r3, #4
@@ -149,6 +149,25 @@ Reset_Handler:
     bgt .L_loop4
 
 .L_loop4_done:
+
+/* Load user part PSRAM code */
+    ldr r0, =link_user_part_flash_end
+    sub r0, r0, #52
+
+    ldr r1, [r0] /* load address */
+    ldr r2, [r0, #4] /* PSRAM start address */
+    ldr r3, [r0, #8] /* PSRAM end address */
+
+    subs r3, r2
+    ble .L_loop5_done
+
+.L_loop5:
+    subs r3, #4
+    ldr r0, [r1,r3]
+    str r0, [r2,r3]
+    bgt .L_loop5
+
+.L_loop5_done:
     ldr r0, =Jump_To_Psram
     blx r0
 

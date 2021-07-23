@@ -152,9 +152,6 @@ platform_user_part_module_info_flash_size  = platform_module_info_flash_size;
 platform_user_part_module_info_flash_start = platform_user_part_flash_start;
 platform_user_part_module_info_flash_end   = platform_user_part_module_info_flash_start + platform_user_part_module_info_flash_size;
 
-/* User part dynalib table */
-platform_user_part_dynalib_table_flash_start = platform_user_part_module_info_flash_end;
-
 
 /* System part 1 */
 platform_system_part1_flash_end   = platform_user_part_flash_start;
@@ -170,9 +167,6 @@ platform_system_part1_module_info_flash_end   = platform_system_part1_module_inf
 platform_system_part1_entry_flash_size  = platform_entry_size;
 platform_system_part1_entry_flash_start = platform_system_part1_module_info_flash_end;
 platform_system_part1_entry_flash_end   = platform_system_part1_entry_flash_start + platform_system_part1_entry_flash_size;
-
-/* System part 1 dynalib table */
-platform_system_part1_dynalib_table_flash_start = platform_system_part1_entry_flash_end;
 
 
 /* Monolithic firmware*/

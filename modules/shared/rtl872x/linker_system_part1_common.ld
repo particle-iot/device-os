@@ -14,14 +14,6 @@ SECTIONS
         KEEP (*(.system.entry))
         . = ALIGN(4);
     } >APP_FLASH
-    
-    /* Dynalib table */
-    .dynalib :
-    {
-        link_dynalib_start = . ;
-        KEEP (*(*.system_part1_module))
-        link_dynalib_end = . ;
-    } > APP_FLASH AT> APP_FLASH
 
     .text :
     {
@@ -33,12 +25,28 @@ SECTIONS
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
+    /* Dynalib location */
+    .dynalib_location :
+    {
+        link_psram_code_flash_start = LOADADDR( .dynalib_location );
+        . = ALIGN(4);
+        link_psram_code_start = .;
+        KEEP (*.o(.modinfo.dynalib_location))
+    } > PSRAM AT> APP_FLASH
+    
+    /* Dynalib table */
+    .dynalib :
+    {
+        . = ALIGN(4);
+        link_dynalib_start = . ;
+        KEEP (*(*.system_part1_module))
+        link_dynalib_end = . ;
+    } > PSRAM AT> APP_FLASH
+
     .psram_text :
     {
-        link_psram_code_flash_start = LOADADDR( .psram_text ); 
         . = ALIGN(4);
 
-        link_psram_code_start = .;
         /* Code */
         *(.flashtext) /* Realtek specific */
         *(.text)
@@ -99,11 +107,10 @@ SECTIONS
         KEEP (*(SORT(.dtors.*)))
         KEEP (*crtend.o(.dtors))
         link_destructors_end = .;
-        link_psram_code_end = .;
         
         . = ALIGN(4);
-    /* } > PSRAM AT> APP_FLASH */ /* FIXME: uncomment this to put them into PSRAM*/
-    } > APP_FLASH
+        link_psram_code_end = .;
+    } > PSRAM AT> APP_FLASH
 
     .data_alt :
     {
@@ -208,6 +215,9 @@ SECTIONS
         *(.glue*)
     }
 }
+
+link_dynalib_location = platform_user_part_dynalib_table_psram_start;
+link_user_part_flash_end = platform_user_part_flash_end;
 
 /* Heap location */
 link_heap_location     = link_bss_end;

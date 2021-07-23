@@ -8,31 +8,25 @@ SECTIONS
     
     /* Module info */
     INCLUDE linker_module_info.ld
-    
-    /* Dynalib table */
-    .dynalib :
-    {
-        link_dynalib_start = .;
-        KEEP (*(*.user_part_module))
-        link_dynalib_end = . ;
-    } > APP_FLASH AT> APP_FLASH
-
-    .text :
-    {
-        . = ALIGN(4);
-        *(.xip.text)
-        . = ALIGN(4);
-    } > APP_FLASH
 
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
+    /* Dynalib table */
+    .dynalib :
+    {
+        link_psram_code_flash_start = LOADADDR( .dynalib );
+        . = ALIGN(4);
+        link_psram_code_start = .;
+        link_dynalib_start = .;
+        KEEP (*(*.user_part_module))
+        link_dynalib_end = . ;
+    } > PSRAM AT> APP_FLASH
+
     .psram_text :
     {
-        link_psram_code_flash_start = LOADADDR( .psram_text ); 
         . = ALIGN(4);
 
-        link_psram_code_start = .;
         /* Code */
         *(.flashtext) /* Realtek specific */
         *(.text)
@@ -83,11 +77,9 @@ SECTIONS
         KEEP (*(SORT(.dtors.*)))
         KEEP (*crtend.o(.dtors))
         link_destructors_end = .;
-        link_psram_code_end = .;
 
         . = ALIGN(4);
-    /* } > PSRAM AT> APP_FLASH */ /* FIXME: uncomment this to put them into PSRAM*/
-    } > APP_FLASH
+    } > PSRAM AT> APP_FLASH
 
     .data_alt :
     {
@@ -107,6 +99,18 @@ SECTIONS
         . = ALIGN(4);
         link_bss_end_alt = .;
     } > PSRAM
+
+    /* Dynalib location */
+    .dynalib_location :
+    {
+        /* To make sure the following sections are located at the end of PSRAM */
+        FILL (0xAA)
+        . = DEFINED(platform_user_part_trimmed) ? ORIGIN(PSRAM) + LENGTH(PSRAM) - 4 : .;
+        KEEP (*.o(.modinfo.dynalib_location))
+        link_psram_code_end = .;
+    } > PSRAM AT> APP_FLASH
+
+    link_psram_code_size = link_psram_code_end - link_psram_code_start;
     
     /* Static RAM start */
     INCLUDE linker_static_ram_start.ld
@@ -159,7 +163,37 @@ SECTIONS
     INCLUDE linker_backup_ram_user.ld
 
     /* Module end */
-    INCLUDE linker_module_end.ld
+    /* INCLUDE linker_module_end.ld */
+    .module_info_suffix :
+    {
+        . = ALIGN(., 2);
+        link_module_info_static_start = .;
+        SHORT (0xffff)
+        SHORT (0xffff)
+
+        KEEP (*.o(.modinfo.product_id))
+        KEEP (*.o(.modinfo.product_version))
+
+        /* To make sure the following sections are located at the end of APP_FLASH */
+        FILL (0xAA)
+        . = DEFINED(platform_user_part_trimmed) ? ORIGIN(APP_FLASH) + LENGTH(APP_FLASH) - 52 : .; /* FIXME: magic number */
+
+        link_module_info_suffix_start = .;
+        KEEP (*.o(.modinfo.module_info_suffix))
+        link_module_info_suffix_end = .;
+    } > APP_FLASH
+
+    .module_end :
+    {
+        link_module_end = .;
+    } > APP_FLASH
+
+    .module_info_crc :
+    {
+        link_module_info_crc_start = .;
+        KEEP (*.o(.modinfo.module_info_crc))
+        link_module_info_crc_end = .;
+    } > APP_FLASH
 
     /DISCARD/ :
     {
@@ -182,6 +216,8 @@ SECTIONS
         *(.glue*)
     }
 }
+
+link_dynalib_location = platform_system_part1_dynalib_table_psram_start;
 
 /* This can be used to calculate the OTA top boundary */
 link_user_part_flash_start = platform_user_part_flash_start;
