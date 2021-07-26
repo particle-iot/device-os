@@ -21,21 +21,16 @@
  ******************************************************************************
  */
 
-#ifndef USER_DYNALIB_H
-#define	USER_DYNALIB_H
+#ifndef USER_PREINIT_DYNALIB_H
+#define	USER_PREINIT_DYNALIB_H
 
 
 #include "dynalib.h"
 
-DYNALIB_BEGIN(user)
-
-DYNALIB_FN(0, user, module_user_init, void(void))
-DYNALIB_FN(1, user, module_user_setup, void(void))
-DYNALIB_FN(2, user, module_user_loop, void(void))
-
-DYNALIB_END(user)
+DYNALIB_BEGIN(preinit)
+DYNALIB_FN(0, preinit, module_user_pre_init, void*(void))
+DYNALIB_END(preinit)
 
 
-
-#endif	/* USER_DYNALIB_H */
+#endif	/* USER_PREINIT_DYNALIB_H */
 

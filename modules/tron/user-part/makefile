@@ -34,6 +34,8 @@ elf_fi: $(TARGET_BASE)_fi.elf
 
 prebuild: $(SHARED_MODULAR)/build_linker_script.mk
 	$(call echo,)
+	$(VERBOSE)$(RM) $(MODULE_USER_MEMORY_FILE_GEN)
+	$(VERBOSE)$(RM) $(TARGET_BASE).elf
 	$(VERBOSE)$(MKDIR) $(dir $(MODULE_USER_MEMORY_FILE_GEN))
 	$(VERBOSE)$(MAKE) -f $(SHARED_MODULAR)/build_linker_script.mk PREBUILD=1
 	$(call echo,)

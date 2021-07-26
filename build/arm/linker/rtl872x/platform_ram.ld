@@ -132,9 +132,6 @@ platform_user_part_psram_size  = DEFINED(platform_user_part_psram_size) ? platfo
 platform_user_part_psram_end   = platform_psram_end;
 platform_user_part_psram_start = platform_user_part_psram_end - platform_user_part_psram_size;
 
-/* User part dynalib table */
-platform_user_part_dynalib_table_psram_start = platform_user_part_psram_end;
-
 /* User part secure RAM code */
 platform_user_part_secure_ram_size  = 4K;
 platform_user_part_secure_ram_end   = platform_modular_firmware_secure_stack_start;
@@ -152,9 +149,6 @@ platform_system_part1_static_ram_end   = platform_system_part1_static_ram_start 
 platform_system_part1_psram_size  = platform_psram_size - platform_user_part_psram_size;
 platform_system_part1_psram_start = platform_psram_start;
 platform_system_part1_psram_end   = platform_system_part1_psram_start + platform_system_part1_psram_size;
-
-/* System part 1 dynalib table */
-platform_system_part1_dynalib_table_psram_start = platform_system_part1_psram_start;
 
 /* System part 1 secure RAM code */
 platform_system_part1_secure_ram_size  = platform_secure_ram_size - platform_modular_firmware_secure_stack_size - platform_user_part_secure_ram_size;

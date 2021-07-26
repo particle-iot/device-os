@@ -25,22 +25,21 @@ SECTIONS
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
-    /* Dynalib location */
-    .dynalib_location :
-    {
-        link_psram_code_flash_start = LOADADDR( .dynalib_location );
-        . = ALIGN(4);
-        link_psram_code_start = .;
-        KEEP (*.o(.modinfo.dynalib_location))
-    } > PSRAM AT> APP_FLASH
-    
     /* Dynalib table */
     .dynalib :
     {
+        link_psram_code_flash_start = LOADADDR( .dynalib );
+        link_dynalib_flash_start = LOADADDR( .dynalib );
         . = ALIGN(4);
+        link_psram_code_start = .;
         link_dynalib_start = . ;
         KEEP (*(*.system_part1_module))
         link_dynalib_end = . ;
+
+        /* WARN: the load address must increase as well due to alognement of virtuall address,
+         * otherwise, the length of code to be copied to PSRAM is incorrect! */
+        FILL (0xff)
+        . = ALIGN(16);
     } > PSRAM AT> APP_FLASH
 
     .psram_text :
@@ -216,7 +215,6 @@ SECTIONS
     }
 }
 
-link_dynalib_location = platform_user_part_dynalib_table_psram_start;
 link_user_part_flash_end = platform_user_part_flash_end;
 
 /* Heap location */

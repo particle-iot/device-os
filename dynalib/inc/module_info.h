@@ -31,7 +31,6 @@ extern "C" {
 #include "static_assert.h"
 #include "stddef.h"
 #include <stdint.h>
-#include "hal_platform.h"
 
 typedef struct module_dependency_t {
     uint8_t module_function;        // module function, lowest 4 bits
@@ -206,11 +205,9 @@ typedef struct compressed_module_header {
  */
 typedef struct module_info_suffix_t {
     // NB: NB: NB: add new members here
-#if HAL_PLATFORM_RTL872X
-    const void* load_address;
-    const void* psram_start;
-    const void* psram_end;
-#endif
+    const void* module_start_address;
+    const void* dynalib_load_address;
+    const void* dynalib_start_address;
     uint16_t reserved;
     uint8_t sha[32];
     uint16_t size;

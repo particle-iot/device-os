@@ -204,6 +204,9 @@ SECTIONS
     }
 }
 
+link_dynalib_flash_start = 0;
+link_dynalib_start = 0;
+
 /* Heap location */
 link_heap_location     = link_bss_end;
 link_heap_location_end = platform_km0_ram_end - platform_km0_bootloader_stack_size;

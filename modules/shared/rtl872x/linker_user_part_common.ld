@@ -9,6 +9,14 @@ SECTIONS
     /* Module info */
     INCLUDE linker_module_info.ld
 
+    .text :
+    {
+        . = ALIGN(4);
+        *(.xip.text)
+        KEEP (*(*.dynalib_preinit))
+        . = ALIGN(4);
+    } > APP_FLASH
+
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
@@ -16,6 +24,7 @@ SECTIONS
     .dynalib :
     {
         link_psram_code_flash_start = LOADADDR( .dynalib );
+        link_dynalib_flash_start = LOADADDR( .dynalib );
         . = ALIGN(4);
         link_psram_code_start = .;
         link_dynalib_start = .;
@@ -79,6 +88,7 @@ SECTIONS
         link_destructors_end = .;
 
         . = ALIGN(4);
+        link_psram_code_end = .;
     } > PSRAM AT> APP_FLASH
 
     .data_alt :
@@ -99,18 +109,6 @@ SECTIONS
         . = ALIGN(4);
         link_bss_end_alt = .;
     } > PSRAM
-
-    /* Dynalib location */
-    .dynalib_location :
-    {
-        /* To make sure the following sections are located at the end of PSRAM */
-        FILL (0xAA)
-        . = DEFINED(platform_user_part_trimmed) ? ORIGIN(PSRAM) + LENGTH(PSRAM) - 4 : .;
-        KEEP (*.o(.modinfo.dynalib_location))
-        link_psram_code_end = .;
-    } > PSRAM AT> APP_FLASH
-
-    link_psram_code_size = link_psram_code_end - link_psram_code_start;
     
     /* Static RAM start */
     INCLUDE linker_static_ram_start.ld
@@ -217,7 +215,7 @@ SECTIONS
     }
 }
 
-link_dynalib_location = platform_system_part1_dynalib_table_psram_start;
-
 /* This can be used to calculate the OTA top boundary */
 link_user_part_flash_start = platform_user_part_flash_start;
+
+INCLUDE linker_rtl872x_rom.ld

@@ -133,17 +133,17 @@ constexpr T2* dynalib_checked_cast(T2 *p) {
                 asm volatile ( \
                     ".equ offset, ( " __SX(counter) " * 4)\n" \
                     ".extern link_dynalib_location_offset_" #tablename "\n" \
-                    ".extern link_dynalib_location\n" \
+                    ".extern dynalib_table_location\n" \
                     "push {r0, r3, lr}\n"           /* save register we will change plus storage for sp value */ \
                                                 /* pushes highest register first, so lowest register is at lowest memory address */ \
                                                 /* SP points to the last pushed item, which is r3. sp+4 is then the pushed lr value */ \
-                    "ldr r0, =link_dynalib_location\n" \
-                    "ldr r0, [r0]\n" /* the dynalib table location */ \
+                    "ldr r0, =dynalib_table_location\n" \
+                    "ldr r0, [r0]\n" /* value of dynalib_table_location variable */ \
                     "ldr r3, =link_dynalib_location_offset_" #tablename "\n" \
                     "add r3, r0, r3\n" \
                     "ldr r3, [r3]\n"                    /* the address of the jump table */ \
                     "ldr r3, [r3, #offset]\n"    /* the address at index __COUNTER__ */ \
-                    "str r3, [sp, #4]\n"                /* patch the link address on the stack */ \
+                    "str r3, [sp, #8]\n"                /* patch the link address on the stack */ \
                     "pop {r0, r3, pc}\n"                    /* restore register and jump to function */ \
                 ); \
             };

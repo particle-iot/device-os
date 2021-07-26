@@ -74,6 +74,7 @@ extern char link_heap_location, link_heap_location_end;
 extern uintptr_t link_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location_end;
+extern uintptr_t link_user_part_flash_end[];
 
 static void* new_heap_end = &link_heap_location_end;
 
@@ -83,6 +84,9 @@ extern void* malloc_heap_end();
 #if defined(MODULAR_FIRMWARE)
 void* module_user_pre_init();
 #endif
+
+extern void* dynalib_table_location; // user part dynalib location
+extern module_bounds_t module_user;
 
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
@@ -311,6 +315,14 @@ void HAL_Core_Config(void) {
     HAL_RNG_Configuration();
 
 #if defined(MODULAR_FIRMWARE)
+    uint8_t* address = (uint8_t*)&link_user_part_flash_end;
+    address = address - 4/*CRC*/ - sizeof(module_info_suffix_t);
+
+    module_user.start_address = *((uint32_t*)address); // module start address
+
+    address += 4;
+    dynalib_table_location = (void*)(*((uint32_t*)address)); // dynalib table in flash
+
     hal_user_module_descriptor user_desc = {};
     if (!hal_user_module_get_descriptor(&user_desc)) {
         new_heap_end = user_desc.pre_init();
@@ -318,6 +330,9 @@ void HAL_Core_Config(void) {
             malloc_set_heap_end(new_heap_end);
         }
     }
+
+    address += 4;
+    dynalib_table_location = (void*)(*((uint32_t*)address)); // dynalib in PSRAM
 
     // Enable malloc before littlefs initialization.
     malloc_enable(1);
@@ -400,6 +415,8 @@ bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
     bool valid = false;
 
     // First verify bootloader module
+    // The bootloader image starts with XIP header!!! Skip it for now,
+#if 0
     bounds = find_module_bounds(MODULE_FUNCTION_BOOTLOADER, 0, HAL_PLATFORM_MCU_DEFAULT);
     module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
 
@@ -408,6 +425,7 @@ bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
     if (!valid) {
         return valid;
     }
+#endif
 
     // Now check system-parts
     int i = 0;

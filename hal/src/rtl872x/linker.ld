@@ -201,6 +201,9 @@ SECTIONS
     }
 }
 
+link_dynalib_flash_start = 0;
+link_dynalib_start = 0;
+
 /* Heap location */
 link_heap_location     = link_bss_end;
 link_heap_location_end = platform_monolithic_firmware_stack_start;

@@ -212,6 +212,9 @@ SECTIONS
     }
 }
 
+link_dynalib_flash_start = 0;
+link_dynalib_start = 0;
+
 /* To make the startup file happy */
 PROVIDE (link_psram_code_flash_start = 0);
 PROVIDE (link_psram_code_start = link_psram_code_flash_start);

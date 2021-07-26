@@ -1,6 +1,12 @@
 WRITE_FILE_CREATE = $(shell echo "$(2)" > $(1))
 WRITE_FILE_APPEND = $(shell echo "$(2)" >> $(1))
 
+sector_aligned = $(shell if [ `expr $1 % 4096` -eq 0 ]; then \
+                             echo $1; \
+						 else \
+						     echo `expr '(' $1 / 4096 + 1 ')' '*' 4096`; \
+						 fi)
+
 COMMA := ,
 
 COMMON_BUILD=../../../build
@@ -22,13 +28,14 @@ PSRAM_DATA_SECTION_LEN  = $(shell $(OBJDUMP) -h --section=.data_alt $(INTERMEDIA
 PSRAM_DATA_SECTION_LEN := 0x$(word 3,$(PSRAM_DATA_SECTION_LEN))
 PSRAM_BSS_SECTION_LEN  = $(shell $(OBJDUMP) -h --section=.bss_alt $(INTERMEDIATE_ELF) | grep -E '^\s*[0-9]+\s+\.bss_alt\s+')
 PSRAM_BSS_SECTION_LEN := 0x$(word 3,$(PSRAM_BSS_SECTION_LEN))
-$(info $(TEXT_SECTION_LEN), $(DATA_SECTION_LEN))
 
 # Note: reserving 16 bytes for alignment just in case
 USER_SRAM_LENGTH = ( $(DATA_SECTION_LEN) + $(BSS_SECTION_LEN) + 16 )
 USER_PSRAM_LENGTH = ( $(PSRAM_TEXT_SECTION_LEN) + $(PSRAM_DATA_SECTION_LEN) + $(PSRAM_BSS_SECTION_LEN) + 16)
-USER_FLASH_LENGTH = ( $(TEXT_SECTION_LEN) + $(DATA_SECTION_LEN) + 16 )
 
+USER_FLASH_LENGTH = $(shell let var=$(TEXT_SECTION_LEN)+$(DATA_SECTION_LEN)+16; echo $$var)
+USER_FLASH_LENGTH := $(call sector_aligned,$(USER_FLASH_LENGTH))
+   
 $(call WRITE_FILE_APPEND, "$(MODULE_USER_MEMORY_FILE_GEN)",platform_user_part_trimmed = 1;)
 
 all: $(INTERMEDIATE_ELF)

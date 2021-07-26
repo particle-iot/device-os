@@ -6,6 +6,8 @@ extern void** dynalib_location_user;
 
 static hal_user_module_descriptor user_descriptor = {};
 
+void* dynalib_table_location = 0; // user part dynalib location
+
 /**
  * Determines if the user module is present and valid.
  * @return

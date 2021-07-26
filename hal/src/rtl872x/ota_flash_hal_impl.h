@@ -25,22 +25,15 @@ extern const module_bounds_t* module_bounds[];
 extern const unsigned module_bounds_length;
 
 extern const module_bounds_t module_bootloader;
-extern const module_bounds_t module_ota;
+extern module_bounds_t module_ota;
 
 // Modular firmware
 extern const module_bounds_t module_system_part1;
-extern const module_bounds_t module_user;
-extern const module_bounds_t module_factory;
+extern module_bounds_t module_user;
 
 // Monolithic firmware
 extern const module_bounds_t module_user_mono;
-extern const module_bounds_t module_factory_mono;
 
-#if HAL_PLATFORM_NCP_UPDATABLE
-extern const module_bounds_t module_ncp_mono;
-#endif // HAL_PLATFORM_NCP_UPDATABLE
-
-extern const module_bounds_t module_radio_stack;
 
 const uint8_t* fetch_server_public_key(uint8_t lock);
 const uint8_t* fetch_device_private_key(uint8_t lock);
