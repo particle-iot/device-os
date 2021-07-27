@@ -205,9 +205,11 @@ typedef struct compressed_module_header {
  */
 typedef struct module_info_suffix_t {
     // NB: NB: NB: add new members here
+#if PLATFORM_ID == 32
     const void* module_start_address;
     const void* dynalib_load_address;
     const void* dynalib_start_address;
+#endif
     uint16_t reserved;
     uint8_t sha[32];
     uint16_t size;

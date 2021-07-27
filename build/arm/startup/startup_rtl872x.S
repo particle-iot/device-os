@@ -134,13 +134,13 @@ Reset_Handler:
 .L_loop3_done:
 #endif /* __STARTUP_CLEAR_BSS */
 
-/* Load system part1 PSRAM code */
+/* Load PSRAM code */
     ldr r1, =link_psram_code_flash_start
     ldr r2, =link_psram_code_start
     ldr r3, =link_psram_code_end
 
     subs r3, r2
-    ble .L_loop4_done /* skipp copying the user part PSRAM as well s*/
+    ble .L_loop4_done
 
 .L_loop4:
     subs r3, #4
